@@ -125,6 +125,8 @@ function botFlagWords(kind, detail) {
   const ids = detail && Array.isArray(detail.activeIds) ? ' (' + detail.activeIds.length + ' accounts)' : '';
   return words + score + n + ids;
 }
+/* v2.3.3398: a chat report's reason in words (chatmod.js REPORT_REASONS) */
+const REPORT_WORDS = { spam: 'Spam', abuse: 'Abuse', harassment: 'Harassment', cheating: 'Cheating', other: 'Other' };
 /* the counters worth reading, in words, the ones that are not zero */
 const BOT_COUNTER_WORDS = [
   ['strikes', 'harvests'], ['noFpStrikes', 'with no gesture fingerprint'], ['replayHits', 'replayed gestures'],
@@ -216,7 +218,8 @@ const CAP_GATES = [
   'farmorders' /* v2.3.3134: the Feed & Seed's order board -- lower case, a kill switch */,
   'armorforge' /* v2.3.3092: bars into armor -- lower case, a kill switch */,
   'dailyspin' /* v2.3.3140: the Gambling Den's free daily spin -- lower case, a kill switch */,
-  'dailyquests' /* v2.3.3140: daily quests + the season -- lower case, a kill switch */,
+  'dailyquests' /* v2.3.3140: daily quests + the season -- lower case, a kill switch; v2.3.3400: the quests PUT AWAY, so a switch to turn them ON (`dailyquests: true`), and the season goes with dailyspin too */,
+  'season' /* v2.3.3400: the season track DROPPED -- off, a switch to turn it ON (`season: true`) */,
   'salvage' /* v2.3.3141: salvage for bars, and the grades' essences -- lower case, a kill switch */,
   'trapping' /* v2.3.3120: arm a trap, then kill it -- lower case, a kill switch */,
   'trapcraft' /* v2.3.3120: box traps at the Woodworker -- lower case, a kill switch */,
@@ -238,6 +241,9 @@ const CAP_GATES = [
   'xpdecay' /* v2.3.3251: XP fades 5+ levels below you, harvests and fights (server/src/xpdecay.js) -- lower case, a kill switch */,
   'presence2' /* v2.3.3250: far players only while the world map is open, the online list, far copies parked (server/src/presence2.js) -- lower case, a kill switch */,
   'nearjoin' /* v2.3.3276: a join is told the players around it whole and the rest as list entries, a look sent when its player comes around (server/src/nearjoin.js) -- lower case, a kill switch */,
+  'emotes' /* v2.3.3391: emotes you can see -- the listed emotes relayed and placed near the sender, the chat box's smiley and B (server/src/emotes.js) -- lower case, a kill switch */,
+  'dice' /* v2.3.3393: /roll and /flip rolled by the worker (server/src/dice.js), shown in the chat and over the roller's head -- lower case, a kill switch */,
+  'emotemoves' /* v2.3.3392: your bro moves -- a wave or a dance drawn in code, a held pose kept on the player (server/src/poses.js, tick.js po) -- off with emotes: false */,
   'bundle' /* v2.3.3254: several messages in one frame (server/src/bundle.js) -- lower case, a kill switch (the worker always takes one) */,
   'quiet' /* v2.3.3254: the quiet phone -- 66 ms moves with nobody near, a steady walk held out of a fight, keepalives and the look only when needed (src/game/quietPhone.js) -- lower case, a kill switch */,
   'pvpbalance' /* v2.3.3260: hits between players rolled by the worker, whole (the roll a monster takes), one sword hit a swing, paid specials (server/src/pvpbalance.js) -- lower case, a kill switch */,
@@ -449,6 +455,47 @@ export const DevPanel = ({ onClose }) => {
     if (j) { setBotFlags(Array.isArray(j.flagged) ? j.flagged : []); setMsg(''); }
   }, [call]);
 
+  /* ═══ v2.3.3398: CHAT REPORTS, WHERE THE OWNER CAN ACT ON THEM ═══
+     Players have filed reports since v2.3.1981 (a player's card, Report), each
+     stored with the server's own copy of what the reported player said
+     (chatmod.js).  The owner could read them, and kick or freeze from them,
+     only with curl -- and runs the game from a phone.  Found by the fun &
+     social plan's check of the code (docs/FUN-SOCIAL-PLAN.md, Phase 0).  This
+     lists them newest first (GET /reports, which says per row whether the
+     player is online and frozen NOW, v2.3.3398) and acts through the admin
+     routes that already exist: Kick (/kick: they can come straight back),
+     Freeze (/freeze, two taps: they cannot join until unfrozen), Unfreeze,
+     and Dismiss (DELETE /reports: the report is handled).  Every one of them
+     is written to the admin log by the worker.  On demand, like the flags. */
+  const [reports, setReports] = useState(null);
+  const [sure, setSure] = useState('');   /* the Freeze waiting for its second tap */
+  const loadReports = useCallback(async (keepMsg) => {
+    const j = await call('/reports?limit=50');
+    if (j) { setReports(Array.isArray(j.reports) ? j.reports : []); if (!keepMsg) setMsg(''); }
+  }, [call]);
+  const reportAct = useCallback(async (r, act) => {
+    const who = r.targetName || r.target;
+    if (act === 'freeze' && sure !== 'freeze:' + r.key) { setSure('freeze:' + r.key); return; }
+    setSure('');
+    if (act === 'dismiss') {
+      const j = await call('/reports?id=' + encodeURIComponent(r.key), null, 'DELETE');
+      if (j) { setReports((rs) => (rs || []).filter((x) => x.key !== r.key)); setMsg('Dismissed the report on ' + who + '.'); }
+      return;
+    }
+    let j = null;
+    if (act === 'kick') {
+      j = await call('/kick', { playerId: r.target, reason: 'chat report ' + r.key });
+      if (j) setMsg(j.wasOnline ? 'Kicked ' + who + '. They can join again straight away.' : who + ' was not online.');
+    } else if (act === 'freeze') {
+      j = await call('/freeze', { playerId: r.target, note: 'chat report: ' + (r.reason || 'other') });
+      if (j) setMsg('Froze ' + who + ': they cannot join until you unfreeze them.');
+    } else if (act === 'unfreeze') {
+      j = await call('/freeze?id=' + encodeURIComponent(r.target), null, 'DELETE');
+      if (j) setMsg('Unfroze ' + who + '.');
+    }
+    if (j) await loadReports(true);   /* the online and frozen words, fresh */
+  }, [call, sure, loadReports]);
+
   /* ═══ v2.3.3344: A CHARACTER'S DEVICES (server/src/devicelock.js) ═══
      A character's key works only on devices it has been played on.  A player
      moving to a new device sees a code on their screen (DeviceScreen.js); the
@@ -459,6 +506,10 @@ export const DevPanel = ({ onClose }) => {
      player out. */
   const [devCode, setDevCode] = useState('');
   const [devForgetArmed, setDevForgetArmed] = useState(false);
+  /* v2.3.3355: "Give it a new key" (server/src/loginkeys.js) -- two taps, and
+     the key it made, shown here once for the owner to send its player */
+  const [devNewKeyArmed, setDevNewKeyArmed] = useState(false);
+  const [devNewKey, setDevNewKey] = useState('');
   const letDeviceIn = useCallback(async () => {
     const id = devCode.trim();
     if (!id) return;
@@ -472,9 +523,30 @@ export const DevPanel = ({ onClose }) => {
     if (!devForgetArmed) { setDevForgetArmed(true); setMsg('Tap Forget again to put out whoever is playing ' + id + ' and forget its devices.'); return; }
     setDevForgetArmed(false);
     const j = await call('/device-forget', { playerId: id });
-    if (j) setMsg('Forgot ' + j.forgot + ' device' + (j.forgot === 1 ? '' : 's') + ' for ' + id
-      + (j.wasOnline ? ' and put its player out' : '') + '. Nobody can play it until you let one device in.');
+    if (!j) return;
+    /* v2.3.3355: what it did, as one sentence -- "Forgot 2 devices for X, took
+       back 1 Login Key and put its player out." */
+    const did = ['Forgot ' + j.forgot + ' device' + (j.forgot === 1 ? '' : 's') + ' for ' + id];
+    if (j.taken) did.push('took back ' + j.taken + ' Login Key' + (j.taken === 1 ? '' : 's'));
+    if (j.wasOnline) did.push('put its player out');
+    const said = did.length > 1 ? did.slice(0, -1).join(', ') + ' and ' + did[did.length - 1] : did[0];
+    setMsg(said + '. Nobody can play it until you let one device in.');
   }, [call, devCode, devForgetArmed]);
+  /* v2.3.3355: the full reset for a stolen character: every device forgotten,
+     every key taken back, the old key retired, and ONE new key, shown below
+     for the owner to send its player (the worker keeps only its fingerprint,
+     so it can never be shown again) */
+  const giveNewKey = useCallback(async () => {
+    const id = devCode.trim();
+    if (!id) return;
+    if (!devNewKeyArmed) { setDevNewKeyArmed(true); setDevNewKey(''); setMsg('Tap again to give ' + id + ' a new Login Key: every old key and device stops working.'); return; }
+    setDevNewKeyArmed(false);
+    const j = await call('/key-new', { playerId: id });
+    if (j && j.key) {
+      setDevNewKey(j.key);
+      setMsg('New Login Key for ' + id + (j.wasOnline ? ' (its player was put out)' : '') + '. Send it to its player: it is shown only now.');
+    }
+  }, [call, devCode, devNewKeyArmed]);
 
   const saveKey = () => {
     const k = draft.trim();
@@ -891,7 +963,7 @@ export const DevPanel = ({ onClose }) => {
             </div>
             <input
               data-devlock-code="1"
-              value={devCode} onChange={(e) => { setDevCode(e.target.value); setDevForgetArmed(false); }}
+              value={devCode} onChange={(e) => { setDevCode(e.target.value); setDevForgetArmed(false); setDevNewKeyArmed(false); setDevNewKey(''); }}
               placeholder="the player's code (bp_…)"
               autoCapitalize="off" autoCorrect="off" spellCheck={false}
               style={{ width: '100%', boxSizing: 'border-box', background: COL.well, color: COL.text,
@@ -909,6 +981,24 @@ export const DevPanel = ({ onClose }) => {
             <div style={{ color: COL.muted, fontSize: 12, marginBottom: 4, lineHeight: 1.4 }}>
               Forget is for a character someone else got into: whoever is playing it is put out, and
               nobody can play it until you let one device in.
+            </div>
+            {/* v2.3.3355: the full reset, its key shown once */}
+            <button type="button" data-devlock-newkey="1"
+              style={{ ...btn(false), borderColor: COL.danger, color: COL.danger }}
+              disabled={busy || !devCode.trim()} onClick={giveNewKey}>
+              {devNewKeyArmed ? 'Sure? Give it a new key' : 'Give it a new key'}
+            </button>
+            {devNewKey && (
+              <input data-devlock-newkey-value="1" readOnly value={devNewKey}
+                onFocus={(e) => { try { e.target.select(); } catch (err) { /* nothing */ } }}
+                style={{ width: '100%', boxSizing: 'border-box', background: COL.well, color: '#EAC675',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontWeight: 700,
+                  border: '1px solid ' + COL.border, borderRadius: 8, padding: '11px 10px', marginBottom: 8, minHeight: 44 }} />
+            )}
+            <div style={{ color: COL.muted, fontSize: 12, marginBottom: 4, lineHeight: 1.4 }}>
+              Give it a new key when a character was stolen, or for a player who lost every device
+              and key: the character's old keys and devices all stop working, and you send its player
+              the new key, which works on any device.
             </div>
 
             {/* ═══ v2.3.3323: BOT FLAGS ═══  See the note by loadBotFlags. */}
@@ -954,6 +1044,74 @@ export const DevPanel = ({ onClose }) => {
                     )}
                     <div style={{ fontSize: 11, marginTop: 2, color: COL.muted, wordBreak: 'break-all', userSelect: 'all' }}>
                       {f.id}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* ═══ v2.3.3398: CHAT REPORTS ═══  See the note by loadReports. */}
+            <div style={label}>Chat reports</div>
+            <button type="button" style={btn(false)} disabled={busy}
+              onClick={() => loadReports(false)}>
+              {reports ? 'Reload chat reports' : 'Show chat reports'}
+            </button>
+            {reports && reports.length === 0 && (
+              <div data-reports-empty="1" style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }}>
+                No reports. Players report someone from that player's card (Report).
+              </div>
+            )}
+            {reports && reports.length > 0 && (
+              <>
+                <div style={{ color: COL.muted, fontSize: 12, marginBottom: 6, lineHeight: 1.4 }}>
+                  Newest first. What they said is the server's own copy, never the reporter's.
+                  Kick lets them straight back in; Freeze keeps them out until you unfreeze them.
+                </div>
+                {reports.map((r) => (
+                  <div key={r.key} data-report={r.key} style={{
+                    marginBottom: 6, background: COL.raised, borderRadius: 8, padding: '8px 9px',
+                    border: '1px solid ' + COL.border,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      <span data-report-name="1" style={{ flex: 1, minWidth: 0, font: '600 13px system-ui, sans-serif',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {r.targetName || r.target}
+                      </span>
+                      <span data-report-state="1" style={{ font: '600 11px system-ui, sans-serif',
+                        color: r.frozen ? COL.danger : (r.onlineNow ? COL.accent : COL.muted) }}>
+                        {r.frozen ? 'frozen' : (r.onlineNow ? 'online' : 'offline')}
+                      </span>
+                    </div>
+                    <div data-report-why="1" style={{ fontSize: 12.5, lineHeight: 1.4, marginTop: 3, color: COL.text2 }}>
+                      {(REPORT_WORDS[r.reason] || 'Other') + ' · reported by ' + (r.byName || r.by || '?')}
+                      {r.at ? ' · ' + agoWords(r.at) : ''}
+                    </div>
+                    {Array.isArray(r.lines) && r.lines.length > 0 ? r.lines.slice(-3).map((l, i) => (
+                      <div key={i} data-report-line="1" style={{ fontSize: 12, lineHeight: 1.4, marginTop: 2, color: COL.text, wordBreak: 'break-word' }}>
+                        {'\u201C' + String((l && l.text) || '') + '\u201D'}
+                        {l && l.lane && l.lane !== 'room' ? <span style={{ color: COL.muted }}>{' (' + l.lane + ')'}</span> : null}
+                      </div>
+                    )) : (
+                      <div style={{ fontSize: 12, marginTop: 2, color: COL.muted }}>Nothing they said in the 15 minutes before.</div>
+                    )}
+                    <div style={{ fontSize: 11, marginTop: 2, color: COL.muted, wordBreak: 'break-all', userSelect: 'all' }}>
+                      {r.target}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                      <button type="button" data-report-act="kick" style={{ ...chip, minHeight: 34, flex: 'none' }}
+                        disabled={busy} onClick={() => reportAct(r, 'kick')}>Kick</button>
+                      {r.frozen ? (
+                        <button type="button" data-report-act="unfreeze" style={{ ...chip, minHeight: 34, flex: 'none' }}
+                          disabled={busy} onClick={() => reportAct(r, 'unfreeze')}>Unfreeze</button>
+                      ) : (
+                        <button type="button" data-report-act="freeze" style={{ ...chip, minHeight: 34, flex: 'none',
+                          borderColor: COL.danger, color: COL.danger }}
+                          disabled={busy} onClick={() => reportAct(r, 'freeze')}>
+                          {sure === 'freeze:' + r.key ? 'Sure? Freeze' : 'Freeze'}
+                        </button>
+                      )}
+                      <button type="button" data-report-act="dismiss" style={{ ...chip, minHeight: 34, flex: 'none' }}
+                        disabled={busy} onClick={() => reportAct(r, 'dismiss')}>Dismiss</button>
                     </div>
                   </div>
                 ))}

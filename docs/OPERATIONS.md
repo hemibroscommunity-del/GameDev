@@ -49,6 +49,9 @@ From there you can:
   (v2.3.3323; "Bot flags" below).
 - **Player logins** — let a player's character onto a new device, or lock out
   someone who got into a character (v2.3.3344; "Player logins" below).
+- **Chat reports** — what players reported, with what was said, and Kick,
+  Freeze, Unfreeze and Dismiss buttons (v2.3.3398; "Dealing with a griefer or
+  cheater" below).
 
 Nobody else can use any of this: every button asks the worker for permission
 with your key, and without the key the buttons do nothing at all. "Forget key
@@ -62,7 +65,9 @@ Who's online, is the world ticking:
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/overview"
 ```
 
-The economy — total gold in the world, richest players, market escrow.
+The economy — total gold in the world, richest players, market escrow
+(the gold waiting in the market's buy orders; it read 0 by mistake until
+v2.3.3368, so older daily snapshots show 0 there).
 Since v2.3.1150 this also shows `history` (the last week of daily
 snapshots), `delta` (how much total gold moved since yesterday), and
 `alert: true` if gold jumped more than 25% in a day — that's the
@@ -123,11 +128,23 @@ played on another device"** and a code (`bp_...`). That happens on:
 3. Tell them to tap **Try again** within 30 minutes. That device is theirs from
    then on.
 
+**New Login Keys (v2.3.3355).** Players now get a new, longer key made by
+the server: eight short words, shown on their Account card. A new key works on
+**any** phone or computer, typed at the start screen's Login Key, with no pass
+from you. Most players moving devices won't need you any more.
+
 **If someone else got into a character** (its player says it was stolen):
-1. Paste its code and tap **Forget all its devices**, then tap again to
-   confirm. Whoever is playing it is put out, and nobody can play it.
-2. When the real player is ready, tap **Let one new device in**, and have them
-   tap Try again straight away.
+1. Paste its code and tap **Give it a new key**, then tap again to confirm.
+   - Whoever is playing it is put out.
+   - Every device and every old key stops working.
+   - The panel shows a new key, **once**.
+2. Send that key to the real player (only when you're sure it's them). They
+   tap **Use a Login Key** on their screen and type it.
+
+**Forget all its devices** still exists: it puts the player out, takes back
+every new key and forgets every device, and **Let one new device in** then
+lets the real player back in with the old key. For a character whose old key
+is retired (one made since v2.3.3355), use **Give it a new key** instead.
 
 From a computer:
 ```
@@ -135,10 +152,14 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/j
   -d '{"playerId":"bp_XXXX"}' "https://WORKER/api/admin/device-pass"
 curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
   -d '{"playerId":"bp_XXXX"}' "https://WORKER/api/admin/device-forget"
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"playerId":"bp_XXXX"}' "https://WORKER/api/admin/key-new"
 ```
 `/api/admin/overview`'s `deviceLock` counts logins let in, refused, and
-passes used. If it ever gets in honest players' way, the live flag
-`devicelock: false` turns it off (docs/specs/device-lock.md).
+passes used, and `loginKeys` the new keys made and used. If the device lock
+ever gets in honest players' way, the live flag `devicelock: false` turns it
+off (docs/specs/device-lock.md); `keys2: false` stops new keys being handed
+out, while keys already made keep working (docs/specs/login-keys.md).
 
 ## Bot flags: who looks like a script (v2.3.3323)
 
@@ -180,7 +201,33 @@ curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/botstat?id=bp_XXXX"
 
 ## Dealing with a griefer or cheater
 
-Kick (disconnects them; they can reconnect — a warning shot):
+**On your phone (v2.3.3398):** players report someone from that player's card
+(Report, then a reason). Open the Test panel (hold the zone name at the top
+for about a second) and under **Chat reports** tap **Show chat reports**. Each
+report shows:
+- who was reported, and whether they're **online**, **offline** or **frozen**
+  right now;
+- the reason, who reported them, and when;
+- what they said in the 15 minutes before, the server's own copy (a report
+  can't put words in anyone's mouth);
+- their player id (`bp_...`).
+
+And four buttons:
+- **Kick**: disconnects them, and they leave the world as anyone who closes
+  the game does (saved, gone from everyone's screen). They can come straight
+  back, so it's a warning shot.
+- **Freeze**: takes two taps (it asks "Sure? Freeze"). They can't log in at
+  all until you unfreeze them, and the row says **frozen**.
+- **Unfreeze**: lets them back.
+- **Dismiss**: you've dealt with it, so the report goes away.
+
+Everything you do here is written to the admin log.
+
+The same, from a computer:
+
+Kick (disconnects them; they can reconnect — a warning shot). Since
+v2.3.3356 a kicked or frozen player leaves the world the way anyone who closes
+the game does: saved, and gone from everyone else's screen.
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"playerId":"bp_XXXX","reason":"stop spamming"}' "https://WORKER/api/admin/kick"

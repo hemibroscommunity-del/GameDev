@@ -529,7 +529,10 @@ docs/specs/relay.md. The table below is that list.
 
 `chat` is still a relay — it keeps the `eventBuffer` fan-out, the relay
 token bucket and its deliberately un-zone-scoped reach — but the payload is
-no longer whatever the sender wrote. `_sanitizeChatRelay` (index.js) REBUILDS
+no longer whatever the sender wrote. (v2.3.3396: `chat` and `emote` spend an
+allowance of their own now, `SOCIAL` — five at once, one every 2 s — not the
+relay bucket; the text is cleaned after the clamp below; and the same room line
+twice in 30 s is relayed once. `docs/specs/chat-guard.md`.) `_sanitizeChatRelay` (index.js) REBUILDS
 it from an allowlist before the rebroadcast:
 
 | Field | Rule |
@@ -707,6 +710,16 @@ count). Quest, season and spin-pot payouts ride `_creditPlayer` →
 `inbox_delivered` with sources `dailyquest` / `season` / `dailyspin`, kept
 out of chat by the client. Full table:
 docs/specs/daily-rewards.md.
+v2.3.3400: the daily quests and the season are put away --
+`caps.dailyquests` is false unless the live flag `dailyquests: true` is set
+(then `daily_reroll` and `daily_progress` work as above), and `caps.season`
+false unless `season: true` (then `season_claim` works as above; off, it is
+refused with no answer). `rewards_state.season` carries `on` (0/1); with the
+season off, the first state after the worker mailed a player's reached and
+unclaimed tiers carries news `{kind: 'season_drop', s, mailed: [tier...]}`
+(their coins and items `inbox_delivered`, source `season`). A new day online
+sends news `{kind: 'spinday'}` in place of `'newday'`, and tut_1's turn-in a
+state with no news in place of `'unlocked'`.
 
 **Salvage and essences (v2.3.3141, caps.salvage):** new c→s cases
 `smith_salvage {field: 'armorStash'|'legsStash', gid}` or `{field:

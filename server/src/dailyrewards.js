@@ -52,6 +52,11 @@
  *      just pauses (stars never go down), unclaimed tiers are MAILED when the
  *      season ends (nothing is lost for being away), and stars past the last
  *      tier keep paying a bonus spin every OVERFLOW_STARS.
+ *      v2.3.3400: DROPPED, the owner: "Yes drop the season" (offered
+ *      keeping it on the free spin's stars once the daily quests were put
+ *      away) -- off unless `season: true` in the live flags (_seOff): no
+ *      star is added, no claim taken, and a tier a player reached and never
+ *      claimed is mailed the first time they are seen, as at a season's end.
  *
  * THE STREAK stays where it always lived, cadence.js (`cadence:login:<pid>`),
  * now with FREEZES: one earned every FREEZE_EVERY days of streak, at most
@@ -131,6 +136,14 @@ export const DAILY = {
     FREEZE_MAX: 2,       /* held at most */
   },
 
+  /* v2.3.3400: PUT AWAY -- the owner: "Remove the daily quests they're
+     randomly appearing as complete and it makes no sense to me ... I'd rather
+     it go away".  They were rolled for everyone at tut_1, counted from any
+     kill, harvest, cook or smelt and announced with the story quest's
+     fanfare, so a player met them already finished.  Off unless the live
+     flags say `dailyquests: true` (_dqOff); the code stays, tested, like the
+     ground's edge pieces and blends.  The season is fed by the free spin
+     instead (SEASON.SPIN_STARS). */
   QUESTS: {
     COUNT: 3,
     REROLLS: 1,          /* free rerolls a day */
@@ -163,7 +176,13 @@ export const DAILY = {
     EPOCH_DAY: Date.UTC(2026, 9, 12) / DAY_MS,
     DAYS: 28,
     STARS_PER_TIER: 3,
-    SPIN_STARS: 1,       /* the day's free spin */
+    /* v2.3.3400: the day's free spin is the season's only star now the
+       daily quests are put away -- 3 a day finishes the 25 tiers (75) in 25
+       days of a 28-day season, three missed days to spare.  At 1 the track
+       stopped at tier 9.  With the quests switched back on the spin pays its
+       old 1 (SPIN_STARS_QUESTS), so that day's 5 at most is as it was. */
+    SPIN_STARS: 3,
+    SPIN_STARS_QUESTS: 1,
     OVERFLOW_STARS: 5,   /* past the last tier: a bonus spin every 5 stars */
     /* Each tier: what it pays, in grants -- {kind:'coins', n} | {kind:'item',
        key, n} | {kind:'spin', n} | {kind:'freeze', n}.  Milestones every
@@ -322,8 +341,23 @@ export const dailyRewardsMethods = {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, name) && !f[name]);
   },
+  /* v2.3.3400: ...and a put-away feature's switch: only a flag set on (true,
+     or a number not 0 -- liveops takes both, and the caps spread passes it on
+     as it is) turns it ON; before the flags are read it is off. */
+  _drFlagOn(name) {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, name) && f[name]);
+  },
   _spinOff() { return this._drFlagOff('dailyspin'); },
-  _dqOff() { return this._drFlagOff('dailyquests'); },
+  /* v2.3.3400: the daily quests are PUT AWAY (QUESTS above): off unless the
+     live flags say `dailyquests: true`. */
+  _dqOff() { return !this._drFlagOn('dailyquests'); },
+  /* v2.3.3400: what the day's free spin puts on the season. */
+  _seSpinStars() { return this._dqOff() ? SEASON.SPIN_STARS : SEASON.SPIN_STARS_QUESTS; },
+  /* v2.3.3400: the season is DROPPED (the owner, offered keeping it on the
+     free spin's stars: "Yes drop the season"): off unless the live flags say
+     `season: true`, put away like the daily quests (_dqOff). */
+  _seOff() { return !this._drFlagOn('season'); },
 
   /* Injectable for tests; the clock and the dice in the game. */
   _drNow() { return Date.now(); },
@@ -376,7 +410,15 @@ export const dailyRewardsMethods = {
     const day = dayOf(now);
     let changed = false;
     const s = seasonOf(day);
-    if (rec.se.s !== s) {
+    if (this._seOff()) {
+      /* v2.3.3400: the season DROPPED -- none turns over and no star is added
+         (_seAddStars), and a tier this player reached and never claimed is
+         MAILED the first time they are seen, as at a season's end: nothing
+         they earned is lost.  The record is left as it is, so the switch can
+         bring the season back where it stood (its claimed tiers marked, so
+         nothing pays twice). */
+      if (await this._seClose(pid, rec, true)) changed = true;
+    } else if (rec.se.s !== s) {
       if (rec.se.s > 0) await this._seClose(pid, rec);
       rec.se = { s, st: 0, cl: [], ov: 0 };
       changed = true;
@@ -442,7 +484,10 @@ export const dailyRewardsMethods = {
       const rec = this._drMap().get(pid);
       if (!rec) return;
       if (await this._drRollover(pid, rec, now)) await this._drSave(pid);
-      await this._drSendState(pid, { kind: 'newday' });
+      /* v2.3.3400: 'newday' reads "three new daily quests" on every page; with
+         the quests put away the news is 'spinday' (the spin alone), which a
+         page from before it ignores */
+      await this._drSendState(pid, { kind: this._dqOff() ? 'spinday' : 'newday' });
     } catch (e) { /* the next signal or tick tries again */ } finally {
       this.__drTurning.delete(pid);
     }
@@ -460,14 +505,17 @@ export const dailyRewardsMethods = {
   },
 
   /* The first quest was just handed in (quests.js): today's three appear at
-     once rather than at the next login. */
+     once rather than at the next login.  v2.3.3400: and the free spin opens
+     -- sent with the quests put away too (it returned early then, so the
+     Gambling Den showed the spin locked until a rejoin), but with no news:
+     'unlocked' reads "Daily quests are open!" on every page. */
   async _drOnQuestTurnIn(pid, questId) {
-    if (questId !== QUESTS.UNLOCK_QUEST || this._dqOff()) return;
+    if (questId !== QUESTS.UNLOCK_QUEST) return;
     try {
       const rec = await this._drLoad(pid);
       if (!rec) return;
       if (await this._drRollover(pid, rec, this._drNow())) await this._drSave(pid);
-      await this._drSendState(pid, { kind: 'unlocked' });
+      await this._drSendState(pid, this._dqOff() ? null : { kind: 'unlocked' });
     } catch (e) { /* the next login rolls them anyway */ }
   },
 
@@ -597,7 +645,8 @@ export const dailyRewardsMethods = {
       const i = spinPick(this._drRand());
       const lump = spinLump(SPIN.PRIZES[i].coins, mult);
       sp.open = 1; sp.pot = lump; sp.k = 0; sp.i = i; sp.run = runId();
-      if (started === 'free' && !this._dqOff()) this._seAddStars(rec, SEASON.SPIN_STARS);
+      /* v2.3.3400: the season's own now, not the quests' switch's */
+      if (started === 'free') this._seAddStars(rec, this._seSpinStars());
       news = { kind: 'spin', act, started, i, lump, pot: lump, mult, jackpot: i === SPIN.PRIZES.length - 1 };
       if (lump * 2 > SPIN.POT_MAX) { news.paid = await this._spinPay(pid, rec, 'the house limit'); news.top = true; }
     } else if (act === 'double') {
@@ -733,16 +782,26 @@ export const dailyRewardsMethods = {
   },
 
   /* A daily quest is done: paid at once, its star on the season, and the
-     all-three bonus when it is the third.  Saved at once (value). */
+     all-three bonus when it is the third.  Saved at once (value).
+
+     v2.3.3369: THE COINS AND THE RECORD IN ONE WRITE.  The record (this
+     quest done) was saved in this run and the coins after _creditPlayer's
+     first read, a write of their own: a restart between the two (every
+     server merge restarts the room) kept "done" and lost the quest's gold
+     (the architecture review, 2026-10-17).  The player is here -- only an
+     online player's record is counted (_drSignal) -- so the coins go onto
+     their live state and are saved and stamped in the SAME synchronous run
+     as the record (inbox.js _creditLiveTogether): both commit, or neither,
+     and neither means the quest is still to do.  `q.d` is set first, so the
+     signal never completes one twice in this life; a done quest is never
+     rerolled, so its opId is only ever paid here.  A player gone from the
+     room (the record not yet forgotten) is credited as before, the record
+     saved after the credit (rule 5: the credit first, the run closed after
+     it; a crash between leaves the quest to do, and its opId answers 'dup'). */
   _dqComplete(pid, rec, i) {
     const q = rec.dq.list[i];
     q.d = 1;
     q.n = q.g;
-    this._creditPlayer(pid, {
-      opId: 'dq:' + pid + ':' + rec.dq.day + ':' + i,
-      source: 'dailyquest', kind: 'gold', payload: { amount: q.c },
-      note: 'Daily quest',
-    }).catch(() => {});
     this._seAddStars(rec, QUESTS.STARS);
     let all = null;
     if (!rec.dq.all && rec.dq.list.length >= QUESTS.COUNT && rec.dq.list.every((x) => x && x.d)) {
@@ -751,7 +810,21 @@ export const dailyRewardsMethods = {
       rec.sp.extra = Math.min(SPIN.EXTRA_MAX, rec.sp.extra + QUESTS.ALL.spins);
       all = { stars: QUESTS.ALL.stars, spins: QUESTS.ALL.spins };
     }
-    this._drSave(pid).catch(() => {});
+    /* the same entry on both roads, written out at each (opid-audit wants a
+       credit's opId inline, where the call is) */
+    const together = this._creditLiveTogether([{ pid, entry: {
+      opId: 'dq:' + pid + ':' + rec.dq.day + ':' + i,
+      source: 'dailyquest', kind: 'gold', payload: { amount: q.c }, note: 'Daily quest',
+    } }], []);
+    if (together) {
+      together.catch(() => {});
+      this._drSave(pid).catch(() => {});
+    } else {
+      this._creditPlayer(pid, {
+        opId: 'dq:' + pid + ':' + rec.dq.day + ':' + i,
+        source: 'dailyquest', kind: 'gold', payload: { amount: q.c }, note: 'Daily quest',
+      }).catch(() => {}).then(() => this._drSave(pid)).catch(() => {});
+    }
     this._drSendState(pid, { kind: 'daily', i, t: q.t, p: q.p, coins: q.c, stars: QUESTS.STARS, all }).catch(() => {});
   },
 
@@ -797,6 +870,7 @@ export const dailyRewardsMethods = {
   /* ── 3. the season ── */
 
   _seAddStars(rec, n) {
+    if (this._seOff()) return;   /* v2.3.3400: the season dropped */
     const se = rec.se;
     se.st += Math.max(0, Math.floor(n) || 0);
     /* past the last tier, every OVERFLOW_STARS more is a bonus spin -- kept
@@ -847,19 +921,27 @@ export const dailyRewardsMethods = {
 
   /* The season is over: every tier this player reached and never claimed is
      MAILED (the inbox for coins and items; spins and freezes kept).  Called
-     from the rollover, i.e. the first time they are seen after it ends. */
-  async _seClose(pid, rec) {
+     from the rollover, i.e. the first time they are seen after it ends.
+     v2.3.3400: ...or, with `drop`, the first time they are seen with the
+     season DROPPED (and every rollover after it, which finds nothing more:
+     a mailed tier is marked claimed).  Returns how many tiers it mailed. */
+  async _seClose(pid, rec, drop) {
     const se = rec.se;
     const mailed = [];
     for (let t = 1; t <= SEASON.TIERS.length; t++) {
       if (se.st < tierNeed(t) || se.cl.includes(t)) continue;
       se.cl.push(t);
       mailed.push(t);
-      await this._seGrant(pid, rec, se.s, t, '(sent at the season\'s end)');
+      await this._seGrant(pid, rec, se.s, t, drop ? '(sent when the season ended early)' : '(sent at the season\'s end)');
     }
     /* the next state this player is sent says the season ended, and what
-       it mailed them -- usually the one after their join */
-    this._drQueueNews(pid, { kind: 'season_end', s: se.s, stars: se.st, mailed });
+       it mailed them -- usually the one after their join.  v2.3.3400: a
+       drop says so only to a player it paid ('season_drop', which a page
+       from before it ignores): a "season is over" for everyone, with no
+       season shown any more, would be a riddle. */
+    if (!drop) this._drQueueNews(pid, { kind: 'season_end', s: se.s, stars: se.st, mailed });
+    else if (mailed.length) this._drQueueNews(pid, { kind: 'season_drop', s: se.s, mailed });
+    return mailed.length;
   },
 
   _drQueueNews(pid, news) {
@@ -869,7 +951,11 @@ export const dailyRewardsMethods = {
 
   async _handleSeasonClaim(session, payload) {
     if (!session || !session.id) return;
-    if (this._dqOff()) return;
+    /* v2.3.3400: no longer refused with the daily quests off -- they are put
+       away, and the season is the free spin's.  v2.3.3400: refused with the
+       season DROPPED: every tier reached is mailed by the rollover instead
+       (a page from before the drop can still send one). */
+    if (this._seOff()) return;
     const pid = session.id;
     const ps = this.playerState[pid];
     if (!ps || ps.dying || ps.dead || ps.disconnected) return;
@@ -910,7 +996,11 @@ export const dailyRewardsMethods = {
      adds season stars (the overflow's spins included), `spins` banks bonus
      spins, `quest: [i, n]` counts n towards today's quest i through the very
      path a kill would (so a finished one is PAID, as in the game).  For the
-     phone scenario (mp-dailyrewards) and the owner's own testing. */
+     phone scenario (mp-dailyrewards) and the owner's own testing.
+     v2.3.3400: `seasonTier: n` makes the record one from before the season
+     was dropped -- this season, n tiers' stars, put straight on (no star is
+     ADDED with the season off) -- and turns it over again, so the drop mails
+     what it reached, as the player's next join would. */
   async _drDev(pid, body) {
     const ps = this.playerState[pid];
     if (!ps) return { ok: false, error: 'not online' };
@@ -922,6 +1012,12 @@ export const dailyRewardsMethods = {
     if (stars) this._seAddStars(rec, stars);
     const spins = Math.max(0, Math.min(SPIN.EXTRA_MAX, Math.floor(Number(b.spins) || 0)));
     if (spins) rec.sp.extra = Math.min(SPIN.EXTRA_MAX, rec.sp.extra + spins);
+    if (b.seasonTier != null) {
+      const n = Math.max(0, Math.min(SEASON.TIERS.length, Math.floor(Number(b.seasonTier) || 0)));
+      rec.se.s = seasonOf(dayOf(this._drNow()));
+      rec.se.st = Math.max(rec.se.st, tierNeed(n));
+      await this._drRollover(pid, rec, this._drNow());
+    }
     if (Array.isArray(b.quest) && b.quest.length === 2) {
       const i = b.quest[0];
       const n = Math.max(1, Math.min(999, Math.floor(Number(b.quest[1]) || 1)));
@@ -1005,6 +1101,7 @@ export const dailyRewardsMethods = {
         stars: QUESTS.STARS,
       },
       season: {
+        on: this._seOff() ? 0 : 1,   /* v2.3.3400: dropped unless its switch is on */
         s: se.s || seasonOf(day),
         st: se.st,
         per: SEASON.STARS_PER_TIER,
@@ -1013,7 +1110,7 @@ export const dailyRewardsMethods = {
         cl: se.cl.slice(),
         ov: se.ov,
         ovEvery: SEASON.OVERFLOW_STARS,
-        spinStars: SEASON.SPIN_STARS,
+        spinStars: this._seSpinStars(),   /* v2.3.3400: 3 with the quests put away */
       },
       news: news || null,
     };

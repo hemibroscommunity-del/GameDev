@@ -1361,6 +1361,39 @@ export async function letDeviceIn(wsPort, playerId) {
 }
 
 
+/* ═══ v2.3.3357: A FRESH MINUTE AT THE LOGIN DOOR ═══
+ * The login door counts every try by the caller's address, 20 a minute
+ * (server/src/account.js ACCOUNT.IP_MAX_ATTEMPTS / IP_WINDOW_MS), and on this
+ * machine every page of a run is ONE address ('unknown': no CF-Connecting-IP).
+ * A scenario right after one that looks many characters up (mp-roster's
+ * picker asks the door about every row) can find the minute spent and its own
+ * door calls answered 'rate': mp-pickerrestart's restart did, on main too.
+ * So a scenario whose subject is a door call starts on a fresh minute: tries
+ * are sent until one is refused 'rate' (the minute used up, if it was not),
+ * then one every 5 s until one is let through, the first of a new minute.  At
+ * most ~70 s; returns how long it waited (-1 if the door never let one
+ * through). */
+export async function freshDoorMinute(wsPort, { timeout = 75000 } = {}) {
+  const t0 = Date.now();
+  const tryDoor = async () => {
+    try {
+      const r = await (await fetch(`http://127.0.0.1:${wsPort}/api/account/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phrase: 'qa-fresh-door-minute-0' }),
+      })).json();
+      return r && r.reason === 'rate' ? 'rate' : 'open';
+    } catch (e) { return 'down'; }
+  };
+  let spent = false;
+  for (let i = 0; i < 25 && !spent; i++) spent = (await tryDoor()) === 'rate';
+  if (!spent) return Date.now() - t0;   /* a door with no limit: nothing to wait for */
+  while (Date.now() - t0 < timeout) {
+    await new Promise((res) => setTimeout(res, 5000));
+    if ((await tryDoor()) === 'open') return Date.now() - t0;
+  }
+  return -1;
+}
+
 export async function devOp(wsPort, op, playerId, body) {
   const res = await fetch(`http://127.0.0.1:${wsPort}/api/admin/dev/${op}`, {
     method: 'POST',

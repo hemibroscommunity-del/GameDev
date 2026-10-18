@@ -22,6 +22,7 @@ import { enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: E a
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';   /* v2.3.3067: E at Ace opens his coin flip */
 import { shopBus } from '@/ui/mobile/shopBus.js';   /* v2.3.3067: ...and at Diego his shop */
 import { startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed on your farm, worked where it lies */
+import { emotesLive } from '@/game/emotes.js';   /* v2.3.3391: B opens the emotes */
 
 /**
  * v2.3.3105: what runInteract would do here, for the right stick's picture
@@ -351,6 +352,19 @@ export function setupDesktopControls(S, deps) {
         setTimeout(function() {
           if (chatInputRef.current) chatInputRef.current.focus();
         }, 50);
+        return;
+      }
+
+      /* ═══ v2.3.3391: B — THE EMOTES (B for Bro) ═══
+         The picker's only door was the hidden toolbar's.  1-3 already pick
+         weapons, so the plan's "1-8 for emotes" was out; B toggles the picker
+         (BroTown's window.__broLegacyUI.emotes), as the chat box's smiley
+         opens it on a phone.  After the C handler for the same reason H is:
+         the INPUT/TEXTAREA guard at the top keeps a typed "b" out of it. */
+      if (e.code === 'KeyB' && !e.repeat) {
+        e.preventDefault();
+        var _emoteUi = typeof window !== 'undefined' ? window.__broLegacyUI : null;
+        if (_emoteUi && typeof _emoteUi.emotes === 'function' && emotesLive(S)) _emoteUi.emotes();
         return;
       }
 
