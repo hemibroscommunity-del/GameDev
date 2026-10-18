@@ -230,10 +230,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const q = await H.readState(B, () => { const f = window.__btFightFood; return f && f.hits.length ? f.hits[f.hits.length - 1] : null; });
     /* a parry is not the plain block this step reads (no stamina cost): one
        that slipped in staggers the striker 1.5 s, so the next tries wait it out */
-    if (q && q.blocked && q.at >= t0 - 200 && !pb.some((p) => p.text === 'PARRY!')) blk = { pb, q };
+    if (q && q.blocked && q.at >= t0 - 200 && !pb.some((p) => p.text === 'PARRY!')) blk = { pb, q, t0 };
     await A.page.waitForTimeout(400);
   }
   rec.ok('a blow was blocked by the worker (guard)', !!blk, blk);
+  /* v2.3.3425: and its words waited for from the record, as steps 2-3's
+     numbers are: the striker is another player, so "Blocked!" and its
+     stamina come out of the peer numbers' playback queue a frame or more
+     later (the second solo run of 2026-10-18 read the record empty) */
+  if (blk) {
+    for (let i = 0; i < 25; i++) {
+      blk.pb = await popsSince(B, blk.t0);
+      if (blk.pb.some((p) => p.text === 'PARRY!') || (blk.pb.some((p) => p.text === 'Blocked!') && blk.pb.some((p) => /⚡$/.test(p.text)))) break;
+      await A.page.waitForTimeout(200);
+    }
+  }
   if (blk) {
     const said = blk.pb.find((p) => p.text === 'Blocked!');
     const st = blk.pb.find((p) => /⚡$/.test(p.text));
