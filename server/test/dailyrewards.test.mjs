@@ -26,15 +26,18 @@
  *      online across midnight turns over to the new day.
  *   7. The wire: both server types privileged; a forged one is not relayed.
  *   8. The operator's test hook.
- *   9. v2.3.3349: the daily quests PUT AWAY -- the game as it ships: not
- *      advertised, nothing rolled, counted or paid, the spin opened at tut_1
- *      with no quest news, the free spin's 3 stars on the season, a claim
- *      settled, a new day's 'spinday'; and the live flag bringing them back.
+ *   9. v2.3.3384: the daily quests and the season PUT AWAY -- the game as
+ *      it ships: neither advertised, nothing rolled, counted or paid, the
+ *      spin opened at tut_1 with no quest news, no star from the spin, a
+ *      claim refused, the tiers a player reached mailed once when they are
+ *      next seen, a new day's 'spinday'; and each live flag bringing its own
+ *      back.
+ *  10. v2.3.3369: a daily quest's coins and its "done" are one write.
  *
- * v2.3.3349: the owner: "Remove the daily quests".  They are off unless the
- * live flags say `dailyquests: true`, so sections 2-8 run with that flag on
- * (the quests' code is kept, and tested, for that switch); section 9 is a
- * room with no flags.
+ * v2.3.3384: the owner: "Remove the daily quests", then "Yes drop the
+ * season".  They are off unless the live flags say `dailyquests: true` and
+ * `season: true`, so sections 2-8 and 10 run with those flags on (the code is
+ * kept, and tested, for those switches); section 9 is a room with no flags.
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import {
@@ -71,9 +74,10 @@ function check(name, cond, detail) {
 const DAY = 86400000;
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
-/* v2.3.3349: the daily quests are put away; sections 2-8 test them switched
-   back on (section 9 tests a room without the flag) */
-room._liveFlags = { dailyquests: true };
+/* v2.3.3384: the daily quests are put away; sections 2-8 test them switched
+   back on (section 9 tests a room without the flag).  v2.3.3384: and the
+   season is dropped, so its switch is on here too. */
+room._liveFlags = { dailyquests: true, season: true };   /* v2.3.3384: the season dropped too */
 /* A fixed clock in the PAST (v2.3.1155: a future-ish timestamp the real
    clock can catch up with is a time bomb in an opId-deduped system). */
 let NOW = Date.UTC(2026, 0, 14, 12, 0, 0);
@@ -134,7 +138,7 @@ await join(ws, 'bp_dr_a');
 const ps = () => room.playerState['bp_dr_a'];
 {
   const sync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);
-  check('caps.dailyspin and caps.dailyquests are advertised (the quests by their live flag, v2.3.3349)', !!sync && sync.caps.dailyspin === true && sync.caps.dailyquests === true);
+  check('caps.dailyspin and caps.dailyquests are advertised (the quests by their live flag, v2.3.3384)', !!sync && sync.caps.dailyspin === true && sync.caps.dailyquests === true);
   const iState = ws.sent.findIndex((m) => m.type === 'rewards_state');
   const iPs = ws.sent.findIndex((m) => m.type === 'player_state');
   check('rewards_state is sent on join, after player_state', iState > 0 && iPs >= 0 && iState > iPs, { iState, iPs });
@@ -181,7 +185,7 @@ const ps = () => room.playerState['bp_dr_a'];
     !!st && st.news.act === 'spin' && st.news.started === 'free' && st.news.i === 2 && st.news.lump === 100 && st.news.pot === 100
     && st.news.jackpot === false && st.spin.open === 1 && st.spin.pot === 100 && st.spin.i === 2 && st.spin.canDouble === 1
     && ps().coins === c0 && paidSpin(ws).length === 0, st && { news: st.news, spin: st.spin });
-  check('...and the day\'s free spin put a star on the season (one, with the quests switched on: v2.3.3349)', st.season.st === DAILY.SEASON.SPIN_STARS_QUESTS && st.season.spinStars === 1, st.season);
+  check('...and the day\'s free spin put a star on the season (one, with the quests switched on: v2.3.3384)', st.season.st === DAILY.SEASON.SPIN_STARS_QUESTS && st.season.spinStars === 1, st.season);
   NOW += 1000;
   force(HEADS);
   await send(ws, 'daily_spin', { act: 'double', opId: 's2' });
@@ -702,7 +706,7 @@ const ps = () => room.playerState['bp_dr_a'];
   check('...an offline id is refused', off.ok === false);
 }
 
-// ── 9. v2.3.3349: the daily quests PUT AWAY -- the game as it ships ──
+// ── 9. v2.3.3384: the daily quests PUT AWAY -- the game as it ships ──
 /* The owner: "Remove the daily quests they're randomly appearing as complete
    and it makes no sense to me ... I'd rather it go away".  A room with no live
    flags, as production has. */
@@ -724,6 +728,7 @@ const ps = () => room.playerState['bp_dr_a'];
   const sync = w9.sent.find((m) => m.type === 'state_sync' && m.caps);
   check('9. with no live flags the daily quests are not advertised; the spin is', !!sync && sync.caps.dailyquests === false && sync.caps.dailyspin === true,
     sync && { dq: sync.caps.dailyquests, sp: sync.caps.dailyspin });
+  check('...nor the season (v2.3.3384: dropped)', !!sync && sync.caps.season === false, sync && sync.caps.season);
   const p9 = r9.playerState[PQ];
   const rec9 = r9._drMap().get(PQ);
   check('...the state says the quests are off, with none', !!lastState(w9) && lastState(w9).dq.on === false && lastState(w9).dq.list.length === 0, lastState(w9) && lastState(w9).dq);
@@ -756,22 +761,68 @@ const ps = () => room.playerState['bp_dr_a'];
   await send9(w9, 'daily_reroll', { i: 0 });
   check('...and a reroll changes nothing', rec9.dq.list[0].t === 'kill' && rec9.dq.rr === 0);
 
-  /* the season is the free spin's: 3 stars, and a claim is settled */
+  /* v2.3.3384: the season DROPPED (the owner: "Yes drop the season") -- the
+     free spin puts no star on it, a claim is refused, and what a player
+     reached and never claimed is mailed the first time they are seen */
   w9.sent.length = 0;
   await send9(w9, 'daily_spin', { act: 'spin', opId: 'q9-spin' });
   s9 = lastState(w9);
-  check('...the day\'s free spin puts 3 stars on the season (it was 1, and the quests the rest)',
-    DAILY.SEASON.SPIN_STARS === 3 && rec9.se.st === st9a + 3 && !!s9 && s9.season.spinStars === 3 && s9.news && s9.news.started === 'free',
-    { st: rec9.se.st, spinStars: s9 && s9.season.spinStars, news: s9 && s9.news });
-  check('...3 a day finishes the 25 tiers in 25 days of the 28-day season', DAILY.SEASON.SPIN_STARS * 25 >= tierNeed(DAILY.SEASON.TIERS.length)
-    && DAILY.SEASON.SPIN_STARS * 24 < tierNeed(DAILY.SEASON.TIERS.length) && DAILY.SEASON.DAYS === 28);
-  const t1coins = DAILY.SEASON.TIERS[0].filter((g) => g.kind === 'coins').reduce((t, g) => t + g.n, 0);
+  check('...the day\'s free spin puts no star on the season (it was 3), and the state says the season is off',
+    rec9.se.st === st9a && !!s9 && s9.season.on === 0 && s9.news && s9.news.started === 'free',
+    { st: rec9.se.st, on: s9 && s9.season.on, news: s9 && s9.news });
+  check('...(switched back on with the quests off, 3 a day finishes the 25 tiers in 25 days of the 28-day season)', DAILY.SEASON.SPIN_STARS === 3
+    && DAILY.SEASON.SPIN_STARS * 25 >= tierNeed(DAILY.SEASON.TIERS.length) && DAILY.SEASON.SPIN_STARS * 24 < tierNeed(DAILY.SEASON.TIERS.length) && DAILY.SEASON.DAYS === 28);
+  /* a player who had reached tier 4 and claimed tier 1 before the drop
+     (their record has its season: only a season switched on adds stars, and
+     its turn-over sets it) */
+  rec9.se.s = seasonOf(dayOf(now9));
+  rec9.se.st = tierNeed(4);
+  rec9.se.cl = [1];
+  await r9._drSave(PQ);
   const c9b = p9.coins || 0;
   w9.sent.length = 0;
-  await send9(w9, 'season_claim', { tier: 1 });
+  await send9(w9, 'season_claim', { tier: 2 });
+  await send9(w9, 'season_claim', { all: true });
+  check('...a season claim is refused, one or "Claim all": nothing marked, paid or sent', JSON.stringify(rec9.se.cl) === '[1]' && (p9.coins || 0) === c9b
+    && !w9.sent.some((m) => m.type === 'rewards_state' || m.type === 'inbox_delivered'), { cl: rec9.se.cl, types: w9.sent.map((m) => m.type) });
+  /* ...and seen again (the join's turn-over, _drOnJoin, and the state it
+     sends), what they reached is theirs */
+  const extra9 = rec9.sp.extra;
+  w9.sent.length = 0;
+  await r9._drOnJoin(PQ);
+  await r9._drSendState(PQ, null);
   s9 = lastState(w9);
-  check('...and a season claim is settled with the quests off (it was refused)', rec9.se.cl.includes(1) && (p9.coins || 0) - c9b === t1coins && !!s9 && s9.news && s9.news.kind === 'claim',
-    { cl: rec9.se.cl, got: (p9.coins || 0) - c9b });
+  const mail9 = w9.sent.filter((m) => m.type === 'inbox_delivered').flatMap((m) => m.payload.entries).filter((e) => e.source === 'season');
+  const coins24 = [2, 3, 4].flatMap((t) => DAILY.SEASON.TIERS[t - 1]).filter((g) => g.kind === 'coins').reduce((t, g) => t + g.n, 0);
+  check('...seen again, the tiers they reached and never claimed (2, 3, 4) are mailed, as at a season\'s end, and marked claimed',
+    rec9.se.cl.join() === '1,2,3,4' && mail9.filter((e) => e.kind === 'gold').reduce((t, e) => t + e.payload.amount, 0) === coins24
+    && mail9.some((e) => e.kind === 'item') && rec9.sp.extra === extra9 + 1, { cl: rec9.se.cl, mail9, extra: rec9.sp.extra });
+  check('...and told so once, as \'season_drop\' with the tiers (never \'season_end\'s "a new season starts now")',
+    !!s9 && s9.news && s9.news.kind === 'season_drop' && s9.news.mailed.join() === '2,3,4', s9 && s9.news);
+  check('...stamped with the claim\'s own opIds, and tier 1, claimed before, not paid again',
+    (await st9.storage.get('oplog:season:' + PQ + ':' + rec9.se.s + ':4:0')) != null && !(await st9.storage.get('oplog:season:' + PQ + ':' + rec9.se.s + ':1:0') || null)
+    && !mail9.some((e) => /tier 1( |$)/.test(e.note || '')), mail9.map((e) => e.note));
+  const c9c = p9.coins || 0;
+  w9.sent.length = 0;
+  const again9 = await r9._drRollover(PQ, rec9, now9);
+  await r9._drSendState(PQ, null);
+  s9 = lastState(w9);
+  check('...every turn-over after it finds nothing more: no change, no coins, no news', again9 === false && (p9.coins || 0) === c9c && !!s9 && !s9.news,
+    { again9, news: s9 && s9.news });
+  /* a player who reached nothing is told nothing */
+  const w9d = fakeWs();
+  await join9(w9d, 'bp_dr_q0');
+  const s9d = lastState(w9d);
+  check('...a player who reached no tier hears nothing of it', !!s9d && !s9d.news, s9d && s9d.news);
+  /* the operator's seed (/dev/daily seasonTier): a record from before the
+     drop, mailed at once as the next join would */
+  const ex9 = rec9.sp.extra;
+  w9.sent.length = 0;
+  const seeded = await r9._drDev(PQ, { seasonTier: 5 });
+  s9 = lastState(w9);
+  check('...the dev hook\'s seasonTier seeds a record from before the drop and the drop mails it at once (tier 5: a gem and 2 spins)',
+    seeded.ok && rec9.se.cl.join() === '1,2,3,4,5' && rec9.sp.extra === Math.min(DAILY.SPIN.EXTRA_MAX, ex9 + 2) && !!s9 && s9.news && s9.news.kind === 'season_drop' && s9.news.mailed.join() === '5',
+    { cl: rec9.se.cl, extra: rec9.sp.extra, news: s9 && s9.news });
 
   /* a new day for a player online: the spin alone */
   now9 += DAY;
@@ -797,6 +848,25 @@ const ps = () => room.playerState['bp_dr_a'];
   r9._liveFlags = Object.create(null);
   const offEmpty = r9._dqOff();
   check('...a number counts as liveops sets it (1 on, 0 off), and no flags is off', onAt1 && offAt0 && offEmpty);
+
+
+  /* v2.3.3384: `season: true` brings the season back where the record left
+     it -- the free spin's stars again, claims taken, and the tiers the drop
+     mailed still marked, so none pays twice */
+  r9._liveFlags = { season: true };
+  const w9e = fakeWs();
+  await join9(w9e, PQ);
+  const recE = r9._drMap().get(PQ);
+  const syncE = w9e.sent.find((m) => m.type === 'state_sync' && m.caps);
+  check('...`season: true` in the live flags brings the season back: advertised, on, and the record as the drop left it',
+    !!syncE && syncE.caps.season === true && !r9._seOff() && !!lastState(w9e) && lastState(w9e).season.on === 1 && recE.se.cl.join() === '1,2,3,4,5',
+    { caps: syncE && syncE.caps.season, cl: recE.se.cl });
+  recE.se.st = tierNeed(6);
+  const cE = r9.playerState[PQ].coins || 0;
+  await r9.webSocketMessage(w9e, JSON.stringify({ type: 'season_claim', payload: { all: true } }));
+  await settle();
+  check('...a claim is taken again, and pays only the tier reached since (6)', recE.se.cl.join() === '1,2,3,4,5,6'
+    && (r9.playerState[PQ].coins || 0) - cE === DAILY.SEASON.TIERS[5].filter((g) => g.kind === 'coins').reduce((t, g) => t + g.n, 0), { cl: recE.se.cl });
 }
 
 // ── 10. v2.3.3369: a daily quest's coins and its "done" are one write ──
@@ -847,9 +917,9 @@ const ps = () => room.playerState['bp_dr_a'];
   const settleIo = () => new Promise((r) => setTimeout(r, 10));
   const P = 'bp_dq_crash';
   const T9 = Date.UTC(2026, 0, 21, 12, 0, 0);
-  /* v2.3.3349: with the daily quests switched on -- they are put away in the
+  /* v2.3.3384: with the daily quests switched on -- they are put away in the
      game as it ships (§9) */
-  const roomOn = (s) => { const r = new GameRoom(s, mockEnv); r._drNow = () => T9; r._liveFlags = { dailyquests: true }; return r; };
+  const roomOn = (s) => { const r = new GameRoom(s, mockEnv); r._drNow = () => T9; r._liveFlags = { dailyquests: true, season: true }; return r; };
   const joinOn = async (rm, w) => {
     rm.sessions.set(w, baseSession());
     await rm.webSocketMessage(w, JSON.stringify({ type: 'join', id: P, name: 'T', phrase: 'p-' + P, data: { x: 0, y: 0, z: 'town' } }));

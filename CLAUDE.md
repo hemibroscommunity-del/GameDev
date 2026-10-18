@@ -2463,27 +2463,34 @@ remnant to migrate server-side, not a mode to preserve.
       tier to claim; `daily_rewards:<pid>`, caps/kill switches `dailyspin`
       and `dailyquests`; `dailyrewards` suite, `mp-dailyrewards`:
       docs/specs/daily-rewards.md.
-    - since v2.3.3349 THE DAILY QUESTS ARE PUT AWAY -- the owner: "Remove the
-      daily quests they're randomly appearing as complete and it makes no
-      sense to me ... I'd rather it go away" (they were rolled for everyone
-      at tut_1 and counted from any kill, harvest, cook or smelt, so they
-      announced themselves already done, with the story quest's fanfare):
-      - off unless the live flags say `dailyquests: true` (`_dqOff`,
-        `_drFlagOn`): not advertised, nothing rolled, counted, rerolled or
-        paid, no `daily_progress`; the code is kept and tested for that
-        switch, as the ground's edge pieces and blends are;
-      - the SEASON is the free spin's: 3 stars a spin (`SEASON.SPIN_STARS`;
-        25 tiers in 25 days of 28 -- at 1 it stopped at tier 9), 1 with the
-        quests back on (`SPIN_STARS_QUESTS`); a claim is settled with the
-        quests off; the page shows the season against `dailyspin` OR
-        `dailyquests` (`seasonLive`), the card its stars, the Den's button
-        "Season rewards";
+    - since v2.3.3384 THE DAILY QUESTS AND THE SEASON ARE PUT AWAY -- the
+      owner: "Remove the daily quests they're randomly appearing as complete
+      and it makes no sense to me ... I'd rather it go away" (they were rolled
+      for everyone at tut_1 and counted from any kill, harvest, cook or
+      smelt, so they announced themselves already done, with the story
+      quest's fanfare), then, offered the season on the free spin's stars,
+      "Yes drop the season":
+      - the quests off unless the live flags say `dailyquests: true`
+        (`_dqOff`, `_drFlagOn`): not advertised, nothing rolled, counted,
+        rerolled or paid, no `daily_progress`; the code is kept and tested
+        for that switch, as the ground's edge pieces and blends are;
+      - the SEASON likewise, off unless `season: true` (`_seOff`,
+        `caps.season`): no star added, no `season_claim` taken, and a tier a
+        player reached and never claimed is MAILED the first time they are
+        seen (`_seClose` with `drop`, the claim's own opIds, `season_drop`
+        news only to someone it paid); each record is kept, so the switch
+        brings the season back where it stood, the free spin's stars 3 with
+        the quests off (`SEASON.SPIN_STARS`), 1 with them;
+      - the page: no Season tab, stars or claims (`seasonLive` is
+        `caps.season`), the Quests card says the spin or the streak, and the
+        Den has no button past its spin;
       - tut_1 handed in now always sends the opened spin (it waited for a
         rejoin with the quests off), with no "Daily quests are open!"; a new
         day online is `spinday` news ("your free spin is waiting"), never
         `newday`'s "three new daily quests";
       - the Quests button's dot stays a quest's alone; `dailyrewards` §9,
-        `mp-dailyrewards`: daily-rewards.md "The daily quests put away".
+        `mp-dailyrewards`: daily-rewards.md "The daily quests and the season
+        put away".
   - Since v2.3.3142 WORN ARMOUR SHOWS ITS GRADE -- the owner: "change the
     outline hue or something on the armor so it retains the color but has
     highlights. So rare is blue, elite is orange, godly is prismatic":

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { BT_AUDIO } from '@/data/index.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the wheel's ticks */
 import {
-  dailyRewardsBus, spinLive, questsLive, askSpin, coinsShort, untilText,
+  dailyRewardsBus, spinLive, questsLive, seasonLive, askSpin, coinsShort, untilText,
 } from '@/game/dailyRewards.js';
 
 /* ═══ v2.3.3140: THE FREE DAILY SPIN, AT THE GAMBLING DEN ═══
@@ -23,7 +23,7 @@ import {
  * x2 doubles the pot, ✕ loses it all.  Again and again, until you take it,
  * lose it, or reach the house limit (paid by itself).  One free spin a day;
  * bonus spins (the season; all three daily quests while they were in the
- * game -- put away since v2.3.3349) start more.  A pot left
+ * game -- put away since v2.3.3384) start more.  A pot left
  * open is paid at the day's end, never lost (the worker's rollover).
  *
  * The slices are drawn the same size, as a fairground wheel's are; the real
@@ -468,6 +468,9 @@ export function DailySpin() {
           {sp.extra} bonus spin{sp.extra === 1 ? '' : 's'} saved for later
         </div>
       )}
+      {/* v2.3.3384: with the season dropped and the quests put away there is
+          nothing past this panel to open: the button goes with them */}
+      {(questsLive() || seasonLive()) && (
       <button
         type="button"
         data-open-daily="1"
@@ -478,9 +481,10 @@ export function DailySpin() {
           background: 'transparent', border: '1px solid ' + LS.border, color: LS.txt2,
           fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
         }}>
-        {/* v2.3.3349: the daily quests are put away; the button is the season's */}
-        {questsLive() ? 'Daily quests & season' : 'Season rewards'} <span aria-hidden="true" style={{ color: LS.brass }}>›</span>
+        {/* v2.3.3384: the daily quests are put away; the button is the season's */}
+        {questsLive() ? (seasonLive() ? 'Daily quests & season' : 'Daily quests') : 'Season rewards'} <span aria-hidden="true" style={{ color: LS.brass }}>›</span>
       </button>
+      )}
     </div>
   );
 }

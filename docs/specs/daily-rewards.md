@@ -393,11 +393,14 @@ yesterday's pot once and saves the day, and a join after the prune pays
 nothing more. A claim that closes an old season mails its tiers once, and
 the backstop marks the record dirty. All 11 fail on main.
 
-## v2.3.3349: the daily quests put away
+## v2.3.3384: the daily quests and the season put away
 
 > The owner, playtesting: *"Remove the daily quests they're randomly appearing
 > as complete and it makes no sense to me when I completed the quest by
 > accident I'd rather it go away."*
+>
+> Then, offered the season fed by the free spin alone (3 stars a spin), or
+> dropped with the quests: *"Yes drop the season."*
 
 **Why they seemed random.** The three quests were rolled for every player the
 moment tut_1 was handed in, with nothing to accept, and counted silently from
@@ -417,17 +420,32 @@ loading screen.
   ↻, and the Quests button's dot stays a story quest's alone. The code is
   kept and tested for that switch (sections 2-8 of the suite run with it on),
   as the ground's edge pieces and blends are.
-- **The season is the free spin's.** It earned most of its stars from the
-  quests; without them the spin's 1 a day stopped a 28-day season at tier 9
-  of 25. The free spin now puts **3** stars on it (`SEASON.SPIN_STARS`):
-  the 25 tiers (75 stars) in 25 days of play, three missed days to spare.
-  With the quests switched back on the spin pays its old 1
-  (`SPIN_STARS_QUESTS`), so that day's 5 at most is as it was. A season claim
-  is no longer refused with the quests off. The page shows the season, its
-  stars on the Quests card and its claims against `caps.dailyspin` OR
-  `caps.dailyquests` (`seasonLive`); the Season tab says "Earn 3 ★ a day
-  with your free spin at the Gambling Den", and the Den's button reads
-  "Season rewards" and opens that tab.
+- **The season is put away too**, off unless the live flags say
+  `season: true` (`_seOff`; `caps.season`, advertised false). It earned most
+  of its stars from the quests, and the owner chose dropping it over feeding
+  it from the free spin alone. Off:
+  - no star is added anywhere (`_seAddStars` returns), and `season_claim` is
+    refused with no answer;
+  - **nothing earned is lost:** every tier a player reached and never
+    claimed is MAILED the first time they are seen (`_drRollover` calls
+    `_seClose(pid, rec, true)` on every turn-over, the join's included), with
+    the very opIds a claim or a season's end uses, so none can pay twice. It
+    is marked claimed, so the next turn-over finds nothing. A player it paid
+    is told once, `season_drop` news with the tiers ("The season has ended
+    early: the 3 rewards you'd reached and not claimed came to you"); anyone
+    else hears nothing, since "Season 1 is over, a new season starts now"
+    with no season shown any more would be a riddle;
+  - each record is left as it is (stars, season, claimed tiers), so
+    `season: true` brings the season back where it stood, claims and all.
+    Switched on with the quests off, the free spin puts **3** stars on it
+    (`SEASON.SPIN_STARS`: the 25 tiers in 25 days of a 28-day season); with
+    the quests on, its old 1 (`SPIN_STARS_QUESTS`);
+  - the page shows no Season tab, stars or claims (`seasonLive` reads
+    `caps.season`); the Quests tab's card says the free spin, or the streak
+    once the spin is taken; the Gambling Den has no button past its spin
+    (with the quests or the season on it reads "Daily quests", "Daily quests
+    & season" or "Season rewards"). A page from before this shows the season
+    it already drew, with nothing left to claim.
 - **Handing in tut_1 sends the opened spin** even with the quests off (it
   returned early, so the Den showed the spin locked until a rejoin), with no
   news: `unlocked` reads "Daily quests are open!" on every page.
@@ -437,12 +455,17 @@ loading screen.
   from before this ignores `spinday`.
 - Records keep their `dq` field, healed as ever, so a rollback reads them.
 
-**Tests.** `dailyrewards.test.mjs` §9 (11 checks, a room with no flags): not
-advertised, nothing rolled, counted, paid or sent (a quest left in a record
-included), no reroll, the spin opened at tut_1 with no news, 3 stars a free
-spin, a claim settled, `spinday` at a new day, and the flag bringing them
-back (rolled, advertised, the spin's 1 star). Seven of them fail on main
-(and the run stops at the switch's check, which calls code main lacks).
-`mp-dailyrewards` (20) plays the game without them on a phone: no quest
-anywhere in the window, no quest toast, the 3 stars, the Season tab's line,
-the Den's "Season rewards", the card's stars.
+**Tests.** `dailyrewards.test.mjs` §9 (a room with no flags, as the game
+ships): neither advertised; nothing rolled, counted, paid or sent (a quest
+left in a record included); no reroll; the spin opened at tut_1 with no news;
+no star from the free spin; a claim refused, one or all; a player who had
+reached tier 4 and claimed tier 1 seen again gets tiers 2-4 (coins, the fish,
+the bonus spin) with the claim's own opIds and `season_drop` news, once, and
+nothing on the next turn-over; a player who reached nothing hears nothing;
+`spinday` at a new day; the quests' flag bringing them back; and the season's
+bringing it back where the record left it (a claim pays only the tier reached
+since). Leaving the season on fails four of the new checks. Sections 2-8 and
+10 run with both switches on. `mp-dailyrewards` plays the game without them
+on a phone: no quest and no season anywhere in the window, no Season tab, no
+quest toast, no star from the spin, no button past the Den's spin, the card's
+words.

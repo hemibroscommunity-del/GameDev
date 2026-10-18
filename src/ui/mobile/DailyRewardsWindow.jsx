@@ -28,7 +28,7 @@ import {
  * Draws only what the worker last said (game/dailyRewards.js); every button
  * is an ask -- daily_reroll, season_claim -- and the answer redraws it.
  *
- * v2.3.3349: the daily quests are PUT AWAY (the owner: "Remove the daily
+ * v2.3.3384: the daily quests are PUT AWAY (the owner: "Remove the daily
  * quests") -- a worker advertises them only with its live flag on, so Today
  * is the streak and the spin, and the season is the free spin's (the Den's
  * button says "Season rewards" and opens it).
@@ -303,7 +303,7 @@ function SeasonTab({ st }) {
         </div>
       </div>
       <div data-season-earn={questsLive() ? 'quests' : 'spin'} style={{ fontSize: 11.5, color: COL.muted, margin: '6px 2px 0', lineHeight: 1.4 }}>
-        {/* v2.3.3349: with the daily quests put away the free spin is the
+        {/* v2.3.3384: with the daily quests put away the free spin is the
             season's only star, and says how many it puts on */}
         {questsLive()
           ? 'Earn ★ from each daily quest, from finishing all three, and from your free spin.'
@@ -348,8 +348,11 @@ export const DailyRewardsWindow = () => {
 
   if (!win.open) return null;
   const close = () => dailyRewardsBus.closeWindow();
-  const live = seasonLive();   /* v2.3.3349: the spin or the quests (the season goes with either) */
-  const tab = win.tab === 'season' ? 'season' : 'today';
+  /* v2.3.3384: the spin or the quests.  v2.3.3384: the season is its own
+     cap now, and DROPPED: with it off there is no Season tab, only Today */
+  const seLive = seasonLive();
+  const live = spinLive() || questsLive() || seLive;
+  const tab = seLive && win.tab === 'season' ? 'season' : 'today';
   const claimN = st ? claimableTiers(st).length : 0;
 
   const tabBtn = (id, label, badge) => (
@@ -394,10 +397,12 @@ export const DailyRewardsWindow = () => {
           <button type="button" aria-label="Close" data-daily-close="1" onClick={close}
             style={{ flex: 'none', width: 44, height: 36, background: 'transparent', border: 0, color: COL.muted, fontSize: 20, fontWeight: 700, cursor: 'pointer' }}>×</button>
         </div>
-        <div style={{ flex: 'none', display: 'flex', gap: 2, margin: '8px 10px 0', padding: 2, borderRadius: 10, background: COL.well, border: '1px solid ' + COL.border }}>
-          {tabBtn('today', 'Today')}
-          {tabBtn('season', 'Season', claimN)}
-        </div>
+        {seLive && (
+          <div style={{ flex: 'none', display: 'flex', gap: 2, margin: '8px 10px 0', padding: 2, borderRadius: 10, background: COL.well, border: '1px solid ' + COL.border }}>
+            {tabBtn('today', 'Today')}
+            {tabBtn('season', 'Season', claimN)}
+          </div>
+        )}
         <div className="ls-scrollbody" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', overscrollBehavior: 'contain', padding: '4px 12px 16px' }}>
           {!live || !st ? (
             <div style={{ padding: '30px 10px', textAlign: 'center', fontSize: 13, color: COL.muted }}>
