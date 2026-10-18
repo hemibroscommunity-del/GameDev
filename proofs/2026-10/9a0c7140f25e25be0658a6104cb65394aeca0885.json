@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9a0c7140f25e25be0658a6104cb65394aeca0885",
+  "tree": "7b8f102a969a9f7149fc5797c4d2d45161f26549",
+  "committedAt": "2026-10-17T22:31:52-07:00",
+  "subject": "A character's Login Key works on the devices it's played on, and you can let a new device in (v2.3.3344) (#969)",
+  "files": 5814,
+  "bytes": 639346680,
+  "listingSha256": "ec609a9ba70ee0d77ec2e1f4e388cecc785cbc9502c98a1136b7740b702d847e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
