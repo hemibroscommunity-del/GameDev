@@ -28,12 +28,6 @@ import * as H from './harness.mjs';
 const PHONE = { width: 390, height: 844 };
 const DPR = 3;
 
-/* v2.3.3408: held until the panel is up (at most `ms`), then let go.  The
-   title opens it on a 1.2 s timer (ZoneHeader.jsx holdStart), and on this box
-   a frame is ~0.8 s: let go at a fixed 2.2 s, the release and the timer were
-   due together after a long frame, the browser ran the input first, and the
-   release cancelled the timer -- three tries in a row, every run that started
-   with this scenario */
 const holdTitle = async (P, ms) => {
   const at = await P.page.evaluate(() => {
     const el = document.querySelector('.bt-zone-header__title');
@@ -44,10 +38,16 @@ const holdTitle = async (P, ms) => {
   if (!at) return false;
   await P.page.mouse.move(at.x, at.y);
   await P.page.mouse.down();
-  for (const t0 = Date.now(); Date.now() - t0 < ms;) {
-    await P.page.waitForTimeout(400);
-    if (Date.now() - t0 >= 1500 && await panelUp(P)) break;
-  }
+  /* v2.3.3425: held until the panel is up (`ms` at the most), not a set
+     time.  The title opens it from a 1.2 s timer that the release clears
+     (ZoneHeader holdStart/holdEnd), and at this file's 3x a frame here
+     outlasts the hold: the browser takes the queued release before the timer
+     that came due during the frame, and clears it -- in the solo run of
+     2026-10-18 every hold landed on the title and none opened the panel.
+     A phone's 16 ms frame never holds the timer back. */
+  const t0 = Date.now();
+  await P.page.waitForTimeout(1400);
+  while (Date.now() - t0 < ms && !(await panelUp(P))) await P.page.waitForTimeout(250);
   await P.page.mouse.up();
   return true;
 };
@@ -55,7 +55,7 @@ const panelUp = (P) => P.page.evaluate(() => !!Array.from(document.querySelector
 async function openPanel(P) {
   for (let i = 0; i < 3; i++) {
     if (await panelUp(P)) return true;
-    await holdTitle(P, 12000);
+    await holdTitle(P, 8000);
     for (const t0 = Date.now(); Date.now() - t0 < 8000;) {
       if (await panelUp(P)) return true;
       await P.page.waitForTimeout(250);
@@ -127,7 +127,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 1-5: the speed test from the real panel ── */
     const opened = await openPanel(P);
-    rec.ok('the test panel opens (guard)', opened);
+    /* v2.3.3425: and if it does not, what the hold landed on -- in the run of
+       2026-10-18 it never opened, with nothing to say why */
+    const noPanel = opened ? null : await P.page.evaluate(() => {
+      const el = document.querySelector('.bt-zone-header__title');
+      if (!el) return { title: null };
+      const r = el.getBoundingClientRect();
+      const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      const chain = [];
+      for (let n = at; n && chain.length < 5; n = n.parentElement) chain.push(n.tagName.toLowerCase() + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/).slice(0, 2).join('.') : ''));
+      return { title: { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height), text: el.textContent }, hit: chain,
+        hitIsTitle: !!at && (at === el || el.contains(at)), body: document.body.className };
+    }).catch((e) => ({ err: String(e) }));
+    if (noPanel) await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/speedtest-nopanel.png` }).catch(() => {});
+    rec.ok('the test panel opens (guard)', opened, noPanel);
     const clicked = await P.page.evaluate(() => {
       const b = document.querySelector('[data-dev-speed-test]');
       if (!b) return false;

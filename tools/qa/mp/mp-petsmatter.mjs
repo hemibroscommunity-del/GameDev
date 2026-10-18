@@ -60,7 +60,11 @@ const openPets = async (P) => {
   await H.openDest(P, 'More').catch(() => {});
   await P.page.waitForTimeout(600);
   await P.page.evaluate(() => { const b = document.querySelector('[data-more-tile="pets"]'); if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); });
-  return P.page.waitForSelector('[data-pets-panel]', { timeout: 5000 }).then(() => true).catch(() => false);
+  /* v2.3.3425: 15 s, not 5 -- on this box, which draws a frame every few
+     hundred ms, More, its tile and the page's first draw took longer than 5:
+     the page came up just after the wait gave up (the screenshot taken next
+     shows it), and the two checks that read it were skipped as "null" */
+  return P.page.waitForSelector('[data-pets-panel]', { timeout: 15000 }).then(() => true).catch(() => false);
 };
 const peerPets = (P) => P.page.evaluate(() => (window._pixiRenderer && window._pixiRenderer.peerPetsDrawn ? window._pixiRenderer.peerPetsDrawn() : null));
 
@@ -164,11 +168,26 @@ async function steps({ A, B, wsPort, rec, errors }) {
 
   /* ── 5. the ward in a real fight: Frost Ridge's snowmen ── */
   const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
-  const at = WHEEL_SPAWNS.frost && WHEEL_SPAWNS.frost.points[0];
+  /* v2.3.3425: at the land's town end, among its level 1s, as mp-wheelnear
+     fights.  points[0] is half way along the first stretch (depth 0.5), and
+     since v2.3.3320 the stretch climbs 1 to 5, so it is level 3 snowmen
+     there: the fresh character died between heals and came back in BroTown,
+     no chill measured and no snowman left near to trap. */
+  const at = WHEEL_SPAWNS.frost && WHEEL_SPAWNS.frost.points.slice(0, 6 * (await H.wheelGeom()).long)
+    .reduce((a, p) => (!a || p[2] < a[2] ? p : a), null);
   await H.devOp(wsPort, 'vitals', aId, { heal: true });
   await H.hopTo(A, at[0] + 120, at[1] + 120, { tries: 260 });
   await A.page.waitForTimeout(1500);
   const t0 = await A.page.evaluate(() => Date.now());
+  /* v2.3.3425: a death is counted as it happens.  Read afterwards, `_dying`
+     is false again once the player has come back in town, and the guard
+     below said "alive" over a character standing on the Town Hall's steps. */
+  await A.page.evaluate(() => {
+    const S = window._gameState.current;
+    window.__pmDeaths = 0;
+    let was = !!S._dying;
+    window.__pmDeathTimer = setInterval(() => { const d = !!S._dying; if (d && !was) window.__pmDeaths++; was = d; }, 100);
+  });
   let got = null;
   for (let i = 0; i < 120 && !got; i++) {
     if (i % 4 === 0) {
@@ -200,8 +219,12 @@ async function steps({ A, B, wsPort, rec, errors }) {
   await H.devOp(wsPort, 'vitals', aId, { heal: true, god: true, godMinutes: 10 });
   const wardSaid = await H.readState(A, (S) => ({ said: S._wardSaid || null, hits: S._wardHits || 0, chillLeft: (S._chillUntil || 0) - Date.now() }));
   /* v2.3.3249: said HERE if the fight killed us, not two sections later */
-  const alive = await H.readState(A, (S) => ({ dying: !!S._dying, hp: S.rpg && S.rpg.hp }));
-  rec.ok('the player came through the ward fight alive (guard)', !alive.dying, alive);
+  const alive = await A.page.evaluate(() => {
+    const S = window._gameState.current;
+    clearInterval(window.__pmDeathTimer);
+    return { dying: !!S._dying, deaths: window.__pmDeaths || 0, hp: S.rpg && S.rpg.hp };
+  });
+  rec.ok('the player came through the ward fight alive (guard)', !alive.dying && alive.deaths === 0, alive);
   const ring = await A.page.evaluate(() => window._pixiRenderer.petDrawn());
   rec.ok(`a snowman's chill lands ${got && got.stMs} ms, not 1000, the hit saying wd ${got && got.wd}`, !!got && got.stMs === 660 && got.wd === 34, got);
   rec.ok(`..."${wardSaid.said}" over the pet, and its ring drawn (${ring && ring.wards} time(s))`, wardSaid.said === 'Ward 34%' && !!ring && ring.wards >= 1, { wardSaid, ring });

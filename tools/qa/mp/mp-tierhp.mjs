@@ -81,19 +81,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(400);
       const bar = await P.page.evaluate(() => Object.assign({}, window.__btNodeHpBar || {}));
       rec.ok('the vein\'s bar reads n/20 as the hits land', bar.show === true && /^\d+\/20$/.test(String(bar.text || '')), bar);
-      await P.page.screenshot({ path: join(OUT, 'tierhp-iron.png') }).catch(() => {});
 
       /* 3. the idle clock: an input 115 s back, then nothing touched */
       holdAlive = true;
+      /* v2.3.3425: what the 2.5 s must hold is hits LANDING in it, counted --
+         not the harvest still waiting at its end: on this box the waits and
+         the picture before it had taken long enough that the twentieth hit
+         came inside it (waiting false, the stamp and the 1.9 s "away" right,
+         the run of 2026-10-18).  The picture is taken after it now. */
       const idle = await P.page.evaluate(async () => {
         const S = window._gameState.current;
+        const shownOf = () => (S._extraction && S._extraction.hits ? S._extraction.hits.shown : null);
+        const shown0 = shownOf();
         S._lastInputAt = Date.now() - 115000;
         const t0 = Date.now();
         await new Promise((r) => setTimeout(r, 2500));
-        return { stamped: S._lastInputAt >= t0, waiting: !!S._extraction && S._extraction.status === 'waiting', away: Date.now() - S._lastInputAt };
+        const shown1 = shownOf();
+        return { stamped: S._lastInputAt >= t0, waiting: !!S._extraction && S._extraction.status === 'waiting',
+          hitsIn: shown0 != null && shown1 != null ? shown1 - shown0 : null, away: Date.now() - S._lastInputAt };
       });
-      rec.ok('while the hits run the idle logout does not count them as idleness (an input 115 s old is stamped fresh)',
-        idle.stamped === true && idle.waiting === true && idle.away < 3000, idle);
+      rec.ok(`while the hits run the idle logout does not count them as idleness (an input 115 s old is stamped fresh; ${idle.hitsIn} hits landed in the 2.5 s)`,
+        idle.stamped === true && idle.hitsIn > 0 && idle.away < 3000, idle);
+      await P.page.screenshot({ path: join(OUT, 'tierhp-iron.png') }).catch(() => {});
       holdAlive = false;
       const done = await H.waitFor(P, (S) => {
         const ex = S._extraction;

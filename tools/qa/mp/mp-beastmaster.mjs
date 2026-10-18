@@ -207,7 +207,9 @@ async function body({ P, wsPort, rec, errors, npcReqs }) {
   await H.openDest(P, 'More').catch(() => {});
   await P.page.waitForTimeout(600);
   await P.page.evaluate(() => { const b = document.querySelector('[data-more-tile="pets"]'); if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); });
-  const page = await P.page.waitForSelector('[data-pets-panel]', { timeout: 5000 }).then(() => true).catch(() => false);
+  /* v2.3.3425: 15 s, the page's first draw can take longer than 5 on this box
+     (step 7, below) */
+  const page = await P.page.waitForSelector('[data-pets-panel]', { timeout: 15000 }).then(() => true).catch(() => false);
   const bar = page ? await P.page.$eval('[data-pet-xp]', (el) => ({ v: el.getAttribute('data-pet-xp'), text: el.innerText.replace(/\s+/g, ' ') })).catch(() => null) : null;
   const pv = await H.readState(P, (S) => (S._petBook && S._petBook.list[0]) || null);
   rec.ok(`the Pets page shows its XP bar ("${bar && bar.text}"), the worker's numbers`, !!bar && bar.v === pv.xp + '/' + Math.ceil(25 * Math.pow(1.08, pv.lv - 1)), { bar, pv });
@@ -240,8 +242,11 @@ async function body({ P, wsPort, rec, errors, npcReqs }) {
     return n && S.camera ? { x: r.left + (n.x - S.camera.x) * (S._worldScaleX || 1), y: r.top + (n.y - S.camera.y) * (S._worldScaleY || 1) - 26 } : null;
   });
   if (css) await P.page.touchscreen.tap(css.x, css.y);
+  /* v2.3.3425: 15 s, not 5 -- the page's first draw after a tap takes longer
+     than 5 s on this box (mp-petsmatter's More tile showed it: the page came
+     up just after its 5 s wait gave up) */
   const tapped = await H.waitFor(P, () => ({ tap: window.__btNpcTap || null, page: !!document.querySelector('[data-pets-panel]') }),
-    (v) => v.page, { timeout: 5000, label: 'the Pets page' }).catch(() => null);
+    (v) => v.page, { timeout: 15000, label: 'the Pets page' }).catch(() => null);
   rec.ok('his line done, a tap on him opens the Pets page', !!tapped && tapped.tap && tapped.tap.npc === 'Beastmaster Bro' && tapped.tap.result === 'pets', { css, tapped });
   await H.closeDest(P).catch(() => {});
 
