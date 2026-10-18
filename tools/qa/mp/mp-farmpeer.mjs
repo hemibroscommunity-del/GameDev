@@ -83,7 +83,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       (v) => v.zone === 'farm_home' && !v.hold && !v.veil, 25000);
   };
   /* Watcher's view of Digger, every animation frame for `ms` */
-  const watch = (dId, ms) => W.page.evaluate(({ dId, ms }) => new Promise((done) => {
+  const watch = (dId, ms) => W.page.evaluate(({ dId, ms, footDy }) => new Promise((done) => {
     const out = [];
     const t0 = performance.now();
     const tick = () => {
@@ -91,12 +91,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const o = (S.others || {})[dId];
       const fp = window.__btPeerFarmers ? window.__btPeerFarmers()[dId] : null;
       const d = window._pixiRenderer && window._pixiRenderer.peerDisplayRaw ? window._pixiRenderer.peerDisplayRaw(dId) : null;
+      const ox = o ? (o.renderX != null ? o.renderX : o.x) : null, oy = o ? (o.renderY != null ? o.renderY : o.y) : null;
       out.push({ t: Math.round(performance.now() - t0), ex: o ? o._ex || null : 'gone', farmer: fp ? JSON.parse(JSON.stringify(fp)) : null,
-        body: d ? !!d.visible : null, ox: o ? (o.renderX != null ? o.renderX : o.x) : null, oy: o ? (o.renderY != null ? o.renderY : o.y) : null });
+        body: d ? !!d.visible : null, ox, oy,
+        groundDy: footDy });
       if (performance.now() - t0 < ms) requestAnimationFrame(tick); else done(out);
     };
     requestAnimationFrame(tick);
-  }), { dId, ms });
+  }), { dId, ms, footDy: FOOT_DY });
   try {
     await Promise.all([H.enterWorld(W), H.enterWorld(D)]);
     for (const P of [W, D]) {
@@ -164,12 +166,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`Watcher draws Digger's farmer with the hoe, through the swing (${frames.length} frames drawn, ${new Set(frames).size} of the hoe's 8, the first ${frames[0]})`,
       on.length >= 2 && on.every((v) => v.farmer.anim === 'hoe') && new Set(frames).size >= 2 && frames[0] <= 2, { frames });
     rec.ok('...and his walking body is put away whenever the farmer is drawn', on.length > 0 && on.every((v) => v.body === false), on.map((v) => [v.t, v.body]));
+    /* where the strip's foot point is DRAWN -- off the frame's own box as
+       drawn, its anchor counted (the first cut placed the anchor right and
+       drew the figure half a body right of it and a whole body below) --
+       against his place and his boots */
     const atBoots = on.map((v) => {
       const A = FARM_ANIMS.hoe;
-      const fx = v.farmer.x + (A.foot[0] - A.fw / 2) * (v.farmer.scaleY);
-      return +(fx - v.ox).toFixed(1);
+      const d = v.farmer.drawn, s = v.farmer.scaleY;
+      const fx = d.midX + (A.foot[0] - A.fw / 2) * s;
+      const fy = d.bottom - (A.fh - A.foot[1]) * s;
+      return [+(fx - v.ox).toFixed(1), +(fy - (v.oy + v.groundDy)).toFixed(1)];
     });
-    rec.ok(`...at his boots (the strip's foot point ${atBoots.slice(0, 4).join(', ')} px from his place across)`, atBoots.length > 0 && atBoots.every((d) => Math.abs(d) < 3), atBoots);
+    rec.ok(`...drawn at his boots: the strip's foot point ${atBoots.slice(0, 3).map((a) => '(' + a.join(', ') + ')').join(' ')} px from them`,
+      atBoots.length > 0 && atBoots.every(([dx, dy]) => Math.abs(dx) < 3 && Math.abs(dy) < 3), atBoots);
     const f0 = on[0] && on[0].farmer;
     rec.ok('...in HIS colours: a figure baked for them, not Watcher\'s own; the body cut for greaves', !!f0 && f0.shared === false && f0.under === true && f0.figures >= 1, f0);
     const dressed = on.filter((v) => v.farmer.order.legs > v.farmer.order.body && v.farmer.order.shirt > v.farmer.order.legs

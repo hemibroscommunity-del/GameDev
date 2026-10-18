@@ -15566,10 +15566,12 @@ export class EffectsRenderer {
     if (ent._exCode !== code || !ent._wasOn) { ent._exCode = code; ent._exStart = now; ent._farmBeat = 0; }
     ent._onNow = true;
     if (!ent.farm) {
-      /* made in their layer order, the head's traits last, over the tool */
+      /* made in their layer order, the head's traits last, over the tool;
+         the layers stand on their bottom middle, as yours do (the traits are
+         placed by their own rule) */
       const mk = () => { const sp = new Sprite(); sp.visible = false; this.gestureLayer.addChild(sp); return sp; };
       const F = {};
-      for (const k of FARM_PEER_LAYERS) F[k] = mk();
+      for (const k of FARM_PEER_LAYERS) { F[k] = mk(); F[k].anchor.set(0.5, 1); }
       F.traits = { hair: mk(), beard: mk(), species: mk(), eyestyle: mk(), eyewear: mk(), hat: mk() };
       ent.farm = F;
     }
@@ -15648,8 +15650,12 @@ export class EffectsRenderer {
         const F = ent.farm;
         if (!F) continue;
         const b = F.body;
+        /* the frame's own box as drawn: its middle across and its bottom,
+           whatever the sprite's anchor */
+        const left = b.x - b.anchor.x * b.width, top = b.y - b.anchor.y * b.height;
         out[id] = { on: !!ent._onNow && !!b.visible, frame: ent._farmFi, anim: ent._farmAnim, shared: ent._farmShared, under: ent._farmUnder,
           code: ent._exCode, x: b.x, y: b.y, scaleY: b.scale.y,
+          drawn: { midX: left + b.width / 2, bottom: top + b.height },
           order: { body: at(F.body), legs: at(F.legs), shirt: at(F.shirt), chest: at(F.chest), prop: at(F.prop), hat: at(F.traits.hat) },
           tints: { legs: F.legs.visible ? F.legs.tint : null, chest: F.chest.visible ? F.chest.tint : null },
           figures: typeof window !== 'undefined' && window.__btPeerFarmFigs ? window.__btPeerFarmFigs() : null };
