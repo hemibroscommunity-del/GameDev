@@ -1054,7 +1054,7 @@ No text, numbers, frame borders, grid lines, ground, grass, soil patch or shadow
 ### The farmer's moves, dressed: the T-shirt and the armour (six chats)
 
 - **In the game:** not yet. The owner asked (2026-10-18): *"Do you want to give me the south facing idle character wearing each and give me a prompt to put it on each of the 3 outputs?"* Yes. Garments drawn on their own never lined up with the body: the fire-lighter's shirt, plate and greaves (v2.3.1715) still need a nudge every frame (`FIRE_GEAR_REG`). Drawn ON him, in a copy of each sheet, they follow his arms in every frame.
-- **Attach, in this order:** (1) your own sheet for the move (`tools/farm_anim_src/hoe.png`, `water.png` or `kneel.png`); (2) `docs/art/farm-moves-reference-tee.png` or `docs/art/farm-moves-reference-armour.png`. They are the reference bro in the game's own white tee and its own steel plate and greaves, placed as the fire-lighter wears them.
+- **Attach, in this order:** (1) your own sheet for the move (`tools/farm_anim_src/hoe.png`, `water.png` or `kneel.png`); (2) `docs/art/farm-moves-reference-tee.png` or `docs/art/farm-moves-reference-armour.png`. They are the game's own walking bro, standing and facing south (`public/sprites/player-naked/stand-south.png`, his face from `player/stand-south.png`: the bare body's eyes are left for the game to draw), in the game's own white tee and its own steel plate and greaves, drawn on him as the game draws them (`gear/*/stand-south.png`), three times their size. The owner's notes on the first pair (2026-10-18), made from the fire-lighter: the eyes were keyed out (his body leaves them for the game to draw too), the shirt and armour sat off the body (his garments need `FIRE_GEAR_REG`), and his own boots showed under the armour.
 - **How:** one chat a sheet and outfit, six in all. Before sending, hold the new sheet next to the original: the same pose, size and place in every frame, or ask again in a new chat.
 - **Why white and plain grey:** the game recolours the shirt to the player's own and lays their print or pattern on it, and tints the armour for each metal.
 - **How a session uses them:** a player in a shirt is drawn from the tee sheet, the shirt cut from that same picture and recoloured, so it always fits its own arms. A player in plate and greaves is drawn from the armour sheet. One piece alone is cut from the armour sheet and laid over the other sheet, lined up by the boots and the face.
@@ -1066,7 +1066,7 @@ Two pictures are attached. The first is a finished pixel-art sprite sheet: one a
 
 The only change: in every frame the man wears the plain white T-shirt that the man in the second picture wears. Short sleeves that end halfway down his upper arm, a round neck, the hem over the top of his trousers. White with light grey shading and a black outline; no logo, print or pattern. His forearms and hands stay bare skin, and wherever an arm is in front of his body, the arm is drawn in front of the shirt.
 
-Change nothing else: not his face, skin, trousers or boots, not his pose, not the tool. No text, numbers, borders, grid lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere. Nothing else in the picture is magenta, pink or purple.
+Take only the T-shirt from the second picture: keep the first picture's drawing style and the man's head, face and proportions exactly as they are. Change nothing else: not his face, skin, trousers or boots, not his pose, not the tool. No text, numbers, borders, grid lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere. Nothing else in the picture is magenta, pink or purple.
 ```
 
 **Armour:**
@@ -1074,9 +1074,9 @@ Change nothing else: not his face, skin, trousers or boots, not his pose, not th
 ```text
 Two pictures are attached. The first is a finished pixel-art sprite sheet: one animation of 8 frames in a grid of 4 columns × 2 rows, on a flat magenta background. Make that same sprite sheet again as a landscape image, 1536 × 1024, keeping everything exactly as it is: the same 8 frames in the same cells, the man in the same pose, at the same size and in the same place in every cell, the same tool, dirt and water, the same pixel-art style and black outline.
 
-The only change: in every frame the man wears the steel armour that the man in the second picture wears: a grey steel breastplate with round shoulder plates over his chest, with no shirt under it, and steel leg plates with round knee caps over his trousers, down to his boots. Plain grey steel, shaded like the second picture, with a black outline. His arms below the shoulder plates and his hands stay bare skin, and wherever an arm is in front of his body, the arm is drawn in front of the armour.
+The only change: in every frame the man wears the steel armour that the man in the second picture wears, from his shoulders to his feet: a steel breastplate with round shoulder plates, steel plates down both arms to his hands, a chain-mail belt, and steel leg plates that cover his trousers and his boots completely. Plain grey steel, shaded like the second picture, with a black outline. No shirt, trousers or boots show anywhere; his head stays bare. Wherever an arm is in front of his body, the armoured arm is drawn in front of the breastplate.
 
-Change nothing else: not his face, skin or boots, not his pose, not the tool. No text, numbers, borders, grid lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere. Nothing else in the picture is magenta, pink or purple.
+Take only the armour from the second picture: keep the first picture's drawing style and the man's head, face and proportions exactly as they are. Change nothing else: not his face, not his pose, not the tool. No text, numbers, borders, grid lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere. Nothing else in the picture is magenta, pink or purple.
 ```
 
 ## Sounds
