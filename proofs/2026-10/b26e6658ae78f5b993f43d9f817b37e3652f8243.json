@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b26e6658ae78f5b993f43d9f817b37e3652f8243",
+  "tree": "171c6952f39d40ff6813ce60ff06bda30379ac7a",
+  "committedAt": "2026-10-18T03:44:45-07:00",
+  "subject": "Halloween week: a Zombie Shuffle dance and pumpkin-coloured speech bubbles (v2.3.3395) (#985)",
+  "files": 5847,
+  "bytes": 639881325,
+  "listingSha256": "3175fd3d1d51ba7fa7e6dce0f583b8602165b3d90c384ea37492f638af6be4a3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
