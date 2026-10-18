@@ -6,6 +6,7 @@ import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_BY_LOG } from '@/data/hardenedWood
 import { dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
 import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player (v2.3.3260: in any fight) */
 import { pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.3133: ...and say how long */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a listing heard */
 import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey, isChestKey } from './InventoryPanel.jsx';   /* v2.3.2820: + isChestKey */   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
@@ -1615,6 +1616,7 @@ export const ItemDetailPopup = () => {
         const R3 = S3 && S3.rpg;
         if (R3 && removeGearLocal(R3, gearSell.field, target[gearSell.prop], target.index)) persist(R3);
       }
+      cue('marketList');   /* v2.3.3343: the thing handed to the auction house is heard (the popup closed in silence; SOUND-GAPS) */
       itemDetailBus.close();
     } else {
       /* v2.3.2551: the worker answers a gear refusal with a STABLE reason

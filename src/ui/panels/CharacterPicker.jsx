@@ -308,6 +308,9 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
         ? 'Could not reach the server. Nothing was changed.'
         : res && (res.reason === 'rate' || res.reason === 'locked')
           ? 'Too many attempts — wait a minute and try again. Nothing was changed.'
+        /* v2.3.3344: server/src/devicelock.js */
+        : res && res.reason === 'device'
+          ? 'This character can only be restarted on a device it was played on. Nothing was changed.'
           : 'That did not work. Nothing was changed.');
       return;
     }
