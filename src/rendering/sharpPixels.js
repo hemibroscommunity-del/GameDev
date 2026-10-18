@@ -100,7 +100,7 @@ const figRoundOn = () => _figRound || (typeof window !== 'undefined' && !!window
 /* sharp bilinear: flat texels, a one-screen-pixel blend at each seam.  Only
    when the texture is MAGNIFIED -- minified, it is the plain sample (and the
    mip chain) as before.  The ORIGINAL uv derivatives go to textureGrad so mip
-   selection is unchanged by the uv remap.  v2.3.3407: one copy, shared with
+   selection is unchanged by the uv remap.  v2.3.3420: one copy, shared with
    paletteTex.js's one program for every sprite (`?onebatch=0` is without it). */
 export const SHARP_SAMPLE_GLSL = `
                 vec4 sharpSample(sampler2D tex, vec2 uv, vec2 dx, vec2 dy)

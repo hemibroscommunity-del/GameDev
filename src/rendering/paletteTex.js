@@ -75,7 +75,7 @@
  * Probe: window.__btPalette().
  */
 import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Sprite, MeshSimple, GlProgram, Shader, UniformGroup, SpritePipe, MeshPipe, GlMeshAdaptor, GlBatchAdaptor, Container, Matrix, glUploadBufferImageResource } from 'pixi.js';
-import { SHARP_SAMPLE_GLSL } from './sharpPixels.js';   /* v2.3.3407: the sharp read, for ONE_BATCHER's program */
+import { SHARP_SAMPLE_GLSL } from './sharpPixels.js';   /* v2.3.3420: the sharp read, for ONE_BATCHER's program */
 import { setWheelPalette } from '../game/wheelTrial.js';
 import { isPaletteSource } from './paletteDraw.js';
 export { isPaletteSource, drawSourceRect, paletteRegionRGBA } from './paletteDraw.js';
@@ -343,7 +343,7 @@ class PaletteBatcher extends DefaultBatcher {
 PaletteBatcher.extension = { type: [ExtensionType.Batcher], name: PAL_BATCHER };
 extensions.add(PaletteBatcher);
 
-/* ═══ v2.3.3407: ONE DRAWING PROGRAM FOR EVERY SPRITE ═══
+/* ═══ v2.3.3420: ONE DRAWING PROGRAM FOR EVERY SPRITE ═══
    The owner: "iterate on what best improves framerate without loss of quality
    (or negligible loss) for phone gameplay (iPhone, android)".  Three batchers
    draw the world's sprites, each with its own program on the GPU: Pixi's own
@@ -378,7 +378,7 @@ extensions.add(PaletteBatcher);
 export const ONE_BATCHER = 'bt-one';
 const ONE_ID_K = 64;   /* the texture id: slot + 64 x code (Pixi's is 16 bits) */
 const SOFTWARE_GL = /swiftshader|llvmpipe|softpipe|software|basic render|\bwarp\b/i;
-/** v2.3.3407: one program or three, from the address (`onebatch=0|1` wins)
+/** v2.3.3420: one program or three, from the address (`onebatch=0|1` wins)
  *  and the renderer's name -- {on, why}.  Pure, so the QA probe asks it
  *  about chips this box is not (mp-onebatch). */
 export function oneBatchChoice(search, renderer) {
@@ -410,7 +410,7 @@ const _oneStats = { linkError: null, prewarmed: false, why: null, renderer: null
 export function oneBatchOn() { return _oneRoute && _oneOk === true; }
 let _oneR = null;             /* the renderer it was built for (setOneBatchRenderer) */
 
-/** v2.3.3407: one program (true) or the three (false), live, for this page
+/** v2.3.3420: one program (true) or the three (false), live, for this page
  *  only -- the Speed test's "the old way" step (game/speedTest.js).  The
  *  choice is made where a sprite meets its batcher, so every draw list in the
  *  scene is marked to be built again and the next frame is drawn the new
@@ -608,7 +608,7 @@ function patchPipes() {
       if (obj) {
         if (palTex(obj.texture)) obj.batcherName = PAL_BATCHER;
         else if (obj.batcherName === PAL_BATCHER) obj.batcherName = 'default';
-        /* v2.3.3407: the three batchers' sprites to the one (sharpPixels.js
+        /* v2.3.3420: the three batchers' sprites to the one (sharpPixels.js
            decided 'sharp' or 'default' first, this file the colour numbers);
            a sprite routed there before and not decided again this time (a
            mesh, a shape) keeps it */
@@ -627,7 +627,7 @@ function patchPipes() {
     const valid = P.validateRenderable;
     P.validateRenderable = function (sprite) {
       const b = this._getGpuSprite(sprite);
-      /* (one batcher draws both kinds: no line to cross, v2.3.3407) */
+      /* (one batcher draws both kinds: no line to cross, v2.3.3420) */
       if (b.batcherName !== ONE_BATCHER && (b.batcherName === PAL_BATCHER) !== palTex(sprite._texture)) return true;
       return valid.call(this, sprite);
     };
@@ -803,7 +803,7 @@ function programLinked(r, program) {
 export function setPaletteRenderer(r) {
   _renderer = r || null;
   _ok = null;
-  /* v2.3.3407: this prewarm must reach the palette program itself -- a
+  /* v2.3.3420: this prewarm must reach the palette program itself -- a
      rebuilt renderer's included, while the old one's ONE_BATCHER routing is
      still on -- so nothing is sent to the one program until
      setOneBatchRenderer has tried it on this renderer */
@@ -850,7 +850,7 @@ export function setPaletteRenderer(r) {
   return _ok;
 }
 
-/** v2.3.3407: ONE_BATCHER built behind the loading screen, after
+/** v2.3.3420: ONE_BATCHER built behind the loading screen, after
  *  setPaletteRenderer (whose own prewarm must reach the palette program):
  *  one plain sprite (and a colour-numbers one, where those are drawn) sent to
  *  it and drawn nearly see-through; it is used if its program linked, else
