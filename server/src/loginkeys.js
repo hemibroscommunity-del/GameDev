@@ -96,15 +96,33 @@ export const loginKeyMethods = {
 
   /* After a join is in (join.js, after the state it is sent): a key's first
      use stamped -- and a new character's first key retired -- or a key
-     handed to a phone that came with the old one.  At most one write. */
-  async _keysAfterJoin(ws, id, msg, out) {
-    if (!out || !id) return;
+     handed to a phone that came with the old one.  At most one write.
+
+     v2.3.3372: in the record's queue (devicelock.js _authSerial), and judged
+     by the record as it is NOW.  The owner's Forget or Give a new key may run
+     after this join's check and before this: it puts out whoever is playing,
+     and a join past its check but not yet playing is nobody it can find.  So
+     a join whose key or device the record no longer lets in is put out here,
+     as the tool would have, and handed nothing -- a key handed to it would
+     outlive the Forget meant to shut it out (login-keys §12b). */
+  _keysAfterJoin(ws, id, msg, out) {
+    if (!out || !id) return Promise.resolve();
+    return this._authSerial(id, () => this._keysAfterJoinNow(ws, id, msg, out));
+  },
+
+  async _keysAfterJoinNow(ws, id, msg, out) {
     const S = this.state.storage;
     const now = Date.now();
+    /* gone already (closed, put out): nothing to stamp or hand */
+    if (!this.sessions.has(ws)) return;
     if (out.via === 'new') {
-      if (!out.firstUse) return;
       const auth = await S.get('auth:' + id);
-      if (!auth || !Array.isArray(auth.keys)) return;
+      /* v2.3.3372: the key this join came in with, taken back since */
+      if (!auth || !Array.isArray(auth.keys) || !auth.keys.some((k) => k && k.h === out.h)) {
+        if (auth) await this._authPutOut(ws, 'key');
+        return;
+      }
+      if (!out.firstUse) return;
       const next = { ...auth, keys: auth.keys.map((k) => (k && k.h === out.h && !k.ok ? { ...k, ok: now } : k)) };
       if (auth.fresh) {
         /* the key this character's phone made for itself: nobody holds it now */
@@ -115,16 +133,30 @@ export const loginKeyMethods = {
       return;
     }
     if (out.via !== 'old' && !out.fresh) return;
-    if (!msg || msg.kv !== 2 || !this._keysOn()) return;
-    const device = cleanDevice(msg.device);
-    if (!device) return;
     const auth = await S.get('auth:' + id);
-    if (!auth || typeof auth !== 'object' || auth.oldGone) return;
+    if (!auth || typeof auth !== 'object') return;
+    const device = cleanDevice(msg && msg.device);
+    /* v2.3.3372: came in with the OLD key -- does the record still let it,
+       from this device?  A key retired since (Give a new key), or the device
+       forgotten since (Forget), puts the join out (above). */
+    if (out.via === 'old') {
+      if (auth.oldGone) { await this._authPutOut(ws, 'key'); return; }
+      if (this._deviceLockOn() && this._deviceDecide(auth, device, now) === 'refuse') {
+        await this._authPutOut(ws, 'device');
+        return;
+      }
+    }
+    if (!msg || msg.kv !== 2 || !this._keysOn()) return;
+    if (!device || auth.oldGone) return;
     const keys = Array.isArray(auth.keys) ? auth.keys.filter((k) => k && typeof k.h === 'string') : [];
     const mine = keys.find((k) => k.d === device);
     if (mine && now - (mine.at || 0) < LOGIN_KEYS.REMINT_MS) return;
     const key = makeLoginKey();
     const h = await this._keyHash(key);
+    /* v2.3.3372: still here after the hash (a reload's join supersedes this
+       socket): a key for a socket nobody reads is a key nobody holds, and it
+       would keep this device from being handed one for REMINT_MS */
+    if (!this.sessions.has(ws)) return;
     /* this device's old one goes (it never kept it); past MAX the oldest
        never used, else the oldest */
     const gone = keys.filter((k) => k.d === device);
