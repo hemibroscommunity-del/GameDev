@@ -689,5 +689,138 @@ const ps = () => room.playerState['bp_dr_a'];
   check('...an offline id is refused', off.ok === false);
 }
 
+// ── 9. v2.3.3369: a daily quest's coins and its "done" are one write ──
+// The record (the quest done) was saved in the completing run and the coins
+// after _creditPlayer's first read, a write of their own: a restart between
+// them (every merge restarts the room) kept "done" and lost the quest's gold
+// (the architecture review).  A storage where every write of one synchronous
+// run commits as ONE batch, as a Durable Object's does, and the room dies
+// before batch `crashAt` (inbox.test §8c's).  At every batch the completion
+// makes: the quest is done on file exactly when its coins and stamp are; and
+// on a second room, the same kill again ends with the quest paid ONCE.
+{
+  const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
+  const mkCrashState = (seed) => {
+    const store = new Map(seed ? [...seed].map(([k, v]) => [k, clone(v)]) : []);
+    let pending = null, batches = 0, crashAt = Infinity, dead = false;
+    const commit = () => {
+      const w = pending; pending = null;
+      const n = batches++;
+      if (dead || n >= crashAt) { dead = true; return; }
+      for (const [op, k, v] of w) { if (op === 'put') store.set(k, v); else store.delete(k); }
+    };
+    const write = (op, k, v) => {
+      if (!pending) { pending = []; queueMicrotask(commit); }
+      pending.push([op, k, clone(v)]);
+    };
+    const view = (k) => {
+      if (pending) for (let i = pending.length - 1; i >= 0; i--) if (pending[i][1] === k) return pending[i][0] === 'put' ? clone(pending[i][2]) : undefined;
+      return clone(store.get(k));
+    };
+    return {
+      _store: store,
+      batches: () => batches,
+      crashAt(n) { crashAt = n; },
+      storage: {
+        get: async (k) => view(k),
+        put: async (k, v) => {
+          if (k && typeof k === 'object') { for (const [kk, vv] of Object.entries(k)) write('put', kk, vv); return; }
+          write('put', k, v);
+        },
+        delete: async (k) => { for (const x of (Array.isArray(k) ? k : [k])) write('del', x); return true; },
+        list: async (opts) => { const out = new Map(); for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, clone(v)); return out; },
+      },
+      getWebSockets: () => [],
+      acceptWebSocket: () => {},
+    };
+  };
+  const settleIo = () => new Promise((r) => setTimeout(r, 10));
+  const P = 'bp_dq_crash';
+  const T9 = Date.UTC(2026, 0, 21, 12, 0, 0);
+  const roomOn = (s) => { const r = new GameRoom(s, mockEnv); r._drNow = () => T9; return r; };
+  const joinOn = async (rm, w) => {
+    rm.sessions.set(w, baseSession());
+    await rm.webSocketMessage(w, JSON.stringify({ type: 'join', id: P, name: 'T', phrase: 'p-' + P, data: { x: 0, y: 0, z: 'town' } }));
+    await settleIo();
+  };
+  // a saved player, tut_1 handed in, 100 gold, today's board: "defeat 1" (60
+  // gold) and two gathers a kill never counts for
+  const s0 = mkCrashState();
+  const r0 = roomOn(s0);
+  await joinOn(r0, fakeWs());
+  const p0 = r0.playerState[P];
+  p0.coins = 100;
+  p0._quests = Object.create(null);
+  p0._quests.tut_1 = 'turnedIn';
+  r0._saveRpg(P, p0);
+  await r0._drOnQuestTurnIn(P, 'tut_1');
+  const rec0 = r0._drMap().get(P);
+  rec0.dq.list = [
+    { t: 'kill', p: null, g: 1, n: 0, d: 0, c: 60 },
+    { t: 'mine', p: null, g: 4, n: 0, d: 0, c: 60 },
+    { t: 'chop', p: null, g: 4, n: 0, d: 0, c: 60 },
+  ];
+  rec0.dq.all = 0;
+  await r0._drSave(P);
+  await settleIo();
+  const store = s0._store;
+  const DAYN = dayOf(T9);
+  const stampKey = 'oplog:dq:' + P + ':' + DAYN + ':0';
+  check('9. the world: the board on file, unpaid', (store.get(DAILY.KEY + P) || { dq: { list: [] } }).dq.list[0].d === 0 && (store.get('rpg:' + P) || {}).coins === 100 && !store.has(stampKey));
+  const onFile = (st) => {
+    const rec = st.get(DAILY.KEY + P);
+    return { done: !!(rec && rec.dq && rec.dq.list[0] && rec.dq.list[0].d), coins: (st.get('rpg:' + P) || {}).coins, stamped: st.has(stampKey) };
+  };
+  const run = async (k) => {
+    const s1 = mkCrashState(store);
+    const r1 = roomOn(s1);
+    await joinOn(r1, fakeWs());
+    const b0 = s1.batches();
+    s1.crashAt(k === Infinity ? Infinity : b0 + k);
+    r1._drSignal(P, 'kill', {}, 1);
+    await settleIo();
+    const first = { batches: s1.batches() - b0, ...onFile(s1._store) };
+    // the room comes back on what was written, and the player kills again
+    const s2 = mkCrashState(s1._store);
+    const r2 = roomOn(s2);
+    await joinOn(r2, fakeWs());
+    r2._drSignal(P, 'kill', {}, 1);
+    await settleIo();
+    return { first, after: onFile(s2._store) };
+  };
+  const dry = await run(Infinity);
+  check('9. with no restart the quest is done, paid and stamped', dry.first.done && dry.first.coins === 160 && dry.first.stamped, dry);
+  const wrong = [], twice = [];
+  for (let k = 0; k <= dry.first.batches; k++) {
+    const { first: f, after: a } = await run(k);
+    const paid = f.coins === 160 && f.stamped;
+    const none = f.coins === 100 && !f.stamped;
+    if (!((f.done && paid) || (!f.done && none))) wrong.push({ crashAt: k, ...f });
+    if (!(a.done && a.coins === 160 && a.stamped)) twice.push({ crashAt: k, ...a });
+  }
+  check('9. a restart at any write keeps "done" exactly when the coins are paid (never done and unpaid)', wrong.length === 0 && dry.first.batches >= 1, { batches: dry.first.batches, wrong });
+  check('9. ...and the next kill, back in the room, leaves it paid exactly once', twice.length === 0, twice);
+
+  // a record still counted for a player already gone from the room: the coins
+  // go to the mailbox through _creditPlayer, and the record is saved after them
+  {
+    const s3 = mkCrashState(store);
+    const r3 = roomOn(s3);
+    await joinOn(r3, fakeWs());
+    delete r3.playerState[P];
+    const order = [];
+    const realPut = s3.storage.put;
+    s3.storage.put = async (k, v) => { if (typeof k === 'string') order.push(k.split(':')[0]); return realPut(k, v); };
+    r3._drSignal(P, 'kill', {}, 1);
+    await settleIo();
+    const box = s3._store.get('inbox:' + P) || [];
+    const f = onFile(s3._store);
+    check('9. a player gone from the room: the quest\'s coins are mailed, stamped, and the quest done', f.done && f.stamped
+      && box.some((e) => e && e.source === 'dailyquest' && e.payload && e.payload.amount === 60), { f, box });
+    check('9. ...the record saved after the coins (the credit first, rule 5)', order.indexOf('inbox') >= 0
+      && order.lastIndexOf('daily_rewards') > order.indexOf('inbox'), order);
+  }
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall daily rewards checks passed');
 process.exit(failures ? 1 : 0);

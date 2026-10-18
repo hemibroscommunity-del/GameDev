@@ -229,6 +229,14 @@ client draws whatever the server sends, so a retune is a server-only change.
     `dailyspin` is switched off: then it waits, open, for the switch.
 - **Quests and the season pay through `_creditPlayer`.** The opIds are
   deterministic: `dq:<pid>:<day>:<slot>` and `season:<pid>:<season>:<tier>:<grant>`.
+  A daily quest finished by a player in the room is paid in the SAME write as
+  its "done" (v2.3.3369, `_creditLiveTogether`): the coins, the stamp and the
+  record go out in one synchronous run, so a restart keeps all three or none,
+  and none means the quest is still to do. Before, the record was saved first
+  and the coins a write later, and a restart between them kept "done" and
+  lost the gold (the architecture review; dailyrewards.test §9). A record
+  still counted for a player already gone is credited first and saved after
+  (rule 5).
   A claim and the season-end mail share the second opId, so the same tier can
   never pay twice. Spins and freezes are the record's and the streak's own:
   `sp.extra`, and `cadence:login`'s `fz`.

@@ -397,5 +397,210 @@ let room2, key2, key2First, h2First;
   check('11. ...and the shared roster\'s (rosterCookie.js, which keeps a new key\'s id)', cookie.includes('/' + NEW_KEY_RE.source + '/.test('));
 }
 
+// ── 12. v2.3.3372: one change at a time to a character's login record ──
+// Every change to `auth:<id>` reads it, works out the next and writes it, with
+// something other than storage awaited between (a key's hash, the account
+// check's fetch, the put-out player's leaving run): two at once both read the
+// same record and the second write threw the first away.  A gate is put where
+// each waits, and the owner's tool is run in the gap.
+{
+  const realHash = GameRoom.prototype._keyHash;
+  const gateNext = () => { let open; const p = new Promise((r) => { open = r; }); return { p, open }; };
+  const tick = () => new Promise((r) => setTimeout(r, 5));
+  /* a character an older phone made on D1; D2 let in once (no key made);
+     nobody left playing it */
+  const setUp = async (id) => {
+    const room = newRoom();
+    await madeOld(room, id, D1);
+    await admin(room, '/device-pass', { playerId: id });
+    await join(room, id, OLD, D2);
+    for (const [w, s] of [...room.sessions]) if (s.id === id) await room.webSocketClose(w);
+    return room;
+  };
+
+  /* 12a. a join's handout has read the record and is making the key when the
+          owner's Forget runs: the Forget must stand */
+  {
+    const id = 'bp_lk_r1';
+    const room = await setUp(id);
+    check('12a. the world: two devices, no new keys yet', (authOf(room, id).devs || []).length === 2 && !(authOf(room, id).keys || []).length, authOf(room, id));
+    const g = gateNext();
+    room._keyHash = async function (k) { await g.p; return realHash.call(this, k); };
+    const pj = join(room, id, OLD, D1, KV);
+    await tick();
+    const pf = admin(room, '/device-forget', { playerId: id });
+    await tick();
+    g.open();
+    const ws = await pj;
+    const j = await (await pf).json();
+    await tick();
+    const a = authOf(room, id);
+    check('12a. the Forget stands: no device, no key, sealed', j.ok && !(a.devs || []).length && !(a.keys || []).length && a.sealed === true, a);
+    check('12a. ...and the key handed out before it is taken back with the rest (its index gone)',
+      ![...room.state._store.keys()].some((k) => k.startsWith(LOGIN_KEYS.IDX) && room.state._store.get(k).id === id));
+    check('12a. ...and the player is put out (device screen)', rejected(ws) && rejected(ws).reason === 'device', ws.sent.map((m) => m.type));
+    const again = await join(room, id, keyOf(ws) || OLD, D1, KV);
+    check('12a. ...so nothing they hold comes back in', !!rejected(again), again.sent.map((m) => m.type));
+  }
+
+  /* 12b. a join past its check, not yet playing, when the owner's Forget runs
+          (the tool finds nobody to put out): its handout puts it out and hands
+          it nothing */
+  const pastCheck = async (room, id, gateKey) => {
+    const realGet = room.state.storage.get;
+    const g = gateNext();
+    let gated = false;
+    room.state.storage.get = async (k) => {
+      if (!gated && k === gateKey) { gated = true; await g.p; }
+      return realGet(k);
+    };
+    return { g, done: () => { room.state.storage.get = realGet; } };
+  };
+  {
+    const id = 'bp_lk_r2';
+    const room = await setUp(id);
+    const pc = await pastCheck(room, id, 'frozen:' + id);
+    const pj = join(room, id, OLD, D1, KV);
+    await tick();
+    const j = await (await admin(room, '/device-forget', { playerId: id })).json();
+    check('12b. the Forget ran while the join was past its check (it found nobody playing)', j.ok && j.wasOnline === false, j);
+    pc.g.open();
+    const ws = await pj;
+    pc.done();
+    await tick();
+    const a = authOf(room, id);
+    check('12b. the join is put out with the device\'s reason, once it is in', rejected(ws) && rejected(ws).reason === 'device' && ws.closed && ws.closed.code === 4016, { sent: ws.sent.map((m) => m.type), closed: ws.closed });
+    check('12b. ...and handed NO key (one would have outlived the Forget)', !keyOf(ws) && !(a.keys || []).length, { key: keyOf(ws), keys: a.keys });
+    check('12b. ...and it leaves the world (no session, no body)', ![...room.sessions.values()].some((s) => s.id === id) && !room.playerState[id]);
+  }
+
+  /* 12c. the same with "Give it a new key": the old key is retired, so a join
+          that came in with it is put out with the key's reason */
+  {
+    const id = 'bp_lk_r3';
+    const room = await setUp(id);
+    const pc = await pastCheck(room, id, 'frozen:' + id);
+    const pj = join(room, id, OLD, D1, KV);
+    await tick();
+    const j = await (await admin(room, '/key-new', { playerId: id })).json();
+    pc.g.open();
+    const ws = await pj;
+    pc.done();
+    await tick();
+    const a = authOf(room, id);
+    check('12c. a join with the old key, past its check when the key was reset: put out, the key\'s reason (close 4017)',
+      j.ok && rejected(ws) && rejected(ws).reason === 'key' && ws.closed && ws.closed.code === 4017, { sent: ws.sent.map((m) => m.type), closed: ws.closed });
+    check('12c. ...handed nothing, and the owner\'s one key is the only one', !keyOf(ws) && a.keys.length === 1 && a.keys[0].d === null, a.keys);
+  }
+
+  /* 12d. a NEW key taken back (Forget) while a join with it is past its check */
+  {
+    const id = 'bp_lk_r4';
+    const room = await setUp(id);
+    const wk = await join(room, id, OLD, D1, KV);
+    const k = keyOf(wk);
+    await join(room, id, k, D1, KV);                // its first use
+    const pc = await pastCheck(room, id, 'frozen:' + id);
+    const pj = join(room, id, k, D3, KV);
+    await tick();
+    await admin(room, '/device-forget', { playerId: id });
+    pc.g.open();
+    const ws = await pj;
+    pc.done();
+    await tick();
+    check('12d. a join with a new key the Forget took back meanwhile: put out with the key\'s reason',
+      isNewKeyShape(k || '') && rejected(ws) && rejected(ws).reason === 'key', { sent: ws.sent.map((m) => m.type) });
+  }
+
+  /* 12e. nothing waits for ever: joins, a pass and two Forgets of one
+          character all at once, every one answered */
+  {
+    const id = 'bp_lk_r5';
+    const room = await setUp(id);
+    const all = [
+      join(room, id, OLD, D1, KV), join(room, id, OLD, D2, KV), admin(room, '/device-forget', { playerId: id }),
+      join(room, id, OLD, D1, KV), admin(room, '/device-pass', { playerId: id }), join(room, id, OLD, D3, KV),
+      admin(room, '/device-forget', { playerId: id }), join(room, id, OLD, D2, KV),
+    ];
+    const timeout = new Promise((r) => setTimeout(() => r('timeout'), 3000));
+    const res = await Promise.race([Promise.all(all).then(() => 'done'), timeout]);
+    check('12e. eight changes to one record at once: every one finishes (no wait for ever)', res === 'done', res);
+    await tick();
+    const a = authOf(room, id);
+    check('12e. ...and the last word is the last Forget\'s: no device, no key, sealed', !(a.devs || []).length && !(a.keys || []).length && a.sealed === true, a);
+    check('12e. ...and nothing is queued behind it any more', !room._authChains || !room._authChains.has(id));
+  }
+
+  /* 12g. a join has READ the record and is checking its key (a hash) when
+          the owner's Forget runs, then remembers its device: the device it
+          remembers must not bring the forgotten ones back */
+  {
+    const id = 'bp_lk_r6';
+    const room = await setUp(id);
+    await admin(room, '/device-pass', { playerId: id });          // D3 may come in once
+    const realPhrase = GameRoom.prototype._phraseHash;
+    const g = gateNext();
+    let gated = false;
+    room._phraseHash = async function (p) { if (!gated) { gated = true; await g.p; } return realPhrase.call(this, p); };
+    const pj = join(room, id, OLD, D3, KV);
+    await tick();
+    const pf = admin(room, '/device-forget', { playerId: id });
+    await tick();
+    g.open();
+    const ws = await pj;
+    await pf;
+    await tick();
+    const a = authOf(room, id);
+    check('12g. the Forget stands over a device the join remembered: no device, no key, sealed, no pass',
+      !(a.devs || []).length && !(a.keys || []).length && a.sealed === true && !a.pass, a);
+    check('12g. ...and that join is put out and handed nothing', rejected(ws) && !keyOf(ws), ws.sent.map((m) => m.type));
+  }
+
+  /* 12h. one join's handout is making its key when another join, let in by a
+          pass, remembers its device: neither change is lost */
+  {
+    const id = 'bp_lk_r7';
+    const room = await setUp(id);
+    await admin(room, '/device-pass', { playerId: id });          // D3 may come in once
+    const g = gateNext();
+    let gated = false;
+    room._keyHash = async function (k) { if (!gated) { gated = true; await g.p; } return realHash.call(this, k); };
+    const pa = join(room, id, OLD, D1, KV);                       // its handout waits on the hash
+    await tick();
+    const pc = await pastCheck(room, id, 'frozen:' + id);         // B waits before it takes A's place
+    const pb = join(room, id, OLD, D3, KV);
+    await tick();
+    g.open();
+    await tick();
+    pc.g.open();
+    await pa;
+    const wb = await pb;
+    pc.done();
+    await tick();
+    const a = authOf(room, id);
+    check('12h. the device the pass let in is remembered, and the pass is spent',
+      (a.devs || []).some((e) => e.d === D3.id) && !a.pass, { devs: a.devs, pass: a.pass });
+    check('12h. ...and the device that came in on the pass is handed its key', joined(wb) && isNewKeyShape(keyOf(wb) || '')
+      && (a.keys || []).some((k) => k.d === D3.id), { keys: a.keys });
+  }
+
+  /* 12f. the queue keeps two ids apart: one character's slow change never
+          holds another's join */
+  {
+    const room = newRoom();
+    await madeOld(room, 'bp_lk_s1', D1);
+    await madeOld(room, 'bp_lk_s2', D2);
+    const pc = await pastCheck(room, 'bp_lk_s1', 'auth:bp_lk_s1');
+    const p1 = join(room, 'bp_lk_s1', OLD, D1);
+    await tick();
+    const w2 = await Promise.race([join(room, 'bp_lk_s2', OLD, D2), new Promise((r) => setTimeout(() => r(null), 1000))]);
+    check('12f. another character\'s join is not held by this one\'s', !!w2 && joined(w2), w2 && w2.sent.map((m) => m.type));
+    pc.g.open();
+    const w1 = await p1;
+    pc.done();
+    check('12f. ...and the held one finishes when let go', joined(w1));
+  }
+}
+
 if (failures) { console.log('\nlogin-keys: ' + failures + ' FAILED'); process.exit(1); }
 console.log('\nlogin-keys: all checks passed');

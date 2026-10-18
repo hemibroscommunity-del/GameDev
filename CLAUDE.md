@@ -4125,7 +4125,15 @@ Two protocol versions coexist; both must keep working:
     the OLD key's device lock makes its character on an older phone: an init
     script that takes the join's `kv` off (mp-devicelock, mp-newkey);
   - kill switch `keys2: false` (no key handed out; made keys still work);
-    `login-keys` suite (73), `mp-newkey`.
+    `login-keys` suite (73), `mp-newkey`;
+  - since v2.3.3372 ONE CHANGE AT A TIME TO A LOGIN RECORD: every
+    read-and-write of `auth:<id>` -- the join's check, the handout, the
+    owner's three tools -- runs in that character's queue (devicelock.js
+    `_authSerial`), and the handout re-reads the record: a join whose key or
+    device a Forget or Give a new key took away since its check is put out
+    (`_authPutOut`) and handed nothing. In the suite's room a Forget was
+    written back over, and a join past its check was handed a new key after
+    it (TRAPS §219); login-keys §12 (21).
 - **A STRUCTURAL CHANGE REBUILDS ITS LAYER'S DRAW LIST (v2.3.3359, TRAPS
   §218, docs/specs/draw-lists.md).** Pixi rebuilds a render group's whole
   draw list for any `visible` / `renderable` / `zIndex` / `blendMode` change,
