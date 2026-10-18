@@ -1,4 +1,4 @@
-/* ═══ v2.3.3440: WHAT A BRANCH NO PIXEL TAKES COSTS THIS BOX'S GPU ═══
+/* ═══ v2.3.3447: WHAT A BRANCH NO PIXEL TAKES COSTS THIS BOX'S GPU ═══
  *
  * `node tools/qa/qa-branchcost.mjs` -- no worker, no game, one page.
  *

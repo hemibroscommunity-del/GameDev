@@ -1,4 +1,4 @@
-/* ═══ v2.3.3440: ONE DRAWING PROGRAM FOR EVERY SPRITE ═══
+/* ═══ v2.3.3447: ONE DRAWING PROGRAM FOR EVERY SPRITE ═══
  *
  * The owner, 2026-10-18: "iterate on what best improves framerate without
  * loss of quality (or negligible loss) for phone gameplay (iPhone, android)".
