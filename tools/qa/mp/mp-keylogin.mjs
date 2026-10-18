@@ -90,6 +90,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(1200);
   await H.enterWorld(A);
   await A.page.waitForTimeout(3500);
+  /* v2.3.3355: a new character is handed a new Login Key at its first join
+     (server/src/loginkeys.js) -- the key to come back with is that one */
+  await A.page.waitForFunction(() => /^[a-z]{3,5}(?:-[a-z]{3,5}){7}$/.test(localStorage.getItem('bt_passphrase') || ''),
+    null, { timeout: 20000, polling: 300 }).catch(() => {});
   const key = await phraseOf(A);
   const madeName = await nameOf(A);
   rec.ok('a character exists to log back in as (guard)',
@@ -330,6 +334,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.waitForTimeout(400);
   rec.ok('...and tapping USE LOGIN KEY opens it',
     await visible(B, 'input[placeholder*="Login Key"]'), {});
+  /* ═══ v2.3.3355: A NEW KEY WORKS ON ANY DEVICE ═══
+     B is a new device for this character.  Since v2.3.3344 an OLD key works
+     only on the devices it is played on (server/src/devicelock.js), but this
+     build's character was handed a new Login Key at its first join
+     (server/src/loginkeys.js), and a new key works anywhere: typed here, it
+     plays, with no pass from the owner.  (The old key at a new door is
+     mp-newkey's and mp-devicelock's.) */
+  rec.ok('the key is a new one, eight words (guard)', /^[a-z]{3,5}(?:-[a-z]{3,5}){7}$/.test(key || ''), { key });
   await B.page.fill('input[placeholder*="Login Key"]', key);
   /* By ROLE + exact name: the plate button's hidden label is "Log in with
      your Key", so a substring match on "Log in" hits it instead of the

@@ -4078,6 +4078,52 @@ Two protocol versions coexist; both must keep working:
   `mp-originlock` (a second browser with `--host-resolver-rules`, so the
   copy's Origin is the browser's own; `H.newPlayer`'s `host`,
   `H.launch(args)`).
+- **A CHARACTER'S KEY WORKS ON THE DEVICES IT IS PLAYED ON (v2.3.3344,
+  docs/specs/device-lock.md).** The owner: on at once, their own tool the way onto
+  a new device, a short note to players.
+  - `auth:<id>` keeps the devices its key is used from (`devs`, 12 at most):
+    the browser's own `bt_device` token, which the join already sends.
+  - The right key from any other device is `join_rejected {reason: 'device'}`
+    and close 4016 -- never `auth`, which makes the phone throw its key away.
+    The phone's `src/ui/DeviceScreen.js` shows the player's code (their id) to
+    give the owner.
+  - The owner lets one new device in for 30 minutes from the Test panel's
+    Player logins (`/api/admin/device-pass`), or forgets a character's devices
+    and seals it for one someone else got into (`device-forget`).
+  - A character with no known device takes its next one. The devices the bot
+    checks already knew are filled in once (`devlock:filled`).
+  - The login check still answers `exists: true` for older phones, with
+    `device: 'unknown'`; the picker's restart refuses from an unknown device.
+  - A phone test that brings a character back in a second browser gets its
+    device (harness `newPlayer`'s `device`; `'fresh'` is a new one).
+  - Kill switch `devicelock: false`; `device-lock` suite (67), `mp-devicelock`.
+- **NEW LOGIN KEYS, MADE BY THE SERVER (v2.3.3355, docs/specs/login-keys.md).**
+  Step 2 of the owner's login plan ("8 short words"):
+  - a key is eight of 1,422 short words (`server/src/keywords.js`, the EFF
+    list's, CREDITS.md), made in `server/src/loginkeys.js`, kept only as a
+    fingerprint (`auth.keys`, `keyidx:<h>` for the door), good from ANY device;
+  - a phone that joins with `kv: 2` and the OLD key, on one of its devices, is
+    handed one after its join (`key_new {key, id}`, PRIVILEGED, the direct
+    switch) -- its own key a device, the old key kept beside it on the phone
+    (`bt_passphrase_old`) until a join with the new one gets in; a NEW
+    character is handed one at its first join and its first key is RETIRED at
+    the new one's first use (`fresh`, `oldGone`);
+  - a new key's id is KEPT, never worked out from it: `idForKey`
+    (networking/index.js: `bt_key_ids`, the roster's rows, the mirror's `i`),
+    everywhere the phone used to call passphraseToId on its key; the join
+    takes the kept one, and a `key` refusal of a new key asks the door once
+    whose it is (a key put on a phone by hand);
+  - refusals `key` (4017: a new key not the character's, an old key retired)
+    and `locked` (4018: five wrong keys in a minute, which used to answer
+    `auth` -- a phone threw its key away over someone else's guesses; a
+    matching new key goes through a lockout) -- never `auth`;
+  - the owner's Forget takes every key back, and "Give it a new key"
+    (`/api/admin/key-new`) is the full reset, its key shown once in the panel;
+  - a phone test's new character is handed a new key at once, so a test of
+    the OLD key's device lock makes its character on an older phone: an init
+    script that takes the join's `kv` off (mp-devicelock, mp-newkey);
+  - kill switch `keys2: false` (no key handed out; made keys still work);
+    `login-keys` suite (73), `mp-newkey`.
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,

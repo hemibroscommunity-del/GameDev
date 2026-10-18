@@ -61,6 +61,20 @@ export const adminMethods = {
     return a === b ? 'ok' : 'denied';
   },
 
+  /* ═══ v2.3.3356: PUT OUT, AND OUT OF THE WORLD ═══
+     Kick and Freeze deleted the session and then closed the socket, so the
+     runtime's own close found no session and the leaving never ran: no save,
+     no player_leave, no party or duel grace -- and every other player kept
+     seeing the body, standing where it was, until the room restarted.  Now
+     the AFK sweep's three steps (tick.js, flood.js _floodClose; the owner's
+     Forget, devicelock.js): the close, the leaving run now, the session gone.
+     A body in a fight with a player lingers as any leaver's does (linger.js). */
+  async _adminPutOut(ws, code, reason) {
+    try { ws.close(code, reason); } catch (e) { /* closed */ }
+    try { await this.webSocketClose(ws); } catch (e) { /* best effort */ }
+    this.sessions.delete(ws);
+  },
+
   async _adminLog(entry) {
     try {
       const log = (await this.state.storage.get('admin_log')) || [];
@@ -153,6 +167,13 @@ export const adminMethods = {
           /* v2.3.3334: monster hits refused for want of the weapon, from too
              far, specials rolled ordinary for want of a paid swipe (hitproof.js) */
           hitProof: this._hitProofInfo(),
+          /* v2.3.3344: logins checked against their character's devices
+             (devicelock.js): let in on a known device, a first device
+             recorded, a pass used, refused, login checks, and the one-time
+             fill */
+          deviceLock: this._deviceLockInfo(),
+          /* v2.3.3355: new Login Keys (loginkeys.js) */
+          loginKeys: this._keysInfo ? this._keysInfo() : null,
           /* v2.3.3240: the 2 s look relay -- tracks in, and how many went out
              whole, as only what changed, or not at all (lookrelay.js) */
           lookRelay: this._lookInfo(),
@@ -344,10 +365,7 @@ export const adminMethods = {
         const { playerId, reason } = body || {};
         if (!playerId) return json({ ok: false, error: 'playerId required' }, 400);
         const target = this._wsBySessionId(playerId);
-        if (target) {
-          this.sessions.delete(target);
-          try { target.close(4008, 'admin_kick'); } catch (e) {}
-        }
+        if (target) await this._adminPutOut(target, 4008, 'admin_kick');   /* v2.3.3356 */
         await this._adminLog({ op: 'kick', playerId, reason: reason || '' });
         return json({ ok: true, wasOnline: !!target });
       }
@@ -358,10 +376,7 @@ export const adminMethods = {
         if (!playerId) return json({ ok: false, error: 'playerId required' }, 400);
         await this.state.storage.put('frozen:' + playerId, { ts: Date.now(), note: note || '' });
         const target = this._wsBySessionId(playerId);
-        if (target) {
-          this.sessions.delete(target);
-          try { target.close(4004, 'frozen'); } catch (e) {}
-        }
+        if (target) await this._adminPutOut(target, 4004, 'frozen');   /* v2.3.3356 */
         await this._adminLog({ op: 'freeze', playerId, note: note || '' });
         return json({ ok: true, wasOnline: !!target });
       }
@@ -402,6 +417,12 @@ export const adminMethods = {
 
       // v2.3.1150: live-ops sub-routes (flags/announce) -- auth already
       // passed above; liveops.js returns null for paths it doesn't own.
+      /* v2.3.3344: the owner's tool for a character's devices (devicelock.js):
+         let one new device in, or forget them all -- same contract, null for
+         paths it doesn't own */
+      const dl = await this._deviceLockAdminRoute(request, url, path, json);
+      if (dl) return dl;
+
       const lo = await this._liveopsRoutes(request, url, path, json);
       if (lo) return lo;
 
