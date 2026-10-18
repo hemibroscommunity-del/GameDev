@@ -48,6 +48,40 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/MEMORY-PLAN.md` (what the phone holds -- sound, canvases, heaps, not
   only textures -- what leaked, and the order of the memory work with each
   item's status, v2.3.3075; `mp-memledger` measures it),
+  `docs/FUN-SOCIAL-PLAN.md` (the owner's fun & social plan checked against
+  the code, v2.3.3391 -- "Go recommended": emotes and dances that move the bro
+  in code, two-player moves, farm-made toys, a playground town; its rules: a
+  pose that lasts is STATE on the player (TRAPS §176), social messages get an
+  allowance of their own, anything earned is stored and checked on the server,
+  no new always-on button; Phase 0's emotes you can see -- the chat box's
+  smiley or B, an emoji over the head, a quick line as the bubble, only the
+  listed ones relayed and placed near the sender: docs/specs/emotes.md,
+  `emotes` suite, `mp-emotes`; and since v2.3.3392 Phase 1's twelve MOVES --
+  wave, laugh, flex, shrug, facepalm, cheer for a moment (the `emote` relay's
+  `{move}`), sit, sleep, flop and three dances held until you move (`pose
+  {id}`, kept by the worker as `ps.po` and sent as the tick's `po`, ended by a
+  real step: server/src/poses.js) -- the whole bro tilted, squashed or hopped
+  in code ABOUT HIS FEET after the depth pass (src/rendering/emoteFx.js, the
+  curves and the math src/game/emoteMoves.js), his HUD given the inverse so
+  the name plate never tilts and only comes down with a sitter or sleeper;
+  the picker's Moves tab and `/wave`, `/sit`, `/dance` in the chat;
+  `caps.emotemoves`, kill switch `emotemoves: false`; `emotes` §5-7,
+  `mp-emotemoves`: docs/specs/emote-moves.md; and since v2.3.3393 `/roll`
+  (1-100, `/roll 20`) and `/flip` ROLLED BY THE WORKER (server/src/dice.js:
+  crypto, no modulo bias, one every 5 s, `dice_roll` PRIVILEGED, placed near
+  the roller and muted with chat), a chat line in the roller's name and the
+  number as their bubble; `caps.dice`, kill switch `dice: false`; `dice`
+  suite, `mp-dice`: docs/specs/dice.md; and since v2.3.3394 YOUR PET AND THE
+  TOWNSFOLK JOIN IN -- a pet copies its player's held pose, Lil Bro copies the
+  nearest player, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have a
+  word (src/game/townsfolkReact.js, this phone's own; emoteFx.js
+  `_updateFollowers` moves each one picture about its feet);
+  `townsfolk-react` suite, `mp-joinin`; and since v2.3.3395 HALLOWEEN WEEK,
+  24 October to 1 November by each phone's calendar (src/game/season.js,
+  `?halloween=1|0`; a look, never a rule): the Zombie Shuffle, a thirteenth
+  move the worker keeps any day, pumpkin-coloured speech bubbles drawn in
+  code, Diego's "No zombies in my store!"; `season` suite, `mp-halloween`:
+  docs/specs/halloween.md),
   `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
   size, in what order — the decoded-RGBA budget and the free-standing
   vs edge-cropped test live here, v2.3.2650),
@@ -2556,6 +2590,34 @@ remnant to migrate server-side, not a mode to preserve.
       tier to claim; `daily_rewards:<pid>`, caps/kill switches `dailyspin`
       and `dailyquests`; `dailyrewards` suite, `mp-dailyrewards`:
       docs/specs/daily-rewards.md.
+    - since v2.3.3400 THE DAILY QUESTS AND THE SEASON ARE PUT AWAY -- the
+      owner: "Remove the daily quests they're randomly appearing as complete
+      and it makes no sense to me ... I'd rather it go away" (they were rolled
+      for everyone at tut_1 and counted from any kill, harvest, cook or
+      smelt, so they announced themselves already done, with the story
+      quest's fanfare), then, offered the season on the free spin's stars,
+      "Yes drop the season":
+      - the quests off unless the live flags say `dailyquests: true`
+        (`_dqOff`, `_drFlagOn`): not advertised, nothing rolled, counted,
+        rerolled or paid, no `daily_progress`; the code is kept and tested
+        for that switch, as the ground's edge pieces and blends are;
+      - the SEASON likewise, off unless `season: true` (`_seOff`,
+        `caps.season`): no star added, no `season_claim` taken, and a tier a
+        player reached and never claimed is MAILED the first time they are
+        seen (`_seClose` with `drop`, the claim's own opIds, `season_drop`
+        news only to someone it paid); each record is kept, so the switch
+        brings the season back where it stood, the free spin's stars 3 with
+        the quests off (`SEASON.SPIN_STARS`), 1 with them;
+      - the page: no Season tab, stars or claims (`seasonLive` is
+        `caps.season`), the Quests card says the spin or the streak, and the
+        Den has no button past its spin;
+      - tut_1 handed in now always sends the opened spin (it waited for a
+        rejoin with the quests off), with no "Daily quests are open!"; a new
+        day online is `spinday` news ("your free spin is waiting"), never
+        `newday`'s "three new daily quests";
+      - the Quests button's dot stays a quest's alone; `dailyrewards` §9,
+        `mp-dailyrewards`: daily-rewards.md "The daily quests and the season
+        put away".
   - Since v2.3.3142 WORN ARMOUR SHOWS ITS GRADE -- the owner: "change the
     outline hue or something on the armor so it retains the color but has
     highlights. So rare is blue, elite is orange, godly is prismatic":
@@ -3005,6 +3067,22 @@ remnant to migrate server-side, not a mode to preserve.
     - test-world-core "the Gem Works", `mp-buildingrooms` (the tabs),
       `mp-wheeldoors`, `mp-shieldgem` (a shield's gem is set on the Set gems
       tab): docs/specs/gem-works.md.
+  - Since v2.3.3382 THE TOWN HALL'S FLAG WAVES -- the owner: "make the town
+    square flag wave using code it looks silly being still":
+    - the flag is painted into the Town Hall's picture (no flag object), so its
+      cloth is CUT OUT of the page as it loads (wheelLife.js `cutFlag`): its
+      colour numbers copied into a little palette picture of its own, then set
+      see-through in the page (uploaded again) -- once per page SOURCE (a
+      mended building finds the cut made); never where the cloth does not
+      count `n` (buildingLife.js's `flag` entry on the picture's own pixels:
+      `box`, `keep`, `pole`), nor with `?nopalette`, WebGL1 or `?nolife`;
+    - a 9 x 4 MeshPlane in the building's life, pinned at the pole, waved by
+      worldLife.js `_updateWheelFlags` (the old map's flags' motion, `windAt`
+      and the trees' gusts; at rest, as painted, under `__btAmbienceOff`) via
+      wheelObjects.js `forEachWheelFlag`; casts no shadow;
+    - test-world-core "the Town Hall's flag", `mp-flagwave` (13),
+      `window.__btWheelFlags()`: docs/specs/flag-wave.md, WORLD-MAP-PIPELINE
+      "The Town Hall's flag waves".
   - Since v2.3.3298 THE WHEEL IS BUILT IN BLOCKS ROUND YOU -- the owner: "the
     game map needs to be larger. It goes from lvl 1 monsters to lvl 20+ way too
     quickly. Maybe 5x larger map is needed", choosing "Rebuild for 5x". Step 1,
@@ -3913,7 +3991,11 @@ Two protocol versions coexist; both must keep working:
   worldViewport). `mp-frameprofile` profiles the CPU by source file (build with
   `--sourcemap`) and names what rebuilds each render group's draw list --
   `Graphics.clear()` on an empty graphic rebuilds it (TRAPS §208);
-  `mp-speedtest`.
+  `mp-speedtest`. Since v2.3.3383 the card never blames the graphics chip at
+  the screen's own pace: at 55+ frames a second it says every frame is ready
+  in time for the screen (`frameNote`) -- the owner's first run read 60 in
+  every step, 17 ms a frame, and was told the chip took most of each, when
+  17 ms is only a 60 Hz screen's own refresh.
 
 ## Conventions
 
@@ -4180,6 +4262,41 @@ Two protocol versions coexist; both must keep working:
   - A phone test that brings a character back in a second browser gets its
     device (harness `newPlayer`'s `device`; `'fresh'` is a new one).
   - Kill switch `devicelock: false`; `device-lock` suite (67), `mp-devicelock`.
+- **NEW LOGIN KEYS, MADE BY THE SERVER (v2.3.3355, docs/specs/login-keys.md).**
+  Step 2 of the owner's login plan ("8 short words"):
+  - a key is eight of 1,422 short words (`server/src/keywords.js`, the EFF
+    list's, CREDITS.md), made in `server/src/loginkeys.js`, kept only as a
+    fingerprint (`auth.keys`, `keyidx:<h>` for the door), good from ANY device;
+  - a phone that joins with `kv: 2` and the OLD key, on one of its devices, is
+    handed one after its join (`key_new {key, id}`, PRIVILEGED, the direct
+    switch) -- its own key a device, the old key kept beside it on the phone
+    (`bt_passphrase_old`) until a join with the new one gets in; a NEW
+    character is handed one at its first join and its first key is RETIRED at
+    the new one's first use (`fresh`, `oldGone`);
+  - a new key's id is KEPT, never worked out from it: `idForKey`
+    (networking/index.js: `bt_key_ids`, the roster's rows, the mirror's `i`),
+    everywhere the phone used to call passphraseToId on its key; the join
+    takes the kept one, and a `key` refusal of a new key asks the door once
+    whose it is (a key put on a phone by hand);
+  - refusals `key` (4017: a new key not the character's, an old key retired)
+    and `locked` (4018: five wrong keys in a minute, which used to answer
+    `auth` -- a phone threw its key away over someone else's guesses; a
+    matching new key goes through a lockout) -- never `auth`;
+  - the owner's Forget takes every key back, and "Give it a new key"
+    (`/api/admin/key-new`) is the full reset, its key shown once in the panel;
+  - a phone test's new character is handed a new key at once, so a test of
+    the OLD key's device lock makes its character on an older phone: an init
+    script that takes the join's `kv` off (mp-devicelock, mp-newkey);
+  - kill switch `keys2: false` (no key handed out; made keys still work);
+    `login-keys` suite (73), `mp-newkey`;
+  - since v2.3.3372 ONE CHANGE AT A TIME TO A LOGIN RECORD: every
+    read-and-write of `auth:<id>` -- the join's check, the handout, the
+    owner's three tools -- runs in that character's queue (devicelock.js
+    `_authSerial`), and the handout re-reads the record: a join whose key or
+    device a Forget or Give a new key took away since its check is put out
+    (`_authPutOut`) and handed nothing. In the suite's room a Forget was
+    written back over, and a join past its check was handed a new key after
+    it (TRAPS §219); login-keys §12 (21).
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,

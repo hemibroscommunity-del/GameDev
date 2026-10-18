@@ -285,7 +285,7 @@ import { perfTracker } from '@/debug/perfTracker.js';
 import { markAlive } from '@/debug/crashTrap.js';   /* v2.3.3017: a page that dies open is reported by the next one */
 import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: shared T1 report gate */
 import * as DATA from '@/data/index.js';
-import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
+import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId, idForKey } from '@/networking/index.js';
 /* v2.3.1923: the device's character roster — see src/networking/charRoster.js */
 import { rememberChar, ensureChar, activateChar, inRoster, adoptSharedPhrase } from '@/networking/charRoster.js';
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
@@ -346,7 +346,7 @@ function holdZoneMusicAtGate(gate) {
   try { BT_AUDIO.holdZoneMusicFor(gate); } catch (e) {}
 }
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
-import { sendChatMessage } from '@/game/chat.js';
+import { sendChatMessage, setChatMoveSender } from '@/game/chat.js';   /* v2.3.3392: + /wave, /sit, /dance are moves */
 import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
@@ -405,10 +405,11 @@ import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits 
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
-import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building */
+import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor, sendMove as sendMoveImpl, updateOwnEmote, updatePeerEmotes, movesLive } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building; v2.3.3392: + your bro moves */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
+import { updateTownsfolkReactions } from '@/game/townsfolkReact.js';   /* v2.3.3394: the townsfolk join in */
 import { waitForServerReady, installWorldHold } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
 import { MONSTER_VARIANTS, isIntangible } from '@/data/monsterVariants.js'; /* isIntangible: v2.3.2244 */
 import { shardByKey } from '@/data/shards.js';
@@ -1030,7 +1031,9 @@ export var BroTown = function BroTown(_ref0) {
           _pf = generatePassphrase();
           localStorage.setItem('bt_passphrase', _pf);
         }
-        return passphraseToId(_pf);
+        /* v2.3.3355: a new Login Key's id is kept, not worked out from it
+           (networking/index.js idForKey); an old key's as ever */
+        return idForKey(_pf) || passphraseToId(_pf);
       } catch (e) {
         return Math.random().toString(36).slice(2, 10);
       }
@@ -5095,6 +5098,28 @@ export var BroTown = function BroTown(_ref0) {
            snarl (game/monsterNoises.js; the call as one notices you is
            wsClient's, on the "!" edge) */
         try { updateMonsterNoises(S, _sprNow); } catch (e) { /* sound only */ }
+        /* v2.3.3392: an emote's moment ends on its own clock, and a held
+           pose -- sit, sleep, a dance -- when you walk, swing, raise the
+           shield, swim, jump, harvest or die; another player's held pose pops
+           its Zzz or its notes now and then (game/interactions.js; drawn by
+           rendering/emoteFx.js) */
+        try {
+          updateOwnEmote(S, _sprNow, {
+            moving: Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1,
+            attacking: !!(S.autoAttack || S.isSwinging || S._bashDash || S._swordSwinging),
+            shield: !!S._shieldUp,
+            swimming: isWheelSwimming(S),
+            dead: _playerDead,
+            jumping: jumpAirborne(S, _sprNow),
+            harvesting: !!S._extraction,
+            fightAt: Math.max(Number(S.lastDamageTaken) || 0, Number(S._dealtAt) || 0, Number(S._pvpAt) || 0)
+          });
+          updatePeerEmotes(S, _sprNow);
+          /* v2.3.3394: the townsfolk answer the moves near them -- Lil Bro
+             copies, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have
+             a word (game/townsfolkReact.js) */
+          updateTownsfolkReactions(S, _sprNow);
+        } catch (e) { /* a look only */ }
 
         /* §14 Terrain feel — tile under player affects movement */
         var footTile = (_S$map$Math$floor$Mat = (_S$map2 = S.map) === null || _S$map2 === void 0 || (_S$map2 = _S$map2[Math.floor(P.y / TILE)]) === null || _S$map2 === void 0 ? void 0 : _S$map2[Math.floor(P.x / TILE)]) !== null && _S$map$Math$floor$Mat !== void 0 ? _S$map$Math$floor$Mat : 0;
@@ -8295,7 +8320,11 @@ export var BroTown = function BroTown(_ref0) {
                applies for the same reason. */
             if (!/[?&]guest=1\b/.test(window.location.search)) {
               var _hbPf = getBtPassphrase();
-              if (_hbPf && S.myName) rememberChar(_hbPf, { name: S.myName, level: (S.rpg && S.rpg.level) || 0 });
+              /* v2.3.3355: and a new key's id -- only the one a join got in
+                 with (wsClient.js `_joinedId`): S.myId on a page that started
+                 before it knew the key's id is a guess, and kept beside the
+                 key it would send the next join to nobody */
+              if (_hbPf && S.myName) rememberChar(_hbPf, { name: S.myName, level: (S.rpg && S.rpg.level) || 0, id: S._joinedId });
             }
           } catch (e) {}
         }
@@ -8707,6 +8736,15 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.3321: the player list, where a party starts -- the dashboard's
          Clan page opens it now that clans are parties (dash/ClanPanel.jsx) */
       playersOpen:  function () { setShowPlayerList(true); },
+      /* v2.3.3391: the emote picker's doors -- the chat box's smiley opens it
+         (ChatBubble.jsx), B toggles it (desktopControls.js).  Its old door
+         was the hidden toolbar's (MenuBar.jsx), so it could not be opened. */
+      emotes:       function () { setShowEmotes(function (v) { return !v; }); },
+      emotesOpen:   function () { setShowEmotes(true); },
+      /* the picker's own sender, for mp-emotes (a stable useCallback below) */
+      emoteSend:    function (emoji) { sendEmote(emoji); },
+      /* v2.3.3392: and the Moves tab's, for mp-emotemoves */
+      moveSend:     function (id) { return sendMove(id); },
     };
     return function () { delete window.__broLegacyUI; };
   }, []);
@@ -8782,6 +8820,15 @@ export var BroTown = function BroTown(_ref0) {
   var sendEmote = useCallback(function (emoji) {
     sendEmoteImpl(stateRef.current, emoji, { setShowEmotes: setShowEmotes });
   }, []);
+  /* v2.3.3392: a move -- a wave, a sit, a dance (game/interactions.js
+     sendMove): from the picker's Moves tab, and from the chat's "/wave" */
+  var sendMove = useCallback(function (id) {
+    return sendMoveImpl(stateRef.current, id, { setShowEmotes: setShowEmotes });
+  }, []);
+  useEffect(function () {
+    setChatMoveSender(sendMove);
+    return function () { setChatMoveSender(null); };
+  }, [sendMove]);
 
   /* Enter building */
   var enterBuilding = useCallback(function () {
@@ -10953,7 +11000,7 @@ export var BroTown = function BroTown(_ref0) {
                    first time the player passes through the door.
                    ensureChar, NOT rememberChar: standing at the door is not
                    playing, and the list is sorted by when you last played. */
-                try { ensureChar(_p, { name: res.preview.name || '', level: res.preview.level || 0 }); } catch (e2) {}
+                try { ensureChar(_p, { name: res.preview.name || '', level: res.preview.level || 0, id: res.kv === 2 ? res.id : undefined }); } catch (e2) {}   /* v2.3.3355 */
               }
             }).catch(function () {
               try { window.__btDoorCheck = { done: true, hasChar: false, failed: true }; } catch (e) {}
@@ -10991,6 +11038,17 @@ export var BroTown = function BroTown(_ref0) {
          The 10-minute "fresh snapshot" heuristic in that effect no longer
          walks anyone in by itself -- it only pre-seeds identity; the door is
          still the door. */
+      /* v2.3.3355: the door's answer for this device's NEW key names its
+         character (a new key's id is not made from it): the page plays as
+         them from here -- one that started before it knew had worked an id
+         out from the key, which is nobody's.  Never a guest's id. */
+      var _takeKeyId = function (res) {
+        try {
+          var _cur = stateRef.current;
+          if (res && res.kv === 2 && typeof res.id === 'string' && res.id.indexOf('bp_') === 0
+            && _cur && typeof _cur.myId === 'string' && _cur.myId.indexOf('bp_') === 0 && _cur.myId !== res.id) _cur.myId = res.id;
+        } catch (e) { /* the join takes the kept id */ }
+      };
       var _straightIn = false;
       try {
         _straightIn = sessionStorage.getItem('bt_resume_now') === '1' || sessionStorage.getItem('bt_play_now') === '1';
@@ -11015,7 +11073,8 @@ export var BroTown = function BroTown(_ref0) {
                in joinTown, whose `nameInput.trim() || 'Anon'` would
                otherwise stamp Anon until state_sync corrects it. */
             if (res.preview.name) setNameInput(res.preview.name);
-            try { ensureChar(phrase, { name: res.preview.name || '', level: res.preview.level || 0 }); } catch (e2) {}
+            try { ensureChar(phrase, { name: res.preview.name || '', level: res.preview.level || 0, id: res.kv === 2 ? res.id : undefined }); } catch (e2) {}   /* v2.3.3355 */
+            _takeKeyId(res);
           }
         }).catch(function () {
           try { window.__btDoorCheck = { done: true, hasChar: false, failed: true }; } catch (e) {}
@@ -11035,7 +11094,8 @@ export var BroTown = function BroTown(_ref0) {
              road most players actually take — straight in.  Also ensureChar:
              the play stamp is joinTown's job a moment from now, and doing it
              twice from two places is how the two start disagreeing. */
-          try { ensureChar(phrase, { name: res.preview.name || '', level: res.preview.level || 0 }); } catch (e2) {}
+          try { ensureChar(phrase, { name: res.preview.name || '', level: res.preview.level || 0, id: res.kv === 2 ? res.id : undefined }); } catch (e2) {}   /* v2.3.3355 */
+          _takeKeyId(res);
           setBootPhase(null);
           try { window.__btBootRoute = 'resume'; } catch (e) {}
         } else {
@@ -11186,6 +11246,8 @@ export var BroTown = function BroTown(_ref0) {
     try {
       if (!/[?&]guest=1\b/.test(window.location.search)) {
         var _rosterPf = getBtPassphrase();
+        /* v2.3.3355: no id here -- the join is not in yet, and S.myId may be
+           a guess for a new key (the heartbeat keeps the one it got in with) */
         if (_rosterPf) rememberChar(_rosterPf, { name: S.myName, level: (S.rpg && S.rpg.level) || 0 });
       }
     } catch (e) {}
@@ -11499,7 +11561,7 @@ export var BroTown = function BroTown(_ref0) {
         var _taken = false;
         try { _taken = inRoster(_curPf); } catch (e) { _taken = false; }
         var _stale = !_curPf || !stateRef.current
-          || passphraseToId(_curPf) !== stateRef.current.myId;
+          || (idForKey(_curPf) || passphraseToId(_curPf)) !== stateRef.current.myId;   /* v2.3.3355 */
         if (_taken || _stale) {
           try {
             var _prev = _curPf;
@@ -13813,7 +13875,7 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       alignItems: 'center'
     }
-  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }),
+  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote, onClose: function () { setShowEmotes(false); } /* v2.3.3391 */, sendMove: sendMove, movesOn: movesLive(stateRef.current) /* v2.3.3392 */ }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
   React.createElement(NmlBadge, { stateRef: stateRef, isLandscape: isLandscape }),   /* v2.3.3268: + the orientation, to keep clear of the shield button */

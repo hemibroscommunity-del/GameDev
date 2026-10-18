@@ -48,14 +48,21 @@ export const guildMethods = {
     if (lvl < quest.checkLvl) {
       return err('not-ready', 'Reach Lv' + quest.checkLvl + ' ' + skill + ' first (Lv' + lvl + ')');
     }
-    // Persist the claim BEFORE paying: a crash between put and pay
-    // costs the player one rung's reward (bounded, visible, re-earnable
-    // support-side) -- the reverse order would be a replayable faucet.
+    /* ═══ v2.3.3369: THE CLAIM AND THE PAY ARE ONE WRITE ═══
+       The claim was put and AWAITED before the pay: a restart between the two
+       (every server merge restarts the room) kept the claim and lost the
+       rung's gold and AP -- "bounded, visible, re-earnable support-side", as
+       this said -- while paying first would have been a faucet.  Neither
+       order was needed: writes issued with no await between them commit as
+       ONE batch (handoff rules 5 and 7, inbox.js _creditPlayer), so the claim
+       and the record go out in the same synchronous run, both or neither
+       (the architecture review, 2026-10-17). */
     claims[skill] = idx + 1;
-    await this.state.storage.put(key, claims);
     ps.coins = (ps.coins || 0) + quest.gold;
     ps.achievementPoints = (ps.achievementPoints || 0) + quest.ap;
+    const claimed = this.state.storage.put(key, claims);
     this._saveRpg(session.id, ps);
+    await claimed;
     this._queuePlayerStateFlush(session.id);
     this._guildSend(session.id, 'guild_quest_result', { skill, index: idx, gold: quest.gold, ap: quest.ap });
   },

@@ -20,6 +20,7 @@ import { SwimFx } from './swimFx.js';                 /* v2.3.3003: a swimmer is
 import { setWheelWaterRenderer } from './wheelWater.js'; /* v2.3.3019: the Wheel's water moves */
 import { setPaletteRenderer } from './paletteTex.js';      /* v2.3.3190: pictures as colour numbers */
 import { JumpFx } from './jumpFx.js';                 /* v2.3.3017: a jumper is drawn in the air */
+import { EmoteFx } from './emoteFx.js';               /* v2.3.3392: a bro who emotes moves */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { setFighterEffects } from './fighterCapture.js';   /* v2.3.2986; v2.3.2987 + the player renderer */
 import { setMonsterDeathRenderer } from './monsterDeathFx.js';   /* v2.3.2913 */
@@ -202,6 +203,7 @@ export async function initPixiRenderer(canvas) {
   const worldLife = new WorldLife(layers);
   const swimFx = new SwimFx(layers);   /* v2.3.3003 */
   const jumpFx = new JumpFx();          /* v2.3.3017 */
+  const emoteFx = new EmoteFx();        /* v2.3.3392 */
   worldFx.setEntityRenderer(entityRenderer);   /* v2.3.2715: night lights the plates and the monsters */
   deathCrumble.setRenderer(app.renderer);
   /* v2.3.2986: the stat scene's hero swings in frames photographed off the
@@ -540,6 +542,12 @@ export async function initPixiRenderer(canvas) {
        lights, which cast their shadows on the ground under them. */
     try { jumpFx.update(S, entityRenderer); }
     catch (e) { if (!update._jumpErr) { update._jumpErr = true; console.error('[pixi-render] jumpFx threw', e && e.message, e && e.stack); } }
+    /* ═══ v2.3.3392: EMOTES, AFTER THE JUMPERS ═══
+       A wave, a dance, a sit: sorted where they stand, then drawn moving
+       about their feet (emoteFx.js), the name plate held still -- before the
+       lights, which cast them where they stand. */
+    try { emoteFx.update(S, entityRenderer); }
+    catch (e) { if (!update._emoteErr) { update._emoteErr = true; console.error('[pixi-render] emoteFx threw', e && e.message, e && e.stack); } }
     /* v2.3.2710: light and shine, LAST of the world passes: a shadow copies
        each figure's pieces where they are THIS frame, so it runs after
        everything that moves them -- the entity pass, the stand-ins placed by

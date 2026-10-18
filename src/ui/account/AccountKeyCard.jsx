@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { getBtPassphrase } from '@/networking/index.js';
+import { getBtPassphrase, isNewKey } from '@/networking/index.js';
 
 /* v2.3.1143: Login Key display card (see docs/specs/account-login.md).
    The silent passphrase IS the account credential; this card is the
@@ -69,6 +69,28 @@ export const AccountKeyCard = () => {
       }}>
         Your Login Key
       </div>
+      {/* ═══ v2.3.3355: A NEW KEY, AS EIGHT WORDS ═══
+          (server/src/loginkeys.js.)  Forty-odd characters do not fit one line
+          on a phone, so the words are laid out two by four, numbered, the
+          way they are typed; the input below still holds the whole key for
+          Copy and select. */}
+      {isNewKey(phrase) && (
+        <ol data-bt="account-keycard-words" style={{
+          listStyle: 'none', margin: '0 0 6px', padding: 0,
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 8px',
+        }}>
+          {phrase.split('-').map((w, i) => (
+            <li key={i} style={{
+              display: 'flex', alignItems: 'baseline', gap: 6, minHeight: 28,
+              padding: '4px 8px', borderRadius: 6, background: 'var(--ui-well)',
+              border: '1px solid var(--ui-line-strong)',
+            }}>
+              <span style={{ fontSize: 11, color: 'var(--ui-text-muted)', fontVariantNumeric: 'tabular-nums', minWidth: 12 }}>{i + 1}</span>
+              <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 16, fontWeight: 700, color: '#EAC675' }}>{w}</span>
+            </li>
+          ))}
+        </ol>
+      )}
       <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
         <input
           ref={inputRef}
@@ -105,12 +127,20 @@ export const AccountKeyCard = () => {
         on a new phone or after clearing your browser. Save it somewhere
         safe. There is no email recovery.
       </div>
-      {/* v2.3.3344: a key works only on the devices it is played on
-          (server/src/devicelock.js) -- a new one also needs the owner */}
-      <div data-bt="account-keycard-device" style={{ fontSize: 12, color: 'var(--ui-text-secondary)', marginTop: 6, lineHeight: 1.4 }}>
-        On a new phone or computer, the game's owner also has to let it in:
-        the screen there gives you a code to send them.
-      </div>
+      {/* v2.3.3344: an old key works only on the devices it is played on
+          (server/src/devicelock.js) -- a new one also needs the owner.
+          v2.3.3355: a NEW key works on any device (server/src/loginkeys.js) */}
+      {isNewKey(phrase) ? (
+        <div data-bt="account-keycard-device" data-newkey="1" style={{ fontSize: 12, color: 'var(--ui-text-secondary)', marginTop: 6, lineHeight: 1.4 }}>
+          This key works on any phone or computer: type its eight words at the
+          start screen's Login Key.
+        </div>
+      ) : (
+        <div data-bt="account-keycard-device" style={{ fontSize: 12, color: 'var(--ui-text-secondary)', marginTop: 6, lineHeight: 1.4 }}>
+          On a new phone or computer, the game's owner also has to let it in:
+          the screen there gives you a code to send them.
+        </div>
+      )}
     </div>
   );
 };

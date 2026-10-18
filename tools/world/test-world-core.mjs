@@ -2460,7 +2460,7 @@ console.log("the buildings' life (v2.3.2983)");
   const { decodePNG } = await import('./png.mjs');
   const fs = await import('node:fs');
   const buildings = objectCatalog().filter((e) => e.kind === 'building').map((e) => e.id);
-  const FX = new Set(['smoke', 'glow', 'sparks', 'glint', 'chaff']);
+  const FX = new Set(['smoke', 'glow', 'sparks', 'glint', 'chaff', 'flag']);   /* v2.3.3382: + the flag */
   const ids = Object.keys(BUILDING_LIFE);
   ok(`every one of the ${buildings.length} buildings has some life, and nothing else does; each spot a known kind, on its picture (0-1)`,
     buildings.every((b) => BUILDING_LIFE[b] && BUILDING_LIFE[b].length) && ids.every((b) => buildings.includes(b)) &&
@@ -2491,6 +2491,50 @@ console.log("the buildings' life (v2.3.2983)");
     }
   }
   ok(`...and every one of the ${checked} spots is on its picture as the game has it: each smoke on a chimney's top, each lamp, spark and glint on the building`, checked > 60 && off.length === 0, off);
+  /* v2.3.3382: a flag's cut, on its picture as the game has it -- the owner:
+     "make the town square flag wave using code".  wheelLife.js cuts the cloth
+     out of the picture only where it counts `n` px (box less keep); a
+     building drawn again fails here first, and says what moved. */
+  const flagBad = [];
+  let flagN = 0;
+  for (const id of ids) {
+    for (const e of BUILDING_LIFE[id]) {
+      if (e.fx !== 'flag') continue;
+      flagN++;
+      const o = man.objects.find((q) => q.id === id);
+      const pc = o && o.pieces[0], a = pc && man.atlases.find((q) => q.name === pc.atlas);
+      if (!a) { flagBad.push(id + ': no picture'); continue; }
+      if (!pages[a.name]) pages[a.name] = { img: decodePNG(fs.readFileSync(new URL(`../../public/world/objects/${a.image}`, import.meta.url))), js: JSON.parse(fs.readFileSync(new URL(`../../public/world/objects/${a.sheet}`, import.meta.url))) };
+      const { img, js } = pages[a.name], f = js.frames[pc.frame].frame;
+      if (f.w !== e.pw || f.h !== e.ph) { flagBad.push(`${id}: the picture is ${f.w} x ${f.h}, the flag's ${e.pw} x ${e.ph}`); continue; }
+      const op = (x, y) => x >= 0 && y >= 0 && x < f.w && y < f.h && img.data[((f.y + y) * img.w + f.x + x) * 4 + 3] > 0;
+      const kept = (x, y) => e.keep.some((r) => x >= r[0] && x < r[2] && y >= r[1] && y < r[3]);
+      const [x0, y0, x1, y1] = e.box;
+      const cloth = new Set();
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (op(x, y) && !kept(x, y)) cloth.add(x + ',' + y);
+      if (cloth.size !== e.n) flagBad.push(`${id}: the cloth is ${cloth.size} px, the entry says ${e.n}`);
+      /* one piece (8 ways) */
+      const seen = new Set(), first = cloth.values().next().value;
+      if (first) {
+        const st = [first]; seen.add(first);
+        while (st.length) {
+          const [cx, cy] = st.pop().split(',').map(Number);
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const q = (cx + dx) + ',' + (cy + dy);
+            if (cloth.has(q) && !seen.has(q)) { seen.add(q); st.push(q); }
+          }
+        }
+      }
+      if (seen.size !== cloth.size) flagBad.push(`${id}: the cloth is in pieces (${seen.size} of ${cloth.size} joined)`);
+      /* nothing of it past its box: the rows over and under it and the column
+         after it are clear wherever cloth stands next to them */
+      let past = 0;
+      for (let x = x0; x < x1; x++) { if (cloth.has(x + ',' + y0) && op(x, y0 - 1) && !kept(x, y0 - 1)) past++; if (cloth.has(x + ',' + (y1 - 1)) && op(x, y1) && !kept(x, y1)) past++; }
+      for (let y = y0; y < y1; y++) if (cloth.has((x1 - 1) + ',' + y) && op(x1, y)) past++;
+      if (past) flagBad.push(`${id}: ${past} px of cloth run past the box`);
+    }
+  }
+  ok(`the Town Hall's flag (v2.3.3382): its cloth counts what its entry says, in one piece, inside its box, on the picture as the game has it`, flagN >= 1 && flagBad.length === 0, flagBad);
 }
 
 /* ── v2.3.2995: what every object is made of ──
