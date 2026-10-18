@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "133be21b87660ca918555be461b504e536d6b0b9",
+  "tree": "ab6df9c3524e2a91ac8a4659acac8ca1e541b97f",
+  "committedAt": "2026-10-17T19:18:30-07:00",
+  "subject": "A hit on a monster needs its weapon, its reach and a paid special, and a bow lands no more hits a second than it shoots (v2.3.3334) (#962)",
+  "files": 5776,
+  "bytes": 636695836,
+  "listingSha256": "95c6ab379c84cfd7dfbe4209552b784c2197fc7131e18ab98051105cb3cd566b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
