@@ -180,8 +180,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const P = await H.newPlayer(browser, { name: 'gpuaudit', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', init: GPU_SHIM });
   const rows = {};
+  /* v2.3.3465: a real keystroke every 20 s (H.keepAlive) -- the page logs
+     itself out after two minutes with no input, and this scenario moves only
+     by H.hopTo, which is none.  On the long Wheel (v2.3.3315) the way out to
+     the ember land outlasts the two minutes: in the second sweep of
+     2026-10-18 the character was logged out before or just after its death,
+     so it never died ("died: false"), or died and never came back (the
+     worker's respawn had no socket to go to: stuck dead in the Wheel for
+     the trip's whole two minutes, read as a trip with no stop in town). */
+  let stopAlive = () => {};
   try {
     await H.enterWorld(P);
+    stopAlive = H.keepAlive(P);
     const ok = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading,
       { timeout: 90000, label: 'into the Wheel' }).catch(() => null);
     rec.ok('in the Wheel (guard)', !!ok, ok);
@@ -212,12 +222,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rows.atFight = await audit(P);
       print('at the fight', rows.atFight);
       await P.page.evaluate(() => { window.__gpuPeakReset(); window.__cachePeakReset(); window.__townSeenReset(); });
+      /* v2.3.3465: the death watched by the page itself, every 200 ms, with
+         the zones it passes through and the lowest HP -- the loop below looks
+         only between hops, seconds apart on this box -- and what changed
+         when, for the log: the zone, the death, the trip's wish and its
+         loading screen (a stuck death reads as one line that never ends) */
+      await P.page.evaluate(() => {
+        const W = window.__qaDeath = { died: 0, zones: [], minHp: null };
+        W.zones.push(window._gameState.current.currentZone);
+        clearInterval(window.__qaDeathTimer);
+        W.t0 = Date.now(); W.tl = []; let last = '';
+        window.__qaDeathTimer = setInterval(() => {
+          const S = window._gameState && window._gameState.current;
+          if (!S) return;
+          if (S._dying) W.died++;
+          const z = S.currentZone;
+          if (z && W.zones[W.zones.length - 1] !== z) W.zones.push(z);
+          const hp = S.rpg && typeof S.rpg.hp === 'number' ? S.rpg.hp : null;
+          if (hp != null && (W.minHp == null || hp < W.minHp)) W.minHp = hp;
+          const k = [z, !!S._dying, !!S._spawnToWheel, !!S._zoneLoading].join();
+          if (k !== last) { last = k; W.tl.push([Math.round((Date.now() - W.t0) / 100) / 10, k, hp]); }
+        }, 200);
+      });
       let died = false;
       const tDie = Date.now();
+      /* v2.3.3465: and brought to 1 HP by the test lever (devtools.js
+         _devVitals, as mp-nomansland's one-blow kill), again every 15 s, so
+         the next goblin's blow is the death whatever the levels: the trip
+         after it is what this measures, not the fight */
+      let lowAt = 0;
       while (Date.now() - tDie < 150000) {
+        if (Date.now() - lowAt > 15000) { await H.devOp(wsPort, 'vitals', myId, { heal: false, hp: 1 }).catch(() => {}); lowAt = Date.now(); }
         const s = await P.page.evaluate(() => {
           const S = window._gameState.current;
-          if (S._dying) return { dying: true };
+          if (S._dying || (window.__qaDeath && window.__qaDeath.died > 0)) return { dying: true };
           const live = (S.monsters || []).filter((m) => m && m.alive !== false && (m.curHp == null || m.curHp > 0));
           let best = null, bd = Infinity;
           for (const m of live) { const d = Math.hypot(m.x - S.player.x, m.y - S.player.y); if (d < bd) { bd = d; best = m; } }
@@ -227,15 +265,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (s.best) await H.hopTo(P, s.best.x + 10, s.best.y, { tries: s.best.d > 150 ? 20 : 2, step: 80 });
         else await P.page.waitForTimeout(400);
       }
-      rec.ok('died to the goblins (guard)', died, { died });
+      const watch = await P.page.evaluate(() => {
+        const S = window._gameState.current, W = window.__qaDeath || {};
+        const live = (S.monsters || []).filter((m) => m && m.alive !== false && (m.curHp == null || m.curHp > 0));
+        const near = live.map((m) => ({ id: m.id, lvl: m.level, d: Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) })).sort((a, b) => a.d - b.d).slice(0, 3);
+        return { died: W.died, zones: (W.zones || []).slice(), minHp: W.minHp, hp: S.rpg && S.rpg.hp, maxHp: S.rpg && S.rpg.maxHp,
+          at: { x: Math.round(S.player.x), y: Math.round(S.player.y) }, zone: S.currentZone, near };
+      });
+      rec.ok('died to the goblins (guard)', died, { died, watch });
       if (died) {
-        const back = [];
+        /* the zones the watch has seen since it began (in the Wheel, before
+           the fight), read as the trip goes, until it is back in the Wheel by
+           way of today's town */
+        let back = (watch.zones || []).slice();
         for (let i = 0; i < 240; i++) {
-          const z = await H.readState(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading, dying: !!S._dying }));
-          if (!back.length || back[back.length - 1] !== z.zone) back.push(z.zone);
+          const z = await P.page.evaluate(() => {
+            const S = window._gameState.current, W = window.__qaDeath || {};
+            return { zone: S.currentZone, loading: !!S._zoneLoading, dying: !!S._dying, zones: (W.zones || []).slice() };
+          });
+          back = z.zones;
           if (z.zone === 'wheel' && !z.loading && !z.dying && back.includes('town')) break;
           await P.page.waitForTimeout(500);
         }
+        const tl = await P.page.evaluate(() => { const W = window.__qaDeath || {}; clearInterval(window.__qaDeathTimer); return { tl: W.tl, last: window.__btLastDeath || null, t0: W.t0 }; });
+        console.log(`    death watch (s since the watch; zone, dying, to the Wheel, loading; hp): ${JSON.stringify(tl.tl)}; the death at ${tl.last ? ((tl.last.at - tl.t0) / 1000).toFixed(1) + ' s' : '?'}`);
         await P.page.waitForTimeout(5000);
         rows.back = await audit(P);
         rows.back.trip = back;
@@ -250,6 +303,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`listed what the GPU holds in the Wheel: ${a && a.mb} MB in ${a && a.n} textures; peaks: the way in ${rows.arrival && rows.arrival.shim && rows.arrival.shim.peak} MB, the death trip ${rows.back && rows.back.shim && rows.back.shim.peak} MB`,
       !!a && !a.err && a.n > 0, a && { mb: a.mb, n: a.n, byKind: a.byKind });
   } finally {
+    stopAlive();
     await P.ctx.close().catch(() => {});
   }
 }

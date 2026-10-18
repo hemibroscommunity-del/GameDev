@@ -415,7 +415,12 @@ export const ChatBubble = () => {
              box that was already narrower than the cap does nothing.
              So: a real width. Capped in px as well as vw so it does not
              become a letterbox on a tablet. */
-          width: 'min(92vw, 460px)',
+          /* v2.3.3470: 92% of the box `fixed` measures from, not of the
+             window: on a phone those are one, and on a computer the box is the
+             game's column (#root's contain:paint, TRAPS §232), where 92vw is
+             wider than the cap -- the card was 460 px in a 436 px column, 12 px
+             cut off each side by its paint box (mp-deskplace). */
+          width: 'min(92%, 460px)',
           minWidth: 220,
           padding: '8px 10px',
           /* v2.3.1233: Lantern Slate — world-floating card (gradient fill,
