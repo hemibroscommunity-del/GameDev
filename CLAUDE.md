@@ -3820,7 +3820,7 @@ Two protocol versions coexist; both must keep working:
   worldViewport). `mp-frameprofile` profiles the CPU by source file (build with
   `--sourcemap`) and names what rebuilds each render group's draw list --
   `Graphics.clear()` on an empty graphic rebuilds it (TRAPS §208);
-  `mp-speedtest`. Since v2.3.3348 the card never blames the graphics chip at
+  `mp-speedtest`. Since v2.3.3383 the card never blames the graphics chip at
   the screen's own pace: at 55+ frames a second it says every frame is ready
   in time for the screen (`frameNote`) -- the owner's first run read 60 in
   every step, 17 ms a frame, and was told the chip took most of each, when

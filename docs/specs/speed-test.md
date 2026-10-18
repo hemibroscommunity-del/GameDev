@@ -54,7 +54,7 @@ sends nothing.
    - whether most of each frame is the graphics chip's or the game's code --
      or, at the screen's own pace (55+ frames a second), that every frame is
      ready in time for the screen and nothing is holding it back
-     (v2.3.3348, `frameNote`: the owner's first run read 60 in every step, 17
+     (v2.3.3383, `frameNote`: the owner's first run read 60 in every step, 17
      ms a frame, and was told the chip took most of each; 17 ms is only a 60
      Hz screen's refresh);
    - the screen's size and pixel ratio, and the canvas's size in pixels.

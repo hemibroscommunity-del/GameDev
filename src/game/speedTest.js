@@ -193,7 +193,7 @@ function showResult(r) {
 
 let _running = false;
 
-/* which side holds the frame, in words -- v2.3.3348: never the graphics chip
+/* which side holds the frame, in words -- v2.3.3383: never the graphics chip
    at the screen's own pace.  The owner's first run read 60 frames a second in
    every step, 17 ms each, and was told "Most of each frame (17 ms) is the
    graphics chip's": the 17 ms there is only the screen's own refresh (a
