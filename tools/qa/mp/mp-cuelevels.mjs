@@ -16,7 +16,8 @@
  *   4. the quiet ones stay quiet: the reveal's and the spin's ticks under the
  *      menu click's own level, a status wearing off under a blow;
  *   5. a rush of air is air: the dodge, the roll, the jump's push-off, the
- *      sprint running dry and the mummy's unwrapping each put at most 0.6 of
+ *      sprint running dry (the owner's grunt since v2.3.3446, a breathy
+ *      voice: 12%) and the mummy's unwrapping each put at most 0.6 of
  *      the old sprint push-off's share of their energy below 400 Hz -- the
  *      owner heard that slowed special swipe's body thump as "a fleshy sound"
  *      (v2.3.3336; measured through a 400 Hz low-pass, which lets a little
@@ -40,6 +41,8 @@ const PROMISED = {
   rested: 0.45, duelAsk: 0.85, tradeAsk: 0.5, anvil: 0.5,
   /* v2.3.3434: the third look ("Good look for more") */
   emotePop: 0.3, slap: 0.3, sitDown: 0.35, flop: 0.6, flexShine: 0.35, cheerPop: 0.45, bagIn: 0.25,
+  /* v2.3.3446: a sprint running dry is the owner's grunt, worn out */
+  sprintOut: 0.23,
 };
 
 /* v2.3.3434: cues kept quieter than 0.08 of a hit on purpose, and why -- each

@@ -780,10 +780,15 @@ remnant to migrate server-side, not a mode to preserve.
     - since v2.3.3446 a sprint starts with the owner's GRUNT (the owner: "a
       loud incoherent sound for sprint button.  Make it a grunt"): their
       "Grunt 1" cut to 0.6 s by tools/audio/cut_sprint_grunt.py
-      (`public/sfx/voice/sprint-grunt.mp3`, level in `src/data/sprintGrunt.js`,
-      half a melee hit's loudness -- the arrow's flight it replaces was 1.8x),
-      `BT_AUDIO.SPRINT_PUSH`, which another player's sprint reads too;
-      mp-sprintpeer: docs/specs/sprint.md "the owner's grunt".
+      (`public/sfx/voice/sprint-grunt.mp3`, level in `src/data/sprintGrunt.js`:
+      ~0.25 of a hit as the game plays it, the arrow's flight it replaces
+      ~0.8), `BT_AUDIO.SPRINT_PUSH`, which another player's sprint reads too;
+      running DRY plays it worn out, lower and slower (`sprintOut`) -- the
+      owner: "Maybe alternate between grunt and tired breath", the breath
+      waiting on a recording (made-up sounds are out, v2.3.1103;
+      docs/SOUND-GAPS.md); a tool that measures a sound reads the file's own
+      channels, never ffmpeg's `-ac` (3 dB off either way); mp-sprintpeer,
+      mp-sprint, mp-cuelevels: docs/specs/sprint.md "the owner's grunt".
   - Since v2.3.3008 the Points window's MAX MP has its before/after scene,
     "the only one missing one": both lanes cast specials at one block of
     mana each (`statSim.js` `manaPass`) until "Out of mana", the "+n" bar

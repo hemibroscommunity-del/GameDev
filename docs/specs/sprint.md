@@ -343,25 +343,43 @@ peaking ~0.53. Still a recording already in the game.
 
 The owner: *"the noise for sprint needs to be changed. It's a loud incoherent
 sound for sprint button. Make it a grunt or something"*, with their recording,
-"Grunt 1" (freesound_community, 85280; CREDITS.md). On one scale -- the RMS of
-the loudest 300 ms above 150 Hz, the monster noises' measure -- the arrow's
-flight at 3.8 was 1.8x a melee hit's loudness: the "loud". And a sped-up rush
-of air is not a thing a body does: the "incoherent".
+"Grunt 1" (freesound_community, 85280; CREDITS.md). In the game's own terms
+(mp-cuelevels: the loudest 50 ms against sword-hit3 at 0.55 x HIT_GAIN, "a
+hit") the arrow's flight at 3.8 was ~0.8 of a hit: the "loud". And a sped-up
+rush of air is not a thing a body does: the "incoherent".
 
 - `tools/audio/cut_sprint_grunt.py` finds the grunt in the recording (0.57 s
   of silence, then about half a second of grunt), cuts 0.56-1.17 s mono with
   short fades, and writes `public/sfx/voice/sprint-grunt.mp3` (10.5 KB) and
-  its level, `src/data/sprintGrunt.js` (GENERATED): half a melee hit's
-  loudness (vol 0.073), about a quarter of the push it replaces.
+  its level, `src/data/sprintGrunt.js` (GENERATED): vol 0.072, ~0.25 of a
+  hit, about a third of the push it replaces (2.6x the grunt on the cutter's
+  own scale, the RMS of the loudest 300 ms above 150 Hz).
 - `BT_AUDIO.SPRINT_PUSH` is `['sprint-grunt', 0, dur, vol, 1]`: sprintPush
   plays it whole with a few percent of pitch either way, and another player's
   sprint starting (wsClient.js, peerOwn 'peerSprint') reads the same layer at
   their share by distance. In SFX_MANIFEST, so it is decoded on the loading
   screen (~0.12 MB).
-- The sound as a sprint runs dry (`sprintOut`, data/eventSounds.js, v2.3.3343)
-  is still the arrow's flight, slowed: not part of this ask.
+- **Running dry** (`sprintOut`, data/eventSounds.js, v2.3.3343) was the
+  arrow's flight slowed, the push's own family. Asked whether it should be a
+  grunt or a tired breath too, the owner: *"Maybe alternate between grunt and
+  tired breath"*. It is the grunt now, worn out -- the same recording at its
+  own level, rate 0.9, a touch lower and slower: ~0.23 of a hit, 12% of it
+  under 400 Hz (a breathy voice, no thump: mp-cuelevels' rush-of-air check
+  still holds it). **The breath is not in yet:** none of the owner's uploads
+  is a breath, and the owner took every made-up sound out of the game in
+  v2.3.1103 ("worse than nothing"), so a breath made in code is not an
+  option. With a recording (docs/SOUND-GAPS.md), the run-outs take turns.
+- **Measured as a speaker plays it.** The first cut read every file through
+  ffmpeg's `-ac 1`, which folds stereo at 0.707 a channel: the stereo
+  yardstick (sword-hit3) and the arrow's flight read 1.41x their real level
+  beside the mono grunt, so "half a melee hit" was really 0.71 of one. The
+  cutter now reads each file's own channels and folds a stereo one
+  (L + R) / 2, as Web Audio does; GRUNT_K is 0.7, the level the game was
+  tested at (vol 0.073 -> 0.072).
 
 **Tests:** mp-sprintpeer (both pages decode it on the loading screen; the
 runner's push plays the grunt whole at its level, with no arrow flight; the
-watcher hears the same grunt no louder -- 0.0365 at 160 px), and mp-sprint as
-before.
+watcher hears the same grunt no louder); mp-sprint 6 (running dry is heard
+once, as `sprintOut`, its recording decoded); mp-cuelevels (sprintOut's
+promised ~0.23, no clipping, no thump); the sound-cues suite (the cue's shape,
+its sample in SFX_MANIFEST and inside its file).
