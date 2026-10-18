@@ -608,6 +608,17 @@ remnant to migrate server-side, not a mode to preserve.
       own blast in full; `BT_AUDIO.monsterDeath(arch, opts, k)`; kills still
       go to every phone; `mp-farfeel`: material-hit-sounds.md "A far death,
       slam or blast".
+    - since v2.3.3332 FOUR MONSTERS HAVE A NOISE OF THEIR OWN -- the owner's
+      recordings: the fire goblin's rawr, the skeleton's (the mummy's second
+      form's) rattling bones, every slime's jelly bounce, the snowman's snarl
+      (`tools/audio/cut_monster_noises.py`, about a second each, levelled to
+      0.75 of a melee hit, SFX_MANIFEST); heard as one notices you (the "!"'s
+      own `tg` edge, wsClient), now and then while it chases you, and as a
+      mummy sheds; never twice in 6 s for one monster nor 0.9 s apart for any
+      two, by distance on `earVol`; `NOISE_OF` (game/monsterNoises.js) spells
+      every name out -- the mummy and the wisp are `fodder` underneath, and a
+      fallback gave them the slime's bounce; `mp-monsternoise`:
+      docs/specs/monster-noises.md.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
