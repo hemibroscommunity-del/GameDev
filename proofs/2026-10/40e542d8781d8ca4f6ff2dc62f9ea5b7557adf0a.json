@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "40e542d8781d8ca4f6ff2dc62f9ea5b7557adf0a",
+  "tree": "039c1966263a7d48903ace4fa698846c33161259",
+  "committedAt": "2026-10-18T03:38:41-07:00",
+  "subject": "Emotes you can see, and the chat's three fixes (v2.3.3391) (#970)",
+  "files": 5830,
+  "bytes": 639707048,
+  "listingSha256": "bd46111be799d7f8c260d1d1d70ff777483dba2bfd22214ff377c2b9a4d31c3b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
