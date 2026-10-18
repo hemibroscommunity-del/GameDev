@@ -7108,7 +7108,30 @@ the rebuilds before guessing (`mp-frameprofile`'s "rebuild asked ... by").
 second at 2.6 frames a second on the QA box), standing or walking; after, never.
 mp-speedtest check 8.
 
-## 209. "The figure is at (world - camera) x scale on the screen" (v2.3.3343)
+## 209. "A refused login is a refused login: send 'auth'" (v2.3.3344)
+
+**Tempting:** the device lock refuses a join, and the join already has a
+refusal for a bad login, `join_rejected {reason: 'auth'}` and close 4003
+(join.js). A refusal is a refusal: reuse it.
+
+**What happens:** the phone answers 'auth' by throwing its Login Key away and
+making a fresh character under a new one (wsClient.js, v2.3.1116: the cure for
+a key that no longer matches). For a device refusal the key was RIGHT. The
+player's real character would be swapped for a level-1 stranger on that device,
+with the key kept only in `bt_passphrase_prev`. And counted as a failed key,
+five refusals would lock the character's own device out for a minute.
+
+**The rule:** a refusal of the right key has its own reason (`'device'`) and its
+own close (4016), and never counts toward the five-tries lockout. An older phone
+treats a reason it doesn't know as final: no new character, no retries. A newer
+one shows the device screen (src/ui/DeviceScreen.js).
+
+**Receipt:** device-lock.test catches both "the refusal says auth" and "a
+refused device counts as a wrong key" (24 of 24 deliberate breaks caught), and
+mp-devicelock refuses a new phone with the code, its key kept, and lets it in
+after the owner's pass.
+
+## 210. "The figure is at (world - camera) x scale on the screen" (v2.3.3350)
 
 **Tempting:** a point in the world is drawn at `(x - camera.x) * scale`, so
 that is where it is on the screen -- compare it with a pointer's `clientX`.
@@ -7131,7 +7154,7 @@ assume it is at 0, 0 -- and test on a computer's window, not only a phone's.
 **Receipt:** mp-deskharvest step 4: with the button hidden the anchor is on the
 figure (within 2 px of where it is drawn), inside the column.
 
-## 210. "An invisible strip at the screen's edge only catches what lands on the world" (v2.3.3343)
+## 211. "An invisible strip at the screen's edge only catches what lands on the world" (v2.3.3350)
 
 **Tempting:** iOS reads a swipe from the bezel as its back gesture, so lay a
 transparent strip down the left edge, above the game, and cancel every
@@ -7157,7 +7180,7 @@ layer.
 both fold chips and the band's first bag tile (all six fail on the strip), and
 a thumb at x 8 on the world still starts no walk.
 
-## 211. "A window that fits a phone held upright fits one held sideways" (v2.3.3343)
+## 212. "A window that fits a phone held upright fits one held sideways" (v2.3.3350)
 
 **Tempting:** build the window on the 390 x 844 design target, centre it on a
 scrim, and it works on every phone.
@@ -7180,7 +7203,7 @@ review takes every window in both.
 screen); mp-shopkeeper's sideways part (the column opens beside the drawer, a
 tap on a bag slot sells, the ✕ answers, "His shelf" below his name).
 
-## 212. "A key's letter is one more word on its button" (v2.3.3343)
+## 213. "A key's letter is one more word on its button" (v2.3.3350)
 
 **Tempting:** to show a computer player that Enter accepts the quest, put
 `<kbd>Enter</kbd>` in the Accept Quest button, and an "Esc" span by every ✕.
@@ -7206,7 +7229,7 @@ with it, or it stays bright on top (TRAPS §20).
 minimap, Next, Accept Quest, Not now and the ✕s, every key doing what its
 button does, and a phone wearing none; the quest scenarios still read the
 cards' words unchanged.
-## 213. "A `vw` is a hundredth of the game's width" (v2.3.3343)
+## 214. "A `vw` is a hundredth of the game's width" (v2.3.3350)
 
 **Tempting:** size a screen's parts as fractions of `vw` -- `--cc-leftw:
 clamp(150px,44vw,360px)` -- because on a phone the game IS the screen, and a

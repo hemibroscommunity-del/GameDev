@@ -64,11 +64,11 @@ export function ChatPanel(props) {
       setChatInput('');
       chatInputValRef.current = '';
     },
-    /* v2.3.3343: Esc closes the chat (its input's own Escape, and
+    /* v2.3.3350: Esc closes the chat (its input's own Escape, and
        desktopControls'), and on a computer this says so */
     'data-esc': '', 'data-key': 'Esc', 'data-key-at': 'hang',
     style: {
-      position: 'relative',   /* v2.3.3343: its key cap's anchor */
+      position: 'relative',   /* v2.3.3350: its key cap's anchor */
       /* v2.3.1232: secondary raised close, larger touch target */
       /* v2.3.1235: batch-4 rollout — 44pt hitbox floor + corrected
          secondary recipe (raised #293B41, strong hairline). */
@@ -171,7 +171,7 @@ export function ChatPanel(props) {
       if (chatInputRef.current) chatInputRef.current.blur();
       sendChat();
     },
-    /* v2.3.3343: Enter sends (the input's own Enter, above), and on a
+    /* v2.3.3350: Enter sends (the input's own Enter, above), and on a
        computer this says so after its word (game.css [data-key]) */
     'data-key': 'Enter', 'data-key-at': 'inline',
     style: {

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3343: WHAT CAN BE PRESSED ON THIS SCREEN, AND CAN IT BE ═══
+/* ═══ v2.3.3350: WHAT CAN BE PRESSED ON THIS SCREEN, AND CAN IT BE ═══
  *
  * The owner: "Make sure all actions/buttons can be completed in landscape mode
  * and on the computer ... I'll also want screenshots labelled and bundled for

@@ -26,6 +26,7 @@
 import { BT_AUDIO, abilityCfg, abilityStaminaCost, abilityUnlocked, isAbilitiesEnabled,
   prog3CharLevel, getActiveWeapon,
   meleeSwingSfx /* v2.3.2260: the lunge borrows the swing's own per-weapon sound */ } from '@/data/index.js';
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the sword's dash heard leaving */
 import { depthK, ZONES } from '@/data/zones.js';   /* v2.3.2790; v2.3.3262: + ZONES (a lunge at a player follows the swing's PvP gate) */
 import { isPlayerDead, pushDmgPopup, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, staggerRefused /* v2.3.3264 */, airRefused /* v2.3.3017 */ } from '@/game/combatHelpers.js';
 import { prog3ActiveCat } from '@/data/prog3.js';   /* v2.3.2327: whirlwind is the sword's */
@@ -564,6 +565,9 @@ export function castAbility(S, kind) {
         } });
       } catch (e) {}
     }
+    /* v2.3.3343: the sword's dash is heard leaving, a quick rush of air (it
+       travelled in silence; the swing on arrival is its own, below) */
+    if (kind === 'sworddash') cue('dodgeRoll', 0.9, 1.25);
   } else {
     S._bashDash = null;
   }

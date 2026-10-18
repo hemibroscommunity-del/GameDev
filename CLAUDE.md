@@ -632,6 +632,34 @@ remnant to migrate server-side, not a mode to preserve.
       every name out -- the mummy and the wisp are `fodder` underneath, and a
       fallback gave them the slime's bounce; `mp-monsternoise`:
       docs/specs/monster-noises.md.
+    - since v2.3.3343 THE MISSING SOUNDS FROM RECORDINGS ALREADY HERE -- the
+      owner, on the list of missing sounds: "Start adding the have ones then
+      give me the list of ones that are still needed afterwards":
+      - 112 cues, each slices of SFX_MANIFEST files (nothing new to load or
+        decode): `src/data/eventSounds.js` says WHAT (`[key, offset, duration,
+        vol, rate, delay, fade]`, `_playLayer`'s layer), `src/game/
+        eventSounds.js` WHEN and HOW LOUD -- `cue(name, k)`, `cueAt` (by
+        distance, earVol), `cuePeer` / `peerShare` (another player's at
+        `PEER_K` 0.5 of yours, at most `PEER_BURST` 4 in 200 ms; footsteps
+        their own budget, `peerStepShare`), `peerOwn` (what sounds as YOURS
+        does -- the sprint's push-off, a swimmer's splash and strokes --
+        played from BT_AUDIO's own tables, never copied into the cue table),
+        `CUE_GAP_MS` for the ones a pack fires at once; `window.__btCues`;
+      - a rush of air is the ARROW'S FLIGHT, never the special swipe (half a
+        body's thump under 400 Hz: the owner's "fleshy" sprint, v2.3.3336);
+      - the beep()s that played nothing (shield, door, weapon swap, quest
+        taken, parry, wind-ups, campfire...) are sounds; a dodged blow is a
+        rush of air, no clang, shake or red sparks; monsters' throws, deaths of
+        their own (`DEATH_CUES`; the slime-sheet looks no longer die twice,
+        `SLIME_SHEET_DEATHS`), crits, the bow's draw, crafting, the reveal,
+        dungeons, No man's land, the market, and other players' steps, swings,
+        shots, rolls, jumps, shield, swimming and gathering;
+      - the river, Bro Pond and the falls heard on their banks
+        (`src/game/waterAmbience.js`, its own loop on the music bus, never
+        startSfxLoop -- the fishing loop of that sample is stopped every frame);
+      - still needed (new recordings): docs/SOUND-GAPS.md; `sound-cues` suite,
+        `mp-soundcues`, `mp-cuelevels` (renders every cue: no clipping, the
+        levels the comments promise), `mp-farfeel` reads the cues now.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
@@ -938,13 +966,13 @@ remnant to migrate server-side, not a mode to preserve.
         gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
         `mp-monsterplate` (whose band sweep now raises the weapon's skill):
         docs/specs/xp-decay.md.
-    - since v2.3.3343 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
+    - since v2.3.3350 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
       all actions/buttons can be completed in landscape mode and on the
       computer. For instance I don't think you can harvest lifeskills right now
       on the computer": the gesture was asked for on the right button, which a
       computer hides, or at the figure worked out without the canvas's offset
       -- in the black margin beside the game's column -- so a harvest waited at
-      its full bar for ever (TRAPS §209):
+      its full bar for ever (TRAPS §210):
       - the right button comes back for a harvest (`data-harvest` on its box,
         game.css under pointer:fine) with "Drag ↔ or hold E" over it
         (gesturePose.js `DESK_GESTURE_HINT`, TouchControls' `.bt-rjoy-deskhint`);
@@ -3299,7 +3327,7 @@ Two protocol versions coexist; both must keep working:
   never a window sized for 60 fps (mp-hitreal, mp-staffcast, mp-solospecial,
   mp-ccink were the test); `BT_QA_CPU_THROTTLE=<rate>` runs every page that
   much slower, to try a check as a slow phone sees it.
-- UI REVIEW SCREENSHOTS (v2.3.3343, docs/specs/ui-review.md): the owner's
+- UI REVIEW SCREENSHOTS (v2.3.3350, docs/specs/ui-review.md): the owner's
   "screenshots labelled and bundled for all UI elements in each view ... so I
   can have chatGPT analyze them".  `node tools/qa/ui-review/capture.mjs`
   (after a build; `--views=`, `--only=`) walks a real player through every
@@ -3317,15 +3345,15 @@ Two protocol versions coexist; both must keep working:
   - What its first run found, fixed in the same version
     (docs/specs/reach-every-button.md): the iOS edge guard was an invisible
     18 px strip over every control at the left edge -- a listener now
-    (BroTown `EDGE_CONTROL`, TRAPS §210); sideways nothing could be SOLD to
-    Diego and Ace's Flip button was off the screen (TRAPS §211); on a computer
+    (BroTown `EDGE_CONTROL`, TRAPS §211); sideways nothing could be SOLD to
+    Diego and Ace's Flip button was off the screen (TRAPS §212); on a computer
     the Enter button lay under the keyboard strip and the Daily Rewards ✕
     under the minimap's "open map" button; the farm bed's Sleep and the field
     cook answered only a finger; the bell drew over windows; and on a
     LAPTOP (1366 x 768) the creator's ENTER BRO TOWN lay below the screen,
     unreachable, its sizes fractions of the WINDOW's width -- on a computer
     they are the play column's now (game.css "THE CREATOR SIZES ITSELF FROM
-    THE COLUMN", TRAPS §213). `mp-edgeguard`, `mp-deskreach`,
+    THE COLUMN", TRAPS §214). `mp-edgeguard`, `mp-deskreach`,
     mp-shopkeeper's sideways part, mp-notifbell.
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
@@ -4094,8 +4122,27 @@ Two protocol versions coexist; both must keep working:
   `mp-originlock` (a second browser with `--host-resolver-rules`, so the
   copy's Origin is the browser's own; `H.newPlayer`'s `host`,
   `H.launch(args)`).
-- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3343,
-  docs/specs/desktop-keys.md, TRAPS §212).** The owner: "For computer usage
+- **A CHARACTER'S KEY WORKS ON THE DEVICES IT IS PLAYED ON (v2.3.3344,
+  docs/specs/device-lock.md).** The owner: on at once, their own tool the way onto
+  a new device, a short note to players.
+  - `auth:<id>` keeps the devices its key is used from (`devs`, 12 at most):
+    the browser's own `bt_device` token, which the join already sends.
+  - The right key from any other device is `join_rejected {reason: 'device'}`
+    and close 4016 -- never `auth`, which makes the phone throw its key away.
+    The phone's `src/ui/DeviceScreen.js` shows the player's code (their id) to
+    give the owner.
+  - The owner lets one new device in for 30 minutes from the Test panel's
+    Player logins (`/api/admin/device-pass`), or forgets a character's devices
+    and seals it for one someone else got into (`device-forget`).
+  - A character with no known device takes its next one. The devices the bot
+    checks already knew are filled in once (`devlock:filled`).
+  - The login check still answers `exists: true` for older phones, with
+    `device: 'unknown'`; the picker's restart refuses from an unknown device.
+  - A phone test that brings a character back in a second browser gets its
+    device (harness `newPlayer`'s `device`; `'fresh'` is a new one).
+  - Kill switch `devicelock: false`; `device-lock` suite (67), `mp-devicelock`.
+- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3350,
+  docs/specs/desktop-keys.md, TRAPS §213).** The owner: "For computer usage
   if there's a key that makes sense to use for a certain action just put the
   letter next to the icon or action in a tasteful way."
   - `src/game/deskKeys.js` is the one table -- B the bag (the band at rest),

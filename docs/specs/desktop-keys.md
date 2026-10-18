@@ -1,4 +1,4 @@
-# A computer's keys, on the buttons they press (v2.3.3343)
+# A computer's keys, on the buttons they press (v2.3.3350)
 
 The owner, 2026-10-18: "For computer usage if there's a key that makes sense
 to use for a certain action just put the letter next to the icon or action in
@@ -26,7 +26,7 @@ heavier bottom edge so it reads as a key) on each button that has a key:
 | chat's **Send** | **Enter** | sends |
 
 The interact prompts at doors, beds and dungeons already wore **E**, and the
-harvest's button says "Drag ↔ or hold E" (v2.3.3343, desktop-harvest.md).
+harvest's button says "Drag ↔ or hold E" (v2.3.3350, desktop-harvest.md).
 The keys strip in the corner lists the rest (WASD, Shift, Space, X, Q, R, F,
 G, V, C, H, Tab) and now **1-3** (each weapon straight to hand), the one
 weapon key no button on a computer wears.
@@ -47,7 +47,7 @@ for map.
 - The letter is drawn by game.css (`[data-key]::after`, `content:
   attr(data-key)`) only under a mouse, `@media (pointer:fine)`. It is
   generated content, never a text node: the quest scenarios read the cards'
-  words, and "Accept QuestEnter" would have broken them (TRAPS §212). A phone never shows
+  words, and "Accept QuestEnter" would have broken them (TRAPS §213). A phone never shows
   one. It takes no clicks (`pointer-events: none`): a press on the letter is
   a press on its button.
 - Where it sits, by `data-key-at`: nothing -- inside the bottom-right corner

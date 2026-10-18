@@ -101,7 +101,7 @@ export function openWorldMap() {
   _openMap();
   return true;
 }
-/* v2.3.3343: M on a computer (game/deskKeys.js MAP_KEY) opens it, and closes
+/* v2.3.3350: M on a computer (game/deskKeys.js MAP_KEY) opens it, and closes
    it again -- only where it is, the Wheel (false elsewhere: no map to open) */
 let _toggleMap = null;
 export function toggleWorldMap() {
@@ -113,7 +113,7 @@ export function WorldMapOverlay({ stateRef }) {
   const [inWheel, setInWheel] = useState(false);
   const [rect, setRect] = useState(null);
   const [open, setOpen] = useState(false);
-  const inWheelRef = useRef(false);   /* v2.3.3343: M asks it (toggleWorldMap) */
+  const inWheelRef = useRef(false);   /* v2.3.3350: M asks it (toggleWorldMap) */
   useEffect(() => {
     const id = setInterval(() => {
       const S = stateRef && stateRef.current;
@@ -155,7 +155,7 @@ export function WorldMapOverlay({ stateRef }) {
           aria-label="Open the world map"
           title="World map (M)"
           data-world-map-open=""
-          /* v2.3.3343: on a computer its key, M, beside the minimap's "tap me"
+          /* v2.3.3350: on a computer its key, M, beside the minimap's "tap me"
              mark (game.css [data-key], drawn only under a mouse) */
           data-key="M"
           data-key-at="xy"
@@ -330,7 +330,7 @@ function WorldMap({ stateRef, onClose }) {
           <div data-world-map-where="" style={{ color: INK, fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{where ? `You are in ${where}` : 'Finding you…'}</div>
         </div>
         <button type="button" aria-label="Close the map" data-world-map-close="" onClick={onClose}
-          data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3343: Esc presses it (game/deskKeys.js) */
+          data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3350: Esc presses it (game/deskKeys.js) */
           style={{ ...btn, fontSize: 24, position: 'relative' }}>×</button>
       </div>
       <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>

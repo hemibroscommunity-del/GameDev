@@ -6,6 +6,7 @@ import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_BY_LOG } from '@/data/hardenedWood
 import { dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
 import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player (v2.3.3260: in any fight) */
 import { pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.3133: ...and say how long */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a listing heard */
 import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey, isChestKey } from './InventoryPanel.jsx';   /* v2.3.2820: + isChestKey */   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
@@ -1101,7 +1102,7 @@ export const ItemDetailPopup = () => {
           <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 5 }}>
             <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#96A2A0' }}>{title}</span>
             <button type="button" aria-label="Close" onPointerUp={(e) => { e.stopPropagation(); itemDetailBus.close(); }}
-              /* v2.3.3343: Esc presses it -- by pointerup, its own gesture
+              /* v2.3.3350: Esc presses it -- by pointerup, its own gesture
                  ("up", game/deskKeys.js pressControl) */
               data-esc="up" data-key="Esc" data-key-at="hang"
               style={{
@@ -1619,6 +1620,7 @@ export const ItemDetailPopup = () => {
         const R3 = S3 && S3.rpg;
         if (R3 && removeGearLocal(R3, gearSell.field, target[gearSell.prop], target.index)) persist(R3);
       }
+      cue('marketList');   /* v2.3.3343: the thing handed to the auction house is heard (the popup closed in silence; SOUND-GAPS) */
       itemDetailBus.close();
     } else {
       /* v2.3.2551: the worker answers a gear refusal with a STABLE reason
@@ -1834,7 +1836,7 @@ export const ItemDetailPopup = () => {
           {actions.sell && !sellOpen && !!sellWhy && (
             <button disabled aria-disabled="true" className={buttonClass()} style={{ ...buttonStyle(), opacity: 0.45 }}>Sell</button>
           )}
-          {/* v2.3.3343: Esc presses it, and on a computer it says so after its
+          {/* v2.3.3350: Esc presses it, and on a computer it says so after its
               X (game/deskKeys.js; game.css [data-key]) */}
           <button onClick={onClose} className={buttonClass()} style={buttonStyle()}
             data-esc="" data-key="Esc" data-key-at="inline">X</button>

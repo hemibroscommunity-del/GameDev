@@ -1,4 +1,4 @@
-/* ═══ ON A COMPUTER, THE BUTTONS A CLICK AIMS AT ARE THE ONES IT REACHES (v2.3.3343) ═══
+/* ═══ ON A COMPUTER, THE BUTTONS A CLICK AIMS AT ARE THE ONES IT REACHES (v2.3.3350) ═══
  *
  * Owner, 2026-10-18: "Make sure all actions/buttons can be completed in
  * landscape mode and on the computer."
@@ -17,7 +17,7 @@
  * Both by a REAL mouse click (1440 x 900, the game in its centred column).
  *   3. and on a LAPTOP's window (1366 x 768) the character creator's ENTER
  *      BRO TOWN lay below the screen, unreachable: it is on it now, and a
- *      click on it starts the game (v2.3.3343).
+ *      click on it starts the game (v2.3.3350).
  */
 import * as H from './harness.mjs';
 
@@ -127,7 +127,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.ctx.close().catch(() => {});
   }
 
-  /* 3. v2.3.3343: a LAPTOP's window (1366 x 768).  The creator's sizes were
+  /* 3. v2.3.3350: a LAPTOP's window (1366 x 768).  The creator's sizes were
      fractions of the window's width, so on a computer the character's column
      took its 360 px ceiling inside the 419 px play column, the Trait Picker
      got 31 px and ENTER BRO TOWN lay at y 847-903 -- off the screen, and the

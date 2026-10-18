@@ -62,7 +62,7 @@ import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
 import { WeaponSwapButton } from './panels/WeaponSwapButton.jsx'; /* v2.3.3005: the weapon in your hand, under the movement stick -- a tap swaps */
-import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3343 (a computer's words over the button) */
+import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3350 (a computer's words over the button) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
@@ -401,6 +401,8 @@ import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordD
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits } from '@/game/lifeSkillRewards.js'; /* tickGatherHits v2.3.2956 */
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
+import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
+import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
 import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
@@ -5003,6 +5005,7 @@ export var BroTown = function BroTown(_ref0) {
            same frame, with the water's own splash. */
         var _jNow = Date.now();
         var _jLanded = tickJump(S, _jNow, _playerDead);
+        tickWaterAmbience(S, _jNow);   /* v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
         var _inAir = !!S._jump;
         var _swEv = _inAir ? null : updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
           playerGroundDy(S.currentZone, P.x, P.y));
@@ -5047,6 +5050,10 @@ export var BroTown = function BroTown(_ref0) {
         });
         /* v2.3.3015: the first stride of a sprint pushes off -- a rush of air
            and a burst of the ground's dust (game/sprint.js) */
+        /* v2.3.3343: a sprint that ran out of stamina mid-run is heard
+           deflating (it stopped in silence; SOUND-GAPS) -- only that end, not
+           a tap, a stop or the shield's */
+        if (_sprEv === 'stop' && S._sprint && S._sprint.why === 'empty') cue('sprintOut');
         if (_sprEv === 'run') {
           try { BT_AUDIO.sprintPush(); } catch (e) { /* sound only */ }
           try {
@@ -6038,7 +6045,7 @@ export var BroTown = function BroTown(_ref0) {
           var _rw = rWrapRef.current;
           var _rWant = _rOn ? '1' : '0';
           if (_rw && _rw.style.opacity !== _rWant) _rw.style.opacity = _rWant;
-          /* ═══ v2.3.3343: ON A COMPUTER THE BUTTON COMES BACK FOR THE HARVEST ═══
+          /* ═══ v2.3.3350: ON A COMPUTER THE BUTTON COMES BACK FOR THE HARVEST ═══
              The owner: "I don't think you can harvest lifeskills right now on
              the computer."  game.css hides this whole box under pointer:fine,
              and with it the cue that teaches the gesture and the ring that
@@ -6304,7 +6311,7 @@ export var BroTown = function BroTown(_ref0) {
             litAt: Date.now(), expiresAt: Date.now() + 45000,
             name: 'Campfire', spotName: 'Campfire', gatherLvl: 1, skill: 'cooking', emoji: '🔥',
           };
-          try { BT_AUDIO.beep(360, 0.05, 0.12, 'sawtooth'); } catch (e) {}
+          cue('campfire');   /* v2.3.3343: the fire catching -- the pan's crackle swelling and fading (a beep(), silent; SOUND-GAPS) */
           /* ═══ v2.3.1753: AND TELL THE OTHER PLAYERS ═══
              Owner: "yes make both peers see a campfire."
              Until now a campfire existed only on the client that lit it, so a
@@ -6415,10 +6422,12 @@ export var BroTown = function BroTown(_ref0) {
               if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
                 _ex.status = 'ready';
                 _ex.readyAt = _exNow;   /* v2.3.2956: when the window really opened -- mp-gatherhits holds it against the last hit */
-                try { BT_AUDIO.beep(820, 0.04, 0.05, 'sine'); } catch (e) {}
                 /* v2.3.2761 (owner: sounds for the specific actions): for fishing
                    the window opening IS the bite -- a fish on the hook, now reel. */
                 if (_ex.skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('fish-on-hook', { vol: 0.65 }); } catch (e) {} }
+                /* v2.3.3343: ...and for the rest a small bright tick that says
+                   "now" -- this was a beep(), silent (SOUND-GAPS) */
+                else cue('gatherReady');
               }
             }
             /* v2.3.1416 (owner: "all resources NOT have a time out window
@@ -9083,7 +9092,7 @@ export var BroTown = function BroTown(_ref0) {
          the finished pose, not a stall. */
       S._firemaking = { startedAt: now, doneAt: now + 700, x: S.player.x, y: S.player.y + 6 };
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lighting fire…', '#ff8a3c', { ts: now });
-      try { BT_AUDIO.beep(180, 0.05, 0.12, 'sawtooth'); } catch (e) {}
+      cue('fireStrike');   /* v2.3.3343: two strikes of the flint (a beep(), silent) */
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
     });
@@ -9258,10 +9267,11 @@ export var BroTown = function BroTown(_ref0) {
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = nextSlot === 'melee' ? (_S2$rpg$weapon = S2.rpg.weapon) === null || _S2$rpg$weapon === void 0 ? void 0 : _S2$rpg$weapon.name : nextSlot === 'ranged' ? (_S2$rpg$rangedWeapon = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon === void 0 ? void 0 : _S2$rpg$rangedWeapon.name : 'Staff';
     pushDmgPopup(S2, S2.player.x, S2.player.y - 40, wpnName, '#D8A94D');
-    BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
-    setTimeout(function () {
-      return BT_AUDIO.beep(800, 0.04, 0.06, 'sine');
-    }, 60);
+    /* v2.3.3343: the blade drawn (two beep()s played nothing; SOUND-GAPS).
+       Stamped as the gesture's own sound so the swap button's generic menu
+       click yields to it (uiSfxDelegate: a specific sound wins the tap). */
+    cue('weaponSwap');
+    try { BT_AUDIO._uiSpecificAt = BT_AUDIO._now(); } catch (e) { /* sound only */ }
     S2._weaponSwapFlash = Date.now();
   }, []);
   var _desktopSelectSlot = useCallback(function (slot) {
@@ -9274,7 +9284,7 @@ export var BroTown = function BroTown(_ref0) {
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = slot === 'melee' ? (_S2$rpg$weapon2 = S2.rpg.weapon) === null || _S2$rpg$weapon2 === void 0 ? void 0 : _S2$rpg$weapon2.name : slot === 'ranged' ? (_S2$rpg$rangedWeapon2 = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon2 === void 0 ? void 0 : _S2$rpg$rangedWeapon2.name : 'Staff';
     pushDmgPopup(S2, S2.player.x, S2.player.y - 40, wpnName, '#D8A94D');
-    BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
+    cue('weaponSwap');   /* v2.3.3343: as the cycle's */
   }, []);
   var _desktopSpecialAttack = useCallback(function () {
     doSpecialAttack();
@@ -9321,7 +9331,7 @@ export var BroTown = function BroTown(_ref0) {
      is filling the lower half of the screen. Two signals because the app has
      two panel systems; collapsing them into one was tried and quietly
      dropped the sheet. */
-  /* ═══ v2.3.3343: ...EXCEPT, SIDEWAYS, THE BAG'S OWN COLUMN ═══
+  /* ═══ v2.3.3350: ...EXCEPT, SIDEWAYS, THE BAG'S OWN COLUMN ═══
      The owner: "Make sure all actions/buttons can be completed in landscape
      mode."  Upright the shop is HALF a window, the bag in the band under it
      the other half (ShopkeeperPanel's header).  Sideways the band holds no
@@ -9725,7 +9735,7 @@ export var BroTown = function BroTown(_ref0) {
      and preventDefault any touchstart that lands inside it.  Best
      effort -- Safari sometimes overrules; if it persists the user
      can reflag for a PWA / fullscreen path. */
-  /* ═══ v2.3.3343: A LISTENER, NOT A STRIP -- THE BUTTONS AT THE EDGE ANSWER ═══
+  /* ═══ v2.3.3350: A LISTENER, NOT A STRIP -- THE BUTTONS AT THE EDGE ANSWER ═══
      The owner: "Make sure all actions/buttons can be completed in landscape
      mode".  The UI review's numbered pictures (tools/qa/ui-review) found the
      strip -- 18 px wide, full height, z 40, over everything outside the
@@ -11957,7 +11967,7 @@ export var BroTown = function BroTown(_ref0) {
     },
     onMouseDown: function onMouseDown(e) {
       if (!stateRef.current._isDesktop) return;
-      /* v2.3.3343: a press during a harvest is the harvest's -- its gesture
+      /* v2.3.3350: a press during a harvest is the harvest's -- its gesture
          once the window is open (ExtractionSwipeLayer, which cancels the
          pointerdown so this mousedown never comes), nothing in the wind-up --
          and never arms the attack: a swing is refused mid-harvest anyway
@@ -13975,7 +13985,7 @@ export var BroTown = function BroTown(_ref0) {
       bottom: 140,
       background: 'rgba(89,191,145,.85)'
     },
-    /* v2.3.3343: onClick, not onTouchStart -- a mouse never fires a
+    /* v2.3.3350: onClick, not onTouchStart -- a mouse never fires a
        touchstart, so on a computer this button did nothing (E did, from
        desktopControls); one click is the tap on both (v2.3.2617's rule) */
     onClick: function onClick(e) {
@@ -14111,7 +14121,7 @@ export var BroTown = function BroTown(_ref0) {
       bottom: 175,
       background: 'rgba(139,105,20,.85)'
     },
-    /* v2.3.3343: the click alone -- a touchstart twin opened the workshop on
+    /* v2.3.3350: the click alone -- a touchstart twin opened the workshop on
        the press and the click behind it opened it again (the door sound
        twice), on the very surface v2.3.2617's rule is about */
     onClick: function onClick(e) {
@@ -14172,7 +14182,7 @@ export var BroTown = function BroTown(_ref0) {
         bottom: 175,
         background: 'rgba(200,100,20,.85)'
       },
-      /* v2.3.3343: onClick, not onTouchStart -- a mouse never fires a
+      /* v2.3.3350: onClick, not onTouchStart -- a mouse never fires a
          touchstart, so on a computer the field cook could not be pressed at
          all; one click is the tap on both (v2.3.2617's rule) */
       onClick: function onClick(e) {

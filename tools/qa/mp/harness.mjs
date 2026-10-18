@@ -358,7 +358,7 @@ export async function stopWorker(w) {
    "passed" three assertions about marks that were never drawn.)  isMobile
    flips the emulated pointer to coarse and turns on the meta viewport, which
    together are the closest this harness gets to the primary platform. */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, query = '', world = null, host = 'localhost' }) {
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, query = '', world = null, host = 'localhost', device = null }) {
   const ctx = await browser.newContext(Object.assign(
     { viewport: viewport || { width: 1000, height: 780 } },
     touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : null,
@@ -412,6 +412,23 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
     await page.addInitScript((ph) => {
       try { localStorage.setItem('bt_passphrase', ph); } catch (e) {}
     }, phrase);
+  }
+  /* ═══ v2.3.3344: ...AND THAT CHARACTER'S DEVICE ═══
+     A character's key works only on the devices it is played on
+     (server/src/devicelock.js), and a new browser context is a new device: it
+     makes its own `bt_device` token.  So a scenario that brings a character
+     back in a second context -- meaning "the same player, a fresh tab" -- is
+     given the device token that key's first context had: one made from the
+     key, the same in every context seeded with it.  `device` overrides: a
+     string is that token, 'fresh' leaves the page to make a random one (a
+     NEW device, as a player typing their key on another phone).  A context
+     with no `phrase` is untouched unless `device` names a token. */
+  const devTok = device && device !== 'fresh' ? String(device)
+    : (phrase && device !== 'fresh' ? 'qa' + devTokenOf(phrase) : null);
+  if (devTok) {
+    await page.addInitScript((d) => {
+      try { if (!localStorage.getItem('bt_device')) localStorage.setItem('bt_device', d); } catch (e) {}
+    }, devTok);
   }
   /* v2.3.2039: `init` is arbitrary JS run before the bundle does. It exists
      for scenarios that must stand in for a BROWSER API the sandbox cannot
@@ -1206,6 +1223,28 @@ export function equipWeapon(P, wantType, stashSlot, activeSlot) {
   }, { wantType, slot: stashSlot, activeSlot });
 }
 
+/* v2.3.3344: a context's Login Key AND its device token, to bring the same
+   player back in a new context ON THE SAME DEVICE (a relaunch, a fresh tab):
+   newPlayer(browser, { ..., ...H.keyAndDevice(await ...) }) takes both.  A
+   scenario that means a NEW device passes the key alone and the owner's pass
+   (letDeviceIn), or expects the device screen. */
+export function keyAndDevice(P) {
+  return P.page.evaluate(() => {
+    let phrase = null, device = null;
+    try { phrase = localStorage.getItem('bt_passphrase'); device = localStorage.getItem('bt_device'); } catch (e) { /* none */ }
+    return { phrase, device };
+  });
+}
+
+/* v2.3.3344: a device token made from a Login Key (newPlayer's `device`):
+   the same key, the same token, in every context -- 32-bit FNV-1a, base 36 */
+export function devTokenOf(key) {
+  let h = 0x811c9dc5;
+  const s = String(key || '');
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(36);
+}
+
 /* ═══ v2.3.3334: A BOW OR A STAFF THE WORKER HOLDS, AS A REAL PLAYER'S ═══
  * Since v2.3.3334 a bow or staff hit on a monster needs that weapon in the
  * WORKER's own slot (server/src/hitproof.js), and the phone's copy is never
@@ -1305,6 +1344,22 @@ export async function warpToZone(P, { wsPort, label, zoneId, settleMs = 3500 }) 
   await P.page.waitForTimeout(settleMs);
   return seeded;
 }
+
+/* ═══ v2.3.3344: THE OWNER LETS ONE NEW DEVICE IN ═══
+ * A character's key works only on the devices it is played on
+ * (server/src/devicelock.js).  A scenario that brings a character to a second
+ * browser AS A NEW DEVICE does what the owner does for a player moving phones:
+ * the Test panel's "Let one new device in" (/api/admin/device-pass), good for
+ * one device within 30 minutes. */
+export async function letDeviceIn(wsPort, playerId) {
+  const res = await fetch(`http://127.0.0.1:${wsPort}/api/admin/device-pass`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${ADMIN_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playerId }),
+  });
+  return res.json();
+}
+
 
 export async function devOp(wsPort, op, playerId, body) {
   const res = await fetch(`http://127.0.0.1:${wsPort}/api/admin/dev/${op}`, {

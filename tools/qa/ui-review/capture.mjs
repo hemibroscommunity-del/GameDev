@@ -1,4 +1,4 @@
-/* ═══ v2.3.3343: EVERY SCREEN, IN EVERY VIEW, LABELLED AND BUNDLED ═══
+/* ═══ v2.3.3350: EVERY SCREEN, IN EVERY VIEW, LABELLED AND BUNDLED ═══
  *
  * The owner, 2026-10-18: "I'll also want screenshots labelled and bundled for
  * all UI elements in each view (portrait, landscape, desktop, etc) so I can
@@ -71,7 +71,7 @@ export const VIEWS = {
     viewport: { width: 1440, height: 900 }, touch: false, dpr: 2, clip: '#root',
     about: 'A computer\'s browser window (1440 x 900) with a mouse: the game plays in a centred phone-shaped column with black bars beside it (the pictures are cropped to that column), the touch controls are hidden and the keyboard does their jobs (WASD, E, Q, Space, X, Shift, F/right-click...).',
   },
-  /* v2.3.3343: not in the default run either: --views=laptop.  The commonest
+  /* v2.3.3350: not in the default run either: --views=laptop.  The commonest
      laptop window, and where the computer's creator hid ENTER BRO TOWN below
      the screen (game.css "THE CREATOR SIZES ITSELF FROM THE COLUMN") */
   laptop: {
@@ -451,9 +451,9 @@ async function makeSheets(browser, results) {
   return made;
 }
 
-/* v2.3.3343: the version the pictures are of, and its commit.  package.json's
+/* v2.3.3350: the version the pictures are of, and its commit.  package.json's
    version follows the client's only loosely (CLAUDE.md) -- it read 2.3.2324
-   on a v2.3.3343 game -- so the newest v2.3.N in the recent commit subjects
+   on a v2.3.3350 game -- so the newest v2.3.N in the recent commit subjects
    (the session brief's high-water) wins, package.json only without git. */
 function gameVersion() {
   let game = '?';

@@ -1,4 +1,4 @@
-/* ═══ A COMPUTER CAN FINISH A HARVEST; A SIDEWAYS PHONE STILL DOES (v2.3.3343) ═══
+/* ═══ A COMPUTER CAN FINISH A HARVEST; A SIDEWAYS PHONE STILL DOES (v2.3.3350) ═══
  *
  * Owner, 2026-10-18: "Make sure all actions/buttons can be completed in
  * landscape mode and on the computer.  For instance I don't think you can
