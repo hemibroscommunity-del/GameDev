@@ -133,6 +133,18 @@ output every run). It:
      lies under it in the bare frame. Over skin it is the plate (arms, chest),
      over trousers and boots the greaves. The chain-mail belt rides with the
      greaves, over the trousers' top;
+   - (v2.3.3472) the plate and greaves **in the game's own greys**: ChatGPT
+     painted a pale, chalky steel (the plate's middle grey 0.60 where the
+     walking plate's is 0.46; the watering can's sheet cream), a different
+     metal beside the walking, cooking and chopping armour and a lighter one
+     again once a metal's tint multiplies it. Each strip's steel is graded to
+     the walking strip's (`jog-south`): each pixel's lightness moved to the
+     same place in the walking steel's spread of lightness (41 quantiles, the
+     order of light and dark kept -- the shading as painted), its colour the
+     walking steel's own near-grey (`steel_like_the_game`). The owner: "the
+     armor art does not match what the character is wearing in the game while
+     farming ... See what other animations do" (before and after, beside the
+     walking and cooking steel: `docs/art/farm-armour-before-after.png`);
    - the **body under greaves**: the bare body with every trouser and boot
      pixel the greaves do not cover taken out, so nothing of them shows round
      the plates. A boot is boot grey below or beside the trousers, or a grey
@@ -479,7 +491,7 @@ two pictures still to come.
   carrots and flies them to the bag; the barn's wall stops your boots; the
   gate leads back to the Wheel.
 - **The moves on a phone:** `tools/qa/mp/mp-farmanim.mjs`
-  (`node tools/qa/mp/run.mjs farmanim`, 41 checks). It dresses the player
+  (`node tools/qa/mp/run.mjs farmanim`, 81 checks). It dresses the player
   (deep skin, blue trousers, red boots, a green tee, a red cap, a blonde beard)
   and checks:
   - the moves are made before the farm's loading screen lifts, in those
@@ -490,12 +502,17 @@ two pictures still to come.
   - the shirt is over him and the tool over both;
   - he stands your height with the hoe and with the can;
   - each step ends in one `farm_act` the worker takes;
-  - in armour, on bed 1 (`out/farmanim-armour-<step>-<frame>.png`): copper
-    plate and greaves with the hoe, the greaves under the tee kneeling, the
-    plate over his trousers with the can. In every frame the garments worn are
-    drawn and no others, the tee hidden under the plate, the body under greaves
-    the one cut for them, each garment on the body's frame, in the order body,
-    greaves, shirt, plate, tool, and in the copper his walking figure wears;
+  - in armour, each of the three outfits on each of the three moves, beds 1-3
+    (`out/farmanim-armour-<bed>-<step>-<frame>.png`; v2.3.3472, the owner:
+    "Make sure armor combos work too (just wearing legs or just wearing
+    torso)"): copper plate and greaves, copper greaves under the tee, the
+    copper plate over his trousers -- with the hoe, kneeling and with the can.
+    In every frame the garments worn are drawn and no others, the tee hidden
+    under the plate, the body under greaves the one cut for them (his trousers
+    and boots under the plate alone), each garment on the body's frame, in the
+    order body, greaves, shirt, plate, tool, in the copper his walking figure
+    wears, and shining as his walking armour does (the sheen's slots hold the
+    garments worn and no others);
   - leaving the farm lets every texture of his go, the garments' too.
 - **Your drawings on him:** `tools/qa/mp/mp-farmink.mjs`
   (`node tools/qa/mp/run.mjs farmink`, 23 checks). A face drawing on its left
