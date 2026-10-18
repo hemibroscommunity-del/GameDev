@@ -6579,7 +6579,12 @@ export const QUEST_CHAINS = {
     id: 'tut_1', npc: 'Mayor Bro', title: 'Cold Reception',
     desc: 'Bring 4 Snowman Remnants from Frost Ridge.',
     check: function (rpg) { return ((rpg.inventory || {}).snowman || 0) >= 4; },
-    reward: { gold: 25, xp: 15 },
+    /* v2.3.3335 (owner: "Makes no sense to have to choose xp in something
+       you've never used yet.  Just remove that little xp bonus"): no XP, so
+       there is nothing to choose and QuestPanel pays it as the AUTO REWARD --
+       no "Choose where to train it", no claim window.  Mirrors
+       server/src/data.js tut_1 (mirror-audit §5). */
+    reward: { gold: 25, xp: 0 },
     next: 'tut_2',
     gives: [
       /* great-sword, not sword: weaponType 'sword' at wood tier is the

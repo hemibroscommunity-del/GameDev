@@ -92,11 +92,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await place(420, 0); await P.page.waitForTimeout(600);
   await place(0, 34);  await P.page.waitForTimeout(1500);
 
-  const landed = await H.advanceNpcDialogue(P);
-  rec.ok('his lines lead to the claim panel (guard)', landed === 'offer', { landed });
-  await H.chooseQuestSkill(P, 'Melee');
+  /* v2.3.3335: the first quest pays no XP, so there is nothing to choose and
+     no claim panel -- his last line's "Claim reward" pays it at once (the
+     auto reward).  The loop this file hunts is just as possible on that
+     path, so the watch below is the same; the claim PANEL's bounce is
+     variant B's, on tut_2. */
   const before = await srv();
-  rec.ok('the claim could be pressed (guard)', await H.confirmQuestOffer(P));
+  rec.ok('his last line\'s "Claim reward" could be pressed (guard)', await H.claimOnLastLine(P));
 
   /* ── now STAND STILL and watch ── */
   await P.page.waitForTimeout(9000);
