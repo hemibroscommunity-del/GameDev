@@ -42,9 +42,12 @@
  * ground and the World View) is one big sprite, not separate objects.
  *
  * Off switches: `?shade=0` on the URL (per load), `window.__btShadeOff = true`
- * (live, for an on/off pixel diff).  Probe: `window.__btShade`.
+ * (live, for an on/off pixel diff; since v2.3.3347 a flip rebuilds every draw
+ * list, drawLists.js, as a still sprite is packed only then).  Probe:
+ * `window.__btShade`.
  */
 import { DefaultBatcher } from 'pixi.js';
+import { liveSwitch } from './drawLists.js';
 
 /* [top rgb multipliers, bottom rgb multipliers].  Top: as painted, a hair
    warm.  Bottom: a cool shade.  Figures lighter than props: a character is
@@ -78,6 +81,8 @@ try {
 export const formShadeOn = () => _on;
 
 let _count = 0;
+/* v2.3.3347: window.__btShadeOff, read below as a plain field */
+const _liveOff = liveSwitch('__btShadeOff');
 
 function mul(c, k) {
   /* aColor is 0xAABBGGRR (little-endian RGBA bytes); alpha untouched */
@@ -108,6 +113,53 @@ function figureSpan(p) {
   return y1 > y0 ? [y0, y1] : [y1, y0];
 }
 
+/* ═══ v2.3.3347: A FIGURE'S PIECES ARE SHADED AGAIN WHEN ITS SPAN CHANGES ═══
+   A piece is shaded when Pixi packs it into its batch, and Pixi packs it
+   again only when IT changes (it moves, its picture or its tint changes).
+   The span it is shaded over comes from the figure's spriteBody, which is
+   invisible, so a new frame on it packs nothing again.  Until v2.3.3347 that
+   never showed: the world's whole draw list was rebuilt, every quad packed
+   again, every frame (drawLists.js).  Since each layer keeps its own list, a
+   piece that stands still keeps the span it was packed with -- so once a
+   frame, before the draw, every figure whose span has moved has its pieces
+   packed again, through Pixi's own update (no rebuild): the pieces this
+   batcher shades by the span, the figure's sprites and those one group down
+   but its name plate's (`_uiLayer`).  A figure is listed the first time one
+   of its pieces is shaded by its span, and dropped once destroyed. */
+const _figs = new Set();
+let _refreshed = 0;
+function noteSpan(p) {
+  const ref = p._vShadeRef;
+  const tex = ref && !ref.destroyed ? ref.texture : null;
+  const h = tex && tex.orig ? tex.orig.height : 0;
+  const top = h ? ref.y - ref.anchor.y * h * ref.scale.y : 0;
+  const bot = h ? top + h * ref.scale.y : 0;
+  if (ref === p._shadeRef && top === p._shadeTop && bot === p._shadeBot) return false;
+  p._shadeRef = ref; p._shadeTop = top; p._shadeBot = bot;
+  return true;
+}
+function repackFigure(p) {
+  const k = p.children;
+  for (let i = 0; i < k.length; i++) {
+    const c = k[i];
+    if (c.renderPipeId === 'sprite') { c.onViewUpdate(); _refreshed++; continue; }
+    if (c === p._uiLayer || !c.children) continue;
+    const g = c.children;
+    for (let j = 0; j < g.length; j++) if (g[j].renderPipeId === 'sprite') { g[j].onViewUpdate(); _refreshed++; }
+  }
+}
+/** pixiRenderer.js, once a frame after the figures are posed, before the
+ *  draw.  Returns how many figures were packed again. */
+export function refreshFigureShades() {
+  if (!_on || _figs.size === 0) return 0;
+  let n = 0;
+  for (const p of _figs) {
+    if (p.destroyed) { _figs.delete(p); continue; }
+    if (noteSpan(p)) { repackFigure(p); n++; }
+  }
+  return n;
+}
+
 if (_on && DefaultBatcher && DefaultBatcher.prototype && DefaultBatcher.prototype.packQuadAttributes) {
   const orig = DefaultBatcher.prototype.packQuadAttributes;
   DefaultBatcher.prototype.packQuadAttributes = function (el, f32, u32, idx, tid) {
@@ -127,10 +179,14 @@ if (_on && DefaultBatcher && DefaultBatcher.prototype && DefaultBatcher.prototyp
         p = g;
       }
       spec = p._vShadeKids;
+      /* v2.3.3347: listed, its span noted (refreshFigureShades) -- before the
+         span is asked for, so a figure whose body has no picture yet is
+         packed again when it has one */
+      if (!p._shadeListed) { p._shadeListed = true; _figs.add(p); noteSpan(p); }
       span = figureSpan(p);
       if (!span) return;
     }
-    if (typeof window !== 'undefined' && window.__btShadeOff) return;
+    if (_liveOff.on) return;
     const c = el.color;
     if (!span) {
       /* own quad: corners 0,1 are the top edge, 2,3 the bottom (see
@@ -195,5 +251,5 @@ function markTree(o, depth) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btShade = () => ({ on: _on, off: !!window.__btShadeOff, quadsShadedTotal: _count });
+  window.__btShade = () => ({ on: _on, off: _liveOff.on, quadsShadedTotal: _count, figures: _figs.size, piecesRefreshed: _refreshed });
 }

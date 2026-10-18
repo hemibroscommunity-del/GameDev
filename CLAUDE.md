@@ -3821,6 +3821,18 @@ Two protocol versions coexist; both must keep working:
   `--sourcemap`) and names what rebuilds each render group's draw list --
   `Graphics.clear()` on an empty graphic rebuilds it (TRAPS §208);
   `mp-speedtest`.
+- The processor's side of a phone's frame, side by side (v2.3.3347,
+  docs/specs/draw-lists.md): `QA_DIST=dist-prof node tools/qa/mp/run.mjs
+  phoneframe` stands a 3x phone page in BroTown and at a Flame Fields fight
+  (mp-frameprofile's profile is BroTown's alone). Per scene it reports:
+  - the frame's cost by stage;
+  - a CPU profile mapped to the source (build `dist-prof` first:
+    `npx vite build --minify false --sourcemap --outDir ../dist-prof`);
+  - the WebGL calls a frame and the draw list's batches;
+  - every draw-list rebuild with its cause.
+  `BT_PF_AB='<switches>'` puts the game as it was beside it, and
+  `BT_PF_VARIANTS='a|b'` ranks address switches. This box draws in software,
+  so read the JavaScript and the GL calls, never the frames a second.
 
 ## Conventions
 
@@ -4068,6 +4080,29 @@ Two protocol versions coexist; both must keep working:
   `mp-originlock` (a second browser with `--host-resolver-rules`, so the
   copy's Origin is the browser's own; `H.newPlayer`'s `host`,
   `H.launch(args)`).
+- **A STRUCTURAL CHANGE REBUILDS ITS LAYER'S DRAW LIST (v2.3.3347, TRAPS
+  §213, docs/specs/draw-lists.md).** Pixi rebuilds a render group's whole
+  draw list for any `visible` / `renderable` / `zIndex` / `blendMode` change,
+  an addChild or removeChild, a sprite's texture from outside its batch, or
+  any change to a small Graphics, `clear()` included. Each world layer but
+  `shadows` is its own render group, so such a change rebuilds only its layer
+  (`?nolayergroups` is the world as one list). In the big layers -- the
+  ground (`tiles`) and the depth-sorted objects (`entities`,
+  `gatherNodesFront`) -- make no structural change every frame:
+  - redraw a shape only when what it draws changes, or move or tint it;
+  - the depth sort gives Pixi a key only when the order changes
+    (depthSort.js; `?zindexall` is every key, as before);
+  - an empty shape's `clear()` is no change (quietClear.js, `?loudclear`).
+  `mp-phoneframe`'s rebuild census names every rebuild and its caller. And a
+  still sprite is packed again only when its layer is rebuilt, so a switch
+  read as a sprite is packed (`window.__btShadeOff`, `__btSharpOff`) is a
+  `liveSwitch` (drawLists.js): a flip rebuilds every list; a figure's shade
+  span is re-read by `refreshFigureShades` (formShade.js); and
+  mp-layergroups forces every list to rebuild in a held frame and wants no
+  pixel changed. A layer draws with the world's own camera numbers, an empty
+  one skipped (layerUniforms.js, `?layerpush` is Pixi's push and pop a group):
+  a group's `inverseParentTextureTransform` is read ONCE a frame, as Pixi's
+  getter keeps nothing for a second read.
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,

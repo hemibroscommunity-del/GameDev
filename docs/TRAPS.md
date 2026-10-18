@@ -7107,3 +7107,63 @@ the rebuilds before guessing (`mp-frameprofile`'s "rebuild asked ... by").
 **Receipt:** mp-frameprofile: the screen's list rebuilt every frame (2.6 a
 second at 2.6 frames a second on the QA box), standing or walking; after, never.
 mp-speedtest check 8.
+
+## 213. "Pixi only rebuilds its draw list when you add or remove something" (v2.3.3347)
+
+**Tempting:** a frame that adds and removes nothing costs only its transforms
+and its draws, so wiping a shape and drawing it again, showing and hiding a
+pooled sprite, or giving a walking monster a new `zIndex` every frame is free.
+
+**What happens:** Pixi rebuilds a render group's WHOLE draw list (every
+sprite of the group walked and batched again) whenever it counts a change as
+structural, and far more counts than adding a child: `visible`, `renderable`,
+`culled` and `blendMode` changes, any `zIndex` change (sortMixin
+`depthOfChildModified`, even when the order stays), a sprite whose new texture
+is not in its batch, and ANY change to a small Graphics -- `clear()` included,
+on a shape that was already empty (`GraphicsPipe.validateRenderable` answers
+"rebuild" for every batchable one that reported an update, and `clear()`
+always reports one: §208, found the same day for the screen's own shapes). The game made ~25 such changes every frame, so the
+world's list and the screen's were both rebuilt every frame for months
+(mp-phoneframe: 0.9 ms of a 5 ms frame in BroTown, 1.3 of 6 at a fight, on
+this box) -- and "stop the triggers one by one" could never win, as any one
+left rebuilt everything.
+
+**The rule:** each world layer is its own render group (pixiApp.js; the same
+picture to the pixel, mp-layergroups), so a change rebuilds only its layer. In
+a layer that holds a lot (the ground, the depth-sorted objects), do not make a
+structural change a frame: give a key to the setter only when the order
+changes (depthSort.js), draw a shape again only when what it draws changes
+(tileRenderer.js `bgGfx`), move or tint a shape instead of redrawing it, and
+wipe nothing that is empty (quietClear.js does that for every Graphics, so
+§208's `clearIfDrawn` is now belt and braces).
+
+**And its other side:** a sprite that changes in no way Pixi tracks is packed
+again only when its layer is rebuilt, so a switch read AS IT IS PACKED (the
+form shade's `window.__btShadeOff`, the sharp pixels' `window.__btSharpOff`)
+used to show on the next frame only because everything was rebuilt every
+frame. Such a switch is a `liveSwitch` (drawLists.js): a plain field for the
+batcher, and a flip rebuilds every draw list. mp-sharppixels, mp-formshade,
+mp-liveness and mp-sheen flip them. The figure shade's span, read off an
+invisible body reference, is the same kind of read: formShade.js
+`refreshFigureShades` packs a figure again when it moves. mp-layergroups'
+"nothing stale" checks force every list to rebuild in a held frame and want
+no pixel changed.
+
+**And a group costs its uniforms:** Pixi draws a render group inside another
+by pushing a fresh set of the shared uniforms (the camera's matrix, the tint,
+the target's projection and size) and popping them after, and the pop marks
+the outer set changed -- so every program uploads the same camera numbers
+again (the world's layers: ~15 more matrix uploads a frame, on 22 pushes, 15
+of them for layers with nothing in them). layerUniforms.js draws a layer whose
+push would set exactly what is bound with what is bound, and skips an empty
+one (`?layerpush` is Pixi's way). If you ever patch around
+`RenderGroupPipe._executeDirect`, read `renderGroup.inverseParentTextureTransform`
+ONCE a frame: the getter clears its dirty bit on the first read and, with no
+cached-as-texture parent, keeps nothing to give a second one -- it returns
+undefined, and a push then inherits the PARENT's matrix (the world group
+pushed that way is drawn without its camera).
+
+**Receipt:** mp-phoneframe's rebuild census (`BT_PF_SDC`, on by default)
+names every rebuild a frame and who caused it, by stack, and its side by side
+the uniform and buffer uploads a frame; mp-layergroups (the same held frame
+with every layer back in one list, and with every group's uniforms pushed).

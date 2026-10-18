@@ -45,7 +45,7 @@ import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
 import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
 import { Assets, TextureSource } from 'pixi.js';   /* v2.3.3074: + TextureSource (destroy, below) */
-import { markStandIns } from './formShade.js'; /* v2.3.2767: light from above (the batcher patch itself installs on import) */
+import { markStandIns, refreshFigureShades } from './formShade.js'; /* v2.3.2767: light from above (the batcher patch itself installs on import) */
 import { SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS } from './lightfx/casters.js';
 import { recordCrash } from '../debug/crashTrap.js';   /* v2.3.3017: a frame that will not draw is reported, and rebuilt */
 
@@ -546,6 +546,9 @@ export async function initPixiRenderer(canvas) {
        boolean read when the switch is off (lightFx.js). */
     /* v2.3.2767: the combat / gathering stand-ins take the figure shade too */
     try { markStandIns(effectsRenderer, SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS); } catch (e) { /* never break a frame */ }
+    /* v2.3.3347: a figure whose span moved has its pieces packed again
+       (formShade.js; each layer keeps its own draw list, drawLists.js) */
+    try { refreshFigureShades(); } catch (e) { /* never break a frame */ }
     try { lightFx.update(S, now, entityRenderer, effectsRenderer); }
     catch (e) { if (!update._lightErr) { update._lightErr = true; console.error('[pixi-render] lightFx threw', e && e.message, e && e.stack); } }
     try { minimap.update(S, cssW, cssH, canvas); }

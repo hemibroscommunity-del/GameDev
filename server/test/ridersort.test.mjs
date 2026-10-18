@@ -24,10 +24,30 @@ function ok(name, cond, extra) {
   else { fail++; console.log('  FAIL ' + name + (extra !== undefined ? '  ' + JSON.stringify(extra) : '')); }
 }
 
+/* v2.3.3347: Pixi's `zIndex` is an accessor over `_zIndex` (sortMixin), its
+   setter marking the parent for a re-sort -- and the depth pass now writes
+   `_zIndex` itself while the order holds (depthSort.js), so a child added to
+   a stand-in layer gets the same accessor */
+function pixiZ(c) {
+  if ('_zIndex' in c) return;
+  c._zIndex = 0;
+  Object.defineProperty(c, 'zIndex', {
+    get() { return this._zIndex; },
+    set(v) {
+      if (this._zIndex === v) return;
+      this._zIndex = v;
+      if (this.parent) { this.parent.sortableChildren = true; this.parent.sortDirty = true; }
+    },
+    enumerable: true,
+    configurable: true,
+  });
+}
+
 function layer(label) {
   const L = { label, children: [] };
   L.addChild = (c) => {
     if (c.parent) { const i = c.parent.children.indexOf(c); if (i >= 0) c.parent.children.splice(i, 1); }
+    pixiZ(c);
     L.children.push(c); c.parent = L; return c;
   };
   return L;
@@ -124,6 +144,27 @@ console.log('ridersort: a building\'s pieces sort with the building');
   applyDepthBuckets(back, front, 400, 1000);
   ok('fractional base: rider = round(base) + 0.25', rider.zIndex === Math.round(800.49) + 0.25, { z: rider.zIndex });
   ok('fractional base: the raised peer still draws over the pieces', peer.zIndex > rider.zIndex, { peer: peer.zIndex, rider: rider.zIndex });
+}
+
+/* v2.3.3347: a sort whose order already holds is QUIET -- every key stored,
+   nothing marked for a re-sort (Pixi would rebuild the layer's draw list for
+   it); the moment the order changes, the keys go through the setter and the
+   layer is marked, as before */
+{
+  const back = layer('entities');
+  const a = { label: 'a', x: 0, y: 100, visible: true };
+  const b = { label: 'b', x: 0, y: 200, visible: true };
+  back.addChild(a); back.addChild(b);
+  back.sortDirty = false;
+  applyGroundSort(back);
+  ok('in order: both keys stored', a.zIndex === 100 && b.zIndex === 200, { a: a.zIndex, b: b.zIndex });
+  ok('...and the layer is not marked for a re-sort', back.sortDirty === false);
+  a.y = 110;
+  applyGroundSort(back);
+  ok('still in order after a step: the new key stored quietly', a.zIndex === 110 && back.sortDirty === false, { a: a.zIndex, dirty: back.sortDirty });
+  b.y = 50;
+  applyGroundSort(back);
+  ok('out of order: the keys go through the setter and the layer is marked', b.zIndex === 50 && back.sortDirty === true, { b: b.zIndex, dirty: back.sortDirty });
 }
 
 console.log(`\nridersort: ${pass + fail} assertions, ${pass} passed, ${fail} failed`);

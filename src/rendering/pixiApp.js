@@ -7,6 +7,9 @@ import { installSharpPixels } from './sharpPixels.js'; /* v2.3.2770 */
 import { renderDpr } from '../game/renderRes.js'; /* v2.3.3339: ?res= and the speed test */
 import { installBindGroupFix } from './bindGroupFix.js'; /* v2.3.3152: a freed picture no longer breaks Pixi's pooled mask */
 import { installTexturePoolTrim } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's texture pool gives back what it does not use */
+import { installQuietClear } from './quietClear.js'; /* v2.3.3347: wiping an empty shape is not a change (no draw-list rebuild) */
+import { setDrawListRoot } from './drawLists.js'; /* v2.3.3347: a live switch's flip rebuilds every draw list */
+import { installLayerUniforms } from './layerUniforms.js'; /* v2.3.3347: a layer draws with the world's own camera numbers */
 import { SHADE } from './formShade.js';
 import { Application, Cache, Container, TextureSource } from 'pixi.js';
 
@@ -164,6 +167,10 @@ const WORLD_LAYER_NAMES = [
   'worldUi',
 ];
 const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];
+
+/* v2.3.3347: each world layer its own render group (buildScene); off with
+   `?nolayergroups` to compare */
+const LAYER_GROUPS = !(typeof location !== 'undefined' && /[?&]nolayergroups\b/.test(location.search || ''));
 export const LAYER_NAMES = [...WORLD_LAYER_NAMES, ...SCREEN_LAYER_NAMES];
 /* v2.3.1915: the world stack, published for QA. "Arrows draw under the
    player" is a statement about ORDER, and a scenario that hard-coded the
@@ -184,6 +191,7 @@ function buildScene(app) {
     app.renderer.events.autoPreventDefault = false;
   }
   app.stage.eventMode = 'none';
+  setDrawListRoot(app.stage);   /* v2.3.3347: drawLists.js */
 
   const worldContainer = new Container();
   worldContainer.label = 'world';
@@ -536,6 +544,24 @@ function buildScene(app) {
        actually changed, so a still scene does no work. */
     if (name === 'entities' || name === 'gatherNodesFront') layer.sortableChildren = true;
     worldContainer.addChild(layer);
+    /* ═══ v2.3.3347: EACH WORLD LAYER KEEPS ITS OWN DRAW LIST ═══
+       The owner: "iterate on what best improves framerate without loss of
+       quality (or negligible loss) for phone gameplay".  With the world one
+       render group (v2.3.3079), ANY change in it -- a monster's health bar
+       redrawn, a dust puff added, the depth sort moving someone -- rebuilt
+       the draw list of the whole world: the ground, every tree and building,
+       every figure.  Something changes every frame, so it was rebuilt every
+       frame (mp-phoneframe: 0.8 ms of a 4 ms frame in BroTown, 1.3 of 6 at a
+       fight, on this box).  As render groups of their own, a change in one
+       layer rebuilds only that layer's list, and the ground and the objects,
+       which hardly change, keep theirs.
+       The SAME PICTURE: each layer sits at the world's origin unscaled, so
+       its group draws with the world's own camera matrix, the same numbers
+       in the same order (mp-layergroups compares held frames pixel for
+       pixel).  `shadows` stays in the world's list: it is drawn through a
+       filter (lightfx/shadows.js) and hardly changes.
+       `?nolayergroups` is the world as one list, to compare. */
+    if (LAYER_GROUPS && worldContainer.isRenderGroup && name !== 'shadows') layer.isRenderGroup = true;
     layers[name] = layer;
   }
 
@@ -650,6 +676,8 @@ export async function createPixiApp(canvas) {
      made before this (module-level filters) are covered too; once a page */
   try { installBindGroupFix(); } catch (e) { /* Pixi as it ships */ }
   try { installTexturePoolTrim(); } catch (e) { /* the pool as Pixi ships it */ }
+  try { installQuietClear(); } catch (e) { /* Pixi's clear as it ships */ }
+  try { installLayerUniforms(); } catch (e) { /* every render group pushed as Pixi does */ }
   try {
     const app = new Application();
     const putBack = withoutDepthBuffer(canvas);   /* v2.3.3072 */

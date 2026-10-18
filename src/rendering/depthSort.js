@@ -117,6 +117,27 @@ export function groundOf(c) {
   return Number.isFinite(y) ? y : NaN;
 }
 
+/* ═══ v2.3.3347: A NEW KEY IS WRITTEN QUIETLY WHILE THE ORDER HOLDS ═══
+   The owner: "iterate on what best improves framerate without loss of
+   quality (or negligible loss) for phone gameplay".  Pixi's zIndex setter
+   marks the layer for a re-sort AND its render group for a whole draw-list
+   rebuild (sortMixin depthOfChildModified) whenever a key changes -- and a
+   key is a ground line rounded to the pixel, so anything walking changes its
+   key nearly every frame: at a fight, ~7 rebuilds asked for a frame
+   (mp-phoneframe), for an order that had not changed at all.
+   So the keys are worked out first.  When the children already stand in
+   their order (each key no smaller than the one before), Pixi's stable sort
+   by them would leave them exactly where they are, so the keys are stored
+   without telling Pixi (the setter's own field, `_zIndex`): nothing to sort,
+   nothing to rebuild, and the stored keys are fresh for the next sort that
+   anything else asks for.  When the order has changed, every key goes
+   through the setter as before, and Pixi sorts.  The same draw order, frame
+   for frame.  `?zindexall` writes every key through the setter, to compare. */
+const ZINDEX_ALL = typeof location !== 'undefined' && /[?&]zindexall\b/.test(location.search || '');
+const _keys = [];
+/* probe only (the QA harness's __btProbe): how many sorts were left quiet */
+const _probe = typeof window !== 'undefined' && window.__btProbe ? (window.__btDepthQuiet = { quiet: 0, loud: 0 }) : null;
+
 /**
  * Give every child of a sortable layer a depth key taken from its ground
  * contact line, so Pixi's own sort orders them back-to-front.
@@ -134,11 +155,15 @@ export function groundOf(c) {
 export function applyGroundSort(layer) {
   if (!layer || !layer.children) return;
   const kids = layer.children;
-  for (let i = 0; i < kids.length; i++) {
+  const n = kids.length;
+  if (_keys.length < n) _keys.length = n;
+  let inOrder = true, prev = -Infinity;
+  for (let i = 0; i < n; i++) {
     const c = kids[i];
     if (!c) continue;
     const y = groundOf(c);
     const k = Number.isFinite(y) ? Math.round(y) : 0;
+    let key;
     /* v2.3.2816: a RIDER -- a building's moving pieces (worldLife.js), which
        stand on their host's ground line -- sorts a quarter step after the
        host: over the building and anything else on its row, but UNDER a
@@ -149,12 +174,28 @@ export function applyGroundSort(layer) {
     const host = c._ridesOn;
     if (host && !host.destroyed && host.parent === c.parent) {
       const hy = groundOf(host);
-      c.zIndex = (Number.isFinite(hy) ? Math.round(hy) : k) + 0.25;
-      continue;
+      key = (Number.isFinite(hy) ? Math.round(hy) : k) + 0.25;
+    } else {
+      /* v2.3.2748: a figure standing in front of a building's real base is
+         lifted just over it (see raiseOverProps) */
+      key = c._raiseTo != null ? c._raiseTo : k;
     }
-    /* v2.3.2748: a figure standing in front of a building's real base is
-       lifted just over it (see raiseOverProps) */
-    c.zIndex = c._raiseTo != null ? c._raiseTo : k;
+    _keys[i] = key;
+    if (key < prev) inOrder = false;
+    prev = key;
+  }
+  if (inOrder && !ZINDEX_ALL) {
+    for (let i = 0; i < n; i++) {
+      const c = kids[i];
+      if (c && c._zIndex !== _keys[i]) c._zIndex = _keys[i];
+    }
+    if (_probe) _probe.quiet++;
+    return;
+  }
+  if (_probe) _probe.loud++;
+  for (let i = 0; i < n; i++) {
+    const c = kids[i];
+    if (c) c.zIndex = _keys[i];
   }
 }
 
