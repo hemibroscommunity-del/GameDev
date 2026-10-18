@@ -2912,6 +2912,22 @@ remnant to migrate server-side, not a mode to preserve.
     - test-world-core "the Gem Works", `mp-buildingrooms` (the tabs),
       `mp-wheeldoors`, `mp-shieldgem` (a shield's gem is set on the Set gems
       tab): docs/specs/gem-works.md.
+  - Since v2.3.3382 THE TOWN HALL'S FLAG WAVES -- the owner: "make the town
+    square flag wave using code it looks silly being still":
+    - the flag is painted into the Town Hall's picture (no flag object), so its
+      cloth is CUT OUT of the page as it loads (wheelLife.js `cutFlag`): its
+      colour numbers copied into a little palette picture of its own, then set
+      see-through in the page (uploaded again) -- once per page SOURCE (a
+      mended building finds the cut made); never where the cloth does not
+      count `n` (buildingLife.js's `flag` entry on the picture's own pixels:
+      `box`, `keep`, `pole`), nor with `?nopalette`, WebGL1 or `?nolife`;
+    - a 9 x 4 MeshPlane in the building's life, pinned at the pole, waved by
+      worldLife.js `_updateWheelFlags` (the old map's flags' motion, `windAt`
+      and the trees' gusts; at rest, as painted, under `__btAmbienceOff`) via
+      wheelObjects.js `forEachWheelFlag`; casts no shadow;
+    - test-world-core "the Town Hall's flag", `mp-flagwave` (13),
+      `window.__btWheelFlags()`: docs/specs/flag-wave.md, WORLD-MAP-PIPELINE
+      "The Town Hall's flag waves".
   - Since v2.3.3298 THE WHEEL IS BUILT IN BLOCKS ROUND YOU -- the owner: "the
     game map needs to be larger. It goes from lvl 1 monsters to lvl 20+ way too
     quickly. Maybe 5x larger map is needed", choosing "Rebuild for 5x". Step 1,
