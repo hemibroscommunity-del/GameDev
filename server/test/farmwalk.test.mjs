@@ -10,7 +10,7 @@
  *
  * The client's rules for it (src/game/farmWork.js, src/data/farmLayout.js --
  * no imports, so node runs them) against the worker's own:
- *   1. the farmer's moves (v2.3.3334, the owner's three sheets cut by
+ *   1. the farmer's moves (v2.3.3340, the owner's three sheets cut by
  *      tools/make_farm_anims.py into src/data/farmAnims.js): each step plays
  *      its own -- the hoe, the watering can, the kneel -- every frame of it,
  *      from the rest pose to the rest pose, the work landing on the frames

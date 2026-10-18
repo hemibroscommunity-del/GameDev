@@ -1,4 +1,4 @@
-# The farm you walk (v2.3.3136; the farmer's own moves v2.3.3334)
+# The farm you walk (v2.3.3136; the farmer's own moves v2.3.3340)
 
 > Owner, 2026-10-06: *"Hold on I don't want this type of farming. I want your
 > character to be able to walk around on the farm. I want the planting process
@@ -16,7 +16,7 @@
 >
 > And then (2026-10-17): *"Do any animations need to be built? I'd like to
 > have animations during the farming process perhaps on a sprite sheet."* They
-> made three sheets from the prompts they were given (v2.3.3334, "The
+> made three sheets from the prompts they were given (v2.3.3340, "The
 > farmer's own moves" below).
 
 Until now the beds lived in the Feed & Seed's window: pick a tool, tap a
@@ -87,7 +87,7 @@ Farming level can plant. With two or more kinds in the bag, each kind's ripe
 picture sits over the button and a tap picks one. That is the only choice
 farming asks of you, made where you stand.
 
-## The farmer's own moves (v2.3.3334)
+## The farmer's own moves (v2.3.3340)
 
 The owner asked for animations on a sprite sheet. They were given three
 prompts and one reference picture (the fire-lighter with his log taken out),
@@ -380,7 +380,7 @@ two pictures still to come.
   worker's farm, the kill switch), `mp-farmorders` and `mp-wheeldoors` (the
   farm's gate) still run.
 - mp-farmwalk's memory check (the farm holding less than the Wheel, the two
-  together) fails, and fails the same way on main (v2.3.3334: the farm 102.1
+  together) fails, and fails the same way on main (v2.3.3340: the farm 102.1
   MB on the graphics chip, 104.6 on main, the Wheel 71.3). Most likely since
   v2.3.3190, which cut the Wheel's from about 104 MB to 72 by keeping its
   ground and objects as colour numbers (CLAUDE.md, "Memory is budgeted"); the

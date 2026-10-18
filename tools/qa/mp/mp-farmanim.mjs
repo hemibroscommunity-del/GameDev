@@ -1,4 +1,4 @@
-/* ═══ THE FARMER'S OWN MOVES, ON A PHONE (v2.3.3334) ═══
+/* ═══ THE FARMER'S OWN MOVES, ON A PHONE (v2.3.3340) ═══
  *
  * The owner, 2026-10-17: "I'd like to have animations during the farming
  * process perhaps on a sprite sheet."  They made three in ChatGPT -- the hoe,

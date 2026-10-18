@@ -979,9 +979,9 @@ The Feed & Seed's farm (v2.3.3127, docs/specs/farm.md) draws its crops, seeds an
 - **Moved to `docs/art/FARM-ART-PROMPTS.md`** (v2.3.3279): the sixteen crops, the sixteen seed packets, and the five dishes with compost, three sheets on the bag's own style key. The white-background prompt that was here is retired: a white ground cuts out badly round the cloudpetal's and frostberry's pale colours.
 - **In the game (v2.3.3281):** all three sheets, cut by `tools/ui/cut-bag-icons.py` (docs/specs/bag-icons.md).
 
-### The farmer's moves: hoe, watering can, kneel (v2.3.3334)
+### The farmer's moves: hoe, watering can, kneel (v2.3.3340)
 
-- **In the game (v2.3.3334):** your three sheets, kept as you sent them in `tools/farm_anim_src/` and cut by `tools/make_farm_anims.py` (docs/specs/farm-walk.md, "The farmer's own moves"). Digging plays the hoe, watering the can, and planting, fertilizing and harvesting the kneel. The game repaints the man in each player's skin, trousers and boots, and puts their shirt, hair, hat and beard on him.
+- **In the game (v2.3.3340):** your three sheets, kept as you sent them in `tools/farm_anim_src/` and cut by `tools/make_farm_anims.py` (docs/specs/farm-walk.md, "The farmer's own moves"). Digging plays the hoe, watering the can, and planting, fertilizing and harvesting the kneel. The game repaints the man in each player's skin, trousers and boots, and puts their shirt, hair, hat and beard on him.
 - **Attach:** `docs/art/farm-moves-reference.png`, the bro from your fire-lighting sheet with the log taken out. Attach nothing else. (Here the bro is attached on purpose: these are his own moves, not world art.)
 - **How:** One sheet a chat. If one frame is wrong, ask for the whole sheet again: frames from different chats won't line up. Send the new sheet in chat and a session puts it in.
 - **Not made yet: the shirt and the armour drawn on him** (below). Until they are, the game cuts a shirt out of the bare body itself, and where an arm is in front of his body the whole arm comes out in the shirt's colour; a player in armour shows that shirt.

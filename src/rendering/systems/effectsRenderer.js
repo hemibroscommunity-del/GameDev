@@ -281,8 +281,8 @@ const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
 const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHpFor /* v2.3.3035: a timer harvest's bar reads the node's HP; v2.3.3251: by its type */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
-import { farmWorkFrame, farmAnimOf } from '@/game/farmWork.js';   /* v2.3.3334: the farmer's own moves, frame by frame */
-import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';   /* v2.3.3334: the owner's three farm animations, cut by tools/make_farm_anims.py */
+import { farmWorkFrame, farmAnimOf } from '@/game/farmWork.js';   /* v2.3.3340: the farmer's own moves, frame by frame */
+import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';   /* v2.3.3340: the owner's three farm animations, cut by tools/make_farm_anims.py */
 import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
@@ -463,7 +463,7 @@ export const CHOP_STANDIN_H = 136.8;
  * The pan follows (COOK_PAN_DX is a share of this). */
 export const COOK_STANDIN_H = 73.9;
 
-/* ═══ v2.3.3334: THE FARMER'S SIZE, ONE NUMBER ═══
+/* ═══ v2.3.3340: THE FARMER'S SIZE, ONE NUMBER ═══
  * The farmer's three moves (src/data/farmAnims.js) are cut so his head, ears
  * to ears at the eyes, is FARM_ANIM_HEAD (64) px wide in every strip -- the
  * owner's three sheets were drawn at three sizes (heads 143, 121, 114 px) and
@@ -614,12 +614,12 @@ const DRESSED_MAX = 10;
    .shirt.scale, declared further down -- so its pixels are that much smaller
    again; found by mp-gatherlook, his stripes 79% of yours without it) */
 const SHIRT_PATTERN_K = { chop: 170 / 94.5, cook: 85 / 25.5, fire: 381 / 94.5 / 0.85, combat: 188 / 94.5,
-  /* v2.3.3334: the farmer's three, matched by the head as the cook is: his
+  /* v2.3.3340: the farmer's three, matched by the head as the cook is: his
      FARM_ANIM_HEAD over the walking head in the 128 sheet */
   farmhoe: FARM_ANIM_HEAD / 25.5, farmwater: FARM_ANIM_HEAD / 25.5, farmkneel: FARM_ANIM_HEAD / 25.5 };
 /* the cook's shirt is one garment, pinned (COOK_SHIRT_FRAME): only it is baked */
 const DRESSED_ONE_FRAME = { cook: 22 };
-/* v2.3.3334: a dressed strip's cache key -- one place, as the farm waits for
+/* v2.3.3340: a dressed strip's cache key -- one place, as the farm waits for
    its own (_warmFarmDressed) and lets them go (_freeFarm) */
 function _dressedKeyOf(item, pose, dir, look, tint, mirror) {
   const side = sideForDir(dir);
@@ -905,7 +905,7 @@ function _projSrcPx(tex) {
 
 function _isGatheringStandIn(skillKey) {
   return skillKey === 'chop' || skillKey === 'cook' || skillKey === 'fire'
-    || FARM_POSES.has(skillKey);   /* v2.3.3334: the farmer's three, in the same layer and capeless */
+    || FARM_POSES.has(skillKey);   /* v2.3.3340: the farmer's three, in the same layer and capeless */
 }
 
 /* Place the cape and then drop its BACK half under the stand-in body.  The
@@ -3387,7 +3387,7 @@ export class EffectsRenderer {
     this.cookChestSprite.anchor.set(0.5, 1);
     this.cookChestSprite.visible = false;
     this.gestureLayer.addChild(this.cookChestSprite);   /* v2.3.1713: above trees */
-    /* ═══ v2.3.3334: THE FARMER'S OWN MOVES ═══
+    /* ═══ v2.3.3340: THE FARMER'S OWN MOVES ═══
        (_updateFarmWork).  His body baked in your skin, trousers and boots,
        your shirt over it, and the hoe or the can over both, as drawn: three
        sprites in this layer, created in that order.  The head's traits are
@@ -4107,7 +4107,7 @@ export class EffectsRenderer {
        43) and the fire-lighter's (101 and 90-100, at his 512 frame) fit their
        0.91 and 1.98 within a tenth, and stay. */
     this._skillTraitMul = { chop: 0.91, cook: 1.65, fire: 1.98, sword: 1.03, sword_se: 1.03, sword_e: 1.03, sword_n: 1.03, bow_e: 1.0, bow_sw: 1.0, bow_s: 1.0, bow_nw: 1.0, bow_n: 1.0 };
-    /* v2.3.3334: the farmer's three -- his head is FARM_ANIM_HEAD px in every
+    /* v2.3.3340: the farmer's three -- his head is FARM_ANIM_HEAD px in every
        strip, so FARM_ANIM_HEAD / 51, the fire-lighter's rule */
     for (const a of Object.keys(FARM_ANIMS)) this._skillTraitMul[FARM_ANIMS[a].pose] = FARM_ANIM_HEAD / 51;
     /* crowns.json frame widths MUST match the strip-loading FWs above
@@ -4121,7 +4121,7 @@ export class EffectsRenderer {
        of frames 22/23 is gone with the frames themselves.  Cache-busted because
        a browser holding the 29-entry table against an 8-frame strip would clamp
        every hat onto crown[7]. */
-    /* v2.3.3334: + the farmer's three, whose crowns travel with their strips
+    /* v2.3.3340: + the farmer's three, whose crowns travel with their strips
        (src/data/farmAnims.js, made with them by tools/make_farm_anims.py) */
     fetch('/sprites/skills/crowns.json?v=2.3.1715').then((r) => r.json()).then((j) => {
       for (const a of Object.keys(FARM_ANIMS)) j[FARM_ANIMS[a].pose] = FARM_ANIMS[a];
@@ -4296,7 +4296,7 @@ export class EffectsRenderer {
     else if (ex && ex.skill === 'cooking') ensureStandIn('cook', 'cooking');
     if (S._campfire && S._campfire.alive) ensureStandIn('cook', 'a campfire lit');
     if (S.currentZone === 'farm_home') {
-      /* v2.3.3334: the farmer's own moves, made from the moment you are on the
+      /* v2.3.3340: the farmer's own moves, made from the moment you are on the
          farm (under its loading screen: preloadZoneAssets asks first), not on
          the first step -- a strip loaded on first sight is a hitch (the
          preloading law); asked again here for a rebuilt renderer */
@@ -5155,7 +5155,7 @@ export class EffectsRenderer {
     try { this._publishPeerBlockArms(S); } catch (e) { /* no arm this frame: the shield still draws */ }   /* v2.3.2920 */
     this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
-    /* v2.3.3334: the farmer's own moves (v2.3.3136 knelt in the cook's
+    /* v2.3.3340: the farmer's own moves (v2.3.3136 knelt in the cook's
        layers, after the cue that hides them).  Cosmetic -- a throw is logged
        once and the frame goes on. */
     try { this._updateFarmWork(S, now); }
@@ -12991,7 +12991,7 @@ export class EffectsRenderer {
         im.onload = () => res(im); im.onerror = rej; im.src = _url;
       }).then((img) => {
         if (this._destroyed) return;   /* v2.3.3074: a rebuild let this renderer go while it loaded */
-        if (this._gearStrips[key] !== 'loading') return;   /* v2.3.3334: let go of while it loaded (_dropGearStrip) */
+        if (this._gearStrips[key] !== 'loading') return;   /* v2.3.3340: let go of while it loaded (_dropGearStrip) */
         const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
         const n = _twin ? _twin.frames : Math.max(1, Math.round(W / fw));
         const w = _twin ? Math.round(W / n) : fw;
@@ -13030,7 +13030,7 @@ export class EffectsRenderer {
         keepOnGpuOnly(this._captureRenderer, src);
       }).catch(() => { if (this._gearStrips[key] === 'loading') this._gearStrips[key] = []; });
       _fxPreload.push(_p);
-      /* v2.3.3334: kept, so a pose made behind a loading screen can wait for
+      /* v2.3.3340: kept, so a pose made behind a loading screen can wait for
          its own layers (_makeFarm) */
       (this._gearStripP || (this._gearStripP = Object.create(null)))[key] = _p;
       return null;
@@ -13156,7 +13156,7 @@ export class EffectsRenderer {
       e.arr = arr;
       keepOnGpuOnly(this._captureRenderer, src);
     }).catch(() => { if (D.get(key) === e) e.arr = []; });
-    e.p = p;   /* v2.3.3334: the farmer's are waited for behind the farm's loading screen (_warmFarmDressed) */
+    e.p = p;   /* v2.3.3340: the farmer's are waited for behind the farm's loading screen (_warmFarmDressed) */
     /* your gathering figures, warmed behind the loading screen */
     if (this._warmingDressed) _fxPreload.push(p);
     return null;
@@ -13186,7 +13186,7 @@ export class EffectsRenderer {
         ['cook', 'south', 213, [false]], ['fire', 'south', FIRE_FW, [false]]]) {
         for (const m of mirrors) this._dressedShirtFrame(item, pose, dir, fw, 0, look, tint, m);
       }
-      /* v2.3.3334: and the farmer's three, while you are on the farm */
+      /* v2.3.3340: and the farmer's three, while you are on the farm */
       if (this._farmFrames) {
         for (const a of Object.keys(FARM_ANIMS)) this._dressedShirtFrame(item, FARM_ANIMS[a].pose, 'south', FARM_ANIMS[a].fw, 0, look, tint, false);
       }
@@ -15011,7 +15011,7 @@ export class EffectsRenderer {
      baked with your skin (the legless one under greaves), your drawings, the
      shirt, the greaves, the plate, your hair and hat.  Moved here whole from
      _updateExtractionCue, where the campfire's cook is placed, because the
-     FARMER knelt in it too (until v2.3.3334 gave him the owner's own moves,
+     FARMER knelt in it too (until v2.3.3340 gave him the owner's own moves,
      _updateFarmWork): one figure, one set of rules.
      Returns the body sprite, its transform the one every layer copies. */
   _placeCookFigure(x, y, pscale, cookFi) {
@@ -15091,7 +15091,7 @@ export class EffectsRenderer {
     return sp;
   }
 
-  /* ═══ v2.3.3334: THE FARMER'S OWN MOVES ═══
+  /* ═══ v2.3.3340: THE FARMER'S OWN MOVES ═══
      The owner, 2026-10-17: "I'd like to have animations during the farming
      process perhaps on a sprite sheet."  They made three in ChatGPT -- the
      hoe, the watering can, and kneeling with his hands in the soil -- and
@@ -15415,7 +15415,7 @@ export class EffectsRenderer {
     this._destroyed = true;
     for (const off of this._offs) { try { off(); } catch (e) { /* already off */ } }
     this._offs = [];
-    try { this._freeFarm(); } catch (e) { /* v2.3.3334: the farmer's strips and tools; _bakes below has the rest */ }
+    try { this._freeFarm(); } catch (e) { /* v2.3.3340: the farmer's strips and tools; _bakes below has the rest */ }
     clearTimeout(this._dressT);   /* v2.3.3146: a pending re-warm of the dressed shirts */
     if (this._dressed) this._dressed.clear();   /* ...whose sources _bakes lets go of below */
     try { this.clear(); } catch (e) { /* a half-built renderer */ }
