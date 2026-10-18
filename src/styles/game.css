@@ -4819,6 +4819,12 @@ body:has([data-world-chat-toggle][aria-expanded="true"]) .bt-kb-hints{display:no
    review's laptop view).  Its own line says the keys the harvest takes
    ("Drag ↔ or hold E"), and the strip is back the moment it ends. */
 body:has(.bt-rjoy-zone[data-harvest="1"]) .bt-kb-hints{display:none}
+/* v2.3.3399: ...and while the emote picker is up (EmotePanel, v2.3.3391): it
+   sits centred just over the band, and on a computer the strip's rows lay
+   over its second row of moves -- Sit, Sleep, Flop, Bounce -- so a click on
+   one hid the strip instead of sitting down.  B, the picker's key, is on the
+   strip; the strip is back when the picker goes. */
+body:has([data-emote-picker]) .bt-kb-hints{display:none}
 /* ═══ v2.3.3399: THE QUEST COACH STANDS ASIDE UNDER A WINDOW ═══
    QuestCoach.jsx: "a coach mark stamped across an open quest dialogue would
    be a straight downgrade", and it keeps off by drawing only when its control

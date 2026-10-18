@@ -82,7 +82,9 @@ the emotes' own button, the chat box's smiley, wears the B.
   INPUT / TEXTAREA guard): "jplkoibm" in chat is just words.
 - The keys strip moved right of the bell (it sat over "Tab Swap" and "C
   Chat" on every computer), 310 px wide to keep five rows, and stands aside
-  while the chat feed the bell opens is up over the same corner.
+  while the chat feed the bell opens is up over the same corner, and while
+  the emote picker is up: its rows lay over the picker's second row of moves,
+  so a click on Sit, Sleep, Flop or Bounce hid the strip instead.
 
 ## Adding a key
 
@@ -98,8 +100,9 @@ the emotes' own button, the chat box's smiley, wears the B.
 `mp-deskkeys` (a computer, real key presses; and a phone): the six letters
 and the M, the strip clear of the bell and listing 1-3; each key opens its
 page and closes it, J then L swaps, I to rest and I folding the band; B
-opens the emotes, whose ✕ wears Esc and Esc closes them, and the chat box's
-smiley wears B; Esc on
+opens the emotes, whose ✕ wears Esc and Esc closes them, every button in the
+picker answers a click (the strip stood over four), and the chat box's smiley
+wears B; Esc on
 More > Settings goes back a step, then shuts; Ctrl+J and Ctrl+M left to the
 browser; typing in chat opens nothing; M and Esc on the world map; Esc on the
 bank, Diego, Ace, the daily rewards, and on the rewards over the bank one at

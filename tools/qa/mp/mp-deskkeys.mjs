@@ -119,6 +119,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await key(P, 'KeyB', 700);
     const e1 = await picker();
     const emoteX = await capOf(P, '[data-emote-close]');
+    /* every button in the picker answers a click at its middle: the keys
+       strip, outside the game's wrapper, painted over its second row */
+    const reach = await P.page.evaluate(() => {
+      const all = Array.from(document.querySelectorAll('[data-emote-picker] button'));
+      const hidden = all.filter((b) => {
+        const r = b.getBoundingClientRect();
+        if (!(r.width > 0 && r.height > 0)) return false;
+        const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return !(at && (at === b || b.contains(at)));
+      }).map((b) => b.getAttribute('aria-label') || b.textContent.trim().slice(0, 16));
+      const strip = document.querySelector('.bt-kb-hints');
+      return { buttons: all.length, hidden, strip: !!strip && getComputedStyle(strip).display !== 'none' };
+    });
+    rec.ok('...every button in it answers a click, the keys strip standing aside',
+      reach.buttons >= 8 && reach.hidden.length === 0 && !reach.strip, reach);
     await key(P, 'Escape', 700);
     const e2 = await picker();
     await key(P, 'KeyB', 700);
