@@ -1894,6 +1894,16 @@ remnant to migrate server-side, not a mode to preserve.
       TRAPS §194, `mp-savedload` (the race made
       certain: Pixi's file held back while a page error sends a report; and the
       context taken bare by the test).
+    - since v2.3.3450 THE WATCHDOG'S SAMPLE NEVER WAITS ON THE GPU -- found by
+      `mp-phoneframe` (the owner: "iterate on what best improves framerate
+      ... for phone gameplay"): all of a sample's time was `gl.getError()`,
+      which makes the page wait for the browser's GPU side to work through the
+      frame, ~10 ms here every 5 s, a hitch. The errors are asked for on a
+      context's FIRST sample only (BroTown.jsx `T.proven`); after that the
+      thumbnail is cleared see-through before the blit (`clearBufferfv`, the
+      clear colour Pixi keeps untouched), and one that comes back see-through
+      everywhere was not copied and is taken the old way. `?wdgeterror` asks
+      every time; `mp-wdsample` counts the calls.
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:
@@ -1953,6 +1963,17 @@ remnant to migrate server-side, not a mode to preserve.
       on the open sea, none on a running river; `?caustics=k` (0-2);
     - test-world-core "the water's frozen web of light taken out", `mp-wheelwaves`:
       docs/specs/moving-water.md.
+    - since v2.3.3448 THE WEB IS WORKED OUT ONLY WHERE IT SHOWS -- the owner's
+      "iterate on what best improves framerate without loss of quality": it
+      fades in and out in big stretches (`brk`), and where it is faded right
+      out (about half the open sea at any moment, a fifth of the shallows and
+      fresh water) the bend, the wobble and the nine cells -- most of the
+      program's work -- were worked out and mixed in at 0; they are skipped
+      (`if (brk > 0.0)`), the picture the same to the bit; `?webskip=0` and
+      `window.__btWaves.webAll(on)` are the program as it was; only a phone
+      shows the saving (software graphics work out every branch for every pixel);
+      mp-wheelwaves 4b draws the water both ways: moving-water.md "Worked out
+      only where it shows".
   - Since v2.3.3022 the TOWN IS LAID ROOMIER -- the owner: "The town center's
     buildings feel too squished together. I think brotown itself might need
     to be bigger to accommodate":
@@ -4143,6 +4164,18 @@ Two protocol versions coexist; both must keep working:
   in time for the screen (`frameNote`) -- the owner's first run read 60 in
   every step, 17 ms a frame, and was told the chip took most of each, when
   17 ms is only a 60 Hz screen's own refresh.
+- The processor's side of a phone's frame, side by side (v2.3.3449,
+  docs/specs/draw-lists.md): `QA_DIST=dist-prof node tools/qa/mp/run.mjs
+  phoneframe` stands a 3x phone page in BroTown and at a Flame Fields fight
+  (mp-frameprofile's profile is BroTown's alone). Per scene it reports:
+  - the frame's cost by stage;
+  - a CPU profile mapped to the source (build `dist-prof` first:
+    `npx vite build --minify false --sourcemap --outDir ../dist-prof`);
+  - the WebGL calls a frame and the draw list's batches;
+  - every draw-list rebuild with its cause.
+  `BT_PF_AB='<switches>'` puts the game as it was beside it, and
+  `BT_PF_VARIANTS='a|b'` ranks address switches. This box draws in software,
+  so read the JavaScript and the GL calls, never the frames a second.
 
 ## Conventions
 
@@ -4290,6 +4323,28 @@ Two protocol versions coexist; both must keep working:
       box's software chip a frame 20-27% longer in BroTown and 14-21% among
       trees and water -- not measured on a phone:
       docs/specs/palette-textures.md.
+    - since v2.3.3447 ONE DRAWING PROGRAM FOR EVERY SPRITE -- the owner:
+      "iterate on what best improves framerate without loss of quality":
+      `ONE_BATCHER` (paletteTex.js) draws what the default, sharp and
+      colour-numbers batchers drew, each branch the very lines of the program
+      it replaces (`SHARP_SAMPLE_GLSL` shared with sharpPixels.js), chosen by a
+      code in the vertex's texture id (`slot + 64 x code`), the colours' atlas
+      bound in the last unit; built behind the loading screen
+      (`setOneBatchRenderer`), the three programs if it does not link;
+      measured on top of v2.3.3449's layers: draw calls a frame 50 -> 30 in
+      BroTown and 71 -> 28 at a fight, program switches 33 -> 6 and 58 -> 8,
+      the same frame to the pixel (`mp-onebatch`); NOT WHERE THE PICTURE IS
+      DRAWN IN SOFTWARE: a software rasterizer runs every branch for every
+      pixel (`tools/qa/qa-branchcost.mjs`), so there the one program costs
+      all three reads and this box drew half the frames a second with it --
+      a renderer whose name says software (`oneBatchChoice`) keeps the three,
+      so the QA box and CI draw as before, and `?onebatch=1` tests the one
+      here (`BT_QA_QUERY=onebatch=1` for any scenario: the harness adds it
+      to every page; TRAPS §225); what one bigger program costs a phone's
+      chip a pixel cannot be measured here, so `?onebatch=0` is the three
+      programs and the Speed test times them as a step of its own
+      (`threeprog`, `setOneBatchLive`), its card saying which way is faster
+      on that phone: docs/specs/one-batch.md.
   - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
     the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
     home again, three times. Each kind of memory's highest reading must stay
@@ -4487,6 +4542,29 @@ Two protocol versions coexist; both must keep working:
   - A new key goes in the table and on its button in the same PR; a new
     window's ✕ takes `data-esc` (`"up"` if it acts on pointerup).
   - The keys strip lists 1-3 and sits right of the bell. `mp-deskkeys`.
+- **A STRUCTURAL CHANGE REBUILDS ITS LAYER'S DRAW LIST (v2.3.3449, TRAPS
+  §218, docs/specs/draw-lists.md).** Pixi rebuilds a render group's whole
+  draw list for any `visible` / `renderable` / `zIndex` / `blendMode` change,
+  an addChild or removeChild, a sprite's texture from outside its batch, or
+  any change to a small Graphics, `clear()` included. Each world layer but
+  `shadows` is its own render group, so such a change rebuilds only its layer
+  (`?nolayergroups` is the world as one list). In the big layers -- the
+  ground (`tiles`) and the depth-sorted objects (`entities`,
+  `gatherNodesFront`) -- make no structural change every frame:
+  - redraw a shape only when what it draws changes, or move or tint it;
+  - the depth sort gives Pixi a key only when the order changes
+    (depthSort.js; `?zindexall` is every key, as before);
+  - an empty shape's `clear()` is no change (quietClear.js, `?loudclear`).
+  `mp-phoneframe`'s rebuild census names every rebuild and its caller. And a
+  still sprite is packed again only when its layer is rebuilt, so a switch
+  read as a sprite is packed (`window.__btShadeOff`, `__btSharpOff`) is a
+  `liveSwitch` (drawLists.js): a flip rebuilds every list; a figure's shade
+  span is re-read by `refreshFigureShades` (formShade.js); and
+  mp-layergroups forces every list to rebuild in a held frame and wants no
+  pixel changed. A layer draws with the world's own camera numbers, an empty
+  one skipped (layerUniforms.js, `?layerpush` is Pixi's push and pop a group):
+  a group's `inverseParentTextureTransform` is read ONCE a frame, as Pixi's
+  getter keeps nothing for a second read.
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,

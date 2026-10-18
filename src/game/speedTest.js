@@ -12,6 +12,9 @@
  *   - with everything on, as you play;
  *   - with the shadows (and the shine) off, then the metal shine alone, then
  *     the water still, then at a lower resolution (2x, a phone above 2x only);
+ *   - v2.3.3447: and the sprites drawn the old way, by three programs instead
+ *     of one (paletteTex.js), which says what the one saves on that phone --
+ *     or that it costs (a note, never "the biggest gain");
  *   - then all of those off at once;
  * and puts everything back -- for this page only, nothing is saved, so a page
  * that dies mid-test comes back as it was.  A card shows the frames a second
@@ -26,6 +29,7 @@
 import { COL } from '@/ui/mobile/dash/common.js';
 import { lightFxOn, setLightFx } from '@/rendering/lightfx/lightFx.js';
 import { sheenOn, setSheen } from '@/rendering/lightfx/glint.js';
+import { oneBatchOn, setOneBatchLive } from '@/rendering/paletteTex.js';   /* v2.3.3447 */
 import { renderDpr, setRenderResLive } from './renderRes.js';
 
 const SETTLE_MS = 1500;
@@ -54,6 +58,10 @@ function steps() {
     { k: 'noshadow', label: 'No shadows (and no shine)', off: { light: true } },
     { k: 'noshine', label: 'No metal shine', off: { shine: true } },
   ];
+  /* v2.3.3447: the sprites drawn the old way, by three programs instead of
+     one (paletteTex.js ONE_BATCHER), so the card says what the one saves on
+     this phone */
+  if (oneBatchOn()) list.push({ k: 'threeprog', label: 'Three drawing programs (the old way)', off: { threeProg: true }, old: true });
   if (w && w.off && w.on) list.push({ k: 'still', label: 'Still water', off: { water: true } });
   if (dev > LOW_RES + 0.01) list.push({ k: 'res2', label: 'Lower resolution (' + LOW_RES + 'x, not ' + (Math.round(dev * 10) / 10) + 'x)', off: { res: true } });
   list.push({ k: 'bare', label: 'All of those off', off: { light: true, shine: true, water: !!(w && w.off), res: dev > LOW_RES + 0.01 } });
@@ -66,7 +74,7 @@ function snapshot() {
   const w = waves();
   let water = true;
   try { water = !(w && w.probe) || !!w.probe().on; } catch (e) { water = true; }
-  return { light: lightFxOn(), shine: sheenOn(), water };
+  return { light: lightFxOn(), shine: sheenOn(), water, one: oneBatchOn() };
 }
 
 function setWater(w, on) {
@@ -79,6 +87,7 @@ function apply(off, was) {
   setSheen(off.shine ? false : was.shine, false);
   setWater(waves(), off.water ? false : was.water);
   setRenderResLive(off.res ? LOW_RES : 0);
+  if (was.one) setOneBatchLive(!off.threeProg);
 }
 
 function restore(was) {
@@ -86,6 +95,7 @@ function restore(was) {
   setSheen(was.shine, false);
   setWater(waves(), was.water);
   setRenderResLive(0);
+  if (was.one) setOneBatchLive(true);
 }
 
 /* count what the graphics chip is asked to do, a frame */
@@ -235,8 +245,18 @@ export async function runSpeedTest() {
   }
   const base = rows[0];
   const notes = [];
-  const best = rows.slice(1).reduce((a, x) => (!a || x.fps > a.fps ? x : a), null);
+  /* v2.3.3447: a step that puts back an old way is not a setting to switch
+     off, so it is never "the biggest gain"; it says what the new way saves */
+  const isOld = (x) => !!(list.find((st) => st.k === x.k) || {}).old;
+  const best = rows.slice(1).filter((x) => !isOld(x)).reduce((a, x) => (!a || x.fps > a.fps ? x : a), null);
+  const oldProg = rows.find((x) => x.k === 'threeprog');
   if (base && best && best.fps - base.fps >= 4) notes.push('The biggest gain: ' + best.label.toLowerCase() + ' (+' + (best.fps - base.fps).toFixed(0) + ' frames a second).');
+  if (base && oldProg && base.fps - oldProg.fps >= 2) {
+    notes.push('Drawing with one program instead of three saves ' + (base.fps - oldProg.fps).toFixed(0) + ' frames a second here ('
+      + base.draws.toFixed(0) + ' draws a frame, the old way ' + oldProg.draws.toFixed(0) + ').');
+  } else if (base && oldProg && oldProg.fps - base.fps >= 2) {
+    notes.push('The old way (three programs) was ' + (oldProg.fps - base.fps).toFixed(0) + ' frames a second faster here: please send this card.');
+  }
   if (rows.length && rows.every((x) => x.fps < 33) && Math.max(...rows.map((x) => x.fps)) - Math.min(...rows.map((x) => x.fps)) < 4) {
     notes.push('Every setting ran at about 30: Low Power Mode, or a hot phone, may be holding the frame rate at 30.');
   }
