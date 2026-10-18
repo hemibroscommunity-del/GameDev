@@ -55,8 +55,11 @@ export const EMOTE_MOVES = Object.freeze({
   robot: { kind: 'hold', dance: true, name: 'Robot', icon: '🤖', pop: '🎶', every: 2000 },
   sprinkler: { kind: 'hold', dance: true, name: 'Sprinkler', icon: '💦', pop: '🎵', every: 2000 },
   /* v2.3.3395: Halloween week's dance (game/season.js): its tile shows only
-     then; the worker keeps it any day (a look, never a rule) */
-  zombie: { kind: 'hold', dance: true, name: 'Zombie Shuffle', icon: '🧟', pop: '🎃', every: 2400, season: 'halloween' },
+     then; the worker keeps it any day (a look, never a rule).
+     v2.3.3444: `short`, the name its tile prints -- "Zombie Shuffle" was cut
+     to "Zombie Sh" at the tile's width (EmotePanel), in the real font too;
+     the whole name stays its title. */
+  zombie: { kind: 'hold', dance: true, name: 'Zombie Shuffle', short: 'Zombie', icon: '🧟', pop: '🎃', every: 2400, season: 'halloween' },
 });
 export const EMOTE_MOVE_IDS = Object.freeze(Object.keys(EMOTE_MOVES));
 export const EMOTE_ONCE_IDS = Object.freeze(EMOTE_MOVE_IDS.filter((k) => EMOTE_MOVES[k].kind === 'once'));

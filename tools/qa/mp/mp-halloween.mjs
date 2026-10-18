@@ -1,12 +1,14 @@
 /* HALLOWEEN WEEK (v2.3.3395, docs/specs/halloween.md)
  *
  * The fun & social plan's Halloween items that need no new picture: the
- * Zombie Shuffle dance and the pumpkin speech bubbles, on 24 October to 1
- * November by each phone's calendar (game/season.js; `?halloween=1|0` forces
- * it).  Two phones, one in Halloween week and one not:
+ * Zombie Shuffle dance and the pumpkin speech bubbles, on 18 October (the
+ * 24th until v2.3.3444) to 1 November by each phone's calendar
+ * (game/season.js; `?halloween=1|0` forces it).  Two phones, one in Halloween
+ * week and one not:
  *
  *   1. in Halloween week the Moves tab has a thirteenth tile, the Zombie
- *      Shuffle; out of it, twelve;
+ *      Shuffle, its name whole on the tile ("Zombie", v2.3.3444: it was cut to
+ *      "Zombie Sh"); out of it, twelve;
  *   2. a finger on it: the bro lurches, held, and the worker keeps the pose;
  *   3. the other phone -- out of Halloween week -- still sees him shuffle
  *      (the worker keeps it any day: a look, never a rule) and its pumpkin;
@@ -68,6 +70,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await openMoves(A);
   const ta = await tiles(A);
   rec.ok('in Halloween week the Moves tab has thirteen tiles, the Zombie Shuffle last', ta.length === 13 && ta[12] === 'zombie', ta);
+  /* v2.3.3444: its name whole on the tile -- "Zombie Shuffle" was cut to
+     "Zombie Sh" at the tile's 42 px.  Asserted for the shuffle alone: the
+     others' fit depends on the font this box draws (docs/DEV-TOOLS.md, the
+     fallback is ~30% wider), so they ride in the detail. */
+  const labels = await A.page.evaluate(() => [...document.querySelectorAll('[data-emote-move]')].map((b) => {
+    const s = b.querySelectorAll('span')[1];
+    return { id: b.getAttribute('data-emote-move'), text: s ? s.textContent : null, cut: s ? s.scrollWidth > s.clientWidth : true };
+  }));
+  const zl = labels.find((l) => l.id === 'zombie');
+  rec.ok('...its name whole on the tile: "Zombie"', !!zl && zl.text === 'Zombie' && !zl.cut,
+    { zombie: zl, cutElsewhere: labels.filter((l) => l.cut && l.id !== 'zombie').map((l) => l.text) });
   await A.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/halloween-picker.png` }).catch(() => {});
   await openMoves(B);
   const tb = await tiles(B);

@@ -3,7 +3,8 @@
  * The phone's calendar for the season's looks (the Zombie Shuffle's tile, the
  * pumpkin speech bubbles), read in node:
  *
- *   1. on from 24 October to 1 November, by the local calendar, any year;
+ *   1. on from 18 October (the 24th until v2.3.3444) to 1 November, by the
+ *      local calendar, any year;
  *   2. `?halloween=1` / `?halloween=0` forces it either way for a tab;
  *   3. a move with no season is always on, an unknown season never;
  *   4. every season's move is a held pose the worker keeps any day (a look,
@@ -22,13 +23,14 @@ function check(name, cond, detail) {
 /* ── 1. the calendar ─────────────────────────────────────────────────────── */
 _resetSeasonForTests(null);   /* no address override */
 const day = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0);
-check('1a the window is 24 October to 1 November', HALLOWEEN.FROM.month === 10 && HALLOWEEN.FROM.day === 24 && HALLOWEEN.TO.month === 11 && HALLOWEEN.TO.day === 1);
-const cases = [[2026, 10, 23, false], [2026, 10, 24, true], [2026, 10, 31, true], [2026, 11, 1, true], [2026, 11, 2, false],
-  [2026, 7, 4, false], [2027, 10, 30, true], [2025, 12, 31, false], [2026, 1, 1, false]];
+check('1a the window is 18 October to 1 November', HALLOWEEN.FROM.month === 10 && HALLOWEEN.FROM.day === 18 && HALLOWEEN.TO.month === 11 && HALLOWEEN.TO.day === 1);
+/* v2.3.3444: the 18th to the 23rd are in it now (the owner's "Start today") */
+const cases = [[2026, 10, 17, false], [2026, 10, 18, true], [2026, 10, 23, true], [2026, 10, 24, true], [2026, 10, 31, true], [2026, 11, 1, true], [2026, 11, 2, false],
+  [2026, 7, 4, false], [2027, 10, 18, true], [2027, 10, 17, false], [2027, 10, 30, true], [2025, 12, 31, false], [2026, 1, 1, false]];
 for (const [y, m, d, want] of cases) {
   check('1b ' + y + '-' + m + '-' + d + ' is ' + (want ? 'Halloween week' : 'not'), halloweenOn(day(y, m, d)) === want);
 }
-check('1c the first and last minutes count', halloweenOn(new Date(2026, 9, 24, 0, 0, 1)) && halloweenOn(new Date(2026, 10, 1, 23, 59, 59)) && !halloweenOn(new Date(2026, 9, 23, 23, 59, 59)));
+check('1c the first and last minutes count', halloweenOn(new Date(2026, 9, 18, 0, 0, 1)) && halloweenOn(new Date(2026, 10, 1, 23, 59, 59)) && !halloweenOn(new Date(2026, 9, 17, 23, 59, 59)) && !halloweenOn(new Date(2026, 10, 2, 0, 0, 1)));
 check('1d a time as a number works too', halloweenOn(day(2026, 10, 30).getTime()) === true);
 
 /* ── 2. the address override ─────────────────────────────────────────────── */

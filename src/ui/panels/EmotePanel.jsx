@@ -81,7 +81,7 @@ export function EmotePanel(props) {
     React.createElement("span", { style: { fontSize: 22, lineHeight: '26px' } }, m.icon),
     React.createElement("span", {
       style: { fontSize: 9, lineHeight: '11px', fontWeight: 700, color: '#D6C9A8', whiteSpace: 'nowrap', letterSpacing: '.02em', maxWidth: BTN - 2, overflow: 'hidden' }
-    }, m.dance ? m.name.replace('Bro ', '') : m.name));
+    }, m.short || (m.dance ? m.name.replace('Bro ', '') : m.name)));   /* v2.3.3444: a move's own short name first ("Zombie") */
   };
   return React.createElement(React.Fragment, null,
     React.createElement("div", {

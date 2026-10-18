@@ -4,9 +4,14 @@
  * "Go recommended") that need no new picture: the Zombie Shuffle dance
  * (game/emoteMoves.js, a move with `season: 'halloween'`) and the speech
  * bubbles in pumpkin colours (effectsRenderer _renderChatBubble).  Both are on
- * from 24 October to 1 November by the phone's own calendar -- a look, never
+ * from 18 October to 1 November by the phone's own calendar -- a look, never
  * a rule: the worker accepts the dance any day, so a phone with a wrong clock
  * only shows another phone's shuffle, it never breaks anything.
+ *
+ * v2.3.3444: from the 18th, not the 24th.  The owner looked for it on 18
+ * October 2026, saw nothing (it had not begun), and chose "Start today for
+ * everyone" -- this year and every year after.  The before-and-after pictures:
+ * docs/shots/halloween.md.
  *
  * `?halloween=1` / `?halloween=0` in the address forces it either way for a
  * tab (tests, and the owner trying it out of season).
@@ -15,7 +20,7 @@
 
 export const HALLOWEEN = Object.freeze({
   /* the first and last days, month 1-12 */
-  FROM: Object.freeze({ month: 10, day: 24 }),
+  FROM: Object.freeze({ month: 10, day: 18 }),   /* v2.3.3444: was the 24th (the owner's "Start today") */
   TO: Object.freeze({ month: 11, day: 1 }),
 });
 
