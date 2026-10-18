@@ -42,6 +42,9 @@ const REST_FRAMES = [0, 1, 2, 3, 4, 12, 13];
    through the body's own transform: mp-tierore's first run) -- no rock is
    drawn higher than game/tierOre.js ORE_TOP_MAX_UP, under them */
 const SHOULDERS_UP = 111;
+/* tierOre.js's own geometry for a picked vein (its tier is `lvl` here, the
+   node's gatherLvl in the game) */
+const geo = (t) => oreGeom({ x: t.x, y: t.y, gatherLvl: t.lvl });
 const METALS = [[1, 'copper'], [6, 'iron'], [11, 'blacksteel'], [16, 'titanium'], [21, 'obsidian']];
 
 import { ORE_ART } from '../../../src/data/oreArt.js';
@@ -374,7 +377,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (L.err) { rec.ok(`${metal}: drawn (guard)`, false, L); continue; }
       await P.page.screenshot({ path: join(OUT, `tierore-${metal}.png`) });
       if (art) {
-        const g = oreGeom(t);
+        const g = geo(t);
         rec.ok(`${metal}: drawn with its own picture (${art.w} x ${art.h} px)`, L.texW === art.w && L.texH === art.h, L);
         rec.ok(`${metal}: at its own size, ${art.h * PX} world px tall (2 picture px a game px)`, Math.abs(L.h - art.h * PX) < 0.6 && Math.abs(L.w - art.w * PX) < 0.6, L);
         rec.ok(`${metal}: untinted (its own colours)`, L.tint === 0xffffff, L);
@@ -407,10 +410,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
           !!cov && !cov.err && cov.rest >= 0.999, { rest: cov && cov.rest, frames: fr });
         rec.ok(`${metal}: ...and at the blow, its chips flying, at least 97% of it (${cov && cov.worst != null ? (cov.worst * 100).toFixed(1) : '?'}%)`,
           !!cov && !cov.err && cov.worst >= 0.97, { worst: cov && cov.worst, frames: fr });
-        const topUp = t.y - oreGeom(t).top;
+        const topUp = t.y - geo(t).top;
         rec.ok(`${metal}: the rock is ${Math.round(topUp)} px tall over the point, under the miner's shoulders (${SHOULDERS_UP}): his head and shoulders over it`,
           topUp <= SHOULDERS_UP && !!cov && !cov.err && cov.bodyY === -94, { topUp, bodyY: cov && cov.bodyY });
-        rec.ok(`${metal}: the harvest's bar hangs under its base, on the screen`, !!L2.bar && L2.bar.artBase != null && Math.abs(L2.bar.artBase - oreGeom(t).footY) < 0.6 && L2.bar.y > L2.bar.artBase && L2.bar.cssY < PHONE.height - 200, L2.bar);
+        rec.ok(`${metal}: the harvest's bar hangs under its base, on the screen`, !!L2.bar && L2.bar.artBase != null && Math.abs(L2.bar.artBase - geo(t).footY) < 0.6 && L2.bar.y > L2.bar.artBase && L2.bar.cssY < PHONE.height - 200, L2.bar);
       }
       await P.page.evaluate(() => { window._gameState.current._extraction = null; });
       await P.page.waitForTimeout(300);
@@ -418,7 +421,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (art && t.lvl === 1) {
         /* the rock stops you: from in front of it, walking north into it
            stops your boots short of its middle (the walk test at the feet) */
-        const g = oreGeom(t);
+        const g = geo(t);
         const w = await walkNorth(P, wsPort, myId, t.x, g.footY + 60 - 52, g.top - 40);
         const feet = w.end.y + 52;
         rec.ok(`${metal}: walking north into it stops your boots short of its middle`, w.moved > 10 && feet > (g.top + g.footY) / 2, { w, feet, top: g.top, base: g.footY });
