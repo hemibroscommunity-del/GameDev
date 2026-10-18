@@ -4472,6 +4472,21 @@ Two protocol versions coexist; both must keep working:
   lower-case name: `liveops.test` §8 scans `server/src` for every flag read
   and every `` `<name>: false` `` promised beside "live flags" or "kill
   switch", and fails for one the route would refuse.
+- **THE CAMERA IS ON WHOLE DEVICE PIXELS (v2.3.3444,
+  docs/specs/camera-whole-pixels.md, TRAPS §230).** The owner's "warbled
+  underwater effect" walking diagonally on a PC came from a fractional camera:
+  `roundPixels` rounds each sprite's corners on their own, so each ground
+  tile, building and prop hopped a pixel at its own moment. On a 3x phone
+  that is never seen; on a 1x computer the hops are whole pixels.
+  - `pixiRenderer.update` puts the world container on device px and hands
+    the systems the camera as drawn.
+  - For the scene's update it moves `S.player` on by what the rounding took
+    off, and puts it back before the minimap. So everything drawn from your
+    position (figure, plate, bars, stand-ins, speech bubble) is exactly where
+    the fractional camera had it. A new drawing from your position needs
+    nothing. A renderer must never WRITE the player's place (none does).
+  - `?camsnap=0` is the old camera; `window.__btCamSnap()` is the probe;
+    `mp-camsnap` is the test.
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.

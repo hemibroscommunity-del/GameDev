@@ -7463,3 +7463,30 @@ name well, 46 px buttons) he is 146.2, with 19.6 px of air under his boots and
 19.8 under the logo; each of the five messages is one line inside its slot at
 both short sizes, and mp-ccjoin says the same at 390x844, where on main the
 empty-name reason was two lines reaching 5.3 px over the well and Randomize.
+
+## 230. "roundPixels puts the world on whole pixels, so the camera can stay fractional" (v2.3.3444)
+
+`roundPixels` snaps every CORNER to a whole device pixel, each on its own, after
+the camera is applied. With the camera at a fraction of a pixel, each piece of
+ground, each building and each prop rounds at its own fraction of it: as the
+view glides, every piece moves a whole pixel at a moment of its own, and a
+quad's width and height breathe by a pixel. The note in pixiRenderer.js that
+kept the camera fractional ("moves the whole scene in smooth GPU sub-pixel
+steps") was written before `roundPixels` came on, and stopped being true the
+day it did. On a 3x phone the hops are a third of a CSS px and nobody saw them.
+On a computer (dpr 1) they are whole pixels on a ground shrunk 3.5x, and walking
+diagonally (1.01 px a frame each way on the QA desktop) the camera's fraction
+creeps, so the hops swept across the ground tile by tile: the owner's
+"warbled underwater effect".
+
+**The rule:** whatever is snapped is only as steady as the translation it is
+snapped after. Put the camera (the world container, a render group) on whole
+DEVICE pixels, never CSS px. Keep what the camera follows (the player) where
+the fractional camera had it: the camera holds him still on screen, and his
+snapped plate is still only because it is rounded from that still place.
+
+**Receipt:** mp-camsnap, a 60 fps walk stepped a frame at a time in BroTown's
+ore yard. On a computer the old camera left up to 5.0% (diagonal) and 11.1%
+(straight) of the world's pixels out of step in one frame. On whole device
+pixels it is 0.01% / 0.02% (the lamps), and 0.00% on a phone. Your figure is
+drawn 0 px from where the old camera drew it.
