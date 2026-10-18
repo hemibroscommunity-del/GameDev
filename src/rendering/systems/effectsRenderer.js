@@ -10737,7 +10737,10 @@ export class EffectsRenderer {
            frame's bottom (NODE_ART_BASE). */
         const _artBase = NODE_ART_BASE[node.nodeType];
         node._pixiSprite._groundDy = _tree ? -TREE_FOOT_DY   /* v2.3.3345: its trunk's foot */
-          : _ore ? _ore.footY - node.y   /* v2.3.3345: its rock's base */
+          /* v2.3.3345: its rock's base -- never exactly 0, which the shadows
+             read as a flat thing with no base (casters.js: a fishing hole);
+             the biggest rocks stand at their point, give or take a few px */
+          : _ore ? (_ore.footY - node.y) || -0.001
           : _artBase != null
             ? -(NODE_SPRITE_ANCHOR_Y[node.nodeType] - _artBase) * node._pixiSprite.height : 0;
         node._pixiSprite.zIndex = Math.round((node.y || 0) + node._pixiSprite._groundDy);
