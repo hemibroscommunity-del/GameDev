@@ -247,12 +247,19 @@ void main(void)
     float cg = (0.09 * sea + 0.46 * shallow + 0.38 * fresh) * (1.0 - smoothstep(0.02, 0.10, sp)) * uCaustics * min(k, 1.25);
     if (cg > 0.0) {
         vec2 p = Pa / 42.0;
-        vec2 bend = vec2(vn(p * 0.45 + vec2(t * 0.05, 0.0)), vn(p * 0.45 + vec2(19.19, 7.73 - t * 0.04))) * 2.0 - 1.0;
-        vec2 wob = vec2(vn(p * 2.1 + vec2(t * 0.21 + 5.1, 0.0)), vn(p * 2.1 + vec2(11.3, -t * 0.17))) * 2.0 - 1.0;
-        float q = cellEdge(p + 0.30 * bend + 0.07 * wob, t);
-        float web = step(0.90, q) + 0.45 * step(0.80, q) * step(q, 0.90);
+        /* v2.3.3448: the stretches of web faded right out (brk exactly 0:
+           about half the open sea at any moment, a fifth of the shallows and
+           fresh water) are not worked out -- the web was mixed in at 0 there,
+           so the picture is the same to the bit.  The bend, the wobble and the
+           nine cells were most of this program's work */
         float brk = smoothstep(0.30 + 0.18 * sea, 0.70 + 0.10 * sea, vn(p * 0.9 + vec2(t * 0.10 + 3.3, -t * 0.06)));
-        col = mix(col, vec3(0.86, 0.98, 1.0), clamp(web * brk * cg, 0.0, 0.9));
+        if (brk > 0.0) {
+            vec2 bend = vec2(vn(p * 0.45 + vec2(t * 0.05, 0.0)), vn(p * 0.45 + vec2(19.19, 7.73 - t * 0.04))) * 2.0 - 1.0;
+            vec2 wob = vec2(vn(p * 2.1 + vec2(t * 0.21 + 5.1, 0.0)), vn(p * 2.1 + vec2(11.3, -t * 0.17))) * 2.0 - 1.0;
+            float q = cellEdge(p + 0.30 * bend + 0.07 * wob, t);
+            float web = step(0.90, q) + 0.45 * step(0.80, q) * step(q, 0.90);
+            col = mix(col, vec3(0.86, 0.98, 1.0), clamp(web * brk * cg, 0.0, 0.9));
+        }
     }
 
     /* SPARKLES: one cell in three or so holds one, which flashes now and
@@ -420,8 +427,34 @@ void main(void)
 }
 `;
 
-let _program = null;
-function program() {
+/* ═══ v2.3.3448: THE WEB OF LIGHT WORKED OUT ONLY WHERE IT SHOWS ═══
+   The owner: "iterate on what best improves framerate without loss of quality
+   (or negligible loss) for phone gameplay (iPhone, android)".  The moving web
+   (v2.3.3021) fades in and out in big stretches as a slow noise drifts over
+   it (`brk`), and where it is faded right out it was still worked out --
+   the bend, the wobble and nine cells, most of the program's work -- then
+   mixed in at 0.  Those stretches are skipped now (the `if (brk > 0.0)`
+   above): about half the open sea at any moment, a fifth of the shallows and
+   fresh water, in patches some 50 game px across, so a phone's chip skips
+   them a whole group of pixels at a time.  The picture is the same to the bit
+   (mixing in 0 leaves a colour as it is).  WEB_ALL is the program as it was,
+   for comparison: `?webskip=0` in the address, `window.__btWaves.webAll(on)`
+   live (mp-wheelwaves draws the water both ways and wants 0 px apart).  This
+   test box draws in software, which works out every branch for every pixel,
+   so only a phone's frame rate can show the saving. */
+const WEB_SKIP = '        if (brk > 0.0) {';
+function fragOf(all) {
+  if (FRAG.indexOf(WEB_SKIP) < 0) throw new Error('the water program changed: its skip needs the same edit');
+  return all ? FRAG.replace(WEB_SKIP, '        {') : FRAG;
+}
+let _webAll = false;
+try { if (typeof location !== 'undefined' && /[?&]webskip=0(&|$)/.test(location.search || '')) _webAll = true; } catch (e) { /* the skip */ }
+let _program = null, _allProgram = null;
+function program(all = _webAll) {
+  if (all) {
+    if (!_allProgram) _allProgram = GlProgram.from({ vertex: VERT, fragment: fragOf(true), name: 'bt-wheel-water-all', preferredFragmentPrecision: 'highp' });
+    return _allProgram;
+  }
   if (!_program) _program = GlProgram.from({ vertex: VERT, fragment: FRAG, name: 'bt-wheel-water', preferredFragmentPrecision: 'highp' });
   return _program;
 }
@@ -456,14 +489,19 @@ vec4 pieceAt(highp vec2 uv)
                mix(palColour(ivec2(a.x, b.y), row), palColour(b, row), f.x), f.y);
 }
 `;
-function palFrag() {
+function palFrag(all) {
+  const F = fragOf(all);   /* v2.3.3448: the skip, or the web worked out everywhere */
   const a = 'uniform sampler2D uPiece;', b = 'texture(uPiece, vUV + off * uUvPerPx)';
-  if (FRAG.indexOf(a) < 0 || FRAG.indexOf(b) < 0) throw new Error('the water program changed: its palette twin needs the same edit');
-  return '#version 300 es\n' + FRAG.replace(a, PAL_SAMPLE).replace(b, 'pieceAt(vUV + off * uUvPerPx)');
+  if (F.indexOf(a) < 0 || F.indexOf(b) < 0) throw new Error('the water program changed: its palette twin needs the same edit');
+  return '#version 300 es\n' + F.replace(a, PAL_SAMPLE).replace(b, 'pieceAt(vUV + off * uUvPerPx)');
 }
-let _palProgram = null;
-function palProgram() {
-  if (!_palProgram) _palProgram = GlProgram.from({ vertex: '#version 300 es\n' + VERT, fragment: palFrag(), name: 'bt-wheel-water-pal', preferredFragmentPrecision: 'highp' });
+let _palProgram = null, _palAllProgram = null;
+function palProgram(all = _webAll) {
+  if (all) {
+    if (!_palAllProgram) _palAllProgram = GlProgram.from({ vertex: '#version 300 es\n' + VERT, fragment: palFrag(true), name: 'bt-wheel-water-pal-all', preferredFragmentPrecision: 'highp' });
+    return _palAllProgram;
+  }
+  if (!_palProgram) _palProgram = GlProgram.from({ vertex: '#version 300 es\n' + VERT, fragment: palFrag(false), name: 'bt-wheel-water-pal', preferredFragmentPrecision: 'highp' });
   return _palProgram;
 }
 /* `?waves=k` in the address: the motion k times as strong, 0.25 to 3 (the
@@ -753,7 +791,7 @@ export class WheelWater {
    strength (0 draws the pictures still, through the same quads) */
 if (typeof window !== 'undefined') {
   window.__btWaves = {
-    probe: () => ({ ..._stats, ok: _ok, webgl2: webgl2(), on: wavesOn() && !_liveOff, strength: _uni.uniforms.uStrength, caustics: _uni.uniforms.uCaustics, time: _uni.uniforms.uTime , cover: _cover }),
+    probe: () => ({ ..._stats, ok: _ok, webgl2: webgl2(), on: wavesOn() && !_liveOff, strength: _uni.uniforms.uStrength, caustics: _uni.uniforms.uCaustics, time: _uni.uniforms.uTime, webAll: _webAll, cover: _cover }),
     /* v2.3.3441: the ground under open sea hidden (true) or drawn (false),
        at once (mp-seacover draws one held frame both ways) */
     cover: (on) => { _cover = !!on; if (_live && !_live.dead) _live.cover(_cover && !_liveOff); return _stats.covered; },
@@ -764,6 +802,24 @@ if (typeof window !== 'undefined') {
     caustics: (k) => { _uni.uniforms.uCaustics = Math.max(0, Math.min(2, +k || 0)); },
     /* hold the clock (pictures of one moment); null lets it run */
     hold: (sec) => { _held = sec == null ? null : +sec; },
+    /* v2.3.3448: the web of light worked out everywhere (true: the program as
+       it was) or only where it shows, live, every quad drawn now; says how many
+       quads it switched */
+    webAll: (on) => {
+      _webAll = !!on;
+      let n = 0;
+      const W = _live;
+      if (W && !W.dead) {
+        for (const e of W.meshes.values()) {
+          const sh = e.mesh && e.mesh.shader;
+          if (!sh) continue;
+          const pal = sh.glProgram === palProgram(false) || sh.glProgram === palProgram(true);
+          const want = pal ? palProgram(_webAll) : program(_webAll);
+          if (sh.glProgram !== want) { sh.glProgram = want; n++; }
+        }
+      }
+      return n;
+    },
     /* the water layer ALONE over a world rectangle, as RGBA px at `res` px a
        game px (mp-wheelwaves: where it draws, and that it moves) */
     extract: (x, y, w, h, res = 0.5) => {

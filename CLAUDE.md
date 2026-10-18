@@ -1099,6 +1099,24 @@ remnant to migrate server-side, not a mode to preserve.
         add-ore-art.mjs) is a re-bake, which test-world-core's --check demands
         and which deploys the worker: docs/specs/tier-trees.md "Where each one
         grows".
+      - since v2.3.3443 EVERY ROCK 1.4x, COPPER AS TALL AS THE OLD VEIN -- the
+        owner: "the smaller ore size now exposes the unfinished design work
+        around aligning the players worn items during the animation (shirt
+        doesn't fit during animation).  Can you make the ore the original size
+        again but just scale up the other ores to keep the size differences
+        relatively the same?": in the swing the shirt rides up and a band of
+        bare belly shows under its hem (1,340 px over mine-south's fourteen
+        frames); the old vein (top 102.5 px over the point) left 163 showing,
+        the first cut's copper (top 80) 1,331; the base cannot go back north
+        (the baked rock), so all five are cut 1.4x taller (add-ore-art.mjs
+        `ORE_GROW`): copper 81 x 81, its top back at 102.5, 52 showing (1.2x,
+        the old vein's own size, 685), obsidian 178 x 157; from iron on each
+        meets ORE_TOP_MAX_UP and stands further south (obsidian's base 47 px
+        south of the point), no tier past 39; re-baked: every count kept, 198
+        rocks and 195 trees moved, fishing, the commons' first six, monsters
+        and doors not; 1.2 MB decoded (0.6); `mp-tierore` counts the band
+        against the old vein's picture: docs/specs/tier-ore.md "As tall as the
+        old vein again".
     - since v2.3.3402 EACH LAND'S TREES AND ROCKS WEAR ITS ELEMENT -- the
       owner: "add effects to a pine tree to make it look like it belongs in
       that elemental zone but the wood logs stay the same", "keep in mind
@@ -1950,6 +1968,17 @@ remnant to migrate server-side, not a mode to preserve.
       on the open sea, none on a running river; `?caustics=k` (0-2);
     - test-world-core "the water's frozen web of light taken out", `mp-wheelwaves`:
       docs/specs/moving-water.md.
+    - since v2.3.3448 THE WEB IS WORKED OUT ONLY WHERE IT SHOWS -- the owner's
+      "iterate on what best improves framerate without loss of quality": it
+      fades in and out in big stretches (`brk`), and where it is faded right
+      out (about half the open sea at any moment, a fifth of the shallows and
+      fresh water) the bend, the wobble and the nine cells -- most of the
+      program's work -- were worked out and mixed in at 0; they are skipped
+      (`if (brk > 0.0)`), the picture the same to the bit; `?webskip=0` and
+      `window.__btWaves.webAll(on)` are the program as it was; only a phone
+      shows the saving (software graphics work out every branch for every pixel);
+      mp-wheelwaves 4b draws the water both ways: moving-water.md "Worked out
+      only where it shows".
   - Since v2.3.3022 the TOWN IS LAID ROOMIER -- the owner: "The town center's
     buildings feel too squished together. I think brotown itself might need
     to be bigger to accommodate":
