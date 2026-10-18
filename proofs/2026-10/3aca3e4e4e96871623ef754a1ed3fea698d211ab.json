@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3aca3e4e4e96871623ef754a1ed3fea698d211ab",
+  "tree": "6b870862fdb8f7cfc09df28da2685cf2575975a4",
+  "committedAt": "2026-10-17T23:52:59-07:00",
+  "subject": "New Login Keys made by the server: eight words that work on any device (v2.3.3355) (#975)",
+  "files": 5819,
+  "bytes": 639453593,
+  "listingSha256": "6903807fae12446a7c26ed3368ddf4fd39dd274217b758deffa002e9558b155c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
