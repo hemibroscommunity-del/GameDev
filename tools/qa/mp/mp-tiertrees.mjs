@@ -49,14 +49,14 @@ const strikeRange = (lvl) => gatheringMethods._nodeStrikeRange.call({ NODE_STRIK
 const LAG_SLACK = 24;
 
 /* mp-harvestbar's walk: H.hopTo's 100 px a hop, checked against the worker */
-async function travel(P, wsPort, myId, tx, ty) {
+async function travel(P, wsPort, myId, tx, ty, maxLegs = 400) {
   const worker = async () => {
     const a = await H.adminPlayer(wsPort, myId).catch(() => null);
     return (a && a.live) || {};
   };
   const here = () => H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
   const apart = (L, c) => typeof L.x === 'number' && Math.hypot(L.x - c.x, L.y - c.y) > 60;
-  for (let leg = 0; leg < 400; leg++) {
+  for (let leg = 0; leg < maxLegs; leg++) {
     const L = await worker();
     const c = await here();
     if (leg % 10 === 0) console.log(`    travel leg ${leg}: here ${Math.round(c.x)},${Math.round(c.y)} worker ${Math.round(L.x)},${Math.round(L.y)} -> ${Math.round(tx)},${Math.round(ty)} (${Math.round(Math.hypot(tx - c.x, ty - c.y))} px to go)`);
@@ -151,6 +151,15 @@ const reachMap = (P, id) => P.page.evaluate((nid) => {
   const r = l + sp.width, b = t + sp.height;
   const P0 = { x: S.player.x, y: S.player.y };
   let offered = 0, maxD = 0, at = null, inPic = 0, inPicOffered = 0;
+  /* v2.3.3465: which offered spots are DRY at the boots -- every one of the
+     swim test's five looks there (wheelSwim.js SWIM_PROBES) known and not
+     water.  A chop is refused while swimming, and since the v2.3.3401
+     re-bake the maple stands by water. */
+  const T = window.__btWorldTrial, g0 = window.__btPlayerGround ? window.__btPlayerGround() : null;
+  const fdy = g0 ? g0.y - P0.y : 52;
+  const LOOKS = [[0, 0], [-9, 0], [9, 0], [0, -6], [0, 6]];
+  const dryAt = (x, y) => !!(T && T.ground) && LOOKS.every(([ox, oy]) => { const c = T.ground(x + ox, y + fdy + oy); return !!c && !c.water; });
+  const dry = [];
   try {
     for (let y = t - 120; y <= b + 120; y += 8) {
       for (let x = l - 120; x <= r + 120; x += 8) {
@@ -162,12 +171,21 @@ const reachMap = (P, id) => P.page.evaluate((nid) => {
         if (inside) inPicOffered++;
         const d = Math.hypot(x - n.x, y - n.y);
         if (d > maxD) { maxD = d; at = { dx: x - n.x, dy: y - n.y }; }
+        if (dryAt(x, y)) dry.push({ dx: x - n.x, dy: y - n.y, d });
       }
     }
     /* beside the trunk, either side, where the lumberjack stands */
     S.player.x = n.x - 50; S.player.y = n.y; const west = F.nodeReachDist(n) != null;
     S.player.x = n.x + 50; S.player.y = n.y; const east = F.nodeReachDist(n) != null;
-    return { offered, maxD: +maxD.toFixed(1), at, west, east, inPic, inPicOffered };
+    /* the farthest dry spots, at least 48 px apart, so a blocked one has
+       others round the tree to try */
+    dry.sort((p, q) => q.d - p.d);
+    const far = [];
+    for (const p of dry) {
+      if (far.length >= 6) break;
+      if (far.every((q) => Math.hypot(q.dx - p.dx, q.dy - p.dy) >= 48)) far.push({ dx: p.dx, dy: p.dy, d: +p.d.toFixed(1) });
+    }
+    return { offered, maxD: +maxD.toFixed(1), at, west, east, inPic, inPicOffered, offeredDry: dry.length, dry: far, fdy: +fdy.toFixed(1) };
   } finally { S.player.x = P0.x; S.player.y = P0.y; }
 }, id);
 
@@ -387,25 +405,63 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.devOp(wsPort, 'lifeskill', myId, { skill: 'woodcutting', level: 99 });
       await H.waitFor(P, (S) => (((S.rpg || {}).lifeSkills || {}).woodcutting || {}).level || 0, (v) => v >= 99,
         { timeout: 10000, label: 'Woodcutting 99' }).catch(() => null);
-      /* the far edge, 10 px in; its mirror, or halfway in, if that is not ground you can stand on */
+      /* the far edge, 10 px in; its mirror, or halfway in, if that is not ground you can stand on.
+         v2.3.3465: and DRY ground first -- since the v2.3.3401 re-bake the
+         maple stands by water, and in the second sweep of 2026-10-18 its far
+         edge lay in it: the bro swam there, and the tap was refused,
+         "Swimming!" (lifeSkillRewards.js startExtraction), as on a phone.
+         The farthest dry spots the reach offers (reachMap's `dry`), each 10 px
+         in, then the old three; a spot you end up swimming in is passed over. */
+      const inward = (p) => { const L = Math.hypot(p.dx, p.dy), kk = L ? Math.max(0, (L - 10) / L) : 0; return { x: t.x + p.dx * kk, y: t.y + p.dy * kk, dry: true }; };
       const k = reach.at ? Math.max(0, (Math.hypot(reach.at.dx, reach.at.dy) - 10) / Math.hypot(reach.at.dx, reach.at.dy)) : 0;
-      const spots = reach.at ? [
+      const spots = [...(reach.dry || []).map(inward), ...(reach.at ? [
         { x: t.x + reach.at.dx * k, y: t.y + reach.at.dy * k },
         { x: t.x - reach.at.dx * k, y: t.y + reach.at.dy * k },
         { x: t.x + reach.at.dx * 0.5, y: t.y + reach.at.dy * 0.5 },
-      ] : [];
+      ] : [])];
       let stood = null;
+      const tried = [];
       for (const sp of spots) {
-        if (await travel(P, wsPort, myId, sp.x, sp.y)) { stood = sp; break; }
+        /* 60 legs a spot: one inside something solid is given up on, not walked at 400 times */
+        if (!(await travel(P, wsPort, myId, sp.x, sp.y, 60))) { tried.push({ x: Math.round(sp.x), y: Math.round(sp.y), dry: !!sp.dry, got: false }); continue; }
+        await P.page.waitForTimeout(700);
+        const swim = await H.readState(P, (S) => !!(S._wheelSwim && S._wheelSwim.on));
+        tried.push({ x: Math.round(sp.x), y: Math.round(sp.y), dry: !!sp.dry, swim });
+        if (!swim) { stood = sp; break; }
       }
       await P.page.waitForTimeout(700);
       const here = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
       const dist = Math.hypot(here.x - t.x, here.y - t.y);
-      rec.ok('maple: stood at the far edge of its reach (guard)', !!stood, { stood, here, dist: +dist.toFixed(1), reach: reach.at });
+      rec.ok(`maple: stood at the far edge of its reach, out of the water (guard: ${Math.round(dist)} px of its farthest ${Math.round(reach.maxD)})`,
+        !!stood, { stood, here, dist: +dist.toFixed(1), reach: reach.at, dry: reach.dry, offeredDry: reach.offeredDry, tried });
       if (stood) {
         const invBefore = await srvInv(wsPort, myId);
         const started = await tapTree(P, t.id);
-        rec.ok(`maple: tapping it from ${Math.round(dist)} px off starts a chop`, started === true, { dist });
+        /* v2.3.3465: and if not, what the taps met -- in the second sweep of
+           2026-10-18 six taps from 280 px started nothing, out among the sky
+           land's level 31-40 monsters, with nothing to say why: where you stood
+           then, a monster the tap locked or the nearest one, the harvest */
+        const why = started ? null : await P.page.evaluate((nid) => {
+          const S = window._gameState.current;
+          const n = (S.gatherNodes || []).find((g) => g.id === nid);
+          const P0 = S.player;
+          const ms = (S.monsters || []).filter((m) => m && m.alive !== false && m.hp > 0)
+            .map((m) => ({ id: m.id, d: Math.round(Math.hypot(m.x - P0.x, m.y - P0.y)), dn: n ? Math.round(Math.hypot(m.x - n.x, m.y - n.y)) : null }))
+            .sort((a, b) => a.d - b.d).slice(0, 3);
+          const L = S.lockedTarget;
+          return { at: { x: Math.round(P0.x), y: Math.round(P0.y) }, dist: n ? Math.round(Math.hypot(n.x - P0.x, n.y - P0.y)) : null,
+            node: n ? { hp: n.hp, alive: n.alive !== false, respawnAt: n.respawnAt || null } : null,
+            lock: L ? { type: L.type, id: L.id, src: L.src || null } : null, near: ms, dying: !!S._dying,
+            ex: S._extraction ? { skill: S._extraction.skill, status: S._extraction.status } : null,
+            harvest: window.__btHarvest ? window.__btHarvest() : null,
+            /* the harvest's quiet refusals (lifeSkillRewards.js startExtraction):
+               swimming, in the air, the socket not live -- and the popups said */
+            swim: !!(S._wheelSwim && S._wheelSwim.on), jump: !!S._jump,
+            live: S.channel && typeof S.channel.isLive === 'function' ? S.channel.isLive() : null,
+            said: (S.dmgNumbers || []).filter((d) => d && typeof d.text === 'string' && !/^[-+]?\d/.test(d.text)).slice(-4).map((d) => d.text),
+            cam: S.camera ? { x: Math.round(S.camera.x), y: Math.round(S.camera.y), k: S._worldScaleX } : null };
+        }, t.id).catch((e) => ({ err: String(e).slice(0, 200) }));
+        rec.ok(`maple: tapping it from ${Math.round(dist)} px off starts a chop`, started === true, { dist, why });
         const ready = started ? await H.waitFor(P, (S) => (S._extraction ? S._extraction.status : null), (v) => v === 'ready',
           { timeout: 60000, label: 'the maple\'s hits land' }).catch(() => null) : null;
         const probe = ready ? await P.page.evaluate(() => (window.__btHarvest ? window.__btHarvest() : null)) : null;

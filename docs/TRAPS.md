@@ -7708,6 +7708,34 @@ cut_owner_sounds.py renders in mp-cuelevels within 2% of its promise (hurtA
 hurtA was 1.00 and notify 1.14, and bossEnrage (the roar with two thuds under
 it) 2.09 of its 1.3 -- the one mp-cuelevels failed.
 
+## 231. "roundPixels puts the world on whole pixels, so the camera can stay fractional" (v2.3.3469)
+
+`roundPixels` snaps every CORNER to a whole device pixel, each on its own, after
+the camera is applied. With the camera at a fraction of a pixel, each piece of
+ground, each building and each prop rounds at its own fraction of it: as the
+view glides, every piece moves a whole pixel at a moment of its own, and a
+quad's width and height breathe by a pixel. The note in pixiRenderer.js that
+kept the camera fractional ("moves the whole scene in smooth GPU sub-pixel
+steps") was written before `roundPixels` came on, and stopped being true the
+day it did. On a 3x phone the hops are a third of a CSS px and nobody saw them.
+On a computer (dpr 1) they are whole pixels on a ground shrunk 3.5x, and walking
+diagonally (1.01 px a frame each way on the QA desktop) the camera's fraction
+creeps, so the hops swept across the ground tile by tile: the owner's
+"warbled underwater effect". Running straight, the fraction jumps a big step
+each frame and the same hops are a fizz all over: their "shimmering".
+
+**The rule:** whatever is snapped is only as steady as the translation it is
+snapped after. Put the camera (the world container, a render group) on whole
+DEVICE pixels, never CSS px. Keep what the camera follows (the player) where
+the fractional camera had it: the camera holds him still on screen, and his
+snapped plate is still only because it is rounded from that still place.
+
+**Receipt:** mp-camsnap, a 60 fps walk stepped a frame at a time in BroTown's
+ore yard. On a computer the old camera left up to 5.0% (diagonal) and 11.1%
+(straight) of the world's pixels out of step in one frame. On whole device
+pixels it is 0.01% / 0.02% (the lamps), and 0.00% on a phone. Your figure is
+drawn 0 px from where the old camera drew it.
+
 ## 232. "It is position:fixed, so its left and top are the window's" (v2.3.3466)
 
 On a phone they are: the game fills the window. On a computer the game is
