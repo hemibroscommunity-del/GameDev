@@ -179,6 +179,16 @@ function _markTooBig(L, r) {
   return bad;
 }
 
+/* v2.3.3328: is this a mouse-driven browser (game.css's own test) -- asked
+   every frame, so the query list is made once */
+let _fineMq = null;
+function _finePointer() {
+  try {
+    if (!_fineMq && typeof window !== 'undefined' && window.matchMedia) _fineMq = window.matchMedia('(pointer:fine)');
+    return !!(_fineMq && _fineMq.matches);
+  } catch (_e) { return false; }
+}
+
 /* Measure a live control.  A zero-size or missing element yields null and
    its lesson is skipped for this tick — the same degrade-to-fewer-callouts
    rule ControlsTutorial has used since v2.3.1205, and the reason the
@@ -213,6 +223,11 @@ function measure(anchors, L, S) {
     return null;
   }
   for (const a of anchors) {
+    /* v2.3.3328: on a computer the right button comes back only for a harvest
+       (game.css `[data-harvest]`), where its lessons -- "Hold to attack", the
+       special's swipe -- would ring a press that harvests.  They never showed
+       on a computer before (the button measured 0, above), and still do not. */
+    if (_finePointer() && discSideFor(a.sel) === 'R') continue;
     let el = null;
     try { el = document.querySelector(a.sel); } catch (_e) {}
     if (!el) continue;

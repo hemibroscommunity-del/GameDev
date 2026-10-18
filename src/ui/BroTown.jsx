@@ -62,7 +62,7 @@ import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
 import { WeaponSwapButton } from './panels/WeaponSwapButton.jsx'; /* v2.3.3005: the weapon in your hand, under the movement stick -- a tap swaps */
-import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before) */
+import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3328 (a computer's words over the button) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
@@ -6030,6 +6030,31 @@ export var BroTown = function BroTown(_ref0) {
           var _rw = rWrapRef.current;
           var _rWant = _rOn ? '1' : '0';
           if (_rw && _rw.style.opacity !== _rWant) _rw.style.opacity = _rWant;
+          /* ═══ v2.3.3328: ON A COMPUTER THE BUTTON COMES BACK FOR THE HARVEST ═══
+             The owner: "I don't think you can harvest lifeskills right now on
+             the computer."  game.css hides this whole box under pointer:fine,
+             and with it the cue that teaches the gesture and the ring that
+             counts it -- so a computer's harvest stopped at a full bar with
+             nothing on screen to say what came next (gesturePose.js
+             DESK_GESTURE_HINT).  `data-harvest` while one runs brings the box
+             back there (game.css; on a phone it is shown anyway), and over it
+             a line in words while the window is open: drag the way the arrows
+             go with the mouse, or hold E.  Not over a locked try, which asks
+             for nothing.  DOM-compared like every stamp here. */
+          var _hvWant = _ex ? '1' : null;
+          if (_rw && _rw.getAttribute('data-harvest') !== _hvWant) {
+            if (_hvWant) _rw.setAttribute('data-harvest', _hvWant); else _rw.removeAttribute('data-harvest');
+          }
+          if (_rw) {
+            var _dh = _rw._btDeskHint;
+            if (!_dh || _dh.parentNode !== _rw) _dh = _rw._btDeskHint = _rw.querySelector('.bt-rjoy-deskhint');
+            if (_dh) {
+              var _dhText = (_ex && _ex.status === 'ready' && !_ex.locked) ? (DESK_GESTURE_HINT[_ex.skill] || '') : '';
+              if (_dh.textContent !== _dhText) _dh.textContent = _dhText;
+              var _dhShow = _dhText ? '1' : '0';
+              if (_dh.getAttribute('data-show') !== _dhShow) _dh.setAttribute('data-show', _dhShow);
+            }
+          }
           var _rd = rJoyRef.current;
           var _peWant = _rPressable ? 'auto' : 'none';   /* v2.3.2260: PRESSABLE, not painted */
           if (_rd && _rd.style.pointerEvents !== _peWant) _rd.style.pointerEvents = _peWant;
@@ -11882,6 +11907,13 @@ export var BroTown = function BroTown(_ref0) {
     },
     onMouseDown: function onMouseDown(e) {
       if (!stateRef.current._isDesktop) return;
+      /* v2.3.3328: a press during a harvest is the harvest's -- its gesture
+         once the window is open (ExtractionSwipeLayer, which cancels the
+         pointerdown so this mousedown never comes), nothing in the wind-up --
+         and never arms the attack: a swing is refused mid-harvest anyway
+         (playerActions) and the loop drops a held attack each frame, but the
+         press still set the attack's state and the aim for nothing */
+      if (stateRef.current._extraction) return;
       if (e.button === 0) {
         /* Left click — attack toward mouse */
         var S = stateRef.current;

@@ -111,6 +111,65 @@ export function gestureTargetCycles(skill) {
   return GESTURE_TARGET_MS / (GESTURE_QUICK_CYCLE_MS[skill] || 450);
 }
 
+/* The reward grade.  It used to be how early in a 3.5s window a 3-rep meter
+   filled; with the meter now a set amount of work by design, it is how
+   QUICKLY and how STEADILY the player kept the motion going -- measured
+   against GESTURE_TARGET_MS, so a retune of the meter carries the grade with
+   it (v2.3.2761: the owner doubled the target and these moved with it;
+   v2.3.3036: a quarter of it, so perfect is <= 1.8s of motion and 2.25s
+   overall, good <= 3.5s):
+     perfect  a quick pace held through (<= 1.2x the target of motion, 1.5x
+              overall) by a hand that looks human (the v2.3.229 entropy floor);
+     good     a steady pace (<= 2.33x overall);
+     ok       anything slower.
+   v2.3.3328: moved here from ExtractionSwipeLayer.jsx, unchanged, because a
+   keyboard now works the gesture too (HOLD E on a computer) and is graded by
+   this same rule.  A key draws no path, so it is graded with an entropy of 0:
+   never 'perfect' -- the worker pays a strike with no fingerprint at most
+   'good' anyway (botfp.js, v2.3.3322) -- 'good' at a steady hold, 'ok' when
+   slow.  The mouse draws a real path and is graded exactly as a thumb. */
+export function gradeGesture(activeMs, wallMs, ent) {
+  const human = ent >= 0.04;            /* near-zero entropy => suspiciously straight */
+  if (human && activeMs <= GESTURE_TARGET_MS * 1.2 && wallMs <= GESTURE_TARGET_MS * 1.5) return 'perfect';
+  if (wallMs <= GESTURE_TARGET_MS * 2.33) return 'good';
+  return 'ok';
+}
+
+/* ═══ v2.3.3328: THE GESTURE ON A COMPUTER ═══
+ * Owner: "Make sure all actions/buttons can be completed in landscape mode and
+ * on the computer.  For instance I don't think you can harvest lifeskills
+ * right now on the computer."
+ *
+ * They could not.  The window opened, and then the gesture was asked for on
+ * the right button -- which game.css hides under `pointer:fine` -- or, failing
+ * that, "on the character", at a point worked out WITHOUT the canvas's own
+ * offset: a computer plays in a centred phone-shaped column, so that point lay
+ * in the black margin left of the game.  A press could never land on it, and
+ * with no time-out since v2.3.1416 the harvest waited at its full bar forever.
+ *
+ * On a computer now (ExtractionSwipeLayer, desktopControls):
+ *   - the right button comes back for the harvest, the phone's own cue on it
+ *     (game.css `.bt-rjoy-zone[data-harvest]`), with this line over it;
+ *   - the MOUSE makes the phone's gesture -- pressed on the button or anywhere
+ *     on the world, dragged the way the arrows go (a circle anywhere reels);
+ *   - or E is HELD: the press that starts the harvest, held on, works the
+ *     gesture once the bar is full, at a quick hand's pace (KEY_WORK below).
+ * The words a computer is shown, by skill (BroTown stamps them over the
+ * button while the window is open). */
+export const DESK_GESTURE_HINT = {
+  mining:      'Drag ↕ or hold E',
+  woodcutting: 'Drag ↔ or hold E',
+  fishing:     'Circle ↻ or hold E',
+  cooking:     'Flick ↕ or hold E',
+};
+
+/* The keyboard's work, per frame while E is held (ExtractionSwipeLayer):
+ *   tapMs  a fresh press works at least this long, so tapping E in a rhythm
+ *          works as steadily as holding it;
+ *   dtMax  no frame gives more than this, as a thumb's active clock counts no
+ *          gap of 200 ms or more -- a stalled tab is not work. */
+export const KEY_WORK = { tapMs: 160, dtMax: 200 };
+
 /* How long after the thumb leaves the button (or stops) before the cue comes
    back to teach.  Long enough that the gaps inside one continuous swipe never
    flash it on, short enough that a player who stops to look gets it back. */

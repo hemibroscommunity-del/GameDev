@@ -257,10 +257,33 @@ export function setupDesktopControls(S, deps) {
           _desktopShieldBash();
           return;
         }
+        /* ═══ v2.3.3328: A HARVEST UNDER WAY OWNS E ═══
+           The owner: "I don't think you can harvest lifeskills right now on
+           the computer."  E started a harvest and then had nothing to do: the
+           gesture that ends one was asked for on a button a computer does not
+           show (gesturePose.js DESK_GESTURE_HINT).  Held now, E WORKS the
+           gesture (ExtractionSwipeLayer's S._harvestKeys) -- and a second
+           press no longer starts the harvest over: runInteract below reaches
+           the resource through S._proxNode, which stays set while you work
+           it, and startExtraction drops the attempt in flight for a new one,
+           so every press of E threw the wind-up away. */
+        if (S._extraction) {
+          if (S._harvestKeys) S._harvestKeys.down();
+          return;
+        }
+        /* v2.3.3328: one press, one interact -- a held E's repeats start
+           nothing (held through a finished harvest, its repeats would start
+           the next resource's) */
+        if (e.repeat) return;
         /* 1-4. v2.3.3105: the interact chain lives in runInteract (below), so
            the right stick's tap -- which wears its picture -- runs the very
            same one */
-        if (runInteract()) return;
+        if (runInteract()) {
+          /* v2.3.3328: the press that starts a harvest, held on, works it once
+             the window opens -- "hold E to harvest" */
+          if (S._extraction && S._harvestKeys) S._harvestKeys.down();
+          return;
+        }
         /* v2.3.1717: NOT in range, but close enough that the player plainly
            MEANT this NPC.  E used to return in silence here, and a judge on a
            fresh character read that as "the mayor is broken" rather than
@@ -392,12 +415,15 @@ export function setupDesktopControls(S, deps) {
         S._shieldKb = false; /* v2.3.1726: stop the rAF mouse-steer too */
         _desktopShieldOff();
       }
+      /* v2.3.3328: let go of E, and the harvest's gesture stops being worked */
+      if (e.code === 'KeyE' && S._harvestKeys) S._harvestKeys.up();
     };
     /* v2.3.3006: a key held as the window loses focus never sends its keyup
        (alt-tab with Shift down kept a sprint running, with W down kept you
        walking), so every held key is let go there. */
     var onBlur = function onBlur() {
       for (var k in S.keys) S.keys[k] = false;
+      if (S._harvestKeys) S._harvestKeys.up();   /* v2.3.3328: ...E's work too */
     };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);

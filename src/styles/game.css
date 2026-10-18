@@ -4655,6 +4655,27 @@ body.bt-intro-up .bt-zone-loading{visibility:hidden}
   .bt-joystick-zone { display:none !important; }
   .bt-desktop-hide { display:none !important; }
 }
+/* ═══ v2.3.3328: ...BUT THE HARVEST'S BUTTON COMES BACK FOR A HARVEST ═══
+   Owner: "I don't think you can harvest lifeskills right now on the
+   computer."  The gesture that ends a harvest is taught by the cue on the
+   right button and counted by its ring -- both inside this box, hidden above
+   on a computer, so a harvest stopped at a full bar with nothing to say what
+   came next.  BroTown's resolver stamps `data-harvest` while one runs; the
+   class + attribute out-ranks .bt-desktop-hide's single class, both
+   !important.  The mouse makes the gesture on it or anywhere on the world,
+   or E is held (ExtractionSwipeLayer), and the line over it says so.  The
+   line's colours are the button's own caption pill (TouchControls). */
+@media (pointer:fine) {
+  .bt-rjoy-zone[data-harvest="1"] { display:block !important; }
+  .bt-rjoy-deskhint[data-show="1"] { display:block; }
+}
+.bt-rjoy-deskhint {
+  display:none; position:absolute; right:0; bottom:calc(100% + 8px);
+  padding:3px 10px 4px; border-radius:999px; box-sizing:border-box;
+  background:rgba(12,16,20,.86); border:1px solid rgba(216,168,95,.6);
+  color:#F7F2E7; font:700 13px/1.25 'Source Sans 3',sans-serif; letter-spacing:.03em;
+  white-space:nowrap; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,.9);
+}
 /* ═══ v2.3.3005: THE WEAPON BUTTON TAKES THE CORNER; THE BELL STEPS RIGHT ═══
    WeaponSwapButton.jsx (owner: "a little icon of current equipped weapon in
    bottom left above dashboard but beneath left joystick").  The bell

@@ -6995,3 +6995,26 @@ trust it then, rather than judge from a guess like the arrival.
 **Receipt:** last-place.test (57 checks, 19 mutations caught: a 3 s cap fails
 five honest reconnects). The lab: a script reconnecting every 3 s 33,333 ->
 694 px/s, every honest reconnect taken.
+
+## 205. "The figure is at (world - camera) x scale on the screen" (v2.3.3328)
+
+**Tempting:** a point in the world is drawn at `(x - camera.x) * scale`, so
+that is where it is on the screen -- compare it with a pointer's `clientX`.
+
+**What happens:** that is where it is in the CANVAS. The canvas is not always
+at the screen's corner: on a computer the game plays in a centred column
+(game.css v2.3.1715, black bars beside it), and sideways the world is offset
+by `--world-x`. The harvest's gesture fell back to "on the character" when the
+right button was hidden, worked out this way: at 1280 x 800 the point lay at
+x 218, in the black margin left of a column at 422..858. No press could reach
+it, and a computer's harvest waited at its full bar for ever (the owner: "I
+don't think you can harvest lifeskills right now on the computer"). The disc's
+ghosting test had already learnt this sideways (v2.3.2472) and subtracts the
+canvas's own rect.
+
+**The rule:** world -> screen is `canvasRect.left + (x - camera.x) * scale`
+(and the same for y). Read the canvas's own `getBoundingClientRect`, never
+assume it is at 0, 0 -- and test on a computer's window, not only a phone's.
+
+**Receipt:** mp-deskharvest step 4: with the button hidden the anchor is on the
+figure (within 2 px of where it is drawn), inside the column.
