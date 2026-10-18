@@ -764,6 +764,10 @@ export const joinMethods = {
     // see httpauth.js).  After the eviction loop above so exactly one
     // live token exists per player id.
     this._httpAuthMint(session, msg);
+    /* v2.3.3327: a session this join takes over (the eviction above) still
+       has its state here: where it had them is what this join is judged
+       from (lastplace.js) */
+    const _livePlace = this.playerState[msg.id] ? this._placeOf(this.playerState[msg.id], Date.now()) : null;
     this.playerState[msg.id] = {
       x: 0, y: 0, d: 'down', z: 'town', vx: 0, vy: 0,
       dodging: false, blocking: false, dead: false, disconnected: false,
@@ -772,6 +776,14 @@ export const joinMethods = {
     };
     /* v2.3.3315: and the Wheel sizes its phone draws (wheeltables.js _wheelInStep) */
     this.playerState[msg.id]._wheelSizes = session.wheelSizes;
+    /* ═══ v2.3.3327: A RECONNECT STARTS WHERE THE SERVER LAST HAD YOU ═══
+       The place this join names is judged from where the worker last had
+       the player -- the session taken over, or the one that left -- at the
+       fastest an honest phone goes while nothing is heard from it, and
+       followed past that, never refused; and the first move after it is
+       judged from where it puts them (lastplace.js). */
+    this._placeOnJoin(msg.id, this.playerState[msg.id], _livePlace, Date.now(),
+      typeof cleanJoinData.x === 'number' && typeof cleanJoinData.y === 'number');
     this.stateHistory[msg.id] = [];
     // v2.3.1146: capture join.device (sent by clients since v2.3.694,
     // never read until now) + hydrate the durable anti-bot summary so
@@ -800,6 +812,9 @@ export const joinMethods = {
         stored = await this._loadRpg(msg.id, { throwOnError: true });
       } catch (e) {
         console.error('[join] could not read rpg:' + msg.id, e && e.message);
+        /* v2.3.3327: the place this join was judged to: the retry is judged
+           from it, as from any leave (lastplace.js) */
+        this._placeRemember(msg.id, this.playerState[msg.id], Date.now());
         delete this.playerState[msg.id];
         delete this.stateHistory[msg.id];
         try { ws.close(1011, 'try again'); } catch (_e) { /* already gone */ }

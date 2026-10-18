@@ -116,7 +116,7 @@ The only numbers a script cannot fake are the ones the server measures itself:
 - **What a flag does:** nothing in the game. That is by design: the owner's
   2026-07-03 decision.
 
-### 4. Movement: a script moves 6.6 times faster, or anywhere at once (HIGH; the budget and the Wheel's way back since v2.3.3325, move-budget.md -- the reconnect still open)
+### 4. Movement: a script moves 6.6 times faster, or anywhere at once (HIGH; the budget and the Wheel's way back since v2.3.3325, move-budget.md; the reconnect since v2.3.3327, last-place.md)
 
 - **The per-message allowance:** the speed check gives 80 px of slack for a
   roll and for network jitter, and gives it again with EVERY move message
@@ -310,8 +310,12 @@ Fix 7, movement, two of its three parts, in docs/specs/move-budget.md
 second to 656, an honest walk unchanged), a move past it is followed rather
 than refused (no honest phone pinned), and the three ways to skip the check
 are closed -- a refused zone, a server-placed move, and a trip out of the
-Wheel and back in, now judged from where you left. The reconnect is still
-open: a join lands where it says.
+Wheel and back in, now judged from where you left. Its third part, the
+reconnect, in docs/specs/last-place.md (v2.3.3327): a join is judged from where
+the server last had the player, at the fastest an honest phone goes while it is
+not heard from, a login's way into the Wheel from the arrival, and the first
+move after any join is judged -- the lab's script reconnecting every 3 s from
+33,333 px a second to 694, every honest reconnect taken.
 One more finding reached the owner privately: the way a login key becomes a
 player id needs replacing with server-issued random ids and a proper
 credential; it is on the list below the farming holes.
