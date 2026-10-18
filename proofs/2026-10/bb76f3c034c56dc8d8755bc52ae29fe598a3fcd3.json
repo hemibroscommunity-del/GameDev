@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "bb76f3c034c56dc8d8755bc52ae29fe598a3fcd3",
+  "tree": "167c47c5c9aebc5841e914c2214659e96c379c0f",
+  "committedAt": "2026-10-18T15:39:28-07:00",
+  "subject": "The farmer wears your armour as you walk in it: the same shine, grade edge and steel greys, in every outfit on every move (v2.3.3472) (#1012)",
+  "files": 6034,
+  "bytes": 680076798,
+  "listingSha256": "b5bbc44ab03f23fbc9f76896d30a01235f15bf5645b04bfc311a68b72cf91338",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
