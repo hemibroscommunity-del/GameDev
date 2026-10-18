@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8cb8daabb8e0d574e4d8326d628d472eaf845a3e",
+  "tree": "9f2389d1c57bf958b1fbb5c613e621e68cff5034",
+  "committedAt": "2026-10-18T12:03:13-07:00",
+  "subject": "The UI review carries the reasons behind every screen, with a ready-made ChatGPT kit, and its pictures show what players see (v2.3.3460) (#1008)",
+  "files": 5985,
+  "bytes": 674308341,
+  "listingSha256": "28617de4a1a15711f9fc4de7d3cbba5e77f123142f76e8cdcc17a767b2a9ef2c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
