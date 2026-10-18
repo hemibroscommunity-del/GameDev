@@ -26,12 +26,12 @@
  *      online across midnight turns over to the new day.
  *   7. The wire: both server types privileged; a forged one is not relayed.
  *   8. The operator's test hook.
- *   9. v2.3.3341: the daily quests PUT AWAY -- the game as it ships: not
+ *   9. v2.3.3349: the daily quests PUT AWAY -- the game as it ships: not
  *      advertised, nothing rolled, counted or paid, the spin opened at tut_1
  *      with no quest news, the free spin's 3 stars on the season, a claim
  *      settled, a new day's 'spinday'; and the live flag bringing them back.
  *
- * v2.3.3341: the owner: "Remove the daily quests".  They are off unless the
+ * v2.3.3349: the owner: "Remove the daily quests".  They are off unless the
  * live flags say `dailyquests: true`, so sections 2-8 run with that flag on
  * (the quests' code is kept, and tested, for that switch); section 9 is a
  * room with no flags.
@@ -71,7 +71,7 @@ function check(name, cond, detail) {
 const DAY = 86400000;
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
-/* v2.3.3341: the daily quests are put away; sections 2-8 test them switched
+/* v2.3.3349: the daily quests are put away; sections 2-8 test them switched
    back on (section 9 tests a room without the flag) */
 room._liveFlags = { dailyquests: true };
 /* A fixed clock in the PAST (v2.3.1155: a future-ish timestamp the real
@@ -134,7 +134,7 @@ await join(ws, 'bp_dr_a');
 const ps = () => room.playerState['bp_dr_a'];
 {
   const sync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);
-  check('caps.dailyspin and caps.dailyquests are advertised (the quests by their live flag, v2.3.3341)', !!sync && sync.caps.dailyspin === true && sync.caps.dailyquests === true);
+  check('caps.dailyspin and caps.dailyquests are advertised (the quests by their live flag, v2.3.3349)', !!sync && sync.caps.dailyspin === true && sync.caps.dailyquests === true);
   const iState = ws.sent.findIndex((m) => m.type === 'rewards_state');
   const iPs = ws.sent.findIndex((m) => m.type === 'player_state');
   check('rewards_state is sent on join, after player_state', iState > 0 && iPs >= 0 && iState > iPs, { iState, iPs });
@@ -181,7 +181,7 @@ const ps = () => room.playerState['bp_dr_a'];
     !!st && st.news.act === 'spin' && st.news.started === 'free' && st.news.i === 2 && st.news.lump === 100 && st.news.pot === 100
     && st.news.jackpot === false && st.spin.open === 1 && st.spin.pot === 100 && st.spin.i === 2 && st.spin.canDouble === 1
     && ps().coins === c0 && paidSpin(ws).length === 0, st && { news: st.news, spin: st.spin });
-  check('...and the day\'s free spin put a star on the season (one, with the quests switched on: v2.3.3341)', st.season.st === DAILY.SEASON.SPIN_STARS_QUESTS && st.season.spinStars === 1, st.season);
+  check('...and the day\'s free spin put a star on the season (one, with the quests switched on: v2.3.3349)', st.season.st === DAILY.SEASON.SPIN_STARS_QUESTS && st.season.spinStars === 1, st.season);
   NOW += 1000;
   force(HEADS);
   await send(ws, 'daily_spin', { act: 'double', opId: 's2' });
@@ -702,7 +702,7 @@ const ps = () => room.playerState['bp_dr_a'];
   check('...an offline id is refused', off.ok === false);
 }
 
-// ── 9. v2.3.3341: the daily quests PUT AWAY -- the game as it ships ──
+// ── 9. v2.3.3349: the daily quests PUT AWAY -- the game as it ships ──
 /* The owner: "Remove the daily quests they're randomly appearing as complete
    and it makes no sense to me ... I'd rather it go away".  A room with no live
    flags, as production has. */

@@ -55,7 +55,7 @@ export function spinLive(S) {
   const s = S || gameState();
   return !!(s && s._serverCaps && s._serverCaps.dailyspin);
 }
-/** The daily quests: likewise.  v2.3.3341: PUT AWAY (the owner: "Remove the
+/** The daily quests: likewise.  v2.3.3349: PUT AWAY (the owner: "Remove the
     daily quests") -- a worker advertises them only with its live flag on, so
     every page shows none; their rows, toasts and the Quests button's dot all
     wait on this. */
@@ -63,7 +63,7 @@ export function questsLive(S) {
   const s = S || gameState();
   return !!(s && s._serverCaps && s._serverCaps.dailyquests);
 }
-/** v2.3.3341: the season, fed by the free spin now: against a worker that
+/** v2.3.3349: the season, fed by the free spin now: against a worker that
     settles either.  It rode on questsLive, so with the quests put away its
     stars and claims would have gone with them. */
 export function seasonLive(S) {
@@ -263,7 +263,7 @@ export function applyRewardsState(S, payload) {
     } else if (n.kind === 'newday') {
       toastWhenSeen('A new day: three new daily quests, and your free spin is waiting at the Gambling Den.');
     } else if (n.kind === 'spinday') {
-      /* v2.3.3341: the new day with the quests put away -- the spin alone,
+      /* v2.3.3349: the new day with the quests put away -- the spin alone,
          and only to a player it is open to (it waits for the first quest) */
       if (payload.spin && payload.spin.on && !payload.spin.locked) toastWhenSeen('A new day: your free spin is waiting at the Gambling Den.');
     }

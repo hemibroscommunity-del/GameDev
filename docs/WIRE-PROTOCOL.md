@@ -707,7 +707,7 @@ count). Quest, season and spin-pot payouts ride `_creditPlayer` →
 `inbox_delivered` with sources `dailyquest` / `season` / `dailyspin`, kept
 out of chat by the client. Full table:
 docs/specs/daily-rewards.md.
-v2.3.3341: the daily quests are put away -- `caps.dailyquests` is false
+v2.3.3349: the daily quests are put away -- `caps.dailyquests` is false
 unless the live flag `dailyquests: true` is set (then `daily_reroll` and
 `daily_progress` work as above); `season_claim` is settled either way and a
 page gates the season on `caps.dailyspin || caps.dailyquests`; a new day

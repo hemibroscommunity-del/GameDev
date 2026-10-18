@@ -6,7 +6,7 @@
  * from the gambling building", and its twist: "Your first spin is for a lump
  * sum award ... Then you have the option of spinning it for double or nothing
  * at 50% odds and that continues on."  One real player against a real
- * worker, in the Wheel, on a phone.  v2.3.3341: the daily quests are PUT AWAY
+ * worker, in the Wheel, on a phone.  v2.3.3349: the daily quests are PUT AWAY
  * (the owner: "Remove the daily quests"), so this is the game without them:
  *   1. the worker advertises the spin and NOT the quests, and says so on join;
  *   2. NOTHING opens at login -- no chest window (even with the harness's
@@ -20,7 +20,7 @@
  *      tomorrow's free spin;
  *   5. a bonus spin (an operator grant here; in the game, the season) lands a
  *      lump sum, and TAKE IT pays it exactly; the free spin put 3 stars on
- *      the season (v2.3.3341: its only stars now), the bonus spin none;
+ *      the season (v2.3.3349: its only stars now), the bonus spin none;
  *   6. "Season rewards" opens the Daily Rewards window on its Season tab;
  *      Today is the streak and the spin, with no daily quest anywhere, and
  *      no "Daily quest done" toast ever came;
@@ -68,7 +68,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 1. caps and the state ── */
     const caps = await H.readState(P, (S) => S._serverCaps || {});
     const st0 = await waitFor(state, 15000);
-    rec.ok('the worker advertises the free spin and not the daily quests (v2.3.3341: put away), and sends the state on join (v2.3.3181: the spin locked until the first quest)',
+    rec.ok('the worker advertises the free spin and not the daily quests (v2.3.3349: put away), and sends the state on join (v2.3.3181: the spin locked until the first quest)',
       caps.dailyspin === true && caps.dailyquests === false && !!st0 && st0.spin.ready === 1 && st0.spin.locked === 1 && st0.spin.open === 0 && st0.dq.on === false
         && Array.isArray(st0.spin.prizes) && st0.spin.prizes.length === DAILY.SPIN.PRIZES.length,
       { caps: { dailyspin: caps.dailyspin, dailyquests: caps.dailyquests }, spin: st0 && st0.spin });
@@ -218,7 +218,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('a bonus spin lands a lump sum, and Take it pays exactly that', !!bonusBtn && !!bonus && bonus.act === 'spin' && !!took
       && took.paid === bonus.pot && cB1 - cB === bonus.pot, { bonusBtn, bonus, took, got: cB1 - cB });
     const se5 = await state();
-    rec.ok('the free spin put 3 stars on the season, the bonus spin none (v2.3.3341: the season is the spin\'s now)',
+    rec.ok('the free spin put 3 stars on the season, the bonus spin none (v2.3.3349: the season is the spin\'s now)',
       !!se5 && se5.season.st === DAILY.SEASON.SPIN_STARS && DAILY.SEASON.SPIN_STARS === 3 && se5.season.spinStars === 3,
       se5 && { st: se5.season.st, spinStars: se5.season.spinStars });
 
@@ -260,7 +260,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot(P, 'window-season');
     rec.ok('the Season tab: the stars, all 25 tiers, Claim on each reached one and "Claim all"',
       !!season && season.tiers === DAILY.SEASON.TIERS.length && season.claimBtns >= 2 && season.all, season);
-    rec.ok('...and it says where stars come from now: "3 ★ a day with your free spin" (v2.3.3341), not the daily quests',
+    rec.ok('...and it says where stars come from now: "3 ★ a day with your free spin" (v2.3.3349), not the daily quests',
       !!season && !!season.earn && season.earn.k === 'spin' && /3 ★ a day with your free spin/.test(season.earn.text) && !/quest/i.test(season.earn.text), season && season.earn);
     const cS = await coins();
     await P.page.evaluate(() => { const b = document.querySelector('[data-claim="1"]'); if (b) b.click(); });
@@ -308,7 +308,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot(P, 'quests-card');
     if (card) await P.page.evaluate(() => { const c = document.querySelector('[data-daily-card-open]'); if (c) { c.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); c.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); } });
     const viaCard = await waitFor(() => P.page.evaluate(() => !!document.querySelector('[data-daily-rewards]')), 5000);
-    rec.ok('the Quests tab\'s card says the day at a glance -- the season\'s stars too, with no daily quests (v2.3.3341) -- and opens the same window',
+    rec.ok('the Quests tab\'s card says the day at a glance -- the season\'s stars too, with no daily quests (v2.3.3349) -- and opens the same window',
       !!card && /Daily rewards/.test(card) && /★ \d/.test(card) && !/quest/i.test(card) && !!viaCard, { card, viaCard, dotOn });
 
     stopAlive = true;

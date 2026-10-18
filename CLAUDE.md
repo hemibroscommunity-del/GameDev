@@ -2463,7 +2463,7 @@ remnant to migrate server-side, not a mode to preserve.
       tier to claim; `daily_rewards:<pid>`, caps/kill switches `dailyspin`
       and `dailyquests`; `dailyrewards` suite, `mp-dailyrewards`:
       docs/specs/daily-rewards.md.
-    - since v2.3.3341 THE DAILY QUESTS ARE PUT AWAY -- the owner: "Remove the
+    - since v2.3.3349 THE DAILY QUESTS ARE PUT AWAY -- the owner: "Remove the
       daily quests they're randomly appearing as complete and it makes no
       sense to me ... I'd rather it go away" (they were rolled for everyone
       at tut_1 and counted from any kill, harvest, cook or smelt, so they

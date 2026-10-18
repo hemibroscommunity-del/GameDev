@@ -131,7 +131,7 @@ export const DAILY = {
     FREEZE_MAX: 2,       /* held at most */
   },
 
-  /* v2.3.3341: PUT AWAY -- the owner: "Remove the daily quests they're
+  /* v2.3.3349: PUT AWAY -- the owner: "Remove the daily quests they're
      randomly appearing as complete and it makes no sense to me ... I'd rather
      it go away".  They were rolled for everyone at tut_1, counted from any
      kill, harvest, cook or smelt and announced with the story quest's
@@ -171,7 +171,7 @@ export const DAILY = {
     EPOCH_DAY: Date.UTC(2026, 9, 12) / DAY_MS,
     DAYS: 28,
     STARS_PER_TIER: 3,
-    /* v2.3.3341: the day's free spin is the season's only star now the
+    /* v2.3.3349: the day's free spin is the season's only star now the
        daily quests are put away -- 3 a day finishes the 25 tiers (75) in 25
        days of a 28-day season, three missed days to spare.  At 1 the track
        stopped at tier 9.  With the quests switched back on the spin pays its
@@ -336,7 +336,7 @@ export const dailyRewardsMethods = {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, name) && !f[name]);
   },
-  /* v2.3.3341: ...and a put-away feature's switch: only a flag set on (true,
+  /* v2.3.3349: ...and a put-away feature's switch: only a flag set on (true,
      or a number not 0 -- liveops takes both, and the caps spread passes it on
      as it is) turns it ON; before the flags are read it is off. */
   _drFlagOn(name) {
@@ -344,10 +344,10 @@ export const dailyRewardsMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, name) && f[name]);
   },
   _spinOff() { return this._drFlagOff('dailyspin'); },
-  /* v2.3.3341: the daily quests are PUT AWAY (QUESTS above): off unless the
+  /* v2.3.3349: the daily quests are PUT AWAY (QUESTS above): off unless the
      live flags say `dailyquests: true`. */
   _dqOff() { return !this._drFlagOn('dailyquests'); },
-  /* v2.3.3341: what the day's free spin puts on the season. */
+  /* v2.3.3349: what the day's free spin puts on the season. */
   _seSpinStars() { return this._dqOff() ? SEASON.SPIN_STARS : SEASON.SPIN_STARS_QUESTS; },
 
   /* Injectable for tests; the clock and the dice in the game. */
@@ -467,7 +467,7 @@ export const dailyRewardsMethods = {
       const rec = this._drMap().get(pid);
       if (!rec) return;
       if (await this._drRollover(pid, rec, now)) await this._drSave(pid);
-      /* v2.3.3341: 'newday' reads "three new daily quests" on every page; with
+      /* v2.3.3349: 'newday' reads "three new daily quests" on every page; with
          the quests put away the news is 'spinday' (the spin alone), which a
          page from before it ignores */
       await this._drSendState(pid, { kind: this._dqOff() ? 'spinday' : 'newday' });
@@ -488,7 +488,7 @@ export const dailyRewardsMethods = {
   },
 
   /* The first quest was just handed in (quests.js): today's three appear at
-     once rather than at the next login.  v2.3.3341: and the free spin opens
+     once rather than at the next login.  v2.3.3349: and the free spin opens
      -- sent with the quests put away too (it returned early then, so the
      Gambling Den showed the spin locked until a rejoin), but with no news:
      'unlocked' reads "Daily quests are open!" on every page. */
@@ -628,7 +628,7 @@ export const dailyRewardsMethods = {
       const i = spinPick(this._drRand());
       const lump = spinLump(SPIN.PRIZES[i].coins, mult);
       sp.open = 1; sp.pot = lump; sp.k = 0; sp.i = i; sp.run = runId();
-      /* v2.3.3341: the season's own now, not the quests' switch's */
+      /* v2.3.3349: the season's own now, not the quests' switch's */
       if (started === 'free') this._seAddStars(rec, this._seSpinStars());
       news = { kind: 'spin', act, started, i, lump, pot: lump, mult, jackpot: i === SPIN.PRIZES.length - 1 };
       if (lump * 2 > SPIN.POT_MAX) { news.paid = await this._spinPay(pid, rec, 'the house limit'); news.top = true; }
@@ -901,7 +901,7 @@ export const dailyRewardsMethods = {
 
   async _handleSeasonClaim(session, payload) {
     if (!session || !session.id) return;
-    /* v2.3.3341: no longer refused with the daily quests off -- they are put
+    /* v2.3.3349: no longer refused with the daily quests off -- they are put
        away, and the season is the free spin's */
     const pid = session.id;
     const ps = this.playerState[pid];
@@ -1046,7 +1046,7 @@ export const dailyRewardsMethods = {
         cl: se.cl.slice(),
         ov: se.ov,
         ovEvery: SEASON.OVERFLOW_STARS,
-        spinStars: this._seSpinStars(),   /* v2.3.3341: 3 with the quests put away */
+        spinStars: this._seSpinStars(),   /* v2.3.3349: 3 with the quests put away */
       },
       news: news || null,
     };

@@ -385,7 +385,7 @@ yesterday's pot once and saves the day, and a join after the prune pays
 nothing more. A claim that closes an old season mails its tiers once, and
 the backstop marks the record dirty. All 11 fail on main.
 
-## v2.3.3341: the daily quests put away
+## v2.3.3349: the daily quests put away
 
 > The owner, playtesting: *"Remove the daily quests they're randomly appearing
 > as complete and it makes no sense to me when I completed the quest by

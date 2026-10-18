@@ -20,7 +20,7 @@ export const DailyRewardsCard = () => {
   const dq = st.dq || {};
   const list = Array.isArray(dq.list) ? dq.list : [];
   const done = list.filter((q) => q.d).length;
-  /* v2.3.3341: the season's stars and claims are the free spin's now (the
+  /* v2.3.3349: the season's stars and claims are the free spin's now (the
      daily quests are put away), so they show against either cap */
   const seLive = seasonLive();
   const claim = seLive ? claimableTiers(st).length : 0;
