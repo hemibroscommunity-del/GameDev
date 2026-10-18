@@ -26,7 +26,9 @@
 
 export const POSE = Object.freeze({
   /* src/game/emoteMoves.js EMOTE_HOLD_IDS, in its order (mirror-audit) */
-  IDS: Object.freeze(['sit', 'sleep', 'flop', 'bounce', 'robot', 'sprinkler']),
+  /* v2.3.3368: + Halloween week's Zombie Shuffle (the phone shows its tile
+     only then; kept here any day, a look and never a rule) */
+  IDS: Object.freeze(['sit', 'sleep', 'flop', 'bounce', 'robot', 'sprinkler', 'zombie']),
   /* a step longer than this ends a pose (the quiet phone's keepalive move,
      standing still, moves nobody) */
   MOVE_END_PX: 1.5,

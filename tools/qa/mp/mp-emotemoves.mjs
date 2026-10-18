@@ -105,7 +105,9 @@ async function picture(P, name) {
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const A = await H.newPlayer(browser, { name: 'Mover', wsPort, webPort, viewport: PHONE, touch: true });
+  /* v2.3.3368: out of Halloween week, whatever today is (game/season.js): the
+     Zombie Shuffle's tile is mp-halloween's */
+  const A = await H.newPlayer(browser, { name: 'Mover', wsPort, webPort, viewport: PHONE, touch: true, query: 'halloween=0' });
   await H.enterWorld(A);
   const B = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort, viewport: PHONE, touch: true });
   await H.enterWorld(B);

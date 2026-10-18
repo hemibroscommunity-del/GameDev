@@ -622,6 +622,7 @@ import { wheelObjectsInfo, wheelMapInfo } from '@/game/wheelTrial.js';      /* v
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 import { DEFENSE_POPUP_KEY, DEFENSE_POPUP_SRC } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's shield on "Defense Lv N" */
+import { halloweenOn } from '@/game/season.js';   /* v2.3.3368: Halloween week's speech bubbles */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -2547,6 +2548,22 @@ function bandWithEmote(band, who) {
    14 px -- it is a picture, read at a glance */
 const EMOTE_POP_FONT = 40;
 const EMOTE_POP_PX = 30;
+/* ═══ v2.3.3368: HALLOWEEN WEEK'S SPEECH BUBBLES (game/season.js) ═══
+   The fun & social plan's "spooky bubble skin", drawn in code (no picture to
+   load): a night-purple bubble ringed in pumpkin orange, its words cream,
+   24 October to 1 November by the phone's calendar.  Made once, as the
+   everyday gradient is. */
+let _spookyBubbleGrad = null;
+const SPOOKY_BUBBLE = Object.freeze({ stroke: 0xFF8A1F, text: '#FFE7C2' });
+function spookyBubbleGradient() {
+  if (!_spookyBubbleGrad) {
+    _spookyBubbleGrad = new FillGradient({
+      type: 'linear', start: { x: 0, y: 0 }, end: { x: 0, y: 1 }, textureSpace: 'local',
+      colorStops: [{ offset: 0, color: '#4A2C66' }, { offset: 0.55, color: '#3A2152' }, { offset: 1, color: '#26153A' }],
+    });
+  }
+  return _spookyBubbleGrad;
+}
 function chatBubbleGradient() {
   if (!_chatBubbleGrad) {
     _chatBubbleGrad = new FillGradient({
@@ -8698,8 +8715,13 @@ export class EffectsRenderer {
       _bubblePath(entry.bg, 2);
       entry.bg.fill({ color: 0x000000, alpha: 0.18 });
       _bubblePath(entry.bg, 0);
-      entry.bg.fill({ fill: chatBubbleGradient() });
-      entry.bg.stroke({ width: 2, color: 0x8a949a, alignment: 1 });
+      /* v2.3.3368: Halloween week's skin -- purple, pumpkin-ringed, cream words */
+      const _spooky = halloweenOn();
+      entry.skin = _spooky ? 'halloween' : 'plain';
+      entry.bg.fill({ fill: _spooky ? spookyBubbleGradient() : chatBubbleGradient() });
+      entry.bg.stroke({ width: 2, color: _spooky ? SPOOKY_BUBBLE.stroke : 0x8a949a, alignment: 1 });
+      const _ink = _spooky ? SPOOKY_BUBBLE.text : '#000000';
+      if (entry.text.style.fill !== _ink) entry.text.style.fill = _ink;
       /* Center the text inside the bubble. */
       entry.text.x = 0;
       entry.text.y = -bh - tipH + padY;
@@ -8757,6 +8779,8 @@ export class EffectsRenderer {
         breakWords: !!entry.text.style.breakWords,
         lineW: entry._lineW,   /* the longest laid-out line, bubble-local px */
         boxW: entry._boxW,     /* the box drawn round it, same units */
+        skin: entry.skin || 'plain',   /* v2.3.3368: 'halloween' in Halloween week */
+        ink: String(entry.text.style.fill),
       };
       /* ...and per bubble, because the single probe above is whichever
          bubble drew LAST this frame -- an NPC's, as often as not.  A Map:

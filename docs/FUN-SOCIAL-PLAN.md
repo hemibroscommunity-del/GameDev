@@ -169,9 +169,10 @@ Built so far:
 
 ## Halloween (if Phase 1 lands by about Oct 27)
 
-- Zombie Shuffle dance (code motion).
-- A spooky bubble skin (9-slice, a few KB, preloaded).
-- The Pumpkin Head: a hat everyone can put on from the bag during Halloween
+- [x] Zombie Shuffle dance (code motion): v2.3.3368, docs/specs/halloween.md.
+- [x] A spooky bubble skin: drawn in code instead of a 9-slice picture
+  (purple, pumpkin-orange rim, cream words), nothing to load: v2.3.3368.
+- [ ] The Pumpkin Head: a hat everyone can put on from the bag during Halloween
   week, like the T-shirt toggle. Needs one picture (prompt at the end).
 
 ## Phase 2 -- two players laugh
