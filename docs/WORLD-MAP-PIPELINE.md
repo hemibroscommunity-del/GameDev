@@ -2580,9 +2580,52 @@ in code (`src/rendering/wheelLife.js`), no new pictures:
   (`wheelLifeWarm`, from `wheelObjectsWarm`), destroyed with the objects'
   pages on the way out (`wheelLifeFree`).
 - **`?trial=wheel&nolife`** leaves the buildings still, to compare.
-- **Not done in code**: flags and banners waving, doors swinging, the clock's
-  hands, the roulette wheel turning. Those move part of a picture, which needs
-  that part drawn separately (an Object Studio job, if wanted).
+- **Not done in code**: banners waving, doors swinging, the clock's hands,
+  the roulette wheel turning. Those move part of a picture, which needs that
+  part drawn separately (an Object Studio job, if wanted) -- or cut out of
+  the picture as the game loads it, as the Town Hall's flag is since
+  v2.3.3382 (below).
+
+### The Town Hall's flag waves (v2.3.3382)
+
+> Owner, 2026-10-18: *"Also make the town square flag wave using code it looks
+> silly being still"*
+
+There is no flag object: the flag is painted into the Town Hall's picture. So
+the game cuts its cloth out of the picture as the page loads, once a page:
+
+- **The cut** (`src/data/buildingLife.js`, the Town Hall's `flag` entry, on the
+  picture's own 812 x 807 pixels): the cloth is what is solid in `box`
+  [412, 12)-[538, 84) but not in `keep` (the ring under the finial, the knob
+  the pole stands on): 5,476 px in one piece (`n`). Its colour numbers are
+  copied into a little picture of its own on the same colours
+  (`makePaletteSource`), then set see-through in the page itself and the page
+  uploaded again (`wheelLife.js` `cutFlag`). A page whose cloth does not count
+  `n` (a picture drawn again) is never cut; its flag just stays still. Nor is
+  a page that is not colour numbers (`?nopalette`, WebGL1), or one drawn with
+  `?nolife`.
+- **The wave**: the cloth is a 9 x 4 MeshPlane in the building's life, hung
+  where it was painted and pinned at the pole, waved by `worldLife.js`
+  (`_updateWheelFlags`) with the old map's flags' own motion (v2.3.2816) --
+  a wave running from the pole to the free end, faster and wider in a
+  stronger wind (`windAt`) and in a gust (`gustAt` at the building's foot,
+  the trees' own gusts) -- and lying exactly as painted under the QA calm
+  switch, `__btAmbienceOff`. Its free end swings ~5-13 of the cloth's pixels
+  (2-5 CSS px on a phone).
+- **Once per page source**: a building mended after it shattered is built
+  again and finds the cut already made; the cloth's picture goes with the page
+  (and the flag with its building). The cloth casts no shadow (the building's
+  is cast from its picture, now without it).
+- Probe: `window.__btWheelFlags()` (each flag's swing, rest and screen box;
+  how many pages were cut or refused; `.hide(true)`).
+
+Tests: test-world-core "the Town Hall's flag" (the cut counts `n`, in one
+piece, inside its box, on the picture as the game has it); `mp-flagwave` (13,
+a phone in the square: cut once, at rest exactly where it was painted and red
+and gold filling its box, none of it left painted when hidden and the pole's
+knob still drawn, waving in the wind while the wall beside the door holds
+still, at rest again, `?nopalette` cutting nothing, no errors). Spec:
+docs/specs/flag-wave.md.
 
 Tests: test-world-core "the buildings' life" (2: every building has life and
 only buildings; every spot on its picture); `mp-wheellife` (6, phone viewport,
