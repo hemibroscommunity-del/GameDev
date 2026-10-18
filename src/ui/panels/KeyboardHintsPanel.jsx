@@ -33,7 +33,12 @@ const KEYS = [
      same terms as the rest: always, and the worker decides the rest. */
   ['WASD', 'Move'], ['Shift', 'Sprint'], ['Click', 'Attack'], ['R-Click', 'Special'], ['Space', 'Dodge'], ['X', 'Jump'] /* v2.3.3017 */,
   ['E', 'Interact'], ['Q', 'Shield'], ['Q+E', 'Bash'], ['R', 'Whirl'],
-  ['Tab', 'Swap'], ['F', 'Special'],
+  /* v2.3.3407: 1 2 3 -- each weapon straight to hand (desktopControls), keys
+     with no button on a computer's screen to wear them (the weapon chip is a
+     touch control).  The dashboard's keys (I P J L K O), M's map, Enter and
+     Esc are worn by their own buttons (game/deskKeys.js), so they are not
+     repeated here. */
+  ['Tab', 'Swap'], ['1-3', 'Weapon'], ['F', 'Special'],
   /* v2.3.1734: G — Element Burst.  Listed on the same terms v2.3.1733 set
      for Bash and Whirl one line above: unconditionally, unlocked or not.
      The label teaches the key, and pressing it before level 6 (or without

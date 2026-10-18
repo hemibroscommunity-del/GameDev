@@ -1102,7 +1102,11 @@ export const ItemDetailPopup = () => {
           <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 5 }}>
             <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#96A2A0' }}>{title}</span>
             <button type="button" aria-label="Close" onPointerUp={(e) => { e.stopPropagation(); itemDetailBus.close(); }}
+              /* v2.3.3407: Esc presses it -- by pointerup, its own gesture
+                 ("up", game/deskKeys.js pressControl) */
+              data-esc="up" data-key="Esc" data-key-at="hang"
               style={{
+                position: 'relative',   /* its key cap's anchor */
                 flex: '0 0 auto', width: 28, height: 28, lineHeight: '26px', textAlign: 'center', padding: 0,
                 fontSize: 13, fontWeight: 700, borderRadius: 8, border: '1px solid rgba(238, 242, 235, .14)',
                 background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)', color: '#F7F2E7', cursor: 'pointer',
@@ -1837,7 +1841,10 @@ export const ItemDetailPopup = () => {
           {actions.sell && !sellOpen && !!sellWhy && (
             <button disabled aria-disabled="true" className={buttonClass()} style={{ ...buttonStyle(), opacity: 0.45 }}>Sell</button>
           )}
-          <button onClick={onClose} className={buttonClass()} style={buttonStyle()}>X</button>
+          {/* v2.3.3407: Esc presses it, and on a computer it says so after its
+              X (game/deskKeys.js; game.css [data-key]) */}
+          <button onClick={onClose} className={buttonClass()} style={buttonStyle()}
+            data-esc="" data-key="Esc" data-key-at="inline">X</button>
         </div>
 
         {actions.sell && !sellOpen && !!sellWhy && (

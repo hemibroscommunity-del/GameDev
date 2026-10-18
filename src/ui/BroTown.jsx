@@ -64,7 +64,7 @@ import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
 import { WeaponSwapButton } from './panels/WeaponSwapButton.jsx'; /* v2.3.3005: the weapon in your hand, under the movement stick -- a tap swaps */
-import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before) */
+import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3407 (a computer's words over the button) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
@@ -6099,6 +6099,31 @@ export var BroTown = function BroTown(_ref0) {
           var _rw = rWrapRef.current;
           var _rWant = _rOn ? '1' : '0';
           if (_rw && _rw.style.opacity !== _rWant) _rw.style.opacity = _rWant;
+          /* ═══ v2.3.3407: ON A COMPUTER THE BUTTON COMES BACK FOR THE HARVEST ═══
+             The owner: "I don't think you can harvest lifeskills right now on
+             the computer."  game.css hides this whole box under pointer:fine,
+             and with it the cue that teaches the gesture and the ring that
+             counts it -- so a computer's harvest stopped at a full bar with
+             nothing on screen to say what came next (gesturePose.js
+             DESK_GESTURE_HINT).  `data-harvest` while one runs brings the box
+             back there (game.css; on a phone it is shown anyway), and over it
+             a line in words while the window is open: drag the way the arrows
+             go with the mouse, or hold E.  Not over a locked try, which asks
+             for nothing.  DOM-compared like every stamp here. */
+          var _hvWant = _ex ? '1' : null;
+          if (_rw && _rw.getAttribute('data-harvest') !== _hvWant) {
+            if (_hvWant) _rw.setAttribute('data-harvest', _hvWant); else _rw.removeAttribute('data-harvest');
+          }
+          if (_rw) {
+            var _dh = _rw._btDeskHint;
+            if (!_dh || _dh.parentNode !== _rw) _dh = _rw._btDeskHint = _rw.querySelector('.bt-rjoy-deskhint');
+            if (_dh) {
+              var _dhText = (_ex && _ex.status === 'ready' && !_ex.locked) ? (DESK_GESTURE_HINT[_ex.skill] || '') : '';
+              if (_dh.textContent !== _dhText) _dh.textContent = _dhText;
+              var _dhShow = _dhText ? '1' : '0';
+              if (_dh.getAttribute('data-show') !== _dhShow) _dh.setAttribute('data-show', _dhShow);
+            }
+          }
           var _rd = rJoyRef.current;
           var _peWant = _rPressable ? 'auto' : 'none';   /* v2.3.2260: PRESSABLE, not painted */
           if (_rd && _rd.style.pointerEvents !== _peWant) _rd.style.pointerEvents = _peWant;
@@ -9379,9 +9404,20 @@ export var BroTown = function BroTown(_ref0) {
      is filling the lower half of the screen. Two signals because the app has
      two panel systems; collapsing them into one was tried and quietly
      dropped the sheet. */
+  /* ═══ v2.3.3407: ...EXCEPT, SIDEWAYS, THE BAG'S OWN COLUMN ═══
+     The owner: "Make sure all actions/buttons can be completed in landscape
+     mode."  Upright the shop is HALF a window, the bag in the band under it
+     the other half (ShopkeeperPanel's header).  Sideways the band holds no
+     bag: the bag is the side column's 'dashboard' page -- and opening that
+     closed the shop here, while the shop's drawer lay over the ▴ chip that
+     opens it.  So nothing could be SOLD to Diego on a sideways phone.  The
+     column on its bag page is the shop's other half there, as the band is
+     upright (the drawer opens it, and sits beside it); any other page still
+     puts the shop away. */
   useEffect(function () {
     return dashboardPanelBus.subscribe(function () {
       if (dashboardPanelBus.state.mode !== 'bar') {
+        if (playIsLandscape() && dashboardPanelBus.current() === 'dashboard') return;
         try { shopBus.setOpen(false); } catch (e) { /* no shop */ }
       }
     });
@@ -9772,6 +9808,29 @@ export var BroTown = function BroTown(_ref0) {
      and preventDefault any touchstart that lands inside it.  Best
      effort -- Safari sometimes overrules; if it persists the user
      can reflag for a PWA / fullscreen path. */
+  /* ═══ v2.3.3407: A LISTENER, NOT A STRIP -- THE BUTTONS AT THE EDGE ANSWER ═══
+     The owner: "Make sure all actions/buttons can be completed in landscape
+     mode".  The UI review's numbered pictures (tools/qa/ui-review) found the
+     strip -- 18 px wide, full height, z 40, over everything outside the
+     game's wrap -- lying across the left of every control that touches the
+     screen's left edge: the top bar's logout, a sideways page's ◂ back arrow
+     and the dashboard's ▴/▼ fold chip (upright, the band's CLOSE pill and its
+     first column of bag tiles).  A tap on that part landed on the strip,
+     which cancelled it: on a sideways phone the left third of the logout
+     button did nothing.  v2.3.2563 moved one cluster off the strip
+     (EDGE_GUARD_PX); these were never moved, and moving every one is the
+     wrong way round.
+     So the guard is a listener now, on the document in the capture phase,
+     ahead of the page: a touch that STARTS within EDGE_GUARD_PX of the left edge is
+     absorbed exactly as the strip absorbed it -- preventDefault (the bezel
+     swipe) and kept from whatever lies under it, the movement pad included --
+     unless it lands on a control, which takes it as the tap it is.  Its later
+     moves and its end reach the window's listeners as they reached them from
+     the strip (the strip only ever stopped the start).  Controls are what the
+     UI review counts as pressable. */
+  var EDGE_CONTROL = 'button, a[href], input, select, textarea, label, summary,'
+    + ' [role="button"], [role="tab"], [role="link"], [role="menuitem"], [role="option"],'
+    + ' [role="checkbox"], [role="switch"], [role="slider"], [data-bag-key], [data-gear]';
   useEffect(function () {
     /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
        screen this guard never knew about, and the refs below only exist once
@@ -9779,27 +9838,25 @@ export var BroTown = function BroTown(_ref0) {
        bails on a null ref, and never re-runs; see the game-loop effect for
        the full account. */
     if (showNameModal || showLogin || bootPhase !== null) return;
-    var guard = document.createElement('div');
-    guard.style.cssText = [
-      'position: fixed',
-      'left: 0',
-      'top: 0',
-      'width: ' + EDGE_GUARD_PX + 'px',   /* v2.3.2563: shared with leftCluster */
-      'height: 100%',
-      'z-index: 40',
-      'background: transparent',
-      'pointer-events: auto',
-      'touch-action: none',
-    ].join(';');
     var onTouchStart = function (e) {
+      var ts = e.changedTouches;
+      if (!ts || !ts.length) return;
+      /* every touch this event starts is at the edge (one target per event;
+         a second finger landing elsewhere at the same instant goes through) */
+      for (var i = 0; i < ts.length; i++) {
+        if (!(ts[i].clientX < EDGE_GUARD_PX)) return;   /* v2.3.2563: shared with leftCluster */
+      }
+      var t = e.target;
+      if (t && t.closest && t.closest(EDGE_CONTROL)) return;   /* a button: its tap */
       if (e.cancelable) e.preventDefault();
       e.stopPropagation();
     };
-    guard.addEventListener('touchstart', onTouchStart, { passive: false });
-    document.body.appendChild(guard);
+    /* on the DOCUMENT, capturing: the window's and the document's own
+       capture listeners (the input stamp, the audio unlock) still hear the
+       touch, as they heard it on its way down to the strip */
+    document.addEventListener('touchstart', onTouchStart, { passive: false, capture: true });
     return function () {
-      try { guard.removeEventListener('touchstart', onTouchStart); } catch (_) {}
-      try { document.body.removeChild(guard); } catch (_) {}
+      document.removeEventListener('touchstart', onTouchStart, { capture: true });
     };
   }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
 
@@ -12006,6 +12063,13 @@ export var BroTown = function BroTown(_ref0) {
     },
     onMouseDown: function onMouseDown(e) {
       if (!stateRef.current._isDesktop) return;
+      /* v2.3.3407: a press during a harvest is the harvest's -- its gesture
+         once the window is open (ExtractionSwipeLayer, which cancels the
+         pointerdown so this mousedown never comes), nothing in the wind-up --
+         and never arms the attack: a swing is refused mid-harvest anyway
+         (playerActions) and the loop drops a held attack each frame, but the
+         press still set the attack's state and the aim for nothing */
+      if (stateRef.current._extraction) return;
       if (e.button === 0) {
         /* Left click — attack toward mouse */
         var S = stateRef.current;
@@ -14014,7 +14078,10 @@ export var BroTown = function BroTown(_ref0) {
       bottom: 140,
       background: 'rgba(89,191,145,.85)'
     },
-    onTouchStart: function onTouchStart(e) {
+    /* v2.3.3407: onClick, not onTouchStart -- a mouse never fires a
+       touchstart, so on a computer this button did nothing (E did, from
+       desktopControls); one click is the tap on both (v2.3.2617's rule) */
+    onClick: function onClick(e) {
       e.preventDefault();
       var S2 = stateRef.current,
         R = S2.rpg;
@@ -14141,12 +14208,10 @@ export var BroTown = function BroTown(_ref0) {
       bottom: 175,
       background: 'rgba(139,105,20,.85)'
     },
+    /* v2.3.3407: the click alone -- a touchstart twin opened the workshop on
+       the press and the click behind it opened it again (the door sound
+       twice), on the very surface v2.3.2617's rule is about */
     onClick: function onClick(e) {
-      e.preventDefault();
-      setShowFurniture(true);
-      BT_AUDIO.enterBuilding();
-    },
-    onTouchStart: function onTouchStart(e) {
       e.preventDefault();
       setShowFurniture(true);
       BT_AUDIO.enterBuilding();
@@ -14204,7 +14269,10 @@ export var BroTown = function BroTown(_ref0) {
         bottom: 175,
         background: 'rgba(200,100,20,.85)'
       },
-      onTouchStart: function onTouchStart(e) {
+      /* v2.3.3407: onClick, not onTouchStart -- a mouse never fires a
+         touchstart, so on a computer the field cook could not be pressed at
+         all; one click is the tap on both (v2.3.2617's rule) */
+      onClick: function onClick(e) {
         e.preventDefault();
         /* Server-authoritative cooking recipe in MP -- see the cooking
            panel onClick (~line 18989) for the predict + sync flow.

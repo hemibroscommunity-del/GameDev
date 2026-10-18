@@ -1118,6 +1118,32 @@ remnant to migrate server-side, not a mode to preserve.
       the Wheel's loading screen (`landAurasWarm`) and freed on leaving
       (`landAurasFree`); the Wheel only, `?noauras`; `mp-landauras`:
       docs/specs/land-auras.md.
+    - since v2.3.3407 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
+      all actions/buttons can be completed in landscape mode and on the
+      computer. For instance I don't think you can harvest lifeskills right now
+      on the computer": the gesture was asked for on the right button, which a
+      computer hides, or at the figure worked out without the canvas's offset
+      -- in the black margin beside the game's column -- so a harvest waited at
+      its full bar for ever (TRAPS §210):
+      - the right button comes back for a harvest (`data-harvest` on its box,
+        game.css under pointer:fine) with "Drag ↔ or hold E" over it
+        (gesturePose.js `DESK_GESTURE_HINT`, TouchControls' `.bt-rjoy-deskhint`);
+      - the MOUSE makes the gesture on it or anywhere on the world (the
+        canvas), a circle reeling by the pointer's heading anywhere
+        (ExtractionSwipeLayer `freeHand`/`onWorld`, `FREE_STEP_PX`); the press
+        is cancelled so the canvas's mousedown (an attack) never comes, and the
+        click it ends with is swallowed (`_touchHandledAt`);
+      - or E HELD works it at a quick hand's pace (`S._harvestKeys`,
+        desktopControls hands E over; `KEY_WORK`): the press that starts a
+        harvest, held, works it when the window opens; a key draws no path, so
+        never 'perfect' and no fingerprint (botfp pays it 'good' at most);
+        `gradeGesture` moved to gesturePose.js;
+      - E no longer starts a harvest over (it reached the node through
+        `_proxNode` and startExtraction dropped the attempt), a held E's
+        repeats start nothing; QuestCoach never rings the right button on a
+        computer; a phone is unchanged (the button only);
+      - `mp-deskharvest` (a computer and a sideways phone):
+        docs/specs/desktop-harvest.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
@@ -3497,6 +3523,34 @@ Two protocol versions coexist; both must keep working:
   never a window sized for 60 fps (mp-hitreal, mp-staffcast, mp-solospecial,
   mp-ccink were the test); `BT_QA_CPU_THROTTLE=<rate>` runs every page that
   much slower, to try a check as a slow phone sees it.
+- UI REVIEW SCREENSHOTS (v2.3.3407, docs/specs/ui-review.md): the owner's
+  "screenshots labelled and bundled for all UI elements in each view ... so I
+  can have chatGPT analyze them".  `node tools/qa/ui-review/capture.mjs`
+  (after a build; `--views=`, `--only=`) walks a real player through every
+  screen in states.mjs -- the door, the creator's tabs, the HUD, the
+  dashboard's pages, every building's window, the maps, a harvest, a fight --
+  as an upright phone, a sideways phone and a computer (`--views=tablet` an
+  iPad too, `--views=laptop` a 1366 x 768 window), and writes
+  tools/qa/out/ui-review/: each screen plain and with
+  every control numbered (audit.mjs: cut off, covered, small), README.md with
+  a ChatGPT prompt, FINDINGS.md, index.html, contact sheets (sheets/, a
+  section to a picture) and a zip per view; `--only=<ids>` retakes screens
+  into the last run, `--report-only` remakes the words and sheets.  The
+  owner's button: Actions -> "UI review screenshots" -> Run workflow
+  (ui-review.yml, never on a PR).  A new screen or window goes in states.mjs.
+  - What its first run found, fixed in the same version
+    (docs/specs/reach-every-button.md): the iOS edge guard was an invisible
+    18 px strip over every control at the left edge -- a listener now
+    (BroTown `EDGE_CONTROL`, TRAPS §211); sideways nothing could be SOLD to
+    Diego and Ace's Flip button was off the screen (TRAPS §212); on a computer
+    the Enter button lay under the keyboard strip and the Daily Rewards ✕
+    under the minimap's "open map" button; the farm bed's Sleep and the field
+    cook answered only a finger; the bell drew over windows; and on a
+    LAPTOP (1366 x 768) the creator's ENTER BRO TOWN lay below the screen,
+    unreachable, its sizes fractions of the WINDOW's width -- on a computer
+    they are the play column's now (game.css "THE CREATOR SIZES ITSELF FROM
+    THE COLUMN", TRAPS §214). `mp-edgeguard`, `mp-deskreach`,
+    mp-shopkeeper's sideways part, mp-notifbell.
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's
@@ -4322,6 +4376,27 @@ Two protocol versions coexist; both must keep working:
     (`_authPutOut`) and handed nothing. In the suite's room a Forget was
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
+- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3407,
+  docs/specs/desktop-keys.md, TRAPS §213).** The owner: "For computer usage
+  if there's a key that makes sense to use for a certain action just put the
+  letter next to the icon or action in a tasteful way."
+  - `src/game/deskKeys.js` is the one table -- I the bag (the band at rest;
+    B is the emotes, v2.3.3391, worn by the chat box's smiley), P character,
+    J quests, L life skills, K codex, O more, M the world map --
+    desktopControls.js binds it, and each key opens its page and closes it
+    again; never with Ctrl, Cmd or Alt (the browser's), never while typing.
+  - The button that does the same wears the key: `data-key="J"` (and
+    `data-key-at`: the corner, `hang` under a ✕, `end`, `inline`, `xy`),
+    drawn by game.css as generated content only under `@media
+    (pointer:fine)` -- never a text node (quest scenarios read the cards'
+    words), never on a phone.
+  - Enter presses a dialogue's own button in front (`data-enter`: Next,
+    Accept Quest); Esc presses the ✕ of the window in front (`data-esc`, and
+    every `.bt-inspect-close`, which wears "Esc" from its ::before), one
+    window at a time, then the old sweep, then a dashboard page.
+  - A new key goes in the table and on its button in the same PR; a new
+    window's ✕ takes `data-esc` (`"up"` if it acts on pointerup).
+  - The keys strip lists 1-3 and sits right of the bell. `mp-deskkeys`.
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,

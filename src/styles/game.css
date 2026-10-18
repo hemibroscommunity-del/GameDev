@@ -1273,8 +1273,29 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
    finger on it opened the world map and the window stayed.  It was already so for the
    Marketplace and the Gambling Den; the room pictures make most windows tall
    (found by mp-buildingrooms: elementFromPoint at the close button).  While any
-   .bt-inspect (window, card, scrim) is up the button lets taps through. */
-body:has(.bt-inspect) [data-world-map-open]{pointer-events:none}
+   .bt-inspect (window, card, scrim) is up the button lets taps through.
+   v2.3.3407: ...and the Daily Rewards window, which is its own scrim, not a
+   .bt-inspect: on a computer its ✕ and the right of its Season tab lay in the
+   minimap's box, and a click on the ✕ opened the world map (the UI review's
+   numbered pictures, tools/qa/ui-review).  And Diego's drawer: sideways it
+   rises 226px from the screen's bottom, so its ✕ reaches the minimap's box. */
+body:has(.bt-inspect) [data-world-map-open],
+body:has([data-daily-rewards]) [data-world-map-open],
+body:has([data-shop-panel]) [data-world-map-open]{pointer-events:none}
+/* v2.3.3407: ...and under the two dimmed screens this body-level button (z 45)
+   still lay on top of: a character's dialogue (its scrim is 44) and Ace's
+   flip (z 4000, but inside the game's wrap) -- a click on the dimmed minimap
+   opened the world map over them.  The button's key, M (game/deskKeys.js),
+   steps aside with it under every one of these: it stayed bright on top of
+   the dimmed screen. */
+body:has(.bt-npcdlg-scrim) [data-world-map-open],
+body:has([data-ace-flip]) [data-world-map-open]{pointer-events:none}
+body:has(.bt-inspect) [data-world-map-open]::after,
+body:has([data-daily-rewards]) [data-world-map-open]::after,
+body:has([data-shop-panel]) [data-world-map-open]::after,
+body:has(.bt-npcdlg-scrim) [data-world-map-open]::after,
+body:has([data-ace-flip]) [data-world-map-open]::after,
+body:has([data-infopopup]) [data-world-map-open]::after{display:none}
 /* ═══ v2.3.2627, moved here v2.3.3258: THE AUCTION HOUSE'S CLERK ═══
    The clerk the game draws into the Auction House's room (data/buildingRooms.js
    ROOM_KEEPERS; he was on the owner's first painting of it, v2.3.2627, and is
@@ -4659,6 +4680,27 @@ body.bt-intro-up .bt-zone-loading{visibility:hidden}
   .bt-joystick-zone { display:none !important; }
   .bt-desktop-hide { display:none !important; }
 }
+/* ═══ v2.3.3407: ...BUT THE HARVEST'S BUTTON COMES BACK FOR A HARVEST ═══
+   Owner: "I don't think you can harvest lifeskills right now on the
+   computer."  The gesture that ends a harvest is taught by the cue on the
+   right button and counted by its ring -- both inside this box, hidden above
+   on a computer, so a harvest stopped at a full bar with nothing to say what
+   came next.  BroTown's resolver stamps `data-harvest` while one runs; the
+   class + attribute out-ranks .bt-desktop-hide's single class, both
+   !important.  The mouse makes the gesture on it or anywhere on the world,
+   or E is held (ExtractionSwipeLayer), and the line over it says so.  The
+   line's colours are the button's own caption pill (TouchControls). */
+@media (pointer:fine) {
+  .bt-rjoy-zone[data-harvest="1"] { display:block !important; }
+  .bt-rjoy-deskhint[data-show="1"] { display:block; }
+}
+.bt-rjoy-deskhint {
+  display:none; position:absolute; right:0; bottom:calc(100% + 8px);
+  padding:3px 10px 4px; border-radius:999px; box-sizing:border-box;
+  background:rgba(12,16,20,.86); border:1px solid rgba(216,168,95,.6);
+  color:#F7F2E7; font:700 13px/1.25 'Source Sans 3',sans-serif; letter-spacing:.03em;
+  white-space:nowrap; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,.9);
+}
 /* ═══ v2.3.3005: THE WEAPON BUTTON TAKES THE CORNER; THE BELL STEPS RIGHT ═══
    WeaponSwapButton.jsx (owner: "a little icon of current equipped weapon in
    bottom left above dashboard but beneath left joystick").  The bell
@@ -4702,7 +4744,11 @@ body.bt-intro-up .bt-zone-loading{visibility:hidden}
    sitting between this strip and the band; that HUD has since been deleted as
    a duplicate of the dashboard, so the strip drops onto the slot directly
    above the band and 77px of dead air goes with it. */
-.bt-kb-hints{position:fixed;bottom:calc(var(--dash-h) + 12px);left:12px;z-index:20;display:flex;gap:4px;flex-wrap:wrap;max-width:280px;
+/* v2.3.3407: left 52px, was 12 -- right of the bell (WorldChatFeed: left 8,
+   36 px wide), which sat over the strip's first chips on every computer,
+   "Tab Swap" and "C Chat" half under it (the folded chip below too); and
+   310 px wide, was 280, so its chips still lie in five rows */
+.bt-kb-hints{position:fixed;bottom:calc(var(--dash-h) + 12px);left:52px;z-index:20;display:flex;gap:4px;flex-wrap:wrap;max-width:310px;
   /* v2.3.1715: pointer-events auto so the strip can be TAPPED to dismiss
      (owner: "do a toggle on and off option for it too").  It sits over the
      world, so the handler stops the tap reaching the canvas. */
@@ -4752,9 +4798,53 @@ body:has(.bt-inspect) .bt-kb-hints,
 body:has(.bt-inspect) .bt-kb-chip,
 body:has([data-trade-drawer]) .bt-kb-hints,
 body:has([data-trade-drawer]) .bt-kb-chip{display:none}
+/* ═══ v2.3.3407: ...AND UNDER A PROMPT'S BUTTON (A DOOR, A BED, A WORKSHOP) ═══
+   The owner: "Make sure all actions/buttons can be completed ... on the
+   computer."  The UI review's numbered pictures (tools/qa/ui-review) showed
+   the "ENTER BANK" button COVERED on a computer: the prompt sits centred just
+   over the band, the strip's five rows of chips reach past the middle of the
+   game's column, and the strip -- outside .brotown-wrap, as above -- paints
+   over it whatever its z-index, its chips taking the click (a click on the
+   button's left half hid the strip instead of opening the bank).  On a
+   computer a prompt that E works carries its own key (the <kbd>E</kbd> in it,
+   BroTown), so while one is up the strip stands aside; its dismissed chip, in
+   the corner clear of any prompt, stays. */
+body:has(.bt-interact-prompt) .bt-kb-hints{display:none}
+/* v2.3.3407: ...and under the chat feed the bell opens, which is drawn up
+   over this same corner */
+body:has([data-world-chat-toggle][aria-expanded="true"]) .bt-kb-hints{display:none}
+/* v2.3.3407: ...and while a harvest's button is up: on a laptop's 1366 x 768
+   window the column is 419 px wide and the strip's rows reached the button's
+   left half ("Click Attack", "X Jump" and "R Whirl" drawn over CHOP, the UI
+   review's laptop view).  Its own line says the keys the harvest takes
+   ("Drag ↔ or hold E"), and the strip is back the moment it ends. */
+body:has(.bt-rjoy-zone[data-harvest="1"]) .bt-kb-hints{display:none}
+/* v2.3.3407: ...and while the emote picker is up (EmotePanel, v2.3.3391): it
+   sits centred just over the band, and on a computer the strip's rows lay
+   over its second row of moves -- Sit, Sleep, Flop, Bounce -- so a click on
+   one hid the strip instead of sitting down.  B, the picker's key, is on the
+   strip; the strip is back when the picker goes. */
+body:has([data-emote-picker]) .bt-kb-hints{display:none}
+/* ═══ v2.3.3407: THE QUEST COACH STANDS ASIDE UNDER A WINDOW ═══
+   QuestCoach.jsx: "a coach mark stamped across an open quest dialogue would
+   be a straight downgrade", and it keeps off by drawing only when its control
+   answers a hit-test -- which a scrim over the screen always failed.  The
+   building windows have no such scrim since v2.3.3258 (they open over the
+   street), and the dashboard's OPEN button they leave in view kept GEAR UP's
+   card up over them: the UI review's laptop view found it over the
+   Woodworker's Staff tab and the Feed & Seed's Orders, and a click there put
+   the tip away instead.  So the coach hides, ring and card, while a window
+   is up; the lesson is untouched (its hit-test skips [data-coach]) and comes
+   back when the window goes.  None of its controls is inside a window.
+   TRAPS §220; mp-questcoach, mp-deskreach 4. */
+body:has(.bt-inspect) [data-coach],
+body:has([data-daily-rewards]) [data-coach],
+body:has([data-shop-panel]) [data-coach],
+body:has([data-ace-flip]) [data-coach],
+body:has([data-trade-drawer]) [data-coach]{display:none}
 /* The dismissed state: one small chip in the same corner, so the controls are
    recoverable.  A toggle you cannot find your way back from is a delete. */
-.bt-kb-chip{position:fixed;bottom:calc(var(--dash-h) + 12px);left:12px;z-index:20;
+.bt-kb-chip{position:fixed;bottom:calc(var(--dash-h) + 12px);left:52px;z-index:20;
   display:flex;align-items:center;justify-content:center;min-width:44px;min-height:28px;
   padding:4px 10px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15);
   border-radius:4px;font-size:13px;color:rgba(255,255,255,.7);cursor:pointer;
@@ -4768,6 +4858,46 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
   /* v2.3.1239: owner feedback — 10px font floor (was 8px); desktop-only kb hint */
   font-size:11px;font-weight:800;color:#fff;min-width:14px;text-align:center}
 .bt-crosshair-cursor{cursor:crosshair !important}
+
+/* ═══ v2.3.3407: A KEY'S LETTER BESIDE WHAT IT DOES -- ON A COMPUTER ═══
+   The owner: "For computer usage if there's a key that makes sense to use for
+   a certain action just put the letter next to the icon or action in a
+   tasteful way."  A button whose key is bound (game/deskKeys.js, the one
+   table desktopControls.js reads) carries data-key="J"; under a mouse it
+   wears the letter as a small key cap.  The letter is GENERATED here, never a
+   text node, so no card's words change (quest scenarios read them), and a
+   touch screen never shows one.  A quiet slate key, not brass (LANTERN-SLATE:
+   brass is selection, never a default edge), badge type 10/700, its bottom
+   edge heavier so it reads as a key; it takes no clicks, so a press on it is
+   a press on its button.  Where it sits, by data-key-at:
+     (none)  inside the bottom-right corner -- the dashboard's six buttons
+     hang    centred under the button, over its bottom edge -- a window's ✕
+     end     inside the right end, at the middle -- a wide button (Accept)
+     inline  after the words -- a button of words (Next, Not now)
+     xy      at --key-x / --key-y -- beside the minimap's "tap me" mark
+   Every .bt-inspect-close (seventeen windows' ✕, which Esc presses) wears
+   "Esc" the same way, from its ::before: its ::after is its touch target. */
+@media (pointer:fine) {
+  [data-key]::after,
+  .bt-inspect-close::before {
+    position:absolute; z-index:3; box-sizing:border-box;
+    display:flex; align-items:center; justify-content:center;
+    min-width:16px; height:16px; padding:0 4px;
+    border:1px solid rgba(238,242,235,.30); border-bottom-width:2px; border-radius:4px;
+    background:rgba(13,22,27,.92); color:#F7F2E7;
+    font:700 10px/1 'Source Sans 3',sans-serif; letter-spacing:.02em;
+    text-transform:none; text-shadow:none; white-space:nowrap;
+    box-shadow:0 1px 3px rgba(0,0,0,.45);
+    pointer-events:none;
+  }
+  [data-key]::after { content:attr(data-key); right:3px; bottom:3px; }
+  .bt-inspect-close::before { content:'Esc'; }
+  [data-key-at="hang"]::after,
+  .bt-inspect-close::before { right:auto; bottom:auto; left:50%; top:calc(100% - 7px); transform:translateX(-50%); }
+  [data-key-at="end"]::after { bottom:auto; right:14px; top:50%; transform:translateY(-50%); }
+  [data-key-at="inline"]::after { position:relative; display:inline-flex; right:auto; bottom:auto; margin-left:8px; vertical-align:1px; }
+  [data-key-at="xy"]::after { right:auto; bottom:auto; left:var(--key-x,0px); top:var(--key-y,0px); }
+}
 
 /* v2.3.1719: the DESKTOP STAT HUD is gone (owner: "remove the HUD stuff that
    was behind the dashboard — it doesn't need to be displayed").  It carried
@@ -5011,6 +5141,48 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
        deliberate frame rather than the page failing to fill. */
     box-shadow:0 0 0 1px rgba(255,255,255,.06), 0 0 48px rgba(0,0,0,.55);
   }
+}
+
+/* ═══ v2.3.3407: THE CREATOR SIZES ITSELF FROM THE COLUMN, NOT THE WINDOW ═══
+   Owner: "Make sure all actions/buttons can be completed ... on the
+   computer."  On a 1366x768 laptop a new player could not make a character:
+   ENTER BRO TOWN lay at y 847-903 of a 768 px window, and the creator does
+   not scroll.  The creator's sizes are fractions of `vw` (--cc-leftw is
+   clamp(150px,44vw,360px)), and `vw` is the WINDOW: 44vw of 1366 is 601, so
+   the character's column took its 360 px ceiling inside the 419 px play
+   column above, the Trait Picker beside it got 31 px, and everything the
+   picker could not hold stacked down past the screen.  Measured on the
+   v2.3.3407 build, ENTER BRO TOWN's bottom against the window: 1440x900 903
+   (3 px cut), 1536x864 39 cut, 1280x800 103, 1366x768 135, 1280x720 139 --
+   only a 1920x1080 window fitted it.
+
+   So on a computer each `vw` the creator reads is a hundredth of the
+   COLUMN, --cc-colw: the #root rule above makes it 390/715 of the window's
+   height, or the window's width when that is narrower.  The creator is then
+   laid out as a phone of the column's own shape is -- which it was built to
+   fit -- with the same clamps.  A phone never sees this (pointer:fine), and
+   a window under 1000 px wide has no column (the gate above), so vw is right
+   there.  TRAPS §214; mp-deskreach 3 holds it at 1366 x 768. */
+@media (pointer:fine) and (min-width:1000px) {
+  .bt-name-modal{
+    --cc-colw:min(100vw,calc(100vh * 390 / 715));
+    --cc-tile:clamp(46px,calc(var(--cc-colw) * .13),66px);
+    --cc-swatch:clamp(30px,calc(var(--cc-colw) * .084),44px);
+    --cc-leftw:clamp(150px,calc(var(--cc-colw) * .44),360px);
+  }
+  /* the plate's type with its column, as v2.3.2359 measured it: at the
+     window's 18px "ENTER BRO TOWN" broke onto two lines in a 184px column */
+  .bt-cc-play{font-size:clamp(12px,calc(var(--cc-colw) * .033),18px)}
+  .bt-cc-login{font-size:clamp(10px,calc(var(--cc-colw) * .026),13px)!important}
+  .bt-cc-actions>button{font-size:clamp(13px,calc(var(--cc-colw) * .039),16px)}
+  .bt-cc-reset.bt-cc-reset{font-size:clamp(13px,calc(var(--cc-colw) * .039),16px)}
+  .bt-cc-namehead::before,.bt-cc-namehead::after{width:clamp(18px,calc(var(--cc-colw) * .07),46px)}
+  .bt-cc-panel-title{font-size:clamp(11px,calc(var(--cc-colw) * .03),14px)}
+  .bt-cc-tab-label{font-size:clamp(9px,calc(var(--cc-colw) * .026),12px)}
+  .bt-cc-rot{width:clamp(34px,calc(var(--cc-colw) * .115),50px);height:clamp(34px,calc(var(--cc-colw) * .115),50px)}
+}
+@media (pointer:fine) and (min-width:1000px) and (max-height:720px) {
+  .bt-cc-logo{width:min(calc(var(--cc-colw) * .30),140px)}
 }
 
 /* ═══ v2.3.1795: THE XP PAYOUT BREATHES, BRIEFLY ═══
