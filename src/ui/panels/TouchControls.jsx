@@ -329,7 +329,7 @@ export function TouchControls(props) {
       width: discW,
       height: discW
     }
-  }, /* ═══ v2.3.3399: A COMPUTER'S WORDS OVER THE BUTTON ═══
+  }, /* ═══ v2.3.3402: A COMPUTER'S WORDS OVER THE BUTTON ═══
        On a computer this box comes back for a harvest (game.css
        `[data-harvest]`), and the cue on the disc says which way to move but
        not with what: this line does -- "Drag ↔ or hold E" (gesturePose.js

@@ -710,6 +710,16 @@ count). Quest, season and spin-pot payouts ride `_creditPlayer` →
 `inbox_delivered` with sources `dailyquest` / `season` / `dailyspin`, kept
 out of chat by the client. Full table:
 docs/specs/daily-rewards.md.
+v2.3.3400: the daily quests and the season are put away --
+`caps.dailyquests` is false unless the live flag `dailyquests: true` is set
+(then `daily_reroll` and `daily_progress` work as above), and `caps.season`
+false unless `season: true` (then `season_claim` works as above; off, it is
+refused with no answer). `rewards_state.season` carries `on` (0/1); with the
+season off, the first state after the worker mailed a player's reached and
+unclaimed tiers carries news `{kind: 'season_drop', s, mailed: [tier...]}`
+(their coins and items `inbox_delivered`, source `season`). A new day online
+sends news `{kind: 'spinday'}` in place of `'newday'`, and tut_1's turn-in a
+state with no news in place of `'unlocked'`.
 
 **Salvage and essences (v2.3.3141, caps.salvage):** new c→s cases
 `smith_salvage {field: 'armorStash'|'legsStash', gid}` or `{field:

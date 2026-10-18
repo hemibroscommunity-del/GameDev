@@ -1,4 +1,4 @@
-/* ═══ v2.3.3399: THE SCREENS THE UI REVIEW VISITS, IN ORDER ═══
+/* ═══ v2.3.3402: THE SCREENS THE UI REVIEW VISITS, IN ORDER ═══
  *
  * Each state is one picture per view (capture.mjs).  `run(ctx)` gets the
  * screen there and returns nothing on success; a thrown error, or a returned

@@ -389,7 +389,7 @@ export function WorldChatFeed() {
            never take away the bell, because the bell is how you get chat back.
            A panel owning the screen is the only case that hides it, and it
            comes back the moment the panel closes. */
-        /* ═══ v2.3.3399: ...AND THE SHUT BELL STANDS DOWN UNDER ANY WINDOW ═══
+        /* ═══ v2.3.3402: ...AND THE SHUT BELL STANDS DOWN UNDER ANY WINDOW ═══
            The UI review's numbered pictures (tools/qa/ui-review) showed the
            36px bell, unread count and all, painted across the bottom of the
            windows in this corner -- the Blacksmith's Forge tab, the

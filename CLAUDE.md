@@ -1000,7 +1000,7 @@ remnant to migrate server-side, not a mode to preserve.
         gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
         `mp-monsterplate` (whose band sweep now raises the weapon's skill):
         docs/specs/xp-decay.md.
-    - since v2.3.3399 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
+    - since v2.3.3402 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
       all actions/buttons can be completed in landscape mode and on the
       computer. For instance I don't think you can harvest lifeskills right now
       on the computer": the gesture was asked for on the right button, which a
@@ -2523,6 +2523,34 @@ remnant to migrate server-side, not a mode to preserve.
       tier to claim; `daily_rewards:<pid>`, caps/kill switches `dailyspin`
       and `dailyquests`; `dailyrewards` suite, `mp-dailyrewards`:
       docs/specs/daily-rewards.md.
+    - since v2.3.3400 THE DAILY QUESTS AND THE SEASON ARE PUT AWAY -- the
+      owner: "Remove the daily quests they're randomly appearing as complete
+      and it makes no sense to me ... I'd rather it go away" (they were rolled
+      for everyone at tut_1 and counted from any kill, harvest, cook or
+      smelt, so they announced themselves already done, with the story
+      quest's fanfare), then, offered the season on the free spin's stars,
+      "Yes drop the season":
+      - the quests off unless the live flags say `dailyquests: true`
+        (`_dqOff`, `_drFlagOn`): not advertised, nothing rolled, counted,
+        rerolled or paid, no `daily_progress`; the code is kept and tested
+        for that switch, as the ground's edge pieces and blends are;
+      - the SEASON likewise, off unless `season: true` (`_seOff`,
+        `caps.season`): no star added, no `season_claim` taken, and a tier a
+        player reached and never claimed is MAILED the first time they are
+        seen (`_seClose` with `drop`, the claim's own opIds, `season_drop`
+        news only to someone it paid); each record is kept, so the switch
+        brings the season back where it stood, the free spin's stars 3 with
+        the quests off (`SEASON.SPIN_STARS`), 1 with them;
+      - the page: no Season tab, stars or claims (`seasonLive` is
+        `caps.season`), the Quests card says the spin or the streak, and the
+        Den has no button past its spin;
+      - tut_1 handed in now always sends the opened spin (it waited for a
+        rejoin with the quests off), with no "Daily quests are open!"; a new
+        day online is `spinday` news ("your free spin is waiting"), never
+        `newday`'s "three new daily quests";
+      - the Quests button's dot stays a quest's alone; `dailyrewards` §9,
+        `mp-dailyrewards`: daily-rewards.md "The daily quests and the season
+        put away".
   - Since v2.3.3142 WORN ARMOUR SHOWS ITS GRADE -- the owner: "change the
     outline hue or something on the armor so it retains the color but has
     highlights. So rare is blue, elite is orange, godly is prismatic":
@@ -3377,7 +3405,7 @@ Two protocol versions coexist; both must keep working:
   never a window sized for 60 fps (mp-hitreal, mp-staffcast, mp-solospecial,
   mp-ccink were the test); `BT_QA_CPU_THROTTLE=<rate>` runs every page that
   much slower, to try a check as a slow phone sees it.
-- UI REVIEW SCREENSHOTS (v2.3.3399, docs/specs/ui-review.md): the owner's
+- UI REVIEW SCREENSHOTS (v2.3.3402, docs/specs/ui-review.md): the owner's
   "screenshots labelled and bundled for all UI elements in each view ... so I
   can have chatGPT analyze them".  `node tools/qa/ui-review/capture.mjs`
   (after a build; `--views=`, `--only=`) walks a real player through every
@@ -4230,7 +4258,7 @@ Two protocol versions coexist; both must keep working:
     (`_authPutOut`) and handed nothing. In the suite's room a Forget was
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
-- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3399,
+- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3402,
   docs/specs/desktop-keys.md, TRAPS §213).** The owner: "For computer usage
   if there's a key that makes sense to use for a certain action just put the
   letter next to the icon or action in a tasteful way."

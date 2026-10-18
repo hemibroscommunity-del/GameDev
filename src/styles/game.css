@@ -1274,7 +1274,7 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
    Marketplace and the Gambling Den; the room pictures make most windows tall
    (found by mp-buildingrooms: elementFromPoint at the close button).  While any
    .bt-inspect (window, card, scrim) is up the button lets taps through.
-   v2.3.3399: ...and the Daily Rewards window, which is its own scrim, not a
+   v2.3.3402: ...and the Daily Rewards window, which is its own scrim, not a
    .bt-inspect: on a computer its ✕ and the right of its Season tab lay in the
    minimap's box, and a click on the ✕ opened the world map (the UI review's
    numbered pictures, tools/qa/ui-review).  And Diego's drawer: sideways it
@@ -1282,7 +1282,7 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
 body:has(.bt-inspect) [data-world-map-open],
 body:has([data-daily-rewards]) [data-world-map-open],
 body:has([data-shop-panel]) [data-world-map-open]{pointer-events:none}
-/* v2.3.3399: ...and under the two dimmed screens this body-level button (z 45)
+/* v2.3.3402: ...and under the two dimmed screens this body-level button (z 45)
    still lay on top of: a character's dialogue (its scrim is 44) and Ace's
    flip (z 4000, but inside the game's wrap) -- a click on the dimmed minimap
    opened the world map over them.  The button's key, M (game/deskKeys.js),
@@ -4680,7 +4680,7 @@ body.bt-intro-up .bt-zone-loading{visibility:hidden}
   .bt-joystick-zone { display:none !important; }
   .bt-desktop-hide { display:none !important; }
 }
-/* ═══ v2.3.3399: ...BUT THE HARVEST'S BUTTON COMES BACK FOR A HARVEST ═══
+/* ═══ v2.3.3402: ...BUT THE HARVEST'S BUTTON COMES BACK FOR A HARVEST ═══
    Owner: "I don't think you can harvest lifeskills right now on the
    computer."  The gesture that ends a harvest is taught by the cue on the
    right button and counted by its ring -- both inside this box, hidden above
@@ -4744,7 +4744,7 @@ body.bt-intro-up .bt-zone-loading{visibility:hidden}
    sitting between this strip and the band; that HUD has since been deleted as
    a duplicate of the dashboard, so the strip drops onto the slot directly
    above the band and 77px of dead air goes with it. */
-/* v2.3.3399: left 52px, was 12 -- right of the bell (WorldChatFeed: left 8,
+/* v2.3.3402: left 52px, was 12 -- right of the bell (WorldChatFeed: left 8,
    36 px wide), which sat over the strip's first chips on every computer,
    "Tab Swap" and "C Chat" half under it (the folded chip below too); and
    310 px wide, was 280, so its chips still lie in five rows */
@@ -4798,7 +4798,7 @@ body:has(.bt-inspect) .bt-kb-hints,
 body:has(.bt-inspect) .bt-kb-chip,
 body:has([data-trade-drawer]) .bt-kb-hints,
 body:has([data-trade-drawer]) .bt-kb-chip{display:none}
-/* ═══ v2.3.3399: ...AND UNDER A PROMPT'S BUTTON (A DOOR, A BED, A WORKSHOP) ═══
+/* ═══ v2.3.3402: ...AND UNDER A PROMPT'S BUTTON (A DOOR, A BED, A WORKSHOP) ═══
    The owner: "Make sure all actions/buttons can be completed ... on the
    computer."  The UI review's numbered pictures (tools/qa/ui-review) showed
    the "ENTER BANK" button COVERED on a computer: the prompt sits centred just
@@ -4810,22 +4810,22 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
    BroTown), so while one is up the strip stands aside; its dismissed chip, in
    the corner clear of any prompt, stays. */
 body:has(.bt-interact-prompt) .bt-kb-hints{display:none}
-/* v2.3.3399: ...and under the chat feed the bell opens, which is drawn up
+/* v2.3.3402: ...and under the chat feed the bell opens, which is drawn up
    over this same corner */
 body:has([data-world-chat-toggle][aria-expanded="true"]) .bt-kb-hints{display:none}
-/* v2.3.3399: ...and while a harvest's button is up: on a laptop's 1366 x 768
+/* v2.3.3402: ...and while a harvest's button is up: on a laptop's 1366 x 768
    window the column is 419 px wide and the strip's rows reached the button's
    left half ("Click Attack", "X Jump" and "R Whirl" drawn over CHOP, the UI
    review's laptop view).  Its own line says the keys the harvest takes
    ("Drag ↔ or hold E"), and the strip is back the moment it ends. */
 body:has(.bt-rjoy-zone[data-harvest="1"]) .bt-kb-hints{display:none}
-/* v2.3.3399: ...and while the emote picker is up (EmotePanel, v2.3.3391): it
+/* v2.3.3402: ...and while the emote picker is up (EmotePanel, v2.3.3391): it
    sits centred just over the band, and on a computer the strip's rows lay
    over its second row of moves -- Sit, Sleep, Flop, Bounce -- so a click on
    one hid the strip instead of sitting down.  B, the picker's key, is on the
    strip; the strip is back when the picker goes. */
 body:has([data-emote-picker]) .bt-kb-hints{display:none}
-/* ═══ v2.3.3399: THE QUEST COACH STANDS ASIDE UNDER A WINDOW ═══
+/* ═══ v2.3.3402: THE QUEST COACH STANDS ASIDE UNDER A WINDOW ═══
    QuestCoach.jsx: "a coach mark stamped across an open quest dialogue would
    be a straight downgrade", and it keeps off by drawing only when its control
    answers a hit-test -- which a scrim over the screen always failed.  The
@@ -4859,7 +4859,7 @@ body:has([data-trade-drawer]) [data-coach]{display:none}
   font-size:11px;font-weight:800;color:#fff;min-width:14px;text-align:center}
 .bt-crosshair-cursor{cursor:crosshair !important}
 
-/* ═══ v2.3.3399: A KEY'S LETTER BESIDE WHAT IT DOES -- ON A COMPUTER ═══
+/* ═══ v2.3.3402: A KEY'S LETTER BESIDE WHAT IT DOES -- ON A COMPUTER ═══
    The owner: "For computer usage if there's a key that makes sense to use for
    a certain action just put the letter next to the icon or action in a
    tasteful way."  A button whose key is bound (game/deskKeys.js, the one
@@ -5143,7 +5143,7 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
   }
 }
 
-/* ═══ v2.3.3399: THE CREATOR SIZES ITSELF FROM THE COLUMN, NOT THE WINDOW ═══
+/* ═══ v2.3.3402: THE CREATOR SIZES ITSELF FROM THE COLUMN, NOT THE WINDOW ═══
    Owner: "Make sure all actions/buttons can be completed ... on the
    computer."  On a 1366x768 laptop a new player could not make a character:
    ENTER BRO TOWN lay at y 847-903 of a 768 px window, and the creator does
@@ -5152,7 +5152,7 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
    the character's column took its 360 px ceiling inside the 419 px play
    column above, the Trait Picker beside it got 31 px, and everything the
    picker could not hold stacked down past the screen.  Measured on the
-   v2.3.3399 build, ENTER BRO TOWN's bottom against the window: 1440x900 903
+   v2.3.3402 build, ENTER BRO TOWN's bottom against the window: 1440x900 903
    (3 px cut), 1536x864 39 cut, 1280x800 103, 1366x768 135, 1280x720 139 --
    only a 1920x1080 window fitted it.
 

@@ -1,4 +1,4 @@
-/* ═══ THE BUTTONS AT THE SCREEN'S LEFT EDGE ANSWER A TAP (v2.3.3399) ═══
+/* ═══ THE BUTTONS AT THE SCREEN'S LEFT EDGE ANSWER A TAP (v2.3.3402) ═══
  *
  * Owner, 2026-10-18: "Make sure all actions/buttons can be completed in
  * landscape mode and on the computer."
@@ -12,7 +12,7 @@
  * logout's left third, the ◂ arrow's, the dashboard's ▴/▼ fold chip's, and
  * upright the band's CLOSE pill and its first column of bag tiles.
  *
- * Since v2.3.3399 the guard is a listener (BroTown.jsx, EDGE_CONTROL): a touch
+ * Since v2.3.3402 the guard is a listener (BroTown.jsx, EDGE_CONTROL): a touch
  * starting in those 18 px is still swallowed on the WORLD -- the bezel swipe
  * cancelled, the movement pad never told -- and goes to a control it lands on.
  *

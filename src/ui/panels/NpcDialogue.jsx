@@ -140,7 +140,7 @@ export const NpcDialogue = (props) => {
             type="button"
             data-qa="dlg-close"
             aria-label="Close. Your reward stays waiting for you."
-            data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3399: Esc presses it (game/deskKeys.js) */
+            data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3402: Esc presses it (game/deskKeys.js) */
             onClick={(e) => { e.stopPropagation(); onClose && onClose(); }}
             style={{
               position: 'absolute', top: 0, right: 0, width: 44, height: 44,
@@ -204,7 +204,7 @@ export const NpcDialogue = (props) => {
               type="button"
               className="button-primary bt-npcdlg-next"
               data-tut="npcdlg-next"
-              /* v2.3.3399: Enter presses it on a computer, and it says so
+              /* v2.3.3402: Enter presses it on a computer, and it says so
                  after its word (game/deskKeys.js; game.css [data-key]) */
               data-enter="" data-key="Enter" data-key-at="inline"
               onClick={(e) => { e.stopPropagation(); advance(); }}

@@ -7131,7 +7131,7 @@ refused device counts as a wrong key" (24 of 24 deliberate breaks caught), and
 mp-devicelock refuses a new phone with the code, its key kept, and lets it in
 after the owner's pass.
 
-## 210. "The figure is at (world - camera) x scale on the screen" (v2.3.3399)
+## 210. "The figure is at (world - camera) x scale on the screen" (v2.3.3402)
 
 **Tempting:** a point in the world is drawn at `(x - camera.x) * scale`, so
 that is where it is on the screen -- compare it with a pointer's `clientX`.
@@ -7154,7 +7154,7 @@ assume it is at 0, 0 -- and test on a computer's window, not only a phone's.
 **Receipt:** mp-deskharvest step 4: with the button hidden the anchor is on the
 figure (within 2 px of where it is drawn), inside the column.
 
-## 211. "An invisible strip at the screen's edge only catches what lands on the world" (v2.3.3399)
+## 211. "An invisible strip at the screen's edge only catches what lands on the world" (v2.3.3402)
 
 **Tempting:** iOS reads a swipe from the bezel as its back gesture, so lay a
 transparent strip down the left edge, above the game, and cancel every
@@ -7180,7 +7180,7 @@ layer.
 both fold chips and the band's first bag tile (all six fail on the strip), and
 a thumb at x 8 on the world still starts no walk.
 
-## 212. "A window that fits a phone held upright fits one held sideways" (v2.3.3399)
+## 212. "A window that fits a phone held upright fits one held sideways" (v2.3.3402)
 
 **Tempting:** build the window on the 390 x 844 design target, centre it on a
 scrim, and it works on every phone.
@@ -7203,7 +7203,7 @@ review takes every window in both.
 screen); mp-shopkeeper's sideways part (the column opens beside the drawer, a
 tap on a bag slot sells, the ✕ answers, "His shelf" below his name).
 
-## 213. "A key's letter is one more word on its button" (v2.3.3399)
+## 213. "A key's letter is one more word on its button" (v2.3.3402)
 
 **Tempting:** to show a computer player that Enter accepts the quest, put
 `<kbd>Enter</kbd>` in the Accept Quest button, and an "Esc" span by every ✕.
@@ -7229,7 +7229,7 @@ with it, or it stays bright on top (TRAPS §20).
 minimap, Next, Accept Quest, Not now and the ✕s, every key doing what its
 button does, and a phone wearing none; the quest scenarios still read the
 cards' words unchanged.
-## 214. "A `vw` is a hundredth of the game's width" (v2.3.3399)
+## 214. "A `vw` is a hundredth of the game's width" (v2.3.3402)
 
 **Tempting:** size a screen's parts as fractions of `vw` -- `--cc-leftw:
 clamp(150px,44vw,360px)` -- because on a phone the game IS the screen, and a
@@ -7364,7 +7364,7 @@ the record and puts out a join whose key or device it no longer lets in.
 **Receipt:** login-keys §12 (21 checks): a gate where each change waits, the
 owner's tool run in the gap; nine fail on v2.3.3355's code.
 
-## 220. "Every window puts a scrim over the screen, so the coach keeps off windows by itself" (v2.3.3399)
+## 220. "Every window puts a scrim over the screen, so the coach keeps off windows by itself" (v2.3.3402)
 
 **Tempting:** leave the quest coach alone when a window is open: it draws a
 lesson only when its control answers a hit-test at its middle (QuestCoach
