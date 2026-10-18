@@ -61,7 +61,7 @@ if (typeof window !== 'undefined') {
     const R = G && G._app && G._app.renderer;
     if (!G || G.dead || !G.under || !R) return null;
     const was = G.under.visible;
-    /* v2.3.3441: every piece drawn for this, the ones under open sea too
+    /* v2.3.3451: every piece drawn for this, the ones under open sea too
        (wheelWater.js hides them while its quads cover them) */
     const W = G.water, covering = !!(W && W._covering);
     if (covering) W.cover(false);
@@ -140,7 +140,7 @@ export class WheelGround {
     this.root.addChild(this.pieceRoot);
     this.water = WheelWater.on() ? new WheelWater(this.root) : null;
     this.under = null;
-    /* v2.3.3441: every piece the view touches laid and the view inside the
+    /* v2.3.3451: every piece the view touches laid and the view inside the
        world -- the tile layer's black under the ground is not drawn (update) */
     this.coversView = false;
     this.pieces = new Map();   /* "i,j" -> { i, j, sprite, ready, popped } */
@@ -178,7 +178,7 @@ export class WheelGround {
   }
 
   update(cx, cy, viewW, viewH) {
-    this.coversView = false;   /* v2.3.3441: until this frame's test says so (below) */
+    this.coversView = false;   /* v2.3.3451: until this frame's test says so (below) */
     if (this.dead) return;
     const info = wheelInfo();
     if (!info) { wheelStart().catch(() => {}); return; }
@@ -216,7 +216,7 @@ export class WheelGround {
        is shown exactly then: while any piece the view (and UNDER_PAD past it)
        touches is missing or still being laid -- the frame that piece is
        wanted, as a piece is only ever asked for here, before the draw. */
-    /* v2.3.3441: worked out whether or not the overview is placed yet, as the
+    /* v2.3.3451: worked out whether or not the overview is placed yet, as the
        tile layer's black under everything asks it too (coversView, below) */
     let covered = true;
     const ui0 = clampI(Math.floor((cx - UNDER_PAD) / cs)), ui1 = clampI(Math.floor((cx + viewW + UNDER_PAD) / cs));
@@ -232,7 +232,7 @@ export class WheelGround {
       if (this.under.visible === covered) this.under.visible = !covered;
       wheelStats.under = !covered;
     }
-    /* ═══ v2.3.3441: AND THE BLACK UNDER IT ALL ═══
+    /* ═══ v2.3.3451: AND THE BLACK UNDER IT ALL ═══
        The tile layer draws a black rectangle under every ground (tileRenderer
        bgGfx: the world and a screen's width round it), one full screen of
        pixels painted a frame in the Wheel, every one of them covered by the

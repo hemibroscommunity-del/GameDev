@@ -1,10 +1,10 @@
-/* ═══ v2.3.3441: THE GROUND UNDER OPEN SEA IS NOT DRAWN ═══
+/* ═══ v2.3.3451: THE GROUND UNDER OPEN SEA IS NOT DRAWN ═══
  *
  * The owner, 2026-10-18: "iterate on what best improves framerate without
  * loss of quality (or negligible loss) for phone gameplay (iPhone, android)".
  * A piece of open sea is covered whole by its moving water's quad at full
  * strength, so its ground sprite was drawn for nothing (wheelWater.js, the
- * v2.3.3441 header).  On a phone viewport, against a real worker, at the
+ * v2.3.3451 header).  On a phone viewport, against a real worker, at the
  * Wind Dunes' first coast (mp-wheelwaves' spot: sand, the shallows and the
  * sea north of it):
  *   1. pieces of open sea are laid there and their ground is hidden while
@@ -21,7 +21,7 @@
  *   5. what it saves here: this box draws in software, every px it is asked
  *      to, so the frame's time with the ground hidden and drawn says how much
  *      drawing was skipped (reported; a phone's chip has its own numbers);
- *   6. v2.3.3441, THE BLACK UNDER THE GROUND (tileRenderer bgGfx) is not drawn
+ *   6. v2.3.3451, THE BLACK UNDER THE GROUND (tileRenderer bgGfx) is not drawn
  *      while the pieces cover the view; in a held frame, hidden and drawn are
  *      the same to the bit; with the ground put away hiding it changes the
  *      picture (it really is not drawn); the overview kept shown (any piece
@@ -204,7 +204,7 @@ const sameFrame = (P) => P.page.evaluate(async () => {
   return out;
 });
 
-/* v2.3.3441: the black under the ground, in a held frame: hidden as the game
+/* v2.3.3451: the black under the ground, in a held frame: hidden as the game
    left it and drawn, the same to the bit; then the ground's root put away,
    hidden and drawn (what it covers is the canvas's own navy, never black);
    and the frame's cost each way */
@@ -334,7 +334,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`the ground's own check (the pieces alone over the overview) still sees every piece (${us && us.diff} px apart), and the pieces are hidden again after it (${after && after.hidden})`,
       !!us && !us.error && us.diff === 0 && !!after && after.hidden === (on && on.hidden), { us, after });
 
-    /* ── 6. v2.3.3441: the black under the ground ── */
+    /* ── 6. v2.3.3451: the black under the ground ── */
     const g0 = await P.page.evaluate(() => (window.__btGroundBg ? window.__btGroundBg() : null));
     rec.ok(`the black under the ground is not drawn while the pieces cover the view (${JSON.stringify(g0)})`,
       !!g0 && g0.zone === 'wheel' && g0.covers === true && g0.drawn === false && g0.keep === false, g0);

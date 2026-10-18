@@ -1927,7 +1927,7 @@ remnant to migrate server-side, not a mode to preserve.
       hold);
     - test-world-core "the water moves", `mp-wheelwaves`:
       docs/specs/moving-water.md.
-    - since v2.3.3441 THE GROUND UNDER OPEN SEA, AND THE BLACK UNDER THE
+    - since v2.3.3451 THE GROUND UNDER OPEN SEA, AND THE BLACK UNDER THE
       GROUND, ARE NOT DRAWN -- the owner's "iterate on what best improves
       framerate without loss of quality": a piece whose field is `uniform`
       (open sea, no shore in reach) is covered whole by its quad at full
