@@ -515,6 +515,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const off = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
   rec.ok(`7. ...a real tap raises the guard facing the raider (${g7.ang != null && toA != null ? Math.round(off(g7.ang, toA) * 180 / Math.PI) : '?'} degrees off)`,
     g7.up && typeof g7.ang === 'number' && typeof toA === 'number' && off(g7.ang, toA) < 0.4, { g7, toA });
+  /* v2.3.3474: and the WORKER has it -- the raised guard rides the next move
+     packet (BroTown's _blockChanged), the next frame on a phone, but on this
+     box that frame can be 600 ms off: in the sweep of 2026-10-18 the first
+     of the raider's two blows reached the worker before the guard did (12
+     taken), the second was blocked */
+  for (let t0 = Date.now(); Date.now() - t0 < 6000;) {
+    if (((await H.serverPlayer(wsPort, idB)) || {}).blocking) break;
+    await B.page.waitForTimeout(150);
+  }
   const hp7a = await hpOf(idB);
   const t7 = Date.now();
   await swingHeld(A, 1400);

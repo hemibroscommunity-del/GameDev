@@ -270,7 +270,12 @@ async function steps({ A, B, wsPort, rec, errors }) {
   rec.ok(`the catch is golden and Big: at the snap, the rays and the ring drawn (${rv.fx.gold} / ${rv.fx.big} frames) and "${words.join('" and "')}" over the trap`,
     !!rv.t && rv.t.reveal && rv.t.reveal.gold === true && rv.t.reveal.big === true && words.indexOf('Golden!') >= 0 && words.indexOf('Big one!') >= 0
       && rv.fx.gold > 0 && rv.fx.big > 0, rv);
-  const card = await A.page.waitForSelector('[data-trap-card]', { timeout: 5000 }).then(() => true).catch(() => false);
+  /* v2.3.3474: 15 s, not 5 -- the card is raised by a timer END_MS after the
+     snap (game/trapping.js springMs), noticed by the card's own polling timer
+     and drawn on the next frame, and on this box timers wait behind 300-600 ms
+     frames: in the sweep of 2026-10-18 the reveal came and the card did not
+     within 5 s ("null") */
+  const card = await A.page.waitForSelector('[data-trap-card]', { timeout: 15000 }).then(() => true).catch(() => false);
   const cardInfo = card ? await A.page.evaluate(() => {
     const c = document.querySelector('[data-trap-card]');
     const sh = c.querySelector('[data-trap-card-shine]');

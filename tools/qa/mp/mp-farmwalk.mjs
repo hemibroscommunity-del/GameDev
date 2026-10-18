@@ -371,8 +371,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const barn = FARM_THINGS.find((t) => t.art === 'farm:barn');
     const wallY = barn.y + barn.block[1] + barn.block[3];
     await standBoots(420, wallY + 70);
+    /* v2.3.3474: held until the boots STOP (or 10 s), not a set 1.8 s -- a
+       held key walks only the frames inside the hold, and on this box (a few
+       frames a second) 1.8 s walked 38 of the 70 px to the wall in the sweep
+       of 2026-10-18 (TRAPS §200).  Stopped = the same place three looks in a
+       row, 300 ms apart: at the wall on any machine. */
+    const y0 = await A.page.evaluate(() => window.__btPlayerGround().y);
     await A.page.keyboard.down('w');
-    await A.page.waitForTimeout(1800);
+    let lastY = y0, still = 0, moved = false;
+    for (let t0 = Date.now(); Date.now() - t0 < 10000 && still < 3;) {
+      await A.page.waitForTimeout(300);
+      const y = await A.page.evaluate(() => window.__btPlayerGround().y);
+      if (Math.abs(y - y0) > 2) moved = true;
+      still = moved && Math.abs(y - lastY) < 0.5 ? still + 1 : 0;
+      lastY = y;
+    }
     await A.page.keyboard.up('w');
     const g = await A.page.evaluate(() => window.__btPlayerGround());
     rec.ok(`walking north into the barn, your boots stop at its wall (${Math.round(g.y)}, the wall at ${wallY})`, g.y >= wallY - 2 && g.y < wallY + 30, { g, wallY });
