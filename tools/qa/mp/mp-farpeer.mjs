@@ -88,12 +88,23 @@ function walker(wsPort) {
    ticks in one go between frames and the count is the page's, not the wire's. */
 function countTicks() {
   const Native = window.WebSocket;
-  window.__farCount = { id: null, n: 0 };
+  window.__farCount = { id: null, n: 0, where: Object.create(null) };
   function Counted(url, protocols) {
     const ws = protocols === undefined ? new Native(url) : new Native(url, protocols);
     ws.addEventListener('message', (ev) => {
       const c = window.__farCount, d = ev.data;
-      if (c.id && typeof d === 'string' && d.startsWith('{"type":"tick"') && d.indexOf('"' + c.id + '":') >= 0) c.n++;
+      if (c.id && typeof d === 'string' && d.startsWith('{"type":"tick"') && d.indexOf('"' + c.id + '":') >= 0) {
+        c.n++;
+        /* v2.3.3403: and WHERE in the tick they came -- the run of 2026-10-18
+           counted four a second at 2,717 px with no far send on */
+        try {
+          const t = JSON.parse(d), key = '"' + c.id + '":';
+          for (const k of Object.keys(t)) {
+            const v = t[k];
+            if (v && typeof v === 'object' && JSON.stringify(v).indexOf(key) >= 0) c.where[k] = (c.where[k] || 0) + 1;
+          }
+        } catch (e) { /* a count only */ }
+      }
     });
     return ws;
   }
@@ -148,9 +159,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }, 50);
   }, W.id);
   const watch = async (ms) => {
-    await B.page.evaluate(() => { window.__farCount.n = 0; window.__farS.present = 0; window.__farS.missing = 0; });
+    await B.page.evaluate(() => { window.__farCount.n = 0; window.__farCount.where = Object.create(null); window.__farS.present = 0; window.__farS.missing = 0; });
     const sentPerSec = await W.walk(ms);
-    const s = await B.page.evaluate(() => ({ n: window.__farCount.n, present: window.__farS.present, missing: window.__farS.missing }));
+    const s = await B.page.evaluate(() => ({ n: window.__farCount.n, where: Object.assign({}, window.__farCount.where), present: window.__farS.present, missing: window.__farS.missing }));
     s.perSec = Math.round(s.n / (ms / 1000) * 10) / 10;
     s.sentPerSec = Math.round(sentPerSec * 10) / 10;
     return s;
