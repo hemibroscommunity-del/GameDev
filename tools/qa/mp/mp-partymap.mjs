@@ -108,6 +108,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await shot(A, 'edge');
 
   /* ── 4. the world map ── */
+  /* v2.3.3376: the friend far enough east that their name is clear of yours
+     at the map's first zoom.  A name is drawn only where nothing is (the
+     map's label rule; "You" goes first, forced), and on the Wheel five times
+     longer (v2.3.3315) the 3,000 px of step 3 is 12 map px at zoom 1 -- the
+     friend's name lay on yours and was left off (it was 47 on the short
+     Wheel).  ~110 map px by the map's own scale (`k`, map px a game px), the
+     move there in one step: the move budget switched off in this room while
+     the friend hops (a zone change is then unbounded, movement.js), as it
+     would otherwise follow at the walk's 500 px a second. */
+  await A.page.evaluate(() => window.__btWorldMapOpen(true));
+  const k1 = await until(() => A.page.evaluate(() => { const m = window.__btWorldMap || {}; return m.open && m.k > 0 ? m.k : null; }), 5000);
+  await A.page.evaluate(() => window.__btWorldMapOpen(false));
+  const far = Math.max(3000, Math.ceil(110 / (k1 || 0.0156)));
+  await H.liveFlag(wsPort, 'movebudget', false, ROOM);
+  let farSeen = null;
+  try {
+    await F.place(me.x + far, me.y + 20);
+    farSeen = await until(() => A.page.evaluate(([id, x]) => { const o = window._gameState.current.others[id]; return o && Math.abs(o.x - x) < 300 ? Math.round(o.x) : null; }, [F.id, me.x + far]), 10000);
+  } finally { await H.liveFlag(wsPort, 'movebudget', null, ROOM).catch(() => {}); }
+  console.log(`    the map's first zoom: ${k1} map px a game px; the friend ${far} px east (seen at ${farSeen})`);
   await A.page.evaluate(() => window.__btWorldMapOpen(true));
   const wm = await until(() => A.page.evaluate(() => { const m = window.__btWorldMap || {}; return m.open && m.more && m.more.party === 1 ? { zoom: m.zoom, party: m.more.party, names: m.more.partyNames, others: m.more.others } : null; }), 5000);
   const key = await A.page.evaluate(() => [...document.querySelectorAll('span, div')].some((e) => e.childElementCount <= 1 && e.textContent.trim() === 'party'));

@@ -246,16 +246,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('5e ...and the sword clone\'s swing is drawn (its swing stamp)', swings[ids.indexOf(swId)] > t5, { swings, t5 });
 
   /* ── 6. a knockout is not a death ── */
+  /* v2.3.3376: the page's own record, every 50 ms: when the knockout's note
+     came and what the bar read after it.  The check read the bar 1.5 s after
+     this script saw the note, and the script polls a page that draws a few
+     frames a second -- seen a second late, its read fell past the clones'
+     SPAR.PAUSE_MS stand-off, and Hard clones had the healed bar down to 7 of
+     250 by then (TRAPS §200).  The heal is what is asked: the bar during the
+     stand-off, from the note on. */
+  const { SPAR } = await import(H.REPO + '/server/src/spar.js');
+  await P.page.evaluate(() => {
+    const S = window._gameState.current, log = window.__btKoLog = { koAt: 0, n0: ((window.__btSpar || {}).notes || []).length, samples: [] };
+    window.__btKoRec = setInterval(() => {
+      const notes = (window.__btSpar || {}).notes || [];
+      if (!log.koAt && notes.slice(log.n0).includes('ko')) log.koAt = Date.now();
+      log.samples.push({ at: Date.now(), hp: S.rpg ? S.rpg.hp : null, max: S.rpg ? S.rpg.maxHp : null, dying: !!S._dying });
+      if (log.samples.length > 2000) log.samples.splice(0, 500);
+    }, 50);
+  });
   await H.devOp(wsPort, 'vitals', myId, { hp: 1, heal: false });
   await H.devOp(wsPort, 'spar', myId, { skill: 'hard' });
   const t6 = Date.now();
   const s6 = await waitSpar(P, (s) => s.notes && s.notes.includes('ko'), 30000);
   await P.page.waitForTimeout(1500);
-  const after = await H.readState(P, (S) => ({ hp: S.rpg && S.rpg.hp, max: S.rpg && S.rpg.maxHp, dying: !!S._dying, dead: !!(S.rpg && S.rpg.hp <= 0) }));
+  const after = await P.page.evaluate((pauseMs) => {
+    clearInterval(window.__btKoRec);
+    const log = window.__btKoLog || { samples: [] };
+    const win = log.koAt ? log.samples.filter((s) => s.at >= log.koAt && s.at <= log.koAt + pauseMs) : [];
+    const best = win.reduce((b, s) => (s.hp > (b ? b.hp : -1) ? s : b), null);
+    return { koSeen: !!log.koAt, samples: win.length, hp: best ? best.hp : null, max: best ? best.max : null,
+      dying: win.some((s) => s.dying), dead: !best || !(best.hp > 0) };
+  }, SPAR.PAUSE_MS);
   const pops6 = await popsSince(P, t6);
   const died = (await popsSince(P, t6)).some((p) => /YOU DIED|Respawning/.test(p.text));
   rec.ok('6a a clone knocks you out (ko)', !!s6 && s6.notes.includes('ko'), s6 && s6.notes);
-  rec.ok('6b ...no death: healed where you stand', !after.dying && after.hp > 0 && after.hp >= after.max * 0.5, after);
+  rec.ok('6b ...no death: healed where you stand (the bar while the clones stand back)', after.koSeen && after.samples > 0 && !after.dying && after.hp > 0 && after.hp >= after.max * 0.5, after);
   rec.ok('6c ...no death on the page (no "YOU DIED")', !died);
   rec.ok('6d ..."Knocked out! Healed" over you', pops6.some((p) => /Knocked out/.test(p.text)), pops6.slice(0, 8));
   rec.ok('6e ...and the score counts it', !!s6 && s6.state && s6.state.rounds && s6.state.rounds.clones >= 1, s6 && s6.state && s6.state.rounds);
