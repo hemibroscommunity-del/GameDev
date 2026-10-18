@@ -44,6 +44,7 @@ The three views:
 | landscape | 844 x 390 @2x | touch           | the same phone sideways                      |
 | desktop   | 1440 x 900 @2x| mouse, keyboard | a computer: the game in its centred column   |
 | tablet    | 820 x 1180 @2x| touch           | an iPad upright (only with `--views=tablet`) |
+| laptop    | 1366 x 768 @2x| mouse, keyboard | the commonest laptop window (only with `--views=laptop`): the column 419 px wide, where the creator's ENTER BRO TOWN was off the screen (TRAPS §214) |
 
 ## The screens (tools/qa/ui-review/states.mjs)
 
