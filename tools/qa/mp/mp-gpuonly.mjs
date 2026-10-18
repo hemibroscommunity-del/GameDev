@@ -185,13 +185,20 @@ const numberDraws = (P, text) => P.page.evaluate(async (txt) => {
   const { pixels } = R.extract.pixels(t);
   t.alpha = a0; t.scale.set(sx, sy); t.rotation = r0;
   let white = 0, dark = 0;
+  /* v2.3.3427: and what the rest is, with the tint the number carried -- the
+     sweep of 2026-10-18 read no white fill at all on both phones before the
+     rebuild (the outline's count the same as after it), with nothing to say
+     what colour the fill came out */
+  const other = {};
   for (let i = 0; i < pixels.length; i += 4) {
     if (pixels[i + 3] < 128) continue;
     if (pixels[i] > 200 && pixels[i + 1] > 200 && pixels[i + 2] > 200) white++;
     else if (pixels[i] < 60 && pixels[i + 1] < 60 && pixels[i + 2] < 60) dark++;
+    else { const k = [pixels[i] >> 4, pixels[i + 1] >> 4, pixels[i + 2] >> 4].map((v) => v.toString(16)).join(''); other[k] = (other[k] || 0) + 1; }
   }
+  const why = { tint: t.tint, others: Object.entries(other).sort((a, b) => b[1] - a[1]).slice(0, 4) };
   d.ts = 0; d.ttl = 0.001;
-  return { bitmap: !!t._bmpBaseScale, white, dark };
+  return { bitmap: !!t._bmpBaseScale, white, dark, why };
 }, text);
 
 export async function run({ browser, wsPort, webPort, rec }) {
