@@ -3592,7 +3592,7 @@ Two protocol versions coexist; both must keep working:
   (`overflow:clip`), and sideways a phone is 300-430px tall -- ENTER BRO
   TOWN sat at y 783 of 390 until the creator became three columns there
   (game.css, the v2.3.3216 block); `mp-cclandscape`, TRAPS §175.
-  And NO DOUBLE-TAP ZOOM (v2.3.3445, the owner: "Double tap to zoom in is
+  And NO DOUBLE-TAP ZOOM (v2.3.3454, the owner: "Double tap to zoom in is
   enabled during skill point application window ... I got stuck there"):
   body's `touch-action:none` stops at the nearest box that scrolls, so
   every element is `manipulation` by default (game.css `*`, the weakest

@@ -1,4 +1,4 @@
-/* ═══ NO DOUBLE-TAP ZOOM IN THE STAT WINDOW, OR ANYWHERE (v2.3.3445) ═══
+/* ═══ NO DOUBLE-TAP ZOOM IN THE STAT WINDOW, OR ANYWHERE (v2.3.3454) ═══
  *
  * Owner: "Double tap to zoom in is enabled during skill point application
  * window.  Disable that.  I got stuck there."
