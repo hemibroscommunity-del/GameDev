@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2cfe3edb919acf0f9812017cb4ac99c4a49922c3",
+  "tree": "c47d7da75bfd359afbadeb1e578cdad216b408aa",
+  "committedAt": "2026-10-18T12:22:00-07:00",
+  "subject": "The farm's pictures kept as colour numbers, like BroTown's: 27 MB less on the graphics chip (v2.3.3464) (#1004)",
+  "files": 6025,
+  "bytes": 679786649,
+  "listingSha256": "55a5d629608705f80fefcb5e53e8863a992e1f76062ea34ec8522ce63b6a36a2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
