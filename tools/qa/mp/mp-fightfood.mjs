@@ -218,26 +218,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.devOp(wsPort, 'vitals', bId, { hp: 30 });
   await H.grant(wsPort, bId, 'item', { invKey: 'meal_garden_stew', count: 3 });
   await B.page.waitForTimeout(1500);
+  /* v2.3.3376: the popups from a record the page keeps as each appears, read
+     once after the Eat, where they were polled eight times.  On this box each
+     poll waits out a frame of a few hundred ms, so one bagEat took ~7 s, and
+     the third bite below came ~20 s after the first: past the worker's own
+     one-bite gap (PVP_HEAL.GAP_MS 15 s), so it ate it, rightly, and the
+     check failed on the clock (TRAPS §200).  `at`: when Eat was pressed. */
+  const { PVP_HEAL } = await import(H.REPO + '/server/src/data.js');
   const bagEat = async (P, key) => {
-    await P.page.evaluate(() => { try { window.__broDashPanelBus.open('bag'); } catch (e) {} });
+    await P.page.evaluate(() => {
+      try { window.__broDashPanelBus.open('bag'); } catch (e) {}
+      if (window.__ffPopRec) return;
+      const seen = new WeakSet();
+      window.__ffPops = [];
+      window.__ffPopRec = setInterval(() => {
+        const S = window._gameState && window._gameState.current;
+        for (const d of (S && S.dmgNumbers) || []) {
+          if (!d || seen.has(d)) continue;
+          seen.add(d);
+          window.__ffPops.push({ at: Date.now(), text: String(d.text) });
+          if (window.__ffPops.length > 300) window.__ffPops.splice(0, 100);
+        }
+      }, 50);
+    });
     await P.page.waitForTimeout(900);
     const tile = await P.page.$(`[data-inv-key="${key}"]`);
     if (!tile) return { tile: false };
     await tile.dispatchEvent('pointerup');
     await P.page.waitForTimeout(700);
     const btn = await P.page.$('button:text-is("Eat")');
+    const at = Date.now();
     if (btn) await btn.click();
-    const seen = [];
-    for (let i = 0; i < 8; i++) {
-      for (const t of await H.readState(P, (S) => (S.dmgNumbers || []).map((p) => String(p.text)))) seen.push(t);
-      await P.page.waitForTimeout(120);
-    }
+    await P.page.waitForTimeout(1200);
+    const seen = await P.page.evaluate((t0) => (window.__ffPops || []).filter((p) => p.at >= t0 - 100).map((p) => p.text), at);
     await P.page.evaluate(() => {
       try { window._itemDetailBus.close(); } catch (e) {}
       try { window.__broDashPanelBus.clear(); } catch (e) {}
     });
     await P.page.waitForTimeout(500);
-    return { tile: true, btn: !!btn, popups: [...new Set(seen)] };
+    return { tile: true, btn: !!btn, at, popups: [...new Set(seen)] };
   };
   const srvStew = async () => ((((await H.adminPlayer(wsPort, bId)) || {}).rpg || {}).inventory || {}).meal_garden_stew || 0;
   const srvHp = async () => (((await H.adminPlayer(wsPort, bId)) || {}).rpg || {}).hp;
@@ -265,13 +284,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
      its resend puts the stew back in the bag the page took it from. */
   await B.page.evaluate(() => { const S = window._gameState.current; if (S._serverCaps) S._serverCaps.pvpheal = false; });
   const forced = await bagEat(B, 'meal_garden_stew');
+  const gapS = (forced.at - first.at) / 1000;
+  rec.ok(`the forced bite comes inside the worker's gap: ${gapS.toFixed(1)} s after the first, under ${PVP_HEAL.GAP_MS / 1000} (guard)`,
+    first.at > 0 && forced.at > 0 && forced.at - first.at < PVP_HEAL.GAP_MS - 1500, { gapS });
   await B.page.waitForTimeout(1500);
   const left3 = await srvStew();
   const back = await H.waitFor(B, (S) => ((S.rpg && S.rpg.inventory) || {}).meal_garden_stew || 0, (n) => n === 2,
     { timeout: 6000, label: 'the stew comes back' }).then(() => true).catch(() => false);
   rec.ok('a page that eats anyway is refused by the WORKER: the stew is still on its books', forced.btn && left3 === 2, { forced, left3 });
+  /* the refusal's words come back from the worker after bagEat's own wait: the
+     record read again now */
+  const forcedPops = await B.page.evaluate((t0) => (window.__ffPops || []).filter((p) => p.at >= t0 - 100).map((p) => p.text), forced.at);
   rec.ok('...and the worker says why: "Eat again in Ns" over B (eat_refused)',
-    forced.popups.some((t) => /^Eat again in \d+s$/.test(t)), forced.popups);
+    forcedPops.some((t) => /^Eat again in \d+s$/.test(t)), [...new Set(forcedPops)]);
   rec.ok('...and the refusal puts it back in that page\'s bag', back);
   await B.page.evaluate(() => { const S = window._gameState.current; if (S._serverCaps) S._serverCaps.pvpheal = true; });
 
