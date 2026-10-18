@@ -1,4 +1,4 @@
-/* ═══ v2.3.3355: A BRO WHO EMOTES MOVES (docs/specs/emote-moves.md) ═══
+/* ═══ v2.3.3363: A BRO WHO EMOTES MOVES (docs/specs/emote-moves.md) ═══
  *
  * The fun & social plan's Phase 1 (docs/FUN-SOCIAL-PLAN.md), the owner's "Go
  * recommended": a wave, a laugh, a flex, a shrug, a facepalm and a cheer for a
@@ -41,7 +41,7 @@ import { figureFeetUnits, figureFeetY, figureFeetX, figureSwimLine, selfCorpseUp
 import { emoteFrameFor, settleFrame, placeEmote, holdMatrix, onceFrame, holdFrame, moveKind, EMOTE_MOVES } from '../game/emoteMoves.js';
 
 const NEAR_ZERO = 1e-4;
-/* v2.3.3357: a pet copies its player's held pose a beat late, its hops and
+/* v2.3.3365: a pet copies its player's held pose a beat late, its hops and
    slides at its own size (a pet stands about half a bro) */
 const PET_LAG_MS = 300;
 const PET_K = 0.5;
@@ -64,7 +64,7 @@ export class EmoteFx {
          is (the HUD layer's whole transform) and where its body is.  'self'
          or a player's id. */
       window.__btEmoteFigure = (id) => self._figure(id);
-      /* v2.3.3357 (mp-joinin): a pet's or a townsperson's picture as last
+      /* v2.3.3365 (mp-joinin): a pet's or a townsperson's picture as last
          drawn -- 'pet' (yours), 'peerPet' or 'npc' with an id */
       window.__btEmoteSprite = (kind, id) => self._spriteProbe(kind, id);
     }
@@ -161,7 +161,7 @@ export class EmoteFx {
     p.ms = +(performance.now() - t0).toFixed(3);
   }
 
-  /* ═══ v2.3.3357: YOUR PET AND THE TOWNSFOLK JOIN IN ═══
+  /* ═══ v2.3.3365: YOUR PET AND THE TOWNSFOLK JOIN IN ═══
      A pet copies its player's held pose (sit, sleep, flop, a dance) a beat
      late -- the dances in step, as they keep the clock's beat -- and a
      townsperson does the move game/townsfolkReact.js gave him (Lil Bro

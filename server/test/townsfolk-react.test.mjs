@@ -1,4 +1,4 @@
-/* The townsfolk join in -- v2.3.3357 (src/game/townsfolkReact.js,
+/* The townsfolk join in -- v2.3.3365 (src/game/townsfolkReact.js,
  * docs/specs/emote-moves.md "Your pet and the townsfolk join in").
  *
  * The phone's own rules, read in node: each townsperson answers the moves

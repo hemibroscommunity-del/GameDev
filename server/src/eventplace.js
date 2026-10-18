@@ -24,7 +24,7 @@
  *     EAR_FAR 1,150);
  *   - anywhere else, to the phones in the same zone (an old v1 phone in the
  *     Wheel too: its tick is shared, not built for it).
- * (v2.3.3353: and an emote -- a moment, an emoji held 2.6 s or a bubble 5 s,
+ * (v2.3.3361: and an emote -- a moment, an emoji held 2.6 s or a bubble 5 s,
  *  emotes.js -- placed like a swing.)
  * Every other event still goes to everyone, as before: chat, duels,
  * trades, clans, the arena, the jackpot, a hit between players, the events a
@@ -68,7 +68,7 @@ const ROOM_PLACED = Object.freeze({
   arrow_boom: { xy: ['x', 'y'], who: ['id'] },
   element_nova: { xy: ['x', 'y'], who: ['id'] },
   ability_windup: { p: 'playerId', who: ['playerId'] },
-  /* v2.3.3356: a /roll or /flip (dice.js): where the room has the roller,
+  /* v2.3.3364: a /roll or /flip (dice.js): where the room has the roller,
      who hears their own anywhere.  Words in the chat, kept as nothing but a
      line, so a phone that walks up later misses nothing it would draw */
   dice_roll: { p: 'id', who: ['id'] },
@@ -80,7 +80,7 @@ const ROOM_PLACED = Object.freeze({
 const RELAY_PLACED = new Set([
   'player_swing', 'player_projectile', 'player_dodge', 'player_jump',
   'monster_dmg_at', 'player_hurt_by_monster', 'gather_node',
-  /* v2.3.3353: an emote is drawn now, for 2.6 s (an emoji) or 5 s (a quick
+  /* v2.3.3361: an emote is drawn now, for 2.6 s (an emoji) or 5 s (a quick
      line's bubble), and kept by nothing -- chat.js handleEmoteEvent only
      stamps it for the renderer -- so a phone too far to see it misses nothing
      (emotes.js) */

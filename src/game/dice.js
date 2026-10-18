@@ -1,4 +1,4 @@
-/* ═══ v2.3.3356: /roll AND /flip (docs/specs/dice.md) ═══
+/* ═══ v2.3.3364: /roll AND /flip (docs/specs/dice.md) ═══
  *
  * The fun & social plan's Phase 1 (docs/FUN-SOCIAL-PLAN.md): "/roll" (1-100),
  * "/roll 20" (1-20, up to 1000) and "/flip" in the chat.  The WORKER rolls

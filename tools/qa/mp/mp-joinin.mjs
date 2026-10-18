@@ -1,4 +1,4 @@
-/* YOUR PET AND THE TOWNSFOLK JOIN IN (v2.3.3357, docs/specs/emote-moves.md)
+/* YOUR PET AND THE TOWNSFOLK JOIN IN (v2.3.3365, docs/specs/emote-moves.md)
  *
  * The fun & social plan's Phase 1 (docs/FUN-SOCIAL-PLAN.md): your pet copies
  * your sit, sleep, flop and dances, and the townsfolk answer the moves near
