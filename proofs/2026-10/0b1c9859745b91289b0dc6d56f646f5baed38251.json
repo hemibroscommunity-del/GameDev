@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0b1c9859745b91289b0dc6d56f646f5baed38251",
+  "tree": "5aa0425a220cd6a9bb748f63afda78b51639e3cc",
+  "committedAt": "2026-10-17T20:24:08-07:00",
+  "subject": "Four monsters make a noise of their own: the fire goblin's rawr, the skeleton's rattling bones, the slime's bounce and the snowman's snarl (v2.3.3340) (#960)",
+  "files": 5803,
+  "bytes": 639141684,
+  "listingSha256": "cd6863385479ddd715cf929ac8a1e2668e3ef54fe26151113b7808affa641793",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
