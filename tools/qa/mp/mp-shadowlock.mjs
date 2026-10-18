@@ -30,7 +30,7 @@
  *   5. no page errors.
  *
  *
- * v2.3.3333, the owner again: "prop shadows right now still flicker as you run
+ * v2.3.3338, the owner again: "prop shadows right now still flicker as you run
  * around".  Seven one-device-pixel steps cross a whole CSS px only twice, and
  * between crossings the locked picture cannot change -- so the mean above
  * watered the crossings down.  At a crossing Pixi re-snapped every shadow
@@ -104,7 +104,7 @@ async function writePng(path, w, h, rgba) {
 }
 
 /* one page: the camera stepped, the props' shadows lined up with the world.
-   v2.3.3333: `runs` -- each a way of stepping it: `axis` 'x' (across) or 'y'
+   v2.3.3338: `runs` -- each a way of stepping it: `axis` 'x' (across) or 'y'
    (down), `dev` device px a step */
 async function measure(browser, wsPort, webPort, query, OUT, tag, runs) {
   const P = await H.newPlayer(browser, { name: 'Shade' + tag, wsPort, webPort, viewport: PHONE, touch: true, dpr: DPR, world: 'wheel', query });
@@ -205,7 +205,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   /* a device px a step (v2.3.3149's measure), and a whole CSS px a step across
-     and down (v2.3.3333's) */
+     and down (v2.3.3338's) */
   const now = await measure(browser, wsPort, webPort, '', OUT, 'locked', [{ axis: 'x', dev: 1 }, { axis: 'x', dev: DPR }, { axis: 'y', dev: DPR }]);
   const was = await measure(browser, wsPort, webPort, 'shadowlock=0', OUT, 'unlocked', [{ axis: 'x', dev: 1 }]);
   const snapped = await measure(browser, wsPort, webPort, 'shadowsnap=1', OUT, 'snapped', [{ axis: 'x', dev: DPR }, { axis: 'y', dev: DPR }]);
@@ -233,7 +233,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!N1 && !!W1 && W1.dark > 0 && Math.abs(N1.dark - W1.dark) / W1.dark <= 0.03, { now: N1 && N1.dark, was: W1 && W1.dark });
   rec.ok('the probe says the fraction the layer is drawn back by (each in [0, 1) CSS px); none with ?shadowlock=0',
     !!N1 && !!N1.lock && N1.lock.fx >= 0 && N1.lock.fx < 1 && N1.lock.fy >= 0 && N1.lock.fy < 1 && !!W1 && W1.lock === null, { now: N1 && N1.lock, was: W1 && W1.lock });
-  /* ── v2.3.3333 ── */
+  /* ── v2.3.3338 ── */
   rec.ok('6. the shadow pieces are drawn unsnapped, at highp; ?shadowsnap=1 leaves Pixi\'s snapping on them',
     !!now.snap && now.snap.hooked && now.snap.unsnapped > 0 && now.snap.highp && !now.snap.snapOld
       && !!snapped.snap && snapped.snap.snapOld && !snapped.snap.hooked, { now: now.snap, snapped: snapped.snap });

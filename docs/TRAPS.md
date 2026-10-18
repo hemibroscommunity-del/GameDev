@@ -6996,7 +6996,7 @@ trust it then, rather than judge from a guess like the arrival.
 five honest reconnects). The lab: a script reconnecting every 3 s 33,333 ->
 694 px/s, every honest reconnect taken.
 
-## 205. "The lock draws each shadow at the same fraction of a texel, so roundPixels keeps it there" (v2.3.3333)
+## 205. "The lock draws each shadow at the same fraction of a texel, so roundPixels keeps it there" (v2.3.3338)
 
 **Tempting:** the shadow layer is drawn on a grid locked to the world (§141):
 every shadow lands at the same fraction of a texel every frame and only ever

@@ -54,7 +54,7 @@
  * fraction (`uShift`, a linear sample between two texels), which is smooth.
  * Same texture, same pass, same cost.  `?shadowlock=0` is the layer as it was.
  *
- * ═══ v2.3.3333: ...AND NEVER SNAPPED TO A GRID THAT IS NOT THE PIXELS ═══
+ * ═══ v2.3.3338: ...AND NEVER SNAPPED TO A GRID THAT IS NOT THE PIXELS ═══
  * Owner, again: "I like the game's shadows but prop shadows right now still
  * flicker as you run around."  The lock above was measured stepping the camera
  * one device pixel at a time, seven steps -- two whole CSS px crossed -- and
@@ -97,14 +97,14 @@ function lockOn() {
   return _lockOn;
 }
 
-/* v2.3.3333: `?shadowsnap=1` -- Pixi's snapping back on the shadow pieces;
+/* v2.3.3338: `?shadowsnap=1` -- Pixi's snapping back on the shadow pieces;
    `?shadowhp=0` -- the filter at the half precision it had (see the header).
    Read once. */
 const _q = (re) => { try { return typeof location !== 'undefined' && re.test(location.search || ''); } catch (e) { return false; } };
 const SNAP_OLD = _q(/[?&]shadowsnap=1\b/);
 const HP_ON = !_q(/[?&]shadowhp=0\b/);
 
-/* ═══ v2.3.3333: THE SHADOW PIECES ARE DRAWN WHERE THEY ARE ═══
+/* ═══ v2.3.3338: THE SHADOW PIECES ARE DRAWN WHERE THEY ARE ═══
    Every batched sprite or mesh meets its batcher in BatcherPipe.addToBatch,
    carrying `roundPixels` (Pixi's own: the renderer's, set once when its GPU
    data is made; sharpPixels.js sets it again there for every quad).  A piece
@@ -185,7 +185,7 @@ void main(void)
 
 function makeShadowFilter() {
   return Filter.from({
-    /* v2.3.3333: highp -- see the header.  (Pixi caches a program by its
+    /* v2.3.3338: highp -- see the header.  (Pixi caches a program by its
        source alone, so the two must never both be asked for in one page:
        HP_ON is read once, at load.) */
     gl: HP_ON
@@ -285,7 +285,7 @@ export function shadowSystemCount() { return _systems.size; }
 export class ShadowSystem {
   constructor(layer, root) {
     _systems.add(this);
-    installNoSnap();   /* v2.3.3333: once, for every renderer's shadows */
+    installNoSnap();   /* v2.3.3338: once, for every renderer's shadows */
     this.layer = layer;
     this.root = root;
     this.pool = [];
@@ -312,7 +312,7 @@ export class ShadowSystem {
     let s = this.pool[this.used];
     if (!s) {
       s = new Sprite();
-      s._btNoSnap = true;   /* v2.3.3333: drawn where it is (installNoSnap) */
+      s._btNoSnap = true;   /* v2.3.3338: drawn where it is (installNoSnap) */
       this.layer.addChild(s);
       this.pool.push(s);
     }
@@ -377,7 +377,7 @@ export class ShadowSystem {
         }
       }
       m = new MeshSimple({ texture: tex, vertices: new Float32Array(n * 2), uvs, indices: idx });
-      m._btNoSnap = true;   /* v2.3.3333 */
+      m._btNoSnap = true;   /* v2.3.3338 */
       this.layer.addChild(m);
       this.meshPool.push(m);
     }
@@ -451,7 +451,7 @@ export class ShadowSystem {
           }
         }
         const mesh = new MeshSimple({ texture: o.texture, vertices: new Float32Array(count * 2), uvs, indices: idx });
-        mesh._btNoSnap = true;   /* v2.3.3333 */
+        mesh._btNoSnap = true;   /* v2.3.3338 */
         this.layer.addChild(mesh);
         m = { mesh, grid: src ? null : [8, 4] };
         this._pieceMeshes.set(o, m);

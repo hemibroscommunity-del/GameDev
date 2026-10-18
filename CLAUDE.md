@@ -567,7 +567,7 @@ remnant to migrate server-side, not a mode to preserve.
       cost, ~5x steadier; a full-resolution pass would be ~32 MB of graphics
       memory (TRAPS §141); `?shadowlock=0` is the layer as it was;
       `mp-shadowlock`.
-    - since v2.3.3333 THE SHADOWS ARE DRAWN UNSNAPPED, AT HIGHP -- the owner,
+    - since v2.3.3338 THE SHADOWS ARE DRAWN UNSNAPPED, AT HIGHP -- the owner,
       again: "prop shadows right now still flicker as you run around": inside
       the shadow filter Pixi's roundPixels snapped every corner to a grid 0.77
       x 0.83 of a texel (it rounds by the pooled power-of-two texture's size,
