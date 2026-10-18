@@ -143,8 +143,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await partyN(7);
   const s3 = await until(async () => { const s = await strip(A); return s.rows.length === 6 && s.more && /Gus/.test(s.rows[1].text) ? s : null; }, 10000);
   const order = s3 ? s3.rows.map((r) => (r.text.match(/Leader|Bea|Cal|Dee|Eli|Fay|Gus/) || ['?'])[0]) : null;
+  /* v2.3.3466: and if not, what the strip sorts by (PartyHUD.jsx's partyRows
+     call): each member's zone, and where this phone draws them -- in the
+     sweep of 2026-10-18 the rows stayed in the order they joined, which is
+     what partyRows gives when it knows no member's distance */
+  const sortedBy = s3 ? null : await A.page.evaluate(() => {
+    const S = window._gameState.current, P0 = S.player, O = S.others || {};
+    return { zone: S.currentZone, me: { x: Math.round(P0.x), y: Math.round(P0.y) },
+      members: ((S._party && S._party.members) || []).map((m) => {
+        const o = Object.prototype.hasOwnProperty.call(O, m.id) ? O[m.id] : null;
+        return { name: m.name, zone: m.zone, off: !!m.off, drawn: !!o, away: !!(o && o._away),
+          d: o && typeof o.x === 'number' ? Math.round(Math.hypot(o.x - P0.x, o.y - P0.y)) : null };
+      }) };
+  });
   rec.ok(`seven: six rows, you first, then the online friends nearest you (${order ? order.join(', ') : '?'})`,
-    !!order && order.join() === ['Leader', 'Gus', 'Bea', 'Cal', 'Dee', 'Fay'].join(), s3 || await strip(A));
+    !!order && order.join() === ['Leader', 'Gus', 'Bea', 'Cal', 'Dee', 'Fay'].join(), s3 || { strip: await strip(A), sortedBy });
   rec.ok(`...and "${s3 ? s3.more : '?'}" for the offline friend past the sixth row`, !!s3 && /\+1 more/.test(s3.more) && /6 online/.test(s3.more), s3 && s3.more);
   await shot(A, '3-seven');
 
