@@ -20,6 +20,8 @@ import { FARM_CROP_IDS } from './farm.js';   /* v2.3.3131: caps.farmCrops */
 import { prog3FromLegacy } from './prog3.js';
 import { LINGER } from './linger.js'; /* v2.3.3260: the refusal's close code */
 import { cleanWheelSizes } from './wheeltables.js'; /* v2.3.3315: the Wheel sizes a phone draws */
+import { DEVICE_LOCK, cleanDevice } from './devicelock.js'; /* v2.3.3344: a key on its character's devices */
+import { LOGIN_KEYS, newKeyOf } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
  *
@@ -470,11 +472,30 @@ export const joinMethods = {
     return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
   },
 
-  async _verifyJoinAuth(id, phrase, opts) {
+  /* v2.3.3372: in the record's queue (devicelock.js _authSerial): this
+     reads `auth:<id>` and may write it -- a new character registered after
+     the account check's fetch, a device remembered -- so a second join of the
+     same id (two tabs, a reload mid-join) or the owner's Forget waits for it,
+     and it for them. */
+  _verifyJoinAuth(id, phrase, opts) {
+    return this._authSerial(id, () => this._verifyJoinAuthNow(id, phrase, opts));
+  },
+
+  async _verifyJoinAuthNow(id, phrase, opts) {
     const now = Date.now();
     if (!this._authFails) this._authFails = new Map(); // in-memory: a deploy reset just clears lockouts
     const rec = this._authFails.get(id);
-    if (rec && rec.until > now) return false; // lockout window active
+    /* ═══ v2.3.3355: A LOCKOUT IS 'locked', AND A NEW KEY GOES THROUGH IT ═══
+       Five wrong keys lock an id out for a minute -- and ids are public, so
+       anyone could lock a player out.  It answered 'auth', which makes the
+       phone throw its key away for a fresh character: one minute of someone
+       else's wrong guesses cost a player their character on that phone.  Now
+       a lockout is its own reason ('locked': a new phone waits and tries
+       again, an older one stops, neither makes a new character), and a NEW
+       key (loginkeys.js) is checked anyway: 84 bits are not guessed, and its
+       holder is never shut out by somebody else's tries. */
+    const _nkLock = newKeyOf(phrase);
+    if (rec && rec.until > now && !_nkLock) return 'locked'; // lockout window active
     const auth = await this.state.storage.get('auth:' + id);
     if (!auth) {
       // Unregistered id.  Register when the client proves it owns a
@@ -487,24 +508,58 @@ export const joinMethods = {
          join, or a guest id, which never has a record -- proves a person is
          there first, when the room is configured to ask (verify.js).  Here,
          BEFORE the record is stamped, so a refused join writes nothing. */
+      /* v2.3.3355: a NEW key (loginkeys.js) is only ever made by the worker,
+         so one with no record is never registered from a phone: refused
+         'key', never 'auth' (which makes the phone throw its key away) */
+      if (newKeyOf(phrase)) return 'key';
       if (opts && typeof opts.needVerify === 'function' && !(await opts.needVerify())) return 'verify';
       if (phrase) {
-        await this.state.storage.put('auth:' + id, { pfHash: await this._phraseHash(phrase), createdAt: now });
+        /* v2.3.3344: ...with the device it was made on (devicelock.js) -- an
+           empty list for a join that names none, so the one-time fill never
+           has to look this character up */
+        const rec = { pfHash: await this._phraseHash(phrase), createdAt: now };
+        if (this._deviceLockOn()) { const d = opts && opts.device; rec.devs = d ? [{ d, at: now }] : []; }
+        await this.state.storage.put('auth:' + id, rec);
+        /* v2.3.3355: a character made just now -- handed a new key once its
+           join is in, and this first key retired at the new one's first use */
+        if (opts && opts.out) opts.out.fresh = true;
       }
       return true;
     }
+    /* v2.3.3355: a NEW key (loginkeys.js): good from any device, or 'key' */
+    const _nk = _nkLock;
+    if (_nk) {
+      const _kr = await this._keyJoinCheck(id, auth, _nk, opts && opts.out);
+      if (_kr === true) { this._authFails.delete(id); return true; }
+      this._authFailCount(id, now);
+      return 'key';
+    }
+    /* v2.3.3355: a key retired (a new character's first key, once its new
+       one was used; the owner's "Give it a new key"): 'key', never 'auth' */
+    if (auth.oldGone) { this._authFailCount(id, now); return 'key'; }
     if (phrase && (await this._phraseHash(phrase)) === auth.pfHash) {
       this._authFails.delete(id);
-      return true;
+      /* v2.3.3344: the key matched -- and is it on one of this character's
+         devices?  true, or 'device' (devicelock.js).  Never counted as a
+         failed key: it was the right one. */
+      const _dl = await this._deviceLockJoin(id, auth, opts && opts.device, now);
+      /* v2.3.3355: in with the OLD key -- handed a new one once the join is in */
+      if (_dl === true && opts && opts.out) opts.out.via = 'old';
+      return _dl;
     }
-    // Failed verify: count toward the brute-force lockout (5 fails ->
-    // 60s).  Keyed by target id, so an attacker hammering someone's id
-    // locks the ATTACK out; the owner's correct phrase clears it.
+    this._authFailCount(id, now);
+    return false;
+  },
+
+  /* Failed verify: count toward the brute-force lockout (5 fails -> 60s).
+     Keyed by target id, so an attacker hammering someone's id locks the
+     ATTACK out; the owner's correct phrase clears it.  (v2.3.3355: one
+     function, as a new key's refusal counts the same.) */
+  _authFailCount(id, now) {
     const f = this._authFails.get(id) || { count: 0, until: 0 };
     f.count += 1;
     if (f.count >= 5) { f.until = now + 60000; f.count = 0; }
     this._authFails.set(id, f);
-    return false;
   },
 
   /* v2.3.2690: stamp the stored record's look onto an outbound cosmetic set
@@ -607,12 +662,48 @@ export const joinMethods = {
     //     send a phrase -- the deploy-order safety property), and the
     //     auth record is stamped when a phrase IS provided, locking
     //     the id from then on.
+    /* v2.3.3355: what the key check saw, for the new key handed out (or
+       first used) once this join is in (loginkeys.js _keysAfterJoin) */
+    const _keyOut = {};
     if (msg.id) {
       /* v2.3.3275: the account check (verify.js) -- asked only of a character
          that does not exist yet, and only when the owner has turned it on. */
-      const _authOk = await this._verifyJoinAuth(msg.id, typeof msg.phrase === 'string' ? msg.phrase : null,
-        (this._verifyConfigured && this._verifyConfigured()) ? { needVerify: () => this._verifyToken(msg.verify, session.ip) } : null);
+      /* v2.3.3344: ...and the device the join came from (devicelock.js) */
+      const _authOk = await this._verifyJoinAuth(msg.id, typeof msg.phrase === 'string' ? msg.phrase : null, {
+        needVerify: (this._verifyConfigured && this._verifyConfigured()) ? () => this._verifyToken(msg.verify, session.ip) : null,
+        device: cleanDevice(msg.device),
+        out: _keyOut,
+      });
       if (_authOk === 'verify') { this._verifyRefuse(ws); return; }
+      /* v2.3.3355: a new-shaped key that is not this character's (taken
+         back, or never made here), or an old key retired: its own reason and
+         close (loginkeys.js), never 'auth' -- that makes the phone throw its
+         key away for a fresh character */
+      if (_authOk === 'key') {
+        try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'key' })); } catch {}
+        try { ws.close(LOGIN_KEYS.CLOSE, 'key'); } catch {}
+        this.sessions.delete(ws);
+        return;
+      }
+      /* v2.3.3355: a lockout (five wrong keys for this id in a minute) --
+         'locked', never 'auth': it is somebody's guesses, not this phone's
+         key that is wrong */
+      if (_authOk === 'locked') {
+        try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'locked', ms: 60000 })); } catch {}
+        try { ws.close(LOGIN_KEYS.LOCKED_CLOSE, 'locked'); } catch {}
+        this.sessions.delete(ws);
+        return;
+      }
+      /* v2.3.3344: the right key from a device this character was never
+         played on: its own reason (never 'auth', which makes the phone throw
+         its key away), its own close, and the live session untouched -- this
+         gate runs before the eviction below. */
+      if (_authOk === 'device') {
+        try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'device' })); } catch {}
+        try { ws.close(DEVICE_LOCK.CLOSE, 'device'); } catch {}
+        this.sessions.delete(ws);
+        return;
+      }
       if (!_authOk) {
         try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'auth' })); } catch {}
         try { ws.close(4003, 'auth'); } catch {}
@@ -1739,5 +1830,10 @@ export const joinMethods = {
        session._lbSig, so the next track only writes if something really
        moved. */
     this.reportToLeaderboard(session, true);
+    /* v2.3.3355: a new Login Key handed to a phone that came with the old
+       one, or a new key's first use stamped (loginkeys.js) -- last, so the
+       phone has its whole world before it is told; a failure here costs the
+       join nothing (the next one tries again) */
+    try { await this._keysAfterJoin(ws, msg.id, msg, _keyOut); } catch (e) { console.warn('[loginkeys] after join:', e && e.message); }
   },
 };

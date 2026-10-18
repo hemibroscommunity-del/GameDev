@@ -7107,3 +7107,131 @@ the rebuilds before guessing (`mp-frameprofile`'s "rebuild asked ... by").
 **Receipt:** mp-frameprofile: the screen's list rebuilt every frame (2.6 a
 second at 2.6 frames a second on the QA box), standing or walking; after, never.
 mp-speedtest check 8.
+
+## 209. "A refused login is a refused login: send 'auth'" (v2.3.3344)
+
+**Tempting:** the device lock refuses a join, and the join already has a
+refusal for a bad login, `join_rejected {reason: 'auth'}` and close 4003
+(join.js). A refusal is a refusal: reuse it.
+
+**What happens:** the phone answers 'auth' by throwing its Login Key away and
+making a fresh character under a new one (wsClient.js, v2.3.1116: the cure for
+a key that no longer matches). For a device refusal the key was RIGHT. The
+player's real character would be swapped for a level-1 stranger on that device,
+with the key kept only in `bt_passphrase_prev`. And counted as a failed key,
+five refusals would lock the character's own device out for a minute.
+
+**The rule:** a refusal of the right key has its own reason (`'device'`) and its
+own close (4016), and never counts toward the five-tries lockout. An older phone
+treats a reason it doesn't know as final: no new character, no retries. A newer
+one shows the device screen (src/ui/DeviceScreen.js).
+
+**Receipt:** device-lock.test catches both "the refusal says auth" and "a
+refused device counts as a wrong key" (24 of 24 deliberate breaks caught), and
+mp-devicelock refuses a new phone with the code, its key kept, and lets it in
+after the owner's pass.
+
+## 215. "A lockout is a wrong key: answer 'auth'" (v2.3.3355)
+
+**Tempting:** five wrong keys for an id lock it out for a minute
+(join.js `_verifyJoinAuth`), and during that minute every join for that id is
+refused the way a wrong key is: `join_rejected {reason: 'auth'}`.
+
+**What happens:** the phone answers 'auth' by throwing its Login Key away and
+making a fresh character under a new one (wsClient.js, the cure for a key that
+no longer matches). A lockout is not this phone's key being wrong: it is
+anyone's five guesses at an id, and ids are on every other player's screen. So
+anyone could make a player's phone drop their character, just by guessing
+wrong five times while that player was reconnecting.
+
+**The rule:** a lockout has its own reason, `locked` (close 4018). A new phone
+waits it out and joins again; an older one treats an unknown reason as final.
+Neither makes a new character. A key that cannot be guessed (a new Login Key,
+loginkeys.js) is checked even during a lockout, so its holder is never shut
+out by somebody else's tries. Every refusal of a key that may be right
+(`device`, `key`, `locked`) has a reason of its own; 'auth' is only for a key
+that is really wrong.
+
+**Receipt:** login-keys.test §7: five wrong keys from another device, then the
+right old key is 'locked' (close 4018), the right new key gets in, and after
+the minute the old one does too.
+
+## 216. "The game's id is its key's: keep `S.myId` beside the key" (v2.3.3355)
+
+**Tempting:** `S.myId` is the character's id, so keep it beside the Login Key
+(the roster's row, `bt_key_ids`) whenever the roster is written: at Play, and
+on the 30 s heartbeat (BroTown.jsx).
+
+**What happens:** an old key's id is worked out from the key, so `S.myId`
+always matched it. A new key's id is the worker's (loginkeys.js), not made from
+the key. A page that starts before it knows works an id out from the key
+anyway, as for an old one, and that id is nobody's. Kept beside the key, it
+replaced the real id the door had written a moment before. The next join named
+nobody and was refused 'key', and the phone took about six seconds to ask the
+door and join again: mp-charlock's second browser had no character record yet,
+and mp-linger's relaunch missed the linger screen.
+
+**The rule:** an id goes beside a new key only from the worker: the door's
+answer (`kv: 2`), `key_new`, the join it let in (`S._joinedId`, wsClient.js),
+or the shared roster carrying one of those. The door's answer also corrects
+`S.myId` at once (BroTown.jsx `_takeKeyId`), and the join takes the kept id
+(wsClient.js).
+
+**Receipt:** a second browser given a new key directly sent two joins, the
+first refused, before the fix; after it, one join, let in. mp-charlock and
+mp-linger.
+
+## 217. "Put a player out: forget their session, then close their socket" (v2.3.3356)
+
+**Tempting:** to put a player out of the room (the Test panel's Kick or
+Freeze), delete their session from `this.sessions`, so nothing more is sent to
+them, and close their socket.
+
+**What happens:** the leaving is the runtime's close, `webSocketClose`
+(index.js): the save, `player_leave` to everyone, the party's and the duel's
+grace, the body taken out of `playerState`. It looks the socket up in
+`this.sessions`, finds nothing, and does none of it. The player is gone from
+the room's list, but their body stands where it was on everyone else's screen
+until the room restarts. Kick and Freeze did exactly this.
+
+**The rule:** put a player out in the AFK sweep's three steps (tick.js,
+flood.js `_floodClose`): close the socket, run `webSocketClose` for it now,
+then delete the session (admin.js `_adminPutOut`; the owner's Forget,
+devicelock.js).
+
+**Receipt:** admin.test §5 and §6: after a Freeze and a Kick an onlooker is
+told `player_leave` and no body is left. Both checks fail on the old code.
+
+**And the character restart (v2.3.3375):** persistence.js
+`_resetCharacterData` did the same, with one more step that must come FIRST:
+drop the in-memory state before the leaving run, or its regen flush saves the
+old character straight back over the wipe -- the restarted bro rejoins with
+the old gold. persistence.test §7b and §7d (an onlooker told, nothing written
+back, the empty room's tick stopped).
+
+## 219. "Nothing comes between my read and my write: I only await a hash" (v2.3.3372)
+
+**Tempting:** to change a record by reading it, working out the next one and
+writing it back -- `get`, a hash or a fetch, `put` -- and trust the input gate
+to keep everything else out of the middle.
+
+**What happens:** the input gate is closed only while a STORAGE operation is
+in flight (handoff rule 9). A fetch (the account check's) opens it, and in
+Node's room so does a hash (`crypto.subtle`); another event then changes the
+same record in the gap, and the first write puts its stale copy back over it.
+In login-keys §12, on v2.3.3355's code: the owner's Forget, run while a join's
+handout made a key, was written back over (the forgotten devices and keys
+returned); a join that remembered its device after a Forget brought them all
+back; and a join already past its check when the Forget ran was handed a new
+key, one that works from any device, after it. On Cloudflare the hashes are
+thought to answer without yielding, so only the fetch is known to open the gap
+there today -- which is no reason to depend on it.
+
+**The rule:** every read-and-write of one record goes through that record's
+queue -- `_inboxSerial` (a mailbox, v2.3.3294), `_authSerial` (a character's
+login record, v2.3.3372) -- never nested. And a decision made from a record
+before a wait is made again from the record after it: the key handout re-reads
+the record and puts out a join whose key or device it no longer lets in.
+
+**Receipt:** login-keys §12 (21 checks): a gate where each change waits, the
+owner's tool run in the gap; nine fail on v2.3.3355's code.

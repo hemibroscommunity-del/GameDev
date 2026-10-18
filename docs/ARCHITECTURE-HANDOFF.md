@@ -64,7 +64,9 @@ extended.
    |---|---|---|
    | `rpg:<playerId>` | the player blob (fixed field list) — v2.3.2523 adds the five GEAR STASHES (`armorStash`, `legsStash`, `shieldStash`, `gearStash`, `amuletStash`) + the `gearStashCaptured` adoption stamp; they are blob fields, not their own prefix. v2.3.2531 makes the store a WRITER of them (escrow). v2.3.2552 RETIRES the `_sv` mark it used to stamp: provenance is `gear_prov:` below, and both branches of `_gearProvResolve` and `sanitizeGearPiece` sweep the dead field off stored blobs on the next join (no migration) | core (gear-stash.md, auction-house.md) |
    | `gear_prov:<playerId>` | `{_v, seq, forgotten, list:[{id, slot, src, at, p}]}` — the GEAR PROVENANCE ledger (v2.3.2534): one row per piece of gear this server minted for this player, holding the server-assigned `gid` and a verbatim copy of the minted blob. The row is the ownership proof; an inbound `gid` is looked up here and the piece rebuilt from `p`, never trusted from the wire. FIFO-capped at 256 with `forgotten` counting what aged out. v2.3.2551: it is also the STORE'S SELL GATE (`_gearSellable`) — a listing takes the row out of the ledger and escrows it inside `store_listing:<id>` as `gearRow`, so the store's own wake-time rebuild recovers it | gear-provenance.md |
-   | `auth:<playerId>` | `{pfHash, createdAt}` SHA-256 of `btv1\|phrase` | identity.md |
+   | `auth:<playerId>` | `{pfHash, createdAt}` SHA-256 of `btv1\|phrase`; v2.3.3344: + `devs: [{d, at}]`, the devices this character's key is honoured from (12 at most, the oldest added dropped; written only when one is added, never by a join from a known one), `pass: {until, at}` the owner's one-time pass for one new device, `sealed` after the owner's forget until a pass breaks it (devicelock.js); v2.3.3355: + `keys: [{h, d, at, ok}]` new Login Keys as fingerprints (SHA-256 of `btk2\|key`, one a device, 12 at most), `fresh` a new character's first key (retired at its new key's first use), `oldGone` the old key retired (loginkeys.js) | identity.md, device-lock.md, login-keys.md |
+   | `keyidx:<h>` | `{id, at}` — a new Login Key's character, by the key's fingerprint, for the login door (v2.3.3355): written in the same put as the record holding the key, deleted when the key is taken back; a stale one finds nothing (the record decides) | login-keys.md |
+   | `devlock:filled` | `{at, chars, devices}` — the one-time fill of every character's `devs` from the `device:` and `botstat:` records (v2.3.3344): present, a worker never scans again. A single key, never a prefix | device-lock.md |
    | `pets:<playerId>` | `{v, cap, active, moved, list:[{id, kind, look, home, stage, gold, size, name, lv, xp, at, caughtBy, owners, tradeAfter, legacy?}], journal:{'<kind>.<stage>': {tries, n, gold, big}}}` — the PETS RECORD (v2.3.3120, petbook.js): the only proof a pet is yours, written only by the worker. Ids `p_...` are the worker's and never change. One GET at join; a catch and every Pets-page action write at once, a miss's try only in memory (written at most once a minute and on disconnect); v2.3.3121: so is a pet's XP from kills (`lv`, `xp`), except a level-up, written at once. A newer `v` is left whole and untouched (a rollback must not destroy it). Old `lifeSkills.pets` move in once (`moved`), from a stored blob only, as `legacy`. v2.3.3123: `cap` grows by 10 for gold (`pet_house_buy`, 30 to 120), the gold off `rpg:` and the place on this record in one synchronous run; the pet out with you is mirrored onto playerState as `_petWire` (memory only, the tick's `pw`). Deleted by `_resetCharacterData`; not in the daily `rpgsnap:` | trapping.md |
    | `codex:<playerId>` | `{v, k: {<kind>: [kills, killsPastLevel20]}}` — the MONSTER CODEX (v2.3.3209, codex.js): each of the nine kinds (petbook.js PET_KINDS) this player has helped kill, counted at the kill's choke point for every XP recipient. One GET at join, cached for the session; a kill that crosses a threshold (`CODEX.TIERS`, a new fact on the Codex page) or a first second-stage kill is written at once, any other kill at most once a minute and on disconnect (a deploy loses at most a minute of counting, never a fact). A newer `v`, or a failed read, LOCKS it: never counted into or overwritten. Deleted by `_resetCharacterData`; not in the daily `rpgsnap:` | monster-codex.md |
    | `char:<playerId>` | `{name, look, createdAt}` the PERMANENT name + appearance; first write wins and a stored record beats the join payload | identity.md |
@@ -96,6 +98,7 @@ extended.
    | `frozen:<pid>` | `{ts, note}` operator freeze — join gate | admin.md |
    | `rpgsnap:<pid>:<yyyymmdd>` | daily rpg-blob snapshot (ring of 7) | admin.md |
    | `rpgsnap:<pid>:prereset-<ts>` | parachute snapshot before a self-service character restart | character-restart.md |
+   | `rpgsnap:<pid>:prerestore-<ts>` | parachute snapshot of the stored rpg blob taken BEFORE an operator restore (admin.js); pruned as its own ring with `prereset-` (`PARACHUTE_TAGS`), never with the dailies. Registered v2.3.3373: written since the restore route, never listed here | admin.md |
    | `rpgsnap_at:<pid>` | snapshot throttle timestamp (20h) | admin.md |
    | `admin_log` | capped ring (100) of mutating admin ops | admin.md |
    | `cadence:<scope>:<subject>` | `{period, streak, ts}` lazy daily/weekly settle. v2.3.3140: the `login` scope pays nothing now and carries the forgiving streak, `{period, streak, fz, saved, best, ts}` -- `fz` streak freezes held (max 2), `saved` freezes spent at the last settle | cadence.md, daily-rewards.md |
@@ -107,6 +110,7 @@ extended.
    | `metrics:<yyyymmdd>` | daily economy snapshot (ring of 30) | liveops.md |
    | `friends:<pid>` | `{list, reqIn, reqOut}` mutual-friend graph + pending requests | friends.md |
    | `capegrant:<capeId>` | `{issued, redeemed}` event-cape ticket ledger: the cap, who holds a ticket, and who redeemed. ALSO the ownership record — rule 1 forbids a cape field on the rpg blob | cape-and-contest.md |
+   | `cape_start_id` | the `EVENT_START_ID` of the cape contest whose start was last seen (eventcapes.js `_capeStartFresh`): a contest's start clears an old contest's `disable_event_capes` and `event_cape_rate` live flags ONCE, then this is written so a later join leaves the owner's new settings alone. One unprefixed key. Registered v2.3.3373 | cape-and-contest.md |
    | `friend_msg:<pid>` | offline DM backlog, capped 50, cleared on join delivery | friends.md |
    | `chat_mute:<pid>` | `{list: {mutedId: {name, at}}, at}` the muter's own chat-mute list; loaded into a null-proto map + a Set on join and enforced on the FAN-OUT (tick.js), so a muted line never reaches the socket | chat-moderation.md |
    | `chat_report:<id>` | one abuse report: `{at, reason, by, byName, target, targetName, zone, targetOnline, lines}` — `lines` is the SERVER's copy of the recent chat, never the reporter's claim. Pruned past `CHATMOD.RETAIN_MS` on the admin read | chat-moderation.md |
@@ -166,7 +170,9 @@ extended.
      stamp of the swap goes out in ONE synchronous run** (v2.3.3294,
      `_creditLiveTogether`). The input gate keeps other events out of the
      middle; it does not make the writes one. Each await between two writes
-     is a place a restart can land (TRAPS #184).
+     is a place a restart can land (TRAPS #184). The same holds for a claim
+     and its pay: a guild rung's claim and a daily quest's "done" go out with
+     their gold in one run (v2.3.3369).
 8. **Single-mutation over two-phase where possible.** If an operation can
    settle in one event on live state (gamble: roll, then one coins
    delta), do that — a debit…credit sequence creates a crash window that
@@ -192,6 +198,9 @@ extended.
    page per tick slot, a cursor in memory, batched deletes, never on the
    join path (`_opPruneMaybe`, `_metricsMaybe`). A single `list()` with no
    `limit` over a prefix that grows without bound is a bug on any hot path.
+   (v2.3.3368: `_metricsMaybe` still listed `inbox:` and `mkt_order:` whole
+   on its last page, every mailbox in memory at once; every table it reads
+   is paged now, the mailboxes 50 at a time.)
    **And a third edge (v2.3.3291): the gate keeps EVENTS apart, not
    messages.** A bundle (v2.3.3254) is up to 24 messages in ONE event. A
    handler the router starts without awaiting runs beside the bundle's next

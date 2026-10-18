@@ -162,6 +162,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     await H.enterWorld(p);
     await p.page.waitForTimeout(3500);
+    /* v2.3.3355: a new character is handed a new Login Key at its first join
+       (server/src/loginkeys.js): read the identity once it is in */
+    await p.page.waitForFunction(() => /^[a-z]{3,5}(?:-[a-z]{3,5}){7}$/.test(localStorage.getItem('bt_passphrase') || ''),
+      null, { timeout: 20000, polling: 300 }).catch(() => {});
     return p;
   };
 
@@ -177,13 +181,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const idBefore = await identity(P);
   console.log('    identity', JSON.stringify(idBefore));
 
-  /* ── ROAD 1: the plain resume — reload holding the key ── */
+  /* ── ROAD 1: the plain resume — reload holding the key ──
+     v2.3.3357: since v2.3.2447 a reload stops at the door (the owner: "Player
+     should need to tap continue or create a character"), so this road waited
+     30 s on the door's dark backdrop and read it as a black world, on main
+     too.  A reload's road is the door, Continue and its row: taken here as a
+     player takes it (ROAD 2 is the same door after a logout instead). */
   await P.page.goto(P.page.url().split('?')[0], { waitUntil: 'load' }).catch(() => {});
   await P.page.waitForTimeout(3000);
-  const r1 = await litWithin(P, 30000);
+  const door1 = await identity(P);
+  rec.ok('ROAD 1: a reload stops at the door, it does not walk in by itself', door1.route === 'login', door1);
+  await H.openPicker(P.page);
+  await P.page.waitForTimeout(800);
+  const row1 = await P.page.$('[data-tut="char-row"][data-char-active="1"]');
+  rec.ok('ROAD 1: ...and its character is in the list (guard)', !!row1, {});
+  if (row1) await row1.click();
+  const r1 = await litWithin(P, 45000);
   const i1 = await identity(P);
   console.log('    road 1 resume', JSON.stringify(r1), JSON.stringify(i1));
-  rec.ok('ROAD 1 (reload with the key): the screen is not black', r1.ok, { ...r1, ...i1 });
+  rec.ok('ROAD 1 (reload with the key, then its row): the screen is not black', r1.ok, { ...r1, ...i1 });
   rec.ok('ROAD 1: ...and it is the same character', i1.myId === idBefore.myId, { i1, idBefore });
 
   /* ── ROAD 2: the door's Continue -> your character in the picker ──
@@ -253,6 +269,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const input = await Q.page.$('input');
     rec.ok('the key form has an input (guard)', !!input, {});
     if (input) {
+      /* ═══ v2.3.3355: A NEW KEY WORKS ON ANY DEVICE ═══
+         Q is a new device for this character.  Since v2.3.3344 an OLD key
+         works only on the devices it is played on (server/src/devicelock.js),
+         but this build's character was handed a new Login Key at its first
+         join (server/src/loginkeys.js), which works anywhere: typed here, it
+         plays, with no pass from the owner. */
+      rec.ok('ROAD 3: the key is a new one, eight words (guard)', /^[a-z]{3,5}(?:-[a-z]{3,5}){7}$/.test(idBefore.key || ''), { key: idBefore.key });
       await input.fill(idBefore.key);
       await Promise.all([
         Q.page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => {}),

@@ -25,6 +25,11 @@ const OLD = {
 };
 
 export async function run({ browser, wsPort, webPort, rec }) {
+  /* v2.3.3357: the restart is a login-door call, and the door's 20 tries a
+     minute are shared by every page of a run: after mp-roster the minute was
+     spent and the restart answered 'rate' (main too).  Start on a fresh one. */
+  const waited = await H.freshDoorMinute(wsPort);
+  console.log('    a fresh minute at the login door after ' + Math.round(waited / 1000) + ' s');
   const P = await H.newPlayer(browser, { name: 'Resa', wsPort, webPort,
     viewport: { width: 390, height: 844 }, touch: true });
   await H.enterWorld(P);
