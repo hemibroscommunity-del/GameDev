@@ -417,7 +417,14 @@ async function body({ P, wsPort, rec }) {
              or still shows the full wind-up, if it was stamped the frame
              before the window opened. */
           const rgReady = !!S._extraction && S._extraction.status === 'ready';
-          for (const e of batch) { e.bar = bar; e.ring = rg; e.ringReady = rgReady; }
+          /* v2.3.3403: and how far the hits had got when the two were read.
+             On a box drawing a few frames a second the two frames above can
+             outlast the next hit (650 ms apart for a cook): the bar and the
+             ring then rightly show that one, and the checks below allow it --
+             never older than this hit, never ahead of the game (TRAPS §200). */
+          const hNow = S._extraction && S._extraction.hits;
+          const hpNow = hNow && typeof hNow.hp === 'number' ? hNow.hp : null;
+          for (const e of batch) { e.bar = bar; e.ring = rg; e.ringReady = rgReady; e.hpNow = hpNow; }
           out.events.push(...batch);
         }
         for (const p of (S.dmgNumbers || [])) {
@@ -505,15 +512,20 @@ async function body({ P, wsPort, rec }) {
     const want = tr.plan.slice().sort().join(',');
     r.ok(`${skill}: one number popped per hit, showing the roll`, nums.length >= tr.plan.length
       && nums.slice(0, tr.plan.length).slice().sort().join(',') === want, { popped: nums, plan: tr.plan });
+    /* v2.3.3403: each read shows this hit's HP or a later one's that had
+       landed by the read (`hpNow`), never an earlier one -- on a phone the
+       same thing as "this hit's", as no hit lands within two frames of
+       another (see the sampler) */
+    const upTo = (e) => (e.hpNow == null ? e.want : e.hpNow);
     r.ok(`${skill}: the ${type === 'campfire' ? 'fire' : 'node'}'s HP bar was up through the hits, reading its HP`,
       tr.events.every((e) => e.bar && e.bar.show === true && e.bar.mode === 'hits' && e.bar.skill === skill
-        && e.bar.maxHp === tr.hp && e.bar.hp === e.want),
-      tr.events.map((e) => e.bar));
+        && e.bar.maxHp === tr.hp && e.bar.hp <= e.want && e.bar.hp >= upTo(e)),
+      tr.events.map((e) => ({ hp: e.bar && e.bar.hp, want: e.want, hpNow: e.hpNow, show: e.bar && e.bar.show, mode: e.bar && e.bar.mode })));
     r.ok(`${skill}: the ring on the button stepped up with each hit (chunked, not a clock)`,
-      tr.events.every((e) => e.ring != null && (Math.abs(e.ring - (1 - e.want / tr.hp)) < 0.02
+      tr.events.every((e) => e.ring != null && ((e.ring >= 1 - e.want / tr.hp - 0.02 && e.ring <= 1 - upTo(e) / tr.hp + 0.02)
         || (e.ringReady && Math.abs(e.ring) < 0.02)))
-        && tr.events.slice(0, -1).every((e) => !e.ringReady),
-      tr.events.map((e) => [e.ring == null ? null : +e.ring.toFixed(3), +(1 - e.want / tr.hp).toFixed(3), e.ringReady ? 'ready' : '']));
+        && tr.events.every((e) => !e.ringReady || e.hpNow === 0),
+      tr.events.map((e) => [e.ring == null ? null : +e.ring.toFixed(3), +(1 - e.want / tr.hp).toFixed(3), e.hpNow, e.ringReady ? 'ready' : '']));
 
     /* 3. on the blow */
     if (BLOW_FX[skill]) {
@@ -537,8 +549,20 @@ async function body({ P, wsPort, rec }) {
            frame stamped after it is a frame that saw it. */
         const lastT = tr.times[tr.times.length - 1];
         const during = blows.filter((t) => t >= tr.planAt && t <= lastT + tol).length;
-        r.ok(`${skill}: ...and the grease pops ONLY on the hits while they land (one per hit)`,
-          during === tr.plan.length, { during, hits: tr.plan.length });
+        /* v2.3.3403: one pop for each FRAME a hit is drawn in -- the game's
+           rule ("One pop per frame however many hits landed in it",
+           effectsRenderer) -- and no pop that is not a hit's.  On a phone
+           every hit has a frame of its own, so that is one per hit; on this
+           box two hits 650 ms apart can share one frame (TRAPS §200), and
+           the run of 2026-10-18 read 9 pops for 10 hits. */
+        const ownBlow = tr.events.map((e) => {
+          let best = null, bd = Infinity;
+          for (const b of blows) { const d = Math.abs(b - e.at); if (d < bd) { bd = d; best = b; } }
+          return best;
+        });
+        const frames = new Set(ownBlow.filter((b) => b != null)).size;
+        r.ok(`${skill}: ...and the grease pops ONLY on the hits while they land (one per frame a hit is drawn in: ${frames} for ${tr.plan.length} hits)`,
+          during === frames && frames <= tr.plan.length && frames >= 1, { during, frames, hits: tr.plan.length });
       }
     } else {
       /* The owner's rule, pinned: "reeling is the ONLY splash moment"
