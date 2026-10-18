@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "cc0e5ba08cce60e206a1317b5f49199760f5c154",
+  "tree": "5642c71802dd797859f796a40de4ff7ff9891c59",
+  "committedAt": "2026-10-18T11:43:13-07:00",
+  "subject": "Hair under hats and hoods is clipped by the stencil, not in a pass of its own (v2.3.3459) (#997)",
+  "files": 5982,
+  "bytes": 674025193,
+  "listingSha256": "ca528eb44add679534b018248fd52830e47dc0726f1d8588448018b674b76f92",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
