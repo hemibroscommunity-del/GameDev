@@ -3,6 +3,7 @@ import { sprintAnchor, ctlBottom } from './ShieldButton.jsx';
 import { sprintSupported, sprintArmed, isSprinting, toggleSprint, SPRINT_MIN_START } from '@/game/sprint.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3462: the "denied" tick */
 import { Skin, PaintedIcon, ICON_URL, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
 
 /* ═══ v2.3.3006: THE SPRINT BUTTON, RIGHT OF THE MOVEMENT STICK ═══
@@ -146,6 +147,7 @@ export function SprintButton(props) {
     var ok = toggleSprint(s, now);
     if (!ok && s._sprint && s._sprint.why === 'tired' && s._sprint.refusedAt === now) {
       if (s.player) pushDmgPopup(s, s.player.x, s.player.y - 30, SPRINT_TIRED_NOTE, SPRINT_TIRED_COLOR, { ts: now });
+      cue('denied');   /* v2.3.3462: a refusal is heard (the owner's "denied" tick) */
       setNope(function (x) { return x + 1; });
     }
     keyRef.current = '';
