@@ -248,7 +248,7 @@ export const EVENT_SOUNDS = {
   allianceUp: [['level-up', 0, 0.5, 0.35, 1, 0, 0.15]],
   allianceWar: [['shield-bash', 0.03, 0.5, 0.45, 0.65], ['whirlwind', 0.1, 0.7, 0.2, 0.8, 0.05, 0.15]],
 
-  /* ── v2.3.3404: MORE MOMENTS THAT PLAYED NOTHING ───────────────────────
+  /* ── v2.3.3410: MORE MOMENTS THAT PLAYED NOTHING ───────────────────────
      The owner, 2026-10-18, after the first round: "Look for more too".  Each
      of these still called collect() or beep(), both silent since v2.3.1103,
      or nothing at all.  Same recordings, same rules as above. */
@@ -293,7 +293,7 @@ export const EVENT_SOUNDS = {
      bright), ~0.5 at the forge -- played by game/townAmbience.js now and
      then while you are near the Blacksmith's, its sparks' sound. */
   anvil: [['mine-strike', 0.58, 0.3, 0.3, 1.25], ['mine-strike', 0.58, 0.3, 0.26, 1.22, 0.42], ['mine-strike', 0.58, 0.3, 0.3, 1.27, 0.84]],
-  /* ── v2.3.3404, the third look (the owner: "Good look for more") ──
+  /* ── v2.3.3410, the third look (the owner: "Good look for more") ──
      The emotes and moves (v2.3.3391-3395) shipped silent -- their plan's
      table says "Extras (reused sounds)" (docs/FUN-SOCIAL-PLAN.md) and Phase 1
      shipped "no new sounds"; each called BT_AUDIO.emote(), two beep()s.  Which
@@ -360,19 +360,19 @@ export const CUE_GAP_MS = {
   lungeMiss: 100,
   unwrap: 200,
   tradeOff: 300,
-  /* v2.3.3404: a player who sends invite after invite is heard once a second
+  /* v2.3.3410: a player who sends invite after invite is heard once a second
      at most, and a pet taken out and put away again and again is one pop */
   duelAsk: 1000,
   tradeAsk: 1000,
   petOut: 300,
   petAway: 300,
-  /* v2.3.3404: a crowd emoting at once is a few pops, and five crops landing
+  /* v2.3.3410: a crowd emoting at once is a few pops, and five crops landing
      together one rustle at a time */
   emotePop: 80,
   bagIn: 120,
 };
 
-/* ═══ v2.3.3404: WHAT EACH MOVE SOUNDS LIKE ═══
+/* ═══ v2.3.3410: WHAT EACH MOVE SOUNDS LIKE ═══
    Every move in game/emoteMoves.js EMOTE_MOVES, chosen -- never fallen into
    (server/test/sound-cues.test.mjs holds the keys to the moves): the emoji's
    pop, and a sound of the move's own where it has one.  The wave, laugh,

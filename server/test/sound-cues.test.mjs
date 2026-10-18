@@ -23,13 +23,13 @@
  *      startSfxLoop, ticked by the game loop;
  *   8. the door: enterBuilding plays the table's knock, not the beep() that
  *      has played nothing since v2.3.1103;
- *  10. v2.3.3404, the third look (the owner: "Good look for more"): every
+ *  10. v2.3.3410, the third look (the owner: "Good look for more"): every
  *      emote and move heard as something chosen (MOVE_SOUNDS holds every move
  *      of game/emoteMoves.js), yours, other players' and the townsfolk's; a
  *      harvest's prize landing in the bag; and a menu opened by tapping the
  *      world (your bro's chat box, a player's card, a townsperson's window)
  *      opening with the menu click.
- *   9. v2.3.3404, the second round (the owner: "Look for more too"): the
+ *   9. v2.3.3410, the second round (the owner: "Look for more too"): the
  *      Gambling Den's dice and pot, the arena's stakes and sign-up, a guild
  *      quest, an alliance war's end, invites to duel and trade, the market,
  *      the farm's harvest and bed, pets out, away and released (and the four
@@ -219,7 +219,7 @@ for (const p of files) {
       const a = t.indexOf('var _pickCue = ');
       return a < 0 ? [] : namesIn(t.slice(a, t.indexOf(';', a)));
     },
-    /* v2.3.3404: the moves' cues, read from the table that names them */
+    /* v2.3.3410: the moves' cues, read from the table that names them */
     'src/game/moveSounds.js n': () => Object.values(MOVE_SOUNDS || {}).flat(),
     'src/ui/panels/buildings/StorePanel.jsx snd': () => {
       const t = src('src/ui/panels/buildings/StorePanel.jsx');
@@ -299,7 +299,7 @@ for (const p of files) {
   check('8b ...and stamps it as the tap\'s own sound, so the Enter button\'s click yields', /this\._uiSpecificAt = this\._now\(\)/.test(body));
 }
 
-/* ── 9. v2.3.3404: the second round ("Look for more too") ──
+/* ── 9. v2.3.3410: the second round ("Look for more too") ──
    Each of these places called collect() or beep(), both silent since
    v2.3.1103, or nothing; each now plays its cue, and none still leans on the
    silent call it replaced. */
@@ -371,7 +371,7 @@ for (const p of files) {
     && /import \{ tickTownAmbience \} from '@\/game\/townAmbience\.js'/.test(BT) && /tickTownAmbience\(S, /.test(BT));
 }
 
-/* ── 10. v2.3.3404: the third look ("Good look for more") ── */
+/* ── 10. v2.3.3410: the third look ("Good look for more") ── */
 {
   const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');   /* the code, not what its comments say */
   const { EMOTE_MOVES } = await import('../../src/game/emoteMoves.js');

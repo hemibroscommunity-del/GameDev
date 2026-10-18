@@ -41,7 +41,7 @@ import { BT_AUDIO } from '@/data/index.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: traps made, and the pet's ward, heard */
-import { NOISE_OF } from '@/game/monsterNoises.js';   /* v2.3.3404: a pet answers in its kind's voice */
+import { NOISE_OF } from '@/game/monsterNoises.js';   /* v2.3.3410: a pet answers in its kind's voice */
 import { MONSTER_NOISE_CLIPS } from '@/data/monsterNoiseClips.js';
 
 /* ── the shakes, drawn by trapFx.js and timed here (the popups, the sounds
@@ -306,14 +306,14 @@ export function onPetsState(S, p) {
     say(S, TRAP_WORDS[p.error] || 'Not done', '#E59A94');
   } else if (p.op === 'release') {
     say(S, 'Released back to the wild', '#B6C1BE');
-    cue('petFree');   /* v2.3.3404: a rush away and a fading sparkle (it was silent) */
+    cue('petFree');   /* v2.3.3410: a rush away and a fading sparkle (it was silent) */
   } else if (p.op === 'name') {
     const pet = S._petBook.list.find((q) => q.id === p.id);
     if (pet) say(S, 'Named ' + petDisplayName(pet), '#7EE0A8');
   } else if (p.op === 'active') {
     const pet = S._petBook.active ? S._petBook.list.find((q) => q.id === S._petBook.active) : null;
     say(S, pet ? petDisplayName(pet) + ' is with you' : 'Pet put away', '#7EE0A8');
-    /* v2.3.3404: and heard -- out with a pop and its own voice, away with a
+    /* v2.3.3410: and heard -- out with a pop and its own voice, away with a
        softer plop (both were silent) */
     if (pet) { cue('petOut'); petVoice(pet.kind); } else cue('petAway');
   } else if (p.op === 'house') {
@@ -324,7 +324,7 @@ export function onPetsState(S, p) {
   bump(S);
 }
 
-/* ═══ v2.3.3404: A PET TAKEN OUT ANSWERS IN ITS KIND'S VOICE ═══
+/* ═══ v2.3.3410: A PET TAKEN OUT ANSWERS IN ITS KIND'S VOICE ═══
  * The owner, on the missing sounds: "Look for more too".  A pet appeared
  * beside you, and went away, without a sound.  Now a pop and a sparkle
  * (data/eventSounds.js petOut) -- and the kinds whose wild look has a
@@ -429,7 +429,7 @@ export function trapProbe(S) {
     arms: (S && S._trapArms) || 0, rolls: (S && S._trapRolls) || 0, catches: (S && S._trapCatches) || 0,
     last: (S && S._trapLast) || null,
     reveal: (S && S._trapReveal) || null,   /* v2.3.3123: a golden or Big catch's words */
-    petVoice: _petVoiceLast,   /* v2.3.3404: what the last pet taken out answered with ('none': no voice yet) */
+    petVoice: _petVoiceLast,   /* v2.3.3410: what the last pet taken out answered with ('none': no voice yet) */
     stretch: (() => { const m = trapTarget(S); return m ? trapStretch(m.level) : null; })(),
   };
 }

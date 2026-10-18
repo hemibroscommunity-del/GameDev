@@ -1,4 +1,4 @@
-/* ═══ v2.3.3404: THE FORGE HEARD AT WORK ═══
+/* ═══ v2.3.3410: THE FORGE HEARD AT WORK ═══
  *
  * The owner, 2026-10-18, on the missing sounds: "Look for more too".  The
  * Blacksmith's forge in the Wheel's BroTown throws sparks (v2.3.2983,
