@@ -168,7 +168,9 @@ extended.
      stamp of the swap goes out in ONE synchronous run** (v2.3.3294,
      `_creditLiveTogether`). The input gate keeps other events out of the
      middle; it does not make the writes one. Each await between two writes
-     is a place a restart can land (TRAPS #184).
+     is a place a restart can land (TRAPS #184). The same holds for a claim
+     and its pay: a guild rung's claim and a daily quest's "done" go out with
+     their gold in one run (v2.3.3369).
 8. **Single-mutation over two-phase where possible.** If an operation can
    settle in one event on live state (gamble: roll, then one coins
    delta), do that — a debit…credit sequence creates a crash window that
