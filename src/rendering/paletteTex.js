@@ -363,16 +363,50 @@ extensions.add(PaletteBatcher);
    pictures (GlBatchAdaptor's execute, below).  WebGL2 only, as the other two;
    built behind the loading screen (setOneBatchRenderer) and, if it does not
    link there, the three programs as before.  `?onebatch=0` is the three
-   programs, to compare (mp-onebatch). */
+   programs, to compare (mp-onebatch).
+   NOT WHERE THE PICTURE IS DRAWN IN SOFTWARE: a software rasterizer runs
+   every branch of a program for every pixel, the ones no pixel takes too --
+   measured on the QA box's SwiftShader, a full-screen read inside a branch
+   whose other side (15 slots of 5 reads, never taken) cost 3-5x the read on
+   its own, as much as the other side alone (TRAPS §222) -- so there the one
+   program pays all three reads for every pixel, and the QA phone drew 4.1
+   frames a second against 9.2 (mp-phoneframe).  A phone's graphics chip
+   skips a branch that every pixel of a quad agrees on, as Pixi's own batch
+   program counts on (its chain of 16 picture slots).  So a renderer that
+   names itself software keeps the three programs (oneBatchChoice), and
+   `?onebatch=1` draws with the one anyway (mp-onebatch). */
 export const ONE_BATCHER = 'bt-one';
 const ONE_ID_K = 64;   /* the texture id: slot + 64 x code (Pixi's is 16 bits) */
-function oneWantedByAddress() {
-  try { return !/(^|[?&])onebatch=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+const SOFTWARE_GL = /swiftshader|llvmpipe|softpipe|software|basic render|\bwarp\b/i;
+/** v2.3.3376: one program or three, from the address (`onebatch=0|1` wins)
+ *  and the renderer's name -- {on, why}.  Pure, so the QA probe asks it
+ *  about chips this box is not (mp-onebatch). */
+export function oneBatchChoice(search, renderer) {
+  const m = /(^|[?&])onebatch=([01])(&|$)/.exec(search || '');
+  if (m) return { on: m[2] === '1', why: 'address' };
+  if (SOFTWARE_GL.test(renderer || '')) return { on: false, why: 'software' };
+  return { on: true, why: 'chip' };
 }
-const _oneWanted = oneWantedByAddress();
+/* the chip's own name: Firefox gives it as RENDERER, Chrome and Safari
+   answer "WebKit WebGL" there and the name through the debug extension
+   (read only then: Firefox warns that it is going away) */
+function rendererName(r) {
+  try {
+    const gl = r && r.gl;
+    if (!gl) return '';
+    const plain = String(gl.getParameter(gl.RENDERER) || '');
+    if (plain && !/^webkit webgl$/i.test(plain)) return plain;
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    return ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '') : plain;
+  } catch (e) { return ''; }
+}
+function pageSearch() {
+  try { return window.location.search || ''; } catch (e) { return ''; }
+}
+let _oneWanted = null;        /* oneBatchChoice's answer for this page's renderer */
 let _oneRoute = false;        /* sprites sent to ONE_BATCHER: while it is tried, and once it linked */
 let _oneOk = null;            /* null: not tried; true: linked; false: the three programs */
-const _oneStats = { linkError: null, prewarmed: false };
+const _oneStats = { linkError: null, prewarmed: false, why: null, renderer: null };
 export function oneBatchOn() { return _oneRoute && _oneOk === true; }
 let _oneR = null;             /* the renderer it was built for (setOneBatchRenderer) */
 
@@ -825,6 +859,11 @@ export function setOneBatchRenderer(r) {
   _oneOk = null;
   _oneRoute = false;
   _oneR = r || null;
+  const name = rendererName(r);
+  const choice = oneBatchChoice(pageSearch(), name);
+  _oneWanted = choice.on;
+  _oneStats.why = choice.why;
+  _oneStats.renderer = name;
   if (!_oneWanted || !webgl2(r)) { _oneOk = false; return false; }
   let box = null, src = null;
   _oneRoute = true;
@@ -861,6 +900,10 @@ if (typeof window !== 'undefined') {
   /* QA only (mp-onebatch): send sprites to the one program or the three, from
      the next rebuild of each draw list -- the same held frame drawn both ways */
   window.__btOneBatchRoute = (on) => { _oneRoute = !!on && _oneOk === true; return _oneRoute; };
+  /* QA only (mp-onebatch): the Speed test's own lever, and the choice asked
+     about any address and chip */
+  window.__btOneBatchLive = (on) => setOneBatchLive(on);
+  window.__btOneBatchChoice = (search, renderer) => oneBatchChoice(search, renderer);
   window.__btPalette = () => {
     let bytes = 0, n = 0, pieces = 0, pages = 0;
     for (const s of _live) {

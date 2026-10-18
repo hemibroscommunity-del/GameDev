@@ -41,7 +41,9 @@ drift apart.
 - Built behind the loading screen (`setOneBatchRenderer`, after the palette's
   own build). If it does not link on a device, the three programs are used, as
   before.
-- `?onebatch=0` in the address is the three programs, to compare.
+- Not where the picture is drawn in software (below): there the three programs.
+- `?onebatch=0` in the address is the three programs, to compare, and
+  `?onebatch=1` the one program, even in software.
 
 ## The same picture
 
@@ -81,28 +83,62 @@ by the three is identical to the pixel in BroTown and at a fight; batches 21
 against 39 (BroTown) and 19 against 48 (fight).
 
 The frame's whole work on this box moved by noise (BroTown 4.43 -> 4.90 ms,
-the fight 5.73 -> 5.81): the one program's extra branches are done in
-software here, on the same four processors as the page. On a phone they are
-the graphics chip's -- which is what cannot be measured here (below), and why
-the owner's Speed test times the three programs as a step of its own.
+the fight 5.73 -> 5.81). But the box drew **4.1 frames a second with the one
+program against 9.2 with the three** -- which is how this box draws, not what
+a phone would do (next).
+
+## In software, the three programs
+
+This box's graphics are SwiftShader, a rasterizer in software, and a software
+rasterizer runs **every branch of a program for every pixel**, the ones no
+pixel takes too. Measured by `node tools/qa/qa-branchcost.mjs`: a full-screen
+quad at 390 x 806, ms a draw over three rounds --
+
+| program | ms a draw |
+|---|---|
+| A: one read, through Pixi's chain of 15 picture slots | 11.5-17.5 |
+| B: A inside a branch whose other side (15 slots of 5 reads) no pixel takes | 50-66 |
+| C: that other side alone | 36-60 |
+
+B costs what C does: the branch nobody took was run. So in software the one
+program pays all three reads for every pixel, and the page draws at half the
+frames a second. A phone's graphics chip skips a branch that every pixel of a
+quad agrees on -- Pixi's own batch program counts on that, with its chain of 16
+picture slots -- so there a sprite pays for its own read.
+
+So `setOneBatchRenderer` asks the renderer its name (`oneBatchChoice`): a name
+saying software (SwiftShader, llvmpipe, softpipe, "Software", Windows' Basic
+Render driver, WARP) keeps the three programs, as do the QA box and CI's
+phones, so every scenario draws as it did before this. `?onebatch=1` draws with
+the one program anyway (`mp-onebatch` does, to test it), `?onebatch=0` with the
+three anywhere. `window.__btOneBatch()` says which, and why (`address`,
+`software`, `chip`), with the renderer's name. TRAPS §222.
 
 ## How it is checked
 
-- `mp-onebatch`: the one program linked and draws the world, `?onebatch=0`
-  draws with the three; the same held frame drawn both ways is identical to
-  the pixel, in BroTown and at a fight; fewer batches and far fewer program
-  switches.
-- `mp-palette`, `mp-sharppixels`, `mp-figureseam`, `mp-membudget`,
-  `mp-questline` and the drawing scenarios run on it.
+- `mp-onebatch` (with `?onebatch=1`): the one program linked and draws the
+  world; a page with nothing in the address draws with the three on this
+  box's software renderer; the choice asked about ten addresses and chips (a
+  phone's the one, a software renderer the three, the address first); the
+  same held frame drawn both ways -- the second by the Speed test's own lever,
+  `setOneBatchLive` -- is identical to the pixel, in BroTown and at a fight;
+  fewer batches and far fewer program switches.
+- `mp-palette`, `mp-sharppixels`, `mp-figureseam`, `mp-membudget` and
+  `mp-questline` ran with the one program drawing (before the software rule):
+  see the PR for the counts.
 
 ## What it cannot show here
 
-The graphics chip's own share. Each branch's work per pixel is unchanged, but
-one program holding three reads needs more registers than the plain one, and
-on some chips that can slow plain sprites a little. This box draws in
-software, so it cannot say. So the Speed test (game/speedTest.js) times the
-sprites drawn by the three programs as a step of its own ("Three drawing
-programs (the old way)", `setOneBatchLive`: every draw list rebuilt, live, for
-that page only), and its card says how many frames a second the one saves on
-that phone -- or, if the old way was faster, asks for the card. `?onebatch=0`
-is the three programs for a whole visit.
+The graphics chip's own share. A phone's chip skips the branches a sprite does
+not take, so each sprite's work per pixel is its old program's, plus the
+choosing. But one program holding three reads needs more registers than the
+plain one, and on some chips that can slow plain sprites a little; and where
+two kinds of sprite meet inside one group of pixels the chip works on together,
+that group runs both reads. This box draws in software, so it cannot say. So
+the Speed test (game/speedTest.js) times the sprites drawn by the three
+programs as a step of its own ("Three drawing programs (the old way)",
+`setOneBatchLive`: every draw list rebuilt, live, for that page only), and its
+card says how many frames a second the one saves on that phone -- or, if the
+old way was faster, asks for the card. `?onebatch=0` is the three programs for
+a whole visit. (In software the step is not offered: the three programs are
+already drawing.)
