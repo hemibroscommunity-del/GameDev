@@ -69,6 +69,8 @@ import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 import { playVw, playVh, playIsLandscape } from './playViewport.js'; /* v2.3.2157: the band has a sideways shape */
 import { dashMinBus } from './dashMinBus.js';
+import { shopBus } from './shopBus.js';          /* v2.3.3399: a window that sells from the bag unfolds it */
+import { tradeBagBus } from './tradeBagBus.js';
 import { startGearFlash } from './gearFlash.js';   /* v2.3.3049: the first quest's gear flashes until it is on */
 import { stampSheetH, unstampSheetH } from './sheetStamp.js'; /* v2.3.2197: one --sheet-h formula, shared with resize() + the watchdog */ /* v2.3.2119: fold the band to the identity row */
 
@@ -913,6 +915,28 @@ export const BottomDashboard = () => {
   useEffect(() => {
     if (mode === 'expanded' && dashMinBus.min) dashMinBus.set(false);
   }, [mode]);
+  /* ═══ v2.3.3399: ...AND SO DOES A WINDOW THAT WORKS THROUGH YOUR BAG ═══
+     Diego's drawer ("tap your bag below to sell", v2.3.2059) and the trade
+     window (v2.3.2149) work through the band's OWN bag tiles, and a folded
+     band draws none (the columns row waits on the fold).  So a new player,
+     whose first join arrives folded (v2.3.2495), opened the shop to "tap your
+     bag below" with no bag below it, and a trade with nothing to offer from
+     -- found by the sweep of 2026-10-17 (mp-shopkeeper).  The same rule as a
+     destination: the window that needs the bag brings it back.  Only as one
+     OPENS: a player who folds the band with it open is not overruled by the
+     next price update. */
+  useEffect(() => {
+    let was = false;
+    const onChange = () => {
+      const now = !!(shopBus.open || tradeBagBus.open);
+      if (now && !was && dashMinBus.min) dashMinBus.set(false);
+      was = now;
+    };
+    onChange();
+    const offShop = shopBus.subscribe(onChange);
+    const offTrade = tradeBagBus.subscribe(onChange);
+    return () => { offShop(); offTrade(); };
+  }, []);
   /* ═══ v2.3.2157: ROTATION CLOSES AN OPEN DESTINATION ═══
      The portrait bottom sheet and the landscape side sheet share no
      geometry, so there is no defined mid-state to animate between -- a

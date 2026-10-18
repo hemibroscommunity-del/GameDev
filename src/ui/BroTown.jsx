@@ -56,6 +56,8 @@ import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
+import { treeGeom, treeTrunkEllipse, treeReachBox } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree -- its box, its trunk and where you chop it from */
+import { oreGeom, oreBlockEllipse } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock -- its box and its body */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
 import { weaponDiscIcon } from './panels/controlSkin.jsx'; /* v2.3.3105: the attack disc wears the weapon in your hand */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
@@ -403,8 +405,8 @@ import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits 
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
-import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3398: the forge heard at work */
-import { tickMoveSounds } from '@/game/moveSounds.js';   /* v2.3.3398: the emotes and moves heard */
+import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3404: the forge heard at work */
+import { tickMoveSounds } from '@/game/moveSounds.js';   /* v2.3.3404: the emotes and moves heard */
 import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor, sendMove as sendMoveImpl, updateOwnEmote, updatePeerEmotes, movesLive } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building; v2.3.3392: + your bro moves */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
@@ -620,6 +622,14 @@ function nodeWorldBox(S, n) {
        logs ~56 wide, the front ends ~12 below the ground point, the flame's tip
        ~55 above it.  Was 56x40 for the vector fire's glow and 21 px flames. */
     w = 64; h = 70; ax = 0.5; ay = 0.82; wx = n.x; wy = n.y;
+  } else if (n.nodeType === 'tree') {
+    /* v2.3.3345: its wood's own picture, before the sprite exists */
+    var _g = treeGeom(n);
+    return { l: _g.left, r: _g.right, t: _g.top, b: _g.bottom };
+  } else if (n.nodeType === 'oreVein') {
+    /* v2.3.3345: and a vein its metal's own rock */
+    var _og = oreGeom(n);
+    return { l: _og.left, r: _og.right, t: _og.top, b: _og.bottom };
   } else {
     var _ts = Math.min(10, Math.max(1, Math.ceil((n.gatherLvl || 1) / 10)));
     h = (n.nodeType === 'tree' ? 168 : 132) * (1 + (_ts - 1) * 0.15);
@@ -671,12 +681,18 @@ function nodeWorldBox(S, n) {
    over-blocks empty air in one direction and under-blocks the art in another,
    which is what the owner was seeing. */
 var NODE_ART = {
-  oreVein:  { x0: 0.232, x1: 0.777, y0: 0.223, y1: 0.737 },
+  /* ore: its whole drawn body.  v2.3.3345: each metal's rock is its own
+     picture, trimmed to the rock, so the body is its box (game/tierOre.js
+     oreBlockEllipse) and these fractions of the old vein's frame are gone.
+     The entry stays: it is what says a vein stops you at all. */
+  oreVein:  {},
   fishSpot: { x0: 0.179, x1: 0.816, y0: 0.348, y1: 0.686 },
-  /* tree: the whole silhouette, then the TRUNK alone (bottom 6% of it) --
-     the owner wants only the base solid, so the canopy is walk-under. */
-  tree:     { x0: 0.250, x1: 0.750, y0: 0.104, y1: 0.840,
-              tx0: 0.379, tx1: 0.613, ty0: 0.795, ty1: 0.840 },
+  /* tree: only the TRUNK is solid -- the owner wants only the base solid, so
+     the canopy is walk-under.  v2.3.3345: its fractions are gone with the old
+     pine; each wood's trunk is its own picture's (nodeBlockEllipse ->
+     game/tierTrees.js treeTrunkEllipse).  The entry stays: it is what says a
+     tree stops you at all. */
+  tree:     {},
 };
 
 /* The ellipse the player cannot walk into, in world pixels.  Ellipse rather
@@ -708,11 +724,16 @@ function nodeBlockEllipse(S, n) {
      out of the bank beside it (it reaches ~33 px east of the spot, where
      the shore and the angler's seat are). */
   if (n.nodeType === 'fishSpot' && zoneHomes(S.currentZone)) return null;
+  /* v2.3.3345: a tree's trunk is its own picture's (game/tierTrees.js), not a
+     share of the old pine's frame -- the slim pine's narrow, the gnarled
+     hardwood's broad, the crown walk-under as ever */
+  if (n.nodeType === 'tree') return treeTrunkEllipse(n);
+  /* v2.3.3345: a rock's body is its own picture's (game/tierOre.js) */
+  if (n.nodeType === 'oreVein') return oreBlockEllipse(n);
   var b = nodeWorldBox(S, n);
   if (!b) return null;
   var w = b.r - b.l, h = b.b - b.t;
   var x0 = art.x0, x1 = art.x1, y0 = art.y0, y1 = art.y1;
-  if (n.nodeType === 'tree') { x0 = art.tx0; x1 = art.tx1; y0 = art.ty0; y1 = art.ty1; }
   var l = b.l + w * x0, r = b.l + w * x1;
   var t = b.t + h * y0, bt = b.t + h * y1;
   return { x: (l + r) / 2, y: (t + bt) / 2, rx: (r - l) / 2, ry: (bt - t) / 2 };
@@ -732,8 +753,12 @@ function oreStandSpot(S, n) {
 function nodeReachDist(S, n, slack) {
   if (!S || !n || !S.player) return null;
   var P = S.player, extra = slack || 0;
-  /* 1. Distance to the sprite's perimeter — 0 while standing ON the art. */
-  var _b = nodeWorldBox(S, n);
+  /* 1. Distance to the sprite's perimeter — 0 while standing ON the art.
+     v2.3.3345: a TREE's from the box the worker pays a chop from
+     (game/tierTrees.js treeReachBox), not its picture: the big crowns reach
+     far past the worker's strike range, and a chop begun out there was
+     refused in silence.  The tap still finds the whole picture. */
+  var _b = n.nodeType === 'tree' ? treeReachBox(n) : nodeWorldBox(S, n);
   if (_b) {
     var _bx = Math.max(_b.l - P.x, 0, P.x - _b.r);
     var _by = Math.max(_b.t - P.y, 0, P.y - _b.b);
@@ -1175,6 +1200,10 @@ export var BroTown = function BroTown(_ref0) {
     migrateLifeSkills: migrateLifeSkills,
     spawnMonstersForZone: spawnMonstersForZone,
     spawnGatherNodes: spawnGatherNodes,
+    /* v2.3.3345: the reach test itself, at the player's spot, so a scenario
+       can ask where a harvest is offered (mp-tiertrees holds every tree's to
+       the worker's strike range, gathering.js _nodeStrikeRange) */
+    nodeReachDist: function (n, slack) { return nodeReachDist(stateRef.current, n, slack); },
     generateZoneMap: generateZoneMap,
     calcWeaponDmg: calcWeaponDmg,
     /* ═══ v2.3.2259: THE GAME'S OWN ANSWER TO "HOW MUCH DPS IS THAT?" ═══
@@ -5011,7 +5040,7 @@ export var BroTown = function BroTown(_ref0) {
         var _jNow = Date.now();
         var _jLanded = tickJump(S, _jNow, _playerDead);
         tickWaterAmbience(S, _jNow);   /* v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
-        tickTownAmbience(S, _jNow);   /* v2.3.3398: the Blacksmith's anvil near the forge (game/townAmbience.js) */
+        tickTownAmbience(S, _jNow);   /* v2.3.3404: the Blacksmith's anvil near the forge (game/townAmbience.js) */
         var _inAir = !!S._jump;
         var _swEv = _inAir ? null : updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
           playerGroundDy(S.currentZone, P.x, P.y));
@@ -5093,7 +5122,7 @@ export var BroTown = function BroTown(_ref0) {
              copies, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have
              a word (game/townsfolkReact.js) */
           updateTownsfolkReactions(S, _sprNow);
-          /* v2.3.3398: and heard -- another player's pose as it begins, a
+          /* v2.3.3404: and heard -- another player's pose as it begins, a
              townsperson's copy as it starts (game/moveSounds.js) */
           tickMoveSounds(S, _sprNow);
         } catch (e) { /* a look only */ }
@@ -5310,7 +5339,7 @@ export var BroTown = function BroTown(_ref0) {
               R2._wellRestedUntil = Date.now() + WELL_RESTED_DURATION;
               pushDmgPopup(S, P.x, P.y - 40, 'Fully Rested!', '#59BF91');
               pushDmgPopup(S, P.x, P.y - 25, '+10% XP for 30 min', '#D8A94D');
-              cue('rested');   /* v2.3.3398: a slow breath and a warm shimmer -- collect() and two beep()s, all silent */
+              cue('rested');   /* v2.3.3404: a slow breath and a warm shimmer -- collect() and two beep()s, all silent */
               S._sleeping = null;
               setRpgState(_objectSpread({}, R2));
               try {
@@ -8837,7 +8866,7 @@ export var BroTown = function BroTown(_ref0) {
     R._wellRestedUntil = Date.now() + 1800000;
     pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'Zzz... Stats restored!', '#59BF91');
     pushDmgPopup(S2, S2.player.x, S2.player.y - 25, 'Well Rested +10% XP (30min)', '#D8A94D');
-    cue('rested');   /* v2.3.3398: the farm's bed heard (three beep()s, silent since v2.3.1103) */
+    cue('rested');   /* v2.3.3404: the farm's bed heard (three beep()s, silent since v2.3.1103) */
     setRpgState(_objectSpread({}, R));
     try {
       localStorage.setItem('bt_rpg', JSON.stringify(R));
@@ -8963,7 +8992,10 @@ export var BroTown = function BroTown(_ref0) {
        and its art is 100-260px of canopy above that, so a radius around the
        anchor would refuse taps on most of what the player can see.
        nodeWorldBox is the same box nodeReachDist measures from, so what you
-       can tap and what you can reach are one shape. */
+       can tap and what you can reach are one shape.
+       v2.3.3345: but for a TREE: the tap finds its whole picture, the reach
+       is the box the worker pays a chop from (game/tierTrees.js
+       treeReachBox) -- a big crown is far wider than that. */
     var _tapScan = function (n) {
       if (!n || !n.alive || (n.respawnAt && Date.now() < n.respawnAt)) return;
       /* ═══ v2.3.3145: ONLY WHAT YOU CAN SEE AND REACH TAKES THE TAP ═══
@@ -9831,7 +9863,7 @@ export var BroTown = function BroTown(_ref0) {
       if (typeof window !== 'undefined') {
         window.__btNpcTap = { at: [Math.round(cssX), Math.round(cssY)], npc: npc ? npc.name : null, result: r, ts: Date.now() };
       }
-      /* v2.3.3398: a window opened by tapping him -- his quest, Ace's coin
+      /* v2.3.3404: a window opened by tapping him -- his quest, Ace's coin
          flip, Diego's shop, the Pets page -- opens with the menu click (a tap
          on the world reaches no <button>); a keeper's building has its door's
          knock already (enterBuilding) */
@@ -10039,7 +10071,7 @@ export var BroTown = function BroTown(_ref0) {
         if (_busC && _busC.state.mode !== 'bar') _busC.toBar(); /* v2.3.1290 */
       } catch (_e3) {}
       try { chatBubbleBus.setOpen(true); } catch (_e4) {}
-      /* v2.3.3398: the chat box is a menu, so it opens with the menu click --
+      /* v2.3.3404: the chat box is a menu, so it opens with the menu click --
          a tap on your bro reaches no <button> (ui/uiSfxDelegate.js) */
       try { BT_AUDIO.uiClickNow(); } catch (_e5) { /* sound only */ }
     };
@@ -12139,7 +12171,7 @@ export var BroTown = function BroTown(_ref0) {
           } catch (e) { _isPartyMate = false; }
           if (_isPartyMate) {
             if (S.lockedTarget && S.lockedTarget.id === id) S.lockedTarget = null;
-            try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ }   /* v2.3.3398: a menu opened by a tap on them -- the menu click (the owner's rule for every menu; a tap on the world reaches no <button>, uiSfxDelegate.js) */
+            try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ }   /* v2.3.3404: a menu opened by a tap on them -- the menu click (the owner's rule for every menu; a tap on the world reaches no <button>, uiSfxDelegate.js) */
             setInspectPlayer({
               id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
@@ -12215,7 +12247,7 @@ export var BroTown = function BroTown(_ref0) {
             S.lockedTarget = null;
           } else if (!_isDuelOpponent) {
             if (S.lockedTarget && S.lockedTarget.id === id) S.lockedTarget = null;
-            try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ }   /* v2.3.3398: the menu click, as above */
+            try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ }   /* v2.3.3404: the menu click, as above */
             setInspectPlayer({
               id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
@@ -12223,27 +12255,21 @@ export var BroTown = function BroTown(_ref0) {
             });
             return;
           } else {
+            /* ═══ v2.3.3399: YOUR DUEL OPPONENT IS AIMED AT, NOT INSPECTED ═══
+               This branch also opened their player card, over the middle of
+               the fight -- what duelLock.js says it never does ("tapping a
+               player opens their inspect card UNLESS they are your duel
+               opponent, in which case it locks on instead"), and what No
+               man's land's and the sparring clones' taps above refuse to do
+               for the same reason.  On a computer a click is the attack, so
+               every second click on them opened it, and the card took every
+               press after it (found by mp-duelfeel, the sweep of 2026-10-17).
+               The lock alone; tapping them again still lets go, as before. */
             S.lockedTarget = {
               type: 'player',
               id: id,
               ref: o
             };
-            try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ }   /* v2.3.3398: the menu click, as above */
-            setInspectPlayer({
-              id: id,
-              name: o.name,
-              color: o.color,
-              avatar: o.avatar,
-              bro: o.bro, brn: o.brn,
-              x: o.x,
-              y: o.y,
-              rpgLv: o.rpgLv,
-              rpgData: o.rpgData,
-              pet: o.pet,
-              rep: o.rep,
-              clanTag: o.allyTag || o.clanTag,   /* v2.3.3321 */
-              clanColor1: o.clanColor1
-            });
           }
           return;
         }
@@ -13999,7 +14025,7 @@ export var BroTown = function BroTown(_ref0) {
       R._wellRestedUntil = Date.now() + 1800000; /* 30 min */
       pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'Zzz... Stats restored!', '#59BF91');
       pushDmgPopup(S2, S2.player.x, S2.player.y - 25, 'Well Rested +10% XP (30min)', '#D8A94D');
-      cue('rested');   /* v2.3.3398: as the E key's sleep above */
+      cue('rested');   /* v2.3.3404: as the E key's sleep above */
       setRpgState(_objectSpread({}, R));
       try {
         localStorage.setItem('bt_rpg', JSON.stringify(R));

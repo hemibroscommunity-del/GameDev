@@ -23,13 +23,13 @@
  *      startSfxLoop, ticked by the game loop;
  *   8. the door: enterBuilding plays the table's knock, not the beep() that
  *      has played nothing since v2.3.1103;
- *  10. v2.3.3398, the third look (the owner: "Good look for more"): every
+ *  10. v2.3.3404, the third look (the owner: "Good look for more"): every
  *      emote and move heard as something chosen (MOVE_SOUNDS holds every move
  *      of game/emoteMoves.js), yours, other players' and the townsfolk's; a
  *      harvest's prize landing in the bag; and a menu opened by tapping the
  *      world (your bro's chat box, a player's card, a townsperson's window)
  *      opening with the menu click.
- *   9. v2.3.3398, the second round (the owner: "Look for more too"): the
+ *   9. v2.3.3404, the second round (the owner: "Look for more too"): the
  *      Gambling Den's dice and pot, the arena's stakes and sign-up, a guild
  *      quest, an alliance war's end, invites to duel and trade, the market,
  *      the farm's harvest and bed, pets out, away and released (and the four
@@ -219,7 +219,7 @@ for (const p of files) {
       const a = t.indexOf('var _pickCue = ');
       return a < 0 ? [] : namesIn(t.slice(a, t.indexOf(';', a)));
     },
-    /* v2.3.3398: the moves' cues, read from the table that names them */
+    /* v2.3.3404: the moves' cues, read from the table that names them */
     'src/game/moveSounds.js n': () => Object.values(MOVE_SOUNDS || {}).flat(),
     'src/ui/panels/buildings/StorePanel.jsx snd': () => {
       const t = src('src/ui/panels/buildings/StorePanel.jsx');
@@ -299,7 +299,7 @@ for (const p of files) {
   check('8b ...and stamps it as the tap\'s own sound, so the Enter button\'s click yields', /this\._uiSpecificAt = this\._now\(\)/.test(body));
 }
 
-/* ── 9. v2.3.3398: the second round ("Look for more too") ──
+/* ── 9. v2.3.3404: the second round ("Look for more too") ──
    Each of these places called collect() or beep(), both silent since
    v2.3.1103, or nothing; each now plays its cue, and none still leans on the
    silent call it replaced. */
@@ -371,7 +371,7 @@ for (const p of files) {
     && /import \{ tickTownAmbience \} from '@\/game\/townAmbience\.js'/.test(BT) && /tickTownAmbience\(S, /.test(BT));
 }
 
-/* ── 10. v2.3.3398: the third look ("Good look for more") ── */
+/* ── 10. v2.3.3404: the third look ("Good look for more") ── */
 {
   const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');   /* the code, not what its comments say */
   const { EMOTE_MOVES } = await import('../../src/game/emoteMoves.js');
@@ -402,11 +402,14 @@ for (const p of files) {
   /* a tap on the world reaches no <button>, so the menus it opens took no click */
   const chatOpen = BT.slice(BT.indexOf('var openSelfChat = function'), BT.indexOf('var openSelfChat = function') + 1400);
   const mark = BT.slice(BT.indexOf('var _mark = function (r)'), BT.indexOf('var _mark = function (r)') + 1200);
-  const inspects = (BT.match(/BT_AUDIO\.uiClickNow\(\); \} catch \(_ce\) \{ \/\* sound only \*\/ \}\s+\/\* v2\.3\.3398[^\n]*\n\s*setInspectPlayer\(\{/g) || []).length;
-  check('10j the menus a tap on the world opens click as every menu does: your bro\'s chat box, a townsperson\'s window, a player\'s card (3 ways)',
+  const inspects = (BT.match(/BT_AUDIO\.uiClickNow\(\); \} catch \(_ce\) \{ \/\* sound only \*\/ \}\s+\/\* v2\.3\.\d+[^\n]*\n\s*setInspectPlayer\(\{/g) || []).length;
+  /* a player's card opens two ways from a tap (a partymate; anyone else not
+     in a duel with you) -- since v2.3.3399 a tap on your duel opponent aims
+     and opens no card (#956) */
+  check('10j the menus a tap on the world opens click as every menu does: your bro\'s chat box, a townsperson\'s window, a player\'s card (2 ways)',
     /chatBubbleBus\.setOpen\(true\)[\s\S]*BT_AUDIO\.uiClickNow\(\)/.test(chatOpen)
     && /r === 'quest' \|\| r === 'flip' \|\| r === 'shop' \|\| r === 'pets'\) \{ try \{ BT_AUDIO\.uiClickNow\(\)/.test(mark)
-    && inspects === 3, { inspects });
+    && inspects === 2, { inspects });
 }
 
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);

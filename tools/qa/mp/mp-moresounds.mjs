@@ -1,4 +1,4 @@
-/* ═══ v2.3.3398: THE SECOND ROUND OF SOUNDS, HEARD ON A PHONE ═══
+/* ═══ v2.3.3404: THE SECOND ROUND OF SOUNDS, HEARD ON A PHONE ═══
  *
  * The owner, 2026-10-18, after the first round (mp-soundcues): "Look for more
  * too".  These moments still called collect() or beep(), both silent since
@@ -38,7 +38,7 @@
  */
 import * as H from './harness.mjs';
 
-/* v2.3.3398: a phone with a finger -- the third look taps the world */
+/* v2.3.3404: a phone with a finger -- the third look taps the world */
 const VIEW = { width: 390, height: 844 };
 const SPEED = 165;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

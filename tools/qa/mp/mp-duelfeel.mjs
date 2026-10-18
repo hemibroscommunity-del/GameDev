@@ -76,9 +76,17 @@ async function aimAt(A) {
     const R = Math.max(40, Math.min(180,
       lim(c, px - 24, r.width - 24 - px),
       lim(s, py - 24, bottom - 16 - py)));
-    return { sx: r.left + px + c * R, sy: r.top + py + s * R };
+    const sx = r.left + px + c * R, sy = r.top + py + s * R;
+    /* v2.3.3399: what the press would land on.  A card over the canvas eats
+       it, and the round reads as a weapon that does nothing. */
+    const top = document.elementFromPoint(sx, sy);
+    const covered = top && top !== cv ? (((top.getAttribute && top.getAttribute('class')) || '').split(' ')[0] || top.tagName) : null;
+    return { sx, sy, covered };
   });
   if (!pt) return false;
+  /* v2.3.3399: covered -- Escape shuts the card or panel (BroTown.jsx
+     _desktopCloseAll), and no press is made or counted */
+  if (pt.covered) { await A.page.keyboard.press('Escape'); return pt.covered; }
   await A.page.mouse.move(pt.sx, pt.sy);
   return true;
 }
@@ -122,8 +130,11 @@ async function fight(A, wsPort, aId, bId, capMs, { keepDistance = 34 } = {}) {
   const before = await H.serverPlayer(wsPort, bId);
   const pool = before ? before.hp : 0;
   let presses = 0, died = false;
+  const covered = {};   /* v2.3.3399: presses not made, by what lay over the canvas */
   while (Date.now() - t0 < capMs) {
-    if (!(await aimAt(A))) break;
+    const aim = await aimAt(A);
+    if (!aim) break;
+    if (aim !== true) { covered[aim] = (covered[aim] || 0) + 1; await A.page.waitForTimeout(300); continue; }
     await A.page.mouse.down();
     await A.page.waitForTimeout(240);
     await A.page.mouse.up();
@@ -145,7 +156,7 @@ async function fight(A, wsPort, aId, bId, capMs, { keepDistance = 34 } = {}) {
   const secs = (Date.now() - t0) / 1000;
   const dropped = died ? pool : Math.max(0, pool - (after ? after.hp : 0));
   return {
-    presses, sent, secs: +secs.toFixed(1), pool, dropped, died,
+    presses, sent, covered, secs: +secs.toFixed(1), pool, dropped, died,
     dps: +(dropped / secs).toFixed(2),
     /* Only a real kill yields a real TTK. */
     ttkSecs: died ? +secs.toFixed(1) : null,
@@ -205,6 +216,15 @@ async function reDuel(A, B, aId, bId) {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Duelist', nameB: 'Rival' });
+  /* v2.3.3399: joinPair's focus click opens the other player's card (mp-clan's
+     note, v2.3.3321).  This suite never touches the UI, so the card sat over
+     the middle of the attacker's screen and every press landed on it: 54
+     presses, nothing sent, all three weapons (the sweep of 2026-10-17).
+     Closed first, as a player would. */
+  for (const P of [A, B]) {
+    await P.page.evaluate(() => { for (const b of document.querySelectorAll('.bt-pcard .bt-inspect-close')) b.click(); });
+  }
+  await A.page.waitForTimeout(300);
   const aId = await H.readState(A, (S) => S.myId);
   const bId = await H.readState(B, (S) => S.myId);
   const stopKeepAlive = keepAlive(B);

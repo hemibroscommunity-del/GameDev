@@ -25,7 +25,7 @@ import { climbOut } from '@/game/wheelSwim.js';   /* v2.3.3012: a seat on the ba
 import { jumpAirborne } from '@/game/jump.js';     /* v2.3.3017 */
 import { MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2915 */
 import { gatherNeed } from '@/data/lifeSkills.js';   /* v2.3.3038: a resource's level is a real requirement */
-import { cue } from '@/game/eventSounds.js';   /* v2.3.3398: the prize heard landing in the bag */
+import { cue } from '@/game/eventSounds.js';   /* v2.3.3404: the prize heard landing in the bag */
 /* v2.3.849: fly a harvested-resource icon from its world node into the
    bottom-left inventory.  DOM-only (appended to document.body, like the
    resume spinner) so it floats above the canvas/HUD and animates on the
@@ -71,7 +71,7 @@ export function _flyResourceToInventory(S, wx, wy, iconUrl, opts) {
       img.style.transition = 'transform .7s cubic-bezier(.45,.05,.3,1),opacity .7s ease-in';
       img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(0.55)';
       img.style.opacity = '0.15';
-      /* v2.3.3398: heard as it lands -- the bag's leather, softly (data/
+      /* v2.3.3404: heard as it lands -- the bag's leather, softly (data/
          eventSounds.js bagIn): the flight ended in silence */
       setTimeout(function () { cue('bagIn'); }, 680);
       setTimeout(function () { try { img.remove(); } catch (e) {} }, 760);

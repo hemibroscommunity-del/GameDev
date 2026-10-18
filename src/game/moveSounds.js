@@ -1,4 +1,4 @@
-/* ═══ v2.3.3398: THE EMOTES AND MOVES, HEARD ═══
+/* ═══ v2.3.3404: THE EMOTES AND MOVES, HEARD ═══
  *
  * The owner, 2026-10-18, on the missing sounds: "Good look for more".  The
  * emotes you can see (v2.3.3391) and your bro's moves (v2.3.3392: wave,

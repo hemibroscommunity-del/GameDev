@@ -34,15 +34,15 @@ const PROMISED = {
   shieldBlock: 1.4, shieldBall: 0.6, shieldUp: 0.55, shieldDown: 0.35, dodged: 0.5, dodgeRoll: 0.6,
   crit: 0.65, bowDraw: 0.5, discovery: 0.8, jumpUp: 0.4, jumpLand: 0.4, statusEnd: 0.2,
   throwSnow: 0.5, door: 0.65, gatherReady: 0.45, lootDrop: 0.25, dungeonClear: 2.5,
-  /* v2.3.3398: the second round ("Look for more too") */
+  /* v2.3.3404: the second round ("Look for more too") */
   farmHarvest: 0.6, betIn: 0.6, betWon: 1.5, betLost: 1.0, jackpotWin: 1.7, guildQuest: 2.4,
   warWon: 1.85, warLost: 1.7, arenaJoin: 0.75, petOut: 0.5, petAway: 0.35, petFree: 0.45,
   rested: 0.45, duelAsk: 0.85, tradeAsk: 0.5, anvil: 0.5,
-  /* v2.3.3398: the third look ("Good look for more") */
+  /* v2.3.3404: the third look ("Good look for more") */
   emotePop: 0.3, slap: 0.3, sitDown: 0.35, flop: 0.6, flexShine: 0.35, cheerPop: 0.45, bagIn: 0.25,
 };
 
-/* v2.3.3398: cues kept quieter than 0.08 of a hit on purpose, and why -- each
+/* v2.3.3404: cues kept quieter than 0.08 of a hit on purpose, and why -- each
    is reported here every run, never silently passed.  The chat's /roll and
    /flip (v2.3.3393) play Ace's coin clip at his toss's own level
    (AceFlipPanel.jsx TOSS_OPTS, vol 0.5 since v2.3.2621): about a twentieth of
