@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8d52aa828aa81273dbbfbb88c43b3140a4ae5150",
+  "tree": "7113f886a69d082c92bc5382407e5c9dacb1282e",
+  "committedAt": "2026-10-18T03:40:45-07:00",
+  "subject": "Your bro moves: wave, laugh, flex, sit, sleep and three dances, drawn in code (v2.3.3392) (#978)",
+  "files": 5835,
+  "bytes": 639791709,
+  "listingSha256": "a1167780e686aeabb298862697d8a594b29cae7bb925c54ac80965b44dcc22d0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
