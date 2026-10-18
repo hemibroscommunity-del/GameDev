@@ -1,4 +1,4 @@
-/* ═══ v2.3.3343: A CHARACTER'S LOGIN KEY WORKS ON THE DEVICES IT IS PLAYED ON ═══
+/* ═══ v2.3.3344: A CHARACTER'S LOGIN KEY WORKS ON THE DEVICES IT IS PLAYED ON ═══
  *
  * docs/specs/device-lock.md.  The owner chose it on at once, their own tool the
  * only way onto a new device for now, and a short note to players.

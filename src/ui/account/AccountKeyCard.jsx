@@ -105,7 +105,7 @@ export const AccountKeyCard = () => {
         on a new phone or after clearing your browser. Save it somewhere
         safe. There is no email recovery.
       </div>
-      {/* v2.3.3343: a key works only on the devices it is played on
+      {/* v2.3.3344: a key works only on the devices it is played on
           (server/src/devicelock.js) -- a new one also needs the owner */}
       <div data-bt="account-keycard-device" style={{ fontSize: 12, color: 'var(--ui-text-secondary)', marginTop: 6, lineHeight: 1.4 }}>
         On a new phone or computer, the game's owner also has to let it in:

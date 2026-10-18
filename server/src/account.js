@@ -20,7 +20,7 @@
  * Rule 11) caps sweep speed across many ids.
  */
 
-import { cleanDevice } from './devicelock.js'; /* v2.3.3343: the device a key is used from */
+import { cleanDevice } from './devicelock.js'; /* v2.3.3344: the device a key is used from */
 
 // Exact port of the client's passphraseToId (src/networking/index.js).
 // 32-bit rolling hash with |0 truncation, Math.abs, base36, then the
@@ -99,7 +99,7 @@ export const accountMethods = {
     if (confirm !== true) return { ok: false, settled: true, reason: 'bad_request' };
     const auth = await this._accountLogin(phrase, ip, device);
     if (!auth || !auth.ok || !auth.exists || !auth.id) return auth || { ok: false, settled: true, reason: 'bad_request' };
-    /* v2.3.3343: only from a device this character could be played on
+    /* v2.3.3344: only from a device this character could be played on
        (devicelock.js) -- a restart is the one thing the picker does with a key
        that a join could not undo */
     if (auth.device === 'unknown') return { ok: false, settled: true, reason: 'device', id: auth.id };
@@ -153,7 +153,7 @@ export const accountMethods = {
 
     if ((await this._phraseHash(phrase)) === auth.pfHash) {
       this._authFails.delete(id);
-      /* ═══ v2.3.3343: AND CAN THIS DEVICE PLAY IT? (devicelock.js) ═══
+      /* ═══ v2.3.3344: AND CAN THIS DEVICE PLAY IT? (devicelock.js) ═══
          Answered, never refused: `exists` stays true, so an older phone's
          start-up check still finds its character (a "no" there sends it to
          the creator), and its join is the one refused.  A newer login door

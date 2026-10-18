@@ -301,7 +301,7 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
     if (!res || !res.ok || !res.reset) {
       setFailed(res && res.reason === 'unavailable'
         ? 'Could not reach the server. Nothing was changed.'
-        /* v2.3.3343: server/src/devicelock.js */
+        /* v2.3.3344: server/src/devicelock.js */
         : res && res.reason === 'device'
           ? 'This character can only be restarted on a device it was played on. Nothing was changed.'
           : 'That did not work. Nothing was changed.');

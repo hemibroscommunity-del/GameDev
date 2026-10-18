@@ -413,7 +413,7 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
       try { localStorage.setItem('bt_passphrase', ph); } catch (e) {}
     }, phrase);
   }
-  /* ═══ v2.3.3343: ...AND THAT CHARACTER'S DEVICE ═══
+  /* ═══ v2.3.3344: ...AND THAT CHARACTER'S DEVICE ═══
      A character's key works only on the devices it is played on
      (server/src/devicelock.js), and a new browser context is a new device: it
      makes its own `bt_device` token.  So a scenario that brings a character
@@ -1223,7 +1223,7 @@ export function equipWeapon(P, wantType, stashSlot, activeSlot) {
   }, { wantType, slot: stashSlot, activeSlot });
 }
 
-/* v2.3.3343: a context's Login Key AND its device token, to bring the same
+/* v2.3.3344: a context's Login Key AND its device token, to bring the same
    player back in a new context ON THE SAME DEVICE (a relaunch, a fresh tab):
    newPlayer(browser, { ..., ...H.keyAndDevice(await ...) }) takes both.  A
    scenario that means a NEW device passes the key alone and the owner's pass
@@ -1236,7 +1236,7 @@ export function keyAndDevice(P) {
   });
 }
 
-/* v2.3.3343: a device token made from a Login Key (newPlayer's `device`):
+/* v2.3.3344: a device token made from a Login Key (newPlayer's `device`):
    the same key, the same token, in every context -- 32-bit FNV-1a, base 36 */
 export function devTokenOf(key) {
   let h = 0x811c9dc5;
@@ -1345,7 +1345,7 @@ export async function warpToZone(P, { wsPort, label, zoneId, settleMs = 3500 }) 
   return seeded;
 }
 
-/* ═══ v2.3.3343: THE OWNER LETS ONE NEW DEVICE IN ═══
+/* ═══ v2.3.3344: THE OWNER LETS ONE NEW DEVICE IN ═══
  * A character's key works only on the devices it is played on
  * (server/src/devicelock.js).  A scenario that brings a character to a second
  * browser AS A NEW DEVICE does what the owner does for a player moving phones:

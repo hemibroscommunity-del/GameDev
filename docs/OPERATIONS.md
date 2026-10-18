@@ -48,7 +48,7 @@ From there you can:
 - **Bot flags** — who the game has flagged as a possible script, and why
   (v2.3.3323; "Bot flags" below).
 - **Player logins** — let a player's character onto a new device, or lock out
-  someone who got into a character (v2.3.3343; "Player logins" below).
+  someone who got into a character (v2.3.3344; "Player logins" below).
 
 Nobody else can use any of this: every button asks the worker for permission
 with your key, and without the key the buttons do nothing at all. "Forget key
@@ -102,7 +102,7 @@ If a grant command times out and you're not sure it went through: the
 response includes an `opId` — run the exact command again with
 `"opId":"<that value>"` added and the server guarantees it pays at most once.
 
-## Player logins: moving a character to a new device (v2.3.3343)
+## Player logins: moving a character to a new device (v2.3.3344)
 
 A character's Login Key works only on the phones and computers it has been
 played on. When a player opens it somewhere new, they see **"This character is

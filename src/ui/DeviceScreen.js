@@ -1,4 +1,4 @@
-/* ═══ v2.3.3343: "THIS CHARACTER IS PLAYED ON ANOTHER DEVICE" ═══
+/* ═══ v2.3.3344: "THIS CHARACTER IS PLAYED ON ANOTHER DEVICE" ═══
  *
  * A character's Login Key works only on devices it has been played on
  * (server/src/devicelock.js, docs/specs/device-lock.md).  The right key from

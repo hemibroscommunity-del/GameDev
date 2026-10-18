@@ -1,4 +1,4 @@
-# A character's login key works on the devices it is played on (v2.3.3343)
+# A character's login key works on the devices it is played on (v2.3.3344)
 
 > The owner, 2026-10-18, choosing how: on at once; the owner's own tool the way
 > onto a new device for now; a short note to players.

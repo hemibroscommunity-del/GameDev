@@ -1,4 +1,4 @@
-/* ═══ v2.3.3343: A CHARACTER'S KEY WORKS ON THE DEVICES IT IS PLAYED ON, ON A PHONE ═══
+/* ═══ v2.3.3344: A CHARACTER'S KEY WORKS ON THE DEVICES IT IS PLAYED ON, ON A PHONE ═══
  *
  * A character's Login Key works only on the devices it has been played on
  * (server/src/devicelock.js, docs/specs/device-lock.md).  On an iPhone-sized

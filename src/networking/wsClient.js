@@ -78,7 +78,7 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
 import { showLingerWait, hideLingerWait } from '@/ui/LingerScreen.js';   /* v2.3.3260: your bro is still in that fight */
 import { showOriginScreen } from '@/ui/OriginScreen.js';   /* v2.3.3312: a copy on another site is sent to the real game */
-import { showDeviceScreen } from '@/ui/DeviceScreen.js';   /* v2.3.3343: a character's key on a device it was never played on */
+import { showDeviceScreen } from '@/ui/DeviceScreen.js';   /* v2.3.3344: a character's key on a device it was never played on */
 import { markServerReady, resetServerReady, serverReadyReason } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -311,7 +311,7 @@ export function setupWebSocket(ctx) {
        another address.  showOriginScreen (ui/OriginScreen.js) says where the
        real game is; nothing reconnects. */
     var _ogPending = null;
-    /* ═══ v2.3.3343: THE RIGHT KEY, ON A DEVICE THIS CHARACTER WAS NEVER PLAYED ON ═══
+    /* ═══ v2.3.3344: THE RIGHT KEY, ON A DEVICE THIS CHARACTER WAS NEVER PLAYED ON ═══
        `_dvPending` is set by join_rejected {reason:'device'} and consumed by
        the close that follows it (4016): a character's key works only on the
        devices it is played on (server/src/devicelock.js).  showDeviceScreen
@@ -1332,7 +1332,7 @@ export function setupWebSocket(ctx) {
                 _ogPending = { home: msg.home };
                 break;
               }
-              /* v2.3.3343: the right key from a device this character was
+              /* v2.3.3344: the right key from a device this character was
                  never played on -- not an auth failure (no new identity: the
                  key is right), not retried; the screen opens on the close */
               if (_rejReason === 'device') {
@@ -4014,7 +4014,7 @@ export function setupWebSocket(ctx) {
           showOriginScreen(_og && _og.home);
           return;
         }
-        /* v2.3.3343: a device this character was never played on
+        /* v2.3.3344: a device this character was never played on
            (join_rejected 'device' / 4016): every try is refused until the
            owner lets this device in, so none is made by itself */
         if (_dvPending || (event && event.code === 4016)) {

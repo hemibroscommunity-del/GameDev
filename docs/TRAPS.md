@@ -7108,7 +7108,7 @@ the rebuilds before guessing (`mp-frameprofile`'s "rebuild asked ... by").
 second at 2.6 frames a second on the QA box), standing or walking; after, never.
 mp-speedtest check 8.
 
-## 209. "A refused login is a refused login: send 'auth'" (v2.3.3343)
+## 209. "A refused login is a refused login: send 'auth'" (v2.3.3344)
 
 **Tempting:** the device lock refuses a join, and the join already has a
 refusal for a bad login, `join_rejected {reason: 'auth'}` and close 4003

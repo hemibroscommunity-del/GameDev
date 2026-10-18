@@ -71,7 +71,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!(made && made.name && madeLook && made.name === madeLook.name),
     { stored: made && made.name, live: madeLook && madeLook.name });
 
-  /* v2.3.3343: B below is a NEW device, and a character's key works only on
+  /* v2.3.3344: B below is a NEW device, and a character's key works only on
      the devices it is played on (server/src/devicelock.js) -- so the owner
      lets one new device in first, as for a player moving phones. */
   const aId = await A.page.evaluate(() => window._gameState && window._gameState.current && window._gameState.current.myId).catch(() => null);

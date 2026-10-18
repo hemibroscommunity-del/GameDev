@@ -449,7 +449,7 @@ export const DevPanel = ({ onClose }) => {
     if (j) { setBotFlags(Array.isArray(j.flagged) ? j.flagged : []); setMsg(''); }
   }, [call]);
 
-  /* ═══ v2.3.3343: A CHARACTER'S DEVICES (server/src/devicelock.js) ═══
+  /* ═══ v2.3.3344: A CHARACTER'S DEVICES (server/src/devicelock.js) ═══
      A character's key works only on devices it has been played on.  A player
      moving to a new device sees a code on their screen (DeviceScreen.js); the
      owner pastes it here.  "Let one new device in" gives that character 30
@@ -883,7 +883,7 @@ export const DevPanel = ({ onClose }) => {
               );
             })()}
 
-            {/* ═══ v2.3.3343: PLAYER LOGINS ═══  See the note by letDeviceIn. */}
+            {/* ═══ v2.3.3344: PLAYER LOGINS ═══  See the note by letDeviceIn. */}
             <div style={label}>Player logins</div>
             <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
               A character can be played only on devices it was played on before. To move one to a new

@@ -253,7 +253,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const input = await Q.page.$('input');
     rec.ok('the key form has an input (guard)', !!input, {});
     if (input) {
-      /* ═══ v2.3.3343: Q IS A NEW DEVICE FOR THIS CHARACTER ═══
+      /* ═══ v2.3.3344: Q IS A NEW DEVICE FOR THIS CHARACTER ═══
          A character's key works only on the devices it is played on
          (server/src/devicelock.js), so the door says so, with the code to
          give the owner, and switches nothing -- then the owner lets one new

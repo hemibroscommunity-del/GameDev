@@ -1,4 +1,4 @@
-/* A character's login key works on the devices it is played on (v2.3.3343;
+/* A character's login key works on the devices it is played on (v2.3.3344;
  * docs/specs/device-lock.md, server/src/devicelock.js).  Through the REAL
  * join, the REAL account requests and the REAL admin routes:
  *   1. the numbers, and a device id cleaned as the bot checks clean it;

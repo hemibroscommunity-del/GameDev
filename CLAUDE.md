@@ -4068,7 +4068,7 @@ Two protocol versions coexist; both must keep working:
   `mp-originlock` (a second browser with `--host-resolver-rules`, so the
   copy's Origin is the browser's own; `H.newPlayer`'s `host`,
   `H.launch(args)`).
-- **A CHARACTER'S KEY WORKS ON THE DEVICES IT IS PLAYED ON (v2.3.3343,
+- **A CHARACTER'S KEY WORKS ON THE DEVICES IT IS PLAYED ON (v2.3.3344,
   docs/specs/device-lock.md).** The owner: on at once, their own tool the way onto
   a new device, a short note to players.
   - `auth:<id>` keeps the devices its key is used from (`devs`, 12 at most):

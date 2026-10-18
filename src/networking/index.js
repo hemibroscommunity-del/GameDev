@@ -106,7 +106,7 @@ export async function checkAccountLogin(phrase) {
     const res = await fetch(BT_API_BASE + '/api/account/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      /* v2.3.3343: and this device, so the answer can say whether it could
+      /* v2.3.3344: and this device, so the answer can say whether it could
          play the character (server/src/devicelock.js) */
       body: JSON.stringify({ phrase, device: getDeviceNonce().id }),
       signal: AbortSignal.timeout(8000),
@@ -143,7 +143,7 @@ export async function resetAccountCharacter(phrase) {
     const res = await fetch(BT_API_BASE + '/api/account/reset', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      /* v2.3.3343: from a device this character is played on only */
+      /* v2.3.3344: from a device this character is played on only */
       body: JSON.stringify({ phrase, confirm: true, device: getDeviceNonce().id }),
       signal: AbortSignal.timeout(8000),
     });

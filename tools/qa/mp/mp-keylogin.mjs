@@ -92,7 +92,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(3500);
   const key = await phraseOf(A);
   const madeName = await nameOf(A);
-  /* v2.3.3343: its code, for the owner's pass below */
+  /* v2.3.3344: its code, for the owner's pass below */
   const aId = await A.page.evaluate(() => window._gameState && window._gameState.current && window._gameState.current.myId).catch(() => null);
   rec.ok('a character exists to log back in as (guard)',
     !!key && !!madeName, { key: !!key, name: madeName });
@@ -332,7 +332,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.waitForTimeout(400);
   rec.ok('...and tapping USE LOGIN KEY opens it',
     await visible(B, 'input[placeholder*="Login Key"]'), {});
-  /* ═══ v2.3.3343: B IS A NEW DEVICE FOR THIS CHARACTER ═══
+  /* ═══ v2.3.3344: B IS A NEW DEVICE FOR THIS CHARACTER ═══
      A character's key works only on the devices it is played on
      (server/src/devicelock.js): the door says so, with the code to give the
      owner, and switches nothing.  Then the owner lets one new device in (the
