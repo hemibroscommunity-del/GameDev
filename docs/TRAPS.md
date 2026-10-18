@@ -6996,6 +6996,45 @@ trust it then, rather than judge from a guess like the arrival.
 five honest reconnects). The lab: a script reconnecting every 3 s 33,333 ->
 694 px/s, every honest reconnect taken.
 
+## 205. "The lock draws each shadow at the same fraction of a texel, so roundPixels keeps it there" (v2.3.3338)
+
+**Tempting:** the shadow layer is drawn on a grid locked to the world (§141):
+every shadow lands at the same fraction of a texel every frame and only ever
+moves by whole texels, so Pixi's roundPixels, on for the whole app, snaps each
+corner to the same place every frame. Nothing to do.
+
+**What happens:** inside a filter, roundPixels rounds against the global
+`uResolution`, which is the render target's FULL size, and a filter draws into
+a texture from Pixi's pool, rounded up to a power of two, of which it uses only
+its frame (RenderTargetSystem sets the viewport to the frame). On a 390 x 844
+phone that is a 394 x 848 frame in a 512 x 1024 texture, so the "pixels" it
+snapped to were 0.77 x 0.83 of a texel, anchored at the screen's edge. Each time
+the camera crossed a whole pixel, every corner and every building column
+re-snapped by a different amount: a shadow up to ~1.4 device px off its prop,
+jumping up to ~2.2 between frames, while the prop (drawn straight to the
+screen, where the grid is exactly one device px) stood still. The owner, again:
+"prop shadows right now still flicker as you run around". The lock's own test
+stepped the camera one device px at a time, seven steps: two crossings, and
+between crossings the locked picture cannot change, so the average hid them.
+And on an iPhone the filter read its picture at `mediump` (Pixi's default for a
+fragment shader), a half float there: the lock's smooth slide back moved in
+steps of a quarter to half a texel. A desktop, and the QA box's software GL,
+run mediump at full precision, so no picture here can show that part.
+
+**The rule:** never trust roundPixels for anything drawn through a filter, a
+render texture or a mask unless that target's texture is exactly its frame:
+draw such pieces unsnapped (shadows.js `installNoSnap`, which clears
+`roundPixels` on any batched piece marked `_btNoSnap` after the rest of the
+batcher hooks have had their say). Give any shader that reads a picture at a
+sliding coordinate `highp` (`preferredFragmentPrecision`, as wheelWater.js).
+And when you measure motion, step by WHOLE pixels as well as fractions, across
+AND down: a sub-pixel step only crosses a pixel now and then.
+
+**Receipt:** mp-shadowlock (23): a whole CSS px a step, across 0.0332 -> 0.0003
+of a luma level a pixel between steps (`?shadowsnap=1` against now), down
+0.1098 -> 0.0184; v2.3.3149's own one-device-px measure 0.011 -> 0.0011.
+`?shadowsnap=1` and `?shadowhp=0` put each back, to compare on a phone.
+
 ## 206. "A special nobody paid for is a cheat: drop it" (v2.3.3334)
 
 **Tempting:** a hit on a monster marked `special` should count only after the
