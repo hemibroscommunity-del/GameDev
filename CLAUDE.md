@@ -2486,6 +2486,23 @@ remnant to migrate server-side, not a mode to preserve.
       `quest_reward_stashed` dedupes by the worker's id when it has one (a
       second minted Iron Torso was dropped as a "replay");
     - `armorgrade` suite, `mp-armorgrade` (15): docs/specs/armor-grade-look.md.
+    - since v2.3.3361 THE ORDINARY SHINE IS DRAWN IN THE FRAME -- the owner:
+      "iterate on what best improves framerate without loss of quality":
+      every shining piece was a filter, a render pass each (on a phone's
+      tile-based chip the frame written out and read back in, a piece a
+      frame); a piece with no grade is now drawn by a batcher of its own
+      (`src/rendering/lightfx/sheenBatch.js`: the sharp read, then the
+      filter's very lines, `sheenLift.js`, one text for both), each piece
+      carrying the filter's box (its whole frame, clipped and widened to whole
+      device px on the chip, as FilterSystem does), uFig, the shine colour and
+      strength, the sun and the tint in its corners; a graded piece, a pinned
+      sweep and anything else filtered keep the pass; built behind the loading
+      screen (`warmSheenBatch`); `?sheenpass` is a pass a piece, as before,
+      `window.__btSheenPass`, and the phone's Speed test times that way too
+      (`shinepass`, a note of what the frame way saves); the probe's
+      `batched`; within 2 levels of the passes (their 8-bit picture);
+      `mp-sheenbatch`, mp-crowdbots `BT_CROWD_LOOK` (armoured bots):
+      docs/specs/sheen-batch.md.
   - Since v2.3.3146 THE BRO LOOKS LIKE HIMSELF WHILE HE GATHERS -- the owner:
     "The character's appearance changes during resource gathering activities.
     It needs to stay consistent" (docs/specs/gathering-look.md):

@@ -30,6 +30,8 @@
  *      it -- the place the glint had never reached;
  *   5. what it costs: filter passes per figure, and the frame time on and off
  *      on this machine (a software GPU, so the RATIO is the useful number).
+ *      v2.3.3361: no passes -- the three pieces' shine is drawn in the frame
+ *      (lightfx/sheenBatch.js; mp-sheenbatch compares it with the passes).
  *
  * Pictures: /tmp/qa-sheen/.
  */
@@ -504,9 +506,11 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   const fOn = await frameTime(A, 2500);
   const pc = await probe(A);
   console.log('    frame time, shine off: ' + JSON.stringify(fOff) + '  on: ' + JSON.stringify(fOn)
-    + '  filter passes on this figure: ' + (pc && pc.glint.sheen));
-  rec.ok('the cost is one filter pass per metal piece: three for plate, greaves and a sword',
-    !!pc && pc.glint.sheen === 3, pc && pc.glint);
+    + '  shining pieces on this figure: ' + (pc && pc.glint.sheen) + ' (' + (pc && pc.glint.batched) + ' in the frame, ' + (pc && pc.glint.lit) + ' in passes)');
+  /* v2.3.3361: the three pieces shine IN THE FRAME (lightfx/sheenBatch.js),
+     none in a filter pass of its own -- a pass each, as it was, was the cost */
+  rec.ok('the cost: three pieces shine (plate, greaves and a sword), drawn in the frame, none in a pass of its own',
+    !!pc && pc.glint.sheen === 3 && pc.glint.batched === 3 && pc.glint.lit === 0, pc && pc.glint);
 
   await setSheen(A, false);
   await glintAt(A, null);

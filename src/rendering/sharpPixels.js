@@ -98,8 +98,10 @@ try { if (typeof location !== 'undefined' && /[?&]figround=1\b/.test(location.se
 const figRoundOn = () => _figRound || (typeof window !== 'undefined' && !!window.__btFigRound);
 
 /* The texture bit, GL flavour: identical to Pixi's generateTextureBatchBitGl
-   except that each texture is read through sharpSample(). */
-function sharpTextureBitGl(maxTextures) {
+   except that each texture is read through sharpSample().
+   v2.3.3361: exported -- the metal shine's batcher (lightfx/sheenBatch.js)
+   reads its pieces exactly as this one does, as they are figure pieces. */
+export function sharpTextureBitGl(maxTextures) {
   const src = [];
   for (let i = 0; i < maxTextures; i++) {
     if (i > 0) src.push('else');
@@ -206,6 +208,23 @@ function wantsSharp(r) {
 }
 let _figureSpec = null;
 
+/** v2.3.3361: how many pictures a batch of figure pieces binds (the shine's
+ *  batcher matches it); 0 until installed. */
+export function sharpMaxTextures() { return _enabled ? _maxTex : 0; }
+/** v2.3.3361: would this batcher draw this sprite?  (The metal shine draws a
+ *  piece in the frame only where it would: lightfx/sheenBatch.js.) */
+export function isSharpPiece(r) { return wantsSharp(r); }
+
+/* ═══ v2.3.3361: A SHINING PIECE GOES TO THE SHINE'S BATCHER ═══
+   lightfx/sheenBatch.js draws the ordinary metal shine in the frame with this
+   batcher's read and the shine after it.  The choice is made HERE, in this
+   batcher's own routing (the outermost hook, installed after app.init), so
+   every hook inside it (paletteTex.js's) sees the shine's name and leaves it
+   -- whatever order the modules loaded in.  A piece glint.js marked
+   (`_btSheen.on`) that this batcher would draw goes to `_sheenName` instead. */
+let _sheenName = null;
+export function setSheenBatcher(name) { _sheenName = name || null; }
+
 /** Call once, after app.init.  `figureSpec` is formShade's SHADE.figure, so a
  *  stand-in marked as figure-shaded is also sharpened (props are not). */
 export function installSharpPixels(app, figureSpec) {
@@ -222,7 +241,8 @@ export function installSharpPixels(app, figureSpec) {
     BatcherPipe.prototype.addToBatch = function (obj, instructionSet) {
       if (obj && obj.packAsQuad) {
         const on = !(typeof window !== 'undefined' && window.__btSharpOff) && wantsSharp(obj.renderable);
-        obj.batcherName = on ? 'sharp' : 'default';
+        const sh = on && _sheenName && obj.renderable ? obj.renderable._btSheen : null;
+        obj.batcherName = on ? (sh && sh.on ? _sheenName : 'sharp') : 'default';
         if (on) _routed++;
         /* v2.3.2922: a figure's pieces are drawn where they are, not snapped
            one by one (above); Pixi's own value for everything else */

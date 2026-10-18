@@ -12,6 +12,9 @@
  *   - with everything on, as you play;
  *   - with the shadows (and the shine) off, then the metal shine alone, then
  *     the water still, then at a lower resolution (2x, a phone above 2x only);
+ *   - v2.3.3361: and the metal shine drawn the old way, a pass of its own for
+ *     each piece (lightfx/sheenBatch.js), which says what drawing it in the
+ *     frame saves on that phone (a note, never "the biggest gain");
  *   - then all of those off at once;
  * and puts everything back -- for this page only, nothing is saved, so a page
  * that dies mid-test comes back as it was.  A card shows the frames a second
@@ -26,6 +29,7 @@
 import { COL } from '@/ui/mobile/dash/common.js';
 import { lightFxOn, setLightFx } from '@/rendering/lightfx/lightFx.js';
 import { sheenOn, setSheen } from '@/rendering/lightfx/glint.js';
+import { sheenBatchOn, setSheenPass } from '@/rendering/lightfx/sheenBatch.js';   /* v2.3.3361 */
 import { renderDpr, setRenderResLive } from './renderRes.js';
 
 const SETTLE_MS = 1500;
@@ -54,6 +58,10 @@ function steps() {
     { k: 'noshadow', label: 'No shadows (and no shine)', off: { light: true } },
     { k: 'noshine', label: 'No metal shine', off: { shine: true } },
   ];
+  /* v2.3.3361: the shine drawn the old way, a pass of its own for each piece
+     of metal (lightfx/sheenBatch.js), so the card says what drawing it in
+     the frame saves on this phone */
+  if (sheenBatchOn()) list.push({ k: 'shinepass', label: 'Metal shine the old way (a pass each)', off: { shinePass: true } });
   if (w && w.off && w.on) list.push({ k: 'still', label: 'Still water', off: { water: true } });
   if (dev > LOW_RES + 0.01) list.push({ k: 'res2', label: 'Lower resolution (' + LOW_RES + 'x, not ' + (Math.round(dev * 10) / 10) + 'x)', off: { res: true } });
   list.push({ k: 'bare', label: 'All of those off', off: { light: true, shine: true, water: !!(w && w.off), res: dev > LOW_RES + 0.01 } });
@@ -79,6 +87,7 @@ function apply(off, was) {
   setSheen(off.shine ? false : was.shine, false);
   setWater(waves(), off.water ? false : was.water);
   setRenderResLive(off.res ? LOW_RES : 0);
+  setSheenPass(!!off.shinePass);
 }
 
 function restore(was) {
@@ -86,6 +95,7 @@ function restore(was) {
   setSheen(was.shine, false);
   setWater(waves(), was.water);
   setRenderResLive(0);
+  setSheenPass(false);
 }
 
 /* count what the graphics chip is asked to do, a frame */
@@ -216,8 +226,15 @@ export async function runSpeedTest() {
   }
   const base = rows[0];
   const notes = [];
-  const best = rows.slice(1).reduce((a, x) => (!a || x.fps > a.fps ? x : a), null);
+  /* v2.3.3361: the old way of drawing the shine is not a setting to switch
+     off, so it is never "the biggest gain"; it says what the new one saves */
+  const best = rows.slice(1).filter((x) => x.k !== 'shinepass').reduce((a, x) => (!a || x.fps > a.fps ? x : a), null);
+  const oldShine = rows.find((x) => x.k === 'shinepass');
   if (base && best && best.fps - base.fps >= 4) notes.push('The biggest gain: ' + best.label.toLowerCase() + ' (+' + (best.fps - base.fps).toFixed(0) + ' frames a second).');
+  if (base && oldShine && base.fps - oldShine.fps >= 2) {
+    notes.push('The metal shine drawn the new way saves ' + (base.fps - oldShine.fps).toFixed(0) + ' frames a second here (the old way: '
+      + oldShine.passes.toFixed(1) + ' picture switches a frame, now ' + base.passes.toFixed(1) + ').');
+  }
   if (rows.length && rows.every((x) => x.fps < 33) && Math.max(...rows.map((x) => x.fps)) - Math.min(...rows.map((x) => x.fps)) < 4) {
     notes.push('Every setting ran at about 30: Low Power Mode, or a hot phone, may be holding the frame rate at 30.');
   }

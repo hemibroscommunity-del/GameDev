@@ -114,6 +114,9 @@ import { weaponMaterial } from '../traits/materialTints.js';
 import { gearArt, gearMaterial } from '../gearVariants.js';
 import { getEquip } from '../gearCatalog.js';
 import { Sprite, Texture } from 'pixi.js';   /* v2.3.2904: the loading-screen warm-up (prewarmGlintPipe) */
+import { SHEEN_LIFT } from './sheenLift.js';   /* v2.3.3361: the sheen's lines, shared with sheenBatch.js */
+import { sheenBatchOn, sheenParams } from './sheenBatch.js';   /* v2.3.3361: the shine drawn in the frame */
+import { isSharpPiece } from '../sharpPixels.js';
 
 const FRAG = `
 in vec2 vTextureCoord;
@@ -164,34 +167,7 @@ void main()
     float band = exp(-(d * d) / 0.006);
     float lum = c.a > 0.0 ? dot(c.rgb / c.a, vec3(0.299, 0.587, 0.114)) : 0.0;
     float k = band * uStrength * (0.3 + 0.7 * lum);
-    /* v2.3.2864: the sheen.  How bright the ART was here, before the metal's
-       tint multiplied it down: the drawn colour divided by the tint. */
-    vec3 art = c.a > 0.0 ? clamp(c.rgb / c.a / max(uTint, vec3(0.05)), 0.0, 1.0) : vec3(0.0);
-    /* only the art's real highlights: a broad mask lifted the midtones too,
-       and the metal read as lighter rather than shinier */
-    float hi = smoothstep(0.55, 0.96, dot(art, vec3(0.299, 0.587, 0.114)));
-    /* the sprite's frame is mostly empty margin around the figure, so the
-       gradient is steep enough to swing across the metal itself.
-       v2.3.3321: laid across the FIGURE's frame (uFig, the body sprite's
-       frame in this sprite's own 0-1 units), not this sprite's -- a held
-       greatsword's picture is a big frame of its own, turned and flipped in
-       the hand, and across it the blade's highlight sat on the side away from
-       the sun (mp-sheen: 0.35 of the figure's left third lit by a left sun).
-       uFig.z 0: no figure to lay it on, this sprite's frame as before. */
-    vec2 q = uFig.z > 0.0 ? (p - uFig.xy) / uFig.zw : p;
-    float side = clamp(0.5 + dot(q - 0.5, uSun) * 3.0, 0.0, 1.0);
-    float s = uSheen * hi * (0.35 + 0.65 * side);
-    /* v2.3.2914: the sheen ROLLS OFF below white instead of being added and
-       clipped.  Per channel, head is the room left under the ceiling; the
-       lift is that room x (1 - e^(-added/room)), which is the old added light
-       while it is small against the room and approaches the ceiling as it
-       grows.  A pixel already above the ceiling (the art's own brightest
-       paint) is left exactly as drawn.  Worked in straight colour, not
-       premultiplied, so a soft edge pixel rolls off the same way. */
-    vec3 col = c.a > 0.0 ? c.rgb / c.a : vec3(0.0);
-    vec3 head = max(uColor * SHEEN_CEIL - col, vec3(0.0));
-    col += head * (vec3(1.0) - exp(-(uColor * s) / max(head, vec3(0.001))));
-    /* the sweep's band (only when pinned now -- see AUTO_SWEEP) still adds */
+${SHEEN_LIFT}    /* the sweep's band (only when pinned now -- see AUTO_SWEEP) still adds */
     col = min(col + uColor * k, vec3(1.0));
     /* v2.3.3142: THE GRADE.  Owner: "change the outline hue or something on
        the armor so it retains the color but has highlights.  So rare is
@@ -542,6 +518,15 @@ function frameBoxNow(spr, out) {
   return out[2] > 0 && out[3] > 0;
 }
 
+/* v2.3.3361: the draw list a sprite is in, marked to be built again (so the
+   batcher that draws it is chosen again) */
+function rebuildAround(spr) {
+  if (!spr || spr.destroyed) return;
+  const g = spr.renderGroup || spr.parentRenderGroup;
+  if (g) g.structureDidChange = true;
+}
+const _figNow = new Float32Array(4);
+
 export class GlintSystem {
   constructor() {
     this._on = new Map();        /* sprite -> filter currently attached */
@@ -554,6 +539,8 @@ export class GlintSystem {
     this._fullBodies = new Set(); /* v2.3.3142: every full-set figure this frame (yours and others'), whose grade edge goes all round */
     this._figBoxes = new Map();   /* v2.3.3321: a figure's body sprite -> its frame's box this frame (_figIn) */
     this._frameNo = 0;
+    this._batched = new Set();    /* v2.3.3361: the pieces whose shine is drawn in the frame (sheenBatch.js) */
+    this.stats.batched = 0;
   }
 
   _filter() { return this._pool.pop() || _warmFilters.pop() || makeGlintFilter(); }   /* v2.3.2904: the loading screen's filter first */
@@ -566,9 +553,20 @@ export class GlintSystem {
     this._pool.push(f);
   }
 
+  /* v2.3.3361: a piece's shine taken out of the frame's batcher.  Marking or
+     unmarking one re-routes it when its layer's draw list is next built, so
+     the list is rebuilt (a filter put on or taken off does the same). */
+  _unbatch(spr) {
+    if (spr._btSheen) spr._btSheen.on = false;
+    rebuildAround(spr);
+  }
+
   clear() {
     for (const [spr, f] of this._on) this._release(spr, f);
     this._on.clear();
+    for (const spr of this._batched) this._unbatch(spr);
+    this._batched.clear();
+    this.stats.batched = 0;
     this.stats.targets = 0; this.stats.lit = 0; this.stats.sheen = 0; this.stats.sweeping = 0; this.stats.graded = 0;
     this._lastTargets = null;
     this._bodies.clear();
@@ -726,6 +724,40 @@ export class GlintSystem {
      of the sun on screen (a unit vector, or 0,0 in a zone with no sun). */
   /* `gradesOnly` (v2.3.3142): the light effects are off on this device --
      only a graded piece's look is drawn (see GRADE_LOOK). */
+  /* v2.3.3361: a piece's shine for the frame's batcher (sheenBatch.js): the
+     numbers the filter's uniforms got below, kept on the sprite.  True when
+     any changed since it was last packed -- Pixi packs a piece again only
+     when IT changes (it moves, its picture or tint changes), so a new number
+     on a piece standing still asks for it (onViewUpdate). */
+  _putInFrame(spr, w, sheen) {
+    const sh = spr._btSheen = sheenParams(spr._btSheen);
+    const fresh = !this._batched.has(spr);
+    let changed = false;
+    const c = w.color;
+    if (sh.r !== c[0] || sh.g !== c[1] || sh.b !== c[2]) { sh.r = c[0]; sh.g = c[1]; sh.b = c[2]; changed = true; }
+    if (sh.k !== w.sheen) { sh.k = w.sheen; changed = true; }
+    if (sh.sx !== sheen.sx || sh.sy !== sheen.sy) { sh.sx = sheen.sx; sh.sy = sheen.sy; changed = true; }
+    this._figIn(spr, w.fig, _figNow);
+    const fig = sh.fig;
+    if (fig[0] !== _figNow[0] || fig[1] !== _figNow[1] || fig[2] !== _figNow[2] || fig[3] !== _figNow[3]) {
+      fig[0] = _figNow[0]; fig[1] = _figNow[1]; fig[2] = _figNow[2]; fig[3] = _figNow[3];
+      changed = true;
+    }
+    /* the tint as the filter read it (uTint: each channel of spr.tint / 255),
+       as the unorm8 bytes the shader reads it from */
+    const tn = typeof spr.tint === 'number' ? spr.tint : 0xffffff;
+    const tp = (((tn >> 16) & 255) | (((tn >> 8) & 255) << 8) | ((tn & 255) << 16) | (255 << 24)) >>> 0;
+    if (sh.tintPacked !== tp) { sh.tintPacked = tp; changed = true; }
+    if (fresh) {
+      this._batched.add(spr);
+      sh.on = true;
+      rebuildAround(spr);   /* routed when its layer's list is built (sheenBatch.js installSheenBatch) */
+      return false;
+    }
+    if (!sh.on) { sh.on = true; rebuildAround(spr); return false; }
+    return changed;
+  }
+
   update(S, now, er, fx, zone, sheen, gradesOnly) {
     this._frameNo++;   /* v2.3.3321: the figures' boxes, worked out once a frame (_figIn) */
     const targets = this._targets(S, er, fx, zone);
@@ -757,7 +789,28 @@ export class GlintSystem {
     for (const [spr, f] of this._on) {
       if (!want.has(spr) || spr.destroyed) { this._release(spr, f); this._on.delete(spr); }
     }
+    /* v2.3.3361: and the frame's shine off anything no longer shining */
+    for (const spr of this._batched) {
+      if (!want.has(spr) || spr.destroyed) { this._unbatch(spr); this._batched.delete(spr); }
+    }
+    /* ═══ v2.3.3361: THE ORDINARY SHINE IS DRAWN IN THE FRAME ═══
+       A piece with no grade and no pinned sweep, drawn by the sharp batcher
+       and filtered by nothing else, has its sheen worked out where it is
+       drawn (sheenBatch.js) instead of in a pass of its own: the same lines,
+       the same numbers, carried in its corners.  Everything else is filtered
+       as before. */
+    /* a sweep pinned across the metal (`force` 0-1, QA's pictures) is the
+       filter's band; -1, every sweep held off, is how the game plays */
+    const inFrame = sheenBatchOn() && (this.force == null || this.force < 0) && !!sheen;
     for (const [spr, w] of want) {
+      if (inFrame && w.p < 0 && !w.look && w.sheen > 0 && !spr.destroyed && isSharpPiece(spr)
+        && !(spr.filters && spr.filters.length && !this._on.has(spr))) {
+        const f0 = this._on.get(spr);
+        if (f0) { this._release(spr, f0); this._on.delete(spr); }   /* the filter's going rebuilds the layer itself */
+        if (this._putInFrame(spr, w, sheen)) spr.onViewUpdate();
+        continue;
+      }
+      if (this._batched.has(spr)) { this._unbatch(spr); this._batched.delete(spr); }
       let f = this._on.get(spr);
       if (!f) {
         /* never take over a sprite some other effect is filtering */
@@ -810,7 +863,8 @@ export class GlintSystem {
     this.stats.graded = graded;
     this.stats.targets = targets.length;
     this.stats.lit = this._on.size;
-    this.stats.sheen = sk > 0 ? this._on.size : 0;
+    this.stats.batched = this._batched.size;   /* v2.3.3361: drawn in the frame */
+    this.stats.sheen = sk > 0 ? this._on.size + this._batched.size : 0;
     this.stats.sweeping = sweeping;
     this._lastTargets = targets;
   }
@@ -820,14 +874,16 @@ export class GlintSystem {
      rather than every frame. */
   probeStats() {
     const t = this._lastTargets || [];
+    /* v2.3.3361: lit in a pass of its own or in the frame */
+    const shines = (q) => this._on.has(q) || this._batched.has(q);
     let body = 0;
-    for (const b of this._bodies) if (this._on.has(b)) body++;
+    for (const b of this._bodies) if (shines(b)) body++;
     return {
       ...this.stats,
-      keys: t.filter((x) => x.sprites.some((q) => this._on.has(q))).map((x) => x.key),
+      keys: t.filter((x) => x.sprites.some(shines)).map((x) => x.key),
       body,
       /* v2.3.3142: each armour slot's grade as drawn this frame, by key */
-      grades: Object.fromEntries(t.filter((x) => x.look && x.sprites.some((q) => this._on.has(q))).map((x) => [x.key, x.grade])),
+      grades: Object.fromEntries(t.filter((x) => x.look && x.sprites.some(shines)).map((x) => [x.key, x.grade])),
     };
   }
 }
