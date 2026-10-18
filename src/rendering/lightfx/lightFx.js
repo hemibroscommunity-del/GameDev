@@ -58,8 +58,10 @@ export function setLightFx(on, persist = true) {
 }
 
 export class LightFx {
-  constructor(layers, worldContainer) {
-    this.shadows = layers && layers.shadows ? new ShadowSystem(layers.shadows, worldContainer) : null;
+  /* v2.3.3377: `renderer` -- the shadows' pieces are drawn before the frame
+     with it (shadows.js _prepass) */
+  constructor(layers, worldContainer, renderer = null) {
+    this.shadows = layers && layers.shadows ? new ShadowSystem(layers.shadows, worldContainer, renderer) : null;
     this.glint = new GlintSystem();
     this._wasOn = false;
     this.lastMs = 0;
@@ -175,7 +177,10 @@ export class LightFx {
       zone: this.zone,
       /* v2.3.3000: the light used last frame -- the Wheel's eased one there */
       light: this.light ? { lx: this.light.lx, ly: this.light.ly, alpha: +(+this.light.alpha).toFixed(3), color: this.light.color, region: this.light.region || null } : zoneLight(this.zone),
-      shadows: sh ? { ...sh.stats, keys: sh.stats.keys.slice(), filtered: !!(layer && layer.filters && layer.filters.length), pool: sh.pool.length,
+      /* v2.3.3377: `filtered` -- the layer drawn through its one pass, the
+         filter's or the pre-pass's shade (`prepass` says which) */
+      shadows: sh ? { ...sh.stats, keys: sh.stats.keys.slice(),
+        filtered: !!(layer && layer.filters && layer.filters.length) || !!(sh.shade && sh.shade.visible), pool: sh.pool.length,
         systems: shadowSystemCount() } : null,   /* v2.3.3152: + systems, the module's (mp-sceneleak) */
       glint: { ...this.glint.probeStats(), force: this.glint.force, sheenOn: sheenOn() },
       ms: +this.lastMs.toFixed(3),

@@ -80,9 +80,13 @@ const INIT = () => {
     for (const L of W.children) {
       if (!KEEP.has(L.label) || (ONLY && ONLY.indexOf(L.label) < 0)) { hide(L); continue; }
       if (L.label === 'shadows') {
-        /* the shadow pieces cast by the objects' pictures, only */
-        const walk = (c) => { for (const k of (c.children || [])) { if (k.texture !== undefined) { if (!objPage(k.texture)) hide(k); } else walk(k); } };
+        /* the shadow pieces cast by the objects' pictures, only -- v2.3.3377:
+           in their own container when they are drawn before the frame
+           (shadows.js), the layer then holding only the shade's quad */
+        const walk = (c) => { for (const k of (c.children || [])) { if (k.label === 'shadowShade') continue; if (k.texture !== undefined) { if (!objPage(k.texture)) hide(k); } else walk(k); } };
         walk(L);
+        const SPX = window.__btShadowPrepass;
+        if (SPX && SPX.casts) for (const C of SPX.casts()) walk(C);
       } else if (L.label !== 'tiles') {
         for (const k of L.children) if (k.label !== 'wheelObject') hide(k);
       }
@@ -116,6 +120,10 @@ const INIT = () => {
       shL.position.set(-fx / (cam.sx || 1), -fy / (cam.sy || 1));
       shu.uShift[0] = fx; shu.uShift[1] = fy;
     }
+    /* v2.3.3377: drawn before the frame, the pieces' picture is drawn again
+       for this camera and these pieces (the lock is worked out in it) */
+    const SPR = window.__btShadowPrepass;
+    if (!shF && SPR && SPR.redraw) SPR.redraw();
     let out = null, err = null;
     try {
       const sw = app.screen.width, sh = app.screen.height;
@@ -130,6 +138,7 @@ const INIT = () => {
     if (shWas) { shL.position.set(shWas.x, shWas.y); shU.uShift[0] = shWas.u0; shU.uShift[1] = shWas.u1; }
     if (pieces && order) { pieces.removeChildren(); for (const k of order) pieces.addChild(k); }
     for (const o of hidden) o.visible = true;
+    if (!shF && SPR && SPR.redraw) SPR.redraw();   /* v2.3.3377: and back as it was */
     return out ? { ...out, cam: { x: cam ? cam.x : was.x, y: cam ? cam.y : was.y, sx: cam ? cam.sx : was.sx, sy: cam ? cam.sy : was.sy } } : { err };
   };
   /* what drawing costs: the whole frame, the camera held, rendered `n` times

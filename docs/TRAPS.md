@@ -7228,3 +7228,36 @@ the record and puts out a join whose key or device it no longer lets in.
 
 **Receipt:** login-keys §12 (21 checks): a gate where each change waits, the
 owner's tool run in the gap; nine fail on v2.3.3355's code.
+
+## 223. "Move it by the transform: a shift is a shift" (v2.3.3377)
+
+**Tempting:** the shadows were drawn through a filter, the shadow layer moved
+back by the camera's fraction of a pixel (`lockToWorldGrid`, v2.3.3149) so the
+pieces land on the same phase of the filter's grid every frame. Drawing the
+pieces before the frame instead (shadows.js `_prepass`), the same shift is
+neater in the transform the picture is drawn with: the world's transform less
+that fraction. In exact numbers it is the same picture.
+
+**What happens:** it is not the same picture. The world's numbers are large
+(a game px near 88,000 on the long Wheel, the world's x near -53,785), so
+everything is rounded to float32 on the way to the graphics chip, and where
+the fraction is taken off decides how the corners round: off each piece's own
+numbers (the layer's position, before they are packed) or off the
+transform's. The two differ by a few thousandths of a pixel. The shadow
+pieces' pictures are pixel art, read pixel by pixel, so a corner a few
+thousandths over a pixel's edge reads the next pixel: on the QA phone 1,114
+pixels of the frame came out different, by up to 15 levels of 255 (36 at a
+fight) -- single texels of the shadows' edges flipped in or out. With the
+lock off, both ways rounded alike and agreed to one level.
+
+**The rule:** to draw something the same way in another pass, do the same
+arithmetic in the same order, not the same mathematics: the pre-pass puts
+the fraction on the pieces' parent (`castIn`, lockToWorldGrid's own numbers)
+and draws with the world's transform plus a whole number of px (PAD), which
+float32 keeps exactly. And compare such pictures pixel for pixel before
+calling them the same: neither rounding was wrong, but only an exact match
+makes "the same" a check that can catch a real change.
+
+**Receipt:** mp-shadowprepass (the held frame the old way and the new within
+one level: 35 px by one in BroTown's ore yard, 92 at a fight, against 1,114
+and 7,886 before `castIn`); docs/specs/shadow-prepass.md.

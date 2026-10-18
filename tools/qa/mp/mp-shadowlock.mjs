@@ -48,6 +48,14 @@
  * (The half precision `?shadowhp=0` puts back is an iPhone's alone: the QA
  * box runs mediump at full precision, so no picture here can show it.)
  *
+ * v2.3.3377: the shadows are drawn BEFORE the frame now, into a picture
+ * exactly the screen's size (shadows.js _prepass, docs/specs/shadow-prepass.md),
+ * and there Pixi's snapping lands on the picture's own texel grid: snapped,
+ * they are as steady as unsnapped (measured: across 0 and 0.0003, down 0.0183
+ * and 0.0184).  So the snapped run is the OLD way, `?shadowsnap=1&shadowpass`
+ * -- the filter whose flicker v2.3.3338 fixed and checks 7 and 8 measure
+ * against (0.0332 and 0.1098 there), and the way the game falls back to.
+ *
  * NOTE, from the hunt that led here: a picture of the world under the Mayor's
  * welcome (its scrim) does not move when the camera does -- every first
  * measurement of this taken with his greeting open read "the shadows never
@@ -208,7 +216,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      and down (v2.3.3338's) */
   const now = await measure(browser, wsPort, webPort, '', OUT, 'locked', [{ axis: 'x', dev: 1 }, { axis: 'x', dev: DPR }, { axis: 'y', dev: DPR }]);
   const was = await measure(browser, wsPort, webPort, 'shadowlock=0', OUT, 'unlocked', [{ axis: 'x', dev: 1 }]);
-  const snapped = await measure(browser, wsPort, webPort, 'shadowsnap=1', OUT, 'snapped', [{ axis: 'x', dev: DPR }, { axis: 'y', dev: DPR }]);
+  /* v2.3.3377: snapped, the old way (the filter): drawn before the frame,
+     snapping costs nothing (the header) */
+  const snapped = await measure(browser, wsPort, webPort, 'shadowsnap=1&shadowpass', OUT, 'snapped', [{ axis: 'x', dev: DPR }, { axis: 'y', dev: DPR }]);
   console.log('    locked:   ' + JSON.stringify(now));
   console.log('    unlocked: ' + JSON.stringify(was));
   console.log('    snapped:  ' + JSON.stringify(snapped));
@@ -225,7 +235,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   };
   guards(now, 'locked');
   guards(was, '?shadowlock=0');
-  guards(snapped, '?shadowsnap=1');
+  guards(snapped, '?shadowsnap=1&shadowpass');
   const N1 = now.runs && now.runs.x1, W1 = was.runs && was.runs.x1;
   rec.ok(`with the shadows drawn on the world's grid they glide with it: ${N1 && N1.mean} against ${W1 && W1.mean} of a luma level a pixel from one step to the next (at most 0.4 of it)`,
     !!N1 && !!W1 && N1.mean >= 0 && W1.mean > 0 && N1.mean <= 0.4 * W1.mean, { locked: N1 && N1.step, unlocked: W1 && W1.step });
@@ -239,7 +249,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       && !!snapped.snap && snapped.snap.snapOld && !snapped.snap.hooked, { now: now.snap, snapped: snapped.snap });
   for (const [key, dir] of [['x3', 'across'], ['y3', 'down']]) {
     const a = now.runs && now.runs[key], b = snapped.runs && snapped.runs[key];
-    rec.ok(`${key === 'x3' ? 7 : 8}. ${dir}, a whole CSS px a step (every step a crossing): ${a && a.mean} against ${b && b.mean} snapped, of a luma level a pixel (at most a third of it)`,
+    rec.ok(`${key === 'x3' ? 7 : 8}. ${dir}, a whole CSS px a step (every step a crossing): ${a && a.mean} against ${b && b.mean} snapped the old way, of a luma level a pixel (at most a third of it)`,
       !!a && !!b && b.mean > 0 && a.mean <= b.mean / 3, { unsnapped: a && a.step, snapped: b && b.step });
   }
   rec.ok('...and unsnapped they are the same shadows (darkness within 3% of the snapped)',

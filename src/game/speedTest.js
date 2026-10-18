@@ -12,6 +12,9 @@
  *   - with everything on, as you play;
  *   - with the shadows (and the shine) off, then the metal shine alone, then
  *     the water still, then at a lower resolution (2x, a phone above 2x only);
+ *   - v2.3.3377: and the shadows drawn the old way, in a pass in the middle of
+ *     the frame (lightfx/shadows.js), which says what drawing them before the
+ *     frame saves on that phone (a note, never "the biggest gain");
  *   - then all of those off at once;
  * and puts everything back -- for this page only, nothing is saved, so a page
  * that dies mid-test comes back as it was.  A card shows the frames a second
@@ -26,6 +29,7 @@
 import { COL } from '@/ui/mobile/dash/common.js';
 import { lightFxOn, setLightFx } from '@/rendering/lightfx/lightFx.js';
 import { sheenOn, setSheen } from '@/rendering/lightfx/glint.js';
+import { shadowPrepassOn, setShadowPrepass } from '@/rendering/lightfx/shadows.js';   /* v2.3.3377 */
 import { renderDpr, setRenderResLive } from './renderRes.js';
 
 const SETTLE_MS = 1500;
@@ -54,6 +58,10 @@ function steps() {
     { k: 'noshadow', label: 'No shadows (and no shine)', off: { light: true } },
     { k: 'noshine', label: 'No metal shine', off: { shine: true } },
   ];
+  /* v2.3.3377: the shadows drawn the old way, in a pass in the middle of the
+     frame (lightfx/shadows.js), so the card says what drawing them before the
+     frame saves on this phone */
+  if (shadowPrepassOn()) list.push({ k: 'shadowpass', label: 'Shadows the old way (a pass mid-frame)', off: { shadowPass: true }, old: true });
   if (w && w.off && w.on) list.push({ k: 'still', label: 'Still water', off: { water: true } });
   if (dev > LOW_RES + 0.01) list.push({ k: 'res2', label: 'Lower resolution (' + LOW_RES + 'x, not ' + (Math.round(dev * 10) / 10) + 'x)', off: { res: true } });
   list.push({ k: 'bare', label: 'All of those off', off: { light: true, shine: true, water: !!(w && w.off), res: dev > LOW_RES + 0.01 } });
@@ -66,7 +74,7 @@ function snapshot() {
   const w = waves();
   let water = true;
   try { water = !(w && w.probe) || !!w.probe().on; } catch (e) { water = true; }
-  return { light: lightFxOn(), shine: sheenOn(), water };
+  return { light: lightFxOn(), shine: sheenOn(), water, pre: shadowPrepassOn() };
 }
 
 function setWater(w, on) {
@@ -79,6 +87,7 @@ function apply(off, was) {
   setSheen(off.shine ? false : was.shine, false);
   setWater(waves(), off.water ? false : was.water);
   setRenderResLive(off.res ? LOW_RES : 0);
+  if (was.pre) setShadowPrepass(!off.shadowPass);
 }
 
 function restore(was) {
@@ -86,21 +95,29 @@ function restore(was) {
   setSheen(was.shine, false);
   setWater(waves(), was.water);
   setRenderResLive(0);
+  if (was.pre) setShadowPrepass(true);
 }
 
 /* count what the graphics chip is asked to do, a frame */
 function glCounter() {
   const R = window._pixiRenderer && window._pixiRenderer.app && window._pixiRenderer.app.renderer;
   const gl = R && R.gl;
-  const c = { binds: 0, draws: 0 };
+  /* v2.3.3377: + `resumes`, the frame set aside and picked up again -- a bind
+     of the screen after a bind of another picture, while the frame is drawn
+     (a render to the screen starts afresh, so its own start is not one; Pixi
+     binding the screen again when it is already bound costs a chip nothing):
+     what a phone's chip pays for, the whole frame out to memory and back */
+  const c = { binds: 0, draws: 0, resumes: 0 };
   if (!gl) return { c, stop() {} };
-  const fb = gl.bindFramebuffer, de = gl.drawElements, da = gl.drawArrays;
-  gl.bindFramebuffer = function (t, f) { c.binds++; return fb.call(this, t, f); };
+  const fb = gl.bindFramebuffer, de = gl.drawElements, da = gl.drawArrays, rr = R.render;
+  let last;
+  R.render = function (o, ...rest) { if (!(o && o.target)) last = undefined; return rr.call(this, o, ...rest); };
+  gl.bindFramebuffer = function (t, f) { c.binds++; if (f == null && last != null) c.resumes++; last = f; return fb.call(this, t, f); };
   gl.drawElements = function () { c.draws++; return de.apply(this, arguments); };
   gl.drawArrays = function () { c.draws++; return da.apply(this, arguments); };
   return {
     c,
-    stop() { gl.bindFramebuffer = fb; gl.drawElements = de; gl.drawArrays = da; },
+    stop() { gl.bindFramebuffer = fb; gl.drawElements = de; gl.drawArrays = da; R.render = rr; },
   };
 }
 
@@ -108,10 +125,15 @@ function glCounter() {
 function measure(ms) {
   return new Promise((resolve) => {
     const t = [];
-    const counter = glCounter();
+    /* v2.3.3377: counted from the end of the first frame timed, so the frames
+       counted are the intervals timed: put on before it, the counter took in
+       one frame's draws and binds too many (a half again on the QA box's
+       two-frame steps; nothing to speak of on a phone's hundred) */
+    let counter = null;
     const t0 = performance.now();
     const f = (now) => {
       t.push(now);
+      if (!counter) counter = glCounter();
       if (now - t0 < ms) requestAnimationFrame(f);
       else {
         counter.stop();
@@ -132,6 +154,7 @@ function measure(ms) {
           p95: d.length ? d[Math.min(d.length - 1, Math.floor(d.length * 0.95))] : 0,
           work,
           passes: counter.c.binds / frames / 2,   /* a pass is a switch away and back */
+          resumes: counter.c.resumes / frames,   /* v2.3.3377: the frame picked up again mid-frame */
           draws: counter.c.draws / frames,
           frames,
           res: renderDpr(),
@@ -216,14 +239,22 @@ export async function runSpeedTest() {
   }
   const base = rows[0];
   const notes = [];
-  const best = rows.slice(1).reduce((a, x) => (!a || x.fps > a.fps ? x : a), null);
+  /* v2.3.3377: a step that puts back an old way is not a setting to switch
+     off, so it is never "the biggest gain"; it says what the new way saves */
+  const isOld = (x) => !!(list.find((st) => st.k === x.k) || {}).old;
+  const best = rows.slice(1).filter((x) => !isOld(x)).reduce((a, x) => (!a || x.fps > a.fps ? x : a), null);
+  const oldShadows = rows.find((x) => x.k === 'shadowpass');
   if (base && best && best.fps - base.fps >= 4) notes.push('The biggest gain: ' + best.label.toLowerCase() + ' (+' + (best.fps - base.fps).toFixed(0) + ' frames a second).');
+  if (base && oldShadows && base.fps - oldShadows.fps >= 2) {
+    notes.push('Drawing the shadows before the frame saves ' + (base.fps - oldShadows.fps).toFixed(0) + ' frames a second here (the old way set the screen aside '
+      + oldShadows.resumes.toFixed(1) + ' times a frame, now ' + base.resumes.toFixed(1) + ').');
+  }
   if (rows.length && rows.every((x) => x.fps < 33) && Math.max(...rows.map((x) => x.fps)) - Math.min(...rows.map((x) => x.fps)) < 4) {
     notes.push('Every setting ran at about 30: Low Power Mode, or a hot phone, may be holding the frame rate at 30.');
   }
   if (base) {
     notes.push('The game\'s own work: ' + (base.work != null ? base.work.toFixed(1) + ' ms a frame' : 'not measured')
-      + '; the graphics chip switched pictures ' + base.passes.toFixed(1) + ' times a frame, with ' + base.draws.toFixed(0) + ' draws.');
+      + '; the graphics chip switched pictures ' + base.passes.toFixed(1) + ' times a frame (set the screen aside ' + base.resumes.toFixed(1) + '), with ' + base.draws.toFixed(0) + ' draws.');
     /* which side holds the frame: a frame much longer than the game's own
        work is waiting on the graphics chip (or the screen) */
     if (base.work != null && base.p50 > 0) {
