@@ -125,7 +125,7 @@ function botFlagWords(kind, detail) {
   const ids = detail && Array.isArray(detail.activeIds) ? ' (' + detail.activeIds.length + ' accounts)' : '';
   return words + score + n + ids;
 }
-/* v2.3.3354: a chat report's reason in words (chatmod.js REPORT_REASONS) */
+/* v2.3.3362: a chat report's reason in words (chatmod.js REPORT_REASONS) */
 const REPORT_WORDS = { spam: 'Spam', abuse: 'Abuse', harassment: 'Harassment', cheating: 'Cheating', other: 'Other' };
 /* the counters worth reading, in words, the ones that are not zero */
 const BOT_COUNTER_WORDS = [
@@ -451,14 +451,14 @@ export const DevPanel = ({ onClose }) => {
     if (j) { setBotFlags(Array.isArray(j.flagged) ? j.flagged : []); setMsg(''); }
   }, [call]);
 
-  /* ═══ v2.3.3354: CHAT REPORTS, WHERE THE OWNER CAN ACT ON THEM ═══
+  /* ═══ v2.3.3362: CHAT REPORTS, WHERE THE OWNER CAN ACT ON THEM ═══
      Players have filed reports since v2.3.1981 (a player's card, Report), each
      stored with the server's own copy of what the reported player said
      (chatmod.js).  The owner could read them, and kick or freeze from them,
      only with curl -- and runs the game from a phone.  Found by the fun &
      social plan's check of the code (docs/FUN-SOCIAL-PLAN.md, Phase 0).  This
      lists them newest first (GET /reports, which says per row whether the
-     player is online and frozen NOW, v2.3.3354) and acts through the admin
+     player is online and frozen NOW, v2.3.3362) and acts through the admin
      routes that already exist: Kick (/kick: they can come straight back),
      Freeze (/freeze, two taps: they cannot join until unfrozen), Unfreeze,
      and Dismiss (DELETE /reports: the report is handled).  Every one of them
@@ -1003,7 +1003,7 @@ export const DevPanel = ({ onClose }) => {
               </>
             )}
 
-            {/* ═══ v2.3.3354: CHAT REPORTS ═══  See the note by loadReports. */}
+            {/* ═══ v2.3.3362: CHAT REPORTS ═══  See the note by loadReports. */}
             <div style={label}>Chat reports</div>
             <button type="button" style={btn(false)} disabled={busy}
               onClick={() => loadReports(false)}>
