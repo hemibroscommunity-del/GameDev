@@ -110,7 +110,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      talks first and offers a "Claim reward" button, and the payout card with
      the skill buttons is what that opens. The first cut of this measured the
      dialogue and reported the chooser missing. */
-  /* v2.3.3326: since v2.3.2237 his tut_2 "complete" line is four parts, and the
+  /* v2.3.3328: since v2.3.2237 his tut_2 "complete" line is four parts, and the
      button says "Next" until the last one -- only then "Claim reward" (the
      sweep of 2026-10-17).  Tap through them first, as a player does. */
   for (let i = 0; i < 8; i++) {
