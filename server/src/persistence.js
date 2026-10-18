@@ -504,19 +504,30 @@ export const persistenceMethods = {
        character has joined nothing.  Before the socket closes, so the rest
        of the party is told at once. */
     try { if (this._partyOnReset) await this._partyOnReset(pid); } catch (e) { /* best-effort, as above */ }
-    const ws = this._wsBySessionId(pid);
-    if (ws) {
-      try { ws.send(JSON.stringify({ type: 'character_reset_done' })); } catch (e) {}
-      this.sessions.delete(ws);
-      try { ws.close(4005, 'character reset'); } catch (e) {}
-    }
-    // Belt-and-braces: drop the in-memory state NOW (webSocketClose
-    // would too, but it only fires on the TCP close completing).
+    /* ═══ v2.3.3374: THE OLD CHARACTER GOES FIRST, THEN THE PLAYER LEAVES ═══
+       The in-memory state is dropped BEFORE the session goes, so nothing
+       after this can save the old character back over the wipe: the leaving
+       run's regen flush, the linger (a body to stay behind) and the last
+       place all read playerState, and find nothing.  Then the player leaves
+       the AFK sweep's way (tick.js, flood.js _floodClose; devicelock.js
+       _authPutOut): the close, webSocketClose now, the session gone.  This
+       deleted the session first, the admin freeze's old way, so the runtime's
+       own close found nothing and the leaving never ran: nobody was told
+       `player_leave` (the others saw the bro freeze until their ghost sweep),
+       an open trade window or duel waited out its own timer, and the room's
+       tick ran on with nobody in it (TRAPS §217's shape). */
     delete this.playerState[pid];
     /* v2.3.3327: a reset character starts again: no last place (lastplace.js) */
     if (this._placeForget) this._placeForget(pid);
     delete this.stateHistory[pid];
     this.dirtyPlayers.delete(pid);
+    const ws = this._wsBySessionId(pid);
+    if (ws) {
+      try { ws.send(JSON.stringify({ type: 'character_reset_done' })); } catch (e) {}
+      try { ws.close(4005, 'character reset'); } catch (e) {}
+      try { await this.webSocketClose(ws); } catch (e) { /* best effort: the session goes below */ }
+      this.sessions.delete(ws);
+    }
     return true;
   },
 

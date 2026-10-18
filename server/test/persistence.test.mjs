@@ -183,9 +183,21 @@ check('reconnect restores the defense track', ps2.defenseSkill && ps2.defenseSki
   check('reset without confirm:true is a no-op', !!state._store.get('rpg:bp_pt_a') && !!room.playerState['bp_pt_a']);
 
   // 7b. confirmed reset.
+  /* v2.3.3374: someone else in the room, to be told the bro left; and the
+     old character with an unsaved regen in memory -- the one write the
+     leaving run would make, which must not put it back over the wipe */
+  const wsOn = fakeWs('onlooker');
+  await join(wsOn, 'bp_pt_on');
+  room.playerState['bp_pt_a']._regenDirty = true;
+  wsOn.sent.length = 0;
   ws2.sent.length = 0;
   await room.webSocketMessage(ws2, JSON.stringify({ type: 'character_reset', payload: { confirm: true } }));
   check('rpg blob deleted', state._store.get('rpg:bp_pt_a') === undefined);
+  await new Promise((r) => setTimeout(r, 20));
+  check('v2.3.3374: ...and stays deleted: the leaving run saves no old character back (an unsaved regen was in memory)', state._store.get('rpg:bp_pt_a') === undefined);
+  check('v2.3.3374: the others are told the bro left (player_leave), not left watching a frozen body', wsOn.sent.some((m) => m.type === 'player_leave' && m.id === 'bp_pt_a'), wsOn.sent.map((m) => m.type));
+  check('v2.3.3374: ...and the room\'s count goes down', wsOn.sent.some((m) => m.type === 'player_count'));
+  check('v2.3.3374: ...and nothing remembers where the old bro stood', !(room._lastPlaces && room._lastPlaces.has('bp_pt_a')));
   const snapKeys = [...state._store.keys()].filter((k) => k.startsWith('rpgsnap:bp_pt_a:prereset-'));
   check('prereset parachute snapshot written', snapKeys.length === 1 && state._store.get(snapKeys[0]).coins === 1234, snapKeys);
   check('character_reset_done acked', ws2.sent.some((m) => m.type === 'character_reset_done'), ws2.sent.map((m) => m.type));
@@ -204,6 +216,21 @@ check('reconnect restores the defense track', ps2.defenseSkill && ps2.defenseSki
      new character does (it was 0 here only because this join sent no
      rpgCoins, which a first join no longer reads). */
   check('rejoin after reset is a fresh level-3 bootstrap', ps3 && ps3.level === 3 && ps3.coins === NEW_CHARACTER_COINS && Object.keys(ps3.inventory || {}).length === 0, ps3 && { level: ps3.level, coins: ps3.coins });
+
+  /* 7d. v2.3.3374: the last bro in a room restarts: the leaving run stops the
+     room's tick, as any last leaver's does (it ran on with nobody in it) */
+  const s7 = makeState();
+  const r7 = new GameRoom(s7, mockEnv);
+  const w7 = fakeWs('alone');
+  r7.sessions.set(w7, baseSession());
+  await r7.webSocketMessage(w7, JSON.stringify({ type: 'join', id: 'bp_pt_solo', name: 'T', phrase: 'p-bp_pt_solo', data: { x: 0, y: 0, z: 'town' } }));
+  /* the tick starts at the socket's upgrade (index.js fetch), which a session
+     set by hand skips: started here as that would */
+  if (!r7.tickInterval) r7.startTickLoop();
+  const ticking = !!r7.tickInterval;
+  await r7.webSocketMessage(w7, JSON.stringify({ type: 'character_reset', payload: { confirm: true } }));
+  check('v2.3.3374: the last bro in the room restarts: the room\'s tick stops', ticking && !r7.tickInterval && r7.sessions.size === 0, { ticking, after: !!r7.tickInterval, sessions: r7.sessions.size });
+  if (r7.tickInterval) { clearInterval(r7.tickInterval); r7.tickInterval = null; }
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
