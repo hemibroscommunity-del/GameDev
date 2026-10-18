@@ -2912,7 +2912,7 @@ remnant to migrate server-side, not a mode to preserve.
     - test-world-core "the Gem Works", `mp-buildingrooms` (the tabs),
       `mp-wheeldoors`, `mp-shieldgem` (a shield's gem is set on the Set gems
       tab): docs/specs/gem-works.md.
-  - Since v2.3.3347 THE TOWN HALL'S FLAG WAVES -- the owner: "make the town
+  - Since v2.3.3382 THE TOWN HALL'S FLAG WAVES -- the owner: "make the town
     square flag wave using code it looks silly being still":
     - the flag is painted into the Town Hall's picture (no flag object), so its
       cloth is CUT OUT of the page as it loads (wheelLife.js `cutFlag`): its

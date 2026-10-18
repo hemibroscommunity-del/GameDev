@@ -66,7 +66,7 @@ import { PROP_LIGHTS } from './worldFx.js';
 import { SHADE, formShadeOn } from './formShade.js';
 import { readArtBottoms } from './propGround.js';
 import { npcArtUrl } from './npcSprites.js';
-import { forEachWheelSwayer, forEachWheelFlag } from './wheelObjects.js';   /* v2.3.3000: the Wheel's trees and bushes sway; v2.3.3347: and the Town Hall's flag waves */
+import { forEachWheelSwayer, forEachWheelFlag } from './wheelObjects.js';   /* v2.3.3000: the Wheel's trees and bushes sway; v2.3.3382: and the Town Hall's flag waves */
 
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
@@ -551,7 +551,7 @@ export class WorldLife {
     probe.wheelBits = this._wheelBits;
   }
 
-  /* ═══ v2.3.3347: THE WHEEL'S FLAGS WAVE ═══
+  /* ═══ v2.3.3382: THE WHEEL'S FLAGS WAVE ═══
      The owner: "make the town square flag wave using code it looks silly
      being still".  The Town Hall's cloth is cut out of its picture and hung
      in its life (wheelLife.js FLAG); here it is waved with this clock, this

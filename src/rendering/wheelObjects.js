@@ -536,7 +536,7 @@ export class WheelObjects {
         s = new Container();
         s.addChild(pic);
         s._pic = pic;
-        /* v2.3.3347: + its picture, out of which a flag's cloth is cut */
+        /* v2.3.3382: + its picture, out of which a flag's cloth is cut */
         s._life = new BuildingLife(id, ix.w[ix.pk[i]], ix.h[ix.pk[i]], ix.ax[ix.pk[i]], ix.scl[ix.pk[i]], pic);
         s.addChild(s._life.view);
       }
@@ -926,7 +926,7 @@ export function forEachWheelSwayer(fn) {
   }
 }
 
-/* v2.3.3347: every drawn building's waving flag (wheelLife.js FLAG), for
+/* v2.3.3382: every drawn building's waving flag (wheelLife.js FLAG), for
    worldLife to wave with its clock and wind: fn(life, footX, footY) */
 export function forEachWheelFlag(fn) {
   const live = _live, ix = _idx;

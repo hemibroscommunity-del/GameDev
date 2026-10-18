@@ -2584,9 +2584,9 @@ in code (`src/rendering/wheelLife.js`), no new pictures:
   the roulette wheel turning. Those move part of a picture, which needs that
   part drawn separately (an Object Studio job, if wanted) -- or cut out of
   the picture as the game loads it, as the Town Hall's flag is since
-  v2.3.3347 (below).
+  v2.3.3382 (below).
 
-### The Town Hall's flag waves (v2.3.3347)
+### The Town Hall's flag waves (v2.3.3382)
 
 > Owner, 2026-10-18: *"Also make the town square flag wave using code it looks
 > silly being still"*

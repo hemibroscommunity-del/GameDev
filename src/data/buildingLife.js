@@ -16,7 +16,7 @@
  *   sparks  a few sparks jumping off the forge
  *   glint   a star of light that comes and goes on something shiny
  *   chaff   a speck of hay drifting down from the loft
- *   flag    v2.3.3347: the cloth of a flag, cut out of the picture and waved
+ *   flag    v2.3.3382: the cloth of a flag, cut out of the picture and waved
  *           (wheelLife.js FLAG) -- the one entry in the picture's OWN pixels
  *           as well (`box`, `keep`, `pole`), since the cut must be exact; its
  *           `u`/`v` are the cloth's middle
@@ -34,7 +34,7 @@ export const BUILDING_LIFE = {
     { fx: 'glint', u: 0.82, v: 0.75 },               /* the trophies */
     { fx: 'glow', u: 0.41, v: 0.69, s: 0.035 },      /* the lantern left of the door */
     { fx: 'glow', u: 0.59, v: 0.69, s: 0.035 },      /* the lantern right of it */
-    /* v2.3.3347: the flag on the clock tower waves -- the owner: "make the
+    /* v2.3.3382: the flag on the clock tower waves -- the owner: "make the
        town square flag wave using code it looks silly being still".  On the
        812 x 807 picture (`pw` x `ph`): the cloth is what is solid in `box`
        ([x0, y0, x1, y1), art px) but not in `keep` -- the ring under the

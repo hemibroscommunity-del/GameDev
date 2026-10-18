@@ -2460,7 +2460,7 @@ console.log("the buildings' life (v2.3.2983)");
   const { decodePNG } = await import('./png.mjs');
   const fs = await import('node:fs');
   const buildings = objectCatalog().filter((e) => e.kind === 'building').map((e) => e.id);
-  const FX = new Set(['smoke', 'glow', 'sparks', 'glint', 'chaff', 'flag']);   /* v2.3.3347: + the flag */
+  const FX = new Set(['smoke', 'glow', 'sparks', 'glint', 'chaff', 'flag']);   /* v2.3.3382: + the flag */
   const ids = Object.keys(BUILDING_LIFE);
   ok(`every one of the ${buildings.length} buildings has some life, and nothing else does; each spot a known kind, on its picture (0-1)`,
     buildings.every((b) => BUILDING_LIFE[b] && BUILDING_LIFE[b].length) && ids.every((b) => buildings.includes(b)) &&
@@ -2491,7 +2491,7 @@ console.log("the buildings' life (v2.3.2983)");
     }
   }
   ok(`...and every one of the ${checked} spots is on its picture as the game has it: each smoke on a chimney's top, each lamp, spark and glint on the building`, checked > 60 && off.length === 0, off);
-  /* v2.3.3347: a flag's cut, on its picture as the game has it -- the owner:
+  /* v2.3.3382: a flag's cut, on its picture as the game has it -- the owner:
      "make the town square flag wave using code".  wheelLife.js cuts the cloth
      out of the picture only where it counts `n` px (box less keep); a
      building drawn again fails here first, and says what moved. */
@@ -2534,7 +2534,7 @@ console.log("the buildings' life (v2.3.2983)");
       if (past) flagBad.push(`${id}: ${past} px of cloth run past the box`);
     }
   }
-  ok(`the Town Hall's flag (v2.3.3347): its cloth counts what its entry says, in one piece, inside its box, on the picture as the game has it`, flagN >= 1 && flagBad.length === 0, flagBad);
+  ok(`the Town Hall's flag (v2.3.3382): its cloth counts what its entry says, in one piece, inside its box, on the picture as the game has it`, flagN >= 1 && flagBad.length === 0, flagBad);
 }
 
 /* ── v2.3.2995: what every object is made of ──

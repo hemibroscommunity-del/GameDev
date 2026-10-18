@@ -13,7 +13,7 @@
  *   sparks  the Blacksmith's forge spitting a spark or two
  *   glint   a star of light now and then on gold, gems, glass and the bell
  *   chaff   a speck of hay drifting down from the Feed & Seed's loft
- *   flag    v2.3.3347: the Town Hall's flag waving from its pole (FLAG below)
+ *   flag    v2.3.3382: the Town Hall's flag waving from its pole (FLAG below)
  *
  * SUBTLE ON PURPOSE: low alphas, a handful of sprites a building, nothing
  * that moves fast.  The Wheel is always daylight for now (timeOfDay.js), so a
@@ -35,9 +35,9 @@
  */
 import { Container, Sprite, Texture, CanvasSource, MeshPlane, Rectangle } from 'pixi.js';
 import { BUILDING_LIFE } from '../data/buildingLife.js';
-import { makePaletteSource, isPaletteSource, paletteStride } from './paletteTex.js';   /* v2.3.3347: the flag's cloth */
+import { makePaletteSource, isPaletteSource, paletteStride } from './paletteTex.js';   /* v2.3.3382: the flag's cloth */
 
-/* ═══ v2.3.3347: THE TOWN HALL'S FLAG WAVES ═══
+/* ═══ v2.3.3382: THE TOWN HALL'S FLAG WAVES ═══
  *
  * The owner: "Also make the town square flag wave using code it looks silly
  * being still".  There is no flag object: the flag is painted into the Town
@@ -202,7 +202,7 @@ const SMOKE_TINT = 0xd9d7d3, GLOW_TINT = 0xffc874, SPARK_TINTS = [0xffd27a, 0xff
    big-town preview) -- distances and sizes grow with it.  Everything is in
    the building's own space: (0, 0) its foot. */
 export class BuildingLife {
-  /* v2.3.3347: + `pic`, the building's picture -- the flag's cloth is cut out
+  /* v2.3.3382: + `pic`, the building's picture -- the flag's cloth is cut out
      of it (FLAG above) and follows it if it is drawn mirrored */
   constructor(id, w, h, ax, k = 1, pic = null) {
     this.view = new Container();
@@ -235,7 +235,7 @@ export class BuildingLife {
     }
   }
 
-  /* v2.3.3347: the flag's cloth, cut out of the picture and hung where it
+  /* v2.3.3382: the flag's cloth, cut out of the picture and hung where it
      was painted: a cloth pixel is 1/res of a picture's point, and the
      picture is drawn k times its points, anchored at (ax, 1) */
   _makeFlag(e, pic, w, h, ax, k) {
@@ -261,7 +261,7 @@ export class BuildingLife {
     mesh.once('destroyed', () => { _flags.delete(rec); });
   }
 
-  /* v2.3.3347: one step of the flag's wave, from worldLife's clock and wind
+  /* v2.3.3382: one step of the flag's wave, from worldLife's clock and wind
      (`g` the gust here, 0..1).  The old map's flags' motion: a wave running
      from the pole to the free end, its swing growing along the cloth, the
      cloth a little shorter as it ripples; calm, it lies as it was painted. */
@@ -424,7 +424,7 @@ export class BuildingLife {
   }
 }
 
-/* v2.3.3347: the flags' probe (QA, mp-flagwave): each live flag's swing at
+/* v2.3.3382: the flags' probe (QA, mp-flagwave): each live flag's swing at
    its free end, its rest, where the cloth and its building are on the screen
    (CSS px), and how many pages were cut or refused; .hide(true) hides the
    cloth, to see that none of it is left painted behind */

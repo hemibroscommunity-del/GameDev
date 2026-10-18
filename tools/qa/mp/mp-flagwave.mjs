@@ -1,4 +1,4 @@
-/* ═══ mp-flagwave (v2.3.3347): THE TOWN HALL'S FLAG WAVES ═══
+/* ═══ mp-flagwave (v2.3.3382): THE TOWN HALL'S FLAG WAVES ═══
  *
  * The owner: "Also make the town square flag wave using code it looks silly
  * being still".  There is no flag object: the flag is painted into the Town
