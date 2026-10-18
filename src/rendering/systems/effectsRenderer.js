@@ -284,6 +284,7 @@ import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleav
 import { farmWorkFrame } from '@/game/farmWork.js';   /* v2.3.3136: the farmer's frames of the cook's strip */
 import { FARM_COVERS, FARM_STEP_COVER, FARM_COVER_FRAME, FARM_FIGURE_X, FARM_PAN_BOX } from '@/data/farmCovers.js';   /* v2.3.3136: what stands where the cook's pan is */
 import { farmArtUrl } from '@/data/farmArtUrl.js';   /* v2.3.3136: the compost bin's address */
+import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, treeChopOffset, behindTree, TREE_PX, TREE_FOOT_DY, TREE_FADE, TREE_SEE_ALPHA, TREE_SEE_MS } from '@/game/tierTrees.js';   /* v2.3.3343: each wood its own tree */
 import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
@@ -500,8 +501,13 @@ export const COOK_PAN_DX = 11 / 62;
    his anchor -- 45 px at the old size, 59 at the new -- and standing 14 px
    further off keeps it biting the trunk exactly where it always did. */
 export const CHOP_OFFSET = 44;   /* px from the trunk to the figure's centre */
+/* v2.3.3343: ...for a trunk as broad as the old pine's.  Each wood's tree is
+   its own picture now, from the slim pine to the broad gnarled hardwood, so
+   the figure stands off by the trunk's own width (game/tierTrees.js
+   treeChopOffset: 44 for a broad trunk, up to 55 for the slim pine) and the
+   blade bites inside it whatever its size. */
 export function chopStandInSpot(zone, node, sign) {
-  const x = node.x - sign * CHOP_OFFSET;
+  const x = node.x - sign * (node && node.nodeType === 'tree' ? treeChopOffset(node) : CHOP_OFFSET);
   const pscale = zonePlayerScale(zone, x, node.y, TILE);
   return { x, y: node.y + 6 * pscale, pscale };
 }
@@ -2115,13 +2121,25 @@ for (const cfg of Object.values(GESTURE_TOOLS)) {
    Nothing reads texture pixels for placement or hit-tests: the anchors are
    fractional, nodeWorldBox (BroTown) reads sprite.width/height (already
    scale-normalised), and the ore-break strip is its own 256-tall sheet.
-   TRAPS §15 audit: `grep -n NODE_SPRITE_TEX` -- one placer, one consumer. */
+   TRAPS §15 audit: `grep -n NODE_SPRITE_TEX` -- one placer, one consumer.
+   v2.3.3343: no tree here any more -- each wood has its own picture
+   (TREE_TEX below, game/tierTrees.js), and tree-pine-940 (3.4 MB decoded)
+   is not loaded at all. */
 const NODE_SPRITE_SOURCES = {
-  tree:     '/sprites/trees/tree-pine-940.webp',
   fishSpot: '/sprites/world/fish-spot-627.webp',
   oreVein:  '/sprites/world/ore-vein-627.webp',
 };
 const NODE_SPRITE_TEX = {};
+/* ═══ v2.3.3343: EACH WOOD ITS OWN TREE ═══
+   The owner's five trees (pine, softwood, hardwood, cedar, maple), one a
+   gathering tier, each drawn at its own size from src/data/treeArt.js -- 5.6
+   MB decoded for the five.  On the loading screen's gate with the others
+   (_fxLoad), as the preloading law wants. */
+const TREE_TEX = {};
+for (const { lvl, url } of treeArtSources()) {
+  _fxLoad(url).then((tex) => { if (tex) TREE_TEX[lvl] = tex; })
+    .catch((err) => console.warn('[tree-art] load failed', url, err));
+}
 /* Target render heights in world px at tierStep 1, scaled up with tier.
    v2.3.1275: +50% (was tree 112 / fishSpot 88 / oreVein 88) — owner's
    size experiment scales resources with the 50%-bigger monsters.  The
@@ -2136,8 +2154,11 @@ const NODE_SPRITE_ANCHOR_Y = { tree: 1.0, fishSpot: 0.5, oreVein: 1.0 };
    trunk a player walks up to is ~27 world px NORTH of node.y on a tier-1
    tree, and sorting on node.y put the canopy over anyone standing in the
    gap -- in front of the trunk, drawn behind it.  The depth pass reads
-   `_groundDy` to lift the tree's line up to its drawn base. */
-const NODE_ART_BASE = { tree: 0.839, oreVein: 0.737 };
+   `_groundDy` to lift the tree's line up to its drawn base.
+   v2.3.3343: a tree's base is its own picture's (game/tierTrees.js: the foot
+   stands TREE_FOOT_DY, 27, north of node.y, where this 0.839 put it at tier
+   1), so only the ore's is a fraction here. */
+const NODE_ART_BASE = { oreVein: 0.737 };
 /* v2.3.2956: where a node's HP bar hangs, as a fraction of its frame --
    measured off the same webps' alpha (>40): the pine's crown tops out at
    0.103, the ore's rock bottoms out at its ground line (NODE_ART_BASE), the
@@ -2161,16 +2182,19 @@ const NODE_ART_BASE = { tree: 0.839, oreVein: 0.737 };
    veins' 418 px art has the copper one's proportions), `under` the bar below
    that line, `gap` 10 (v2.3.2956's: the miner's boots hang just below the
    ore's base, and a 4 px gap let them clip the number). */
+/* v2.3.3343: a tree's `f` is gone -- its crown's top is its own picture's
+   (game/tierTrees.js treeGeom), only the gap is here */
 const NODE_HPBAR_AT = {
-  tree:     { f: 0.103, gap: 4 },
+  tree:     { gap: 4 },
   oreVein:  { f: 0.737, gap: 10, under: true },
   fishSpot: { f: 0.349, gap: 4 },
 };
 /* v2.3.3040: the TOP of each resource's art, as a fraction of its frame, for
    the label over it (_nodeLabelAt): the crown and the pond's water as above,
    and the rock's top (alpha >50% off ore-vein-627; the iron and black steel
-   veins' 418 px art has its proportions, 93/418). */
-const NODE_LABEL_TOP = { tree: 0.103, oreVein: 0.223, fishSpot: 0.349 };
+   veins' 418 px art has its proportions, 93/418).  v2.3.3343: a tree's is its
+   own picture's top (treeGeom). */
+const NODE_LABEL_TOP = { oreVein: 0.223, fishSpot: 0.349 };
 /* ...and a cook's, UNDER the campfire (owner: "Make it appear for cooking
    too").  The one resource whose bar is not over it (v2.3.3035): the cook
    leans right over his fire, the pan in the flames (cookStandInSpot, 11.5
@@ -2215,7 +2239,9 @@ for (const [kind, byLvl] of Object.entries(NODE_TIER_SOURCES)) {
       .catch((err) => console.warn('[node-tier-sprites] load failed', path, err));
   }
 }
-const NODE_TIER_TINT = { tree: { 6: 0xd8e88a, 11: 0xb09070, 16: 0xc89a8a /* cedar: red-brown */, 21: 0xffa860 /* maple: autumn */ } };
+/* v2.3.3343: the trees' tints are gone -- each wood is its own picture
+   (TREE_TEX), its bark already its log's colour */
+const NODE_TIER_TINT = {};
 const ORE_BREAK_TINT = { 6: 0xd8a890, 11: 0x5c6478, 16: 0xc8d0dc /* titanium */, 21: 0x6a4a9a /* obsidian */ };
 const ORE_ICON_TIER_TEX = {};
 for (const [lvl, path] of [[6, '/icons/items/ore-iron.webp'], [11, '/icons/items/ore-black-steel.webp'],
@@ -2225,6 +2251,7 @@ for (const [lvl, path] of [[6, '/icons/items/ore-iron.webp'], [11, '/icons/items
 }
 /** The picture a node is drawn with: its tier's own when there is one. */
 function nodeSpriteTex(node) {
+  if (node.nodeType === 'tree') return TREE_TEX[treeArtLevelFor(node.gatherLvl)] || null;   /* v2.3.3343 */
   const own = NODE_TIER_TEX[node.nodeType];
   const t = own && own[node.gatherLvl || 1];
   return t || NODE_SPRITE_TEX[node.nodeType];
@@ -10449,6 +10476,31 @@ export class EffectsRenderer {
     return out;
   }
 
+  /* ═══ v2.3.3343: A BIG TREE IS SEEN THROUGH WHEN YOU STAND BEHIND IT ═══
+     The maple is four people tall: drawn over you behind its foot (the
+     depth pass, v2.3.2635) it would hide you whole.  So while its crown
+     covers your body it eases to TREE_SEE_ALPHA and back when you step out
+     (game/tierTrees.js behindTree, the scenery trees' rule and numbers).
+     Yours alone, as theirs; `?treefade=0` keeps every tree solid. */
+  _treeSeeThrough(S, node, g, now) {
+    const spr = node._pixiSprite;
+    if (!spr || spr.destroyed) return;
+    let want = 1;
+    const P = S && S.player;
+    if (TREE_FADE && P) {
+      const fy = P.y + (playerGroundDy(S.currentZone, P.x, P.y) || 0);
+      const bodyH = S._bodyDrawH > 20 ? S._bodyDrawH : 100;
+      if (behindTree(g, P.x, fy, bodyH)) want = TREE_SEE_ALPHA;
+    }
+    const last = node._seeT != null ? node._seeT : now;
+    node._seeT = now;
+    let see = node._see == null ? 1 : node._see;
+    see += (want - see) * Math.min(1, (now - last) / TREE_SEE_MS);
+    if (Math.abs(see - want) < 0.01) see = want;
+    node._see = see;
+    if (spr.alpha !== see) spr.alpha = see;
+  }
+
   _updateGatherNodes(S, now) {
     this._peerWork = this._peerWorkNodes(S);   /* v2.3.2915: once a frame, for the vein here and the pond below */
     const gfx = this.nodeGfx;
@@ -10584,11 +10636,23 @@ export class EffectsRenderer {
              above every sprite. */
           this.nodeLayer.addChildAt(node._pixiSprite, 0);
         }
-        const targetH = (NODE_SPRITE_HEIGHT_BASE[node.nodeType] ?? 24) * (1 + (tierStep - 1) * 0.15);
-        const baseScale = targetH / spriteTex.height;
-        /* Restore the gentle breathe-pulse the old procedural pond had. */
-        const pulse = node.nodeType === 'fishSpot' ? (1 + Math.sin(now / 600 + node.x) * 0.04) : 1;
-        node._pixiSprite.scale.set(baseScale * pulse);
+        /* v2.3.3343: a tree is its wood's own picture at its own size (2
+           picture px a game px), stood on node.y with its trunk's foot
+           TREE_FOOT_DY above it (game/tierTrees.js) -- not the one pine
+           scaled 15% a stretch */
+        const _tree = node.nodeType === 'tree' ? treeGeom(node) : null;
+        if (_tree) {
+          if (node._pixiSprite.texture !== spriteTex) node._pixiSprite.texture = spriteTex;
+          node._pixiSprite.anchor.set(_tree.anchorX, _tree.anchorY);
+          node._pixiSprite.scale.set(TREE_PX);
+          this._treeSeeThrough(S, node, _tree, now);
+        } else {
+          const targetH = (NODE_SPRITE_HEIGHT_BASE[node.nodeType] ?? 24) * (1 + (tierStep - 1) * 0.15);
+          const baseScale = targetH / spriteTex.height;
+          /* Restore the gentle breathe-pulse the old procedural pond had. */
+          const pulse = node.nodeType === 'fishSpot' ? (1 + Math.sin(now / 600 + node.x) * 0.04) : 1;
+          node._pixiSprite.scale.set(baseScale * pulse);
+        }
         node._pixiSprite.x = node.x;
         node._pixiSprite.y = node.y;
         /* v2.3.854: while THIS vein is the active mining target, render the
@@ -10660,8 +10724,9 @@ export class EffectsRenderer {
            frame it first appears.  v2.3.2748: at the DRAWN base, not the
            frame's bottom (NODE_ART_BASE). */
         const _artBase = NODE_ART_BASE[node.nodeType];
-        node._pixiSprite._groundDy = _artBase != null
-          ? -(NODE_SPRITE_ANCHOR_Y[node.nodeType] - _artBase) * node._pixiSprite.height : 0;
+        node._pixiSprite._groundDy = _tree ? -TREE_FOOT_DY   /* v2.3.3343: its trunk's foot */
+          : _artBase != null
+            ? -(NODE_SPRITE_ANCHOR_Y[node.nodeType] - _artBase) * node._pixiSprite.height : 0;
         node._pixiSprite.zIndex = Math.round((node.y || 0) + node._pixiSprite._groundDy);
       } else if (node.nodeType === 'tree') {
         /* v2.3.1275: procedural fallbacks get the same +50% as the
@@ -10851,6 +10916,9 @@ export class EffectsRenderer {
       const f = wheelFishTop(node);
       return { x: f.x, y: f.top - NODE_LABEL_GAP };
     }
+    /* v2.3.3343: over its own crown (in a big one's, game/tierTrees.js
+       treeMarkY: the maple's top is under the phone's top cards) */
+    if (node.nodeType === 'tree') return { x: node.x, y: treeMarkY(treeGeom(node)) - NODE_LABEL_GAP };
     const top = NODE_LABEL_TOP[node.nodeType];
     if (top == null) return null;
     const tierStep = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
@@ -10880,6 +10948,11 @@ export class EffectsRenderer {
     }
     const at = NODE_HPBAR_AT[node.nodeType];
     if (!at) return null;
+    /* v2.3.3343: over its own crown (in a big one's: treeMarkY) */
+    if (node.nodeType === 'tree') {
+      const top = treeMarkY(treeGeom(node));
+      return { x: node.x, y: top - at.gap - halfH, scale, artTop: top, artBase: null, nodeY: node.y };
+    }
     const tierStep = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
     const targetH = (NODE_SPRITE_HEIGHT_BASE[node.nodeType] ?? 24) * (1 + (tierStep - 1) * 0.15);
     const frameTop = node.y - (NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5) * targetH;
@@ -12323,20 +12396,22 @@ export class EffectsRenderer {
     const m = S && S._peerGatherNode;
     const rec = m && m.get(String(id));
     if (!rec || !(now - rec.at <= PEER_GATHER_NODE_TTL_MS)) return null;
-    let x = rec.x, y = rec.y;
+    let x = rec.x, y = rec.y, gatherLvl;
     if (rec.node != null) {
       const nodes = S.gatherNodes || [];
       for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i];
         if (!n || String(n.id) !== rec.node) continue;
         if (n.nodeType !== 'tree' || n.alive === false || n.depleted) return null;
-        x = n.x; y = n.y;
+        x = n.x; y = n.y; gatherLvl = n.gatherLvl;
         break;
       }
     }
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
     if (Math.hypot(x - ox, y - oy) > PEER_CHOP_REACH) return null;
-    return { x, y };
+    /* v2.3.3343: a tree, and which wood -- chopStandInSpot stands the
+       lumberjack off by its own trunk, as the chopper's own screen does */
+    return { x, y, nodeType: 'tree', gatherLvl };
   }
 
   /* v2.3.1092: harvest stand-ins for OTHER players.  When a peer broadcasts a

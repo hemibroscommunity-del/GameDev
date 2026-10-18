@@ -56,6 +56,7 @@ import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
+import { treeGeom, treeTrunkEllipse } from '@/game/tierTrees.js';   /* v2.3.3343: each wood its own tree -- its box and its trunk */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
 import { weaponDiscIcon } from './panels/controlSkin.jsx'; /* v2.3.3105: the attack disc wears the weapon in your hand */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
@@ -612,6 +613,10 @@ function nodeWorldBox(S, n) {
        logs ~56 wide, the front ends ~12 below the ground point, the flame's tip
        ~55 above it.  Was 56x40 for the vector fire's glow and 21 px flames. */
     w = 64; h = 70; ax = 0.5; ay = 0.82; wx = n.x; wy = n.y;
+  } else if (n.nodeType === 'tree') {
+    /* v2.3.3343: its wood's own picture, before the sprite exists */
+    var _g = treeGeom(n);
+    return { l: _g.left, r: _g.right, t: _g.top, b: _g.bottom };
   } else {
     var _ts = Math.min(10, Math.max(1, Math.ceil((n.gatherLvl || 1) / 10)));
     h = (n.nodeType === 'tree' ? 168 : 132) * (1 + (_ts - 1) * 0.15);
@@ -665,10 +670,12 @@ function nodeWorldBox(S, n) {
 var NODE_ART = {
   oreVein:  { x0: 0.232, x1: 0.777, y0: 0.223, y1: 0.737 },
   fishSpot: { x0: 0.179, x1: 0.816, y0: 0.348, y1: 0.686 },
-  /* tree: the whole silhouette, then the TRUNK alone (bottom 6% of it) --
-     the owner wants only the base solid, so the canopy is walk-under. */
-  tree:     { x0: 0.250, x1: 0.750, y0: 0.104, y1: 0.840,
-              tx0: 0.379, tx1: 0.613, ty0: 0.795, ty1: 0.840 },
+  /* tree: only the TRUNK is solid -- the owner wants only the base solid, so
+     the canopy is walk-under.  v2.3.3343: its fractions are gone with the old
+     pine; each wood's trunk is its own picture's (nodeBlockEllipse ->
+     game/tierTrees.js treeTrunkEllipse).  The entry stays: it is what says a
+     tree stops you at all. */
+  tree:     {},
 };
 
 /* The ellipse the player cannot walk into, in world pixels.  Ellipse rather
@@ -700,11 +707,14 @@ function nodeBlockEllipse(S, n) {
      out of the bank beside it (it reaches ~33 px east of the spot, where
      the shore and the angler's seat are). */
   if (n.nodeType === 'fishSpot' && zoneHomes(S.currentZone)) return null;
+  /* v2.3.3343: a tree's trunk is its own picture's (game/tierTrees.js), not a
+     share of the old pine's frame -- the slim pine's narrow, the gnarled
+     hardwood's broad, the crown walk-under as ever */
+  if (n.nodeType === 'tree') return treeTrunkEllipse(n);
   var b = nodeWorldBox(S, n);
   if (!b) return null;
   var w = b.r - b.l, h = b.b - b.t;
   var x0 = art.x0, x1 = art.x1, y0 = art.y0, y1 = art.y1;
-  if (n.nodeType === 'tree') { x0 = art.tx0; x1 = art.tx1; y0 = art.ty0; y1 = art.ty1; }
   var l = b.l + w * x0, r = b.l + w * x1;
   var t = b.t + h * y0, bt = b.t + h * y1;
   return { x: (l + r) / 2, y: (t + bt) / 2, rx: (r - l) / 2, ry: (bt - t) / 2 };

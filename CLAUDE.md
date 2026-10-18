@@ -914,6 +914,33 @@ remnant to migrate server-side, not a mode to preserve.
         gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
         `mp-monsterplate` (whose band sweep now raises the weapon's skill):
         docs/specs/xp-decay.md.
+    - since v2.3.3343 EACH WOOD ITS OWN TREE -- the owner: every resource tier
+      in every land, "the log art (in terms of color to represent the type of
+      wood) would need to be the same across all 8 lands", the land shown by
+      effects in code; then their two ChatGPT pictures, "You can start with
+      this":
+      - pine (commons), a willow (softwood, 1-10), a gnarled hardwood
+        (11-20), a cedar (21-30) and a huge autumn maple (31-40), 1.5 to 4
+        people tall, each bark its log icon's colour, one picture in every
+        land, untinted (the one painted pine and its tints are gone);
+      - cut by `tools/world/add-tree-art.mjs` (sources in
+        `assets/prop-source/trees/`) into `public/sprites/trees/wood-*.png` and
+        the GENERATED `src/data/treeArt.js` (size, foot, trunk);
+        `src/game/tierTrees.js` says where each stands: its foot 27 px north
+        of the node (`TREE_FOOT_DY`, where the old pine's base stood), the
+        trunk the only solid part (`treeTrunkEllipse`, BroTown
+        nodeBlockEllipse), the lumberjack off by its own trunk
+        (`treeChopOffset`), the label and bar over its own crown but never
+        300 px past its foot (`treeMarkY`: over the maple's top they lay under
+        the phone's quest card);
+      - seen through (0.42) while its crown covers you behind its foot
+        (`behindTree`, `?treefade=0`), the maple hiding a bro whole; the
+        Wheel's node view margin 320 -> 480; +2.1 MB decoded (5.6 for the
+        five, the 3.4 MB pine no longer loaded);
+      - not yet: the ten zones' effects in code, the ore veins (their prompt
+        in ART-WISHLIST "Trees and ore, one a tier"), the woods past maple
+        (WOODCUTTING_TIERS lists 20, only 5 grow); `mp-tiertrees`:
+        docs/specs/tier-trees.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":

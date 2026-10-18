@@ -39,8 +39,11 @@ import { wheelWaterAt } from '@/game/wheelTrial.js';   /* the ground as drawn: a
    drawn.  A tree's art stands up to ~195 world px above its anchor and ~60
    either side of it, so 320 keeps every node whose picture reaches the screen;
    HYST more before one is let go, so a step back and forth across the line
-   does not rebuild it. */
-export const WHEEL_NODE_MARGIN = 320;
+   does not rebuild it.
+   v2.3.3343: each wood its own tree, and the maple stands 451 world px over
+   its anchor (424 tall, its foot 27 up: game/tierTrees.js) and 226 to one
+   side, so 480 -- its crown came into view with nothing drawn under it. */
+export const WHEEL_NODE_MARGIN = 480;
 export const WHEEL_NODE_HYST = 400;
 
 /** null outside a zone of other zones' monsters (every node drawn, as ever);

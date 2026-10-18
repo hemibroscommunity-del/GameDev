@@ -370,12 +370,14 @@ async function body({ P, wsPort, rec, OUT, errors }) {
       const n = (S.gatherNodes || []).find((g) => g.id === id);
       const sp = n && n._pixiSprite;
       const trees = (S.gatherNodes || []).filter((g) => g.nodeType === 'tree' && g._pixiSprite && !g._pixiSprite.destroyed)
-        .map((g) => ({ tier: g.gatherLvl, tint: g._pixiSprite.tint }));
+        .map((g) => ({ tier: g.gatherLvl, tint: g._pixiSprite.tint, texH: g._pixiSprite.texture && g._pixiSprite.texture.height, h: Math.round(g._pixiSprite.height) }));
       return { texH: sp && sp.texture ? sp.texture.height : null, trees };
     }, iron.id);
     rec.ok('the iron vein is drawn with its own picture (418 px tall; copper\'s is 627)', look.texH === 418, look);
+    /* v2.3.3343: a softwood tree is its own picture (the willow, 424 px, two
+       people tall: 212 world px), untinted -- each wood its own tree */
     const soft = look.trees.find((t) => t.tier === 6);
-    if (soft) rec.ok('a softwood tree near it takes the softwood tint', soft.tint === 0xd8e88a, soft);
+    if (soft) rec.ok('a softwood tree near it is the willow, at its own size and untinted', soft.texH === 424 && soft.h === 212 && soft.tint === 0xffffff, soft);
     await closeTalk(P);
     await P.page.screenshot({ path: join(OUT, 'wheelnodes-iron.png') });
     const clip = await P.page.evaluate(({ x, y }) => {

@@ -543,4 +543,6 @@ The owner: "there are invisible areas that block movement near the town".
 - The Wind Dunes' oases are ringed with palms that stand in front of every
   seat. The dunes fish their coast.
 - The node art for veins and trees is the old painted art; Wheel-style
-  pictures would come from the Object Studio.
+  pictures would come from the Object Studio.  v2.3.3343: the trees are the
+  owner's own now, one picture a wood, growing tier by tier
+  (docs/specs/tier-trees.md); the veins still wait on theirs.
