@@ -2535,7 +2535,7 @@ let _chatBubbleGrad = null;
    you -- past any screen's edge at the Wheel's zoom (a 3x phone shows ~650 x
    1,400 of the world, a desktop about 3,200 across) -- see _updateChatBubbles */
 const NPC_BUBBLE_REACH = 2400;
-/* v2.3.3363: the band over a head, lowered as far as an emote brought the
+/* v2.3.3362: the band over a head, lowered as far as an emote brought the
    name plate down (rendering/emoteFx.js `_emoteHudDrop`: a sitter, a sleeper) */
 function bandWithEmote(band, who) {
   if (typeof band !== 'number' || !isFinite(band)) return band;
@@ -8810,7 +8810,7 @@ export class EffectsRenderer {
          from their position, so chatting while chopping does not drop the
          bubble back onto the face for exactly as long as the axe is up.
          Only a speaker never seen with a band falls back to the old anchor. */
-      /* v2.3.3363: a sitter's or a sleeper's band came down with him
+      /* v2.3.3362: a sitter's or a sleeper's band came down with him
          (rendering/emoteFx.js, last frame's: it draws after this pass) */
       const _band = bandWithEmote(pid === S.myId ? S._selfBandTopY : source._bandTopY, pid === S.myId ? S : source);
       let _top = null;
@@ -8897,7 +8897,7 @@ export class EffectsRenderer {
       sources.push([id, o, o.emote]);
     }
     for (const [pid, src, em] of sources) {
-      /* v2.3.3363: or a move's own emoji (`trusted`: set by this phone's code
+      /* v2.3.3362: or a move's own emoji (`trusted`: set by this phone's code
          from the move's table, never from the wire -- game/emoteMoves.js) */
       const _okEmoji = em && (em.trusted ? (typeof em.emoji === 'string' && em.emoji.length <= 8) : emoteKind(em.emoji) === 'emoji');
       if (!pid || !src || !em || !_okEmoji) continue;

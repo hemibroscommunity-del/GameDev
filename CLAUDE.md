@@ -56,7 +56,7 @@ remnant to migrate server-side, not a mode to preserve.
   no new always-on button; Phase 0's emotes you can see -- the chat box's
   smiley or B, an emoji over the head, a quick line as the bubble, only the
   listed ones relayed and placed near the sender: docs/specs/emotes.md,
-  `emotes` suite, `mp-emotes`; and since v2.3.3363 Phase 1's twelve MOVES --
+  `emotes` suite, `mp-emotes`; and since v2.3.3362 Phase 1's twelve MOVES --
   wave, laugh, flex, shrug, facepalm, cheer for a moment (the `emote` relay's
   `{move}`), sit, sleep, flop and three dances held until you move (`pose
   {id}`, kept by the worker as `ps.po` and sent as the tick's `po`, ended by a

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3363: YOUR BRO MOVES (docs/specs/emote-moves.md) ═══
+/* ═══ v2.3.3362: YOUR BRO MOVES (docs/specs/emote-moves.md) ═══
  *
  * The fun & social plan's Phase 1 (docs/FUN-SOCIAL-PLAN.md), the owner's "Go
  * recommended": emotes that move the WHOLE drawn bro in code -- an offset, a

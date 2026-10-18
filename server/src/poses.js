@@ -1,4 +1,4 @@
-/* ═══ v2.3.3363: A HELD POSE IS PART OF THE PLAYER (docs/specs/emote-moves.md) ═══
+/* ═══ v2.3.3362: A HELD POSE IS PART OF THE PLAYER (docs/specs/emote-moves.md) ═══
  *
  * The fun & social plan's Phase 1 (docs/FUN-SOCIAL-PLAN.md): sit, sleep, flop
  * and three dances move the whole bro in code (src/game/emoteMoves.js,

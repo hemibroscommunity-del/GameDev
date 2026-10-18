@@ -15,7 +15,7 @@ import { BT_AUDIO } from '@/data/index.js';
 /* v2.3.2139: the channel picker's compose step — see its note below. */
 import { chatChannelBus } from '@/game/chatChannel.js';
 import { emoteKind } from '@/game/emotes.js'; /* v2.3.3361 */
-import { moveKind, EMOTE_MOVES, slashMove } from '@/game/emoteMoves.js'; /* v2.3.3363: the moment moves, and /wave */
+import { moveKind, EMOTE_MOVES, slashMove } from '@/game/emoteMoves.js'; /* v2.3.3362: the moment moves, and /wave */
 import { slashDice, diceResult, diceLineText, diceBubbleText, diceWaitMs } from '@/game/dice.js'; /* v2.3.3364: /roll and /flip */
 import { cueAt } from '@/game/eventSounds.js'; /* v2.3.3364: the roll's clatter, by distance */
 import { isBlockedId } from '@/game/chatMute.js'; /* v2.3.3361: both shapes of the block list */
@@ -54,7 +54,7 @@ function clampChatName(v) {
 /* Send a chat line: broadcast to the room, local echo into the chat log +
    own overhead bubble. `text` is already trimmed/validated by the caller.
    deps = { setChatLog } */
-/* ═══ v2.3.3363: "/wave", "/sit", "/dance" ... ARE MOVES, NOT LINES ═══
+/* ═══ v2.3.3362: "/wave", "/sit", "/dance" ... ARE MOVES, NOT LINES ═══
    A message that is only a move's command (game/emoteMoves.js slashMove)
    makes your bro do it, as the picker's tile does, and says nothing in the
    chat.  The sender is BroTown's (game/interactions.js sendMove, with the
@@ -454,7 +454,7 @@ export function handleEmoteEvent(payload, S) {
      shape of the block list) or muted, and the chirp carries only as far as
      a hit does (hitSounds.js earVol): it rang at full volume from anywhere
      in your zone, the whole Wheel. */
-  /* v2.3.3363: or a moment MOVE -- a wave, a laugh, a cheer (game/
+  /* v2.3.3362: or a moment MOVE -- a wave, a laugh, a cheer (game/
      emoteMoves.js) -- which moves their bro in code (rendering/emoteFx.js)
      and pops its own emoji.  Only a listed one, by the same rules. */
   var _move = payload.move !== undefined ? payload.move : null;
