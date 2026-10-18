@@ -62,7 +62,7 @@ of pixels, one shade).
 
 ## Measured
 
-On top of v2.3.3404's layers (each world layer its own draw list, PR #977) --
+On top of v2.3.3424's layers (each world layer its own draw list, PR #977) --
 the state this lands in -- a phone page at 1x density on this box's software
 graphics, `mp-phoneframe` with `BT_PF_AB='onebatch=0'`, 3 rounds each, no
 profiler or census:
