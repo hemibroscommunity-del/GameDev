@@ -855,6 +855,10 @@ export const joinMethods = {
     // see httpauth.js).  After the eviction loop above so exactly one
     // live token exists per player id.
     this._httpAuthMint(session, msg);
+    /* v2.3.3430: is this character in test mode (testmode.js)?  One storage
+       read (rule 9: the gate stays closed), before the place below is judged
+       -- test mode is one of the things that skips it. */
+    const _testMode = await this._testModeRead(msg.id);
     /* v2.3.3327: a session this join takes over (the eviction above) still
        has its state here: where it had them is what this join is judged
        from (lastplace.js) */
@@ -865,6 +869,9 @@ export const joinMethods = {
       /* v2.3.1627: the ALLOWLISTED copy, never the raw wire blob. */
       ...cleanJoinData
     };
+    /* memory only, never the wire's (cleanJoinData is an allowlist, and this
+       is set after it) and never the rpg blob's (rule 1) */
+    this.playerState[msg.id]._testMode = _testMode;
     /* v2.3.3315: and the Wheel sizes its phone draws (wheeltables.js _wheelInStep) */
     this.playerState[msg.id]._wheelSizes = session.wheelSizes;
     /* ═══ v2.3.3327: A RECONNECT STARTS WHERE THE SERVER LAST HAD YOU ═══
@@ -1744,6 +1751,9 @@ export const joinMethods = {
       /* v2.3.3255: and how many Hemi Bros the linked wallet holds (the
          checkmark at 1 or more, the profile's number) -- 0 with no fresh link */
       broN: (this.playerState[session.id] && this.playerState[session.id].broN) || 0,
+      /* v2.3.3430: this character is in test mode (testmode.js) -- the phone
+         shows its tag.  Absent when off; an old phone ignores it. */
+      testMode: this._testMode(this.playerState[session.id]) || undefined,
       players: this.getAllPlayerData(session),   /* v2.3.3276: a near-join session is told the players around it (nearjoin.js) */
       playerCount: this.getPlayerCount(),
       monsters: zoneMonsters.map(m => ({

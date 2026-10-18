@@ -342,6 +342,10 @@ export const devToolsMethods = {
       hp: ps.hp, maxHp: ps.maxHp,
       god: !!(ps._godUntil && Date.now() < ps._godUntil),
       godMsLeft: ps._godUntil ? Math.max(0, ps._godUntil - Date.now()) : 0,
+      /* v2.3.3430: test mode (testmode.js) -- on for this character, and
+         whether the room allows it (the `testmode: false` kill switch) */
+      testMode: ps._testMode === true,
+      testModeAllowed: this._testModeAllowed(),
       zones,
       charLevel: (ps.prog3 && ps.prog3.sk)
         ? ['sword', 'bow', 'staff'].reduce((s, k) => s + ((ps.prog3.sk[k] && ps.prog3.sk[k].level) || 0), 0)
@@ -571,6 +575,11 @@ export const devToolsMethods = {
     if (request.method === 'GET' && path === '/dev/botflags') {
       return json({ ok: true, flagged: await this._botfpFlaggedList(50), flagAt: BOTFP.FLAG_AT });
     }
+    /* v2.3.3430: every character in test mode (testmode.js), newest first */
+    if (request.method === 'GET' && path === '/dev/testmodes') {
+      const r = await this._testModeList();
+      return json(r, r.ok ? 200 : 500);
+    }
     if (request.method !== 'POST') return null;
 
     const body = await request.json().catch(() => ({}));
@@ -592,6 +601,7 @@ export const devToolsMethods = {
     else if (path === '/dev/combat') result = this._devCombatLevel(playerId, body);   /* v2.3.3313: {skill | 'all', level} -- a combat level (the alliance counts level 5+) */
     else if (path === '/dev/botflag') result = this._botfpTestFlag(playerId);   /* v2.3.3323: a TEST flag on a player who is here (botfp.js) */
     else if (path === '/dev/spar') result = this._sparDev(playerId, body);   /* v2.3.3265: {add | skill | clear} -- sparring clones of yourself (spar.js) */
+    else if (path === '/dev/testmode') result = await this._testModeSet(playerId, body.on === true);   /* v2.3.3430: {on} -- the honesty checks off for this character (testmode.js) */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

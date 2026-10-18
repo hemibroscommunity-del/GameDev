@@ -7337,6 +7337,66 @@ old character straight back over the wipe -- the restarted bro rejoins with
 the old gold. persistence.test §7b and §7d (an onlooker told, nothing written
 back, the empty room's tick stopped).
 
+## 218. "Pixi only rebuilds its draw list when you add or remove something" (v2.3.3449)
+
+**Tempting:** a frame that adds and removes nothing costs only its transforms
+and its draws, so wiping a shape and drawing it again, showing and hiding a
+pooled sprite, or giving a walking monster a new `zIndex` every frame is free.
+
+**What happens:** Pixi rebuilds a render group's WHOLE draw list (every
+sprite of the group walked and batched again) whenever it counts a change as
+structural, and far more counts than adding a child: `visible`, `renderable`,
+`culled` and `blendMode` changes, any `zIndex` change (sortMixin
+`depthOfChildModified`, even when the order stays), a sprite whose new texture
+is not in its batch, and ANY change to a small Graphics -- `clear()` included,
+on a shape that was already empty (`GraphicsPipe.validateRenderable` answers
+"rebuild" for every batchable one that reported an update, and `clear()`
+always reports one: §208, found the same day for the screen's own shapes). The game made ~25 such changes every frame, so the
+world's list and the screen's were both rebuilt every frame for months
+(mp-phoneframe: 0.9 ms of a 5 ms frame in BroTown, 1.3 of 6 at a fight, on
+this box) -- and "stop the triggers one by one" could never win, as any one
+left rebuilt everything.
+
+**The rule:** each world layer is its own render group (pixiApp.js; the same
+picture to the pixel, mp-layergroups), so a change rebuilds only its layer. In
+a layer that holds a lot (the ground, the depth-sorted objects), do not make a
+structural change a frame: give a key to the setter only when the order
+changes (depthSort.js), draw a shape again only when what it draws changes
+(tileRenderer.js `bgGfx`), move or tint a shape instead of redrawing it, and
+wipe nothing that is empty (quietClear.js does that for every Graphics, so
+§208's `clearIfDrawn` is now belt and braces).
+
+**And its other side:** a sprite that changes in no way Pixi tracks is packed
+again only when its layer is rebuilt, so a switch read AS IT IS PACKED (the
+form shade's `window.__btShadeOff`, the sharp pixels' `window.__btSharpOff`)
+used to show on the next frame only because everything was rebuilt every
+frame. Such a switch is a `liveSwitch` (drawLists.js): a plain field for the
+batcher, and a flip rebuilds every draw list. mp-sharppixels, mp-formshade,
+mp-liveness and mp-sheen flip them. The figure shade's span, read off an
+invisible body reference, is the same kind of read: formShade.js
+`refreshFigureShades` packs a figure again when it moves. mp-layergroups'
+"nothing stale" checks force every list to rebuild in a held frame and want
+no pixel changed.
+
+**And a group costs its uniforms:** Pixi draws a render group inside another
+by pushing a fresh set of the shared uniforms (the camera's matrix, the tint,
+the target's projection and size) and popping them after, and the pop marks
+the outer set changed -- so every program uploads the same camera numbers
+again (the world's layers: ~15 more matrix uploads a frame, on 22 pushes, 15
+of them for layers with nothing in them). layerUniforms.js draws a layer whose
+push would set exactly what is bound with what is bound, and skips an empty
+one (`?layerpush` is Pixi's way). If you ever patch around
+`RenderGroupPipe._executeDirect`, read `renderGroup.inverseParentTextureTransform`
+ONCE a frame: the getter clears its dirty bit on the first read and, with no
+cached-as-texture parent, keeps nothing to give a second one -- it returns
+undefined, and a push then inherits the PARENT's matrix (the world group
+pushed that way is drawn without its camera).
+
+**Receipt:** mp-phoneframe's rebuild census (`BT_PF_SDC`, on by default)
+names every rebuild a frame and who caused it, by stack, and its side by side
+the uniform and buffer uploads a frame; mp-layergroups (the same held frame
+with every layer back in one list, and with every group's uniforms pushed).
+
 ## 219. "Nothing comes between my read and my write: I only await a hash" (v2.3.3372)
 
 **Tempting:** to change a record by reading it, working out the next one and
@@ -7460,3 +7520,67 @@ rock, into another monster, or past the target. After, every bow row landed
 every shot: the bow rows alone 49 of 49 checks, then the full run 128 of 129,
 its one miss a staff bolt into Frost Ridge's rock ridge, which the check now
 asks about at the boots (Frost Ridge again: 33 of 33).
+
+## 225. "This box says the one program halves the frame rate: take it out" (v2.3.3447)
+
+**Tempting:** paletteTex.js's ONE_BATCHER draws every sprite with one program
+holding three reads, and on the QA phone the page drew 4.1 frames a second
+with it against 9.2 with the three programs it replaced. Half the frames: it
+costs more than it saves, so take it out -- or, the other way round, read the
+QA box's frames a second to judge any program with branches in it.
+
+**What happens:** the QA box draws with SwiftShader, a rasterizer in
+software, and a software rasterizer runs EVERY branch of a program for every
+pixel, the ones no pixel takes too. `node tools/qa/qa-branchcost.mjs`: a read
+inside a branch whose other side no pixel takes costs what that other side
+costs alone (50-66 ms a full-screen draw, against 11.5-17.5 for the read on
+its own). So there the one program pays all three reads for every pixel. A
+phone's graphics chip skips a branch every pixel of a quad agrees on -- Pixi's
+own batch program counts on that, with its chain of 16 picture slots -- so on a
+phone a sprite pays for its own read, and the one program saves the draw calls
+(71 -> 28 a fight's frame) for nearly nothing. The box's frames a second say
+what a program costs in software, never what it costs a phone.
+
+**The rule:** a program whose branches are chosen per sprite is judged by its
+draw calls and its GL calls here (mp-phoneframe), and by the owner's Speed test
+on a phone (`threeprog`), never by this box's frames a second. And the game
+keeps the three programs where the renderer names itself software
+(`oneBatchChoice`: SwiftShader, llvmpipe, softpipe, "Software", Basic Render,
+WARP), so the QA box, CI and a desktop with its graphics chip blocked draw as
+they did; `?onebatch=1` tests the one program here anyway.
+
+**Receipt:** qa-branchcost (every branch run in software); mp-onebatch with
+`?onebatch=1`; docs/specs/one-batch.md "In software, the three programs".
+
+## 227. "The creator fits: I measured it at 390x844" (v2.3.3430)
+
+The creator's upright column holds the logo, the character's stage, the name
+plate, ENTER and Back, and the stage is the only one of them that gives: every
+pixel the plate grows comes off the character. Between v2.3.2416 and v2.3.2453
+the plate grew 22 px (the name well 44 -> 56, the gap under Randomize 8 ->
+19.4), each change measured at 390x844 -- the same phone with Safari's
+toolbars hidden, where the column has room. At 390x664, that phone as it is
+usually held, with the toolbars showing, the character went from 147.4 px
+drawn to 121, and mp-ccfeet's floor (145, set at v2.3.2378 as the receipt that
+the plate's clearance was not paid out of the character) went red with nobody
+running it.
+
+The same narrowing (v2.3.2416, the gap under the name .14 -> .10 of the plate:
+"the message is 11px text needing about 13px of line") left a 19.4 px slot for
+the ENTER button's refusal reasons, which wrapped to two lines, 30 px, at every
+size: "Name your bro first — tap the field above." ran over the name well's
+gold frame and Randomize's. The checks that existed read the message's TEXT
+(mp-ccjoin), and a text is right wherever it is drawn.
+
+**The rule:** a change to the creator's column is measured at 390x664 and
+320x568 too (mp-ccfeet), not only at 390x844; and a message slot is checked
+with every message it shows -- pressed as well as typed -- by where its lines
+are drawn (a Range's client rects: how many, and between what), never by its
+text alone.
+
+**Receipt:** mp-ccfeet at 390x664 on main drew the character 121.1 px (floor
+145). With the short-screen plate (game.css, v2.3.3430: one 15 px gap, a 48 px
+name well, 46 px buttons) he is 146.2, with 19.6 px of air under his boots and
+19.8 under the logo; each of the five messages is one line inside its slot at
+both short sizes, and mp-ccjoin says the same at 390x844, where on main the
+empty-name reason was two lines reaching 5.3 px over the well and Randomize.

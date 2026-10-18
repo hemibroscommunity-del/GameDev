@@ -33,7 +33,8 @@
  * Cost: a batch break into and out of each figure, a couple of draw calls.
  *
  * WebGL2 only (textureSize / textureGrad); on anything else it never turns on.
- * Off switches: `?sharp=0` (per load), `window.__btSharpOff = true` (live).
+ * Off switches: `?sharp=0` (per load), `window.__btSharpOff = true` (live;
+ * since v2.3.3449 a flip rebuilds every draw list, drawLists.js).
  * Probe: `window.__btSharp()`.
  */
 import {
@@ -42,8 +43,11 @@ import {
   globalUniformsBitGl, colorBitGl, colorBit, roundPixelsBitGl, roundPixelsBit, generateTextureBatchBit,
   getBatchSamplersUniformGroup, getMaxTexturesPerBatch,
 } from 'pixi.js';
+import { liveSwitch } from './drawLists.js';
 
 let _enabled = false;
+/* v2.3.3449: window.__btSharpOff, read below as a plain field */
+const _liveOff = liveSwitch('__btSharpOff');
 let _maxTex = 0;
 let _routed = 0;
 let _urlOff = false;
@@ -97,6 +101,26 @@ let _figRound = false;
 try { if (typeof location !== 'undefined' && /[?&]figround=1\b/.test(location.search)) _figRound = true; } catch (e) { /* off */ }
 const figRoundOn = () => _figRound || (typeof window !== 'undefined' && !!window.__btFigRound);
 
+/* sharp bilinear: flat texels, a one-screen-pixel blend at each seam.  Only
+   when the texture is MAGNIFIED -- minified, it is the plain sample (and the
+   mip chain) as before.  The ORIGINAL uv derivatives go to textureGrad so mip
+   selection is unchanged by the uv remap.  v2.3.3447: one copy, shared with
+   paletteTex.js's one program for every sprite (`?onebatch=0` is without it). */
+export const SHARP_SAMPLE_GLSL = `
+                vec4 sharpSample(sampler2D tex, vec2 uv, vec2 dx, vec2 dy)
+                {
+                    vec2 ts = vec2(textureSize(tex, 0));
+                    vec2 tpp = vec2(length(vec2(dx.x, dy.x)), length(vec2(dx.y, dy.y))) * ts;
+                    vec2 scale = 1.0 / max(tpp, vec2(1e-4));
+                    vec2 px = uv * ts;
+                    vec2 base = floor(px - 0.5) + 0.5;
+                    vec2 f = clamp((px - base - 0.5) * scale + 0.5, 0.0, 1.0);
+                    vec2 uv2 = (base + f) / ts;
+                    uv2 = mix(uv, uv2, step(1.0, min(scale.x, scale.y)));
+                    return textureGrad(tex, uv2, dx, dy);
+                }
+`;
+
 /* The texture bit, GL flavour: identical to Pixi's generateTextureBatchBitGl
    except that each texture is read through sharpSample().
    v2.3.3433: exported -- the metal shine's batcher (lightfx/sheenBatch.js)
@@ -131,24 +155,7 @@ export function sharpTextureBitGl(maxTextures) {
       header: `
                 in float vTextureId;
                 uniform sampler2D uTextures[${maxTextures}];
-
-                /* sharp bilinear: flat texels, a one-screen-pixel blend at
-                   each seam.  Only when the texture is MAGNIFIED -- minified,
-                   it is the plain sample (and the mip chain) as before.  The
-                   ORIGINAL uv derivatives go to textureGrad so mip selection
-                   is unchanged by the uv remap. */
-                vec4 sharpSample(sampler2D tex, vec2 uv, vec2 dx, vec2 dy)
-                {
-                    vec2 ts = vec2(textureSize(tex, 0));
-                    vec2 tpp = vec2(length(vec2(dx.x, dy.x)), length(vec2(dx.y, dy.y))) * ts;
-                    vec2 scale = 1.0 / max(tpp, vec2(1e-4));
-                    vec2 px = uv * ts;
-                    vec2 base = floor(px - 0.5) + 0.5;
-                    vec2 f = clamp((px - base - 0.5) * scale + 0.5, 0.0, 1.0);
-                    vec2 uv2 = (base + f) / ts;
-                    uv2 = mix(uv, uv2, step(1.0, min(scale.x, scale.y)));
-                    return textureGrad(tex, uv2, dx, dy);
-                }
+${SHARP_SAMPLE_GLSL}
             `,
       main: `
                 vec2 uvDx = dFdx(vUV);
@@ -240,7 +247,7 @@ export function installSharpPixels(app, figureSpec) {
     const orig = BatcherPipe.prototype.addToBatch;
     BatcherPipe.prototype.addToBatch = function (obj, instructionSet) {
       if (obj && obj.packAsQuad) {
-        const on = !(typeof window !== 'undefined' && window.__btSharpOff) && wantsSharp(obj.renderable);
+        const on = !_liveOff.on && wantsSharp(obj.renderable);
         const sh = on && _sheenName && obj.renderable ? obj.renderable._btSheen : null;
         obj.batcherName = on ? (sh && sh.on ? _sheenName : 'sharp') : 'default';
         if (on) _routed++;
@@ -261,5 +268,5 @@ export function installSharpPixels(app, figureSpec) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btSharp = () => ({ enabled: _enabled, off: !!window.__btSharpOff, urlOff: _urlOff, routedTotal: _routed, maxTextures: _maxTex, figRound: figRoundOn() });
+  window.__btSharp = () => ({ enabled: _enabled, off: _liveOff.on, urlOff: _urlOff, routedTotal: _routed, maxTextures: _maxTex, figRound: figRoundOn() });
 }

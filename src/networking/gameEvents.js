@@ -682,12 +682,12 @@ export function processGameEvent(type, payload, S, deps) {
                 S._gambleResult = { won: true, amount: payload.payout || 0, ts: Date.now() };
                 pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + (payload.payout || 0) + 'g!', '#3dd497');
                 S.screenShake = 3;
-                BT_AUDIO.collect();
+                cue('betWon');   /* v2.3.3434: the coins and Ace's win -- collect() is beep()s, silent */
               } else {
                 _gR._compStats.totalGambleLost += payload.wager || 0;
                 S._gambleResult = { won: false, amount: payload.wager || 0, ts: Date.now() };
                 pushDmgPopup(S, S.player.x, S.player.y - 30, '-' + (payload.wager || 0) + 'g', '#ff5e6c');
-                BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
+                cue('betLost');   /* v2.3.3434: Ace's loss (a beep(), silent) */
               }
               setRpgState(_objectSpread({}, _gR));
               break;
@@ -769,6 +769,7 @@ export function processGameEvent(type, payload, S, deps) {
               S._jackpotTickets = payload.yourTickets || 0;
               if (payload.deposited) {
                 pushDmgPopup(S, S.player.x, S.player.y - 30, 'Deposited ' + payload.deposited + 'g to jackpot (' + (payload.yourTickets || 0) + ' 🎟️)', '#f5c542');
+                cue('betIn');   /* v2.3.3434: coins into the pot (it was silent) */
               }
               break;
             }
@@ -779,7 +780,10 @@ export function processGameEvent(type, payload, S, deps) {
               S._jackpotPool = 0;
               S._jackpotTickets = 0;
               pushDmgPopup(S, S.player.x, S.player.y - 44, '🎰 ' + (payload.winnerName || 'Someone') + ' won the ' + (payload.amount || 0) + 'g jackpot!', '#f5c542', { ttl: 5 });
-              try { BT_AUDIO.collect(); } catch (e) {}
+              /* v2.3.3434: the winner hears it -- the fanfare and the coins
+                 (collect() was beep()s, silent for everyone).  Everyone else's
+                 news waits for an announcement chime (docs/SOUND-GAPS.md). */
+              if (payload.winnerId && payload.winnerId === S.myId) cue('jackpotWin');
               break;
             }
           case 'dungeon_started':
@@ -1629,6 +1633,7 @@ export function processGameEvent(type, payload, S, deps) {
                  echo shows it).  Private ack -- just the confirm UI. */
               if (!payload) break;
               pushDmgPopup(S, S.player.x, S.player.y - 30, 'Staked ' + (payload.amount || 0) + 'G on ' + (payload.targetName || 'a gladiator'), '#f5c542');
+              cue('betIn');   /* v2.3.3434: coins put down (it was silent) */
               break;
             }
           case 'arena_stake_result':
@@ -1643,9 +1648,10 @@ export function processGameEvent(type, payload, S, deps) {
                 if (!S.stats._betsWon) S.stats._betsWon = 0;
                 S.stats._betsWon++;
                 pushDmgPopup(S, S.player.x, S.player.y - 50, 'SPONSORSHIP PAID! +' + (payload.payout || 0) + 'G', '#3dd497');
-                BT_AUDIO.collect();
+                cue('betWon');   /* v2.3.3434: collect() is beep()s, silent */
               } else {
                 pushDmgPopup(S, S.player.x, S.player.y - 50, 'Stake lost (-' + (payload.amount || 0) + 'G)', '#ff5e6c');
+                cue('betLost');   /* v2.3.3434 */
               }
               if (_stR) setRpgState(_objectSpread({}, _stR));
               break;
@@ -1701,7 +1707,7 @@ export function processGameEvent(type, payload, S, deps) {
               var _gqG = SKILL_GUILDS[payload.skill] || {};
               pushDmgPopup(S, S.player.x, S.player.y - 40, (_gqG.name || 'Guild') + ' quest complete!', _gqG.color || '#f5c542');
               pushDmgPopup(S, S.player.x, S.player.y - 25, '+' + (payload.gold || 0) + 'G +' + (payload.ap || 0) + 'AP', '#f5c542');
-              BT_AUDIO.collect();
+              cue('guildQuest');   /* v2.3.3434: every quest's turn-in chime -- collect() is beep()s, silent */
               setRpgState(_objectSpread({}, _gqR));
               try {
                 localStorage.setItem('bt_rpg', JSON.stringify(_gqR));
@@ -4396,11 +4402,14 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'duel_request':
             {
-              if (payload.target === S.myId) setDuelRequest({
-                fromId: payload.from,
-                fromName: payload.fromName,
-                ts: Date.now()
-              });
+              if (payload.target === S.myId) {
+                setDuelRequest({
+                  fromId: payload.from,
+                  fromName: payload.fromName,
+                  ts: Date.now()
+                });
+                cue('duelAsk');   /* v2.3.3434: a blade ringing out -- a challenge came in silently */
+              }
               break;
             }
           case 'duel_accept':
@@ -4586,7 +4595,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (!payload || !payload.from) break;
               if (setTrade2) setTrade2({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', ts: Date.now() });
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🤝 ' + (payload.fromName || 'Someone') + ' wants to trade!', '#3dd497');
-              BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
+              cue('tradeAsk');   /* v2.3.3434: two coins' clink (a beep(), silent) */
               break;
             }
           case 'trade2_state':
@@ -4886,10 +4895,7 @@ export function processGameEvent(type, payload, S, deps) {
                   ts: Date.now(),
                   wager: payload.wager
                 });
-                BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
-                setTimeout(function () {
-                  return BT_AUDIO.beep(800, 0.04, 0.06, 'sine');
-                }, 80);
+                cue('duelAsk');   /* v2.3.3434: a blade ringing out (two beep()s, silent) */
               }
               break;
             }
