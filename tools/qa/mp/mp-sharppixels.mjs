@@ -76,6 +76,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate((o) => {
       window.__btSharpOff = o;
       const R = window._pixiRenderer;
+      /* (since v2.3.3449 each world layer has a draw list of its own, and the
+         switch's flip rebuilds all of them, drawLists.js; this is the root's) */
       R.app.stage.renderGroup.structureDidChange = true;
       const dn = Date.now, pn = performance.now.bind(performance);
       Date.now = () => window.__spT; performance.now = () => window.__spPT;

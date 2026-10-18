@@ -92,6 +92,37 @@ Chromium worker. Off the main thread, once a session, when the first piece
 with that water is laid (four pictures in all). On the GPU the web is a 3 x 3
 cell search per water px, the cost of a few more texture reads.
 
+### Worked out only where it shows (v2.3.3448)
+
+The owner, 2026-10-18: *"iterate on what best improves framerate without loss
+of quality (or negligible loss) for phone gameplay (iPhone, android)"*.
+
+The web fades in and out in big stretches as a slow noise drifts over it
+(`brk`, the shader's "stretches of web fading out and back"). Where it is faded
+right out -- `brk` exactly 0, which `smoothstep` gives below its lower edge --
+the web was still worked out and then mixed in at 0:
+
+- the bend (two value noises), the wobble (two more) and the nine-cell search,
+  by a count of the program's operations about 590 of the ~860 an open-sea px
+  costs (an estimate: the chip's own costs per operation differ);
+- on about **47% of the open sea** at any moment, and **20% of the shallows and
+  fresh water** (the noise sampled over 400,000 points and moments: below
+  0.48 on the sea, 0.30 elsewhere).
+
+They are skipped now (`if (brk > 0.0)`). Mixing in 0 leaves a colour exactly as
+it is, so **the picture is the same to the bit**. The faded stretches are some
+50 game px across (the noise's cell, 42 / 0.9), so a phone's chip skips them
+a whole group of pixels at a time -- about a third of the open sea's water work
+on average.
+
+- `?webskip=0` in the address is the program as it was;
+  `window.__btWaves.webAll(on)` switches every quad drawn, live.
+- **Only a phone shows the saving.** This test box draws in software, which
+  works out every branch of a program for every pixel, taken or not. The Speed
+  test's "still water" step is the moving water's whole cost on a phone.
+- `mp-wheelwaves` 4b draws the coast at three moments both ways and wants 0
+  px apart, with the web in the picture (its brightness at 0 changes it).
+
 ## What you see
 
 | Where | What moves |

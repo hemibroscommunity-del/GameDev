@@ -91,7 +91,7 @@ calls. Not measured on a phone.
 - `?nopalette`: the old way, all of it, for the tab.
 - `window.__btPalette()`: on, built, sources alive (pieces, pages, MB), rows
   used, pieces sent as colours, the most colours a piece had; since
-  v2.3.3451 the farm's apart (`liveFarm`, `liveFarmMB`).
+  v2.3.3457 the farm's apart (`liveFarm`, `liveFarmMB`).
 - `window.__btPaletteLoad()`: the farm's reads -- the ground, pictures and
   pages read as numbers, those loaded as pictures instead, and whether the
   reader is up.
@@ -104,14 +104,14 @@ calls. Not measured on a phone.
   the cost.
 - `server/test/palette.test.mjs`: every object sheet read as numbers matches
   `tools/world/png.mjs` on every pixel; every PNG row filter; padding; a piece
-  over 256 colours refused; and (v2.3.3451) the farm's ground twin held to its
+  over 256 colours refused; and (v2.3.3457) the farm's ground twin held to its
   stamp, every farm picture read exactly, the borrowed sheets' pages readable.
-- `mp-farmpalette` (v2.3.3451): the farm both ways on two phones -- what is
+- `mp-farmpalette` (v2.3.3457): the farm both ways on two phones -- what is
   read as numbers, the memory, the same picture, the loading screen, the Map
   panel, everything let go of on leaving.
 - `mp-groundcopy` checks the pieces are numbers and let go of on the page.
 
-## The farm (v2.3.3451)
+## The farm (v2.3.3457)
 
 Owner, 2026-10-18, offered the farm's 22 MB ground the same way: *"Yes do the
 separate PR"*. Every picture the farm draws is on 256 colours or fewer: its
@@ -173,7 +173,7 @@ reads where it was one. Not measured on a phone.
 ## Not done
 
 - The other zones' art (the closed old lands) and the characters: they are
-  not on 256 colours. (The farm's are, and are kept so since v2.3.3451.)
+  not on 256 colours. (The farm's are, and are kept so since v2.3.3457.)
 - Every sprite through the one batcher (no extra draw calls): it would change
   how every sprite in the game is drawn.
 - Objects only (if the cost turns out too high on a phone): ~29 MB saved

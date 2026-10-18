@@ -227,7 +227,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 4. a tap on the bed itself waters it; the prompt's button fertilizes ── */
     await A.page.waitForTimeout(400);
-    /* v2.3.3451: the camera at rest first -- it eases after the player, and
+    /* v2.3.3457: the camera at rest first -- it eases after the player, and
        on this box's slow frames a bed's place worked out while it still moved
        was no longer under the tap (the tap missed every bed) */
     await A.page.evaluate(() => new Promise((res) => {
@@ -352,7 +352,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        sweep of 2026-10-17).  So: none of the Wheel's colour numbers is left on
        the farm (11 MB of them in BroTown), and the farm is no heavier than it
        was built, 196 MB, with room for small additions. */
-    /* v2.3.3451: the farm's own pictures are colour numbers too now
+    /* v2.3.3457: the farm's own pictures are colour numbers too now
        (rendering/paletteLoad.js) -- its ground, its 76 pictures and its
        copies of the six sheets' pages -- so the GPU's buffers on the farm are
        mostly its own; BroTown's are counted apart (__btPalette: the Wheel's

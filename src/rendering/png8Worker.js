@@ -13,7 +13,7 @@
  *                   or { id, ok: false, error } -- the page then loads as a
  *                   picture, as before
  *
- * v2.3.3451: and one palette PNG on its own (the farm's ground, its pictures
+ * v2.3.3457: and one palette PNG on its own (the farm's ground, its pictures
  * and the pages of the sheets it borrows: paletteLoad.js):
  *
  *   { id, png }  -> { id, ok: true, w, h, stride, n, idx, rgb, alpha }
