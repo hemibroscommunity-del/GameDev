@@ -628,6 +628,19 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#10181D;touch-action:none;overscroll-behavior:none;position:fixed;width:100%;top:0;left:0}
+/* v2.3.3442: NO DOUBLE-TAP ZOOM, ANYWHERE.  Owner: "Double tap to zoom in is
+   enabled during skill point application window.  Disable that.  I got stuck
+   there."  html and body are touch-action:none, but a browser counts an
+   element's touch-action only up to the nearest box that scrolls -- and the
+   stat window's middle scrolls (InfoPopup's data-infopopup-scroll), as do
+   some fifty other windows' with no touch-action of their own.  A double tap
+   anywhere in one zoomed the whole page, and with the page itself never
+   pannable there was no way back out.  `manipulation` is everything `auto`
+   is except the double tap -- scrolling and every button work as before --
+   and as the weakest rule there is, everything that names its own
+   touch-action keeps it: the canvas and the sticks' none, the scrollers'
+   pan-y, the world map's own pinch.  mp-nozoom. */
+*{touch-action:manipulation}
 body{font-family:'Source Sans 3',system-ui,sans-serif;color:var(--txt);font-size:14px;-webkit-font-smoothing:antialiased}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-track{background:transparent}

@@ -3553,6 +3553,12 @@ Two protocol versions coexist; both must keep working:
   (`overflow:clip`), and sideways a phone is 300-430px tall -- ENTER BRO
   TOWN sat at y 783 of 390 until the creator became three columns there
   (game.css, the v2.3.3216 block); `mp-cclandscape`, TRAPS §175.
+  And NO DOUBLE-TAP ZOOM (v2.3.3442, the owner: "Double tap to zoom in is
+  enabled during skill point application window ... I got stuck there"):
+  body's `touch-action:none` stops at the nearest box that scrolls, so
+  every element is `manipulation` by default (game.css `*`, the weakest
+  rule there is); anything that must be `none` or `pan-y` says so itself,
+  and nothing is ever set `auto`; `mp-nozoom`, TRAPS §229.
   Two phone scenarios DO run on every PR, each an owner call: `playable`
   (mp-questline, v2.3.1729, client-ci.yml) and `memory-budget`
   (mp-membudget, v2.3.3101, memory.yml -- Conventions, "Memory is
