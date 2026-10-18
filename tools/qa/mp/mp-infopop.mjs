@@ -58,6 +58,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
+  /* v2.3.3326: the dashboard opened.  A first join arrives with it folded
+     (v2.3.2495), and a folded band draws no columns, so the three combat
+     cards were not on screen at all (the sweep of 2026-10-18: `[]`, then a
+     crash reading a card that was not there). */
+  await H.unfoldBand(P);
 
   /* Give the three combat skills real, DIFFERENT numbers, so "the popup shows
      this skill's own progress" is a claim with an answer. */

@@ -155,7 +155,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
          clipped, and narrow enough to exclude the monster's own furniture: at
          +/-24 something ~24px left of the mark joined the x-projection and the
          run-through-centre bridged to it, reporting 32px. */
-      return { x: Math.max(0, Math.round(ax - 17)), y: Math.max(0, Math.round(ay - 7)), width: 34, height: 26 };
+      /* v2.3.3326: 20 tall, not 26 -- the mark's top less 7 to 2 past the
+         tip of its 11 px chip.  Since v2.3.2313/v2.3.2504 the chip hangs from
+         the monster's band, its tip 5 px over the HP bar at the bottom of its
+         bob (effectsRenderer `_cstand`), and the 26 px box reached down into
+         the bar: its top rows, 34 px wide, read as "the arrow is 34 across"
+         (the sweep of 2026-10-18; LOOK at crop-solo.png: the bar's "1000"
+         box right under the chip). */
+      return { x: Math.max(0, Math.round(ax - 17)), y: Math.max(0, Math.round(ay - 7)), width: 34, height: 20 };
     });
     if (!box) return null;
     const a = await H.screenshotPixels(P, box);
