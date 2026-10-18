@@ -162,6 +162,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     await H.enterWorld(p);
     await p.page.waitForTimeout(3500);
+    /* v2.3.3355: a new character is handed a new Login Key at its first join
+       (server/src/loginkeys.js): read the identity once it is in */
+    await p.page.waitForFunction(() => /^[a-z]{3,5}(?:-[a-z]{3,5}){7}$/.test(localStorage.getItem('bt_passphrase') || ''),
+      null, { timeout: 20000, polling: 300 }).catch(() => {});
     return p;
   };
 
@@ -265,24 +269,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const input = await Q.page.$('input');
     rec.ok('the key form has an input (guard)', !!input, {});
     if (input) {
-      /* ═══ v2.3.3344: Q IS A NEW DEVICE FOR THIS CHARACTER ═══
-         A character's key works only on the devices it is played on
-         (server/src/devicelock.js), so the door says so, with the code to
-         give the owner, and switches nothing -- then the owner lets one new
-         device in (the Test panel's Player logins) and the key works as it
-         always did. */
+      /* ═══ v2.3.3355: A NEW KEY WORKS ON ANY DEVICE ═══
+         Q is a new device for this character.  Since v2.3.3344 an OLD key
+         works only on the devices it is played on (server/src/devicelock.js),
+         but this build's character was handed a new Login Key at its first
+         join (server/src/loginkeys.js), which works anywhere: typed here, it
+         plays, with no pass from the owner. */
+      rec.ok('ROAD 3: the key is a new one, eight words (guard)', /^[a-z]{3,5}(?:-[a-z]{3,5}){7}$/.test(idBefore.key || ''), { key: idBefore.key });
       await input.fill(idBefore.key);
-      await Q.page.keyboard.press('Enter');
-      await Q.page.waitForTimeout(2500);
-      const said = await Q.page.evaluate(() => (document.body && document.body.innerText) || '').catch(() => '');
-      rec.ok('ROAD 3: a key typed on a new device is refused at the door, with the code to give the owner',
-        /played on a device it was played on before/.test(said) && said.includes(idBefore.myId), { said: said.slice(0, 400) });
-      const stillDoor = await identity(Q);
-      rec.ok('ROAD 3: ...and nothing switched (this device keeps its own key)', stillDoor.key === qDoor.key, { stillDoor, qDoor });
-      const pass = await H.letDeviceIn(wsPort, idBefore.myId).catch(() => null);
-      rec.ok('ROAD 3: the owner lets one new device in (guard)', !!(pass && pass.ok), pass);
-      const input2 = (await Q.page.$('input')) || input;
-      await input2.fill(idBefore.key);
       await Promise.all([
         Q.page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => {}),
         Q.page.keyboard.press('Enter'),
