@@ -1,8 +1,14 @@
-# The camera on whole device pixels (v2.3.3444)
+# The camera on whole device pixels (v2.3.3464)
 
 > Owner, 2026-10-18: "When playing the game on PC the world has a warbled
 > underwater effect when the character moves diagonally (sw, nw, ne, se). Can
 > you fix that?"
+>
+> And then: "there's a slight flickering on PC for the art even when you run
+> up and down or left to right. I'd like that fixed too ... Maybe shimmering
+> is the right word for it."
+
+Both are the same fault, and this one fix is the fix for both.
 
 ## What was wrong
 
@@ -29,7 +35,9 @@
   after another: a column of ground tiles hops, then the next, then the next.
   That is a slow ripple across the screen, about every 1.3 s each way: the
   warble. Walking straight across is 1.43 px a frame. The fraction jumps 0.43
-  a frame there, and the same hops are a fine fizz with no shape.
+  a frame there, and the same hops are a fine fizz with no shape: the owner's
+  "shimmering" running up and down or left to right. Straight across, more of
+  the world hopped in each frame than walking diagonally (below).
 
 ## The fix
 
@@ -76,12 +84,18 @@ world's whole-pixel step. The measure is the share of the world's pixels that
 did not move with it (a luma change over 24). The page's controls and the HUD
 are taken out of the picture, and the bro is left out.
 
-| | north-east | east |
-|---|---|---|
-| computer (dpr 1), old camera, worst frame | 5.0% | 11.1% |
-| computer (dpr 1), old camera, mean | 0.9% | 9.2% |
-| computer (dpr 1), whole device pixels, worst frame | 0.01% | 0.02% |
-| phone (dpr 3), whole device pixels, worst frame | 0.00% | 0.01% |
+| | north-east | east | north |
+|---|---|---|---|
+| computer (dpr 1), old camera, worst frame | 5.0% | 11.1% | 9.6% |
+| computer (dpr 1), old camera, mean | 0.9% | 9.2% | 7.3% |
+| computer (dpr 1), whole device pixels, worst frame | 0.01% | 0.02% | 0.01% |
+| phone (dpr 3), whole device pixels, worst frame | 0.00% | 0.01% | |
+
+* A computer at 125% (dpr 1.25, a Windows laptop's usual setting) was measured
+  too, walking north, south, east, west and south-west: no frame over 0.04%.
+* The screen's outer 48 CSS px are not measured. New ground is laid there as
+  it comes into view, which is not a hop (and the top bar covers it in the
+  game). One such frame walking north read 1.0% before the margin.
 
 * What is left is the lamps' flicker. The old camera's worst diagonal frame
   is a whole column of ground tiles and the Auction House hopping a pixel
@@ -91,4 +105,5 @@ are taken out of the picture, and the bro is left out.
   frame, on the computer and the phone, while the world under you was rounded
   by up to 0.5 px.
 * `mp-camsnap` runs these checks: a computer at dpr 1 and a phone at dpr 3,
-  with the old camera as the guard that shows the warble.
+  walking north-east, east and north, with the old camera as the guard that
+  shows the warble and the shimmer.

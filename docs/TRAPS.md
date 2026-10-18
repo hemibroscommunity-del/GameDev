@@ -7676,7 +7676,7 @@ the window's 91 could be double-tapped into a zoom; with the rule, 0 and 0,
 the canvas, html and body still `none`, the window's +, - and x still
 `manipulation`, the stepper stepping 1 -> 3 -> 2.
 
-## 230. "roundPixels puts the world on whole pixels, so the camera can stay fractional" (v2.3.3444)
+## 230. "roundPixels puts the world on whole pixels, so the camera can stay fractional" (v2.3.3464)
 
 `roundPixels` snaps every CORNER to a whole device pixel, each on its own, after
 the camera is applied. With the camera at a fraction of a pixel, each piece of
@@ -7689,7 +7689,8 @@ day it did. On a 3x phone the hops are a third of a CSS px and nobody saw them.
 On a computer (dpr 1) they are whole pixels on a ground shrunk 3.5x, and walking
 diagonally (1.01 px a frame each way on the QA desktop) the camera's fraction
 creeps, so the hops swept across the ground tile by tile: the owner's
-"warbled underwater effect".
+"warbled underwater effect". Running straight, the fraction jumps a big step
+each frame and the same hops are a fizz all over: their "shimmering".
 
 **The rule:** whatever is snapped is only as steady as the translation it is
 snapped after. Put the camera (the world container, a render group) on whole

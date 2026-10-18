@@ -1,8 +1,11 @@
-/* ═══ THE WORLD MOVES AS ONE PICTURE (v2.3.3444) ═══
+/* ═══ THE WORLD MOVES AS ONE PICTURE (v2.3.3464) ═══
  *
  * Owner, 2026-10-18: "When playing the game on PC the world has a warbled
  * underwater effect when the character moves diagonally (sw, nw, ne, se).
- * Can you fix that?"
+ * Can you fix that?", and then: "there's a slight flickering on PC for the
+ * art even when you run up and down or left to right ... Maybe shimmering is
+ * the right word for it" -- the same hops, which straight across come every
+ * frame (a fine fizz) where a diagonal's came round as ripples.
  *
  * The camera is a fraction of a pixel wherever it is, and every world sprite
  * is snapped to whole device pixels corner by corner (pixiApp's roundPixels),
@@ -13,25 +16,27 @@
  * (dpr 1) it is a whole one, and the HD art is shrunk 3.5x, so a hop is seen
  * and a stretched piece re-samples into a new grain.  A diagonal walk there
  * moves each axis ~1.01 px a frame, so the hops came round tile after tile as
- * slow ripples -- the warble.  v2.3.3444 puts the world container on whole
+ * slow ripples -- the warble.  v2.3.3464 puts the world container on whole
  * device pixels (pixiRenderer.js, THE CAMERA IN WHOLE DEVICE PIXELS); `?camsnap=0`
  * is the camera as it was.
  *
  * In BroTown's ore yard (a trough, a minecart, coal, crates, barrels, a lamp
  * post: mp-shadowlock's spot), the camera is moved EXACTLY as a 60 fps walk
  * moves it (SPEED 2.5 game px a frame, a diagonal 0.71 of it each way), one
- * frame at a time, north-east and then east, and each frame is photographed
+ * frame at a time, north-east, east and north, and each frame is photographed
  * with the page's controls and the HUD put out of the picture (they do not
  * move with the world).  A world that moves as one picture is, frame after
  * frame, the frame before moved by the camera's whole-pixel step: the measure
  * is the share of the world's pixels that are not (a luma change over 24,
- * the bro and his plate left out -- he moves with the camera here).
+ * the bro and his plate left out -- he moves with the camera here -- and the
+ * screen's edges, EDGE css px, where new ground is laid as it comes into view:
+ * under the top bar in the game, and not a hop).
  *   1. the probe: the world drawn on whole device pixels every frame, within
  *      half a device pixel of the camera; `?camsnap=0` the camera as it was
  *   2. guard: the camera really moved (the steps add up to the walk)
  *   3. a computer (1280 x 800, dpr 1), north-east: no frame leaves more than
  *      SHARE_OK of the world behind
- *   4. ...and east, the same
+ *   4. ...and east and north, the same: the owner's straight-run shimmer
  *   5. the camera as it was (`?camsnap=0`): the same walks DO leave pieces
  *      behind -- the warble the test exists for is there to see (guard)
  *   6. a phone (390 x 844, dpr 3), north-east: the probe, and the world moves
@@ -54,7 +59,9 @@ const NF = 24;                 /* frames of each walk */
 const WALK = 2.5;              /* game px a 60 fps frame (gameSystems.js SPEED, no points) */
 const G = await H.wheelGeom();
 const SPOT = [23450 + G.shift, 21750 + G.shift];   /* the ore yard (mp-shadowlock) */
-const DIRS = [{ id: 'ne', ax: Math.SQRT1_2, ay: -Math.SQRT1_2 }, { id: 'e', ax: 1, ay: 0 }];
+const DIRS = [{ id: 'ne', ax: Math.SQRT1_2, ay: -Math.SQRT1_2 }, { id: 'e', ax: 1, ay: 0 }, { id: 'n', ax: 0, ay: -1 }];
+const WALKS = DIRS.map((D) => D.id);
+const EDGE = 48;               /* css px at the screen's edges not measured: new ground is laid there as it comes into view */
 const DIFF = 24;               /* a luma change that is a pixel left behind */
 const SHARE_OK = 0.004;        /* the most of the world a frame may leave behind */
 const SHARE_OLD = 0.02;        /* what the old camera must show on some frame (the guard) */
@@ -94,12 +101,12 @@ async function writePng(path, w, h, rgba) {
 
 /* the share of the world's pixels frame B left behind against frame A moved
    by (ox, oy) device px; `skip` marks the pixels not measured */
-function leftBehind(A, B, ox, oy, W, Hh, skip, out) {
+function leftBehind(A, B, ox, oy, W, Hh, skip, out, m) {
   let bad = 0, n = 0;
-  for (let y = 12; y < Hh - 12; y++) {
+  for (let y = m; y < Hh - m; y++) {
     const yy = y + oy;
     if (yy < 0 || yy >= Hh) continue;
-    for (let x = 12; x < W - 12; x++) {
+    for (let x = m; x < W - m; x++) {
       const xx = x + ox;
       if (xx < 0 || xx >= W || skip[y * W + x]) continue;
       const d = Math.abs(luma(A.data, (y * A.width + x) * A.channels) - luma(B.data, (yy * B.width + xx) * B.channels));
@@ -133,9 +140,12 @@ async function measure(browser, wsPort, webPort, OUT, { tag, viewport, dpr, touc
         r: { x: r.left, y: r.top, w: r.width, h: r.height } };
     });
     const clip = { x: Math.round(base.r.x), y: Math.round(base.r.y), width: Math.round(base.r.w), height: Math.round(base.r.h) };
-    const W = clip.width * dpr, Hh = clip.height * dpr;
+    /* rounded: at a fractional dpr (1.25, a Windows laptop's 125%) a CSS px
+       is not a whole number of device px, and the picture is whole */
+    const W = Math.round(clip.width * dpr), Hh = Math.round(clip.height * dpr);
     /* the bro (and his plate and shadow) stand at the view's middle: left out */
     const k = base.sx * dpr;
+    const M = Math.round(EDGE * dpr);
     const skip = new Uint8Array(W * Hh);
     for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
       const gx = (x - W / 2) / k, gy = (y - Hh / 2) / k;
@@ -171,7 +181,7 @@ async function measure(browser, wsPort, webPort, OUT, { tag, viewport, dpr, touc
         let best = Infinity, bs = [0, 0];
         for (const sx of new Set([Math.floor(ex), Math.ceil(ex)])) for (const sy of new Set([Math.floor(ey), Math.ceil(ey)])) {
           /* the world's pixel at x in the frame before is at x + sx in this one */
-          const s = leftBehind(pics[f - 1], pics[f], sx, sy, W, Hh, skip, null);
+          const s = leftBehind(pics[f - 1], pics[f], sx, sy, W, Hh, skip, null, M);
           if (s < best) { best = s; bs = [sx, sy]; }
         }
         shares.push(+best.toFixed(5)); steps.push(bs);
@@ -180,7 +190,7 @@ async function measure(browser, wsPort, webPort, OUT, { tag, viewport, dpr, touc
       const pic = new Uint8Array(W * Hh * 4);
       for (let j = 3; j < pic.length; j += 4) pic[j] = 255;
       const ws = steps[worstAt - 1];
-      leftBehind(pics[worstAt - 1], pics[worstAt], ws[0], ws[1], W, Hh, skip, pic);
+      leftBehind(pics[worstAt - 1], pics[worstAt], ws[0], ws[1], W, Hh, skip, pic, M);
       await writePng(join(OUT, `camsnap-${tag}-${D.id}-worst.png`), W, Hh, pic);
       /* the probe: on whole device pixels, within half a device pixel of the camera */
       const onGrid = probes.every((p) => p && Math.abs(p.x * dpr - Math.round(p.x * dpr)) < 1e-3 && Math.abs(p.y * dpr - Math.round(p.y * dpr)) < 1e-3);
@@ -224,32 +234,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${name}: in the Wheel, the Mayor's window talked away`, !!m && !m.err && m.away === true, m && (m.err || m.away));
   }
   /* 1. the probe */
-  rec.ok('1. the world is drawn on whole device pixels every frame of both walks, within half a device pixel of the camera',
-    ['ne', 'e'].every((d) => w(desk, d) && w(desk, d).on && w(desk, d).onGrid && w(desk, d).near), ['ne', 'e'].map((d) => w(desk, d) && { on: w(desk, d).on, onGrid: w(desk, d).onGrid, near: w(desk, d).near }));
+  rec.ok('1. the world is drawn on whole device pixels every frame of every walk, within half a device pixel of the camera',
+    WALKS.every((d) => w(desk, d) && w(desk, d).on && w(desk, d).onGrid && w(desk, d).near), WALKS.map((d) => w(desk, d) && { on: w(desk, d).on, onGrid: w(desk, d).onGrid, near: w(desk, d).near }));
   rec.ok('...and ?camsnap=0 is the camera as it was (not snapped)',
-    ['ne', 'e'].every((d) => w(old, d) && !w(old, d).on), ['ne', 'e'].map((d) => w(old, d) && w(old, d).on));
+    WALKS.every((d) => w(old, d) && !w(old, d).on), WALKS.map((d) => w(old, d) && w(old, d).on));
   /* 2. guard: the world was drawn as far as the walk goes, and the pictures
      moved with it -- step for step where the world moves as one picture, and
      within a pixel a frame for the old camera, whose pieces do not agree */
   for (const [name, m, slack] of [['computer', desk, 1.5], ['computer, ?camsnap=0', old, NF / 2], ['phone', phone, 1.5]]) {
-    rec.ok(`2. ${name}: the camera really moved, in the pictures (guard: ${['ne', 'e'].map((d) => w(m, d) && JSON.stringify({ pics: w(m, d).travel, drawn: w(m, d).cam, walk: w(m, d).want })).join(' ')})`,
-      ['ne', 'e'].every((d) => {
+    rec.ok(`2. ${name}: the camera really moved, in the pictures (guard: ${WALKS.map((d) => w(m, d) && JSON.stringify({ pics: w(m, d).travel, drawn: w(m, d).cam, walk: w(m, d).want })).join(' ')})`,
+      WALKS.every((d) => {
         const r = w(m, d);
         return r && r.cam && Math.hypot(r.want[0], r.want[1]) > 20
           && Math.abs(r.cam[0] - r.want[0]) <= 1 && Math.abs(r.cam[1] - r.want[1]) <= 1
           && Math.abs(r.travel[0] - r.cam[0]) <= slack && Math.abs(r.travel[1] - r.cam[1]) <= slack;
       }),
-      ['ne', 'e'].map((d) => w(m, d) && { pics: w(m, d).travel, drawn: w(m, d).cam, walk: w(m, d).want }));
+      WALKS.map((d) => w(m, d) && { pics: w(m, d).travel, drawn: w(m, d).cam, walk: w(m, d).want }));
   }
   /* 3-4. the computer */
   rec.ok(`3. a computer walking north-east: no frame leaves more than ${SHARE_OK * 100}% of the world behind (worst ${w(desk, 'ne') && (w(desk, 'ne').worst * 100).toFixed(2)}%)`,
     !!w(desk, 'ne') && w(desk, 'ne').worst <= SHARE_OK, w(desk, 'ne') && w(desk, 'ne').shares);
-  rec.ok(`4. ...and walking east (worst ${w(desk, 'e') && (w(desk, 'e').worst * 100).toFixed(2)}%)`,
-    !!w(desk, 'e') && w(desk, 'e').worst <= SHARE_OK, w(desk, 'e') && w(desk, 'e').shares);
+  rec.ok(`4. ...and running straight, east and north, the owner's "shimmering" (worst e ${w(desk, 'e') && (w(desk, 'e').worst * 100).toFixed(2)}%, n ${w(desk, 'n') && (w(desk, 'n').worst * 100).toFixed(2)}%)`,
+    ['e', 'n'].every((d) => !!w(desk, d) && w(desk, d).worst <= SHARE_OK), { e: w(desk, 'e') && w(desk, 'e').shares, n: w(desk, 'n') && w(desk, 'n').shares });
   /* 5. guard: the old camera shows the hops */
-  rec.ok(`5. the camera as it was leaves pieces of the world behind on the same walks (guard: worst ne ${w(old, 'ne') && (w(old, 'ne').worst * 100).toFixed(2)}%, e ${w(old, 'e') && (w(old, 'e').worst * 100).toFixed(2)}%; at least ${SHARE_OLD * 100}%)`,
-    !!w(old, 'ne') && !!w(old, 'e') && w(old, 'ne').worst >= SHARE_OLD && w(old, 'e').worst >= SHARE_OLD,
-    { ne: w(old, 'ne') && w(old, 'ne').shares, e: w(old, 'e') && w(old, 'e').shares });
+  rec.ok(`5. the camera as it was leaves pieces of the world behind on the same walks (guard: worst ${WALKS.map((d) => d + ' ' + (w(old, d) && (w(old, d).worst * 100).toFixed(2)) + '%').join(', ')}; at least ${SHARE_OLD * 100}%)`,
+    WALKS.every((d) => !!w(old, d) && w(old, d).worst >= SHARE_OLD),
+    Object.fromEntries(WALKS.map((d) => [d, w(old, d) && w(old, d).shares])));
   /* 6. the phone */
   rec.ok(`6. a phone (dpr 3): the world on whole device pixels, and walking north-east no frame leaves more than ${SHARE_OK * 100}% of it behind (worst ${w(phone, 'ne') && (w(phone, 'ne').worst * 100).toFixed(2)}%)`,
     !!w(phone, 'ne') && w(phone, 'ne').on && w(phone, 'ne').onGrid && w(phone, 'ne').near && w(phone, 'ne').worst <= SHARE_OK,
@@ -257,7 +267,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* 7. you: the camera follows you, so the old camera held you still -- and
      you are still held exactly there, though the world was rounded under you */
   for (const [name, m] of [['computer', desk], ['phone', phone]]) {
-    const rs = ['ne', 'e'].map((d) => w(m, d));
+    const rs = WALKS.map((d) => w(m, d));
     rec.ok(`7. ${name}: your figure (and the plate and bars it carries) is drawn every frame exactly where the old camera drew it (worst ${rs.map((r) => r && r.selfOff).join(' / ')} device px), though the rounding moved the world up to ${rs.map((r) => r && r.rounded).join(' / ')} px from it`,
       rs.every((r) => r && r.selfOff <= 0.01) && rs.some((r) => r && r.rounded >= 0.1), rs.map((r) => r && { selfOff: r.selfOff, rounded: r.rounded }));
   }
