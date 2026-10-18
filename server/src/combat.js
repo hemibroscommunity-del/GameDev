@@ -1114,7 +1114,8 @@ export const combatMethods = {
     // Also clamp the incoming value to the per-level cap so a cheater
     // can't claim 99999 damage to one-shot tough monsters.
     const attackerPs = this.playerState[session.id];
-    const isSpecial = !!payload.special;
+    /* v2.3.3334: `let` -- a special nobody paid for rolls as an ordinary hit (hitproof.js) */
+    let isSpecial = !!payload.special;
 
     /* ═══ v2.3.1628: attacker gates -- the ones every SIBLING handler
        already had and this one never did (gathering.js _handleNodeStrike,
@@ -1207,17 +1208,28 @@ export const combatMethods = {
        wider band, worth the orbs, and then it explodes (STAFF_BOLT, top of
        this file).  The lane, the clamp and the "absent -> 1" are unchanged. */
     const _orbsWire = Math.floor(Number(payload.orbs));
-    /* v2.3.2849: a big bolt is ONE roll from its own band that then explodes
-       (STAFF_BOLT at the top of this file) -- `_bigBolt` is what the wire
-       said, `_orbs` below is what the lane lets it be worth. */
-    const _bigBolt = isSpecial && _effSlot === 'staff' && _orbsWire > 1;
-    let _orbs = _bigBolt ? Math.min(3, _orbsWire) : 1;
+    /* v2.3.3334: the weapon, the reach and the paid special (hitproof.js) --
+       `hitproof: false` is everything below as it was */
+    const _hp = this._hitProofOn();
+    const _hpNow = Date.now();
+    if (_hp && !this._hitWeaponOk(attackerPs, _effSlot)) { this._hpTally('noWeapon'); return; }
     if (_effSlot === 'melee'
         && typeof attackerPs.x === 'number' && typeof attackerPs.y === 'number'
         && typeof m.x === 'number' && typeof m.y === 'number') {
       const _rdx = attackerPs.x - m.x;
       const _rdy = attackerPs.y - m.y;
       if (_rdx * _rdx + _rdy * _rdy > this.PVE_MELEE_RANGE * this.PVE_MELEE_RANGE) return;
+    }
+    /* v2.3.3334: a bow's or a staff's own reach, in every zone, from the
+       worker's own copy of the player (hitproof.js _hitReach) -- inside a paid
+       volley's window the Wheel's 3,600, for the stuck arrows' chips */
+    else if (_hp
+        && typeof attackerPs.x === 'number' && typeof attackerPs.y === 'number'
+        && typeof m.x === 'number' && typeof m.y === 'number') {
+      const _reach = this._hitReach(attackerPs, _effSlot, _hpNow);
+      const _hdx = attackerPs.x - m.x;
+      const _hdy = attackerPs.y - m.y;
+      if (_reach !== null && _hdx * _hdx + _hdy * _hdy > _reach * _reach) { this._hpTally('far'); return; }
     }
     /* v2.3.2978: ...but the Wheel is forty zones across, so "anywhere in this
        zone" is no longer a cap at all.  A ranged or staff hit there must come
@@ -1230,6 +1242,21 @@ export const combatMethods = {
       const _wdy = attackerPs.y - m.y;
       if (_wdx * _wdx + _wdy * _wdy > WHEEL.RANGED_MAX * WHEEL.RANGED_MAX) return;
     }
+    /* v2.3.3334: a special is a special only inside a window a paid swipe
+       opened, one special's shape a window (hitproof.js); else it rolls as an
+       ordinary hit, under the ordinary lane below -- never dropped */
+    if (_hp && isSpecial) {
+      if (this._pveSpecialTake(attackerPs, _effSlot, monsterId, _orbsWire, _hpNow)) this._hpTally('paid');
+      else { isSpecial = false; this._hpTally('unpaid'); }
+    }
+    /* v2.3.3334: ...and a bow or staff lands no more hits a second, across
+       every monster, than its shots carry (hitproof.js _hitRateTake) */
+    if (_hp && !isSpecial && !this._hitRateTake(attackerPs, _effSlot, _hpNow)) { this._hpTally('rate'); return; }
+    /* v2.3.2849: a big bolt is ONE roll from its own band that then explodes
+       (STAFF_BOLT at the top of this file) -- `_bigBolt` is what the wire
+       said, `_orbs` below is what the lane lets it be worth. */
+    const _bigBolt = isSpecial && _effSlot === 'staff' && _orbsWire > 1;
+    let _orbs = _bigBolt ? Math.min(3, _orbsWire) : 1;
 
     // v2.3.1134: HIT-CADENCE FLOOR.  Until now damage-per-hit was capped
     // but hit FREQUENCY was not -- a hacked client could spam
@@ -1256,6 +1283,10 @@ export const combatMethods = {
       if (!attackerPs._monHitCad) attackerPs._monHitCad = new Map();
       let cad = attackerPs._monHitCad.get(monsterId);
       if (!cad) { cad = { n: 0, s: [] }; attackerPs._monHitCad.set(monsterId, cad); }
+      /* v2.3.3334: kept in the order of LAST use, so the trim below drops the
+         lanes of monsters not hit for longest -- by first hit, a fight across
+         more than 32 monsters wiped the lanes of the ones being hit now */
+      else if (_hp) { attackerPs._monHitCad.delete(monsterId); attackerPs._monHitCad.set(monsterId, cad); }
       if (isSpecial) {
         cad.s = cad.s.filter(t => nowTs - t < 1200);
         if (cad.s.length >= 3) return;
@@ -1468,7 +1499,7 @@ export const combatMethods = {
          debt cap below takes the same factor so the repay (index.js, also
          depth-scaled) still undoes exactly one swing. */
       const _kbK = this._depthK(zone, m.y);
-      const kbForce = (payload.special ? HIT_KNOCKBACK.special : (rolled.isCrit ? HIT_KNOCKBACK.crit : HIT_KNOCKBACK.normal)) * _kbK;   /* v2.3.3264: the numbers, named (above) */
+      const kbForce = (isSpecial ? HIT_KNOCKBACK.special : (rolled.isCrit ? HIT_KNOCKBACK.crit : HIT_KNOCKBACK.normal)) * _kbK;   /* v2.3.3264: the numbers, named (above); v2.3.3334: an unpaid special shoves as an ordinary hit */
       const kbAng = Math.atan2(m.y - attackerPs.y, m.x - attackerPs.x);
       m.x += Math.cos(kbAng) * kbForce;
       m.y += Math.sin(kbAng) * kbForce;
