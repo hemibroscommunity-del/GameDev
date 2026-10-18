@@ -68,12 +68,29 @@ const swingAt = (A, bId, sw) => A.page.evaluate(({ bId, sw }) => {
   return true;
 }, { bId, sw });
 
-/* the popups a page drew since `t0` (S.dmgNumbers, combatHelpers pushDmgPopup) */
-const popsSince = (P, t0) => P.page.evaluate((t0) => {
-  const S = window._gameState.current;
-  return (S.dmgNumbers || []).filter((d) => d && (d.recvTs || d.ts || 0) >= t0 - 50)
-    .map((d) => ({ text: String(d.text), color: d.color, icon: d.iconKey || null, crit: !!d.crit, taken: !!d.taken, x: Math.round(d.x), y: Math.round(d.y) }));
-}, t0);
+/* the popups a page drew since `t0` (S.dmgNumbers, combatHelpers pushDmgPopup).
+   v2.3.3425: from a record kept as each appears (mp-spar's and mp-pvpextras'
+   recorder), not the live list: a popup lives 1.5 s, and on this box the read
+   after a blow and its waits could come when the block's "Blocked!" and its
+   stamina had already gone -- the list was empty, the block real (TRAPS §200).
+   Each page's recorder is started before the first blow (recordPops). */
+const recordPops = (P) => P.page.evaluate(() => {
+  if (window.__btPopRec) return;
+  const seen = new WeakSet();
+  window.__btPopLog = [];
+  window.__btPopRec = setInterval(() => {
+    const S = window._gameState && window._gameState.current;
+    for (const d of (S && S.dmgNumbers) || []) {
+      if (!d || seen.has(d)) continue;
+      seen.add(d);
+      window.__btPopLog.push({ at: d.recvTs || d.ts || Date.now(), text: String(d.text), color: d.color, icon: d.iconKey || null,
+        crit: !!d.crit, taken: !!d.taken, x: Math.round(d.x), y: Math.round(d.y) });
+      if (window.__btPopLog.length > 500) window.__btPopLog.splice(0, 100);
+    }
+  }, 60);
+});
+const popsSince = (P, t0) => P.page.evaluate((t0) => (window.__btPopLog || []).filter((d) => d.at >= t0 - 50)
+  .map(({ at, ...d }) => d), t0);
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const A = await H.newPlayer(browser, { name: 'Striker', wsPort, webPort, viewport: PHONE, touch: true });
@@ -136,6 +153,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the watcher can see the target (guard)', cSees);
 
   /* ── 1-3. one landed blow, three screens ── */
+  await Promise.all([recordPops(A), recordPops(B), recordPops(C)]);
   let sw = 9100;
   let got = null;
   for (let tries = 0; tries < 6 && !got; tries++) {
@@ -151,6 +169,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(500);
   }
   rec.ok('a blow landed (guard)', !!got, got);
+  /* v2.3.3425: and the other two screens' numbers WAITED for, from the
+     record.  Theirs is another player's hit, so it goes through the peer
+     numbers' playback queue and comes out on a later frame (combatHelpers
+     releasePeerDamage) -- on this box, after the trip through the worker,
+     more than the 900 ms above can pass: the target's and the watcher's
+     records were still empty at that read in the solo run of 2026-10-18.
+     The striker's own number comes at once, as before. */
+  if (got) {
+    for (let i = 0; i < 25; i++) {
+      [got.pb, got.pc] = await Promise.all([popsSince(B, got.t0), popsSince(C, got.t0)]);
+      if (got.pb.some((p) => /^-\d+$/.test(p.text) && p.taken) && got.pc.some((p) => /^-\d+$/.test(p.text))) break;
+      await A.page.waitForTimeout(200);
+    }
+  }
   if (got) {
     const { hp0, hp1, pa, pb, pc, hitA } = got;
     const want = Math.max(1, Math.ceil(hp0 / 5) - Math.ceil(hp1 / 5));   /* toDisplayHitDamage: the change in the bar */
@@ -198,10 +230,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const q = await H.readState(B, () => { const f = window.__btFightFood; return f && f.hits.length ? f.hits[f.hits.length - 1] : null; });
     /* a parry is not the plain block this step reads (no stamina cost): one
        that slipped in staggers the striker 1.5 s, so the next tries wait it out */
-    if (q && q.blocked && q.at >= t0 - 200 && !pb.some((p) => p.text === 'PARRY!')) blk = { pb, q };
+    if (q && q.blocked && q.at >= t0 - 200 && !pb.some((p) => p.text === 'PARRY!')) blk = { pb, q, t0 };
     await A.page.waitForTimeout(400);
   }
   rec.ok('a blow was blocked by the worker (guard)', !!blk, blk);
+  /* v2.3.3425: and its words waited for from the record, as steps 2-3's
+     numbers are: the striker is another player, so "Blocked!" and its
+     stamina come out of the peer numbers' playback queue a frame or more
+     later (the second solo run of 2026-10-18 read the record empty) */
+  if (blk) {
+    for (let i = 0; i < 25; i++) {
+      blk.pb = await popsSince(B, blk.t0);
+      if (blk.pb.some((p) => p.text === 'PARRY!') || (blk.pb.some((p) => p.text === 'Blocked!') && blk.pb.some((p) => /⚡$/.test(p.text)))) break;
+      await A.page.waitForTimeout(200);
+    }
+  }
   if (blk) {
     const said = blk.pb.find((p) => p.text === 'Blocked!');
     const st = blk.pb.find((p) => /⚡$/.test(p.text));
