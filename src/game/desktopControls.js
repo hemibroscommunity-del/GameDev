@@ -20,6 +20,7 @@ import { trapButtonView, armTrap } from '@/game/trapping.js';   /* v2.3.3120: T 
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.3120: the Pet House opens the Pets page */
 import { enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: E at a Wheel dungeon's mouth */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';   /* v2.3.3067: E at Ace opens his coin flip */
+import { npcSpeaks } from '@/game/npcVoices.js';   /* v2.3.3462: the townsfolk answer in their own voices */
 import { shopBus } from '@/ui/mobile/shopBus.js';   /* v2.3.3067: ...and at Diego his shop */
 import { startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed on your farm, worked where it lies */
 import { emotesLive } from '@/game/emotes.js';   /* v2.3.3391: B opens the emotes */
@@ -97,24 +98,29 @@ export function setupDesktopControls(S, deps) {
          Ace's coin flip and Diego's shop.  E said "has nothing for you"
          to both, and Ace's flip has no other door -- he stands in the
          Wheel's Brotown now (WHEEL_TOWNSFOLK), where a keyboard plays too. */
+      /* v2.3.3462: each answer in his own voice, as a tap's (game/npcVoices.js) */
       if (npc.flip) {
         try { aceFlipBus.setStake(0); aceFlipBus.setOpen(true); } catch (_e) { /* display-only */ }
+        npcSpeaks(S, npc);
         return true;
       }
       if (npc.shop) {
         S._npcProxLatch = { npc: npc, ready: false };   /* as the tap: closing it beside him does not reopen it */
         try { shopBus.setOpen(true); } catch (_e) { /* display-only */ }
+        npcSpeaks(S, npc);
         return true;
       }
       /* v2.3.3121: Beastmaster Bro, his quests done: the Pets page, as a tap */
       if (npc.pets && S._serverCaps && S._serverCaps.petbook) {
         try { dashboardPanelBus.open('pets'); } catch (_e) { /* display-only */ }
+        npcSpeaks(S, npc);
         return true;
       }
       /* v2.3.1717: he is right there and has nothing left.  Say so — a
          giver whose chain is finished used to go completely inert, which
          is indistinguishable from a broken NPC. */
       if (deps.pushNpcMsg) deps.pushNpcMsg(npc.name + ' has nothing for you right now');
+      npcSpeaks(S, npc);
       return true;
     };
     var runInteract = function runInteract(opts) {
