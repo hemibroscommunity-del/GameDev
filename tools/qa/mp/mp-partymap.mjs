@@ -35,7 +35,8 @@ function sock(wsPort, name, room = ROOM) {
   w.open = () => new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://127.0.0.1:${wsPort}/ws?room=${room}&rf=1`);
     w.ws = ws;
-    ws.onopen = () => ws.send(JSON.stringify({ type: 'join', id, name, protocolVersion: 2, pres: 2, httpAuth: true,
+    /* v2.3.3363: `ws` -- which Wheels this player draws (TRAPS §196) */
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'join', id, name, protocolVersion: 2, pres: 2, ws: [1, 5], httpAuth: true,
       data: { x: 1000, y: 1000, d: 'down', z: 'town', name, hr: 'long', bt: '#22aaff' } }));
     ws.onmessage = (ev) => {
       if (typeof ev.data !== 'string') return;
@@ -109,7 +110,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 4. the world map ── */
   await A.page.evaluate(() => window.__btWorldMapOpen(true));
-  const wm = await until(() => A.page.evaluate(() => { const m = window.__btWorldMap || {}; return m.open && m.more && m.more.party === 1 ? { zoom: m.zoom, party: m.more.party, names: m.more.partyNames, others: m.more.others } : null; }), 5000);
+  /* v2.3.3363: ...with the two names far enough apart ON THE MAP to both be
+     written.  A name is written only where it clears the labels placed
+     before it, yours first (WorldMapOverlay.jsx label()), and since v2.3.3315
+     the map at zoom 1 is the long Wheel, five times the ground in the same
+     screen: 3,000 px east came out a few map px from you, the friend's name
+     sat on "You" and was rightly left out (the sweep of 2026-10-18).  So the
+     friend steps south by what 40 map px is at this scale -- clear of your
+     name -- and the check waits for the name while they walk there. */
+  const k0 = await until(() => A.page.evaluate(() => { const m = window.__btWorldMap || {}; return m.open && m.k ? m.k : null; }), 5000);
+  if (k0 && 3000 * k0 < 60) await F.place(me.x + 3000, me.y + Math.ceil(40 / k0));
+  const wmRead = () => A.page.evaluate(() => { const m = window.__btWorldMap || {}; return m.open && m.more && m.more.party === 1 ? { zoom: m.zoom, party: m.more.party, names: m.more.partyNames, others: m.more.others, k: m.k } : null; });
+  const wm = (await until(async () => { const r = await wmRead(); return r && r.names === 1 ? r : null; }, 45000)) || await wmRead();
   const key = await A.page.evaluate(() => [...document.querySelectorAll('span, div')].some((e) => e.childElementCount <= 1 && e.textContent.trim() === 'party'));
   rec.ok(`the world map at zoom ${wm ? wm.zoom : '?'} (the bros only from 1.5): the friend drawn as party and named (${wm ? wm.names : '?'}), and the key says "party"`,
     !!wm && wm.zoom < 1.5 && wm.party === 1 && wm.names === 1 && key, { wm, key });
