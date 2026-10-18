@@ -396,7 +396,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(600);
     const css = await npcCss(name);
     const t0 = Date.now();
-    if (css) await P.page.touchscreen.tap(css.x, css.y);
+    /* v2.3.3465: tapped until the world's scan has RUN (window.__btNpcTap
+       stamped), three tries at most -- mp-npctap's way.  A touch's start and
+       end are two events, and the zones count it a tap only when they come
+       within SELF_TAP_MAX_MS 400 of each other (BroTown lE/rE).  On this box a
+       frame takes 300-600 ms, and one drawn between the two made the tap a
+       hold: nothing ran, no record, no window (the sweep of 2026-10-18 --
+       Blacksmith Bro "NOTHING", the Mayor's tap a minute later fine).  A
+       phone's frame is 16 ms.  The check below still asks the one tap that
+       ran to have opened his building. */
+    const ranSince = () => P.page.evaluate((t) => { const r = window.__btNpcTap; return !!(r && r.ts >= t - 50); }, t0);
+    for (let k = 0; k < 3 && css; k++) {
+      const at2 = k ? (await npcCss(name)) || css : css;
+      await P.page.touchscreen.tap(at2.x, at2.y);
+      await P.page.waitForTimeout(300);
+      if (await ranSince()) break;
+    }
     let key = null;
     for (let i = 0; i < 16 && !key; i++) { await P.page.waitForTimeout(250); key = await panelKey(); }
     let m = null;

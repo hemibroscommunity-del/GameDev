@@ -1,4 +1,4 @@
-/* ═══ A BUILDING SHOWS EVERY HIT (v2.3.3467) ═══
+/* ═══ A BUILDING SHOWS EVERY HIT (v2.3.3471) ═══
  *
  * Owner, 2026-10-18: "add wood chip effect when you attack buildings so you
  * get instant feedback that the building is getting damaged (not just when you

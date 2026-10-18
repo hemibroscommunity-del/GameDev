@@ -603,7 +603,7 @@ function profileFor(b) {
    a sheet off the blade's edge, to one side of the swing.  BOLT: everywhere,
    leaning away from the caster.  Unknown (a peer's hit): a loose cone. */
 function sprayAng(P) {
-  if (P.bld) return wallAng(P);   /* v2.3.3467 */
+  if (P.bld) return wallAng(P);   /* v2.3.3471 */
   switch (P.w) {
     case 'arrow': return P.dir + gauss() * 0.34;
     case 'sword': return P.dir + P.side * (0.3 + rnd() * 1.05) + gauss() * 0.12;
@@ -621,7 +621,7 @@ function towardCamera(a) {
 }
 /* the kick back toward the attacker (an arrow's entry puff) */
 const backAng = (P) => (P.bld ? wallAng(P) : P.dir + Math.PI + gauss() * 0.7);
-/* v2.3.3467: a building's chips leave the face that was hit, back toward the
+/* v2.3.3471: a building's chips leave the face that was hit, back toward the
    attacker -- and always toward the camera: a piece north of the hit's ground
    line is drawn behind the entities, under the building's own picture, so one
    thrown that way is turned to come out in front (A BUILDING SHOWS EVERY HIT).
@@ -993,7 +993,7 @@ export class HitMaterialFx {
     const nChip = cnt(5, P);
     for (let i = 0; i < nChip; i++) {
       const p = this._take(b, now);
-      const r = rnd() + ((b.crit || b.big || b.bld) ? 0.25 : 0);   /* v2.3.3467: + a building's */
+      const r = rnd() + ((b.crit || b.big || b.bld) ? 0.25 : 0);   /* v2.3.3471: + a building's */
       p.tex = r < 0.5 ? T.stoneS : r < 0.85 ? T.stoneM : T.stoneL;
       p.size = r < 0.5 ? 0 : r < 0.85 ? 1 : 2;   /* v2.3.2929: for the own-art chip */
       p.tint = tint;
@@ -1041,7 +1041,7 @@ export class HitMaterialFx {
     const n = cnt(6, P);
     for (let i = 0; i < n; i++) {
       const p = this._take(b, now);
-      const r = rnd() + ((b.crit || b.big || b.bld) ? 0.25 : 0);   /* v2.3.3467: + a building's */
+      const r = rnd() + ((b.crit || b.big || b.bld) ? 0.25 : 0);   /* v2.3.3471: + a building's */
       p.size = r < 0.45 ? 0 : r < 0.85 ? 1 : 2;
       p.frames = p.size === 2 ? this._frames.splL : this._frames.splS;
       p.tint = tint; p.spin = 9 + rnd() * 9;
@@ -1244,7 +1244,7 @@ export class HitMaterialFx {
       id: ++this._stats.bursts, t0: now, fx: b.kind || 'goo', gy,
       ex: 0, ey: 0, ez: 0, u: PIX, weapon: b.weapon || null,
       tint: b.tint, ang: dir, side: b.side, crit: !!b.crit, big: !!b.big, heavy: !!b.heavy, elem: b.elem || null,
-      bld: !!b.bld,   /* v2.3.3467: one of the Wheel's buildings (A BUILDING SHOWS EVERY HIT) */
+      bld: !!b.bld,   /* v2.3.3471: one of the Wheel's buildings (A BUILDING SHOWS EVERY HIT) */
     };
     if (Number.isFinite(b.hitX) && Number.isFinite(b.hitY)) {
       rec.ex = b.hitX;
@@ -1301,7 +1301,7 @@ export class HitMaterialFx {
        is news: under half the pieces, flung lower and slower.  It rides this
        queue marked `prop` (its `scale`/`parts` were written for the renderer
        this replaced; this is what they meant). */
-    /* ═══ v2.3.3467: A BUILDING SHOWS EVERY HIT ═══
+    /* ═══ v2.3.3471: A BUILDING SHOWS EVERY HIT ═══
        The owner: "add wood chip effect when you attack buildings so you get
        instant feedback that the building is getting damaged (not just when
        you attack for a while and start to see flames)".  A building's hit

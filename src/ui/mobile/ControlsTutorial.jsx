@@ -3,6 +3,7 @@ import { controlsTutorialBus } from './controlsTutorialBus.js';
 import { holdDisc, releaseDisc } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves; a tour that points at them says so */
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2658: ui-close tick */
+import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
 
 /* v2.3.1205: REBUILT as live DOM-anchored annotations (previously a
    frozen screenshot with eyeballed coordinates that every HUD change
@@ -237,17 +238,25 @@ export const ControlsTutorial = () => {
   const cur = steps[idx];
   const isFirst = idx === 0;
   const isLast = idx === total - 1;
-  const vh = window.innerHeight || 1;
+  /* v2.3.3470: the steps are measured in the WINDOW's numbers and the
+     spotlight is drawn in this fixed layer, which on a computer is the game's
+     column (#root's contain:paint): the gear tile's and the More button's
+     cutouts were drawn the column's left edge too far right.  So the rect is
+     taken into the layer's box first; a phone's is the window's.  TRAPS §232. */
+  const box = fixedBox(document.querySelector('[data-ctltut]'));
+  const spot = cur.rect && { left: cur.rect.left - box.x, top: cur.rect.top - box.y,
+                             width: cur.rect.width, height: cur.rect.height };
+  const vh = box.h || 1;
   const PAD = 6; // breathing room between element edge and cutout
 
   /* v2.3.1235: coach card sits opposite the spotlight — target in the
      bottom half → card at ~20% height; top half → ~60%; target-less
      step → dead center. */
   let cardTop, cardTransform;
-  if (!cur.rect) {
+  if (!spot) {
     cardTop = '50%';
     cardTransform = 'translate(-50%, -50%)';
-  } else if (cur.rect.top + cur.rect.height / 2 > vh / 2) {
+  } else if (spot.top + spot.height / 2 > vh / 2) {
     cardTop = '20%';
     cardTransform = 'translateX(-50%)';
   } else {
@@ -274,6 +283,7 @@ export const ControlsTutorial = () => {
          this root is the shield that blocks taps from reaching the game
          beneath; the SVG dim stays pointerEvents 'none' so only the
          card's buttons are interactive. */
+      data-ctltut=""
       style={{
         position: 'fixed', inset: 0, zIndex: 9300,
         fontFamily: 'Source Sans 3, system-ui, sans-serif',
@@ -289,32 +299,32 @@ export const ControlsTutorial = () => {
         <defs>
           <mask id="bt-tut-cutouts">
             <rect x="0" y="0" width="100%" height="100%" fill="#fff" />
-            {cur.rect && (cur.shape === 'circle' ? (
+            {spot && (cur.shape === 'circle' ? (
               <circle
-                cx={cur.rect.left + cur.rect.width / 2}
-                cy={cur.rect.top + cur.rect.height / 2}
-                r={Math.max(cur.rect.width, cur.rect.height) / 2 + PAD}
+                cx={spot.left + spot.width / 2}
+                cy={spot.top + spot.height / 2}
+                r={Math.max(spot.width, spot.height) / 2 + PAD}
                 fill="#000" />
             ) : (
               <rect
-                x={cur.rect.left - PAD} y={cur.rect.top - PAD}
-                width={cur.rect.width + PAD * 2} height={cur.rect.height + PAD * 2}
+                x={spot.left - PAD} y={spot.top - PAD}
+                width={spot.width + PAD * 2} height={spot.height + PAD * 2}
                 rx={10} fill="#000" />
             ))}
           </mask>
         </defs>
         <rect x="0" y="0" width="100%" height="100%"
           fill={COL.dim} mask="url(#bt-tut-cutouts)" />
-        {cur.rect && (cur.shape === 'circle' ? (
+        {spot && (cur.shape === 'circle' ? (
           <circle
-            cx={cur.rect.left + cur.rect.width / 2}
-            cy={cur.rect.top + cur.rect.height / 2}
-            r={Math.max(cur.rect.width, cur.rect.height) / 2 + PAD}
+            cx={spot.left + spot.width / 2}
+            cy={spot.top + spot.height / 2}
+            r={Math.max(spot.width, spot.height) / 2 + PAD}
             fill="none" stroke={COL.ring} strokeWidth="2" />
         ) : (
           <rect
-            x={cur.rect.left - PAD} y={cur.rect.top - PAD}
-            width={cur.rect.width + PAD * 2} height={cur.rect.height + PAD * 2}
+            x={spot.left - PAD} y={spot.top - PAD}
+            width={spot.width + PAD * 2} height={spot.height + PAD * 2}
             rx={10} fill="none" stroke={COL.ring} strokeWidth="2" />
         ))}
       </svg>

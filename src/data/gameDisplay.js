@@ -2261,6 +2261,8 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     var kv = typeof share === 'number' ? (isFinite(share) ? Math.max(0, Math.min(1, share)) : 0) : 1;
     var mine = typeof share !== 'number';
     if (!(kv > 0.01)) return;
+    /* v2.3.3470: ...and louder on a computer (DESK_STEP_K, below) */
+    kv *= this._deskStepK();
     /* v2.3.3003: no steps while you swim -- the strokes have their own clock
        (game/wheelSwim.js -> swimStroke below) */
     if (surface === 'swim') { if (mine) this._noteStep('swim', 'swim', null, -1); return; }
@@ -4182,6 +4184,35 @@ BT_AUDIO.loadGroundSteps = function () {
 BT_AUDIO.dropGroundSteps = function () {
   this._groundStepsWanted = false;
   for (var s in FOOTSTEP_CLIPS) delete this._samples[FOOTSTEP_CLIPS[s].key];
+};
+/* ═══ v2.3.3470: FOOTSTEPS ARE HEARD ON A COMPUTER ═══
+   The owner: "I can't hear footsteps on pc".  They play there -- a walk on a
+   computer asks for and plays every step a phone does, at the same volume
+   (measured) -- but under the music.  Each step's loudest 50 ms at the volume
+   footstep() plays it, each speaker's side as the game plays it (TRAPS §230):
+   grass -51.5 dB, gravel -50.6, sand -52.3, snow -49.2, dirt -47.3; the town's
+   score's own average -47.5 (village.mp3 at ZONE_MUSIC_VOL); a sword swing
+   -12.0, the bow's draw -24.2.  So a step on the Wheel's commons sat 3-5 dB
+   UNDER the music.  A phone's small speaker loses most of the music's bass
+   and the steps' crunch comes through; a computer's speakers or headphones
+   play the music whole, and buried them.  On a computer (pointer:fine, the
+   game's own desktop test) every step -- yours, a jump's landing, another
+   player's at their share -- is played DESK_STEP_K louder (+8 dB): the quiet
+   grounds 3-5 dB over the score's average, dirt 8 dB over it, all still 15 dB
+   and more under a bow's draw.  A phone is unchanged (the owner halved the
+   steps there, v2.3.1237).  `?stepvol=k` (0-4) sets the multiplier on any
+   device, to try a level. */
+BT_AUDIO.DESK_STEP_K = 2.5;
+BT_AUDIO._deskStepK = function () {
+  if (this._deskStepKv != null) return this._deskStepKv;
+  var k = 1;
+  try {
+    var m = typeof location !== 'undefined' && /[?&]stepvol=([0-9.]+)/.exec(location.search || '');
+    if (m) k = Math.max(0, Math.min(4, parseFloat(m[1]) || 0));
+    else if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer:fine)').matches) k = this.DESK_STEP_K;
+  } catch (e) { k = 1; }
+  this._deskStepKv = k;
+  return k;
 };
 /* What the last footstep was, for the tests: the ground asked for, the
    sound played (dirt where its clip is not in yet), which sample and step,

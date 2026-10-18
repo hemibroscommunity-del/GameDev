@@ -9045,9 +9045,13 @@ export var BroTown = function BroTown(_ref0) {
    * the three that already exist drifted apart; there is not going to be one.
    *
    * Returns true when it consumed the tap, so a caller can stop. */
-  var _tapHarvestAtCss = useCallback(function (cssX, cssY) {
+  /* ═══ v2.3.3470: THE SCAN ON ITS OWN ═══
+     The resource in reach a tap at (cssX, cssY) lands on, or null -- nothing
+     started.  A computer's press asks it before it swings (_deskPressTarget):
+     the press is held back exactly when the click that follows will use it. */
+  var _harvestNodeAtCss = useCallback(function (cssX, cssY) {
     var _S = stateRef.current;
-    if (!_S || !_S.player || !_S.camera) return false;
+    if (!_S || !_S.player || !_S.camera) return null;
     var _cx = _S.camera.x, _cy = _S.camera.y;
     var _tapSX = _S._worldScaleX || 1, _tapSY = _S._worldScaleY || 1;
     var _tapNodeBest = null, _tapNodeD = 44;   /* CSS px, generous for a thumb */
@@ -9096,6 +9100,11 @@ export var BroTown = function BroTown(_ref0) {
     };
     if (_S.gatherNodes) _S.gatherNodes.forEach(_tapScan);
     if (_S._campfire) _tapScan(_S._campfire);
+    return _tapNodeBest;
+  }, []);
+  var _tapHarvestAtCss = useCallback(function (cssX, cssY) {
+    var _S = stateRef.current;
+    var _tapNodeBest = _harvestNodeAtCss(cssX, cssY);
     if (!_tapNodeBest) return false;
     /* CLOSE ENOUGH, as he asked -- the same reach the button and the E key
        use, so the three cannot disagree about what is in range.
@@ -9128,14 +9137,17 @@ export var BroTown = function BroTown(_ref0) {
      rule (v2.3.3145: no longer -- a bed out of reach lets the tap through,
      below).  The bed's box reaches up over a tall crop.  True when it took
      the tap (the caller then neither jumps nor opens chat). */
-  var _tapFarmBedAtCss = useCallback(function (cssX, cssY) {
+  /* v2.3.3470: the scan on its own -- the bed in reach a tap at (cssX, cssY)
+     lands on (`best`, -1 for none) and one out of reach under it (`far`),
+     nothing started; a computer's press asks it before it swings
+     (_deskPressTarget) */
+  var _farmBedAtCss = useCallback(function (cssX, cssY) {
     var _S = stateRef.current;
-    if (!_S || !_S.player || !_S.camera || _S.currentZone !== 'farm_home') return false;
+    if (!_S || !_S.player || !_S.camera || _S.currentZone !== 'farm_home') return null;
     var _cx = _S.camera.x, _cy = _S.camera.y;
     var _sx = _S._worldScaleX || 1, _sy = _S._worldScaleY || 1;
     var _P = _S.player;
     var _fy = _P.y + playerGroundDy(_S.currentZone, _P.x, _P.y);
-    var _probe = typeof window !== 'undefined' && window.__btProbe;
     var _best = -1, _bestD = 14;   /* CSS px round a bed's box: a thumb */
     var _far = -1;
     for (var _bi = 0; _bi < FARM_BEDS.length; _bi++) {
@@ -9154,6 +9166,14 @@ export var BroTown = function BroTown(_ref0) {
       if (!_S._farmWork && bedAt([_b], _P.x, _fy, FARM_BED_REACH) !== 0) { _far = _bi; continue; }
       _bestD = _d; _best = _bi;
     }
+    return { best: _best, far: _far };
+  }, []);
+  var _tapFarmBedAtCss = useCallback(function (cssX, cssY) {
+    var _S = stateRef.current;
+    var _hit = _farmBedAtCss(cssX, cssY);
+    if (!_hit) return false;
+    var _best = _hit.best, _far = _hit.far;
+    var _probe = typeof window !== 'undefined' && window.__btProbe;
     if (_best < 0) {
       if (_probe && _far >= 0) window.__btBedTap = { bed: _far, far: true, at: Date.now() };
       return false;
@@ -10019,6 +10039,74 @@ export var BroTown = function BroTown(_ref0) {
     }
     pushDmgPopup(S, npc.x, npc.y - 30, npc.name + ' has nothing for you right now', '#B6C1BE');
     return _mark('nothing');
+  };
+  /* ═══ v2.3.3470: ON A COMPUTER, A PRESS ON SOMETHING YOU USE IS NOT A SWING ═══
+     The owner, on a computer: "when you click on a resource on pc it tries to
+     do a combat swing first (or at least plays the combat audio). I hear a bow
+     shot every time I click on an ore to harvest it", and "I'm having trouble
+     of the combat swings while interacting with different objects in the world
+     including farming plots too."
+     A phone's tap waits to see what it is (settleTapPress, v2.3.3145); a
+     mouse's press was the attack at once: the canvas's onMouseDown armed it
+     and swung -- a sword's whoosh, a bow's arrow along the cursor's line, a
+     staff's bolt -- before the click that follows the release found the ore,
+     the bed or the townsperson.  So the press asks first, in the click's own
+     order (onClick): a monster or another player under the cursor is still
+     the attack; a townsperson (near or not: far, the click says "Too far
+     away!"), a resource in reach that you hold the tool for, or a bed of your
+     farm is the click's, and the press arms nothing.  A resource OUT of reach
+     is left to the attack, as the click passes it over (v2.3.3145): a tree's
+     tap box is its whole picture, a maple's 428 px across, and in a wood a bow
+     aimed past a crown must still loose.  A far bed is the click's all the
+     same: the farm has no monsters, so a swing there is only noise.  What the
+     click will do, or null for the attack. */
+  var monsterAtCss = function (cssX, cssY) {
+    var S = stateRef.current;
+    if (!S || !S.monsters || !S.camera) return null;
+    var sx = S._worldScaleX || 1.0, sy = S._worldScaleY || 1.0;
+    var cx = S.camera.x, cy = S.camera.y;
+    /* Hit radius in CSS px -- monster bodies are 12-28 px wide (size 6-14),
+       under iOS's 44 px tap-target minimum; 40 px is forgiving without making
+       empty-space taps accidentally lock on.  NEAREST wins. */
+    var closest = null, closestDist = 40;
+    S.monsters.forEach(function (m) {
+      if (!m.alive) return;
+      /* v2.3.1111: shared body-centre table (the inline copy was missing
+         fireGoblin/mummy/skeleton). */
+      var _mTapY = DATA.monsterBodyY(m);
+      var msx = (m.x - cx) * sx;
+      var msy = (_mTapY - cy) * sy;
+      var d = Math.sqrt(Math.pow(cssX - msx, 2) + Math.pow(cssY - msy, 2));
+      if (d < closestDist) {
+        closestDist = d;
+        closest = m;
+      }
+    });
+    return closest;
+  };
+  /* another player within the click's 25 px (onClick's own loop: the first
+     one found, as it acts on) -- their id, or null */
+  var otherPlayerAtCss = function (cssX, cssY) {
+    var S = stateRef.current;
+    if (!S || !S.others || !S.camera) return null;
+    var sx = S._worldScaleX || 1.0, sy = S._worldScaleY || 1.0;
+    var cx = S.camera.x, cy = S.camera.y;
+    for (var id in S.others) {
+      var o = S.others[id];
+      if (!o) continue;
+      var osx = (o.renderX - cx) * sx, osy = (o.renderY - cy) * sy;
+      if (Math.sqrt(Math.pow(cssX - osx, 2) + Math.pow(cssY - osy, 2)) < 25) return id;
+    }
+    return null;
+  };
+  var _deskPressTarget = function (cssX, cssY) {
+    if (monsterAtCss(cssX, cssY)) return null;
+    if (npcAtCss(cssX, cssY)) return 'talk';
+    if (otherPlayerAtCss(cssX, cssY)) return null;
+    if (_harvestNodeAtCss(cssX, cssY)) return 'gather';
+    var _bed = _farmBedAtCss(cssX, cssY);
+    if (_bed && (_bed.best >= 0 || _bed.far >= 0)) return 'farm';
+    return null;
   };
   useEffect(function () {
     /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
@@ -11535,6 +11623,12 @@ export var BroTown = function BroTown(_ref0) {
     try {
       _rejoinSpin = document.createElement('div');
       _rejoinSpin.className = 'bt-rejoin-loading';
+      /* v2.3.3470: beside the exit arrow, which on a computer is the game
+         column's corner -- this is body's, so its `left` is the window's
+         (TRAPS §232), and it showed in the black margin */
+      var _rr = document.getElementById('root');
+      var _rl = _rr ? _rr.getBoundingClientRect().left : 0;
+      if (_rl > 0) _rejoinSpin.style.left = Math.round(_rl + 52) + 'px';
       document.body.appendChild(_rejoinSpin);
     } catch (e4) {}
     var _clearSpin = function () { try { if (_rejoinSpin) { _rejoinSpin.remove(); _rejoinSpin = null; } } catch (e5) {} };
@@ -12113,9 +12207,19 @@ export var BroTown = function BroTown(_ref0) {
          (playerActions) and the loop drops a held attack each frame, but the
          press still set the attack's state and the aim for nothing */
       if (stateRef.current._extraction) return;
+      /* v2.3.3470: ...nor while you work a bed of your farm: kneeling, a
+         press is the farm's (its click goes to the bed) */
+      if (stateRef.current._farmWork) return;
       if (e.button === 0) {
         /* Left click — attack toward mouse */
         var S = stateRef.current;
+        /* v2.3.3470: ...unless it is on something the click will use -- a
+           townsperson, a resource, a bed (_deskPressTarget): no aim, no
+           swing, no arrow, no sound; the click that follows does its job */
+        var _pr = e.currentTarget.getBoundingClientRect();
+        var _pk = _deskPressTarget(e.clientX - _pr.left, e.clientY - _pr.top);
+        if (typeof window !== 'undefined' && window.__btProbe) window.__btDeskPress = { kind: _pk || 'attack', ts: Date.now() };
+        if (_pk) return;
         if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
         S.autoAttack = true;
         setAutoAttack(true);
@@ -12191,21 +12295,9 @@ export var BroTown = function BroTown(_ref0) {
          Canvas 2D path), under iOS's 44 px tap-target minimum. 40 px is
          forgiving without making empty-space taps accidentally lock on. */
       if (S.monsters) {
-        var closest = null,
-          closestDist = 40;
-        S.monsters.forEach(function (m) {
-          if (!m.alive) return;
-          /* v2.3.1111: shared body-centre table (the inline copy was
-             missing fireGoblin/mummy/skeleton). */
-          var _mTapY = DATA.monsterBodyY(m);
-          var msx = (m.x - cx) * SCALE_X;
-          var msy = (_mTapY - cy) * SCALE_Y;
-          var d = Math.sqrt(Math.pow(cssX - msx, 2) + Math.pow(cssY - msy, 2));
-          if (d < closestDist) {
-            closestDist = d;
-            closest = m;
-          }
-        });
+        /* v2.3.3470: the scan is monsterAtCss, shared with the press's own
+           question (_deskPressTarget) so the two cannot disagree */
+        var closest = monsterAtCss(cssX, cssY);
         if (closest) {
           /* Toggle lock: tap same = unlock, tap new = lock */
           if (S.lockedTarget && S.lockedTarget.ref === closest) {
