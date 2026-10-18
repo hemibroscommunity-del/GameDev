@@ -371,7 +371,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.devOp(wsPort, 'vitals', myId, { heal: true, stamina: 12 });
     await P.page.waitForTimeout(700);
     const s0 = await sprintState(P);
-    /* v2.3.3446: the run-out's sound, counted from here */
+    /* v2.3.3455: the run-out's sound, counted from here */
     const outs0 = await P.page.evaluate(() => (window.__btCues && window.__btCues.stats.played.sprintOut) || 0);
     const c = centre((await LAYOUT(P)).btn);
     await P.page.touchscreen.tap(c.x, c.y);
@@ -395,7 +395,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`run dry it ends on its own (from ${s0.st != null ? s0.st.toFixed(0) : '?'} stamina, after ${(end.t / 1000).toFixed(1)} s), the worker's bar down to ${srvMin}`,
       !!end.btn && !end.btn.armed && end.btn.why === 'empty' && srvMin <= 1, { end: end.btn, srvMin, now: srv && srv.stamina });
     rec.ok('...the button fades', L.state === 'tired', L.state);
-    /* v2.3.3446: running dry is heard once, as the owner's grunt worn out
+    /* v2.3.3455: running dry is heard once, as the owner's grunt worn out
        (the cue sprintOut: their recording, lower and slower), decoded on the
        loading screen like every sound */
     const heard = await P.page.evaluate(() => {
