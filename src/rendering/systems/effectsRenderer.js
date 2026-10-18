@@ -286,6 +286,9 @@ import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleav
 import { farmWorkFrame } from '@/game/farmWork.js';   /* v2.3.3136: the farmer's frames of the cook's strip */
 import { FARM_COVERS, FARM_STEP_COVER, FARM_COVER_FRAME, FARM_FIGURE_X, FARM_PAN_BOX } from '@/data/farmCovers.js';   /* v2.3.3136: what stands where the cook's pan is */
 import { farmArtUrl } from '@/data/farmArtUrl.js';   /* v2.3.3136: the compost bin's address */
+import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, treeChopOffset, behindTree, TREE_PX, TREE_FOOT_DY, TREE_FADE, TREE_SEE_ALPHA, TREE_SEE_MS } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree */
+import { oreArtSources, oreArtLevelFor, oreGeom, ORE_PX } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock */
+import { WheelShatter } from '../wheelShatter.js';   /* v2.3.3345: a rock mined out breaks into pieces of its own picture */
 import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
@@ -502,8 +505,13 @@ export const COOK_PAN_DX = 11 / 62;
    his anchor -- 45 px at the old size, 59 at the new -- and standing 14 px
    further off keeps it biting the trunk exactly where it always did. */
 export const CHOP_OFFSET = 44;   /* px from the trunk to the figure's centre */
+/* v2.3.3345: ...for a trunk as broad as the old pine's.  Each wood's tree is
+   its own picture now, from the slim pine to the broad gnarled hardwood, so
+   the figure stands off by the trunk's own width (game/tierTrees.js
+   treeChopOffset: 44 for a broad trunk, up to 55 for the slim pine) and the
+   blade bites inside it whatever its size. */
 export function chopStandInSpot(zone, node, sign) {
-  const x = node.x - sign * CHOP_OFFSET;
+  const x = node.x - sign * (node && node.nodeType === 'tree' ? treeChopOffset(node) : CHOP_OFFSET);
   const pscale = zonePlayerScale(zone, x, node.y, TILE);
   return { x, y: node.y + 6 * pscale, pscale };
 }
@@ -2118,18 +2126,40 @@ for (const cfg of Object.values(GESTURE_TOOLS)) {
    Nothing reads texture pixels for placement or hit-tests: the anchors are
    fractional, nodeWorldBox (BroTown) reads sprite.width/height (already
    scale-normalised), and the ore-break strip is its own 256-tall sheet.
-   TRAPS §15 audit: `grep -n NODE_SPRITE_TEX` -- one placer, one consumer. */
+   TRAPS §15 audit: `grep -n NODE_SPRITE_TEX` -- one placer, one consumer.
+   v2.3.3345: no tree here any more -- each wood has its own picture
+   (TREE_TEX below, game/tierTrees.js), and tree-pine-940 (3.4 MB decoded)
+   is not loaded at all.  Nor the ore: each metal its own rock (ORE_TEX
+   below), and ore-vein-627 (1.5 MB decoded) is not loaded either. */
 const NODE_SPRITE_SOURCES = {
-  tree:     '/sprites/trees/tree-pine-940.webp',
   fishSpot: '/sprites/world/fish-spot-627.webp',
-  oreVein:  '/sprites/world/ore-vein-627.webp',
 };
 const NODE_SPRITE_TEX = {};
+/* ═══ v2.3.3345: EACH WOOD ITS OWN TREE ═══
+   The owner's five trees (pine, softwood, hardwood, cedar, maple), one a
+   gathering tier, each drawn at its own size from src/data/treeArt.js -- 5.6
+   MB decoded for the five.  On the loading screen's gate with the others
+   (_fxLoad), as the preloading law wants. */
+const TREE_TEX = {};
+for (const { lvl, url } of treeArtSources()) {
+  _fxLoad(url).then((tex) => { if (tex) TREE_TEX[lvl] = tex; })
+    .catch((err) => console.warn('[tree-art] load failed', url, err));
+}
+/* ═══ v2.3.3345: ...AND EACH METAL ITS OWN ROCK ═══
+   The owner's five ore rocks (copper, iron, black steel, titanium,
+   obsidian), one a gathering tier, each at its own size from
+   src/data/oreArt.js -- 0.6 MB decoded for the five, where the old copper
+   vein, its four colour-mapped twins and their break strip held ~8 MB. */
+const ORE_TEX = {};
+for (const { lvl, url } of oreArtSources()) {
+  _fxLoad(url).then((tex) => { if (tex) ORE_TEX[lvl] = tex; })
+    .catch((err) => console.warn('[ore-art] load failed', url, err));
+}
 /* Target render heights in world px at tierStep 1, scaled up with tier.
    v2.3.1275: +50% (was tree 112 / fishSpot 88 / oreVein 88) — owner's
    size experiment scales resources with the 50%-bigger monsters.  The
    ore-break animation derives from these too (_spawnOreBreak). */
-const NODE_SPRITE_HEIGHT_BASE = { tree: 168, fishSpot: 132, oreVein: 132 };
+const NODE_SPRITE_HEIGHT_BASE = { tree: 168, fishSpot: 132 };   /* v2.3.3345: a tree's and a rock's are their own pictures' */
 const NODE_SPRITE_ANCHOR_Y = { tree: 1.0, fishSpot: 0.5, oreVein: 1.0 };
 /* ═══ v2.3.2748: WHERE THE ART MEETS THE GROUND, as a fraction of the frame ═══
    The sprites are anchored at their FRAME's bottom (node.y), and the frames
@@ -2139,8 +2169,12 @@ const NODE_SPRITE_ANCHOR_Y = { tree: 1.0, fishSpot: 0.5, oreVein: 1.0 };
    trunk a player walks up to is ~27 world px NORTH of node.y on a tier-1
    tree, and sorting on node.y put the canopy over anyone standing in the
    gap -- in front of the trunk, drawn behind it.  The depth pass reads
-   `_groundDy` to lift the tree's line up to its drawn base. */
-const NODE_ART_BASE = { tree: 0.839, oreVein: 0.737 };
+   `_groundDy` to lift the tree's line up to its drawn base.
+   v2.3.3345: a tree's base is its own picture's (game/tierTrees.js: the foot
+   stands TREE_FOOT_DY, 27, north of node.y, where this 0.839 put it at tier
+   1), and so is a rock's (game/tierOre.js oreGeom) -- nothing is a fraction
+   here any more. */
+const NODE_ART_BASE = {};
 /* v2.3.2956: where a node's HP bar hangs, as a fraction of its frame --
    measured off the same webps' alpha (>40): the pine's crown tops out at
    0.103, the ore's rock bottoms out at its ground line (NODE_ART_BASE), the
@@ -2164,16 +2198,20 @@ const NODE_ART_BASE = { tree: 0.839, oreVein: 0.737 };
    veins' 418 px art has the copper one's proportions), `under` the bar below
    that line, `gap` 10 (v2.3.2956's: the miner's boots hang just below the
    ore's base, and a 4 px gap let them clip the number). */
+/* v2.3.3345: a tree's `f` is gone -- its crown's top is its own picture's
+   (game/tierTrees.js treeGeom), only the gap is here; and a rock's, whose
+   base is its own picture's (game/tierOre.js oreGeom) */
 const NODE_HPBAR_AT = {
-  tree:     { f: 0.103, gap: 4 },
-  oreVein:  { f: 0.737, gap: 10, under: true },
+  tree:     { gap: 4 },
+  oreVein:  { gap: 10, under: true },
   fishSpot: { f: 0.349, gap: 4 },
 };
 /* v2.3.3040: the TOP of each resource's art, as a fraction of its frame, for
    the label over it (_nodeLabelAt): the crown and the pond's water as above,
    and the rock's top (alpha >50% off ore-vein-627; the iron and black steel
-   veins' 418 px art has its proportions, 93/418). */
-const NODE_LABEL_TOP = { tree: 0.103, oreVein: 0.223, fishSpot: 0.349 };
+   veins' 418 px art has its proportions, 93/418).  v2.3.3345: a tree's is its
+   own picture's top (treeGeom), and a rock's (oreGeom). */
+const NODE_LABEL_TOP = { fishSpot: 0.349 };
 /* ...and a cook's, UNDER the campfire (owner: "Make it appear for cooking
    too").  The one resource whose bar is not over it (v2.3.3035): the cook
    leans right over his fire, the pan in the flames (cookStandInSpot, 11.5
@@ -2203,23 +2241,16 @@ Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
        dark and olive.  A third and fourth 940 px pine would be 7 MB.
    Keyed by the tier's lvl (MINING_TIERS / WOODCUTTING_TIERS); a tier with no
    entry draws as before.  The break strip and the ore that pops out of it
-   follow (ORE_BREAK_TINT, ORE_ICON_TIER_TEX). */
+   follow (ORE_BREAK_TINT, ORE_ICON_TIER_TEX).  (v2.3.3345: the ore that pops
+   out still does; the strip is gone, below.) */
 /* v2.3.3094: + the second stage's (the Wheel's levels 21-40): titanium (16)
    and obsidian (21) veins, cedar and maple trees -- the same two ways, from
    tools/make_tier_art.py past20 (the two veins 1.4 MB decoded more) */
-const NODE_TIER_SOURCES = {
-  oreVein: { 6: '/sprites/world/ore-vein-iron-418.webp', 11: '/sprites/world/ore-vein-black-steel-418.webp',
-    16: '/sprites/world/ore-vein-titanium-418.webp', 21: '/sprites/world/ore-vein-obsidian-418.webp' },
-};
-const NODE_TIER_TEX = { oreVein: {} };
-for (const [kind, byLvl] of Object.entries(NODE_TIER_SOURCES)) {
-  for (const [lvl, path] of Object.entries(byLvl)) {
-    _fxLoad(path).then((tex) => { if (tex) NODE_TIER_TEX[kind][lvl] = tex; })
-      .catch((err) => console.warn('[node-tier-sprites] load failed', path, err));
-  }
-}
-const NODE_TIER_TINT = { tree: { 6: 0xd8e88a, 11: 0xb09070, 16: 0xc89a8a /* cedar: red-brown */, 21: 0xffa860 /* maple: autumn */ } };
-const ORE_BREAK_TINT = { 6: 0xd8a890, 11: 0x5c6478, 16: 0xc8d0dc /* titanium */, 21: 0x6a4a9a /* obsidian */ };
+/* v2.3.3345: both ways are gone -- each wood is its own tree (TREE_TEX), its
+   bark already its log's colour, and each metal its own rock (ORE_TEX); the
+   four colour-mapped veins (2.8 MB decoded) are not loaded any more.  The
+   ore that pops out of a broken rock is still its own (ORE_ICON_TIER_TEX). */
+const NODE_TIER_TINT = {};
 const ORE_ICON_TIER_TEX = {};
 for (const [lvl, path] of [[6, '/icons/items/ore-iron.webp'], [11, '/icons/items/ore-black-steel.webp'],
   [16, '/icons/items/ore-titanium.webp'], [21, '/icons/items/ore-obsidian.webp']]) {   /* v2.3.3094 */
@@ -2228,42 +2259,36 @@ for (const [lvl, path] of [[6, '/icons/items/ore-iron.webp'], [11, '/icons/items
 }
 /** The picture a node is drawn with: its tier's own when there is one. */
 function nodeSpriteTex(node) {
-  const own = NODE_TIER_TEX[node.nodeType];
-  const t = own && own[node.gatherLvl || 1];
-  return t || NODE_SPRITE_TEX[node.nodeType];
+  if (node.nodeType === 'tree') return TREE_TEX[treeArtLevelFor(node.gatherLvl)] || null;   /* v2.3.3345 */
+  if (node.nodeType === 'oreVein') return ORE_TEX[oreArtLevelFor(node.gatherLvl)] || null;   /* v2.3.3345 */
+  return NODE_SPRITE_TEX[node.nodeType];
 }
 
 /* Ore-vein break: a 14-frame 256-px horizontal strip (intact -> split
    halves) played once when an ore node is depleted.  Carved into per-frame
    Textures up front, same pattern as the player sheets.  See
    docs/skill-animation-pipeline.md. */
-const ORE_BREAK_FRAMES = 14;
-const ORE_BREAK_FRAME = 256;
-const ORE_BREAK_DURATION_MS = 700;
-/* Rock fills ~45% of the 256-px frame height, so scale the strip up
-   relative to the static ore-vein target height to keep the rock the same
-   on-screen size.  Tune ORE_BREAK_FILL / ORE_BREAK_ANCHOR_Y in-game if the
-   broken rock sits high/low or large/small. */
-const ORE_BREAK_FILL = 0.45;
-const ORE_BREAK_ANCHOR_Y = 0.78;
-let ORE_BREAK_TEX = null;
-_fxLoad('/sprites/world/ore-vein-break.webp?v=1').then((tex) => {
-  if (!tex || !tex.source) return;
-  tex.source.scaleMode = 'linear';
-  tex.source.autoGenerateMipmaps = true;
-  const arr = [];
-  for (let i = 0; i < ORE_BREAK_FRAMES; i++) {
-    arr.push(new Texture({
-      source: tex.source,
-      frame: new Rectangle(i * ORE_BREAK_FRAME, 0, ORE_BREAK_FRAME, ORE_BREAK_FRAME),
-    }));
-  }
-  ORE_BREAK_TEX = arr;
-}).catch((err) => console.warn('[ore-break] load failed', err));
-/* User pass: shrink the break vignette 50% so it reads as a node, not a boulder. */
-const ORE_BREAK_SCALE = 0.5;
-/* Frame index where the rock visibly splits — the ore icon pops out here. */
-const ORE_BREAK_SPLIT_FRAME = 7;
+/* ═══ v2.3.3345: A ROCK BREAKS INTO PIECES OF ITSELF ═══
+   The strip was the old copper vein splitting, tinted for the other metals --
+   with each metal its own rock now, a different rock would have split where
+   the owner's had stood.  So the rock mined out is cut into pieces of its own
+   picture, which fly apart from the pick's blow, fall and fade
+   (wheelShatter.js, the cut and the fall the Wheel's broken objects use; a
+   heap of its own here, `_oreShatter`, faded once the pieces land).  The
+   strip (3.7 MB decoded) is not loaded any more.  Its timing stays: the ore
+   pops out and the rock cracks ORE_SPLIT_MS in, where the strip's split frame
+   was (7 of 14 in 700 ms), and the pieces lie ORE_BREAK_LIE_MS before they
+   fade. */
+const ORE_SPLIT_MS = 350;
+/* `?orebreakms=` holds them that long instead -- a test's picture on a slow
+   machine, where a screenshot takes longer than the pieces last (mp-tierore) */
+const ORE_BREAK_LIE_MS = (() => {
+  try {
+    const m = /(?:^|[?&])orebreakms=(\d+)/.exec(window.location.search || '');
+    if (m) return Math.min(60000, Math.max(100, Number(m[1])));
+  } catch (e) { /* no page: the default */ }
+  return 900;
+})();
 /* v2.3.3146: how late a frame may still play the split (the pop and the
    crack) after the break began -- past the break's own 950 ms, as a stalled
    frame is (_advanceOreBreaks); not minutes later, from a tab coming back */
@@ -10609,6 +10634,31 @@ export class EffectsRenderer {
     return out;
   }
 
+  /* ═══ v2.3.3345: A BIG TREE IS SEEN THROUGH WHEN YOU STAND BEHIND IT ═══
+     The maple is four people tall: drawn over you behind its foot (the
+     depth pass, v2.3.2635) it would hide you whole.  So while its crown
+     covers your body it eases to TREE_SEE_ALPHA and back when you step out
+     (game/tierTrees.js behindTree, the scenery trees' rule and numbers).
+     Yours alone, as theirs; `?treefade=0` keeps every tree solid. */
+  _treeSeeThrough(S, node, g, now) {
+    const spr = node._pixiSprite;
+    if (!spr || spr.destroyed) return;
+    let want = 1;
+    const P = S && S.player;
+    if (TREE_FADE && P) {
+      const fy = P.y + (playerGroundDy(S.currentZone, P.x, P.y) || 0);
+      const bodyH = S._bodyDrawH > 20 ? S._bodyDrawH : 100;
+      if (behindTree(g, P.x, fy, bodyH)) want = TREE_SEE_ALPHA;
+    }
+    const last = node._seeT != null ? node._seeT : now;
+    node._seeT = now;
+    let see = node._see == null ? 1 : node._see;
+    see += (want - see) * Math.min(1, (now - last) / TREE_SEE_MS);
+    if (Math.abs(see - want) < 0.01) see = want;
+    node._see = see;
+    if (spr.alpha !== see) spr.alpha = see;
+  }
+
   _updateGatherNodes(S, now) {
     this._peerWork = this._peerWorkNodes(S);   /* v2.3.2915: once a frame, for the vein here and the pond below */
     const gfx = this.nodeGfx;
@@ -10668,7 +10718,7 @@ export class EffectsRenderer {
            break animation at the node's spot (before the sprite is torn
            down).  _breakPlayed guards against re-spawning every dead frame
            and is cleared when the node revives. */
-        if (node.nodeType === 'oreVein' && !node._breakPlayed && ORE_BREAK_TEX) {
+        if (node.nodeType === 'oreVein' && !node._breakPlayed) {
           this._spawnOreBreak(node, now);
         }
         node._breakPlayed = true;
@@ -10744,11 +10794,30 @@ export class EffectsRenderer {
              above every sprite. */
           this.nodeLayer.addChildAt(node._pixiSprite, 0);
         }
-        const targetH = (NODE_SPRITE_HEIGHT_BASE[node.nodeType] ?? 24) * (1 + (tierStep - 1) * 0.15);
-        const baseScale = targetH / spriteTex.height;
-        /* Restore the gentle breathe-pulse the old procedural pond had. */
-        const pulse = node.nodeType === 'fishSpot' ? (1 + Math.sin(now / 600 + node.x) * 0.04) : 1;
-        node._pixiSprite.scale.set(baseScale * pulse);
+        /* v2.3.3345: a tree is its wood's own picture at its own size (2
+           picture px a game px), stood on node.y with its trunk's foot
+           TREE_FOOT_DY above it (game/tierTrees.js) -- not the one pine
+           scaled 15% a stretch */
+        const _tree = node.nodeType === 'tree' ? treeGeom(node) : null;
+        /* v2.3.3345: and a vein is its metal's own rock at its own size, its
+           base where the miner behind it needs it (game/tierOre.js oreGeom) */
+        const _ore = node.nodeType === 'oreVein' ? oreGeom(node) : null;
+        if (_tree) {
+          if (node._pixiSprite.texture !== spriteTex) node._pixiSprite.texture = spriteTex;
+          node._pixiSprite.anchor.set(_tree.anchorX, _tree.anchorY);
+          node._pixiSprite.scale.set(TREE_PX);
+          this._treeSeeThrough(S, node, _tree, now);
+        } else if (_ore) {
+          if (node._pixiSprite.texture !== spriteTex) node._pixiSprite.texture = spriteTex;
+          node._pixiSprite.anchor.set(_ore.anchorX, _ore.anchorY);
+          node._pixiSprite.scale.set(ORE_PX);
+        } else {
+          const targetH = (NODE_SPRITE_HEIGHT_BASE[node.nodeType] ?? 24) * (1 + (tierStep - 1) * 0.15);
+          const baseScale = targetH / spriteTex.height;
+          /* Restore the gentle breathe-pulse the old procedural pond had. */
+          const pulse = node.nodeType === 'fishSpot' ? (1 + Math.sin(now / 600 + node.x) * 0.04) : 1;
+          node._pixiSprite.scale.set(baseScale * pulse);
+        }
         node._pixiSprite.x = node.x;
         node._pixiSprite.y = node.y;
         /* v2.3.854: while THIS vein is the active mining target, render the
@@ -10820,8 +10889,13 @@ export class EffectsRenderer {
            frame it first appears.  v2.3.2748: at the DRAWN base, not the
            frame's bottom (NODE_ART_BASE). */
         const _artBase = NODE_ART_BASE[node.nodeType];
-        node._pixiSprite._groundDy = _artBase != null
-          ? -(NODE_SPRITE_ANCHOR_Y[node.nodeType] - _artBase) * node._pixiSprite.height : 0;
+        node._pixiSprite._groundDy = _tree ? -TREE_FOOT_DY   /* v2.3.3345: its trunk's foot */
+          /* v2.3.3345: its rock's base -- never exactly 0, which the shadows
+             read as a flat thing with no base (casters.js: a fishing hole);
+             the biggest rocks stand at their point, give or take a few px */
+          : _ore ? (_ore.footY - node.y) || -0.001
+          : _artBase != null
+            ? -(NODE_SPRITE_ANCHOR_Y[node.nodeType] - _artBase) * node._pixiSprite.height : 0;
         node._pixiSprite.zIndex = Math.round((node.y || 0) + node._pixiSprite._groundDy);
       } else if (node.nodeType === 'tree') {
         /* v2.3.1275: procedural fallbacks get the same +50% as the
@@ -11011,6 +11085,11 @@ export class EffectsRenderer {
       const f = wheelFishTop(node);
       return { x: f.x, y: f.top - NODE_LABEL_GAP };
     }
+    /* v2.3.3345: over its own crown (in a big one's, game/tierTrees.js
+       treeMarkY: the maple's top is under the phone's top cards) */
+    if (node.nodeType === 'tree') return { x: node.x, y: treeMarkY(treeGeom(node)) - NODE_LABEL_GAP };
+    /* v2.3.3345: over its own rock (game/tierOre.js oreGeom) */
+    if (node.nodeType === 'oreVein') return { x: node.x, y: oreGeom(node).top - NODE_LABEL_GAP };
     const top = NODE_LABEL_TOP[node.nodeType];
     if (top == null) return null;
     const tierStep = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
@@ -11040,6 +11119,16 @@ export class EffectsRenderer {
     }
     const at = NODE_HPBAR_AT[node.nodeType];
     if (!at) return null;
+    /* v2.3.3345: over its own crown (in a big one's: treeMarkY) */
+    if (node.nodeType === 'tree') {
+      const top = treeMarkY(treeGeom(node));
+      return { x: node.x, y: top - at.gap - halfH, scale, artTop: top, artBase: null, nodeY: node.y };
+    }
+    /* v2.3.3345: under its own rock's base (oreGeom) */
+    if (node.nodeType === 'oreVein') {
+      const base = oreGeom(node).footY;
+      return { x: node.x, y: base + at.gap + halfH, scale, artTop: null, artBase: base, nodeY: node.y, under: true };
+    }
     const tierStep = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
     const targetH = (NODE_SPRITE_HEIGHT_BASE[node.nodeType] ?? 24) * (1 + (tierStep - 1) * 0.15);
     const frameTop = node.y - (NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5) * targetH;
@@ -11253,27 +11342,31 @@ export class EffectsRenderer {
 
   /* Spawn a one-shot ore-vein break animation at a depleted node.  Sized to
      match the static ore-vein sprite via the same tier-scaled target height. */
+  /* v2.3.3345: the rock itself breaks -- its own picture cut into pieces
+     (wheelShatter.js) that fly apart from the pick's blow, on its north-west
+     where the miner stands, and fall where it stood.  A rock not drawn yet
+     breaks unseen, but the ore still pops out and it still cracks. */
   _spawnOreBreak(node, now) {
-    if (!ORE_BREAK_TEX) return;
     if (!this._oreBreaks) this._oreBreaks = [];
     const tierLvl = node.gatherLvl || 1;
-    const tierStep = Math.min(10, Math.max(1, Math.ceil(tierLvl / 10)));
-    const targetH = (NODE_SPRITE_HEIGHT_BASE.oreVein ?? 88) * (1 + (tierStep - 1) * 0.15);
-    const sp = new Sprite(ORE_BREAK_TEX[0]);
-    sp.anchor.set(0.5, ORE_BREAK_ANCHOR_Y);
-    /* Strip frame is ORE_BREAK_FRAME tall but the rock only fills part of it,
-       so divide by the filled fraction to match the static sprite's size. */
-    sp.scale.set((targetH / (ORE_BREAK_FRAME * ORE_BREAK_FILL)) * ORE_BREAK_SCALE);
-    sp.x = node.x;
-    sp.y = node.y;
-    /* v2.3.3012: an iron or black steel vein breaks in its own colours, and
-       its own ore pops out (the strip is the copper vein's) */
-    if (ORE_BREAK_TINT[tierLvl]) sp.tint = ORE_BREAK_TINT[tierLvl];
-    this.nodeLayer.addChild(sp);
+    const tex = ORE_TEX[oreArtLevelFor(tierLvl)];
+    let key = null;
+    if (tex && this.entityLayer) {
+      if (!this._oreShatter) this._oreShatter = new WheelShatter(this.entityLayer);
+      const g = oreGeom(node);
+      key = 'ore:' + node.id + ':' + now;
+      const tall = g.footY - g.top;
+      this._oreShatter.add(key, tex, {
+        x: g.footX, y: g.footY, ax: g.art.foot[0] / g.art.w, ks: ORE_PX, flip: false,
+        hitX: g.footX - 7, hitY: g.top + tall * 0.3, ang: Math.PI / 2, weapon: 'pick',
+        as: tall > 85 ? 'big' : 'small', depth: (g.right - g.left) * 0.35, dust: 0xb9b2a8,
+      });
+    }
     /* v2.3.3040: whose break it is, for the crack's loudness (_advanceOreBreaks):
        yours (applyMiningReward stamps the node as it pays) or a peer's */
     const self = !!(node._selfMinedAt && Date.now() - node._selfMinedAt < 3000);
-    this._oreBreaks.push({ sp, startedAt: now, x: node.x, y: node.y, popped: false, icon: ORE_ICON_TIER_TEX[tierLvl] || null, self });
+    this._oreBreaks.push({ key, startedAt: now, x: node.x, y: node.y, popped: false, faded: false,
+      icon: ORE_ICON_TIER_TEX[tierLvl] || null, self });
   }
 
   /* A small icon that floats up out of a position and fades — "collected". */
@@ -11309,16 +11402,21 @@ export class EffectsRenderer {
   }
 
   /* Advance + retire active ore-break animations.  Plays each strip once,
-     holds the final "split halves" frame for a short beat, then disposes. */
+     holds the final "split halves" frame for a short beat, then disposes.
+     (v2.3.3345: the rock's own pieces now, wheelShatter.js -- this times the
+     pop, the crack and their fade.) */
   _advanceOreBreaks(now, S) {
+    /* v2.3.3345: the pieces fall on the shatter's own clock */
+    if (this._oreShatter) {
+      const dt = this._oreShatterAt ? now - this._oreShatterAt : 16;
+      this._oreShatterAt = now;
+      this._oreShatter.update(dt);
+    }
     const list = this._oreBreaks;
-    if (!list || !list.length || !ORE_BREAK_TEX) return;
-    const HOLD_MS = 250;
+    if (!list || !list.length) return;
     for (let i = list.length - 1; i >= 0; i--) {
       const fx = list[i];
       const t = now - fx.startedAt;
-      const idx = Math.min(ORE_BREAK_FRAMES - 1,
-        Math.floor((Math.min(t, ORE_BREAK_DURATION_MS) / ORE_BREAK_DURATION_MS) * ORE_BREAK_FRAMES));
       /* ═══ v2.3.3146: THE SPLIT IS NEVER SKIPPED BY A LATE FRAME ═══
          The owner, offered "The crack sound is lost on any device that freezes
          for about a second right as a rock breaks.  It's a small fix": "Yes fix
@@ -11333,19 +11431,17 @@ export class EffectsRenderer {
          played first, on whatever frame reaches it -- up to ORE_POP_LATE_MS
          after the break began, so a tab back from the background minutes
          later does not crack out of nowhere. */
-      if (!fx.popped && idx >= ORE_BREAK_SPLIT_FRAME && !fx.sp.destroyed) {
+      /* v2.3.3345: the split at ORE_SPLIT_MS (the strip's frame 7 was), the
+         pieces left to fade at ORE_BREAK_LIE_MS -- the same rule: split first */
+      if (!fx.popped && t >= ORE_SPLIT_MS) {
         fx.popped = true;
         if (t <= ORE_POP_LATE_MS) this._oreSplit(fx, now, S);
       }
-      if (t >= ORE_BREAK_DURATION_MS + HOLD_MS || fx.sp.destroyed) {
-        if (!fx.sp.destroyed) {
-          if (fx.sp.parent) fx.sp.parent.removeChild(fx.sp);
-          fx.sp.destroy();
-        }
-        list.splice(i, 1);
-        continue;
+      if (!fx.faded && t >= ORE_BREAK_LIE_MS) {
+        fx.faded = true;
+        if (fx.key && this._oreShatter) this._oreShatter.remove(fx.key, t > ORE_POP_LATE_MS);
       }
-      fx.sp.texture = ORE_BREAK_TEX[idx];
+      if (fx.popped && fx.faded) list.splice(i, 1);
     }
   }
 
@@ -12483,20 +12579,22 @@ export class EffectsRenderer {
     const m = S && S._peerGatherNode;
     const rec = m && m.get(String(id));
     if (!rec || !(now - rec.at <= PEER_GATHER_NODE_TTL_MS)) return null;
-    let x = rec.x, y = rec.y;
+    let x = rec.x, y = rec.y, gatherLvl;
     if (rec.node != null) {
       const nodes = S.gatherNodes || [];
       for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i];
         if (!n || String(n.id) !== rec.node) continue;
         if (n.nodeType !== 'tree' || n.alive === false || n.depleted) return null;
-        x = n.x; y = n.y;
+        x = n.x; y = n.y; gatherLvl = n.gatherLvl;
         break;
       }
     }
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
     if (Math.hypot(x - ox, y - oy) > PEER_CHOP_REACH) return null;
-    return { x, y };
+    /* v2.3.3345: a tree, and which wood -- chopStandInSpot stands the
+       lumberjack off by its own trunk, as the chopper's own screen does */
+    return { x, y, nodeType: 'tree', gatherLvl };
   }
 
   /* v2.3.1092: harvest stand-ins for OTHER players.  When a peer broadcasts a
@@ -16245,6 +16343,9 @@ export class EffectsRenderer {
     }
     this.nodeGfx.clear();
     if (this._wheelFish) this._wheelFish.clear();   /* v2.3.3012 */
+    /* v2.3.3345: no rock's pieces carried across a zone change, nor its crack */
+    if (this._oreShatter) this._oreShatter.clear();
+    this._oreBreaks = [];
     if (this._wheelDoors) this._wheelDoors.clear();   /* v2.3.3016 */
     if (this._wheelSigns) this._wheelSigns.clear();   /* v2.3.3062 */
     this.flashOverlay.clear();

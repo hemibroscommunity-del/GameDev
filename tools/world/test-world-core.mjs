@@ -3998,6 +3998,63 @@ console.log('the Wheel five times longer (v2.3.3315)');
   ok('...and the three dungeons\' mouths are on their lands at their own levels, further out',
     ['sky', 'hollows', 'thunder'].every((h) => live.WHEEL_DOORS[h] && short.WHEEL_DOORS[h] && live.WHEEL_DOORS[h].tier === short.WHEEL_DOORS[h].tier
       && live.WHEEL_DOORS[h].levels.join() === short.WHEEL_DOORS[h].levels.join() && tierAt(live.WHEEL_DOORS[h].at[0], live.WHEEL_DOORS[h].at[1])[0] === h), live.WHEEL_DOORS);
+  /* 5b. v2.3.3401: every fishing seat of both tables out of the water as the
+     game DRAWS it -- each piece composed as the ground worker lays it (its
+     blocks' window, composeGround at its scale, no pictures: the pictures
+     only colour the shore) and read where its `under` reads (ground-worker.js
+     underOf): the spot and its school's middle in water, the angler's boots
+     dry, fewer than SWIM_IN of a swimmer's five looks wet.  The bake asks it
+     of a small rectangle round the points (bake-wheel-spawns.mjs
+     drawnWaterOf); this of whole pieces, as the phone gets them -- and
+     mp-wheelseats read the same on a phone at every look of 111 seats.  And
+     the bake's copy of a piece's size and its `under` step is the worker's. */
+  {
+    const { PIECE_ART, UNDER_ART, NODE_RULES } = await import('./bake-wheel-spawns.mjs');
+    const { SWIM_PROBES, SWIM_IN } = await import('../../src/game/wheelSwim.js');
+    const { PIECE_MARGIN } = await import('../../public/tools/world/core/worldblocks.js');
+    const wsrc = fs.readFileSync(new URL('../../public/tools/world/core/ground-worker.js', import.meta.url), 'utf8');
+    const num = (re) => { const m = wsrc.match(re); return m ? Number(m[1]) : NaN; };
+    const CHUNK = num(/^const CHUNK = (\d+);/m), UNDER = num(/^const UNDER = (\d+);/m), APRON = num(/^const APRON = (\d+);/m);
+    ok('the bake reads the drawn ground where the worker samples its pieces (bake-wheel-spawns.mjs PIECE_ART, UNDER_ART are ground-worker.js CHUNK, UNDER)',
+      CHUNK === PIECE_ART && UNDER === UNDER_ART && APRON > 0, { CHUNK, UNDER, APRON, PIECE_ART, UNDER_ART });
+    const seatsOf = (P, Bk, T) => {
+      const F = Bk.features, K = Math.round(P.worldPxPerArtPx / PIXEL.gamePxPerArtPx), cs = CHUNK * P.worldPxPerArtPx, n = CHUNK / UNDER;
+      const cache = new Map();
+      let water = -1;
+      const under = (i, j) => {
+        const key = i + ',' + j;
+        if (cache.has(key)) return cache.get(key);
+        const rect = { x: F.x0 + i * CHUNK - APRON, y: F.y0 + j * CHUNK - APRON, w: CHUNK + 2 * APRON, h: CHUNK + 2 * APRON };
+        const cx = Math.floor((rect.x - F.x0) / F.S), cy = Math.floor((rect.y - F.y0) / F.S);
+        const cw = Math.ceil((rect.x + rect.w - F.x0) / F.S) - cx, ch = Math.ceil((rect.y + rect.h - F.y0) / F.S) - cy;
+        const { bp: wb, mm: wm } = Bk.window({ x: cx - PIECE_MARGIN, y: cy - PIECE_MARGIN, w: cw + 2 * PIECE_MARGIN, h: ch + 2 * PIECE_MARGIN });
+        water = wm.water;
+        const out = composeGround(P, wb, wm, rect, {}, { scale: K });
+        const a = APRON * K, h = (UNDER * K) >> 1, u8 = new Uint8Array(n * n);
+        for (let v = 0; v < n; v++) { const row = (a + v * UNDER * K + h) * out.w + a + h; for (let u = 0; u < n; u++) u8[v * n + u] = out.mat[row + u * UNDER * K]; }
+        cache.set(key, u8);
+        return u8;
+      };
+      const wet = (x, y) => {
+        const i = Math.floor(x / cs), j = Math.floor(y / cs), g = under(i, j);
+        const u = Math.min(n - 1, Math.max(0, Math.floor(((x - i * cs) / cs) * n))), v = Math.min(n - 1, Math.max(0, Math.floor(((y - j * cs) / cs) * n)));
+        return g[v * n + u] === water;
+      };
+      const [dx0, dy0] = NODE_RULES.fishSeat, bad = [];
+      let seats = 0;
+      for (const [area, list] of Object.entries(T.WHEEL_NODES)) list.forEach((p, k) => {
+        if (p[0] !== 'f') return;
+        seats++;
+        const sx = p[1] + dx0, sy = p[2] + dy0, looks = SWIM_PROBES.map(([dx, dy]) => wet(sx + dx, sy + dy));
+        const nWet = looks.filter(Boolean).length;
+        if (looks[0] || nWet >= SWIM_IN || !wet(p[1], p[2]) || !wet(p[1] - 30, p[2])) bad.push({ id: 'wn-' + area + '-' + k, nWet, boots: looks[0] ? 'wet' : 'dry' });
+      });
+      return { seats, bad };
+    };
+    const s5 = seatsOf(PLAN5, B, live), s1 = seatsOf(PLAN, A, short);
+    ok(`...and every fishing seat of both Wheels is out of the water as the game draws it (${s5.seats} on the live Wheel, ${s1.seats} on the short one): the spot and its school in water, the angler's boots dry and fewer than ${SWIM_IN} of a swimmer's ${SWIM_PROBES.length} looks wet -- before v2.3.3401 the live table had 7 with the boots in the water`,
+      s5.seats > 200 && s1.seats > 40 && s5.bad.length === 0 && s1.bad.length === 0, { long: s5.bad.slice(0, 4), short: s1.bad.slice(0, 4) });
+  }
   /* 6. every copy the game keeps of either Wheel */
   const { WHEELS } = await import('../../src/game/worldTrial.js');
   const geomOk = (G, T) => G.w * 32 === T.WHEEL_WORLD[0] && G.h * 32 === T.WHEEL_WORLD[1] && G.safeR === T.WHEEL_SAFE_R

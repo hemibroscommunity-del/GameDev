@@ -1000,6 +1000,80 @@ remnant to migrate server-side, not a mode to preserve.
         gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
         `mp-monsterplate` (whose band sweep now raises the weapon's skill):
         docs/specs/xp-decay.md.
+    - since v2.3.3345 EACH WOOD ITS OWN TREE -- the owner: every resource tier
+      in every land, "the log art (in terms of color to represent the type of
+      wood) would need to be the same across all 8 lands", the land shown by
+      effects in code; then their two ChatGPT pictures, "You can start with
+      this":
+      - pine (commons), a willow (softwood, 1-10), a gnarled hardwood
+        (11-20), a cedar (21-30) and a huge autumn maple (31-40), 1.5 to 4
+        people tall, each bark its log icon's colour, one picture in every
+        land, untinted (the one painted pine and its tints are gone);
+      - cut by `tools/world/add-tree-art.mjs` (sources in
+        `assets/prop-source/trees/`) into `public/sprites/trees/wood-*.png` and
+        the GENERATED `src/data/treeArt.js` (size, foot, trunk);
+        `src/game/tierTrees.js` says where each stands: its foot 27 px north
+        of the node (`TREE_FOOT_DY`, where the old pine's base stood), the
+        trunk the only solid part (`treeTrunkEllipse`, BroTown
+        nodeBlockEllipse), the lumberjack off by its own trunk
+        (`treeChopOffset`), the label and bar over its own crown but never
+        300 px past its foot (`treeMarkY`: over the maple's top they lay under
+        the phone's quest card);
+      - seen through (0.42) while its crown covers you behind its foot
+        (`behindTree`, `?treefade=0`), the maple hiding a bro whole; the
+        Wheel's node view margin 320 -> 480; +2.1 MB decoded (5.6 for the
+        five, the 3.4 MB pine no longer loaded);
+      - WHERE YOU CHOP FROM is not the picture: the worker pays a chop only
+        within `_nodeStrikeRange` (gathering.js: the OLD pine's box, 168 px a
+        tier, + 56 pad + 24 slack), and a reach to the new crowns offered
+        chops up to ~580 px out that it refused in silence (v2.3.2273's "logs
+        not going into my inventory"); BroTown `nodeReachDist` measures a tree
+        from `treeReachBox`, that very box (the tap still finds the whole
+        tree) -- change the two together;
+      - EACH METAL ITS OWN ROCK too, from the owner's one picture on green:
+        copper (58 px), iron, black steel, titanium and an obsidian boulder
+        (127 x 112), cut by `tools/world/add-ore-art.mjs` (source
+        `assets/prop-source/ore/`) into `public/sprites/ore/` and the GENERATED
+        `src/data/oreArt.js`; `src/game/tierOre.js` stands each rock's base 22
+        px north of the node (`ORE_BASE_DY`) and never higher than 110
+        (`ORE_TOP_MAX_UP`), so it hides the rock BAKED into the miner's swing
+        (27-59 px north of the node, measured through the body's transform:
+        the old vein covered 67% of it) and his head and shoulders stay over
+        it; a rock mined out breaks into pieces of its own picture
+        (`wheelShatter.js`, `_oreShatter`), the old copper break strip and the
+        four colour-mapped veins no longer loaded (7.7 -> 0.6 MB decoded);
+      - and the FISH grow more (wheelNodes.js `FISH_LOOK`): six 14 px minnows
+        to one 42 px pike, a big fish's circle smaller (`swim`) so it stays in
+        the bake's water;
+      - not yet: the ten zones' effects in code, the woods past maple
+        (WOODCUTTING_TIERS lists 20, only 5 grow); `mp-tiertrees`,
+        `mp-tierore`: docs/specs/tier-trees.md, docs/specs/tier-ore.md;
+      - since v2.3.3401 THE BAKE KEEPS EACH TREE AND ROCK CLEAR AS IT IS DRAWN
+        -- the owner: "Yes fix #3 resource placement": bake-wheel-spawns.mjs
+        `hidden` kept the old pine's and vein's one box (62 x 196, 52 x 118)
+        clear at every tier, and a tall thing could stand over a maple's
+        crown, 428 px across; now each tier's own (`treeGeom`, `oreGeom`) and
+        the woodcutter's spot either side of the trunk; whole where there is
+        room, else a tree's middle half across and lower half (`loose`: the
+        Verdant Wilds at 31-40 had room for 25 of 30 whole); NO RESOURCE IN
+        FRONT OF ANOTHER (`nodeClash`: 15 on the live table, a willow over an
+        angler, 0 now); a band's fishing spots chosen BEFORE its veins and
+        trees (scarce, and the bigger trees cost up to three a stretch); and
+        EVERY ANGLER'S SEAT DRY AS THE GROUND IS DRAWN (`drawnWaterOf`: the
+        shore is drawn where the grounds' blurred fields say, not on the
+        cells' lines, so a one-cell nub of land is drawn as sea -- the live
+        table had 7 seats with the boots in drawn water, 0 now; the shore is
+        the plan's alone, so the bake composes the very pixel a piece's
+        `under` reads with no pictures, which matched a phone's survey at
+        every look of 111 seats; test-world-core asks it of every seat of both
+        tables, and its piece sizes of ground-worker.js); every count kept on
+        the live Wheel (486 veins, 486 trees, 250 fishing spots), the short
+        one's fishing 55 -> 56, 1,019 places new, the commons' first copper
+        and pine where they were, no monster moved; the places now depend on
+        the trees' and rocks' picture SIZES: a new cut (add-tree-art.mjs,
+        add-ore-art.mjs) is a re-bake, which test-world-core's --check demands
+        and which deploys the worker: docs/specs/tier-trees.md "Where each one
+        grows".
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":

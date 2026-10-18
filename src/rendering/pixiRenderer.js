@@ -1339,6 +1339,15 @@ export async function initPixiRenderer(canvas) {
       const ent = e._remoteSkillSprites && e._remoteSkillSprites.get(id);
       return (ent && ent.chop) || null;
     },
+    /* v2.3.3345: where a resource's name label and harvest bar hang (world
+       px), for mp-tiertrees -- each wood's tree its own crown */
+    nodeMarksAt: (S, node) => ({
+      label: effectsRenderer._nodeLabelAt(S, node),
+      bar: effectsRenderer._nodeHpBarAt(S, node),
+    }),
+    /* v2.3.3345: a mined-out rock's pieces (wheelShatter.js probe), for
+       mp-tierore -- each metal's rock breaks into pieces of itself */
+    oreBreakProbe: () => (effectsRenderer._oreShatter ? effectsRenderer._oreShatter.probe() : []),
     /* v2.3.2855: how many drawn peers' lumberjacks are baked right now.
        v2.3.3314: every peer's not in your colours, drawings or not. */
     peerChopBakes: () => (effectsRenderer._peerChopBakes ? effectsRenderer._peerChopBakes.size : 0),
