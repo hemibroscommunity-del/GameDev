@@ -1,4 +1,4 @@
-# One drawing program for every sprite (v2.3.3434)
+# One drawing program for every sprite (v2.3.3440)
 
 The owner, 2026-10-18: *"I'd like you to iterate on what best improves
 framerate without loss of quality (or negligible loss) for phone gameplay

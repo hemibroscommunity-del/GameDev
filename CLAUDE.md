@@ -4266,7 +4266,7 @@ Two protocol versions coexist; both must keep working:
       box's software chip a frame 20-27% longer in BroTown and 14-21% among
       trees and water -- not measured on a phone:
       docs/specs/palette-textures.md.
-    - since v2.3.3434 ONE DRAWING PROGRAM FOR EVERY SPRITE -- the owner:
+    - since v2.3.3440 ONE DRAWING PROGRAM FOR EVERY SPRITE -- the owner:
       "iterate on what best improves framerate without loss of quality":
       `ONE_BATCHER` (paletteTex.js) draws what the default, sharp and
       colour-numbers batchers drew, each branch the very lines of the program
