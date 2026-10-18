@@ -20,6 +20,8 @@ import { ZONES, isWorldViewZone } from './zones.js'; /* v2.3.2978: + either name
 import { TOWN_BUILDINGS } from './buildings.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS } from './effects.js';
 import { FOOTSTEP_CLIPS } from './footstepClips.js';   /* v2.3.2967: each ground its own step */
+import { MONSTER_NOISE_CLIPS } from './monsterNoiseClips.js';   /* v2.3.3340: the owner's monster noises */
+import { EVENT_SOUNDS } from './eventSounds.js';   /* v2.3.3343: each creature its own death (monsterDeath) */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
@@ -2226,11 +2228,17 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   npcChat: function npcChat() {
     this.beep(600, 0.04, 0.03, 'sine');
   },
-  footstep: function footstep(armored, surface) {
+  footstep: function footstep(armored, surface, share) {
     if (!this.ctx || this.muted) return;
+    /* v2.3.3343: `share`, ANOTHER player's step at its share by distance
+       (game/eventSounds.peerStepShare; absent = your own, in full) -- its
+       volumes times that, and not noted as yours (the tests read _lastStep) */
+    var kv = typeof share === 'number' ? (isFinite(share) ? Math.max(0, Math.min(1, share)) : 0) : 1;
+    var mine = typeof share !== 'number';
+    if (!(kv > 0.01)) return;
     /* v2.3.3003: no steps while you swim -- the strokes have their own clock
        (game/wheelSwim.js -> swimStroke below) */
-    if (surface === 'swim') { this._noteStep('swim', 'swim', null, -1); return; }
+    if (surface === 'swim') { if (mine) this._noteStep('swim', 'swim', null, -1); return; }
     /* ═══ v2.3.2967: EACH GROUND ITS OWN STEP ═══
        Owner: "give each ground type its own footstep sound.  Grass sounds
        like walking through grass, walking through rocks sounds like walking
@@ -2249,11 +2257,11 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       var k = Math.floor(Math.random() * n);
       if (n > 1 && this._lastStep && this._lastStep.key === clip.key && this._lastStep.i === k) k = (k + 1) % n;
       var st = clip.steps[k];
-      this._noteStep(surface, surface, clip.key, k);
+      if (mine) this._noteStep(surface, surface, clip.key, k);
       if (armored) {
-        this.play(clip.key, { offset: st[0], duration: st[1], vol: 0.17 + Math.random() * 0.03, rate: 0.96 + (Math.random() - 0.5) * 0.08 });
+        this.play(clip.key, { offset: st[0], duration: st[1], vol: (0.17 + Math.random() * 0.03) * kv, rate: 0.96 + (Math.random() - 0.5) * 0.08 });
       } else {
-        this.play(clip.key, { offset: st[0], duration: st[1], vol: 0.13 + Math.random() * 0.025, rate: 1.06 + (Math.random() - 0.5) * 0.10 });
+        this.play(clip.key, { offset: st[0], duration: st[1], vol: (0.13 + Math.random() * 0.025) * kv, rate: 1.06 + (Math.random() - 0.5) * 0.10 });
       }
       return;
     }
@@ -2274,23 +2282,30 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     if (!_fsKey) return;
     if (this._footToggle === undefined) this._footToggle = 0;
     var two = (this._footToggle++ & 1);
-    this._noteStep(surface || null, 'dirt', _fsKey, two);
+    if (mine) this._noteStep(surface || null, 'dirt', _fsKey, two);
     var off = _fsKey === 'footstep-v3' ? (two ? 0.92 : 0.08) : (two ? 0.57 : 0.0);
     var dur = _fsKey === 'footstep-v3' ? 0.34 : (two ? 0.18 : 0.22);
     /* v2.3.1237: owner feedback — footstep volume halved (armored
        0.34→0.17 base, bare 0.26→0.13; jitter halved in step). */
     if (armored) {
-      this.play(_fsKey, { offset: off, duration: dur, vol: 0.17 + Math.random() * 0.03, rate: 0.96 + (Math.random() - 0.5) * 0.08 });
+      this.play(_fsKey, { offset: off, duration: dur, vol: (0.17 + Math.random() * 0.03) * kv, rate: 0.96 + (Math.random() - 0.5) * 0.08 });
     } else {
-      this.play(_fsKey, { offset: off, duration: dur, vol: 0.13 + Math.random() * 0.025, rate: 1.06 + (Math.random() - 0.5) * 0.10 });
+      this.play(_fsKey, { offset: off, duration: dur, vol: (0.13 + Math.random() * 0.025) * kv, rate: 1.06 + (Math.random() - 0.5) * 0.10 });
     }
   },
   enterBuilding: function enterBuilding() {
-    var _this3 = this;
-    this.beep(400, 0.06, 0.05, 'sine');
-    setTimeout(function () {
-      return _this3.beep(500, 0.05, 0.04, 'sine');
-    }, 80);
+    /* v2.3.3343: a door is heard -- a knock of wood (data/eventSounds.js
+       `door`).  This was two beep()s, which have played nothing since
+       v2.3.1103, and it is the one call every way through a door makes (the
+       E key, the stick's tap, a keeper, the Enter button, a dungeon's mouth,
+       the farm's sheds) -- twelve call sites, one sound.  Stamped as the
+       gesture's own sound, so the Enter button's menu click yields to it
+       (uiClick: a specific sound wins the tap). */
+    if (!this.ctx || this.muted) return;
+    var L = EVENT_SOUNDS.door, r = 1 + (Math.random() - 0.5) * 0.06;
+    for (var i = 0; i < L.length; i++) this._playLayer(L[i], 1, r, 1);
+    this._uiSpecificAt = this._now();
+    this._lastDoor = Date.now();   /* for the tests */
   },
   chatSend: function chatSend() {
     this.beep(500, 0.05, 0.04, 'sine');
@@ -2434,7 +2449,17 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      monster hit, slowed into a heavy thud), the game's own "lost" sting a
      beat after it, and the bones' rattle when the body crumbles to bone
      (deathCrumble's burst, 1.08 s after the death). */
-  playerDeath: function playerDeath() {
+  playerDeath: function playerDeath(k) {
+    /* v2.3.3343: `k`, ANOTHER player's death at its share by distance
+       (game/eventSounds.peerShare; absent = your own, in full): the blow and
+       the bones, without the "lost" sting, which is yours alone. */
+    if (typeof k === 'number') {
+      var v = isFinite(k) ? Math.max(0, Math.min(1, k)) : 0;
+      if (!(v > 0.01)) return;
+      this.play('monster-hit', { vol: 0.95 * v, rate: 0.7 });
+      this.play('skeleton-death', { vol: 0.55 * v, rate: 0.82, delay: 1.08 });
+      return;
+    }
     this.play('monster-hit', { vol: 0.95, rate: 0.7 });
     this.play('flip-lose', { vol: 0.5, rate: 0.92, delay: 0.16 });
     this.play('skeleton-death', { vol: 0.55, rate: 0.82, delay: 1.08 });
@@ -3080,6 +3105,16 @@ BT_AUDIO.SFX_MANIFEST = {
      58KB against the old 114KB, and shorter, which suits the moment: the
      completion banner is 2.2s and this resolves inside it. */
   'quest-complete-v2': '/sfx/quest/quest-complete-v2.mp3',
+  /* v2.3.3340: the owner's monster noises -- the fire goblin's rawr, the
+     skeleton's (the mummy's second form's) rattling bones, the slime's bouncy
+     jelly, the snowman's snarl (game/monsterNoises.js says when).  Cut to about
+     a second each, mono, by tools/audio/cut_monster_noises.py from the owner's
+     recordings (assets/sfx-source/monsters/, CREDITS.md); their levels are in
+     monsterNoiseClips.js.  ~0.75 MB decoded in all. */
+  'noise-goblin-rawr': '/sfx/monster/noise-goblin-rawr.mp3',
+  'noise-skeleton-rattle': '/sfx/monster/noise-skeleton-rattle.mp3',
+  'noise-slime-bounce': '/sfx/monster/noise-slime-bounce.mp3',
+  'noise-snowman-snarl': '/sfx/monster/noise-snowman-snarl.mp3',
 };
 
 /* Regular sword-hit alternation. The two samples cycle so a flurry of hits
@@ -3654,7 +3689,18 @@ BT_AUDIO.ELEM_SOUNDS = {
    swipe's swoosh, its attack (0.02-0.32 s off its own loudness curve) a
    touch slower, peaking ~0.3 -- under the footsteps that follow, which
    already quicken with the stride.  A recording already in the game. */
-BT_AUDIO.SPRINT_PUSH = ['special-swipe', 0.02, 0.3, 2, 0.82];
+/* ═══ v2.3.3336: A RUSH OF AIR, NOT A THUMP ═══
+   Owner, playtesting: "The button for sprint needs a different sound.  It
+   sounds like a fleshy sound."  Measured (ffmpeg + an FFT of what plays,
+   offset, length and rate applied): the slowed special swipe put 49% of its
+   energy under 400 Hz -- a body's thump, the "fleshy" part -- and the swoosh
+   only on top.  The arrow's flight is the airiest recording the game has:
+   11% under 400 Hz, a breathy rush through the mids and highs, no attack
+   (13% under 400 Hz at the rate below).  Its loud part (0.03-0.27 s), a
+   touch slower so it is not the arrow you hear when you shoot, at the old
+   push's loudness above 400 Hz -- what the ear weighs -- which is vol ~4.1;
+   3.8, peaking ~0.53 (the hits keep under 0.66, there is no limiter). */
+BT_AUDIO.SPRINT_PUSH = ['arrow-fly', 0.03, 0.24, 3.8, 0.85];
 BT_AUDIO.sprintPush = function () {
   var L = this.SPRINT_PUSH;
   this._lastSprintSound = 'push';   /* what it meant to play, for the tests (mp-sprint) */
@@ -3800,11 +3846,41 @@ BT_AUDIO.swimSplash = function (how) {
 BT_AUDIO._noteHero = function (armored, ball, vol) {
   this._lastHero = { armored: !!armored, ball: !!ball, vol: vol, at: Date.now() };
 };
+/* ═══ v2.3.3340: A MONSTER'S NOISE ═══
+   `clip` a MONSTER_NOISE_CLIPS key (game/monsterNoises.js NOISE_OF picks it
+   by the monster, and says when), `k` how much of it you hear where you stand
+   (0-1, hitSounds earVol).  Played at its own level -- 0.75 of a melee hit's
+   loudness beside you -- with a few percent of pitch either way, so the same
+   call twice is not the same sound twice. */
+BT_AUDIO.monsterNoise = function (clip, k) {
+  var c = Object.prototype.hasOwnProperty.call(MONSTER_NOISE_CLIPS, clip) ? MONSTER_NOISE_CLIPS[clip] : null;
+  if (!c) return null;
+  var v = typeof k === 'number' && isFinite(k) ? Math.max(0, Math.min(1, k)) : 1;
+  if (!(v > 0)) return null;
+  this._lastMonsterNoise = clip;   /* what it meant to play, for the tests (mp-monsternoise) */
+  return this.play('noise-' + clip, { vol: c.vol * v, rate: 1 + (Math.random() - 0.5) * 0.08 });
+};
+/* ═══ v2.3.3343: EACH CREATURE ITS OWN DEATH ═══
+   Owner, 2026-10-18: "Start adding the have ones" (docs/SOUND-GAPS.md).  Five
+   creatures had only the generic bone crunch below; each now dies as what it
+   is, from recordings already here (data/eventSounds.js die*): the goblin a
+   thud and a fizzle, the rock monster and the thorn shambler (the rock
+   monster's own body, mossy: HIT_MATERIALS calls both stone) a stone crack
+   and rubble, the fishman a splash, the bog lurker a deep squelch.  Their
+   elder forms past level 20 share the archetype, so they share the sound.
+   And the slime-sheet variants (the Blue Slime, the Mire Wisp, the unused
+   Moss Slime) are slimes HERE too: entityRenderer has played the slime's
+   splat for every slime-sheet variant since v2.3.1147, and this played the
+   bone crunch on top of it -- two death sounds at once for every Blue Slime
+   and Mire Wisp.  Only plain 'fodder' was skipped. */
+BT_AUDIO.SLIME_SHEET_DEATHS = { blueSlime: 1, mireWisp: 1, mossSlime: 1 };
+BT_AUDIO.DEATH_CUES = { fireGoblin: 'dieGoblin', rockmonster: 'dieRock', thornShambler: 'dieRock', fishman: 'dieFish', bogLurker: 'dieLurker' };
 BT_AUDIO.monsterDeath = function (arch, opts, k) {
   /* No-op for slimes (fodder).  The splat SFX is owned by the render-
      loop death-detection in BroTown.jsx — playing the bony-death wav
      here too was layering the "old death sound" on top of the splat. */
   if (arch === 'fodder') return;
+  if (arch && Object.prototype.hasOwnProperty.call(this.SLIME_SHEET_DEATHS, arch)) return;   /* v2.3.3343: see above */
   /* v2.3.3248: `k`, how much of it you hear where you stand (0-1, the kill
      handlers' hitSounds.deathVol; absent = all of it, as every older caller
      wants): each sample's own level times k, nothing at 0. */
@@ -3824,6 +3900,15 @@ BT_AUDIO.monsterDeath = function (arch, opts, k) {
     this.play('skeleton-death', opts || { vol: 0.75 * v });
     return;
   }
+  /* v2.3.3343: the five with a death of their own (above), at its share */
+  var own = arch && Object.prototype.hasOwnProperty.call(this.DEATH_CUES, arch) ? EVENT_SOUNDS[this.DEATH_CUES[arch]] : null;
+  if (own && !opts) {
+    var r = 1 + (Math.random() - 0.5) * 0.06;
+    for (var i = 0; i < own.length; i++) this._playLayer(own[i], v, r, 1);
+    this._lastDeath = { arch: arch, cue: this.DEATH_CUES[arch], k: v, at: Date.now() };   /* for the tests */
+    return;
+  }
+  this._lastDeath = { arch: arch, cue: 'monster-death', k: v, at: Date.now() };
   this.play('monster-death', opts || { vol: 0.5 * v });
 };
 /* v2.3.1738: RETURNS THE PROMISE.  Every existing caller ignores the return

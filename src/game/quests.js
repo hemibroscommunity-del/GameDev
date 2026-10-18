@@ -16,6 +16,7 @@ import { _objectSpread } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx'; /* v2.3.1874: quest XP flies to its skill card */
 import { flyQuestRewards } from '@/game/questFly.js'; /* v2.3.3030: the coins and items fly home */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a quest taken, heard */
 export function acceptQuest(S, questPanel, deps) {
   var setRpgState = deps.setRpgState,
     setQuestPanel = deps.setQuestPanel;
@@ -57,7 +58,9 @@ export function acceptQuest(S, questPanel, deps) {
     status: 'active'
   }));
   pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Accepted: ' + questPanel.quest.title, '#5b52ff');
-  BT_AUDIO.collect();
+  /* v2.3.3343: the old fanfare's first bars -- collect() is a beep(), silent,
+     though the note below calls it the one thing the player could get */
+  cue('questAccept');
   /* v2.3.1745: ...and the screen-space banner over the dialogue.  The world
      popup above is drawn in the Pixi world, UNDER the modal's scrim — at the
      moment you accept, the dialogue is still open and covering it, so the
@@ -139,11 +142,21 @@ export function turnInQuest(S, questPanel, deps, xpCat, opts) {
        choice through here, matching what the quest log has sent since
        v2.3.1669.  Never guessed on the player's behalf: with no choice the
        button does not fire at all. */
+    /* v2.3.3335: a quest this page pays NO XP for (tut_1 since v2.3.3335) is
+       handed in with no choice made (QuestPanel's AUTO REWARD), and a worker
+       from before v2.3.3335 still pays tut_1 15 XP -- so it would refuse the
+       hand-in for want of a skill, silently, and the bow and staff with it
+       (during a deploy, or after a rollback of the worker).  So such a
+       hand-in names Melee, the one skill a player has used by then.  A
+       worker whose quest pays no XP ignores it (_needsCat is false); a
+       quest that pays XP still never goes without the player's own choice. */
+    var _sendCat = typeof xpCat === 'string' ? xpCat
+      : (questPanel.quest.reward && questPanel.quest.reward.xp > 0 ? undefined : 'sword');
     if (_Sqt.channel) {
       try {
         _Sqt.channel.send({ type: 'quest_turn_in', payload: {
           questId: questPanel.quest.id,
-          xpCat: typeof xpCat === 'string' ? xpCat : undefined,
+          xpCat: _sendCat,
         } });
       } catch (e) {}
     }
@@ -164,7 +177,10 @@ export function turnInQuest(S, questPanel, deps, xpCat, opts) {
   try {
     localStorage.setItem('bt_rpg', JSON.stringify(R));
   } catch (e) {}
-  pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Complete! +' + questPanel.quest.reward.gold + 'G +' + questPanel.quest.reward.xp + 'XP', '#f5c542');
+  /* v2.3.3335: the XP only when there is some -- tut_1 pays none now, and
+     "+0XP" over your head would say there was a reward you missed */
+  pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Complete! +' + questPanel.quest.reward.gold + 'G'
+    + (questPanel.quest.reward.xp > 0 ? ' +' + questPanel.quest.reward.xp + 'XP' : ''), '#f5c542');
   /* ═══ v2.3.1874: the quest's XP flies to the skill it was banked into ═══
      Owner: "When you kill a monster OR COMPLETE A QUEST show the combat skill
      xp over the character then have the xp jump down into whatever combat

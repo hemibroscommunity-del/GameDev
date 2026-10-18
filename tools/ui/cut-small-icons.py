@@ -21,6 +21,16 @@ assets for the 'small icons'":
   4. assets/icons-source/sheet-small-4-buffs.png (1448 x 1086)
        cursed · bleeding · damage · mana
        regen · resist · XP · speed
+  5. assets/icons-source/sheet-small-5-specials.png (2172 x 724), v2.3.3336 --
+     the owner: "Also use these icons instead for the special attacks (bow,
+     staff, sword)":
+       the bow's volley · the staff's crystal · the sword's whirl
+     Each is a WHOLE round button (its own gold ring and slate face), and the
+     game's Special button keeps its own ring, which carries the cooldown arc,
+     the greyed and the lit states (controlSkin Skin).  So only the disc
+     INSIDE the owner's ring is kept (INNER_DISC, inner_disc below), written
+     edge to edge at the button's size, with no margin: the game draws it
+     filling the face inside its ring.
 
 Every sheet is on a TRANSPARENT ground (its corners alpha 0), so nothing is
 keyed by colour -- the icons' own black outlines would not survive a colour key
@@ -49,9 +59,11 @@ WHAT IT DOES (the method of slice-social-icons.mjs, v2.3.2926):
      TRAPS §42).
   4. Writes a CONTACT SHEET of every cut (--contact) to check by eye.
 
-Refuses to overwrite an existing file without --force.
+Refuses to overwrite an existing file without --force.  --only <sheet> cuts
+one sheet and writes nothing else (v2.3.3336: a new sheet without re-encoding
+every icon already in the game).
 
-  python3 tools/ui/cut-small-icons.py [--force] [--contact out.png]
+  python3 tools/ui/cut-small-icons.py [--force] [--only <sheet>] [--contact out.png]
 """
 import os
 import sys
@@ -81,8 +93,14 @@ LAYOUT = [
         ['icons/ui/buff-cursed', 'icons/ui/buff-bleed', 'icons/ui/buff-damage', 'icons/ui/buff-mana'],
         ['icons/ui/buff-regen', 'icons/ui/buff-resist', 'icons/ui/buff-xp', 'icons/ui/buff-speed'],
     ]),
+    ('sheet-small-5-specials.png', [
+        ['ui/controls/abil-special-bow', 'ui/controls/abil-special-staff', 'ui/controls/abil-special-sword'],
+    ]),
 ]
-GREY = {n for n in LAYOUT[1][1][0]}
+# v2.3.3336: the special attacks are drawn as a whole button face -- only the
+# disc inside their own gold ring is kept (see sheet 5 in the header)
+INNER_DISC = {n for n in LAYOUT[4][1][0]}
+GREY = {n for n in LAYOUT[1][1][0]} | INNER_DISC
 # The plate's words are the game's: keep only the shield at the left end.
 SHIELD_ONLY = {'icons/popups/defense-up'}
 
@@ -221,6 +239,60 @@ def fit(icon, size):
     return out
 
 
+def inner_disc(icon):
+    """v2.3.3336: the disc inside a round icon's gold ring, as a circle on a
+    transparent square.  The centre is the icon's own box's; the ring's inner
+    edge is found on 72 rays walked in from the outside -- past the dark edge,
+    through the gold band, to the first dark pixel of the face -- and the median
+    taken, so a glow that reaches the band on one ray cannot move it.  The
+    circle is cut 2 px inside that edge (keeping the ring's own dark inner
+    line as the disc's rim) with an edge supersampled 4x."""
+    import math
+    import statistics
+    w, h = icon.size
+    px = icon.load()
+    cx, cy = (w - 1) / 2, (h - 1) / 2
+    rout = (w + h) / 4
+    edges = []
+    for k in range(72):
+        t = 2 * math.pi * k / 72
+        state, r = 'out', rout + 2
+        while r > 0:
+            x, y = int(round(cx + r * math.cos(t))), int(round(cy + r * math.sin(t)))
+            if 0 <= x < w and 0 <= y < h:
+                R, G, B, A = px[x, y]
+                gold = A > 200 and R > 140 and G > 90 and B < 120 and R - B > 60
+                dark = A > 200 and max(R, G, B) < 95
+                if state == 'out' and A > 200:
+                    state = 'edge'
+                if state == 'edge' and gold:
+                    state = 'gold'
+                if state == 'gold' and dark:
+                    edges.append(r)
+                    break
+            r -= 0.5
+    if len(edges) < 48:
+        raise SystemExit(f'ABORT inner_disc: the ring was found on only {len(edges)} of 72 rays')
+    rin = statistics.median(edges) - 2
+    side = int(math.ceil(rin * 2))
+    x0, y0 = int(round(cx - rin)), int(round(cy - rin))
+    disc = icon.crop((x0, y0, x0 + side, y0 + side))
+    SS = 4
+    from PIL import ImageChops, ImageDraw
+    m = Image.new('L', (side * SS, side * SS), 0)
+    ImageDraw.Draw(m).ellipse((0, 0, side * SS - 1, side * SS - 1), fill=255)
+    m = m.resize((side, side), Image.LANCZOS)
+    r_, g_, b_, a_ = disc.split()
+    a_ = ImageChops.multiply(a_, m)
+    print(f'      inner disc: ring inside edge r {statistics.median(edges):.1f} on {len(edges)}/72 rays, kept r {rin:.1f}')
+    return Image.merge('RGBA', (r_, g_, b_, a_))
+
+
+def fit_disc(disc, size):
+    """v2.3.3336: a disc edge to edge on its square, no margin."""
+    return disc.resize((size, size), Image.LANCZOS)
+
+
 def grey(icon):
     """The controls' greyed palette: luminance squeezed into 30..214, as the
     SVG icons' grey sets run (#15181B outline to #C0C4C8 light)."""
@@ -232,8 +304,14 @@ def grey(icon):
 def main():
     force = '--force' in sys.argv
     contact = sys.argv[sys.argv.index('--contact') + 1] if '--contact' in sys.argv else None
+    only = sys.argv[sys.argv.index('--only') + 1] if '--only' in sys.argv else None
+    if only and only not in [sh for sh, _ in LAYOUT]:
+        print(f'ABORT: no sheet {only} in LAYOUT')
+        return 1
     writes, cuts, ok = [], [], True
     for sheet, rows in LAYOUT:
+        if only and sheet != only:
+            continue
         img = Image.open(os.path.join(SRC, sheet)).convert('RGBA')
         ps = pieces(img)
         res = split_by_gaps(ps, 1, 3, len(rows))
@@ -257,10 +335,15 @@ def main():
                 else:
                     icon = normalise(img.crop(box))
                 print(f'    {name:28s} {len(g):3d} piece(s)  box x{box[0]} y{box[1]} {box[2] - box[0]}x{box[3] - box[1]}')
+                if name in INNER_DISC:
+                    icon = inner_disc(icon)
+                    shown = fit_disc(icon, size_of(name))
+                else:
+                    shown = fit(icon, size_of(name))
                 cuts.append((name, icon))
-                writes.append((name, fit(icon, size_of(name))))
+                writes.append((name, shown))
                 if name in GREY:
-                    writes.append((name + '-grey', grey(fit(icon, size_of(name)))))
+                    writes.append((name + '-grey', grey(shown)))
     if contact:
         n = len(cuts)
         cols = 8

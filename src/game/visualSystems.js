@@ -14,6 +14,7 @@ import { jumpActive } from '@/game/jump.js';   /* v2.3.3017: no prints in the ai
 import { sweepBlockPoint, boxFace } from '@/data/worldProps.js';   /* v2.3.2730: a peer's shot stops at a prop on your screen too */
 import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap, STUCK_ARROW_MS, SCORCH_MS, scorchStyle, propHitHeight } from '@/game/combatHelpers.js';   /* v2.3.2730; v2.3.2731 the snap; v2.3.2995 what stays in the Wheel's objects; v2.3.3206 how high a hit shows */
 import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: a peer's shot hits the Wheel's objects on your screen too */
+import { earVol } from '@/game/hitSounds.js';   /* v2.3.3343: a peer's shot on a prop, heard by distance */
 import { arrowSnaps } from '@/data/arrowSnap.js';   /* v2.3.2731 */
 import { shotSkip } from '@/game/projectiles.js';   /* v2.3.3206: a peer's shot flies over low things as yours does */
 import { BOW_VOLLEY, LONE_BURN_MS } from '@/game/bowVolley.js';   /* v2.3.2849: how long a peer's special stands burning */
@@ -441,13 +442,17 @@ export function updateVisualSystems(S) {
                 var _rpOi = (_rpHit.box && _rpHit.box.oi != null) ? _rpHit.box.oi : null;
                 var _rpFace = boxFace(_rpHit.box, _rpHit.x, _rpHit.y);
                 var _rpW = null;
+                /* v2.3.3343: ...heard by how near it lands (hitSounds.earVol):
+                   at one level it rang as loud from the far side of the view
+                   as beside you (SOUND-GAPS "Also wrong") */
+                var _rpK = earVol(S, _rpHit.x, _rpHit.y);
                 if (_rpOi != null) {
                   _rpW = strikeWheelObject(S, { oi: _rpOi, x: _rpHit.x, y: _rpY, gy: _rpHit.y, ang: rp.ang + Math.PI,
-                    weapon: rp.isStaff ? 'bolt' : 'arrow', special: !!rp.isSpecial, vol: 0.22, peer: true });
+                    weapon: rp.isStaff ? 'bolt' : 'arrow', special: !!rp.isSpecial, vol: 0.22 * _rpK, peer: true, k: _rpK });
                 } else {
                   spawnPropDebris(S, { id: _rpId, x: _rpHit.x, y: _rpY, gy: _rpHit.y,
                     ang: rp.ang + Math.PI, weapon: rp.isStaff ? 'bolt' : 'arrow' });
-                  propImpactSound(_rpId, 0.22);   /* someone else's shot: quieter than your own */
+                  if (_rpK > 0.02) propImpactSound(_rpId, 0.22 * _rpK);   /* someone else's shot: quieter than your own */
                 }
                 if (rp.isStaff) {
                   orbCrashFx(S, _rpHit.x, _rpY, rp.isSpecial ? '#f5c542' : '#a78bfa');
@@ -463,7 +468,7 @@ export function updateVisualSystems(S) {
                 } else if (!rp.isSpecial && arrowSnaps(rp.ownerId, rp.shotTs)) {
                   /* v2.3.2731: the same one-in-eight snap the shooter rolled --
                      same id, same shot timestamp, same answer (arrowSnap.js) */
-                  queueArrowSnap(S, _rpHit.x, _rpY, _rpHit.y, rp.ang, 0.18);
+                  queueArrowSnap(S, _rpHit.x, _rpY, _rpHit.y, rp.ang, 0.18 * _rpK);
                 } else {
                   markProp(S, { kind: 'arrow', id: _rpId, oi: _rpOi, x: _rpHit.x, y: _rpY, gy: _rpHit.y,
                     face: _rpFace, ang: rp.ang,

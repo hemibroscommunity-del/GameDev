@@ -3,6 +3,7 @@
  * Manages the PixiJS application and orchestrates all render systems.
  */
 import { createPixiApp } from './pixiApp.js';
+import { renderDpr } from '../game/renderRes.js'; /* v2.3.3339 */
 import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass per frame */
 import { TileRenderer } from './systems/tileRenderer.js';
 import { WheelObjects } from './wheelObjects.js'; /* v2.3.2975: the Wheel's buildings, trees, rocks and props */
@@ -384,7 +385,7 @@ export async function initPixiRenderer(canvas) {
     // logical (CSS) pixels — same units as cssW / cssH — so the
     // earlier `/ dpr` on app.renderer.* was double-counting and made
     // the comparison always-true, firing resize() every frame.
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = renderDpr();   /* v2.3.3339: as the canvas was sized (game/renderRes.js) */
     const cssW = canvas.width / dpr;
     const cssH = canvas.height / dpr;
     if (Math.abs(app.renderer.width - cssW) > 0.5 || Math.abs(app.renderer.height - cssH) > 0.5) {

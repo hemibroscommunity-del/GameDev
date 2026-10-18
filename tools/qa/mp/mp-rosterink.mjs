@@ -189,6 +189,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(O);
   await O.page.waitForTimeout(1500);
 
+  /* v2.3.3344: Plainy was made on another device, and a character's key works
+     only on the devices it is played on (server/src/devicelock.js) -- so the
+     owner lets this device in first, as for a player moving phones. */
+  const pass = await H.letDeviceIn(wsPort, plain.id).catch(() => null);
+  rec.ok('the owner lets this device in for Plainy (guard)', !!(pass && pass.ok), pass);
   await D.page.goto(`http://localhost:${webPort}/?noresume=1&login=1`, { waitUntil: 'domcontentloaded' });
   await D.page.waitForTimeout(1500);
   await H.openPicker(D.page);

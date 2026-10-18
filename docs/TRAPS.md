@@ -6996,6 +6996,45 @@ trust it then, rather than judge from a guess like the arrival.
 five honest reconnects). The lab: a script reconnecting every 3 s 33,333 ->
 694 px/s, every honest reconnect taken.
 
+## 205. "The lock draws each shadow at the same fraction of a texel, so roundPixels keeps it there" (v2.3.3338)
+
+**Tempting:** the shadow layer is drawn on a grid locked to the world (§141):
+every shadow lands at the same fraction of a texel every frame and only ever
+moves by whole texels, so Pixi's roundPixels, on for the whole app, snaps each
+corner to the same place every frame. Nothing to do.
+
+**What happens:** inside a filter, roundPixels rounds against the global
+`uResolution`, which is the render target's FULL size, and a filter draws into
+a texture from Pixi's pool, rounded up to a power of two, of which it uses only
+its frame (RenderTargetSystem sets the viewport to the frame). On a 390 x 844
+phone that is a 394 x 848 frame in a 512 x 1024 texture, so the "pixels" it
+snapped to were 0.77 x 0.83 of a texel, anchored at the screen's edge. Each time
+the camera crossed a whole pixel, every corner and every building column
+re-snapped by a different amount: a shadow up to ~1.4 device px off its prop,
+jumping up to ~2.2 between frames, while the prop (drawn straight to the
+screen, where the grid is exactly one device px) stood still. The owner, again:
+"prop shadows right now still flicker as you run around". The lock's own test
+stepped the camera one device px at a time, seven steps: two crossings, and
+between crossings the locked picture cannot change, so the average hid them.
+And on an iPhone the filter read its picture at `mediump` (Pixi's default for a
+fragment shader), a half float there: the lock's smooth slide back moved in
+steps of a quarter to half a texel. A desktop, and the QA box's software GL,
+run mediump at full precision, so no picture here can show that part.
+
+**The rule:** never trust roundPixels for anything drawn through a filter, a
+render texture or a mask unless that target's texture is exactly its frame:
+draw such pieces unsnapped (shadows.js `installNoSnap`, which clears
+`roundPixels` on any batched piece marked `_btNoSnap` after the rest of the
+batcher hooks have had their say). Give any shader that reads a picture at a
+sliding coordinate `highp` (`preferredFragmentPrecision`, as wheelWater.js).
+And when you measure motion, step by WHOLE pixels as well as fractions, across
+AND down: a sub-pixel step only crosses a pixel now and then.
+
+**Receipt:** mp-shadowlock (23): a whole CSS px a step, across 0.0332 -> 0.0003
+of a luma level a pixel between steps (`?shadowsnap=1` against now), down
+0.1098 -> 0.0184; v2.3.3149's own one-device-px measure 0.011 -> 0.0011.
+`?shadowsnap=1` and `?shadowhp=0` put each back, to compare on a phone.
+
 ## 206. "A special nobody paid for is a cheat: drop it" (v2.3.3334)
 
 **Tempting:** a hit on a monster marked `special` should count only after the
@@ -7042,3 +7081,52 @@ the page (`F.createMonster`) is the page's alone, and needs neither.
 
 **Receipt:** mp-orbrange's new guard (the worker holds the staff), and its
 interceptions back to 5 of 5 as on main.
+
+## 208. "Clearing a Graphics that is already empty costs nothing" (v2.3.3339)
+
+**Tempting:** draw a screen flash, a HUD mark or a minimap road the simple way:
+`clear()` it at the top of every frame and draw whatever is needed. When nothing
+is needed it stays empty, so the clear is free.
+
+**What happens:** `clear()` on an empty Graphics still marks it changed, and in
+Pixi 8 any change to a batchable Graphics makes its render group rebuild its
+whole draw list (GraphicsPipe.validateRenderable returns true, so
+`structureDidChange`). The screen's flash, atmosphere and HUD graphics are empty
+nearly always and were cleared every frame, and the minimap's quest road was
+cleared and drawn again every frame standing still, so the screen's draw list
+was rebuilt every frame for nothing. Found while chasing the owner's "30fps to
+40ish fps" with `mp-frameprofile`, which names the renderable behind every
+rebuild.
+
+**The rule:** clear a Graphics only when it holds something
+(`g.context.instructions.length`, effectsRenderer `clearIfDrawn`), and redraw
+one only when what it shows has moved (a signature of its geometry, as the
+minimap's party rims and road do). When a frame-time question comes up, count
+the rebuilds before guessing (`mp-frameprofile`'s "rebuild asked ... by").
+
+**Receipt:** mp-frameprofile: the screen's list rebuilt every frame (2.6 a
+second at 2.6 frames a second on the QA box), standing or walking; after, never.
+mp-speedtest check 8.
+
+## 209. "A refused login is a refused login: send 'auth'" (v2.3.3344)
+
+**Tempting:** the device lock refuses a join, and the join already has a
+refusal for a bad login, `join_rejected {reason: 'auth'}` and close 4003
+(join.js). A refusal is a refusal: reuse it.
+
+**What happens:** the phone answers 'auth' by throwing its Login Key away and
+making a fresh character under a new one (wsClient.js, v2.3.1116: the cure for
+a key that no longer matches). For a device refusal the key was RIGHT. The
+player's real character would be swapped for a level-1 stranger on that device,
+with the key kept only in `bt_passphrase_prev`. And counted as a failed key,
+five refusals would lock the character's own device out for a minute.
+
+**The rule:** a refusal of the right key has its own reason (`'device'`) and its
+own close (4016), and never counts toward the five-tries lockout. An older phone
+treats a reason it doesn't know as final: no new character, no retries. A newer
+one shows the device screen (src/ui/DeviceScreen.js).
+
+**Receipt:** device-lock.test catches both "the refusal says auth" and "a
+refused device counts as a wrong key" (24 of 24 deliberate breaks caught), and
+mp-devicelock refuses a new phone with the code, its key kept, and lets it in
+after the owner's pass.

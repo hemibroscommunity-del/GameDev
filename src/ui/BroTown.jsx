@@ -378,6 +378,8 @@ import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a s
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
+import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
+import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
 import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
@@ -388,6 +390,7 @@ import { nmlAsk, nmlAskOn, nmlAim, nmlHitBack } from '@/game/nmlAsk.js';   /* v2
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
 import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
+import { NewMonsterCard } from '@/ui/panels/NewMonsterCard.jsx';   /* v2.3.3336: NEW MONSTER, a tap opens its codex page */
 import { activePet } from '@/game/petBook.js';   /* v2.3.3120: the pet out with you is the record's */
 import { beastmasterOn } from '@/game/trapping.js';   /* v2.3.3121: Beastmaster Bro stands only against a worker that knows his quests */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
@@ -400,6 +403,8 @@ import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordD
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits } from '@/game/lifeSkillRewards.js'; /* tickGatherHits v2.3.2956 */
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
+import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
+import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
 import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
@@ -3406,7 +3411,7 @@ export var BroTown = function BroTown(_ref0) {
        open state since the v2.3.1350 two-state cut) overlays the world
        without resizing the canvas (see sheetGeometry's invariant note). */
     function resize() {
-      var dpr = window.devicePixelRatio || 1;
+      var dpr = renderDpr();   /* v2.3.3339: the canvas's pixel ratio, lowered by ?res= or the speed test (game/renderRes.js) */
       var vw = vv ? vv.width : window.innerWidth;
       var vhFull = vv ? vv.height : window.innerHeight;
       /* iOS keyboard fix: when the chat input pops the keyboard,
@@ -5029,6 +5034,7 @@ export var BroTown = function BroTown(_ref0) {
            same frame, with the water's own splash. */
         var _jNow = Date.now();
         var _jLanded = tickJump(S, _jNow, _playerDead);
+        tickWaterAmbience(S, _jNow);   /* v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
         var _inAir = !!S._jump;
         var _swEv = _inAir ? null : updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
           playerGroundDy(S.currentZone, P.x, P.y));
@@ -5073,6 +5079,10 @@ export var BroTown = function BroTown(_ref0) {
         });
         /* v2.3.3015: the first stride of a sprint pushes off -- a rush of air
            and a burst of the ground's dust (game/sprint.js) */
+        /* v2.3.3343: a sprint that ran out of stamina mid-run is heard
+           deflating (it stopped in silence; SOUND-GAPS) -- only that end, not
+           a tap, a stop or the shield's */
+        if (_sprEv === 'stop' && S._sprint && S._sprint.why === 'empty') cue('sprintOut');
         if (_sprEv === 'run') {
           try { BT_AUDIO.sprintPush(); } catch (e) { /* sound only */ }
           try {
@@ -5080,6 +5090,11 @@ export var BroTown = function BroTown(_ref0) {
               Math.atan2(dy, dx), zonePlayerScale(S.currentZone, P.x, P.y, TILE) || 1, 7);
           } catch (e) { /* a look only */ }
         }
+        /* v2.3.3340: the monsters chasing you call now and then -- the
+           owner's goblin rawr, skeleton rattle, slime bounce and snowman
+           snarl (game/monsterNoises.js; the call as one notices you is
+           wsClient's, on the "!" edge) */
+        try { updateMonsterNoises(S, _sprNow); } catch (e) { /* sound only */ }
 
         /* §14 Terrain feel — tile under player affects movement */
         var footTile = (_S$map$Math$floor$Mat = (_S$map2 = S.map) === null || _S$map2 === void 0 || (_S$map2 = _S$map2[Math.floor(P.y / TILE)]) === null || _S$map2 === void 0 ? void 0 : _S$map2[Math.floor(P.x / TILE)]) !== null && _S$map$Math$floor$Mat !== void 0 ? _S$map$Math$floor$Mat : 0;
@@ -6300,7 +6315,7 @@ export var BroTown = function BroTown(_ref0) {
             litAt: Date.now(), expiresAt: Date.now() + 45000,
             name: 'Campfire', spotName: 'Campfire', gatherLvl: 1, skill: 'cooking', emoji: '🔥',
           };
-          try { BT_AUDIO.beep(360, 0.05, 0.12, 'sawtooth'); } catch (e) {}
+          cue('campfire');   /* v2.3.3343: the fire catching -- the pan's crackle swelling and fading (a beep(), silent; SOUND-GAPS) */
           /* ═══ v2.3.1753: AND TELL THE OTHER PLAYERS ═══
              Owner: "yes make both peers see a campfire."
              Until now a campfire existed only on the client that lit it, so a
@@ -6411,10 +6426,12 @@ export var BroTown = function BroTown(_ref0) {
               if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
                 _ex.status = 'ready';
                 _ex.readyAt = _exNow;   /* v2.3.2956: when the window really opened -- mp-gatherhits holds it against the last hit */
-                try { BT_AUDIO.beep(820, 0.04, 0.05, 'sine'); } catch (e) {}
                 /* v2.3.2761 (owner: sounds for the specific actions): for fishing
                    the window opening IS the bite -- a fish on the hook, now reel. */
                 if (_ex.skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('fish-on-hook', { vol: 0.65 }); } catch (e) {} }
+                /* v2.3.3343: ...and for the rest a small bright tick that says
+                   "now" -- this was a beep(), silent (SOUND-GAPS) */
+                else cue('gatherReady');
               }
             }
             /* v2.3.1416 (owner: "all resources NOT have a time out window
@@ -6969,7 +6986,10 @@ export var BroTown = function BroTown(_ref0) {
                  badge at all; ready wore a '?'.  '❔' (waiting) and '❓'
                  (ready) are the wire values entityRenderer draws: a grey disc
                  with a white "?", still; a green disc with a check DRAWN in
-                 lines -- no emoji glyph anywhere. */
+                 lines -- no emoji glyph anywhere.
+                 v2.3.3336 (owner: "be yellow instead of green.  Green implies
+                 something is done"): the waiting "?" is drawn on YELLOW now,
+                 the grey having read as green -- same wire values. */
               npc._questMarker = _qReady ? '❓' : '❔';
             }
           });
@@ -8450,8 +8470,15 @@ export var BroTown = function BroTown(_ref0) {
           visitedBuildings: S2.stats.visitedBuildings instanceof Set ? _toConsumableArray(S2.stats.visitedBuildings) : S2.stats.visitedBuildings,
           badges: S2.badges
         });
+        /* v2.3.3339: only when it changed -- this runs twice a second, and a
+           localStorage write is a synchronous one on the main thread (on an
+           iPhone a write to disk); standing still, nothing in it changes */
         try {
-          localStorage.setItem('bt_stats', JSON.stringify(statsToSave));
+          var _statsJson = JSON.stringify(statsToSave);
+          if (_statsJson !== stateRef.current._statsSavedJson) {
+            localStorage.setItem('bt_stats', _statsJson);
+            stateRef.current._statsSavedJson = _statsJson;
+          }
         } catch (e) {}
         if (stateRef.current._statsSyncTimer === undefined) stateRef.current._statsSyncTimer = 0;
         stateRef.current._statsSyncTimer++;
@@ -9072,7 +9099,7 @@ export var BroTown = function BroTown(_ref0) {
          the finished pose, not a stall. */
       S._firemaking = { startedAt: now, doneAt: now + 700, x: S.player.x, y: S.player.y + 6 };
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lighting fire…', '#ff8a3c', { ts: now });
-      try { BT_AUDIO.beep(180, 0.05, 0.12, 'sawtooth'); } catch (e) {}
+      cue('fireStrike');   /* v2.3.3343: two strikes of the flint (a beep(), silent) */
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
     });
@@ -9247,10 +9274,11 @@ export var BroTown = function BroTown(_ref0) {
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = nextSlot === 'melee' ? (_S2$rpg$weapon = S2.rpg.weapon) === null || _S2$rpg$weapon === void 0 ? void 0 : _S2$rpg$weapon.name : nextSlot === 'ranged' ? (_S2$rpg$rangedWeapon = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon === void 0 ? void 0 : _S2$rpg$rangedWeapon.name : 'Staff';
     pushDmgPopup(S2, S2.player.x, S2.player.y - 40, wpnName, '#D8A94D');
-    BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
-    setTimeout(function () {
-      return BT_AUDIO.beep(800, 0.04, 0.06, 'sine');
-    }, 60);
+    /* v2.3.3343: the blade drawn (two beep()s played nothing; SOUND-GAPS).
+       Stamped as the gesture's own sound so the swap button's generic menu
+       click yields to it (uiSfxDelegate: a specific sound wins the tap). */
+    cue('weaponSwap');
+    try { BT_AUDIO._uiSpecificAt = BT_AUDIO._now(); } catch (e) { /* sound only */ }
     S2._weaponSwapFlash = Date.now();
   }, []);
   var _desktopSelectSlot = useCallback(function (slot) {
@@ -9263,7 +9291,7 @@ export var BroTown = function BroTown(_ref0) {
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = slot === 'melee' ? (_S2$rpg$weapon2 = S2.rpg.weapon) === null || _S2$rpg$weapon2 === void 0 ? void 0 : _S2$rpg$weapon2.name : slot === 'ranged' ? (_S2$rpg$rangedWeapon2 = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon2 === void 0 ? void 0 : _S2$rpg$rangedWeapon2.name : 'Staff';
     pushDmgPopup(S2, S2.player.x, S2.player.y - 40, wpnName, '#D8A94D');
-    BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
+    cue('weaponSwap');   /* v2.3.3343: as the cycle's */
   }, []);
   var _desktopSpecialAttack = useCallback(function () {
     doSpecialAttack();
@@ -12896,7 +12924,7 @@ export var BroTown = function BroTown(_ref0) {
   }, React.createElement(ElemStatusChips, { stateRef: stateRef }) /* v2.3.2996: the snowflake, the flame, the slime */,
   /* v2.3.3120: pet trapping -- the TRAP pop-up over a targeted monster and the
      card for a new pet (each on its own clock; game/trapping.js) */
-  React.createElement(TrapButton, { stateRef: stateRef }), React.createElement(TrapCatchCard, { stateRef: stateRef }), function () {
+  React.createElement(TrapButton, { stateRef: stateRef }), React.createElement(TrapCatchCard, { stateRef: stateRef }), React.createElement(NewMonsterCard, { stateRef: stateRef }), function () {
     var S = stateRef.current;
     if (!S) return null;
     var effects = [];

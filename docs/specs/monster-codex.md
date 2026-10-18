@@ -509,3 +509,23 @@ answer carries that monster's `layout`).
   scrolling less than before; the bar's ‹; sideways, the six buttons in the
   side container (238 px), the list two across with no word cut -- numbers in
   tools/qa/mp/out/codexfit.json, pictures codexfit-*.png.
+
+## The NEW MONSTER card (v2.3.3336)
+
+The owner, playtesting: *"Make the new codex entry for monsters as a 'new
+monster' announcement instead of a new codex entry and have it jump to the
+codex area."*
+
+- The kill that opens a page (the first of its kind the worker counted) no
+  longer floats "New in the Codex: Snowman" over your head. It raises a card
+  (`src/ui/panels/NewMonsterCard.jsx`): NEW MONSTER, the monster's picture and
+  name, "Tap to see it in the Codex ›", for `ANNOUNCE_MS` (6 s).
+- A tap opens the dashboard's Codex on that monster's page, from anywhere --
+  folded dashboard included (`codexOpenPage` / `takeCodexOpen` in
+  `src/game/monsterCodex.js`, taken by `EncyclopediaPanel`).
+- It never stops a fight: no scrim, only the card takes taps. A body portal at
+  z 59 (above the minimap's open button, under a new pet's card); centred just
+  under the minimap upright, near the top sideways. A second new monster
+  within the six seconds is a new card (keyed by its time).
+- `mp-codex` step 2 reads the card, no words over your head, and taps it from
+  the world.

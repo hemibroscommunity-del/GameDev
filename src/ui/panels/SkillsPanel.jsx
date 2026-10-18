@@ -256,7 +256,7 @@ export function SkillsPanel(props) {
     name: 'Trapping',
     key: 'trapping',
     icon: '🪤',
-    iconSrc: '/icons/ui/skill-trapping.webp?v=2.3.1232',
+    iconSrc: '/icons/ui/skill-trapping.webp?v=2.3.3331',
     desc: 'Capture weakened monsters as pets'
   }].map(function (sk) {
     var _rpgState$lifeSkills45;
