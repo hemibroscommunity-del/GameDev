@@ -275,8 +275,9 @@ async function mineIt(P, wsPort, myId, rec, metal, t) {
   rec.ok(`${metal}: the gesture completes the harvest`, ended === true && g.lastProg >= 0.85, g);
   /* the rock breaks into pieces of its own picture, and cracks -- watched
      from the page itself, frame by frame, so the picture below is taken while
-     the pieces fly (they lie ORE_BREAK_LIE_MS and fade in 1.2 s: a poll from
-     here, on this box's slow frames, caught them gone) */
+     the pieces lie there (ORE_BREAK_LIE_MS, held long by the page's
+     ?orebreakms=: a poll from here, on this box's slow frames, caught them
+     gone) */
   const heap = await P.page.evaluate((nid) => new Promise((res) => {
     const t0 = performance.now();
     const look = () => {
@@ -296,11 +297,18 @@ async function mineIt(P, wsPort, myId, rec, metal, t) {
     return { x: Math.max(0, sx - 120), y: Math.max(0, sy - 200), width: 240, height: 260 };
   }, t);
   await P.page.screenshot({ path: join(H.REPO, `tools/qa/mp/out/tierore-${metal}-break.png`), clip }).catch(() => {});
-  rec.ok(`${metal}: mined out, the rock breaks into pieces of its own picture`, !!heap && heap.shards >= 6, heap);
+  /* ...and still lie there once the picture is taken, so it shows them: with
+     the pieces held 6 s, every picture on this box came out with none -- the
+     break is seen a few seconds after it starts (the harvest's end comes
+     first), and the screenshot takes seconds more */
+  const shown = await P.page.evaluate((nid) => (window._pixiRenderer.oreBreakProbe() || [])
+    .some((q) => String(q.oi).indexOf('ore:' + nid + ':') === 0 && q.shards >= 6), t.id);
+  rec.ok(`${metal}: mined out, the rock breaks into pieces of its own picture (in tierore-${metal}-break.png)`,
+    !!heap && heap.shards >= 6 && shown === true, { heap, shown });
   const cracks = await H.waitFor(P, () => window.__btOreCracks || [], (a) => a.length > 0, { timeout: 8000, label: 'the crack' }).catch(() => []);
   rec.ok(`${metal}: ...and it cracks, at your full voice`, cracks.length >= 1 && cracks[0].self === true, cracks);
   const gone = await H.waitFor(P, () => (window._pixiRenderer.oreBreakProbe() || []).filter((h) => String(h.oi).indexOf('ore:' + t.id + ':') === 0).length,
-    (n) => n === 0, { timeout: 15000, label: 'the pieces fade' }).catch(() => null);
+    (n) => n === 0, { timeout: 40000, label: 'the pieces fade' }).catch(() => null);
   rec.ok(`${metal}: ...its pieces fade away after`, gone === 0, { gone });
   let got = {};
   for (let i = 0; i < 20; i++) {
@@ -318,9 +326,10 @@ async function mineIt(P, wsPort, myId, rec, metal, t) {
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  /* the pieces of a broken rock lie 6 s here, not 0.9: a screenshot on this
-     box takes longer than they last (effectsRenderer ?orebreakms=) */
-  const P = await H.newPlayer(browser, { name: 'Pickbro', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'orebreakms=6000' });
+  /* the pieces of a broken rock lie 20 s here, not 0.9 (effectsRenderer
+     ?orebreakms=): this box sees the break seconds late and takes seconds
+     more for a screenshot -- at 6 s no picture showed them */
+  const P = await H.newPlayer(browser, { name: 'Pickbro', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'orebreakms=20000' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stopAlive = H.keepAlive(P, 15000);

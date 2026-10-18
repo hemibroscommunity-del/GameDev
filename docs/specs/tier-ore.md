@@ -139,5 +139,11 @@ the pike reaches x-71..x+11 and y +/- 35. Past that a fish dives, as before.
   gesture): the rock breaks into pieces of itself that fade, it cracks, and
   the worker pays its ore. Pictures: `tools/qa/mp/out/tierore-<metal>.png`,
   `-mine.png`, `-break.png`.
+
+  The pieces lie 0.9 s in the game. The test holds them 20 s with
+  `?orebreakms=20000` and checks they are still there once `-break.png` is
+  taken. On the test machine the break is seen a few seconds after it starts,
+  and a screenshot takes seconds more: with the pieces held 6 s, no picture
+  showed them.
 - `mp-wheelnodes` checks the iron vein is its own rock (it checked the old
   418 px twin), and still mines it.
