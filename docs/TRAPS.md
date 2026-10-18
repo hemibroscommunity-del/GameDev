@@ -7131,6 +7131,134 @@ refused device counts as a wrong key" (24 of 24 deliberate breaks caught), and
 mp-devicelock refuses a new phone with the code, its key kept, and lets it in
 after the owner's pass.
 
+## 210. "The figure is at (world - camera) x scale on the screen" (v2.3.3407)
+
+**Tempting:** a point in the world is drawn at `(x - camera.x) * scale`, so
+that is where it is on the screen -- compare it with a pointer's `clientX`.
+
+**What happens:** that is where it is in the CANVAS. The canvas is not always
+at the screen's corner: on a computer the game plays in a centred column
+(game.css v2.3.1715, black bars beside it), and sideways the world is offset
+by `--world-x`. The harvest's gesture fell back to "on the character" when the
+right button was hidden, worked out this way: at 1280 x 800 the point lay at
+x 218, in the black margin left of a column at 422..858. No press could reach
+it, and a computer's harvest waited at its full bar for ever (the owner: "I
+don't think you can harvest lifeskills right now on the computer"). The disc's
+ghosting test had already learnt this sideways (v2.3.2472) and subtracts the
+canvas's own rect.
+
+**The rule:** world -> screen is `canvasRect.left + (x - camera.x) * scale`
+(and the same for y). Read the canvas's own `getBoundingClientRect`, never
+assume it is at 0, 0 -- and test on a computer's window, not only a phone's.
+
+**Receipt:** mp-deskharvest step 4: with the button hidden the anchor is on the
+figure (within 2 px of where it is drawn), inside the column.
+
+## 211. "An invisible strip at the screen's edge only catches what lands on the world" (v2.3.3407)
+
+**Tempting:** iOS reads a swipe from the bezel as its back gesture, so lay a
+transparent strip down the left edge, above the game, and cancel every
+touchstart on it (v2.3.112). Nothing visible lives that close to the edge.
+
+**What happens:** things DID live there, and kept arriving. The strip was 18 px
+wide, full height, z 40, appended to the body -- above everything outside the
+game's wrap. The top bar's logout button starts at x 6, a sideways page's ◂
+back arrow at 8, the sideways ▴/▼ fold chip at 8, the band's CLOSE pill at 8
+and its first column of bag tiles at 9: the left part of each took no tap. The
+UI review's numbered pictures (tools/qa/ui-review) marked them "covered" on
+every sideways screen; v2.3.2563 had already found the Special button half
+dead and MOVED it off the strip, and the next control to land there did not
+know the rule.
+
+**The rule:** a guard is a LISTENER, not a layer: on the document, capturing,
+it cancels a touch that starts at the edge on the world and lets one that lands
+on a control through (BroTown.jsx `EDGE_CONTROL`). Nothing invisible lies over
+a control. Never fix a covered control by moving it off a hidden layer: fix the
+layer.
+
+**Receipt:** mp-edgeguard: real touches at x 10 work the logout, the ◂ arrow,
+both fold chips and the band's first bag tile (all six fail on the strip), and
+a thumb at x 8 on the world still starts no walk.
+
+## 212. "A window that fits a phone held upright fits one held sideways" (v2.3.3407)
+
+**Tempting:** build the window on the 390 x 844 design target, centre it on a
+scrim, and it works on every phone.
+
+**What happens:** sideways the same phone is 390 px TALL. Ace's coin flip is
+about 600 px: centred on a scrim that does not scroll, its tabs ran off the top
+and its Flip button off the bottom -- the coin could not be flipped. Diego's
+drawer is a fixed 226 px whose shelf slots are a fifth of its width: 111 px
+square beside a 594 px drawer, so his shelf pushed "His shelf" up under his
+name and the ✕ with it -- and the bag it trades with is not under it sideways
+at all (it is the side column), so nothing could be sold.
+
+**The rule:** a window holds itself to the screen (`max-height: 100%`, a column
+whose body scrolls) and sizes its parts against the room it has, not a fraction
+of a width that grows sideways. Ask "where is the other half of this window
+sideways?" for anything that leans on the band. Look at it sideways: the UI
+review takes every window in both.
+
+**Receipt:** mp-edgeguard step 6 (Ace's Flip answers, his ✕ and tabs on
+screen); mp-shopkeeper's sideways part (the column opens beside the drawer, a
+tap on a bag slot sells, the ✕ answers, "His shelf" below his name).
+
+## 213. "A key's letter is one more word on its button" (v2.3.3407)
+
+**Tempting:** to show a computer player that Enter accepts the quest, put
+`<kbd>Enter</kbd>` in the Accept Quest button, and an "Esc" span by every ✕.
+
+**What happens:** the letter becomes part of the card's words. The quest
+scenarios read a card's text to check what Mayor Bro says and what the button
+offers ("Accept Quest", "30 XP" as a whole word: QuestOfferPanel's notes), and
+"Accept QuestEnter" fails them for a wording that never changed; v2.3.2289 took
+the dialogue's ✕ out of its text for the same reason. And a letter in the DOM
+is on a phone too, where there is no key to press.
+
+**The rule:** a key's letter is GENERATED content: `data-key="Enter"` on the
+button, drawn by game.css (`[data-key]::after { content: attr(data-key) }`)
+only under `@media (pointer:fine)`, `pointer-events: none` -- never a text
+node. The table of keys is ONE module (src/game/deskKeys.js) that both the
+key handler and the buttons read, so a letter cannot promise what its key does
+not do; and Esc presses the ✕ that is in front rather than closing a list of
+panels, so it does whatever that ✕ does. A body-level button (the minimap's
+open button, z 45) lies over in-wrap dimmed screens: its letter must step aside
+with it, or it stays bright on top (TRAPS §20).
+
+**Receipt:** mp-deskkeys -- the letters on the six dashboard buttons, the
+minimap, Next, Accept Quest, Not now and the ✕s, every key doing what its
+button does, and a phone wearing none; the quest scenarios still read the
+cards' words unchanged.
+## 214. "A `vw` is a hundredth of the game's width" (v2.3.3407)
+
+**Tempting:** size a screen's parts as fractions of `vw` -- `--cc-leftw:
+clamp(150px,44vw,360px)` -- because on a phone the game IS the screen, and a
+clamp keeps the extremes sane.
+
+**What happens:** on a computer the game plays in a centred column, 390/715 of
+the window's height wide (game.css, the `#root` rule, v2.3.1768), and `vw` is
+still the WINDOW. 44vw of a 1366 px window is 601, so the character creator's
+column took its 360 px ceiling inside a 419 px play column, the Trait Picker
+beside it got 31 px, and what the picker could not hold stacked down: ENTER
+BRO TOWN at y 847-903 of a 768 px window, in a creator that does not scroll. A
+new player on the commonest laptop could not begin; 1536 x 864, 1280 x 800 and
+1280 x 720 the same, and 1440 x 900 -- the size every desktop scenario used --
+cut it by only 3 px, which is why nothing failed. v2.3.1728 met the same
+mistake as `width:100vw` on the wrap; `contain:paint` re-anchors fixed boxes,
+never a viewport unit.
+
+**The rule:** inside the play column on a computer, a size taken from the
+screen's width is taken from the COLUMN: `--cc-colw:
+min(100vw, calc(100vh * 390 / 715))` mirrors the `#root` rule (game.css "THE
+CREATOR SIZES ITSELF FROM THE COLUMN"), and the parts are fractions of it
+under `@media (pointer:fine) and (min-width:1000px)`, so a phone never sees
+it. Check a computer screen at a laptop's 1366 x 768 as well as 1440 x 900:
+the UI review's `--views=laptop` (tools/qa/ui-review/capture.mjs).
+
+**Receipt:** mp-deskreach 3 -- at 1366 x 768 ENTER BRO TOWN is on the screen,
+answers a click at its middle, the picker has room, and the click takes a new
+bro into the game.
+
 ## 215. "A lockout is a wrong key: answer 'auth'" (v2.3.3355)
 
 **Tempting:** five wrong keys for an id lock it out for a minute
@@ -7235,6 +7363,35 @@ the record and puts out a join whose key or device it no longer lets in.
 
 **Receipt:** login-keys §12 (21 checks): a gate where each change waits, the
 owner's tool run in the gap; nine fail on v2.3.3355's code.
+
+## 220. "Every window puts a scrim over the screen, so the coach keeps off windows by itself" (v2.3.3407)
+
+**Tempting:** leave the quest coach alone when a window is open: it draws a
+lesson only when its control answers a hit-test at its middle (QuestCoach
+`reachable`), and "every overlay in this UI puts a scrim over the screen", so
+any window takes the mark down with no code of its own.
+
+**What happens:** the building windows have no scrim since v2.3.3258 (they open
+over the street, the room behind the menu), and the dashboard's OPEN button
+stays in view under them. So the GEAR UP lesson's ring stayed on OPEN and its
+card -- lifted clear of the combat band -- stood over the open window: the UI
+review's laptop view found it on the Woodworker's Staff tab and the Feed &
+Seed's Orders, and the card is tappable (v2.3.2312), so a press there put the
+tip away instead of choosing the tab. On a computer the same lift, past a
+combat band a computer does not show, carried the card to the top, under the
+minimap's invisible "open map" button: a click on its ✕ opened the world map.
+
+**The rule:** the coach stands aside under any window, by marker, in game.css
+(`body:has(.bt-inspect) [data-coach]` and the windows that are not
+`.bt-inspect`: daily rewards, Diego, Ace, the trade drawer) -- display only,
+so the lesson keeps waiting and comes back when the window goes. A rule that
+rests on "every X does Y" needs a check that fails when a new X does not. And
+on a computer the card clears the keys strip, not the phone's combat band
+(QuestCoach `bandClear`).
+
+**Receipt:** mp-questcoach (a phone: the bank's window puts the gear lesson
+away, shut it is back), mp-deskreach 4 (a laptop: the card clears the minimap
+and the keys strip, its ✕ answers).
 
 ## 221. "A filter on one small sprite costs one small shader" (v2.3.3406)
 

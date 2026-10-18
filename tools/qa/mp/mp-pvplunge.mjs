@@ -37,13 +37,15 @@ async function closeIn(A, wsPort, aId, bId, want) {
     const d = Math.hypot(dx, dy);
     const tol = Math.max(8, want * 0.2);
     if (Math.abs(d - want) <= tol) return { ok: true, d: Math.round(d) };
-    const away = d < want;
-    const sx = away ? -dx : dx, sy = away ? -dy : dy;
-    const key = Math.abs(dx) > Math.abs(dy) ? (sx > 0 ? 'd' : 'a') : (sy > 0 ? 's' : 'w');
-    await A.page.keyboard.down(key);
-    await A.page.waitForTimeout(Math.min(700, Math.max(90, Math.abs(d - want) * 2.2)));
-    await A.page.keyboard.up(key);
-    await A.page.waitForTimeout(320);
+    /* v2.3.3425: put there by the harness's hops (the page's own place, then
+       its move to the worker), as mp-pvpnumbers' closeIn does.  A key held a
+       set time walks however many frames fall inside it, and this box draws a
+       frame every few hundred ms: a 123 ms press often walked none, and 24
+       tries ended 216 px out with the guard failed (the lunge, from there,
+       still landed). */
+    const ux = d > 1 ? dx / d : 1, uy = d > 1 ? dy / d : 0;
+    await H.hopTo(A, pb.x - ux * want, pb.y - uy * want, { step: 60, gap: 300, tries: 30 });
+    await A.page.waitForTimeout(500);
   }
   const [pa, pb] = await Promise.all([H.serverPlayer(wsPort, aId), H.serverPlayer(wsPort, bId)]);
   return { ok: false, d: pa && pb ? Math.round(Math.hypot(pb.x - pa.x, pb.y - pa.y)) : null };
@@ -178,11 +180,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.evaluate(() => {
     const q = window.__qaLunge = { dazes: [], pos: [], tried: null };
     const S = window._gameState.current;
+    /* v2.3.3425: the place every 20 ms, not once a frame.  The daze is 500 ms
+       and this box draws a frame every few hundred, so a frame-paced record
+       held one frame of it and "at least two" could not be met; read on a
+       timer, the frames inside the daze are all between two samples, and a
+       walk the daze failed to stop shows as movement within it. */
+    q.timer = setInterval(() => {
+      const now = Date.now(), u = S._dazeUntil || 0;
+      if (q.pos.length < 1500) q.pos.push({ t: now, x: S.player.x, y: S.player.y, dazed: u > now });
+      if (q.stop) clearInterval(q.timer);
+    }, 20);
     (function loop() {
       const now = Date.now();
       const u = S._dazeUntil || 0;
       if (u && (!q.dazes.length || q.dazes[q.dazes.length - 1].until !== u)) q.dazes.push({ seenAt: now, until: u });
-      if (q.pos.length < 600) q.pos.push({ t: now, x: S.player.x, y: S.player.y, dazed: u > now });
       if (u > now && !q.tried) {
         S._abilCd = null;   /* B's lunge is off cooldown: only the daze can refuse it */
         const ok = window.__btMaybeSwordDash ? window.__btMaybeSwordDash() : null;
@@ -210,6 +221,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.keyboard.down(walkKey);
   await B.page.waitForTimeout(400);
   const hp0 = (await H.serverPlayer(wsPort, bId) || {}).hp;
+  /* v2.3.3425: BOTH stages blanked through the lunge and its daze.  This
+     box draws in software, one graphics process for both phones, 300-600 ms
+     a frame, and nothing on B's page -- frame or timer -- runs inside one:
+     the 500 ms daze held one sample (the runs of 2026-10-18, with the 20 ms
+     sampler, and again with B's stage alone blanked, A's frames keeping the
+     graphics process busy).  What steps 2-3 read is the game's logic -- the
+     dash, the hit, the walk refused, B's own lunge refused, A's copy of B
+     dazed -- not its pixels: drawn nothing, both pages run at a phone's
+     pace.  About 3 s, inside the black-screen watchdog's two strikes (10 s). */
+  await Promise.all([A, B].map((P) => P.page.evaluate(() => { if (window.__btBlankStage) window.__btBlankStage(true); })));
   const tFire = Date.now();
   const fired = await press(A);
   rec.ok('2. the press LUNGES at the locked player (a dash that names them)', fired.ok === true && fired.dash && String(fired.pid) === String(bId), fired);
@@ -221,6 +242,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`2. ...the dash ends on its own at contact (${end.gap} px, ${end.ms} ms)`, end.ended && end.gap != null && end.gap <= 80, end);
   await A.page.waitForTimeout(900);   /* the daze is over: B lets the key go */
   await B.page.keyboard.up(walkKey);
+  await Promise.all([A, B].map((P) => P.page.evaluate(() => { if (window.__btBlankStage) window.__btBlankStage(false); })));
   await A.page.waitForTimeout(600);
   const hp1 = (await H.serverPlayer(wsPort, bId) || {}).hp;
   const hitsB = await hitsOf(B);
