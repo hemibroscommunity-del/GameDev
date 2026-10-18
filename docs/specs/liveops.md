@@ -122,7 +122,7 @@ somewhere.
 
 - `_economySnapshot()` — the `/economy` aggregation factored out of
   admin.js so the endpoint and the daily writer share one implementation.
-  Every table it reads is paged (v2.3.2438 the player records, v2.3.3363
+  Every table it reads is paged (v2.3.2438 the player records, v2.3.3368
   the mailboxes and the orders): the whole table is read, a page at a time,
   so its memory stays bounded however many players there are.
 - `_metricsMaybe(now)` writes `metrics:<yyyymmdd>` = `{totalGold,
@@ -136,7 +136,7 @@ somewhere.
   market's orders (`mkt_order:`, 200 a page: the gold buy orders hold). A
   call reads at most one page of each and stops at the first FULL one; the
   record goes out on the call whose pages all came back short. Until
-  v2.3.3363 the mailboxes and orders were one unbounded list each on the
+  v2.3.3368 the mailboxes and orders were one unbounded list each on the
   last call -- a box is drained only when its player joins, so the mail of
   a player who never returns stays, and that list grew for ever (the
   architecture review).
@@ -144,7 +144,7 @@ somewhere.
   fine: no players means no economy movement.
 - `escrowedGold` is the gold resting BUY orders hold (an order is `{type,
   price}`: a buy takes its price when placed, a sell holds a weapon;
-  `orderEscrowGold`). Until v2.3.3363 it read `o.side` and `o.qty`, which
+  `orderEscrowGold`). Until v2.3.3368 it read `o.side` and `o.qty`, which
   no order has, and was 0 in every record and `/economy` answer. Gold held
   elsewhere (duel wagers, arena entries, auction-house offers) is not in it.
 - `GET /api/admin/economy` now also returns `history` (last 7 snapshots),
@@ -179,7 +179,7 @@ idempotency, `/economy` history/delta/alert math, ring prune.
 route, each read off by the worker and told to a join, cleared and read
 on again; any other camelCase name refused; the two scans of
 `server/src` (flags read, switches promised).
-§7b (v2.3.3363, 15 checks): three pages of mail and two of orders --
+§7b (v2.3.3368, 15 checks): three pages of mail and two of orders --
 every buy order's gold and every mailbox entry counted, every list of a
 growing table bounded, the mailboxes read 50 at a time and resumed, no call
 reading more than one full page, `/economy` paged and counting the same, an

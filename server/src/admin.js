@@ -189,7 +189,7 @@ export const adminMethods = {
       if (request.method === 'GET' && path === '/economy') {
         // v2.3.1150: aggregation factored into _economySnapshot
         // (liveops.js) so the daily metrics tripwire shares it.  Every
-        // table it reads is paged (v2.3.2438, v2.3.3363), so its memory
+        // table it reads is paged (v2.3.2438, v2.3.3368), so its memory
         // stays bounded; its time still grows with the tables.
         const s = await this._economySnapshot();
         // Tripwire surface: last 7 daily snapshots + day-over-day

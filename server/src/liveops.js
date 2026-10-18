@@ -27,7 +27,7 @@
  *           ("server restarting in 2 minutes").
  *   METRICS once-daily `metrics:<yyyymmdd>` economy snapshot (ring of
  *           30) written from the tick's housekeeping slot, a page at a
- *           time (v2.3.2438; every table paged since v2.3.3363);
+ *           time (v2.3.2438; every table paged since v2.3.3368);
  *           /api/admin/economy surfaces the last 7 with a day-over-day
  *           delta and an `alert` when |Δ totalGold| > 25% — the solo
  *           owner's dupe-exploit tripwire.
@@ -49,7 +49,7 @@
    instead of every slot. */
 export const METRICS = {
   PAGE: 200,
-  /* v2.3.3363: the mailboxes are paged too, fewer to a page: a box is a list
+  /* v2.3.3368: the mailboxes are paged too, fewer to a page: a box is a list
      of up to ~200 entries (gold and items merge past that, weapons do not --
      inbox.js _inboxAppend), where a player record is one */
   BOX_PAGE: 50,
@@ -57,7 +57,7 @@ export const METRICS = {
   RETRY_MS: 3600000,
 };
 
-/* ═══ v2.3.3363: THE GOLD A MARKET ORDER HOLDS ═══
+/* ═══ v2.3.3368: THE GOLD A MARKET ORDER HOLDS ═══
    An order carries `type` ('buy' or 'sell'), `price` and `item` (market.js
    _mktPlaceOrder): a buy takes its price from the buyer when it is placed
    and holds it until it fills, is cancelled or expires; a sell holds a
@@ -72,7 +72,7 @@ export function orderEscrowGold(o) {
   return Number.isFinite(p) && p > 0 ? p : 0;
 }
 
-/* v2.3.3363: the entries waiting in one `inbox:` value */
+/* v2.3.3368: the entries waiting in one `inbox:` value */
 function boxEntries(box) {
   return Array.isArray(box) ? box.length : 0;
 }
@@ -171,7 +171,7 @@ export const liveopsMethods = {
     return { gold, players, count: blobs.size, last, done: blobs.size < METRICS.PAGE || !last };
   },
 
-  /* ═══ v2.3.3363: EVERY TABLE ONE PAGE AT A TIME ═══
+  /* ═══ v2.3.3368: EVERY TABLE ONE PAGE AT A TIME ═══
      v2.3.2438 paged the player records, and left the two tails -- the
      mailboxes (`inbox:`) and the market's resting orders (`mkt_order:`) --
      as one list each, every value in memory at once.  A box is drained only
@@ -234,7 +234,7 @@ export const liveopsMethods = {
      idempotent (the cheap wall); this._lastMetricsDay is the fast path.
      Never throws out of a tick.  Returns true while there is more to do.
 
-     v2.3.3363: three tables, one after the other -- the player records (the
+     v2.3.3368: three tables, one after the other -- the player records (the
      gold), the mailboxes (the mail waiting), the market's orders (the gold
      its buy orders hold) -- and a call reads AT MOST ONE PAGE OF EACH: it
      stops at the first page that comes back full (more of that table next

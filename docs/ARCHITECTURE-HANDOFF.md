@@ -194,7 +194,7 @@ extended.
    page per tick slot, a cursor in memory, batched deletes, never on the
    join path (`_opPruneMaybe`, `_metricsMaybe`). A single `list()` with no
    `limit` over a prefix that grows without bound is a bug on any hot path.
-   (v2.3.3363: `_metricsMaybe` still listed `inbox:` and `mkt_order:` whole
+   (v2.3.3368: `_metricsMaybe` still listed `inbox:` and `mkt_order:` whole
    on its last page, every mailbox in memory at once; every table it reads
    is paged now, the mailboxes 50 at a time.)
    **And a third edge (v2.3.3291): the gate keeps EVENTS apart, not

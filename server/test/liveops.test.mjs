@@ -23,7 +23,7 @@
  *       server_announce is dropped by the deny-list.
  *   6.  Metrics: once-daily key-existence idempotency; /economy
  *       history/delta/alert math; ring prunes to METRICS_KEEP.
- *   7b. v2.3.3363: the mailboxes and orders are paged like the player
+ *   7b. v2.3.3368: the mailboxes and orders are paged like the player
  *       records, and a buy order's gold is counted (escrowedGold read
  *       fields no order has, and was always 0).
  *   8.  v2.3.3295: every kill switch can be THROWN through the real
@@ -299,7 +299,7 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   check('...but runs again after RETRY_MS', (await r8._metricsMaybe(T7 + METRICS.RETRY_MS + 1)) === false && s8._store.has('metrics:' + r8._cadencePeriodDaily(T7)));
 }
 
-// ── 7b. v2.3.3363: the mailboxes and the orders are paged too, and a buy
+// ── 7b. v2.3.3368: the mailboxes and the orders are paged too, and a buy
 //        order's gold is counted ──
 // The two tails were one unbounded list each, values and all; and escrowedGold
 // read `o.side`/`o.qty`, which no order has (an order is {type, price}), so it
