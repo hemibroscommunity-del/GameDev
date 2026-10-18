@@ -1020,14 +1020,19 @@ remnant to migrate server-side, not a mode to preserve.
       that elemental zone but the wood logs stay the same", "keep in mind
       there are actually 10 elemental zones": specks drawn in code over the
       picture, which never changes (`src/rendering/landAuras.js`,
-      `LAND_AURAS`): snow (frost), embers (ember), sand (sky), dust and
-      glints (hollows), sparks (thunder), drips (tidal), spores (mist),
-      petals and fireflies (verdant), and the realms' dark and light ready
-      for when they are built; a resource's land from its id
-      (`wn-<land>-<k>`), the commons none; each resource's specks a
-      Container RIDING on its picture (depthSort `_ridesOn`) at its alpha (a
-      tree seen through, its specks too), one 2 x 2 texture, `AURA_MAX` 180
-      alive, a pool; the Wheel only, `?noauras`; `mp-landauras`:
+      `LAND_AURAS`): snowflakes and rime glints (frost), embers and ash
+      (ember), sand streaks (sky), dust and crystal glints (hollows), sparks
+      and arcs (thunder), drips and mist (tidal), spores (mist), petals and
+      fireflies (verdant), a glow at the foot in fire, electric and poison,
+      and the realms' dark and light ready for when they are built; each kind
+      its own shape, 3-10 world px, the lights ADDED (the first cut's 2 px
+      squares were a device pixel on a phone: the trees looked bare); a
+      resource's land from its id (`wn-<land>-<k>`), the commons none; each
+      resource's specks a Container RIDING on its picture (depthSort
+      `_ridesOn`) at its alpha (a tree seen through, its specks too);
+      `AURA_MAX` 260, `PER_MAX` 36, a pool; seven tiny textures made behind
+      the Wheel's loading screen (`landAurasWarm`) and freed on leaving
+      (`landAurasFree`); the Wheel only, `?noauras`; `mp-landauras`:
       docs/specs/land-auras.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes

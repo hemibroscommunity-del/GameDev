@@ -2,19 +2,24 @@
  *
  * src/rendering/landAuras.js: a resource in one of the Wheel's eight lands
  * makes specks of its element round its picture (snow, embers, sand, dust and
- * glints, sparks, drips, spores, petals and fireflies); the commons' wear
- * nothing.  On a phone (390 x 844, 3x) in the Wheel, the player put beside
- * the nearest tree and the nearest rock of each land in turn (the page's own
- * position: the specks are the page's alone, and nothing here asks the
- * worker), and beside the commons' pine:
+ * glints, sparks and arcs, drips, spores, petals and fireflies, a glow at the
+ * foot of some); the commons' wear nothing.  On a phone (390 x 844, 3x) in
+ * the Wheel, the player put beside the nearest tree and the nearest rock of
+ * each land in turn (the page's own position: the specks are the page's
+ * alone, and nothing here asks the worker), and beside the commons' pine:
+ *   0. the specks' textures were made behind the loading screen;
  *   1. the commons' pine makes none;
- *   2. each land's tree and rock make specks of THAT land (`byLand`), riding
- *      on the resource's picture (`_ridesOn`, the depth pass's rider, so they
+ *   2. each land's tree and rock make specks of THAT land -- counted as made,
+ *      not as alive at one look (a spark lives a fifth of a second) -- among
+ *      them its land's own shape (a flake, a streak, a drop...), riding on
+ *      the resource's picture (`_ridesOn`, the depth pass's rider, so they
  *      are drawn just in front of it and behind anyone south of it), every
- *      one inside the resource's box grown by 120 px;
+ *      one alive inside the resource's box grown by 120 px; the lands with
+ *      one wear a glow at the foot;
  *   3. never more than AURA_MAX alive;
  * and back at the commons' pine, every land's let go.
- * Pictures: tools/qa/mp/out/landauras-<land>.png -- what the owner looks at.
+ * Pictures: tools/qa/mp/out/landauras-<land>.png (a tree) and
+ * landauras-<land>-rock.png -- what the owner looks at.
  *
  *   node tools/qa/mp/run.mjs landauras
  */
@@ -24,6 +29,11 @@ import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
 const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'];
+/* each land's own shape, as landAuras.js LAND_AURAS draws it (any one will
+   do where a land has two), and the lands with a glow at the foot */
+const SHAPE = { frost: ['flake'], ember: ['glow'], sky: ['streak'], hollows: ['dot', 'glint'], thunder: ['glow', 'dot'],
+  tidal: ['drop'], mist: ['glow'], verdant: ['petal', 'glow'] };
+const BASE = new Set(['ember', 'thunder', 'mist']);
 
 const put = (P, x, y) => P.page.evaluate(({ x, y }) => {
   const S = window._gameState.current;
@@ -66,6 +76,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       (v) => v.zone === 'wheel' && !v.loading && v.n > 0, { timeout: 120000, label: 'into the Wheel' }).catch(() => null);
     rec.ok('in the Wheel, with its resources (guard)', !!inW, inW);
     if (!inW) return;
+    const ready = await probe(P, null);
+    rec.ok('the specks\' textures were made behind the loading screen', !!ready && ready.ready === true, ready);
     await P.page.addStyleTag({ content:
       '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
     for (const k of ['woodcutting_axe', 'mining_pickaxe']) await H.grant(wsPort, myId, 'item', { invKey: k, count: 1 }).catch(() => {});
@@ -110,25 +122,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       /* the specks are made on the game's own clock, capped at 100 ms a frame,
          and this box draws a few frames a second: waited for, not timed */
-      let got = null;
-      for (let i = 0; i < 40; i++) {
+      let got = null, outside = 0, rides = true;
+      const kinds = new Set();
+      for (let i = 0; i < 50; i++) {
         await P.page.waitForTimeout(400);
         got = await probe(P, s.id);
         maxLive = Math.max(maxLive, (got && got.live) || 0);
-        if (got && got.node && got.node.parts >= 2) break;
+        const n = got && got.node;
+        if (n) {
+          for (const k of Object.keys(n.kinds || {})) kinds.add(k);
+          outside = Math.max(outside, n.outside);
+          if (n.parts) rides = rides && n.rides;
+          if (n.made >= 6 && SHAPE[s.land].some((k) => kinds.has(k))) break;
+        }
       }
       const n = got && got.node;
-      rec.ok(`${s.land} ${what}: makes specks of its land, riding on its picture, every one inside its box`,
-        !!n && n.land === s.land && n.parts >= 2 && n.rides === true && n.outside === 0, { n, live: got && got.live });
-      if (s.type === 'tree') {
-        await P.page.waitForTimeout(1200);
-        const clip = await P.page.evaluate(({ x, y }) => {
-          const S = window._gameState.current, cv = document.querySelector('canvas'), rc = cv.getBoundingClientRect();
-          const sx = rc.left + (x - S.camera.x) * (S._worldScaleX || 1), sy = rc.top + (y - S.camera.y) * (S._worldScaleY || 1);
-          return { x: Math.max(0, sx - 170), y: Math.max(0, sy - 320), width: 340, height: 380 };
-        }, s);
-        await P.page.screenshot({ path: join(OUT, `landauras-${s.land}.png`), clip }).catch(() => {});
-      }
+      rec.ok(`${s.land} ${what}: makes specks of its land, its own shape among them, riding on its picture, every one inside its box`,
+        !!n && n.land === s.land && n.made >= 6 && SHAPE[s.land].some((k) => kinds.has(k)) && rides && outside === 0,
+        { n, kinds: [...kinds], outside, rides, live: got && got.live });
+      if (BASE.has(s.land)) rec.ok(`${s.land} ${what}: a glow at its foot`, !!n && n.base === true, n);
+      await P.page.waitForTimeout(1500);
+      const clip = await P.page.evaluate(({ x, y }) => {
+        const S = window._gameState.current, cv = document.querySelector('canvas'), rc = cv.getBoundingClientRect();
+        const sy = rc.top + (y - S.camera.y) * (S._worldScaleY || 1);
+        const top = Math.max(0, Math.min(rc.bottom - 420, sy - 330));
+        return { x: rc.left, y: top, width: Math.min(390, rc.width), height: 420 };
+      }, s);
+      await P.page.screenshot({ path: join(OUT, `landauras-${s.land}${s.type === 'tree' ? '' : '-rock'}.png`), clip }).catch(() => {});
     }
     const cap = await P.page.evaluate(() => (window._pixiRenderer.landAuraCap ? window._pixiRenderer.landAuraCap() : null));
     rec.ok(`never more than the cap alive (${maxLive} at most, the cap ${cap})`, cap != null && maxLive <= cap, { maxLive, cap });

@@ -15360,6 +15360,8 @@ export class EffectsRenderer {
     for (const k in (this._peerInks || {})) { const c = this._peerInks[k]; if (c && c.clear) c.clear(); }
     for (const k in (this._peerFigs || {})) { const c = this._peerFigs[k]; if (c && c.clear) c.clear(); }   /* v2.3.3314 (their sources are in _bakes, released above) */
     if (this._remoteSkillSprites) this._remoteSkillSprites.clear();
+    /* v2.3.3346: the lands' specks, and their pool -- a rebuilt renderer makes its own */
+    if (this._landAuras) { this._landAuras.destroy(); this._landAuras = null; }
     this._captureRenderer = null;
     this._layers = null;
   }
