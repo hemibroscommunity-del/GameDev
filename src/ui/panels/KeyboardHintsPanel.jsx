@@ -58,19 +58,33 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
   const swallow = (e) => { e.stopPropagation(); };
   const toggle = (e) => { e.stopPropagation(); if (onToggle) onToggle(); };
 
-  if (hidden) {
-    return React.createElement('div', {
-      className: 'bt-kb-chip',
-      onPointerDown: swallow,
-      onClick: toggle,
-      title: 'Show the keyboard controls (H)',
-      role: 'button',
-      'aria-label': 'Show keyboard controls',
-    }, '⌨');
-  }
+  /* ═══ v2.3.3470: THE ⌨ STAYS, BESIDE THE STRIP ═══
+     The owner: "The computer keyboard icon is a nice touch for showing and
+     hiding the computer controls. But once the computer controls are open
+     it's hidden behind the shortcut keys the menu shows. Move it over so you
+     can still see where to click it to hide it again".  It was the strip OR
+     the chip, both pinned to one corner, so opening the strip took the ⌨
+     away and its five rows of keys grew over the spot -- the way back was a
+     click on a key chip, or H.  Now the ⌨ is always there, the toggle both
+     ways (lit while the strip is open), and the strip starts just right of
+     it (game.css .bt-kb-hints[data-beside]). */
+  const chip = React.createElement('div', {
+    className: 'bt-kb-chip',
+    key: 'chip',
+    'data-open': hidden ? '0' : '1',
+    onPointerDown: swallow,
+    onClick: toggle,
+    title: hidden ? 'Show the keyboard controls (H)' : 'Hide the keyboard controls (H)',
+    role: 'button',
+    'aria-pressed': hidden ? 'false' : 'true',
+    'aria-label': hidden ? 'Show keyboard controls' : 'Hide keyboard controls',
+  }, '⌨');
+  if (hidden) return chip;
 
-  return React.createElement('div', {
+  return React.createElement(React.Fragment, null, chip, React.createElement('div', {
     className: 'bt-kb-hints',
+    key: 'strip',
+    'data-beside': '1',
     onPointerDown: swallow,
     onClick: toggle,
     title: 'Hide these (H)',
@@ -78,5 +92,5 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
     'aria-label': 'Hide keyboard controls',
   }, KEYS.map(([k, label]) => React.createElement('span', {
     className: 'bt-kb-key', key: k,
-  }, React.createElement('kbd', null, k), ' ' + label)));
+  }, React.createElement('kbd', null, k), ' ' + label))));
 }

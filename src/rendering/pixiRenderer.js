@@ -180,6 +180,72 @@ if (typeof window !== 'undefined') {
   window.__btDepthLegacy = (on) => { _depthProbe.legacy = !!on; };
 }
 
+/* ═══ v2.3.3469: THE CAMERA IN WHOLE DEVICE PIXELS ═══
+ * Owner, 2026-10-18: "When playing the game on PC the world has a warbled
+ * underwater effect when the character moves diagonally (sw, nw, ne, se)",
+ * and then "a slight flickering on PC for the art even when you run up and
+ * down or left to right ... Maybe shimmering is the right word for it" --
+ * the same hops (WHY THE DIAGONALS, below).
+ *
+ * The camera is a fraction of a pixel wherever it is (update(), below), and
+ * every world sprite is snapped to whole device pixels -- each CORNER on its
+ * own (pixiApp's roundPixels).  So each piece of ground, each building and
+ * each prop rounds at its own fraction of the camera, and a quad's width and
+ * height breathe by a pixel as the camera slides.  As the view glides, the
+ * world moves a whole pixel at a time, but every piece at a moment of its own.
+ * On a phone a device pixel is a third of a CSS px and that is never seen.  A
+ * computer draws at one device pixel a CSS px: on the QA desktop (1280 x 800,
+ * a 436 px column) the world is drawn 0.573 to the game px, so a hop is a
+ * whole visible pixel, and the HD art (2 picture px a game px) is shrunk
+ * 3.5x, so a piece stretched by a pixel re-samples its picture into a
+ * different grain.
+ *
+ * WHY THE DIAGONALS.  A diagonal walk moves each axis 0.71 of the walk: there
+ * 2.5 x 0.71 x 0.573 = 1.01 px a frame, nearly a whole pixel, so the camera's
+ * fraction creeps 0.013 a frame and the pieces' moments come round one after
+ * another -- the hops sweep across the ground's tiles as a slow ripple, about
+ * every 1.3 s each way: the warble.  Straight across, 1.43 px a frame, the
+ * fraction jumps 0.43 a frame and the same hops are a fine fizz with no shape:
+ * the shimmer, more of the world hopping each frame than on a diagonal.
+ * Measured (mp-camsnap, a 60 fps walk one frame at a time, each frame against
+ * the one before moved by the world's whole-pixel step): up to 5.0% of the
+ * world's pixels out of step in a frame walking diagonally, 11.1% straight --
+ * the worst diagonal frame a whole column of ground tiles and a building
+ * hopping while the rest stood; on whole device pixels 0.01% and 0.02%, the
+ * lamps' own flicker.
+ *
+ * So the world container is placed on whole DEVICE pixels.  Every world
+ * sprite then keeps the same fraction of a pixel however the camera moves, so
+ * the world moves as ONE picture, a device pixel at a time, nothing
+ * re-sampled; the characters, drawn unsnapped since v2.3.2922 (sharpPixels),
+ * still glide over it.  Not the rounding the old note in update() took out:
+ * that one rounded to whole CSS px (three device px on an iPhone) before
+ * anything else was snapped, and dragged the player a whole CSS px with it.
+ * Here YOU are not dragged: the camera follows you, so the fractional camera
+ * held your figure, plate and bars perfectly still, and everything drawn from
+ * your position is placed for the frame where that camera had it (YOU STAY
+ * WHERE YOU WERE ON SCREEN, in update()) -- on screen you are exactly as
+ * before, and you move smoothly over a ground that no longer ripples.
+ * The systems that place things from the camera (the night's light map, the
+ * clouds, the motes) are handed the camera as DRAWN, so they move with it.
+ * `?camsnap=0` is the camera as it was; `window.__btCamSnap()` says what was
+ * drawn this frame. */
+let _camSnapOff = null;
+function camSnapOn() {
+  if (_camSnapOff === null) {
+    _camSnapOff = false;
+    try { if (typeof location !== 'undefined' && /[?&]camsnap=0\b/.test(location.search || '')) _camSnapOff = true; } catch (e) { /* on */ }
+  }
+  return !_camSnapOff;
+}
+/* x, y: the world drawn at (CSS px); rawX, rawY: where the old camera put it;
+   cx, cy: the camera as drawn (game px); selfDX, selfDY: how far your own
+   drawings were moved on to stay where the old camera had them (game px) */
+const _camProbe = { on: false, dpr: 1, x: 0, y: 0, rawX: 0, rawY: 0, cx: 0, cy: 0, selfDX: 0, selfDY: 0 };
+if (typeof window !== 'undefined') {
+  window.__btCamSnap = () => ({ ..._camProbe });
+}
+
 export async function initPixiRenderer(canvas) {
   const { app, layers, worldContainer, screenContainer } = await createPixiApp(canvas);
   _appRef = app;
@@ -390,8 +456,10 @@ export async function initPixiRenderer(canvas) {
    */
   function update(S, viewW, viewH, nfts) {
     const now = Date.now();
-    const cx = S.camera.x;
-    const cy = S.camera.y;
+    /* v2.3.3469: `let` -- moved onto whole device pixels below, before
+       anything is placed from it (THE CAMERA IN WHOLE DEVICE PIXELS) */
+    let cx = S.camera.x;
+    let cy = S.camera.y;
 
     // Resize PixiJS to match the current canvas dimensions when they
     // actually change.  app.renderer.width/.height are stored in
@@ -456,8 +524,52 @@ export async function initPixiRenderer(canvas) {
     // is what reads as frame-rate jitter even at a steady 60 fps.
     // Letting the offset stay fractional moves the whole scene in
     // smooth GPU sub-pixel steps instead.
-    worldContainer.x = -cx * scaleX + shakeX;
-    worldContainer.y = -cy * scaleY + shakeY;
+    /* v2.3.3469: no longer true once roundPixels came in (pixiApp): with the
+       offset fractional, every world sprite snaps on its own at its own
+       fraction, and on a computer the world's pieces hop a pixel at moments
+       of their own -- the owner's diagonal "warble".  So the offset goes onto
+       whole DEVICE pixels (not CSS px, the rounding taken out above), the
+       shake with it, and `cx`/`cy` become the camera as drawn for every
+       system below: THE CAMERA IN WHOLE DEVICE PIXELS, at the top of this
+       file.  `?camsnap=0` keeps the old offset. */
+    let wx = -cx * scaleX, wy = -cy * scaleY;
+    _camProbe.rawX = wx + shakeX; _camProbe.rawY = wy + shakeY;   /* where the old offset put it */
+    const snap = camSnapOn() && dpr > 0 && scaleX > 0 && scaleY > 0;
+    if (snap) {
+      wx = Math.round(wx * dpr) / dpr;
+      wy = Math.round(wy * dpr) / dpr;
+      shakeX = Math.round(shakeX * dpr) / dpr;
+      shakeY = Math.round(shakeY * dpr) / dpr;
+      cx = -wx / scaleX;
+      cy = -wy / scaleY;
+    }
+    worldContainer.x = wx + shakeX;
+    worldContainer.y = wy + shakeY;
+    _camProbe.on = snap; _camProbe.dpr = dpr;
+    _camProbe.x = worldContainer.x; _camProbe.y = worldContainer.y;
+    _camProbe.cx = cx; _camProbe.cy = cy;
+    /* ═══ v2.3.3469: ...AND YOU STAY WHERE YOU WERE ON SCREEN ═══
+       The camera follows YOU, so you were the one thing a fractional camera
+       held still: your figure (unsnapped) at exactly the same place frame
+       after frame, and your name plate and bars -- snapped, but rounded from
+       that same still place -- with it.  Drawn under the rounded camera, the
+       figure would sway by up to half a device pixel and the plate's text hop
+       a pixel back and forth.  So for the scene's update, everything drawn
+       from your position (the figure and all it carries, the stand-ins of a
+       swing, shot or harvest, your speech bubble and emoji, the jump, swim
+       and emote moves, your shadow, the magnifier on the old World View) is
+       placed this much further on: exactly where the fractional camera put
+       it, while the world under you moves as one picture.  Under half a
+       device pixel (0.9 game px on a 1x screen, 0.3 on a 3x phone), and only
+       for the draw -- put back before the minimap and before anything else
+       reads it: nothing in the renderers writes the player's place. */
+    const selfP = S.player;
+    const selfX = selfP ? selfP.x : 0, selfY = selfP ? selfP.y : 0;
+    const selfDX = snap && selfP ? (_camProbe.rawX - worldContainer.x) / scaleX : 0;
+    const selfDY = snap && selfP ? (_camProbe.rawY - worldContainer.y) / scaleY : 0;
+    const selfShift = !!selfP && (selfDX !== 0 || selfDY !== 0) && Number.isFinite(selfX + selfY + selfDX + selfDY);
+    _camProbe.selfDX = selfShift ? selfDX : 0; _camProbe.selfDY = selfShift ? selfDY : 0;
+    if (selfShift) { selfP.x = selfX + selfDX; selfP.y = selfY + selfDY; }
 
     // Each renderer wrapped — a single throw in entity or effects
     // (e.g. the bow-kill crash) used to cascade into app.render() never
@@ -570,6 +682,10 @@ export async function initPixiRenderer(canvas) {
     try { refreshFigureShades(); } catch (e) { /* never break a frame */ }
     try { lightFx.update(S, now, entityRenderer, effectsRenderer); }
     catch (e) { if (!update._lightErr) { update._lightErr = true; console.error('[pixi-render] lightFx threw', e && e.message, e && e.stack); } }
+    /* v2.3.3469: your place put back (YOU STAY WHERE YOU WERE ON SCREEN,
+       above) -- every pass between is wrapped, so this line is always
+       reached; it only undoes its own move */
+    if (selfShift && S.player === selfP && selfP.x === selfX + selfDX && selfP.y === selfY + selfDY) { selfP.x = selfX; selfP.y = selfY; }
     try { minimap.update(S, cssW, cssH, canvas); }
     catch (e) { if (!update._miniErr) { update._miniErr = true; console.error('[pixi-render] minimap threw', e && e.message, e && e.stack); } }
 
