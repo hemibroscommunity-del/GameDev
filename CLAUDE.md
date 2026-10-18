@@ -914,6 +914,32 @@ remnant to migrate server-side, not a mode to preserve.
         gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
         `mp-monsterplate` (whose band sweep now raises the weapon's skill):
         docs/specs/xp-decay.md.
+    - since v2.3.3328 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
+      all actions/buttons can be completed in landscape mode and on the
+      computer. For instance I don't think you can harvest lifeskills right now
+      on the computer": the gesture was asked for on the right button, which a
+      computer hides, or at the figure worked out without the canvas's offset
+      -- in the black margin beside the game's column -- so a harvest waited at
+      its full bar for ever (TRAPS §205):
+      - the right button comes back for a harvest (`data-harvest` on its box,
+        game.css under pointer:fine) with "Drag ↔ or hold E" over it
+        (gesturePose.js `DESK_GESTURE_HINT`, TouchControls' `.bt-rjoy-deskhint`);
+      - the MOUSE makes the gesture on it or anywhere on the world (the
+        canvas), a circle reeling by the pointer's heading anywhere
+        (ExtractionSwipeLayer `freeHand`/`onWorld`, `FREE_STEP_PX`); the press
+        is cancelled so the canvas's mousedown (an attack) never comes, and the
+        click it ends with is swallowed (`_touchHandledAt`);
+      - or E HELD works it at a quick hand's pace (`S._harvestKeys`,
+        desktopControls hands E over; `KEY_WORK`): the press that starts a
+        harvest, held, works it when the window opens; a key draws no path, so
+        never 'perfect' and no fingerprint (botfp pays it 'good' at most);
+        `gradeGesture` moved to gesturePose.js;
+      - E no longer starts a harvest over (it reached the node through
+        `_proxNode` and startExtraction dropped the attempt), a held E's
+        repeats start nothing; QuestCoach never rings the right button on a
+        computer; a phone is unchanged (the button only);
+      - `mp-deskharvest` (a computer and a sideways phone):
+        docs/specs/desktop-harvest.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
@@ -3249,6 +3275,20 @@ Two protocol versions coexist; both must keep working:
   never a window sized for 60 fps (mp-hitreal, mp-staffcast, mp-solospecial,
   mp-ccink were the test); `BT_QA_CPU_THROTTLE=<rate>` runs every page that
   much slower, to try a check as a slow phone sees it.
+- UI REVIEW SCREENSHOTS (v2.3.3328, docs/specs/ui-review.md): the owner's
+  "screenshots labelled and bundled for all UI elements in each view ... so I
+  can have chatGPT analyze them".  `node tools/qa/ui-review/capture.mjs`
+  (after a build; `--views=`, `--only=`) walks a real player through every
+  screen in states.mjs -- the door, the creator's tabs, the HUD, the
+  dashboard's pages, every building's window, the maps, a harvest, a fight --
+  as an upright phone, a sideways phone and a computer (`--views=tablet` an
+  iPad too), and writes tools/qa/out/ui-review/: each screen plain and with
+  every control numbered (audit.mjs: cut off, covered, small), README.md with
+  a ChatGPT prompt, FINDINGS.md, index.html, contact sheets (sheets/, a
+  section to a picture) and a zip per view; `--only=<ids>` retakes screens
+  into the last run, `--report-only` remakes the words and sheets.  The
+  owner's button: Actions -> "UI review screenshots" -> Run workflow
+  (ui-review.yml, never on a PR).  A new screen or window goes in states.mjs.
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's

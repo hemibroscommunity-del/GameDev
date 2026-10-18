@@ -1,0 +1,93 @@
+# UI review screenshots -- every screen, in every view, on a button (v2.3.3328).
+#
+# The owner, 2026-10-18: "I'll also want screenshots labelled and bundled for
+# all UI elements in each view (portrait, landscape, desktop, etc) so I can
+# have chatGPT analyze them for improvements."
+#
+# Actions -> "UI review screenshots" -> Run workflow.  About 1-2 hours.
+# When it finishes, the run's page has the bundles under "Artifacts":
+#   ui-review-all        everything (three views, README, FINDINGS, index.html)
+#   ui-review-portrait   / ui-review-landscape / ui-review-desktop: one view each
+# Each holds, per screen, the picture as a player sees it and a ".labels"
+# picture with every button numbered (green fine, amber small, red cut off or
+# covered), README.md saying what each screen is and listing its buttons, and
+# a ready-made prompt to paste into ChatGPT with them.
+#
+# It runs tools/qa/ui-review/capture.mjs against the built game and a private
+# copy of the server on the runner -- never the live game.  Nothing here runs
+# on a pull request or a merge: only when the button is pressed.
+name: UI review screenshots
+on:
+  workflow_dispatch:
+    inputs:
+      views:
+        description: 'Which views (any of portrait,landscape,desktop,tablet)'
+        required: false
+        default: 'portrait,landscape,desktop'
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: server
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Every screen, in every view
+        env:
+          VIEWS: ${{ github.event.inputs.views || 'portrait,landscape,desktop' }}
+        run: node tools/qa/ui-review/capture.mjs --views="$VIEWS"
+      - name: The bundle, every view
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-review-all
+          path: tools/qa/out/ui-review/
+          if-no-files-found: warn
+      - name: Portrait only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-review-portrait
+          path: |
+            tools/qa/out/ui-review/README.md
+            tools/qa/out/ui-review/FINDINGS.md
+            tools/qa/out/ui-review/index.html
+            tools/qa/out/ui-review/manifest.json
+            tools/qa/out/ui-review/portrait/
+          if-no-files-found: ignore
+      - name: Landscape only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-review-landscape
+          path: |
+            tools/qa/out/ui-review/README.md
+            tools/qa/out/ui-review/FINDINGS.md
+            tools/qa/out/ui-review/index.html
+            tools/qa/out/ui-review/manifest.json
+            tools/qa/out/ui-review/landscape/
+          if-no-files-found: ignore
+      - name: Desktop only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-review-desktop
+          path: |
+            tools/qa/out/ui-review/README.md
+            tools/qa/out/ui-review/FINDINGS.md
+            tools/qa/out/ui-review/index.html
+            tools/qa/out/ui-review/manifest.json
+            tools/qa/out/ui-review/desktop/
+          if-no-files-found: ignore
