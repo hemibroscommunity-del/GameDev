@@ -74,10 +74,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* Out from under the Quests panel the way mp-tutorial does it — a reload,
      which also proves the accept survived the round trip rather than living in
      the client's optimistic copy.  Everything below runs on a clean screen. */
+  /* v2.3.3342: ...and back in through the door.  Since v2.3.2447 a reload
+     lands on the login door (Continue, then this bro's row), where the old
+     wait passed on the door's own myId with no character played: the equip
+     below went nowhere, the hunt never left town, and seven checks failed
+     behind one (the sweep of 2026-10-18).  H.enterWorld takes the returning
+     player's road. */
   await P.page.reload();
-  await P.page.waitForTimeout(9000);
-  await H.waitFor(P, (S) => !!(S.myId && S.currentZone), (v) => !!v,
+  await H.enterWorld(P);
+  await H.waitFor(P, (S) => !!(S.myId && S.currentZone && S.rpg), (v) => !!v,
     { timeout: 60000, label: 'back in the world' }).catch(() => {});
+  await P.page.waitForTimeout(2000);
 
   /* Equip the greatsword — quest weapons land in the STASH since v2.3.1683,
      and the auto-attack loop refuses to fire on an empty slot (v2.3.212), so
@@ -158,6 +165,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let got = 0;
   let died = false;
   const log = [];
+  /* ═══ v2.3.3342: WALK TO IT, DON'T JUMP ═══
+     Each pass used to put the character straight beside its target.  Since
+     v2.3.3325 the worker follows a move past its budget at an honest walk
+     instead of taking it (movement.js MOVE_BUDGET), and since v2.3.3334 it
+     measures a swing's reach from where its OWN copy stands (hitproof.js):
+     so every jump to a new snowman swung from too far away on the worker
+     until its copy walked up, while the snowmen hit back -- the character
+     died with 2 of the 4 (the sweep of 2026-10-18).  So the pass picks its
+     target here as before and the character WALKS there: 100 px hops a beat
+     apart, the walk the budget pays for (H.hopTo's reasoning), each hop
+     re-aimed at the target as it moves. */
+  const { gap: hopMs } = await H.hopGap(P);
+  const walkTo = async (kind, id) => {
+    for (let i = 0; i < 40; i++) {
+      const r = await P.page.evaluate(({ kind, id }) => {
+        const S = window._gameState && window._gameState.current;
+        if (!S || !S.player) return { done: true };
+        const t = kind === 'loot'
+          ? (S.groundLoot || []).find((l) => l && String(l.lootId) === id && !l._collected)
+          : (S.monsters || []).find((m) => m && String(m.id) === id && m.alive !== false && (m.curHp === undefined || m.curHp > 0));
+        if (!t) return { done: true, gone: true };
+        /* Just inside the swing sweep, and BELOW the monster so the
+           character faces up at it -- the sweep is a cone off P.dir. */
+        const x = t.x, y = kind === 'loot' ? t.y : t.y + 26;
+        const P0 = S.player, dx = x - P0.x, dy = y - P0.y, d = Math.hypot(dx, dy);
+        if (d < 6) return { done: true };
+        const k = Math.min(100, d);
+        P0.x += (dx / d) * k; P0.y += (dy / d) * k;
+        if (kind !== 'loot') { P0.dir = 'up'; S.autoAttack = true; }
+        return { done: false, d: Math.round(d) };
+      }, { kind, id });
+      if (r.done) return r;
+      await P.page.waitForTimeout(hopMs);
+    }
+    return { done: false };
+  };
   for (let pass = 0; pass < 70 && got < WANT.count; pass++) {
     const step = await P.page.evaluate(() => {
       const S = window._gameState && window._gameState.current;
@@ -177,8 +220,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const d = Math.hypot(l.x - P0.x, l.y - P0.y);
           if (d < bd) { bd = d; best = l; }
         }
-        P0.x = best.x; P0.y = best.y;
-        return { act: 'loot', d: Math.round(bd) };
+        return { act: 'loot', id: String(best.lootId), d: Math.round(bd) };
       }
       const live = (S.monsters || []).filter((m) => m && m.alive !== false && (m.curHp === undefined || m.curHp > 0));
       if (!live.length) return { act: 'wait-respawn' };
@@ -187,14 +229,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const d = Math.hypot(m.x - P0.x, m.y - P0.y);
         if (d < td) { td = d; tgt = m; }
       }
-      /* Just inside the swing sweep, and BELOW the monster so the character
-         faces up at it — the sweep is a cone off P.dir. */
-      P0.x = tgt.x; P0.y = tgt.y + 26; P0.dir = 'up';
       S.autoAttack = true;
-      return { act: 'fight', arch: tgt.arch || tgt.type, hp: Math.round(tgt.curHp || 0), was: Math.round(td) };
+      return { act: 'fight', id: String(tgt.id), arch: tgt.arch || tgt.type, hp: Math.round(tgt.curHp || 0), was: Math.round(td) };
     });
     if (step && step.err === 'dead') { died = true; break; }
     if (step && step.err === 'left-zone') { died = true; log.push(step); break; }
+    if (step && step.id && (step.act === 'loot' || step.act === 'fight')) await walkTo(step.act, step.id);
     await P.page.waitForTimeout(900);
     const now = await invCount();
     if (now !== got) log.push({ pass, count: now, after: step && step.act });

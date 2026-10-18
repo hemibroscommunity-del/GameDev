@@ -29,7 +29,12 @@ import * as H from './harness.mjs';
    an unarmed player" PASSED because they were still in town.  Only "and says
    why" caught it.  That is the shape the comment above promised, and it is
    worth knowing the first assertion alone would have hidden this. */
-const TOWN_EXIT = { tx: 25, ty: 48, zoneId: 'worldview' };   /* v2.3.1813: town_v17 is 52x55 — tx 56 is off the new zone entirely */
+/* v2.3.3342: (25,48) -> (33,63), effects.js TOWN_EXITS since v2.3.2628 (town
+   52x55 -> 68x72 tiles).  The marker had moved and this had not, so the player
+   stood on plain ground: "the gate blocks" passed because nothing ran, and only
+   "...and says why" failed -- the shape the note above promised (the sweep of
+   2026-10-18). */
+const TOWN_EXIT = { tx: 33, ty: 63, zoneId: 'worldview' };   /* v2.3.1813: town_v17 is 52x55 — tx 56 is off the new zone entirely */
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Rookie', wsPort, webPort });
@@ -238,16 +243,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
      recognise a shield it already holds or it hands out a fresh copy on every
      reload.  Only a real reload proves it: this is the one path that replays
      a full snapshot at a client that already has the item. */
+  /* v2.3.3342: ...and back in through the door.  Since v2.3.2447 a reload
+     lands on the login door (Continue, then this bro's row), where the old
+     wait passed on the door's own myId with no character played: the shield
+     read null and "a SECOND shield" failed for want of a first (the sweep of
+     2026-10-18).  H.enterWorld takes the returning player's road. */
   await P.page.reload({ waitUntil: 'domcontentloaded' });
-  const _needsCc = await P.page.waitForSelector('input.bt-cc-name', { timeout: 8000 })
-    .then(() => true).catch(() => false);
-  if (_needsCc) {
-    await P.page.fill('input.bt-cc-name', 'Rookie');
-    await P.page.click('button.bt-cc-play');
-  }
+  await H.enterWorld(P);
   await P.page.waitForFunction(() => {
     const S = window._gameState && window._gameState.current;
-    return !!(S && S.myId && S.currentZone);
+    return !!(S && S.myId && S.currentZone && S.rpg);
   }, null, { timeout: 90000, polling: 500 });
   await P.page.waitForTimeout(2500);   /* let a few player_state frames land */
   const after2 = await H.readState(P, (S) => ({

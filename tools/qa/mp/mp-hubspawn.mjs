@@ -212,22 +212,61 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* THE WALL ACTUALLY STOPS YOU. Walk due north from the arrival: the ring's
      northern stones are the only thing between the player and the open map,
-     so a wall that works holds them south of it. */
+     so a wall that works holds them south of it.
+     v2.3.3342: ...that was the arrival INSIDE the ring (v2.3.2075).  Since
+     v2.3.2094 (the owner: "spawn the character outside the city walls when he
+     exits the town") you land outside, six tiles due south of the gate and the
+     town trail-head (effects.js WORLDVIEW_ARRIVAL), so due north is the way
+     home: the walk went through the gate and the trail-head took it to town
+     at y 961, and every check after this one ran in town (the sweep of
+     2026-10-18).  So the walk starts beside the gate instead, in the nearest
+     column where the client's own walk grid has the town's outer wall north
+     of the arrival with no trail-head in the way, and the wall must hold it
+     south of the wall's face. */
+  const lane = await P.page.evaluate((mark) => {
+    const S = window._gameState.current;
+    const grid = S._tiledWalkable.worldview;
+    const gh = grid.length, gw = grid[0].length, Z = 48 * 32;
+    const open = (x, y) => { const r = grid[Math.floor(y * gh / Z)]; return !!(r && r[Math.floor(x * gw / Z)]); };
+    const x0 = S.player.x, y0 = S.player.y, mx = mark.tx * 32 + 16, my = mark.ty * 32 + 16;
+    for (const k of [4, -4, 5, -5, 6, -6, 7, -7, 8, -8]) {
+      const x = x0 + k * 32;
+      if (!open(x, y0)) continue;
+      for (let y = y0; y > y0 - 320; y -= 4) {
+        if (Math.hypot(x - mx, y - my) < 4 * 32) break;   /* the trail-head is in this lane */
+        if (!open(x, y)) {
+          /* the wall's south face: the bottom of the first solid cell */
+          const face = (Math.floor(y * gh / Z) + 1) * Z / gh;
+          S.player.x = x; S.player.vx = 0; S.player.vy = 0;
+          return { x: Math.round(x), from: Math.round(y0), face: Math.round(face) };
+        }
+      }
+    }
+    return null;
+  }, marks.townMark);
+  rec.ok('beside the gate there is a stretch of the town wall north of the arrival (guard)', !!lane, lane);
+  await P.page.waitForTimeout(400);
   const before = await P.page.evaluate(() => Math.round(window._gameState.current.player.y));
   await P.page.keyboard.down('w');
   await P.page.waitForTimeout(2600);
   await P.page.keyboard.up('w');
   await P.page.waitForTimeout(300);
+  /* v2.3.3342: read with the zone and off the grid's edge answered, never
+     thrown: in the sweep of 2026-10-18 this read `grid[row][132]` with no row
+     ("Cannot read properties of undefined (reading '132')") and took the whole
+     scenario down with it, so nothing said where the walk had ended. */
   const after = await P.page.evaluate(() => {
     const S = window._gameState.current;
     const grid = S._tiledWalkable.worldview;
     const gh = grid.length, gw = grid[0].length, Z = 48 * 32;
-    return { y: Math.round(S.player.y), x: Math.round(S.player.x),
-      onWall: !grid[Math.floor(S.player.y * gh / Z)][Math.floor(S.player.x * gw / Z)] };
+    const row = grid[Math.floor(S.player.y * gh / Z)];
+    return { y: Math.round(S.player.y), x: Math.round(S.player.x), zone: S.currentZone,
+      onWall: row ? !row[Math.floor(S.player.x * gw / Z)] : null };
   });
   rec.ok(`walking north into the town wall stops you (${before} -> ${after.y}, `
-       + `the wall's inner face is near 760)`,
-    after.y > 745 && !after.onWall, { before, after });
+       + `the wall's face at ${lane && lane.face})`,
+    !!lane && after.zone === 'worldview' && after.y > lane.face - 16 && after.onWall === false,
+    { before, after, lane });
   rec.ok('...and you did try -- you are not simply where you spawned',
     after.y < before - 20, { before, after });
 
@@ -267,15 +306,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     const grid = S._tiledWalkable.worldview;
     const gh = grid.length, gw = grid[0].length, Z = 48 * 32;
-    return { x: Math.round(S.player.x), y: Math.round(S.player.y),
-      stillInWall: !grid[Math.floor(S.player.y * gh / Z)][Math.floor(S.player.x * gw / Z)] };
+    const row = grid[Math.floor(S.player.y * gh / Z)];   /* v2.3.3342: as `after` above */
+    return { x: Math.round(S.player.x), y: Math.round(S.player.y), zone: S.currentZone,
+      stillInWall: row ? !row[Math.floor(S.player.x * gw / Z)] : null };
   });
   /* The property is "no longer stuck", not "travelled far": once out of the
      band normal collision applies again, and on a curved wall that can be a
      few tens of pixels later. Measured as the cell they end on. */
   rec.ok(`a player standing inside the wall can walk out of it `
        + `(${from.x},${from.y} -> ${got.x},${got.y})`,
-    !got.stillInWall && (got.x !== from.x || got.y !== from.y), { escape, from, got });
+    got.stillInWall === false && (got.x !== from.x || got.y !== from.y), { escape, from, got });
 
   /* RE-ARM THE ARRIVAL. The walk above took ~3 s and the hub-exit latch is
      deaf for 2500 ms (HUB_EXIT_DEAF_MS), so section 2 would be testing an

@@ -123,20 +123,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* The staff is the one that pays a cadence penalty, and it is the reason
      the two ranged bases are different numbers for the same DPS.  Pinned so
-     a change to _staffCdExtra cannot quietly retune magic. */
-  rec.ok('the staff still casts slower than everything else swings',
-    dps.staff.cdMs === dps.melee.cdMs + 300 && dps.bow.cdMs === dps.melee.cdMs,
-    { melee: dps.melee.cdMs, bow: dps.bow.cdMs, staff: dps.staff.cdMs });
+     a change to _staffCdExtra cannot quietly retune magic.
+     v2.3.3342: and the BOW DRAWS FASTER than the sword swings -- the owner's
+     own two changes after this scenario was written: v2.3.2265 "increase the
+     attack speed of bow by 25% ... It's underpowered due to the more
+     difficult mechanics" (600 x 0.75) and v2.3.2449 "slow bow attack speed
+     10%" (0.75 -> 0.825, gameSystems.js BOW_SWING_MULT).  This line still
+     read "the bow's cadence IS the sword's", which has been false since
+     v2.3.2265.  0.825 is pinned on purpose: a change to it is the owner's
+     call, and this line is where it shows. */
+  const BOW_CADENCE = 0.825;   /* gameSystems.js BOW_SWING_MULT, v2.3.2449 */
+  rec.ok('the staff still casts slower than everything else swings, and the bow draws faster',
+    dps.staff.cdMs === dps.melee.cdMs + 300
+      && Math.abs(dps.bow.cdMs - dps.melee.cdMs * BOW_CADENCE) < 1,
+    { melee: dps.melee.cdMs, bow: dps.bow.cdMs, staff: dps.staff.cdMs,
+      bowWant: dps.melee.cdMs * BOW_CADENCE });
 
   /* ROUGHLY 20% LOWER.  The tolerance is +-6 points of the ratio, which is
      wider than the rounding in the card's integer min/max (about 1 point at
      these sizes) and far tighter than the 46%/51% this replaced -- so it can
      tell "retuned" from "not retuned" without being brittle about a digit. */
-  for (const [label, r] of [['bow', dps.bow], ['staff', dps.staff]]) {
-    const ratio = r.dps / dps.melee.dps;
-    rec.ok(`the ${label} starts at roughly 80% of the default melee weapon's DPS (${(ratio * 100).toFixed(1)}%)`,
+  {
+    const ratio = dps.staff.dps / dps.melee.dps;
+    rec.ok(`the staff starts at roughly 80% of the default melee weapon's DPS (${(ratio * 100).toFixed(1)}%)`,
       ratio >= 0.74 && ratio <= 0.86,
-      { ratio: +ratio.toFixed(3), [label]: r, melee: dps.melee });
+      { ratio: +ratio.toFixed(3), staff: dps.staff, melee: dps.melee });
+  }
+  /* v2.3.3342: THE BOW IS ABOVE ITS 80%, ON PURPOSE.  The owner's 80% was
+     this scenario's (v2.3.2262), at the sword's 600ms; the two cadence
+     changes above came after it and were DPS changes the owner asked for --
+     "underpowered due to the more difficult mechanics" -- not a retune of
+     the hit.  80% at 600ms is ~97% at 495ms, and the gear-quality tier curve
+     (v2.3.2664: copper's 1.12 counts as 1.12^1.5) brings it to ~92%; the
+     game reads 89%.  So the promise kept here is the one both asks leave: at
+     least the owner's 80%, and still under the sword, the starter that
+     walks up to its target. */
+  {
+    const ratio = dps.bow.dps / dps.melee.dps;
+    rec.ok(`the bow starts at 80% of the default melee weapon's DPS or more, and under it (${(ratio * 100).toFixed(1)}%)`,
+      ratio >= 0.80 && ratio < 1.0,
+      { ratio: +ratio.toFixed(3), bow: dps.bow, melee: dps.melee });
   }
 
   /* ════════════════ 2. ONE RAY, THREE ORBS ════════════════
@@ -181,22 +207,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
        change that did nothing. */
     rec.ok('...and no orb carries the shared volley hit set any more',
       fired.every((o) => o.hasVolleySet === false), fired.map((o) => o.hasVolleySet));
-    /* ═══ v2.3.2262: FAST, MEDIUM, SLOW ═══
-       Owner: "space out the magic attack orbs in a novel way: I want the first
-       orb speed to be fast, the second orb speed to be medium, and the third
-       orb speed to be slow."  The speeds are the spacing now; the launch
-       stagger asserted above stays on top of it, because at point blank a speed
-       difference has no distance in which to open a gap. */
+    /* ═══ v2.3.2262: FAST, MEDIUM, SLOW -- AND v2.3.2464: ONE SPEED ═══
+       v2.3.2262's owner ask was fast, medium and slow orbs; v2.3.2464
+       replaced it -- "I want magic special to change to 3 evenly spaced out
+       orbs. Maybe like one every .2 seconds" -- with ONE speed and the
+       launch stagger as the whole spacing (playerActions.js `_ORB_SPEEDS`,
+       `_ORB_GAP_MS` 200).  v2.3.3342: this line still asked for fast to
+       slow; it asks for the one speed now, the stagger above being what
+       spaces them. */
     const speeds = fired.map((o) => o.speedPx);
-    rec.ok(`...each orb flies at its own speed, fast to slow (${speeds.join(' / ')})`,
-      speeds.every((v) => typeof v === 'number' && v > 0)
-        && speeds[0] > speeds[1] && speeds[1] > speeds[2], speeds);
+    rec.ok(`...all three fly at one speed, spaced by their launch (${speeds.join(' / ')})`,
+      speeds.every((v) => typeof v === 'number' && v > 0 && v === speeds[0]), speeds);
     /* RANGE IS HELD EQUAL.  `life` is spent in ticks, so three speeds with one
        life would give three different reaches and the slow orb would die short
        -- turning a spacing request into a range nerf on the third hit.  This is
-       the assertion that stops that: speed x life must come out the same. */
+       the assertion that stops that: speed x life must come out the same (with
+       one speed it still guards the three lives). */
     const reach = fired.map((o) => Math.round(o.speedPx * o.life));
-    rec.ok(`...but they all cover the same ground, so the slow one still arrives (${reach.join(' / ')}px)`,
+    rec.ok(`...and they all cover the same ground, so the last one still arrives (${reach.join(' / ')}px)`,
       reach.every((r) => Math.abs(r - reach[0]) <= 6), { reach, speeds, lives: fired.map((o) => o.life) });
   }
 

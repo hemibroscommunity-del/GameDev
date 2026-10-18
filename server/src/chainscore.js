@@ -193,8 +193,20 @@ export const chainScoreMethods = {
     const ls = ps && ps.lifeSkills;
     if (ls && typeof ls === 'object') {
       for (const name of LIFE_SKILL_KEYS) {
-        const lvl = Math.max(0, Math.floor((ls[name] && ls[name].level) || 0));
-        if (lvl > 0) out[name] = lvl;
+        const sk = ls[name];
+        const lvl = Math.max(0, Math.floor((sk && sk.level) || 0));
+        /* v2.3.3342: ...and an UNTOUCHED life skill is level 1 with no XP
+           since v2.3.3039 (a life skill is never level 0: freshLifeSkills, and
+           a stored 0 heals to 1), so `lvl > 0` attested every skill nobody had
+           trained at 1 -- and the hiscores board, which drops a player with
+           nothing in its column (leaderboard.js getTop), listed every player
+           at 1 for a skill nobody had touched (mp-hiscores, the sweep of
+           2026-10-18).  Trained is past level 1, or any XP in it (the XP is
+           spent at each level-up, so a fresh level 2 may hold none).  The
+           contract's guard is monotonic: a 1 already written stays, and
+           nothing is ever lowered by leaving a skill out. */
+        const trained = lvl > 1 || (lvl === 1 && Number(sk && sk.xp) > 0);
+        if (trained) out[name] = lvl;
       }
     }
     const kills = Math.max(0, Math.floor((ps && ps.svKills) || 0));

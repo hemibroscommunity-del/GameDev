@@ -66,6 +66,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── EQUIP through the bag ── */
   await H.openDest(P, 'Dashboard').catch(() => {});
   await P.page.waitForTimeout(900);
+  /* v2.3.3342: ...and the band OPEN.  Since v2.3.2495 a first join arrives
+     with the dashboard folded, which shows no bag at all: the tile was never
+     on screen to tap (the sweep of 2026-10-18; mp-questlegs had the same). */
+  await H.unfoldBand(P);
   const tappedOn = await P.page.locator('[title="Copper Torso"]').first()
     .click({ timeout: 8000 }).then(() => true).catch(() => false);
   rec.ok('the torso can be opened from the bag', tappedOn);

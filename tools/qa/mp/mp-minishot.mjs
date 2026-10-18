@@ -104,7 +104,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
      character inside, and the marker colour differs as well (C_QUEST vs
      C_QUEST_DONE).  They are meant to look like siblings, so they are held to
      "not identical" rather than to the separation every unrelated pair needs. */
-  const SIBLINGS = new Set(['quest vs questDone']);
+  /* v2.3.3342: THREE states since v2.3.3047 -- '!' work for you, '?' waiting
+     on you (grey), the check when ready -- "the in-world badge's three states,
+     one for one" (minimapRenderer _mintPin), each its own colour.  The new pin
+     was a sibling the set did not name, so '!' against '?' (0.025 apart at the
+     icons' 14 px) read as two unrelated glyphs of one shape (the sweep of
+     2026-10-18).  Any pair of the three is held to "not identical". */
+  const PIN = new Set(['quest', 'questWait', 'questDone']);
+  const SIBLINGS = new Set();
+  for (const a of PIN) for (const b of PIN) if (a !== b) SIBLINGS.add(a + ' vs ' + b);
   const worst = [];
   for (let i = 0; i < keys.length; i++) {
     for (let j = i + 1; j < keys.length; j++) {
@@ -126,8 +134,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const rest = worst.filter((w) => !SIBLINGS.has(w.pair));
   const tooClose = rest.filter((w) => w.d < 0.18);
   rec.ok('no two unrelated glyphs are the same shape', tooClose.length === 0, tooClose);
-  rec.ok('...and the two quest pins still differ from each other',
-    sib.every((w) => w.d > 0.02), sib);
+  rec.ok('...and the quest pins still differ from each other',
+    sib.length >= 1 && sib.every((w) => w.d > 0.02), sib);
 
   /* ═══ v2.3.2072: AND THE MAP DOES NOT SAY THE SAME THING TWICE ═══
      Owner: "I think there's two blacksmith indicators on map."  The checks

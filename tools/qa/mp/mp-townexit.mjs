@@ -118,9 +118,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (!exit) { await P.ctx.close().catch(() => {}); return; }
 
   const ex = exit.tx * TILE + TILE / 2, ey = exit.ty * TILE + TILE / 2;
-  const gateSolid = await P.page.evaluate(([x, y]) => window.__btIsSolid(x, y), [ex, 1440]);
+  /* v2.3.3342: 3.5 tiles above the exit, as y 1440 was over the (25,48) exit
+     it was written for.  The town grew 52x55 -> 68x72 tiles in v2.3.2628 and
+     the exit went to (33,63), y 2032, so a fixed 1440 asked about a spot
+     eighteen tiles up in the middle of town (the sweep of 2026-10-18). */
+  const gy = ey - 112;
+  const gateSolid = await P.page.evaluate(([x, y]) => window.__btIsSolid(x, y), [ex, gy]);
   rec.ok('the corridor above the exit tile is not walled off',
-    gateSolid === false, { exit, probedAt: { x: ex, y: 1440 }, solid: gateSolid });
+    gateSolid === false, { exit, probedAt: { x: ex, y: gy }, solid: gateSolid });
 
   /* And the spawn is not boxed in: there is a way south from it, all the way
      to the cliff. The first attempt at this spawn sat 23px north of the
@@ -211,20 +216,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the route has to detour round would show as a leg that stops making
      progress, so the "no progress" bail is part of the assertion, not
      housekeeping. */
-  let reached = false, stalls = 0;
-  for (let i = 0; i < 40 && !reached && stalls < 4; i++) {
+  /* v2.3.3342: ...and after a press that went nowhere, the OTHER axis, as a
+     thumb slides along a wall.  The greedy axis alone stopped the bro at
+     (1131, 1971), 60 px east of the stairs and 60 px north of them (68x72-tile
+     town, exit (33,63)), against something solid to the south -- and, the
+     south still the longer way, pressed south four times and never west (the
+     sweep of 2026-10-18).  A route that is really shut still stalls on both
+     axes and bails. */
+  let reached = false, stalls = 0, flip = false;
+  for (let i = 0; i < 60 && !reached && stalls < 6; i++) {
     const p = await H.readState(P, (S) => ({ zone: S.currentZone, x: S.player.x, y: S.player.y }));
     if (p.zone === 'worldview') { reached = true; break; }
     const dx = ex - p.x, dy = ey - p.y;
     if (Math.hypot(dx, dy) < 8) break;
-    const key = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'd' : 'a') : (dy > 0 ? 's' : 'w');
+    let horiz = Math.abs(dx) > Math.abs(dy);
+    if (flip && Math.abs(horiz ? dy : dx) > 6) horiz = !horiz;
+    const key = horiz ? (dx > 0 ? 'd' : 'a') : (dy > 0 ? 's' : 'w');
     await P.page.keyboard.down(key);
-    await P.page.waitForTimeout(Math.min(600, Math.max(120, Math.hypot(dx, dy) * 1.2)));
+    await P.page.waitForTimeout(Math.min(600, Math.max(120, Math.abs(horiz ? dx : dy) * 1.2)));
     await P.page.keyboard.up(key);
     await P.page.waitForTimeout(160);
     const q = await H.readState(P, (S) => ({ zone: S.currentZone, x: S.player.x, y: S.player.y }));
     if (q.zone === 'worldview') { reached = true; break; }
-    stalls = Math.hypot(q.x - p.x, q.y - p.y) < 4 ? stalls + 1 : 0;
+    const moved = Math.hypot(q.x - p.x, q.y - p.y) >= 4;
+    stalls = moved ? 0 : stalls + 1;
+    flip = !moved;
   }
   await P.page.waitForTimeout(600);
   const end = await H.readState(P, (S) => ({

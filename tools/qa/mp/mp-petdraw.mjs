@@ -28,10 +28,20 @@
  *
  * The position check is the part that would have caught the popup mismatch
  * too: renderer and popup now read the same S._petX/_petY.
+ *
+ * v2.3.3342: a REAL pet now.  Since v2.3.3120 a pet lives in the worker's
+ * pets record (server/src/petbook.js, pets_state -> S._petBook), drawn from
+ * the pet sheet as the monster it was caught from (no emoji any more), and
+ * the renderer draws the one the record has out (game/petBook.js activePet).
+ * The old R.lifeSkills pair this wrote is read only against an older worker,
+ * so the pet it put in the house was never drawn (the sweep of 2026-10-18).
+ * The Test panel's lever makes a catch (/dev/trapping {pet}), which comes out
+ * with you, and the game's own pet_name and pet_active name it and put it
+ * away, as the Pets page does.
  */
 import * as H from './harness.mjs';
 
-const PET = { name: 'Biscuit', emoji: '🐕', color: '#f5c542', tier: 0 };
+const PET = { name: 'Biscuit', home: 'frost' };
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'PetOwner', wsPort, webPort });
@@ -50,21 +60,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     none === null || none.visible === false, none);
 
   /* ── ONE PET, ACTIVE ──
-     Written where the rest of the game keeps it: R.lifeSkills.pets, indexed
-     by R.lifeSkills.activePet. That is PetHousePanel's own storage, which is
-     the point — a renderer that only follows a field the panels do not write
-     is exactly the defect. */
-  const armed = await P.page.evaluate((pet) => {
-    const S = window._gameState && window._gameState.current;
-    if (!S || !S.rpg) return null;
-    S.rpg.lifeSkills = S.rpg.lifeSkills || {};
-    S.rpg.lifeSkills.pets = [pet];
-    S.rpg.lifeSkills.activePet = 0;
-    S._petX = null;  /* let the follow simulation seed it */
-    return { pets: S.rpg.lifeSkills.pets.length, active: S.rpg.lifeSkills.activePet };
-  }, PET);
-  rec.ok('a pet could be put in the pet house and switched on (guard)',
-    !!armed && armed.pets === 1 && armed.active === 0, armed);
+     v2.3.3342: caught for the worker's record and named there (header). */
+  const myId = await H.readState(P, (S) => S.myId);
+  const made = await H.devOp(wsPort, 'trapping', myId, { level: 5, pet: { home: PET.home, level: 1 } }).catch(() => null);
+  const outWith = !!(made && made.pet) && await P.page.waitForFunction((id) => {
+    const b = window._gameState.current._petBook;
+    return !!(b && b.active === id);
+  }, made.pet, { timeout: 8000 }).then(() => true).catch(() => false);
+  if (outWith) {
+    await P.page.evaluate(([id, name]) => {
+      const S = window._gameState.current;
+      S.channel.send({ type: 'pet_name', payload: { id, name } });
+    }, [made.pet, PET.name]);
+    await P.page.waitForFunction(([id, name]) => {
+      const b = window._gameState.current._petBook;
+      const p = b && b.list.find((q) => q && q.id === id);
+      return !!(p && p.name === name);
+    }, [made.pet, PET.name], { timeout: 8000 }).catch(() => {});
+    await P.page.evaluate(() => { window._gameState.current._petX = null; });   /* let the follow simulation seed it */
+  }
+  const armed = await H.readState(P, (S) => {
+    const b = S._petBook;
+    const p = b && b.list.find((q) => q && q.id === b.active);
+    return p ? { id: p.id, kind: p.kind, name: p.name } : null;
+  });
+  rec.ok('a pet could be caught, named and taken out with you (guard)',
+    outWith && !!armed && armed.id === made.pet && armed.name === PET.name, { made, armed });
 
   const drew = await H.waitFor(P, () => {
     const r = window._pixiRenderer;
@@ -74,8 +95,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   rec.ok('THE REGRESSION: an active pet is actually drawn in the world',
     !!drew && drew.visible === true, drew || (await probe()));
-  rec.ok("...showing that pet's own emoji, the one every menu shows",
-    !!drew && drew.emoji === PET.emoji, drew);
+  /* v2.3.3342: its own kind off the pet sheet, where it showed its emoji */
+  rec.ok("...drawn from the pet sheet as its own kind, the one the Pets page shows",
+    !!drew && !!armed && drew.kind === armed.kind && drew.tex === true, { drew, armed });
   rec.ok('...and its name', !!drew && drew.name === PET.name, drew);
 
   /* ── IT IS WHERE THE SIMULATION PUT IT ──
@@ -115,10 +137,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── SWITCHED OFF, IT GOES AWAY ──
      The other half of the gate: a renderer that ignores the field on the way
      in can just as easily ignore it on the way out. */
+  /* v2.3.3342: put away through the record (pet_active {id: null}), as the
+     Pets page does */
   await P.page.evaluate(() => {
     const S = window._gameState.current;
-    S.rpg.lifeSkills.activePet = null;
+    S.channel.send({ type: 'pet_active', payload: { id: null } });
   });
+  await P.page.waitForFunction(() => {
+    const b = window._gameState.current._petBook;
+    return !!b && !b.active;
+  }, null, { timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(900);
   const off = await probe();
   rec.ok('putting the pet away takes it off the screen',

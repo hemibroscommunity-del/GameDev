@@ -9,8 +9,23 @@
  */
 import * as H from './harness.mjs';
 
+/* v2.3.3342: the WELCOME plate marked seen and the coach's tips done, with the
+   game's own flags (welcomeBanner.js, QuestCoach), before the first script.
+   The welcome rides the quest banner, over the middle of the screen where he
+   stands, for 9 s from the way in: in the sweep of 2026-10-18 the crop below
+   was the banner's "Follow the gold road on your map" and "Skip tutorial", 0
+   purple, and the "no panel over him" guard passed it -- the banner lets taps
+   through (pointer-events: none), so elementsFromPoint never names it. */
+const SEEN = `try {
+  const l = ['openDash', 'move', 'equip', 'dashAfterTurnIn', 'equipAll', 'cycle',
+    'blockRanged', 'attack', 'special', 'chatTap', 'passkey'];
+  const d = {}; for (const k of l) d[k] = true;
+  localStorage.setItem('bt_coach_v1', JSON.stringify(d));
+  localStorage.setItem('bt_welcome_seen', '1');
+} catch (e) {}`;
+
 export async function run({ browser, wsPort, webPort, rec }) {
-  const A = await H.newPlayer(browser, { name: 'Looker', wsPort, webPort });
+  const A = await H.newPlayer(browser, { name: 'Looker', wsPort, webPort, init: SEEN });
   await H.enterWorld(A);
   await A.page.waitForTimeout(1500);
 
@@ -131,6 +146,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
             painters.push(el.tagName + (typeof el.className === 'string' && el.className
               ? '.' + el.className.split(' ')[0] : ''));
           }
+        }
+      }
+      /* v2.3.3342: ...and a banner or plate over him, which a tap goes through
+         and so the walk above never meets: by its box against the crop's */
+      for (const el of document.querySelectorAll('.bt-quest-banner, .bt-quest-plate, .bt-mayor')) {
+        const b = el.getBoundingClientRect();
+        if (b.width > 0 && b.height > 0 && b.left < clip.x + clip.width && b.right > clip.x
+          && b.top < clip.y + clip.height && b.bottom > clip.y
+          && getComputedStyle(el).visibility !== 'hidden' && parseFloat(getComputedStyle(el).opacity || '1') > 0.05) {
+          painters.push('banner:' + (el.getAttribute('data-quest-banner') || el.className.split(' ')[0]));
         }
       }
       return { clip, inCanvas, painters, ok: inCanvas && painters.length === 0 };

@@ -49,6 +49,10 @@ async function viewFor(browser, wsPort, webPort, viewport, name) {
         return z ? z.h * 32 : null;
       })(),
       zone: S ? S.currentZone : null,
+      /* v2.3.3342: the game's own sizing rule for this canvas and zone
+         (worldViewport.js's read-only probe), so the check below can ask it
+         rather than recompute it (TRAPS §37). */
+      rule: (S && window.__btWorldView) ? window.__btWorldView(S.currentZone) : null,
       shellW: root ? root.clientWidth : null, shellH: root ? root.clientHeight : null,
       canvasW: cv ? Math.round(cv.getBoundingClientRect().width) : null,
       winW: window.innerWidth, winH: window.innerHeight,
@@ -110,9 +114,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`the phone is untouched — never MORE than window x ${WORLD_ZOOM}`,
     phone.viewW <= phone.winW * WORLD_ZOOM + 1.5,
     { viewW: phone.viewW, target: phone.winW * WORLD_ZOOM, worldZoom: WORLD_ZOOM });
-  rec.ok('...and the only thing that reduced it is the zone it stands in',
-    phone.viewW >= Math.min(phone.winW * WORLD_ZOOM, phone.zoneW || Infinity) - 1.5,
-    { viewW: phone.viewW, zoneW: phone.zoneW, target: phone.winW * WORLD_ZOOM });
+  /* v2.3.3342: "...the only thing that reduced it is the zone" has not been
+     true since the CHARACTER-SIZE floors (v2.3.2249 FIGURE_SCALE_FLOOR,
+     v2.3.2257 the 32x32 reference zone, both x VIEW_OUT since v2.3.2997):
+     they keep the bro one size in town and in a fight, and in town they are
+     what decides the view (762 world px across on this phone, the map 2,176).
+     What this line is for still holds and is asked of the game itself: the
+     phone's view is exactly what the sizing rule gives its canvas in its
+     zone -- no desktop shell, nothing else, took it down. */
+  rec.ok('...and the only thing that reduced it is the game\'s own sizing rule (zone and character-size floors)',
+    !!phone.rule && Math.abs(phone.viewW - phone.rule.W) <= 1.5,
+    { viewW: phone.viewW, rule: phone.rule, zoneW: phone.zoneW, target: phone.winW * WORLD_ZOOM });
   rec.ok('...and its shell is still the whole window',
     phone.canvasW === phone.winW, { canvasW: phone.canvasW, winW: phone.winW });
 }
