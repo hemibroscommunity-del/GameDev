@@ -177,13 +177,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const idBefore = await identity(P);
   console.log('    identity', JSON.stringify(idBefore));
 
-  /* ── ROAD 1: the plain resume — reload holding the key ── */
+  /* ── ROAD 1: the plain resume — reload holding the key ──
+     v2.3.3357: since v2.3.2447 a reload stops at the door (the owner: "Player
+     should need to tap continue or create a character"), so this road waited
+     30 s on the door's dark backdrop and read it as a black world, on main
+     too.  A reload's road is the door, Continue and its row: taken here as a
+     player takes it (ROAD 2 is the same door after a logout instead). */
   await P.page.goto(P.page.url().split('?')[0], { waitUntil: 'load' }).catch(() => {});
   await P.page.waitForTimeout(3000);
-  const r1 = await litWithin(P, 30000);
+  const door1 = await identity(P);
+  rec.ok('ROAD 1: a reload stops at the door, it does not walk in by itself', door1.route === 'login', door1);
+  await H.openPicker(P.page);
+  await P.page.waitForTimeout(800);
+  const row1 = await P.page.$('[data-tut="char-row"][data-char-active="1"]');
+  rec.ok('ROAD 1: ...and its character is in the list (guard)', !!row1, {});
+  if (row1) await row1.click();
+  const r1 = await litWithin(P, 45000);
   const i1 = await identity(P);
   console.log('    road 1 resume', JSON.stringify(r1), JSON.stringify(i1));
-  rec.ok('ROAD 1 (reload with the key): the screen is not black', r1.ok, { ...r1, ...i1 });
+  rec.ok('ROAD 1 (reload with the key, then its row): the screen is not black', r1.ok, { ...r1, ...i1 });
   rec.ok('ROAD 1: ...and it is the same character', i1.myId === idBefore.myId, { i1, idBefore });
 
   /* ── ROAD 2: the door's Continue -> your character in the picker ──
