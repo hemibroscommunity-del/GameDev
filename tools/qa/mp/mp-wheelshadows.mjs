@@ -257,7 +257,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 4. Frost Ridge: a pine's shadow on the snow, its blue, the wind,
         snow in the air, prints in the snow ── */
   const frost = await SPOT('frost', 2);
-  let fr = null, side = null, sway = null, bits = null;
+  let fr = null, side = null, sway = null, bits = null, treeLook = null;
   if (frost) {
     await H.hopTo(P, frost.x, frost.y, { tries: 200 });
     await settle(60);
@@ -266,16 +266,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
        nothing up and to its left whose shadow could fall in the boxes --
        with the air still (the harness's calm), so a drifting flake cannot
        land in a box */
-    const pick = await P.page.evaluate(() => {
-      const S = window._gameState.current, W = window.__btWheelObjects;
+    /* v2.3.3465: the trees IN VIEW first, then the least crowded -- the six
+       least crowded of everything within 900 px could all be off the screen
+       (900 px is ~550 CSS px out at the view's scale), and then none was
+       tried; and when no tree is in view at all, a hop to stand beside one */
+    const pickTrees = () => P.page.evaluate(({ W0, H0 }) => {
+      const S = window._gameState.current, W = window.__btWheelObjects, R = window._pixiRenderer;
+      const find = (n, label) => { if (n.label === label) return n; for (const c of (n.children || [])) { const f = find(c, label); if (f) return f; } return null; };
+      const tiles = find(R.app.stage, 'tiles'), world = tiles && tiles.parent;
+      const r = document.querySelector('canvas').getBoundingClientRect();
+      const scr = (x, y) => { const g = world.toGlobal({ x, y }); return { x: r.left + g.x, y: r.top + g.y }; };
       const all = W.near(S.player.x, S.player.y, 900);
-      const cands = all.filter((o) => o.h > 110 && o.w > 50 && W.sprite(o.i)).map((o) => {
+      const tall = all.filter((o) => o.h > 110 && o.w > 50 && W.sprite(o.i));
+      const cands = tall.map((o) => {
         const crowd = all.filter((q) => q.i !== o.i && q.h > 30 && Math.abs(q.x - o.x) < 260 && q.y < o.y + 140 && q.y > o.y - 320).length;
-        return { i: o.i, id: o.id, x: o.x, y: o.y, h: o.h, w: o.w, crowd };
+        const shade = scr(o.x + 0.2 * o.h, o.y + 0.136 * o.h), lit = scr(o.x - o.w * 0.5 - 30, o.y - 4);
+        const inView = !(shade.x < 12 || shade.y < 70 || shade.x > W0 - 12 || shade.y > H0 - 130 || lit.x < 12 || lit.y < 70);
+        return { i: o.i, id: o.id, x: o.x, y: o.y, h: o.h, w: o.w, crowd, inView };
       });
-      cands.sort((a, b) => a.crowd - b.crowd || b.h - a.h);
-      return cands.slice(0, 6);
-    });
+      cands.sort((a, b) => (Number(b.inView) - Number(a.inView)) || a.crowd - b.crowd || b.h - a.h);
+      return { near: all.length, tall: tall.length, inView: cands.filter((c) => c.inView).length, cands: cands.slice(0, 6), at: { x: Math.round(S.player.x), y: Math.round(S.player.y) } };
+    }, { W0: PHONE.width, H0: PHONE.height });
+    let picked = await pickTrees();
+    treeLook = [picked];
+    if (!picked.inView && picked.cands.length) {
+      const t = picked.cands[0];
+      await H.hopTo(P, t.x - 150, t.y + 100, { tries: 60 });
+      await settle(40);
+      await P.page.waitForTimeout(1500);
+      picked = await pickTrees();
+      treeLook.push(picked);
+    }
+    const pick = picked.cands.filter((c) => c.inView);
     for (const c of pick) {
       const shade = await toScreen(P, c.x + 0.5 * 0.4 * c.h, c.y + 0.34 * 0.4 * c.h);
       const lit = await toScreen(P, c.x - c.w * 0.5 - 30, c.y - 4);
@@ -379,7 +401,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log(`    frost: ${JSON.stringify({ ...fr, side })}`);
   const drop = (q) => (q && q.off > 0 ? 1 - q.on / q.off : 0);
   rec.ok(`a tree's shadow falls below and right of its foot (${side ? `${side.obj.id}: the snow there ${(drop(side.shade) * 100).toFixed(1)}% darker` : 'no tree in view'}), not on its sunlit left (${side ? (drop(side.lit) * 100).toFixed(1) : '?'}%)`,
-    !!side && drop(side.shade) > 0.08 && Math.abs(drop(side.lit)) < 0.03, side);
+    !!side && drop(side.shade) > 0.08 && Math.abs(drop(side.lit)) < 0.03, side || { treeLook });
   /* v2.3.3028: a low thing's shadow starts at its own base */
   {
     const L = lowSide && lowSide.obj ? lowSide : null, c = L && L.obj.c;

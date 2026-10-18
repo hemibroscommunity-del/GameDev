@@ -92,6 +92,29 @@ const look = (P) => P.page.evaluate(() => {
 
 const centre = (b) => ({ x: b.x + b.w / 2, y: b.y + b.h / 2 });
 const overlaps = (a, b) => !!(a && b) && a.x < b.r && b.x < a.r && a.y < b.b && b.y < a.b;
+/* v2.3.3465: until the button has drawn what the game holds -- the same slot,
+   as many weapons, the same picture (window.__btWeaponChip is the game's side).
+   The button reads the game on a 200 ms timer, and on this box a frame takes
+   300-600 ms, so a set wait after a change could look before it had read it:
+   in the second sweep of 2026-10-18 it showed empty hands while three weapons
+   were held, and on its re-run three while one was.  A phone draws it within
+   200 ms.  `slot`, when given, is waited for in the game first (a tap). */
+const caughtUp = async (P, slot = null, ms = 10000) => {
+  if (slot) {
+    await P.page.waitForFunction((want) => {
+      const S = window._gameState && window._gameState.current;
+      return !!(S && S.rpg) && (S.rpg.activeSlot || 'melee') === want;
+    }, slot, { timeout: 5000, polling: 100 }).catch(() => {});
+  }
+  await P.page.waitForFunction(() => {
+    const b = document.querySelector('[data-weapon-chip]'), img = b && b.querySelector('img');
+    const p = window.__btWeaponChip ? window.__btWeaponChip() : null;
+    if (!b || !p) return false;
+    return b.getAttribute('data-weapon-chip') === p.slot && Number(b.getAttribute('data-weapon-owned')) === (p.owned || []).length
+      && (!p.src || (!!img && (img.getAttribute('src') || '') === p.src));
+  }, null, { timeout: ms, polling: 200 }).catch(() => {});
+  await P.page.waitForTimeout(250);
+};
 
 export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
@@ -113,7 +136,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const R = window._gameState.current.rpg;
     R.weapon = null; R.rangedWeapon = null; R.staffWeapon = null; R.activeSlot = 'melee';
   });
-  await P.page.waitForTimeout(500);
+  await caughtUp(P);
   const bare = await look(P);
   rec.ok('the button is on screen with nothing in your hands (guard)', !!bare.btn, bare);
   rec.ok('empty hands show the Weapon cell\'s own empty-slot picture, faint',
@@ -125,7 +148,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const R = window._gameState.current.rpg;
     R.weapon = SWORD; R.rangedWeapon = BOW; R.staffWeapon = STAFF; R.activeSlot = 'melee';
   }, { SWORD, BOW, STAFF });
-  await P.page.waitForTimeout(600);
+  await caughtUp(P);
   const a = await look(P);
   const bandTop = a.vh - a.dashH;
   rec.ok(`the button is little and a thumb's size (${a.btn && a.btn.w}x${a.btn && a.btn.h} touch, ${a.face && a.face.w}px face)`,
@@ -162,7 +185,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const [slot, art] of expect) {
     const c = centre(prev.btn);
     await touch(P, c.x, c.y);
-    await P.page.waitForTimeout(450);
+    await caughtUp(P, slot);
     const now = await look(P);
     rec.ok(`a tap moves to the next weapon: ${prev.slot} -> ${now.slot} (wanted ${slot})`, now.slot === slot, { slot: now.slot });
     rec.ok(`...and the button shows it (${(now.src || '').split('/').pop()})`, art.test(now.src || '') && now.slotAttr === slot, now.src);
@@ -188,7 +211,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const R = window._gameState.current.rpg;
     R.rangedWeapon = null; R.staffWeapon = null; R.activeSlot = 'melee';
   });
-  await P.page.waitForTimeout(500);
+  await caughtUp(P);
   const one = await look(P);
   rec.ok('one weapon: no dots, and the edge is not lit brass', one.dotCount === 0 && one.probe && one.probe.canSwap === false, one);
   await touch(P, centre(one.btn).x, centre(one.btn).y);
@@ -206,7 +229,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (let i = 0; i < 8; i++) S.chatLog.push({ name: 'Crowd' + (i % 3), text: 'a line of world chat that runs long enough to wrap ' + i, ts: Date.now() + i });
     try { window.__broChatLogBus && window.__broChatLogBus.bump(); } catch (e) {}
   }, { BOW, STAFF });
-  await P.page.waitForTimeout(600);
+  await caughtUp(P);
   const opened = await H.openWorldChat(P);
   await P.page.waitForTimeout(500);
   const chat = await P.page.evaluate(() => {
@@ -248,7 +271,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the bell is still beside it, not on it', !!land.bell && land.bell.x >= land.btn.r && !overlaps(land.bell, land.btn), { bell: land.bell, btn: land.btn });
   const lc = centre(land.btn);
   await touch(P, lc.x, lc.y);
-  await P.page.waitForTimeout(450);
+  await caughtUp(P, { melee: 'ranged', ranged: 'staff', staff: 'melee' }[land.slot] || null);
   const landTap = await look(P);
   rec.ok(`...and a tap swaps there too (${land.slot} -> ${landTap.slot})`, landTap.slot !== land.slot, { from: land.slot, to: landTap.slot });
   await P.page.screenshot({ path: `${OUT}/weaponswap-landscape.png` });

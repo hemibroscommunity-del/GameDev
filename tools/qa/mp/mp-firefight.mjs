@@ -99,15 +99,6 @@ const tapSel = (P, sel, id, fx = 0.5, fy = 0.5) => P.page.evaluate(({ sel, id, f
   return true;
 }, { sel, id, fx, fy });
 
-/* hold the keys that walk toward (dx, dy) for ms */
-async function stepToward(P, dx, dy, ms) {
-  const keys = [];
-  if (dy < -12) keys.push('w'); else if (dy > 12) keys.push('s');
-  if (dx < -12) keys.push('a'); else if (dx > 12) keys.push('d');
-  for (const k of keys) await P.page.keyboard.down(k);
-  await P.page.waitForTimeout(ms);
-  for (const k of keys) await P.page.keyboard.up(k);
-}
 
 /* the mean brightness (0-255) of a screenshot, and the share of near-black pixels */
 async function shotLuma(P) {
@@ -193,14 +184,28 @@ async function body({ P, wsPort, rec, OUT, errors, shots }) {
 
   await P.page.evaluate(SAMPLER);
   const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
-  const at = WHEEL_SPAWNS[HOME] && WHEEL_SPAWNS[HOME].points[0];
+  /* v2.3.3465: at the land's town end, among its level 1s, as mp-wheelnear
+     and mp-petsmatter fight.  points[0] is half way along the first stretch
+     (depth 0.5), and since v2.3.3320 the stretch climbs 1 to 5: level 3 fire
+     goblins there killed the fresh character in 13 s, and on the five-times
+     Wheel each walk back out took about a minute -- 2 swings in 188 s, two
+     deaths (the sweep of 2026-10-18). */
+  const at = WHEEL_SPAWNS[HOME] && WHEEL_SPAWNS[HOME].points.slice(0, 6 * (await H.wheelGeom()).long)
+    .reduce((a, p) => (!a || p[2] < a[2] ? p : a), null);
   rec.ok(`the ${HOME} land's monsters have a place (guard)`, !!at, at);
   if (!at) return;
 
   /* walk out (untouchable on the way: the fight is the test, not the road) */
+  /* v2.3.3465: ...and 150 px past it, AWAY from BroTown.  The town end lies
+     ~200 px outside the safe ground (WHEEL_SAFE_R), and the old (+200, +200)
+     stood the character 36 px from its edge, by no monster (the re-run of
+     2026-10-18: none came, 0 swings in 183 s). */
+  const G = await H.wheelGeom();
+  const ol = Math.hypot(at[0] - G.cx, at[1] - G.cy) || 1;
+  const spot = { x: Math.round(at[0] + (at[0] - G.cx) / ol * 150), y: Math.round(at[1] + (at[1] - G.cy) / ol * 150) };
   const goOut = async () => {
     await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 3 });
-    await H.hopTo(P, at[0] + 200, at[1] + 200, { tries: 220 });
+    await H.hopTo(P, spot.x, spot.y, { tries: 220 });
     await P.page.waitForTimeout(800);
     await H.devOp(wsPort, 'vitals', myId, { heal: true, god: false });
   };
@@ -254,7 +259,13 @@ async function body({ P, wsPort, rec, OUT, errors, shots }) {
       if (await tapSel(P, '[data-jump]', 41)) jumps++;
     }
     if (s.m.d > 70) {
-      await stepToward(P, s.m.x - s.px, s.m.y - s.py, Math.min(450, 60 + s.m.d * 1.2));
+      /* v2.3.3465: closed by the harness's hops (the page's place, then its
+         move to the worker), stopping 45 px short of it -- not by keys held a
+         set time: on this box a held key walks only the few frames that fall
+         inside it (TRAPS §200), and the re-run of 2026-10-18 never came within
+         reach of a goblin in 183 s */
+      const k = (s.m.d - 45) / s.m.d;
+      await H.hopTo(P, s.px + (s.m.x - s.px) * k, s.py + (s.m.y - s.py) * k, { step: 60, gap: 250, tries: 3 });
     } else {
       if (await tapSel(P, '[data-joyzone="R"]', 52, 0.5, 0.4)) swings++;
       await P.page.waitForTimeout(220);
