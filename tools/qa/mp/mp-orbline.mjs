@@ -276,6 +276,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
         S.__orbProbe.last = m.curHp;
       }, 20);
+      /* v2.3.3381: ...and the special this measures, set in the same breath
+         as the press.  Part 2 put the staff in hand and the old volley on
+         (bigorb off) on the page alone, and a player_state from the worker
+         in between hands back its own activeSlot (wsClient: unless the
+         player cycled the slot), so the press was the sword's or the bow's
+         and no orb left -- `orbs: 0`, in one run of two, on main as on this
+         branch. */
+      if (!S._serverCaps) S._serverCaps = {};
+      S._serverCaps.bigorb = false;
+      S.rpg.activeSlot = 'staff';
+      S.rpg.mana = S.rpg.maxMana = 500;
+      S._lastSwipe = 0;
       window._gameFns.specialAttack();
       /* Every orb of one volley carries the SAME damage (playerActions rolls
          it once, outside the loop), so total hp lost / that number is an
