@@ -135,7 +135,11 @@ output every run). It:
      greaves, over the trousers' top;
    - the **body under greaves**: the bare body with every trouser and boot
      pixel the greaves do not cover taken out, so nothing of them shows round
-     the plates;
+     the plates. A boot is boot grey below or beside the trousers, or a grey
+     piece lying wholly below his waist: the kneel's boot as he leans forward
+     and the can's toe beside the splash were too far from their trousers
+     for the first two rules, and showed as two specks in your colours until
+     that third rule (the `farmwalk` suite now fails on any such speck);
 6. finds the top of his head in each frame, for your hat.
 
 It writes:
@@ -423,10 +427,6 @@ two pictures still to come.
 
 - **The farmer's drawings** (above). His shirt and armour came with the
   owner's six dressed sheets (v2.3.3352).
-- **Two small specks** in the outfit with greaves under the tee: a few
-  pixels of trouser colour at the kneel's left foot (its second frame) and
-  beside the can's splash (its fourth). Each is a pixel or two at phone
-  size.
 - **Other players see you standing at a bed** while you work it: the steps go
   only to the worker, which tells no one else, as since v2.3.3136.
 - The **Farmhouse** and **Dungeon Workshop** pictures (prompts in

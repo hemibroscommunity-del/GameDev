@@ -149,6 +149,51 @@ const FOOT_DY = 52;   /* a body's middle to its boots, on a zone with no perspec
         }
       }
       check(`...every frame of his shirt, plate and greaves there and on him; the man under greaves the man trimmed`, !bad.length, bad);
+      /* v2.3.3352: and under greaves nothing of his trousers or boots peeks
+         out: no piece of 12+ olive or boot-grey px of that body below the
+         greaves' top that the greaves leave bare (the classes are the tool's
+         body_classes: the game repaints exactly these your trousers' and
+         boots' colours).  The kneel's boot and the can's toe once did, 45 and
+         34 px, two specks in the owner's colours. */
+      const peek = [];
+      for (let f = 0; f < A.n; f++) {
+        let top = A.fh;
+        const at = (x, y) => y * want.w + f * A.fw + x;
+        for (let y = 0; y < A.fh && top === A.fh; y++) for (let x = 0; x < A.fw; x++) if (op(G.legs, at(x, y))) { top = y; break; }
+        const hit = new Uint8Array(A.fw * A.fh);
+        for (let y = top; y < A.fh; y++) {
+          for (let x = 0; x < A.fw; x++) {
+            const i = at(x, y);
+            if (!op(U, i) || op(G.legs, i)) continue;
+            const r = U.data[i * 4], g = U.data[i * 4 + 1], b = U.data[i * 4 + 2];
+            const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+            const pants = Math.abs(r - g) < 30 && g - b > 25 && r > 60 && r < 170 && g > 55;
+            const grey = mx - mn < 28 && mx >= 45 && mx < 150;
+            if (pants || grey) hit[y * A.fw + x] = 1;
+          }
+        }
+        /* its pieces, 8-connected */
+        const seen = new Uint8Array(hit.length);
+        for (let k = 0; k < hit.length; k++) {
+          if (!hit[k] || seen[k]) continue;
+          let n = 0;
+          const q = [k];
+          seen[k] = 1;
+          while (q.length) {
+            const c = q.pop();
+            n++;
+            const cx = c % A.fw, cy = (c - cx) / A.fw;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+              const nx = cx + dx, ny = cy + dy;
+              if (nx < 0 || ny < 0 || nx >= A.fw || ny >= A.fh) continue;
+              const j = ny * A.fw + nx;
+              if (hit[j] && !seen[j]) { seen[j] = 1; q.push(j); }
+            }
+          }
+          if (n >= 12) peek.push({ f, px: n, at: [k % A.fw, Math.floor(k / A.fw)] });
+        }
+      }
+      check(`...under greaves, nothing of his trousers or boots peeks out round them`, !peek.length, peek);
     }
     const inF = (p) => p[0] >= 0 && p[0] <= A.fw && p[1] >= 0 && p[1] <= A.fh;
     check(`...his boots (${A.foot.join(', ')}) and the work (${A.work.join(', ')}) inside the frame, near its bottom; every crown inside it and over the boots`,

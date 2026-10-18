@@ -69,8 +69,9 @@ makes everything that needs:
        - the BODY UNDER GREAVES (`under`): the bare body with every trouser
          and boot pixel the greaves do not cover taken out, so no strip of
          trouser or boot shows round the plates.  A boot is the boot grey
-         below the trousers or beside them (dilated 25 px), never a pixel
-         of the tool: the hoe's blade is that grey too.
+         below the trousers or beside them (dilated 25 px), or a grey piece
+         of 40+ px wholly below his waist, never a pixel of the tool: the
+         hoe's blade is that grey too.
      The game tints the shirt your colour and bakes your print and pattern
      on it, and tints the armour its metal, as on every stand-in.
   6. THE CROWNS: where the top of the head is in each frame, for the hat --
@@ -427,7 +428,24 @@ def legs_of(bare):
         above[d:] |= pants[:-d]
     # ...or beside them: kneeling, the boot lies behind the knee, its trousers
     # alongside, and a hand on the ground next to it would claim it as skin
-    return pants | (K['grey'] & ~tool & (above | dilate8(pants, 25)))
+    grey = K['grey'] & ~tool
+    boots = grey & (above | dilate8(pants, 25))
+    # v2.3.3352: ...or a grey piece of some size lying wholly below his
+    # waist: nothing else of him is grey down there (the hoe and the can are
+    # the tool).  The kneel's boot as he leans forward, its trousers hidden by
+    # his arm, and the can's toe beside the splash lay further from their
+    # trousers than either rule reaches -- so they were "skin", and showed
+    # round the greaves (the two specks) and took their steel into the plate.
+    if pants.any():
+        waist = np.nonzero(pants)[0].min()
+        glab, gsz = labels(grey)
+        for i in np.nonzero(gsz >= 40)[0]:
+            if i == 0:
+                continue
+            piece = glab == i
+            if np.nonzero(piece)[0].min() > waist:
+                boots |= piece
+    return pants | boots
 
 
 def bare_classes(bare):
