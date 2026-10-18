@@ -7180,3 +7180,24 @@ or the shared roster carrying one of those. The door's answer also corrects
 **Receipt:** a second browser given a new key directly sent two joins, the
 first refused, before the fix; after it, one join, let in. mp-charlock and
 mp-linger.
+
+## 217. "Put a player out: forget their session, then close their socket" (v2.3.3356)
+
+**Tempting:** to put a player out of the room (the Test panel's Kick or
+Freeze), delete their session from `this.sessions`, so nothing more is sent to
+them, and close their socket.
+
+**What happens:** the leaving is the runtime's close, `webSocketClose`
+(index.js): the save, `player_leave` to everyone, the party's and the duel's
+grace, the body taken out of `playerState`. It looks the socket up in
+`this.sessions`, finds nothing, and does none of it. The player is gone from
+the room's list, but their body stands where it was on everyone else's screen
+until the room restarts. Kick and Freeze did exactly this.
+
+**The rule:** put a player out in the AFK sweep's three steps (tick.js,
+flood.js `_floodClose`): close the socket, run `webSocketClose` for it now,
+then delete the session (admin.js `_adminPutOut`; the owner's Forget,
+devicelock.js).
+
+**Receipt:** admin.test §5 and §6: after a Freeze and a Kick an onlooker is
+told `player_leave` and no body is left. Both checks fail on the old code.

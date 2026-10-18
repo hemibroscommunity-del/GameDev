@@ -144,8 +144,16 @@ state._store.set('rpg:bp_adm_rich', { coins: 5000, level: 40 });
   await join(wsF2, 'bp_adm_frz');
   check('unfreeze -> join succeeds', !!room.playerState['bp_adm_frz'] && msgsOfType(wsF2, 'join_rejected').length === 0);
   // Freezing an ONLINE player kicks them.
+  const wsO = fakeWs('frz-onlooker');
+  await join(wsO, 'bp_adm_frz_o');
   const f2 = await jbody(await req('POST', '/api/admin/freeze', { playerId: 'bp_adm_frz' }));
   check('freezing an online player kicks the live socket', f2.body.wasOnline === true && wsF2.closed && wsF2.closed.code === 4004, wsF2.closed);
+  /* v2.3.3356: and they leave the world -- the session is deleted first no
+     more, so the leaving runs: no body left standing, the others told */
+  check('...and they leave the world: no body left, the others told (v2.3.3356)',
+    !room.playerState['bp_adm_frz'] && msgsOfType(wsO, 'player_leave').some((m) => m.id === 'bp_adm_frz')
+    && ![...room.sessions.values()].some((x) => x && x.id === 'bp_adm_frz'),
+    { body: !!room.playerState['bp_adm_frz'], told: msgsOfType(wsO, 'player_leave').map((m) => m.id) });
   await req('DELETE', '/api/admin/freeze?id=bp_adm_frz');
 }
 
@@ -153,8 +161,18 @@ state._store.set('rpg:bp_adm_rich', { coins: 5000, level: 40 });
 {
   const wsK = fakeWs('k');
   await join(wsK, 'bp_adm_k');
+  const wsO = fakeWs('k-onlooker');
+  await join(wsO, 'bp_adm_k_o');
   const k = await jbody(await req('POST', '/api/admin/kick', { playerId: 'bp_adm_k', reason: 'afk-bot' }));
   check('kick closes the target socket with 4008', k.body.wasOnline === true && wsK.closed && wsK.closed.code === 4008, wsK.closed);
+  /* v2.3.3356: the leaving runs -- before, the session was deleted first and
+     the body stood in everyone's world */
+  check('...and the kicked player leaves the world: no body left, the others told (v2.3.3356)',
+    !room.playerState['bp_adm_k'] && msgsOfType(wsO, 'player_leave').some((m) => m.id === 'bp_adm_k')
+    && ![...room.sessions.values()].some((x) => x && x.id === 'bp_adm_k'),
+    { body: !!room.playerState['bp_adm_k'], told: msgsOfType(wsO, 'player_leave').map((m) => m.id) });
+  /* the leaving saved them, as any leaver: their record is on file */
+  check('...and saved on the way out, as any leaver is', !!state._store.get('rpg:bp_adm_k'));
   const k2 = await jbody(await req('POST', '/api/admin/kick', { playerId: 'bp_adm_k' }));
   check('kick on an offline player reports wasOnline false', k2.body.wasOnline === false);
 }
