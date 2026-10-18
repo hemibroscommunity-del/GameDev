@@ -441,8 +441,10 @@ export function sheenOn() {
   _sheen = v !== '0';   /* v2.3.2887: was `v === '1'` */
   return _sheen;
 }
-export function setSheen(on) {
+/* v2.3.3339: `persist` false -- for this page only (the speed test) */
+export function setSheen(on, persist = true) {
   _sheen = !!on;
+  if (!persist) return;
   try { localStorage.setItem(SHEEN_KEY, _sheen ? '1' : '0'); } catch (e) { /* the switch still flips for this page */ }
 }
 

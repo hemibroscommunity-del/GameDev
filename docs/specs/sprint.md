@@ -328,3 +328,13 @@ fights move up".
 - **Stamina use is shared.** The sprint and the abilities spend the same bar,
   so a long sprint before a fight leaves less for Shield Bash and Whirlwind.
   That is by design, but it is the first thing to tune if it feels harsh.
+
+## v2.3.3336: the push-off is a rush of air
+
+The owner, playtesting: *"The button for sprint needs a different sound. It
+sounds like a fleshy sound."* Measured (an FFT of exactly what plays: offset,
+length and rate applied), the slowed special swipe put 49% of its energy under
+400 Hz -- a body's thump. `BT_AUDIO.SPRINT_PUSH` is now the arrow's flight
+(0.03-0.27 s, rate 0.85, vol 3.8): 13% under 400 Hz, a breathy rush through the
+mids and highs, at the old push's loudness above 400 Hz (what the ear weighs),
+peaking ~0.53. Still a recording already in the game.

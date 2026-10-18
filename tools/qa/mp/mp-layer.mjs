@@ -144,7 +144,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
      at once". This scenario was one of the three that did not get the memo.
      Labels are owner-facing copy and will change again; the classes are the
      contract. */
+  /* v2.3.3335: the first quest pays no XP, so its claim is the auto reward,
+     with no claim screen at all -- this section reads the claim screen of the
+     SECOND quest, which still pays XP.  The first is handed in and the second
+     taken up over the wire (the messages the dialogue sends), so the walk-up
+     below is the second quest's hand-in. */
+  const send = (msg) => P.page.evaluate((m) => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send(m);
+  }, msg);
   await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: 4 });
+  await P.page.waitForTimeout(1500);
+  await send({ type: 'quest_turn_in', payload: { questId: 'tut_1' } });
+  await P.page.waitForTimeout(1500);
+  await send({ type: 'quest_accept', payload: { questId: 'tut_2' } });
+  await P.page.waitForTimeout(1500);
+  await H.grant(wsPort, myId, 'item', { invKey: 'slime-remnants', count: 6 });
   await P.page.waitForTimeout(1800);
   /* The turn-in lives ONLY in the in-world dialogue: the dash list page had its
      Turn In button deliberately removed (QuestDetailPanel, v2.3.1685 incident),

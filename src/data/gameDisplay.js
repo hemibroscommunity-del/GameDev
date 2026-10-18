@@ -20,6 +20,7 @@ import { ZONES, isWorldViewZone } from './zones.js'; /* v2.3.2978: + either name
 import { TOWN_BUILDINGS } from './buildings.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS } from './effects.js';
 import { FOOTSTEP_CLIPS } from './footstepClips.js';   /* v2.3.2967: each ground its own step */
+import { MONSTER_NOISE_CLIPS } from './monsterNoiseClips.js';   /* v2.3.3340: the owner's monster noises */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
@@ -3080,6 +3081,16 @@ BT_AUDIO.SFX_MANIFEST = {
      58KB against the old 114KB, and shorter, which suits the moment: the
      completion banner is 2.2s and this resolves inside it. */
   'quest-complete-v2': '/sfx/quest/quest-complete-v2.mp3',
+  /* v2.3.3340: the owner's monster noises -- the fire goblin's rawr, the
+     skeleton's (the mummy's second form's) rattling bones, the slime's bouncy
+     jelly, the snowman's snarl (game/monsterNoises.js says when).  Cut to about
+     a second each, mono, by tools/audio/cut_monster_noises.py from the owner's
+     recordings (assets/sfx-source/monsters/, CREDITS.md); their levels are in
+     monsterNoiseClips.js.  ~0.75 MB decoded in all. */
+  'noise-goblin-rawr': '/sfx/monster/noise-goblin-rawr.mp3',
+  'noise-skeleton-rattle': '/sfx/monster/noise-skeleton-rattle.mp3',
+  'noise-slime-bounce': '/sfx/monster/noise-slime-bounce.mp3',
+  'noise-snowman-snarl': '/sfx/monster/noise-snowman-snarl.mp3',
 };
 
 /* Regular sword-hit alternation. The two samples cycle so a flurry of hits
@@ -3654,7 +3665,18 @@ BT_AUDIO.ELEM_SOUNDS = {
    swipe's swoosh, its attack (0.02-0.32 s off its own loudness curve) a
    touch slower, peaking ~0.3 -- under the footsteps that follow, which
    already quicken with the stride.  A recording already in the game. */
-BT_AUDIO.SPRINT_PUSH = ['special-swipe', 0.02, 0.3, 2, 0.82];
+/* ═══ v2.3.3336: A RUSH OF AIR, NOT A THUMP ═══
+   Owner, playtesting: "The button for sprint needs a different sound.  It
+   sounds like a fleshy sound."  Measured (ffmpeg + an FFT of what plays,
+   offset, length and rate applied): the slowed special swipe put 49% of its
+   energy under 400 Hz -- a body's thump, the "fleshy" part -- and the swoosh
+   only on top.  The arrow's flight is the airiest recording the game has:
+   11% under 400 Hz, a breathy rush through the mids and highs, no attack
+   (13% under 400 Hz at the rate below).  Its loud part (0.03-0.27 s), a
+   touch slower so it is not the arrow you hear when you shoot, at the old
+   push's loudness above 400 Hz -- what the ear weighs -- which is vol ~4.1;
+   3.8, peaking ~0.53 (the hits keep under 0.66, there is no limiter). */
+BT_AUDIO.SPRINT_PUSH = ['arrow-fly', 0.03, 0.24, 3.8, 0.85];
 BT_AUDIO.sprintPush = function () {
   var L = this.SPRINT_PUSH;
   this._lastSprintSound = 'push';   /* what it meant to play, for the tests (mp-sprint) */
@@ -3799,6 +3821,20 @@ BT_AUDIO.swimSplash = function (how) {
    it was a ball's, softened (game/hitSounds.heroHitSfx). */
 BT_AUDIO._noteHero = function (armored, ball, vol) {
   this._lastHero = { armored: !!armored, ball: !!ball, vol: vol, at: Date.now() };
+};
+/* ═══ v2.3.3340: A MONSTER'S NOISE ═══
+   `clip` a MONSTER_NOISE_CLIPS key (game/monsterNoises.js NOISE_OF picks it
+   by the monster, and says when), `k` how much of it you hear where you stand
+   (0-1, hitSounds earVol).  Played at its own level -- 0.75 of a melee hit's
+   loudness beside you -- with a few percent of pitch either way, so the same
+   call twice is not the same sound twice. */
+BT_AUDIO.monsterNoise = function (clip, k) {
+  var c = Object.prototype.hasOwnProperty.call(MONSTER_NOISE_CLIPS, clip) ? MONSTER_NOISE_CLIPS[clip] : null;
+  if (!c) return null;
+  var v = typeof k === 'number' && isFinite(k) ? Math.max(0, Math.min(1, k)) : 1;
+  if (!(v > 0)) return null;
+  this._lastMonsterNoise = clip;   /* what it meant to play, for the tests (mp-monsternoise) */
+  return this.play('noise-' + clip, { vol: c.vol * v, rate: 1 + (Math.random() - 0.5) * 0.08 });
 };
 BT_AUDIO.monsterDeath = function (arch, opts, k) {
   /* No-op for slimes (fodder).  The splat SFX is owned by the render-

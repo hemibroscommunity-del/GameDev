@@ -567,6 +567,19 @@ remnant to migrate server-side, not a mode to preserve.
       cost, ~5x steadier; a full-resolution pass would be ~32 MB of graphics
       memory (TRAPS §141); `?shadowlock=0` is the layer as it was;
       `mp-shadowlock`.
+    - since v2.3.3338 THE SHADOWS ARE DRAWN UNSNAPPED, AT HIGHP -- the owner,
+      again: "prop shadows right now still flicker as you run around": inside
+      the shadow filter Pixi's roundPixels snapped every corner to a grid 0.77
+      x 0.83 of a texel (it rounds by the pooled power-of-two texture's size,
+      not the frame drawn into), so every whole-pixel crossing of the camera
+      re-snapped each shadow differently; and on an iPhone the filter read its
+      picture at mediump, a half float, so the lock's slide moved in quarter-
+      to half-texel steps. The pieces are drawn unsnapped (`installNoSnap`,
+      `_btNoSnap`; the batcher hook clears roundPixels after sharpPixels' and
+      the palette's) and the filter is `highp`; `?shadowsnap=1` /
+      `?shadowhp=0` put each back, `window.__btShadowSnap()`; mp-shadowlock
+      now steps a whole CSS px across and down: 110x and 6x steadier (TRAPS
+      §205).
   - Since v2.3.3001 HITS SOUND LIKE THEIR MATERIAL -- the owner: "modify hit
     sound effects based on material type so hitting wood vs plants etc for
     props and also against monsters (arrow, melee, magic hit sound for
@@ -608,6 +621,17 @@ remnant to migrate server-side, not a mode to preserve.
       own blast in full; `BT_AUDIO.monsterDeath(arch, opts, k)`; kills still
       go to every phone; `mp-farfeel`: material-hit-sounds.md "A far death,
       slam or blast".
+    - since v2.3.3340 FOUR MONSTERS HAVE A NOISE OF THEIR OWN -- the owner's
+      recordings: the fire goblin's rawr, the skeleton's (the mummy's second
+      form's) rattling bones, every slime's jelly bounce, the snowman's snarl
+      (`tools/audio/cut_monster_noises.py`, about a second each, levelled to
+      0.75 of a melee hit, SFX_MANIFEST); heard as one notices you (the "!"'s
+      own `tg` edge, wsClient), now and then while it chases you, and as a
+      mummy sheds; never twice in 6 s for one monster nor 0.9 s apart for any
+      two, by distance on `earVol`; `NOISE_OF` (game/monsterNoises.js) spells
+      every name out -- the mummy and the wisp are `fodder` underneath, and a
+      fallback gave them the slime's bounce; `mp-monsternoise`:
+      docs/specs/monster-noises.md.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
@@ -3756,6 +3780,19 @@ Two protocol versions coexist; both must keep working:
 
   The fix order is in the review. Re-run the lab after any change to a
   harvest, cook, move or hit path.
+- Frame rate on a phone (v2.3.3339, docs/specs/speed-test.md): the QA box
+  draws in software (under 3 frames a second), so a phone's frame rate is
+  measured ON the phone. The test panel's **Speed test** (no key,
+  `src/game/speedTest.js`) times the frames with everything on, then with the
+  shadows, the metal shine, the moving water and the full resolution each off,
+  and puts them back (page-only switches: `setLightFx(on, false)`,
+  `setSheen(on, false)`); its card is what to fix next. `?res=2` draws the
+  canvas at 2x (`src/game/renderRes.js` `renderDpr`, read by the four places
+  that size the canvas: BroTown `resize()`, pixiApp, pixiRenderer.update,
+  worldViewport). `mp-frameprofile` profiles the CPU by source file (build with
+  `--sourcemap`) and names what rebuilds each render group's draw list --
+  `Graphics.clear()` on an empty graphic rebuilds it (TRAPS §208);
+  `mp-speedtest`.
 
 ## Conventions
 
