@@ -472,7 +472,16 @@ export const joinMethods = {
     return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
   },
 
-  async _verifyJoinAuth(id, phrase, opts) {
+  /* v2.3.3372: in the record's queue (devicelock.js _authSerial): this
+     reads `auth:<id>` and may write it -- a new character registered after
+     the account check's fetch, a device remembered -- so a second join of the
+     same id (two tabs, a reload mid-join) or the owner's Forget waits for it,
+     and it for them. */
+  _verifyJoinAuth(id, phrase, opts) {
+    return this._authSerial(id, () => this._verifyJoinAuthNow(id, phrase, opts));
+  },
+
+  async _verifyJoinAuthNow(id, phrase, opts) {
     const now = Date.now();
     if (!this._authFails) this._authFails = new Map(); // in-memory: a deploy reset just clears lockouts
     const rec = this._authFails.get(id);
