@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8d0e3d35deb9dd0f647f869413fbdff3b19263f6",
+  "tree": "4e1897d0c8c802b4aa6696d8d01f4ef00e5cdfcd",
+  "committedAt": "2026-10-18T10:56:41-07:00",
+  "subject": "Each world layer keeps its own draw list: Pixi no longer rebuilds the whole world every frame (v2.3.3449) (#977)",
+  "files": 5963,
+  "bytes": 673737118,
+  "listingSha256": "064bb8bdee823e1c4c0655a05dd6a7aab33f87a71795bbb9a0400736b3bdcc73",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
