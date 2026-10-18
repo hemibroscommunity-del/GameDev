@@ -151,9 +151,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       n0 && n0.near && n0.near.step === 'dig' && ic0 === 'farm-dig' && pr0 && pr0.step === 'dig' && /Dig/.test(pr0.text)
         && wa0 && wa0.beds[0].label[0] === 'Needs Digging' && wa0.beds.slice(1).every((b) => b.label && b.label.length === 0), { n0, ic0, pr0, wa0: wa0 && wa0.beds });
     /* v2.3.3136: dressed in the steel plate and greaves (the client's own equip
-       seam) -- v2.3.3345: the farmer's moves have no armour of their own yet,
-       so the hoe must still lie over the man, and nothing of the plate show */
+       seam) -- v2.3.3345: and the farmer wears them, cut from the owner's
+       dressed sheets: the body cut for greaves, the greaves and the plate over
+       it, the hoe over everything (mp-farmanim checks every frame and mix) */
     await A.page.evaluate(() => { window.__btSetGear('chest', 'steelplate'); window.__btSetGear('legs', 'steelgreaves'); });
+    /* the body cut for greaves, baked as they go on (effectsRenderer
+       _farmUnderWanted), before the bed is worked */
+    await until(() => A.page.evaluate(() => (window.__btFarmBody ? window.__btFarmBody.under : null)), (u) => u === true, 8000);
     await A.page.waitForTimeout(400);
     const a0 = (await acts()).length;
     await A.page.keyboard.press('e');
@@ -175,9 +179,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const o = kf.order || {};
     rec.ok(`E digs it with the owner's hoe (frame ${kf.frame} of the ${kf.anim}, ${kf.figure && kf.figure.drawnH} px tall), your walking body put away, the step "${k0.w && k0.w.work && k0.w.work.step}"`,
       k0.w && k0.w.work && k0.w.work.step === 'dig' && kf.anim === 'hoe' && kf.frame >= 0 && kf.frame < 8 && k0.body && kf.figure && kf.figure.drawnH > 40, k0);
-    rec.ok(`...in steel plate and greaves: the hoe drawn over the man (hoe ${o.prop} over body ${o.body}), his boots on yours`,
-      kf.prop && kf.prop.visible && o.prop > o.body && o.body >= 0 && kf.foot && Math.abs(kf.foot.y - kf.figure.feetY) < 1.5,
-      { order: o, prop: kf.prop, foot: kf.foot, feetY: kf.figure && kf.figure.feetY });
+    rec.ok(`...in steel plate and greaves, and so is he: body ${o.body}${kf.under ? ' (cut for greaves)' : ''}, greaves ${o.legs}, plate ${o.chest}, the hoe ${o.prop} over them all, his boots on yours`,
+      kf.prop && kf.prop.visible && kf.legs && kf.legs.visible && kf.chest && kf.chest.visible && kf.under === true
+        && o.body >= 0 && o.legs > o.body && o.chest > o.legs && o.prop > o.chest && o.shirt === -1
+        && kf.foot && Math.abs(kf.foot.y - kf.figure.feetY) < 1.5,
+      { order: o, prop: kf.prop, legs: kf.legs, chest: kf.chest, under: kf.under, foot: kf.foot, feetY: kf.figure && kf.figure.feetY });
     await A.page.evaluate(() => { window.__btSetGear('chest', 'none'); window.__btSetGear('legs', 'none'); });
     const v0 = await until(view, (v) => v && v[0] === 'tilled', 6000);
     const w2 = await until(world, (w) => w && w.beds[0].soil === 'bed-dug' && w.beds[0].label && w.beds[0].label[0] === 'Needs Planting', 4000);

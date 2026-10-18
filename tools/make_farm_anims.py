@@ -724,9 +724,18 @@ def recolour(body, skin_t, pants_t, boots_t):
     a = body[..., 3]
     lum = (0.299 * r + 0.587 * g + 0.114 * b)
     sk = (a > 40) & (r > g) & (g >= b) & (r - b > 30) & (r > 90) & (r - g > 25) & (g < 0.8 * r)
-    pa = (a > 180) & (g >= r - 10) & (g > b + 8) & (r < 150)
+    pa = (a > 180) & (g >= r - 10) & (g > b + 8) & (r < 150) & (g > 55)
+    lab, sizes = labels(pa)     # in pieces of some size: never an outline px
+    pa = (sizes[lab] >= 40) & (lab > 0)
     mx, mn = rgb.max(-1), rgb.min(-1)
-    bo = (a > 180) & ((mx - mn) < 28) & (mx >= 45) & (mx < 140)
+    # a boot is grey with trousers above it or beside it, as the game's own
+    # repaint has it (playerSkins _standInClothes) -- never the grey round an
+    # eye, which a rule of grey alone painted the boots' colour
+    near = np.zeros_like(pa)
+    for d in range(1, 61):
+        near[d:] |= pa[:-d]
+    near |= dilate8(pa, 25)
+    bo = (a > 180) & ((mx - mn) < 28) & (mx >= 45) & (mx < 140) & near
     for m, t, ref in ((sk, skin_t, 149), (pa, pants_t, 112), (bo, boots_t, 75)):
         k = (lum[m] / ref)[:, None]
         rgb[m] = np.clip(np.array(t)[None] * k, 0, 255)

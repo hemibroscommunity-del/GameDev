@@ -422,8 +422,9 @@ two pictures still to come.
 - **The farmer's drawings** (above). His shirt and armour came with the
   owner's six dressed sheets (v2.3.3345).
 - **Two small specks** in the outfit with greaves under the tee: a few
-  pixels of trouser red at the kneel's left foot (frame 2) and beside the
-  can's splash (frame 4). Each is a pixel or two at phone size.
+  pixels of trouser colour at the kneel's left foot (its second frame) and
+  beside the can's splash (its fourth). Each is a pixel or two at phone
+  size.
 - **Other players see you standing at a bed** while you work it: the steps go
   only to the worker, which tells no one else, as since v2.3.3136.
 - The **Farmhouse** and **Dungeon Workshop** pictures (prompts in

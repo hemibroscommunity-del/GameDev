@@ -15243,6 +15243,9 @@ export class EffectsRenderer {
       this._farmUnder = under;
       this._farmLook = _standInColourKey(skinT, pantsT, shoesT);
       if (old) this._letGo(Object.keys(old).map((a) => old[a]));
+      /* QA (mp-farmwalk): which body the last bake made, so a test that puts
+         greaves on waits for it before it works a bed */
+      if (typeof window !== 'undefined' && window.__btProbe) window.__btFarmBody = { under, seq, at: Date.now() };
     });
   }
 
