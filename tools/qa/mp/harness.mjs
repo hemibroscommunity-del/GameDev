@@ -1336,13 +1336,26 @@ export async function warpToZone(P, { wsPort, label, zoneId, settleMs = 3500 }) 
     b.click();
     return true;
   }, text);
+  /* v2.3.3425: the panel waited for, up to 10 s, not a set 900 ms.  It is
+     a lazy chunk (ZoneHeader openDev), and on a box drawing a few frames a
+     second it came up after the wait: the key and "Finish all quests" then
+     found nothing to press, the zones stayed shut, and the warp went nowhere
+     (mp-pvpnumbers' watcher stayed in town in two runs of 2026-10-18 out of
+     three).  It returns as soon as the panel is up. */
   const openPanel = async () => {
     if (await panelUp()) return true;
     await holdTitle(1500);
-    await P.page.waitForTimeout(900);
+    for (let i = 0; i < 40; i++) {
+      if (await panelUp()) return true;
+      await P.page.waitForTimeout(250);
+    }
     return panelUp();
   };
   await openPanel();
+  /* (the key's box, or the panel already keyed: either is the panel ready) */
+  await P.page.waitForFunction(() => !!document.querySelector('input[type="password"]')
+    || Array.from(document.querySelectorAll('button')).some((n) => (n.textContent || '').indexOf('Finish all quests') >= 0),
+  null, { timeout: 10000 }).catch(() => {});
   await P.page.evaluate((k) => {
     const inp = document.querySelector('input[type="password"]');
     if (!inp) return;
