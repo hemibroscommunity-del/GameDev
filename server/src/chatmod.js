@@ -382,7 +382,7 @@ export const chatModMethods = {
       for (const k of stale) await this.state.storage.delete(k);
       if (filter) rows = rows.filter((r) => r.target === filter || r.by === filter);
       rows.sort((a, b) => (b.at || 0) - (a.at || 0));
-      /* ═══ v2.3.3366: WHAT THE OWNER NEEDS TO ACT ON A REPORT ═══
+      /* ═══ v2.3.3397: WHAT THE OWNER NEEDS TO ACT ON A REPORT ═══
          The Test panel's Chat reports section (DevPanel.jsx) shows these and
          kicks, freezes and unfreezes from them -- until now only a curl
          command read them, and the owner runs the game from a phone.  Each

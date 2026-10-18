@@ -50,7 +50,7 @@ From there you can:
 - **Player logins** — let a player's character onto a new device, or lock out
   someone who got into a character (v2.3.3344; "Player logins" below).
 - **Chat reports** — what players reported, with what was said, and Kick,
-  Freeze, Unfreeze and Dismiss buttons (v2.3.3366; "Dealing with a griefer or
+  Freeze, Unfreeze and Dismiss buttons (v2.3.3397; "Dealing with a griefer or
   cheater" below).
 
 Nobody else can use any of this: every button asks the worker for permission
@@ -201,7 +201,7 @@ curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/botstat?id=bp_XXXX"
 
 ## Dealing with a griefer or cheater
 
-**On your phone (v2.3.3366):** players report someone from that player's card
+**On your phone (v2.3.3397):** players report someone from that player's card
 (Report, then a reason). Open the Test panel (hold the zone name at the top
 for about a second) and under **Chat reports** tap **Show chat reports**. Each
 report shows:

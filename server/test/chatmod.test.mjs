@@ -294,11 +294,11 @@ for (const n of ['a', 'b', 'c']) {
   res = await rm._adminFetch(adminReq('GET', '?target=bp_cm_nobody', 'sekrit'));
   body = await res.json();
   check('...and excludes everything else', body.reports.length === 0);
-  /* v2.3.3366: each row says whether its player is frozen and online NOW --
+  /* v2.3.3397: each row says whether its player is frozen and online NOW --
      the Test panel's Chat reports section acts on them */
   res = await rm._adminFetch(adminReq('GET', '', 'sekrit'));
   body = await res.json();
-  check('a report row says its player is online now and not frozen (v2.3.3366)',
+  check('a report row says its player is online now and not frozen (v2.3.3397)',
     body.reports.length >= 1 && body.reports.every((r) => r.onlineNow === true && r.frozen === false), body.reports.map((r) => [r.onlineNow, r.frozen]));
   const freezeReq = (method, qs, payload) => new Request('https://x/api/admin/freeze' + (qs || ''), {
     method, headers: Object.assign({ Authorization: 'Bearer sekrit' }, payload ? { 'Content-Type': 'application/json' } : {}),
