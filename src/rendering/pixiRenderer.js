@@ -1340,6 +1340,14 @@ export async function initPixiRenderer(canvas) {
     /* v2.3.3345: a mined-out rock's pieces (wheelShatter.js probe), for
        mp-tierore -- each metal's rock breaks into pieces of itself */
     oreBreakProbe: () => (effectsRenderer._oreShatter ? effectsRenderer._oreShatter.probe() : []),
+    /* v2.3.3346: the lands' specks over their resources (landAuras.js), for
+       mp-landauras -- all of them, and one resource's (its node id) */
+    landAuraProbe: (id) => {
+      const a = effectsRenderer._landAuras;
+      if (!a) return { live: 0, node: null };
+      return { ...a.probe(), node: id != null ? a.nodeProbe(id) : null };
+    },
+    landAuraCap: () => effectsRenderer._landAuraCap(),
     /* v2.3.2855: how many drawn peers' lumberjacks are baked right now.
        v2.3.3314: every peer's not in your colours, drawings or not. */
     peerChopBakes: () => (effectsRenderer._peerChopBakes ? effectsRenderer._peerChopBakes.size : 0),

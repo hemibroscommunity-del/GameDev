@@ -287,7 +287,8 @@ import { FARM_COVERS, FARM_STEP_COVER, FARM_COVER_FRAME, FARM_FIGURE_X, FARM_PAN
 import { farmArtUrl } from '@/data/farmArtUrl.js';   /* v2.3.3136: the compost bin's address */
 import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, treeChopOffset, behindTree, TREE_PX, TREE_FOOT_DY, TREE_FADE, TREE_SEE_ALPHA, TREE_SEE_MS } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree */
 import { oreArtSources, oreArtLevelFor, oreGeom, ORE_PX } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock */
-import { WheelShatter } from '../wheelShatter.js';   /* v2.3.3345: a rock mined out breaks into pieces of its own picture */
+import { WheelShatter } from '../wheelShatter.js';
+import { LandAuras, AURAS_ON, AURA_MAX } from '../landAuras.js';   /* v2.3.3346: each land's resources wear its element */   /* v2.3.3345: a rock mined out breaks into pieces of its own picture */
 import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
@@ -10807,6 +10808,17 @@ export class EffectsRenderer {
       if (!this._wheelFish) this._wheelFish = new WheelFish(this.lootLayer);
       this._wheelFish.update(_wheelSpots || [], now);
     }
+    /* v2.3.3346: each land's trees and rocks wear its element, drawn over
+       their pictures (landAuras.js) -- in the Wheel, where a resource's id
+       names its land; anywhere else, and with `?noauras`, none */
+    if (_near && AURAS_ON) {
+      if (!this._landAuras) this._landAuras = new LandAuras(this.entityLayer);
+      const _at = performance.now();
+      this._landAuras.update(nodes, this._landAurasAt ? _at - this._landAurasAt : 16);
+      this._landAurasAt = _at;
+    } else if (this._landAuras && this._landAuras.at.size) {
+      this._landAuras.clear();
+    }
     /* v2.3.3016: the Wheel's dungeon mouths at its landmarks (wheelDoors.js)
        -- and, anywhere else or against a worker that opens none, none */
     const _doors = (S.currentZone === 'wheel' && wheelDungeonsSupported(S)) ? wheelDungeonDoors() : null;
@@ -11194,6 +11206,9 @@ export class EffectsRenderer {
       })),
     };
   }
+
+  /* v2.3.3346: the most of the lands' specks alive at once (landAuras.js) */
+  _landAuraCap() { return AURA_MAX; }
 
   /* Spawn a one-shot ore-vein break animation at a depleted node.  Sized to
      match the static ore-vein sprite via the same tier-scaled target height. */
@@ -16198,6 +16213,7 @@ export class EffectsRenderer {
     }
     this.nodeGfx.clear();
     if (this._wheelFish) this._wheelFish.clear();   /* v2.3.3012 */
+    if (this._landAuras) this._landAuras.clear();   /* v2.3.3346 */
     /* v2.3.3345: no rock's pieces carried across a zone change, nor its crack */
     if (this._oreShatter) this._oreShatter.clear();
     this._oreBreaks = [];

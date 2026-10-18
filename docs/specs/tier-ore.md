@@ -115,7 +115,8 @@ the pike reaches x-71..x+11 and y +/- 35. Past that a fish dives, as before.
 
 ## Not in this round
 
-- **The ten zones' effects** on trees and rocks, drawn in code: the next round.
+- **The ten zones' effects** on trees and rocks, drawn in code: v2.3.3346
+  (`docs/specs/land-auras.md`).
 - **The bake's sizes.** `tools/world/bake-wheel-spawns.mjs` keeps tall scenery
   from standing in front of a node, using the OLD art's sizes (a tree 62 x 196,
   a vein 52 x 118). The new maple is far bigger and the obsidian a little. A

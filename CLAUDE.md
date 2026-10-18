@@ -1011,11 +1011,22 @@ remnant to migrate server-side, not a mode to preserve.
       - and the FISH grow more (wheelNodes.js `FISH_LOOK`): six 14 px minnows
         to one 42 px pike, a big fish's circle smaller (`swim`) so it stays in
         the bake's water;
-      - not yet: the ten zones' effects in code, the bake's tree and vein
-        sizes (bake-wheel-spawns.mjs `ART`, a re-bake deploys the worker), the
-        woods past maple (WOODCUTTING_TIERS lists 20, only 5 grow);
-        `mp-tiertrees`, `mp-tierore`: docs/specs/tier-trees.md,
-        docs/specs/tier-ore.md.
+      - not yet: the bake's tree and vein sizes (bake-wheel-spawns.mjs
+        `ART`, a re-bake deploys the worker), the woods past maple
+        (WOODCUTTING_TIERS lists 20, only 5 grow); `mp-tiertrees`,
+        `mp-tierore`: docs/specs/tier-trees.md, docs/specs/tier-ore.md.
+    - since v2.3.3346 EACH LAND'S TREES AND ROCKS WEAR ITS ELEMENT -- the
+      owner: "add effects to a pine tree to make it look like it belongs in
+      that elemental zone but the wood logs stay the same", "keep in mind
+      there are actually 10 elemental zones": specks drawn in code over the
+      picture, which never changes (`src/rendering/landAuras.js`,
+      `LAND_AURAS`): snow (frost), embers (ember), sand (sky), dust and
+      glints (hollows), sparks (thunder), drips (tidal), spores (mist),
+      petals and fireflies (verdant), the realms' dark and light when they
+      are built; a resource's land from its id (`wn-<land>-<k>`), the commons
+      none; each resource's specks a Container RIDING on its picture
+      (depthSort `_ridesOn`), one 2 x 2 texture, `AURA_MAX` 180 alive, a pool;
+      the Wheel only, `?noauras`; `mp-landauras`: docs/specs/land-auras.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":

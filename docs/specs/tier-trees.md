@@ -115,8 +115,9 @@ the game holds about **2.1 MB more**. They are 319 KB to download.
 
 ## Not in this round
 
-- **The ten zones' effects** are the next round, drawn in code, with no art.
-  Around town the trees stay plain. The idea for each zone:
+- **The ten zones' effects** came in v2.3.3346, drawn in code, with no art
+  (`docs/specs/land-auras.md`). Around town the trees stay plain. The idea for
+  each zone, as first written:
 
   | Zone | Effect |
   |---|---|
