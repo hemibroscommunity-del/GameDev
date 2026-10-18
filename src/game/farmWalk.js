@@ -13,7 +13,7 @@
  *     the stick or a tap on the bed itself takes it (desktopControls
  *     runInteract, BroTown's bed tap);
  *   - you stand at its back, facing us, and work it in the owner's own
- *     moves (v2.3.3402, effectsRenderer _updateFarmWork): the hoe to dig,
+ *     moves (v2.3.3411, effectsRenderer _updateFarmWork): the hoe to dig,
  *     the watering can to water, kneeling with your hands in the soil to
  *     plant, put compost on and harvest -- dirt, water, seeds, compost or
  *     leaves flying where the work lands (farmWorld.js), a sound at each
@@ -89,7 +89,7 @@ function sayOverBed(S, i, text, color) {
 }
 function play(key, opts) { try { BT_AUDIO.play(key, opts); } catch (e) { /* sound only */ } }
 
-/* the sound of each lean (farmWork.js FARM_BEAT_SOUND: v2.3.3402, the table
+/* the sound of each lean (farmWork.js FARM_BEAT_SOUND: v2.3.3411, the table
    moved there so another player's are heard from the same one) */
 function beatSound(step) {
   const b = Object.prototype.hasOwnProperty.call(FARM_BEAT_SOUND, step) ? FARM_BEAT_SOUND[step] : null;
@@ -184,7 +184,7 @@ export function startFarmStep(S, i) {
   S._facing = 'down';
   P.dir = 'down';
   const t0 = Date.now();
-  /* v2.3.3402: `n`, your steps counted, for what the others see (farmWork.js
+  /* v2.3.3411: `n`, your steps counted, for what the others see (farmWork.js
      farmExCode) */
   S._farmSteps = ((S._farmSteps | 0) + 1) % 100;
   S._farmWork = { bed: i, step: n.step, crop, startedAt: t0, doneAt: t0 + FARM_WORK_MS[n.step], x: P.x, y: P.y, n: S._farmSteps };

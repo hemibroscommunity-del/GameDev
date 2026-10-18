@@ -32,7 +32,7 @@
  *   WORK     the bits that fly as you work a bed (S._farmWork): dirt,
  *            seeds, water, compost, the crop popping up -- from where the
  *            work lands, the hoe's blade, the can's water, the hands in the
- *            soil (effectsRenderer _updateFarmWork, S._farmHands; v2.3.3402),
+ *            soil (effectsRenderer _updateFarmWork, S._farmHands; v2.3.3411),
  *            as each move's beat comes round (farmWork.js farmWorkBeats).
  *
  * Nothing here decides anything: the beds are only ever the worker's

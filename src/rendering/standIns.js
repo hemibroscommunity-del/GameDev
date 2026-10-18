@@ -29,7 +29,7 @@
  * hands in how to make each (setStandInMaker).  QA: window.__btStandIns,
  * window.__btStandInMake.
  */
-/* v2.3.3402: + 'farm', the farmer's three moves (effectsRenderer _makeFarm):
+/* v2.3.3411: + 'farm', the farmer's three moves (effectsRenderer _makeFarm):
    made on the farm, behind its loading screen, and let go of on leaving it
    (forgetStandIn) -- the only pose that is, as it is drawn nowhere else */
 const KINDS = ['chop', 'cook', 'fire', 'farm'];
@@ -127,7 +127,7 @@ if (typeof window !== 'undefined') {
   };
 }
 
-/** v2.3.3402: `kind` let go of -- its frames freed (the farmer's, leaving the
+/** v2.3.3411: `kind` let go of -- its frames freed (the farmer's, leaving the
  *  farm): asked for again, it is made again.  A make still on its way when
  *  this is called settles the record it was asked from, no longer this
  *  kind's (the maker drops what it made itself: effectsRenderer _farmGen). */
@@ -135,7 +135,7 @@ export function forgetStandIn(kind) {
   if (!_st[kind]) return;
   _st[kind] = idle();
 }
-/** v2.3.3402: can the farmer work a bed in his own moves (the hoe, the can,
+/** v2.3.3411: can the farmer work a bed in his own moves (the hoe, the can,
  *  the kneel), made with your skin, trousers and boots?  Until then the
  *  walking body stays drawn. */
 export function farmFigureReady() { return standInReady('farm'); }

@@ -1,4 +1,4 @@
-# The farm you walk (v2.3.3136; the farmer's own moves v2.3.3402)
+# The farm you walk (v2.3.3136; the farmer's own moves v2.3.3411)
 
 > Owner, 2026-10-06: *"Hold on I don't want this type of farming. I want your
 > character to be able to walk around on the farm. I want the planting process
@@ -16,7 +16,7 @@
 >
 > And then (2026-10-17): *"Do any animations need to be built? I'd like to
 > have animations during the farming process perhaps on a sprite sheet."* They
-> made three sheets from the prompts they were given (v2.3.3402, "The
+> made three sheets from the prompts they were given (v2.3.3411, "The
 > farmer's own moves" below).
 >
 > And of the first cut (2026-10-18): *"How do you want me to add armor and the
@@ -93,7 +93,7 @@ Farming level can plant. With two or more kinds in the bag, each kind's ripe
 picture sits over the button and a tap picks one. That is the only choice
 farming asks of you, made where you stand.
 
-## The farmer's own moves (v2.3.3402)
+## The farmer's own moves (v2.3.3411)
 
 The owner asked for animations on a sprite sheet. They were given three
 prompts and one reference picture (the fire-lighter with his log taken out),
@@ -179,7 +179,7 @@ cut, at once (`_farmUnderWanted`: asked each frame on the farm, so a change
 made while a bake was on its way is caught too).
 
 The clothes are drawn on him, so they follow his arms in every frame:
-v2.3.3402's first cut made the shirt out of the bare body, and wherever an arm
+v2.3.3411's first cut made the shirt out of the bare body, and wherever an arm
 crossed in front of him the whole arm came out in the shirt's colour. Garments
 drawn on their own never line up: the fire-lighter's still need a nudge every
 frame (`FIRE_GEAR_REG`). These lie within a pixel of the body.
@@ -229,7 +229,7 @@ changed on the farm bakes him again once the strokes stop, as the
 lumberjack's (400 ms).
 
 **The others on the farm see you work.** The steps go only to the worker,
-which tells no one else, so until v2.3.3402 everyone else saw you standing at
+which tells no one else, so until v2.3.3411 everyone else saw you standing at
 the bed. Now your move carries the step as its `ex`, `farm:<step>:<n>`
 (`farmWork.js` `farmExCode`; `n` counts your steps, so two alike in a row
 start over on their screens), the code a lumberjack's move carries as
@@ -512,7 +512,7 @@ two pictures still to come.
   worker's farm, the kill switch), `mp-farmorders` and `mp-wheeldoors` (the
   farm's gate) still run.
 - mp-farmwalk's memory check (the farm holding less than the Wheel, the two
-  together) fails, and fails the same way on main (v2.3.3402: the farm 104.5
+  together) fails, and fails the same way on main (v2.3.3411: the farm 104.5
   MB on the graphics chip, 104.6 on main, the Wheel 71.3). Most likely since
   v2.3.3190, which cut the Wheel's from about 104 MB to 72 by keeping its
   ground and objects as colour numbers (CLAUDE.md, "Memory is budgeted"); the

@@ -2352,8 +2352,8 @@ remnant to migrate server-side, not a mode to preserve.
         (`farm_open`, the free deed);
       - (v2.3.3136 knelt in the COOK'S crouch, a crate of the owner's art
         where its pan was -- the owner: "Cooking animation might be better" --
-        until v2.3.3402's moves, below);
-      - since v2.3.3402 THE FARMER'S OWN MOVES -- the owner: "I'd like to have
+        until v2.3.3411's moves, below);
+      - since v2.3.3411 THE FARMER'S OWN MOVES -- the owner: "I'd like to have
         animations during the farming process perhaps on a sprite sheet",
         then three ChatGPT sheets of 8 frames (`tools/farm_anim_src/`):
         - DIG plays the hoe (two swings), WATER the can (one pour), PLANT,

@@ -189,7 +189,7 @@ Measured instead, in world px, from the same rows the walking body is sized by
 - **Everything on them follows:** the hair, hat and beard (they read the
   sprite's scale; the head ratios in `_skillTraitMul` are unchanged), the
   armour layers, the cook's pan (`COOK_PAN_DX` is a share of his height) and
-  the farm's kneel and its covers (until v2.3.3402 gave the farmer his own
+  the farm's kneel and its covers (until v2.3.3411 gave the farmer his own
   moves: farm-walk.md, "The farmer's own moves").
 - **The axe still bites the trunk:** the lumberjack is scaled about his feet,
   so his blade reaches further. `CHOP_OFFSET` 30 -> 44 keeps it where it was
