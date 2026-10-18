@@ -213,6 +213,9 @@ function footprintTexture() {
  * So the set is the registry, the CONTAINER's flag is what moves, and every
  * live renderer moves together. */
 const _liveTileRenderers = new Set();
+/* v2.3.3452: `?groundbg=1` keeps the black under the Wheel's ground drawn
+   every frame, as it was (_groundBg: THE BLACK UNDER THE GROUND) */
+const GROUND_BG_KEEP = typeof location !== 'undefined' && /[?&]groundbg=1(?:&|$)/.test(location.search || '');
 
 function cssToHex(css) {
   if (typeof css !== 'string') return 0x000000;
@@ -321,6 +324,22 @@ export class TileRenderer {
         for (const t of _liveTileRenderers) { t.portalLayer.visible = !!v; n++; }
         return n;
       };
+      /* v2.3.3452: QA (mp-seacover) -- the black under the ground: drawn now,
+         whether the Wheel's pieces cover the view, and `show(on)` to draw it
+         or not in a held frame (the next update decides again) */
+      window.__btGroundBg = () => {
+        for (const t of _liveTileRenderers) {
+          if (!t.bgGfx || t.bgGfx.destroyed) continue;
+          return { drawn: !!t.bgGfx.visible, covers: !!(t._chunkGround && t._chunkGround.coversView),
+                   keep: GROUND_BG_KEEP || !!window.__btGroundBgKeep, zone: t.currentZone };
+        }
+        return null;
+      };
+      window.__btGroundBg.show = (on) => {
+        let n = 0;
+        for (const t of _liveTileRenderers) if (t.bgGfx && !t.bgGfx.destroyed) { t.bgGfx.visible = !!on; n++; }
+        return n;
+      };
     }
     // Building sprite container (rendered on top of tiles)
     this.buildingContainer = new Container();
@@ -401,6 +420,7 @@ export class TileRenderer {
     /* v2.3.2932: and the world trial's streamed ground, which frees every
        piece it holds -- the same "drop the reference on the way out" rule. */
     if (this._chunkGround) { try { this._chunkGround.destroy(); } catch (e) { /* ignore */ } this._chunkGround = null; }
+    this.bgGfx.visible = true;   /* v2.3.3452: drawn until a ground covers the view (_groundBg) */
     // Remove old tile sprites
     this.tileContainer.removeChildren();
     this.buildingContainer.removeChildren();
@@ -1143,6 +1163,24 @@ export class TileRenderer {
     }
   }
 
+  /* ═══ v2.3.3452: THE BLACK UNDER THE GROUND, ONLY WHERE IT CAN SHOW ═══
+     Found by the frame-rate hunt's count of what a phone's graphics chip
+     paints a frame (the owner: "iterate on what best improves framerate
+     without loss of quality"): bgGfx, the black past the world's edge, is a
+     rectangle the world's size and a screen's width round it under every
+     ground -- in the Wheel a whole screen of pixels painted every frame and
+     every one of them painted over by the ground's pieces.  It is not drawn
+     while the Wheel's pieces cover the whole view (WheelGround.coversView:
+     every piece the view touches laid, a shake's pad past it, and the view
+     inside the world), and drawn again the frame any of it is not -- near the
+     world's edge, a piece still being laid, any other zone.  `?groundbg=1`
+     (or window.__btGroundBgKeep) keeps it drawn always. */
+  _groundBg() {
+    const bgOff = !GROUND_BG_KEEP && !!(this._chunkGround && this._chunkGround.coversView)
+      && !(typeof window !== 'undefined' && window.__btGroundBgKeep);
+    if (this.bgGfx.visible === bgOff) this.bgGfx.visible = !bgOff;
+  }
+
   update(cx, cy, viewW, viewH, S) {
     /* v2.3.3037: today's town's map, put off while it was only the stop on
        the way to the Wheel (rebuild), fetched once town is to be SEEN -- the
@@ -1155,7 +1193,11 @@ export class TileRenderer {
       if (!d.sprite.destroyed) this._loadMapInto(d.imageUrl, d.sprite, d.w, d.h, d.reload, d.zoneId);
     }
     /* v2.3.2932: stream the trial's ground round the camera (null otherwise) */
-    if (this._chunkGround) this._chunkGround.update(cx, cy, viewW, viewH);
+    try {
+      if (this._chunkGround) this._chunkGround.update(cx, cy, viewW, viewH);
+    } finally {
+      this._groundBg();   /* v2.3.3452: decided every frame, a ground that threw included */
+    }
     /* Auto-refresh when a Tiled map finishes loading AFTER the
        initial rebuild for this zone — the user briefly sees the
        procedural fallback, then snaps to the Tiled visuals once
