@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6742aa9649ed6cabd53a294cf96f46c5a3a1560d",
+  "tree": "bbccd6b20e1b9f49f2c4201baebbc2f58a913728",
+  "committedAt": "2026-10-18T03:43:25-07:00",
+  "subject": "Your pet and the townsfolk join in: your pet sits and dances with you, Lil Bro copies you, Diego hates dancing (v2.3.3394) (#983)",
+  "files": 5843,
+  "bytes": 639861679,
+  "listingSha256": "5f2f5cf8228c73ee081d486396acb6b476b6c1b645550e96f888a8d24c2aad98",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
