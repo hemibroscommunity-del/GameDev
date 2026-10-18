@@ -1,4 +1,4 @@
-/* ═══ v2.3.3343: EACH WOOD ITS OWN TREE ═══
+/* ═══ v2.3.3345: EACH WOOD ITS OWN TREE ═══
  *
  * The owner, 2026-10-18, of the resources: every tier grows in every land,
  * "the log art (in terms of color to represent the type of wood) would need to
@@ -99,6 +99,25 @@ export function treeTrunkEllipse(node) {
 export const CHOP_REACH = 59;
 export function treeChopOffset(node) {
   return CHOP_REACH - Math.min(15, treeGeom(node).trunk * 0.6);
+}
+
+/* ═══ WHERE YOU CAN CHOP FROM: THE BOX THE WORKER PAYS FROM ═══
+   The worker pays a chop only from within _nodeStrikeRange of the node
+   (server/src/gathering.js), which it works out from the OLD pine's box: 168
+   px tall at tier 1 and 15% more a ten levels, 0.8 as wide, standing on the
+   node's point -- its far corner, plus the reach test's 56 px pad and 24 of
+   lag slack.  The new crowns are far bigger (the maple's is ~430 px across),
+   and a reach measured to the whole picture offered chops from up to ~580 px
+   that the worker refused in silence: the v2.3.2273 bug ("Chopped logs were
+   not going into my inventory") again.  So the REACH stays that box -- you
+   chop from beside the trunk, where the lumberjack is drawn anyway
+   (chopStandInSpot) -- and the TAP still finds the whole tree (BroTown
+   nodeWorldBox).  Change one side, change both. */
+export function treeReachBox(node) {
+  const step = Math.min(10, Math.max(1, Math.ceil(((node && node.gatherLvl) || 1) / 10)));
+  const h = 168 * (1 + (step - 1) * 0.15);
+  const w = h * 0.8;
+  return { l: node.x - w / 2, r: node.x + w / 2, t: node.y - h, b: node.y };
 }
 
 /* ═══ SEEN THROUGH WHEN YOU STAND BEHIND ONE ═══

@@ -56,7 +56,8 @@ import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
-import { treeGeom, treeTrunkEllipse } from '@/game/tierTrees.js';   /* v2.3.3343: each wood its own tree -- its box and its trunk */
+import { treeGeom, treeTrunkEllipse, treeReachBox } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree -- its box, its trunk and where you chop it from */
+import { oreGeom, oreBlockEllipse } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock -- its box and its body */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
 import { weaponDiscIcon } from './panels/controlSkin.jsx'; /* v2.3.3105: the attack disc wears the weapon in your hand */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
@@ -614,9 +615,13 @@ function nodeWorldBox(S, n) {
        ~55 above it.  Was 56x40 for the vector fire's glow and 21 px flames. */
     w = 64; h = 70; ax = 0.5; ay = 0.82; wx = n.x; wy = n.y;
   } else if (n.nodeType === 'tree') {
-    /* v2.3.3343: its wood's own picture, before the sprite exists */
+    /* v2.3.3345: its wood's own picture, before the sprite exists */
     var _g = treeGeom(n);
     return { l: _g.left, r: _g.right, t: _g.top, b: _g.bottom };
+  } else if (n.nodeType === 'oreVein') {
+    /* v2.3.3345: and a vein its metal's own rock */
+    var _og = oreGeom(n);
+    return { l: _og.left, r: _og.right, t: _og.top, b: _og.bottom };
   } else {
     var _ts = Math.min(10, Math.max(1, Math.ceil((n.gatherLvl || 1) / 10)));
     h = (n.nodeType === 'tree' ? 168 : 132) * (1 + (_ts - 1) * 0.15);
@@ -668,10 +673,14 @@ function nodeWorldBox(S, n) {
    over-blocks empty air in one direction and under-blocks the art in another,
    which is what the owner was seeing. */
 var NODE_ART = {
-  oreVein:  { x0: 0.232, x1: 0.777, y0: 0.223, y1: 0.737 },
+  /* ore: its whole drawn body.  v2.3.3345: each metal's rock is its own
+     picture, trimmed to the rock, so the body is its box (game/tierOre.js
+     oreBlockEllipse) and these fractions of the old vein's frame are gone.
+     The entry stays: it is what says a vein stops you at all. */
+  oreVein:  {},
   fishSpot: { x0: 0.179, x1: 0.816, y0: 0.348, y1: 0.686 },
   /* tree: only the TRUNK is solid -- the owner wants only the base solid, so
-     the canopy is walk-under.  v2.3.3343: its fractions are gone with the old
+     the canopy is walk-under.  v2.3.3345: its fractions are gone with the old
      pine; each wood's trunk is its own picture's (nodeBlockEllipse ->
      game/tierTrees.js treeTrunkEllipse).  The entry stays: it is what says a
      tree stops you at all. */
@@ -707,10 +716,12 @@ function nodeBlockEllipse(S, n) {
      out of the bank beside it (it reaches ~33 px east of the spot, where
      the shore and the angler's seat are). */
   if (n.nodeType === 'fishSpot' && zoneHomes(S.currentZone)) return null;
-  /* v2.3.3343: a tree's trunk is its own picture's (game/tierTrees.js), not a
+  /* v2.3.3345: a tree's trunk is its own picture's (game/tierTrees.js), not a
      share of the old pine's frame -- the slim pine's narrow, the gnarled
      hardwood's broad, the crown walk-under as ever */
   if (n.nodeType === 'tree') return treeTrunkEllipse(n);
+  /* v2.3.3345: a rock's body is its own picture's (game/tierOre.js) */
+  if (n.nodeType === 'oreVein') return oreBlockEllipse(n);
   var b = nodeWorldBox(S, n);
   if (!b) return null;
   var w = b.r - b.l, h = b.b - b.t;
@@ -734,8 +745,12 @@ function oreStandSpot(S, n) {
 function nodeReachDist(S, n, slack) {
   if (!S || !n || !S.player) return null;
   var P = S.player, extra = slack || 0;
-  /* 1. Distance to the sprite's perimeter — 0 while standing ON the art. */
-  var _b = nodeWorldBox(S, n);
+  /* 1. Distance to the sprite's perimeter — 0 while standing ON the art.
+     v2.3.3345: a TREE's from the box the worker pays a chop from
+     (game/tierTrees.js treeReachBox), not its picture: the big crowns reach
+     far past the worker's strike range, and a chop begun out there was
+     refused in silence.  The tap still finds the whole picture. */
+  var _b = n.nodeType === 'tree' ? treeReachBox(n) : nodeWorldBox(S, n);
   if (_b) {
     var _bx = Math.max(_b.l - P.x, 0, P.x - _b.r);
     var _by = Math.max(_b.t - P.y, 0, P.y - _b.b);
@@ -1175,6 +1190,10 @@ export var BroTown = function BroTown(_ref0) {
     migrateLifeSkills: migrateLifeSkills,
     spawnMonstersForZone: spawnMonstersForZone,
     spawnGatherNodes: spawnGatherNodes,
+    /* v2.3.3345: the reach test itself, at the player's spot, so a scenario
+       can ask where a harvest is offered (mp-tiertrees holds every tree's to
+       the worker's strike range, gathering.js _nodeStrikeRange) */
+    nodeReachDist: function (n, slack) { return nodeReachDist(stateRef.current, n, slack); },
     generateZoneMap: generateZoneMap,
     calcWeaponDmg: calcWeaponDmg,
     /* ═══ v2.3.2259: THE GAME'S OWN ANSWER TO "HOW MUCH DPS IS THAT?" ═══
@@ -8905,7 +8924,10 @@ export var BroTown = function BroTown(_ref0) {
        and its art is 100-260px of canopy above that, so a radius around the
        anchor would refuse taps on most of what the player can see.
        nodeWorldBox is the same box nodeReachDist measures from, so what you
-       can tap and what you can reach are one shape. */
+       can tap and what you can reach are one shape.
+       v2.3.3345: but for a TREE: the tap finds its whole picture, the reach
+       is the box the worker pays a chop from (game/tierTrees.js
+       treeReachBox) -- a big crown is far wider than that. */
     var _tapScan = function (n) {
       if (!n || !n.alive || (n.respawnAt && Date.now() < n.respawnAt)) return;
       /* ═══ v2.3.3145: ONLY WHAT YOU CAN SEE AND REACH TAKES THE TAP ═══

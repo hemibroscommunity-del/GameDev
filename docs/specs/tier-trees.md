@@ -1,4 +1,4 @@
-# Each wood its own tree (v2.3.3343)
+# Each wood its own tree (v2.3.3345)
 
 > The owner, 2026-10-18, on resources: *"A fun idea is to make the beginner tier
 > scale up in physical size to the final tier where you have huge fish, ore,
@@ -91,8 +91,22 @@ Now **each wood has its own tree**, and it is the same picture in every land:
   view's half-diagonal (`WHEEL_NODE_MARGIN`, was 320). The maple stands 451 px
   over its anchor, so its crown used to come into view with nothing drawn.
 - **Walking.** BroTown's `nodeBlockEllipse` reads the trunk from `tierTrees`.
-  `nodeWorldBox` (the reach and tap box) is the sprite's own bounds, so a big
-  tree is a big target to tap.
+  `nodeWorldBox` (the tap box) is the sprite's own bounds, so a big tree is a
+  big target to tap.
+- **Where you can chop from** is NOT the picture. The worker pays a chop only
+  from within `_nodeStrikeRange` of the node (`server/src/gathering.js`): the
+  old pine's box (168 px tall at tier 1, 15% more every ten levels, 0.8 as
+  wide, standing on the node), plus the reach test's 56 px pad and 24 of lag
+  slack. A reach measured to the new crowns offered chops from up to ~580 px
+  (the maple) that the worker refused in silence -- the v2.3.2273 bug, "Chopped
+  logs were not going into my inventory", again. Found before this shipped,
+  by the phone test below: on the first cut every tree failed it (the
+  softwood offered a chop 312 px out, the worker pays to 261).
+  - So the reach is `treeReachBox` (`tierTrees.js`), that very box, in
+    BroTown's `nodeReachDist`: you chop from beside the trunk, where the
+    lumberjack is drawn anyway. The tap still finds the whole tree.
+  - The server is unchanged. Change `treeReachBox` and `_nodeStrikeRange`
+    together, or neither.
 
 ## Memory
 
@@ -119,11 +133,10 @@ the game holds about **2.1 MB more**. They are 319 KB to download.
 
   Dark and Light are the realms past each land's far gate, and they are not
   built yet.
-- **The ore veins.** One sheet of five, copper to obsidian, growing in size.
-  Its prompt is in `docs/ART-WISHLIST.md` "Trees and ore, one a tier", and it
-  waits on the owner's picture.
-- **The fish** grow by tier already (16 to 31 px long, drawn in code). Making
-  the gap dramatic is a code change with no art.
+- **The ore veins** came in the same version, from the owner's picture: one
+  rock a metal, copper to obsidian (`docs/specs/tier-ore.md`).
+- **The fish** grow more in the same version too: 14 px minnows to one 42 px
+  pike (`tier-ore.md` "The fish").
 - **Bows and staffs** look the same at every tier. They could take their
   wood's colour, as swords take their metal's.
 - **The tiers past maple.** The woodcutting table (`WOODCUTTING_TIERS`) lists
@@ -149,8 +162,16 @@ the game holds about **2.1 MB more**. They are 319 KB to download.
     300 px over the foot), the bar on the screen below the top cards;
   - the lumberjack off by its own trunk.
 
+  - where a chop is offered: the game's own reach test (`nodeReachDist`, on
+    the `_gameFns` bridge), asked at every spot of an 8 px grid round the
+    tree, offers it only within the worker's strike range less its 24 px of
+    lag slack -- the worker's own function, imported -- and beside the trunk
+    on either side.
+
   Then it checks that the pine's trunk stops you while its crown does not, and
-  that the maple is seen through from behind and solid again from in front. It
+  that the maple is seen through from behind and solid again from in front.
+  Last, a real chop of the maple (Woodcutting 99, a tap, the worker's hits, the
+  swipe) from the far edge of its reach, and the log read from the worker. It
   takes a picture of each tree and each chop:
   `tools/qa/mp/out/tiertrees-<wood>.png`.
 - `mp-wheelnodes` now checks that the softwood tree is the willow at its own

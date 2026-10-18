@@ -914,7 +914,7 @@ remnant to migrate server-side, not a mode to preserve.
         gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
         `mp-monsterplate` (whose band sweep now raises the weapon's skill):
         docs/specs/xp-decay.md.
-    - since v2.3.3343 EACH WOOD ITS OWN TREE -- the owner: every resource tier
+    - since v2.3.3345 EACH WOOD ITS OWN TREE -- the owner: every resource tier
       in every land, "the log art (in terms of color to represent the type of
       wood) would need to be the same across all 8 lands", the land shown by
       effects in code; then their two ChatGPT pictures, "You can start with
@@ -937,10 +937,33 @@ remnant to migrate server-side, not a mode to preserve.
         (`behindTree`, `?treefade=0`), the maple hiding a bro whole; the
         Wheel's node view margin 320 -> 480; +2.1 MB decoded (5.6 for the
         five, the 3.4 MB pine no longer loaded);
-      - not yet: the ten zones' effects in code, the ore veins (their prompt
-        in ART-WISHLIST "Trees and ore, one a tier"), the woods past maple
-        (WOODCUTTING_TIERS lists 20, only 5 grow); `mp-tiertrees`:
-        docs/specs/tier-trees.md.
+      - WHERE YOU CHOP FROM is not the picture: the worker pays a chop only
+        within `_nodeStrikeRange` (gathering.js: the OLD pine's box, 168 px a
+        tier, + 56 pad + 24 slack), and a reach to the new crowns offered
+        chops up to ~580 px out that it refused in silence (v2.3.2273's "logs
+        not going into my inventory"); BroTown `nodeReachDist` measures a tree
+        from `treeReachBox`, that very box (the tap still finds the whole
+        tree) -- change the two together;
+      - EACH METAL ITS OWN ROCK too, from the owner's one picture on green:
+        copper (58 px), iron, black steel, titanium and an obsidian boulder
+        (127 x 112), cut by `tools/world/add-ore-art.mjs` (source
+        `assets/prop-source/ore/`) into `public/sprites/ore/` and the GENERATED
+        `src/data/oreArt.js`; `src/game/tierOre.js` stands each rock's base 22
+        px north of the node (`ORE_BASE_DY`) and never higher than 110
+        (`ORE_TOP_MAX_UP`), so it hides the rock BAKED into the miner's swing
+        (27-59 px north of the node, measured through the body's transform:
+        the old vein covered 67% of it) and his head and shoulders stay over
+        it; a rock mined out breaks into pieces of its own picture
+        (`wheelShatter.js`, `_oreShatter`), the old copper break strip and the
+        four colour-mapped veins no longer loaded (7.7 -> 0.6 MB decoded);
+      - and the FISH grow more (wheelNodes.js `FISH_LOOK`): six 14 px minnows
+        to one 42 px pike, a big fish's circle smaller (`swim`) so it stays in
+        the bake's water;
+      - not yet: the ten zones' effects in code, the bake's tree and vein
+        sizes (bake-wheel-spawns.mjs `ART`, a re-bake deploys the worker), the
+        woods past maple (WOODCUTTING_TIERS lists 20, only 5 grow);
+        `mp-tiertrees`, `mp-tierore`: docs/specs/tier-trees.md,
+        docs/specs/tier-ore.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":

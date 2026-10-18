@@ -17,7 +17,7 @@ Each of these is drawn in code, borrowed from somewhere else, or missing today. 
 4. **The three dungeons** (6 chats): each mouth, then each arena's walls.
 5. **The Farmhouse and the Dungeon Workshop** (2 chats): their prompts are in `docs/art/FARM-ART-PROMPTS.md`.
 6. **Small icons, sheet 5, and the spin wheel** (2 chats).
-7. **The ore veins, one a tier** (1 chat, v2.3.3343): copper to obsidian, growing in size. The trees are done (below, "Trees and ore, one a tier").
+7. ~~**The ore veins, one a tier**~~: done in v2.3.3345 from your picture, with the trees (below, "Trees and ore, one a tier").
 
 Not on the list unless you want them: each land's levels 21-40 monsters (recoloured today; the monster prompts make them), the Gem Works' inside with two stations, and the four lands' music (below).
 
@@ -951,13 +951,13 @@ Instrumental background music for BroTown, a cozy-but-adventurous pixel-art acti
 Eerie and swampy, for a land of blighted farms, slime woods and a mangrove marsh: a creeping, slightly off-kilter rhythm of plucked strings and bubbling percussion, a low clarinet or bassoon melody, buzzing insects and squelchy bubbles in the texture. Mischievous rather than horror. About 95 BPM.
 ```
 
-## Trees and ore, one a tier (v2.3.3343)
+## Trees and ore, one a tier (v2.3.3345)
 
 The owner, 2026-10-18: every resource tier grows in every land, and a wood's (or an ore's) colour must be the same in all of them, so each tier is ONE picture everywhere: its shape and size say the tier (small by town, huge at the far end), its colour matches its bag icon. The land is to be shown by effects drawn in code, not by another picture (docs/specs/tier-trees.md). Plain pictures only: no snow, embers or moss on them.
 
 ### The five trees
 
-- **In the game (v2.3.3343):** done, from the owner's two pictures (kept in `assets/prop-source/trees/`), cut by `tools/world/add-tree-art.mjs`: pine on the commons, a willow (softwood) at levels 1-10, a gnarled hardwood at 11-20, a cedar at 21-30, a huge maple at 31-40, 1.5 to 4 people tall. The prompts stay for a redo: send the new pictures in chat.
+- **In the game (v2.3.3345):** done, from the owner's two pictures (kept in `assets/prop-source/trees/`), cut by `tools/world/add-tree-art.mjs`: pine on the commons, a willow (softwood) at levels 1-10, a gnarled hardwood at 11-20, a cedar at 21-30, a huge maple at 31-40, 1.5 to 4 people tall. The prompts stay for a redo: send the new pictures in chat.
 - **Attach:** your style key + `docs/art/log-icons-key.png` (the five log icons, for the bark colours).
 - **How:** two pictures in ONE chat: paste the first prompt, then the second. The hardwood is not an oak on purpose: the commons has scenery oaks you can't chop.
 
@@ -992,7 +992,7 @@ Each is drawn whole, with plenty of background around it and nothing cut off. Th
 
 ### The five ore veins
 
-- **In the game:** not yet. Today every vein is the old painted copper rock, recoloured by `tools/make_tier_art.py` for each ore. A session cuts this picture the way the trees were cut and sizes each vein.
+- **In the game (v2.3.3345):** done, from the owner's picture (kept in `assets/prop-source/ore/`), cut by `tools/world/add-ore-art.mjs`: copper 58 game px wide up to an obsidian boulder 127 wide, each sized and placed to hide the rock baked into the miner's swing (docs/specs/tier-ore.md). The prompt stays for a redo: send the new picture in chat.
 - **Attach:** your style key + `docs/art/ore-icons-key.png` (the five ore icons, for each ore's colours).
 - **Background green, not magenta:** obsidian is violet, which a magenta background would eat into.
 

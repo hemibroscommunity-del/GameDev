@@ -1,4 +1,4 @@
-/* ═══ v2.3.3343: EACH WOOD ITS OWN TREE, ON A PHONE ═══
+/* ═══ v2.3.3345: EACH WOOD ITS OWN TREE, ON A PHONE ═══
  *
  * The owner's five trees (game/tierTrees.js, src/data/treeArt.js): pine on
  * the commons, then softwood (a willow), hardwood, cedar and maple out along
@@ -13,9 +13,17 @@
  *   4. held in a chop, the lumberjack stands off by its own trunk's width
  *      (59 - 60% of the half-width, 15 at most) and the bar hangs over the
  *      crown;
+ *   5. a chop is offered (the game's own reach test, asked at every spot of a
+ *      grid round the tree) only within the WORKER's strike range for it
+ *      (server/src/gathering.js _nodeStrikeRange, imported here), its 24 px of
+ *      lag slack kept, and from beside its trunk on either side -- the big
+ *      crowns reach far past that range, and a chop begun out there was
+ *      refused in silence (game/tierTrees.js treeReachBox);
  * and at the pine: the trunk stops you walking north into it, while beside
  * the trunk you walk on under the crown; and behind the maple, its crown over
- * you, the tree eases to see-through (0.42) and back when you step out.
+ * you, the tree eases to see-through (0.42) and back when you step out; and a
+ * REAL chop of the maple (a tap, its hits, the swipe) from the far edge of its
+ * reach puts a log in the bag, read from the worker.
  * Pictures: tools/qa/mp/out/tiertrees-<wood>.png and -<wood>-chop.png.
  *
  *   node tools/qa/mp/run.mjs tiertrees
@@ -24,6 +32,7 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { TREE_ART } from '../../../src/data/treeArt.js';
+import { gatheringMethods } from '../../../server/src/gathering.js';
 
 const PHONE = { width: 390, height: 844 };
 /* game/tierTrees.js: 2 picture px a game px, the foot 27 north of the node,
@@ -34,6 +43,10 @@ const chopOffset = (lvl) => 59 - Math.min(15, TREE_ART[lvl].trunk * PX * 0.6);
    ~100 CSS px down: a bar above this is under them (measured off
    tiertrees-maple-chop.png before the cap: the maple's bar was hidden). */
 const TOP_CARDS_CSS = 110;
+/* the worker's own: how far from a tree's point it pays a chop (the old pine's
+   box, its pad and 24 px of lag slack) */
+const strikeRange = (lvl) => gatheringMethods._nodeStrikeRange.call({ NODE_STRIKE_RANGE: 110 }, 'tree', lvl);
+const LAG_SLACK = 24;
 
 /* mp-harvestbar's walk: H.hopTo's 100 px a hop, checked against the worker */
 async function travel(P, wsPort, myId, tx, ty) {
@@ -125,6 +138,104 @@ const look = (P, id) => P.page.evaluate((nid) => {
   };
 }, id);
 
+/* Where the game offers a chop: its own reach test (BroTown nodeReachDist, on
+   the _gameFns bridge) asked with the player put at every spot of an 8 px grid
+   round the tree's picture, and put back -- all in one evaluate, so no frame
+   runs with the player moved. */
+const reachMap = (P, id) => P.page.evaluate((nid) => {
+  const S = window._gameState.current, F = window._gameFns;
+  const n = (S.gatherNodes || []).find((g) => g && g.id === nid);
+  const sp = n && n._pixiSprite;
+  if (!n || !sp || !F || !F.nodeReachDist) return { err: 'no node, sprite or reach hook' };
+  const l = sp.x - sp.width * sp.anchor.x, t = sp.y - sp.height * sp.anchor.y;
+  const r = l + sp.width, b = t + sp.height;
+  const P0 = { x: S.player.x, y: S.player.y };
+  let offered = 0, maxD = 0, at = null, inPic = 0, inPicOffered = 0;
+  try {
+    for (let y = t - 120; y <= b + 120; y += 8) {
+      for (let x = l - 120; x <= r + 120; x += 8) {
+        S.player.x = x; S.player.y = y;
+        const inside = x >= l && x <= r && y >= t && y <= b;
+        if (inside) inPic++;
+        if (F.nodeReachDist(n) == null) continue;
+        offered++;
+        if (inside) inPicOffered++;
+        const d = Math.hypot(x - n.x, y - n.y);
+        if (d > maxD) { maxD = d; at = { dx: x - n.x, dy: y - n.y }; }
+      }
+    }
+    /* beside the trunk, either side, where the lumberjack stands */
+    S.player.x = n.x - 50; S.player.y = n.y; const west = F.nodeReachDist(n) != null;
+    S.player.x = n.x + 50; S.player.y = n.y; const east = F.nodeReachDist(n) != null;
+    return { offered, maxD: +maxD.toFixed(1), at, west, east, inPic, inPicOffered };
+  } finally { S.player.x = P0.x; S.player.y = P0.y; }
+}, id);
+
+/* What the worker holds in the bag (mp-chopyield's read: the client's is only
+   an echo of it), and every key that went up. */
+const srvInv = async (wsPort, id) => {
+  const a = await H.adminPlayer(wsPort, id).catch(() => ({}));
+  return (a && (a.inventory || (a.rpg && a.rpg.inventory) || (a.live && a.live.inventory))) || {};
+};
+const gained = (before, after) => {
+  const out = {};
+  for (const k of Object.keys(after || {})) {
+    const d = (after[k] || 0) - ((before && before[k]) || 0);
+    if (d > 0) out[k] = d;
+  }
+  return out;
+};
+
+/* mp-tierhp's tap on a node, through the canvas as a finger would: on the
+   trunk, a little over the foot */
+async function tapTree(P, id, tries = 6) {
+  for (let i = 0; i < tries; i++) {
+    await P.page.evaluate(({ nid, up }) => {
+      const S = window._gameState.current;
+      const n = (S.gatherNodes || []).find((g) => g.id === nid);
+      if (!n) return;
+      const cv = document.querySelector('canvas');
+      const rc = cv.getBoundingClientRect();
+      const x = rc.left + (n.x - S.camera.x) * (S._worldScaleX || 1);
+      const y = rc.top + (n.y - up - S.camera.y) * (S._worldScaleY || 1);
+      const mk = (t) => new TouchEvent(t, { bubbles: true, cancelable: true,
+        touches: t === 'touchend' ? [] : [new Touch({ identifier: 77, target: cv, clientX: x, clientY: y })],
+        changedTouches: [new Touch({ identifier: 77, target: cv, clientX: x, clientY: y })] });
+      cv.dispatchEvent(mk('touchstart'));
+      cv.dispatchEvent(mk('touchend'));
+    }, { nid: id, up: FOOT_DY + 30 });
+    await P.page.waitForTimeout(300);
+    if (await H.readState(P, (S) => !!S._extraction && S._extraction.skill === 'woodcutting')) return true;
+  }
+  return false;
+}
+
+/* mp-wheelnodes' chop: a real side-to-side stroke of pointer events on
+   `window`, 16 ms apart in ONE run on the page's thread -- the meter counts
+   only gaps under 200 ms between moves, and a frame of the Wheel takes about
+   that on this box, so moves that yield between them barely move it (its
+   note) -- the phone's cadence, not a shortcut through the gesture */
+const swipeChop = (P, cue) => P.page.evaluate(([cx, cy]) => {
+  const S = window._gameState.current;
+  const ev = (t, x, y) => window.dispatchEvent(new PointerEvent(t, { pointerId: 9, clientX: x, clientY: y,
+    pointerType: 'touch', bubbles: true, cancelable: true, isPrimary: true }));
+  ev('pointerdown', cx, cy);
+  const t0 = performance.now();
+  let step = 0, lastProg = 0, next = t0;
+  while (performance.now() - t0 < 12000) {
+    while (performance.now() < next) { /* the phone's 16 ms */ }
+    next += 16;
+    const k = step % 12, v = k < 6 ? -26 + 52 * k / 6 : 26 - 52 * (k - 6) / 6;
+    ev('pointermove', cx + v, cy + Math.sin(step) * 3);
+    step++;
+    const ex = S._extraction;
+    if (ex) lastProg = ex.progress || 0;
+    if (!ex || ex.status !== 'ready' || lastProg >= 1) break;
+  }
+  ev('pointerup', cx, cy);
+  return { lastProg: +lastProg.toFixed(2), ms: Math.round(performance.now() - t0), moves: step };
+}, [cue.x, cue.y]);
+
 const holdChop = (P, id) => P.page.evaluate((nid) => {
   const S = window._gameState.current;
   const node = (S.gatherNodes || []).find((n) => n && n.id === nid);
@@ -189,6 +300,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }, [1, 6, 11, 16, 21]);
     rec.ok('a tree of every tier to visit, four of them in one land (guard)', picks.every(Boolean), picks);
 
+    let maple = null;
     for (const t of picks) {
       if (!t) continue;
       const art = TREE_ART[t.lvl];
@@ -212,6 +324,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${wood}: its name label hangs over its own crown${markY > L.top + 0.5 ? ` (in it: ${Math.round(markY - L.top)} px down from its top)` : ''}`,
         !!L.label && L.label.y < markY && markY - L.label.y < 30 && Math.abs(L.label.x - t.x) < 0.5, { label: L.label, top: L.top, markY });
       await P.page.screenshot({ path: join(OUT, `tiertrees-${wood}.png`) });
+
+      /* where a chop is offered: only within the worker's strike range, its
+         lag slack kept -- and from beside the trunk, either side */
+      const reach = await reachMap(P, t.id);
+      const range = strikeRange(t.lvl);
+      rec.ok(`${wood}: a chop is offered only within the worker's strike range (${range.toFixed(0)} px, ${LAG_SLACK} of it lag slack)`,
+        !reach.err && reach.offered > 0 && reach.maxD <= range - LAG_SLACK, { ...reach, range: +range.toFixed(1) });
+      rec.ok(`${wood}: ...and from beside its trunk, on either side`, reach.west === true && reach.east === true, reach);
+      if (t.lvl === 21) maple = { t, reach };
 
       /* held in a chop: the lumberjack beside its trunk, the bar over its crown */
       await holdChop(P, t.id);
@@ -254,6 +375,57 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await P.page.waitForTimeout(600);
         const out = await look(P, t.id);
         rec.ok('...and solid again when you step out in front', out.alpha === 1, { alpha: out.alpha });
+      }
+    }
+    /* ═══ A REAL CHOP OF THE MAPLE, FROM THE FAR EDGE OF ITS REACH ═══
+       The tap, the worker's hits, the swipe, and the log read from the worker
+       -- what the reach check above says in numbers, end to end.  Woodcutting
+       99 so the maple's 2,480 HP fall in ~26 hits (its own level, 20, is ~150:
+       a test's worth of waiting for nothing new). */
+    if (maple) {
+      const { t, reach } = maple;
+      await H.devOp(wsPort, 'lifeskill', myId, { skill: 'woodcutting', level: 99 });
+      await H.waitFor(P, (S) => (((S.rpg || {}).lifeSkills || {}).woodcutting || {}).level || 0, (v) => v >= 99,
+        { timeout: 10000, label: 'Woodcutting 99' }).catch(() => null);
+      /* the far edge, 10 px in; its mirror, or halfway in, if that is not ground you can stand on */
+      const k = reach.at ? Math.max(0, (Math.hypot(reach.at.dx, reach.at.dy) - 10) / Math.hypot(reach.at.dx, reach.at.dy)) : 0;
+      const spots = reach.at ? [
+        { x: t.x + reach.at.dx * k, y: t.y + reach.at.dy * k },
+        { x: t.x - reach.at.dx * k, y: t.y + reach.at.dy * k },
+        { x: t.x + reach.at.dx * 0.5, y: t.y + reach.at.dy * 0.5 },
+      ] : [];
+      let stood = null;
+      for (const sp of spots) {
+        if (await travel(P, wsPort, myId, sp.x, sp.y)) { stood = sp; break; }
+      }
+      await P.page.waitForTimeout(700);
+      const here = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+      const dist = Math.hypot(here.x - t.x, here.y - t.y);
+      rec.ok('maple: stood at the far edge of its reach (guard)', !!stood, { stood, here, dist: +dist.toFixed(1), reach: reach.at });
+      if (stood) {
+        const invBefore = await srvInv(wsPort, myId);
+        const started = await tapTree(P, t.id);
+        rec.ok(`maple: tapping it from ${Math.round(dist)} px off starts a chop`, started === true, { dist });
+        const ready = started ? await H.waitFor(P, (S) => (S._extraction ? S._extraction.status : null), (v) => v === 'ready',
+          { timeout: 60000, label: 'the maple\'s hits land' }).catch(() => null) : null;
+        const probe = ready ? await P.page.evaluate(() => (window.__btHarvest ? window.__btHarvest() : null)) : null;
+        rec.ok('maple: its hits land and the swipe opens (guard)', !!(probe && probe.status === 'ready' && probe.cue), probe);
+        if (probe && probe.cue) {
+          const sw = await swipeChop(P, probe.cue);
+          const ended = await H.waitFor(P, (S) => !S._extraction, (v) => v === true, { timeout: 8000, label: 'the chop ends' }).catch(() => false);
+          rec.ok('maple: the swipe finishes the chop', ended === true && sw.lastProg >= 0.85, sw);
+          let got = {};
+          for (let i = 0; i < 20; i++) {
+            await P.page.waitForTimeout(400);
+            got = gained(invBefore, await srvInv(wsPort, myId));
+            if (Object.keys(got).some((key) => key.startsWith('wood_'))) break;
+          }
+          const strike = ((await H.adminPlayer(wsPort, myId).catch(() => ({}))).live || {}).lastStrike || null;
+          console.log(`    maple chopped from ${Math.round(dist)} px: the worker said ${JSON.stringify(strike)}, credited ${JSON.stringify(got)}`);
+          rec.ok(`maple: the worker paid the strike from ${Math.round(dist)} px (its range ${strikeRange(21).toFixed(0)})`,
+            !!strike && strike.why === 'paid', strike);
+          rec.ok('maple: ...and the log is in the bag', Object.keys(got).some((key) => key.startsWith('wood_')), got);
+        }
       }
     }
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 5));

@@ -40,7 +40,7 @@ import { wheelWaterAt } from '@/game/wheelTrial.js';   /* the ground as drawn: a
    either side of it, so 320 keeps every node whose picture reaches the screen;
    HYST more before one is let go, so a step back and forth across the line
    does not rebuild it.
-   v2.3.3343: each wood its own tree, and the maple stands 451 world px over
+   v2.3.3345: each wood its own tree, and the maple stands 451 world px over
    its anchor (424 tall, its foot 27 up: game/tierTrees.js) and 226 to one
    side, so 480 -- its crown came into view with nothing drawn under it. */
 export const WHEEL_NODE_MARGIN = 480;
@@ -81,13 +81,25 @@ export function wheelNodeView(S) {
    shadow a few px down, which is what makes a fish read as IN the water from
    above (the first cut, 10-18 px and pale, was all but invisible on a phone:
    mp-wheelnodes' picture). */
+/* ═══ v2.3.3345: EACH TIER'S FISH BIGGER, AND FEWER ═══
+   The owner, of the resources: "the beginner tier scale up in physical size
+   to the final tier where you have huge fish, ore, and trees at the end".  The
+   trees and the rocks are the owner's pictures (game/tierTrees.js,
+   game/tierOre.js); the fish are drawn here, so they grow here: a school of
+   six minnows 14 px long, four clownfish, three trout, two salmon, and one
+   pike 42 px long -- 55 nose to tail, most of a bro -- where they were 16 to
+   31 px.  `swim` shrinks a big fish's circle (SWIM_RX/RY) so all of it, its
+   tail too (0.3 of len past the body), stays in the block of water the bake
+   keeps west of a spot (x-84..x+12, y-36..y+36: the note under SWIM_DX),
+   worked out over the whole circle for nose and tail: the pike's reaches
+   x-71..x+11 and y +/- 35. */
 const FISH_LOOK = {
-  1:  { n: 6, len: 16, body: 0xb7c7d4, back: 0x3a5163, alpha: 0.92, school: true, speed: 1.1 },   /* minnows */
-  6:  { n: 3, len: 19, body: 0xff7d1f, back: 0xb84a10, alpha: 0.95, bands: 0xfffaf2, speed: 0.85 }, /* clownfish */
-  11: { n: 3, len: 25, body: 0x8f8a52, back: 0x4f4a2c, alpha: 0.95, spots: 0x2e2a18, speed: 0.6 },  /* trout */
+  1:  { n: 6, len: 14, body: 0xb7c7d4, back: 0x3a5163, alpha: 0.92, school: true, speed: 1.1, swim: 1 },   /* minnows */
+  6:  { n: 4, len: 23, body: 0xff7d1f, back: 0xb84a10, alpha: 0.95, bands: 0xfffaf2, speed: 0.85, swim: 1 }, /* clownfish */
+  11: { n: 3, len: 30, body: 0x8f8a52, back: 0x4f4a2c, alpha: 0.95, spots: 0x2e2a18, speed: 0.6, swim: 0.9 },  /* trout */
   /* v2.3.3094: the second stage's (levels 21-40): a pink salmon, a long olive pike */
-  16: { n: 3, len: 27, body: 0xf08a78, back: 0x8a3c34, alpha: 0.95, spots: 0x5a2420, speed: 0.6 },   /* salmon */
-  21: { n: 2, len: 31, body: 0x7a9a4a, back: 0x34461e, alpha: 0.95, spots: 0xd8e0a0, speed: 0.5 },   /* pike */
+  16: { n: 2, len: 37, body: 0xf08a78, back: 0x8a3c34, alpha: 0.95, spots: 0x5a2420, speed: 0.6, swim: 0.8 },   /* salmon */
+  21: { n: 1, len: 42, body: 0x7a9a4a, back: 0x34461e, alpha: 0.95, spots: 0xd8e0a0, speed: 0.5, swim: 0.7 },   /* pike */
 };
 const lookFor = (lvl) => FISH_LOOK[lvl >= 21 ? 21 : lvl >= 16 ? 16 : lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1];   /* v2.3.3094: + 16, 21 */
 
@@ -110,7 +122,7 @@ const SWIM_RX = 26, SWIM_RY = 18;
    school's centre, and the top of its circle less a fish's half length. */
 export function wheelFishTop(node) {
   const look = lookFor((node && node.gatherLvl) || 1);
-  return { x: node.x + SWIM_DX, top: node.y - SWIM_RY - look.len / 2 };
+  return { x: node.x + SWIM_DX, top: node.y - SWIM_RY * look.swim - look.len / 2 };   /* v2.3.3345: its own circle */
 }
 
 /* a stable 0..1 from a few numbers, so a spot's fish are the same every visit */
@@ -206,7 +218,7 @@ export class WheelFish {
         const wob = 0.3 * Math.sin(t * 0.7 * f.wob + i * 1.7);
         const th = f.ph + f.w * t + wob;
         const dth = f.w + 0.3 * 0.7 * f.wob * Math.cos(t * 0.7 * f.wob + i * 1.7);
-        const rx = SWIM_RX * f.r, ry = SWIM_RY * f.r;
+        const rx = SWIM_RX * f.r * s.look.swim, ry = SWIM_RY * f.r * s.look.swim;   /* v2.3.3345: a big fish's circle smaller */
         const x = rx * Math.cos(th), y = ry * Math.sin(th);
         const vx = -rx * Math.sin(th) * dth, vy = ry * Math.cos(th) * dth;
         const rot = Math.atan2(vy, vx);
