@@ -210,24 +210,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const ws = await readWatch(P);
       rec.ok(`1. guard: a click on empty ground (on the ${at.top}) is the attack -- the sword swings (the press: ${ws && ws.press})`,
         at.top === 'CANVAS' && !!ws && ws.press === 'attack' && ws.swung, { at, ws });
-      /* a prop near you that is not a building: what a bow looses at (its
-         sight opens on a prop on the arrow's ground track, v2.3.3206) */
-      const prop = await P.page.evaluate(() => {
+      /* a prop that is not a building, what a bow looses at (its sight opens
+         on a prop on the arrow's ground track, v2.3.3206): the nearest of the
+         town's own, walked to, then clicked from 170 px south of it */
+      const PROPS = ['barrel', 'crate', 'lamp', 'bench', 'trough', 'hitch', 'noticeboard', 'well', 'cart', 'signpost', 'haybale'];
+      const findProp = () => P.page.evaluate((ids) => {
         const S = window._gameState.current, W = window.__btWheelObjects;
         const boxes = W.blockers();
-        const fy = S.player.y + 52;
         let best = null;
-        for (const o of W.near(S.player.x, S.player.y, 560)) {
-          if (!o.ready) continue;
+        for (const o of W.near(S.player.x, S.player.y, 1600)) {
+          if (ids.indexOf(o.id) < 0) continue;
           const b = boxes.find((q) => q.oi === o.i);
-          if (!b || b.x1 - b.x0 > 160) continue;
+          if (!b) continue;
           const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
-          const d = Math.hypot(cx - S.player.x, cy - fy);
-          if (d < 90 || d > 330) continue;   /* on the screen: the view is ~760 game px across */
-          if (!best || d < best.d) best = { id: o.id, oi: o.i, cx, cy, d: Math.round(d) };
+          const d = Math.hypot(cx - S.player.x, cy - S.player.y);
+          if (!best || d < best.d) best = { id: o.id, oi: o.i, cx, cy, y1: b.y1, d: Math.round(d) };
         }
         return best;
-      });
+      }, PROPS);
+      let prop = await findProp();
+      if (prop) {
+        await goTo(P, prop.cx, prop.y1 + 170, 1200);
+        prop = (await findProp()) || prop;
+      }
       const pt = prop ? await pagePoint(P, prop.cx, prop.cy) : null;
       await hold('bow');
       await P.page.waitForTimeout(600);
