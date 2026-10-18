@@ -241,7 +241,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       });
       let died = false;
       const tDie = Date.now();
+      /* v2.3.3461: and brought to 1 HP by the test lever (devtools.js
+         _devVitals, as mp-nomansland's one-blow kill), again every 15 s, so
+         the next goblin's blow is the death: a fresh character could stand
+         beside a level 3 one for the whole 150 s and live (a re-run of the
+         second sweep: 154 of 250 at its lowest) */
+      let lowAt = 0;
       while (Date.now() - tDie < 150000) {
+        if (Date.now() - lowAt > 15000) { await H.devOp(wsPort, 'vitals', myId, { heal: false, hp: 1 }).catch(() => {}); lowAt = Date.now(); }
         const s = await P.page.evaluate(() => {
           const S = window._gameState.current;
           if (S._dying || (window.__qaDeath && window.__qaDeath.died > 0)) return { dying: true };
