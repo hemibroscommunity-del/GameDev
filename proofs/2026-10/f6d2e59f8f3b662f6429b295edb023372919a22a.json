@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f6d2e59f8f3b662f6429b295edb023372919a22a",
+  "tree": "ced3a6503c3b92666375a9dace76e86f173cca00",
+  "committedAt": "2026-10-18T01:34:30-07:00",
+  "subject": "A character restart puts the player out of the world too: the others are told, the old character is never saved back (v2.3.3375) (#990)",
+  "files": 5819,
+  "bytes": 639511268,
+  "listingSha256": "b972bb8979d9334de96c63b4f87aaec86ef2c158be841bb87f3dbf8a04b229f5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
