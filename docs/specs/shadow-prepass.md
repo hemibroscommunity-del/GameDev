@@ -56,7 +56,16 @@ frame in one go.
 
 `mp-shadowprepass` holds the game's frames and draws one frame three ways:
 before the frame, the old way (the filter, the same pieces), and before the
-frame again. Measured: see the PR.
+frame again (a 390 x 806 phone at 3x, 2,829,060 px):
+
+| | the old way, px apart | most apart | before the frame again |
+|---|---|---|---|
+| BroTown's ore yard | 40 | 1 level of 255 | 0 px apart |
+| a fight at the Flame Fields | 126 | 1 level of 255 | 0 px apart |
+
+The shadows are in the comparison: with the shade put away, 147,617 and
+234,752 px change. The first cut was 1,114 px apart by up to 15 levels: the
+rounding of large numbers, TRAPS §223.
 
 ## Steadier, for free
 
@@ -80,16 +89,25 @@ now the old way's, the flicker its checks 7 and 8 measure against.
 ## Measured
 
 On this box's software graphics a pass costs nothing extra (there is no tile
-memory to write out), so what can be shown here is the count:
+memory to write out), so what can be shown here is the count -- the frame
+picked up again after another picture was drawn mid-frame (a bind of the
+screen after one of another picture; Pixi also binds the screen again when it
+is already bound, which costs a chip nothing, so the raw binds are beside it):
 
-| | before the frame | the old way |
+| a frame | before the frame | the old way |
 |---|---|---|
-| the screen bound, a frame | | |
+| the frame picked up again, 24 live frames | **0.13** | 1.13 |
+| the screen bound (raw), 24 live frames | 1.38 | 2.38 |
+| the frame picked up again, one frozen frame | **0** | 2 |
+
+The 0.13 is other effects that come and go (a glint's pass); on the frozen
+frame the old way also made its picture, that frame.
 
 **On a phone, the Speed test can show it**: a new step, *"Shadows the old way
 (a pass mid-frame)"*, and the card says how many frames a second drawing them
-first saves there. The card now also says how many times a frame the screen
-was set aside (`resumes`).
+first saves there. The card now also says how many times a frame the frame
+was set aside (`resumes`, the middle frame's: a one-off between two frames
+is not what a frame costs).
 
 ## How it is checked
 
