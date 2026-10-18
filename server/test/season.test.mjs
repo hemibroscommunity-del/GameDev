@@ -1,4 +1,4 @@
-/* Halloween week -- v2.3.3370 (src/game/season.js, docs/specs/halloween.md).
+/* Halloween week -- v2.3.3395 (src/game/season.js, docs/specs/halloween.md).
  *
  * The phone's calendar for the season's looks (the Zombie Shuffle's tile, the
  * pumpkin speech bubbles), read in node:

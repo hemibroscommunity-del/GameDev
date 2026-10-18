@@ -1537,13 +1537,13 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   check('chat: ...and the colour is bounded too',
     !!rel && rel.payload.color.length <= CHAT_RELAY.COLOR_MAX, rel && rel.payload.color.length);
 
-  /* v2.3.3361: the colour is a #rgb or #rrggbb or nothing -- "transparent"
+  /* v2.3.3391: the colour is a #rgb or #rrggbb or nothing -- "transparent"
      made a name invisible in everyone's chat feed (index.js CHAT_COLOR_RE) */
   for (const bad of ['transparent', 'rgba(0,0,0,0)', 'red', '#12', '#1234567', 'url(x)', '#zzzzzz', '#fff;color:red']) {
     resetRelay(wsN);
     await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: 'c', color: bad } }));
     rel = chatOf().pop();
-    check('chat: the colour ' + JSON.stringify(bad) + ' is not relayed (v2.3.3361)', !!rel && rel.payload.color === '', rel && rel.payload.color);
+    check('chat: the colour ' + JSON.stringify(bad) + ' is not relayed (v2.3.3391)', !!rel && rel.payload.color === '', rel && rel.payload.color);
   }
   for (const good of ['#5b52ff', '#FFF', '#00d4b8']) {
     resetRelay(wsN);
@@ -1551,7 +1551,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     rel = chatOf().pop();
     check('chat: the colour ' + good + ' is kept', !!rel && rel.payload.color === good, rel && rel.payload.color);
   }
-  /* v2.3.3361: a name that starts with a lane's mark -- the feed read
+  /* v2.3.3391: a name that starts with a lane's mark -- the feed read
      "✉ Mayor"'s every room line as a whisper (index.js stripChatLaneMarks) */
   {
     const wsM = fakeWs();
@@ -1560,7 +1560,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     resetRelay(wsM);
     await room.webSocketMessage(wsM, JSON.stringify({ type: 'chat', payload: { text: 'psst' } }));
     rel = chatOf().pop();
-    check('chat: a name starting with a lane\'s marks is relayed without them (v2.3.3361)', !!rel && rel.payload.name === 'Mayor', rel && rel.payload.name);
+    check('chat: a name starting with a lane\'s marks is relayed without them (v2.3.3391)', !!rel && rel.payload.name === 'Mayor', rel && rel.payload.name);
   }
 
   resetRelay(wsN);

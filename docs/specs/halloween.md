@@ -1,4 +1,4 @@
-# Halloween week (v2.3.3370)
+# Halloween week (v2.3.3395)
 
 The fun & social plan's Halloween items (docs/FUN-SOCIAL-PLAN.md), the owner's
 "Go recommended": the two that need no new picture. The third, the Pumpkin

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3362: A HELD POSE IS PART OF THE PLAYER (docs/specs/emote-moves.md) ═══
+/* ═══ v2.3.3392: A HELD POSE IS PART OF THE PLAYER (docs/specs/emote-moves.md) ═══
  *
  * The fun & social plan's Phase 1 (docs/FUN-SOCIAL-PLAN.md): sit, sleep, flop
  * and three dances move the whole bro in code (src/game/emoteMoves.js,
@@ -26,7 +26,7 @@
 
 export const POSE = Object.freeze({
   /* src/game/emoteMoves.js EMOTE_HOLD_IDS, in its order (mirror-audit) */
-  /* v2.3.3370: + Halloween week's Zombie Shuffle (the phone shows its tile
+  /* v2.3.3395: + Halloween week's Zombie Shuffle (the phone shows its tile
      only then; kept here any day, a look and never a rule) */
   IDS: Object.freeze(['sit', 'sleep', 'flop', 'bounce', 'robot', 'sprinkler', 'zombie']),
   /* a step longer than this ends a pose (the quiet phone's keepalive move,

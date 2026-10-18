@@ -49,14 +49,14 @@ remnant to migrate server-side, not a mode to preserve.
   only textures -- what leaked, and the order of the memory work with each
   item's status, v2.3.3075; `mp-memledger` measures it),
   `docs/FUN-SOCIAL-PLAN.md` (the owner's fun & social plan checked against
-  the code, v2.3.3361 -- "Go recommended": emotes and dances that move the bro
+  the code, v2.3.3391 -- "Go recommended": emotes and dances that move the bro
   in code, two-player moves, farm-made toys, a playground town; its rules: a
   pose that lasts is STATE on the player (TRAPS §176), social messages get an
   allowance of their own, anything earned is stored and checked on the server,
   no new always-on button; Phase 0's emotes you can see -- the chat box's
   smiley or B, an emoji over the head, a quick line as the bubble, only the
   listed ones relayed and placed near the sender: docs/specs/emotes.md,
-  `emotes` suite, `mp-emotes`; and since v2.3.3362 Phase 1's twelve MOVES --
+  `emotes` suite, `mp-emotes`; and since v2.3.3392 Phase 1's twelve MOVES --
   wave, laugh, flex, shrug, facepalm, cheer for a moment (the `emote` relay's
   `{move}`), sit, sleep, flop and three dances held until you move (`pose
   {id}`, kept by the worker as `ps.po` and sent as the tick's `po`, ended by a
@@ -66,17 +66,17 @@ remnant to migrate server-side, not a mode to preserve.
   the name plate never tilts and only comes down with a sitter or sleeper;
   the picker's Moves tab and `/wave`, `/sit`, `/dance` in the chat;
   `caps.emotemoves`, kill switch `emotemoves: false`; `emotes` §5-7,
-  `mp-emotemoves`: docs/specs/emote-moves.md; and since v2.3.3364 `/roll`
+  `mp-emotemoves`: docs/specs/emote-moves.md; and since v2.3.3393 `/roll`
   (1-100, `/roll 20`) and `/flip` ROLLED BY THE WORKER (server/src/dice.js:
   crypto, no modulo bias, one every 5 s, `dice_roll` PRIVILEGED, placed near
   the roller and muted with chat), a chat line in the roller's name and the
   number as their bubble; `caps.dice`, kill switch `dice: false`; `dice`
-  suite, `mp-dice`: docs/specs/dice.md; and since v2.3.3365 YOUR PET AND THE
+  suite, `mp-dice`: docs/specs/dice.md; and since v2.3.3394 YOUR PET AND THE
   TOWNSFOLK JOIN IN -- a pet copies its player's held pose, Lil Bro copies the
   nearest player, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have a
   word (src/game/townsfolkReact.js, this phone's own; emoteFx.js
   `_updateFollowers` moves each one picture about its feet);
-  `townsfolk-react` suite, `mp-joinin`; and since v2.3.3370 HALLOWEEN WEEK,
+  `townsfolk-react` suite, `mp-joinin`; and since v2.3.3395 HALLOWEEN WEEK,
   24 October to 1 November by each phone's calendar (src/game/season.js,
   `?halloween=1|0`; a look, never a rule): the Zombie Shuffle, a thirteenth
   move the worker keeps any day, pumpkin-coloured speech bubbles drawn in

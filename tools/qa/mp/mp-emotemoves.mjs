@@ -1,4 +1,4 @@
-/* YOUR BRO MOVES (v2.3.3362, docs/specs/emote-moves.md)
+/* YOUR BRO MOVES (v2.3.3392, docs/specs/emote-moves.md)
  *
  * The fun & social plan's Phase 1 (docs/FUN-SOCIAL-PLAN.md): a wave, a sit,
  * a dance -- the whole drawn bro moved in code (rendering/emoteFx.js), about
@@ -105,7 +105,7 @@ async function picture(P, name) {
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  /* v2.3.3370: out of Halloween week, whatever today is (game/season.js): the
+  /* v2.3.3395: out of Halloween week, whatever today is (game/season.js): the
      Zombie Shuffle's tile is mp-halloween's */
   const A = await H.newPlayer(browser, { name: 'Mover', wsPort, webPort, viewport: PHONE, touch: true, query: 'halloween=0' });
   await H.enterWorld(A);

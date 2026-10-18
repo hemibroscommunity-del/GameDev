@@ -1,6 +1,6 @@
 # BroTown: Fun & Social Plan (revised)
 
-v2.3.3361, 2026-10-18. The owner's own plan ("Bro Town: Fun & Social Plan", Oct 17,
+v2.3.3391, 2026-10-18. The owner's own plan ("Bro Town: Fun & Social Plan", Oct 17,
 written without the code) checked against the code, corrected and added to.
 The owner: "Go recommended". This file is the plan; each piece's spec goes in
 `docs/specs/` as it ships.
@@ -99,11 +99,11 @@ And BroTown's own, which the plan did not know:
   players near you, the 12 quick lines show as your speech bubble; opened
   from the chat box (tap your bro, then the smiley) or B; the server keeps
   only emotes on its list; blocking someone hides their emotes too
-  (v2.3.3361, docs/specs/emotes.md).
+  (v2.3.3391, docs/specs/emotes.md).
 - [x] Chat fixes: Block made from the friends list did not hide chat (the
   two panels saved the list in two shapes); a name starting with 📍, 🛡 or ✉
   dressed ordinary chat as area, party or whisper chat; the chat name colour
-  took any colour, invisible included (v2.3.3361, docs/specs/emotes.md "The
+  took any colour, invisible included (v2.3.3391, docs/specs/emotes.md "The
   chat's three fixes").
 - [ ] Reports, kick and freeze in the Test panel, beside the bot flags, so the
   owner can read them without terminal commands (its own PR, #972,
@@ -114,17 +114,17 @@ And BroTown's own, which the plan did not know:
 Built so far:
 
 - [x] The motion code and all twelve moves, held poses kept by the worker
-  (`po` on the tick), the Moves tab and `/wave`-style commands: v2.3.3362,
+  (`po` on the tick), the Moves tab and `/wave`-style commands: v2.3.3392,
   docs/specs/emote-moves.md. The emote wheel became a Moves tab of all twelve
   (no slots to choose yet); the extras are the move's own emoji popped over
   the head, no new sounds.
 - [ ] The server's guardrails (the social allowance, a repeat filter, text
   cleaning): its own PR, #974.
 - [x] `/roll` (1-100, or `/roll 20`) and `/flip`, rolled by the worker:
-  v2.3.3364, docs/specs/dice.md.
+  v2.3.3393, docs/specs/dice.md.
 - [x] Your pet copies your sit, sleep, flop and dances; Lil Bro copies you,
   Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have a word:
-  v2.3.3365, docs/specs/emote-moves.md "Your pet and the townsfolk join in".
+  v2.3.3394, docs/specs/emote-moves.md "Your pet and the townsfolk join in".
 
 - Code-driven motion for the whole figure, after the trait layers are put
   together: offset, squash and stretch, tilt, pivoted at the feet. The
@@ -169,9 +169,9 @@ Built so far:
 
 ## Halloween (if Phase 1 lands by about Oct 27)
 
-- [x] Zombie Shuffle dance (code motion): v2.3.3370, docs/specs/halloween.md.
+- [x] Zombie Shuffle dance (code motion): v2.3.3395, docs/specs/halloween.md.
 - [x] A spooky bubble skin: drawn in code instead of a 9-slice picture
-  (purple, pumpkin-orange rim, cream words), nothing to load: v2.3.3370.
+  (purple, pumpkin-orange rim, cream words), nothing to load: v2.3.3395.
 - [ ] The Pumpkin Head: a hat everyone can put on from the bag during Halloween
   week, like the T-shirt toggle. Needs one picture (prompt at the end).
 

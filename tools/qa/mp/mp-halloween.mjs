@@ -1,4 +1,4 @@
-/* HALLOWEEN WEEK (v2.3.3370, docs/specs/halloween.md)
+/* HALLOWEEN WEEK (v2.3.3395, docs/specs/halloween.md)
  *
  * The fun & social plan's Halloween items that need no new picture: the
  * Zombie Shuffle dance and the pumpkin speech bubbles, on 24 October to 1

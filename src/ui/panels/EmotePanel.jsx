@@ -1,7 +1,7 @@
 import React from 'react';
 import { EMOTES, TEXT_EMOTES } from '@/data/index.js';
-import { EMOTE_MOVES, EMOTE_MOVE_IDS } from '@/game/emoteMoves.js';   /* v2.3.3362 */
-import { seasonOn } from '@/game/season.js';   /* v2.3.3370: Halloween week's Zombie Shuffle */
+import { EMOTE_MOVES, EMOTE_MOVE_IDS } from '@/game/emoteMoves.js';   /* v2.3.3392 */
+import { seasonOn } from '@/game/season.js';   /* v2.3.3395: Halloween week's Zombie Shuffle */
 
 /* === EmotePanel — the showEmotes quick-picker === */
 /* v2.3.886: extracted verbatim from the showEmotes JSX subtree in
@@ -12,7 +12,7 @@ import { seasonOn } from '@/game/season.js';   /* v2.3.3370: Halloween week's Zo
 /* v2.3.1232: Lantern Slate restyle — inline override of the legacy
    .bt-emote-bar blur/black chrome (spec hard lock: no backdrop-filter);
    text quick-chats become 32px pill chips. Handlers untouched. */
-/* ═══ v2.3.3361: A PICKER YOU CAN REACH, THAT SENDS ONCE ═══
+/* ═══ v2.3.3391: A PICKER YOU CAN REACH, THAT SENDS ONCE ═══
    Its only door was the 😀 in the bottom toolbar hidden since v14
    (MenuBar.jsx, display:none), so nobody could open it.  It opens now from
    the chat box (tap your bro, then the smiley: ChatBubble.jsx) or B on a
@@ -24,7 +24,7 @@ import { seasonOn } from '@/game/season.js';   /* v2.3.3370: Halloween week's Zo
      area closes it (the chat box's own dismiss layer, `data-emote-dismiss`).
    - 6 emoji to a row at 44 px, the touch floor; the quick lines under them.
    props: sendEmote(emoji), onClose(). */
-/* ═══ v2.3.3362: AND YOUR BRO MOVES (game/emoteMoves.js) ═══
+/* ═══ v2.3.3392: AND YOUR BRO MOVES (game/emoteMoves.js) ═══
    A MOVES tab first: six moments (wave, laugh, flex, shrug, facepalm, cheer)
    and six held until you move (sit, sleep, flop, three dances), each a tile
    with its picture and its name -- the whole bro moves in code
@@ -136,7 +136,7 @@ export function EmotePanel(props) {
     tab === 'moves' ? React.createElement("div", {
       "data-emote-moves": "",
       style: { display: 'grid', gridTemplateColumns: 'repeat(6, ' + BTN + 'px)', gap: 6, justifyContent: 'center' }
-    }, EMOTE_MOVE_IDS.filter(function (id) { return seasonOn(EMOTE_MOVES[id].season); }).map(moveTile)) : null,   /* v2.3.3370: a season's tile only in its season */
+    }, EMOTE_MOVE_IDS.filter(function (id) { return seasonOn(EMOTE_MOVES[id].season); }).map(moveTile)) : null,   /* v2.3.3395: a season's tile only in its season */
     tab === 'moves' ? React.createElement("div", {
       style: { fontSize: 11, lineHeight: '14px', color: '#9FAEAA', textAlign: 'center' }
     }, "Sit, sleep, flop and the dances last until you move.") : null,
@@ -161,7 +161,7 @@ export function EmotePanel(props) {
         "data-emote": t,
         onClick: function () { sendEmote(t); },
         style: {
-          /* v2.3.1232: 32px raised pill chip; v2.3.3361: 36 -- a thumb's */
+          /* v2.3.1232: 32px raised pill chip; v2.3.3391: 36 -- a thumb's */
           minHeight: 36,
           padding: '4px 12px',
           borderRadius: 999,

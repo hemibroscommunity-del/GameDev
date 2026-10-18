@@ -1,4 +1,4 @@
-/* ═══ v2.3.3370: HALLOWEEN WEEK (docs/specs/halloween.md) ═══
+/* ═══ v2.3.3395: HALLOWEEN WEEK (docs/specs/halloween.md) ═══
  *
  * The fun & social plan's Halloween items (docs/FUN-SOCIAL-PLAN.md, the owner's
  * "Go recommended") that need no new picture: the Zombie Shuffle dance
