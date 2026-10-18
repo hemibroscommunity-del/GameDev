@@ -1011,11 +1011,26 @@ remnant to migrate server-side, not a mode to preserve.
       - and the FISH grow more (wheelNodes.js `FISH_LOOK`): six 14 px minnows
         to one 42 px pike, a big fish's circle smaller (`swim`) so it stays in
         the bake's water;
-      - not yet: the ten zones' effects in code, the bake's tree and vein
-        sizes (bake-wheel-spawns.mjs `ART`, a re-bake deploys the worker), the
-        woods past maple (WOODCUTTING_TIERS lists 20, only 5 grow);
-        `mp-tiertrees`, `mp-tierore`: docs/specs/tier-trees.md,
-        docs/specs/tier-ore.md.
+      - not yet: the ten zones' effects in code, the woods past maple
+        (WOODCUTTING_TIERS lists 20, only 5 grow); `mp-tiertrees`,
+        `mp-tierore`: docs/specs/tier-trees.md, docs/specs/tier-ore.md;
+      - since v2.3.3374 THE BAKE KEEPS EACH TREE AND ROCK CLEAR AS IT IS DRAWN
+        -- the owner: "Yes fix #3 resource placement": bake-wheel-spawns.mjs
+        `hidden` kept the old pine's and vein's one box (62 x 196, 52 x 118)
+        clear at every tier, and a tall thing could stand over a maple's
+        crown, 428 px across; now each tier's own (`treeGeom`, `oreGeom`) and
+        the woodcutter's spot either side of the trunk; whole where there is
+        room, else a tree's middle half across and lower half (`loose`: the
+        Verdant Wilds at 31-40 had room for 25 of 30 whole); NO RESOURCE IN
+        FRONT OF ANOTHER (`nodeClash`: 15 on the live table, a willow over an
+        angler, 0 now); a band's fishing spots chosen BEFORE its veins and
+        trees (scarce, and the bigger trees cost up to three a stretch);
+        every vein and tree count kept, fishing 1,222 -> 1,223 and 259 -> 260,
+        1,002 places new, the commons' first copper and pine where they were,
+        no monster moved; the places now depend on those pictures' SIZES: a
+        new cut (add-tree-art.mjs, add-ore-art.mjs) is a re-bake, which
+        test-world-core's --check demands and which deploys the worker:
+        docs/specs/tier-trees.md "Where each one grows".
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
