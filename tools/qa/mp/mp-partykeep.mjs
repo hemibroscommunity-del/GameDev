@@ -143,7 +143,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await partyN(7);
   const s3 = await until(async () => { const s = await strip(A); return s.rows.length === 6 && s.more && /Gus/.test(s.rows[1].text) ? s : null; }, 10000);
   const order = s3 ? s3.rows.map((r) => (r.text.match(/Leader|Bea|Cal|Dee|Eli|Fay|Gus/) || ['?'])[0]) : null;
-  /* v2.3.3466: and if not, what the strip sorts by (PartyHUD.jsx's partyRows
+  /* v2.3.3474: and if not, what the strip sorts by (PartyHUD.jsx's partyRows
      call): each member's zone, and where this phone draws them -- in the
      sweep of 2026-10-18 the rows stayed in the order they joined, which is
      what partyRows gives when it knows no member's distance */

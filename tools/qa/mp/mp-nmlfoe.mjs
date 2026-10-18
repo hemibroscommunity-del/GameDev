@@ -515,7 +515,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const off = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
   rec.ok(`7. ...a real tap raises the guard facing the raider (${g7.ang != null && toA != null ? Math.round(off(g7.ang, toA) * 180 / Math.PI) : '?'} degrees off)`,
     g7.up && typeof g7.ang === 'number' && typeof toA === 'number' && off(g7.ang, toA) < 0.4, { g7, toA });
-  /* v2.3.3466: and the WORKER has it -- the raised guard rides the next move
+  /* v2.3.3474: and the WORKER has it -- the raised guard rides the next move
      packet (BroTown's _blockChanged), the next frame on a phone, but on this
      box that frame can be 600 ms off: in the sweep of 2026-10-18 the first
      of the raider's two blows reached the worker before the guard did (12

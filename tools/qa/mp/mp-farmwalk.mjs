@@ -371,7 +371,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const barn = FARM_THINGS.find((t) => t.art === 'farm:barn');
     const wallY = barn.y + barn.block[1] + barn.block[3];
     await standBoots(420, wallY + 70);
-    /* v2.3.3466: held until the boots STOP (or 10 s), not a set 1.8 s -- a
+    /* v2.3.3474: held until the boots STOP (or 10 s), not a set 1.8 s -- a
        held key walks only the frames inside the hold, and on this box (a few
        frames a second) 1.8 s walked 38 of the 70 px to the wall in the sweep
        of 2026-10-18 (TRAPS §200).  Stopped = the same place three looks in a

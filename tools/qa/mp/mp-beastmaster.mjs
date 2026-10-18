@@ -242,7 +242,7 @@ async function body({ P, wsPort, rec, errors, npcReqs }) {
     return n && S.camera ? { x: r.left + (n.x - S.camera.x) * (S._worldScaleX || 1), y: r.top + (n.y - S.camera.y) * (S._worldScaleY || 1) - 26 } : null;
   });
   const css = await bmCss();
-  /* v2.3.3466: tapped until the world's scan has RUN (window.__btNpcTap
+  /* v2.3.3474: tapped until the world's scan has RUN (window.__btNpcTap
      stamped), three tries at most -- mp-npctap's and mp-buildingrooms' way.
      The zones count a touch a tap only when its start and end come within
      SELF_TAP_MAX_MS 400 of each other, and on this box a frame drawn between
