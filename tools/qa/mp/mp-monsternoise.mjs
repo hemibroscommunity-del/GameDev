@@ -1,4 +1,4 @@
-/* ═══ mp-monsternoise (v2.3.3332): THE MONSTERS' OWN NOISES ═══
+/* ═══ mp-monsternoise (v2.3.3337): THE MONSTERS' OWN NOISES ═══
  *
  * The owner, with four recordings: the "growl and rawr" for the fire goblins,
  * the "rattling bones" for the skeleton form of the mummy, the bouncy jelly

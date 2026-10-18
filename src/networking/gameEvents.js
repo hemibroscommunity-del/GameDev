@@ -178,7 +178,7 @@ import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { notePvpHit, noteDealt } from '@/game/fightFood.js'; /* v2.3.3133: a pvp_hit starts a fight with a player (the one-bite rule); v2.3.3260: so does a hit you land on a monster */
 import { notePvpBlow } from '@/game/sparTargets.js'; /* v2.3.3268: a blow between you and a player keeps the fight with them on (the shield; a chosen foe) */
 import { allyMomentText } from '@/game/alliance.js'; /* v2.3.3313: the alliance's moments on party_state */
-import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3332: the mummy's bones rattle as it sheds */
+import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3337: the mummy's bones rattle as it sheds */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -2302,7 +2302,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (tm.arch !== undefined) tm.arch = payload.toVariant;
               var toV = MONSTER_VARIANTS[payload.toVariant];
               if (toV && toV.spd != null) tm.spd = toV.spd;
-              /* v2.3.3332: the owner's "rattling bones ... for the skeleton
+              /* v2.3.3337: the owner's "rattling bones ... for the skeleton
                  form of the mummy" -- heard first as it comes apart */
               if (payload.toVariant === 'skeleton') { try { monsterShed(S, tm); } catch (e) { /* sound only */ } }
               break;

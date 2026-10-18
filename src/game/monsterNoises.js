@@ -1,4 +1,4 @@
-/* ═══ v2.3.3332: THE MONSTERS' OWN NOISES ═══
+/* ═══ v2.3.3337: THE MONSTERS' OWN NOISES ═══
  *
  * The owner, 2026-10-18, with four recordings:
  *   "You can use part of this 'growl and rawr' sound effect for the fire
