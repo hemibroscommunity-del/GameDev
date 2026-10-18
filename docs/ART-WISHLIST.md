@@ -1043,6 +1043,106 @@ The Feed & Seed's farm (v2.3.3127, docs/specs/farm.md) draws its crops, seeds an
 - **Moved to `docs/art/FARM-ART-PROMPTS.md`** (v2.3.3279): the sixteen crops, the sixteen seed packets, and the five dishes with compost, three sheets on the bag's own style key. The white-background prompt that was here is retired: a white ground cuts out badly round the cloudpetal's and frostberry's pale colours.
 - **In the game (v2.3.3281):** all three sheets, cut by `tools/ui/cut-bag-icons.py` (docs/specs/bag-icons.md).
 
+### The farmer's moves: hoe, watering can, kneel (v2.3.3439)
+
+- **In the game (v2.3.3439):** your three sheets, kept as you sent them in `tools/farm_anim_src/` and cut by `tools/make_farm_anims.py` (docs/specs/farm-walk.md, "The farmer's own moves"). Digging plays the hoe, watering the can, and planting, fertilizing and harvesting the kneel. The game repaints the man in each player's skin, trousers and boots, dresses him in their shirt and armour (cut from the six dressed copies below), and puts their hair, hat and beard on him.
+- **Attach:** `docs/art/farm-moves-reference.png`, the bro from your fire-lighting sheet with the log taken out. Attach nothing else. (Here the bro is attached on purpose: these are his own moves, not world art.)
+- **How:** One sheet a chat. If one frame is wrong, ask for the whole sheet again: frames from different chats won't line up. Send the new sheet in chat and a session puts it in.
+- **Not made yet: the shirt and the armour drawn on him** (below). Until they are, the game cuts a shirt out of the bare body itself, and where an arm is in front of his body the whole arm comes out in the shirt's colour; a player in armour shows that shirt.
+
+**Kneel** (plant, fertilize, harvest):
+
+```text
+Landscape image, 1536 × 1024: a pixel-art sprite sheet of ONE looping animation for a 2D action RPG, 8 frames in a grid of 4 columns × 2 rows, read like a page (top row left to right, then the bottom row). Every frame is an equal 384 × 512 cell.
+
+The character is exactly the bald, shirtless man in the attached picture: the same orange skin, face, olive-green trousers and dark grey boots, the same body shape and size, the same pixel-art style and black outline. Keep him identical in all 8 frames. Do not give him a shirt, hair, hat, gloves or anything else to wear: the game dresses him itself.
+
+He faces the viewer (we see his front) and works on the ground just in front of him. In every frame he stays in the same spot in his cell, at the same size, his knee and boots resting on the same line near the bottom of the cell. Leave empty space around him in each cell; nothing crosses into the next cell.
+
+The action: kneeling at a garden bed, working the soil with his bare hands.
+Frame 1: kneeling on one knee, upright, hands resting on his thighs.
+Frame 2: leaning forward, both hands reaching down to the ground in front of his knees.
+Frame 3: both hands pressing into the soil.
+Frame 4: both hands patting the soil flat.
+Frame 5: one hand lifting a little, as if dropping something into the ground.
+Frame 6: both hands patting the soil again.
+Frame 7: sitting back up.
+Frame 8: back to the pose of frame 1.
+His hands are empty in every frame.
+
+No text, numbers, frame borders, grid lines, ground, grass, soil patch or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the picture is magenta, pink or purple.
+```
+
+**Hoe** (dig):
+
+```text
+Landscape image, 1536 × 1024: a pixel-art sprite sheet of ONE looping animation for a 2D action RPG, 8 frames in a grid of 4 columns × 2 rows, read like a page (top row left to right, then the bottom row). Every frame is an equal 384 × 512 cell.
+
+The character is exactly the bald, shirtless man in the attached picture: the same orange skin, face, olive-green trousers and dark grey boots, the same body shape and size, the same pixel-art style and black outline. Keep him identical in all 8 frames. Do not give him a shirt, hair, hat, gloves or anything else to wear: the game dresses him itself.
+
+He faces the viewer (we see his front) and works on the ground just in front of his feet. In every frame he stays in the same spot in his cell, at the same size, his boots on the same line near the bottom of the cell. Leave empty space around him in each cell; nothing crosses into the next cell.
+
+The action: digging garden soil with a hoe, a plain wooden handle with a dark iron blade.
+Frame 1: standing, holding the hoe across his body with both hands.
+Frame 2: lifting the hoe up beside his shoulder.
+Frame 3: the hoe raised high over his head.
+Frame 4: swinging it down in front of him.
+Frame 5: the blade striking the ground just in front of his feet, a small burst of brown dirt.
+Frame 6: pulling the hoe back toward him.
+Frame 7: lifting it a little, a few clods of dirt falling.
+Frame 8: back to the pose of frame 1.
+
+No text, numbers, frame borders, grid lines, ground, grass, soil patch or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the picture is magenta, pink or purple.
+```
+
+**Watering can** (water):
+
+```text
+Landscape image, 1536 × 1024: a pixel-art sprite sheet of ONE looping animation for a 2D action RPG, 8 frames in a grid of 4 columns × 2 rows, read like a page (top row left to right, then the bottom row). Every frame is an equal 384 × 512 cell.
+
+The character is exactly the bald, shirtless man in the attached picture: the same orange skin, face, olive-green trousers and dark grey boots, the same body shape and size, the same pixel-art style and black outline. Keep him identical in all 8 frames. Do not give him a shirt, hair, hat, gloves or anything else to wear: the game dresses him itself.
+
+He faces the viewer (we see his front) and works on the ground just in front of his feet. In every frame he stays in the same spot in his cell, at the same size, his boots on the same line near the bottom of the cell. Leave empty space around him in each cell; nothing crosses into the next cell.
+
+The action: watering the garden with a watering can, a green-painted tin can with a long spout.
+Frame 1: standing, holding the can in front of him with both hands, upright.
+Frame 2: tipping it forward.
+Frame 3: water starting to pour from the spout.
+Frames 4 to 6: a steady stream of light blue water pouring onto the ground just in front of his feet, wavering a little from frame to frame, with small splashes where it lands.
+Frame 7: tipping the can back up, the last drops falling.
+Frame 8: back to the pose of frame 1.
+
+No text, numbers, frame borders, grid lines, ground, grass, soil patch or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the picture is magenta, pink or purple.
+```
+
+### The farmer's moves, dressed: the T-shirt and the armour (six chats)
+
+- **In the game:** yes, since v2.3.3439: the owner's six sheets are in `tools/farm_anim_src/` (`<move>-tee.png`, `<move>-armour.png`), cut by `tools/make_farm_anims.py` into the shirt, plate and greaves the farmer wears (docs/specs/farm-walk.md "The farmer's own moves"). The owner asked (2026-10-18): *"Do you want to give me the south facing idle character wearing each and give me a prompt to put it on each of the 3 outputs?"* Yes. Garments drawn on their own never lined up with the body: the fire-lighter's shirt, plate and greaves (v2.3.1715) still need a nudge every frame (`FIRE_GEAR_REG`). Drawn ON him, in a copy of each sheet, they follow his arms in every frame.
+- **Attach, in this order:** (1) your own sheet for the move (`tools/farm_anim_src/hoe.png`, `water.png` or `kneel.png`); (2) `docs/art/farm-moves-reference-tee.png` or `docs/art/farm-moves-reference-armour.png`. They are the game's own walking bro, standing and facing south (`public/sprites/player-naked/stand-south.png`, his face from `player/stand-south.png`: the bare body's eyes are left for the game to draw), in the game's own white tee and its own steel plate and greaves, drawn on him as the game draws them (`gear/*/stand-south.png`), three times their size. The owner's notes on the first pair (2026-10-18), made from the fire-lighter: the eyes were keyed out (his body leaves them for the game to draw too), the shirt and armour sat off the body (his garments need `FIRE_GEAR_REG`), and his own boots showed under the armour.
+- **How:** one chat a sheet and outfit, six in all. Before sending, hold the new sheet next to the original: the same pose, size and place in every frame, or ask again in a new chat.
+- **Why white and plain grey:** the game recolours the shirt to the player's own and lays their print or pattern on it, and tints the armour for each metal.
+- **How the game uses them:** the farmer's body is always the bare sheet, repainted in your colours. Each dressed frame is laid on its bare frame by the skin of his head, and the clothes are cut out of it: the tee, and the steel split into the plate (over his skin) and the greaves (over his trousers and boots). Any mix can be worn: the tee alone, plate and greaves, greaves under the tee, the plate over trousers. Under greaves he wears a copy of the bare body with the trousers and boots they leave bare taken out. A redo of one sheet needs only that sheet: re-run the tool.
+
+**T-shirt:**
+
+```text
+Two pictures are attached. The first is a finished pixel-art sprite sheet: one animation of 8 frames in a grid of 4 columns × 2 rows, on a flat magenta background. Make that same sprite sheet again as a landscape image, 1536 × 1024, keeping everything exactly as it is: the same 8 frames in the same cells, the man in the same pose, at the same size and in the same place in every cell, the same tool, dirt and water, the same pixel-art style and black outline.
+
+The only change: in every frame the man wears the plain white T-shirt that the man in the second picture wears. Short sleeves that end halfway down his upper arm, a round neck, the hem over the top of his trousers. White with light grey shading and a black outline; no logo, print or pattern. His forearms and hands stay bare skin, and wherever an arm is in front of his body, the arm is drawn in front of the shirt.
+
+Take only the T-shirt from the second picture: keep the first picture's drawing style and the man's head, face and proportions exactly as they are. Change nothing else: not his face, skin, trousers or boots, not his pose, not the tool. No text, numbers, borders, grid lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere. Nothing else in the picture is magenta, pink or purple.
+```
+
+**Armour:**
+
+```text
+Two pictures are attached. The first is a finished pixel-art sprite sheet: one animation of 8 frames in a grid of 4 columns × 2 rows, on a flat magenta background. Make that same sprite sheet again as a landscape image, 1536 × 1024, keeping everything exactly as it is: the same 8 frames in the same cells, the man in the same pose, at the same size and in the same place in every cell, the same tool, dirt and water, the same pixel-art style and black outline.
+
+The only change: in every frame the man wears the steel armour that the man in the second picture wears, from his shoulders to his feet: a steel breastplate with round shoulder plates, steel plates down both arms to his hands, a chain-mail belt, and steel leg plates that cover his trousers and his boots completely. Plain grey steel, shaded like the second picture, with a black outline. No shirt, trousers or boots show anywhere; his head stays bare. Wherever an arm is in front of his body, the armoured arm is drawn in front of the breastplate.
+
+Take only the armour from the second picture: keep the first picture's drawing style and the man's head, face and proportions exactly as they are. Change nothing else: not his face, not his pose, not the tool. No text, numbers, borders, grid lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere. Nothing else in the picture is magenta, pink or purple.
+```
+
 ## Sounds
 
 One footstep the Wheel still borrows.

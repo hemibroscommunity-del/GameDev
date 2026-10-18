@@ -10,7 +10,9 @@
  * player_state that follows every value-bearing answer (rule 20); nothing
  * here adds or takes anything.  Sounds are recordings already in the game
  * (SFX_MANIFEST): the dirt footstep for a spade in the ground, the fishing
- * lure's plop for a watering can, the pickup chime for a harvest. */
+ * lure's plop for a watering can, and for a harvest the soil giving and a pop
+ * (v2.3.3434, data/eventSounds.js farmHarvest: the "pickup chime" it named
+ * was collect(), two beep()s that played nothing). */
 import { BT_AUDIO } from '@/data/index.js';
 import { FARM, FARM_LOOK, farmCropOfSeed, farmCropOfItem } from '@/data/farmCrops.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -79,7 +81,7 @@ const SOUND = {
   plant: () => play('footstep-v3', { vol: 0.45, rate: 1.25 }),
   water: () => play('lure-drop', { vol: 0.5 }),
   feed: () => play('footstep-v3', { vol: 0.55, rate: 0.6 }),
-  harvest: () => { try { BT_AUDIO.collect(); } catch (e) { /* sound only */ } },
+  harvest: () => cue('farmHarvest'),   /* v2.3.3434: the soil giving and a pop -- collect() is two beep()s, silent since v2.3.1103 */
   buy: () => play('coin-pickup', { vol: 0.5 }),
   order: () => play('coin-pickup', { vol: 0.7 }),   /* v2.3.3134: an order delivered, paid in gold */
 };

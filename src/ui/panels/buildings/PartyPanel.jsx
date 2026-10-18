@@ -4,6 +4,7 @@ import { BT_API_BASE } from '@/networking/index.js';
 import { _asyncToGenerator, _objectSpread, _regenerator, _toConsumableArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { cue } from '@/game/eventSounds.js';   /* v2.3.3434: signing up heard */
 /* === PartyPanel — buildingPanel === 'party' sub-panel === */
 /* v2.3.881: extracted verbatim from the buildingPanel === 'party'
    clause in BroTown.jsx (the Arena: live tournament bracket, betting
@@ -238,7 +239,7 @@ export function PartyPanel(props) {
             });
             if (data.started && data.tournament) setArenaTournament(data.tournament);
             pushDmgPopup(S, S.player.x, S.player.y - 30, 'Entered arena queue!', '#D95C54');
-            BT_AUDIO.beep(500, 0.08, 0.1, 'sine');
+            cue('arenaJoin');   /* v2.3.3434: a bell and a drum (a beep(), silent since v2.3.1103) */
             _context8.n = 7;
             break;
           case 6:

@@ -10,12 +10,15 @@
  *
  * The client's rules for it (src/game/farmWork.js, src/data/farmLayout.js --
  * no imports, so node runs them) against the worker's own:
- *   1. the kneel: the cook strip's frames where the pan is held out, to and
- *      fro, the hands pushing out at its far end; and what stands where the
- *      pan is (src/data/farmCovers.js): a cover for every step, each on disk
- *      at the size it says, right of the hands, round the pan's area, its
- *      mouth in its top half (the pixel-by-pixel check is the tool's own:
- *      tools/world/make_farm_covers.py fails if one pixel of the pan shows);
+ *   1. the farmer's moves (v2.3.3439, the owner's three sheets cut by
+ *      tools/make_farm_anims.py into src/data/farmAnims.js): each step plays
+ *      its own -- the hoe, the watering can, the kneel -- every frame of it,
+ *      from the rest pose to the rest pose, the work landing on the frames
+ *      where it does; every strip on disk at the size the data says (the man,
+ *      the man under greaves, his tool, his shirt, plate and greaves), his
+ *      boots, his crown and the work inside it; and (v2.3.3439) every frame
+ *      of every garment there and on him, the man under greaves the man
+ *      trimmed;
  *   2. a bed's next step and its words, its timer, its crop's stage, its soil;
  *   3. THE STEP THE GAME OFFERS IS ONE THE WORKER TAKES: a bed walked from
  *      grass to the bag through the real farm handler, each step the one
@@ -40,15 +43,18 @@ import { fileURLToPath } from 'url';
 import { GameRoom } from '../src/index.js';
 import { FARM } from '../src/farm.js';
 import {
-  FARM_STEPS, FARM_WORK_MS, FARM_KNEEL_FRAME_MS, farmWorkFrame, farmWorkBeats, bedNext, farmClock, bedAt,
-  seedToPlant, seedsInHand, cropStageOf, soilOf,
+  FARM_STEPS, FARM_WORK_MS, FARM_STEP_ANIM, FARM_ANIM_TURN, FARM_ANIM_BEATS, farmAnimOf, farmWorkFrame, farmWorkBeats,
+  bedNext, farmClock, bedAt, seedToPlant, seedsInHand, cropStageOf, soilOf,
+  farmExCode, parseFarmEx, FARM_BEAT_SOUND,
 } from '../../src/game/farmWork.js';
 import {
   FARM_ZONE, FARM_GROUND, FARM_BEDS, FARM_BED_REACH, FARM_KNEEL_DY, FARM_KNEEL_DX, FARM_CROP_FOOT_DY, FARM_SPOTS, FARM_GATE,
   FARM_ARRIVE, FARM_FROM_WORKSHOP, FARM_THINGS, FARM_EDGE, farmBlockers,
 } from '../../src/data/farmLayout.js';
 import { FARM_ART } from '../../src/data/farmArt.js';
-import { FARM_COVERS, FARM_STEP_COVER, FARM_KNEEL_ORDER, FARM_PAN_BOX, FARM_FIGURE_X, FARM_COVER_FRAME } from '../../src/data/farmCovers.js';
+import { FARM_ANIMS, FARM_ANIM_HEAD } from '../../src/data/farmAnims.js';
+import { decodePNG } from '../../tools/world/png.mjs';   /* v2.3.3439: what the farmer's strips hold */
+import { splitSkinBySeeds, framePieces } from '../../src/rendering/playerDecal.js';   /* v2.3.3439: where his drawings go */
 import { generateZoneMap } from '../../src/data/gameDisplay.js';
 import { ZONES } from '../../src/data/zones.js';
 
@@ -67,44 +73,211 @@ function pngSize(file) {
 const TILE = 32;
 const FOOT_DY = 52;   /* a body's middle to its boots, on a zone with no perspective (entityRenderer standFootDy) */
 
-// ── 1. the kneel ──
+// ── 1. the farmer's moves ──
 {
-  const order = FARM_KNEEL_ORDER;
-  const far = Math.max(...order);
-  check(`the farmer plays the cook strip's frames ${order.join(', ')}, to and fro: frames of its 24, each one in the order's middle twice`,
-    order.length >= 3 && order.every((f) => Number.isInteger(f) && f >= 0 && f < 24) && order[0] === Math.min(...order)
-      && order.indexOf(far) === order.length / 2, order);
-  for (const step of FARM_STEPS) {
-    const T = FARM_WORK_MS[step];
+  const anims = Object.keys(FARM_ANIMS);
+  check(`every step plays one of the owner's three (${FARM_STEPS.map((st) => st + ':' + farmAnimOf(st)).join(' ')}): the hoe digs, the can waters, the kneel plants, feeds and harvests`,
+    FARM_STEPS.every((st) => !!FARM_ANIMS[FARM_STEP_ANIM[st]] && farmAnimOf(st) === FARM_STEP_ANIM[st])
+      && FARM_STEP_ANIM.dig === 'hoe' && FARM_STEP_ANIM.water === 'water'
+      && ['plant', 'feed', 'harvest'].every((st) => FARM_STEP_ANIM[st] === 'kneel'), FARM_STEP_ANIM);
+  for (const st of FARM_STEPS) {
+    const T = FARM_WORK_MS[st];
+    const a = farmAnimOf(st), A = FARM_ANIMS[a];
+    const turn = FARM_ANIM_TURN[a];
     const frames = [];
-    for (let t = 0; t < T; t += 10) frames.push(farmWorkFrame(t, T));
-    const beats = farmWorkBeats(T);
-    check(`${step}: ${T} ms of kneeling, ${beats.length} times the hands push out`, T >= 900 && T <= 2000 && beats.length >= 2, { T, beats });
-    check('...only the order\'s frames, all of them, a frame every ' + FARM_KNEEL_FRAME_MS + ' ms',
-      frames.every((f) => order.includes(f)) && order.every((f) => frames.includes(f))
-        && farmWorkFrame(0, T) === order[0] && farmWorkFrame(FARM_KNEEL_FRAME_MS, T) === order[1], frames.join(','));
-    check('...each push the moment the hands reach the far end', beats.every((b) => farmWorkFrame(b, T) === far && farmWorkFrame(b - 1, T) !== far && b < T), beats);
+    for (let t = 0; t < T; t += 5) frames.push(farmWorkFrame(st, t, T));
+    const beats = farmWorkBeats(st, T);
+    const seen = new Set(frames);
+    let turns = 0;
+    for (let i = 1; i < frames.length; i++) if (frames[i] < frames[i - 1]) turns++;
+    check(`${st}: ${T} ms of the ${a}, every one of its ${A.n} frames in order, from the first to the last (${turns + 1} turn${turns ? 's' : ''})`,
+      T >= 900 && T <= 2000 && turn.length === A.n && seen.size === A.n && frames[0] === 0 && frames[frames.length - 1] === A.n - 1
+        && farmWorkFrame(st, T, T) === A.n - 1 && frames.every((f, i) => i === 0 || f === frames[i - 1] || f === frames[i - 1] + 1 || (f === 0 && frames[i - 1] === A.n - 1)),
+      frames.join(''));
+    const beatFrames = FARM_ANIM_BEATS[a];
+    check(`...the work lands ${beats.length} time${beats.length === 1 ? '' : 's'}, each as a frame where it does begins (${beatFrames.join(', ')})`,
+      beats.length >= 1 && beats.every((b) => b > 0 && b < T && beatFrames.includes(farmWorkFrame(st, b, T)) && farmWorkFrame(st, b - 1, T) !== farmWorkFrame(st, b, T)),
+      { beats, at: beats.map((b) => farmWorkFrame(st, b, T)) });
   }
-  check('nonsense times are the first frame', farmWorkFrame(-5, 1000) === order[0] && farmWorkFrame(NaN, 1000) === order[0] && farmWorkFrame(10, 0) === order[0] && farmWorkBeats(0).length === 0);
+  check('the hoe swings twice in a dig, the strike each time', farmWorkBeats('dig', FARM_WORK_MS.dig).length === 2);
+  check('nonsense times are the first frame, and no time is no beats',
+    farmWorkFrame('dig', -5, 1000) === 0 && farmWorkFrame('plant', NaN, 1000) === 0 && farmWorkFrame('water', 10, 0) === 0
+      && farmWorkBeats('dig', 0).length === 0 && farmAnimOf('nonsense') === 'kneel');
 
-  /* what stands where the pan is */
-  const F = FARM_COVER_FRAME;
-  const [px0, py0, px1, py1] = FARM_PAN_BOX;
-  const steps = FARM_STEPS.map((st) => st + ':' + FARM_STEP_COVER[st]);
-  check(`every step has a cover (${steps.join(' ')})`, FARM_STEPS.every((st) => !!FARM_COVERS[FARM_STEP_COVER[st]]), FARM_STEP_COVER);
-  for (const key of Object.keys(FARM_COVERS)) {
-    const c = FARM_COVERS[key];
-    const file = c.url ? path.join(REPO, 'public', c.url.split('?')[0]) : path.join(REPO, 'public/world/farm', c.art + '.png');
-    const size = fs.existsSync(file) ? pngSize(file) : null;
-    const [x0, y0, x1, y1] = c.box;
-    check(`the ${key} cover: ${c.url ? c.url.split('?')[0] : 'the farm picture ' + c.art}, ${size && size.w}x${size && size.h} as it says, its box (${c.box.join(',')}) round the pan's area (${FARM_PAN_BOX.join(',')}), right of the hands, standing on the ground and not on the figure's feet, its mouth (${c.mouth.join(',')}) in its top half`,
-      !!size && size.w === c.w && size.h === c.h && (c.art ? !!FARM_ART[c.art] : true)
-        && x0 <= px0 && y0 <= py0 && x1 >= px1 && y1 >= py1 && x0 >= 118 && y1 <= F.h - 20
-        && c.mouth[0] > x0 + (x1 - x0) * 0.3 && c.mouth[0] < x1 && c.mouth[1] > y0 && c.mouth[1] < y0 + (y1 - y0) * 0.5
-        && Math.abs((x1 - x0) / (y1 - y0) - c.w / c.h) < 0.03, { key, size, box: c.box });
+  /* the strips on disk, at the size the data says */
+  const fileOf = (url) => path.join(REPO, 'public', url.split('?')[0]);
+  const sizeOf = (url) => { const f = fileOf(url); return fs.existsSync(f) ? pngSize(f) : null; };
+  /* v2.3.3439: the garments, cut from the owner's sheets drawn again in the
+     game's white tee and steel armour */
+  const GARMENTS = [['shirt', 'tshirt'], ['chest', 'steelplate'], ['legs', 'steelgreaves']];
+  for (const a of anims) {
+    const A = FARM_ANIMS[a];
+    const body = sizeOf(A.url), under = A.under ? sizeOf(A.under) : null, prop = A.prop ? sizeOf(A.prop) : null;
+    const gear = {};
+    for (const [slot, item] of GARMENTS) gear[slot] = sizeOf('/sprites/gear/' + slot + '/' + item + '/' + A.pose + '-south.png');
+    const want = { w: A.fw * A.n, h: A.fh };
+    const same = (z) => !!z && z.w === want.w && z.h === want.h;
+    check(`the ${a}: ${A.n} frames of ${A.fw}x${A.fh} -- the man, the man under greaves${A.prop ? ', his tool' : ''}, his shirt, plate and greaves, each ${want.w}x${want.h}`,
+      same(body) && same(under) && GARMENTS.every(([slot]) => same(gear[slot])) && (!A.prop || same(prop)) && (a !== 'kneel') === !!A.prop,
+      { body, under, prop, gear, want });
+    /* v2.3.3439: what each frame holds.  Every garment has something in every
+       frame (an empty one would show him bare for a frame) and lies on the man:
+       the tee over his body, the armour mostly so -- its shoulder plates stand
+       out of his outline (81% over it at the can, measured).  The man under
+       greaves is the man with his trousers and boots trimmed, never more. */
+    if (same(body) && same(under) && GARMENTS.every(([slot]) => same(gear[slot]))) {
+      const img = (url) => decodePNG(fs.readFileSync(fileOf(url)));
+      const B = img(A.url), U = img(A.under);
+      const G = {};
+      for (const [slot, item] of GARMENTS) G[slot] = img('/sprites/gear/' + slot + '/' + item + '/' + A.pose + '-south.png');
+      const op = (im, i) => im.data[i * 4 + 3] > 127;
+      const FLOOR = { shirt: [1000, 0.98], chest: [2000, 0.75], legs: [1000, 0.85] };
+      const bad = [];
+      for (let f = 0; f < A.n; f++) {
+        let nB = 0, nU = 0, out = 0;
+        const n = { shirt: 0, chest: 0, legs: 0 }, on = { shirt: 0, chest: 0, legs: 0 };
+        for (let y = 0; y < A.fh; y++) {
+          for (let x = f * A.fw; x < (f + 1) * A.fw; x++) {
+            const i = y * want.w + x, b = op(B, i), u = op(U, i);
+            if (b) nB++;
+            if (u) { nU++; if (!b) out++; }
+            for (const [slot] of GARMENTS) if (op(G[slot], i)) { n[slot]++; if (b) on[slot]++; }
+          }
+        }
+        if (out || nU >= nB) bad.push({ f, under: nU, body: nB, out });
+        for (const [slot] of GARMENTS) {
+          const share = n[slot] ? on[slot] / n[slot] : 0;
+          if (n[slot] < FLOOR[slot][0] || share < FLOOR[slot][1]) bad.push({ f, slot, px: n[slot], on: +share.toFixed(3) });
+        }
+      }
+      check(`...every frame of his shirt, plate and greaves there and on him; the man under greaves the man trimmed`, !bad.length, bad);
+      /* v2.3.3439: and under greaves nothing of his trousers or boots peeks
+         out: no piece of 12+ olive or boot-grey px of that body below the
+         greaves' top that the greaves leave bare (the classes are the tool's
+         body_classes: the game repaints exactly these your trousers' and
+         boots' colours).  The kneel's boot and the can's toe once did, 45 and
+         34 px, two specks in the owner's colours. */
+      const peek = [];
+      for (let f = 0; f < A.n; f++) {
+        let top = A.fh;
+        const at = (x, y) => y * want.w + f * A.fw + x;
+        for (let y = 0; y < A.fh && top === A.fh; y++) for (let x = 0; x < A.fw; x++) if (op(G.legs, at(x, y))) { top = y; break; }
+        const hit = new Uint8Array(A.fw * A.fh);
+        for (let y = top; y < A.fh; y++) {
+          for (let x = 0; x < A.fw; x++) {
+            const i = at(x, y);
+            if (!op(U, i) || op(G.legs, i)) continue;
+            const r = U.data[i * 4], g = U.data[i * 4 + 1], b = U.data[i * 4 + 2];
+            const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+            const pants = Math.abs(r - g) < 30 && g - b > 25 && r > 60 && r < 170 && g > 55;
+            const grey = mx - mn < 28 && mx >= 45 && mx < 150;
+            if (pants || grey) hit[y * A.fw + x] = 1;
+          }
+        }
+        /* its pieces, 8-connected */
+        const seen = new Uint8Array(hit.length);
+        for (let k = 0; k < hit.length; k++) {
+          if (!hit[k] || seen[k]) continue;
+          let n = 0;
+          const q = [k];
+          seen[k] = 1;
+          while (q.length) {
+            const c = q.pop();
+            n++;
+            const cx = c % A.fw, cy = (c - cx) / A.fw;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+              const nx = cx + dx, ny = cy + dy;
+              if (nx < 0 || ny < 0 || nx >= A.fw || ny >= A.fh) continue;
+              const j = ny * A.fw + nx;
+              if (hit[j] && !seen[j]) { seen[j] = 1; q.push(j); }
+            }
+          }
+          if (n >= 12) peek.push({ f, px: n, at: [k % A.fw, Math.floor(k / A.fw)] });
+        }
+      }
+      check(`...under greaves, nothing of his trousers or boots peeks out round them`, !peek.length, peek);
+      /* v2.3.3439: where your drawings go on him (A.ink, the tool's
+         ink_regions): the game's own split (playerDecal splitSkinBySeeds) run
+         on each strip's skin as the bake finds it -- playerSkins _isSkin in
+         4-connected pieces of FARM_MIN_BLOB (12, effectsRenderer) or more --
+         the arm cuts taken out, and the arms measured piece by piece as the
+         stamp measures them (framePieces).  On the man and on the man under
+         greaves: nothing of his face under his chin (the head's flood once
+         ran down his jaw into the chest drawing's box), a chest in the
+         chest's box, and two arms, one each side of his head's middle (the
+         hoe's strike once joined them at the hands into one piece, and one
+         arm drawing was fitted over both). */
+      const I = A.ink;
+      const table = !!I && I.fw === A.fw && I.fh === A.fh && [I.seeds, I.face, I.torso, I.armCuts].every((l) => Array.isArray(l) && l.length === A.n);
+      check(`...where your drawings go on him: a table for his ${A.fw}x${A.fh} frames, every frame in it`, table, I && { fw: I.fw, fh: I.fh });
+      if (table) {
+        for (const [who, IM] of [['the man', B], ['under greaves', U]]) {
+          const W = IM.width, Hh = IM.height, px = W * Hh;
+          const sk = new Uint8Array(px);
+          for (let i = 0; i < px; i++) {
+            const r = IM.data[i * 4], g = IM.data[i * 4 + 1], b = IM.data[i * 4 + 2], al = IM.data[i * 4 + 3];
+            if (al > 40 && r > g && g >= b && r - b > 30 && r > 90 && r - g > 25) sk[i] = 1;
+          }
+          const skin = new Uint8Array(px);
+          for (let f = 0; f < A.n; f++) {
+            for (const c of framePieces(sk, W, Hh, f * A.fw, (f + 1) * A.fw, null, 0)) {
+              if (c.length >= 12) for (const i of c) skin[i] = 1;
+            }
+          }
+          const reg = splitSkinBySeeds(skin, W, Hh, A.fw, I.seeds);
+          for (let f = 0; f < A.n; f++) {
+            for (const [x, y0, y1] of I.armCuts[f]) for (let y = y0; y <= y1; y++) reg.arms[y * W + f * A.fw + x] = 0;
+          }
+          const bad = [];
+          for (let f = 0; f < A.n; f++) {
+            const fb = I.face[f], tb = I.torso[f], mid = A.crowns[f][0];
+            let under = 0, beside = 0, face = 0, chest = 0;
+            for (let y = 0; y < Hh; y++) {
+              for (let x = 0; x < A.fw; x++) {
+                const i = y * W + f * A.fw + x;
+                if (reg.face[i]) {
+                  if (y > fb[3]) under++;
+                  else if (x < fb[0] || x > fb[1] || y < fb[2]) beside++;
+                  else face++;
+                }
+                if (reg.torso[i] && x >= tb[0] && x <= tb[1] && y >= tb[2] && y <= tb[3]) chest++;
+              }
+            }
+            const arms = framePieces(reg.arms, W, Hh, f * A.fw, (f + 1) * A.fw, null, I.pieceKeep);
+            const sides = arms.map((c) => {
+              let sx = 0;
+              for (const i of c) sx += (i % W) - f * A.fw;
+              return sx / c.length < mid ? 'L' : 'R';
+            }).sort().join('');
+            if (under || beside > 8 || face < 1500 || chest < 300 || sides !== 'LR') bad.push({ f, under, beside, face, chest, arms: arms.map((c) => c.length), sides });
+          }
+          check(`...${who}, as the game splits him: his face in its box and none of it under his chin, his chest in its box, two arms, one each side`, !bad.length, bad);
+        }
+      }
+    }
+    const inF = (p) => p[0] >= 0 && p[0] <= A.fw && p[1] >= 0 && p[1] <= A.fh;
+    check(`...his boots (${A.foot.join(', ')}) and the work (${A.work.join(', ')}) inside the frame, near its bottom; every crown inside it and over the boots`,
+      inF(A.foot) && inF(A.work) && A.foot[1] > A.fh * 0.85 && A.work[1] > A.fh * 0.6
+        && A.crowns.length === A.n && A.crowns.every((c) => inF(c) && c[1] < A.foot[1] - FARM_ANIM_HEAD && Math.abs(c[0] - A.foot[0]) < FARM_ANIM_HEAD), A.crowns);
   }
-  check(`the figure stands on its boots' middle (x ${FARM_FIGURE_X} of ${F.w}), left of its cell's middle: the cell is wide for the pan`,
-    FARM_FIGURE_X > 20 && FARM_FIGURE_X < F.w / 2);
+}
+
+// ── 1c. v2.3.3439: what the others see -- the step as your move's `ex` ──
+{
+  const codes = FARM_STEPS.map((st, i) => farmExCode(st, i * 37));
+  check(`every step names itself on the wire (${codes.join(' ')}) and reads back as the same step and move`,
+    codes.every((c, i) => /^farm:[a-z]+:\d{1,2}$/.test(c) && c.length <= 16 && JSON.stringify(parseFarmEx(c))
+      === JSON.stringify({ step: FARM_STEPS[i], anim: FARM_STEP_ANIM[FARM_STEPS[i]], ms: FARM_WORK_MS[FARM_STEPS[i]] })), codes);
+  check('two steps alike in a row read differently (the count), and the count stays two digits',
+    farmExCode('dig', 1) !== farmExCode('dig', 2) && farmExCode('dig', 199) === 'farm:dig:99' && farmExCode('dig', -3) === 'farm:dig:3');
+  /* it is relayed, so anything a player could send */
+  const odd = ['farm:__proto__:1', 'farm:constructor:1', 'farm:toString:1', 'farm:hasOwnProperty', 'farm::1', 'farm:', 'farm:Dig:1',
+    'farm:dig:12345678901', 'chop', 'cook', '', null, undefined, 7, {}, ['farm:dig:1'], { toString: () => 'farm:dig:1' }];
+  check('nothing else reads as a step: no prototype name, no other code, nothing longer, nothing but a string',
+    odd.every((c) => parseFarmEx(c) === null), odd.filter((c) => parseFarmEx(c) !== null));
+  check('...and nothing that is no step is named', farmExCode('__proto__', 1) === null && farmExCode('constructor', 1) === null && farmExCode('', 1) === null);
+  check('each step has its sound where its work lands (the table yours and the others\' play from)',
+    FARM_STEPS.every((st) => FARM_BEAT_SOUND[st] && typeof FARM_BEAT_SOUND[st].key === 'string' && FARM_BEAT_SOUND[st].vol > 0 && FARM_BEAT_SOUND[st].vol <= 1));
 }
 
 // ── 2. a bed's next step, its words, its timer, its look ──
@@ -213,6 +386,36 @@ const settle = () => new Promise((r) => setTimeout(r, 10));
   check('a crop left dry until ripe is offered for harvest, never water -- which the worker refuses on a ripe crop', dryRipe.step === 'harvest' && !!w && w.did.n === 0, { dryRipe, w: w && w.did });
 }
 Date.now = realNow;
+
+// ── 3b. v2.3.3439: the step on the wire, through a real room ──
+/* the code is a move's `ex`, which the worker keeps and hands every player
+   in the zone in its tick, verbatim (protocol-v2's harvest-activity checks);
+   here a farm code goes the same way, and gives no harvest's damage shield */
+{
+  const room = new GameRoom(makeState(), mockEnv);
+  const join = async (pid) => {
+    const w = fakeWs();
+    room.sessions.set(w, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+    await room.webSocketMessage(w, JSON.stringify({ type: 'join', id: pid, name: pid, phrase: 'p-' + pid, protocolVersion: 2, data: { x: 700, y: 700, z: 'farm_home' } }));
+    await settle();
+    return w;
+  };
+  const wa = await join('bp_farmex_a');
+  const wb = await join('bp_farmex_b');
+  const pa = room.playerState.bp_farmex_a;
+  const code = farmExCode('dig', 5);
+  await room.webSocketMessage(wa, JSON.stringify({ type: 'move', x: pa.x, y: pa.y, z: 'farm_home', ex: code }));
+  check(`a move carrying ${code} is kept as the mover's harvest code`, pa.ex === code, pa.ex);
+  check('...and buys no harvest\'s damage shield (no node, not a cook or a fire)', room._extractionShielded('bp_farmex_a', Date.now()) === false);
+  wb.sent.length = 0;
+  room.startTickLoop();
+  await new Promise((r) => setTimeout(r, 90));
+  clearInterval(room.tickInterval); room.tickInterval = null;
+  const seen = wb.sent.filter((m) => m.type === 'tick' && m.players && m.players.bp_farmex_a).map((m) => m.players.bp_farmex_a.ex);
+  check(`the other player on the farm gets it in the tick, as sent (${JSON.stringify(seen[0])})`, seen.length > 0 && seen[0] === code, seen.slice(0, 3));
+  await room.webSocketMessage(wa, JSON.stringify({ type: 'move', x: pa.x, y: pa.y, z: 'farm_home', ex: null }));
+  check('...and the step over, it is cleared', pa.ex === null, pa.ex);
+}
 
 // ── 4. the seed planted, the bed in reach ──
 {

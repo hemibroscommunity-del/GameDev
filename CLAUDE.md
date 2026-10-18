@@ -694,6 +694,31 @@ remnant to migrate server-side, not a mode to preserve.
       - still needed (new recordings): docs/SOUND-GAPS.md; `sound-cues` suite,
         `mp-soundcues`, `mp-cuelevels` (renders every cue: no clipping, the
         levels the comments promise), `mp-farfeel` reads the cues now.
+    - since v2.3.3434 A SECOND LOOK FOUND MORE -- the owner: "Look for more
+      too" (every place still calling the silent beep()/collect(), every
+      server message that shows something and plays nothing), 16 cues more,
+      the same recordings and rules: the farm's harvest and bed; the Gambling
+      Den's dice and weekly pot (`betIn`/`betWon`/`betLost`, the pot's fanfare
+      the winner's alone), the arena's stakes and sign-up; a guild quest's
+      turn-in chime; an alliance war won or lost; the General Store's market
+      with the auction house's sounds; a duel challenge (a blade) and a trade
+      invite (coins); pets out, away and released, and the Snowling, Gobling,
+      Sparklet and Dewdrop answering in their wild kind's voice, smaller
+      (trapping.js `petVoice`, NOISE_OF); and the forge's anvil near the
+      Blacksmith's (`src/game/townAmbience.js`, `?noforge`,
+      `window.__btForge`); the bag's Drink called the browser's window.close()
+      and now closes its card; `sound-cues` §9, `mp-moresounds`; then a
+      third look (the owner: "Good look for more"): the emotes and moves
+      (`src/game/moveSounds.js`, `MOVE_SOUNDS` in data/eventSounds.js, every
+      move chosen: an emoji's pop, a facepalm's slap, a sit's bump, a flop's
+      thump, a flex's sparkle, a cheer's popper) -- yours, other players' at
+      the peer share (a pose heard only if it began once they were near,
+      `PEER_KNOWN_MS`) and the townsfolk's copies (`NPC_K`); a harvest's prize
+      landing in the bag (`bagIn`); and the menu click on a world tap that
+      opens a menu (your bro's chat box, a player's card, a townsperson's
+      window: no <button>, so the delegate never heard them); `sound-cues`
+      §10; `mp-cuelevels` lists the cues kept quiet on purpose (`QUIET_OK`:
+      /roll and /flip at Ace's toss level, the owner's call).
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
@@ -2463,25 +2488,68 @@ remnant to migrate server-side, not a mode to preserve.
         picture and its timer, in words over the nearest ("4m 12s · Needs
         Watering"); E, a tap on the right stick (wearing the step), the button
         over the dashboard (`FarmBedPrompt.jsx`, a seed picker with 2+ kinds)
-        or a tap on the bed KNEELS you at its back for 1.1-1.5 s, then sends
+        or a tap on the bed WORKS it from its back for 1.1-1.5 s, then sends
         ONE `farm_act` for that bed
         (`src/game/farmWalk.js`); walking away sends nothing; the bed changes
         only on the worker's answer, a harvest flying to the bag; NO worker
         change, and a farm never described is asked for on arrival
         (`farm_open`, the free deed);
-      - the kneel is the COOK'S crouch -- the owner: "Cooking animation might
-        be better. You can use something to occlude the part where the pan
-        or log is": the cook strip's frames 4-6 (the pan held out, clear of
-        the hands) to and fro, worn as the cook wears it (your skin and
-        drawings baked in, shirt, armour, hair and hat on their own layers:
-        effectsRenderer `_placeCookFigure`, shared with cooking), and ONE
-        picture over every layer where the pan is (`_updateFarmKneel`) -- a
-        crate of the dug bed's earth (dig), of seeds (plant) or of water, the
-        compost bin (fertilize), the crate's straw (harvest), all the owner's
-        own art, so it never has to know your look;
-        `tools/world/make_farm_covers.py` makes them and the GENERATED
-        `src/data/farmCovers.js`, and FAILS if one pixel of the pan shows;
-        the firemaking kneel and its mound are gone;
+      - (v2.3.3136 knelt in the COOK'S crouch, a crate of the owner's art
+        where its pan was -- the owner: "Cooking animation might be better" --
+        until v2.3.3439's moves, below);
+      - since v2.3.3439 THE FARMER'S OWN MOVES -- the owner: "I'd like to have
+        animations during the farming process perhaps on a sprite sheet",
+        then three ChatGPT sheets of 8 frames (`tools/farm_anim_src/`):
+        - DIG plays the hoe (two swings), WATER the can (one pour), PLANT,
+          FERTILIZE and HARVEST the kneel, frame by frame in whole turns that
+          fill the step (farmWork.js `FARM_STEP_ANIM`, `FARM_ANIM_TURN`,
+          `farmWorkFrame`); the bits fly and the sound plays where and when
+          the work lands (`FARM_ANIM_BEATS`, the strip's `work`);
+        - `tools/make_farm_anims.py` cuts them: the magenta out, the hoe and
+          the can lifted into strips of their own (the repaint would take the
+          can for trousers), the frames lined up, one head size, the crowns --
+          into `public/sprites/skills/farm-*.png` and the GENERATED
+          `src/data/farmAnims.js`;
+        - DRESSED FROM THE OWNER'S SIX SHEETS -- of the first cut's shirt,
+          made from the bare body: "Whole arm was green", and their plan,
+          each move drawn again in the game's white tee and in its steel
+          armour (`docs/art/farm-moves-reference-*.png`, ART-WISHLIST "The
+          farmer's moves, dressed"): each dressed frame laid on the bare one
+          by the skin of his head and cut into the tshirt's, steelplate's and
+          steelgreaves' `farm*-south` strips (the steel split by what lies
+          under it: skin the plate, trousers and boots the greaves), plus the
+          body under greaves, `farm-*-greaves.png` (`under`: trousers and
+          boots the greaves leave bare taken out). Never garments drawn alone
+          (the fire-lighter's need `FIRE_GEAR_REG`);
+        - he wears your skin, trousers and boots (`_bakeFarmBodies`; the body
+          under greaves when you wear them, baked again as they go on or come
+          off, `_farmUnderWanted`), then your greaves, your shirt with its
+          print (hidden under a plate) and your plate, in their metal, the
+          tool, your hair, hat and beard; his head is drawn
+          `FARM_ANIM_HEAD_WORLD` 31.25 world px, so he stands your height
+          (95-101%);
+        - and your DRAWINGS, face, chest and arms, where the tool measured
+          each on each frame (`ink` in farmAnims.js, the shape of
+          standInInk.js's hand-fitted tables: seeds the game's split floods
+          from, the face's and chest's boxes, and `armCuts` where both hands
+          on the hoe join his arms -- playerSkins `_stampStandInInk`), baked
+          again when you change one; `PREVIEW` writes `ink-<move>.png`;
+        - and the OTHERS ON THE FARM SEE YOU WORK: your move's `ex` carries
+          `farm:<step>:<n>` (farmWork.js `farmExCode`/`parseFarmEx`, the code
+          a lumberjack's carries as 'chop'; the worker relays it unchanged,
+          no worker change, an older screen draws you standing), and their
+          screens draw your farmer (effectsRenderer `_drawPeerFarmer`): in
+          your colours and drawings (their own farmer when you share them,
+          else `_peerFarmFigure`'s bake inside PEER_FIG_BUDGET), dressed, the
+          tool, your head, the step's sound at your share; `mp-farmpeer`;
+        - made behind the farm's loading screen (`ensureStandIn('farm')`,
+          `farmFigureReady`), all nine garments whatever you wear (the
+          character menu can dress you there), and let go of on leaving
+          (`_freeFarm`): the farm holds 104.5 MB on the GPU, the nine
+          garments ~1.9 of it, where the cook's kneel held 104.6;
+        - the crates (`make_farm_covers.py`, `farmCovers.js`) are gone;
+          `farmwalk` suite §1, `mp-farmanim`, `mp-farmink`, `mp-farmpeer`:
+          docs/specs/farm-walk.md "The farmer's own moves";
       - the Feed & Seed's window lost its Beds tab: Visit Your Farm on top,
         "Your farm: 3 ready to harvest · 3 beds to plant" under it, then Seeds
         and Orders;
@@ -2489,7 +2557,8 @@ remnant to migrate server-side, not a mode to preserve.
         (`holdFarmUntilReady`, `src/game/farmTrip.js`), let go on leaving
         (`freeFarmArt`); the map decodes to 22 MB (the cave's 6), held on the
         farm only;
-      - `farmwalk` suite, `mp-farmwalk`, `mp-farm`: docs/specs/farm-walk.md.
+      - `farmwalk` suite, `mp-farmwalk`, `mp-farmanim`, `mp-farm`:
+        docs/specs/farm-walk.md.
   - Since v2.3.3120 PET TRAPPING -- the owner: "your trapping level governs
     what level monster you can capture ... The best success rate for the
     lowest tier monster should be about 1%. And each trap should cost at least
