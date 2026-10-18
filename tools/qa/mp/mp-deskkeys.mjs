@@ -1,4 +1,4 @@
-/* ═══ A COMPUTER'S KEYS, ON THE BUTTONS THEY PRESS (v2.3.3377) ═══
+/* ═══ A COMPUTER'S KEYS, ON THE BUTTONS THEY PRESS (v2.3.3399) ═══
  *
  * Owner, 2026-10-18: "For computer usage if there's a key that makes sense to
  * use for a certain action just put the letter next to the icon or action in
@@ -8,11 +8,13 @@
  * the button that does the same wears its letter (`data-key`, drawn by
  * game.css only under a mouse).  Proven here on a real page, by real key
  * presses (1440 x 900, the game in its centred column):
- *   1. the dashboard's six buttons wear B P J L K O, the minimap's open
+ *   1. the dashboard's six buttons wear I P J L K O, the minimap's open
  *      button M beside its "tap me" mark, the keys strip lists 1-3 and no
  *      longer lies under the bell;
- *   2. each key opens its page and closes it again; B is the bag (back to
- *      rest, and at rest it folds the band away and back);
+ *   2. each key opens its page and closes it again; I is the bag (back to
+ *      rest, and at rest it folds the band away and back); B is the emotes
+ *      (v2.3.3391's key), the chat box's smiley wears it, and the picker's ✕
+ *      wears Esc and Esc closes it;
  *   3. never with Ctrl held (the browser's), never while typing in chat;
  *   4. M opens the world map and closes it, Esc presses its ✕;
  *   5. Esc presses the ✕ of the window in front -- a building, Diego, Ace,
@@ -27,7 +29,7 @@ const DESK = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };
 /* src/game/deskKeys.js NAV_KEYS -- held to it in step 1 by what the page
    wears, so a change there that this file missed fails here */
-const NAV = { dashboard: 'B', hero: 'P', quests: 'J', skills: 'L', encyclopedia: 'K', more: 'O' };
+const NAV = { dashboard: 'I', hero: 'P', quests: 'J', skills: 'L', encyclopedia: 'K', more: 'O' };
 
 /** The key cap a control wears: its ::after (or ::before) as computed. */
 const capOf = (P, sel, pseudo = '::after') => P.page.evaluate(([s, ps]) => {
@@ -67,7 +69,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 1. THE LETTERS ── */
     const caps = {};
     for (const id of Object.keys(NAV)) caps[id] = await capOf(P, `[data-nav="${id}"]`);
-    rec.ok('the dashboard\'s six buttons wear B P J L K O',
+    rec.ok('the dashboard\'s six buttons wear I P J L K O',
       Object.keys(NAV).every((id) => shown(caps[id]) && caps[id].key === NAV[id]), caps);
     const mapCap = await capOf(P, '[data-world-map-open]');
     const mark = await P.page.evaluate(() => (window.__btWheelMini && window.__btWheelMini.mark) || null);
@@ -96,14 +98,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await key(P, 'KeyL');
     const swapped = await sheet(P);
     rec.ok('J then L: the Quests page gives way to Life Skills', !!swapped && swapped.mode === 'expanded' && swapped.root === 'skills', swapped);
-    await key(P, 'KeyB');
+    await key(P, 'KeyI');
     const toBag = await sheet(P);
-    rec.ok('B with a page open: back to the band at rest, where the bag is', !!toBag && toBag.mode === 'bar' && toBag.fold === 'open', toBag);
-    await key(P, 'KeyB');
+    rec.ok('I with a page open: back to the band at rest, where the bag is', !!toBag && toBag.mode === 'bar' && toBag.fold === 'open', toBag);
+    await key(P, 'KeyI');
     const folded = await sheet(P);
-    await key(P, 'KeyB');
+    await key(P, 'KeyI');
     const unfolded = await sheet(P);
-    rec.ok('B at rest folds the band away, and B brings it back', !!folded && folded.fold === 'min' && !!unfolded && unfolded.fold === 'open', { folded, unfolded });
+    rec.ok('I at rest folds the band away, and I brings it back', !!folded && folded.fold === 'min' && !!unfolded && unfolded.fold === 'open', { folded, unfolded });
+
+    /* B, THE EMOTES (main's v2.3.3391 key): its button, the chat box's
+       smiley, wears it, and the picker's ✕ wears Esc */
+    const picker = () => P.page.evaluate(() => !!document.querySelector('[data-emote-picker]'));
+    await P.page.evaluate(() => window.__broChatBubbleBus.setOpen(true));
+    await P.page.waitForTimeout(700);
+    const smileyCap = await capOf(P, '[data-chat-emotes]');
+    await P.page.evaluate(() => window.__broChatBubbleBus.setOpen(false));
+    await P.page.waitForTimeout(500);
+    rec.ok('the chat box\'s smiley, the emotes\' button, wears B', shown(smileyCap) && smileyCap.key === 'B', smileyCap);
+    await key(P, 'KeyB', 700);
+    const e1 = await picker();
+    const emoteX = await capOf(P, '[data-emote-close]');
+    await key(P, 'Escape', 700);
+    const e2 = await picker();
+    await key(P, 'KeyB', 700);
+    const e3 = await picker();
+    await key(P, 'KeyB', 700);
+    const e4 = await picker();
+    const restB = await sheet(P);
+    rec.ok('B opens the emotes, whose ✕ wears Esc', e1 && shown(emoteX) && emoteX.key === 'Esc', { e1, emoteX });
+    rec.ok('...Esc closes them, B opens them again and B closes them, the band left as it was',
+      !e2 && e3 && !e4 && !!restB && restB.mode === 'bar' && restB.fold === 'open', { e2, e3, e4, restB });
 
     /* Esc on the dashboard: back a step, then shut */
     await key(P, 'KeyO');
@@ -124,11 +149,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('Ctrl+J and Ctrl+M are left to the browser', !!chord && chord.mode === 'bar' && !(await mapOpen(P)), chord);
     await key(P, 'KeyC', 700);
     const typing = await P.page.evaluate(() => document.activeElement && document.activeElement.hasAttribute('data-chat-input'));
-    await P.page.keyboard.type('jplkobm', { delay: 40 });
+    await P.page.keyboard.type('jplkoibm', { delay: 40 });
     await P.page.waitForTimeout(500);
     const typed = await sheet(P);
     const words = await P.page.evaluate(() => { const i = document.querySelector('[data-chat-input]'); return i ? i.value : null; });
-    rec.ok('typing "jplkobm" in the chat opens no page and no map', typing && words === 'jplkobm' && !!typed && typed.mode === 'bar' && !(await mapOpen(P)), { typing, words, typed });
+    rec.ok('typing "jplkoibm" in the chat opens no page, no map and no emotes',
+      typing && words === 'jplkoibm' && !!typed && typed.mode === 'bar' && !(await mapOpen(P)) && !(await picker()), { typing, words, typed });
     await key(P, 'Escape');
     rec.ok('...and Esc closes the chat', await P.page.evaluate(() => !document.querySelector('[data-chat-input]')));
 

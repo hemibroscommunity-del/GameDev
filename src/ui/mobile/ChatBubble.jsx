@@ -7,6 +7,7 @@ import { sendChatMessage } from '../../game/chat.js';
    composed inside sendChatMessage, so this composer stays ignorant of how
    a lane is spelled (see chatChannel.js on why that matters here). */
 import { ChatChannelChips, lanePlaceholder } from './ChatChannelChips.jsx';
+import { emotesLive } from '../../game/emotes.js';   /* v2.3.3391: the emote picker's door */
 
 // Over-the-character chat bubble. Opens from the bottom-dashboard chat
 // icon, focuses immediately so the soft keyboard appears, and closes when
@@ -306,6 +307,18 @@ export const ChatBubble = () => {
   };
 
   const close = () => chatBubbleBus.setOpen(false);
+  /* ═══ v2.3.3391: THE EMOTES' DOOR ═══
+     The emote picker's only door was the bottom toolbar's, hidden since v14,
+     so its 30 emoji and 12 quick lines could not be reached on a phone.  The
+     owner's plan: no new always-on button (the screen is full) -- the emotes
+     live in the chat box, which opens by tapping your own bro.  The smiley
+     closes this card and opens the picker (BroTown's __broLegacyUI). */
+  const emotesOn = emotesLive(window._gameState && window._gameState.current);
+  const openEmotes = () => {
+    close();
+    const ui = typeof window !== 'undefined' ? window.__broLegacyUI : null;
+    if (ui && typeof ui.emotesOpen === 'function') ui.emotesOpen();
+  };
   const submit = () => {
     sendThroughGameState(val);
     setVal('');
@@ -505,6 +518,46 @@ export const ChatBubble = () => {
               {' online'}
             </span>
           </div>
+          {emotesOn ? (
+            <button
+              type="button"
+              onClick={openEmotes}
+              data-chat-emotes=""
+              aria-label="Emotes"
+              /* v2.3.3399: B, its key (desktopControls.js), in its corner on a
+                 computer (game/deskKeys.js) */
+              data-key="B"
+              title="Emotes (B)"
+              /* the mic's quiet styling, 44 px square: a way IN to saying
+                 something, like the mic, not a second Send */
+              style={{
+                position: 'relative',   /* v2.3.3399: its key cap's anchor */
+                flex: '0 0 auto',
+                marginLeft: 'auto',
+                width: 44,
+                height: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#293B41',
+                border: '1px solid rgba(229,237,233,.20)',
+                borderRadius: 8,
+                color: '#EAC675',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              {/* drawn, not an emoji -- the mic's reason: one look on every
+                  phone, in the button's own colour */}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+                   stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="9" cy="10" r="1.2" fill="currentColor" stroke="none" />
+                <circle cx="15" cy="10" r="1.2" fill="currentColor" stroke="none" />
+                <path d="M8 14.5c1 1.4 2.4 2.1 4 2.1s3-.7 4-2.1" />
+              </svg>
+            </button>
+          ) : null}
           {SpeechRec ? (
             <button
               type="button"
@@ -537,7 +590,8 @@ export const ChatBubble = () => {
                  flex:1 used to fill. */
               style={{
                 flex: '0 0 auto',
-                marginLeft: 'auto',
+                /* v2.3.3391: the smiley takes the auto margin when it is there */
+                marginLeft: emotesOn ? 0 : 'auto',
                 width: 44,
                 height: 44,
                 display: 'flex',

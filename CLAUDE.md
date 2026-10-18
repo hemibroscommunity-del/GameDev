@@ -48,6 +48,40 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/MEMORY-PLAN.md` (what the phone holds -- sound, canvases, heaps, not
   only textures -- what leaked, and the order of the memory work with each
   item's status, v2.3.3075; `mp-memledger` measures it),
+  `docs/FUN-SOCIAL-PLAN.md` (the owner's fun & social plan checked against
+  the code, v2.3.3391 -- "Go recommended": emotes and dances that move the bro
+  in code, two-player moves, farm-made toys, a playground town; its rules: a
+  pose that lasts is STATE on the player (TRAPS §176), social messages get an
+  allowance of their own, anything earned is stored and checked on the server,
+  no new always-on button; Phase 0's emotes you can see -- the chat box's
+  smiley or B, an emoji over the head, a quick line as the bubble, only the
+  listed ones relayed and placed near the sender: docs/specs/emotes.md,
+  `emotes` suite, `mp-emotes`; and since v2.3.3392 Phase 1's twelve MOVES --
+  wave, laugh, flex, shrug, facepalm, cheer for a moment (the `emote` relay's
+  `{move}`), sit, sleep, flop and three dances held until you move (`pose
+  {id}`, kept by the worker as `ps.po` and sent as the tick's `po`, ended by a
+  real step: server/src/poses.js) -- the whole bro tilted, squashed or hopped
+  in code ABOUT HIS FEET after the depth pass (src/rendering/emoteFx.js, the
+  curves and the math src/game/emoteMoves.js), his HUD given the inverse so
+  the name plate never tilts and only comes down with a sitter or sleeper;
+  the picker's Moves tab and `/wave`, `/sit`, `/dance` in the chat;
+  `caps.emotemoves`, kill switch `emotemoves: false`; `emotes` §5-7,
+  `mp-emotemoves`: docs/specs/emote-moves.md; and since v2.3.3393 `/roll`
+  (1-100, `/roll 20`) and `/flip` ROLLED BY THE WORKER (server/src/dice.js:
+  crypto, no modulo bias, one every 5 s, `dice_roll` PRIVILEGED, placed near
+  the roller and muted with chat), a chat line in the roller's name and the
+  number as their bubble; `caps.dice`, kill switch `dice: false`; `dice`
+  suite, `mp-dice`: docs/specs/dice.md; and since v2.3.3394 YOUR PET AND THE
+  TOWNSFOLK JOIN IN -- a pet copies its player's held pose, Lil Bro copies the
+  nearest player, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have a
+  word (src/game/townsfolkReact.js, this phone's own; emoteFx.js
+  `_updateFollowers` moves each one picture about its feet);
+  `townsfolk-react` suite, `mp-joinin`; and since v2.3.3395 HALLOWEEN WEEK,
+  24 October to 1 November by each phone's calendar (src/game/season.js,
+  `?halloween=1|0`; a look, never a rule): the Zombie Shuffle, a thirteenth
+  move the worker keeps any day, pumpkin-coloured speech bubbles drawn in
+  code, Diego's "No zombies in my store!"; `season` suite, `mp-halloween`:
+  docs/specs/halloween.md),
   `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
   size, in what order — the decoded-RGBA budget and the free-standing
   vs edge-cropped test live here, v2.3.2650),
@@ -966,7 +1000,7 @@ remnant to migrate server-side, not a mode to preserve.
         gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
         `mp-monsterplate` (whose band sweep now raises the weapon's skill):
         docs/specs/xp-decay.md.
-    - since v2.3.3377 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
+    - since v2.3.3399 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
       all actions/buttons can be completed in landscape mode and on the
       computer. For instance I don't think you can harvest lifeskills right now
       on the computer": the gesture was asked for on the right button, which a
@@ -2938,6 +2972,22 @@ remnant to migrate server-side, not a mode to preserve.
     - test-world-core "the Gem Works", `mp-buildingrooms` (the tabs),
       `mp-wheeldoors`, `mp-shieldgem` (a shield's gem is set on the Set gems
       tab): docs/specs/gem-works.md.
+  - Since v2.3.3382 THE TOWN HALL'S FLAG WAVES -- the owner: "make the town
+    square flag wave using code it looks silly being still":
+    - the flag is painted into the Town Hall's picture (no flag object), so its
+      cloth is CUT OUT of the page as it loads (wheelLife.js `cutFlag`): its
+      colour numbers copied into a little palette picture of its own, then set
+      see-through in the page (uploaded again) -- once per page SOURCE (a
+      mended building finds the cut made); never where the cloth does not
+      count `n` (buildingLife.js's `flag` entry on the picture's own pixels:
+      `box`, `keep`, `pole`), nor with `?nopalette`, WebGL1 or `?nolife`;
+    - a 9 x 4 MeshPlane in the building's life, pinned at the pole, waved by
+      worldLife.js `_updateWheelFlags` (the old map's flags' motion, `windAt`
+      and the trees' gusts; at rest, as painted, under `__btAmbienceOff`) via
+      wheelObjects.js `forEachWheelFlag`; casts no shadow;
+    - test-world-core "the Town Hall's flag", `mp-flagwave` (13),
+      `window.__btWheelFlags()`: docs/specs/flag-wave.md, WORLD-MAP-PIPELINE
+      "The Town Hall's flag waves".
   - Since v2.3.3298 THE WHEEL IS BUILT IN BLOCKS ROUND YOU -- the owner: "the
     game map needs to be larger. It goes from lvl 1 monsters to lvl 20+ way too
     quickly. Maybe 5x larger map is needed", choosing "Rebuild for 5x". Step 1,
@@ -3327,7 +3377,7 @@ Two protocol versions coexist; both must keep working:
   never a window sized for 60 fps (mp-hitreal, mp-staffcast, mp-solospecial,
   mp-ccink were the test); `BT_QA_CPU_THROTTLE=<rate>` runs every page that
   much slower, to try a check as a slow phone sees it.
-- UI REVIEW SCREENSHOTS (v2.3.3377, docs/specs/ui-review.md): the owner's
+- UI REVIEW SCREENSHOTS (v2.3.3399, docs/specs/ui-review.md): the owner's
   "screenshots labelled and bundled for all UI elements in each view ... so I
   can have chatGPT analyze them".  `node tools/qa/ui-review/capture.mjs`
   (after a build; `--views=`, `--only=`) walks a real player through every
@@ -3874,7 +3924,11 @@ Two protocol versions coexist; both must keep working:
   worldViewport). `mp-frameprofile` profiles the CPU by source file (build with
   `--sourcemap`) and names what rebuilds each render group's draw list --
   `Graphics.clear()` on an empty graphic rebuilds it (TRAPS §208);
-  `mp-speedtest`.
+  `mp-speedtest`. Since v2.3.3383 the card never blames the graphics chip at
+  the screen's own pace: at 55+ frames a second it says every frame is ready
+  in time for the screen (`frameNote`) -- the owner's first run read 60 in
+  every step, 17 ms a frame, and was told the chip took most of each, when
+  17 ms is only a 60 Hz screen's own refresh.
 
 ## Conventions
 
@@ -4176,12 +4230,13 @@ Two protocol versions coexist; both must keep working:
     (`_authPutOut`) and handed nothing. In the suite's room a Forget was
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
-- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3377,
+- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3399,
   docs/specs/desktop-keys.md, TRAPS §213).** The owner: "For computer usage
   if there's a key that makes sense to use for a certain action just put the
   letter next to the icon or action in a tasteful way."
-  - `src/game/deskKeys.js` is the one table -- B the bag (the band at rest),
-    P character, J quests, L life skills, K codex, O more, M the world map --
+  - `src/game/deskKeys.js` is the one table -- I the bag (the band at rest;
+    B is the emotes, v2.3.3391, worn by the chat box's smiley), P character,
+    J quests, L life skills, K codex, O more, M the world map --
     desktopControls.js binds it, and each key opens its page and closes it
     again; never with Ctrl, Cmd or Alt (the browser's), never while typing.
   - The button that does the same wears the key: `data-key="J"` (and

@@ -1,4 +1,4 @@
-# Every button, sideways and on a computer (v2.3.3377)
+# Every button, sideways and on a computer (v2.3.3399)
 
 The owner, 2026-10-18: "Make sure all actions/buttons can be completed in
 landscape mode and on the computer. For instance I don't think you can harvest

@@ -62,7 +62,7 @@ import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
 import { WeaponSwapButton } from './panels/WeaponSwapButton.jsx'; /* v2.3.3005: the weapon in your hand, under the movement stick -- a tap swaps */
-import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3377 (a computer's words over the button) */
+import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3399 (a computer's words over the button) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
@@ -344,7 +344,7 @@ function holdZoneMusicAtGate(gate) {
   try { BT_AUDIO.holdZoneMusicFor(gate); } catch (e) {}
 }
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
-import { sendChatMessage } from '@/game/chat.js';
+import { sendChatMessage, setChatMoveSender } from '@/game/chat.js';   /* v2.3.3392: + /wave, /sit, /dance are moves */
 import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
@@ -403,10 +403,11 @@ import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits 
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
-import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building */
+import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor, sendMove as sendMoveImpl, updateOwnEmote, updatePeerEmotes, movesLive } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building; v2.3.3392: + your bro moves */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
+import { updateTownsfolkReactions } from '@/game/townsfolkReact.js';   /* v2.3.3394: the townsfolk join in */
 import { waitForServerReady, installWorldHold } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
 import { MONSTER_VARIANTS, isIntangible } from '@/data/monsterVariants.js'; /* isIntangible: v2.3.2244 */
 import { shardByKey } from '@/data/shards.js';
@@ -5068,6 +5069,28 @@ export var BroTown = function BroTown(_ref0) {
            snarl (game/monsterNoises.js; the call as one notices you is
            wsClient's, on the "!" edge) */
         try { updateMonsterNoises(S, _sprNow); } catch (e) { /* sound only */ }
+        /* v2.3.3392: an emote's moment ends on its own clock, and a held
+           pose -- sit, sleep, a dance -- when you walk, swing, raise the
+           shield, swim, jump, harvest or die; another player's held pose pops
+           its Zzz or its notes now and then (game/interactions.js; drawn by
+           rendering/emoteFx.js) */
+        try {
+          updateOwnEmote(S, _sprNow, {
+            moving: Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1,
+            attacking: !!(S.autoAttack || S.isSwinging || S._bashDash || S._swordSwinging),
+            shield: !!S._shieldUp,
+            swimming: isWheelSwimming(S),
+            dead: _playerDead,
+            jumping: jumpAirborne(S, _sprNow),
+            harvesting: !!S._extraction,
+            fightAt: Math.max(Number(S.lastDamageTaken) || 0, Number(S._dealtAt) || 0, Number(S._pvpAt) || 0)
+          });
+          updatePeerEmotes(S, _sprNow);
+          /* v2.3.3394: the townsfolk answer the moves near them -- Lil Bro
+             copies, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have
+             a word (game/townsfolkReact.js) */
+          updateTownsfolkReactions(S, _sprNow);
+        } catch (e) { /* a look only */ }
 
         /* §14 Terrain feel — tile under player affects movement */
         var footTile = (_S$map$Math$floor$Mat = (_S$map2 = S.map) === null || _S$map2 === void 0 || (_S$map2 = _S$map2[Math.floor(P.y / TILE)]) === null || _S$map2 === void 0 ? void 0 : _S$map2[Math.floor(P.x / TILE)]) !== null && _S$map$Math$floor$Mat !== void 0 ? _S$map$Math$floor$Mat : 0;
@@ -6047,7 +6070,7 @@ export var BroTown = function BroTown(_ref0) {
           var _rw = rWrapRef.current;
           var _rWant = _rOn ? '1' : '0';
           if (_rw && _rw.style.opacity !== _rWant) _rw.style.opacity = _rWant;
-          /* ═══ v2.3.3377: ON A COMPUTER THE BUTTON COMES BACK FOR THE HARVEST ═══
+          /* ═══ v2.3.3399: ON A COMPUTER THE BUTTON COMES BACK FOR THE HARVEST ═══
              The owner: "I don't think you can harvest lifeskills right now on
              the computer."  game.css hides this whole box under pointer:fine,
              and with it the cue that teaches the gesture and the ring that
@@ -8709,6 +8732,15 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.3321: the player list, where a party starts -- the dashboard's
          Clan page opens it now that clans are parties (dash/ClanPanel.jsx) */
       playersOpen:  function () { setShowPlayerList(true); },
+      /* v2.3.3391: the emote picker's doors -- the chat box's smiley opens it
+         (ChatBubble.jsx), B toggles it (desktopControls.js).  Its old door
+         was the hidden toolbar's (MenuBar.jsx), so it could not be opened. */
+      emotes:       function () { setShowEmotes(function (v) { return !v; }); },
+      emotesOpen:   function () { setShowEmotes(true); },
+      /* the picker's own sender, for mp-emotes (a stable useCallback below) */
+      emoteSend:    function (emoji) { sendEmote(emoji); },
+      /* v2.3.3392: and the Moves tab's, for mp-emotemoves */
+      moveSend:     function (id) { return sendMove(id); },
     };
     return function () { delete window.__broLegacyUI; };
   }, []);
@@ -8784,6 +8816,15 @@ export var BroTown = function BroTown(_ref0) {
   var sendEmote = useCallback(function (emoji) {
     sendEmoteImpl(stateRef.current, emoji, { setShowEmotes: setShowEmotes });
   }, []);
+  /* v2.3.3392: a move -- a wave, a sit, a dance (game/interactions.js
+     sendMove): from the picker's Moves tab, and from the chat's "/wave" */
+  var sendMove = useCallback(function (id) {
+    return sendMoveImpl(stateRef.current, id, { setShowEmotes: setShowEmotes });
+  }, []);
+  useEffect(function () {
+    setChatMoveSender(sendMove);
+    return function () { setChatMoveSender(null); };
+  }, [sendMove]);
 
   /* Enter building */
   var enterBuilding = useCallback(function () {
@@ -9337,7 +9378,7 @@ export var BroTown = function BroTown(_ref0) {
      is filling the lower half of the screen. Two signals because the app has
      two panel systems; collapsing them into one was tried and quietly
      dropped the sheet. */
-  /* ═══ v2.3.3377: ...EXCEPT, SIDEWAYS, THE BAG'S OWN COLUMN ═══
+  /* ═══ v2.3.3399: ...EXCEPT, SIDEWAYS, THE BAG'S OWN COLUMN ═══
      The owner: "Make sure all actions/buttons can be completed in landscape
      mode."  Upright the shop is HALF a window, the bag in the band under it
      the other half (ShopkeeperPanel's header).  Sideways the band holds no
@@ -9741,7 +9782,7 @@ export var BroTown = function BroTown(_ref0) {
      and preventDefault any touchstart that lands inside it.  Best
      effort -- Safari sometimes overrules; if it persists the user
      can reflag for a PWA / fullscreen path. */
-  /* ═══ v2.3.3377: A LISTENER, NOT A STRIP -- THE BUTTONS AT THE EDGE ANSWER ═══
+  /* ═══ v2.3.3399: A LISTENER, NOT A STRIP -- THE BUTTONS AT THE EDGE ANSWER ═══
      The owner: "Make sure all actions/buttons can be completed in landscape
      mode".  The UI review's numbered pictures (tools/qa/ui-review) found the
      strip -- 18 px wide, full height, z 40, over everything outside the
@@ -11988,7 +12029,7 @@ export var BroTown = function BroTown(_ref0) {
     },
     onMouseDown: function onMouseDown(e) {
       if (!stateRef.current._isDesktop) return;
-      /* v2.3.3377: a press during a harvest is the harvest's -- its gesture
+      /* v2.3.3399: a press during a harvest is the harvest's -- its gesture
          once the window is open (ExtractionSwipeLayer, which cancels the
          pointerdown so this mousedown never comes), nothing in the wind-up --
          and never arms the attack: a swing is refused mid-harvest anyway
@@ -13866,7 +13907,7 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       alignItems: 'center'
     }
-  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }),
+  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote, onClose: function () { setShowEmotes(false); } /* v2.3.3391 */, sendMove: sendMove, movesOn: movesLive(stateRef.current) /* v2.3.3392 */ }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
   React.createElement(NmlBadge, { stateRef: stateRef, isLandscape: isLandscape }),   /* v2.3.3268: + the orientation, to keep clear of the shield button */
@@ -14006,7 +14047,7 @@ export var BroTown = function BroTown(_ref0) {
       bottom: 140,
       background: 'rgba(89,191,145,.85)'
     },
-    /* v2.3.3377: onClick, not onTouchStart -- a mouse never fires a
+    /* v2.3.3399: onClick, not onTouchStart -- a mouse never fires a
        touchstart, so on a computer this button did nothing (E did, from
        desktopControls); one click is the tap on both (v2.3.2617's rule) */
     onClick: function onClick(e) {
@@ -14142,7 +14183,7 @@ export var BroTown = function BroTown(_ref0) {
       bottom: 175,
       background: 'rgba(139,105,20,.85)'
     },
-    /* v2.3.3377: the click alone -- a touchstart twin opened the workshop on
+    /* v2.3.3399: the click alone -- a touchstart twin opened the workshop on
        the press and the click behind it opened it again (the door sound
        twice), on the very surface v2.3.2617's rule is about */
     onClick: function onClick(e) {
@@ -14203,7 +14244,7 @@ export var BroTown = function BroTown(_ref0) {
         bottom: 175,
         background: 'rgba(200,100,20,.85)'
       },
-      /* v2.3.3377: onClick, not onTouchStart -- a mouse never fires a
+      /* v2.3.3399: onClick, not onTouchStart -- a mouse never fires a
          touchstart, so on a computer the field cook could not be pressed at
          all; one click is the tap on both (v2.3.2617's rule) */
       onClick: function onClick(e) {

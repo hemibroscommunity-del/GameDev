@@ -231,7 +231,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       dx < 6 && dy < 6, { ring: c1.ring, tile, dx, dy });
   }
 
-  /* ── v2.3.3377: A WINDOW PUTS THE MARK AWAY, AND IT COMES BACK ──
+  /* ── v2.3.3399: A WINDOW PUTS THE MARK AWAY, AND IT COMES BACK ──
      The building windows have no scrim over the screen since v2.3.3258, so
      the hit-test that keeps the coach off a dialogue let GEAR UP's card stand
      over them (the UI review found it on the Woodworker's Staff tab and the

@@ -33,9 +33,9 @@ const KEYS = [
      same terms as the rest: always, and the worker decides the rest. */
   ['WASD', 'Move'], ['Shift', 'Sprint'], ['Click', 'Attack'], ['R-Click', 'Special'], ['Space', 'Dodge'], ['X', 'Jump'] /* v2.3.3017 */,
   ['E', 'Interact'], ['Q', 'Shield'], ['Q+E', 'Bash'], ['R', 'Whirl'],
-  /* v2.3.3377: 1 2 3 -- each weapon straight to hand (desktopControls), keys
+  /* v2.3.3399: 1 2 3 -- each weapon straight to hand (desktopControls), keys
      with no button on a computer's screen to wear them (the weapon chip is a
-     touch control).  The dashboard's keys (B P J L K O), M's map, Enter and
+     touch control).  The dashboard's keys (I P J L K O), M's map, Enter and
      Esc are worn by their own buttons (game/deskKeys.js), so they are not
      repeated here. */
   ['Tab', 'Swap'], ['1-3', 'Weapon'], ['F', 'Special'],
@@ -47,6 +47,8 @@ const KEYS = [
   ['G', 'Burst'],
   /* v2.3.3260: V -- quick eat (game/quickEat.js), the touch button's twin */
   ['V', 'Eat'],
+  /* v2.3.3391: B -- the emotes (game/emotes.js), the chat box's smiley's twin */
+  ['B', 'Emotes'],
   ['C', 'Chat'], ['H', 'Hide'], ['Esc', 'Close'],
 ];
 

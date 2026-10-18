@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { GESTURE_STROKE, STROKE_SPAN_PX, GESTURE_FLOOR_MS, GESTURE_QUICK_CYCLE_MS, gestureTargetCycles, gradeGesture, KEY_WORK } from '@/game/gesturePose.js'; /* v2.3.2760; v2.3.3377: the grade lives there now, with the keyboard's work */
+import { GESTURE_STROKE, STROKE_SPAN_PX, GESTURE_FLOOR_MS, GESTURE_QUICK_CYCLE_MS, gestureTargetCycles, gradeGesture, KEY_WORK } from '@/game/gesturePose.js'; /* v2.3.2760; v2.3.3399: the grade lives there now, with the keyboard's work */
 
 /* v2.3.229 / v2.4 — ExtractionSwipeLayer
  *
@@ -165,7 +165,7 @@ function repsTargetFor(skill) {
    a short wobble that never becomes a stroke can hold the meter but never
    push it back. */
 function cyclesFromGesture(skill, g) {
-  /* v2.3.3377: + the keyboard's work (HOLD E, keyStep below), counted in the
+  /* v2.3.3399: + the keyboard's work (HOLD E, keyStep below), counted in the
      same cycles, so a gesture begun with the mouse and finished with E is one
      meter, not two */
   const kb = g.kbCycles || 0;
@@ -174,10 +174,10 @@ function cyclesFromGesture(skill, g) {
   return ((g.halfStrokes || 0) + cur) / 2 + kb;
 }
 
-/* (v2.3.3377: gradeGesture moved to gesturePose.js, unchanged -- the keyboard
+/* (v2.3.3399: gradeGesture moved to gesturePose.js, unchanged -- the keyboard
    is graded by it too.) */
 
-/* ═══ v2.3.3377: A MOUSE CIRCLES ANYWHERE ═══
+/* ═══ v2.3.3399: A MOUSE CIRCLES ANYWHERE ═══
    The reel counts turns round the button's centre, which is where a thumb on
    a round button draws them.  A mouse on a computer is pressed anywhere on the
    world, so its turns are counted from the way it is HEADING instead: a circle
@@ -194,7 +194,7 @@ const FREE_TURN_MAX = 2.2;   /* radians, ~126 degrees */
    pointer:fine), so there the gesture anchors on the CHARACTER instead --
    the mouse pumps / circles over the figure, which is where fishing's cue
    always sat -- with a generous radius.  Null only before the HUD mounts.
-   v2.3.3377: ...measured from the CANVAS's corner, which is where the
+   v2.3.3399: ...measured from the CANVAS's corner, which is where the
    projection lands.  It was not: a computer plays in a centred phone-shaped
    column (game.css, v2.3.1715), so the point lay in the black margin left of
    the game, ~420 px from the figure at 1280 wide, and no press could reach it.
@@ -217,7 +217,7 @@ export function buttonCueScreenPos(S) {
   return null;
 }
 
-/* v2.3.3377: a press that is a MOUSE (or a pen) rather than a finger, and one
+/* v2.3.3399: a press that is a MOUSE (or a pen) rather than a finger, and one
    that lands on the world itself rather than on a menu, a card or the strip of
    keys over it -- a computer's gesture may start anywhere the world shows. */
 function freeHand(e) {
@@ -276,12 +276,12 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
      * (CLAUDE.md). */
     const downPointers = new Map();   /* pointerId -> { x, y } */
 
-    /* v2.3.3377: the mouse presses that began a gesture -- their click, when
+    /* v2.3.3399: the mouse presses that began a gesture -- their click, when
        they let go, is the end of a drag and not a tap on the world (onPointerUp
        stamps the canvas's own "already handled" mark). */
     const gestured = new Set();
 
-    /* The gesture's record, made at the first press of a window (v2.3.3377:
+    /* The gesture's record, made at the first press of a window (v2.3.3399:
        its own function, so the keyboard's work -- which has no press -- makes
        the very same one). */
     const newGesture = (ex, x, y, cue) => {
@@ -311,7 +311,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
            cycles     the meter's reading, kept monotonic;
            activeMs   time the thumb has actually been MOVING (the floor);
            firstMoveT / lastMoveT  for the grade and the active clock.
-           v2.3.3377:
+           v2.3.3399:
            hx/hy, lastHeading  a mouse's reel: where its last step ended and
                       which way it was heading (FREE_STEP_PX above);
            kb, kbCycles, kbPhase  the keyboard's work: whether E worked on
@@ -346,7 +346,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         ex._gesture.from = axisV; ex._gesture.ext = axisV; ex._gesture.segTravel = 0;
         ex._gesture.lastMoveT = 0;
       }
-      /* v2.3.3377: a mouse's reel heads from the press */
+      /* v2.3.3399: a mouse's reel heads from the press */
       ex._gesture.hx = x; ex._gesture.hy = y; ex._gesture.lastHeading = null;
       ex._gestureDownAt = performance.now();   /* v2.3.2245: the button face reads this */
       /* v2.3.2384: A THUMB THAT IS DOWN OWNS THE PHASE, FULL STOP.
@@ -368,7 +368,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
          movement stick killed the harvest stroke the right thumb was in the
          middle of, and the demo came back 600ms later.  Recorded on the press
          so the lift can be matched to it.
-         v2.3.3377: `free` -- a mouse's press, which reels by its heading. */
+         v2.3.3399: `free` -- a mouse's press, which reels by its heading. */
       swipeRef.current = { startX: x, startY: y, pointerId, free: !!free, samples: [{ x, y, t: performance.now() }] };
       if (free && pointerId != null) gestured.add(pointerId);
     };
@@ -381,7 +381,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
          the pointer that goes down and never reports either (a lost capture,
          a backgrounded tab), so a long session cannot accumulate ids.  A
          hand has ten fingers, so 12 is already generous.
-         v2.3.3377: + whether it is a mouse pressed on the world, which may be
+         v2.3.3399: + whether it is a mouse pressed on the world, which may be
          adopted anywhere (onPointerMove). */
       if (downPointers.size > 12) downPointers.clear();
       downPointers.set(e.pointerId, { x, y, free: freeHand(e) && onWorld(e) });
@@ -390,7 +390,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       const cue = cueScreenPos();
       /* v2.3.2245: ON the button, not merely near where a cue happened to be. */
       const onCue = !!cue && Math.hypot(x - cue.x, y - cue.y) <= cue.r + BUTTON_SLACK_PX;
-      /* ═══ v2.3.3377: ...OR, FOR A MOUSE, ANYWHERE ON THE WORLD ═══
+      /* ═══ v2.3.3399: ...OR, FOR A MOUSE, ANYWHERE ON THE WORLD ═══
          A computer has no thumb resting on the button, and a mouse that has
          just clicked the tree is already over the world: a press there is the
          gesture as much as one on the button.  Only a mouse (or a pen) -- a
@@ -458,7 +458,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       return cur >= st.split ? Math.max(cur, t) : t;
     };
 
-    /* ═══ v2.3.3377: THE METER, AND THE END, SHARED BY EVERY HAND ═══
+    /* ═══ v2.3.3399: THE METER, AND THE END, SHARED BY EVERY HAND ═══
        The cycles made so far against the target, held to the floor, and the
        grade and success once it is full -- one copy for the pointer (below)
        and the keyboard (keyStep), so the two cannot fill or grade apart.
@@ -510,7 +510,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
          since v2.3.2514 it had been handed this move's own position instead
          (the map was updated first), so the travel already made was lost. */
       const wasAt = downPointers.get(e.pointerId);
-      if (wasAt) downPointers.set(e.pointerId, { x, y, free: !!wasAt.free });   /* v2.3.3377: keeps `free` */
+      if (wasAt) downPointers.set(e.pointerId, { x, y, free: !!wasAt.free });   /* v2.3.3399: keeps `free` */
       let sw = swipeRef.current;
       /* v2.3.2514: ADOPT A FINGER THAT WAS DOWN BEFORE THE WINDOW OPENED.
          See the note above beginGesture: the thumb that pressed CHOP is
@@ -519,7 +519,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
          picked up -- the first move, on the button, of a pointer we know is
          down.  Deliberately NOT "any move at all": a left thumb steering the
          character must not be mistaken for a chop.
-         v2.3.3377: ...but a MOUSE pressed on the world is adopted wherever it
+         v2.3.3399: ...but a MOUSE pressed on the world is adopted wherever it
          moves (onPointerDown's note): the click that started the harvest on
          the tree, held through the wind-up, is already making the gesture. */
       if (!sw && wasAt) {
@@ -546,7 +546,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       const tNow = performance.now();
       const axisV = (GESTURE_STROKE[ex.skill] && GESTURE_STROKE[ex.skill].axis === 'x') ? x : y;
       if (ex.skill === 'fishing' && sw.free) {
-        /* v2.3.3377: a mouse reels by the turn of its own heading (FREE_STEP_PX
+        /* v2.3.3399: a mouse reels by the turn of its own heading (FREE_STEP_PX
            above), so a circle drawn anywhere counts */
         const hdx = x - g.hx, hdy = y - g.hy;
         if (g.hx == null) { g.hx = x; g.hy = y; }
@@ -608,7 +608,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
     const onPointerUp = (e) => {
       const id = e && e.pointerId;
       downPointers.delete(id);
-      /* v2.3.3377: a mouse that made a gesture lets go with a CLICK, and on a
+      /* v2.3.3399: a mouse that made a gesture lets go with a CLICK, and on a
          computer the world takes a click as a tap -- a monster's lock, a
          character's quest, the next resource.  It was a drag, so the canvas
          is told it is already handled (its own _touchHandledAt mark, which it
@@ -638,12 +638,12 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
          HOLD_MS the demo already waits after the last move, so a player who
          lifts between strokes gets their own pose held for a beat rather than
          the demo cutting in on the pause.
-         v2.3.3377: ...unless E is working it (keyStep owns the flag then). */
+         v2.3.3399: ...unless E is working it (keyStep owns the flag then). */
       const ex = readyExtraction();
       if (ex && !keyWorking()) { ex._gestureDown = false; ex._gestureMovedAt = performance.now(); }
     };
 
-    /* ═══ v2.3.3377: HOLD E -- THE GESTURE FROM A KEYBOARD ═══
+    /* ═══ v2.3.3399: HOLD E -- THE GESTURE FROM A KEYBOARD ═══
        The owner: "Make sure all actions/buttons can be completed ... on the
        computer.  For instance I don't think you can harvest lifeskills right
        now on the computer."  (gesturePose.js DESK_GESTURE_HINT has the story.)
@@ -748,7 +748,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
           cycles: ex && ex._gesture ? +(ex._gesture.cycles || 0).toFixed(2) : null,
           target: ex ? +(ex.repsTarget || 0).toFixed(2) : null,
           activeMs: ex && ex._gesture ? Math.round(ex._gesture.activeMs || 0) : null,
-          /* v2.3.3377: a mouse's press (anywhere on the world, reeling by its
+          /* v2.3.3399: a mouse's press (anywhere on the world, reeling by its
              heading), and E's work: held, working, and the cycles it made */
           free: !!(swipeRef.current && swipeRef.current.free),
           keys: harvestKeys.probe(),
@@ -771,7 +771,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
          with its demo suppressed forever.  Clear it on the way out. */
       const ex = readyExtraction();
       if (ex) ex._gestureDown = false;
-      /* v2.3.3377: and E's work stops with the layer that does it */
+      /* v2.3.3399: and E's work stops with the layer that does it */
       keyStop();
       const S1 = stateRef && stateRef.current;
       if (S1 && S1._harvestKeys === harvestKeys) S1._harvestKeys = null;

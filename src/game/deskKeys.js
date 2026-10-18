@@ -1,4 +1,4 @@
-/* ═══ v2.3.3377: A COMPUTER'S KEYS, AND THE LETTERS THAT SHOW THEM ═══
+/* ═══ v2.3.3399: A COMPUTER'S KEYS, AND THE LETTERS THAT SHOW THEM ═══
    The owner: "For computer usage if there's a key that makes sense to use for
    a certain action just put the letter next to the icon or action in a
    tasteful way."
@@ -12,10 +12,12 @@
    letter in the DOM would have put "J" into them.
 
    THE LETTERS.  The ones PC games give these places, kept clear of every key
-   the game already uses (WASD, Q E R F G T V X C H, Tab, 1-3, Space, Shift,
-   Esc): B the bag (the dashboard at rest), P your character, J the quest
-   journal, L life skills, K the codex (between those two on the home row), O
-   more (options); M the world map.  Each opens its page, and pressed again
+   the game already uses (WASD, Q E R F G T V X C H B, Tab, 1-3, Space, Shift,
+   Esc): I the bag (the inventory, at the dashboard's rest), P your character,
+   J the quest journal, L life skills, K the codex (between those two on the
+   home row), O more (options); M the world map.  B was the bag here until main
+   gave B to the emotes (v2.3.3391, "B for Bro"), so the bag is I, as many PC
+   games have it; the chat box's smiley, the emotes' button, wears the B.  Each opens its page, and pressed again
    closes it, as games do.  Enter presses a dialogue's own button (Next,
    Accept Quest) -- `data-enter`; Esc a window's ✕ -- `data-esc`.
 
@@ -28,7 +30,7 @@ import { playIsLandscape } from '@/ui/mobile/playViewport.js';
 
 /** The dashboard's six buttons (BottomDashboard RAIL_ITEMS ids) -> a letter. */
 export const NAV_KEYS = Object.freeze({
-  dashboard: 'B', hero: 'P', quests: 'J', skills: 'L', encyclopedia: 'K', more: 'O',
+  dashboard: 'I', hero: 'P', quests: 'J', skills: 'L', encyclopedia: 'K', more: 'O',
 });
 /** The world map (WorldMapOverlay.jsx), from the Wheel's minimap. */
 export const MAP_KEY = 'M';
@@ -49,7 +51,7 @@ export function browserChord(e) {
 /**
  * What a destination's key does: what a tap on its button does (NavRail),
  * and pressed with its page already open, closes it (a toggle, as the keys
- * of a game's windows are).  B is the bag: with a page open it goes back to
+ * of a game's windows are).  I is the bag: with a page open it goes back to
  * the band at rest -- where the bag is -- and at rest it folds the band away
  * or brings it back (the CLOSE / OPEN pill's job).  Sideways the bag is the
  * side column's 'dashboard' page (NavRail's v2.3.2158 rule).

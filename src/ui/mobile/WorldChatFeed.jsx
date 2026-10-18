@@ -4,6 +4,7 @@ import { chatLogBus } from './chatLogBus.js';
 import { uiBusyBus } from './uiBusyBus.js';   /* v2.3.2085 */
 import { capeStatusBus } from './capeStatusBus.js'; /* v2.3.2118 */
 import { chatLaneOf, CHAT_LANE_ICON } from '../../data/smallIcons.js';   /* v2.3.3279: the owner's chat-lane pictures */
+import { chatNameColor } from '../../game/chatColor.js';   /* v2.3.3391: a name's colour you can read */
 
 /* ═══ v2.3.2037: WORLD CHAT, AS ITS OWN SECTION ═══
  *
@@ -388,7 +389,7 @@ export function WorldChatFeed() {
            never take away the bell, because the bell is how you get chat back.
            A panel owning the screen is the only case that hides it, and it
            comes back the moment the panel closes. */
-        /* ═══ v2.3.3377: ...AND THE SHUT BELL STANDS DOWN UNDER ANY WINDOW ═══
+        /* ═══ v2.3.3399: ...AND THE SHUT BELL STANDS DOWN UNDER ANY WINDOW ═══
            The UI review's numbered pictures (tools/qa/ui-review) showed the
            36px bell, unread count and all, painted across the bottom of the
            windows in this corner -- the Blacksmith's Forge tab, the
@@ -701,7 +702,9 @@ export function WorldChatFeed() {
                  the front of its name, game/chat.js) is the owner's picture */
               const lane = chatLaneOf(m.name);
               return (
-                <span style={{ color: m.color || '#8FB8C9', fontWeight: 700 }}>
+                /* v2.3.3391: only a hex that reads (game/chatColor.js) -- an older
+                   worker relays any colour, "transparent" included */
+                <span style={{ color: chatNameColor(m.color), fontWeight: 700 }}>
                   {lane ? (
                     <img src={CHAT_LANE_ICON[lane.lane]} alt={lane.lane} data-chat-lane={lane.lane} draggable={false}
                       width={16} height={16}
