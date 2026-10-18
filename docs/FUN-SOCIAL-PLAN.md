@@ -110,6 +110,17 @@ And BroTown's own, which the plan did not know:
 
 ## Phase 1 -- one player smiles
 
+Built so far:
+
+- [x] The motion code and all twelve moves, held poses kept by the worker
+  (`po` on the tick), the Moves tab and `/wave`-style commands: v2.3.3345,
+  docs/specs/emote-moves.md. The emote wheel became a Moves tab of all twelve
+  (no slots to choose yet); the extras are the move's own emoji popped over
+  the head, no new sounds.
+- [ ] The server's guardrails (the social allowance, a repeat filter, text
+  cleaning): v2.3.3346, in progress.
+- [ ] Pets copy poses, townsfolk react, `/roll` and `/flip`.
+
 - Code-driven motion for the whole figure, after the trait layers are put
   together: offset, squash and stretch, tilt, pivoted at the feet. The
   template is `src/rendering/jumpFx.js` (it moves the body after the depth

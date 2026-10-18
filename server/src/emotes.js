@@ -32,9 +32,19 @@ export const EMOTE = Object.freeze({
   EMOJI: Object.freeze(['👋', '😂', '🔥', '💎', '🎉', '👀', '💪', '🕺', '🫡', '🤝', '💀', '😤', '🧘', '🎭', '❤️', '👏', '🏆', '🎣', '😴', '🤙', '6️⃣', '7️⃣', '🤷', '🙏', '😎', '🥶', '💃', '🪩', '🎤', '🫶']),
   /* src/data/gameDisplay.js TEXT_EMOTES, in its order */
   LINES: Object.freeze(['67', 'GG', 'RIP', 'Bruh', 'EZ', 'F', 'Lets go', 'Wow', 'Gritty', 'gg ez', 'Champion', 'Salute']),
+  /* v2.3.3345: the moves that are a MOMENT (src/game/emoteMoves.js
+     EMOTE_ONCE_IDS, in its order) -- the bro moves in code on every phone
+     near; the held ones (sit, sleep, a dance) are STATE, poses.js */
+  MOVES: Object.freeze(['wave', 'laugh', 'flex', 'shrug', 'facepalm', 'cheer']),
 });
 
 const LISTED = new Set([...EMOTE.EMOJI, ...EMOTE.LINES]);
+const MOVES = new Set(EMOTE.MOVES);
+
+/* v2.3.3345: whether `m` is a moment move the worker relays */
+export function emoteMoveListed(m) {
+  return typeof m === 'string' && MOVES.has(m);
+}
 
 /* Whether `e` is an emote the worker relays (a Set: no prototype lookups). */
 export function emoteListed(e) {
@@ -47,6 +57,13 @@ export const emoteMethods = {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'emotes') && !f.emotes);
   },
+  /* v2.3.3345: `emotemoves: false` (or `emotes: false`): no move is relayed
+     and no pose kept (poses.js) -- the plain emotes go on */
+  _movesOff() {
+    if (this._emotesOff()) return true;
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'emotemoves') && !f.emotemoves);
+  },
 
   /* The default relay branch's check for an `emote` (index.js, beside
      _sanitizeChatRelay): false drops it; true leaves `msg.payload` as exactly
@@ -54,6 +71,13 @@ export const emoteMethods = {
   _sanitizeEmoteRelay(session, msg) {
     if (this._emotesOff()) return false;
     const p = msg && msg.payload;
+    /* v2.3.3345: a moment MOVE (wave, laugh...) -- exactly {id, move} */
+    const mv = p && typeof p === 'object' ? p.move : null;
+    if (mv !== undefined && mv !== null) {
+      if (!emoteMoveListed(mv) || this._movesOff()) return false;
+      msg.payload = { id: session.id, move: mv };
+      return true;
+    }
     const e = p && typeof p === 'object' ? p.emoji : null;
     if (!emoteListed(e)) return false;
     msg.payload = { id: session.id, emoji: e };

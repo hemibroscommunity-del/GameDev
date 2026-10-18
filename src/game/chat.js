@@ -15,6 +15,7 @@ import { BT_AUDIO } from '@/data/index.js';
 /* v2.3.2139: the channel picker's compose step — see its note below. */
 import { chatChannelBus } from '@/game/chatChannel.js';
 import { emoteKind } from '@/game/emotes.js'; /* v2.3.3343 */
+import { moveKind, EMOTE_MOVES, slashMove } from '@/game/emoteMoves.js'; /* v2.3.3345: the moment moves, and /wave */
 import { isBlockedId } from '@/game/chatMute.js'; /* v2.3.3343: both shapes of the block list */
 import { stripLaneMarks } from '@/data/smallIcons.js'; /* v2.3.3343 */
 import { earVol } from '@/game/hitSounds.js'; /* v2.3.3343: an emote's chirp carries as far as a hit */
@@ -51,8 +52,23 @@ function clampChatName(v) {
 /* Send a chat line: broadcast to the room, local echo into the chat log +
    own overhead bubble. `text` is already trimmed/validated by the caller.
    deps = { setChatLog } */
+/* ═══ v2.3.3345: "/wave", "/sit", "/dance" ... ARE MOVES, NOT LINES ═══
+   A message that is only a move's command (game/emoteMoves.js slashMove)
+   makes your bro do it, as the picker's tile does, and says nothing in the
+   chat.  The sender is BroTown's (game/interactions.js sendMove, with the
+   picker it closes), handed in once so this file needs no game imports. */
+var _moveSender = null;
+export function setChatMoveSender(fn) {
+  _moveSender = typeof fn === 'function' ? fn : null;
+}
+
 export function sendChatMessage(S, text, deps) {
   var setChatLog = deps.setChatLog;
+  var _slash = slashMove(text);
+  if (_slash && _moveSender) {
+    _moveSender(_slash);
+    return;
+  }
   /* ═══ v2.3.2139: THE CHANNEL PICKER APPLIES HERE, AND ONLY HERE ═══
      The picker (game/chatChannel.js) sets a mode; this turns that mode plus
      what was typed into the line to send.  It happens at the TOP of the one
@@ -416,14 +432,25 @@ export function handleEmoteEvent(payload, S) {
      shape of the block list) or muted, and the chirp carries only as far as
      a hit does (hitSounds.js earVol): it rang at full volume from anywhere
      in your zone, the whole Wheel. */
-  var kind = emoteKind(payload.emoji);
+  /* v2.3.3345: or a moment MOVE -- a wave, a laugh, a cheer (game/
+     emoteMoves.js) -- which moves their bro in code (rendering/emoteFx.js)
+     and pops its own emoji.  Only a listed one, by the same rules. */
+  var _move = payload.move !== undefined ? payload.move : null;
+  var kind = _move !== null ? (moveKind(_move) === 'once' ? 'move' : null) : emoteKind(payload.emoji);
   if (!kind || isBlockedId(payload.id)) return;
   try {
     var _ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
     if (Array.isArray(_ml) && _ml.includes(payload.id)) return;
   } catch (e) {}
   var _now = Date.now();
-  _o.emote = { emoji: payload.emoji, ts: _now };
+  if (kind === 'move') {
+    _o._emoteMove = { id: _move, at: _now };
+    var _pop = EMOTE_MOVES[_move] && EMOTE_MOVES[_move].pop;
+    /* `trusted`: the move's own emoji, which may not be on the picker's list */
+    if (_pop) _o.emote = { emoji: _pop, ts: _now, trusted: true };
+  } else {
+    _o.emote = { emoji: payload.emoji, ts: _now };
+  }
   if (kind === 'line') {
     if (!S.chatBubbles) S.chatBubbles = {};
     S.chatBubbles[payload.id] = { text: payload.emoji, ts: _now };

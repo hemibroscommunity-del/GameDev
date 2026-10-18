@@ -2534,6 +2534,13 @@ let _chatBubbleGrad = null;
    you -- past any screen's edge at the Wheel's zoom (a 3x phone shows ~650 x
    1,400 of the world, a desktop about 3,200 across) -- see _updateChatBubbles */
 const NPC_BUBBLE_REACH = 2400;
+/* v2.3.3345: the band over a head, lowered as far as an emote brought the
+   name plate down (rendering/emoteFx.js `_emoteHudDrop`: a sitter, a sleeper) */
+function bandWithEmote(band, who) {
+  if (typeof band !== 'number' || !isFinite(band)) return band;
+  const d = who && who._emoteHudDrop;
+  return d > 0 ? band + d : band;
+}
 /* v2.3.3343: an emote's emoji over the head (_updateEmotePops): drawn at
    EMOTE_POP_FONT and scaled to EMOTE_POP_PX on the SCREEN, twice the chat's
    14 px -- it is a picture, read at a glance */
@@ -8802,7 +8809,9 @@ export class EffectsRenderer {
          from their position, so chatting while chopping does not drop the
          bubble back onto the face for exactly as long as the axe is up.
          Only a speaker never seen with a band falls back to the old anchor. */
-      const _band = pid === S.myId ? S._selfBandTopY : source._bandTopY;
+      /* v2.3.3345: a sitter's or a sleeper's band came down with him
+         (rendering/emoteFx.js, last frame's: it draws after this pass) */
+      const _band = bandWithEmote(pid === S.myId ? S._selfBandTopY : source._bandTopY, pid === S.myId ? S : source);
       let _top = null;
       if (typeof _band === 'number' && isFinite(_band)) {
         _top = _band;
@@ -8887,7 +8896,10 @@ export class EffectsRenderer {
       sources.push([id, o, o.emote]);
     }
     for (const [pid, src, em] of sources) {
-      if (!pid || !src || !em || emoteKind(em.emoji) !== 'emoji') continue;
+      /* v2.3.3345: or a move's own emoji (`trusted`: set by this phone's code
+         from the move's table, never from the wire -- game/emoteMoves.js) */
+      const _okEmoji = em && (em.trusted ? (typeof em.emoji === 'string' && em.emoji.length <= 8) : emoteKind(em.emoji) === 'emoji');
+      if (!pid || !src || !em || !_okEmoji) continue;
       const age = now - (em.ts || 0);
       if (!(age >= 0 && age < EMOTE_POP_MS)) continue;
       let entry = pops.get(pid);
@@ -8917,7 +8929,7 @@ export class EffectsRenderer {
       const sy = src.renderY || src.y || 0;
       const px = ws > 0.01 ? 1 / ws : 1;   /* one screen px, in world px */
       /* the band over the head, as _updateChatBubbles reads it */
-      const band = pid === S.myId ? S._selfBandTopY : src._bandTopY;
+      const band = bandWithEmote(pid === S.myId ? S._selfBandTopY : src._bandTopY, pid === S.myId ? S : src);
       let base = null;
       if (typeof band === 'number' && isFinite(band)) base = band;
       else if (this._chatBandOff.has(pid)) base = sy + this._chatBandOff.get(pid);

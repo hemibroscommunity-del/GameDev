@@ -257,6 +257,8 @@ export const adminMethods = {
                v2.3.3006 sprint's, twice -- esbuild warned on every worker start);
                the copy below, with the stamina pool's own reasoning, is the one */
             ex: ps.ex || null, extracting: !!this.extractions[id], harvestShield: !!this._extractionShielded(id),
+            /* v2.3.3345: the pose the worker keeps (poses.js), for mp-emotemoves */
+            po: ps.po || null,
             /* v2.3.2273: WHAT HAPPENED TO THE LAST node_strike.
                `{ why, at, ... }` -- 'paid' when the bag was credited, otherwise
                the name of the gate that refused it (node-already-dead,
