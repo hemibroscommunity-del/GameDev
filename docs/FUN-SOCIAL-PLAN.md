@@ -106,7 +106,8 @@ And BroTown's own, which the plan did not know:
   took any colour, invisible included (v2.3.3353, docs/specs/emotes.md "The
   chat's three fixes").
 - [ ] Reports, kick and freeze in the Test panel, beside the bot flags, so the
-  owner can read them without terminal commands.
+  owner can read them without terminal commands (its own PR, #972,
+  docs/specs/chat-moderation.md).
 
 ## Phase 1 -- one player smiles
 

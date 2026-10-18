@@ -87,9 +87,12 @@ function emotesOf(p, from = 0) {
   return out;
 }
 /* send one message from `p`; the emotes that went into the room's relay */
+/* each relay starts with a full allowance: the relay bucket, and the chat and
+   emote allowance of #974's chat guard (`session.chatGuard`, chatguard.js),
+   which a bare null leaves untouched on a worker without it (v2.3.3353) */
 async function relay(room, p, msg) {
   const s = room.sessions.get(p.ws);
-  s.relayTokens = room.RELAY_BURST; s.relayAt = Date.now();
+  s.relayTokens = room.RELAY_BURST; s.relayAt = Date.now(); s.chatGuard = null;
   room.eventBuffer.length = 0;
   await room.webSocketMessage(p.ws, typeof msg === 'string' ? msg : JSON.stringify(msg));
   return room.eventBuffer.filter((e) => e && e.type === 'emote');
@@ -169,7 +172,7 @@ const ARRIVAL = { x: 21504, y: 21792 };
   tickFn();
   const mark = all.map((p) => p.ws.sent.length);
   const s = room.sessions.get(A.ws);
-  s.relayTokens = room.RELAY_BURST; s.relayAt = Date.now();
+  s.relayTokens = room.RELAY_BURST; s.relayAt = Date.now(); s.chatGuard = null;
   await room.webSocketMessage(A.ws, JSON.stringify({ type: 'emote', payload: { id: A.id, emoji: '🎉' } }));
   keepAlive(room, all);
   tickFn();
@@ -183,7 +186,7 @@ const ARRIVAL = { x: 21504, y: 21792 };
   /* the placing's own kill switch puts it back room-wide (the zone's), as every placed event */
   room._liveFlags = Object.assign(Object.create(null), room._liveFlags || {}, { eventplace: false });
   const mark2 = all.map((p) => p.ws.sent.length);
-  s.relayTokens = room.RELAY_BURST; s.relayAt = Date.now();
+  s.relayTokens = room.RELAY_BURST; s.relayAt = Date.now(); s.chatGuard = null;
   await room.webSocketMessage(A.ws, JSON.stringify({ type: 'emote', payload: { emoji: '👏' } }));
   keepAlive(room, all);
   tickFn();

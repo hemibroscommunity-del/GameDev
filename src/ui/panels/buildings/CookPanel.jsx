@@ -3,6 +3,7 @@ import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, createDefau
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the Cookhouse heard */
 import { pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx'; /* v2.3.3281: a recipe row's picture is the bag's */
@@ -250,7 +251,7 @@ export function CookPanel(props) {
              as lifeSkillRewards.js leaves it for fishing/woodcutting/mining. */
           if (leveled) celebrateLifeSkillLevel(stateRef.current, 'cooking', sk.cooking.level, _ckLvlBefore);
           if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 45, 'Cooking Lv' + sk.cooking.level + '!', '#D8A94D');
-          BT_AUDIO.collect();
+          cue('cookDone');   /* v2.3.3343: collect() is a beep(), silent */
           setCookMinigame(_objectSpread(_objectSpread({}, cookMinigame), {}, {
             result: 'success'
           }));
@@ -260,7 +261,7 @@ export function CookPanel(props) {
           if (!R._compStats) R._compStats = createDefaultCompStats();
           R._compStats.cookBurns++;
           pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Burnt! Fish wasted.', '#D95C54');
-          BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
+          cue('cookBurnt');   /* v2.3.3343: a hiss and the loss sting (a beep(), silent) */
           setCookMinigame(_objectSpread(_objectSpread({}, cookMinigame), {}, {
             result: 'burnt'
           }));
@@ -394,7 +395,7 @@ export function CookPanel(props) {
             started: Date.now(),
             result: null
           });
-          BT_AUDIO.beep(400, 0.06, 0.08, 'sine');
+          cue('cookStart');   /* v2.3.3343: the pan starting to sizzle (a beep(), silent) */
         }
       }, "Cook"));
     }));
@@ -770,7 +771,7 @@ export function CookPanel(props) {
         try {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
-        BT_AUDIO.collect();
+        cue('cookDone');   /* v2.3.3343: the campfire's own sting -- collect() is a beep(), silent (SOUND-GAPS) */
       }
     }, canCook ? hasIngredients ? "Cook" : "Need " + (firstMissing ? firstMissing.type.split('_')[0] : 'items') : "Lv" + recipe.cookLvl /* v2.3.1235: state-correction — disabled action states its reason: "Need herb" (state 2) / "Lv3" (state 3) */));
   })));
