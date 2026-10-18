@@ -153,6 +153,13 @@ export const adminMethods = {
           /* v2.3.3334: monster hits refused for want of the weapon, from too
              far, specials rolled ordinary for want of a paid swipe (hitproof.js) */
           hitProof: this._hitProofInfo(),
+          /* v2.3.3344: logins checked against their character's devices
+             (devicelock.js): let in on a known device, a first device
+             recorded, a pass used, refused, login checks, and the one-time
+             fill */
+          deviceLock: this._deviceLockInfo(),
+          /* v2.3.3355: new Login Keys (loginkeys.js) */
+          loginKeys: this._keysInfo ? this._keysInfo() : null,
           /* v2.3.3240: the 2 s look relay -- tracks in, and how many went out
              whole, as only what changed, or not at all (lookrelay.js) */
           lookRelay: this._lookInfo(),
@@ -402,6 +409,12 @@ export const adminMethods = {
 
       // v2.3.1150: live-ops sub-routes (flags/announce) -- auth already
       // passed above; liveops.js returns null for paths it doesn't own.
+      /* v2.3.3344: the owner's tool for a character's devices (devicelock.js):
+         let one new device in, or forget them all -- same contract, null for
+         paths it doesn't own */
+      const dl = await this._deviceLockAdminRoute(request, url, path, json);
+      if (dl) return dl;
+
       const lo = await this._liveopsRoutes(request, url, path, json);
       if (lo) return lo;
 

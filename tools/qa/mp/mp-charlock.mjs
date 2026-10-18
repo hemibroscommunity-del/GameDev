@@ -71,6 +71,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!(made && made.name && madeLook && made.name === madeLook.name),
     { stored: made && made.name, live: madeLook && madeLook.name });
 
+  /* v2.3.3344: B below is a NEW device, and a character's key works only on
+     the devices it is played on (server/src/devicelock.js) -- so the owner
+     lets one new device in first, as for a player moving phones. */
+  const aId = await A.page.evaluate(() => window._gameState && window._gameState.current && window._gameState.current.myId).catch(() => null);
+  const pass = aId ? await H.letDeviceIn(wsPort, aId).catch(() => null) : null;
+  rec.ok('the owner lets one new device in for this character (guard)', !!(pass && pass.ok), { aId, pass });
   await A.ctx.close().catch(() => {});
 
   /* ── 3. the same key lands on the door, and Continue shows its character ──
@@ -118,8 +124,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.waitForTimeout(2500);
   const arrived = await look(B);
   const bRec = await record(B);
+  /* v2.3.3355: what B's join was, should the record not be there */
+  const bJoin = await B.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    return S ? { myId: S.myId, joinKey: !!S._joinKey, asked: !!S._keyIdAsked, status: S._realtimeStatus,
+      caps: !!(S._serverCaps && Object.keys(S._serverCaps).length), keyIds: localStorage.getItem('bt_key_ids') } : null;
+  }).catch(() => null);
   rec.ok('the stored look reaches a device that never picked it',
-    !!(bRec && bRec.look && Object.keys(bRec.look).length > 0), { bRec });
+    !!(bRec && bRec.look && Object.keys(bRec.look).length > 0), { bRec, aId, bJoin });
   rec.ok('...and the name came with it',
     !!(arrived && made && arrived.name === made.name),
     { expected: made && made.name, got: arrived && arrived.name });

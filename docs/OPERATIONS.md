@@ -47,6 +47,8 @@ From there you can:
   minutes, so you can't leave it on by accident.
 - **Bot flags** — who the game has flagged as a possible script, and why
   (v2.3.3323; "Bot flags" below).
+- **Player logins** — let a player's character onto a new device, or lock out
+  someone who got into a character (v2.3.3344; "Player logins" below).
 
 Nobody else can use any of this: every button asks the worker for permission
 with your key, and without the key the buttons do nothing at all. "Forget key
@@ -99,6 +101,60 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
 If a grant command times out and you're not sure it went through: the
 response includes an `opId` — run the exact command again with
 `"opId":"<that value>"` added and the server guarantees it pays at most once.
+
+## Player logins: moving a character to a new device (v2.3.3344)
+
+A character's Login Key works only on the phones and computers it has been
+played on. When a player opens it somewhere new, they see **"This character is
+played on another device"** and a code (`bp_...`). That happens on:
+- a new phone;
+- a cleared browser;
+- a private window;
+- the iPhone home-screen app after playing in Safari (they keep separate
+  storage);
+- a friend's phone.
+
+**To let them in:**
+1. They send you the code. Let a device in only when you're sure the message
+   comes from that character's own player: someone else who has the key and
+   asks you is exactly who this keeps out.
+2. Open the Test panel. Under **Player logins**, paste the code and tap **Let
+   one new device in (30 min)**.
+3. Tell them to tap **Try again** within 30 minutes. That device is theirs from
+   then on.
+
+**New Login Keys (v2.3.3355).** Players now get a new, longer key made by
+the server: eight short words, shown on their Account card. A new key works on
+**any** phone or computer, typed at the start screen's Login Key, with no pass
+from you. Most players moving devices won't need you any more.
+
+**If someone else got into a character** (its player says it was stolen):
+1. Paste its code and tap **Give it a new key**, then tap again to confirm.
+   - Whoever is playing it is put out.
+   - Every device and every old key stops working.
+   - The panel shows a new key, **once**.
+2. Send that key to the real player (only when you're sure it's them). They
+   tap **Use a Login Key** on their screen and type it.
+
+**Forget all its devices** still exists: it puts the player out, takes back
+every new key and forgets every device, and **Let one new device in** then
+lets the real player back in with the old key. For a character whose old key
+is retired (one made since v2.3.3355), use **Give it a new key** instead.
+
+From a computer:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"playerId":"bp_XXXX"}' "https://WORKER/api/admin/device-pass"
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"playerId":"bp_XXXX"}' "https://WORKER/api/admin/device-forget"
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"playerId":"bp_XXXX"}' "https://WORKER/api/admin/key-new"
+```
+`/api/admin/overview`'s `deviceLock` counts logins let in, refused, and
+passes used, and `loginKeys` the new keys made and used. If the device lock
+ever gets in honest players' way, the live flag `devicelock: false` turns it
+off (docs/specs/device-lock.md); `keys2: false` stops new keys being handed
+out, while keys already made keep working (docs/specs/login-keys.md).
 
 ## Bot flags: who looks like a script (v2.3.3323)
 

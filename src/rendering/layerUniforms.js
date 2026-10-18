@@ -1,4 +1,4 @@
-/* ═══ v2.3.3347: A LAYER DRAWS WITH THE WORLD'S OWN CAMERA NUMBERS ═══
+/* ═══ v2.3.3359: A LAYER DRAWS WITH THE WORLD'S OWN CAMERA NUMBERS ═══
  *
  * Pixi draws a render group that sits inside another by pushing a fresh set
  * of the shared uniforms for it -- the camera's matrix, the tint, the target's
@@ -7,7 +7,7 @@
  * draws with uploads the numbers again, and the pop marks the outer set
  * changed, so the next program uploads them once more.
  *
- * Since v2.3.3347 each world layer is a render group of its own (pixiApp.js
+ * Since v2.3.3359 each world layer is a render group of its own (pixiApp.js
  * LAYER_GROUPS), sitting at the world's origin, unscaled and untinted: its
  * numbers ARE the world's, and twenty-odd of them were pushed and popped every
  * frame -- most of them empty (mp-phoneframe: in BroTown 15 of the 22 drew

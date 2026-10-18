@@ -162,6 +162,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     await H.enterWorld(p);
     await p.page.waitForTimeout(3500);
+    /* v2.3.3355: a new character is handed a new Login Key at its first join
+       (server/src/loginkeys.js): read the identity once it is in */
+    await p.page.waitForFunction(() => /^[a-z]{3,5}(?:-[a-z]{3,5}){7}$/.test(localStorage.getItem('bt_passphrase') || ''),
+      null, { timeout: 20000, polling: 300 }).catch(() => {});
     return p;
   };
 
@@ -253,6 +257,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const input = await Q.page.$('input');
     rec.ok('the key form has an input (guard)', !!input, {});
     if (input) {
+      /* ═══ v2.3.3355: A NEW KEY WORKS ON ANY DEVICE ═══
+         Q is a new device for this character.  Since v2.3.3344 an OLD key
+         works only on the devices it is played on (server/src/devicelock.js),
+         but this build's character was handed a new Login Key at its first
+         join (server/src/loginkeys.js), which works anywhere: typed here, it
+         plays, with no pass from the owner. */
+      rec.ok('ROAD 3: the key is a new one, eight words (guard)', /^[a-z]{3,5}(?:-[a-z]{3,5}){7}$/.test(idBefore.key || ''), { key: idBefore.key });
       await input.fill(idBefore.key);
       await Promise.all([
         Q.page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => {}),

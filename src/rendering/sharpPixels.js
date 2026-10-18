@@ -34,7 +34,7 @@
  *
  * WebGL2 only (textureSize / textureGrad); on anything else it never turns on.
  * Off switches: `?sharp=0` (per load), `window.__btSharpOff = true` (live;
- * since v2.3.3347 a flip rebuilds every draw list, drawLists.js).
+ * since v2.3.3359 a flip rebuilds every draw list, drawLists.js).
  * Probe: `window.__btSharp()`.
  */
 import {
@@ -46,7 +46,7 @@ import {
 import { liveSwitch } from './drawLists.js';
 
 let _enabled = false;
-/* v2.3.3347: window.__btSharpOff, read below as a plain field */
+/* v2.3.3359: window.__btSharpOff, read below as a plain field */
 const _liveOff = liveSwitch('__btSharpOff');
 let _maxTex = 0;
 let _routed = 0;

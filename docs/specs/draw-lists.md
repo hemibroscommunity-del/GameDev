@@ -1,4 +1,4 @@
-# Each world layer keeps its own draw list (v2.3.3347)
+# Each world layer keeps its own draw list (v2.3.3359)
 
 The owner, 2026-10-18: *"I'd like you to iterate on what best improves
 framerate without loss of quality (or negligible loss) for phone gameplay
@@ -69,7 +69,7 @@ itself became a group (the camera already on the GPU), so it no longer holds.
    numbers reach the same programs: **the same picture to the pixel**
    (`mp-layergroups` draws one held frame both ways). The group's matrix is
    read once a frame: Pixi's getter keeps nothing for a second read and a push
-   would then inherit the parent's matrix (TRAPS §213).
+   would then inherit the parent's matrix (TRAPS §218).
 
 And the ground's black background (tileRenderer.js `bgGfx`, the same two
 rectangles every frame) is drawn again only when what it draws changes.
