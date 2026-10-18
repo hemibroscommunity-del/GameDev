@@ -1374,7 +1374,7 @@ export const ItemDetailPopup = () => {
       noteInstantHeal(S);
     }
     try { S.channel.send({ type: 'potion_drink', payload: { invKey: target.key } }); } catch (e) {}
-    /* v2.3.3410: the window's own close.  This was a bare close(), which no
+    /* v2.3.3434: the window's own close.  This was a bare close(), which no
        name here binds -- so it was the BROWSER's window.close(): the card
        stayed open after a drink, and a tab the browser lets a script close
        (one opened from a link, with no history) could have closed the game.

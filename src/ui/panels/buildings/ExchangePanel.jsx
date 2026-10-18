@@ -5,7 +5,7 @@ import { storeEnabled } from '@/ui/storeApi.js';   /* v2.3.2476 */
 import { _asyncToGenerator, _objectSpread, _regenerator, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { cue } from '@/game/eventSounds.js';   /* v2.3.3410: the market's moments heard, as the auction house's are */
+import { cue } from '@/game/eventSounds.js';   /* v2.3.3434: the market's moments heard, as the auction house's are */
 /* === ExchangePanel — buildingPanel === 'exchange' sub-panel === */
 /* v2.3.876: extracted verbatim from the buildingPanel === 'exchange'
    clause in BroTown.jsx (the player marketplace: buy/sell orders,
@@ -711,7 +711,7 @@ export function ExchangePanel(props) {
             if (data.matched) {
               execPrice = data.execPrice;
               pushDmgPopup(S, S.player.x, S.player.y - 30, (mktMode === 'buy' ? 'Bought for ' : 'Sold for ') + execPrice + 'G!', '#59BF91');
-              /* v2.3.3410: the auction house's own sounds (collect() and the
+              /* v2.3.3434: the auction house's own sounds (collect() and the
                  beep() below were silent since v2.3.1103) */
               cue(mktMode === 'buy' ? 'marketBuy' : 'marketSold');
             } else {
@@ -1113,7 +1113,7 @@ export function ExchangePanel(props) {
                      gone with its twin on /place above -- the worker returns
                      the escrow itself and the echo carries it. */
                   pushDmgPopup(S, S.player.x, S.player.y - 30, 'Order cancelled', 'rgba(255,255,255,.5)');
-                  cue('tradeOff');   /* v2.3.3410: called off, as a trade is */
+                  cue('tradeOff');   /* v2.3.3434: called off, as a trade is */
                   /* Refresh */
                   S._mktLastRefresh = null;
                   fetch(BT_API_BASE + '/api/market/my?playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom()).then(function (r) {

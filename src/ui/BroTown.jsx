@@ -405,8 +405,8 @@ import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits 
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
-import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3410: the forge heard at work */
-import { tickMoveSounds } from '@/game/moveSounds.js';   /* v2.3.3410: the emotes and moves heard */
+import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3434: the forge heard at work */
+import { tickMoveSounds } from '@/game/moveSounds.js';   /* v2.3.3434: the emotes and moves heard */
 import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor, sendMove as sendMoveImpl, updateOwnEmote, updatePeerEmotes, movesLive } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building; v2.3.3392: + your bro moves */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
@@ -5040,7 +5040,7 @@ export var BroTown = function BroTown(_ref0) {
         var _jNow = Date.now();
         var _jLanded = tickJump(S, _jNow, _playerDead);
         tickWaterAmbience(S, _jNow);   /* v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
-        tickTownAmbience(S, _jNow);   /* v2.3.3410: the Blacksmith's anvil near the forge (game/townAmbience.js) */
+        tickTownAmbience(S, _jNow);   /* v2.3.3434: the Blacksmith's anvil near the forge (game/townAmbience.js) */
         var _inAir = !!S._jump;
         var _swEv = _inAir ? null : updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
           playerGroundDy(S.currentZone, P.x, P.y));
@@ -5122,7 +5122,7 @@ export var BroTown = function BroTown(_ref0) {
              copies, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have
              a word (game/townsfolkReact.js) */
           updateTownsfolkReactions(S, _sprNow);
-          /* v2.3.3410: and heard -- another player's pose as it begins, a
+          /* v2.3.3434: and heard -- another player's pose as it begins, a
              townsperson's copy as it starts (game/moveSounds.js) */
           tickMoveSounds(S, _sprNow);
         } catch (e) { /* a look only */ }
@@ -5339,7 +5339,7 @@ export var BroTown = function BroTown(_ref0) {
               R2._wellRestedUntil = Date.now() + WELL_RESTED_DURATION;
               pushDmgPopup(S, P.x, P.y - 40, 'Fully Rested!', '#59BF91');
               pushDmgPopup(S, P.x, P.y - 25, '+10% XP for 30 min', '#D8A94D');
-              cue('rested');   /* v2.3.3410: a slow breath and a warm shimmer -- collect() and two beep()s, all silent */
+              cue('rested');   /* v2.3.3434: a slow breath and a warm shimmer -- collect() and two beep()s, all silent */
               S._sleeping = null;
               setRpgState(_objectSpread({}, R2));
               try {
@@ -8891,7 +8891,7 @@ export var BroTown = function BroTown(_ref0) {
     R._wellRestedUntil = Date.now() + 1800000;
     pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'Zzz... Stats restored!', '#59BF91');
     pushDmgPopup(S2, S2.player.x, S2.player.y - 25, 'Well Rested +10% XP (30min)', '#D8A94D');
-    cue('rested');   /* v2.3.3410: the farm's bed heard (three beep()s, silent since v2.3.1103) */
+    cue('rested');   /* v2.3.3434: the farm's bed heard (three beep()s, silent since v2.3.1103) */
     setRpgState(_objectSpread({}, R));
     try {
       localStorage.setItem('bt_rpg', JSON.stringify(R));
@@ -9920,7 +9920,7 @@ export var BroTown = function BroTown(_ref0) {
       if (typeof window !== 'undefined') {
         window.__btNpcTap = { at: [Math.round(cssX), Math.round(cssY)], npc: npc ? npc.name : null, result: r, ts: Date.now() };
       }
-      /* v2.3.3410: a window opened by tapping him -- his quest, Ace's coin
+      /* v2.3.3434: a window opened by tapping him -- his quest, Ace's coin
          flip, Diego's shop, the Pets page -- opens with the menu click (a tap
          on the world reaches no <button>); a keeper's building has its door's
          knock already (enterBuilding) */
@@ -10128,7 +10128,7 @@ export var BroTown = function BroTown(_ref0) {
         if (_busC && _busC.state.mode !== 'bar') _busC.toBar(); /* v2.3.1290 */
       } catch (_e3) {}
       try { chatBubbleBus.setOpen(true); } catch (_e4) {}
-      /* v2.3.3410: the chat box is a menu, so it opens with the menu click --
+      /* v2.3.3434: the chat box is a menu, so it opens with the menu click --
          a tap on your bro reaches no <button> (ui/uiSfxDelegate.js) */
       try { BT_AUDIO.uiClickNow(); } catch (_e5) { /* sound only */ }
     };
@@ -12235,7 +12235,7 @@ export var BroTown = function BroTown(_ref0) {
           } catch (e) { _isPartyMate = false; }
           if (_isPartyMate) {
             if (S.lockedTarget && S.lockedTarget.id === id) S.lockedTarget = null;
-            try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ }   /* v2.3.3410: a menu opened by a tap on them -- the menu click (the owner's rule for every menu; a tap on the world reaches no <button>, uiSfxDelegate.js) */
+            try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ }   /* v2.3.3434: a menu opened by a tap on them -- the menu click (the owner's rule for every menu; a tap on the world reaches no <button>, uiSfxDelegate.js) */
             setInspectPlayer({
               id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
@@ -12311,7 +12311,7 @@ export var BroTown = function BroTown(_ref0) {
             S.lockedTarget = null;
           } else if (!_isDuelOpponent) {
             if (S.lockedTarget && S.lockedTarget.id === id) S.lockedTarget = null;
-            try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ }   /* v2.3.3410: the menu click, as above */
+            try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ }   /* v2.3.3434: the menu click, as above */
             setInspectPlayer({
               id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
@@ -14092,7 +14092,7 @@ export var BroTown = function BroTown(_ref0) {
       R._wellRestedUntil = Date.now() + 1800000; /* 30 min */
       pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'Zzz... Stats restored!', '#59BF91');
       pushDmgPopup(S2, S2.player.x, S2.player.y - 25, 'Well Rested +10% XP (30min)', '#D8A94D');
-      cue('rested');   /* v2.3.3410: as the E key's sleep above */
+      cue('rested');   /* v2.3.3434: as the E key's sleep above */
       setRpgState(_objectSpread({}, R));
       try {
         localStorage.setItem('bt_rpg', JSON.stringify(R));
