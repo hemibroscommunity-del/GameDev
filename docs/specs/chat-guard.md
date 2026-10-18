@@ -39,6 +39,13 @@ player's chat can never use up the swings, arrows, rolls, jumps and
 handshakes the others need to see. Every other relay spends the relay bucket
 exactly as before.
 
+**Party chat pays from the same allowance** (party.js `_handlePartyChat`, once
+the line is cleaned and not blank). It had no limit of its own but the
+connection's message budget (flood.js: 300 at once, then 120 a second), so a
+script could send a party of up to 50 about 120 lines a second. One allowance
+for room chat, emotes and party chat together, so a flood cannot be split
+across them.
+
 - One allowance for chat and emotes together: sending emotes does not buy
   more chat.
 - Fractional, as the relay bucket is: exactly one every 2 s however the
@@ -158,7 +165,7 @@ meets now:
 | `emote` | default branch relay | **`SOCIAL`**, shared with chat (was the relay bucket) | no | no (a listed emote) |
 | `area_chat` | chatlanes.js | `CHAT_LANES`: 6, then 1 per 1.5 s, per player, shared with whispers and DMs (unchanged) | **yes**, 30 s | **yes** |
 | `whisper` | chatlanes.js | `CHAT_LANES` (unchanged) | no (private) | **yes** |
-| `party_chat` | party.js | none of its own (unchanged) | no (private) | **yes** |
+| `party_chat` | party.js | **`SOCIAL`**, shared with chat and emotes (had none) | no (private) | **yes** |
 | `friend_dm` | friends.js | `CHAT_LANES` (unchanged) | no (private) | **yes** |
 | `store_dm` | storechat.js | `STORE_CHAT` (unchanged) | no (one buyer, one seller) | **yes** |
 | every other relay (`player_swing`, `player_projectile`, `player_dodge`, `player_jump`, the handshakes...) | default branch | the relay bucket, 8 then 4 a second (unchanged) | no | no |
@@ -194,8 +201,6 @@ the room exactly as it was. `chatguard: true`, or no flag, is on.
   bucket always was: a reconnect starts fresh. Opening sockets is limited on
   its own (flood.js: a join window, one join a socket, 20 opens a minute an
   address).
-- **Party chat still has no allowance of its own**; only the connection's
-  message budget (flood.js) bounds it. Left as it was.
 - **An emote's content** is checked against the listed emotes by the emote
   work (`docs/specs/emotes.md`, v2.3.3343), not here.
 

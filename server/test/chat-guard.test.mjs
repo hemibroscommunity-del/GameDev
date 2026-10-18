@@ -400,6 +400,47 @@ check('0. the kill switch is a name the admin route takes (lower case, TRAPS 117
   }
 }
 
+/* ══ 3h. party chat pays from the same allowance (a follow-up: it had no limit
+   of its own but the socket's message budget, ~120 lines a second to a party
+   of up to 50) ══ */
+{
+  const { room } = makeRoom(false);
+  const A = await join(room, 'bp_cg3h_a', 'Ash');
+  const B = await join(room, 'bp_cg3h_b', 'Bree');
+  await send(room, A, 'party_invite', { target: B.id });
+  await send(room, B, 'party_accept', { target: A.id });
+  check('3h setup: a party of two', !!room._partyOf(A.id) && room._partyOf(A.id) === room._partyOf(B.id));
+  freshGuard(A);
+  B.ws.sent.length = 0;
+  for (let i = 0; i < 8; i++) await send(room, A, 'party_chat', { text: 'party line ' + i });
+  const got = ofType(B.ws, 'party_chat').map((m) => m.payload.text);
+  check('3h eight party lines at once: five go', got.length === SOCIAL.BURST && got[4] === 'party line 4', got);
+  NOW += SOCIAL.REFILL_MS;
+  B.ws.sent.length = 0;
+  await send(room, A, 'party_chat', { text: 'two seconds later' });
+  check('3h ...then one more every 2 s', ofType(B.ws, 'party_chat').length === 1);
+  /* one allowance for the three: room chat, emotes and party chat together */
+  freshGuard(A);
+  room.eventBuffer.length = 0;
+  B.ws.sent.length = 0;
+  for (let i = 0; i < 3; i++) await send(room, A, 'chat', { text: 'room ' + i });
+  for (let i = 0; i < 3; i++) await send(room, A, 'party_chat', { text: 'party ' + i });
+  const n = room.eventBuffer.filter((e) => e.type === 'chat').length + ofType(B.ws, 'party_chat').length;
+  check('3h room chat and party chat share one allowance: three and three, five go', n === SOCIAL.BURST, n);
+  /* a blank line costs nothing */
+  freshGuard(A);
+  for (let i = 0; i < 10; i++) await send(room, A, 'party_chat', { text: '   ' });
+  B.ws.sent.length = 0;
+  await send(room, A, 'party_chat', { text: 'still five left' });
+  check('3h a blank party line spends nothing', ofType(B.ws, 'party_chat').length === 1 && A.session().chatGuard.tokens >= SOCIAL.BURST - 1 - 1e-9, A.session().chatGuard);
+  /* the kill switch: party chat as it was, no allowance */
+  room._liveFlags = Object.assign(Object.create(null), room._liveFlags || {}, { chatguard: false });
+  freshGuard(A);
+  B.ws.sent.length = 0;
+  for (let i = 0; i < 8; i++) await send(room, A, 'party_chat', { text: 'free ' + i });
+  check('3h `chatguard: false`: party chat has no allowance, as before', ofType(B.ws, 'party_chat').length === 8, ofType(B.ws, 'party_chat').length);
+}
+
 /* ══ 4. the repeat filter ══ */
 {
   const { room } = makeRoom(false);
