@@ -7235,3 +7235,32 @@ the record and puts out a join whose key or device it no longer lets in.
 
 **Receipt:** login-keys §12 (21 checks): a gate where each change waits, the
 owner's tool run in the gap; nine fail on v2.3.3355's code.
+
+## 224. "Route it in my own wrapper: I installed it last, so it runs last" (v2.3.3381)
+
+**Tempting:** to send some sprites to a batcher of your own, wrap
+`BatcherPipe.prototype.addToBatch` like the others do (paletteTex.js,
+sharpPixels.js, the shadows' no-snap hook) and set `obj.batcherName` before
+calling on. Installed last, after app.init, the wrapper surely has the final
+say.
+
+**What happens:** each wrapper calls the one installed before it, and the
+code BEFORE that call runs outermost first -- so the wrapper installed FIRST
+sets the batcher name LAST. paletteTex.js patches at module load (first, so
+innermost), sharpPixels.js after app.init, anything later outermost: a name
+set there is overwritten by the sharp pixels' unconditional `'sharp'` or
+`'default'` for every quad of a figure. hairClip.js's first draft (v2.3.3381)
+routed the hair's silhouette that way: read through, the chain sends it to the
+sharp program, which has no discard, so the whole quad would have gone into
+the stencil and nothing been clipped.
+
+**The rule:** a sprite that must be drawn by one particular batcher answers
+for itself: hairClip.js defines `batcherName` on `BatchableSprite.prototype`
+(at module load, before any element is made -- Pixi's constructor assigns the
+field, so it goes through the setter) and answers `CLIP_BATCHER` for a
+clipping silhouette whatever the routings set. Or decide inside the innermost
+routing that already owns the choice (the sheen batcher's way, inside
+sharpPixels' own decision). Never count on install order.
+
+**Receipt:** mp-hairstencil (the hair clipped through the stencil, the alpha
+mask's picture different only at the cut).

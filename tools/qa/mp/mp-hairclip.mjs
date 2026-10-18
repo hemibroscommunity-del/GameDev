@@ -87,6 +87,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the swung hair is MASKED to the helmet, not left bursting out of it',
     !!withHelmet && withHelmet.masked === true && withHelmet.maskVisible === true, withHelmet);
 
+  /* ── v2.3.3381: the clip goes through the stencil, in a box of its own
+     (hairClip.js).  The head set changes layer with the figure that owns it
+     -- a chop, cook or fire figure seats it in the gesture layer, a swing back
+     in the fighting one (effectsRenderer _seatStandInTraits) -- and the hat's
+     silhouette must travel IN its box: moved alone, it is drawn as a white hat
+     and the hair is clipped to an empty box.  Seated as a gathering figure
+     would seat it, then swung again: in its box both times, and never boxed
+     again (a silhouette found outside its box is boxed again where it stands
+     -- a structural change, so a draw-list rebuild, every frame it happened). */
+  const seat = await P.page.evaluate(() => ({
+    clip: window.__btHairClip ? window.__btHairClip() : null,
+    at: window.__btSeatStandInTraits ? window.__btSeatStandInTraits(true) : null,
+  }));
+  rec.ok(`the clip goes through the stencil (${JSON.stringify(seat.clip)}) (guard)`, !!seat.clip && seat.clip.stencil === true && seat.clip.boxes > 0, seat.clip);
+  rec.ok(`seated as a gathering figure seats it, the hat's silhouette is in its box and the box in the gesture layer (${JSON.stringify(seat.at)})`,
+    !!seat.at && seat.at.boxed === true && seat.at.box === 'gesture', seat.at);
+  const again = await swingAndRead(P);
+  const back = await P.page.evaluate(() => ({
+    clip: window.__btHairClip ? window.__btHairClip() : null,
+    at: window.__btSeatStandInTraits ? window.__btSeatStandInTraits(false) : null,
+  }));
+  rec.ok(`...and the next swing seats it back with the fighting figures and clips the hair to it again, nothing boxed again (${JSON.stringify(back)})`,
+    !!again && again.masked === true && again.maskVisible === true && !!back.at && back.at.boxed === true && back.at.box === 'node'
+      && !!back.clip && !!seat.clip && back.clip.reboxed === seat.clip.reboxed, { again, back });
+
   /* ── the negative: a hat with no clip must not crop the hair ── */
   await set(PLAIN_HAT);
   await P.page.waitForTimeout(1500);

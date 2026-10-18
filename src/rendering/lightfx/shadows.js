@@ -221,7 +221,12 @@ function relTransform(node, root, out) {
   _chain.length = 0;
   let cur = node;
   while (cur && cur !== root) {
-    if (!cur.visible || cur.renderable === false || cur.alpha <= 0.02) return null;
+    /* v2.3.3381: + left out of its parent's drawing (`includeInBuild` false):
+       a stencil mask's box clipping the hair (hairClip.js) -- its silhouette
+       is shown, but only into the stencil, so it casts nothing, as the alpha
+       mask's silhouette (renderable false) never did; the stand-ins' sets
+       hand their silhouettes over directly (casters.js walkSet) */
+    if (!cur.visible || cur.renderable === false || cur.includeInBuild === false || cur.alpha <= 0.02) return null;
     _chain.push(cur);
     cur = cur.parent;
   }

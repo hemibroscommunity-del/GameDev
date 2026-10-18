@@ -4122,6 +4122,19 @@ Two protocol versions coexist; both must keep working:
     (`_authPutOut`) and handed nothing. In the suite's room a Forget was
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
+- **A SPRITE MASK IS A PASS IN THE MIDDLE OF THE FRAME (v2.3.3381,
+  docs/specs/hair-clip-stencil.md).** In Pixi a Sprite set as a `mask` is an
+  alpha mask, drawn through a filter: a phone's tile-based chip stops the
+  frame for it, writes the half-drawn frame out and reads it back (TRAPS
+  §221). A Container or Graphics mask is the stencil, in the frame's own pass.
+  The hair under a clipping hat or a hood is clipped through the stencil now:
+  `clipHair(hair, silhouette)` (src/rendering/hairClip.js) puts the
+  silhouette in a box of its own, drawn by a batcher that keeps its opaque
+  half, and the box is the mask; whatever moves a boxed silhouette to another
+  layer moves its box (`clipBoxOrSelf`). A new mask is a Graphics or a
+  Container, never a Sprite, unless the soft edge is the point (the one left:
+  monsterDeathFx's wounds, for the second a death lasts). `?alphaclip` is the
+  alpha mask, as it was; `window.__btHairClip()`; `mp-hairstencil`.
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,

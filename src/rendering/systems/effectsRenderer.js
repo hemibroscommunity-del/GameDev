@@ -296,6 +296,7 @@ import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWoun
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandScale, HPBAR_BIG_H /* v2.3.3035: that bar at your HP bar's size, over the resource */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
+import { clipBoxOrSelf } from '../hairClip.js';   /* v2.3.3381: a stand-in's hair silhouette travels in its stencil box */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
@@ -4056,6 +4057,18 @@ export class EffectsRenderer {
       this.skillTraits[k].visible = false;
       this.nodeLayer.addChild(this.skillTraits[k]);
     }
+    /* v2.3.3381: QA (mp-hairclip) -- the set seated as a gathering figure
+       (true) or a fighting one would seat it, and where its hat's silhouette
+       then is */
+    if (typeof window !== 'undefined') {
+      window.__btSeatStandInTraits = (gathering) => {
+        this._seatStandInTraits(gathering ? this.gestureLayer : this.nodeLayer);
+        const m = this.skillTraits && this.skillTraits.hairMask;
+        const box = m && m._btClipBox;
+        const lay = (c) => (c === this.gestureLayer ? 'gesture' : c === this.nodeLayer ? 'node' : (c ? (c.label || 'other') : null));
+        return { mask: lay(m && m.parent), boxed: !!box && m.parent === box, box: lay(box && box.parent) };
+      };
+    }
     this._skillCrowns = null;
     /* v2.3.875: trait scale per stand-in = its render scale × (character height
        / the stand 182px reference), so the hat matches how it sits idle rather
@@ -5018,6 +5031,18 @@ export class EffectsRenderer {
   /* v2.3.2516: `belowSprite` is optional and only the bow stand-ins pass it --
      the cape's drape-over-the-waist exception caps the panels under the weapon.
      See _STAND_IN_CAPE_OVER_BODY. */
+  /* The stand-in head set into `layer`, every trait in key order (the order
+     is the z-order).  v2.3.1776: the mask travels with them; v2.3.2190: so
+     does the cape.  v2.3.3381: a silhouette clipping through the stencil
+     travels in its box (hairClip.js) -- moved alone, it would leave the hair
+     clipped to an empty box and be drawn as a white hat. */
+  _seatStandInTraits(layer) {
+    if (!layer) return;
+    for (const k of _STAND_IN_TRAIT_KEYS) {
+      const t = this.skillTraits && clipBoxOrSelf(this.skillTraits[k]);
+      if (t && !t.destroyed && t.parent !== layer) layer.addChild(t);
+    }
+  }
   _placeSkillTraitsOn(skillKey, sp, fi, dir, mirror, belowSprite) {
     /* v2.3.1713: follow the figure that owns the traits this frame into ITS
        layer.  The gathering figures moved up to gestureFront (above trees);
@@ -5028,11 +5053,7 @@ export class EffectsRenderer {
        ('sword*', 'bow*') is combat.  addChild is a no-op when already
        parented there, so this costs nothing on the steady state. */
     const _gathering = _isGatheringStandIn(skillKey);
-    const _want = _gathering ? this.gestureLayer : this.nodeLayer;
-    for (const k of _STAND_IN_TRAIT_KEYS) { /* v2.3.1776: the mask travels with them; v2.3.2190: so does the cape */
-      const t = this.skillTraits && this.skillTraits[k];
-      if (t && !t.destroyed && t.parent !== _want) _want.addChild(t);
-    }
+    this._seatStandInTraits(_gathering ? this.gestureLayer : this.nodeLayer);
     const data = this._skillCrowns && this._skillCrowns[skillKey];
     if (!data || !data.crowns.length) { hideSkillTraits(this.skillTraits); return; }
     const cr = data.crowns[Math.min(fi, data.crowns.length - 1)];
@@ -13696,7 +13717,10 @@ export class EffectsRenderer {
       set.jogLegs.visible = set.jogLegsGear.visible = false;
       hideSkillTraits(set.traits);
       if (!others[id]) {
-        for (const s of [set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.species, set.traits.eyestyle, set.traits.eyewear, set.traits.hat]) {   /* v2.3.2361; v2.3.2643: + eyestyle; v2.3.2682: + species */
+        /* v2.3.3381: EVERY trait, the cape's halves and both hair silhouettes
+           too (each a hidden sprite left in the layer per peer who swung and
+           left; a silhouette's stencil box goes with it, hairClip.js) */
+        for (const s of [set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, ...Object.values(set.traits)]) {   /* v2.3.2361; v2.3.2643: + eyestyle; v2.3.2682: + species */
           try { s.destroy(); } catch (e) {}
         }
         this._remoteSwordSprites.delete(id);
@@ -13916,7 +13940,8 @@ export class EffectsRenderer {
       set.shieldLo.visible = set.offLo.visible = set.offHi.visible = set.shieldHi.visible = false;   /* v2.3.2920 */
       hideSkillTraits(set.traits);
       if (!others[id]) {
-        for (const s of [set.shieldLo, set.offLo, set.offHi, set.shieldHi, set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.species, set.traits.eyestyle, set.traits.eyewear, set.traits.hat]) {   /* v2.3.2361; v2.3.2643: + eyestyle; v2.3.2682: + species */
+        /* v2.3.3381: every trait (the sword set's note) */
+        for (const s of [set.shieldLo, set.offLo, set.offHi, set.shieldHi, set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, ...Object.values(set.traits)]) {   /* v2.3.2361; v2.3.2643: + eyestyle; v2.3.2682: + species */
           try { s.destroy(); } catch (e) {}
         }
         this._remoteBowSprites.delete(id);
