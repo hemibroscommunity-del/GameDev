@@ -118,7 +118,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (!exit) { await P.ctx.close().catch(() => {}); return; }
 
   const ex = exit.tx * TILE + TILE / 2, ey = exit.ty * TILE + TILE / 2;
-  /* v2.3.3342: 3.5 tiles above the exit, as y 1440 was over the (25,48) exit
+  /* v2.3.3351: 3.5 tiles above the exit, as y 1440 was over the (25,48) exit
      it was written for.  The town grew 52x55 -> 68x72 tiles in v2.3.2628 and
      the exit went to (33,63), y 2032, so a fixed 1440 asked about a spot
      eighteen tiles up in the middle of town (the sweep of 2026-10-18). */
@@ -216,7 +216,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the route has to detour round would show as a leg that stops making
      progress, so the "no progress" bail is part of the assertion, not
      housekeeping. */
-  /* v2.3.3342: ...and after a press that went nowhere, the OTHER axis, as a
+  /* v2.3.3351: ...and after a press that went nowhere, the OTHER axis, as a
      thumb slides along a wall.  The greedy axis alone stopped the bro at
      (1131, 1971), 60 px east of the stairs and 60 px north of them (68x72-tile
      town, exit (33,63)), against something solid to the south -- and, the

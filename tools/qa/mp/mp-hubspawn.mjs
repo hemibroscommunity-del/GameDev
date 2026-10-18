@@ -213,7 +213,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* THE WALL ACTUALLY STOPS YOU. Walk due north from the arrival: the ring's
      northern stones are the only thing between the player and the open map,
      so a wall that works holds them south of it.
-     v2.3.3342: ...that was the arrival INSIDE the ring (v2.3.2075).  Since
+     v2.3.3351: ...that was the arrival INSIDE the ring (v2.3.2075).  Since
      v2.3.2094 (the owner: "spawn the character outside the city walls when he
      exits the town") you land outside, six tiles due south of the gate and the
      town trail-head (effects.js WORLDVIEW_ARRIVAL), so due north is the way
@@ -251,7 +251,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(2600);
   await P.page.keyboard.up('w');
   await P.page.waitForTimeout(300);
-  /* v2.3.3342: read with the zone and off the grid's edge answered, never
+  /* v2.3.3351: read with the zone and off the grid's edge answered, never
      thrown: in the sweep of 2026-10-18 this read `grid[row][132]` with no row
      ("Cannot read properties of undefined (reading '132')") and took the whole
      scenario down with it, so nothing said where the walk had ended. */
@@ -306,7 +306,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     const grid = S._tiledWalkable.worldview;
     const gh = grid.length, gw = grid[0].length, Z = 48 * 32;
-    const row = grid[Math.floor(S.player.y * gh / Z)];   /* v2.3.3342: as `after` above */
+    const row = grid[Math.floor(S.player.y * gh / Z)];   /* v2.3.3351: as `after` above */
     return { x: Math.round(S.player.x), y: Math.round(S.player.y), zone: S.currentZone,
       stillInWall: row ? !row[Math.floor(S.player.x * gw / Z)] : null };
   });

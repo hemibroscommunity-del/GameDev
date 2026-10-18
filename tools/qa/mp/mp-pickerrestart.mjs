@@ -64,7 +64,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.click('[data-tut="char-menu-restart"]');
   await P.page.waitForTimeout(400);
   await P.page.fill('[data-tut="char-confirm-input"]', 'yes');
-  /* v2.3.3342: the worker's answer is read, and "too many tries" is waited
+  /* v2.3.3351: the worker's answer is read, and "too many tries" is waited
      out once.  The Login Key check and this restart share 20 a minute per
      address (server account.js ACCOUNT.IP_MAX_ATTEMPTS); locally every page
      is 'unknown' and one worker serves the whole run, and mp-roster, just

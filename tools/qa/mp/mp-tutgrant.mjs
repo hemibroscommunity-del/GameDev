@@ -53,7 +53,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      on a character the server considers level 1 in all three.  Asserting the
      coexistence (rather than just "prog3 is 1") is what keeps a future
      "simplification" from deleting the prog3 read and looking fine. */
-  /* v2.3.3342: ...read as its readers read it, a weapon with no entry being
+  /* v2.3.3351: ...read as its readers read it, a weapon with no entry being
      level 0 (XpFlyOverlay.jsx, gameSystems.js).  Since v2.3.3138 a first join
      carries no `rpg*` claims (join.js `_withoutRpgClaims`), so the worker's
      sanitizer gets nothing and the track comes back `{}` -- present, every

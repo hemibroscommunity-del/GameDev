@@ -51,7 +51,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      badge being absent are two different claims: the badge has its own
      fallback (v2.3.1687, "show it on all three when the stamp is missing")
      that could light up on its own. */
-  /* v2.3.3342: the dashboard opened first.  A first join arrives with it
+  /* v2.3.3351: the dashboard opened first.  A first join arrives with it
      folded (v2.3.2495), and a folded band draws no columns, so no card was
      on screen to read (the sweep of 2026-10-18: `cards []`). */
   await H.unfoldBand(P);

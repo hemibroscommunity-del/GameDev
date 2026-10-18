@@ -174,7 +174,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       pill.pillVisible === true && pill.pillBottom > pill.pillTop, pill);
     rec.ok('...and the character has real bounds behind it (guard)',
       pill.bodyBottom > pill.bodyTop, pill);
-    /* v2.3.3342: OVER THE HEAD, ON THE HP BAR'S OWN LINE.  The 3-10px drop
+    /* v2.3.3351: OVER THE HEAD, ON THE HP BAR'S OWN LINE.  The 3-10px drop
        below the feet (v2.3.1765: 30 overlapped them, 33-40 asked) is retired
        since v2.3.2571, when the plate moved to where the bar sits and the two
        swap in one spot ("THE PLATE SITS WHERE THE BAR SITS", entityRenderer:
