@@ -195,7 +195,7 @@ const ARRIVAL = { x: 21504, y: 21792 };
     JSON.stringify(got2) === JSON.stringify([1, 1, 1, 0, 1]), got2);
 }
 
-/* ── 5. v2.3.3363: the moment moves ── */
+/* ── 5. v2.3.3362: the moment moves ── */
 {
   const { EMOTE_ONCE_IDS, EMOTE_HOLD_IDS } = await import('../../src/game/emoteMoves.js');
   /* POSE: imported at the top */
@@ -222,7 +222,7 @@ const ARRIVAL = { x: 21504, y: 21792 };
   check('5g state_sync advertises caps.emotemoves', !!(sync && sync.caps && sync.caps.emotemoves === true), sync && sync.caps && sync.caps.emotemoves);
 }
 
-/* ── 6. v2.3.3363: a held pose is state on the player ── */
+/* ── 6. v2.3.3362: a held pose is state on the player ── */
 {
   const { room, tickFn } = await makeRoom();
   const A = await join(room, 'bp_em_po_a');   /* the sitter */
@@ -321,7 +321,7 @@ const ARRIVAL = { x: 21504, y: 21792 };
   check('6m a zone change ends it', room.playerState[A.id].po == null, room.playerState[A.id].po);
 }
 
-/* ── 7. v2.3.3363: the moves' math (src/game/emoteMoves.js, no imports) ── */
+/* ── 7. v2.3.3362: the moves' math (src/game/emoteMoves.js, no imports) ── */
 {
   const M = await import('../../src/game/emoteMoves.js');
   const fin = (f) => !!f && ['hop', 'dx', 'rot', 'kx', 'ky'].every((k) => Number.isFinite(f[k]));

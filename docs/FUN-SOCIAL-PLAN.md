@@ -114,7 +114,7 @@ And BroTown's own, which the plan did not know:
 Built so far:
 
 - [x] The motion code and all twelve moves, held poses kept by the worker
-  (`po` on the tick), the Moves tab and `/wave`-style commands: v2.3.3363,
+  (`po` on the tick), the Moves tab and `/wave`-style commands: v2.3.3362,
   docs/specs/emote-moves.md. The emote wheel became a Moves tab of all twelve
   (no slots to choose yet); the extras are the move's own emoji popped over
   the head, no new sounds.

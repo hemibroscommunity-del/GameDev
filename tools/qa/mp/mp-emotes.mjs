@@ -80,7 +80,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const t1 = await fingerTap(A, '[data-chat-emotes]');
   rec.ok('...a real finger can reach it', !t1.err, t1);
   await A.page.waitForTimeout(500);
-  /* v2.3.3363: the picker opens on its Moves tab (mp-emotemoves) against a
+  /* v2.3.3362: the picker opens on its Moves tab (mp-emotemoves) against a
      worker with caps.emotemoves; the emoji and lines are the second tab, and
      the phone remembers it, so the later opens below land on it too */
   if (await A.page.evaluate(() => !!document.querySelector('[data-emote-tab="emoji"]'))) {

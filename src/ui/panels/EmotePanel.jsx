@@ -1,6 +1,6 @@
 import React from 'react';
 import { EMOTES, TEXT_EMOTES } from '@/data/index.js';
-import { EMOTE_MOVES, EMOTE_MOVE_IDS } from '@/game/emoteMoves.js';   /* v2.3.3363 */
+import { EMOTE_MOVES, EMOTE_MOVE_IDS } from '@/game/emoteMoves.js';   /* v2.3.3362 */
 
 /* === EmotePanel — the showEmotes quick-picker === */
 /* v2.3.886: extracted verbatim from the showEmotes JSX subtree in
@@ -23,7 +23,7 @@ import { EMOTE_MOVES, EMOTE_MOVE_IDS } from '@/game/emoteMoves.js';   /* v2.3.33
      area closes it (the chat box's own dismiss layer, `data-emote-dismiss`).
    - 6 emoji to a row at 44 px, the touch floor; the quick lines under them.
    props: sendEmote(emoji), onClose(). */
-/* ═══ v2.3.3363: AND YOUR BRO MOVES (game/emoteMoves.js) ═══
+/* ═══ v2.3.3362: AND YOUR BRO MOVES (game/emoteMoves.js) ═══
    A MOVES tab first: six moments (wave, laugh, flex, shrug, facepalm, cheer)
    and six held until you move (sit, sleep, flop, three dances), each a tile
    with its picture and its name -- the whole bro moves in code
