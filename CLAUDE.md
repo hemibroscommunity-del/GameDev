@@ -567,6 +567,19 @@ remnant to migrate server-side, not a mode to preserve.
       cost, ~5x steadier; a full-resolution pass would be ~32 MB of graphics
       memory (TRAPS §141); `?shadowlock=0` is the layer as it was;
       `mp-shadowlock`.
+    - since v2.3.3338 THE SHADOWS ARE DRAWN UNSNAPPED, AT HIGHP -- the owner,
+      again: "prop shadows right now still flicker as you run around": inside
+      the shadow filter Pixi's roundPixels snapped every corner to a grid 0.77
+      x 0.83 of a texel (it rounds by the pooled power-of-two texture's size,
+      not the frame drawn into), so every whole-pixel crossing of the camera
+      re-snapped each shadow differently; and on an iPhone the filter read its
+      picture at mediump, a half float, so the lock's slide moved in quarter-
+      to half-texel steps. The pieces are drawn unsnapped (`installNoSnap`,
+      `_btNoSnap`; the batcher hook clears roundPixels after sharpPixels' and
+      the palette's) and the filter is `highp`; `?shadowsnap=1` /
+      `?shadowhp=0` put each back, `window.__btShadowSnap()`; mp-shadowlock
+      now steps a whole CSS px across and down: 110x and 6x steadier (TRAPS
+      §205).
   - Since v2.3.3001 HITS SOUND LIKE THEIR MATERIAL -- the owner: "modify hit
     sound effects based on material type so hitting wood vs plants etc for
     props and also against monsters (arrow, melee, magic hit sound for

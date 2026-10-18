@@ -17,7 +17,9 @@
  * SO EVERY ACCEPT AND EVERY TURN-IN HERE IS A REAL TAP on the real dialogue,
  * opened by walking up to him. The XP-skill chooser is a real tap too — the
  * worker refuses an XP-paying turn-in that does not name a skill (v2.3.1669),
- * so it is part of the flow, not decoration.
+ * so it is part of the flow, not decoration.  (v2.3.3335: the first quest
+ * pays no XP, so it has no chooser and no claim panel -- his last line's
+ * "Claim reward" pays it, the auto reward.)
  *
  * WHAT IS SEEDED, AND WHY — stated plainly rather than buried:
  *   • OBJECTIVE ITEMS are granted through the operator endpoint. Killing four
@@ -40,6 +42,9 @@
  * looking verified (see mp-townlock).
  */
 import * as H from './harness.mjs';
+/* v2.3.3335: which steps pay XP (and so put the skill chooser on the claim
+   panel) is the worker's own table's to say, not this file's */
+import { QUEST_REWARDS } from '../../../server/src/data.js';
 
 /* The four-step tutorial arc and the two-step life-skill chain, in the order
    Mayor Bro offers them.  `objective` is what the worker demands before it
@@ -385,33 +390,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── TURN IN, through the dialogue — the only door left ── */
     rec.ok(`${step.id}: walking back up opens the dialogue again`, await approach());
-    const landedBack = await H.advanceNpcDialogue(P);
-    rec.ok(`${step.id}: ...and his lines lead to the claim panel`,
-      landedBack === 'offer', { landedBack });
-    const ready = await cardText();
-    rec.ok(`${step.id}: ...which carries the turn-in`,
-      /Claim Reward|Choose a skill/i.test(ready), ready.slice(0, 200));
-    /* The worker refuses an XP-paying turn-in with no named skill
-       (v2.3.1669), so pick one when the chooser is on the card.
-       v2.3.1827: scoped to the panel and ASSERTED.  The old call was a
-       page-wide text search swallowed by `.catch(() => {})` — "Melee" also
-       matches the dashboard behind the scrim, so on a miss the confirm
-       stayed aria-disabled and the failure surfaced one assertion later as
-       "the turn-in button could be clicked: false", which reads like a
-       broken button rather than an unchosen skill. */
-    if (/Choose/i.test(ready)) {
-      const picked = await H.chooseQuestSkill(P, 'Melee');
-      rec.ok(`${step.id}: the XP skill could be chosen`, picked);
-      rec.ok(`${step.id}: ...which un-blocks the claim`, !(await H.questOfferBlocked(P)));
+    if (!(QUEST_REWARDS[step.id].xp > 0)) {
+      /* v2.3.3335: a quest that pays no XP has nothing to choose (tut_1 --
+         the owner: "Makes no sense to have to choose xp in something you've
+         never used yet"), so it is the AUTO REWARD: his last line's "Claim
+         reward" pays at once and he goes straight on to his next quest, with
+         no claim panel and no skill chooser.  A real tap, as the panel's is. */
+      const _tapped = await H.claimOnLastLine(P);
+      rec.ok(`${step.id}: nothing to choose, so his last line's "Claim reward" pays it at once`, _tapped);
+      const _noPanel = await P.page.evaluate(() => !document.querySelector('.bt-quest-turnin, [data-xp-skill]'));
+      rec.ok(`${step.id}: ...with no claim window and no skill to choose`, _noPanel,
+        await cardText().then((t) => t.slice(0, 200)));
+    } else {
+      const landedBack = await H.advanceNpcDialogue(P);
+      rec.ok(`${step.id}: ...and his lines lead to the claim panel`,
+        landedBack === 'offer', { landedBack });
+      const ready = await cardText();
+      rec.ok(`${step.id}: ...which carries the turn-in`,
+        /Claim Reward|Choose a skill/i.test(ready), ready.slice(0, 200));
+      /* The worker refuses an XP-paying turn-in with no named skill
+         (v2.3.1669), so pick one when the chooser is on the card.
+         v2.3.1827: scoped to the panel and ASSERTED.  The old call was a
+         page-wide text search swallowed by `.catch(() => {})` — "Melee" also
+         matches the dashboard behind the scrim, so on a miss the confirm
+         stayed aria-disabled and the failure surfaced one assertion later as
+         "the turn-in button could be clicked: false", which reads like a
+         broken button rather than an unchosen skill. */
+      if (/Choose/i.test(ready)) {
+        const picked = await H.chooseQuestSkill(P, 'Melee');
+        rec.ok(`${step.id}: the XP skill could be chosen`, picked);
+        rec.ok(`${step.id}: ...which un-blocks the claim`, !(await H.questOfferBlocked(P)));
+      }
+      /* v2.3.1765: by CLASS, not by caption.  This click used to look for the
+         words "Turn In" and swallow a miss — so when v2.3.1764 reworded the
+         button to "Redeem Reward" the hand-in silently stopped happening and
+         this scenario reported it eight assertions later as the WORKER failing
+         to mark the quest turned in.  The miss is no longer swallowed either:
+         a turn-in that cannot be clicked must fail HERE, where it happened. */
+      const _turned = await H.clickSel(P, 'button.bt-quest-turnin').then(() => true).catch(() => false);
+      rec.ok(`${step.id}: the turn-in button could be clicked`, _turned);
     }
-    /* v2.3.1765: by CLASS, not by caption.  This click used to look for the
-       words "Turn In" and swallow a miss — so when v2.3.1764 reworded the
-       button to "Redeem Reward" the hand-in silently stopped happening and
-       this scenario reported it eight assertions later as the WORKER failing
-       to mark the quest turned in.  The miss is no longer swallowed either:
-       a turn-in that cannot be clicked must fail HERE, where it happened. */
-    const _turned = await H.clickSel(P, 'button.bt-quest-turnin').then(() => true).catch(() => false);
-    rec.ok(`${step.id}: the turn-in button could be clicked`, _turned);
     await P.page.waitForTimeout(2200);
 
     const done = await srv();
