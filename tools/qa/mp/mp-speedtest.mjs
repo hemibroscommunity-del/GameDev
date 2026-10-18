@@ -141,7 +141,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const rows = (result && result.rows) || [];
     console.log('    RESULT ' + JSON.stringify(rows.map((r) => ({ k: r.k, fps: +r.fps.toFixed(1), p95: +r.p95.toFixed(0), work: r.work && +r.work.toFixed(1), passes: +r.passes.toFixed(2), draws: +r.draws.toFixed(0), cw: r.cw, res: r.res, frames: r.frames }))));
     const keys = rows.map((r) => r.k);
-    /* v2.3.3376: + the sprites drawn by three programs, the old way
+    /* v2.3.3382: + the sprites drawn by three programs, the old way
        (paletteTex.js) -- only where the one program draws: never on this
        box's software renderer, which keeps the three (TRAPS §222) */
     const oneOn = await P.page.evaluate(() => !!(window.__btOneBatch && window.__btOneBatch().on)).catch(() => null);

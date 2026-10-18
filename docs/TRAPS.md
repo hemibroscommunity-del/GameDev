@@ -7236,7 +7236,7 @@ the record and puts out a join whose key or device it no longer lets in.
 **Receipt:** login-keys §12 (21 checks): a gate where each change waits, the
 owner's tool run in the gap; nine fail on v2.3.3355's code.
 
-## 222. "This box says the one program halves the frame rate: take it out" (v2.3.3376)
+## 222. "This box says the one program halves the frame rate: take it out" (v2.3.3382)
 
 **Tempting:** paletteTex.js's ONE_BATCHER draws every sprite with one program
 holding three reads, and on the QA phone the page drew 4.1 frames a second

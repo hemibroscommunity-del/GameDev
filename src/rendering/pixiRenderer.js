@@ -17,7 +17,7 @@ import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, signs swing, flags wave */
 import { SwimFx } from './swimFx.js';                 /* v2.3.3003: a swimmer is a head in the water */
 import { setWheelWaterRenderer } from './wheelWater.js'; /* v2.3.3019: the Wheel's water moves */
-import { setPaletteRenderer, setOneBatchRenderer } from './paletteTex.js';      /* v2.3.3190: pictures as colour numbers; v2.3.3376: one program for every sprite */
+import { setPaletteRenderer, setOneBatchRenderer } from './paletteTex.js';      /* v2.3.3190: pictures as colour numbers; v2.3.3382: one program for every sprite */
 import { JumpFx } from './jumpFx.js';                 /* v2.3.3017: a jumper is drawn in the air */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { setFighterEffects } from './fighterCapture.js';   /* v2.3.2986; v2.3.2987 + the player renderer */
@@ -222,7 +222,7 @@ export async function initPixiRenderer(canvas) {
      a pixel, coloured on the GPU -- its programs built here, behind the
      loading screen (rendering/paletteTex.js) */
   try { setPaletteRenderer(app.renderer); } catch (e) { /* colours, as before */ }
-  /* v2.3.3376: one drawing program for every sprite, built here after the
+  /* v2.3.3382: one drawing program for every sprite, built here after the
      palette's (whose own prewarm must reach the palette program); the three
      programs, as before, if it does not link (rendering/paletteTex.js) */
   try { setOneBatchRenderer(app.renderer); } catch (e) { /* the three programs */ }
