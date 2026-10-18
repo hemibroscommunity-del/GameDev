@@ -7675,3 +7675,31 @@ player opens it: on main 362 of the page's 423 elements were `auto` and 61 of
 the window's 91 could be double-tapped into a zoom; with the rule, 0 and 0,
 the canvas, html and body still `none`, the window's +, - and x still
 `manipulation`, the stepper stepping 1 -> 3 -> 2.
+
+## 231. "It is position:fixed, so its left and top are the window's" (v2.3.3465)
+
+On a phone they are: the game fills the window. On a computer the game is
+`#root`, a column in the middle of the window, and `#root` has
+`contain: paint` (game.css, v2.3.1768) -- which makes it the containing block
+of every `position: fixed` element inside it. So inside the game, a fixed
+element's `left: 0; top: 0` is the COLUMN's corner, while one appended to
+`document.body` still measures from the window's. Both kinds were placed with
+window points (`getBoundingClientRect`, `innerWidth`), or with canvas points and
+no canvas offset, and each was right on a phone and wrong on a computer: the
+harvest's prize rose in the black margin and flew to 46 px from the window's
+left (body-level, canvas offset missing), and the XP label (inside #root) was
+drawn the column's left edge too far right, where the paint box cut it off.
+The owner: "the jump to bag also flies off screen (to far left where black
+area is not where bag area is)".
+
+**The rule:** work out which corner a fixed element measures from before
+placing it. Inside `#root`, subtract `#root`'s (or the fixed parent's)
+`getBoundingClientRect()`; on `document.body`, add the canvas's own. A point on
+the canvas is the canvas's rect plus the world-to-screen sum -- never the sum
+alone (§210 is the same mistake in the harvest's gesture). Test it on a
+computer-sized window, where the column does not start at 0.
+
+**Receipt:** mp-deskclick at 1280 x 800 (the column at x 422 to 858): the ore's
+flight from the vein inside the column to the dashboard's Bag panel, and the XP
+label inside the column at every sample; on a phone (390 x 844) the flight
+starts on the vein and lands on the bag as before.

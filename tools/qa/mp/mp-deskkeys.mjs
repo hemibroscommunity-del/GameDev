@@ -86,6 +86,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok('the keys strip lists 1-3, and lies clear of the bell', strip.keys.includes('1-3') && !strip.overlap, strip);
 
+    /* ── 1b. v2.3.3465: THE ⌨ STAYS BESIDE THE OPEN STRIP ──
+       The owner: "once the computer controls are open it's hidden behind the
+       shortcut keys the menu shows. Move it over so you can still see where to
+       click it to hide it again".  On main the strip REPLACED the ⌨ in its
+       corner.  Now: the ⌨ is there while the strip is open, clear of the
+       strip and the bell, inside the game's column, the thing a click at its
+       middle reaches; one click hides the strip, one more brings it back. */
+    const kbState = () => P.page.evaluate(() => {
+      const chip = document.querySelector('.bt-kb-chip'), s = document.querySelector('.bt-kb-hints');
+      const bell = document.querySelector('[data-world-chat-toggle]'), root = document.getElementById('root');
+      const R = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 ? { l: r.left, r: r.right, t: r.top, b: r.bottom } : null; };
+      const c = R(chip), st = R(s && getComputedStyle(s).display !== 'none' ? s : null), b = R(bell), col = R(root);
+      const ov = (a, z) => !!(a && z && a.l < z.r && a.r > z.l && a.t < z.b && a.b > z.t);
+      let onTop = false;
+      if (c) { const at = document.elementFromPoint((c.l + c.r) / 2, (c.t + c.b) / 2); onTop = !!(at && (at === chip || chip.contains(at))); }
+      return { chip: c, strip: !!st, open: chip ? chip.getAttribute('data-open') : null, onStrip: ov(c, st), onBell: ov(c, b), onTop,
+        inCol: !!(c && col && c.l >= col.l && c.r <= col.r), stripInCol: !st || !!(col && st.l >= col.l - 0.5 && st.r <= col.r + 0.5),
+        at: c ? [Math.round((c.l + c.r) / 2), Math.round((c.t + c.b) / 2)] : null };
+    });
+    const kb1 = await kbState();
+    rec.ok('the ⌨ is still on screen beside the open strip: lit, clear of the strip and the bell, inside the game\'s column, and what a click there reaches',
+      kb1.strip && !!kb1.chip && kb1.open === '1' && !kb1.onStrip && !kb1.onBell && kb1.inCol && kb1.stripInCol && kb1.onTop, kb1);
+    if (kb1.at) await P.page.mouse.click(kb1.at[0], kb1.at[1]);
+    await P.page.waitForTimeout(400);
+    const kb2 = await kbState();
+    if (kb2.at) await P.page.mouse.click(kb2.at[0], kb2.at[1]);
+    await P.page.waitForTimeout(400);
+    const kb3 = await kbState();
+    rec.ok('...one click on it hides the strip (the ⌨ stays, unlit), one more brings the strip back',
+      !kb2.strip && !!kb2.chip && kb2.open === '0' && kb3.strip && kb3.open === '1', { kb2, kb3 });
+
     /* ── 2. EACH KEY ITS PAGE, AND AGAIN TO CLOSE IT ── */
     for (const [id, k] of [['quests', 'J'], ['hero', 'P'], ['skills', 'L'], ['encyclopedia', 'K'], ['more', 'O']]) {
       await key(P, 'Key' + k);

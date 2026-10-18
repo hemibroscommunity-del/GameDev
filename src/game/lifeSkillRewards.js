@@ -31,6 +31,44 @@ import { cue } from '@/game/eventSounds.js';   /* v2.3.3434: the prize heard lan
    resume spinner) so it floats above the canvas/HUD and animates on the
    compositor; world->screen is node minus camera (world canvas pinned
    top-left, 1:1 CSS px).  No-ops outside the browser. */
+/* v2.3.3465: the game canvas's place on the page (the window's top-left
+   corner on a phone, the middle column on a computer) -- {left, top} */
+export function canvasPageRect() {
+  try {
+    var cv = typeof document !== 'undefined' && document.querySelector('canvas.brotown-canvas');
+    if (cv) {
+      var r = cv.getBoundingClientRect();
+      return { left: r.left, top: r.top, width: r.width, height: r.height };
+    }
+  } catch (e) { /* the window's corner */ }
+  return { left: 0, top: 0, width: 0, height: 0 };
+}
+
+/* ═══ v2.3.3465: WHERE THE BAG IS ON THE SCREEN ═══
+   The dashboard's Bag panel when its row is up; folded (or a page open over
+   it), the band's OPEN / CLOSE pill, which is the way back to the bag; else
+   the bottom-left of the game's column, where the pill sits.  Only what is
+   really on the screen counts -- a panel rendered nowhere has no rect.
+   {x, y, kind: 'bag' | 'fold' | 'column'}. */
+export function bagFlightTarget(cvR) {
+  var c = cvR || canvasPageRect();
+  var H = (typeof window !== 'undefined' && window.innerHeight) || 0, W = (typeof window !== 'undefined' && window.innerWidth) || 0;
+  var shown = function (sel) {
+    try {
+      var el = document.querySelector(sel);
+      if (!el) return null;
+      var r = el.getBoundingClientRect();
+      if (!(r.width > 1 && r.height > 1) || r.bottom <= 0 || r.top >= H || r.right <= 0 || r.left >= W) return null;
+      return r;
+    } catch (e) { return null; }
+  };
+  var r = shown('[aria-label="Bag"]');
+  if (r) return { x: r.left + r.width / 2, y: r.top + r.height / 2, kind: 'bag' };
+  r = shown('[data-dash-fold]');
+  if (r) return { x: r.left + r.width / 2, y: r.top + r.height / 2, kind: 'fold' };
+  return { x: c.left + 46, y: H - 54, kind: 'column' };
+}
+
 /* v2.3.3136: exported for the farm's harvest -- the crop's own picture pops
    out of its bed and flies to the bag (game/farmFeedback.js) */
 export function _flyResourceToInventory(S, wx, wy, iconUrl, opts) {
@@ -42,7 +80,21 @@ export function _flyResourceToInventory(S, wx, wy, iconUrl, opts) {
        the node-prompt anchor uses, so the icon launches ON the node at
        every viewport size. */
     var _scX = (S && S._worldScaleX) || 1, _scY = (S && S._worldScaleY) || 1;
-    var sx = (wx - cam.x) * _scX, sy = (wy - cam.y) * _scY;
+    /* ═══ v2.3.3465: FROM WHERE THE GAME IS DRAWN, TO WHERE THE BAG IS ═══
+       The owner, on a computer: "the jump to bag also flies off screen (to
+       far left where black area is not where bag area is)".  This icon lives
+       on the body (position:fixed, the WINDOW's corner), and both of its ends
+       were worked out as if the game began there: the start was the node's
+       place on the canvas with no canvas offset, and the bag was a toolbar
+       button that has not existed since v2.3.1654, so every flight ended at
+       the fallback, 46 px from the window's left.  On a phone the canvas IS
+       the window and both happened to be right; on a computer the game is a
+       column in the middle (x 422..858 on a 1280 x 800 window), and the icon
+       rose in the black margin and flew to it.  Now the start adds the
+       canvas's own place on the page (TRAPS §210, the harvest gesture's same
+       mistake) and the end is the bag as the page draws it (bagFlightTarget). */
+    var _cvR = canvasPageRect();
+    var sx = _cvR.left + (wx - cam.x) * _scX, sy = _cvR.top + (wy - cam.y) * _scY;
     var img = document.createElement('img');
     img.src = iconUrl;
     img.alt = '';
@@ -54,19 +106,15 @@ export function _flyResourceToInventory(S, wx, wy, iconUrl, opts) {
     img.style.marginLeft = '-17px';  // centre the 34px icon on the point
     img.style.marginTop = '-17px';
     document.body.appendChild(img);
-    /* Target: the toolbar's Bag button — the item visibly flies "into
-       the bag".  v2.3.1290 (three-state nav): the resting band is
-       toolbar-only, so the button rect IS the bag's home; fall back to
-       just above the 72px bar if the toolbar isn't mounted. */
-    var tx = 46, ty = window.innerHeight - 72 + 18;
-    try {
-      var bagBtn = document.querySelector('.bt-dashboard-nav-button[aria-label="Bag"]');
-      if (bagBtn) {
-        var br = bagBtn.getBoundingClientRect();
-        tx = br.left + br.width / 2;
-        ty = br.top + br.height / 2;
-      }
-    } catch (e2) {}
+    /* Target: the bag, so the item visibly flies "into the bag" (v2.3.3465:
+       bagFlightTarget -- the toolbar's Bag button this read is long gone) */
+    var _bt = bagFlightTarget(_cvR);
+    var tx = _bt.x, ty = _bt.y;
+    if (typeof window !== 'undefined' && window.__btProbe) {
+      var _fl = window.__btBagFlights || (window.__btBagFlights = []);
+      _fl.push({ from: [Math.round(sx), Math.round(sy)], to: [Math.round(tx), Math.round(ty)], kind: _bt.kind, ts: Date.now() });
+      if (_fl.length > 12) _fl.shift();
+    }
     var _fly = function () {
       img.style.transition = 'transform .7s cubic-bezier(.45,.05,.3,1),opacity .7s ease-in';
       img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(0.55)';

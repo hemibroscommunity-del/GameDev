@@ -4581,6 +4581,21 @@ Two protocol versions coexist; both must keep working:
     (`_authPutOut`) and handed nothing. In the suite's room a Forget was
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
+- **ON A COMPUTER A CLICK ON SOMETHING YOU USE IS NOT A SWING, AND A FLIGHT
+  STARTS WHERE THE GAME IS (v2.3.3465, docs/specs/desktop-clicks.md, TRAPS
+  §231).** The owner: "I hear a bow shot every time I click on an ore to
+  harvest it", and the prize "flies off screen".
+  - The canvas's `onMouseDown` asks the click's own question first
+    (BroTown `_deskPressTarget`): a townsperson, a resource in reach you hold
+    the tool for, or a bed of your farm is the click's, and the press arms no
+    attack; a monster, another player or empty ground is still the attack. The
+    scans are shared (`monsterAtCss`, `_harvestNodeAtCss`, `_farmBedAtCss`,
+    `npcAtCss`): a new thing a click uses goes in `_deskPressTarget` too.
+  - Anything drawn `position: fixed` over the game works out its corner first:
+    inside `#root` (contain: paint on a computer) it is the column's.
+    `bagFlightTarget` is where the bag is on screen.
+  - The ⌨ stays beside the open keys strip, the switch both ways.
+  - `mp-deskclick`, `mp-deskkeys` 1b.
 - **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3407,
   docs/specs/desktop-keys.md, TRAPS §213).** The owner: "For computer usage
   if there's a key that makes sense to use for a certain action just put the

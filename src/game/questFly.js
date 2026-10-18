@@ -51,11 +51,18 @@ export function questFlyTarget(kind) {
   return null;
 }
 
+/* v2.3.3465: the corners of the GAME, not the window's -- on a computer the
+   game is the middle column (#root, game.css v2.3.1768) and the window's
+   corners are the black margins either side of it */
 function fallbackRect(kind) {
-  var w = window.innerWidth, hh = window.innerHeight;
+  var L = 0, T = 0, w = window.innerWidth, hh = window.innerHeight;
+  try {
+    var root = document.getElementById('root');
+    if (root) { var r = root.getBoundingClientRect(); if (r.width > 1 && r.height > 1) { L = r.left; T = r.top; w = r.width; hh = r.height; } }
+  } catch (e) { /* the window's corners */ }
   return kind === 'gold'
-    ? { left: w - 44, top: 10, width: 30, height: 26 }
-    : { left: 14, top: hh - 50, width: 40, height: 36 };
+    ? { left: L + w - 44, top: T + 10, width: 30, height: 26 }
+    : { left: L + 14, top: T + hh - 50, width: 40, height: 36 };
 }
 
 function pulse(el) {

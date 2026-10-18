@@ -4905,6 +4905,17 @@ body:has([data-trade-drawer]) [data-coach]{display:none}
   border-radius:4px;font-size:13px;color:rgba(255,255,255,.7);cursor:pointer;
   pointer-events:auto;opacity:.8;transition:opacity .3s}
 .bt-kb-chip:hover{opacity:1}
+/* ═══ v2.3.3465: THE ⌨ STAYS, AND THE OPEN STRIP STARTS BESIDE IT ═══
+   The owner: "once the computer controls are open it's hidden behind the
+   shortcut keys the menu shows. Move it over so you can still see where to
+   click it to hide it again" (KeyboardHintsPanel.jsx).  The ⌨ keeps its
+   corner (left 52, right of the bell) and is drawn over the strip; the
+   strip starts 48 px on (the chip's 44 + a 4 px gap) and never runs past
+   the game's column (100% is the column on a computer: #root's contain:paint).
+   Lit while the strip is open, so it reads as the switch it is. */
+.bt-kb-chip{z-index:21}
+.bt-kb-chip[data-open="1"]{opacity:1;color:#F5E6C8;border-color:rgba(216,168,95,.65)}
+.bt-kb-hints[data-beside]{left:100px;max-width:min(310px,calc(100% - 112px))}
 .bt-kb-key{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;background:rgba(0,0,0,.6);
   /* v2.3.1239: owner feedback — 10px font floor (was 9px); desktop-only kb hint */
   border:1px solid rgba(255,255,255,.15);border-radius:4px;font-size:11px;font-weight:700;color:rgba(255,255,255,.7);
@@ -5938,6 +5949,11 @@ html[data-orient="landscape"] .bt-zone-header{
 html[data-orient="landscape"] .bt-kb-hints,
 html[data-orient="landscape"] .bt-kb-chip{
   left:calc(12px + var(--world-pad-l,0px));
+}
+/* v2.3.3465: ...the open strip beside the ⌨ there too (both at the same
+   edge: .bt-kb-hints[data-beside]) */
+html[data-orient="landscape"] .bt-kb-hints[data-beside]{
+  left:calc(60px + var(--world-pad-l,0px));
 }
 /* The fold chip hides sideways: the landscape band already IS the fold
    (bandFootprint returns the identity row unconditionally), so the toggle
