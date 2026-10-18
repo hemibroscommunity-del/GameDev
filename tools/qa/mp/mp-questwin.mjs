@@ -12,16 +12,20 @@
  *   2. accepting raises QUEST ACCEPTED! on the thin glowing banner, OUT of
  *      .brotown-wrap (a sibling of the window's scrim, so its z-index means
  *      what it says);
- *   3. the CLAIM window (only because there is a choice: where the XP goes):
- *      QUEST COMPLETE, +25 Gold / +15 XP with the HUD's pictures, the bow and
- *      the staff in their slots, the three skill chips, the claim GREY until a
- *      chip is chosen and gold after, the chosen chip in the gold ring;
- *   4. a tap on the claim turns the window into the CONFIRMATION -- "Rewards
- *      claimed!", the slots glowing, "+15 XP to Bow" -- with QUEST COMPLETE!
- *      at the top of the screen and not over the window, the coins flying to
- *      the purse and the items to the bag, and after it his next quest;
- *   5. the worker paid it (the bow XP named, the gold);
- *   6. the auto reward's banner (nothing to choose) wears the laurel check;
+ *   3. (v2.3.3326) the first quest pays no XP, so its claim is the AUTO
+ *      REWARD -- his last line's "Claim reward" pays it, no claim window and
+ *      no skill chip at any moment, QUEST COMPLETE! on the banner with the
+ *      laurel check, the coins to the purse and the bow and staff to the bag,
+ *      the worker paying the gold and no XP;
+ *   4. the CLAIM window, on the second quest (only because there is a
+ *      choice: where its XP goes): QUEST COMPLETE, its gold and XP with the
+ *      HUD's pictures, the three skill chips, the claim GREY until a chip is
+ *      chosen and gold after, the chosen chip in the gold ring;
+ *   5. a tap on the claim turns the window into the CONFIRMATION -- "Rewards
+ *      claimed!", "+N XP to Bow" -- with QUEST COMPLETE! at the top of the
+ *      screen and not over the window, the coins flying to the purse, and
+ *      after it his next quest;
+ *   6. the worker paid it (the gold, the XP into Bow alone);
  *   7. sideways, the window fits a 390px-tall screen with its button on it.
  * Pictures of each step in tools/qa/mp/out/questwin-after-*.png (and, run
  * against an older build with QA_DIST, questwin-before-*.png).
@@ -237,23 +241,89 @@ async function body(P, wsPort, rec) {
   rec.ok('the WORKER has the quest active (guard)', !!srvA && (srvA._quests || {}).tut_1 === 'active', srvA && srvA._quests);
   await H.closeNpcDialogue(P).catch(() => {});
 
-  /* ── 3. the claim window ── */
+  /* ── 3. the first quest's claim: the AUTO REWARD ──
+     v2.3.3326 (owner, playtesting: "Makes no sense to have to choose xp in
+     something you've never used yet.  Just remove that little xp bonus"):
+     tut_1 pays no XP, so there is nothing to choose and no claim window --
+     his last line's "Claim reward" pays it at once, QUEST COMPLETE! on the
+     auto reward's banner with the laurel check, the coins and the bow and
+     staff flying from it to the HUD.  The claim window and its chips are
+     tested on tut_2 below, which still pays XP. */
+  const skOf = (r, k) => {
+    const s = r && r.prog3 && r.prog3.sk && r.prog3.sk[k];
+    return s ? (s.level || 0) * 1e6 + (s.xp || 0) : null;
+  };
+  const skAll = (r) => ['sword', 'bow', 'staff'].map((k) => skOf(r, k)).join(',');
   const before = await srv();
   await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: 4 });
   await P.page.waitForTimeout(1600);
   rec.ok('back at Mayor Bro with the remnants (guard)', await approach());
+  /* a claim window or a skill chip must never appear, not even for a frame */
+  await P.page.evaluate(() => {
+    window.__qwChoice = false;
+    const look = () => { if (document.querySelector('.bt-quest-turnin, [data-xp-skill]')) window.__qwChoice = true; };
+    window.__qwChoiceObs = new MutationObserver(look);
+    window.__qwChoiceObs.observe(document.body, { childList: true, subtree: true });
+    look();
+  });
+  const autoTap = await H.claimOnLastLine(P);
+  rec.ok('the first quest pays no XP (the worker\'s table), so his last line\'s "Claim reward" pays it at once',
+    TUT1.xp === 0 && autoTap, { xp: TUT1.xp, autoTap });
+  await P.page.waitForTimeout(450);
+  const autoLook = await P.page.evaluate(() => {
+    const b = document.querySelector('.bt-quest-banner[data-quest-banner="completed"] .bt-qw-banner');
+    const badge = b && b.querySelector('.bt-qw-banner-badge');
+    return { cls: b ? b.className : null, text: b ? (b.innerText || '').replace(/\s+/g, ' ').trim() : '',
+      badge: !!badge && badge.complete && badge.naturalWidth > 0 };
+  });
+  await shot('auto');
+  const bAuto = (await P.page.evaluate(() => window.__qw.slice())).find((b) => b.kind === 'completed');
+  console.log('    QUESTWIN auto banner: ' + JSON.stringify({ autoLook, bAuto }));
+  rec.ok('QUEST COMPLETE! rises on the auto reward\'s banner, the laurel check on its crest',
+    /QUEST COMPLETE/.test(autoLook.text) && /bt-qw-banner--auto/.test(autoLook.cls || '') && autoLook.badge, autoLook);
+  rec.ok('...out of .brotown-wrap', !!bAuto && bAuto.inWrap === false, bAuto);
+
+  /* the flights: coins to the purse, the bow and the staff to the bag */
+  await P.page.waitForTimeout(1200);
+  const F1 = await P.page.evaluate(() => (window.__btQuestFly ? JSON.parse(JSON.stringify(window.__btQuestFly)) : null));
+  console.log('    QUESTWIN auto flights: ' + JSON.stringify(F1));
+  rec.ok('the coins fly to the purse and the bow and staff to the bag (3 + 2 pictures), and all land',
+    !!F1 && F1.flown >= 5 && F1.landed === F1.flown
+      && F1.last.some((l) => l.kind === 'gold' && l.to === 'purse') && F1.last.filter((l) => l.kind === 'item').length >= 2, F1);
+  const paid1 = await srv();
+  rec.ok('the WORKER turned it in and paid the gold, and no XP to any skill',
+    !!paid1 && (paid1._quests || {}).tut_1 === 'turnedIn' && (paid1.coins || 0) - ((before && before.coins) || 0) === TUT1.gold
+      && skOf(paid1, 'sword') != null && skAll(paid1) === skAll(before),
+    paid1 && { q: paid1._quests, coins: paid1.coins, was: before && before.coins, sk: [skAll(before), skAll(paid1)] });
+  rec.ok('...and the bow and the staff are in the bag',
+    !!paid1 && ['bow', 'staff'].every((t) => (paid1.weaponStash || []).some((w) => w && w.type === t)),
+    paid1 && (paid1.weaponStash || []).map((w) => w && w.type));
+  rec.ok('...no claim window and no skill chip at any moment', !(await P.page.evaluate(() => window.__qwChoice)));
+  await P.page.evaluate(() => { if (window.__qwChoiceObs) window.__qwChoiceObs.disconnect(); });
+  const next1 = await P.page.evaluate(() => ({ dialogue: !!document.querySelector('.bt-npcdlg'), offer: !!document.querySelector('.bt-qoffer') }));
+  rec.ok('...and he goes straight on to his next quest', next1.dialogue || next1.offer, next1);
+
+  /* ── 4. the claim window: the next quest pays XP, so there is a choice ── */
+  const TUT2 = QUEST_REWARDS.tut_2;
+  const landed2 = await H.advanceNpcDialogue(P);
+  rec.ok('his next quest\'s NEW QUEST window (guard)', landed2 === 'offer', { landed2 });
+  rec.ok('...and a finger on its Accept Quest (guard)', await tap(P, '[data-tut="qoffer-confirm"]'));
+  await P.page.waitForTimeout(1800);
+  await H.closeNpcDialogue(P).catch(() => {});
+  const before2 = await srv();
+  rec.ok('the WORKER has the second quest active (guard)', !!before2 && (before2._quests || {}).tut_2 === 'active', before2 && before2._quests);
+  await H.grant(wsPort, myId, 'item', { invKey: 'slime-remnants', count: 6 });
+  await P.page.waitForTimeout(1600);
+  rec.ok('back at Mayor Bro with its remnants (guard)', await approach());
   const landedBack = await H.advanceNpcDialogue(P);
   rec.ok('...his lines lead to the CLAIM window, as there is a choice to make (guard)', landedBack === 'offer', { landedBack });
   await P.page.waitForTimeout(500);
   const C = await win(P);
   await shot('choose');
   console.log('    QUESTWIN choose: ' + JSON.stringify(C));
-  rec.ok('the claim window: QUEST COMPLETE / Cold Reception', !!C && /quest complete/i.test(C.kicker) && /Cold Reception/.test(C.title), C && { k: C.kicker, t: C.title });
-  rec.ok(`...paying +${TUT1.gold} Gold and +${TUT1.xp} XP, with the HUD's coin and XP pictures`,
-    !!C && C.gold.includes(`+${TUT1.gold} Gold`) && C.xp.includes(`+${TUT1.xp} XP`), C && { g: C.gold, x: C.xp });
-  const cFin = C && C.groups.find((g) => g.when === 'complete');
-  rec.ok('...the bow and the staff, each in its slot',
-    !!cFin && cFin.slots === 2 && cFin.items.some((s) => /^bow\./.test(s)) && cFin.items.some((s) => /^staff\./.test(s)), C && C.groups);
+  rec.ok('the claim window: QUEST COMPLETE / Into the Blue', !!C && /quest complete/i.test(C.kicker) && /Into the Blue/.test(C.title), C && { k: C.kicker, t: C.title });
+  rec.ok(`...paying +${TUT2.gold} Gold and +${TUT2.xp} XP, with the HUD's coin and XP pictures`,
+    !!C && TUT2.xp > 0 && C.gold.includes(`+${TUT2.gold} Gold`) && C.xp.includes(`+${TUT2.xp} XP`), C && { g: C.gold, x: C.xp });
   rec.ok('...the three skill chips, none chosen',
     !!C && C.chips.length === 3 && C.chips.every((c) => !c.on && !c.ring)
       && C.chips.map((c) => c.text).join() === 'Melee,Bow,Magic', C && C.chips);
@@ -270,7 +340,7 @@ async function body(P, wsPort, rec) {
     !!bow && bow.on && bow.ring && D.chips.filter((c) => c.ring).length === 1, D && D.chips);
   rec.ok('...and the claim turns gold', !!D && !!D.claim && !D.claim.off && D.claim.art === 'claim.webp', D && D.claim);
 
-  /* ── 4. claim: the confirmation ── */
+  /* ── 5. claim: the confirmation ── */
   const claimedTap = await tap(P, 'button.bt-quest-turnin');
   rec.ok('a finger on Claim Rewards (guard)', claimedTap);
   await P.page.waitForTimeout(450);
@@ -279,24 +349,24 @@ async function body(P, wsPort, rec) {
   console.log('    QUESTWIN claimed: ' + JSON.stringify(E));
   rec.ok('the window becomes the confirmation: "Rewards claimed!"',
     !!E && E.done && /rewards claimed/i.test(E.claimed), E && { done: E.done, c: E.claimed });
-  rec.ok('...the rewards in glowing slots, and where the XP went',
-    !!E && E.glow === 2 && String(E.xpline || '').includes(`+${TUT1.xp} XP to Bow`), E && { glow: E.glow, xp: E.xpline });
+  rec.ok('...saying where the XP went',
+    !!E && String(E.xpline || '').includes(`+${TUT2.xp} XP to Bow`), E && { xp: E.xpline });
   rec.ok('...with nothing on it to press again (no claim button)', !!E && !E.claim, E && E.claim);
   await P.page.waitForTimeout(250);
-  const bC = (await P.page.evaluate(() => window.__qw.slice())).find((b) => b.kind === 'completed');
+  const bC = (await P.page.evaluate(() => window.__qw.slice())).filter((b) => b.kind === 'completed').pop();
   console.log('    QUESTWIN completed banner: ' + JSON.stringify(bC));
   rec.ok('QUEST COMPLETE! rises on the glowing banner, the smaller one at the top while the window is up',
-    !!bC && /QUEST COMPLETE/.test(bC.text) && bC.art === 'banner.webp' && /bt-qw-banner--compact/.test(bC.cls), bC);
+    !!bC && bC !== bAuto && /QUEST COMPLETE/.test(bC.text) && bC.art === 'banner.webp' && /bt-qw-banner--compact/.test(bC.cls), bC);
   rec.ok('...above the confirmation, not over it', !!bC && bC.winTop != null && bC.bottom <= bC.winTop + 2, bC);
   rec.ok('...out of .brotown-wrap', !!bC && bC.inWrap === false, bC);
 
-  /* the flights: coins to the purse, items to the bag */
+  /* the flights: coins to the purse (this quest hands over no item) */
   await P.page.waitForTimeout(1200);
   const F = await P.page.evaluate(() => window.__btQuestFly || null);
   console.log('    QUESTWIN flights: ' + JSON.stringify(F));
-  rec.ok('the coins fly to the purse and the bow and staff to the bag (3 + 2 pictures), and all land',
-    !!F && F.flown >= 5 && F.landed === F.flown
-      && F.last.some((l) => l.kind === 'gold' && l.to === 'purse') && F.last.some((l) => l.kind === 'item'), F);
+  rec.ok('the coins fly to the purse, and all land',
+    !!F && !!F1 && F.flown >= F1.flown + 3 && F.landed === F.flown
+      && F.last.some((l) => l.kind === 'gold' && l.to === 'purse'), { F, F1 });
 
   /* and then his next quest */
   await P.page.waitForTimeout(1200);
@@ -307,24 +377,12 @@ async function body(P, wsPort, rec) {
   }));
   rec.ok('...and a moment later he is offering his next quest', !after.done && (after.dialogue || after.offer), after);
 
-  /* ── 5. the worker paid it ── */
+  /* ── 6. the worker paid it ── */
   const paid = await srv();
-  rec.ok('the WORKER turned it in and paid the gold',
-    !!paid && (paid._quests || {}).tut_1 === 'turnedIn' && (paid.coins || 0) - ((before && before.coins) || 0) === TUT1.gold,
-    paid && { q: paid._quests, coins: paid.coins, was: before && before.coins });
-
-  /* ── 6. the auto reward's banner ── */
-  await P.page.evaluate(() => window._setQuestMsg && window._setQuestMsg({ kind: 'completed', title: 'Gather Copper', gold: 40, xp: 0, auto: true, ts: Date.now() }));
-  await P.page.waitForTimeout(700);
-  const auto = await P.page.evaluate(() => {
-    const b = document.querySelector('.bt-quest-banner .bt-qw-banner');
-    const badge = b && b.querySelector('.bt-qw-banner-badge');
-    return { cls: b ? b.className : null, badge: !!badge && badge.complete && badge.naturalWidth > 0 };
-  });
-  await shot('auto');
-  rec.ok('the auto reward\'s banner (nothing to choose) wears the laurel check on its crest',
-    /bt-qw-banner--auto/.test(auto.cls || '') && auto.badge, auto);
-  await P.page.evaluate(() => window._setQuestMsg && window._setQuestMsg(null));
+  rec.ok('the WORKER turned it in, paid the gold and put the XP into Bow alone',
+    !!paid && (paid._quests || {}).tut_2 === 'turnedIn' && (paid.coins || 0) - ((before2 && before2.coins) || 0) === TUT2.gold
+      && skOf(paid, 'bow') > skOf(before2, 'bow') && skOf(paid, 'sword') === skOf(before2, 'sword') && skOf(paid, 'staff') === skOf(before2, 'staff'),
+    paid && { q: paid._quests, coins: paid.coins, was: before2 && before2.coins, sk: [skAll(before2), skAll(paid)] });
 
   /* ── 7. sideways ── */
   await P.page.setViewportSize({ width: 844, height: 390 });

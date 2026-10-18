@@ -173,17 +173,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: 4 });
   await P.page.waitForTimeout(1600);
   rec.ok('walking back up re-opens the dialogue for the hand-in', await approach());
-  const landedBack = await H.advanceNpcDialogue(P);
-  rec.ok('...and his lines lead to the claim panel', landedBack === 'offer', { landedBack });
-  /* v2.3.1827: scoped and asserted — see the note at the same call in
-     mp-questline.  A swallowed miss here leaves the claim aria-disabled and
-     the next assertion blames the button. */
-  rec.ok('the XP skill could be chosen', await H.chooseQuestSkill(P, 'Melee'));
-  /* v2.3.1765: by CLASS — see the note on H.clickSel.  The caption moved to
-     "Redeem Reward" in v2.3.1764 and this assertion went red for a wording
-     change rather than a broken button. */
-  const turned = await H.clickSel(P, 'button.bt-quest-turnin').then(() => true).catch(() => false);
-  rec.ok('the dialogue offers a turn-in button', turned);
+  /* v2.3.3326: the first quest pays no XP, so there is nothing to choose and
+     no claim panel -- his last line's "Claim reward" pays it (the auto
+     reward; H.claimOnLastLine).  The claim panel's own chooser and button are
+     mp-questwin's and mp-questline's, on the quests that pay XP. */
+  rec.ok('his last line\'s "Claim reward" hands it in (nothing to choose)', await H.claimOnLastLine(P));
   await P.page.waitForTimeout(900);
 
   const afterTurnIn = await banners();
@@ -194,7 +188,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!done && /QUEST COMPLETE/.test(done.text), afterTurnIn.map((b) => b.kind));
   rec.ok('...carrying the reward it just paid',
     !!done && /\+\d+\s*g/i.test(done.text), done && done.text);
-  rec.ok('...over the claim\'s window (its confirmation, then his next quest)',
+  rec.ok('...over his window (v2.3.3326: the auto reward goes straight on to his next quest)',
     !!done && done.modalOpen === true && done.z > done.modalZ && done.inWrap === false,
     done && { z: done.z, modalZ: done.modalZ, modalOpen: done.modalOpen, inWrap: done.inWrap });
 

@@ -79,9 +79,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
      payout used to be a bare money figure floating at the right edge — the same
      shape an ACTIVE row carries — so nothing said whether the payout was
      what this new quest pays or a leftover from the one you are already on. */
+  /* v2.3.3326: built as the pane builds it (questModel.js rewardText) -- the
+     first quest pays no XP now, and a 0 is never printed */
+  const tut1Pays = 'pays ' + [TUT1.gold ? `${TUT1.gold}g` : null, TUT1.xp ? `${TUT1.xp} XP` : null]
+    .filter(Boolean).join(' · ');
   rec.ok('an offered quest\'s reward is labelled as a payout, not a bare figure',
-    pane.includes(`pays ${TUT1.gold}g · ${TUT1.xp} XP`),
-    { want: `pays ${TUT1.gold}g · ${TUT1.xp} XP`, pane: pane.slice(0, 400) });
+    pane.includes(tut1Pays) && !pane.includes(tut1Pays + ' · '),
+    { want: tut1Pays, pane: pane.slice(0, 400) });
 
   /* ── tap him in the world ── */
   /* Screen position computed from the same camera + world scale the tap
@@ -347,6 +351,51 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(800);
   await tapMayor();
 
+  /* ═══ v2.3.3326: THE FIRST QUEST HAS NOTHING TO CHOOSE ═══
+     Owner, playtesting: "Makes no sense to have to choose xp in something
+     you've never used yet.  Just remove that little xp bonus."  tut_1 pays no
+     XP, so it is the AUTO REWARD (QuestPanel, v2.3.3030): his last line's
+     "Claim reward" pays it at once, with no claim card and no chooser, and he
+     goes straight on to his next quest.  Everything below about the claim
+     card and the XP choice runs on tut_2, which still pays XP. */
+  const skillOf = (r, k) => {
+    const s = r && r.prog3 && r.prog3.sk && r.prog3.sk[k];
+    return s ? (s.level || 0) * 1e6 + (s.xp || 0) : null;
+  };
+  const skillsOf = (r) => ['sword', 'bow', 'staff'].map((k) => skillOf(r, k)).join(',');
+  const svr1Before = await H.adminPlayer(wsPort, pid).then((a) => (a && a.rpg) || null).catch(() => null);
+  const _autoTap = await H.claimOnLastLine(P);
+  rec.ok('the first quest pays no XP, so his last line\'s "Claim reward" hands it in',
+    TUT1.xp === 0 && _autoTap, { xp: TUT1.xp, tapped: _autoTap });
+  rec.ok('...with no claim card and no skill to choose',
+    await P.page.evaluate(() => !document.querySelector('.bt-quest-turnin, [data-xp-skill]')));
+  await P.page.waitForTimeout(2500);
+  const paid1 = await H.readState(P, (S) => ({
+    quest: S.rpg._quests.tut_1,
+    wstash: (S.rpg.weaponStash || []).map((w) => w && w.name),
+    snowman: (S.rpg.inventory || {}).snowman || 0,
+  }));
+  rec.ok('the first quest\'s turn-in completes', paid1.quest === 'turnedIn', paid1);
+  rec.ok('the worker pays the bow and the staff into the bag',
+    paid1.wstash.includes("Pine Bow") && paid1.wstash.includes("Pine Staff"), paid1);
+  const svr1After = await H.adminPlayer(wsPort, pid).then((a) => (a && a.rpg) || null).catch(() => null);
+  rec.ok('the gold is paid in the STORED blob, and no XP into any skill',
+    !!svr1Before && !!svr1After && (svr1After.coins || 0) >= (svr1Before.coins || 0) + TUT1.gold
+      && skillOf(svr1After, 'sword') != null && skillsOf(svr1After) === skillsOf(svr1Before),
+    { coins: [svr1Before && svr1Before.coins, svr1After && svr1After.coins], skills: [skillsOf(svr1Before), skillsOf(svr1After)] });
+  rec.ok('and the first quest\'s remnants are consumed', paid1.snowman === 0, paid1);
+
+  /* ── the claim card and the XP choice, on the second quest ── */
+  const TUT2 = QUEST_REWARDS.tut_2;
+  const _landedOffer2 = await H.advanceNpcDialogue(P);
+  rec.ok('he goes straight on to his next quest: his lines lead to its offer', _landedOffer2 === 'offer', { _landedOffer2 });
+  rec.ok('...which can be accepted', await H.confirmQuestOffer(P));
+  await P.page.waitForTimeout(1500);
+  await H.closeNpcDialogue(P).catch(() => {});
+  await H.grant(wsPort, pid, 'item', { invKey: 'slime-remnants', count: 6 });
+  await P.page.waitForTimeout(2000);
+  await tapMayor();
+
   /* v2.3.1827: talk him through to the claim panel — the chooser and the
      reward list live there now, behind his lines (v2.3.1820). */
   const _landedTurn = await H.advanceNpcDialogue(P);
@@ -366,8 +415,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
      bow and staff, so the caption has to say which moment these belong to. */
   /* v2.3.1827: the caption NAMES the quest again — see QuestOfferPanel.
      Case-insensitive because the caption is uppercased in CSS. */
-  rec.ok('the ready card says these items are what FINISHING pays',
-    /for finishing/i.test(dlg) && /cold reception/i.test(dlg), dlg.slice(0, 400));
+  /* v2.3.3326: the claim card is the second quest's, which hands over no
+     item.  Which items FINISHING pays -- the bow and the staff, under "For
+     finishing “Cold Reception”" -- is checked on the first quest's offer above:
+     its claim has no card any more. */
+  rec.ok('the claim card is the second quest\'s',
+    /into the blue/i.test(dlg), dlg.slice(0, 400));
   /* v2.3.1793: asserts the PROPERTY, not the sentence.  This used to require
      the literal string "Train 30 XP into", so restyling the chooser into a
      reward card broke a passing test that had found no bug — the same trap
@@ -376,8 +429,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      What has to be true is that the amount is stated and the skills are
      offered; how it is phrased is the owner's to change. */
   rec.ok('the dialogue names the XP on offer',
-    new RegExp(`\\b${TUT1.xp}\\s*XP\\b`, 'i').test(dlg),
-    { want: `${TUT1.xp} XP`, dlg: dlg.slice(0, 300) });
+    TUT2.xp > 0 && new RegExp(`\\b${TUT2.xp}\\s*XP\\b`, 'i').test(dlg),
+    { want: `${TUT2.xp} XP`, dlg: dlg.slice(0, 300) });
   rec.ok('...and offers the skills to spend it on',
     /Melee/.test(dlg) && /Bow/.test(dlg),
     { dlg: dlg.slice(0, 300) });
@@ -396,13 +449,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* Pressing the held button must do NOTHING — not even locally.  A local
      'turnedIn' here would strand the quest: the worker never saw it, and the
      client will not offer a turn-in twice. */
-  const beforePress = await H.readState(P, (S) => ({ q: S.rpg._quests.tut_1, coins: S.rpg.coins }));
+  const beforePress = await H.readState(P, (S) => ({ q: S.rpg._quests.tut_2, coins: S.rpg.coins }));
   await P.page.evaluate(() => {
     const b = document.querySelector('[data-tut="qoffer-confirm"]');
     if (b) b.click();       // in-page ON PURPOSE: press the held button anyway
   });
   await P.page.waitForTimeout(900);
-  const afterPress = await H.readState(P, (S) => ({ q: S.rpg._quests.tut_1, coins: S.rpg.coins }));
+  const afterPress = await H.readState(P, (S) => ({ q: S.rpg._quests.tut_2, coins: S.rpg.coins }));
   rec.ok('pressing it with no choice made changes nothing at all',
     afterPress.q === beforePress.q && afterPress.coins === beforePress.coins,
     { beforePress, afterPress });
@@ -415,8 +468,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('choosing a skill arms the turn-in button',
     !(await H.questOfferBlocked(P)) && /Claim Reward/i.test(dlg), dlg.slice(0, 300));
 
-  const bowXpBefore = await H.readState(P, (S) =>
-    (S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk.bow && S.rpg.prog3.sk.bow.xp) || 0);
+  /* v2.3.3326: level and XP together -- the second quest's XP may level the
+     bow, which leaves less XP in the new level than there was before */
+  const bowXpBefore = await H.readState(P, (S) => {
+    const b = S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk.bow;
+    return b ? (b.level || 0) * 1e6 + (b.xp || 0) : 0;
+  });
   /* The client's OWN coin figure is not evidence: turnInQuest adds the gold
      locally as prediction, so it goes up even when the worker refuses the
      turn-in outright (verified — with the xpCat removed, every client-side
@@ -429,26 +486,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the claim could actually be pressed', await H.confirmQuestOffer(P));
   await P.page.waitForTimeout(3000);
 
-  const paid = await H.readState(P, (S) => ({
-    quest: S.rpg._quests.tut_1,
-    coins: S.rpg.coins,
-    bowXp: (S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk.bow && S.rpg.prog3.sk.bow.xp) || 0,
-    wstash: (S.rpg.weaponStash || []).map((w) => w && w.name),
-    snowman: (S.rpg.inventory || {}).snowman || 0,
-  }));
+  const paid = await H.readState(P, (S) => {
+    const b = S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk.bow;
+    return {
+      quest: S.rpg._quests.tut_2,
+      coins: S.rpg.coins,
+      bowXp: b ? (b.level || 0) * 1e6 + (b.xp || 0) : 0,
+      slime: (S.rpg.inventory || {})['slime-remnants'] || 0,
+    };
+  });
   rec.ok('the turn-in completes', paid.quest === 'turnedIn', paid);
-  /* weaponStash and prog3 are server-owned — the client only ever receives
-     them — so these are the assertions that prove the WORKER paid, rather
-     than the client congratulating itself as it used to. */
-  rec.ok('the worker pays the bow into the bag', paid.wstash.includes("Pine Bow"), paid);
+  /* prog3 is server-owned — the client only ever receives it — so this is
+     the assertion that proves the WORKER paid, rather than the client
+     congratulating itself as it used to. */
   rec.ok('the XP lands in the skill that was chosen', paid.bowXp > bowXpBefore,
     { before: bowXpBefore, after: paid.bowXp });
   const svrCoinsAfter = await H.adminPlayer(wsPort, pid)
     .then((a) => (a && a.rpg && a.rpg.coins) || 0).catch(() => null);
   rec.ok('the gold is paid in the STORED blob, not just on screen',
-    svrCoinsBefore != null && svrCoinsAfter >= svrCoinsBefore + 25,
+    svrCoinsBefore != null && svrCoinsAfter >= svrCoinsBefore + TUT2.gold,
     { before: svrCoinsBefore, after: svrCoinsAfter, clientSays: paid.coins });
-  rec.ok('and the remnants are consumed', paid.snowman === 0, paid);
+  rec.ok('and the remnants are consumed', paid.slime === 0, paid);
 
   await P.ctx.close().catch(() => {});
 }
