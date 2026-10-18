@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a17c6c821a0441490048e7d22df60b83feaf6eae",
+  "tree": "e78750470b4d4c1b67b741e0c068e693540bc865",
+  "committedAt": "2026-10-18T00:04:30-07:00",
+  "subject": "Kick and Freeze put a player out of the world too, not only off the game (v2.3.3356) (#976)",
+  "files": 5819,
+  "bytes": 639456886,
+  "listingSha256": "0986e3c8fb04352944d61bfe420b4d5a8e7824b56301ad393dd7f84040162fed",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
