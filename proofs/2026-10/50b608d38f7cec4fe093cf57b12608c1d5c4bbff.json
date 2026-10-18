@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "50b608d38f7cec4fe093cf57b12608c1d5c4bbff",
+  "tree": "4e09603b6373a5ada552a5e2abe7d3deb04f7d9b",
+  "committedAt": "2026-10-17T20:08:02-07:00",
+  "subject": "A speed test you run on your phone, a lower-resolution switch, and three frame-time fixes (v2.3.3339) (#963)",
+  "files": 5790,
+  "bytes": 638497951,
+  "listingSha256": "4490d99c2f6fb964a60601bf0188c5df0d2eaaa1b75a96ad464d321a0fd2440f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
