@@ -2622,7 +2622,7 @@ remnant to migrate server-side, not a mode to preserve.
       `quest_reward_stashed` dedupes by the worker's id when it has one (a
       second minted Iron Torso was dropped as a "replay");
     - `armorgrade` suite, `mp-armorgrade` (15): docs/specs/armor-grade-look.md.
-    - since v2.3.3378 THE ORDINARY SHINE IS DRAWN IN THE FRAME -- the owner:
+    - since v2.3.3406 THE ORDINARY SHINE IS DRAWN IN THE FRAME -- the owner:
       "iterate on what best improves framerate without loss of quality":
       every shining piece was a filter, a render pass each (on a phone's
       tile-based chip the frame written out and read back in, a piece a

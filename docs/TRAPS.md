@@ -7236,7 +7236,7 @@ the record and puts out a join whose key or device it no longer lets in.
 **Receipt:** login-keys §12 (21 checks): a gate where each change waits, the
 owner's tool run in the gap; nine fail on v2.3.3355's code.
 
-## 221. "A filter on one small sprite costs one small shader" (v2.3.3378)
+## 221. "A filter on one small sprite costs one small shader" (v2.3.3406)
 
 **Tempting:** a filter on a single sword or plate is cheap: Pixi draws the
 sprite into a picture its own size, runs the filter's few lines over it and
