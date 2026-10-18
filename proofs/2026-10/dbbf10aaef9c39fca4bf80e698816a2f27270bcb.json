@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "dbbf10aaef9c39fca4bf80e698816a2f27270bcb",
+  "tree": "b0fe28bf36f95f07486c5bc2acfd113f7190fd31",
+  "committedAt": "2026-10-18T01:15:09-07:00",
+  "subject": "Docs: register the two storage keys the registry missed, and list what a character restart keeps (v2.3.3373) (#989)",
+  "files": 5819,
+  "bytes": 639487839,
+  "listingSha256": "b43d0de08a3d93fc61bf0878ed45151f10cd0db95e296cfada84e1b521dc8698",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
