@@ -337,7 +337,7 @@ the art law's 2 picture px a game px (`docs/WORLD-BIBLE.md` §6), so it is
 Their edges wander at three scales of noise, never a ruler line, and every
 pixel is copied from a swatch: nothing is blended or painted. The result is
 `public/maps/farm_v2.webp`, 2048 × 2816 lossless (1.6 MB on disk), and since
-v2.3.3457 its palette twin `public/maps/farm_v2.png` (246 colours, the same
+v2.3.3462 its palette twin `public/maps/farm_v2.png` (246 colours, the same
 pixels; the game reads it where pictures are drawn as colour numbers), the
 two stamped in `tools/world/farm_ground_stamp.json` and held to each other by
 `server/test/palette.test.mjs`. It is drawn
@@ -371,7 +371,7 @@ Workshop dungeon (`zoneTransitions.js` and both of `dungeonWaves.js`'s).
 **Memory.** Everything is let go on leaving (`freeFarmArt` from
 `freeZoneAssets`, the map by `freeZoneMap`). The farm's map decodes to 22 MB,
 where the cave's was 6 MB, and the farm's pictures to at most 9 MB, all held
-only while you are on the farm. Since v2.3.3457 they are kept as colour
+only while you are on the farm. Since v2.3.3462 they are kept as colour
 numbers, one byte a pixel, as BroTown's ground and objects are
 (`src/rendering/paletteLoad.js`; the map read from its palette twin
 `public/maps/farm_v2.png`, which the bake writes beside the WebP): the map,
@@ -527,7 +527,7 @@ two pictures still to come.
   farm hold less than BroTown, which failed on main too once v2.3.3190 kept
   BroTown's ground and objects as colour numbers (104 MB to 71 on the chip):
   the farm's pictures are still full colour, its 22 MB map the biggest. Main
-  asked it as those two questions from v2.3.3399 (#956). Since v2.3.3457 the
+  asked it as those two questions from v2.3.3399 (#956). Since v2.3.3462 the
   farm's pictures are colour numbers too: 76.7 + 90.3 = 167 MB, and the line
   came down to 177 to keep the saving; none of BroTown's pictures is left
   (`__btPalette()`'s pieces and pages, the farm's own counted apart).

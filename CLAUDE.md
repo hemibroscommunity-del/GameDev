@@ -4405,7 +4405,7 @@ Two protocol versions coexist; both must keep working:
       programs and the Speed test times them as a step of its own
       (`threeprog`, `setOneBatchLive`), its card saying which way is faster
       on that phone: docs/specs/one-batch.md.
-    - since v2.3.3457 the FARM'S too (the owner: "Yes do the separate PR"):
+    - since v2.3.3462 the FARM'S too (the owner: "Yes do the separate PR"):
       its ground, its 76 pictures and its copies of the six sheets it borrows,
       read as numbers by a loader inside Pixi's own
       (`src/rendering/paletteLoad.js`), so the same `Assets.load` / `unload`
