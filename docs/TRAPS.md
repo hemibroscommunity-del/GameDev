@@ -7081,3 +7081,52 @@ the page (`F.createMonster`) is the page's alone, and needs neither.
 
 **Receipt:** mp-orbrange's new guard (the worker holds the staff), and its
 interceptions back to 5 of 5 as on main.
+
+## 208. "Clearing a Graphics that is already empty costs nothing" (v2.3.3339)
+
+**Tempting:** draw a screen flash, a HUD mark or a minimap road the simple way:
+`clear()` it at the top of every frame and draw whatever is needed. When nothing
+is needed it stays empty, so the clear is free.
+
+**What happens:** `clear()` on an empty Graphics still marks it changed, and in
+Pixi 8 any change to a batchable Graphics makes its render group rebuild its
+whole draw list (GraphicsPipe.validateRenderable returns true, so
+`structureDidChange`). The screen's flash, atmosphere and HUD graphics are empty
+nearly always and were cleared every frame, and the minimap's quest road was
+cleared and drawn again every frame standing still, so the screen's draw list
+was rebuilt every frame for nothing. Found while chasing the owner's "30fps to
+40ish fps" with `mp-frameprofile`, which names the renderable behind every
+rebuild.
+
+**The rule:** clear a Graphics only when it holds something
+(`g.context.instructions.length`, effectsRenderer `clearIfDrawn`), and redraw
+one only when what it shows has moved (a signature of its geometry, as the
+minimap's party rims and road do). When a frame-time question comes up, count
+the rebuilds before guessing (`mp-frameprofile`'s "rebuild asked ... by").
+
+**Receipt:** mp-frameprofile: the screen's list rebuilt every frame (2.6 a
+second at 2.6 frames a second on the QA box), standing or walking; after, never.
+mp-speedtest check 8.
+
+## 209. "A refused login is a refused login: send 'auth'" (v2.3.3344)
+
+**Tempting:** the device lock refuses a join, and the join already has a
+refusal for a bad login, `join_rejected {reason: 'auth'}` and close 4003
+(join.js). A refusal is a refusal: reuse it.
+
+**What happens:** the phone answers 'auth' by throwing its Login Key away and
+making a fresh character under a new one (wsClient.js, v2.3.1116: the cure for
+a key that no longer matches). For a device refusal the key was RIGHT. The
+player's real character would be swapped for a level-1 stranger on that device,
+with the key kept only in `bt_passphrase_prev`. And counted as a failed key,
+five refusals would lock the character's own device out for a minute.
+
+**The rule:** a refusal of the right key has its own reason (`'device'`) and its
+own close (4016), and never counts toward the five-tries lockout. An older phone
+treats a reason it doesn't know as final: no new character, no retries. A newer
+one shows the device screen (src/ui/DeviceScreen.js).
+
+**Receipt:** device-lock.test catches both "the refusal says auth" and "a
+refused device counts as a wrong key" (24 of 24 deliberate breaks caught), and
+mp-devicelock refuses a new phone with the code, its key kept, and lets it in
+after the owner's pass.

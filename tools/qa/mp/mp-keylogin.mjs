@@ -92,6 +92,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(3500);
   const key = await phraseOf(A);
   const madeName = await nameOf(A);
+  /* v2.3.3344: its code, for the owner's pass below */
+  const aId = await A.page.evaluate(() => window._gameState && window._gameState.current && window._gameState.current.myId).catch(() => null);
   rec.ok('a character exists to log back in as (guard)',
     !!key && !!madeName, { key: !!key, name: madeName });
   await A.ctx.close().catch(() => {});
@@ -330,6 +332,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.waitForTimeout(400);
   rec.ok('...and tapping USE LOGIN KEY opens it',
     await visible(B, 'input[placeholder*="Login Key"]'), {});
+  /* ═══ v2.3.3344: B IS A NEW DEVICE FOR THIS CHARACTER ═══
+     A character's key works only on the devices it is played on
+     (server/src/devicelock.js): the door says so, with the code to give the
+     owner, and switches nothing.  Then the owner lets one new device in (the
+     Test panel's Player logins), and the key works as it always did. */
+  await B.page.fill('input[placeholder*="Login Key"]', key);
+  await B.page.getByRole('button', { name: 'Log in', exact: true }).click();
+  await B.page.waitForTimeout(2500);
+  const said = await B.page.evaluate(() => (document.body && document.body.innerText) || '').catch(() => '');
+  rec.ok('a key typed on a new device is refused at the door, with the code to give the owner',
+    /played on a device it was played on before/.test(said) && !!aId && said.includes(aId), { said: said.slice(0, 400), aId });
+  rec.ok('...and nothing switched', (await phraseOf(B)) !== key, {});
+  const pass = aId ? await H.letDeviceIn(wsPort, aId).catch(() => null) : null;
+  rec.ok('the owner lets one new device in (guard)', !!(pass && pass.ok), pass);
   await B.page.fill('input[placeholder*="Login Key"]', key);
   /* By ROLE + exact name: the plate button's hidden label is "Log in with
      your Key", so a substring match on "Log in" hits it instead of the

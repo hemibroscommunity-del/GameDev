@@ -621,6 +621,45 @@ remnant to migrate server-side, not a mode to preserve.
       own blast in full; `BT_AUDIO.monsterDeath(arch, opts, k)`; kills still
       go to every phone; `mp-farfeel`: material-hit-sounds.md "A far death,
       slam or blast".
+    - since v2.3.3340 FOUR MONSTERS HAVE A NOISE OF THEIR OWN -- the owner's
+      recordings: the fire goblin's rawr, the skeleton's (the mummy's second
+      form's) rattling bones, every slime's jelly bounce, the snowman's snarl
+      (`tools/audio/cut_monster_noises.py`, about a second each, levelled to
+      0.75 of a melee hit, SFX_MANIFEST); heard as one notices you (the "!"'s
+      own `tg` edge, wsClient), now and then while it chases you, and as a
+      mummy sheds; never twice in 6 s for one monster nor 0.9 s apart for any
+      two, by distance on `earVol`; `NOISE_OF` (game/monsterNoises.js) spells
+      every name out -- the mummy and the wisp are `fodder` underneath, and a
+      fallback gave them the slime's bounce; `mp-monsternoise`:
+      docs/specs/monster-noises.md.
+    - since v2.3.3343 THE MISSING SOUNDS FROM RECORDINGS ALREADY HERE -- the
+      owner, on the list of missing sounds: "Start adding the have ones then
+      give me the list of ones that are still needed afterwards":
+      - 112 cues, each slices of SFX_MANIFEST files (nothing new to load or
+        decode): `src/data/eventSounds.js` says WHAT (`[key, offset, duration,
+        vol, rate, delay, fade]`, `_playLayer`'s layer), `src/game/
+        eventSounds.js` WHEN and HOW LOUD -- `cue(name, k)`, `cueAt` (by
+        distance, earVol), `cuePeer` / `peerShare` (another player's at
+        `PEER_K` 0.5 of yours, at most `PEER_BURST` 4 in 200 ms; footsteps
+        their own budget, `peerStepShare`), `peerOwn` (what sounds as YOURS
+        does -- the sprint's push-off, a swimmer's splash and strokes --
+        played from BT_AUDIO's own tables, never copied into the cue table),
+        `CUE_GAP_MS` for the ones a pack fires at once; `window.__btCues`;
+      - a rush of air is the ARROW'S FLIGHT, never the special swipe (half a
+        body's thump under 400 Hz: the owner's "fleshy" sprint, v2.3.3336);
+      - the beep()s that played nothing (shield, door, weapon swap, quest
+        taken, parry, wind-ups, campfire...) are sounds; a dodged blow is a
+        rush of air, no clang, shake or red sparks; monsters' throws, deaths of
+        their own (`DEATH_CUES`; the slime-sheet looks no longer die twice,
+        `SLIME_SHEET_DEATHS`), crits, the bow's draw, crafting, the reveal,
+        dungeons, No man's land, the market, and other players' steps, swings,
+        shots, rolls, jumps, shield, swimming and gathering;
+      - the river, Bro Pond and the falls heard on their banks
+        (`src/game/waterAmbience.js`, its own loop on the music bus, never
+        startSfxLoop -- the fishing loop of that sample is stopped every frame);
+      - still needed (new recordings): docs/SOUND-GAPS.md; `sound-cues` suite,
+        `mp-soundcues`, `mp-cuelevels` (renders every cue: no clipping, the
+        levels the comments promise), `mp-farfeel` reads the cues now.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
@@ -3799,6 +3838,19 @@ Two protocol versions coexist; both must keep working:
 
   The fix order is in the review. Re-run the lab after any change to a
   harvest, cook, move or hit path.
+- Frame rate on a phone (v2.3.3339, docs/specs/speed-test.md): the QA box
+  draws in software (under 3 frames a second), so a phone's frame rate is
+  measured ON the phone. The test panel's **Speed test** (no key,
+  `src/game/speedTest.js`) times the frames with everything on, then with the
+  shadows, the metal shine, the moving water and the full resolution each off,
+  and puts them back (page-only switches: `setLightFx(on, false)`,
+  `setSheen(on, false)`); its card is what to fix next. `?res=2` draws the
+  canvas at 2x (`src/game/renderRes.js` `renderDpr`, read by the four places
+  that size the canvas: BroTown `resize()`, pixiApp, pixiRenderer.update,
+  worldViewport). `mp-frameprofile` profiles the CPU by source file (build with
+  `--sourcemap`) and names what rebuilds each render group's draw list --
+  `Graphics.clear()` on an empty graphic rebuilds it (TRAPS §208);
+  `mp-speedtest`.
 
 ## Conventions
 
@@ -4046,6 +4098,25 @@ Two protocol versions coexist; both must keep working:
   `mp-originlock` (a second browser with `--host-resolver-rules`, so the
   copy's Origin is the browser's own; `H.newPlayer`'s `host`,
   `H.launch(args)`).
+- **A CHARACTER'S KEY WORKS ON THE DEVICES IT IS PLAYED ON (v2.3.3344,
+  docs/specs/device-lock.md).** The owner: on at once, their own tool the way onto
+  a new device, a short note to players.
+  - `auth:<id>` keeps the devices its key is used from (`devs`, 12 at most):
+    the browser's own `bt_device` token, which the join already sends.
+  - The right key from any other device is `join_rejected {reason: 'device'}`
+    and close 4016 -- never `auth`, which makes the phone throw its key away.
+    The phone's `src/ui/DeviceScreen.js` shows the player's code (their id) to
+    give the owner.
+  - The owner lets one new device in for 30 minutes from the Test panel's
+    Player logins (`/api/admin/device-pass`), or forgets a character's devices
+    and seals it for one someone else got into (`device-forget`).
+  - A character with no known device takes its next one. The devices the bot
+    checks already knew are filled in once (`devlock:filled`).
+  - The login check still answers `exists: true` for older phones, with
+    `device: 'unknown'`; the picker's restart refuses from an unknown device.
+  - A phone test that brings a character back in a second browser gets its
+    device (harness `newPlayer`'s `device`; `'fresh'` is a new one).
+  - Kill switch `devicelock: false`; `device-lock` suite (67), `mp-devicelock`.
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,
