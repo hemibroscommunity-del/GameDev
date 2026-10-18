@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5425439fd8affb6519b6844c651476bae2339a21",
+  "tree": "84c6795d7bebee744ac34e52dc9e48338a473dcf",
+  "committedAt": "2026-10-18T08:12:05-07:00",
+  "subject": "The character is full size again on a short phone, ENTER's reasons fit on one line, and the owner's test mode (v2.3.3430) (#999)",
+  "files": 5896,
+  "bytes": 647102732,
+  "listingSha256": "2f635f78eb75dec46f9907a0012bb2208e35a827466d17b9a6d2deb0a7b19c29",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
