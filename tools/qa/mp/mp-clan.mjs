@@ -109,7 +109,7 @@ async function runClans({ browser, wsPort, webPort, rec }) {
          wherever you are (ClanInviteCard.jsx), and it sits over the clan
          window -- its Accept is the one a player sees, and sends the same
          clan_join_accept as the window's */
-      /* v2.3.3368: WAITED for, not looked for once: the card comes up a
+      /* v2.3.3381: WAITED for, not looked for once: the card comes up a
          moment after the window shows the invite, so the one look found
          nothing and the fallback's tap on the window's Accept landed on the
          card arriving over it ("COVERED BY ... .bt-inspect-card", the sweep

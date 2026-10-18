@@ -28,7 +28,7 @@ import * as H from './harness.mjs';
 
 const VIEW = { width: 900, height: 700 };
 const ROOM = 'nearjoin';
-/* BroTown's arrival.  v2.3.3368: from the Wheel the worker plays
+/* BroTown's arrival.  v2.3.3381: from the Wheel the worker plays
    (H.wheelGeom), never a short-Wheel number: since v2.3.3315 the room plays
    the long Wheel, and (21504, 21792) put the stander and the walker about
    92,700 px from the arriver, who came in at the long Wheel's arrival -- the
@@ -60,7 +60,7 @@ function sock(wsPort, name, { nj = false, look = null } = {}) {
   w.open = () => new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://127.0.0.1:${wsPort}/ws?room=${ROOM}&rf=1`);
     w.ws = ws;
-    /* v2.3.3368: `ws` -- which Wheels this player draws; one that says nothing
+    /* v2.3.3381: `ws` -- which Wheels this player draws; one that says nothing
        is out of step since v2.3.3315 (TRAPS §196) */
     ws.onopen = () => ws.send(JSON.stringify({ type: 'join', id, name, protocolVersion: 2, pres: 2, ws: [1, 5], ...(nj ? { nj: 1 } : {}), httpAuth: true,
       data: { ...(look || {}), rpgData: undefined, x: 1000, y: 1000, d: 'down', z: 'town', name } }));

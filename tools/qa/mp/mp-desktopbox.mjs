@@ -49,7 +49,7 @@ async function viewFor(browser, wsPort, webPort, viewport, name) {
         return z ? z.h * 32 : null;
       })(),
       zone: S ? S.currentZone : null,
-      /* v2.3.3368: the game's own sizing rule for this canvas and zone
+      /* v2.3.3381: the game's own sizing rule for this canvas and zone
          (worldViewport.js's read-only probe), so the check below can ask it
          rather than recompute it (TRAPS §37). */
       rule: (S && window.__btWorldView) ? window.__btWorldView(S.currentZone) : null,
@@ -114,7 +114,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`the phone is untouched — never MORE than window x ${WORLD_ZOOM}`,
     phone.viewW <= phone.winW * WORLD_ZOOM + 1.5,
     { viewW: phone.viewW, target: phone.winW * WORLD_ZOOM, worldZoom: WORLD_ZOOM });
-  /* v2.3.3368: "...the only thing that reduced it is the zone" has not been
+  /* v2.3.3381: "...the only thing that reduced it is the zone" has not been
      true since the CHARACTER-SIZE floors (v2.3.2249 FIGURE_SCALE_FLOOR,
      v2.3.2257 the 32x32 reference zone, both x VIEW_OUT since v2.3.2997):
      they keep the bro one size in town and in a fight, and in town they are

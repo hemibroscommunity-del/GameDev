@@ -420,7 +420,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .map(([k, v]) => [k, v && { frames: v.frames, widths: v.widths, mismatched: v.mismatched }])));
 
   /* ── the guard: the measurement has to be able to SEE hair at all ── */
-  /* v2.3.3368: 3000 was set when the preview drew him at 92% of the stage;
+  /* v2.3.3381: 3000 was set when the preview drew him at 92% of the stage;
      v2.3.2201/v2.3.2204 shrank him to 76%, so every count is (76/92)^2 = 0.68
      of what it was (smallest today ~2,900: a big hat on an afro, southwest).
      2000 is the same floor at the new size, still far from "trivially zero". */

@@ -1166,7 +1166,7 @@ const MSG_FONT_PX = DMG_FONT_PX * DMG_SCALE;
    draws them in the world as before, to compare. */
 const POPUP_ZOOM = 0.606;
 const POPUP_Z_MIN = 0.25, POPUP_Z_MAX = 3;   /* a sanity bound (a near-zero scale from a mid-rebuild frame), never a design term */
-/* v2.3.3368: the aim's eight sectors, in entityRenderer's SECTORS order (it
+/* v2.3.3381: the aim's eight sectors, in entityRenderer's SECTORS order (it
    picks the bow pose's facing with them), and the switch that leaves the
    between-shots grip as it was -- see _predictBowGrip */
 const BOW_AIM_SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
@@ -14565,7 +14565,7 @@ export class EffectsRenderer {
    * entityRenderer._updatePlayer sets S._bowShowing + S._bowDir (and hides the
    * real body + weapon) when a bow shot is active and the aim resolves to an
    * authored facing.  Same self-contained pattern as the sword swings. */
-  /* ═══ v2.3.3368: WHERE THE BOW WILL BE HELD, BEFORE IT IS ═══
+  /* ═══ v2.3.3381: WHERE THE BOW WILL BE HELD, BEFORE IT IS ═══
      The grip is published below only while the shot pose is drawn, so between
      shots `_bowGripDX/DY` is where it was on the LAST shot -- and before the
      first shot of a visit there is none, and bowGripPoint gives your centre.
@@ -14638,7 +14638,7 @@ export class EffectsRenderer {
         && ((this._standInStrip(this._bowBodyFrames, _rf[0], _rf[1]) || this._bowFrames[_rf[0]] || []).length));   /* v2.3.2429 */
     }
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) {
-      if (S && S.player && !S._bowShowing) this._predictBowGrip(S);   /* v2.3.3368 */
+      if (S && S.player && !S._bowShowing) this._predictBowGrip(S);   /* v2.3.3381 */
       return;
     }
     if (this._selfCorpse) return;   /* v2.3.2281 */

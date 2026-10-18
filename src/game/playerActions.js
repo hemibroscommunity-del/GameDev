@@ -315,7 +315,7 @@ export function specialAttack(S) {
        hit-test uses and returns null (rather than the world origin) when the
        target has no usable position.  Both specials launch from the player at
        dist 14 -- no grip offset to correct for, unlike the auto-attack.
-       (v2.3.3368: the bow's volley leaves from the grip now, below, and is
+       (v2.3.3381: the bow's volley leaves from the grip now, below, and is
        re-aimed from it at release; the staff's orbs still leave from you.) */
     /* v2.3.2845: at the torso, as every locked shot is (combatHelpers lockShotPoint) */
     var _sLock = lockShotPoint(S.lockedTarget && S.lockedTarget.ref, S.currentZone);
@@ -360,7 +360,7 @@ export function specialAttack(S) {
          bow's sight is on (it goes out only when the sight is on something:
          monsterCombat's gate) -- projectiles.js shotSkip */
       var _bowLp = (S._bowSight && S._bowSight.lp) || null;
-      /* ═══ v2.3.3368: THE VOLLEY LEAVES FROM THE BOW, AS ITS SIGHT IS CAST ═══
+      /* ═══ v2.3.3381: THE VOLLEY LEAVES FROM THE BOW, AS ITS SIGHT IS CAST ═══
          The special goes out only while the bow's sight is on something
          (monsterCombat's gate, v2.3.2473), and the sight is cast from the
          GRIP; the volley left from your centre.  A lock is re-aimed from the
@@ -381,7 +381,7 @@ export function specialAttack(S) {
         S.arrows.push({
           ang: aimAng,
           dist: 14,
-          _ox: _vGrip ? _vgx : undefined,   /* v2.3.3368 */
+          _ox: _vGrip ? _vgx : undefined,   /* v2.3.3381 */
           _oy: _vGrip ? _vgy : undefined,
           /* v2.3.2848: sized from the arrow's own speed so the train is GAP_PX
              apart however fast Longshot makes it (projectiles.js catches the

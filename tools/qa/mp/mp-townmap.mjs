@@ -115,7 +115,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const MASK_OK = new Set(['worldview', 'town']);
   const grids = await H.readState(P, (S) => Object.keys(S._tiledWalkable || {}));
   const unexpected = grids.filter((z) => !MASK_OK.has(z));
-  /* v2.3.3368: ...or a zone whose grid is town's KIND, every wall in it one of
+  /* v2.3.3381: ...or a zone whose grid is town's KIND, every wall in it one of
      the zone's own prop footprints, stamped as the game stamps them
      (spriteSheets.js installPropOnlyGrids / stampPropFootprints, the boxes
      read off window.__btBlockers).  Frost Ridge got blocking props (its rock

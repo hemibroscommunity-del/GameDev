@@ -60,7 +60,7 @@ const pickTarget = (P) => P.page.evaluate(() => {
   if (!cv || !P0) return null;
   const r = cv.getBoundingClientRect();
   const sx = S._worldScaleX || 1, sy = S._worldScaleY || 1;
-  /* v2.3.3368: ...and not one whose straight walk passes the zone's way out
+  /* v2.3.3381: ...and not one whose straight walk passes the zone's way out
      (the return marker, map tile 9): the walk below would leave the zone on
      the way there.  A precaution found while chasing runs that ended in town
      (the sweep of 2026-10-18) -- those look like a death on the walk (see the
@@ -101,7 +101,7 @@ const snap = (P, id) => P.page.evaluate((mid) => {
     hp: m ? m.curHp : null,
     gap: m && S.player ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null,
     droppedWhy: S._lockDroppedWhy || null,
-    /* v2.3.3368: where the bro is and how he is, so a target gone from the
+    /* v2.3.3381: where the bro is and how he is, so a target gone from the
        list says whether IT went or HE did */
     zone: S.currentZone,
     myHp: S.rpg ? S.rpg.hp : null,
@@ -161,7 +161,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S._shieldUp = false;
   });
 
-  /* v2.3.3368: the worker's god mode (the Test panel's, /dev/vitals: no
+  /* v2.3.3381: the worker's god mode (the Test panel's, /dev/vitals: no
      damage taken, in memory, it expires), as mp-monwatch's.  Now and then a
      run ended in town at full health with nothing to swing at -- a fresh
      character killed on its walk through the Verdant Wilds and respawned,
@@ -218,7 +218,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const zone = S.currentZone;
     window.__walk = setInterval(() => {
       const m = (S.monsters || []).find((x) => String(x.id) === mid);
-      /* v2.3.3368: target gone, or the zone changed -- let go of the stick,
+      /* v2.3.3381: target gone, or the zone changed -- let go of the stick,
          or the bro walks on in its last direction (it was left pushed) */
       if (!m || !S.player || S.currentZone !== zone) { S.stickX = 0; S.stickY = 0; return; }
       const dx = m.x - S.player.x, dy = m.y - S.player.y;

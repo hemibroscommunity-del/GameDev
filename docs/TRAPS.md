@@ -7236,7 +7236,7 @@ the record and puts out a join whose key or device it no longer lets in.
 **Receipt:** login-keys §12 (21 checks): a gate where each change waits, the
 owner's tool run in the gap; nine fail on v2.3.3355's code.
 
-## 222. "A shot the sight lets go flies the sight's line" (v2.3.3368)
+## 222. "A shot the sight lets go flies the sight's line" (v2.3.3381)
 
 **Tempting:** the bow's sight gate decides when a shot may leave, and every
 shot flies the aim angle, so every shot it lets go flies the line it was on.

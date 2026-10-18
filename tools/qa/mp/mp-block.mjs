@@ -149,7 +149,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const t0 = Date.now();
       let sawHit = false, sawBlock = false;
       window.__blockPin = setInterval(() => {
-        /* v2.3.3368: STEERED AS A KEYBOARD GUARD IS.  Since v2.3.2472 (the
+        /* v2.3.3381: STEERED AS A KEYBOARD GUARD IS.  Since v2.3.2472 (the
            owner's D8) a raised shield turns to the nearest monster every
            frame (shieldToggle.js shieldAimAngle), so pinning _shieldAngle
            alone raced the game's frame and the "turned" shield faced the
@@ -163,14 +163,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
            200 ms after it is set */
         if ((S._blockFlash || 0) >= t0) sawBlock = true;
         if ((S.lastDamageTaken || 0) >= t0) sawHit = true;
-        for (const g of (S.slimeProjectiles || [])) globs.add(g);   /* v2.3.3368: every glob it throws */
+        for (const g of (S.slimeProjectiles || [])) globs.add(g);   /* v2.3.3381: every glob it throws */
         for (const d of (S.dmgNumbers || [])) if (d && d.text != null) pops.add(String(d.text));   /* ...and what it said */
       }, 16);
       const before = S.rpg.hp;
       const injected = S.monsters[0];
       await sleep(4000);           /* clears the 400ms telegraph + several swings */
       const after = S.rpg.hp;
-      /* v2.3.3368: WHAT THE GAME STAMPED, not the bar.  The slime's attack is
+      /* v2.3.3381: WHAT THE GAME STAMPED, not the bar.  The slime's attack is
          a glob, and a glob that reaches you stamps S.lastDamageTaken when it
          hurts you and S._blockFlash when the shield takes it (projectiles.js
          updateSlimeProjectiles).  An unchanged bar cannot tell a block from a
@@ -179,7 +179,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          sweep of 2026-10-18 saw the turned case read 250 too -- its shield
          had turned back to the slime and blocked (the steer above). */
       const hit = sawHit || (S.lastDamageTaken || 0) >= t0, blocked = sawBlock;
-      /* v2.3.3368: where the injected monster got to, for a sample that
+      /* v2.3.3381: where the injected monster got to, for a sample that
          dropped nothing -- the difference between "it swung and the shield
          took it" and "it never swung" (the sweep of 2026-10-18 saw 0 both
          ways). */

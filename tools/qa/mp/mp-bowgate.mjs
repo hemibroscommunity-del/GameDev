@@ -160,7 +160,7 @@ const holdAndSample = async (P, ms, fodderR, bodyOff) => {
   await P.page.waitForTimeout(150);       /* the beam comes up, the gate settles */
   const s = await sample(P, fodderR, bodyOff);
   await P.page.waitForTimeout(ms);
-  /* v2.3.3368: ...and a shot LEFT if the cadence clock was stamped (it is only
+  /* v2.3.3381: ...and a shot LEFT if the cadence clock was stamped (it is only
      when one does, monsterCombat), not only if an arrow is still in the air:
      with the grip worked out before the pose is drawn (effectsRenderer
      _predictBowGrip) the control's arrow flies the line and is in the monster

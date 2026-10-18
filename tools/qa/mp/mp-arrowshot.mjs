@@ -45,7 +45,7 @@ const seed = (P, list) => P.page.evaluate((ms) => {
     targetX: S.player.x + dx, targetY: S.player.y + dy,
     hp: 5000, curHp: 5000, maxHp: 5000, dmg: 0, level: 1, gold: 0,
     spd: 0, vx: 0, vy: 0, alive: true, statuses: {},
-    /* v2.3.3368: an attack clock an hour ahead, so they never swing.  `dmg: 0`
+    /* v2.3.3381: an attack clock an hour ahead, so they never swing.  `dmg: 0`
        was meant to make them harmless, but the client's town monster hits for
        `Math.max(1, m.dmg)` after a red wind-up, and every landed hit shakes
        the screen (monsterCombat.js `S.screenShake`): the crop measured for
@@ -119,7 +119,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the target is still the target', hot.filter((m) => m.target).length === 1, hot);
   await P.page.screenshot({ path: `${out}/arrows-red.png` });
 
-  /* v2.3.3368: let go BEFORE the arrow is measured (it was after).  Held, the
+  /* v2.3.3381: let go BEFORE the arrow is measured (it was after).  Held, the
      attack chases and swings at the target, so the camera leads and kicks
      with it, and moving the monster away for the control frame moved the
      whole view: all 2,720 pixels of the crop differed (BT_ARROW_DUMP, the
@@ -172,7 +172,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          clipped, and narrow enough to exclude the monster's own furniture: at
          +/-24 something ~24px left of the mark joined the x-projection and the
          run-through-centre bridged to it, reporting 32px. */
-      /* v2.3.3368: and it ends where the monster's band begins.  Since
+      /* v2.3.3381: and it ends where the monster's band begins.  Since
          v2.3.2313/v2.3.2504 the chip hangs from the band (the name plate and
          HP bar), its tip a few px over it at the bottom of its bob
          (effectsRenderer `_cstand`), and the 26 px box reached down into the

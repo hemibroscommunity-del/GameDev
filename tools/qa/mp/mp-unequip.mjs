@@ -66,7 +66,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── EQUIP through the bag ── */
   await H.openDest(P, 'Dashboard').catch(() => {});
   await P.page.waitForTimeout(900);
-  /* v2.3.3368: ...and the band OPEN.  Since v2.3.2495 a first join arrives
+  /* v2.3.3381: ...and the band OPEN.  Since v2.3.2495 a first join arrives
      with the dashboard folded, which shows no bag at all: the tile was never
      on screen to tap (the sweep of 2026-10-18; mp-questlegs had the same). */
   await H.unfoldBand(P);

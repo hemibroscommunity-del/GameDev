@@ -74,7 +74,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* Out from under the Quests panel the way mp-tutorial does it — a reload,
      which also proves the accept survived the round trip rather than living in
      the client's optimistic copy.  Everything below runs on a clean screen. */
-  /* v2.3.3368: ...and back in through the door.  Since v2.3.2447 a reload
+  /* v2.3.3381: ...and back in through the door.  Since v2.3.2447 a reload
      lands on the login door (Continue, then this bro's row), where the old
      wait passed on the door's own myId with no character played: the equip
      below went nowhere, the hunt never left town, and seven checks failed
@@ -165,7 +165,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let got = 0;
   let died = false;
   const log = [];
-  /* ═══ v2.3.3368: WALK TO IT, DON'T JUMP ═══
+  /* ═══ v2.3.3381: WALK TO IT, DON'T JUMP ═══
      Each pass used to put the character straight beside its target.  Since
      v2.3.3325 the worker follows a move past its budget at an honest walk
      instead of taking it (movement.js MOVE_BUDGET), and it judges a swing's
