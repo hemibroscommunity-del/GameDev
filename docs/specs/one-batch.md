@@ -62,7 +62,7 @@ of pixels, one shade).
 
 ## Measured
 
-On top of v2.3.3359's layers (each world layer its own draw list, PR #977) --
+On top of v2.3.3379's layers (each world layer its own draw list, PR #977) --
 the state this lands in -- a phone page at 1x density on this box's software
 graphics, `mp-phoneframe` with `BT_PF_AB='onebatch=0'`, 3 rounds each, no
 profiler or census:
@@ -125,7 +125,9 @@ three anywhere. `window.__btOneBatch()` says which, and why (`address`,
   fewer batches and far fewer program switches.
 - `mp-palette`, `mp-sharppixels`, `mp-figureseam`, `mp-membudget` and
   `mp-questline` ran with the one program drawing (before the software rule):
-  see the PR for the counts.
+  see the PR for the counts. `BT_QA_QUERY=onebatch=1 node tools/qa/mp/run.mjs
+  <scenarios>` runs any of them so again (the harness adds `BT_QA_QUERY` to
+  every page's address).
 
 ## What it cannot show here
 

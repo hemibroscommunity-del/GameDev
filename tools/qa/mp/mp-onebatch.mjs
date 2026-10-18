@@ -109,7 +109,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const P = await H.newPlayer(browser, { name: 'onebatch', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'onebatch=1' });
-  const Q = await H.newPlayer(browser, { name: 'threebatch', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel' });
+  /* (the default page only says which programs draw: at 1x, so the two
+     pages are not both drawing a 3x screen in software on the way in) */
+  const Q = await H.newPlayer(browser, { name: 'threebatch', wsPort, webPort, viewport: PHONE, touch: true, dpr: 1, world: 'wheel' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   let stopAlive = null;
@@ -160,7 +162,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     } catch (e) { /* BroTown only */ }
     for (const [tag, at] of spots) {
       if (at) {
+        /* the walk there on the three programs: this box draws the one at
+           half the frames a second (TRAPS §222), and the walk is frames */
+        await P.page.evaluate(() => window.__btOneBatchLive(false));
         await H.hopTo(P, at[0], at[1], { tries: 400, step: 140, gap: 200 });
+        await P.page.evaluate(() => window.__btOneBatchLive(true));
         await P.page.waitForTimeout(5000);
       }
       const r = await sameFrame(P);

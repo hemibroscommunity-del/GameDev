@@ -3976,7 +3976,7 @@ Two protocol versions coexist; both must keep working:
       code in the vertex's texture id (`slot + 64 x code`), the colours' atlas
       bound in the last unit; built behind the loading screen
       (`setOneBatchRenderer`), the three programs if it does not link;
-      measured on top of v2.3.3359's layers: draw calls a frame 50 -> 30 in
+      measured on top of v2.3.3379's layers: draw calls a frame 50 -> 30 in
       BroTown and 71 -> 28 at a fight, program switches 33 -> 6 and 58 -> 8,
       the same frame to the pixel (`mp-onebatch`); NOT WHERE THE PICTURE IS
       DRAWN IN SOFTWARE: a software rasterizer runs every branch for every
@@ -3984,11 +3984,12 @@ Two protocol versions coexist; both must keep working:
       all three reads and this box drew half the frames a second with it --
       a renderer whose name says software (`oneBatchChoice`) keeps the three,
       so the QA box and CI draw as before, and `?onebatch=1` tests the one
-      here (TRAPS §222); what one bigger program costs a phone's chip a pixel
-      cannot be measured here, so `?onebatch=0` is the three programs and the
-      Speed test times them as a step of its own (`threeprog`,
-      `setOneBatchLive`), its card saying which way is faster on that phone:
-      docs/specs/one-batch.md.
+      here (`BT_QA_QUERY=onebatch=1` for any scenario: the harness adds it
+      to every page; TRAPS §222); what one bigger program costs a phone's
+      chip a pixel cannot be measured here, so `?onebatch=0` is the three
+      programs and the Speed test times them as a step of its own
+      (`threeprog`, `setOneBatchLive`), its card saying which way is faster
+      on that phone: docs/specs/one-batch.md.
   - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
     the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
     home again, three times. Each kind of memory's highest reading must stay
