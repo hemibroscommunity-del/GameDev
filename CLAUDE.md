@@ -4013,6 +4013,26 @@ Two protocol versions coexist; both must keep working:
   `mp-originlock` (a second browser with `--host-resolver-rules`, so the
   copy's Origin is the browser's own; `H.newPlayer`'s `host`,
   `H.launch(args)`).
+- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3328,
+  docs/specs/desktop-keys.md, TRAPS §208).** The owner: "For computer usage if there's a
+  key that makes sense to use for a certain action just put the letter next
+  to the icon or action in a tasteful way."
+  - `src/game/deskKeys.js` is the one table -- B the bag (the band at rest),
+    P character, J quests, L life skills, K codex, O more, M the world map --
+    desktopControls.js binds it, and each key opens its page and closes it
+    again; never with Ctrl, Cmd or Alt (the browser's), never while typing.
+  - The button that does the same wears the key: `data-key="J"` (and
+    `data-key-at`: the corner, `hang` under a ✕, `end`, `inline`, `xy`),
+    drawn by game.css as generated content only under `@media
+    (pointer:fine)` -- never a text node (quest scenarios read the cards'
+    words), never on a phone.
+  - Enter presses a dialogue's own button in front (`data-enter`: Next,
+    Accept Quest); Esc presses the ✕ of the window in front (`data-esc`, and
+    every `.bt-inspect-close`, which wears "Esc" from its ::before), one
+    window at a time, then the old sweep, then a dashboard page.
+  - A new key goes in the table and on its button in the same PR; a new
+    window's ✕ takes `data-esc` (`"up"` if it acts on pointerup).
+  - The keys strip lists 1-3 and sits right of the bell. `mp-deskkeys`.
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,

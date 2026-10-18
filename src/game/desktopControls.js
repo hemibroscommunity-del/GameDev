@@ -22,6 +22,8 @@ import { enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: E a
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';   /* v2.3.3067: E at Ace opens his coin flip */
 import { shopBus } from '@/ui/mobile/shopBus.js';   /* v2.3.3067: ...and at Diego his shop */
 import { startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed on your farm, worked where it lies */
+import { navIdForCode, navKey, browserChord, frontControl, pressControl, ESC_SEL, ENTER_SEL, MAP_KEY } from '@/game/deskKeys.js';   /* v2.3.3328: B P J L K O, M, Enter, Esc */
+import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3328: M */
 
 /**
  * v2.3.3105: what runInteract would do here, for the right stick's picture
@@ -389,11 +391,71 @@ export function setupDesktopControls(S, deps) {
         return;
       }
 
+      /* ═══ v2.3.3328: B P J L K O -- THE DASHBOARD'S SIX BUTTONS; M -- THE MAP ═══
+         The owner: "For computer usage if there's a key that makes sense to
+         use for a certain action just put the letter next to the icon or
+         action in a tasteful way."  Each button wears its letter (NavRail,
+         the minimap's open button: game/deskKeys.js is the one table).  A
+         key does what a click on its button does, and closes the page it
+         opened when pressed again.  Never with Ctrl, Cmd or Alt held: those
+         are the browser's (Ctrl+P, Cmd+L, Ctrl+J). */
+      if (!browserChord(e) && !e.repeat && S.rpg) {
+        var _navId = navIdForCode(e.code);
+        if (_navId) {
+          e.preventDefault();
+          BT_AUDIO.uiClickNow();
+          navKey(_navId);
+          return;
+        }
+        if (e.code === 'Key' + MAP_KEY) {
+          if (toggleWorldMap()) {
+            e.preventDefault();
+            BT_AUDIO.uiClickNow();
+          }
+          return;
+        }
+      }
+
+      /* ═══ v2.3.3328: Enter -- A DIALOGUE'S OWN BUTTON ═══
+         Mayor Bro's Next / Continue and the quest's Accept Quest / Claim
+         Rewards (data-enter, each wearing "Enter"), the one in front.  With
+         none up, Enter is left alone -- a focused button's own Enter. */
+      if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !e.repeat && !browserChord(e)) {
+        var _go = frontControl(ENTER_SEL);
+        if (_go) {
+          e.preventDefault();
+          pressControl(_go);
+          return;
+        }
+      }
+
       /* Escape — close chat first, then close panels */
       if (e.code === 'Escape') {
         if (chatOpen) {
           setChatOpen(false);
           if (chatInputRef.current) chatInputRef.current.blur();
+          return;
+        }
+        /* ═══ v2.3.3328: ...THE WINDOW IN FRONT, BY ITS OWN ✕ ═══
+           Each window's ✕ wears "Esc" on a computer (data-esc, and every
+           .bt-inspect-close), so Esc presses THAT ✕: whatever closing it
+           does, Esc does -- the world map, Diego, Ace, the daily rewards and
+           the item card were not closed by it at all, and one window over
+           another now closes one at a time.  Then the old sweep for a window
+           with no ✕ of that kind (a .bt-inspect window, a character's
+           dialogue), then the dashboard's open page (back one step, then
+           shut). */
+        var _x = frontControl(ESC_SEL);
+        if (_x) {
+          pressControl(_x);
+          return;
+        }
+        if (document.querySelector('.bt-inspect, .bt-npcdlg-scrim')) {
+          _desktopCloseAll();
+          return;
+        }
+        if (dashboardPanelBus.state.mode === 'expanded') {
+          dashboardPanelBus.pop();
           return;
         }
         _desktopCloseAll();

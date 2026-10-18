@@ -1278,6 +1278,20 @@ input{font-family:inherit}
 body:has(.bt-inspect) [data-world-map-open],
 body:has([data-daily-rewards]) [data-world-map-open],
 body:has([data-shop-panel]) [data-world-map-open]{pointer-events:none}
+/* v2.3.3328: ...and under the two dimmed screens this body-level button (z 45)
+   still lay on top of: a character's dialogue (its scrim is 44) and Ace's
+   flip (z 4000, but inside the game's wrap) -- a click on the dimmed minimap
+   opened the world map over them.  The button's key, M (game/deskKeys.js),
+   steps aside with it under every one of these: it stayed bright on top of
+   the dimmed screen. */
+body:has(.bt-npcdlg-scrim) [data-world-map-open],
+body:has([data-ace-flip]) [data-world-map-open]{pointer-events:none}
+body:has(.bt-inspect) [data-world-map-open]::after,
+body:has([data-daily-rewards]) [data-world-map-open]::after,
+body:has([data-shop-panel]) [data-world-map-open]::after,
+body:has(.bt-npcdlg-scrim) [data-world-map-open]::after,
+body:has([data-ace-flip]) [data-world-map-open]::after,
+body:has([data-infopopup]) [data-world-map-open]::after{display:none}
 /* ═══ v2.3.2627, moved here v2.3.3258: THE AUCTION HOUSE'S CLERK ═══
    The clerk the game draws into the Auction House's room (data/buildingRooms.js
    ROOM_KEEPERS; he was on the owner's first painting of it, v2.3.2627, and is
@@ -4726,7 +4740,11 @@ body.bt-intro-up .bt-zone-loading{visibility:hidden}
    sitting between this strip and the band; that HUD has since been deleted as
    a duplicate of the dashboard, so the strip drops onto the slot directly
    above the band and 77px of dead air goes with it. */
-.bt-kb-hints{position:fixed;bottom:calc(var(--dash-h) + 12px);left:12px;z-index:20;display:flex;gap:4px;flex-wrap:wrap;max-width:280px;
+/* v2.3.3328: left 52px, was 12 -- right of the bell (WorldChatFeed: left 8,
+   36 px wide), which sat over the strip's first chips on every computer,
+   "Tab Swap" and "C Chat" half under it (the folded chip below too); and
+   310 px wide, was 280, so its chips still lie in five rows */
+.bt-kb-hints{position:fixed;bottom:calc(var(--dash-h) + 12px);left:52px;z-index:20;display:flex;gap:4px;flex-wrap:wrap;max-width:310px;
   /* v2.3.1715: pointer-events auto so the strip can be TAPPED to dismiss
      (owner: "do a toggle on and off option for it too").  It sits over the
      world, so the handler stops the tap reaching the canvas. */
@@ -4788,9 +4806,12 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
    BroTown), so while one is up the strip stands aside; its dismissed chip, in
    the corner clear of any prompt, stays. */
 body:has(.bt-interact-prompt) .bt-kb-hints{display:none}
+/* v2.3.3328: ...and under the chat feed the bell opens, which is drawn up
+   over this same corner */
+body:has([data-world-chat-toggle][aria-expanded="true"]) .bt-kb-hints{display:none}
 /* The dismissed state: one small chip in the same corner, so the controls are
    recoverable.  A toggle you cannot find your way back from is a delete. */
-.bt-kb-chip{position:fixed;bottom:calc(var(--dash-h) + 12px);left:12px;z-index:20;
+.bt-kb-chip{position:fixed;bottom:calc(var(--dash-h) + 12px);left:52px;z-index:20;
   display:flex;align-items:center;justify-content:center;min-width:44px;min-height:28px;
   padding:4px 10px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15);
   border-radius:4px;font-size:13px;color:rgba(255,255,255,.7);cursor:pointer;
@@ -4804,6 +4825,46 @@ body:has(.bt-interact-prompt) .bt-kb-hints{display:none}
   /* v2.3.1239: owner feedback — 10px font floor (was 8px); desktop-only kb hint */
   font-size:11px;font-weight:800;color:#fff;min-width:14px;text-align:center}
 .bt-crosshair-cursor{cursor:crosshair !important}
+
+/* ═══ v2.3.3328: A KEY'S LETTER BESIDE WHAT IT DOES -- ON A COMPUTER ═══
+   The owner: "For computer usage if there's a key that makes sense to use for
+   a certain action just put the letter next to the icon or action in a
+   tasteful way."  A button whose key is bound (game/deskKeys.js, the one
+   table desktopControls.js reads) carries data-key="J"; under a mouse it
+   wears the letter as a small key cap.  The letter is GENERATED here, never a
+   text node, so no card's words change (quest scenarios read them), and a
+   touch screen never shows one.  A quiet slate key, not brass (LANTERN-SLATE:
+   brass is selection, never a default edge), badge type 10/700, its bottom
+   edge heavier so it reads as a key; it takes no clicks, so a press on it is
+   a press on its button.  Where it sits, by data-key-at:
+     (none)  inside the bottom-right corner -- the dashboard's six buttons
+     hang    centred under the button, over its bottom edge -- a window's ✕
+     end     inside the right end, at the middle -- a wide button (Accept)
+     inline  after the words -- a button of words (Next, Not now)
+     xy      at --key-x / --key-y -- beside the minimap's "tap me" mark
+   Every .bt-inspect-close (seventeen windows' ✕, which Esc presses) wears
+   "Esc" the same way, from its ::before: its ::after is its touch target. */
+@media (pointer:fine) {
+  [data-key]::after,
+  .bt-inspect-close::before {
+    position:absolute; z-index:3; box-sizing:border-box;
+    display:flex; align-items:center; justify-content:center;
+    min-width:16px; height:16px; padding:0 4px;
+    border:1px solid rgba(238,242,235,.30); border-bottom-width:2px; border-radius:4px;
+    background:rgba(13,22,27,.92); color:#F7F2E7;
+    font:700 10px/1 'Source Sans 3',sans-serif; letter-spacing:.02em;
+    text-transform:none; text-shadow:none; white-space:nowrap;
+    box-shadow:0 1px 3px rgba(0,0,0,.45);
+    pointer-events:none;
+  }
+  [data-key]::after { content:attr(data-key); right:3px; bottom:3px; }
+  .bt-inspect-close::before { content:'Esc'; }
+  [data-key-at="hang"]::after,
+  .bt-inspect-close::before { right:auto; bottom:auto; left:50%; top:calc(100% - 7px); transform:translateX(-50%); }
+  [data-key-at="end"]::after { bottom:auto; right:14px; top:50%; transform:translateY(-50%); }
+  [data-key-at="inline"]::after { position:relative; display:inline-flex; right:auto; bottom:auto; margin-left:8px; vertical-align:1px; }
+  [data-key-at="xy"]::after { right:auto; bottom:auto; left:var(--key-x,0px); top:var(--key-y,0px); }
+}
 
 /* v2.3.1719: the DESKTOP STAT HUD is gone (owner: "remove the HUD stuff that
    was behind the dashboard — it doesn't need to be displayed").  It carried

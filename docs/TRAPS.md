@@ -7067,3 +7067,30 @@ review takes every window in both.
 **Receipt:** mp-edgeguard step 6 (Ace's Flip answers, his ✕ and tabs on
 screen); mp-shopkeeper's sideways part (the column opens beside the drawer, a
 tap on a bag slot sells, the ✕ answers, "His shelf" below his name).
+
+## 208. "A key's letter is one more word on its button" (v2.3.3328)
+
+**Tempting:** to show a computer player that Enter accepts the quest, put
+`<kbd>Enter</kbd>` in the Accept Quest button, and an "Esc" span by every ✕.
+
+**What happens:** the letter becomes part of the card's words. The quest
+scenarios read a card's text to check what Mayor Bro says and what the button
+offers ("Accept Quest", "30 XP" as a whole word: QuestOfferPanel's notes), and
+"Accept QuestEnter" fails them for a wording that never changed; v2.3.2289 took
+the dialogue's ✕ out of its text for the same reason. And a letter in the DOM
+is on a phone too, where there is no key to press.
+
+**The rule:** a key's letter is GENERATED content: `data-key="Enter"` on the
+button, drawn by game.css (`[data-key]::after { content: attr(data-key) }`)
+only under `@media (pointer:fine)`, `pointer-events: none` -- never a text
+node. The table of keys is ONE module (src/game/deskKeys.js) that both the
+key handler and the buttons read, so a letter cannot promise what its key does
+not do; and Esc presses the ✕ that is in front rather than closing a list of
+panels, so it does whatever that ✕ does. A body-level button (the minimap's
+open button, z 45) lies over in-wrap dimmed screens: its letter must step aside
+with it, or it stays bright on top (TRAPS §20).
+
+**Receipt:** mp-deskkeys -- the letters on the six dashboard buttons, the
+minimap, Next, Accept Quest, Not now and the ✕s, every key doing what its
+button does, and a phone wearing none; the quest scenarios still read the
+cards' words unchanged.

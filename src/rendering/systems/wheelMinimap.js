@@ -105,6 +105,10 @@ const C_PLAYER = 0xf4f0e7, C_OTHER = 0x58b97b, C_MONSTER = 0xe35d5b;
    keyline, a slate band (the bars' panel colour, LANTERN-SLATE) and the brass
    line inside it */
 const FRAME = 7, R_BOX = 8, R_IN = 4, C_KEYLINE = 0x0b161b, C_SLATE = 0x202c32, C_SLATE_HI = 0x3a4b55;
+/* the "tap me" mark's box in the minimap's box, CSS px (drawn below) --
+   published with the box (window.__btWheelMini.mark), where the world map's
+   button puts its key beside it (v2.3.3328, game/deskKeys.js) */
+const EXPAND_MARK = Object.freeze({ x: FRAME + 3, y: MAP_BOT - 19, w: 16, h: 16 });
 /* v2.3.2990: as the zones' minimap stars, held this far in from the box's
    edge -- v2.3.3009: and clear of the frame (was 10) */
 const C_QUEST_STAR = 0xf5ce3c, QUEST_STAR_PX = 17, QUEST_EDGE = FRAME + 9;
@@ -224,8 +228,8 @@ export class WheelMinimap {
     /* the "tap me" mark: two corner arrows, bottom left (v2.3.3009: inside
        the frame) */
     const expand = new Graphics();
-    const ex = FRAME + 5, ey = MAP_BOT - 17;   /* v2.3.3108: the map's corner (was the box's) */
-    expand.roundRect(ex - 2, ey - 2, 16, 16, 4).fill({ color: 0x0b161b, alpha: 0.7 });
+    const ex = EXPAND_MARK.x + 2, ey = EXPAND_MARK.y + 2;   /* v2.3.3108: the map's corner (was the box's) */
+    expand.roundRect(ex - 2, ey - 2, EXPAND_MARK.w, EXPAND_MARK.h, 4).fill({ color: 0x0b161b, alpha: 0.7 });
     expand.moveTo(ex + 2, ey + 6).lineTo(ex + 2, ey + 2).lineTo(ex + 6, ey + 2)
       .moveTo(ex + 10, ey + 6).lineTo(ex + 10, ey + 10).lineTo(ex + 6, ey + 10)
       .moveTo(ex + 2, ey + 2).lineTo(ex + 5, ey + 5).moveTo(ex + 10, ey + 10).lineTo(ex + 7, ey + 7)
@@ -705,7 +709,7 @@ export class WheelMinimap {
       if (rk !== this._rectFor) {
         this._rectFor = rk;
         const c = (canvas || document.querySelector('canvas')).getBoundingClientRect();
-        this._rect = { left: Math.round(c.left + this.root.x), top: Math.round(c.top + this.root.y), w: WHEEL_BOX, h: WHEEL_H };
+        this._rect = { left: Math.round(c.left + this.root.x), top: Math.round(c.top + this.root.y), w: WHEEL_BOX, h: WHEEL_H, mark: EXPAND_MARK };
         /* v2.3.3108: the plate's own box, where a land's banner docks */
         const pb = this._plateBox;
         this._plateRect = { left: this._rect.left + pb.x, top: this._rect.top + pb.y, width: pb.w, height: pb.h };

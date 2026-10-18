@@ -393,6 +393,7 @@ export function AceFlipPanel() {
 
   return React.createElement('div', {
     onClick: close,
+    'data-ace-flip': '',   /* v2.3.3328: the minimap's open button stands aside under it (game.css) */
     style: { position: 'fixed', inset: 0, zIndex: 4000, background: 'rgba(8,14,17,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 },
   }, React.createElement('div', {
     onClick: function (e) { e.stopPropagation(); },
@@ -423,7 +424,9 @@ export function AceFlipPanel() {
         React.createElement('div', { style: { fontSize: 13.5, color: LS.txt3, marginTop: 2 } }, 'Gambler')),
       React.createElement('button', {
         onClick: close, 'aria-label': 'Close',
-        style: { border: 'none', background: 'transparent', color: LS.txt3, fontSize: 20, lineHeight: 1, cursor: 'pointer', padding: 4 },
+        /* v2.3.3328: Esc presses it (game/deskKeys.js) */
+        'data-esc': '', 'data-key': 'Esc', 'data-key-at': 'hang',
+        style: { position: 'relative', border: 'none', background: 'transparent', color: LS.txt3, fontSize: 20, lineHeight: 1, cursor: 'pointer', padding: 4 },
       }, '×')),
 
     /* ── v2.3.2619: three faces of the dialog ── */

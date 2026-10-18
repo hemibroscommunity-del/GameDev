@@ -375,7 +375,9 @@ export function ShopkeeperPanel() {
         </div>
         <button type="button" onClick={() => shopBus.setOpen(false)} aria-label="Close"
           data-shop-close=""
+          data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3328: Esc presses it (game/deskKeys.js) */
           style={{
+            position: 'relative',   /* its key cap's anchor */
             width: 30, height: 30, borderRadius: 8, padding: 0, flex: 'none',
             background: '#293B41', border: '1px solid rgba(229,237,233,.20)',
             color: 'var(--ui-text, #F4F0E7)', fontSize: 14, cursor: 'pointer',
