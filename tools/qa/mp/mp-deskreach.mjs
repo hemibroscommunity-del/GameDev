@@ -162,9 +162,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and "ENTER BRO TOWN" stays on one line', !!cc && cc.labelH < cc.font * 1.6, cc);
     await L.page.fill('input.bt-cc-name', 'Laptop');
     if (cc) await L.page.mouse.click(cc.x, cc.y);
+    /* the creator GONE, not only a socket: the page has an id and a zone
+       while the creator is still up (on the build before the fix this read
+       "joined" with the click landing below the window) */
     const joined = await L.page.waitForFunction(() => {
       const S = window._gameState && window._gameState.current;
-      return !!(S && S.myId && S.currentZone);
+      return !document.querySelector('input.bt-cc-name') && !!(S && S.myId && S.currentZone);
     }, null, { timeout: 90000, polling: 500 }).then(() => true).catch(() => false);
     rec.ok('...and a mouse click on it takes the new bro into the game', joined);
     rec.ok('no page errors on the laptop', lErrors.length === 0, lErrors.slice(0, 3));
