@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "960140e923c0ab001a25b13f8e400b153f862920",
+  "tree": "703697a539891d0928262f9ed8eb3e43621d03a2",
+  "committedAt": "2026-10-18T00:51:45-07:00",
+  "subject": "The daily stats job reads every table a page at a time, and counts the market's gold (v2.3.3368) (#984)",
+  "files": 5819,
+  "bytes": 639472082,
+  "listingSha256": "b8f2a04df535bb480139bee8bbff2fab319bc4b6d383549cbfa0f0134a423149",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
