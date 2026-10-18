@@ -26,6 +26,10 @@
  *      the tee hidden under a plate, the body under greaves the one cut for
  *      them, each garment on the body's own frame, in the order body,
  *      greaves, shirt, plate, tool, and in the metal his walking figure wears;
+ *      (v2.3.3467) and the plate and greaves SHINE as his walking ones do (the
+ *      metal sheen's own slots, self:c and self:l, hold farmChest and
+ *      farmLegs), and the six strips are in the walking steel's greys (their
+ *      middle grey within 0.03 of jog-south's; ChatGPT's was 0.60);
  *   6. leaving through the gate lets all of it go: the 'farm' pose idle again,
  *      the three strips, the two tools and the nine garments no longer on the
  *      graphics chip;
@@ -34,7 +38,7 @@
  * farmanim-armour-<step>-<frame>.png for the armour.
  */
 import * as H from './harness.mjs';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FARM_BEDS, FARM_GATE } from '../../../src/data/farmLayout.js';
 import { FARM_ANIMS } from '../../../src/data/farmAnims.js';
@@ -276,8 +280,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const v = await until(fig, (x) => x.fig && x.fig.visible && x.fig.frame === f, 1500);
         const F = v && v.fig;
         if (F) await shot(`armour-${o.step}-${f}`, F);
+        /* v2.3.3467: what the metal sheen lights this frame, by slot */
+        const shineNow = await P.page.evaluate(() => { const p = window.__btLightFx ? window.__btLightFx.probe() : null; return p && p.glint ? p.glint.labels || null : null; });
         frames.push({ f, ok: !!F && F.frame === f && F.anim === anim, under: F && F.under, legs: F && F.legs, chest: F && F.chest, shirt: F && F.shirt,
-          prop: F && F.prop, order: F && F.order });
+          prop: F && F.prop, order: F && F.order, shine: shineNow });
       }
       await P.page.evaluate(() => { clearInterval(window.__pinT); window.__btFarmHoldFrame = null; const w = window._gameState.current._farmWork; if (w) { w.startedAt = Date.now() - 50; w.doneAt = Date.now() + 120; } });
       report.armour[o.step] = { outfit: o, walk, frames };
@@ -296,12 +302,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && (!wearsChest || (x.chest.tint === walk.chest && walk.chest !== 0xffffff));
       rec.ok(`...in the copper his walking figure wears (greaves ${walk.legs}, plate ${walk.chest})`, frames.every(metalOk),
         { walk, got: frames.map((x) => ({ legs: x.legs && x.legs.tint, chest: x.chest && x.chest.tint })) });
+      /* v2.3.3467: ...and it shines as his walking armour does: the sheen's own
+         slots (glint.js) hold the farmer's sprites (they were left out) */
+      const shine = frames.map((x) => x.shine || {});
+      const shineOk = (sh) => (!wearsChest || ((sh['self:c'] || []).includes('farmChest')))
+        && (!wearsLegs || ((sh['self:l'] || []).includes('farmLegs')));
+      rec.ok(`...and the metal SHINES as his walking armour does: the sheen's slots hold ${[wearsChest && 'farmChest', wearsLegs && 'farmLegs'].filter(Boolean).join(' and ')} (${JSON.stringify(shine[0])})`,
+        shine.length > 0 && shine.every(shineOk), shine);
       const sent = await until(acts, (l) => l.length > a0, 6000);
       rec.ok(`...and the step ends in ONE farm_act the worker takes (${JSON.stringify(sent.slice(a0))})`,
         sent.length - a0 === 1 && sent[a0].op === o.step && JSON.stringify(sent[a0].beds) === '[1]', sent.slice(a0));
       await P.page.waitForTimeout(700);
     }
     await P.page.evaluate(() => { window.__btSetGear('chest', 'none'); window.__btSetGear('legs', 'none'); });
+    /* v2.3.3467: the six strips in the walking steel's greys -- the middle
+       grey of their opaque pixels within 0.03 of jog-south's (ChatGPT's steel
+       was 0.53-0.61; tools/make_farm_anims.py steel_like_the_game) */
+    {
+      const midGrey = (file) => {
+        const im = H.decodePng(readFileSync(join(H.REPO, 'public/sprites/gear', file)));
+        const L = [];
+        for (let i = 0; i < im.width * im.height; i++) {
+          const j = i * im.channels;
+          if (im.channels === 4 && im.data[j + 3] <= 200) continue;
+          L.push((0.299 * im.data[j] + 0.587 * im.data[j + 1] + 0.114 * im.data[j + 2]) / 255);
+        }
+        L.sort((a, b) => a - b);
+        return L.length ? +L[L.length >> 1].toFixed(3) : null;
+      };
+      const grey = {};
+      for (const [slot, art] of [['chest', 'steelplate'], ['legs', 'steelgreaves']]) {
+        grey[slot] = { walk: midGrey(`${slot}/${art}/jog-south.png`) };
+        for (const a of ['hoe', 'water', 'kneel']) grey[slot][a] = midGrey(`${slot}/${art}/farm${a}-south.png`);
+      }
+      rec.ok(`the farmer's plate and greaves are in the walking steel's greys: middle grey ${['hoe', 'water', 'kneel'].map((a) => grey.chest[a] + '/' + grey.legs[a]).join(', ')} against ${grey.chest.walk}/${grey.legs.walk}`,
+        ['chest', 'legs'].every((sl) => ['hoe', 'water', 'kneel'].every((a) => grey[sl][a] != null && Math.abs(grey[sl][a] - grey[sl].walk) <= 0.03)), grey);
+    }
 
     /* ── 6. leaving lets it all go ── */
     const gpuBefore = await P.page.evaluate(() => (window.__btGpuTex ? window.__btGpuTex(400) : null));

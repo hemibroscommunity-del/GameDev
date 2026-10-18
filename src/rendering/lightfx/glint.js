@@ -441,9 +441,14 @@ function hashPhase(s, period) {
 /* Where each figure keeps its metal pieces: the display's own layers, and
    the stand-in sprites drawn in its place during a swing or a gather. */
 const SELF_WEAPON_STAND_INS = ['swordWeaponSprite'];
-const SELF_CHEST_STAND_INS = ['swordChestSprite', 'bowChestSprite', 'chopChestSprite', 'cookChestSprite', 'fireChestSprite'];
+/* v2.3.3467: + the farmer's plate and greaves (effectsRenderer
+   _updateFarmWork).  Left out when the farmer's moves came in (v2.3.3439), so
+   the plate you knelt in had no shine and no grade's edge while every other
+   pose's did -- the owner: "the armor art does not match what the character is
+   wearing in the game while farming ... See what other animations do." */
+const SELF_CHEST_STAND_INS = ['swordChestSprite', 'bowChestSprite', 'chopChestSprite', 'cookChestSprite', 'fireChestSprite', 'farmChestSprite'];
 const SELF_LEGS_STAND_INS = ['swordLegsSprite', 'bowLegsSprite', 'chopLegsSprite', 'cookLegsSprite', 'fireLegsSprite',
-  'swordJogLegsGearSprite', 'bowJogLegsGearSprite'];
+  'swordJogLegsGearSprite', 'bowJogLegsGearSprite', 'farmLegsSprite'];
 
 function pushVisible(list, s) { if (s && s.visible && !s.destroyed) list.push(s); }
 
@@ -661,6 +666,7 @@ export class GlintSystem {
         const bw = fx && fx._remoteBowSprites && fx._remoteBowSprites.get(id);
         const skg = fx && fx._remoteSkillSprites && fx._remoteSkillSprites.get(id);
         const gg = skg && skg.gear;
+        const fa = skg && skg.farm;   /* v2.3.3467: their farmer (_drawPeerFarmer), as yours */
         const wm = weaponMaterial(o.wpnType, o.wpnMat);
         if (wm) {
           const s = [];
@@ -682,6 +688,7 @@ export class GlintSystem {
           if (sw) pushVisible(s, sw.chest);
           if (bw) pushVisible(s, bw.chest);   /* v2.3.2887 */
           if (gg) pushVisible(s, gg.chest);
+          if (fa) pushVisible(s, fa.chest);   /* v2.3.3467 */
           /* v2.3.3142: their grade, from the worker (tick.js eqg) */
           this._slot(out, id + ':c', s, cm, peerGrade(o._eqg, 0), 'c');
         }
@@ -692,6 +699,7 @@ export class GlintSystem {
           if (sw) { pushVisible(s, sw.legs); pushVisible(s, sw.jogLegsGear); }   /* v2.3.2887: + the running legs' greaves */
           if (bw) { pushVisible(s, bw.legs); pushVisible(s, bw.jogLegsGear); }
           if (gg) pushVisible(s, gg.legs);
+          if (fa) pushVisible(s, fa.legs);   /* v2.3.3467 */
           this._slot(out, id + ':l', s, lm, peerGrade(o._eqg, 1), 'l');
         }
         for (let i = n1; i < out.length; i++) out[i].fig = d._spriteBody || null;   /* v2.3.3321 */
@@ -884,6 +892,9 @@ export class GlintSystem {
       body,
       /* v2.3.3142: each armour slot's grade as drawn this frame, by key */
       grades: Object.fromEntries(t.filter((x) => x.look && x.sprites.some(shines)).map((x) => [x.key, x.grade])),
+      /* v2.3.3467: the sprites that shine in each slot, by their labels (the
+         farmer's are farmChest / farmLegs: mp-farmanim) */
+      labels: Object.fromEntries(t.filter((x) => x.sprites.some(shines)).map((x) => [x.key, x.sprites.filter(shines).map((q) => q.label || '?')])),
     };
   }
 }
