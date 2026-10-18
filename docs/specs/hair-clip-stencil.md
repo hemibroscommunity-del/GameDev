@@ -96,8 +96,11 @@ player on the screen in a clipping hat or a hood had cost the same.
 
 - `mp-hairstencil`: the bro in an afro under the army helmet, then under the
   crimson cape's hood; one held frame drawn the new way, with the alpha mask
-  (the live switch) and the new way again; the picture differs only at the cut,
-  inside the head's box; the screen bound once less a frame; the bro's shadow as
-  many pieces either way.
+  (the live switch) and the new way again; the picture differs only inside the
+  head's box, split by the frame with the hair unclipped into at the cut and on
+  hair that shows (where the new way must be the unclipped hair, within 64 of
+  the old); the cut is real (the hair unclipped changes 300 px or more, by 100
+  or more); the frame picked up again once less (twice under the helmet); the
+  bro's shadow as many pieces either way.
 - `mp-hairclip` (the stand-ins' clip) and `mp-capehair` (the hood) read the same
   probes, which now say "clipped" for the stencil's box too.
