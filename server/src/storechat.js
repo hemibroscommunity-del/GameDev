@@ -124,7 +124,9 @@ export const storeChatMethods = {
   _scText(v) {
     if (typeof v !== 'string') return null;
     const t = v.slice(0, STORE_CHAT.TEXT_MAX).replace(/[\x00-\x1f\x7f]/g, ' ').trim();
-    return t || null;
+    /* v2.3.3346: then cleaned, as every chat lane is (chatguard.js) -- this
+       one most of all, as a thread is kept for days */
+    return this._chatGuardClean(t) || null;
   },
 
   /* A listing id off the wire. Bounded and never an Object.prototype member:

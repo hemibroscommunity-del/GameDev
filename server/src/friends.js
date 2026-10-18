@@ -215,6 +215,10 @@ export const friendsMethods = {
     let text = payload && payload.text;
     if (!from || !to || typeof to !== 'string' || typeof text !== 'string') return;
     text = text.slice(0, FRIENDS.DM_MAX).replace(/[\x00-\x1f\x7f]/g, ' ').trim();
+    /* v2.3.3346: then cleaned, as every chat lane is (chatguard.js) -- before
+       the allowance, so a line with nothing left in it costs none, as an
+       empty one never did; a DM is private, so no repeat filter */
+    text = this._chatGuardClean(text);
     if (!text) return;
     /* v2.3.3274: a DM is a chat line and spends the sender's chat allowance
        (chatlanes.js _laneAllow: six, then one every 1.5 s).  There was no

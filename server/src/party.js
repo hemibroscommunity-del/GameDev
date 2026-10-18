@@ -337,6 +337,9 @@ export const partyMethods = {
     // Strip control chars, clamp length, trim.  The order matters: clamp
     // the RAW length first so a padded string can't smuggle a long line.
     text = text.slice(0, PARTY.CHAT_MAX).replace(/[\x00-\x1f\x7f]/g, " ").trim();
+    /* v2.3.3346: then cleaned, as every chat lane is; party chat is private,
+       so no repeat filter (chatguard.js) */
+    text = this._chatGuardClean(text);
     if (!text) return;
     const wire = {
       from: session.id, // server-known identity -- unforgeable sender

@@ -170,6 +170,10 @@ import { chatModMethods } from './chatmod.js';
 /* v2.3.2136: @area / @user chat lanes (chatlanes.js).  Own validated
    cases, never the room-wide default relay -- see that file's header. */
 import { chatLaneMethods } from './chatlanes.js';
+/* v2.3.3346: chat guardrails -- chat and emotes spend an allowance of their
+   own (not the one a fight's swings and arrows need), the same public line
+   twice in 30 s is said once, and every lane's text is cleaned (chatguard.js) */
+import { chatGuardMethods } from './chatguard.js';
 import { broVerifyMethods } from './broverify.js'; /* v2.3.1576: Hemi Bro ownership */
 // v2.3.1191 (P4 decomposition): the combat/damage core -- see combat.js.
 import { combatMethods } from './combat.js';
@@ -939,6 +943,9 @@ export class GameRoom {
        EVENTS_PER_TICK_CAP, which only ever bounded the COUNT -- 500
        events of unbounded size was a legal tick payload. */
     this.MAX_INBOUND_BYTES = 16 * 1024;
+    /* v2.3.3346: chat and emotes no longer spend this bucket -- they have an
+       allowance of their own (chatguard.js SOCIAL); this one is for the
+       swings, arrows, rolls, jumps and handshakes */
     this.RELAY_BURST = 8;
     this.RELAY_REFILL_PER_S = 4;
     this.EVENT_BYTES_PER_TICK = 64 * 1024;
@@ -4700,7 +4707,12 @@ export class GameRoom {
        line past the trim -- the ordering _handlePartyChat documents. */
     let text = typeof p.text === 'string' ? p.text : '';
     text = text.slice(0, CHAT_RELAY.TEXT_MAX).replace(/[\x00-\x1f\x7f]/g, ' ').trim();
+    /* v2.3.3346: then cleaned -- stacked accents, invisible and backwards
+       characters, a wall of emoji or of one key (chatguard.js) */
+    text = this._chatGuardClean(text);
     if (!text) return false;
+    /* v2.3.3346: the same line twice in 30 s is said once (chatguard.js) */
+    if (this._chatRepeated(session, 'room', text)) return false;
     const ps = this.playerState[session.id];
     /* The server's own copy of who this is.  session.name is itself
        sanitised at join (join.js sanitizeDisplayName, same version), and
@@ -5856,15 +5868,25 @@ export class GameRoom {
          * path is untouched. */
         if (session.id) {
           const _now = Date.now();
-          if (session.relayTokens === undefined) {
-            session.relayTokens = this.RELAY_BURST;
+          /* v2.3.3346: chat and emotes spend the SOCIAL allowance, five at
+             once then one every 2 s, and never this bucket -- it is the one a
+             player's own swings, arrows, rolls and jumps spend, and a burst of
+             chat or emotes used to empty it, so the next swing the others
+             should have seen was dropped (chatguard.js SOCIAL).  `chatguard:
+             false` puts them back on this bucket. */
+          const _social = this._socialLane(msg.type);
+          if (_social && !this._socialAllow(session, _now)) break;
+          if (!_social) {
+            if (session.relayTokens === undefined) {
+              session.relayTokens = this.RELAY_BURST;
+              session.relayAt = _now;
+            }
+            session.relayTokens = Math.min(this.RELAY_BURST,
+              session.relayTokens + ((_now - session.relayAt) / 1000) * this.RELAY_REFILL_PER_S);
             session.relayAt = _now;
+            if (session.relayTokens < 1) { session.relayDropped = (session.relayDropped || 0) + 1; break; }
+            session.relayTokens -= 1;
           }
-          session.relayTokens = Math.min(this.RELAY_BURST,
-            session.relayTokens + ((_now - session.relayAt) / 1000) * this.RELAY_REFILL_PER_S);
-          session.relayAt = _now;
-          if (session.relayTokens < 1) { session.relayDropped = (session.relayDropped || 0) + 1; break; }
-          session.relayTokens -= 1;
         }
         if (session.id) {
           /* v2.3.3304: rebuilt -- {type, payload} and nothing else, the
@@ -6182,6 +6204,7 @@ export class GameRoom {
 // v2.3.1118: mix the marketplace methods into GameRoom (see the
 // market.js header for the fold rationale + re-extraction path).
 Object.assign(GameRoom.prototype, chatLaneMethods); /* v2.3.2136 */
+Object.assign(GameRoom.prototype, chatGuardMethods); /* v2.3.3346 */
 Object.assign(GameRoom.prototype, broVerifyMethods); /* v2.3.1576 */
 Object.assign(GameRoom.prototype, eventCapeMethods); /* v2.3.2026 */
 Object.assign(GameRoom.prototype, marketMethods);
