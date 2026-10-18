@@ -48,6 +48,15 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/MEMORY-PLAN.md` (what the phone holds -- sound, canvases, heaps, not
   only textures -- what leaked, and the order of the memory work with each
   item's status, v2.3.3075; `mp-memledger` measures it),
+  `docs/FUN-SOCIAL-PLAN.md` (the owner's fun & social plan checked against
+  the code, v2.3.3391 -- "Go recommended": emotes and dances that move the bro
+  in code, two-player moves, farm-made toys, a playground town; its rules: a
+  pose that lasts is STATE on the player (TRAPS §176), social messages get an
+  allowance of their own, anything earned is stored and checked on the server,
+  no new always-on button; Phase 0's emotes you can see -- the chat box's
+  smiley or B, an emoji over the head, a quick line as the bubble, only the
+  listed ones relayed and placed near the sender: docs/specs/emotes.md,
+  `emotes` suite, `mp-emotes`),
   `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
   size, in what order — the decoded-RGBA budget and the free-standing
   vs edge-cropped test live here, v2.3.2650),

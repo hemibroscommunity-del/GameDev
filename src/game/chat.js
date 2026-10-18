@@ -14,6 +14,10 @@
 import { BT_AUDIO } from '@/data/index.js';
 /* v2.3.2139: the channel picker's compose step — see its note below. */
 import { chatChannelBus } from '@/game/chatChannel.js';
+import { emoteKind } from '@/game/emotes.js'; /* v2.3.3391 */
+import { isBlockedId } from '@/game/chatMute.js'; /* v2.3.3391: both shapes of the block list */
+import { stripLaneMarks } from '@/data/smallIcons.js'; /* v2.3.3391 */
+import { earVol } from '@/game/hitSounds.js'; /* v2.3.3391: an emote's chirp carries as far as a hit */
 import { _toConsumableArray } from '@/lib/babelHelpers.js';
 
 /* ═══ v2.3.1970: A RECEIVED LINE IS UNTRUSTED TEXT ═══
@@ -227,11 +231,12 @@ export function handleChatEvent(payload, S, deps) {
      a message with no message in it. */
   var _text = clampChatText(payload.text);
   if (!_text) return;
-  var _name = clampChatName(payload.name);
-  try {
-    var bl = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
-    if (bl.includes(payload.id)) return;
-  } catch (e) {}
+  /* v2.3.3391: never a lane's mark at the front (smallIcons.js stripLaneMarks):
+     a name starting "✉ " drew every room line as a whisper */
+  var _name = stripLaneMarks(clampChatName(payload.name)) || 'Bro';
+  /* v2.3.3391: either shape of the block list (chatMute.js isBlockedId) --
+     a block made from the friends list ({id, name}) hid nothing */
+  if (isBlockedId(payload.id)) return;
   var isMuted = false;
   try {
     var ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
@@ -306,10 +311,7 @@ export function handleAreaChatEvent(payload, S, deps) {
   if (!payload || !payload.from || payload.from === S.myId) return;
   var _atext = clampChatText(payload.text);
   if (!_atext) return;
-  try {
-    var bl = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
-    if (bl.includes(payload.from)) return;
-  } catch (e) {}
+  if (isBlockedId(payload.from)) return;   /* v2.3.3391: either shape of the block list */
   var isMuted = false;
   try {
     var ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
@@ -331,10 +333,7 @@ export function handleWhisperEvent(payload, S, deps) {
   if (!payload || !payload.from || payload.from === S.myId) return;
   var _wtext = clampChatText(payload.text);
   if (!_wtext) return;
-  try {
-    var bl2 = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
-    if (bl2.includes(payload.from)) return;
-  } catch (e) {}
+  if (isBlockedId(payload.from)) return;   /* v2.3.3391: either shape of the block list */
   var wMuted = false;
   try {
     var ml2 = JSON.parse(localStorage.getItem('bt_muted') || '[]');
@@ -376,10 +375,7 @@ export function handlePartyChatEvent(payload, S, deps) {
      lane at PARTY.CHAT_MAX, so this is purely the deploy-order half. */
   var _ptext = clampChatText(payload.text);
   if (!_ptext) return;
-  try {
-    var bl = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
-    if (bl.includes(payload.from)) return;
-  } catch (e) {}
+  if (isBlockedId(payload.from)) return;   /* v2.3.3391: either shape of the block list */
   var isMuted = false;
   try {
     var ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
@@ -412,9 +408,30 @@ export function handleEmoteEvent(payload, S) {
   var _o = payload && payload.id ? S.others[payload.id] : null;
   if (!_o) return;
   if ((_o.zone || _o.z || 'town') !== S.currentZone) return;
-  _o.emote = { emoji: payload.emoji, ts: Date.now() };
-  BT_AUDIO.beep(800, 0.06, 0.06, 'sine');
+  /* ═══ v2.3.3391: AN EMOTE YOU CAN SEE (src/game/emotes.js) ═══
+     This stamped `.emote` and nothing drew it.  Now the renderer pops an
+     emoji over the head (effectsRenderer _updateEmotePops) and a quick line
+     is the speaker's bubble -- so only a LISTED emote is taken (an older
+     worker relays any string), never one from a player you blocked (either
+     shape of the block list) or muted, and the chirp carries only as far as
+     a hit does (hitSounds.js earVol): it rang at full volume from anywhere
+     in your zone, the whole Wheel. */
+  var kind = emoteKind(payload.emoji);
+  if (!kind || isBlockedId(payload.id)) return;
+  try {
+    var _ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
+    if (Array.isArray(_ml) && _ml.includes(payload.id)) return;
+  } catch (e) {}
+  var _now = Date.now();
+  _o.emote = { emoji: payload.emoji, ts: _now };
+  if (kind === 'line') {
+    if (!S.chatBubbles) S.chatBubbles = {};
+    S.chatBubbles[payload.id] = { text: payload.emoji, ts: _now };
+  }
+  var _k = earVol(S, _o.renderX != null ? _o.renderX : _o.x, _o.renderY != null ? _o.renderY : _o.y);
+  if (!(_k > 0)) return;
+  BT_AUDIO.beep(800, 0.06, 0.06 * _k, 'sine');
   setTimeout(function () {
-    return BT_AUDIO.beep(1000, 0.04, 0.06, 'sine');
+    return BT_AUDIO.beep(1000, 0.04, 0.06 * _k, 'sine');
   }, 60);
 }

@@ -8684,6 +8684,13 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.3321: the player list, where a party starts -- the dashboard's
          Clan page opens it now that clans are parties (dash/ClanPanel.jsx) */
       playersOpen:  function () { setShowPlayerList(true); },
+      /* v2.3.3391: the emote picker's doors -- the chat box's smiley opens it
+         (ChatBubble.jsx), B toggles it (desktopControls.js).  Its old door
+         was the hidden toolbar's (MenuBar.jsx), so it could not be opened. */
+      emotes:       function () { setShowEmotes(function (v) { return !v; }); },
+      emotesOpen:   function () { setShowEmotes(true); },
+      /* the picker's own sender, for mp-emotes (a stable useCallback below) */
+      emoteSend:    function (emoji) { sendEmote(emoji); },
     };
     return function () { delete window.__broLegacyUI; };
   }, []);
@@ -13802,7 +13809,7 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       alignItems: 'center'
     }
-  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }),
+  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote, onClose: function () { setShowEmotes(false); } /* v2.3.3391 */ }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
   React.createElement(NmlBadge, { stateRef: stateRef, isLandscape: isLandscape }),   /* v2.3.3268: + the orientation, to keep clear of the shield button */

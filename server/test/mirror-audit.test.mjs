@@ -2337,5 +2337,19 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     guesses.length >= 1 && guesses.every((g) => /: 0$/.test(g)), guesses);
 }
 
+/* ═══ v2.3.3391: THE EMOTES THE WORKER RELAYS ARE THE PHONE'S ═══
+   The worker relays an emote only when it is on its list (emotes.js), and the
+   phone's picker offers -- and its renderer draws -- only its own
+   (gameDisplay.js EMOTES / TEXT_EMOTES).  One emoji missing from the worker's
+   copy is a button that does nothing; several carry a variation selector
+   (U+FE0F), so they are held equal byte for byte, in order. */
+{
+  const { EMOTES: CLIENT_EMOTES, TEXT_EMOTES: CLIENT_TEXT_EMOTES } = await import('../../src/data/gameDisplay.js');
+  const { EMOTE: SRV_EMOTE } = await import('../src/emotes.js');
+  check('emotes: the worker relays exactly the phone\'s 30 emoji and 12 quick lines, byte for byte',
+    JSON.stringify(SRV_EMOTE.EMOJI) === JSON.stringify(CLIENT_EMOTES) && JSON.stringify(SRV_EMOTE.LINES) === JSON.stringify(CLIENT_TEXT_EMOTES),
+    { srv: [SRV_EMOTE.EMOJI.length, SRV_EMOTE.LINES.length], client: [CLIENT_EMOTES.length, CLIENT_TEXT_EMOTES.length] });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
