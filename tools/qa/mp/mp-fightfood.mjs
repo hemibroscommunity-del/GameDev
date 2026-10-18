@@ -241,21 +241,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
       }, 50);
     });
-    await P.page.waitForTimeout(900);
-    const tile = await P.page.$(`[data-inv-key="${key}"]`);
+    /* v2.3.3425: the tile and the Eat button waited for, not set times
+       (900 and 700 ms), and shorter pauses after: in the second solo run the
+       forced bite still came 15.4 s after the first, past the worker's gap,
+       and was rightly eaten.  The popups after the Eat are in the record,
+       which a caller reads again when it needs later ones. */
+    const tile = await P.page.waitForSelector(`[data-inv-key="${key}"]`, { timeout: 8000 }).catch(() => null);
     if (!tile) return { tile: false };
     await tile.dispatchEvent('pointerup');
-    await P.page.waitForTimeout(700);
-    const btn = await P.page.$('button:text-is("Eat")');
+    const btn = await P.page.waitForSelector('button:text-is("Eat")', { timeout: 8000 }).catch(() => null);
     const at = Date.now();
     if (btn) await btn.click();
-    await P.page.waitForTimeout(1200);
+    await P.page.waitForTimeout(700);
     const seen = await P.page.evaluate((t0) => (window.__ffPops || []).filter((p) => p.at >= t0 - 100).map((p) => p.text), at);
     await P.page.evaluate(() => {
       try { window._itemDetailBus.close(); } catch (e) {}
       try { window.__broDashPanelBus.clear(); } catch (e) {}
     });
-    await P.page.waitForTimeout(500);
+    await P.page.waitForTimeout(300);
     return { tile: true, btn: !!btn, at, popups: [...new Set(seen)] };
   };
   const srvStew = async () => ((((await H.adminPlayer(wsPort, bId)) || {}).rpg || {}).inventory || {}).meal_garden_stew || 0;
@@ -263,17 +266,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const hp0 = await srvHp();
   const first = await bagEat(B, 'meal_garden_stew');
-  await B.page.waitForTimeout(800);
-  const hp1 = await srvHp();
-  const left1 = await srvStew();
+  /* v2.3.3425: the pauses between the bites 400 ms, not 800 (bagEat's note) */
+  await B.page.waitForTimeout(400);
+  const [hp1, left1] = await Promise.all([srvHp(), srvStew()]);
   rec.ok(`in the duel, B's first stew heals (${hp0} -> ${hp1}) and is used up`, first.btn && hp1 > hp0 && left1 === 2, { first, hp0, hp1, left1 });
 
   await H.devOp(wsPort, 'vitals', bId, { hp: 30 });
-  await B.page.waitForTimeout(800);
+  await B.page.waitForTimeout(400);
   const second = await bagEat(B, 'meal_garden_stew');
-  await B.page.waitForTimeout(800);
-  const left2 = await srvStew();
-  const hp2 = await srvHp();
+  await B.page.waitForTimeout(400);
+  const [left2, hp2] = await Promise.all([srvStew(), srvHp()]);
   rec.ok('the second, right after, is held back on B\'s screen: "Eat again in Ns"',
     second.btn && second.popups.some((t) => /^Eat again in \d+s$/.test(t)), second);
   rec.ok('...and the worker never ate it (the stew still there, no heal)', left2 === 2 && hp2 <= 31, { left2, hp2 });
