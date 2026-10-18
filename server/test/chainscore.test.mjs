@@ -510,6 +510,14 @@ function mk(over) {
 
   const a = room._chainScoreCheckpoint('bp_qa', { level: 25, svKills: 1 });
   const b = room._chainScoreCheckpoint('bp_qb', { level: 25, svKills: 2 });
+  /* v2.3.3371: wait for the FIRST flight to reach its held nonce read, then
+     give the second 20 ms to read one too (it never may).  A bare 20 ms from
+     the start was a race: on a busy CI runner (4 suites at once) the first
+     had not got there yet, the count read 0, and a correct guard failed
+     (#978, `countsBeforeRelease: 0`).  Warm, it gets there in ~4 ms. */
+  for (const t0 = Date.now(); txCount === 0 && Date.now() - t0 < 5000;) {
+    await new Promise((r) => setTimeout(r, 2));
+  }
   await new Promise((r) => setTimeout(r, 20));
   const sendsBeforeRelease = order.filter((m) => m === 'eth_sendRawTransaction').length;
   const countsBeforeRelease = order.filter((m) => m === 'eth_getTransactionCount').length;
