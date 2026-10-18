@@ -107,20 +107,31 @@ than the legs"), as `mp-sharppixels` already did.
 
 ## Measured
 
-`mp-phoneframe` with `BT_PF_AB='nolayergroups&loudclear&zindexall'`, two
-rounds each, a phone page (390 x 844) on this box's software graphics:
+`mp-phoneframe` side by side, a phone page (390 x 844, drawn at 1x density so
+this box's software graphics keep up), 3 rounds each, no profiler or census
+running (`BT_PF_ROUNDS=3 BT_PF_PROFILE=0 BT_PF_SDC=0 BT_PF_DPR=1`). Changes 1-3
+and the background, against `BT_PF_AB='nolayergroups&loudclear&zindexall'`:
 
 | | now | before |
 |---|---|---|
-| BroTown, walking: the frame's work (mean) | 4.55 ms | 5.04 ms |
-| BroTown, walking: draw-list rebuilding a frame | 0.40 ms | 0.88 ms |
-| Flame Fields fight: the frame's work (mean) | 5.51 ms | 6.01 ms |
-| Flame Fields fight: draw-list rebuilding a frame | 0.41 ms | 1.25 ms |
-| draw calls a frame (BroTown / fight) | 51 / 76 | 49 / 72 |
+| BroTown, walking: Pixi's drawing a frame | 1.52 ms | 1.80 ms |
+| Flame Fields fight: Pixi's drawing a frame | 2.15 ms | 2.72 ms |
+| BroTown, walking: the frame's work (mean) | 4.27 ms | 4.45 ms |
+| Flame Fields fight: the frame's work (mean) | 5.11 ms | 5.68 ms |
+| draw calls a frame (BroTown / fight) | 49.6 / 74.1 | 47.3 / 70.2 |
 
-About a tenth of the game's own work a frame. The cost: a few more draw calls,
-as a batch now ends at each layer's edge. What is still rebuilt each frame is
-small layers (a monster's health bar redraws its own `monsterUi` layer).
+Change 4 on its own, against `BT_PF_AB='layerpush'`:
+
+| | now | Pixi's push and pop |
+|---|---|---|
+| uniform uploads a frame (BroTown / fight) | 28 / 31 | 44 / 46 |
+| Pixi's drawing a frame (BroTown / fight) | 1.58 / 2.27 ms | 1.72 / 2.37 ms |
+
+The one list's own uploads were 28 / 31: with the camera numbers shared the
+layers cost none. What the layers do cost is a few draw calls, as a batch now
+ends at each layer's edge, and a buffer upload a layer that changed. What is
+still rebuilt each frame is small layers (a monster's health bar redraws its
+own `monsterUi` layer).
 
 ## How it is checked
 
