@@ -16,6 +16,8 @@ import { BT_AUDIO } from '@/data/index.js';
 import { chatChannelBus } from '@/game/chatChannel.js';
 import { emoteKind } from '@/game/emotes.js'; /* v2.3.3353 */
 import { moveKind, EMOTE_MOVES, slashMove } from '@/game/emoteMoves.js'; /* v2.3.3355: the moment moves, and /wave */
+import { slashDice, diceResult, diceLineText, diceBubbleText, diceWaitMs } from '@/game/dice.js'; /* v2.3.3356: /roll and /flip */
+import { cueAt } from '@/game/eventSounds.js'; /* v2.3.3356: the roll's clatter, by distance */
 import { isBlockedId } from '@/game/chatMute.js'; /* v2.3.3353: both shapes of the block list */
 import { stripLaneMarks } from '@/data/smallIcons.js'; /* v2.3.3353 */
 import { earVol } from '@/game/hitSounds.js'; /* v2.3.3353: an emote's chirp carries as far as a hit */
@@ -64,6 +66,26 @@ export function setChatMoveSender(fn) {
 
 export function sendChatMessage(S, text, deps) {
   var setChatLog = deps.setChatLog;
+  /* ═══ v2.3.3356: "/roll", "/roll 20", "/flip" -- ROLLED BY THE WORKER ═══
+     (game/dice.js, server/src/dice.js).  This phone only asks; the number is
+     the worker's, and comes back as `dice_roll` for everyone near
+     (handleDiceEvent below).  One ask every DICE_GAP_MS, held back here with
+     words.  Against a worker without caps.dice, "/roll" is the plain line it
+     always was. */
+  var _dice = slashDice(text);
+  if (_dice && S._serverCaps && S._serverCaps.dice === true) {
+    var _dwait = diceWaitMs(S);
+    if (_dwait > 0) {
+      S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
+        id: '_sys', name: '🎲', text: 'Roll again in ' + Math.ceil(_dwait / 1000) + ' s', color: '#8a8f98', ts: Date.now(), lane: true
+      }]);
+      setChatLog(_toConsumableArray(S.chatLog));
+      return;
+    }
+    S._diceAskAt = Date.now();
+    if (S.channel) S.channel.send(_dice.kind === 'flip' ? { type: 'dice', kind: 'flip' } : { type: 'dice', kind: 'roll', max: _dice.max });
+    return;
+  }
   var _slash = slashMove(text);
   if (_slash && _moveSender) {
     _moveSender(_slash);
@@ -461,4 +483,33 @@ export function handleEmoteEvent(payload, S) {
   setTimeout(function () {
     return BT_AUDIO.beep(1000, 0.04, 0.06 * _k, 'sine');
   }, 60);
+}
+
+/* ═══ v2.3.3356: A ROLL OR FLIP THE WORKER MADE (server/src/dice.js) ═══
+   `dice_roll` {id, name, kind, value, max}: the roller is the worker's stamp
+   (wsClient.js reads `from` into `id`), the number the worker's.  A line in
+   the chat in the roller's name ("🎲 rolled 57 (1-100)"), the number over
+   their head as their speech bubble for its 5 s, and the toss heard by
+   distance.  Not from a blocked or muted player (the worker drops a muted
+   roller's for us too).  Your own comes back this way as well: what you see
+   is what everyone near sees.  deps = { setChatLog, setUnreadChats } */
+export function handleDiceEvent(payload, S, deps) {
+  var r = diceResult(payload);
+  if (!r || !payload.id || isBlockedId(payload.id)) return;
+  try {
+    var _ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
+    if (Array.isArray(_ml) && _ml.includes(payload.id)) return;
+  } catch (e) {}
+  var _mine = payload.id === S.myId;
+  var _name = stripLaneMarks(clampChatName(payload.name)) || (_mine ? S.myName : '') || 'Bro';
+  var _now = Date.now();
+  if (!S.chatBubbles) S.chatBubbles = {};
+  S.chatBubbles[payload.id] = { text: diceBubbleText(r), ts: _now };
+  S.chatLog = [].concat(_toConsumableArray((S.chatLog || []).slice(-40)), [{
+    id: payload.id, name: _name, text: diceLineText(r), color: '#E8C76A', ts: _now, dice: true
+  }]);
+  if (deps && deps.setChatLog) deps.setChatLog(_toConsumableArray(S.chatLog));
+  if (!_mine && deps && deps.setUnreadChats) deps.setUnreadChats(function (prev) { return prev + 1; });
+  var _src = _mine ? S.player : (S.others && S.others[payload.id]);
+  if (_src) cueAt(S, r.kind === 'flip' ? 'coinToss' : 'diceRoll', _src.x, _src.y);
 }

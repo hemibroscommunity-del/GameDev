@@ -66,7 +66,12 @@ remnant to migrate server-side, not a mode to preserve.
   the name plate never tilts and only comes down with a sitter or sleeper;
   the picker's Moves tab and `/wave`, `/sit`, `/dance` in the chat;
   `caps.emotemoves`, kill switch `emotemoves: false`; `emotes` §5-7,
-  `mp-emotemoves`: docs/specs/emote-moves.md),
+  `mp-emotemoves`: docs/specs/emote-moves.md; and since v2.3.3356 `/roll`
+  (1-100, `/roll 20`) and `/flip` ROLLED BY THE WORKER (server/src/dice.js:
+  crypto, no modulo bias, one every 5 s, `dice_roll` PRIVILEGED, placed near
+  the roller and muted with chat), a chat line in the roller's name and the
+  number as their bubble; `caps.dice`, kill switch `dice: false`; `dice`
+  suite, `mp-dice`: docs/specs/dice.md),
   `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
   size, in what order — the decoded-RGBA budget and the free-standing
   vs edge-cropped test live here, v2.3.2650),

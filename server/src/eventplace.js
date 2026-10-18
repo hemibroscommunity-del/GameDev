@@ -68,6 +68,10 @@ const ROOM_PLACED = Object.freeze({
   arrow_boom: { xy: ['x', 'y'], who: ['id'] },
   element_nova: { xy: ['x', 'y'], who: ['id'] },
   ability_windup: { p: 'playerId', who: ['playerId'] },
+  /* v2.3.3356: a /roll or /flip (dice.js): where the room has the roller,
+     who hears their own anywhere.  Words in the chat, kept as nothing but a
+     line, so a phone that walks up later misses nothing it would draw */
+  dice_roll: { p: 'id', who: ['id'] },
 });
 
 /* what a phone relays about what it does where it stands (index.js's default
