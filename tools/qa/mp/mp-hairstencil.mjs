@@ -16,8 +16,9 @@
  *      mask's picture differs only at the hair's cut -- a few hundred pixels at
  *      most, all of them in the box round the head (out/hairstencil-*.png);
  *   3. the cut is real: with the hair unclipped the picture changes more;
- *   4. the screen is set aside for no clip: drawing the frame the new way binds
- *      the screen once, the alpha mask once more;
+ *   4. the screen is set aside for no clip: drawing the frame the new way, the
+ *      screen is picked up again after another picture no more often than for
+ *      the frame's other passes, the alpha mask at least once more;
  *   5. under a hood (the crimson cape, no hat) the same three checks;
  *   6. the silhouettes cast no shadow (the bro's shadow as many pieces either
  *      way), and no page errors.
@@ -41,11 +42,21 @@ const sameFrame = (P) => P.page.evaluate(async () => {
   w.requestAnimationFrame = (cb) => { w.__hsHeld.push(cb); return 0; };
   await new Promise((r) => setTimeout(r, 700));
   const W = gl.drawingBufferWidth, Hh = gl.drawingBufferHeight;
+  /* the frame set aside while it is drawn: every bind of the screen that
+     comes after a bind of another picture is the frame picked up again
+     (`resumes`); the screen's raw binds (`screens`) count more, as Pixi binds
+     it again when it is already bound (a filter's pop), which costs a chip
+     nothing (mp-shadowprepass, v2.3.3377) */
   const fb = gl.bindFramebuffer;
-  let screens = 0;
-  gl.bindFramebuffer = function (t, f) { if (f == null) screens++; return fb.call(this, t, f); };
+  let screens = 0, resumes = 0, last;
+  gl.bindFramebuffer = function (t, f) { if (f == null) { screens++; if (last != null) resumes++; } last = f; return fb.call(this, t, f); };
   const binds = [];
-  const grab = () => { screens = 0; R.render(app.stage); binds.push(screens); const px = new Uint8Array(W * Hh * 4); gl.readPixels(0, 0, W, Hh, gl.RGBA, gl.UNSIGNED_BYTE, px); return px; };
+  const grab = () => {
+    screens = 0; resumes = 0; last = undefined;
+    R.render(app.stage);
+    binds.push({ screens, resumes });
+    const px = new Uint8Array(W * Hh * 4); gl.readPixels(0, 0, W, Hh, gl.RGBA, gl.UNSIGNED_BYTE, px); return px;
+  };
   const S = w._gameState.current;
   const k = S._worldScaleX || 1, dpr = W / (app.screen.width || 1);
   /* the head, on the screen in device px from the bottom row up (readPixels) */
@@ -155,8 +166,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`the hat: the cut is real (unclipped, ${h.unclipped && h.unclipped.n} px change, against ${h.diff.n})`,
       !!h.unclipped && h.unclipped.n > 4 * Math.max(50, h.diff.n), h.unclipped);
     const [b1, , bA, b3] = h.binds;
-    rec.ok(`the hat: no pass for the clip -- drawing the frame binds the screen ${b1} time(s), the alpha mask ${bA}`,
-      b1 >= 1 && b3 === b1 && bA === b1 + 1, h.binds);
+    rec.ok(`the hat: no pass for the clip -- drawing the frame, the screen is picked up again ${b1 && b1.resumes} time(s) (other passes), with the alpha mask ${bA && bA.resumes}`,
+      !!b1 && !!b3 && !!bA && b1.screens >= 1 && b3.resumes === b1.resumes && bA.resumes >= b1.resumes + 1, h.binds);
 
     /* 5: the hood (the crimson cape, no hat) */
     const pid = await P.page.evaluate(() => (window._gameState && window._gameState.current && window._gameState.current.myId) || null);
@@ -178,7 +189,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!d.before && d.before.hairVisible && d.before.maskedToHood && d.before.clipKind === 'stencil' && !d.before.hoodMaskDrawn, d.before);
     rec.ok(`the hood: the same frame twice (${d.steady.n}), the alpha mask only at the cut (${d.diff.n} px, most ${d.diff.maxd}, ${d.diff.out} outside the head's box), the new way again the same (${d.back.n})`,
       d.steady.n === 0 && d.diff.out === 0 && d.diff.n <= 600 && d.back.n === 0, { steady: d.steady, diff: d.diff, back: d.back });
-    rec.ok(`the hood: no pass for the clip (${JSON.stringify(d.binds)})`, d.binds[0] >= 1 && d.binds[2] === d.binds[0] + 1, d.binds);
+    rec.ok(`the hood: no pass for the clip (${JSON.stringify(d.binds)})`,
+      !!d.binds[0] && !!d.binds[2] && d.binds[0].screens >= 1 && d.binds[2].resumes >= d.binds[0].resumes + 1, d.binds);
 
     /* 6: the bro's shadow is cast from as many pieces either way (a
        silhouette in a stencil box would add one: casters.js skips the box) */
