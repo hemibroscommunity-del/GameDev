@@ -765,16 +765,26 @@ export const dailyRewardsMethods = {
   },
 
   /* A daily quest is done: paid at once, its star on the season, and the
-     all-three bonus when it is the third.  Saved at once (value). */
+     all-three bonus when it is the third.  Saved at once (value).
+
+     v2.3.3369: THE COINS AND THE RECORD IN ONE WRITE.  The record (this
+     quest done) was saved in this run and the coins after _creditPlayer's
+     first read, a write of their own: a restart between the two (every
+     server merge restarts the room) kept "done" and lost the quest's gold
+     (the architecture review, 2026-10-17).  The player is here -- only an
+     online player's record is counted (_drSignal) -- so the coins go onto
+     their live state and are saved and stamped in the SAME synchronous run
+     as the record (inbox.js _creditLiveTogether): both commit, or neither,
+     and neither means the quest is still to do.  `q.d` is set first, so the
+     signal never completes one twice in this life; a done quest is never
+     rerolled, so its opId is only ever paid here.  A player gone from the
+     room (the record not yet forgotten) is credited as before, the record
+     saved after the credit (rule 5: the credit first, the run closed after
+     it; a crash between leaves the quest to do, and its opId answers 'dup'). */
   _dqComplete(pid, rec, i) {
     const q = rec.dq.list[i];
     q.d = 1;
     q.n = q.g;
-    this._creditPlayer(pid, {
-      opId: 'dq:' + pid + ':' + rec.dq.day + ':' + i,
-      source: 'dailyquest', kind: 'gold', payload: { amount: q.c },
-      note: 'Daily quest',
-    }).catch(() => {});
     this._seAddStars(rec, QUESTS.STARS);
     let all = null;
     if (!rec.dq.all && rec.dq.list.length >= QUESTS.COUNT && rec.dq.list.every((x) => x && x.d)) {
@@ -783,7 +793,21 @@ export const dailyRewardsMethods = {
       rec.sp.extra = Math.min(SPIN.EXTRA_MAX, rec.sp.extra + QUESTS.ALL.spins);
       all = { stars: QUESTS.ALL.stars, spins: QUESTS.ALL.spins };
     }
-    this._drSave(pid).catch(() => {});
+    /* the same entry on both roads, written out at each (opid-audit wants a
+       credit's opId inline, where the call is) */
+    const together = this._creditLiveTogether([{ pid, entry: {
+      opId: 'dq:' + pid + ':' + rec.dq.day + ':' + i,
+      source: 'dailyquest', kind: 'gold', payload: { amount: q.c }, note: 'Daily quest',
+    } }], []);
+    if (together) {
+      together.catch(() => {});
+      this._drSave(pid).catch(() => {});
+    } else {
+      this._creditPlayer(pid, {
+        opId: 'dq:' + pid + ':' + rec.dq.day + ':' + i,
+        source: 'dailyquest', kind: 'gold', payload: { amount: q.c }, note: 'Daily quest',
+      }).catch(() => {}).then(() => this._drSave(pid)).catch(() => {});
+    }
     this._drSendState(pid, { kind: 'daily', i, t: q.t, p: q.p, coins: q.c, stars: QUESTS.STARS, all }).catch(() => {});
   },
 

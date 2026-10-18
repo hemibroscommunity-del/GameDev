@@ -13,6 +13,7 @@ code.
 |---|---|---|---|
 | **noble-secp256k1** (Paul Miller) | `server/src/vendor/noble-secp256k1.js` | MIT | Vendored verbatim with its license header. Used to sign on-chain score attestations in the Cloudflare Worker — Web Crypto does not implement secp256k1, and vendoring keeps the server test suite dependency-free. Upstream: https://github.com/paulmillr/noble-secp256k1 |
 | **keccak-256** | `server/src/onchain.js` | MIT (this project) | Written for this project; verified against the canonical private-key-1 → `0x7E5F…95BdF` address vector. |
+| **EFF Long Wordlist** (Electronic Frontier Foundation, 2016) | `server/src/keywords.js` | [CC BY 3.0 US](https://creativecommons.org/licenses/by/3.0/us/) | The words a new Login Key is made of (v2.3.3355): the list's 1,477 words of five letters or fewer, with 55 removed (brand names, illness and body words, insults, and one containing a dash). Source: https://www.eff.org/dice |
 | React, PixiJS, Vite, Wrangler | `package.json`, `server/package.json` | MIT / respective | Standard dependencies, unmodified, installed from npm. |
 
 ## Fonts

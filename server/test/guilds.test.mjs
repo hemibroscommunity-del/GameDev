@@ -114,5 +114,89 @@ room.eventBuffer.length = 0;
 await room.webSocketMessage(ws2, JSON.stringify({ type: 'guild_quest_result', payload: { skill: 'fishing', index: 7, gold: 2000, ap: 750 } }));
 check('forged guild_quest_result dropped by deny-list', room.eventBuffer.filter((e) => e.type === 'guild_quest_result').length === 0, room.eventBuffer.map((e) => e.type));
 
+// ── 7. v2.3.3369: the claim and the pay are one write ──
+// The claim was put and awaited before the rung's gold and AP were saved, so a
+// restart between the two (every merge restarts the room) kept the claim and
+// lost the pay (the architecture review).  A storage where every write of one
+// synchronous run commits as ONE batch, as a Durable Object's does, and the
+// room dies before batch `crashAt` (inbox.test §8c's): at every batch the
+// turn-in makes, the claim is on file exactly when the rung is paid.
+{
+  const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
+  const mkCrashState = (seed) => {
+    const store = new Map(seed ? [...seed].map(([k, v]) => [k, clone(v)]) : []);
+    let pending = null, batches = 0, crashAt = Infinity, dead = false;
+    const commit = () => {
+      const w = pending; pending = null;
+      const n = batches++;
+      if (dead || n >= crashAt) { dead = true; return; }
+      for (const [op, k, v] of w) { if (op === 'put') store.set(k, v); else store.delete(k); }
+    };
+    const write = (op, k, v) => {
+      if (!pending) { pending = []; queueMicrotask(commit); }
+      pending.push([op, k, clone(v)]);
+    };
+    const view = (k) => {
+      if (pending) for (let i = pending.length - 1; i >= 0; i--) if (pending[i][1] === k) return pending[i][0] === 'put' ? clone(pending[i][2]) : undefined;
+      return clone(store.get(k));
+    };
+    return {
+      _store: store,
+      batches: () => batches,
+      crashAt(n) { crashAt = n; },
+      storage: {
+        get: async (k) => view(k),
+        put: async (k, v) => {
+          if (k && typeof k === 'object') { for (const [kk, vv] of Object.entries(k)) write('put', kk, vv); return; }
+          write('put', k, v);
+        },
+        delete: async (k) => { for (const x of (Array.isArray(k) ? k : [k])) write('del', x); return true; },
+        list: async (opts) => { const out = new Map(); for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, clone(v)); return out; },
+      },
+      getWebSockets: () => [],
+      acceptWebSocket: () => {},
+    };
+  };
+  const settleIo = () => new Promise((r) => setTimeout(r, 5));
+  const P = 'bp_gq_crash';
+  const joinOn = async (rm, w) => {
+    rm.sessions.set(w, baseSession());
+    await rm.webSocketMessage(w, JSON.stringify({ type: 'join', id: P, name: 'T', phrase: 'p-' + P, data: { x: 0, y: 0, z: 'town' } }));
+    await settleIo();
+  };
+  // a saved player at Fishing 20 with no gold, AP or claims
+  const s0 = mkCrashState();
+  const r0 = new GameRoom(s0, mockEnv);
+  await joinOn(r0, fakeWs('w0'));
+  Object.assign(r0.playerState[P], { coins: 0, achievementPoints: 0, lifeSkills: { fishing: { level: 20, xp: 0 } } });
+  r0._saveRpg(P, r0.playerState[P]);
+  await settleIo();
+  const store = s0._store;
+  const G = GUILD_QUESTS[0];
+  const run = async (k) => {
+    const s1 = mkCrashState(store);
+    const r1 = new GameRoom(s1, mockEnv);
+    const w1 = fakeWs('w1');
+    await joinOn(r1, w1);
+    const b0 = s1.batches();
+    s1.crashAt(k === Infinity ? Infinity : b0 + k);
+    await r1.webSocketMessage(w1, JSON.stringify({ type: 'guild_quest_turn_in', payload: { skill: 'fishing' } }));
+    await settleIo();
+    const rec = s1._store.get('rpg:' + P) || {};
+    const cl = s1._store.get('guild_claims:' + P) || {};
+    return { batches: s1.batches() - b0, claimed: cl.fishing || 0, coins: rec.coins || 0, ap: rec.achievementPoints || 0 };
+  };
+  const dry = await run(Infinity);
+  check('7. with no restart the rung is claimed and paid', dry.claimed === 1 && dry.coins === G.gold && dry.ap === G.ap, dry);
+  const wrong = [];
+  for (let k = 0; k <= dry.batches; k++) {
+    const r = await run(k);
+    const paid = r.coins === G.gold && r.ap === G.ap;
+    const none = r.coins === 0 && r.ap === 0;
+    if (!((r.claimed === 1 && paid) || (r.claimed === 0 && none))) wrong.push({ crashAt: k, ...r });
+  }
+  check('7. a restart at any write keeps the claim exactly when the rung is paid (never claimed and unpaid)', wrong.length === 0 && dry.batches >= 1, { batches: dry.batches, wrong });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
