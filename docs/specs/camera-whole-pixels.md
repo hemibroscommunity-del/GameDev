@@ -88,8 +88,8 @@ are taken out of the picture, and the bro is left out.
 |---|---|---|---|
 | computer (dpr 1), old camera, worst frame | 5.0% | 11.1% | 9.6% |
 | computer (dpr 1), old camera, mean | 0.9% | 9.2% | 7.3% |
-| computer (dpr 1), whole device pixels, worst frame | 0.01% | 0.02% | 0.01% |
-| phone (dpr 3), whole device pixels, worst frame | 0.00% | 0.01% | |
+| computer (dpr 1), whole device pixels, worst frame | 0.01% | 0.02% | 0.10% |
+| phone (dpr 3), whole device pixels, worst frame | 0.00% | 0.01% | 0.01% |
 
 * A computer at 125% (dpr 1.25, a Windows laptop's usual setting) was measured
   too, walking north, south, east, west and south-west: no frame over 0.04%.
