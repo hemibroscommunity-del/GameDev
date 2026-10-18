@@ -13,9 +13,13 @@
  *   2. THE SAME FRAME: the game's frames held, the scene drawn twice the new
  *      way (identical: guard), once with the alpha mask (the live switch), once
  *      the new way again: the new way is the same as itself, and the alpha
- *      mask's picture differs only at the hair's cut -- a few hundred pixels at
+ *      mask's picture differs only at the hair -- a few hundred pixels at
  *      most, all of them in the box round the head (out/hairstencil-*.png);
- *   3. the cut is real: with the hair unclipped the picture changes more;
+ *   3. the cut is real: with the hair unclipped the picture changes by
+ *      hundreds of pixels, fully; and where the two ways differ is split by
+ *      the unclipped picture: AT THE CUT (the clip changes that pixel) or on
+ *      hair that SHOWS (it does not): there the new way draws the hair exactly
+ *      as with no hat, and the alpha mask's pass had moved it a little;
  *   4. the screen is set aside for no clip: drawing the frame the new way, the
  *      screen is picked up again after another picture no more often than for
  *      the frame's other passes, the alpha mask at least once more;
@@ -74,6 +78,19 @@ const sameFrame = (P) => P.page.evaluate(async () => {
     }
     return { n, maxd, out };
   };
+  /* where the new way (a) and the alpha mask (b) differ: at the cut (the
+     unclipped picture u differs from a there) or on hair that shows (u is a
+     there, so the new way draws it as unmasked hair) */
+  const split = (a, b, u) => {
+    let atCut = 0, cutMax = 0, onShown = 0, shownMax = 0;
+    for (let i = 0; i < a.length; i += 4) {
+      const d = Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]), Math.abs(a[i + 2] - b[i + 2]));
+      if (!d) continue;
+      if (a[i] !== u[i] || a[i + 1] !== u[i + 1] || a[i + 2] !== u[i + 2]) { atCut++; if (d > cutMax) cutMax = d; }
+      else { onShown++; if (d > shownMax) shownMax = d; }
+    }
+    return { atCut, cutMax, onShown, shownMax };
+  };
   const probe = () => (w.__btCapeHair ? w.__btCapeHair() : null);
   const before = probe();
   const a1 = grab();
@@ -121,7 +138,7 @@ const sameFrame = (P) => P.page.evaluate(async () => {
   held.forEach((cb) => w.requestAnimationFrame(cb));
   return {
     W, H: Hh, before, pAlpha, binds, png,
-    steady: cmp(a1, a2), diff, back: cmp(a1, a3), unclipped: un ? cmp(a1, un) : null,
+    steady: cmp(a1, a2), diff, back: cmp(a1, a3), unclipped: un ? cmp(a1, un) : null, split: un ? split(a1, b, un) : null,
     clip: w.__btHairClip ? w.__btHairClip() : null,
   };
 });
@@ -149,7 +166,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const step = async (tag) => {
       const r = await sameFrame(P);
       writeFileSync(join(OUT, `hairstencil-${tag}.png`), Buffer.from(r.png.split(',')[1], 'base64'));
-      console.log(`    ${tag}: ${JSON.stringify(r.before)}; alpha ${r.pAlpha && r.pAlpha.clipKind}; binds ${JSON.stringify(r.binds)}; twice ${r.steady.n}; the alpha mask ${r.diff.n} px apart (most ${r.diff.maxd}, ${r.diff.out} outside the head's box); back ${r.back.n}; unclipped ${r.unclipped && r.unclipped.n}; ${JSON.stringify(r.clip)}`);
+      console.log(`    ${tag}: ${JSON.stringify(r.before)}; alpha ${r.pAlpha && r.pAlpha.clipKind}; binds ${JSON.stringify(r.binds)}; twice ${r.steady.n}; the alpha mask ${r.diff.n} px apart (most ${r.diff.maxd}, ${r.diff.out} outside the head's box); back ${r.back.n}; unclipped ${r.unclipped && r.unclipped.n}; split ${JSON.stringify(r.split)}; ${JSON.stringify(r.clip)}`);
       return r;
     };
 
@@ -160,11 +177,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`the hat: the same frame drawn twice is the same frame (${h.steady.n} px apart) (guard)`, h.steady.n === 0, h.steady);
     rec.ok(`the hat: the live switch drew it with the alpha mask (${h.pAlpha && h.pAlpha.clipKind}) (guard)`,
       !!h.pAlpha && h.pAlpha.clipKind === 'alpha' && h.pAlpha.maskedToHat, h.pAlpha);
-    rec.ok(`the hat: the alpha mask's picture differs only at the hair's cut (${h.diff.n} px, most ${h.diff.maxd}, ${h.diff.out} outside the head's box) -- out/hairstencil-hat.png`,
+    rec.ok(`the hat: the alpha mask's picture differs only at the hair (${h.diff.n} px, most ${h.diff.maxd}, ${h.diff.out} outside the head's box) -- out/hairstencil-hat.png`,
       h.diff.out === 0 && h.diff.n <= 600, h.diff);
     rec.ok(`the hat: and the new way again is the same frame (${h.back.n} px apart)`, h.back.n === 0, h.back);
-    rec.ok(`the hat: the cut is real (unclipped, ${h.unclipped && h.unclipped.n} px change, against ${h.diff.n})`,
-      !!h.unclipped && h.unclipped.n > 4 * Math.max(50, h.diff.n), h.unclipped);
+    /* (the alpha mask's pass resampled the hair a little everywhere it shows
+       -- 418 px by up to 35 on the afro's sides, against a cut of 947 by up to
+       232 -- so "the cut is much bigger than the difference" was the wrong
+       test; the split says which pixels are which) */
+    rec.ok(`the hat: the cut is real (unclipped, ${h.unclipped && h.unclipped.n} px change, most ${h.unclipped && h.unclipped.maxd}); the two ways differ ${h.split && h.split.atCut} px at the cut (most ${h.split && h.split.cutMax}) and ${h.split && h.split.onShown} on hair that shows (most ${h.split && h.split.shownMax}), where the new way is the unmasked hair`,
+      !!h.unclipped && h.unclipped.n >= 300 && h.unclipped.maxd >= 100 && !!h.split && h.split.shownMax <= 64, { unclipped: h.unclipped, split: h.split });
     const [b1, , bA, b3] = h.binds;
     rec.ok(`the hat: no pass for the clip -- drawing the frame, the screen is picked up again ${b1 && b1.resumes} time(s) (other passes), with the alpha mask ${bA && bA.resumes}`,
       !!b1 && !!b3 && !!bA && b1.screens >= 1 && b3.resumes === b1.resumes && bA.resumes >= b1.resumes + 1, h.binds);
@@ -187,7 +208,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const d = await step('hood');
     rec.ok(`the hood: the hair is clipped to it through the stencil, and the silhouette is not drawn as a picture (${JSON.stringify(d.before)}) (guard)`,
       !!d.before && d.before.hairVisible && d.before.maskedToHood && d.before.clipKind === 'stencil' && !d.before.hoodMaskDrawn, d.before);
-    rec.ok(`the hood: the same frame twice (${d.steady.n}), the alpha mask only at the cut (${d.diff.n} px, most ${d.diff.maxd}, ${d.diff.out} outside the head's box), the new way again the same (${d.back.n})`,
+    rec.ok(`the hood: the same frame twice (${d.steady.n}), the alpha mask only round the head (${d.diff.n} px, most ${d.diff.maxd}, ${d.diff.out} outside the head's box: ${d.split && d.split.atCut} at the cut, ${d.split && d.split.onShown} on hair that shows), the new way again the same (${d.back.n})`,
       d.steady.n === 0 && d.diff.out === 0 && d.diff.n <= 600 && d.back.n === 0, { steady: d.steady, diff: d.diff, back: d.back });
     rec.ok(`the hood: no pass for the clip (${JSON.stringify(d.binds)})`,
       !!d.binds[0] && !!d.binds[2] && d.binds[0].screens >= 1 && d.binds[2].resumes >= d.binds[0].resumes + 1, d.binds);
