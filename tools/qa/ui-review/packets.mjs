@@ -89,21 +89,75 @@ export function sectionOf(notesText, title) {
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-/* one view's check, in a line or a few: the controls with something found
-   ('tight' -- merely close to a neighbour -- left out, as FINDINGS does) */
-function checkLines(row) {
+/* the check's findings on one view's row, each in the words a brief prints
+   ('tight' -- merely under Apple's 44 px guide -- left out, as FINDINGS does) */
+function foundOf(row) {
+  return foundRows(row).map((f) => f.text);
+}
+function foundRows(row) {
+  if (!row || row.skipped) return [];
+  return (row.controls || []).filter((c) => (c.issues || []).some((i) => i.kind !== 'tight')).map((c) => {
+    const rest = `(${c.w}x${c.h}): ${c.issues.filter((i) => i.kind !== 'tight').map((i) => i.text).join('; ')}`;
+    return { name: c.name, rest, text: `"${c.name}" ${rest}` };
+  });
+}
+
+/* one view's check, in a line or a few.  `shared`: the findings this view
+   has on several screens of the packet, listed once under "Found on several
+   screens" and only counted here (v2.3.3456: the dashboard's buttons and the
+   creator's back arrow were listed on every screen they show on, eighteen
+   times each, and a reviewer answers each one it is shown) */
+function checkLines(row, shared) {
   if (!row) return ['not taken in this view'];
   if (row.skipped) return ['not taken in this view: ' + row.skipped];
   const cs = row.controls || [];
-  const bad = cs.filter((c) => (c.issues || []).some((i) => i.kind !== 'tight'));
   if (!cs.length) return ['no page controls (everything here is drawn in the game world)'];
-  if (!bad.length) return [`${plural(cs.length, 'control', 'controls')}, nothing found`];
-  const shown = bad.slice(0, 8).map((c) => {
-    const what = c.issues.filter((i) => i.kind !== 'tight').map((i) => i.text).join('; ');
-    return `"${c.name}" (${c.w}x${c.h}): ${what}`;
-  });
-  if (bad.length > shown.length) shown.push(`and ${bad.length - shown.length} more`);
-  return [`${plural(cs.length, 'control', 'controls')}, ${bad.length} with something found:`, ...shown.map((t) => '  - ' + t)];
+  const found = foundOf(row);
+  if (!found.length) return [`${plural(cs.length, 'control', 'controls')}, nothing found`];
+  const own = found.filter((t) => !(shared && shared.has(t)));
+  const elsewhere = found.length - own.length;
+  const shown = own.slice(0, 8);
+  if (own.length > shown.length) shown.push(`and ${own.length - shown.length} more`);
+  if (elsewhere) shown.push(`${own.length ? 'and ' : ''}${plural(elsewhere, 'finding', 'findings')} also on other screens of this packet (under "Found on several screens")`);
+  return [`${plural(cs.length, 'control', 'controls')}, ${found.length} with something found:`, ...shown.map((t) => '  - ' + t)];
+}
+
+/* "1, 2 and 5" */
+const listWords = (xs) => (xs.length < 2 ? xs.join('') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1]);
+
+/* the findings each view has on two or more of the packet's screens:
+   { byView: view -> Set of finding words, rows: [{ names, rest, views,
+   screens }] } -- views with the same screens folded into one row, and the
+   controls found the same way on the same screens into one row too (the six
+   dashboard buttons sideways) */
+function sharedFindings(packet, views, rowsById) {
+  const byView = {};
+  const rows = [];
+  for (const v of views) {
+    const at = new Map();
+    packet.screens.forEach((id, i) => {
+      const seen = new Set();
+      for (const f of foundRows(rowsById[id] && rowsById[id][v])) {
+        if (seen.has(f.text)) continue;
+        seen.add(f.text);
+        if (!at.has(f.text)) at.set(f.text, { f, screens: [] });
+        at.get(f.text).screens.push(i + 1);
+      }
+    });
+    byView[v] = new Set();
+    for (const [text, { f, screens }] of at) {
+      if (screens.length < 2) continue;
+      byView[v].add(text);
+      const same = rows.find((r) => r.text === text && r.screens.join() === screens.join());
+      if (same) same.views.push(v); else rows.push({ text, name: f.name, rest: f.rest, views: [v], screens });
+    }
+  }
+  const folded = [];
+  for (const r of rows) {
+    const same = folded.find((x) => x.rest === r.rest && x.views.join() === r.views.join() && x.screens.join() === r.screens.join());
+    if (same) same.names.push(r.name); else folded.push({ names: [r.name], rest: r.rest, views: r.views, screens: r.screens });
+  }
+  return { byView, rows: folded };
 }
 
 /* brief.md for one packet.
@@ -114,6 +168,7 @@ function checkLines(row) {
 export function briefFor(packet, { rowsById, views, notes, general, meta, pics }) {
   const B = [];
   const first = (id) => views.map((v) => rowsById[id] && rowsById[id][v]).find(Boolean);
+  const shared = sharedFindings(packet, views, rowsById);
   B.push(`# BroTown UI review, packet ${packet.n}: ${packet.title}`, '');
   B.push(`${plural(packet.screens.length, 'screen', 'screens')}, each in one picture with its views side by side. `
     + `Pictures taken ${meta.made} from game version ${meta.game}.`, '');
@@ -128,7 +183,7 @@ export function briefFor(packet, { rowsById, views, notes, general, meta, pics }
     + 'If you think a decision is wrong, say so under "Disagreements" at the end, with your reason, not among the findings.');
   B.push('2. Anything a note lists under "Still open" is known already: don\'t report it as new (you may say how you would solve it, under "Still open, my take").');
   B.push('3. Look for: (a) anything hard to read, find or tap; (b) controls too small, crowded, cut off or overlapping -- '
-    + 'the automatic check\'s results are listed per view below: confirm or dismiss them, don\'t just repeat them; '
+    + 'the automatic check\'s results are listed per view below (those on several screens once, under "Found on several screens"): confirm or dismiss them, don\'t just repeat them; '
     + '(c) unclear hierarchy: is the main action obvious, does the eye go to the right place first; '
     + '(d) words: labels or messages that are unclear, too long, inconsistent with other screens, or jargon a new player won\'t know; '
     + '(e) differences between the views that look like mistakes; (f) anything that looks broken.');
@@ -142,6 +197,11 @@ export function briefFor(packet, { rowsById, views, notes, general, meta, pics }
   B.push('1. [High|Medium|Low] <view or views> -- <what is wrong> -> <the fix: what, where, how big>');
   B.push('   (at most 6 a screen; "No changes" when nothing is worth changing)');
   B.push('');
+  if (shared.rows.length) {
+    B.push('### Found on several screens');
+    B.push('- <the finding> -- <real or not, and why> -> <the fix, once for every screen it is on>');
+    B.push('');
+  }
   B.push('### Disagreements with the design notes');
   B.push('- <note> -- <the decision> -- <why you would change it>');
   B.push('');
@@ -164,7 +224,29 @@ export function briefFor(packet, { rowsById, views, notes, general, meta, pics }
     const about = (meta.viewAbout && meta.viewAbout[v]) || '';
     B.push(`  - **${VIEW_NAMES[v] || v}**${about ? ': ' + about : ''}`);
   }
-  B.push('- A view a screen does not exist in is missing from its picture (the touch controls have no computer view).', '');
+  B.push('- A view a screen does not exist in is missing from its picture (the touch controls have no computer view).');
+  /* v2.3.3456: what a reviewer reading pictures would otherwise get wrong --
+     a size counted in a picture's pixels (each view is drawn at its own
+     scale), the check taken for the whole screen, the test setup taken for
+     the game's */
+  B.push('- Sizes in this brief are CSS px, the unit a designer sets (Apple\'s touch guide is 44 of them). '
+    + 'Each view in a picture is drawn at its own scale, so judge a size by the numbers here, not by counting a picture\'s pixels.');
+  B.push('- The automatic check sees only the page\'s own controls. What the game draws on its canvas (the world, the minimap, '
+    + 'name plates, the bars and numbers over heads, speech bubbles) is in the pictures but not in its lists: judge those by eye.');
+  B.push('- Don\'t report what the test setup put there (the name Reviewer, its gold, goods and armour, the stand-ins) '
+    + 'unless the screen shows it wrongly.', '');
+
+  if (shared.rows.length) {
+    B.push('## Found on several screens', '');
+    B.push('The automatic check found these on more than one screen of this packet. Judge each one once, here: '
+      + 'confirm or dismiss it, and give its fix once for every screen it is on. The screens\' own lists below leave them out.', '');
+    for (const r of shared.rows) {
+      const where = r.screens.length === packet.screens.length ? 'every screen' : 'screens ' + listWords(r.screens.map(String));
+      const what = r.names.length === 1 ? `"${r.names[0]}" ${r.rest}` : `${listWords(r.names.map((n) => `"${n}"`))}, each ${r.rest}`;
+      B.push(`- ${listWords(r.views.map((v) => VIEW_NAMES[v] || v))}, on ${where}: ${what}`);
+    }
+    B.push('');
+  }
 
   B.push('## The screens', '');
   packet.screens.forEach((id, i) => {
@@ -177,7 +259,7 @@ export function briefFor(packet, { rowsById, views, notes, general, meta, pics }
     if (own.length) B.push(`Design notes: ${own.map((t) => `"${t}"`).join(', ')} (below), and the ones every screen follows.`, '');
     B.push('What the automatic check found (it flags controls under 32 px on a touch screen, cut off by the edge, or covered by something else):', '');
     for (const v of views) {
-      const lines = checkLines(rowsById[id] && rowsById[id][v]);
+      const lines = checkLines(rowsById[id] && rowsById[id][v], shared.byView[v]);
       B.push(`- ${VIEW_NAMES[v] || v}: ${lines[0]}`);
       for (const l of lines.slice(1)) B.push(l);
     }
@@ -216,7 +298,7 @@ export function startHere(packets, meta) {
     + 'the design notes behind it, and the task) and **one picture a screen**, its views side by side. About 3 minutes of your time a folder.', '');
   S.push(`Pictures taken ${meta.made}, game version ${meta.game}.`, '');
   S.push('## Once', '');
-  S.push('1. Unzip this file. (On an iPhone: tap it in the Files app.)');
+  S.push('1. Unzip this file. A computer is quickest: you can drag a folder\'s files into ChatGPT all at once. (On an iPhone: tap the zip in the Files app.)');
   S.push('2. In ChatGPT, choose the model that thinks before it answers (the strongest your plan offers): it can open a picture up close to read small text.');
   S.push('3. Optional: make a Project called "BroTown UI review" and start every chat inside it, so they stay together.', '');
   S.push('## For each folder, in order', '');
@@ -225,10 +307,11 @@ export function startHere(packets, meta) {
   S.push('3. Paste this and send:', '');
   S.push('   > ' + PROMPT, '');
   S.push('4. Copy the whole answer into one running note, under the folder\'s name.', '');
+  S.push('You don\'t have to wait for one answer before starting the next: while ChatGPT thinks about one folder (it can take a few minutes), start the next folder in a new chat.', '');
   S.push('The folders:', '');
   for (const p of packets) S.push(`- \`${p.dir}\`: ${p.title} (${plural(p.screens.length, 'screen', 'screens')})`);
   S.push('', '## Then', '');
-  S.push('Paste the answers back to Claude in the session this came from. Claude checks each finding against the game\'s code and these notes, '
+  S.push('Paste the answers back to Claude in the session this came from (all in one message, or one at a time as they come). Claude checks each finding against the game\'s code and these notes, '
     + 'drops repeats and anything that goes against your decisions (unless you want to change one), and turns the rest into fixes.', '');
   S.push('## If something goes wrong', '');
   S.push('- ChatGPT says it cannot read something small: reply "Open the picture up close and read it."');

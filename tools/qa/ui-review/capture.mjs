@@ -822,6 +822,14 @@ if (process.argv[1] && basename(process.argv[1]) === 'capture.mjs') {
        run (manifest.json), everything else of it kept */
     if (ONLY && existsSync(join(OUT, 'manifest.json'))) {
       const prior = JSON.parse(readFileSync(join(OUT, 'manifest.json'), 'utf8'));
+      /* v2.3.3456: the bundle is still the build it was taken from when the
+         game has not been built again since -- gameVersion() names the
+         checkout, which can have moved on (a retake after a pull named every
+         picture by a version none of them came from) */
+      const builtAt = statSync(join(H.REPO, 'dist', 'index.html')).mtimeMs;
+      const priorAt = Date.parse(String(prior.made || '').replace(' UTC', 'Z').replace(' ', 'T'));
+      if (prior.game && priorAt && builtAt < priorAt) { meta.game = prior.game; meta.made = prior.made; }
+      else if (prior.game && prior.game !== meta.game) log(`the game was built again since the bundle was taken: the retaken screens are ${meta.game}, the rest ${prior.game}`);
       const merged = {};
       for (const sh of prior.shots) (merged[sh.view] = merged[sh.view] || { rows: [], errors: [] }).rows.push(sh);
       const retaken = [];

@@ -3724,9 +3724,12 @@ Two protocol versions coexist; both must keep working:
     folder is one message of ten files), each screen ONE picture with its
     views side by side (a computer window's black bars cut off) and a
     brief.md with the task, the answer's shape, what the check found and the
-    screens' design notes in full; a new screen goes in a packet in
-    `PACKETS` (else "Other screens"); `--report-only` makes it for any
-    bundle.
+    screens' design notes in full, a finding on several of its screens
+    listed once ("Found on several screens", `sharedFindings`); a new screen
+    goes in a packet in `PACKETS` (else "Other screens"); `--report-only`
+    makes it for any bundle. The check measures the box a press lands in --
+    a control's own `::before`/`::after` ring counts (audit.mjs `touchBox`:
+    every window's ✕ is drawn 28 px in a 44 px ring and was called small).
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's

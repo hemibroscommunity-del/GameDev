@@ -81,6 +81,15 @@ Every control a player could press -- a button, a tab, a link, a field, a
   computer), or covered -- the middle of it answers as something else, so a
   tap there reaches that instead.
 
+Small is measured by the box a press lands in (v2.3.3456, `touchBox`): a
+control's own `::before` / `::after` placed round it takes its presses, so
+every window's ✕, drawn 28 px inside an invisible ring that makes it 44
+(game.css `.bt-inspect-close::after`, v2.3.1235), is not small -- the check
+had measured only the drawing and called all seventeen building windows' ✕
+small for a finger. A control whose touch area is bigger than its drawing says
+both ("drawn 20x20, touch area 30x30 px"), and the manifest keeps it as
+`tw`/`th`.
+
 A control inside a list that scrolls is only "cut off" when the list itself
 runs past the screen (its end can never be scrolled into view); one scrolled
 part-way out of its list is judged by the part that shows, boxed with a dashed
@@ -164,7 +173,11 @@ pictures that showed a player something they never see:
 A screen's number is its place in states.mjs, so after a screen is added or
 taken away there, `--only` and `--report-only` rename the pictures they keep
 to their new numbers, drop those of a screen that is gone, and take every
-title and caption from states.mjs as it is now (`tidyShots`).
+title and caption from states.mjs as it is now (`tidyShots`). A retake into
+a bundle keeps the bundle's version and time when the game has not been built
+again since it was taken (`dist/index.html` older than it): the version is
+read off the checkout, and a retake after a pull named every picture by a
+version none of them came from. Built again since, it says so.
 
 ## The ChatGPT kit (v2.3.3456, tools/qa/ui-review/packets.mjs)
 
@@ -193,6 +206,12 @@ picture down; and a picture inside a zip is not one it sees. So `chatgpt/`:
   pictures were taken (the test character, its setup, the stand-ins), each
   screen's words and what the check found on it in every view, and the
   design notes in full -- "The short version", each screen's sections, then
-  the ones every screen follows.
+  the ones every screen follows. A finding the check made on two or more of
+  a packet's screens in one view is listed ONCE, under "Found on several
+  screens" (controls found the same way on the same screens on one line), and
+  only counted in the screens' own lists: sideways the dashboard's six buttons
+  were listed on every screen they show on, and the creator's back arrow on
+  eighteen pictures, and a reviewer answers each one it is shown
+  (`sharedFindings`).
 
 `--report-only` makes the kit for any bundle already taken.
