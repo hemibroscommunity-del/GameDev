@@ -100,7 +100,10 @@ const settle = async (P, ms = 30000) => {
   return s;
 };
 const probe = (P) => P.page.evaluate(() => window.__btWaves.probe());
-/* the hidden pieces: how many, and whether every one is still hidden */
+/* the hidden pieces: how many, and whether every one is still hidden --
+   the pieces alone: the whole Wheel's overview under them shares their
+   container (wheelGround.js _placeUnder) and is hidden too once every piece
+   in view is laid, so it is left out by its size */
 const hiddenNow = (P) => P.page.evaluate(() => {
   const root = window._pixiRenderer && window._pixiRenderer.app.stage;
   let pieces = null;
@@ -108,7 +111,7 @@ const hiddenNow = (P) => P.page.evaluate(() => {
   find(root, 0);
   if (!pieces) return null;
   let shown = 0, hidden = 0;
-  for (const s of pieces.children) { if (s.visible) shown++; else hidden++; }
+  for (const s of pieces.children) { if (s.width > 4000) continue; if (s.visible) shown++; else hidden++; }
   return { shown, hidden };
 });
 
