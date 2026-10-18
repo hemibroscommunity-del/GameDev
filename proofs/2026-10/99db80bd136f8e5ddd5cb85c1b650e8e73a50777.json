@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "99db80bd136f8e5ddd5cb85c1b650e8e73a50777",
+  "tree": "93a3b88631eee0b1fdbc1b465a05ddfd7d4c9897",
+  "committedAt": "2026-10-18T11:01:38-07:00",
+  "subject": "The black-screen watchdog no longer makes the page wait for the graphics chip every 5 s (v2.3.3450) (#979)",
+  "files": 5966,
+  "bytes": 673787186,
+  "listingSha256": "0c237c170d063516165cd21ddde3cf74d4cde88cd47fcae4801ce38f6d1ffba8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
