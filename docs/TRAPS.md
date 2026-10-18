@@ -7453,6 +7453,36 @@ on a computer the card clears the keys strip, not the phone's combat band
 away, shut it is back), mp-deskreach 4 (a laptop: the card clears the minimap
 and the keys strip, its ✕ answers).
 
+## 221. "A filter on one small sprite costs one small shader" (v2.3.3453)
+
+**Tempting:** a filter on a single sword or plate is cheap: Pixi draws the
+sprite into a picture its own size, runs the filter's few lines over it and
+draws it back, so a dozen shining pieces on screen are a dozen tiny passes.
+
+**What happens:** each one is a RENDER PASS. To draw the sprite into its own
+picture the graphics chip stops drawing the frame and changes target, then
+changes back to carry on. A phone's chip (tile-based: every iPhone, most
+Androids) keeps the frame in its own small fast memory while it draws; a
+change of target writes all of it out to main memory and the change back
+reads it all in again -- the WHOLE frame (~14 MB at 3x on a big iPhone), for
+a 60 x 90 px sword. So the cost of a filter is not its size but its count,
+and it never shows on the page's main thread: the main thread sees a few GL
+calls (mp-phoneframe's "target switches"), and this box, which draws in
+software, has no tile memory to show it either. The metal shine was one such
+pass a piece, a frame, for every armoured player on screen (glint.js, since
+v2.3.2887).
+
+**The rule:** an effect drawn on many sprites every frame belongs in their
+batch, not in a filter: the shine is worked out where the piece is drawn
+(lightfx/sheenBatch.js), its numbers carried in the piece's corners. Keep a
+filter for what truly needs a picture of its own (the grade's edge reads the
+pixels round each pixel), and count passes, not pixels: mp-crowdbots with
+`BT_CROWD_LOOK` reports the target switches a frame with armoured players on
+screen; the owner's Speed test (v2.3.3339) shows what they cost on a phone.
+
+**Receipt:** mp-sheenbatch (the pieces in the frame, six fewer target switches
+a frame for three, the same picture to two levels); docs/specs/sheen-batch.md.
+
 ## 222. "A shot the sight lets go flies the sight's line" (v2.3.3399)
 
 **Tempting:** the bow's sight gate decides when a shot may leave, and every
@@ -7491,6 +7521,39 @@ every shot: the bow rows alone 49 of 49 checks, then the full run 128 of 129,
 its one miss a staff bolt into Frost Ridge's rock ridge, which the check now
 asks about at the boots (Frost Ridge again: 33 of 33).
 
+## 223. "Move it by the transform: a shift is a shift" (v2.3.3458)
+
+**Tempting:** the shadows were drawn through a filter, the shadow layer moved
+back by the camera's fraction of a pixel (`lockToWorldGrid`, v2.3.3149) so the
+pieces land on the same phase of the filter's grid every frame. Drawing the
+pieces before the frame instead (shadows.js `_prepass`), the same shift is
+neater in the transform the picture is drawn with: the world's transform less
+that fraction. In exact numbers it is the same picture.
+
+**What happens:** it is not the same picture. The world's numbers are large
+(a game px near 88,000 on the long Wheel, the world's x near -53,785), so
+everything is rounded to float32 on the way to the graphics chip, and where
+the fraction is taken off decides how the corners round: off each piece's own
+numbers (the layer's position, before they are packed) or off the
+transform's. The two differ by a few thousandths of a pixel. The shadow
+pieces' pictures are pixel art, read pixel by pixel, so a corner a few
+thousandths over a pixel's edge reads the next pixel: on the QA phone 1,114
+pixels of the frame came out different, by up to 15 levels of 255 (36 at a
+fight) -- single texels of the shadows' edges flipped in or out. With the
+lock off, both ways rounded alike and agreed to one level.
+
+**The rule:** to draw something the same way in another pass, do the same
+arithmetic in the same order, not the same mathematics: the pre-pass puts
+the fraction on the pieces' parent (`castIn`, lockToWorldGrid's own numbers)
+and draws with the world's transform plus a whole number of px (PAD), which
+float32 keeps exactly. And compare such pictures pixel for pixel before
+calling them the same: neither rounding was wrong, but only an exact match
+makes "the same" a check that can catch a real change.
+
+**Receipt:** mp-shadowprepass (the held frame the old way and the new within
+one level: 35 px by one in BroTown's ore yard, 92 at a fight, against 1,114
+and 7,886 before `castIn`); docs/specs/shadow-prepass.md.
+
 ## 225. "This box says the one program halves the frame rate: take it out" (v2.3.3447)
 
 **Tempting:** paletteTex.js's ONE_BATCHER draws every sprite with one program
@@ -7521,6 +7584,35 @@ they did; `?onebatch=1` tests the one program here anyway.
 
 **Receipt:** qa-branchcost (every branch run in software); mp-onebatch with
 `?onebatch=1`; docs/specs/one-batch.md "In software, the three programs".
+
+## 226. "Route it in my own wrapper: I installed it last, so it runs last" (v2.3.3459)
+
+**Tempting:** to send some sprites to a batcher of your own, wrap
+`BatcherPipe.prototype.addToBatch` like the others do (paletteTex.js,
+sharpPixels.js, the shadows' no-snap hook) and set `obj.batcherName` before
+calling on. Installed last, after app.init, the wrapper surely has the final
+say.
+
+**What happens:** each wrapper calls the one installed before it, and the
+code BEFORE that call runs outermost first -- so the wrapper installed FIRST
+sets the batcher name LAST. paletteTex.js patches at module load (first, so
+innermost), sharpPixels.js after app.init, anything later outermost: a name
+set there is overwritten by the sharp pixels' unconditional `'sharp'` or
+`'default'` for every quad of a figure. hairClip.js's first draft (v2.3.3459)
+routed the hair's silhouette that way: read through, the chain sends it to the
+sharp program, which has no discard, so the whole quad would have gone into
+the stencil and nothing been clipped.
+
+**The rule:** a sprite that must be drawn by one particular batcher answers
+for itself: hairClip.js defines `batcherName` on `BatchableSprite.prototype`
+(at module load, before any element is made -- Pixi's constructor assigns the
+field, so it goes through the setter) and answers `CLIP_BATCHER` for a
+clipping silhouette whatever the routings set. Or decide inside the innermost
+routing that already owns the choice (the sheen batcher's way, inside
+sharpPixels' own decision). Never count on install order.
+
+**Receipt:** mp-hairstencil (the hair clipped through the stencil, the alpha
+mask's picture different only at the cut).
 
 ## 227. "The creator fits: I measured it at 390x844" (v2.3.3430)
 
@@ -7554,3 +7646,32 @@ name well, 46 px buttons) he is 146.2, with 19.6 px of air under his boots and
 19.8 under the logo; each of the five messages is one line inside its slot at
 both short sizes, and mp-ccjoin says the same at 390x844, where on main the
 empty-name reason was two lines reaching 5.3 px over the well and Randomize.
+
+## 229. "body is touch-action:none, so nothing in the game can be double-tapped into a zoom" (v2.3.3454)
+
+html and body have been `touch-action:none` for a long time, and every window
+is inside body, so it read as settled. But a browser counts an element's
+touch-action only up to the nearest box that scrolls: a double tap is judged
+by the chain from the element under the finger to that scroller, never body.
+The stat window's middle scrolls (InfoPopup's `data-infopopup-scroll`,
+v2.3.2616) and named no touch-action, so 61 of its 91 elements were `auto` all
+the way up -- a double tap on its words, scene or meter zoomed the whole page,
+and with the page itself never pannable there was no way back. The owner:
+"Double tap to zoom in is enabled during skill point application window.
+Disable that. I got stuck there." Some fifty other windows' scrollers were the
+same. The window's own buttons were `manipulation`, which is why the bug
+lived only between them.
+
+**The rule:** every element is `manipulation` by default (game.css
+`*{touch-action:manipulation}`, the weakest rule there is: everything `auto`
+allows except the double tap). Anything that must be `none` (a canvas, a
+stick, a pinch the game handles itself) or `pan-y` names it on itself, as it
+already did. Never set `touch-action:auto`; a new scrolling box needs nothing.
+Chromium honours `user-scalable=no` and so never shows the zoom: check the
+cause instead -- an element whose chain to its scroller is all `auto`.
+
+**Receipt:** mp-nozoom, with the stat window open from the Points screen as a
+player opens it: on main 362 of the page's 423 elements were `auto` and 61 of
+the window's 91 could be double-tapped into a zoom; with the rule, 0 and 0,
+the canvas, html and body still `none`, the window's +, - and x still
+`manipulation`, the stepper stepping 1 -> 3 -> 2.

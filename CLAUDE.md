@@ -614,6 +614,22 @@ remnant to migrate server-side, not a mode to preserve.
       `?shadowhp=0` put each back, `window.__btShadowSnap()`; mp-shadowlock
       now steps a whole CSS px across and down: 110x and 6x steadier (TRAPS
       §205).
+    - since v2.3.3458 THE SHADOWS ARE DRAWN BEFORE THE FRAME -- the owner:
+      "iterate on what best improves framerate without loss of quality": the
+      filter was a pass in the MIDDLE of the frame, so a phone's tile-based
+      chip wrote the half-drawn frame out and read it back every frame (~15
+      MB each way at 3x); the pieces now live in a container of their own
+      (shadows.js `cast`, never in the scene; `castIn` moved back by the
+      lock's fraction, lockToWorldGrid's own numbers: TRAPS §223), drawn into
+      `rt` (the screen in CSS px + PAD 2 a side) at the end of the shadows'
+      update, and `shade`, a quad in the layer's place with the filter's own
+      fragment program, draws it; the held frame the same to one level
+      (mp-shadowprepass), the screen bound once less a frame; a throw puts
+      Pixi back (renderHeal) and that page uses the filter; `?shadowpass` is
+      the filter, `window.__btShadowPrepass` the QA's handle (`set` the Speed
+      test's `shadowpass` step, which says what it saves on that phone; the
+      card now counts the screen set aside, `resumes`):
+      docs/specs/shadow-prepass.md.
   - Since v2.3.3001 HITS SOUND LIKE THEIR MATERIAL -- the owner: "modify hit
     sound effects based on material type so hitting wood vs plants etc for
     props and also against monsters (arrow, melee, magic hit sound for
@@ -777,6 +793,18 @@ remnant to migrate server-side, not a mode to preserve.
       or sideways steps it left of the Wheel's minimap (`SPRINT_MAP_CLEAR`);
       `rightCluster` puts Special and Whirlwind a row above it upright and
       beside it sideways, half a button clear; mp-sprint, mp-abilslot.
+    - since v2.3.3455 a sprint starts with the owner's GRUNT (the owner: "a
+      loud incoherent sound for sprint button.  Make it a grunt"): their
+      "Grunt 1" cut to 0.6 s by tools/audio/cut_sprint_grunt.py
+      (`public/sfx/voice/sprint-grunt.mp3`, level in `src/data/sprintGrunt.js`:
+      ~0.25 of a hit as the game plays it, the arrow's flight it replaces
+      ~0.8), `BT_AUDIO.SPRINT_PUSH`, which another player's sprint reads too;
+      running DRY plays it worn out, lower and slower (`sprintOut`) -- the
+      owner: "Maybe alternate between grunt and tired breath", the breath
+      waiting on a recording (made-up sounds are out, v2.3.1103;
+      docs/SOUND-GAPS.md); a tool that measures a sound reads the file's own
+      channels, never ffmpeg's `-ac` (3 dB off either way); mp-sprintpeer,
+      mp-sprint, mp-cuelevels: docs/specs/sprint.md "the owner's grunt".
   - Since v2.3.3008 the Points window's MAX MP has its before/after scene,
     "the only one missing one": both lanes cast specials at one block of
     mana each (`statSim.js` `manaPass`) until "Out of mana", the "+n" bar
@@ -2790,6 +2818,23 @@ remnant to migrate server-side, not a mode to preserve.
       `quest_reward_stashed` dedupes by the worker's id when it has one (a
       second minted Iron Torso was dropped as a "replay");
     - `armorgrade` suite, `mp-armorgrade` (15): docs/specs/armor-grade-look.md.
+    - since v2.3.3453 THE ORDINARY SHINE IS DRAWN IN THE FRAME -- the owner:
+      "iterate on what best improves framerate without loss of quality":
+      every shining piece was a filter, a render pass each (on a phone's
+      tile-based chip the frame written out and read back in, a piece a
+      frame); a piece with no grade is now drawn by a batcher of its own
+      (`src/rendering/lightfx/sheenBatch.js`: the sharp read, then the
+      filter's very lines, `sheenLift.js`, one text for both), each piece
+      carrying the filter's box (its whole frame, clipped and widened to whole
+      device px on the chip, as FilterSystem does), uFig, the shine colour and
+      strength, the sun and the tint in its corners; a graded piece, a pinned
+      sweep and anything else filtered keep the pass; built behind the loading
+      screen (`warmSheenBatch`); `?sheenpass` is a pass a piece, as before,
+      `window.__btSheenPass`, and the phone's Speed test times that way too
+      (`shinepass`, a note of what the frame way saves); the probe's
+      `batched`; within 2 levels of the passes (their 8-bit picture);
+      `mp-sheenbatch`, mp-crowdbots `BT_CROWD_LOOK` (armoured bots):
+      docs/specs/sheen-batch.md.
   - Since v2.3.3146 THE BRO LOOKS LIKE HIMSELF WHILE HE GATHERS -- the owner:
     "The character's appearance changes during resource gathering activities.
     It needs to stay consistent" (docs/specs/gathering-look.md):
@@ -3607,6 +3652,12 @@ Two protocol versions coexist; both must keep working:
   (`overflow:clip`), and sideways a phone is 300-430px tall -- ENTER BRO
   TOWN sat at y 783 of 390 until the creator became three columns there
   (game.css, the v2.3.3216 block); `mp-cclandscape`, TRAPS §175.
+  And NO DOUBLE-TAP ZOOM (v2.3.3454, the owner: "Double tap to zoom in is
+  enabled during skill point application window ... I got stuck there"):
+  body's `touch-action:none` stops at the nearest box that scrolls, so
+  every element is `manipulation` by default (game.css `*`, the weakest
+  rule there is); anything that must be `none` or `pan-y` says so itself,
+  and nothing is ever set `auto`; `mp-nozoom`, TRAPS §229.
   Two phone scenarios DO run on every PR, each an owner call: `playable`
   (mp-questline, v2.3.1729, client-ci.yml) and `memory-budget`
   (mp-membudget, v2.3.3101, memory.yml -- Conventions, "Memory is
@@ -4587,6 +4638,19 @@ Two protocol versions coexist; both must keep working:
   one skipped (layerUniforms.js, `?layerpush` is Pixi's push and pop a group):
   a group's `inverseParentTextureTransform` is read ONCE a frame, as Pixi's
   getter keeps nothing for a second read.
+- **A SPRITE MASK IS A PASS IN THE MIDDLE OF THE FRAME (v2.3.3459,
+  docs/specs/hair-clip-stencil.md).** In Pixi a Sprite set as a `mask` is an
+  alpha mask, drawn through a filter: a phone's tile-based chip stops the
+  frame for it, writes the half-drawn frame out and reads it back (TRAPS
+  §221). A Container or Graphics mask is the stencil, in the frame's own pass.
+  The hair under a clipping hat or a hood is clipped through the stencil now:
+  `clipHair(hair, silhouette)` (src/rendering/hairClip.js) puts the
+  silhouette in a box of its own, drawn by a batcher that keeps its opaque
+  half, and the box is the mask; whatever moves a boxed silhouette to another
+  layer moves its box (`clipBoxOrSelf`). A new mask is a Graphics or a
+  Container, never a Sprite, unless the soft edge is the point (the one left:
+  monsterDeathFx's wounds, for the second a death lasts). `?alphaclip` is the
+  alpha mask, as it was; `window.__btHairClip()`; `mp-hairstencil`.
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,
