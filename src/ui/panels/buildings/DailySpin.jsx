@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { BT_AUDIO } from '@/data/index.js';
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the wheel's ticks */
 import {
   dailyRewardsBus, spinLive, askSpin, coinsShort, untilText,
 } from '@/game/dailyRewards.js';
@@ -203,6 +204,34 @@ export function DailySpin() {
       labs[i].style.transform = 'translate(-50%, -50%) rotate(' + (-deg) + 'deg)';
     }
   };
+
+  /* ═══ v2.3.3343: THE WHEEL TICKS AS IT TURNS ═══
+     It turned in silence between the toss and the result (SOUND-GAPS): a tick
+     each time a slice passes the pointer, read off the wheel as DRAWN (its
+     computed transform, which carries the landing's ease-out as it runs), so
+     the ticks slow with it and stop where it stops. */
+  useEffect(() => {
+    if (phase !== 'waiting' && phase !== 'landing') return undefined;
+    let raf = 0;
+    let lastSlice = null;
+    const read = () => {
+      const el = wheelRef.current;
+      const t = el && typeof getComputedStyle === 'function' ? getComputedStyle(el).transform : '';
+      if (t && t !== 'none' && typeof DOMMatrixReadOnly === 'function') {
+        let M = null;
+        try { M = new DOMMatrixReadOnly(t); } catch (e) { M = null; }
+        if (M) {
+          const deg = Math.atan2(M.b, M.a) * 180 / Math.PI;
+          const slice = Math.floor((((deg % 360) + 360) % 360) / SLICE);
+          if (lastSlice !== null && slice !== lastSlice) cue('spinTick');
+          lastSlice = slice;
+        }
+      }
+      raf = requestAnimationFrame(read);
+    };
+    raf = requestAnimationFrame(read);
+    return () => cancelAnimationFrame(raf);
+  }, [phase]);
 
   /* The answer: land on it, then show it.  Read from the bus's own copy of
      the last spin answer, not `st.news`: a quest's news landing in the same
