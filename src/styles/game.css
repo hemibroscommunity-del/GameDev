@@ -4813,6 +4813,12 @@ body:has(.bt-interact-prompt) .bt-kb-hints{display:none}
 /* v2.3.3350: ...and under the chat feed the bell opens, which is drawn up
    over this same corner */
 body:has([data-world-chat-toggle][aria-expanded="true"]) .bt-kb-hints{display:none}
+/* v2.3.3350: ...and while a harvest's button is up: on a laptop's 1366 x 768
+   window the column is 419 px wide and the strip's rows reached the button's
+   left half ("Click Attack", "X Jump" and "R Whirl" drawn over CHOP, the UI
+   review's laptop view).  Its own line says the keys the harvest takes
+   ("Drag ↔ or hold E"), and the strip is back the moment it ends. */
+body:has(.bt-rjoy-zone[data-harvest="1"]) .bt-kb-hints{display:none}
 /* The dismissed state: one small chip in the same corner, so the controls are
    recoverable.  A toggle you cannot find your way back from is a delete. */
 .bt-kb-chip{position:fixed;bottom:calc(var(--dash-h) + 12px);left:52px;z-index:20;
