@@ -76,7 +76,7 @@ remnant to migrate server-side, not a mode to preserve.
   nearest player, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have a
   word (src/game/townsfolkReact.js, this phone's own; emoteFx.js
   `_updateFollowers` moves each one picture about its feet);
-  `townsfolk-react` suite, `mp-joinin`; and since v2.3.3368 HALLOWEEN WEEK,
+  `townsfolk-react` suite, `mp-joinin`; and since v2.3.3370 HALLOWEEN WEEK,
   24 October to 1 November by each phone's calendar (src/game/season.js,
   `?halloween=1|0`; a look, never a rule): the Zombie Shuffle, a thirteenth
   move the worker keeps any day, pumpkin-coloured speech bubbles drawn in

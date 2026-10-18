@@ -40,7 +40,7 @@ export const REACT_LINES = Object.freeze({
   lil: Object.freeze(['Look, I can do it too!', 'Teach me, bro!', 'Like this?']),
   smith: Object.freeze(['Not bad. Not bad at all.', 'Ha! Now lift an anvil.', 'Forge-made, these arms.']),
   diego: Object.freeze(['No dancing in my store!', 'Take it outside, bro!', 'This is a place of business!']),
-  /* v2.3.3368: Halloween week's Zombie Shuffle by his door */
+  /* v2.3.3370: Halloween week's Zombie Shuffle by his door */
   diegoZombie: Object.freeze(['No zombies in my store!', 'Out! And take your brains with you!']),
   ace: Object.freeze(['3 to 1', '2 to 1', '5 to 2', 'even money']),
   mayor: Object.freeze(["Now THAT's a town!", 'Party in the square!', 'This is what BroTown is about!']),

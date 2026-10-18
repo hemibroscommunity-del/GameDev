@@ -388,7 +388,7 @@ const ARRIVAL = { x: 21504, y: 21792 };
   for (const [txt, want] of Object.entries(sl)) {
     check('7g slashMove(' + JSON.stringify(txt) + ') is ' + JSON.stringify(want), M.slashMove(txt) === want, M.slashMove(txt));
   }
-  check('7h moveKind knows only its twelve and Halloween\'s Zombie Shuffle (v2.3.3368)', M.moveKind('wave') === 'once' && M.moveKind('sit') === 'hold'
+  check('7h moveKind knows only its twelve and Halloween\'s Zombie Shuffle (v2.3.3370)', M.moveKind('wave') === 'once' && M.moveKind('sit') === 'hold'
     && M.moveKind('zombie') === 'hold' && M.EMOTE_MOVES.zombie.season === 'halloween'
     && M.moveKind('__proto__') === null && M.moveKind('toString') === null && M.moveKind(5) === null && M.EMOTE_MOVE_IDS.length === 13);
   check('7i a held pose wins over a moment, and nothing is ZERO',

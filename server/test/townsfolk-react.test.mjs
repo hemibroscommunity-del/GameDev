@@ -113,7 +113,7 @@ const peer = (S, id, x, y, extra) => { S.others[id] = Object.assign({ id, name: 
   check('3d ...and again after it', dg.chatBubble.ts === T0 + 100 + REACT.LINE_GAP_MS && dg.chatBubble.text === REACT_LINES.diego[1]);
 }
 
-/* ── 3e. Halloween week: a zombie by Diego's door (v2.3.3368) ──────────── */
+/* ── 3e. Halloween week: a zombie by Diego's door (v2.3.3370) ──────────── */
 {
   const S = world();
   const dg = npc(S, 'diego');

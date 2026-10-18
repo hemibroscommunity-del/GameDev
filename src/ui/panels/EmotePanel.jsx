@@ -1,7 +1,7 @@
 import React from 'react';
 import { EMOTES, TEXT_EMOTES } from '@/data/index.js';
 import { EMOTE_MOVES, EMOTE_MOVE_IDS } from '@/game/emoteMoves.js';   /* v2.3.3362 */
-import { seasonOn } from '@/game/season.js';   /* v2.3.3368: Halloween week's Zombie Shuffle */
+import { seasonOn } from '@/game/season.js';   /* v2.3.3370: Halloween week's Zombie Shuffle */
 
 /* === EmotePanel — the showEmotes quick-picker === */
 /* v2.3.886: extracted verbatim from the showEmotes JSX subtree in
@@ -136,7 +136,7 @@ export function EmotePanel(props) {
     tab === 'moves' ? React.createElement("div", {
       "data-emote-moves": "",
       style: { display: 'grid', gridTemplateColumns: 'repeat(6, ' + BTN + 'px)', gap: 6, justifyContent: 'center' }
-    }, EMOTE_MOVE_IDS.filter(function (id) { return seasonOn(EMOTE_MOVES[id].season); }).map(moveTile)) : null,   /* v2.3.3368: a season's tile only in its season */
+    }, EMOTE_MOVE_IDS.filter(function (id) { return seasonOn(EMOTE_MOVES[id].season); }).map(moveTile)) : null,   /* v2.3.3370: a season's tile only in its season */
     tab === 'moves' ? React.createElement("div", {
       style: { fontSize: 11, lineHeight: '14px', color: '#9FAEAA', textAlign: 'center' }
     }, "Sit, sleep, flop and the dances last until you move.") : null,

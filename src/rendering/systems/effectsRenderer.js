@@ -622,7 +622,7 @@ import { wheelObjectsInfo, wheelMapInfo } from '@/game/wheelTrial.js';      /* v
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 import { DEFENSE_POPUP_KEY, DEFENSE_POPUP_SRC } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's shield on "Defense Lv N" */
-import { halloweenOn } from '@/game/season.js';   /* v2.3.3368: Halloween week's speech bubbles */
+import { halloweenOn } from '@/game/season.js';   /* v2.3.3370: Halloween week's speech bubbles */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -2548,7 +2548,7 @@ function bandWithEmote(band, who) {
    14 px -- it is a picture, read at a glance */
 const EMOTE_POP_FONT = 40;
 const EMOTE_POP_PX = 30;
-/* ═══ v2.3.3368: HALLOWEEN WEEK'S SPEECH BUBBLES (game/season.js) ═══
+/* ═══ v2.3.3370: HALLOWEEN WEEK'S SPEECH BUBBLES (game/season.js) ═══
    The fun & social plan's "spooky bubble skin", drawn in code (no picture to
    load): a night-purple bubble ringed in pumpkin orange, its words cream,
    24 October to 1 November by the phone's calendar.  Made once, as the
@@ -8715,7 +8715,7 @@ export class EffectsRenderer {
       _bubblePath(entry.bg, 2);
       entry.bg.fill({ color: 0x000000, alpha: 0.18 });
       _bubblePath(entry.bg, 0);
-      /* v2.3.3368: Halloween week's skin -- purple, pumpkin-ringed, cream words */
+      /* v2.3.3370: Halloween week's skin -- purple, pumpkin-ringed, cream words */
       const _spooky = halloweenOn();
       entry.skin = _spooky ? 'halloween' : 'plain';
       entry.bg.fill({ fill: _spooky ? spookyBubbleGradient() : chatBubbleGradient() });
@@ -8779,7 +8779,7 @@ export class EffectsRenderer {
         breakWords: !!entry.text.style.breakWords,
         lineW: entry._lineW,   /* the longest laid-out line, bubble-local px */
         boxW: entry._boxW,     /* the box drawn round it, same units */
-        skin: entry.skin || 'plain',   /* v2.3.3368: 'halloween' in Halloween week */
+        skin: entry.skin || 'plain',   /* v2.3.3370: 'halloween' in Halloween week */
         ink: String(entry.text.style.fill),
       };
       /* ...and per bubble, because the single probe above is whichever
