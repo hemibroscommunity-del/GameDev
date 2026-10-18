@@ -194,8 +194,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* v2.3.1746 — owner: "play this sound upon quest completion." */
   const sfx = await P.page.evaluate(() => (window.__sfx || []).slice());
+  /* v2.3.3326: either of them -- v2.3.2637 made the owner's NEW completion
+     sound ('quest-complete-v2') the one played, with the old fanfare as its
+     fallback for a cold cache (quests.js turnInQuest), so this looked for a
+     name the game no longer plays first and failed on main too */
   rec.ok("the owner's quest fanfare is played on the hand-in",
-    sfx.includes('quest-complete'), sfx);
+    sfx.includes('quest-complete-v2') || sfx.includes('quest-complete'), sfx);
 
   const srvDone = await srv();
   rec.ok('the WORKER marked it turned in (the banner is not lying)',
