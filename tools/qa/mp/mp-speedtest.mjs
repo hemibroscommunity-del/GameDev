@@ -85,7 +85,7 @@ const look = (P) => P.page.evaluate(() => {
     pieces: lp && lp.shadows ? lp.shadows.pieces : null,
     water: window.__btWaves && window.__btWaves.probe ? window.__btWaves.probe().on : null,
     saved: { light: localStorage.getItem('bt-lightfx'), sheen: localStorage.getItem('bt-sheen') },
-    pre: window.__btShadowPrepass ? window.__btShadowPrepass.on() : null,   /* v2.3.3408 */
+    pre: window.__btShadowPrepass ? window.__btShadowPrepass.on() : null,   /* v2.3.3435 */
   };
 });
 
@@ -165,9 +165,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log('    RESULT ' + JSON.stringify(rows.map((r) => ({ k: r.k, fps: +r.fps.toFixed(1), p95: +r.p95.toFixed(0), work: r.work && +r.work.toFixed(1), passes: +r.passes.toFixed(2), resumes: r.resumes != null ? +r.resumes.toFixed(2) : null, draws: +r.draws.toFixed(0), cw: r.cw, res: r.res, frames: r.frames }))));
     const keys = rows.map((r) => r.k);
     rec.ok(`2. every step measured: ${keys.join(', ')}`,
-      /* v2.3.3408: + the shadows the old way, in a pass mid-frame (lightfx/shadows.js) */
+      /* v2.3.3435: + the shadows the old way, in a pass mid-frame (lightfx/shadows.js) */
       ['all', 'noshadow', 'noshine', 'shadowpass', 'still', 'res2', 'bare'].every((k) => keys.includes(k)) && rows.every((r) => r.frames > 1 && r.fps > 0), keys);
-    /* v2.3.3408: how often each step set the screen aside -- reported, not
+    /* v2.3.3435: how often each step set the screen aside -- reported, not
        compared: on this box a step is two or three frames, and the metal
        shine's passes come and go with its glints; mp-shadowprepass counts the
        shadows' own on a held frame */

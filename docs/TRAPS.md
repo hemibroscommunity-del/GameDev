@@ -7431,7 +7431,7 @@ every shot: the bow rows alone 49 of 49 checks, then the full run 128 of 129,
 its one miss a staff bolt into Frost Ridge's rock ridge, which the check now
 asks about at the boots (Frost Ridge again: 33 of 33).
 
-## 223. "Move it by the transform: a shift is a shift" (v2.3.3408)
+## 223. "Move it by the transform: a shift is a shift" (v2.3.3435)
 
 **Tempting:** the shadows were drawn through a filter, the shadow layer moved
 back by the camera's fraction of a pixel (`lockToWorldGrid`, v2.3.3149) so the

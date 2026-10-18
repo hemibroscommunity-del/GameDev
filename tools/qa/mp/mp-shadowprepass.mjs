@@ -1,4 +1,4 @@
-/* ═══ v2.3.3408: THE SHADOWS DRAWN BEFORE THE FRAME ═══
+/* ═══ v2.3.3435: THE SHADOWS DRAWN BEFORE THE FRAME ═══
  *
  * The owner, 2026-10-18: "iterate on what best improves framerate without
  * loss of quality (or negligible loss) for phone gameplay (iPhone, android)".
