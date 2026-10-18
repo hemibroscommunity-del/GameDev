@@ -45,6 +45,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(700);
   await stand(P, marks.spoke.tx*TILE+16, marks.spoke.ty*TILE+16);
   await H.waitFor(P,(S)=>S.currentZone,(z)=>z==='verdant',{timeout:30000,label:'verdant'}).catch(()=>{});
+  /* v2.3.3326: the worker's god mode (the Test panel's, /dev/vitals: no
+     damage taken, in memory, it expires), as mp-beastmaster's.  Standing
+     still among the Verdant Wilds' monsters, a fresh character was killed
+     between 30 and 45 s and woke in town, its list empty for the respawn,
+     not for anything the client dropped (the run of 2026-10-18).  The
+     client-side HP pin below is the page's copy and never kept anyone
+     alive: the worker decides a death. */
+  await H.devOp(wsPort, 'vitals', await H.readState(P, (S) => S.myId), { heal: true, god: true, godMinutes: 10 });
   await P.page.waitForTimeout(2500);
 
   const snap = () => P.page.evaluate(() => {
