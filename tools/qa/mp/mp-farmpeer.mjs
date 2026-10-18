@@ -1,4 +1,4 @@
-/* ═══ v2.3.3426: THE OTHERS SEE YOU WORK A BED ═══
+/* ═══ v2.3.3439: THE OTHERS SEE YOU WORK A BED ═══
  *
  * Until this, a player working a bed on the farm was seen by everyone else
  * there standing at it: the steps went only to the worker.  Now the move

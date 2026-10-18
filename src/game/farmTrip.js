@@ -25,7 +25,7 @@ export const FARM_HOLD_CAP_MS = 12000;
 let _seq = 0;
 
 /** Is everything the farm draws in?  Its ground, its pictures, the farmer's
- *  moves (v2.3.3426: the hoe, the can, the kneel). */
+ *  moves (v2.3.3439: the hoe, the can, the kneel). */
 export function farmReady() {
   return farmArtReady() && isZoneMapResident('farm_home') && farmFigureReady();
 }
