@@ -66,7 +66,7 @@ import { PROP_LIGHTS } from './worldFx.js';
 import { SHADE, formShadeOn } from './formShade.js';
 import { readArtBottoms } from './propGround.js';
 import { npcArtUrl } from './npcSprites.js';
-import { forEachWheelSwayer } from './wheelObjects.js';   /* v2.3.3000: the Wheel's trees and bushes sway */
+import { forEachWheelSwayer, forEachWheelFlag } from './wheelObjects.js';   /* v2.3.3000: the Wheel's trees and bushes sway; v2.3.3347: and the Town Hall's flag waves */
 
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
@@ -438,6 +438,7 @@ export class WorldLife {
     this._cam = cam || null;
     try { this._updateTrees(S, t, dt, wind, fx, calm, now, probe); } catch (e) { this._err('trees', e); }
     try { this._updateWheelSway(t, dt, wind, calm, probe); } catch (e) { this._err('wheelsway', e); }
+    try { this._updateWheelFlags(t, dt, wind, calm, probe); } catch (e) { this._err('wheelflags', e); }
     try { this._updatePropSway(S, t, dt, wind, er, calm, probe); } catch (e) { this._err('props', e); }
     try { this._updateCanopies(S, t, dt, wind, er, calm, probe); } catch (e) { this._err('canopy', e); }
     try { this._updateBuildings(S, t, dt, wind, er, calm, lamp, probe); } catch (e) { this._err('buildings', e); }
@@ -548,6 +549,22 @@ export class WorldLife {
     });
     probe.wheelSway = n;
     probe.wheelBits = this._wheelBits;
+  }
+
+  /* ═══ v2.3.3347: THE WHEEL'S FLAGS WAVE ═══
+     The owner: "make the town square flag wave using code it looks silly
+     being still".  The Town Hall's cloth is cut out of its picture and hung
+     in its life (wheelLife.js FLAG); here it is waved with this clock, this
+     wind and the gusts that move the trees round it (gustAt at its foot), as
+     the old map's flags were (_stepParts) -- and lies still, as painted,
+     under the calm switch. */
+  _updateWheelFlags(t, dt, wind, calm, probe) {
+    let n = 0;
+    forEachWheelFlag((life, x, y) => {
+      life.waveFlag(dt, wind, calm ? 0 : gustAt(x, y, t, wind), calm);
+      n++;
+    });
+    probe.wheelFlags = n;
   }
 
   _updatePropSway(S, t, dt, wind, er, calm, probe) {

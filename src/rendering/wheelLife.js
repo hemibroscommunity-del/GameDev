@@ -13,6 +13,7 @@
  *   sparks  the Blacksmith's forge spitting a spark or two
  *   glint   a star of light now and then on gold, gems, glass and the bell
  *   chaff   a speck of hay drifting down from the Feed & Seed's loft
+ *   flag    v2.3.3347: the Town Hall's flag waving from its pole (FLAG below)
  *
  * SUBTLE ON PURPOSE: low alphas, a handful of sprites a building, nothing
  * that moves fast.  The Wheel is always daylight for now (timeOfDay.js), so a
@@ -32,8 +33,98 @@
  *
  * `?trial=wheel&nolife` leaves the buildings still (wheelTrial.js wheelLifeOn).
  */
-import { Container, Sprite, Texture, CanvasSource } from 'pixi.js';
+import { Container, Sprite, Texture, CanvasSource, MeshPlane, Rectangle } from 'pixi.js';
 import { BUILDING_LIFE } from '../data/buildingLife.js';
+import { makePaletteSource, isPaletteSource, paletteStride } from './paletteTex.js';   /* v2.3.3347: the flag's cloth */
+
+/* ═══ v2.3.3347: THE TOWN HALL'S FLAG WAVES ═══
+ *
+ * The owner: "Also make the town square flag wave using code it looks silly
+ * being still".  There is no flag object: the flag is painted into the Town
+ * Hall's picture.  So its cloth is CUT OUT of the picture, once a page load:
+ *   - its colour numbers copied into a little picture of its own, on the same
+ *     colours (makePaletteSource), so it is drawn by the same lookup and
+ *     comes out the same pixels at rest;
+ *   - then set see-through in the page itself (its numbers, uploaded again),
+ *     so the painted cloth is never seen behind the moving one.
+ * The cloth is a MeshPlane in the building's life, hung from the pole and
+ * waved by worldLife.js (_updateWheelFlags) with the old map's flags' own
+ * motion (v2.3.2816): the wind's strength (timeOfDay.js windAt), its gusts,
+ * and the QA calm switch, __btAmbienceOff, under which it lies exactly where
+ * it was painted.
+ *
+ * WHERE: src/data/buildingLife.js's `flag` entry, on the picture's own pixels
+ * (`box`, `keep`, `pole`).  A page whose cloth does not count `n` -- a picture
+ * drawn again -- is never cut, so a flag that moved stays still rather than
+ * leaving a hole (tools/world/test-world-core says what moved).  Not cut
+ * either: a page that is not colour numbers (`?nopalette`, WebGL1), or with
+ * `?nolife` (no life at all).  Once per page SOURCE: a building mended after
+ * it shattered is built again and finds the cut made; the cloth's picture
+ * goes with the page.  The cloth casts no shadow (the building's own shadow
+ * is cast from its picture, now without it).
+ *
+ * Probe: window.__btWheelFlags(). */
+const TAU = Math.PI * 2;
+const FLAG_COLS = 9, FLAG_ROWS = 4;
+/* the free end's swing, in the cloth's pixels a unit of the old flags' (which
+   were drawn at a game px a texel: these are 2 a game px, and a little more
+   for the town's centrepiece) */
+const FLAG_AMP = 3;
+const _flagCuts = new WeakMap();   /* page source -> its cut, or { bad: true } */
+const _flags = new Set();          /* the live flags' records (QA) */
+const _flagStats = { cuts: 0, refused: 0, lastRefused: null };
+
+/* The cloth of entry `e` out of picture `tex` (a frame of a page), once per
+   page source: its own little picture, and the page's pixels see-through. */
+function cutFlag(tex, e) {
+  const src = tex && tex.source;
+  if (!isPaletteSource(src) || !e || !Array.isArray(e.box) || !(e.n > 0)) return null;
+  const had = _flagCuts.get(src);
+  if (had) return had.bad ? null : had;
+  const refuse = (why) => { _flagCuts.set(src, { bad: true }); _flagStats.refused++; _flagStats.lastRefused = why; return null; };
+  const P = src._btPal, idx = src.resource;
+  const res = src.resolution || 1, fr = tex.frame;
+  const ox = Math.round(fr.x * res), oy = Math.round(fr.y * res);
+  if (!idx || tex.rotate || Math.round(fr.width * res) !== e.pw || Math.round(fr.height * res) !== e.ph) return refuse('picture');
+  let clear = -1;
+  for (let k = 0; k < 256; k++) if (P.rgba[k * 4 + 3] === 0) { clear = k; break; }
+  if (clear < 0) return refuse('no see-through colour');
+  const [x0, y0, x1, y1] = e.box;
+  const cw = x1 - x0, ch = y1 - y0, cst = paletteStride(cw);
+  if (!(cw > 1 && ch > 1) || ox + x1 > P.w || oy + y1 > P.h) return refuse('box');
+  const keep = Array.isArray(e.keep) ? e.keep : [];
+  const kept = (x, y) => { for (const r of keep) if (x >= r[0] && x < r[2] && y >= r[1] && y < r[3]) return true; return false; };
+  /* the cloth's numbers; everything else (and the rows' padding) see-through,
+     as the page round it is */
+  const cloth = new Uint8Array(cst * ch).fill(clear);
+  let n = 0;
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const v = idx[(oy + y) * P.stride + ox + x];
+      if (v === clear || P.rgba[v * 4 + 3] === 0 || kept(x, y)) continue;
+      cloth[(y - y0) * cst + (x - x0)] = v;
+      n++;
+    }
+  }
+  if (Math.abs(n - e.n) > Math.max(8, e.n * 0.01)) return refuse('cloth ' + n + ' px, not ' + e.n);
+  const csrc = makePaletteSource({ idx: cloth, w: cw, h: ch, stride: cst, rgba: P.rgba, alphaMode: src.alphaMode, label: 'bt-wheel-flag' });
+  if (!csrc) return refuse('palette full');
+  /* only now, with the cloth safe in its own picture: out of the page */
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      if (cloth[(y - y0) * cst + (x - x0)] !== clear) idx[(oy + y) * P.stride + ox + x] = clear;
+    }
+  }
+  try { src.update(); } catch (er) { /* uploaded at its first draw anyway */ }
+  const cut = { tex: new Texture({ source: csrc, frame: new Rectangle(0, 0, cw, ch) }), cw, ch, x0, y0, pole: Math.max(0, (e.pole || x0) - x0), n };
+  _flagCuts.set(src, cut);
+  _flagStats.cuts++;
+  src.once('destroy', () => {
+    try { cut.tex.destroy(true); } catch (er) { /* gone */ }
+    _flagCuts.delete(src);
+  });
+  return cut;
+}
 
 /* ── the textures ── */
 let _tex = null;
@@ -111,14 +202,21 @@ const SMOKE_TINT = 0xd9d7d3, GLOW_TINT = 0xffc874, SPARK_TINTS = [0xffd27a, 0xff
    big-town preview) -- distances and sizes grow with it.  Everything is in
    the building's own space: (0, 0) its foot. */
 export class BuildingLife {
-  constructor(id, w, h, ax, k = 1) {
+  /* v2.3.3347: + `pic`, the building's picture -- the flag's cloth is cut out
+     of it (FLAG above) and follows it if it is drawn mirrored */
+  constructor(id, w, h, ax, k = 1, pic = null) {
     this.view = new Container();
     this.view.label = 'wheelLife';
     this.k = k;
     this.emitters = [];
+    this.flag = null;
     const x0 = -ax * w, y0 = -h;
     for (const e of BUILDING_LIFE[id] || []) {
       const x = x0 + e.u * w, y = y0 + e.v * h;
+      if (e.fx === 'flag') {
+        try { this._makeFlag(e, pic, w, h, ax, k); } catch (er) { this.flag = null; }
+        continue;
+      }
       if (e.fx === 'glow') {
         const s = new Sprite(_tex.glow);
         s.anchor.set(0.5);
@@ -135,6 +233,65 @@ export class BuildingLife {
         this.emitters.push({ fx: e.fx, x, y, str: e.s || 1, next: rand(0.1, 1.6), parts: [], t: 0, on: null });
       }
     }
+  }
+
+  /* v2.3.3347: the flag's cloth, cut out of the picture and hung where it
+     was painted: a cloth pixel is 1/res of a picture's point, and the
+     picture is drawn k times its points, anchored at (ax, 1) */
+  _makeFlag(e, pic, w, h, ax, k) {
+    if (!pic || !pic.texture) return;
+    const cut = cutFlag(pic.texture, e);
+    if (!cut) return;
+    const res = (pic.texture.source && pic.texture.source.resolution) || 1;
+    const mesh = new MeshPlane({ texture: cut.tex, verticesX: FLAG_COLS, verticesY: FLAG_ROWS });
+    mesh.label = 'wheelFlag';
+    mesh.x = (cut.x0 / res) * k - ax * w;
+    mesh.y = (cut.y0 / res) * k - h;
+    mesh.scale.set(k / res);
+    const holder = new Container();
+    holder.label = 'wheelFlagPole';
+    if (pic.scale && pic.scale.x < 0) holder.scale.x = -1;   /* a mirrored building flies its flag mirrored */
+    holder.addChild(mesh);
+    this.view.addChildAt(holder, 0);
+    const pos = mesh.geometry.positions;
+    const rec = this.flag = { mesh, pic, base: Float32Array.from(pos), w: cut.cw, h: cut.ch, pole: cut.pole, ph: Math.random() * TAU, rest: true, amp: 0, tipDy: 0, gust: 0, t: 0 };
+    _flags.add(rec);
+    /* gone with its building (walked away from, or shattered): out of the
+       probe's list at once, never kept "until the page closes" */
+    mesh.once('destroyed', () => { _flags.delete(rec); });
+  }
+
+  /* v2.3.3347: one step of the flag's wave, from worldLife's clock and wind
+     (`g` the gust here, 0..1).  The old map's flags' motion: a wave running
+     from the pole to the free end, its swing growing along the cloth, the
+     cloth a little shorter as it ripples; calm, it lies as it was painted. */
+  waveFlag(dt, wind, g, calm) {
+    const F = this.flag;
+    if (!F || F.mesh.destroyed) return;
+    const geo = F.mesh.geometry, pos = geo.positions, base = F.base;
+    if (calm) {
+      if (!F.rest) { pos.set(base); geo.getBuffer('aPosition').update(); F.rest = true; }
+      F.amp = 0; F.tipDy = 0; F.gust = 0;
+      return;
+    }
+    F.rest = false;
+    const sp = Math.max(0, Math.min(1, ((wind ? wind.speed : 14) - 9) / 10));
+    F.ph += TAU * (1.15 + 0.85 * sp + 0.6 * g) * dt;
+    F.t += dt;
+    const A = FLAG_AMP * (1.5 + 1.2 * sp + 1.6 * g);
+    const n = pos.length / 2, span = Math.max(1, F.w - F.pole);
+    for (let i = 0; i < n; i++) {
+      const bx = base[i * 2], by = base[i * 2 + 1];
+      const u = Math.max(0, (bx - F.pole) / span);
+      const v = by / F.h;
+      const env = Math.pow(u, 1.25);
+      const ph = F.ph - u * TAU * 1.05 - v * 0.5;
+      pos[i * 2] = bx - A * 0.35 * env * (1 - Math.cos(ph));
+      pos[i * 2 + 1] = by + A * env * Math.sin(ph);
+    }
+    geo.getBuffer('aPosition').update();
+    F.amp = A; F.gust = g;
+    F.tipDy = pos[(FLAG_COLS - 1) * 2 + 1] - base[(FLAG_COLS - 1) * 2 + 1];
   }
 
   /* a particle sprite from the emitter's own spares, or a new one */
@@ -258,7 +415,7 @@ export class BuildingLife {
 
   /* how many of its sprites are showing (QA) */
   count() {
-    let n = 0;
+    let n = this.flag && !this.flag.mesh.destroyed ? 1 : 0;
     for (const em of this.emitters) {
       if (em.fx === 'glow') n += em.s.alpha > 0 ? 1 : 0;
       else for (const p of em.parts) if (p.live) n++;
@@ -266,3 +423,20 @@ export class BuildingLife {
     return n;
   }
 }
+
+/* v2.3.3347: the flags' probe (QA, mp-flagwave): each live flag's swing at
+   its free end, its rest, where the cloth and its building are on the screen
+   (CSS px), and how many pages were cut or refused; .hide(true) hides the
+   cloth, to see that none of it is left painted behind */
+try {
+  if (typeof window !== 'undefined') {
+    const box = (o) => { try { const b = o.getBounds(); return { x: +b.x.toFixed(1), y: +b.y.toFixed(1), w: +b.width.toFixed(1), h: +b.height.toFixed(1) }; } catch (e) { return null; } };
+    const live = () => { for (const F of _flags) if (!F.mesh || F.mesh.destroyed) _flags.delete(F); return [..._flags]; };
+    window.__btWheelFlags = () => ({
+      flags: live().map((F) => ({ amp: +F.amp.toFixed(2), tipDy: +F.tipDy.toFixed(2), rest: F.rest, gust: +F.gust.toFixed(2), w: F.w, h: F.h, t: +F.t.toFixed(2),
+        shown: F.mesh.visible, mesh: box(F.mesh), pic: F.pic && !F.pic.destroyed ? box(F.pic) : null })),
+      cuts: _flagStats.cuts, refused: _flagStats.refused, lastRefused: _flagStats.lastRefused,
+    });
+    window.__btWheelFlags.hide = (on) => { for (const F of live()) F.mesh.visible = !on; return live().length; };
+  }
+} catch (e) { /* probe only */ }
