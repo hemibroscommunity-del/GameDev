@@ -6,7 +6,7 @@
  * from the gambling building", and its twist: "Your first spin is for a lump
  * sum award ... Then you have the option of spinning it for double or nothing
  * at 50% odds and that continues on."  One real player against a real
- * worker, in the Wheel, on a phone.  v2.3.3394: the daily quests and the
+ * worker, in the Wheel, on a phone.  v2.3.3400: the daily quests and the
  * season are PUT AWAY (the owner: "Remove the daily quests", then "Yes drop
  * the season"), so this is the game without them:
  *   1. the worker advertises the spin and NOT the quests or the season, and
@@ -70,7 +70,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 1. caps and the state ── */
     const caps = await H.readState(P, (S) => S._serverCaps || {});
     const st0 = await waitFor(state, 15000);
-    rec.ok('the worker advertises the free spin and not the daily quests or the season (v2.3.3394: put away), and sends the state on join (v2.3.3181: the spin locked until the first quest)',
+    rec.ok('the worker advertises the free spin and not the daily quests or the season (v2.3.3400: put away), and sends the state on join (v2.3.3181: the spin locked until the first quest)',
       caps.dailyspin === true && caps.dailyquests === false && caps.season === false && !!st0 && st0.spin.ready === 1 && st0.spin.locked === 1 && st0.spin.open === 0 && st0.dq.on === false
         && st0.season.on === 0
         && Array.isArray(st0.spin.prizes) && st0.spin.prizes.length === DAILY.SPIN.PRIZES.length,
@@ -221,7 +221,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('a bonus spin lands a lump sum, and Take it pays exactly that', !!bonusBtn && !!bonus && bonus.act === 'spin' && !!took
       && took.paid === bonus.pot && cB1 - cB === bonus.pot, { bonusBtn, bonus, took, got: cB1 - cB });
     const se5 = await state();
-    rec.ok('neither spin put a star anywhere, and the state says the season is off (v2.3.3394: dropped; the free spin gave 3)',
+    rec.ok('neither spin put a star anywhere, and the state says the season is off (v2.3.3400: dropped; the free spin gave 3)',
       !!se5 && se5.season.on === 0 && se5.season.st === 0, se5 && { on: se5.season.on, st: se5.season.st });
 
     /* ── 6. nothing past the Den's spin ── */

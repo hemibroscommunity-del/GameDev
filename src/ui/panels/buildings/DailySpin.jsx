@@ -23,7 +23,7 @@ import {
  * x2 doubles the pot, ✕ loses it all.  Again and again, until you take it,
  * lose it, or reach the house limit (paid by itself).  One free spin a day;
  * bonus spins (the season; all three daily quests while they were in the
- * game -- put away since v2.3.3394) start more.  A pot left
+ * game -- put away since v2.3.3400) start more.  A pot left
  * open is paid at the day's end, never lost (the worker's rollover).
  *
  * The slices are drawn the same size, as a fairground wheel's are; the real
@@ -468,7 +468,7 @@ export function DailySpin() {
           {sp.extra} bonus spin{sp.extra === 1 ? '' : 's'} saved for later
         </div>
       )}
-      {/* v2.3.3394: with the season dropped and the quests put away there is
+      {/* v2.3.3400: with the season dropped and the quests put away there is
           nothing past this panel to open: the button goes with them */}
       {(questsLive() || seasonLive()) && (
       <button
@@ -481,7 +481,7 @@ export function DailySpin() {
           background: 'transparent', border: '1px solid ' + LS.border, color: LS.txt2,
           fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
         }}>
-        {/* v2.3.3394: the daily quests are put away; the button is the season's */}
+        {/* v2.3.3400: the daily quests are put away; the button is the season's */}
         {questsLive() ? (seasonLive() ? 'Daily quests & season' : 'Daily quests') : 'Season rewards'} <span aria-hidden="true" style={{ color: LS.brass }}>›</span>
       </button>
       )}
