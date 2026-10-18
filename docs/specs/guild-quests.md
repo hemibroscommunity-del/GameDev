@@ -33,6 +33,11 @@ old-worker fallback).
   write mid-session would clobber — the `_questFlags` lesson).
 - Replay-safe by construction: claims increment before pay, so a
   re-sent turn-in meets the *next* rung's higher level requirement.
+- The claim and the pay are ONE write (v2.3.3369): the claim's put and the
+  record's save go out in the same synchronous run, so a restart keeps both
+  or neither. Before, the claim was put and awaited first, and a restart
+  between the two kept the claim and lost the rung's gold and AP (the
+  architecture review; guilds.test §7 restarts the room at every write).
 - Legacy note: pre-server client claims paid nothing real (echo-
   stomped), so the server ladder starting at 0 for everyone is fair —
   players re-claim rungs they "completed" before, this time for real
