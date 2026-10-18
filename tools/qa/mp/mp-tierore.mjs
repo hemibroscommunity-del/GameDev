@@ -270,11 +270,23 @@ async function mineIt(P, wsPort, myId, rec, metal, t) {
   }, [cue ? cue.x : 200, cue ? cue.y : 700]);
   const ended = await H.waitFor(P, (S) => !S._extraction, (v) => v === true, { timeout: 8000, label: 'the harvest ends' }).catch(() => false);
   rec.ok(`${metal}: the gesture completes the harvest`, ended === true && g.lastProg >= 0.85, g);
-  /* the rock breaks into pieces of its own picture, and cracks */
-  const brk = await H.waitFor(P, () => (window._pixiRenderer && window._pixiRenderer.oreBreakProbe ? window._pixiRenderer.oreBreakProbe() : []),
-    (a) => Array.isArray(a) && a.some((h) => String(h.oi).indexOf('ore:' + t.id + ':') === 0), { timeout: 8000, label: 'the break' }).catch(() => []);
-  const heap = (brk || []).find((h) => String(h.oi).indexOf('ore:' + t.id + ':') === 0) || null;
-  await P.page.waitForTimeout(300);
+  /* the rock breaks into pieces of its own picture, and cracks -- watched
+     from the page itself, frame by frame, so the picture below is taken while
+     the pieces fly (they lie ORE_BREAK_LIE_MS and fade in 1.2 s: a poll from
+     here, on this box's slow frames, caught them gone) */
+  const heap = await P.page.evaluate((nid) => new Promise((res) => {
+    const t0 = performance.now();
+    const look = () => {
+      const R = window._pixiRenderer;
+      const a = R && R.oreBreakProbe ? R.oreBreakProbe() : [];
+      const h = a.find((q) => String(q.oi).indexOf('ore:' + nid + ':') === 0);
+      if (h) return res(h);
+      if (performance.now() - t0 > 8000) return res(null);
+      requestAnimationFrame(look);
+    };
+    look();
+  }), t.id);
+  await P.page.waitForTimeout(150);
   const clip = await P.page.evaluate(({ x, y }) => {
     const S = window._gameState.current, cv = document.querySelector('canvas'), rc = cv.getBoundingClientRect();
     const sx = rc.left + (x - S.camera.x) * (S._worldScaleX || 1), sy = rc.top + (y - S.camera.y) * (S._worldScaleY || 1);
