@@ -4663,8 +4663,8 @@ Two protocol versions coexist; both must keep working:
     (`_authPutOut`) and handed nothing. In the suite's room a Forget was
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
-- **ON A COMPUTER A CLICK ON SOMETHING YOU USE IS NOT A SWING, A FLIGHT
-  STARTS WHERE THE GAME IS, AND THE FOOTSTEPS ARE HEARD (v2.3.3466,
+- **ON A COMPUTER A CLICK ON SOMETHING YOU USE IS NOT A SWING, WHAT IS DRAWN
+  OVER THE GAME IS WHERE THE GAME IS, AND THE FOOTSTEPS ARE HEARD (v2.3.3466,
   docs/specs/desktop-clicks.md, TRAPS §232).** The owner: "I hear a bow shot
   every time I click on an ore to harvest it", the prize "flies off screen",
   and "I can't hear footsteps on pc".
@@ -4675,14 +4675,21 @@ Two protocol versions coexist; both must keep working:
     scans are shared (`monsterAtCss`, `_harvestNodeAtCss`, `_farmBedAtCss`,
     `npcAtCss`): a new thing a click uses goes in `_deskPressTarget` too.
   - Anything drawn `position: fixed` over the game works out its corner first:
-    inside `#root` (contain: paint on a computer) it is the column's.
-    `bagFlightTarget` is where the bag is on screen.
+    inside `#root` (contain: paint on a computer) it is the column's --
+    `fixedBox(layer)` (src/ui/fixedBox.js) is that box. Seven more overlays had
+    it wrong and do not now: the quest coach's rings and card, the controls
+    tour's spotlights, the bag's item card, the level-up celebration (sized
+    from the window, it was never seen on a computer; it measures its own box
+    now, once, and the keys strip stands aside while it plays), the chat card
+    (`92%`, not `92vw`), the minimap's place (measured again when only the
+    window's width changes) and the reconnect spinner (body-level, in the black
+    margin). `bagFlightTarget` is where the bag is on screen.
   - The ⌨ stays beside the open keys strip, the switch both ways.
   - Footsteps on a computer are `BT_AUDIO.DESK_STEP_K` (2.5x) louder: they
     played there, but 3-5 dB under the music on the commons, which a phone's
     speaker thins and a computer's plays whole ("I can't hear footsteps on
     pc"); a phone is unchanged; `?stepvol=k`.
-  - `mp-deskclick`, `mp-deskkeys` 1b.
+  - `mp-deskclick`, `mp-deskplace`, `mp-deskkeys` 1b.
 - **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3407,
   docs/specs/desktop-keys.md, TRAPS §213).** The owner: "For computer usage
   if there's a key that makes sense to use for a certain action just put the

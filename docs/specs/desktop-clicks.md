@@ -1,4 +1,4 @@
-# A computer's clicks, flights, keys strip and footsteps (v2.3.3466)
+# A computer's clicks, flights, keys strip, footsteps, and what is drawn over the game (v2.3.3466)
 
 Four things the owner found playing on a computer, 2026-10-18:
 
@@ -16,6 +16,10 @@ Four things the owner found playing on a computer, 2026-10-18:
 > where to click it to hide it again"
 
 > "I can't hear footsteps on pc"
+
+And a sixth, found while fixing the second: the same mistake in the tutorial,
+the level-up celebration, the bag's item card, the chat card, the minimap's
+place and the reconnect spinner (section 5).
 
 ## 1. A click on something you use is not a swing
 
@@ -134,6 +138,55 @@ step -- yours, a jump's landing, another player's at their share -- is played
 the owner halved the steps there (v2.3.1237). `?stepvol=k` (0 to 4) sets the
 multiplier on any device, to try a level.
 
+## 5. What is drawn over the game is placed where the game is
+
+**What was wrong.** Section 2's mistake (TRAPS §232) in seven more places, found
+by measuring every overlay on a 1280 x 800 window, where the game's column runs
+from x 422 to 858:
+
+| | where it should be | where it was |
+|---|---|---|
+| a new bro's "Tap OPEN" ring (QuestCoach) | round OPEN, x 426 | x 838, past the column's edge: cut off |
+| ...its card | over OPEN | the column's far side |
+| the gear lesson's ring | round the bag's first tile, x 431 | x 848: cut off |
+| the controls tour's spotlights (Settings -> Controls) | on the bag and More | 421.8 px right of them |
+| the level-up celebration | the column's middle | medallion at x 1062, caption 1,280 px wide: **none of it seen** |
+| the bag's item card | beside the tile you clicked | x 605-845 whatever the tile, over it in the column's right half |
+| the chat card | inside the column | 460 px in a 436 px column: 12 px cut off each side |
+| the world map's button over the minimap, after the window is made only narrower or wider | over the minimap | where the minimap was (90 px off at 1,100 wide) |
+| the spinner while a reload rejoins | beside the exit arrow | x 52 of the window: in the black margin |
+
+The tutorial, the tour and the item card read controls with
+`getBoundingClientRect` -- the window's numbers -- and draw in a `position:
+fixed` layer that, inside `#root`, measures from the column. The celebration
+sized and pinned itself from `window.innerWidth` and `innerHeight` (so a
+computer also counted as sideways: no dashboard band under its caption), the
+chat card was `92vw` wide, the minimap re-measured its place only when the
+canvas changed size (on a computer a window made narrower moves the column, not
+its size), and the spinner is the body's, so its `left` is the window's.
+
+**The fix.**
+
+* `fixedBox(layer)` (`src/ui/fixedBox.js`): the box a fixed layer's children
+  are placed in, in the window's numbers -- the layer's own when it is laid out,
+  else `#root`'s, else the window's. The coach, the tour and the item card take
+  its corner off every rect before placing it, and measure from its bottom; the
+  XP label's corner (section 2) is the same helper now.
+* The celebration measures its own box (its parent's client size) when it
+  appears, in a layout effect so the first frame painted has it, and again only
+  on a resize or rotation -- never every frame (`LevelUpBurst.jsx`).
+* While it plays, the keys strip stands aside (`body:has([data-levelup-kind])
+  .bt-kb-hints`, game.css): it paints over the game whatever its z-index, and
+  its last rows lay over the caption. It is back when the 2.6 s are over.
+* The chat card is `min(92%, 460px)`: 92% of the box it is fixed in.
+* The minimap's place is measured again when the window's width or the
+  dashboard's side changes (`wheelMinimap.js`, both read without a layout).
+* The spinner is put the column's left edge + 52 px across when the column
+  does not start at the window's edge.
+
+On a phone each of these boxes is the window: nothing there moves (the last
+part of `mp-deskplace`).
+
 ## Tests
 
 * `mp-deskclick` (new): on a computer, a bow in hand, a real click on a copper
@@ -149,4 +202,19 @@ multiplier on any device, to try a level.
 * `mp-deskkeys` 1b: the ⌨ is on screen beside the open strip, clear of it and
   of the bell, in the column, the thing a click there reaches; one click hides
   the strip, one more brings it back.
+* `mp-deskplace` (new), on a computer: the "Tap OPEN" ring round the OPEN
+  button inside the column, a click at its middle reaching the button, its card
+  over it; a real click answering it; the gear lesson's ring on the gear tile;
+  every spotlight of the controls tour on its control; the celebration's
+  medallion in the column's middle, its art and caption inside the column, the
+  keys strip aside while it plays and back after; an item's card beside the
+  tile clicked, in the column; the chat card inside the column; in the Wheel,
+  the world map's button over the minimap before and after the window is made
+  narrower; a reload's spinner beside the exit arrow. On a phone: the
+  celebration and the first tile's card where they were. On main 12 of its 23
+  checks fail, each by the amounts in the table above (the item card's two
+  find it by a test handle this adds, so main's read "none").
+* `mp-questcoach`, `mp-coachearly`, `mp-ctltut`, `mp-skillup`, `mp-chatbubble`,
+  `mp-chatcompose`, `mp-cardreach`, `mp-wheelmap`, `mp-north` (phones),
+  `mp-xpfly`, `mp-deskkeys`: unchanged, still green.
 * `mp-deskharvest`, `mp-deskreach`: unchanged, still green.

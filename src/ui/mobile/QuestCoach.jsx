@@ -18,6 +18,7 @@ import { holdDisc, releaseDisc, discSideFor } from '@/game/controlVisibility.js'
 import { dashMinBus } from './dashMinBus.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { playIsLandscape } from './playViewport.js';
+import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3466: the layer's own box -- a computer's is the game's column (TRAPS §232) */
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
@@ -1278,7 +1279,22 @@ export function QuestCoach(props) {
   }, [stateRef]);
 
   if (!view) return null;
-  const r = view.rect;
+  /* ═══ v2.3.3466: THE RING IS DRAWN IN THE LAYER'S BOX, NOT THE WINDOW'S ═══
+     measure() reads every control (and the bro, worldRect) in the WINDOW's
+     numbers, getBoundingClientRect's, and the ring and card below are absolute
+     in a `position: fixed; inset: 0` layer.  On a phone those are one corner.
+     On a computer `fixed` measures from the game's column (#root's
+     contain:paint), so everything was drawn the column's left edge too far
+     right: on a 1280 x 800 window a new bro's "Tap OPEN" ring was at x 840
+     with the OPEN button at 426 -- past the column's right edge, where its
+     paint box cut it off -- and the card was pushed to the column's far side
+     (mp-deskcoach).  So the rect is taken into the layer's own box first
+     (`fixedBox`), and its bottom is the layer's bottom, not the window's.  A
+     phone's box is the window's: nothing there moves.  TRAPS §232. */
+  const box = fixedBox(document.querySelector('[data-coach]'));
+  const r = { left: view.rect.left - box.x, top: view.rect.top - box.y,
+              width: view.rect.width, height: view.rect.height };
+  const boxH = box.h;
   const pad = view.shape === 'circle' ? 6 : 5;
   const round = view.shape === 'circle' ? '50%' : 12;
   /* The card goes ABOVE the target when there is room and below when
@@ -1340,7 +1356,7 @@ export function QuestCoach(props) {
       if (typeof matchMedia === 'function' && matchMedia('(pointer:fine)').matches) {
         const kb = document.querySelector('.bt-kb-hints');
         const kr = kb && getComputedStyle(kb).display !== 'none' ? kb.getBoundingClientRect() : null;
-        return Math.max(band + 12, kr && kr.height > 0 ? window.innerHeight - kr.top + 8 : 0);
+        return Math.max(band + 12, kr && kr.height > 0 ? (box.y + boxH) - kr.top + 8 : 0);
       }
       /* Measured from the viewport's BOTTOM, which is the unit `bottom` below
          wants, so the two can be compared directly. */
@@ -1475,9 +1491,9 @@ export function QuestCoach(props) {
         bottom: above
           ? Math.min(
             Math.max(
-              Math.max(6, window.innerHeight - (r.top - pad - 10)),
+              Math.max(6, boxH - (r.top - pad - 10)),
               bandClear),
-            Math.max(6, window.innerHeight - 120))
+            Math.max(6, boxH - 120))
           : undefined,
         width: 220,
         background: INK,

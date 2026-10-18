@@ -7724,14 +7724,31 @@ drawn the column's left edge too far right, where the paint box cut it off.
 The owner: "the jump to bag also flies off screen (to far left where black
 area is not where bag area is)".
 
+A search of every overlay then found it seven times more: the quest coach's
+rings and the controls tour's spotlights (a new bro's "Tap OPEN" ring at x 838,
+the button at 426), the bag's item card (never beside its tile), the level-up
+celebration (sized from `window.innerWidth`: its medallion at x 1062 and its
+caption 1,280 px wide, so on a computer no level-up was ever SEEN), the chat
+card (`92vw`, wider than the column), the minimap's place (measured again only
+when the canvas changed size, which a narrower window does not do), and, the
+other way round, a body-level spinner at `left: 52px` -- in the black margin.
+`vw`/`vh` and `innerWidth`/`innerHeight` are the window's too: inside the game
+use `%`, `playVw()`/`playVh()`, or the box's own size.
+
 **The rule:** work out which corner a fixed element measures from before
-placing it. Inside `#root`, subtract `#root`'s (or the fixed parent's)
-`getBoundingClientRect()`; on `document.body`, add the canvas's own. A point on
-the canvas is the canvas's rect plus the world-to-screen sum -- never the sum
-alone (§210 is the same mistake in the harvest's gesture). Test it on a
-computer-sized window, where the column does not start at 0.
+placing it. Inside `#root`, take `fixedBox(layer)`'s corner (src/ui/fixedBox.js:
+the fixed layer's box, else `#root`'s, else the window's) off every
+`getBoundingClientRect()`; on `document.body`, add the canvas's own (or
+`#root`'s left). A point on the canvas is the canvas's rect plus the
+world-to-screen sum -- never the sum alone (§210 is the same mistake in the
+harvest's gesture). A cached rect is stale when the column moves, not only when
+it changes size. Test it on a computer-sized window, where the column does not
+start at 0 -- and, for anything cached, after the window is made narrower.
 
 **Receipt:** mp-deskclick at 1280 x 800 (the column at x 422 to 858): the ore's
 flight from the vein inside the column to the dashboard's Bag panel, and the XP
 label inside the column at every sample; on a phone (390 x 844) the flight
-starts on the vein and lands on the bag as before.
+starts on the vein and lands on the bag as before. mp-deskplace: the seven above,
+each where it belongs (main fails 12 of its 23 checks, the rings by exactly
+421.8 px, the black margin's width), and on a phone the celebration and the
+item card where they were.

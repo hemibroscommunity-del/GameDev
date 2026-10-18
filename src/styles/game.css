@@ -4880,6 +4880,13 @@ body:has(.bt-rjoy-zone[data-harvest="1"]) .bt-kb-hints{display:none}
    one hid the strip instead of sitting down.  B, the picker's key, is on the
    strip; the strip is back when the picker goes. */
 body:has([data-emote-picker]) .bt-kb-hints{display:none}
+/* v2.3.3466: ...and for the 2.6 s of a level-up.  The celebration was never
+   seen on a computer (LevelUpBurst sized itself from the window, past the
+   column's edge: TRAPS §232); drawn in the column at last, its caption ("Bow ·
+   Level 9") lay under the strip's last rows, which paint over the wrap
+   whatever its z-index, as above.  The burst leaves the page when it ends, and
+   the strip is back. */
+body:has([data-levelup-kind]) .bt-kb-hints{display:none}
 /* ═══ v2.3.3407: THE QUEST COACH STANDS ASIDE UNDER A WINDOW ═══
    QuestCoach.jsx: "a coach mark stamped across an open quest dialogue would
    be a straight downgrade", and it keeps off by drawing only when its control

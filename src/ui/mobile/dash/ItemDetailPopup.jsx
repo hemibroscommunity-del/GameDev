@@ -33,6 +33,7 @@ import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegs
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { playVw } from '../playViewport.js';
+import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3466: the card layer's box -- a computer's is the game's column (TRAPS §232) */
 import {
   WEAPON_TYPES,
   calcDisplayDmgRange,
@@ -616,18 +617,31 @@ const stepStyle = {
    Prefer right-of-anchor; flip to left if no room.  Clamp the whole
    popup inside the bottom dashboard rect when possible, otherwise
    inside the viewport. */
-function positionFor(anchor, popupW, popupH) {
+function positionFor(rawAnchor, popupW, popupH, box) {
   const GAP = 8;
   const MARGIN = 4;
-  const vw = playVw();   /* v2.3.1715: the shell, not the window */
-  const vh = (typeof window !== 'undefined') ? window.innerHeight : 768;
+  /* ═══ v2.3.3466: IN THE CARD LAYER'S OWN BOX ═══
+     The tile's rect is the WINDOW's (getBoundingClientRect), and the card is
+     absolute in a `position: fixed; inset: 0` layer, which on a computer
+     measures from the game's column (#root's contain:paint) -- while the clamp
+     below was already the column's (playVw).  So the card was placed from a
+     tile x the column's left edge too far right, always flipped, and clamped
+     to the column's right edge: never beside the tile, over it when the tile
+     sat in the right half (mp-deskplace).  `box` is fixedBox(layer)
+     (src/ui/fixedBox.js); every rect is taken into it first.  On a phone the
+     box is the window: nothing moves.  TRAPS §232. */
+  const bx = box ? box.x : 0, by = box ? box.y : 0;
+  const into = (r) => (r ? { left: r.left - bx, right: r.right - bx, top: r.top - by, bottom: r.bottom - by } : null);
+  const anchor = into(rawAnchor);
+  const vw = box && box.w > 0 ? box.w : playVw();   /* v2.3.1715: the shell, not the window */
+  const vh = box && box.h > 0 ? box.h : ((typeof window !== 'undefined') ? window.innerHeight : 768);
   /* Try to locate the bottom dashboard root for clamping. */
   let dashRect = null;
   try {
     const el = document.querySelector('[data-dashboard-root]')
             || document.querySelector('.bottom-dashboard')
             || document.querySelector('[data-dash]');
-    if (el && el.getBoundingClientRect) dashRect = el.getBoundingClientRect();
+    if (el && el.getBoundingClientRect) dashRect = into(el.getBoundingClientRect());
   } catch (_e) {}
   const clampLeft = dashRect ? dashRect.left + MARGIN : MARGIN;
   const clampRight = dashRect ? dashRect.right - MARGIN : vw - MARGIN;
@@ -740,7 +754,8 @@ export const ItemDetailPopup = () => {
          when it was drawing half as much again, and it placed a box it had the
          wrong size for.  scrollHeight is what is actually being drawn. */
       const h = Math.max(el.offsetHeight || 0, el.scrollHeight || 0) || 240;
-      const next = positionFor(itemDetailBus.state.target && itemDetailBus.state.target.anchor, w, h);
+      const next = positionFor(itemDetailBus.state.target && itemDetailBus.state.target.anchor, w, h,
+        fixedBox(el.parentElement));   /* v2.3.3466: the layer's box */
       setPos((prev) => (prev && prev.left === next.left && prev.top === next.top) ? prev : next);
     };
     place();
@@ -1674,6 +1689,7 @@ export const ItemDetailPopup = () => {
     >
       <div
         ref={cardRef}
+        data-item-card=""   /* v2.3.3466: a test handle (mp-deskplace) */
         onPointerDown={(e) => e.stopPropagation()}
         style={{
           position: 'absolute',

@@ -11623,6 +11623,12 @@ export var BroTown = function BroTown(_ref0) {
     try {
       _rejoinSpin = document.createElement('div');
       _rejoinSpin.className = 'bt-rejoin-loading';
+      /* v2.3.3466: beside the exit arrow, which on a computer is the game
+         column's corner -- this is body's, so its `left` is the window's
+         (TRAPS §232), and it showed in the black margin */
+      var _rr = document.getElementById('root');
+      var _rl = _rr ? _rr.getBoundingClientRect().left : 0;
+      if (_rl > 0) _rejoinSpin.style.left = Math.round(_rl + 52) + 'px';
       document.body.appendChild(_rejoinSpin);
     } catch (e4) {}
     var _clearSpin = function () { try { if (_rejoinSpin) { _rejoinSpin.remove(); _rejoinSpin = null; } } catch (e5) {} };

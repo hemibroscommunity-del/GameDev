@@ -717,7 +717,13 @@ export class WheelMinimap {
 
     /* the box's place on the page, for the button that opens the world map */
     try {
-      const rk = `${cssW}x${cssH}x${this.root.y}`;
+      /* v2.3.3466: + the window's width and the dashboard's side, both read
+         without a layout.  On a computer the canvas is a column centred in the
+         window (TRAPS §232), so a window made wider or narrower moves the box
+         with the canvas the same size -- and the world map's button, the No
+         man's land card and a land's banner kept the old place (mp-deskplace);
+         a sideways phone whose dashboard changes side, the same. */
+      const rk = `${cssW}x${cssH}x${this.root.y}x${window.innerWidth}x${document.documentElement.getAttribute('data-dash-side') || ''}`;
       if (rk !== this._rectFor) {
         this._rectFor = rk;
         const c = (canvas || document.querySelector('canvas')).getBoundingClientRect();

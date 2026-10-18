@@ -3,6 +3,7 @@ import { COL } from '@/ui/mobile/dash/common.js';
 import { activeWeaponCategory, weaponXpRequired, WEAPON_LEVEL_CAP } from '@/data/gameSystems.js';
 import { prog3HasSkills, prog3XpRequired, PROG3, PROG3_SKILL_META } from '@/data/prog3.js';
 import { xpCardPoint, holdXp, landXp } from '@/ui/xpLanding.js'; /* v2.3.1874 */
+import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3466 */
 
 /* HudPopupOverlay — HUD-anchored "+N XP" / "+N G" feedback, plus the
    transient XP bar the XP popup flies into.  Reads entries pushed to
@@ -576,11 +577,8 @@ try {
    root (fixed, inset 0) when it is mounted, else #root's corner (the
    containing block on a computer, the window's corner on a phone) */
 function fixedCorner(el) {
-  try {
-    const host = (el && el.parentElement) || (typeof document !== 'undefined' && document.getElementById('root'));
-    if (host) { const r = host.getBoundingClientRect(); return { x: r.left, y: r.top }; }
-  } catch (e) { /* the window's corner */ }
-  return { x: 0, y: 0 };
+  const b = fixedBox(el && el.parentElement);   /* src/ui/fixedBox.js */
+  return { x: b.x, y: b.y };
 }
 
 export function playerScreenPoint(S) {

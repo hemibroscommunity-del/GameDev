@@ -8,6 +8,7 @@ import {
   LEVELUP_CAPTION_BOX_H, LEVELUP_CAPTION_GAP, levelUpFrameAt,
 } from '../data/levelUpBurst.js';
 import { BT_AUDIO } from '../data/index.js';
+import { playVw, playVh } from './mobile/playViewport.js'; /* v2.3.3466: the column on a computer, until the burst's own box is measured */
 
 /* ═══ v2.3.2591: THE LEVEL-UP NOTIFICATION, REPLACED ═══
  *
@@ -160,9 +161,25 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
      already starts at 0.  Adding the reset anyway would make every mount
      measure, blank itself, and measure again. */
   const [capH, setCapH] = React.useState(0);
+  /* ═══ v2.3.3466: THE BURST'S OWN BOX, NOT THE WINDOW ═══
+     The fit below was solved against window.innerWidth/innerHeight, and the
+     burst is drawn in the world's box (BroTown's `relative` world div, inside
+     the wrap).  On a phone those are one box.  On a computer the world is the
+     game's column -- 436 x 800 on a 1280 x 800 window -- so the medallion was
+     pinned at x 640 of a 436 px box and the caption laid 1,280 px wide: the
+     whole celebration past the column's right edge, cut off, only its sound
+     left (mp-deskplace).  A sideways phone with the side sheet open had the
+     same mistake, smaller: the wrap is --play-w wide there.  So the box is
+     MEASURED, its parent's client size, the same once-per-layout way as the
+     caption (a read every frame is ~150 forced layouts a burst): on mount, in
+     a layout effect, so the first PAINTED frame already has it; again only on
+     a resize or rotation.  playVw/playVh (the column on a computer) stand in
+     until it lands, or if it never can. */
+  const layerRef = React.useRef(null);
+  const [area, setArea] = React.useState(null);
   React.useEffect(() => {
     if (typeof window === 'undefined') return undefined;
-    const reArm = () => setCapH(0);
+    const reArm = () => { setCapH(0); setArea(null); };
     window.addEventListener('resize', reArm);
     window.addEventListener('orientationchange', reArm);
     return () => {
@@ -171,7 +188,15 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
     };
   }, []);
   React.useLayoutEffect(() => {
+    if (area) return;                        /* already measured for this layout */
+    const host = layerRef.current && layerRef.current.parentElement;
+    if (!host) return;                       /* nothing drawn this render */
+    const w = host.clientWidth, h = host.clientHeight;
+    setArea(w > 0 && h > 0 ? { w, h } : { w: playVw(), h: playVh() });
+  });
+  React.useLayoutEffect(() => {
     if (capH > 0) return;                    /* already measured for this layout */
+    if (!area) return;                       /* v2.3.3466: wrapped at the box's width, once it is known */
     const el = capRef.current;
     if (!el) return;
     const h = Math.ceil(el.getBoundingClientRect().height);
@@ -190,8 +215,9 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
   /* ═══ FIT ═══ solved against the LARGEST frame, not the current one, so the
      burst never overflows at its peak and the scale never changes mid-run
      (a changing backgroundSize would re-rasterize the strip every frame). */
-  const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
-  const vh = typeof window !== 'undefined' ? window.innerHeight : 844;
+  /* v2.3.3466: the world's box (above), not the window */
+  const vw = area ? area.w : playVw();
+  const vh = area ? area.h : playVh();
   /* v2.3.2615: the burst owns a COLUMN.  With cols === 1 this is the viewport
      and the fill fraction is v2.3.2591's 0.86, so a single burst is unchanged.
      Two columns get 0.92 OF THE COLUMN rather than 0.86 — the gutter between
@@ -276,6 +302,7 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
 
   return (
     <div
+      ref={layerRef}
       data-levelup-kind={msg.kind}
       data-levelup-col={String(col)}
       style={{ position: 'absolute', inset: 0, zIndex: 70, pointerEvents: 'none', opacity: alpha }}
