@@ -21,6 +21,7 @@
  */
 
 import { cleanDevice } from './devicelock.js'; /* v2.3.3344: the device a key is used from */
+import { newKeyOf } from './loginkeys.js';   /* v2.3.3355: new Login Keys, made by the worker */
 
 // Exact port of the client's passphraseToId (src/networking/index.js).
 // 32-bit rolling hash with |0 truncation, Math.abs, base36, then the
@@ -136,6 +137,19 @@ export const accountMethods = {
       if (ipRec.count > ACCOUNT.IP_MAX_ATTEMPTS) return { ok: false, settled: true, reason: 'rate' };
     }
 
+    /* ═══ v2.3.3355: A NEW LOGIN KEY (loginkeys.js) ═══
+       Its character is found by its fingerprint's index, never worked out
+       from the key; it is good from any device, so `device` is always 'ok';
+       and `kv: 2` tells the phone to keep the id it is told (a new key's id
+       is not made from it).  Not in the index, or taken back: exists:false,
+       as a typo of an old key is. */
+    const _nk = newKeyOf(phrase);
+    if (_nk) {
+      const found = await this._keyLookup(_nk);
+      if (!found) return { ok: true, settled: true, exists: false };
+      return this._accountAnswer(found.id, found.auth, 'ok', 2);
+    }
+
     const id = accountPassphraseToId(phrase);
 
     // Shared lockout with the join gate (see module header).
@@ -151,6 +165,10 @@ export const accountMethods = {
       return { ok: true, settled: true, exists: false };
     }
 
+    /* v2.3.3355: an old key this character no longer takes (a new
+       character's first key once its new one was used; the owner's "Give it
+       a new key") -- said in its own words, never "wrong key" */
+    if (auth.oldGone) return { ok: false, settled: true, reason: 'keychanged' };
     if ((await this._phraseHash(phrase)) === auth.pfHash) {
       this._authFails.delete(id);
       /* ═══ v2.3.3344: AND CAN THIS DEVICE PLAY IT? (devicelock.js) ═══
@@ -160,54 +178,7 @@ export const accountMethods = {
          reads `device: 'unknown'` and says so instead of switching to a key
          this device could not play. */
       const _dl = await this._deviceLockCheck(id, auth, cleanDevice(device), now);
-      // Small preview so the login UI can confirm before switching.
-      // The rpg blob has no name field (fixed field list, Rule 1), so
-      // level + account age is the whole preview.
-      const rpg = await this.state.storage.get('rpg:' + id);
-      /* v2.3.1814: the character record joins the preview.  Two jobs.
-         (1) The confirm dialog can say WHO you are about to become by name
-         instead of only "your Lv 7 character" — you may hold several keys.
-         (2) It is how the pre-game screen decides which screen to show at
-         all: a key with a character skips the creator and goes straight
-         into the game (owner: "it should just bring you into the game not
-         the login menu anymore"), and one without it goes to the creator.
-
-         Safe to return here: you already had to present the correct
-         passphrase to reach this branch, so this leaks nothing that
-         exists:true did not already. */
-      const char = await this.state.storage.get('char:' + id);
-      return {
-        ok: true, settled: true, exists: true, id,
-        device: _dl === 'refuse' ? 'unknown' : 'ok',
-        preview: {
-          level: (rpg && rpg.level) || 1,
-          createdAt: auth.createdAt,
-          hasChar: !!(char && char.look),
-          name: (char && char.name) || '',
-          /* ═══ v2.3.2193: THE APPEARANCE, SO THE PICKER CAN DRAW A FACE ═══
-             Owner, of the Continue window: "it currently feels like an
-             account-management modal, not a character-selection screen...
-             In an RPG, I should recognize my character visually before I even
-             read the name."  A portrait is the fix, and this is the only place
-             the client can learn what a character it is NOT currently playing
-             looks like -- the roster on the device holds keys and names, never
-             cosmetics.
-
-             THE WHOLE LOOK, not a face-shaped subset.  Picking out "the keys a
-             headshot needs" would be a second allowlist beside
-             JOIN_COSMETIC_KEYS that has to stay in step with it forever, and
-             this repo has already paid for that shape once (v2.3.2148: a
-             drawing key added to one gate and not the other, and the print
-             silently never appeared).  It costs ~2KB when a character has all
-             eight drawings, on a request made once per character ever.
-
-             LEAKS NOTHING NEW: reaching this branch required presenting the
-             correct passphrase, which is the same bar `name` already cleared.
-             Absent on an old worker, and the client falls back to its letter
-             tile -- deploy-order safe in both directions (rule 19). */
-          look: (char && char.look) || null,
-        },
-      };
+      return this._accountAnswer(id, auth, _dl === 'refuse' ? 'unknown' : 'ok', 1);
     }
 
     // Registered id, wrong phrase (31-bit hash collision, or a guess
@@ -218,5 +189,61 @@ export const accountMethods = {
     if (f.count >= 5) { f.until = now + 60000; f.count = 0; }
     this._authFails.set(id, f);
     return { ok: false, settled: true, reason: 'auth' };
+  },
+
+  /* The login door's answer for a key that is this character's (v2.3.3355:
+     shared by an old key and a new one): its preview, and whether this
+     device could play it. */
+  async _accountAnswer(id, auth, deviceState, kv) {
+    // Small preview so the login UI can confirm before switching.
+    // The rpg blob has no name field (fixed field list, Rule 1), so
+    // level + account age is the whole preview.
+    const rpg = await this.state.storage.get('rpg:' + id);
+    /* v2.3.1814: the character record joins the preview.  Two jobs.
+       (1) The confirm dialog can say WHO you are about to become by name
+       instead of only "your Lv 7 character" — you may hold several keys.
+       (2) It is how the pre-game screen decides which screen to show at
+       all: a key with a character skips the creator and goes straight
+       into the game (owner: "it should just bring you into the game not
+       the login menu anymore"), and one without it goes to the creator.
+
+       Safe to return here: you already had to present the correct
+       passphrase to reach this branch, so this leaks nothing that
+       exists:true did not already. */
+    const char = await this.state.storage.get('char:' + id);
+    return {
+      ok: true, settled: true, exists: true, id,
+      device: deviceState,
+      /* v2.3.3355: a new key's id is not made from it: the phone keeps this one */
+      ...(kv === 2 ? { kv: 2 } : {}),
+      preview: {
+        level: (rpg && rpg.level) || 1,
+        createdAt: auth.createdAt,
+        hasChar: !!(char && char.look),
+        name: (char && char.name) || '',
+        /* ═══ v2.3.2193: THE APPEARANCE, SO THE PICKER CAN DRAW A FACE ═══
+           Owner, of the Continue window: "it currently feels like an
+           account-management modal, not a character-selection screen...
+           In an RPG, I should recognize my character visually before I even
+           read the name."  A portrait is the fix, and this is the only place
+           the client can learn what a character it is NOT currently playing
+           looks like -- the roster on the device holds keys and names, never
+           cosmetics.
+
+           THE WHOLE LOOK, not a face-shaped subset.  Picking out "the keys a
+           headshot needs" would be a second allowlist beside
+           JOIN_COSMETIC_KEYS that has to stay in step with it forever, and
+           this repo has already paid for that shape once (v2.3.2148: a
+           drawing key added to one gate and not the other, and the print
+           silently never appeared).  It costs ~2KB when a character has all
+           eight drawings, on a request made once per character ever.
+
+           LEAKS NOTHING NEW: reaching this branch required presenting the
+           correct passphrase, which is the same bar `name` already cleared.
+           Absent on an old worker, and the client falls back to its letter
+           tile -- deploy-order safe in both directions (rule 19). */
+        look: (char && char.look) || null,
+      },
+    };
   },
 };

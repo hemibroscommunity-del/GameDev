@@ -146,6 +146,9 @@ export function readShared() {
       at: Number(r.a) || 1,
       name: typeof r.n === 'string' ? r.n : '',
       level: Number(r.lv) || 0,
+      /* v2.3.3355: a new Login Key's player id (it is not made from the key,
+         so another origin could not work it out); absent for an old key */
+      ...(typeof r.i === 'string' && r.i.indexOf('bp_') === 0 ? { id: r.i } : {}),
     });
   }
   const tomb = [];
@@ -165,7 +168,11 @@ export function writeShared(list, tomb) {
     const body = encodeURIComponent(JSON.stringify({
       v: 1,
       l: rows.map(function (e) {
-        return { p: e.phrase, a: e.at || 1, n: e.name || '', lv: e.level || 0 };
+        /* v2.3.3355: a new key's id rides along (`i`); an old key's is
+           worked out from it, so it costs no bytes */
+        const row = { p: e.phrase, a: e.at || 1, n: e.name || '', lv: e.level || 0 };
+        if (typeof e.id === 'string' && e.id && /^[a-z]{3,5}(?:-[a-z]{3,5}){7}$/.test(e.phrase)) row.i = e.id;
+        return row;
       }),
       x: tombs,
     }));
