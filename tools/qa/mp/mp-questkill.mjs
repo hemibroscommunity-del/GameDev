@@ -168,11 +168,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ═══ v2.3.3351: WALK TO IT, DON'T JUMP ═══
      Each pass used to put the character straight beside its target.  Since
      v2.3.3325 the worker follows a move past its budget at an honest walk
-     instead of taking it (movement.js MOVE_BUDGET), and since v2.3.3334 it
-     measures a swing's reach from where its OWN copy stands (hitproof.js):
-     so every jump to a new snowman swung from too far away on the worker
-     until its copy walked up, while the snowmen hit back -- the character
-     died with 2 of the 4 (the sweep of 2026-10-18).  So the pass picks its
+     instead of taking it (movement.js MOVE_BUDGET), and it judges a swing's
+     reach from where its OWN copy stands (combat.js PVE_MELEE_RANGE): so
+     every jump to a new snowman swung from too far away on the worker until
+     its copy walked up, while the snowmen hit back -- the character died
+     with 2 of the 4 (the sweep of 2026-10-18).  So the pass picks its
      target here as before and the character WALKS there: 100 px hops a beat
      apart, the walk the budget pays for (H.hopTo's reasoning), each hop
      re-aimed at the target as it moves. */
