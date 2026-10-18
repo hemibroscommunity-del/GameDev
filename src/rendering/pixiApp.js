@@ -4,7 +4,7 @@
  */
 import { watchContextLoss } from '../debug/crashTrap.js';
 import { installSharpPixels } from './sharpPixels.js'; /* v2.3.2770 */
-import { installHairClip } from './hairClip.js'; /* v2.3.3409 */
+import { installHairClip } from './hairClip.js'; /* v2.3.3421 */
 import { renderDpr } from '../game/renderRes.js'; /* v2.3.3339: ?res= and the speed test */
 import { installBindGroupFix } from './bindGroupFix.js'; /* v2.3.3152: a freed picture no longer breaks Pixi's pooled mask */
 import { installTexturePoolTrim } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's texture pool gives back what it does not use */
@@ -664,7 +664,7 @@ export async function createPixiApp(canvas) {
     watchContextLoss(canvas);
     /* v2.3.2770: crisp character pixels without spending texture memory */
     try { installSharpPixels(app, SHADE.figure); } catch (e) { /* the default look */ }
-    /* v2.3.3409: the hair clipped through the stencil, not a pass a hatted
+    /* v2.3.3421: the hair clipped through the stencil, not a pass a hatted
        figure (hairClip.js) */
     try { installHairClip(app); } catch (e) { /* the alpha mask, as before */ }
     console.log('PixiJS using WebGL renderer');

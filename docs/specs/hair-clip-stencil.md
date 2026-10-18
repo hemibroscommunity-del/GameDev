@@ -1,4 +1,4 @@
-# The hair clipped by the stencil, not in a pass of its own (v2.3.3409)
+# The hair clipped by the stencil, not in a pass of its own (v2.3.3421)
 
 The owner, 2026-10-18: *"I'd like you to iterate on what best improves
 framerate without loss of quality (or negligible loss) for phone gameplay
@@ -45,7 +45,7 @@ of its own, no stop.
   has the last word -- a wrapper added after them is overruled (the sharp pixels
   send every figure part to 'sharp'). So a sprite's batch element answers its
   `batcherName` itself: for a clipping silhouette, `CLIP_BATCHER` (an accessor
-  on `BatchableSprite`, defined at module load). TRAPS §224.
+  on `BatchableSprite`, defined at module load). TRAPS §226.
 - While a box clips, Pixi leaves it out of the figure's own drawing
   (`includeInBuild` false); when it clips nothing, it is put away (`renderable`
   false): Pixi hands a stencil mask back to be drawn as an ordinary child, the

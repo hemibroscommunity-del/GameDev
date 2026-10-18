@@ -62,7 +62,7 @@ function walkDisplay(node, out, skip) {
   const kids = node.children;
   for (let i = 0; i < kids.length; i++) {
     const k = kids[i];
-    /* v2.3.3409: and a box the figure's drawing leaves out -- a stencil mask
+    /* v2.3.3421: and a box the figure's drawing leaves out -- a stencil mask
        clipping the hair (hairClip.js): its silhouette is shown, but only into
        the stencil, and casts nothing */
     if (!k.visible || k === skip || k.includeInBuild === false) continue;

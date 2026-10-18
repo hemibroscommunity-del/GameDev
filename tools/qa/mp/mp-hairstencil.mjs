@@ -1,4 +1,4 @@
-/* ═══ v2.3.3409: THE HAIR CLIPPED BY THE STENCIL, NOT IN A PASS OF ITS OWN ═══
+/* ═══ v2.3.3421: THE HAIR CLIPPED BY THE STENCIL, NOT IN A PASS OF ITS OWN ═══
  *
  * The owner, 2026-10-18: "iterate on what best improves framerate without
  * loss of quality (or negligible loss) for phone gameplay (iPhone, android)".
