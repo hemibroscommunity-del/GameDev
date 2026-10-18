@@ -432,6 +432,9 @@ async function preloadWheel() {
        overlay, not in the frame the first water comes on screen (a program
        is compiled the first time it is drawn: rendering/wheelWater.js) */
     try { (await import('../rendering/wheelWater.js')).prewarmWheelWater(); } catch (e) { /* still water */ }
+    /* v2.3.3402: and the lands' specks over their trees and rocks -- seven
+       little textures made in code (rendering/landAuras.js) */
+    try { (await import('../rendering/landAuras.js')).landAurasWarm(); } catch (e) { /* plain resources */ }
   })();
   await wheelWarm(at.x, at.y, warmX, warmY);
   await objects;
