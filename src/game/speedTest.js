@@ -12,6 +12,9 @@
  *   - with everything on, as you play;
  *   - with the shadows (and the shine) off, then the metal shine alone, then
  *     the water still, then at a lower resolution (2x, a phone above 2x only);
+ *   - v2.3.3453: and the metal shine drawn the old way, a pass of its own for
+ *     each piece (lightfx/sheenBatch.js), which says what drawing it in the
+ *     frame saves on that phone (a note, never "the biggest gain");
  *   - v2.3.3447: and the sprites drawn the old way, by three programs instead
  *     of one (paletteTex.js), which says what the one saves on that phone --
  *     or that it costs (a note, never "the biggest gain");
@@ -29,6 +32,7 @@
 import { COL } from '@/ui/mobile/dash/common.js';
 import { lightFxOn, setLightFx } from '@/rendering/lightfx/lightFx.js';
 import { sheenOn, setSheen } from '@/rendering/lightfx/glint.js';
+import { sheenBatchOn, setSheenPass } from '@/rendering/lightfx/sheenBatch.js';   /* v2.3.3453 */
 import { oneBatchOn, setOneBatchLive } from '@/rendering/paletteTex.js';   /* v2.3.3447 */
 import { renderDpr, setRenderResLive } from './renderRes.js';
 
@@ -58,6 +62,10 @@ function steps() {
     { k: 'noshadow', label: 'No shadows (and no shine)', off: { light: true } },
     { k: 'noshine', label: 'No metal shine', off: { shine: true } },
   ];
+  /* v2.3.3453: the shine drawn the old way, a pass of its own for each piece
+     of metal (lightfx/sheenBatch.js), so the card says what drawing it in
+     the frame saves on this phone */
+  if (sheenBatchOn()) list.push({ k: 'shinepass', label: 'Metal shine the old way (a pass each)', off: { shinePass: true }, old: true });
   /* v2.3.3447: the sprites drawn the old way, by three programs instead of
      one (paletteTex.js ONE_BATCHER), so the card says what the one saves on
      this phone */
@@ -87,6 +95,7 @@ function apply(off, was) {
   setSheen(off.shine ? false : was.shine, false);
   setWater(waves(), off.water ? false : was.water);
   setRenderResLive(off.res ? LOW_RES : 0);
+  setSheenPass(!!off.shinePass);
   if (was.one) setOneBatchLive(!off.threeProg);
 }
 
@@ -95,6 +104,7 @@ function restore(was) {
   setSheen(was.shine, false);
   setWater(waves(), was.water);
   setRenderResLive(0);
+  setSheenPass(false);
   if (was.one) setOneBatchLive(true);
 }
 
@@ -245,12 +255,18 @@ export async function runSpeedTest() {
   }
   const base = rows[0];
   const notes = [];
-  /* v2.3.3447: a step that puts back an old way is not a setting to switch
-     off, so it is never "the biggest gain"; it says what the new way saves */
+  /* v2.3.3453, v2.3.3447: a step that puts back an old way (the shine's
+     pass each, the three programs) is not a setting to switch off, so it is
+     never "the biggest gain"; it says what the new way saves */
   const isOld = (x) => !!(list.find((st) => st.k === x.k) || {}).old;
   const best = rows.slice(1).filter((x) => !isOld(x)).reduce((a, x) => (!a || x.fps > a.fps ? x : a), null);
+  const oldShine = rows.find((x) => x.k === 'shinepass');
   const oldProg = rows.find((x) => x.k === 'threeprog');
   if (base && best && best.fps - base.fps >= 4) notes.push('The biggest gain: ' + best.label.toLowerCase() + ' (+' + (best.fps - base.fps).toFixed(0) + ' frames a second).');
+  if (base && oldShine && base.fps - oldShine.fps >= 2) {
+    notes.push('The metal shine drawn the new way saves ' + (base.fps - oldShine.fps).toFixed(0) + ' frames a second here (the old way: '
+      + oldShine.passes.toFixed(1) + ' picture switches a frame, now ' + base.passes.toFixed(1) + ').');
+  }
   if (base && oldProg && base.fps - oldProg.fps >= 2) {
     notes.push('Drawing with one program instead of three saves ' + (base.fps - oldProg.fps).toFixed(0) + ' frames a second here ('
       + base.draws.toFixed(0) + ' draws a frame, the old way ' + oldProg.draws.toFixed(0) + ').');

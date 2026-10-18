@@ -167,7 +167,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
        (paletteTex.js) -- only where the one program draws: never on this
        box's software renderer, which keeps the three (TRAPS §225) */
     const oneOn = await P.page.evaluate(() => !!(window.__btOneBatch && window.__btOneBatch().on)).catch(() => null);
-    const want = ['all', 'noshadow', 'noshine', ...(oneOn ? ['threeprog'] : []), 'still', 'res2', 'bare'];
+    /* v2.3.3453: + the metal shine the old way (lightfx/sheenBatch.js) */
+    const want = ['all', 'noshadow', 'noshine', 'shinepass', ...(oneOn ? ['threeprog'] : []), 'still', 'res2', 'bare'];
     rec.ok(`2. every step measured: ${keys.join(', ')}`,
       want.every((k) => keys.includes(k)) && (oneOn || !keys.includes('threeprog')) && rows.every((r) => r.frames > 1 && r.fps > 0), { keys, oneOn });
     const R0 = rows.find((r) => r.k === 'all'), R2 = rows.find((r) => r.k === 'res2'), NS = rows.find((r) => r.k === 'noshadow');

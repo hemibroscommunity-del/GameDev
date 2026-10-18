@@ -7453,6 +7453,36 @@ on a computer the card clears the keys strip, not the phone's combat band
 away, shut it is back), mp-deskreach 4 (a laptop: the card clears the minimap
 and the keys strip, its ✕ answers).
 
+## 221. "A filter on one small sprite costs one small shader" (v2.3.3453)
+
+**Tempting:** a filter on a single sword or plate is cheap: Pixi draws the
+sprite into a picture its own size, runs the filter's few lines over it and
+draws it back, so a dozen shining pieces on screen are a dozen tiny passes.
+
+**What happens:** each one is a RENDER PASS. To draw the sprite into its own
+picture the graphics chip stops drawing the frame and changes target, then
+changes back to carry on. A phone's chip (tile-based: every iPhone, most
+Androids) keeps the frame in its own small fast memory while it draws; a
+change of target writes all of it out to main memory and the change back
+reads it all in again -- the WHOLE frame (~14 MB at 3x on a big iPhone), for
+a 60 x 90 px sword. So the cost of a filter is not its size but its count,
+and it never shows on the page's main thread: the main thread sees a few GL
+calls (mp-phoneframe's "target switches"), and this box, which draws in
+software, has no tile memory to show it either. The metal shine was one such
+pass a piece, a frame, for every armoured player on screen (glint.js, since
+v2.3.2887).
+
+**The rule:** an effect drawn on many sprites every frame belongs in their
+batch, not in a filter: the shine is worked out where the piece is drawn
+(lightfx/sheenBatch.js), its numbers carried in the piece's corners. Keep a
+filter for what truly needs a picture of its own (the grade's edge reads the
+pixels round each pixel), and count passes, not pixels: mp-crowdbots with
+`BT_CROWD_LOOK` reports the target switches a frame with armoured players on
+screen; the owner's Speed test (v2.3.3339) shows what they cost on a phone.
+
+**Receipt:** mp-sheenbatch (the pieces in the frame, six fewer target switches
+a frame for three, the same picture to two levels); docs/specs/sheen-batch.md.
+
 ## 222. "A shot the sight lets go flies the sight's line" (v2.3.3399)
 
 **Tempting:** the bow's sight gate decides when a shot may leave, and every

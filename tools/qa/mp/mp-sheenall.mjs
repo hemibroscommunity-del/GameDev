@@ -21,6 +21,9 @@
  *     sprite.tint) -- the shader divides the tint back out to find where the
  *     steel art was bright, so this is what makes a copper highlight come out
  *     bright COPPER rather than the wrong colour;
+ *     (v2.3.3453: or have its shine drawn IN THE FRAME -- lightfx/sheenBatch.js
+ *     -- drawn by the shine's batcher with a sheen and the tint it is drawn
+ *     with, the same two conditions on the numbers it carries instead;)
  *   - and the tint is the metal actually worn (materialTints.js).
  * It is checked on EVERY frame drawn, including the first frame of each
  * animation and the first frame after it, so a shine that blinks off as a
@@ -204,7 +207,15 @@ function install() {
           const u = f ? f.resources.glintUniforms.uniforms : null;
           const tint = (typeof c.tint === 'number' ? c.tint : 0xffffff) & 0xffffff;
           const ut = u ? ((Math.round(u.uTint[0] * 255) << 16) | (Math.round(u.uTint[1] * 255) << 8) | Math.round(u.uTint[2] * 255)) : null;
-          const ok = !!u && u.uSheen > 0 && ut === tint;
+          /* v2.3.3453: or the shine drawn IN THE FRAME (lightfx/sheenBatch.js):
+             the sprite drawn by the shine's batcher (its batch record's
+             batcherName, as the last build left it), carrying a sheen, and the
+             tint it carries the one it is drawn with */
+          const gd = c._gpuData && c._gpuData[R.app.renderer.uid];
+          const sb = c._btSheen;
+          const st = sb ? (((sb.tintPacked & 255) << 16) | (((sb.tintPacked >>> 8) & 255) << 8) | ((sb.tintPacked >>> 16) & 255)) : null;
+          const inFrame = !!(gd && gd.batcherName === 'sheen' && sb && sb.on && sb.k > 0 && st === tint);
+          const ok = (!!u && u.uSheen > 0 && ut === tint) || inFrame;
           const key = who + '|' + slot + '|' + m[2];
           const e = out.seen[key] || (out.seen[key] = { n: 0, bad: 0, tints: [], dirs: [] });
           e.n++;
@@ -218,6 +229,7 @@ function install() {
             for (let q = c; q && path.length < 5; q = q.parent) path.unshift(q.label || (q.constructor && q.constructor.name) || '?');
             const pdp = peerId ? R.peerDisplayRaw(peerId) : null;
             out.bad.push({ key, file: m[1] + '/' + m[2] + '-' + m[3], tint: tint.toString(16), glint: !!f,
+              batcher: gd ? gd.batcherName : null, inFrame: sb ? { on: sb.on, k: +(+sb.k).toFixed(3), tint: st == null ? null : st.toString(16) } : null,
               sheen: u ? +u.uSheen.toFixed(3) : 0, uTint: ut == null ? null : ut.toString(16),
               filters: Array.isArray(c.filters) ? c.filters.length : 0, path: path.join('>'),
               body: c === pd._spriteBody ? 'mine' : (pdp && c === pdp._spriteBody ? 'theirs' : 'no'),
