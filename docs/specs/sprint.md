@@ -339,7 +339,7 @@ length and rate applied), the slowed special swipe put 49% of its energy under
 mids and highs, at the old push's loudness above 400 Hz (what the ear weighs),
 peaking ~0.53. Still a recording already in the game.
 
-## v2.3.3443: the push-off is the owner's grunt
+## v2.3.3446: the push-off is the owner's grunt
 
 The owner: *"the noise for sprint needs to be changed. It's a loud incoherent
 sound for sprint button. Make it a grunt or something"*, with their recording,

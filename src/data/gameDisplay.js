@@ -21,7 +21,7 @@ import { TOWN_BUILDINGS } from './buildings.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS } from './effects.js';
 import { FOOTSTEP_CLIPS } from './footstepClips.js';   /* v2.3.2967: each ground its own step */
 import { MONSTER_NOISE_CLIPS } from './monsterNoiseClips.js';   /* v2.3.3340: the owner's monster noises */
-import { SPRINT_GRUNT } from './sprintGrunt.js';   /* v2.3.3443: the owner's sprint grunt */
+import { SPRINT_GRUNT } from './sprintGrunt.js';   /* v2.3.3446: the owner's sprint grunt */
 import { EVENT_SOUNDS } from './eventSounds.js';   /* v2.3.3343: each creature its own death (monsterDeath) */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 
@@ -3120,7 +3120,7 @@ BT_AUDIO.SFX_MANIFEST = {
   'noise-skeleton-rattle': '/sfx/monster/noise-skeleton-rattle.mp3',
   'noise-slime-bounce': '/sfx/monster/noise-slime-bounce.mp3',
   'noise-snowman-snarl': '/sfx/monster/noise-snowman-snarl.mp3',
-  /* v2.3.3443: the owner's grunt as a sprint starts (SPRINT_PUSH below), cut
+  /* v2.3.3446: the owner's grunt as a sprint starts (SPRINT_PUSH below), cut
      to its 0.6 s by tools/audio/cut_sprint_grunt.py from their "Grunt 1"
      (assets/sfx-source/voice/, CREDITS.md); its level in sprintGrunt.js.
      ~0.12 MB decoded. */
@@ -3710,7 +3710,7 @@ BT_AUDIO.ELEM_SOUNDS = {
    touch slower so it is not the arrow you hear when you shoot, at the old
    push's loudness above 400 Hz -- what the ear weighs -- which is vol ~4.1;
    3.8, peaking ~0.53 (the hits keep under 0.66, there is no limiter). */
-/* ═══ v2.3.3443: A GRUNT ═══
+/* ═══ v2.3.3446: A GRUNT ═══
    Owner: "the noise for sprint needs to be changed.  It's a loud incoherent
    sound for sprint button.  Make it a grunt or something", with their "Grunt
    1" (CREDITS.md).  On one scale (tools/audio/cut_sprint_grunt.py: the RMS of

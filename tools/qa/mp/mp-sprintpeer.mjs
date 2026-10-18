@@ -15,7 +15,7 @@
  *   3. once the runner walks again, the watcher's copy walks too: no `spr`,
  *      the loop back to its walking length;
  *   4. no page errors on either side.
- * v2.3.3443: and the push-off is the owner's GRUNT ("the noise for sprint
+ * v2.3.3446: and the push-off is the owner's GRUNT ("the noise for sprint
  * needs to be changed ... Make it a grunt"): decoded on the loading screen on
  * both pages, played whole at its level as the runner's sprint starts, and
  * heard by the watcher (peerOwn's 'peerSprint') no louder; no arrow flight.
@@ -91,7 +91,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const fpsOn = () => { window.__rafN = 0; window.__rafT0 = performance.now(); (function f() { window.__rafN++; requestAnimationFrame(f); })(); };
   const fpsOf = () => Math.round(window.__rafN / Math.max(0.001, (performance.now() - window.__rafT0) / 1000) * 10) / 10;
   await A.page.evaluate(() => { window.__btSprintDust = 0; if (window.BT_AUDIO) window.BT_AUDIO._lastSprintSound = null; });
-  /* v2.3.3443: every sample either page asks for from here on, and whether it
+  /* v2.3.3446: every sample either page asks for from here on, and whether it
      played (BT_AUDIO.play hands back a source only for a decoded sample) */
   const logPlays = () => {
     const A0 = window.BT_AUDIO;
@@ -113,7 +113,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       vol: A0 && A0.SPRINT_PUSH && A0.SPRINT_PUSH[3] };
   });
   const gA = await gruntIn(A), gB = await gruntIn(B);
-  rec.ok('the sprint\'s push-off is the owner\'s grunt, decoded on the loading screen on both pages (v2.3.3443)',
+  rec.ok('the sprint\'s push-off is the owner\'s grunt, decoded on the loading screen on both pages (v2.3.3446)',
     gA.layer === 'sprint-grunt' && gA.decoded && gB.decoded && gA.vol > 0 && gA.vol < 0.2, { gA, gB });
   await A.page.evaluate(fpsOn);
   await B.page.evaluate(fpsOn);
@@ -140,7 +140,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.keyboard.up('Shift');
   rec.ok(`runner: the first stride pushes off (${runner.push}) and every footfall of the sprint kicks up dust (${runner.dust} puffs)`,
     runner.push === 'push' && runner.dust >= 2, runner);
-  /* v2.3.3443: what the push really played, on each side */
+  /* v2.3.3446: what the push really played, on each side */
   const playsA = await A.page.evaluate(() => window.__btPlayLog || []);
   const playsB = await B.page.evaluate(() => window.__btPlayLog || []);
   const gruntA = playsA.filter((p) => p.key === 'sprint-grunt');
