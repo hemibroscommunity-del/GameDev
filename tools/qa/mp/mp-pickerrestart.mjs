@@ -25,6 +25,11 @@ const OLD = {
 };
 
 export async function run({ browser, wsPort, webPort, rec }) {
+  /* v2.3.3357: the restart is a login-door call, and the door's 20 tries a
+     minute are shared by every page of a run: after mp-roster the minute was
+     spent and the restart answered 'rate' (main too).  Start on a fresh one. */
+  const waited = await H.freshDoorMinute(wsPort);
+  console.log('    a fresh minute at the login door after ' + Math.round(waited / 1000) + ' s');
   const P = await H.newPlayer(browser, { name: 'Resa', wsPort, webPort,
     viewport: { width: 390, height: 844 }, touch: true });
   await H.enterWorld(P);
@@ -64,14 +69,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.click('[data-tut="char-menu-restart"]');
   await P.page.waitForTimeout(400);
   await P.page.fill('[data-tut="char-confirm-input"]', 'yes');
-  /* v2.3.3351: the worker's answer is read, and "too many tries" is waited
-     out once.  The Login Key check and this restart share 20 a minute per
-     address (server account.js ACCOUNT.IP_MAX_ATTEMPTS); locally every page
-     is 'unknown' and one worker serves the whole run, and mp-roster, just
-     before this, asks about ~19 rows in its last 15 s -- so in a full run the
-     restart was answered 'rate', the dialog stayed up, and enterWorld's Back
-     click landed on it (the sweep of 2026-10-17).  Alone it never happened.
-     (POST only: the CORS preflight asks the same address first.) */
+  /* v2.3.3351: the worker's answer is read.  Should the minute be spent
+     after all (the fresh one above makes it unlikely), the refusal must say
+     so -- the picker said only "That did not work" -- and it is waited out
+     once.  (POST only: the CORS preflight asks the same address first.) */
   const pressGo = async () => {
     const answer = P.page.waitForResponse((r) => r.url().includes('/api/account/reset')
       && r.request().method() === 'POST', { timeout: 15000 }).then((r) => r.json()).catch(() => null);

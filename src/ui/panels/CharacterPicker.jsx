@@ -264,6 +264,9 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
           /* undefined on an old worker, which charRoster reads as "leave what
              you have" rather than "this character has no face" (rule 19). */
           look: p.look,
+          /* v2.3.3355: a new key's id, as the worker said (it is not made
+             from the key -- server/src/loginkeys.js) */
+          id: res.exists && res.kv === 2 ? res.id : undefined,
         }));
       }
     })();

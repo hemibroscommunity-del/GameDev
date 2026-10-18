@@ -7130,3 +7130,74 @@ one shows the device screen (src/ui/DeviceScreen.js).
 refused device counts as a wrong key" (24 of 24 deliberate breaks caught), and
 mp-devicelock refuses a new phone with the code, its key kept, and lets it in
 after the owner's pass.
+
+## 215. "A lockout is a wrong key: answer 'auth'" (v2.3.3355)
+
+**Tempting:** five wrong keys for an id lock it out for a minute
+(join.js `_verifyJoinAuth`), and during that minute every join for that id is
+refused the way a wrong key is: `join_rejected {reason: 'auth'}`.
+
+**What happens:** the phone answers 'auth' by throwing its Login Key away and
+making a fresh character under a new one (wsClient.js, the cure for a key that
+no longer matches). A lockout is not this phone's key being wrong: it is
+anyone's five guesses at an id, and ids are on every other player's screen. So
+anyone could make a player's phone drop their character, just by guessing
+wrong five times while that player was reconnecting.
+
+**The rule:** a lockout has its own reason, `locked` (close 4018). A new phone
+waits it out and joins again; an older one treats an unknown reason as final.
+Neither makes a new character. A key that cannot be guessed (a new Login Key,
+loginkeys.js) is checked even during a lockout, so its holder is never shut
+out by somebody else's tries. Every refusal of a key that may be right
+(`device`, `key`, `locked`) has a reason of its own; 'auth' is only for a key
+that is really wrong.
+
+**Receipt:** login-keys.test §7: five wrong keys from another device, then the
+right old key is 'locked' (close 4018), the right new key gets in, and after
+the minute the old one does too.
+
+## 216. "The game's id is its key's: keep `S.myId` beside the key" (v2.3.3355)
+
+**Tempting:** `S.myId` is the character's id, so keep it beside the Login Key
+(the roster's row, `bt_key_ids`) whenever the roster is written: at Play, and
+on the 30 s heartbeat (BroTown.jsx).
+
+**What happens:** an old key's id is worked out from the key, so `S.myId`
+always matched it. A new key's id is the worker's (loginkeys.js), not made from
+the key. A page that starts before it knows works an id out from the key
+anyway, as for an old one, and that id is nobody's. Kept beside the key, it
+replaced the real id the door had written a moment before. The next join named
+nobody and was refused 'key', and the phone took about six seconds to ask the
+door and join again: mp-charlock's second browser had no character record yet,
+and mp-linger's relaunch missed the linger screen.
+
+**The rule:** an id goes beside a new key only from the worker: the door's
+answer (`kv: 2`), `key_new`, the join it let in (`S._joinedId`, wsClient.js),
+or the shared roster carrying one of those. The door's answer also corrects
+`S.myId` at once (BroTown.jsx `_takeKeyId`), and the join takes the kept id
+(wsClient.js).
+
+**Receipt:** a second browser given a new key directly sent two joins, the
+first refused, before the fix; after it, one join, let in. mp-charlock and
+mp-linger.
+
+## 217. "Put a player out: forget their session, then close their socket" (v2.3.3356)
+
+**Tempting:** to put a player out of the room (the Test panel's Kick or
+Freeze), delete their session from `this.sessions`, so nothing more is sent to
+them, and close their socket.
+
+**What happens:** the leaving is the runtime's close, `webSocketClose`
+(index.js): the save, `player_leave` to everyone, the party's and the duel's
+grace, the body taken out of `playerState`. It looks the socket up in
+`this.sessions`, finds nothing, and does none of it. The player is gone from
+the room's list, but their body stands where it was on everyone else's screen
+until the room restarts. Kick and Freeze did exactly this.
+
+**The rule:** put a player out in the AFK sweep's three steps (tick.js,
+flood.js `_floodClose`): close the socket, run `webSocketClose` for it now,
+then delete the session (admin.js `_adminPutOut`; the owner's Forget,
+devicelock.js).
+
+**Receipt:** admin.test §5 and §6: after a Freeze and a Kick an onlooker is
+told `player_leave` and no body is left. Both checks fail on the old code.

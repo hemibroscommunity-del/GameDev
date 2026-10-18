@@ -51,9 +51,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      badge being absent are two different claims: the badge has its own
      fallback (v2.3.1687, "show it on all three when the stamp is missing")
      that could light up on its own. */
-  /* v2.3.3351: the dashboard opened first.  A first join arrives with it
-     folded (v2.3.2495), and a folded band draws no columns, so no card was
-     on screen to read (the sweep of 2026-10-18: `cards []`). */
+  /* v2.3.3357: the band arrives FOLDED, and folded the combat cards are not
+     in the page at all (BottomDashboard.jsx, `!dashMin`): unfold it the way a
+     player does, the harness's own precondition (H.unfoldBand). */
   await H.unfoldBand(P);
   const cards = await P.page.evaluate(() => {
     try { window.__broDashPanelBus.toBar(); } catch (e) {}
