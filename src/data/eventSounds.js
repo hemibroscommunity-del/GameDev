@@ -144,9 +144,10 @@ export const EVENT_SOUNDS = {
   respawnSlime: [['lure-drop', 0, 0, 2.2, 0.8]],
   respawnOther: [['magic-cast', 0, 0.6, 0.4, 1.25, 0, 0.12]],
   /* A mummy's wrappings whipping away from the skeleton inside: the cloth
-     (the leather rustle of the equip tick, low) and a whip of air, only.  Its bones are left to the skeleton's own noise, the owner's
-     "rattling bones" recording, played as it sheds (game/monsterNoises.js,
-     its own change); a bone layer here would rattle twice. */
+     (the leather rustle of the equip tick, low) and a whip of air, only.
+     Its bones are the skeleton's own noise, the owner's "rattling bones"
+     recording, played as it sheds (game/monsterNoises.js monsterShed,
+     v2.3.3340); a bone layer here would rattle twice. */
   unwrap: [['ui-equip', 0.095, 0.3, 2.6, 0.78, 0, 0.08], ['arrow-fly', 0.03, 0.18, 1.8, 1.2, 0.05, 0.05]],
   /* A dungeon boss: arriving, its warning, slam, charge, enrage, summons and
      life drain. */

@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  monsternoise: () => import('./mp-monsternoise.mjs'), /* v2.3.3340: the owner's monster noises -- the table (snowman snarl, slimes bounce, fire goblin rawr, skeleton rattle; the mummy and unrecorded kinds silent), the clips in the manifest, nothing heard past 1,150 px, a mummy's shed rattles; real snowmen and slimes call as they notice you and now and then while they chase, within the limits */
   speedtest: () => import('./mp-speedtest.mjs'), /* v2.3.3339: the test panel's speed test on a 3x phone (every step measured, the switches really switched, everything back after, nothing saved, the card), ?res=2 (the canvas at 2x, smoothly stretched, the world the same size), the overview under the ground only while a piece is missing, and the screen's draw list not rebuilt every frame standing still */
   frameprofile: () => import('./mp-frameprofile.mjs'), /* v2.3.3339: where a frame's time goes in BroTown -- a CPU profile standing and walking, by source file (build with --sourcemap), the frame's split and the long tasks; a measuring tool */
   specialart: () => import('./mp-specialart.mjs'), /* v2.3.3336: the owner's special attacks on the Special button -- with the kit's great sword, bow and staff in hand in turn, that weapon's picture, decoded, filling the face inside the game's ring, the star gone; its grey copy cooling down (the blue arc round it) and with no mana; the press's shade over it */
