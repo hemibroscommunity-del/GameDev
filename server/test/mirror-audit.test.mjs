@@ -2351,7 +2351,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     { srv: [SRV_EMOTE.EMOJI.length, SRV_EMOTE.LINES.length], client: [CLIENT_EMOTES.length, CLIENT_TEXT_EMOTES.length] });
 }
 
-/* ═══ v2.3.3363: THE MOVES THE WORKER RELAYS AND KEEPS ARE THE PHONE'S ═══
+/* ═══ v2.3.3362: THE MOVES THE WORKER RELAYS AND KEEPS ARE THE PHONE'S ═══
    A moment move (wave, laugh...) is relayed only when it is on emotes.js
    EMOTE.MOVES, and a held pose (sit, sleep, a dance) kept only when it is on
    poses.js POSE.IDS; the phone's tiles are game/emoteMoves.js.  One missing
