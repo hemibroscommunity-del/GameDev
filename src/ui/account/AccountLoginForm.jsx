@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { normalizeLoginKey, checkAccountLogin, applyAccountLogin, getBtPassphrase } from '@/networking/index.js';
+import { normalizeLoginKey, normalizeNewKey, isNewKey, checkAccountLogin, applyAccountLogin, getBtPassphrase } from '@/networking/index.js';
 import { rememberChar } from '@/networking/charRoster.js'; /* v2.3.1923 */
 
 /* v2.3.1143: Login Key entry flow (see docs/specs/account-login.md).
@@ -22,6 +22,9 @@ const ERROR_COPY = {
   /* v2.3.3344: the right key, from a device the character was never played on
      (server/src/devicelock.js) -- the code is the player's id, for the owner */
   device: 'This character can only be played on a device it was played on before. To play it here, ask the game\u2019s owner to let this device in, and give them this code:',
+  /* v2.3.3355: an old key whose character has a new one now (a new character's
+     first key, or the owner's "Give it a new key"; server/src/loginkeys.js) */
+  keychanged: 'This character has a new Login Key now. Use the new one: it\u2019s on the Account card of a device you play it on, or the game\u2019s owner can give you one.',
 };
 
 /* ═══ v2.3.1823: THE LOGIN DOOR DOES NOT ASK TWICE ═══
@@ -57,9 +60,10 @@ const ERROR_COPY = {
    and the NEXT switch overwrote that stash, losing the first character for
    anyone who had not written its key down.  Both keys are now rows in a
    list. */
-function _remember(key, preview) {
+function _remember(key, preview, id) {
   try {
-    rememberChar(key, { name: (preview && preview.name) || '', level: (preview && preview.level) || 0 });
+    /* v2.3.3355: and a new key's id, as the door said (it is not made from the key) */
+    rememberChar(key, { name: (preview && preview.name) || '', level: (preview && preview.level) || 0, id: id || undefined });
   } catch (e) { /* a roster write must never block a login that already worked */ }
 }
 
@@ -71,7 +75,11 @@ export const AccountLoginForm = ({ immediate = false }) => {
 
   const submit = async () => {
     if (phase === 'checking' || phase === 'switching') return;
-    const key = normalizeLoginKey(input);
+    /* v2.3.3355: a new key (eight words) in its own spelling -- any spaces,
+       dashes or capitals -- an old key exactly as before (its id is made from
+       its exact text) */
+    const _nk = normalizeNewKey(input);
+    const key = isNewKey(_nk) ? _nk : normalizeLoginKey(input);
     if (!key) return;
     setError('');
     if (key === getBtPassphrase()) { setError(ERROR_COPY.same); return; }
@@ -91,13 +99,13 @@ export const AccountLoginForm = ({ immediate = false }) => {
          a button still saying "Checking…" while the screen sits there is the
          exact "it does nothing" the owner reported. */
       if (immediate) {
-        setFound({ key, preview: res.preview || {} });
+        setFound({ key, preview: res.preview || {}, id: res.kv === 2 ? res.id : null });
         setPhase('switching');
-        _remember(key, res.preview);
-        applyAccountLogin(key);
+        _remember(key, res.preview, res.kv === 2 ? res.id : null);
+        applyAccountLogin(key, res.kv === 2 ? res.id : undefined);
         return;
       }
-      setFound({ key, preview: res.preview || {} });
+      setFound({ key, preview: res.preview || {}, id: res.kv === 2 ? res.id : null });
       setPhase('confirm');
       return;
     }
@@ -109,8 +117,8 @@ export const AccountLoginForm = ({ immediate = false }) => {
   const confirm = () => {
     if (!found) return;
     setPhase('switching');
-    _remember(found.key, found.preview);
-    applyAccountLogin(found.key); // stashes the old key, writes, reloads
+    _remember(found.key, found.preview, found.id);
+    applyAccountLogin(found.key, found.id || undefined); // stashes the old key, writes, reloads
   };
 
   /* v2.3.1823: in immediate mode 'switching' must NOT render the confirm

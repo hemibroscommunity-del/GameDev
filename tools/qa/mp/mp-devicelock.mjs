@@ -20,12 +20,32 @@
  *      Try again is refused; then Let one new device in, and its Try again
  *      plays it.
  * A picture of the screen: tools/qa/mp/out/devicelock.png.
+ *
+ * v2.3.3355: the device lock holds the OLD kind of key; a new Login Key
+ * (server/src/loginkeys.js) works on any device, and this build's phones are
+ * handed one.  So the character here is made by an OLDER phone, which keeps
+ * its old key (an init script takes the join's `kv` off, as mp-newkey's
+ * does), and the new phones are this build: in with the owner's pass, B is
+ * handed a new key; Forget takes it back, and B's Try again goes back to the
+ * old key it kept -- the device lock's screen again.
  */
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import * as H from './harness.mjs';
 
 const PHONE = { width: 390, height: 844 };
+
+/* v2.3.3355: an OLDER phone's join -- no `kv`, so it keeps its old key */
+const OLD_PHONE_JOIN = () => {
+  const send = WebSocket.prototype.send;
+  WebSocket.prototype.send = function (d) {
+    try {
+      const m = typeof d === 'string' ? JSON.parse(d) : null;
+      if (m && m.type === 'join') { delete m.kv; d = JSON.stringify(m); }
+    } catch (e) { /* not ours to reshape */ }
+    return send.call(this, d);
+  };
+};
 
 const screenState = (page) => page.evaluate(() => {
   const el = document.getElementById('bt-device');
@@ -112,7 +132,7 @@ async function tapItsRow(P) {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 1. its own phone ── */
-  const A = await H.newPlayer(browser, { name: 'Homebody', wsPort, webPort, viewport: PHONE, touch: true });
+  const A = await H.newPlayer(browser, { name: 'Homebody', wsPort, webPort, viewport: PHONE, touch: true, init: OLD_PHONE_JOIN });
   await H.enterWorld(A);
   const a = await A.page.evaluate(() => ({
     id: window._gameState.current.myId,
@@ -121,6 +141,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }));
   rec.ok('1. a character plays on the phone it was made on (guard)',
     !!(a.id && a.key && a.device) && await playing(A.page, a.id), a);
+  rec.ok('1. ...an older phone: its key the old kind (guard)', !/^[a-z]{3,5}(?:-[a-z]{3,5}){7}$/.test(a.key || ''), a);
 
   /* ── 2. its key on a new phone ── */
   const B = await H.newPlayer(browser, { name: 'Homebody', wsPort, webPort, viewport: PHONE, touch: true, phrase: a.key, device: 'fresh' });
@@ -179,8 +200,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const armed = await O.page.$eval('[data-devlock-forget]', (b) => (b.textContent || '').trim()).catch(() => '');
   rec.ok('5. Forget asks first: "Sure? Forget all its devices"', armed === 'Sure? Forget all its devices', armed);
   await pressPanel(O, '[data-devlock-forget]');
-  rec.ok('5. the second tap forgets both its devices and puts its player out',
-    await panelSays(O, new RegExp('Forgot 2 devices for ' + a.id + ' and put its player out')));
+  /* v2.3.3355: and takes back the new key B was handed once the pass let it in */
+  rec.ok('5. the second tap forgets both its devices, takes back the new key B was handed, and puts its player out',
+    await panelSays(O, new RegExp('Forgot 2 devices for ' + a.id + ', took back 1 Login Key and put its player out')));
   const bUp = await screenUp(B.page, 15000);
   const b1 = await screenState(B.page);
   rec.ok('5. ...whoever plays it is put out, with the same screen', bUp && !!b1 && b1.status === 'device' && b1.code === a.id, b1);

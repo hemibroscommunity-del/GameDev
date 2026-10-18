@@ -41,6 +41,67 @@ export function generatePassphrase() {
   return w.join('-') + '-' + Math.floor(Math.random() * 99);
 }
 
+/* ═══ v2.3.3355: NEW LOGIN KEYS, MADE BY THE WORKER ═══
+   (server/src/loginkeys.js, docs/specs/login-keys.md.)  A new key is eight
+   short words the worker hands this phone (wsClient.js `key_new`), or one
+   typed at the door.  Its player id is NOT made from it -- nothing public is
+   -- so the phone KEEPS the id it is told beside the key: `bt_key_ids`, and
+   the roster's rows.  `idForKey` is the one way from a key to its id; an old
+   key's id is still passphraseToId's, exactly as before. */
+export const NEW_KEY_RE = /^[a-z]{3,5}(?:-[a-z]{3,5}){7}$/;   /* server/src/keywords.js NEW_KEY_RE */
+
+/** A key as typed in its one spelling, for the new shape: lower case, every
+ *  run of spaces, dashes or underscores one dash (keywords.js normalizeKeyText). */
+export function normalizeNewKey(input) {
+  if (!input) return '';
+  return String(input).trim().toLowerCase().replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+/** Is this a new key (eight words), as stored? */
+export function isNewKey(phrase) {
+  return typeof phrase === 'string' && NEW_KEY_RE.test(phrase);
+}
+
+const KEY_IDS = 'bt_key_ids';
+const KEY_IDS_MAX = 24;
+function _keyIdList() {
+  try {
+    const o = JSON.parse(localStorage.getItem(KEY_IDS) || 'null');
+    return o && Array.isArray(o.list) ? o.list.filter((r) => Array.isArray(r) && isNewKey(r[0]) && typeof r[1] === 'string') : [];
+  } catch (e) { return []; }
+}
+
+/** Keep the id a new key belongs to (the worker said so). */
+export function rememberKeyId(phrase, id) {
+  if (!isNewKey(phrase) || typeof id !== 'string' || id.indexOf('bp_') !== 0) return;
+  try {
+    const list = _keyIdList().filter((r) => r[0] !== phrase);
+    list.unshift([phrase, id]);
+    localStorage.setItem(KEY_IDS, JSON.stringify({ v: 1, list: list.slice(0, KEY_IDS_MAX) }));
+  } catch (e) { /* storage full or off: the roster's row still has it */ }
+}
+
+/** A key's player id: an old key's worked out as ever, a new key's as kept
+ *  (bt_key_ids, then the roster's row) -- null when a new key's is not known. */
+export function idForKey(phrase) {
+  if (!phrase || typeof phrase !== 'string') return null;
+  if (!isNewKey(phrase)) return passphraseToId(phrase);
+  const hit = _keyIdList().find((r) => r[0] === phrase);
+  if (hit) return hit[1];
+  try {
+    const o = JSON.parse(localStorage.getItem('bt_chars') || 'null');
+    const row = o && Array.isArray(o.list) ? o.list.find((e) => e && e.phrase === phrase && typeof e.id === 'string' && e.id.indexOf('bp_') === 0) : null;
+    if (row) return row.id;
+  } catch (e) { /* no roster */ }
+  return null;
+}
+
+/** Make `phrase` the device's key, keeping a new key's id beside it. */
+export function setActiveKey(phrase, id) {
+  try { localStorage.setItem('bt_passphrase', phrase); } catch (e) { /* private mode */ }
+  if (isNewKey(phrase) && id) rememberKeyId(phrase, id);
+}
+
 export function passphraseToId(phrase) {
   let hash = 0;
   for (let i = 0; i < phrase.length; i++) {
@@ -52,7 +113,8 @@ export function passphraseToId(phrase) {
 export function getBtPlayerId() {
   const phrase = localStorage.getItem('bt_passphrase');
   if (!phrase) return null;
-  return passphraseToId(phrase);
+  /* v2.3.3355: a new key's id is kept, not worked out */
+  return idForKey(phrase) || passphraseToId(phrase);
 }
 
 export function getBtPassphrase() {
@@ -155,12 +217,13 @@ export async function resetAccountCharacter(phrase) {
   }
 }
 
-export function applyAccountLogin(phrase) {
+export function applyAccountLogin(phrase, id) {
   /* Only after checkAccountLogin returned exists:true + user confirm. */
   try {
     const prev = localStorage.getItem('bt_passphrase');
     if (prev && prev !== phrase) localStorage.setItem('bt_passphrase_prev', prev);
-    localStorage.setItem('bt_passphrase', phrase);
+    /* v2.3.3355: a new key with the id the door said it belongs to */
+    setActiveKey(phrase, id);
     /* Stale per-character caches; bt_device stays (per-device nonce). */
     localStorage.removeItem('bt_rpg');
     localStorage.removeItem('bt_stats');
@@ -277,7 +340,16 @@ export function getDeviceNonce() {
   var id = null;
   try { id = localStorage.getItem('bt_device'); } catch (e) {}
   if (!id) {
-    id = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+    /* v2.3.3355: a new token's random part from crypto when there is one --
+       since v2.3.3344 the token is what a character's key is held to
+       (server/src/devicelock.js), so it should be as hard to guess as a key */
+    let r = '';
+    try {
+      const b = new Uint32Array(2);
+      crypto.getRandomValues(b);
+      r = b[0].toString(36) + b[1].toString(36);
+    } catch (e) { r = Math.random().toString(36).slice(2, 10); }
+    id = (Date.now().toString(36) + r).slice(0, 32);
     try { localStorage.setItem('bt_device', id); } catch (e) {}
   }
   return { id: id, env: _envHash() };
