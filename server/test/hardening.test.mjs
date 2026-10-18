@@ -19,7 +19,7 @@
  *   9.  Forged harden_result is not rebroadcast (deny-list).
  */
 import { GameRoom } from '../src/index.js';
-import { SOCIAL } from '../src/chatguard.js'; /* v2.3.3346: chat's own allowance */
+import { SOCIAL } from '../src/chatguard.js'; /* v2.3.3367: chat's own allowance */
 import { HARDEN, HARDEN_BAR_BY_TIER, HARDEN_WOOD_BY_TIER, hardenMaterialFor, hardenAmountFor, hardenGoldFor, hardenIsWood } from '../src/hardening.js'; /* v2.3.3139: + the bars and hardened wood */
 import { QUALITY_GRADES, weaponQualityMult, weaponTierFactor } from '../src/data.js'; /* v2.3.2664: + the gear helpers */
 
@@ -586,7 +586,7 @@ check('strict sanitize still strips quality on client blobs (drops are server-mi
     room.eventBuffer.length);
 
   // 3. the relay token bucket bounds the RATE into the shared buffer.
-  //    v2.3.3346: measured with a SWING -- chat and emotes spend an allowance
+  //    v2.3.3367: measured with a SWING -- chat and emotes spend an allowance
   //    of their own now (chatguard.js SOCIAL), held in chat-guard.test.mjs and
   //    in the last check of this block.
   room.eventBuffer.length = 0;
@@ -606,14 +606,14 @@ check('strict sanitize still strips quality on client blobs (drops are server-mi
   check('the bucket refills over time (throttle, not a ban)',
     room.eventBuffer.length === 1, room.eventBuffer.length);
 
-  // 4b. v2.3.3346: chat is bounded too, by its own allowance -- a burst of
+  // 4b. v2.3.3367: chat is bounded too, by its own allowance -- a burst of
   //     60 lines puts no more than SOCIAL.BURST into the shared buffer
   room.eventBuffer.length = 0;
   sess.chatGuard = null;   /* a fresh allowance */
   for (let i = 0; i < 60; i++) {
     await room.webSocketMessage(wsAb, JSON.stringify({ type: 'chat', payload: { text: 'spam' + i } }));
   }
-  check('chat\'s own allowance caps a burst at SOCIAL.BURST (v2.3.3346)',
+  check('chat\'s own allowance caps a burst at SOCIAL.BURST (v2.3.3367)',
     room.eventBuffer.length === SOCIAL.BURST, room.eventBuffer.length);
 
   // 5. the tick drain has a BYTE ceiling, and honors v2.3.1163: the

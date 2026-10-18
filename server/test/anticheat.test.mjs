@@ -1493,14 +1493,14 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   const resetRelay = (ws) => {
     const sess = room.sessions.get(ws);
     sess.relayTokens = room.RELAY_BURST; sess.relayAt = Date.now();
-    /* v2.3.3346: and chat's own allowance and repeat memory (chatguard.js),
+    /* v2.3.3367: and chat's own allowance and repeat memory (chatguard.js),
        so each check below is the sanitiser's, not the guard's */
     sess.chatGuard = null;
     room.eventBuffer.length = 0;
   };
 
   resetRelay(wsN);
-  /* v2.3.3346: a long line that is not one key held down (LONG is 'z' x 4000):
+  /* v2.3.3367: a long line that is not one key held down (LONG is 'z' x 4000):
      a run of one character is cut to 6 now (chatguard.js), hiding the clamp */
   await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: 'zy'.repeat(2000) } }));
   let rel = chatOf().pop();

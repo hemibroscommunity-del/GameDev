@@ -1,4 +1,4 @@
-/* ═══ v2.3.3346: CHAT GUARDRAILS -- its own allowance, no repeats, clean text ═══
+/* ═══ v2.3.3367: CHAT GUARDRAILS -- its own allowance, no repeats, clean text ═══
  *
  * docs/specs/chat-guard.md.  The fun & social plan (Phase 1, the owner's "Go
  * recommended") found three guardrails the chat still did not have:
