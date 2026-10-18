@@ -21,7 +21,7 @@ on:
   workflow_dispatch:
     inputs:
       views:
-        description: 'Which views (any of portrait,landscape,desktop,tablet)'
+        description: 'Which views (any of portrait,landscape,desktop,laptop,tablet)'
         required: false
         default: 'portrait,landscape,desktop'
 jobs:

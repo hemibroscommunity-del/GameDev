@@ -3306,7 +3306,8 @@ Two protocol versions coexist; both must keep working:
   screen in states.mjs -- the door, the creator's tabs, the HUD, the
   dashboard's pages, every building's window, the maps, a harvest, a fight --
   as an upright phone, a sideways phone and a computer (`--views=tablet` an
-  iPad too), and writes tools/qa/out/ui-review/: each screen plain and with
+  iPad too, `--views=laptop` a 1366 x 768 window), and writes
+  tools/qa/out/ui-review/: each screen plain and with
   every control numbered (audit.mjs: cut off, covered, small), README.md with
   a ChatGPT prompt, FINDINGS.md, index.html, contact sheets (sheets/, a
   section to a picture) and a zip per view; `--only=<ids>` retakes screens
@@ -3320,8 +3321,12 @@ Two protocol versions coexist; both must keep working:
     Diego and Ace's Flip button was off the screen (TRAPS §211); on a computer
     the Enter button lay under the keyboard strip and the Daily Rewards ✕
     under the minimap's "open map" button; the farm bed's Sleep and the field
-    cook answered only a finger; the bell drew over windows. `mp-edgeguard`,
-    `mp-deskreach`, mp-shopkeeper's sideways part, mp-notifbell.
+    cook answered only a finger; the bell drew over windows; and on a
+    LAPTOP (1366 x 768) the creator's ENTER BRO TOWN lay below the screen,
+    unreachable, its sizes fractions of the WINDOW's width -- on a computer
+    they are the play column's now (game.css "THE CREATOR SIZES ITSELF FROM
+    THE COLUMN", TRAPS §213). `mp-edgeguard`, `mp-deskreach`,
+    mp-shopkeeper's sideways part, mp-notifbell.
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's

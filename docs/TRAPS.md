@@ -7206,3 +7206,32 @@ with it, or it stays bright on top (TRAPS §20).
 minimap, Next, Accept Quest, Not now and the ✕s, every key doing what its
 button does, and a phone wearing none; the quest scenarios still read the
 cards' words unchanged.
+## 213. "A `vw` is a hundredth of the game's width" (v2.3.3343)
+
+**Tempting:** size a screen's parts as fractions of `vw` -- `--cc-leftw:
+clamp(150px,44vw,360px)` -- because on a phone the game IS the screen, and a
+clamp keeps the extremes sane.
+
+**What happens:** on a computer the game plays in a centred column, 390/715 of
+the window's height wide (game.css, the `#root` rule, v2.3.1768), and `vw` is
+still the WINDOW. 44vw of a 1366 px window is 601, so the character creator's
+column took its 360 px ceiling inside a 419 px play column, the Trait Picker
+beside it got 31 px, and what the picker could not hold stacked down: ENTER
+BRO TOWN at y 847-903 of a 768 px window, in a creator that does not scroll. A
+new player on the commonest laptop could not begin; 1536 x 864, 1280 x 800 and
+1280 x 720 the same, and 1440 x 900 -- the size every desktop scenario used --
+cut it by only 3 px, which is why nothing failed. v2.3.1728 met the same
+mistake as `width:100vw` on the wrap; `contain:paint` re-anchors fixed boxes,
+never a viewport unit.
+
+**The rule:** inside the play column on a computer, a size taken from the
+screen's width is taken from the COLUMN: `--cc-colw:
+min(100vw, calc(100vh * 390 / 715))` mirrors the `#root` rule (game.css "THE
+CREATOR SIZES ITSELF FROM THE COLUMN"), and the parts are fractions of it
+under `@media (pointer:fine) and (min-width:1000px)`, so a phone never sees
+it. Check a computer screen at a laptop's 1366 x 768 as well as 1440 x 900:
+the UI review's `--views=laptop` (tools/qa/ui-review/capture.mjs).
+
+**Receipt:** mp-deskreach 3 -- at 1366 x 768 ENTER BRO TOWN is on the screen,
+answers a click at its middle, the picker has room, and the click takes a new
+bro into the game.

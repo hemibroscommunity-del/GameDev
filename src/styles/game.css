@@ -5114,6 +5114,48 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
   }
 }
 
+/* ═══ v2.3.3343: THE CREATOR SIZES ITSELF FROM THE COLUMN, NOT THE WINDOW ═══
+   Owner: "Make sure all actions/buttons can be completed ... on the
+   computer."  On a 1366x768 laptop a new player could not make a character:
+   ENTER BRO TOWN lay at y 847-903 of a 768 px window, and the creator does
+   not scroll.  The creator's sizes are fractions of `vw` (--cc-leftw is
+   clamp(150px,44vw,360px)), and `vw` is the WINDOW: 44vw of 1366 is 601, so
+   the character's column took its 360 px ceiling inside the 419 px play
+   column above, the Trait Picker beside it got 31 px, and everything the
+   picker could not hold stacked down past the screen.  Measured on the
+   v2.3.3343 build, ENTER BRO TOWN's bottom against the window: 1440x900 903
+   (3 px cut), 1536x864 39 cut, 1280x800 103, 1366x768 135, 1280x720 139 --
+   only a 1920x1080 window fitted it.
+
+   So on a computer each `vw` the creator reads is a hundredth of the
+   COLUMN, --cc-colw: the #root rule above makes it 390/715 of the window's
+   height, or the window's width when that is narrower.  The creator is then
+   laid out as a phone of the column's own shape is -- which it was built to
+   fit -- with the same clamps.  A phone never sees this (pointer:fine), and
+   a window under 1000 px wide has no column (the gate above), so vw is right
+   there.  TRAPS §213; mp-deskreach 3 holds it at 1366 x 768. */
+@media (pointer:fine) and (min-width:1000px) {
+  .bt-name-modal{
+    --cc-colw:min(100vw,calc(100vh * 390 / 715));
+    --cc-tile:clamp(46px,calc(var(--cc-colw) * .13),66px);
+    --cc-swatch:clamp(30px,calc(var(--cc-colw) * .084),44px);
+    --cc-leftw:clamp(150px,calc(var(--cc-colw) * .44),360px);
+  }
+  /* the plate's type with its column, as v2.3.2359 measured it: at the
+     window's 18px "ENTER BRO TOWN" broke onto two lines in a 184px column */
+  .bt-cc-play{font-size:clamp(12px,calc(var(--cc-colw) * .033),18px)}
+  .bt-cc-login{font-size:clamp(10px,calc(var(--cc-colw) * .026),13px)!important}
+  .bt-cc-actions>button{font-size:clamp(13px,calc(var(--cc-colw) * .039),16px)}
+  .bt-cc-reset.bt-cc-reset{font-size:clamp(13px,calc(var(--cc-colw) * .039),16px)}
+  .bt-cc-namehead::before,.bt-cc-namehead::after{width:clamp(18px,calc(var(--cc-colw) * .07),46px)}
+  .bt-cc-panel-title{font-size:clamp(11px,calc(var(--cc-colw) * .03),14px)}
+  .bt-cc-tab-label{font-size:clamp(9px,calc(var(--cc-colw) * .026),12px)}
+  .bt-cc-rot{width:clamp(34px,calc(var(--cc-colw) * .115),50px);height:clamp(34px,calc(var(--cc-colw) * .115),50px)}
+}
+@media (pointer:fine) and (min-width:1000px) and (max-height:720px) {
+  .bt-cc-logo{width:min(calc(var(--cc-colw) * .30),140px)}
+}
+
 /* ═══ v2.3.1795: THE XP PAYOUT BREATHES, BRIEFLY ═══
    Owner: "Maybe breathing effect text for the plus xp and a green colored
    modal or something."

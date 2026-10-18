@@ -71,6 +71,14 @@ export const VIEWS = {
     viewport: { width: 1440, height: 900 }, touch: false, dpr: 2, clip: '#root',
     about: 'A computer\'s browser window (1440 x 900) with a mouse: the game plays in a centred phone-shaped column with black bars beside it (the pictures are cropped to that column), the touch controls are hidden and the keyboard does their jobs (WASD, E, Q, Space, X, Shift, F/right-click...).',
   },
+  /* v2.3.3343: not in the default run either: --views=laptop.  The commonest
+     laptop window, and where the computer's creator hid ENTER BRO TOWN below
+     the screen (game.css "THE CREATOR SIZES ITSELF FROM THE COLUMN") */
+  laptop: {
+    id: 'laptop', title: 'Laptop (a short computer window)',
+    viewport: { width: 1366, height: 768 }, touch: false, dpr: 2, clip: '#root',
+    about: 'A laptop\'s browser window (1366 x 768) with a mouse: the computer\'s centred column, shorter -- 768 px tall, so anything laid out for a taller window shows here first.',
+  },
 };
 
 const OUT = ARGS.out ? String(ARGS.out) : join(H.REPO, 'tools/qa/out/ui-review');
@@ -399,8 +407,8 @@ async function makeSheets(browser, results) {
   const dir = join(OUT, 'sheets');
   mkdirSync(dir, { recursive: true });
   const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
-  const per = { portrait: 8, landscape: 6, desktop: 8, tablet: 8 };
-  const cols = { portrait: 4, landscape: 2, desktop: 4, tablet: 4 };
+  const per = { portrait: 8, landscape: 6, desktop: 8, laptop: 8, tablet: 8 };
+  const cols = { portrait: 4, landscape: 2, desktop: 4, laptop: 4, tablet: 4 };
   const slug = (t) => String(t).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
   try {
     for (const v of Object.keys(results)) {

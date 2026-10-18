@@ -15,10 +15,14 @@
  *      click on the ✕ opened the world map.  That button lets clicks through
  *      while the window is up, as it does for every .bt-inspect window.
  * Both by a REAL mouse click (1440 x 900, the game in its centred column).
+ *   3. and on a LAPTOP's window (1366 x 768) the character creator's ENTER
+ *      BRO TOWN lay below the screen, unreachable: it is on it now, and a
+ *      click on it starts the game (v2.3.3343).
  */
 import * as H from './harness.mjs';
 
 const DESK = { width: 1440, height: 900 };
+const LAPTOP = { width: 1366, height: 768 };
 
 async function standAt(P, x, bootsY) {
   for (let k = 0; k < 4; k++) {
@@ -121,5 +125,50 @@ export async function run({ browser, wsPort, webPort, rec }) {
   } finally {
     stopAlive();
     await P.ctx.close().catch(() => {});
+  }
+
+  /* 3. v2.3.3343: a LAPTOP's window (1366 x 768).  The creator's sizes were
+     fractions of the window's width, so on a computer the character's column
+     took its 360 px ceiling inside the 419 px play column, the Trait Picker
+     got 31 px and ENTER BRO TOWN lay at y 847-903 -- off the screen, and the
+     creator does not scroll: a new player on a laptop could not begin.  They
+     are fractions of the column now (game.css "THE CREATOR SIZES ITSELF FROM
+     THE COLUMN"). */
+  const L = await H.newPlayer(browser, { name: 'Laptop', wsPort, webPort, viewport: LAPTOP, world: 'wheel' });
+  const lErrors = [];
+  L.page.on('pageerror', (e) => lErrors.push(String((e && e.message) || e).slice(0, 200)));
+  try {
+    await L.page.waitForSelector('[data-tut="login-create"], input.bt-cc-name', { timeout: 30000 });
+    if (await L.page.$('[data-tut="login-create"]')) {
+      await H.uncoverDoor(L.page);
+      await L.page.click('[data-tut="login-create"]');
+    }
+    await L.page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
+    await L.page.waitForTimeout(1500);
+    const cc = await L.page.evaluate(() => {
+      const b = document.querySelector('button.bt-cc-play');
+      const pane = document.querySelector('.bt-cc-panel');
+      const label = document.querySelector('.bt-cc-play-label');
+      if (!b || !pane || !label) return null;
+      const r = b.getBoundingClientRect();
+      const at = r.bottom <= innerHeight ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
+      return { top: Math.round(r.top), bottom: Math.round(r.bottom), winH: innerHeight, x: r.left + r.width / 2, y: r.top + r.height / 2,
+        answers: !!(at && b.contains(at)), pane: Math.round(pane.getBoundingClientRect().width),
+        labelH: Math.round(label.getBoundingClientRect().height), font: parseFloat(getComputedStyle(label).fontSize) };
+    });
+    rec.ok('on a 1366 x 768 laptop the creator\'s ENTER BRO TOWN is on the screen and answers a click there',
+      !!cc && cc.bottom <= cc.winH && cc.answers, cc);
+    rec.ok('...the Trait Picker beside it has room for its tiles (it had 31 px)', !!cc && cc.pane >= 150, cc);
+    rec.ok('...and "ENTER BRO TOWN" stays on one line', !!cc && cc.labelH < cc.font * 1.6, cc);
+    await L.page.fill('input.bt-cc-name', 'Laptop');
+    if (cc) await L.page.mouse.click(cc.x, cc.y);
+    const joined = await L.page.waitForFunction(() => {
+      const S = window._gameState && window._gameState.current;
+      return !!(S && S.myId && S.currentZone);
+    }, null, { timeout: 90000, polling: 500 }).then(() => true).catch(() => false);
+    rec.ok('...and a mouse click on it takes the new bro into the game', joined);
+    rec.ok('no page errors on the laptop', lErrors.length === 0, lErrors.slice(0, 3));
+  } finally {
+    await L.ctx.close().catch(() => {});
   }
 }

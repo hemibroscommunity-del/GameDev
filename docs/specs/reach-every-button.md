@@ -21,6 +21,7 @@ button on every screen, "is it on the screen, and does a press there reach it?"
 | computer | Two farm buttons answered only a finger: "😴 Sleep" at the farm's bed and "🔥 Cook … (Field)". A mouse click did nothing (E still worked for the bed). | One click, the v2.3.2617 rule for a finger and a mouse alike. The Furniture Workshop's button fired twice on a finger; now once. | (by reading; no scenario reaches the farm's bed with the field cook) |
 | every view | The notification bell was drawn over the bottom row of any window in its corner (the Forge tab, a marketplace filter) while it could not be pressed. | Shut and under a window, the bell is hidden (WorldChatFeed). | mp-notifbell |
 | sideways | The ◂ back arrow had no name for screen readers or the review. | `aria-label="Back from …"`. | -- |
+| computer | The character creator on a **laptop**: on a 1366 x 768 window **Enter Bro Town** lay at y 847-903, below the screen, and the creator does not scroll -- a new player could not begin (1536 x 864, 1280 x 800 and 1280 x 720 the same; 1440 x 900 cut it 3 px). Its sizes were fractions of the *window's* width (`44vw`...), so the character's column took its 360 px ceiling inside the 419 px play column and the trait picker got 31 px (its labels "H…", "S…"). | On a computer the creator's sizes are fractions of the play column (game.css "THE CREATOR SIZES ITSELF FROM THE COLUMN"): it lays out as a phone of the column's shape. Every window from 1280 x 650 to 1920 x 1080 fits it. TRAPS §213. | mp-deskreach 3 |
 
 ## Checked and fine
 
@@ -40,10 +41,8 @@ button on every screen, "is it on the screen, and does a press there reach it?"
 
 - Many buttons are smaller than Apple's 44 px guide; the review lists them as
   "small" or "under the 44 px touch guide". None is unreachable.
-- On a computer the keyboard strip covers the bottom-left of the world, and the
-  bell sits on two of its chips. The black margins beside the game's column
-  (~470 px at 1440 wide) could hold the strip instead.
-- On a computer the creator's "Enter Bro Town" is 3 px past the bottom of a
-  900 px window, and its trait picker's labels are cut ("H…", "S…").
+- On a computer the keyboard strip covers the bottom-left of the world (the
+  bell no longer sits on its chips: desktop-keys.md). The black margins beside
+  the game's column (~470 px at 1440 wide) could hold the strip instead.
 - The NPC dialogue, the quest offer and the world map are drawn over the whole
   window on a computer, a little wider than the game's column.
