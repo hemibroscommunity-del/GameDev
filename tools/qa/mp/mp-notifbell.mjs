@@ -336,4 +336,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('tapping a MESSAGE — not the header — folds the feed to the bell',
       false, { why: 'the feed never reopened with a list to tap', reopened });
   }
+
+  /* ═══ v2.3.3328: THE SHUT BELL STANDS DOWN UNDER A WINDOW ═══
+     The UI review's numbered pictures showed the bell painted across a
+     building window's bottom row (the Blacksmith's Forge tab): this shell is
+     outside the game's wrap, so it paints over an in-wrap window whatever the
+     z-index says, and while a window is open it already takes no taps.  Shut,
+     it fades with them -- and comes back the moment the window closes. */
+  const shellAlpha = () => P.page.evaluate(() => {
+    const s = document.querySelector('[data-world-chat]');
+    const b = document.querySelector('[data-world-chat-toggle]');
+    return { opacity: s ? parseFloat(getComputedStyle(s).opacity) : null,
+      taps: b ? getComputedStyle(b).pointerEvents : null,
+      shut: b ? b.getAttribute('aria-expanded') !== 'true' : null };
+  });
+  const before = await shellAlpha();
+  rec.ok('the shut bell shows over the world (guard)', before.shut === true && before.opacity === 1, before);
+  /* the fade is a 140 ms transition, which this box's slow frames stretch:
+     read until it has run, up to 3 s */
+  const settle = async (want) => {
+    let s = await shellAlpha();
+    for (let i = 0; i < 20 && !want(s); i++) { await P.page.waitForTimeout(150); s = await shellAlpha(); }
+    return s;
+  };
+  await P.page.evaluate(() => window.__btBuildingWindow && window.__btBuildingWindow.open('forge'));
+  const under = await settle((s) => s.opacity === 0);
+  rec.ok('with a building window open the shut bell is hidden, as it takes no taps',
+    under.opacity === 0 && under.taps === 'none', under);
+  await P.page.evaluate(() => window.__btBuildingWindow && window.__btBuildingWindow.open(null));
+  const back = await settle((s) => s.opacity === 1);
+  rec.ok('...and back the moment the window closes', back.opacity === 1 && back.taps === 'auto', back);
 }

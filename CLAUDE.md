@@ -3289,6 +3289,15 @@ Two protocol versions coexist; both must keep working:
   into the last run, `--report-only` remakes the words and sheets.  The
   owner's button: Actions -> "UI review screenshots" -> Run workflow
   (ui-review.yml, never on a PR).  A new screen or window goes in states.mjs.
+  - What its first run found, fixed in the same version
+    (docs/specs/reach-every-button.md): the iOS edge guard was an invisible
+    18 px strip over every control at the left edge -- a listener now
+    (BroTown `EDGE_CONTROL`, TRAPS §206); sideways nothing could be SOLD to
+    Diego and Ace's Flip button was off the screen (TRAPS §207); on a computer
+    the Enter button lay under the keyboard strip and the Daily Rewards ✕
+    under the minimap's "open map" button; the farm bed's Sleep and the field
+    cook answered only a finger; the bell drew over windows. `mp-edgeguard`,
+    `mp-deskreach`, mp-shopkeeper's sideways part, mp-notifbell.
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's

@@ -75,7 +75,17 @@ Every control a player could press -- a button, a tab, a link, a field, a
   tap there reaches that instead.
 
 A control inside a list that scrolls is only "cut off" when the list itself
-runs past the screen (its end can never be scrolled into view). Controls behind
-a whole screen in front (a modal, a window) are left out of that screen's list.
-What the game draws itself (the world, the minimap, name plates, bars, damage
-numbers) is in the pictures but not in the lists.
+runs past the screen (its end can never be scrolled into view); one scrolled
+part-way out of its list is judged by the part that shows, boxed with a dashed
+line. Controls behind a whole screen in front (a modal, a window) are left out
+of that screen's list. What the game draws itself (the world, the minimap, name
+plates, bars, damage numbers, speech bubbles) is in the pictures but not in the
+lists.
+
+On a computer the pictures are cropped to the game's column, except while a
+window drawn outside the column is up (the NPC dialogue, the quest offer, the
+world map are portalled to the page and centred on the whole window): then the
+picture is the whole window, as the player sees it, and those windows are
+judged against it, not the column.
+
+What the first run found, and what was done about it: docs/specs/reach-every-button.md.

@@ -7018,3 +7018,52 @@ assume it is at 0, 0 -- and test on a computer's window, not only a phone's.
 
 **Receipt:** mp-deskharvest step 4: with the button hidden the anchor is on the
 figure (within 2 px of where it is drawn), inside the column.
+
+## 206. "An invisible strip at the screen's edge only catches what lands on the world" (v2.3.3328)
+
+**Tempting:** iOS reads a swipe from the bezel as its back gesture, so lay a
+transparent strip down the left edge, above the game, and cancel every
+touchstart on it (v2.3.112). Nothing visible lives that close to the edge.
+
+**What happens:** things DID live there, and kept arriving. The strip was 18 px
+wide, full height, z 40, appended to the body -- above everything outside the
+game's wrap. The top bar's logout button starts at x 6, a sideways page's ◂
+back arrow at 8, the sideways ▴/▼ fold chip at 8, the band's CLOSE pill at 8
+and its first column of bag tiles at 9: the left part of each took no tap. The
+UI review's numbered pictures (tools/qa/ui-review) marked them "covered" on
+every sideways screen; v2.3.2563 had already found the Special button half
+dead and MOVED it off the strip, and the next control to land there did not
+know the rule.
+
+**The rule:** a guard is a LISTENER, not a layer: on the document, capturing,
+it cancels a touch that starts at the edge on the world and lets one that lands
+on a control through (BroTown.jsx `EDGE_CONTROL`). Nothing invisible lies over
+a control. Never fix a covered control by moving it off a hidden layer: fix the
+layer.
+
+**Receipt:** mp-edgeguard: real touches at x 10 work the logout, the ◂ arrow,
+both fold chips and the band's first bag tile (all six fail on the strip), and
+a thumb at x 8 on the world still starts no walk.
+
+## 207. "A window that fits a phone held upright fits one held sideways" (v2.3.3328)
+
+**Tempting:** build the window on the 390 x 844 design target, centre it on a
+scrim, and it works on every phone.
+
+**What happens:** sideways the same phone is 390 px TALL. Ace's coin flip is
+about 600 px: centred on a scrim that does not scroll, its tabs ran off the top
+and its Flip button off the bottom -- the coin could not be flipped. Diego's
+drawer is a fixed 226 px whose shelf slots are a fifth of its width: 111 px
+square beside a 594 px drawer, so his shelf pushed "His shelf" up under his
+name and the ✕ with it -- and the bag it trades with is not under it sideways
+at all (it is the side column), so nothing could be sold.
+
+**The rule:** a window holds itself to the screen (`max-height: 100%`, a column
+whose body scrolls) and sizes its parts against the room it has, not a fraction
+of a width that grows sideways. Ask "where is the other half of this window
+sideways?" for anything that leans on the band. Look at it sideways: the UI
+review takes every window in both.
+
+**Receipt:** mp-edgeguard step 6 (Ace's Flip answers, his ✕ and tabs on
+screen); mp-shopkeeper's sideways part (the column opens beside the drawer, a
+tap on a bag slot sells, the ✕ answers, "His shelf" below his name).

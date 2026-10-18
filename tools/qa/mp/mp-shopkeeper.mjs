@@ -128,6 +128,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(A);
   await H.enterWorld(B);
   await A.page.waitForTimeout(2500);
+  /* v2.3.3328: a first join arrives with the band FOLDED (v2.3.2495; harness
+     unfoldBand's note) -- this scenario predates that, read no bag, and failed
+     at "the bag is on screen" on main.  The band unfolded as a player does. */
+  await H.unfoldBand(A).catch(() => {});
+  await H.unfoldBand(B).catch(() => {});
 
   const aId = await H.readState(A, (S) => S.myId);
   const bId = await H.readState(B, (S) => S.myId);
@@ -367,6 +372,74 @@ export async function run({ browser, wsPort, webPort, rec }) {
     sizes.shopkeeper_bro > 140 && sizes.shopkeeper_bro > sizes.mayor_bro, sizes);
 
   await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/shopkeeper-panel.png' }).catch(() => {});
+
+  /* ══ SIDEWAYS, THE BAG IS THE COLUMN BESIDE HIM (v2.3.3328) ══
+     The owner: "Make sure all actions/buttons can be completed in landscape
+     mode."  Sideways the band holds no bag -- it is the side column's
+     'dashboard' page -- and nothing could be SOLD: the drawer lay over the ▴
+     chip that opens the column, and opening the column put the shop away.
+     Now the shop opens the column with it and sits beside it, and his shelf
+     fits its drawer.  Every press here is a real finger. */
+  const C = await H.newPlayer(browser, { name: 'Sideways', wsPort, webPort,
+    viewport: { width: 844, height: 390 }, touch: true });
+  await H.enterWorld(C);
+  await C.page.waitForTimeout(2500);
+  const cId = await H.readState(C, (S) => S.myId);
+  await H.grant(wsPort, cId, 'item', { invKey: KEY, count: 4 });
+  await C.page.waitForTimeout(1200);
+  await openShop(C);
+  const side = await (async () => {
+    for (let i = 0; i < 40; i++) {
+      const s = await C.page.evaluate((k) => {
+        const R = (e) => { if (!e) return null; const r = e.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top), r: Math.round(r.right), b: Math.round(r.bottom) }; };
+        const bus = window.__broDashPanelBus;
+        const x = document.querySelector('[data-shop-close]');
+        const xr = x && x.getBoundingClientRect();
+        const xTop = xr ? document.elementFromPoint(xr.left + xr.width / 2, xr.top + xr.height / 2) : null;
+        const lbl = Array.from(document.querySelectorAll('[data-shop-panel] div')).find((d) => d.textContent.trim() === 'His shelf');
+        const tile = document.querySelector(`.bt-land-sheet [data-inv-key="${k}"]`);
+        return { panel: R(document.querySelector('[data-shop-panel]')), sheet: R(document.querySelector('.bt-land-sheet')),
+          col: bus ? bus.state.mode + ':' + bus.current() : null, tile: R(tile),
+          closeOnTop: !!(xTop && xTop.closest && xTop.closest('[data-shop-close]')),
+          who: R(document.querySelector('[data-shop-coins]') && document.querySelector('[data-shop-coins]').parentElement), label: R(lbl) };
+      }, KEY);
+      if (s.panel && s.sheet && s.tile) return s;
+      await C.page.waitForTimeout(150);
+    }
+    return null;
+  })();
+  rec.ok('sideways, opening his shop opens your bag column beside it', !!side && side.col === 'expanded:dashboard' && !!side.tile, side);
+  rec.ok('...and the drawer sits beside the column, never over your bag',
+    !!side && side.panel.l >= side.sheet.r - 1, side && { panel: side.panel, sheet: side.sheet });
+  rec.ok('...its ✕ is what answers a tap there (not the minimap behind it)', !!side && side.closeOnTop, side);
+  rec.ok('...and his shelf fits the drawer: "His shelf" sits below his name, not under it',
+    !!side && !!side.label && !!side.who && side.label.t >= side.who.b - 1, side && { who: side.who, label: side.label });
+  const cCoins0 = await purse(C);
+  if (side && side.tile) await C.page.touchscreen.tap((side.tile.l + side.tile.r) / 2, (side.tile.t + side.tile.b) / 2);
+  const cv = await until(C, (x) => x.dealKey === KEY && +x.dealTotal > 0, 'C: sell quote');
+  rec.ok('a tap on the bag column\'s slot puts it in the deal strip as a SELL', cv.dealSide === 'bag' && /SELL/i.test(cv.actLabel || ''), cv);
+  const actBox = await C.page.evaluate(() => { const b = document.querySelector('[data-shop-act]'); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+  if (actBox) await C.page.touchscreen.tap(actBox.x, actBox.y);
+  let cCoins1 = cCoins0;
+  for (let i = 0; i < 20 && cCoins1 <= cCoins0; i++) { await C.page.waitForTimeout(250); cCoins1 = await purse(C); }
+  rec.ok('...and SELL pays, sideways', cCoins1 > cCoins0, { cCoins0, cCoins1 });
+  const xBox = await C.page.evaluate(() => { const b = document.querySelector('[data-shop-close]'); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+  await C.page.evaluate(() => {   /* away from him first: standing on him reopens it (closeShop's note) */
+    const S = window._gameState.current;
+    const n = (S.npcs || []).find((o) => o.id === 'shopkeeper_bro');
+    if (n) { S.player.x = n.x + 900; S.player.y = n.y + 900; }
+  });
+  await C.page.waitForTimeout(500);
+  if (xBox) await C.page.touchscreen.tap(xBox.x, xBox.y);
+  await C.page.waitForTimeout(900);
+  const shut = await C.page.evaluate(() => ({ panel: !!document.querySelector('[data-shop-panel]'),
+    col: window.__broDashPanelBus ? window.__broDashPanelBus.state.mode : null }));
+  rec.ok('his ✕ shuts the drawer, and the column it opened folds with it', !shut.panel && shut.col === 'bar', shut);
+  await C.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/shopkeeper-sideways.png' }).catch(() => {});
+  const cErrs = C.logs.filter((l) => String(l).startsWith('pageerror'));
+  rec.ok('no page errors on the sideways client', cErrs.length === 0, cErrs.slice(0, 3));
+  await C.ctx.close();
+
   for (const P of [A, B]) {
     const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));
     rec.ok(`no page errors on ${P.name}'s client`, errs.length === 0, errs.slice(0, 3));

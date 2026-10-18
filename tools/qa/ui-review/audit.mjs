@@ -37,7 +37,18 @@ export function auditControls(opts) {
   const o = opts || {};
   const touch = !!o.touch;
   const OVERLAY = 'bt-ui-review-overlay';
-  const clip = o.clip || { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+  const view = o.clip || { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+  /* On a computer the game plays in a column (#root, contain:paint) that clips
+     what is inside it; a window portalled to the page body -- the NPC
+     dialogue, the quest offer, the world map -- is not inside it and is not
+     clipped by it, so it is judged against the picture's own box (`o.inner`
+     names the column). */
+  const innerEl = o.inner ? document.querySelector(o.inner) : null;
+  const innerR = innerEl ? innerEl.getBoundingClientRect() : null;
+  const clipOf = (el) => (innerR && innerEl.contains(el))
+    ? { left: Math.max(view.left, innerR.left), top: Math.max(view.top, innerR.top),
+      right: Math.min(view.right, innerR.right), bottom: Math.min(view.bottom, innerR.bottom) }
+    : view;
   const SEL = [
     'button', 'a[href]', 'input:not([type="hidden"])', 'select', 'textarea',
     '[role="button"]', '[role="tab"]', '[role="menuitem"]', '[role="checkbox"]', '[role="switch"]',
@@ -72,12 +83,25 @@ export function auditControls(opts) {
     const c = (typeof el.className === 'string' ? el.className : '').split(/\s+/).filter(Boolean)[0];
     return '(' + el.tagName.toLowerCase() + (c ? '.' + c : '') + ', no label)';
   };
-  const describe = (n) => {
-    if (!n) return 'nothing';
+  const describe1 = (n) => {
     const c = (typeof n.className === 'string' ? n.className : (n.className && n.className.baseVal) || '').split(/\s+/).filter(Boolean).slice(0, 2).join('.');
     const lbl = n.getAttribute && (n.getAttribute('aria-label') || n.getAttribute('title'));
     const t = (n.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 30);
-    return n.tagName.toLowerCase() + (c ? '.' + c : '') + (lbl ? ' "' + lbl.slice(0, 30) + '"' : t ? ' "' + t + '"' : '');
+    const da = n.attributes ? Array.from(n.attributes).find((a) => a.name.startsWith('data-')) : null;
+    return n.tagName.toLowerCase() + (c ? '.' + c : '') + (da ? `[${da.name}${da.value ? '=' + da.value.slice(0, 16) : ''}]` : '')
+      + (lbl ? ' "' + lbl.slice(0, 30) + '"' : t ? ' "' + t + '"' : '');
+  };
+  /* a bare <div> says nothing to a reader: name the nearest thing round it
+     that has a name (a class, a data- attribute, a label) */
+  const describe = (n) => {
+    if (!n) return 'nothing';
+    const d = describe1(n);
+    if (d !== n.tagName.toLowerCase()) return d;
+    for (let p = n.parentElement, k = 0; p && p !== document.body && k < 6; p = p.parentElement, k++) {
+      const pd = describe1(p);
+      if (pd !== p.tagName.toLowerCase()) return d + ' in ' + pd;
+    }
+    return d;
   };
   const topAt = (x, y) => {
     let stack = [];
@@ -97,6 +121,7 @@ export function auditControls(opts) {
     const r = el.getBoundingClientRect();
     if (r.width < 3 || r.height < 3) continue;
     /* on the screen (the clip) at all */
+    const clip = clipOf(el);
     if (r.right <= clip.left || r.left >= clip.right || r.bottom <= clip.top || r.top >= clip.bottom) continue;
     const cs = getComputedStyle(el);
     if (cs.pointerEvents === 'none') continue;
@@ -125,24 +150,32 @@ export function auditControls(opts) {
     if (getComputedStyle(p).pointerEvents !== 'none') return false;
     const pr = p.getBoundingClientRect();
     if (pr.width < 6 || pr.height < 6) return false;
+    const clip = clipOf(p);
     if (pr.right <= clip.left || pr.left >= clip.right || pr.bottom <= clip.top || pr.top >= clip.bottom) return false;
     return shown(p) && paints(p);
   });
-  /* a control inside a scroller that has scrolled it out of its own view is
-     not on the screen, whatever its box says */
-  const inScrollView = (el, r) => {
+  /* the part of a control its scrolling (or clipping) ancestors let show: a
+     control scrolled half out of its list shows only that half, and only that
+     half takes a press -- so that half is what is tested for being covered.
+     Null when none of it shows: scrolled out of view is not on the screen,
+     whatever its box says. */
+  const visibleOf = (el, r) => {
+    let v = { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
     for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
       const cs = getComputedStyle(n);
       if (/(auto|scroll|hidden|clip)/.test(cs.overflowY + ' ' + cs.overflowX)) {
         const pr = n.getBoundingClientRect();
-        if (r.bottom <= pr.top + 1 || r.top >= pr.bottom - 1 || r.right <= pr.left + 1 || r.left >= pr.right - 1) return false;
+        v = { left: Math.max(v.left, pr.left), top: Math.max(v.top, pr.top), right: Math.min(v.right, pr.right), bottom: Math.min(v.bottom, pr.bottom) };
+        if (v.right - v.left < 2 || v.bottom - v.top < 2) return null;
       }
     }
-    return true;
+    return v;
   };
   let num = 0;
   for (const { el, r } of kept) {
-    if (!inScrollView(el, r)) continue;
+    const shownR = visibleOf(el, r);
+    if (!shownR) continue;
+    const clip = clipOf(el);
     const issues = [];
     /* cut off by the screen's edge (the frame on a computer).  Inside a list
        that scrolls, a control half out of view is only scrolled part-way --
@@ -167,8 +200,9 @@ export function auditControls(opts) {
       }
     }
     /* covered: the middle of its visible part answers as something else */
-    const vx0 = Math.max(r.left, clip.left), vx1 = Math.min(r.right, clip.right);
-    const vy0 = Math.max(r.top, clip.top), vy1 = Math.min(r.bottom, clip.bottom);
+    const vx0 = Math.max(shownR.left, clip.left), vx1 = Math.min(shownR.right, clip.right);
+    const vy0 = Math.max(shownR.top, clip.top), vy1 = Math.min(shownR.bottom, clip.bottom);
+    if (vx1 - vx0 < 2 || vy1 - vy0 < 2) continue;   /* what shows of it lies off the picture */
     const cx = (vx0 + vx1) / 2, cy = (vy0 + vy1) / 2;
     const top = topAt(cx, cy);
     if (top && top !== el && !el.contains(top)) {
@@ -246,10 +280,15 @@ export function auditControls(opts) {
     out.push({
       n: num, name: nameOf(el), tag: el.tagName.toLowerCase(),
       x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height),
+      /* the part that shows, when its list has scrolled some of it away: the
+         box is drawn there, not over whatever lies past the list's edge */
+      vis: (shownR.left > r.left + 1 || shownR.top > r.top + 1 || shownR.right < r.right - 1 || shownR.bottom < r.bottom - 1)
+        ? { x: Math.round(shownR.left), y: Math.round(shownR.top), w: Math.round(shownR.right - shownR.left), h: Math.round(shownR.bottom - shownR.top) }
+        : null,
       issues,
     });
   }
-  return { controls: out, viewport: { w: window.innerWidth, h: window.innerHeight }, clip };
+  return { controls: out, viewport: { w: window.innerWidth, h: window.innerHeight }, clip: view };
 }
 
 export function drawOverlay(list) {
@@ -264,8 +303,10 @@ export function drawOverlay(list) {
     const warn = !bad && c.issues.some((i) => i.kind === 'small' || i.kind === 'clipped' || i.kind === 'overlap');
     const col = bad ? '#ff3b30' : warn ? '#ffb020' : '#34c759';
     const b = document.createElement('div');
+    const v = c.vis || c;
     b.style.cssText = 'position:absolute;box-sizing:border-box;border:2px solid ' + col + ';border-radius:4px;'
-      + 'left:' + c.x + 'px;top:' + c.y + 'px;width:' + c.w + 'px;height:' + c.h + 'px;';
+      + (c.vis ? 'border-style:dashed;' : '')
+      + 'left:' + v.x + 'px;top:' + v.y + 'px;width:' + v.w + 'px;height:' + v.h + 'px;';
     const t = document.createElement('div');
     t.textContent = String(c.n);
     t.style.cssText = 'position:absolute;left:-2px;top:-2px;transform:translate(-30%,-55%);min-width:16px;height:16px;'

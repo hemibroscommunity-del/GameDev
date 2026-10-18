@@ -38,7 +38,7 @@
  * hands back the zips (.github/workflows/ui-review.yml).
  */
 import * as H from '../mp/harness.mjs';
-import { STATES } from './states.mjs';
+import { STATES, foldBand } from './states.mjs';
 import { auditControls, drawOverlay, clearOverlay } from './audit.mjs';
 import { mkdirSync, writeFileSync, rmSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
@@ -104,17 +104,47 @@ async function closeAll(P) {
   /* and whatever else listens for it (the item card, the codex's own pages) */
   await P.page.keyboard.press('Escape').catch(() => {});
   await P.page.waitForTimeout(450);
+  /* and the band folded, as a new player has it: the bag's page opens it, and
+     left open it sat under every screen after (a state that wants it opens it) */
+  await foldBand(P).catch(() => {});
 }
 
-/* the box a picture is cropped to (the game's column on a computer) */
+/* the box a picture is cropped to (the game's column on a computer) -- unless
+   something drawn OUTSIDE the column is showing: a window portalled to the page
+   body (the NPC dialogue, the quest offer, the world map) is centred on the
+   whole window and may run past the column into the black bars, so then the
+   picture is the whole window, as the player sees it */
 async function clipBox(P, view) {
   if (!view.clip) return null;
-  return P.page.evaluate((sel) => {
+  return P.page.evaluate(([sel, overlayId]) => {
     const el = document.querySelector(sel);
     if (!el) return null;
     const r = el.getBoundingClientRect();
+    const shown = (n) => {
+      for (let k = n; k && k.nodeType === 1; k = k.parentElement) {
+        const cs = getComputedStyle(k);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) < 0.05) return false;
+      }
+      return true;
+    };
+    /* ...and draws something there (an invisible catcher is not a picture) */
+    const paints = (n) => {
+      if (/^(IMG|CANVAS|VIDEO|svg)$/i.test(n.tagName)) return true;
+      const cs = getComputedStyle(n);
+      if (cs.backgroundImage && cs.backgroundImage !== 'none') return true;
+      const m = /rgba?\(([^)]+)\)/.exec(cs.backgroundColor || '');
+      if (m) { const p = m[1].split(',').map(Number); if (p.length < 4 || p[3] > 0.02) return true; }
+      return Array.from(n.childNodes).some((c) => c.nodeType === 3 && c.textContent.trim());
+    };
+    for (const n of document.body.querySelectorAll('*')) {
+      if (el.contains(n) || n.closest('#' + overlayId) || /^(SCRIPT|STYLE|LINK|META)$/.test(n.tagName)) continue;
+      const b = n.getBoundingClientRect();
+      if (b.width < 8 || b.height < 8) continue;
+      if (b.left >= r.left - 2 && b.right <= r.right + 2 && b.top >= r.top - 2 && b.bottom <= r.bottom + 2) continue;
+      if (shown(n) && paints(n)) return null;
+    }
     return { x: Math.max(0, Math.floor(r.left)), y: Math.max(0, Math.floor(r.top)), width: Math.ceil(r.width), height: Math.ceil(r.height) };
-  }, view.clip).catch(() => null);
+  }, [view.clip, 'bt-ui-review-overlay']).catch(() => null);
 }
 
 async function shoot(P, file, clip) {
@@ -146,7 +176,7 @@ async function captureState(ctx, st, n) {
       await shoot(P, file, clip);
       row.file = `${view.id}/${base}.${EXT}`;
       const clipRect = clip ? { left: clip.x, top: clip.y, right: clip.x + clip.width, bottom: clip.y + clip.height } : null;
-      const audit = await P.page.evaluate(auditControls, { touch: !!view.touch, clip: clipRect });
+      const audit = await P.page.evaluate(auditControls, { touch: !!view.touch, clip: clipRect, inner: view.clip || null });
       row.controls = audit.controls;
       await P.page.evaluate(drawOverlay, audit.controls);
       const lfile = join(OUT, view.id, `${base}.labels.${EXT}`);
@@ -288,7 +318,7 @@ function writeReport(results, meta) {
   for (const v of views) R.push(`- **${VIEWS[v].title}** (\`${v}/\`): ${VIEWS[v].about}`);
   R.push('', 'Every screen comes twice:', '');
   R.push(`- \`NN-name.${EXT}\`: the screen as the player sees it`);
-  R.push(`- \`NN-name.labels.${EXT}\`: the same screen with every control (button, tab, link, field) boxed and numbered -- green = fine, amber = small or drawn over by something, red = cut off or covered. The numbers match the list under each screen below.`, '');
+  R.push(`- \`NN-name.labels.${EXT}\`: the same screen with every control (button, tab, link, field) boxed and numbered -- green = fine, amber = small or drawn over by something, red = cut off or covered; a dashed box is a control partly scrolled out of its list (only the part that shows is boxed). The numbers match the list under each screen below.`, '');
   R.push('Things the game draws itself (the world, the minimap, name plates, health bars, damage numbers) are in the pictures but not in the numbered lists.', '');
   R.push('`FINDINGS.md` lists every problem the automatic check found; `manifest.json` has all of this as data.', '');
   if (meta.sheets && meta.sheets.length) {

@@ -88,6 +88,41 @@ const tapSel = async (P, sel) => {
   return null;
 };
 const has = (P, sel) => evalIn(P, (s) => !!document.querySelector(s), sel);
+/* where the dashboard's pages are: the band upright and on a computer, and
+   sideways its own column (.bt-dashboard is display:none sideways --
+   BottomDashboard's .bt-land-sheet) */
+const DASH = '.bt-dashboard, .bt-land-sheet';
+/* The dashboard band folded to its button row, as a new player has it: its fold
+   chip pressed, as a player presses it, when it is open.  The bag's page opens
+   the band, and left open it sat under every screen after it. */
+export async function foldBand(P) {
+  const st = await evalIn(P, () => {
+    const b = document.querySelector('[data-dash-fold]');
+    if (b) return { sel: '[data-dash-fold]', v: b.getAttribute('data-dash-fold') };
+    const l = document.querySelector('[data-land-fold]');
+    if (l) return { sel: '[data-land-fold]', v: l.getAttribute('data-land-fold') };
+    return null;
+  });
+  if (!st || st.v === 'min') return false;
+  await tapSel(P, st.sel).catch(() => {});
+  await wait(P, 700);
+  return true;
+}
+/* ...and unfolded: the band's chip (upright, a computer), or sideways the
+   column's own chip, ▴ (BottomDashboard's `data-land-fold`: sideways the rest
+   state IS folded, and the chip opens the dashboard column) */
+async function unfoldBand(P) {
+  const st = await evalIn(P, () => {
+    const b = document.querySelector('[data-dash-fold]');
+    if (b) return { sel: '[data-dash-fold]', v: b.getAttribute('data-dash-fold') };
+    const l = document.querySelector('[data-land-fold]');
+    if (l) return { sel: '[data-land-fold]', v: l.getAttribute('data-land-fold') };
+    return null;
+  });
+  if (!st) return 'no dashboard fold chip';
+  if (st.v === 'min') { const e = await tapSel(P, st.sel); if (e) return e; await wait(P, 900); }
+  return null;
+}
 const S_ = (P, fn) => H.readState(P, fn);
 
 /* Stand somewhere in the Wheel by walking there in hops the worker accepts
@@ -250,15 +285,13 @@ export const STATES = [
   },
   {
     id: 'hud-band', group: 'The world (HUD)', title: 'BroTown, dashboard band open',
-    about: 'The same screen with the dashboard band unfolded: the bag, what you have equipped and your combat skills at a glance.',
-    run: async ({ P }) => { await H.unfoldBand(P).catch(() => {}); },
+    about: 'The same screen with the dashboard band unfolded: the bag, what you have equipped and your combat skills at a glance (sideways, the ▴ button opens it as a column at the side).',
+    run: async ({ P }) => unfoldBand(P),
     after: async ({ P }) => {
       /* folded again, as a new player has it: the screens of the world after
          this one show the world, and the dashboard's pages open the same way
          either way (its fold chip, as a player taps it) */
-      const st = await evalIn(P, () => { const b = document.querySelector('[data-dash-fold]'); return b ? b.getAttribute('data-dash-fold') : null; });
-      if (st && st !== 'min') await tapSel(P, '[data-dash-fold]').catch(() => {});
-      await wait(P, 700);
+      await foldBand(P);
     },
   },
   {
@@ -336,7 +369,7 @@ export const STATES = [
     run: async ({ P }) => {
       await bus(P, 'open', 'hero');
       await wait(P, 500);
-      const e = await clickText(P, /^points$/i, '.bt-dashboard');
+      const e = await clickText(P, /^points$/i, DASH);
       if (e) return e;
     },
   },
@@ -347,7 +380,7 @@ export const STATES = [
     run: async ({ P }) => {
       await bus(P, 'open', 'quests');
       await wait(P, 600);
-      const ok = await clickText(P, / pays |objective|remnant|bring|visit|talk/i, '.bt-dashboard').then((e) => !e);
+      const ok = await clickText(P, / pays |objective|remnant|bring|visit|talk/i, DASH).then((e) => !e);
       if (!ok) return 'no quest row to open';
     },
   },
@@ -358,7 +391,7 @@ export const STATES = [
     run: async ({ P }) => {
       await bus(P, 'open', 'skills');
       await wait(P, 600);
-      const e = await clickText(P, /^(mining|woodcutting|fishing)\b/i, '.bt-dashboard');
+      const e = await clickText(P, /^(mining|woodcutting|fishing)\b/i, DASH);
       if (e) return e;
     },
   },
@@ -371,7 +404,7 @@ export const STATES = [
       await wait(P, 800);
       await bus(P, 'open', 'encyclopedia');
       await wait(P, 800);
-      const ok = !(await clickText(P, /snowman|slime|goblin|mummy/i, '.bt-dashboard'));
+      const ok = !(await clickText(P, /snowman|slime|goblin|mummy/i, DASH));
       if (!ok) return 'no monster card to open';
     },
   },

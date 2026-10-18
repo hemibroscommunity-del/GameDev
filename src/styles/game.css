@@ -1269,8 +1269,15 @@ input{font-family:inherit}
    finger on it opened the world map and the window stayed.  It was already so for the
    Marketplace and the Gambling Den; the room pictures make most windows tall
    (found by mp-buildingrooms: elementFromPoint at the close button).  While any
-   .bt-inspect (window, card, scrim) is up the button lets taps through. */
-body:has(.bt-inspect) [data-world-map-open]{pointer-events:none}
+   .bt-inspect (window, card, scrim) is up the button lets taps through.
+   v2.3.3328: ...and the Daily Rewards window, which is its own scrim, not a
+   .bt-inspect: on a computer its ✕ and the right of its Season tab lay in the
+   minimap's box, and a click on the ✕ opened the world map (the UI review's
+   numbered pictures, tools/qa/ui-review).  And Diego's drawer: sideways it
+   rises 226px from the screen's bottom, so its ✕ reaches the minimap's box. */
+body:has(.bt-inspect) [data-world-map-open],
+body:has([data-daily-rewards]) [data-world-map-open],
+body:has([data-shop-panel]) [data-world-map-open]{pointer-events:none}
 /* ═══ v2.3.2627, moved here v2.3.3258: THE AUCTION HOUSE'S CLERK ═══
    The clerk the game draws into the Auction House's room (data/buildingRooms.js
    ROOM_KEEPERS; he was on the owner's first painting of it, v2.3.2627, and is
@@ -4769,6 +4776,18 @@ body:has(.bt-inspect) .bt-kb-hints,
 body:has(.bt-inspect) .bt-kb-chip,
 body:has([data-trade-drawer]) .bt-kb-hints,
 body:has([data-trade-drawer]) .bt-kb-chip{display:none}
+/* ═══ v2.3.3328: ...AND UNDER A PROMPT'S BUTTON (A DOOR, A BED, A WORKSHOP) ═══
+   The owner: "Make sure all actions/buttons can be completed ... on the
+   computer."  The UI review's numbered pictures (tools/qa/ui-review) showed
+   the "ENTER BANK" button COVERED on a computer: the prompt sits centred just
+   over the band, the strip's five rows of chips reach past the middle of the
+   game's column, and the strip -- outside .brotown-wrap, as above -- paints
+   over it whatever its z-index, its chips taking the click (a click on the
+   button's left half hid the strip instead of opening the bank).  On a
+   computer a prompt that E works carries its own key (the <kbd>E</kbd> in it,
+   BroTown), so while one is up the strip stands aside; its dismissed chip, in
+   the corner clear of any prompt, stays. */
+body:has(.bt-interact-prompt) .bt-kb-hints{display:none}
 /* The dismissed state: one small chip in the same corner, so the controls are
    recoverable.  A toggle you cannot find your way back from is a delete. */
 .bt-kb-chip{position:fixed;bottom:calc(var(--dash-h) + 12px);left:12px;z-index:20;
