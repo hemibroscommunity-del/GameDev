@@ -122,7 +122,7 @@ import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   
 import { SMALL_TEX } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's party badge, threat skull and talk bubble */
 import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
 import { plateNameWithTag, myAllyTag } from '../../game/alliance.js';   /* v2.3.3313: an alliance member's plate says [TAG] before the name */
-import { clipHair, hairClippedBy } from '../hairClip.js';   /* v2.3.3381: the hair clipped through the stencil, not a pass of its own */
+import { clipHair, hairClippedBy } from '../hairClip.js';   /* v2.3.3409: the hair clipped through the stencil, not a pass of its own */
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -4126,7 +4126,7 @@ function _clipHairToHat(display, hatId, hairId, pose, dir, mirror, frameIdx, bod
      * already registered by the time this reads it. */
     const hoodMask = display._capeHoodMask;
     if (hair.visible && hoodMask && hoodMask._btReady) {
-      clipHair(hair, hoodMask);   /* v2.3.3381: through the stencil (hairClip.js) */
+      clipHair(hair, hoodMask);   /* v2.3.3409: through the stencil (hairClip.js) */
     } else if (hair.mask) {
       clipHair(hair, null);
     }
@@ -4146,7 +4146,7 @@ function _clipHairToHat(display, hatId, hairId, pose, dir, mirror, frameIdx, bod
   _placeTrait(maskSprite, { tex: maskEntry.tex, meta }, display, pose, dir, mirror, frameIdx, bodyScale,
     _hatTune(hatId, meta, hairId, pose, dir, mirror));
   if (maskSprite.visible) {
-    clipHair(hair, maskSprite);   /* v2.3.3381: through the stencil (hairClip.js) */
+    clipHair(hair, maskSprite);   /* v2.3.3409: through the stencil (hairClip.js) */
   } else if (hair.mask) {
     clipHair(hair, null);  // mask didn't place -> don't clip the hair to nothing
   }
@@ -4178,7 +4178,7 @@ function _placeHair(display, hairId, hairColorId, hatId, pose, dir, mirror, fram
    them on.  The flag lives in the headwear catalog beside the piece's name
    (headwearUnderHair), because "does my hair cover this" is a property of the
    thing you are wearing, not of the renderer. */
-/* v2.3.3381: is `o` drawn as a picture of its own -- shown, renderable and
+/* v2.3.3409: is `o` drawn as a picture of its own -- shown, renderable and
    built into its figure's drawing all the way up to `root`?  (A stencil mask
    is shown inside a box the figure's drawing leaves out: hairClip.js.) */
 function drawnAsContent(o, root) {
@@ -4212,14 +4212,14 @@ if (typeof window !== 'undefined') {
     const hair = d._hairSprite, hm = d._capeHoodMask, hatMask = d._hairMask;
     return {
       hairVisible: !!(hair && hair.visible),
-      maskedToHood: hairClippedBy(hair, hm),   /* v2.3.3381: the stencil's box or the sprite itself */
+      maskedToHood: hairClippedBy(hair, hm),   /* v2.3.3409: the stencil's box or the sprite itself */
       hoodMaskReady: !!(hm && hm._btReady),
       hatMaskVisible: !!(hatMask && hatMask.visible),
-      /* v2.3.3381: clipped to the hat's silhouette, and how: 'stencil' (its
+      /* v2.3.3409: clipped to the hat's silhouette, and how: 'stencil' (its
          box, hairClip.js), 'alpha' (the sprite, a pass), or null */
       maskedToHat: hairClippedBy(hair, hatMask),
       clipKind: !(hair && hair.mask) ? null : (hair.mask.label === 'hairClipBox' ? 'stencil' : 'alpha'),
-      /* v2.3.3381: drawn as a picture of its own, not into the stencil (a
+      /* v2.3.3409: drawn as a picture of its own, not into the stencil (a
          stencil mask is drawn visible, inside its box, left out of the
          figure's own drawing: hairClip.js) */
       hoodMaskDrawn: drawnAsContent(hm, d),
@@ -4497,7 +4497,7 @@ function _clipStandInHair(sprites, hatId, dir, mirror, cwx, cwy, scaleVal, fit) 
     if (typeof window === 'undefined') return;
     _standInHairClip.hat = hatId || null;
     _standInHairClip.clipsHair = !!(meta && meta.clipsHair);
-    _standInHairClip.masked = hairClippedBy(hair, maskSprite);   /* v2.3.3381 */
+    _standInHairClip.masked = hairClippedBy(hair, maskSprite);   /* v2.3.3409 */
     _standInHairClip.maskVisible = !!maskSprite.visible;
     const _hm = sprites.capeHoodMask;                          /* v2.3.2192 */
     _standInHairClip.maskedToHood = hairClippedBy(hair, _hm);
@@ -4513,7 +4513,7 @@ function _clipStandInHair(sprites, hatId, dir, mirror, cwx, cwy, scaleVal, fit) 
        that clips still wins -- it is the inner layer, worn under the hood. */
     const hoodMask = sprites.capeHoodMask;
     if (hair.visible && hoodMask && hoodMask._btReady) {
-      clipHair(hair, hoodMask);   /* v2.3.3381 */
+      clipHair(hair, hoodMask);   /* v2.3.3409 */
     } else if (hair.mask) {
       clipHair(hair, null);
     }
@@ -4525,7 +4525,7 @@ function _clipStandInHair(sprites, hatId, dir, mirror, cwx, cwy, scaleVal, fit) 
   _placeStandaloneTrait(maskSprite, { tex: maskEntry.tex, meta }, dir, mirror, cwx, cwy, scaleVal,
     fit && fit.dy256, fit && fit.mulX);
   if (maskSprite.visible) {
-    clipHair(hair, maskSprite);   /* v2.3.3381 */
+    clipHair(hair, maskSprite);   /* v2.3.3409 */
   } else if (hair.mask) {
     clipHair(hair, null);   /* placed nowhere -> do not clip the hair to nothing */
   }
@@ -4656,7 +4656,7 @@ export function hideSkillTraits(sprites) {
      still holding a mask keeps Pixi doing the stencil work for something
      nobody can see, and the next pose to reuse this set would inherit the
      previous hat's silhouette. */
-  if (sprites.hair && sprites.hair.mask) clipHair(sprites.hair, null);   /* v2.3.3381 */
+  if (sprites.hair && sprites.hair.mask) clipHair(sprites.hair, null);   /* v2.3.3409 */
   if (sprites.hairMask) sprites.hairMask.visible = false;
 }
 

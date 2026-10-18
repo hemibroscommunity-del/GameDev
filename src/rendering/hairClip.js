@@ -1,4 +1,4 @@
-/* ═══ v2.3.3381: THE HAIR CLIPPED BY THE STENCIL, NOT IN A PASS OF ITS OWN ═══
+/* ═══ v2.3.3409: THE HAIR CLIPPED BY THE STENCIL, NOT IN A PASS OF ITS OWN ═══
  *
  * The owner: "iterate on what best improves framerate without loss of quality
  * (or negligible loss) for phone gameplay (iPhone, android)".
@@ -174,7 +174,7 @@ function boxOf(m) {
   return box;
 }
 
-/** v2.3.3381: what to move when a silhouette changes layer -- its box, when
+/** v2.3.3409: what to move when a silhouette changes layer -- its box, when
  *  it has one (the header). */
 export function clipBoxOrSelf(m) {
   const box = m && m._btClipBox;
@@ -218,7 +218,7 @@ export function clipHair(hair, m) {
   if (was && was !== box && was.label === 'hairClipBox' && was.renderable) was.renderable = false;
 }
 
-/** v2.3.3381: the stencil (true) or the alpha mask (false), live, for this
+/** v2.3.3409: the stencil (true) or the alpha mask (false), live, for this
  *  page only -- mp-hairstencil's held frame drawn both ways.  Every hair a box
  *  has clipped is clipped again the way the switch now says. */
 export function setHairClipStencil(on) {

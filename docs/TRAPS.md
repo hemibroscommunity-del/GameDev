@@ -7274,7 +7274,7 @@ every shot: the bow rows alone 49 of 49 checks, then the full run 128 of 129,
 its one miss a staff bolt into Frost Ridge's rock ridge, which the check now
 asks about at the boots (Frost Ridge again: 33 of 33).
 
-## 224. "Route it in my own wrapper: I installed it last, so it runs last" (v2.3.3381)
+## 224. "Route it in my own wrapper: I installed it last, so it runs last" (v2.3.3409)
 
 **Tempting:** to send some sprites to a batcher of your own, wrap
 `BatcherPipe.prototype.addToBatch` like the others do (paletteTex.js,
@@ -7287,7 +7287,7 @@ code BEFORE that call runs outermost first -- so the wrapper installed FIRST
 sets the batcher name LAST. paletteTex.js patches at module load (first, so
 innermost), sharpPixels.js after app.init, anything later outermost: a name
 set there is overwritten by the sharp pixels' unconditional `'sharp'` or
-`'default'` for every quad of a figure. hairClip.js's first draft (v2.3.3381)
+`'default'` for every quad of a figure. hairClip.js's first draft (v2.3.3409)
 routed the hair's silhouette that way: read through, the chain sends it to the
 sharp program, which has no discard, so the whole quad would have gone into
 the stencil and nothing been clipped.

@@ -4278,7 +4278,7 @@ Two protocol versions coexist; both must keep working:
     (`_authPutOut`) and handed nothing. In the suite's room a Forget was
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
-- **A SPRITE MASK IS A PASS IN THE MIDDLE OF THE FRAME (v2.3.3381,
+- **A SPRITE MASK IS A PASS IN THE MIDDLE OF THE FRAME (v2.3.3409,
   docs/specs/hair-clip-stencil.md).** In Pixi a Sprite set as a `mask` is an
   alpha mask, drawn through a filter: a phone's tile-based chip stops the
   frame for it, writes the half-drawn frame out and reads it back (TRAPS

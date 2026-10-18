@@ -87,7 +87,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the swung hair is MASKED to the helmet, not left bursting out of it',
     !!withHelmet && withHelmet.masked === true && withHelmet.maskVisible === true, withHelmet);
 
-  /* ── v2.3.3381: the clip goes through the stencil, in a box of its own
+  /* ── v2.3.3409: the clip goes through the stencil, in a box of its own
      (hairClip.js).  The head set changes layer with the figure that owns it
      -- a chop, cook or fire figure seats it in the gesture layer, a swing back
      in the fighting one (effectsRenderer _seatStandInTraits) -- and the hat's
