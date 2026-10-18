@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { BT_AUDIO } from '@/data/index.js';
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: the wheel's ticks */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the wheel's ticks */
 import {
   dailyRewardsBus, spinLive, askSpin, coinsShort, untilText,
 } from '@/game/dailyRewards.js';
@@ -205,7 +205,7 @@ export function DailySpin() {
     }
   };
 
-  /* ═══ v2.3.3341: THE WHEEL TICKS AS IT TURNS ═══
+  /* ═══ v2.3.3343: THE WHEEL TICKS AS IT TURNS ═══
      It turned in silence between the toss and the result (SOUND-GAPS): a tick
      each time a slice passes the pointer, read off the wheel as DRAWN (its
      computed transform, which carries the landing's ease-out as it runs), so

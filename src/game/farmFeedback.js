@@ -18,7 +18,7 @@ import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
 import { _flyResourceToInventory } from '@/game/lifeSkillRewards.js';   /* v2.3.3136: the crop flies to the bag */
 import { FARM_BEDS } from '@/data/farmLayout.js';
 import { farmArtUrl } from '@/data/farmArtUrl.js';   /* data only: the network imports no renderer */
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: ripe beds heard */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: ripe beds heard */
 
 const GOOD = '#59BF91';
 const XP_GOLD = '#D8A94D';
@@ -108,7 +108,7 @@ export function farmFeedback(S, payload, deps) {
         if (deps && deps.setChatLog) deps.setChatLog(S.chatLog.slice());
       } catch (e) { /* the window still shows them */ }
       say(S, 55, text, GOOD, { ttl: 5 });
-      cue('cropRipe');   /* v2.3.3341: the news heard (it was silent) */
+      cue('cropRipe');   /* v2.3.3343: the news heard (it was silent) */
     }
     return;
   }

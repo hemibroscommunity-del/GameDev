@@ -632,7 +632,7 @@ remnant to migrate server-side, not a mode to preserve.
       every name out -- the mummy and the wisp are `fodder` underneath, and a
       fallback gave them the slime's bounce; `mp-monsternoise`:
       docs/specs/monster-noises.md.
-    - since v2.3.3341 THE MISSING SOUNDS FROM RECORDINGS ALREADY HERE -- the
+    - since v2.3.3343 THE MISSING SOUNDS FROM RECORDINGS ALREADY HERE -- the
       owner, on the list of missing sounds: "Start adding the have ones then
       give me the list of ones that are still needed afterwards":
       - 112 cues, each slices of SFX_MANIFEST files (nothing new to load or

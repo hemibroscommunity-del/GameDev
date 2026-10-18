@@ -1,4 +1,4 @@
-/* ═══ v2.3.3341: THE MISSING SOUNDS, HEARD ON A PHONE ═══
+/* ═══ v2.3.3343: THE MISSING SOUNDS, HEARD ON A PHONE ═══
  *
  * The owner, 2026-10-18, on the list of missing sounds: "Start adding the have
  * ones" -- every event that played nothing and can be made from a recording

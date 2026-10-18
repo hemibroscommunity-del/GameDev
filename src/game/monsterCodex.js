@@ -24,7 +24,7 @@
  * which, and a tap on it asks the Codex to open on that monster's page
  * (`codexOpenPage` / `takeCodexOpen`, read by the Codex panel). */
 import { CODEX_KINDS, codexFactsAt } from '@/data/monsterCodex.js';
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: a new page heard */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a new page heard */
 
 /* v2.3.3336: how long the NEW MONSTER card stays up -- long enough to read
    and reach in a fight, short enough not to sit over it */
@@ -86,7 +86,7 @@ export function onCodexKill(S, cx) {
     c.fresh[cx.k] = fresh;
     /* v2.3.3336: announced on its card, not in words over your head */
     c.announce = { kind: cx.k, at: Date.now() };
-    cue('discovery');   /* v2.3.3341: and heard -- the quest chime's first notes (it was silent; SOUND-GAPS) */
+    cue('discovery');   /* v2.3.3343: and heard -- the quest chime's first notes (it was silent; SOUND-GAPS) */
   }
   bump(c);
 }

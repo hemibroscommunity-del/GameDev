@@ -1,4 +1,4 @@
-/* ═══ v2.3.3341: SOUNDS FROM RECORDINGS ALREADY IN THE GAME ═══
+/* ═══ v2.3.3343: SOUNDS FROM RECORDINGS ALREADY IN THE GAME ═══
  *
  * Owner, 2026-10-18, on the list of missing sounds (docs/SOUND-GAPS.md):
  * "Start adding the have ones" -- every event that plays nothing today and

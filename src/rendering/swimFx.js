@@ -32,8 +32,8 @@ import { isWheelTrialZone } from '../game/worldTrial.js';
 import { wheelWaterAt, wheelSwimOn, wheelSwimCell } from '../game/wheelTrial.js';
 import { wetProbes, swimNext, isWheelSwimming, STROKE_MS, SWIM_MULT, JUMP_PX } from '../game/wheelSwim.js';
 import { jumpActive } from '../game/jump.js';   /* v2.3.3017: a player in the air is not in the water */
-import { peerOwn } from '../game/eventSounds.js';   /* v2.3.3341: another swimmer, heard */
-import { BT_AUDIO } from '../data/gameDisplay.js';   /* v2.3.3341: ...with your own swimming's sounds */
+import { peerOwn } from '../game/eventSounds.js';   /* v2.3.3343: another swimmer, heard */
+import { BT_AUDIO } from '../data/gameDisplay.js';   /* v2.3.3343: ...with your own swimming's sounds */
 /* the game's state, for how far off a sound is (as the QA probes read it) */
 const gameState = () => (typeof window !== 'undefined' && window._gameState ? window._gameState.current : null);
 
@@ -234,7 +234,7 @@ export class SwimFx {
     st.k = Math.max(0, Math.min(1, st.k + (on ? dt / SINK_MS : -dt / RISE_MS)));
     if (on && !st._was) this._burst(fx, fy, this._u(line, sy), 'in', st);
     if (!on && st._was) this._burst(fx, fy, this._u(line, sy), 'out', st);
-    /* v2.3.3341: ANOTHER player's splash in and drip out are heard (yours are
+    /* v2.3.3343: ANOTHER player's splash in and drip out are heard (yours are
        BroTown's): your own (BT_AUDIO.swimSplash's table and level) at their
        share by distance -- silent before (docs/specs/wheel-swimming.md
        listed it "Not done") */
@@ -262,7 +262,7 @@ export class SwimFx {
       st.ph = ph - Math.floor(ph);
       if (ph >= 1) stroke = true;
     }
-    /* v2.3.3341: ...and their strokes, yours (a SWIM_STROKES row at
+    /* v2.3.3343: ...and their strokes, yours (a SWIM_STROKES row at
        SWIM_STEP_VOL, as swimStroke plays it), on their footsteps' budget
        (eventSounds.peerStepShare) */
     if (stroke && peer) {

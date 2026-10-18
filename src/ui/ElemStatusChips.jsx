@@ -19,7 +19,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { ELEM_ICON_SRC } from '@/game/elemHits.js';
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: a status heard wearing off */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a status heard wearing off */
 
 const ROWS = [
   { key: '_chillUntil', img: ELEM_ICON_SRC['elem-frost'], label: 'Chilled', color: '#9fd8ff' },
@@ -49,7 +49,7 @@ function readChips(S, now) {
   return out;
 }
 
-/* v2.3.3341: a status that has worn off is heard, softly (it ended in
+/* v2.3.3343: a status that has worn off is heard, softly (it ended in
    silence; SOUND-GAPS) -- only one that was on you a while, so a half-second
    daze or hold is not followed by a second sound */
 const WORE_OFF_AFTER_MS = 1500;

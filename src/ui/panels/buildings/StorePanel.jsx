@@ -4,7 +4,7 @@ import { thumbFor, iconFor, ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.j
 import { armorIconFor, gearIdIcon } from '@/rendering/gearVariants.js'; /* v2.3.2531: gear listing art */
 import { storeBrowse, storeMine, storeBuy, storeBid, storeAccept, storeCancel, storeEnabled, storeMyId, storePetsEnabled } from '@/ui/storeApi.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
-import { cue } from '@/game/eventSounds.js';   /* v2.3.3341: the auction house heard */
+import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the auction house heard */
 import { PlayerIcon } from '@/ui/PlayerIcon.jsx';   /* v2.3.2620: the same icon the player list draws */
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
 import { StoreChatPanel } from './StoreChatPanel.jsx';   /* v2.3.2621 */
@@ -291,7 +291,7 @@ export function StorePanel(props) {
   /* One shape for every action: ask, show the worker's own sentence back,
      then re-read both shelves.  Never a local credit -- the echo carries
      the gold and the goods. */
-  /* v2.3.3341: `snd`, the cue the worker's yes is heard as (data/eventSounds.js
+  /* v2.3.3343: `snd`, the cue the worker's yes is heard as (data/eventSounds.js
      market*): a sale taken or a thing bought clinks, a bid's coin taps, a
      listing taken down goes back in the bag -- they were silent but for the
      button's click (SOUND-GAPS). */

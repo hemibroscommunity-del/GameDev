@@ -1,4 +1,4 @@
-/* ═══ v2.3.3341: WHEN AND HOW LOUD THE NEW SOUNDS PLAY ═══
+/* ═══ v2.3.3343: WHEN AND HOW LOUD THE NEW SOUNDS PLAY ═══
  *
  * Owner, 2026-10-18: "Start adding the have ones" (docs/SOUND-GAPS.md).  The
  * sounds are data/eventSounds.js's table, slices of recordings already in

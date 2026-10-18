@@ -30,7 +30,7 @@
  * draws them, and drains `events` once a frame.
  */
 import { BT_AUDIO } from '@/data/index.js';
-import { cueAt } from '@/game/eventSounds.js'; /* v2.3.3341: a mended object heard */
+import { cueAt } from '@/game/eventSounds.js'; /* v2.3.3343: a mended object heard */
 import { wheelInfo } from './wheelTrial.js';
 import { wheelMaterialOf, materialInfo } from '@/data/wheelMaterials.js';
 
@@ -149,7 +149,7 @@ export function strikeWheelObject(S, hit) {
   /* v2.3.3001: + its crown -- a hit on a tree's trunk shakes the leaves, snow,
      char or slime in it, and that is heard just after the knock
      (BT_AUDIO.CROWN_SOUNDS), the way its pieces are seen falling */
-  /* v2.3.3341: a peer's blow arrives with its `vol` already scaled by how far
+  /* v2.3.3343: a peer's blow arrives with its `vol` already scaled by how far
      off it is (and `k` the same share for the break below); one too far off
      to hear plays nothing */
   if (!(hit.vol != null && hit.vol < 0.005)) { try { BT_AUDIO.propHit(k.mat, { vol: hit.vol != null ? hit.vol : 0.32, big, crown: k.canopy || null }); } catch (e) { /* audio is best-effort */ } }
@@ -214,7 +214,7 @@ export function tickWheelBreak(S, now) {
   for (const [oi, b] of _broken) {
     if (t < b.until) continue;
     if (P && standsIn(o, oi, P.x, P.y)) { if (!b.waited) { b.waited = true; wheelBreakStats.waited++; } continue; }
-    /* v2.3.3341: a broken thing mended is heard, a soft knock of wood by
+    /* v2.3.3343: a broken thing mended is heard, a soft knock of wood by
        distance (it came back in silence; SOUND-GAPS) */
     if (o.x && o.y) cueAt(S, 'mended', o.x[oi], o.y[oi]);
     repair(oi, t);

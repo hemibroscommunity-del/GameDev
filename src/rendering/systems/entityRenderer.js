@@ -97,8 +97,8 @@ import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, bl
 import { gearTint, gearArt, gearMaterial, gearIdFor } from '../gearVariants.js'; /* v2.3.1757: material recolor; v2.3.2872: + owned pieces -> art */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
-import { footstepSurface, groundStepAt } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel); v2.3.3341: + under another player's boots */
-import { peerStepShare, peerShare } from '@/game/eventSounds.js';   /* v2.3.3341: another player's footsteps and pick, heard */
+import { footstepSurface, groundStepAt } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel); v2.3.3343: + under another player's boots */
+import { peerStepShare, peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's footsteps and pick, heard */
 import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
 import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
 import { jumpActive, jumpFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog */
@@ -11252,7 +11252,7 @@ export class EntityRenderer {
           if (!_rJump && display._prevJogFrame !== frameIdx) {
             const _rPlant = _jogPlantCrossed(JOG_FOOT_FRAMES[dir] || JOG_FOOT_FRAMES.south, display._prevJogFrame, frameIdx, fc, false,
               now - (display._prevJogAt || 0), _rCyc);
-            /* ═══ v2.3.3341: ...AND IS HEARD AT EVERY FOOTFALL ═══
+            /* ═══ v2.3.3343: ...AND IS HEARD AT EVERY FOOTFALL ═══
                Another player's steps were silent (SOUND-GAPS §5): on the same
                foot-plant frames as yours, the ground under THEIR boots (the
                Wheel's, as yours; dirt elsewhere), their armour's weight, at
@@ -11290,7 +11290,7 @@ export class EntityRenderer {
              as the local player's mine/fish pose. */
           const fc = playerFrameCount(pose, 'south') || (pose === 'mine' ? 14 : 32);
           frameIdx = Math.floor((now / cycleMs(pose, 'south')) * fc) % fc;
-          /* v2.3.3341: their pick heard on the rock, on the strike frame
+          /* v2.3.3343: their pick heard on the rock, on the strike frame
              yours is (4: effectsRenderer, the pick down), alternating the
              sample's two strikes as yours does, at their share by distance --
              a miner beside you was silent (SOUND-GAPS §5) */

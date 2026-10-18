@@ -1,4 +1,4 @@
-# Missing sound effects (audit v2.3.3023, refreshed v2.3.3341)
+# Missing sound effects (audit v2.3.3023, refreshed v2.3.3343)
 
 > Owner, 2026-10-04: *"Give me a list of missing sound effects. Some I thought
 > of is jumping, landing (from jumping). Monster noises, monster projectiles
@@ -7,7 +7,7 @@
 > Owner, 2026-10-18, on the refreshed list: *"Start adding the have ones then
 > give me the list of ones that are still needed afterwards"*
 
-v2.3.3341 added every missing sound that could be made from recordings the game
+v2.3.3343 added every missing sound that could be made from recordings the game
 already ships. What is left needs **new recordings**, or work that is more than
 a sound. Both lists are below.
 
@@ -19,7 +19,7 @@ a sound. Both lists are below.
   sounds are slices of the recordings the game ships (`public/sfx/`,
   `public/audio/`) or new recordings: Pixabay, or Freesound as CC0 or CC BY.
   **A CC BY-NC recording is never used** (CREDITS.md).
-- **How v2.3.3341's sounds are made.** Each is a list of slices of files
+- **How v2.3.3343's sounds are made.** Each is a list of slices of files
   already in `SFX_MANIFEST` (decoded on the loading screen, so memory does not
   move): `src/data/eventSounds.js` says WHAT (the slice, its level, its pitch),
   `src/game/eventSounds.js` says WHEN and HOW LOUD (a monster's or another
@@ -29,7 +29,7 @@ a sound. Both lists are below.
   call site's name to the table; `tools/qa/mp/mp-soundcues.mjs` plays them on
   a phone; `tools/qa/mp/mp-cuelevels.mjs` renders each one and measures it.
 
-## Added in v2.3.3341
+## Added in v2.3.3343
 
 **In a fight**
 - Your shield: a monster's blow on it (the clang), a ball breaking on it, and
@@ -125,7 +125,7 @@ Get them from Pixabay, or Freesound as CC0 or CC BY. Never CC BY-NC.
   creature's own foot plant, and their walk strips do not say which frame
   that is. A step out of time with the feet sounds worse than none.
 - **Your blow on a player who blocks it** plays the flesh hit at contact, then
-  their shield's clang when the worker answers (v2.3.3341). Waiting for the
+  their shield's clang when the worker answers (v2.3.3343). Waiting for the
   answer before any sound would make every hit on a player sound late.
 - **Mining miss**: `extract-fail.mp4` has a sound to cut, but cutting it is a
   new file in the manifest.

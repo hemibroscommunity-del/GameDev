@@ -19,7 +19,7 @@
  * what the server's block arc is measured against.  A toggle is a different
  * INPUT to the same contract, not a new contract.
  */
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: the shield heard going up and down */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the shield heard going up and down */
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js';
 import { lockAimPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */ } from '@/game/combatHelpers.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no button in the water */
@@ -143,7 +143,7 @@ export function raiseShieldToggle(S) {
     try { S.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: S.myId, up: true } }); } catch (e) { /* offline: the local block still holds */ }
   }
   try { blockRingBus.beginBlock(); } catch (e) { /* bus is display-only */ }
-  /* v2.3.3341: the leather and buckle of the shield coming up -- these were
+  /* v2.3.3343: the leather and buckle of the shield coming up -- these were
      two beep()s, which play nothing (SOUND-GAPS) */
   cue('shieldUp');
   return true;
@@ -165,7 +165,7 @@ export function dropShield(S, why) {
     try { S.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: S.myId, up: false } }); } catch (e) { /* as above */ }
   }
   try { blockRingBus.endBlock(); } catch (e) { /* display-only */ }
-  cue('shieldDown');   /* v2.3.3341: ...and going down, softer (it was silent) */
+  cue('shieldDown');   /* v2.3.3343: ...and going down, softer (it was silent) */
   return true;
 }
 

@@ -37,7 +37,7 @@
 import { Container, Graphics, Sprite, Text, TextStyle, Texture, CanvasSource } from 'pixi.js';
 import { WHEEL_LAND_LOOK, WHEEL_LANDS } from '../data/wheelLands.js';
 import { WHEEL_GATE_ROADS, gateOf, SIGNPOST_TOWN_R, SIGNPOST_SHOW_R, SIGNPOST_SHOW_FADE, landLevelsText } from '../data/wheelSignposts.js';
-import { cue } from '../game/eventSounds.js'; /* v2.3.3341: the plates heard popping up */
+import { cue } from '../game/eventSounds.js'; /* v2.3.3343: the plates heard popping up */
 
 const ICON_PX = 64;                   /* the icons' canvas, px a side */
 const PLATE_H = 40, PLATE_R = 9, PAD_L = 10, PAD_R = 14, GAP = 7, STACK = 7;
@@ -216,7 +216,7 @@ export class WheelSignposts {
       let e = this.posts.get(p.i);
       if (!e) { e = this._make(p, lands); this.posts.set(p.i, e); }
       const want = Math.max(0, Math.min(1, (SIGNPOST_SHOW_R - d) / SIGNPOST_SHOW_FADE));
-      /* v2.3.3341: a little knock of wood as its plates pop up (they came up in
+      /* v2.3.3343: a little knock of wood as its plates pop up (they came up in
          silence; SOUND-GAPS) -- once each time it comes up, never while it stays */
       const up = want > 0.05;
       if (up && !e._up) cue('signpost');

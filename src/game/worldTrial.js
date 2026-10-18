@@ -458,7 +458,7 @@ let _lastSurface = null;
    at this frame; the body's centre, ~52 px above them, heard the ground a
    step ahead walking north), and 'swim' while you swim: BT_AUDIO.footstep
    is silent for it, the strokes have their own clock (wheelSwim.js). */
-/* v2.3.3341: the sound of the ground under ANOTHER player's boots, for their
+/* v2.3.3343: the sound of the ground under ANOTHER player's boots, for their
    footsteps (entityRenderer) -- the Wheel only, as yours; null elsewhere,
    which plays the dirt step */
 export function groundStepAt(S, x, y) {

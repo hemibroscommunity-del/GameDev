@@ -16,7 +16,7 @@ import { _objectSpread } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx'; /* v2.3.1874: quest XP flies to its skill card */
 import { flyQuestRewards } from '@/game/questFly.js'; /* v2.3.3030: the coins and items fly home */
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: a quest taken, heard */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a quest taken, heard */
 export function acceptQuest(S, questPanel, deps) {
   var setRpgState = deps.setRpgState,
     setQuestPanel = deps.setQuestPanel;
@@ -58,7 +58,7 @@ export function acceptQuest(S, questPanel, deps) {
     status: 'active'
   }));
   pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Accepted: ' + questPanel.quest.title, '#5b52ff');
-  /* v2.3.3341: the old fanfare's first bars -- collect() is a beep(), silent,
+  /* v2.3.3343: the old fanfare's first bars -- collect() is a beep(), silent,
      though the note below calls it the one thing the player could get */
   cue('questAccept');
   /* v2.3.1745: ...and the screen-space banner over the dialogue.  The world

@@ -3,7 +3,7 @@ import { revealBus } from './revealBus.js';
 import { QUALITY_COLOR, QUALITY_LABEL, qualityInk } from '../mobile/dash/common.js';
 import { armorIconFor } from '@/rendering/gearVariants.js';
 import { metalIconPath } from '@/rendering/traits/materialTints.js';
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: the reveal heard */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the reveal heard */
 
 /* ═══ v2.3.1925: THE MYSTERY REVEAL ═══
  *
@@ -114,7 +114,7 @@ export const RevealOverlay = () => {
         /* The stage lands on its target.  If the ladder continues, the next
            effect run picks it up; if not, this is the answer. */
         setFlash(target);
-        /* v2.3.3341: the ceremony was silent -- a glint as a stage lands and
+        /* v2.3.3343: the ceremony was silent -- a glint as a stage lands and
            climbs on, and the grade's own finish when it stops (SOUND-GAPS) */
         if (stage + 1 < ladder.length) { cue('revealStage', 1, 1 + 0.1 * stage); setStage(stage + 1); }
         else { cue(item.quality === 'godly' ? 'revealGodly' : item.quality === 'elite' ? 'revealElite' : 'revealRare'); setDone(true); }
@@ -123,7 +123,7 @@ export const RevealOverlay = () => {
       /* During the spin the flash is honest noise between the two grades in
          play; during the deceleration the ticks are discrete and slow. */
       setFlash(Math.random() < 0.5 ? floor : up);
-      cue('revealTick', 1, 1 + 0.08 * stage);   /* v2.3.3341: a tick as each grade flicks past, a ratchet slowing with the spin */
+      cue('revealTick', 1, 1 + 0.08 * stage);   /* v2.3.3343: a tick as each grade flicks past, a ratchet slowing with the spin */
       const decel = t > SPIN_MS ? 1 + ((t - SPIN_MS) / (STAGE_MS - SPIN_MS)) * 6 : 1;
       /* Clamped to the stage's own end, and this is not a nicety: the last
          decelerated tick is ~7x the base interval, so an unclamped schedule

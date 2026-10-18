@@ -15,7 +15,7 @@
 import { BT_AUDIO } from '@/data/index.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { essenceName, GRADE_LABEL } from '@/data/salvage.js';
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: a salvage heard */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a salvage heard */
 
 let _last = null;
 const _listeners = new Set();
@@ -67,7 +67,7 @@ export function applySalvageResult(S, payload, save) {
   }
   if (payload.ok) {
     say(S, '+' + (payload.bars || 0) + ' bars' + (payload.essence ? ' · ' + (essenceName(payload.essence) || 'essence') : ''), payload.essence ? '#9FD3F0' : '#D8AA58');
-    cue('salvage');   /* v2.3.3341: the piece broken down -- collect() is a beep(), silent (SOUND-GAPS) */
+    cue('salvage');   /* v2.3.3343: the piece broken down -- collect() is a beep(), silent (SOUND-GAPS) */
     if (payload.essence) setTimeout(() => play('flip-win', { vol: 0.45 }), 160);
   }
   _last = { kind: 'salvage', ...payload, at: Date.now() };

@@ -54,7 +54,7 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { monsterHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: a hit sounds like the monster's material */
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: the missing sounds, from recordings already in the game */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no fighting while you swim */
 import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
 import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock monster has you dazed */
@@ -1825,7 +1825,7 @@ export function updateMonsterCombat(S, deps) {
                      these to play the load/draw/release frames for the shot). */
                   S._bowShotAt = Date.now();
                   S._bowShotAng = arrAngle;
-                  /* v2.3.3341: the bow is DRAWN, then loosed -- bow-pullback, in
+                  /* v2.3.3343: the bow is DRAWN, then loosed -- bow-pullback, in
                      the game since the bow and never played (SOUND-GAPS), as
                      the pull starts, quickened to fit the quick draw; and the
                      arrow's whoosh on the release frame (entityRenderer
@@ -2388,7 +2388,7 @@ export function updateMonsterCombat(S, deps) {
                   var isNew = discoverCollision(coll.id);
                   if (isNew) {
                     pushDmgPopup(S, P.x, P.y - 65, 'NEW: ' + coll.name + '!', '#f5c542');
-                    cue('discovery');   /* v2.3.3341: was collect(), a beep() -- silent */
+                    cue('discovery');   /* v2.3.3343: was collect(), a beep() -- silent */
                   }
                 }
                 /* Real WAV — replaces the old synth material thump.
@@ -2416,7 +2416,7 @@ export function updateMonsterCombat(S, deps) {
                 if (collisionResult && _activeWpn.isVolatile) _R6._questFlags.volatileCollision = true;
                 /* Three-layer collision sound if collision fired */
                 if (collisionResult) {
-                  /* v2.3.3341: collisionSound is all beep()s, which play
+                  /* v2.3.3343: collisionSound is all beep()s, which play
                      nothing -- a bolt's crack and a gust from recordings */
                   cue('collision');
                 }

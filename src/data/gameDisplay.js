@@ -21,7 +21,7 @@ import { TOWN_BUILDINGS } from './buildings.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS } from './effects.js';
 import { FOOTSTEP_CLIPS } from './footstepClips.js';   /* v2.3.2967: each ground its own step */
 import { MONSTER_NOISE_CLIPS } from './monsterNoiseClips.js';   /* v2.3.3340: the owner's monster noises */
-import { EVENT_SOUNDS } from './eventSounds.js';   /* v2.3.3341: each creature its own death (monsterDeath) */
+import { EVENT_SOUNDS } from './eventSounds.js';   /* v2.3.3343: each creature its own death (monsterDeath) */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
@@ -2230,7 +2230,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   },
   footstep: function footstep(armored, surface, share) {
     if (!this.ctx || this.muted) return;
-    /* v2.3.3341: `share`, ANOTHER player's step at its share by distance
+    /* v2.3.3343: `share`, ANOTHER player's step at its share by distance
        (game/eventSounds.peerStepShare; absent = your own, in full) -- its
        volumes times that, and not noted as yours (the tests read _lastStep) */
     var kv = typeof share === 'number' ? (isFinite(share) ? Math.max(0, Math.min(1, share)) : 0) : 1;
@@ -2294,7 +2294,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     }
   },
   enterBuilding: function enterBuilding() {
-    /* v2.3.3341: a door is heard -- a knock of wood (data/eventSounds.js
+    /* v2.3.3343: a door is heard -- a knock of wood (data/eventSounds.js
        `door`).  This was two beep()s, which have played nothing since
        v2.3.1103, and it is the one call every way through a door makes (the
        E key, the stick's tap, a keeper, the Enter button, a dungeon's mouth,
@@ -2450,7 +2450,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      beat after it, and the bones' rattle when the body crumbles to bone
      (deathCrumble's burst, 1.08 s after the death). */
   playerDeath: function playerDeath(k) {
-    /* v2.3.3341: `k`, ANOTHER player's death at its share by distance
+    /* v2.3.3343: `k`, ANOTHER player's death at its share by distance
        (game/eventSounds.peerShare; absent = your own, in full): the blow and
        the bones, without the "lost" sting, which is yours alone. */
     if (typeof k === 'number') {
@@ -3860,7 +3860,7 @@ BT_AUDIO.monsterNoise = function (clip, k) {
   this._lastMonsterNoise = clip;   /* what it meant to play, for the tests (mp-monsternoise) */
   return this.play('noise-' + clip, { vol: c.vol * v, rate: 1 + (Math.random() - 0.5) * 0.08 });
 };
-/* ═══ v2.3.3341: EACH CREATURE ITS OWN DEATH ═══
+/* ═══ v2.3.3343: EACH CREATURE ITS OWN DEATH ═══
    Owner, 2026-10-18: "Start adding the have ones" (docs/SOUND-GAPS.md).  Five
    creatures had only the generic bone crunch below; each now dies as what it
    is, from recordings already here (data/eventSounds.js die*): the goblin a
@@ -3880,7 +3880,7 @@ BT_AUDIO.monsterDeath = function (arch, opts, k) {
      loop death-detection in BroTown.jsx — playing the bony-death wav
      here too was layering the "old death sound" on top of the splat. */
   if (arch === 'fodder') return;
-  if (arch && Object.prototype.hasOwnProperty.call(this.SLIME_SHEET_DEATHS, arch)) return;   /* v2.3.3341: see above */
+  if (arch && Object.prototype.hasOwnProperty.call(this.SLIME_SHEET_DEATHS, arch)) return;   /* v2.3.3343: see above */
   /* v2.3.3248: `k`, how much of it you hear where you stand (0-1, the kill
      handlers' hitSounds.deathVol; absent = all of it, as every older caller
      wants): each sample's own level times k, nothing at 0. */
@@ -3900,7 +3900,7 @@ BT_AUDIO.monsterDeath = function (arch, opts, k) {
     this.play('skeleton-death', opts || { vol: 0.75 * v });
     return;
   }
-  /* v2.3.3341: the five with a death of their own (above), at its share */
+  /* v2.3.3343: the five with a death of their own (above), at its share */
   var own = arch && Object.prototype.hasOwnProperty.call(this.DEATH_CUES, arch) ? EVENT_SOUNDS[this.DEATH_CUES[arch]] : null;
   if (own && !opts) {
     var r = 1 + (Math.random() - 0.5) * 0.06;

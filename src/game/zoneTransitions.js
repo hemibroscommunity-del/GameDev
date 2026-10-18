@@ -20,7 +20,7 @@
    - W/H: CSS-pixel canvas size for the camera snap.
    S is stateRef.current; P is S.player (same object the loop mutates). */
 import { TILE, ZONES, ELEMENTS, TOWN_EXITS, WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, DEPTH_CONFIG, BT_AUDIO, updateZoneDimensions, discoverZone, generateZoneMap, spawnMonstersForZone, spawnGatherNodes, createMonster } from '@/data/index.js';
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: in and out of a dungeon, heard */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: in and out of a dungeon, heard */
 import { zoneUnlockQuest } from '@/game/questRoute.js'; /* v2.3.1817: which quest opens a zone */
 import { perfTracker } from '@/debug/perfTracker.js';
 import { _typeof } from '@/lib/babelHelpers.js';
@@ -1493,7 +1493,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                and down its stairs, as a death comes back */
             if (S._serverDungeon && leaveWheelDungeon(S)) {
               pushDmgPopup(S, S.player.x, S.player.y - 30, 'Exited dungeon', '#3dd497');
-              cue('dungeonOut');   /* v2.3.3341: out, a falling rush (a beep(), silent; SOUND-GAPS) */
+              cue('dungeonOut');   /* v2.3.3343: out, a falling rush (a beep(), silent; SOUND-GAPS) */
               return;
             }
             /* v2.3.1127: abandoning a server-dungeon instance --
@@ -1565,7 +1565,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             }
             S._zoneWipe = Date.now();
             pushDmgPopup(S, P.x, P.y - 30, 'Exited dungeon', '#3dd497');
-            cue('dungeonOut');   /* v2.3.3341: as above */
+            cue('dungeonOut');   /* v2.3.3343: as above */
           }
         }
 }

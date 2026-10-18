@@ -8,7 +8,7 @@ import { armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.3092: each m
 import { BAR_THUMBS, thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { metalIconPath, weaponMaterial } from '@/rendering/traits/materialTints.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: the forge's results heard */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the forge's results heard */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
 import { startSmithing, SMITH_STRIKE_MS } from '@/game/smithing.js';
 import { SALVAGE, GRADE_LABEL, armourMetal, weaponMetal, weaponSig, parseEssenceKey, essenceKey, essenceName, essenceIcon, gradeRank } from '@/data/salvage.js'; /* v2.3.3141 */
@@ -170,7 +170,7 @@ export function SmithyPanel({ rpgState, stateRef }) {
     if (p && p.sig() !== p.before) {
       pending.current = null; setBusy(null);
       if (p.done) say(p.done);
-      /* v2.3.3341: the anvil's ring -- collect() is a beep(), silent
+      /* v2.3.3343: the anvil's ring -- collect() is a beep(), silent
          (SOUND-GAPS).  A smelt and the armor forge sound from their own
          receipts (wsClient smelt_result / forge_armor_result). */
       if (p.kind !== 'smelt' && p.kind !== 'armor') cue('forge');
@@ -187,7 +187,7 @@ export function SmithyPanel({ rpgState, stateRef }) {
     if (!busy) return undefined;
     const t = setTimeout(() => {
       const p = pending.current;
-      if (p && p.fail) { say(p.fail, C.bad); cue('forgeFail'); }   /* v2.3.3341: the refusal heard */
+      if (p && p.fail) { say(p.fail, C.bad); cue('forgeFail'); }   /* v2.3.3343: the refusal heard */
       pending.current = null; setBusy(null);
     }, 3500);
     return () => clearTimeout(t);

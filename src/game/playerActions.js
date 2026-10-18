@@ -17,7 +17,7 @@ import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /*
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, staggerRefused /* v2.3.3264 */, airRefused /* v2.3.3017 */, shotGroundDy /* v2.3.3206 */ } from '@/game/combatHelpers.js';   /* v2.3.2845: lockShotPoint, the torso; v2.3.3206: shotGroundDy, a shot's ground under the boots */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: the specials' and the burst's own sounds */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the specials' and the burst's own sounds */
 import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: a special carries the damage brew too */
 
 export function swingAttack(S) {
@@ -405,7 +405,7 @@ export function specialAttack(S) {
           }});
         }
       }
-      /* v2.3.3341: the bow drawn and each arrow of the volley loosed as it
+      /* v2.3.3343: the bow drawn and each arrow of the volley loosed as it
          leaves (its own launch wait), under the special's swoosh below --
          the bow's own layer was two beep()s, which play nothing
          (SOUND-GAPS: the bow special sounded like the sword's) */
@@ -550,7 +550,7 @@ export function specialAttack(S) {
             ts: now
           }});
         }
-        cue('staffSpecial');   /* v2.3.3341: the big bolt's own cast (two silent beep()s) */
+        cue('staffSpecial');   /* v2.3.3343: the big bolt's own cast (two silent beep()s) */
         S.screenShake = 4;
       } else {
         /* The three-orb volley: an older worker, which has no caps.bigorb. */
@@ -593,7 +593,7 @@ export function specialAttack(S) {
             }});
           }
         }
-        cue('staffSpecial');   /* v2.3.3341: as the big bolt's */
+        cue('staffSpecial');   /* v2.3.3343: as the big bolt's */
         S.screenShake = 3;
       }
     } else {
@@ -691,7 +691,7 @@ export function elementBurst(S) {
      stops the HUD lying for a round-trip. */
   S._lastBurstAt = now;
   var elemColor = (ELEMENTS[wpn.element1] && ELEMENTS[wpn.element1].color) || '#8E44AD';
-  /* v2.3.3341: the cast heard on the tap -- two beep()s, silent (SOUND-GAPS);
+  /* v2.3.3343: the cast heard on the tap -- two beep()s, silent (SOUND-GAPS);
      the blast itself is the element_nova handler's, where it goes off */
   cue('burstCast');
   /* A tiny local tell at the caster's feet so the tap feels instant even

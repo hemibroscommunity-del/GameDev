@@ -3,7 +3,7 @@ import { BT_AUDIO, ELEMENTS, GEM_CUT_TIERS, ZONE_RESOURCES, addLifeSkillXp } fro
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: a cut or a shattered gem heard (the old local path) */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a cut or a shattered gem heard (the old local path) */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 /* === GemcutPanel — buildingPanel === 'gemcut' sub-panel === */
 /* v2.3.875: extracted verbatim from the buildingPanel === 'gemcut' clause
@@ -169,10 +169,10 @@ export function GemcutPanel(props) {
             if (Math.random() < successRate) {
               sk.gems[polKey] = (sk.gems[polKey] || 0) + 1;
               pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Polished ' + gemName + '!', gemCol);
-              cue('gemCut');   /* v2.3.3341: as the worker's gem_cut_result (wsClient) */
+              cue('gemCut');   /* v2.3.3343: as the worker's gem_cut_result (wsClient) */
             } else {
               pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Gem shattered!', '#D95C54');
-              cue('gemShatter');   /* v2.3.3341 */
+              cue('gemShatter');   /* v2.3.3343 */
             }
             var _gcLvlBefore = sk.gemCutting.level;
             var leveled = addLifeSkillXp(sk, 'gemCutting', 15);

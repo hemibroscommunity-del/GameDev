@@ -3,7 +3,7 @@ import { BT_AUDIO, REFORGE_BONUSES, STAT_LABELS, WEAPON_STASH_MAX, WEAPON_TYPES,
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: the woodworker's results heard */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the woodworker's results heard */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { TrapsTab } from './TrapsTab.jsx'; /* v2.3.3120: box traps from logs */
 import { hardenCost as hardenAttemptCost } from '@/data/hardenCosts.js'; /* v2.3.3139: hardening takes a material and a doubling gold ladder (renamed: the legacy affix section below has a local hardenCost) */
@@ -329,7 +329,7 @@ export function WoodworkPanel(props) {
             if (wt.slots > 0) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 42, wt.slots + ' gem slot' + (wt.slots > 1 ? 's' : '') + ' ready!', '#a855f7');
             if (leveled) celebrateLifeSkillLevel(stateRef.current, 'woodworking', R.lifeSkills.woodworking.level, _wwLvlBefore); /* v2.3.2591 */
             if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 54, 'Woodworking Lv' + R.lifeSkills.woodworking.level + '!', '#D8A94D');
-            cue('woodwork');   /* v2.3.3341: the plane and the knock of the wood -- collect() is a beep(), silent (SOUND-GAPS) */
+            cue('woodwork');   /* v2.3.3343: the plane and the knock of the wood -- collect() is a beep(), silent (SOUND-GAPS) */
             setRpgState(_objectSpread({}, R));
             try {
               localStorage.setItem('bt_rpg', JSON.stringify(R));
@@ -485,7 +485,7 @@ export function WoodworkPanel(props) {
             R[wpnKey].reforgeBonus = bonus;
             addLifeSkillXp(R.lifeSkills, 'woodworking', Math.ceil(wt.minLvl * 2));
             pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Reforged! ' + bonus.label + ' +' + bonus.value + bonus.unit, '#d4a020');
-            cue('woodwork', 0.85, 1.1);   /* v2.3.3341: a beep(), silent */
+            cue('woodwork', 0.85, 1.1);   /* v2.3.3343: a beep(), silent */
             setRpgState(_objectSpread({}, R));
             try {
               localStorage.setItem('bt_rpg', JSON.stringify(R));
@@ -538,14 +538,14 @@ export function WoodworkPanel(props) {
               addLifeSkillXp(R.lifeSkills, 'woodworking', Math.ceil(wt.minLvl * 4));
               pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'HARDENED! +' + bonus.label + ' +' + bonus.value + bonus.unit, '#D8A94D');
               stateRef.current.screenShake = 4;
-              cue('hardenOk');   /* v2.3.3341: collect() is a beep(), silent */
+              cue('hardenOk');   /* v2.3.3343: collect() is a beep(), silent */
             } else {
               var oldName = R[wpnKey].name;
               R[wpnKey].reforgeBonus = null;
               R[wpnKey].hardenBonus = null;
               pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'BROKE! ' + oldName + ' lost all bonuses', '#D95C54');
               stateRef.current.screenShake = 6;
-              cue('woodBreak');   /* v2.3.3341: the wood cracking (a beep(), silent) */
+              cue('woodBreak');   /* v2.3.3343: the wood cracking (a beep(), silent) */
             }
             setRpgState(_objectSpread({}, R));
             try {

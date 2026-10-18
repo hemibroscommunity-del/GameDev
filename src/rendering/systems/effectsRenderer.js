@@ -5,7 +5,7 @@
  */
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
-import { peerShare } from '@/game/eventSounds.js';   /* v2.3.3341: another player's axe, heard */
+import { peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's axe, heard */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { keepOnGpuOnly } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
@@ -12598,7 +12598,7 @@ export class EffectsRenderer {
          once in order or wraps — and neither window._gameState nor a
          screenshot can see it.  Same posture as fireGearProbe (v2.3.1715). */
       ent._fi = _fiClamped;
-      /* v2.3.3341: their axe heard biting, on the strike frame yours is
+      /* v2.3.3343: their axe heard biting, on the strike frame yours is
          (CHOP_STRIKE_K, 9 of the twelve), alternating the hatchet's two
          strikes, at their share by distance -- a lumberjack beside you was
          silent (SOUND-GAPS §5).  A figure that starts over starts clean. */

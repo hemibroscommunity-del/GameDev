@@ -12,7 +12,7 @@
  * player_dodge -- which they draw (game events -> other._jump).  An old
  * client ignores it and sees you glide a step. */
 import { BT_AUDIO } from '@/data/index.js';
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: a jump's push-off and landing */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a jump's push-off and landing */
 import { jumpRefusal, startJump, endJump, jumpActive, JUMP_MS, JUMP_PEAK } from '@/game/jump.js';
 import { dropShield } from '@/game/shieldToggle.js';
 import { isStuck, isDazed } from '@/game/elemHits.js';
@@ -74,7 +74,7 @@ export function triggerJump(S) {
   S._jumpCount = (S._jumpCount || 0) + 1;
   /* the push-off: a step on the ground you are standing on */
   try { if (BT_AUDIO.footstep) BT_AUDIO.footstep(isWearingArmor(), footstepSurface(S)); } catch (e) { /* audio is best-effort */ }
-  cue('jumpUp');   /* v2.3.3341: ...and a rush of air over it (one plain step was all; SOUND-GAPS) */
+  cue('jumpUp');   /* v2.3.3343: ...and a rush of air over it (one plain step was all; SOUND-GAPS) */
   if (S.channel) {
     try {
       S.channel.send({ type: 'broadcast', event: 'player_jump',
@@ -105,5 +105,5 @@ export function tickJump(S, now, dead) {
 export function landJump(S) {
   if (!S || isWheelSwimming(S)) return;
   try { if (BT_AUDIO.footstep) BT_AUDIO.footstep(isWearingArmor(), footstepSurface(S)); } catch (e) { /* audio is best-effort */ }
-  cue('jumpLand');   /* v2.3.3341: ...with the landing's weight under the step */
+  cue('jumpLand');   /* v2.3.3343: ...with the landing's weight under the step */
 }

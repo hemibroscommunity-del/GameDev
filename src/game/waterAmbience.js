@@ -1,4 +1,4 @@
-/* ═══ v2.3.3341: THE RIVER HEARD ON ITS BANKS ═══
+/* ═══ v2.3.3343: THE RIVER HEARD ON ITS BANKS ═══
  *
  * Owner, 2026-10-18: "Start adding the have ones" (docs/SOUND-GAPS.md:
  * "rivers, ponds and the sea make no sound").  river-water.mp3, a loop of

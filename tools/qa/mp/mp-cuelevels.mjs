@@ -1,4 +1,4 @@
-/* ═══ v2.3.3341: HOW LOUD THE NEW SOUNDS ARE, RENDERED ═══
+/* ═══ v2.3.3343: HOW LOUD THE NEW SOUNDS ARE, RENDERED ═══
  *
  * The owner, 2026-10-18: "Start adding the have ones" -- the missing sounds
  * made from recordings already in the game (data/eventSounds.js).  Their

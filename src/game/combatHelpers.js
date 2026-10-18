@@ -1077,7 +1077,7 @@ var PROP_BLADE_H = 30;
 var _propSlashFlip = 0;
 export function propSwingHit(S, px, py, ang, reach, halfArc, peerK) {
   if (!S) return null;
-  /* v2.3.3341: `peerK`, ANOTHER player's swing, its share by distance
+  /* v2.3.3343: `peerK`, ANOTHER player's swing, its share by distance
      (gameEvents player_swing): the knock and any break that quiet -- it rang
      at your own swing's level from across the view (SOUND-GAPS "Also wrong") */
   var _pk = typeof peerK === 'number' ? Math.max(0, Math.min(1, peerK)) : 1;

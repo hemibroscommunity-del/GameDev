@@ -58,7 +58,7 @@ import { SHADE } from './formShade.js';
 import { releaseShadowTextures } from './lightfx/shadows.js';
 import { farmBus } from '../ui/mobile/farmBus.js';
 import { bedNext, farmClock, farmWorkBeats, cropStageOf, soilOf, FARM_STEPS } from '../game/farmWork.js';
-import { cue } from '../game/eventSounds.js'; /* v2.3.3341: a crop heard ripening */
+import { cue } from '../game/eventSounds.js'; /* v2.3.3343: a crop heard ripening */
 import { playerGroundDy } from './systems/entityRenderer.js';
 
 export const FARM_ZONE_ID = 'farm_home';
@@ -309,7 +309,7 @@ export class FarmWorld {
 
   _label(B, S, p, now, hide, full) {
     const n = bedNext(p, now);
-    /* v2.3.3341: a crop ripening while you are on the farm is heard, a glint
+    /* v2.3.3343: a crop ripening while you are on the farm is heard, a glint
        and a note (it ripened in silence; SOUND-GAPS) -- the moment it turns,
        not a bed already ripe when you arrive */
     if (n.ripe && B._wasRipe === false) cue('cropRipe');

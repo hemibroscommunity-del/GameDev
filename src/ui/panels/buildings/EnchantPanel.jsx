@@ -3,7 +3,7 @@ import { AMULET_GEM_STATS, AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, ELEMENTS, R
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: a gem set, heard */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a gem set, heard */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { askShieldGem, shieldGemBus, shieldGemOnServer, shieldGemReasonText, SHIELD_GEM_WAIT_MS } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
 /* === EnchantPanel — buildingPanel === 'enchant' sub-panel === */
@@ -289,7 +289,7 @@ export function EnchantPanel(props) {
               pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, elem + ' enchanted!', edef.color);
               if (leveled) celebrateLifeSkillLevel(stateRef.current, 'enchanting', sk.enchanting.level, _enLvlBefore); /* v2.3.2591 */
               if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 50, 'Enchanting Lv' + sk.enchanting.level + '!', '#D8A94D');
-              cue('gemSet');   /* v2.3.3341: the gem set with a cast and a glint -- collect() is a beep(), silent (SOUND-GAPS) */
+              cue('gemSet');   /* v2.3.3343: the gem set with a cast and a glint -- collect() is a beep(), silent (SOUND-GAPS) */
               setRpgState(_objectSpread({}, R));
               try {
                 localStorage.setItem('bt_rpg', JSON.stringify(R));
@@ -407,7 +407,7 @@ export function EnchantPanel(props) {
             R._questFlags.slottedGem = true;
             addLifeSkillXp(sk, 'enchanting', 20);
             pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, gemStat.label + ' +' + previewVal + gemStat.unit, edef.color);
-            cue('gemSet');   /* v2.3.3341: collect() is a beep(), silent */
+            cue('gemSet');   /* v2.3.3343: collect() is a beep(), silent */
             setRpgState(_objectSpread({}, R));
             try {
               localStorage.setItem('bt_rpg', JSON.stringify(R));
@@ -519,7 +519,7 @@ export function EnchantPanel(props) {
             recalcDerived(R);
             addLifeSkillXp(sk, 'enchanting', 20);
             pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, gemStat.label + ' +' + previewVal + gemStat.unit, edef.color);
-            cue('gemSet');   /* v2.3.3341: collect() is a beep(), silent */
+            cue('gemSet');   /* v2.3.3343: collect() is a beep(), silent */
             setRpgState(_objectSpread({}, R));
             try {
               localStorage.setItem('bt_rpg', JSON.stringify(R));

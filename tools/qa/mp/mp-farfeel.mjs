@@ -18,7 +18,7 @@
  * measured distances from where the player stands.  BT_AUDIO's monsterDeath,
  * play and beep are wrapped to record what they were asked (and still play).
  *
- * v2.3.3341: the slam's landing, the wind-up's warning, the miss and the
+ * v2.3.3343: the slam's landing, the wind-up's warning, the miss and the
  * slime's burst were beep()s, which have played nothing since v2.3.1103; they
  * are sounds now (data/eventSounds.js slamHit, windSlam, lungeMiss,
  * blueBurst), played by game/eventSounds.js at the same share, so these
@@ -74,7 +74,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     const log = window.__qaFar;
     log.deaths.length = 0; log.plays.length = 0; log.beeps.length = 0;
-    /* v2.3.3341: the cue log emptied, and each cue's least gap forgotten
+    /* v2.3.3343: the cue log emptied, and each cue's least gap forgotten
        (two slams a few ms apart would otherwise be one sound) */
     if (window.__btCues) window.__btCues.reset();
     S.screenShake = 0; S._camPunch = null;
@@ -92,7 +92,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       shake: S.screenShake || 0, punch: S._camPunch ? Math.hypot(S._camPunch.dx, S._camPunch.dy) : 0, at: { x, y } };
   }, { type, payload, dx });
   const r3 = (v) => Math.round(v * 1000) / 1000;
-  /* v2.3.3341: the one cue an event played, and the share it was asked at */
+  /* v2.3.3343: the one cue an event played, and the share it was asked at */
   const one = (r, name) => (r.cues && r.cues.length === 1 && r.cues[0].name === name ? r.cues[0].k : null);
   const none = (r) => !!r.cues && r.cues.length === 0;
 
