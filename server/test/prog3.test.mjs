@@ -216,6 +216,7 @@ const psA = room.playerState.pa;
        half that would silently rot if the coupling ever came back. */
     const staffBefore = psA.prog3.sk.staff.xp + psA.prog3.sk.staff.level;
     const swordBefore2 = psA.prog3.sk.sword.xp + psA.prog3.sk.sword.level;
+    room._pveSpecialPaid(psA, Date.now());   /* v2.3.3334: a special is paid for first (hitproof.js) */
     room._handleMonsterDamage(sess, { monsterId: m.id, zone: 'meadow', slot: 'melee', special: true });
     check('special hit trains the WEAPON that fired it, not Magic',
       psA.prog3.sk.sword.xp + psA.prog3.sk.sword.level > swordBefore2,

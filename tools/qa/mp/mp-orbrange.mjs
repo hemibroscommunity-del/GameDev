@@ -238,6 +238,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     body: JSON.stringify({ playerId: myId }),
   }).catch(() => {});
   await P.page.waitForTimeout(1200);
+  /* v2.3.3334: ...and the staff ON THE WORKER, as a real mage holds it.  This
+     file hands the staff to the phone alone (the sections below), and until
+     then a staff hit landed without one: the worker rolled it, and the mummies
+     were hurt, shoved and turned to skeletons as a real mage's bolts do.  Since
+     v2.3.3334 a staff hit needs the worker's own staff (server/src/hitproof.js),
+     so with the phone's alone nothing here touched them, they crowded the
+     player, and the aimed shot read a different fight from a real one.
+     H.armWorker is the test panel's starter weapons and the game's own
+     equip_request (TRAPS §207). */
+  const armed = await H.armWorker(P, wsPort, myId, ['staff']);
+  rec.ok('the worker equipped a staff for this player too, as for a real mage (guard)', armed.includes('staff'), { armed });
   const skyThere = await warpTo(P, 'sky');
   rec.ok('we can reach Desert Winds (guard)', skyThere, { zone: await zoneOf(P) });
   if (skyThere) {
