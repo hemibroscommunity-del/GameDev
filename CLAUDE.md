@@ -1953,6 +1953,17 @@ remnant to migrate server-side, not a mode to preserve.
       on the open sea, none on a running river; `?caustics=k` (0-2);
     - test-world-core "the water's frozen web of light taken out", `mp-wheelwaves`:
       docs/specs/moving-water.md.
+    - since v2.3.3448 THE WEB IS WORKED OUT ONLY WHERE IT SHOWS -- the owner's
+      "iterate on what best improves framerate without loss of quality": it
+      fades in and out in big stretches (`brk`), and where it is faded right
+      out (about half the open sea at any moment, a fifth of the shallows and
+      fresh water) the bend, the wobble and the nine cells -- most of the
+      program's work -- were worked out and mixed in at 0; they are skipped
+      (`if (brk > 0.0)`), the picture the same to the bit; `?webskip=0` and
+      `window.__btWaves.webAll(on)` are the program as it was; only a phone
+      shows the saving (software graphics work out every branch for every pixel);
+      mp-wheelwaves 4b draws the water both ways: moving-water.md "Worked out
+      only where it shows".
   - Since v2.3.3022 the TOWN IS LAID ROOMIER -- the owner: "The town center's
     buildings feel too squished together. I think brotown itself might need
     to be bigger to accommodate":
