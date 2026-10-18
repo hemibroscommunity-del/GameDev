@@ -1,6 +1,6 @@
 import React from 'react';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2637: ui-close tick */
-import { npcSpeaks } from '@/game/npcVoices.js'; /* v2.3.3457: the townsfolk's voices */
+import { npcSpeaks } from '@/game/npcVoices.js'; /* v2.3.3462: the townsfolk's voices */
 import { acceptQuest, turnInQuest } from '@/game/quests.js';
 import { NPC_DATA } from '@/data/gameDisplay.js';
 import { prog3Live, PROG3_SKILL_META } from '@/data/prog3.js';
@@ -243,7 +243,7 @@ export function QuestPanel(props) {
   };
   React.useEffect(function () {
     setStage('talk');
-    /* v2.3.3457: he speaks as the talk opens -- his own hum, however you
+    /* v2.3.3462: he speaks as the talk opens -- his own hum, however you
        reached him (a tap, E, walking up to him): game/npcVoices.js */
     npcSpeaks(stateRef.current, questPanel.npc);
     /* a change of subject from anywhere else ends a confirmation without

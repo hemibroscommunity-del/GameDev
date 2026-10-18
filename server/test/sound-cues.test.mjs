@@ -34,7 +34,7 @@
  *      quest, an alliance war's end, invites to duel and trade, the market,
  *      the farm's harvest and bed, pets out, away and released (and the four
  *      kinds that answer in their own voice), and the forge's anvil.
- *  11. v2.3.3457, the owner's recordings ("I have the rest of the sounds"):
+ *  11. v2.3.3462, the owner's recordings ("I have the rest of the sounds"):
  *      every one-shot cut by tools/audio/cut_owner_sounds.py in SFX_MANIFEST
  *      at the rate it is decoded at (24 kHz ones in LOW_RATE_SFX), every loop
  *      kept out of it; your hurt grunt, the heartbeat on its own clock,
@@ -230,7 +230,7 @@ for (const p of files) {
     },
     /* v2.3.3434: the moves' cues, read from the table that names them */
     'src/game/moveSounds.js n': () => Object.values(MOVE_SOUNDS || {}).flat(),
-    /* v2.3.3457: your hurt grunts and the townsfolk's hums, one of a list */
+    /* v2.3.3462: your hurt grunts and the townsfolk's hums, one of a list */
     'src/game/ownSounds.js HURT_CUES[i]': () => {
       const t = src('src/game/ownSounds.js');
       const a = t.indexOf('export const HURT_CUES = ');
@@ -432,7 +432,7 @@ for (const p of files) {
     && inspects === 2, { inspects });
 }
 
-/* ── 11. v2.3.3457: the owner's recordings ("I have the rest of the sounds") ── */
+/* ── 11. v2.3.3462: the owner's recordings ("I have the rest of the sounds") ── */
 {
   const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');   /* the code, not what its comments say */
   const { OWNER_SOUNDS, OWNER_LOOPS, LOOP_REFS } = await import('../../src/data/ownerSoundClips.js');

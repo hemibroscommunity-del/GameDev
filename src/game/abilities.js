@@ -404,14 +404,14 @@ export function castAbility(S, kind) {
   if (!st.equipped) {
     pushDmgPopup(S, S.player.x, S.player.y - 30,
       cfg.needs === 'shield' ? 'No shield equipped!' : 'No weapon equipped!', '#D8A94D', { ts: Date.now() });
-    cue('denied');   /* v2.3.3457: a refusal is heard */
+    cue('denied');   /* v2.3.3462: a refusal is heard */
     return false;
   }
   if (!st.afford) {
     /* Say so.  The whole reason ability_rejected got a handler this version
        is that a silent refusal reads as a broken button (v2.3.1716). */
     pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough energy!', '#F2C14E', { ts: Date.now() });
-    cue('denied');   /* v2.3.3457 */
+    cue('denied');   /* v2.3.3462 */
     return false;
   }
   /* v2.3.2542: and the same courtesy for the engagement rule.  Below the
@@ -437,7 +437,7 @@ export function castAbility(S, kind) {
      below this check, not above it. */
   if (!st.engaged) {
     pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not in combat!', '#D8A94D', { ts: Date.now() });
-    cue('denied');   /* v2.3.3457 */
+    cue('denied');   /* v2.3.3462 */
     return false;
   }
 

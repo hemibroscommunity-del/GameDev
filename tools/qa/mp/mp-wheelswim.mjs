@@ -9,7 +9,7 @@
  *   1. walking south off a pond's bank he goes INTO the water (it stopped him
  *      at the bank before), and swims: only his head out of it (the figure
  *      sunk and cut at the neck, swimFx.js), a splash going in (the owner's
- *      recording since v2.3.3457, its IN part);
+ *      recording since v2.3.3462, its IN part);
  *   2. in the water he moves at about SWIM_MULT of his walk, in strokes he
  *      hears, his footsteps silent;
  *   3. he GLIDES: let go and he drifts on a little, then stops;
@@ -111,7 +111,7 @@ const swimState = (P) => P.page.evaluate(() => {
     fx: f && f.self, peers: f ? f.peers : null, ripples: f ? f.ripples : null, drops: f ? f.drops : null, ms: f ? f.ms : null,
     swimCounts: A && A._swimCounts ? Object.assign({}, A._swimCounts) : {}, stepCounts: A && A._stepCounts ? Object.assign({}, A._stepCounts) : {},
     audio: !!(A && A.ctx), muted: !!(A && A.muted),
-    /* v2.3.3457: the last splash -- the owner's recording, its part's own level */
+    /* v2.3.3462: the last splash -- the owner's recording, its part's own level */
     lastIn: A && A._swimLast && A._swimLast.in ? Object.assign({}, A._swimLast.in) : null,
     lastOut: A && A._swimLast && A._swimLast.out ? Object.assign({}, A._swimLast.out) : null,
     splash: A && A.SWIM_SPLASH ? { in: A.SWIM_SPLASH.in[0], out: A.SWIM_SPLASH.out[0] } : null,
@@ -200,7 +200,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      few px from a stand's, which is what the test's 52 is) */
   rec.ok('...the waterline is where he swims: the cut at his boots\' ground point', !!inWater.fx && Math.abs(inWater.fx.surface - feetIn) < 6, { surface: inWater.fx && inWater.fx.surface, feetIn });
   if (inWater.audio && !inWater.muted) rec.ok('...with a splash going in', (inWater.swimCounts.in || 0) >= 1, inWater.swimCounts);
-  /* v2.3.3457: the owner's splash ("a missing sound effect for the player
+  /* v2.3.3462: the owner's splash ("a missing sound effect for the player
      gets in and out of the water"), its IN part, decoded and heard */
   if (inWater.audio && !inWater.muted) {
     rec.ok(`...the owner's splash, the whole of it (${inWater.lastIn ? inWater.lastIn.key : 'none'}, part at ${inWater.splash ? inWater.splash.in[1] : '-'} s, gain ${inWater.splash ? inWater.splash.in[3] : '-'})`,

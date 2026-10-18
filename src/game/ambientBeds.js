@@ -1,4 +1,4 @@
-/* ═══ v2.3.3457: THE SEA, BROTOWN'S CROWD AND A FIRE, HEARD ═══
+/* ═══ v2.3.3462: THE SEA, BROTOWN'S CROWD AND A FIRE, HEARD ═══
  *
  * The owner, 2026-10-18: "I have the rest of the sounds" -- among them three
  * beds for docs/SOUND-GAPS.md's list: sea surf ("the open sea and the

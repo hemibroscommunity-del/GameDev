@@ -510,7 +510,7 @@ export function CookPanel(props) {
             localStorage.setItem('bt_rpg', JSON.stringify(R));
           } catch (e) {}
           pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + toDisplayDamage(healed) + ' HP', '#59BF91');   /* v2.3.2520: display scale */
-          cue('munch');   /* v2.3.3457: the owner's munch (a beep(), silent since v2.3.1103) */
+          cue('munch');   /* v2.3.3462: the owner's munch (a beep(), silent since v2.3.1103) */
         }
       }, "Eat"));
     })));

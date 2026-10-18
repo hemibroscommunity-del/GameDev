@@ -138,7 +138,7 @@ Nothing new and nothing synthesised.
   plop. One plays each stroke, never the same one twice running.
 - **Going in**: the catch's splash, at twice a step's level.
 - **Coming out**: the plop.
-- **Since v2.3.3457 the splash is the owner's own recording** -- "a missing
+- **Since v2.3.3462 the splash is the owner's own recording** -- "a missing
   sound effect for the player gets in and out of the water": the old splash
   and plop played at 0.10 and 0.05 of a melee hit, too quiet to be heard as
   anything. One file (`public/sfx/player/swim-splash.mp3`, 24 kHz), two parts
@@ -154,7 +154,7 @@ Nothing new and nothing synthesised.
   `footstepSurface` now reads the ground at your boots rather than the
   body's centre, which heard the ground ~52 px ahead when walking north.
 - `loadGroundSteps` also asks for the three samples (`SWIM_SAMPLES`: the
-  splash's file in place of the catch's since v2.3.3457), so a quick dip
+  splash's file in place of the catch's since v2.3.3462), so a quick dip
   before the manifest has loaded is not silent.
 
 ## Tests

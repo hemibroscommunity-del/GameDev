@@ -1,4 +1,4 @@
-# The owner's recordings for the sounds still needed (v2.3.3457)
+# The owner's recordings for the sounds still needed (v2.3.3462)
 
 The owner, 2026-10-18, after the list of sounds that needed new recordings
 (docs/SOUND-GAPS.md): *"I have the rest of the sounds"* -- 21 recordings from
@@ -89,7 +89,7 @@ the player gets in and out of the water"* (universfield's Water Splash) and
 | Munch, gulp | the eatBus (Quick Eat and the bag's Eat), the Cookhouse's Eat, the old bag's; the bag's Drink | BroTown.jsx, CookPanel, InventoryPanel, ItemDetailPopup |
 | Chat pop | a line in on any lane (room, area, whisper, party); yours out softer | `game/chat.js` (chatReceive / chatSend were silent beeps) |
 | Notification chime | mail (not the daily rewards' payouts), a party or clan invite, a friend's request, yes or message, an announcement, someone else's jackpot; one a second | `gameEvents.js` |
-| "Denied" | see docs/SOUND-GAPS.md "Added in v2.3.3457"; one each 250 ms | the refusals' own code |
+| "Denied" | see docs/SOUND-GAPS.md "Added in v2.3.3462"; one each 250 ms | the refusals' own code |
 | Laugh, snore | the Laugh; Sleep as you lie down and every 3.6 s while asleep -- yours, a player's near you (the peer share), a townsperson's copy | `MOVE_SOUNDS`, `game/moveSounds.js` |
 | The dance's beat | while YOU hold a dance: the music deck's target (`BT_AUDIO.setDanceMusic`, `_danceWant` before the zone and session tracks), its epoch a whole number of its 16 s so the beat sits on the wall clock's half-seconds where the dances bob | `moveSounds.js` `tickDanceMusic` |
 | War horn | each dungeon wave, the arena's start, a war declared on you (clan or alliance) | the cue table (`dungeonWave`, `arenaStart`, `allianceWar`) |

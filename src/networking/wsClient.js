@@ -1963,7 +1963,7 @@ export function setupWebSocket(ctx) {
                  farm_state's reason: a relayed copy is never trusted. */
               var _erw = noteEatRefused(S, msg.payload && msg.payload.wait);
               try { if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, pvpHealWaitText(_erw), '#B9C1BF'); } catch (_ee) { /* words only */ }
-              cue('denied');   /* v2.3.3457: a refusal is heard (the owner's "denied" tick) */
+              cue('denied');   /* v2.3.3462: a refusal is heard (the owner's "denied" tick) */
               break;
             }
           case 'key_new':
@@ -3063,7 +3063,7 @@ export function setupWebSocket(ctx) {
               recalcDerived(Rsa);
               setRpgState(_objectSpread({}, Rsa));
               try { localStorage.setItem('bt_rpg', JSON.stringify(Rsa)); } catch (e) {}
-              try { cue('pointsSpent'); } catch (e) { /* v2.3.3457: as prog3_allocated's */ }
+              try { cue('pointsSpent'); } catch (e) { /* v2.3.3462: as prog3_allocated's */ }
               break;
             }
           case 'prog3_level':
@@ -3392,7 +3392,7 @@ export function setupWebSocket(ctx) {
               recalcDerived(S.rpg);
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
-              /* v2.3.3457: the owner's level-up chime -- "add this sound
+              /* v2.3.3462: the owner's level-up chime -- "add this sound
                  effect for after applying skill stat points" -- on the
                  worker's word, never the press (a spend it refuses says
                  nothing back, and plays nothing); a batch's acks arrive

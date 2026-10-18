@@ -18,7 +18,7 @@ import { isWheelSwimming, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wh
 import { jumpAirborne } from '@/game/jump.js';   /* v2.3.3017: nor in the air */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';   /* v2.3.3105: a swing meets a prop at the swinger's boots */
 import { isDazed, isStaggered } from '@/game/elemHits.js';   /* v2.3.3014: nor while a rock monster has you dazed; v2.3.3264: nor while a parry has you staggered */
-import { cue } from '@/game/eventSounds.js';   /* v2.3.3457: a refusal is heard (the owner's "denied" tick) */
+import { cue } from '@/game/eventSounds.js';   /* v2.3.3462: a refusal is heard (the owner's "denied" tick) */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
    Owner: "Tap to lock on enemy sometimes does not hit the target.  I was
@@ -740,7 +740,7 @@ export function isPlayerDead(S) {
 export function swimRefused(S) {
   if (!isWheelSwimming(S)) return false;
   var at = swimNote(S, Date.now());
-  if (at) { pushDmgPopup(S, at.x, at.y, SWIM_NOTE, SWIM_NOTE_COLOR, { ts: Date.now() + 1 }); cue('denied'); }   /* v2.3.3457: said and heard */
+  if (at) { pushDmgPopup(S, at.x, at.y, SWIM_NOTE, SWIM_NOTE_COLOR, { ts: Date.now() + 1 }); cue('denied'); }   /* v2.3.3462: said and heard */
   return true;
 }
 
@@ -766,7 +766,7 @@ export function offlineRefused(S) {
   if (S.player && (!S._offlineNoteAt || now - S._offlineNoteAt > 1500)) {
     S._offlineNoteAt = now;
     pushDmgPopup(S, S.player.x, S.player.y - 44, why === 'elsewhere' ? ELSEWHERE_NOTE : OFFLINE_NOTE, '#e9d27a', { ts: now + 1 });
-    cue('denied');   /* v2.3.3457 */
+    cue('denied');   /* v2.3.3462 */
   }
   return true;
 }
@@ -794,7 +794,7 @@ export function dazeRefused(S) {
   if (S.player && (!S._dazeNoteAt || now - S._dazeNoteAt > 600)) {
     S._dazeNoteAt = now;
     pushDmgPopup(S, S.player.x, S.player.y - 44, DAZE_NOTE, '#e9d27a', { ts: now + 1 });
-    cue('denied');   /* v2.3.3457 */
+    cue('denied');   /* v2.3.3462 */
   }
   return true;
 }
@@ -812,7 +812,7 @@ export function staggerRefused(S) {
   if (S.player && (!S._staggerNoteAt || now - S._staggerNoteAt > 600)) {
     S._staggerNoteAt = now;
     pushDmgPopup(S, S.player.x, S.player.y - 44, STAGGER_NOTE, '#e9a27a', { ts: now + 1 });
-    cue('denied');   /* v2.3.3457 */
+    cue('denied');   /* v2.3.3462 */
   }
   return true;
 }

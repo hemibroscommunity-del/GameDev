@@ -7647,7 +7647,7 @@ the window's 91 could be double-tapped into a zoom; with the rule, 0 and 0,
 the canvas, html and body still `none`, the window's +, - and x still
 `manipulation`, the stepper stepping 1 -> 3 -> 2.
 
-## 230. "I measured its loudness in mono: ffmpeg -ac 1" (v2.3.3457)
+## 230. "I measured its loudness in mono: ffmpeg -ac 1" (v2.3.3462)
 
 A level is measured against a reference, and the game's reference for every
 sound it levels is sword-hit3 at the melee hit's 0.55 x HIT_GAIN -- a STEREO

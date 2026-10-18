@@ -41,7 +41,7 @@ const PROMISED = {
   rested: 0.45, duelAsk: 0.85, tradeAsk: 0.5, anvil: 0.5,
   /* v2.3.3434: the third look ("Good look for more") */
   emotePop: 0.3, slap: 0.3, sitDown: 0.35, flop: 0.6, flexShine: 0.35, cheerPop: 0.45, bagIn: 0.25,
-  /* v2.3.3457: the owner's recordings, levelled by tools/audio/cut_owner_sounds.py,
+  /* v2.3.3462: the owner's recordings, levelled by tools/audio/cut_owner_sounds.py,
      and the cues moved onto them */
   hurtA: 0.7, hurtB: 0.7, heartbeat: 1.2, munch: 0.5, gulp: 0.5, chatPop: 0.3, chatSent: 0.2,
   notify: 0.8, denied: 0.45, laugh: 0.6, snore: 0.45,

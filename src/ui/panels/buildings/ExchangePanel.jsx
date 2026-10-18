@@ -614,7 +614,7 @@ export function ExchangePanel(props) {
               _context0.n = 2;
               break;
             }
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#D95C54'); cue('denied');   /* v2.3.3457: heard */
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#D95C54'); cue('denied');   /* v2.3.3462: heard */
             return _context0.a(2);
           case 2:
             _context0.n = 4;

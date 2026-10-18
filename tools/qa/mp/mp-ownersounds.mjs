@@ -1,4 +1,4 @@
-/* ═══ v2.3.3457: THE OWNER'S RECORDINGS, HEARD ON A PHONE ═══
+/* ═══ v2.3.3462: THE OWNER'S RECORDINGS, HEARD ON A PHONE ═══
  *
  * The owner, 2026-10-18, after the list of sounds that still needed new
  * recordings (docs/SOUND-GAPS.md): "I have the rest of the sounds" -- 21

@@ -4,7 +4,7 @@ import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHe
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player */
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3457: the owner's munch */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3462: the owner's munch */
 /* === InventoryPanel — the showInventory modal === */
 /* v2.3.883: extracted verbatim from the showInventory && rpgState JSX
    subtree in BroTown.jsx (the full inventory / equipment screen: equip
@@ -679,7 +679,7 @@ export function InventoryPanel(props) {
           if (stateRef.current.channel) {
             try { stateRef.current.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
           }
-          cue('munch');   /* v2.3.3457: the owner's munch (a beep(), silent since v2.3.1103) */
+          cue('munch');   /* v2.3.3462: the owner's munch (a beep(), silent since v2.3.1103) */
         }
         /* v2.3.1235: batch-2 rollout \u2014 the \uD83D\uDC1F prefix was decorative
            emoji in button chrome (the fish name carries the meaning) */

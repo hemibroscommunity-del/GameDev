@@ -21,7 +21,7 @@
  * sitting down: only a pose that begins once they have been near for
  * PEER_KNOWN_MS.  Sound only: nothing here may throw into its caller.
  *
- * v2.3.3457, the owner's recordings ("I have the rest of the sounds"): the
+ * v2.3.3462, the owner's recordings ("I have the rest of the sounds"): the
  * Laugh laughs and Sleep snores (MOVE_SOUNDS), and one asleep -- you, a
  * player near you, a townsperson copying you -- snores again every
  * SNORE_EVERY_MS while they lie there.  And YOUR dance takes the music deck
@@ -80,7 +80,7 @@ export function peerMoveSound(S, x, y, move) {
  *  two that no message of their own announces. */
 export function tickMoveSounds(S, now) {
   try {
-    /* v2.3.3457: your own sleep snores on (its first snore is MOVE_SOUNDS') */
+    /* v2.3.3462: your own sleep snores on (its first snore is MOVE_SOUNDS') */
     const mine = S && S._pose;
     if (mine && mine.id === 'sleep') {
       if (!mine._snoreAt) mine._snoreAt = mine.at || now;
@@ -95,14 +95,14 @@ export function tickMoveSounds(S, now) {
            a moment; a far player's copy is parked, presence v2) */
         if ((o.zone || o.z || 'town') !== S.currentZone || o._away) continue;
         if (!o._mvKnownAt) o._mvKnownAt = now;
-        /* v2.3.3457: one asleep near you snores on, every SNORE_EVERY_MS */
+        /* v2.3.3462: one asleep near you snores on, every SNORE_EVERY_MS */
         if (o._po === 'sleep' && o._poSoundAt >= (o._poAt || 0) && now - (o._snoreAt || o._poSoundAt || 0) >= SNORE_EVERY_MS) {
           o._snoreAt = now;
           cuePeer(S, 'snore', o.renderX != null ? o.renderX : o.x, o.renderY != null ? o.renderY : o.y);
         }
         if (!o._po || o._poSoundAt >= (o._poAt || 0)) continue;
         o._poSoundAt = now;
-        o._snoreAt = now;   /* v2.3.3457: a snore of an earlier sleep is not this one's clock */
+        o._snoreAt = now;   /* v2.3.3462: a snore of an earlier sleep is not this one's clock */
         if ((o._poAt || 0) - o._mvKnownAt >= PEER_KNOWN_MS && now - (o._poAt || 0) < FRESH_MS) {
           peerMoveSound(S, o.renderX != null ? o.renderX : o.x, o.renderY != null ? o.renderY : o.y, o._po);
         }
@@ -122,7 +122,7 @@ export function tickMoveSounds(S, now) {
           npc._snoreAt = now;
           if (now - (npc._poAt || 0) < FRESH_MS) for (const n of moveCues(npc._po)) cueAt(S, n, npc.x, npc.y, NPC_K);
         } else if (npc._po === 'sleep' && now - (npc._snoreAt || 0) >= SNORE_EVERY_MS) {
-          npc._snoreAt = now;   /* v2.3.3457: a townsperson copying your sleep snores on too */
+          npc._snoreAt = now;   /* v2.3.3462: a townsperson copying your sleep snores on too */
           cueAt(S, 'snore', npc.x, npc.y, NPC_K);
         }
       }
@@ -131,7 +131,7 @@ export function tickMoveSounds(S, now) {
 }
 
 /** Once a frame (BroTown's loop): while YOU hold a dance, its beat takes the
- *  music deck (BT_AUDIO.setDanceMusic, v2.3.3457); when you stop, the land's
+ *  music deck (BT_AUDIO.setDanceMusic, v2.3.3462); when you stop, the land's
  *  music comes back where it would have been.  Not while dead, dying or
  *  loading; a no-op where the deck cannot stream. */
 export function tickDanceMusic(S) {

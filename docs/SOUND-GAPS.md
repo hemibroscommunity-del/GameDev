@@ -1,4 +1,4 @@
-# Missing sound effects (audit v2.3.3023, refreshed v2.3.3343, v2.3.3434 and v2.3.3457)
+# Missing sound effects (audit v2.3.3023, refreshed v2.3.3343, v2.3.3434 and v2.3.3462)
 
 > Owner, 2026-10-04: *"Give me a list of missing sound effects. Some I thought
 > of is jumping, landing (from jumping). Monster noises, monster projectiles
@@ -139,7 +139,7 @@ Found on the way and fixed: the bag's **Drink** button called the browser's
 own window-close instead of the card's, so the card stayed open after a drink
 (and a tab the browser lets a script close could have closed the game).
 
-## Added in v2.3.3457 (the owner's recordings)
+## Added in v2.3.3462 (the owner's recordings)
 
 The owner sent 21 recordings for the list below ("I have the rest of the
 sounds"). `tools/audio/cut_owner_sounds.py` cuts each to the moment the game
@@ -205,7 +205,7 @@ Get them from Pixabay, or Freesound as CC0 or CC BY. Never CC BY-NC.
 |---|---|---|
 | **A tired breath** | a sprint running out of stamina, turn about with the grunt -- the owner, 2026-10-18: "Maybe alternate between grunt and tired breath" | until then running dry plays the owner's grunt alone, worn out (v2.3.3455); a breath made in code is out (v2.3.1103) |
 | **Creature voices** | each kind's idle, an "it noticed you" call and a hurt grunt | the fire goblin, the mummy's skeleton, the slimes and the snowman have one (v2.3.3340); the rock monster, thorn shambler, fishman, bog lurker, mire wisp and mummy still have none -- and so the Pebbling, Finling, Wisplet, Lurkling and Mumling pets come out without a voice |
-| **The other lands' air** | Frost Ridge, the Stone Hollows (cave drips), the Electric Foundry, the Water Caves, the Poison Forest | the Wind Dunes, the Verdant Wilds and the Flame Fields have theirs (v2.3.3457); one loop each, 10-20 s, goes under ZONE_AMBIENT |
+| **The other lands' air** | Frost Ridge, the Stone Hollows (cave drips), the Electric Foundry, the Water Caves, the Poison Forest | the Wind Dunes, the Verdant Wilds and the Flame Fields have theirs (v2.3.3462); one loop each, 10-20 s, goes under ZONE_AMBIENT |
 | **The town's buildings** | the Saloon's piano and chatter, the Old Mill's water wheel | the forge's anvil is done (v2.3.3434) |
 | **Leaf-litter footsteps** | the forest floor | plays grass today |
 | **Music for four lands** | Stone Hollows, Electric Foundry, Water Caves, Poison Forest | they play the login theme. `world.mp3` was offered as a stopgap and the owner said no (2026-10-06) |

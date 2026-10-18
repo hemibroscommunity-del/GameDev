@@ -174,6 +174,6 @@ export function farmFeedback(S, payload, deps) {
      window itself, which is where the player is looking. */
   if (payload.err && (!did || !did.n) && payload.err !== 'nothing') {
     say(S, 34, FARM_ERR_TEXT[payload.err] || 'Could not', BAD);
-    cue('denied');   /* v2.3.3457: the farm's no, heard (the owner's "denied" tick) */
+    cue('denied');   /* v2.3.3462: the farm's no, heard (the owner's "denied" tick) */
   }
 }

@@ -65,7 +65,7 @@ function segDist(px, py, ax, ay, bx, by) {
   return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 
-/** v2.3.3457: the rivers and ponds of `map` (wheelTrial.wheelMapInfo) for
+/** v2.3.3462: the rivers and ponds of `map` (wheelTrial.wheelMapInfo) for
  *  waterDistance -- the sea's bed asks it of every water it finds
  *  (game/ambientBeds.js), and this file's own tick does not run while you
  *  fish. */
