@@ -87,6 +87,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const idA = await H.readState(A, (S) => S.myId);
   const idB = await H.readState(B, (S) => S.myId);
   const phraseB = await B.page.evaluate(() => { try { return localStorage.getItem('bt_passphrase'); } catch (e) { return null; } });
+  /* v2.3.3343: and its device -- the relaunch below is the same player on the
+     same phone (a character's key works only on its devices: devicelock.js) */
+  const { device: deviceB } = await H.keyAndDevice(B);
   rec.ok('setup: both in the Wheel, the wanderer\'s Login Key known (guard)', okA && okB && !!phraseB, { okA, okB, phrase: !!phraseB });
   if (!(okA && okB && phraseB)) { await A.ctx.close().catch(() => {}); await B.ctx.close().catch(() => {}); return; }
 
@@ -242,7 +245,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await new Promise((r) => setTimeout(r, 100));
     }
   })();
-  const B2 = await H.newPlayer(browser, { name: 'Wanderer', wsPort, webPort, world: 'wheel', viewport: VIEW, phrase: phraseB });
+  const B2 = await H.newPlayer(browser, { name: 'Wanderer', wsPort, webPort, world: 'wheel', viewport: VIEW, phrase: phraseB, device: deviceB });
   const entering = H.enterWorld(B2, 120000).then(() => true).catch((e) => String(e));
   let screen = null;
   for (let i = 0; i < 80 && !screen; i++) {

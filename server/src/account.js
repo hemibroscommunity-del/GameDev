@@ -20,6 +20,8 @@
  * Rule 11) caps sweep speed across many ids.
  */
 
+import { cleanDevice } from './devicelock.js'; /* v2.3.3343: the device a key is used from */
+
 // Exact port of the client's passphraseToId (src/networking/index.js).
 // 32-bit rolling hash with |0 truncation, Math.abs, base36, then the
 // first two words as a suffix.  Parity is locked by literal fixtures in
@@ -58,7 +60,7 @@ export const accountMethods = {
         let body = null;
         try { body = await request.json(); } catch (e) { /* malformed -> bad_request below */ }
         const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-        const result = await this._accountLogin(body && body.phrase, ip);
+        const result = await this._accountLogin(body && body.phrase, ip, body && body.device);
         return new Response(JSON.stringify(result), { headers: H });
       }
       /* v2.3.2194: RESTART A CHARACTER YOU ARE NOT PLAYING.
@@ -74,7 +76,7 @@ export const accountMethods = {
         let body = null;
         try { body = await request.json(); } catch (e) { /* malformed -> bad_request below */ }
         const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-        const result = await this._accountReset(body && body.phrase, body && body.confirm, ip);
+        const result = await this._accountReset(body && body.phrase, body && body.confirm, ip, body && body.device);
         return new Response(JSON.stringify(result), { headers: H });
       }
       return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
@@ -93,17 +95,21 @@ export const accountMethods = {
      A failure is returned VERBATIM -- 'rate', 'auth', 'locked', exists:false --
      so the caller cannot tell a wrong key from a missing character by the shape
      of the answer any more than it can on /login. */
-  async _accountReset(phrase, confirm, ip) {
+  async _accountReset(phrase, confirm, ip, device) {
     if (confirm !== true) return { ok: false, settled: true, reason: 'bad_request' };
-    const auth = await this._accountLogin(phrase, ip);
+    const auth = await this._accountLogin(phrase, ip, device);
     if (!auth || !auth.ok || !auth.exists || !auth.id) return auth || { ok: false, settled: true, reason: 'bad_request' };
+    /* v2.3.3343: only from a device this character could be played on
+       (devicelock.js) -- a restart is the one thing the picker does with a key
+       that a join could not undo */
+    if (auth.device === 'unknown') return { ok: false, settled: true, reason: 'device', id: auth.id };
     await this._resetCharacterData(auth.id);
     return { ok: true, settled: true, reset: true, id: auth.id };
   },
 
   // Core check, split from the fetch wrapper as the test seam.
   // Returns a plain object; never touches storage beyond reads.
-  async _accountLogin(phrase, ip) {
+  async _accountLogin(phrase, ip, device) {
     if (typeof phrase !== 'string') return { ok: false, settled: true, reason: 'bad_request' };
     phrase = phrase.trim();
     if (!phrase || phrase.length > ACCOUNT.PHRASE_MAX_LEN) {
@@ -147,6 +153,13 @@ export const accountMethods = {
 
     if ((await this._phraseHash(phrase)) === auth.pfHash) {
       this._authFails.delete(id);
+      /* ═══ v2.3.3343: AND CAN THIS DEVICE PLAY IT? (devicelock.js) ═══
+         Answered, never refused: `exists` stays true, so an older phone's
+         start-up check still finds its character (a "no" there sends it to
+         the creator), and its join is the one refused.  A newer login door
+         reads `device: 'unknown'` and says so instead of switching to a key
+         this device could not play. */
+      const _dl = await this._deviceLockCheck(id, auth, cleanDevice(device), now);
       // Small preview so the login UI can confirm before switching.
       // The rpg blob has no name field (fixed field list, Rule 1), so
       // level + account age is the whole preview.
@@ -165,6 +178,7 @@ export const accountMethods = {
       const char = await this.state.storage.get('char:' + id);
       return {
         ok: true, settled: true, exists: true, id,
+        device: _dl === 'refuse' ? 'unknown' : 'ok',
         preview: {
           level: (rpg && rpg.level) || 1,
           createdAt: auth.createdAt,

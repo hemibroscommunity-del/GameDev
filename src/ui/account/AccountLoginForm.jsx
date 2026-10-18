@@ -19,6 +19,9 @@ const ERROR_COPY = {
   unavailable: "Login isn't available right now — try again later.",
   bad_request: 'That doesn’t look like a Login Key.',
   same: "You're already playing as this character.",
+  /* v2.3.3343: the right key, from a device the character was never played on
+     (server/src/devicelock.js) -- the code is the player's id, for the owner */
+  device: 'This character can only be played on a device it was played on before. To play it here, ask the game\u2019s owner to let this device in, and give them this code:',
 };
 
 /* ═══ v2.3.1823: THE LOGIN DOOR DOES NOT ASK TWICE ═══
@@ -74,6 +77,13 @@ export const AccountLoginForm = ({ immediate = false }) => {
     if (key === getBtPassphrase()) { setError(ERROR_COPY.same); return; }
     setPhase('checking');
     const res = await checkAccountLogin(key);
+    /* v2.3.3343: a key this device could not play -- say so, and switch
+       nothing (its join would only be refused) */
+    if (res.ok && res.exists && res.device === 'unknown') {
+      setPhase('idle');
+      setError(ERROR_COPY.device + ' ' + (res.id || ''));
+      return;
+    }
     if (res.ok && res.exists) {
       /* v2.3.1823: on the login door, a key that checks out IS the answer.
          setPhase before applying so the button reads "Switching…" for the

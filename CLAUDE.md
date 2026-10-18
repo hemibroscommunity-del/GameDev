@@ -4040,6 +4040,25 @@ Two protocol versions coexist; both must keep working:
   `mp-originlock` (a second browser with `--host-resolver-rules`, so the
   copy's Origin is the browser's own; `H.newPlayer`'s `host`,
   `H.launch(args)`).
+- **A CHARACTER'S KEY WORKS ON THE DEVICES IT IS PLAYED ON (v2.3.3343,
+  docs/specs/device-lock.md).** The owner: on at once, their own tool the way onto
+  a new device, a short note to players.
+  - `auth:<id>` keeps the devices its key is used from (`devs`, 12 at most):
+    the browser's own `bt_device` token, which the join already sends.
+  - The right key from any other device is `join_rejected {reason: 'device'}`
+    and close 4016 -- never `auth`, which makes the phone throw its key away.
+    The phone's `src/ui/DeviceScreen.js` shows the player's code (their id) to
+    give the owner.
+  - The owner lets one new device in for 30 minutes from the Test panel's
+    Player logins (`/api/admin/device-pass`), or forgets a character's devices
+    and seals it for one someone else got into (`device-forget`).
+  - A character with no known device takes its next one. The devices the bot
+    checks already knew are filled in once (`devlock:filled`).
+  - The login check still answers `exists: true` for older phones, with
+    `device: 'unknown'`; the picker's restart refuses from an unknown device.
+  - A phone test that brings a character back in a second browser gets its
+    device (harness `newPlayer`'s `device`; `'fresh'` is a new one).
+  - Kill switch `devicelock: false`; `device-lock` suite (67), `mp-devicelock`.
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,
