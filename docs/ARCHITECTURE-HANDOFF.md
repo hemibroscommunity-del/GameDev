@@ -98,6 +98,7 @@ extended.
    | `frozen:<pid>` | `{ts, note}` operator freeze — join gate | admin.md |
    | `rpgsnap:<pid>:<yyyymmdd>` | daily rpg-blob snapshot (ring of 7) | admin.md |
    | `rpgsnap:<pid>:prereset-<ts>` | parachute snapshot before a self-service character restart | character-restart.md |
+   | `rpgsnap:<pid>:prerestore-<ts>` | parachute snapshot of the stored rpg blob taken BEFORE an operator restore (admin.js); pruned as its own ring with `prereset-` (`PARACHUTE_TAGS`), never with the dailies. Registered v2.3.3373: written since the restore route, never listed here | admin.md |
    | `rpgsnap_at:<pid>` | snapshot throttle timestamp (20h) | admin.md |
    | `admin_log` | capped ring (100) of mutating admin ops | admin.md |
    | `cadence:<scope>:<subject>` | `{period, streak, ts}` lazy daily/weekly settle. v2.3.3140: the `login` scope pays nothing now and carries the forgiving streak, `{period, streak, fz, saved, best, ts}` -- `fz` streak freezes held (max 2), `saved` freezes spent at the last settle | cadence.md, daily-rewards.md |
@@ -109,6 +110,7 @@ extended.
    | `metrics:<yyyymmdd>` | daily economy snapshot (ring of 30) | liveops.md |
    | `friends:<pid>` | `{list, reqIn, reqOut}` mutual-friend graph + pending requests | friends.md |
    | `capegrant:<capeId>` | `{issued, redeemed}` event-cape ticket ledger: the cap, who holds a ticket, and who redeemed. ALSO the ownership record — rule 1 forbids a cape field on the rpg blob | cape-and-contest.md |
+   | `cape_start_id` | the `EVENT_START_ID` of the cape contest whose start was last seen (eventcapes.js `_capeStartFresh`): a contest's start clears an old contest's `disable_event_capes` and `event_cape_rate` live flags ONCE, then this is written so a later join leaves the owner's new settings alone. One unprefixed key. Registered v2.3.3373 | cape-and-contest.md |
    | `friend_msg:<pid>` | offline DM backlog, capped 50, cleared on join delivery | friends.md |
    | `chat_mute:<pid>` | `{list: {mutedId: {name, at}}, at}` the muter's own chat-mute list; loaded into a null-proto map + a Set on join and enforced on the FAN-OUT (tick.js), so a muted line never reaches the socket | chat-moderation.md |
    | `chat_report:<id>` | one abuse report: `{at, reason, by, byName, target, targetName, zone, targetOnline, lines}` — `lines` is the SERVER's copy of the recent chat, never the reporter's claim. Pruned past `CHATMOD.RETAIN_MS` on the admin read | chat-moderation.md |
