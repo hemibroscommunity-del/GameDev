@@ -7201,3 +7201,30 @@ devicelock.js).
 
 **Receipt:** admin.test §5 and §6: after a Freeze and a Kick an onlooker is
 told `player_leave` and no body is left. Both checks fail on the old code.
+
+## 219. "Nothing comes between my read and my write: I only await a hash" (v2.3.3372)
+
+**Tempting:** to change a record by reading it, working out the next one and
+writing it back -- `get`, a hash or a fetch, `put` -- and trust the input gate
+to keep everything else out of the middle.
+
+**What happens:** the input gate is closed only while a STORAGE operation is
+in flight (handoff rule 9). A fetch (the account check's) opens it, and in
+Node's room so does a hash (`crypto.subtle`); another event then changes the
+same record in the gap, and the first write puts its stale copy back over it.
+In login-keys §12, on v2.3.3355's code: the owner's Forget, run while a join's
+handout made a key, was written back over (the forgotten devices and keys
+returned); a join that remembered its device after a Forget brought them all
+back; and a join already past its check when the Forget ran was handed a new
+key, one that works from any device, after it. On Cloudflare the hashes are
+thought to answer without yielding, so only the fetch is known to open the gap
+there today -- which is no reason to depend on it.
+
+**The rule:** every read-and-write of one record goes through that record's
+queue -- `_inboxSerial` (a mailbox, v2.3.3294), `_authSerial` (a character's
+login record, v2.3.3372) -- never nested. And a decision made from a record
+before a wait is made again from the record after it: the key handout re-reads
+the record and puts out a join whose key or device it no longer lets in.
+
+**Receipt:** login-keys §12 (21 checks): a gate where each change waits, the
+owner's tool run in the gap; nine fail on v2.3.3355's code.

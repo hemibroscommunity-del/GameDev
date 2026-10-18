@@ -4113,7 +4113,15 @@ Two protocol versions coexist; both must keep working:
     the OLD key's device lock makes its character on an older phone: an init
     script that takes the join's `kv` off (mp-devicelock, mp-newkey);
   - kill switch `keys2: false` (no key handed out; made keys still work);
-    `login-keys` suite (73), `mp-newkey`.
+    `login-keys` suite (73), `mp-newkey`;
+  - since v2.3.3372 ONE CHANGE AT A TIME TO A LOGIN RECORD: every
+    read-and-write of `auth:<id>` -- the join's check, the handout, the
+    owner's three tools -- runs in that character's queue (devicelock.js
+    `_authSerial`), and the handout re-reads the record: a join whose key or
+    device a Forget or Give a new key took away since its check is put out
+    (`_authPutOut`) and handed nothing. In the suite's room a Forget was
+    written back over, and a join past its check was handed a new key after
+    it (TRAPS §219); login-keys §12 (21).
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,
