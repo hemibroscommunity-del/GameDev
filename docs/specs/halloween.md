@@ -55,3 +55,8 @@ and for tests); `?halloween=0` turns it off.
   worker keeps it; the phone out of season still sees it and its pumpkin; the
   bubble pumpkin-coloured on one phone and plain on the other. Pictures:
   `tools/qa/mp/out/halloween-*.png`.
+
+## Pictures
+
+docs/shots/halloween.md (v2.3.3444): each change on a phone in Halloween week
+beside one out of it, in BroTown, and the Zombie Shuffle as a looping clip.
