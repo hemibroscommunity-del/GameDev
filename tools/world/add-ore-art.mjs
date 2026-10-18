@@ -46,15 +46,36 @@ const { chromium } = require_('playwright-core');
 
 /* A person is 106 game px tall (bible.js PIXEL.personGamePx). */
 const PERSON = 106;
+/* ═══ v2.3.3443: EVERY ROCK 1.4x, COPPER AS TALL AS THE OLD VEIN ═══
+   The owner, of the first cut: "the smaller ore size now exposes the
+   unfinished design work around aligning the players worn items during the
+   animation (shirt doesn't fit during animation).  Can you make the ore the
+   original size again but just scale up the other ores to keep the size
+   differences relatively the same?"  In the miner's swing the shirt rides up
+   and a band of bare belly shows between its hem and the trousers (in all
+   fourteen frames of mine-south); the old copper vein (ore-vein-627, its base
+   35 px north of the node's point, its top 102.5) hid most of it, and the
+   first cut's copper, 58 px tall from 22 px north, its top 80 px up, hid
+   almost none: 1,331 of the band's 1,340 px over the fourteen frames
+   showed, against the old vein's 163.  The rock cannot stand higher again
+   (its base at game/tierOre.js ORE_BASE_DY is what hides the rock baked into
+   the swing), so it has to be taller: at 1.4x copper's top is back on the
+   old vein's top line, 102.5 px up, and 52 px of the band show -- fewer than
+   the old vein let show.  Cut at 1.2x, the old vein's own size, 685 still
+   would, and at 1.3x 217.  All five by the one factor, so the steps between
+   them stay the first cut's; from iron on a rock meets ORE_TOP_MAX_UP and
+   stands further south (tierOre.js), the miner's head and shoulders always
+   over it, and none lets more than 39 px of the band show. */
+const ORE_GROW = 1.4;
 /* Each metal's rock: its gathering tier (the node's gatherLvl), the file, and
    its height in game px.  The order is the sheet's, left to right. */
 export const ORE_SHEETS = {
   ore: [
-    { lvl: 1, name: 'copper', gameH: 58 },
-    { lvl: 6, name: 'iron', gameH: 68 },
-    { lvl: 11, name: 'blacksteel', gameH: 80 },
-    { lvl: 16, name: 'titanium', gameH: 94 },
-    { lvl: 21, name: 'obsidian', gameH: 112 },
+    { lvl: 1, name: 'copper', gameH: 58 * ORE_GROW },
+    { lvl: 6, name: 'iron', gameH: 68 * ORE_GROW },
+    { lvl: 11, name: 'blacksteel', gameH: 80 * ORE_GROW },
+    { lvl: 16, name: 'titanium', gameH: 94 * ORE_GROW },
+    { lvl: 21, name: 'obsidian', gameH: 112 * ORE_GROW },
   ],
 };
 
