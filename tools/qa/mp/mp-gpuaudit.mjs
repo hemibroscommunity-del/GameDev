@@ -219,6 +219,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
          2026-10-18 the check read "died: false" with nothing to say why */
       await P.page.evaluate(() => {
         const W = window.__qaDeath = { died: 0, zones: [], minHp: null };
+        const S0 = window._gameState.current;
+        /* every zone the game sets, as it sets it: the stop in today's town
+           on a death's way back can be over inside one frame, which no timer
+           here sees (a frame is 300-600 ms); put back after the trip */
+        let z0 = S0.currentZone;
+        W.zones.push(z0);
+        Object.defineProperty(S0, 'currentZone', { configurable: true, enumerable: true,
+          get() { return z0; }, set(v) { if (v !== z0 && v) W.zones.push(v); z0 = v; } });
+        W.unhook = () => { Object.defineProperty(S0, 'currentZone', { value: z0, writable: true, configurable: true, enumerable: true }); };
         clearInterval(window.__qaDeathTimer);
         window.__qaDeathTimer = setInterval(() => {
           const S = window._gameState && window._gameState.current;
@@ -254,15 +263,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
       });
       rec.ok('died to the goblins (guard)', died, { died, watch });
       if (died) {
-        /* the zones the trip has passed through already, as the page saw them
-           (the watch began in the Wheel, before the fight) */
-        const back = (watch.zones || []).slice();
+        /* the zones the game has set since the watch began (the hook's list:
+           the watch began in the Wheel, before the fight), read as the trip
+           goes, until it is back in the Wheel by way of today's town */
+        let back = (watch.zones || []).slice();
         for (let i = 0; i < 240; i++) {
-          const z = await H.readState(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading, dying: !!S._dying }));
-          if (!back.length || back[back.length - 1] !== z.zone) back.push(z.zone);
+          const z = await P.page.evaluate(() => {
+            const S = window._gameState.current, W = window.__qaDeath || {};
+            return { zone: S.currentZone, loading: !!S._zoneLoading, dying: !!S._dying, zones: (W.zones || []).slice() };
+          });
+          back = z.zones;
           if (z.zone === 'wheel' && !z.loading && !z.dying && back.includes('town')) break;
           await P.page.waitForTimeout(500);
         }
+        await P.page.evaluate(() => { const W = window.__qaDeath || {}; try { if (W.unhook) W.unhook(); } catch (e) { /* */ } clearInterval(window.__qaDeathTimer); });
         await P.page.waitForTimeout(5000);
         rows.back = await audit(P);
         rows.back.trip = back;
