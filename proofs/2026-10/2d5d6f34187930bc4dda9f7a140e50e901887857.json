@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2d5d6f34187930bc4dda9f7a140e50e901887857",
+  "tree": "81013bc3f03c435c771ac4cd43e5876ae6d2d54e",
+  "committedAt": "2026-10-18T04:04:19-07:00",
+  "subject": "The daily quests and the season are gone: no more quests finishing themselves, and what you'd reached is paid to you (v2.3.3400) (#966)",
+  "files": 5851,
+  "bytes": 640001323,
+  "listingSha256": "55cfcd3fae6b6a65bd09c7f736879e36997089007b9702372f044b0e9b59060a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
