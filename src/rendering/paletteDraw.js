@@ -70,3 +70,46 @@ export function drawSourceRect(ctx, src, sx, sy, sw, sh, dx, dy, dw, dh) {
     c.width = 0; c.height = 0;   /* iPhone Safari's canvas budget (v2.3.3046) */
   }
 }
+
+/**
+ * v2.3.3464: the whole picture made small -- a w x h canvas, each pixel the
+ * average of 4 x 4 points over its share of the picture -- for what drew a
+ * picture's <img> small (the dashboard's map, MapPanel.jsx: the farm's ground
+ * is colour numbers now, and has no <img>).  Kept per picture and size until
+ * the picture goes (its canvas emptied then: iPhone Safari's canvas budget);
+ * a whole picture through drawSourceRect would have made a scratch canvas of
+ * all of it, 23 MB for the farm's ground.  Null if it is not one of these.
+ */
+const _thumbs = new WeakMap();
+export function paletteThumb(src, w, h) {
+  if (!isPaletteSource(src) || typeof document === 'undefined') return null;
+  w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
+  const had = _thumbs.get(src);
+  if (had && had.w === w && had.h === h) return had.canvas;
+  const P = src._btPal, idx = src.resource, rgba = P.rgba;
+  const out = new Uint8ClampedArray(w * h * 4);
+  const N = 4;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let r = 0, g = 0, b = 0, a = 0;
+      for (let j = 0; j < N; j++) {
+        const sy = Math.min(P.h - 1, Math.floor(((y + (j + 0.5) / N) / h) * P.h));
+        for (let i = 0; i < N; i++) {
+          const sx = Math.min(P.w - 1, Math.floor(((x + (i + 0.5) / N) / w) * P.w));
+          const k = idx[sy * P.stride + sx] * 4;
+          r += rgba[k]; g += rgba[k + 1]; b += rgba[k + 2]; a += rgba[k + 3];
+        }
+      }
+      const o = (y * w + x) * 4;
+      /* the colours are premultiplied; a canvas holds straight alpha */
+      out[o + 3] = Math.round(a / (N * N));
+      if (a) { out[o] = Math.round(r * 255 / a); out[o + 1] = Math.round(g * 255 / a); out[o + 2] = Math.round(b * 255 / a); }
+    }
+  }
+  const c = had ? had.canvas : document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d').putImageData(new ImageData(out, w, h), 0, 0);
+  if (!had && typeof src.once === 'function') src.once('destroy', () => { c.width = 0; c.height = 0; _thumbs.delete(src); });
+  _thumbs.set(src, { w, h, canvas: c });
+  return c;
+}

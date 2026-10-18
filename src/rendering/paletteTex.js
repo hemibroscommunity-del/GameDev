@@ -905,16 +905,21 @@ if (typeof window !== 'undefined') {
   window.__btOneBatchLive = (on) => setOneBatchLive(on);
   window.__btOneBatchChoice = (search, renderer) => oneBatchChoice(search, renderer);
   window.__btPalette = () => {
-    let bytes = 0, n = 0, pieces = 0, pages = 0;
+    let bytes = 0, n = 0, pieces = 0, pages = 0, farm = 0, farmBytes = 0;
     for (const s of _live) {
       if (s.destroyed || !s._btPal) continue;
       n++;
-      bytes += s._btPal.stride * s._btPal.h;
-      if (/^wheel-ground/.test(s.label)) pieces++;
+      const b = s._btPal.stride * s._btPal.h;
+      bytes += b;
+      /* v2.3.3464: the farm's own (paletteLoad.js) -- its ground, its
+         pictures and its copies of the sheets' pages (`?farm=1`) */
+      if (/[?&]farm=1|\/world\/farm\/|\/maps\/farm_/.test(s.label)) { farm++; farmBytes += b; }
+      else if (/^wheel-ground/.test(s.label)) pieces++;
       else if (/world\/objects\//.test(s.label)) pages++;
     }
     return { ..._stats, on: paletteOn(), wanted: _wanted, ok: _ok, webgl2: webgl2(_renderer),
       live: n, livePieces: pieces, livePages: pages, liveMB: +(bytes / 1048576).toFixed(2),
+      liveFarm: farm, liveFarmMB: +(farmBytes / 1048576).toFixed(2),
       rowsUsed: _atlas ? _atlas.used : 0, rowsMax: ATLAS_ROWS };
   };
 }
