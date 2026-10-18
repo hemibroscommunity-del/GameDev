@@ -440,16 +440,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     return { ok: false, cz, sv, net };
   };
+  /* v2.3.3397: each land's town end, among its level 1s (mp-wheelnear's
+     pick).  Since v2.3.3318 a phone holds only the monsters it has come
+     within 2,400 px of, and the commons' edge by one land is too far from the
+     next land's: the frost land's snowmen, and every land after, were never
+     on the list to pick from ("to meet" failed with nothing tried). */
+  const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
+  const LONG = (await H.wheelGeom()).long;
+  const townEnd = (home) => (WHEEL_SPAWNS[home] ? WHEEL_SPAWNS[home].points.slice(0, 6 * LONG).reduce((a, p) => (!a || p[2] < a[2] ? p : a), null) : null);
   for (const L of lands) {
     const st0 = await settle();
     if (!st0.ok) { rec.ok(`real: in the Wheel on both sides before ${L.name}`, false, st0); continue; }
+    const end = townEnd(L.home);
+    if (end) await H.hopTo(P, end[0], end[1] + 20, { step: 100, gap: 260, tries: 90 });
     await H.devOp(wsPort, 'vitals', myId, { heal: true });
-    const target = await P.page.evaluate((home) => {
-      const S = window._gameState.current;
+    /* (the land's monsters come in the tick that first has you near them) */
+    await P.page.evaluate((home) => { window.__ehHome = home; }, L.home);
+    const target = await H.waitFor(P, (S) => {
+      const home = window.__ehHome;
       const m = (S.monsters || []).filter((x) => x && x.home === home && x.alive !== false && x.hp > 0)
         .sort((a, b) => Math.hypot(a.x - S.player.x, a.y - S.player.y) - Math.hypot(b.x - S.player.x, b.y - S.player.y))[0];
       return m ? { id: m.id, x: m.x, y: m.y } : null;
-    }, L.home);
+    }, (v) => !!v, { timeout: 10000, label: L.name + ' on the list' }).catch(() => null);
     if (!target) { rec.ok(`real: ${L.name} to meet`, false, { home: L.home }); continue; }
     /* v2.3.3014: what came in since now, by the time on each entry -- the
        log keeps its last 60, so by the fifth land an index into it no longer
