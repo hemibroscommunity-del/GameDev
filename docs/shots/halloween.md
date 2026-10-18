@@ -1,4 +1,4 @@
-# Halloween week, before and after (v2.3.3444)
+# Halloween week, before and after (v2.3.3460)
 
 Owner: *"A recent session added a 'Halloween mode' but I could not see any
 difference. Can you include screenshots of what the differences are?"*
@@ -6,7 +6,7 @@ difference. Can you include screenshots of what the differences are?"*
 **Why nothing looked different:** Halloween week (v2.3.3395,
 docs/specs/halloween.md) began on **24 October**, by each phone's own calendar,
 and the owner looked on the 18th. Shown these pictures, the owner chose "Start
-today for everyone": since v2.3.3444 it runs from **18 October to 1 November**,
+today for everyone": since v2.3.3460 it runs from **18 October to 1 November**,
 this year and every year after.
 
 **To see it on any other day:** open the game with `?halloween=1` on the end of
@@ -52,7 +52,7 @@ The chat box's smiley, then Emotes, then Moves: one more tile, or type
 
 Found while taking the first pictures: the tile's name did not fit and read
 **"Zombie Sh"** (cut at the tile's width, in the real font as well as the
-fallback). Since v2.3.3444 the tile prints "Zombie" (the move's `short`, as
+fallback). Since v2.3.3460 the tile prints "Zombie" (the move's `short`, as
 "Bro Bounce" prints "Bounce"); this picture is after the fix.
 
 ![The emote picker's Moves tab, 12 tiles and 13](halloween-3-moves.webp)
