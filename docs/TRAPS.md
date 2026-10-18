@@ -7585,7 +7585,7 @@ they did; `?onebatch=1` tests the one program here anyway.
 **Receipt:** qa-branchcost (every branch run in software); mp-onebatch with
 `?onebatch=1`; docs/specs/one-batch.md "In software, the three programs".
 
-## 226. "Route it in my own wrapper: I installed it last, so it runs last" (v2.3.3436)
+## 226. "Route it in my own wrapper: I installed it last, so it runs last" (v2.3.3459)
 
 **Tempting:** to send some sprites to a batcher of your own, wrap
 `BatcherPipe.prototype.addToBatch` like the others do (paletteTex.js,
@@ -7598,7 +7598,7 @@ code BEFORE that call runs outermost first -- so the wrapper installed FIRST
 sets the batcher name LAST. paletteTex.js patches at module load (first, so
 innermost), sharpPixels.js after app.init, anything later outermost: a name
 set there is overwritten by the sharp pixels' unconditional `'sharp'` or
-`'default'` for every quad of a figure. hairClip.js's first draft (v2.3.3436)
+`'default'` for every quad of a figure. hairClip.js's first draft (v2.3.3459)
 routed the hair's silhouette that way: read through, the chain sends it to the
 sharp program, which has no discard, so the whole quad would have gone into
 the stencil and nothing been clipped.
