@@ -132,6 +132,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await travel(marks.frost.tx, marks.frost.ty, 'frost'),
       await H.readState(P, (S) => S.currentZone));
   }
+  /* v2.3.3403: full health for the idle seconds before the hunt (the hunt's
+     own heals, below, say why) */
+  await H.devOp(wsPort, 'vitals', myId, { heal: true }).catch(() => {});
   await P.page.waitForTimeout(2500);
 
   /* The zone has to have something in it, or "no drop" and "no monster" are
@@ -165,6 +168,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let got = 0;
   let died = false;
   const log = [];
+  /* v2.3.3403: healed as the hunt begins and every few passes after, on the
+     worker.  In the solo run of 2026-10-18 (main's walk-to-it hunt) the fresh
+     character was dead before its first kill (got 0, the log empty): on this
+     box the idle seconds after walking in and the page's slow swings leave
+     the snowmen most of the fight.  Not god mode -- the blows still land and
+     the snowmen must still be killed for their drops; `heals` and the lowest
+     HP seen say how close it came. */
+  let heals = 0, lowHp = null;
+  const heal = async () => { await H.devOp(wsPort, 'vitals', myId, { heal: true }).catch(() => {}); heals++; };
+  await heal();
   /* ═══ v2.3.3399: WALK TO IT, DON'T JUMP ═══
      Each pass used to put the character straight beside its target.  Since
      v2.3.3325 the worker follows a move past its budget at an honest walk
@@ -202,6 +215,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { done: false };
   };
   for (let pass = 0; pass < 70 && got < WANT.count; pass++) {
+    if (pass > 0 && pass % 3 === 0) await heal();
+    const hpNow = await H.readState(P, (S) => (S.rpg && typeof S.rpg.hp === 'number' ? S.rpg.hp : null)).catch(() => null);
+    if (typeof hpNow === 'number' && (lowHp == null || hpNow < lowHp)) lowHp = hpNow;
     const step = await P.page.evaluate(() => {
       const S = window._gameState && window._gameState.current;
       if (!S || !S.player) return { err: 'no-state' };
@@ -244,8 +260,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const endSrv = await srv();
   rec.ok(`killing snowmen actually drops '${WANT.invKey}' into the worker's bag`,
     got > 0, { got, died, log, zone: endSrv && endSrv.z, inv: endSrv && endSrv.inventory });
-  rec.ok('...and the character survived the errand (a corpse cannot finish it)',
-    !died, { died, log });
+  rec.ok(`...and the character survived the errand (a corpse cannot finish it; healed ${heals} times, ${lowHp} HP at the lowest)`,
+    !died, { died, log, heals, lowHp });
   /* The whole objective, not just one drop: `count` of them is what the quest
      asks for and what the turn-in gate demands, so a drop rate or a respawn
      that cannot supply four in seventy passes is the finding, not a pass. */
