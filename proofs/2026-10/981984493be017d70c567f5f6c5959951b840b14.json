@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "981984493be017d70c567f5f6c5959951b840b14",
+  "tree": "a3a0f99c4e493981c980a38c3dac238c24461b39",
+  "committedAt": "2026-10-18T03:42:05-07:00",
+  "subject": "/roll and /flip in the chat, rolled by the server so nobody can fake a 100 (v2.3.3393) (#981)",
+  "files": 5840,
+  "bytes": 639830773,
+  "listingSha256": "26ae4a836badd9ce3b724db78a3343d28277e4b5b7c023858252a6af2a44d897",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
