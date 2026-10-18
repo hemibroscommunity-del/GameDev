@@ -109,9 +109,17 @@ const ORDER_WATCH = () => {
   const sorted = world.children.filter((c) => c.label === 'entities' || c.label === 'gatherNodesFront');
   const st = R.__lgOrder = { frames: 0, bad: 0, badAt: [], children: 0 };
   const render = R.render;
-  R.render = function () {
+  /* v2.3.3424: after the SCREEN's render only.  The shadows drawn before the
+     frame (shadow-prepass.md) are a render of their own, first in the frame,
+     and a re-sort the depth pass asked for is done when the screen's render
+     draws the layer -- after the shadows' render the layer can still stand
+     in the old order, which is never drawn (the combined build's run counted
+     exactly the frames whose sort was loud: 1 of 1 in BroTown, 11 of 11 at a
+     fight) */
+  R.render = function (opts) {
     const out = render.apply(this, arguments);
-    if (window.__lgWatch) {
+    const what = opts && opts.container ? opts.container : opts;
+    if (window.__lgWatch && what === app.stage) {
       st.frames++;
       for (const L of sorted) {
         const k = L.children;
