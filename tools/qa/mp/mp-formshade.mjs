@@ -39,7 +39,7 @@ async function onOff(P, name, rec, { props = true } = {}) {
   await P.page.waitForTimeout(400);
   const before = await P.page.evaluate(() => window.__btShade && window.__btShade());
   const box = await H.figureBox(P, { pad: 2 }).catch(() => null);
-  /* ═══ v2.3.3445: ONE HELD FRAME, THE SWITCH THE ONLY DIFFERENCE ═══
+  /* ═══ v2.3.3449: ONE HELD FRAME, THE SWITCH THE ONLY DIFFERENCE ═══
      The two pictures used to be taken live, 250 ms apart: in Verdant a
      slime's LUNGE! warning came up over the player's head between them and
      read as "the head is shaded more than the legs".  So the game's frames
