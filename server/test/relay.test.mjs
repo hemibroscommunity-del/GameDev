@@ -70,7 +70,8 @@ const one = (evs, type) => evs.filter((e) => e.type === type);
 const SETTLED = new Set(['trade_offer', 'trade_accept', 'trade_reject', 'duel_request', 'duel_wager_request', 'duel_accept', 'duel_decline', 'pvp_threat', 'threat_response', 'clan_invite']);
 for (const type of RELAY.TYPES) {
   if (SETTLED.has(type)) continue;
-  const payload = type === 'chat' ? { id: A, text: 'hello' } : { id: A, x: 1010, y: 1000, zone: 'town', ts: Date.now() };
+  /* v2.3.3391: an emote is one of the listed emotes or nothing (emotes.js) */
+  const payload = type === 'chat' ? { id: A, text: 'hello' } : type === 'emote' ? { id: A, emoji: '👋' } : { id: A, x: 1010, y: 1000, zone: 'town', ts: Date.now() };
   const evs = one(await relay({ type, payload }), type);
   check('1. ' + type + ': relayed once, from the sender, in the sender\'s name',
     evs.length === 1 && evs[0].from === A && evs[0].payload && evs[0].payload.id === A, evs);
@@ -109,12 +110,14 @@ for (const type of RELAY.TYPES) {
   const extra = one(await relay({ type: 'emote', id: B, from: B, events: [{ type: 'player_state' }], payload: { id: A, emoji: '👋' } }), 'emote');
   check('3. nothing else on the message goes out: type, from and payload only',
     extra.length === 1 && Object.keys(extra[0]).sort().join(',') === 'from,payload,type' && extra[0].from === A, extra);
-  const bare = one(await relay({ type: 'emote', id: B, emoji: '👋' }), 'emote');
+  /* v2.3.3391: the rebuild's own cases on a relay with no check of its own
+     (player_jump) -- an emote with no emoji is no emote at all (emotes.js) */
+  const bare = one(await relay({ type: 'player_jump', id: B, x: 5 }), 'player_jump');
   check('3. no payload: an empty one in the sender\'s name (the phone read the message itself as the payload)',
-    bare.length === 1 && bare[0].payload.id === A && !('emoji' in bare[0].payload) && !('id' in bare[0]), bare);
-  const arr = one(await relay({ type: 'emote', payload: [B, 'x'] }), 'emote');
+    bare.length === 1 && bare[0].payload.id === A && !('x' in bare[0].payload) && !('id' in bare[0]), bare);
+  const arr = one(await relay({ type: 'player_jump', payload: [B, 'x'] }), 'player_jump');
   check('3. an array for a payload: an empty one in the sender\'s name', arr.length === 1 && !Array.isArray(arr[0].payload) && arr[0].payload.id === A, arr);
-  const pol = one(await relay('{"type":"emote","payload":{"__proto__":{"polluted":1},"emoji":"x"}}'), 'emote');
+  const pol = one(await relay('{"type":"player_jump","payload":{"__proto__":{"polluted":1},"x":1}}'), 'player_jump');
   check('3. a "__proto__" key in the payload pollutes nothing', pol.length === 1 && ({}).polluted === undefined && pol[0].payload.id === A, pol);
   const chat = one(await relay({ type: 'chat', payload: { id: B, name: 'Bob', text: 'it was me' } }), 'chat');
   check('3. chat, as since v2.3.1970: the worker\'s id and name', chat.length === 1 && chat[0].payload.id === A && chat[0].payload.name === NAME_A && chat[0].payload.text === 'it was me', chat);
@@ -166,7 +169,7 @@ for (const type of RELAY.TYPES) {
   s.relayTokens = 1; s.relayAt = Date.now();
   room.eventBuffer.length = 0;
   await room.webSocketMessage(ws[A], JSON.stringify({ type: 'zz_not_a_relay', payload: {} }));
-  await room.webSocketMessage(ws[A], JSON.stringify({ type: 'emote', payload: { emoji: 'x' } }));
+  await room.webSocketMessage(ws[A], JSON.stringify({ type: 'emote', payload: { emoji: '👋' } }));   /* v2.3.3391: a listed one */
   check('5. a dropped type costs no relay budget: the last token still carries an emote',
     room.eventBuffer.length === 1 && room.eventBuffer[0].type === 'emote', room.eventBuffer.map((e) => e.type));
   /* v2.3.3396: ...and the relay bucket's last token, which the emote above no

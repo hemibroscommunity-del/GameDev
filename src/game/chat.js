@@ -14,6 +14,13 @@
 import { BT_AUDIO } from '@/data/index.js';
 /* v2.3.2139: the channel picker's compose step — see its note below. */
 import { chatChannelBus } from '@/game/chatChannel.js';
+import { emoteKind } from '@/game/emotes.js'; /* v2.3.3391 */
+import { moveKind, EMOTE_MOVES, slashMove } from '@/game/emoteMoves.js'; /* v2.3.3392: the moment moves, and /wave */
+import { slashDice, diceResult, diceLineText, diceBubbleText, diceWaitMs } from '@/game/dice.js'; /* v2.3.3393: /roll and /flip */
+import { cueAt } from '@/game/eventSounds.js'; /* v2.3.3393: the roll's clatter, by distance */
+import { isBlockedId } from '@/game/chatMute.js'; /* v2.3.3391: both shapes of the block list */
+import { stripLaneMarks } from '@/data/smallIcons.js'; /* v2.3.3391 */
+import { earVol } from '@/game/hitSounds.js'; /* v2.3.3391: an emote's chirp carries as far as a hit */
 import { _toConsumableArray } from '@/lib/babelHelpers.js';
 
 /* ═══ v2.3.1970: A RECEIVED LINE IS UNTRUSTED TEXT ═══
@@ -47,8 +54,43 @@ function clampChatName(v) {
 /* Send a chat line: broadcast to the room, local echo into the chat log +
    own overhead bubble. `text` is already trimmed/validated by the caller.
    deps = { setChatLog } */
+/* ═══ v2.3.3392: "/wave", "/sit", "/dance" ... ARE MOVES, NOT LINES ═══
+   A message that is only a move's command (game/emoteMoves.js slashMove)
+   makes your bro do it, as the picker's tile does, and says nothing in the
+   chat.  The sender is BroTown's (game/interactions.js sendMove, with the
+   picker it closes), handed in once so this file needs no game imports. */
+var _moveSender = null;
+export function setChatMoveSender(fn) {
+  _moveSender = typeof fn === 'function' ? fn : null;
+}
+
 export function sendChatMessage(S, text, deps) {
   var setChatLog = deps.setChatLog;
+  /* ═══ v2.3.3393: "/roll", "/roll 20", "/flip" -- ROLLED BY THE WORKER ═══
+     (game/dice.js, server/src/dice.js).  This phone only asks; the number is
+     the worker's, and comes back as `dice_roll` for everyone near
+     (handleDiceEvent below).  One ask every DICE_GAP_MS, held back here with
+     words.  Against a worker without caps.dice, "/roll" is the plain line it
+     always was. */
+  var _dice = slashDice(text);
+  if (_dice && S._serverCaps && S._serverCaps.dice === true) {
+    var _dwait = diceWaitMs(S);
+    if (_dwait > 0) {
+      S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
+        id: '_sys', name: '🎲', text: 'Roll again in ' + Math.ceil(_dwait / 1000) + ' s', color: '#8a8f98', ts: Date.now(), lane: true
+      }]);
+      setChatLog(_toConsumableArray(S.chatLog));
+      return;
+    }
+    S._diceAskAt = Date.now();
+    if (S.channel) S.channel.send(_dice.kind === 'flip' ? { type: 'dice', kind: 'flip' } : { type: 'dice', kind: 'roll', max: _dice.max });
+    return;
+  }
+  var _slash = slashMove(text);
+  if (_slash && _moveSender) {
+    _moveSender(_slash);
+    return;
+  }
   /* ═══ v2.3.2139: THE CHANNEL PICKER APPLIES HERE, AND ONLY HERE ═══
      The picker (game/chatChannel.js) sets a mode; this turns that mode plus
      what was typed into the line to send.  It happens at the TOP of the one
@@ -227,11 +269,12 @@ export function handleChatEvent(payload, S, deps) {
      a message with no message in it. */
   var _text = clampChatText(payload.text);
   if (!_text) return;
-  var _name = clampChatName(payload.name);
-  try {
-    var bl = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
-    if (bl.includes(payload.id)) return;
-  } catch (e) {}
+  /* v2.3.3391: never a lane's mark at the front (smallIcons.js stripLaneMarks):
+     a name starting "✉ " drew every room line as a whisper */
+  var _name = stripLaneMarks(clampChatName(payload.name)) || 'Bro';
+  /* v2.3.3391: either shape of the block list (chatMute.js isBlockedId) --
+     a block made from the friends list ({id, name}) hid nothing */
+  if (isBlockedId(payload.id)) return;
   var isMuted = false;
   try {
     var ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
@@ -306,10 +349,7 @@ export function handleAreaChatEvent(payload, S, deps) {
   if (!payload || !payload.from || payload.from === S.myId) return;
   var _atext = clampChatText(payload.text);
   if (!_atext) return;
-  try {
-    var bl = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
-    if (bl.includes(payload.from)) return;
-  } catch (e) {}
+  if (isBlockedId(payload.from)) return;   /* v2.3.3391: either shape of the block list */
   var isMuted = false;
   try {
     var ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
@@ -331,10 +371,7 @@ export function handleWhisperEvent(payload, S, deps) {
   if (!payload || !payload.from || payload.from === S.myId) return;
   var _wtext = clampChatText(payload.text);
   if (!_wtext) return;
-  try {
-    var bl2 = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
-    if (bl2.includes(payload.from)) return;
-  } catch (e) {}
+  if (isBlockedId(payload.from)) return;   /* v2.3.3391: either shape of the block list */
   var wMuted = false;
   try {
     var ml2 = JSON.parse(localStorage.getItem('bt_muted') || '[]');
@@ -376,10 +413,7 @@ export function handlePartyChatEvent(payload, S, deps) {
      lane at PARTY.CHAT_MAX, so this is purely the deploy-order half. */
   var _ptext = clampChatText(payload.text);
   if (!_ptext) return;
-  try {
-    var bl = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
-    if (bl.includes(payload.from)) return;
-  } catch (e) {}
+  if (isBlockedId(payload.from)) return;   /* v2.3.3391: either shape of the block list */
   var isMuted = false;
   try {
     var ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
@@ -412,9 +446,70 @@ export function handleEmoteEvent(payload, S) {
   var _o = payload && payload.id ? S.others[payload.id] : null;
   if (!_o) return;
   if ((_o.zone || _o.z || 'town') !== S.currentZone) return;
-  _o.emote = { emoji: payload.emoji, ts: Date.now() };
-  BT_AUDIO.beep(800, 0.06, 0.06, 'sine');
+  /* ═══ v2.3.3391: AN EMOTE YOU CAN SEE (src/game/emotes.js) ═══
+     This stamped `.emote` and nothing drew it.  Now the renderer pops an
+     emoji over the head (effectsRenderer _updateEmotePops) and a quick line
+     is the speaker's bubble -- so only a LISTED emote is taken (an older
+     worker relays any string), never one from a player you blocked (either
+     shape of the block list) or muted, and the chirp carries only as far as
+     a hit does (hitSounds.js earVol): it rang at full volume from anywhere
+     in your zone, the whole Wheel. */
+  /* v2.3.3392: or a moment MOVE -- a wave, a laugh, a cheer (game/
+     emoteMoves.js) -- which moves their bro in code (rendering/emoteFx.js)
+     and pops its own emoji.  Only a listed one, by the same rules. */
+  var _move = payload.move !== undefined ? payload.move : null;
+  var kind = _move !== null ? (moveKind(_move) === 'once' ? 'move' : null) : emoteKind(payload.emoji);
+  if (!kind || isBlockedId(payload.id)) return;
+  try {
+    var _ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
+    if (Array.isArray(_ml) && _ml.includes(payload.id)) return;
+  } catch (e) {}
+  var _now = Date.now();
+  if (kind === 'move') {
+    _o._emoteMove = { id: _move, at: _now };
+    var _pop = EMOTE_MOVES[_move] && EMOTE_MOVES[_move].pop;
+    /* `trusted`: the move's own emoji, which may not be on the picker's list */
+    if (_pop) _o.emote = { emoji: _pop, ts: _now, trusted: true };
+  } else {
+    _o.emote = { emoji: payload.emoji, ts: _now };
+  }
+  if (kind === 'line') {
+    if (!S.chatBubbles) S.chatBubbles = {};
+    S.chatBubbles[payload.id] = { text: payload.emoji, ts: _now };
+  }
+  var _k = earVol(S, _o.renderX != null ? _o.renderX : _o.x, _o.renderY != null ? _o.renderY : _o.y);
+  if (!(_k > 0)) return;
+  BT_AUDIO.beep(800, 0.06, 0.06 * _k, 'sine');
   setTimeout(function () {
-    return BT_AUDIO.beep(1000, 0.04, 0.06, 'sine');
+    return BT_AUDIO.beep(1000, 0.04, 0.06 * _k, 'sine');
   }, 60);
+}
+
+/* ═══ v2.3.3393: A ROLL OR FLIP THE WORKER MADE (server/src/dice.js) ═══
+   `dice_roll` {id, name, kind, value, max}: the roller is the worker's stamp
+   (wsClient.js reads `from` into `id`), the number the worker's.  A line in
+   the chat in the roller's name ("🎲 rolled 57 (1-100)"), the number over
+   their head as their speech bubble for its 5 s, and the toss heard by
+   distance.  Not from a blocked or muted player (the worker drops a muted
+   roller's for us too).  Your own comes back this way as well: what you see
+   is what everyone near sees.  deps = { setChatLog, setUnreadChats } */
+export function handleDiceEvent(payload, S, deps) {
+  var r = diceResult(payload);
+  if (!r || !payload.id || isBlockedId(payload.id)) return;
+  try {
+    var _ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
+    if (Array.isArray(_ml) && _ml.includes(payload.id)) return;
+  } catch (e) {}
+  var _mine = payload.id === S.myId;
+  var _name = stripLaneMarks(clampChatName(payload.name)) || (_mine ? S.myName : '') || 'Bro';
+  var _now = Date.now();
+  if (!S.chatBubbles) S.chatBubbles = {};
+  S.chatBubbles[payload.id] = { text: diceBubbleText(r), ts: _now };
+  S.chatLog = [].concat(_toConsumableArray((S.chatLog || []).slice(-40)), [{
+    id: payload.id, name: _name, text: diceLineText(r), color: '#E8C76A', ts: _now, dice: true
+  }]);
+  if (deps && deps.setChatLog) deps.setChatLog(_toConsumableArray(S.chatLog));
+  if (!_mine && deps && deps.setUnreadChats) deps.setUnreadChats(function (prev) { return prev + 1; });
+  var _src = _mine ? S.player : (S.others && S.others[payload.id]);
+  if (_src) cueAt(S, r.kind === 'flip' ? 'coinToss' : 'diceRoll', _src.x, _src.y);
 }
