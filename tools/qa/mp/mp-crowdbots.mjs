@@ -35,6 +35,11 @@
  * other player drawn wherever they stand, as before; `crowd=K`: the crowd cap
  * at K, `crowd=all` none), and each row says how many players the renderer
  * left undrawn far off screen (`farHidden`) and past the cap (`crowdHidden`).
+ *
+ * v2.3.3453: BT_CROWD_LOOK (JSON) is what the bots wear over the sampled look
+ * -- iron plate, greaves and sword put three shining pieces of metal a bot on
+ * the phone's screen -- and each row says how many the shine drew
+ * (`shine`: drawn in the pass, in passes of their own).
  */
 import * as H from './harness.mjs';
 import { fork } from 'node:child_process';
@@ -72,6 +77,10 @@ function startBots(wsPort) {
       /* v2.3.3240: each bot sends a real phone's 2 s look, as players do
          (bots.mjs --track), so the phone hears the worker's relays too */
       track: process.env.BT_CROWD_TRACK !== '0',
+      /* v2.3.3453: BT_CROWD_LOOK, JSON merged into that look -- e.g.
+         '{"eqc":"ironplate","eql":"irongreaves","wpnType":"sword","wpnMat":"iron"}'
+         dresses every bot in iron, each piece a shine on the phone's screen */
+      look: process.env.BT_CROWD_LOOK ? JSON.parse(process.env.BT_CROWD_LOOK) : null,
     } });
     groups.push(g);
   }
@@ -146,7 +155,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await P.page.waitForTimeout(1000);
       }
       await P.page.waitForTimeout(4000);
-      await P.page.evaluate(() => { window.perfTracker && window.perfTracker.reset(); });
+      await P.page.evaluate(() => {
+        window.perfTracker && window.perfTracker.reset();
+        /* v2.3.3453: the render-target switches a frame (a phone's graphics
+           chip sets the whole frame aside at each), counted on the context */
+        const gl = window._pixiRenderer && window._pixiRenderer.app.renderer.gl;
+        if (gl && !gl.__bfWrapped) {
+          const bind = gl.bindFramebuffer.bind(gl);
+          gl.bindFramebuffer = (t, f) => { window.__bfCount = (window.__bfCount || 0) + 1; return bind(t, f); };
+          gl.__bfWrapped = true;
+        }
+        window.__bfCount = 0;
+      });
       const m0 = await metrics();
       const w0 = Date.now();
       await P.page.waitForTimeout(SAMPLE_MS);
@@ -173,9 +193,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const o = S.others[id];
           if (o && Math.abs(o.x - me.x) < 340 && Math.abs(o.y - me.y) < 700) near++;
         }
+        const lf = window.__btLightFx && window.__btLightFx.probe ? window.__btLightFx.probe() : null;
+        const g = lf && lf.glint;
         return {
           known: Object.keys(S.others || {}).length, near, farHidden: S._peersFarHidden || 0, crowdHidden: S._peersCrowdHidden || 0,
           work: a.map((s) => s.workMs || 0), entity: a.map((s) => s.entityMs || 0),
+          /* v2.3.3453: the metal shine this frame -- pieces drawn in the pass
+             (`batched`) and in passes of their own (`lit`, a filter each) */
+          shine: g ? { targets: g.targets, lit: g.lit, batched: g.batched || 0 } : null,
+          switches: window.__bfCount || 0,
         };
       });
       const row = {
@@ -185,6 +211,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
         taskMsPerS: +(((m1.TaskDuration - m0.TaskDuration) * 1000) / wall).toFixed(1),
         scriptMsPerS: +(((m1.ScriptDuration - m0.ScriptDuration) * 1000) / wall).toFixed(1),
         heapMB: +((m1.JSHeapUsedSize || 0) / 1048576).toFixed(1),
+        shine: r.shine,
+        targetSwitchesPerFrame: r.work.length ? +(r.switches / r.work.length).toFixed(1) : null,
       };
       rows.push(row);
       console.log('  crowdbots', JSON.stringify(row), 'bots:', JSON.stringify(bots.states()), JSON.stringify(bots.totals()));

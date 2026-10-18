@@ -298,7 +298,9 @@ function startWalking(bot) {
       if (bot.trackTimer || bot.retired) return;
       bot.trackTimer = setInterval(() => {
         if (bot.state !== 'walking' && bot.state !== 'dead') return;
-        const data = Object.assign({}, trackSample(), {
+        /* v2.3.3453: CFG.look -- what the bots wear on top of the sample
+           (mp-crowdbots BT_CROWD_LOOK: armoured bots, for the metal shine) */
+        const data = Object.assign({}, trackSample(), CFG.look || null, {
           x: Math.round(bot.x * 10) / 10, y: Math.round(bot.y * 10) / 10,
           name: 'Load' + bot.k, zone: 'wheel', dir: 'down',
         });

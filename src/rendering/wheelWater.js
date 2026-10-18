@@ -247,12 +247,19 @@ void main(void)
     float cg = (0.09 * sea + 0.46 * shallow + 0.38 * fresh) * (1.0 - smoothstep(0.02, 0.10, sp)) * uCaustics * min(k, 1.25);
     if (cg > 0.0) {
         vec2 p = Pa / 42.0;
-        vec2 bend = vec2(vn(p * 0.45 + vec2(t * 0.05, 0.0)), vn(p * 0.45 + vec2(19.19, 7.73 - t * 0.04))) * 2.0 - 1.0;
-        vec2 wob = vec2(vn(p * 2.1 + vec2(t * 0.21 + 5.1, 0.0)), vn(p * 2.1 + vec2(11.3, -t * 0.17))) * 2.0 - 1.0;
-        float q = cellEdge(p + 0.30 * bend + 0.07 * wob, t);
-        float web = step(0.90, q) + 0.45 * step(0.80, q) * step(q, 0.90);
+        /* v2.3.3448: the stretches of web faded right out (brk exactly 0:
+           about half the open sea at any moment, a fifth of the shallows and
+           fresh water) are not worked out -- the web was mixed in at 0 there,
+           so the picture is the same to the bit.  The bend, the wobble and the
+           nine cells were most of this program's work */
         float brk = smoothstep(0.30 + 0.18 * sea, 0.70 + 0.10 * sea, vn(p * 0.9 + vec2(t * 0.10 + 3.3, -t * 0.06)));
-        col = mix(col, vec3(0.86, 0.98, 1.0), clamp(web * brk * cg, 0.0, 0.9));
+        if (brk > 0.0) {
+            vec2 bend = vec2(vn(p * 0.45 + vec2(t * 0.05, 0.0)), vn(p * 0.45 + vec2(19.19, 7.73 - t * 0.04))) * 2.0 - 1.0;
+            vec2 wob = vec2(vn(p * 2.1 + vec2(t * 0.21 + 5.1, 0.0)), vn(p * 2.1 + vec2(11.3, -t * 0.17))) * 2.0 - 1.0;
+            float q = cellEdge(p + 0.30 * bend + 0.07 * wob, t);
+            float web = step(0.90, q) + 0.45 * step(0.80, q) * step(q, 0.90);
+            col = mix(col, vec3(0.86, 0.98, 1.0), clamp(web * brk * cg, 0.0, 0.9));
+        }
     }
 
     /* SPARKLES: one cell in three or so holds one, which flashes now and
@@ -420,8 +427,34 @@ void main(void)
 }
 `;
 
-let _program = null;
-function program() {
+/* ═══ v2.3.3448: THE WEB OF LIGHT WORKED OUT ONLY WHERE IT SHOWS ═══
+   The owner: "iterate on what best improves framerate without loss of quality
+   (or negligible loss) for phone gameplay (iPhone, android)".  The moving web
+   (v2.3.3021) fades in and out in big stretches as a slow noise drifts over
+   it (`brk`), and where it is faded right out it was still worked out --
+   the bend, the wobble and nine cells, most of the program's work -- then
+   mixed in at 0.  Those stretches are skipped now (the `if (brk > 0.0)`
+   above): about half the open sea at any moment, a fifth of the shallows and
+   fresh water, in patches some 50 game px across, so a phone's chip skips
+   them a whole group of pixels at a time.  The picture is the same to the bit
+   (mixing in 0 leaves a colour as it is).  WEB_ALL is the program as it was,
+   for comparison: `?webskip=0` in the address, `window.__btWaves.webAll(on)`
+   live (mp-wheelwaves draws the water both ways and wants 0 px apart).  This
+   test box draws in software, which works out every branch for every pixel,
+   so only a phone's frame rate can show the saving. */
+const WEB_SKIP = '        if (brk > 0.0) {';
+function fragOf(all) {
+  if (FRAG.indexOf(WEB_SKIP) < 0) throw new Error('the water program changed: its skip needs the same edit');
+  return all ? FRAG.replace(WEB_SKIP, '        {') : FRAG;
+}
+let _webAll = false;
+try { if (typeof location !== 'undefined' && /[?&]webskip=0(&|$)/.test(location.search || '')) _webAll = true; } catch (e) { /* the skip */ }
+let _program = null, _allProgram = null;
+function program(all = _webAll) {
+  if (all) {
+    if (!_allProgram) _allProgram = GlProgram.from({ vertex: VERT, fragment: fragOf(true), name: 'bt-wheel-water-all', preferredFragmentPrecision: 'highp' });
+    return _allProgram;
+  }
   if (!_program) _program = GlProgram.from({ vertex: VERT, fragment: FRAG, name: 'bt-wheel-water', preferredFragmentPrecision: 'highp' });
   return _program;
 }
@@ -456,14 +489,19 @@ vec4 pieceAt(highp vec2 uv)
                mix(palColour(ivec2(a.x, b.y), row), palColour(b, row), f.x), f.y);
 }
 `;
-function palFrag() {
+function palFrag(all) {
+  const F = fragOf(all);   /* v2.3.3448: the skip, or the web worked out everywhere */
   const a = 'uniform sampler2D uPiece;', b = 'texture(uPiece, vUV + off * uUvPerPx)';
-  if (FRAG.indexOf(a) < 0 || FRAG.indexOf(b) < 0) throw new Error('the water program changed: its palette twin needs the same edit');
-  return '#version 300 es\n' + FRAG.replace(a, PAL_SAMPLE).replace(b, 'pieceAt(vUV + off * uUvPerPx)');
+  if (F.indexOf(a) < 0 || F.indexOf(b) < 0) throw new Error('the water program changed: its palette twin needs the same edit');
+  return '#version 300 es\n' + F.replace(a, PAL_SAMPLE).replace(b, 'pieceAt(vUV + off * uUvPerPx)');
 }
-let _palProgram = null;
-function palProgram() {
-  if (!_palProgram) _palProgram = GlProgram.from({ vertex: '#version 300 es\n' + VERT, fragment: palFrag(), name: 'bt-wheel-water-pal', preferredFragmentPrecision: 'highp' });
+let _palProgram = null, _palAllProgram = null;
+function palProgram(all = _webAll) {
+  if (all) {
+    if (!_palAllProgram) _palAllProgram = GlProgram.from({ vertex: '#version 300 es\n' + VERT, fragment: palFrag(true), name: 'bt-wheel-water-pal-all', preferredFragmentPrecision: 'highp' });
+    return _palAllProgram;
+  }
+  if (!_palProgram) _palProgram = GlProgram.from({ vertex: '#version 300 es\n' + VERT, fragment: palFrag(false), name: 'bt-wheel-water-pal', preferredFragmentPrecision: 'highp' });
   return _palProgram;
 }
 /* `?waves=k` in the address: the motion k times as strong, 0.25 to 3 (the
@@ -502,7 +540,30 @@ let _ok = null;              /* null: not built yet; true: built and linked; fal
 let _liveOff = false;
 let _held = null;            /* QA: the clock held at one moment, for pictures */
 let _live = null;            /* QA: the WheelWater drawing now, for __btWaves.extract */
-const _stats = { meshes: 0, fields: 0, uniform: 0, flowing: 0, fieldBytes: 0, made: 0, prewarmed: false, linkError: null };
+/* ═══ v2.3.3452: THE GROUND UNDER OPEN SEA IS NOT DRAWN ═══
+   The owner: "iterate on what best improves framerate without loss of
+   quality (or negligible loss) for phone gameplay (iPhone, android)".  A
+   piece of open sea with no shore in reach (its field `uniform`) is drawn
+   twice: its ground picture, then this quad over all of it, every px of it
+   water at full strength (wet 1: the field's distance is the cap), so the
+   quad's colour replaces the ground's to the bit (premultiplied, alpha 1).
+   On a phone that ground is a whole screen's share of texture reads for
+   nothing -- eight a px where the ground is kept as colour numbers
+   (paletteTex.js) -- and a tile-based chip cannot skip it, as the quad over
+   it blends.  So while the water is drawn, such a piece's ground sprite is
+   hidden (it stays laid: the quad reads its picture); the water's live
+   switch off shows it again the frame the quad goes.  Only a quad over the
+   piece's own square, and the sprite's half a game px of apron over a
+   neighbour lies under that neighbour's quad, as open sea runs on past it.
+   `?seacover=0` draws the ground under every quad, as it was;
+   `window.__btWaves.cover(on)` live (QA: mp-seacover). */
+let _cover = true;
+try { if (typeof location !== 'undefined' && /[?&]seacover=0(&|$)/.test(location.search || '')) _cover = false; } catch (e) { /* on */ }
+/* the shader's own numbers (FRAG: d = field.r x 10.625, wet = smoothstep(0.3,
+   0.9, d)): a uniform field this far from the shore is water at full strength */
+const WET_ALL_D = 0.9;
+function wetAll(u) { return !!u && (u[0] / 255) * 10.625 >= WET_ALL_D; }
+const _stats = { meshes: 0, fields: 0, uniform: 0, flowing: 0, fieldBytes: 0, made: 0, prewarmed: false, linkError: null, covered: 0 };
 
 /** The renderer, from initPixiRenderer: what builds the program, and says
  *  whether this is WebGL2. */
@@ -639,8 +700,9 @@ export class WheelWater {
     this.root = new Container();
     this.root.label = 'wheelWater';
     parent.addChild(this.root);
-    this.meshes = new Map();   /* "i,j" -> { mesh, tex (its own, or null when shared), bytes } */
+    this.meshes = new Map();   /* "i,j" -> { mesh, tex (its own, or null when shared), bytes, ground } */
     this.dead = false;
+    this._covering = _cover && !_liveOff;   /* v2.3.3452 */
     _live = this;
   }
 
@@ -652,8 +714,10 @@ export class WheelWater {
   }
 
   /** The piece at (i, j) was laid (or laid again): its water's quad, or
-   *  none.  `pic`: the piece's own picture, which the quad moves. */
-  set(key, i, j, wf, info, pic) {
+   *  none.  `pic`: the piece's own picture, which the quad moves; `ground`:
+   *  the piece's sprite, hidden while a quad of open sea covers it whole
+   *  (v2.3.3452, the header above). */
+  set(key, i, j, wf, info, pic, ground) {
     if (this.dead) return;
     this.drop(key);
     if (!wf || (!wf.data && !wf.uniform) || !pic || !pic.source || !WheelWater.on()) return;
@@ -668,7 +732,9 @@ export class WheelWater {
     const mesh = meshFor(tex, pic, quad(x0, y0, x0 + cs, y0 + cs, u0, v0, u1, v1));
     this.root.addChild(mesh);
     const bytes = own ? wf.w * wf.h * 4 : 0;
-    this.meshes.set(key, { mesh, tex: own, bytes, flowing: wf.flowing > 0 });
+    const e = { mesh, tex: own, bytes, flowing: wf.flowing > 0, ground: !own && ground && wetAll(wf.uniform) ? ground : null };
+    this.meshes.set(key, e);
+    if (e.ground && this._covering && e.ground.visible) e.ground.visible = false;
     _stats.made++;
     this._count();
   }
@@ -678,6 +744,7 @@ export class WheelWater {
     if (!e) return;
     this.meshes.delete(key);
     unmake(e.mesh);
+    if (e.ground && !e.ground.destroyed && !e.ground.visible) e.ground.visible = true;   /* v2.3.3452 */
     /* the field is this piece's alone: its GPU copy and its texels go with it */
     if (e.tex) { try { e.tex.destroy(true); } catch (err) { /* gone */ } }
     this._count();
@@ -688,14 +755,26 @@ export class WheelWater {
     if (this.dead) return;
     const off = _liveOff;
     this.root.visible = !off;
+    this.cover(_cover && !off);   /* v2.3.3452: the ground shown the frame the quads go */
     if (off || !this.meshes.size) return;
     _uni.uniforms.uTime = _held != null ? _held : (now / 1000) % TIME_WRAP;
   }
 
+  /** v2.3.3452: hide (true) or show (false) the ground under every quad of
+   *  open sea -- only on a change, as each is a change to the ground's draw
+   *  list. */
+  cover(on) {
+    if (this.dead || on === this._covering) return;
+    this._covering = on;
+    for (const e of this.meshes.values()) if (e.ground && !e.ground.destroyed) e.ground.visible = !on;
+    this._count();
+  }
+
   _count() {
-    let fields = 0, uni = 0, bytes = 0, flowing = 0;
-    for (const e of this.meshes.values()) { if (e.tex) fields++; else uni++; bytes += e.bytes; if (e.flowing) flowing++; }
+    let fields = 0, uni = 0, bytes = 0, flowing = 0, covered = 0;
+    for (const e of this.meshes.values()) { if (e.tex) fields++; else uni++; bytes += e.bytes; if (e.flowing) flowing++; if (e.ground) covered++; }
     _stats.meshes = this.meshes.size; _stats.fields = fields; _stats.uniform = uni; _stats.fieldBytes = bytes; _stats.flowing = flowing;
+    _stats.covered = this._covering ? covered : 0;
   }
 
   destroy() {
@@ -704,7 +783,7 @@ export class WheelWater {
     this.dead = true;
     if (_live === this) _live = null;
     try { this.root.destroy(); } catch (e) { /* gone */ }
-    _stats.meshes = 0; _stats.fields = 0; _stats.uniform = 0; _stats.fieldBytes = 0; _stats.flowing = 0;
+    _stats.meshes = 0; _stats.fields = 0; _stats.uniform = 0; _stats.fieldBytes = 0; _stats.flowing = 0; _stats.covered = 0;
   }
 }
 
@@ -712,7 +791,10 @@ export class WheelWater {
    strength (0 draws the pictures still, through the same quads) */
 if (typeof window !== 'undefined') {
   window.__btWaves = {
-    probe: () => ({ ..._stats, ok: _ok, webgl2: webgl2(), on: wavesOn() && !_liveOff, strength: _uni.uniforms.uStrength, caustics: _uni.uniforms.uCaustics, time: _uni.uniforms.uTime }),
+    probe: () => ({ ..._stats, ok: _ok, webgl2: webgl2(), on: wavesOn() && !_liveOff, strength: _uni.uniforms.uStrength, caustics: _uni.uniforms.uCaustics, time: _uni.uniforms.uTime, webAll: _webAll, cover: _cover }),
+    /* v2.3.3452: the ground under open sea hidden (true) or drawn (false),
+       at once (mp-seacover draws one held frame both ways) */
+    cover: (on) => { _cover = !!on; if (_live && !_live.dead) _live.cover(_cover && !_liveOff); return _stats.covered; },
     off: () => { _liveOff = true; },
     on: () => { _liveOff = false; },
     strength: (k) => { _uni.uniforms.uStrength = Math.max(0, Math.min(4, +k || 0)); },
@@ -720,6 +802,24 @@ if (typeof window !== 'undefined') {
     caustics: (k) => { _uni.uniforms.uCaustics = Math.max(0, Math.min(2, +k || 0)); },
     /* hold the clock (pictures of one moment); null lets it run */
     hold: (sec) => { _held = sec == null ? null : +sec; },
+    /* v2.3.3448: the web of light worked out everywhere (true: the program as
+       it was) or only where it shows, live, every quad drawn now; says how many
+       quads it switched */
+    webAll: (on) => {
+      _webAll = !!on;
+      let n = 0;
+      const W = _live;
+      if (W && !W.dead) {
+        for (const e of W.meshes.values()) {
+          const sh = e.mesh && e.mesh.shader;
+          if (!sh) continue;
+          const pal = sh.glProgram === palProgram(false) || sh.glProgram === palProgram(true);
+          const want = pal ? palProgram(_webAll) : program(_webAll);
+          if (sh.glProgram !== want) { sh.glProgram = want; n++; }
+        }
+      }
+      return n;
+    },
     /* the water layer ALONE over a world rectangle, as RGBA px at `res` px a
        game px (mp-wheelwaves: where it draws, and that it moves) */
     extract: (x, y, w, h, res = 0.5) => {

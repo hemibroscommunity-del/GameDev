@@ -4,11 +4,11 @@
    tier that grows it (a node's gatherLvl): each picture's size in picture px
    (2 a game px, trimmed to the rock) and `foot` where it meets the ground
    (the middle of its lowest rows, at its lowest row). */
-export const ORE_ART_V = "2026-10-18T05:22:11.126Z";
+export const ORE_ART_V = "2026-10-18T16:38:19.485Z";
 export const ORE_ART = {
-  1: { name: "copper", url: '/sprites/ore/ore-copper.png', w: 116, h: 115, foot: [53, 115] },
-  6: { name: "iron", url: '/sprites/ore/ore-iron.png', w: 139, h: 136, foot: [66, 136] },
-  11: { name: "blacksteel", url: '/sprites/ore/ore-blacksteel.png', w: 177, h: 160, foot: [83, 160] },
-  16: { name: "titanium", url: '/sprites/ore/ore-titanium.png', w: 196, h: 188, foot: [95, 188] },
-  21: { name: "obsidian", url: '/sprites/ore/ore-obsidian.png', w: 254, h: 224, foot: [123, 224] },
+  1: { name: "copper", url: '/sprites/ore/ore-copper.png', w: 162, h: 161, foot: [76, 161] },
+  6: { name: "iron", url: '/sprites/ore/ore-iron.png', w: 195, h: 190, foot: [93, 190] },
+  11: { name: "blacksteel", url: '/sprites/ore/ore-blacksteel.png', w: 247, h: 224, foot: [117, 224] },
+  16: { name: "titanium", url: '/sprites/ore/ore-titanium.png', w: 275, h: 263, foot: [133, 263] },
+  21: { name: "obsidian", url: '/sprites/ore/ore-obsidian.png', w: 355, h: 314, foot: [172, 314] },
 };
