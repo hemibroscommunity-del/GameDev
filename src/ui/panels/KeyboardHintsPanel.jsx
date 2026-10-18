@@ -33,7 +33,7 @@ const KEYS = [
      same terms as the rest: always, and the worker decides the rest. */
   ['WASD', 'Move'], ['Shift', 'Sprint'], ['Click', 'Attack'], ['R-Click', 'Special'], ['Space', 'Dodge'], ['X', 'Jump'] /* v2.3.3017 */,
   ['E', 'Interact'], ['Q', 'Shield'], ['Q+E', 'Bash'], ['R', 'Whirl'],
-  /* v2.3.3350: 1 2 3 -- each weapon straight to hand (desktopControls), keys
+  /* v2.3.3358: 1 2 3 -- each weapon straight to hand (desktopControls), keys
      with no button on a computer's screen to wear them (the weapon chip is a
      touch control).  The dashboard's keys (B P J L K O), M's map, Enter and
      Esc are worn by their own buttons (game/deskKeys.js), so they are not

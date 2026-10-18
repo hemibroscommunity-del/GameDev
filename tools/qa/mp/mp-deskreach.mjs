@@ -1,4 +1,4 @@
-/* ═══ ON A COMPUTER, THE BUTTONS A CLICK AIMS AT ARE THE ONES IT REACHES (v2.3.3350) ═══
+/* ═══ ON A COMPUTER, THE BUTTONS A CLICK AIMS AT ARE THE ONES IT REACHES (v2.3.3358) ═══
  *
  * Owner, 2026-10-18: "Make sure all actions/buttons can be completed in
  * landscape mode and on the computer."
@@ -17,7 +17,7 @@
  * Both by a REAL mouse click (1440 x 900, the game in its centred column).
  *   3. and on a LAPTOP's window (1366 x 768) the character creator's ENTER
  *      BRO TOWN lay below the screen, unreachable: it is on it now, and a
- *      click on it starts the game (v2.3.3350).
+ *      click on it starts the game (v2.3.3358).
  */
 import * as H from './harness.mjs';
 
@@ -127,7 +127,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.ctx.close().catch(() => {});
   }
 
-  /* 3. v2.3.3350: a LAPTOP's window (1366 x 768).  The creator's sizes were
+  /* 3. v2.3.3358: a LAPTOP's window (1366 x 768).  The creator's sizes were
      fractions of the window's width, so on a computer the character's column
      took its 360 px ceiling inside the 419 px play column, the Trait Picker
      got 31 px and ENTER BRO TOWN lay at y 847-903 -- off the screen, and the
@@ -171,7 +171,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }, null, { timeout: 90000, polling: 500 }).then(() => true).catch(() => false);
     rec.ok('...and a mouse click on it takes the new bro into the game', joined);
 
-    /* 4. v2.3.3350: the quest coach's card on a laptop.  It was lifted clear
+    /* 4. v2.3.3358: the quest coach's card on a laptop.  It was lifted clear
        of the phone's combat band, which a computer does not show, up to the
        cap at the top -- onto the minimap, under its invisible "open map"
        button, where a click on the card's ✕ opened the world map.  On a

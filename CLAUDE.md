@@ -966,7 +966,7 @@ remnant to migrate server-side, not a mode to preserve.
         gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
         `mp-monsterplate` (whose band sweep now raises the weapon's skill):
         docs/specs/xp-decay.md.
-    - since v2.3.3350 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
+    - since v2.3.3358 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
       all actions/buttons can be completed in landscape mode and on the
       computer. For instance I don't think you can harvest lifeskills right now
       on the computer": the gesture was asked for on the right button, which a
@@ -3327,7 +3327,7 @@ Two protocol versions coexist; both must keep working:
   never a window sized for 60 fps (mp-hitreal, mp-staffcast, mp-solospecial,
   mp-ccink were the test); `BT_QA_CPU_THROTTLE=<rate>` runs every page that
   much slower, to try a check as a slow phone sees it.
-- UI REVIEW SCREENSHOTS (v2.3.3350, docs/specs/ui-review.md): the owner's
+- UI REVIEW SCREENSHOTS (v2.3.3358, docs/specs/ui-review.md): the owner's
   "screenshots labelled and bundled for all UI elements in each view ... so I
   can have chatGPT analyze them".  `node tools/qa/ui-review/capture.mjs`
   (after a build; `--views=`, `--only=`) walks a real player through every
@@ -4141,7 +4141,34 @@ Two protocol versions coexist; both must keep working:
   - A phone test that brings a character back in a second browser gets its
     device (harness `newPlayer`'s `device`; `'fresh'` is a new one).
   - Kill switch `devicelock: false`; `device-lock` suite (67), `mp-devicelock`.
-- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3350,
+- **NEW LOGIN KEYS, MADE BY THE SERVER (v2.3.3355, docs/specs/login-keys.md).**
+  Step 2 of the owner's login plan ("8 short words"):
+  - a key is eight of 1,422 short words (`server/src/keywords.js`, the EFF
+    list's, CREDITS.md), made in `server/src/loginkeys.js`, kept only as a
+    fingerprint (`auth.keys`, `keyidx:<h>` for the door), good from ANY device;
+  - a phone that joins with `kv: 2` and the OLD key, on one of its devices, is
+    handed one after its join (`key_new {key, id}`, PRIVILEGED, the direct
+    switch) -- its own key a device, the old key kept beside it on the phone
+    (`bt_passphrase_old`) until a join with the new one gets in; a NEW
+    character is handed one at its first join and its first key is RETIRED at
+    the new one's first use (`fresh`, `oldGone`);
+  - a new key's id is KEPT, never worked out from it: `idForKey`
+    (networking/index.js: `bt_key_ids`, the roster's rows, the mirror's `i`),
+    everywhere the phone used to call passphraseToId on its key; the join
+    takes the kept one, and a `key` refusal of a new key asks the door once
+    whose it is (a key put on a phone by hand);
+  - refusals `key` (4017: a new key not the character's, an old key retired)
+    and `locked` (4018: five wrong keys in a minute, which used to answer
+    `auth` -- a phone threw its key away over someone else's guesses; a
+    matching new key goes through a lockout) -- never `auth`;
+  - the owner's Forget takes every key back, and "Give it a new key"
+    (`/api/admin/key-new`) is the full reset, its key shown once in the panel;
+  - a phone test's new character is handed a new key at once, so a test of
+    the OLD key's device lock makes its character on an older phone: an init
+    script that takes the join's `kv` off (mp-devicelock, mp-newkey);
+  - kill switch `keys2: false` (no key handed out; made keys still work);
+    `login-keys` suite (73), `mp-newkey`.
+- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3358,
   docs/specs/desktop-keys.md, TRAPS §213).** The owner: "For computer usage
   if there's a key that makes sense to use for a certain action just put the
   letter next to the icon or action in a tasteful way."

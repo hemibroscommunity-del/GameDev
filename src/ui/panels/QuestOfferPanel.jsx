@@ -236,7 +236,7 @@ export const QuestOfferPanel = (props) => {
             <QuestClaimButton
               className={'bt-qoffer-go' + (confirmClass ? ' ' + confirmClass : '')}
               tut="qoffer-confirm"
-              enterKey   /* v2.3.3350: Enter presses it on a computer */
+              enterKey   /* v2.3.3358: Enter presses it on a computer */
               disabled={!!confirmDisabled}
               onClick={() => { onConfirm && onConfirm(); }}
             >
@@ -249,7 +249,7 @@ export const QuestOfferPanel = (props) => {
               <button
                 type="button"
                 className="bt-qoffer-later bt-qw-later"
-                data-esc="" data-key="Esc" data-key-at="inline"   /* v2.3.3350: the offer's way out, Esc's */
+                data-esc="" data-key="Esc" data-key-at="inline"   /* v2.3.3358: the offer's way out, Esc's */
                 onClick={(e) => { e.stopPropagation(); onClose && onClose(); }}
               >
                 Not now
