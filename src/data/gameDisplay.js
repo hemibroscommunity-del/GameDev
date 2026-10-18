@@ -3654,7 +3654,18 @@ BT_AUDIO.ELEM_SOUNDS = {
    swipe's swoosh, its attack (0.02-0.32 s off its own loudness curve) a
    touch slower, peaking ~0.3 -- under the footsteps that follow, which
    already quicken with the stride.  A recording already in the game. */
-BT_AUDIO.SPRINT_PUSH = ['special-swipe', 0.02, 0.3, 2, 0.82];
+/* ═══ v2.3.3336: A RUSH OF AIR, NOT A THUMP ═══
+   Owner, playtesting: "The button for sprint needs a different sound.  It
+   sounds like a fleshy sound."  Measured (ffmpeg + an FFT of what plays,
+   offset, length and rate applied): the slowed special swipe put 49% of its
+   energy under 400 Hz -- a body's thump, the "fleshy" part -- and the swoosh
+   only on top.  The arrow's flight is the airiest recording the game has:
+   11% under 400 Hz, a breathy rush through the mids and highs, no attack
+   (13% under 400 Hz at the rate below).  Its loud part (0.03-0.27 s), a
+   touch slower so it is not the arrow you hear when you shoot, at the old
+   push's loudness above 400 Hz -- what the ear weighs -- which is vol ~4.1;
+   3.8, peaking ~0.53 (the hits keep under 0.66, there is no limiter). */
+BT_AUDIO.SPRINT_PUSH = ['arrow-fly', 0.03, 0.24, 3.8, 0.85];
 BT_AUDIO.sprintPush = function () {
   var L = this.SPRINT_PUSH;
   this._lastSprintSound = 'push';   /* what it meant to play, for the tests (mp-sprint) */
