@@ -689,7 +689,7 @@ export async function joinPair(browser, { wsPort, webPort, nameA = 'Alpha', name
   await waitMutualSight(A, B);
   /* Focus each canvas so keyboard input reaches the game loop. */
   for (const P of [A, B]) await P.page.mouse.click(500, 400).catch(() => {});
-  /* v2.3.3397: ...and close the player card that click may have opened.  The
+  /* v2.3.3398: ...and close the player card that click may have opened.  The
      two players stand together in the middle of the screen, so the focus
      click is often a tap on the other one, and a tap on a player opens their
      card (InspectPlayerPanel) -- a decision panel: it covered the clan

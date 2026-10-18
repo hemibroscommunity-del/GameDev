@@ -111,7 +111,7 @@ coupling and no caps flag.
   single arrow in an arena.
 - **Nothing about range changed.** The 675px plant cap still governs reach.
 
-## The sight is cast from where the bow will be (v2.3.3397)
+## The sight is cast from where the bow will be (v2.3.3398)
 
 The gate's promise is that a shot it lets go connects. That holds only if the
 sight is cast from the point the arrow leaves from, the bow's grip.
@@ -141,4 +141,4 @@ down, which does not weaken the claim: the monster is not a lock, so the angle
 still comes from `_aimAngle` / `_facingAngle` exactly as before),
 `mp-jetstream` (the stream's length, now asserted twice — clipped at a target,
 and full reach with the line clear), `mp-arrowshot`, and `mp-hitreal`'s bow
-rows (v2.3.3397: every shot the gate lets go, on worker monsters that move).
+rows (v2.3.3398: every shot the gate lets go, on worker monsters that move).

@@ -138,7 +138,7 @@ const MAX_H = LINE_H * 4 + BOX_PAD;
 /* Re-measure by collapsing first: scrollHeight of an element already sized to
    its content reports the CURRENT height, not the needed one, so a textarea
    that has grown can never shrink again when you delete a line. */
-/* ═══ v2.3.3397: ...AND NEVER TALLER THAN THE CARD HAS ROOM FOR ═══
+/* ═══ v2.3.3398: ...AND NEVER TALLER THAN THE CARD HAS ROOM FOR ═══
    v2.3.2139 put the lane chips (36 px) on top of this card, which grows UPWARD
    from its pinned bottom, without taking them out of MAX_H's budget: at four
    lines its top sat at y=1 on a 390x844 phone (under the notch) and off the

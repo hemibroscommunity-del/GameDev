@@ -104,7 +104,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const D = await H.newPlayer(browser, { name: 'Dan', wsPort, webPort, guest: true });
   const ALL = [A, B, C, D];
 
-  /* v2.3.3397: a real keystroke every 20 s on each player from the moment it
+  /* v2.3.3398: a real keystroke every 20 s on each player from the moment it
      is in the world (H.keepAlive, v2.3.3283).  The page logs itself out after
      two minutes without real input (v2.3.1913), and the 1 px nudges below
      reach only the worker's clock: Ana sat idle through the other three's
@@ -348,7 +348,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       errs.length === 0, errs.slice(0, 3));
   }
   _stopKeepAwake();
-  for (const stop of _alive) stop();   /* v2.3.3397: the keystrokes above */
+  for (const stop of _alive) stop();   /* v2.3.3398: the keystrokes above */
   const stillSeen = await H.readState(A, (S) => Object.keys(S.others || {}).length);
   rec.ok('all four are still connected at the end of the session',
     stillSeen >= 3, { stillSeen });

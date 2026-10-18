@@ -26,7 +26,7 @@ const inked = (a) => (a ? [...a].filter((c) => c !== '0').length : 0);
 const art = (ch, n) => ch.repeat(n) + '0'.repeat(256 - n);
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  /* v2.3.3397: DRAWN BEFORE THE CHARACTER EXISTS.  Since v2.3.2690 (#706) the
+  /* v2.3.3398: DRAWN BEFORE THE CHARACTER EXISTS.  Since v2.3.2690 (#706) the
      look is the character's stored record, and every join puts it back on the
      device, clearing a drawing the record does not have (characterRecord.js
      LOOK_BLANK).  This drew into storage after the character was made, then
@@ -48,7 +48,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const n of Object.keys(k)) { try { out[n] = localStorage.getItem(k[n]) || ''; } catch (e) { out[n] = ''; } }
     return out;
   }, KEYS);
-  /* v2.3.3397: read after the join, which blanks a drawing the record lacks */
+  /* v2.3.3398: read after the join, which blanks a drawing the record lacks */
   rec.ok('the chest drawing survived the join -- his record has it (guard)', inked(back.tattoo) === 40,
     { chest: inked(back.tattoo) });
   rec.ok('...and the BACK drawing is stored separately, at its own size -- one '
@@ -78,7 +78,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* And the half that is easy to lose: someone who has drawn only a chest
      piece must show a BARE back, not their chest wrapped round.
 
-     v2.3.3397: cleared through the game's own setter, __btSetArt (setArt
+     v2.3.3398: cleared through the game's own setter, __btSetArt (setArt
      itself, v2.3.2856), which writes the store getArt reads -- so no reload.
      A reload clears nothing now: the init script seeds the 90 cells again and
      the join puts back the record, which has them. */

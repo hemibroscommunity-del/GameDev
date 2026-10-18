@@ -370,7 +370,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      places the number at (target.x, target.y - 30), while the old
      attacker-anchored popup sat at (me.x + 20, me.y - 20).  The 20px x-offset
      separates them however close the two players are standing. */
-  /* v2.3.3397: ...at its height now.  Since v2.3.3026 a number on a player
+  /* v2.3.3398: ...at its height now.  Since v2.3.3026 a number on a player
      pops over their BAND, the name plate or HP bar, not 30 px above their
      feet (combatHelpers peerPopupY: the band's top less 34, published each
      frame as `_bandTopY`; `y - 136` with no band up) -- the run of

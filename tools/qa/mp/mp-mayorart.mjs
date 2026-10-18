@@ -9,7 +9,7 @@
  */
 import * as H from './harness.mjs';
 
-/* v2.3.3397: the WELCOME plate marked seen and the coach's tips done, with the
+/* v2.3.3398: the WELCOME plate marked seen and the coach's tips done, with the
    game's own flags (welcomeBanner.js, QuestCoach), before the first script.
    The welcome rides the quest banner, over the middle of the screen where he
    stands, for 9 s from the way in: in the sweep of 2026-10-18 the crop below
@@ -148,7 +148,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           }
         }
       }
-      /* v2.3.3397: ...and a banner or plate over him, which a tap goes through
+      /* v2.3.3398: ...and a banner or plate over him, which a tap goes through
          and so the walk above never meets: by its box against the crop's */
       for (const el of document.querySelectorAll('.bt-quest-banner, .bt-quest-plate, .bt-mayor')) {
         const b = el.getBoundingClientRect();

@@ -35,7 +35,7 @@ function sock(wsPort, name, room = ROOM) {
   w.open = () => new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://127.0.0.1:${wsPort}/ws?room=${room}&rf=1`);
     w.ws = ws;
-    /* v2.3.3397: `ws` -- which Wheels this player draws (TRAPS §196) */
+    /* v2.3.3398: `ws` -- which Wheels this player draws (TRAPS §196) */
     ws.onopen = () => ws.send(JSON.stringify({ type: 'join', id, name, protocolVersion: 2, pres: 2, ws: [1, 5], httpAuth: true,
       data: { x: 1000, y: 1000, d: 'down', z: 'town', name, hr: 'long', bt: '#22aaff' } }));
     ws.onmessage = (ev) => {
@@ -110,7 +110,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 4. the world map ── */
   await A.page.evaluate(() => window.__btWorldMapOpen(true));
-  /* v2.3.3397: ...with the two names far enough apart ON THE MAP to both be
+  /* v2.3.3398: ...with the two names far enough apart ON THE MAP to both be
      written.  A name is written only where it clears the labels placed
      before it, yours first (WorldMapOverlay.jsx label()), and since v2.3.3315
      the map at zoom 1 is the long Wheel, five times the ground in the same
