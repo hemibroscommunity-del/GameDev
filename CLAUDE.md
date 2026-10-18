@@ -4292,7 +4292,7 @@ Two protocol versions coexist; both must keep working:
       code in the vertex's texture id (`slot + 64 x code`), the colours' atlas
       bound in the last unit; built behind the loading screen
       (`setOneBatchRenderer`), the three programs if it does not link;
-      measured on top of v2.3.3445's layers: draw calls a frame 50 -> 30 in
+      measured on top of v2.3.3449's layers: draw calls a frame 50 -> 30 in
       BroTown and 71 -> 28 at a fight, program switches 33 -> 6 and 58 -> 8,
       the same frame to the pixel (`mp-onebatch`); NOT WHERE THE PICTURE IS
       DRAWN IN SOFTWARE: a software rasterizer runs every branch for every
