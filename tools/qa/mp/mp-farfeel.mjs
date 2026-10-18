@@ -18,6 +18,12 @@
  * measured distances from where the player stands.  BT_AUDIO's monsterDeath,
  * play and beep are wrapped to record what they were asked (and still play).
  *
+ * v2.3.3343: the slam's landing, the wind-up's warning, the miss and the
+ * slime's burst were beep()s, which have played nothing since v2.3.1103; they
+ * are sounds now (data/eventSounds.js slamHit, windSlam, lungeMiss,
+ * blueBurst), played by game/eventSounds.js at the same share, so these
+ * checks read the share each was asked at off its probe (window.__btCues).
+ *
  *   node tools/qa/mp/run.mjs farfeel
  */
 import * as H from './harness.mjs';
@@ -68,6 +74,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     const log = window.__qaFar;
     log.deaths.length = 0; log.plays.length = 0; log.beeps.length = 0;
+    /* v2.3.3343: the cue log emptied, and each cue's least gap forgotten
+       (two slams a few ms apart would otherwise be one sound) */
+    if (window.__btCues) window.__btCues.reset();
     S.screenShake = 0; S._camPunch = null;
     const x = Math.round(S.player.x + dx), y = Math.round(S.player.y);
     const p = Object.assign({ zone: S.currentZone }, payload);
@@ -78,10 +87,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (Array.isArray(p[k])) p[k] = p[k].map((v) => (v === '$me' ? S.myId : v));
     }
     window.__btDispatch({ type, payload: p });
-    return { deaths: log.deaths.slice(), plays: log.plays.slice(), beeps: log.beeps.slice(),
+    const cues = window.__btCues ? window.__btCues.stats.log.map((c) => ({ name: c.name, k: c.k })) : null;
+    return { deaths: log.deaths.slice(), plays: log.plays.slice(), beeps: log.beeps.slice(), cues,
       shake: S.screenShake || 0, punch: S._camPunch ? Math.hypot(S._camPunch.dx, S._camPunch.dy) : 0, at: { x, y } };
   }, { type, payload, dx });
   const r3 = (v) => Math.round(v * 1000) / 1000;
+  /* v2.3.3343: the one cue an event played, and the share it was asked at */
+  const one = (r, name) => (r.cues && r.cues.length === 1 && r.cues[0].name === name ? r.cues[0].k : null);
+  const none = (r) => !!r.cues && r.cues.length === 0;
 
   /* ── 1-3. the death sound ── */
   const k1 = await fire('monster_kill', { monsterId: m1, x: '$x', y: '$y', recipients: ['bp_someone_else'], xp: 0, gold: 0 }, FAR);
@@ -97,28 +110,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 4-6. a landed slam ── */
   const slam = { monsterId: m1, ability: 'slam', phase: 'execute', hit: true, radius: 60, x: '$x', y: '$y' };
   const s4 = await fire('monster_ability', slam, FAR);
-  rec.ok(`4. a slam that landed ${FAR} px away: no shake, no camera kick, no beep (it shook every screen)`,
-    s4.shake === 0 && s4.punch === 0 && s4.beeps.length === 0, s4);
+  rec.ok(`4. a slam that landed ${FAR} px away: no shake, no camera kick, no sound (it shook every screen)`,
+    s4.shake === 0 && s4.punch === 0 && s4.beeps.length === 0 && none(s4), s4);
   const s5 = await fire('monster_ability', slam, NEAR);
-  rec.ok(`5. a slam that landed ${NEAR} px away: the full shake (${s5.shake}), the camera's kick (${r3(s5.punch)} px) and the beep (${s5.beeps[0] && r3(s5.beeps[0].v)})`,
-    s5.shake === 8 && Math.abs(s5.punch - 8) < 0.01 && s5.beeps.length === 1 && Math.abs(s5.beeps[0].v - 0.22) < 1e-6, s5);
+  rec.ok(`5. a slam that landed ${NEAR} px away: the full shake (${s5.shake}), the camera's kick (${r3(s5.punch)} px) and its thud in full (${one(s5, 'slamHit')})`,
+    s5.shake === 8 && Math.abs(s5.punch - 8) < 0.01 && Math.abs(one(s5, 'slamHit') - 1) < 1e-6, s5);
   const k6 = ((1 - (MID - 220) / (1150 - 220)) ** 2);
   const s6 = await fire('monster_ability', slam, MID);
-  rec.ok(`6. a slam ${MID} px away: a part of each, on the hits' curve (k ${r3(k6)}: shake ${s6.shake}, kick ${r3(s6.punch)}, beep ${s6.beeps[0] && r3(s6.beeps[0].v)})`,
-    s6.shake === Math.round(8 * k6) && Math.abs(s6.punch - 8 * k6) < 0.01 && s6.beeps.length === 1 && Math.abs(s6.beeps[0].v - 0.22 * k6) < 1e-6, s6);
+  rec.ok(`6. a slam ${MID} px away: a part of each, on the hits' curve (k ${r3(k6)}: shake ${s6.shake}, kick ${r3(s6.punch)}, thud ${r3(one(s6, 'slamHit'))})`,
+    s6.shake === Math.round(8 * k6) && Math.abs(s6.punch - 8 * k6) < 0.01 && Math.abs(one(s6, 'slamHit') - k6) < 1e-6, s6);
 
   /* ── 7-8. the wind-up and the miss ── */
   /* a wind-up far off, aimed far off */
   const t7 = await fire('monster_ability', { monsterId: m1, ability: 'slam', phase: 'telegraph',
     ms: 900, radius: 60, x: '$x', y: '$y', ax: '$x', ay: '$y' }, FAR);
-  rec.ok(`7a. a wind-up ${FAR} px away, aimed there: no warning beep`, t7.beeps.length === 0, t7);
+  rec.ok(`7a. a wind-up ${FAR} px away, aimed there: no warning`, none(t7), t7);
   const me = await H.readState(P, (S) => ({ x: Math.round(S.player.x), y: Math.round(S.player.y) }));
   const t7b = await fire('monster_ability', { monsterId: m1, ability: 'slam', phase: 'telegraph',
     ms: 900, radius: 60, x: '$x', y: '$y', ax: me.x, ay: me.y }, FAR);
-  rec.ok(`7b. ...one aimed at you (its caster ${FAR} px off): the warning beep in full (${t7b.beeps[0] && r3(t7b.beeps[0].v)})`,
-    t7b.beeps.length === 1 && Math.abs(t7b.beeps[0].v - 0.1) < 1e-6, t7b);
+  rec.ok(`7b. ...one aimed at you (its caster ${FAR} px off): the slam's wind-up heard in full (${one(t7b, 'windSlam')})`,
+    Math.abs(one(t7b, 'windSlam') - 1) < 1e-6, t7b);
   const s8 = await fire('monster_ability', Object.assign({}, slam, { hit: false }), FAR);
-  rec.ok(`8. a slam that missed ${FAR} px away: no beep`, s8.beeps.length === 0 && s8.shake === 0, s8);
+  rec.ok(`8. a slam that missed ${FAR} px away: no sound, no shake`, none(s8) && s8.shake === 0, s8);
+  const s8n = await fire('monster_ability', Object.assign({}, slam, { hit: false }), NEAR);
+  rec.ok(`8b. ...one that missed beside you still hits the ground: its thud in full (${one(s8n, 'slamHit')}), no shake`,
+    Math.abs(one(s8n, 'slamHit') - 1) < 1e-6 && s8n.shake === 0, s8n);
 
   /* ── 9. the bow special's blast ── */
   const b9 = await fire('arrow_boom', { x: '$x', y: '$y', r: 80, id: 'bp_someone_else', targets: [] }, FAR);
@@ -130,8 +146,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 10. a slime's burst ── */
   const sb = await fire('monster_ability', { monsterId: m1, ability: 'burst', phase: 'execute', hit: false, radius: 110, ax: '$x', ay: '$y' }, FAR);
   const sbN = await fire('monster_ability', { monsterId: m1, ability: 'burst', phase: 'execute', hit: false, radius: 110, ax: '$x', ay: '$y' }, NEAR);
-  rec.ok(`10. a slime's burst ${FAR} px away: no beep; ${NEAR} px away: the beep in full`,
-    sb.beeps.length === 0 && sbN.beeps.length === 1 && Math.abs(sbN.beeps[0].v - 0.09) < 1e-6, { sb, sbN });
+  rec.ok(`10. a slime's burst ${FAR} px away: not heard; ${NEAR} px away: its blast in full (${one(sbN, 'blueBurst')})`,
+    none(sb) && Math.abs(one(sbN, 'blueBurst') - 1) < 1e-6, { sb, sbN });
 
   /* ── 11. the probe's curve ── */
   const curve = await P.page.evaluate(() => {

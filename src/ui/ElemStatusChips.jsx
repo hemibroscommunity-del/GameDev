@@ -19,6 +19,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { ELEM_ICON_SRC } from '@/game/elemHits.js';
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a status heard wearing off */
 
 const ROWS = [
   { key: '_chillUntil', img: ELEM_ICON_SRC['elem-frost'], label: 'Chilled', color: '#9fd8ff' },
@@ -48,12 +49,27 @@ function readChips(S, now) {
   return out;
 }
 
+/* v2.3.3343: a status that has worn off is heard, softly (it ended in
+   silence; SOUND-GAPS) -- only one that was on you a while, so a half-second
+   daze or hold is not followed by a second sound */
+const WORE_OFF_AFTER_MS = 1500;
+
 export default function ElemStatusChips({ stateRef }) {
   const [chips, setChips] = useState([]);
   useEffect(() => {
     let last = '';
+    const since = new Map();   /* a chip's key -> when it was first seen */
     const id = setInterval(() => {
-      const c = readChips(stateRef && stateRef.current, Date.now());
+      const S = stateRef && stateRef.current;
+      const now = Date.now();
+      const c = readChips(S, now);
+      const on = new Set(c.map((x) => x.r.key));
+      for (const k of on) if (!since.has(k)) since.set(k, now);
+      for (const [k, t] of since) {
+        if (on.has(k)) continue;
+        since.delete(k);
+        if (now - t >= WORE_OFF_AFTER_MS && S && !S._dying && !(S.rpg && S.rpg.hp <= 0)) cue('statusEnd');
+      }
       const sig = c.map((x) => x.r.key + x.s + '/' + x.n).join();
       if (sig !== last) { last = sig; setChips(c); }
     }, 150);
