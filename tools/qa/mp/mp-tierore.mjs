@@ -318,7 +318,9 @@ async function mineIt(P, wsPort, myId, rec, metal, t) {
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'Pickbro', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel' });
+  /* the pieces of a broken rock lie 6 s here, not 0.9: a screenshot on this
+     box takes longer than they last (effectsRenderer ?orebreakms=) */
+  const P = await H.newPlayer(browser, { name: 'Pickbro', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'orebreakms=6000' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stopAlive = H.keepAlive(P, 15000);

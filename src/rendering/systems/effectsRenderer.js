@@ -2278,7 +2278,15 @@ function nodeSpriteTex(node) {
    was (7 of 14 in 700 ms), and the pieces lie ORE_BREAK_LIE_MS before they
    fade. */
 const ORE_SPLIT_MS = 350;
-const ORE_BREAK_LIE_MS = 900;
+/* `?orebreakms=` holds them that long instead -- a test's picture on a slow
+   machine, where a screenshot takes longer than the pieces last (mp-tierore) */
+const ORE_BREAK_LIE_MS = (() => {
+  try {
+    const m = /(?:^|[?&])orebreakms=(\d+)/.exec(window.location.search || '');
+    if (m) return Math.min(60000, Math.max(100, Number(m[1])));
+  } catch (e) { /* no page: the default */ }
+  return 900;
+})();
 /* v2.3.3146: how late a frame may still play the split (the pop and the
    crack) after the break began -- past the break's own 950 ms, as a stalled
    frame is (_advanceOreBreaks); not minutes later, from a tab coming back */
