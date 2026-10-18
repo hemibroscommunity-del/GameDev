@@ -441,7 +441,7 @@ export function sheenOn() {
   _sheen = v !== '0';   /* v2.3.2887: was `v === '1'` */
   return _sheen;
 }
-/* v2.3.3334: `persist` false -- for this page only (the speed test) */
+/* v2.3.3339: `persist` false -- for this page only (the speed test) */
 export function setSheen(on, persist = true) {
   _sheen = !!on;
   if (!persist) return;

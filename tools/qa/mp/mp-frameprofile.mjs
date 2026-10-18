@@ -1,4 +1,4 @@
-/* ═══ mp-frameprofile (v2.3.3334): WHERE A FRAME'S TIME GOES, IN BROTOWN ═══
+/* ═══ mp-frameprofile (v2.3.3339): WHERE A FRAME'S TIME GOES, IN BROTOWN ═══
  *
  * The owner, 2026-10-18: "Not so sure about the performance. The framerate is
  * definitely not totally smooth. It appears to be around 30fps to 40ish fps".

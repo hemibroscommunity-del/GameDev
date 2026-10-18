@@ -48,7 +48,7 @@ export function lightFxOn() {
   return _on;
 }
 
-/* v2.3.3334: `persist` false -- for this page only (the speed test, which
+/* v2.3.3339: `persist` false -- for this page only (the speed test, which
    puts it back: a page that dies mid-test must not leave the device without
    its shadows) */
 export function setLightFx(on, persist = true) {

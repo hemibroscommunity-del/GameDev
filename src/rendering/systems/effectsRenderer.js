@@ -2774,7 +2774,7 @@ function applySquash(sp, sq, rot = 0) {
   sp.scale.set(sp.scale.x * (1 + 0.6 * sq), sp.scale.y * (1 - sq));
 }
 
-/* ═══ v2.3.3334: AN EMPTY GRAPHIC IS NOT CLEARED AGAIN ═══
+/* ═══ v2.3.3339: AN EMPTY GRAPHIC IS NOT CLEARED AGAIN ═══
    Found by the frame-rate hunt after the owner's "around 30fps to 40ish fps":
    Graphics.clear() on a graphic that is already empty draws nothing new, but
    it still marks the graphic changed, and Pixi answers any change to a
@@ -5920,7 +5920,7 @@ export class EffectsRenderer {
   /* ── Screen Flashes ── */
   _updateScreenFlash(S, viewW, viewH, now) {
     const gfx = this.flashOverlay;
-    clearIfDrawn(gfx);   /* v2.3.3334 */
+    clearIfDrawn(gfx);   /* v2.3.3339 */
 
     if (S._damageFlash && now - S._damageFlash < 200) {
       const age = (now - S._damageFlash) / 200;
@@ -5964,7 +5964,7 @@ export class EffectsRenderer {
   /* ── Atmosphere ── */
   _updateAtmosphere(S, viewW, viewH, now) {
     const gfx = this.atmosphereGfx;
-    clearIfDrawn(gfx);   /* v2.3.3334 */
+    clearIfDrawn(gfx);   /* v2.3.3339 */
 
     const zone = ZONES[S.currentZone];
     if (zone?.atmosphere) {
@@ -8854,7 +8854,7 @@ export class EffectsRenderer {
   /* ── HUD (screen-space) ── */
   _updateHUD(S, viewW, viewH, now) {
     const gfx = this.hudGfx;
-    clearIfDrawn(gfx);   /* v2.3.3334 */
+    clearIfDrawn(gfx);   /* v2.3.3339 */
 
     // Desktop aim reticle
     if (S._mouseWorldX != null && S._mouseWorldY != null) {

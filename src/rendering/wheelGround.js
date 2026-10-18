@@ -48,10 +48,10 @@ import { paletteOn, makePaletteSource, paletteStats } from './paletteTex.js';   
 const MAX_IN_FLIGHT = 3;
 const MARGIN = 96;
 const KEEP_PX = 96;
-/* v2.3.3334: how far past the view the pieces must all be laid before the
+/* v2.3.3339: how far past the view the pieces must all be laid before the
    overview under them is put away (a shake, a rounding of the camera) */
 const UNDER_PAD = 48;
-/* v2.3.3334: QA -- the ground drawing now, and whether the pieces alone look
+/* v2.3.3339: QA -- the ground drawing now, and whether the pieces alone look
    exactly as the pieces over the overview do (mp-speedtest): the pieces root
    drawn twice, the overview hidden and shown, over the view's rectangle */
 let _liveGround = null;
@@ -123,7 +123,7 @@ export class WheelGround {
   /* v2.3.3076: `app`, the Pixi application (tileRenderer's), to put each
      piece on the GPU as it is placed (_toGpu) */
   constructor(parent, app) {
-    _liveGround = this;   /* v2.3.3334: QA (__btUnderSame) */
+    _liveGround = this;   /* v2.3.3339: QA (__btUnderSame) */
     this._app = app || null;
     this.root = new Container();
     this.root.label = 'wheelGround';
@@ -198,7 +198,7 @@ export class WheelGround {
     const j0 = clampJ(Math.floor(ny0 / cs)), j1 = clampJ(Math.floor(ny1 / cs));
     const vi0 = clampI(Math.floor(cx / cs)), vi1 = clampI(Math.floor((cx + viewW) / cs));
     const vj0 = clampJ(Math.floor(cy / cs)), vj1 = clampJ(Math.floor((cy + viewH) / cs));
-    /* ═══ v2.3.3334: THE OVERVIEW UNDER THE PIECES ONLY WHILE ONE IS MISSING ═══
+    /* ═══ v2.3.3339: THE OVERVIEW UNDER THE PIECES ONLY WHILE ONE IS MISSING ═══
        Found by the frame-rate hunt after the owner's "around 30fps to 40ish
        fps": the whole Wheel's overview was drawn under the ground every frame,
        one full screen of blended pixels that the pieces, laid edge to edge and

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { WORLDVIEW_EXITS } from '../../data/index.js';
-import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3334: the speed test, measured on this phone */
+import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
 
 /* ═══ v2.3.2240: THE OWNER'S TEST PANEL ═══
  *
@@ -541,7 +541,7 @@ export const DevPanel = ({ onClose }) => {
           );
         })()}
 
-        {/* ═══ v2.3.3334: THE SPEED TEST ═══
+        {/* ═══ v2.3.3339: THE SPEED TEST ═══
             Keyless and on this phone only (game/speedTest.js): what makes a
             frame slow is mostly the phone's graphics chip, which no test
             machine has.  The panel closes first, so the test times the game

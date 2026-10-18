@@ -7043,7 +7043,7 @@ the page (`F.createMonster`) is the page's alone, and needs neither.
 **Receipt:** mp-orbrange's new guard (the worker holds the staff), and its
 interceptions back to 5 of 5 as on main.
 
-## 208. "Clearing a Graphics that is already empty costs nothing" (v2.3.3334)
+## 208. "Clearing a Graphics that is already empty costs nothing" (v2.3.3339)
 
 **Tempting:** draw a screen flash, a HUD mark or a minimap road the simple way:
 `clear()` it at the top of every frame and draw whatever is needed. When nothing

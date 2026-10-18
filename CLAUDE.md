@@ -3756,7 +3756,7 @@ Two protocol versions coexist; both must keep working:
 
   The fix order is in the review. Re-run the lab after any change to a
   harvest, cook, move or hit path.
-- Frame rate on a phone (v2.3.3334, docs/specs/speed-test.md): the QA box
+- Frame rate on a phone (v2.3.3339, docs/specs/speed-test.md): the QA box
   draws in software (under 3 frames a second), so a phone's frame rate is
   measured ON the phone. The test panel's **Speed test** (no key,
   `src/game/speedTest.js`) times the frames with everything on, then with the

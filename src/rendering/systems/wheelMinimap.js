@@ -193,7 +193,7 @@ export class WheelMinimap {
     this.places = new Graphics();    /* camps, passes, gates, landmarks: drawn once */
     this.townMark = new Graphics();  /* the town's square: v2.3.3146, only while its buildings are not known */
     this.marks = new Container();    /* bros and monsters: every frame */
-    this.road = new Graphics();      /* v2.3.2992: the gold road to the quest's star (v2.3.3334: redrawn when it moves) */
+    this.road = new Graphics();      /* v2.3.2992: the gold road to the quest's star (v2.3.3339: redrawn when it moves) */
     this.partyRims = new Graphics(); /* v2.3.3277: your party's marks' rims, over theirs: every frame */
     this.pan.addChild(this.lines, this.buildings, this.places, this.townMark, this.road, this.marks, this.partyRims);
     this.player = new Sprite(this.icons.self || this.dotTex);
@@ -624,7 +624,7 @@ export class WheelMinimap {
     let quest = null;
     try { quest = questRoutePoint(S.currentZone, S.rpg || null, S); } catch (e) { quest = null; }
     let questEdge = false, road = null;
-    /* v2.3.3334: the road is redrawn only when it moved (roadSig below), as
+    /* v2.3.3339: the road is redrawn only when it moved (roadSig below), as
        the party's rims are: cleared and drawn again every frame, it was a
        Graphics change a frame, and each one rebuilds the screen's whole draw
        list (the frame-rate hunt after the owner's "30fps to 40ish fps") */
@@ -658,7 +658,7 @@ export class WheelMinimap {
       }
       this._mark((pbx + dx * t - this.pan.x) / SCALE, (pby + dy * t - this.pan.y) / SCALE, 'star', C_QUEST_STAR, QUEST_STAR_PX);
     }
-    if (!roadSig && this._roadSig) { this.road.clear(); this._roadSig = ''; }   /* v2.3.3334: no road now */
+    if (!roadSig && this._roadSig) { this.road.clear(); this._roadSig = ''; }   /* v2.3.3339: no road now */
     for (let i = this.used; i < this.pool.length; i++) this.pool[i].visible = false;
     /* v2.3.3023: the way home -- when the town's centre is off the box, its
        badge on the box's inner edge, on the line from you to it (the quest's

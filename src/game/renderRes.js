@@ -1,4 +1,4 @@
-/* ═══ v2.3.3334: HOW MANY CANVAS PIXELS A CSS PIXEL ═══
+/* ═══ v2.3.3339: HOW MANY CANVAS PIXELS A CSS PIXEL ═══
  *
  * The owner, 2026-10-18: "Not so sure about the performance. The framerate is
  * definitely not totally smooth. It appears to be around 30fps to 40ish fps".
