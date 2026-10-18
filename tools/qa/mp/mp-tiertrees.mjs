@@ -405,7 +405,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (stood) {
         const invBefore = await srvInv(wsPort, myId);
         const started = await tapTree(P, t.id);
-        rec.ok(`maple: tapping it from ${Math.round(dist)} px off starts a chop`, started === true, { dist });
+        /* v2.3.3427: and if not, what the taps met -- in the second sweep of
+           2026-10-18 six taps from 280 px started nothing, out among the sky
+           land's level 31-40 monsters, with nothing to say why: where you stood
+           then, a monster the tap locked or the nearest one, the harvest */
+        const why = started ? null : await P.page.evaluate((nid) => {
+          const S = window._gameState.current;
+          const n = (S.gatherNodes || []).find((g) => g.id === nid);
+          const P0 = S.player;
+          const ms = (S.monsters || []).filter((m) => m && m.alive !== false && m.hp > 0)
+            .map((m) => ({ id: m.id, d: Math.round(Math.hypot(m.x - P0.x, m.y - P0.y)), dn: n ? Math.round(Math.hypot(m.x - n.x, m.y - n.y)) : null }))
+            .sort((a, b) => a.d - b.d).slice(0, 3);
+          const L = S.lockedTarget;
+          return { at: { x: Math.round(P0.x), y: Math.round(P0.y) }, dist: n ? Math.round(Math.hypot(n.x - P0.x, n.y - P0.y)) : null,
+            node: n ? { hp: n.hp, alive: n.alive !== false, respawnAt: n.respawnAt || null } : null,
+            lock: L ? { type: L.type, id: L.id, src: L.src || null } : null, near: ms, dying: !!S._dying,
+            ex: S._extraction ? { skill: S._extraction.skill, status: S._extraction.status } : null,
+            harvest: window.__btHarvest ? window.__btHarvest() : null };
+        }, t.id).catch((e) => ({ err: String(e).slice(0, 200) }));
+        rec.ok(`maple: tapping it from ${Math.round(dist)} px off starts a chop`, started === true, { dist, why });
         const ready = started ? await H.waitFor(P, (S) => (S._extraction ? S._extraction.status : null), (v) => v === 'ready',
           { timeout: 60000, label: 'the maple\'s hits land' }).catch(() => null) : null;
         const probe = ready ? await P.page.evaluate(() => (window.__btHarvest ? window.__btHarvest() : null)) : null;
