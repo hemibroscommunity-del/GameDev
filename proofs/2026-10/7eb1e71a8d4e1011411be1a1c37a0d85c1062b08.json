@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7eb1e71a8d4e1011411be1a1c37a0d85c1062b08",
+  "tree": "ffddf7df0dcfd9677a3212a324119a438b288594",
+  "committedAt": "2026-10-18T12:04:43-07:00",
+  "subject": "Halloween week starts today (Oct 18), the Zombie Shuffle's tile reads \"Zombie\", and before/after pictures of every change (v2.3.3463) (#1006)",
+  "files": 6021,
+  "bytes": 677689868,
+  "listingSha256": "a5d0cdf808a1cb64d699316256812c21bd9635576a5b1d98897bdb36b18b7cb1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
