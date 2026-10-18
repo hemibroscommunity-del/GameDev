@@ -338,3 +338,30 @@ length and rate applied), the slowed special swipe put 49% of its energy under
 (0.03-0.27 s, rate 0.85, vol 3.8): 13% under 400 Hz, a breathy rush through the
 mids and highs, at the old push's loudness above 400 Hz (what the ear weighs),
 peaking ~0.53. Still a recording already in the game.
+
+## v2.3.3443: the push-off is the owner's grunt
+
+The owner: *"the noise for sprint needs to be changed. It's a loud incoherent
+sound for sprint button. Make it a grunt or something"*, with their recording,
+"Grunt 1" (freesound_community, 85280; CREDITS.md). On one scale -- the RMS of
+the loudest 300 ms above 150 Hz, the monster noises' measure -- the arrow's
+flight at 3.8 was 1.8x a melee hit's loudness: the "loud". And a sped-up rush
+of air is not a thing a body does: the "incoherent".
+
+- `tools/audio/cut_sprint_grunt.py` finds the grunt in the recording (0.57 s
+  of silence, then about half a second of grunt), cuts 0.56-1.17 s mono with
+  short fades, and writes `public/sfx/voice/sprint-grunt.mp3` (10.5 KB) and
+  its level, `src/data/sprintGrunt.js` (GENERATED): half a melee hit's
+  loudness (vol 0.073), about a quarter of the push it replaces.
+- `BT_AUDIO.SPRINT_PUSH` is `['sprint-grunt', 0, dur, vol, 1]`: sprintPush
+  plays it whole with a few percent of pitch either way, and another player's
+  sprint starting (wsClient.js, peerOwn 'peerSprint') reads the same layer at
+  their share by distance. In SFX_MANIFEST, so it is decoded on the loading
+  screen (~0.12 MB).
+- The sound as a sprint runs dry (`sprintOut`, data/eventSounds.js, v2.3.3343)
+  is still the arrow's flight, slowed: not part of this ask.
+
+**Tests:** mp-sprintpeer (both pages decode it on the loading screen; the
+runner's push plays the grunt whole at its level, with no arrow flight; the
+watcher hears the same grunt no louder -- 0.0365 at 160 px), and mp-sprint as
+before.

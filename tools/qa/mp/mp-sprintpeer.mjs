@@ -15,6 +15,10 @@
  *   3. once the runner walks again, the watcher's copy walks too: no `spr`,
  *      the loop back to its walking length;
  *   4. no page errors on either side.
+ * v2.3.3443: and the push-off is the owner's GRUNT ("the noise for sprint
+ * needs to be changed ... Make it a grunt"): decoded on the loading screen on
+ * both pages, played whole at its level as the runner's sprint starts, and
+ * heard by the watcher (peerOwn's 'peerSprint') no louder; no arrow flight.
  * A picture of the watcher's view: tools/qa/mp/out/sprintpeer-watcher.png.
  */
 import * as H from './harness.mjs';
@@ -87,6 +91,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const fpsOn = () => { window.__rafN = 0; window.__rafT0 = performance.now(); (function f() { window.__rafN++; requestAnimationFrame(f); })(); };
   const fpsOf = () => Math.round(window.__rafN / Math.max(0.001, (performance.now() - window.__rafT0) / 1000) * 10) / 10;
   await A.page.evaluate(() => { window.__btSprintDust = 0; if (window.BT_AUDIO) window.BT_AUDIO._lastSprintSound = null; });
+  /* v2.3.3443: every sample either page asks for from here on, and whether it
+     played (BT_AUDIO.play hands back a source only for a decoded sample) */
+  const logPlays = () => {
+    const A0 = window.BT_AUDIO;
+    window.__btPlayLog = [];
+    if (!A0 || A0.__logged) return;
+    const play = A0.play;
+    A0.play = function (key, opts) {
+      const h = play.call(this, key, opts);
+      window.__btPlayLog.push({ key, vol: opts && opts.vol, ok: !!h });
+      return h;
+    };
+    A0.__logged = true;
+  };
+  await A.page.evaluate(logPlays);
+  await B.page.evaluate(logPlays);
+  const gruntIn = (P) => P.page.evaluate(() => {
+    const A0 = window.BT_AUDIO;
+    return { layer: A0 && A0.SPRINT_PUSH && A0.SPRINT_PUSH[0], decoded: !!(A0 && A0._samples && A0._samples['sprint-grunt']),
+      vol: A0 && A0.SPRINT_PUSH && A0.SPRINT_PUSH[3] };
+  });
+  const gA = await gruntIn(A), gB = await gruntIn(B);
+  rec.ok('the sprint\'s push-off is the owner\'s grunt, decoded on the loading screen on both pages (v2.3.3443)',
+    gA.layer === 'sprint-grunt' && gA.decoded && gB.decoded && gA.vol > 0 && gA.vol < 0.2, { gA, gB });
   await A.page.evaluate(fpsOn);
   await B.page.evaluate(fpsOn);
   await B.page.evaluate(() => { window.__btPeerSprintDust = 0; window.__btPeerJogCyc = Object.create(null); });
@@ -112,6 +140,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.keyboard.up('Shift');
   rec.ok(`runner: the first stride pushes off (${runner.push}) and every footfall of the sprint kicks up dust (${runner.dust} puffs)`,
     runner.push === 'push' && runner.dust >= 2, runner);
+  /* v2.3.3443: what the push really played, on each side */
+  const playsA = await A.page.evaluate(() => window.__btPlayLog || []);
+  const playsB = await B.page.evaluate(() => window.__btPlayLog || []);
+  const gruntA = playsA.filter((p) => p.key === 'sprint-grunt');
+  const gruntB = playsB.filter((p) => p.key === 'sprint-grunt');
+  rec.ok(`runner: the push-off played the grunt (${gruntA.length}x, at ${gruntA[0] && gruntA[0].vol}), whole and at its level, and no arrow flight`,
+    gruntA.length >= 1 && gruntA[0].ok && Math.abs(gruntA[0].vol - gA.vol) < 1e-9 && !playsA.some((p) => p.key === 'arrow-fly'),
+    { gruntA, others: playsA.filter((p) => p.key !== 'sprint-grunt').slice(0, 8) });
+  rec.ok(`watcher: the runner's sprint starting is heard as the same grunt, no louder (${gruntB[0] && gruntB[0].vol})`,
+    gruntB.length >= 1 && gruntB[0].ok && gruntB[0].vol > 0 && gruntB[0].vol <= gA.vol + 1e-9 && !playsB.some((p) => p.key === 'arrow-fly'),
+    { gruntB, others: playsB.filter((p) => p.key !== 'sprint-grunt').slice(0, 8) });
   const ratio = watch && watch.cyc ? watch.cyc.base / watch.cyc.cyc : 0;
   rec.ok(`watcher: the worker says the runner sprints, and their legs run ${ratio.toFixed(2)}x quicker (the loop ${watch && watch.cyc && Math.round(watch.cyc.cyc)} ms against ${watch && watch.cyc && Math.round(watch.cyc.base)})`,
     !!watch && watch.sp && Math.abs(ratio - MULT) < 0.01, watch);
