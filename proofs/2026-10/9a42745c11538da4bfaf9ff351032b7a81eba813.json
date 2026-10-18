@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9a42745c11538da4bfaf9ff351032b7a81eba813",
+  "tree": "74251d76693ab2950cb25b801813637a513fe26c",
+  "committedAt": "2026-10-18T01:17:05-07:00",
+  "subject": "One change at a time to a character's login record; a join a Forget shut out is put out (v2.3.3372) (#988)",
+  "files": 5819,
+  "bytes": 639507551,
+  "listingSha256": "802a4e1d5373010fd5e00d79f8fd7936c3688076f06e4b49a0541c1212575499",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
