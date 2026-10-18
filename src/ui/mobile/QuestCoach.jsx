@@ -179,7 +179,7 @@ function _markTooBig(L, r) {
   return bad;
 }
 
-/* v2.3.3341: is this a mouse-driven browser (game.css's own test) -- asked
+/* v2.3.3343: is this a mouse-driven browser (game.css's own test) -- asked
    every frame, so the query list is made once */
 let _fineMq = null;
 function _finePointer() {
@@ -223,7 +223,7 @@ function measure(anchors, L, S) {
     return null;
   }
   for (const a of anchors) {
-    /* v2.3.3341: on a computer the right button comes back only for a harvest
+    /* v2.3.3343: on a computer the right button comes back only for a harvest
        (game.css `[data-harvest]`), where its lessons -- "Hold to attack", the
        special's swipe -- would ring a press that harvests.  They never showed
        on a computer before (the button measured 0, above), and still do not. */

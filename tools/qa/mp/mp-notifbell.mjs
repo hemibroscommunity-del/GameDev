@@ -337,7 +337,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       false, { why: 'the feed never reopened with a list to tap', reopened });
   }
 
-  /* ═══ v2.3.3341: THE SHUT BELL STANDS DOWN UNDER A WINDOW ═══
+  /* ═══ v2.3.3343: THE SHUT BELL STANDS DOWN UNDER A WINDOW ═══
      The UI review's numbered pictures showed the bell painted across a
      building window's bottom row (the Blacksmith's Forge tab): this shell is
      outside the game's wrap, so it paints over an in-wrap window whatever the
