@@ -184,7 +184,7 @@ async function body({ P, wsPort, rec, OUT, errors, shots }) {
 
   await P.page.evaluate(SAMPLER);
   const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
-  /* v2.3.3461: at the land's town end, among its level 1s, as mp-wheelnear
+  /* v2.3.3465: at the land's town end, among its level 1s, as mp-wheelnear
      and mp-petsmatter fight.  points[0] is half way along the first stretch
      (depth 0.5), and since v2.3.3320 the stretch climbs 1 to 5: level 3 fire
      goblins there killed the fresh character in 13 s, and on the five-times
@@ -196,7 +196,7 @@ async function body({ P, wsPort, rec, OUT, errors, shots }) {
   if (!at) return;
 
   /* walk out (untouchable on the way: the fight is the test, not the road) */
-  /* v2.3.3461: ...and 150 px past it, AWAY from BroTown.  The town end lies
+  /* v2.3.3465: ...and 150 px past it, AWAY from BroTown.  The town end lies
      ~200 px outside the safe ground (WHEEL_SAFE_R), and the old (+200, +200)
      stood the character 36 px from its edge, by no monster (the re-run of
      2026-10-18: none came, 0 swings in 183 s). */
@@ -259,7 +259,7 @@ async function body({ P, wsPort, rec, OUT, errors, shots }) {
       if (await tapSel(P, '[data-jump]', 41)) jumps++;
     }
     if (s.m.d > 70) {
-      /* v2.3.3461: closed by the harness's hops (the page's place, then its
+      /* v2.3.3465: closed by the harness's hops (the page's place, then its
          move to the worker), stopping 45 px short of it -- not by keys held a
          set time: on this box a held key walks only the few frames that fall
          inside it (TRAPS §200), and the re-run of 2026-10-18 never came within

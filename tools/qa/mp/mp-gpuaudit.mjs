@@ -180,7 +180,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const P = await H.newPlayer(browser, { name: 'gpuaudit', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', init: GPU_SHIM });
   const rows = {};
-  /* v2.3.3461: a real keystroke every 20 s (H.keepAlive) -- the page logs
+  /* v2.3.3465: a real keystroke every 20 s (H.keepAlive) -- the page logs
      itself out after two minutes with no input, and this scenario moves only
      by H.hopTo, which is none.  On the long Wheel (v2.3.3315) the way out to
      the ember land outlasts the two minutes: in the second sweep of
@@ -222,7 +222,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rows.atFight = await audit(P);
       print('at the fight', rows.atFight);
       await P.page.evaluate(() => { window.__gpuPeakReset(); window.__cachePeakReset(); window.__townSeenReset(); });
-      /* v2.3.3461: the death watched by the page itself, every 200 ms, with
+      /* v2.3.3465: the death watched by the page itself, every 200 ms, with
          the zones it passes through and the lowest HP -- the loop below looks
          only between hops, seconds apart on this box -- and what changed
          when, for the log: the zone, the death, the trip's wish and its
@@ -246,7 +246,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       });
       let died = false;
       const tDie = Date.now();
-      /* v2.3.3461: and brought to 1 HP by the test lever (devtools.js
+      /* v2.3.3465: and brought to 1 HP by the test lever (devtools.js
          _devVitals, as mp-nomansland's one-blow kill), again every 15 s, so
          the next goblin's blow is the death whatever the levels: the trip
          after it is what this measures, not the fight */

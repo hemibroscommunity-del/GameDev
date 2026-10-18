@@ -92,7 +92,7 @@ const look = (P) => P.page.evaluate(() => {
 
 const centre = (b) => ({ x: b.x + b.w / 2, y: b.y + b.h / 2 });
 const overlaps = (a, b) => !!(a && b) && a.x < b.r && b.x < a.r && a.y < b.b && b.y < a.b;
-/* v2.3.3461: until the button has drawn what the game holds -- the same slot,
+/* v2.3.3465: until the button has drawn what the game holds -- the same slot,
    as many weapons, the same picture (window.__btWeaponChip is the game's side).
    The button reads the game on a 200 ms timer, and on this box a frame takes
    300-600 ms, so a set wait after a change could look before it had read it:

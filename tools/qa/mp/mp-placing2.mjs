@@ -23,7 +23,7 @@ const PHONE = { width: 390, height: 844 };
 const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 /* a spot on a land's road, a stage in (land:id:tier as render-wheel-objects
    says it), as game px: worked out in Node from the plan.
-   v2.3.3461: on EACH run's own Wheel.  The `?placing=2` preview is always the
+   v2.3.3465: on EACH run's own Wheel.  The `?placing=2` preview is always the
    short Wheel (v2.3.3315: every preview is) and the game itself the long one;
    the spots were worked out on the short one for both, so the walker without
    the switch stood in the long Wheel's sea, nothing drawn there and no tree
@@ -92,7 +92,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const first = await settle(P, 120);
     console.log(`    ${tag} arrival: ${JSON.stringify(first.o)}`);
     await H.devOp(wsPort, 'quests', myId);
-    /* v2.3.3461: 30 minutes -- on the long Wheel the walk out to the four
+    /* v2.3.3465: 30 minutes -- on the long Wheel the walk out to the four
        spots alone is ~15,600 px and back across (it was 10) */
     await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 30 });
     const at = {};
@@ -130,7 +130,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     got[tag] = { first, at, errors, see };
     await P.ctx.close().catch(() => {});
   }
-  /* v2.3.3461: THE YARDSTICK FOR v2's TIME: v1 placed LIVE, as v2 is.  Since
+  /* v2.3.3465: THE YARDSTICK FOR v2's TIME: v1 placed LIVE, as v2 is.  Since
      v2.3.3298 the game reads v1's places from the bake (129 ms on this box),
      so "2.5 x v1" measured a file read and the 4,000 ms floor alone judged
      v2's 4,119 (the sweep of 2026-10-18).  `?plaintown` is v1 worked out on
