@@ -1206,6 +1206,46 @@ export function equipWeapon(P, wantType, stashSlot, activeSlot) {
   }, { wantType, slot: stashSlot, activeSlot });
 }
 
+/* ═══ v2.3.3334: A BOW OR A STAFF THE WORKER HOLDS, AS A REAL PLAYER'S ═══
+ * Since v2.3.3334 a bow or staff hit on a monster needs that weapon in the
+ * WORKER's own slot (server/src/hitproof.js), and the phone's copy is never
+ * asked: a bow written into the page (`S.rpg.rangedWeapon = {...}`) fires,
+ * flies and pops its numbers there, and the worker refuses every hit it lands
+ * -- its monsters unhurt, unshoved, never killed.  A scenario whose bow or
+ * staff hits must land arms the worker the way a player is armed: the test
+ * panel's starter weapons into the bag (/dev/kit), then the game's own
+ * equip_request for each kind asked, the phone's own weapon taken out of its
+ * hand first (equipWeapon takes one already held as equipped and sends
+ * nothing).  Resolves to the kinds the WORKER put in hand, read off its answer:
+ * its player_state takes the weapon out of the bag, and nothing else on the
+ * phone moves the bag.  The scenario may write its own weapon into the page
+ * afterwards; the worker keeps the starter.  A monster made on the page
+ * (F.createMonster) is the page's alone and needs none of this.  TRAPS §207. */
+export async function armWorker(P, wsPort, playerId, kinds = ['bow', 'staff']) {
+  const SLOT = { bow: ['rangedWeapon', 'ranged'], staff: ['staffWeapon', 'staff'] };
+  const look = (k, s) => P.page.evaluate(({ k, s }) => {
+    const R = (window._gameState && window._gameState.current && window._gameState.current.rpg) || {};
+    return { inBag: (R.weaponStash || []).filter((w) => w && w.type === k).length, held: !!(R[s] && R[s].type === k) };
+  }, { k, s });
+  await devOp(wsPort, 'kit', playerId, { what: 'weapons' }).catch(() => null);
+  const armed = [];
+  for (const k of kinds) {
+    const [slot, active] = SLOT[k];
+    let v = await look(k, slot);
+    for (let i = 0; i < 60 && !v.inBag; i++) { await P.page.waitForTimeout(250); v = await look(k, slot); }
+    if (!v.inBag) continue;
+    const before = v.inBag;
+    await P.page.evaluate((s) => { const R = window._gameState.current.rpg; if (R) R[s] = null; }, slot);
+    await equipWeapon(P, k, slot, active);
+    for (let i = 0; i < 60; i++) {
+      v = await look(k, slot);
+      if (v.held && v.inBag === before - 1) { armed.push(k); break; }
+      await P.page.waitForTimeout(250);
+    }
+  }
+  return armed;
+}
+
 /* ═══ v2.3.2435: THE OWNER'S TEST KIT, OVER HTTP ═══
  * The four /api/admin/dev ops (devtools.js).  They are POSTs carrying the
  * player id IN THE BODY — only /dev/state takes it as a query param — and a
@@ -1692,6 +1732,45 @@ export async function advanceNpcDialogue(P, { max = 12, onChunk = null } = {}) {
   }
   return P.page.evaluate(() => (document.querySelector('.bt-qoffer') ? 'offer'
     : document.querySelector('.bt-npcdlg') ? 'dialogue' : null));
+}
+
+/* ═══ v2.3.3335: A QUEST WITH NOTHING TO CHOOSE IS CLAIMED ON HIS LAST LINE ═══
+ * A quest that pays no XP (tut_1 since v2.3.3335 -- the owner: "Makes no
+ * sense to have to choose xp in something you've never used yet" -- and
+ * Beastmaster Bro's) is the AUTO REWARD (QuestPanel, v2.3.3030): the last
+ * line's "Claim reward" pays at once and he goes straight on to his next
+ * quest.  There is no claim panel, so advanceNpcDialogue would walk on into
+ * the NEXT quest's lines; this walks to that button and taps it ONCE, a real
+ * click (see confirmQuestOffer for why).  Returns true when it was tapped --
+ * or, with `press: false`, when it was reached and left unpressed. */
+export async function claimOnLastLine(P, { max = 12, timeout = 6000, press = true } = {}) {
+  await waitClaimedDone(P);
+  for (let i = 0; i < max; i++) {
+    const label = await P.page.evaluate(() => {
+      const b = document.querySelector('.bt-npcdlg-next');
+      return b ? (b.innerText || '').trim() : null;
+    });
+    if (label == null) return false;
+    if (/^claim reward$/i.test(label)) {
+      if (!press) return true;
+      try {
+        await P.page.locator('.bt-npcdlg-next:visible').first().click({ timeout });
+      } catch (e) {
+        return false;
+      }
+      await P.page.waitForTimeout(500);
+      return true;
+    }
+    const clicked = await P.page.evaluate(() => {
+      const b = document.querySelector('.bt-npcdlg-next');
+      if (!b) return false;
+      b.click();
+      return true;
+    });
+    if (!clicked) return false;
+    await P.page.waitForTimeout(220);
+  }
+  return false;
 }
 
 /** Tap the offer panel's one primary — Accept Quest, or Claim Reward.

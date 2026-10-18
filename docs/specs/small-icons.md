@@ -58,3 +58,29 @@ four sheets of it: *"Here's the art assets for the 'small icons'"*.
   eight buff badges and the Defense popup. Screenshots in
   `tools/qa/mp/out/smallicons-*.png`.
 - `mp-btnskin` and `mp-tapact` read the ability buttons and the right stick.
+
+## The special attacks, one for each weapon (v2.3.3336)
+
+The owner, with a fifth sheet: *"Also use these icons instead for the special
+attacks (bow, staff, sword)"* -- a volley of golden arrows, a crystal staff in a
+blue swirl, a sword in a golden whirl (`assets/icons-source/sheet-small-5-specials.png`).
+
+- They replace the winged star on the Special button, by the weapon whose
+  special the press fires (`controlSkin.specialArtKind`: the same test of the
+  weapon's type as `playerActions.specialAttack` -- a bow, a staff, anything
+  else the sword).
+- Each was drawn as a WHOLE button: its own gold ring and slate face. The
+  game's button keeps its own ring, because the ring carries the cooldown arc,
+  the grey and the lit states. So the cutter keeps only the disc INSIDE the
+  owner's ring (`INNER_DISC`, `inner_disc` in `tools/ui/cut-small-icons.py`:
+  the ring's inner edge found on 72 rays, the median taken, the circle cut 2 px
+  inside it), written edge to edge at 160 px, and `SpecialFace` draws it
+  filling the face inside the game's ring. A `-grey` copy each for the
+  cooldown and no-mana states; the press's shade is drawn over the picture
+  (`.bt-skin-faceart::after`).
+- `--only <sheet>` cuts one sheet without re-encoding the icons already in the
+  game.
+- Warmed on the loading screen with the other ability pictures
+  (`ABILITY_ART_URLS`): six pictures of 160 x 160, ~0.6 MB decoded.
+- `mp-specialart` checks each weapon's picture, its fit, its grey states and
+  the press.

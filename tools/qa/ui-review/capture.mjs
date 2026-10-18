@@ -1,4 +1,4 @@
-/* ═══ v2.3.3328: EVERY SCREEN, IN EVERY VIEW, LABELLED AND BUNDLED ═══
+/* ═══ v2.3.3341: EVERY SCREEN, IN EVERY VIEW, LABELLED AND BUNDLED ═══
  *
  * The owner, 2026-10-18: "I'll also want screenshots labelled and bundled for
  * all UI elements in each view (portrait, landscape, desktop, etc) so I can

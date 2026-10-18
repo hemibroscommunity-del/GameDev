@@ -47,6 +47,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
 
+  /* v2.3.3334: a bow ON THE WORKER, as a real archer holds one.  This file
+     writes its bow into the page (below), and until then an arrow landed
+     without one; since v2.3.3334 a bow hit needs the worker's own bow
+     (server/src/hitproof.js), and with the page's alone no number was ever
+     dealt to the monster (TRAPS §207). */
+  const myId = await H.readState(P, (S) => S.myId);
+  const armed = await H.armWorker(P, wsPort, myId, ['bow']);
+  rec.ok('the worker equipped a bow for this player, as for a real archer (guard)', armed.includes('bow'), { armed });
+
   /* meadow: server-driven, real monsters (town monsters are client-side). */
   await P.page.evaluate(() => {
     const S = window._gameState.current;

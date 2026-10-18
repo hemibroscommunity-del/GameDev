@@ -1,4 +1,4 @@
-# Every button, sideways and on a computer (v2.3.3328)
+# Every button, sideways and on a computer (v2.3.3341)
 
 The owner, 2026-10-18: "Make sure all actions/buttons can be completed in
 landscape mode and on the computer. For instance I don't think you can harvest
@@ -13,8 +13,8 @@ button on every screen, "is it on the screen, and does a press there reach it?"
 
 | where | what was wrong | fix | test |
 |---|---|---|---|
-| sideways (and upright at the edge) | An invisible 18 px strip down the screen's left edge (the iOS swipe-back guard, v2.3.112) lay over every control there: the logout, a page's ◂ back arrow, the ▴/▼ fold chip; upright the band's CLOSE pill and first bag column. Their left part took no tap. | The guard is a listener now (BroTown.jsx `EDGE_CONTROL`): a touch starting at the edge is still swallowed on the world, but goes to a control it lands on. TRAPS §206. | mp-edgeguard 1-5 |
-| sideways | Diego's shop: nothing could be **sold**. The bag is the side column sideways, the shop's drawer covered the ▴ chip that opens it, and opening it closed the shop. His shelf also overflowed its drawer (111 px slots), pushing "His shelf" under his name. | The shop opens your bag column with it and sits beside it (ShopkeeperPanel, BroTown keeps the shop open for that page); shelf slots at most 68 px (an upright phone's are 67.6, unchanged). TRAPS §207. | mp-shopkeeper (sideways part) |
+| sideways (and upright at the edge) | An invisible 18 px strip down the screen's left edge (the iOS swipe-back guard, v2.3.112) lay over every control there: the logout, a page's ◂ back arrow, the ▴/▼ fold chip; upright the band's CLOSE pill and first bag column. Their left part took no tap. | The guard is a listener now (BroTown.jsx `EDGE_CONTROL`): a touch starting at the edge is still swallowed on the world, but goes to a control it lands on. TRAPS §210. | mp-edgeguard 1-5 |
+| sideways | Diego's shop: nothing could be **sold**. The bag is the side column sideways, the shop's drawer covered the ▴ chip that opens it, and opening it closed the shop. His shelf also overflowed its drawer (111 px slots), pushing "His shelf" under his name. | The shop opens your bag column with it and sits beside it (ShopkeeperPanel, BroTown keeps the shop open for that page); shelf slots at most 68 px (an upright phone's are 67.6, unchanged). TRAPS §211. | mp-shopkeeper (sideways part) |
 | sideways | Ace's coin flip: the window was ~600 px tall on a 390 px screen and did not scroll, so its **Flip** button was below the screen. | The window holds itself to the screen and its body scrolls (AceFlipPanel). | mp-edgeguard 6 |
 | computer | At a building's door the **Enter** button lay under the keyboard-keys strip, which took the click. | The strip steps aside while a door's/character's prompt is up -- the prompt shows its own key, E (game.css). | mp-deskreach 1 |
 | computer | The Daily Rewards window's **✕** lay under the minimap's invisible "open map" button: a click opened the world map. Sideways, Diego's ✕ the same. | That button lets clicks through while either window is up, as it already did for every building window (game.css). | mp-deskreach 2, mp-shopkeeper |

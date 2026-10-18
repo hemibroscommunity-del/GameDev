@@ -567,6 +567,19 @@ remnant to migrate server-side, not a mode to preserve.
       cost, ~5x steadier; a full-resolution pass would be ~32 MB of graphics
       memory (TRAPS §141); `?shadowlock=0` is the layer as it was;
       `mp-shadowlock`.
+    - since v2.3.3338 THE SHADOWS ARE DRAWN UNSNAPPED, AT HIGHP -- the owner,
+      again: "prop shadows right now still flicker as you run around": inside
+      the shadow filter Pixi's roundPixels snapped every corner to a grid 0.77
+      x 0.83 of a texel (it rounds by the pooled power-of-two texture's size,
+      not the frame drawn into), so every whole-pixel crossing of the camera
+      re-snapped each shadow differently; and on an iPhone the filter read its
+      picture at mediump, a half float, so the lock's slide moved in quarter-
+      to half-texel steps. The pieces are drawn unsnapped (`installNoSnap`,
+      `_btNoSnap`; the batcher hook clears roundPixels after sharpPixels' and
+      the palette's) and the filter is `highp`; `?shadowsnap=1` /
+      `?shadowhp=0` put each back, `window.__btShadowSnap()`; mp-shadowlock
+      now steps a whole CSS px across and down: 110x and 6x steadier (TRAPS
+      §205).
   - Since v2.3.3001 HITS SOUND LIKE THEIR MATERIAL -- the owner: "modify hit
     sound effects based on material type so hitting wood vs plants etc for
     props and also against monsters (arrow, melee, magic hit sound for
@@ -914,13 +927,13 @@ remnant to migrate server-side, not a mode to preserve.
         gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
         `mp-monsterplate` (whose band sweep now raises the weapon's skill):
         docs/specs/xp-decay.md.
-    - since v2.3.3328 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
+    - since v2.3.3341 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
       all actions/buttons can be completed in landscape mode and on the
       computer. For instance I don't think you can harvest lifeskills right now
       on the computer": the gesture was asked for on the right button, which a
       computer hides, or at the figure worked out without the canvas's offset
       -- in the black margin beside the game's column -- so a harvest waited at
-      its full bar for ever (TRAPS §205):
+      its full bar for ever (TRAPS §209):
       - the right button comes back for a harvest (`data-harvest` on its box,
         game.css under pointer:fine) with "Drag ↔ or hold E" over it
         (gesturePose.js `DESK_GESTURE_HINT`, TouchControls' `.bt-rjoy-deskhint`);
@@ -3275,7 +3288,7 @@ Two protocol versions coexist; both must keep working:
   never a window sized for 60 fps (mp-hitreal, mp-staffcast, mp-solospecial,
   mp-ccink were the test); `BT_QA_CPU_THROTTLE=<rate>` runs every page that
   much slower, to try a check as a slow phone sees it.
-- UI REVIEW SCREENSHOTS (v2.3.3328, docs/specs/ui-review.md): the owner's
+- UI REVIEW SCREENSHOTS (v2.3.3341, docs/specs/ui-review.md): the owner's
   "screenshots labelled and bundled for all UI elements in each view ... so I
   can have chatGPT analyze them".  `node tools/qa/ui-review/capture.mjs`
   (after a build; `--views=`, `--only=`) walks a real player through every
@@ -3292,8 +3305,8 @@ Two protocol versions coexist; both must keep working:
   - What its first run found, fixed in the same version
     (docs/specs/reach-every-button.md): the iOS edge guard was an invisible
     18 px strip over every control at the left edge -- a listener now
-    (BroTown `EDGE_CONTROL`, TRAPS §206); sideways nothing could be SOLD to
-    Diego and Ace's Flip button was off the screen (TRAPS §207); on a computer
+    (BroTown `EDGE_CONTROL`, TRAPS §210); sideways nothing could be SOLD to
+    Diego and Ace's Flip button was off the screen (TRAPS §211); on a computer
     the Enter button lay under the keyboard strip and the Daily Rewards ✕
     under the minimap's "open map" button; the farm bed's Sleep and the field
     cook answered only a finger; the bell drew over windows. `mp-edgeguard`,
@@ -3759,6 +3772,44 @@ Two protocol versions coexist; both must keep working:
       694 px/s; the overview's `lastPlace` and `moveBudget.arrival`; kill
       switch `lastplace: false` (and `movebudget: false`); `last-place` suite
       (57, nineteen bugs caught), move-budget §6/§9 updated.
+  - since v2.3.3334 A HIT ON A MONSTER NEEDS ITS WEAPON, ITS REACH AND A PAID
+    SPECIAL, AND A BOW LANDS NO MORE A SECOND THAN ITS SHOTS (fix 8;
+    docs/specs/hit-proof.md, `server/src/hitproof.js`, called by combat.js
+    `_handleMonsterDamage`):
+    - a `ranged` claim needs the worker's own bow slot (`ps.rangedWeapon`), a
+      `staff` claim its staff slot -- never the phone's activeSlot; a bare fist
+      still swings (an unarmed player is held in the commons until armed);
+    - the reach, from the worker's copy, in EVERY zone: a bow 675 x its Range
+      (prog3 Bow lane; an older character's x2.0) + 150 + a second of the
+      fastest honest run (`_moveSpeedK` x SPRINT.MULT) -- 1,490 px with no
+      points; a staff 675 x its Range + 250 + 0.3 s (a bolt is held to its
+      caster: projectiles.js, no range of its own but its life); inside a paid
+      bow special's window the Wheel's old 3,600 for the stuck arrows' chips;
+    - a special only inside a window a paid swipe opened (`_pveSpecialPaid`,
+      index.js `_handleAbilityUse`): 4.5 s, ONE special's shape -- the sword's
+      on each monster once (24 at most), the volley's three arrows, the big
+      bolt's orbs -- four at once, the oldest with room first; outside one a
+      special rolls ORDINARY, never dropped (the phone fires it whatever the
+      worker charged; the tutorial's free swipe sends none: TRAPS §206);
+    - per player, across every monster (`_hitRateTake`): a bow 5 x (1 +
+      Piercing) a second (the phone's 200 ms floor; Piercing from the worker's
+      weaponSpecs copy), a staff 2, three seconds waiting; a paid swipe adds
+      48 for its chips and its burning patch (eight monsters packed in it,
+      the archer at the quickest real pace, are ~50 claims; a script in a
+      fight pays a swipe about every 19 s), a paid retreat its shot;
+      specials and melee are the lanes';
+    - the per-monster lanes trimmed by LAST use (a 40-monster fight wiped the
+      lanes of the ones being hit);
+    - the lab (`aimbot-bow`, `honest-archer` new; the aimbots held under the
+      message budget, 100 a second): a script with no bow 6,009 -> 0 kills an
+      hour, with a bow 6,111 -> 2,109 (a perfect archer at the 200 ms floor),
+      an honest sword (471) and archer (378) unchanged; the overview's `hitProof`;
+      kill switch `hitproof: false`; `hit-proof` suite (66, twenty-six bugs
+      caught); anticheat, combat-lifecycle, prog3, pvp-balance and statsim pay
+      for their specials as a phone does; a phone test whose bow or staff
+      hits must land arms the WORKER as a player is armed (harness.mjs
+      `armWorker`: the kit, then the game's own equip_request), never only
+      the page -- mp-orbrange and mp-bowmark do (TRAPS §207).
   - since v2.3.3292 (the architecture review): a phone's `dodging` stops a
     player's blow only within 1 s of a roll the worker CHARGED for
     (movement.js `ROLL`, `_rollOn`; it was unbounded, one move made a player
@@ -3767,6 +3818,19 @@ Two protocol versions coexist; both must keep working:
 
   The fix order is in the review. Re-run the lab after any change to a
   harvest, cook, move or hit path.
+- Frame rate on a phone (v2.3.3339, docs/specs/speed-test.md): the QA box
+  draws in software (under 3 frames a second), so a phone's frame rate is
+  measured ON the phone. The test panel's **Speed test** (no key,
+  `src/game/speedTest.js`) times the frames with everything on, then with the
+  shadows, the metal shine, the moving water and the full resolution each off,
+  and puts them back (page-only switches: `setLightFx(on, false)`,
+  `setSheen(on, false)`); its card is what to fix next. `?res=2` draws the
+  canvas at 2x (`src/game/renderRes.js` `renderDpr`, read by the four places
+  that size the canvas: BroTown `resize()`, pixiApp, pixiRenderer.update,
+  worldViewport). `mp-frameprofile` profiles the CPU by source file (build with
+  `--sourcemap`) and names what rebuilds each render group's draw list --
+  `Graphics.clear()` on an empty graphic rebuilds it (TRAPS §208);
+  `mp-speedtest`.
 
 ## Conventions
 
@@ -3983,7 +4047,8 @@ Two protocol versions coexist; both must keep working:
   `roomfill` probes show the before and after. Still open: the farming holes
   (the review's 6-9; 6, the harvest, closed in v2.3.3322: harvest-proof.md;
   9, the flags shown, v2.3.3323: bot-flags.md; 7, movement, v2.3.3325 and the
-  reconnect v2.3.3327: move-budget.md, last-place.md).
+  reconnect v2.3.3327: move-budget.md, last-place.md; 8, fighting, v2.3.3334:
+  hit-proof.md).
 - **THE ACCOUNT CHECK (v2.3.3275, docs/specs/account-check.md).** A character
   that does not exist yet (an id with no `auth:` record: a first join, every
   guest) is asked for a Cloudflare Turnstile token before the identity is
@@ -4013,10 +4078,10 @@ Two protocol versions coexist; both must keep working:
   `mp-originlock` (a second browser with `--host-resolver-rules`, so the
   copy's Origin is the browser's own; `H.newPlayer`'s `host`,
   `H.launch(args)`).
-- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3328,
-  docs/specs/desktop-keys.md, TRAPS §208).** The owner: "For computer usage if there's a
-  key that makes sense to use for a certain action just put the letter next
-  to the icon or action in a tasteful way."
+- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3341,
+  docs/specs/desktop-keys.md, TRAPS §212).** The owner: "For computer usage
+  if there's a key that makes sense to use for a certain action just put the
+  letter next to the icon or action in a tasteful way."
   - `src/game/deskKeys.js` is the one table -- B the bag (the band at rest),
     P character, J quests, L life skills, K codex, O more, M the world map --
     desktopControls.js binds it, and each key opens its page and closes it

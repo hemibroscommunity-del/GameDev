@@ -107,7 +107,7 @@ const C_PLAYER = 0xf4f0e7, C_OTHER = 0x58b97b, C_MONSTER = 0xe35d5b;
 const FRAME = 7, R_BOX = 8, R_IN = 4, C_KEYLINE = 0x0b161b, C_SLATE = 0x202c32, C_SLATE_HI = 0x3a4b55;
 /* the "tap me" mark's box in the minimap's box, CSS px (drawn below) --
    published with the box (window.__btWheelMini.mark), where the world map's
-   button puts its key beside it (v2.3.3328, game/deskKeys.js) */
+   button puts its key beside it (v2.3.3341, game/deskKeys.js) */
 const EXPAND_MARK = Object.freeze({ x: FRAME + 3, y: MAP_BOT - 19, w: 16, h: 16 });
 /* v2.3.2990: as the zones' minimap stars, held this far in from the box's
    edge -- v2.3.3009: and clear of the frame (was 10) */
@@ -197,7 +197,7 @@ export class WheelMinimap {
     this.places = new Graphics();    /* camps, passes, gates, landmarks: drawn once */
     this.townMark = new Graphics();  /* the town's square: v2.3.3146, only while its buildings are not known */
     this.marks = new Container();    /* bros and monsters: every frame */
-    this.road = new Graphics();      /* v2.3.2992: the gold road to the quest's star: every frame */
+    this.road = new Graphics();      /* v2.3.2992: the gold road to the quest's star (v2.3.3339: redrawn when it moves) */
     this.partyRims = new Graphics(); /* v2.3.3277: your party's marks' rims, over theirs: every frame */
     this.pan.addChild(this.lines, this.buildings, this.places, this.townMark, this.road, this.marks, this.partyRims);
     this.player = new Sprite(this.icons.self || this.dotTex);
@@ -628,7 +628,11 @@ export class WheelMinimap {
     let quest = null;
     try { quest = questRoutePoint(S.currentZone, S.rpg || null, S); } catch (e) { quest = null; }
     let questEdge = false, road = null;
-    this.road.clear();
+    /* v2.3.3339: the road is redrawn only when it moved (roadSig below), as
+       the party's rims are: cleared and drawn again every frame, it was a
+       Graphics change a frame, and each one rebuilds the screen's whole draw
+       list (the frame-rate hunt after the owner's "30fps to 40ish fps") */
+    let roadSig = '';
     if (quest) {
       const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
       const dx = quest.x * SCALE + this.pan.x - pbx, dy = quest.y * SCALE + this.pan.y - pby;
@@ -645,12 +649,20 @@ export class WheelMinimap {
         const ux = dx / Math.hypot(dx, dy), uy = dy / Math.hypot(dx, dy);
         const x0 = P.x * SCALE + ux * ROAD_FROM, y0 = P.y * SCALE + uy * ROAD_FROM;
         const x1 = P.x * SCALE + dx * t, y1 = P.y * SCALE + dy * t;
-        this.road.moveTo(x0, y0).lineTo(x1, y1).stroke({ width: ROAD_CASE, color: C_ROAD_CASE, alpha: 0.55, cap: 'round' });
-        this.road.moveTo(x0, y0).lineTo(x1, y1).stroke({ width: ROAD_W, color: C_QUEST_STAR, alpha: 0.95, cap: 'round' });
+        /* to a hundredth of a px of the road's own space: the box draws it at
+           its own scale, never more than a few px a world px */
+        roadSig = Math.round(x0 * 100) + ',' + Math.round(y0 * 100) + ',' + Math.round(x1 * 100) + ',' + Math.round(y1 * 100);
+        if (roadSig !== this._roadSig) {
+          this.road.clear();
+          this.road.moveTo(x0, y0).lineTo(x1, y1).stroke({ width: ROAD_CASE, color: C_ROAD_CASE, alpha: 0.55, cap: 'round' });
+          this.road.moveTo(x0, y0).lineTo(x1, y1).stroke({ width: ROAD_W, color: C_QUEST_STAR, alpha: 0.95, cap: 'round' });
+          this._roadSig = roadSig;
+        }
         road = { len: Math.round(L - ROAD_FROM), x0: Math.round(x0 + this.pan.x), y0: Math.round(y0 + this.pan.y), x1: Math.round(x1 + this.pan.x), y1: Math.round(y1 + this.pan.y) };
       }
       this._mark((pbx + dx * t - this.pan.x) / SCALE, (pby + dy * t - this.pan.y) / SCALE, 'star', C_QUEST_STAR, QUEST_STAR_PX);
     }
+    if (!roadSig && this._roadSig) { this.road.clear(); this._roadSig = ''; }   /* v2.3.3339: no road now */
     for (let i = this.used; i < this.pool.length; i++) this.pool[i].visible = false;
     /* v2.3.3023: the way home -- when the town's centre is off the box, its
        badge on the box's inner edge, on the line from you to it (the quest's

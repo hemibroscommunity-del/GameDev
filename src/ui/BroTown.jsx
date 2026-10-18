@@ -62,7 +62,7 @@ import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
 import { WeaponSwapButton } from './panels/WeaponSwapButton.jsx'; /* v2.3.3005: the weapon in your hand, under the movement stick -- a tap swaps */
-import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3328 (a computer's words over the button) */
+import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3341 (a computer's words over the button) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
@@ -376,6 +376,7 @@ import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a s
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
+import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
 import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
@@ -386,6 +387,7 @@ import { nmlAsk, nmlAskOn, nmlAim, nmlHitBack } from '@/game/nmlAsk.js';   /* v2
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
 import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
+import { NewMonsterCard } from '@/ui/panels/NewMonsterCard.jsx';   /* v2.3.3336: NEW MONSTER, a tap opens its codex page */
 import { activePet } from '@/game/petBook.js';   /* v2.3.3120: the pet out with you is the record's */
 import { beastmasterOn } from '@/game/trapping.js';   /* v2.3.3121: Beastmaster Bro stands only against a worker that knows his quests */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
@@ -3377,7 +3379,7 @@ export var BroTown = function BroTown(_ref0) {
        open state since the v2.3.1350 two-state cut) overlays the world
        without resizing the canvas (see sheetGeometry's invariant note). */
     function resize() {
-      var dpr = window.devicePixelRatio || 1;
+      var dpr = renderDpr();   /* v2.3.3339: the canvas's pixel ratio, lowered by ?res= or the speed test (game/renderRes.js) */
       var vw = vv ? vv.width : window.innerWidth;
       var vhFull = vv ? vv.height : window.innerHeight;
       /* iOS keyboard fix: when the chat input pops the keyboard,
@@ -6030,7 +6032,7 @@ export var BroTown = function BroTown(_ref0) {
           var _rw = rWrapRef.current;
           var _rWant = _rOn ? '1' : '0';
           if (_rw && _rw.style.opacity !== _rWant) _rw.style.opacity = _rWant;
-          /* ═══ v2.3.3328: ON A COMPUTER THE BUTTON COMES BACK FOR THE HARVEST ═══
+          /* ═══ v2.3.3341: ON A COMPUTER THE BUTTON COMES BACK FOR THE HARVEST ═══
              The owner: "I don't think you can harvest lifeskills right now on
              the computer."  game.css hides this whole box under pointer:fine,
              and with it the cue that teaches the gesture and the ring that
@@ -6965,7 +6967,10 @@ export var BroTown = function BroTown(_ref0) {
                  badge at all; ready wore a '?'.  '❔' (waiting) and '❓'
                  (ready) are the wire values entityRenderer draws: a grey disc
                  with a white "?", still; a green disc with a check DRAWN in
-                 lines -- no emoji glyph anywhere. */
+                 lines -- no emoji glyph anywhere.
+                 v2.3.3336 (owner: "be yellow instead of green.  Green implies
+                 something is done"): the waiting "?" is drawn on YELLOW now,
+                 the grey having read as green -- same wire values. */
               npc._questMarker = _qReady ? '❓' : '❔';
             }
           });
@@ -8446,8 +8451,15 @@ export var BroTown = function BroTown(_ref0) {
           visitedBuildings: S2.stats.visitedBuildings instanceof Set ? _toConsumableArray(S2.stats.visitedBuildings) : S2.stats.visitedBuildings,
           badges: S2.badges
         });
+        /* v2.3.3339: only when it changed -- this runs twice a second, and a
+           localStorage write is a synchronous one on the main thread (on an
+           iPhone a write to disk); standing still, nothing in it changes */
         try {
-          localStorage.setItem('bt_stats', JSON.stringify(statsToSave));
+          var _statsJson = JSON.stringify(statsToSave);
+          if (_statsJson !== stateRef.current._statsSavedJson) {
+            localStorage.setItem('bt_stats', _statsJson);
+            stateRef.current._statsSavedJson = _statsJson;
+          }
         } catch (e) {}
         if (stateRef.current._statsSyncTimer === undefined) stateRef.current._statsSyncTimer = 0;
         stateRef.current._statsSyncTimer++;
@@ -9303,7 +9315,7 @@ export var BroTown = function BroTown(_ref0) {
      is filling the lower half of the screen. Two signals because the app has
      two panel systems; collapsing them into one was tried and quietly
      dropped the sheet. */
-  /* ═══ v2.3.3328: ...EXCEPT, SIDEWAYS, THE BAG'S OWN COLUMN ═══
+  /* ═══ v2.3.3341: ...EXCEPT, SIDEWAYS, THE BAG'S OWN COLUMN ═══
      The owner: "Make sure all actions/buttons can be completed in landscape
      mode."  Upright the shop is HALF a window, the bag in the band under it
      the other half (ShopkeeperPanel's header).  Sideways the band holds no
@@ -9707,7 +9719,7 @@ export var BroTown = function BroTown(_ref0) {
      and preventDefault any touchstart that lands inside it.  Best
      effort -- Safari sometimes overrules; if it persists the user
      can reflag for a PWA / fullscreen path. */
-  /* ═══ v2.3.3328: A LISTENER, NOT A STRIP -- THE BUTTONS AT THE EDGE ANSWER ═══
+  /* ═══ v2.3.3341: A LISTENER, NOT A STRIP -- THE BUTTONS AT THE EDGE ANSWER ═══
      The owner: "Make sure all actions/buttons can be completed in landscape
      mode".  The UI review's numbered pictures (tools/qa/ui-review) found the
      strip -- 18 px wide, full height, z 40, over everything outside the
@@ -11939,7 +11951,7 @@ export var BroTown = function BroTown(_ref0) {
     },
     onMouseDown: function onMouseDown(e) {
       if (!stateRef.current._isDesktop) return;
-      /* v2.3.3328: a press during a harvest is the harvest's -- its gesture
+      /* v2.3.3341: a press during a harvest is the harvest's -- its gesture
          once the window is open (ExtractionSwipeLayer, which cancels the
          pointerdown so this mousedown never comes), nothing in the wind-up --
          and never arms the attack: a swing is refused mid-harvest anyway
@@ -12928,7 +12940,7 @@ export var BroTown = function BroTown(_ref0) {
   }, React.createElement(ElemStatusChips, { stateRef: stateRef }) /* v2.3.2996: the snowflake, the flame, the slime */,
   /* v2.3.3120: pet trapping -- the TRAP pop-up over a targeted monster and the
      card for a new pet (each on its own clock; game/trapping.js) */
-  React.createElement(TrapButton, { stateRef: stateRef }), React.createElement(TrapCatchCard, { stateRef: stateRef }), function () {
+  React.createElement(TrapButton, { stateRef: stateRef }), React.createElement(TrapCatchCard, { stateRef: stateRef }), React.createElement(NewMonsterCard, { stateRef: stateRef }), function () {
     var S = stateRef.current;
     if (!S) return null;
     var effects = [];
@@ -13957,7 +13969,7 @@ export var BroTown = function BroTown(_ref0) {
       bottom: 140,
       background: 'rgba(89,191,145,.85)'
     },
-    /* v2.3.3328: onClick, not onTouchStart -- a mouse never fires a
+    /* v2.3.3341: onClick, not onTouchStart -- a mouse never fires a
        touchstart, so on a computer this button did nothing (E did, from
        desktopControls); one click is the tap on both (v2.3.2617's rule) */
     onClick: function onClick(e) {
@@ -14093,7 +14105,7 @@ export var BroTown = function BroTown(_ref0) {
       bottom: 175,
       background: 'rgba(139,105,20,.85)'
     },
-    /* v2.3.3328: the click alone -- a touchstart twin opened the workshop on
+    /* v2.3.3341: the click alone -- a touchstart twin opened the workshop on
        the press and the click behind it opened it again (the door sound
        twice), on the very surface v2.3.2617's rule is about */
     onClick: function onClick(e) {
@@ -14154,7 +14166,7 @@ export var BroTown = function BroTown(_ref0) {
         bottom: 175,
         background: 'rgba(200,100,20,.85)'
       },
-      /* v2.3.3328: onClick, not onTouchStart -- a mouse never fires a
+      /* v2.3.3341: onClick, not onTouchStart -- a mouse never fires a
          touchstart, so on a computer the field cook could not be pressed at
          all; one click is the tap on both (v2.3.2617's rule) */
       onClick: function onClick(e) {

@@ -1351,12 +1351,23 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   check('monster_damage: a 1300px Longshot bow hit still lands (no ranged cap)',
     tgt.hp < hp0, { hp: tgt.hp, hp0 });
 
-  /* A far-away chip tick from a stuck arrow, after the player kited. */
-  psM.x = tgt.x + 2600; tgt.hp = hp0; delete psM._monHitCad;
+  /* A far-away chip tick from a stuck arrow, after the player kited.
+     v2.3.3334: arrows stick only from a bow special, and a special is paid
+     for (hitproof.js): inside the paid swipe's window the chip keeps the
+     Wheel's old 3,600 px; with no special paid for, a bow claim is held to
+     the bow's own reach -- 2,600 px is past it. */
+  psM.x = tgt.x + 2600; tgt.hp = hp0; delete psM._monHitCad; psM._pveSpec = undefined;
   await room.webSocketMessage(wsM, JSON.stringify({
     type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'ranged', noKb: true },
   }));
-  check('monster_damage: a stuck-arrow chip tick from far away still lands',
+  check('monster_damage: a "chip" from 2,600 px with no bow special paid for is refused (the bow\'s own reach, v2.3.3334)',
+    tgt.hp === hp0, { hp: tgt.hp, hp0 });
+  room._pveSpecialPaid(psM, Date.now());
+  delete psM._monHitCad;
+  await room.webSocketMessage(wsM, JSON.stringify({
+    type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'ranged', noKb: true },
+  }));
+  check('monster_damage: a stuck-arrow chip tick from far away still lands (inside the paid volley\'s window)',
     tgt.hp < hp0, { hp: tgt.hp, hp0 });
 
   /* Melee still bounded -- the one job proximity keeps. */

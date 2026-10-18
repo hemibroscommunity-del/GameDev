@@ -57,6 +57,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
     worldState.banner === true, worldState);
   await A.ctx.close().catch(() => {});
 
+  /* ── 1b. IN THE WHEEL, ON A PHONE: the banner's Reload is on top ──
+     v2.3.3336, the owner: "The 'new version available' button ... is layered
+     behind the minimap so whenever I try to tap the button it just opens the
+     minimap."  The Wheel's minimap opens on an invisible button laid over its
+     box, a z 45 body portal; the 340px card at the top of a 390px phone runs
+     under that box.  A REAL tap on Reload must reach Reload (the page
+     reloads), not the minimap's button (the world map would open). */
+  const W = await H.newPlayer(browser, { name: 'Wheeler', wsPort, webPort, world: 'wheel',
+    viewport: { width: 390, height: 844 }, touch: true });
+  await H.enterWorld(W);
+  await H.waitFor(W, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => v.z === 'wheel' && !v.l,
+    { timeout: 120000, label: 'in the Wheel' }).catch(() => null);
+  await W.page.waitForSelector('[data-world-map-open]', { timeout: 20000 }).catch(() => {});
+  await goStale(W);
+  await W.page.waitForSelector('[data-update-banner]', { timeout: 5000 }).catch(() => {});
+  const look = await W.page.evaluate(() => {
+    const card = document.querySelector('[data-update-banner]');
+    const mapBtn = document.querySelector('[data-world-map-open]');
+    const reload = card && [...card.querySelectorAll('button')].find((b) => /Reload/.test(b.textContent || ''));
+    if (!card || !reload) return { card: !!card, reload: !!reload, map: !!mapBtn };
+    const r = reload.getBoundingClientRect(), m = mapBtn ? mapBtn.getBoundingClientRect() : null;
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const hit = document.elementFromPoint(x, y);
+    const overlaps = !!m && x >= m.left && x <= m.right && y >= m.top && y <= m.bottom;
+    return { card: true, reload: true, map: !!mapBtn, x: Math.round(x), y: Math.round(y), overlaps,
+      onTop: hit === reload || reload.contains(hit), hit: hit ? (hit.getAttribute('aria-label') || hit.tagName) : null };
+  });
+  console.log('    WHEEL -> ' + JSON.stringify(look));
+  rec.ok('in the Wheel on a phone the banner\'s Reload is the thing under a finger, though it lies over the minimap\'s box',
+    !!look.onTop && look.map === true, look);
+  if (look.reload) {
+    await W.page.mouse.click(look.x, look.y);
+    await W.page.waitForTimeout(2500);
+  }
+  const afterTap = await W.page.evaluate(() => ({ reloaded: !window.__stillHere, map: !!window.__btWorldMap && !!window.__btWorldMap.open }))
+    .catch(() => ({ reloaded: true, map: false }));   /* a navigation in flight: the page is reloading */
+  rec.ok('...and a real tap on it reloads the page (the world map does not open)', afterTap.reloaded === true, afterTap);
+  await W.ctx.close().catch(() => {});
+
   /* ── 2. ON THE PRE-GAME SCREEN: just take it ──
      No enterWorld: a fresh client sits on the login/checking screen, which
      is exactly where a resumed installed app lands. */

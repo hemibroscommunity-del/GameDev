@@ -16107,12 +16107,22 @@ export class EntityRenderer {
              items, "a green checkmark ... (not emoji)" when you have them):
              '❗' offer, gold "!"; '❔' waiting, a GREY disc with a white "?";
              '❓' ready, a GREEN disc with a drawn check and no glyph. */
+          /* ═══ v2.3.3336: WAITING IS A YELLOW "?" ═══
+             Owner, playtesting: "While waiting for a quest in progress to be
+             complete have the question mark above mayor bros head be yellow
+             instead of green.  Green implies something is done."  The grey
+             was #8B9695, a teal grey (more green and blue than red) that on a
+             phone, over the commons' grass, read as sage green -- next to the
+             ready badge's real green.  Now the offer's own yellow, with the
+             offer's dark glyph (a white "?" on yellow is unreadable): yellow
+             says "his quest", the "?" and the stillness say "not yet", and
+             green is kept for "done".  The wire values are unchanged. */
           const _ready = qmStr === '❓', _wait = qmStr === '❔';
           display._qmGlyph.text = _ready ? '' : _wait ? '?' : '!';
-          display._qmGlyph.style.fill = _wait ? '#FFFFFF' : '#2A1B06';
+          display._qmGlyph.style.fill = '#2A1B06';
           display._qmGlyph.visible = !_ready;
-          _drawQuestBadge(display._qmBadge,
-            _ready ? 0x4BD98A : _wait ? 0x8B9695 : 0xFFC93C, _ready);
+          display._qmFill = _ready ? 0x4BD98A : 0xFFC93C;   /* the probe below says it (mp-questguide) */
+          _drawQuestBadge(display._qmBadge, display._qmFill, _ready);
         }
         /* v2.3.3047: waiting holds still -- the bob says "come here", and
            there is nothing to come for yet */
@@ -16138,7 +16148,9 @@ export class EntityRenderer {
           if (typeof window !== 'undefined' && window.__btProbe) {
             const _nm = window.__btNpcMarks || (window.__btNpcMarks = Object.create(null));
             _nm[npc.id] = { name: npc.name, talk: tm.visible, quest: !!qm.visible,
-              talkArt: !!(tm.texture && tm.texture !== Texture.EMPTY && tm.texture.width > 1), talkW: Math.round(tm.width) };
+              talkArt: !!(tm.texture && tm.texture !== Texture.EMPTY && tm.texture.width > 1), talkW: Math.round(tm.width),
+              /* v2.3.3336: the quest badge's drawn colour (yellow waiting) */
+              badge: qm.visible && display._qmFill != null ? display._qmFill.toString(16) : null };
           }
         } catch (e) { /* never breaks the frame */ }
       }

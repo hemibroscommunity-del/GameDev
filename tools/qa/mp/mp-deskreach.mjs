@@ -1,4 +1,4 @@
-/* ═══ ON A COMPUTER, THE BUTTONS A CLICK AIMS AT ARE THE ONES IT REACHES (v2.3.3328) ═══
+/* ═══ ON A COMPUTER, THE BUTTONS A CLICK AIMS AT ARE THE ONES IT REACHES (v2.3.3341) ═══
  *
  * Owner, 2026-10-18: "Make sure all actions/buttons can be completed in
  * landscape mode and on the computer."
