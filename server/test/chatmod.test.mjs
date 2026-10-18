@@ -294,6 +294,27 @@ for (const n of ['a', 'b', 'c']) {
   res = await rm._adminFetch(adminReq('GET', '?target=bp_cm_nobody', 'sekrit'));
   body = await res.json();
   check('...and excludes everything else', body.reports.length === 0);
+  /* v2.3.3344: each row says whether its player is frozen and online NOW --
+     the Test panel's Chat reports section acts on them */
+  res = await rm._adminFetch(adminReq('GET', '', 'sekrit'));
+  body = await res.json();
+  check('a report row says its player is online now and not frozen (v2.3.3344)',
+    body.reports.length >= 1 && body.reports.every((r) => r.onlineNow === true && r.frozen === false), body.reports.map((r) => [r.onlineNow, r.frozen]));
+  const freezeReq = (method, qs, payload) => new Request('https://x/api/admin/freeze' + (qs || ''), {
+    method, headers: Object.assign({ Authorization: 'Bearer sekrit' }, payload ? { 'Content-Type': 'application/json' } : {}),
+    body: payload ? JSON.stringify(payload) : undefined,
+  });
+  res = await rm._adminFetch(freezeReq('POST', '', { playerId: P('rb'), note: 'from a report' }));
+  check('setup: the reported player frozen through the admin route', (await res.json()).ok === true);
+  res = await rm._adminFetch(adminReq('GET', '', 'sekrit'));
+  body = await res.json();
+  check('...and every row about them now says frozen, and no longer online (the freeze closed their socket)',
+    body.reports.length >= 1 && body.reports.every((r) => r.frozen === true && r.onlineNow === false), body.reports.map((r) => [r.onlineNow, r.frozen]));
+  res = await rm._adminFetch(freezeReq('DELETE', '?id=' + encodeURIComponent(P('rb'))));
+  check('setup: unfrozen', (await res.json()).ok === true);
+  res = await rm._adminFetch(adminReq('GET', '', 'sekrit'));
+  body = await res.json();
+  check('...and the rows say so', body.reports.every((r) => r.frozen === false), body.reports.map((r) => r.frozen));
   const dismissKey = keys[0];
   res = await rm._adminFetch(adminReq('DELETE', '?id=' + encodeURIComponent(dismissKey), 'sekrit'));
   body = await res.json();
