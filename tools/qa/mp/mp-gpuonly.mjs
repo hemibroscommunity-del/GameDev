@@ -190,13 +190,14 @@ const numberDraws = (P, text) => P.page.evaluate(async (txt) => {
      rebuild (the outline's count the same as after it), with nothing to say
      what colour the fill came out */
   const other = {};
+  let faint = 0;
   for (let i = 0; i < pixels.length; i += 4) {
-    if (pixels[i + 3] < 128) continue;
+    if (pixels[i + 3] < 128) { if (pixels[i + 3]) faint++; continue; }
     if (pixels[i] > 200 && pixels[i + 1] > 200 && pixels[i + 2] > 200) white++;
     else if (pixels[i] < 60 && pixels[i + 1] < 60 && pixels[i + 2] < 60) dark++;
     else { const k = [pixels[i] >> 4, pixels[i + 1] >> 4, pixels[i + 2] >> 4].map((v) => v.toString(16)).join(''); other[k] = (other[k] || 0) + 1; }
   }
-  const why = { tint: t.tint, others: Object.entries(other).sort((a, b) => b[1] - a[1]).slice(0, 4) };
+  const why = { tint: t.tint, faint, others: Object.entries(other).sort((a, b) => b[1] - a[1]).slice(0, 4) };
   d.ts = 0; d.ttl = 0.001;
   return { bitmap: !!t._bmpBaseScale, white, dark, why };
 }, text);
