@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "34b097ce972f4bd581ed3ba06141aac4b0a2569d",
+  "tree": "77bce06514ae459a1edfce5ba2af67681db49235",
+  "committedAt": "2026-10-18T05:05:33-07:00",
+  "subject": "Harvest on a computer, every button reachable sideways, on a computer and on a laptop, each key shown on its button, and labelled screenshots of every screen (v2.3.3407) (#965)",
+  "files": 5891,
+  "bytes": 646995124,
+  "listingSha256": "731dfc263a580db72aba946a12e248eea7f5c76fe2d0547fee8492541c1f3a6b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
