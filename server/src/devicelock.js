@@ -78,6 +78,50 @@ export function cleanDevice(dev) {
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
 export const deviceLockMethods = {
+  /* ═══ v2.3.3372: ONE CHANGE AT A TIME TO A CHARACTER'S LOGIN RECORD ═══
+     Every change to `auth:<id>` reads the record, works out the next one and
+     writes it -- the join's check (a new character registered, a device
+     remembered: join.js _verifyJoinAuth), the key handed out or first used
+     after a join (loginkeys.js _keysAfterJoin), and the owner's Forget, Give
+     a new key and device pass (_deviceLockAdminRoute below).  Between the
+     read and the write each can wait on something that is not storage -- the
+     account check's fetch (a new character's, once the owner switches it on),
+     a key's or a phrase's hash -- and while it does, other events run
+     (handoff rule 9): two at once both read the same record and the second
+     write throws the first away.  In the suite's room (login-keys §12) the
+     owner's Forget was written back over by a join's handout that had read
+     the record before it, the forgotten devices and keys with it, and a join
+     that remembered its device after a Forget brought them all back.  On
+     Cloudflare the hashes are thought to answer at once, so today only the
+     fetch is known to open that gap -- and none of this may depend on it.
+     Each change runs here now, after every one started before it for the
+     same id has finished, whatever became of it (inbox.js _inboxSerial's
+     shape).  In memory only: a restart has nothing running.  Never nested --
+     a run that took it never asks for it again. */
+  _authSerial(id, fn) {
+    if (!this._authChains) this._authChains = new Map();
+    const key = String(id);
+    const prev = this._authChains.get(key) || Promise.resolve();
+    const run = prev.then(() => fn(), () => fn());
+    const tail = run.then(() => {}, () => {});
+    this._authChains.set(key, tail);
+    tail.then(() => { if (this._authChains.get(key) === tail) this._authChains.delete(key); });
+    return run;
+  },
+
+  /* v2.3.3372: put a player out for their login (`why` 'device' or 'key'),
+     and let them LEAVE: the AFK sweep's three steps (tick.js, flood.js
+     _floodClose) -- the close, the leaving run now (the save, player_leave,
+     the party's and duel's grace), the session gone.  Not the kick's old way
+     (admin.js, before v2.3.3356): deleting the session first left the body
+     standing in the world. */
+  async _authPutOut(ws, why) {
+    try { ws.send(JSON.stringify({ type: 'join_rejected', reason: why })); } catch (e) { /* closed */ }
+    try { ws.close(why === 'key' ? 4017 : DEVICE_LOCK.CLOSE, why); } catch (e) { /* closed */ }   /* 4017: LOGIN_KEYS.CLOSE (loginkeys.js imports this file) */
+    try { await this.webSocketClose(ws); } catch (e) { /* best effort */ }
+    this.sessions.delete(ws);
+  },
+
   /* the kill switch, read the lower-case way (TRAPS §117) */
   _deviceLockOn() {
     const f = this._liveFlags;
@@ -217,10 +261,25 @@ export const deviceLockMethods = {
     if (!id) return json({ ok: false, error: 'playerId required' }, 400);
     const now = Date.now();
     await this._deviceFillReady(now);
+    /* v2.3.3372: the read, the put-out and the write in the record's queue
+       (_authSerial): a join's handout can no longer read the record before
+       this write and write it back after, the forgotten device and keys with
+       it */
+    const r = await this._authSerial(id, () => this._deviceLockAdminRun(id, path, now));
+    if (r.error) return json({ ok: false, error: r.error });
+    await this._adminLog({ op: path.slice(1), playerId: id, forgot: r.forgot, taken: r.taken });
+    return json({
+      ok: true, until: r.until, devices: r.devices, forgot: r.forgot, sealed: r.sealed, wasOnline: r.wasOnline,
+      taken: r.taken, ...(r.key ? { key: r.key } : {}),
+    });
+  },
+
+  /* The three tools' change to one record, in its queue (above). */
+  async _deviceLockAdminRun(id, path, now) {
     const auth = await this.state.storage.get('auth:' + id);
     /* 200 and the reason in words: the Test panel says "Failed: <error>" for
        it, where a 404 reads as "is that character online?" (DevPanel.jsx) */
-    if (!auth || typeof auth !== 'object') return json({ ok: false, error: 'No character has that code. Check it for typos.' });
+    if (!auth || typeof auth !== 'object') return { error: 'No character has that code. Check it for typos.' };
     const next = { ...auth };
     let forgot = 0, wasOnline = false, taken = 0, key = null, h = null;
     if (path === '/device-pass') {
@@ -245,34 +304,27 @@ export const deviceLockMethods = {
         h = await this._keyHash(key);
         next.keys = [{ h, d: null, at: now, ok: 0 }];
       }
-      /* whoever is playing it now is put out, and LEAVES: the AFK sweep's
-         three steps (tick.js, flood.js _floodClose) -- the close, the leaving
-         run now (the save, player_leave, the party's and duel's grace), the
-         session gone.  Not the kick's way (admin.js): it deletes the session
-         first, so the runtime's own webSocketClose finds nothing and the
-         body stays standing in the world. */
+      /* whoever is playing it now is put out, and LEAVES (_authPutOut).
+         v2.3.3355: with the key's reason after a new key (its screen offers
+         the key form), the device's after a forget.  v2.3.3372: a join
+         already past its check but not yet playing is put out by its own
+         handout, which reads this record after this write (loginkeys.js
+         _keysAfterJoin). */
       const live = this._wsBySessionId && this._wsBySessionId(id);
       if (live) {
         wasOnline = true;
-        /* v2.3.3355: put out with the key's reason after a new key (its
-           screen offers the key form), the device's after a forget */
-        const _why = key ? 'key' : 'device';
-        try { live.send(JSON.stringify({ type: 'join_rejected', reason: _why })); } catch (e) { /* closed */ }
-        try { live.close(key ? 4017 : DEVICE_LOCK.CLOSE, _why); } catch (e) { /* closed */ }   /* 4017: LOGIN_KEYS.CLOSE (loginkeys.js imports this file) */
-        try { await this.webSocketClose(live); } catch (e) { /* best effort */ }
-        this.sessions.delete(live);
+        await this._authPutOut(live, key ? 'key' : 'device');
       }
     }
     /* v2.3.3355: a new key's index in the same write as its record */
     if (key) await this.state.storage.put({ ['auth:' + id]: next, ['keyidx:' + h]: { id, at: now } });
     else await this.state.storage.put('auth:' + id, next);
     if (path !== '/device-pass') taken = this._keysTakeBack ? await this._keysTakeBack(auth) : 0;
-    await this._adminLog({ op: path.slice(1), playerId: id, forgot, taken });
-    return json({
-      ok: true, until: next.pass ? next.pass.until : null,
+    return {
+      until: next.pass ? next.pass.until : null,
       devices: Array.isArray(next.devs) ? next.devs.length : 0, forgot, sealed: !!next.sealed, wasOnline,
-      taken, ...(key ? { key } : {}),
-    });
+      taken, key,
+    };
   },
 
   /* for /api/admin/overview */
