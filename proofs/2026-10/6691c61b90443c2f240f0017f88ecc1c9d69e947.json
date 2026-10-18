@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6691c61b90443c2f240f0017f88ecc1c9d69e947",
+  "tree": "74916df8bfc903aded3bf6a0ec938d4ba7a7b3a0",
+  "committedAt": "2026-10-18T04:18:06-07:00",
+  "subject": "New players can sell to Diego, the chat box stays on screen, a duel tap opens no card, the hiscores skip untrained skills, the bow's shots fly its sight line, and 63 phone checks fixed (v2.3.3399) (#956)",
+  "files": 5875,
+  "bytes": 646703159,
+  "listingSha256": "713822323dc5dc56ed730eef4efd91e0a0311319cb07907dec7c2d259637c007",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
