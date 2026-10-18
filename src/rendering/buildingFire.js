@@ -642,7 +642,7 @@ export class BuildingFires {
     if (ev.type === 'hit') {
       let f = this.fires.get(i);
       if (!f) {
-        /* v2.3.3404: its picture's size is kept once a PIECE since v2.3.3315
+        /* v2.3.3409: its picture's size is kept once a PIECE since v2.3.3315
            (wheelObjects.js, "Read as ix.w[ix.pk[i]]"), and read here at the
            object's own number it was some other picture's -- the Hotel took a
            40 px one's: every spot was held within 18 px of its middle, arrows

@@ -4077,7 +4077,7 @@ console.log('the Wheel five times longer (v2.3.3315)');
     NML_CENTRES[1].join() === short.WHEEL_CENTRE.join() && NML_CENTRES[5].join() === live.WHEEL_CENTRE.join(), NML_CENTRES);
 }
 
-/* ── v2.3.3404: the objects' sizes are read at their picture's number ── */
+/* ── v2.3.3409: the objects' sizes are read at their picture's number ── */
 {
   /* Since v2.3.3315 the Wheel's object index keeps each picture's page,
      frame, size, anchor, reach and scale once a PIECE (wheelObjects.js, "Read
