@@ -6996,7 +6996,54 @@ trust it then, rather than judge from a guess like the arrival.
 five honest reconnects). The lab: a script reconnecting every 3 s 33,333 ->
 694 px/s, every honest reconnect taken.
 
-## 206. "Clearing a Graphics that is already empty costs nothing" (v2.3.3334)
+## 206. "A special nobody paid for is a cheat: drop it" (v2.3.3334)
+
+**Tempting:** a hit on a monster marked `special` should count only after the
+worker charged a special's mana. So drop a special claim with no paid swipe
+behind it, as a forged claim deserves.
+
+**What happens:** the phone fires its special on its OWN count of its mana
+(playerActions.js) and sends the swipe beside it. When the worker's mana is
+lower -- an echo not back yet, a regen tick apart -- it refuses the swipe, and
+the special still flies and still lands on the phone. And the tutorial's free
+special sends no swipe at all. Dropped, an honest player's special deals
+nothing: the arrow hits, the number pops, the monster's bar does not move.
+
+**The rule:** an unpaid special is an ORDINARY hit. Roll it as one, under the
+ordinary per-monster lane, with an ordinary hit's knockback and splash. A
+forged special buys nothing more than an honest swing, and an honest special
+the worker could not charge still lands like a swing.
+
+**Receipt:** hit-proof.test (66 checks, 26 mutations caught: "an unpaid
+special is dropped" fails eight).
+
+## 207. "A test can hand the phone its bow" (v2.3.3334)
+
+**Tempting:** a phone scenario that needs a bow or a staff writes one into the
+page (`S.rpg.rangedWeapon = {...}`, `R.staffWeapon = {...}`): the game draws
+it, fires it, and the hits land.
+
+**What happens:** since v2.3.3328 a bow or staff hit on a monster needs that
+weapon in the WORKER's own slot (server/src/hitproof.js), and the phone's copy
+is never asked. The shots still fly and still pop numbers on that phone, but
+the worker refuses every one: its monsters are never hurt, shoved, turned or
+killed. A test that watches only the phone (a sprite, a flight, a sound, a
+monster made on the page) is untouched. One whose fight goes on -- the
+monsters it shoots at, where they stand, what they drop -- is reading a fight
+no real archer has: mp-orbrange read it as its aimed orb ending 558 px from
+its mummy, because the unhurt mummies had crowded the player.
+
+**The rule:** a scenario whose bow or staff hits must land on the worker arms
+the worker, as a player is armed: `H.devOp(wsPort, 'kit', id, { what:
+'weapons' })` (the test panel's starter weapons, into the stash), then
+`H.equipWeapon(P, 'staff', 'staffWeapon', 'staff')` (or `'bow',
+'rangedWeapon', 'ranged'`: the game's own equip_request). A monster made on
+the page (`F.createMonster`) is the page's alone, and needs neither.
+
+**Receipt:** mp-orbrange's new guard (the worker holds the staff), and its
+interceptions back to 5 of 5 as on main.
+
+## 208. "Clearing a Graphics that is already empty costs nothing" (v2.3.3334)
 
 **Tempting:** draw a screen flash, a HUD mark or a minimap road the simple way:
 `clear()` it at the top of every frame and draw whatever is needed. When nothing
