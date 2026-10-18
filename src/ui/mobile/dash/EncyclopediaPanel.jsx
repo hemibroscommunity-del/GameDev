@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { MonsterCodex } from './MonsterCodex.jsx';   /* v2.3.3209: the monster codex */
+import { takeCodexOpen, codexOpenWaiting } from '@/game/monsterCodex.js';   /* v2.3.3336: the NEW MONSTER card's tap */
 
 /* v2.3.3209: 'Bestiary' -> 'Monsters', the monster codex (MonsterCodex.jsx).
    The old tab listed `rpg._seenMonsters || rpg.killedMonsters`, which nothing
@@ -55,12 +56,21 @@ export const EncyclopediaPanel = () => {
   /* v2.3.3209: the monster page open (MonsterCodex.jsx).  These tabs step
      aside while one is, its header and tabs taking their place on the
      sheet's short height; "‹ All monsters" brings them back */
-  const [monster, setMonster] = useState(null);
+  /* v2.3.3336: opened by the NEW MONSTER card (src/ui/panels/NewMonsterCard.jsx)
+     on that monster's page -- shown from the first render (codexOpenWaiting),
+     taken by the effect below as it mounts, or after any render while it is
+     up (the card's tap re-opens the dashboard, which renders this).  Taken in
+     an effect, not the initializer: React may call an initializer twice. */
+  const [monster, setMonster] = useState(() => codexOpenWaiting(getState()));
   const [, force] = useState(0);
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 800);
     return () => clearInterval(id);
   }, []);
+  useEffect(() => {
+    const k = takeCodexOpen(getState());
+    if (k) { setTab('monsters'); setMonster(k); }
+  });
 
   const S = getState();
   const R = S?.rpg || {};

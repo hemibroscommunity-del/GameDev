@@ -376,6 +376,7 @@ import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a s
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
+import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
 import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
@@ -386,6 +387,7 @@ import { nmlAsk, nmlAskOn, nmlAim, nmlHitBack } from '@/game/nmlAsk.js';   /* v2
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
 import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
+import { NewMonsterCard } from '@/ui/panels/NewMonsterCard.jsx';   /* v2.3.3336: NEW MONSTER, a tap opens its codex page */
 import { activePet } from '@/game/petBook.js';   /* v2.3.3120: the pet out with you is the record's */
 import { beastmasterOn } from '@/game/trapping.js';   /* v2.3.3121: Beastmaster Bro stands only against a worker that knows his quests */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
@@ -3379,7 +3381,7 @@ export var BroTown = function BroTown(_ref0) {
        open state since the v2.3.1350 two-state cut) overlays the world
        without resizing the canvas (see sheetGeometry's invariant note). */
     function resize() {
-      var dpr = window.devicePixelRatio || 1;
+      var dpr = renderDpr();   /* v2.3.3339: the canvas's pixel ratio, lowered by ?res= or the speed test (game/renderRes.js) */
       var vw = vv ? vv.width : window.innerWidth;
       var vhFull = vv ? vv.height : window.innerHeight;
       /* iOS keyboard fix: when the chat input pops the keyboard,
@@ -6949,7 +6951,10 @@ export var BroTown = function BroTown(_ref0) {
                  badge at all; ready wore a '?'.  '❔' (waiting) and '❓'
                  (ready) are the wire values entityRenderer draws: a grey disc
                  with a white "?", still; a green disc with a check DRAWN in
-                 lines -- no emoji glyph anywhere. */
+                 lines -- no emoji glyph anywhere.
+                 v2.3.3336 (owner: "be yellow instead of green.  Green implies
+                 something is done"): the waiting "?" is drawn on YELLOW now,
+                 the grey having read as green -- same wire values. */
               npc._questMarker = _qReady ? '❓' : '❔';
             }
           });
@@ -8430,8 +8435,15 @@ export var BroTown = function BroTown(_ref0) {
           visitedBuildings: S2.stats.visitedBuildings instanceof Set ? _toConsumableArray(S2.stats.visitedBuildings) : S2.stats.visitedBuildings,
           badges: S2.badges
         });
+        /* v2.3.3339: only when it changed -- this runs twice a second, and a
+           localStorage write is a synchronous one on the main thread (on an
+           iPhone a write to disk); standing still, nothing in it changes */
         try {
-          localStorage.setItem('bt_stats', JSON.stringify(statsToSave));
+          var _statsJson = JSON.stringify(statsToSave);
+          if (_statsJson !== stateRef.current._statsSavedJson) {
+            localStorage.setItem('bt_stats', _statsJson);
+            stateRef.current._statsSavedJson = _statsJson;
+          }
         } catch (e) {}
         if (stateRef.current._statsSyncTimer === undefined) stateRef.current._statsSyncTimer = 0;
         stateRef.current._statsSyncTimer++;
@@ -12874,7 +12886,7 @@ export var BroTown = function BroTown(_ref0) {
   }, React.createElement(ElemStatusChips, { stateRef: stateRef }) /* v2.3.2996: the snowflake, the flame, the slime */,
   /* v2.3.3120: pet trapping -- the TRAP pop-up over a targeted monster and the
      card for a new pet (each on its own clock; game/trapping.js) */
-  React.createElement(TrapButton, { stateRef: stateRef }), React.createElement(TrapCatchCard, { stateRef: stateRef }), function () {
+  React.createElement(TrapButton, { stateRef: stateRef }), React.createElement(TrapCatchCard, { stateRef: stateRef }), React.createElement(NewMonsterCard, { stateRef: stateRef }), function () {
     var S = stateRef.current;
     if (!S) return null;
     var effects = [];

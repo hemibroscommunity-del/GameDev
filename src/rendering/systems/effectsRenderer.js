@@ -2775,6 +2775,20 @@ function applySquash(sp, sq, rot = 0) {
   sp.scale.set(sp.scale.x * (1 + 0.6 * sq), sp.scale.y * (1 - sq));
 }
 
+/* ═══ v2.3.3339: AN EMPTY GRAPHIC IS NOT CLEARED AGAIN ═══
+   Found by the frame-rate hunt after the owner's "around 30fps to 40ish fps":
+   Graphics.clear() on a graphic that is already empty draws nothing new, but
+   it still marks the graphic changed, and Pixi answers any change to a
+   batchable graphic by rebuilding its render group's whole draw list
+   (GraphicsPipe.validateRenderable).  The screen's flash, atmosphere and HUD
+   graphics are empty nearly always and were cleared every frame, so the
+   screen's draw list (its three layers: atmosphere, screenFX, the HUD) was
+   rebuilt every frame.  An empty graphic has no instructions; clearing one
+   changes nothing (each fill already starts its next path afresh). */
+function clearIfDrawn(g) {
+  if (g && g.context && g.context.instructions.length) g.clear();
+}
+
 export class EffectsRenderer {
   constructor(layers) {
     /* ═══ v2.3.3074: WHAT THIS RENDERER BAKES, AND WHAT IT LISTENS TO ═══
@@ -5907,7 +5921,7 @@ export class EffectsRenderer {
   /* ── Screen Flashes ── */
   _updateScreenFlash(S, viewW, viewH, now) {
     const gfx = this.flashOverlay;
-    gfx.clear();
+    clearIfDrawn(gfx);   /* v2.3.3339 */
 
     if (S._damageFlash && now - S._damageFlash < 200) {
       const age = (now - S._damageFlash) / 200;
@@ -5951,7 +5965,7 @@ export class EffectsRenderer {
   /* ── Atmosphere ── */
   _updateAtmosphere(S, viewW, viewH, now) {
     const gfx = this.atmosphereGfx;
-    gfx.clear();
+    clearIfDrawn(gfx);   /* v2.3.3339 */
 
     const zone = ZONES[S.currentZone];
     if (zone?.atmosphere) {
@@ -8841,7 +8855,7 @@ export class EffectsRenderer {
   /* ── HUD (screen-space) ── */
   _updateHUD(S, viewW, viewH, now) {
     const gfx = this.hudGfx;
-    gfx.clear();
+    clearIfDrawn(gfx);   /* v2.3.3339 */
 
     // Desktop aim reticle
     if (S._mouseWorldX != null && S._mouseWorldY != null) {

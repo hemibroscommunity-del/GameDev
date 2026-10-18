@@ -87,3 +87,18 @@ Rules:
   5. the bow and the staff after the hand-in.
 - `mp-minimap` counts the waiting pin. `mp-blacksmith` still sees the mayor
   marked and the blacksmith not.
+
+## The waiting "?" is yellow (v2.3.3336)
+
+The owner, playtesting: *"While waiting for a quest in progress to be complete
+have the question mark above mayor bros head be yellow instead of green. Green
+implies something is done."*
+
+The waiting badge was a grey (#8B9695) with more green and blue than red, which
+on a phone over the commons' grass read as sage green -- beside the ready
+badge's real green. It is drawn on the offer's yellow now (#FFC93C), with the
+offer's dark glyph (a white "?" on yellow does not read), still holding still.
+Yellow says "his quest", the "?" and the stillness say "not yet", and green is
+kept for "done". The 52 px minimap's waiting pin is the same yellow. The wire
+values ('❗', '❔', '❓') are unchanged; `mp-questguide` reads the drawn colour
+(`__btNpcMarks[...].badge`).

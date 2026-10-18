@@ -520,32 +520,50 @@ const sess = { id: 'bp_t' };
   ps._questKills = Object.create(null);
   ps.coins = 0; ps.armor = null;
 
+  /* v2.3.3335 (owner: "Makes no sense to have to choose xp in something
+     you've never used yet.  Just remove that little xp bonus"): the FIRST
+     quest pays no XP, so its hand-in needs no skill -- the game sends none
+     (QuestPanel's auto reward) -- and pays its gold and nothing to any
+     skill.  The checks below that need an XP-paying quest use tut_2. */
+  const _skSum = () => ['sword', 'bow', 'staff'].map((k) => ps.prog3.sk[k].level + ps.prog3.sk[k].xp).join(',');
+  check('the first quest pays no XP', QUEST_REWARDS.tut_1.xp === 0, QUEST_REWARDS.tut_1.xp);
   ps.inventory = { snowman: 4 };
   await room._handleQuestAccept(sess, { questId: 'tut_1' });
+  const _skBefore1 = _skSum();
+  await room._handleQuestTurnIn(sess, { questId: 'tut_1' });
+  check('...so its hand-in needs no skill named, and completes',
+    ps._quests.tut_1 === 'turnedIn' && ps.coins === QUEST_REWARDS.tut_1.gold && !ps.inventory.snowman,
+    { st: ps._quests.tut_1, coins: ps.coins, inv: ps.inventory });
+  check('...and puts no XP into any skill', _skSum() === _skBefore1, { before: _skBefore1, after: _skSum() });
+
+  check('the second quest still pays XP', QUEST_REWARDS.tut_2.xp > 0, QUEST_REWARDS.tut_2.xp);
+  ps.coins = 0;
+  ps.inventory = { 'slime-remnants': 6 };
+  await room._handleQuestAccept(sess, { questId: 'tut_2' });
 
   /* No category, unknown category, prototype key — all refused, and
      refused WHOLE: the quest must stay claimable, not end up turnedIn
      with the reward unpaid. */
   for (const bad of [undefined, 'trebuchet', '__proto__', 42]) {
-    await room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: bad });
+    await room._handleQuestTurnIn(sess, { questId: 'tut_2', xpCat: bad });
   }
   check('an XP-paying turn-in with no valid skill is refused',
-    ps._quests.tut_1 === 'active' && ps.coins === 0, { st: ps._quests.tut_1, coins: ps.coins });
+    ps._quests.tut_2 === 'active' && ps.coins === 0, { st: ps._quests.tut_2, coins: ps.coins });
   /* v2.3.1673: and a refusal at the XP-category gate must not eat the
      remnants either — that gate fires BEFORE the consume step, which is the
      ordering this pins. */
   check('a turn-in refused for a missing skill keeps the items',
-    ps.inventory.snowman === 4, ps.inventory);
+    ps.inventory['slime-remnants'] === 6, ps.inventory);
 
   const bowBefore = ps.prog3.sk.bow.level + ps.prog3.sk.bow.xp;
   const swordBefore = ps.prog3.sk.sword.level + ps.prog3.sk.sword.xp;
-  await room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: 'bow' });
-  check('naming a skill completes the turn-in', ps._quests.tut_1 === 'turnedIn', ps._quests.tut_1);
+  await room._handleQuestTurnIn(sess, { questId: 'tut_2', xpCat: 'bow' });
+  check('naming a skill completes the turn-in', ps._quests.tut_2 === 'turnedIn', ps._quests.tut_2);
   check('the XP went into the NAMED skill',
     ps.prog3.sk.bow.level + ps.prog3.sk.bow.xp > bowBefore, ps.prog3.sk.bow);
   check('the XP did NOT go anywhere else',
     ps.prog3.sk.sword.level + ps.prog3.sk.sword.xp === swordBefore, ps.prog3.sk.sword);
-  check('gold is still paid alongside', ps.coins === QUEST_REWARDS.tut_1.gold, ps.coins);
+  check('gold is still paid alongside', ps.coins === QUEST_REWARDS.tut_2.gold, ps.coins);
 }
 
 // ── 7. v2.3.1679: WORN ARMOR IS REAL MITIGATION ──

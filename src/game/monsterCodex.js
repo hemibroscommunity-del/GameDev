@@ -13,10 +13,22 @@
  * (world text never carries emoji: the iPhone Safari crash, nodeLabels.js),
  * and remembers it as NEW until its page is opened.
  *
- * Nothing here decides anything: a count is only ever the worker's. */
-import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { CODEX_KINDS, codexEntry, codexFactsAt } from '@/data/monsterCodex.js';
+ * Nothing here decides anything: a count is only ever the worker's.
+ *
+ * ═══ v2.3.3336: A NEW MONSTER IS ANNOUNCED, AND THE ANNOUNCEMENT OPENS ITS PAGE ═══
+ * Owner, playtesting: "Make the new codex entry for monsters as a 'new
+ * monster' announcement instead of a new codex entry and have it jump to the
+ * codex area."  The page-opening kill no longer floats "New in the Codex: X"
+ * over your head (world text: nothing to tap).  It raises a NEW MONSTER card
+ * (src/ui/panels/NewMonsterCard.jsx) for `ANNOUNCE_MS`: `announce` below says
+ * which, and a tap on it asks the Codex to open on that monster's page
+ * (`codexOpenPage` / `takeCodexOpen`, read by the Codex panel). */
+import { CODEX_KINDS, codexFactsAt } from '@/data/monsterCodex.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: a new page heard */
+
+/* v2.3.3336: how long the NEW MONSTER card stays up -- long enough to read
+   and reach in a fight, short enough not to sit over it */
+export const ANNOUNCE_MS = 6000;
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -72,12 +84,47 @@ export function onCodexKill(S, cx) {
     const fresh = has(c.fresh, cx.k) ? c.fresh[cx.k] : [];
     for (const f of opened) if (!fresh.includes(f)) fresh.push(f);
     c.fresh[cx.k] = fresh;
-    const e = codexEntry(cx.k);
-    const what = 'New in the Codex: ' + (e ? e.name : 'a monster');
-    try { const P = S.player; if (P) pushDmgPopup(S, P.x, P.y - 96, what, '#5FD3C0'); } catch (e2) { /* popup only */ }
-    cue('discovery');   /* v2.3.3341: a new page heard -- the quest chime's first notes (it was silent; SOUND-GAPS) */
+    /* v2.3.3336: announced on its card, not in words over your head */
+    c.announce = { kind: cx.k, at: Date.now() };
+    cue('discovery');   /* v2.3.3341: and heard -- the quest chime's first notes (it was silent; SOUND-GAPS) */
   }
   bump(c);
+}
+
+/** v2.3.3336: the NEW MONSTER card's subject while it is up: {kind, at}. */
+export function codexAnnouncement(S, now) {
+  const c = S && S._codex;
+  const a = c && c.announce;
+  if (!a) return null;
+  if ((now || Date.now()) - a.at >= ANNOUNCE_MS) { c.announce = null; return null; }
+  return a;
+}
+/** v2.3.3336: put the card away (its time is up, or it was tapped). */
+export function codexAnnounceDone(S, at) {
+  const c = S && S._codex;
+  if (c && c.announce && (at == null || c.announce.at === at)) { c.announce = null; bump(c); }
+}
+/** v2.3.3336: ask the Codex to open on a kind's page; the Codex panel takes it
+    when it is open or next opens (takeCodexOpen). */
+export function codexOpenPage(S, kind) {
+  if (!S || !CODEX_KINDS.includes(kind)) return;
+  const c = codexOf(S);
+  c.openReq = kind;
+  bump(c);
+}
+/** v2.3.3336: the page asked for, if one is waiting -- without taking it (a
+    first render's guess; takeCodexOpen is what clears it). */
+export function codexOpenWaiting(S) {
+  const c = S && S._codex;
+  return (c && c.openReq) || null;
+}
+/** v2.3.3336: the page asked for, once (null when none is waiting). */
+export function takeCodexOpen(S) {
+  const c = S && S._codex;
+  const k = c && c.openReq;
+  if (!k) return null;
+  c.openReq = null;
+  return k;
 }
 
 /** The facts a kind has that its page has not shown yet. */
