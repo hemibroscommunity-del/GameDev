@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0aa2de37a18a9d2cddfca52c71540428997ddf31",
+  "tree": "6b0959416481a68b8ec070d36d0ebc15cc078039",
+  "committedAt": "2026-10-17T19:55:45-07:00",
+  "subject": "Prop shadows no longer flicker as you run: drawn unsnapped and at full precision (v2.3.3338) (#961)",
+  "files": 5776,
+  "bytes": 636725061,
+  "listingSha256": "1dc0d8c7639684e520bda8fa49f62c14b5aa07496eba7cff1e21e554d2f93966",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7603f7ca0da88d2d117a9da28b779cb4df23bdf8",
+  "tree": "79a0f8c182d102a10b439aac89eaba4d72a49029",
+  "committedAt": "2026-10-17T19:56:07-07:00",
+  "subject": "Playtest fixes: the update button over the minimap, a yellow \"?\" while Mayor Bro waits, a new sprint sound, a NEW MONSTER card, the trap icon cleaned up, Mayor Bro's line, and your special-attack icons (v2.3.3336) (#959)",
+  "files": 5785,
+  "bytes": 638442680,
+  "listingSha256": "b09fa0df00aae4dce096cf92eb1bedf128450cb3c272590e9cd9586dc659d016",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
