@@ -19,6 +19,7 @@ import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, 
 import { SwimFx } from './swimFx.js';                 /* v2.3.3003: a swimmer is a head in the water */
 import { setWheelWaterRenderer } from './wheelWater.js'; /* v2.3.3019: the Wheel's water moves */
 import { setPaletteRenderer } from './paletteTex.js';      /* v2.3.3190: pictures as colour numbers */
+import './paletteLoad.js';                                 /* v2.3.3440: the farm's too, read so by Pixi's own loader */
 import { JumpFx } from './jumpFx.js';                 /* v2.3.3017: a jumper is drawn in the air */
 import { EmoteFx } from './emoteFx.js';               /* v2.3.3392: a bro who emotes moves */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */

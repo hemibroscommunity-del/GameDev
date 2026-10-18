@@ -227,6 +227,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 4. a tap on the bed itself waters it; the prompt's button fertilizes ── */
     await A.page.waitForTimeout(400);
+    /* v2.3.3440: the camera at rest first -- it eases after the player, and
+       on this box's slow frames a bed's place worked out while it still moved
+       was no longer under the tap (the tap missed every bed) */
+    await A.page.evaluate(() => new Promise((res) => {
+      const S = window._gameState.current;
+      let last = '', same = 0, n = 0;
+      const tick = () => {
+        const k = Math.round(S.camera.x) + ',' + Math.round(S.camera.y);
+        same = k === last ? same + 1 : 0;
+        last = k;
+        if (same >= 3 || ++n > 300) { res(); return; }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }));
     const bedPt = await A.page.evaluate((b) => {
       const S = window._gameState.current, c = document.querySelector('canvas'), r = c.getBoundingClientRect();
       return { x: r.left + (b.x + b.w / 2 - S.camera.x) * S._worldScaleX, y: r.top + (b.y + b.h * 0.6 - S.camera.y) * S._worldScaleY };
@@ -237,7 +252,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const bt = await A.page.evaluate(() => window.__btBedTap || null);
     const w4 = await until(world, (w) => w && w.beds[0].soil === 'bed-wet' && w.beds[0].label && w.beds[0].label[1] === 'Needs Fertilizer', 4000);
     rec.ok(`a tap on the bed itself (${JSON.stringify(bt)}) waters it (${v2 && v2[0]}): the soil darker, "${w4 && w4.beds[0].label && w4.beds[0].label[1]}"`,
-      v2 && v2[0] === 'planted:carrot+w' && bt && bt.bed === 0 && bt.used && w4 && w4.beds[0].soil === 'bed-wet', { v2, bt, w4: w4 && w4.beds[0] });
+      v2 && v2[0] === 'planted:carrot+w' && bt && bt.bed === 0 && bt.used && w4 && w4.beds[0].soil === 'bed-wet', { v2, bt, w4: w4 && w4.beds[0], bedPt });
     await A.page.waitForTimeout(400);
     await until(() => A.page.evaluate(() => { const p = document.querySelector('[data-farm-step]'); return p ? p.getAttribute('data-farm-step') : null; }), (v) => v === 'feed', 3000);
     await tapSel('[data-farm-step="feed"]');
@@ -337,10 +352,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
        sweep of 2026-10-17).  So: none of the Wheel's colour numbers is left on
        the farm (11 MB of them in BroTown), and the farm is no heavier than it
        was built, 196 MB, with room for small additions. */
-    const FARM_MB = 205;
+    /* v2.3.3440: the farm's own pictures are colour numbers too now
+       (rendering/paletteLoad.js) -- its ground, its 76 pictures and its
+       copies of the six sheets' pages -- so the GPU's buffers on the farm are
+       mostly its own; BroTown's are counted apart (__btPalette: the Wheel's
+       ground pieces and pages, none of which may be left).  The farm then
+       held 76.7 + 90.3 = 167 MB (was 104.5 + 90.3 = 195), and the line came
+       down with it, 205 -> 177, to keep the saving (CLAUDE.md, "Memory is
+       budgeted": lowering a line after a saving locks it in). */
+    const FARM_MB = 177;
     const buf = (m) => (m && m.byKind && m.byKind.buffer) || 0;
-    rec.ok(`on the farm the page holds ${memFarm && memFarm.mb} MB on the GPU and ${memFarm && memFarm.cacheNotOnGpu && memFarm.cacheNotOnGpu.mb} MB cached (${Math.round(tot(memFarm))} together, BroTown's ${Math.round(tot(memWheel))}): at most ${FARM_MB}, and none of BroTown's colour numbers kept (${buf(memFarm)} MB of them, BroTown's ${buf(memWheel)})`,
-      tot(memFarm) <= FARM_MB && buf(memFarm) < 1, { farm: memFarm && { mb: memFarm.mb, cache: memFarm.cacheNotOnGpu, buffer: buf(memFarm), top: (memFarm.list || []).slice(0, 8) }, wheel: memWheel && { mb: memWheel.mb, cache: memWheel.cacheNotOnGpu && memWheel.cacheNotOnGpu.mb, buffer: buf(memWheel) } });
+    const pal = await A.page.evaluate(() => (window.__btPalette ? window.__btPalette() : null));
+    const wheelLeft = pal ? pal.livePieces + pal.livePages : NaN;
+    rec.ok(`on the farm the page holds ${memFarm && memFarm.mb} MB on the GPU and ${memFarm && memFarm.cacheNotOnGpu && memFarm.cacheNotOnGpu.mb} MB cached (${Math.round(tot(memFarm))} together, BroTown's ${Math.round(tot(memWheel))}): at most ${FARM_MB}, and none of BroTown's colour numbers kept (${wheelLeft} of its pictures; the farm's own ${pal && pal.liveFarm}, ${pal && pal.liveFarmMB} MB, of ${buf(memFarm)} MB of buffers; BroTown held ${buf(memWheel)})`,
+      tot(memFarm) <= FARM_MB && wheelLeft === 0, { farm: memFarm && { mb: memFarm.mb, cache: memFarm.cacheNotOnGpu, buffer: buf(memFarm), top: (memFarm.list || []).slice(0, 8) }, wheel: memWheel && { mb: memWheel.mb, cache: memWheel.cacheNotOnGpu && memWheel.cacheNotOnGpu.mb, buffer: buf(memWheel) }, pal });
 
     /* ── 7. the barn stops your boots; the gate takes you back out ── */
     const barn = FARM_THINGS.find((t) => t.art === 'farm:barn');

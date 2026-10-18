@@ -4265,7 +4265,19 @@ Two protocol versions coexist; both must keep working:
       it); the cost, eight reads a pixel where the chip did one, on the QA
       box's software chip a frame 20-27% longer in BroTown and 14-21% among
       trees and water -- not measured on a phone:
-      docs/specs/palette-textures.md.
+      docs/specs/palette-textures.md;
+    - since v2.3.3440 the FARM'S too (the owner: "Yes do the separate PR"):
+      its ground, its 76 pictures and its copies of the six sheets it borrows,
+      read as numbers by a loader inside Pixi's own
+      (`src/rendering/paletteLoad.js`), so the same `Assets.load` / `unload`
+      addresses still load and free them; the ground from its palette twin
+      `public/maps/farm_v2.png`, which bake_farm_ground.py writes beside the
+      WebP and stamps (`tools/world/farm_ground_stamp.json`, held by
+      palette.test.mjs); the dashboard's Map panel draws it from its numbers
+      (paletteDraw.js `paletteThumb`); ~42 -> 10.4 MB, the chip 27 MB lighter
+      on the farm, mp-farmwalk's line 205 -> 177; the picture 279 of 2.8 M px
+      one level apart; the frame 23-38% longer on the QA box's software chip;
+      `mp-farmpalette`: docs/specs/palette-textures.md "The farm".
   - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
     the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
     home again, three times. Each kind of memory's highest reading must stay
