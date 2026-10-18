@@ -28,6 +28,12 @@ import * as H from './harness.mjs';
 const PHONE = { width: 390, height: 844 };
 const DPR = 3;
 
+/* v2.3.3408: held until the panel is up (at most `ms`), then let go.  The
+   title opens it on a 1.2 s timer (ZoneHeader.jsx holdStart), and on this box
+   a frame is ~0.8 s: let go at a fixed 2.2 s, the release and the timer were
+   due together after a long frame, the browser ran the input first, and the
+   release cancelled the timer -- three tries in a row, every run that started
+   with this scenario */
 const holdTitle = async (P, ms) => {
   const at = await P.page.evaluate(() => {
     const el = document.querySelector('.bt-zone-header__title');
@@ -38,7 +44,10 @@ const holdTitle = async (P, ms) => {
   if (!at) return false;
   await P.page.mouse.move(at.x, at.y);
   await P.page.mouse.down();
-  await P.page.waitForTimeout(ms);
+  for (const t0 = Date.now(); Date.now() - t0 < ms;) {
+    await P.page.waitForTimeout(400);
+    if (Date.now() - t0 >= 1500 && await panelUp(P)) break;
+  }
   await P.page.mouse.up();
   return true;
 };
@@ -46,7 +55,7 @@ const panelUp = (P) => P.page.evaluate(() => !!Array.from(document.querySelector
 async function openPanel(P) {
   for (let i = 0; i < 3; i++) {
     if (await panelUp(P)) return true;
-    await holdTitle(P, 2200);
+    await holdTitle(P, 12000);
     for (const t0 = Date.now(); Date.now() - t0 < 8000;) {
       if (await panelUp(P)) return true;
       await P.page.waitForTimeout(250);
