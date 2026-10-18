@@ -865,6 +865,8 @@ export const cookingMethods = {
   // v2.3.3036: 45/min since the gesture is a quarter of what it was --
   // see COOK_PER_MIN.
   _cookRateOk(ps) {
+    /* v2.3.3430: no rate for a test-mode character (testmode.js) */
+    if (typeof this._testMode === 'function' && this._testMode(ps)) return true;
     const now = Date.now();
     if (!Array.isArray(ps._cookHistory)) ps._cookHistory = [];
     ps._cookHistory = ps._cookHistory.filter((t) => (now - t) < 60000);
@@ -919,7 +921,8 @@ export const cookingMethods = {
     // bound on the rate.
     const nowCk = Date.now();
     const COOK_FLOOR_MS = 900;
-    if (ps._lastCookAt && (nowCk - ps._lastCookAt) < COOK_FLOOR_MS) {
+    /* v2.3.3430: ...and no floor for a test-mode character (testmode.js) */
+    if (ps._lastCookAt && (nowCk - ps._lastCookAt) < COOK_FLOOR_MS && !this._testMode(ps)) {
       const ws = this._wsBySessionId(session.id);
       if (ws) this._sendPlayerState(ws, session.id);
       return;

@@ -1210,10 +1210,15 @@ export const combatMethods = {
     const _orbsWire = Math.floor(Number(payload.orbs));
     /* v2.3.3334: the weapon, the reach and the paid special (hitproof.js) --
        `hitproof: false` is everything below as it was */
-    const _hp = this._hitProofOn();
+    /* v2.3.3430: ...and none of it, nor the reaches and lanes below, for a
+       test-mode character (testmode.js): its hit lands as its phone sends it,
+       the zone and death gates above still hold, and the damage is still the
+       worker's own roll */
+    const _tm = this._testMode(attackerPs);
+    const _hp = this._hitProofOn() && !_tm;
     const _hpNow = Date.now();
     if (_hp && !this._hitWeaponOk(attackerPs, _effSlot)) { this._hpTally('noWeapon'); return; }
-    if (_effSlot === 'melee'
+    if (_effSlot === 'melee' && !_tm
         && typeof attackerPs.x === 'number' && typeof attackerPs.y === 'number'
         && typeof m.x === 'number' && typeof m.y === 'number') {
       const _rdx = attackerPs.x - m.x;
@@ -1235,7 +1240,7 @@ export const combatMethods = {
        zone" is no longer a cap at all.  A ranged or staff hit there must come
        from within WHEEL.RANGED_MAX of the monster -- wide enough for a maxed
        bow and its stuck arrow chipping while you kite (wheelzone.js). */
-    else if (zone === WHEEL_ZONE
+    else if (zone === WHEEL_ZONE && !_tm
         && typeof attackerPs.x === 'number' && typeof attackerPs.y === 'number'
         && typeof m.x === 'number' && typeof m.y === 'number') {
       const _wdx = attackerPs.x - m.x;
@@ -1278,7 +1283,8 @@ export const combatMethods = {
     // Excess hits are silently dropped (no reject event -- a cheater
     // learns nothing, a laggy legit client just loses a ghost hit its
     // next authoritative tick corrects).  In-memory only (rule 11).
-    if (attackerPs) {
+    // v2.3.3430: no lanes for a test-mode character (testmode.js).
+    if (attackerPs && !_tm) {
       const nowTs = Date.now();
       if (!attackerPs._monHitCad) attackerPs._monHitCad = new Map();
       let cad = attackerPs._monHitCad.get(monsterId);
