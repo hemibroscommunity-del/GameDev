@@ -216,10 +216,12 @@ export function DailySpin() {
     let lastSlice = null;
     const read = () => {
       const el = wheelRef.current;
-      if (el && typeof getComputedStyle === 'function') {
-        const m = /matrix\(([^,]+),\s*([^,]+)/.exec(getComputedStyle(el).transform || '');
-        if (m) {
-          const deg = Math.atan2(Number(m[2]), Number(m[1])) * 180 / Math.PI;
+      const t = el && typeof getComputedStyle === 'function' ? getComputedStyle(el).transform : '';
+      if (t && t !== 'none' && typeof DOMMatrixReadOnly === 'function') {
+        let M = null;
+        try { M = new DOMMatrixReadOnly(t); } catch (e) { M = null; }
+        if (M) {
+          const deg = Math.atan2(M.b, M.a) * 180 / Math.PI;
           const slice = Math.floor((((deg % 360) + 360) % 360) / SLICE);
           if (lastSlice !== null && slice !== lastSlice) cue('spinTick');
           lastSlice = slice;
