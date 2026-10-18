@@ -4905,7 +4905,7 @@ body:has([data-trade-drawer]) [data-coach]{display:none}
   border-radius:4px;font-size:13px;color:rgba(255,255,255,.7);cursor:pointer;
   pointer-events:auto;opacity:.8;transition:opacity .3s}
 .bt-kb-chip:hover{opacity:1}
-/* ═══ v2.3.3465: THE ⌨ STAYS, AND THE OPEN STRIP STARTS BESIDE IT ═══
+/* ═══ v2.3.3466: THE ⌨ STAYS, AND THE OPEN STRIP STARTS BESIDE IT ═══
    The owner: "once the computer controls are open it's hidden behind the
    shortcut keys the menu shows. Move it over so you can still see where to
    click it to hide it again" (KeyboardHintsPanel.jsx).  The ⌨ keeps its
@@ -5950,7 +5950,7 @@ html[data-orient="landscape"] .bt-kb-hints,
 html[data-orient="landscape"] .bt-kb-chip{
   left:calc(12px + var(--world-pad-l,0px));
 }
-/* v2.3.3465: ...the open strip beside the ⌨ there too (both at the same
+/* v2.3.3466: ...the open strip beside the ⌨ there too (both at the same
    edge: .bt-kb-hints[data-beside]) */
 html[data-orient="landscape"] .bt-kb-hints[data-beside]{
   left:calc(60px + var(--world-pad-l,0px));

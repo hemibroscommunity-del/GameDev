@@ -58,7 +58,7 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
   const swallow = (e) => { e.stopPropagation(); };
   const toggle = (e) => { e.stopPropagation(); if (onToggle) onToggle(); };
 
-  /* ═══ v2.3.3465: THE ⌨ STAYS, BESIDE THE STRIP ═══
+  /* ═══ v2.3.3466: THE ⌨ STAYS, BESIDE THE STRIP ═══
      The owner: "The computer keyboard icon is a nice touch for showing and
      hiding the computer controls. But once the computer controls are open
      it's hidden behind the shortcut keys the menu shows. Move it over so you

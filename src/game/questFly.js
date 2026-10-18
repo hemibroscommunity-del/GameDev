@@ -51,7 +51,7 @@ export function questFlyTarget(kind) {
   return null;
 }
 
-/* v2.3.3465: the corners of the GAME, not the window's -- on a computer the
+/* v2.3.3466: the corners of the GAME, not the window's -- on a computer the
    game is the middle column (#root, game.css v2.3.1768) and the window's
    corners are the black margins either side of it */
 function fallbackRect(kind) {

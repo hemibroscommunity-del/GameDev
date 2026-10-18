@@ -7676,7 +7676,7 @@ the window's 91 could be double-tapped into a zoom; with the rule, 0 and 0,
 the canvas, html and body still `none`, the window's +, - and x still
 `manipulation`, the stepper stepping 1 -> 3 -> 2.
 
-## 231. "It is position:fixed, so its left and top are the window's" (v2.3.3465)
+## 232. "It is position:fixed, so its left and top are the window's" (v2.3.3466)
 
 On a phone they are: the game fills the window. On a computer the game is
 `#root`, a column in the middle of the window, and `#root` has

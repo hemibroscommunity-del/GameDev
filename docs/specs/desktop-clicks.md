@@ -1,6 +1,6 @@
-# A computer's clicks, flights and keys strip (v2.3.3465)
+# A computer's clicks, flights, keys strip and footsteps (v2.3.3466)
 
-Three things the owner found playing on a computer, 2026-10-18:
+Four things the owner found playing on a computer, 2026-10-18:
 
 > "when you click on a resource on pc it tries to do a combat swing first (or
 > at least plays the combat audio). I hear a bow shot every time I click on an
@@ -14,6 +14,8 @@ Three things the owner found playing on a computer, 2026-10-18:
 > computer controls. But once the computer controls are open it's hidden
 > behind the shortcut keys the menu shows. Move it over so you can still see
 > where to click it to hide it again"
+
+> "I can't hear footsteps on pc"
 
 ## 1. A click on something you use is not a swing
 
@@ -102,6 +104,36 @@ open; the open strip starts just right of it (game.css
 `.bt-kb-hints[data-beside]`, sideways too), and never runs past the game's
 column.
 
+## 4. Footsteps you can hear on a computer
+
+**What was wrong.** Nothing was skipped: a walk on a computer asks for and
+plays every footstep a phone does, at the same volume (measured: 14 steps in
+6 s on both, `ctx` running, every clip loaded). They were simply under the
+music. Each step's loudest 50 ms, at the volume `footstep()` plays it, against
+the town's score (village.mp3 at `ZONE_MUSIC_VOL`, its whole-track average),
+each measured per speaker side, as the game plays it (TRAPS §230):
+
+| sound | level |
+|---|---|
+| a sword swing | -12.0 dB |
+| the bow's draw | -24.2 dB |
+| a step on dirt | -47.3 dB |
+| the town's music, on average | **-47.5 dB** |
+| a step on snow | -49.2 dB |
+| a step on gravel, grass or sand (the Wheel's commons) | **-50.6 to -52.3 dB** |
+
+So a step on the commons sat 3-5 dB UNDER the music. A phone's small speaker
+loses most of the music's bass and the steps' crunch comes through; a
+computer's speakers or headphones play the music whole, and it buried them.
+
+**The fix.** On a computer (`pointer:fine`, the game's own desktop test) every
+step -- yours, a jump's landing, another player's at their share -- is played
+`BT_AUDIO.DESK_STEP_K` (2.5x, +8 dB) louder (`gameDisplay.js`
+`_deskStepK`): gravel, grass and sand 3-5 dB over the music's average, dirt
+8 dB over it, all still 15 dB and more under a bow's draw. A phone is unchanged:
+the owner halved the steps there (v2.3.1237). `?stepvol=k` (0 to 4) sets the
+multiplier on any device, to try a level.
+
 ## Tests
 
 * `mp-deskclick` (new): on a computer, a bow in hand, a real click on a copper
@@ -112,6 +144,8 @@ column.
   ore's flight starts on the vein in the game's column and ends on the bag; an
   XP label stays in the column; and on a phone the flight still starts on the
   vein and lands on the bag.
+* `mp-deskclick` 9-10: a computer's footsteps play at 2.5x, a phone's at its
+  own level.
 * `mp-deskkeys` 1b: the ⌨ is on screen beside the open strip, clear of it and
   of the bell, in the column, the thing a click there reaches; one click hides
   the strip, one more brings it back.

@@ -1,4 +1,4 @@
-/* ═══ A CLICK ON SOMETHING YOU USE IS NOT A SWING, AND THE PRIZE FLIES TO THE BAG (v2.3.3465) ═══
+/* ═══ A CLICK ON SOMETHING YOU USE IS NOT A SWING, AND THE PRIZE FLIES TO THE BAG (v2.3.3466) ═══
  *
  * Owner, 2026-10-18, on a computer: "when you click on a resource on pc it
  * tries to do a combat swing first (or at least plays the combat audio). I
@@ -16,7 +16,9 @@
  *
  * On a computer (1280 x 800, a mouse), in the Wheel:
  *   1. guard: a real click on empty ground is still the attack -- a sword
- *      swings, a bow looses (an arrow, its draw heard)
+ *      swings -- and one on a prop (a lamp, a bench, a barrel: not something
+ *      a click uses) a bow looses at (an arrow, its draw heard; with nothing
+ *      in its sight on bare ground the bow holds, as it always has)
  *   2. a bow in hand, a real click on a copper vein in reach starts mining,
  *      and nothing of the attack happens: no arrow, no draw, no swing
  *   3. ...the mining finished (E held), the worker pays the ore, and the
@@ -29,8 +31,12 @@
  *      was drawn the column's left edge too far right, past it)
  *   7. the farm: a real click on a bed in reach works it (the dig is sent),
  *      no swing; a press while kneeling arms nothing
+ *   9. ("I can't hear footsteps on pc") a walk's footsteps play
+ *      BT_AUDIO.DESK_STEP_K (2.5x) as loud as a phone's (gameDisplay.js:
+ *      under the music on a computer's speakers)
  * and on a phone (390 x 844, touch):
- *   8. a harvest's prize still starts on the vein and lands on the bag.
+ *   8. a harvest's prize still starts on the vein and lands on the bag;
+ *  10. its footsteps at the phone's own level, unchanged.
  */
 import * as H from './harness.mjs';
 import { FARM_BEDS } from '../../../src/data/farmLayout.js';
@@ -130,6 +136,28 @@ const readWatch = (P) => P.page.evaluate(() => {
 });
 const quiet = (w) => !!w && !w.auto && !w.swung && w.arrows === 0 && w.draws === 0;
 
+/* v2.3.3466: the footsteps a short walk plays, by the volume each step was
+   played at (BT_AUDIO.play's own `vol`) */
+async function stepVolumes(P) {
+  await P.page.evaluate(() => {
+    const A = window.BT_AUDIO;
+    window.__dcSteps = [];
+    if (!A.__dcPlay) {
+      const op = A.play;
+      A.__dcPlay = op;
+      A.play = function (key, opts) {
+        if (/^(step-|footstep-)/.test(String(key))) (window.__dcSteps || []).push(+((opts && opts.vol) || 0).toFixed(4));
+        return op.call(this, key, opts);
+      };
+    }
+    const a = document.activeElement; if (a && a.blur) a.blur();
+  });
+  await P.page.keyboard.down('d'); await P.page.waitForTimeout(1600); await P.page.keyboard.up('d');
+  await P.page.keyboard.down('a'); await P.page.waitForTimeout(1600); await P.page.keyboard.up('a');
+  await P.page.waitForTimeout(300);
+  return P.page.evaluate(() => ({ vols: (window.__dcSteps || []).slice(), k: window.BT_AUDIO._deskStepK ? window.BT_AUDIO._deskStepK() : null }));
+}
+
 /* the game's column, and the canvas in it */
 const column = (P) => P.page.evaluate(() => {
   const r = document.getElementById('root').getBoundingClientRect();
@@ -169,7 +197,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('a computer is in the Wheel with its tools, a bow and a sword (guard)', !!inW && desk && armed.includes('bow') && sw.ok, { inW, desk, armed, sw });
     const hold = (kind) => (kind === 'bow' ? H.equipWeapon(P, 'bow', 'rangedWeapon', 'ranged') : H.equipWeapon(P, 'greatsword', 'weapon', 'melee'));
 
-    /* ── 1. guard: on empty ground the press is the attack ── */
+    /* ── 1. guard: on empty ground, or at a prop, the press is the attack ── */
     {
       await H.closeNpcDialogue(P).catch(() => {});
       const me = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
@@ -180,14 +208,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.mouse.click(at.x, at.y, { delay: PRESS_MS });
       await P.page.waitForTimeout(900);
       const ws = await readWatch(P);
+      rec.ok(`1. guard: a click on empty ground (on the ${at.top}) is the attack -- the sword swings (the press: ${ws && ws.press})`,
+        at.top === 'CANVAS' && !!ws && ws.press === 'attack' && ws.swung, { at, ws });
+      /* a prop near you that is not a building: what a bow looses at (its
+         sight opens on a prop on the arrow's ground track, v2.3.3206) */
+      const prop = await P.page.evaluate(() => {
+        const S = window._gameState.current, W = window.__btWheelObjects;
+        const boxes = W.blockers();
+        const fy = S.player.y + 52;
+        let best = null;
+        for (const o of W.near(S.player.x, S.player.y, 560)) {
+          if (!o.ready) continue;
+          const b = boxes.find((q) => q.oi === o.i);
+          if (!b || b.x1 - b.x0 > 160) continue;
+          const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+          const d = Math.hypot(cx - S.player.x, cy - fy);
+          if (d < 90 || d > 330) continue;   /* on the screen: the view is ~760 game px across */
+          if (!best || d < best.d) best = { id: o.id, oi: o.i, cx, cy, d: Math.round(d) };
+        }
+        return best;
+      });
+      const pt = prop ? await pagePoint(P, prop.cx, prop.cy) : null;
       await hold('bow');
       await P.page.waitForTimeout(600);
       await watchAttack(P);
-      await P.page.mouse.click(at.x, at.y, { delay: PRESS_MS });
+      if (pt) await P.page.mouse.click(pt.x, pt.y, { delay: PRESS_MS });
       await P.page.waitForTimeout(1200);
       const wb = await readWatch(P);
-      rec.ok(`1. guard: a click on empty ground (on the ${at.top}) is the attack -- the sword swings, the bow looses (${wb && wb.arrows} arrow, ${wb && wb.draws} draw)`,
-        at.top === 'CANVAS' && !!ws && ws.press === 'attack' && ws.swung && !!wb && wb.press === 'attack' && (wb.arrows > 0 || wb.draws > 0), { at, ws, wb });
+      rec.ok(`1. guard: a click on a ${prop && prop.id} ${prop && prop.d} px off (on the ${pt && pt.top}) is the attack -- the bow looses at it (${wb && wb.arrows} arrow, ${wb && wb.draws} draw; the press: ${wb && wb.press})`,
+        !!pt && pt.top === 'CANVAS' && !!wb && wb.press === 'attack' && (wb.arrows > 0 || wb.draws > 0), { prop, pt, wb });
+    }
+
+    /* ── 9. footsteps a computer can hear ── */
+    {
+      const st = await stepVolumes(P);
+      const v = st.vols;
+      rec.ok(`9. a computer's footsteps play ${st.k}x a phone's: ${v.length} steps at ${v.length ? Math.min(...v) : '-'}-${v.length ? Math.max(...v) : '-'} (a phone's 0.13-0.20)`,
+        st.k === 2.5 && v.length >= 3 && v.every((x) => x >= 0.13 * 2.5 * 0.98 && x <= 0.2 * 2.5 * 1.02), st);
     }
 
     /* ── 2-3. a bow in hand, a click on a copper vein ── */
@@ -304,6 +361,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await watchAttack(P);
       await P.page.mouse.click(at.x, at.y, { delay: PRESS_MS });
       const kneel = await H.waitFor(P, (S) => !!S._farmWork, (v) => v, { timeout: 3000, label: 'kneeling' }).catch(() => false);
+      const tap = await P.page.evaluate(() => window.__btBedTap || null);   /* this click's (the next press takes the probe) */
       /* a press while kneeling: nothing armed, and the click it ends with is the farm's */
       const w = await readWatch(P);
       const me = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
@@ -314,7 +372,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(600);
       const wk = await readWatch(P);
       const acts = await H.waitFor(P, () => (window.__dcFarmActs || []).slice(), (a) => a.length >= 1, { timeout: 6000, label: 'the dig sent' }).catch(() => []);
-      const tap = await P.page.evaluate(() => window.__btBedTap || null);
       rec.ok(`7. on the farm (${onFarm && onFarm.zone}), a real click on a bed in reach (on the ${at.top}) works it (${JSON.stringify(tap)}, sent ${JSON.stringify(acts[0] || null)}) with no swing (the press: ${w && w.press})`,
         !!onFarm && at.top === 'CANVAS' && !!tap && tap.bed === 0 && tap.used && kneel && acts.length >= 1 && quiet(w) && w.press === 'farm', { onFarm, at, tap, kneel, acts, w });
       rec.ok(`7. ...and a press while kneeling arms nothing (kneeling ${kneeling}: swing ${wk && wk.swung}, attack held ${wk && wk.auto})`,
@@ -370,6 +427,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const onBag = !!f && (f.kind === 'bag' ? !!col.bag && Math.hypot(f.to[0] - col.bag.x, f.to[1] - col.bag.y) < 2 : f.kind === 'fold');
     rec.ok(`8. a phone: the mining paid (${g}, +${got}), its flight starts on the vein (${f && f.from} by ${Math.round(vein.x)},${Math.round(vein.y)}) and lands on the ${f && f.kind} (${f && f.to})`,
       g === 'gone' && got >= 1 && !!f && Math.hypot(f.from[0] - vein.x, f.from[1] - vein.y) < 90 && onBag && inBox(f.to, { l: 0, r: PHONE.width, t: 0, b: PHONE.height }), { g, got, f, vein, col });
+    /* ── 10. a phone's footsteps unchanged ── */
+    const st = await stepVolumes(L);
+    rec.ok(`10. a phone's footsteps at its own level, unchanged: ${st.vols.length} steps at ${st.vols.length ? Math.min(...st.vols) : '-'}-${st.vols.length ? Math.max(...st.vols) : '-'} (x${st.k})`,
+      st.k === 1 && st.vols.length >= 3 && st.vols.every((x) => x >= 0.13 * 0.98 && x <= 0.2 * 1.02), st);
     rec.ok('the phone: no page errors', lerr.length === 0, lerr.slice(0, 4));
   } finally {
     stopL();

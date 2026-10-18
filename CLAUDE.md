@@ -4581,10 +4581,11 @@ Two protocol versions coexist; both must keep working:
     (`_authPutOut`) and handed nothing. In the suite's room a Forget was
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
-- **ON A COMPUTER A CLICK ON SOMETHING YOU USE IS NOT A SWING, AND A FLIGHT
-  STARTS WHERE THE GAME IS (v2.3.3465, docs/specs/desktop-clicks.md, TRAPS
-  §231).** The owner: "I hear a bow shot every time I click on an ore to
-  harvest it", and the prize "flies off screen".
+- **ON A COMPUTER A CLICK ON SOMETHING YOU USE IS NOT A SWING, A FLIGHT
+  STARTS WHERE THE GAME IS, AND THE FOOTSTEPS ARE HEARD (v2.3.3466,
+  docs/specs/desktop-clicks.md, TRAPS §232).** The owner: "I hear a bow shot
+  every time I click on an ore to harvest it", the prize "flies off screen",
+  and "I can't hear footsteps on pc".
   - The canvas's `onMouseDown` asks the click's own question first
     (BroTown `_deskPressTarget`): a townsperson, a resource in reach you hold
     the tool for, or a bed of your farm is the click's, and the press arms no
@@ -4595,6 +4596,10 @@ Two protocol versions coexist; both must keep working:
     inside `#root` (contain: paint on a computer) it is the column's.
     `bagFlightTarget` is where the bag is on screen.
   - The ⌨ stays beside the open keys strip, the switch both ways.
+  - Footsteps on a computer are `BT_AUDIO.DESK_STEP_K` (2.5x) louder: they
+    played there, but 3-5 dB under the music on the commons, which a phone's
+    speaker thins and a computer's plays whole ("I can't hear footsteps on
+    pc"); a phone is unchanged; `?stepvol=k`.
   - `mp-deskclick`, `mp-deskkeys` 1b.
 - **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3407,
   docs/specs/desktop-keys.md, TRAPS §213).** The owner: "For computer usage
