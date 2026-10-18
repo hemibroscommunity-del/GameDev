@@ -1839,6 +1839,15 @@ remnant to migrate server-side, not a mode to preserve.
       hold);
     - test-world-core "the water moves", `mp-wheelwaves`:
       docs/specs/moving-water.md.
+    - since v2.3.3411 THE GROUND UNDER OPEN SEA IS NOT DRAWN -- the owner's
+      "iterate on what best improves framerate without loss of quality": a
+      piece whose field is `uniform` (open sea, no shore in reach) is covered
+      whole by its quad at full strength, so its ground sprite (eight texture
+      reads a px as colour numbers) was drawn for nothing; it is hidden while
+      the water draws and shown the frame the water's live switch puts the
+      quads away (`WheelWater.cover`), the picture the same to the bit;
+      `?seacover=0` and `window.__btWaves.cover(on)`; `__btUnderSame` shows
+      them for its check; `mp-seacover`: docs/specs/sea-cover.md.
   - Since v2.3.3020 the view is BACK IN A LITTLE, the bro 64 px tall -- the
     owner: "the framerate looks a bit gritty I think from the scale change
     ... I think char 64 pixels tall was probably best": `VIEW_OUT` 0.77 in

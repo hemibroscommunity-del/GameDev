@@ -61,6 +61,10 @@ if (typeof window !== 'undefined') {
     const R = G && G._app && G._app.renderer;
     if (!G || G.dead || !G.under || !R) return null;
     const was = G.under.visible;
+    /* v2.3.3411: every piece drawn for this, the ones under open sea too
+       (wheelWater.js hides them while its quads cover them) */
+    const W = G.water, covering = !!(W && W._covering);
+    if (covering) W.cover(false);
     try {
       const frame = new Rectangle(x, y, w, h);
       G.under.visible = false;
@@ -77,6 +81,7 @@ if (typeof window !== 'undefined') {
       return { error: String((e && e.message) || e) };
     } finally {
       G.under.visible = was;
+      if (covering) W.cover(true);
     }
   };
 }
@@ -282,7 +287,7 @@ export class WheelGround {
       if (this.dead || this._orphaned() || this.pieces.get(key) !== rec) return;
       rec.sprite = this._sprite(m, info, i, j);
       rec.ready = true;
-      if (this.water) this.water.set(key, i, j, m.wf, info, rec.sprite.texture);
+      if (this.water) this.water.set(key, i, j, m.wf, info, rec.sprite.texture, rec.sprite);
       this._short(rec, m);
     }).catch(() => {
       if (!warm) this.inFlight--;
@@ -390,7 +395,7 @@ export class WheelGround {
       const old = rec.sprite;
       rec.sprite = this._sprite(m, info, rec.i, rec.j);
       /* (the water moves the new picture before the old one goes) */
-      if (this.water) this.water.set(key, rec.i, rec.j, m.wf, info, rec.sprite.texture);
+      if (this.water) this.water.set(key, rec.i, rec.j, m.wf, info, rec.sprite.texture, rec.sprite);
       if (old) {
         const was = old.texture && old.texture.source;
         try { old.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
