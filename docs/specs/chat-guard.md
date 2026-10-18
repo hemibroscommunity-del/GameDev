@@ -1,4 +1,4 @@
-# Chat guardrails: its own allowance, no repeats, clean text (v2.3.3367)
+# Chat guardrails: its own allowance, no repeats, clean text (v2.3.3396)
 
 Phase 1 of the fun & social plan, the owner's "Go recommended": the three
 guardrails the plan found missing on the server. **Server only. Nothing new

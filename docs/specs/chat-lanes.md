@@ -56,7 +56,7 @@ client sends nothing and says so in the chat log, exactly as `/p` does
 ## Why the rate limit is in this module
 
 Room chat rides the **default** branch, which owns the relay token bucket
-("8 burst + 4/s absorbs a human hammering chat"). (v2.3.3367: room chat and
+("8 burst + 4/s absorbs a human hammering chat"). (v2.3.3396: room chat and
 emotes have an allowance of their own there now, apart from the swings' and
 arrows', and every lane here is cleaned too: `docs/specs/chat-guard.md`.) An **explicit** case in the
 router switch never reaches it. That is not a theory — it is the hole

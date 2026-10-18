@@ -271,7 +271,7 @@ check('forged decline (no live invite) sends nothing', msgsOfType(wss.c, 'party_
   var _ctrl = false; var _ct = (gc[0] && gc[0].payload.text) || ''; for (var _i = 0; _i < _ct.length; _i++) if (_ct.charCodeAt(_i) < 32) _ctrl = true;
   check('control chars are stripped', gc.length === 1 && !_ctrl && _ct.indexOf('there') >= 0, _ct);
   wss.g.sent.length = 0;
-  /* v2.3.3367: a long line that is not one key held down -- a run of one
+  /* v2.3.3396: a long line that is not one key held down -- a run of one
      character is cut to 6 now (chatguard.js), which would hide the clamp */
   await cmd(wss.f, 'party_chat', { text: 'ab'.repeat(250) });
   const gl = msgsOfType(wss.g, 'party_chat');

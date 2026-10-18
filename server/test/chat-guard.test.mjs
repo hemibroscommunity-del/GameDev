@@ -1,4 +1,4 @@
-/* Chat guardrails -- v2.3.3367 (server/src/chatguard.js, docs/specs/chat-guard.md).
+/* Chat guardrails -- v2.3.3396 (server/src/chatguard.js, docs/specs/chat-guard.md).
  *
  * The fun & social plan's Phase 1 guardrails, the owner's "Go recommended":
  *
