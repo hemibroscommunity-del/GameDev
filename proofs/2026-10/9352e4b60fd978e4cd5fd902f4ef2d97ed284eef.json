@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9352e4b60fd978e4cd5fd902f4ef2d97ed284eef",
+  "tree": "38c1dd67f994af2a41e0fde843e91d09ee27c6ec",
+  "committedAt": "2026-10-18T10:30:09-07:00",
+  "subject": "Every ore rock 1.4x, so copper hides the miner's shirt as the old vein did (v2.3.3443) (#1005)",
+  "files": 5957,
+  "bytes": 673640412,
+  "listingSha256": "374b466898d9565456d26f09ef6f081d60198ad921fb4bc0000d84f47c11b7b3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
