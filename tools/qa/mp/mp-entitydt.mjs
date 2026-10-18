@@ -28,7 +28,7 @@ import * as H from './harness.mjs';
 const GAP = 60;          /* under the interpolator's 80px snap threshold */
 const WINDOW_MS = 220;
 
-/* ═══ v2.3.3340: PER SECOND OF GAME TIME, NOT OF THE WALL CLOCK ═══
+/* ═══ v2.3.3342: PER SECOND OF GAME TIME, NOT OF THE WALL CLOCK ═══
    The game steps each frame by its real length but never more than 3/60 s
    (BroTown.jsx `_dtScale`, clamped to 3), so below 20 fps the whole world
    slows rather than jumps, by design: a tab that stalls must not teleport
@@ -91,7 +91,7 @@ async function interpDecayAt(P, cdp, rate) {
     m.x = S.player.x + 200; m.y = S.player.y;   /* parked, and far enough not to be swung at */
     m.renderX = m.x - gap; m.renderY = m.y;
     m._stunUntil = 0; m._kbUntil = 0;
-    (0, eval)(window.__edtClockSrc)();   /* v2.3.3340: the game clock (gameClock) */
+    (0, eval)(window.__edtClockSrc)();   /* v2.3.3342: the game clock (gameClock) */
     return { gap, frames: S._frameCount || 0, t: (document.timeline.currentTime || performance.now()) };
   }, GAP);
   if (!start) return null;
@@ -105,7 +105,7 @@ async function interpDecayAt(P, cdp, rate) {
   });
   if (!end || !(end.gap > 0)) return null;
   const secs = (end.t - start.t) / 1000;
-  if (!(secs > 0)) return null;   /* v2.3.3340: no frame drawn in the window */
+  if (!(secs > 0)) return null;   /* v2.3.3342: no frame drawn in the window */
   return {
     k: -Math.log(end.gap / start.gap) / secs,
     fps: (end.frames - start.frames) / secs,
@@ -132,7 +132,7 @@ async function npcRateAt(P, cdp, rate) {
     n.moveTimer = 900000;
     n.targetX = n.x + 300;
     n.targetY = n.y;
-    (0, eval)(window.__edtClockSrc)();   /* v2.3.3340: the game clock (gameClock) */
+    (0, eval)(window.__edtClockSrc)();   /* v2.3.3342: the game clock (gameClock) */
     return { mt: n.moveTimer, x: n.x, y: n.y, frames: S._frameCount || 0, t: (document.timeline.currentTime || performance.now()) };
   });
   const read = () => P.page.evaluate(() => {
@@ -147,7 +147,7 @@ async function npcRateAt(P, cdp, rate) {
   const t1 = await read();
   if (!t1) return null;
   const secs = (t1.t - t0.t) / 1000;
-  if (!(secs > 0)) return null;   /* v2.3.3340: no frame drawn in the window */
+  if (!(secs > 0)) return null;   /* v2.3.3342: no frame drawn in the window */
   const walked = Math.sqrt((t1.x - t0.x) ** 2 + (t1.y - t0.y) ** 2);
   return {
     msPerSec: (t0.mt - t1.mt) / secs,
@@ -175,7 +175,7 @@ async function remoteSpeedAt(P, cdp, rate) {
       renderX: S.player.x, renderY: S.player.y,
       _vx: 2, _vy: 0, _smoothVx: 2, _smoothVy: 0,
     };
-    (0, eval)(window.__edtClockSrc)();   /* v2.3.3340: the game clock (gameClock) */
+    (0, eval)(window.__edtClockSrc)();   /* v2.3.3342: the game clock (gameClock) */
     return { rx: S.others['entitydt-peer'].renderX, frames: S._frameCount || 0, t: (document.timeline.currentTime || performance.now()) };
   });
   if (!t0) return null;
@@ -192,7 +192,7 @@ async function remoteSpeedAt(P, cdp, rate) {
   });
   if (!t1) return null;
   const secs = (t1.t - t0.t) / 1000;
-  if (!(secs > 0)) return null;   /* v2.3.3340: no frame drawn in the window */
+  if (!(secs > 0)) return null;   /* v2.3.3342: no frame drawn in the window */
   await P.page.evaluate(() => { const S = window._gameState.current; if (S && S.others) delete S.others['entitydt-peer']; });
   return { pxPerSec: (t1.rx - t0.rx) / secs, fps: (t1.frames - t0.frames) / secs, gameRate: (t1.game || 0) / 1000 / secs };
 }
@@ -208,7 +208,7 @@ async function turnDecayAt(P, cdp, rate) {
     if (!S) return null;
     S._facingAngle = 0;
     S._targetFacingAngle = Math.PI / 2;
-    (0, eval)(window.__edtClockSrc)();   /* v2.3.3340: the game clock (gameClock) */
+    (0, eval)(window.__edtClockSrc)();   /* v2.3.3342: the game clock (gameClock) */
     return { gap: Math.PI / 2, frames: S._frameCount || 0, t: (document.timeline.currentTime || performance.now()) };
   });
   if (!t0) return null;
@@ -221,7 +221,7 @@ async function turnDecayAt(P, cdp, rate) {
   });
   if (!t1 || !(t1.gap > 0)) return null;
   const secs = (t1.t - t0.t) / 1000;
-  if (!(secs > 0)) return null;   /* v2.3.3340: no frame drawn in the window */
+  if (!(secs > 0)) return null;   /* v2.3.3342: no frame drawn in the window */
   return { k: -Math.log(t1.gap / t0.gap) / secs, fps: (t1.frames - t0.frames) / secs,
     gameRate: (t1.game || 0) / 1000 / secs, remaining: t1.gap };
 }
@@ -230,7 +230,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort });
   await H.enterWorld(P);
   await P.page.waitForTimeout(1800);
-  /* v2.3.3340: the game clock's source, handed to the page once and started
+  /* v2.3.3342: the game clock's source, handed to the page once and started
      by each sample (gameClock above) */
   await P.page.evaluate(({ src, cap }) => { window.__edtClockSrc = src; window.__edtCap = cap; },
     { src: '(' + gameClock.toString() + ')', cap: CAP_MS });
@@ -295,7 +295,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         fast.fps > slow.fps * 1.5, { fastFps: +fast.fps.toFixed(1), slowFps: +slow.fps.toFixed(1) });
       rec.ok('the gap actually closed in both samples (guard)',
         fast.remaining < GAP && slow.remaining < GAP, { fast: fast.remaining, slow: slow.remaining });
-      /* v2.3.3340: per second of game time (judge, above) */
+      /* v2.3.3342: per second of game time (judge, above) */
       const j = judge(fast.k, slow.k, fast, slow);
       if (!j.apart) rec.skip('a monster catches up to the server at the same rate per SECOND', TOO_LOADED);
       else rec.ok('a monster catches up to the server at the same rate per SECOND', j.ok,
@@ -312,7 +312,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('the NPC timer actually ran down, and it walked (guard)',
       nFast.msPerSec > 200 && nSlow.msPerSec > 200 && nFast.pxPerSec > 8 && nSlow.pxPerSec > 8,
       { nFast, nSlow });
-    /* v2.3.3340: per second of game time (judge, above) */
+    /* v2.3.3342: per second of game time (judge, above) */
     const jt = judge(nFast.msPerSec, nSlow.msPerSec, nFast, nSlow);
     if (!jt.apart) rec.skip('an NPC wander timer drains at the same ms per SECOND', TOO_LOADED);
     else rec.ok('an NPC wander timer drains at the same ms per SECOND', jt.ok,
@@ -330,7 +330,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log(`    remote:    ${rFast.pxPerSec.toFixed(0)} px/s at ${rFast.fps.toFixed(1)}fps  vs  ${rSlow.pxPerSec.toFixed(0)} px/s at ${rSlow.fps.toFixed(1)}fps (game time ${rFast.gameRate.toFixed(2)} / ${rSlow.gameRate.toFixed(2)})`);
     rec.ok('the remote actually moved (guard)',
       rFast.pxPerSec > 20 && rSlow.pxPerSec > 20, { rFast: rFast.pxPerSec, rSlow: rSlow.pxPerSec });
-    /* v2.3.3340: per second of game time (judge, above) */
+    /* v2.3.3342: per second of game time (judge, above) */
     const jr = judge(rFast.pxPerSec, rSlow.pxPerSec, rFast, rSlow);
     if (!jr.apart) rec.skip('a remote player is dead-reckoned at the same px per SECOND', TOO_LOADED);
     else rec.ok('a remote player is dead-reckoned at the same px per SECOND', jr.ok,
@@ -346,7 +346,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('the facing angle actually closed (guard)',
       tFast.remaining < Math.PI / 2 && tSlow.remaining < Math.PI / 2,
       { fast: tFast.remaining, slow: tSlow.remaining });
-    /* v2.3.3340: per second of game time (judge, above) */
+    /* v2.3.3342: per second of game time (judge, above) */
     const jf = judge(tFast.k, tSlow.k, tFast, tSlow);
     if (!jf.apart) rec.skip('the player turns toward a heading at the same rate per SECOND', TOO_LOADED);
     else rec.ok('the player turns toward a heading at the same rate per SECOND', jf.ok,

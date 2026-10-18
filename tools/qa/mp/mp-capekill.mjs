@@ -58,7 +58,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     if (S && S.rpg) S.rpg.level = 40;
   });
-  /* v2.3.3340: and Mayor Bro met, through the harness's opener (tut_1, then
+  /* v2.3.3342: and Mayor Bro met, through the harness's opener (tut_1, then
      the Test panel's unlock: H.openLands, as mp-monwatch and mp-fightsoak).
      Since v2.3.1676 the town's gate turns back a character who has not
      spoken to him (the owner: "not be allowed to leave town without speaking
@@ -97,7 +97,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return e ? { x: e.tx * 32 + 16, y: e.ty * 32 + 16 } : null;
   });
   rec.ok('town declares its trail-head (guard)', !!townExit, townExit);
-  /* v2.3.3340: hopped to open ground just north of the trail-head first, then
+  /* v2.3.3342: hopped to open ground just north of the trail-head first, then
      WALKED onto it (the walker above, for the reason its note gives).  From
      the clean spot the walker heads south and stopped at (1126, 1971), 80 px
      short, against scenery it only ever tries to push through -- it presses
@@ -132,7 +132,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return e ? { x: e.tx * 32 + 16, y: e.ty * 32 + 16 } : null;
     });
   }
-  /* v2.3.3340: the same approach for Frost Ridge's trail-head (above) */
+  /* v2.3.3342: the same approach for Frost Ridge's trail-head (above) */
   const frostApproach = frostExit && await approachOf(frostExit);
   if (frostApproach) await H.hopTo(P, frostApproach.x, frostApproach.y);
   const onFrost = !!frostExit && await walkTo(frostExit.x, frostExit.y, 'frost');

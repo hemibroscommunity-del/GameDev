@@ -115,8 +115,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const MASK_OK = new Set(['worldview', 'town']);
   const grids = await H.readState(P, (S) => Object.keys(S._tiledWalkable || {}));
   const unexpected = grids.filter((z) => !MASK_OK.has(z));
+  /* v2.3.3342: ...or a zone whose grid is town's KIND, every wall in it one of
+     the zone's own prop footprints, stamped as the game stamps them
+     (spriteSheets.js installPropOnlyGrids / stampPropFootprints, the boxes
+     read off window.__btBlockers).  Frost Ridge got blocking props (its rock
+     ridge, mp-propshots), so the game builds it the same open grid with its
+     footprints in it, and the allowlist read it as a mask come back (the
+     sweep of 2026-10-18).  A hue-derived mask walls in terrain no footprint
+     covers, so it still fails here, which is the property. */
+  const propOnly = await P.page.evaluate((zones) => {
+    const S = window._gameState.current;
+    const out = {};
+    for (const z of zones) {
+      const g = S._tiledWalkable && S._tiledWalkable[z];
+      const Z = (window.__btZones || {})[z];
+      const boxes = (window.__btBlockers && window.__btBlockers(z)) || [];
+      if (!g || !g.length || !Z) { out[z] = { ok: false, why: 'no grid or no zone' }; continue; }
+      const gh = g.length, gw = g[0].length, mw = Z.w * 32, mh = Z.h * 32;
+      const stamped = new Set();
+      for (const f of boxes) {
+        const gx0 = Math.max(0, Math.floor(f.x0 * gw / mw)), gx1 = Math.min(gw - 1, Math.floor(f.x1 * gw / mw));
+        const gy0 = Math.max(0, Math.floor(f.y0 * gh / mh)), gy1 = Math.min(gh - 1, Math.floor(f.y1 * gh / mh));
+        for (let y = gy0; y <= gy1; y++) for (let x = gx0; x <= gx1; x++) stamped.add(y * gw + x);
+      }
+      let walls = 0, stray = 0;
+      for (let y = 0; y < gh; y++) {
+        for (let x = 0; x < gw; x++) if (g[y][x] === false) { walls++; if (!stamped.has(y * gw + x)) stray++; }
+      }
+      out[z] = { ok: walls > 0 && stray === 0, walls, stray, boxes: boxes.length };
+    }
+    return out;
+  }, unexpected);
+  const masks = unexpected.filter((z) => !(propOnly[z] && propOnly[z].ok));
   rec.ok('no zone has a HUE-DERIVED walk mask loaded (the v2.3.1794 verdict holds)',
-    unexpected.length === 0, { unexpected, grids, allowed: [...MASK_OK] });
+    masks.length === 0, { masks, propOnly, grids, allowed: [...MASK_OK] });
   /* The prop grid IS in this map — that is how the town's buildings block at
      all — so an empty set here would mean collision had quietly gone away.
      (The world map's authored mask loads on ENTRY to that zone, so it is not

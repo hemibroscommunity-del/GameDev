@@ -115,7 +115,7 @@ async function read(P, tag) {
   };
 }
 
-/* ═══ v2.3.3340: READ HIM WHEN NOTHING IS OVER HIM ═══
+/* ═══ v2.3.3342: READ HIM WHEN NOTHING IS OVER HIM ═══
    A card or plate of the page's own over the figure reads as no colour at all
    -- the lesson cards (now marked done, COACH_OFF), and in the sweep of
    2026-10-17 a dark plate with a gold rule over the first, facing-forward
@@ -146,7 +146,7 @@ async function readShowing(P, tag, shows) {
    script), and the creator's join carries them into the record, the way a
    player who drew in the creator arrives.  The control is a separate, plain
    character, because this one is never plain. */
-/* v2.3.3340: the tutorial's tip cards are marked done before the first script
+/* v2.3.3342: the tutorial's tip cards are marked done before the first script
    runs, as mp-cosmpose and mp-skinworld do.  Since v2.3.3106 raised the combat
    buttons, the "Your dashboard" card sits ~72 px higher, over the middle of the
    screen where he stands: the turned-away and turned-back reads were that card
@@ -172,7 +172,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      measuring the ground. This is also what stops the "gone when turned away"
      check passing vacuously -- which is exactly how the first version of this
      scenario reported a green run while its crop sat on bare cobblestones. */
-  const C = await H.newPlayer(browser, { name: 'Plain', wsPort, webPort, dpr: 2, init: COACH_OFF });   /* v2.3.3340: a card over him would pass this control on zeros */
+  const C = await H.newPlayer(browser, { name: 'Plain', wsPort, webPort, dpr: 2, init: COACH_OFF });   /* v2.3.3342: a card over him would pass this control on zeros */
   await H.enterWorld(C);
   await C.page.waitForTimeout(2500);
   await H.hopTo(C, H.TOWN_CLEAN_SPOT.x, H.TOWN_CLEAN_SPOT.y);

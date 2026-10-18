@@ -299,7 +299,7 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
     try { res = await resetAccountCharacter(e.phrase); } catch (err) { res = null; }
     setBusy(false);
     if (!res || !res.ok || !res.reset) {
-      /* v2.3.3340: "too many tries" says so, in the Login Key form's own words
+      /* v2.3.3342: "too many tries" says so, in the Login Key form's own words
          (AccountLoginForm.jsx).  The restart and the Login Key check share 20
          tries a minute per address (server account.js), and this list asks the
          worker about every row it has no look for, so a device with many bros

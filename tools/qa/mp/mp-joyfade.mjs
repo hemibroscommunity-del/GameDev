@@ -107,7 +107,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      covered rather than merely worked around, and read from the probe's
      `holds` rather than guessed from the opacity -- "painted with no thumb on
      it" has two possible causes and the number names neither. */
-  /* v2.3.3340: the band OPEN first.  Since v2.3.2495 a first join arrives
+  /* v2.3.3342: the band OPEN first.  Since v2.3.2495 a first join arrives
      with the dashboard FOLDED, the coach's first lesson is then the fold chip
      (`openDash`), and it never reaches `move`, the lesson that holds the left
      stick (mp-rbutton read {"L":[],"R":[]} in the sweep of 2026-10-17). */
@@ -120,7 +120,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     if (S.rpg) { S.rpg._quests = S.rpg._quests || {}; S.rpg._quests.tut_4 = 'turnedIn'; }
   });
-  /* v2.3.3340: the coach looks only every 5th frame -- wait its hold out
+  /* v2.3.3342: the coach looks only every 5th frame -- wait its hold out
      rather than a fixed 700 ms, which a slow box may not reach */
   await P.page.waitForFunction(() => { const v = window.__btDiscVis && window.__btDiscVis(); return !!(v && v.holds && v.holds.L.indexOf('coach') < 0); }, null, { timeout: 10000, polling: 200 }).catch(() => {});
   const holds1 = await P.page.evaluate(() => (window.__btDiscVis ? window.__btDiscVis() : null));
