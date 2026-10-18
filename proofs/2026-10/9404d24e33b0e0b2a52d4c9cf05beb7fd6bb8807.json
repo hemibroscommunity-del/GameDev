@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9404d24e33b0e0b2a52d4c9cf05beb7fd6bb8807",
+  "tree": "872865445f5d0368d5fb7281ed7069fe1edc19ce",
+  "committedAt": "2026-10-18T08:37:38-07:00",
+  "subject": "Farming has its own moves: your hoe, watering can and kneel, in your clothes and drawings, and everyone on the farm sees them (v2.3.3439) (#964)",
+  "files": 5936,
+  "bytes": 667525286,
+  "listingSha256": "da84a4e2cfe52945ac56b1abf2f13c6f31c83b07c65371a4586d81ff171ebdef",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
