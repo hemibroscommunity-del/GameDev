@@ -88,12 +88,23 @@ function walker(wsPort) {
    ticks in one go between frames and the count is the page's, not the wire's. */
 function countTicks() {
   const Native = window.WebSocket;
-  window.__farCount = { id: null, n: 0 };
+  window.__farCount = { id: null, n: 0, where: Object.create(null) };
   function Counted(url, protocols) {
     const ws = protocols === undefined ? new Native(url) : new Native(url, protocols);
     ws.addEventListener('message', (ev) => {
       const c = window.__farCount, d = ev.data;
-      if (c.id && typeof d === 'string' && d.startsWith('{"type":"tick"') && d.indexOf('"' + c.id + '":') >= 0) c.n++;
+      if (c.id && typeof d === 'string' && d.startsWith('{"type":"tick"') && d.indexOf('"' + c.id + '":') >= 0) {
+        c.n++;
+        /* v2.3.3425: and WHERE in the tick they came -- the run of 2026-10-18
+           counted four a second at 2,717 px with no far send on */
+        try {
+          const t = JSON.parse(d), key = '"' + c.id + '":';
+          for (const k of Object.keys(t)) {
+            const v = t[k];
+            if (v && typeof v === 'object' && JSON.stringify(v).indexOf(key) >= 0) c.where[k] = (c.where[k] || 0) + 1;
+          }
+        } catch (e) { /* a count only */ }
+      }
     });
     return ws;
   }
@@ -148,9 +159,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }, 50);
   }, W.id);
   const watch = async (ms) => {
-    await B.page.evaluate(() => { window.__farCount.n = 0; window.__farS.present = 0; window.__farS.missing = 0; });
+    await B.page.evaluate(() => { window.__farCount.n = 0; window.__farCount.where = Object.create(null); window.__farS.present = 0; window.__farS.missing = 0; });
     const sentPerSec = await W.walk(ms);
-    const s = await B.page.evaluate(() => ({ n: window.__farCount.n, present: window.__farS.present, missing: window.__farS.missing }));
+    const s = await B.page.evaluate(() => ({ n: window.__farCount.n, where: Object.assign({}, window.__farCount.where), present: window.__farS.present, missing: window.__farS.missing }));
     s.perSec = Math.round(s.n / (ms / 1000) * 10) / 10;
     s.sentPerSec = Math.round(sentPerSec * 10) / 10;
     return s;
@@ -178,8 +189,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
      shut), so this step watches with the map open, as a player looking for
      someone far away does */
   await B.page.evaluate(() => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(true); });
+  /* v2.3.3425: the jump made with the move budget off in this test's room.
+     `place` hops out to town and back to land where it says, and since
+     v2.3.3325 a way back into the Wheel is judged from where it was left
+     (movement.js MOVE_BUDGET, `_wheelBack`): the worker walked its copy of
+     the walker out at an honest pace, ~5 s for 2,700 px, so for most of the
+     count it was still within 2,400 px of the watcher and sent as a near
+     player -- four times a second, every one in the tick's `players` (the
+     runs of 2026-10-18).  Back on before anything is counted. */
+  await H.liveFlag(wsPort, 'movebudget', false, ROOM);
   await W.place(b0.x + 300, b0.y - 2700);
   await B.page.waitForTimeout(1500);
+  await H.liveFlag(wsPort, 'movebudget', null, ROOM);
   const far = await watch(3000);
   await B.page.waitForTimeout(1600);   /* the next roster (about a second), and its trip */
   const p2 = await peerOnB();
