@@ -1,4 +1,4 @@
-/* ═══ v2.3.3375: THE METAL SHINE DRAWN IN THE FRAME, NOT IN A PASS A PIECE ═══
+/* ═══ v2.3.3378: THE METAL SHINE DRAWN IN THE FRAME, NOT IN A PASS A PIECE ═══
  *
  * The owner, 2026-10-18: "iterate on what best improves framerate without
  * loss of quality (or negligible loss) for phone gameplay (iPhone, android)".

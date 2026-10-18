@@ -1,4 +1,4 @@
-/* ═══ v2.3.3375: THE METAL SHINE IS DRAWN IN THE FRAME, NOT IN A PASS A PIECE ═══
+/* ═══ v2.3.3378: THE METAL SHINE IS DRAWN IN THE FRAME, NOT IN A PASS A PIECE ═══
  *
  * The owner, 2026-10-18: "iterate on what best improves framerate without
  * loss of quality (or negligible loss) for phone gameplay (iPhone, android)".
@@ -303,7 +303,7 @@ export function warmSheenBatch(renderer) {
   return _built;
 }
 
-/** Every piece in a pass of its own (true), as before v2.3.3375, or the
+/** Every piece in a pass of its own (true), as before v2.3.3378, or the
  *  ordinary ones drawn in the frame (false) -- for this page only: the
  *  Speed test's step (game/speedTest.js) and QA (window.__btSheenPass).
  *  glint.js re-routes the pieces on its next update. */

@@ -99,7 +99,7 @@ const figRoundOn = () => _figRound || (typeof window !== 'undefined' && !!window
 
 /* The texture bit, GL flavour: identical to Pixi's generateTextureBatchBitGl
    except that each texture is read through sharpSample().
-   v2.3.3375: exported -- the metal shine's batcher (lightfx/sheenBatch.js)
+   v2.3.3378: exported -- the metal shine's batcher (lightfx/sheenBatch.js)
    reads its pieces exactly as this one does, as they are figure pieces. */
 export function sharpTextureBitGl(maxTextures) {
   const src = [];
@@ -208,14 +208,14 @@ function wantsSharp(r) {
 }
 let _figureSpec = null;
 
-/** v2.3.3375: how many pictures a batch of figure pieces binds (the shine's
+/** v2.3.3378: how many pictures a batch of figure pieces binds (the shine's
  *  batcher matches it); 0 until installed. */
 export function sharpMaxTextures() { return _enabled ? _maxTex : 0; }
-/** v2.3.3375: would this batcher draw this sprite?  (The metal shine draws a
+/** v2.3.3378: would this batcher draw this sprite?  (The metal shine draws a
  *  piece in the frame only where it would: lightfx/sheenBatch.js.) */
 export function isSharpPiece(r) { return wantsSharp(r); }
 
-/* ═══ v2.3.3375: A SHINING PIECE GOES TO THE SHINE'S BATCHER ═══
+/* ═══ v2.3.3378: A SHINING PIECE GOES TO THE SHINE'S BATCHER ═══
    lightfx/sheenBatch.js draws the ordinary metal shine in the frame with this
    batcher's read and the shine after it.  The choice is made HERE, in this
    batcher's own routing (the outermost hook, installed after app.init), so

@@ -36,7 +36,7 @@
  * at K, `crowd=all` none), and each row says how many players the renderer
  * left undrawn far off screen (`farHidden`) and past the cap (`crowdHidden`).
  *
- * v2.3.3375: BT_CROWD_LOOK (JSON) is what the bots wear over the sampled look
+ * v2.3.3378: BT_CROWD_LOOK (JSON) is what the bots wear over the sampled look
  * -- iron plate, greaves and sword put three shining pieces of metal a bot on
  * the phone's screen -- and each row says how many the shine drew
  * (`shine`: drawn in the pass, in passes of their own).
@@ -77,7 +77,7 @@ function startBots(wsPort) {
       /* v2.3.3240: each bot sends a real phone's 2 s look, as players do
          (bots.mjs --track), so the phone hears the worker's relays too */
       track: process.env.BT_CROWD_TRACK !== '0',
-      /* v2.3.3375: BT_CROWD_LOOK, JSON merged into that look -- e.g.
+      /* v2.3.3378: BT_CROWD_LOOK, JSON merged into that look -- e.g.
          '{"eqc":"ironplate","eql":"irongreaves","wpnType":"sword","wpnMat":"iron"}'
          dresses every bot in iron, each piece a shine on the phone's screen */
       look: process.env.BT_CROWD_LOOK ? JSON.parse(process.env.BT_CROWD_LOOK) : null,
@@ -157,7 +157,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(4000);
       await P.page.evaluate(() => {
         window.perfTracker && window.perfTracker.reset();
-        /* v2.3.3375: the render-target switches a frame (a phone's graphics
+        /* v2.3.3378: the render-target switches a frame (a phone's graphics
            chip sets the whole frame aside at each), counted on the context */
         const gl = window._pixiRenderer && window._pixiRenderer.app.renderer.gl;
         if (gl && !gl.__bfWrapped) {
@@ -198,7 +198,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return {
           known: Object.keys(S.others || {}).length, near, farHidden: S._peersFarHidden || 0, crowdHidden: S._peersCrowdHidden || 0,
           work: a.map((s) => s.workMs || 0), entity: a.map((s) => s.entityMs || 0),
-          /* v2.3.3375: the metal shine this frame -- pieces drawn in the pass
+          /* v2.3.3378: the metal shine this frame -- pieces drawn in the pass
              (`batched`) and in passes of their own (`lit`, a filter each) */
           shine: g ? { targets: g.targets, lit: g.lit, batched: g.batched || 0 } : null,
           switches: window.__bfCount || 0,

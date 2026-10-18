@@ -12,7 +12,7 @@
  *   - with everything on, as you play;
  *   - with the shadows (and the shine) off, then the metal shine alone, then
  *     the water still, then at a lower resolution (2x, a phone above 2x only);
- *   - v2.3.3375: and the metal shine drawn the old way, a pass of its own for
+ *   - v2.3.3378: and the metal shine drawn the old way, a pass of its own for
  *     each piece (lightfx/sheenBatch.js), which says what drawing it in the
  *     frame saves on that phone (a note, never "the biggest gain");
  *   - then all of those off at once;
@@ -29,7 +29,7 @@
 import { COL } from '@/ui/mobile/dash/common.js';
 import { lightFxOn, setLightFx } from '@/rendering/lightfx/lightFx.js';
 import { sheenOn, setSheen } from '@/rendering/lightfx/glint.js';
-import { sheenBatchOn, setSheenPass } from '@/rendering/lightfx/sheenBatch.js';   /* v2.3.3375 */
+import { sheenBatchOn, setSheenPass } from '@/rendering/lightfx/sheenBatch.js';   /* v2.3.3378 */
 import { renderDpr, setRenderResLive } from './renderRes.js';
 
 const SETTLE_MS = 1500;
@@ -58,7 +58,7 @@ function steps() {
     { k: 'noshadow', label: 'No shadows (and no shine)', off: { light: true } },
     { k: 'noshine', label: 'No metal shine', off: { shine: true } },
   ];
-  /* v2.3.3375: the shine drawn the old way, a pass of its own for each piece
+  /* v2.3.3378: the shine drawn the old way, a pass of its own for each piece
      of metal (lightfx/sheenBatch.js), so the card says what drawing it in
      the frame saves on this phone */
   if (sheenBatchOn()) list.push({ k: 'shinepass', label: 'Metal shine the old way (a pass each)', off: { shinePass: true } });
@@ -226,7 +226,7 @@ export async function runSpeedTest() {
   }
   const base = rows[0];
   const notes = [];
-  /* v2.3.3375: the old way of drawing the shine is not a setting to switch
+  /* v2.3.3378: the old way of drawing the shine is not a setting to switch
      off, so it is never "the biggest gain"; it says what the new one saves */
   const best = rows.slice(1).filter((x) => x.k !== 'shinepass').reduce((a, x) => (!a || x.fps > a.fps ? x : a), null);
   const oldShine = rows.find((x) => x.k === 'shinepass');
