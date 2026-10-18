@@ -25,6 +25,19 @@
  *   3. and the giver does not offer it — the filter added in v2.3.1972 skips
  *      to the next quest he CAN pay out on.
  *
+ * ═══ v2.3.3399: THE DAY CAME, AND THE WALL IS DOWN ═══
+ * It failed in the sweep of 2026-10-18 exactly as promised: the forge, the
+ * auction house and the bank stand in town again, measured against today's
+ * map (worldProps.js propIsPlaced: a prop with the current `mapV` draws
+ * whatever TOWN_PROPS_ENABLED says), each with its door, and the Wheel's
+ * buildings have had doors since v2.3.3032 (setWheelDoorsOpen counts them).
+ * So the filter re-read says what it should: a door can pay mayor_1, and he
+ * offers it.  The three facts now pinned are the other way round --
+ *   1. a building raises the Enter prompt,
+ *   2. entering three of them meets mayor_1's own check,
+ *   3. and the giver offers mayor_1, as the Quests panel does --
+ * so the day the doors go again this fails, and the filter is re-read again.
+ *
  * SETUP IS OVER THE WIRE ON PURPOSE.  The DOM road through all six quests is
  * mp-questline's job and takes three minutes; repeating it here would make
  * this file a slower copy of that one.  What is asserted is read from the
@@ -110,10 +123,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }, doors);
   rec.ok('every building position was probed (guard: an empty probe proves nothing)',
     !!probe && probe.tried >= 12, probe);
-  rec.ok('no town building can be entered — the Enter prompt never appears',
-    !!probe && probe.hits.length === 0, probe);
-  rec.ok('...because the town props are switched off, so there are no doors',
-    propsForZone('town').filter((p) => p && p.action).length === 0,
+  /* v2.3.3399: the other way round (header) */
+  rec.ok('a town building can be entered — the Enter prompt appears at its door',
+    !!probe && probe.hits.length > 0, probe);
+  rec.ok('...because the town has its buildings again, doors and all',
+    propsForZone('town').filter((p) => p && p.action).length > 0,
     { placed: doors.length, live: propsForZone('town').length });
 
   /* ── 2. mayor_1's OWN CHECK CAN NEVER TURN TRUE ──
@@ -129,8 +143,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const v = S.stats && S.stats.visitedBuildings;
     return { ready, visited: v ? (v.size !== undefined ? v.size : Object.keys(v).length) : 0 };
   });
-  rec.ok("mayor_1's objective is unmet after visiting every building in town",
+  /* v2.3.3399: standing at a door is not a visit (nothing above pressed
+     Enter), so the check is still unmet here -- the control for the visits
+     below, which are made the way a player makes them: stand at the door,
+     press E (desktopControls' interact chain, enterBuilding), close. */
+  rec.ok("mayor_1's objective is unmet before any building is entered (control)",
     !!check && check.ready === false && check.visited === 0, check);
+  const entered = [];
+  for (const what of (probe && probe.hits) || []) {
+    const d = doors.find((x) => x.what === what);
+    if (!d) continue;
+    await P.page.evaluate((s2) => {
+      const S = window._gameState.current;
+      S.player.x = s2.x; S.player.y = s2.y;
+    }, d);
+    await P.page.waitForTimeout(400);
+    await P.page.keyboard.press('e');
+    await P.page.waitForTimeout(900);
+    await P.page.keyboard.press('Escape');
+    await P.page.waitForTimeout(500);
+    entered.push(what);
+    if (entered.length >= 3) break;
+  }
+  const visits = await P.page.evaluate(() => {
+    const F = window._gameFns || {};
+    const C = F.QUEST_CHAINS;
+    const S = window._gameState && window._gameState.current;
+    if (!C || !C.mayor_1 || !S) return null;
+    let ready = null;
+    try { ready = !!C.mayor_1.check(S.rpg || {}, S); } catch (e) { ready = 'threw:' + e.message; }
+    const v = S.stats && S.stats.visitedBuildings;
+    return { ready, visited: v ? (v.size !== undefined ? v.size : Object.keys(v).length) : 0 };
+  });
+  rec.ok(`entering three buildings meets mayor_1's objective (${entered.join(', ')})`,
+    entered.length >= 3 && !!visits && visits.ready === true && visits.visited >= 3,
+    { entered, visits });
 
   /* ── 3. SO HE MUST NOT OFFER IT ──
      v2.3.1972 filters an unreachable quest out of getNpcQuest, which is the
@@ -162,13 +209,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok('control: mayor_1 IS the quest an unfiltered walk would offer next',
     !!offered && offered.wouldHaveBeen === 'mayor_1', offered);
-  rec.ok('Mayor Bro does not offer the building quest he cannot be paid for',
-    !offered || offered.id !== 'mayor_1', offered);
-  /* mayor_2 is "kill 5 monsters", server-verified through _creditQuestObjective
-     — completable today, and the thing the skip is FOR.  A filter that ate the
-     whole rest of his chain would be a different wall. */
-  rec.ok('...he offers the next one that IS completable instead',
-    !!offered && offered.id === 'mayor_2', offered);
+  /* v2.3.3399: a door can pay it now, so the filter lets it through */
+  rec.ok('Mayor Bro offers the building quest, now that a door can pay it',
+    !!offered && offered.id === 'mayor_1', offered);
 
   /* ── 4. AND THE SAME QUESTION FOR THE ONE AFTER THAT ──
      mayor_3 is "Clear any dungeon", and there is no way into a dungeon: the
@@ -201,9 +244,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.clickText(P, 'Available').catch(() => {});
   await P.page.waitForTimeout(500);
   const panel = await H.bodyText(P);
-  rec.ok('the Quests panel does not advertise it either',
-    !/Welcome Home/.test(panel), panel.slice(0, 300));
-  rec.ok('...and shows the completable one', /Into the Wild/.test(panel), panel.slice(0, 300));
+  /* v2.3.3399: and the log says the same as the giver */
+  rec.ok('the Quests panel advertises it too', /Welcome Home/.test(panel), panel.slice(0, 400));
 
   await P.ctx.close().catch(() => {});
 }

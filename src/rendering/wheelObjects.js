@@ -536,7 +536,8 @@ export class WheelObjects {
         s = new Container();
         s.addChild(pic);
         s._pic = pic;
-        s._life = new BuildingLife(id, ix.w[ix.pk[i]], ix.h[ix.pk[i]], ix.ax[ix.pk[i]], ix.scl[ix.pk[i]]);
+        /* v2.3.3382: + its picture, out of which a flag's cloth is cut */
+        s._life = new BuildingLife(id, ix.w[ix.pk[i]], ix.h[ix.pk[i]], ix.ax[ix.pk[i]], ix.scl[ix.pk[i]], pic);
         s.addChild(s._life.view);
       }
       s.x = x; s.y = y;
@@ -922,6 +923,18 @@ export function forEachWheelSwayer(fn) {
       s._swayCrown = (m && m.canopy) || null;
     }
     if (kind) fn(s, kind, o.x[i], o.y[i], s._swayCrown);
+  }
+}
+
+/* v2.3.3382: every drawn building's waving flag (wheelLife.js FLAG), for
+   worldLife to wave with its clock and wind: fn(life, footX, footY) */
+export function forEachWheelFlag(fn) {
+  const live = _live, ix = _idx;
+  if (!live || live.dead || !ix || !live.sprites.size) return;
+  const o = ix.o;
+  for (const [i, s] of live.sprites) {
+    if (!s || s.destroyed || !s._life || !s._life.flag) continue;
+    fn(s._life, o.x[i], o.y[i]);
   }
 }
 

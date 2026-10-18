@@ -80,11 +80,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
      is orphaned, silently. */
   const B2 = { ctx: B.ctx, name: B.name, logs: B.logs, page: await B.ctx.newPage() };
   await B2.page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
-  await B2.page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
-  const backIn = await B2.page.waitForFunction(() => {
-    const S = window._gameState && window._gameState.current;
-    return !!(S && S.myId && S.currentZone);
-  }, null, { timeout: 120000, polling: 500 }).then(() => true).catch(() => false);
+  /* v2.3.3399: back through the door, as a returning player comes back.  The
+     bare address this opened has been the login door since v2.3.2447 (the
+     owner: "Player should need to tap continue or create a character"), so
+     B never rejoined -- the old wait passed on the door's own myId -- and it
+     also dropped the suite's `trial=off&nospawn` (H.newPlayer), which would
+     have put a rejoining B in the Wheel and A's town out of its sight (the
+     sweep of 2026-10-18).  H.enterWorld takes the door's road: Continue,
+     then this key's own row. */
+  await B2.page.goto(`http://localhost:${webPort}/?trial=off&nospawn`, { waitUntil: 'domcontentloaded' });
+  const backIn = await H.enterWorld(B2).then(() => true).catch(() => false);
   rec.ok('a returning player gets back into the world', backIn);
 
   const b2Id = backIn ? await H.readState(B2, (S) => S.myId).catch(() => null) : null;

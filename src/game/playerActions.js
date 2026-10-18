@@ -314,7 +314,9 @@ export function specialAttack(S) {
        v2.3.1979: through lockAimPoint, which reads the RENDERED position the
        hit-test uses and returns null (rather than the world origin) when the
        target has no usable position.  Both specials launch from the player at
-       dist 14 -- no grip offset to correct for, unlike the auto-attack. */
+       dist 14 -- no grip offset to correct for, unlike the auto-attack.
+       (v2.3.3399: the bow's volley leaves from the grip now, below, and is
+       re-aimed from it at release; the staff's orbs still leave from you.) */
     /* v2.3.2845: at the torso, as every locked shot is (combatHelpers lockShotPoint) */
     var _sLock = lockShotPoint(S.lockedTarget && S.lockedTarget.ref, S.currentZone);
     if (_sLock) aimAng = Math.atan2(_sLock.y - S.player.y, _sLock.x - S.player.x);
@@ -358,10 +360,29 @@ export function specialAttack(S) {
          bow's sight is on (it goes out only when the sight is on something:
          monsterCombat's gate) -- projectiles.js shotSkip */
       var _bowLp = (S._bowSight && S._bowSight.lp) || null;
+      /* ═══ v2.3.3399: THE VOLLEY LEAVES FROM THE BOW, AS ITS SIGHT IS CAST ═══
+         The special goes out only while the bow's sight is on something
+         (monsterCombat's gate, v2.3.2473), and the sight is cast from the
+         GRIP; the volley left from your centre.  A lock is re-aimed from the
+         shot's own origin at release (projectiles.js), so a locked volley
+         still hit -- but unlocked, the usual case since v2.3.2258, both flew
+         the stick's ANGLE, and the volley's line ran parallel to the sight's,
+         the grip's offset beside it: mp-hitreal's arrow tracker saw all three
+         arrows pass 43 px from a fire goblin's centre while the sight was on
+         it and it had moved 8 px.  So each arrow carries the live grip as its
+         offset from you (`_ox/_oy`, which projectiles.js reads for the plain
+         arrow's nock), and flies the sight's own line; with no nock, the
+         train keeps its timing (bowVolley.js).  Before the bow pose has ever
+         been drawn there is no grip, and it leaves from your centre as
+         before. */
+      var _vgx = S._bowGripDX, _vgy = S._bowGripDY;
+      var _vGrip = typeof _vgx === 'number' && typeof _vgy === 'number' && isFinite(_vgx) && isFinite(_vgy);
       for (var bvi = 0; bvi < _bowN; bvi++) {
         S.arrows.push({
           ang: aimAng,
           dist: 14,
+          _ox: _vGrip ? _vgx : undefined,   /* v2.3.3399 */
+          _oy: _vGrip ? _vgy : undefined,
           /* v2.3.2848: sized from the arrow's own speed so the train is GAP_PX
              apart however fast Longshot makes it (projectiles.js catches the
              frame it overstays back up).  v2.3.2891: from the speed it really
