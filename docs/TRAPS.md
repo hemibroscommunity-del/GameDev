@@ -7707,3 +7707,76 @@ cut_owner_sounds.py renders in mp-cuelevels within 2% of its promise (hurtA
 0.71 of 0.7, notify 0.81 of 0.8, bossArrive 1.52 of 1.5); read with `-ac 1`,
 hurtA was 1.00 and notify 1.14, and bossEnrage (the roar with two thuds under
 it) 2.09 of its 1.3 -- the one mp-cuelevels failed.
+
+## 231. "roundPixels puts the world on whole pixels, so the camera can stay fractional" (v2.3.3469)
+
+`roundPixels` snaps every CORNER to a whole device pixel, each on its own, after
+the camera is applied. With the camera at a fraction of a pixel, each piece of
+ground, each building and each prop rounds at its own fraction of it: as the
+view glides, every piece moves a whole pixel at a moment of its own, and a
+quad's width and height breathe by a pixel. The note in pixiRenderer.js that
+kept the camera fractional ("moves the whole scene in smooth GPU sub-pixel
+steps") was written before `roundPixels` came on, and stopped being true the
+day it did. On a 3x phone the hops are a third of a CSS px and nobody saw them.
+On a computer (dpr 1) they are whole pixels on a ground shrunk 3.5x, and walking
+diagonally (1.01 px a frame each way on the QA desktop) the camera's fraction
+creeps, so the hops swept across the ground tile by tile: the owner's
+"warbled underwater effect". Running straight, the fraction jumps a big step
+each frame and the same hops are a fizz all over: their "shimmering".
+
+**The rule:** whatever is snapped is only as steady as the translation it is
+snapped after. Put the camera (the world container, a render group) on whole
+DEVICE pixels, never CSS px. Keep what the camera follows (the player) where
+the fractional camera had it: the camera holds him still on screen, and his
+snapped plate is still only because it is rounded from that still place.
+
+**Receipt:** mp-camsnap, a 60 fps walk stepped a frame at a time in BroTown's
+ore yard. On a computer the old camera left up to 5.0% (diagonal) and 11.1%
+(straight) of the world's pixels out of step in one frame. On whole device
+pixels it is 0.01% / 0.02% (the lamps), and 0.00% on a phone. Your figure is
+drawn 0 px from where the old camera drew it.
+
+## 232. "It is position:fixed, so its left and top are the window's" (v2.3.3470)
+
+On a phone they are: the game fills the window. On a computer the game is
+`#root`, a column in the middle of the window, and `#root` has
+`contain: paint` (game.css, v2.3.1768) -- which makes it the containing block
+of every `position: fixed` element inside it. So inside the game, a fixed
+element's `left: 0; top: 0` is the COLUMN's corner, while one appended to
+`document.body` still measures from the window's. Both kinds were placed with
+window points (`getBoundingClientRect`, `innerWidth`), or with canvas points and
+no canvas offset, and each was right on a phone and wrong on a computer: the
+harvest's prize rose in the black margin and flew to 46 px from the window's
+left (body-level, canvas offset missing), and the XP label (inside #root) was
+drawn the column's left edge too far right, where the paint box cut it off.
+The owner: "the jump to bag also flies off screen (to far left where black
+area is not where bag area is)".
+
+A search of every overlay then found it seven times more: the quest coach's
+rings and the controls tour's spotlights (a new bro's "Tap OPEN" ring at x 838,
+the button at 426), the bag's item card (never beside its tile), the level-up
+celebration (sized from `window.innerWidth`: its medallion at x 1062 and its
+caption 1,280 px wide, so on a computer no level-up was ever SEEN), the chat
+card (`92vw`, wider than the column), the minimap's place (measured again only
+when the canvas changed size, which a narrower window does not do), and, the
+other way round, a body-level spinner at `left: 52px` -- in the black margin.
+`vw`/`vh` and `innerWidth`/`innerHeight` are the window's too: inside the game
+use `%`, `playVw()`/`playVh()`, or the box's own size.
+
+**The rule:** work out which corner a fixed element measures from before
+placing it. Inside `#root`, take `fixedBox(layer)`'s corner (src/ui/fixedBox.js:
+the fixed layer's box, else `#root`'s, else the window's) off every
+`getBoundingClientRect()`; on `document.body`, add the canvas's own (or
+`#root`'s left). A point on the canvas is the canvas's rect plus the
+world-to-screen sum -- never the sum alone (§210 is the same mistake in the
+harvest's gesture). A cached rect is stale when the column moves, not only when
+it changes size. Test it on a computer-sized window, where the column does not
+start at 0 -- and, for anything cached, after the window is made narrower.
+
+**Receipt:** mp-deskclick at 1280 x 800 (the column at x 422 to 858): the ore's
+flight from the vein inside the column to the dashboard's Bag panel, and the XP
+label inside the column at every sample; on a phone (390 x 844) the flight
+starts on the vein and lands on the bag as before. mp-deskplace: the seven above,
+each where it belongs (main fails 12 of its 23 checks, the rings by exactly
+421.8 px, the black margin's width), and on a phone the celebration and the
+item card where they were.

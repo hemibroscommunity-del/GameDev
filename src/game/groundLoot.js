@@ -20,6 +20,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3462: a pile that is not yours, heard */
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
+import { dropWaitsForYou } from '@/game/itemDrop.js'; /* v2.3.3473: your own drop, left alone until you step off it */
 export function updateGroundLootPickup(S, deps) {
   var P = S.player;
   var pixiRef = deps.pixiRef,
@@ -60,6 +61,11 @@ export function updateGroundLootPickup(S, deps) {
                the position the server validates. */
             if (loot._sx === undefined) { loot._sx = loot.x; loot._sy = loot.y; }
             var sDist = Math.sqrt(Math.pow(P.x - loot._sx, 2) + Math.pow(_pickupOriginY - loot._sy, 2));
+            /* v2.3.3473: your own drop lands at your feet -- inside the 20 px
+               below -- so it waits, magnet and all, until your boots have once
+               been DROP_LEAVE_PX from it (game/itemDrop.js); then walking back
+               onto it takes it back, as with any pile of yours */
+            if (dropWaitsForYou(S, loot, sDist)) return true;
 
             /* v2.3.254: skip magnetism only for the variants with the
                same-frame splat-vacuum risk (raw slime fodder + fireGoblin).

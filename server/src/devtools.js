@@ -602,6 +602,7 @@ export const devToolsMethods = {
     else if (path === '/dev/botflag') result = this._botfpTestFlag(playerId);   /* v2.3.3323: a TEST flag on a player who is here (botfp.js) */
     else if (path === '/dev/spar') result = this._sparDev(playerId, body);   /* v2.3.3265: {add | skill | clear} -- sparring clones of yourself (spar.js) */
     else if (path === '/dev/testmode') result = await this._testModeSet(playerId, body.on === true);   /* v2.3.3430: {on} -- the honesty checks off for this character (testmode.js) */
+    else if (path === '/dev/dropage') result = this._dropDevAge(playerId, body);   /* v2.3.3473: {ms} -- this player's drops that much older (itemdrop.js) */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

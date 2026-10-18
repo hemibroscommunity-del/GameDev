@@ -5,8 +5,9 @@ import { essenceInfo } from '@/data/salvage.js';   /* v2.3.3141: what an essence
 import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_BY_LOG } from '@/data/hardenedWood.js';   /* v2.3.3139 */
 import { dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
 import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player (v2.3.3260: in any fight) */
-import { pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.3133: ...and say how long */
+import { pushDmgPopup, offlineRefused /* v2.3.3473: Drop never into a dead socket */ } from '@/game/combatHelpers.js'; /* v2.3.3133: ...and say how long */
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a listing heard */
+import { dropSupported, dropBlockedWhy, sendItemDrop } from '@/game/itemDrop.js'; /* v2.3.3473: Drop */
 import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey, isChestKey } from './InventoryPanel.jsx';   /* v2.3.2820: + isChestKey */   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
@@ -33,6 +34,7 @@ import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegs
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { playVw } from '../playViewport.js';
+import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the card layer's box -- a computer's is the game's column (TRAPS §232) */
 import {
   WEAPON_TYPES,
   calcDisplayDmgRange,
@@ -278,7 +280,15 @@ function resolveTarget(target) {
            `drink` above -- the worker takes the goods out of ITS copy of
            the bag and holds them, so nothing here is credited locally. */
         sell: count > 0 && storeEnabled(),
+        /* v2.3.3473: Drop -- out of the bag and onto the ground at your feet,
+           yours alone for a minute, then anyone's (server itemdrop.js).  Gated
+           on caps.itemdrop (read in itemDrop.js dropSupported): against an
+           older worker the ask would go nowhere and nothing would happen. */
+        drop: count > 0 && dropSupported(SR),
       },
+      /* ...greyed, with the reason, where no pile is ever kept: today's town
+         and the farm (the worker's own rule, itemdrop.js NO_DROP_ZONES) */
+      dropWhy: dropBlockedWhy(SR),
     };
   }
   if (target.kind === 'weapon') {
@@ -616,18 +626,31 @@ const stepStyle = {
    Prefer right-of-anchor; flip to left if no room.  Clamp the whole
    popup inside the bottom dashboard rect when possible, otherwise
    inside the viewport. */
-function positionFor(anchor, popupW, popupH) {
+function positionFor(rawAnchor, popupW, popupH, box) {
   const GAP = 8;
   const MARGIN = 4;
-  const vw = playVw();   /* v2.3.1715: the shell, not the window */
-  const vh = (typeof window !== 'undefined') ? window.innerHeight : 768;
+  /* ═══ v2.3.3470: IN THE CARD LAYER'S OWN BOX ═══
+     The tile's rect is the WINDOW's (getBoundingClientRect), and the card is
+     absolute in a `position: fixed; inset: 0` layer, which on a computer
+     measures from the game's column (#root's contain:paint) -- while the clamp
+     below was already the column's (playVw).  So the card was placed from a
+     tile x the column's left edge too far right, always flipped, and clamped
+     to the column's right edge: never beside the tile, over it when the tile
+     sat in the right half (mp-deskplace).  `box` is fixedBox(layer)
+     (src/ui/fixedBox.js); every rect is taken into it first.  On a phone the
+     box is the window: nothing moves.  TRAPS §232. */
+  const bx = box ? box.x : 0, by = box ? box.y : 0;
+  const into = (r) => (r ? { left: r.left - bx, right: r.right - bx, top: r.top - by, bottom: r.bottom - by } : null);
+  const anchor = into(rawAnchor);
+  const vw = box && box.w > 0 ? box.w : playVw();   /* v2.3.1715: the shell, not the window */
+  const vh = box && box.h > 0 ? box.h : ((typeof window !== 'undefined') ? window.innerHeight : 768);
   /* Try to locate the bottom dashboard root for clamping. */
   let dashRect = null;
   try {
     const el = document.querySelector('[data-dashboard-root]')
             || document.querySelector('.bottom-dashboard')
             || document.querySelector('[data-dash]');
-    if (el && el.getBoundingClientRect) dashRect = el.getBoundingClientRect();
+    if (el && el.getBoundingClientRect) dashRect = into(el.getBoundingClientRect());
   } catch (_e) {}
   const clampLeft = dashRect ? dashRect.left + MARGIN : MARGIN;
   const clampRight = dashRect ? dashRect.right - MARGIN : vw - MARGIN;
@@ -682,6 +705,11 @@ export const ItemDetailPopup = () => {
      is lost (each can be taken down) but the seller did not ask for it.
      Raised as finding #3 on PR #615's review, which names this button. */
   const sellInFlight = useRef(false);
+  /* v2.3.3473: Drop's own step, in the card like Sell's: how many, then the
+     drop.  The ref is the one tap, one drop rule (sellInFlight's reason). */
+  const [dropOpen, setDropOpen] = useState(false);
+  const [dropQty, setDropQty] = useState(1);
+  const dropInFlight = useRef(false);
 
   useEffect(() => {
     const u1 = itemDetailBus.subscribe(() => force((v) => v + 1));
@@ -694,6 +722,7 @@ export const ItemDetailPopup = () => {
   useEffect(() => {
     setSellOpen(false); setSellPrice(''); setSellQty(1); setSellErr(''); setSellBusy(false);
     sellInFlight.current = false;
+    setDropOpen(false); setDropQty(1); dropInFlight.current = false;   /* v2.3.3473 */
   }, [itemDetailBus.state.open, itemDetailBus.state.target]);
 
   /* Measure popup size after render, then reposition.  setLayoutEffect
@@ -740,7 +769,8 @@ export const ItemDetailPopup = () => {
          when it was drawing half as much again, and it placed a box it had the
          wrong size for.  scrollHeight is what is actually being drawn. */
       const h = Math.max(el.offsetHeight || 0, el.scrollHeight || 0) || 240;
-      const next = positionFor(itemDetailBus.state.target && itemDetailBus.state.target.anchor, w, h);
+      const next = positionFor(itemDetailBus.state.target && itemDetailBus.state.target.anchor, w, h,
+        fixedBox(el.parentElement));   /* v2.3.3470: the layer's box */
       setPos((prev) => (prev && prev.left === next.left && prev.top === next.top) ? prev : next);
     };
     place();
@@ -1320,7 +1350,7 @@ export const ItemDetailPopup = () => {
 
   const resolved = resolveTarget(target);
   if (!resolved) return null;
-  const { lockKey, thumb, glyph, name, info, delta, desc, actions, sellWhy } = resolved;
+  const { lockKey, thumb, glyph, name, info, delta, desc, actions, sellWhy, dropWhy } = resolved;
   const locked = itemIsLocked(lockKey);
   /* v2.3.2815: the portrait lives the way the item does in the bag -- a potion
      sloshes, metal glints, a log lies still (bagLife.js) */
@@ -1548,6 +1578,21 @@ export const ItemDetailPopup = () => {
      list a different weapon. */
   const sellMax = (target && target.kind === 'inventory')
     ? Math.max(1, Math.floor(target.count || 1)) : 1;
+  /* ═══ v2.3.3473: DROP ═══
+     The worker takes it out of ITS bag and lays the pile (itemdrop.js); the
+     bag here moves on the player_state that comes back, and a refusal is said
+     over your head (game/itemDrop.js).  So nothing is taken out of the bag
+     here, and the card closes at once: the answer is on the ground, not in
+     the card. */
+  const dropN = Math.max(1, Math.min(sellMax, Math.floor(Number(dropQty)) || 1));
+  const onDropConfirm = () => {
+    if (dropInFlight.current) return;
+    const S4 = getState();
+    if (offlineRefused(S4)) return;   /* "Reconnecting…", nothing sent */
+    if (!sendItemDrop(S4, target.key, dropN)) return;
+    dropInFlight.current = true;
+    itemDetailBus.close();
+  };
   const onSellConfirm = async () => {
     if (sellInFlight.current) return;   /* v2.3.2507: one tap, one listing */
     const price = Math.floor(Number(sellPrice) || 0);
@@ -1674,6 +1719,7 @@ export const ItemDetailPopup = () => {
     >
       <div
         ref={cardRef}
+        data-item-card=""   /* v2.3.3470: a test handle (mp-deskplace) */
         onPointerDown={(e) => e.stopPropagation()}
         style={{
           position: 'absolute',
@@ -1839,9 +1885,18 @@ export const ItemDetailPopup = () => {
               outfits are simply not for sale.  `sellWhy` is only ever set
               for the two PERMANENT answers -- everything else is left to the
               worker, which answers with a reason of its own. */}
-          {actions.sell && !sellOpen && !sellWhy && <button onClick={() => { setSellOpen(true); setSellErr(''); }} className={buttonClass()} style={buttonStyle()}>Sell</button>}
-          {actions.sell && !sellOpen && !!sellWhy && (
+          {actions.sell && !sellOpen && !dropOpen && !sellWhy && <button onClick={() => { setSellOpen(true); setSellErr(''); }} className={buttonClass()} style={buttonStyle()}>Sell</button>}
+          {actions.sell && !sellOpen && !dropOpen && !!sellWhy && (
             <button disabled aria-disabled="true" className={buttonClass()} style={{ ...buttonStyle(), opacity: 0.45 }}>Sell</button>
+          )}
+          {/* v2.3.3473: Drop -- hidden while either sheet is open; greyed with
+              its reason where nothing can be dropped (dropWhy) */}
+          {actions.drop && !sellOpen && !dropOpen && !dropWhy && (
+            <button onClick={() => { setDropOpen(true); setSellOpen(false); }} data-item-drop=""
+              className={buttonClass()} style={buttonStyle()}>Drop</button>
+          )}
+          {actions.drop && !sellOpen && !dropOpen && !!dropWhy && (
+            <button disabled aria-disabled="true" data-item-drop="off" className={buttonClass()} style={{ ...buttonStyle(), opacity: 0.45 }}>Drop</button>
           )}
           {/* v2.3.3407: Esc presses it, and on a computer it says so after its
               X (game/deskKeys.js; game.css [data-key]) */}
@@ -1852,6 +1907,50 @@ export const ItemDetailPopup = () => {
         {actions.sell && !sellOpen && !!sellWhy && (
           <div style={{ marginTop: 2, fontSize: 11, fontWeight: 600, color: COL.muted, lineHeight: 1.4, textAlign: 'center' }}>
             {sellWhy}
+          </div>
+        )}
+        {actions.drop && !sellOpen && !dropOpen && !!dropWhy && (
+          <div data-item-drop-why="" style={{ marginTop: 2, fontSize: 11, fontWeight: 600, color: COL.muted, lineHeight: 1.4, textAlign: 'center' }}>
+            {dropWhy}
+          </div>
+        )}
+
+        {/* ═══ v2.3.3473: THE DROP SHEET ═══
+            How many (a stack), what happens to it, and the drop.  The owner:
+            "After about a minute they become visible to other players. After
+            2 minutes it begins flashing and disappears". */}
+        {actions.drop && dropOpen && (
+          <div data-drop-sheet="" style={{
+            marginTop: 6, padding: 8, borderRadius: 8,
+            background: '#19252A', border: '1px solid ' + COL.divider,
+            display: 'flex', flexDirection: 'column', gap: 6,
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: COL.muted }}>
+              Drop on the ground
+            </div>
+            {sellMax > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ flex: 1, fontSize: 12, color: COL.text }}>How many</span>
+                <button type="button" data-drop-less="" onClick={() => setDropQty((q) => Math.max(1, (Math.floor(Number(q)) || 1) - 1))}
+                  style={stepStyle}>−</button>
+                <span data-drop-qty={dropN} style={{ minWidth: 34, textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#F7F2E7', fontVariantNumeric: 'tabular-nums' }}>
+                  {dropN}
+                </span>
+                <button type="button" data-drop-more="" onClick={() => setDropQty((q) => Math.min(sellMax, (Math.floor(Number(q)) || 1) + 1))}
+                  style={stepStyle}>+</button>
+                <button type="button" data-drop-all="" onClick={() => setDropQty(sellMax)} style={{ ...stepStyle, width: 'auto', padding: '0 8px', fontSize: 11 }}>All</button>
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.4 }}>
+              Only you can see it for a minute, then anyone can pick it up. At two minutes it starts flashing, then it's gone.
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={onDropConfirm} data-drop-confirm=""
+                className={buttonClass('danger')} style={buttonStyle('danger')}>
+                {dropN > 1 ? 'Drop ' + dropN : 'Drop it'}
+              </button>
+              <button onClick={() => setDropOpen(false)} className={buttonClass()} style={buttonStyle()}>Back</button>
+            </div>
           </div>
         )}
 

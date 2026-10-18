@@ -513,6 +513,15 @@ remnant to migrate server-side, not a mode to preserve.
       charred (wheelShatter `burnt`) and burn on until the mending; each fire
       rides what it burns on (depthSort `_ridesOn`), hidden off the screen;
       `?nobuildingfire`; `mp-buildingfire`: docs/specs/building-fire.md.
+    - since v2.3.3471 A BUILDING SHOWS EVERY HIT -- the owner: "add wood chip
+      effect when you attack buildings so you get instant feedback that the
+      building is getting damaged": a building's burst was a prop's (x0.45
+      pieces, about two splinters an arrow) and flew INTO the wall, behind its
+      picture; now `bld` (wheelBreak.js) throws half as many pieces again as a
+      plain hit, bigger, out of the face toward the camera (hitMaterialFx.js
+      `wallAng`), in the building's own material, and it shakes 1.6 px (was
+      0.8, rounded away on a computer); props unchanged; `mp-buildingchips`:
+      docs/specs/building-chips.md.
   - Since v2.3.2996 a MONSTER'S HIT CARRIES ITS ELEMENT (the owner's snowflake,
     fire and air icons, and "slime for floral damage ... a brief held in place"):
     - a landed hit by a frost/flame/wind/flora monster chills (walk x0.55 for
@@ -2674,6 +2683,18 @@ remnant to migrate server-side, not a mode to preserve.
         - the crates (`make_farm_covers.py`, `farmCovers.js`) are gone;
           `farmwalk` suite §1, `mp-farmanim`, `mp-farmink`, `mp-farmpeer`:
           docs/specs/farm-walk.md "The farmer's own moves";
+        - since v2.3.3472 HIS ARMOUR IS YOURS -- the owner: "the armor art does
+          not match what the character is wearing in the game while farming.
+          It needs to match. See what other animations do": the plate and
+          greaves had no metal shine and no grade's edge (glint.js's stand-in
+          lists never got `farmChestSprite`/`farmLegsSprite`, nor a peer's
+          `farm` sprites), and were ChatGPT's pale, cream-cast steel; now
+          both lists hold them, and the tool grades each strip's steel to the
+          walking strip's greys (`steel_like_the_game`, the middle grey 0.60
+          -> 0.47 against the walking 0.46), `GEARLAYER_VER` 1037;
+          `mp-farmanim` §5 reads the shine's sprites and the strips' greys,
+          each outfit (plate and greaves, greaves alone, plate alone) on each
+          move (the hoe, the kneel, the can);
       - the Feed & Seed's window lost its Beds tab: Visit Your Farm on top,
         "Your farm: 3 ready to harvest · 3 beds to plant" under it, then Seeds
         and Orders;
@@ -3090,6 +3111,31 @@ remnant to migrate server-side, not a mode to preserve.
       Seeds tab sells packets and the sack; the Cookhouse's rows lead with what
       they make; the quick-eat Garden Stew is warmed on the loading screen;
     - `bag-icons` suite, `mp-bagicons`, `mp-farm`: docs/specs/bag-icons.md.
+  - Since v2.3.3473 YOU CAN DROP A BAG ITEM -- the owner: "add an option to
+    "drop" items in game. After about a minute they become visible to other
+    players. After 2 minutes it begins flashing and disappears":
+    - the bag's card's Drop (and "How many"), on `caps.itemdrop`, greyed in
+      today's town, the old World View and the farm (the safe zones, whose
+      piles are never shown); `item_drop {key, qty}` -> server/src/itemdrop.js,
+      which takes it out of the bag and lays a pile just in front of your
+      feet (`AHEAD_PX` 34: at them, your legs hid it) in one run;
+    - the pile is the DEATH PILE's own (`isDeathDrop`, `deathItems`, owner
+      gate, expiry) plus `dropped`: for 60 s it is sent to the dropper alone,
+      left out of every other player's pile list (`_zoneLootForWire(zone,
+      viewer)`, `_pileHiddenFrom`), then `_tickLoot` tells the room and anyone
+      may take it whole; the phones flash it from 120 s and it is gone at 130,
+      to nobody; its clocks go as time LEFT (`openLeft`, `flashLeft`, `left`),
+      put on each phone's clock (`_buildServerPile`);
+    - drawn as its own bag picture (`src/rendering/dropIcons.js`, from the
+      bag's `thumbFor` via the import-free `src/game/dropLook.js`), "×3" for a
+      stack; your own drop is not picked straight back up (it waits until you
+      step 60 px off it, `dropWaitsForYou`) and your pet never fetches it;
+    - refusals in words over your head (`item_drop_result`, PRIVILEGED):
+      a fight with a player, 12 of yours on the ground, one drop a 400 ms...;
+      gear is not droppable (its receipt would have to move);
+    - kill switch `itemdrop: false`; dev lever `/dev/dropage {ms}`;
+      `itemdrop` suite, mirror-audit "item drop", `mp-itemdrop`:
+      docs/specs/item-drop.md.
   - Since v2.3.3209 THE MONSTER CODEX -- the owner: "After you kill a monster
     you learn more about it, what it does, where it's from, elemental type,
     special attack, (make up a backstory) etc.", "Also include drop tables
@@ -4663,6 +4709,33 @@ Two protocol versions coexist; both must keep working:
     (`_authPutOut`) and handed nothing. In the suite's room a Forget was
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
+- **ON A COMPUTER A CLICK ON SOMETHING YOU USE IS NOT A SWING, WHAT IS DRAWN
+  OVER THE GAME IS WHERE THE GAME IS, AND THE FOOTSTEPS ARE HEARD (v2.3.3470,
+  docs/specs/desktop-clicks.md, TRAPS §232).** The owner: "I hear a bow shot
+  every time I click on an ore to harvest it", the prize "flies off screen",
+  and "I can't hear footsteps on pc".
+  - The canvas's `onMouseDown` asks the click's own question first
+    (BroTown `_deskPressTarget`): a townsperson, a resource in reach you hold
+    the tool for, or a bed of your farm is the click's, and the press arms no
+    attack; a monster, another player or empty ground is still the attack. The
+    scans are shared (`monsterAtCss`, `_harvestNodeAtCss`, `_farmBedAtCss`,
+    `npcAtCss`): a new thing a click uses goes in `_deskPressTarget` too.
+  - Anything drawn `position: fixed` over the game works out its corner first:
+    inside `#root` (contain: paint on a computer) it is the column's --
+    `fixedBox(layer)` (src/ui/fixedBox.js) is that box. Seven more overlays had
+    it wrong and do not now: the quest coach's rings and card, the controls
+    tour's spotlights, the bag's item card, the level-up celebration (sized
+    from the window, it was never seen on a computer; it measures its own box
+    now, once, and the keys strip stands aside while it plays), the chat card
+    (`92%`, not `92vw`), the minimap's place (measured again when only the
+    window's width changes) and the reconnect spinner (body-level, in the black
+    margin). `bagFlightTarget` is where the bag is on screen.
+  - The ⌨ stays beside the open keys strip, the switch both ways.
+  - Footsteps on a computer are `BT_AUDIO.DESK_STEP_K` (2.5x) louder: they
+    played there, but 3-5 dB under the music on the commons, which a phone's
+    speaker thins and a computer's plays whole ("I can't hear footsteps on
+    pc"); a phone is unchanged; `?stepvol=k`.
+  - `mp-deskclick`, `mp-deskplace`, `mp-deskkeys` 1b.
 - **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3407,
   docs/specs/desktop-keys.md, TRAPS §213).** The owner: "For computer usage
   if there's a key that makes sense to use for a certain action just put the
@@ -4729,6 +4802,22 @@ Two protocol versions coexist; both must keep working:
   lower-case name: `liveops.test` §8 scans `server/src` for every flag read
   and every `` `<name>: false` `` promised beside "live flags" or "kill
   switch", and fails for one the route would refuse.
+- **THE CAMERA IS ON WHOLE DEVICE PIXELS (v2.3.3469,
+  docs/specs/camera-whole-pixels.md, TRAPS §231).** The owner's "warbled
+  underwater effect" walking diagonally on a PC, and the "shimmering" running
+  straight, came from a fractional camera: `roundPixels` rounds each sprite's
+  corners on their own, so each ground tile, building and prop hopped a pixel
+  at its own moment (as ripples on a diagonal, a fizz straight across). On a
+  3x phone that is never seen; on a 1x computer the hops are whole pixels.
+  - `pixiRenderer.update` puts the world container on device px and hands
+    the systems the camera as drawn.
+  - For the scene's update it moves `S.player` on by what the rounding took
+    off, and puts it back before the minimap. So everything drawn from your
+    position (figure, plate, bars, stand-ins, speech bubble) is exactly where
+    the fractional camera had it. A new drawing from your position needs
+    nothing. A renderer must never WRITE the player's place (none does).
+  - `?camsnap=0` is the old camera; `window.__btCamSnap()` is the probe;
+    `mp-camsnap` is the test.
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.
