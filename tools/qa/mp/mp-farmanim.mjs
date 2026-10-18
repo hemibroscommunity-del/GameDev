@@ -192,6 +192,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
           if (!w || w.step !== step) return;
           const n = Date.now(); w.startedAt = n - mid; w.doneAt = w.startedAt + T * 100;
         };
+        /* v2.3.3468: ...and pinned the moment the game STARTS the step, not on
+           the interval's next turn: on this box a frame after E can take longer
+           than the whole step (the plant's 1.1 s), and the step ended -- its bed
+           planted, the farmer put away -- before the interval ran (the armour's
+           plant outfit, 2 runs of 3; TRAPS §200) */
+        const S0 = window._gameState.current;
+        if (!window.__pinHooked) {
+          window.__pinHooked = true;
+          let cur = S0._farmWork;
+          Object.defineProperty(S0, '_farmWork', { configurable: true, enumerable: true,
+            get() { return cur; }, set(v) { cur = v; if (window.__pinNow) window.__pinNow(); } });
+        }
+        window.__pinNow = pin;
         pin();
         window.__pinT = setInterval(pin, 10);
       }, { step, mid, T, f });
@@ -209,7 +222,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         frames.push({ f, ok: !!F && F.frame === f, anim: F && F.anim, foot: F && F.foot, feetY: F && F.figure.feetY, px: P0.x, work: v && v.work, made: v && v.made,
           body: v && v.body, shirt: F && F.shirt, prop: F && F.prop, order: F && F.order, crown: F && F.crown, h: F && F.figure.drawnH, headW: F && F.headW });
       }
-      await P.page.evaluate(() => { clearInterval(window.__pinT); window.__btFarmHoldFrame = null; const w = window._gameState.current._farmWork; if (w) { w.startedAt = Date.now() - 50; w.doneAt = Date.now() + 120; } });
+      await P.page.evaluate(() => { clearInterval(window.__pinT); window.__pinNow = null; window.__btFarmHoldFrame = null; const w = window._gameState.current._farmWork; if (w) { w.startedAt = Date.now() - 50; w.doneAt = Date.now() + 120; } });
       report.steps[step] = frames;
       const allShown = frames.every((x) => x.ok && x.anim === anim);
       const onBoots = frames.every((x) => x.foot && Math.abs(x.foot.x - x.px) < 1.5 && Math.abs(x.foot.y - x.feetY) < 1.5);
@@ -268,6 +281,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
           if (!w || w.step !== step) return;
           const n = Date.now(); w.startedAt = n - mid; w.doneAt = w.startedAt + T * 100;
         };
+        /* v2.3.3468: ...and pinned the moment the game STARTS the step, not on
+           the interval's next turn: on this box a frame after E can take longer
+           than the whole step (the plant's 1.1 s), and the step ended -- its bed
+           planted, the farmer put away -- before the interval ran (the armour's
+           plant outfit, 2 runs of 3; TRAPS §200) */
+        const S0 = window._gameState.current;
+        if (!window.__pinHooked) {
+          window.__pinHooked = true;
+          let cur = S0._farmWork;
+          Object.defineProperty(S0, '_farmWork', { configurable: true, enumerable: true,
+            get() { return cur; }, set(v) { cur = v; if (window.__pinNow) window.__pinNow(); } });
+        }
+        window.__pinNow = pin;
         pin();
         window.__pinT = setInterval(pin, 10);
       }, { step: o.step, mid, T, f });
@@ -285,7 +311,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         frames.push({ f, ok: !!F && F.frame === f && F.anim === anim, under: F && F.under, legs: F && F.legs, chest: F && F.chest, shirt: F && F.shirt,
           prop: F && F.prop, order: F && F.order, shine: shineNow });
       }
-      await P.page.evaluate(() => { clearInterval(window.__pinT); window.__btFarmHoldFrame = null; const w = window._gameState.current._farmWork; if (w) { w.startedAt = Date.now() - 50; w.doneAt = Date.now() + 120; } });
+      await P.page.evaluate(() => { clearInterval(window.__pinT); window.__pinNow = null; window.__btFarmHoldFrame = null; const w = window._gameState.current._farmWork; if (w) { w.startedAt = Date.now() - 50; w.doneAt = Date.now() + 120; } });
       report.armour[o.step] = { outfit: o, walk, frames };
       const wearsChest = o.chest !== 'none', wearsLegs = o.legs !== 'none';
       rec.ok(`in ${o.label}: the ${anim}, all ${A.n} frames (${started ? 'started' : 'NOT started'}; at the bed ${!!near}), on the body ${wantUnder ? 'cut for greaves' : 'in his trousers'} (${baked})`,
