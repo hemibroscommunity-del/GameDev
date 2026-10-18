@@ -40,7 +40,7 @@
 import * as H from '../mp/harness.mjs';
 import { STATES, foldBand } from './states.mjs';
 import { auditControls, drawOverlay, clearOverlay } from './audit.mjs';
-import { mkdirSync, writeFileSync, rmSync, existsSync, statSync, readdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, existsSync, statSync, readdirSync, readFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
@@ -443,6 +443,23 @@ async function makeSheets(browser, results) {
   return made;
 }
 
+/* v2.3.3343: the version the pictures are of, and its commit.  package.json's
+   version follows the client's only loosely (CLAUDE.md) -- it read 2.3.2324
+   on a v2.3.3343 game -- so the newest v2.3.N in the recent commit subjects
+   (the session brief's high-water) wins, package.json only without git. */
+function gameVersion() {
+  let game = '?';
+  try { game = JSON.parse(readFileSync(join(H.REPO, 'package.json'), 'utf8')).version; } catch (e) { /* */ }
+  try {
+    let hi = 0;
+    const subjects = execFileSync('git', ['log', '-60', '--format=%s'], { cwd: H.REPO }).toString();
+    for (const m of subjects.matchAll(/\bv2\.3\.(\d+)\b/g)) hi = Math.max(hi, +m[1]);
+    if (hi) game = '2.3.' + hi;
+    game += ' (' + execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: H.REPO }).toString().trim() + ')';
+  } catch (e) { /* not a checkout */ }
+  return game;
+}
+
 function zipBundles(views) {
   const made = [];
   const zip = (name, items) => {
@@ -468,7 +485,6 @@ if (process.argv[1] && basename(process.argv[1]) === 'capture.mjs') {
   /* --report-only: the pictures already taken (manifest.json), the words,
      the contact sheets and the zips made again -- no game, no worker */
   if (ARGS['report-only']) {
-    const { readFileSync } = await import('node:fs');
     const man = JSON.parse(readFileSync(join(OUT, 'manifest.json'), 'utf8'));
     const results = {};
     /* the words come from states.mjs as it is now, so a title or a
@@ -479,7 +495,11 @@ if (process.argv[1] && basename(process.argv[1]) === 'capture.mjs') {
       if (st) { sh.title = st.title; sh.about = st.about; sh.group = st.group; }
       (results[sh.view] = results[sh.view] || { rows: [], errors: [] }).rows.push(sh);
     }
-    const meta = { made: man.made, game: man.game, sheets: [] };
+    /* the same commit is the same version: a manifest of this checkout's
+       commit is named by gameVersion() as it reads now */
+    const now = gameVersion();
+    const sameCommit = / \(([0-9a-f]+)\)$/.exec(man.game || '');
+    const meta = { made: man.made, game: sameCommit && now.endsWith(' (' + sameCommit[1] + ')') ? now : man.game, sheets: [] };
     const browser = await H.launch();
     try { if (!ARGS['no-sheets']) meta.sheets = await makeSheets(browser, results); } finally { await browser.close().catch(() => {}); }
     writeReport(results, meta);
@@ -499,16 +519,12 @@ if (process.argv[1] && basename(process.argv[1]) === 'capture.mjs') {
   const cleanup = () => { try { H.stopWorker(worker); } catch (e) { /* */ } };
   process.on('SIGINT', () => { cleanup(); process.exit(130); });
   const results = {};
-  let game = '?';
-  try { game = JSON.parse(await (await import('node:fs/promises')).readFile(join(H.REPO, 'package.json'), 'utf8')).version; } catch (e) { /* */ }
-  try { game += ' (' + execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: H.REPO }).toString().trim() + ')'; } catch (e) { /* not a checkout */ }
-  const meta = { made: new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC', game, sheets: [] };
+  const meta = { made: new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC', game: gameVersion(), sheets: [] };
   try {
     for (const v of WANT_VIEWS) results[v] = await runView(browser, { ws, web }, VIEWS[v]);
     /* --only: the screens taken now replace the same screens of the last
        run (manifest.json), everything else of it kept */
     if (ONLY && existsSync(join(OUT, 'manifest.json'))) {
-      const { readFileSync } = await import('node:fs');
       const prior = JSON.parse(readFileSync(join(OUT, 'manifest.json'), 'utf8'));
       const merged = {};
       for (const sh of prior.shots) (merged[sh.view] = merged[sh.view] || { rows: [], errors: [] }).rows.push(sh);
