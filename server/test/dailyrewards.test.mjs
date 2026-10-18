@@ -26,7 +26,7 @@
  *      online across midnight turns over to the new day.
  *   7. The wire: both server types privileged; a forged one is not relayed.
  *   8. The operator's test hook.
- *   9. v2.3.3384: the daily quests and the season PUT AWAY -- the game as
+ *   9. v2.3.3394: the daily quests and the season PUT AWAY -- the game as
  *      it ships: neither advertised, nothing rolled, counted or paid, the
  *      spin opened at tut_1 with no quest news, no star from the spin, a
  *      claim refused, the tiers a player reached mailed once when they are
@@ -34,7 +34,7 @@
  *      back.
  *  10. v2.3.3369: a daily quest's coins and its "done" are one write.
  *
- * v2.3.3384: the owner: "Remove the daily quests", then "Yes drop the
+ * v2.3.3394: the owner: "Remove the daily quests", then "Yes drop the
  * season".  They are off unless the live flags say `dailyquests: true` and
  * `season: true`, so sections 2-8 and 10 run with those flags on (the code is
  * kept, and tested, for those switches); section 9 is a room with no flags.
@@ -74,10 +74,10 @@ function check(name, cond, detail) {
 const DAY = 86400000;
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
-/* v2.3.3384: the daily quests are put away; sections 2-8 test them switched
-   back on (section 9 tests a room without the flag).  v2.3.3384: and the
+/* v2.3.3394: the daily quests are put away; sections 2-8 test them switched
+   back on (section 9 tests a room without the flag).  v2.3.3394: and the
    season is dropped, so its switch is on here too. */
-room._liveFlags = { dailyquests: true, season: true };   /* v2.3.3384: the season dropped too */
+room._liveFlags = { dailyquests: true, season: true };   /* v2.3.3394: the season dropped too */
 /* A fixed clock in the PAST (v2.3.1155: a future-ish timestamp the real
    clock can catch up with is a time bomb in an opId-deduped system). */
 let NOW = Date.UTC(2026, 0, 14, 12, 0, 0);
@@ -138,7 +138,7 @@ await join(ws, 'bp_dr_a');
 const ps = () => room.playerState['bp_dr_a'];
 {
   const sync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);
-  check('caps.dailyspin and caps.dailyquests are advertised (the quests by their live flag, v2.3.3384)', !!sync && sync.caps.dailyspin === true && sync.caps.dailyquests === true);
+  check('caps.dailyspin and caps.dailyquests are advertised (the quests by their live flag, v2.3.3394)', !!sync && sync.caps.dailyspin === true && sync.caps.dailyquests === true);
   const iState = ws.sent.findIndex((m) => m.type === 'rewards_state');
   const iPs = ws.sent.findIndex((m) => m.type === 'player_state');
   check('rewards_state is sent on join, after player_state', iState > 0 && iPs >= 0 && iState > iPs, { iState, iPs });
@@ -185,7 +185,7 @@ const ps = () => room.playerState['bp_dr_a'];
     !!st && st.news.act === 'spin' && st.news.started === 'free' && st.news.i === 2 && st.news.lump === 100 && st.news.pot === 100
     && st.news.jackpot === false && st.spin.open === 1 && st.spin.pot === 100 && st.spin.i === 2 && st.spin.canDouble === 1
     && ps().coins === c0 && paidSpin(ws).length === 0, st && { news: st.news, spin: st.spin });
-  check('...and the day\'s free spin put a star on the season (one, with the quests switched on: v2.3.3384)', st.season.st === DAILY.SEASON.SPIN_STARS_QUESTS && st.season.spinStars === 1, st.season);
+  check('...and the day\'s free spin put a star on the season (one, with the quests switched on: v2.3.3394)', st.season.st === DAILY.SEASON.SPIN_STARS_QUESTS && st.season.spinStars === 1, st.season);
   NOW += 1000;
   force(HEADS);
   await send(ws, 'daily_spin', { act: 'double', opId: 's2' });
@@ -706,7 +706,7 @@ const ps = () => room.playerState['bp_dr_a'];
   check('...an offline id is refused', off.ok === false);
 }
 
-// ── 9. v2.3.3384: the daily quests PUT AWAY -- the game as it ships ──
+// ── 9. v2.3.3394: the daily quests PUT AWAY -- the game as it ships ──
 /* The owner: "Remove the daily quests they're randomly appearing as complete
    and it makes no sense to me ... I'd rather it go away".  A room with no live
    flags, as production has. */
@@ -728,7 +728,7 @@ const ps = () => room.playerState['bp_dr_a'];
   const sync = w9.sent.find((m) => m.type === 'state_sync' && m.caps);
   check('9. with no live flags the daily quests are not advertised; the spin is', !!sync && sync.caps.dailyquests === false && sync.caps.dailyspin === true,
     sync && { dq: sync.caps.dailyquests, sp: sync.caps.dailyspin });
-  check('...nor the season (v2.3.3384: dropped)', !!sync && sync.caps.season === false, sync && sync.caps.season);
+  check('...nor the season (v2.3.3394: dropped)', !!sync && sync.caps.season === false, sync && sync.caps.season);
   const p9 = r9.playerState[PQ];
   const rec9 = r9._drMap().get(PQ);
   check('...the state says the quests are off, with none', !!lastState(w9) && lastState(w9).dq.on === false && lastState(w9).dq.list.length === 0, lastState(w9) && lastState(w9).dq);
@@ -761,7 +761,7 @@ const ps = () => room.playerState['bp_dr_a'];
   await send9(w9, 'daily_reroll', { i: 0 });
   check('...and a reroll changes nothing', rec9.dq.list[0].t === 'kill' && rec9.dq.rr === 0);
 
-  /* v2.3.3384: the season DROPPED (the owner: "Yes drop the season") -- the
+  /* v2.3.3394: the season DROPPED (the owner: "Yes drop the season") -- the
      free spin puts no star on it, a claim is refused, and what a player
      reached and never claimed is mailed the first time they are seen */
   w9.sent.length = 0;
@@ -850,7 +850,7 @@ const ps = () => room.playerState['bp_dr_a'];
   check('...a number counts as liveops sets it (1 on, 0 off), and no flags is off', onAt1 && offAt0 && offEmpty);
 
 
-  /* v2.3.3384: `season: true` brings the season back where the record left
+  /* v2.3.3394: `season: true` brings the season back where the record left
      it -- the free spin's stars again, claims taken, and the tiers the drop
      mailed still marked, so none pays twice */
   r9._liveFlags = { season: true };
@@ -917,7 +917,7 @@ const ps = () => room.playerState['bp_dr_a'];
   const settleIo = () => new Promise((r) => setTimeout(r, 10));
   const P = 'bp_dq_crash';
   const T9 = Date.UTC(2026, 0, 21, 12, 0, 0);
-  /* v2.3.3384: with the daily quests switched on -- they are put away in the
+  /* v2.3.3394: with the daily quests switched on -- they are put away in the
      game as it ships (§9) */
   const roomOn = (s) => { const r = new GameRoom(s, mockEnv); r._drNow = () => T9; r._liveFlags = { dailyquests: true, season: true }; return r; };
   const joinOn = async (rm, w) => {

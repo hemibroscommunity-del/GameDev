@@ -20,7 +20,7 @@ export const DailyRewardsCard = () => {
   const dq = st.dq || {};
   const list = Array.isArray(dq.list) ? dq.list : [];
   const done = list.filter((q) => q.d).length;
-  /* v2.3.3384: the season's stars and claims are the free spin's now (the
+  /* v2.3.3394: the season's stars and claims are the free spin's now (the
      daily quests are put away), so they show against either cap */
   const seLive = seasonLive();
   const claim = seLive ? claimableTiers(st).length : 0;
@@ -35,7 +35,7 @@ export const DailyRewardsCard = () => {
     const sp = st.spin;
     bits.push(sp.ready ? 'free spin ready' : (sp.open ? 'spin going' : sp.extra + ' bonus spin' + (sp.extra === 1 ? '' : 's')));
   }
-  /* v2.3.3384: with the quests put away and the season dropped, a day whose
+  /* v2.3.3394: with the quests put away and the season dropped, a day whose
      spin is taken had nothing left to say: the streak says it */
   if (!bits.length) bits.push(((st.streak && st.streak.n) || 1) + '-day streak');
   return (

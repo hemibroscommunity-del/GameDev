@@ -55,7 +55,7 @@ export function spinLive(S) {
   const s = S || gameState();
   return !!(s && s._serverCaps && s._serverCaps.dailyspin);
 }
-/** The daily quests: likewise.  v2.3.3384: PUT AWAY (the owner: "Remove the
+/** The daily quests: likewise.  v2.3.3394: PUT AWAY (the owner: "Remove the
     daily quests") -- a worker advertises them only with its live flag on, so
     every page shows none; their rows, toasts and the Quests button's dot all
     wait on this. */
@@ -63,9 +63,9 @@ export function questsLive(S) {
   const s = S || gameState();
   return !!(s && s._serverCaps && s._serverCaps.dailyquests);
 }
-/** v2.3.3384: the season, fed by the free spin now: against a worker that
+/** v2.3.3394: the season, fed by the free spin now: against a worker that
     settles either.  It rode on questsLive, so with the quests put away its
-    stars and claims would have gone with them.  v2.3.3384: DROPPED (the
+    stars and claims would have gone with them.  v2.3.3394: DROPPED (the
     owner: "Yes drop the season") -- its own cap, which a worker advertises
     only with its live flag on, so every page shows no stars, tiers or
     claims.  A worker from before the cap ran it on the spin: until it
@@ -257,7 +257,7 @@ export function applyRewardsState(S, payload) {
         toastWhenSeen('All three done! +' + n.all.stars + ' ★ and ' + (n.all.spins === 1 ? 'a bonus spin' : n.all.spins + ' bonus spins') + ' at the Gambling Den');
       }, 700);
     } else if (n.kind === 'season_drop') {
-      /* v2.3.3384: the season dropped, and what this player had reached and
+      /* v2.3.3394: the season dropped, and what this player had reached and
          not claimed was paid to them (sent only to someone it paid) */
       const m = Array.isArray(n.mailed) ? n.mailed.length : 0;
       if (m) toastWhenSeen('The season has ended early: the ' + m + ' reward' + (m === 1 ? '' : 's') + ' you\'d reached and not claimed came to you.');
@@ -274,7 +274,7 @@ export function applyRewardsState(S, payload) {
     } else if (n.kind === 'newday') {
       toastWhenSeen('A new day: three new daily quests, and your free spin is waiting at the Gambling Den.');
     } else if (n.kind === 'spinday') {
-      /* v2.3.3384: the new day with the quests put away -- the spin alone,
+      /* v2.3.3394: the new day with the quests put away -- the spin alone,
          and only to a player it is open to (it waits for the first quest) */
       if (payload.spin && payload.spin.on && !payload.spin.locked) toastWhenSeen('A new day: your free spin is waiting at the Gambling Den.');
     }
