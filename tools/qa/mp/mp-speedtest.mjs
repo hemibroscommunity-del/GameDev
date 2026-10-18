@@ -85,6 +85,7 @@ const look = (P) => P.page.evaluate(() => {
     pieces: lp && lp.shadows ? lp.shadows.pieces : null,
     water: window.__btWaves && window.__btWaves.probe ? window.__btWaves.probe().on : null,
     saved: { light: localStorage.getItem('bt-lightfx'), sheen: localStorage.getItem('bt-sheen') },
+    pre: window.__btShadowPrepass ? window.__btShadowPrepass.on() : null,   /* v2.3.3458 */
   };
 });
 
@@ -161,16 +162,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     const result = await H.waitFor(P, () => window.__btSpeedTest || null, (v) => !!v, { timeout: 120000, label: 'the speed test result' }).catch(() => null);
     const rows = (result && result.rows) || [];
-    console.log('    RESULT ' + JSON.stringify(rows.map((r) => ({ k: r.k, fps: +r.fps.toFixed(1), p95: +r.p95.toFixed(0), work: r.work && +r.work.toFixed(1), passes: +r.passes.toFixed(2), draws: +r.draws.toFixed(0), cw: r.cw, res: r.res, frames: r.frames }))));
+    console.log('    RESULT ' + JSON.stringify(rows.map((r) => ({ k: r.k, fps: +r.fps.toFixed(1), p95: +r.p95.toFixed(0), work: r.work && +r.work.toFixed(1), passes: +r.passes.toFixed(2), resumes: r.resumes != null ? +r.resumes.toFixed(2) : null, draws: +r.draws.toFixed(0), cw: r.cw, res: r.res, frames: r.frames }))));
     const keys = rows.map((r) => r.k);
     /* v2.3.3447: + the sprites drawn by three programs, the old way
        (paletteTex.js) -- only where the one program draws: never on this
        box's software renderer, which keeps the three (TRAPS §225) */
     const oneOn = await P.page.evaluate(() => !!(window.__btOneBatch && window.__btOneBatch().on)).catch(() => null);
     /* v2.3.3453: + the metal shine the old way (lightfx/sheenBatch.js) */
-    const want = ['all', 'noshadow', 'noshine', 'shinepass', ...(oneOn ? ['threeprog'] : []), 'still', 'res2', 'bare'];
+    /* v2.3.3458: + the shadows the old way, in a pass mid-frame (lightfx/shadows.js) */
+    const want = ['all', 'noshadow', 'noshine', 'shinepass', 'shadowpass', ...(oneOn ? ['threeprog'] : []), 'still', 'res2', 'bare'];
     rec.ok(`2. every step measured: ${keys.join(', ')}`,
       want.every((k) => keys.includes(k)) && (oneOn || !keys.includes('threeprog')) && rows.every((r) => r.frames > 1 && r.fps > 0), { keys, oneOn });
+    /* v2.3.3458: how often each step set the screen aside -- reported, not
+       compared: on this box a step is two or three frames, and the metal
+       shine's passes come and go with its glints; mp-shadowprepass counts the
+       shadows' own on a held frame */
+    rec.ok(`...and every step says how often a frame it set the screen aside (${rows.map((r) => r.k + ' ' + (r.resumes != null ? r.resumes.toFixed(2) : '?')).join(', ')})`,
+      rows.length > 0 && rows.every((r) => typeof r.resumes === 'number' && r.resumes >= 0), rows.map((r) => r.resumes));
     const R0 = rows.find((r) => r.k === 'all'), R2 = rows.find((r) => r.k === 'res2'), NS = rows.find((r) => r.k === 'noshadow');
     rec.ok(`3. the lower resolution step drew the canvas at 2x (${R2 && R2.cw} px against ${R0 && R0.cw} at 3x)`,
       !!R0 && !!R2 && R2.res === 2 && Math.abs(R2.cw - Math.round(before.cssW * 2)) <= 2 && Math.abs(R0.cw - Math.round(before.cssW * 3)) <= 2, { R0, R2 });
@@ -182,7 +190,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log('    AFTER ' + JSON.stringify(after));
     rec.ok('4. everything is back: the canvas at 3x and crisp, the shadows and the water drawn, no saved switch written',
       after.res === before.res && after.cw === before.cw && after.ch === before.ch && !after.soft && after.rendering === before.rendering
-        && after.pieces > 0 && after.water === before.water
+        && after.pieces > 0 && after.water === before.water && after.pre === before.pre
         && after.saved.light === before.saved.light && after.saved.sheen === before.saved.sheen, { before, after });
 
     const cardRows = await P.page.evaluate(() => document.querySelectorAll('[data-speed-test] [data-speed-row]').length);
