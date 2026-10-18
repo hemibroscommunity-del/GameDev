@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7277e1adb14278b6f8cf026bd062bcdd1734e7c8",
+  "tree": "50bc3d5c129917fe254f4b3721c0fc8a2f07fd67",
+  "committedAt": "2026-10-18T01:04:16-07:00",
+  "subject": "A guild rung and a daily quest are paid in the same write as their claim (v2.3.3369) (#986)",
+  "files": 5819,
+  "bytes": 639485724,
+  "listingSha256": "2741931f72979030ec98b8e34480c06ed2eff106739b5d884dbecda6249ed2de",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
