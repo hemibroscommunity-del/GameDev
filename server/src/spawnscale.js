@@ -452,7 +452,10 @@ export const spawnScaleMethods = {
   /* v2.3.3318: `pick` (optional) chooses which of the zone's monsters go in
      -- the Wheel's arrival takes only those around the phone (wheelnear.js);
      every other caller sends them all, as before */
-  _zoneSnapshotWire(zoneId, pick) {
+  /* v2.3.3473: `viewer` (optional) -- the player the snapshot is for, whose
+     own drops in their private minute go in its loot (itemdrop.js); without
+     one, the loot everyone may see */
+  _zoneSnapshotWire(zoneId, pick, viewer) {
     const all = this._ensureZoneMonsters(zoneId) || [];
     const monsters = (pick ? pick(all) : all).map(monsterSnapWire);
     const nodes = (this._ensureZoneNodes(zoneId) || []).map((n) => ({
@@ -462,7 +465,7 @@ export const spawnScaleMethods = {
          only on those, so every other zone's snapshot is byte-identical. */
       ...(n.home ? { home: n.home } : {}),
     }));
-    return { monsters, nodes, loot: this._zoneLootForWire(zoneId) };
+    return { monsters, nodes, loot: this._zoneLootForWire(zoneId, viewer) };
   },
 
   /* Announce a changed roster to everyone standing in the zone.  Re-sends
@@ -483,6 +486,17 @@ export const spawnScaleMethods = {
       if (!snap) snap = this._zoneSnapshotWire(zoneId);
       try {
         if (s.protocolVersion === 2) {
+          /* v2.3.3473: a player with a drop still private here gets a list
+             with it in (itemdrop.js) -- the shared one leaves it out, and a
+             zone_state REPLACES a phone's piles, so theirs would vanish at
+             every roster change.  Rare: only while a drop is a minute old. */
+          if (this._dropPrivateIn(zoneId, s.id)) {
+            ws.send(JSON.stringify({
+              type: 'zone_state', zone: zoneId,
+              monsters: snap.monsters, nodes: snap.nodes, loot: this._zoneLootForWire(zoneId, s.id),
+            }));
+            continue;
+          }
           if (v2 === null) {
             v2 = JSON.stringify({
               type: 'zone_state', zone: zoneId,

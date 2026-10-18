@@ -3090,6 +3090,31 @@ remnant to migrate server-side, not a mode to preserve.
       Seeds tab sells packets and the sack; the Cookhouse's rows lead with what
       they make; the quick-eat Garden Stew is warmed on the loading screen;
     - `bag-icons` suite, `mp-bagicons`, `mp-farm`: docs/specs/bag-icons.md.
+  - Since v2.3.3473 YOU CAN DROP A BAG ITEM -- the owner: "add an option to
+    "drop" items in game. After about a minute they become visible to other
+    players. After 2 minutes it begins flashing and disappears":
+    - the bag's card's Drop (and "How many"), on `caps.itemdrop`, greyed in
+      today's town, the old World View and the farm (the safe zones, whose
+      piles are never shown); `item_drop {key, qty}` -> server/src/itemdrop.js,
+      which takes it out of the bag and lays a pile just in front of your
+      feet (`AHEAD_PX` 34: at them, your legs hid it) in one run;
+    - the pile is the DEATH PILE's own (`isDeathDrop`, `deathItems`, owner
+      gate, expiry) plus `dropped`: for 60 s it is sent to the dropper alone,
+      left out of every other player's pile list (`_zoneLootForWire(zone,
+      viewer)`, `_pileHiddenFrom`), then `_tickLoot` tells the room and anyone
+      may take it whole; the phones flash it from 120 s and it is gone at 130,
+      to nobody; its clocks go as time LEFT (`openLeft`, `flashLeft`, `left`),
+      put on each phone's clock (`_buildServerPile`);
+    - drawn as its own bag picture (`src/rendering/dropIcons.js`, from the
+      bag's `thumbFor` via the import-free `src/game/dropLook.js`), "×3" for a
+      stack; your own drop is not picked straight back up (it waits until you
+      step 60 px off it, `dropWaitsForYou`) and your pet never fetches it;
+    - refusals in words over your head (`item_drop_result`, PRIVILEGED):
+      a fight with a player, 12 of yours on the ground, one drop a 400 ms...;
+      gear is not droppable (its receipt would have to move);
+    - kill switch `itemdrop: false`; dev lever `/dev/dropage {ms}`;
+      `itemdrop` suite, mirror-audit "item drop", `mp-itemdrop`:
+      docs/specs/item-drop.md.
   - Since v2.3.3209 THE MONSTER CODEX -- the owner: "After you kill a monster
     you learn more about it, what it does, where it's from, elemental type,
     special attack, (make up a backstory) etc.", "Also include drop tables

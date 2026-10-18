@@ -663,6 +663,9 @@ import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js
 import { setStandInMaker, ensureStandIn, standInStarted, standInReady, standInMaking, setPeerStandInCheck, forgetStandIn, farmFigureReady } from '../standIns.js';   /* v2.3.3077: the gathering poses, made when first wanted; v2.3.3314: + a peer's, in their colours */
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
+import { ICON_PX as DROP_ICON_PX, acquireDropIcon, releaseDropIcon, dropIconTexture, dropIconStats } from '../dropIcons.js';   /* v2.3.3473: a dropped item, drawn as itself */
+import { dropThumb } from '@/game/dropLook.js';   /* v2.3.3473: ...from its bag picture */
+import { dropAlpha, dropFlashing } from '@/game/itemDrop.js';   /* v2.3.3473: ...flashing at its end */
 import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
 import { wheelNodeView, WheelFish, wheelFishTop /* v2.3.3035: the harvest's bar over a spot's school */ } from '../wheelNodes.js';   /* v2.3.3012: the Wheel's resources -- drawn near the view, its fishing spots as fish */
 import { updateNodeLabel, killNodeLabel, nodeLabelWorldH, NODE_LABEL_GAP, nodeNameNode } from '../nodeLabels.js';   /* v2.3.3040: the tool, the name and the level over a resource; v2.3.3059: words for the nearest only */
@@ -2809,6 +2812,17 @@ const LOOT_Z = {
   ring: -10, remnant: 0, coin: 10, coinLabel: 11, shard: 20,
   weapon: 30, gem: 40, armor: 50, beam: 55, label: 60, owner: 70, rareText: 80,
 };
+/* v2.3.3473: a dropped item's picture, in world px (a bro is ~106 tall): a
+   good deal bigger than a rare drop's icon (~26), as it is the whole pile */
+const DROP_ICON_WORLD = 40;
+/* ...and its count, in the owner label's type (_renderOwnerLabel), a size up */
+const DROP_COUNT_STYLE = new TextStyle({
+  fontFamily: 'Source Sans 3, sans-serif',
+  fontSize: 16,
+  fontWeight: '700',
+  fill: '#ffffff',
+  stroke: { color: '#000000', width: 3 },
+});
 /* A rare item is anything rarer than 1 in 100 -- the weapon, gem and armour
    lanes.  What earns the RARE DROP! call and the shine. */
 const RARE_KINDS = { weapon: true, gem: true, armor: true };
@@ -9249,9 +9263,84 @@ export class EffectsRenderer {
     kill(l._pixiRareLabel);   /* v2.3.1924: the iron/gem label — a Text left
                                  on lootLayer after its pile despawns is a
                                  leak AND a name floating over empty ground. */
+    /* v2.3.3473: a dropped item's picture, let go of with its sprite (the
+       cache destroys only a picture no pile holds: dropIcons.js) */
+    if (l._dropIconUrl) { releaseDropIcon(l._dropIconUrl); l._dropIconUrl = null; }
     l._pixiSprite = l._pixiLabel = l._pixiTimer = l._pixiCount = l._pixiIcon = null;
     l._pixiCoinSprite = l._pixiCoinLabel = l._pixiShardSprite = l._pixiOwnerLabel = null;
     l._pixiWpnLabel = l._pixiRareLabel = null;
+  }
+
+  /* ═══ v2.3.3473: A DROPPED ITEM IS DRAWN AS ITSELF ═══
+     The owner: "add an option to "drop" items in game. After about a minute
+     they become visible to other players. After 2 minutes it begins flashing
+     and disappears" (game/itemDrop.js, server/src/itemdrop.js).  Its bag
+     picture (dropIcons.js), a shadow, "×3" for more than one, and from its
+     flashAt on, on and off, quicker to its end (dropAlpha).  Until the picture
+     is in, a plain bundle mark stands in -- never nothing, as the pile is
+     there to be picked up.  Reuses the pile's own sprite fields, so
+     _disposeLoot takes it all down. */
+  _renderDroppedItem(l, age, now) {
+    const gfx = this.lootGfx;
+    const item = (l.deathItems && l.deathItems[0]) || null;
+    const key = item ? item.key : null;
+    const qty = item ? Math.floor(Number(item.qty) || 0) : 0;
+    const alpha = dropAlpha(l, now);
+    /* at the feet, as every pile is drawn (PILE_Y_OFFSET), bobbing slightly */
+    const footY = l.y + 38;
+    const midY = footY + Math.sin(age * 3) * 2;
+    const S_ = DROP_ICON_WORLD;
+    /* its shadow on the ground, which does not bob */
+    gfx.ellipse(l.x, footY + S_ * 0.4, S_ * 0.42, S_ * 0.13);
+    gfx.fill({ color: 0x000000, alpha: 0.3 * alpha });
+    /* the picture: asked for until the bag has a name for it, then held */
+    if (!l._dropIconUrl) {
+      const u = dropThumb(key);
+      if (u) { l._dropIconUrl = u; acquireDropIcon(u); }
+    }
+    const tex = dropIconTexture(l._dropIconUrl);
+    if (!l._pixiSprite || l._pixiSprite.destroyed) {
+      l._pixiSprite = new Sprite(Texture.EMPTY);
+      l._pixiSprite.anchor.set(0.5, 0.5);
+      l._pixiSprite.zIndex = LOOT_Z.weapon;
+      l._pixiSprite.visible = false;
+      this.lootLayer.addChild(l._pixiSprite);
+    }
+    const spr = l._pixiSprite;
+    if (tex) {
+      if (spr.texture !== tex) spr.texture = tex;
+      const k = S_ / DROP_ICON_PX;
+      if (spr.scale.x !== k) spr.scale.set(k);
+      spr.x = l.x;
+      spr.y = midY;
+      spr.alpha = alpha;
+      if (!spr.visible) spr.visible = true;
+    } else {
+      if (spr.visible) spr.visible = false;
+      /* the stand-in: a tied bundle in the bag's own tan */
+      gfx.roundRect(l.x - S_ * 0.3, midY - S_ * 0.26, S_ * 0.6, S_ * 0.52, S_ * 0.12);
+      gfx.fill({ color: 0x9a7448, alpha });
+      gfx.stroke({ color: 0x3b2a17, width: 2, alpha });
+      gfx.moveTo(l.x - S_ * 0.3, midY - S_ * 0.06);
+      gfx.lineTo(l.x + S_ * 0.3, midY - S_ * 0.06);
+      gfx.stroke({ color: 0x3b2a17, width: 2, alpha });
+    }
+    /* how many, beside its lower right corner */
+    if (qty > 1) {
+      if (!l._pixiCount || l._pixiCount.destroyed) {
+        l._pixiCount = new Text({ text: '', style: DROP_COUNT_STYLE });
+        l._pixiCount.anchor.set(0, 1);
+        l._pixiCount.zIndex = LOOT_Z.label;
+        this.lootLayer.addChild(l._pixiCount);
+      }
+      const str = '\u00d7' + qty;
+      if (l._pixiCount.text !== str) l._pixiCount.text = str;
+      l._pixiCount.x = l.x + S_ * 0.18;
+      l._pixiCount.y = midY + S_ * 0.52;
+      l._pixiCount.alpha = alpha;
+    }
+    /* its end, said on the phone's clock (the worker sends loot_despawn too) */
+    if (l.expiry && now > l.expiry) l._expired = true;
   }
 
   /** Renders a stroked "[killer]'s loot" label above an MP loot pile
@@ -9456,6 +9545,33 @@ export class EffectsRenderer {
     /* v2.3.2771 QA probe: each pile's rare items, the draw order of everything
        on it (lowest first), and where its landing is -- a bounce is a number
        over time, which a screenshot cannot hold. */
+    /* v2.3.3473 QA probe (mp-itemdrop): every dropped item on this screen,
+       what is drawn for it, and its clocks */
+    if (typeof window !== 'undefined' && !window.__btDrops) {
+      const _selfD = this;
+      window.__btDrops = function () {
+        const t = Date.now();
+        const out = [];
+        for (const e of (_selfD._knownLoot || [])) {
+          if (!e || !e.dropped) continue;
+          const it = (e.deathItems && e.deathItems[0]) || {};
+          const spr = e._pixiSprite;
+          const pic = !!(spr && !spr.destroyed && spr.visible && spr.texture && spr.texture !== Texture.EMPTY);
+          out.push({
+            lootId: e.lootId, key: it.key || null, qty: it.qty || 0, dropBy: e.dropBy, x: e.x, y: e.y,
+            picture: pic, url: e._dropIconUrl || null,
+            pictureWorldPx: pic ? +(spr.texture.width * Math.abs(spr.scale.x)).toFixed(1) : 0,
+            alpha: pic ? +spr.alpha.toFixed(2) : null,
+            count: e._pixiCount && !e._pixiCount.destroyed ? e._pixiCount.text : null,
+            flashing: dropFlashing(e, t), leftIt: !!e._leftIt,
+            openInMs: e.ownerOnlyUntil ? e.ownerOnlyUntil - t : null,
+            flashInMs: e.flashAt ? e.flashAt - t : null,
+            goneInMs: e.expiry ? e.expiry - t : null,
+          });
+        }
+        return { piles: out, icons: dropIconStats() };
+      };
+    }
     if (typeof window !== 'undefined' && !window.__btLootRare) {
       const _selfR = this;
       window.__btLootRare = function () {
@@ -9543,7 +9659,11 @@ export class EffectsRenderer {
     for (let i = loot.length - 1; i >= 0; i--) {
       const l = loot[i];
       const age = (now - l.ts) / 1000;
-      if (l._expired || age > 30) {
+      /* v2.3.3473: a dropped item lives to its own end (its 130 s, on this
+         phone's clock: wsClient _buildServerPile), never the 30 s here, which
+         would take it off everyone's screen at half a minute -- and off the
+         others' the moment it is shown them, a minute after it landed */
+      if (l._expired || ((l.dropped && l.expiry) ? now > l.expiry : age > 30)) {
         this._disposeLoot(l);
         this._knownLoot.delete(l);
         loot.splice(i, 1);
@@ -9608,6 +9728,13 @@ export class EffectsRenderer {
         const _urg = Math.max(0, Math.min(1, 1 - _leftS / LOOT_FLASH_S));
         const _rate = 3 + _urg * 9;
         alpha = 0.35 + 0.65 * (0.5 + 0.5 * Math.cos(age * _rate));
+      }
+
+      /* v2.3.3473: a dropped item -- its own picture, never the death pile's
+         ring, skull and "N items" below (game/itemDrop.js) */
+      if (l.dropped) {
+        this._renderDroppedItem(l, age, now);
+        continue;
       }
 
       if (l.isDeathDrop) {

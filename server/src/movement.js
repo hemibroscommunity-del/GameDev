@@ -814,7 +814,7 @@ export const movementMethods = {
            it is sent only the monsters around it (wheelnear.js) */
         const _near = this._wheelNearArrival(session, ps);
         if (!_near) session._wheelWhole = null;   /* a whole list: nothing to send whole later */
-        const _zsnap = this._zoneSnapshotWire(ps.z, _near ? (all) => this._wheelNearPick(session, ps, all) : undefined);
+        const _zsnap = this._zoneSnapshotWire(ps.z, _near ? (all) => this._wheelNearPick(session, ps, all) : undefined, session.id);   /* v2.3.3473: + their own drops (itemdrop.js) */
         const zoneMonstersWire = _zsnap.monsters;
         const zoneNodesWire = _zsnap.nodes;
         const zoneLootWire = _zsnap.loot;
