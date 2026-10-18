@@ -23,6 +23,8 @@ import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';   /* v2.3.3067: E at Ace
 import { shopBus } from '@/ui/mobile/shopBus.js';   /* v2.3.3067: ...and at Diego his shop */
 import { startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed on your farm, worked where it lies */
 import { emotesLive } from '@/game/emotes.js';   /* v2.3.3391: B opens the emotes */
+import { navIdForCode, navKey, browserChord, frontControl, pressControl, ESC_SEL, ENTER_SEL, MAP_KEY } from '@/game/deskKeys.js';   /* v2.3.3407: I P J L K O, M, Enter, Esc */
+import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3407: M */
 
 /**
  * v2.3.3105: what runInteract would do here, for the right stick's picture
@@ -258,10 +260,33 @@ export function setupDesktopControls(S, deps) {
           _desktopShieldBash();
           return;
         }
+        /* ═══ v2.3.3407: A HARVEST UNDER WAY OWNS E ═══
+           The owner: "I don't think you can harvest lifeskills right now on
+           the computer."  E started a harvest and then had nothing to do: the
+           gesture that ends one was asked for on a button a computer does not
+           show (gesturePose.js DESK_GESTURE_HINT).  Held now, E WORKS the
+           gesture (ExtractionSwipeLayer's S._harvestKeys) -- and a second
+           press no longer starts the harvest over: runInteract below reaches
+           the resource through S._proxNode, which stays set while you work
+           it, and startExtraction drops the attempt in flight for a new one,
+           so every press of E threw the wind-up away. */
+        if (S._extraction) {
+          if (S._harvestKeys) S._harvestKeys.down();
+          return;
+        }
+        /* v2.3.3407: one press, one interact -- a held E's repeats start
+           nothing (held through a finished harvest, its repeats would start
+           the next resource's) */
+        if (e.repeat) return;
         /* 1-4. v2.3.3105: the interact chain lives in runInteract (below), so
            the right stick's tap -- which wears its picture -- runs the very
            same one */
-        if (runInteract()) return;
+        if (runInteract()) {
+          /* v2.3.3407: the press that starts a harvest, held on, works it once
+             the window opens -- "hold E to harvest" */
+          if (S._extraction && S._harvestKeys) S._harvestKeys.down();
+          return;
+        }
         /* v2.3.1717: NOT in range, but close enough that the player plainly
            MEANT this NPC.  E used to return in silence here, and a judge on a
            fresh character read that as "the mayor is broken" rather than
@@ -380,11 +405,71 @@ export function setupDesktopControls(S, deps) {
         return;
       }
 
+      /* ═══ v2.3.3407: I P J L K O -- THE DASHBOARD'S SIX BUTTONS; M -- THE MAP ═══
+         The owner: "For computer usage if there's a key that makes sense to
+         use for a certain action just put the letter next to the icon or
+         action in a tasteful way."  Each button wears its letter (NavRail,
+         the minimap's open button: game/deskKeys.js is the one table).  A
+         key does what a click on its button does, and closes the page it
+         opened when pressed again.  Never with Ctrl, Cmd or Alt held: those
+         are the browser's (Ctrl+P, Cmd+L, Ctrl+J). */
+      if (!browserChord(e) && !e.repeat && S.rpg) {
+        var _navId = navIdForCode(e.code);
+        if (_navId) {
+          e.preventDefault();
+          BT_AUDIO.uiClickNow();
+          navKey(_navId);
+          return;
+        }
+        if (e.code === 'Key' + MAP_KEY) {
+          if (toggleWorldMap()) {
+            e.preventDefault();
+            BT_AUDIO.uiClickNow();
+          }
+          return;
+        }
+      }
+
+      /* ═══ v2.3.3407: Enter -- A DIALOGUE'S OWN BUTTON ═══
+         Mayor Bro's Next / Continue and the quest's Accept Quest / Claim
+         Rewards (data-enter, each wearing "Enter"), the one in front.  With
+         none up, Enter is left alone -- a focused button's own Enter. */
+      if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !e.repeat && !browserChord(e)) {
+        var _go = frontControl(ENTER_SEL);
+        if (_go) {
+          e.preventDefault();
+          pressControl(_go);
+          return;
+        }
+      }
+
       /* Escape — close chat first, then close panels */
       if (e.code === 'Escape') {
         if (chatOpen) {
           setChatOpen(false);
           if (chatInputRef.current) chatInputRef.current.blur();
+          return;
+        }
+        /* ═══ v2.3.3407: ...THE WINDOW IN FRONT, BY ITS OWN ✕ ═══
+           Each window's ✕ wears "Esc" on a computer (data-esc, and every
+           .bt-inspect-close), so Esc presses THAT ✕: whatever closing it
+           does, Esc does -- the world map, Diego, Ace, the daily rewards and
+           the item card were not closed by it at all, and one window over
+           another now closes one at a time.  Then the old sweep for a window
+           with no ✕ of that kind (a .bt-inspect window, a character's
+           dialogue), then the dashboard's open page (back one step, then
+           shut). */
+        var _x = frontControl(ESC_SEL);
+        if (_x) {
+          pressControl(_x);
+          return;
+        }
+        if (document.querySelector('.bt-inspect, .bt-npcdlg-scrim')) {
+          _desktopCloseAll();
+          return;
+        }
+        if (dashboardPanelBus.state.mode === 'expanded') {
+          dashboardPanelBus.pop();
           return;
         }
         _desktopCloseAll();
@@ -406,12 +491,15 @@ export function setupDesktopControls(S, deps) {
         S._shieldKb = false; /* v2.3.1726: stop the rAF mouse-steer too */
         _desktopShieldOff();
       }
+      /* v2.3.3407: let go of E, and the harvest's gesture stops being worked */
+      if (e.code === 'KeyE' && S._harvestKeys) S._harvestKeys.up();
     };
     /* v2.3.3006: a key held as the window loses focus never sends its keyup
        (alt-tab with Shift down kept a sprint running, with W down kept you
        walking), so every held key is let go there. */
     var onBlur = function onBlur() {
       for (var k in S.keys) S.keys[k] = false;
+      if (S._harvestKeys) S._harvestKeys.up();   /* v2.3.3407: ...E's work too */
     };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);

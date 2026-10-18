@@ -4,6 +4,7 @@ import { COL } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { playIsLandscape } from '../playViewport.js'; /* v2.3.2158: the tap decides by shape */
 import { navButtonSize } from '../sheet/sheetGeometry.js';
+import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, shown on a computer */
 
 /* v2.3.1637 (owner mockup): the NAV RAIL — the destinations as icon-only
    buttons down the band's left edge, replacing the full-width bottom
@@ -103,7 +104,16 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                finding anything and quietly asserts nothing.  That is TRAPS §29,
                and mp-hudface is the fifth scenario it killed. */
             data-nav={d.id}
-            role="button" aria-label={d.label} aria-pressed={on} title={d.label}
+            role="button" aria-label={d.label} aria-pressed={on}
+            /* ═══ v2.3.3407: ITS KEY IN THE CORNER, ON A COMPUTER ═══
+               The owner: "For computer usage if there's a key that makes
+               sense to use for a certain action just put the letter next to
+               the icon".  I P J L K O (game/deskKeys.js, which
+               desktopControls.js binds): drawn by game.css's [data-key] only
+               under a mouse, as generated content, never a text node; the
+               hover's tooltip says it too. */
+            data-key={NAV_KEYS[d.id] || undefined}
+            title={NAV_KEYS[d.id] ? d.label + ' (' + NAV_KEYS[d.id] + ')' : d.label}
             onPointerUp={(e) => {
               e.stopPropagation();
               /* ═══ v2.3.2639: THE TAB TAP, WHERE THE TAP ACTUALLY IS ═══

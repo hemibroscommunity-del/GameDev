@@ -329,7 +329,14 @@ export function TouchControls(props) {
       width: discW,
       height: discW
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, /* ═══ v2.3.3407: A COMPUTER'S WORDS OVER THE BUTTON ═══
+       On a computer this box comes back for a harvest (game.css
+       `[data-harvest]`), and the cue on the disc says which way to move but
+       not with what: this line does -- "Drag ↔ or hold E" (gesturePose.js
+       DESK_GESTURE_HINT), stamped by BroTown's resolver while the window is
+       open.  Never shown on a phone (game.css: pointer:fine only). */
+  React.createElement('div', { className: 'bt-rjoy-deskhint', 'data-show': '0', 'aria-live': 'polite' }),
+  /*#__PURE__*/React.createElement("div", {
     ref: rJoyRef,
     className: "bt-rjoy-base",
     'data-rbutton': '1',
