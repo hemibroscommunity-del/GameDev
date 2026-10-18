@@ -708,6 +708,14 @@ async function body({ P, wsPort, rec }) {
   const arrived = await travel(spoke.tx, spoke.ty, spoke.zoneId);
   rec.ok(`arrived in a gathering zone (${spoke.zoneId}) (guard)`, arrived === true, { spoke });
   if (!arrived) return;
+  /* v2.3.3403: and kept alive there.  A harvest is shielded from monsters
+     (gathering.js _extractionShielded), the idle gaps between this file's
+     steps are not, and on this box they are long: in the run of 2026-10-18
+     Frost Ridge's snowmen killed the player after the four harvests, and the
+     "no answer", "old client" and "kill switch" sections each found them back
+     in town.  Nothing here measures a blow taken (the cook moved to town for
+     the same reason, above). */
+  await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
   await H.waitFor(P, (S) => (S.gatherNodes || []).filter((n) => n.alive).length, (n) => n >= 3,
     { timeout: 15000, label: 'the nodes arrive' }).catch(() => {});
   await H.closeDest(P).catch(() => {});
