@@ -2435,6 +2435,27 @@ remnant to migrate server-side, not a mode to preserve.
       tier to claim; `daily_rewards:<pid>`, caps/kill switches `dailyspin`
       and `dailyquests`; `dailyrewards` suite, `mp-dailyrewards`:
       docs/specs/daily-rewards.md.
+    - since v2.3.3341 THE DAILY QUESTS ARE PUT AWAY -- the owner: "Remove the
+      daily quests they're randomly appearing as complete and it makes no
+      sense to me ... I'd rather it go away" (they were rolled for everyone
+      at tut_1 and counted from any kill, harvest, cook or smelt, so they
+      announced themselves already done, with the story quest's fanfare):
+      - off unless the live flags say `dailyquests: true` (`_dqOff`,
+        `_drFlagOn`): not advertised, nothing rolled, counted, rerolled or
+        paid, no `daily_progress`; the code is kept and tested for that
+        switch, as the ground's edge pieces and blends are;
+      - the SEASON is the free spin's: 3 stars a spin (`SEASON.SPIN_STARS`;
+        25 tiers in 25 days of 28 -- at 1 it stopped at tier 9), 1 with the
+        quests back on (`SPIN_STARS_QUESTS`); a claim is settled with the
+        quests off; the page shows the season against `dailyspin` OR
+        `dailyquests` (`seasonLive`), the card its stars, the Den's button
+        "Season rewards";
+      - tut_1 handed in now always sends the opened spin (it waited for a
+        rejoin with the quests off), with no "Daily quests are open!"; a new
+        day online is `spinday` news ("your free spin is waiting"), never
+        `newday`'s "three new daily quests";
+      - the Quests button's dot stays a quest's alone; `dailyrewards` §9,
+        `mp-dailyrewards`: daily-rewards.md "The daily quests put away".
   - Since v2.3.3142 WORN ARMOUR SHOWS ITS GRADE -- the owner: "change the
     outline hue or something on the armor so it retains the color but has
     highlights. So rare is blue, elite is orange, godly is prismatic":

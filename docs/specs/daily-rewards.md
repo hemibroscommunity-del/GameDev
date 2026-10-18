@@ -384,3 +384,57 @@ Tests: `dailyrewards.test.mjs` §6, 11 new checks. Each of the four acts pays
 yesterday's pot once and saves the day, and a join after the prune pays
 nothing more. A claim that closes an old season mails its tiers once, and
 the backstop marks the record dirty. All 11 fail on main.
+
+## v2.3.3341: the daily quests put away
+
+> The owner, playtesting: *"Remove the daily quests they're randomly appearing
+> as complete and it makes no sense to me when I completed the quest by
+> accident I'd rather it go away."*
+
+**Why they seemed random.** The three quests were rolled for every player the
+moment tut_1 was handed in, with nothing to accept, and counted silently from
+every kill (any share of it), harvest, cook and smelt. So ordinary play
+finished "Defeat 15 monsters" or "Chop 10 logs" before the player had ever
+seen them, and the first they heard of one was a toast, "Daily quest done",
+with the story quest's own fanfare, sometimes held back up to 90 s behind a
+loading screen.
+
+**What changed.**
+
+- The quests are OFF unless the live flags say `dailyquests: true`
+  (`_dqOff`, read through the new `_drFlagOn`: true or a number not 0, as
+  liveops stores them; no flags is off). Off, nothing is rolled, counted,
+  rerolled or paid, and no `daily_progress` is sent. `caps.dailyquests` is
+  advertised false, so every page, old or new, shows no quest rows, toasts or
+  ↻, and the Quests button's dot stays a story quest's alone. The code is
+  kept and tested for that switch (sections 2-8 of the suite run with it on),
+  as the ground's edge pieces and blends are.
+- **The season is the free spin's.** It earned most of its stars from the
+  quests; without them the spin's 1 a day stopped a 28-day season at tier 9
+  of 25. The free spin now puts **3** stars on it (`SEASON.SPIN_STARS`):
+  the 25 tiers (75 stars) in 25 days of play, three missed days to spare.
+  With the quests switched back on the spin pays its old 1
+  (`SPIN_STARS_QUESTS`), so that day's 5 at most is as it was. A season claim
+  is no longer refused with the quests off. The page shows the season, its
+  stars on the Quests card and its claims against `caps.dailyspin` OR
+  `caps.dailyquests` (`seasonLive`); the Season tab says "Earn 3 ★ a day
+  with your free spin at the Gambling Den", and the Den's button reads
+  "Season rewards" and opens that tab.
+- **Handing in tut_1 sends the opened spin** even with the quests off (it
+  returned early, so the Den showed the spin locked until a rejoin), with no
+  news: `unlocked` reads "Daily quests are open!" on every page.
+- **A new day online** is `spinday` news with the quests off ("A new day:
+  your free spin is waiting at the Gambling Den", only to a player the spin
+  is open to); `newday` reads "three new daily quests" on every page. A page
+  from before this ignores `spinday`.
+- Records keep their `dq` field, healed as ever, so a rollback reads them.
+
+**Tests.** `dailyrewards.test.mjs` §9 (11 checks, a room with no flags): not
+advertised, nothing rolled, counted, paid or sent (a quest left in a record
+included), no reroll, the spin opened at tut_1 with no news, 3 stars a free
+spin, a claim settled, `spinday` at a new day, and the flag bringing them
+back (rolled, advertised, the spin's 1 star). Seven of them fail on main
+(and the run stops at the switch's check, which calls code main lacks).
+`mp-dailyrewards` (20) plays the game without them on a phone: no quest
+anywhere in the window, no quest toast, the 3 stars, the Season tab's line,
+the Den's "Season rewards", the card's stars.

@@ -4,7 +4,7 @@ import { thumbFor } from './dash/InventoryPanel.jsx';
 import { useModalGuard } from './modalGuardBus.js';
 import { tapDismiss, TAP_DISMISS_STYLE } from '../tapDismiss.js';
 import {
-  dailyRewardsBus, questsLive, spinLive, askReroll, askClaim, askRewards,
+  dailyRewardsBus, questsLive, spinLive, seasonLive, askReroll, askClaim, askRewards,
   questLabel, questIcon, grantLabel, untilText, claimableTiers, nextTier, tierNeed, coinsShort,
 } from '@/game/dailyRewards.js';
 
@@ -27,6 +27,11 @@ import {
  *
  * Draws only what the worker last said (game/dailyRewards.js); every button
  * is an ask -- daily_reroll, season_claim -- and the answer redraws it.
+ *
+ * v2.3.3341: the daily quests are PUT AWAY (the owner: "Remove the daily
+ * quests") -- a worker advertises them only with its live flag on, so Today
+ * is the streak and the spin, and the season is the free spin's (the Den's
+ * button says "Season rewards" and opens it).
  *
  * SMALL SCREENS: the InfoPopup recipe (v2.3.2616) -- the card is capped at
  * the screen and only its middle scrolls, so the header, the tabs and the
@@ -297,8 +302,13 @@ function SeasonTab({ st }) {
           {nt ? 'Tier ' + nt + ' at ' + ntNeed + ' ★' : 'Every tier reached! A bonus spin every ' + (se.ovEvery || 5) + ' ★ more.'}
         </div>
       </div>
-      <div style={{ fontSize: 11.5, color: COL.muted, margin: '6px 2px 0', lineHeight: 1.4 }}>
-        Earn ★ from each daily quest, from finishing all three, and from your free spin. Missed days never cost ★, and
+      <div data-season-earn={questsLive() ? 'quests' : 'spin'} style={{ fontSize: 11.5, color: COL.muted, margin: '6px 2px 0', lineHeight: 1.4 }}>
+        {/* v2.3.3341: with the daily quests put away the free spin is the
+            season's only star, and says how many it puts on */}
+        {questsLive()
+          ? 'Earn ★ from each daily quest, from finishing all three, and from your free spin.'
+          : 'Earn ' + (se.spinStars || 1) + ' ★ a day with your free spin at the Gambling Den.'}
+        {' '}Missed days never cost ★, and
         anything you reach but don't claim is sent to you when the season ends.
       </div>
       {claimable.length > 1 && (
@@ -338,7 +348,7 @@ export const DailyRewardsWindow = () => {
 
   if (!win.open) return null;
   const close = () => dailyRewardsBus.closeWindow();
-  const live = questsLive() || spinLive();
+  const live = seasonLive();   /* v2.3.3341: the spin or the quests (the season goes with either) */
   const tab = win.tab === 'season' ? 'season' : 'today';
   const claimN = st ? claimableTiers(st).length : 0;
 

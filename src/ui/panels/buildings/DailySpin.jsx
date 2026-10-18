@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { BT_AUDIO } from '@/data/index.js';
 import {
-  dailyRewardsBus, spinLive, askSpin, coinsShort, untilText,
+  dailyRewardsBus, spinLive, questsLive, askSpin, coinsShort, untilText,
 } from '@/game/dailyRewards.js';
 
 /* ═══ v2.3.3140: THE FREE DAILY SPIN, AT THE GAMBLING DEN ═══
@@ -21,7 +21,8 @@ import {
  * -- the wheel turns into the coin's own (half x2, half ✕) and spins again:
  * x2 doubles the pot, ✕ loses it all.  Again and again, until you take it,
  * lose it, or reach the house limit (paid by itself).  One free spin a day;
- * bonus spins (all three daily quests, the season) start more.  A pot left
+ * bonus spins (the season; all three daily quests while they were in the
+ * game -- put away since v2.3.3341) start more.  A pot left
  * open is paid at the day's end, never lost (the worker's rollover).
  *
  * The slices are drawn the same size, as a fairground wheel's are; the real
@@ -441,14 +442,15 @@ export function DailySpin() {
       <button
         type="button"
         data-open-daily="1"
-        onClick={() => dailyRewardsBus.openWindow('today')}
+        onClick={() => dailyRewardsBus.openWindow(questsLive() ? 'today' : 'season')}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           width: '100%', minHeight: 44, marginTop: 6, padding: '0 8px', borderRadius: 10,
           background: 'transparent', border: '1px solid ' + LS.border, color: LS.txt2,
           fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
         }}>
-        Daily quests &amp; season <span aria-hidden="true" style={{ color: LS.brass }}>›</span>
+        {/* v2.3.3341: the daily quests are put away; the button is the season's */}
+        {questsLive() ? 'Daily quests & season' : 'Season rewards'} <span aria-hidden="true" style={{ color: LS.brass }}>›</span>
       </button>
     </div>
   );

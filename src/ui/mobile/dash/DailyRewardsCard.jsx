@@ -1,6 +1,6 @@
 import React, { useSyncExternalStore } from 'react';
 import { COL } from './common.js';
-import { dailyRewardsBus, questsLive, spinLive, claimableTiers } from '@/game/dailyRewards.js';
+import { dailyRewardsBus, questsLive, spinLive, seasonLive, claimableTiers } from '@/game/dailyRewards.js';
 import { useScrollTap } from '../sheet/scrollTap.js'; /* the card sits in the Quests scroller */
 
 /* ═══ v2.3.3140: THE DAILY REWARDS CARD, AT THE TOP OF QUESTS ═══
@@ -20,13 +20,16 @@ export const DailyRewardsCard = () => {
   const dq = st.dq || {};
   const list = Array.isArray(dq.list) ? dq.list : [];
   const done = list.filter((q) => q.d).length;
-  const claim = qLive ? claimableTiers(st).length : 0;
+  /* v2.3.3341: the season's stars and claims are the free spin's now (the
+     daily quests are put away), so they show against either cap */
+  const seLive = seasonLive();
+  const claim = seLive ? claimableTiers(st).length : 0;
   /* v2.3.3181: a spin the first quest has not opened yet is not ready */
   const spinReady = sLive && st.spin && st.spin.on && (st.spin.open || (!st.spin.locked && (st.spin.ready || st.spin.extra > 0)));
   const warm = claim > 0 || spinReady;
   const bits = [];
   if (qLive && dq.on !== false) bits.push(dq.locked ? 'Daily quests: soon' : done + '/' + (list.length || 3) + ' daily quests');
-  if (qLive && st.season) bits.push('★ ' + st.season.st);
+  if (seLive && st.season) bits.push('★ ' + st.season.st);
   if (claim > 0) bits.push(claim + ' to claim');
   else if (spinReady) {
     const sp = st.spin;

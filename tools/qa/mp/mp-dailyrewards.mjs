@@ -6,8 +6,9 @@
  * from the gambling building", and its twist: "Your first spin is for a lump
  * sum award ... Then you have the option of spinning it for double or nothing
  * at 50% odds and that continues on."  One real player against a real
- * worker, in the Wheel, on a phone:
- *   1. the worker advertises the spin and the quests, and says so on join;
+ * worker, in the Wheel, on a phone.  v2.3.3341: the daily quests are PUT AWAY
+ * (the owner: "Remove the daily quests"), so this is the game without them:
+ *   1. the worker advertises the spin and NOT the quests, and says so on join;
  *   2. NOTHING opens at login -- no chest window (even with the harness's
  *      chest offer allowed), no chest in the bag;
  *   3. at the Gambling Den's door, Enter opens its window with the FREE
@@ -17,16 +18,17 @@
  *      and lands on the answer; a won double then TAKEN pays exactly the
  *      doubled pot, a lost one pays nothing; then the button counts down to
  *      tomorrow's free spin;
- *   5. a bonus spin (an operator grant here; in the game, all three daily
- *      quests or the season) lands a lump sum, and TAKE IT pays it exactly;
- *   6. "Daily quests & season" opens the Daily Rewards window: the streak,
- *      the spin used, three daily quests (the first quest handed in), a reroll
- *      that swaps one; finishing all three pays and banks a bonus spin;
- *   7. the Season tab: stars, 25 tiers, a reached tier claimed (coins on the
- *      purse), "Claim all" taking the rest, the Quests button's dot lit while
- *      one waits and out after;
- *   8. the Quests tab's card opens the same window; the window fits a phone
- *      on its side (header, tabs and close on screen); no page errors.
+ *   5. a bonus spin (an operator grant here; in the game, the season) lands a
+ *      lump sum, and TAKE IT pays it exactly; the free spin put 3 stars on
+ *      the season (v2.3.3341: its only stars now), the bonus spin none;
+ *   6. "Season rewards" opens the Daily Rewards window on its Season tab;
+ *      Today is the streak and the spin, with no daily quest anywhere, and
+ *      no "Daily quest done" toast ever came;
+ *   7. the Season tab: stars, "3 ★ a day with your free spin", 25 tiers, a
+ *      reached tier claimed (coins on the purse), "Claim all" taking the rest;
+ *   8. the Quests tab's card shows the stars (it hid them without the quests)
+ *      and opens the same window; the window fits a phone on its side
+ *      (header, tabs and close on screen); no page errors.
  * Pictures: tools/qa/mp/out/daily-*.png.
  */
 import * as H from './harness.mjs';
@@ -66,8 +68,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 1. caps and the state ── */
     const caps = await H.readState(P, (S) => S._serverCaps || {});
     const st0 = await waitFor(state, 15000);
-    rec.ok('the worker advertises the free spin and the daily quests, and sends their state on join (v2.3.3181: the spin locked until the first quest)',
-      caps.dailyspin === true && caps.dailyquests === true && !!st0 && st0.spin.ready === 1 && st0.spin.locked === 1 && st0.spin.open === 0
+    rec.ok('the worker advertises the free spin and not the daily quests (v2.3.3341: put away), and sends the state on join (v2.3.3181: the spin locked until the first quest)',
+      caps.dailyspin === true && caps.dailyquests === false && !!st0 && st0.spin.ready === 1 && st0.spin.locked === 1 && st0.spin.open === 0 && st0.dq.on === false
         && Array.isArray(st0.spin.prizes) && st0.spin.prizes.length === DAILY.SPIN.PRIZES.length,
       { caps: { dailyspin: caps.dailyspin, dailyquests: caps.dailyquests }, spin: st0 && st0.spin });
 
@@ -215,39 +217,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const cB1 = await coins();
     rec.ok('a bonus spin lands a lump sum, and Take it pays exactly that', !!bonusBtn && !!bonus && bonus.act === 'spin' && !!took
       && took.paid === bonus.pot && cB1 - cB === bonus.pot, { bonusBtn, bonus, took, got: cB1 - cB });
+    const se5 = await state();
+    rec.ok('the free spin put 3 stars on the season, the bonus spin none (v2.3.3341: the season is the spin\'s now)',
+      !!se5 && se5.season.st === DAILY.SEASON.SPIN_STARS && DAILY.SEASON.SPIN_STARS === 3 && se5.season.spinStars === 3,
+      se5 && { st: se5.season.st, spinStars: se5.season.spinStars });
 
-    /* ── 6. the Daily Rewards window ── */
-    await H.devOp(wsPort, 'quests', id);   /* the tutorial handed in: the daily quests open */
+    /* ── 6. the Daily Rewards window, without the daily quests ── */
+    const denBtn = await P.page.evaluate(() => { const b = document.querySelector('[data-open-daily]'); return b ? (b.textContent || '').trim() : null; });
     await P.page.evaluate(() => { const b = document.querySelector('[data-open-daily]'); if (b) b.click(); });
-    const win = await waitFor(() => P.page.evaluate(() => {
+    const winS = await waitFor(() => P.page.evaluate(() => {
       const w = document.querySelector('[data-daily-rewards]');
+      return w ? { tab: w.getAttribute('data-daily-rewards') } : null;
+    }), 10000);
+    rec.ok('the Den\'s button says "Season rewards" and opens the window on its Season tab',
+      !!denBtn && /Season rewards/.test(denBtn) && !/quest/i.test(denBtn) && !!winS && winS.tab === 'season', { denBtn, winS });
+    await P.page.evaluate(() => { const b = document.querySelector('[data-daily-tab="today"]'); if (b) b.click(); });
+    const win = await waitFor(() => P.page.evaluate(() => {
+      const w = document.querySelector('[data-daily-rewards="today"]');
       if (!w) return null;
       return { tab: w.getAttribute('data-daily-rewards'), quests: document.querySelectorAll('[data-daily-quest]').length,
+        rerolls: document.querySelectorAll('[data-reroll]').length, words: /daily quest/i.test(w.textContent || ''),
         streak: !!document.querySelector('[data-daily-streak]'), spinrow: (document.querySelector('[data-daily-spinrow]') || { getAttribute: () => null }).getAttribute('data-daily-spinrow') };
-    }).then((v) => (v && v.quests === 3 ? v : null)), 10000);
+    }), 10000);
     await shot(P, 'window-today');
-    rec.ok('"Daily quests & season" opens the window on Today: the streak, the spin, and three daily quests',
-      !!win && win.tab === 'today' && win.streak && win.quests === 3 && !!win.spinrow, win);
-
-    const before6 = await state();
-    const t0 = before6 && before6.dq.list.map((q) => q.t + ':' + (q.p || ''));
-    await P.page.evaluate(() => { const b = document.querySelector('[data-reroll="0"]'); if (b) b.click(); });
-    const rerolled = await waitFor(async () => { const s = await state(); return s && s.dq.rr === 0 && s.dq.list[0] && (s.dq.list[0].t + ':' + (s.dq.list[0].p || '')) !== t0[0] ? s : null; }, 6000);
-    const rrBtns = await P.page.evaluate(() => document.querySelectorAll('[data-reroll]').length);
-    rec.ok('↻ swaps a quest for another, once a day (then the swap buttons go)', !!rerolled && rrBtns === 0, { before: t0, after: rerolled && rerolled.dq.list.map((q) => q.t + ':' + (q.p || '')), rrBtns });
-
-    const cQ = await coins();
-    const extra0 = (await state()).spin.extra;
-    for (let i = 0; i < 3; i++) { await H.devOp(wsPort, 'daily', id, { quest: [i, 999] }); await P.page.waitForTimeout(400); }
-    const allDone = await waitFor(async () => { const s = await state(); return s && s.dq.all === 1 ? s : null; }, 8000);
-    const cQ1 = await coins();
-    const pay = allDone ? allDone.dq.list.reduce((a, q) => a + q.c, 0) : -1;
-    const toasts = await P.page.evaluate(() => (window.__btToastLog || []).map((t) => t.text || t).slice(-6));
-    await shot(P, 'window-alldone');
-    rec.ok('finishing all three pays each quest\'s coins, banks a bonus spin and says so in a toast',
-      !!allDone && cQ1 - cQ === pay && allDone.spin.extra === extra0 + DAILY.QUESTS.ALL.spins
-        && toasts.some((t) => /Daily quest done/.test(String(t))),
-      { got: cQ1 - cQ, pay, extra0, extra: allDone && allDone.spin.extra, toasts });
+    const toasts = await P.page.evaluate(() => (window.__btToastLog || []).map((t) => t.text || t));
+    rec.ok('Today: the streak and the spin, and no daily quest anywhere -- no rows, no ↻, no words -- with the first quest handed in; and no "Daily quest done" toast ever came',
+      !!win && win.tab === 'today' && win.streak && !!win.spinrow && win.quests === 0 && win.rerolls === 0 && !win.words
+        && !toasts.some((t) => /daily quest/i.test(String(t))), { win, toasts: toasts.slice(-6) });
 
     /* ── 7. the Season tab ── */
     await H.devOp(wsPort, 'daily', id, { stars: 12 });
@@ -255,13 +251,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const season = await waitFor(() => P.page.evaluate(() => {
       const w = document.querySelector('[data-daily-rewards="season"]');
       if (!w) return null;
+      const earn = document.querySelector('[data-season-earn]');
       return { tiers: document.querySelectorAll('[data-season-tier]').length, claimBtns: document.querySelectorAll('[data-claim]').length,
-        all: !!document.querySelector('[data-claim-all]'), stars: +(document.querySelector('[data-season-stars]') || { getAttribute: () => 0 }).getAttribute('data-season-stars') };
+        all: !!document.querySelector('[data-claim-all]'), stars: +(document.querySelector('[data-season-stars]') || { getAttribute: () => 0 }).getAttribute('data-season-stars'),
+        earn: earn ? { k: earn.getAttribute('data-season-earn'), text: (earn.textContent || '').trim() } : null };
     }).then((v) => (v && v.claimBtns > 1 ? v : null)), 8000);
     const dotOn = await P.page.evaluate(() => { const q = document.querySelector('[data-nav="quests"]'); return q ? q.innerText : null; });
     await shot(P, 'window-season');
     rec.ok('the Season tab: the stars, all 25 tiers, Claim on each reached one and "Claim all"',
       !!season && season.tiers === DAILY.SEASON.TIERS.length && season.claimBtns >= 2 && season.all, season);
+    rec.ok('...and it says where stars come from now: "3 ★ a day with your free spin" (v2.3.3341), not the daily quests',
+      !!season && !!season.earn && season.earn.k === 'spin' && /3 ★ a day with your free spin/.test(season.earn.text) && !/quest/i.test(season.earn.text), season && season.earn);
     const cS = await coins();
     await P.page.evaluate(() => { const b = document.querySelector('[data-claim="1"]'); if (b) b.click(); });
     const one = await waitFor(async () => { const s = await state(); return s && s.season.cl.includes(1) ? s : null; }, 6000);
@@ -308,7 +308,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot(P, 'quests-card');
     if (card) await P.page.evaluate(() => { const c = document.querySelector('[data-daily-card-open]'); if (c) { c.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); c.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); } });
     const viaCard = await waitFor(() => P.page.evaluate(() => !!document.querySelector('[data-daily-rewards]')), 5000);
-    rec.ok('the Quests tab\'s card says the day at a glance and opens the same window', !!card && /Daily rewards/.test(card) && !!viaCard, { card, viaCard, dotOn });
+    rec.ok('the Quests tab\'s card says the day at a glance -- the season\'s stars too, with no daily quests (v2.3.3341) -- and opens the same window',
+      !!card && /Daily rewards/.test(card) && /★ \d/.test(card) && !/quest/i.test(card) && !!viaCard, { card, viaCard, dotOn });
 
     stopAlive = true;
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 5));
