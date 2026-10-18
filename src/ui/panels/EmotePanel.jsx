@@ -124,8 +124,11 @@ export function EmotePanel(props) {
       type: "button",
       "aria-label": "Close emotes",
       "data-emote-close": "",
+      /* v2.3.3407: Esc presses it, and on a computer it says so (game/deskKeys.js) */
+      "data-esc": "", "data-key": "Esc", "data-key-at": "hang",
       onClick: function () { onClose(); },
       style: {
+        position: 'relative',   /* v2.3.3407: its key cap's anchor */
         width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(229,237,233,.20)',
         background: '#293B41', color: '#B6C1BE', fontSize: 16, lineHeight: '30px', padding: 0, cursor: 'pointer'
       }
