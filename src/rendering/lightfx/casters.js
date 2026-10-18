@@ -26,7 +26,7 @@
  *      beneath the monster" (v2.3.1704).
  */
 import { Sprite } from 'pixi.js';
-import { figureFeetY } from '../systems/entityRenderer.js';
+import { figureFeetY, figureFeetX } from '../systems/entityRenderer.js';   /* v2.3.3392: + the x an emoting figure stands at */
 import { wheelObjectCasters } from '../wheelObjects.js';   /* v2.3.3000: the Wheel's objects cast */
 import { farmCasters } from '../farmWorld.js';   /* v2.3.3136 */
 
@@ -128,7 +128,7 @@ export function collectCasters(S, er, fx, zone) {
     if (pd.visible) walkDisplay(pd, sprites, pd._uiLayer);
     const own = sprites.length;
     selfStandIns(fx, sprites);
-    out.push({ key: 'self', px: pd.x, py: figureFeetY(pd), sprites, alive: true, standIns: sprites.length - own });
+    out.push({ key: 'self', px: figureFeetX(pd), py: figureFeetY(pd), sprites, alive: true, standIns: sprites.length - own });
   }
 
   /* other players in this zone */
@@ -142,7 +142,7 @@ export function collectCasters(S, er, fx, zone) {
       if (d.visible) walkDisplay(d, sprites, d._uiLayer);
       peerStandIns(fx, id, sprites);
       if (!sprites.length && !here) continue;
-      out.push({ key: 'p:' + id, px: d.x, py: figureFeetY(d), sprites, alive: here });
+      out.push({ key: 'p:' + id, px: figureFeetX(d), py: figureFeetY(d), sprites, alive: here });
     }
   }
 

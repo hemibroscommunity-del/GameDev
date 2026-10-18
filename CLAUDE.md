@@ -48,6 +48,40 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/MEMORY-PLAN.md` (what the phone holds -- sound, canvases, heaps, not
   only textures -- what leaked, and the order of the memory work with each
   item's status, v2.3.3075; `mp-memledger` measures it),
+  `docs/FUN-SOCIAL-PLAN.md` (the owner's fun & social plan checked against
+  the code, v2.3.3391 -- "Go recommended": emotes and dances that move the bro
+  in code, two-player moves, farm-made toys, a playground town; its rules: a
+  pose that lasts is STATE on the player (TRAPS §176), social messages get an
+  allowance of their own, anything earned is stored and checked on the server,
+  no new always-on button; Phase 0's emotes you can see -- the chat box's
+  smiley or B, an emoji over the head, a quick line as the bubble, only the
+  listed ones relayed and placed near the sender: docs/specs/emotes.md,
+  `emotes` suite, `mp-emotes`; and since v2.3.3392 Phase 1's twelve MOVES --
+  wave, laugh, flex, shrug, facepalm, cheer for a moment (the `emote` relay's
+  `{move}`), sit, sleep, flop and three dances held until you move (`pose
+  {id}`, kept by the worker as `ps.po` and sent as the tick's `po`, ended by a
+  real step: server/src/poses.js) -- the whole bro tilted, squashed or hopped
+  in code ABOUT HIS FEET after the depth pass (src/rendering/emoteFx.js, the
+  curves and the math src/game/emoteMoves.js), his HUD given the inverse so
+  the name plate never tilts and only comes down with a sitter or sleeper;
+  the picker's Moves tab and `/wave`, `/sit`, `/dance` in the chat;
+  `caps.emotemoves`, kill switch `emotemoves: false`; `emotes` §5-7,
+  `mp-emotemoves`: docs/specs/emote-moves.md; and since v2.3.3393 `/roll`
+  (1-100, `/roll 20`) and `/flip` ROLLED BY THE WORKER (server/src/dice.js:
+  crypto, no modulo bias, one every 5 s, `dice_roll` PRIVILEGED, placed near
+  the roller and muted with chat), a chat line in the roller's name and the
+  number as their bubble; `caps.dice`, kill switch `dice: false`; `dice`
+  suite, `mp-dice`: docs/specs/dice.md; and since v2.3.3394 YOUR PET AND THE
+  TOWNSFOLK JOIN IN -- a pet copies its player's held pose, Lil Bro copies the
+  nearest player, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have a
+  word (src/game/townsfolkReact.js, this phone's own; emoteFx.js
+  `_updateFollowers` moves each one picture about its feet);
+  `townsfolk-react` suite, `mp-joinin`; and since v2.3.3395 HALLOWEEN WEEK,
+  24 October to 1 November by each phone's calendar (src/game/season.js,
+  `?halloween=1|0`; a look, never a rule): the Zombie Shuffle, a thirteenth
+  move the worker keeps any day, pumpkin-coloured speech bubbles drawn in
+  code, Diego's "No zombies in my store!"; `season` suite, `mp-halloween`:
+  docs/specs/halloween.md),
   `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
   size, in what order — the decoded-RGBA budget and the free-standing
   vs edge-cropped test live here, v2.3.2650),
@@ -966,6 +1000,80 @@ remnant to migrate server-side, not a mode to preserve.
         gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
         `mp-monsterplate` (whose band sweep now raises the weapon's skill):
         docs/specs/xp-decay.md.
+    - since v2.3.3345 EACH WOOD ITS OWN TREE -- the owner: every resource tier
+      in every land, "the log art (in terms of color to represent the type of
+      wood) would need to be the same across all 8 lands", the land shown by
+      effects in code; then their two ChatGPT pictures, "You can start with
+      this":
+      - pine (commons), a willow (softwood, 1-10), a gnarled hardwood
+        (11-20), a cedar (21-30) and a huge autumn maple (31-40), 1.5 to 4
+        people tall, each bark its log icon's colour, one picture in every
+        land, untinted (the one painted pine and its tints are gone);
+      - cut by `tools/world/add-tree-art.mjs` (sources in
+        `assets/prop-source/trees/`) into `public/sprites/trees/wood-*.png` and
+        the GENERATED `src/data/treeArt.js` (size, foot, trunk);
+        `src/game/tierTrees.js` says where each stands: its foot 27 px north
+        of the node (`TREE_FOOT_DY`, where the old pine's base stood), the
+        trunk the only solid part (`treeTrunkEllipse`, BroTown
+        nodeBlockEllipse), the lumberjack off by its own trunk
+        (`treeChopOffset`), the label and bar over its own crown but never
+        300 px past its foot (`treeMarkY`: over the maple's top they lay under
+        the phone's quest card);
+      - seen through (0.42) while its crown covers you behind its foot
+        (`behindTree`, `?treefade=0`), the maple hiding a bro whole; the
+        Wheel's node view margin 320 -> 480; +2.1 MB decoded (5.6 for the
+        five, the 3.4 MB pine no longer loaded);
+      - WHERE YOU CHOP FROM is not the picture: the worker pays a chop only
+        within `_nodeStrikeRange` (gathering.js: the OLD pine's box, 168 px a
+        tier, + 56 pad + 24 slack), and a reach to the new crowns offered
+        chops up to ~580 px out that it refused in silence (v2.3.2273's "logs
+        not going into my inventory"); BroTown `nodeReachDist` measures a tree
+        from `treeReachBox`, that very box (the tap still finds the whole
+        tree) -- change the two together;
+      - EACH METAL ITS OWN ROCK too, from the owner's one picture on green:
+        copper (58 px), iron, black steel, titanium and an obsidian boulder
+        (127 x 112), cut by `tools/world/add-ore-art.mjs` (source
+        `assets/prop-source/ore/`) into `public/sprites/ore/` and the GENERATED
+        `src/data/oreArt.js`; `src/game/tierOre.js` stands each rock's base 22
+        px north of the node (`ORE_BASE_DY`) and never higher than 110
+        (`ORE_TOP_MAX_UP`), so it hides the rock BAKED into the miner's swing
+        (27-59 px north of the node, measured through the body's transform:
+        the old vein covered 67% of it) and his head and shoulders stay over
+        it; a rock mined out breaks into pieces of its own picture
+        (`wheelShatter.js`, `_oreShatter`), the old copper break strip and the
+        four colour-mapped veins no longer loaded (7.7 -> 0.6 MB decoded);
+      - and the FISH grow more (wheelNodes.js `FISH_LOOK`): six 14 px minnows
+        to one 42 px pike, a big fish's circle smaller (`swim`) so it stays in
+        the bake's water;
+      - not yet: the ten zones' effects in code, the woods past maple
+        (WOODCUTTING_TIERS lists 20, only 5 grow); `mp-tiertrees`,
+        `mp-tierore`: docs/specs/tier-trees.md, docs/specs/tier-ore.md;
+      - since v2.3.3401 THE BAKE KEEPS EACH TREE AND ROCK CLEAR AS IT IS DRAWN
+        -- the owner: "Yes fix #3 resource placement": bake-wheel-spawns.mjs
+        `hidden` kept the old pine's and vein's one box (62 x 196, 52 x 118)
+        clear at every tier, and a tall thing could stand over a maple's
+        crown, 428 px across; now each tier's own (`treeGeom`, `oreGeom`) and
+        the woodcutter's spot either side of the trunk; whole where there is
+        room, else a tree's middle half across and lower half (`loose`: the
+        Verdant Wilds at 31-40 had room for 25 of 30 whole); NO RESOURCE IN
+        FRONT OF ANOTHER (`nodeClash`: 15 on the live table, a willow over an
+        angler, 0 now); a band's fishing spots chosen BEFORE its veins and
+        trees (scarce, and the bigger trees cost up to three a stretch); and
+        EVERY ANGLER'S SEAT DRY AS THE GROUND IS DRAWN (`drawnWaterOf`: the
+        shore is drawn where the grounds' blurred fields say, not on the
+        cells' lines, so a one-cell nub of land is drawn as sea -- the live
+        table had 7 seats with the boots in drawn water, 0 now; the shore is
+        the plan's alone, so the bake composes the very pixel a piece's
+        `under` reads with no pictures, which matched a phone's survey at
+        every look of 111 seats; test-world-core asks it of every seat of both
+        tables, and its piece sizes of ground-worker.js); every count kept on
+        the live Wheel (486 veins, 486 trees, 250 fishing spots), the short
+        one's fishing 55 -> 56, 1,019 places new, the commons' first copper
+        and pine where they were, no monster moved; the places now depend on
+        the trees' and rocks' picture SIZES: a new cut (add-tree-art.mjs,
+        add-ore-art.mjs) is a re-bake, which test-world-core's --check demands
+        and which deploys the worker: docs/specs/tier-trees.md "Where each one
+        grows".
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
@@ -2463,6 +2571,34 @@ remnant to migrate server-side, not a mode to preserve.
       tier to claim; `daily_rewards:<pid>`, caps/kill switches `dailyspin`
       and `dailyquests`; `dailyrewards` suite, `mp-dailyrewards`:
       docs/specs/daily-rewards.md.
+    - since v2.3.3400 THE DAILY QUESTS AND THE SEASON ARE PUT AWAY -- the
+      owner: "Remove the daily quests they're randomly appearing as complete
+      and it makes no sense to me ... I'd rather it go away" (they were rolled
+      for everyone at tut_1 and counted from any kill, harvest, cook or
+      smelt, so they announced themselves already done, with the story
+      quest's fanfare), then, offered the season on the free spin's stars,
+      "Yes drop the season":
+      - the quests off unless the live flags say `dailyquests: true`
+        (`_dqOff`, `_drFlagOn`): not advertised, nothing rolled, counted,
+        rerolled or paid, no `daily_progress`; the code is kept and tested
+        for that switch, as the ground's edge pieces and blends are;
+      - the SEASON likewise, off unless `season: true` (`_seOff`,
+        `caps.season`): no star added, no `season_claim` taken, and a tier a
+        player reached and never claimed is MAILED the first time they are
+        seen (`_seClose` with `drop`, the claim's own opIds, `season_drop`
+        news only to someone it paid); each record is kept, so the switch
+        brings the season back where it stood, the free spin's stars 3 with
+        the quests off (`SEASON.SPIN_STARS`), 1 with them;
+      - the page: no Season tab, stars or claims (`seasonLive` is
+        `caps.season`), the Quests card says the spin or the streak, and the
+        Den has no button past its spin;
+      - tut_1 handed in now always sends the opened spin (it waited for a
+        rejoin with the quests off), with no "Daily quests are open!"; a new
+        day online is `spinday` news ("your free spin is waiting"), never
+        `newday`'s "three new daily quests";
+      - the Quests button's dot stays a quest's alone; `dailyrewards` §9,
+        `mp-dailyrewards`: daily-rewards.md "The daily quests and the season
+        put away".
   - Since v2.3.3142 WORN ARMOUR SHOWS ITS GRADE -- the owner: "change the
     outline hue or something on the armor so it retains the color but has
     highlights. So rare is blue, elite is orange, godly is prismatic":
@@ -2912,6 +3048,22 @@ remnant to migrate server-side, not a mode to preserve.
     - test-world-core "the Gem Works", `mp-buildingrooms` (the tabs),
       `mp-wheeldoors`, `mp-shieldgem` (a shield's gem is set on the Set gems
       tab): docs/specs/gem-works.md.
+  - Since v2.3.3382 THE TOWN HALL'S FLAG WAVES -- the owner: "make the town
+    square flag wave using code it looks silly being still":
+    - the flag is painted into the Town Hall's picture (no flag object), so its
+      cloth is CUT OUT of the page as it loads (wheelLife.js `cutFlag`): its
+      colour numbers copied into a little palette picture of its own, then set
+      see-through in the page (uploaded again) -- once per page SOURCE (a
+      mended building finds the cut made); never where the cloth does not
+      count `n` (buildingLife.js's `flag` entry on the picture's own pixels:
+      `box`, `keep`, `pole`), nor with `?nopalette`, WebGL1 or `?nolife`;
+    - a 9 x 4 MeshPlane in the building's life, pinned at the pole, waved by
+      worldLife.js `_updateWheelFlags` (the old map's flags' motion, `windAt`
+      and the trees' gusts; at rest, as painted, under `__btAmbienceOff`) via
+      wheelObjects.js `forEachWheelFlag`; casts no shadow;
+    - test-world-core "the Town Hall's flag", `mp-flagwave` (13),
+      `window.__btWheelFlags()`: docs/specs/flag-wave.md, WORLD-MAP-PIPELINE
+      "The Town Hall's flag waves".
   - Since v2.3.3298 THE WHEEL IS BUILT IN BLOCKS ROUND YOU -- the owner: "the
     game map needs to be larger. It goes from lvl 1 monsters to lvl 20+ way too
     quickly. Maybe 5x larger map is needed", choosing "Rebuild for 5x". Step 1,
@@ -3820,7 +3972,11 @@ Two protocol versions coexist; both must keep working:
   worldViewport). `mp-frameprofile` profiles the CPU by source file (build with
   `--sourcemap`) and names what rebuilds each render group's draw list --
   `Graphics.clear()` on an empty graphic rebuilds it (TRAPS §208);
-  `mp-speedtest`.
+  `mp-speedtest`. Since v2.3.3383 the card never blames the graphics chip at
+  the screen's own pace: at 55+ frames a second it says every frame is ready
+  in time for the screen (`frameNote`) -- the owner's first run read 60 in
+  every step, 17 ms a frame, and was told the chip took most of each, when
+  17 ms is only a 60 Hz screen's own refresh.
 - The processor's side of a phone's frame, side by side (v2.3.3379,
   docs/specs/draw-lists.md): `QA_DIST=dist-prof node tools/qa/mp/run.mjs
   phoneframe` stands a 3x phone page in BroTown and at a Flame Fields fight

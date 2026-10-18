@@ -182,12 +182,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
      The starter sword is minted at the copper tier, so this needs no dev hook:
      accept tut_1 the way a player does and read what the renderer draws. */
   await send(A, { type: 'quest_accept', payload: { questId: 'tut_1' } });
-  await A.page.waitForTimeout(2000);
+  /* v2.3.3399: until the sword is in the bag, not a fixed 2 s: on a busy box
+     the worker's answer came later than that and the check read "no copper
+     sword" off a bag it had not reached yet (the sweep of 2026-10-18; the
+     same run on a quiet box passed). */
+  await H.waitFor(A, (S) => (S.rpg.weaponStash || []).some((x) => x && /Copper Great Sword/.test(x.name || '')),
+    (v) => v === true, { timeout: 15000, label: 'the quest sword reaches the bag' }).catch(() => {});
   const starter = await H.readState(A, (S) => {
     const w = (S.rpg.weaponStash || []).find((x) => x && /Copper Great Sword/.test(x.name || ''));
     return w ? { type: w.type, gearBase: w.gearBase, mult: w.tierMult } : null;
   });
-  rec.ok('the first weapon in the game is copper', !!starter && starter.gearBase === 'copper', starter);
+  /* v2.3.3399: what the bag and the quest log say, for when it is missing. */
+  const why = starter ? null : await H.readState(A, (S) => ({
+    tut1: (S.rpg._quests || {}).tut_1 || null,
+    held: S.rpg.weapon ? S.rpg.weapon.name : null,
+    stash: (S.rpg.weaponStash || []).map((x) => x && x.name),
+  }));
+  rec.ok('the first weapon in the game is copper', !!starter && starter.gearBase === 'copper', starter || why);
 
   /* Hold it, and read the tint off the weapon sprite the renderer is drawing. */
   await A.page.evaluate(() => {

@@ -195,6 +195,14 @@ const ATTACKS = [
 
 const ranged = (a) => a.slot === 'ranged' || a.slot === 'staff';
 
+/* v2.3.3399: a run of some rows only, to look into one of them --
+   BT_HITREAL_ZONES=frost,sky and/or BT_HITREAL_ONLY=bow,bow+special (a "+"
+   for the space).  Unset, every zone and every attack, as always. */
+const pickRows = (name, all, key) => {
+  const want = (process.env[name] || '').split(',').map((w) => w.trim().replace(/\+/g, ' ')).filter(Boolean);
+  return want.length ? all.filter((x) => want.includes(x[key])) : all;
+};
+
 /* ═══ ONE ATTACK, WHICHEVER WAY THAT WEAPON ACTUALLY ATTACKS ═══
    swingAttack RETURNS IMMEDIATELY for ranged and staff — "let the auto-attack
    loop fire the projectile on the shared cadence" (playerActions.js) — so
@@ -205,7 +213,7 @@ const ranged = (a) => a.slot === 'ranged' || a.slot === 'staff';
    through swingAttack, and ranged/staff hold the fire control just long enough
    for the auto-attack loop to release ONE projectile — polled rather than
    timed, so an attempt is 1:1 with a shot or is reported as never fired. */
-const fire = (P, atk) => P.page.evaluate(({ sp, rg }) => new Promise((resolve) => {
+const fire = (P, atk, tid) => P.page.evaluate(({ sp, rg, tid }) => new Promise((resolve) => {
   const S = window._gameState.current, F = window._gameFns || {};
   if (sp && rg) {
     /* ═══ v2.3.2473: A SPECIAL THAT WAS QUEUED IS NOT A SPECIAL THAT FIRED ═══
@@ -248,11 +256,64 @@ const fire = (P, atk) => P.page.evaluate(({ sp, rg }) => new Promise((resolve) =
   const n0 = (S.arrows || []).length;
   S.autoAttack = true;
   const t0 = Date.now();
+  /* ═══ v2.3.3399: THE THUMB STAYS ON THE TARGET UNTIL THE SHOT LEAVES ═══
+     The aim was set once, before this, and the bow looses only while its
+     sight is on something (monsterCombat's gate): a slime that hopped while
+     the cadence came round took the line off it, and the row voided the
+     attempt as "never fired" (the verdant bow row, 8 of 15, twice running;
+     the line 35-53 px from its centre when it gave up).  A player keeps the
+     stick on what they are shooting, so this does too: every poll re-aims at
+     the target where it is drawn, from the point the sight casts from (or
+     you, for the staff), and the attempt is measured from where the target
+     was when the shot left (`at`). */
+  const aimNow = () => {
+    const m = tid != null ? (S.monsters || []).find((x) => x.id === tid) : null;
+    if (!m || !S.player) return null;
+    const tx = typeof m.renderX === 'number' ? m.renderX : m.x;
+    const ty = typeof m.renderY === 'number' ? m.renderY : m.y;
+    const ay = ty - ((F.monsterBodyOffsetY && F.monsterBodyOffsetY(m.archetype || m.type)) || 0);
+    const b = S.rpg && S.rpg.activeSlot === 'ranged' ? S._bowSight : null;
+    const ox = b && typeof b.ox === 'number' ? b.ox : S.player.x;
+    const oy = b && typeof b.oy === 'number' ? b.oy : S.player.y;
+    const ang = Math.atan2(ay - oy, tx - ox);
+    S._aimAngle = ang; S._lastAimAngle = ang; S._aiming = true;
+    S._facingAngle = ang; S._targetFacingAngle = ang;
+    return { x: Math.round(tx), y: Math.round(ty), aimY: Math.round(ay) };
+  };
+  let at = aimNow();
+  /* ...and a shot is a shot when it LEAVES: the cadence clock (`swingTimer`,
+     stamped only when one does, and zeroed by aimAt) as well as the list.
+     At point blank an arrow can be loosed, hit and taken off the list inside
+     one frame, between two polls: that row's "never fired" had its sight on
+     the target and its clock stamped 170-590 ms before giving up. */
   const iv = setInterval(() => {
-    if ((S.arrows || []).length > n0) { clearInterval(iv); S.autoAttack = false; resolve({ ok: true, shot: true }); }
-    else if (Date.now() - t0 > 1500) { clearInterval(iv); S.autoAttack = false; resolve({ ok: false, why: 'never fired' }); }
+    if ((S.arrows || []).length > n0 || (S.swingTimer || 0) >= t0) { clearInterval(iv); S.autoAttack = false; resolve({ ok: true, shot: true, at }); }
+    else if (Date.now() - t0 > 1500) {
+      clearInterval(iv); S.autoAttack = false;
+      /* v2.3.3399: ...and WHY.  The bow looses only while its sight is on
+         something (monsterCombat `_bowSight.d`), and the verdant bow row lost
+         8 of its 15 attempts this way twice running: what the sight saw, and
+         how far the line passed from the target's centre when it gave up. */
+      const b = S._bowSight;
+      const m = (S.monsters || []).find((x) => x.id === tid);
+      let off = null;
+      if (b && m && typeof b.ox === 'number') {
+        const tx = typeof m.renderX === 'number' ? m.renderX : m.x;
+        const ty = (typeof m.renderY === 'number' ? m.renderY : m.y) - ((F.monsterBodyOffsetY && F.monsterBodyOffsetY(m.archetype || m.type)) || 0);
+        const dd = Math.hypot(tx - b.ox, ty - b.oy);
+        const da = Math.atan2(ty - b.oy, tx - b.ox) - b.ang;
+        off = { d: Math.round(dd), side: Math.round(Math.sin(da) * dd), ahead: Math.cos(da) > 0 };
+      }
+      resolve({ ok: false, why: 'never fired', diag: {
+        sight: b ? { id: b.id, d: b.d == null ? null : Math.round(b.d), age: Date.now() - b.at } : null,
+        off, alive: !!(m && m.alive), cd: Date.now() - (S.swingTimer || 0),
+        aiming: !!S._aiming, shield: !!S._shieldUp } });
+    } else {
+      const a2 = aimNow();
+      if (a2) at = a2;
+    }
   }, 16);
-}), { sp: !!atk.special, rg: ranged(atk) });
+}), { sp: !!atk.special, rg: ranged(atk), tid: tid || null });
 
 /* Who the GAME says we are fighting, plus everything an attempt needs to know
    about it.  The lock is the game's own auto-acquisition (targeting.js), and
@@ -271,7 +332,26 @@ const readTarget = (P) => P.page.evaluate(() => {
      rather than fired at and scored: frost's snowmen burrow when they are hit,
      and the first run of this file spent three whole rows firing at piles and
      reported them as five voids each. */
-  const usable = (m) => live(m) && m._burPhase !== 'pile' && !m._invulnerable;
+  /* v2.3.3399: ...and not one whose straight walk from here crosses the zone's
+     way out (the return marker, map tile 9): the placer walks that line, and a
+     run lost a whole ember bow row walking out of the zone seven times
+     (2026-10-18).  Over it is within two tiles of its middle; the first 64 px
+     of the walk do not count, since you arrive beside the way out: counted
+     from where you stand, as mp-tapswing's rule does, every monster in ember
+     was refused. */
+  const outs = [];
+  for (let ty = 0; ty < (S.map || []).length; ty++) {
+    const row = S.map[ty] || [];
+    for (let tx = 0; tx < row.length; tx++) if (row[tx] === 9) outs.push([tx * 32 + 16, ty * 32 + 16]);
+  }
+  const P0 = S.player;
+  const passesOut = (m) => outs.some(([ox, oy]) => {
+    const vx = m.x - P0.x, vy = m.y - P0.y, L = Math.hypot(vx, vy) || 1;
+    const t0 = Math.min(1, 64 / L);
+    const t = Math.max(t0, Math.min(1, ((ox - P0.x) * vx + (oy - P0.y) * vy) / (L * L)));
+    return Math.hypot(P0.x + vx * t - ox, P0.y + vy * t - oy) < 2 * 32;
+  });
+  const usable = (m) => live(m) && m._burPhase !== 'pile' && !m._invulnerable && !passesOut(m);
   const lk = (S.lockedTarget && S.lockedTarget.type === 'monster') ? S.lockedTarget.ref : null;
   let m = usable(lk) ? lk : null;
   let via = m ? 'lock' : null;
@@ -432,19 +512,31 @@ async function placeAt(P, id, reach) {
    The side is chosen with the game's own probes: clear of every footprint
    (with the player's collision pad and a little), and with nothing between
    that spot and the target. */
-async function sidestep(P, g) {
-  const goal = await P.page.evaluate((q) => {
+async function sidestep(P, g, boots, grip) {
+  const goal = await P.page.evaluate(({ q, boots, grip }) => {
     const S = window._gameState.current, z = S.currentZone;
     const boxes = (window.__btBlockers && window.__btBlockers(z)) || [];
     const inBox = (x, y) => boxes.some((b) => x >= b.x0 - 14 && x <= b.x1 + 14 && y >= b.y0 - 14 && y <= b.y1 + 14);
     const dx = q.x - q.px, dy = q.y - q.py, L = Math.hypot(dx, dy) || 1;
     const nx = -dy / L, ny = dx / L;
+    /* v2.3.3399: for a shot, the line the game asks about -- its ground
+       track, from your boots to the aim point carried back by the bow
+       grip's offset (`grip`; a staff bolt has none) and down as far
+       (projectiles.js `_ox`, `_goy`), and the chest line as well */
+    /* the boots' depth the game stamps on a shot (trackShot keeps the last
+       one, per zone), else the stand-in's plant below you (entityRenderer) */
+    const gdy = typeof window.__hrGdy === 'number' ? window.__hrGdy
+      : (typeof S._standInFootY === 'number' && S.player ? S._standInFootY - S.player.y : 52);
+    const gx = boots && grip && typeof S._bowGripDX === 'number' ? S._bowGripDX : 0;
+    const gy = boots && grip && typeof S._bowGripDY === 'number' ? S._bowGripDY : 0;
+    const clear = (sx, sy) => !window.__btAttackBlocked(z, sx, sy, q.x, q.y)
+      && (!boots || !window.__btAttackBlocked(z, sx, sy + gdy, q.x - gx, q.aimY - gy + gdy));
     for (const k of [90, -90, 170, -170, 250, -250]) {
       const sx = q.px + nx * k, sy = q.py + ny * k;
-      if (!inBox(sx, sy) && !window.__btAttackBlocked(z, sx, sy, q.x, q.y)) return { x: Math.round(sx), y: Math.round(sy) };
+      if (!inBox(sx, sy) && clear(sx, sy)) return { x: Math.round(sx), y: Math.round(sy) };
     }
     return null;
-  }, g);
+  }, { q: g, boots: !!boots, grip: !!grip });
   if (!goal) return false;
   for (let i = 0; i < PLACE_TRIES; i++) {
     const done = await P.page.evaluate(({ gx, gy, step }) => {
@@ -540,6 +632,84 @@ async function settle(P, id, before, ms) {
     await P.page.waitForTimeout(120);
   }
 }
+
+/* v2.3.3399: what the bow's sight is on, two frames after the aim was set (so
+   the gate has cast with it): `id` a monster's id, `prop:<oi>`, or null. */
+const bowSightNow = (P) => P.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => {
+  const S = window._gameState.current, b = S._bowSight;
+  r(b ? { id: b.id, d: b.d == null ? null : Math.round(b.d), age: Date.now() - b.at } : null);
+}))));
+
+/* v2.3.3399: WHERE EACH SHOT OF THIS ATTEMPT ENDED.  A miss the target
+   barely moved for (frost, ~80 px, 2-3 px across: this run and part-13's)
+   printed only "no claim" -- not whether the arrow went into another monster,
+   into a rock, or fell spent at its range.  Called right after fire(): every
+   arrow in S.arrows is this attempt's (aimAt empties it), and each is watched
+   until it sticks (`stuckIn`), plants (`planted`, `_inProp` when it is in a
+   prop), starts its spent drop (`planting`) or leaves the list.  Read back with
+   the attempt's claims on OTHER monsters. */
+const trackShot = (P, tid) => P.page.evaluate((tid) => {
+  const S = window._gameState.current, F = window._gameFns || {};
+  const shots = (S.arrows || []).slice();
+  const pos = (a) => ({ x: Math.round(a._renderX != null ? a._renderX : a.x), y: Math.round(a._renderY != null ? a._renderY : a.y) });
+  const w = { t0: Date.now(), shots, tr: shots.map((a) => ({ from: pos(a), ang: Math.round((a.ang || 0) * 1000) / 1000, why: null, at: null, ms: null })),
+    /* the closest each flight came to the target's hit centre (the segment
+       between two looks, against where the target was drawn), and what the
+       target was doing then: a miss the line passed inside, with the target
+       not burrowed, is the hit test's to answer for */
+    near: null };
+  const tgtNow = () => {
+    const m = tid != null ? (S.monsters || []).find((x) => x.id === tid) : null;
+    if (!m) return null;
+    const tx = typeof m.renderX === 'number' ? m.renderX : m.x;
+    const ty = (typeof m.renderY === 'number' ? m.renderY : m.y) - ((F.monsterBodyOffsetY && F.monsterBodyOffsetY(m.archetype || m.type)) || 0);
+    return { x: tx, y: ty, ph: m._burPhase || null, burst: !!m._burstUntil, alive: !!m.alive };
+  };
+  const segD = (ax, ay, bx, by, px, py) => {
+    const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy;
+    const t = L2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / L2)) : 0;
+    return Math.hypot(ax + vx * t - px, ay + vy * t - py);
+  };
+  const prev = new Map();
+  /* the boots' depth under you the game stamped on the shot (combatHelpers
+     shotGroundDy), for sidestep's look at the ground */
+  for (const a of shots) if (a && typeof a._gdy === 'number' && isFinite(a._gdy)) { window.__hrGdy = a._gdy; break; }
+  if (window.__hrShotIv) clearInterval(window.__hrShotIv);
+  window.__hrShot = w;
+  window.__hrShotIv = setInterval(() => {
+    let open = 0;
+    /* a volley's later arrows leave after fire() has seen the first */
+    if (Date.now() - w.t0 < 1500) {
+      for (const a of (S.arrows || [])) {
+        if (a && w.shots.indexOf(a) < 0) { w.shots.push(a); w.tr.push({ from: pos(a), ang: Math.round((a.ang || 0) * 1000) / 1000, why: null, at: null, ms: null }); }
+      }
+    }
+    const tg = tgtNow();
+    w.shots.forEach((a, i) => {
+      const t = w.tr[i];
+      if (t.why) return;
+      if (tg && !a.planted && !a.planting && !a._held) {
+        const p1 = pos(a), p0 = prev.get(a) || p1;
+        const d = segD(p0.x, p0.y, p1.x, p1.y, tg.x, tg.y);
+        if (!w.near || d < w.near.d) w.near = { d: Math.round(d), ms: Date.now() - w.t0, ph: tg.ph, burst: tg.burst, alive: tg.alive };
+        prev.set(a, p1);
+      }
+      let why = null;
+      if (a.stuckIn) why = 'stuck:' + (a.stuckIn.id || '?');
+      else if (a.planted) why = a._inProp ? 'prop' : 'ground';
+      else if (a.planting) why = 'spent';
+      else if ((S.arrows || []).indexOf(a) < 0) why = 'gone';
+      if (why) { t.why = why; t.ms = Date.now() - w.t0; } else open++;
+      t.at = pos(a);
+    });
+    if (!open || Date.now() - w.t0 > 6000) { clearInterval(window.__hrShotIv); window.__hrShotIv = null; }
+  }, 16);
+}, tid == null ? null : tid);
+const shotEnd = (P, mid, since) => P.page.evaluate(({ mid, since }) => {
+  const w = window.__hrShot;
+  const others = (window.__hitReal || []).filter((r) => r.id !== mid && r.at >= since).map((r) => r.id);
+  return { ends: w ? w.tr : [], others, near: w ? w.near : null };
+}, { mid, since });
 
 /* v2.3.3321: is a shot of ours still in the air, and how long ago did the last
    claim for this monster go?  aimAt empties S.arrows before every attempt, so
@@ -656,7 +826,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const rows = [];
   const zoneNotes = [];
 
-  for (const stop of ROSTER) {
+  for (const stop of pickRows('BT_HITREAL_ZONES', ROSTER, 'zone')) {
+    /* v2.3.3399: a zone draws you at its own scale, so the boots' depth a
+       shot was stamped with in the last one is not this one's */
+    await P.page.evaluate(() => { window.__hrGdy = undefined; }).catch(() => {});
     /* ═══ ARRIVING IS TWO THINGS, AND ONLY ONE OF THEM IS THE ZONE NAME ═══
        The hop is the game's own zone chip: `S._devWarp` walks the real front
        doors leg by leg (zoneTransitions driveDevWarp), per-zone asset load and
@@ -732,7 +905,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
     }
 
-    for (const atk of ATTACKS) {
+    for (const atk of pickRows('BT_HITREAL_ONLY', ATTACKS, 'key')) {
       const eq = await H.equipWeapon(P, atk.type, atk.stash, atk.slot);
       await P.page.waitForTimeout(900);
       /* ═══ IS THE SOCKET STILL UP? ═══
@@ -742,7 +915,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          nothing, and reports it as six rows of a broken weapon. */
       const link = await H.readState(P, (S) => S._realtimeStatus || 'unknown');
       const row = { zone: stop.zone, key: atk.key, slot: atk.slot, eq: !!(eq && eq.ok), link, body: stop.body,
-        fired: 0, fairs: 0, landed: 0, sent: 0, blast: 0, void: 0, neverFired: 0, dug: 0, covered: 0,
+        fired: 0, fairs: 0, landed: 0, sent: 0, blast: 0, void: 0, neverFired: 0, neverWhy: [], dug: 0, covered: 0, inFront: 0,
         gaps: [], skipGaps: [], missed: [], desync: [], kills: 0, arch: null, empty: [], left: 0 };
       const reach = REACH[atk.slot];
       /* Attempts that could not be PLACED (out of the weapon's reach, nothing
@@ -814,10 +987,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
            rock.  The game's question, not this file's arithmetic (TRAPS #35).
            Ranged rows only: the sword does not ask about props yet, so its
            attempts still count. */
-        if (atk.slot !== 'melee' && await P.page.evaluate(
-          (q) => !!(window.__btAttackBlocked && window.__btAttackBlocked(window._gameState.current.currentZone, q.px, q.py, q.x, q.y)), g)) {
+        /* v2.3.3399: the bow asks its own sight, below.  The staff has none,
+           so it asks the line its bolt is judged on: since v2.3.3206 every
+           shot is judged at the shooter's BOOTS (projectiles.js `_goy`; a bolt
+           has no grip offset, so its ground track is the drawn line carried
+           straight down by `_gdy`), from there to the point under its aim, as
+           far as the target's body.  The chest line alone missed it: frost's
+           magic row lost a bolt (2026-10-18) with you just north of the rock
+           ridge and the snowman at its face -- the chest line ended 2 px short
+           of the ridge, the ground track ran into it a step from the boots,
+           and the bolt burst on the rock before the tracker's first look
+           (`ends: []`).  Both lines are asked, so nothing the old test
+           called covered is scored now. */
+        if (atk.slot === 'staff' && await P.page.evaluate((q) => {
+          const S = window._gameState.current, z = S.currentZone;
+          if (!window.__btAttackBlocked) return false;
+          if (window.__btAttackBlocked(z, q.px, q.py, q.x, q.y)) return true;
+          const gdy = typeof window.__hrGdy === 'number' ? window.__hrGdy
+            : (typeof S._standInFootY === 'number' && S.player ? S._standInFootY - S.player.y : 52);
+          const dx = q.x - q.px, dy = q.aimY - q.py, L = Math.hypot(dx, dy) || 1;
+          const k = Math.max(0, L - q.r) / L;   /* where the bolt meets the body */
+          return !!window.__btAttackBlocked(z, q.px, q.py + gdy, q.px + dx * k, q.py + gdy + dy * k);
+        }, { ...g, r: stop.body || 0 })) {
           row.void++; row.covered++;
-          await sidestep(P, g);
+          await sidestep(P, g, true, false);
           continue;
         }
         row.arch = row.arch || g.arch;
@@ -844,13 +1037,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
           }
         }
         await aimAt(P, g);
+        /* ═══ v2.3.3399: THE BOW'S OWN SIGHT SAYS WHAT THE ARROW HITS FIRST ═══
+           The covered test above asks about a line from the CHEST to the
+           monster's feet.  Since v2.3.3206 a shot is judged at the shooter's
+           BOOTS (projectiles.js: the drawn point carried back by the grip's
+           offset and down to the boots), over the low things bar the one it is
+           aimed at: another line, so a rock it missed stopped the arrow --
+           frost's unexplained miss of 2026-10-18 ended in a prop 304 ms after
+           it left (trackShot), and frost's bow special lost 13 of 15 attempts
+           to the chest line.  The bow's sight is that very question, asked by
+           the game every frame from the live grip (monsterCombat `_bowSight`:
+           the monster's id, or `prop:<oi>`), so a bow row reads it once the
+           aim has settled: a prop first is covered (void, and step aside),
+           another monster first is void too -- that arrow lands, on it. */
+        if (atk.slot === 'ranged') {
+          const sight = await bowSightNow(P);
+          if (sight && typeof sight.id === 'string' && sight.id.indexOf('prop:') === 0) {
+            row.void++; row.covered++;
+            await sidestep(P, g, true, true);
+            continue;
+          }
+          if (sight && sight.id != null && sight.id !== g.id) { row.void++; row.inFront++; continue; }
+        }
         const since = Date.now();
-        const f = await fire(P, atk);
-        if (f && f.ok) row.fired++; else { row.void++; row.neverFired++; continue; }
+        const f = await fire(P, atk, g.id);
+        if (f && f.ok) row.fired++; else { row.void++; row.neverFired++; if (f && f.diag) row.neverWhy.push(f.diag); continue; }
+        if (f.at) { g.x = f.at.x; g.y = f.at.y; g.aimY = f.at.aimY; }   /* v2.3.3399: where it was when the shot left */
+        await trackShot(P, g.id).catch(() => {});
         const after = await settle(P, g.id, g.hp, SETTLE_MS);
         const said = await sentFor(g.id, since);
         const landed = after.gone || !after.alive
           || (g.hp != null && after.hp != null && after.hp < g.hp);
+        /* v2.3.3399: another monster stepped into the line and took the shot
+           (the claim went to it: a frost row's "miss" of 2026-10-18 was
+           sm-frost-0 hit instead) -- the hit test working on the wrong
+           target, so void, as an arrow the sight saw land elsewhere is above */
+        if (!landed && !after.dug) {
+          const took = await shotEnd(P, g.id, since).catch(() => null);
+          if (took && took.others && took.others.length) { row.void++; row.inFront++; continue; }
+        }
         if (!landed && after.dug) {
           /* It burrowed under the shot.  A refusal the game is supposed to
              make, so it is not this weapon's miss -- and not silently dropped
@@ -893,7 +1118,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
             cli: { x: g.px, y: g.py },
             /* v2.3.3321: how long the settle waited, and whether it gave up
                at SETTLE_MAX_MS with a shot still in the air */
-            waited: after.waited || null, cut: !!after.cut });
+            waited: after.waited || null, cut: !!after.cut,
+            /* v2.3.3399: where its shots ended, and any monster they hit
+               instead -- beside where the target was when it was shot at
+               and where it was after */
+            tgt: { x: g.x, y: g.y, aimY: g.aimY, ax: after.x, ay: after.y },
+            shot: await shotEnd(P, g.id, since).catch(() => null) });
         }
       }
       await P.page.evaluate(() => { const S = window._gameState.current; S.autoAttack = false; S._aiming = false; });
@@ -914,9 +1144,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       + `${(Math.round((r.landed / Math.max(1, r.fairs)) * 100) + '%').padStart(5)}  `
       + `${String(r.kills).padStart(6)}  ${gaps}  ${r.secs}s`
       + `${r.blast ? `   (+${r.blast} blast)` : ''}`
-      + `${r.void ? `   (${r.void} void: ${r.dug} burrowed, ${r.covered} behind a prop, ${r.neverFired} never fired, `
+      + `${r.void ? `   (${r.void} void: ${r.dug} burrowed, ${r.covered} behind a prop, ${r.inFront ? `${r.inFront} with another monster first, ` : ''}${r.neverFired} never fired, `
         + `${r.left ? `${r.left} walked out of the zone, ` : ''}gaps ${JSON.stringify(r.skipGaps)})` : ''}`);
     if (r.missed.length) console.log(`      missed: ${JSON.stringify(r.missed)}`);
+    if (r.neverWhy.length) console.log(`      never fired: ${JSON.stringify(r.neverWhy)}`);   /* v2.3.3399 */
     if (r.desync.length) console.log(`      the worker did not follow the walk ${r.desync.length}x: ${JSON.stringify(r.desync)}`);
   }
   console.log('');

@@ -7,6 +7,7 @@ import { sendChatMessage } from '../../game/chat.js';
    composed inside sendChatMessage, so this composer stays ignorant of how
    a lane is spelled (see chatChannel.js on why that matters here). */
 import { ChatChannelChips, lanePlaceholder } from './ChatChannelChips.jsx';
+import { emotesLive } from '../../game/emotes.js';   /* v2.3.3391: the emote picker's door */
 
 // Over-the-character chat bubble. Opens from the bottom-dashboard chat
 // icon, focuses immediately so the soft keyboard appears, and closes when
@@ -137,10 +138,25 @@ const MAX_H = LINE_H * 4 + BOX_PAD;
 /* Re-measure by collapsing first: scrollHeight of an element already sized to
    its content reports the CURRENT height, not the needed one, so a textarea
    that has grown can never shrink again when you delete a line. */
+/* ═══ v2.3.3399: ...AND NEVER TALLER THAN THE CARD HAS ROOM FOR ═══
+   v2.3.2139 put the lane chips (36 px) on top of this card, which grows UPWARD
+   from its pinned bottom, without taking them out of MAX_H's budget: at four
+   lines its top sat at y=1 on a 390x844 phone (under the notch) and off the
+   top of a shorter one, chips and all -- found by the sweep of 2026-10-17
+   (mp-chatcompose).  So the box stops where the card's top would come within
+   TOP_CLEAR of the screen's, and scrolls from there.  A 120-character line of
+   words is three lines (85 px), under the 87 px this leaves on that phone. */
+const TOP_CLEAR = 20;
 const grow = (el) => {
   if (!el) return;
   el.style.height = 'auto';
-  el.style.height = Math.max(MIN_H, Math.min(el.scrollHeight, MAX_H)) + 'px';
+  let cap = MAX_H;
+  const card = el.closest && el.closest('.bt-chat-noselect');
+  if (card) {
+    const c = card.getBoundingClientRect(), t = el.getBoundingClientRect();
+    if (c.height > 0) cap = Math.min(MAX_H, Math.floor(c.bottom - TOP_CLEAR - (c.height - t.height)));
+  }
+  el.style.height = Math.max(MIN_H, Math.min(el.scrollHeight, cap)) + 'px';
 };
 
 export const ChatBubble = () => {
@@ -306,6 +322,18 @@ export const ChatBubble = () => {
   };
 
   const close = () => chatBubbleBus.setOpen(false);
+  /* ═══ v2.3.3391: THE EMOTES' DOOR ═══
+     The emote picker's only door was the bottom toolbar's, hidden since v14,
+     so its 30 emoji and 12 quick lines could not be reached on a phone.  The
+     owner's plan: no new always-on button (the screen is full) -- the emotes
+     live in the chat box, which opens by tapping your own bro.  The smiley
+     closes this card and opens the picker (BroTown's __broLegacyUI). */
+  const emotesOn = emotesLive(window._gameState && window._gameState.current);
+  const openEmotes = () => {
+    close();
+    const ui = typeof window !== 'undefined' ? window.__broLegacyUI : null;
+    if (ui && typeof ui.emotesOpen === 'function') ui.emotesOpen();
+  };
   const submit = () => {
     sendThroughGameState(val);
     setVal('');
@@ -505,6 +533,41 @@ export const ChatBubble = () => {
               {' online'}
             </span>
           </div>
+          {emotesOn ? (
+            <button
+              type="button"
+              onClick={openEmotes}
+              data-chat-emotes=""
+              aria-label="Emotes"
+              /* the mic's quiet styling, 44 px square: a way IN to saying
+                 something, like the mic, not a second Send */
+              style={{
+                flex: '0 0 auto',
+                marginLeft: 'auto',
+                width: 44,
+                height: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#293B41',
+                border: '1px solid rgba(229,237,233,.20)',
+                borderRadius: 8,
+                color: '#EAC675',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              {/* drawn, not an emoji -- the mic's reason: one look on every
+                  phone, in the button's own colour */}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+                   stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="9" cy="10" r="1.2" fill="currentColor" stroke="none" />
+                <circle cx="15" cy="10" r="1.2" fill="currentColor" stroke="none" />
+                <path d="M8 14.5c1 1.4 2.4 2.1 4 2.1s3-.7 4-2.1" />
+              </svg>
+            </button>
+          ) : null}
           {SpeechRec ? (
             <button
               type="button"
@@ -537,7 +600,8 @@ export const ChatBubble = () => {
                  flex:1 used to fill. */
               style={{
                 flex: '0 0 auto',
-                marginLeft: 'auto',
+                /* v2.3.3391: the smiley takes the auto margin when it is there */
+                marginLeft: emotesOn ? 0 : 'auto',
                 width: 44,
                 height: 44,
                 display: 'flex',

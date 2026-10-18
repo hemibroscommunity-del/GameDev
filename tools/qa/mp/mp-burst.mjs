@@ -31,7 +31,12 @@
  * worker's handler at all.
  */
 import * as H from './harness.mjs';
-import { PROG3 } from '../../../src/data/prog3.js';
+/* v2.3.3399: the worker's own price of one block (abilities.js blockSize) --
+   a special costs ONE BLOCK since v2.3.2298 (the owner: "All special attacks
+   will cost one block"), not the flat PROG3.SPECIAL_MANA_COST of v2.3.1734 this
+   checked: 20 of a fresh character's 102 against 25 (the sweep of
+   2026-10-18). */
+import { blockSize } from '../../../server/src/abilities.js';
 
 /* The WORKER's live pool, not the browser's.  The client predicts every
    ability spend and the worker settles it, so reading the browser would
@@ -96,18 +101,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
      post-spend value. */
   await H.callFn(P, 'specialAttack').catch(() => {});
   let low = before ? before.mana : null;
-  for (let i = 0; i < 14; i++) {
-    const s = await srvMana(wsPort, myId);
+  /* v2.3.3399: the reads go out 30 ms apart WITHOUT waiting on each other.
+     One read at a time, each one's round trip on a busy box was longer than
+     the 670 ms between regen ticks, so the first read after the spend came
+     a tick late: 95 = 82 + 2 (the trickle) + 11 (the top-off), "spent 7"
+     (the sweep of 2026-10-18).  Fired together, some land inside the window
+     whatever each one's trip costs. */
+  const reads = [];
+  for (let i = 0; i < 40; i++) {
+    reads.push(srvMana(wsPort, myId));
+    await new Promise((r) => setTimeout(r, 30));
+  }
+  for (const s of await Promise.all(reads)) {
     if (s && (low == null || s.mana < low)) low = s.mana;
-    await P.page.waitForTimeout(45);
   }
   const after = low != null ? { mana: low, maxMana: before && before.maxMana } : null;
   const spent = before && after ? before.mana - after.mana : null;
   /* THE REGRESSION.  Under floor(maxMana/5) this reads 20 at the fresh
      character's 102 max — and, crucially, it read a DIFFERENT number at
-     every Magic level, which is exactly why mana could never progress. */
-  rec.ok(`a special costs the FLAT ${PROG3.SPECIAL_MANA_COST} on the worker (was a fraction of max)`,
-    spent === PROG3.SPECIAL_MANA_COST, { before, after, spent, expected: PROG3.SPECIAL_MANA_COST });
+     every Magic level, which is exactly why mana could never progress.
+     v2.3.3399: and one block is the rule again since v2.3.2298 (the import's
+     note): ONE BLOCK of the bar the worker reports, its blocks the client's
+     count of them (the same blocksAt; 5 on a fresh character). */
+  const blocks = await H.readState(P, (S) => (S.rpg && S.rpg.manaBlocks) || null);
+  const oneBlock = before ? blockSize({ maxMana: before.maxMana, manaBlocks: blocks }, 'mana') : null;
+  rec.ok(`a special costs ONE BLOCK of mana on the worker (${oneBlock})`,
+    oneBlock > 0 && spent === oneBlock, { before, after, spent, expected: oneBlock, blocks });
 
   /* THE HUD MUST AGREE WITH THE WORKER.  The charge pie's centre number is
      the client's claim about how many casts you are carrying, derived from
@@ -132,10 +151,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S._tutorialStep = 0;
     const was = S.rpg.mana;
     window._gameFns.specialAttack();
-    return { was, now: S.rpg.mana, maxMana: S.rpg.maxMana };
+    return { was, now: S.rpg.mana, maxMana: S.rpg.maxMana, blocks: S.rpg.manaBlocks || null };
   });
-  rec.ok(`the CLIENT predicts the same flat ${PROG3.SPECIAL_MANA_COST} (it predicted floor(maxMana/5) before)`,
-    !!predicted && predicted.was - predicted.now === PROG3.SPECIAL_MANA_COST, predicted);
+  /* v2.3.3399: the same one block, priced as the worker prices it */
+  const predBlock = predicted ? blockSize({ maxMana: predicted.maxMana, manaBlocks: predicted.blocks }, 'mana') : null;
+  rec.ok(`the CLIENT predicts the same one block (${predBlock})`,
+    !!predicted && predBlock > 0 && predicted.was - predicted.now === predBlock, { predicted, predBlock });
 
   /* ═══ 2. element_burst REACHES THE WORKER ═══ */
   /* Sent RAW rather than through elementBurst(), deliberately: at character

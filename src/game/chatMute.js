@@ -52,6 +52,28 @@ function _write(list) {
 /* Read the current list (localStorage mirror of the server's). */
 export function readMutedIds() { return _read(); }
 
+/* ═══ v2.3.3391: ONE READING OF THE BLOCK LIST ═══
+   `bt_blocked` is written in two shapes: plain ids by the inspect card
+   (InspectPlayerPanel) and the old Social panel, `{ id, name }` by the
+   dashboard's friends list (sheet/friendsModel.js blockPlayer).  Every reader
+   compared ids with `includes(id)`, so a block made from the friends list hid
+   nothing -- their chat still showed -- and the old Social panel threw on one
+   (`bid.slice`).  Found by the fun & social plan's check of the code
+   (docs/FUN-SOCIAL-PLAN.md, Phase 0).  Every reader asks these now, and both
+   shapes stay valid: the lists already saved on phones are left as they are. */
+export function blockedIdOf(b) {
+  return b && typeof b === 'object' ? (typeof b.id === 'string' ? b.id : '') : (typeof b === 'string' ? b : '');
+}
+export function readBlockedIds() {
+  try {
+    var v = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
+    return Array.isArray(v) ? v.map(blockedIdOf).filter(Boolean) : [];
+  } catch (e) { return []; }
+}
+export function isBlockedId(id) {
+  return !!id && readBlockedIds().indexOf(id) >= 0;
+}
+
 /* Subscribe to list changes (BroTown keeps `mutedList` React state in
    sync with this so the Social panel and the inspect card agree with the
    server rather than with whatever this browser last remembered).

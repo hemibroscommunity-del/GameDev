@@ -420,7 +420,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .map(([k, v]) => [k, v && { frames: v.frames, widths: v.widths, mismatched: v.mismatched }])));
 
   /* ── the guard: the measurement has to be able to SEE hair at all ── */
-  const sane = Object.entries(out).filter(([, v]) => v && v.vis > 3000);
+  /* v2.3.3399: 3000 was set when the preview drew him at 92% of the stage;
+     v2.3.2201/v2.3.2204 shrank him to 76%, so every count is (76/92)^2 = 0.68
+     of what it was (smallest today ~2,900: a big hat on an afro, southwest).
+     2000 is the same floor at the new size, still far from "trivially zero". */
+  const sane = Object.entries(out).filter(([, v]) => v && v.vis > 2000);
   rec.ok('every hat/facing rendered hair the hat is not standing in front of (guard: '
     + 'without this the bald counts below are trivially zero)',
     sane.length === Object.keys(out).length,

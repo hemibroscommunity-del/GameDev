@@ -28,7 +28,12 @@ import * as H from './harness.mjs';
 
 const VIEW = { width: 900, height: 700 };
 const ROOM = 'nearjoin';
-const ARRIVAL = { x: 21504, y: 21792 };   /* BroTown's arrival (tools/qa/load/roster-bench.mjs) */
+/* BroTown's arrival.  v2.3.3399: from the Wheel the worker plays
+   (H.wheelGeom), never a short-Wheel number: since v2.3.3315 the room plays
+   the long Wheel, and (21504, 21792) put the stander and the walker about
+   92,700 px from the arriver, who came in at the long Wheel's arrival -- the
+   stander was never near enough to be sent whole (the sweep of 2026-10-18). */
+let ARRIVAL = null;
 const NEAR_R = 2400;                       /* server/src/nearjoin.js NEAR_JOIN.R */
 const STEP_MS = 33;
 
@@ -55,7 +60,9 @@ function sock(wsPort, name, { nj = false, look = null } = {}) {
   w.open = () => new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://127.0.0.1:${wsPort}/ws?room=${ROOM}&rf=1`);
     w.ws = ws;
-    ws.onopen = () => ws.send(JSON.stringify({ type: 'join', id, name, protocolVersion: 2, pres: 2, ...(nj ? { nj: 1 } : {}), httpAuth: true,
+    /* v2.3.3399: `ws` -- which Wheels this player draws; one that says nothing
+       is out of step since v2.3.3315 (TRAPS §196) */
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'join', id, name, protocolVersion: 2, pres: 2, ws: [1, 5], ...(nj ? { nj: 1 } : {}), httpAuth: true,
       data: { ...(look || {}), rpgData: undefined, x: 1000, y: 1000, d: 'down', z: 'town', name } }));
     ws.onmessage = (ev) => {
       if (typeof ev.data !== 'string') return;
@@ -115,6 +122,7 @@ function wire() {
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
+  ARRIVAL = (await H.wheelGeom()).arrival;
   await flag(wsPort, 'nearjoin', undefined);   /* a run before may have left the switch */
 
   /* ── the room before the arriver ── */
