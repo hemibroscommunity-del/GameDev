@@ -491,7 +491,7 @@ two pictures still to come.
   carrots and flies them to the bag; the barn's wall stops your boots; the
   gate leads back to the Wheel.
 - **The moves on a phone:** `tools/qa/mp/mp-farmanim.mjs`
-  (`node tools/qa/mp/run.mjs farmanim`, 41 checks). It dresses the player
+  (`node tools/qa/mp/run.mjs farmanim`, 81 checks). It dresses the player
   (deep skin, blue trousers, red boots, a green tee, a red cap, a blonde beard)
   and checks:
   - the moves are made before the farm's loading screen lifts, in those
@@ -502,12 +502,17 @@ two pictures still to come.
   - the shirt is over him and the tool over both;
   - he stands your height with the hoe and with the can;
   - each step ends in one `farm_act` the worker takes;
-  - in armour, on bed 1 (`out/farmanim-armour-<step>-<frame>.png`): copper
-    plate and greaves with the hoe, the greaves under the tee kneeling, the
-    plate over his trousers with the can. In every frame the garments worn are
-    drawn and no others, the tee hidden under the plate, the body under greaves
-    the one cut for them, each garment on the body's frame, in the order body,
-    greaves, shirt, plate, tool, and in the copper his walking figure wears;
+  - in armour, each of the three outfits on each of the three moves, beds 1-3
+    (`out/farmanim-armour-<bed>-<step>-<frame>.png`; v2.3.3468, the owner:
+    "Make sure armor combos work too (just wearing legs or just wearing
+    torso)"): copper plate and greaves, copper greaves under the tee, the
+    copper plate over his trousers -- with the hoe, kneeling and with the can.
+    In every frame the garments worn are drawn and no others, the tee hidden
+    under the plate, the body under greaves the one cut for them (his trousers
+    and boots under the plate alone), each garment on the body's frame, in the
+    order body, greaves, shirt, plate, tool, in the copper his walking figure
+    wears, and shining as his walking armour does (the sheen's slots hold the
+    garments worn and no others);
   - leaving the farm lets every texture of his go, the garments' too.
 - **Your drawings on him:** `tools/qa/mp/mp-farmink.mjs`
   (`node tools/qa/mp/run.mjs farmink`, 23 checks). A face drawing on its left
