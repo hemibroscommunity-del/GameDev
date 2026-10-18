@@ -3821,7 +3821,7 @@ Two protocol versions coexist; both must keep working:
   `--sourcemap`) and names what rebuilds each render group's draw list --
   `Graphics.clear()` on an empty graphic rebuilds it (TRAPS §208);
   `mp-speedtest`.
-- The processor's side of a phone's frame, side by side (v2.3.3359,
+- The processor's side of a phone's frame, side by side (v2.3.3379,
   docs/specs/draw-lists.md): `QA_DIST=dist-prof node tools/qa/mp/run.mjs
   phoneframe` stands a 3x phone page in BroTown and at a Flame Fields fight
   (mp-frameprofile's profile is BroTown's alone). Per scene it reports:
@@ -4134,7 +4134,7 @@ Two protocol versions coexist; both must keep working:
     (`_authPutOut`) and handed nothing. In the suite's room a Forget was
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
-- **A STRUCTURAL CHANGE REBUILDS ITS LAYER'S DRAW LIST (v2.3.3359, TRAPS
+- **A STRUCTURAL CHANGE REBUILDS ITS LAYER'S DRAW LIST (v2.3.3379, TRAPS
   §218, docs/specs/draw-lists.md).** Pixi rebuilds a render group's whole
   draw list for any `visible` / `renderable` / `zIndex` / `blendMode` change,
   an addChild or removeChild, a sprite's texture from outside its batch, or

@@ -7209,7 +7209,7 @@ old character straight back over the wipe -- the restarted bro rejoins with
 the old gold. persistence.test §7b and §7d (an onlooker told, nothing written
 back, the empty room's tick stopped).
 
-## 218. "Pixi only rebuilds its draw list when you add or remove something" (v2.3.3359)
+## 218. "Pixi only rebuilds its draw list when you add or remove something" (v2.3.3379)
 
 **Tempting:** a frame that adds and removes nothing costs only its transforms
 and its draws, so wiping a shape and drawing it again, showing and hiding a

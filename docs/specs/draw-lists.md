@@ -1,4 +1,4 @@
-# Each world layer keeps its own draw list (v2.3.3359)
+# Each world layer keeps its own draw list (v2.3.3379)
 
 The owner, 2026-10-18: *"I'd like you to iterate on what best improves
 framerate without loss of quality (or negligible loss) for phone gameplay

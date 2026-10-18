@@ -1,4 +1,4 @@
-/* ═══ v2.3.3359: AN EMPTY SHAPE WIPED AGAIN IS NOT A CHANGE ═══
+/* ═══ v2.3.3379: AN EMPTY SHAPE WIPED AGAIN IS NOT A CHANGE ═══
  *
  * Owner, 2026-10-18: "iterate on what best improves framerate without loss of
  * quality (or negligible loss) for phone gameplay (iPhone, android)".
