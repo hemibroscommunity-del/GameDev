@@ -296,7 +296,12 @@ async function body({ P, wsPort, rec }) {
     const skill = SKILL[type];
     const opened = await H.waitFor(P, (S) => (S._extraction ? S._extraction.status : null), (v) => v === 'ready',
       { timeout: 20000, label: 'the window opens' }).catch(() => null);
-    r.ok(`${label}: the gesture window opens (guard)`, opened === 'ready', { opened });
+    /* v2.3.3403: and if not, where the player was -- the old client's window
+       never opened in the run of 2026-10-18, and the next section found the
+       player back in town */
+    const why = opened === 'ready' ? null : await H.readState(P, (S) => ({ zone: S.currentZone, dying: !!S._dying, hp: S.rpg && S.rpg.hp,
+      ex: S._extraction ? { status: S._extraction.status, skill: S._extraction.skill, hits: !!S._extraction.hits } : null })).catch(() => null);
+    r.ok(`${label}: the gesture window opens (guard)`, opened === 'ready', { opened, why });
     if (opened !== 'ready') return { cancelled: false };
     const cue = await P.page.evaluate(() => (window.__btHarvest ? window.__btHarvest().cue : null));
     /* v2.3.3035: the moves 16 ms apart in ONE uninterrupted run on the page's
@@ -434,6 +439,12 @@ async function body({ P, wsPort, rec }) {
           if (!seenFx.has(b)) { seenFx.add(b); out.fx.push({ kind: b.kind, t0: b.t0 }); }
         }
         if (ex.status === 'ready') {
+          /* v2.3.3403: a last hit that landed while the hit before it was
+             being read (its two frames outlasting the 650 ms to the next on
+             this box) is still a hit: kept below, read with the window open
+             two frames on, before the loop stops -- fishing's tenth was lost
+             so ("every hit landed": 9 of 10, the run of 2026-10-18) */
+          const late = h && h.shown > lastShown ? { from: lastShown, to: h.shown, seen: Date.now() } : null;
           /* The game stamps the moment it opened the window (BroTown's
              extraction tick); this loop's own `now` was taken before the
              two-frame probe wait above and would read it early. */
@@ -446,6 +457,14 @@ async function body({ P, wsPort, rec }) {
           await new Promise((res) => requestAnimationFrame(res));
           await new Promise((res) => requestAnimationFrame(res));
           out.atReady.bar = window.__btNodeHpBar ? Object.assign({}, window.__btNodeHpBar) : null;
+          if (late) {
+            const lateRing = ring();
+            for (let k = late.from; k < late.to; k++) {
+              out.events.push({ k: k + 1, seen: late.seen, at: h.times[k], d: h.plan[k], hp: k === late.to - 1 ? h.hp : null,
+                bar: out.atReady.bar, ring: lateRing, ringReady: true, hpNow: h.hp });
+            }
+            lastShown = late.to;
+          }
           /* v2.3.3035: where the resource stands, for the bar over it */
           out.atReady.nodeX = ex.nodeRef ? ex.nodeRef.x : null;
           /* v2.3.3027: and what the band over the head shows instead */
@@ -482,8 +501,16 @@ async function body({ P, wsPort, rec }) {
     /* 1. the plan */
     r.ok(`${skill}: the client is playing hits, not the timer`, !tr.fellBack && Array.isArray(tr.plan), { fellBack: tr.fellBack, plan: tr.plan });
     if (!Array.isArray(tr.plan)) return {};
-    r.ok(`${skill}: the worker's plan reached the client within one swing of the tap`,
-      tr.planAt != null && tr.startedAt != null && tr.planAt - tr.startedAt < GATHER_SWING[skill].ms, { ms: tr.planAt - tr.startedAt });
+    /* v2.3.3403: plus one of this browser's own slow frames (p95), the most
+       a message can wait for the page's thread: the plan is stamped when the
+       page HANDLES it, and on this box a frame is 300-600 ms (woodcutting read
+       780 ms against its 540 ms swing, the run of 2026-10-18).  A phone's
+       frame is 16 ms: the old bound, near enough. */
+    const dtsP = tr.dts.slice().sort((a, b) => a - b);
+    const frameP95 = dtsP.length ? dtsP[Math.min(dtsP.length - 1, Math.floor(0.95 * dtsP.length))] : 16.7;
+    r.ok(`${skill}: the worker's plan reached the client within one swing of the tap (and a frame: ${Math.round(frameP95)} ms here)`,
+      tr.planAt != null && tr.startedAt != null && tr.planAt - tr.startedAt < GATHER_SWING[skill].ms + frameP95,
+      { ms: tr.planAt - tr.startedAt, swing: GATHER_SWING[skill].ms, frameP95: Math.round(frameP95) });
     r.ok(`${skill}: the client plays EXACTLY the hits the worker rolled (operator view)`,
       !!srvPlan && JSON.stringify(srvPlan.hits) === JSON.stringify(tr.plan) && srvPlan.hp === tr.hp && srvPlan.skill === skill
         && (type !== 'campfire' || srvPlan.fishKey === 'fish_minnow'),
