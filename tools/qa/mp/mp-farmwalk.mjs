@@ -15,7 +15,7 @@
  *      six beds of grass, a spade over each (the step as the stick's own
  *      picture; the words only over the bed you are nearest);
  *   2. walk up to a bed: the stick wears the spade, the prompt says "Dig";
- *      E digs it with the owner's hoe (v2.3.3424, mp-farmanim pictures every
+ *      E digs it with the owner's hoe (v2.3.3426, mp-farmanim pictures every
  *      frame of all three moves), one farm_act goes when it ends, the bed
  *      turns to dug earth -- "Needs Planting";
  *   3. two kinds of seed: their pictures over the prompt, a tap picks one;
@@ -151,7 +151,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       n0 && n0.near && n0.near.step === 'dig' && ic0 === 'farm-dig' && pr0 && pr0.step === 'dig' && /Dig/.test(pr0.text)
         && wa0 && wa0.beds[0].label[0] === 'Needs Digging' && wa0.beds.slice(1).every((b) => b.label && b.label.length === 0), { n0, ic0, pr0, wa0: wa0 && wa0.beds });
     /* v2.3.3136: dressed in the steel plate and greaves (the client's own equip
-       seam) -- v2.3.3424: and the farmer wears them, cut from the owner's
+       seam) -- v2.3.3426: and the farmer wears them, cut from the owner's
        dressed sheets: the body cut for greaves, the greaves and the plate over
        it, the hoe over everything (mp-farmanim checks every frame and mix) */
     await A.page.evaluate(() => { window.__btSetGear('chest', 'steelplate'); window.__btSetGear('legs', 'steelgreaves'); });

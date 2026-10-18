@@ -1,4 +1,4 @@
-/* ═══ THE FARMER'S OWN MOVES, ON A PHONE (v2.3.3424) ═══
+/* ═══ THE FARMER'S OWN MOVES, ON A PHONE (v2.3.3426) ═══
  *
  * The owner, 2026-10-17: "I'd like to have animations during the farming
  * process perhaps on a sprite sheet."  They made three in ChatGPT -- the hoe,
@@ -19,7 +19,7 @@
  *   3. HIS SIZE: standing with the hoe and the can he is as tall as his
  *      walking figure from head to boots, within 6%;
  *   4. each step still ends in one farm_act the worker takes;
- *   5. (v2.3.3424) IN ARMOUR, cut from the owner's dressed sheets, on bed 1:
+ *   5. (v2.3.3426) IN ARMOUR, cut from the owner's dressed sheets, on bed 1:
  *      copper plate and greaves (dig, the hoe), the greaves under his green
  *      tee (plant, the kneel), the plate over his trousers (water, the can) --
  *      in each, every frame: the garments he wears drawn and the others not,
@@ -231,7 +231,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(700);
     }
 
-    /* ── 5. v2.3.3424: in armour, on bed 1 ── */
+    /* ── 5. v2.3.3426: in armour, on bed 1 ── */
     const B1 = FARM_BEDS[1];
     const OUTFITS = [
       { step: 'dig', chest: 'copperplate', legs: 'coppergreaves', label: 'copper plate and greaves' },
