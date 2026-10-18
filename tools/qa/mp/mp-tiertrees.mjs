@@ -151,7 +151,7 @@ const reachMap = (P, id) => P.page.evaluate((nid) => {
   const r = l + sp.width, b = t + sp.height;
   const P0 = { x: S.player.x, y: S.player.y };
   let offered = 0, maxD = 0, at = null, inPic = 0, inPicOffered = 0;
-  /* v2.3.3427: which offered spots are DRY at the boots -- every one of the
+  /* v2.3.3461: which offered spots are DRY at the boots -- every one of the
      swim test's five looks there (wheelSwim.js SWIM_PROBES) known and not
      water.  A chop is refused while swimming, and since the v2.3.3401
      re-bake the maple stands by water. */
@@ -406,7 +406,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.waitFor(P, (S) => (((S.rpg || {}).lifeSkills || {}).woodcutting || {}).level || 0, (v) => v >= 99,
         { timeout: 10000, label: 'Woodcutting 99' }).catch(() => null);
       /* the far edge, 10 px in; its mirror, or halfway in, if that is not ground you can stand on.
-         v2.3.3427: and DRY ground first -- since the v2.3.3401 re-bake the
+         v2.3.3461: and DRY ground first -- since the v2.3.3401 re-bake the
          maple stands by water, and in the second sweep of 2026-10-18 its far
          edge lay in it: the bro swam there, and the tap was refused,
          "Swimming!" (lifeSkillRewards.js startExtraction), as on a phone.
@@ -437,7 +437,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (stood) {
         const invBefore = await srvInv(wsPort, myId);
         const started = await tapTree(P, t.id);
-        /* v2.3.3427: and if not, what the taps met -- in the second sweep of
+        /* v2.3.3461: and if not, what the taps met -- in the second sweep of
            2026-10-18 six taps from 280 px started nothing, out among the sky
            land's level 31-40 monsters, with nothing to say why: where you stood
            then, a monster the tap locked or the nearest one, the harvest */

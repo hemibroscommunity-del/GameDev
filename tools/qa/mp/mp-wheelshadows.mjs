@@ -266,7 +266,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        nothing up and to its left whose shadow could fall in the boxes --
        with the air still (the harness's calm), so a drifting flake cannot
        land in a box */
-    /* v2.3.3427: the trees IN VIEW first, then the least crowded -- the six
+    /* v2.3.3461: the trees IN VIEW first, then the least crowded -- the six
        least crowded of everything within 900 px could all be off the screen
        (900 px is ~550 CSS px out at the view's scale), and then none was
        tried; and when no tree is in view at all, a hop to stand beside one */

@@ -612,7 +612,7 @@ for (const n of names) {
 
 console.log(`booting worker + dist for ${names.length} scenario(s): ${names.join(', ')}`);
 const t0 = Date.now();
-/* v2.3.3427: the page server takes its port FIRST.  freePort only finds a
+/* v2.3.3461: the page server takes its port FIRST.  freePort only finds a
    port free and lets go of it, and the worker's start (up to 90 s) opens
    ports of its own on any free number: in the second sweep of 2026-10-18 it
    took WEB's, and serveDist died, EADDRINUSE, before a scenario ran. */

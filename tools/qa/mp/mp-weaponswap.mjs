@@ -125,7 +125,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const R = window._gameState.current.rpg;
     R.weapon = SWORD; R.rangedWeapon = BOW; R.staffWeapon = STAFF; R.activeSlot = 'melee';
   }, { SWORD, BOW, STAFF });
-  /* v2.3.3427: until the button has read them -- it reads the game on a 200
+  /* v2.3.3461: until the button has read them -- it reads the game on a 200
      ms timer, and on this box a frame takes 300-600 ms, so 600 ms was a frame
      or two: the button still showed empty hands (owned 1) while the game held
      all three. A phone sees them within 200 ms. */

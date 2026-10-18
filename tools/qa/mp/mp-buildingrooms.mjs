@@ -396,7 +396,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(600);
     const css = await npcCss(name);
     const t0 = Date.now();
-    /* v2.3.3427: tapped until the world's scan has RUN (window.__btNpcTap
+    /* v2.3.3461: tapped until the world's scan has RUN (window.__btNpcTap
        stamped), three tries at most -- mp-npctap's way.  A touch's start and
        end are two events, and the zones count it a tap only when they come
        within SELF_TAP_MAX_MS 400 of each other (BroTown lE/rE).  On this box a

@@ -185,7 +185,7 @@ const numberDraws = (P, text) => P.page.evaluate(async (txt) => {
   const { pixels } = R.extract.pixels(t);
   t.alpha = a0; t.scale.set(sx, sy); t.rotation = r0;
   let white = 0, dark = 0;
-  /* v2.3.3427: and what the rest is, with the tint the number carried -- the
+  /* v2.3.3461: and what the rest is, with the tint the number carried -- the
      sweep of 2026-10-18 read no white fill at all on both phones before the
      rebuild (the outline's count the same as after it), with nothing to say
      what colour the fill came out */
