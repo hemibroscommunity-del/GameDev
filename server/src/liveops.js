@@ -26,7 +26,8 @@
  *           every join until deleted.  Use before worker deploys
  *           ("server restarting in 2 minutes").
  *   METRICS once-daily `metrics:<yyyymmdd>` economy snapshot (ring of
- *           30) written lazily from join + the rate-limited tick slot;
+ *           30) written from the tick's housekeeping slot, a page at a
+ *           time (v2.3.2438; every table paged since v2.3.3368);
  *           /api/admin/economy surfaces the last 7 with a day-over-day
  *           delta and an `alert` when |Δ totalGold| > 25% — the solo
  *           owner's dupe-exploit tripwire.
@@ -48,9 +49,33 @@
    instead of every slot. */
 export const METRICS = {
   PAGE: 200,
+  /* v2.3.3368: the mailboxes are paged too, fewer to a page: a box is a list
+     of up to ~200 entries (gold and items merge past that, weapons do not --
+     inbox.js _inboxAppend), where a player record is one */
+  BOX_PAGE: 50,
   SLOT_MS: 3000,
   RETRY_MS: 3600000,
 };
+
+/* ═══ v2.3.3368: THE GOLD A MARKET ORDER HOLDS ═══
+   An order carries `type` ('buy' or 'sell'), `price` and `item` (market.js
+   _mktPlaceOrder): a buy takes its price from the buyer when it is placed
+   and holds it until it fills, is cancelled or expires; a sell holds a
+   weapon, no gold.  The daily record and /economy read `o.side` and
+   `o.qty`, which no order has, so their escrowedGold was 0 every day since
+   it was written (found by the architecture review).  Gold held anywhere
+   else (a duel's wager, an arena entry, an auction-house offer) is not
+   counted here, as before. */
+export function orderEscrowGold(o) {
+  if (!o || o.type !== 'buy') return 0;
+  const p = Number(o.price);
+  return Number.isFinite(p) && p > 0 ? p : 0;
+}
+
+/* v2.3.3368: the entries waiting in one `inbox:` value */
+function boxEntries(box) {
+  return Array.isArray(box) ? box.length : 0;
+}
 
 export const LIVEOPS = {
   XP_MULT_MIN: 1,
@@ -146,6 +171,25 @@ export const liveopsMethods = {
     return { gold, players, count: blobs.size, last, done: blobs.size < METRICS.PAGE || !last };
   },
 
+  /* ═══ v2.3.3368: EVERY TABLE ONE PAGE AT A TIME ═══
+     v2.3.2438 paged the player records, and left the two tails -- the
+     mailboxes (`inbox:`) and the market's resting orders (`mkt_order:`) --
+     as one list each, every value in memory at once.  A box is drained only
+     when its player joins, so the mail of a player who never comes back (a
+     market or auction-house sale, a refund after a deploy) stays for ever,
+     and that list grew with every one of them: one more input-gate hold a
+     day that only got longer, and every box in memory with it (the
+     architecture review's rule-9 finding).  One bounded page of any prefix,
+     values included, resumed after `after`. */
+  async _metricsList(prefix, limit, after) {
+    const opts = { prefix, limit };
+    if (after) opts.startAfter = after;
+    const page = await this.state.storage.list(opts);
+    let last = null;
+    for (const k of page.keys()) last = k;
+    return { page, last, done: page.size < limit || !last };
+  },
+
   async _economySnapshot() {
     let totalGold = 0, playerBlobs = 0, after = null;
     let top = [];
@@ -156,31 +200,47 @@ export const liveopsMethods = {
       if (pg.done) break;
       after = pg.last;
     }
-    const orders = await this.state.storage.list({ prefix: 'mkt_order:' });
-    let escrowedGold = 0;
-    for (const [, o] of orders) {
-      if (o && o.side === 'buy') escrowedGold += (o.price || 0) * (o.qty || 1);
+    let openOrders = 0, escrowedGold = 0;
+    for (after = null; ;) {
+      const pg = await this._metricsList('mkt_order:', METRICS.PAGE, after);
+      openOrders += pg.page.size;
+      for (const o of pg.page.values()) escrowedGold += orderEscrowGold(o);
+      if (pg.done) break;
+      after = pg.last;
     }
-    const inboxes = await this.state.storage.list({ prefix: 'inbox:' });
-    let pendingEntries = 0;
-    for (const [, box] of inboxes) pendingEntries += Array.isArray(box) ? box.length : 0;
+    let inboxes = 0, pendingEntries = 0;
+    for (after = null; ;) {
+      const pg = await this._metricsList('inbox:', METRICS.BOX_PAGE, after);
+      inboxes += pg.page.size;
+      for (const box of pg.page.values()) pendingEntries += boxEntries(box);
+      if (pg.done) break;
+      after = pg.last;
+    }
     const h5log = (await this.state.storage.get('harden_h5_log')) || [];
     const jackpot = (await this.state.storage.get('jackpot:draw')) || null;
     return {
       playerBlobs,
       totalGold,
       top10: top,
-      market: { openOrders: orders.size, escrowedGold },
-      inbox: { inboxes: inboxes.size, pendingEntries },
+      market: { openOrders, escrowedGold },
+      inbox: { inboxes, pendingEntries },
       hardenH5Mints: h5log.length,
       jackpot: jackpot ? { period: jackpot.period, pool: jackpot.pool, entrants: Object.keys(jackpot.entries || {}).length } : null,
       ts: Date.now(),
     };
   },
 
-  /* Once-daily economy snapshot, one page per call.  Key-existence
+  /* Once-daily economy snapshot, a page at a time.  Key-existence
      idempotent (the cheap wall); this._lastMetricsDay is the fast path.
-     Never throws out of a tick.  Returns true while there is more to do. */
+     Never throws out of a tick.  Returns true while there is more to do.
+
+     v2.3.3368: three tables, one after the other -- the player records (the
+     gold), the mailboxes (the mail waiting), the market's orders (the gold
+     its buy orders hold) -- and a call reads AT MOST ONE PAGE OF EACH: it
+     stops at the first page that comes back full (more of that table next
+     slot) and writes the record on the call whose pages all came back short.
+     So a call never reads more than one full page, as v2.3.2438 meant, and a
+     quiet room with few of each still writes its record in one call. */
   async _metricsMaybe(now) {
     try {
       now = now || Date.now();
@@ -192,23 +252,33 @@ export const liveopsMethods = {
         if (this._metricsRetryAt && now < this._metricsRetryAt) return false;
         const key = 'metrics:' + ymd;
         if (await this.state.storage.get(key)) { this._lastMetricsDay = ymd; this._metricsJob = null; return false; }
-        job = this._metricsJob = { ymd, after: null, totalGold: 0, playerBlobs: 0, pages: 0 };
+        job = this._metricsJob = { ymd, table: 'rpg', after: null, totalGold: 0, playerBlobs: 0,
+          pendingEntries: 0, escrowedGold: 0, pages: 0 };
       }
-      const pg = await this._economyPage(job.after);
-      job.totalGold += pg.gold; job.playerBlobs += pg.count; job.pages++;
-      if (!pg.done) { job.after = pg.last; return true; }
-      // Last page: the cheap tails, then the record.
-      const orders = await this.state.storage.list({ prefix: 'mkt_order:' });
-      let escrowedGold = 0;
-      for (const [, o] of orders) if (o && o.side === 'buy') escrowedGold += (o.price || 0) * (o.qty || 1);
-      const inboxes = await this.state.storage.list({ prefix: 'inbox:' });
-      let pendingEntries = 0;
-      for (const [, box] of inboxes) pendingEntries += Array.isArray(box) ? box.length : 0;
+      if (job.table === 'rpg') {
+        const pg = await this._economyPage(job.after);
+        job.totalGold += pg.gold; job.playerBlobs += pg.count; job.pages++;
+        if (!pg.done) { job.after = pg.last; return true; }
+        job.table = 'inbox'; job.after = null;
+      }
+      if (job.table === 'inbox') {
+        const pg = await this._metricsList('inbox:', METRICS.BOX_PAGE, job.after);
+        for (const box of pg.page.values()) job.pendingEntries += boxEntries(box);
+        job.pages++;
+        if (!pg.done) { job.after = pg.last; return true; }
+        job.table = 'orders'; job.after = null;
+      }
+      {
+        const pg = await this._metricsList('mkt_order:', METRICS.PAGE, job.after);
+        for (const o of pg.page.values()) job.escrowedGold += orderEscrowGold(o);
+        job.pages++;
+        if (!pg.done) { job.after = pg.last; return true; }
+      }
       await this.state.storage.put('metrics:' + ymd, {
         totalGold: job.totalGold,
         playerBlobs: job.playerBlobs,
-        escrowedGold,
-        pendingEntries,
+        escrowedGold: job.escrowedGold,
+        pendingEntries: job.pendingEntries,
         ts: now,
       });
       this._lastMetricsDay = ymd;
