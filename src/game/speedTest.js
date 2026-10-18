@@ -12,7 +12,7 @@
  *   - with everything on, as you play;
  *   - with the shadows (and the shine) off, then the metal shine alone, then
  *     the water still, then at a lower resolution (2x, a phone above 2x only);
- *   - v2.3.3420: and the sprites drawn the old way, by three programs instead
+ *   - v2.3.3434: and the sprites drawn the old way, by three programs instead
  *     of one (paletteTex.js), which says what the one saves on that phone --
  *     or that it costs (a note, never "the biggest gain");
  *   - then all of those off at once;
@@ -29,7 +29,7 @@
 import { COL } from '@/ui/mobile/dash/common.js';
 import { lightFxOn, setLightFx } from '@/rendering/lightfx/lightFx.js';
 import { sheenOn, setSheen } from '@/rendering/lightfx/glint.js';
-import { oneBatchOn, setOneBatchLive } from '@/rendering/paletteTex.js';   /* v2.3.3420 */
+import { oneBatchOn, setOneBatchLive } from '@/rendering/paletteTex.js';   /* v2.3.3434 */
 import { renderDpr, setRenderResLive } from './renderRes.js';
 
 const SETTLE_MS = 1500;
@@ -58,7 +58,7 @@ function steps() {
     { k: 'noshadow', label: 'No shadows (and no shine)', off: { light: true } },
     { k: 'noshine', label: 'No metal shine', off: { shine: true } },
   ];
-  /* v2.3.3420: the sprites drawn the old way, by three programs instead of
+  /* v2.3.3434: the sprites drawn the old way, by three programs instead of
      one (paletteTex.js ONE_BATCHER), so the card says what the one saves on
      this phone */
   if (oneBatchOn()) list.push({ k: 'threeprog', label: 'Three drawing programs (the old way)', off: { threeProg: true }, old: true });
@@ -245,7 +245,7 @@ export async function runSpeedTest() {
   }
   const base = rows[0];
   const notes = [];
-  /* v2.3.3420: a step that puts back an old way is not a setting to switch
+  /* v2.3.3434: a step that puts back an old way is not a setting to switch
      off, so it is never "the biggest gain"; it says what the new way saves */
   const isOld = (x) => !!(list.find((st) => st.k === x.k) || {}).old;
   const best = rows.slice(1).filter((x) => !isOld(x)).reduce((a, x) => (!a || x.fps > a.fps ? x : a), null);

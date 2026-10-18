@@ -1,4 +1,4 @@
-# One drawing program for every sprite (v2.3.3420)
+# One drawing program for every sprite (v2.3.3434)
 
 The owner, 2026-10-18: *"I'd like you to iterate on what best improves
 framerate without loss of quality (or negligible loss) for phone gameplay
@@ -62,7 +62,7 @@ of pixels, one shade).
 
 ## Measured
 
-On top of v2.3.3424's layers (each world layer its own draw list, PR #977) --
+On top of v2.3.3431's layers (each world layer its own draw list, PR #977) --
 the state this lands in -- a phone page at 1x density on this box's software
 graphics, `mp-phoneframe` with `BT_PF_AB='onebatch=0'`, 3 rounds each, no
 profiler or census:
