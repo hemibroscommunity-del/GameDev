@@ -114,7 +114,7 @@ const capsOf = (p) => {
     x += 5; y += (i % 7) - 3;
     m.push({ type: 'move', x, y, d: 'right', f: 'east', z: 'wheel', vx: 300, vy: 0, eqc: 'none', eql: 'none', eqs: 'none', ex: null, dodging: false, blocking: false, ba: null, dead: false });
     if (i % 5 === 0) m.push({ type: 'player_swing', payload: { id: 'p1', ts: NOW, kind: 'melee' } });
-    if (i % 9 === 0) m.push({ type: 'emote', payload: { id: 'p1', emote: 'wave' } });
+    if (i % 9 === 0) m.push({ type: 'emote', payload: { id: 'p1', emoji: '👋' } });   /* v2.3.3343: a listed emote (emotes.js) */
     if (i % 4 === 0) m.push({ type: 'track', data: look(i) });
     if (i % 11 === 0) m.push({ type: 'pong', ts: 0, hd: 5 });
     moments.push(m);

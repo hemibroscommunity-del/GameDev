@@ -8,15 +8,34 @@
    deps: sendEmote -> setShowEmotes, enterBuilding -> setBuildingPanel. */
 import { BT_AUDIO, BUILDINGS } from '@/data/index.js'; /* v2.3.1779: hasUnlock + QUEST_CHAINS went with the retired building gate */
 import { _typeof } from '@/lib/babelHelpers.js';
+import { emoteKind, emotesLive, EMOTE_COOLDOWN_MS } from '@/game/emotes.js'; /* v2.3.3343 */
 
 export function sendEmote(S, emoji, deps) {
   var setShowEmotes = deps.setShowEmotes;
+    /* ═══ v2.3.3343: AN EMOTE YOU CAN SEE (src/game/emotes.js) ═══
+       Only a listed emote goes out (the worker relays nothing else, emotes.js
+       on its side), at most one a second (the relay allowance it spends is
+       your swings' and arrows' too), and none under the worker's `emotes:
+       false`.  An emoji pops over your head (effectsRenderer
+       _updateEmotePops); a quick line ("GG") is your speech bubble, as a
+       typed line is. */
+    var kind = emoteKind(emoji);
+    var now = Date.now();
+    if (!kind || !emotesLive(S) || (S._emoteAt && now - S._emoteAt < EMOTE_COOLDOWN_MS)) {
+      setShowEmotes(false);
+      return;
+    }
+    S._emoteAt = now;
     BT_AUDIO.emote();
     if (S.stats) S.stats.emotesUsed++;
     S.emote = {
       emoji: emoji,
-      ts: Date.now()
+      ts: now
     };
+    if (kind === 'line') {
+      if (!S.chatBubbles) S.chatBubbles = {};
+      S.chatBubbles[S.myId] = { text: emoji, ts: now };
+    }
     if (S.channel) S.channel.send({
       type: 'broadcast',
       event: 'emote',
