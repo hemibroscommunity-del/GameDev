@@ -1953,7 +1953,7 @@ remnant to migrate server-side, not a mode to preserve.
       on the open sea, none on a running river; `?caustics=k` (0-2);
     - test-world-core "the water's frozen web of light taken out", `mp-wheelwaves`:
       docs/specs/moving-water.md.
-    - since v2.3.3437 THE WEB IS WORKED OUT ONLY WHERE IT SHOWS -- the owner's
+    - since v2.3.3448 THE WEB IS WORKED OUT ONLY WHERE IT SHOWS -- the owner's
       "iterate on what best improves framerate without loss of quality": it
       fades in and out in big stretches (`brk`), and where it is faded right
       out (about half the open sea at any moment, a fifth of the shallows and
