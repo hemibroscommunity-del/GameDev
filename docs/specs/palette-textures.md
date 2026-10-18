@@ -90,7 +90,11 @@ calls. Not measured on a phone.
 
 - `?nopalette`: the old way, all of it, for the tab.
 - `window.__btPalette()`: on, built, sources alive (pieces, pages, MB), rows
-  used, pieces sent as colours, the most colours a piece had.
+  used, pieces sent as colours, the most colours a piece had; since
+  v2.3.3464 the farm's apart (`liveFarm`, `liveFarmMB`).
+- `window.__btPaletteLoad()`: the farm's reads -- the ground, pictures and
+  pages read as numbers, those loaded as pictures instead, and whether the
+  reader is up.
 - `window.__btGpuTex()` counts an R8 texture at 1 byte a pixel.
 
 ## Tests
@@ -100,12 +104,85 @@ calls. Not measured on a phone.
   the cost.
 - `server/test/palette.test.mjs`: every object sheet read as numbers matches
   `tools/world/png.mjs` on every pixel; every PNG row filter; padding; a piece
-  over 256 colours refused.
+  over 256 colours refused; and (v2.3.3464) the farm's ground twin held to its
+  stamp, every farm picture read exactly, the borrowed sheets' pages readable.
+- `mp-farmpalette` (v2.3.3464): the farm both ways on two phones -- what is
+  read as numbers, the memory, the same picture, the loading screen, the Map
+  panel, everything let go of on leaving.
 - `mp-groundcopy` checks the pieces are numbers and let go of on the page.
+
+## The farm (v2.3.3464)
+
+Owner, 2026-10-18, offered the farm's 22 MB ground the same way: *"Yes do the
+separate PR"*. Every picture the farm draws is on 256 colours or fewer: its
+ground (246), the owner's 76 farm pictures (the barn, the beds, every crop's
+every stage) and the six BroTown sheets it borrows trees, hay and the well
+from.
+
+They are read by a loader of their own inside Pixi's asset loader
+(`src/rendering/paletteLoad.js`), placed ahead of Pixi's picture loader, so
+nothing that loads, finds or frees them changed: the same addresses still go
+to `Assets.load` and `Assets.unload`.
+
+| the game asks for | read as numbers from |
+|---|---|
+| `/maps/farm_v2.webp`, the ground | its palette twin `/maps/farm_v2.png` (2.0 MB on disk, the WebP 1.7), which `tools/world/bake_farm_ground.py` writes beside it |
+| `/world/farm/*.png`, a farm picture | itself |
+| `/world/objects/*.png?farm=1`, a borrowed sheet's page | itself (the farm's own copy, as before) |
+
+- Each file is fetched and read on a worker (`png8Worker.js`, its `{png}`
+  message), which stops 3 s after its last read.
+- Anything that will not read (not a palette PNG, no row left in the colour
+  table, no worker) loads as a picture, as before. `?nopalette` reads none so.
+- Freed as before: `Assets.unload` destroys the texture, which gives its
+  colours' row back.
+- The ground's two files must stay one picture. The bake stamps them
+  (`tools/world/farm_ground_stamp.json`), and `server/test/palette.test.mjs`
+  checks that the WebP is the one stamped and that the PNG's every pixel is the
+  stamp's. A ground baked again comes with its twin; a WebP changed any other
+  way fails the test.
+- The dashboard's Map panel drew the ground's `<img>`, and the ground now has
+  none: it draws a small copy from the numbers (`paletteDraw.js`
+  `paletteThumb`, each pixel the average of 4 x 4, made once a size and
+  emptied with the picture).
+
+Measured on the QA phone (390 x 844, 3x), `mp-farmpalette` and `mp-farmwalk`:
+
+| | full colour | colour numbers |
+|---|---|---|
+| the farm's pictures (ground, 76 pictures, 6 sheet pages) | ~42 MB | 10.4 MB |
+| GPU textures, standing between the barn and the beds | 100.3 MB | 73.2 MB |
+| GPU + cached after a visit's farming (mp-farmwalk) | 104.5 + 90.3 = 195 MB | 76.7 + 90.3 = 167 MB |
+| mp-farmwalk's memory line | 205 MB | 177 MB |
+
+The same picture: the ground, the beds, the farm's things and crops and their
+shadows rendered at the phone's own pixels against `?nopalette`, 279 of
+2,829,060 pixels one level of 255 apart, none more; the frame against itself
+0. The Map panel lights the same 8,800 of its 12,100 pixels both ways. The
+same again drawn by v2.3.3447's one program (`BT_QA_QUERY=onebatch=1`, the
+way a phone draws; this box keeps the three programs): its colour-numbers
+branch picks a picture by its `_btPal`, which the loader sets, so the farm
+needed nothing for it.
+
+The farm's loading screen: about the same either way, the two phones loading
+at once on the QA box's four cores -- 12.6 s reading colour numbers against
+16.6 reading pictures in one run, 14.5 against 11.6 in another, everything in
+when the screen lifted both ways. With the one program forced on, this box
+draws a frame in ~1.5 s and neither way was all in at the screen's 12 s cap
+(34 s each), so mp-farmpalette asks only that the numbers load no worse than
+the pictures.
+
+The cost, on the QA box's software chip, the whole frame drawn and finished:
+16-46% longer over five runs with the three programs (688 ms against 558, 709
+against 545, 662-687 against 496-515, 770 against 529, 637 against 549). The ground fills the
+screen, and each of its pixels is eight reads where it was one. With the one
+program, 7% (1,531 against 1,424): a software rasterizer runs every branch
+for every pixel anyway (docs/specs/one-batch.md). Not measured on a phone.
 
 ## Not done
 
-- The other zones' art and the characters: they are not on 256 colours.
+- The other zones' art (the closed old lands) and the characters: they are
+  not on 256 colours. (The farm's are, and are kept so since v2.3.3464.)
 - Every sprite through the one batcher (no extra draw calls): it would change
   how every sprite in the game is drawn.
 - Objects only (if the cost turns out too high on a phone): ~29 MB saved

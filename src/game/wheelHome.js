@@ -32,6 +32,7 @@
 import { TILE, ZONES, TOWN_EXITS } from '../data/index.js';
 import { isWorldViewZone } from '../data/zones.js';
 import { wheelIsHome, wheelWayBack } from './worldTrial.js';
+import { cue } from '@/game/eventSounds.js';   /* v2.3.3462: the gate heard */
 
 /* a beat in the world before the trip, so the arrival settles first */
 const SPAWN_SETTLE_MS = 400;
@@ -161,6 +162,7 @@ export function wheelCommonsGate(S) {
   if (!S._mayorGateAt || Date.now() - S._mayorGateAt > 2500) {
     S._mayorGateAt = Date.now();
     S._wheelGateHits = (S._wheelGateHits || 0) + 1;   /* QA readout (mp-wheelhome) */
+    cue('denied');   /* v2.3.3462: the gate is heard (the owner's "denied" tick) */
     if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {
       window._setLevelUpMsg({
         kind: 'warning',
