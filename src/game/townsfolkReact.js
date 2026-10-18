@@ -1,4 +1,4 @@
-/* ═══ v2.3.3365: THE TOWNSFOLK JOIN IN (docs/specs/emote-moves.md) ═══
+/* ═══ v2.3.3394: THE TOWNSFOLK JOIN IN (docs/specs/emote-moves.md) ═══
  *
  * The fun & social plan's Phase 1 (docs/FUN-SOCIAL-PLAN.md), the owner's "Go
  * recommended": "the six townsfolk react in character, with the same motion

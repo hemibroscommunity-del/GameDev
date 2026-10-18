@@ -927,7 +927,7 @@ export function setupWebSocket(ctx) {
                        `eqg`: 'rn', 'ee', ...), which glint.js draws as the
                        armour's grade look; absent is plain, as for `spr` */
                     S.others[pid]._eqg = typeof data.eqg === 'string' ? data.eqg.slice(0, 2) : '';
-                    /* v2.3.3362: a held pose (tick.js `po`, poses.js): sit,
+                    /* v2.3.3392: a held pose (tick.js `po`, poses.js): sit,
                        sleep, flop or a dance, drawn by rendering/emoteFx.js;
                        `_poAt` is when this phone first saw it, for its settle.
                        A far player's slim entry says nothing about it and
@@ -5125,14 +5125,14 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
-        /* v2.3.3362: a held pose -- sit, sleep, flop, a dance
+        /* v2.3.3392: a held pose -- sit, sleep, flop, a dance
            (game/emoteMoves.js) -> poses.js, which keeps it on the player.
            TRAPS #18: without this line the pose never leaves the browser. */
         if (msg.type === 'pose') {
           wsOut(msg);
           return;
         }
-        /* v2.3.3364: "/roll" or "/flip" (game/dice.js) -> dice.js, which rolls.
+        /* v2.3.3393: "/roll" or "/flip" (game/dice.js) -> dice.js, which rolls.
            TRAPS #18: without this line the ask never leaves the browser. */
         if (msg.type === 'dice') {
           wsOut(msg);

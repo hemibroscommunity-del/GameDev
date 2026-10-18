@@ -1,4 +1,4 @@
-/* ═══ v2.3.3361: A NAME'S COLOUR YOU CAN READ (docs/FUN-SOCIAL-PLAN.md) ═══
+/* ═══ v2.3.3391: A NAME'S COLOUR YOU CAN READ (docs/FUN-SOCIAL-PLAN.md) ═══
  *
  * A room chat line carries its sender's colour, drawn as their name's colour
  * in everyone's chat feed (WorldChatFeed.jsx: `color: m.color`).  The worker

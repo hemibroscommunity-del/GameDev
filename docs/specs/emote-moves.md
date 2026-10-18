@@ -1,4 +1,4 @@
-# Your bro moves (v2.3.3362)
+# Your bro moves (v2.3.3392)
 
 Phase 1 of the fun & social plan (docs/FUN-SOCIAL-PLAN.md), the owner's "Go
 recommended": twelve emotes that move the whole bro, with no new art and no
@@ -147,7 +147,7 @@ Old phones ignore `po` and `move`. A worker without poses never says
   everywhere; `/dance` and `/sleep` from the chat; no `caps.emotemoves`, no
   Moves tab. Pictures in `tools/qa/mp/out/emotemoves-*.png`.
 
-## Your pet and the townsfolk join in (v2.3.3365)
+## Your pet and the townsfolk join in (v2.3.3394)
 
 - **Your pet copies your held pose**, a beat (300 ms) late: it sits, sleeps,
   flops or dances with you, the dances in step with yours (they keep the

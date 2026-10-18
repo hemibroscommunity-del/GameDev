@@ -1,4 +1,4 @@
-/* The chat's three fixes -- v2.3.3361 (docs/FUN-SOCIAL-PLAN.md, Phase 0;
+/* The chat's three fixes -- v2.3.3391 (docs/FUN-SOCIAL-PLAN.md, Phase 0;
  * docs/specs/emotes.md "The chat's three fixes").
  *
  * Found by the fun & social plan's check of the code:
