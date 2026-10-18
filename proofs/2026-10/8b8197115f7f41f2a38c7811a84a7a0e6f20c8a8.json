@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8b8197115f7f41f2a38c7811a84a7a0e6f20c8a8",
+  "tree": "e4e711f00471c69bb1de7e8bbbd5ddc4e5758d8c",
+  "committedAt": "2026-10-18T14:56:58-07:00",
+  "subject": "The world no longer ripples or shimmers when you move on a computer: the camera sits on whole pixels (v2.3.3469) (#1009)",
+  "files": 6027,
+  "bytes": 679838679,
+  "listingSha256": "ab1284d2b0dfc452d5090e00f331ae24f0c56e39bbe403843da3a0d0c7f5a9f0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
