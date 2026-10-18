@@ -1,4 +1,4 @@
-# The metal shine is drawn in the frame, not in a pass a piece (v2.3.3406)
+# The metal shine is drawn in the frame, not in a pass a piece (v2.3.3433)
 
 The owner, 2026-10-18: *"I'd like you to iterate on what best improves
 framerate without loss of quality (or negligible loss) for phone gameplay
