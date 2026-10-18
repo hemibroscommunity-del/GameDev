@@ -27,6 +27,11 @@
  * the bank.)
  * The walker is a god (server/src/devtools.js): the deeper stretches have
  * monsters, and one dead surveyor is a survey of the respawn.
+ * v2.3.3401: the bake asks the asserted rule of every seat itself, of the
+ * ground composed as the worker draws it (bake-wheel-spawns.mjs drawnWaterOf),
+ * and test-world-core of every seat of both tables; this is the phone's own
+ * look at them -- on the 111 seats that version's re-bake moved, the two
+ * found the same at every look.
  */
 import * as H from './harness.mjs';
 import { SWIM_IN, SWIM_OUT } from '../../../src/game/wheelSwim.js';

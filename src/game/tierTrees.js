@@ -17,7 +17,7 @@
  * (chopStandInSpot), the bar and the label over the crown.  No Pixi here.
  * docs/specs/tier-trees.md.
  */
-/* v2.3.3374: relative, so the bake (tools/world/bake-wheel-spawns.mjs, in
+/* v2.3.3401: relative, so the bake (tools/world/bake-wheel-spawns.mjs, in
    Node) keeps tall things out of the way of each tree as it is drawn */
 import { TREE_ART, TREE_ART_V } from '../data/treeArt.js';
 

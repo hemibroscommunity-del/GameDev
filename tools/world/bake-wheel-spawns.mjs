@@ -28,7 +28,7 @@
  * DRIFT: the worker only redeploys when server/** changes, so a plan change
  * that moved a land would leave monsters standing where it used to be.
  * tools/world/test-world-core.mjs runs this with --check: the plan and the
- * server's copy must agree, in the same PR.  (v2.3.3374: and the trees' and
+ * server's copy must agree, in the same PR.  (v2.3.3401: and the trees' and
  * rocks' picture sizes, which the resources' places are kept clear by.)
  */
 import fs from 'fs';
@@ -40,8 +40,10 @@ import { wheelInfo, axisDist } from '../../public/tools/world/core/wheel.js';
 import { gridInfo } from '../../public/tools/world/core/grid.js';
 import { placeObjects, footprintOf } from '../../public/tools/world/core/placing.js';
 import { objectCatalog } from '../../public/tools/objects/catalog.js';
-import { materialMap, walkBits } from '../../public/tools/world/core/ground.js';   /* v2.3.3012: the game's own walk grid */
-/* v2.3.3374: each tier's tree and rock as the game draws them (bakeWheelNodes `hidden`) */
+import { materialMap, walkBits, composeGround } from '../../public/tools/world/core/ground.js';   /* v2.3.3012: the game's own walk grid; v2.3.3401: and its drawn shore */
+import { PIXEL } from '../../public/tools/style/bible.js';
+import { SWIM_PROBES, SWIM_IN } from '../../src/game/wheelSwim.js';
+/* v2.3.3401: each tier's tree and rock as the game draws them (bakeWheelNodes `hidden`) */
 import { treeGeom, treeChopOffset } from '../../src/game/tierTrees.js';
 import { oreGeom } from '../../src/game/tierOre.js';
 
@@ -351,9 +353,12 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES, nodeRules = NO
      the plan calls it ground.  A harvest seat must be ground the game agrees
      is ground: the first survey of the seats as drawn found one such, the
      angler sat in a pond. */
-  const walk = walkBits(bp, materialMap(plan, bp));
+  const mm = materialMap(plan, bp);
+  const walk = walkBits(bp, mm);
   const blocked = (i) => !!(walk[i >> 3] & (1 << (i & 7)));
-  const nodes = bakeWheelNodes({ bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns: out, safeR, blocked, groundCells }, nodeRules);
+  /* v2.3.3401: and the water as the game draws it, for the fishing seats */
+  const drawnWater = drawnWaterOf(plan, bp, mm);
+  const nodes = bakeWheelNodes({ bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns: out, safeR, blocked, groundCells, drawnWater }, nodeRules);
   /* ═══ v2.3.3016: THE DUNGEONS' MOUTHS ═══
      Each land's landmark (layout.js pass 8: the Great Cave, the Foundry
      Dome, the Buried City) is the way into its dungeon (server/src/
@@ -420,7 +425,7 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES, nodeRules = NO
  * SPOT_SIDE, below).  The same for the miner's seat (MINE_SEAT_DX/DY).
  *
  * Positions never depend on which pictures exist, only on the plan and the
- * placer -- like everything else this tool bakes.  v2.3.3374: except the
+ * placer -- like everything else this tool bakes.  v2.3.3401: except the
  * resources' own pictures' SIZES: each tier's tree and rock is kept clear as
  * the game draws it (src/data/treeArt.js, oreArt.js, made by
  * tools/world/add-tree-art.mjs and add-ore-art.mjs), so a new cut of them is
@@ -449,15 +454,57 @@ export const NODE_RULES = Object.freeze({
   clearNode: 160,       /* a vein or tree from a fishing spot, any area's */
   fishSeat: Object.freeze([52, 9]),   /* FISH_SEAT_DX, FISH_SEAT_DY + the 52 px drop to the boots */
   mineSeat: Object.freeze([-7, -34]), /* MINE_SEAT_DX, MINE_SEAT_DY + 52 */
-  chopSeat: 6,          /* v2.3.3374: the woodcutter's boots, this far south of the node (effectsRenderer chopStandInSpot) */
+  chopSeat: 6,          /* v2.3.3401: the woodcutter's boots, this far south of the node (effectsRenderer chopStandInSpot) */
 });
+
+/* ═══ v2.3.3401: THE WATER AS THE GAME DRAWS IT ═══
+   A fishing seat is placed by the plan's cells, but the shore is not drawn
+   on the cells' lines: each pixel of the ground is the swatch whose blurred
+   field is strongest there (ground.js composeGround, the water's edge kept
+   crisp), so a cell of land can come out as water.  A nub of land one cell
+   wide with the sea on three sides does, and a seat on it put the angler's
+   boots in the sea: mp-wheelseats found wn-ember-119 with all five of a
+   swimmer's looks wet, after this version's re-bake moved 111 spots.  Asked
+   of every seat, the live table had 7 with the boots on drawn water BEFORE
+   that re-bake (wn-thunder-37, wn-sky-111...), 8 after it.  The shore is
+   worked out from the plan alone -- the pictures only colour it -- so the
+   bake asks exactly what the game's ground worker draws: the material at
+   the very pixel a piece's `under` reads (ground-worker.js underOf: one
+   every UNDER art px of a CHUNK-art-px piece, at its middle), composed with
+   no pictures, a small rectangle round the points (composeGround's pieces
+   meet with no seam, so any rectangle gives the same pixel).  Checked
+   against a phone's survey of 111 seats: the same answer at every look.
+   `pts` [[x, y], ...] in game px -> [wet, ...]. */
+export const PIECE_ART = 128, UNDER_ART = 2;   /* ground-worker.js CHUNK, UNDER (test-world-core holds them to it) */
+export function drawnWaterOf(plan, bp, mm) {
+  const WPA = plan.worldPxPerArtPx, K = Math.round(WPA / PIXEL.gamePxPerArtPx);
+  const cs = PIECE_ART * WPA, n = PIECE_ART / UNDER_ART, half = (UNDER_ART * K) >> 1;
+  /* the ground px (art px x K, from the plan's corner) a game point's sample reads */
+  const sampleOf = (x, y) => {
+    const i = Math.floor(x / cs), j = Math.floor(y / cs);
+    const u = Math.min(n - 1, Math.max(0, Math.floor(((x - i * cs) / cs) * n)));
+    const v = Math.min(n - 1, Math.max(0, Math.floor(((y - j * cs) / cs) * n)));
+    return [(bp.x0 + i * PIECE_ART) * K + half + u * UNDER_ART * K, (bp.y0 + j * PIECE_ART) * K + half + v * UNDER_ART * K];
+  };
+  return (pts) => {
+    const f = pts.map(([x, y]) => sampleOf(x, y));
+    let ax0 = Infinity, ay0 = Infinity, ax1 = -Infinity, ay1 = -Infinity;
+    for (const [fx, fy] of f) {
+      ax0 = Math.min(ax0, Math.floor(fx / K)); ay0 = Math.min(ay0, Math.floor(fy / K));
+      ax1 = Math.max(ax1, Math.floor(fx / K)); ay1 = Math.max(ay1, Math.floor(fy / K));
+    }
+    const rect = { x: ax0 - 1, y: ay0 - 1, w: ax1 - ax0 + 3, h: ay1 - ay0 + 3 };
+    const out = composeGround(plan, bp, mm, rect, {}, { scale: K });
+    return f.map(([fx, fy]) => out.mat[(fy - rect.y * K) * out.w + (fx - rect.x * K)] === mm.water);
+  };
+}
 
 export function bakeWheelNodes(ctx, rules = NODE_RULES) {
   const { bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns, safeR } = ctx;
   const blocked = ctx.blocked || (() => false);
   /* nothing standing in front of the node's own picture, or of the bro working
      it (a body's box, 44 x 64, over his boots).
-     ═══ v2.3.3374: THE NODE'S PICTURE AS IT IS DRAWN ═══
+     ═══ v2.3.3401: THE NODE'S PICTURE AS IT IS DRAWN ═══
      The owner, of the trees' and rocks' new pictures: "Yes fix #3 resource
      placement".  Since v2.3.3345 each tier's tree and rock is a picture of
      its own at its own size (src/game/tierTrees.js treeGeom, tierOre.js
@@ -490,6 +537,19 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
     }
     const off = treeChopOffset(node), by = y + rules.chopSeat;
     return coveredAt(x - off - 22, x - off + 22, by - 64, by, by) || coveredAt(x + off - 22, x + off + 22, by - 64, by, by);
+  };
+  /* v2.3.3401: a fishing seat as mp-wheelseats asks it of the ground as
+     drawn (drawnWaterOf, above): the spot and its school's middle in the
+     water, the angler's boots dry and fewer than SWIM_IN of a swimmer's
+     five looks round them wet -- so a seated angler stays out of the water */
+  const drawnWater = ctx.drawnWater || null;
+  const seatDrawnDry = (x, y) => {
+    if (!drawnWater) return true;
+    const sx = x + rules.fishSeat[0], sy = y + rules.fishSeat[1], L = SWIM_PROBES.length;
+    const w = drawnWater([...SWIM_PROBES.map(([dx, dy]) => [sx + dx, sy + dy]), [x, y], [x - 30, y]]);
+    let wet = 0;
+    for (let k = 0; k < L; k++) if (w[k]) wet++;
+    return !w[0] && wet < SWIM_IN && w[L] && w[L + 1];
   };
   const n = bp.w * bp.h;
   const WATER = new Set([C.water, C.ocean, C.river]);
@@ -615,7 +675,7 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
     }
     return true;
   };
-  /* ═══ v2.3.3374: NOR ONE RESOURCE IN FRONT OF ANOTHER ═══
+  /* ═══ v2.3.3401: NOR ONE RESOURCE IN FRONT OF ANOTHER ═══
      The new trees are as tall as the scenery: a willow 175 px south of a
      fishing spot stood over its angler, and the live table had 15 such (a
      tree or rock whose picture, its foot further south, covers another
@@ -687,7 +747,7 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
     }
     return out;
   };
-  /* v2.3.3374: `pick`, with each candidate asked whether it `fits` (the node
+  /* v2.3.3401: `pick`, with each candidate asked whether it `fits` (the node
      it would become, beside those placed) as its turn comes, and carrying on
      from the picks in `out` (`apart` from them too) -- so a second set of
      candidates can fill what the first could not.  With nothing seeded and
@@ -733,7 +793,7 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
     for (const band of area.bands) {
       /* fishing spots: fresh water in the commons; a land's coast for its
          clownfish; its rivers and pools for trout, else its coast.
-         v2.3.3374: chosen FIRST, before the band's veins and trees (they
+         v2.3.3401: chosen FIRST, before the band's veins and trees (they
          still come first in its list): a spot needs water, a dry seat on
          the bank and that bank clear, and a land has few, so where its
          trees stood decided how many it got -- their bigger pictures, laid
@@ -750,7 +810,8 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
           const x = gameX(i % bp.w), y = gameY((i / bp.w) | 0);
           const sx = x + rules.fishSeat[0], sy = y + rules.fishSeat[1];
           if (!dryClear(sx, sy, band, area.rid, SEAT_SIDE) || !clearOfMonsters(sx, sy) || !clearOfNodes(x, y, true) || hidden(x, y, 'f')) continue;
-          if (nodeClash('f', x, y, band.tierLvl)) continue;   /* v2.3.3374: its angler in view */
+          if (nodeClash('f', x, y, band.tierLvl)) continue;   /* v2.3.3401: its angler in view */
+          if (!seatDrawnDry(x, y)) continue;                   /* v2.3.3401: and out of the water as drawn */
           cand.push({ x, y, r: Math.hypot(x - cxG, y - cyG) });
         }
         return cand;
@@ -773,7 +834,7 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
         if (nearObject(x, y, rules.clearObject) || !clearOfMonsters(x, y) || !clearOfNodes(x, y, false)) continue;
         if (!dryClear(x + rules.mineSeat[0], y + rules.mineSeat[1], band, area.rid)) continue;
         /* hidden as either kind: which it becomes is decided as it is picked
-           (v2.3.3374: each the band's own tier's picture -- a rock always
+           (v2.3.3401: each the band's own tier's picture -- a rock always
            whole, a tree whole or else at least its middle and lower half,
            for the thick woods) */
         if (hidden(x, y, 'o', band.tierLvl)) continue;
@@ -781,7 +842,7 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
         if (!hidden(x, y, 't', band.tierLvl)) land.push(c);
         else if (!hidden(x, y, 't', band.tierLvl, true)) loose.push(c);
       }
-      /* ═══ v2.3.3374: WHOLE WHERE THERE IS ROOM ═══
+      /* ═══ v2.3.3401: WHOLE WHERE THERE IS ROOM ═══
          A maple 428 px across seldom stands clear of everything in the
          Verdant Wilds: the whole-picture rule alone left its levels 31-40
          five resources short (25 of 30).  So a band takes its places with

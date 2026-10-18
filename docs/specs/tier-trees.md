@@ -113,7 +113,7 @@ Now **each wood has its own tree**, and it is the same picture in every land:
 The five pictures are 5.6 MB decoded together, and the old pine was 3.4 MB, so
 the game holds about **2.1 MB more**. They are 319 KB to download.
 
-## Where each one grows (v2.3.3374)
+## Where each one grows (v2.3.3401)
 
 The owner, of the resources' places: *"Yes fix #3 resource placement."*
 
@@ -152,15 +152,36 @@ Now:
   trees, so the trees' bigger pictures cost some lands up to three a stretch.
   Now each band chooses its fishing spots first, and the veins and trees go
   round them. Open ground has room to spare.
+- **Every angler's seat dry as the ground is DRAWN.** The phone survey run
+  after the first re-bake (`mp-wheelseats`, over the 111 spots it moved) found
+  two seats with the angler's boots on drawn water: `wn-ember-119`, on a nub of
+  land one cell wide with the sea on three sides, all five of a swimmer's looks
+  wet, and `wn-frost-33`. The plan calls such a cell land, but the shore is
+  drawn where the grounds' blurred fields say (`composeGround`), not on the
+  cells' lines.
+  - The live table on main had 7 such seats already (`wn-thunder-37`,
+    `wn-sky-111` and five more), found by the same rule asked of all 250.
+  - The shore is worked out from the plan alone (the pictures only colour it),
+    so the bake now asks exactly what the ground worker draws
+    (`drawnWaterOf`): the swatch at the very pixel a piece's `under` reads,
+    composed with no pictures. A spot is used only when, as `mp-wheelseats`
+    asks it, the spot and its school's middle are in the water, the angler's
+    boots are dry and fewer than `SWIM_IN` (4) of the five looks round them
+    are wet.
+  - Checked first against the phone: the same answer at every look of the 111
+    seats it surveyed. `test-world-core` asks it of every seat of both tables,
+    each piece composed as the worker lays it.
+  - It adds about 6 s to the long Wheel's bake.
 
 What changed in the tables:
 
 | | Long Wheel | Short Wheel |
 |---|---|---|
-| Veins and trees | every count as it was | every count as it was |
-| Fishing spots | 1,222 → 1,223 in all: Frost Ridge's trout 9 → 8, its pike 6 → 8 | 259 → 260: Frost Ridge's salmon 1 → 2 |
-| Places that moved | 1,002 of 1,223 | 176 of 260 |
+| Veins and trees | every count as it was (486 and 486) | every count as it was (102 and 102) |
+| Fishing spots | 250, as before: Frost Ridge's trout 9 → 8 and pike 6 → 8, the Electric Foundry's salmon 5 → 4 | 55 → 56: Frost Ridge's salmon 1 → 2 |
+| Places that moved | 1,019 of 1,222 | 177 of 260 |
 | A resource in front of another | 15 → 0 | 6 → 0 |
+| An angler's boots on drawn water | 7 → 0 | 0 → 0 |
 | Monsters, doors, the safe ground | the same | the same |
 
 - Near town nothing moved that you would notice. The first copper and pine out
