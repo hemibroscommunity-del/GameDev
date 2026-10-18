@@ -2,6 +2,7 @@ import React from 'react';
 import { lockOntoDuelOpponent } from '@/game/duelLock.js'; /* v2.3.2145 */
 import { createPortal } from 'react-dom';
 import { BT_AUDIO } from '@/data/index.js';
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the duel heard beginning */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === DuelRequestPanel — the incoming duel-request modal === */
@@ -201,7 +202,8 @@ export function DuelRequestPanel(props) {
       lockOntoDuelOpponent(S2, duelRequest.fromId);
       setDuelRequest(null);
       pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'DUEL!', '#a78bfa');
-      BT_AUDIO.beep(300, 0.15, 0.2, 'sawtooth');
+      cue('duelStart');   /* v2.3.3343: was a beep() -- silent */
+      try { BT_AUDIO._uiSpecificAt = BT_AUDIO._now(); } catch (e) { /* the Accept button's click yields to it */ }
     }
   }, "Accept", duelRequest.wager > 0 ? ' (' + duelRequest.wager + 'g)' : ''), /*#__PURE__*/React.createElement("button", {
     style: {
