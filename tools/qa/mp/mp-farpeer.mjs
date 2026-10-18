@@ -189,8 +189,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
      shut), so this step watches with the map open, as a player looking for
      someone far away does */
   await B.page.evaluate(() => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(true); });
+  /* v2.3.3403: the jump made with the move budget off in this test's room.
+     `place` hops out to town and back to land where it says, and since
+     v2.3.3325 a way back into the Wheel is judged from where it was left
+     (movement.js MOVE_BUDGET, `_wheelBack`): the worker walked its copy of
+     the walker out at an honest pace, ~5 s for 2,700 px, so for most of the
+     count it was still within 2,400 px of the watcher and sent as a near
+     player -- four times a second, every one in the tick's `players` (the
+     runs of 2026-10-18).  Back on before anything is counted. */
+  await H.liveFlag(wsPort, 'movebudget', false, ROOM);
   await W.place(b0.x + 300, b0.y - 2700);
   await B.page.waitForTimeout(1500);
+  await H.liveFlag(wsPort, 'movebudget', null, ROOM);
   const far = await watch(3000);
   await B.page.waitForTimeout(1600);   /* the next roster (about a second), and its trip */
   const p2 = await peerOnB();

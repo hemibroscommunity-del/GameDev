@@ -221,15 +221,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.keyboard.down(walkKey);
   await B.page.waitForTimeout(400);
   const hp0 = (await H.serverPlayer(wsPort, bId) || {}).hp;
-  /* v2.3.3403: B's stage blanked through the lunge and its daze.  This box
-     spends 300-600 ms drawing each frame, and nothing on B's page -- frame
-     or timer -- runs inside one, so the 500 ms daze held one sample (the run
-     of 2026-10-18, again with the 20 ms sampler).  What step 3 reads on B is
-     the game's logic (the walk refused, its own lunge refused), not its
-     drawing: drawn nothing, B's frames come at a phone's pace.  About 3 s,
-     inside the black-screen watchdog's two strikes (10 s); A's phone, which
-     draws the daze on B, is untouched. */
-  await B.page.evaluate(() => { if (window.__btBlankStage) window.__btBlankStage(true); });
+  /* v2.3.3403: BOTH stages blanked through the lunge and its daze.  This
+     box draws in software, one graphics process for both phones, 300-600 ms
+     a frame, and nothing on B's page -- frame or timer -- runs inside one:
+     the 500 ms daze held one sample (the runs of 2026-10-18, with the 20 ms
+     sampler, and again with B's stage alone blanked, A's frames keeping the
+     graphics process busy).  What steps 2-3 read is the game's logic -- the
+     dash, the hit, the walk refused, B's own lunge refused, A's copy of B
+     dazed -- not its pixels: drawn nothing, both pages run at a phone's
+     pace.  About 3 s, inside the black-screen watchdog's two strikes (10 s). */
+  await Promise.all([A, B].map((P) => P.page.evaluate(() => { if (window.__btBlankStage) window.__btBlankStage(true); })));
   const tFire = Date.now();
   const fired = await press(A);
   rec.ok('2. the press LUNGES at the locked player (a dash that names them)', fired.ok === true && fired.dash && String(fired.pid) === String(bId), fired);
@@ -241,7 +242,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`2. ...the dash ends on its own at contact (${end.gap} px, ${end.ms} ms)`, end.ended && end.gap != null && end.gap <= 80, end);
   await A.page.waitForTimeout(900);   /* the daze is over: B lets the key go */
   await B.page.keyboard.up(walkKey);
-  await B.page.evaluate(() => { if (window.__btBlankStage) window.__btBlankStage(false); });
+  await Promise.all([A, B].map((P) => P.page.evaluate(() => { if (window.__btBlankStage) window.__btBlankStage(false); })));
   await A.page.waitForTimeout(600);
   const hp1 = (await H.serverPlayer(wsPort, bId) || {}).hp;
   const hitsB = await hitsOf(B);
