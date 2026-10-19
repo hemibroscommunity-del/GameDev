@@ -1660,6 +1660,24 @@ body:has(.bt-pcard) [data-coach]{display:none}
 .bt-pin-drop-art svg{display:block;width:50px;height:50px}
 .bt-pin-drop-r{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#FF9C6B}
 .bt-pin-drop-n{font-size:12.5px;line-height:1.2;color:#FFE6CF}
+/* v2.3.3484: the box is the rarest ACHIEVEMENT, a button to the page, in its
+   tier's colours (the armour grades': rare blue, the arena orange, super-rare
+   a rainbow); the title chip a button too, keeping the mockup's gold */
+button.bt-pin-drop,button.bt-pin-title{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button.bt-pin-drop{color:inherit;margin:0}
+.bt-pin-drop-art img,.bt-pin-drop-art .bt-pcard-glyph{display:block;width:50px;height:50px;object-fit:contain;font-size:34px;line-height:50px}
+.bt-pin-drop[data-tier="none"],.bt-pin-drop[data-tier="common"]{border-color:#3B5366;background:#1C2F3C}
+.bt-pin-drop[data-tier="none"] .bt-pin-drop-r,.bt-pin-drop[data-tier="common"] .bt-pin-drop-r{color:#A9B4BA}
+.bt-pin-drop[data-tier="common"] .bt-pin-drop-n{color:#EDF6FA}
+.bt-pin-drop-n.is-none{color:#8E9AA3;font-weight:600}
+.bt-pin-drop[data-tier="rare"]{border-color:#5D93D2;background:radial-gradient(circle at 50% 32%,#22446B 0%,#14263B 72%)}
+.bt-pin-drop[data-tier="rare"] .bt-pin-drop-r{color:#8DB9EC}
+.bt-pin-drop[data-tier="rare"] .bt-pin-drop-n{color:#E3EEFB}
+.bt-pin-drop[data-tier="arena"]{border-color:#E8893A;background:radial-gradient(circle at 50% 32%,#6B3A15 0%,#34200F 72%)}
+.bt-pin-drop[data-tier="arena"] .bt-pin-drop-r{color:#F2A869}
+.bt-pin-drop[data-tier="superrare"]{border-color:#C79BFF;background:radial-gradient(circle at 50% 32%,#46295F 0%,#20162E 72%)}
+.bt-pin-drop[data-tier="superrare"] .bt-pin-drop-r{background:linear-gradient(90deg,#FF8A8A,#FFD36B,#7CE38B,#6BC7FF,#C79BFF);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
 .bt-pin-home{display:flex;flex-direction:column;min-width:0;border:1px solid #3B5366;border-radius:10px;background:#1C2F3C;overflow:hidden}
 .bt-pin-scene{position:relative;flex:none;height:84px;background:#1B2A20}
 .bt-pin-scene>img{display:block;width:100%;height:100%;object-fit:cover}
@@ -1733,6 +1751,7 @@ body:has(.bt-pcard) [data-coach]{display:none}
   .bt-pin-equip{margin-top:6px}
   .bt-pin-kills{padding:5px 8px}
   .bt-pin-drop-art svg{width:40px;height:40px}
+  .bt-pin-drop-art img,.bt-pin-drop-art .bt-pcard-glyph{width:40px;height:40px;line-height:40px;font-size:28px}
   .bt-pin-scene{height:64px}
   .bt-pin-species{min-height:28px}
   .bt-pin-plots{padding:0 8px 6px}
@@ -1766,6 +1785,7 @@ body:has(.bt-pcard) [data-coach]{display:none}
   .bt-pin-kills{padding:5px 8px}
   .bt-pin-drop{padding:4px 6px 6px}
   .bt-pin-drop-art svg{width:40px;height:40px}
+  .bt-pin-drop-art img,.bt-pin-drop-art .bt-pcard-glyph{width:40px;height:40px;line-height:40px;font-size:28px}
   .bt-pin-scene{height:56px}
   .bt-pin-species{min-height:28px}
   .bt-pin-plots{padding:0 8px 6px}

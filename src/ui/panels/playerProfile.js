@@ -15,11 +15,14 @@
  *   levels, all six equipment slots, lifetime kills, the active pet, and how
  *   many farm plots are ready.
  * PLACEHOLDER, only where the game has no such system yet (PROFILE_PREVIEW):
- *   the equipped title, the rarest drop, the Homestead picture, and a sample
- *   pet for a player who has none.  The owner's direction allows exactly
- *   these ("Demo placeholders are acceptable").  Every one is marked
- *   `preview: true`, which the card renders as data-preview="1" -- so a QA
- *   run, or the next session, can find every stand-in on the screen.
+ *   the Homestead picture.  The owner's direction allows these ("Demo
+ *   placeholders are acceptable").  Every one is marked `preview: true`,
+ *   which the card renders as data-preview="1" -- so a QA run, or the next
+ *   session, can find every stand-in on the screen.
+ *   v2.3.3484: the title and the "rarest drop" were placeholders too
+ *   ("Fishing Master", "Ancient Ember Crown" on everyone's card); they are
+ *   the achievements now -- the title one you chose, the rarest the worker
+ *   works out -- or nothing (achvTitleCard / achvRarestCard below).
  * NEVER A PLACEHOLDER: the clan.  Clans are a real, joinable system, so a
  *   made-up "Frost Bros" on someone who is in no clan would send people
  *   looking for a clan that does not exist.  No clan reads "No Clan", as the
@@ -43,6 +46,7 @@ import { activePet } from '@/game/petBook.js';   /* v2.3.3120 */
 import { PET_KINDS, petKindName, petDisplayName, worldSafeText } from '@/data/trapping.js';   /* v2.3.3120 */
 import { getEquippedSlots, peerEquippedSlots } from '../mobile/sheet/equipModel.js';
 import { broBadgeOf, broCountOf } from '@/networking/broWallet.js';   /* v2.3.3255: the checkmark and the count */
+import { achvById, ACHV_TIERS } from '@/data/achievements.js';   /* v2.3.3484: the card's title and rarest */
 
 /* Pet rarity, from the owner's direction: "White Normal, Blue Rare, Orange
    Elite, Prismatic Godly".  The game has no pet rarity yet, so every real pet
@@ -57,8 +61,6 @@ export const PET_RARITY = Object.freeze({
 /* The owner's mockup content, for the systems that do not exist yet.  One
    object, so removing a placeholder when its system ships is one edit. */
 export const PROFILE_PREVIEW = Object.freeze({
-  title: { text: 'Fishing Master', iconSrc: '/icons/ui/skill-fishing.webp', preview: true },
-  rarestDrop: { name: 'Ancient Ember Crown', rarity: 'Mythic', art: 'crown', preview: true },
   pet: { customName: 'Glacier', speciesName: 'Frost Fox', rarity: 'rare', emoji: '🦊', preview: true },
   /* the farm zone's own art -- since v2.3.3136 the farmstead drawn as the
      game draws it -- by tools/ui/make-homestead-preview.mjs */
@@ -66,6 +68,22 @@ export const PROFILE_PREVIEW = Object.freeze({
 });
 
 const COMBAT_CATS = [['melee', 'sword'], ['bow', 'bow'], ['staff', 'staff']];
+
+/* ═══ v2.3.3484: THE TITLE AND THE RAREST -- ACHIEVEMENTS ═══
+   Both arrive as an achievement's id: another player's on their card's blob,
+   stamped there by the WORKER (achievements.js _achvStamp: a page's own claim
+   is taken off), yours in its achv_state (S._achv).  An id this page does not
+   know shows nothing, never a guess. */
+export function achvTitleCard(id) {
+  const a = typeof id === 'string' ? achvById(id) : null;
+  return a ? { id: a.id, text: a.name, iconSrc: a.icon, glyph: a.glyph, tier: a.tier, preview: false } : null;
+}
+export function achvRarestCard(id) {
+  const a = typeof id === 'string' ? achvById(id) : null;
+  if (!a) return null;
+  const t = ACHV_TIERS[a.tier];
+  return { id: a.id, name: a.name, tier: a.tier, tierLabel: t ? t.label : '', iconSrc: a.icon, glyph: a.glyph, preview: false };
+}
 
 /** A finite number, or null -- "not known" must never read as 0. */
 function num(v) {
@@ -153,6 +171,12 @@ export function profileRelayFields(R, S) {
      sends it -- the number the Hero sheet's Record shows, so your card and
      your own sheet cannot disagree */
   if (typeof R.svKills === 'number') out.svKills = R.svKills;
+  /* v2.3.3484: your title and rarest achievement, as the worker last said
+     (S._achv) -- here only so a change is news and the look goes at once
+     (lookrelay.js); the worker stamps its own over them either way */
+  const av = S && S._achv;
+  if (av && typeof av.t === 'string' && av.t) out.title = av.t;
+  if (av && typeof av.rarest === 'string' && av.rarest) out.rarest = av.rarest;
   return out;
 }
 
@@ -220,7 +244,7 @@ export function profileFromPeer(ip, live, rel) {
     relationship: { friend: !!(rel && rel.friend), party: !!(rel && rel.party) },
     achievementPoints: has ? num(r.ap) : null,
     questsCompleted: has ? num(r.quests) : null,
-    equippedTitle: PROFILE_PREVIEW.title,
+    equippedTitle: has ? achvTitleCard(r.title) : null,
     clan: tag ? {
       tag,
       name: (!allyT && r.clanTag === tag && typeof r.clanName === 'string' && r.clanName) ? r.clanName : null,
@@ -230,7 +254,9 @@ export function profileFromPeer(ip, live, rel) {
     equipment: peerEquippedSlots(o),
     showcase: {
       lifetimeKills: has ? (num(r.svKills) != null ? num(r.svKills) : num(r.kills)) : null,
-      rarestDrop: PROFILE_PREVIEW.rarestDrop,
+      /* v2.3.3484: their rarest achievement (was the placeholder crown);
+         undefined until their blob lands, null for none */
+      rarest: has ? achvRarestCard(r.rarest) : undefined,
     },
     /* nothing until the blob lands (a 2s gap -- the sample pet would be a
        claim about a player we have not heard from yet); then their real pet,
@@ -263,7 +289,7 @@ export function profileFromSelf(S) {
     relationship: null,
     achievementPoints: num(R.achievementPoints) || 0,
     questsCompleted: num(cs.questsCompleted) || 0,
-    equippedTitle: PROFILE_PREVIEW.title,
+    equippedTitle: achvTitleCard(S && S._achv && S._achv.t),
     clan: clan && clan.tag ? { tag: clan.tag, name: clan.name || null, color: clan.color1 || null } : null,
     combat,
     equipment: getEquippedSlots(R).map((s) => ({
@@ -272,7 +298,7 @@ export function profileFromSelf(S) {
     })),
     showcase: {
       lifetimeKills: num(R.svKills) != null ? R.svKills : (num(cs.monstersKilled) || 0),
-      rarestDrop: PROFILE_PREVIEW.rarestDrop,
+      rarest: achvRarestCard(S && S._achv && S._achv.rarest),   /* v2.3.3484 */
     },
     pet: petCardOf(pet),   /* v2.3.3120: yours, or none (was the sample Frost Fox) */
     homestead: { previewSrc: PROFILE_PREVIEW.homesteadSrc, plotsReady: farmPlotsReady(R.lifeSkills) },
