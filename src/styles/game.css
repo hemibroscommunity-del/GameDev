@@ -3431,6 +3431,15 @@ body:has(.bt-pcard) [data-coach]{display:none}
 }
 .bt-cc-ink-width:active{transform:scale(.96)}
 .bt-cc-ink-width--on{border-color:var(--ui-brass);box-shadow:0 0 0 2px var(--ui-brass);background:rgba(216,170,88,.18)}
+/* v2.3.3479: the 2026-10-19 UI review -- the brushes are 26px tall, and a
+   visible 44px would take the card's picture (the owner's call).  The
+   no-trade step: an invisible ring, 34px tall.  Down 6px into the tools' own
+   6px bottom padding (the row is the tools' last); 2px each side, half the
+   5px gap between brushes; 2px up, half the 5px gap under the palette -- the
+   other half stays dead, as the palette (a scroller) clips its chips' rings
+   at its own edge, so a tap between the two rows favours neither. */
+.bt-cc-ink-width{position:relative}
+.bt-cc-ink-width::after{content:"";position:absolute;inset:-2px -2px -6px}
 .bt-cc-ink-dot{display:block;border-radius:50%;background:#1E2C33}
 /* ── shoes: the pattern tiles instead ──
    Five across (plain, plus the four that survive eight pixels of boot), sized
