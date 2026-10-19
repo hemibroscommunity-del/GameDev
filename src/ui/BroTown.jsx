@@ -2639,7 +2639,26 @@ export var BroTown = function BroTown(_ref0) {
     var sel = selId === opt.id;
     return /*#__PURE__*/React.createElement("button", {
       key: 's_' + opt.id, type: 'button', title: opt.name,
-      onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, sz)
+      /* v2.3.3479: the 2026-10-19 UI review -- a tab with no colour row now
+         gives its band to this grid (NameModal, .bt-cc-colors--yield), so the
+         first pick of a hat, hair or beard brings the row in and the strip
+         gets ~145px shorter; a tile tapped near the strip's foot would slide
+         under it.  After the pick has drawn, scroll THE STRIP (only) by what
+         the tile overhangs.  Arithmetic, not scrollIntoView, which can also
+         scroll the overflow:hidden creator itself (TRAPS §64).  The tapped
+         element is the one to keep: a picked tile has no class of its own
+         (its pick is only its background art). */
+      onClick: function (e) {
+        onSet(opt.id);
+        var b = e.currentTarget;
+        requestAnimationFrame(function () {
+          var s = b.parentNode;
+          if (!s) return;
+          var over = b.getBoundingClientRect().bottom - s.getBoundingClientRect().bottom;
+          if (over > 0) s.scrollTop += over + 4;
+        });
+      },
+      style: _apTileStyle(sel, sz)
     }, opt.id === 'none'
       /* v2.3.1307 (round-7): the dashed circle read as a missing asset /
          loading placeholder — the painted bald-head "none" icon with a

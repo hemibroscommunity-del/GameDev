@@ -23,6 +23,7 @@
  */
 import * as H from './harness.mjs';
 import fs from 'fs';
+import { execFileSync } from 'child_process';
 
 const route = (P) => P.page.evaluate(() => window.__btBootRoute || null);
 const phraseOf = (P) => P.page.evaluate(() => { try { return localStorage.getItem('bt_passphrase'); } catch (e) { return null; } });
@@ -69,13 +70,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
        lies.  So: the rendered text must match package.json as it is on disk
        right now, and the sha must be a real one rather than the
        'local'/'nogit'/'dev' fallback BuildBadge uses when Vite did not
-       substitute the token. */
+       substitute the token.
+
+       v2.3.3479 (the 2026-10-19 UI review): package.json lied again -- the
+       door said v2.3.2324 on a v2.3.3439 build -- so the door now shows the
+       GAME's version, worked out at build time as the newest v2.3.N in the
+       last 60 commit titles, never below package.json's (vite.config.js
+       GAME_VERSION, the session brief's rule), package.json's only with no
+       git.  The number expected here is worked out the same way, from the
+       checkout dist/ was built from; package.json's version stays the art's
+       cache key and is no longer what the door shows. */
     const ver = await S.page.$eval('.bt-login-ver', (el) => el.textContent.trim())
       .catch(() => null);
     const pkg = JSON.parse(fs.readFileSync(H.REPO + '/package.json', 'utf8'));
+    const gameVer = (() => {
+      let hi = 0;
+      const p = /^2\.3\.(\d+)$/.exec(String(pkg.version || ''));
+      if (p) hi = +p[1];
+      let subjects = '';
+      try { subjects = execFileSync('git', ['log', '-60', '--format=%s'], { cwd: H.REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString(); } catch (e) { /* no git: package.json's */ }
+      for (const m of subjects.matchAll(/\bv2\.3\.(\d+)\b/g)) hi = Math.max(hi, +m[1]);
+      return hi ? '2.3.' + hi : String(pkg.version);
+    })();
+    const shown = (/\bv(\d+\.\d+\.\d+)\b/.exec(ver || '') || [])[1] || null;
     rec.ok('the splash carries a build stamp', !!ver, { ver });
-    rec.ok('...showing the version package.json actually declares',
-      !!ver && ver.includes('v' + pkg.version), { ver, pkg: pkg.version });
+    rec.ok('...showing the game\'s version (the newest v2.3.N in the commit titles)',
+      shown === gameVer, { ver, shown, game: gameVer, pkg: pkg.version });
     rec.ok('...and a real build sha, not the un-substituted fallback',
       !!ver && !/\b(local|nogit|dev)\b/.test(ver) && /\u00b7\s*[0-9a-f]{7,}/.test(ver),
       { ver });

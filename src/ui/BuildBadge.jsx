@@ -5,8 +5,16 @@
 const VERSION = typeof __BUILD_VERSION__ === 'string' ? __BUILD_VERSION__ : 'dev';
 const SHA     = typeof __BUILD_SHA__     === 'string' ? __BUILD_SHA__     : 'local';
 const TIME    = typeof __BUILD_TIME__    === 'string' ? __BUILD_TIME__    : '';
+/* v2.3.3479: the 2026-10-19 UI review -- the door and the creator said
+   "v2.3.2324" on a v2.3.3439 game: VERSION is package.json's hand-kept number.
+   GAME is the version a player is SHOWN, the newest v2.3.N in the build's
+   commit titles (vite.config.js GAME_VERSION); COMMIT the commit it is of.
+   VERSION stays exactly as it was: it is the `?v=` cache key on the door's
+   and the creator's art, and must not move on every deploy. */
+const GAME    = typeof __GAME_VERSION__  === 'string' ? __GAME_VERSION__  : VERSION;
+const COMMIT  = typeof __BUILD_COMMIT__  === 'string' ? __BUILD_COMMIT__  : '';
 
-export const BUILD_INFO = { version: VERSION, sha: SHA, time: TIME };
+export const BUILD_INFO = { version: VERSION, sha: SHA, time: TIME, game: GAME, commit: COMMIT };
 
 // Sits below the Canvas 2D FPS HUD (which lives at canvas coords 90,6 / height ~18).
 // Always visible regardless of renderer so deployments can be verified at a glance.
@@ -29,6 +37,7 @@ export const BuildBadge = () => (
       letterSpacing: 0.2,
     }}
   >
-    v{VERSION} · {SHA}
+    {/* v2.3.3479: the version shown (GAME), not the cache key */}
+    v{GAME} · {SHA}
   </div>
 );

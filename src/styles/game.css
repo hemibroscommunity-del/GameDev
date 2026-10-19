@@ -4006,7 +4006,12 @@ body:has(.bt-pcard) [data-coach]{display:none}
    already, so nothing painted is being taken away, and a 0px box holding a
    min-height:75px row is a clip waiting to be got wrong.
    Shirt is deliberately NOT in this set -- with a shirt on, that block holds
-   twelve real swatches. */
+   twelve real swatches.
+   v2.3.3479 (the 2026-10-19 UI review): set on EVERY tab where the block is a
+   ghost, not only the ink-card ones -- Hats with no hat (every new bro), Hair,
+   Beard and Eyewear with nothing worn held ~100px of hidden band under a grid
+   that hid rows under its fade.  The reasoning above holds for them too:
+   nothing in this panel can move the character. */
 .bt-cc-colors--yield{display:none}
 /* v2.3.2035: the DEFAULT colour button, above the swatches.  Fixed height so
    the row cannot vary with font metrics -- the constant-sheet-height
@@ -5567,8 +5572,15 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
    UI block competing with the two that matter.  The sheet ships a painted
    note plate too; it is deliberately NOT used, because this string is the
    one piece of copy here that may still change. */
+/* v2.3.3479: the 2026-10-19 UI review -- on a 390 px phone the sentence
+   missed one line by ~2 px and left "device." alone on the second.  The box
+   is already narrower than its 360 px cap (the modal's and the shell's
+   padding), so the side padding goes 14 -> 6 px (326 px of text at 390, the
+   sentence ~312), and where it must wrap (360/320 px) `balance` makes two
+   even lines instead of an orphan.  The gradient (::before, 190% of the box)
+   still covers it. */
 .bt-login-note{
-  position:relative;margin-top:auto;padding:26px 14px 6px;
+  position:relative;margin-top:auto;padding:26px 6px 6px;text-wrap:balance;
   max-width:360px;font-size:12.5px;line-height:1.55;
   color:#F3E7CC;opacity:.86;
   text-shadow:0 1px 3px rgba(3,6,10,.95),0 0 8px rgba(3,6,10,.7);
