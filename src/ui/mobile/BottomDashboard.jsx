@@ -1211,6 +1211,7 @@ export const BottomDashboard = () => {
           <button
             onPointerUp={(e) => {
               e.stopPropagation();
+              try { e.currentTarget.blur(); } catch (_) {}   /* v2.3.3479: as the upright chip's (no gold focus ring after a key) */
               if (dashboardPanelBus.state.mode === 'expanded') dashboardPanelBus.toBar();
               else dashboardPanelBus.open('dashboard');
             }}
@@ -1597,6 +1598,12 @@ export const BottomDashboard = () => {
         <button
           onPointerUp={(e) => {
             e.stopPropagation();
+            /* v2.3.3479: the 2026-10-19 UI review -- on a computer a click left
+               the chip focused, and the next game key (W, Esc...) switched the
+               browser to keyboard focus, so CLOSE wore .bt-chisel's gold
+               :focus-visible ring for the rest of play.  Let go of the focus:
+               the chip's job is done once it is pressed. */
+            try { e.currentTarget.blur(); } catch (_) {}
             if (mode === 'expanded') { dashboardPanelBus.toBar(); dashMinBus.set(true); }
             else dashMinBus.set(!dashMinBus.min);
           }}
