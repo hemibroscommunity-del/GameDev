@@ -21,19 +21,37 @@ import * as H from './harness.mjs';
 
 const PHONE = { width: 390, height: 844 };
 
+const panelUp = (P) => P.page.evaluate(() => !!Array.from(document.querySelectorAll('strong')).find((n) => n.textContent === 'Test panel'));
+/* v2.3.3481: the finger stays down until the panel is up, as a person holds
+   it.  The title opens the panel from a 1.2 s timer that lifting the finger
+   cancels (ZoneHeader holdStart / holdEnd), and with three game pages
+   drawing here a frame can run past the 2 s this used to hold: the lift is
+   an input event, which goes before a timer that came due in the same
+   frame, so it cancelled the press (the sweep of 2026-10-19, TRAPS §200).
+   At least `ms`, at most 6 s a press, three presses. */
 const holdTitle = async (P, ms) => {
-  const at = await P.page.evaluate(() => {
-    const el = document.querySelector('.bt-zone-header__title');
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
-  });
-  if (!at) return 'no title element';
-  await P.page.mouse.move(at.x, at.y);
-  await P.page.mouse.down();
-  await P.page.waitForTimeout(ms);
-  await P.page.mouse.up();
-  return 'ok';
+  for (let tries = 0; tries < 3; tries++) {
+    if (await panelUp(P)) return 'ok';   /* a slow chunk came up after the last press let go */
+    const at = await P.page.evaluate(() => {
+      const el = document.querySelector('.bt-zone-header__title');
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+    });
+    if (!at) return 'no title element';
+    await P.page.mouse.move(at.x, at.y);
+    await P.page.mouse.down();
+    const t0 = Date.now();
+    let up = false;
+    while (Date.now() - t0 < 6000) {
+      await P.page.waitForTimeout(250);
+      up = await panelUp(P);
+      if (up && Date.now() - t0 >= ms) break;
+    }
+    await P.page.mouse.up();
+    if (up || await panelUp(P)) return 'ok';
+  }
+  return 'held three times';
 };
 const waitPanel = async (P, ms = 8000) => {
   const t0 = Date.now();
@@ -112,8 +130,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await O.page.waitForTimeout(1500);
 
   /* ── 1. the panel, with nothing reported ── */
-  await holdTitle(O, 2000);
-  rec.ok('1. a real hit-tested press on the zone title opens the Test panel', (await waitPanel(O)) === true);
+  const held = await holdTitle(O, 2000);
+  rec.ok('1. a real hit-tested press on the zone title opens the Test panel', (await waitPanel(O)) === true, { held });
   await O.page.evaluate((k) => {
     const inp = document.querySelector('input[type="password"]');
     const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;

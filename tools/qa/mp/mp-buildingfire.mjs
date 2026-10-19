@@ -167,7 +167,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 2. the third: it smoulders ── */
   await fire(1, LEFT);
   let f2 = null;
-  for (let i = 0; i < 10; i++) { await P.page.waitForTimeout(250); f2 = await fireOf(P, t.oi); if (f2 && f2.smoke > 0) break; }
+  /* v2.3.3481: up to 10 s for the first puff, not ten looks.  The fire's
+     clock moves at most 0.1 s a frame (buildingFire.js `dt`), and a smoulder
+     puffs 0.4 + 1.6 x its level a second from a random start, so on a machine
+     drawing ~3 frames a second the first puff can take 3-9 s; ten looks
+     (~2.5-5 s) missed it (the sweep of 2026-10-19: smoulder 0.42, no puff yet,
+     TRAPS §200).  Never as long as the 12 s after which a smoulder sinks. */
+  for (const t0 = Date.now(); Date.now() - t0 < 10000;) { await P.page.waitForTimeout(250); f2 = await fireOf(P, t.oi); if (f2 && f2.smoke > 0) break; }
   await shot(P, '1-smoulder');
   rec.ok(`the third (${(3 / hp * 100).toFixed(0)}% of the way to breaking, past ${R.SMOULDER * 100}%): it SMOULDERS -- smoke from where it was hit (${f2 ? f2.smoke : 0} puffs), no flames`,
     !!f2 && f2.smoke > 0 && f2.flames === 0, f2);
