@@ -1144,30 +1144,10 @@ export function getFishHealAmount(fishKey) {
 export const FISH_HEAL = Object.freeze({ minnow: 100, clownfish: 150, trout: 225, salmon: 325, pike: 475 });
 var _fishHealLadder = false;
 export function setFishHealEnabled(on) { _fishHealLadder = !!on; }
-export function getFishTierLevel(fishKey) {
-  var name = fishKey.replace(/^fish_/, '').toLowerCase();
-  var tier = FISHING_TIERS.find(function (t) {
-    return name.includes(t.name.toLowerCase().replace(/\s+/g, '_'));
-  });
-  return tier ? tier.lvl : 1;
-}
-
-/* Cooking minigame sweet spot: cookingLevel widens it, fishTier narrows it */
-/* Returns {center: 0-1, width: 0-1} — center is random, width is the green zone fraction */
-export function getCookingSweetSpot(cookingLevel, fishTierLvl) {
-  /* Base width: 40% of bar. Cooking level adds up to +30%. Fish tier subtracts up to -25%. */
-  var baseWidth = 0.40;
-  var skillBonus = Math.min(0.30, cookingLevel * 0.004); /* +0.4% per level, max +30% */
-  var tierPenalty = Math.min(0.25, fishTierLvl * 0.003); /* -0.3% per fish tier level, max -25% */
-  var width = Math.max(0.10, Math.min(0.65, baseWidth + skillBonus - tierPenalty));
-  /* Center is random but always allows the full sweet spot to fit */
-  var halfW = width / 2;
-  var center = halfW + Math.random() * (1 - width);
-  return {
-    center: center,
-    width: width
-  };
-}
+/* v2.3.3479: getFishTierLevel and getCookingSweetSpot (the Cookhouse fish
+   game's tier lookup and green zone) are gone with that game -- the owner:
+   "Remove cookhouse fish game".  Nothing else read them; fish are cooked at
+   a campfire, settled by the worker (cook_request). */
 
 /* §18.2 Farming — plant seeds, harvest after time */
 export const FARM_GROWTH_TIMES = [0, 3600, 14400, 43200, 86400, 172800]; /* seconds per tier */

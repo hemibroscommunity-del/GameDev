@@ -29,6 +29,11 @@
  *      Woodworking XP, said over your head, the worker's bag the same); and
  *      the bow's button "Attempt H1 (500G + 1 Hardened Pine Wood · 80%)",
  *      the worker taking one of it and 500 gold;
+ *      v2.3.3479: and the bow's hardening line names its skill -- against a
+ *      worker with caps.hardenwoodskill "Needs Woodworking Lv5" (the owner:
+ *      "Do woodworking"; a pine bow is tier 1, 5 x 1), else "Gated on
+ *      Blacksmithing" -- and against that worker Woodworking 5 is set (the
+ *      admin lever) before the attempt, which it would refuse at Woodworking 1;
  *   7. no page errors.
  * Pictures: tools/qa/mp/out/hardenbars-*.png.
  */
@@ -254,6 +259,17 @@ async function body({ P, wsPort, rec, errors }) {
   const w0 = await wwBtn();
   rec.ok(`a pine bow takes HARDENED PINE WOOD, not bars: with none, its Harden button says "${w0 && w0.text}"`,
     wOpen && !!w0 && !!h0.bow && h0.bow.gb === 'ww_pine' && h0.hw === 0 && w0.text === 'Need 1 Hardened Pine Wood more' && !w0.on, { w0, h0 });
+  /* v2.3.3479: the skill the line names -- Woodworking and the level the
+     worker asks (5 x the tier) against caps.hardenwoodskill, else the old
+     words (WoodworkPanel.jsx `data-harden-gate`) */
+  const woodGate = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.hardenwoodskill));
+  const gate0 = await P.page.evaluate(() => {
+    const el = document.querySelector('[data-harden-gate]');
+    return el ? { gate: el.getAttribute('data-harden-gate'), text: el.textContent.trim() } : null;
+  });
+  rec.ok(`...and its line names the skill it asks for: ${woodGate ? 'Woodworking Lv5 (caps.hardenwoodskill)' : 'Blacksmithing (an older worker)'} ("${gate0 && gate0.text}")`,
+    !!gate0 && (woodGate ? gate0.gate === 'woodworking:5' && /Needs Woodworking Lv5$/.test(gate0.text)
+      : gate0.gate === 'blacksmithing' && /Gated on Blacksmithing$/.test(gate0.text)), { woodGate, gate0 });
 
   /* the Harden choice: two by two with Bow, Staff and Traps */
   const make = await P.page.evaluate(() => {
@@ -295,6 +311,15 @@ async function body({ P, wsPort, rec, errors }) {
   const srvInv2 = (srv2 && srv2.rpg && srv2.rpg.inventory) || {};
   rec.ok('...and the worker\'s bag says the same (2 hardened, 2 logs)', srvInv2.hardened_pine === 2 && srvInv2.wood_pine_log === 2, { hardened: srvInv2.hardened_pine, logs: srvInv2.wood_pine_log });
   await shot(P, 'hardwood-made');
+
+  /* v2.3.3479: a worker that gates a bow's hardening on Woodworking
+     (caps.hardenwoodskill) refuses a pine bow below Woodworking 5, and two
+     hardened woods' XP leave this character at 1 or 2: set it, as
+     mp-tierore sets Mining (the admin lever, which pushes the new level) */
+  if (woodGate) {
+    await H.devOp(wsPort, 'lifeskill', me, { skill: 'woodworking', level: 5 });
+    await P.page.waitForFunction(() => ((((window._gameState.current.rpg || {}).lifeSkills || {}).woodworking || {}).level || 0) >= 5, null, { timeout: 8000 }).catch(() => {});
+  }
 
   /* back to the bow: one Hardened Pine Wood and 500 gold */
   await P.page.click('[data-ww-type="bow"]');

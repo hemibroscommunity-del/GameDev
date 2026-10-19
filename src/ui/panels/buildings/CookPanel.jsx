@@ -1,5 +1,5 @@
 import React from 'react';
-import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, createDefaultCompStats, getCookingSweetSpot, getFishTierLevel, toDisplayDamage, dishFor } from '@/data/index.js'; /* v2.3.2520: the display damage scale; v2.3.3130: dishFor */
+import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, toDisplayDamage, dishFor } from '@/data/index.js'; /* v2.3.2520: the display damage scale; v2.3.3130: dishFor; v2.3.3479: createDefaultCompStats, getCookingSweetSpot and getFishTierLevel went with the fish game */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -43,12 +43,13 @@ import { thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx'; /* v2.3.3281: a 
    approved recipe (#1A292F/#8D9B98/.11 line, opacity 1) with a real
    disabled prop. Handlers byte-identical. */
 export function CookPanel(props) {
+  /* v2.3.3479: three props now -- cookMinigame / setCookMinigame went with
+     the fish game (the owner: "Remove cookhouse fish game"; NO FISH ARE
+     COOKED HERE, below) */
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
-    setRpgState = props.setRpgState,
-    cookMinigame = props.cookMinigame,
-    setCookMinigame = props.setCookMinigame;
-  var _rpgState$lifeSkills14, _rpgState$lifeSkills15, _rpgState$lifeSkills16, _rpgState$lifeSkills17;
+    setRpgState = props.setRpgState;
+  var _rpgState$lifeSkills14, _rpgState$lifeSkills17;
   /* v2.3.3130: does the worker cook INTO THE BAG (caps.meals)?  Read live,
      not once: the caps land with state_sync, after the panel may be open. */
   var _mealsOn = function () {
@@ -121,285 +122,34 @@ export function CookPanel(props) {
       letterSpacing: '.10em',
       color: '#F4F0E7'
     }
-  }, "Kitchen")), /*#__PURE__*/React.createElement("div", {
+  }, "Cookhouse" /* v2.3.3479: the 2026-10-19 UI review -- was "Kitchen", the old town's name, under a door and a sign that say COOKHOUSE */)), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#8D9B98',
       marginBottom: 12
     }
-  }, "Cooking Lv", ((_rpgState$lifeSkills14 = rpgState.lifeSkills) === null || _rpgState$lifeSkills14 === void 0 || (_rpgState$lifeSkills14 = _rpgState$lifeSkills14.cooking) === null || _rpgState$lifeSkills14 === void 0 ? void 0 : _rpgState$lifeSkills14.level) || 1, " \xB7 Cook fish for healing. Prepare herb recipes for combat buffs."), /*#__PURE__*/React.createElement("div", {
-    style: LS_HEAD
-  }, "Cook Fish — Healing"), /*#__PURE__*/React.createElement("div", {
+  }, "Cooking Lv", ((_rpgState$lifeSkills14 = rpgState.lifeSkills) === null || _rpgState$lifeSkills14 === void 0 || (_rpgState$lifeSkills14 = _rpgState$lifeSkills14.cooking) === null || _rpgState$lifeSkills14 === void 0 ? void 0 : _rpgState$lifeSkills14.level) || 1, " \xB7 Cook what your farm grows into meals and brews." /* v2.3.3479: was "Cook fish for healing. Prepare herb recipes for combat buffs." -- no fish are cooked here now (below) */),
+  /* ═══ v2.3.3479: NO FISH ARE COOKED HERE ═══
+     The owner: "Remove cookhouse fish game".  This window's timing bar took
+     the raw fish out of the bag and put a cooked one in on the phone alone:
+     it sent the worker nothing, and wrote the wrong key besides (cooked_minnow,
+     where the worker and every reader want cooked_fish_minnow), so the next
+     update from the worker took both back, the fish could not be eaten
+     through it, and it never counted for "Learn a Trade" (the 2026-10-19 UI
+     review).  Fish are cooked at a campfire -- a log's "Light fire" in the
+     bag, then a tap on the fire -- which the worker settles (cook_request,
+     lifeSkillRewards.js).  So the timing bar, its raw-fish rows and
+     BroTown's cookMinigame state are gone, and this one line says where to
+     go.  "Cooked — Ready to Eat" below stays: its Eat is the worker's
+     eat_request. */
+  /*#__PURE__*/React.createElement("div", {
+    "data-cook-fish-note": "1",
     style: {
       fontSize: 11,
       color: '#8D9B98',
-      marginBottom: 8
-    }
-  }, "Raw fish → Cook (timing minigame) → Cooked fish you can eat to heal."), cookMinigame && !cookMinigame.result && /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 10,
-      borderRadius: 10,
-      /* v2.3.1235: batch-3 rollout — card token + hairline; chrome
-         emoji dropped from the banner title. */
-      background: '#24363C',
-      border: '1px solid rgba(229,237,233,.11)',
       marginBottom: 10
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      fontWeight: 700,
-      color: '#F4F0E7',
-      marginBottom: 4
-    }
-  }, "Cooking: ", cookMinigame.fishName, " (Heals ", toDisplayDamage(cookMinigame.healAmt), " HP)"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: '#8D9B98',
-      marginBottom: 8
-    }
-  }, "Tap COOK when the marker is in the green zone!"), function () {
-    var spot = cookMinigame.sweetSpot;
-    var barW = 260;
-    var greenLeft = (spot.center - spot.width / 2) * barW;
-    var greenW = spot.width * barW;
-    /* Indicator position oscillates based on time */
-    var elapsed = (Date.now() - cookMinigame.started) / 1000;
-    var speed = 1.2 + cookMinigame.tier * 0.015; /* faster for harder fish */
-    var pos = (Math.sin(elapsed * speed * Math.PI) + 1) / 2; /* 0-1 oscillating */
-    var indX = pos * barW;
-    var inZone = indX >= greenLeft && indX <= greenLeft + greenW;
-    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-      style: {
-        position: 'relative',
-        width: barW,
-        height: 26,
-        /* v2.3.1235: batch-3 rollout — bar tracks sit on well-deep with
-           the shared well recess (no per-screen shadow recipes). */
-        background: '#0B161B',
-        boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
-        borderRadius: 8,
-        overflow: 'hidden',
-        margin: '0 auto 8px'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        position: 'absolute',
-        left: greenLeft,
-        top: 0,
-        width: greenW,
-        height: '100%',
-        /* v2.3.1235: batch-3 rollout — positive token (#55B98A) tint */
-        background: 'rgba(85,185,138,.25)',
-        borderLeft: '2px solid #55B98A',
-        borderRight: '2px solid #55B98A'
-      }
-    }), /*#__PURE__*/React.createElement("div", {
-      style: {
-        position: 'absolute',
-        left: indX - 2,
-        top: 0,
-        width: 4,
-        height: '100%',
-        /* v2.3.1235: batch-3 rollout — positive/danger tokens; pill
-           radius (2px is off the approved radius set) and the glow
-           dropped (not in the approved shadow kit). */
-        background: inZone ? '#55B98A' : '#D8635D',
-        borderRadius: 999,
-        transition: 'left 0.05s linear'
-      }
-    })), /*#__PURE__*/React.createElement("button", {
-      style: {
-        width: '100%',
-        minHeight: 44,
-        padding: '0 12px',
-        borderRadius: 10,
-        /* v2.3.1235: batch-3 rollout — the surface's ONE primary uses
-           the committed gold-gradient recipe (#EAC675 edge, #172126
-           ink); out-of-zone falls back to the secondary recipe. */
-        border: inZone ? '1px solid #EAC675' : '1px solid rgba(229,237,233,.20)',
-        fontSize: 13,
-        fontWeight: 700,
-        background: inZone ? 'linear-gradient(180deg,#E2B765,#D2A14D)' : '#293B41',
-        color: inZone ? '#172126' : '#B6C1BE',
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-        letterSpacing: '.05em'
-      },
-      onClick: function onClick() {
-        var R = stateRef.current.rpg;
-        var sk = R.lifeSkills;
-        if (inZone) {
-          /* SUCCESS — cooked! */
-          if (!R.inventory) R.inventory = {};
-          var cookedKey = 'cooked_' + cookMinigame.fishKey.replace('fish_', '');
-          R.inventory[cookedKey] = (R.inventory[cookedKey] || 0) + 1;
-          var _ckLvlBefore = sk.cooking.level;
-          var leveled = addLifeSkillXp(sk, 'cooking', Math.ceil(cookMinigame.tier * 3));
-          if (!R._questFlags) R._questFlags = {};
-          R._questFlags.cookedRecipe = true;
-          if (!R._compStats) R._compStats = createDefaultCompStats();
-          R._compStats.cookSuccess++;
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Cooked ' + cookMinigame.fishName + '!', '#59BF91');
-          /* v2.3.2591: a CRAFTING level is a level too.  This site already decided a
-             level was worth telling the player about — it just told them in the world,
-             at the player's feet, under a modal panel they are looking at instead.  That
-             is the exact defect v2.3.1915 fixed for the gather trio ("I didn't even
-             notice my woodcutting went up 2 levels"), and the owner's ask here is for
-             the new notification on "both lifeskills and combat skills".  So the same
-             celebration fires, and the world popup stays as the in-world echo, exactly
-             as lifeSkillRewards.js leaves it for fishing/woodcutting/mining. */
-          if (leveled) celebrateLifeSkillLevel(stateRef.current, 'cooking', sk.cooking.level, _ckLvlBefore);
-          if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 45, 'Cooking Lv' + sk.cooking.level + '!', '#D8A94D');
-          cue('cookDone');   /* v2.3.3343: collect() is a beep(), silent */
-          setCookMinigame(_objectSpread(_objectSpread({}, cookMinigame), {}, {
-            result: 'success'
-          }));
-        } else {
-          /* FAIL — burnt! Fish consumed, nothing gained */
-          addLifeSkillXp(sk, 'cooking', 1);
-          if (!R._compStats) R._compStats = createDefaultCompStats();
-          R._compStats.cookBurns++;
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Burnt! Fish wasted.', '#D95C54');
-          cue('cookBurnt');   /* v2.3.3343: a hiss and the loss sting (a beep(), silent) */
-          setCookMinigame(_objectSpread(_objectSpread({}, cookMinigame), {}, {
-            result: 'burnt'
-          }));
-        }
-        setRpgState(_objectSpread({}, R));
-        try {
-          localStorage.setItem('bt_rpg', JSON.stringify(R));
-        } catch (e) {}
-        /* Auto-clear result after 1.5s */
-        setTimeout(function () {
-          return setCookMinigame(null);
-        }, 1500);
-      }
-    }, "COOK!"));
-  }()), (cookMinigame === null || cookMinigame === void 0 ? void 0 : cookMinigame.result) && /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 10,
-      borderRadius: 10,
-      marginBottom: 10,
-      textAlign: 'center',
-      fontSize: 13,
-      fontWeight: 700,
-      /* v2.3.1235: batch-3 rollout — positive/danger token tints; chrome
-         emoji dropped from the status strings. */
-      background: cookMinigame.result === 'success' ? 'rgba(85,185,138,.15)' : 'rgba(216,99,93,.15)',
-      border: cookMinigame.result === 'success' ? '1px solid rgba(85,185,138,.3)' : '1px solid rgba(216,99,93,.3)',
-      color: cookMinigame.result === 'success' ? '#55B98A' : '#D8635D'
-    }
-  }, cookMinigame.result === 'success' ? 'Perfectly cooked!' : 'Burnt to a crisp!'), !cookMinigame && function () {
-    var inv = rpgState.inventory || {};
-    var rawFish = Object.entries(inv).filter(function (_ref97) {
-      var _ref98 = _slicedToArray(_ref97, 2),
-        k = _ref98[0],
-        v = _ref98[1];
-      return v > 0 && k.startsWith('fish_');
-    });
-    if (rawFish.length === 0) return /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12,
-        color: '#8D9B98',
-        fontStyle: 'italic',
-        padding: '4px 0',
-        marginBottom: 10
-      }
-    }, "No raw fish. Catch some at fishing spots in combat zones!");
-    /* v2.3.1232: rows live in one recessed well, divided by hairlines. */
-    return /*#__PURE__*/React.createElement("div", {
-      style: LS_WELL
-    }, rawFish.map(function (_ref99, _ri) {
-      var _rpgState$lifeSkills15;
-      var _ref100 = _slicedToArray(_ref99, 2),
-        key = _ref100[0],
-        qty = _ref100[1];
-      var fishName = key.replace('fish_', '').replace(/_/g, ' ');
-      /* v2.3.1207: calcDisplayHeal — folds the HP-grid Recovery mult
-         the way the server's _handleEatRequest does, so every "Heals X
-         HP" label (raw preview, minigame banner, cooked list) and the
-         optimistic eat prediction match the authoritative heal in the
-         player_state echo.  Live rpg via stateRef (Recovery points can
-         be spent without a setRpgState). */
-      var healAmt = calcDisplayHeal((stateRef.current && stateRef.current.rpg) || rpgState, key);
-      var tierLvl = getFishTierLevel(key);
-      var cookLvl = ((_rpgState$lifeSkills15 = rpgState.lifeSkills) === null || _rpgState$lifeSkills15 === void 0 || (_rpgState$lifeSkills15 = _rpgState$lifeSkills15.cooking) === null || _rpgState$lifeSkills15 === void 0 ? void 0 : _rpgState$lifeSkills15.level) || 1;
-      var spot = getCookingSweetSpot(cookLvl, tierLvl);
-      return /*#__PURE__*/React.createElement("div", {
-        key: key,
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          minHeight: 44,
-          padding: '4px 8px',
-          borderTop: _ri > 0 ? LS_DIV : 'none'
-        }
-      }, /*#__PURE__*/React.createElement("span", {
-        style: {
-          fontSize: 18
-        }
-      }, "🐟"), /*#__PURE__*/React.createElement("div", {
-        style: {
-          flex: 1,
-          minWidth: 0
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 13,
-          fontWeight: 600,
-          color: '#F4F0E7',
-          textTransform: 'capitalize'
-        }
-      }, fishName, " ", /*#__PURE__*/React.createElement("span", {
-        style: {
-          color: '#8D9B98',
-          fontVariantNumeric: 'tabular-nums'
-        }
-      }, "\xD7", qty)), /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 11,
-          color: '#8D9B98'
-        }
-      }, "Heals ", toDisplayDamage(healAmt), " HP \xB7 Sweet spot: ", Math.round(spot.width * 100), "%")), /*#__PURE__*/React.createElement("button", {
-        style: {
-          /* v2.3.1235: batch-3 rollout — 44px hitbox floor; secondary =
-             raised + strong hairline, 10px button radius. */
-          minHeight: 44,
-          padding: '0 14px',
-          borderRadius: 10,
-          border: '1px solid rgba(229,237,233,.20)',
-          fontSize: 13,
-          fontWeight: 700,
-          background: '#293B41',
-          color: '#F4F0E7',
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-          flexShrink: 0
-        },
-        onClick: function onClick() {
-          var _rpgState$lifeSkills16;
-          var R = stateRef.current.rpg;
-          if (!R.inventory[key] || R.inventory[key] < 1) return;
-          R.inventory[key]--;
-          if (R.inventory[key] <= 0) delete R.inventory[key];
-          setRpgState(_objectSpread({}, R));
-          /* Start minigame — fish is consumed whether you succeed or fail */
-          setCookMinigame({
-            fishKey: key,
-            fishName: fishName,
-            healAmt: healAmt,
-            tier: tierLvl,
-            sweetSpot: getCookingSweetSpot(((_rpgState$lifeSkills16 = rpgState.lifeSkills) === null || _rpgState$lifeSkills16 === void 0 || (_rpgState$lifeSkills16 = _rpgState$lifeSkills16.cooking) === null || _rpgState$lifeSkills16 === void 0 ? void 0 : _rpgState$lifeSkills16.level) || 1, tierLvl),
-            started: Date.now(),
-            result: null
-          });
-          cue('cookStart');   /* v2.3.3343: the pan starting to sizzle (a beep(), silent) */
-        }
-      }, "Cook"));
-    }));
-  }(), !cookMinigame && function () {
+  }, "Raw fish are cooked at a campfire, not here: tap a log in your bag, choose Light fire, then tap the fire."), function () {
     var inv = rpgState.inventory || {};
     var cookedFish = Object.entries(inv).filter(function (_ref101) {
       var _ref102 = _slicedToArray(_ref101, 2),
