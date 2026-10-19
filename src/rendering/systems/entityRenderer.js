@@ -6635,6 +6635,10 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party) {
       pb.y = h / 2;
     }
   }
+  /* v2.3.3479: the capsule's width, in the pill's own units -- your own
+     plate's is published as the band's half width (S._selfBandHalfW, the HUD
+     pass) for the resource label that slides clear of it (nodeLabels.js) */
+  display._pillW = w;
   const g = display._pillBg;
   g.clear();
   g.roundRect(left, 0, w, h, h / 2);
@@ -15103,6 +15107,20 @@ export class EntityRenderer {
         ? ((display._pillCss || 15) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
       S._selfBandTopY = display.visible
         ? display.y + (PLAYER_BAND_Y - _bandHalf) * Math.abs(display.scale.y || 1) : null;
+      /* v2.3.3479: the 2026-10-19 UI review (p11/harvest-near #4, p03/
+         desktop-window #1) -- "Pine Log" and "Reviewer 3" read as one.  The
+         one resource label that says its name slid out of your BODY's 40 px
+         (nodeLabels.js) and, level with the band, stayed under the plate
+         (~100 world px either side).  So the band's bottom and half width go
+         out too, in the same world px: the plate's own width while it is up,
+         the HP bar's while that has its place in a fight. */
+      const _bsx = Math.abs(display.scale.x || 1);
+      const _plateHalf = (display._namePill && display._namePill.visible && display._pillW)
+        ? display._pillW * (display._pillZoom || 1) / 2 : 0;
+      const _barHalf = (display._hudHpAlpha || 0) > 0.01 ? PLAYER_HPBAR_W / 2 : 0;
+      S._selfBandBotY = display.visible
+        ? display.y + (PLAYER_BAND_Y + _bandHalf) * Math.abs(display.scale.y || 1) : null;
+      S._selfBandHalfW = display.visible ? Math.max(_plateHalf, _barHalf) * _bsx : 0;
       /* v2.3.3027 published the band's centre here too (S._selfBand), for the
          harvest's bar over your head; v2.3.3035 put that bar over the
          resource, so nothing reads it and it is gone. */
