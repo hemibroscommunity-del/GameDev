@@ -127,6 +127,16 @@ async function unfoldBand(P) {
   if (st.v === 'min') { const e = await tapSel(P, st.sel); if (e) return e; await wait(P, 900); }
   return null;
 }
+/* v2.3.3479 (the 2026-10-19 UI review): the bag a PLAYER sees -- upright and
+   on a computer the band at rest, unfolded (four across, BAG_VIEW_COLS);
+   sideways the dashboard column.  open('bag') was the retired expanded bag
+   page, which no button opens (v2.3.1654) and which fits five across at 390
+   px: the review read its five columns as the game's bag. */
+async function openBag(P, view) {
+  if (view.id === 'landscape') return bus(P, 'open', 'dashboard');
+  await evalIn(P, () => { if (window.__broDashPanelBus) window.__broDashPanelBus.toBar(); });
+  return unfoldBand(P);
+}
 const S_ = (P, fn) => H.readState(P, fn);
 
 /* Stand somewhere in the Wheel by walking there in hops the worker accepts
@@ -461,7 +471,8 @@ export const STATES = [
     id: 'dash-bag', group: 'Dashboard', title: 'Bag',
     about: 'The bag: everything you carry, filtered by kind; a tap on an item opens its card.',
     run: async ({ P, view }) => {
-      await bus(P, 'open', view.id === 'landscape' ? 'dashboard' : 'bag');
+      const e = await openBag(P, view);
+      if (e) return e;
       await wait(P, 600);
     },
   },
@@ -469,7 +480,8 @@ export const STATES = [
     id: 'item-card', group: 'Dashboard', title: 'An item card',
     about: 'A bag item opened: its picture, what it is, and its buttons (use, equip, sell, drop...).',
     run: async ({ P, view }) => {
-      await bus(P, 'open', view.id === 'landscape' ? 'dashboard' : 'bag');
+      const e0 = await openBag(P, view);
+      if (e0) return e0;
       await wait(P, 700);
       const e = await tapSel(P, '[data-bag-key]');
       if (e) return e;
