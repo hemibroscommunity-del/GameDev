@@ -3835,6 +3835,21 @@ Two protocol versions coexist; both must keep working:
     makes it for any bundle. The check measures the box a press lands in --
     a control's own `::before`/`::after` ring counts (audit.mjs `touchBox`:
     every window's ✕ is drawn 28 px in a 44 px ring and was called small).
+  - Since v2.3.3479 THE FIRST REVIEW, CHECKED AND FIXED -- the owner sent
+    ChatGPT's notes on the kit and 13 icon sheets: every finding was checked
+    against the code before anything changed (about 100 real, the rest false,
+    already fixed, the tool's own mistakes or the owner's call), the real ones
+    fixed with copy that is the worker's rule, never ChatGPT's wording
+    (docs/specs/ui-review-2026-10-19.md); the owner's decisions with it: the
+    Cookhouse's fish game removed, a bow's or staff's hardening on
+    Woodworking (hardening.js `hardenIsWood`, `caps.hardenwoodskill`), the
+    arena's champion paid the 500 AP it always promised (gladiator.js
+    `ARENA.CHAMPION_AP`, `caps.arenaap`), the dialogue blur kept; and their
+    icon picks -- every Wheel land's banner a scene from their sheet (the
+    animated strips no longer loaded there), gold quest pins, the arena's
+    helmet, the trade request's handshake, the jackpot's sack, the Pet House,
+    the prize wheel, Journey's map: tools/ui/cut-owner-icons.py,
+    src/data/ownerIcons.js, docs/specs/owner-icons.md.
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's

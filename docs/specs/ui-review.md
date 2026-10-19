@@ -215,3 +215,8 @@ picture down; and a picture inside a zip is not one it sees. So `chatgpt/`:
   (`sharedFindings`).
 
 `--report-only` makes the kit for any bundle already taken.
+
+## The first review
+
+The owner's first ChatGPT review (2026-10-19), every finding checked against
+the code and the real ones fixed: docs/specs/ui-review-2026-10-19.md.
