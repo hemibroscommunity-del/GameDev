@@ -7866,3 +7866,33 @@ points a tick. A pool read in town is a race with the top-off.
 
 **Receipt:** the sweep of 2026-10-19's batch 22 (68), the first mend's 102,
 and a probe through the real router (three swipes: 102, 82, 62, 42).
+
+## 236. "The sight is on the monster, so the shot lands" (v2.3.3485)
+
+**The plausible move.** A fire gate or an aiming line decides "this shot hits
+that monster" from the line and the monster's hit circle: the circle the hit
+test uses, the same radius, so it must agree.
+
+**Why it is wrong.** The hit test asks more than the circle. A hit also has to
+pass `_rockBetween` (projectiles.js, v2.3.2701): no prop between the arrow's
+GROUND point and the monster's FEET. A monster standing just behind a prop has
+a circle that reaches back over the prop toward you, so the circle says hit
+and the rock rule says no. `mp-hitreal`'s frost bow row:
+
+- a snowman 98 px off, on the far side of a snowbank;
+- the bow's line on it at distance 0, so the bow loosed;
+- the drawn arrow 0-4 px from its centre;
+- every frame refused;
+- the arrow stuck in the bank at its feet, for no damage.
+
+An arrow whose ground line passes beside such a prop flies on through the
+monster.
+
+**The rule.** The guide asks every question the hit test asks, from the same
+points: `firstSightHit` gates a target by the rock rule over the stretch where
+the capsule meets its circle. A new refusal added to the hit test is added to
+`firstSightHit` in the same change, or the line promises shots that cannot land.
+
+**Receipt:** the debug trace of 2026-10-19 (`frost-snowbank-e`, segD 4 and 0
+against 38.6, rock true twice), and `mp-sightrock`, which fails on the build
+before the gate and passes with it.
