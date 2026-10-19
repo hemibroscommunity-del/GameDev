@@ -813,7 +813,7 @@ Screens: more-achievements
 - Achievements for life-skill levels, owning Hemi Bros, or logging in.
 
 **Still open:**
-- The owner's own badge pictures. Until then each row wears a picture the game already has (docs/ART-WISHLIST.md "Achievements"). ChatGPT's first answer to the badge prompts was a set of flat vector stand-ins it drew in code (its image tool did not follow the prompt; it said so itself): not the painted look of the owner's icons, so not in the game without the owner's word.
+- The owner's own badge pictures. Until then each row wears a picture the game already has (docs/ART-WISHLIST.md "Achievements"). ChatGPT's first answer to the badge prompts was a set of flat vector stand-ins it drew in code (its image tool did not follow the prompt; it said so itself): not the painted look of the owner's icons. Shown them beside today's pictures, the owner chose "Wait for painted ones" (2026-10-19): the borrowed pictures stay until the painted sheets come.
 - The banner's plate is drawn in code, with no art of its own.
 - What the Journey page becomes: nothing writes a journey, and with achievements on its tile is gone.
 

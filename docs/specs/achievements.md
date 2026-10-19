@@ -192,7 +192,8 @@ decisions first:
   - the banner's smaller type: it would make the name smaller than its 16 px.
 - **Not wired:** the badge "drafts" ChatGPT drew in code (its own words: "NOT
   claimed as the hand-painted art ... Approve/rework the appearance before
-  inserting"). They wait on the owner.
+  inserting"). Shown them in the game beside today's pictures, the owner
+  chose "Wait for painted ones": the borrowed pictures stay until then.
 
 ## Not built yet
 
