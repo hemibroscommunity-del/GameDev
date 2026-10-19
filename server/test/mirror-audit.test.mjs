@@ -342,6 +342,37 @@ const room = Object.create(GameRoom.prototype);
   check('QUEST_REWARDS <-> QUEST_CHAINS gold/xp/next mirror, both directions', bad.length === 0, bad);
 }
 
+// ── 5a. v2.3.3486: THE TOUR'S ORDER -- `after` (a giver's line waits for
+// another's quest: getNpcQuest on the page, _questBarred on the worker), the
+// retired quests (offered by neither), and a hand-in's trade, the same on both
+// sides.  A one-sided `after` offers a quest the worker refuses, or hides one
+// it would take. ──
+{
+  const bad = [];
+  for (const [k, sv] of Object.entries(SRV.QUEST_REWARDS)) {
+    const c = QUEST_CHAINS[k];
+    if (!c) continue;
+    if ((c.after || null) !== (sv.after || null)) bad.push({ quest: k, after: { server: sv.after || null, client: c.after || null } });
+    if (JSON.stringify(c.trade || null) !== JSON.stringify(sv.trade || null)) bad.push({ quest: k, trade: { server: sv.trade || null, client: c.trade || null } });
+  }
+  const retiredC = Object.keys(QUEST_CHAINS).filter((k) => QUEST_CHAINS[k].retired).sort();
+  const retiredS = (SRV.QUEST_RETIRED || []).slice().sort();
+  if (retiredC.join() !== retiredS.join()) bad.push({ retired: { server: retiredS, client: retiredC } });
+  check('QUEST_REWARDS <-> QUEST_CHAINS `after`, `trade` and the retired quests mirror (v2.3.3486, the tour)', bad.length === 0, bad);
+  /* the tour is ONE line: from tut_1, each quest's `next` is the following
+     step and that step waits for it (`after`), giver to giver, back to the
+     Mayor's tut_2 -- so only the next step is ever offered */
+  const order = [];
+  for (let q = SRV.QUEST_FIRST; q && order.length < 20; q = (SRV.QUEST_REWARDS[q] || {}).next) {
+    order.push(q);
+    if (q === 'tut_2') break;
+  }
+  const broken = order.slice(1).filter((q, i) => (SRV.QUEST_REWARDS[q] || {}).after !== order[i]);
+  check('the tour runs tut_1 -> farm_1 -> smith_1 -> smith_2 -> wood_1 -> wood_2 -> fish_1 -> farm_2 -> race_1 -> beast_1 -> beast_2 -> tut_2, each step waiting for the one before',
+    order.join() === 'tut_1,farm_1,smith_1,smith_2,wood_1,wood_2,fish_1,farm_2,race_1,beast_1,beast_2,tut_2' && broken.length === 0
+      && order.slice(1).every((q) => QUEST_CHAINS[q] && QUEST_CHAINS[q].tour === true), { order, broken });
+}
+
 // ── 5b. v2.3.1681: the quest dialog's item THUMBNAILS (`gives`) are display
 // only, but showing a player a picture of a sword the server will not hand
 // over is the worst kind of wrong.  Assert that a promised payout moment
@@ -359,7 +390,8 @@ const room = Object.create(GameRoom.prototype);
       if (g.when === 'accept' && !Array.isArray(sv.grantOnAccept)) {
         bad.push({ quest: k, icon: g.icon, reason: 'promises an item on accept, server has no grantOnAccept' });
       }
-      if (g.when === 'complete' && !sv.item) {
+      /* v2.3.3486: or a trade at the hand-in (wood_2's softwood swap) */
+      if (g.when === 'complete' && !sv.item && !sv.trade) {
         bad.push({ quest: k, icon: g.icon, reason: 'promises an item on turn-in, server pays no item' });
       }
       if (g.when !== 'accept' && g.when !== 'complete') {

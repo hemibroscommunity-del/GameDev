@@ -20,7 +20,8 @@
  * in town with nothing marked at all, which is worse than no feature: it
  * would read as "no quest is active".
  */
-import { QUEST_CHAINS, QUEST_STATUS, questSteps /* v2.3.3012: which node a gathering quest's next step needs */ } from '@/data/gameSystems.js';
+import { QUEST_CHAINS, QUEST_STATUS, questSteps /* v2.3.3012: which node a gathering quest's next step needs */, getNpcQuest /* v2.3.3486: the tour's next step */ } from '@/data/gameSystems.js';
+import { raceRoutePoint } from '@/game/race.js';   /* v2.3.3486: the race's next flag */
 import { hasGatherTool, gatherNeed /* v2.3.3038 */ } from '@/data/lifeSkills.js';   /* v2.3.3012: never lead to a node that is not drawn */
 import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
 import { TILE } from '@/data/constants.js';
@@ -292,6 +293,9 @@ export function zoneUnlockQuest(zoneId) {
 const WELCOME_NPC = 'Mayor Bro';
 
 export function questRoutePoint(currentZone, rpg, S) {
+  /* v2.3.3486: racing Lil Bro, the road is the race's: the next flag */
+  const flag = raceRoutePoint(S);
+  if (flag) return flag;
   const exit = questRouteExit(currentZone, rpg, S);
   if (exit) return exit;
   if (currentZone !== QUEST_HOME_ZONE) return _wheelPoint(currentZone, rpg, S);
@@ -315,13 +319,94 @@ function _wantNpc(rpg, S) {
     if (S && S._rpgFromServer === false) return null;
     return WELCOME_NPC;                          /* brand new: go meet him */
   }
+  let atGiver = null, anyActive = false;
   for (const qid of Object.keys(quests)) {
     if (quests[qid] !== QUEST_STATUS.active) continue;
     const q = QUEST_CHAINS[qid];
     if (!q || !q.npc) continue;
+    anyActive = true;
     let done = false;
     try { done = !!(q.check && q.check(rpg, S)); } catch (e) { done = false; }
     if (done) return q.npc;                      /* hand it in */
+    /* v2.3.3486: a step done at its giver's building (the tour's `opens`:
+       the forge, the bench, the Feed & Seed) -- to him, whose line opens it;
+       unless the step names a door of its own (_wantDoor) */
+    if (!atGiver && q.opens && !_stepDoor(q, rpg, S)) atGiver = q.npc;
+  }
+  if (atGiver) return atGiver;
+  /* v2.3.3486: and nothing in hand while the TOUR has its next step on
+     offer -- to whoever gives it, as the welcome leads to the Mayor
+     (tourOffer, below) */
+  if (!anyActive) {
+    const t = tourOffer(rpg, S);
+    if (t) return t.npc;
+  }
+  return null;
+}
+
+/* ═══ v2.3.3486: THE TOUR'S NEXT STEP ═══
+   The tour (gameSystems.js QUEST_CHAINS, the header above farm_1) hands a new
+   player from giver to giver, so between two steps there is no quest in hand
+   and nothing for the road to follow -- the moment a reviewer most needs one.
+   This is the step on offer: the first `tour` quest a giver offers
+   (getNpcQuest -- its `after` holds every other giver's line back, so there
+   is one), and only while no quest is active: the road never nags past the
+   job you have.  The pinned quest card says it too (BroTown, "Next:"). */
+export function tourOffer(rpg, S) {
+  const quests = (rpg && rpg._quests) || null;
+  if (!quests || !Object.keys(quests).length) return null;
+  for (const k of Object.keys(quests)) if (quests[k] === QUEST_STATUS.active) return null;
+  const seen = new Set();
+  for (const qid of Object.keys(QUEST_CHAINS)) {
+    const q = QUEST_CHAINS[qid];
+    if (!q || !q.tour || !q.npc || seen.has(q.npc)) continue;
+    seen.add(q.npc);
+    let r = null;
+    try { r = getNpcQuest(rpg, q.npc); } catch (e) { r = null; }
+    if (r && r.status === QUEST_STATUS.available && r.quest && r.quest.tour) {
+      /* only a giver who stands here (the tour's two new ones stand only
+         against a worker that knows the tour) */
+      if (S && Array.isArray(S.npcs) && !S.npcs.some((n) => n && n.name === r.quest.npc)) continue;
+      return { quest: r.quest, npc: r.quest.npc };
+    }
+  }
+  return null;
+}
+
+/* ═══ v2.3.3486: A STEP DONE AT A DOOR ═══
+   farm_2's Zoom Juice is cooked at the Cookhouse -- not at its giver's -- so
+   that step names the door (`door`, a plot of the town), and the road leads
+   there.  Where a door stands is the ground worker's (game/wheelTownDoors.js),
+   handed in by BroTown (setQuestDoorFinder) so this module stays clear of the
+   renderer. */
+let _doorFinder = null;
+export function setQuestDoorFinder(fn) { _doorFinder = typeof fn === 'function' ? fn : null; }
+function _stepDoor(q, rpg, S) {
+  if (!q || !Array.isArray(q.steps)) return null;
+  let steps = null;
+  try { steps = questSteps(q, rpg, S); } catch (e) { steps = null; }
+  const cur = steps && steps.find((st) => st.current);
+  const i = cur ? steps.indexOf(cur) : -1;
+  return (i >= 0 && q.steps[i] && q.steps[i].door) || null;
+}
+function _wantDoor(rpg, S) {
+  const quests = (rpg && rpg._quests) || null;
+  if (!quests || !_doorFinder) return null;
+  for (const qid of Object.keys(quests)) {
+    if (quests[qid] !== QUEST_STATUS.active) continue;
+    const q = QUEST_CHAINS[qid];
+    let done = false;
+    try { done = !!(q && q.check && q.check(rpg, S)); } catch (e) { done = false; }
+    if (!q || done) continue;
+    const door = _stepDoor(q, rpg, S);
+    if (!door) continue;
+    let at = null;
+    try { at = _doorFinder(door); } catch (e) { at = null; }
+    if (at && typeof at.x === 'number' && typeof at.y === 'number') {
+      const P = (S && S.player) || null;
+      if (P && Math.hypot(P.x - at.x, P.y - at.y) < GATHER_HERE_R) return null;   /* there */
+      return { x: at.x, y: at.y, door };
+    }
   }
   return null;
 }
@@ -393,6 +478,11 @@ function _wheelPoint(currentZone, rpg, S) {
     }
     if (P && Math.hypot(P.x - spot[0], P.y - spot[1]) < LAND_HERE_R) return null;
     return { x: spot[0], y: spot[1], zoneId: target, land: true };
+  }
+  /* v2.3.3486: a step done at a door (farm_2's Cookhouse), in the Wheel */
+  if (currentZone === 'wheel') {
+    const door = _wantDoor(rpg, S);
+    if (door) return door;
   }
   const want = _wantNpc(rpg, S);
   return want ? _npcHere(S, want) : null;

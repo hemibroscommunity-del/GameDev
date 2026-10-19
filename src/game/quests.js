@@ -116,7 +116,8 @@ function flyFromBanner(quest) {
 /* v2.3.3030: `opts` -- { deferNext } hands his next panel back instead of
    opening it (QuestPanel opens it after the claim's confirmation), { compact,
    auto } choose the banner (see showQuestBanner).  Returns the next panel
-   (or null when his chain is done) either way. */
+   (or null when his chain is done) either way.  v2.3.3486: { trade }, the
+   weapon a hand-in's trade takes. */
 export function turnInQuest(S, questPanel, deps, xpCat, opts) {
   var o = opts || {};
   var setRpgState = deps.setRpgState,
@@ -157,6 +158,10 @@ export function turnInQuest(S, questPanel, deps, xpCat, opts) {
         _Sqt.channel.send({ type: 'quest_turn_in', payload: {
           questId: questPanel.quest.id,
           xpCat: _sendCat,
+          /* v2.3.3486: which weapon a hand-in's trade takes (wood_2: 'bow' or
+             'staff', QuestPanel's TradeChooser) -- the worker picks the
+             first it finds without one (quests.js _questTradePick) */
+          trade: typeof o.trade === 'string' ? o.trade : undefined,
         } });
       } catch (e) {}
     }

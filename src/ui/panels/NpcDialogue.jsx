@@ -54,7 +54,12 @@ export const NpcDialogue = (props) => {
   /* v2.3.2289: `lockScrim` makes the backdrop inert. Opt-in and default-off,
      so every existing caller behaves exactly as before -- see the note on the
      scrim below for which screen asks for it and why. */
-  const { npcName, text, onDone, onClose, ctaLabel, lockScrim } = props;
+  /* v2.3.3486: `action` -- { label, onClick, qa } -- a second button on the
+     LAST line, the thing he is asking you to do (a tour giver's "Open the
+     forge", Lil Bro's "Race!": game/tour.js).  It is the brass one then, and
+     the line's own button (Close) goes quiet beside it; never on an offer or
+     a claim, which have their own window. */
+  const { npcName, text, onDone, onClose, ctaLabel, lockScrim, action } = props;
   const chunks = React.useMemo(() => dialogueChunks(text), [text]);
   const [i, setI] = React.useState(0);
   /* Reset when the SPEECH changes, not when the component happens to
@@ -200,9 +205,19 @@ export const NpcDialogue = (props) => {
                 ))}
               </div>
             )}
+            {last && action && (
+              <button
+                type="button"
+                className="button-primary bt-npcdlg-act"
+                data-qa={action.qa || 'npcdlg-act'}
+                onClick={(e) => { e.stopPropagation(); action.onClick && action.onClick(); }}
+              >
+                {action.label}
+              </button>
+            )}
             <button
               type="button"
-              className="button-primary bt-npcdlg-next"
+              className={(last && action ? 'button-secondary bt-npcdlg-next bt-npcdlg-next--quiet' : 'button-primary bt-npcdlg-next')}
               data-tut="npcdlg-next"
               /* v2.3.3407: Enter presses it on a computer, and it says so
                  after its word (game/deskKeys.js; game.css [data-key]) */

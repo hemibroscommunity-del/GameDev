@@ -226,6 +226,8 @@ const CAP_GATES = [
   'petbook' /* v2.3.3120: the pets record and the Pets page -- lower case, a kill switch */,
   'petlevels' /* v2.3.3121: pets earn XP while out with you -- lower case, a kill switch */,
   'beastmaster' /* v2.3.3121: Beastmaster Bro and his quests -- lower case, a kill switch */,
+  'tour' /* v2.3.3486: the tour's two new townsfolk (Woodworker Bro, Farmer Bro) -- lower case, a kill switch */,
+  'race' /* v2.3.3486: Lil Bro's race -- lower case, a kill switch */,
   'pettrade' /* v2.3.3122: pets in trades, the auction house and the mail -- lower case, a kill switch */,
   'petwards' /* v2.3.3123: the land ward of the pet out with you -- lower case, a kill switch */,
   'petshow' /* v2.3.3123: the others see your pet -- lower case, a kill switch */,

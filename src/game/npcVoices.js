@@ -33,6 +33,8 @@ export const VOICE_OF = Object.freeze({
   'Ace': [0, 1.06],
   'Lil Bro': [4, 1.32],
   'Beastmaster Bro': [2, 0.94],
+  'Woodworker Bro': [1, 0.92],   /* v2.3.3486: the tour's two new townsfolk */
+  'Farmer Bro': [3, 0.88],
 });
 export const CHATTER_K = 0.4;
 export const CHATTER_R = 900;

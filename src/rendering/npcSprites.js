@@ -391,10 +391,14 @@ export function wheelNpcSources() {
   return _wheelCast().filter((n) => n.sprite && !_walksSouth(n)).map((n) => n.sprite);
 }
 /** The walkers the Wheel shows, and the one strip of each it loads:
-    [{ id, dir, src, frames }]. */
+    [{ id, dir, src, frames }].  v2.3.3486: or the strips its row names in
+    `wheelDirs` -- Lil Bro races round the square (game/race.js) and needs his
+    four straight ones. */
 export function wheelWalkSources() {
   return _wheelCast().filter(_walksSouth)
-    .map((n) => ({ id: n.id, dir: 'south', src: n.walk.base + 'south.webp', frames: n.walk.frames || 4 }));
+    .flatMap((n) => (Array.isArray(n.wheelDirs) && n.wheelDirs.length ? n.wheelDirs : ['south'])
+      .filter((d) => n.walk.dirs.indexOf(d) >= 0)
+      .map((d) => ({ id: n.id, dir: d, src: n.walk.base + d + '.webp', frames: n.walk.frames || 4 })));
 }
 export function loadWheelNpcArt() {
   if (_wheelArt) return _wheelArt.p;

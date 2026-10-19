@@ -3402,8 +3402,8 @@ console.log("the buildings' doors (v2.3.3032)");
     blocked.length === 0, blocked.map((d) => [d.id, hit(d.x, d.y + 30, 10)]));
   /* Diego keeps the General Store (v2.3.3067: and the rest of town's cast) */
   const sp = WHEEL_TOWNSFOLK.map((f) => ({ f, d: byDoor[f.door] })).map(({ f, d }) => ({ name: f.name, x: d.x + f.dx, y: d.y + f.dy, d }));
-  ok('each of the townsfolk has a door to stand by, in no footprint with room round them, on the town\'s ground: Diego, Ace, Blacksmith Bro, Lil Bro and Beastmaster Bro',
-    sp.map((q) => q.name).join() === 'Diego,Ace,Blacksmith Bro,Lil Bro,Beastmaster Bro' && sp.every((q) => q.d && hit(q.x, q.y, 24).length === 0 && dbp.regionIds[dbp.reg[cellG(q.x, q.y)]] === 'town'),
+  ok('each of the townsfolk has a door to stand by, in no footprint with room round them, on the town\'s ground: Diego, Ace, Blacksmith Bro, Lil Bro, Beastmaster Bro, and the tour\'s Woodworker Bro and Farmer Bro (v2.3.3486)',
+    sp.map((q) => q.name).join() === 'Diego,Ace,Blacksmith Bro,Lil Bro,Beastmaster Bro,Woodworker Bro,Farmer Bro' && sp.every((q) => q.d && hit(q.x, q.y, 24).length === 0 && dbp.regionIds[dbp.reg[cellG(q.x, q.y)]] === 'town'),
     sp.map((q) => [q.name, hit(q.x, q.y, 24)]));
   /* ...and standing at the General Store's door does not open his window by
      itself: it opens within 90 px of him from your middle, ~52 px above your boots */
@@ -3440,9 +3440,48 @@ console.log("the buildings' doors (v2.3.3032)");
     const toDoors = Math.min.apply(null, doors.map((d) => Math.hypot(d.x - lb.x, d.y - lb.y)));
     ok(`Lil Bro is on the square, met on arrival (${Math.round(toArrive)} px from where you land), on the side away from Mayor Bro (${Math.round(toMayor)} px), beyond every door's reach (${Math.round(toDoors)} px from the nearest)`,
       toArrive > 200 && toArrive < 320 && lb.x < arrive.x && ms2.x > arrive.x && toMayor > 300 && toDoors > 2 * WHEEL_DOOR_REACH, { toArrive, toMayor, toDoors });
+    /* v2.3.3486: the Woodworker's two (its keeper and the Beastmaster) stand
+       either side of its steps, 210 px apart: a tap finds the nearest within
+       44 CSS px (~73 world px at the Wheel's 0.606) and a quest opens by
+       itself within 90, so 200 keeps every tap and every opener one man's */
     let closest = Infinity;
     for (const a of sp) for (const b of sp) if (a !== b) closest = Math.min(closest, Math.hypot(a.x - b.x, a.y - b.y));
-    ok(`no two of them within reach of one tap (${Math.round(closest)} px apart at the closest)`, closest > 300, closest);
+    ok(`no two of them within reach of one tap or one quest's opener (${Math.round(closest)} px apart at the closest)`, closest > 200, closest);
+    /* ═══ v2.3.3486: THE TOUR'S TWO NEW GIVERS, AND LIL BRO'S RACE ═══ */
+    const ww = at['Woodworker Bro'], fb = at['Farmer Bro'];
+    const wwRow = row('Woodworker Bro'), fbRow = row('Farmer Bro');
+    const tourRow = (r) => !!r && r.wheelOnly === true && r.needsCap === 'tour' && r.quietProgress === true
+      && fs.existsSync(new URL('../../public' + r.sprite, import.meta.url)) && fs.existsSync(new URL('../../public' + r.portrait, import.meta.url));
+    ok('Woodworker Bro stands by his bench (west of its steps, the Beastmaster east) and Farmer Bro by the Feed & Seed, each the Wheel\'s only, spawned against caps.tour, quiet as you walk past, his pictures on disk',
+      ownDoor(ww, 'woodworker') && ww.x < ww.d.x && ownDoor(fb, 'feedseed') && tourRow(wwRow) && tourRow(fbRow)
+        && WHEEL_TOWNSFOLK.filter((f) => f.cap === 'tour').map((f) => f.name).join() === 'Woodworker Bro,Farmer Bro',
+      { ww: ww && [ww.x - ww.d.x, ww.y - ww.d.y], fb: fb && [fb.x - fb.d.x, fb.y - fb.d.y], rows: [!!wwRow, !!fbRow] });
+    {
+      const { RACE, lilLapPx } = await import('../../server/src/race.js');
+      const { WHEEL_CENTRE } = await import('../../server/src/wheelspawns1.js');
+      const [cx, cy] = WHEEL_CENTRE;
+      const lbRel = [lb.x - cx, lb.y - cy];
+      ok(`Lil Bro's race starts at Lil Bro's own spot, the Town Hall's door + (-260, 110): (${lbRel.map(Math.round)}) from the Wheel's middle, the worker's START (${RACE.START})`,
+        Math.abs(lbRel[0] - RACE.START[0]) < 1 && Math.abs(lbRel[1] - RACE.START[1]) < 1
+          && RACE.LIL_PATH[0][0] === RACE.START[0] && RACE.LIL_PATH[0][1] === RACE.START[1]
+          && RACE.FLAGS[RACE.FLAGS.length - 1].join() === RACE.START.join(), { lbRel, start: RACE.START });
+      /* every flag stands on the town's ground with room round it, and Lil
+         Bro's line between them crosses no footprint (he runs, he does not
+         climb: sampled every 8 px, a body's half width round the line) */
+      const badFlags = RACE.FLAGS.filter((f) => hit(cx + f[0], cy + f[1], 20).length > 0 || dbp.regionIds[dbp.reg[cellG(cx + f[0], cy + f[1])]] !== 'town');
+      const badPath = [];
+      for (let i = 1; i < RACE.LIL_PATH.length; i++) {
+        const a = RACE.LIL_PATH[i - 1], b = RACE.LIL_PATH[i];
+        const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 8));
+        for (let k = 0; k <= n; k++) {
+          const x = cx + a[0] + (b[0] - a[0]) * k / n, y = cy + a[1] + (b[1] - a[1]) * k / n;
+          const h = hit(x, y, 14);
+          if (h.length) { badPath.push([i, Math.round(x - cx), Math.round(y - cy), h]); break; }
+        }
+      }
+      ok(`the course is clear: its ${RACE.FLAGS.length} flags on the town's ground with room round them, and Lil Bro's ${Math.round(lilLapPx())} px line between them through no footprint`,
+        badFlags.length === 0 && badPath.length === 0, { badFlags, badPath });
+    }
     const spriteSrc = fs.readFileSync(new URL('../../src/rendering/npcSprites.js', import.meta.url), 'utf8');
     ok('...and the Wheel loads each one\'s picture behind its loading screen, read off the same table (npcSprites.js _wheelCast)',
       /WHEEL_TOWNSFOLK\.map\(\(f\) => f\.name\)/.test(spriteSrc) && /export function wheelNpcSources\(\) \{\s*return _wheelCast\(\)/.test(spriteSrc)
@@ -3690,8 +3729,9 @@ console.log("the keepers (v2.3.3258)");
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const bad = Object.entries(WHEEL_KEEPERS).filter(([name, plot]) => !((name === 'Mayor Bro' || WHEEL_TOWNSFOLK.some((f) => f.name === name && f.door === plot))
     && (own(WHEEL_BUILDING_DOORS, plot) || own(WHEEL_HALL_DOORS, plot))));
-  ok('each keeper stands at the very building he opens (Mayor Bro on the Town Hall\'s steps, the rest a WHEEL_TOWNSFOLK row at that door), and it is one with a window -- a building or a hall: Blacksmith Bro the forge, Mayor Bro the Town Hall',
-    Object.keys(WHEEL_KEEPERS).length === 2 && WHEEL_KEEPERS['Blacksmith Bro'] === 'blacksmith' && WHEEL_KEEPERS['Mayor Bro'] === 'townhall' && bad.length === 0, bad);
+  ok('each keeper stands at the very building he opens (Mayor Bro on the Town Hall\'s steps, the rest a WHEEL_TOWNSFOLK row at that door), and it is one with a window -- a building or a hall: Blacksmith Bro the forge, Mayor Bro the Town Hall, and the tour\'s Woodworker Bro the bench and Farmer Bro the Feed & Seed (v2.3.3486)',
+    Object.keys(WHEEL_KEEPERS).length === 4 && WHEEL_KEEPERS['Blacksmith Bro'] === 'blacksmith' && WHEEL_KEEPERS['Mayor Bro'] === 'townhall'
+      && WHEEL_KEEPERS['Woodworker Bro'] === 'woodworker' && WHEEL_KEEPERS['Farmer Bro'] === 'feedseed' && bad.length === 0, bad);
   const bt = fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
   const dc = fs.readFileSync(new URL('../../src/game/desktopControls.js', import.meta.url), 'utf8');
   const it = fs.readFileSync(new URL('../../src/game/interactions.js', import.meta.url), 'utf8');

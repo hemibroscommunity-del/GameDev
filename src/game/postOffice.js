@@ -15,8 +15,11 @@
  * Nothing new on the wire: this only remembers what the event already says.
  * Kept in S._mail, MAIL_KEEP of them; nothing stored.
  *
- * No imports, so node can read its rules.
+ * No imports but data/remains.js (itself import-free), so node can read its
+ * rules.
  */
+import { remainsName } from '../data/remains.js';   /* v2.3.3486: "remains", not "remnants" */
+
 export const MAIL_KEEP = 30;
 
 /* an inventory key as words: 'ore_black_steel_ore' -> 'Black steel ore' */
@@ -24,6 +27,9 @@ const PREFIX = ['ore', 'fish', 'log', 'gem', 'food', 'bar', 'seed', 'item'];
 const KEEP_AFTER = ['ore', 'log', 'bar'];   /* "Iron ore", not "Iron" */
 export function itemWords(invKey) {
   const k = typeof invKey === 'string' && invKey ? invKey : 'item';
+  /* v2.3.3486: a monster's remains by their name (data/remains.js) */
+  const rem = remainsName(k);
+  if (rem) return rem;
   let parts = k.split('_').filter(Boolean);
   if (parts.length > 1 && PREFIX.includes(parts[0])) {
     const pre = parts[0];

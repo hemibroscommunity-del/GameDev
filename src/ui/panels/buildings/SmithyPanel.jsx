@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, LIFE_SKILL_XP, NUGGETS_PER_BAR,
-  SMELT_RECIPES, WEAPON_STASH_MAX, gemExtractCost, getGearStatReq,
+  SMELT_RECIPES, WEAPON_STASH_MAX, gemExtractCost, getGearStatReq, getEquipReqLabel,
   ARMOR_FORGE_RECIPES, getArmorPieceDr, armorDefReq, /* v2.3.3092: bars into armor */
 } from '@/data/index.js';
 import { armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.3092: each metal's plate and greaves */
@@ -317,7 +317,17 @@ function ForgeTab({ S, R, inv, coins, lvl, ask, busy, wtype, setWtype }) {
         const resNeed = bt.bar ? bt.bars : bt.oreCost;
         const have = Math.floor(inv[resKey] || 0);
         const idx = keys.indexOf(key);
-        const req = getGearStatReq(wtype, idx, R);
+        let req = getGearStatReq(wtype, idx, R);
+        /* v2.3.3486: against a worker with the tour's gear rules
+           (caps.tourgear, server/src/gear.js) the forge asks what WEARING the
+           sword asks -- copper nothing, iron nothing, every rung above what
+           its badge says -- where an older one asked tierIndex x 5 (Melee 5
+           to make the copper sword a new player is handed) */
+        if (S._serverCaps && S._serverCaps.tourgear) {
+          const eq = getEquipReqLabel({ type: wtype, gearBase: key, tierMult: bt.tierMult }, 'weapon', R);
+          req = eq ? { stat: eq.stat, label: eq.label, value: eq.req, met: eq.met !== false, prog3: !!eq.prog3 }
+            : { stat: 'sword', label: '', value: 0, met: true, prog3: true };
+        }
         const meets = req.value === 0 || (req.prog3 ? req.met : (R[req.stat] || 0) >= req.value);
         const skillOk = lvl >= bt.minLvl;
         const ok = skillOk && meets && have >= resNeed && coins >= bt.goldCost && !stashFull;

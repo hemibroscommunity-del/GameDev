@@ -5,6 +5,7 @@ import { guardPush } from '../mobile/modalGuardBus.js'; /* v2.3.2145 */
    row rarity (existing data; plain inventory items carry no rarity). */
 import { RARITY_TIERS } from '@/data/index.js';
 import { farmLookFor, FARM_ITEM_NAMES } from '@/data/farmCrops.js';   /* v2.3.3135 */
+import { remainsName } from '@/data/remains.js';   /* v2.3.3486: "remains", not "remnants" */
 /* ═══ v2.3.1755: THE BAG'S OWN THUMBNAILS ═══
    Owner: "I'd also like it if you included the item thumbnails next to the
    quantities and gold icon next to the gold amount for trading."
@@ -110,7 +111,7 @@ const GOLD_STEPS = [1, 5, 25, 50, 100, 500, 1000];
    hasOwnProperty: a key here is the other player's word. */
 const farmName = (k) => (Object.prototype.hasOwnProperty.call(FARM_ITEM_NAMES, k) ? FARM_ITEM_NAMES[k] : null);
 const emojiFor = (k) => ITEM_EMOJI[k] || farmLookFor(k) || (k.startsWith('skull') ? '💀' : k.startsWith('shard') ? '💠' : '📦');
-const labelFor = (k) => farmName(k) || k.replace(/^(fish|cooked_fish|wood|ore|herb)_/, '').replace(/_/g, ' ');
+const labelFor = (k) => farmName(k) || remainsName(k) || k.replace(/^(fish|cooked_fish|wood|ore|herb)_/, '').replace(/_/g, ' ');   /* v2.3.3486: + "remains" */
 /* v2.3.1235: batch-4 state-correction — hoisted from the component so
    the row renderer can use it (was a local const; same expression). */
 const wpnName = (w) => (w && w.weapon && w.weapon.name) || 'Weapon';
