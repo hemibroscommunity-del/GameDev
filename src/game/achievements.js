@@ -283,9 +283,9 @@ export function achvWorldShown(S) {
 
 /** The banner's subject at `now`: {id, at, shownAt, until, started}, or null.
  *  `started` is true on the one call that put it up (the caller plays its
- *  sound then, once).  `ready(id)` says the next one may show now (the world
- *  in view, its picture decoded); a moment that waited past
- *  MOMENT_GIVE_UP_MS goes quietly. */
+ *  sound then, once).  `ready(id, at)` says the next one may show now (the
+ *  world in view, its picture decoded, `at` when it was queued); a moment
+ *  that waited past MOMENT_GIVE_UP_MS goes quietly. */
 export function achvMoment(S, now, ready) {
   const a = S && S._achv;
   if (!a) return null;
@@ -296,7 +296,7 @@ export function achvMoment(S, now, ready) {
   while (a.moments.length && t - a.moments[0].at > MOMENT_GIVE_UP_MS) a.moments.shift();
   if (!a.moments.length) return null;
   const next = a.moments[0];
-  if (typeof ready === 'function' && !ready(next.id)) return null;
+  if (typeof ready === 'function' && !ready(next.id, next.at)) return null;
   a.moments.shift();
   a.showing = { id: next.id, at: next.at, shownAt: t, until: t + BANNER_MS };
   bump(a);
