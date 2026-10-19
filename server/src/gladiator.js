@@ -58,7 +58,7 @@ export const ARENA = {
      bound bounds what they can make. */
   PRIZE_PER_ENTRANT: 250,
   HOUSE_GOLD_PER_HOUR: 3600,
-  /* v2.3.3479: the champion's ACHIEVEMENT POINTS.  The arena's window has
+  /* v2.3.3481: the champion's ACHIEVEMENT POINTS.  The arena's window has
      always promised "the Gladiator title and 500 AP", and nothing on the
      worker paid them (the page's own grant was the old path caps.arena turns
      off).  The owner: "Achievement points are something I'd like in the game
@@ -90,7 +90,7 @@ export const ARENA = {
 };
 
 export const arenaMethods = {
-  /* v2.3.3479: `arenaap: false` in liveflags -- the champion is paid gold
+  /* v2.3.3481: `arenaap: false` in liveflags -- the champion is paid gold
      alone, as before (ARENA.CHAMPION_AP). */
   _arenaApOff() {
     const f = this._liveFlags;
@@ -613,7 +613,7 @@ export const arenaMethods = {
     const t = this._arena;
     if (!t || t.champion) return;
     const { prize, topUp } = this._arenaPrize(t.players.length, Date.now());
-    const ap = this._arenaApOff() ? 0 : ARENA.CHAMPION_AP;   /* v2.3.3479 */
+    const ap = this._arenaApOff() ? 0 : ARENA.CHAMPION_AP;   /* v2.3.3481 */
     t.champion = { playerId: champion.playerId, playerName: champion.playerName, prize };
     if (ap) t.champion.ap = ap;
     t.status = 'complete';
@@ -628,7 +628,7 @@ export const arenaMethods = {
     (async () => {
       try {
         if (house) await this.state.storage.put('arena_house', house);
-        /* v2.3.3479: the champion's AP ride the gold's credit -- one stamp,
+        /* v2.3.3481: the champion's AP ride the gold's credit -- one stamp,
            one write, the mail's too when the champion is away */
         await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: ap ? { amount: prize, ap } : { amount: prize }, note: 'Gladiator Arena champion' });
         for (const pid of entrants) await this.state.storage.delete('arena_entry:' + tid + ':' + pid);

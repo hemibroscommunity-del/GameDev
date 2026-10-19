@@ -144,7 +144,7 @@ const C_QUEST_DONE = 0x58b97b;   /* COL.xp — green, same as the in-world badge
    badge is now (owner: "be yellow instead of green.  Green implies something
    is done" -- the old grey #8b9695 read as green on a phone): the '?' glyph
    says waiting, and green stays the ready check's */
-/* v2.3.3479: GREY again, following the in-world badge -- the owner's icon pick
+/* v2.3.3481: GREY again, following the in-world badge -- the owner's icon pick
    4 made it their pin, baked grey (a waiting quest wears a grey "?" so it never
    looks ready).  A neutral grey (the grey pin's own lightness), not
    v2.3.3047's teal #8b9695, which read as green */

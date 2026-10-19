@@ -348,7 +348,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
                     exists — the one thing a dead end must not do is give
                     directions.  Says the cap plainly instead, until delete has
                     a home again.
-                    v2.3.3479 (the 2026-10-19 UI review): it has one -- each
+                    v2.3.3481 (the 2026-10-19 UI review): it has one -- each
                     card's ••• menu holds "Remove from this device" (CharacterPicker,
                     v2.3.2194, behind a typed "yes"), which frees a slot and keeps
                     the bro behind their Login Key.  So the card gives the way
@@ -413,7 +413,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
             tags, whereas __BUILD_SHA__ comes from `git rev-parse` in the same
             build that emits version.json, so it is the same string buildWatch
             compares.  Both are shown; the sha is the one to read out.
-            v2.3.3479 (the 2026-10-19 UI review): and the number is now the
+            v2.3.3481 (the 2026-10-19 UI review): and the number is now the
             GAME's -- the newest v2.3.N in the build's commit titles
             (BUILD_INFO.game, vite.config.js GAME_VERSION); it still read
             2.3.2324 on a v2.3.3439 build.  BUILD_INFO.version stays the art's

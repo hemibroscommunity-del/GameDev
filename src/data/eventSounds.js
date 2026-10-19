@@ -241,7 +241,7 @@ export const EVENT_SOUNDS = {
   hardenOk: [['sword-hit2', 0, 0, 0.5, 1.25], ['quest-complete-v2', 0.05, 0.7, 0.5, 1, 0.08, 0.2]],
   hardenFail: [['mine-strike', 0.06, 0.35, 0.45, 0.6], ['flip-lose', 0, 0.7, 0.45, 1, 0.08]],
   woodwork: [['axe-chop', 0.13, 0.3, 1.8, 1.05], ['wood-chop', 0.05, 0.3, 0.12, 1.25, 0.1, 0.08]],
-  /* v2.3.3479: woodBreak (the wood cracking) is gone with its one caller,
+  /* v2.3.3481: woodBreak (the wood cracking) is gone with its one caller,
      the Woodworker's browser-only Reforge & Harden row (WoodworkPanel.jsx);
      a cue nothing plays fails the sound suite (sound-cues §5d). */
   hardWood: [['wood-chop', 0.05, 0.3, 0.14, 0.9], ['pan-sizzle', 0.3, 0.6, 1.2, 1.1, 0.08, 0.2]],
@@ -254,7 +254,7 @@ export const EVENT_SOUNDS = {
   salvage: [['armor-hit-2', 0.06, 0.6, 0.2, 0.8, 0, 0.15], ['mine-strike', 0.58, 0.4, 0.35, 0.8, 0.06]],
   /* The Cookhouse: a dish cooked (the campfire's own sting, at its level),
      and another player starting to cook (a peer's `cook` gather).
-     v2.3.3479: `cookBurnt`, a fish burnt in the Cookhouse's fish game, went
+     v2.3.3481: `cookBurnt`, a fish burnt in the Cookhouse's fish game, went
      with the game -- the owner: "Remove cookhouse fish game". */
   cookDone: [['cook-success', 0, 0, 0.6, 1]],
   cookStart: [['pan-sizzle', 0.3, 0.8, 1.6, 1, 0, 0.3]],

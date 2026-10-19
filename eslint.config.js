@@ -35,8 +35,8 @@ export default [
         __WEBP_TWINS__: 'readonly',   /* v2.3.2328: build-time set of sprites with a .webp twin (vite.config.js scanWebpTwins) */
         __BUILD_SHA__: 'readonly',
         __BUILD_TIME__: 'readonly',
-        __GAME_VERSION__: 'readonly',  /* v2.3.3479: the version shown, from the commit titles (vite.config.js GAME_VERSION) */
-        __BUILD_COMMIT__: 'readonly',  /* v2.3.3479: the commit, for the crash report */
+        __GAME_VERSION__: 'readonly',  /* v2.3.3481: the version shown, from the commit titles (vite.config.js GAME_VERSION) */
+        __BUILD_COMMIT__: 'readonly',  /* v2.3.3481: the commit, for the crash report */
         process: 'readonly',
       },
     },

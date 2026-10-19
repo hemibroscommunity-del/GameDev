@@ -25,7 +25,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /* The short forms, by prog3 stat key.  Only drawn where the whole name
    would be cut; a key with none (or the same word) is always whole.
-   v2.3.3479: the 2026-10-19 UI review -- Range is RGE, not RNG: beside LCK
+   v2.3.3481: the 2026-10-19 UI review -- Range is RGE, not RNG: beside LCK
    a player reads "RNG" as luck's randomness.  Three letters as before, E
    narrower than N, so it fits every cell RNG fitted. */
 export const STAT_CAPTION_SHORT = Object.freeze({

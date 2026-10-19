@@ -229,7 +229,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
            portrait-only (the v2.3.2173 tourniquet). So the button lands on
            the bag upright and on the dashboard sideways, and asserting "bag"
            in both would be asserting against the app.
-           v2.3.3479 (the 2026-10-19 UI review): upright it lands where the
+           v2.3.3481 (the 2026-10-19 UI review): upright it lands where the
            Dashboard button lands, the band AT REST and unfolded (mode 'bar',
            the fold chip 'open'), whose four-across bag is the one a player
            knows; open('bag') was the retired expanded page, five across.

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3479: THE OWNER'S CHOSEN ICONS ═══
+/* ═══ v2.3.3481: THE OWNER'S CHOSEN ICONS ═══
  *
  * The owner, 2026-10-19, uploaded thirteen ChatGPT sheets of UI art
  * (assets/icons-source/owner-2026-10-19/).  A review page set the nine places
@@ -24,7 +24,7 @@
  *
  * No imports: node-tested (server/test/owner-icons.test.mjs).
  */
-const V = '?v=2.3.3479';
+const V = '?v=2.3.3481';
 
 /* Keyed by the plan's region ids, which reach here from the game's state:
    a null prototype, so '__proto__' or 'toString' is no land (CLAUDE.md) */

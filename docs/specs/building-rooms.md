@@ -161,7 +161,7 @@ plain to see.
 - **The Saloon is the Saloon** (`SaloonPanel` in `WheelHallPanel.jsx`): your
   party as the worker last said it (you first, each member's level), or how a
   party works, and **Invite a player** (the player list, where a player's card
-  has Invite to Party). Nothing new on the wire. (v2.3.3479, the 2026-10-19 UI
+  has Invite to Party). Nothing new on the wire. (v2.3.3481, the 2026-10-19 UI
   review: it was "Find a party", but the worker refuses an invite to anyone
   already in a party, so the row can only invite someone into yours; with no
   party it comes first, above how a party works.)

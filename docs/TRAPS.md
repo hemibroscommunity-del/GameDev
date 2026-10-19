@@ -7259,7 +7259,7 @@ the UI review's `--views=laptop` (tools/qa/ui-review/capture.mjs).
 answers a click at its middle, the picker has room, and the click takes a new
 bro into the game.
 
-**And again (v2.3.3479, the 2026-10-19 UI review):** the fix above covered the
+**And again (v2.3.3481, the 2026-10-19 UI review):** the fix above covered the
 creator and missed the DRAWING EDITOR it opens: `.bt-paint`'s pane was
 `min(52vw,52vh,288px)`, so on a 1366 x 768 laptop it took 288 px and the panel
 wanted ~505 px in the 419 px column -- it scrolled sideways inside itself, Done

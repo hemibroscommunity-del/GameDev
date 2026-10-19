@@ -124,7 +124,7 @@ function WarPart(props) {
 function Board(props) {
   var b = allyBus.board;
   if (!b) return <div style={SMALL}>Asking…</div>;
-  /* v2.3.3479: the review -- says who counts, as the Saloon's line does */
+  /* v2.3.3481: the review -- says who counts, as the Saloon's line does */
   if (!b.rows.length) return <div data-ally-board-rows="0" style={SMALL}>No alliances yet. A party becomes one when 20 of its members are level 5 or more and played in the last 7 days.</div>;
   return (
     <div data-ally-board-rows={b.rows.length} style={{ display: 'grid', gap: 0 }}>
@@ -194,7 +194,7 @@ export function AlliancePart(props) {
           {err ? <div data-ally-error="" style={{ fontSize: 12.5, color: LS.danger }}>{err.text}</div> : null}
         </div>
       ) : (
-        /* v2.3.3479: the 2026-10-19 UI review -- "active" was never said:
+        /* v2.3.3481: the 2026-10-19 UI review -- "active" was never said:
            a member counts when level 5 or more and played in the last 7
            days (server alliance.js ACTIVE_LEVEL, ACTIVE_MS), as the line a
            party member sees above already says. */

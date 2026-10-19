@@ -1144,7 +1144,7 @@ export function getFishHealAmount(fishKey) {
 export const FISH_HEAL = Object.freeze({ minnow: 100, clownfish: 150, trout: 225, salmon: 325, pike: 475 });
 var _fishHealLadder = false;
 export function setFishHealEnabled(on) { _fishHealLadder = !!on; }
-/* v2.3.3479: getFishTierLevel and getCookingSweetSpot (the Cookhouse fish
+/* v2.3.3481: getFishTierLevel and getCookingSweetSpot (the Cookhouse fish
    game's tier lookup and green zone) are gone with that game -- the owner:
    "Remove cookhouse fish game".  Nothing else read them; fish are cooked at
    a campfire, settled by the worker (cook_request). */
@@ -1849,7 +1849,7 @@ export const FEEDBACK_CATEGORIES = [{
   desc: 'New feature idea'
 }, {
   id: 'qol',
-  /* v2.3.3479: the 2026-10-19 UI review -- "QoL" is gamer shorthand a new
+  /* v2.3.3481: the 2026-10-19 UI review -- "QoL" is gamer shorthand a new
      player may not know; the chip says Improve.  The id stays 'qol' (the
      worker checks ids, feedback.js VALID_CATEGORIES), so old reports keep
      their kind and read Improve on the board. */
@@ -6563,7 +6563,7 @@ export const QUEST_CHAINS = {
     id: 'tut_1', npc: 'Mayor Bro', title: 'Cold Reception',
     desc: 'Bring 4 Snowman Remnants from Frost Ridge.',
     check: function (rpg) { return ((rpg.inventory || {}).snowman || 0) >= 4; },
-    /* v2.3.3479: the 2026-10-19 UI review -- what `check` counts, written as
+    /* v2.3.3481: the 2026-10-19 UI review -- what `check` counts, written as
        data, so the quest log, the quest's page and the pinned card can say how
        many you hold, "(2/4)" (questCountText).  Nothing printed a count before.
        The same bag key and number as `check` above and the server's collect
@@ -6636,7 +6636,7 @@ export const QUEST_CHAINS = {
     id: 'tut_2', npc: 'Mayor Bro', title: 'Into the Blue',
     desc: 'Bring 6 Slime Remnants from the Verdant Wilds.',
     check: function (rpg) { return ((rpg.inventory || {})['slime-remnants'] || 0) >= 6; },
-    need: { key: 'slime-remnants', n: 6 },   /* v2.3.3479: the count shown beside the errand -- see tut_1 */
+    need: { key: 'slime-remnants', n: 6 },   /* v2.3.3481: the count shown beside the errand -- see tut_1 */
     reward: { gold: 60, xp: 35 },
     next: 'tut_3',
     /* v2.3.1692: the staff moved to tut_1 — this step pays gold + xp. */
@@ -6664,7 +6664,7 @@ export const QUEST_CHAINS = {
     id: 'tut_3', npc: 'Mayor Bro', title: 'Bad Wind',
     desc: 'Bring 5 Skeleton Remnants from the Wind Dunes.',
     check: function (rpg) { return ((rpg.inventory || {})['skeleton-remnants'] || 0) >= 5; },
-    need: { key: 'skeleton-remnants', n: 5 },   /* v2.3.3479: the count shown beside the errand -- see tut_1 */
+    need: { key: 'skeleton-remnants', n: 5 },   /* v2.3.3481: the count shown beside the errand -- see tut_1 */
     reward: { gold: 150, xp: 53 },
     next: 'tut_4',
     dialogue: {
@@ -6679,7 +6679,7 @@ export const QUEST_CHAINS = {
     id: 'tut_4', npc: 'Mayor Bro', title: 'Bro Ascendant',
     desc: 'Bring 6 Fire Goblin Remnants from the Flame Fields.',
     check: function (rpg) { return ((rpg.inventory || {})['fire-goblin-remnants'] || 0) >= 6; },
-    need: { key: 'fire-goblin-remnants', n: 6 },   /* v2.3.3479: the count shown beside the errand -- see tut_1 */
+    need: { key: 'fire-goblin-remnants', n: 6 },   /* v2.3.3481: the count shown beside the errand -- see tut_1 */
     /* v2.3.1758 (owner: "copper to be the first armor in the game (you mine
        copper ore) so this should replace the iron armor.  The second tier of
        armor will be iron").  Mirrors server/src/data.js exactly — this row is
@@ -7562,7 +7562,7 @@ export function questObjectiveDone(quest, S, rpgFallback) {
   try { return !!quest.check(rpg, S); } catch (e) { return false; }
 }
 
-/* ═══ v2.3.3479: HOW MANY YOU HOLD ═══
+/* ═══ v2.3.3481: HOW MANY YOU HOLD ═══
  * The 2026-10-19 UI review: "Bring 4 Snowman Remnants", and nothing in the
  * game said how many were already in the bag -- not the quest log, not the
  * quest's page, not the pinned card.  A quest that names what it collects

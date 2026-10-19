@@ -1034,7 +1034,7 @@ Style: exactly the attached reference: glossy hand-painted item icons, clean dar
 No text, frames, cell lines or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the icons is magenta, pink or purple. Do not copy the reference's items or background.
 ```
 
-### Gems: raw and polished, for every element (v2.3.3479; two chats)
+### Gems: raw and polished, for every element (v2.3.3481; two chats)
 
 - **Why (the 2026-10-19 icon review):** the element gems have no picture anywhere: the Gem Works writes "◇ Raw" and "◆ Polished" beside a coloured name, and the bag draws a ◇. The sheets of 2026-10-19 had eight cut gems, but not in the game's shapes, so they were left out (the Rare Gem already has its picture).
 - **The shapes are the game's own** (`src/data/elements.js`, each element's `shape`): a polished gem is cut in its element's shape and colour, so it reads the same as the element's other marks. A raw gem is the same stone before cutting: a rough chunk with that colour breaking through.

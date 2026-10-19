@@ -1,5 +1,5 @@
 import React from 'react';
-import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, toDisplayDamage, dishFor } from '@/data/index.js'; /* v2.3.2520: the display damage scale; v2.3.3130: dishFor; v2.3.3479: createDefaultCompStats, getCookingSweetSpot and getFishTierLevel went with the fish game */
+import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, toDisplayDamage, dishFor } from '@/data/index.js'; /* v2.3.2520: the display damage scale; v2.3.3130: dishFor; v2.3.3481: createDefaultCompStats, getCookingSweetSpot and getFishTierLevel went with the fish game */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -43,7 +43,7 @@ import { thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx'; /* v2.3.3281: a 
    approved recipe (#1A292F/#8D9B98/.11 line, opacity 1) with a real
    disabled prop. Handlers byte-identical. */
 export function CookPanel(props) {
-  /* v2.3.3479: three props now -- cookMinigame / setCookMinigame went with
+  /* v2.3.3481: three props now -- cookMinigame / setCookMinigame went with
      the fish game (the owner: "Remove cookhouse fish game"; NO FISH ARE
      COOKED HERE, below) */
   var rpgState = props.rpgState,
@@ -122,14 +122,14 @@ export function CookPanel(props) {
       letterSpacing: '.10em',
       color: '#F4F0E7'
     }
-  }, "Cookhouse" /* v2.3.3479: the 2026-10-19 UI review -- was "Kitchen", the old town's name, under a door and a sign that say COOKHOUSE */)), /*#__PURE__*/React.createElement("div", {
+  }, "Cookhouse" /* v2.3.3481: the 2026-10-19 UI review -- was "Kitchen", the old town's name, under a door and a sign that say COOKHOUSE */)), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#8D9B98',
       marginBottom: 12
     }
-  }, "Cooking Lv", ((_rpgState$lifeSkills14 = rpgState.lifeSkills) === null || _rpgState$lifeSkills14 === void 0 || (_rpgState$lifeSkills14 = _rpgState$lifeSkills14.cooking) === null || _rpgState$lifeSkills14 === void 0 ? void 0 : _rpgState$lifeSkills14.level) || 1, " \xB7 Cook what your farm grows into meals and brews." /* v2.3.3479: was "Cook fish for healing. Prepare herb recipes for combat buffs." -- no fish are cooked here now (below) */),
-  /* ═══ v2.3.3479: NO FISH ARE COOKED HERE ═══
+  }, "Cooking Lv", ((_rpgState$lifeSkills14 = rpgState.lifeSkills) === null || _rpgState$lifeSkills14 === void 0 || (_rpgState$lifeSkills14 = _rpgState$lifeSkills14.cooking) === null || _rpgState$lifeSkills14 === void 0 ? void 0 : _rpgState$lifeSkills14.level) || 1, " \xB7 Cook what your farm grows into meals and brews." /* v2.3.3481: was "Cook fish for healing. Prepare herb recipes for combat buffs." -- no fish are cooked here now (below) */),
+  /* ═══ v2.3.3481: NO FISH ARE COOKED HERE ═══
      The owner: "Remove cookhouse fish game".  This window's timing bar took
      the raw fish out of the bag and put a cooked one in on the phone alone:
      it sent the worker nothing, and wrote the wrong key besides (cooked_minnow,

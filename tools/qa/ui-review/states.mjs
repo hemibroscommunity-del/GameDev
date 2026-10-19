@@ -127,7 +127,7 @@ async function unfoldBand(P) {
   if (st.v === 'min') { const e = await tapSel(P, st.sel); if (e) return e; await wait(P, 900); }
   return null;
 }
-/* v2.3.3479 (the 2026-10-19 UI review): the bag a PLAYER sees -- upright and
+/* v2.3.3481 (the 2026-10-19 UI review): the bag a PLAYER sees -- upright and
    on a computer the band at rest, unfolded (four across, BAG_VIEW_COLS);
    sideways the dashboard column.  open('bag') was the retired expanded bag
    page, which no button opens (v2.3.1654) and which fits five across at 390
@@ -241,7 +241,7 @@ async function sparCloneId(P, timeout = 9000) {
   return null;
 }
 
-/* v2.3.3479: a sword in your hand and a shield on your arm, as a player arms
+/* v2.3.3481: a sword in your hand and a shield on your arm, as a player arms
    (the 2026-10-19 UI review, p11/spar-fight #1).  The Reviewer never put on
    the sword and shield tut_1 gives (both phone views' controls read "Weapon:
    Fists"), and with no weapon in hand the Special button stays away
@@ -353,7 +353,7 @@ export const STATES = [
   /* ═══ ARRIVING ═══ */
   {
     id: 'welcome', group: 'Arriving in BroTown', title: 'Welcome, first seconds in the world',
-    /* v2.3.3479: no coach card -- none is shown over the welcome plate, and the
+    /* v2.3.3481: no coach card -- none is shown over the welcome plate, and the
        review plays as a player who skipped the tutorial (capture.mjs) */
     about: 'A brand-new character just arrived in BroTown: the welcome plate (with Skip tutorial) over the world with the dashboard folded.  The review then plays on as a player who pressed Skip tutorial, so no tutorial coach card is in the screens after this one.',
     settle: 400,
@@ -461,7 +461,7 @@ export const STATES = [
     about: 'The Character page on its Points tab: spending points on each weapon skill and on the character.',
     run: async ({ P }) => {
       await bus(P, 'open', 'hero');
-      /* v2.3.3479 (the 2026-10-19 UI review): the computer's picture showed
+      /* v2.3.3481 (the 2026-10-19 UI review): the computer's picture showed
          the Equipment tab.  Opening from the folded band is two renders and a
          220 ms rise, and 500 ms on the software-drawn 2880 x 1800 page measured
          the tab mid-rise, so the press landed on the bars under it.  Wait the
@@ -489,7 +489,7 @@ export const STATES = [
   {
     id: 'dash-skill-detail', group: 'Dashboard', title: 'A life skill in detail',
     about: 'One life skill opened: what it unlocks at each level, the XP it pays, each hit\'s odds.',
-    /* v2.3.3479: the 2026-10-19 UI review -- the laptop's picture was the
+    /* v2.3.3481: the 2026-10-19 UI review -- the laptop's picture was the
        ten-skill list, not the detail: the press went in while the band was
        still unfolding (the last view of a run on a box drawing a few frames a
        second) and landed on empty band, and the state said it had worked.  So
@@ -701,7 +701,7 @@ export const STATES = [
       if (!node) return 'no tree near';
       (ctx.used = ctx.used || []).push(node.id);
       ctx.node = node;
-      /* v2.3.3479: the 2026-10-19 UI review read "Pine Log over empty grass,
+      /* v2.3.3481: the 2026-10-19 UI review read "Pine Log over empty grass,
          no tree": 130 px NORTH of the node stood the bro behind the trunk,
          under the crown, and a tree whose crown covers you is drawn see-through
          (0.42, tierTrees.js behindTree) -- a green pine on green grass all but
@@ -754,7 +754,7 @@ export const STATES = [
     settle: 2500,
     run: async ({ P, wsPort, myId }) => {
       await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
-      await armForFight(P, wsPort, myId);   /* v2.3.3479: so Special and Shield can come up */
+      await armForFight(P, wsPort, myId);   /* v2.3.3481: so Special and Shield can come up */
       const r = await H.devOp(wsPort, 'spar', myId, { add: 'sword', skill: 'easy' }).catch((e) => ({ error: String(e) }));
       if (r && r.ok === false) return 'no clone: ' + (r.error || JSON.stringify(r));
       await wait(P, 3000);
@@ -765,7 +765,7 @@ export const STATES = [
         const S = window._gameState.current;
         const o = S.others && S.others[cid];
         if (o) S.lockedTarget = { type: 'player', id: cid, ref: o, spar: true };
-        /* v2.3.3479: and hold Attack, as a thumb on the button does, so the
+        /* v2.3.3481: and hold Attack, as a thumb on the button does, so the
            blows land in the picture: the clone's HP bar shows only once it is
            hurt, and the numbers only with a blow (the review's picture had
            neither -- the bro never swung) */
@@ -773,7 +773,7 @@ export const STATES = [
       }, id);
     },
     after: async ({ P, wsPort, myId }) => {
-      await evalIn(P, () => { const S = window._gameState.current; if (S) S.autoAttack = false; }).catch(() => {});   /* v2.3.3479 */
+      await evalIn(P, () => { const S = window._gameState.current; if (S) S.autoAttack = false; }).catch(() => {});   /* v2.3.3481 */
       await H.devOp(wsPort, 'spar', myId, { clear: true }).catch(() => {});
       await wait(P, 1000);
     },

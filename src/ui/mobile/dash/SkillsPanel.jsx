@@ -86,7 +86,7 @@ export const SkillsPanel = () => {
     return (
       <div style={{ ...panelStyle, overflowY: 'auto' }}>
         {/* Back to the roster — in-panel, no sheet-height change. */}
-        {/* v2.3.3479: the 2026-10-19 UI review -- the only way back was a
+        {/* v2.3.3481: the 2026-10-19 UI review -- the only way back was a
             53 x 25 target.  game.css .bt-back-link gives it an invisible
             ring (~95 x 39) into the empty row beside it and the top of the
             header under it; the words and the look are unchanged. */}
@@ -156,7 +156,7 @@ export const SkillsPanel = () => {
     const sk = ls[sd.key] || { level: 0, xp: 0 };
     const need = Math.max(1, skillXpRequired(sk.level || 1));   /* v2.3.3041: the worker's price */
     const pct = Math.min(100, ((sk.xp || 0) / need) * 100);
-    /* v2.3.3479: the 2026-10-19 UI review -- a pill is 28 px tall, and a
+    /* v2.3.3481: the 2026-10-19 UI review -- a pill is 28 px tall, and a
        taller one would push the tenth under the fold ("fit on one screen
        without scrolling", v2.3.1337).  So only its TARGET grows: game.css
        .bt-skill-pill draws an invisible ring 2 px above and below, into the

@@ -230,7 +230,7 @@ function Header({ kind, e, n, n2, elder }) {
    and "‹ All monsters", which was a 40 px row of its own above the header,
    is its first button.  `reveal` keeps what a tap brings up just under it. */
 const TABS = [['drops', 'Drops'], ['info', 'Info'], ['locations', 'Locations']];
-/* ═══ v2.3.3479: THE WAY BACK SAYS SO, WHERE IT FITS (the 2026-10-19 UI review) ═══
+/* ═══ v2.3.3481: THE WAY BACK SAYS SO, WHERE IT FITS (the 2026-10-19 UI review) ═══
    The bar's first button was a bare "‹" -- its words only in its aria-label
    and tooltip, so a finger never saw them, while Life Skills says "‹ All
    skills".  Where the bar has the room it says "‹ All monsters" (~95 px), and
@@ -334,7 +334,7 @@ function Dice({ h = 12 }) {
 }
 function DropsTab({ rows, sel, onPick, shared }) {
   const free = codexRollFreeFrom(rows, shared);
-  /* ═══ v2.3.3479: SIDEWAYS, THE NAME GETS THE MIDDLE (the 2026-10-19 UI review) ═══
+  /* ═══ v2.3.3481: SIDEWAYS, THE NAME GETS THE MIDDLE (the 2026-10-19 UI review) ═══
      In the side column (~190 px inside a row) the five tracks' fixed parts
      -- picture 26, type 52, roll 64 and the gaps -- left the name and the
      bar ~25 px between them: "Gold 5–18" wrapped a letter a line and

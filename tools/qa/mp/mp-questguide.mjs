@@ -16,7 +16,7 @@
  *   1. before the quest, the Wheel's Mayor Bro offers it: '❗';
  *   2. accepted, he waits on you: '❔' (a "?", drawn still -- YELLOW since
  *      v2.3.3336, the owner's "Green implies something is done"; since
- *      v2.3.3479 the owner's own pin, its "?" baked GREY -- their icon pick 4,
+ *      v2.3.3481 the owner's own pin, its "?" baked GREY -- their icon pick 4,
  *      a waiting quest never looking ready), and the quest card leads with the
  *      quest picture, not an emoji;
  *   3. the folded dashboard's OPEN flashes; opened, the sword AND the shield
@@ -39,7 +39,7 @@ const mayor = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
   const m = (Array.isArray(S.npcs) ? S.npcs : []).find((n) => n && n.name === 'Mayor Bro');
   /* v2.3.3336: and the badge's drawn colour (entityRenderer's probe) --
-     v2.3.3479: which of the owner's pins is up, its picture and its height */
+     v2.3.3481: which of the owner's pins is up, its picture and its height */
   const nm = m && window.__btNpcMarks && window.__btNpcMarks[m.id];
   return m ? { mark: m._questMarker || null, badge: (nm && nm.badge) || null, badgeArt: !!(nm && nm.badgeArt), badgeSrc: (nm && nm.badgeSrc) || null,
     badgeH: nm ? nm.badgeH : null, x: Math.round(m.x), y: Math.round(m.y) } : null;
@@ -65,7 +65,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     let m0 = null;
     for (let i = 0; i < 30 && !(m0 && m0.mark); i++) { m0 = await mayor(P); if (!(m0 && m0.mark)) await P.page.waitForTimeout(400); }
     rec.ok(`1. before the quest the Wheel's Mayor Bro offers it ("${m0 && m0.mark}")`, !!m0 && m0.mark === '❗', m0);
-    /* v2.3.3479 (the owner's icon pick 4): drawn as their gold "!" pin, 38
+    /* v2.3.3481 (the owner's icon pick 4): drawn as their gold "!" pin, 38
        world px tall (the disc was 32), the picture loaded on the loading screen */
     let m0b = m0;
     for (let i = 0; i < 10 && !(m0b && m0b.badgeArt); i++) { await P.page.waitForTimeout(300); m0b = await mayor(P); }
@@ -86,7 +86,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        yellow instead of green.  Green implies something is done"): drawn on
        the offer's yellow, never the ready check's green (the grey it was,
        #8b9695, read as green on a phone) */
-    /* v2.3.3479 (the owner's icon pick 4): their "?" pin, baked GREY -- a
+    /* v2.3.3481 (the owner's icon pick 4): their "?" pin, baked GREY -- a
        neutral grey, never the ready pin's green check */
     let m1b = m1;
     for (let i = 0; i < 10 && !(m1b && m1b.badge === 'waiting' && m1b.badgeArt); i++) { await P.page.waitForTimeout(300); m1b = await mayor(P); }
@@ -131,7 +131,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (let i = 0; i < 30 && !(m2 && m2.mark === '❓'); i++) { m2 = await mayor(P); if (!(m2 && m2.mark === '❓')) await P.page.waitForTimeout(400); }
     rec.ok(`5. the four snowmen in the bag: his mark is the green check ("${m2 && m2.mark}")`, !!m2 && m2.mark === '❓', m2);
     let m2b = m2;
-    /* v2.3.3479: the owner's ready pin, its green check */
+    /* v2.3.3481: the owner's ready pin, its green check */
     for (let i = 0; i < 10 && !(m2b && m2b.badge === 'ready' && m2b.badgeArt); i++) { await P.page.waitForTimeout(300); m2b = await mayor(P); }
     rec.ok(`...drawn as the owner's ready pin, the green check (${m2b && m2b.badgeSrc ? m2b.badgeSrc.split('?')[0] : 'no picture'})`,
       !!m2b && m2b.badge === 'ready' && m2b.badgeArt === true && /\/ui\/quest\/pin-ready\.webp/.test(m2b.badgeSrc || ''), m2b);

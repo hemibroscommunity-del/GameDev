@@ -390,7 +390,7 @@ export const ChatBubble = () => {
           // The player avatar sits at ~37% from the top of the viewport
           // (canvas is upper 75 vh, camera-centered).  Anchor the bubble
           // bottom at 25% so the tail sits well above the player's head.
-          /* v2.3.3479: the 2026-10-19 UI review -- ...but never less than
+          /* v2.3.3481: the 2026-10-19 UI review -- ...but never less than
              156 px down.  Sideways a phone is ~390 px tall, so 25% put the
              bottom at ~97 px and the card's ~148 px (padding, the lane row,
              the line, the mic row) ran ~50 px off the top: All / Area /

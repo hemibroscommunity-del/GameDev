@@ -40,7 +40,7 @@ const WEBP_TWINS = scanWebpTwins(path.join(PUBLIC_DIR, 'sprites'), PUBLIC_DIR, [
 const GIT_SHA = safeExec('git rev-parse --short HEAD') || 'nogit';
 const GIT_DIRTY = safeExec('git status --porcelain') ? '+' : '';
 const BUILD_TIME = new Date().toISOString().replace('T', ' ').slice(0, 16) + 'Z';
-/* v2.3.3479: the 2026-10-19 UI review -- THE VERSION A PLAYER SEES.
+/* v2.3.3481: the 2026-10-19 UI review -- THE VERSION A PLAYER SEES.
    package.json's version is moved by hand and read 2.3.2324 on a v2.3.3439
    game (~1,150 tags without moving), so the door, the creator, the loading
    badge and every crash report named the same old number whatever deploy
@@ -62,7 +62,7 @@ const GAME_VERSION = (() => {
   for (const m of safeExec('git log -60 --format=%s').matchAll(/\bv2\.3\.(\d+)\b/g)) hi = Math.max(hi, +m[1]);
   return hi ? '2.3.' + hi : String(pkg.version || 'dev');
 })();
-/* v2.3.3479: the commit a build is of, for the crash report: Cloudflare Pages
+/* v2.3.3481: the commit a build is of, for the crash report: Cloudflare Pages
    names it (CF_PAGES_COMMIT_SHA, the whole sha), else git, else ''. */
 const BUILD_COMMIT = String(process.env.CF_PAGES_COMMIT_SHA || '').trim().slice(0, 9)
   || safeExec('git rev-parse --short HEAD');
@@ -80,7 +80,7 @@ export default defineConfig({
       transformIndexHtml(html) {
         return html
           .replaceAll('__BUILD_VERSION__', pkg.version)
-          /* v2.3.3479: the loading badge's number (see GAME_VERSION) */
+          /* v2.3.3481: the loading badge's number (see GAME_VERSION) */
           .replaceAll('__GAME_VERSION__', GAME_VERSION)
           .replaceAll('__BUILD_SHA__', GIT_SHA + GIT_DIRTY);
       },
@@ -99,7 +99,7 @@ export default defineConfig({
         this.emitFile({
           type: 'asset',
           fileName: 'version.json',
-          /* v2.3.3479: `game`, the version a player is shown (GAME_VERSION);
+          /* v2.3.3481: `game`, the version a player is shown (GAME_VERSION);
              buildWatch reads only `sha`. */
           source: JSON.stringify({ sha: GIT_SHA + GIT_DIRTY, version: pkg.version, game: GAME_VERSION, time: BUILD_TIME }),
         });
@@ -112,7 +112,7 @@ export default defineConfig({
     __BUILD_VERSION__: JSON.stringify(pkg.version),
     __BUILD_SHA__: JSON.stringify(GIT_SHA + GIT_DIRTY),
     __BUILD_TIME__: JSON.stringify(BUILD_TIME),
-    /* v2.3.3479: the version shown and the commit, for display and the crash
+    /* v2.3.3481: the version shown and the commit, for display and the crash
        report only; __BUILD_VERSION__ stays the art's cache key */
     __GAME_VERSION__: JSON.stringify(GAME_VERSION),
     __BUILD_COMMIT__: JSON.stringify(BUILD_COMMIT),

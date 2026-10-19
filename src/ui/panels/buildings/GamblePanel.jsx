@@ -4,7 +4,7 @@ import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { DailySpin } from './DailySpin.jsx'; /* v2.3.3140: the free daily spin */
-import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3479: the jackpot's sack of gold */
+import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3481: the jackpot's sack of gold */
 /* === GamblePanel — buildingPanel === 'gamble' sub-panel === */
 /* v2.3.880: extracted verbatim from the buildingPanel === 'gamble'
    clause in BroTown.jsx (the casino: coin-flip bet + jackpot deposit).
@@ -92,7 +92,7 @@ export function GamblePanel(props) {
   return React.createElement("div", { style: _objectSpread(_objectSpread({}, LS_WRAP), {}, { display: 'flex', flexDirection: 'column', maxHeight: '100%' }) /* v2.3.1235: state-correction §10 — flex column: fixed header + ONE scroll body */ },
     /* v2.3.3140: the free daily spin leads the window (DailySpin.jsx) --
        the day's reward lives here now, not in a window at login */
-    /* v2.3.3479: the 2026-10-19 UI review -- the subtitle promised coin
+    /* v2.3.3481: the 2026-10-19 UI review -- the subtitle promised coin
        flips, but this window holds the spin, the gold wager below and the
        jackpot; the coin flip is Ace's own window, from Ace outside. */
     lsHeader('gamble', '🎰', "Gambling Den", "Free daily spin, a gold wager & the weekly jackpot"),
@@ -110,10 +110,10 @@ export function GamblePanel(props) {
            ("Your gold: 75G"), never a bare unexplained number. */
         style: { display: 'inline-flex', alignItems: 'center', gap: 6 }
       }, React.createElement("span", { style: { fontSize: 12, color: LS.txt2 } }, "Your gold:"),
-      lsGold(Number(rpgState.coins || 0).toLocaleString() + 'G', 16) /* v2.3.1235: batch-3 rollout — key numbers are 16-18/700 tabular; v2.3.3479: with its thousands separator, "2,550G", as the top bar and every other window (the 2026-10-19 UI review) */),
+      lsGold(Number(rpgState.coins || 0).toLocaleString() + 'G', 16) /* v2.3.1235: batch-3 rollout — key numbers are 16-18/700 tabular; v2.3.3481: with its thousands separator, "2,550G", as the top bar and every other window (the 2026-10-19 UI review) */),
       React.createElement("span", { style: { fontSize: 12, color: LS.txt2, fontVariantNumeric: 'tabular-nums' } },
         rpgState.achievementPoints || 0, " AP") /* v2.3.1235: batch-3 rollout — ⭐ dropped, no emoji in chrome */),
-      /* v2.3.3479: the 2026-10-19 UI review -- the free spin above has its
+      /* v2.3.3481: the 2026-10-19 UI review -- the free spin above has its
          own "Double or nothing" at 50% (dailyrewards.js DOUBLE_CHANCE), and
          this wager was headed the same at 40% (gamble.js settles it at
          0.40). Both numbers were right; the heading and the line now say
@@ -265,7 +265,7 @@ export function GamblePanel(props) {
       }, stateRef.current._gambleWager ? "Roll \xB7 " + stateRef.current._gambleWager + "G" : "Select a wager") /* v2.3.1235: state-correction §7 — never a "—g" placeholder: "Select a wager" until a chip is picked, then "Roll · 10G" */,
       React.createElement("div", { style: LS_DIV }),
       React.createElement("div", { style: LS_MOD }, "Weekly Jackpot"),
-      /* v2.3.3479: the 2026-10-19 UI review -- the line said "10% house cut"
+      /* v2.3.3481: the 2026-10-19 UI review -- the line said "10% house cut"
          and "one random winner", and the worker does neither: a deposit is
          50-5,000 in steps of 50, each 50 one ticket, and the week's draw
          picks one TICKET (so more tickets, better odds) and credits the
@@ -276,7 +276,7 @@ export function GamblePanel(props) {
         style: { fontSize: 11, color: LS.txt3, marginBottom: 6, lineHeight: 1.5 }
       }, "Every 50G you put in is one ticket. Each week one ticket wins the whole pot. The house takes nothing."),
       React.createElement("div", {
-        /* v2.3.3479: the owner's sack of gold beside the pool (their icon pick
+        /* v2.3.3481: the owner's sack of gold beside the pool (their icon pick
            5: the one gold prize in the game with no picture); the line's words
            unchanged, the number in a span beside it */
         "data-jackpot-pool": "",
@@ -287,7 +287,7 @@ export function GamblePanel(props) {
         style: { width: OWNER_ICON.jackpotSack.w, height: OWNER_ICON.jackpotSack.h, objectFit: 'contain', flex: 'none' },
         onError: function onError(e) { e.currentTarget.style.display = 'none'; }
       }), React.createElement("span", null, stateRef.current._jackpotPool || '???', "g")) /* v2.3.1235: batch-3 rollout — 🏆 dropped, no emoji in chrome */,
-      /* v2.3.3479: the same review -- "Your deposits this week" read the
+      /* v2.3.3481: the same review -- "Your deposits this week" read the
          browser's own tally (_compStats.jackpotDeposited, which nothing ever
          resets for a new week); the worker's count of YOUR tickets in this
          week's draw comes with every jackpot_state, at the join and after a

@@ -31,7 +31,7 @@
 import { ICON_URL, RDISC_ICONS, ABILITY_ART_URLS } from '../ui/panels/controlSkin.jsx';
 import { smallIconDomUrls } from '../data/smallIcons.js';   /* v2.3.3279: the owner's small icons */
 import { quickEatIconUrls } from '../data/foodIcons.js';   /* v2.3.3260: the quick-eat button's food */
-import { OWNER_ICON } from '../data/ownerIcons.js';   /* v2.3.3479: the trade request's handshake */
+import { OWNER_ICON } from '../data/ownerIcons.js';   /* v2.3.3481: the trade request's handshake */
 /* v2.3.3120: the TRAP pop-up's picture (TrapButton.jsx uses the same string)
    v2.3.3281: the owner's box trap (tools/ui/cut-bag-icons.py), no longer the
    Trapping skill's icon -- the same picture in the bag, on the Woodworker's
@@ -72,7 +72,7 @@ export function controlsPreloadUrls() {
      show (data/smallIcons.js) -- a buff lands, a party forms, a whisper comes
      in the middle of play, never while a loading screen is up */
   urls.push(...ABILITY_ART_URLS, ...smallIconDomUrls());
-  /* v2.3.3479: the owner's handshake on the trade request card
+  /* v2.3.3481: the owner's handshake on the trade request card
      (TradeWindowPanel.jsx), which pops up when another player asks, in the
      middle of play (17 KB decoded).  The owner's other picks sit in windows
      you open, which load their pictures as they open, as every window does */

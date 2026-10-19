@@ -140,7 +140,7 @@ export function ExchangePanel(props) {
   (storeEnabled() && setBuildingPanel) ? /*#__PURE__*/React.createElement("button", {
     type: 'button',
     onClick: function onClick() { setBuildingPanel('store'); },
-    /* v2.3.3479: the 2026-10-19 UI review -- a way to another window wore
+    /* v2.3.3481: the 2026-10-19 UI review -- a way to another window wore
        brass, which Lantern Slate keeps for selection and the one main action
        (here the selected chips and Place Buy Order): now the secondary
        recipe, raised + strong hairline + primary text, as the panel's own
@@ -190,7 +190,7 @@ export function ExchangePanel(props) {
       color: '#8D9B98'
     }
   },
-  /* v2.3.3479: the 2026-10-19 UI review -- "Buy & sell · Listings" did not
+  /* v2.3.3481: the 2026-10-19 UI review -- "Buy & sell · Listings" did not
      say this is an order book: orders rest per KIND of gear (tier, type,
      elements), buy and sell alike last 24h (market.js ORDER_EXPIRY), and an
      expired or cancelled one is refunded through the mail (_creditPlayer). */
@@ -508,7 +508,7 @@ export function ExchangePanel(props) {
       color: '#8D9B98'
     }
   },
-  /* v2.3.3479: the 2026-10-19 UI review -- "Max Bid 100" beside "Est: ~25G"
+  /* v2.3.3481: the 2026-10-19 UI review -- "Max Bid 100" beside "Est: ~25G"
      read as a bid four times the value. It is the most you pay: an order
      that fills at once pays the resting seller's lower price and gets the
      rest back (market.js, the 'price improvement' refund), and one that

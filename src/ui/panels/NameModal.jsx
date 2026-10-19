@@ -1289,7 +1289,7 @@ export function NameModal(props) {
        ellipsised its own placeholder to "Name your ...", which reads as a
        broken string rather than as an invitation. The heading above says whose
        name it is now, so the placeholder only has to say what to do. */
-    /* v2.3.3479: the 2026-10-19 UI review -- "Tap" is a phone's word; on a
+    /* v2.3.3481: the 2026-10-19 UI review -- "Tap" is a phone's word; on a
        computer you click and type.  (pointer:fine) is the house test for a
        computer (desktopControls.js, QuestCoach.jsx).  Same eleven characters
        and about 1.5px wider at the field's 16px, inside v2.3.2464's measured
@@ -1688,7 +1688,7 @@ export function NameModal(props) {
     }
     /* v2.3.1307: the commit sha leaves the splash (round-7) \u2014 support
        reads it from the console BUILD_INFO when needed.
-       v2.3.3479: the 2026-10-19 UI review -- the GAME's version (the newest
+       v2.3.3481: the 2026-10-19 UI review -- the GAME's version (the newest
        v2.3.N in the build's commit titles), not package.json's 2.3.2324;
        BUILD_INFO.version stays the art's `?v=` cache key. */
   }, "v" + BUILD_INFO.game))), /*#__PURE__*/React.createElement("div", {
@@ -1764,7 +1764,7 @@ export function NameModal(props) {
        is a sibling now and measures the same 172/120px on every tab regardless.
        Shirt keeps its band: with a shirt on, that block holds twelve real
        swatches. */
-    /* v2.3.3479: the 2026-10-19 UI review -- ANY tab with no colour row yields
+    /* v2.3.3481: the 2026-10-19 UI review -- ANY tab with no colour row yields
        its band now, not only the ink-card tabs.  With no hat on (every new
        bro) the Hats grid stopped under its fade over ~100px of hidden band,
        and Hair, Beard and Eyewear did the same with nothing worn.  The band

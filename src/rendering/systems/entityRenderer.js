@@ -121,10 +121,10 @@ import { standInReady, farmFigureReady, peerStandInReady } from '../standIns.js'
 import { parseFarmEx } from '@/game/farmWork.js';   /* v2.3.3439: a peer working a bed of their farm, off their `ex` */
 import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   /* v2.3.3241: at most K other players drawn in full */
 import { SMALL_TEX } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's party badge, threat skull and talk bubble */
-import { QUEST_PIN, QUEST_PIN_WORLD } from '@/data/ownerIcons.js';   /* v2.3.3479: the owner's quest pins over a townsperson */
+import { QUEST_PIN, QUEST_PIN_WORLD } from '@/data/ownerIcons.js';   /* v2.3.3481: the owner's quest pins over a townsperson */
 import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
 import { plateNameWithTag, myAllyTag } from '../../game/alliance.js';   /* v2.3.3313: an alliance member's plate says [TAG] before the name */
-import { isLiveClone } from '../../game/sparTargets.js';   /* v2.3.3479: a clone you spar with lifts its plate off yours (it imports nothing) */
+import { isLiveClone } from '../../game/sparTargets.js';   /* v2.3.3481: a clone you spar with lifts its plate off yours (it imports nothing) */
 import { clipHair, hairClippedBy } from '../hairClip.js';   /* v2.3.3459: the hair clipped through the stencil, not a pass of its own */
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
@@ -6278,7 +6278,7 @@ function _bindSmallTex(spr, k) {
   }
 }
 
-/* ═══ v2.3.3479: THE OWNER'S QUEST PINS ═══
+/* ═══ v2.3.3481: THE OWNER'S QUEST PINS ═══
    The owner's icon pick 4: the gold pins from their sheet over a townsperson
    in place of the drawn discs -- '!' a quest to take, the "?" of a quest
    taken and waiting on you in GREY (the owner: a waiting quest wears a grey
@@ -6663,7 +6663,7 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party) {
       pb.y = h / 2;
     }
   }
-  /* v2.3.3479: the capsule's width, in the pill's own units -- your own
+  /* v2.3.3481: the capsule's width, in the pill's own units -- your own
      plate's is published as the band's half width (S._selfBandHalfW, the HUD
      pass) for the resource label that slides clear of it (nodeLabels.js) */
   display._pillW = w;
@@ -12093,7 +12093,7 @@ export class EntityRenderer {
         const _bandTop = Math.min(PEER_HPBAR_Y - _bandHalf, display._peerBarUp ? PEER_BAR_Y - PEER_BAR_H / 2 : Infinity);
         other._bandTopY = display.visible
           ? display.y + _bandTop * Math.abs(display.scale.y || 1) : null;
-        /* ═══ v2.3.3479: AN OPPONENT'S PLATE STEPS UP OFF YOURS ═══
+        /* ═══ v2.3.3481: AN OPPONENT'S PLATE STEPS UP OFF YOURS ═══
            The 2026-10-19 UI review: "Reviewer 3" and "Sword Clone 3" on top
            of each other, the opponent's name hidden (upright almost wholly).
            A sword fight is at 50 px at most and a sword clone walks to within
@@ -15178,7 +15178,7 @@ export class EntityRenderer {
         ? ((display._pillCss || 15) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
       S._selfBandTopY = display.visible
         ? display.y + (PLAYER_BAND_Y - _bandHalf) * Math.abs(display.scale.y || 1) : null;
-      /* v2.3.3479: the 2026-10-19 UI review (p11/harvest-near #4, p03/
+      /* v2.3.3481: the 2026-10-19 UI review (p11/harvest-near #4, p03/
          desktop-window #1) -- "Pine Log" and "Reviewer 3" read as one.  The
          one resource label that says its name slid out of your BODY's 40 px
          (nodeLabels.js) and, level with the band, stayed under the plate
@@ -16044,7 +16044,7 @@ export class EntityRenderer {
            geometric centre leaves the glyph looking like it is floating. */
         qmGlyph.y = 1;
         questMarker.addChild(qmGlyph);
-        /* v2.3.3479: the owner's pin (QUEST_PIN), shown over the drawn badge
+        /* v2.3.3481: the owner's pin (QUEST_PIN), shown over the drawn badge
            once its picture is in -- the disc and glyph above stay as the
            fallback, so a picture that never came still marks the quest */
         const qmPin = new Sprite(Texture.EMPTY);
@@ -16148,7 +16148,7 @@ export class EntityRenderer {
         /* The marker is anchored at its CENTRE, so clearing the hat needs half
            its own glyph height on top of the gap — the first attempt used the
            gap alone and the ❗ sat down inside the hat brim. */
-        /* v2.3.3479: the owner's pin is 38 tall where the disc was 32, its
+        /* v2.3.3481: the owner's pin is 38 tall where the disc was 32, its
            tip 3 px over the hat as the disc's edge was */
         const MARK_PX = QUEST_PIN_WORLD.h;      // matches the marker's own art
         /* v2.3.1681: gaps tightened from 8 to 3.  The badge is 32px where the
@@ -16161,7 +16161,7 @@ export class EntityRenderer {
         const GAP = 3;
 
         display._questMarker._baseY = -(top + GAP + MARK_PX / 2);
-        /* v2.3.3479: the talk bubble keeps the old disc's centre (it was placed
+        /* v2.3.3481: the talk bubble keeps the old disc's centre (it was placed
            at the badge's, and the taller pin is no reason to move it) */
         display._talkBaseY = -(top + GAP + QUEST_BADGE_R);
         display._figTop = top;   /* v2.3.2896: for his chat bubble -- see npc._headTopY below */
@@ -16308,7 +16308,7 @@ export class EntityRenderer {
              offer's dark glyph (a white "?" on yellow is unreadable): yellow
              says "his quest", the "?" and the stillness say "not yet", and
              green is kept for "done".  The wire values are unchanged. */
-          /* ═══ v2.3.3479: THE OWNER'S PINS, AND WAITING IS GREY AGAIN ═══
+          /* ═══ v2.3.3481: THE OWNER'S PINS, AND WAITING IS GREY AGAIN ═══
              The owner's icon pick 4 puts their sheet's gold pins here (the
              drawn badge below stays, as the fallback), and the waiting "?"
              is that pin baked GREY: the review page showed it greyed -- a
@@ -16322,11 +16322,11 @@ export class EntityRenderer {
           display._qmGlyph.visible = !_ready;
           display._qmFill = _ready ? 0x4BD98A : 0xFFC93C;   /* the probe below says it (mp-questguide) */
           _drawQuestBadge(display._qmBadge, display._qmFill, _ready);
-          /* v2.3.3479: the owner's pin for the new state, bound below */
+          /* v2.3.3481: the owner's pin for the new state, bound below */
           display._qmState = _ready ? 'ready' : _wait ? 'waiting' : 'offer';
           display._qmPin.texture = Texture.EMPTY;
         }
-        /* v2.3.3479: the owner's pin over the drawn badge once its picture is
+        /* v2.3.3481: the owner's pin over the drawn badge once its picture is
            in -- looked up each frame until it is (a display made before the
            loading screen lifted), as _bindSmallTex does -- and the drawn disc
            and glyph only while it is not (they are the fallback) */
@@ -16355,7 +16355,7 @@ export class EntityRenderer {
         const showTalk = !qm.visible;
         if (showTalk) {
           _bindSmallTex(tm, 'npcTalk');
-          /* v2.3.3479: at the old disc's centre, not the taller pin's */
+          /* v2.3.3481: at the old disc's centre, not the taller pin's */
           const ty = display._talkBaseY !== undefined ? display._talkBaseY : (qm._baseY !== undefined ? qm._baseY : -36);
           if (tm.y !== ty) tm.y = ty;
         }
@@ -16368,7 +16368,7 @@ export class EntityRenderer {
             _nm[npc.id] = { name: npc.name, talk: tm.visible, quest: !!qm.visible,
               talkArt: !!(tm.texture && tm.texture !== Texture.EMPTY && tm.texture.width > 1), talkW: Math.round(tm.width),
               /* v2.3.3336: the quest badge's drawn colour (yellow waiting) --
-                 v2.3.3479: now `badgeFill`, the fallback disc's; `badge` says
+                 v2.3.3481: now `badgeFill`, the fallback disc's; `badge` says
                  which of the owner's pins is up ('offer' | 'waiting' |
                  'ready'), with its picture and its drawn height */
               badge: qm.visible ? (display._qmState || null) : null,
@@ -16389,7 +16389,7 @@ export class EntityRenderer {
       if (display._figTop != null) {
         const _sy = Math.abs(display.scale.y || 1);
         /* v2.3.3279: or the talk bubble while it stands there instead */
-        /* v2.3.3479: the pin's height (38), the disc's place as laid out */
+        /* v2.3.3481: the pin's height (38), the disc's place as laid out */
         npc._headTopY = display.y - (display._figTop + (qm.visible ? 3 + QUEST_PIN_WORLD.h
           : (tm && tm.visible ? 3 + NPC_TALK_PX : 0))) * _sy;
       }

@@ -8807,7 +8807,7 @@ export class EffectsRenderer {
       this.overlayLayer.addChild(container);
       this.chatTexts.set(key, entry);
     }
-    /* v2.3.3479: here, not in the block below, as the outline is also drawn
+    /* v2.3.3481: here, not in the block below, as the outline is also drawn
        again further down, when the box slides inside the view */
     const padX = 8, padY = 6, tipH = 6, radius = 8;
     /* Update text content + recompute bg only when text changed. */
@@ -8841,7 +8841,7 @@ export class EffectsRenderer {
       entry._lineW = tw; entry._boxW = bw;   /* v2.3.2896: for the QA probe below */
       const bh = th + padY * 2;
       entry._boxH = bh + tipH;   /* v2.3.3391: an emoji pops above the whole bubble (_updateEmotePops) */
-      entry._bh = bh;            /* v2.3.3479: for the outline drawn below */
+      entry._bh = bh;            /* v2.3.3481: for the outline drawn below */
       entry._pathDx = null;      /* ...at this frame's slide */
       /* v2.3.3395: Halloween week's skin -- purple, pumpkin-ringed, cream words */
       const _spooky = halloweenOn();
@@ -8877,7 +8877,7 @@ export class EffectsRenderer {
     } else {
       entry.container.scale.set(1);
     }
-    /* ═══ v2.3.3479: THE BUBBLE STAYS INSIDE THE VIEW, ITS POINT ON THE SPEAKER ═══
+    /* ═══ v2.3.3481: THE BUBBLE STAYS INSIDE THE VIEW, ITS POINT ON THE SPEAKER ═══
        The 2026-10-19 UI review: Lil Bro's bubble was cut off at the game
        column's left edge (the laptop's 419 px column; any speaker within about
        half a box, ~112 CSS px, of a side).  The box was centred on the speaker
@@ -8936,7 +8936,7 @@ export class EffectsRenderer {
       const _spooky = entry.skin === 'halloween';   /* v2.3.3395's skin, chosen with the line above */
       entry.bg.fill({ fill: _spooky ? spookyBubbleGradient() : chatBubbleGradient() });
       entry.bg.stroke({ width: 2, color: _spooky ? SPOOKY_BUBBLE.stroke : 0x8a949a, alignment: 1 });
-      /* Center the text inside the bubble (v2.3.3479: inside the box, wherever it slid). */
+      /* Center the text inside the bubble (v2.3.3481: inside the box, wherever it slid). */
       entry.text.x = _dx;
     }
     entry.container.alpha = age > totalMs - 500 ? (totalMs - age) / 500 : 1;
@@ -8964,7 +8964,7 @@ export class EffectsRenderer {
         breakWords: !!entry.text.style.breakWords,
         lineW: entry._lineW,   /* the longest laid-out line, bubble-local px */
         boxW: entry._boxW,     /* the box drawn round it, same units */
-        slide: entry._pathDx || 0,   /* v2.3.3479: how far the box slid off its point to stay in the view, same units */
+        slide: entry._pathDx || 0,   /* v2.3.3481: how far the box slid off its point to stay in the view, same units */
         skin: entry.skin || 'plain',   /* v2.3.3395: 'halloween' in Halloween week */
         ink: String(entry.text.style.fill),
       };
@@ -8980,7 +8980,7 @@ export class EffectsRenderer {
   _updateChatBubbles(S, now) {
     const bubbles = S.chatBubbles || {};
     const activeKeys = new Set();
-    /* v2.3.3479: the view's sides, world px, that a bubble keeps inside
+    /* v2.3.3481: the view's sides, world px, that a bubble keeps inside
        (_renderChatBubble) */
     const _view = (S.camera && S._viewW > 0) ? { l: S.camera.x, r: S.camera.x + S._viewW } : null;
 
@@ -10933,7 +10933,7 @@ export class EffectsRenderer {
     if (!spr || spr.destroyed) return;
     let want = 1;
     const P = S && S.player;
-    /* v2.3.3479: the 2026-10-19 UI review -- "the bro chops empty grass, the
+    /* v2.3.3481: the 2026-10-19 UI review -- "the bro chops empty grass, the
        bar floats over nothing".  During a chop your walking body is put away
        and the lumberjack is drawn IN FRONT of the trunk (chopStandInSpot), but
        the test below still read S.player, the hidden body, which stays where

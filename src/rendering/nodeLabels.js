@@ -163,7 +163,7 @@ export const NAME_PLATE_ONLY = Object.freeze(new Set(['fishSpot']));
    your body */
 const BODY_HALF_W = 20, BODY_UP = 92, BODY_DOWN = 48;
 const CLEAR = 6;
-/* v2.3.3479: how clear of your name plate (or the HP bar in its place) a pill
+/* v2.3.3481: how clear of your name plate (or the HP bar in its place) a pill
    level with it stops, CSS px -- see updateNodeLabel */
 const PLATE_CLEAR_CSS = 8;
 const SCALE_MIN = 0.25, SCALE_MAX = 4;
@@ -314,7 +314,7 @@ export function updateNodeLabel(layer, node, S, at, full = true) {
   const P = S && S.player;
   if (full && P && typeof P.x === 'number' && p.mode === 'full') {
     const half = (p.w || 0) * s / 2, top = at.y - PILL_H * s, bot = at.y;
-    /* v2.3.3479: the 2026-10-19 UI review (p11/harvest-near #4, p03/
+    /* v2.3.3481: the 2026-10-19 UI review (p11/harvest-near #4, p03/
        desktop-window #1) -- "Pine Log" and "Reviewer 3" touched and read as
        one: the box was your BODY's alone, 20 px either side, so a pill level
        with your name plate (you under a crown, the label at its top) stopped

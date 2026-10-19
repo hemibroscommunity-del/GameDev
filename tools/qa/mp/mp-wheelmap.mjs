@@ -38,7 +38,7 @@
  * stands, its door on its front edge, the shut ones grey, the town's square
  * gone in their place, and their roofs read off the screen.
  *
- * v2.3.3479, the owner's icon picks ("1b": all eight lands' scenes from their
+ * v2.3.3481, the owner's icon picks ("1b": all eight lands' scenes from their
  * sheet) -- 4 checks the Wheel holds the eight scenes and none of the four
  * animated strips, and that Frost Ridge's banner, played again, shows the
  * frost scene over its plaque (wheelmap-04c-landbanner.png).
@@ -349,14 +349,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const zb = window.__btZoneBanner;
     return { land: pl ? pl.land : null, icon: pl ? pl.icon : false, color: pl ? pl.color : null, plateRect: window.__btWheelPlate || null,
       bannerAt: zb ? zb.shownAt('frost') : 0, banner: zb && zb.onScreen ? zb.onScreen() : null, watch: zb && zb.land ? zb.land() : null,
-      /* v2.3.3479: the eight lands' scenes held, the closed lands' strips not */
+      /* v2.3.3481: the eight lands' scenes held, the closed lands' strips not */
       scenes: zb && zb.scenes ? zb.scenes() : null, strips: zb && zb.resident ? zb.resident() : null };
   });
   rec.ok(`...and the name plate marks the land: the frost icon before "Frost Ridge", the name in the land's own colour (${look.color})`,
     look.land === 'frost' && look.icon === true && !!look.color && look.color !== '#f7f2e7', look);
   rec.ok(`...and crossing into Frost Ridge played its banner, docking into the plate (${look.banner ? `"${look.banner.text}"${look.banner.scene ? ', the owner\'s frost scene over it' : (look.banner.plain ? ', plain' : ', the owner\'s frost art')}` : 'shown ' + (look.bannerAt ? 'and docked' : 'never')})`,
     look.bannerAt > 0 && look.watch && look.watch.shown === 'frost', look);
-  /* v2.3.3479, the owner's icon picks ("1b": all eight lands' scenes from their
+  /* v2.3.3481, the owner's icon picks ("1b": all eight lands' scenes from their
      sheet): the Wheel holds the eight scenes for its banners, loaded behind
      its loading screen, and none of the four animated strips it used to */
   rec.ok(`...and the Wheel holds every land's scene for its banner (${(look.scenes || []).length}: ${(look.scenes || []).join(', ')}) and none of the closed lands' animated strips (${JSON.stringify(look.strips)})`,
@@ -411,7 +411,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   rec.ok(`...and out there, town off the box, its HOME BADGE rides the box's edge toward it: town ${hm.deg} degrees from you (south-east), ${hm.dist} game px away, the badge at (${hm.x}, ${hm.y}) in the box, drawn (${badge ? `${badge.white} white, ${badge.brass} brass, ${badge.dark} dark px` : 'not shown'})`,
     hm.edge === true && hm.shown === true && hm.deg >= 30 && hm.deg <= 60 && hm.x > 66 && hm.y > 66 && !!badge && badge.white >= 8 && badge.brass >= 6 && badge.dark >= 20, { home: hm, badge, quest: now4.quest || null });
-  /* v2.3.3479: the banner played again (its history forgotten, the land watch
+  /* v2.3.3481: the banner played again (its history forgotten, the land watch
      asks once more 600 ms on) and caught on screen, read in the page: the
      owner's frost SCENE, decoded, over the plaque and on the screen */
   const sb = await P.page.evaluate(async () => {

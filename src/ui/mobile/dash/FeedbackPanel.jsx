@@ -79,7 +79,7 @@ export const FeedbackPanel = () => {
       </div>
       {tab === 'submit' ? (
         <>
-          {/* ═══ v2.3.3479: THE BOX FIRST (the 2026-10-19 UI review) ═══
+          {/* ═══ v2.3.3481: THE BOX FIRST (the 2026-10-19 UI review) ═══
               Under "What kind?" and the fifteen "About" chips (three to five
               rows), the box started ~230 px down a page ~159 px tall (149 on
               a laptop): every first view was chips, and nothing said where to

@@ -40,7 +40,7 @@ import { holdFarmUntilReady } from '@/game/farmTrip.js';
  * data-farm-summary; window.__btFarm (the bus).
  * v2.3.3134: data-farm-orders, data-farm-order={slot} / data-farm-order-done,
  * data-farm-deliver={slot}, data-farm-orders-reset.
- * v2.3.3479: data-farm-key (the Seeds tab's key to the chips). */
+ * v2.3.3481: data-farm-key (the Seeds tab's key to the chips). */
 
 const C = {
   sheet: '#1E2E34', well: '#111E23', raised: '#293B41', card: '#24363C',
@@ -258,7 +258,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
         )}
         {!closed && tab === 'seeds' && (
           <div data-farm-shop="1">
-            {/* v2.3.3479: the 2026-10-19 UI review -- the seed rows' chips
+            {/* v2.3.3481: the 2026-10-19 UI review -- the seed rows' chips
                 (grow time dry and watered, the harvest plain and with
                 compost) had no words anywhere; a one-line key in the space
                 left of the gold, drawn with the chips' own glyphs and the
@@ -273,7 +273,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
             </div>
             {crops.filter(unlocked).map((id) => {
               const c = FARM.CROPS[id];
-              /* v2.3.3479: the 2026-10-19 UI review -- "Carrot ×0" counts the
+              /* v2.3.3481: the 2026-10-19 UI review -- "Carrot ×0" counts the
                  SEED packets you hold (seedCount), but read like harvested
                  carrots beside the Orders tab's "12 × Carrot"; the row is
                  named as the bag and the buy line name the seed

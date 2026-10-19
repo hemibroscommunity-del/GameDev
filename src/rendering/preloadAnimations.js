@@ -46,7 +46,7 @@ import { isWorldTrialZone, preloadWorldTrial } from '../game/worldTrial.js'; /* 
 import { townSkippedOnTheWay } from '../game/wheelHome.js'; /* v2.3.3037: today's town is a stop on the way to the Wheel */
 import { effectsAnimationsReady, ensureSnowballBurstTex, freeFrostImpactTex, ensureArrowBlastTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit; v2.3.2844: minus the retired snowman plume */
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
-import { preloadTraits, preloadBroBadge, preloadSmallIconTextures, preloadQuestPinTextures } from './systems/entityRenderer.js'; /* v2.3.2345: + the verified-Bro plate badge; v2.3.3279: + the owner's small icons; v2.3.3479: + their quest pins */
+import { preloadTraits, preloadBroBadge, preloadSmallIconTextures, preloadQuestPinTextures } from './systems/entityRenderer.js'; /* v2.3.2345: + the verified-Bro plate badge; v2.3.3279: + the owner's small icons; v2.3.3481: + their quest pins */
 import { preloadCapes } from './capeSprites.js'; /* v2.3.2023: cosmetic capes are GLOBAL, not per-zone */
 import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset knight figures */
 import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their head overlays */
@@ -60,7 +60,7 @@ import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-
 import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the harvest cue's mini tools */
 import { preloadControls } from './controlsPreload.js'; /* v2.3.3018: the touch controls' pictures (the owner's mockup) */
 import { preloadQuestArt } from './questArtPreload.js'; /* v2.3.3030: the quest windows' painted art (the owner's sheets) */
-import { preloadZoneBanner, freeZoneBanner, preloadLandScenes, freeLandScenes } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE; v2.3.3479: + the Wheel's lands' scenes */
+import { preloadZoneBanner, freeZoneBanner, preloadLandScenes, freeLandScenes } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE; v2.3.3481: + the Wheel's lands' scenes */
 import { loadSignpostIcons, freeSignpostIcons } from './wheelSignposts.js';   /* v2.3.3062: Brotown's signposts' icons */
 import { preloadFarmArt, freeFarmArt } from './farmWorld.js';   /* v2.3.3136: your farm's barn, props, beds and crops */
 import { ensureStandIn } from './standIns.js';   /* v2.3.3136: the farmer kneels in the cook's figure */
@@ -81,7 +81,7 @@ import { preloadWorldLife } from './worldLife.js';        /* v2.3.2811: the buil
    amended: these load during the per-zone loading SCREEN (awaited, no
    in-play first-use hitch) — compliant in spirit. */
 /* v2.3.3024's wheelBannerLands() (the four lands with ornament strips) went in
-   v2.3.3479: the Wheel's lands play their scenes now, all eight (below). */
+   v2.3.3481: the Wheel's lands play their scenes now, all eight (below). */
 
 export async function preloadZoneAssets(zoneId) {
   const tasks = [];
@@ -137,7 +137,7 @@ export async function preloadZoneAssets(zoneId) {
      into a land plays its banner (zoneBannerOverlay.js noteWheelLand) and is
      not a zone change, so their strips load HERE, behind the Wheel's own
      loading screen, and go when you leave it (freeZoneAssets, below) */
-  /* v2.3.3479: ...and since the owner's icon picks ("1b": "all eight from the
+  /* v2.3.3481: ...and since the owner's icon picks ("1b": "all eight from the
      sheet") every land's banner is its SCENE from their sheet, so the Wheel
      loads those eight (~0.6 MB decoded) and NOT the four strips (15.7 MB
      decoded), which stay the closed lands' own (zoneBannerPreload.js) */
@@ -278,7 +278,7 @@ export async function freeZoneAssets(fromZoneId, toZoneId) {
   let bannersFreed = [];
   try { bannersFreed = freeZoneBanner(fromZoneId, toZoneId); } catch (e) { /* a strip that will not release is a leak, not a crash */ }
   /* v2.3.3024: leaving the Wheel lets its lands' banner strips go too
-     (v2.3.3479: its lands' scenes, which are what it loads now) */
+     (v2.3.3481: its lands' scenes, which are what it loads now) */
   if (fromZoneId === 'wheel' && toZoneId !== 'wheel') {
     try { bannersFreed = bannersFreed.concat(freeLandScenes().map((land) => 'scene:' + land)); } catch (e) { /* a leak, not a crash */ }
     /* v2.3.3062: and the signposts' icons (their plates taken down first) */
@@ -410,7 +410,7 @@ export async function preloadWorldAnimations() {
        plates -- a party forms, a skull lights, a townsperson comes into view
        in the middle of play */
     smallIcons: preloadSmallIconTextures(),
-    /* v2.3.3479: the owner's quest pins over a townsperson (data/ownerIcons.js
+    /* v2.3.3481: the owner's quest pins over a townsperson (data/ownerIcons.js
        QUEST_PIN: offer, the grey waiting "?", ready), on the canvas -- GLOBAL,
        as townsfolk with quests stand in BroTown, the farm and today's town,
        and a pin changes the moment a quest is taken or its items come in */

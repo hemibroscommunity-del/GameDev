@@ -27,7 +27,7 @@ const btnRaised = { ...btn, background: COL.raised, color: COL.text, border: `1p
    -- its tag, if it was your clan or is an alliance -- or how a party becomes
    an alliance, and its button opens the player list, where a party starts
    (a player's card, Invite to Party), as the Saloon's "Invite a player"
-   ("Find a party" until v2.3.3479) does. */
+   ("Find a party" until v2.3.3481) does. */
 function PartyNowPage({ S }) {
   const p = S && S._party && S._party.state === 'open' ? S._party : null;
   const a = p && p.ally && typeof p.ally === 'object' ? p.ally : null;
@@ -61,7 +61,7 @@ function PartyNowPage({ S }) {
         {p ? 'Your party stays together when you log out. ' : 'Make a party: pick a player and tap Invite to Party on their card. '}
         A party of {(a && a.at) || 20} members who played in the last 7 days and are level 5 or more becomes an alliance, with a name and a tag on every member. Your alliance and the alliance board are in the Saloon in BroTown.
       </div>
-      {/* v2.3.3479: the 2026-10-19 UI review -- "Find a party" -> "Invite a
+      {/* v2.3.3481: the 2026-10-19 UI review -- "Find a party" -> "Invite a
           player": it opens the player list, where you invite someone; the
           worker refuses an invite to anyone already in a party, so it can
           never find you one (the Saloon's row says the same, WheelHallPanel.jsx) */}

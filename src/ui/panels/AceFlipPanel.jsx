@@ -245,7 +245,7 @@ export function AceFlipPanel() {
   var stake = Math.min(aceFlipBus.stake, maxStake);
   var risk = stake * ACE_FLIP_RISK_MULT;
   var canFlip = stake >= ACE_FLIP_MIN_STAKE && risk <= coins && !aceFlipBus.pending;
-  /* v2.3.3479: the 2026-10-19 UI review -- his window always opens at a stake
+  /* v2.3.3481: the 2026-10-19 UI review -- his window always opens at a stake
      of 0 (BroTown's tap and desktopControls' E both setStake(0)), so the Win
      and Lose boxes read a green "+0" and a red "-0" before anything was
      chosen.  Until a stake is picked they say "—" in the quiet grey. */
@@ -429,7 +429,7 @@ export function AceFlipPanel() {
         React.createElement('div', { style: { fontSize: 13.5, color: LS.txt3, marginTop: 2 } }, 'Gambler')),
       React.createElement('button', {
         onClick: close, 'aria-label': 'Close',
-        /* v2.3.3479: the 2026-10-19 UI review -- the ✕ is 18 x 28, under the
+        /* v2.3.3481: the 2026-10-19 UI review -- the ✕ is 18 x 28, under the
            44 px touch floor: an invisible ring makes the press 44 x 44 with
            no change to how it looks (game.css .bt-ace-close; ::before, as
            ::after is the computer's Esc key cap). */
@@ -488,7 +488,7 @@ export function AceFlipPanel() {
 
       /* ── the coin ── */
       React.createElement('div', {
-        /* v2.3.3479: the 2026-10-19 UI review -- held sideways the 138 px well
+        /* v2.3.3481: the 2026-10-19 UI review -- held sideways the 138 px well
            pushed the stake chips and the button below the first view.  The
            well is not empty space: it is the coin's toss (it climbs from y 117
            of its frame to y 10 and back), so a short screen shrinks the WHOLE
@@ -516,7 +516,7 @@ export function AceFlipPanel() {
       /* ── stake ── */
       React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 } },
         React.createElement('span', { style: { fontSize: 12.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: LS.txt3 } }, 'Your stake'),
-        /* v2.3.3479: the 2026-10-19 UI review -- "Bag 2550" beside the top
+        /* v2.3.3481: the 2026-10-19 UI review -- "Bag 2550" beside the top
            bar's "2,550": the balance takes the HUD's own call (ZoneHeader.jsx).
            The stake chips and "Flip for 90g" are amounts, not the balance. */
         React.createElement('span', { style: { fontSize: 12.5, color: LS.txt3 } }, 'Bag ', gold(Number(coins).toLocaleString(), 13))),

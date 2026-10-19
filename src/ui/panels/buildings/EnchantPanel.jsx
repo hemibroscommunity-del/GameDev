@@ -113,7 +113,7 @@ export function EnchantPanel(props) {
         key: 'weapon',
         wpn: rpgState.weapon
       }, {
-        /* v2.3.3479: the 2026-10-19 UI review -- was 'Ranged', beside 'Staff',
+        /* v2.3.3481: the 2026-10-19 UI review -- was 'Ranged', beside 'Staff',
            which is ranged too; this slot is the bow, as the hero sheet, the
            profile and the leaderboard call it (and the Bank's row) */
         label: 'Bow',
@@ -161,7 +161,7 @@ export function EnchantPanel(props) {
             color: (wpn === null || wpn === void 0 ? void 0 : wpn.name) ? LS.txt1 : LS.dis,
             marginBottom: 4
           }
-        }, (wpn === null || wpn === void 0 ? void 0 : wpn.name) || 'None'), /* v2.3.3479: the 2026-10-19 UI review -- the rarity row only for a
+        }, (wpn === null || wpn === void 0 ? void 0 : wpn.name) || 'None'), /* v2.3.3481: the 2026-10-19 UI review -- the rarity row only for a
            weapon that is there: with the slot empty it printed "Common (1×)"
            under "None", as if something were equipped. */
         wpn && /*#__PURE__*/React.createElement("div", {
@@ -553,7 +553,7 @@ export function EnchantPanel(props) {
           fontSize: 11,
           color: LS.txt3
         }
-      }, /* v2.3.3479: the 2026-10-19 UI review -- was "Forge a shield at the
+      }, /* v2.3.3481: the 2026-10-19 UI review -- was "Forge a shield at the
             Blacksmith to slot defensive gems here.", but the Blacksmith has
             made no shields since its rebuild (v2.3.2826); and no emoji in
             the window's words (v2.3.1235) */

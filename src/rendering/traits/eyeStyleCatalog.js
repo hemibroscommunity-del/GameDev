@@ -91,7 +91,7 @@
 export const EYE_STYLE_CATALOG = [
   /* 'none' is the eyes the body sheets paint -- the tile helper draws its
      shared bald-head icon for this id.
-     v2.3.3479: the 2026-10-19 UI review -- and the caption is THIS NAME now,
+     v2.3.3481: the 2026-10-19 UI review -- and the caption is THIS NAME now,
      not a fixed "None": on Hair or Hats 'none' means the thing is absent, but
      here the bro still has eyes, his ordinary ones, and "None" said he had
      none.  _thumbTile (BroTown.jsx) reads the name for 'eyestyle' as it does

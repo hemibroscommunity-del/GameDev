@@ -21,7 +21,7 @@
  *      BRO TOWN lay below the screen, unreachable: it is on it now, and a
  *      click on it starts the game (v2.3.3407).
  *   3b. and there the drawing editor ran off the column, Done off its edge:
- *      it fits the column now and Done answers a click (v2.3.3479, the
+ *      it fits the column now and Done answers a click (v2.3.3481, the
  *      2026-10-19 UI review).
  */
 import * as H from './harness.mjs';
@@ -177,7 +177,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...the Trait Picker beside it has room for its tiles (it had 31 px)', !!cc && cc.pane >= 150, cc);
     rec.ok('...and "ENTER BRO TOWN" stays on one line', !!cc && cc.labelH < cc.font * 1.6, cc);
 
-    /* 3b. v2.3.3479 (the 2026-10-19 UI review): the DRAWING EDITOR on the
+    /* 3b. v2.3.3481 (the 2026-10-19 UI review): the DRAWING EDITOR on the
        same laptop.  Its pane was a fraction of the WINDOW (min(52vw,52vh,
        288px)), so it took its 288 px ceiling and the panel wanted ~505 px in
        the 419 px column: it scrolled sideways inside itself, with Done,

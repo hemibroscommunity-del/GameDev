@@ -298,7 +298,7 @@ function chevron(x, y, ang, s) {
   const p = (u, v) => `${(x + bx * u + nx * v).toFixed(1)} ${(y + by * u + ny * v).toFixed(1)}`;
   return `M ${p(-s, -s)} L ${p(0, 0)} L ${p(-s, s)}`;
 }
-/* v2.3.3479: the 2026-10-19 UI review -- "the CHOP cue shows only a right-
+/* v2.3.3481: the 2026-10-19 UI review -- "the CHOP cue shows only a right-
    pointing arrow", though the stroke goes both ways.  While the cue waits the
    tool sits still at its track's START on its dark badge (r 15.5, drawn over
    the arrows, TouchControls), and the chevron at that end lay wholly under

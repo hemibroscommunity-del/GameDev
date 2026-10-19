@@ -75,7 +75,7 @@ export function BankPanel(props) {
       /* v2.3.1235: state-correction — the old copy claimed gold is "always
          safe", contradicting the actual death rule (monsterCombat.js:
          DEATH_GOLD_PENALTY = 10% of carried coins). Copy now matches code. */
-      /* v2.3.3479: the 2026-10-19 UI review -- "The bank protects additional
+      /* v2.3.3481: the 2026-10-19 UI review -- "The bank protects additional
          items from death scatter" promised storage this window does not have
          (it shows your gold and what you wear, and sends nothing), and
          "Equipped items are always safe" is not true for a red skull a player
@@ -96,7 +96,7 @@ export function BankPanel(props) {
       /* v2.3.2343: the worker owns coins and charges no death penalty, so
          the "10% is lost on death" line promised a loss that never happened
          (the client used to subtract it locally and the echo put it back). */
-      /* v2.3.3479: the 2026-10-19 UI review -- true of an ordinary death, not
+      /* v2.3.3481: the 2026-10-19 UI review -- true of an ordinary death, not
          of No man's land since v2.3.3316: a death there to a player under its
          rule gives your gold to the killer, and a red skull's death to
          anything takes it too (nomansland.js _nmlOnDeath: ps.coins = 0
@@ -107,6 +107,6 @@ export function BankPanel(props) {
       React.createElement("div", {
         style: { borderRadius: 8, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
       }, gearRow('Melee', meleeName, false),
-      gearRow('Bow' /* v2.3.3479: was 'Ranged' -- the bow slot, named as the Gem Works' Set gems and the hero sheet name it (the 2026-10-19 UI review) */, rangedName, false),
+      gearRow('Bow' /* v2.3.3481: was 'Ranged' -- the bow slot, named as the Gem Works' Set gems and the hero sheet name it (the 2026-10-19 UI review) */, rangedName, false),
       gearRow('Armor', armorName, true))));
 }

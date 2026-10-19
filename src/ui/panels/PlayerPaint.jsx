@@ -92,7 +92,7 @@ const TARGETS = {
     pattern: null,
     /* v2.3.1994: the Body screen reaches the arms as well now, so the caption
        says where a stroke will land before you make it.
-       v2.3.3479: the 2026-10-19 UI review -- "Chest and arms. Draw straight on
+       v2.3.3481: the 2026-10-19 UI review -- "Chest and arms. Draw straight on
        either -- ..." read awkwardly.  Same two facts, plainer, and still the
        exact rule (a shirt or breastplate covers the chest; sleeves the upper
        arm, as tattooArm says) and still under the 120px the caption cell

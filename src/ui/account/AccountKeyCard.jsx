@@ -29,7 +29,7 @@ export const AccountKeyCard = () => {
     );
   }
 
-  /* v2.3.3479: an eight-word key's field is kept for Copy's fallback but not
+  /* v2.3.3481: an eight-word key's field is kept for Copy's fallback but not
      shown (the row below says why) */
   const hideField = isNewKey(phrase);
 
@@ -78,7 +78,7 @@ export const AccountKeyCard = () => {
           on a phone, so the words are laid out two by four, numbered, the
           way they are typed; the input below still holds the whole key for
           Copy and select. */}
-      {/* ═══ v2.3.3479: FOUR ACROSS WHERE THEY FIT (the 2026-10-19 UI review) ═══
+      {/* ═══ v2.3.3481: FOUR ACROSS WHERE THEY FIT (the 2026-10-19 UI review) ═══
           Two by four, the label and the words alone took ~155 px of the ~159
           an upright phone's page has (169 on a laptop), so Copy and "There
           is no email recovery" waited below the fold everywhere but sideways.
@@ -108,7 +108,7 @@ export const AccountKeyCard = () => {
           ))}
         </ol>
       )}
-      {/* ═══ v2.3.3479: AN EIGHT-WORD KEY IS COPIED, NOT READ OFF A FIELD (the 2026-10-19 UI review) ═══
+      {/* ═══ v2.3.3481: AN EIGHT-WORD KEY IS COPIED, NOT READ OFF A FIELD (the 2026-10-19 UI review) ═══
           The words above already show the key; beside them the field showed
           only the joined key's start ("slept-hash-", sideways), which looked
           like a key cut short.  It cannot simply go: it is what Copy selects

@@ -54,7 +54,7 @@ function _doFlush() {
     _lastSentLen = log.length;
     const payload = JSON.stringify({
       sid: _SID,
-      /* v2.3.3479: the 2026-10-19 UI review -- every report said 2.3.2324,
+      /* v2.3.3481: the 2026-10-19 UI review -- every report said 2.3.2324,
          package.json's hand-kept number (the art's cache key), whatever deploy
          it came from.  `v` is the game's version now (the newest v2.3.N in the
          build's commit titles, vite.config.js GAME_VERSION) and `sha` the
@@ -268,7 +268,7 @@ export function installCrashTrap() {
          the last entry was always a routine [resume] and hid the story.
          v2.3.776: header carries the build version so a screenshot also
          answers "which deploy was this?".
-         v2.3.3479: the game's version and the commit, not package.json's
+         v2.3.3481: the game's version and the commit, not package.json's
          2.3.2324, which answered nothing. */
       const ver = (typeof __GAME_VERSION__ !== 'undefined' ? __GAME_VERSION__ : 'dev')
         + (typeof __BUILD_COMMIT__ !== 'undefined' && __BUILD_COMMIT__ ? ' · ' + __BUILD_COMMIT__ : '');

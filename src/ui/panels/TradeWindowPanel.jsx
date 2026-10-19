@@ -32,7 +32,7 @@ import { PetPortrait } from '@/ui/petPortrait.jsx';
 import { petDisplayName, petKindName, petTradeView, worldSafeText, PET_TRADE_MAX } from '@/data/trapping.js';
 import { petList, petbookOn } from '@/game/petBook.js';
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '../../rendering/characterPortrait.js';
-import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3479: the trade request's handshake */
+import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3481: the trade request's handshake */
 
 /* === TradeWindowPanel — the two-sided trade window (v2.3.1132) === */
 /* Handoff item H: both players stage items + gold, both confirm, the
@@ -208,10 +208,10 @@ const DRAWER_FRAME = {
 
 /* `title` is the header line every state shares (icon + one sentence);
    `onClose` renders the ✕ and is omitted only where a state has no way to
-   leave that isn't one of its own buttons.  v2.3.3479: `icon` ({src, w, h})
+   leave that isn't one of its own buttons.  v2.3.3481: `icon` ({src, w, h})
    leads the title -- only the incoming request wears one (the owner's
    handshake), as the duel challenge card wears its swords. */
-/* v2.3.3479: `kind` names the state on the drawer (`data-trade-drawer`,
+/* v2.3.3481: `kind` names the state on the drawer (`data-trade-drawer`,
    empty for most): "invite" lets game.css put the sideways ▴ chip away while
    an invite's Open trade lies under it.  Everything else reads the attribute
    by its presence only. */
@@ -1064,7 +1064,7 @@ export function TradeWindowPanel(props) {
          invite, and it SENDS trade2_cancel -- the scrim tap this replaces
          did not, so a dismissed invite used to leave the other player
          waiting on a request nobody had actually refused. */
-      /* v2.3.3479: the owner's handshake leads it (their icon pick 3) */
+      /* v2.3.3481: the owner's handshake leads it (their icon pick 3) */
       <TradeDrawer kind="invite" title={`${trade2.fromName} wants to trade`} icon={OWNER_ICON.tradeHandshake}>
           <div style={{ display: 'flex', gap: 6 }}>
             <button

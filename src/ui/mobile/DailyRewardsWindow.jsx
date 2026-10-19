@@ -3,7 +3,7 @@ import { COL } from './dash/common.js';
 import { thumbFor } from './dash/InventoryPanel.jsx';
 import { useModalGuard } from './modalGuardBus.js';
 import { tapDismiss, TAP_DISMISS_STYLE } from '../tapDismiss.js';
-import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3479: the free spin row's prize wheel */
+import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3481: the free spin row's prize wheel */
 import {
   dailyRewardsBus, questsLive, spinLive, seasonLive, askReroll, askClaim, askRewards,
   questLabel, questIcon, grantLabel, untilText, claimableTiers, nextTier, tierNeed, coinsShort,
@@ -167,7 +167,7 @@ function TodayTab({ st }) {
           {(sk.fz || 0) + '/' + (sk.fzMax || 2)}
         </span>
       </div>
-      {/* v2.3.3479: the 2026-10-19 UI review -- "covers a missed day by
+      {/* v2.3.3481: the 2026-10-19 UI review -- "covers a missed day by
           itself" did not say plainly that nothing has to be done: the worker
           spends one freeze a missed day on its own (cadence.js
           _cadenceLoginReward), and a gap longer than the freezes held starts
@@ -188,7 +188,7 @@ function TodayTab({ st }) {
           background: lit ? COL.accentFill : COL.well,
           border: '1px solid ' + (lit ? COL.edgeWarm : COL.border),
         }}>
-          {/* v2.3.3479: the owner's prize wheel (their icon pick 8), where the
+          {/* v2.3.3481: the owner's prize wheel (their icon pick 8), where the
               little drawn wheel was; the bonus spins elsewhere keep SpinGlyph */}
           <img src={OWNER_ICON.prizeWheel.src} alt="" draggable={false} width={OWNER_ICON.prizeWheel.w} height={OWNER_ICON.prizeWheel.h}
             data-daily-spin-icon="" style={{ width: OWNER_ICON.prizeWheel.w, height: OWNER_ICON.prizeWheel.h, objectFit: 'contain', flex: 'none' }}

@@ -76,7 +76,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const combat = await rows();
   rec.ok('both live players appear on the combat board',
     combat.some((r) => r.name === 'Hiscore') && combat.some((r) => r.name === 'Rival'), combat);
-  /* v2.3.3479: a level board's number says so, "Lv 3" */
+  /* v2.3.3481: a level board's number says so, "Lv 3" */
   rec.ok('the row shows the ranked value (fresh character = 3 trained levels)',
     combat.length > 0 && combat[0].rank === '#1' && combat[0].value === 'Lv 3', combat);
 

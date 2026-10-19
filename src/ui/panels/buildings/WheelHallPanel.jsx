@@ -1,7 +1,7 @@
 import React from 'react';
 import { WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';
 import { mailList, mailAge } from '@/game/postOffice.js';
-import { ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3479: the mail names items as the bag does */
+import { ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3481: the mail names items as the bag does */
 import { AlliancePart } from './AlliancePart.jsx';   /* v2.3.3313: the alliance, at the top of the Saloon */
 import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3321: clans are parties now */
 
@@ -105,7 +105,7 @@ function postOffice(props) {
     <div key="mail" data-hall-mail={mail.length}
       style={{ background: LS.well, border: '1px solid ' + LS.border, borderRadius: 10, padding: mail.length ? '4px 0' : '12px', maxHeight: 220, overflowY: 'auto' }}>
       {mail.length ? mail.map(function (m, i) {
-        /* v2.3.3479: the 2026-10-19 UI review -- "2× Meal garden stew" ->
+        /* v2.3.3481: the 2026-10-19 UI review -- "2× Meal garden stew" ->
            "2× Garden Stew": an item the bag has a name for is named so
            (postOffice.js keeps its key and count); the rest, and a line kept
            before this version, read the line's own words. */
@@ -171,7 +171,7 @@ export function WheelHallPanel(props) {
    always said -- where you team up:
      - your party as the worker last said it (S._party, party.js _partyWire:
        you first, each member's level), or how a party works;
-     - Invite a player (v2.3.3479; "Find a party" until then): the player
+     - Invite a player (v2.3.3481; "Find a party" until then): the player
        list, where a player's card has Invite to Party (InspectPlayerPanel)
        -- the same list as the Sheriff's duel row.
    Nothing new on the wire: invites, the roster, party chat and the HUD are
@@ -183,7 +183,7 @@ export function SaloonPanel(props) {
   /* v2.3.3284: a party lasts and holds 50 against a worker that says so
      (party.js PARTY.KEEP_MAX); the strip shows six, this list everyone */
   var keeps = !!(S._serverCaps && S._serverCaps.partykeep);
-  /* v2.3.3479: the 2026-10-19 UI review -- the row was "Find a party", but it
+  /* v2.3.3481: the 2026-10-19 UI review -- the row was "Find a party", but it
      opens the player list, where you INVITE someone: the worker refuses an
      invite to anyone already in a party (party.js 'target-busy'), so this row
      can never find you one -- joining a party takes one of its members

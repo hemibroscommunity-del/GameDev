@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3479: THE OWNER'S CHOSEN ICONS, CUT FROM THEIR THIRTEEN SHEETS.
+"""v2.3.3481: THE OWNER'S CHOSEN ICONS, CUT FROM THEIR THIRTEEN SHEETS.
 
 The owner, 2026-10-19, uploaded thirteen ChatGPT sheets of game UI art, now in
 assets/icons-source/owner-2026-10-19/.  Most of what is on them is ChatGPT

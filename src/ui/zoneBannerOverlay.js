@@ -63,7 +63,7 @@ import {
   ZONE_BANNER_IN_MS, ZONE_BANNER_NAME_AT, ZONE_BANNER_NAME_MS,
   ZONE_BANNER_DOCK_MS, ZONE_BANNER_REPEAT_MS,
 } from '../data/zoneBanner.js';
-import { zoneBannerReady, zoneBannerResident, landSceneHeld, landScenesResident } from '../rendering/zoneBannerPreload.js'; /* v2.3.3479: + the Wheel's lands' scenes */
+import { zoneBannerReady, zoneBannerResident, landSceneHeld, landScenesResident } from '../rendering/zoneBannerPreload.js'; /* v2.3.3481: + the Wheel's lands' scenes */
 import { zoneTitle } from './mobile/zoneTitle.js';
 import { prefersReducedMotion } from './mobile/sheet/motion.js';
 import { landLook } from '../data/wheelLands.js';   /* v2.3.3024: the Wheel's lands */
@@ -172,7 +172,7 @@ export function playZoneBanner(zoneId, S, opts = {}) {
      the owner's plays the PLAQUE alone, its name and icon, no ornaments
      (nothing borrowed: the rule above stands), and one whose art is not warm
      does too */
-  /* v2.3.3479: and `scene` -- a Wheel land's id: its SCENE from the owner's
+  /* v2.3.3481: and `scene` -- a Wheel land's id: its SCENE from the owner's
      sheet stands over the plaque (the owner's "1b", all eight lands), never
      the ornament strip of the closed zone of the same id; a scene that is not
      held (cold, or failed) is the plain plaque, never a load */
@@ -209,7 +209,7 @@ export function playZoneBanner(zoneId, S, opts = {}) {
   }
   if (opts.color) nameEl.style.color = opts.color;
   if (scene) {
-    /* v2.3.3479: the land's scene over the plaque, at its own shape (the
+    /* v2.3.3481: the land's scene over the plaque, at its own shape (the
        picture's own size on the element; CSS draws it half the banner wide,
        game.css .is-scene).  The same URL as the held, decoded Image, so it
        paints at once.  Its painted name plate was cut off: the plaque below
@@ -225,7 +225,7 @@ export function playZoneBanner(zoneId, S, opts = {}) {
   }
   if (plain) {
     /* the plaque alone: in, named, docked -- the same clock, no beats
-       (v2.3.3479: and a land's scene over it, on the same clock: it rises in
+       (v2.3.3481: and a land's scene over it, on the same clock: it rises in
        with the plaque and lifts away as the plaque docks, game.css) */
     _el.classList.add('is-plain');
     if (reduced) {
@@ -376,7 +376,7 @@ export function noteZoneEntered(zoneId, S) {
  * go when you leave it -- never on first sight (the preloading LAW).  The
  * plain plaque holds LAND_HOLD_MS longer before it docks, having no beats.
  *
- * v2.3.3479: EVERY LAND'S SCENE.  Of the owner's thirteen icon sheets, the
+ * v2.3.3481: EVERY LAND'S SCENE.  Of the owner's thirteen icon sheets, the
  * first held a scene for each of the eight lands standing on a painted name
  * plate, and of the review's two choices -- the four lands with no art, or
  * "all eight from the sheet" -- the owner picked the second ("Icon picks: 1b,
@@ -436,7 +436,7 @@ try {
       reset: resetZoneBannerHistory,
       /* v2.3.3024: the Wheel's land watch, and what the banner on screen says */
       land: () => ({ cur: _wl.cur, shown: _wl.shown }),
-      /* v2.3.3479: + the land's scene over the plaque (its picture, and whether
+      /* v2.3.3481: + the land's scene over the plaque (its picture, and whether
          it is decoded and drawn), and which lands' scenes the Wheel holds */
       onScreen: () => {
         if (!_el) return null;

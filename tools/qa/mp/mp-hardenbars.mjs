@@ -29,7 +29,7 @@
  *      Woodworking XP, said over your head, the worker's bag the same); and
  *      the bow's button "Attempt H1 (500G + 1 Hardened Pine Wood · 80%)",
  *      the worker taking one of it and 500 gold;
- *      v2.3.3479: and the bow's hardening line names its skill -- against a
+ *      v2.3.3481: and the bow's hardening line names its skill -- against a
  *      worker with caps.hardenwoodskill "Needs Woodworking Lv5" (the owner:
  *      "Do woodworking"; a pine bow is tier 1, 5 x 1), else "Gated on
  *      Blacksmithing" -- and against that worker Woodworking 5 is set (the
@@ -259,7 +259,7 @@ async function body({ P, wsPort, rec, errors }) {
   const w0 = await wwBtn();
   rec.ok(`a pine bow takes HARDENED PINE WOOD, not bars: with none, its Harden button says "${w0 && w0.text}"`,
     wOpen && !!w0 && !!h0.bow && h0.bow.gb === 'ww_pine' && h0.hw === 0 && w0.text === 'Need 1 Hardened Pine Wood more' && !w0.on, { w0, h0 });
-  /* v2.3.3479: the skill the line names -- Woodworking and the level the
+  /* v2.3.3481: the skill the line names -- Woodworking and the level the
      worker asks (5 x the tier) against caps.hardenwoodskill, else the old
      words (WoodworkPanel.jsx `data-harden-gate`) */
   const woodGate = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.hardenwoodskill));
@@ -312,7 +312,7 @@ async function body({ P, wsPort, rec, errors }) {
   rec.ok('...and the worker\'s bag says the same (2 hardened, 2 logs)', srvInv2.hardened_pine === 2 && srvInv2.wood_pine_log === 2, { hardened: srvInv2.hardened_pine, logs: srvInv2.wood_pine_log });
   await shot(P, 'hardwood-made');
 
-  /* v2.3.3479: a worker that gates a bow's hardening on Woodworking
+  /* v2.3.3481: a worker that gates a bow's hardening on Woodworking
      (caps.hardenwoodskill) refuses a pine bow below Woodworking 5, and two
      hardened woods' XP leave this character at 1 or 2: set it, as
      mp-tierore sets Mining (the admin lever, which pushes the new level) */

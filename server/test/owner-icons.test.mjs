@@ -1,4 +1,4 @@
-/* ═══ v2.3.3479: THE OWNER'S CHOSEN ICONS (src/data/ownerIcons.js) ═══
+/* ═══ v2.3.3481: THE OWNER'S CHOSEN ICONS (src/data/ownerIcons.js) ═══
  *
  * The owner's answer to the review of their thirteen icon sheets: "Icon picks:
  * 1b, 2a, 3, 4, 5, 6, 8, 9" (docs/specs/owner-icons.md).
@@ -88,7 +88,7 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     && /icon\('\/icons\/ui\/bldg-tavern\.webp', '🍺', 26\)/.test(wh));
   const tw = src('src/ui/panels/TradeWindowPanel.jsx');
   check('3b the trade request card leads with the handshake, and no other trade drawer wears an icon',
-    /<TradeDrawer [^>]*title=\{`\$\{trade2\.fromName\} wants to trade`\}[^>]*icon=\{OWNER_ICON\.tradeHandshake\}[^>]*>/.test(tw)   /* other props may sit beside it (the invite's `kind`, v2.3.3479) */
+    /<TradeDrawer [^>]*title=\{`\$\{trade2\.fromName\} wants to trade`\}[^>]*icon=\{OWNER_ICON\.tradeHandshake\}[^>]*>/.test(tw)   /* other props may sit beside it (the invite's `kind`, v2.3.3481) */
     && (tw.match(/<TradeDrawer [^>]*icon=/g) || []).length === 1 && /\{icon && <img src=\{icon\.src\}/.test(tw));
   const gp = src('src/ui/panels/buildings/GamblePanel.jsx');
   check('3c the weekly jackpot\'s pool wears the sack of gold', /"data-jackpot-pool": ""/.test(gp) && /src: OWNER_ICON\.jackpotSack\.src/.test(gp));

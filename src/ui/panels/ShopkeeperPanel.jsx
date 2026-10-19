@@ -371,7 +371,7 @@ export function ShopkeeperPanel() {
           <img src="/icons/popups/gold.webp" alt="" draggable={false}
             style={{ width: 15, height: 15, objectFit: 'contain' }}
             onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('🪙')); }} />
-          {/* v2.3.3479: the 2026-10-19 UI review -- his drawer read "2550"
+          {/* v2.3.3481: the 2026-10-19 UI review -- his drawer read "2550"
               under the top bar's "2,550": the count takes the HUD's own call
               (ZoneHeader.jsx), so both read alike in any browser's language.
               data-shop-coins above stays the raw number: tests read it. */}

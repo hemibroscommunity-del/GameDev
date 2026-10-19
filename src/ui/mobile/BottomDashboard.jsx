@@ -453,7 +453,7 @@ const PANELS = {
   skills:       { title: 'Life Skills', Component: SkillsPanel },
   encyclopedia: { title: 'Codex',       Component: EncyclopediaPanel },
   guild:        { title: 'Guild',       Component: GuildPanel },
-  /* v2.3.3479: the 2026-10-19 UI review -- headed 'Ranks', the More tile's
+  /* v2.3.3481: the 2026-10-19 UI review -- headed 'Ranks', the More tile's
      word (v2.3.2038's rule: what you tap and what opens carry one name);
      "Leaderboard" is too long for a six-across tile.  The Town Hall's row
      and the profile's button still say Leaderboard: they describe the
@@ -1211,7 +1211,7 @@ export const BottomDashboard = () => {
           <button
             onPointerUp={(e) => {
               e.stopPropagation();
-              try { e.currentTarget.blur(); } catch (_) {}   /* v2.3.3479: as the upright chip's (no gold focus ring after a key) */
+              try { e.currentTarget.blur(); } catch (_) {}   /* v2.3.3481: as the upright chip's (no gold focus ring after a key) */
               if (dashboardPanelBus.state.mode === 'expanded') dashboardPanelBus.toBar();
               else dashboardPanelBus.open('dashboard');
             }}
@@ -1598,7 +1598,7 @@ export const BottomDashboard = () => {
         <button
           onPointerUp={(e) => {
             e.stopPropagation();
-            /* v2.3.3479: the 2026-10-19 UI review -- on a computer a click left
+            /* v2.3.3481: the 2026-10-19 UI review -- on a computer a click left
                the chip focused, and the next game key (W, Esc...) switched the
                browser to keyboard focus, so CLOSE wore .bt-chisel's gold
                :focus-visible ring for the rest of play.  Let go of the focus:

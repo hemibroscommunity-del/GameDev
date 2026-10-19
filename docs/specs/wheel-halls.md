@@ -69,7 +69,7 @@ closes the hall.
     Stew", "4× Copper Bar": the line keeps its key and count, and the window
     reads the bag's `ITEM_NAMES`); any other key reads as words ("3× Black
     steel ore"). Gold has the top bar's thousands separator ("+2,500 gold").
-    (v2.3.3479, the 2026-10-19 UI review: it read "2× Meal garden stew".)
+    (v2.3.3481, the 2026-10-19 UI review: it read "2× Meal garden stew".)
   - The daily chest is "A daily chest".
 - **Messages from friends** already wait for an offline friend (friends.js
   `friend_dm` backlog, delivered at join). The Post Office opens them in the

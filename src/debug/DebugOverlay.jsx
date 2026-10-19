@@ -436,7 +436,7 @@ const Cell = ({ k, v, hot }) => (
       </Section>
 
       <Section title="ENVIRONMENT">
-        {/* v2.3.3479: the game's version (BUILD_INFO.game), not the art's cache key */}
+        {/* v2.3.3481: the game's version (BUILD_INFO.game), not the art's cache key */}
         <Cell k="Build" v={`v${BUILD_INFO.game} · ${BUILD_INFO.sha}`} />
         <Cell k="Viewport" v={`${window.innerWidth}x${window.innerHeight} dpr ${window.devicePixelRatio}`} />
         {/* v2.3.2177: the four numbers that decide which edge the landscape

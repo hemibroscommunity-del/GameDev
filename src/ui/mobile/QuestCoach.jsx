@@ -474,7 +474,7 @@ const LESSONS = [
        tools/qa/mp/mp-ctltut.mjs; noted here because this is where it was
        found, and because the dead names are still tempting.) */
     anchors: [
-      /* v2.3.3479: the 2026-10-19 UI review -- "Tap it" named one item while
+      /* v2.3.3481: the 2026-10-19 UI review -- "Tap it" named one item while
          the first quest's sword AND shield both glow (gearFlash.js), and this
          lesson ends only when a weapon and a shield are both worn: "each". */
       { sel: '[data-tut="coach-gear"]', body: 'Tap each glowing item, then Equip.' },
@@ -1366,7 +1366,7 @@ export function QuestCoach(props) {
       return band + combatBandTopPx(playIsLandscape()) + 12;
     } catch (_e) { return 0; /* a card that cannot measure simply does not dodge */ }
   })();
-  /* ═══ v2.3.3479: ...AND OFF THE BRO HIMSELF ═══
+  /* ═══ v2.3.3481: ...AND OFF THE BRO HIMSELF ═══
    * The 2026-10-19 UI review: "GEAR UP covers the character's lower body".
    * Upright with the band folded, the band's lift leaves a bottom-anchored
    * card (GEAR UP, Tap OPEN, Your reward) at y 392-455 on a 390 x 844 phone,
@@ -1536,7 +1536,7 @@ export function QuestCoach(props) {
           let _l = Math.min(
             Math.max(_wx + 8, r.left + r.width / 2 - 110),
             Math.max(_wx + 8, _wx + _pw - 228));
-          /* v2.3.3479: the 2026-10-19 UI review -- SIDEWAYS THE CARD SAT ON
+          /* v2.3.3481: the 2026-10-19 UI review -- SIDEWAYS THE CARD SAT ON
              THE PINNED QUEST CARD ("GEAR UP" over "Cold Reception").  Sideways
              the combat band's lift always reaches the 120 px cap on `bottom`
              below, so the card ends 120 px from the top, right across the
@@ -1569,7 +1569,7 @@ export function QuestCoach(props) {
            same breathing room the anchor gap above uses.  Capped at
            innerHeight - 120 so a very tall band cannot push the card off the
            top edge -- see the note on `bandTop`.
-           v2.3.3479: ...and clear of the bro when it can be (`broClear`). */
+           v2.3.3481: ...and clear of the bro when it can be (`broClear`). */
         bottom: above
           ? Math.min(
             Math.max(

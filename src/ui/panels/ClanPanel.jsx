@@ -198,7 +198,7 @@ export function ClanPanel(props) {
         className: "button-primary", "data-clanparty-find": "",
         style: Object.assign({}, LS_PRIMARY, { marginBottom: 8 }),
         onClick: function () { _closeCp(); var ui = typeof window !== 'undefined' ? window.__broLegacyUI : null; if (ui && typeof ui.playersOpen === 'function') ui.playersOpen(); }
-      }, /* v2.3.3479: the 2026-10-19 UI review -- "Find a party" -> "Invite a
+      }, /* v2.3.3481: the 2026-10-19 UI review -- "Find a party" -> "Invite a
             player": it opens the player list, where you invite someone (the
             worker refuses an invite to anyone already in a party) */
       "Invite a player"),

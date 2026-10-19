@@ -185,7 +185,7 @@ function WorldMap({ stateRef, onClose }) {
   const [zoomShown, setZoomShown] = useState([1, 1]);
   /* v2.3.3277: the key says "party" while one of yours is on the map */
   const [partyShown, setPartyShown] = useState(false);
-  /* v2.3.3479: the canvas's size in CSS px, for the key's width (below);
+  /* v2.3.3481: the canvas's size in CSS px, for the key's width (below);
      set by the draw loop, so a turn of the phone moves the key too */
   const [cvBox, setCvBox] = useState(null);
 
@@ -319,7 +319,7 @@ function WorldMap({ stateRef, onClose }) {
   };
   const zoomBtn = (f) => { const cv = cvRef.current; if (cv) zoomAt(f, cv.clientWidth / 2, cv.clientHeight / 2); };
 
-  /* v2.3.3479: the 2026-10-19 UI review -- sideways the key, one row ~490 px
+  /* v2.3.3481: the 2026-10-19 UI review -- sideways the key, one row ~490 px
      wide, ran on across the Wheel's south end and its gate: the Wheel is
      drawn square, 0.96 x the canvas's height, in the middle (baseScale), and
      the key sat on top of it.  On a canvas wider than tall the key keeps to

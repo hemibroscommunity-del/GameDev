@@ -52,14 +52,14 @@
  * memory back.
  */
 import { bannerStripFor, ZONE_BANNER_THEME } from '../data/zoneBanner.js';
-import { LAND_SCENE, landSceneUrl } from '../data/ownerIcons.js';   /* v2.3.3479: the Wheel's lands' scenes */
+import { LAND_SCENE, landSceneUrl } from '../data/ownerIcons.js';   /* v2.3.3481: the Wheel's lands' scenes */
 
 /* theme -> the decoded Image we are holding.  Keyed by THEME rather than by
    zone so two zones that ever share one (none today, one line away) warm and
    free as a single asset instead of fetching it twice. */
 const _held = new Map();
 const _inflight = new Map();
-/* v2.3.3479: land id -> the decoded scene (see the land scenes, below) */
+/* v2.3.3481: land id -> the decoded scene (see the land scenes, below) */
 const _scenes = new Map();
 const _sceneFlight = new Map();
 
@@ -132,7 +132,7 @@ export function freeZoneBanner(fromZoneId, toZoneId) {
 /** For rigs: which themes are resident. */
 export function zoneBannerResident() { return Array.from(_held.keys()); }
 
-/* ═══ v2.3.3479: THE WHEEL'S LANDS' SCENES (the owner's pick 1b) ═══
+/* ═══ v2.3.3481: THE WHEEL'S LANDS' SCENES (the owner's pick 1b) ═══
  *
  * Crossing into one of the Wheel's eight lands plays its banner
  * (zoneBannerOverlay.js noteWheelLand), and since the owner's icon picks

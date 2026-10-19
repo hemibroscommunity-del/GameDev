@@ -12,7 +12,7 @@ import { hasUnseenLevelUps } from '../sheet/skillsModel.js';
 import { getBtPassphrase } from '@/networking/index.js';
 import { CODEX_KINDS, CODEX_TIERS } from '@/data/monsterCodex.js';   /* v2.3.3209 */
 import { codexCounts, codexFreshCount } from '@/game/monsterCodex.js';   /* v2.3.3209 */
-import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3479: the Clan tile's tooltip, once clans are parties */
+import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3481: the Clan tile's tooltip, once clans are parties */
 
 // v2.3.1224: swapped to the UI Bible icon set (docs/UI-BIBLE.md Part 4,
 // sliced by tools/process_icon_sheets.py); every tile has a real icon.
@@ -78,7 +78,7 @@ function statusFor(id, S) {
     case 'journey': {
       const j = R.journey || S?.journey || {};
       const n = (j.entries || j.recent || []).length;
-      /* v2.3.3479: the 2026-10-19 UI review -- "logged live" claimed more
+      /* v2.3.3481: the 2026-10-19 UI review -- "logged live" claimed more
          than the page does: nothing in the game or the server writes this
          log yet (docs/UI-DESIGN-NOTES.md, More's Still open) */
       return n > 0 ? `Travel log · ${n} entr${n === 1 ? 'y' : 'ies'}` : 'Your travels';
@@ -111,7 +111,7 @@ function statusFor(id, S) {
       } catch (_e) { return 'Add friends · direct messages'; }
     }
     case 'clan': {
-      /* v2.3.3479: the 2026-10-19 UI review -- once clans are parties
+      /* v2.3.3481: the 2026-10-19 UI review -- once clans are parties
          (caps.clanparty, v2.3.3321) S._clanData is empty for everyone, so
          this said "Not joined · player clans" even to a player in a party.
          The page it opens shows the party (ClanPanel's PartyNowPage), so the
@@ -206,7 +206,7 @@ export const MorePanel = () => {
     return () => clearInterval(id);
   }, []);
   const S = getState();
-  /* v2.3.3479: the 2026-10-19 UI review -- sideways the grid is two across in
+  /* v2.3.3481: the 2026-10-19 UI review -- sideways the grid is two across in
      rows of their own height (v2.3.2173), and six rows of 54 px tiles needed
      ~350 px of the ~313-322 the side column has: the sixth row's label (Login
      Key) sat in the scroller's clip and fade, against "every choice on one

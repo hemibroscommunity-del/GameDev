@@ -376,7 +376,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok('his header shows the gold coin symbol beside the count',
     coinIcon.img && coinIcon.loaded && coinIcon.w > 0, coinIcon);
-  /* v2.3.3479: the count has the HUD's thousands separator now ("2,550"), so
+  /* v2.3.3481: the count has the HUD's thousands separator now ("2,550"), so
      a richer test character reads digits and commas. */
   rec.ok('...and the count itself is still a number', /^[\d,]+$/.test(coinIcon.text || ''), coinIcon);
 

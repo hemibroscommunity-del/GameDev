@@ -168,7 +168,7 @@ export function InfoPanel(props) {
       fontSize: 11, color: '#6E685E', marginTop: -2, marginBottom: 8,
       fontVariantNumeric: 'tabular-nums',
     }
-    /* v2.3.3479: the 2026-10-19 UI review -- the game's version (the newest
+    /* v2.3.3481: the 2026-10-19 UI review -- the game's version (the newest
        v2.3.N in the build's commit titles), not package.json's 2.3.2324,
        which is only the art's cache key */
   }, "build " + BUILD_INFO.game + " (" + BUILD_INFO.sha + ")"), /*#__PURE__*/React.createElement("button", {

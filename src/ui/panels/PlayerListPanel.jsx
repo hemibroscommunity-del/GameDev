@@ -18,7 +18,7 @@ export function PlayerListPanel(props) {
     setShowPlayerList = props.setShowPlayerList;
   return React.createElement("div", {
     className: "bt-plist"
-  }, /* v2.3.3479: the 2026-10-19 UI review -- the list had NO way to close.
+  }, /* v2.3.3481: the 2026-10-19 UI review -- the list had NO way to close.
        Only picking a row shut it, so "Find a party" or "Duel a player" with
        nobody near left "No other players nearby" up until a reload, and
        while it was up the game counted a window as open (BroTown `_uiBusy`),

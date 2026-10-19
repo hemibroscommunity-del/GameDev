@@ -217,7 +217,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const missing = WANT.filter((w) => !titles.some((t) => (t || '') === w));
   rec.ok(`the Eyes tab offers all four styles (saw ${JSON.stringify(titles)})`,
     missing.length === 0, { titles, missing });
-  /* v2.3.3479: the 'none' tile is named "Normal" now (the 2026-10-19 UI
+  /* v2.3.3481: the 'none' tile is named "Normal" now (the 2026-10-19 UI
      review: "None" said the bro had no eyes; eyeStyleCatalog.js), so the
      real eyes' tile is looked up by that name.  Its id is still 'none'. */
   rec.ok('...and "Normal" (the style id \'none\') is still the first tile, so the real eyes are reachable',
@@ -487,7 +487,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      captures from the same tab differ only by what is on the face. */
   rec.ok('back to the Eyes tab to clear the style (guard)', await pickTab(P, 'Eyes'), null);
   await P.page.waitForTimeout(700);
-  rec.ok('Normal (the style id \'none\') re-picked (guard)', (await pickTile(P, 'Normal')).ok === true, null);   /* v2.3.3479: the tile's name */
+  rec.ok('Normal (the style id \'none\') re-picked (guard)', (await pickTile(P, 'Normal')).ok === true, null);   /* v2.3.3481: the tile's name */
   await P.page.waitForTimeout(1200);
   rec.ok('the Eyewear tab opened (guard)', await pickTab(P, 'Eyewear'), null);
   await P.page.waitForTimeout(700);

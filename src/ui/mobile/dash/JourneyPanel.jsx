@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
-import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3479: the empty page's treasure map */
+import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3481: the empty page's treasure map */
 
 const fmtAge = (ts) => {
   const sec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
@@ -31,7 +31,7 @@ export const JourneyPanel = () => {
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
         {/* v2.3.1235: batch-1 rollout — empty-state spec: icon ≤40px,
             message 13/700 secondary. */}
-        {/* v2.3.3479: the owner's treasure map (their icon pick 9), 120 x 69 and
+        {/* v2.3.3481: the owner's treasure map (their icon pick 9), 120 x 69 and
             not dimmed, where the Journey button's own icon sat at 40 px and .4 --
             bigger than the spec's 40 px empty-state icon, the owner's choice */}
         <img src={OWNER_ICON.journeyMap.src} alt="" draggable={false} width={OWNER_ICON.journeyMap.w} height={OWNER_ICON.journeyMap.h}

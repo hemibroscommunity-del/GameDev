@@ -159,7 +159,7 @@ export function DuelRequestPanel(props) {
       color: '#B6C1BE',
       marginBottom: 10
     }
-  }, /* v2.3.3479: the 2026-10-19 UI review -- the line spoke of a wager on
+  }, /* v2.3.3481: the 2026-10-19 UI review -- the line spoke of a wager on
        every challenge, and a challenge from a player's card has none (it
        sends 0), so every player read about a stake that did not exist.  It
        says so now, and names the wager only when the line above shows one.

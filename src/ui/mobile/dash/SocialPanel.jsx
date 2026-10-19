@@ -27,7 +27,7 @@ import { friendsSrv } from '../sheet/friendsSync.js';            /* v2.3.1324 */
    REQUESTS tab, direct messages.  No away state exists either, so the
    dot is green/gray only. */
 
-/* ═══ v2.3.3479: THE EMPTY FRIENDS PAGE SAYS SO IN THE FIRST VIEW (the 2026-10-19 UI review) ═══
+/* ═══ v2.3.3481: THE EMPTY FRIENDS PAGE SAYS SO IN THE FIRST VIEW (the 2026-10-19 UI review) ═══
    Under Add Friend and the Friends / Requests tabs the stacked empty state
    (22 px of padding, a 40 px icon, then the words) put the icon at the fold
    of an upright phone's drilled page (~159 px tall) and "No friends yet",

@@ -421,7 +421,7 @@ key is restored) and the storage-key registry.
 worker and a real Chromium. What it establishes, beyond the guards:
 
 - all four styles are in the Eyes tab, with `None` first (the tile named
-  "Normal" since v2.3.3479, the 2026-10-19 UI review: "None" said the bro had
+  "Normal" since v2.3.3481, the 2026-10-19 UI review: "None" said the bro had
   no eyes; its id is still `none`);
 - the eye-**colour** row is live while the style is `None`;
 - the eye row is located by diffing two eye colours — the game's own answer to

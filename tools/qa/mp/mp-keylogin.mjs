@@ -72,7 +72,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        'local'/'nogit'/'dev' fallback BuildBadge uses when Vite did not
        substitute the token.
 
-       v2.3.3479 (the 2026-10-19 UI review): package.json lied again -- the
+       v2.3.3481 (the 2026-10-19 UI review): package.json lied again -- the
        door said v2.3.2324 on a v2.3.3439 build -- so the door now shows the
        GAME's version, worked out at build time as the newest v2.3.N in the
        last 60 commit titles, never below package.json's (vite.config.js

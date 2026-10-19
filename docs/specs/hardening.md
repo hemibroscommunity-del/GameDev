@@ -85,7 +85,7 @@ hardened wood, and gold that doubles" below.
   material tier index = `floor(skill / 5)` (tier index =
   position in the BLACKSMITH/WOODWORKING tier tables; legacy weapons
   without a `gearBase` rank by tierMult). The skill is Blacksmithing for a
-  sword and, since v2.3.3479, WOODWORKING for a bow or a staff
+  sword and, since v2.3.3481, WOODWORKING for a bow or a staff
   (`hardenIsWood`; the owner, asked which: "Do woodworking"). The refusal
   names it: "Need Woodworking Lv5 for this tier". Kill switch
   `hardenwoodskill: false` (Blacksmithing for every weapon, as before);

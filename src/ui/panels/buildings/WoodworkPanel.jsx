@@ -1,12 +1,12 @@
 import React from 'react';
-import { BT_AUDIO, STAT_LABELS, WEAPON_STASH_MAX, WEAPON_TYPES, WOODWORKING_TIERS, addLifeSkillXp, getGearStatReq } from '@/data/index.js'; /* v2.3.3479: REFORGE_BONUSES, hardenChance and rollReforgeBonus went with the browser-only Reforge & Harden row */
+import { BT_AUDIO, STAT_LABELS, WEAPON_STASH_MAX, WEAPON_TYPES, WOODWORKING_TIERS, addLifeSkillXp, getGearStatReq } from '@/data/index.js'; /* v2.3.3481: REFORGE_BONUSES, hardenChance and rollReforgeBonus went with the browser-only Reforge & Harden row */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the woodworker's results heard */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { TrapsTab } from './TrapsTab.jsx'; /* v2.3.3120: box traps from logs */
-import { hardenCost as hardenAttemptCost, hardenIsWood, hardenTierOf } from '@/data/hardenCosts.js'; /* v2.3.3139: hardening takes a material and a doubling gold ladder (renamed: the legacy affix section below has a local hardenCost; v2.3.3479: that section is gone, the name stays); v2.3.3479: hardenIsWood and hardenTierOf name the skill and level a bow's or a staff's hardening asks for */
+import { hardenCost as hardenAttemptCost, hardenIsWood, hardenTierOf } from '@/data/hardenCosts.js'; /* v2.3.3139: hardening takes a material and a doubling gold ladder (renamed: the legacy affix section below has a local hardenCost; v2.3.3481: that section is gone, the name stays); v2.3.3481: hardenIsWood and hardenTierOf name the skill and level a bow's or a staff's hardening asks for */
 import { HardenedWoodTab } from './HardenedWoodTab.jsx'; /* v2.3.3139: five logs into one hardened wood */
 /* === WoodworkPanel — buildingPanel === 'woodwork' sub-panel === */
 /* v2.3.873: extracted verbatim from the buildingPanel === 'woodwork' clause
@@ -52,13 +52,13 @@ function lsHeader(icon, emoji, title, subtitle) {
     React.createElement("div", { style: { fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 } }, title),
     subtitle ? React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginTop: 1 } }, subtitle) : null));
 }
-/* v2.3.3479: lsGoldImg (the coin on the ready craft button) went with that
+/* v2.3.3481: lsGoldImg (the coin on the ready craft button) went with that
    price-tag label: the button says "Craft" now (below). */
 export function WoodworkPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
     setRpgState = props.setRpgState;
-  var _rpgState$lifeSkills29; /* v2.3.3479: the Reforge & Harden row's three temps went with it */
+  var _rpgState$lifeSkills29; /* v2.3.3481: the Reforge & Harden row's three temps went with it */
   /* v2.3.1235: state-correction §10 — scroll-fade plumbing (pattern:
      InspectPlayerPanel ~128-139): sticky 24px bottom fade shows only
      while content remains below the fold. Display-only state. */
@@ -94,12 +94,12 @@ export function WoodworkPanel(props) {
     desc: 'Ranged AOE swipe'
   }].concat(_trapCraftOn ? [{ type: 'traps', label: 'Traps', desc: 'Box traps for pets' }] : [])
     .concat(_hwOn ? [{ type: 'hardwood', label: 'Harden', desc: 'Hardened wood' }] : []);
-  /* v2.3.3479: the 2026-10-19 UI review -- ON FIRST OPENING NO CHOICE WAS
+  /* v2.3.3481: the 2026-10-19 UI review -- ON FIRST OPENING NO CHOICE WAS
      LIT, though bows were listed: `_wwType` is unset until a choice is
      tapped, and every reader below takes that as Bow (`_wwType || 'bow'`).
      The lit card reads the same default, so it always names what is shown. */
   var _selType = (stateRef.current && stateRef.current._wwType) || 'bow';
-  /* v2.3.3479: your Woodworking level, and the first wood above it -- the
+  /* v2.3.3481: your Woodworking level, and the first wood above it -- the
      craft list's one locked row (its filter, below) */
   var _wwNow = (rpgState.lifeSkills && rpgState.lifeSkills.woodworking && rpgState.lifeSkills.woodworking.level) || 1;
   var _wwNext = Object.keys(WOODWORKING_TIERS).find(function (k) { return WOODWORKING_TIERS[k].minLvl > _wwNow; });
@@ -117,7 +117,7 @@ export function WoodworkPanel(props) {
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 10, lineHeight: 1.5 } },
         _trapsMode ? "Make box traps for catching pets."
           : _hwMode ? "Five logs make one hardened wood. A bow or staff is hardened with its own wood's."
-          /* v2.3.3479: the 2026-10-19 UI review -- "Higher tiers unlock gem
+          /* v2.3.3481: the 2026-10-19 UI review -- "Higher tiers unlock gem
              slots" read as none until later, but every wood has one (the
              Pine Bow's row says "1 gem slot") and from Lv31 two
              (WOODWORKING_TIERS); each row prints its own count. */
@@ -140,7 +140,7 @@ export function WoodworkPanel(props) {
       }, _makeCards.map(function (wt) {
         return /*#__PURE__*/React.createElement("button", {
           key: wt.type,
-          "data-ww-type": wt.type, /* v2.3.3139: a test hook -- the old Reforge & Harden row has a "Harden (...)" button too (v2.3.3479: that row is gone; mp-hardenbars still taps these by it) */
+          "data-ww-type": wt.type, /* v2.3.3139: a test hook -- the old Reforge & Harden row has a "Harden (...)" button too (v2.3.3481: that row is gone; mp-hardenbars still taps these by it) */
           style: {
             flex: 1,
             padding: '8px 10px',
@@ -149,7 +149,7 @@ export function WoodworkPanel(props) {
             fontSize: 13,
             fontWeight: 700,
             cursor: 'pointer',
-            /* v2.3.3479: lit by `_selType` (above), so Bow is lit before anything is tapped */
+            /* v2.3.3481: lit by `_selType` (above), so Bow is lit before anything is tapped */
             background: _selType === wt.type ? LS.brassFill : LS.raised,
             border: _selType === wt.type ? '1px solid ' + LS.brass : '1px solid ' + LS.border,
             color: _selType === wt.type ? LS.brass : LS.txt2
@@ -174,7 +174,7 @@ export function WoodworkPanel(props) {
         var _ref140 = _slicedToArray(_ref139, 2),
           key = _ref140[0],
           wt = _ref140[1];
-        /* v2.3.3479: the 2026-10-19 UI review -- what you can make now, plus
+        /* v2.3.3481: the 2026-10-19 UI review -- what you can make now, plus
            only the NEXT wood, locked, as the goal: the Blacksmith's rule
            (SmithyPanel.jsx ForgeTab, the owner's v2.3.2826 rebuild).  The
            list ran ten Woodworking levels ahead (`minLvl <= level + 10`),
@@ -197,7 +197,7 @@ export function WoodworkPanel(props) {
         var wwStatReq = getGearStatReq(craftType, wwFullIdx, rpgState);
         var wwMeetsStat = wwStatReq.value === 0 || (wwStatReq.prog3 ? wwStatReq.met : (rpgState[wwStatReq.stat] || 0) >= wwStatReq.value);
         var canCraft = canCraftSkill && wwMeetsStat;
-        var craftReady = canCraft && hasWood && hasGold; /* v2.3.3479: the button's one ready test (below) */
+        var craftReady = canCraft && hasWood && hasGold; /* v2.3.3481: the button's one ready test (below) */
         return /*#__PURE__*/React.createElement("div", {
           key: key,
           /* v2.3.1235: batch-3 rollout — divided list rows replace the
@@ -272,7 +272,7 @@ export function WoodworkPanel(props) {
              prop added around the untouched handler; blocked buttons carry
              the need in their label so the price pill is never the only
              explanation. */
-          /* v2.3.3479: the 2026-10-19 UI review -- THE READY BUTTON READ AS A
+          /* v2.3.3481: the 2026-10-19 UI review -- THE READY BUTTON READ AS A
              PRICE TAG: a coin and "8" on a slate chip, while the row above it
              already prints the cost ("Gold 2550/8").  It now says "Craft" on
              the brass primary face, the pattern of the Attempt-H button below
@@ -358,12 +358,12 @@ export function WoodworkPanel(props) {
               for level/stat locks (state 3), the binding shortage for
               missing materials (state 2); only state 1 keeps the price
               pill (which is then not the only explanation).
-              v2.3.3479: state 1 says "Craft" (the price is on the row). */
+              v2.3.3481: state 1 says "Craft" (the price is on the row). */
         !canCraft ? "Locked" : !hasWood ? "Need ".concat(wt.woodCost - ((rpgState.inventory || {})[woodKey] || 0), " ").concat(wt.wood.replace(/_/g, ' ')) : !hasGold ? "Need ".concat(wt.goldCost - (rpgState.coins || 0), "G more") : "Craft"));
       }), _otherMode ? null : function () {
         /* v2.3.1131: SS4.6c HARDENING for the active ranged/staff weapon
            (server ladder via harden_weapon -- see the ForgePanel twin;
-           distinct from the legacy hardenBonus affix below -- v2.3.3479:
+           distinct from the legacy hardenBonus affix below -- v2.3.3481:
            that row is gone, this is the only hardening here). */
         var _Sh = stateRef.current;
         if (!(_Sh._serverCaps && _Sh._serverCaps.harden && _Sh.channel)) return null;
@@ -385,7 +385,7 @@ export function WoodworkPanel(props) {
         var hGoldOk = (rpgState.coins || 0) >= hCost;
         var hMatsOk = !hc.material || hMatsHave >= hc.amount;
         var hAfford = hGoldOk && hMatsOk;
-        /* v2.3.3479: WHICH SKILL HARDENING ASKS FOR.  The owner, asked
+        /* v2.3.3481: WHICH SKILL HARDENING ASKS FOR.  The owner, asked
            whether hardening a bow or a staff should ask for the Blacksmithing
            level: "Do woodworking" (2026-10-19).  A worker that gates it so
            says caps.hardenwoodskill (server/src/hardening.js: Woodworking
@@ -404,7 +404,7 @@ export function WoodworkPanel(props) {
         }, /*#__PURE__*/React.createElement("div", {
           style: { fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */, fontWeight: 700, color: LS.txt1, marginBottom: 3 }
         }, "Hardening: ", hw.name, " — H", hLvl, "/5") /* v2.3.1235: batch-3 rollout — ⚒️ dropped, no emoji in chrome */, /*#__PURE__*/React.createElement("div", {
-          "data-harden-gate": hByWood ? 'woodworking:' + hSkillLvl : 'blacksmithing', /* v2.3.3479: mp-hardenbars reads which skill this line names */
+          "data-harden-gate": hByWood ? 'woodworking:' + hSkillLvl : 'blacksmithing', /* v2.3.3481: mp-hardenbars reads which skill this line names */
           style: { fontSize: 11, color: LS.txt3, marginBottom: 8, lineHeight: 1.5 }
         }, hMaxed ? 'Maximum hardness reached!' : "+1.04 base dmg per level \xB7 Success " + hOdds + "% \xB7 Fail resets hardness (Temper " + hTemper + " softens it) \xB7 " + (hByWood ? "Needs Woodworking Lv" + hSkillLvl : "Gated on Blacksmithing")), !hMaxed && /*#__PURE__*/React.createElement("button", {
           /* v2.3.1235: batch-3 rollout — the surface's single gold
@@ -438,7 +438,7 @@ export function WoodworkPanel(props) {
         hAfford ? /*#__PURE__*/React.createElement("span", { "data-harden-cost": hc.material ? hc.material + ':' + hc.amount : 'gold' }, "Attempt H", hLvl + 1, " (", hCost, "G", hc.material ? " + " + hc.word(hc.amount) : "", " \xB7 ", hOdds, "%)")
           : !hGoldOk ? "Need ".concat(hCost - (rpgState.coins || 0), "G more")
           : "Need " + hc.word(hc.amount - hMatsHave) + " more"));
-      }(), /* v2.3.3479: the 2026-10-19 UI review -- THE OLD "REFORGE & HARDEN"
+      }(), /* v2.3.3481: the 2026-10-19 UI review -- THE OLD "REFORGE & HARDEN"
          ROW IS GONE (with its "Craft a weapon first to unlock Reforge &
          Harden." line).  It spent wood and gold and rolled a reforge or
          harden bonus in the browser alone: it sent the worker nothing, the

@@ -49,7 +49,7 @@ export function mailLine(e) {
   const p = (e && e.payload) || {};
   const kind = e && typeof e.kind === 'string' ? e.kind : 'item';
   const source = e && typeof e.source === 'string' ? e.source : '';
-  /* v2.3.3479: the 2026-10-19 UI review -- the mail read "2× Meal garden
+  /* v2.3.3481: the 2026-10-19 UI review -- the mail read "2× Meal garden
      stew" and "4× Copper bar": itemWords only strips a few prefixes, and the
      bag calls them "Garden Stew" and "Copper Bar".  The line keeps the item's
      KEY and its count beside the words, so the Post Office
@@ -59,11 +59,11 @@ export function mailLine(e) {
   const n = Math.max(1, Math.round(Number(p.count) || 1));
   const key = kind === 'item' && source !== 'daily' && typeof p.invKey === 'string' ? p.invKey : '';
   let what;
-  /* v2.3.3479: the review -- "+2500 gold" beside the top bar's "2,550": the
+  /* v2.3.3481: the review -- "+2500 gold" beside the top bar's "2,550": the
      HUD's own call (ZoneHeader.jsx) */
   if (kind === 'gold') {
     what = `+${Math.max(0, Math.round(Number(p.amount) || 0)).toLocaleString()} gold`;
-    /* v2.3.3479: a gold credit may carry ACHIEVEMENT POINTS paid with it --
+    /* v2.3.3481: a gold credit may carry ACHIEVEMENT POINTS paid with it --
        the arena's champion ("+2,000 gold and 500 AP"; server gladiator.js
        ARENA.CHAMPION_AP, inbox.js adds a gold credit's `ap`).  Read as the
        worker pays it (a whole number, never below 0); no `ap`, no words. */

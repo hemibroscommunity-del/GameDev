@@ -5,7 +5,7 @@
 const VERSION = typeof __BUILD_VERSION__ === 'string' ? __BUILD_VERSION__ : 'dev';
 const SHA     = typeof __BUILD_SHA__     === 'string' ? __BUILD_SHA__     : 'local';
 const TIME    = typeof __BUILD_TIME__    === 'string' ? __BUILD_TIME__    : '';
-/* v2.3.3479: the 2026-10-19 UI review -- the door and the creator said
+/* v2.3.3481: the 2026-10-19 UI review -- the door and the creator said
    "v2.3.2324" on a v2.3.3439 game: VERSION is package.json's hand-kept number.
    GAME is the version a player is SHOWN, the newest v2.3.N in the build's
    commit titles (vite.config.js GAME_VERSION); COMMIT the commit it is of.
@@ -37,7 +37,7 @@ export const BuildBadge = () => (
       letterSpacing: 0.2,
     }}
   >
-    {/* v2.3.3479: the version shown (GAME), not the cache key */}
+    {/* v2.3.3481: the version shown (GAME), not the cache key */}
     v{GAME} · {SHA}
   </div>
 );

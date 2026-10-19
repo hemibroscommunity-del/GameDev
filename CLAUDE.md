@@ -3842,7 +3842,7 @@ Two protocol versions coexist; both must keep working:
     makes it for any bundle. The check measures the box a press lands in --
     a control's own `::before`/`::after` ring counts (audit.mjs `touchBox`:
     every window's ✕ is drawn 28 px in a 44 px ring and was called small).
-  - Since v2.3.3479 THE FIRST REVIEW, CHECKED AND FIXED -- the owner sent
+  - Since v2.3.3481 THE FIRST REVIEW, CHECKED AND FIXED -- the owner sent
     ChatGPT's notes on the kit and 13 icon sheets: every finding was checked
     against the code before anything changed (about 100 real, the rest false,
     already fixed, the tool's own mistakes or the owner's call), the real ones
