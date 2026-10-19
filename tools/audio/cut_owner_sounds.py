@@ -26,7 +26,7 @@ their sparkle at 48 kHz.
   hurt-2     angry-grunt 103204        0.22 s + 0.28   a clipped "hnh"
              (the third grunt the owner sent, grunt-1 85280, is the sprint's
              push-off: the owner's own ask, "Make it a grunt", cut by
-             tools/audio/cut_sprint_grunt.py -- assets/sfx-source/voice/)
+             tools/audio/cut_sprint_voice.py -- assets/sfx-source/voice/)
   heartbeat  thudding-heartbeat 372487 0.03 s + 0.59   ONE lub-dub (lub 0.045, dub 0.24, gone by 0.6)
   munch      eating-chocolate 67566    6.90 s + 0.52   two quick crunches (6.94, 7.12)
   gulp       gulping 37758             9.62 s + 0.70   the long swallow (its onset at 9.64)

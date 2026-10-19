@@ -348,7 +348,8 @@ sound for sprint button. Make it a grunt or something"*, with their recording,
 hit") the arrow's flight at 3.8 was ~0.8 of a hit: the "loud". And a sped-up
 rush of air is not a thing a body does: the "incoherent".
 
-- `tools/audio/cut_sprint_grunt.py` finds the grunt in the recording (0.57 s
+- `tools/audio/cut_sprint_voice.py` (`cut_sprint_grunt.py` until v2.3.3475)
+  finds the grunt in the recording (0.57 s
   of silence, then about half a second of grunt), cuts 0.56-1.17 s mono with
   short fades, and writes `public/sfx/voice/sprint-grunt.mp3` (10.5 KB) and
   its level, `src/data/sprintGrunt.js` (GENERATED): vol 0.072, ~0.25 of a
@@ -365,10 +366,9 @@ rush of air is not a thing a body does: the "incoherent".
   tired breath"*. It is the grunt now, worn out -- the same recording at its
   own level, rate 0.9, a touch lower and slower: ~0.23 of a hit, 12% of it
   under 400 Hz (a breathy voice, no thump: mp-cuelevels' rush-of-air check
-  still holds it). **The breath is not in yet:** none of the owner's uploads
-  is a breath, and the owner took every made-up sound out of the game in
-  v2.3.1103 ("worse than nothing"), so a breath made in code is not an
-  option. With a recording (docs/SOUND-GAPS.md), the run-outs take turns.
+  still holds it). The breath waited on a recording -- the owner took every
+  made-up sound out of the game in v2.3.1103 ("worse than nothing") -- and
+  came the next day: see "v2.3.3475" below.
 - **Measured as a speaker plays it.** The first cut read every file through
   ffmpeg's `-ac 1`, which folds stereo at 0.707 a channel: the stereo
   yardstick (sword-hit3) and the arrow's flight read 1.41x their real level
@@ -383,3 +383,39 @@ watcher hears the same grunt no louder); mp-sprint 6 (running dry is heard
 once, as `sprintOut`, its recording decoded); mp-cuelevels (sprintOut's
 promised ~0.23, no clipping, no thump); the sound-cues suite (the cue's shape,
 its sample in SFX_MANIFEST and inside its file).
+
+## v2.3.3475: the owner's tired breath, turn about with the grunt
+
+The owner sent the recording the breath had waited on: *"Here's the out of
+breath"* -- "Out of Breath Male" by voicebosch (id 176715; CREDITS.md), 48 s,
+kept as supplied in `assets/sfx-source/voice/`.
+
+- **Which part.** The recording is six takes. The first (0.4-5.1 s) is plain
+  tired breathing: a breath out every ~1.2 s and a quieter breath in between,
+  no voice in either (no harmonics on a spectrogram, 1-7% of the energy under
+  400 Hz). The other five are loud voiced gasps and groans -- a grunt's
+  cousins, which the breath is meant to stand apart from. The cut is that
+  first take's second and third breaths out with the breath in between,
+  1.51-3.23 s, each end in the silence between two breaths.
+  `tools/audio/cut_sprint_voice.py` (the grunt's tool, renamed) checks it
+  still is -- quiet at both ends, two breaths out -- and writes
+  `public/sfx/voice/sprint-breath.mp3` (27.8 KB) and `src/data/sprintBreath.js`
+  (GENERATED).
+- **How loud.** Set at 0.9 of the grunt's loudness BY EAR (A-weighted, the
+  loudest 300 ms): a breath's energy sits high, where the ear is keenest.
+  mp-cuelevels reads it 0.20 of a hit plain and 0.24 by ear, the worn grunt
+  0.22 and 0.21: about as loud as each other. 8% of it under 400 Hz -- air,
+  no thump (the rush-of-air check holds it too).
+- **Turn about.** `sprintOutBreathTurn(S)` (game/sprint.js, no imports) counts
+  the run-outs on `S._sprintRunOuts`: the first of a visit is the grunt
+  (`sprintOut`), the second the breath (`sprintOutBreath`), and so on. Only a
+  sprint that runs DRY counts -- a tap, a stop, the shield or an attack ending
+  one plays nothing, as before. BroTown names both cues at the call, where the
+  sound-cues suite reads them.
+- In SFX_MANIFEST, decoded on the loading screen: ~0.33 MB (1.72 s of mono at
+  48 kHz), inside the decoded-sound line's room.
+
+**Tests:** the sprint suite (the turn: grunt, breath, grunt, breath, grunt);
+mp-sprint 6 and 6b (running dry twice: the grunt, then the breath and not the
+grunt, each recording decoded); mp-cuelevels (sprintOutBreath's promised
+~0.2, no clipping, no thump); the sound-cues suite.

@@ -5,7 +5,8 @@ The owner, 2026-10-18, after the list of sounds that needed new recordings
 Pixabay, uploaded to the top of the project. They are kept as supplied in
 `assets/sfx-source/{player,ui,emote,world,npc,voice}/` (CREDITS.md says where
 each came from). "Grunt 1" is the sprint's push-off, the owner's own ask in
-another change (`tools/audio/cut_sprint_grunt.py`); the other 20 are cut here.
+another change (`tools/audio/cut_sprint_voice.py`, which since v2.3.3475 cuts
+the owner's tired breath too); the other 20 are cut here.
 Two more came the same day, in chat: *"Also here's a missing sound effect for
 the player gets in and out of the water"* (universfield's Water Splash) and
 *"Also add this sound effect for after applying skill stat points"*

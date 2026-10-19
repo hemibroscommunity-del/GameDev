@@ -17,7 +17,8 @@
  *      menu click's own level, a status wearing off under a blow;
  *   5. a rush of air is air: the dodge, the roll, the jump's push-off, the
  *      sprint running dry (the owner's grunt since v2.3.3455, a breathy
- *      voice: 12%) and the mummy's unwrapping each put at most 0.6 of
+ *      voice: 12%; and since v2.3.3475 their tired breath, every other
+ *      time) and the mummy's unwrapping each put at most 0.6 of
  *      the old sprint push-off's share of their energy below 400 Hz -- the
  *      owner heard that slowed special swipe's body thump as "a fleshy sound"
  *      (v2.3.3336; measured through a 400 Hz low-pass, which lets a little
@@ -49,6 +50,8 @@ const PROMISED = {
   dungeonWave: 1.2, arenaStart: 1.0, allianceWar: 1.1, bossArrive: 1.5, bossEnrage: 1.3, blueBurst: 1.3,
   /* v2.3.3455: a sprint running dry is the owner's grunt, worn out */
   sprintOut: 0.23,
+  /* v2.3.3475: ...and every other time their tired breath */
+  sprintOutBreath: 0.2,
 };
 
 /* v2.3.3434: cues kept quieter than 0.08 of a hit on purpose, and why -- each
@@ -165,7 +168,7 @@ try {
   const ticks = ['revealTick', 'spinTick'].filter((n) => !(res.out[n].plain <= res.click.plain * 1.15));
   ok(ticks.length === 0 && res.out.statusEnd.plain < 0.5,
     `4. the quiet ones stay quiet: the reveal's and spin's ticks at or under the menu click (${f2(res.out.revealTick.plain)}, ${f2(res.out.spinTick.plain)} vs ${f2(res.click.plain)}), a status wearing off under half a blow (${f2(res.out.statusEnd.plain)})`);
-  const AIRY = ['dodged', 'dodgeRoll', 'jumpUp', 'sprintOut', 'unwrap'];
+  const AIRY = ['dodged', 'dodgeRoll', 'jumpUp', 'sprintOut', 'sprintOutBreath', 'unwrap'];
   const thump = AIRY.filter((n) => !(res.out[n].low <= 0.6 * res.fleshyLow));
   ok(thump.length === 0, `5. a rush of air is air: ${AIRY.map((n) => n + ' ' + Math.round(res.out[n].low * 100) + '%').join(', ')} of its energy under 400 Hz (the old "fleshy" push-off ${Math.round(res.fleshyLow * 100)}%; at most 0.6 of it)`);
   ok(errs.length === 0, `no page errors (${errs.slice(0, 2).join(' | ')})`);

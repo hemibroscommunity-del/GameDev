@@ -377,7 +377,7 @@ import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2
 import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
-import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
+import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
 import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
@@ -5093,8 +5093,9 @@ export var BroTown = function BroTown(_ref0) {
            and a burst of the ground's dust (game/sprint.js) */
         /* v2.3.3343: a sprint that ran out of stamina mid-run is heard
            deflating (it stopped in silence; SOUND-GAPS) -- only that end, not
-           a tap, a stop or the shield's */
-        if (_sprEv === 'stop' && S._sprint && S._sprint.why === 'empty') cue('sprintOut');
+           a tap, a stop or the shield's.  v2.3.3475: the owner's grunt and
+           their tired breath, turn about (game/sprint.js) */
+        if (_sprEv === 'stop' && S._sprint && S._sprint.why === 'empty') cue(sprintOutBreathTurn(S) ? 'sprintOutBreath' : 'sprintOut');
         if (_sprEv === 'run') {
           try { BT_AUDIO.sprintPush(); } catch (e) { /* sound only */ }
           try {

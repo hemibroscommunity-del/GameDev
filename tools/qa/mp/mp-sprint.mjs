@@ -403,10 +403,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const L = window.__btCues && C.stats.log.filter((e) => e.name === 'sprintOut').pop();
       return { n: (C && C.stats.played.sprintOut) || 0, decoded: !!(A && A._samples && A._samples['sprint-grunt']), k: L ? L.k : null };
     });
+    /* (v2.3.3475: the first run-out of a visit is the grunt's turn; 6b runs
+       dry again for the breath's) */
     rec.ok(`...and is heard once, as the owner's grunt worn out (sprintOut asked ${heard.n - outs0} time(s), its recording decoded)`,
       heard.n - outs0 === 1 && heard.decoded && heard.k === 1, { ...heard, outs0 });
     rec.ok('...and a tap then is refused, with "Not enough energy!" over his head and a shake',
       !!refused.b && !refused.b.armed && refused.b.why === 'tired' && refused.note >= 1 && refused.shake, refused);
+  }
+
+  /* ── 6b. run dry again: the tired breath's turn (v2.3.3475) ── */
+  {
+    await H.hopTo(P, start.x, start.y, { tries: 200 });
+    await H.devOp(wsPort, 'vitals', myId, { heal: true, stamina: 12 });
+    await P.page.waitForTimeout(700);
+    const count = () => P.page.evaluate(() => {
+      const C = window.__btCues, A = window.BT_AUDIO;
+      const L = C && C.stats.log.filter((e) => e.name === 'sprintOutBreath').pop();
+      return { grunt: (C && C.stats.played.sprintOut) || 0, breath: (C && C.stats.played.sprintOutBreath) || 0,
+        turns: window._gameState.current._sprintRunOuts | 0, decoded: !!(A && A._samples && A._samples['sprint-breath']), k: L ? L.k : null };
+    });
+    const b0 = await count();
+    const c = centre((await LAYOUT(P)).btn);
+    await P.page.touchscreen.tap(c.x, c.y);
+    const dry = await hold(P, 'd', 12000, (o) => { const l = o[o.length - 1]; return !!(l.btn && !l.btn.armed); });
+    const end = dry[dry.length - 1];
+    await P.page.waitForTimeout(200);
+    const b1 = await count();
+    console.log(`    dry again: ${JSON.stringify({ end: end.btn, b0, b1 })}`);
+    rec.ok(`run dry again, the tired breath's turn: the owner's "Out of Breath" plays once and the grunt does not (breath +${b1.breath - b0.breath}, grunt +${b1.grunt - b0.grunt}; run-outs ${b0.turns} -> ${b1.turns}), its recording decoded on the loading screen`,
+      !!end.btn && end.btn.why === 'empty' && b0.turns === 1 && b1.turns === 2
+        && b1.breath - b0.breath === 1 && b1.grunt === b0.grunt && b1.decoded && b1.k === 1, { end: end.btn, b0, b1 });
   }
 
   /* ── 7. Shift ── */
