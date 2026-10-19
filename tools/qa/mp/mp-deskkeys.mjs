@@ -87,7 +87,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         overlap: !!(r && b && b.width && r.left < b.right && r.right > b.left && r.top < b.bottom && r.bottom > b.top) };
     });
     rec.ok('the keys strip lists 1-3, and lies clear of the bell', strip.keys.includes('1-3') && !strip.overlap, strip);
-    /* v2.3.3483 (the owner's "Go recommended" on the review's "move the keys
+    /* v2.3.3484 (the owner's "Go recommended" on the review's "move the keys
        strip into the black margin beside the game"): on this window it is in
        the margin, wholly left of the game's column and on the screen */
     rec.ok('...in the black margin beside the game: wholly left of the column, every row on the screen',
@@ -108,7 +108,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const ov = (a, z) => !!(a && z && a.l < z.r && a.r > z.l && a.t < z.b && a.b > z.t);
       let onTop = false;
       if (c) { const at = document.elementFromPoint((c.l + c.r) / 2, (c.t + c.b) / 2); onTop = !!(at && (at === chip || chip.contains(at))); }
-      /* v2.3.3483: drawn in the margin (data-kb-place="side") the ⌨ and the
+      /* v2.3.3484: drawn in the margin (data-kb-place="side") the ⌨ and the
          rows are wholly LEFT of the column; drawn in it, inside it, as before */
       const side = !!chip && chip.getAttribute('data-kb-place') === 'side';
       const inCol = (a) => !!(a && col && a.l >= col.l && a.r <= col.r);
@@ -129,7 +129,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...one click on it hides the strip (the ⌨ stays, unlit), one more brings the strip back',
       !kb2.strip && !!kb2.chip && kb2.open === '0' && kb3.strip && kb3.open === '1', { kb2, kb3 });
 
-    /* ── 1c. v2.3.3483: A WINDOW WITH NO ROOM BESIDE THE GAME ──
+    /* ── 1c. v2.3.3484: A WINDOW WITH NO ROOM BESIDE THE GAME ──
        1000 x 1200: the column is 654 px wide and the margins 173, under the
        190 the strip needs, so it is drawn in the column, as before, the ⌨
        with it; back to this window, it goes back to the margin -- each the
@@ -190,7 +190,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const col = document.getElementById('root').getBoundingClientRect();
       const sr = strip ? strip.getBoundingClientRect() : null;
       return { buttons: all.length, hidden, strip: !!strip && getComputedStyle(strip).display !== 'none',
-        /* v2.3.3483: in the margin it covers nothing, so it stays */
+        /* v2.3.3484: in the margin it covers nothing, so it stays */
         margin: !!(strip && strip.getAttribute('data-kb-place') === 'side' && sr && sr.right <= col.left) };
     });
     rec.ok('...every button in it answers a click, the keys strip in the margin beside the game (or standing aside)',

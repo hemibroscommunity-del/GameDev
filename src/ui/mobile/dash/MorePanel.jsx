@@ -63,10 +63,10 @@ export const TILES = [
   { id: 'account',     src: '/icons/ui/panel-account.webp?v=2.3.2038',     label: 'Login Key', glyph: '🔑', group: 'System',    iconScale: 1 },
   /* v2.3.3120: the Pets page (docs/PET-TRAPPING-PLAN.md: "More -> Pets, with
      the paw-print icon"), beside Life Skills, whose Trapping it belongs to */
-  /* v2.3.3483: the owner's sheet's orange paw ("Go recommended on everything":
+  /* v2.3.3484: the owner's sheet's orange paw ("Go recommended on everything":
      the review page's card 11, "Sheet's is clearer"; tools/ui/cut-owner-icons.py)
      -- the brown one was muddy at 30 px on the dark tile */
-  { id: 'pets',        src: '/icons/ui/pets-paw.webp?v=2.3.3483',          label: 'Pets',     glyph: '🐾', group: 'Progress',  iconScale: 1 },
+  { id: 'pets',        src: '/icons/ui/pets-paw.webp?v=2.3.3484',          label: 'Pets',     glyph: '🐾', group: 'Progress',  iconScale: 1 },
 ];
 
 /* v2.3.1299 (round-6): one short LIVE status line per destination —
@@ -194,7 +194,7 @@ const Icon = ({ t, px }) => t.src ? (
 const OWN_BUTTON = new Set(['encyclopedia']);
 const open = (id) => (OWN_BUTTON.has(id) ? dashboardPanelBus.open(id) : dashboardPanelBus.push(id));
 const tile = (id) => TILES.find(t => t.id === id);
-/* v2.3.3483 (the owner, of the 2026-10-19 review's leftovers: "Go recommended
+/* v2.3.3484 (the owner, of the 2026-10-19 review's leftovers: "Go recommended
    on everything" -- rename More's Clan tile to Party): once clans are parties
    (caps.clanparty, v2.3.3321) the page it opens is your party, so the tile
    says so.  Under the kill switch (`clanparty: false`) clans are clans again

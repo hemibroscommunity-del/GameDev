@@ -305,7 +305,7 @@ export const STATES = [
       await wait(P, 1800);
     },
   },
-  /* v2.3.3483: 'hair' joins the list -- the creator opens on Skin now (the
+  /* v2.3.3484: 'hair' joins the list -- the creator opens on Skin now (the
      owner's "Go recommended"), so the opening shot no longer shows Hair */
   ...['hair', 'hat', 'skin', 'eyes', 'eyewear', 'beard', 'shirt', 'pants', 'shoes'].map((t) => ({
     id: 'creator-tab-' + t, group: 'Before the game', pre: true, keep: true, title: 'Creator: ' + t + ' tab',

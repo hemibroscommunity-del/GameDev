@@ -119,7 +119,7 @@ while you walked it; it now holds eight scenes of about 190 x 100 (0.61 MB). The
 are DOM images, not Pixi textures, so no line of the memory budget
 (`tools/qa/mp/memory-budget.mjs`) measured them and none moves.
 
-## v2.3.3483: the legs and chest, and five more ("Go recommended on everything")
+## v2.3.3484: the legs and chest, and five more ("Go recommended on everything")
 
 Asked whether to use the sheet's leg armour (card 10, with the chest to match)
 and anything from card 11, the owner answered "Go recommended on everything":
@@ -171,7 +171,7 @@ and anything from card 11, the owner answered "Go recommended on everything":
 
 ## Tests
 
-- `server/test/owner-icons.test.mjs`: (§5, v2.3.3483) the legs and chest the
+- `server/test/owner-icons.test.mjs`: (§5, v2.3.3484) the legs and chest the
   sheet's with every metal made at their size, the five new pictures in place
   and used where the old ones were (the old ones nowhere); and every file in
   place at its size (each window

@@ -35,7 +35,7 @@ size it would be drawn, and the owner answered: "Icon picks: 1b, 2a, 3, 4, 5,
       Journey page.
 Not 7 (the compass): the owner kept today's.
 
-v2.3.3483: and, to "Go recommended on everything" (the owner, 2026-10-19):
+v2.3.3484: and, to "Go recommended on everything" (the owner, 2026-10-19):
   10a/10b  the IRON LEGS and the CHEST beside them on the same armour row
       (brotown-rpg-ui-asset-sheet-1.png), written over the bag's two STEEL
       pictures, icons/items/greaves and chest-plate -- the art every metal's
@@ -159,7 +159,7 @@ PIECES = [
          box=(68, 4, 456, 424), grow=4, css=(34, 37)),
     dict(name='icons/ui/journey-map', src='colorful-rpg-game-ui-asset-sheet.png', mode='alpha',
          box=(1208, 552, 1476, 708), grow=4, css=(120, 69)),
-    # v2.3.3483: 10a/10b and card 11's clearer five (the header)
+    # v2.3.3484: 10a/10b and card 11's clearer five (the header)
     dict(name='icons/items/greaves', src='brotown-rpg-ui-asset-sheet-1.png', mode='key',
          box=(318, 462, 422, 566), frame=dict(fill=0.89), metal=True),
     dict(name='icons/items/chest-plate', src='brotown-rpg-ui-asset-sheet-1.png', mode='key',
@@ -279,7 +279,7 @@ def to_pin(im):
 
 
 def to_frame(im, size=None, fill=0.8, exact=False):
-    """v2.3.3483: the art centred in a square, its larger side `fill` of the
+    """v2.3.3484: the art centred in a square, its larger side `fill` of the
     square's (the header's FRAMES).  With `size` the square is at most that
     (exactly that if `exact`), the art scaled down to fit; never scaled up."""
     w, h = im.size

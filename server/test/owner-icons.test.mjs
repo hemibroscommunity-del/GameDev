@@ -17,7 +17,7 @@
  *      Wheel's and let go on leaving it, the four animated strips no longer the
  *      Wheel's, the handshake warmed with the controls; a land's banner never
  *      uses a closed zone's strip;
- *   5. v2.3.3483 ("Go recommended on everything"): the bag's legs and chest
+ *   5. v2.3.3484 ("Go recommended on everything"): the bag's legs and chest
  *      the sheet's, every metal made from them; card 11's clearer five -- the
  *      orange paw, the party's crown and pin, the auction gavel, the creator's
  *      none sign -- under new names the code points at.
@@ -139,7 +139,7 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     && !/\.bt-zone-banner__scene\{[^}]*filter/.test(css));
 }
 
-/* ── 5. v2.3.3483: "Go recommended on everything" -- the legs and chest
+/* ── 5. v2.3.3484: "Go recommended on everything" -- the legs and chest
    (card 10) and card 11's clearer five ── */
 {
   /* the bag's steel legs and chest are the sheet's, framed as today's were
