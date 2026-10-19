@@ -138,6 +138,20 @@ export const PetsPanel = () => {
           </div>
         </div>
       </div>
+      {/* ═══ v2.3.3479: WITH NO PETS, HOW TO CATCH ONE COMES FIRST (the 2026-10-19 UI review) ═══
+          These words came after the Pet House's More room, and upright they
+          began at the fold: a new player at 0/30 was offered room for pets
+          before being told how to get one.  So with no pets (or the record
+          not ready) they follow the count; with pets, More room still sits
+          above the list, where a long list cannot push it down. */}
+      {unavailable ? (
+        <div style={{ fontSize: 13, color: COL.text2, padding: 12, background: COL.well, borderRadius: 10 }}>Your pets are not ready yet. Try again after you rejoin.</div>
+      ) : list.length === 0 ? (
+        <div data-pets-empty="1" style={{ fontSize: 13, color: COL.text2, padding: 12, background: COL.well, borderRadius: 10, lineHeight: 1.45, marginBottom: 8 }}>
+          No pets yet. Make box traps at the Woodworker, target a monster out in the lands, tap <b style={{ color: COL.accent }}>TRAP</b>, then kill it.
+          About one try in a hundred at best, and every try pays Trapping XP.
+        </div>
+      ) : null}
       {/* ═══ v2.3.3123: MORE ROOM IN THE PET HOUSE (Phase 4) ═══
           The plan's "The Pet House holds more for gold": 10 more places at the
           price the worker charges (data/trapping.js petHousePrice, its rule),
@@ -152,9 +166,12 @@ export const PetsPanel = () => {
         return (
           <div data-pet-house={cap} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '6px 10px', background: COL.well, borderRadius: 10 }}>
             <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: COL.text2, lineHeight: 1.35 }}>
+              {/* v2.3.3479: the 2026-10-19 UI review -- "10 more places" never
+                  said what the places are for: the row says pets, in words
+                  (no "+" or "·"), the price still the worker's rule */}
               {houseAsk
-                ? <span>Buy {PET_HOUSE.STEP} more places for <b style={{ color: '#EAC675' }}>{hp.toLocaleString()} gold</b>?</span>
-                : <span>Pet House: {PET_HOUSE.STEP} more places for <b style={{ color: '#EAC675' }}>{hp.toLocaleString()} gold</b>{coins < hp ? <span style={{ color: COL.muted }}> (you have {coins.toLocaleString()})</span> : null}</span>}
+                ? <span>Buy room for {PET_HOUSE.STEP} more pets for <b style={{ color: '#EAC675' }}>{hp.toLocaleString()} gold</b>?</span>
+                : <span>Pet House: room for {PET_HOUSE.STEP} more pets, <b style={{ color: '#EAC675' }}>{hp.toLocaleString()} gold</b>{coins < hp ? <span style={{ color: COL.muted }}> (you have {coins.toLocaleString()})</span> : null}</span>}
             </div>
             {houseAsk ? (
               <>
@@ -172,14 +189,7 @@ export const PetsPanel = () => {
           {sellMsg.text}. It waits at the Auction House until it sells, and comes back if it does not.
         </div>
       ) : null}
-      {unavailable ? (
-        <div style={{ fontSize: 13, color: COL.text2, padding: 12, background: COL.well, borderRadius: 10 }}>Your pets are not ready yet. Try again after you rejoin.</div>
-      ) : list.length === 0 ? (
-        <div data-pets-empty="1" style={{ fontSize: 13, color: COL.text2, padding: 12, background: COL.well, borderRadius: 10, lineHeight: 1.45 }}>
-          No pets yet. Make box traps at the Woodworker, target a monster out in the lands, tap <b style={{ color: COL.accent }}>TRAP</b>, then kill it.
-          About one try in a hundred at best, and every try pays Trapping XP.
-        </div>
-      ) : list.map((p) => {
+      {!unavailable && list.length > 0 && list.map((p) => {
         const isOut = out && out.id === p.id;
         const kind = p.kind || petKindOfOld(p);
         const pp = p.kind ? p : { ...p, kind, lv: p.level };

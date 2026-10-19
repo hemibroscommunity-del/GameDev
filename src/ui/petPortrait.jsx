@@ -45,9 +45,14 @@ function draw(cv, pet, shadow) {
     g.globalCompositeOperation = 'source-over';
   }
   /* v2.3.3121: a kind not caught yet, in the journal: its shape alone */
+  /* v2.3.3479: the 2026-10-19 UI review -- #0b1418 on the locked cards' own
+     ground (COL.well #111E23) was about 1.08:1, and the rounder bodies
+     vanished.  One muted slate step lighter (~1.6:1): the shape shows, still
+     no detail and no colour.  The same shape serves the Codex's locked cards
+     and page and the Pets journal's uncaught kinds. */
   if (shadow) {
     g.globalCompositeOperation = 'source-in';
-    g.fillStyle = '#0b1418';
+    g.fillStyle = '#30434B';
     g.fillRect(0, 0, cv.width, cv.height);
     g.globalCompositeOperation = 'source-over';
   }

@@ -1849,7 +1849,11 @@ export const FEEDBACK_CATEGORIES = [{
   desc: 'New feature idea'
 }, {
   id: 'qol',
-  label: '✨ QoL',
+  /* v2.3.3479: the 2026-10-19 UI review -- "QoL" is gamer shorthand a new
+     player may not know; the chip says Improve.  The id stays 'qol' (the
+     worker checks ids, feedback.js VALID_CATEGORIES), so old reports keep
+     their kind and read Improve on the board. */
+  label: '✨ Improve',
   color: '#a78bfa',
   desc: 'Quality of life'
 }, {
