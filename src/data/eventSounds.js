@@ -253,10 +253,11 @@ export const EVENT_SOUNDS = {
   gemSet: [['magic-cast', 0, 0.6, 0.7, 1.1], ['sword-hit2', 0, 0.25, 0.4, 1.6, 0.08]],
   salvage: [['armor-hit-2', 0.06, 0.6, 0.2, 0.8, 0, 0.15], ['mine-strike', 0.58, 0.4, 0.35, 0.8, 0.06]],
   /* The Cookhouse: a dish cooked (the campfire's own sting, at its level),
-     its fish game starting, and a fish burnt. */
+     and another player starting to cook (a peer's `cook` gather).
+     v2.3.3479: `cookBurnt`, a fish burnt in the Cookhouse's fish game, went
+     with the game -- the owner: "Remove cookhouse fish game". */
   cookDone: [['cook-success', 0, 0, 0.6, 1]],
   cookStart: [['pan-sizzle', 0.3, 0.8, 1.6, 1, 0, 0.3]],
-  cookBurnt: [['pan-sizzle', 0.3, 0.6, 1.6, 0.9, 0, 0.2], ['flip-lose', 0, 0.7, 0.4, 1, 0.1]],
 
   /* ── loot, quests, the market ──────────────────────────────────────── */
   /* Armour, a weapon or a remnant into the bag: the equip tick at uiEquip's
