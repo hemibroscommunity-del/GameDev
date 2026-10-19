@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "67e6398e89cae1432956b4fc3baa9b059785e3da",
+  "tree": "eea97857966938dedd83430882c4208d5c5e5cc3",
+  "committedAt": "2026-10-19T16:17:59-07:00",
+  "subject": "An arrow comes down where the aiming line says: 24 px short of the screen edge it flies toward (v2.3.3489) (#1029)",
+  "files": 6086,
+  "bytes": 711584874,
+  "listingSha256": "f0d4ff34f1a51d3b3ddd65feae740d04a6a4f139d5b41604670b0a6b14a9c072",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
