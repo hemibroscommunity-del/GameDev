@@ -501,7 +501,15 @@ export function ExchangePanel(props) {
       letterSpacing: '.14em',
       color: '#8D9B98'
     }
-  }, mktMode === 'buy' ? 'Max Bid' : 'Ask Price'), /*#__PURE__*/React.createElement("input", {
+  },
+  /* v2.3.3479: the 2026-10-19 UI review -- "Max Bid 100" beside "Est: ~25G"
+     read as a bid four times the value. It is the most you pay: an order
+     that fills at once pays the resting seller's lower price and gets the
+     rest back (market.js, the 'price improvement' refund), and one that
+     rests pays it when a seller comes -- so the label says so; "Est." is the
+     game's own formula of the kind's value (estimateMktPrice), not market
+     history, so it says "value". */
+  mktMode === 'buy' ? "Max you'll pay" : 'Ask Price'), /*#__PURE__*/React.createElement("input", {
     type: "number",
     min: 1,
     max: 99999,
@@ -547,7 +555,7 @@ export function ExchangePanel(props) {
       fontVariantNumeric: 'tabular-nums',
       marginLeft: 'auto'
     }
-  }, "Est: ~", estimateMktPrice(mktTier, mktSubtype), "G")), mktMode === 'sell' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "Est. value: ~", estimateMktPrice(mktTier, mktSubtype), "G")), mktMode === 'sell' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
