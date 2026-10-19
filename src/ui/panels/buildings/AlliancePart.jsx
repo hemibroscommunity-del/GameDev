@@ -124,7 +124,8 @@ function WarPart(props) {
 function Board(props) {
   var b = allyBus.board;
   if (!b) return <div style={SMALL}>Asking…</div>;
-  if (!b.rows.length) return <div data-ally-board-rows="0" style={SMALL}>No alliances yet. A party of 20 active members becomes one.</div>;
+  /* v2.3.3479: the review -- says who counts, as the Saloon's line does */
+  if (!b.rows.length) return <div data-ally-board-rows="0" style={SMALL}>No alliances yet. A party becomes one when 20 of its members are level 5 or more and played in the last 7 days.</div>;
   return (
     <div data-ally-board-rows={b.rows.length} style={{ display: 'grid', gap: 0 }}>
       {b.rows.map(function (r, i) {
@@ -193,7 +194,11 @@ export function AlliancePart(props) {
           {err ? <div data-ally-error="" style={{ fontSize: 12.5, color: LS.danger }}>{err.text}</div> : null}
         </div>
       ) : (
-        <div style={Object.assign({}, WELL, SMALL)}>A party of {at} active members becomes an alliance, with a name, a tag, wars and a place on the board.</div>
+        /* v2.3.3479: the 2026-10-19 UI review -- "active" was never said:
+           a member counts when level 5 or more and played in the last 7
+           days (server alliance.js ACTIVE_LEVEL, ACTIVE_MS), as the line a
+           party member sees above already says. */
+        <div style={Object.assign({}, WELL, SMALL)}>A party becomes an alliance when {at} of its members are level 5 or more and played in the last 7 days: a name, a tag, wars and a place on the board.</div>
       )}
       <button type="button" data-ally-board=""
         onClick={function () { var open = !boardOpen; setBoardOpen(open); if (open) allyBus.askBoard(S); }}

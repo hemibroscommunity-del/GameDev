@@ -1309,6 +1309,28 @@ body:has([data-shop-panel]) [data-world-map-open]::after,
 body:has(.bt-npcdlg-scrim) [data-world-map-open]::after,
 body:has([data-ace-flip]) [data-world-map-open]::after,
 body:has([data-infopopup]) [data-world-map-open]::after{display:none}
+/* ═══ v2.3.3479: THE 2026-10-19 UI REVIEW -- ACE'S COIN ON A SHORT SCREEN ═══
+   Held sideways his 138 px coin well pushed the stake chips and the Flip
+   button below the first view.  The well is the coin's TOSS (its frame climbs
+   from y 117 to y 10 and back), so a short screen shrinks the WHOLE coin, arc
+   and all, instead of a smaller window that would crop it mid-air: the 92 x 138
+   coin stays centred in the overflow-hidden flex well and scales round its
+   middle to 39 x 58.  !important beats the well's inline height.  The face
+   still scrolls for the Flip button (v2.3.3407); upright, a computer and a
+   laptop are all taller than 460 px and unchanged. */
+@media (max-height:460px){
+  [data-ace-flip] .bt-ace-coinwell{height:58px !important}
+  [data-ace-flip] .bt-ace-coin{flex:none;transform:scale(.42)}
+}
+/* v2.3.3479: the review -- Ace's ✕ is 18 x 28; an invisible ring makes the
+   press 44 x 44 (the card's edge is 15 px to its right, the header 29 px above
+   and below).  ::before, because on a computer ::after is its Esc key cap. */
+.bt-ace-close::before{content:'';position:absolute;inset:-8px -13px}
+/* v2.3.3479: the review -- the bag's upright filter chips are 26 px tall; an
+   invisible ring makes each 41 px, the room between the button row (13 px
+   above) and the first bag tile (4 px below).  No sideways growth: the chips
+   sit 4 px apart. */
+.bt-bagchip::after{content:'';position:absolute;inset:-12px 0 -3px}
 /* ═══ v2.3.2627, moved here v2.3.3258: THE AUCTION HOUSE'S CLERK ═══
    The clerk the game draws into the Auction House's room (data/buildingRooms.js
    ROOM_KEEPERS; he was on the owner's first painting of it, v2.3.2627, and is

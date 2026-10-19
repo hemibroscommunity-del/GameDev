@@ -202,8 +202,9 @@ merged. `server/src/clanparty.js`; the phone's side in `src/game/alliance.js`
   like any other, and its name and tag stay reserved while the party lasts.
 - **The phone** (against `caps.clanparty`, beside `caps.partykeep`): the clan
   window (wherever it is opened), the dashboard's Clan page and the Guild
-  Hall's clan row say "Clans are parties now" and their Find a party opens the
-  player list (`__broLegacyUI.playersOpen`, where a party starts: a player's
+  Hall's clan row say "Clans are parties now" and their Invite a player
+  ("Find a party" until v2.3.3479) opens the player list
+  (`__broLegacyUI.playersOpen`, where a party starts: a player's
   card, Invite to Party); a player card's Invite to Clan is gone; the Saloon's
   Alliance part names a former clan ("Your clan is this party now"); the
   inspect card, profile and leaderboard show the worker's `allyTag` first,

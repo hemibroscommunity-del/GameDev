@@ -8687,7 +8687,14 @@ export var BroTown = function BroTown(_ref0) {
             if (!S3._betsPaidOut) S3._betsPaidOut = {};
             S3._betsPaidOut[d.tournament.id] = true;
             var R3 = S3.rpg;
-            var myBets = ((R3 === null || R3 === void 0 ? void 0 : R3._arenaBets) || []).filter(function (b) {
+            /* v2.3.3479: the 2026-10-19 UI review -- this 3x payout is the
+               PAGE's own, for the old wells' page-only bets.  Against a worker
+               that settles stakes (caps.sponsor) those wells are not drawn
+               (PartyPanel's legacyBets) and the worker pays a real stake
+               itself (arena_stake_result), so nothing is paid here and no
+               "BET WON!" shows for a bet that did not exist.  The paid-out
+               mark above stays: the poll's fast/idle choice reads it. */
+            var myBets = (S3._serverCaps && S3._serverCaps.sponsor) ? [] : ((R3 === null || R3 === void 0 ? void 0 : R3._arenaBets) || []).filter(function (b) {
               return b.tournamentId === d.tournament.id;
             });
             if (myBets.length > 0) {
