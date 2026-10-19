@@ -3163,6 +3163,36 @@ remnant to migrate server-side, not a mode to preserve.
         nothing (groundLoot.js `S._dying`): TRAPS §233;
       - combat-lifecycle §5, `mp-deathpile` (a real death, in real time,
         `BT_DP_TRACE=1` its timeline): item-drop.md "A dead player's pile".
+  - Since v2.3.3485 ACHIEVEMENTS -- the owner: "Achievement points are
+    something I'd like in the game. You get it by completing the game. Some of
+    them are through super rare achievements. Although not as rare, an arena
+    winner should be included in that", then "Go recommended on everything":
+    - 23, decided by the WORKER where the game already settles each fact
+      (server/src/achievements.js: a kill, a combat level, a Wheel dungeon, a
+      catch, an order, a duel won by the kill, a No man's land kill, every story
+      chain's last quest, gear off a kill or a forge, H5, the spin's house
+      limit, the arena's crown by the mail): common 10 AP, rare 100, the arena
+      500, super-rare 1,000 (7,470 in all), each paid ONCE a character (a
+      counting row counts again: a second crown pays its gold, never 500 AP
+      again -- v2.3.3481 paid it on every crown);
+    - the record `achv:<pid>` (`got` the stamp, written in the same synchronous
+      run as the save carrying its points; a failed read or a newer `v` LOCKS
+      it), loaded before the mail drains; `_achvSweep` grants quietly at the
+      join what you did before (a kill, a level, the story, the codex, pets);
+    - the AP on a card, in the lists and on the leaderboard is the worker's
+      (`_achvStamp` over the phone's `rpgData.ap`), and so are the card's
+      TITLE (one you have, `achv_title`, paced by PACE.ACHVT) and RAREST
+      (ACHV.RARITY): the placeholders "Fishing Master" and "Ancient Ember
+      Crown" are gone;
+    - the phone: More's Journey tile is Achievements
+      (src/ui/mobile/dash/AchievementsPanel.jsx, "Use as title"), a banner and
+      a sound for rare and up, a chat line for common (src/game/achievements.js,
+      ui/panels/AchievementBanner.jsx); the dormant BT_ACHIEVEMENTS checker and
+      the local "RARE DROP +AP" popup are gone;
+    - `caps.achievements`, kill switch `achievements: false`, lever
+      `/dev/achv`; `achievements` suite, `achievements-client`, mirror-audit,
+      cost-guard §5 (a first kill writes one more row) and §9c,
+      `mp-achievements`, `mp-achvtitle`: docs/specs/achievements.md.
   - Since v2.3.3209 THE MONSTER CODEX -- the owner: "After you kill a monster
     you learn more about it, what it does, where it's from, elemental type,
     special attack, (make up a backstory) etc.", "Also include drop tables
