@@ -1,4 +1,4 @@
-/* ═══ v2.3.3487: THE SOUND STUDIO'S CATALOGUE -- WHERE EVERY SOUND PLAYS ═══
+/* ═══ v2.3.3498: THE SOUND STUDIO'S CATALOGUE -- WHERE EVERY SOUND PLAYS ═══
  *
  * The owner, after a playtest: "I think sounds were wired in the wrong
  * places.  The labels should tell you where they go.  Might need to build a

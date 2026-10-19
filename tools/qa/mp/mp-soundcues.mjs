@@ -154,7 +154,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(400);
   await P.page.keyboard.press('1');
   await P.page.waitForTimeout(400);
-  /* v2.3.3487: each weapon its own swap sound (the owner: "Change weapon switch sound") */
+  /* v2.3.3498: each weapon its own swap sound (the owner: "Change weapon switch sound") */
   const swap = await P.page.evaluate(() => { const p = window.__btCues.stats.played; return { bow: p.swapBow || 0, sword: p.swapSword || 0, staff: p.swapStaff || 0, slot: window._gameState.current.rpg.activeSlot }; });
   rec.ok(`2b. a weapon changed and changed back (2, 1): the bow's sound, then the sword's (${swap.bow}, ${swap.sword})`,
     slot0 === 'melee' && swap.bow === 1 && swap.sword === 1 && swap.staff === 0 && swap.slot === 'melee', { slot0, swap });

@@ -1828,7 +1828,7 @@ export function updateMonsterCombat(S, deps) {
                   S._bowShotAng = arrAngle;
                   /* v2.3.3343: the arrow's whoosh on the release frame
                      (entityRenderer BOW_RELEASE_MS, 110 ms), where the arrow
-                     leaves the grip.  v2.3.3487: as the jump's rush of air
+                     leaves the grip.  v2.3.3498: as the jump's rush of air
                      (data/eventSounds.js bowLoose, the owner's "should be
                      current 'jump' sound"), and no bow-pullback drawn first:
                      quickened to fit the quick draw, it was the "duck

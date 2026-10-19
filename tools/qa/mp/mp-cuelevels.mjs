@@ -22,8 +22,8 @@
  *      owner heard that slowed special swipe's body thump as "a fleshy sound"
  *      (v2.3.3336; measured through a 400 Hz low-pass, which lets a little
  *      above it through, hence the comparison and not a fixed number);
- *   6. v2.3.3487: a grunt is a voice, not a thump: the sprint running dry
- *      (the owner's effort grunt since v2.3.3487, their "angry grunt" -- a
+ *   6. v2.3.3498: a grunt is a voice, not a thump: the sprint running dry
+ *      (the owner's effort grunt since v2.3.3498, their "angry grunt" -- a
  *      low strained "hnh" whose strain sits at 200-400 Hz, so check 5's 400
  *      Hz line no longer tells it from a thump; until then "Grunt 1", a
  *      breathy voice, 12%, sat in check 5) and the two hurt grunts each put
@@ -41,7 +41,7 @@ import { EVENT_SOUNDS } from '../../../src/data/eventSounds.js';
 /* the levels the table's comments promise (data/eventSounds.js) */
 const PROMISED = {
   shieldBlock: 1.4, shieldBall: 0.6, shieldUp: 0.55, shieldDown: 0.35, dodged: 0.5, dodgeRoll: 0.6,
-  crit: 0.65, bowLoose: 0.4 /* v2.3.3487: was bowDraw 0.5, the squeak */, discovery: 0.8, jumpUp: 0.4, jumpLand: 0.4, statusEnd: 0.2,
+  crit: 0.65, bowLoose: 0.4 /* v2.3.3498: was bowDraw 0.5, the squeak */, discovery: 0.8, jumpUp: 0.4, jumpLand: 0.4, statusEnd: 0.2,
   throwSnow: 0.5, door: 0.65, gatherReady: 0.45, lootDrop: 0.25, dungeonClear: 2.5,
   /* v2.3.3434: the second round ("Look for more too") */
   farmHarvest: 0.6, betIn: 0.6, betWon: 1.5, betLost: 1.0, jackpotWin: 1.7, guildQuest: 2.4,
@@ -56,12 +56,12 @@ const PROMISED = {
   npcVoice0: 0.5, npcVoice1: 0.5, npcVoice2: 0.5, npcVoice3: 0.5, npcVoice4: 0.5, pointsSpent: 0.8,
   dungeonWave: 1.2, arenaStart: 1.0, allianceWar: 1.1, bossArrive: 1.5, bossEnrage: 1.3, blueBurst: 1.3,
   /* v2.3.3455: a sprint running dry is the owner's grunt, worn out (~0.23);
-     v2.3.3487: their effort grunt now, ~0.45 plain -- its strain sits at
+     v2.3.3498: their effort grunt now, ~0.45 plain -- its strain sits at
      200-400 Hz, which the plain measure weighs whole (~0.3 by ear) */
   sprintOut: 0.45,
   /* v2.3.3475: ...and every other time their tired breath */
   sprintOutBreath: 0.2,
-  /* v2.3.3487: the weapon swapped to, the tree felled */
+  /* v2.3.3498: the weapon swapped to, the tree felled */
   swapSword: 0.4, swapBow: 0.4, swapStaff: 0.4, treeFelled: 1.4,
 };
 
@@ -115,7 +115,7 @@ try {
     /* as BT_AUDIO._playLayer plays a layer: vol x hg x gain, the rate, the
        slice, the delay, and a fade over the slice's last `fade` seconds */
     const render = async (layers, vol, hg) => {
-      /* lp: a low-pass's corner in Hz (v2.3.3487: 400 for check 5, 150 for check 6), or none */
+      /* lp: a low-pass's corner in Hz (v2.3.3498: 400 for check 5, 150 for check 6), or none */
       const once = async (aw, lp) => {
         let len = 0.2;
         for (const L of layers) {
@@ -184,7 +184,7 @@ try {
   const AIRY = ['dodged', 'dodgeRoll', 'jumpUp', 'sprintOutBreath', 'unwrap'];
   const thump = AIRY.filter((n) => !(res.out[n].low <= 0.6 * res.fleshyLow));
   ok(thump.length === 0, `5. a rush of air is air: ${AIRY.map((n) => n + ' ' + Math.round(res.out[n].low * 100) + '%').join(', ')} of its energy under 400 Hz (the old "fleshy" push-off ${Math.round(res.fleshyLow * 100)}%; at most 0.6 of it)`);
-  /* v2.3.3487: the grunts -- a voice, whose strain is under 400 Hz, but no thump */
+  /* v2.3.3498: the grunts -- a voice, whose strain is under 400 Hz, but no thump */
   const VOICES = ['sprintOut', 'hurtA', 'hurtB'];
   const thud = VOICES.filter((n) => !(res.out[n].low150 <= 0.6 * res.fleshyLow150));
   ok(thud.length === 0, `6. a grunt is a voice, not a thump: ${VOICES.map((n) => n + ' ' + Math.round(res.out[n].low150 * 100) + '%').join(', ')} of its energy under 150 Hz (the old "fleshy" push-off ${Math.round(res.fleshyLow150 * 100)}%; at most 0.6 of it)`);

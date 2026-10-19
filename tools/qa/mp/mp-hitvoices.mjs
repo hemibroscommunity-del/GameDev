@@ -49,7 +49,7 @@ const MONSTERS = [
 /* What each voice is made of (gameDisplay.js HIT_VOICES) */
 const WHOLE = {
   bone: ['sword-hit3'], goo: ['monster-hit', 'step-mud'], ember: ['monster-hit', 'cook-success'],
-  stone: ['mine-strike', 'step-gravel'], snow: ['step-snow', 'step-ice'],   /* v2.3.3487: no thump under either */
+  stone: ['mine-strike', 'step-gravel'], snow: ['step-snow', 'step-ice'],   /* v2.3.3498: no thump under either */
   mud: ['step-mud', 'monster-hit'], wet: ['monster-hit', 'fish-on-hook'],
 };
 const WEAPONS = [{ w: 'sword', src: 'melee', vol: 0.55 }, { w: 'arrow', src: 'arrow', vol: 0.6 }, { w: 'bolt', src: 'bolt', vol: 0.22 }];
@@ -126,7 +126,7 @@ const seed = (P, list) => P.page.evaluate((list) => {
    several in ONE breath when given a list (a whirlwind's hits arrive together) */
 const echo = (P, p, heardJustNow) => P.page.evaluate(({ p, heardJustNow }) => {
   const S = window._gameState.current, st = window.__btHitSounds.stats;
-  /* v2.3.3487: "heard a moment ago" stamped in the same breath as the blow --
+  /* v2.3.3498: "heard a moment ago" stamped in the same breath as the blow --
      two round trips to this page can outlast ECHO_GAP_MS on a slow box */
   if (heardJustNow) { const m = S.monsters.find((q) => q.id === heardJustNow); if (m) m._hitSndAt = Date.now(); }
   const n0 = { echo: st.echo, skipped: st.echoSkipped, throttled: st.echoThrottled };
@@ -242,7 +242,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 2. the snowman is one hit, not two ── */
   const snow = rows.filter((r) => r.mon.key === 'snowman' && !r.err);
-  /* v2.3.3487: his voice is snow now -- the owner: "Hit made a fleshy sound on
+  /* v2.3.3498: his voice is snow now -- the owner: "Hit made a fleshy sound on
      the snowman ... can't be that sound": a crunch and an icy crack, never the
      snowball's thud (snowman-hit, 91% under 250 Hz) nor the slime's */
   rec.ok('an arrow, a bolt or a sword into a snowman is ONE hit: a crunch of snow once and its icy crack, never a thud (the snowball\'s or the slime\'s)',

@@ -23,7 +23,7 @@ their sparkle at 48 kHz.
 
   name       recording                 window          what
   hurt-1     male_hurt7 48124          0.07 s + 0.49   a short "uh!" (its onset at 0.10)
-  hurt-2     grunt-1 85280 (voice/)    0.56 s + 0.50   a falling "uh-uh!" (v2.3.3487: was the
+  hurt-2     grunt-1 85280 (voice/)    0.56 s + 0.50   a falling "uh-uh!" (v2.3.3498: was the
              angry grunt 103204, a low strained "hnh" -- the EFFORT, which is
              the sprint's now, tools/audio/cut_sprint_voice.py; the owner:
              "Wrong sound for starting sprint and ending sprint (hurt sound)
@@ -115,7 +115,7 @@ MUSIC = os.path.join(ROOT, 'public', 'audio', 'music', 'village.mp3')
 # name, source (under assets/sfx-source), start s, length s, fade in s, fade out s, rate, level, group
 ONE_SHOTS = [
     ('hurt-1', 'player/freesound_community-male_hurt7-48124.mp3', 0.07, 0.49, 0.006, 0.12, 'low', 0.7, 'player'),
-    ('hurt-2', 'voice/freesound_community-grunt-1-85280.mp3', 0.56, 0.50, 0.006, 0.12, 'low', 0.7, 'player'),   # v2.3.3487: Grunt 1 (was the angry grunt, now the sprint's)
+    ('hurt-2', 'voice/freesound_community-grunt-1-85280.mp3', 0.56, 0.50, 0.006, 0.12, 'low', 0.7, 'player'),   # v2.3.3498: Grunt 1 (was the angry grunt, now the sprint's)
     ('heartbeat', 'player/dragon-studio-thudding-heartbeat-372487.mp3', 0.03, 0.59, 0.004, 0.18, 'low', 1.2, 'player'),
     ('munch', 'player/freesound_community-eating-chocolate-67566.mp3', 6.90, 0.52, 0.006, 0.06, 'low', 0.5, 'player'),
     ('gulp', 'player/freesound_community-gulping-noises-drinking-noises-37758.mp3', 9.62, 0.70, 0.006, 0.15, 'low', 0.5, 'player'),

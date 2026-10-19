@@ -3,7 +3,7 @@ import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { WORLDVIEW_EXITS } from '../../data/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
-import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3487: every sound and where it plays */
+import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3498: every sound and where it plays */
 
 /* ═══ v2.3.2240: THE OWNER'S TEST PANEL ═══
  *
@@ -662,7 +662,7 @@ export const DevPanel = ({ onClose }) => {
           Run the speed test
         </button>
 
-        {/* ═══ v2.3.3487: THE SOUND STUDIO ═══
+        {/* ═══ v2.3.3498: THE SOUND STUDIO ═══
             The owner: "I think sounds were wired in the wrong places.  The
             labels should tell you where they go.  Might need to build a quick
             studio to show which sounds belong where."  Keyless: it only plays

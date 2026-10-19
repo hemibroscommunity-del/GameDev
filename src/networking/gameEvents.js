@@ -33,7 +33,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armou
 import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
 import { applyElemHit, applyHitShove, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3014: + the poison's and the storm's ticks; v2.3.3264: + a player's blow's shove */
 import { echoHitSfx, heroHitSfx, earVol, deathVol, shotHitMe } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's; v2.3.3248: a far death, slam or blast heard and felt by distance; v2.3.3343: + was a blocked blow the ball */
-import { cue, cueAt, peerShare, cuePeer, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game; v2.3.3487: + cueLater, a peer's shot */
+import { cue, cueAt, peerShare, cuePeer, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game; v2.3.3498: + cueLater, a peer's shot */
 import { hurtGrunt } from '@/game/ownSounds.js'; /* v2.3.3462: your hurt grunt (the owner's recordings) */
 import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
 import { peerShotFlight } from '@/game/peerShots.js'; /* v2.3.3266: another player's shot at their speed and reach */
@@ -2193,7 +2193,7 @@ export function processGameEvent(type, payload, S, deps) {
                   var _pak = peerShare(S, _psX, _psY);
                   if (_pak > 0) {
                     var _pad = Math.max(0, Math.min(2, (Number(payload.delayMs) || 0) / 1000));
-                    /* v2.3.3487: the shot's own sound (bowLoose), at the
+                    /* v2.3.3498: the shot's own sound (bowLoose), at the
                        relay's moment -- its release frame came with it */
                     cueLater('bowLoose', _pad - 0.11, _pak);
                     if (payload.isSpecial && _psFirst) BT_AUDIO.specialSwipe({ vol: 0.55 * _pak });

@@ -108,7 +108,7 @@ const pagePoint = (P, wx, wy) => P.page.evaluate(([x, y]) => {
 
 /* everything of the attack from now on, watched every frame: a swing (the
    swing's clock moved), an arrow made, the bow's shot heard (bowLoose since
-   v2.3.3487, the draw's squeak gone), the attack held */
+   v2.3.3498, the draw's squeak gone), the attack held */
 const watchAttack = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
   const st = window.__btCues && window.__btCues.stats;

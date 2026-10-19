@@ -71,7 +71,7 @@ export function cue(name, k, rate) {
     let any = false;
     const layers = EVENT_SOUNDS[name];
     const prev = BT_AUDIO._tag;
-    BT_AUDIO._tag = 'cue:' + name;   /* v2.3.3487: what these samples are, for the sound studio (game/soundStudio.js) */
+    BT_AUDIO._tag = 'cue:' + name;   /* v2.3.3498: what these samples are, for the sound studio (game/soundStudio.js) */
     try {
       for (let i = 0; i < layers.length; i++) any = !!BT_AUDIO._playLayer(layers[i], share, r, 1) || any;
     } finally { BT_AUDIO._tag = prev; }
@@ -80,7 +80,7 @@ export function cue(name, k, rate) {
   } catch (e) { return false; /* sound only */ }
 }
 
-/** v2.3.3487: cue `name` with every layer `extra` seconds later than its own
+/** v2.3.3498: cue `name` with every layer `extra` seconds later than its own
  *  delay (never earlier than now): a bow volley's arrows, each on its own
  *  launch wait, and another player's shot, whose release came with the
  *  relay.  No CUE_GAP_MS -- a volley is meant to be several. */
@@ -174,7 +174,7 @@ export function peerOwn(S, label, layers, vol, x, y, budget) {
     const r = 1 + (Math.random() - 0.5) * 0.06;
     let any = false;
     const prev = BT_AUDIO._tag;
-    BT_AUDIO._tag = 'peer:' + label;   /* v2.3.3487: the sound studio's "heard just now" */
+    BT_AUDIO._tag = 'peer:' + label;   /* v2.3.3498: the sound studio's "heard just now" */
     try {
       for (let i = 0; i < list.length; i++) any = !!BT_AUDIO._playLayer(list[i], (vol == null ? 1 : vol) * s, r, 1) || any;
     } finally { BT_AUDIO._tag = prev; }
