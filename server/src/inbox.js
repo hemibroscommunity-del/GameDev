@@ -37,7 +37,39 @@ export const OP_PRUNE = {
   SLOT_MS: 3000,         // one page every 3s while the room is occupied
 };
 
+/* ═══ v2.3.3488: ACHIEVEMENT POINTS PAID ONCE A CHARACTER ═══
+   The names a credit's `apOnce` may carry, each a prize whose points a
+   character is paid the first time only (_applyCreditToPs).  The marks are
+   their own record, `aponce:<pid>` -> {name: 1} (ARCHITECTURE-HANDOFF rule 1:
+   no new field in the rpg blob), read at the join before the mail
+   (_apOnceLoadOnJoin) and written by _saveRpg in the same synchronous run as
+   the blob that holds the points (persistence.js).  cleanApOnce keeps only
+   these names, only 1. */
+export const AP_ONCE = new Set(['arena']);
+export function cleanApOnce(v) {
+  const out = {};
+  if (v && typeof v === 'object') for (const k of AP_ONCE) if (v[k] === 1 || v[k] === true) out[k] = 1;
+  return out;
+}
+
 export const inboxMethods = {
+  /* v2.3.3488: the once-a-character prizes this character has been paid
+     (AP_ONCE above) -- one GET at the join, BEFORE the mail drains, so a
+     champion's prize waiting there is judged by them.  A failed read marks
+     the character `_apOnceFailed`: no once-a-character points until the next
+     join, and no mark written. */
+  async _apOnceLoadOnJoin(playerId, ps) {
+    if (!playerId || !ps) return;
+    try {
+      ps.apOnce = cleanApOnce(await this.state.storage.get('aponce:' + playerId));
+      ps._apOnceFailed = false;
+    } catch (e) {
+      ps.apOnce = {};
+      ps._apOnceFailed = true;
+    }
+    ps._apOnceDirty = false;
+  },
+
   /* ═══ v2.3.1971: HOW MANY OF `k` DOES THIS PLAYER ACTUALLY HOLD ═══
    *
    * Every ownership gate in the economy was spelled `(inv[k] || 0) < n`,
@@ -339,7 +371,28 @@ export const inboxMethods = {
          gold is: once, live or from the mail at the next join.  Only a
          server-made credit ever carries `ap` (no client message builds one). */
       const ap = Math.max(0, Math.floor(Number(p.ap) || 0));
-      if (ap) ps.achievementPoints = (ps.achievementPoints || 0) + ap;
+      /* ═══ v2.3.3488: ...ONCE A CHARACTER, WHEN THE CREDIT SAYS SO ═══
+         The owner, on the arena's 500 AP on every win (two accounts in a
+         2-player bracket could farm them): "I don't want anyone exploiting
+         the achievement points from it".  A credit carrying `apOnce` (a name
+         in AP_ONCE) pays its points only if this character has never been
+         paid them under that name, and marks it -- here, in the same apply
+         as the gold, so a mailed prize decides at the drain, and the mark is
+         saved with the gold in the one write that follows (`ps.apOnce`,
+         persistence.js).  The gold is paid either way. */
+      const once = (typeof p.apOnce === 'string' && AP_ONCE.has(p.apOnce)) ? p.apOnce : null;
+      if (ap && once) {
+        /* a character whose marks could not be read pays none and marks
+           nothing (fail closed: the points are the cheaper loss) */
+        if (!ps._apOnceFailed) {
+          if (!ps.apOnce || typeof ps.apOnce !== 'object') ps.apOnce = {};
+          if (!ps.apOnce[once]) {
+            ps.apOnce[once] = 1;
+            ps._apOnceDirty = true;   /* _saveRpg writes aponce:<pid> with the points */
+            ps.achievementPoints = (ps.achievementPoints || 0) + ap;
+          }
+        }
+      } else if (ap) ps.achievementPoints = (ps.achievementPoints || 0) + ap;
       return true;
     }
     if (entry.kind === 'item') {
