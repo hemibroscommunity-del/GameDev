@@ -101,17 +101,12 @@ export function deriveQuestLog(S) {
 /* v2.3.1298 (round-5 Quests): client-side quest TRACKING — a pinned
    quest id in localStorage.  Safe by design: tracking is a display
    preference; accepting/turning-in stays with the NPCs and the
-   server-authoritative flow untouched. */
-const TRACK_KEY = 'bt_trackedQuest';
-export function trackedQuestId() {
-  try { return localStorage.getItem(TRACK_KEY) || null; } catch { return null; }
-}
-export function setTrackedQuest(id) {
-  try {
-    if (id) localStorage.setItem(TRACK_KEY, id);
-    else localStorage.removeItem(TRACK_KEY);
-  } catch (_e) {}
-}
+   server-authoritative flow untouched.
+   v2.3.3489: kept in src/game/trackedQuest.js now, where the minimap's star,
+   the world map's road and the pinned quest card read it too (the owner:
+   "I tapped track quest in quest menu but no golden stars were in
+   minimap") -- the same key, the same two calls. */
+export { trackedQuestId, setTrackedQuest } from '../../../game/trackedQuest.js';
 
 /* Toolbar badge feed: READY turn-ins only (round-5: available quests
    alone never badge). */

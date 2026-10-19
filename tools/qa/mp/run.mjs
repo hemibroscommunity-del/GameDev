@@ -428,6 +428,7 @@ const SCENARIOS = {
   chatjoy: () => import('./mp-chatjoy.mjs'), /* v2.3.2123: the world chat sitting on the joystick */
   dunes: () => import('./mp-dunes.mjs'), /* v2.3.2122: the Wind Dunes arrival you cannot walk out of */
   queststar: () => import('./mp-queststar.mjs'), /* v2.3.1906: the star after the objective is done */
+  trackquest: () => import('./mp-trackquest.mjs'), /* v2.3.3489: the owner's "I tapped track quest in quest menu but no golden stars were in minimap": a Beastmaster and a Mayor quest, a star untracked, the star, the card and the world map's road following the tracked one, and the road ending at its door */
   freshpoints: () => import('./mp-freshpoints.mjs'), /* v2.3.1860: a new character has nothing to spend */
   pointsglow: () => import('./mp-pointsglow.mjs'), /* v2.3.3004: points waiting make the Character tab and the Points tab glow -- none on a new bro, a real level-up lights the Character tab and its light flashes, a real tap still opens the sheet, the Points tab (only) glows there and stays lit while points wait, sideways too, reduced motion lit and still, and spending every point through prog3_allocate puts both out with the count */
   bandsummary: () => import('./mp-bandsummary.mjs'), /* v2.3.1848: the band's compact summary */

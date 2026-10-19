@@ -211,7 +211,7 @@ export const QuestsPanel = () => {
           activeSorted.length === 0
             ? <EmptyLine text="No active quests. Choose one from Available or speak with someone in town." />
             : activeSorted.map(({ quest, ready }) => (
-              <button key={quest.id} style={rowBtn}
+              <button key={quest.id} style={rowBtn} data-quest-row={quest.id /* v2.3.3489: mp-trackquest */}
                 onPointerUp={(e) => { e.stopPropagation(); openDetail(quest.id); }}>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{

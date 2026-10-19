@@ -264,9 +264,14 @@ export const QuestDetailPanel = () => {
         </>
       )}
 
-      {/* Track toggle — active quests only (a pin for "what am I doing"). */}
+      {/* Track toggle — active quests only (a pin for "what am I doing").
+          v2.3.3489: and now the minimap's star, the world map's gold road and
+          the pinned quest card follow it (game/trackedQuest.js, questRoute.js;
+          the owner: "I tapped track quest in quest menu but no golden stars
+          were in minimap"); data-quest-track for mp-trackquest */}
       {status === 'Active' && (
         <button
+          data-quest-track={tracked ? 'on' : 'off'}
           onPointerUp={(e) => {
             e.stopPropagation();
             setTrackedQuest(tracked ? null : quest.id);
@@ -286,6 +291,12 @@ export const QuestDetailPanel = () => {
             touchAction: 'manipulation',
           }}
         >{tracked ? '★ Tracked — tap to untrack' : '☆ Track this quest'}</button>
+      )}
+      {/* v2.3.3489: what tracking does, said once it is on */}
+      {status === 'Active' && tracked && (
+        <div data-quest-track-note="" style={{ fontSize: 11, color: COL.muted, padding: '6px 2px 0', textAlign: 'center' }}>
+          Your map's gold star follows this quest.
+        </div>
       )}
       {/* ═══ v2.3.2195: AND THE ACCEPT HALF IS GONE TOO ═══
           Owner: "the landscape quest module lets you accept a quest from the

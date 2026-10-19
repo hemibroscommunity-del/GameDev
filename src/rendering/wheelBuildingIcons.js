@@ -125,3 +125,12 @@ export function holdBuildingIcons(holder) { if (holder) _live.add(holder); }
 export function releaseBuildingIcons(holder) { _live.delete(holder); }
 /** QA: how many pictures are loaded. */
 export function wheelBuildingIconsLoaded() { return Object.keys(_canvas).length; }
+
+/* QA (mp-wheelmap): what is held -- the drawn-down pictures, their grey
+   copies and the minimap's textures; all three none outside the Wheel */
+if (typeof window !== 'undefined') {
+  try {
+    window.__btBuildingIcons = () => ({ loaded: Object.keys(_canvas).length, grey: Object.keys(_grey).length, textures: Object.keys(_tex).length,
+      bytes: (Object.keys(_canvas).length + Object.keys(_grey).length) * BUILDING_ICON_PX * BUILDING_ICON_PX * 4 });
+  } catch (e) { /* no window */ }
+}

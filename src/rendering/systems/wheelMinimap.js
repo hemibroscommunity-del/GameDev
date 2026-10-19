@@ -803,7 +803,9 @@ export class WheelMinimap {
         frame: FRAME, label: false,   /* v2.3.3009: the frame's width; nothing printed under the box */
         /* v2.3.3108: the map's window ends here, and the plate's two lines */
         h: WHEEL_H, mapBottom: MAP_BOT, plate: plate ? { ...plate, rect: this._plateRect || null } : null,
-        quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge, road } : null,
+        /* v2.3.3489: + whose road it is and where it leads (game/questWays.js) */
+        quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge, road,
+          qid: quest.qid || null, way: quest.way || null, door: quest.door || null } : null,
         /* v2.3.3023: the way home: whether town is off the box, whether its
            badge shows (and where, in the box), town's bearing from you
            (degrees, 0 east, 90 south) and how far, game px */

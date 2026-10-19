@@ -56,6 +56,7 @@ import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
+import { trackedFirst } from '@/game/trackedQuest.js';   /* v2.3.3489: the pinned quest card shows the quest you track */
 import { treeGeom, treeTrunkEllipse, treeReachBox } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree -- its box, its trunk and where you chop it from */
 import { oreGeom, oreBlockEllipse } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock -- its box and its body */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
@@ -13420,6 +13421,12 @@ export var BroTown = function BroTown(_ref0) {
       return QUEST_CHAINS[qid];
     }).filter(Boolean);
     if (activeQuests.length === 0) return null;
+    /* v2.3.3489: the quest you TRACK (the quest page's "Track this quest"),
+       when it is one of these -- the owner tracked one and nothing outside the
+       quest list changed ("I tapped track quest in quest menu but no golden
+       stars were in minimap"); the card, the minimap's star and the world
+       map's road all follow it now.  Else the first, as before. */
+    activeQuests = trackedFirst(activeQuests.map(function (aq) { return { qid: aq.id, q: aq }; })).map(function (e) { return e.q; });
     var q = activeQuests[0];
     /* v2.3.1914: live rpg, not the snapshot — one answer everywhere. */
     var done = DATA.questObjectiveDone(q, stateRef.current, rpgState);

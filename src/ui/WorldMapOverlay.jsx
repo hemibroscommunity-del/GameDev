@@ -657,7 +657,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     g.lineWidth = 6; g.strokeStyle = 'rgba(11,22,27,0.55)'; g.stroke();
     g.lineWidth = 3; g.strokeStyle = C_STAR; g.setLineDash([9, 6]); g.stroke(); g.setLineDash([]);
     starAt(g, qx, qy, 9);
-    more.quest = { x: Math.round(quest.x), y: Math.round(quest.y) };
+    more.quest = { x: Math.round(quest.x), y: Math.round(quest.y), qid: quest.qid || null, way: quest.way || null };   /* v2.3.3489: + whose road */
   }
 
   /* labels: placed in order of importance, each only where it clears the
