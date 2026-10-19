@@ -20,6 +20,9 @@
  *   3. and on a LAPTOP's window (1366 x 768) the character creator's ENTER
  *      BRO TOWN lay below the screen, unreachable: it is on it now, and a
  *      click on it starts the game (v2.3.3407).
+ *   3b. and there the drawing editor ran off the column, Done off its edge:
+ *      it fits the column now and Done answers a click (v2.3.3479, the
+ *      2026-10-19 UI review).
  */
 import * as H from './harness.mjs';
 
@@ -173,6 +176,53 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!cc && cc.bottom <= cc.winH && cc.answers, cc);
     rec.ok('...the Trait Picker beside it has room for its tiles (it had 31 px)', !!cc && cc.pane >= 150, cc);
     rec.ok('...and "ENTER BRO TOWN" stays on one line', !!cc && cc.labelH < cc.font * 1.6, cc);
+
+    /* 3b. v2.3.3479 (the 2026-10-19 UI review): the DRAWING EDITOR on the
+       same laptop.  Its pane was a fraction of the WINDOW (min(52vw,52vh,
+       288px)), so it took its 288 px ceiling and the panel wanted ~505 px in
+       the 419 px column: it scrolled sideways inside itself, with Done,
+       Select, Mirror and "To front" off its edge.  It is a fraction of the
+       column now (game.css, the v2.3.3407 computer block).  Opened from the
+       Skin tab's card, the way a player opens it. */
+    const tab = (label) => L.page.evaluate((l) => {
+      const b = [...document.querySelectorAll('.bt-cc-tabs .bt-cc-tab')].find((x) => (x.textContent || '').trim() === l);
+      if (b) b.click();
+      return !!b;
+    }, label);
+    const onSkin = await tab('Skin');
+    await L.page.waitForTimeout(800);
+    const inkCard = await L.page.$('.bt-cc-ink-pane');
+    if (inkCard) await inkCard.click({ timeout: 10000 }).catch(() => {});
+    const edOpen = await L.page.waitForSelector('.bt-paint', { timeout: 20000 }).then(() => true).catch(() => false);
+    rec.ok('on the laptop the Skin tab\'s drawing card opens the editor (guard)', onSkin && !!inkCard && edOpen,
+      { onSkin, card: !!inkCard, edOpen });
+    if (edOpen) {
+      await L.page.waitForTimeout(1200);
+      const ed = await L.page.evaluate(() => {
+        const p = document.querySelector('.bt-paint');
+        const pr = p.getBoundingClientRect();
+        const done = [...p.querySelectorAll('button')].filter((b) => (b.textContent || '').trim() === 'Done').pop();
+        const dr = done ? done.getBoundingClientRect() : null;
+        const x = dr ? dr.left + dr.width / 2 : -1, y = dr ? dr.top + dr.height / 2 : -1;
+        const inView = !!dr && x >= pr.left && x <= pr.right && y >= pr.top && y <= pr.bottom && x <= innerWidth && y <= innerHeight;
+        const at = inView ? document.elementFromPoint(x, y) : null;
+        return { panel: [Math.round(pr.left), Math.round(pr.top), Math.round(pr.right), Math.round(pr.bottom)],
+          win: [innerWidth, innerHeight], scrollW: p.scrollWidth, clientW: p.clientWidth,
+          scrollH: p.scrollHeight, clientH: p.clientHeight,
+          done: dr ? [Math.round(dr.left), Math.round(dr.top), Math.round(dr.right), Math.round(dr.bottom)] : null,
+          inView, answers: !!(at && done && done.contains(at)), x, y };
+      });
+      rec.ok('...the editor no longer scrolls sideways inside itself (it was ~505 px of content in the 419 px column)',
+        !!ed && ed.scrollW <= ed.clientW + 1, ed);
+      rec.ok('...its Done button is in view and answers a click there', !!ed && ed.inView && ed.answers, ed);
+      if (ed && ed.answers) await L.page.mouse.click(ed.x, ed.y);
+      const edClosed = await L.page.waitForFunction(() => !document.querySelector('.bt-paint'), null, { timeout: 10000, polling: 200 })
+        .then(() => true).catch(() => false);
+      rec.ok('...and a mouse click on Done closes it', edClosed);
+    }
+    await tab('Hair');   /* back to the tab ENTER was measured on */
+    await L.page.waitForTimeout(500);
+
     await L.page.fill('input.bt-cc-name', 'Laptop');
     if (cc) await L.page.mouse.click(cc.x, cc.y);
     /* the creator GONE, not only a socket: the page has an id and a zone
