@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b7fbaa7b3f6a8a82f84f77545d15f501499a9bcf",
+  "tree": "81a0a6fa6ac23abdfe60f91b51898db13b3a30e3",
+  "committedAt": "2026-10-18T20:56:57-07:00",
+  "subject": "The ChatGPT UI review's fixes, Woodworking for bow and staff hardening, 500 AP for the arena champion, and your icon picks (v2.3.3481) (#1020)",
+  "files": 6082,
+  "bytes": 711498897,
+  "listingSha256": "1da49465cc67bfedec8bef668dcdda794021fda23669c5b517023dbc47025275",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
