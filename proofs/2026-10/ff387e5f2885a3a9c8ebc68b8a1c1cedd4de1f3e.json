@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ff387e5f2885a3a9c8ebc68b8a1c1cedd4de1f3e",
+  "tree": "679155122e9259fb9980b1b2b5e72a96fc1abc7e",
+  "committedAt": "2026-10-19T16:00:26-07:00",
+  "subject": "The arena champion's 500 achievement points are paid on a character's first win only (v2.3.3488) (#1026)",
+  "files": 6083,
+  "bytes": 711547664,
+  "listingSha256": "5d74ca75ea24b2b234c718103f5891bfb9782c5d10dd51d7de6d82501720362b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
