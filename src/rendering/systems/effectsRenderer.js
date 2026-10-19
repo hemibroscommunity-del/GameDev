@@ -10898,7 +10898,21 @@ export class EffectsRenderer {
     if (!spr || spr.destroyed) return;
     let want = 1;
     const P = S && S.player;
-    if (TREE_FADE && P) {
+    /* v2.3.3479: the 2026-10-19 UI review -- "the bro chops empty grass, the
+       bar floats over nothing".  During a chop your walking body is put away
+       and the lumberjack is drawn IN FRONT of the trunk (chopStandInSpot), but
+       the test below still read S.player, the hidden body, which stays where
+       you tapped -- anywhere in the reach box, up to 168 px north of the node,
+       behind the trunk and under the crown.  So a chop begun from behind the
+       tree kept the very tree you were chopping at 0.42 for the whole wind-up
+       and swipe: a ghost trunk, the bar over a ghost crown.  While your body
+       is away for the lumberjack (entityRenderer's S._standInBody, set earlier
+       this frame) the tree he is chopping stays solid; the node match is
+       _isMineTarget's. */
+    const ex = S && S._extraction;
+    const chopping = !!(S && S._standInBody && ex && ex.skill === 'woodcutting'
+      && (ex.nodeRef === node || (ex.nodeId != null && ex.nodeId === node.id)));
+    if (TREE_FADE && P && !chopping) {
       const fy = P.y + (playerGroundDy(S.currentZone, P.x, P.y) || 0);
       const bodyH = S._bodyDrawH > 20 ? S._bodyDrawH : 100;
       if (behindTree(g, P.x, fy, bodyH)) want = TREE_SEE_ALPHA;
