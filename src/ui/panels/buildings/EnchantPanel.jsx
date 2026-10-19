@@ -158,7 +158,10 @@ export function EnchantPanel(props) {
             color: (wpn === null || wpn === void 0 ? void 0 : wpn.name) ? LS.txt1 : LS.dis,
             marginBottom: 4
           }
-        }, (wpn === null || wpn === void 0 ? void 0 : wpn.name) || 'None'), /*#__PURE__*/React.createElement("div", {
+        }, (wpn === null || wpn === void 0 ? void 0 : wpn.name) || 'None'), /* v2.3.3479: the 2026-10-19 UI review -- the rarity row only for a
+           weapon that is there: with the slot empty it printed "Common (1×)"
+           under "None", as if something were equipped. */
+        wpn && /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 12,
             display: 'flex',
