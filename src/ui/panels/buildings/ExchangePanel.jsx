@@ -140,11 +140,17 @@ export function ExchangePanel(props) {
   (storeEnabled() && setBuildingPanel) ? /*#__PURE__*/React.createElement("button", {
     type: 'button',
     onClick: function onClick() { setBuildingPanel('store'); },
+    /* v2.3.3479: the 2026-10-19 UI review -- a way to another window wore
+       brass, which Lantern Slate keeps for selection and the one main action
+       (here the selected chips and Place Buy Order): now the secondary
+       recipe, raised + strong hairline + primary text, as the panel's own
+       Done button; and 44 px, the one control here under the touch guide
+       (it was 40). */
     style: {
-      width: '100%', minHeight: 40, margin: '6px 0 8px', padding: '0 12px',
+      width: '100%', minHeight: 44, margin: '6px 0 8px', padding: '0 12px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
       borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
-      border: '1px solid #D8AA58', background: 'rgba(216,170,88,.15)', color: '#D8AA58',
+      border: '1px solid rgba(229,237,233,.20)', background: '#293B41', color: '#F4F0E7',
       fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em',
       WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation'
     }
