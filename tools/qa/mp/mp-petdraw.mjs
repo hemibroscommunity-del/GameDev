@@ -120,6 +120,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── IT FOLLOWS ──
      A pet pinned at its spawn point would pass everything above. */
   const before = { x: agree.dx, y: agree.dy };
+  /* v2.3.3480: every frame of the walk, where the follow left the pet and how
+     long the game took that frame to be (S._dtScale, 1 at 60 Hz).  Read after
+     the game loop's own callback: it asks for its next frame first thing, so
+     a callback asked for later in a frame runs after it in the next. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const out = [];
+    let on = true;
+    window.__petPace = out;
+    window.__petPaceStop = () => { on = false; };
+    const look = () => {
+      if (!on) return;
+      if (typeof S._petX === 'number' && typeof S._petY === 'number' && S.player) {
+        out.push({ px: S._petX, py: S._petY, x: S.player.x, y: S.player.y, dt: S._dtScale || 1 });
+      }
+      requestAnimationFrame(look);
+    };
+    requestAnimationFrame(look);
+  });
   await P.page.keyboard.down('d');
   await P.page.waitForTimeout(2200);
   await P.page.keyboard.up('d');
@@ -133,6 +152,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
     Math.hypot(after.dx - before.x, after.dy - before.y) > 60, { before, after });
   rec.ok('...and is still beside them at the end of the walk',
     Math.hypot(after.dx - after.plx, after.dy - after.ply) < 200, after);
+  /* ── AT THE SAME PACE ON EVERY SCREEN (v2.3.3480) ──
+     The follow (BroTown.jsx §18.1) is 2 px a 60 Hz frame, so a frame the game
+     counts as k of them (S._dtScale) must move it 2k: a frame-rate-blind 2 px
+     left it at half pace on a 30 fps phone and 209 px behind here (the sweep
+     of 2026-10-19), where frames come ~12 a second.  Only frames that start
+     clearly outside the follow's 50 px ring are counted (measured from where
+     the pet began the frame to where you ended it, as the follow measures);
+     a personality's idle wiggle adds at most a quarter of a step either way,
+     so the middle of the steps must be within 30% of the frame's share.  On
+     a 60 Hz machine the old step passes too: there it was right. */
+  const pace = await P.page.evaluate(() => {
+    if (window.__petPaceStop) window.__petPaceStop();
+    const s = window.__petPace || [];
+    const k = [], dts = [];
+    for (let i = 1; i < s.length; i++) {
+      const a = s[i - 1], b = s[i];
+      const gap = Math.hypot(a.px - b.x, a.py - b.y);
+      const step = Math.hypot(b.px - a.px, b.py - a.py);
+      if (gap > 56 && step > 0 && step < 100) { k.push(step / (2 * b.dt)); dts.push(b.dt); }
+    }
+    const mid = (v) => { const w = v.slice().sort((p, q) => p - q); return w.length ? Math.round(w[w.length >> 1] * 100) / 100 : null; };
+    return { frames: s.length, follow: k.length, share: mid(k), dt: mid(dts) };
+  });
+  rec.ok("...at the walk's pace whatever the frame rate: each step is its frame's share of 2 px a 60 Hz frame",
+    pace.follow >= 4 && pace.share > 0.7 && pace.share < 1.3, pace);
 
   /* ── SWITCHED OFF, IT GOES AWAY ──
      The other half of the gate: a renderer that ignores the field on the way
