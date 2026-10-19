@@ -134,18 +134,31 @@ const orbSeries = async (P, samples, gapMs) => {
  * monster in front of them would change what the orb-spacing assertions
  * measure for no reason at all.
  */
-const seedBowTarget = (P, on) => P.page.evaluate((a) => {
+/* v2.3.3489: ON THE SCREEN.  The bow's gate counts a monster only as far as an
+   arrow flies before it comes down short of the screen's edge (arrowEdge.js);
+   620 px at this heading was past the right side of the 390 px phone, where the
+   old gate opened and every arrow came down at the edge, short of it.  So the
+   fodder stands on the bow's line, 620 px from the grip or 60 px inside where
+   an arrow comes down (the game's own `reach`), the nearer. */
+const seedBowTarget = (P, on) => P.page.evaluate((a) => new Promise((resolve) => {
   const S = window._gameState.current, F = window._gameFns || {};
-  if (!a.on) { S.monsters = []; S.lockedTarget = null; return { cleared: true }; }
-  S._serverMonsters = false;
-  const m = F.createMonster('solo-line', 'fodder', 2,
-    S.player.x + Math.cos(a.ang) * a.d, S.player.y + Math.sin(a.ang) * a.d, null);
-  m.alive = true; m.curHp = m.maxHp = 9000000; m.spd = 0; m.vx = 0; m.vy = 0; m.dmg = 0;
-  m.renderX = m.x; m.renderY = m.y;
-  S.monsters = [m];
-  S.lockedTarget = null;      /* a bow acquires nothing by itself -- the aim stays the fixture's */
-  return { mx: Math.round(m.x), my: Math.round(m.y) };
-}, { on: !!on, ang: 0.4, d: 620 });
+  if (!a.on) { S.monsters = []; S.lockedTarget = null; resolve({ cleared: true }); return; }
+  S._aimAngle = a.ang; S._lastAimAngle = a.ang;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const sight = S._bowSight || {};
+    const gx = isFinite(sight.ox) ? sight.ox : S.player.x, gy = isFinite(sight.oy) ? sight.oy : S.player.y;
+    const d = (typeof sight.reach === 'number' && isFinite(sight.reach)) ? Math.min(a.d, sight.reach - 60) : a.d;
+    const lift = (F.monsterBodyOffsetY && F.monsterBodyOffsetY('fodder')) || 0;
+    S._serverMonsters = false;
+    const m = F.createMonster('solo-line', 'fodder', 2,
+      gx + Math.cos(a.ang) * d, gy + Math.sin(a.ang) * d + lift, null);
+    m.alive = true; m.curHp = m.maxHp = 9000000; m.spd = 0; m.vx = 0; m.vy = 0; m.dmg = 0;
+    m.renderX = m.x; m.renderY = m.y;
+    S.monsters = [m];
+    S.lockedTarget = null;      /* a bow acquires nothing by itself -- the aim stays the fixture's */
+    resolve({ mx: Math.round(m.x), my: Math.round(m.y), d: Math.round(d), reach: sight.reach == null ? null : Math.round(sight.reach) });
+  }));
+}), { on: !!on, ang: 0.4, d: 620 });
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Solo', wsPort, webPort, viewport: PHONE, touch: true });

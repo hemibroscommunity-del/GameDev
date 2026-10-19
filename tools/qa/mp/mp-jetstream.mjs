@@ -27,7 +27,9 @@
  *      and the one number that decides whether it worked.  Measured against a
  *      LIVE ARROW's own range multiplier rather than against a constant this
  *      file also writes down: beam length must equal 675 * that arrow's
- *      _rangeMult, which is the plant cap projectiles.js enforces.  The old
+ *      _rangeMult, which is the plant cap projectiles.js enforces -- or, since
+ *      v2.3.3489, where the arrow comes down at the screen's edge, the nearer
+ *      (the owner: "Go recommended" to ending the line there).  The old
  *      280 px beam fails this by a factor of 2.4.
  *
  * MAGIC STILL GETS NOTHING, as since v2.3.2258 -- the owner has taken a sight
@@ -60,17 +62,31 @@ const AIM = -Math.PI / 2 + 0.18;
  * which is what section 2 asserts.
  */
 const TARGET_D = 500;
-const seedTarget = (P) => P.page.evaluate((a) => {
+/* v2.3.3489: ON THE SCREEN.  The gate now counts a monster only as far as an
+   arrow flies before it comes down at the screen's edge (arrowEdge.js) -- 500
+   px up from the player was past the top edge of the 664 px phone, where the
+   old gate opened and every arrow came down short.  So the fodder stands on
+   the bow's line, 500 px from the grip or 60 px inside where an arrow comes
+   down (the game's own `reach`), the nearer: the arrows still fly most of the
+   screen. */
+const seedTarget = (P) => P.page.evaluate((a) => new Promise((resolve) => {
   const S = window._gameState.current, F = window._gameFns || {};
-  S._serverMonsters = false;
-  const m = F.createMonster('jet-target', 'fodder', 2,
-    S.player.x + Math.cos(a.ang) * a.d, S.player.y + Math.sin(a.ang) * a.d, null);
-  m.alive = true; m.curHp = m.maxHp = 900000; m.spd = 0; m.vx = 0; m.vy = 0;
-  m.renderX = m.x; m.renderY = m.y;
-  S.monsters = [m];
-  S.lockedTarget = null;
-  return { mx: Math.round(m.x), my: Math.round(m.y), d: a.d };
-}, { ang: AIM, d: TARGET_D });
+  S._aimAngle = a.ang; S._lastAimAngle = a.ang;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const sight = S._bowSight || {};
+    const gx = isFinite(sight.ox) ? sight.ox : S.player.x, gy = isFinite(sight.oy) ? sight.oy : S.player.y;
+    const d = (typeof sight.reach === 'number' && isFinite(sight.reach)) ? Math.min(a.d, sight.reach - 60) : a.d;
+    const lift = (F.monsterBodyOffsetY && F.monsterBodyOffsetY('fodder')) || 0;
+    S._serverMonsters = false;
+    const m = F.createMonster('jet-target', 'fodder', 2,
+      gx + Math.cos(a.ang) * d, gy + Math.sin(a.ang) * d + lift, null);
+    m.alive = true; m.curHp = m.maxHp = 900000; m.spd = 0; m.vx = 0; m.vy = 0;
+    m.renderX = m.x; m.renderY = m.y;
+    S.monsters = [m];
+    S.lockedTarget = null;
+    resolve({ mx: Math.round(m.x), my: Math.round(m.y), d: Math.round(d), reach: sight.reach == null ? null : Math.round(sight.reach) });
+  }));
+}), { ang: AIM, d: TARGET_D });
 
 const armBow = (P) => P.page.evaluate(() => {
   const S = window._gameState.current, R = S.rpg, F = window._gameFns || {};
@@ -153,7 +169,18 @@ const snap = (P) => P.page.evaluate(() => new Promise((resolve) => {
         ang: +a._jet.ang.toFixed(4), len: +a._jet.len.toFixed(2),
         spent: !!a._jet.spent, dead: !!a._jet.dead } : null,
     }));
-    resolve({ probe, beam, arrows, px: S.player.x, py: S.player.y });
+    /* v2.3.3489: where an arrow on the line's heading comes down at the
+       screen's edge, by the game's rule written out again (arrowEdge.js): 24
+       px of flight short of the edge it flies toward */
+    let room = null;
+    if (beam && beam.origin && beam.angle != null && S.camera && S._viewW > 0 && S._viewH > 0) {
+      const c = Math.cos(beam.angle), sn = Math.sin(beam.angle), ox = beam.origin.x, oy = beam.origin.y;
+      let t = Infinity;
+      if (c > 1e-9) t = Math.min(t, (S.camera.x + S._viewW - ox) / c); else if (c < -1e-9) t = Math.min(t, (S.camera.x - ox) / c);
+      if (sn > 1e-9) t = Math.min(t, (S.camera.y + S._viewH - oy) / sn); else if (sn < -1e-9) t = Math.min(t, (S.camera.y - oy) / sn);
+      room = Math.max(0, t - 24);
+    }
+    resolve({ probe, beam, arrows, room, px: S.player.x, py: S.player.y });
    } catch (e) {
     /* A SCENARIO MUST NOT TAKE THE PAGE DOWN.  This body runs inside a
        requestAnimationFrame callback, so a throw here is UNCAUGHT: it never
@@ -303,13 +330,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(200);
       const clear = await snap(P);
       await hold(P, true);   /* back on AIM for what follows */
-      rec.ok(`${vp.height}: with nothing on the line the stream is exactly the arrow's own reach (${clear.beam ? clear.beam.len.toFixed(0) : '?'} px vs ${want.toFixed(0)} px)`,
-        !!clear.beam && clear.beam.clipped === false && Math.abs(clear.beam.len - want) < 0.5,
-        { beam: clear.beam, want, mult });
+      /* v2.3.3489: the arrow's own reach is the nearer of its range and the
+         screen's edge -- it comes down short of the edge (arrowEdge.js), and
+         the owner, offered "end the aiming line where the arrow comes down":
+         "Go recommended".  The edge is measured here by the test's own copy
+         of the rule (snap's `room`), from the line's own origin and heading. */
+      const reach = clear.room == null ? want : Math.min(want, clear.room);
+      rec.ok(`${vp.height}: with nothing on the line the stream is exactly the arrow's own reach (${clear.beam ? clear.beam.len.toFixed(0) : '?'} px vs ${reach.toFixed(0)} px: the range ${want.toFixed(0)}, the screen's edge ${clear.room == null ? '?' : clear.room.toFixed(0)})`,
+        !!clear.beam && clear.beam.clipped === false && Math.abs(clear.beam.len - reach) < 0.5,
+        { beam: clear.beam, want, room: clear.room, mult });
       /* The number this replaced, written down so a silent revert is loud:
          280 px was under half the arrow's reach. */
       rec.ok(`${vp.height}: ...which is far past the old 280 px stub`,
-        !!clear.beam && clear.beam.len > 600, { len: clear.beam && clear.beam.len });
+        !!clear.beam && clear.beam.len > 360, { len: clear.beam && clear.beam.len });
       await seedTarget(P);   /* put it back for the screenshot below */
       await P.page.waitForTimeout(150);
     }
