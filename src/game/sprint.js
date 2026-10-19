@@ -181,7 +181,8 @@ export function sprintDust(S, x, y, surface, ang, k, n) {
  *   swimming / shield / attacking / dead   what ends a sprint
  *   dtMs       this frame, in game time (BroTown's _dtScale x 16.7)
  * Returns 'start' | 'stop' | null for the caller's sound or note -- and
- * since v2.3.3015 'run' on a sprint's first moving frame, its push-off.
+ * since v2.3.3015 'run' on a sprint's first moving frame, its push-off
+ * (v2.3.3487: in place of 'start' when it started on that very frame).
  */
 export function updateSprint(S, now, f) {
   if (!S) return null;
@@ -205,8 +206,13 @@ export function updateSprint(S, now, f) {
   else if (sp.how !== 'key' && now - sp.lastMoveAt > (sp.ran ? IDLE_STOP_MS : START_WAIT_MS)) return end('still');
   sp.moving = !!fr.moving;
   if (sp.moving) {
-    /* v2.3.3015: the first stride of this sprint: its push-off */
-    if (!sp.ran) ev = ev || 'run';
+    /* v2.3.3015: the first stride of this sprint: its push-off.
+       v2.3.3487: ...even when it is the frame the sprint started on -- Shift
+       pressed while already walking starts it and strides in one frame, and
+       `ev || 'run'` kept that frame's 'start' (which nothing plays), so on a
+       computer a sprint begun mid-walk never pushed off: no grunt, no dust.
+       'run' says it started too. */
+    if (!sp.ran) ev = (!ev || ev === 'start') ? 'run' : ev;
     sp.ran = true;
     sp.ranAt = now;
     /* the prediction: the worker's player_state overwrites it */

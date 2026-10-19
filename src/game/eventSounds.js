@@ -70,7 +70,38 @@ export function cue(name, k, rate) {
     const r = (Number(rate) > 0 ? Number(rate) : 1) * (1 + (Math.random() - 0.5) * 0.05);
     let any = false;
     const layers = EVENT_SOUNDS[name];
-    for (let i = 0; i < layers.length; i++) any = !!BT_AUDIO._playLayer(layers[i], share, r, 1) || any;
+    const prev = BT_AUDIO._tag;
+    BT_AUDIO._tag = 'cue:' + name;   /* v2.3.3487: what these samples are, for the sound studio (game/soundStudio.js) */
+    try {
+      for (let i = 0; i < layers.length; i++) any = !!BT_AUDIO._playLayer(layers[i], share, r, 1) || any;
+    } finally { BT_AUDIO._tag = prev; }
+    note(name, share, any);
+    return any;
+  } catch (e) { return false; /* sound only */ }
+}
+
+/** v2.3.3487: cue `name` with every layer `extra` seconds later than its own
+ *  delay (never earlier than now): a bow volley's arrows, each on its own
+ *  launch wait, and another player's shot, whose release came with the
+ *  relay.  No CUE_GAP_MS -- a volley is meant to be several. */
+export function cueLater(name, extra, k) {
+  try {
+    if (!name || !has(EVENT_SOUNDS, name)) return false;
+    const share = k == null ? 1 : Math.max(0, Math.min(1.5, Number(k) || 0));
+    if (!(share > QUIET)) { cueStats.quiet++; return false; }
+    const dx = Number(extra) || 0;
+    const r = 1 + (Math.random() - 0.5) * 0.05;
+    let any = false;
+    const layers = EVENT_SOUNDS[name];
+    const prev = BT_AUDIO._tag;
+    BT_AUDIO._tag = 'cue:' + name;
+    try {
+      for (let i = 0; i < layers.length; i++) {
+        const L = layers[i].slice();
+        L[5] = Math.max(0, (L[5] || 0) + dx);
+        any = !!BT_AUDIO._playLayer(L, share, r, 1) || any;
+      }
+    } finally { BT_AUDIO._tag = prev; }
     note(name, share, any);
     return any;
   } catch (e) { return false; /* sound only */ }
@@ -142,7 +173,11 @@ export function peerOwn(S, label, layers, vol, x, y, budget) {
     const list = typeof layers[0] === 'string' ? [layers] : layers;   /* one layer, or a list */
     const r = 1 + (Math.random() - 0.5) * 0.06;
     let any = false;
-    for (let i = 0; i < list.length; i++) any = !!BT_AUDIO._playLayer(list[i], (vol == null ? 1 : vol) * s, r, 1) || any;
+    const prev = BT_AUDIO._tag;
+    BT_AUDIO._tag = 'peer:' + label;   /* v2.3.3487: the sound studio's "heard just now" */
+    try {
+      for (let i = 0; i < list.length; i++) any = !!BT_AUDIO._playLayer(list[i], (vol == null ? 1 : vol) * s, r, 1) || any;
+    } finally { BT_AUDIO._tag = prev; }
     note(label, s, any);
     return any;
   } catch (e) { return false; /* sound only */ }

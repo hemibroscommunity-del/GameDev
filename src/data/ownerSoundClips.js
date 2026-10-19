@@ -16,9 +16,9 @@ export const OWNER_SOUNDS = {
   },
   "hurt-2": {
     "url": "/sfx/player/hurt-2.mp3",
-    "vol": 0.218,
+    "vol": 0.222,
     "level": 0.7,
-    "dur": 0.28,
+    "dur": 0.5,
     "low": true
   },
   "heartbeat": {

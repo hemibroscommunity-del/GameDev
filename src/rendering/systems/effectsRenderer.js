@@ -11749,6 +11749,22 @@ export class EffectsRenderer {
          later does not crack out of nowhere. */
       /* v2.3.3345: the split at ORE_SPLIT_MS (the strip's frame 7 was), the
          pieces left to fade at ORE_BREAK_LIE_MS -- the same rule: split first */
+      /* ═══ v2.3.3487: THE CRACK WHEN THE ROCK BURSTS ═══
+         The owner: "Breaking the ore sound doesn't sound right anymore. Old
+         sound was better (almost positive it had a different sound before)."
+         The sound never changed (ore-crack, v2.3.3040); its MOMENT did.  The
+         old strip split on its frame 7, ORE_SPLIT_MS in, and the crack played
+         there, on the split; since v2.3.3345 the rock bursts into its pieces
+         the moment the break begins and they have nearly landed by 350 ms,
+         so the crack came after the burst, a lone crack under falling
+         rubble.  Now it cracks on the break's first frame, with the burst,
+         and as the pieces land (ORE_SPLIT_MS, with the ore's pop) the stone
+         break settles them -- a broken rock prop's own sound (PROP_SOUNDS
+         stone brk), quieter. */
+      if (!fx.cracked) {
+        fx.cracked = true;
+        if (t <= ORE_POP_LATE_MS) this._oreCrack(fx, S, now);
+      }
       if (!fx.popped && t >= ORE_SPLIT_MS) {
         fx.popped = true;
         if (t <= ORE_POP_LATE_MS) this._oreSplit(fx, now, S);
@@ -11761,28 +11777,39 @@ export class EffectsRenderer {
     }
   }
 
-  /* The rock splits: the collected ore icon pops out of it, and it cracks. */
-  _oreSplit(fx, now, S) {
-    this._spawnItemPopup(fx.icon || ORE_ICON_TEX, fx.x, fx.y - 6, now);
-    /* ═══ v2.3.3040: ...AND IT CRACKS ═══
-       Owner: "Add cracking sound when the ore splits when user completes
-       the gesture."  On this frame, the one the rock visibly splits on
-       (~350 ms after the gesture lands), not at the gesture: the sound
-       and the picture are one event.  Yours at full voice; a peer's
-       vein, which breaks the same way on your screen, softer and fading
-       with distance, so a busy quarry is a texture rather than a din. */
+  /* How loud a break is heard here: yours at full voice; a peer's vein,
+     which breaks the same way on your screen, softer and fading with
+     distance, so a busy quarry is a texture rather than a din (v2.3.3040). */
+  _oreBreakVol(fx, S) {
+    if (fx.self) return 1;
+    const P = S && S.player;
+    const d = P ? Math.hypot(P.x - fx.x, P.y - fx.y) : 0;
+    return d > 1400 ? 0 : (0.3 / 0.72) * (1 - d / 1400);
+  }
+
+  /* ═══ v2.3.3040: THE ROCK CRACKS ═══
+     Owner: "Add cracking sound when the ore splits when user completes the
+     gesture."  v2.3.3487: on the break's first frame, the one the rock
+     bursts on (see _advanceOreBreaks) -- the sound and the picture are one
+     event, as they were on the old strip's split frame. */
+  _oreCrack(fx, S, now) {
     try {
-      let vol = 0.72;
-      if (!fx.self) {
-        const P = S && S.player;
-        const d = P ? Math.hypot(P.x - fx.x, P.y - fx.y) : 0;
-        vol = d > 1400 ? 0 : 0.3 * (1 - d / 1400);
-      }
+      const vol = 0.72 * this._oreBreakVol(fx, S);
       if (vol > 0.02) BT_AUDIO.play('ore-crack', { vol, pitchVar: 0.06 });
       if (typeof window !== 'undefined' && window.__btProbe) {
         (window.__btOreCracks || (window.__btOreCracks = [])).push({ at: Date.now(), self: !!fx.self, vol: +vol.toFixed(3),
           late: Math.round(now - fx.startedAt) });   /* v2.3.3146: how far into the break it was played */
       }
+    } catch (e) { /* a sound never breaks the frame */ }
+  }
+
+  /* The pieces land: the collected ore icon pops out, and (v2.3.3487) the
+     rubble settles -- a stone prop's break, quieter than the crack. */
+  _oreSplit(fx, now, S) {
+    this._spawnItemPopup(fx.icon || ORE_ICON_TEX, fx.x, fx.y - 6, now);
+    try {
+      const k = this._oreBreakVol(fx, S);
+      if (k > 0.03) BT_AUDIO.propBreak('stone', 'small', { vol: 0.32 * k });
     } catch (e) { /* a sound never breaks the frame */ }
   }
 

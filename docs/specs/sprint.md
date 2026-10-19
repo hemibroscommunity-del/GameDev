@@ -419,3 +419,19 @@ kept as supplied in `assets/sfx-source/voice/`.
 mp-sprint 6 and 6b (running dry twice: the grunt, then the breath and not the
 grunt, each recording decoded); mp-cuelevels (sprintOutBreath's promised
 ~0.2, no clipping, no thump); the sound-cues suite.
+
+## v2.3.3487: the effort grunt, and the push-off a sprint begun mid-walk missed
+
+- The grunt is the owner's "Angry Grunt" now, the effort ("Wrong sound for
+  starting sprint and ending sprint (hurt sound) instead of effort grunt").
+  "Grunt 1" sounded like the hurt "uh!" and is the second hurt grunt. Cut by
+  the same tool: high-passed at 220 Hz, levelled by ear (docs/specs/
+  sounds-2026-10-19.md section 2). `sprintOut` measures ~0.45 plain (its
+  strain sits at 200-400 Hz), ~0.3 by ear. mp-cuelevels' check 6 holds it to a
+  voice, not a thump: 6% of its energy under 150 Hz, against the old fleshy
+  push-off's 49%.
+- `updateSprint` returns `'run'`, not `'start'`, when a sprint starts and
+  strides in the same frame (Shift pressed while walking). That frame's
+  `'start'` played nothing, so a sprint begun mid-walk on a computer had no
+  push-off. The sprint suite checks both orders.
+

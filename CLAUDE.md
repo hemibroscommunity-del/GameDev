@@ -800,6 +800,36 @@ remnant to migrate server-side, not a mode to preserve.
       - `sound-cues` §11, `mp-ownersounds`, `mp-cuelevels`, `mp-wheelswim`:
         docs/specs/owner-recordings.md; what is still needed:
         docs/SOUND-GAPS.md.
+    - since v2.3.3487 THE PLAYTEST'S SOUNDS AND THE SOUND STUDIO -- the owner:
+      "I think sounds were wired in the wrong places.  The labels should tell
+      you where they go.  Might need to build a quick studio to show which
+      sounds belong where", with a list (docs/specs/sounds-2026-10-19.md):
+      - the bow's "duck squeak" (`bowDraw`, a creak at 1.9-2.5 kHz) is gone:
+        `bowLoose`, the arrow's flight the jump's push-off was, at the release
+        (a volley's arrows and a peer's shot via `cueLater`); the jump's the
+        same rush, lower;
+      - the two grunts were the wrong way round for how they SOUND: the sprint
+        (SPRINT_PUSH, `sprintOut`) is the angry grunt now, the effort
+        (cut_sprint_voice.py, high-passed at 220 Hz, levelled by ear), and
+        "Grunt 1", which falls like the hurt "uh!", is `hurt-2`; mp-cuelevels
+        check 6, a grunt is a voice and not a thump (under 150 Hz);
+      - no thumps: a felled tree cracks and creaks (`treeFelled`, tree-fall's
+        first second; `PROP_SOUNDS.wood.tree` the same); the snowman's hit is
+        snow and ice, the rock's the pick WITH its click over gravel; big wood
+        the axe's dry knock, stone/coal/ice/crystal the pick's click;
+      - a weapon swap sounds like the weapon (`swapSword`/`swapBow`/
+        `swapStaff`); the ore cracks as the rock bursts (its first frame) and
+        its rubble settles as it lands; `pointsSpent` at 1.8x;
+      - THE SOUND STUDIO: the Test panel's "Sound studio" (or `?sounds`) --
+        every sound under the moment it plays at, in plain words, ▶ through
+        the game's own player, its recordings as chips (a tap shows every
+        place a recording plays), and "Heard just now", the last sounds the
+        game started by their labels (game/soundStudio.js wraps BT_AUDIO.play
+        and its helpers, `BT_AUDIO._tag`; cue/cueLater/peerOwn tag their
+        cue); the catalogue `src/data/soundStudio.js`, the screen
+        `ui/panels/SoundStudio.jsx` (its own chunk, loaded on opening);
+        A NEW SOUND GETS ITS LABEL THERE in the same change -- `sound-cues`
+        §12 fails for a cue or table key without one; `mp-soundstudio`.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
@@ -873,7 +903,9 @@ remnant to migrate server-side, not a mode to preserve.
       a tool that measures a sound reads the file's own channels, never
       ffmpeg's `-ac` (3 dB off either way: TRAPS §230); mp-sprintpeer,
       mp-sprint (6b runs dry twice), mp-cuelevels: docs/specs/sprint.md "the
-      owner's grunt".
+      owner's grunt"; since v2.3.3487 the grunt is their "Angry Grunt", the
+      effort -- "Grunt 1" sounded hurt and is the second hurt grunt now
+      (docs/specs/sounds-2026-10-19.md).
   - Since v2.3.3008 the Points window's MAX MP has its before/after scene,
     "the only one missing one": both lanes cast specials at one block of
     mana each (`statSim.js` `manaPass`) until "Out of mana", the "+n" bar

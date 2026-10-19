@@ -49,7 +49,7 @@ const MONSTERS = [
 /* What each voice is made of (gameDisplay.js HIT_VOICES) */
 const WHOLE = {
   bone: ['sword-hit3'], goo: ['monster-hit', 'step-mud'], ember: ['monster-hit', 'cook-success'],
-  stone: ['mine-strike', 'step-stone'], snow: ['snowman-hit', 'step-snow'],
+  stone: ['mine-strike', 'step-gravel'], snow: ['step-snow', 'step-ice'],   /* v2.3.3487: no thump under either */
   mud: ['step-mud', 'monster-hit'], wet: ['monster-hit', 'fish-on-hook'],
 };
 const WEAPONS = [{ w: 'sword', src: 'melee', vol: 0.55 }, { w: 'arrow', src: 'arrow', vol: 0.6 }, { w: 'bolt', src: 'bolt', vol: 0.22 }];
@@ -124,14 +124,17 @@ const seed = (P, list) => P.page.evaluate((list) => {
 
 /* monster_hit(s) through the game's own dispatcher, as the worker sends them --
    several in ONE breath when given a list (a whirlwind's hits arrive together) */
-const echo = (P, p) => P.page.evaluate((p) => {
+const echo = (P, p, heardJustNow) => P.page.evaluate(({ p, heardJustNow }) => {
   const S = window._gameState.current, st = window.__btHitSounds.stats;
+  /* v2.3.3487: "heard a moment ago" stamped in the same breath as the blow --
+     two round trips to this page can outlast ECHO_GAP_MS on a slow box */
+  if (heardJustNow) { const m = S.monsters.find((q) => q.id === heardJustNow); if (m) m._hitSndAt = Date.now(); }
   const n0 = { echo: st.echo, skipped: st.echoSkipped, throttled: st.echoThrottled };
   for (const q of Array.isArray(p) ? p : [p]) {
     window.__btDispatch({ type: 'monster_hit', payload: Object.assign({ zone: S.currentZone, dmg: 3, isCrit: false, hpPct: 0.9 }, q, { attackerId: q.attackerId === 'ME' ? S.myId : q.attackerId }) });
   }
   return { played: st.echo - n0.echo, skipped: st.echoSkipped - n0.skipped, throttled: st.echoThrottled - n0.throttled, last: st.lastEcho ? { ...st.lastEcho } : null, hit: window.BT_AUDIO._lastHit ? { ...window.BT_AUDIO._lastHit } : null };
-}, p);
+}, { p, heardJustNow: heardJustNow || null });
 
 /* A ball thrown by monster `id` from where it stands at the point (tx, ty) off
    you -- a real monster_projectile, flown by the game's own simulator -- and
@@ -239,8 +242,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 2. the snowman is one hit, not two ── */
   const snow = rows.filter((r) => r.mon.key === 'snowman' && !r.err);
-  rec.ok('an arrow, a bolt or a sword into a snowman is ONE hit: his thud once, a crunch, never the slime\'s thud',
-    snow.length === 3 && snow.every((r) => r.plays.filter((k) => k === 'snowman-hit').length === 1 && !r.plays.includes('monster-hit') && r.plays.includes('step-snow')),
+  /* v2.3.3487: his voice is snow now -- the owner: "Hit made a fleshy sound on
+     the snowman ... can't be that sound": a crunch and an icy crack, never the
+     snowball's thud (snowman-hit, 91% under 250 Hz) nor the slime's */
+  rec.ok('an arrow, a bolt or a sword into a snowman is ONE hit: a crunch of snow once and its icy crack, never a thud (the snowball\'s or the slime\'s)',
+    snow.length === 3 && snow.every((r) => r.plays.filter((k) => k === 'step-snow').length === 1 && r.plays.includes('step-ice')
+      && !r.plays.includes('snowman-hit') && !r.plays.includes('monster-hit')),
     snow.map((r) => ({ w: r.W.w, plays: r.plays })));
 
   /* ── 3. hits nobody here played ── */
@@ -267,8 +274,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...but not your own lunge or swing (heard where they landed), nor a burn tick', lunge.played === 0 && swing.played === 0 && tickE.played === 0, { lunge, swing, tickE });
   const far = await echo(P, { monsterId: ids[2], attackerId: 'qa-peer', slot: 'ranged' });
   rec.ok('...nor a blow across the map (1,580 px off)', far.played === 0, far);
-  await P.page.evaluate((id) => { const m = window._gameState.current.monsters.find((q) => q.id === id); if (m) m._hitSndAt = Date.now(); }, ids[0]);
-  const twice = await echo(P, { monsterId: ids[0], attackerId: 'qa-peer', slot: 'melee' });
+  const twice = await echo(P, { monsterId: ids[0], attackerId: 'qa-peer', slot: 'melee' }, ids[0]);
   rec.ok('...nor a monster you heard hit a moment ago (never twice for one blow)', twice.played === 0 && twice.skipped === 1, twice);
   await P.page.waitForTimeout(450);
   const burst = await echo(P, [3, 4, 5, 6, 7].map((i) => ({ monsterId: ids[i], attackerId: 'ME', ability: 'whirlwind' })));
