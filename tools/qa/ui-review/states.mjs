@@ -625,7 +625,15 @@ export const STATES = [
       if (!node) return 'no tree near';
       (ctx.used = ctx.used || []).push(node.id);
       ctx.node = node;
-      await H.hopTo(P, node.x, node.y - 130);
+      /* v2.3.3479: the 2026-10-19 UI review read "Pine Log over empty grass,
+         no tree": 130 px NORTH of the node stood the bro behind the trunk,
+         under the crown, and a tree whose crown covers you is drawn see-through
+         (0.42, tierTrees.js behindTree) -- a green pine on green grass all but
+         gone in a JPEG.  In front of the trunk instead, as a player walking up
+         from the south stands: the woodcutter's own side of it, inside the reach
+         the next screen chops from (a tier-1 tree's reach box, BroTown
+         nodeReachDist), the boots south of its foot. */
+      await H.hopTo(P, node.x - 60, node.y + 10);
       await wait(P, 1500);
     },
   },
