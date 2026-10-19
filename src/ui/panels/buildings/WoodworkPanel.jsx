@@ -52,13 +52,8 @@ function lsHeader(icon, emoji, title, subtitle) {
     React.createElement("div", { style: { fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 } }, title),
     subtitle ? React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginTop: 1 } }, subtitle) : null));
 }
-function lsGoldImg(dim) {
-  return React.createElement("img", {
-    src: '/icons/popups/gold.webp', alt: '', draggable: false,
-    style: { width: 16, height: 16, objectFit: 'contain', opacity: dim ? 0.55 : 1 /* v2.3.1235: batch-3 rollout — unaffordable rows stay readable, .55 opacity floor */ },
-    onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); }
-  });
-}
+/* v2.3.3479: lsGoldImg (the coin on the ready craft button) went with that
+   price-tag label: the button says "Craft" now (below). */
 export function WoodworkPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
@@ -191,6 +186,7 @@ export function WoodworkPanel(props) {
         var wwStatReq = getGearStatReq(craftType, wwFullIdx, rpgState);
         var wwMeetsStat = wwStatReq.value === 0 || (wwStatReq.prog3 ? wwStatReq.met : (rpgState[wwStatReq.stat] || 0) >= wwStatReq.value);
         var canCraft = canCraftSkill && wwMeetsStat;
+        var craftReady = canCraft && hasWood && hasGold; /* v2.3.3479: the button's one ready test (below) */
         return /*#__PURE__*/React.createElement("div", {
           key: key,
           /* v2.3.1235: batch-3 rollout — divided list rows replace the
@@ -265,22 +261,29 @@ export function WoodworkPanel(props) {
              prop added around the untouched handler; blocked buttons carry
              the need in their label so the price pill is never the only
              explanation. */
-          disabled: !(canCraft && hasWood && hasGold),
+          /* v2.3.3479: the 2026-10-19 UI review -- THE READY BUTTON READ AS A
+             PRICE TAG: a coin and "8" on a slate chip, while the row above it
+             already prints the cost ("Gold 2550/8").  It now says "Craft" on
+             the brass primary face, the pattern of the Attempt-H button below
+             and of the Blacksmith's Smelt and Forge: the class draws it, so
+             the inline colours step aside.  The blocked labels are unchanged. */
+          className: craftReady ? 'button-primary' : undefined,
+          disabled: !craftReady,
           style: {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
-            padding: '8px 10px',
+            padding: craftReady ? '8px 14px' : '8px 10px',
             minHeight: 44,
             borderRadius: 10,
             fontSize: 13,
             fontWeight: 700,
             fontVariantNumeric: 'tabular-nums',
-            background: canCraft && hasWood && hasGold ? LS.raised : '#1A292F',
-            border: '1px solid ' + (canCraft && hasWood && hasGold ? LS.borderStrong : LS.border),
-            color: canCraft && hasWood && hasGold ? LS.brass : LS.txt3,
+            background: craftReady ? undefined : '#1A292F',
+            border: craftReady ? undefined : '1px solid ' + LS.border,
+            color: craftReady ? undefined : LS.txt3,
             opacity: 1,
-            cursor: canCraft && hasWood && hasGold ? 'pointer' : 'default'
+            cursor: craftReady ? 'pointer' : 'default'
           },
           onClick: function onClick() {
             if (!canCraft || !hasWood || !hasGold) return;
@@ -343,14 +346,9 @@ export function WoodworkPanel(props) {
         }, /* v2.3.1235: state-correction — action label states: "Locked"
               for level/stat locks (state 3), the binding shortage for
               missing materials (state 2); only state 1 keeps the price
-              pill (which is then not the only explanation). */
-        !canCraft ? "Locked" : !hasWood ? "Need ".concat(wt.woodCost - ((rpgState.inventory || {})[woodKey] || 0), " ").concat(wt.wood.replace(/_/g, ' ')) : !hasGold ? "Need ".concat(wt.goldCost - (rpgState.coins || 0), "G more") : /*#__PURE__*/React.createElement("span", {
-          style: {
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5
-          }
-        }, lsGoldImg(false), wt.goldCost)));
+              pill (which is then not the only explanation).
+              v2.3.3479: state 1 says "Craft" (the price is on the row). */
+        !canCraft ? "Locked" : !hasWood ? "Need ".concat(wt.woodCost - ((rpgState.inventory || {})[woodKey] || 0), " ").concat(wt.wood.replace(/_/g, ' ')) : !hasGold ? "Need ".concat(wt.goldCost - (rpgState.coins || 0), "G more") : "Craft"));
       }), _otherMode ? null : function () {
         /* v2.3.1131: SS4.6c HARDENING for the active ranged/staff weapon
            (server ladder via harden_weapon -- see the ForgePanel twin;
