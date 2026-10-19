@@ -3,6 +3,7 @@ import { COL } from './dash/common.js';
 import { thumbFor } from './dash/InventoryPanel.jsx';
 import { useModalGuard } from './modalGuardBus.js';
 import { tapDismiss, TAP_DISMISS_STYLE } from '../tapDismiss.js';
+import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3479: the free spin row's prize wheel */
 import {
   dailyRewardsBus, questsLive, spinLive, seasonLive, askReroll, askClaim, askRewards,
   questLabel, questIcon, grantLabel, untilText, claimableTiers, nextTier, tierNeed, coinsShort,
@@ -182,7 +183,11 @@ function TodayTab({ st }) {
           background: lit ? COL.accentFill : COL.well,
           border: '1px solid ' + (lit ? COL.edgeWarm : COL.border),
         }}>
-          <SpinGlyph size={30} />
+          {/* v2.3.3479: the owner's prize wheel (their icon pick 8), where the
+              little drawn wheel was; the bonus spins elsewhere keep SpinGlyph */}
+          <img src={OWNER_ICON.prizeWheel.src} alt="" draggable={false} width={OWNER_ICON.prizeWheel.w} height={OWNER_ICON.prizeWheel.h}
+            data-daily-spin-icon="" style={{ width: OWNER_ICON.prizeWheel.w, height: OWNER_ICON.prizeWheel.h, objectFit: 'contain', flex: 'none' }}
+            onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: COL.text }}>
               {spLocked ? 'The free daily spin' : (sp.open ? 'Your pot of ' + coinsShort(sp.pot) + ' coins is waiting' : (sp.ready ? 'Your free spin is ready' : (sp.extra > 0 ? sp.extra + ' bonus spin' + (sp.extra === 1 ? '' : 's') + ' to use' : 'Today\'s spin is done')))}

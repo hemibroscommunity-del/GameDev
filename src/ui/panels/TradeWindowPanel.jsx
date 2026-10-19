@@ -32,6 +32,7 @@ import { PetPortrait } from '@/ui/petPortrait.jsx';
 import { petDisplayName, petKindName, petTradeView, worldSafeText, PET_TRADE_MAX } from '@/data/trapping.js';
 import { petList, petbookOn } from '@/game/petBook.js';
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '../../rendering/characterPortrait.js';
+import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3479: the trade request's handshake */
 
 /* === TradeWindowPanel — the two-sided trade window (v2.3.1132) === */
 /* Handoff item H: both players stage items + gold, both confirm, the
@@ -207,8 +208,10 @@ const DRAWER_FRAME = {
 
 /* `title` is the header line every state shares (icon + one sentence);
    `onClose` renders the ✕ and is omitted only where a state has no way to
-   leave that isn't one of its own buttons. */
-function TradeDrawer({ title, titleColor, onClose, children }) {
+   leave that isn't one of its own buttons.  v2.3.3479: `icon` ({src, w, h})
+   leads the title -- only the incoming request wears one (the owner's
+   handshake), as the duel challenge card wears its swords. */
+function TradeDrawer({ title, titleColor, onClose, children, icon }) {
   return (
     <div
       data-trade-drawer=""
@@ -230,6 +233,9 @@ function TradeDrawer({ title, titleColor, onClose, children }) {
             /* clear the ✕ so a long partner name never runs under it */
             paddingRight: onClose ? 34 : 0, paddingLeft: onClose ? 34 : 0,
           }}>
+            {icon && <img src={icon.src} alt="" draggable={false} width={icon.w} height={icon.h} data-trade-icon=""
+              style={{ width: icon.w, height: icon.h, objectFit: 'contain', flex: 'none' }}
+              onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
             {title}
           </div>
         )}
@@ -1054,7 +1060,8 @@ export function TradeWindowPanel(props) {
          invite, and it SENDS trade2_cancel -- the scrim tap this replaces
          did not, so a dismissed invite used to leave the other player
          waiting on a request nobody had actually refused. */
-      <TradeDrawer title={`${trade2.fromName} wants to trade`}>
+      /* v2.3.3479: the owner's handshake leads it (their icon pick 3) */
+      <TradeDrawer title={`${trade2.fromName} wants to trade`} icon={OWNER_ICON.tradeHandshake}>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               style={{ ...primaryBtn, flex: 1, padding: '7px 0' }}
