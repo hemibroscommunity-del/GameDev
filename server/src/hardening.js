@@ -186,7 +186,7 @@ export const hardeningMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'hardenmats') && !f.hardenmats);
   },
 
-  /* v2.3.3478: `hardenwoodskill: false` in liveflags gates bows and staffs
+  /* v2.3.3479: `hardenwoodskill: false` in liveflags gates bows and staffs
      on Blacksmithing again, as before (see _handleHardenWeapon). */
   _hardenWoodSkillOff() {
     const f = this._liveFlags;
@@ -214,7 +214,7 @@ export const hardeningMethods = {
     if (hardness >= HARDEN.MAX) return err('maxed', 'Already at maximum hardness');
     // Access gate: floor(skill / 5) >= the weapon's material
     // tier index.  Skill never changes the odds (§4.6c).
-    /* v2.3.3478: the skill is the one that MAKES the weapon -- a bow or a
+    /* v2.3.3479: the skill is the one that MAKES the weapon -- a bow or a
        staff asks for Woodworking, a sword Blacksmithing.  The owner, asked
        whether hardening a bow should ask for the Blacksmithing level: "Do
        woodworking" (2026-10-19).  The same rule and numbers as a sword's on

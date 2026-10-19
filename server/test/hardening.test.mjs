@@ -81,7 +81,7 @@ ps.inventory = { wood_pine_log: 99, bar_copper: 99 };   /* v2.3.3139: every atte
 // ── 1. caps ──
 const sync = ws.sent.find((m) => m.type === 'state_sync');
 check('state_sync advertises caps.harden', sync && sync.caps && sync.caps.harden === true, sync && sync.caps);
-check('v2.3.3478: state_sync advertises caps.hardenwoodskill (bows and staffs on Woodworking)', sync && sync.caps && sync.caps.hardenwoodskill === true, sync && sync.caps && sync.caps.hardenwoodskill);
+check('v2.3.3479: state_sync advertises caps.hardenwoodskill (bows and staffs on Woodworking)', sync && sync.caps && sync.caps.hardenwoodskill === true, sync && sync.caps && sync.caps.hardenwoodskill);
 
 // ── 2. forge mints quality (forced rolls) ──
 const forge = () => room.webSocketMessage(ws, JSON.stringify({ type: 'forge_weapon', payload: { weaponType: 'sword', tierKey: 'wood', isWoodwork: false } }));
@@ -389,7 +389,7 @@ check('reaching H5 appends the INV-27 global log', ps.weapon.hardness === 5 && A
 {
   room._liveFlags = {};
   ps.lifeSkills.blacksmithing.level = 25;   // a maple staff (tier 5) needs Smithing 25
-  /* v2.3.3478: ...and Woodworking 25 since a bow's and a staff's hardening
+  /* v2.3.3479: ...and Woodworking 25 since a bow's and a staff's hardening
      asks for the skill that makes them (the owner: "Do woodworking"); §8d */
   ps.lifeSkills.woodworking = { level: 25, xp: 0 };
   ps.rangedWeapon = { type: 'bow', gearBase: 'ww_pine', tierMult: 1, name: 'Pine Bow', quality: 'normal', hardness: 1, temper: 0 };
@@ -452,7 +452,7 @@ check('reaching H5 appends the INV-27 global log', ps.weapon.hardness === 5 && A
   delete room.playerState.bp_hd_w;
 }
 
-// ── 8d. v2.3.3478: a bow's or a staff's hardening asks for WOODWORKING, a
+// ── 8d. v2.3.3479: a bow's or a staff's hardening asks for WOODWORKING, a
 // sword's Blacksmithing -- the owner, asked whether hardening a bow should ask
 // for the Blacksmithing level: "Do woodworking".  The same rule (floor(level /
 // 5) at least the weapon's tier), on the skill that makes the weapon ──
