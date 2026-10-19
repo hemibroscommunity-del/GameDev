@@ -3865,7 +3865,12 @@ Two protocol versions coexist; both must keep working:
     Cookhouse's fish game removed, a bow's or staff's hardening on
     Woodworking (hardening.js `hardenIsWood`, `caps.hardenwoodskill`), the
     arena's champion paid the 500 AP it always promised (gladiator.js
-    `ARENA.CHAMPION_AP`, `caps.arenaap`), the dialogue blur kept; and their
+    `ARENA.CHAMPION_AP`, `caps.arenaap`; since v2.3.3488 a character's FIRST
+    win only -- the owner: "I don't want anyone exploiting the achievement
+    points from it" -- the mark its own record `aponce:<pid>`, written with
+    the save that holds the points, decided where the gold is paid, inbox.js
+    `AP_ONCE`, `caps.arenaapfirst`: docs/specs/arena.md "The champion's
+    points, once"), the dialogue blur kept; and their
     icon picks -- every Wheel land's banner a scene from their sheet (the
     animated strips no longer loaded there), gold quest pins, the arena's
     helmet, the trade request's handshake, the jackpot's sack, the Pet House,
