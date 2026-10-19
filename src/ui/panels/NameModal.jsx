@@ -1289,7 +1289,12 @@ export function NameModal(props) {
        ellipsised its own placeholder to "Name your ...", which reads as a
        broken string rather than as an invitation. The heading above says whose
        name it is now, so the placeholder only has to say what to do. */
-    placeholder: "Tap to name",
+    /* v2.3.3479: the 2026-10-19 UI review -- "Tap" is a phone's word; on a
+       computer you click and type.  (pointer:fine) is the house test for a
+       computer (desktopControls.js, QuestCoach.jsx).  Same eleven characters
+       and about 1.5px wider at the field's 16px, inside v2.3.2464's measured
+       slack (93 of 103.5px); the sideways fit below is touch-only. */
+    placeholder: (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer:fine)').matches) ? "Type a name" : "Tap to name",
     maxLength: 20,
     /* ═══ v2.3.1818: NO AUTOFOCUS ═══
        Owner: "Immediately after tapping new character from splash screen the
