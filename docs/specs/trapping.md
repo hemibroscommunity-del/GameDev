@@ -76,6 +76,15 @@ section) once real rates are measured; the phone's copy must move with it.
   your loot pickup to 240 px (the v2.3.1200 vacuum, which now reads the record's
   active pet). Pets don't fight: the old "pet combat" (fake bites on your screen
   only) is gone.
+- **It keeps the same pace on every screen** (v2.3.3480). The follow
+  (BroTown.jsx §18.1) moves 2 px a 60 Hz frame, scaled by each frame's time
+  (`S._dtScale`, as your walk is): 120 px a second at 30, 60 or 120 frames a
+  second. It was 2 px a frame whatever the frame took, so an iPhone in Low
+  Power Mode (30 fps) had its pet follow at half pace and a 120 Hz screen at
+  double; the sweep of 2026-10-19 found it with `mp-petdraw`'s pet left 209 px
+  behind on a machine drawing ~12 frames a second. The others' pets were
+  already eased by time (below). `mp-petdraw` now measures each step of the
+  walk against its frame's time.
 
 ## Pet levels (Phase 2, v2.3.3121)
 

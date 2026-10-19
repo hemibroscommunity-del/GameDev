@@ -6731,33 +6731,44 @@ export var BroTown = function BroTown(_ref0) {
               S._petY = P.y + 20;
             }
             /* Follow player — orbit slightly behind */
+            /* v2.3.3480: EVERY STEP HERE IS PER 60 Hz FRAME, SO IT IS SCALED
+               BY THE FRAME'S TIME (S._dtScale, as the walk's own step is).  The
+               2 px a frame was a speed only at 60 fps: a phone at 30 (iPhone
+               Low Power Mode) had its pet follow at half pace and a 120 Hz
+               screen at double, and the sweep of 2026-10-19 saw mp-petdraw's
+               pet left 209 px behind on a machine drawing ~12 frames a second.
+               The others' pets were already eased by time (entityRenderer
+               _updatePeerPets, v2.3.3123); yours is now 120 px a second on
+               every screen, and slows with the walk only where the game itself
+               does (under 20 fps, the scale's x3 clamp). */
+            var _petDt = S._dtScale || 1;
             var petDistToP = Math.sqrt(Math.pow(S._petX - P.x, 2) + Math.pow(S._petY - P.y, 2));
             var petTargetDist = 35;
             if (petDistToP > petTargetDist + 15) {
               var pDx = P.x - S._petX,
                 pDy = P.y - S._petY;
               var pDist = Math.sqrt(pDx * pDx + pDy * pDy) || 1;
-              S._petX += pDx / pDist * 2.0;
-              S._petY += pDy / pDist * 2.0;
+              S._petX += pDx / pDist * 2.0 * _petDt;
+              S._petY += pDy / pDist * 2.0 * _petDt;
             } else if (petDistToP < petTargetDist - 10) {
               /* Too close — drift outward */
               var bx = S._petX - P.x,
                 by = S._petY - P.y;
               var bd = Math.sqrt(bx * bx + by * by) || 1;
-              S._petX += bx / bd * 0.5;
-              S._petY += by / bd * 0.5;
+              S._petX += bx / bd * 0.5 * _petDt;
+              S._petY += by / bd * 0.5 * _petDt;
             }
             /* Personality idle movement */
             if (pet.personality === 'playful') {
-              S._petX += Math.sin(now / 300) * 0.3;
-              S._petY += Math.cos(now / 400) * 0.2;
+              S._petX += Math.sin(now / 300) * 0.3 * _petDt;
+              S._petY += Math.cos(now / 400) * 0.2 * _petDt;
             }
             if (pet.personality === 'curious') {
-              S._petX += Math.sin(now / 500 + 1) * 0.5;
+              S._petX += Math.sin(now / 500 + 1) * 0.5 * _petDt;
             }
             if (pet.personality === 'anxious') {
-              S._petX += (Math.random() - 0.5) * 0.4;
-              S._petY += (Math.random() - 0.5) * 0.4;
+              S._petX += (Math.random() - 0.5) * 0.4 * _petDt;
+              S._petY += (Math.random() - 0.5) * 0.4 * _petDt;
             }
 
             /* AUTO-LOOT — pet collects nearby ground loot */

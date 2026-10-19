@@ -2774,6 +2774,13 @@ remnant to migrate server-side, not a mode to preserve.
       for 1,000 gold, each step 1,000 more, to 120, a stale `cap` refused;
       caps `petwards` / `petshow` / `pethouse`; dev `look: {gold, size}`;
       `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.
+    - since v2.3.3480 YOUR OWN PET KEEPS PACE ON EVERY SCREEN -- found by the
+      sweep (mp-petdraw's pet 209 px behind on a machine drawing ~12 frames a
+      second): its follow (BroTown.jsx §18.1) was 2 px a frame whatever the
+      frame took, half pace on a 30 fps phone (Low Power Mode) and double at
+      120 Hz; each step is now x `S._dtScale`, as the walk's is (120 px a
+      second), the others' pets already eased by time; `mp-petdraw` measures
+      each step against its frame's time: docs/specs/trapping.md.
   - Since v2.3.3139 HARDENING TAKES BARS OR HARDENED WOOD AND ITS GOLD
     DOUBLES -- the owner: "hardening should cost 1 bar per level (hardening
     lvl 1 cost 1 bar, hardening lvl 2 costs 2 bars, and a doubling gold cost
