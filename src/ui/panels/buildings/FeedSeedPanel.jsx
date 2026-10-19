@@ -39,7 +39,8 @@ import { holdFarmUntilReady } from '@/game/farmTrip.js';
  * data-farm-pic, data-farm-locked(-crop), data-farm-status, data-farm-visit,
  * data-farm-summary; window.__btFarm (the bus).
  * v2.3.3134: data-farm-orders, data-farm-order={slot} / data-farm-order-done,
- * data-farm-deliver={slot}, data-farm-orders-reset. */
+ * data-farm-deliver={slot}, data-farm-orders-reset.
+ * v2.3.3479: data-farm-key (the Seeds tab's key to the chips). */
 
 const C = {
   sheet: '#1E2E34', well: '#111E23', raised: '#293B41', card: '#24363C',
@@ -257,7 +258,17 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
         )}
         {!closed && tab === 'seeds' && (
           <div data-farm-shop="1">
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+            {/* v2.3.3479: the 2026-10-19 UI review -- the seed rows' chips
+                (grow time dry and watered, the harvest plain and with
+                compost) had no words anywhere; a one-line key in the space
+                left of the gold, drawn with the chips' own glyphs and the
+                same compost sack (FARM_LOOK, FARM_COMPOST_ICON: no new art).
+                Centred so a key that wraps at 360 px does not stretch the
+                gold chip two lines tall. */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+              <span data-farm-key="1" style={{ fontSize: 11, color: C.sub, display: 'inline-flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+                {'⏱ grow · ' + FARM_LOOK.water + ' watered · ' + FARM_LOOK.harvest + ' harvest ·'}<Icon src={FARM_COMPOST_ICON} size={13} />{'with compost'}
+              </span>
               <Chip icon={COIN} color={C.brass}>{coins}</Chip>
             </div>
             {crops.filter(unlocked).map((id) => {
