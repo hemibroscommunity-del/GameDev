@@ -3552,9 +3552,10 @@ remnant to migrate server-side, not a mode to preserve.
   -- the owner: "Dont ship any caps yet"; since v2.3.3486 paid in $2 worth of
   ETH on Hemi (the owner: USDC there is bridged by Stargate) into an address
   of the character's own, with no wallet signature, the server holding no
-  key, only an address book the owner signs offline --
-  `docs/SUPPORTER-PASS-PLAN.md`, its attack table included, waiting on the
-  owner's answers and pass wallet),
+  key, only an address book the owner's hardware wallet signs --
+  `docs/SUPPORTER-PASS-PLAN.md`, attacked by two independent reviewers, its
+  41-row attack table and the repo lock-down it needs first included,
+  waiting on the owner's answers),
   `docs/SERVER-SPLIT-PLAN.md` (v2.3.3208, the owner's "Hopefully 1000 while
   just as smooth is possible ... begin planning what the best server split
   would look like": MEASURED, about four fifths of the room's thread at 150
