@@ -113,7 +113,10 @@ export function EnchantPanel(props) {
         key: 'weapon',
         wpn: rpgState.weapon
       }, {
-        label: 'Ranged',
+        /* v2.3.3479: the 2026-10-19 UI review -- was 'Ranged', beside 'Staff',
+           which is ranged too; this slot is the bow, as the hero sheet, the
+           profile and the leaderboard call it (and the Bank's row) */
+        label: 'Bow',
         key: 'rangedWeapon',
         wpn: rpgState.rangedWeapon
       }, {
