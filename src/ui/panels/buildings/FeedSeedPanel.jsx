@@ -273,8 +273,13 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
             </div>
             {crops.filter(unlocked).map((id) => {
               const c = FARM.CROPS[id];
+              /* v2.3.3479: the 2026-10-19 UI review -- "Carrot ×0" counts the
+                 SEED packets you hold (seedCount), but read like harvested
+                 carrots beside the Orders tab's "12 × Carrot"; the row is
+                 named as the bag and the buy line name the seed
+                 (farmItemName: "Carrot Seeds"). */
               return (
-                <ShopRow key={id} item={c.seed} look={c.look} pic={id + '-ripe'} icon={farmSeedIcon(id)} name={c.name} have={seedCount(id)} price={c.price}
+                <ShopRow key={id} item={c.seed} look={c.look} pic={id + '-ripe'} icon={farmSeedIcon(id)} name={farmItemName(c.seed)} have={seedCount(id)} price={c.price}
                   coins={coins} locked={null} pending={pending}
                   onBuy={(n) => farmBus.buy(S, c.seed, n)}>
                   <Chip>{'⏱ ' + farmTimeLeft(farmGrowMs(c, false))}</Chip>
