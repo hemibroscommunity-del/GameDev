@@ -58,9 +58,23 @@ function skinPredicates(probe) {
   if (!probe || probe.skin === 'plain' || !Array.isArray(probe.fill)) return { SLAB: LIGHT, INKP: INK };
   const stops = probe.fill.map(hexRgb), ink = hexRgb(probe.ink);
   const d2 = (p, q) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2;
+  /* a letter's pixel, the white test mirrored: black-on-white INK above counts
+     a neutral px at least ~35% of the way from the white fill to black
+     (max <= 165), anti-aliased edges included -- so here, a px at least 35% of
+     the way from the fill (its middle stop) toward the letters' colour, near
+     the line between the two */
+  const f = stops[1] || stops[0];
+  const L = [ink[0] - f[0], ink[1] - f[1], ink[2] - f[2]];
+  const LL = L[0] * L[0] + L[1] * L[1] + L[2] * L[2] || 1;
   return {
     SLAB: (r, g, b) => stops.some((s) => d2([r, g, b], s) <= 22 * 22),
-    INKP: (r, g, b) => d2([r, g, b], ink) <= 70 * 70,
+    INKP: (r, g, b) => {
+      const v = [r - f[0], g - f[1], b - f[2]];
+      const t = (v[0] * L[0] + v[1] * L[1] + v[2] * L[2]) / LL;
+      if (t < 0.35) return false;
+      const q = [f[0] + L[0] * t, f[1] + L[1] * t, f[2] + L[2] * t];
+      return d2([r, g, b], q) <= 40 * 40;
+    },
   };
 }
 
@@ -69,13 +83,16 @@ function skinPredicates(probe) {
    returns convincing noise rather than an error — the first cut of this
    file did exactly that and reported "no bubble" against a screenshot the
    bubble was plainly visible in. */
-function measureInk(img, { yTo, yFrom = 0, xFrom = 0, xTo = Infinity, SLAB = LIGHT, INKP = INK }) {
+function measureInk(img, { yTo, yFrom = 0, xFrom = 0, xTo = Infinity, SLAB = LIGHT, INKP = INK, windowed = false }) {
   const { width, height } = img;
   const rows = [];
   /* v2.3.3489: within the window the probe gives (skinPredicates' note) */
   const xa = Math.max(0, Math.floor(xFrom)), xb = Math.min(width, Math.ceil(xTo));
   for (let y = Math.max(0, Math.floor(yFrom)); y < Math.min(height, yTo); y++) {
-    let light = 0, x0 = -1, x1 = -1;
+    /* v2.3.3489: inside the probe's window a row of the bubble is one carrying
+       its fill OR its letters -- light letters on a dark bubble leave a text
+       row too little fill to count, and broke the stack at the first line */
+    let light = 0, x0 = -1, x1 = -1, inked = 0;
     /* v2.3.2078: the longest CONTIGUOUS light run as well as the outer
        extent.  The bubble is a solid near-white box; the town around it is
        not contiguous white.  See the note by xL/xR below for what this
@@ -83,6 +100,7 @@ function measureInk(img, { yTo, yFrom = 0, xFrom = 0, xTo = Infinity, SLAB = LIG
     let run = 0, runBest = 0, runAt = -1, runStart = -1;
     for (let x = xa; x < xb; x++) {
       const p = img.at(x, y);
+      if (windowed && INKP(p[0], p[1], p[2])) inked++;
       if (SLAB(p[0], p[1], p[2])) {
         light++; if (x0 < 0) x0 = x; x1 = x;
         if (run === 0) runStart = x;
@@ -90,7 +108,7 @@ function measureInk(img, { yTo, yFrom = 0, xFrom = 0, xTo = Infinity, SLAB = LIG
         if (run > runBest) { runBest = run; runAt = runStart; }
       } else run = 0;
     }
-    rows.push({ y, light, x0, x1, runBest, runAt });
+    rows.push({ y, light, x0, x1, runBest, runAt, inked });
   }
   /* The bubble body: the tallest stack of rows carrying a neutral slab.
      Counted, not run-length: a text row's white is BROKEN by the letters,
@@ -98,7 +116,7 @@ function measureInk(img, { yTo, yFrom = 0, xFrom = 0, xTo = Infinity, SLAB = LIG
      matter — which is how the first cut lost the bubble it was measuring. */
   let best = null, cur = null;
   for (const r of rows) {
-    if (r.light >= MIN_LIGHT) { cur = cur || { from: r.y, rows: [] }; cur.rows.push(r); }
+    if (r.light + r.inked >= MIN_LIGHT) { cur = cur || { from: r.y, rows: [] }; cur.rows.push(r); }
     else if (cur) { if (!best || cur.rows.length > best.rows.length) best = cur; cur = null; }
   }
   if (cur && (!best || cur.rows.length > best.rows.length)) best = cur;
@@ -176,6 +194,13 @@ async function say(P, text) {
   await P.page.waitForTimeout(900);
 }
 
+/* v2.3.3489: the player's own bubble's probe (the map keyed by speaker) */
+const ownBubble = (P) => P.page.evaluate(() => {
+  const S = window._gameState && window._gameState.current;
+  const m = window.__btChatBubbles;
+  return (S && m && m.get(S.myId)) || null;
+});
+
 /* v2.3.3489: where to look, in the screenshot's px -- the box the probe says it
    drew (its point on the screen, its width and height in bubble px times the
    bubble's screen scale), with 12 CSS px to spare -- and the skin's colours.
@@ -189,7 +214,7 @@ async function bubbleWindow(P, img, probe) {
   const sc = probe.worldScale || 1;
   const cx = probe.screenX + (probe.slide || 0) * sc;
   const half = (probe.boxW / 2) * sc;
-  return Object.assign({}, pick, {
+  return Object.assign({}, pick, { windowed: true,
     xFrom: (cx - half - 12) * k, xTo: (cx + half + 12) * k,
     yFrom: (probe.screenY - probe.boxH * sc - 12) * k, yTo: (probe.screenY + 4) * k,
   });
@@ -214,7 +239,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await say(P, SAY);
 
-  const probe = await P.page.evaluate(() => window.__btChatBubble || null);
+  /* v2.3.3489: YOUR bubble's probe, by your id -- the single __btChatBubble is
+     whichever bubble drew last, and in the Wheel's BroTown that is as often a
+     townsperson's line (Diego's, measured) as yours */
+  const probe = await ownBubble(P);
   rec.ok('a bubble was drawn (guard)', !!probe, probe);
   if (!probe) return;
   console.log('   probe:', JSON.stringify(probe));
@@ -253,7 +281,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await say(P, long);
 
   if (process.env.BT_SHOT2) await P.page.screenshot({ path: process.env.BT_SHOT2 });
-  const probe2 = await P.page.evaluate(() => window.__btChatBubble || null);
+  const probe2 = await ownBubble(P);
   const img2 = await H.screenshotPixels(P);
   const ink2 = measureInk(img2, await bubbleWindow(P, img2, probe2));
   console.log('   long:', JSON.stringify(ink2));
