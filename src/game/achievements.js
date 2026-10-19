@@ -141,6 +141,12 @@ export function achvMailWords(payload) {
   const a = payload && typeof payload === 'object' ? achvById(payload.id) : null;
   return a ? a.name + ' achievement' : 'An achievement';
 }
+/** The same inside the chat's "You received ..." line: "the Gladiator
+ *  achievement", or "an achievement". */
+export function achvMailPhrase(payload) {
+  const a = payload && typeof payload === 'object' ? achvById(payload.id) : null;
+  return a ? 'the ' + a.name + ' achievement' : 'an achievement';
+}
 
 function queueMoment(a, id, now) {
   if (!Array.isArray(a.moments)) a.moments = [];
