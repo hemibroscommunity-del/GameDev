@@ -1,5 +1,5 @@
 {
- "_doc": "v2.3.3487: card 11 of the icon review, the owner's own picks (\"Icon picks: ... T3.3 ... T129.1\", 2026-10-19). Each entry: the code on the review page, what it is in the game, the sheet and the review page's own cut (cut), the file it is written to (name.ext, over today's), and how it is sized (out): frame = today's canvas with the art's larger side the share of it today's fills; tight = no padding, the larger side that many px; disc = only the disc inside its own ring (rin of its outer radius), edge to edge on a square that size. grey: a -grey copy as the controls' greyed states use. Cut by tools/ui/cut-owner-icons.py.",
+ "_doc": "v2.3.3490: card 11 of the icon review, the owner's own picks (\"Icon picks: ... T3.3 ... T129.1\", 2026-10-19). Each entry: the code on the review page, what it is in the game, the sheet and the review page's own cut (cut), the file it is written to (name.ext, over today's), and how it is sized (out): frame = today's canvas with the art's larger side the share of it today's fills; tight = no padding, the larger side that many px; disc = only the disc inside its own ring (rin of its outer radius), edge to edge on a square that size. grey: a -grey copy as the controls' greyed states use. Cut by tools/ui/cut-owner-icons.py.",
  "done": {
   "T61.1": "icons/ui/pets-paw",
   "T112.2": "icons/ui/party-crown",

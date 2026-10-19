@@ -82,7 +82,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const sr = strip ? strip.getBoundingClientRect() : null;
       return { x: r.left + r.width * 0.25, y: r.top + r.height / 2, text: b.textContent.replace(/\s+/g, ' ').trim(), answers: pts,
         strip: strip ? getComputedStyle(strip).display : 'none',
-        /* v2.3.3487: drawn in the margin beside the game it covers nothing */
+        /* v2.3.3490: drawn in the margin beside the game it covers nothing */
         margin: !!(strip && strip.getAttribute('data-kb-place') === 'side' && sr && sr.right <= col.left) };
     });
     rec.ok('at the bank\'s door the Enter button answers a click anywhere on it (the key strip in the margin, or standing aside)',
@@ -224,7 +224,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         .then(() => true).catch(() => false);
       rec.ok('...and a mouse click on Done closes it', edClosed);
     }
-    await tab('Skin');   /* back to the tab ENTER was measured on (v2.3.3487: the creator opens on Skin) */
+    await tab('Skin');   /* back to the tab ENTER was measured on (v2.3.3490: the creator opens on Skin) */
     await L.page.waitForTimeout(500);
 
     await L.page.fill('input.bt-cc-name', 'Laptop');

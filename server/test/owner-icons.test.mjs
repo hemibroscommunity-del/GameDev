@@ -17,11 +17,11 @@
  *      Wheel's and let go on leaving it, the four animated strips no longer the
  *      Wheel's, the handshake warmed with the controls; a land's banner never
  *      uses a closed zone's strip;
- *   5. v2.3.3487 ("Go recommended on everything"): the bag's legs and chest
+ *   5. v2.3.3490 ("Go recommended on everything"): the bag's legs and chest
  *      the sheet's, every metal made from them; card 11's clearer five -- the
  *      orange paw, the party's crown and pin, the auction gavel, the creator's
  *      none sign -- under new names the code points at.
- *   6. v2.3.3487, card 11 as the owner picked it ("Icon picks: ... T3.3 ...
+ *   6. v2.3.3490, card 11 as the owner picked it ("Icon picks: ... T3.3 ...
  *      T129.1"): every one of the owner's 72 codes is in the cutter's list,
  *      already in the game, or set aside with its reason; every file the
  *      cutter wrote is still the one it wrote (its SHA-256 recorded: a re-run
@@ -148,7 +148,7 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     && !/\.bt-zone-banner__scene\{[^}]*filter/.test(css));
 }
 
-/* ── 5. v2.3.3487: "Go recommended on everything" -- the legs and chest
+/* ── 5. v2.3.3490: "Go recommended on everything" -- the legs and chest
    (card 10) and card 11's clearer five ── */
 {
   /* the bag's steel legs and chest are the sheet's, framed as today's were
@@ -185,7 +185,7 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     /\(cat === 'species' \|\| cat === 'eyestyle'\) \? '\/ui\/welcome\/cc\/cc-no-hair\.webp\?v=' : '\/ui\/welcome\/cc\/cc-none\.webp\?v='/.test(bt));
 }
 
-/* ── 6. v2.3.3487: card 11, the owner's own picks ── */
+/* ── 6. v2.3.3490: card 11, the owner's own picks ── */
 {
   /* the owner's message, word for word (1b and 2a were #1020's) */
   const OWNER = ('T3.3, T20.2, T54.4, T61.1, T64.1, T98.3, T103.2, T105.1, T106.1, T112.2, T114.2, T116.1, T124.1, T129.1, '
@@ -239,14 +239,14 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   const cs = src('src/ui/panels/controlSkin.jsx'), sb = src('src/ui/panels/SpecialButton.jsx'), jb = src('src/ui/panels/JumpButton.jsx');
   check('6e Jump and the generic Special are round pictures drawn as the button\'s face (AbilityFace), at a new address, their greys beside them',
     /export function AbilityFace\(props\)/.test(cs) && /AbilityFace, \{ size: size, name: 'special', grey: grey \}/.test(sb)
-    && /AbilityFace, \{ size: size, name: 'jump' \}/.test(jb) && /const ABILITY_ART_V = '2\.3\.3487'/.test(cs)
-    && /const SPECIAL_ART_V = '2\.3\.3487'/.test(cs) && !/JumpIcon|StarburstIcon/.test(cs + sb + jb)
+    && /AbilityFace, \{ size: size, name: 'jump' \}/.test(jb) && /const ABILITY_ART_V = '2\.3\.3490'/.test(cs)
+    && /const SPECIAL_ART_V = '2\.3\.3490'/.test(cs) && !/JumpIcon|StarburstIcon/.test(cs + sb + jb)
     && ['jump', 'special', 'burst', 'special-sword', 'special-bow'].every((n) => existsSync(pub('/ui/controls/abil-' + n + '-grey.webp'))));
   const cut = src('tools/ui/cut-owner-icons.py');
   check('6f the party leader\'s crown is the owner\'s T112.2 (sheet 3\'s), not the first sheet\'s',
     /name='icons\/ui\/party-crown', src='brotown-rpg-ui-icon-sheet-2\.png', mode='alpha',\s*box=\(1160, 540, 1256, 620\)/.test(cut));
   const rd = ['talk', 'door', 'sleep', 'farm-dig', 'farm-plant', 'farm-water', 'farm-feed', 'farm-harvest'];
-  check('6g the right stick\'s eight pictures are asked for at a new address', rd.every((n) => cs.indexOf("'/ui/controls/" + n + ".webp?v=2.3.3487'") >= 0));
+  check('6g the right stick\'s eight pictures are asked for at a new address', rd.every((n) => cs.indexOf("'/ui/controls/" + n + ".webp?v=2.3.3490'") >= 0));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

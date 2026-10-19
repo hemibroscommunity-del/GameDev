@@ -40,7 +40,7 @@ Usage:
   python3 tools/webp_icons.py --convert FILE.png..  # write those .webp files, remove those .png
   python3 tools/webp_icons.py --convert --all       # every .png under public/icons (see below)
 
-v2.3.3487: --convert takes the FILES to convert.  It used to convert every
+v2.3.3490: --convert takes the FILES to convert.  It used to convert every
 .png under public/icons, which was right when this was written (they were all
 inventory icons waiting to move) and is wrong now: the app icons
 (public/icons/app/*.png: the manifest's and iOS's home-screen icons, which
