@@ -1207,6 +1207,13 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
    28px is under the 44pt touch floor; an invisible inset:-8px pseudo
    grows the TAP target to 44px with zero visual change. */
 .bt-inspect-close::after{content:'';position:absolute;inset:-8px}
+/* v2.3.3479: the 2026-10-19 UI review -- the same for the bag item card's 26px
+   ⚓ pin (ItemDetailPopup.jsx): 9px a side makes a 44x44 press, ending 1px
+   inside the card's top and right edges (its 10px padding); the portrait well
+   below is far to the left and the "Anchored" word beside it is not a
+   control, so the ring covers nothing.  ::before, as a computer's key cap
+   owns [data-key]::after. */
+.bt-card-pin::before{content:'';position:absolute;inset:-9px}
 /* ═══ v2.3.3258: THE ROOM BEHIND THE MENU (BuildingRoom.jsx, data/buildingRooms.js) ═══
    The owner's picture of the inside of a building is the BACKGROUND of its
    window, and the menu is written over it -- the owner: "Have it open up as

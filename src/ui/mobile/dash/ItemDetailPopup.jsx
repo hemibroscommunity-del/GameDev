@@ -1786,11 +1786,16 @@ export const ItemDetailPopup = () => {
             fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em',
             color: '#F0C878', opacity: locked ? 1 : 0,
           }}>Anchored</span>
-          <button type="button"
+          {/* v2.3.3479: the 2026-10-19 UI review -- a 26 px chip is under the
+              44 px touch floor.  .bt-card-pin (game.css) grows the PRESS to
+              44 x 44 with an invisible ::before, inside the card's 10 px
+              padding and clear of the portrait well, so it looks the same. */}
+          <button type="button" className="bt-card-pin"
             aria-label={locked ? 'Unpin from the top of the bag' : 'Pin to the top of the bag'}
             title={locked ? 'Unpin from the top of the bag' : 'Pin to the top of the bag'}
             onPointerUp={(e) => { e.stopPropagation(); onToggleLock(); }}
             style={{
+              position: 'relative',   /* v2.3.3479: holds the ::before tap ring */
               flex: '0 0 auto', width: 26, height: 26, lineHeight: '24px', textAlign: 'center', padding: 0,
               fontSize: 13, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
               border: '1px solid ' + (locked ? '#F0C878' : 'rgba(238, 242, 235, .14)'),
