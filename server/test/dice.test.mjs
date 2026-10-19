@@ -6,8 +6,9 @@
  *   1. the ask: a roll (1-100, or 2..1000 faces), a flip; anything else is
  *      nothing;
  *   2. the number is fair: in range, every face comes up about as often as
- *      every other (60,000 rolls), and the draw that would favour the low
- *      faces is drawn again (a rigged source);
+ *      every other (60,000 rolls on a seeded source, and 60,000 on the crypto
+ *      one against a line no fair die reaches -- v2.3.3478), and the draw that
+ *      would favour the low faces is drawn again (a rigged source);
  *   3. one every DICE.GAP_MS a player; the dead roll nothing; `dice: false`;
  *      state_sync's caps.dice;
  *   4. through the tick, in the Wheel: the roller and a phone near hear it in
@@ -109,18 +110,40 @@ for (const bad of [{ kind: 'roll', max: 1 }, { kind: 'roll', max: 0 }, { kind: '
 
 /* ── 2. the number is fair ─────────────────────────────────────────────── */
 {
-  const counts = new Array(7).fill(0);
-  let outOfRange = 0;
-  const N = 60000;
-  for (let i = 0; i < N; i++) {
-    const v = fairInt(6);
-    if (!(Number.isInteger(v) && v >= 1 && v <= 6)) outOfRange++; else counts[v]++;
-  }
+  /* v2.3.3478: 2a rolls on a SEEDED source (mulberry32), the same 60,000
+     numbers every run.  On the platform's own crypto numbers a fair die
+     crosses the 0.1% line one run in a thousand, and #1017's CI was that run
+     (chi 22.65, nothing near the dice changed).  What 2a tests is fairInt's
+     own arithmetic, the modulo and the redraw, which a seeded stream shows
+     just as well.  2a2 still rolls the crypto source, against the line a
+     fair die crosses one run in a hundred million: it catches a broken
+     source, never a fair one. */
+  const rolls = (draw) => {
+    const counts = new Array(7).fill(0);
+    let outOfRange = 0;
+    for (let i = 0; i < 60000; i++) {
+      const v = fairInt(6, draw);
+      if (!(Number.isInteger(v) && v >= 1 && v <= 6)) outOfRange++; else counts[v]++;
+    }
+    const e = 60000 / 6;
+    let chi = 0;
+    for (let f = 1; f <= 6; f++) chi += (counts[f] - e) * (counts[f] - e) / e;
+    return { outOfRange, counts: counts.slice(1), chi: +chi.toFixed(2) };
+  };
+  let seed = 0x5eed;
+  const seeded = () => {
+    seed = (seed + 0x6D2B79F5) >>> 0;
+    let t = seed;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return (t ^ (t >>> 14)) >>> 0;
+  };
+  const s = rolls(seeded);
   /* chi-square with 5 degrees of freedom: 20.5 is the 0.1% line */
-  const e = N / 6;
-  let chi = 0;
-  for (let f = 1; f <= 6; f++) chi += (counts[f] - e) * (counts[f] - e) / e;
-  check('2a 60,000 rolls of six faces: every one 1-6, as often as each other (chi-square under the 0.1% line)', outOfRange === 0 && chi < 20.5, { counts: counts.slice(1), chi: +chi.toFixed(2) });
+  check('2a 60,000 rolls of six faces from a seeded source: every one 1-6, as often as each other (chi-square under the 0.1% line)', s.outOfRange === 0 && s.chi < 20.5, s);
+  const c = rolls(undefined);
+  /* ...and 45.7 the one-in-a-hundred-million line */
+  check('2a2 60,000 rolls from the crypto source: every one 1-6, none lopsided (chi-square under the 1e-8 line)', c.outOfRange === 0 && c.chi < 45.7, c);
   let lo = Infinity, hi = -Infinity;
   for (let i = 0; i < 20000; i++) { const v = fairInt(100); lo = Math.min(lo, v); hi = Math.max(hi, v); }
   check('2b a hundred faces reaches both ends', lo === 1 && hi === 100, { lo, hi });
