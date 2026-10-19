@@ -208,10 +208,14 @@ const DRAWER_FRAME = {
 /* `title` is the header line every state shares (icon + one sentence);
    `onClose` renders the ✕ and is omitted only where a state has no way to
    leave that isn't one of its own buttons. */
-function TradeDrawer({ title, titleColor, onClose, children }) {
+/* v2.3.3479: `kind` names the state on the drawer (`data-trade-drawer`,
+   empty for most): "invite" lets game.css put the sideways ▴ chip away while
+   an invite's Open trade lies under it.  Everything else reads the attribute
+   by its presence only. */
+function TradeDrawer({ title, titleColor, onClose, children, kind }) {
   return (
     <div
-      data-trade-drawer=""
+      data-trade-drawer={kind || ''}
       onPointerDown={(e) => e.stopPropagation()}
       className="bt-chat-noselect"
       style={DRAWER_FRAME}>
@@ -1054,7 +1058,7 @@ export function TradeWindowPanel(props) {
          invite, and it SENDS trade2_cancel -- the scrim tap this replaces
          did not, so a dismissed invite used to leave the other player
          waiting on a request nobody had actually refused. */
-      <TradeDrawer title={`${trade2.fromName} wants to trade`}>
+      <TradeDrawer kind="invite" title={`${trade2.fromName} wants to trade`}>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               style={{ ...primaryBtn, flex: 1, padding: '7px 0' }}

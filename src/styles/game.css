@@ -1032,6 +1032,15 @@ input{font-family:inherit}
   display:flex;align-items:center;justify-content:center;
   cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
 }
+/* v2.3.3479: the 2026-10-19 UI review -- sideways, the dashboard's ▴ chip
+   (BottomDashboard's landscape dock, bottom left) lay on the left end of an
+   invite's "Open trade", and a tap there opened the menu column instead.
+   While an INVITE is up the dock steps aside, but only at rest, when the ▴ is
+   all it holds (with the column open it is the column's own row).  The DOCK,
+   not the chip alone: a hidden chip would leave the dock's empty box over
+   the button, still taking the tap.  Only the invite: in a live trade the ▴
+   is how you open the bag sideways (TradeWindowPanel `kind`). */
+body:has([data-trade-drawer="invite"]) .bt-land-navdock:has([data-land-fold="min"]){visibility:hidden}
 
 .bt-nospin::-webkit-outer-spin-button,
 .bt-nospin::-webkit-inner-spin-button{-webkit-appearance:none;appearance:none;margin:0}
@@ -1145,7 +1154,33 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
    which is shown BEFORE you commit rather than after. */
 .bt-plist{position:absolute;top:46px;left:8px;z-index:25;width:200px;max-height:260px;
   background:rgba(17,25,29,.94);border:1px solid rgba(255,255,255,.15);border-radius:10px;
-  overflow-y:auto}
+  overflow-y:auto;
+  /* v2.3.3479: the 2026-10-19 UI review -- room for the list's new ✕
+     (PlayerListPanel.jsx; it had no way to close).  44 px, not less: the ✕'s
+     invisible ring (.bt-inspect-close::after, inset -8px) reaches 44 px down,
+     and a first row starting higher would lose the top of its right end to
+     it -- a tap there would close the list instead of picking the player. */
+  padding-top:44px}
+/* v2.3.3479: ...and on a computer the ✕ wears its "Esc" key cap hanging under
+   it (the KEY'S LETTER block below), which reaches 45 px down */
+@media (pointer:fine) { .bt-plist{padding-top:48px} }
+/* v2.3.3479: the 2026-10-19 UI review -- the list opens in the pinned quest
+   card's corner (the card: top 56, left 8, z 17, 248 px wide; BroTown.jsx),
+   over it but 48 px narrower and a little see-through, so the card's words
+   showed through and round it ("Bring 4 Snowman ... idge.").  The list is a
+   chooser, gone on a pick or its ✕, so the card steps out of sight while it
+   is up and comes back with it closed.  [data-quest-hud] marks the card's
+   outer box. */
+body:has(.bt-plist) [data-quest-hud]{visibility:hidden}
+/* v2.3.3479: ...and the tutorial coach stands aside too, as it does for the
+   player card (.bt-pcard, below) and every window (THE QUEST COACH STANDS
+   ASIDE UNDER A WINDOW): sideways its bottom-anchored card is held to the
+   top left, the list's corner, and GEAR UP lay over "No other players
+   nearby".  Stepping the card right of the quest card (QuestCoach `left`)
+   does not cover it: that card may be folded narrower than the list, or not
+   there at all.  The lesson is kept and comes back when the list closes; no
+   lesson points into the list. */
+body:has(.bt-plist) [data-coach]{display:none}
 .bt-plist-item{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;
   border-bottom:1px solid rgba(255,255,255,.06);transition:background .1s}
 .bt-plist-item:active{background:rgba(216,168,95,.25)}
@@ -4882,6 +4917,18 @@ body:has(.bt-inspect) .bt-kb-hints,
 body:has(.bt-inspect) .bt-kb-chip,
 body:has([data-trade-drawer]) .bt-kb-hints,
 body:has([data-trade-drawer]) .bt-kb-chip{display:none}
+/* v2.3.3479: the 2026-10-19 UI review -- ...and the world's prompts stand
+   aside under a window too.  A door's "Enter BANK" (and the shut door's
+   caption, the bed, the workshops, a dungeon's mouth, TRAP) is fixed at z 35,
+   over the windows' z 32 (zLayers.js), and was gated off only under a
+   BUILDING's window (v2.3.2617, BroTown `buildingPanel === null`).  Standing
+   at a door with any other window up -- your own Inspect card, a player's
+   card, a duel challenge -- it drew over the window and took its taps;
+   sideways the Inspect card reaches its slot.  Hidden, not unmounted, so
+   nearBuilding, E and the visit count are untouched and it is back when the
+   window closes.  !important because a Wheel door's prompt and TRAP set their
+   display inline (flex), which only !important outranks (as below). */
+body:has(.bt-inspect) .bt-interact-prompt{display:none!important}
 /* ═══ v2.3.3407: ...AND UNDER A PROMPT'S BUTTON (A DOOR, A BED, A WORKSHOP) ═══
    The owner: "Make sure all actions/buttons can be completed ... on the
    computer."  The UI review's numbered pictures (tools/qa/ui-review) showed
