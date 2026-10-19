@@ -67,7 +67,7 @@ Two gaps:
 
 - **Moving a Bro between wallets** can verify each for up to a day. It's a
   cosmetic, so the daily re-read is enough.
-- **One wallet, any number of characters.** v2.3.3486: the supporter pass
+- **One wallet, any number of characters.** v2.3.3490: the supporter pass
   no longer uses wallets as accounts (each character pays into an address of
   its own, docs/SUPPORTER-PASS-PLAN.md), so no wallet cap comes with it.
 - **ERC-721 assumed.** If the collection were ERC-1155, `balanceOf(address)`

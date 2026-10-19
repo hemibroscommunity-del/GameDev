@@ -647,9 +647,9 @@ strict deploy-order symmetry (rule 19). Danger: the current gate is
 adequate (local heal is prediction, the echo is the tiebreaker,
 rule 20) — this is symmetry polish, not a hole.
 
-### O. The supporter pass — waits on the repo lock-down and the owner's answers (v2.3.3256, rewritten v2.3.3486)
+### O. The supporter pass — waits on the repo lock-down (docs/REPO-SAFETY.md) (v2.3.3256, rewritten v2.3.3490)
 $2 worth of ETH on Hemi for 30 days, 30 days from ACTIVATION, sharable
-later with the owner's other characters (up to 10).  v2.3.3486 (owner,
+later with the owner's other characters (up to 10).  v2.3.3490 (owner,
 2026-10-19: no wallet signatures; USDC on Hemi is Stargate-bridged, so ETH):
 NO CONTRACT and NO SIGNATURE -- each character gets its own payment address
 from an address book made by an offline tool and signed by the owner's

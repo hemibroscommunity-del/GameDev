@@ -426,10 +426,10 @@ last, only if the one world server fills.)*
 **Since v2.3.3256 (owner, 2026-10-14):** the pass is $2 for 30 days, its
 days starting when the player activates it, with no contract (a plain
 transfer the server reads), and NO PLAY CAPS for now ("Dont ship any caps
-yet"). **Since v2.3.3486 (owner, 2026-10-19)** it is paid in $2 worth of ETH
+yet"). **Since v2.3.3490 (owner, 2026-10-19)** it is paid in $2 worth of ETH
 on Hemi into an address of the character's own, with no wallet signature,
 and is sharable later with the owner's other characters (up to 10). It
-waits on the owner's answers and pass wallet: `docs/SUPPORTER-PASS-PLAN.md`.
+waits on the repo lock-down (docs/REPO-SAFETY.md); the plan is `docs/SUPPORTER-PASS-PLAN.md`.
 The card-payment arithmetic below stays as the comparison it was.
 
 **The business model (the owner's intent; not built yet):** free play up to

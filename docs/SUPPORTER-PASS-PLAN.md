@@ -1,4 +1,4 @@
-# The supporter pass: plan and decisions (on the backlog; rewritten v2.3.3486)
+# The supporter pass: plan and decisions (on the backlog; rewritten v2.3.3490)
 
 > Owner, 2026-10-14: *"I was thinking the 'monthly supporter pass' would just
 > be $2 for the month. I wanted this to be a very simple contract where if you
@@ -20,14 +20,15 @@
 ## Status
 
 **On the backlog. Nothing is built.** Before anything is built, the repo and
-its deploys must be locked down ("Before anything else"), and the owner
-answers "Still to decide".
+its deploys must be locked down ("Before anything else"). The owner said go
+on 2026-10-19: the code half is v2.3.3491 (PR #1031), and the owner's
+settings steps are in `docs/REPO-SAFETY.md`.
 
 **No play caps.** The owner: "Dont ship any caps yet". Free play has no time
 limit, and the 2-hours-a-day idea in `docs/WORLD-ARCHITECTURE.md` §11 stays
 unbuilt.
 
-**What changed in v2.3.3486.** The v2.3.3256 plan had each player link a
+**What changed in v2.3.3490.** The v2.3.3256 plan had each player link a
 wallet with a signature and pay 2 USDC from it. Both are gone:
 
 - **No signature and no wallet connection.** Each character gets its own
@@ -62,19 +63,16 @@ section.
 | Gifts | Anyone can pay into a character's address |
 | Play caps | None for now |
 | A contract on the chain | None |
+| A hardware wallet | Yes, the owner has one (2026-10-19). It holds the main wallet and the key that signs the address books |
+| The repo lock-down | "Go recommended on what's best for safety" (2026-10-19): `docs/REPO-SAFETY.md` |
 
-## Still to decide (the owner's call; the recommendation first)
+## Following the recommendation unless the owner says otherwise
 
-1. **A hardware wallet (needed).** It holds your main wallet, where the money
-   is moved to, and the key that signs the address books. Which one do you
-   have, or would you get one?
-2. **The lock-down steps** in "Before anything else". Some are settings only
-   you can change.
-3. **The price from three exchanges** (recommended), with no price set by
-   hand.
-4. **One character first, sharing after.** The pass works for the character
+The owner, 2026-10-19: "go recommended". So, unless the owner says otherwise:
+
+1. **The price comes from three exchanges,** with no price set by hand.
+2. **One character first, sharing after.** The pass works for the character
    that paid; sharing it with your other characters comes in build step 6.
-   OK?
 
 ## Before anything else: lock the doors the pass stands behind
 
@@ -100,19 +98,22 @@ file. No design inside the game survives that. Before any real key exists:
    Admin. Connect THAT account to Claude (claude.ai/connect-github), and keep
    yours for you alone. Admin is what changes settings, secrets and
    protection.
-2. **A ruleset on main.** Changes come only through a PR that you approve,
-   with the lock's check required ("The locked set"), and nobody can bypass
-   it.
+2. **A ruleset on main.** Changes come only through a PR, once Server CI
+   passes, and only you can bypass it. A PR that touches the workflows or
+   the deploy settings waits for your Approve (CODEOWNERS), and the pass's
+   locked set will join them, with the lock's check required ("The locked
+   set"). Ordinary PRs don't wait for you, so parallel sessions aren't
+   slowed (TRAPS §238).
 3. **The Cloudflare deploy token in a GitHub Environment** (`production`)
-   that only main can use. The deploy job also checks that it runs on main.
-   The lab gets its own Cloudflare account and token, so it can never touch
-   the game.
+   that only main can use. The deploy job and the lab check that they run
+   on main.
 4. **Previews for you only.** Put them behind Cloudflare Access. The live
    server serves the pass only to brotown.net.
 5. **Passkeys or security keys** on your GitHub and Cloudflare logins.
 
 These change how every session and every deploy works, not just the pass.
-So each gets its own PR, with step-by-step instructions.
+The code half is v2.3.3491 (PR #1031). The owner's steps, with what to click
+and how to check each, are in `docs/REPO-SAFETY.md`.
 
 ## How it works for a player
 
@@ -664,8 +665,8 @@ lists page through them (handoff rule 9).
 
 ## Build order
 
-0. **Lock-down and answers.** "Before anything else", each step its own PR,
-   and the owner's answers to "Still to decide".
+0. **Lock-down.** "Before anything else": PR #1031, then the owner's steps
+   in `docs/REPO-SAFETY.md`, above all the sessions' own GitHub account.
 1. **The tool,** practised with throwaway phrases.
 2. **The server and the screen,** on the testnet worker.
 3. **The locked-set check, and `PASS_PIN`.**
@@ -684,5 +685,5 @@ each character linked once with a free signature (the Hemi Bro check's
 `bro_link`). That made the wallet the account, and a payment from an exchange
 or a friend could not be matched to anyone. It was replaced on 2026-10-19 for
 the reasons at the top: no signatures, and no Stargate bridge in the middle.
-The first v2.3.3486 draft was attacked the same day by two independent
+The first v2.3.3490 draft was attacked the same day by two independent
 reviewers, and their fixes are folded in above.
