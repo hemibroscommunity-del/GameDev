@@ -49,7 +49,7 @@ export const TILES = [
      than a six-across tile's ~56 (v2.3.2173's "the labels are getting cut
      off"), so a soft hyphen lets it break "Achieve-" / "ments" on two lines
      where it has to, and only there (sideways the tile is wide enough). */
-  { id: 'achievements', src: '/icons/ui/journey.webp?v=2.3.1224',          label: 'Achievements', soft: 'Achieve­ments', glyph: '🏆', group: 'Progress', iconScale: 1.18 },
+  { id: 'achievements', src: '/icons/ui/journey.webp?v=2.3.1224',          label: 'Achievements', soft: 'Achieve\u00ADments', glyph: '🏆', group: 'Progress', iconScale: 1.18 },
   { id: 'encyclopedia', src: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224', label: 'Codex',  glyph: '📚', group: 'Progress',  iconScale: 1 },
   { id: 'leaderboard', src: '/icons/ui/panel-leaderboard.webp?v=2.3.1224', label: 'Ranks',    glyph: '🏆', group: 'Progress',  iconScale: 1 },
   { id: 'social',      src: '/icons/ui/nav-friends.webp?v=2.3.1224',      label: 'Friends',  glyph: '👥', group: 'Community', iconScale: 1 },
