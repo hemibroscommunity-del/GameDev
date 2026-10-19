@@ -136,7 +136,7 @@ export function hasUnseenLevelUps(R) {
   const seen = readSeen();
   return SKILL_ROSTER.some(s => ((ls[s.key] && ls[s.key].level) || 0) > (seen[s.key] ?? ((ls[s.key] && ls[s.key].level) || 0)));
 }
-/* v2.3.3489: WHICH skills have the unviewed level-up -- the Life Skills
+/* v2.3.3494: WHICH skills have the unviewed level-up -- the Life Skills
    page's tiles each wear the dashboard's brass dot (SkillsPanel), read once
    as the page opens, before opening it marks them seen (markSkillsSeen). */
 export function unseenSkillKeys(R) {

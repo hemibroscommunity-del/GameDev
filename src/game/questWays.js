@@ -1,4 +1,4 @@
-/* ═══ v2.3.3489: WHERE EACH QUEST LEADS IN THE WHEEL ═══
+/* ═══ v2.3.3494: WHERE EACH QUEST LEADS IN THE WHEEL ═══
  *
  * The owner, playtesting: "I tapped track quest in quest menu but no golden
  * stars were in minimap (I had two active quests - one from beast master and

@@ -43,7 +43,7 @@
  * animated strips, and that Frost Ridge's banner, played again, shows the
  * frost scene over its plaque (wheelmap-04c-landbanner.png).
  *
- * v2.3.3489, the owner: "Have icons representing each building on each
+ * v2.3.3494, the owner: "Have icons representing each building on each
  * building in the minimap/compass" -- 2 checks every footprint on the box
  * wears its picture, loaded behind the loading screen, and 5 that leaving
  * the Wheel lets them go; and "When you're in town make the expanded map
@@ -216,7 +216,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (like(px(x, y), 0xa4553a, 26)) roof++;
     }
     rec.ok(`...drawn: the roofs' terracotta on the box round the square (${roof} CSS px)`, roof > 60, { roof });
-    /* v2.3.3489: each wears its picture (data/wheelBuildingDoors.js
+    /* v2.3.3494: each wears its picture (data/wheelBuildingDoors.js
        WHEEL_BUILDING_ICONS), loaded behind the Wheel's loading screen */
     const held = await P.page.evaluate(() => (window.__btBuildingIcons ? window.__btBuildingIcons() : null));
     const bi = m && m.buildingIcons;
@@ -250,7 +250,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(900);
   let w = await wm(P);
   const opened = await P.page.evaluate(() => ({ el: !!document.querySelector('[data-world-map]'), where: (document.querySelector('[data-world-map-where]') || {}).textContent || '' }));
-  /* ═══ v2.3.3489: IN TOWN IT OPENS ON THE TOWN ═══
+  /* ═══ v2.3.3494: IN TOWN IT OPENS ON THE TOWN ═══
      The owner: "When you're in town make the expanded map zoomed in on the
      town so you can see which building is labeled where on the map."  It
      opened on the whole Wheel, the town a dot.  Now, in BroTown: every
@@ -312,7 +312,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(400);
   w = await wm(P);
-  /* v2.3.3489: in BroTown the target button is the town's view, as the map
+  /* v2.3.3494: in BroTown the target button is the town's view, as the map
      opens there (every building on the screen, named) -- and that is where
      you are */
   rec.ok(`the target button brings you back: in BroTown to the town's view (${w && w.more && w.more.buildingsAt} buildings on the screen, zoom ${w && w.rel ? w.rel.toFixed(1) : '?'}), you on it`,
@@ -506,7 +506,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const home = await mini(P);
   const btnHome = await P.page.evaluate(() => !!document.querySelector('[data-world-map-open]'));
   rec.ok('back in town, today\'s minimap is back and the world map\'s button is gone', back === 'town' && home && !home.wheel && home.box === 52 && !btnHome, { back, box: home && home.box, btnHome });
-  /* v2.3.3489: and the buildings' pictures were let go with the Wheel */
+  /* v2.3.3494: and the buildings' pictures were let go with the Wheel */
   const heldHome = await P.page.evaluate(() => (window.__btBuildingIcons ? window.__btBuildingIcons() : null));
   rec.ok('...and the buildings\' pictures went with the Wheel (none held)', !!heldHome && heldHome.loaded === 0 && heldHome.grey === 0 && heldHome.textures === 0, heldHome);
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));

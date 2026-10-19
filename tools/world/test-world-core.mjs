@@ -3387,7 +3387,7 @@ console.log("the buildings' doors (v2.3.3032)");
     ok('...from every inbox_delivered entry, before the daily reward\'s quiet branch', evSrc.indexOf('recordMail(S, _e)') > 0
       && evSrc.indexOf('recordMail(S, _e)') < evSrc.indexOf("if (_e.source === 'daily')"), {});
   }
-  /* ═══ v2.3.3489: EACH BUILDING'S PICTURE, ON THE MAPS ═══
+  /* ═══ v2.3.3494: EACH BUILDING'S PICTURE, ON THE MAPS ═══
      The owner: "Have icons representing each building on each building in
      the minimap/compass" (data/wheelBuildingDoors.js WHEEL_BUILDING_ICONS) */
   {
@@ -3785,7 +3785,7 @@ console.log('the Gem Works (v2.3.3259)');
   /* the room is the window's background (v2.3.3258): the window's first row is what is written on the room, a title in the others --
      here the tab strip, so the tabs sit on the room and the cutter's or setter's own title strip under them; the strip keeps clear of
      the close button only where that button lies over it (no room: a sideways phone, a picture that failed) */
-  /* v2.3.3489: 44 -> 52 px, the close button being the windows' one big 40 px ✕ now (.bt-xclose, the owner's "more prominent escape icon") */
+  /* v2.3.3494: 44 -> 52 px, the close button being the windows' one big 40 px ✕ now (.bt-xclose, the owner's "more prominent escape icon") */
   ok('...its first row is the tab strip, so the tabs are written on the room where the other windows\' titles are, and the strip keeps 52 px clear for the close button only where no room is behind the window (sideways, or a picture that failed)',
     /return React\.createElement\("div", \{ style: LS_WRAP, "data-gem-works": tab \},\s*React\.createElement\("div", \{ role: 'tablist', className: 'bt-gw-tabs'/.test(gws)
       && /\.bt-gw-tabs\{padding:12px 52px 12px 14px\}/.test(gcss) && /\.bt-room \+ \[data-gem-works\] \.bt-gw-tabs\{padding-right:14px\}/.test(gcss)

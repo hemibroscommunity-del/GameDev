@@ -1,4 +1,4 @@
-/* ═══ LIFE SKILLS AS APP TILES (v2.3.3489) ═══
+/* ═══ LIFE SKILLS AS APP TILES (v2.3.3494) ═══
  *
  * The owner, playtesting: "Make the lifeskills menu look more like iPhone
  * apps instead of elongated pills."  It reverses their own v2.3.1312b

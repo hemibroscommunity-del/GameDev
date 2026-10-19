@@ -487,7 +487,7 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
       + `(dx ${dx}, dy ${dy})`,
       dx < 0 && dy < 0, { whirl: d.whirl, special: d.special });
     /* The owner's own reason, as a number.
-       ═══ v2.3.3489: CLOSER, STILL APART ═══
+       ═══ v2.3.3494: CLOSER, STILL APART ═══
        The owner, playtesting: "Whirlwind action button needs to be placed
        closer to melee special attack (too far away)" -- it was 77 px centre to
        centre with half a button of box air.  Now the two RINGS (round buttons:
@@ -828,7 +828,7 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
     let worst = null;
     for (let i = 0; i < named.length; i++) for (let j = i + 1; j < named.length; j++) {
       const [an, a] = named[i], [bn, b] = named[j];
-      /* v2.3.3489: Whirlwind and Special are the one pair the owner asked to
+      /* v2.3.3494: Whirlwind and Special are the one pair the owner asked to
          be CLOSER ("too far away") -- measured ring to ring above, 8 px of air
          at the least -- so this half-button box floor holds every other pair */
       if ((an === 'Whirlwind' && bn === 'Special') || (an === 'Special' && bn === 'Whirlwind')) continue;

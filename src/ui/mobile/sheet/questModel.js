@@ -102,7 +102,7 @@ export function deriveQuestLog(S) {
    quest id in localStorage.  Safe by design: tracking is a display
    preference; accepting/turning-in stays with the NPCs and the
    server-authoritative flow untouched.
-   v2.3.3489: kept in src/game/trackedQuest.js now, where the minimap's star,
+   v2.3.3494: kept in src/game/trackedQuest.js now, where the minimap's star,
    the world map's road and the pinned quest card read it too (the owner:
    "I tapped track quest in quest menu but no golden stars were in
    minimap") -- the same key, the same two calls. */

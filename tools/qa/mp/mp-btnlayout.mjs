@@ -544,7 +544,7 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
       rec.ok(`${tag}: Whirlwind sits UP and to the LEFT of Special -- a diagonal, not a stack or a row `
         + `(dx ${Math.round(wMidX - sMidX)}, dy ${Math.round(wMidY - sMidY)})`,
         wMidX < sMidX && wMidY < sMidY, { special: r2.special, whirl: r2.whirl });
-      /* v2.3.3489: the owner, playtesting: "Whirlwind action button needs to
+      /* v2.3.3494: the owner, playtesting: "Whirlwind action button needs to
          be placed closer to melee special attack (too far away)".  The pair is
          held to air between the RINGS now (ShieldButton.jsx RCTL_PAIR_AIR:
          9 px upright, 10 sideways), its boxes never touching side to side,

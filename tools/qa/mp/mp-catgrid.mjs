@@ -127,7 +127,7 @@ async function answerConfirm(P, which, settle) {
     if (settle(now)) { res = { ok: true, now }; break; }
   }
   if (!res) res = { ok: false, now: await pools(P) };
-  /* ═══ v2.3.3489: THE WINDOW STAYS ═══
+  /* ═══ v2.3.3494: THE WINDOW STAYS ═══
      The owner: "After spending a stat allocation point keep it on the menu
      confirmation window instead of closing it to return to the points main
      screen."  So a confirm leaves the window up and, once the worker has
@@ -538,7 +538,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     const spent = await answerConfirm(P, 'confirm', (n) => (n.poolBy || {})[laneNow] === (before.poolBy || {})[laneNow] - K);
     rec.ok(`${label}: answering the window actually buys the points`, !!spent.ok && K === 2, spent.now && { pool: spent.now.pool, K });
-    /* v2.3.3489: the owner's "keep it on the menu confirmation window" */
+    /* v2.3.3494: the owner's "keep it on the menu confirmation window" */
     rec.ok(`${label}: ...and the window STAYS, saying "✓ ${K} points spent", its stepper back at 1 and its Spend button live again`,
       !!spent.stay && spent.stay.open && spent.stay.spent === `✓ ${K} points spent` && !spent.stay.spending
         && (spent.stay.blocked || (spent.stay.count === 1 && /^Spend 1 point$/.test(spent.stay.action || ''))), spent.stay);

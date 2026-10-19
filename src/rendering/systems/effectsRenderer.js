@@ -677,7 +677,7 @@ import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 import { DEFENSE_POPUP_KEY, DEFENSE_POPUP_SRC } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's shield on "Defense Lv N" */
 import { halloweenOn } from '@/game/season.js';   /* v2.3.3395: Halloween week's speech bubbles */
-import { BUBBLE_SKINS, bubbleSkinFor } from '@/game/bubbleSkins.js';   /* v2.3.3489: a townsperson's bubble white, a player's dark */
+import { BUBBLE_SKINS, bubbleSkinFor } from '@/game/bubbleSkins.js';   /* v2.3.3494: a townsperson's bubble white, a player's dark */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -2647,7 +2647,7 @@ const EMOTE_POP_PX = 30;
    load): a night-purple bubble ringed in pumpkin orange, its words cream,
    18 October (the 24th until v2.3.3463) to 1 November by the phone's
    calendar.  Made once, as the everyday gradient is. */
-/* ═══ v2.3.3489: A SKIN BY WHO IS SPEAKING (game/bubbleSkins.js) ═══
+/* ═══ v2.3.3494: A SKIN BY WHO IS SPEAKING (game/bubbleSkins.js) ═══
    The owner: "Make Npc dialog boxes white. Keep players the darker color to
    differentiate."  A townsperson's bubble is the white one always, a player's
    dark always -- Halloween's purple in its week, Lantern Slate's the rest of
@@ -8854,7 +8854,7 @@ export class EffectsRenderer {
       entry._bh = bh;            /* v2.3.3481: for the outline drawn below */
       entry._pathDx = null;      /* ...at this frame's slide */
       /* v2.3.3395: Halloween week's skin -- purple, pumpkin-ringed, cream words.
-         v2.3.3489: by who is speaking (game/bubbleSkins.js) -- the owner: "Make
+         v2.3.3494: by who is speaking (game/bubbleSkins.js) -- the owner: "Make
          Npc dialog boxes white. Keep players the darker color to
          differentiate": a townsperson's ('npc:' key) white always, a
          player's dark always (Halloween's purple in its week) */
@@ -8946,7 +8946,7 @@ export class EffectsRenderer {
       _bubblePath(entry.bg, 2);
       entry.bg.fill({ color: 0x000000, alpha: 0.18 });
       _bubblePath(entry.bg, 0);
-      /* v2.3.3395's skin, chosen with the line above (v2.3.3489: by speaker) */
+      /* v2.3.3395's skin, chosen with the line above (v2.3.3494: by speaker) */
       const _sk = BUBBLE_SKINS[entry.skin] || BUBBLE_SKINS.plain;
       entry.bg.fill({ fill: bubbleGradient(entry.skin) });
       entry.bg.stroke({ width: 2, color: _sk.stroke, alpha: _sk.strokeAlpha, alignment: 1 });
@@ -8979,9 +8979,9 @@ export class EffectsRenderer {
         lineW: entry._lineW,   /* the longest laid-out line, bubble-local px */
         boxW: entry._boxW,     /* the box drawn round it, same units */
         slide: entry._pathDx || 0,   /* v2.3.3481: how far the box slid off its point to stay in the view, same units */
-        skin: entry.skin || 'plain',   /* v2.3.3395: 'halloween' in Halloween week; v2.3.3489: 'plain' a townsperson's, 'player' a player's the rest of the year */
+        skin: entry.skin || 'plain',   /* v2.3.3395: 'halloween' in Halloween week; v2.3.3494: 'plain' a townsperson's, 'player' a player's the rest of the year */
         ink: String(entry.text.style.fill),
-        /* v2.3.3489: the skin's fill, top to bottom, and where the bubble is
+        /* v2.3.3494: the skin's fill, top to bottom, and where the bubble is
            on the screen -- its point (last frame's transform, the stage's
            CSS px) and the box's height, bubble-local -- for mp-chatfont,
            which finds a dark bubble in the pixels only where it is */

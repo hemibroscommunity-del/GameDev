@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { skillXpRequired } from '../../../data/items.js';
 import { gatherHitOddsText } from '../../../data/lifeSkills.js'; /* v2.3.3229: the hit ladder's odds */
-import { SKILL_GATHER, SKILL_CRAFT, SKILL_ROSTER, skillUnlocks, markSkillsSeen, skillXpFade, xpShareText, unseenSkillKeys /* v2.3.3489 */ } from '../sheet/skillsModel.js';
+import { SKILL_GATHER, SKILL_CRAFT, SKILL_ROSTER, skillUnlocks, markSkillsSeen, skillXpFade, xpShareText, unseenSkillKeys /* v2.3.3494 */ } from '../sheet/skillsModel.js';
 import { xpDecayOn } from '../../../data/xpDecay.js'; /* v2.3.3251: the XP fade's lines */
 import { skillDetailBus } from '../sheet/skillDetailBus.js';
 import { panelVw } from '../playViewport.js'; /* v2.3.2173: the sheet's width, not the shell's */
@@ -40,7 +40,7 @@ import { panelVw } from '../playViewport.js'; /* v2.3.2173: the sheet's width, n
 export const SkillsPanel = () => {
   const [, force] = useState(0);
   const [detailKey, setDetailKey] = useState(() => skillDetailBus.consumeOpen());
-  /* v2.3.3489: the skills with a level-up not yet looked at, read as the page
+  /* v2.3.3494: the skills with a level-up not yet looked at, read as the page
      opens -- before opening it marks them seen (below) -- so each tile can
      wear the dashboard's dot for this visit */
   const [fresh] = useState(() => { const S0 = getState(); return unseenSkillKeys((S0 && S0.rpg) || {}); });
@@ -151,7 +151,7 @@ export const SkillsPanel = () => {
     );
   }
 
-  /* ═══ v2.3.3489: A HOME SCREEN OF SKILLS, NOT A LIST OF PILLS ═══
+  /* ═══ v2.3.3494: A HOME SCREEN OF SKILLS, NOT A LIST OF PILLS ═══
      The owner, playtesting: "Make the lifeskills menu look more like iPhone
      apps instead of elongated pills."  This reverses the owner's own
      v2.3.1312b ask ("make the expanded view pill shaped so they all fit
@@ -255,7 +255,7 @@ export const SkillsPanel = () => {
   );
 };
 
-/* v2.3.3489: a skill's tile, CSS px a side (the home screen's app) */
+/* v2.3.3494: a skill's tile, CSS px a side (the home screen's app) */
 const SKILL_TILE_PX = 52;
 /* #RRGGBB at alpha `a`, for the tiles' accent tint and edge */
 function hexA(hex, a) {

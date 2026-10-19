@@ -56,7 +56,7 @@ import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
-import { trackedFirst } from '@/game/trackedQuest.js';   /* v2.3.3489: the pinned quest card shows the quest you track */
+import { trackedFirst } from '@/game/trackedQuest.js';   /* v2.3.3494: the pinned quest card shows the quest you track */
 import { treeGeom, treeTrunkEllipse, treeReachBox } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree -- its box, its trunk and where you chop it from */
 import { oreGeom, oreBlockEllipse } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock -- its box and its body */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
@@ -515,7 +515,7 @@ import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
 import { bedAt, farmExCode } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
-import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers; v2.3.3489: + each one's picture */
+import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers; v2.3.3494: + each one's picture */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
 
@@ -12664,7 +12664,7 @@ export var BroTown = function BroTown(_ref0) {
       WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
       maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)'
     }
-  }, /* \u2550\u2550\u2550 v2.3.3489: THE \u2715 STAYS IN THE CORNER, AND IS EASY TO SEE \u2550\u2550\u2550
+  }, /* \u2550\u2550\u2550 v2.3.3494: THE \u2715 STAYS IN THE CORNER, AND IS EASY TO SEE \u2550\u2550\u2550
        The owner, playtesting: "Vendor menus need a more prominent escape icon
        in the corner."  It was a faint 28 px disc, a child of this card -- the
        SCROLLER -- so in a long menu (the forge, the Woodworker, the Gem Works)
@@ -13421,7 +13421,7 @@ export var BroTown = function BroTown(_ref0) {
       return QUEST_CHAINS[qid];
     }).filter(Boolean);
     if (activeQuests.length === 0) return null;
-    /* v2.3.3489: the quest you TRACK (the quest page's "Track this quest"),
+    /* v2.3.3494: the quest you TRACK (the quest page's "Track this quest"),
        when it is one of these -- the owner tracked one and nothing outside the
        quest list changed ("I tapped track quest in quest menu but no golden
        stars were in minimap"); the card, the minimap's star and the world
@@ -14248,7 +14248,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "E"), (nearBuilding !== null ? BUILDINGS[nearBuilding].iconSrc : WHEEL_HALLS[nearHall].icon) ? /*#__PURE__*/React.createElement("img", {
     /* v2.3.1224: UI Bible building icon (bldg-*) in the enter prompt;
        falls back to the emoji when iconSrc is absent.
-       v2.3.3489: at a Wheel door, the picture the maps wear for that building
+       v2.3.3494: at a Wheel door, the picture the maps wear for that building
        (data/wheelBuildingDoors.js WHEEL_BUILDING_ICONS -- the same files, but
        the Land Office's own parchment map where it borrowed the Feed & Seed's
        barn), so the door and the map agree */

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3489: EACH BUILDING'S PICTURE, FOR THE MAPS ═══
+/* ═══ v2.3.3494: EACH BUILDING'S PICTURE, FOR THE MAPS ═══
  *
  * The owner, playtesting: "Have icons representing each building on each
  * building in the minimap/compass."  The minimap (wheelMinimap.js _buildTown)

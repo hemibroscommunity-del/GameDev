@@ -175,7 +175,7 @@ export const WHEEL_KEEPERS = {
   'Mayor Bro': 'townhall',          /* the Town Hall: its leaderboard and the world map */
 };
 
-/* ═══ v2.3.3489: EACH BUILDING'S PICTURE, ON THE MAPS ═══
+/* ═══ v2.3.3494: EACH BUILDING'S PICTURE, ON THE MAPS ═══
    The owner, playtesting: "Have icons representing each building on each
    building in the minimap/compass."  Plot id -> the picture the minimap draws
    on the building's footprint (wheelMinimap.js _buildTown) and the world map

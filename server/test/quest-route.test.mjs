@@ -1,4 +1,4 @@
-/* The quest's road in the Wheel, and the quest you track -- v2.3.3489
+/* The quest's road in the Wheel, and the quest you track -- v2.3.3494
  * (src/game/questWays.js, src/game/trackedQuest.js, src/game/questRoute.js;
  * docs/specs/menus-2026-10-19.md "Track a quest").
  *
@@ -125,7 +125,7 @@ const ANYWHERE = { life_1: [2, 3, 4] };
   check('3d every quest ready to hand in leads to its giver', giver.length === 0, giver);
   const owners = ['beast_1', 'beast_2', 'beast_3', 'beast_4', 'mayor_1', 'mayor_2', 'mayor_3'];
   const hadOne = owners.filter((k) => { const q = QUEST_CHAINS[k]; return !!q.zone || !!q.node || (q.steps || []).some((s) => s.node); });
-  check('3e none of the owner\'s seven named a land or a resource, so before v2.3.3489 none had a road until handed in', hadOne.length === 0, hadOne);
+  check('3e none of the owner\'s seven named a land or a resource, so before v2.3.3494 none had a road until handed in', hadOne.length === 0, hadOne);
   const kinds = Object.fromEntries(owners.map((k) => [k, (wayOf(QUEST_CHAINS[k], QUEST_CHAINS[k].steps
     ? QUEST_CHAINS[k].steps.map((s, j) => ({ current: j === 0, node: s.node || null, way: s.way || null })) : null, false) || {}).kind + ((wayOf(QUEST_CHAINS[k], null, false) || {}).plot ? ':' + wayOf(QUEST_CHAINS[k], null, false).plot : '')]));
   check('3f the Woodworker for the traps, the monsters for springing, catching and the Mayor\'s five kills, a building for his visits, the Land Office for his dungeon',
