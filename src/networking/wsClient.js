@@ -5216,6 +5216,15 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
+        /* v2.3.3484: the title on your card, from the Achievements page
+           (game/achievements.js sendAchvTitle) -> achievements.js _achvTitle,
+           which answers with a fresh achv_state.  TRAPS #18: without this line
+           the ask never leaves the browser and "Use as title" waits for an
+           answer that never comes. */
+        if (msg.type === 'achv_title') {
+          wsOut(msg);
+          return;
+        }
         /* v2.3.3187: a gem into the shield (game/shieldGem.js) -> shieldgem.js.
            TRAPS #18: without this line the ask never leaves the browser. */
         if (msg.type === 'shield_gem') {

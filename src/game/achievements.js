@@ -35,6 +35,15 @@
  * player_state echo of `achievementPoints` too (noteServerAp), never the
  * phone's own +5 quest prediction (game/quests.js).
  *
+ * THE TITLE AND THE RAREST (the plan's Phase 3): achv_state also carries `t`,
+ * the title you chose (an achievement you have, only while you have it), and
+ * `rarest`, the earned one first in the worker's ACHV.RARITY; your card
+ * (ui/panels/playerProfile.js) reads them here as `S._achv.t` and
+ * `S._achv.rarest`.  The page's "Use as title" asks the worker
+ * (`achv_title {id}`, null to take it off: sendAchvTitle); the worker
+ * answers with a fresh achv_state every time -- a change refused past its
+ * burst of ten comes back unchanged -- and only that answer moves the page.
+ *
  * Every id passes achvById (the phone's table, data/achievements.js): an id
  * this phone does not know (a newer worker added it) is skipped, and every
  * map is built over the table's own ids, null-prototype -- no key the wire
@@ -66,6 +75,7 @@ function achvOf(S) {
     S._achv = {
       known: false, unavailable: false,
       got: Object.create(null), n: Object.create(null), dg: Object.create(null),
+      t: null, rarest: null, titleAsk: null,
       ap: null, rev: 0, moments: [], showing: null,
     };
   }
@@ -93,8 +103,11 @@ export function normalizeAchvState(p) {
   for (const land of WHEEL_DUNGEON_HOMES) if (has(src.dg, land) && src.dg[land]) dg[land] = 1;
   const apN = Number(src.ap);
   const ids = (list) => (Array.isArray(list) ? list : []).filter((id, i, all) => !!achvById(id) && all.indexOf(id) === i);
+  /* the title and the rarest: an id the page knows and you have, else none */
+  const mine = (id) => (typeof id === 'string' && achvById(id) && has(got, id) ? id : null);
   return {
     unavailable: false, got, n, dg,
+    t: mine(src.t), rarest: mine(src.rarest),
     ap: Number.isFinite(apN) && apN >= 0 ? Math.floor(apN) : null,
     fresh: ids(src.new), retro: ids(src.retro),
   };
@@ -169,8 +182,11 @@ export function onAchvState(S, p, now) {
   const s = normalizeAchvState(p);
   a.known = true;
   a.unavailable = s.unavailable;
-  if (s.unavailable) { bump(a); return out; }
+  /* the worker's answer to a title ask, or any newer word: nothing waits */
+  a.titleAsk = null;
+  if (s.unavailable) { a.t = null; a.rarest = null; bump(a); return out; }
   a.got = s.got; a.n = s.n; a.dg = s.dg;
+  a.t = s.t; a.rarest = s.rarest;
   if (s.ap != null) a.ap = s.ap;
   for (const id of s.fresh) {
     if (achvBig(id)) { if (queueMoment(a, id, t)) out.big.push(id); }
@@ -179,6 +195,36 @@ export function onAchvState(S, p, now) {
   if (s.retro.length) { const line = '🏆 ' + achvRetroLine(s.retro); say(S, line); out.lines.push(line); }
   bump(a);
   return out;
+}
+
+/* a title ask with no answer stops waiting after this (a lost frame, a worker
+   from before titles): the page's buttons come back */
+export const TITLE_ASK_MS = 4000;
+
+/** "Use as title" (an id you have) or "Remove title" (null): asks the worker
+ *  (server achievements.js _achvTitle), the road every page's ask takes --
+ *  S.channel.send, channelShim's passthrough (wsClient.js, TRAPS #18).  The
+ *  page waits for the worker's achv_state; nothing changes here but the
+ *  wait.  False when it was not sent (no worker achievements, not yours,
+ *  no connection). */
+export function sendAchvTitle(S, id, now) {
+  if (!achvLive(S) || !S.channel || typeof S.channel.send !== 'function') return false;
+  const a = S._achv;
+  const want = id == null ? null : id;
+  if (want !== null && !(achvById(want) && a && has(a.got, want))) return false;
+  try { S.channel.send({ type: 'achv_title', payload: { id: want } }); } catch (e) { return false; }
+  achvOf(S).titleAsk = { id: want, at: typeof now === 'number' ? now : Date.now() };
+  bump(S._achv);
+  return true;
+}
+
+/** A title ask still waiting for its answer: {id, at} or null. */
+export function achvTitleWaiting(S, now) {
+  const a = S && S._achv;
+  const ask = a && a.titleAsk;
+  if (!ask) return null;
+  if ((typeof now === 'number' ? now : Date.now()) - ask.at > TITLE_ASK_MS) { a.titleAsk = null; bump(a); return null; }
+  return ask;
 }
 
 /** The player_state echo's `achievementPoints` (wsClient.js): the worker's

@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState, QUALITY_PRISM, qualityInk } from './common.js';
 import { panelVw } from '../playViewport.js';
 import { ACHV_TIERS } from '@/data/achievements.js';
-import { achvLive, achvSummary, achvRows, achvProgress, achvDateWords, ACHV_FILTERS } from '@/game/achievements.js';
+import { achvLive, achvSummary, achvRows, achvProgress, achvDateWords, ACHV_FILTERS, sendAchvTitle, achvTitleWaiting } from '@/game/achievements.js';
+import { achvById } from '@/data/achievements.js';
 
 /* ═══ v2.3.3484: THE ACHIEVEMENTS PAGE ═══
  * The owner, 2026-10-19: "Achievement points are something I'd like in the
@@ -28,7 +29,16 @@ import { achvLive, achvSummary, achvRows, achvProgress, achvDateWords, ACHV_FILT
  * CSS (a gradient ring, the godly grade's own QUALITY_PRISM / qualityInk),
  * no filter.  Sideways the side column is ~238 px: the chips go two by two
  * and the rows wrap, and nothing scrolls sideways.
- * Its own clock: it re-reads the record a few times a second (PetsPanel's). */
+ * Its own clock: it re-reads the record a few times a second (PetsPanel's).
+ *
+ * THE TITLE (the plan's Phase 3): an EARNED row offers "Use as title" -- the
+ * achievement your card wears under your name (ui/panels/PlayerProfilePanel
+ * .jsx), in place of the placeholder "Fishing Master" -- and the one you wear
+ * says "Your title" with "Remove title" beside it; a row you have not earned
+ * never offers it.  Each tap asks the worker (game/achievements.js
+ * sendAchvTitle) and the buttons wait for its answer, a fresh achv_state:
+ * the page never shows a title the worker did not keep (past ten changes in
+ * a burst it keeps the old one, and the page says so by showing it). */
 const POLL_MS = 400;
 
 const fmt = (v) => Math.max(0, Math.floor(Number(v) || 0)).toLocaleString('en-US');
@@ -76,10 +86,46 @@ const Lock = () => (
   </svg>
 );
 
-function Row({ r, S, now }) {
+/* the title's buttons: small, quiet (secondary), one row's worth */
+const titleBtn = (on) => ({
+  minHeight: 36, padding: '0 12px', margin: 0, borderRadius: 999, boxSizing: 'border-box',
+  border: '1px solid ' + (on ? COL.borderStrong : COL.border), background: on ? COL.raised : 'transparent',
+  color: on ? COL.text : COL.muted, fontFamily: 'inherit', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+  cursor: on ? 'pointer' : 'default', touchAction: 'manipulation',
+});
+
+/* an earned row's title line: "Use as title", or on the one you wear "Your
+   title" and "Remove title"; `wait` is a title ask with no answer yet */
+function TitleLine({ S, id, wearing, wait }) {
+  const busy = !!wait;
+  const mine = busy && (wait.id === id || (wait.id === null && wearing));
+  const ask = (want) => (e) => { e.stopPropagation(); if (!busy) sendAchvTitle(S, want); };
+  return (
+    <div data-achv-title-line={wearing ? 'on' : 'off'} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 5 }}>
+      {wearing ? (
+        <>
+          <span data-achv-title-on="" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: COL.accent }}>
+            <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M2 6.4l2.6 2.5L10 3.2" fill="none" stroke={COL.accent} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            Your title
+          </span>
+          <button type="button" data-achv-title-off={id} disabled={busy} onClick={ask(null)} style={titleBtn(!busy)}>
+            {mine ? 'Removing…' : 'Remove title'}
+          </button>
+        </>
+      ) : (
+        <button type="button" data-achv-title-use={id} disabled={busy} onClick={ask(id)} style={titleBtn(!busy)}>
+          {mine ? 'Saving…' : 'Use as title'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Row({ r, S, now, wait }) {
   const { def, got, at, n } = r;
   const [bad, setBad] = useState(false);
   const prog = got ? '' : achvProgress(S, def.id);
+  const wearing = got && !!(S && S._achv && S._achv.t === def.id);
   return (
     <div data-achv-row={def.id} data-achv-got={got ? 1 : 0} data-achv-tier={def.tier}
       style={{ display: 'flex', alignItems: 'flex-start', gap: 8, minHeight: 44, padding: '7px 2px', boxSizing: 'border-box', borderBottom: `1px solid ${COL.divider}` }}>
@@ -107,6 +153,7 @@ function Row({ r, S, now }) {
             ? <span data-achv-date="" style={{ flex: 'none', fontSize: 11, fontWeight: 600, color: COL.text2, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{achvDateWords(at, now)}</span>
             : <Lock />}
         </div>
+        {got ? <TitleLine S={S} id={def.id} wearing={wearing} wait={wait} /> : null}
       </div>
     </div>
   );
@@ -133,7 +180,10 @@ export const AchievementsPanel = () => {
     const id = setInterval(() => {
       const S = getState();
       const a = S && S._achv;
-      const key = S ? [a ? a.rev : -1, S._codex ? S._codex.rev : -1, achvLive(S) ? 1 : 0, achvSummary(S).apTotal, panelVw() < 260 ? 1 : 0].join('|') : '';
+      /* a title ask that waited past TITLE_ASK_MS is let go here, so the
+         buttons come back without a tap */
+      const waiting = S ? (achvTitleWaiting(S) ? 1 : 0) : 0;
+      const key = S ? [a ? a.rev : -1, S._codex ? S._codex.rev : -1, achvLive(S) ? 1 : 0, achvSummary(S).apTotal, panelVw() < 260 ? 1 : 0, waiting].join('|') : '';
       if (key !== last) { last = key; force((v) => (v + 1) % 1e9); }
     }, POLL_MS);
     return () => clearInterval(id);
@@ -160,6 +210,8 @@ export const AchievementsPanel = () => {
   const sum = achvSummary(S);
   const rows = achvRows(S, filter);
   const now = Date.now();
+  const wait = achvTitleWaiting(S, now);
+  const titleDef = a && a.t ? achvById(a.t) : null;
   return (
     <div data-achv-panel="1" style={box}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
@@ -173,6 +225,14 @@ export const AchievementsPanel = () => {
       <div data-achv-split={sum.achvPts + '/' + sum.otherPts} style={{ fontSize: 12, color: COL.muted, lineHeight: 1.35, marginTop: 1 }}>
         Achievements {fmt(sum.achvPts)} AP · quests, guilds and more {fmt(sum.otherPts)} AP
       </div>
+      {/* the title your card wears, or how to choose one once you can */}
+      {sum.earned > 0 ? (
+        <div data-achv-title-current={titleDef ? titleDef.id : 'none'} style={{ fontSize: 12, lineHeight: 1.35, marginTop: 2, color: COL.text2 }}>
+          {titleDef
+            ? <>Your title: <b style={{ color: COL.accent }}>{titleDef.name}</b></>
+            : 'No title on your card: tap "Use as title" on one you have.'}
+        </div>
+      ) : null}
       <div role="group" aria-label="Show" style={narrow
         ? { display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 6, margin: '2px 0 2px' }
         : { display: 'flex', flexWrap: 'wrap', columnGap: 6, margin: '2px 0 2px' }}>
@@ -185,7 +245,7 @@ export const AchievementsPanel = () => {
         ))}
       </div>
       <div data-achv-list={filter}>
-        {rows.map((r) => <Row key={r.def.id} r={r} S={S} now={now} />)}
+        {rows.map((r) => <Row key={r.def.id} r={r} S={S} now={now} wait={wait} />)}
       </div>
     </div>
   );
