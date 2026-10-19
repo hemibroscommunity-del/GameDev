@@ -1901,6 +1901,19 @@ remnant to migrate server-side, not a mode to preserve.
       "You need a tool for that") is gone, a farm bed out of reach the same
       (`_tapHarvestAtCss`, `_tapFarmBedAtCss`); `mp-tapstance`:
       docs/specs/jumping.md "v2.3.3145".
+    - since v2.3.3486 25% HIGHER, AND NEVER CAUGHT HALF WAY OVER A FENCE --
+      the owner: "Try making jump 25% higher. Gets stuck on some props
+      sometimes that it should be clearing": `JUMP_PEAK` 85, `JUMP_MS` 625,
+      `JUMP_CLEAR` 0.36; a crossing once begun LATCHES (`jumpLatch`), 160 ms
+      of grace, the latches outlive the landing 450 ms for feet already in
+      one (`landedOver`); the minecart and rowboat can be jumped
+      (`JUMP_OVER_H` 87, so shots fly over them too). The same round of
+      notes: the whirlwind marks the monsters it will catch
+      (`_markWhirlCatch`), a lock lets go across the map (targeting.js
+      `lockTooFar`, 'far'), TRAP answers a touch while you jog, the owner's
+      trap picture in the world, "Missed!", the trap's sounds, death pieces
+      in their own colour, jaggier, no frozen death (`topple`), dropped items
+      1.5x: docs/specs/combat-feel-2026-10-19.md.
   - Since v2.3.3017 a BLACK SCREEN LEAVES EVIDENCE -- the owner, on #782's
     preview: "I was fighting fire goblins and my screen went black", and the
     crash feed had nothing:

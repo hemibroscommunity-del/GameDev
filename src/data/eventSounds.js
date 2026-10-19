@@ -255,14 +255,15 @@ export const EVENT_SOUNDS = {
                   wood (~0.7), on the worker's answer that the trap is set;
        trapShake  the box rattling, once a shake (~0.4);
        trapSnap   the door slamming shut -- the pick's bright ring, short --
-                  with the box's rattle, then the coin flip's win (~1.0); the
-                  new pet then answers in its kind's own voice
-                  (game/trapping.js petVoice);
-       trapMiss   the box splintering and the flip's loss (~0.7). */
+                  with the box's rattle, then the coin flip's win (~1.6, a
+                  catch is a reward: a quest turn-in is ~2.4); the new pet
+                  then answers in its kind's own voice (game/trapping.js
+                  petVoice);
+       trapMiss   the box splintering and the flip's loss (~1.0). */
   trapSet: [['ui-click', 0.042, 0.17, 1.0, 0.8], ['ui-equip', 0.095, 0.3, 2.4, 0.9, 0.05]],
   trapShake: [['ui-equip', 0.095, 0.3, 1.6, 1.25], ['axe-chop', 1.135, 0.12, 0.5, 1.6, 0.04, 0.05]],
   trapSnap: [['mine-strike', 0.55, 0.15, 0.35, 1.5], ['ui-equip', 0.095, 0.3, 2.0, 0.85, 0.03], ['flip-win', 0, 1.6, 0.45, 1, 0.2, 0.2]],
-  trapMiss: [['axe-chop', 1.135, 0.3, 1.5, 1.05], ['axe-chop', 0.13, 0.2, 0.9, 1.35, 0.06], ['flip-lose', 0, 0.7, 0.4, 1, 0.14]],
+  trapMiss: [['axe-chop', 1.135, 0.3, 1.15, 1.05], ['axe-chop', 0.13, 0.2, 0.7, 1.35, 0.06], ['flip-lose', 0, 0.7, 0.35, 1, 0.14]],
   /* A gem polished or shattered: the crystal prop's own hit and break
      (PROP_SOUNDS.crystal), at its levels. */
   gemCut: [['sword-hit2', 0, 0.3, 0.6, 1.3], ['mine-strike', 0.06, 0.3, 0.35, 1.4]],
