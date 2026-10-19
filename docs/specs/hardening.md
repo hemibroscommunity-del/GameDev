@@ -90,6 +90,17 @@ hardened wood, and gold that doubles" below.
   names it: "Need Woodworking Lv5 for this tier". Kill switch
   `hardenwoodskill: false` (Blacksmithing for every weapon, as before);
   `caps.hardenwoodskill` tells the Woodworker's line which to say.
+- **v2.3.3488: the level that MAKES the tier.** The owner: "Hardening should
+  only require the same smithing level as it takes to smithing that item
+  tier". Against `caps.forgeladder` the gate is the weapon's own tier row's
+  `minLvl` (server/src/forgeladder.js `_hardenLevelFor`, the game's copy
+  `hardenLevelFor` in src/data/hardenCosts.js): a copper greatsword Smithing
+  1, iron 5, black steel 10, five more a tier; a bow or a staff its wood's
+  Woodworking level (pine 1, softwood 6, hardwood 11 ...). A legacy weapon
+  with no `gearBase` is ranked by tierMult as before, on the table of the
+  bench that makes its kind. Only the level moved: the tier index still picks
+  the bars or hardened wood. `forgeladder: false` puts back `floor(skill / 5)`
+  (docs/specs/blacksmith-2026-10-19.md).
 - Gold is a pure sink, single mutation on live ps (gamble pattern).
   The guard gear lock (threats.md) blocks hardening — it mutates the
   equipped weapon.
