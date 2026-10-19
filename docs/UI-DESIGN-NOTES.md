@@ -1274,7 +1274,7 @@ Screens: player-list, player-card, inspect-self, trade-request, duel-request
 
 **Still open:**
 - Nothing in the game opens your own Inspect card yet: where its button goes is the owner's call (v2.3.2926).
-- The Inspect card's title ("Fishing Master"), rarest drop ("Ancient Ember Crown") and Homestead picture are marked placeholders the owner allowed ("Demo placeholders are acceptable") until those systems exist.
+- The Inspect card's Homestead picture is a marked placeholder the owner allowed ("Demo placeholders are acceptable") until that system exists. Its title ("Fishing Master") and rarest drop ("Ancient Ember Crown") were placeholders too until v2.3.3484. Now the title is an achievement the player chose and the rarest is their rarest achievement, both the worker's (docs/specs/achievements.md "The card"). With none, the card shows no title and "Rarest achievement: None yet".
 - The owner's painted frame for the trade drawer is in the repo but was backed out; it needs a layout change first (v2.3.2290).
 
 Sources: docs/specs/trading.md, docs/specs/duels.md, docs/specs/owner-icons.md, docs/specs/friends.md, docs/specs/party.md, docs/specs/no-mans-land.md, docs/specs/hemi-bro-count.md, docs/specs/alliance.md, docs/specs/wheel-halls.md, docs/LANTERN-SLATE-SPEC.md, docs/TRAPS.md, CLAUDE.md, src/ui/panels/TradeWindowPanel.jsx, src/ui/panels/InspectPlayerPanel.jsx, src/ui/panels/PlayerProfilePanel.jsx, src/ui/panels/playerProfile.js, src/ui/panels/PlayerListPanel.jsx, src/ui/panels/DuelRequestPanel.jsx, src/ui/panels/IncomingTradePanel.jsx, src/ui/panels/PartyHUD.jsx, src/ui/mobile/NmlAskCard.jsx, src/game/nmlAsk.js, src/ui/BroTown.jsx, src/styles/game.css
