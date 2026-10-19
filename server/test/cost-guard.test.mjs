@@ -398,6 +398,23 @@ const FAST = 110;
   const inStash = (psA.weaponStash || []).length, inTrade = staged().length;
   check('9b. ...and the weapon is in exactly one place, the stash or the window', inStash + inTrade === 1, { inStash, inTrade });
 }
+{
+  /* v2.3.3484: the title on your card (achievements.js _achvTitle) -- one
+     row a change, refused past its burst, never held */
+  const { room, state } = await makeRoom();
+  const p = await join(room, 'cg_title');
+  const ps = room.playerState.cg_title;
+  room._achvGrant('cg_title', ps, 'first_blood');
+  room._achvGrant('cg_title', ps, 'combat_10');
+  const w0 = state.writes.length;
+  for (let i = 0; i < 200; i++) {
+    NOW += 9;
+    await send(room, p, { type: 'achv_title', payload: { id: i % 2 ? 'first_blood' : 'combat_10' } });
+  }
+  const rows = mine(state, 'cg_title', w0).length;
+  check(`9c. a title changed 200 times in 2 s writes ${rows} rows (${Object.entries(byPrefix(mine(state, 'cg_title', w0))).map((e) => e.join(' ')).join(', ') || 'none'}), at most PACE.ACHVT's burst (${PACE.ACHVT.BURST})`,
+    rows >= 1 && rows <= PACE.ACHVT.BURST, byPrefix(mine(state, 'cg_title', w0)));
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

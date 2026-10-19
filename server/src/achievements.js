@@ -61,15 +61,28 @@
  * tag's and the cape's stamps): always, the kill switch or not.
  *
  * THE WIRE:
- *   achv_state {v, got, n, dg, ap, new?: [id], retro?: [id]}   at the join
+ *   achv_state {v, got, n, dg, t?, ap, new?: [id], retro?: [id]}   at the join
  *       (after the mail) and on every change: `new` the one just earned (the
  *       banner), `retro` the sweep's (a quiet line).  {unavailable} when the
  *       record is locked.  PRIVILEGED (index.js).
+ *   achv_title {id | null}   phone -> worker: the title (_achvTitle).
  *   caps.achievements    advertised; `achievements: false` in the live flags
  *       is the kill switch: no grants, no counting, no sweep (what was earned
  *       stays, the AP too), the cap off at the next join.
  *   /dev/achv {id | all | clear}  the owner's lever (devtools.js): a grant
  *       there pays NO points.
+ * THE CARD (the plan's Phase 3): a player's card had a placeholder title and
+ * "rarest drop" (src/ui/panels/playerProfile.js PROFILE_PREVIEW: "Fishing
+ * Master", "Ancient Ember Crown"), the same on everyone's.  Now:
+ *   - a TITLE is an achievement you have, chosen on the Achievements page
+ *     (`achv_title {id}`, null to take it off), kept on the record as `t`;
+ *     one row a change, PACED (flood.js PACE.ACHVT, handoff rule 27);
+ *   - the RAREST is worked out, never chosen: the earned one first in
+ *     ACHV.RARITY;
+ *   - both go on the card's blob as ids (`rpgData.title`, `rpgData.rarest`,
+ *     the page has the words and pictures), stamped by _achvStamp with the
+ *     AP: a page's own claim is never relayed.
+ *
  * Spec: docs/specs/achievements.md.  Suite: server/test/achievements.test.mjs. */
 import { CODEX } from './codex.js';
 import { PETBOOK } from './petbook.js';
@@ -77,6 +90,7 @@ import { PROG3 } from './prog3.js';
 import { HARDEN } from './hardening.js';
 import { WHEEL_DUNGEON } from './wheeldungeon.js';
 import { QUEST_REWARDS, QUEST_DORMANT } from './data.js';
+import { PACE } from './flood.js';
 
 export const ACHV_KEY = (playerId) => 'achv:' + playerId;
 
@@ -136,6 +150,26 @@ export const ACHV = Object.freeze({
   DUNGEONS: Object.freeze(Object.keys(WHEEL_DUNGEON.LANDS)),
   /* a count stops here: never reached, never unbounded in storage */
   N_MAX: 9999999,
+  /* v2.3.3484: the card's "rarest", rarest first: by tier (super-rare, the
+     arena, rare, common), and in a tier by the worker's own odds -- H5 is
+     five successes in a row, ~1 in 2.5 million runs (HARDEN.ODDS 80/20/5/
+     1/0.5%: a failure with under 20 temper resets to H0, and a success
+     clears the temper, so the pity band almost never builds); Godly 1 in
+     2,000,000 a quality roll (hardening.js Q_GODLY); an Elite Iron Great
+     Sword 1 in ~55,000 kills (1 in 500 x 0.9%); the house limit ~1 in 600
+     spins doubling every time, one spin a day; a golden giant ~1 in 700
+     catches (1 in 50 x 7%); level 100 a grind that comes.  Then a kill roll of 1
+     (1 in 10,000 killing blows), the Buried City's 41-45, every land's
+     second stage, Elite (0.9% a roll), the Iron Great Sword (1 in 500), a
+     golden pet (1 in 50 catches), level 50, the codex, the story; the
+     commons by how few go looking.  Every id once (achievements.test). */
+  RARITY: Object.freeze([
+    'tempered', 'godly', 'elite_iron', 'house_limit', 'golden_giant', 'combat_100',
+    'gladiator',
+    'natural_one', 'dungeons_all', 'elder_all', 'elite_piece', 'iron_blade', 'golden_pet',
+    'combat_50', 'codex_all', 'story_done',
+    'nml_kill', 'first_duel', 'first_dungeon', 'first_order', 'first_pet', 'combat_10', 'first_blood',
+  ]),
 });
 
 const BY_ID = Object.create(null);
@@ -164,14 +198,27 @@ export function normalizeAchv(raw) {
   for (const land of ACHV.DUNGEONS) {
     if (src.dg && typeof src.dg === 'object' && has(src.dg, land) && src.dg[land]) dg[land] = 1;
   }
-  return { rec: { v: ACHV.V, got, n, dg }, locked: false };
+  const rec = { v: ACHV.V, got, n, dg };
+  /* v2.3.3484: the chosen title, kept only while it is one you have */
+  if (typeof src.t === 'string' && has(got, src.t)) rec.t = src.t;
+  return { rec, locked: false };
+}
+
+/** The card's "rarest": the earned achievement first in ACHV.RARITY, or
+ *  null with none. */
+export function rarestOf(rec) {
+  if (!rec || !rec.got) return null;
+  for (const id of ACHV.RARITY) if (has(rec.got, id)) return id;
+  return null;
 }
 
 /* a plain copy for storage and the wire: storage clones on put anyway, and
    the suites' storage does not -- an aliased object would let a test pass
    on a write that never happened (codex.js's note) */
 function plain(rec) {
-  return { v: rec.v, got: { ...rec.got }, n: { ...rec.n }, dg: { ...rec.dg } };
+  const o = { v: rec.v, got: { ...rec.got }, n: { ...rec.n }, dg: { ...rec.dg } };
+  if (rec.t) o.t = rec.t;
+  return o;
 }
 
 export const achievementMethods = {
@@ -430,7 +477,40 @@ export const achievementMethods = {
     if (!data || typeof data !== 'object' || !data.rpgData || typeof data.rpgData !== 'object') return;
     const ps = this.playerState && this.playerState[pid];
     if (!ps) return;
-    data.rpgData = { ...data.rpgData, ap: Math.max(0, Math.floor(Number(ps.achievementPoints) || 0)) };
+    const rd = { ...data.rpgData, ap: Math.max(0, Math.floor(Number(ps.achievementPoints) || 0)) };
+    /* v2.3.3484: the title and the rarest are the record's, never the
+       page's: a claim is taken off, and an unreadable record shows neither */
+    delete rd.title;
+    delete rd.rarest;
+    const book = this._achvOf(pid);
+    const rec = book && !book.locked && book.rec ? book.rec : null;
+    if (rec && rec.t && has(rec.got, rec.t)) rd.title = rec.t;
+    const rarest = rarestOf(rec);
+    if (rarest) rd.rarest = rarest;
+    data.rpgData = rd;
+  },
+
+  /* ═══ THE TITLE (v2.3.3484: `achv_title {id}`, index.js's router) ═══ an
+     achievement you have, or null (or '') to take it off.  The same title
+     again writes nothing; a change is one row, PACED -- past PACE.ACHVT's
+     burst it is refused, never held (a tap must not queue a write behind
+     it).  Off or locked, nothing changes.  The phone is always told what
+     stands, so a refused tap puts its page right. */
+  _achvTitle(session, payload) {
+    const pid = session && session.id;
+    const ps = pid && this.playerState && this.playerState[pid];
+    if (!ps) return;
+    const book = this._achvOf(pid);
+    const raw = payload && typeof payload === 'object' ? payload.id : undefined;
+    const want = raw === null || raw === undefined || raw === '' ? null : raw;
+    const ok = !this._achvOff() && book && !book.locked && book.rec
+      && (want === null || (typeof want === 'string' && has(BY_ID, want) && has(book.rec.got, want)));
+    if (ok && (book.rec.t || null) !== want && this._paceTake('achvt', pid, PACE.ACHVT)) {
+      if (want) book.rec.t = want;
+      else delete book.rec.t;
+      this._achvPut(pid, book);
+    }
+    this._achvSend(pid);
   },
 
   /* ═══ THE OWNER'S LEVER (devtools /dev/achv) ═══ `id` (or `all`) marked

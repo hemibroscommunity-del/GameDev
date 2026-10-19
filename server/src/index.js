@@ -5013,6 +5013,12 @@ export class GameRoom {
       case 'item_drop':
         this._handleItemDrop(session, msg);
         break;
+      /* v2.3.3484: the title on your card -- an achievement you have, or none
+         (achievements.js _achvTitle: one row a change, paced; the phone told
+         what stands) */
+      case 'achv_title':
+        if (session.id) this._achvTitle(session, msg.payload || msg);
+        break;
       case 'move':
         // Hottest path -- anti-teleport cap, position/facing merge,
         // zone-change streaming.  Hoisted to movement.js

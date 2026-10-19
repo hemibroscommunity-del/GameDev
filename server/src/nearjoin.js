@@ -83,7 +83,10 @@ export const NEAR_JOIN = Object.freeze({
   /* ...and of their inspect card (`rpgData`), the parts the lists read: the
      clan window's other clans, the leaderboard's online tab */
   LIST_RPG_KEYS: Object.freeze(['clanTag', 'clanName', 'clanColor1',
-    'lifeTotal', 'ap', 'kills', 'dungeons', 'goldEarned', 'playtime']),
+    'lifeTotal', 'ap', 'kills', 'dungeons', 'goldEarned', 'playtime',
+    /* v2.3.3484: the card's title and rarest achievement (ids, the worker's:
+       achievements.js _achvStamp) -- a far player's card shows them too */
+    'title', 'rarest']),
 });
 
 const LIST_KEYS = NEAR_JOIN.LIST_KEYS;

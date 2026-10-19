@@ -108,11 +108,49 @@ modelled on the codex (codex.js).
   one row more (First Blood); counted rows write one row each time they count,
   and none of them is frequent (`cost-guard` §5).
 
+## The card: your title and your rarest
+
+The plan's Phase 3. A player's card had a placeholder title ("Fishing
+Master") and "rarest drop" ("Ancient Ember Crown"), the same on everyone's
+(src/ui/panels/playerProfile.js PROFILE_PREVIEW).
+
+- **The title** is an achievement you have, picked on the Achievements page
+  ("Use as title"), or none. The record keeps it as `t`, and only while you
+  have it (the lever's clear forgets it). `achv_title {id}` changes it:
+  - the same title again writes nothing;
+  - a change is one row, PACED (flood.js `PACE.ACHVT`, a burst of 10 and one
+    more every 10 s, handoff rule 27). Past the burst a change is REFUSED,
+    never held, so a tap never queues a write behind it;
+  - anything you do not have, an unknown id, `__proto__`, a number or an
+    object is refused. So is any change with the kill switch on, or with the
+    record unreadable;
+  - the phone is always sent `achv_state` back, so a refused tap puts its page
+    right.
+- **The rarest** is worked out, never chosen: the earned achievement first in
+  `ACHV.RARITY`:
+  - by tier first: super-rare, then the arena, rare, common;
+  - in a tier, by the worker's own odds. H5 is five successes in a row, ~1 in
+    2.5 million runs: a failure with under 20 temper resets the weapon to H0,
+    and a success clears the temper, so the pity band almost never builds.
+    Godly is 1 in 2,000,000 a quality roll. An Elite Iron Great Sword is ~1 in
+    55,000 kills. The house limit is ~1 in 600 spins at one a day. A golden
+    giant is ~1 in 700 catches. Level 100 is a grind that comes...
+- **On the card** both are ids on the inspect card's blob (`rpgData.title`,
+  `rpgData.rarest`), stamped by `_achvStamp` with the AP at the join and on
+  every track. A page's own `title` or `rarest` is taken off, never relayed,
+  and an unreadable record shows neither.
+  - The page has the words and pictures (src/data/achievements.js).
+  - A far player's list entry carries them too (nearjoin.js `LIST_RPG_KEYS`).
+  - The phone puts its own title and rarest in its track, so a change is news
+    and goes at once (lookrelay.js); the worker's stamp is still the truth.
+
 ## The wire
 
 | message | direction | when | payload |
 |---|---|---|---|
-| `achv_state` | worker -> phone, PRIVILEGED | at the join (after `codex_state`) and on every change | `{v, got, n, dg, ap, new?: [id], retro?: [id]}`, or `{unavailable: true}` |
+| `achv_state` | worker -> phone, PRIVILEGED | at the join (after `codex_state`), on every change and in answer to `achv_title` | `{v, got, n, dg, t?, ap, new?: [id], retro?: [id]}`, or `{unavailable: true}` |
+| `achv_title` | phone -> worker | "Use as title" on the page | `{id}`: an achievement you have, or `null` to take it off |
+| `rpgData.title`, `rpgData.rarest` | on the card's blob, relayed | the join and every track | achievement ids, the worker's (`_achvStamp`) |
 | `inbox_delivered` entry `kind: 'achv'` | worker -> phone | a Gladiator crown delivered | `{id: 'gladiator'}` |
 | `caps.achievements` | in `state_sync` | the join | `true`; `achievements: false` in the live flags turns it off |
 | POST `/api/admin/dev/achv` | owner -> worker | the Test panel | `{playerId, id}` / `{all: true}` / `{clear: true}`: lit without points; clear forgets them, the points stay |
@@ -129,19 +167,17 @@ row's words and picture, held to the worker's list by mirror-audit.
 
 ## Not built yet
 
-- Titles a player chooses (Gladiator, Storyteller...) and the rarest
-  achievement on a player's card, in place of the card's placeholder title and
-  "rarest drop" lines: that needs titles kept by the worker (the handoff
-  backlog), the plan's Phase 3.
 - The owner's own badge art: docs/ART-WISHLIST.md "Achievements".
 
 ## Tests
 
-- `server/test/achievements.test.mjs` (75): every achievement at its place, once;
+- `server/test/achievements.test.mjs` (91): every achievement at its place, once;
   the record and the save of its points in one synchronous run; the arena's
   first crown, a second one, a champion away, an unreadable record and a
   v2.3.3481 crown in the mail; locked records; the kill switch; the join's
-  sweep; the stamp; the lever; normalizeAchv.
+  sweep; the stamp; the lever; normalizeAchv; and the card (§11): the rarest's
+  order, `achv_title`'s every refusal, its pace, and the stamp over a page's
+  claim. `cost-guard` §9c: 200 title changes in 2 s write at most 10 rows.
 - `mirror-audit`: the page's list, tiers, points and counting rows are the
   worker's. `cost-guard` §5: the first kill's one extra row, none after.
   `wire-audit`: `achv_state` privileged. `arena` §4: the crown's points.

@@ -32,10 +32,17 @@
  *   9. THE STAMP: the AP on the inspect card's blob is the worker's, at the
  *      join and on a track, whatever the phone said.
  *  10. THE LEVER, A RESTART, normalizeAchv, and the list's tiers and counts.
+ *  11. THE CARD: the rarest's order; `achv_title` takes one you have (one row,
+ *      the phone told), refuses anything else, writes nothing for the same one,
+ *      null takes it off, forty in a row write at most the pace's burst, the
+ *      kill switch and an unreadable record change nothing; the stamp puts the
+ *      worker's title and rarest on the card's blob over the page's claim, and
+ *      a far player's list entry carries them; a restart reads them back.
  */
 import { GameRoom } from '../src/index.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
-import { ACHV, ACHV_KEY, achvAp, normalizeAchv } from '../src/achievements.js';
+import { ACHV, ACHV_KEY, achvAp, normalizeAchv, rarestOf } from '../src/achievements.js';
+import { PACE } from '../src/flood.js';
 import { CODEX } from '../src/codex.js';
 import { HARDEN } from '../src/hardening.js';
 import { PETBOOK } from '../src/petbook.js';
@@ -471,6 +478,95 @@ const gotC = (id) => !!(rec('bp_av_c') && rec('bp_av_c').got && rec('bp_av_c').g
     && Object.keys(n.rec.dg).join() === 'hollows' && Object.getPrototypeOf(n.rec.got) === null, n);
   check('10g normalizeAchv locks a newer record', normalizeAchv({ v: ACHV.V + 1 }).locked === true);
   check('10h CODEX\'s kinds are what Know Thy Enemy counts', CODEX.KINDS.length === 9);
+}
+
+/* ── 11. THE CARD: YOUR TITLE AND YOUR RAREST (v2.3.3484) ──────────────────── */
+{
+  const ids = ACHV.LIST.map((a) => a.id);
+  check('11a the rarest\'s order names every achievement once', ACHV.RARITY.length === ids.length && new Set(ACHV.RARITY).size === ids.length && ids.every((id) => ACHV.RARITY.includes(id)), ACHV.RARITY);
+  const aps = ACHV.RARITY.map((id) => achvAp(id));
+  check('11b ...rarest first: super-rare, then the arena, rare, common', aps.every((v, i) => i === 0 || v <= aps[i - 1]), aps);
+  const g = (...have) => { const o = Object.create(null); for (const id of have) o[id] = 1; return { got: o }; };
+  check('11c rarestOf: none for nothing, First Blood alone, the story over a common, Centurion over the arena, H5 over all',
+    rarestOf(g()) === null && rarestOf(null) === null && rarestOf(g('first_blood')) === 'first_blood'
+    && rarestOf(g('first_blood', 'story_done')) === 'story_done' && rarestOf(g('gladiator', 'combat_100')) === 'combat_100'
+    && rarestOf(g(...ids)) === 'tempered' && rarestOf(g('godly', 'gladiator')) === 'godly');
+
+  const wsC = fakeWs('C');
+  const C = await join(wsC, 'bp_av_card');
+  const sess = room.sessions.get(wsC);
+  C.achievementPoints = 0;
+  room._achvGrant('bp_av_card', C, 'first_blood');
+  room._achvGrant('bp_av_card', C, 'story_done');
+  let puts = 0;
+  const realPut = state.storage.put;
+  state.storage.put = async (k, v) => { if (k === ACHV_KEY('bp_av_card')) puts++; return realPut(k, v); };
+  const send = (obj) => room.webSocketMessage(wsC, JSON.stringify(obj));
+  const track = (rd) => send({ type: 'track', data: { rpgData: rd } });
+
+  await send({ type: 'achv_title', payload: { id: 'story_done' } });
+  await flush();
+  const st = last(wsC, 'achv_state');
+  check('11d achv_title with one you have: kept on the record, one row, the phone told', rec('bp_av_card').t === 'story_done' && puts === 1 && st && st.t === 'story_done', { rec: rec('bp_av_card'), puts, st });
+
+  await track({ ap: 5, kills: 1, title: 'godly', rarest: 'godly' });
+  check('11e the card\'s blob: the worker\'s title and rarest, the page\'s claim taken off', sess.data.rpgData.title === 'story_done' && sess.data.rpgData.rarest === 'story_done', sess.data.rpgData);
+  const entry = room._nearJoinListEntry(C, { data: sess.data });
+  check('11f ...a far player\'s list entry carries both', entry.rpgData && entry.rpgData.title === 'story_done' && entry.rpgData.rarest === 'story_done', entry);
+
+  puts = 0;
+  const sentBefore = msgsOfType(wsC, 'achv_state').length;
+  for (const bad of ['godly', 'made_up', '__proto__', 7, { id: 'first_blood' }, ['first_blood']]) {
+    await send({ type: 'achv_title', payload: { id: bad } });
+  }
+  check('11g one you do not have, an unknown id, __proto__, a number, an object: refused, nothing written', rec('bp_av_card').t === 'story_done' && puts === 0, { t: rec('bp_av_card').t, puts });
+  check('11h ...the phone is told what stands each time', msgsOfType(wsC, 'achv_state').length === sentBefore + 6 && last(wsC, 'achv_state').t === 'story_done');
+
+  await send({ type: 'achv_title', payload: { id: 'story_done' } });
+  check('11i the same title again writes nothing', puts === 0, puts);
+
+  await send({ type: 'achv_title', payload: { id: null } });
+  await track({ ap: 5, kills: 1, title: 'story_done' });
+  check('11j null takes it off: none on the record, none on the card, the rarest still there', !('t' in rec('bp_av_card')) && puts === 1 && !('title' in sess.data.rpgData) && sess.data.rpgData.rarest === 'story_done', { rec: rec('bp_av_card'), rd: sess.data.rpgData });
+
+  puts = 0;
+  for (let i = 0; i < 40; i++) await send({ type: 'achv_title', payload: { id: i % 2 ? 'first_blood' : 'story_done' } });
+  check(`11k forty changes in a row write at most PACE.ACHVT's burst (${PACE.ACHVT.BURST}) -- a tap never queues a write`, puts <= PACE.ACHVT.BURST && puts >= 1, puts);
+  state.storage.put = realPut;
+
+  room._liveFlags = { ...(room._liveFlags || {}), achievements: false };
+  const tOff = rec('bp_av_card').t;
+  await send({ type: 'achv_title', payload: { id: tOff === 'story_done' ? 'first_blood' : 'story_done' } });
+  check('11l the kill switch: a change is refused', rec('bp_av_card').t === tOff, rec('bp_av_card').t);
+  delete room._liveFlags.achievements;
+
+  const n1 = normalizeAchv({ v: 1, got: { first_blood: 5 }, t: 'first_blood' });
+  const n2 = normalizeAchv({ v: 1, got: { first_blood: 5 }, t: 'godly' });
+  const n3 = normalizeAchv({ v: 1, got: { first_blood: 5 }, t: '__proto__' });
+  check('11m normalizeAchv keeps a title you have, and only that', n1.rec.t === 'first_blood' && !('t' in n2.rec) && !('t' in n3.rec), [n1.rec, n2.rec, n3.rec]);
+
+  /* a restart: the next join reads the title back off the record */
+  const keep = rec('bp_av_card').t;
+  room._achvForget('bp_av_card');
+  const wsC2 = fakeWs('C2');
+  await join(wsC2, 'bp_av_card');
+  const sess2 = room.sessions.get(wsC2);
+  await room.webSocketMessage(wsC2, JSON.stringify({ type: 'track', data: { rpgData: { ap: 0 } } }));
+  check('11n after a restart the title comes back from the record', !!keep && last(wsC2, 'achv_state').t === keep && sess2.data.rpgData.title === keep, { keep, st: last(wsC2, 'achv_state'), rd: sess2.data.rpgData });
+
+  room._achvDev('bp_av_card', { clear: true });
+  await room.webSocketMessage(wsC2, JSON.stringify({ type: 'track', data: { rpgData: { ap: 0 } } }));
+  check('11o the lever\'s clear forgets the title and the rarest with the rest', !('t' in rec('bp_av_card')) && !('title' in sess2.data.rpgData) && !('rarest' in sess2.data.rpgData), { rec: rec('bp_av_card'), rd: sess2.data.rpgData });
+
+  const wsU = fakeWs('U');
+  state.failReads((k) => k === ACHV_KEY('bp_av_card_u'));
+  await join(wsU, 'bp_av_card_u');
+  state.failReads(null);
+  const sessU = room.sessions.get(wsU);
+  await room.webSocketMessage(wsU, JSON.stringify({ type: 'achv_title', payload: { id: 'first_blood' } }));
+  await room.webSocketMessage(wsU, JSON.stringify({ type: 'track', data: { rpgData: { ap: 0, title: 'godly', rarest: 'godly' } } }));
+  check('11p a record that cannot be read: no title taken, the card shows neither, the phone told unavailable',
+    !state._store.has(ACHV_KEY('bp_av_card_u')) && !('title' in sessU.data.rpgData) && !('rarest' in sessU.data.rpgData) && last(wsU, 'achv_state').unavailable === true, sessU.data.rpgData);
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');
