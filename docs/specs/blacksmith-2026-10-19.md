@@ -108,6 +108,11 @@ Decoded at the file's own channels, read in mono as Web Audio downmixes (TRAPS
 | **...now:** `armor-hit-2` from 0.06, 0.42 s, x0.22, rate 1.1 (the metal props' clang) | 0.101 | 7% | 1,000 Hz |
 | The forge cue's first layer (unchanged): `sword-hit`, x0.6, rate 0.95 | 0.062 | 0% | 4,909 Hz |
 
+Rendered through Web Audio by `mp-cuelevels` (every cue, as the game plays
+it): the whole `forge` cue is 1.12 of the game's own hit (plain and by ear),
+peak 0.29, 35% of its energy under 400 Hz -- in range, no clipping, all five
+of its checks green.
+
 The "flesh" is the dull body under 250 Hz. The town anvil's ring is brighter
 on average (its click) but keeps the same 42% thud under it, so the sword's
 metal hit was used for the strike, at about the old level. Only the `forge`
