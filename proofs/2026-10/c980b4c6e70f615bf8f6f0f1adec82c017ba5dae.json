@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c980b4c6e70f615bf8f6f0f1adec82c017ba5dae",
+  "tree": "7b1e5d245831f757064475fe9693c8a0916a7e76",
+  "committedAt": "2026-10-18T18:45:07-07:00",
+  "subject": "Two more phone tests from the sweep's part 3, mended, and the dice suite's chance failure fixed: each was the test, not the game (v2.3.3477) (#1017)",
+  "files": 6059,
+  "bytes": 711181589,
+  "listingSha256": "69c6e7faa6216efe1c50569c9c241a365a2f46e97448b445de2a63effffd1389",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
