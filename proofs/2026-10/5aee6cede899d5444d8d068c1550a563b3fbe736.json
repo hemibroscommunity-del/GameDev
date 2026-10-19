@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5aee6cede899d5444d8d068c1550a563b3fbe736",
+  "tree": "4fcc536debe0c0e8fbc3c61ff3a593a0b3f81399",
+  "committedAt": "2026-10-19T14:55:37-07:00",
+  "subject": "The bow's aiming line never promises a shot at a monster hiding behind a rock (v2.3.3485) (#1024)",
+  "files": 6083,
+  "bytes": 711529851,
+  "listingSha256": "d652555c7291dfe82d9cc00e389091e824c6832e1bace19eb796124c8d6814f0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
