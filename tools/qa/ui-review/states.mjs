@@ -231,6 +231,47 @@ async function sparCloneId(P, timeout = 9000) {
   return null;
 }
 
+/* v2.3.3479: a sword in your hand and a shield on your arm, as a player arms
+   (the 2026-10-19 UI review, p11/spar-fight #1).  The Reviewer never put on
+   the sword and shield tut_1 gives (both phone views' controls read "Weapon:
+   Fists"), and with no weapon in hand the Special button stays away
+   (SpecialButton.jsx specialButtonLive), with no shield on the arm the Shield
+   button (shieldToggle.js shieldButtonLive) -- the fight's two buttons the
+   screen is about.  The quest's own pieces when the bag holds them (a full
+   run accepts tut_1 at quest-accepted), else the test panel's kit (a
+   `--only` retake).  The sword through the game's own equip_request
+   (harness equipWeapon); the shield the bag's way (ItemDetailPopup
+   onEquipStashShield: off the stash onto the arm, and the worker told which,
+   as shieldWear.js syncShieldWorn tells it). */
+async function armForFight(P, wsPort, myId) {
+  let r = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null);
+  if (!r || !r.ok) {
+    await H.devOp(wsPort, 'kit', myId, { what: 'weapons' }).catch(() => {});
+    for (let i = 0; i < 24 && !(r && r.ok); i++) {
+      await wait(P, 250);
+      r = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null);
+    }
+  }
+  const onArm = () => evalIn(P, () => {
+    const S = window._gameState.current, R = S && S.rpg;
+    if (!R) return false;
+    if (R.shield) return true;
+    if (!Array.isArray(R.shieldStash) || !R.shieldStash.length) return false;
+    const sh = R.shieldStash.shift();
+    R.shield = sh;
+    if (S.channel && S._serverCaps && S._serverCaps.shieldwear) {
+      const payload = (typeof sh.gid === 'string' && sh.gid) ? { gid: sh.gid }
+        : { sig: [sh.name || '', sh.gearBase || '', sh.tierMult == null ? '' : sh.tierMult, sh.tier || ''].join('|') };
+      try { S.channel.send({ type: 'shield_wear', payload }); } catch (e) { /* the next change reports it */ }
+    }
+    return true;
+  });
+  if (!(await onArm())) {
+    await H.devOp(wsPort, 'kit', myId, { what: 'shield' }).catch(() => {});
+    for (let i = 0; i < 24 && !(await onArm()); i++) await wait(P, 250);
+  }
+}
+
 export const STATES = [
   /* ═══ BEFORE THE WORLD ═══ */
   {
@@ -678,6 +719,7 @@ export const STATES = [
     settle: 2500,
     run: async ({ P, wsPort, myId }) => {
       await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
+      await armForFight(P, wsPort, myId);   /* v2.3.3479: so Special and Shield can come up */
       const r = await H.devOp(wsPort, 'spar', myId, { add: 'sword', skill: 'easy' }).catch((e) => ({ error: String(e) }));
       if (r && r.ok === false) return 'no clone: ' + (r.error || JSON.stringify(r));
       await wait(P, 3000);
@@ -688,9 +730,15 @@ export const STATES = [
         const S = window._gameState.current;
         const o = S.others && S.others[cid];
         if (o) S.lockedTarget = { type: 'player', id: cid, ref: o, spar: true };
+        /* v2.3.3479: and hold Attack, as a thumb on the button does, so the
+           blows land in the picture: the clone's HP bar shows only once it is
+           hurt, and the numbers only with a blow (the review's picture had
+           neither -- the bro never swung) */
+        S.autoAttack = true;
       }, id);
     },
     after: async ({ P, wsPort, myId }) => {
+      await evalIn(P, () => { const S = window._gameState.current; if (S) S.autoAttack = false; }).catch(() => {});   /* v2.3.3479 */
       await H.devOp(wsPort, 'spar', myId, { clear: true }).catch(() => {});
       await wait(P, 1000);
     },
