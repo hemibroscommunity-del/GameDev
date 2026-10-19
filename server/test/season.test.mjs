@@ -57,5 +57,31 @@ const seasonal = EMOTE_MOVE_IDS.filter((id) => EMOTE_MOVES[id].season);
 check('4a the Zombie Shuffle is Halloween\'s', seasonal.length === 1 && seasonal[0] === 'zombie' && EMOTE_MOVES.zombie.season === 'halloween', seasonal);
 check('4b ...a held dance the worker keeps any day', seasonal.every((id) => EMOTE_MOVES[id].kind === 'hold' && EMOTE_MOVES[id].dance && POSE.IDS.includes(id)));
 
+/* ── 5. v2.3.3489: whose bubble is whose (src/game/bubbleSkins.js) ──────────
+   The owner: "Make Npc dialog boxes white. Keep players the darker color to
+   differentiate."  A townsperson's line (the renderer's 'npc:<id>' key) is the
+   white bubble always; a player's is dark always: Halloween's purple in its
+   week, Lantern Slate's the rest of the year. */
+{
+  const { BUBBLE_SKINS, bubbleSkinFor } = await import('../../src/game/bubbleSkins.js');
+  check('5a a townsperson\'s bubble is white, in Halloween week and out of it',
+    bubbleSkinFor('npc:mayor_bro', true) === 'plain' && bubbleSkinFor('npc:diego', false) === 'plain');
+  check('5b a player\'s is dark: purple in Halloween week, the slate one out of it',
+    bubbleSkinFor('bp_abc123', true) === 'halloween' && bubbleSkinFor('bp_abc123', false) === 'player'
+      && bubbleSkinFor('guest_9', false) === 'player');
+  check('5c a key that only looks like a townsperson\'s is a player\'s (the prefix is the whole rule)',
+    bubbleSkinFor('xnpc:1', true) === 'halloween' && bubbleSkinFor('', false) === 'player' && bubbleSkinFor(null, false) === 'player'
+      && bubbleSkinFor(undefined, true) === 'halloween');
+  const lum = (h) => { const v = parseInt(h.slice(1), 16); return 0.2126 * ((v >> 16) & 255) + 0.7152 * ((v >> 8) & 255) + 0.0722 * (v & 255); };
+  const S = BUBBLE_SKINS;
+  check('5d the white bubble is light with black words; both player skins dark with light words',
+    S.plain.stops.every((c) => lum(c) > 200) && S.plain.text === '#000000'
+      && ['halloween', 'player'].every((k) => S[k].stops.every((c) => lum(c) < 80) && lum(S[k].text) > 200),
+    Object.fromEntries(Object.entries(S).map(([k, v]) => [k, v.stops.map(lum).map(Math.round)])));
+  check('5e the everyday player skin is Lantern Slate (raised #2B3940 into the panel #202C32, text-1 #F7F2E7)',
+    S.player.stops[0] === '#2B3940' && S.player.stops[2] === '#202C32' && S.player.text === '#F7F2E7' && S.player.strokeAlpha > 0 && S.player.strokeAlpha < 1);
+  check('5f every skin has its three stops and an edge', Object.values(S).every((v) => v.stops.length === 3 && typeof v.stroke === 'number' && v.strokeAlpha > 0));
+}
+
 console.log(`\nseason: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
