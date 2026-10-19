@@ -2669,10 +2669,14 @@ export var BroTown = function BroTown(_ref0) {
          "None".  On the species strip the caption goes ABOVE the icon, as
          _buildTile's does for the same reason ("Averag" + the check); the check
          then lands on the round icon's empty corner.  "None" tiles keep their
-         look. */
-      ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: cat === 'species' ? 'column-reverse' : 'column', alignItems: 'center', justifyContent: 'center' } },
+         look.
+         v2.3.3479: and the Eyes strip the same: its 'none' is the bro's own
+         eyes, so it is captioned with its name, "Normal" (eyeStyleCatalog.js),
+         which is as wide as "Human" and goes above the icon for the same
+         reason. */
+      ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: (cat === 'species' || cat === 'eyestyle') ? 'column-reverse' : 'column', alignItems: 'center', justifyContent: 'center' } },
           /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/cc/cc-no-hair.webp?v=' + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
-          /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, cat === 'species' ? opt.name : "None"))   /* v2.3.2682: on the species strip 'none' is the Human */
+          /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, (cat === 'species' || cat === 'eyestyle') ? opt.name : "None"))   /* v2.3.2682: on the species strip 'none' is the Human; v2.3.3479: on the Eyes strip, Normal */
       : /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
           onError: function (e) { _thumbFallback(e, cat, opt.id); },
           style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
