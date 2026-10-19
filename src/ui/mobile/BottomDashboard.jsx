@@ -453,7 +453,12 @@ const PANELS = {
   skills:       { title: 'Life Skills', Component: SkillsPanel },
   encyclopedia: { title: 'Codex',       Component: EncyclopediaPanel },
   guild:        { title: 'Guild',       Component: GuildPanel },
-  leaderboard:  { title: 'Leaderboard', Component: LeaderboardPanel },
+  /* v2.3.3479: the 2026-10-19 UI review -- headed 'Ranks', the More tile's
+     word (v2.3.2038's rule: what you tap and what opens carry one name);
+     "Leaderboard" is too long for a six-across tile.  The Town Hall's row
+     and the profile's button still say Leaderboard: they describe the
+     board, and renaming them is the owner's taste. */
+  leaderboard:  { title: 'Ranks',       Component: LeaderboardPanel },
   clan:         { title: 'Clan',        Component: ClanPanel },
   feedback:     { title: 'Feedback',    Component: FeedbackPanel },
   about:        { title: 'About & privacy', Component: AboutPanel },   /* v2.3.2820: privacy, rules, credits (demo audit) */
