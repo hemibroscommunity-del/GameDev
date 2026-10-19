@@ -1,4 +1,4 @@
-/* ═══ v2.3.3488: THE FORGE'S LADDER -- the game's copy ═══
+/* ═══ v2.3.3493: THE FORGE'S LADDER -- the game's copy ═══
  * The owner's playtest notes at the Blacksmith (2026-10-19): "'wood
  * greatsword' is not an actual weapon in the game.  Make the beginning weapon
  * a copper greatsword (requiring smithing lvl 1)", "Copper 1, iron 5, black
@@ -24,7 +24,7 @@ import { BLACKSMITH_TIERS, getEquipReqLabel, getGearStatReq } from './gameSystem
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 export const FORGE_LADDER = Object.freeze({
-  /* The forge's Smithing level for each blacksmith tier before v2.3.3488:
+  /* The forge's Smithing level for each blacksmith tier before v2.3.3493:
      1 + 5 x its place in the table (wood 1, copper 6, iron 11, black steel 16
      ... worldbreaker 96) -- the worker's FORGE_LADDER.OLD_LEVELS. */
   OLD_LEVELS: Object.freeze(Object.fromEntries(Object.keys(BLACKSMITH_TIERS).map((k, i) => [k, 1 + 5 * i]))),

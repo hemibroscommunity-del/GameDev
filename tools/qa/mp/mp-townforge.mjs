@@ -16,7 +16,7 @@
  */
 import * as H from './harness.mjs';
 
-/* v2.3.3488: the copper greatsword -- four copper bars and 20 gold at
+/* v2.3.3493: the copper greatsword -- four copper bars and 20 gold at
    Smithing 1, nothing asked of Melee (the owner: "'wood greatsword' is not an
    actual weapon in the game.  Make the beginning weapon a copper greatsword
    (requiring smithing lvl 1)"); the wood tier (v2.3.2123: three pine logs and
@@ -69,7 +69,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the forge panel opens', open, { at });
 
   /* The wood tier is the one a fresh character can actually make: Lv1, no
-     stat requirement, 3 logs and 8 gold.  (v2.3.3488: the COPPER greatsword
+     stat requirement, 3 logs and 8 gold.  (v2.3.3493: the COPPER greatsword
      now -- four bars, 20 gold, Smithing 1 -- the wood tier not forged.)
      v2.3.3324: the Blacksmith has had TABS since it was rebuilt (v2.3.2826,
      SmithyPanel.jsx) and opens on Smelt, so "the first enabled button that

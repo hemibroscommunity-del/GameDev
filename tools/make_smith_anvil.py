@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3488: THE SMITH'S ANVIL, THE OWNER'S PAINTED ONE.
+"""v2.3.3493: THE SMITH'S ANVIL, THE OWNER'S PAINTED ONE.
 
 The owner's playtest note: "make a more realistic anvil for the animation when
 the character does smithing work".  The anvil under the smith's hammer was

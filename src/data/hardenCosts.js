@@ -67,7 +67,7 @@ export function hardenIsWood(w, slot) {
   return slot === 'rangedWeapon' || slot === 'staffWeapon';
 }
 
-/** v2.3.3488: the level hardening `w` (in `slot`) asks against
+/** v2.3.3493: the level hardening `w` (in `slot`) asks against
     caps.forgeladder -- the owner: "Hardening should only require the same
     smithing level as it takes to smithing that item tier".  The level that
     MAKES its tier: its own row's minLvl, in the Woodworker's table for a `ww_`

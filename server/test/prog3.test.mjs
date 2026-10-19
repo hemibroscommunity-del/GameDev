@@ -574,7 +574,7 @@ const psA = room.playerState.pa;
 
   // forge_weapon: the stat gate reads the trained skill now.  Tier
   // index 1 (statReq 10 legacy) → prog3 requirement Melee 5.
-  /* v2.3.3488: against the forge's ladder (forgeladder.js) it is the WEAR
+  /* v2.3.3493: against the forge's ladder (forgeladder.js) it is the WEAR
      gate -- what wearing the blade asks (_prog3EquipOk): the copper
      greatsword a new character forges first asks nothing, black steel (tier
      index 3, two rungs past copper) Melee 10.  The old tierIndex x 5 is

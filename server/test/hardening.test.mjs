@@ -12,7 +12,7 @@
  *       ladder (500×4^H); failure applies the temper pity bands
  *       (0-19 → reset 0, 20-49 → −2, 50-99 → −1, 100+ → none) and
  *       increments temper; odds thresholds per rung.
- *   7.  Gates: blacksmith tier access (floor(skill/5); v2.3.3488: the
+ *   7.  Gates: blacksmith tier access (floor(skill/5); v2.3.3493: the
  *       level that makes the tier, forge-ladder.test.mjs), maxed, no-gold,
  *       no-weapon, guard gear lock (no charge while locked).
  *   8.  Ledger written (harden_ledger:<pid>) and the INV-27 global H5
@@ -85,7 +85,7 @@ check('state_sync advertises caps.harden', sync && sync.caps && sync.caps.harden
 check('v2.3.3481: state_sync advertises caps.hardenwoodskill (bows and staffs on Woodworking)', sync && sync.caps && sync.caps.hardenwoodskill === true, sync && sync.caps && sync.caps.hardenwoodskill);
 
 // ── 2. forge mints quality (forced rolls) ──
-/* v2.3.3488: a copper greatsword -- the wood tier is not forged any more and
+/* v2.3.3493: a copper greatsword -- the wood tier is not forged any more and
    the forge makes greatswords only (forgeladder.js; the owner: "'wood
    greatsword' is not an actual weapon in the game") */
 ps.inventory.bar_copper = 99 + 4 * 4;   /* four bars a forge, the 99 kept for §6 */
@@ -213,7 +213,7 @@ ws.sent.length = 0;
 await harden(ws, 'weapon');
 check('maxed rejected', lastHR(ws).error === 'maxed');
 ps.weapon.hardness = 0;
-/* v2.3.3488: the gate is the level that MAKES the tier now (forgeladder.js
+/* v2.3.3493: the gate is the level that MAKES the tier now (forgeladder.js
    _hardenLevelFor): the wood tier asks Smithing 1, so an iron blade (Smithing
    5) is the one refused at 4.  The old 5 x tier is forge-ladder.test's. */
 const woodBlade = ps.weapon;
@@ -312,7 +312,7 @@ check('reaching H5 appends the INV-27 global log', ps.weapon.hardness === 5 && A
 
   /* an iron sword at the real handler: iron bars, by the ladder */
   ps.weapon = { type: 'sword', gearBase: 'iron', tierMult: 1.25, name: 'Iron Sword', quality: 'normal', hardness: 1, temper: 0 };
-  ps.lifeSkills.blacksmithing.level = 15;   // iron needs Smithing 5 (v2.3.3488; tier 3 x 5 = 15 before)
+  ps.lifeSkills.blacksmithing.level = 15;   // iron needs Smithing 5 (v2.3.3493; tier 3 x 5 = 15 before)
   ps.coins = 5000;
   ps.inventory = { bar_copper: 50, bar_iron: 2 };
   ws.sent.length = 0;
@@ -399,7 +399,7 @@ check('reaching H5 appends the INV-27 global log', ps.weapon.hardness === 5 && A
 // required and gold too" (hardenedwood.js) ──
 {
   room._liveFlags = {};
-  ps.lifeSkills.blacksmithing.level = 25;   // a maple staff (tier 5) needed Smithing 25 (v2.3.3488: Woodworking 21, the maple's own level)
+  ps.lifeSkills.blacksmithing.level = 25;   // a maple staff (tier 5) needed Smithing 25 (v2.3.3493: Woodworking 21, the maple's own level)
   /* v2.3.3481: ...and Woodworking 25 since a bow's and a staff's hardening
      asks for the skill that makes them (the owner: "Do woodworking"); §8d */
   ps.lifeSkills.woodworking = { level: 25, xp: 0 };
@@ -467,7 +467,7 @@ check('reaching H5 appends the INV-27 global log', ps.weapon.hardness === 5 && A
 // sword's Blacksmithing -- the owner, asked whether hardening a bow should ask
 // for the Blacksmithing level: "Do woodworking".  The same rule (floor(level /
 // 5) at least the weapon's tier), on the skill that makes the weapon.
-// v2.3.3488: the rule is now the level that MAKES the tier ("Hardening should
+// v2.3.3493: the rule is now the level that MAKES the tier ("Hardening should
 // only require the same smithing level as it takes to smithing that item
 // tier", forgeladder.js) -- a pine bow Woodworking 1, so the bow here is a
 // SOFTWOOD one (Woodworking 6), and the iron sword Smithing 5 ──

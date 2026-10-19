@@ -537,7 +537,7 @@ export function EncyclopediaPanel(props) {
       gap: 4,
       marginBottom: 14
     }
-  }, Object.entries(BLACKSMITH_TIERS).filter(function (e) { return e[1].forge !== false; /* v2.3.3488: the wood tier is not forged (the owner: "'wood greatsword' is not an actual weapon in the game") */ }).map(function (_ref54) {
+  }, Object.entries(BLACKSMITH_TIERS).filter(function (e) { return e[1].forge !== false; /* v2.3.3493: the wood tier is not forged (the owner: "'wood greatsword' is not an actual weapon in the game") */ }).map(function (_ref54) {
     var _ref55 = _slicedToArray(_ref54, 2),
       key = _ref55[0],
       t = _ref55[1];

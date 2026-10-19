@@ -2909,7 +2909,7 @@ function applySquash(sp, sq, rot = 0) {
   sp.scale.set(sp.scale.x * (1 + 0.6 * sq), sp.scale.y * (1 - sq));
 }
 
-/* ═══ v2.3.3488: THE SMITH'S ANVIL IS THE OWNER'S PAINTED ONE ═══
+/* ═══ v2.3.3493: THE SMITH'S ANVIL IS THE OWNER'S PAINTED ONE ═══
    The owner's playtest note: "make a more realistic anvil for the animation
    when the character does smithing work".  It was drawn in code (a block, a
    waist, a horn and a face of flat colour); it is now the painted anvil the
@@ -2920,7 +2920,7 @@ function applySquash(sp, sq, rot = 0) {
    here through _fxLoad, so on the loading screen (the preloading law); about
    108 KB decoded.  Drawn by _updateSmithing. */
 const SMITH_ANVIL = { tex: null };
-_fxLoad('/sprites/fx/smith-anvil.webp?v=2.3.3488').then((tex) => {
+_fxLoad('/sprites/fx/smith-anvil.webp?v=2.3.3493').then((tex) => {
   if (tex && tex.source) SMITH_ANVIL.tex = tex;
 }).catch((err) => console.warn('[smith-anvil] load failed', err));
 /* Where it stands, in the smith effect's own units (x SMITH_SCALE = world px,
@@ -12083,7 +12083,7 @@ export class EffectsRenderer {
        - a burst of sparks and the pick-on-rock clink on every strike frame.
      Drawn on the node-FRONT layer, above the body, exactly where an ore node
      sits when you mine.  Clears the moment S._smithing ends.
-     v2.3.3488: the ANVIL is the owner's painted one (SMITH_ANVIL above; the
+     v2.3.3493: the ANVIL is the owner's painted one (SMITH_ANVIL above; the
      owner: "make a more realistic anvil for the animation when the character
      does smithing work"), standing where the drawn one stood, the hot bar on
      its face.  And nothing is drawn again a frame: the anvil, bar and fire are
@@ -12209,7 +12209,7 @@ export class EffectsRenderer {
             color: i % 3 === 0 ? '#ffffff' : (i % 3 === 1 ? '#ffd27a' : '#ff9a3c'), size: 1.4 });
         }
       }
-      /* v2.3.3488: a hammer on an anvil, not a body blow -- the owner:
+      /* v2.3.3493: a hammer on an anvil, not a body blow -- the owner:
          "Forging sword makes flesh hit sound wrong sound".  It was the
          pickaxe's recording with its click cut off (mine-strike from 0.08):
          a dull body, 40% of its energy under 250 Hz.  Now the sword's own

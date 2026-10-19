@@ -19,7 +19,7 @@
  *   6   the pet house at the start of the Pets page's "Pet House" row;
  *   8   the prize wheel on the Daily Rewards window's free spin row;
  *   9   the treasure map on the empty Journey page.
- * v2.3.3488: and the hammer off the gold "Craft" button of the crafting sheet,
+ * v2.3.3493: and the hammer off the gold "Craft" button of the crafting sheet,
  * for the Blacksmith's Upgrade tab -- the owner's playtest note: "Make the
  * upgrade tab icon different for smithing.  Like a hammer" (it wore the
  * currency strip's gold gem).
@@ -52,7 +52,7 @@ export const OWNER_ICON = Object.freeze({
   petHouse: icon('pet-house', 40, 33),
   prizeWheel: icon('prize-wheel', 34, 37),
   journeyMap: icon('journey-map', 120, 69),
-  smithHammer: icon('smith-hammer', 22, 21, '?v=2.3.3488'),   /* v2.3.3488: the Blacksmith's Upgrade tab */
+  smithHammer: icon('smith-hammer', 22, 21, '?v=2.3.3493'),   /* v2.3.3493: the Blacksmith's Upgrade tab */
 });
 
 /* The quest pins over a townsperson, by the state entityRenderer reads off

@@ -90,7 +90,7 @@ hardened wood, and gold that doubles" below.
   names it: "Need Woodworking Lv5 for this tier". Kill switch
   `hardenwoodskill: false` (Blacksmithing for every weapon, as before);
   `caps.hardenwoodskill` tells the Woodworker's line which to say.
-- **v2.3.3488: the level that MAKES the tier.** The owner: "Hardening should
+- **v2.3.3493: the level that MAKES the tier.** The owner: "Hardening should
   only require the same smithing level as it takes to smithing that item
   tier". Against `caps.forgeladder` the gate is the weapon's own tier row's
   `minLvl` (server/src/forgeladder.js `_hardenLevelFor`, the game's copy

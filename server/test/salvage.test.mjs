@@ -135,14 +135,14 @@ const bars = (k) => Math.floor(inv()[k] || 0);
 }
 
 // ── 3. A sword from four bars ──
-/* v2.3.3488: a GREATSWORD (the game forges nothing else now) at Smithing 1,
+/* v2.3.3493: a GREATSWORD (the game forges nothing else now) at Smithing 1,
    the copper tier's new level (forgeladder.js) */
 {
   setSmith(1);
   ps().coins = 100;
   ps().weapon = null;
   /* the forge's own stat gate (gear.js): a copper blade asks nothing of a
-     trained sword now (v2.3.3488: the wear gate; it asked 5), or power 10 on
+     trained sword now (v2.3.3493: the wear gate; it asked 5), or power 10 on
      a legacy save -- not what this section is about */
   ps().agility = 50; ps().power = 50;
   if (ps().prog3) { ps().prog3.sk = ps().prog3.sk || {}; ps().prog3.sk.sword = { ...(ps().prog3.sk.sword || {}), level: 20 }; }
