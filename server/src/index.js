@@ -4433,7 +4433,15 @@ export class GameRoom {
     const ps = this.playerState[session.id];
     if (!ps) return reject('no-ps');
     if (ps.z !== zone) return reject('wrong-zone', { psZ: ps.z });
-    if (ps.dead) return reject('dead');
+    /* v2.3.3476: `ps.dying` too, the worker's own word (combat.js v2.3.1628,
+       abilities.js).  `ps.dead` alone is the phone's: movement.js writes it
+       from every move, and the move a phone sends as its player_died lands
+       still says alive (the HP-0 player_state comes after).  So a corpse lying
+       on its own death pile asked for it, was given it a second after dying,
+       and the respawn's wipe five seconds later took it out of the bag again:
+       a monster death destroyed the bag's items, the pile on every screen for
+       about a second (docs/specs/item-drop.md "A dead player's pile"). */
+    if (ps.dead || ps.dying) return reject('dead');
     if (ps.disconnected) return reject('disconnected');
     // v2.3.1200: a viaPet pickup requires a server-known active pet --
     // the wider vacuum radius is the pet's feature, not a free upgrade

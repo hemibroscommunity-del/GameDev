@@ -43,6 +43,13 @@ export function updateGroundLootPickup(S, deps) {
               return false;
             }
             if (!loot.isDeathDrop && !isRemnantSkull(loot.skull) && Date.now() - loot.ts > 60000) return false;
+            /* v2.3.3476: a corpse picks nothing up.  Lying on its own death
+               pile it asked for it the moment it landed, the worker said yes
+               (it read the phone's own "alive" flag: server/src/index.js
+               _handleLootPickup, which now asks `dying`) and the respawn's
+               wipe then took the items out of the bag for good.  The pile
+               waits, magnet and all, for the player to walk back to it. */
+            if (S._dying) return true;
             /* v2.3.189: pickup origin 15 px above the player center so the
                trigger zone reads as "around the body" instead of "at the
                feet" (user said the area felt 15 px too low). */
