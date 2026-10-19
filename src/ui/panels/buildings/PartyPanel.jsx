@@ -104,6 +104,10 @@ export function PartyPanel(props) {
      old path caps.arena turns off), so the window names the AP only against
      a worker that says it pays; an older one, or `arenaap: false`, pays none. */
   var arenaPaysAp = !!(stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.arenaap);
+  /* v2.3.3488: ...on a character's FIRST win only (server inbox.js AP_ONCE) --
+     the owner: "I don't want anyone exploiting the achievement points from
+     it" -- which the window says against a worker that says it does */
+  var arenaApFirst = arenaPaysAp && !!stateRef.current._serverCaps.arenaapfirst;
   return React.createElement("div", {
     /* v2.3.1232: LS shared buildings kit -- full-bleed panel surface;
        -20px margin counters the legacy .bt-inspect-card padding */
@@ -235,7 +239,9 @@ export function PartyPanel(props) {
      (`arenaPaysAp`, caps.arenaap); an older worker pays gold alone, and the
      line says the gold alone. */
   "Enter a single elimination tournament of up to 8 fighters. Blind matchups \u2014 any level can face any level. No food or healing allowed. ",
-  arenaPaysAp
+  arenaApFirst
+    ? "Only the final victor earns the Gladiator title and up to 250G for every fighter in the bracket (2,000G for a full 8), plus " + ARENA_CHAMPION_REWARD.ap + " AP for your first win."
+    : arenaPaysAp
     ? "Only the final victor earns the Gladiator title and " + ARENA_CHAMPION_REWARD.ap + " AP, plus up to 250G for every fighter in the bracket (2,000G for a full 8)."
     : "Only the final victor earns the Gladiator title and up to 250G for every fighter in the bracket (2,000G for a full 8)."), /*#__PURE__*/React.createElement("button", {
     onClick: /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee8() {

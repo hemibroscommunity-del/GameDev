@@ -21,6 +21,7 @@
 
 import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills } from './migrations.js';
 import { GEAR_STASH_CAP } from './gearstash.js';
+import { cleanApOnce } from './inbox.js';   /* v2.3.3488: the once-a-character prize marks */
 
 /* v2.3.2523: one bound for the five gear stashes, applied at BOTH the
    save and the echo below.  Handoff rule 3's warning is why it is a
@@ -245,6 +246,19 @@ export const persistenceMethods = {
     ps._regenSaveAt = Date.now();
     ps._regenDirty = false;
     this._pruneBuffs(ps);
+    /* ═══ v2.3.3488: A ONCE-A-CHARACTER PRIZE'S MARK, WITH ITS POINTS ═══
+       inbox.js pays the arena champion's points the first time only, and
+       marks it (`ps._apOnceDirty`).  The mark is its own record (rule 1: no
+       new field in this blob), put here, before the blob's own put and with
+       no await between them, so the mark and the points it paid are one
+       write. */
+    if (ps._apOnceDirty) {
+      ps._apOnceDirty = false;
+      try {
+        const w = this.state.storage.put('aponce:' + playerId, cleanApOnce(ps.apOnce));
+        if (w && typeof w.catch === 'function') w.catch(() => {});
+      } catch (e) {}
+    }
     try {
       await this.state.storage.put('rpg:' + playerId, {
         coins: ps.coins || 0,
@@ -483,6 +497,10 @@ export const persistenceMethods = {
        and the beds were bought with them.  The next open hands out the free
        deed again. */
     try { await this.state.storage.delete('farm:' + pid); } catch (e) { /* best-effort, as above */ }
+    /* v2.3.3488: and the once-a-character prize marks (`aponce:<pid>`,
+       inbox.js AP_ONCE): a restarted character has been paid nothing, and
+       starts again from no points (docs/specs/character-restart.md) */
+    try { await this.state.storage.delete('aponce:' + pid); } catch (e) { /* best-effort, as above */ }
     /* v2.3.3134: today's order board (`farmorders:<pid>`, farmorders.js) is
        KEPT, as the guild claims are.  Its done flags are the day's limit: the
        first cut deleted it here, and one player id could deliver the day's
