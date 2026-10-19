@@ -50,11 +50,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       return { __timeout: label, last };
     })();
-    /* the card's title chip and rarest box, as drawn */
+    /* the card's title chip and rarest box, as drawn -- on the Inspect card
+       (PlayerProfilePanel), which a player reaches from the player card by its
+       portrait (`[data-act="profile"]`, InspectPlayerPanel) */
     const cardOf = (P) => P.page.evaluate(() => {
       const card = document.querySelector('.bt-inspect-card') || document;
-      const t = card.querySelector('.bt-pin-title');
-      const r = card.querySelector('.bt-pin-drop');
+      const t = document.querySelector('.bt-pin-title');
+      const r = document.querySelector('.bt-pin-drop');
       const text = (card.textContent || '');
       return {
         title: t ? { achv: t.getAttribute('data-achv'), text: (t.textContent || '').trim() } : null,
@@ -67,6 +69,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await closeCards(V);
       await V.page.waitForTimeout(300);
       await H.openInspect(V, tId);
+      /* the player card first, as a tap opens it; its portrait opens the
+         Inspect card, where the title and the rarest are */
+      await H.clickAct(V, 'profile').catch(() => null);
       /* the card draws the rarest box once their blob is in */
       for (let i = 0; i < 20; i++) {
         const c = await cardOf(V);
