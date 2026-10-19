@@ -96,8 +96,13 @@ export function BankPanel(props) {
       /* v2.3.2343: the worker owns coins and charges no death penalty, so
          the "10% is lost on death" line promised a loss that never happened
          (the client used to subtract it locally and the echo put it back). */
+      /* v2.3.3479: the 2026-10-19 UI review -- true of an ordinary death, not
+         of No man's land since v2.3.3316: a death there to a player under its
+         rule gives your gold to the killer, and a red skull's death to
+         anything takes it too (nomansland.js _nmlOnDeath: ps.coins = 0
+         whenever the kill is the rule's or the skull is red). */
       React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginBottom: 12 } },
-        "Carried gold stays with you on death."),
+        "Kept when you die, unless a player kills you in No man's land or you die with a red skull."),
       React.createElement("div", { style: LS_MOD }, "Equipped"),
       React.createElement("div", {
         style: { borderRadius: 8, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
