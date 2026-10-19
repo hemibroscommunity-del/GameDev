@@ -1032,6 +1032,15 @@ input{font-family:inherit}
   display:flex;align-items:center;justify-content:center;
   cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
 }
+/* v2.3.3479: the 2026-10-19 UI review -- sideways, the dashboard's ▴ chip
+   (BottomDashboard's landscape dock, bottom left) lay on the left end of an
+   invite's "Open trade", and a tap there opened the menu column instead.
+   While an INVITE is up the dock steps aside, but only at rest, when the ▴ is
+   all it holds (with the column open it is the column's own row).  The DOCK,
+   not the chip alone: a hidden chip would leave the dock's empty box over
+   the button, still taking the tap.  Only the invite: in a live trade the ▴
+   is how you open the bag sideways (TradeWindowPanel `kind`). */
+body:has([data-trade-drawer="invite"]) .bt-land-navdock:has([data-land-fold="min"]){visibility:hidden}
 
 .bt-nospin::-webkit-outer-spin-button,
 .bt-nospin::-webkit-inner-spin-button{-webkit-appearance:none;appearance:none;margin:0}
