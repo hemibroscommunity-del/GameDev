@@ -575,15 +575,11 @@ export const ChatBubble = () => {
                 padding: 0,
               }}
             >
-              {/* drawn, not an emoji -- the mic's reason: one look on every
-                  phone, in the button's own colour */}
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"
-                   stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <circle cx="12" cy="12" r="9" />
-                <circle cx="9" cy="10" r="1.2" fill="currentColor" stroke="none" />
-                <circle cx="15" cy="10" r="1.2" fill="currentColor" stroke="none" />
-                <path d="M8 14.5c1 1.4 2.4 2.1 4 2.1s3-.7 4-2.1" />
-              </svg>
+              {/* v2.3.3484: the owner's own smiley (card 11, T118.1), a
+                  picture, not an emoji -- the mic's reason: one look on every
+                  phone.  It was a brass line smiley drawn here in SVG. */}
+              <img src="/icons/ui/chat-emotes.webp?v=2.3.3484" alt="" aria-hidden="true" draggable={false}
+                width={24} height={24} style={{ display: 'block', width: 24, height: 24, pointerEvents: 'none' }} />
             </button>
           ) : null}
           {SpeechRec ? (

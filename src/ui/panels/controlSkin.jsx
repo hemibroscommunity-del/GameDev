@@ -18,7 +18,7 @@ import { metalIconPath, weaponMaterial } from '../../rendering/traits/materialTi
  *
  * So the look lives HERE, once, and every button wears it: SprintButton,
  * SpecialButton, AbilityButtons, ShieldButton, ElementBurstButton,
- * WeaponSwapButton, JumpButton (v2.3.3017's, JumpIcon below) and the attack
+ * WeaponSwapButton, JumpButton (v2.3.3017's, AbilityFace below) and the attack
  * disc in TouchControls.  Seven files each drawing their own ring is how they
  * came to look like seven different kits (four slate radial gradients, one
  * sprite, one rounded square, one emoji glyph) -- the same reason
@@ -327,21 +327,23 @@ export const RDISC_ICONS = [
      at the farm's bed (desktopControls interactKind) -- the owner: "chat
      bubble for speaking [to NPCs], door for entering door"; drawn in the
      JUMP arrow's white-and-outline style */
-  ['talk', '/ui/controls/talk.webp?v=2.3.3279'],
-  ['door', '/ui/controls/door.webp?v=2.3.3279'],
-  ['sleep', '/ui/controls/sleep.webp?v=2.3.3279'],
+  ['talk', '/ui/controls/talk.webp?v=2.3.3484'],
+  ['door', '/ui/controls/door.webp?v=2.3.3484'],
+  ['sleep', '/ui/controls/sleep.webp?v=2.3.3484'],
   /* v2.3.3136: and at a bed on your farm, its next step (game/farmWalk.js;
      desktopControls interactKind 'farm-<step>') -- the owner: "You dig, you
      water, you fertilize, etc." -- a spade, a sprout, a watering can, a sack
      of compost and a basket, in the same white-and-outline style.
      v2.3.3279: talk, door, sleep and the five farm steps are the owner's own
      painted pictures now (tools/ui/cut-small-icons.py), drawn whole over the
-     disc like the weapon's, not see-through (game.css) */
-  ['farm-dig', '/ui/controls/farm-dig.webp?v=2.3.3279'],
-  ['farm-plant', '/ui/controls/farm-plant.webp?v=2.3.3279'],
-  ['farm-water', '/ui/controls/farm-water.webp?v=2.3.3279'],
-  ['farm-feed', '/ui/controls/farm-feed.webp?v=2.3.3279'],
-  ['farm-harvest', '/ui/controls/farm-harvest.webp?v=2.3.3279'],
+     disc like the weapon's, not see-through (game.css).
+     v2.3.3484: all eight are the ones the owner picked on the icon review's
+     card 11 (tools/ui/cut-owner-icons.py), at a new address */
+  ['farm-dig', '/ui/controls/farm-dig.webp?v=2.3.3484'],
+  ['farm-plant', '/ui/controls/farm-plant.webp?v=2.3.3484'],
+  ['farm-water', '/ui/controls/farm-water.webp?v=2.3.3484'],
+  ['farm-feed', '/ui/controls/farm-feed.webp?v=2.3.3484'],
+  ['farm-harvest', '/ui/controls/farm-harvest.webp?v=2.3.3484'],
   /* v2.3.3105: while the tap ATTACKS, the weapon in your hand -- the owner:
      "when attacking it should show the weapon type depending on what weapon
      is used".  The bag's own pictures (InventoryPanel's thumb: a sword or a
@@ -366,7 +368,9 @@ export const RDISC_ICONS = [
  *
  * The art sits in the icon set's 256 frame with a 12% margin; ABILITY_ART_K
  * draws it that much larger so it fills the button as the SVGs did. */
-const ABILITY_ART_V = '2.3.3279';
+/* v2.3.3484: the Jump, generic Special and Element Burst pictures are the
+   owner's card 11 picks (tools/ui/cut-owner-icons.py), at a new address */
+const ABILITY_ART_V = '2.3.3484';
 export const ABILITY_ART_K = 1.18;
 export function abilityArtUrl(name, grey) {
   return '/ui/controls/abil-' + name + (grey ? '-grey' : '') + '.webp?v=' + ABILITY_ART_V;
@@ -383,7 +387,8 @@ export function abilityArtUrl(name, grey) {
  * grey and the lit states: so the cutter keeps the disc INSIDE the owner's
  * ring, and SpecialFace draws it filling the face inside the game's ring.  A
  * -grey copy for the cooldown and no-mana states, as the others. */
-const SPECIAL_ART_V = '2.3.3331';
+/* v2.3.3484: the sword's and the bow's are the owner's card 11 picks */
+const SPECIAL_ART_V = '2.3.3484';
 export function specialArtUrl(kind, grey) {
   return '/ui/controls/abil-special-' + kind + (grey ? '-grey' : '') + '.webp?v=' + SPECIAL_ART_V;
 }
@@ -402,6 +407,24 @@ export function SpecialFace(props) {
     style: { position: 'relative', display: 'block', width: d, height: d, borderRadius: '50%' },
   }, React.createElement('img', {
     src: specialArtUrl(props.kind, !!props.grey), alt: '', draggable: false, width: d, height: d,
+    style: { display: 'block', width: d, height: d, borderRadius: '50%', pointerEvents: 'none' },
+  }));
+}
+/* ═══ v2.3.3484: A ROUND ABILITY PICTURE AS THE BUTTON'S FACE ═══
+ * The owner's card 11 picks for Jump and the generic Special are round buttons
+ * too, like the special attacks above: a disc in its own ring.  So the cutter
+ * keeps the disc inside that ring, and the face draws it filling the button
+ * inside the game's ring, as SpecialFace -- at abilityArt's 1.18x it would
+ * have covered the ring that carries the cooldown arc.  `data-icon` as
+ * abilityArt's, so "which picture is up" reads the same. */
+export function AbilityFace(props) {
+  var size = props.size;
+  var d = size - 2 * skinRing(size);
+  return React.createElement('span', {
+    className: 'bt-skin-faceart', 'data-icon': props.name, 'data-ability-face': props.name,
+    style: { position: 'relative', display: 'block', width: d, height: d, borderRadius: '50%' },
+  }, React.createElement('img', {
+    src: abilityArtUrl(props.name, !!props.grey), alt: '', draggable: false, width: d, height: d,
     style: { display: 'block', width: d, height: d, borderRadius: '50%', pointerEvents: 'none' },
   }));
 }
@@ -426,11 +449,9 @@ function abilityArt(name, props, under) {
 }
 
 export function TornadoIcon(props) { return abilityArt('whirl', props); }
-export function StarburstIcon(props) { return abilityArt('special', props); }
 /* Shield Bash: the owner's shield striking, burst and all -- the wood shield
    alone stays the Block button beside it, so the two are never one picture. */
 export function BashIcon(props) { return abilityArt('bash', props); }
-export function JumpIcon(props) { return abilityArt('jump', props); }
 /* The burst fires the element of the weapon's gem: the owner's picture is one
    for every element, so a faint ring in the element's colour stays behind it
    (the outer ring of the nova this button drew since v2.3.1734). */

@@ -21,8 +21,17 @@
  *      the sheet's, every metal made from them; card 11's clearer five -- the
  *      orange paw, the party's crown and pin, the auction gavel, the creator's
  *      none sign -- under new names the code points at.
+ *   6. v2.3.3484, card 11 as the owner picked it ("Icon picks: ... T3.3 ...
+ *      T129.1"): every one of the owner's 72 codes is in the cutter's list,
+ *      already in the game, or set aside with its reason; every file the
+ *      cutter wrote is still the one it wrote (its SHA-256 recorded: a re-run
+ *      of process_icon_sheets.py, cut-small-icons.py or another older tool
+ *      fails here), at the size its rule says; the Forge tab's anvil and the
+ *      chat box's smiley are pointed at; Jump and the generic Special drawn
+ *      as faces; the party's crown the owner's T112.2.
  */
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -174,6 +183,70 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   const bt = src('src/ui/BroTown.jsx');
   check('5g the creator\'s None tile is the plain no-entry sign, and the species\' Human and the eyes\' Normal keep the bald head',
     /\(cat === 'species' \|\| cat === 'eyestyle'\) \? '\/ui\/welcome\/cc\/cc-no-hair\.webp\?v=' : '\/ui\/welcome\/cc\/cc-none\.webp\?v='/.test(bt));
+}
+
+/* ── 6. v2.3.3484: card 11, the owner's own picks ── */
+{
+  /* the owner's message, word for word (1b and 2a were #1020's) */
+  const OWNER = ('T3.3, T20.2, T54.4, T61.1, T64.1, T98.3, T103.2, T105.1, T106.1, T112.2, T114.2, T116.1, T124.1, T129.1, '
+    + 'T6.1, T7.2, T9.4, T11.1, T29.1, T30.1, T104.3, T8.3, T19.2, T24.1, T26.1, T31.1, T32.1, T33.1, T36.1, T37.1, T38.2, '
+    + 'T50.2, T51.1, T52.2, T55.2, T59.1, T60.1, T62.1, T63.2, T65.2, T69.1, T69.2, T70.2, T71.2, T72.2, T74.2, T75.2, T76.2, '
+    + 'T77.1, T78.1, T84.3, T85.3, T90.3, T91.3, T92.1, T97.4, T99.2, T100.3, T101.3, T102.1, T107.2, T108.2, T109.1, T111.1, '
+    + 'T113.1, T115.3, T118.1, T121.1, T123.1, T125.1, T127.1, T128.1').split(', ');
+  const spec = JSON.parse(src('tools/ui/owner-picks-card11.json'));
+  const inList = new Set(spec.picks.map((e) => e.code));
+  const accounted = OWNER.filter((c) => inList.has(c) || (spec.done && c in spec.done) || (spec.dropped && c in spec.dropped));
+  const extra = [...inList].filter((c) => OWNER.indexOf(c) < 0);
+  check('6a every one of the owner\'s 72 codes is cut, already in the game (5 from the first cut), or set aside with its reason (T69.1, the same star as T69.2)',
+    OWNER.length === 72 && accounted.length === 72 && extra.length === 0 && Object.keys(spec.done).length === 5 && Object.keys(spec.dropped).join() === 'T69.1',
+    { missing: OWNER.filter((c) => accounted.indexOf(c) < 0), extra });
+
+  const sums = Object.create(null);
+  for (const line of src('tools/ui/owner-picks-card11.sha256').split('\n')) {
+    const m = line.match(/^([0-9a-f]{64})\s+(\S+)$/);
+    if (m) sums[m[2]] = m[1];
+  }
+  const fileOf = (e, grey) => 'public/' + e.name + (grey ? '-grey' : '') + '.' + (e.ext || 'webp');
+  const want = [];
+  for (const e of spec.picks) { want.push([e, fileOf(e)]); if (e.grey) want.push([e, fileOf(e, true)]); }
+  const changed = want.filter(([, f]) => !sums[f] || !existsSync(new URL(f, root))
+    || createHash('sha256').update(readFileSync(new URL(f, root))).digest('hex') !== sums[f]).map(([e, f]) => e.code + ' ' + f);
+  check(`6b all ${want.length} files the cutter wrote are still the owner's picks, byte for byte (another tool writing over one fails here: run tools/ui/cut-owner-icons.py --force --only <code>)`,
+    want.length === 71 && changed.length === 0, changed);
+
+  /* each is the size its rule says (a PNG's from its IHDR) */
+  const size = (f) => {
+    const b = readFileSync(new URL(f, root));
+    if (f.endsWith('.png')) return [b.readUInt32BE(16), b.readUInt32BE(20)];
+    return dims(f.slice('public'.length));
+  };
+  const wrong = [];
+  for (const e of spec.picks) {
+    const [w, h] = size(fileOf(e));
+    const o = e.out;
+    const ok = o.frame ? (w === o.frame[0] && h === o.frame[1])
+      : o.disc ? (w === o.disc && h === o.disc)
+        : o.tight ? Math.max(w, h) === o.tight : false;
+    if (!ok) wrong.push({ code: e.code, file: fileOf(e), w, h, out: o });
+  }
+  check('6c each at its rule\'s size: today\'s canvas (frame), a square disc, or tight to its larger side', wrong.length === 0, wrong);
+
+  const smithy = src('src/ui/panels/buildings/SmithyPanel.jsx'), chat = src('src/ui/mobile/ChatBubble.jsx');
+  check('6d the Forge tab wears the anvil (not the copper sword, an item\'s own picture), the chat box the owner\'s smiley (not the drawn one)',
+    /id: 'forge', label: 'Forge', icon: '\/icons\/ui\/tab-forge\.webp/.test(smithy) && /src="\/icons\/ui\/chat-emotes\.webp/.test(chat)
+    && !/<circle cx="9" cy="10" r="1\.2"/.test(chat) && existsSync(pub('/icons/ui/tab-forge.webp')) && existsSync(pub('/icons/ui/chat-emotes.webp')));
+
+  const cs = src('src/ui/panels/controlSkin.jsx'), sb = src('src/ui/panels/SpecialButton.jsx'), jb = src('src/ui/panels/JumpButton.jsx');
+  check('6e Jump and the generic Special are round pictures drawn as the button\'s face (AbilityFace), at a new address, their greys beside them',
+    /export function AbilityFace\(props\)/.test(cs) && /AbilityFace, \{ size: size, name: 'special', grey: grey \}/.test(sb)
+    && /AbilityFace, \{ size: size, name: 'jump' \}/.test(jb) && /const ABILITY_ART_V = '2\.3\.3484'/.test(cs)
+    && /const SPECIAL_ART_V = '2\.3\.3484'/.test(cs) && !/JumpIcon|StarburstIcon/.test(cs + sb + jb)
+    && ['jump', 'special', 'burst', 'special-sword', 'special-bow'].every((n) => existsSync(pub('/ui/controls/abil-' + n + '-grey.webp'))));
+  const cut = src('tools/ui/cut-owner-icons.py');
+  check('6f the party leader\'s crown is the owner\'s T112.2 (sheet 3\'s), not the first sheet\'s',
+    /name='icons\/ui\/party-crown', src='brotown-rpg-ui-icon-sheet-2\.png', mode='alpha',\s*box=\(1160, 540, 1256, 620\)/.test(cut));
+  const rd = ['talk', 'door', 'sleep', 'farm-dig', 'farm-plant', 'farm-water', 'farm-feed', 'farm-harvest'];
+  check('6g the right stick\'s eight pictures are asked for at a new address', rd.every((n) => cs.indexOf("'/ui/controls/" + n + ".webp?v=2.3.3484'") >= 0));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

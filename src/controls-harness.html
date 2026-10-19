@@ -23,7 +23,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles/game.css';
-import { Skin, TornadoIcon, StarburstIcon, BashIcon, NovaIcon, JumpIcon, PaintedIcon, ICON_URL } from './ui/panels/controlSkin.jsx';
+import { Skin, TornadoIcon, AbilityFace, BashIcon, NovaIcon, PaintedIcon, ICON_URL } from './ui/panels/controlSkin.jsx';
 
 const h = React.createElement;
 const STATES = ['normal', 'pressed', 'cooldown', 'ready', 'disabled'];
@@ -65,10 +65,10 @@ function attackCell(state) {
 
 const ROWS = [
   ['Whirl', 48, 'slate', (s, g) => h(TornadoIcon, { size: Math.round(s * 0.7), grey: g })],
-  ['Spec', 48, 'slate', (s, g) => h(StarburstIcon, { size: Math.round(s * 0.7), grey: g })],
+  ['Spec', 48, 'slate', (s, g) => h(AbilityFace, { size: s, name: 'special', grey: g })],
   ['Block', 45, 'slate', (s, g) => h(PaintedIcon, { src: ICON_URL.shield, size: Math.round(s * 0.62), dim: g, pixelated: true })],
   ['Bash', 48, 'slate', (s, g) => h(BashIcon, { size: Math.round(s * 0.7), grey: g })],
-  ['Jump', 48, 'slate', (s, g) => h(JumpIcon, { size: Math.round(s * 0.62), grey: g })],
+  ['Jump', 48, 'slate', (s, g) => h(AbilityFace, { size: s, name: 'jump', grey: g })],
   ['Sprint', 48, 'slate', (s, g) => h(PaintedIcon, { src: ICON_URL.boot, size: Math.round(s * 0.7), dim: g })],
   ['Burst', 46, 'slate', (s, g) => h(NovaIcon, { size: Math.round(s * 0.62), grey: g, color: '#E8642C' })],
 ];
