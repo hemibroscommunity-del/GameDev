@@ -180,6 +180,10 @@ export const ACE_FLIP_WIN_CHANCE = 0.45;
 export function aceFlipMaxStake(coins) {
   return Math.floor(Math.max(0, Number(coins) || 0) / ACE_FLIP_RISK_MULT);
 }
+/* v2.3.3479: NOT a rule of the game -- nothing reads this (BroTown.jsx only
+   imports it). The worker's weekly jackpot takes no cut: the winner gets the
+   whole pool (server/src/cadence.js), and the Den's line says so now. A cut
+   would be a new rule, the owner's call. */
 export const JACKPOT_HOUSE_CUT = 0.10;
 export const JACKPOT_MIN_DEPOSIT = 50;
 

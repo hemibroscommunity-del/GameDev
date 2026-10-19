@@ -1015,6 +1015,7 @@ Screens: building-gamble, daily-rewards
 - **Small screens:** the window is capped at the screen and only its middle scrolls, so its title and ✕ stay on screen, upright or sideways.
 - **The Den's window (Lantern Slate restyle, v2.3.1232 / v2.3.1235):** its own double-or-nothing wager (40% to double; headed "Wager · Double or Nothing" and called "a separate bet with your own gold" since v2.3.3479, so it is not taken for the spin's 50% double) has a button that reads "Select a wager" until a chip is picked, then "Roll · 10G"; only wager chips you can afford show; the balance is labelled ("Your gold: 75G"), never a bare number; jackpot chips say "Deposit 50G", and "Need 50G" shows in red when none is affordable; one scrolling body with a fade at the bottom, so the stats are reachable on short phones; no emoji in the window's chrome.
 - **The room behind it (v2.3.3258):** the owner's Gambling Den picture is the window's background. Ace, beside the door, keeps his own coin-flip window (see #ace).
+- **The weekly jackpot says what the server does (v2.3.3479):** "Every 50G you put in is one ticket. Each week one ticket wins the whole pot. The house takes nothing." The old line promised a "10% house cut" the server never took and "one random winner" (the draw picks a ticket, so more tickets mean better odds). Under the pot, "Your tickets this week" is the server's count; it was the browser's own tally of deposits, which never started again for a new week.
 
 **Tried before, and changed:**
 - **The daily chest window at login** (until v2.3.3140): called "intrusive". The login used to pay 25-85 gold by streak (v2.3.1149); now it pays nothing.
@@ -1030,7 +1031,7 @@ Screens: building-gamble, daily-rewards
 - Opening the spin before Mayor Bro's first quest.
 
 **Still open:**
-- The Den's jackpot line says "10% house cut", but the cadence spec and the server say the house takes nothing (v1). The sources do not say which is meant.
+- Whether the weekly jackpot should ever take a house cut is the owner's call. Today it takes none (the cadence spec and the server), and since v2.3.3479 the window says so; the line used to say "10% house cut".
 
 Sources: CLAUDE.md, docs/specs/daily-rewards.md, docs/specs/cadence.md, docs/specs/gambling.md, docs/specs/building-rooms.md, docs/specs/reach-every-button.md, src/ui/panels/buildings/DailySpin.jsx, src/ui/panels/buildings/GamblePanel.jsx, src/ui/mobile/DailyRewardsWindow.jsx, src/ui/mobile/dash/DailyRewardsCard.jsx, tools/qa/ui-review/states.mjs
 
