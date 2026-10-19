@@ -1,4 +1,4 @@
-/* ═══ v2.3.3484: ACHIEVEMENTS -- POINTS FOR COMPLETING THE GAME ═══
+/* ═══ v2.3.3485: ACHIEVEMENTS -- POINTS FOR COMPLETING THE GAME ═══
  *
  * The owner, 2026-10-19: "Achievement points are something I'd like in the
  * game. You get it by completing the game. Some of them are through super
@@ -150,7 +150,7 @@ export const ACHV = Object.freeze({
   DUNGEONS: Object.freeze(Object.keys(WHEEL_DUNGEON.LANDS)),
   /* a count stops here: never reached, never unbounded in storage */
   N_MAX: 9999999,
-  /* v2.3.3484: the card's "rarest", rarest first: by tier (super-rare, the
+  /* v2.3.3485: the card's "rarest", rarest first: by tier (super-rare, the
      arena, rare, common), and in a tier by the worker's own odds -- H5 is
      five successes in a row, ~1 in 2.5 million runs (HARDEN.ODDS 80/20/5/
      1/0.5%: a failure with under 20 temper resets to H0, and a success
@@ -199,7 +199,7 @@ export function normalizeAchv(raw) {
     if (src.dg && typeof src.dg === 'object' && has(src.dg, land) && src.dg[land]) dg[land] = 1;
   }
   const rec = { v: ACHV.V, got, n, dg };
-  /* v2.3.3484: the chosen title, kept only while it is one you have */
+  /* v2.3.3485: the chosen title, kept only while it is one you have */
   if (typeof src.t === 'string' && has(got, src.t)) rec.t = src.t;
   return { rec, locked: false };
 }
@@ -273,7 +273,7 @@ export const achievementMethods = {
     const payload = (!book || book.locked || !book.rec)
       ? { unavailable: true }
       : { ...plain(book.rec), ap: Math.max(0, Math.floor(Number(ps && ps.achievementPoints) || 0)),
-          /* v2.3.3484: the card's rarest, worked out here so the page never
+          /* v2.3.3485: the card's rarest, worked out here so the page never
              keeps its own copy of the order */
           ...(rarestOf(book.rec) ? { rarest: rarestOf(book.rec) } : {}), ...(extra || {}) };
     try { ws.send(JSON.stringify({ type: 'achv_state', payload })); } catch (e) {}
@@ -481,7 +481,7 @@ export const achievementMethods = {
     const ps = this.playerState && this.playerState[pid];
     if (!ps) return;
     const rd = { ...data.rpgData, ap: Math.max(0, Math.floor(Number(ps.achievementPoints) || 0)) };
-    /* v2.3.3484: the title and the rarest are the record's, never the
+    /* v2.3.3485: the title and the rarest are the record's, never the
        page's: a claim is taken off, and an unreadable record shows neither */
     delete rd.title;
     delete rd.rarest;
@@ -493,7 +493,7 @@ export const achievementMethods = {
     data.rpgData = rd;
   },
 
-  /* ═══ THE TITLE (v2.3.3484: `achv_title {id}`, index.js's router) ═══ an
+  /* ═══ THE TITLE (v2.3.3485: `achv_title {id}`, index.js's router) ═══ an
      achievement you have, or null (or '') to take it off.  The same title
      again writes nothing; a change is one row, PACED -- past PACE.ACHVT's
      burst it is refused, never held (a tap must not queue a write behind

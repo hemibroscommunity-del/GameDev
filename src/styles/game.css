@@ -1660,7 +1660,7 @@ body:has(.bt-pcard) [data-coach]{display:none}
 .bt-pin-drop-art svg{display:block;width:50px;height:50px}
 .bt-pin-drop-r{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#FF9C6B}
 .bt-pin-drop-n{font-size:12.5px;line-height:1.2;color:#FFE6CF}
-/* v2.3.3484: the box is the rarest ACHIEVEMENT, a button to the page, in its
+/* v2.3.3485: the box is the rarest ACHIEVEMENT, a button to the page, in its
    tier's colours (the armour grades': rare blue, the arena orange, super-rare
    a rainbow); the title chip a button too, keeping the mockup's gold */
 button.bt-pin-drop,button.bt-pin-title{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -7124,7 +7124,7 @@ html[data-orient="landscape"] .bt-zone-banner.is-scene{--zb-scene-w:calc(var(--z
   [data-new-monster]{animation:none!important}
 }
 
-/* ═══ v2.3.3484: THE ACHIEVEMENT BANNER (src/ui/panels/AchievementBanner.jsx) ═══
+/* ═══ v2.3.3485: THE ACHIEVEMENT BANNER (src/ui/panels/AchievementBanner.jsx) ═══
    A rare, arena or super-rare achievement's moment, about three seconds.  Its
    layer is `position:fixed; inset:0` OUTSIDE the world's wrap, so it is the
    window on a phone and #root's column on a computer (contain:paint); the

@@ -527,7 +527,7 @@ export const STATES = [
   more('pets', 'Pets', 'Your pets: the ones you caught, the one out with you, the journal of kinds.'),
   more('leaderboard', 'Ranks (leaderboard)', 'The leaderboard.'),
   more('social', 'Friends', 'Friends: your friends list and messages.'),
-  /* v2.3.3484: Journey's tile is Achievements while the server grants them
+  /* v2.3.3485: Journey's tile is Achievements while the server grants them
      (the review's own worker does); the Journey page stays the fallback.
      Two common ones are earned first by the owner's lever (/dev/achv: no
      points, a common one a chat line and no banner, so nothing covers the

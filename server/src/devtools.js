@@ -596,7 +596,7 @@ export const devToolsMethods = {
     else if (path === '/dev/farmripe') result = await this._devFarmRipe(playerId);   /* v2.3.3127 */
     else if (path === '/dev/trapping') result = this._devTrapping(playerId, body);   /* v2.3.3120 */
     else if (path === '/dev/codex') result = this._codexDevSet(playerId, body);   /* v2.3.3209: {kind | all, n, n2} (codex.js) */
-    else if (path === '/dev/achv') result = this._achvDev(playerId, body);   /* v2.3.3484: {id | all | clear}, no points (achievements.js) */
+    else if (path === '/dev/achv') result = this._achvDev(playerId, body);   /* v2.3.3485: {id | all | clear}, no points (achievements.js) */
     else if (path === '/dev/killroll') result = this._killRollDev(playerId, body);   /* v2.3.3209: {next, kill} -- the next kill's roll (killroll.js) */
     else if (path === '/dev/lifeskill') result = this._devLifeSkill(playerId, body);   /* v2.3.3229: {skill | 'hits', level} -- the hit ladder at any level */
     else if (path === '/dev/combat') result = this._devCombatLevel(playerId, body);   /* v2.3.3313: {skill | 'all', level} -- a combat level (the alliance counts level 5+) */

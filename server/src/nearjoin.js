@@ -84,7 +84,7 @@ export const NEAR_JOIN = Object.freeze({
      clan window's other clans, the leaderboard's online tab */
   LIST_RPG_KEYS: Object.freeze(['clanTag', 'clanName', 'clanColor1',
     'lifeTotal', 'ap', 'kills', 'dungeons', 'goldEarned', 'playtime',
-    /* v2.3.3484: the card's title and rarest achievement (ids, the worker's:
+    /* v2.3.3485: the card's title and rarest achievement (ids, the worker's:
        achievements.js _achvStamp) -- a far player's card shows them too */
     'title', 'rarest']),
 });

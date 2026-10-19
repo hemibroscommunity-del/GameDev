@@ -613,7 +613,7 @@ export const arenaMethods = {
     const t = this._arena;
     if (!t || t.champion) return;
     const { prize, topUp } = this._arenaPrize(t.players.length, Date.now());
-    /* v2.3.3481: the champion's 500 AP.  v2.3.3484: ONCE A CHARACTER -- the
+    /* v2.3.3481: the champion's 500 AP.  v2.3.3485: ONCE A CHARACTER -- the
        owner's "Go recommended" (achievements.js decision 2: a second account in
        a two-player bracket made 500 every few minutes): the points are the
        Gladiator achievement's, sent by the mail below, and a later crown pays
@@ -637,7 +637,7 @@ export const arenaMethods = {
       try {
         if (house) await this.state.storage.put('arena_house', house);
         await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: { amount: prize }, note: 'Gladiator Arena champion' });
-        /* v2.3.3484: and the Gladiator achievement, its own credit (inbox.js
+        /* v2.3.3485: and the Gladiator achievement, its own credit (inbox.js
            `achv`): it stays queued until the champion's achievements record is
            loaded, while the gold above never waits on it */
         if (apOn) await this._creditPlayer(champion.playerId, { opId: 'arenaachv:' + tid, source: 'arena', kind: 'achv', payload: { id: 'gladiator' }, note: 'Gladiator Arena champion' });

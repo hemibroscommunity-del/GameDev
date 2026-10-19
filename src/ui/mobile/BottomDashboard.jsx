@@ -52,7 +52,7 @@ import { MapPanel }          from './dash/MapPanel.jsx';
 import { SocialPanel }       from './dash/SocialPanel.jsx';
 import { MorePanel }         from './dash/MorePanel.jsx';
 import { PetsPanel }         from './dash/PetsPanel.jsx'; /* v2.3.3120 */
-import { AchievementsPanel } from './dash/AchievementsPanel.jsx'; /* v2.3.3484 */
+import { AchievementsPanel } from './dash/AchievementsPanel.jsx'; /* v2.3.3485 */
 import { StatsPanel }        from './dash/StatsPanel.jsx';
 import { SkillsPanel }       from './dash/SkillsPanel.jsx';
 import { EncyclopediaPanel } from './dash/EncyclopediaPanel.jsx';
@@ -431,10 +431,10 @@ const PANELS = {
      deeper toolbar destination that opens the full item surface. */
   inventory:    { title: 'Inventory',   Component: InventoryPanel },
   self:         { title: 'Self',        Component: SelfPanel },
-  /* v2.3.3484: kept for a stale drill id and a worker without
+  /* v2.3.3485: kept for a stale drill id and a worker without
      caps.achievements, where More's tile is still Journey */
   journey:      { title: 'Journey',     Component: JourneyPanel },
-  /* v2.3.3484: the Achievements page (dash/AchievementsPanel.jsx): More's
+  /* v2.3.3485: the Achievements page (dash/AchievementsPanel.jsx): More's
      Journey tile against a worker that grants them (the owner's decision 6),
      and your AP number on Life Skills */
   achievements: { title: 'Achievements', Component: AchievementsPanel },

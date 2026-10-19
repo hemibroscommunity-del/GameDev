@@ -18,7 +18,7 @@ Each of these is drawn in code, borrowed from somewhere else, or missing today. 
 5. **The Farmhouse and the Dungeon Workshop** (2 chats): their prompts are in `docs/art/FARM-ART-PROMPTS.md`.
 6. **Small icons, sheet 5, and the spin wheel** (2 chats).
 7. ~~**The ore veins, one a tier**~~: done in v2.3.3345 from your picture, with the trees (below, "Trees and ore, one a tier").
-8. **Achievement badges** (3 chats, v2.3.3484): a badge for each of the 23 achievements on two sheets, then the four tiers' frames (below, "Achievements").
+8. **Achievement badges** (3 chats, v2.3.3485): a badge for each of the 23 achievements on two sheets, then the four tiers' frames (below, "Achievements").
 
 Not on the list unless you want them: each land's levels 21-40 monsters (recoloured today; the monster prompts make them), the Gem Works' inside with two stations, and the four lands' music (below).
 
@@ -904,7 +904,7 @@ Style: exactly the attached icons: chunky pixel art with a bold dark outline, a 
 No words, numbers, frames or shadows. Background: transparent, like the attached icons.
 ```
 
-## Achievements (v2.3.3484)
+## Achievements (v2.3.3485)
 
 The 23 achievements (docs/specs/achievements.md) borrow pictures the game already has: the kills record's sword and skull for First Blood, the Codex's icon for two of them, the pet icon for three, the melee icon for three. Each needs a badge of its own, and the tiers a frame each.
 

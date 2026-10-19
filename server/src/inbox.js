@@ -338,7 +338,7 @@ export const inboxMethods = {
          the same apply as the gold, so the points are paid exactly when the
          gold is: once, live or from the mail at the next join.  Only a
          server-made credit ever carries `ap` (no client message builds one).
-         v2.3.3484: no credit is made with it any more -- the arena's points
+         v2.3.3485: no credit is made with it any more -- the arena's points
          are the Gladiator achievement's (`achv` below) -- but one waiting in
          a mailbox from v2.3.3481 is an arena crown: it goes through that
          achievement, so it pays once a character like a new one (and its
@@ -350,7 +350,7 @@ export const inboxMethods = {
       }
       return true;
     }
-    /* ═══ v2.3.3484: AN ACHIEVEMENT BY THE MAIL (achievements.js) ═══
+    /* ═══ v2.3.3485: AN ACHIEVEMENT BY THE MAIL (achievements.js) ═══
        The arena's crown (gladiator.js).  FALSE -- the entry STAYS QUEUED --
        while the player's achievements record is not loaded or is locked, the
        pet's rule below: whether the points are owed is that record's to say.

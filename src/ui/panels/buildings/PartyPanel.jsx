@@ -104,7 +104,7 @@ export function PartyPanel(props) {
      old path caps.arena turns off), so the window names the AP only against
      a worker that says it pays; an older one, or `arenaap: false`, pays none. */
   var arenaPaysAp = !!(stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.arenaap);
-  /* v2.3.3484: and since achievements (server achievements.js, the owner's
+  /* v2.3.3485: and since achievements (server achievements.js, the owner's
      decision 2) the 500 are the GLADIATOR ACHIEVEMENT's, paid the FIRST time
      you win; a later crown pays its gold and counts on the achievement's row.
      `achvCaps` is the worker's word on achievements: true (the first win
@@ -243,7 +243,7 @@ export function PartyPanel(props) {
      (`arenaPaysAp`, caps.arenaap); an older worker pays gold alone, and the
      line says the gold alone. */
   "Enter a single elimination tournament of up to 8 fighters. Blind matchups \u2014 any level can face any level. No food or healing allowed. ",
-  /* v2.3.3484: against a worker with achievements the AP are the first
+  /* v2.3.3485: against a worker with achievements the AP are the first
      win's (achvCaps above); the gold and the title every win */
   arenaPaysAp && achvCaps === true
     ? "Only the final victor earns the Gladiator title and up to 250G for every fighter in the bracket (2,000G for a full 8). Your first win also earns the Gladiator achievement and its " + ARENA_CHAMPION_REWARD.ap + " AP; later wins pay the gold."
@@ -761,7 +761,7 @@ export function PartyPanel(props) {
      (caps.arenaap).  A record without it was paid gold alone -- an older
      worker, or `arenaap: false` -- and the box said "+500AP" for points
      nobody was given, so it names none.
-     v2.3.3484: and since achievements a crown pays them only the first time
+     v2.3.3485: and since achievements a crown pays them only the first time
      (the Gladiator achievement): the worker sets `champion.ap` only on a
      crown that pays them (achievements.js _achvWouldPay), so a second
      crown's box says the gold and the title alone. */

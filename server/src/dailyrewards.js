@@ -666,7 +666,7 @@ export const dailyRewardsMethods = {
       const pot = sp.pot;
       news = { kind: 'spin', act, k: sp.k, pot, paid: await this._spinPay(pid, rec, null) };
     }
-    /* v2.3.3484: Breaking the House (achievements.js) -- the pot doubled to the
+    /* v2.3.3485: Breaking the House (achievements.js) -- the pot doubled to the
        house limit and paid; the grant saves its own points */
     if (news && news.top) {
       try { if (this._achvOnSpinTop && this.playerState[pid]) this._achvOnSpinTop(pid, this.playerState[pid]); } catch (e) { /* never break a spin */ }
