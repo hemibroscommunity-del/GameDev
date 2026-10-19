@@ -159,7 +159,13 @@ export function DuelRequestPanel(props) {
       color: '#B6C1BE',
       marginBottom: 10
     }
-  }, "Duels are consensual. No reputation penalty. Loser pays wager (if any). No item loss."), /*#__PURE__*/React.createElement("div", {
+  }, /* v2.3.3479: the 2026-10-19 UI review -- the line spoke of a wager on
+       every challenge, and a challenge from a player's card has none (it
+       sends 0), so every player read about a stake that did not exist.  It
+       says so now, and names the wager only when the line above shows one.
+       The promises are the server's (v2.3.1121): consensual, no reputation
+       penalty, no item loss. */
+  duelRequest.wager > 0 ? "Duels are consensual. No reputation penalty. The loser pays the wager. No item loss." : "Duels are consensual. No wager, no item loss, no reputation penalty."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8
