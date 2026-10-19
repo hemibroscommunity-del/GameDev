@@ -112,7 +112,9 @@ async function body({ P, wsPort, rec, errors }) {
   await P.page.waitForFunction(() => { const q = (window._gameState.current.rpg || {})._quests || {}; return q.tut_1 === 'turnedIn'; }, null, { timeout: 8000 }).catch(() => {});
   await H.closeNpcDialogue(P).catch(() => {});
   await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 60 });
-  await H.grant(wsPort, me, 'item', { invKey: 'wood_pine_log', count: 3 });
+  /* v2.3.3488: no pine logs -- they were the wood tier's three, and a copper
+     greatsword is forged from the bars; three left over made the Harden tab's
+     twelve-log count read fifteen */
   await H.grant(wsPort, me, 'gold', { amount: 30000 });
   await P.page.waitForFunction(() => { const R = window._gameState.current.rpg || {}; return ((R.inventory || {}).ore_copper_ore || 0) >= 60 && (R.coins || 0) >= 30000; }, null, { timeout: 8000 }).catch(() => {});
 
