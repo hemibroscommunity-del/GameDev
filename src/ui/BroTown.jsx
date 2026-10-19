@@ -13080,7 +13080,11 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       position: 'absolute',
       left: '50%',
-      top: '26%',
+      /* v2.3.3479: the 2026-10-19 UI review -- never higher than 150 px.  The
+         plate is placed by its MIDDLE, and on a sideways phone (390 px tall)
+         26% put its top under the 42 px top bar: "WELCOME" was cut in half.
+         Upright and on a computer 26% is already lower, so nothing moves. */
+      top: 'max(26%, 150px)',
       /* v2.3.1816: the fade starts 500ms before THIS banner's own hold
          ends — a fixed 1700ms here would have the long banners fade out and
          then sit invisible for two more seconds. */
@@ -13471,7 +13475,11 @@ export var BroTown = function BroTown(_ref0) {
       var _st = null;
       try { _st = DATA.questSteps(q, rpgState, stateRef.current); } catch (e) { _st = null; }
       var _cur = _st && _st.find(function (x) { return x.current; });
-      return _cur ? 'Next: ' + _cur.label : q.desc;
+      /* v2.3.3479: the 2026-10-19 UI review -- and how many you hold, " (2/4)"
+         (gameSystems questCountText), from the LIVE rpg that `done` above
+         reads, so the count and the green check agree. */
+      return _cur ? 'Next: ' + _cur.label
+        : q.desc + DATA.questCountText(q, (stateRef.current && stateRef.current.rpg) || rpgState);
     }()));
   }(), null /* v2.3.1333: floating zone label retired — the zone name lives in the ZoneHeader rail (GameApp) */, function (_stateRef$current37, _ZONES$nearest$zone) {
     var dd = (_stateRef$current37 = stateRef.current) === null || _stateRef$current37 === void 0 ? void 0 : _stateRef$current37._deathDrops;

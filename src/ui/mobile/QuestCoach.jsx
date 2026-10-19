@@ -474,7 +474,10 @@ const LESSONS = [
        tools/qa/mp/mp-ctltut.mjs; noted here because this is where it was
        found, and because the dead names are still tempting.) */
     anchors: [
-      { sel: '[data-tut="coach-gear"]', body: 'Tap it, then Equip.' },
+      /* v2.3.3479: the 2026-10-19 UI review -- "Tap it" named one item while
+         the first quest's sword AND shield both glow (gearFlash.js), and this
+         lesson ends only when a weapon and a shield are both worn: "each". */
+      { sel: '[data-tut="coach-gear"]', body: 'Tap each glowing item, then Equip.' },
       /* ═══ v2.3.2495: THE FALLBACK POINTED AT A BUTTON THAT NO LONGER EXISTS ═══
          `.bt-navrail [aria-label="Bag"]` has matched nothing since v2.3.1654
          took Bag out of the rail (the rail is Dashboard / Character / Quests /
