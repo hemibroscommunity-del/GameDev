@@ -29,6 +29,10 @@ export const AccountKeyCard = () => {
     );
   }
 
+  /* v2.3.3479: an eight-word key's field is kept for Copy's fallback but not
+     shown (the row below says why) */
+  const hideField = isNewKey(phrase);
+
   const copy = () => {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -104,13 +108,30 @@ export const AccountKeyCard = () => {
           ))}
         </ol>
       )}
-      <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
+      {/* ═══ v2.3.3479: AN EIGHT-WORD KEY IS COPIED, NOT READ OFF A FIELD (the 2026-10-19 UI review) ═══
+          The words above already show the key; beside them the field showed
+          only the joined key's start ("slept-hash-", sideways), which looked
+          like a key cut short.  It cannot simply go: it is what Copy selects
+          when the clipboard refuses (selectFallback), and mp-loginkey reads
+          it.  So for a new key it stays, out of sight -- over the row, see-
+          through, no pointer, no tab stop, still 16 px (smaller, and iPhone
+          Safari zooms the page when the fallback focuses it) -- and Copy
+          takes the row and says what it copies.  An old key's field and
+          Copy are as they were (its one line is the only place it shows).
+          The cost: no long-press on the joined key; the clipboard covers
+          iPhone Safari over HTTPS. */}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', position: 'relative' }}>
         <input
           ref={inputRef}
           readOnly
           value={phrase}
+          tabIndex={hideField ? -1 : undefined}
           onFocus={(e) => { try { e.target.select(); } catch (err) {} }}
-          style={{
+          style={hideField ? {
+            position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+            opacity: 0, pointerEvents: 'none',
+            fontSize: 16, border: 0, padding: 0, margin: 0,
+          } : {
             flex: 1, minWidth: 0,
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
             fontSize: 16, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
@@ -126,13 +147,14 @@ export const AccountKeyCard = () => {
           onClick={copy}
           className="button-secondary"
           style={{
-            flexShrink: 0, minWidth: 74, minHeight: 44,
+            ...(hideField ? { flex: 1 } : { flexShrink: 0 }),
+            minWidth: 74, minHeight: 44,
             color: copied ? '#55B98A' : 'var(--ui-text)',
             fontSize: 15,
             padding: '0 12px',
           }}
         >
-          {copied ? 'Copied!' : 'Copy'}
+          {copied ? 'Copied!' : hideField ? 'Copy Login Key' : 'Copy'}
         </button>
       </div>
       <div style={{ fontSize: 12, color: 'var(--ui-text-secondary)', marginTop: 8, lineHeight: 1.4 }}>
