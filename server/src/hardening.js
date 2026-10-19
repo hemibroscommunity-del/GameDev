@@ -186,6 +186,13 @@ export const hardeningMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'hardenmats') && !f.hardenmats);
   },
 
+  /* v2.3.3478: `hardenwoodskill: false` in liveflags gates bows and staffs
+     on Blacksmithing again, as before (see _handleHardenWeapon). */
+  _hardenWoodSkillOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'hardenwoodskill') && !f.hardenwoodskill);
+  },
+
   _hardenSend(playerId, payload) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
@@ -205,19 +212,29 @@ export const hardeningMethods = {
     if (!w) return err('no-weapon', 'Nothing equipped in that slot');
     const hardness = (typeof w.hardness === 'number') ? Math.max(0, Math.min(HARDEN.MAX, Math.floor(w.hardness))) : 0;
     if (hardness >= HARDEN.MAX) return err('maxed', 'Already at maximum hardness');
-    // Access gate: floor(blacksmithing / 5) >= the weapon's material
+    // Access gate: floor(skill / 5) >= the weapon's material
     // tier index.  Skill never changes the odds (§4.6c).
-    const smithLvl = (ps.lifeSkills && ps.lifeSkills.blacksmithing && ps.lifeSkills.blacksmithing.level) || 1;
+    /* v2.3.3478: the skill is the one that MAKES the weapon -- a bow or a
+       staff asks for Woodworking, a sword Blacksmithing.  The owner, asked
+       whether hardening a bow should ask for the Blacksmithing level: "Do
+       woodworking" (2026-10-19).  The same rule and numbers as a sword's on
+       the Woodworking ladder its tier comes from (_weaponTierIndex reads a
+       ww_ weapon's tier off WOODWORKING_TIERS).  `hardenwoodskill: false` in
+       liveflags puts every weapon back on Blacksmithing (_hardenWoodSkillOff)
+       and un-advertises caps.hardenwoodskill, so the game's line says which. */
+    const wood = hardenIsWood(w, slot);
+    const byWood = wood && !this._hardenWoodSkillOff();
+    const skillKey = byWood ? 'woodworking' : 'blacksmithing';
+    const smithLvl = (ps.lifeSkills && ps.lifeSkills[skillKey] && ps.lifeSkills[skillKey].level) || 1;
     const tierIdx = this._weaponTierIndex(w);
     if (Math.floor(smithLvl / 5) < tierIdx) {
-      return err('skill-gate', 'Need Blacksmithing Lv' + (tierIdx * 5) + ' for this tier');
+      return err('skill-gate', 'Need ' + (byWood ? 'Woodworking' : 'Blacksmithing') + ' Lv' + (tierIdx * 5) + ' for this tier');
     }
     /* v2.3.3139: the owner's ladder -- doubling gold, and as many of the
        weapon's material as the level the attempt reaches: its metal's bars,
        or a bow's or a staff's own hardened wood.  Wood only while hardened
        wood can be made (`hardenedwood: false` puts bows and staffs back on
        gold alone, so nothing asks for a material no one can make). */
-    const wood = hardenIsWood(w, slot);
     const matsOn = !this._hardenMatsOff() && !(wood && this._hardenedWoodOff());
     const cost = hardenGoldFor(hardness, !matsOn);
     const material = matsOn ? hardenMaterialFor(tierIdx, wood) : null;

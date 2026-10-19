@@ -333,6 +333,13 @@ export const inboxMethods = {
     const p = entry.payload || {};
     if (entry.kind === 'gold') {
       ps.coins = Math.max(0, (ps.coins || 0) + Math.max(0, Math.floor(p.amount || 0)));
+      /* v2.3.3478: a prize may carry ACHIEVEMENT POINTS with its gold (the
+         arena's champion, gladiator.js ARENA.CHAMPION_AP) -- added here, in
+         the same apply as the gold, so the points are paid exactly when the
+         gold is: once, live or from the mail at the next join.  Only a
+         server-made credit ever carries `ap` (no client message builds one). */
+      const ap = Math.max(0, Math.floor(Number(p.ap) || 0));
+      if (ap) ps.achievementPoints = (ps.achievementPoints || 0) + ap;
       return true;
     }
     if (entry.kind === 'item') {

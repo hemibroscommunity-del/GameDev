@@ -58,6 +58,15 @@ export const ARENA = {
      bound bounds what they can make. */
   PRIZE_PER_ENTRANT: 250,
   HOUSE_GOLD_PER_HOUR: 3600,
+  /* v2.3.3478: the champion's ACHIEVEMENT POINTS.  The arena's window has
+     always promised "the Gladiator title and 500 AP", and nothing on the
+     worker paid them (the page's own grant was the old path caps.arena turns
+     off).  The owner: "Achievement points are something I'd like in the game
+     ... an arena winner should be included" (2026-10-19).  Paid with the
+     champion's gold, in the same credit (one write: inbox.js adds a gold
+     credit's `ap`), whatever the bracket's size; `arenaap: false` in
+     liveflags pays none and un-advertises caps.arenaap (_arenaApOff). */
+  CHAMPION_AP: 500,
   MAX_BRACKET: 8,          // design review: 16 never fills at prototype population
   GATHER_MS: 60000,        // start timer from the first join
   MATCH_MS: 180000,        // per-match shot-clock (duel.expiresAt)
@@ -81,6 +90,13 @@ export const ARENA = {
 };
 
 export const arenaMethods = {
+  /* v2.3.3478: `arenaap: false` in liveflags -- the champion is paid gold
+     alone, as before (ARENA.CHAMPION_AP). */
+  _arenaApOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arenaap') && !f.arenaap);
+  },
+
   /* HTTP surface -- the worker routes /api/arena/* here (old DO
    * retired from routing).  Response shapes mirror arena.js so the
    * polling client renders unchanged. */
@@ -597,7 +613,9 @@ export const arenaMethods = {
     const t = this._arena;
     if (!t || t.champion) return;
     const { prize, topUp } = this._arenaPrize(t.players.length, Date.now());
+    const ap = this._arenaApOff() ? 0 : ARENA.CHAMPION_AP;   /* v2.3.3478 */
     t.champion = { playerId: champion.playerId, playerName: champion.playerName, prize };
+    if (ap) t.champion.ap = ap;
     t.status = 'complete';
     this.eventBuffer.push({ type: 'arena_tournament_complete', payload: { tid: t.id, champion: t.champion } });
     const tid = t.id;
@@ -610,7 +628,9 @@ export const arenaMethods = {
     (async () => {
       try {
         if (house) await this.state.storage.put('arena_house', house);
-        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: { amount: prize }, note: 'Gladiator Arena champion' });
+        /* v2.3.3478: the champion's AP ride the gold's credit -- one stamp,
+           one write, the mail's too when the champion is away */
+        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: ap ? { amount: prize, ap } : { amount: prize }, note: 'Gladiator Arena champion' });
         for (const pid of entrants) await this.state.storage.delete('arena_entry:' + tid + ':' + pid);
       } catch (e) { /* sweep repairs */ }
     })();

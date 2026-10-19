@@ -164,6 +164,12 @@ await new Promise((r) => setTimeout(r, 25));
 check('kill resolves the match server-side', room._arena.champion && room._arena.champion.playerId === P('a'), room._arena.champion);
 check('champion paid via mail/escrow', room.playerState[P('a')].coins === 900 + 2 * ARENA.PRIZE_PER_ENTRANT, room.playerState[P('a')].coins);
 check('v2.3.3178: a 2-gladiator bracket pays 500, not 2,000 for 200 of entries', room.playerState[P('a')].coins === 900 + 500, room.playerState[P('a')].coins);
+/* v2.3.3478: and the champion's 500 achievement points, with the gold (the
+   owner: "an arena winner should be included") -- on the crown and its event */
+check('v2.3.3478: the champion is paid ARENA.CHAMPION_AP achievement points with the gold',
+  ARENA.CHAMPION_AP === 500 && room.playerState[P('a')].achievementPoints === ARENA.CHAMPION_AP, room.playerState[P('a')].achievementPoints);
+check('v2.3.3478: ...the crown and its event say so (champion.ap)',
+  room._arena.champion.ap === 500 && room.eventBuffer.some((e) => e.type === 'arena_tournament_complete' && e.payload.champion && e.payload.champion.ap === 500), room._arena.champion);
 check('entry records cleaned after the pot', ![...state._store.keys()].some((k) => k.startsWith('arena_entry:' + tid2 + ':')));
 check('completion + result events emitted', room.eventBuffer.some((e) => e.type === 'arena_match_result') && room.eventBuffer.some((e) => e.type === 'arena_tournament_complete'));
 check('healing-gate flags cleared', !room.playerState[P('a')]._arenaMatch);
@@ -231,6 +237,24 @@ room._arena = null; room._arenaClearAt = 0;
   const wire4b = room._arenaWire();
   check('the poll\'s champion carries the prize paid', wire4b && wire4b.champion && wire4b.champion.prize === 250, wire4b && wire4b.champion);
   check('...and so does the crown\'s event', room.eventBuffer.some((e) => e.type === 'arena_tournament_complete' && e.payload.champion && e.payload.champion.prize === 250));
+  /* v2.3.3478: `arenaap: false` -- the champion is paid gold alone, and the
+     crown says nothing of AP; and a gold credit's `ap` is paid where the gold
+     is, from the mail too (inbox.js _applyCreditToPs) */
+  {
+    const apA = room.playerState[P('a')].achievementPoints || 0;
+    room._liveFlags = { arenaap: false };
+    const tOff = await tour(P('a'), P('b'));
+    room._liveFlags = {};
+    check('v2.3.3478: arenaap false -- no achievement points, no champion.ap',
+      (room.playerState[P('a')].achievementPoints || 0) === apA && tOff && tOff.champion && !('ap' in tOff.champion),
+      { ap: room.playerState[P('a')].achievementPoints, champ: tOff && tOff.champion });
+    const psX = { coins: 5, achievementPoints: 7 };
+    room._applyCreditToPs(psX, { kind: 'gold', payload: { amount: 100, ap: 500 } }, 'bp_ap_mail');
+    room._applyCreditToPs(psX, { kind: 'gold', payload: { amount: 1 } }, 'bp_ap_mail');
+    room._applyCreditToPs(psX, { kind: 'gold', payload: { amount: 1, ap: -9 } }, 'bp_ap_mail');
+    check('v2.3.3478: a gold credit pays its ap with the gold (a plain one and a negative one add none)',
+      psX.coins === 107 && psX.achievementPoints === 507, psX);
+  }
   await tour(P('a'), P('b'));
   check('the next crown that hour takes the entries only', room.playerState[P('a')].coins === 900 + 200, room.playerState[P('a')].coins);
 
