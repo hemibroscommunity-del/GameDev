@@ -1,4 +1,4 @@
-/* Achievements -- v2.3.3485 (server/src/achievements.js; spec
+/* Achievements -- v2.3.3491 (server/src/achievements.js; spec
  * docs/specs/achievements.md).  The owner: "Achievement points are something
  * I'd like in the game. You get it by completing the game", then "Go
  * recommended on everything".
@@ -589,7 +589,7 @@ const gotC = (id) => !!(rec('bp_av_c') && rec('bp_av_c').got && rec('bp_av_c').g
   check('10h CODEX\'s kinds are what Know Thy Enemy counts', CODEX.KINDS.length === 9);
 }
 
-/* ── 11. THE CARD: YOUR TITLE AND YOUR RAREST (v2.3.3485) ──────────────────── */
+/* ── 11. THE CARD: YOUR TITLE AND YOUR RAREST (v2.3.3491) ──────────────────── */
 {
   const ids = ACHV.LIST.map((a) => a.id);
   check('11a the rarest\'s order names every achievement once', ACHV.RARITY.length === ids.length && new Set(ACHV.RARITY).size === ids.length && ids.every((id) => ACHV.RARITY.includes(id)), ACHV.RARITY);

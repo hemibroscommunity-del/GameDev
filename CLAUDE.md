@@ -3177,7 +3177,7 @@ remnant to migrate server-side, not a mode to preserve.
         nothing (groundLoot.js `S._dying`): TRAPS §233;
       - combat-lifecycle §5, `mp-deathpile` (a real death, in real time,
         `BT_DP_TRACE=1` its timeline): item-drop.md "A dead player's pile".
-  - Since v2.3.3485 ACHIEVEMENTS -- the owner: "Achievement points are
+  - Since v2.3.3491 ACHIEVEMENTS -- the owner: "Achievement points are
     something I'd like in the game. You get it by completing the game. Some of
     them are through super rare achievements. Although not as rare, an arena
     winner should be included in that", then "Go recommended on everything":

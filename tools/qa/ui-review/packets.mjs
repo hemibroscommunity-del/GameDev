@@ -34,7 +34,7 @@ export const PACKETS = [
   { slug: 'dashboard-skills-codex', title: 'Dashboard: life skills, the Codex and More',
     screens: ['dash-skills', 'dash-skill-detail', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more'] },
   { slug: 'dashboard-more-pages', title: 'Dashboard: More\'s pages',
-    /* v2.3.3485: + the Achievements page, the ninth (MAX_PICTURES) */
+    /* v2.3.3491: + the Achievements page, the ninth (MAX_PICTURES) */
     screens: ['more-settings', 'more-pets', 'more-leaderboard', 'more-social', 'more-achievements', 'more-journey', 'more-account', 'more-about', 'more-feedback'] },
   { slug: 'doors-and-crafts', title: 'Building doors and the craft buildings',
     screens: ['near-door', 'building-forge', 'building-woodwork', 'building-gemcut', 'building-enchant', 'building-cook'] },

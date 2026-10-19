@@ -97,7 +97,7 @@ export const PACE = Object.freeze({
      refused.  A trade holds at most TRADE2.WEAPON_MAX (4) a side, so twelve
      covers any real one with room to change your mind (trade2.js). */
   T2WPN: { BURST: 12, REFILL_MS: 20000 },
-  /* v2.3.3485: the title on your card (achievements.js _achvTitle): one row
+  /* v2.3.3491: the title on your card (achievements.js _achvTitle): one row
      a change; past the burst a change is refused and the page told what
      stands */
   ACHVT: { BURST: 10, REFILL_MS: 10000 },

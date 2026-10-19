@@ -1,7 +1,7 @@
 import React from 'react';
 import { LIFE_SKILL_XP, QUEST_CHAINS, QUEST_STATUS, ZONE_RESOURCES, createDefaultCompStats, questObjectiveDone } from '@/data/index.js';
 import { _slicedToArray } from '@/lib/babelHelpers.js';
-import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.3485: your AP opens the Achievements page */
+import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.3491: your AP opens the Achievements page */
 
 /* ═══ SkillsPanel — life-skill levels / resources / quest progress ═══ */
 /* v2.3.865: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -122,7 +122,7 @@ export function SkillsPanel(props) {
     stateRef = props.stateRef,
     setShowSkills = props.setShowSkills;
   var _rpgState$lifeSkills46;
-  /* v2.3.3485: against a worker that grants achievements (caps.achievements,
+  /* v2.3.3491: against a worker that grants achievements (caps.achievements,
      server achievements.js) the AP number below is a door to the
      Achievements page, under More where its tile is -- this window shuts
      first, so the page is not left under it */
@@ -416,7 +416,7 @@ export function SkillsPanel(props) {
   }, /*#__PURE__*/React.createElement("span", {
     style: LS_HEADER
   }, "Achievement Points"), _achvOn ? /*#__PURE__*/React.createElement("button", {
-    /* v2.3.3485: the number opens the Achievements page (above): a 44 px
+    /* v2.3.3491: the number opens the Achievements page (above): a 44 px
        target, the same 16/700 number, a chevron saying it goes somewhere */
     type: 'button',
     'data-skills-ap': '1',

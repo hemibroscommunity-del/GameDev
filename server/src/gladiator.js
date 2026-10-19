@@ -619,7 +619,7 @@ export const arenaMethods = {
        FIRST win only, under a mark of its own (`aponce:<pid>`, inbox.js
        AP_ONCE) -- the owner: "I don't want anyone exploiting the achievement
        points from it" (two accounts could take turns crowning each other).
-       v2.3.3485: ONCE A CHARACTER as the GLADIATOR ACHIEVEMENT (achievements.js
+       v2.3.3491: ONCE A CHARACTER as the GLADIATOR ACHIEVEMENT (achievements.js
        decision 2), sent by the mail below; a later crown pays its gold and
        counts on the row.  The achievement honours v2.3.3488's mark and sets
        it when it pays (achievements.js AP_ONCE_OF), so a champion the mark's
@@ -643,7 +643,7 @@ export const arenaMethods = {
       try {
         if (house) await this.state.storage.put('arena_house', house);
         await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: { amount: prize }, note: 'Gladiator Arena champion' });
-        /* v2.3.3485: and the Gladiator achievement, its own credit (inbox.js
+        /* v2.3.3491: and the Gladiator achievement, its own credit (inbox.js
            `achv`): it stays queued until the champion's achievements record is
            loaded, while the gold above never waits on it */
         if (apOn && !this._achvOff()) await this._creditPlayer(champion.playerId, { opId: 'arenaachv:' + tid, source: 'arena', kind: 'achv', payload: { id: 'gladiator' }, note: 'Gladiator Arena champion' });

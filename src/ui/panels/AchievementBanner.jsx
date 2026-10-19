@@ -5,7 +5,7 @@ import { codexAnnouncement } from '@/game/monsterCodex.js';
 import { cue } from '@/game/eventSounds.js';
 import { QUALITY_PRISM, qualityInk } from '@/ui/mobile/dash/common.js';
 
-/* ═══ v2.3.3485: THE ACHIEVEMENT BANNER ═══
+/* ═══ v2.3.3491: THE ACHIEVEMENT BANNER ═══
  * The owner's decision 4 ("Go recommended on everything", server
  * achievements.js): a rare, arena or super-rare achievement is a BANNER and a
  * SOUND; a common one a line in the chat (game/achievements.js).  "Gladiator ·

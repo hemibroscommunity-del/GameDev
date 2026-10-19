@@ -1621,7 +1621,7 @@ body:has(.bt-pcard) [data-coach]{display:none}
   font-size:12.5px;font-weight:700;white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(255,214,128,.08)}
 .bt-pin-title img{flex:none;width:24px;height:24px}
 .bt-pin-title>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
-/* v2.3.3485: a long achievement title ("Breaking the House") is cut with an
+/* v2.3.3491: a long achievement title ("Breaking the House") is cut with an
    ellipsis inside the chip's own footprint, never pushing the clan box off:
    at most three fifths of the row (the owner's ChatGPT review) */
 .bt-pin-title[data-achv]{max-width:60%}
@@ -1664,7 +1664,7 @@ body:has(.bt-pcard) [data-coach]{display:none}
 .bt-pin-drop-art svg{display:block;width:50px;height:50px}
 .bt-pin-drop-r{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#FF9C6B}
 .bt-pin-drop-n{font-size:12.5px;line-height:1.2;color:#FFE6CF}
-/* v2.3.3485: the box is the rarest ACHIEVEMENT, a button to the page, in its
+/* v2.3.3491: the box is the rarest ACHIEVEMENT, a button to the page, in its
    tier's colours (the armour grades': rare blue, the arena orange, super-rare
    a rainbow); the title chip a button too, keeping the mockup's gold */
 button.bt-pin-drop,button.bt-pin-title{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -7136,7 +7136,7 @@ html[data-orient="landscape"] .bt-zone-banner.is-scene{--zb-scene-w:calc(var(--z
   [data-new-monster]{animation:none!important}
 }
 
-/* ═══ v2.3.3485: THE ACHIEVEMENT BANNER (src/ui/panels/AchievementBanner.jsx) ═══
+/* ═══ v2.3.3491: THE ACHIEVEMENT BANNER (src/ui/panels/AchievementBanner.jsx) ═══
    A rare, arena or super-rare achievement's moment, about three seconds.  Its
    layer is `position:fixed; inset:0` OUTSIDE the world's wrap, so it is the
    window on a phone and #root's column on a computer (contain:paint); the

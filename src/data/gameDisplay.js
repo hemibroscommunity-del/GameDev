@@ -5316,7 +5316,7 @@ BT_AUDIO.play = function (key, opts) {
   return null;
 };
 
-/* ═══ v2.3.3485: BT_ACHIEVEMENTS IS GONE ═══
+/* ═══ v2.3.3491: BT_ACHIEVEMENTS IS GONE ═══
    Thirty-two badges ({id, name, icon, desc, check(stats)}, no points), checked
    twice a second by BroTown against the phone's own S.stats and recorded
    silently in S.badges, which nothing read: their toasts went in v2.3.820

@@ -6,7 +6,7 @@ import { ACHV_TIERS, ACHV_MEDAL_SRC } from '@/data/achievements.js';
 import { achvLive, achvSummary, achvRows, achvProgress, achvProgressShort, achvSplitWords, achvDateWords, ACHV_FILTERS, sendAchvTitle, achvTitleWaiting } from '@/game/achievements.js';
 import { achvById } from '@/data/achievements.js';
 
-/* ═══ v2.3.3485: THE ACHIEVEMENTS PAGE ═══
+/* ═══ v2.3.3491: THE ACHIEVEMENTS PAGE ═══
  * The owner, 2026-10-19: "Achievement points are something I'd like in the
  * game. You get it by completing the game. Some of them are through super
  * rare achievements. Although not as rare, an arena winner should be included

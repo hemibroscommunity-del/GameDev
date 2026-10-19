@@ -1,4 +1,4 @@
-# v2.3.3485: the owner's achievement badges, written by tools/ui/cut-achievement-badges.py.
+# v2.3.3491: the owner's achievement badges, written by tools/ui/cut-achievement-badges.py.
 # server/test/achievements-client.test.mjs fails if any of these files changes.
 744f56a7564545878808dca3781119c4ce36cb37c3d182916cba3b64a38f4aad  public/icons/achievements/first_blood.webp
 4dfea7f9d63c2bdc6762c08efcf223836f262b908694815020888238d9e26eb7  public/icons/achievements/combat_10.webp

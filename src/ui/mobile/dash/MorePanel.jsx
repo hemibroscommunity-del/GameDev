@@ -13,8 +13,8 @@ import { getBtPassphrase } from '@/networking/index.js';
 import { CODEX_KINDS, CODEX_TIERS } from '@/data/monsterCodex.js';   /* v2.3.3209 */
 import { codexCounts, codexFreshCount } from '@/game/monsterCodex.js';   /* v2.3.3209 */
 import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3481: the Clan tile's tooltip, once clans are parties */
-import { achvLive, achvSummary } from '@/game/achievements.js';   /* v2.3.3485: Journey's tile becomes Achievements */
-import { ACHV_MEDAL_SRC } from '@/data/achievements.js';   /* v2.3.3485: its medal, the owner's */
+import { achvLive, achvSummary } from '@/game/achievements.js';   /* v2.3.3491: Journey's tile becomes Achievements */
+import { ACHV_MEDAL_SRC } from '@/data/achievements.js';   /* v2.3.3491: its medal, the owner's */
 
 // v2.3.1224: swapped to the UI Bible icon set (docs/UI-BIBLE.md Part 4,
 // sliced by tools/process_icon_sheets.py); every tile has a real icon.
@@ -40,7 +40,7 @@ export const TILES = [
   { id: 'quests',      src: '/icons/ui/panel-quests.webp?v=2.3.1224',      label: 'Quests',   glyph: '📜', group: 'Progress',  iconScale: 1 },
   { id: 'skills',      src: '/icons/ui/nav-lifeskills.webp?v=2.3.1331',    label: 'Life Skills', glyph: '⛏', group: 'Progress', iconScale: 1 },
   { id: 'journey',     src: '/icons/ui/journey.webp?v=2.3.1224',           label: 'Journey',  glyph: '🛤', group: 'Progress',  iconScale: 1.18 },
-  /* ═══ v2.3.3485: JOURNEY'S PLACE BECOMES ACHIEVEMENTS ═══
+  /* ═══ v2.3.3491: JOURNEY'S PLACE BECOMES ACHIEVEMENTS ═══
      The owner's decision 6 ("Go recommended on everything", server
      achievements.js): the always-empty Journey tile -- nothing in the game or
      the server writes its log -- is the Achievements page against a worker
@@ -98,7 +98,7 @@ function statusFor(id, S) {
          log yet (docs/UI-DESIGN-NOTES.md, More's Still open) */
       return n > 0 ? `Travel log · ${n} entr${n === 1 ? 'y' : 'ies'}` : 'Your travels';
     }
-    /* v2.3.3485: the worker's count (game/achievements.js), real state as
+    /* v2.3.3491: the worker's count (game/achievements.js), real state as
        every line here */
     case 'achievements': {
       const sum = achvSummary(S);
@@ -280,7 +280,7 @@ export const MorePanel = () => {
         gap: 4,
         height: narrow ? undefined : '100%', boxSizing: 'border-box',
       }}>
-        {/* v2.3.3485: Journey's place is Achievements against a worker that
+        {/* v2.3.3491: Journey's place is Achievements against a worker that
             grants them (the tile's note in TILES) */}
         {['quests', 'skills', 'pets', 'social', 'clan', 'guild',
           achvLive(S) ? 'achievements' : 'journey', 'encyclopedia', 'leaderboard', 'settings', 'account'].map(id => {
@@ -307,7 +307,7 @@ export const MorePanel = () => {
                 fontSize: 11, fontWeight: 700, color: COL.text,
                 lineHeight: 1.1, textAlign: 'center',
                 maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                /* v2.3.3485: a label with a soft hyphen breaks there, onto a
+                /* v2.3.3491: a label with a soft hyphen breaks there, onto a
                    second line, rather than lose its end to an ellipsis */
                 ...(t.soft ? { whiteSpace: 'normal', textOverflow: 'clip' } : null),
               }}>{t.soft || t.label}</span>

@@ -21,7 +21,7 @@ import { PlayerProfilePanel, Lens } from './PlayerProfilePanel.jsx'; /* v2.3.292
 import { profileFromPeer, profileFromSelf } from './playerProfile.js'; /* v2.3.2926: the Inspect card's data */
 import { dashboardPanelBus } from '../mobile/dashboardPanelBus.js'; /* v2.3.2926: its leaderboard / codex buttons */
 
-/* v2.3.3485: the Achievements page belongs to More (its tile, and the
+/* v2.3.3491: the Achievements page belongs to More (its tile, and the
    "◂ ACHIEVEMENTS" header that carries the AP and the title since the owner's
    ChatGPT review): from a card's title chip or rarest box it opens UNDER More,
    as Life Skills' AP button does.  Opened as a root page it had no header --
