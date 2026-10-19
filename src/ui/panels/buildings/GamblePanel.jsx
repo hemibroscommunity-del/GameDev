@@ -72,7 +72,7 @@ export function GamblePanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
     setRpgState = props.setRpgState;
-  var _rpgState$_compStats, _rpgState$_compStats2, _rpgState$_compStats3, _rpgState$_compStats4, _rpgState$_compStats5, _rpgState$_compStats6, _rpgState$_compStats7, _rpgState$_compStats8;
+  var _rpgState$_compStats2, _rpgState$_compStats3, _rpgState$_compStats4, _rpgState$_compStats5, _rpgState$_compStats6, _rpgState$_compStats7, _rpgState$_compStats8;
   /* v2.3.1235: state-correction §10 — bottom-fade scroll affordance
      (the InspectPlayerPanel pattern): the fade shows ONLY while more
      content exists below the fold, so the Gambling Stats rows are
@@ -91,7 +91,10 @@ export function GamblePanel(props) {
   return React.createElement("div", { style: _objectSpread(_objectSpread({}, LS_WRAP), {}, { display: 'flex', flexDirection: 'column', maxHeight: '100%' }) /* v2.3.1235: state-correction §10 — flex column: fixed header + ONE scroll body */ },
     /* v2.3.3140: the free daily spin leads the window (DailySpin.jsx) --
        the day's reward lives here now, not in a window at login */
-    lsHeader('gamble', '🎰', "Gambling Den", "Free daily spin, coin flips & the weekly jackpot"),
+    /* v2.3.3479: the 2026-10-19 UI review -- the subtitle promised coin
+       flips, but this window holds the spin, the gold wager below and the
+       jackpot; the coin flip is Ace's own window, from Ace outside. */
+    lsHeader('gamble', '🎰', "Gambling Den", "Free daily spin, a gold wager & the weekly jackpot"),
     React.createElement("div", {
       ref: scrollBodyRef,
       onScroll: measureFade,
@@ -109,10 +112,15 @@ export function GamblePanel(props) {
       lsGold(rpgState.coins + 'G', 16) /* v2.3.1235: batch-3 rollout — key numbers are 16-18/700 tabular */),
       React.createElement("span", { style: { fontSize: 12, color: LS.txt2, fontVariantNumeric: 'tabular-nums' } },
         rpgState.achievementPoints || 0, " AP") /* v2.3.1235: batch-3 rollout — ⭐ dropped, no emoji in chrome */),
-      React.createElement("div", { style: LS_MOD }, "Double or Nothing"),
+      /* v2.3.3479: the 2026-10-19 UI review -- the free spin above has its
+         own "Double or nothing" at 50% (dailyrewards.js DOUBLE_CHANCE), and
+         this wager was headed the same at 40% (gamble.js settles it at
+         0.40). Both numbers were right; the heading and the line now say
+         this one is a separate bet of your own gold. */
+      React.createElement("div", { style: LS_MOD }, "Wager \xB7 Double or Nothing"),
       React.createElement("div", {
         style: { fontSize: 11, color: LS.txt3, marginBottom: 8, lineHeight: 1.5 }
-      }, "40% chance to double your wager. 60% chance to lose it all. House always wins... eventually."),
+      }, "A separate bet with your own gold: 40% chance to double it, 60% chance to lose it."),
       React.createElement("div", {
         style: { display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }
       }, [10, 50, 100, 500, 1000, 5000].filter(function (v) {
@@ -256,15 +264,27 @@ export function GamblePanel(props) {
       }, stateRef.current._gambleWager ? "Roll \xB7 " + stateRef.current._gambleWager + "G" : "Select a wager") /* v2.3.1235: state-correction §7 — never a "—g" placeholder: "Select a wager" until a chip is picked, then "Roll · 10G" */,
       React.createElement("div", { style: LS_DIV }),
       React.createElement("div", { style: LS_MOD }, "Weekly Jackpot"),
+      /* v2.3.3479: the 2026-10-19 UI review -- the line said "10% house cut"
+         and "one random winner", and the worker does neither: a deposit is
+         50-5,000 in steps of 50, each 50 one ticket, and the week's draw
+         picks one TICKET (so more tickets, better odds) and credits the
+         winner the whole pool, the house taking nothing (cadence.js,
+         _handleJackpotDeposit, _jackpotMaybeResolve). The words now say
+         what it does; no cut was added (that would be a new rule). */
       React.createElement("div", {
         style: { fontSize: 11, color: LS.txt3, marginBottom: 6, lineHeight: 1.5 }
-      }, "Server-wide pool. All deposits collected. One random winner each week. 10% house cut."),
+      }, "Every 50G you put in is one ticket. Each week one ticket wins the whole pot. The house takes nothing."),
       React.createElement("div", {
         style: { fontSize: 18, fontWeight: 700, color: LS.brass, textAlign: 'center', marginBottom: 4, fontVariantNumeric: 'tabular-nums' }
       }, stateRef.current._jackpotPool || '???', "g") /* v2.3.1235: batch-3 rollout — 🏆 dropped, no emoji in chrome */,
+      /* v2.3.3479: the same review -- "Your deposits this week" read the
+         browser's own tally (_compStats.jackpotDeposited, which nothing ever
+         resets for a new week); the worker's count of YOUR tickets in this
+         week's draw comes with every jackpot_state, at the join and after a
+         deposit (gameEvents.js S._jackpotTickets, emptied at the draw). */
       React.createElement("div", {
         style: { fontSize: 11, color: LS.txt3, textAlign: 'center', marginBottom: 8, fontVariantNumeric: 'tabular-nums' }
-      }, "Your deposits this week: ", ((_rpgState$_compStats = rpgState._compStats) === null || _rpgState$_compStats === void 0 ? void 0 : _rpgState$_compStats.jackpotDeposited) || 0, "g \xB7 Min deposit: ", JACKPOT_MIN_DEPOSIT, "g"),
+      }, "Your tickets this week: ", stateRef.current._jackpotTickets || 0, " \xB7 Min deposit: ", JACKPOT_MIN_DEPOSIT, "g"),
       React.createElement("div", {
         style: { display: 'flex', gap: 6 }
       }, [50, 100, 500, 1000].filter(function (v) {

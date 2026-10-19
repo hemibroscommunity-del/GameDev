@@ -140,11 +140,17 @@ export function ExchangePanel(props) {
   (storeEnabled() && setBuildingPanel) ? /*#__PURE__*/React.createElement("button", {
     type: 'button',
     onClick: function onClick() { setBuildingPanel('store'); },
+    /* v2.3.3479: the 2026-10-19 UI review -- a way to another window wore
+       brass, which Lantern Slate keeps for selection and the one main action
+       (here the selected chips and Place Buy Order): now the secondary
+       recipe, raised + strong hairline + primary text, as the panel's own
+       Done button; and 44 px, the one control here under the touch guide
+       (it was 40). */
     style: {
-      width: '100%', minHeight: 40, margin: '6px 0 8px', padding: '0 12px',
+      width: '100%', minHeight: 44, margin: '6px 0 8px', padding: '0 12px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
       borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
-      border: '1px solid #D8AA58', background: 'rgba(216,170,88,.15)', color: '#D8AA58',
+      border: '1px solid rgba(229,237,233,.20)', background: '#293B41', color: '#F4F0E7',
       fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em',
       WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation'
     }
@@ -183,7 +189,12 @@ export function ExchangePanel(props) {
       fontSize: 12, /* v2.3.1235: Checkpoint B — hint copy floor 12px */
       color: '#8D9B98'
     }
-  }, "Buy & sell \xB7 Listings last 24h, refunds by mail")), /*#__PURE__*/React.createElement("div", {
+  },
+  /* v2.3.3479: the 2026-10-19 UI review -- "Buy & sell · Listings" did not
+     say this is an order book: orders rest per KIND of gear (tier, type,
+     elements), buy and sell alike last 24h (market.js ORDER_EXPIRY), and an
+     expired or cancelled one is refunded through the mail (_creditPlayer). */
+  "Trade by gear type \xB7 Orders last 24h \xB7 Refunds by mail")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 2,
@@ -496,7 +507,15 @@ export function ExchangePanel(props) {
       letterSpacing: '.14em',
       color: '#8D9B98'
     }
-  }, mktMode === 'buy' ? 'Max Bid' : 'Ask Price'), /*#__PURE__*/React.createElement("input", {
+  },
+  /* v2.3.3479: the 2026-10-19 UI review -- "Max Bid 100" beside "Est: ~25G"
+     read as a bid four times the value. It is the most you pay: an order
+     that fills at once pays the resting seller's lower price and gets the
+     rest back (market.js, the 'price improvement' refund), and one that
+     rests pays it when a seller comes -- so the label says so; "Est." is the
+     game's own formula of the kind's value (estimateMktPrice), not market
+     history, so it says "value". */
+  mktMode === 'buy' ? "Max you'll pay" : 'Ask Price'), /*#__PURE__*/React.createElement("input", {
     type: "number",
     min: 1,
     max: 99999,
@@ -542,7 +561,7 @@ export function ExchangePanel(props) {
       fontVariantNumeric: 'tabular-nums',
       marginLeft: 'auto'
     }
-  }, "Est: ~", estimateMktPrice(mktTier, mktSubtype), "G")), mktMode === 'sell' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "Est. value: ~", estimateMktPrice(mktTier, mktSubtype), "G")), mktMode === 'sell' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,

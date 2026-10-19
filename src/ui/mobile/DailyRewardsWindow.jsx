@@ -166,8 +166,13 @@ function TodayTab({ st }) {
           {(sk.fz || 0) + '/' + (sk.fzMax || 2)}
         </span>
       </div>
+      {/* v2.3.3479: the 2026-10-19 UI review -- "covers a missed day by
+          itself" did not say plainly that nothing has to be done: the worker
+          spends one freeze a missed day on its own (cadence.js
+          _cadenceLoginReward), and a gap longer than the freezes held starts
+          the streak again */}
       <div style={{ fontSize: 11.5, color: COL.muted, margin: '6px 2px 0', lineHeight: 1.4 }}>
-        A freeze covers a missed day by itself. You earn one every {sk.every || 7} days of streak.
+        A freeze is used automatically if you miss a day. You earn one every {sk.every || 7} days of streak.
       </div>
 
       {/* the spin */}
