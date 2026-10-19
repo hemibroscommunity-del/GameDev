@@ -497,6 +497,20 @@ remnant to migrate server-side, not a mode to preserve.
         handed to `sweepBlockPoint` / `attackBlocked`, and the staff, with no
         sight, asks `lowAimAlong`;
       - `mp-bowprops`: docs/specs/bow-at-props.md.
+      - since v2.3.3485 THE LINE IS NEVER ON A MONSTER BEHIND A ROCK -- found
+        by mp-hitreal's frost bow row: a snowman just behind a snowbank, its
+        hit circle reaching back over the bank to the bow, so the gate said
+        "on the snowman" and the bow loosed; but the hit test refuses a hit
+        with a prop between the arrow's ground point and the monster's FEET
+        (`_rockBetween`, v2.3.2701), and every arrow stuck in the bank for
+        nothing. `firstSightHit` now asks that question too, along the
+        stretch where the arrow meets the target (a player you may shoot
+        too); the line ends at the bank and the arrow sticks where it shows.
+        A new refusal in the hit test goes in the gate in the same change
+        (TRAPS §236). NOT changed, the owner's call: a shot's ground line
+        runs parallel to the drawn one, so an aimed shot judges props ~33 px
+        short of the target's feet; `mp-sightrock`: bow-at-props.md
+        "v2.3.3485".
     - since v2.3.3230 A BUILDING YOU KEEP HITTING CATCHES FIRE -- the owner:
       "add flame effects on the building after getting hit a while in the
       location where the building is getting struck and make the flames grow
