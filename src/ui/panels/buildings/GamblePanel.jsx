@@ -110,7 +110,7 @@ export function GamblePanel(props) {
            ("Your gold: 75G"), never a bare unexplained number. */
         style: { display: 'inline-flex', alignItems: 'center', gap: 6 }
       }, React.createElement("span", { style: { fontSize: 12, color: LS.txt2 } }, "Your gold:"),
-      lsGold(rpgState.coins + 'G', 16) /* v2.3.1235: batch-3 rollout — key numbers are 16-18/700 tabular */),
+      lsGold(Number(rpgState.coins || 0).toLocaleString() + 'G', 16) /* v2.3.1235: batch-3 rollout — key numbers are 16-18/700 tabular; v2.3.3479: with its thousands separator, "2,550G", as the top bar and every other window (the 2026-10-19 UI review) */),
       React.createElement("span", { style: { fontSize: 12, color: LS.txt2, fontVariantNumeric: 'tabular-nums' } },
         rpgState.achievementPoints || 0, " AP") /* v2.3.1235: batch-3 rollout — ⭐ dropped, no emoji in chrome */),
       /* v2.3.3479: the 2026-10-19 UI review -- the free spin above has its

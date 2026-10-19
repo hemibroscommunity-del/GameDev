@@ -874,7 +874,7 @@ export function PartyPanel(props) {
       fontSize: 11,
       color: '#8D9B98'
     }
-  }, "G (", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G"), ")")), /*#__PURE__*/React.createElement("button", {
+  }, "G (", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, Number(rpgState.coins || 0).toLocaleString() /* v2.3.3479: the thousands separator (UI review) */, "G"), ")")), /*#__PURE__*/React.createElement("button", {
     disabled: !arenaBetTarget || rpgState.coins < arenaBetAmount,
     onClick: function onClick() {
       var _arenaTournament$play3;
@@ -1062,7 +1062,7 @@ export function PartyPanel(props) {
       color: '#667875',
       marginLeft: 'auto'
     }
-  }, /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G"))), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, Number(rpgState.coins || 0).toLocaleString() /* v2.3.3479: the thousands separator (UI review) */, "G"))), /*#__PURE__*/React.createElement("button", {
     disabled: !arenaBetTarget || rpgState.coins < arenaBetAmount,
     onClick: function onClick() {
       var _arenaTournament$play4;
@@ -1293,7 +1293,7 @@ export function PartyPanel(props) {
       fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
       color: '#8D9B98'
     }
-  }, "G (", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G"), ")")), /*#__PURE__*/React.createElement("button", {
+  }, "G (", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, Number(rpgState.coins || 0).toLocaleString() /* v2.3.3479: the thousands separator (UI review) */, "G"), ")")), /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
       var _arenaTournament$play6;
       var S = stateRef.current,
@@ -1716,7 +1716,7 @@ export function PartyPanel(props) {
         color: '#8D9B98',
         marginBottom: 6
       }
-    }, "Blind bet on who wins the tournament. Payout: pot \xF7 winners. ", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G")), /*#__PURE__*/React.createElement("div", {
+    }, "Blind bet on who wins the tournament. Payout: pot \xF7 winners. ", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, Number(rpgState.coins || 0).toLocaleString() /* v2.3.3479: the thousands separator (UI review) */, "G")), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         fontWeight: 700,
