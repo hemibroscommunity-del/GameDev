@@ -175,6 +175,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const mid = (v) => { const w = v.slice().sort((p, q) => p - q); return w.length ? Math.round(w[w.length >> 1] * 100) / 100 : null; };
     return { frames: s.length, follow: k.length, share: mid(k), dt: mid(dts) };
   });
+  console.log('    pet pace over the walk: ' + JSON.stringify(pace));
   rec.ok("...at the walk's pace whatever the frame rate: each step is its frame's share of 2 px a 60 Hz frame",
     pace.follow >= 4 && pace.share > 0.7 && pace.share < 1.3, pace);
 
