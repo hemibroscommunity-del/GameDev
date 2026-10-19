@@ -144,7 +144,11 @@ const C_QUEST_DONE = 0x58b97b;   /* COL.xp — green, same as the in-world badge
    badge is now (owner: "be yellow instead of green.  Green implies something
    is done" -- the old grey #8b9695 read as green on a phone): the '?' glyph
    says waiting, and green stays the ready check's */
-const C_QUEST_WAIT = C_QUEST;
+/* v2.3.3479: GREY again, following the in-world badge -- the owner's icon pick
+   4 made it their pin, baked grey (a waiting quest wears a grey "?" so it never
+   looks ready).  A neutral grey (the grey pin's own lightness), not
+   v2.3.3047's teal #8b9695, which read as green */
+const C_QUEST_WAIT = 0xb0b0b0;
 /* v2.3.2992: the gold road to the quest's spot -- width and dark casing, CSS
    px; it starts clear of your chevron, is not drawn when the spot is this
    close, and stops this far in from the box's edge when the spot is off it */

@@ -46,7 +46,7 @@ import { isWorldTrialZone, preloadWorldTrial } from '../game/worldTrial.js'; /* 
 import { townSkippedOnTheWay } from '../game/wheelHome.js'; /* v2.3.3037: today's town is a stop on the way to the Wheel */
 import { effectsAnimationsReady, ensureSnowballBurstTex, freeFrostImpactTex, ensureArrowBlastTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit; v2.3.2844: minus the retired snowman plume */
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
-import { preloadTraits, preloadBroBadge, preloadSmallIconTextures } from './systems/entityRenderer.js'; /* v2.3.2345: + the verified-Bro plate badge; v2.3.3279: + the owner's small icons */
+import { preloadTraits, preloadBroBadge, preloadSmallIconTextures, preloadQuestPinTextures } from './systems/entityRenderer.js'; /* v2.3.2345: + the verified-Bro plate badge; v2.3.3279: + the owner's small icons; v2.3.3479: + their quest pins */
 import { preloadCapes } from './capeSprites.js'; /* v2.3.2023: cosmetic capes are GLOBAL, not per-zone */
 import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset knight figures */
 import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their head overlays */
@@ -410,6 +410,11 @@ export async function preloadWorldAnimations() {
        plates -- a party forms, a skull lights, a townsperson comes into view
        in the middle of play */
     smallIcons: preloadSmallIconTextures(),
+    /* v2.3.3479: the owner's quest pins over a townsperson (data/ownerIcons.js
+       QUEST_PIN: offer, the grey waiting "?", ready), on the canvas -- GLOBAL,
+       as townsfolk with quests stand in BroTown, the farm and today's town,
+       and a pin changes the moment a quest is taken or its items come in */
+    questPins: preloadQuestPinTextures(),
     /* ═══ v2.3.2591: the level-up burst + the skill icons it seats in the
        medallion.  GLOBAL, not per-zone, and the reason is the whole point of
        the asset: you can level up ANYWHERE — a monster kill in any combat
