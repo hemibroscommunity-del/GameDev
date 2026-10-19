@@ -144,7 +144,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const btns = Array.from(document.querySelectorAll('button'));
       const R = (e) => { const r = e.getBoundingClientRect(); return { t: Math.round(r.top), b: Math.round(r.bottom), x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
       const flip = btns.find((b) => /^(flip for|pick a stake)/i.test(b.textContent.trim()));
-      const close = btns.find((b) => b.getAttribute('aria-label') === 'Close' && /×/.test(b.textContent));
+      /* v2.3.3489: his ✕ is the shop windows' one big ✕ now (game.css .bt-xclose) */
+      const close = document.querySelector('[data-ace-close]') || btns.find((b) => b.getAttribute('aria-label') === 'Close' && /[×✕]/.test(b.textContent));
       const tabs = btns.filter((b) => /^(gold|items|records)$/i.test(b.textContent.trim())).map(R);
       let sc = flip;
       while (sc && sc !== document.body) { const cs = getComputedStyle(sc); if (/(auto|scroll)/.test(cs.overflowY) && sc.scrollHeight > sc.clientHeight + 1) break; sc = sc.parentElement; }

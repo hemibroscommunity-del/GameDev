@@ -152,6 +152,11 @@ async function answerConfirm(P, which, settle) {
       await P.page.waitForTimeout(150);
     }
     res.stay = stay;
+    /* the first window that stayed, pictured (catgrid-spent-stays.png) */
+    if (stay && stay.open && stay.spent && !answerConfirm.shot) {
+      answerConfirm.shot = true;
+      await P.page.screenshot({ path: `${OUT}/catgrid-spent-stays.png` }).catch(() => {});
+    }
     if (stay && stay.open) await finger(P, '[data-infopopup-x]');
     await P.page.waitForTimeout(250);
   }
