@@ -14,6 +14,7 @@ import { CODEX_KINDS, CODEX_TIERS } from '@/data/monsterCodex.js';   /* v2.3.320
 import { codexCounts, codexFreshCount } from '@/game/monsterCodex.js';   /* v2.3.3209 */
 import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3481: the Clan tile's tooltip, once clans are parties */
 import { achvLive, achvSummary } from '@/game/achievements.js';   /* v2.3.3485: Journey's tile becomes Achievements */
+import { ACHV_MEDAL_SRC } from '@/data/achievements.js';   /* v2.3.3485: its medal, the owner's */
 
 // v2.3.1224: swapped to the UI Bible icon set (docs/UI-BIBLE.md Part 4,
 // sliced by tools/process_icon_sheets.py); every tile has a real icon.
@@ -44,12 +45,14 @@ export const TILES = [
      achievements.js): the always-empty Journey tile -- nothing in the game or
      the server writes its log -- is the Achievements page against a worker
      that grants them (caps.achievements); without the cap it stays Journey
-     exactly as it was.  The journey scroll stays its picture.  `soft` is how
+     exactly as it was.  Its picture is the owner's medal from their badge
+     sheets (tools/ui/cut-achievement-badges.py), framed at 0.72 of its square
+     as its neighbours' pictures are, so iconScale 1.  `soft` is how
      the label is DRAWN: "Achievements" is about 66 px of 11 px type, wider
      than a six-across tile's ~56 (v2.3.2173's "the labels are getting cut
      off"), so a soft hyphen lets it break "Achieve-" / "ments" on two lines
      where it has to, and only there (sideways the tile is wide enough). */
-  { id: 'achievements', src: '/icons/ui/journey.webp?v=2.3.1224',          label: 'Achievements', soft: 'Achieve\u00ADments', glyph: '🏆', group: 'Progress', iconScale: 1.18 },
+  { id: 'achievements', src: ACHV_MEDAL_SRC,                               label: 'Achievements', soft: 'Achieve\u00ADments', glyph: '🏆', group: 'Progress', iconScale: 1 },
   { id: 'encyclopedia', src: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224', label: 'Codex',  glyph: '📚', group: 'Progress',  iconScale: 1 },
   { id: 'leaderboard', src: '/icons/ui/panel-leaderboard.webp?v=2.3.1224', label: 'Ranks',    glyph: '🏆', group: 'Progress',  iconScale: 1 },
   { id: 'social',      src: '/icons/ui/nav-friends.webp?v=2.3.1224',      label: 'Friends',  glyph: '👥', group: 'Community', iconScale: 1 },

@@ -59,8 +59,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const r = document.querySelector('.bt-pin-drop');
       const text = (card.textContent || '');
       return {
-        title: t ? { achv: t.getAttribute('data-achv'), text: (t.textContent || '').trim() } : null,
-        rarest: r ? { id: r.getAttribute('data-rarest'), tier: r.getAttribute('data-tier'), text: (r.textContent || '').trim() } : null,
+        title: t ? { achv: t.getAttribute('data-achv'), text: (t.textContent || '').trim(), img: (t.querySelector('img') || {}).src || null } : null,
+        rarest: r ? { id: r.getAttribute('data-rarest'), tier: r.getAttribute('data-tier'), text: (r.textContent || '').trim(), img: (r.querySelector('img') || {}).src || null } : null,
         placeholders: /Fishing Master|Ember Crown/.test(text),
       };
     });
@@ -106,9 +106,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const r3 = await waitPeer((r) => r.title === ID && r.rarest === ID, 'the title relayed');
     const c3 = await openCard();
     rec.ok('3. Viewer\'s copy of Titled carries the title and the rarest (the look relay)', !r3.__timeout, r3);
-    rec.ok('...and Viewer\'s card on Titled shows "Storyteller" as the title and as the rarest, a rare one',
+    rec.ok('...and Viewer\'s card on Titled shows "Storyteller" as the title and as the rarest, a rare one, its badge on both',
       c3.title && c3.title.achv === ID && c3.title.text.indexOf(NAME) >= 0
-      && c3.rarest && c3.rarest.id === ID && c3.rarest.tier === 'rare' && c3.rarest.text.indexOf(NAME) >= 0 && !c3.placeholders, c3);
+      && c3.rarest && c3.rarest.id === ID && c3.rarest.tier === 'rare' && c3.rarest.text.indexOf(NAME) >= 0 && !c3.placeholders
+      && [c3.title.img, c3.rarest.img].every((u) => new RegExp('/icons/achievements/' + ID + '\\.webp').test(u || '')), c3);
     await closeCards(V);
 
     /* ── 4. a claim the page makes is never relayed ── */

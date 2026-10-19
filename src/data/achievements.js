@@ -30,6 +30,20 @@ export const ACHV_TIERS = Object.freeze({
   superrare: Object.freeze({ ap: 1000, label: 'Super-rare', color: 'prismatic' }),
 });
 
+/* v2.3.3485: THE OWNER'S BADGES -- "I think this is everything", then their
+   two painted sheets (2026-10-19), cut by tools/ui/cut-achievement-badges.py
+   into public/icons/achievements/<id>.webp, 150 px square: three times the 50
+   CSS px of the card's rarest box, the biggest place one is drawn (a page row
+   30, the banner 40, the card's title chip 24).  `achievements.webp` is the
+   page's own medal (More's tile, the empty page).  Was a picture borrowed from
+   elsewhere in the game for each.  A re-cut changes ACHV_BADGE_V, so no phone
+   keeps the old one. */
+export const ACHV_BADGE_V = '2.3.3485';
+export function achvBadgeSrc(id) {
+  return '/icons/achievements/' + id + '.webp?v=' + ACHV_BADGE_V;
+}
+export const ACHV_MEDAL_SRC = achvBadgeSrc('achievements');
+
 /* The order the page lists them in: by tier, then as written.
    `count`: the row says how many times (a second Gladiator crown pays gold,
    not points, and counts here); the worker counts only these.
@@ -37,32 +51,32 @@ export const ACHV_TIERS = Object.freeze({
    review, 2026-10-19: "Clear the Great Cave, the Foundry Dome and the Buried
    City" wrapped a row to three lines); `how`: the whole of it, shown when the
    row is opened.
-   `icon`: a picture the game already has (the owner's own for these is a
-   wishlist item, docs/ART-WISHLIST.md "Achievements"); `glyph` if it fails. */
+   `icon`: its own badge, from the owner's two painted sheets (below);
+   `glyph` if it fails. */
 export const ACHIEVEMENTS = Object.freeze([
-  { id: 'first_blood', tier: 'common', name: 'First Blood', clue: 'Defeat your first monster', how: 'Defeat your first monster.', icon: '/icons/ui/hero/rec-kills.webp', glyph: '🗡️' },
-  { id: 'combat_10', tier: 'common', name: 'Blooded', clue: 'Melee, Bow or Magic to Lv 10', how: 'Raise Melee, Bow or Magic to level 10.', icon: '/icons/ui/hero/melee.webp', glyph: '⚔️' },
-  { id: 'first_dungeon', tier: 'common', name: 'Into the Dark', clue: 'Clear a Wheel dungeon', how: 'Clear a dungeon in the Wheel.', icon: '/icons/ui/evt-dungeon.webp', glyph: '🕳️', count: true },
-  { id: 'first_pet', tier: 'common', name: 'Gotcha', clue: 'Catch a pet in a trap', how: 'Catch your first pet in a trap.', icon: '/icons/ui/evt-pets.webp', glyph: '🐾' },
-  { id: 'first_order', tier: 'common', name: 'Farmhand', clue: 'Deliver a Feed & Seed order', how: 'Deliver an order at the Feed & Seed.', icon: '/icons/ui/bldg-farm.webp', glyph: '🌾', count: true },
-  { id: 'first_duel', tier: 'common', name: 'Duelist', clue: 'Win a duel', how: 'Win a duel.', icon: '/icons/ui/hero/rec-duels.webp', glyph: '🤺', count: true },
-  { id: 'nml_kill', tier: 'common', name: 'Outlaw', clue: 'Defeat a player in No man\'s land', how: "Defeat a player in No man's land.", icon: '/icons/ui/threat-skull.webp', glyph: '💀', count: true },
-  { id: 'story_done', tier: 'rare', name: 'Storyteller', clue: 'Finish every story quest', how: 'Finish every story quest.', icon: '/icons/ui/panel-quests.webp', glyph: '📜' },
-  { id: 'codex_all', tier: 'rare', name: 'Know Thy Enemy', clue: 'Defeat all 9 kinds of monster', how: 'Defeat all nine kinds of monster.', icon: '/icons/ui/panel-encyclopedia.webp', glyph: '📚' },
-  { id: 'elder_all', tier: 'rare', name: 'Elder Hunter', clue: 'All 9 kinds past Lv 20', how: 'Defeat all nine kinds past level 20.', icon: '/icons/ui/panel-encyclopedia.webp', glyph: '🐉' },
-  { id: 'dungeons_all', tier: 'rare', name: 'Delver', clue: 'Clear all 3 Wheel dungeons', how: 'Clear the Great Cave, the Foundry Dome and the Buried City.', icon: '/icons/ui/evt-dungeon.webp', glyph: '🗝️' },
-  { id: 'combat_50', tier: 'rare', name: 'Veteran', clue: 'Melee, Bow or Magic to Lv 50', how: 'Raise Melee, Bow or Magic to level 50.', icon: '/icons/ui/hero/melee.webp', glyph: '⚔️' },
-  { id: 'natural_one', tier: 'rare', name: 'Natural One', clue: 'A kill roll of exactly 1', how: 'Land a killing blow whose kill roll is 1 (1 in 10,000).', icon: '/icons/popups/dice.webp', glyph: '🎲', count: true },
-  { id: 'iron_blade', tier: 'rare', name: 'Iron Great Sword', clue: 'An Iron Great Sword off a kill', how: 'Find an Iron Great Sword on a kill (1 in 500).', icon: '/icons/items/great-sword-iron.webp', glyph: '🗡️', count: true },
-  { id: 'golden_pet', tier: 'rare', name: 'Golden Catch', clue: 'Catch a golden pet', how: 'Catch a golden pet.', icon: '/icons/ui/evt-pets.webp', glyph: '✨', count: true },
-  { id: 'elite_piece', tier: 'rare', name: 'Elite', clue: 'Find or forge Elite gear', how: 'Find or forge an Elite piece of gear.', icon: '/icons/items/essence-elite-iron.webp', glyph: '🔶', count: true },
-  { id: 'gladiator', tier: 'arena', name: 'Gladiator', clue: 'Win the Gladiator Arena', how: 'Win the Gladiator Arena.', icon: '/icons/ui/arena-helmet.webp', glyph: '🏆', count: true },
-  { id: 'tempered', tier: 'superrare', name: 'Perfectly Tempered', clue: 'Harden a weapon to H5', how: 'Harden a weapon all the way to H5.', icon: '/icons/ui/bldg-forge.webp', glyph: '🔨', count: true },
-  { id: 'golden_giant', tier: 'superrare', name: 'Golden Giant', clue: 'A golden pet that\'s big too', how: 'Catch a golden pet that is a big one too.', icon: '/icons/ui/evt-pets.webp', glyph: '🌟', count: true },
-  { id: 'elite_iron', tier: 'superrare', name: 'Elite Iron', clue: 'An Elite Iron Great Sword off a kill', how: 'Find an Elite Iron Great Sword on a kill.', icon: '/icons/items/great-sword-iron.webp', glyph: '⚔️', count: true },
-  { id: 'house_limit', tier: 'superrare', name: 'Breaking the House', clue: 'Double the free spin to the limit', how: "Double the free spin's pot all the way to the house limit.", icon: '/icons/ui/prize-wheel.webp', glyph: '🎡', count: true },
-  { id: 'combat_100', tier: 'superrare', name: 'Centurion', clue: 'Melee, Bow or Magic to Lv 100', how: 'Raise Melee, Bow or Magic to level 100.', icon: '/icons/ui/hero/melee.webp', glyph: '👑' },
-  { id: 'godly', tier: 'superrare', name: 'Godly', clue: 'Find or forge Godly gear', how: 'Find or forge a Godly piece of gear.', icon: '/icons/items/essence-godly-iron.webp', glyph: '🌈', count: true },
+  { id: 'first_blood', tier: 'common', name: 'First Blood', clue: 'Defeat your first monster', how: 'Defeat your first monster.', icon: achvBadgeSrc('first_blood'), glyph: '🗡️' },
+  { id: 'combat_10', tier: 'common', name: 'Blooded', clue: 'Melee, Bow or Magic to Lv 10', how: 'Raise Melee, Bow or Magic to level 10.', icon: achvBadgeSrc('combat_10'), glyph: '⚔️' },
+  { id: 'first_dungeon', tier: 'common', name: 'Into the Dark', clue: 'Clear a Wheel dungeon', how: 'Clear a dungeon in the Wheel.', icon: achvBadgeSrc('first_dungeon'), glyph: '🕳️', count: true },
+  { id: 'first_pet', tier: 'common', name: 'Gotcha', clue: 'Catch a pet in a trap', how: 'Catch your first pet in a trap.', icon: achvBadgeSrc('first_pet'), glyph: '🐾' },
+  { id: 'first_order', tier: 'common', name: 'Farmhand', clue: 'Deliver a Feed & Seed order', how: 'Deliver an order at the Feed & Seed.', icon: achvBadgeSrc('first_order'), glyph: '🌾', count: true },
+  { id: 'first_duel', tier: 'common', name: 'Duelist', clue: 'Win a duel', how: 'Win a duel.', icon: achvBadgeSrc('first_duel'), glyph: '🤺', count: true },
+  { id: 'nml_kill', tier: 'common', name: 'Outlaw', clue: 'Defeat a player in No man\'s land', how: "Defeat a player in No man's land.", icon: achvBadgeSrc('nml_kill'), glyph: '💀', count: true },
+  { id: 'story_done', tier: 'rare', name: 'Storyteller', clue: 'Finish every story quest', how: 'Finish every story quest.', icon: achvBadgeSrc('story_done'), glyph: '📜' },
+  { id: 'codex_all', tier: 'rare', name: 'Know Thy Enemy', clue: 'Defeat all 9 kinds of monster', how: 'Defeat all nine kinds of monster.', icon: achvBadgeSrc('codex_all'), glyph: '📚' },
+  { id: 'elder_all', tier: 'rare', name: 'Elder Hunter', clue: 'All 9 kinds past Lv 20', how: 'Defeat all nine kinds past level 20.', icon: achvBadgeSrc('elder_all'), glyph: '🐉' },
+  { id: 'dungeons_all', tier: 'rare', name: 'Delver', clue: 'Clear all 3 Wheel dungeons', how: 'Clear the Great Cave, the Foundry Dome and the Buried City.', icon: achvBadgeSrc('dungeons_all'), glyph: '🗝️' },
+  { id: 'combat_50', tier: 'rare', name: 'Veteran', clue: 'Melee, Bow or Magic to Lv 50', how: 'Raise Melee, Bow or Magic to level 50.', icon: achvBadgeSrc('combat_50'), glyph: '⚔️' },
+  { id: 'natural_one', tier: 'rare', name: 'Natural One', clue: 'A kill roll of exactly 1', how: 'Land a killing blow whose kill roll is 1 (1 in 10,000).', icon: achvBadgeSrc('natural_one'), glyph: '🎲', count: true },
+  { id: 'iron_blade', tier: 'rare', name: 'Iron Great Sword', clue: 'An Iron Great Sword off a kill', how: 'Find an Iron Great Sword on a kill (1 in 500).', icon: achvBadgeSrc('iron_blade'), glyph: '🗡️', count: true },
+  { id: 'golden_pet', tier: 'rare', name: 'Golden Catch', clue: 'Catch a golden pet', how: 'Catch a golden pet.', icon: achvBadgeSrc('golden_pet'), glyph: '✨', count: true },
+  { id: 'elite_piece', tier: 'rare', name: 'Elite', clue: 'Find or forge Elite gear', how: 'Find or forge an Elite piece of gear.', icon: achvBadgeSrc('elite_piece'), glyph: '🔶', count: true },
+  { id: 'gladiator', tier: 'arena', name: 'Gladiator', clue: 'Win the Gladiator Arena', how: 'Win the Gladiator Arena.', icon: achvBadgeSrc('gladiator'), glyph: '🏆', count: true },
+  { id: 'tempered', tier: 'superrare', name: 'Perfectly Tempered', clue: 'Harden a weapon to H5', how: 'Harden a weapon all the way to H5.', icon: achvBadgeSrc('tempered'), glyph: '🔨', count: true },
+  { id: 'golden_giant', tier: 'superrare', name: 'Golden Giant', clue: 'A golden pet that\'s big too', how: 'Catch a golden pet that is a big one too.', icon: achvBadgeSrc('golden_giant'), glyph: '🌟', count: true },
+  { id: 'elite_iron', tier: 'superrare', name: 'Elite Iron', clue: 'An Elite Iron Great Sword off a kill', how: 'Find an Elite Iron Great Sword on a kill.', icon: achvBadgeSrc('elite_iron'), glyph: '⚔️', count: true },
+  { id: 'house_limit', tier: 'superrare', name: 'Breaking the House', clue: 'Double the free spin to the limit', how: "Double the free spin's pot all the way to the house limit.", icon: achvBadgeSrc('house_limit'), glyph: '🎡', count: true },
+  { id: 'combat_100', tier: 'superrare', name: 'Centurion', clue: 'Melee, Bow or Magic to Lv 100', how: 'Raise Melee, Bow or Magic to level 100.', icon: achvBadgeSrc('combat_100'), glyph: '👑' },
+  { id: 'godly', tier: 'superrare', name: 'Godly', clue: 'Find or forge Godly gear', how: 'Find or forge a Godly piece of gear.', icon: achvBadgeSrc('godly'), glyph: '🌈', count: true },
 ].map((a) => Object.freeze({ count: false, ...a })));
 
 const BY_ID = Object.create(null);

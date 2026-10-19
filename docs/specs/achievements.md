@@ -193,11 +193,43 @@ decisions first:
 - **Not wired:** the badge "drafts" ChatGPT drew in code (its own words: "NOT
   claimed as the hand-painted art ... Approve/rework the appearance before
   inserting"). Shown them in the game beside today's pictures, the owner
-  chose "Wait for painted ones": the borrowed pictures stay until then.
+  chose "Wait for painted ones": the borrowed pictures stayed until then
+  (below).
+
+## The owner's badges (2026-10-19)
+
+The owner then sent two painted sheets, made from the kit's prompts
+(docs/ART-WISHLIST.md "Achievements"): sheet 1 the seven common ones and the
+first five rare, sheet 2 the other four rare, the arena's, the six super-rare
+and a medal for the page itself, each 4 x 3 on a see-through ground.
+
+- `tools/ui/cut-achievement-badges.py` cuts them (sources in
+  `assets/icons-source/achievements-2026-10-19/`): an icon is every piece in
+  its cell (the sparkles, the stars, the coins), the faint halo dropped, and
+  each written as `public/icons/achievements/<id>.webp`, 150 x 150. That is
+  three times the 50 CSS px of the card's rarest box, the biggest place one is
+  drawn: a page row 30, the banner 40, the card's title chip 24. A badge's
+  longer side is 0.94 of its square.
+- The medal is `achievements.webp`, framed at 0.72 like More's other tiles'
+  pictures (0.63 to 0.74), so it is drawn their size. It is More's
+  Achievements tile (was the journey scroll) and the empty page's picture.
+- `src/data/achievements.js`: every row's `icon` is `achvBadgeSrc(id)`, with
+  `ACHV_BADGE_V` as its cache key (a re-cut changes it), and `ACHV_MEDAL_SRC`.
+- The cutter records each file's SHA-256 in
+  `tools/ui/achievement-badges.sha256`, and refuses to write over a file it did
+  not make without `--force`. `achievements-client` §9 checks every row's
+  picture, every file's size and fingerprint, and that the cutter's names are
+  the table's ids in the sheets' order (a new achievement needs its badge).
+- 24 pictures, 228 KB, loaded only where they are shown; nothing on the
+  loading screen.
+- `mp-achievements` 1b and 2e (every row's own badge, loaded at 150 px) and 3a
+  (the banner's), `mp-achvtitle` 3 (the card's chip and rarest box).
 
 ## Not built yet
 
-- The owner's own badge art: docs/ART-WISHLIST.md "Achievements".
+- The four tiers' frames, an optional third sheet (docs/ART-WISHLIST.md
+  "Achievements"): today the tier is the points pill's colour and the banner's
+  and rarest box's edge.
 
 ## Tests
 

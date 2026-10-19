@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState, QUALITY_PRISM, qualityInk } from './common.js';
 import { panelVw } from '../playViewport.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { ACHV_TIERS } from '@/data/achievements.js';
+import { ACHV_TIERS, ACHV_MEDAL_SRC } from '@/data/achievements.js';
 import { achvLive, achvSummary, achvRows, achvProgress, achvProgressShort, achvSplitWords, achvDateWords, ACHV_FILTERS, sendAchvTitle, achvTitleWaiting } from '@/game/achievements.js';
 import { achvById } from '@/data/achievements.js';
 
@@ -223,11 +223,11 @@ function Row({ r, S, now, wait, open, onToggle }) {
 }
 
 /* the page with nothing to list: a line and a smaller one (the spec's empty
-   state, the journey scroll at .4) */
+   state, the page's medal at .4; was the journey scroll) */
 function Note({ id, title, sub }) {
   return (
     <div data-achv-note={id} style={{ textAlign: 'center', padding: '16px 8px' }}>
-      <img src="/icons/ui/journey.webp?v=2.3.1224" alt="" draggable={false} width={40} height={40}
+      <img src={ACHV_MEDAL_SRC} alt="" draggable={false} width={40} height={40}
         style={{ width: 40, height: 40, objectFit: 'contain', opacity: 0.4, margin: '0 auto' /* img{display:block} in game.css */ }} />
       <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2, marginTop: 6 }}>{title}</div>
       {sub ? <div style={{ fontSize: 12, color: COL.muted, marginTop: 3, lineHeight: 1.35 }}>{sub}</div> : null}

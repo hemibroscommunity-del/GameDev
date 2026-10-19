@@ -25,7 +25,13 @@
  *   7. the wiring, read from the source: wsClient's direct switch (never a
  *      relayed copy) and the channel's passthrough, the echo, More's tile,
  *      the dashboard's PANELS, the mail's line, the worker's PRIVILEGED list,
- *      and BT_ACHIEVEMENTS / the fake rare-drop AP gone for good.
+ *      and BT_ACHIEVEMENTS / the fake rare-drop AP gone for good;
+ *   8. the page after the owner's ChatGPT review (the header's summary, one
+ *      line a row, a row that opens, the card's way in under More);
+ *   9. the owner's painted badges: every row its own picture, 150 px square,
+ *      the medal on More's tile and the empty page, the cutter's names the
+ *      table's ids in the sheets' order, and every file as the cutter wrote
+ *      it (tools/ui/achievement-badges.sha256).
  */
 import { readFileSync } from 'node:fs';
 
@@ -194,8 +200,9 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
     shimFrom > 0 && /if \(msg\.type === 'achv_title'\) \{\s*wsOut\(msg\);\s*return;\s*\}/.test(ws.slice(shimFrom, shimTo)));
   check('7c the player_state echo of achievementPoints feeds the page\'s total', /noteServerAp\(S, msg\.payload\.achievementPoints\)/.test(ws));
   const more = src('src/ui/mobile/dash/MorePanel.jsx');
-  check('7d More: the Journey tile is Achievements against a worker that grants them, Journey otherwise',
-    /achvLive\(S\) \? 'achievements' : 'journey'/.test(more) && /id: 'achievements'/.test(more) && /\/icons\/ui\/journey\.webp/.test(more));
+  check('7d More: the Journey tile is Achievements against a worker that grants them (the owner\'s medal its picture), Journey otherwise',
+    /achvLive\(S\) \? 'achievements' : 'journey'/.test(more) && /id: 'achievements', src: ACHV_MEDAL_SRC, +label: 'Achievements'[^\n]*iconScale: 1 \}/.test(more)
+      && /id: 'journey', +src: '\/icons\/ui\/journey\.webp/.test(more));
   check('7e the dashboard knows the page, with its Head', /achievements: \{ title: 'Achievements', Component: AchievementsPanel, Head: AchievementsHead \}/.test(src('src/ui/mobile/BottomDashboard.jsx')));
   check('7f the chat\'s mail line names an achievement', /_e\.kind === 'achv' \? achvMailPhrase\(_ep\)/.test(src('src/networking/gameEvents.js')));
   const idx = src('server/src/index.js');
@@ -250,6 +257,45 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
   const sr = css.slice(css.indexOf('.bt-pin-drop[data-tier="superrare"]{'), css.indexOf('.bt-pin-drop[data-tier="superrare"]{') + 400);
   check('8i the super-rare box is the rainbow EDGE on the card\'s slate (no purple fill), the title chip bounded',
     /border:1\.5px solid transparent/.test(sr) && /border-box/.test(sr) && !/#46295F/.test(css) && /\.bt-pin-title\[data-achv\]\{max-width:60%\}/.test(css));
+}
+
+/* ── 9. the owner's painted badges (tools/ui/cut-achievement-badges.py) ── */
+{
+  const { createHash } = await import('node:crypto');
+  const { existsSync } = await import('node:fs');
+  const bin = (p) => readFileSync(new URL(p, root));
+  /* a WebP's canvas: VP8X (lossy with alpha) or a plain VP8 frame */
+  const webpSize = (b) => {
+    if (b.toString('ascii', 0, 4) !== 'RIFF' || b.toString('ascii', 8, 12) !== 'WEBP') return null;
+    const kind = b.toString('ascii', 12, 16);
+    if (kind === 'VP8X') return [1 + b.readUIntLE(24, 3), 1 + b.readUIntLE(27, 3)];
+    if (kind === 'VP8 ') return [b.readUInt16LE(26) & 0x3fff, b.readUInt16LE(28) & 0x3fff];
+    return null;
+  };
+  const ids = D.ACHIEVEMENTS.map((a) => a.id);
+  check('9a every achievement wears its own badge, /icons/achievements/<id>.webp at the badges\' cache key',
+    D.ACHIEVEMENTS.every((a) => a.icon === '/icons/achievements/' + a.id + '.webp?v=' + D.ACHV_BADGE_V && a.icon === D.achvBadgeSrc(a.id))
+      && /^\d+\.\d+\.\d+$/.test(D.ACHV_BADGE_V) && D.ACHV_MEDAL_SRC === D.achvBadgeSrc('achievements'),
+    D.ACHIEVEMENTS.filter((a) => a.icon !== D.achvBadgeSrc(a.id)).map((a) => a.id));
+  const files = [...ids, 'achievements'].map((id) => 'public/icons/achievements/' + id + '.webp');
+  const sizes = files.map((f) => (existsSync(new URL(f, root)) ? webpSize(bin(f)) : null));
+  check('9b ...each file there, a WebP 150 px square (3x the card\'s 50 CSS px rarest box, the biggest place one is drawn), the medal too',
+    sizes.every((s) => s && s[0] === 150 && s[1] === 150), files.filter((f, i) => !sizes[i] || sizes[i][0] !== 150 || sizes[i][1] !== 150));
+  const tool = src('tools/ui/cut-achievement-badges.py');
+  const named = [...tool.slice(tool.indexOf('SHEETS = ['), tool.indexOf(']),\n]', tool.indexOf('SHEETS = [')) + 4).matchAll(/'([a-z0-9_]+)'/g)]
+    .map((m) => m[1]).filter((n) => !/^badges-sheet/.test(n));
+  check('9c the cutter names the sheets\' 24 cells the table\'s ids in order, then the medal (a row added to the table needs its badge)',
+    named.join(',') === ids.join(',') && /'godly', MEDAL\]\),\n\]/.test(tool) && /^MEDAL = 'achievements'$/m.test(tool),
+    { named: named.length, ids: ids.length });
+  const rec = src('tools/ui/achievement-badges.sha256').split('\n').filter((l) => l && !l.startsWith('#')).map((l) => l.split(/\s+/));
+  const recMap = new Map(rec.map(([h, f]) => [f, h]));
+  const drift = files.filter((f) => !existsSync(new URL(f, root)) || recMap.get(f) !== createHash('sha256').update(bin(f)).digest('hex'));
+  check('9d every badge is the cutter\'s, unchanged since (another tool writing over one fails here)',
+    rec.length === files.length && drift.length === 0, { recorded: rec.length, drift });
+  const more = src('src/ui/mobile/dash/MorePanel.jsx'), page = src('src/ui/mobile/dash/AchievementsPanel.jsx');
+  check('9e the medal is More\'s tile and the empty page\'s picture; no achievement borrows another picture',
+    /import \{ ACHV_MEDAL_SRC \} from '@\/data\/achievements\.js'/.test(more) && /<img src=\{ACHV_MEDAL_SRC\}/.test(page)
+      && !/journey\.webp/.test(page) && !/icon: '\//.test(src('src/data/achievements.js')));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

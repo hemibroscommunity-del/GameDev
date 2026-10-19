@@ -157,6 +157,7 @@ const bannerLook = (P) => P.page.evaluate(() => {
     layerPE: layer ? getComputedStyle(layer).pointerEvents : null,
     q: window.__btAchvBanner ? { shown: window.__btAchvBanner.shown, ids: window.__btAchvBanner.ids.slice() } : null,
     champion: window.__btCues && window.__btCues.stats ? (window.__btCues.stats.played.champion || 0) : null,
+    img: (el.querySelector('img') || {}).src || null,
   };
 });
 
@@ -232,9 +233,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const t = document.querySelector('[data-more-tile="achievements"]');
       const sp = t.querySelector('span');
       return { label: (sp ? sp.textContent : '').replace(/\u00AD/g, ''), title: t.getAttribute('title'), journey: !!document.querySelector('[data-more-tile="journey"]'),
-        whole: !!sp && sp.scrollWidth <= sp.clientWidth + 1 && sp.scrollHeight <= sp.clientHeight + 1, icon: !!(t.querySelector('img') && /journey\.webp/.test(t.querySelector('img').src)) };
+        whole: !!sp && sp.scrollWidth <= sp.clientWidth + 1 && sp.scrollHeight <= sp.clientHeight + 1,
+        icon: !!(t.querySelector('img') && /\/icons\/achievements\/achievements\.webp/.test(t.querySelector('img').src)) };
     })).catch(() => null);
-    rec.ok(`1b More: Journey's tile is Achievements, whole ("${tile && tile.label}"), the journey scroll its picture, "0 of 23 earned"`,
+    rec.ok(`1b More: Journey's tile is Achievements, whole ("${tile && tile.label}"), the owner's medal its picture, "0 of 23 earned"`,
       !!tile && tile.label === 'Achievements' && !tile.journey && tile.whole && tile.icon && /0 of 23 earned/.test(tile.title || ''), tile);
 
     /* ── 2 ── */
@@ -259,6 +261,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('2d the chips: Super-rare 6, Rare 10 with the arena\'s row, Common 7, All 23',
       counts.superrare && counts.superrare.n === 6 && counts.rare && counts.rare.n === 10 && counts.rare.arena
         && counts.common && counts.common.n === 7 && !counts.common.arena && counts.all && counts.all.n === 23, counts);
+    /* the owner's painted badges: every row its own, loaded at its 150 px */
+    const badges = await A.page.waitForFunction(() => {
+      const rows = [...document.querySelectorAll('[data-achv-row]')];
+      const look = rows.map((r) => { const i = r.querySelector('img'); return { id: r.dataset.achvRow, src: i ? i.getAttribute('src') : '', w: i ? i.naturalWidth : 0 }; });
+      return rows.length === 23 && look.every((x) => x.w === 150) ? look : false;
+    }, null, { timeout: 10000, polling: 250 }).then((h) => h.jsonValue()).catch(() => A.page.evaluate(() => [...document.querySelectorAll('[data-achv-row]')]
+      .map((r) => { const i = r.querySelector('img'); return { id: r.dataset.achvRow, src: i ? i.getAttribute('src') : '', w: i ? i.naturalWidth : 0 }; })));
+    rec.ok('2e every row wears its own badge, the owner\'s, loaded (150 px)',
+      badges.length === 23 && badges.every((x) => x.src.startsWith('/icons/achievements/' + x.id + '.webp?v=') && x.w === 150),
+      badges.filter((x) => !x.src.startsWith('/icons/achievements/' + x.id + '.webp?v=') || x.w !== 150));
     await A.page.screenshot({ path: join(OUT, 'achievements-1-page.png') });
 
     /* ── 3 ── */
@@ -266,8 +278,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const lever = await H.devOp(wsPort, 'achv', aId, { id: 'gladiator' }).catch((e) => ({ ok: false, error: String(e) }));
     const b1 = await A.page.waitForSelector('[data-achv-banner="gladiator"]', { timeout: 15000 }).then(() => bannerLook(A)).catch(() => null);
     if (b1) await A.page.screenshot({ path: join(OUT, 'achievements-2-banner.png') });
-    rec.ok(`3a the lever's one achievement is a BIG one's moment: the banner "${b1 && b1.words}", arena orange`,
-      !!lever && lever.ok && !!b1 && b1.words === 'Gladiator · +500 AP' && b1.tier === 'arena', { lever, b1 });
+    rec.ok(`3a the lever's one achievement is a BIG one's moment: the banner "${b1 && b1.words}", arena orange, its own badge`,
+      !!lever && lever.ok && !!b1 && b1.words === 'Gladiator · +500 AP' && b1.tier === 'arena' && /\/icons\/achievements\/gladiator\.webp/.test(b1.img || ''), { lever, b1 });
     rec.ok('3b ...with the champion\'s fanfare asked for it', !!b1 && b1.champion > champ0, { champ0, b1: b1 && b1.champion });
     rec.ok('3c ...drawn outside the world\'s wrap, inside the screen, never a tap target',
       !!b1 && !b1.inWrap && b1.inRoot && b1.x >= 0 && b1.r <= b1.vw && b1.y >= 0 && b1.b <= b1.vh && b1.layerPE === 'none', b1);

@@ -3191,6 +3191,13 @@ remnant to migrate server-side, not a mode to preserve.
       a banner and a sound for rare and up, a chat line for common
       (src/game/achievements.js, ui/panels/AchievementBanner.jsx); the dormant
       BT_ACHIEVEMENTS checker and the local "RARE DROP +AP" popup are gone;
+    - EACH ITS OWN BADGE, the owner's two painted sheets (they waited for them
+      over ChatGPT's code-drawn stand-ins): `tools/ui/cut-achievement-badges.py`
+      (sources assets/icons-source/achievements-2026-10-19/) writes
+      public/icons/achievements/<id>.webp, 150 px (3x the card's 50 CSS px
+      rarest box), and the page's medal (More's tile); `achvBadgeSrc`,
+      `ACHV_BADGE_V` in src/data/achievements.js; every file's SHA-256 in
+      tools/ui/achievement-badges.sha256 (achievements-client §9);
     - `caps.achievements`, kill switch `achievements: false`, lever
       `/dev/achv`; `achievements` suite, `achievements-client`, mirror-audit,
       cost-guard §5 (a first kill writes one more row) and §9c,
