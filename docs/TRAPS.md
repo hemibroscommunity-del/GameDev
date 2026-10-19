@@ -7842,3 +7842,27 @@ test whose pass depends on luck at odds a CI can roll.
 
 **Receipt:** dice.test 2a/2a2 (70 checks); the old 2a's failing run is in #1017's
 first CI (`test`, job 117846154027).
+
+## 235. "Spend the pool, wait a moment, read it" (v2.3.3482)
+
+**The plausible move.** A phone test spends mana or stamina through the worker
+(`ability_use` a few times, a pause between), waits for the answers, and reads
+the pool to prove the spend landed.
+
+**Why it is wrong.** In a hub (town, the World View, the farm) the worker tops
+both pools off every regen tick, ~670 ms: a tenth of the bar plus the ordinary
+trickle (index.js "HUB TOP-OFF"; 13 of a 102 mana bar). mp-potions spent three
+specials there (102 -> 42, one block of 20 each), 180 ms apart from the test,
+each send waiting on a page that draws a few frames a second, and read 400 ms
+after the last: two ticks had landed, 42 + 26 = 68, and "three specials
+drained the pool" failed on a worker that had charged all three. Reading the
+worker's own pool a few seconds later is worse, not better: by then the hub
+has filled it again (it read 102).
+
+**The rule.** Spend in one page turn and read the WORKER's pool (the admin
+view's `live.mana` / `stamina`) straight after, with the threshold set so one
+tick cannot cross it; or spend outside a hub, where the trickle is a few
+points a tick. A pool read in town is a race with the top-off.
+
+**Receipt:** the sweep of 2026-10-19's batch 22 (68), the first mend's 102,
+and a probe through the real router (three swipes: 102, 82, 62, 42).

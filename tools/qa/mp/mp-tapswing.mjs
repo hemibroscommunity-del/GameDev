@@ -75,16 +75,44 @@ const pickTarget = (P) => P.page.evaluate(() => {
     const t = Math.max(0, Math.min(1, ((ox - P0.x) * vx + (oy - P0.y) * vy) / L));
     return Math.hypot(P0.x + vx * t - ox, P0.y + vy * t - oy) < 5 * 32;
   });
+  /* v2.3.3482: ...and only one the bro can walk straight to.  The walk below
+     steers the stick in a straight line, so a monster behind a rock, a tree or
+     water stood him against it for the whole walk while it wandered off (the
+     sweep of 2026-10-19: 489 px at the tap, 556 after the walk, 637 after).
+     Asked of the game's own walk test (window.__btIsSolid, the body's box
+     against the walk grid) every 8 px from your feet to 30 px short of it. */
+  const clearWalk = (bx, by) => {
+    if (typeof window.__btIsSolid !== 'function') return true;
+    const vx = bx - P0.x, vy = by - P0.y, L = Math.hypot(vx, vy);
+    for (let s = 16; s < L - 30; s += 8) {
+      if (window.__btIsSolid(P0.x + vx * s / L, P0.y + vy * s / L)) return false;
+    }
+    return true;
+  };
   let best = null;
+  /* v2.3.3482: when there is nothing to tap, why (window.__tsPickWhy) */
+  const why = { alive: 0, onScreen: 0, passOut: 0, blocked: 0, outs: outs.length,
+    me: { x: Math.round(P0.x), y: Math.round(P0.y) },
+    nearestOut: outs.length ? Math.round(Math.min(...outs.map(([ox, oy]) => Math.hypot(ox - P0.x, oy - P0.y)))) : null };
   for (const m of (S.monsters || [])) {
     if (!m || m.alive === false || (typeof m.curHp === 'number' && m.curHp <= 0)) continue;
+    why.alive++;
     const cx = r.left + (m.x - S.camera.x) * sx;
     const cy = r.top + ((m.renderY != null ? m.renderY : m.y) - S.camera.y) * sy;
-    if (cx < r.left + 8 || cx > r.right - 8 || cy < r.top + 8 || cy > r.bottom - 8) continue;
-    if (passesOut(m.x, m.y)) continue;
+    /* v2.3.3482: 40 px inside the screen, not 8.  A touch that starts within
+       EDGE_GUARD_PX (18) of the left edge is the iPhone's back swipe and the
+       game absorbs it (BroTown's edge guard), so a tap on a monster drawn at
+       x 13 locked nothing (the sweep of 2026-10-19: "lock src auto", tapped at
+       13, 215); the far side keeps the same room for the monster to step on
+       before the tap lands. */
+    if (cx < r.left + 40 || cx > r.right - 40 || cy < r.top + 40 || cy > r.bottom - 40) continue;
+    why.onScreen++;
+    if (passesOut(m.x, m.y)) { why.passOut++; continue; }
+    if (!clearWalk(m.x, m.y)) { why.blocked++; continue; }
     const gap = Math.round(Math.hypot(m.x - P0.x, m.y - P0.y));
     if (!best || gap > best.gap) best = { id: String(m.id), gap, cx: Math.round(cx), cy: Math.round(cy), hp: m.curHp };
   }
+  window.__tsPickWhy = why;
   return best;
 });
 
@@ -188,7 +216,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      this is a pure lock -- exactly the gesture the owner describes and the one
      that cannot smuggle a held attack button in with it. */
   const target = await pickTarget(P);
-  rec.ok('there is a live monster drawn on screen to tap (guard)', !!target, target);
+  rec.ok('there is a live monster drawn on screen to tap (guard)', !!target,
+    target || await P.page.evaluate(() => window.__tsPickWhy || null));
   if (!target) { await P.ctx.close().catch(() => {}); return; }
 
   await P.page.evaluate(({ x, y }) => {

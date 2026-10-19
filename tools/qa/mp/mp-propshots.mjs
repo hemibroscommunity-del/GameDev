@@ -80,7 +80,14 @@ const throwBall = (P, b) => P.page.evaluate((b) => new Promise((resolve) => {
     for (const e of ((window.__btSlimeProj && window.__btSlimeProj()) || [])) {
       if (e.ownerId === b.id && e.visible) drawn.push([e.x, e.y]);
     }
-    if (!alive || performance.now() - t0 > b.ms + 2000) {
+    /* v2.3.3482: watched until the ball's OWN flight ends, which is counted
+       in 60 Hz frames (gameEvents.js: travelMs -> life, each frame taking
+       S._dtScale of it, at most 3).  Below 20 frames a second the game runs
+       slower than the clock, so the old cut-off of travelMs + 2 s stopped
+       watching the control ball 12 frames of its 18 along (y 316.7 of 400,
+       the sweep of 2026-10-19, at ~4 frames a second: TRAPS §200).  The
+       clock is only the guard against a ball that never ends. */
+    if (!alive || performance.now() - t0 > Math.max(b.ms * 12, 15000)) {
       resolve({ spawn, track, drawn, alive, bursts: window.__qaBursts.slice(),
         ms: Math.round(performance.now() - t0) });
       return;

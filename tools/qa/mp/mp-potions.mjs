@@ -273,16 +273,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
      seen: setting S.rpg.mana in the page leaves the server still believing the
      pool is full, and with a delta player_state it has no changed field to
      send -- so the drink "fills" a pool the server never saw empty and the
-     number on screen is the client's own guess. Three specials is 75 mana. */
-  for (let i = 0; i < 3; i++) {
-    await P.page.evaluate(() => {
-      const S = window._gameState.current;
-      if (S.channel) S.channel.send({ type: 'ability_use', payload: { type: 'swipe', tier: 0 } });
-    });
-    await P.page.waitForTimeout(180);
+     number on screen is the client's own guess. Three specials is three blocks. */
+  /* ═══ v2.3.3482: SENT TOGETHER, AND THE WORKER'S POOL READ AT ONCE ═══
+     This stands in town, where the worker tops the pools off every regen
+     tick (~670 ms: 10% of the bar plus the ordinary trickle, 13 of a 102
+     bar -- index.js "HUB TOP-OFF").  Three specials take it 102 -> 42 (one
+     block, 20, each), and the sweep of 2026-10-19 read 68: 42 plus two
+     ticks, because the three sends went 180 ms apart from the test, each
+     waiting on a page that draws a few frames a second, and the read came
+     400 ms after the last (TRAPS §200).  So the three go in one turn, and
+     "server-side" is the WORKER's pool (the admin view's `mana`), read
+     straight after: at most one tick can land before it (55).  A worker that
+     charged fewer reads 62 or more. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    if (!S.channel) return;
+    for (let i = 0; i < 3; i++) S.channel.send({ type: 'ability_use', payload: { type: 'swipe', tier: 0 } });
+  });
+  let drained = null;
+  for (let t0 = Date.now(); Date.now() - t0 < 2000;) {
+    const sp = await H.serverPlayer(wsPort, id).catch(() => null);
+    if (sp && typeof sp.mana === 'number') drained = Math.round(sp.mana);
+    if (drained != null && drained < 60) break;
+    await P.page.waitForTimeout(60);
   }
-  await P.page.waitForTimeout(400);
-  const drained = await mana(P);
+  if (drained == null) drained = await mana(P);
   rec.ok(`three specials really drained the pool server-side (${drained})`,
     drained < 60, { drained });
 
