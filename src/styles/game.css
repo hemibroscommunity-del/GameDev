@@ -3401,6 +3401,16 @@ body:has(.bt-pcard) [data-coach]{display:none}
    reflow the grid under the finger (the same reason .bt-cc-defcolor--on uses
    a shadow rather than a fatter border). */
 .bt-cc-ink-chip--on{border-color:var(--ui-brass);box-shadow:0 0 0 2px var(--ui-brass)}
+/* v2.3.3479: the 2026-10-19 UI review -- a 22px chip is a small target, and
+   a reflow would take the card's picture (the owner's call).  The no-trade
+   step: an invisible ring of 2px, half the 5px gap, so a near miss lands on
+   the nearest chip and no ring overlaps a neighbour's.  Up and to the sides
+   only, NOT down: this palette has no padding, so a ring under its last row
+   would add 2px of scroll to a palette that fits exactly (three rows at
+   390x844) and it would wobble under a thumb.  The row below a chip claims
+   that side of the gap with its own ring. */
+.bt-cc-ink-chip{position:relative}
+.bt-cc-ink-chip::after{content:"";position:absolute;inset:-2px -2px 0}
 /* The eraser reads as a hole, not as a colour -- the same checker the editor
    draws it with, because the same control must look like the same control in
    both places or the shared store is a lie. */
@@ -4130,6 +4140,15 @@ body:has(.bt-pcard) [data-coach]{display:none}
    is what lets the row give the room back on a tab like Hats. */
 .bt-cc-colors-row::-webkit-scrollbar{display:none}
 .bt-cc-colors-row>*{flex:none!important;width:var(--cc-swatch)!important;height:var(--cc-swatch)!important}
+/* v2.3.3479: the 2026-10-19 UI review -- sideways the swatches are ~31px (a
+   44px reflow would cost the sideways creator height it has not got: the
+   owner's call).  The no-trade step: an invisible 2px ring, half the 5px gap
+   (4px under 360px wide: the rings meet and never overlap), so a near miss
+   lands on the nearest colour; upright it helps the ~33px swatches the same
+   way.  The row's own 2px padding takes the outer rings, so it adds no
+   scroll.  Buttons only: the ghost row's placeholder is a bare div, and the
+   swatch buttons carry position:relative (_apTileStyle, BroTown.jsx). */
+.bt-cc-colors-row>button::after{content:"";position:absolute;inset:-2px}
 /* v2.3.1254: scroll affordance (owner: indicate there are more items) —
    each strip sits in a .bt-cc-scroll wrap; when content extends past
    the right edge, a sheet-colored fade + chevron fades in (driven by
