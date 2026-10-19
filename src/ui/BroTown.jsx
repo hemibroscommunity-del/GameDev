@@ -2663,7 +2663,14 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.1307 (round-7): the dashed circle read as a missing asset /
          loading placeholder — the painted bald-head "none" icon with a
          tiny None caption replaces it. */
-      ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' } },
+      /* v2.3.3479: the 2026-10-19 UI review -- the picked "Human" tile read
+         "Huma" + the check: the check is PAINTED into cc-tile-on.png's
+         bottom-right corner, so it cannot be moved, and "Human" is wider than
+         "None".  On the species strip the caption goes ABOVE the icon, as
+         _buildTile's does for the same reason ("Averag" + the check); the check
+         then lands on the round icon's empty corner.  "None" tiles keep their
+         look. */
+      ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: cat === 'species' ? 'column-reverse' : 'column', alignItems: 'center', justifyContent: 'center' } },
           /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/cc/cc-no-hair.webp?v=' + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
           /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, cat === 'species' ? opt.name : "None"))   /* v2.3.2682: on the species strip 'none' is the Human */
       : /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
