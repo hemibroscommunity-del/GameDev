@@ -631,7 +631,7 @@ export function castAbility(S, kind) {
      press, so against it the old instant path below is the truth. */
   if (kind === 'whirl' && cfg.windupMs > 0 && S._serverCaps && S._serverCaps.whirlWindup) {
     try { S.channel && S.channel.send({ type: 'ability', payload: { kind: kind } }); } catch (e) {}
-    S._whirlWindup = { t0: now, until: now + cfg.windupMs, r: cfg.radius, flushed: false };
+    S._whirlWindup = { t0: now, until: now + cfg.windupMs, r: cfg.radius, max: cfg.maxTargets /* v2.3.3486: who it will catch */, flushed: false };
     S.swingTimer = now;
     var _wsfx = null;
     try { _wsfx = BT_AUDIO.play('whirlwind', { vol: 0.9 }); } catch (e) { _wsfx = null; }

@@ -295,7 +295,7 @@ import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, S
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
 import { variantSpritesFor } from '../monsterVariantSprites.js';
-import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.2923 */ } from '../../data/monsterVariants.js';
+import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.2923 */, isIntangible /* v2.3.3486: the whirlwind's catch is what it can hit */ } from '../../data/monsterVariants.js';
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
@@ -2922,6 +2922,10 @@ function applySquash(sp, sq, rot = 0) {
 function clearIfDrawn(g) {
   if (g && g.context && g.context.instructions.length) g.clear();
 }
+
+/* v2.3.3486: the whirlwind's cap if a wind-up does not carry its own (the
+   worker's STAM_ABILITIES.whirl.maxTargets, mirrored in data/abilities.js). */
+const WHIRL_CATCH_MAX = 16;
 
 export class EffectsRenderer {
   constructor(layers) {
@@ -7609,6 +7613,10 @@ export class EffectsRenderer {
              the footprint sizing, the distance ramp, the screen-space line
              weight -- is untouched for the candidates that keep it. */
           if (isCur) continue;
+          /* v2.3.3486: a monster the whirlwind's wind-up has caught wears the
+             whirl's ring (_markWhirlCatch, drawn this frame before this
+             loop) -- one monster, one ring. */
+          if (this._whirlCaught && c.m && this._whirlCaught.has(c.m.id)) continue;
           /* ═══ v2.3.2253: THE RING FOLLOWS THE ARROW ═══
              It used to go red only for a TAPPED target, which meant the ground
              mark and the arrow above the head could disagree about what red
@@ -12594,7 +12602,17 @@ export class EffectsRenderer {
       }
     };
     const w = S._whirlWindup;
-    if (w && now < w.until + 50) draw(S.player.x, S.player.y, w);
+    this._whirlCaught = null;
+    this._whirlCatchProbe = null;
+    /* v2.3.3486: QA probe, house style -- who the wind-up has caught, this frame */
+    if (typeof window !== 'undefined' && !window.__btWhirlCatch) {
+      const self = this;
+      window.__btWhirlCatch = () => self._whirlCatchProbe;
+    }
+    if (w && now < w.until + 50) {
+      draw(S.player.x, S.player.y, w);
+      this._markWhirlCatch(S, w, now, rk);
+    }
     const pw = S._peerWindups;
     if (pw) {
       for (const id of Object.keys(pw)) {
@@ -12607,6 +12625,90 @@ export class EffectsRenderer {
         if (typeof ox === 'number' && typeof oy === 'number') draw(ox, oy, e);
       }
     }
+  }
+
+  /* ═══ v2.3.3486: WHO THE WHIRLWIND WILL CATCH ═══
+     Owner: "when you do the whirlwind (wind up period after tapping the
+     button) it would be helpful if the monsters were highlighted (or some
+     other visual cue that works best) to show if they're in the whirlwind
+     effective area".
+     The worker strikes, as the wind-up ends, the nearest `maxTargets` (16)
+     damageable monsters whose position is within `radius` (240) x depthK of
+     where it has you, feet to feet (server abilities.js, the whirl's scan).
+     So every frame of the ring the same question is asked here of the
+     monsters this screen holds, nearest first and at most as many, and each
+     one caught gets a bright double ring on the ground at its feet that beats
+     with the wind-up's pulse and burns brighter as the strike comes, with a
+     small chevron on the ground pointing at you: the vortex PULLS them in
+     (pullTo 34).  Step a monster out of the circle and its marks go; step one
+     in and it lights -- the tactical half of the owner's v2.3.2824 ask.
+     Rings, not a tint: the tint is the hit flash's (and the death's), and an
+     outline filter is a pass in the middle of the frame (TRAPS §221).
+     Measured where each monster is DRAWN, as the ring is drawn round where
+     you are drawn: a mark has to agree with what the eye sees inside the
+     ring.  The worker's copy can be a tick apart, so a monster right ON the
+     edge may go either way; the edge ring already reads as a line.
+     `this._whirlCaught` (their ids) lets the engage rings stand aside for
+     them (_updateOverlays runs after this): one monster, one ring. */
+  _markWhirlCatch(S, w, now, rk) {
+    const g = this.windupGfx;
+    const ms = S.monsters;
+    if (!g || !ms || !ms.length || !S.player) return;
+    const R = (w.r || 240) * depthK(S.currentZone, S.player.y);
+    const R2 = R * R;
+    const px = S.player.x, py = S.player.y;
+    const hits = [];
+    for (let i = 0; i < ms.length; i++) {
+      const m = ms[i];
+      if (!m || !m.alive || (typeof m.curHp === 'number' && m.curHp <= 0) || isIntangible(m)) continue;
+      if (m.zone && S.currentZone && m.zone !== S.currentZone) continue;
+      const mx = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
+      const my = (typeof m.renderY === 'number' && isFinite(m.renderY)) ? m.renderY : m.y;
+      if (typeof mx !== 'number' || typeof my !== 'number' || !isFinite(mx) || !isFinite(my)) continue;
+      const dx = mx - px, dy = my - py, d2 = dx * dx + dy * dy;
+      if (d2 <= R2) hits.push({ m, mx, my, d2 });
+    }
+    if (!hits.length) { this._whirlCaught = new Set(); this._whirlCatchProbe = { n: 0, inside: 0, r: R, ids: [] }; return; }
+    hits.sort((a, b) => a.d2 - b.d2);
+    const cap = Math.max(1, (w.max | 0) || WHIRL_CATCH_MAX);
+    const n = Math.min(hits.length, cap);
+    const span = Math.max(1, w.until - w.t0);
+    const p = Math.max(0, Math.min(1, (now - w.t0) / span));
+    const beat = 0.5 + 0.5 * Math.cos(((now - w.t0) % 700) / 700 * Math.PI * 2);
+    const caught = new Set();
+    for (let i = 0; i < n; i++) {
+      const h = hits[i];
+      const m = h.m;
+      caught.add(m.id);
+      const rx = (monsterMeleeHitRadius(m.arch || m.archetype || m.type) || 24) + 12;
+      const ry = rx * 0.38;
+      /* the keyline, then the bright ring, then a second one inside it */
+      g.ellipse(h.mx, h.my, rx, ry);
+      g.fill({ color: 0xff9a3c, alpha: 0.10 + 0.14 * p });
+      g.ellipse(h.mx, h.my, rx, ry);
+      g.stroke({ color: 0x2a1406, width: 5 * rk, alpha: 0.45 });
+      g.ellipse(h.mx, h.my, rx, ry);
+      g.stroke({ color: 0xffe0a8, width: (2.6 + 1.4 * p) * rk, alpha: 0.7 + 0.3 * beat });
+      g.ellipse(h.mx, h.my, rx * 0.62, ry * 0.62);
+      g.stroke({ color: 0xffb347, width: 1.8 * rk, alpha: 0.45 + 0.4 * beat });
+      /* the pull: a chevron on the ground just past the ring, pointing at you */
+      const d = Math.sqrt(h.d2);
+      if (d > rx + 18) {
+        const ux = (px - h.mx) / d, uy = (py - h.my) / d;
+        const cx = h.mx + ux * (rx + 10 + 6 * beat), cy = h.my + uy * (ry + 10 + 6 * beat);
+        const s = 9 * rk, nx = -uy, ny = ux;
+        g.moveTo(cx - ux * s + nx * s, cy - uy * s + ny * s);
+        g.lineTo(cx, cy);
+        g.lineTo(cx - ux * s - nx * s, cy - uy * s - ny * s);
+        g.stroke({ color: 0x2a1406, width: 5 * rk, alpha: 0.4 });
+        g.moveTo(cx - ux * s + nx * s, cy - uy * s + ny * s);
+        g.lineTo(cx, cy);
+        g.lineTo(cx - ux * s - nx * s, cy - uy * s - ny * s);
+        g.stroke({ color: 0xffe0a8, width: 2.6 * rk, alpha: 0.6 + 0.4 * beat });
+      }
+    }
+    this._whirlCaught = caught;
+    this._whirlCatchProbe = { n, inside: hits.length, r: R, ids: Array.from(caught) };
   }
 
   /* ── Catch flight (v2.3.845) ──
