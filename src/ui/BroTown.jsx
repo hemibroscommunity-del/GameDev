@@ -12663,12 +12663,23 @@ export var BroTown = function BroTown(_ref0) {
       WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
       maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)'
     }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-close",
+  }, /* \u2550\u2550\u2550 v2.3.3489: THE \u2715 STAYS IN THE CORNER, AND IS EASY TO SEE \u2550\u2550\u2550
+       The owner, playtesting: "Vendor menus need a more prominent escape icon
+       in the corner."  It was a faint 28 px disc, a child of this card -- the
+       SCROLLER -- so in a long menu (the forge, the Woodworker, the Gem Works)
+       it scrolled away with the rows.  It is the shared 40 px dark disc now
+       (game.css .bt-xclose), in a sticky bar of no height at the top of the
+       card, so it stays in the corner while the menu scrolls under it.  Still
+       .bt-inspect-close: Esc presses it, the close sound and the computer's
+       key cap find it by that. */
+  /*#__PURE__*/React.createElement("div", { className: "bt-inspect-closebar" }, /*#__PURE__*/React.createElement("button", {
+    className: "bt-inspect-close bt-xclose",
+    "aria-label": "Close",
+    "data-building-close": "",
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement(BuildingRoom, { key: roomIdFor(buildingPanel) || buildingPanel, panel: buildingPanel }) /* v2.3.3258: the inside of the building, behind its window's menu; v2.3.3259: keyed by its ROOM, so the Gem Works' two tabs (one room) never load it again */, /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
+  }, "\u2715")), /*#__PURE__*/React.createElement(BuildingRoom, { key: roomIdFor(buildingPanel) || buildingPanel, panel: buildingPanel }) /* v2.3.3258: the inside of the building, behind its window's menu; v2.3.3259: keyed by its ROOM, so the Gem Works' two tabs (one room) never load it again */, /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
        opens the panel that does the work and closes the hall */
   Object.prototype.hasOwnProperty.call(WHEEL_HALLS, buildingPanel) && /*#__PURE__*/React.createElement(WheelHallPanel, {   /* v2.3.3258: every hall in the table, the Town Hall's too */
     hall: buildingPanel,

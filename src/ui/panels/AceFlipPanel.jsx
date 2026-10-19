@@ -432,12 +432,15 @@ export function AceFlipPanel() {
         /* v2.3.3481: the 2026-10-19 UI review -- the ✕ is 18 x 28, under the
            44 px touch floor: an invisible ring makes the press 44 x 44 with
            no change to how it looks (game.css .bt-ace-close; ::before, as
-           ::after is the computer's Esc key cap). */
-        className: 'bt-ace-close',
+           ::after is the computer's Esc key cap).
+           v2.3.3489: the owner, playtesting -- "Vendor menus need a more
+           prominent escape icon in the corner": a bare grey "×" was the
+           faintest of the three; it is the windows' one big ✕ now (game.css
+           .bt-xclose, its own 44 px ring on ::before as this one's was) */
+        className: 'bt-xclose',
         /* v2.3.3407: Esc presses it (game/deskKeys.js) */
-        'data-esc': '', 'data-key': 'Esc', 'data-key-at': 'hang',
-        style: { position: 'relative', border: 'none', background: 'transparent', color: LS.txt3, fontSize: 20, lineHeight: 1, cursor: 'pointer', padding: 4 },
-      }, '×')),
+        'data-esc': '', 'data-key': 'Esc', 'data-key-at': 'hang', 'data-ace-close': '',
+      }, '✕')),
 
     /* ── v2.3.2619: three faces of the dialog ── */
     React.createElement('div', {
