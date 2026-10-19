@@ -96,6 +96,13 @@ export function PartyPanel(props) {
     return p && p.id === stateRef.current.myId;
   }) : null;
   var sponsorSpectator = !legacyBets && !!arenaTournament && (!_betMe || !!_betMe.eliminated);
+  /* v2.3.3479: the champion's ACHIEVEMENT POINTS are the worker's to pay, and
+     since v2.3.3479 it pays them (server gladiator.js ARENA.CHAMPION_AP, 500,
+     with the gold; inbox.js adds them to achievementPoints) and says so in
+     caps.arenaap.  Before it no worker paid them (the page's own grant is the
+     old path caps.arena turns off), so the window names the AP only against
+     a worker that says it pays; an older one, or `arenaap: false`, pays none. */
+  var arenaPaysAp = !!(stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.arenaap);
   return React.createElement("div", {
     /* v2.3.1232: LS shared buildings kit -- full-bleed panel surface;
        -20px margin counters the legacy .bt-inspect-card padding */
@@ -213,8 +220,17 @@ export function PartyPanel(props) {
      The worker pays the champion PRIZE_PER_ENTRANT 250 a fighter in the
      bracket (server gladiator.js _arenaPrize: 2,000 for a full 8), "up to"
      because the house's share is capped at 3,600 an hour game-wide.  The
-     title and the AP stay: the owner wants the champion to have the AP. */
-  "Enter a single elimination tournament of up to 8 fighters. Blind matchups \u2014 any level can face any level. No food or healing allowed. Only the final victor earns the Gladiator title and ", ARENA_CHAMPION_REWARD.ap, " AP, plus up to 250G for every fighter in the bracket (2,000G for a full 8)."), /*#__PURE__*/React.createElement("button", {
+     title stays, and the AP: the window always promised the champion 500
+     AP, and since v2.3.3479 the worker really pays them, with the gold
+     (server gladiator.js ARENA.CHAMPION_AP; inbox.js adds them to
+     achievementPoints) -- the owner: "an arena winner should be included".
+     So the AP are named only against a worker that says it pays them
+     (`arenaPaysAp`, caps.arenaap); an older worker pays gold alone, and the
+     line says the gold alone. */
+  "Enter a single elimination tournament of up to 8 fighters. Blind matchups \u2014 any level can face any level. No food or healing allowed. ",
+  arenaPaysAp
+    ? "Only the final victor earns the Gladiator title and " + ARENA_CHAMPION_REWARD.ap + " AP, plus up to 250G for every fighter in the bracket (2,000G for a full 8)."
+    : "Only the final victor earns the Gladiator title and up to 250G for every fighter in the bracket (2,000G for a full 8)."), /*#__PURE__*/React.createElement("button", {
     onClick: /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee8() {
       var S, R, res, data, _t7;
       return _regenerator().w(function (_context8) {
@@ -720,7 +736,13 @@ export function PartyPanel(props) {
   }, "+", /* v2.3.3178: the prize the worker paid -- it follows the bracket
      now (250 a gladiator, at most 3,600 from the house an hour); a worker
      from before it never sends one, and paid the 2,000 */
-  typeof arenaTournament.champion.prize === 'number' ? arenaTournament.champion.prize : ARENA_CHAMPION_REWARD.gold, "G +", ARENA_CHAMPION_REWARD.ap, "AP + \"Gladiator\" title")), arenaTournament.recentMatches.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  typeof arenaTournament.champion.prize === 'number' ? arenaTournament.champion.prize : ARENA_CHAMPION_REWARD.gold, "G +",
+  /* v2.3.3479: the AP the worker PAID, as the prize above: `champion.ap`,
+     which gladiator.js _arenaCrown puts on the record only when it pays them
+     (caps.arenaap).  A record without it was paid gold alone -- an older
+     worker, or `arenaap: false` -- and the box said "+500AP" for points
+     nobody was given, so it names none. */
+  typeof arenaTournament.champion.ap === 'number' && arenaTournament.champion.ap > 0 ? arenaTournament.champion.ap + "AP + " : " ", "\"Gladiator\" title")), arenaTournament.recentMatches.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,

@@ -61,8 +61,15 @@ export function mailLine(e) {
   let what;
   /* v2.3.3479: the review -- "+2500 gold" beside the top bar's "2,550": the
      HUD's own call (ZoneHeader.jsx) */
-  if (kind === 'gold') what = `+${Math.max(0, Math.round(Number(p.amount) || 0)).toLocaleString()} gold`;
-  else if (kind === 'item') what = source === 'daily' ? 'A daily chest' : `${n}× ${itemWords(p.invKey)}`;
+  if (kind === 'gold') {
+    what = `+${Math.max(0, Math.round(Number(p.amount) || 0)).toLocaleString()} gold`;
+    /* v2.3.3479: a gold credit may carry ACHIEVEMENT POINTS paid with it --
+       the arena's champion ("+2,000 gold and 500 AP"; server gladiator.js
+       ARENA.CHAMPION_AP, inbox.js adds a gold credit's `ap`).  Read as the
+       worker pays it (a whole number, never below 0); no `ap`, no words. */
+    const ap = Math.max(0, Math.floor(Number(p.ap) || 0));
+    if (ap) what += ` and ${ap.toLocaleString()} AP`;
+  } else if (kind === 'item') what = source === 'daily' ? 'A daily chest' : `${n}× ${itemWords(p.invKey)}`;
   else if (kind === 'weapon') what = (p.weapon && typeof p.weapon.name === 'string' && p.weapon.name) || 'A weapon';
   else if (kind === 'gear') what = (p.piece && typeof p.piece.name === 'string' && p.piece.name) || 'A piece of gear';
   else if (kind === 'pet') what = petWords(p.pet);   /* v2.3.3122: a pet (a sale, a trade, an unsold one back) */
