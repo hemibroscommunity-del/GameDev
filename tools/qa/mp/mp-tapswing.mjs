@@ -175,12 +175,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
      S.rpg.weapon is undone by the next player_state echo. */
   const myId = await H.readState(P, (S) => S.myId);
   await H.grant(wsPort, myId, 'gold', { amount: 500 }).catch(() => {});
-  await H.grant(wsPort, myId, 'item', { invKey: 'wood_pine_log', count: 9 }).catch(() => {});
+  await H.grant(wsPort, myId, 'item', { invKey: 'bar_copper', count: 4 }).catch(() => {});   /* v2.3.3488: a COPPER greatsword from four bars -- the wood tier is not forged any more (the owner: "'wood greatsword' is not an actual weapon in the game"; copper asks Smithing 1 and nothing of Melee) */
   await P.page.waitForTimeout(1200);
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     if (S && S.channel) S.channel.send({ type: 'forge_weapon',
-      payload: { weaponType: 'greatsword', tierKey: 'wood', isWoodwork: false } });
+      payload: { weaponType: 'greatsword', tierKey: 'copper', isWoodwork: false } });
   });
   await P.page.waitForTimeout(2200);
   await P.page.evaluate(() => {
