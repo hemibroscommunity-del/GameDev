@@ -97,7 +97,7 @@ export function VendorPanel(props) {
      goods at their own price, bought now or bid on (store.js header), so
      the subtitle says that; the tile keeps its words. */
   return React.createElement("div", { style: LS_WRAP },
-    /* v2.3.3484: the gavel (icons/ui/bldg-auction-gavel.webp), as the door's prompt */
+    /* v2.3.3486: the gavel (icons/ui/bldg-auction-gavel.webp), as the door's prompt */
     lsHeader('auction-gavel', '⚖', "Auction House", "Individual item listings and bids"),
     React.createElement("div", { style: LS_BODY },
       React.createElement("div", {

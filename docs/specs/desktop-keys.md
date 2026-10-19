@@ -85,7 +85,7 @@ the emotes' own button, the chat box's smiley, wears the B.
   while the chat feed the bell opens is up over the same corner, and while
   the emote picker is up: its rows lay over the picker's second row of moves,
   so a click on Sit, Sleep, Flop or Bounce hid the strip instead.
-- **Since v2.3.3484 it is in the black margin beside the game** (the first
+- **Since v2.3.3486 it is in the black margin beside the game** (the first
   ChatGPT review's suggestion; the owner: "Go recommended on everything").
   Wherever the margin has room -- 190 px, and a window at least 520 px tall --
   KeyboardHintsPanel portals the strip and the ⌨ into the body (#root's
