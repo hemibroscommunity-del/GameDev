@@ -1129,6 +1129,7 @@ Screens: building-party, building-post, building-sheriff, building-guildhall, bu
 - A clan invite with its only Accept inside an unreachable window, then a card of its own (v2.3.3066); gone with clans (v2.3.3321).
 - The dashboard's Clan page showed developer code to a player with no clan, and its Guild page said "You haven't joined a guild yet" to everyone (fixed v2.3.3066).
 - Parties of four, forgotten at logout (until v2.3.3284).
+- Five betting sections in the arena window during a tournament, each with its own Place Bet (noted in v2.3.1235 as not fixable by restyling). Four of them took the bet off the gold on your screen and sent a message no server settles, so they placed bets that did not exist. Since v2.3.3479 (the UI review), against a server that settles stakes only the real one is drawn, the round bet ("pick who you think will win this round"), for anyone not in the bracket or already knocked out.
 
 **Please don't suggest:**
 - Bringing clans back as a separate system, or refunding the old clan founding fee.
@@ -1139,7 +1140,6 @@ Screens: building-party, building-post, building-sheriff, building-guildhall, bu
 **Still open:**
 - The Hotel is still shut ("Shut for now"): its rest is the farm bed's, on the phone only. Its room picture is ready for the day it opens.
 - No keeper stands outside the Saloon, Post Office, Sheriff's Office or Guild Hall yet; each needs the owner's picture of the person.
-- In the arena window, the old duplicated betting sections can still show more than one gold confirm button at once (noted in v2.3.1235 as not fixable by restyling).
 - Not built for alliances: a chat of their own, shared storage, territory, war kills on the map, a war banner.
 
 Sources: CLAUDE.md, docs/specs/wheel-halls.md, docs/specs/building-rooms.md, docs/specs/party.md, docs/specs/alliance.md, docs/specs/arena.md, docs/specs/clans.md, docs/specs/wheel-doors.md, src/ui/panels/buildings/WheelHallPanel.jsx, src/ui/panels/buildings/AlliancePart.jsx, src/ui/panels/buildings/PartyPanel.jsx
