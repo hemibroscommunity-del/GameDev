@@ -524,7 +524,7 @@ export const achievementMethods = {
     const book = this._achvOf(pid);
     if (!ps || !book) return { ok: false, error: 'not online' };
     if (book.locked || !book.rec) return { ok: false, error: 'achievements record locked' };
-    const b = body && typeof body === 'object' ? body : {};
+    const b = body && typeof body === 'object' ? body : Object.create(null);
     if (b.clear) {
       book.rec = { v: ACHV.V, got: Object.create(null), n: Object.create(null), dg: Object.create(null) };
       this._achvPut(pid, book);
