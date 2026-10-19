@@ -1954,25 +1954,11 @@ export var BroTown = function BroTown(_ref0) {
     _useState134 = _slicedToArray(_useState133, 2),
     buildingPanel = _useState134[0],
     setBuildingPanel = _useState134[1]; /* 'shop'|'bank'|'enchant'|'cook'|'farm'|'party'|'exchange'|'forge'|'gemcut'|'woodwork' */
-  var _useState135 = useState(null),
-    _useState136 = _slicedToArray(_useState135, 2),
-    cookMinigame = _useState136[0],
-    setCookMinigame = _useState136[1]; /* {fishKey, fishName, healAmt, tier, started, result} */
-  var _useState137 = useState(0),
-    _useState138 = _slicedToArray(_useState137, 2),
-    cookTick = _useState138[0],
-    setCookTick = _useState138[1]; /* forces re-render for minigame animation */
-  React.useEffect(function () {
-    if (!cookMinigame || cookMinigame.result) return;
-    var id = setInterval(function () {
-      return setCookTick(function (t) {
-        return t + 1;
-      });
-    }, 50); /* 20fps animation */
-    return function () {
-      return clearInterval(id);
-    };
-  }, [cookMinigame === null || cookMinigame === void 0 ? void 0 : cookMinigame.started, cookMinigame === null || cookMinigame === void 0 ? void 0 : cookMinigame.result]);
+  /* v2.3.3479: the Cookhouse's fish game is gone (the owner: "Remove
+     cookhouse fish game"; CookPanel.jsx, NO FISH ARE COOKED HERE), and with
+     it its state here -- cookMinigame, and the 20 fps cookTick re-render that
+     moved its marker.  Fish are cooked at a campfire (the worker's
+     cook_request). */
   var _useState139 = useState(null),
     _useState140 = _slicedToArray(_useState139, 2),
     questPanel = _useState140[0],
@@ -3178,8 +3164,7 @@ export var BroTown = function BroTown(_ref0) {
     || showClanPanel || showGuildPanel || showFeedback || showPetHouse || showFurniture
     || showPlayerList || showDungeonCreator || showTrade || incomingTrade || trade2
     || duelRequest || threatIncoming || inspectPlayer || chatOpen || showEmotes || showInfo
-    || showIntro || showWelcome || showMayorGreeting || showTourPrompt || showNameModal
-    || cookMinigame);
+    || showIntro || showWelcome || showMayorGreeting || showTourPrompt || showNameModal);   /* v2.3.3479: `|| cookMinigame` went with the Cookhouse's fish game */
   stateRef.current._uiBusy = _anyPanelOpen;
   /* v2.3.2085: and out to the chrome mounted OUTSIDE this tree.  GameApp's
      WorldChatFeed has no path to this React state (its own comment says so),
@@ -12631,7 +12616,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.3258: the Town Hall's rows -- the dashboard's Ranks page (More -> Leaderboard, as its tile opens it), and the Wheel's world map */
     onLeaderboard: function onLeaderboard() { setBuildingPanel(null); dashboardPanelBus.open('more'); dashboardPanelBus.push('leaderboard'); },
     onMap: function onMap() { setBuildingPanel(null); openWorldMap(); }
-  }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), /* v2.3.3258: the Saloon's door opens the Saloon -- where a party is formed (WheelHallPanel.jsx SaloonPanel) -- and the Gladiator Arena is its own window, 'arena', from the Sheriff's Office (the owner: "the gladiator arena is showing 'saloon' behind it") */
+  }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState /* v2.3.3479: no cookMinigame props -- the fish game is gone */ }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), /* v2.3.3258: the Saloon's door opens the Saloon -- where a party is formed (WheelHallPanel.jsx SaloonPanel) -- and the Gladiator Arena is its own window, 'arena', from the Sheriff's Office (the owner: "the gladiator arena is showing 'saloon' behind it") */
   buildingPanel === 'party' && /*#__PURE__*/React.createElement(SaloonPanel, { stateRef: stateRef, onPlayers: function onPlayers() { setBuildingPanel(null); setShowPlayerList(true); } }), buildingPanel === 'arena' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), (buildingPanel === 'gemcut' || buildingPanel === 'enchant') && /*#__PURE__*/React.createElement(GemWorksPanel, { tab: buildingPanel, onTab: setBuildingPanel, rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }) /* v2.3.3259: cut gems / set gems, one building */, /* v2.3.3258: the Land Office's window is a panel in the card now (it was a separate dialog under an empty card, panels/buildings/LandOfficePanel.jsx) */
   buildingPanel === 'farmhome' && /*#__PURE__*/React.createElement(LandOfficePanel, {
     onCancel: function onCancel() { return setBuildingPanel(null); },
@@ -13359,6 +13344,10 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.1914: live rpg, not the snapshot — one answer everywhere. */
     var done = DATA.questObjectiveDone(q, stateRef.current, rpgState);
     return /*#__PURE__*/React.createElement("div", {
+      /* v2.3.3479: the 2026-10-19 UI review -- the quest coach's card finds
+         this card by it, to step right of it when held sideways
+         (QuestCoach.jsx, the card's `left`). */
+      'data-quest-hud': '1',
       /* v2.3.1714: tap to fold the objective away, leaving just the title.
          onPointerDown stops the tap BEFORE it reaches the canvas — a bare
          onClick would fold the card and ALSO order the character to walk to

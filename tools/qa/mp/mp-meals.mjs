@@ -104,7 +104,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       food: ['meal_garden_stew', 'meal_pumpkin_pie'].map((k) => { const b = document.querySelector(`[data-cook-makes="${k}"]`); return b ? (b.textContent || '').trim() : null; }),
       bread: (() => { const b = document.querySelector('[data-cook-recipe="0"]'); const r = b && b.parentElement; return r ? (r.innerText || '').replace(/\s+/g, ' ').slice(0, 160) : null; })(),
     }));
-    rec.ok('...under "Meals & Brews", saying what the bread does when eaten', win.head && /twice as fast/i.test(win.bread || ''), win);
+    rec.ok('...under "Meals & Brews", saying what the bread does when eaten', win.head && /2\u00D7 healing out of a fight/i.test(win.bread || ''), win);   /* v2.3.3479: the bread's line is "2× healing out of a fight, 30 min" (data/dishes.js), was "Heal twice as fast ..." */
     rec.ok('...and the three tonics are there to brew', win.tonics.every(Boolean), win.tonics);
     await shot(A, 'cookhouse');
 
@@ -140,7 +140,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return { btn: !!btn, text: (document.body.innerText || '').replace(/\s+/g, ' '),
           caption: cap ? cap.getAttribute('data-item-caption') : null };
       }, verb);
-      const info = /twice as fast|20% damage/i.exec(pop.text || '');
+      const info = /2\u00D7 healing|20% damage/i.exec(pop.text || '');   /* v2.3.3479: the bread's desc (data/dishes.js) */
       const btn = await A.page.$(`button:text-is("${verb}")`);
       if (btn) { await btn.click(); await A.page.waitForTimeout(1600); }
       await A.page.evaluate(() => {

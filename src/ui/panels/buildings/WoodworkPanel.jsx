@@ -99,6 +99,11 @@ export function WoodworkPanel(props) {
     desc: 'Ranged AOE swipe'
   }].concat(_trapCraftOn ? [{ type: 'traps', label: 'Traps', desc: 'Box traps for pets' }] : [])
     .concat(_hwOn ? [{ type: 'hardwood', label: 'Harden', desc: 'Hardened wood' }] : []);
+  /* v2.3.3479: the 2026-10-19 UI review -- ON FIRST OPENING NO CHOICE WAS
+     LIT, though bows were listed: `_wwType` is unset until a choice is
+     tapped, and every reader below takes that as Bow (`_wwType || 'bow'`).
+     The lit card reads the same default, so it always names what is shown. */
+  var _selType = (stateRef.current && stateRef.current._wwType) || 'bow';
   return React.createElement("div", { style: LS_WRAP },
     lsHeader('woodwork', '🪚', "Woodworker", "Woodworking Lv" + (((_rpgState$lifeSkills29 = rpgState.lifeSkills) === null || _rpgState$lifeSkills29 === void 0 || (_rpgState$lifeSkills29 = _rpgState$lifeSkills29.woodworking) === null || _rpgState$lifeSkills29 === void 0 ? void 0 : _rpgState$lifeSkills29.level) || 1)),
     React.createElement("div", {
@@ -130,7 +135,6 @@ export function WoodworkPanel(props) {
           marginBottom: 12
         }
       }, _makeCards.map(function (wt) {
-        var _stateRef$current13, _stateRef$current14, _stateRef$current15;
         return /*#__PURE__*/React.createElement("button", {
           key: wt.type,
           "data-ww-type": wt.type, /* v2.3.3139: a test hook -- the old Reforge & Harden row has a "Harden (...)" button too */
@@ -142,9 +146,10 @@ export function WoodworkPanel(props) {
             fontSize: 13,
             fontWeight: 700,
             cursor: 'pointer',
-            background: ((_stateRef$current13 = stateRef.current) === null || _stateRef$current13 === void 0 ? void 0 : _stateRef$current13._wwType) === wt.type ? LS.brassFill : LS.raised,
-            border: ((_stateRef$current14 = stateRef.current) === null || _stateRef$current14 === void 0 ? void 0 : _stateRef$current14._wwType) === wt.type ? '1px solid ' + LS.brass : '1px solid ' + LS.border,
-            color: ((_stateRef$current15 = stateRef.current) === null || _stateRef$current15 === void 0 ? void 0 : _stateRef$current15._wwType) === wt.type ? LS.brass : LS.txt2
+            /* v2.3.3479: lit by `_selType` (above), so Bow is lit before anything is tapped */
+            background: _selType === wt.type ? LS.brassFill : LS.raised,
+            border: _selType === wt.type ? '1px solid ' + LS.brass : '1px solid ' + LS.border,
+            color: _selType === wt.type ? LS.brass : LS.txt2
           },
           onClick: function onClick() {
             stateRef.current._wwType = wt.type;

@@ -1261,6 +1261,17 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
      wears a dark disc that reads on any of the rooms */
   .bt-inspect-card[data-room] > .bt-inspect-close{z-index:2;background:rgba(17,30,35,.78);color:#fff}
 }
+/* v2.3.3479: the 2026-10-19 UI review -- ON A SHORT SCREEN THE FORGE'S FIRST
+   ROW WAS HALF HIDDEN.  The forge's window stays low (its height is capped
+   to leave the smith in view, BroTown.jsx), so on a 1366 x 768 laptop it was
+   259px tall while its 90px band and tabs pushed the first Smelt row past the
+   bottom fade; an iPhone SE (667 tall) cut it the same way.  On screens up to
+   800px tall the band is slimmer instead (36px, not 90px), and the window
+   keeps its place and its height; 844px phones and taller computers are
+   unchanged. */
+@media (min-height:461px) and (max-height:800px){
+  .bt-inspect-card[data-room="blacksmith"]{--room-stage:min(36px, calc(25vw - 6px))}
+}
 @media (max-height:460px){.bt-room{display:none}}
 @media (prefers-reduced-motion:reduce){.bt-room-img{transition:none}}
 /* ═══ v2.3.3259: THE GEM WORKS (panels/buildings/GemWorksPanel.jsx) ═══

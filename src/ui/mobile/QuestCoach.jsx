@@ -1472,9 +1472,29 @@ export function QuestCoach(props) {
           const _cs = getComputedStyle(document.documentElement);
           const _wx = parseFloat(_cs.getPropertyValue('--world-x')) || 0;
           const _pw = parseFloat(_cs.getPropertyValue('--play-w')) || window.innerWidth;
-          return Math.min(
+          let _l = Math.min(
             Math.max(_wx + 8, r.left + r.width / 2 - 110),
             Math.max(_wx + 8, _wx + _pw - 228));
+          /* v2.3.3479: the 2026-10-19 UI review -- SIDEWAYS THE CARD SAT ON
+             THE PINNED QUEST CARD ("GEAR UP" over "Cold Reception").  Sideways
+             the combat band's lift always reaches the 120 px cap on `bottom`
+             below, so the card ends 120 px from the top, right across the
+             quest card's row (top 56, BroTown.jsx `data-quest-hud`).  Lower is
+             no answer: the left cluster's Quick-eat and Burst slots start at y
+             128 and 158, and the card clears them even before they are drawn.
+             So while that cap is in force the card steps RIGHT of the quest
+             card instead, still inside the world's span.  Upright the cap
+             never applies (the band's lift is far below it), so nothing there
+             moves. */
+          if (above && bandClear > boxH - 120) {
+            const qh = document.querySelector('[data-quest-hud]');
+            const qr = qh && qh.getBoundingClientRect();
+            if (qr && qr.width > 0) {
+              _l = Math.min(Math.max(_l, qr.right - box.x + 8),
+                Math.max(_wx + 8, _wx + _pw - 228));
+            }
+          }
+          return _l;
         })(),
         /* Anchored by its BOTTOM when it sits above the control, because the
            card's height is not knowable here — it is one, two or three lines

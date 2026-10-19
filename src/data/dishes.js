@@ -20,7 +20,12 @@ export const DISHES = {
   meal_herb_bread: {
     slot: 'meal', buff: 'rest', power: 2, duration: 1800,
     icon: DISH_ICON('herb-bread'),
-    name: 'Herb Bread', look: '\uD83C\uDF5E', desc: 'Heal twice as fast out of a fight, 30 min'
+    /* v2.3.3479: the 2026-10-19 UI review -- was "Heal twice as fast out of
+       a fight, 30 min", which wrapped beside the Cookhouse's button and left
+       "min" alone on a line.  Shorter, and the no-break space keeps "30 min"
+       together if it still wraps.  The rule is the same: double the healing
+       out of a fight only (HERB_REGEN_MULT on the worker). */
+    name: 'Herb Bread', look: '\uD83C\uDF5E', desc: '2\u00D7 healing out of a fight, 30\u00A0min'
   },
   meal_root_stew: {
     slot: 'meal', buff: 'resist', power: 0.05, duration: 1800,
