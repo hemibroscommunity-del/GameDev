@@ -30,6 +30,8 @@
  * 0-19 → reset to 0 · 20-49 → -2 · 50-99 → -1 · 100+ → no reset.
  * Temper +1 per fail, 0 on success.  Blacksmith skill gates ACCESS
  * (max hardenable tier index = floor(skill/5)), never odds.
+ * (v2.3.3485: the access gate is the level that MAKES the weapon's tier --
+ * forgeladder.js _hardenLevelFor -- against caps.forgeladder.)
  *
  * NAME COLLISION WARNING: the client already has a DIFFERENT "harden"
  * -- the reforge-affix doubler that writes weapon.hardenBonus
@@ -214,6 +216,7 @@ export const hardeningMethods = {
     if (hardness >= HARDEN.MAX) return err('maxed', 'Already at maximum hardness');
     // Access gate: floor(skill / 5) >= the weapon's material
     // tier index.  Skill never changes the odds (§4.6c).
+    // (v2.3.3485: the level that makes the tier now -- below.)
     /* v2.3.3481: the skill is the one that MAKES the weapon -- a bow or a
        staff asks for Woodworking, a sword Blacksmithing.  The owner, asked
        whether hardening a bow should ask for the Blacksmithing level: "Do
@@ -227,8 +230,17 @@ export const hardeningMethods = {
     const skillKey = byWood ? 'woodworking' : 'blacksmithing';
     const smithLvl = (ps.lifeSkills && ps.lifeSkills[skillKey] && ps.lifeSkills[skillKey].level) || 1;
     const tierIdx = this._weaponTierIndex(w);
-    if (Math.floor(smithLvl / 5) < tierIdx) {
-      return err('skill-gate', 'Need ' + (byWood ? 'Woodworking' : 'Blacksmithing') + ' Lv' + (tierIdx * 5) + ' for this tier');
+    /* v2.3.3485: the owner: "Hardening should only require the same smithing
+       level as it takes to smithing that item tier" -- the level that MAKES
+       the weapon's tier (forgeladder.js _hardenLevelFor): a copper greatsword
+       Smithing 1, iron 5, black steel 10; a pine bow Woodworking 1, softwood
+       6 ... (the Woodworker's own table, the same principle on v2.3.3481's
+       skill).  It was 5 x the tier index (copper Smithing 10), which
+       `forgeladder: false` still asks.  The tier index still picks the bars
+       or hardened wood below; only the level moved. */
+    const needLvl = this._forgeLadderOff() ? tierIdx * 5 : this._hardenLevelFor(w, slot);
+    if (smithLvl < needLvl) {
+      return err('skill-gate', 'Need ' + (byWood ? 'Woodworking' : 'Blacksmithing') + ' Lv' + needLvl + ' for this tier');
     }
     /* v2.3.3139: the owner's ladder -- doubling gold, and as many of the
        weapon's material as the level the attempt reaches: its metal's bars,

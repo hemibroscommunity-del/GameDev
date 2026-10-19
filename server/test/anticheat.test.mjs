@@ -1214,6 +1214,8 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
 
   /* forge_weapon with a prototype tierKey used to pass EVERY gate,
      because each compared against undefined. */
+  /* v2.3.3485: as a GREATSWORD -- the game forges nothing else now, so the
+     prototype key, not the weapon type, is what this must be refused for. */
   const wsF = fakeWs('forge');
   room.sessions.set(wsF, baseSession());
   await room.webSocketMessage(wsF, JSON.stringify({
@@ -1224,10 +1226,10 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   psF.coins = 0;
   const stashBefore = (psF.weaponStash || []).length;
   await room.webSocketMessage(wsF, JSON.stringify({
-    type: 'forge_weapon', payload: { tierKey: 'constructor', weaponType: 'sword' },
+    type: 'forge_weapon', payload: { tierKey: 'constructor', weaponType: 'greatsword' },
   }));
   await room.webSocketMessage(wsF, JSON.stringify({
-    type: 'forge_weapon', payload: { tierKey: '__proto__', weaponType: 'sword' },
+    type: 'forge_weapon', payload: { tierKey: '__proto__', weaponType: 'greatsword' },
   }));
   check('forge: a prototype tierKey mints nothing',
     (psF.weaponStash || []).length === stashBefore

@@ -106,6 +106,13 @@ export const BLACKSMITH_TIERS = {
     goldCost: 8,
     tierMult: 1.00,
     statReq: 0,
+    /* v2.3.3485: the owner's playtest notes -- "'wood greatsword' is not an
+       actual weapon in the game.  Make the beginning weapon a copper
+       greatsword".  Not forged against caps.forgeladder (data/forgeLadder.js,
+       the Forge tab starts at copper); the row stays for the starter Pine
+       Shield, old wooden weapons and every tier index after it.  Mirrors
+       server/src/data.js BLACKSMITH_TIERS.wood (mirror-audit). */
+    forge: false,
     color: '#6b4226',
     desc: 'Deep earthy brown, rough but workable'
   },
@@ -114,8 +121,14 @@ export const BLACKSMITH_TIERS = {
      pay the armour forge's XP for them.  Mirrors server/src/data.js
      BLACKSMITH_TIERS (mirror-audit); the worker settles, this draws the
      Forge tab's cost chip. */
+  /* v2.3.3485: the forge's Smithing levels -- the owner: "Copper 1, iron 5,
+     black steel 10 for smithing lvl req", every tier after five more (titanium
+     15 ... worldbreaker 90; each was 6 more).  The levels before
+     (`forgeladder: false`, or an older worker) are data/forgeLadder.js's
+     FORGE_LADDER.OLD_LEVELS; from titanium on the old minLvl x 5 is pinned as
+     `xp` so no tier's pay moves.  Mirrors server/src/data.js (mirror-audit). */
   copper: {
-    minLvl: 6,
+    minLvl: 1,
     label: 'Copper',
     slots: 1,
     oreName: 'copper',
@@ -129,7 +142,7 @@ export const BLACKSMITH_TIERS = {
     desc: 'Warm reddish-orange'
   },
   iron: {
-    minLvl: 11,
+    minLvl: 5,
     label: 'Iron',
     slots: 1,
     oreName: 'iron',
@@ -149,7 +162,7 @@ export const BLACKSMITH_TIERS = {
      it is every minted piece's gearBase and the native art's material name
      (materialTints.js); only the name, the ore and the swatch move. */
   steel: {
-    minLvl: 16,
+    minLvl: 10,
     label: 'Black Steel',
     slots: 1,
     oreName: 'black_steel',
@@ -163,10 +176,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Dark blued steel'
   },
   titanium: {
-    minLvl: 21,
+    minLvl: 15,
     label: 'Titanium',
     slots: 1,
     oreName: 'titanium',
+    xp: 105,
     oreCost: 5,
     goldCost: 85,
     tierMult: 1.56,
@@ -175,10 +189,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Brushed metallic gray with subtle blue tint'
   },
   obsidian: {
-    minLvl: 26,
+    minLvl: 20,
     label: 'Obsidian',
     slots: 1,
     oreName: 'obsidian',
+    xp: 130,
     oreCost: 6,
     goldCost: 120,
     tierMult: 1.74,
@@ -187,10 +202,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Glossy jet black'
   },
   mythril: {
-    minLvl: 31,
+    minLvl: 25,
     label: 'Mythril',
     slots: 2,
     oreName: 'mythril',
+    xp: 155,
     oreCost: 7,
     goldCost: 170,
     tierMult: 1.94,
@@ -199,10 +215,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Luminous silver-blue'
   },
   diamond: {
-    minLvl: 36,
+    minLvl: 30,
     label: 'Diamond',
     slots: 2,
     oreName: 'diamond',
+    xp: 180,
     oreCost: 8,
     goldCost: 240,
     tierMult: 2.16,
@@ -211,10 +228,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Brilliant crystalline white'
   },
   abyssal: {
-    minLvl: 41,
+    minLvl: 35,
     label: 'Abyssal',
     slots: 2,
     oreName: 'abyssal',
+    xp: 205,
     oreCost: 9,
     goldCost: 330,
     tierMult: 2.40,
@@ -223,10 +241,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Deep midnight purple-black'
   },
   dragonbone: {
-    minLvl: 46,
+    minLvl: 40,
     label: 'Dragonbone',
     slots: 2,
     oreName: 'dragonbone',
+    xp: 230,
     oreCost: 10,
     goldCost: 440,
     tierMult: 2.68,
@@ -235,10 +254,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Pale ivory with faint gold veins'
   },
   shadowsteel: {
-    minLvl: 51,
+    minLvl: 45,
     label: 'Shadowsteel',
     slots: 2,
     oreName: 'shadowsteel',
+    xp: 255,
     oreCost: 11,
     goldCost: 570,
     tierMult: 2.98,
@@ -247,10 +267,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Dark smoky gunmetal'
   },
   bloodstone: {
-    minLvl: 56,
+    minLvl: 50,
     label: 'Bloodstone',
     slots: 2,
     oreName: 'bloodstone',
+    xp: 280,
     oreCost: 12,
     goldCost: 720,
     tierMult: 3.32,
@@ -259,10 +280,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Deep crimson with dark flecks'
   },
   runestone: {
-    minLvl: 61,
+    minLvl: 55,
     label: 'Runestone',
     slots: 2,
     oreName: 'runite',
+    xp: 305,
     oreCost: 13,
     goldCost: 900,
     tierMult: 3.70,
@@ -271,10 +293,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Carved gray with glowing etched lines'
   },
   sunstone: {
-    minLvl: 66,
+    minLvl: 60,
     label: 'Sunstone',
     slots: 2,
     oreName: 'sunstone',
+    xp: 330,
     oreCost: 14,
     goldCost: 1100,
     tierMult: 4.12,
@@ -283,10 +306,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Warm radiant gold-orange'
   },
   demonite: {
-    minLvl: 71,
+    minLvl: 65,
     label: 'Demonite',
     slots: 2,
     oreName: 'demonite',
+    xp: 355,
     oreCost: 15,
     goldCost: 1350,
     tierMult: 4.58,
@@ -295,10 +319,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Sinister dark red-black'
   },
   spiritforge: {
-    minLvl: 76,
+    minLvl: 70,
     label: 'Spiritforge',
     slots: 2,
     oreName: 'spiritore',
+    xp: 380,
     oreCost: 16,
     goldCost: 1650,
     tierMult: 5.10,
@@ -307,10 +332,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Ghostly pale blue-white'
   },
   starforged: {
-    minLvl: 81,
+    minLvl: 75,
     label: 'Starforged',
     slots: 2,
     oreName: 'starite',
+    xp: 405,
     oreCost: 18,
     goldCost: 2000,
     tierMult: 5.68,
@@ -319,10 +345,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Shimmering silver with cosmic sparkle'
   },
   celestial: {
-    minLvl: 86,
+    minLvl: 80,
     label: 'Celestial',
     slots: 2,
     oreName: 'celestite',
+    xp: 430,
     oreCost: 20,
     goldCost: 2500,
     tierMult: 6.32,
@@ -331,10 +358,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Soft glowing platinum-gold'
   },
   antimatter: {
-    minLvl: 91,
+    minLvl: 85,
     label: 'Antimatter',
     slots: 2,
     oreName: 'antimatter',
+    xp: 455,
     oreCost: 22,
     goldCost: 3200,
     tierMult: 7.04,
@@ -343,10 +371,11 @@ export const BLACKSMITH_TIERS = {
     desc: 'Flecks of red, green, and blue'
   },
   worldbreaker: {
-    minLvl: 96,
+    minLvl: 90,
     label: 'Worldbreaker',
     slots: 2,
     oreName: 'voidcrystal',
+    xp: 480,
     oreCost: 25,
     goldCost: 4200,
     tierMult: 7.84,
