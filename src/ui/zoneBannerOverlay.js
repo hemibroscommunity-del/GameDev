@@ -63,7 +63,7 @@ import {
   ZONE_BANNER_IN_MS, ZONE_BANNER_NAME_AT, ZONE_BANNER_NAME_MS,
   ZONE_BANNER_DOCK_MS, ZONE_BANNER_REPEAT_MS,
 } from '../data/zoneBanner.js';
-import { zoneBannerReady, zoneBannerResident } from '../rendering/zoneBannerPreload.js';
+import { zoneBannerReady, zoneBannerResident, landSceneHeld, landScenesResident } from '../rendering/zoneBannerPreload.js'; /* v2.3.3479: + the Wheel's lands' scenes */
 import { zoneTitle } from './mobile/zoneTitle.js';
 import { prefersReducedMotion } from './mobile/sheet/motion.js';
 import { landLook } from '../data/wheelLands.js';   /* v2.3.3024: the Wheel's lands */
@@ -172,9 +172,14 @@ export function playZoneBanner(zoneId, S, opts = {}) {
      the owner's plays the PLAQUE alone, its name and icon, no ornaments
      (nothing borrowed: the rule above stands), and one whose art is not warm
      does too */
-  const art = bannerStripFor(zoneId);
+  /* v2.3.3479: and `scene` -- a Wheel land's id: its SCENE from the owner's
+     sheet stands over the plaque (the owner's "1b", all eight lands), never
+     the ornament strip of the closed zone of the same id; a scene that is not
+     held (cold, or failed) is the plain plaque, never a load */
+  const art = opts.scene ? null : bannerStripFor(zoneId);
   const strip = art && zoneBannerReady(zoneId) ? art : null;
-  const plain = !strip && !!opts.plain;
+  const scene = !strip && opts.scene ? landSceneHeld(opts.scene) : null;
+  const plain = !strip && (!!scene || !!opts.plain);
   if (!strip && !plain) { hide(); return false; }
   if (typeof document === 'undefined') return false;
   if (!titleRect()) { hide(); return false; }
@@ -203,8 +208,25 @@ export function playZoneBanner(zoneId, S, opts = {}) {
     nameEl.insertBefore(ic, nameEl.firstChild);
   }
   if (opts.color) nameEl.style.color = opts.color;
+  if (scene) {
+    /* v2.3.3479: the land's scene over the plaque, at its own shape (the
+       picture's own size on the element; CSS draws it half the banner wide,
+       game.css .is-scene).  The same URL as the held, decoded Image, so it
+       paints at once.  Its painted name plate was cut off: the plaque below
+       writes the name. */
+    const w = scene.naturalWidth || scene.width || 0, h = scene.naturalHeight || scene.height || 0;
+    const pic = document.createElement('img');
+    pic.className = 'bt-zone-banner__scene';
+    pic.alt = ''; pic.draggable = false;
+    if (w && h) { pic.width = w; pic.height = h; _el.style.setProperty('--zb-scene-ar', String(h / w)); }
+    pic.src = scene.src;
+    _el.insertBefore(pic, _el.firstChild);
+    _el.classList.add('is-scene');
+  }
   if (plain) {
-    /* the plaque alone: in, named, docked -- the same clock, no beats */
+    /* the plaque alone: in, named, docked -- the same clock, no beats
+       (v2.3.3479: and a land's scene over it, on the same clock: it rises in
+       with the plaque and lifts away as the plaque docks, game.css) */
     _el.classList.add('is-plain');
     if (reduced) {
       _el.classList.add('is-static');
@@ -352,7 +374,19 @@ export function noteZoneEntered(zoneId, S) {
  * ZONE_BANNER_REPEAT_MS (as every zone's).  The four art strips load behind
  * the Wheel's own loading screen (preloadAnimations.js preloadZoneAssets) and
  * go when you leave it -- never on first sight (the preloading LAW).  The
- * plain plaque holds LAND_HOLD_MS longer before it docks, having no beats. */
+ * plain plaque holds LAND_HOLD_MS longer before it docks, having no beats.
+ *
+ * v2.3.3479: EVERY LAND'S SCENE.  Of the owner's thirteen icon sheets, the
+ * first held a scene for each of the eight lands standing on a painted name
+ * plate, and of the review's two choices -- the four lands with no art, or
+ * "all eight from the sheet" -- the owner picked the second ("Icon picks: 1b,
+ * ..."), so all eight match: crossing into any land shows its scene over the
+ * game's own plaque (the painted plate cut off, the plaque writes the name),
+ * on the plain plaque's clock.  The Wheel loads the eight scenes behind its
+ * loading screen in place of the four strips (zoneBannerPreload.js
+ * preloadLandScenes) and lets them go on leaving; a scene not held is the
+ * plain plaque, as before.  The closed lands' own banners (`?trial=off`, a
+ * zone change into ember/frost/sky/verdant) keep the animated strips. */
 export const LAND_DWELL_MS = 600;
 export const LAND_HOLD_MS = 350;
 const _wl = { cur: null, since: 0, shown: null };
@@ -364,7 +398,7 @@ export function noteWheelLand(region, title, S) {
   _wl.shown = region;
   const look = landLook(region);
   if (!look || !look.element || !title) return false;
-  const shown = playZoneBanner(region, S, { title, plain: true, icon: look.icon, color: landNameColor(look.color) });
+  const shown = playZoneBanner(region, S, { title, plain: true, scene: region, icon: look.icon, color: landNameColor(look.color) });
   /* v2.3.3343: a breath of wind under a land's banner as you cross in (it came
      in silence; SOUND-GAPS) -- the land's banner only, not every zone's */
   if (shown) cue('landCross');
@@ -402,11 +436,19 @@ try {
       reset: resetZoneBannerHistory,
       /* v2.3.3024: the Wheel's land watch, and what the banner on screen says */
       land: () => ({ cur: _wl.cur, shown: _wl.shown }),
+      /* v2.3.3479: + the land's scene over the plaque (its picture, and whether
+         it is decoded and drawn), and which lands' scenes the Wheel holds */
       onScreen: () => {
         if (!_el) return null;
         const n = _el.querySelector('.bt-zone-banner__name'), ic = _el.querySelector('.bt-zone-banner__icon');
-        return { text: n ? n.textContent : '', plain: _el.classList.contains('is-plain'), icon: ic ? ic.getAttribute('src') : null, color: n ? n.style.color : '' };
+        const sc = _el.querySelector('.bt-zone-banner__scene');
+        const sr = sc ? sc.getBoundingClientRect() : null, pr = _el.querySelector('.bt-zone-banner__plaque').getBoundingClientRect();
+        return { text: n ? n.textContent : '', plain: _el.classList.contains('is-plain'), icon: ic ? ic.getAttribute('src') : null, color: n ? n.style.color : '',
+          scene: sc ? sc.getAttribute('src') : null, sceneDrawn: !!(sc && sc.complete && sc.naturalWidth > 0),
+          sceneBox: sr ? { l: Math.round(sr.left), t: Math.round(sr.top), w: Math.round(sr.width), h: Math.round(sr.height) } : null,
+          plaqueTop: Math.round(pr.top), plaqueW: Math.round(pr.width) };
       },
+      scenes: landScenesResident,
     };
   }
 } catch (e) { /* a debug handle must never be the thing that breaks the page */ }
