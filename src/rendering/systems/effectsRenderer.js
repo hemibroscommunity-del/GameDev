@@ -672,6 +672,7 @@ import { updateNodeLabel, killNodeLabel, nodeLabelWorldH, NODE_LABEL_GAP, nodeNa
 import { WheelDoors } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn */
 import { WheelSignposts, findGateSignposts } from '../wheelSignposts.js';   /* v2.3.3062: Brotown's signposts, named */
 import { TrapFx } from '../trapFx.js';   /* v2.3.3120: the trap's mark, shakes, snap and break */
+import { TRAP_ICON_URL } from '../controlsPreload.js';   /* v2.3.3486: ...drawn with the owner's box trap */
 import { wheelObjectsInfo, wheelMapInfo } from '@/game/wheelTrial.js';      /* v2.3.3062: where they stand, and the lands */
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
@@ -1428,6 +1429,11 @@ Promise.all(Object.values(ZONE_SHARDS).map((s) =>
 const MAGIC_BOLT_FRAMES = [];
 const MAGIC_BOLT_ANCHOR = { x: 0.688, y: 0.534 };
 const MAGIC_BOLT_FRAME_MS = 90;
+/* v2.3.3486: the owner's box trap picture, for the trap in the world
+   (trapFx.js) -- the same file the TRAP pop-up, the bag and the Traps tab show
+   (controlsPreload.js TRAP_ICON_URL), here as a texture: ~0.26 MB decoded */
+let _trapArt = null;
+_fxLoad(TRAP_ICON_URL).then((tex) => { _trapArt = tex; }).catch(() => { /* the drawn box stands in */ });
 _fxLoad('/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334').then((tex) => {
   if (!tex || !tex.source) return;
   const fw = Math.floor(tex.source.width / 4);
@@ -2813,15 +2819,22 @@ const LOOT_Z = {
   weapon: 30, gem: 40, armor: 50, beam: 55, label: 60, owner: 70, rareText: 80,
 };
 /* v2.3.3473: a dropped item's picture, in world px (a bro is ~106 tall): a
-   good deal bigger than a rare drop's icon (~26), as it is the whole pile */
-const DROP_ICON_WORLD = 40;
+   good deal bigger than a rare drop's icon (~26), as it is the whole pile.
+   v2.3.3486: 40 -> 60, the owner: "Make dropped items 50% larger (hard to
+   see)" -- its shadow, stand-in and count with it (all are shares of it), the
+   count's type 16 -> 22, and the picture made at 128 px (dropIcons.js) so it
+   is as sharp at the new size.  A dead player's pile (_updateGroundLoot's
+   death branch) grows by the same DROP_GROW.  The pickup and magnet reach are
+   groundLoot.js's own numbers and do not move. */
+const DROP_GROW = 1.5;
+const DROP_ICON_WORLD = 40 * DROP_GROW;
 /* ...and its count, in the owner label's type (_renderOwnerLabel), a size up */
 const DROP_COUNT_STYLE = new TextStyle({
   fontFamily: 'Source Sans 3, sans-serif',
-  fontSize: 16,
+  fontSize: 22,
   fontWeight: '700',
   fill: '#ffffff',
-  stroke: { color: '#000000', width: 3 },
+  stroke: { color: '#000000', width: 4 },
 });
 /* A rare item is anything rarer than 1 in 100 -- the weapon, gem and armour
    lanes.  What earns the RARE DROP! call and the shine. */
@@ -9799,23 +9812,26 @@ export class EffectsRenderer {
         const urgency = Math.max(0, Math.min(1, 1 - timeLeft / 30));
         const pulseRate = 2 + urgency * 6;
         const auraAlpha = (0.2 + Math.sin(age * pulseRate) * 0.15 + urgency * 0.2) * alpha;
-        gfx.circle(l.x, l.y + bob, 18);
+        /* v2.3.3486: everything here DROP_GROW (1.5x) bigger, as a dropped
+           item is -- its 7 and 8 px words were ~5 CSS px on a phone */
+        const G_ = DROP_GROW;
+        gfx.circle(l.x, l.y + bob, 18 * G_);
         gfx.fill({ color: 0xea580c, alpha: auraAlpha });
         const ringColor = urgency > 0.7 ? 0xff5e6c : 0xea580c;
-        gfx.circle(l.x, l.y + bob, 15);
-        gfx.stroke({ color: ringColor, width: 2, alpha });
+        gfx.circle(l.x, l.y + bob, 15 * G_);
+        gfx.stroke({ color: ringColor, width: 2 * G_, alpha });
         /* Bag emoji icon. */
         if (!l._pixiIcon || l._pixiIcon.destroyed) {
-          l._pixiIcon = new Text({ text: '💀', style: { ...LABEL_STYLE_EMOJI, fontSize: 18 } });
+          l._pixiIcon = new Text({ text: '💀', style: { ...LABEL_STYLE_EMOJI, fontSize: 18 * G_ } });
           l._pixiIcon.anchor.set(0.5, 0.5);
           this.lootLayer.addChild(l._pixiIcon);
         }
         l._pixiIcon.x = l.x;
-        l._pixiIcon.y = l.y + 6 + bob;
+        l._pixiIcon.y = l.y + 6 * G_ + bob;
         l._pixiIcon.alpha = alpha;
         /* Timer text below. */
         if (!l._pixiTimer || l._pixiTimer.destroyed) {
-          l._pixiTimer = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 8, fontWeight: '700' } });
+          l._pixiTimer = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 8 * G_, fontWeight: '700' } });
           l._pixiTimer.anchor.set(0.5, 0);
           this.lootLayer.addChild(l._pixiTimer);
         }
@@ -9823,11 +9839,11 @@ export class EffectsRenderer {
         if (l._pixiTimer.text !== tStr) l._pixiTimer.text = tStr;
         l._pixiTimer.style.fill = urgency > 0.7 ? '#ff5e6c' : '#ea580c';
         l._pixiTimer.x = l.x;
-        l._pixiTimer.y = l.y + 22 + bob;
+        l._pixiTimer.y = l.y + 22 * G_ + bob;
         l._pixiTimer.alpha = alpha;
         /* Item count above. */
         if (!l._pixiCount || l._pixiCount.destroyed) {
-          l._pixiCount = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700' } });
+          l._pixiCount = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7 * G_, fontWeight: '700' } });
           l._pixiCount.anchor.set(0.5, 1);
           this.lootLayer.addChild(l._pixiCount);
         }
@@ -9835,7 +9851,7 @@ export class EffectsRenderer {
         const cStr = itemTotal + ' items';
         if (l._pixiCount.text !== cStr) l._pixiCount.text = cStr;
         l._pixiCount.x = l.x;
-        l._pixiCount.y = l.y - 12 + bob;
+        l._pixiCount.y = l.y - 12 * G_ + bob;
         l._pixiCount.alpha = alpha;
         if (timeLeft <= 0) l._expired = true;
         continue;
@@ -11291,7 +11307,7 @@ export class EffectsRenderer {
     /* v2.3.3120: pet trapping -- the mark over an armed monster, and the trap
        springing where it fell (trapFx.js; the rules are game/trapping.js) */
     if ((S._trap && (S._trap.mark || S._trap.springs.length)) || (this._trapFx && this._trapFx.root)) {
-      if (!this._trapFx) this._trapFx = new TrapFx(this.monsterUiLayer);
+      if (!this._trapFx) this._trapFx = new TrapFx(this.monsterUiLayer, () => _trapArt);   /* v2.3.3486: + the picture */
       this._trapFx.update(S, now);
     }
     this._drawGatherHpBar(S, nodes, now);   /* v2.3.2956 */

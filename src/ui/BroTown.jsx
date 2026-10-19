@@ -383,7 +383,7 @@ import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the s
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
 import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
-import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
+import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3486: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land over the band's middle */
 import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
 import { nmlAsk, nmlAskOn, nmlAim, nmlHitBack } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first */
@@ -4550,11 +4550,19 @@ export var BroTown = function BroTown(_ref0) {
         _avx = ((S.player && S.player.vx) || 0) * _pxMs;
         _avy = ((S.player && S.player.vy) || 0) * _pxMs;
       }
+      /* v2.3.3486: ...and once a jump has started across one, it is passed
+         for the rest of the jump, whatever this frame's speed, and a moment
+         after it (game/jump.js jumpLatched / landedOver): the owner's "gets
+         stuck on some props sometimes that it should be clearing". */
+      var _landNow = (!_air && S._jumpOver) ? Date.now() : 0;
       for (var i = 0; i < bx.length; i++) {
         var b = bx[i];
         if (px + h <= b.x0 || px - h >= b.x1 || fy + h <= b.y0 || fy - h >= b.y1) continue;
-        if (_air && overLow(b, _air, _airNow, h, px, fy, _avx, _avy)) continue;
+        if (_air && (jumpLatched(_air, b) || (overLow(b, _air, _airNow, h, px, fy, _avx, _avy) && jumpLatch(_air, b)))) continue;
         var inNow = !(curX + h <= b.x0 || curX - h >= b.x1 || cfy + h <= b.y0 || cfy - h >= b.y1);
+        /* v2.3.3486: only feet ALREADY in it walk on out -- never a step into
+           a fence you have just cleared, on the ground */
+        if (inNow && _landNow && landedOver(S, b, _landNow)) continue;
         if (!inNow) return true;
         if (_boxDepth(px, fy, b, h) > _boxDepth(curX, cfy, b, h)) return true;
       }
@@ -9761,7 +9769,11 @@ export var BroTown = function BroTown(_ref0) {
        now, on purpose. */
     var _lt = S.lockedTarget;
     if (_lt && _lt.ref && _lt.type === 'monster' && _lt.src !== 'tap') {
-      S.lockedTarget = { type: 'monster', id: _lt.id, ref: _lt.ref, src: 'tap' };
+      /* v2.3.3486: `near` -- an auto lock is only ever made inside the 220 px
+         perimeter, so the promoted tap has been there: without the latch a
+         press made with the monster 220-275 px off gave a sword a tap lock
+         that was never released (targeting.js tapReleased, lockTooFar) */
+      S.lockedTarget = { type: 'monster', id: _lt.id, ref: _lt.ref, src: 'tap', near: true };
     }
     /* ═══ v2.3.3145: A PRESS THAT MAY BE A TAP IS NOT AN ATTACK YET ═══
        The owner: "When you tap jump with bow equipped it shows you and your

@@ -29,18 +29,25 @@
  * it, rendering/jumpFx.js draws it. */
 
 /* how long you are in the air, and how high you go at the top (world px; a
-   bro is ~66 tall at the Wheel's scale, so about his own height).  68 is
-   twice the first cut's 34 -- the owner, having tried it: "I'd also like it
-   if the jump were about 2x as high".  The time in the air is the same, so
-   the window for clearing low things is too: only the picture rises higher,
-   and the things it clears (JUMP_OVER, 70 px tall or less) are now about as
-   tall as the jump. */
-export const JUMP_MS = 560;
-export const JUMP_PEAK = 68;
+   bro is ~66 tall at the Wheel's scale).  68 was twice the first cut's 34 --
+   the owner, having tried it: "I'd also like it if the jump were about 2x as
+   high".  The time in the air stayed the same then, so the window for
+   clearing low things did too. */
+/* ═══ v2.3.3486: 25% HIGHER, AND A LITTLE LONGER IN THE AIR ═══
+   The owner, after more play: "Try making jump 25% higher.  Gets stuck on
+   some props sometimes that it should be clearing."  68 -> 85 px at the top,
+   and 560 -> 625 ms in the air: the same pull of gravity (a height goes with
+   the square of the time, so 25% higher is sqrt(1.25) = 1.118x the time), so
+   it still reads as the same bro jumping, only harder.  The longer air is
+   also more ground covered while you are high enough to clear something. */
+export const JUMP_MS = 625;
+export const JUMP_PEAK = 85;
 /* low things are cleared while the lift is at least this share of the peak:
-   the middle ~74% of the jump, from ~70 ms after take-off to ~70 ms before
-   touching down */
-export const JUMP_CLEAR = 0.45;
+   the middle 80% of the jump, from ~62 ms after take-off to ~62 ms before
+   touching down.  v2.3.3486: 0.45 -> 0.36 with the peak, so the feet are as
+   high off the ground (~31 px) as they were when a crossing could start --
+   0.36 x 85 = 0.45 x 68 -- and the window is 500 ms where it was 415. */
+export const JUMP_CLEAR = 0.36;
 /* on the ground at least this long between two jumps */
 export const JUMP_REST_MS = 120;
 
@@ -51,20 +58,24 @@ export const JUMP_REST_MS = 120;
 export const JUMP_FRAME = Object.freeze({ east: 1, north: 8, northeast: 4, south: 7, southwest: 6 });
 
 /* What a jump clears, by the Wheel catalog's id (public/tools/objects/
-   catalog.js): the low things with a footprint, 70 game px tall or less as
-   drawn -- and `fence-down`, a fence running north-south, drawn 170 tall
-   because it runs up the picture but no higher than `fence`.  Boulders (90),
-   carts (94), minecarts (79), rowboats (81), haystacks (110) and everything
-   taller are NOT cleared.  test-world-core checks every id is in the catalog
-   and every low thing with a footprint is here or named in JUMP_NOT. */
+   catalog.js): the low things with a footprint, JUMP_OVER_H game px tall or
+   less as drawn -- and `fence-down`, a fence running north-south, drawn 170
+   tall because it runs up the picture but no higher than `fence`.  Boulders
+   (90), carts (94), haystacks (110) and everything taller are NOT cleared.
+   test-world-core checks every id is in the catalog and every low thing with
+   a footprint is here or named in JUMP_NOT.
+   v2.3.3486: the jump's 25% gave the list 25% too, 70 -> 87 px: the minecart
+   (79) and the rowboat (81), left off as "about as tall as a bro" while the
+   jump was a bro's height, are lower than the new one's top. */
+export const JUMP_OVER_H = 87;
 export const JUMP_OVER = new Set([
   'stump', 'charstump', 'driftwood', 'haybale', 'trough', 'stone', 'barrel',
   'bench', 'crate', 'bush', 'snowrock', 'scrap', 'stonewall', 'hitch',
   'fence', 'fence-down', 'basalt', 'coal', 'searock',
+  'minecart', 'rowboat',   /* v2.3.3486 */
 ]);
-/* ...and the low things deliberately left off: a minecart and a rowboat are
-   about as tall as a bro on the picture. */
-export const JUMP_NOT = new Set(['minecart', 'rowboat']);
+/* ...and the low things deliberately left off (none since v2.3.3486). */
+export const JUMP_NOT = new Set([]);
 
 /** The lift's share of the peak at phase t (0 taking off, 1 landing). */
 export function jumpLiftAt(t) {
@@ -144,9 +155,14 @@ export function startJump(S, now, dx, dy) {
   return S._jump;
 }
 
-/** Touch down (or cut short: a death, a zone change). */
+/** Touch down (or cut short: a death, a zone change).
+    v2.3.3486: the low things this jump was crossing stay passable a moment
+    after it (JUMP_LATCH_MS, landedOver), so feet that came down in one walk
+    on out of it. */
 export function endJump(S, now) {
   if (!S) return;
+  const j = S._jump;
+  S._jumpOver = (j && j.over && j.over.size) ? { keys: j.over, until: now + JUMP_LATCH_MS } : null;
   S._jump = null;
   S._jumpLandAt = now;
 }
@@ -169,13 +185,61 @@ export function crossMs(b, h, x, fy, vx, vy) {
  * May the feet pass over this footprint?  Only a JUMP_OVER thing, only while
  * high enough, and only if the way you are going (vx, vy px a ms) takes the
  * feet box (half-size h, at x, fy -- where the step would put it) out of it
- * before you are too low: you never come down inside one.
+ * before you are too low -- give or take JUMP_LAND_GRACE_MS (v2.3.3486).
  */
 export function overLow(b, j, now, h, x, fy, vx, vy) {
   if (!b || !JUMP_OVER.has(b.id)) return false;
   const left = clearMsLeft(j, now);
   if (!(left > 0)) return false;
-  return crossMs(b, h, x, fy, vx, vy) <= left;
+  return crossMs(b, h, x, fy, vx, vy) <= left + JUMP_LAND_GRACE_MS;
+}
+
+/* ═══ v2.3.3486: A CROSSING ONCE BEGUN IS NEVER JUDGED AGAIN ═══
+   The owner: "Gets stuck on some props sometimes that it should be
+   clearing."  overLow was asked afresh on EVERY frame of a crossing, with
+   that frame's speed, so anything that slowed you over the fence -- a slow
+   frame (a frame moves at most three 60 fps steps: S._dtScale's cap), a
+   sprint running dry, a held attack's half pace, the stick eased or turned,
+   the walk's x-then-y slide -- turned the answer to no with the feet already
+   in it, and the walk test's "never deeper into a footprint" froze them
+   there in mid-air: you came down IN the fence and had to back out.  And a
+   jump taken a stride too far back reached the fence just after the last
+   moment it could be out before landing, and stopped dead at its edge in
+   the air.
+   So: the first frame a jump may pass a low thing LATCHES it (jumpLatch, on
+   the jump), and a latched thing is passed for the rest of the jump
+   whatever the speed (jumpLatched); a crossing that comes down up to
+   JUMP_LAND_GRACE_MS short is let start; and the jump's latches outlive it
+   by JUMP_LATCH_MS (endJump, landedOver), so feet that did come down inside
+   walk on out of it instead of being held.  Only a JUMP_OVER thing is ever
+   latched, so a tree, a building or the sea is exactly as solid as before. */
+export const JUMP_LAND_GRACE_MS = 160;
+export const JUMP_LATCH_MS = 450;
+
+/** A footprint's key: the same box every frame, whatever array it came in. */
+export function jumpBoxKey(b) {
+  return Math.round(b.x0) + ',' + Math.round(b.y0) + ',' + Math.round(b.x1) + ',' + Math.round(b.y1);
+}
+
+/** Has this jump already started across box b? */
+export function jumpLatched(j, b) {
+  return !!(j && j.over && b && JUMP_OVER.has(b.id) && j.over.has(jumpBoxKey(b)));
+}
+
+/** Start across box b on this jump (true, so a test can read `overLow(...) && jumpLatch(...)`). */
+export function jumpLatch(j, b) {
+  if (!j || !b) return false;
+  if (!j.over) j.over = new Set();
+  j.over.add(jumpBoxKey(b));
+  return true;
+}
+
+/** Just landed from a jump that was crossing box b: the feet may walk on out of it. */
+export function landedOver(S, b, now) {
+  const L = S && S._jumpOver;
+  if (!L || !L.keys || !b || !JUMP_OVER.has(b.id)) return false;
+  if (!(now < L.until)) { S._jumpOver = null; return false; }
+  return L.keys.has(jumpBoxKey(b));
 }
 
 /** The held jog frame for a sheet direction (the five that are drawn). */
@@ -193,6 +257,6 @@ export function peerJump(payload, now) {
   return {
     t0: now,
     dur: isFinite(dur) && dur > 0 ? Math.max(200, Math.min(900, dur)) : JUMP_MS,
-    peak: isFinite(peak) && peak > 0 ? Math.max(8, Math.min(120, peak)) : JUMP_PEAK,   /* room above JUMP_PEAK 68 */
+    peak: isFinite(peak) && peak > 0 ? Math.max(8, Math.min(120, peak)) : JUMP_PEAK,   /* room above JUMP_PEAK (85 since v2.3.3486) */
   };
 }

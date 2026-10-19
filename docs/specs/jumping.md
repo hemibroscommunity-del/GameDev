@@ -15,10 +15,11 @@
   (`docs/specs/control-redesign.md` §14).
 - **X on a keyboard.** Space is already the dodge roll and Shift the sprint, so
   the jump is X, under the left hand. The key hints list it.
-- **The jump.** For 0.56 s the body rises up to 68 world px (about a bro's own
-  height) and comes back down on a smooth arc. The first cut went half as high;
-  the owner, having tried it: *"I'd also like it if the jump were about 2x as
-  high"*. The time in the air didn't change, so what it clears didn't either.
+- **The jump.** For 0.625 s the body rises up to 85 world px and comes back
+  down on a smooth arc. The first cut went 34 px; the owner, having tried it:
+  *"I'd also like it if the jump were about 2x as high"* (68 px, 0.56 s). Then,
+  since v2.3.3486: *"Try making jump 25% higher"* -- 85 px, in the air
+  sqrt(1.25) as long, the same pull of gravity (see the v2.3.3486 section).
   It holds one leaping frame of the jog for the way you face (one knee up, the
   other leg trailing): the owner's "jog directions", not a new animation. The
   weapon, cape and name plate rise with it.
@@ -34,13 +35,15 @@
   - fences (both directions), stone walls and hitching rails;
   - barrels, crates, benches, troughs and hay bales;
   - stones, snow rocks, basalt, sea rocks, coal and scrap;
-  - bushes, stumps and driftwood.
+  - bushes, stumps and driftwood;
+  - since v2.3.3486, minecarts and rowboats (lower than the higher jump's top).
 
-  You only pass over one if the way you're going carries you out of it before
-  you come down, so you never land inside one.
+  You pass over one if the way you're going carries you out of it before you
+  come down, give or take 0.16 s; once you have started across one you are
+  never stopped half way over it, and feet that come down in it walk on out.
 - **Everything else stops you in the air** as it does on the ground: trees,
-  boulders, carts, minecarts, rowboats, haystacks, buildings, the resources,
-  monsters, people and the open sea.
+  boulders, carts, haystacks, buildings, the resources, monsters, people and
+  the open sea.
 - **In the air you keep going.** Let go of the stick and you carry on the way
   you took off. Hold it and you steer. You never go faster than your walk (or
   your sprint).
@@ -58,12 +61,13 @@
 
 The idea: **your position never leaves the ground.** Only the picture does.
 
-- **The rules** (`src/game/jump.js`, pure, no imports): `JUMP_MS` 560, `JUMP_PEAK`
-  68, the arc `4t(1-t)`.
-  - Low things are cleared while the lift is at least `JUMP_CLEAR` (0.45) of the
-    peak, from about 72 ms to 488 ms.
-  - `JUMP_OVER` is the catalog ids that are cleared. `JUMP_NOT` names the low
-    ones left off (minecart, rowboat).
+- **The rules** (`src/game/jump.js`, pure, no imports): `JUMP_MS` 625, `JUMP_PEAK`
+  85 (560 and 68 until v2.3.3486), the arc `4t(1-t)`.
+  - Low things are cleared while the lift is at least `JUMP_CLEAR` (0.36 since
+    v2.3.3486, 0.45 before) of the peak, from about 62 ms to 563 ms.
+  - `JUMP_OVER` is the catalog ids that are cleared, everything `JUMP_OVER_H`
+    (87) px tall or less as drawn. `JUMP_NOT` names the low ones left off (none
+    since v2.3.3486).
   - `jumpRefusal` says why a jump may not start. `overLow` is the crossing rule.
     `JUMP_FRAME` is the held frame per sheet (east 1, north 8, northeast 4,
     south 7, southwest 6; mirrored facings share them).
@@ -78,7 +82,8 @@ The idea: **your position never leaves the ground.** Only the picture does.
   - In the air the water isn't checked at all, so you fly over a stream.
   - With no stick you take the take-off direction.
   - `propFeetBlocked` lets the feet into a `JUMP_OVER` footprint only when
-    `overLow` says the crossing finishes in time.
+    `overLow` says the crossing finishes in time (and, since v2.3.3486, latches
+    it: `jumpLatched` / `jumpLatch`, then `landedOver` after the landing).
   - The speed it checks against is what this frame really moves (`S._frameMs`):
     below 20 fps the game's clock caps a step, and a crossing judged on the wall
     clock would come down inside the fence.
@@ -327,3 +332,50 @@ resource extraction areas."
 - Today's town: its props are stamped into its walk grid, so a jump there
   clears nothing. The Wheel's objects are separate, and they're where clearing
   works.
+
+## v2.3.3486: 25% higher, and no more getting caught on a fence
+
+The owner, after more play: *"Try making jump 25% higher. Gets stuck on some
+props sometimes that it should be clearing."*
+
+- **Higher.** `JUMP_PEAK` 68 -> 85 px, and `JUMP_MS` 560 -> 625: a height goes
+  with the square of the time under one gravity, so 25% higher is sqrt(1.25) =
+  1.118x as long in the air, and the bro still jumps like himself, only harder.
+  `JUMP_CLEAR` 0.45 -> 0.36, so a crossing may start with the feet as high off
+  the ground as before (0.36 x 85 = 0.45 x 68, ~31 px); the window is 500 ms
+  where it was 415.
+- **Why a jump got stuck** (measured off the code):
+  - the crossing rule was asked again EVERY frame with that frame's speed, so
+    anything that slowed you with your feet already over the fence -- a slow
+    frame (a frame moves at most three 60 fps steps), a sprint running dry, a
+    held attack's half pace, the stick eased or turned, the walk's x-then-y
+    slide -- turned the answer to "no" half way, and the walk's "never deeper
+    into a footprint" rule froze you there in the air: you came down IN the
+    fence and had to back out;
+  - and a jump taken a stride too far back reached the fence just after the
+    last moment it could be out before landing, and stopped dead at its edge
+    in mid-air (you had to take off within ~41 px of a fence, ~31 of a crate).
+- **The fix:**
+  - the first frame a jump may pass a low thing **latches** it on the jump
+    (`jumpLatch`), and a latched thing is passed for the rest of the jump
+    whatever the speed (`jumpLatched`);
+  - a crossing that would come down up to `JUMP_LAND_GRACE_MS` (160 ms) short
+    of clear is let start;
+  - the jump's latches outlive it by `JUMP_LATCH_MS` (450 ms, `endJump` ->
+    `S._jumpOver`, `landedOver`): feet that did come down inside one walk on
+    out of it. Only feet ALREADY inside -- a step into a fence you have just
+    cleared is refused as ever.
+  - Only a `JUMP_OVER` thing is ever latched: a tree, a building or the sea is
+    exactly as solid as before. With all three, a fence can be taken off for
+    from ~76 px away (was 41) and a crate from ~66 (was 31), and a crate can be
+    cleared on a diagonal.
+- **Minecarts and rowboats are cleared now** (79 and 81 px tall, under the new
+  85 px top; `JUMP_OVER_H` 87, 70 x 1.25). They were left off as "about as tall
+  as a bro" while the jump was a bro's height. Shots fly over what you can
+  jump (v2.3.3206, projectiles.js `_isLow`), so an arrow or a bolt now flies
+  over a minecart or a rowboat too, unless it is what the shot is aimed at.
+- Other players' screens draw the jump from the relay's own `dur` and `peak`
+  (`peerJump` clamps to 900 ms and 120 px), so an older page sees the new jump
+  too; nothing on the worker changes.
+- Tests: test-world-core "jumping" (the new numbers, the latch, the grace, the
+  landing, the longer list), `mp-jump` (the peak read as 85).

@@ -3,7 +3,8 @@
  * A drop (game/itemDrop.js) is drawn as the item, from its bag picture
  * (game/dropLook.js), shrunk once to ICON_PX as lootIcons.js does the rare
  * drops' icons: the bag's pictures ship at 192-256 px and draw at ~32 world
- * px, so a 64 px texture is ~16 KB on the graphics chip instead of ~256 KB.
+ * px, so a 64 px texture is ~16 KB on the graphics chip instead of ~256 KB
+ * (v2.3.3486: 128 px, drawn 60 world px: 64 KB).
  *
  * NOT PRELOADED, the one kind of exception CLAUDE.md's law allows: which of
  * the bag's hundred-odd items someone drops "cannot be known at load time",
@@ -21,7 +22,10 @@
  */
 import { Texture } from 'pixi.js';
 
-export const ICON_PX = 64;
+/* v2.3.3486: 64 -> 128 with the drop's 1.5x (effectsRenderer DROP_GROW):
+   60 world px is ~110 device px on a 3x phone, which a 64 px picture would
+   draw soft; 64 KB on the graphics chip each, KEEP_MAX of them ~1.5 MB */
+export const ICON_PX = 128;
 const KEEP_MAX = 24;
 
 /* url -> { tex, state: 'loading'|'ready'|'failed', refs, freeAt } */

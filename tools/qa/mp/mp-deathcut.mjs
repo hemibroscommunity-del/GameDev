@@ -14,6 +14,14 @@
  *   - the unforced roll is the same for the same monster and place (every
  *     client sees the same death) and all four deaths turn up across kills.
  * Saves a contact sheet per monster (tools/qa/mp/out/deathcut/) for eyes.
+ *
+ * v2.3.3486 (the owner: "Don't turn enemies red on the final death flow ...
+ * make the edges more jagged ... Remove the death where the enemy is frozen in
+ * place"): the pieces are killed INSIDE the blow's red flash and still wear
+ * the monster's own colour (never 0xff8080) at its own shape (no squash); no
+ * cut is the `clean` style; and the rock monster -- a look with no death strip
+ * of its own -- never plays `normal` (it stood frozen): forced to it, it
+ * TOPPLES, one piece tipping over and lying on the ground, then gone.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -24,7 +32,7 @@ const MONS = [
   { key: 'slime',    arch: 'fodder', variant: null,          zone: null,      blob: true },
   { key: 'goblin',   arch: 'fodder', variant: 'fireGoblin',  zone: 'ember' },
   { key: 'skeleton', arch: 'fodder', variant: 'skeleton',    zone: 'sky' },
-  { key: 'rock',     arch: 'brute',  variant: 'rockmonster', zone: 'hollows' },
+  { key: 'rock',     arch: 'brute',  variant: 'rockmonster', zone: 'hollows', noStrip: true },   /* v2.3.3486: no death strip of its own */
 ];
 const KINDS = ['slice', 'decap', 'leg', 'normal'];
 const SLOW = 5;
@@ -44,11 +52,21 @@ const spawn = (P, mon, tag) => P.page.evaluate(({ mon, tag }) => {
   return { id: m.id };
 }, { mon, tag });
 
-const kill = (P, id, kind) => P.page.evaluate(([mid, k]) => {
+const kill = (P, id, kind) => P.page.evaluate(async ([mid, k]) => {
   const S = window._gameState.current;
   if (k) window.__btDeathKind = k; else delete window.__btDeathKind;
   const m = S.monsters.find((x) => x.id === mid);
   if (!m) return false;
+  /* v2.3.3486: the killing blow lands first -- its red flash and its squash
+     drawn on the living body for a frame or two, as a real kill's are -- and
+     the pieces must keep neither */
+  /* (held for as long as the frames take on a slow test machine: a flash
+     stamped in the future reads as "now" every frame, and a squash whose
+     clock runs over 100 s sits at its widest) */
+  const t = Date.now();
+  m._hitFlash = t + 1e6; m._hitAnimStart = t - 40000; m._hitAnimEnd = t + 60000;
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  window.__dcLiveTint = window.__btMonsterSprite ? window.__btMonsterSprite(mid) : null;
   /* hold the respawn: with no worker monsters (S._serverMonsters false)
      the local sim revives a corpse as soon as Date.now() > respawnAt */
   m.curHp = 0; m.alive = false; m.respawnAt = Date.now() + 60000;
@@ -90,6 +108,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${mon.key}/${kind}: the death probe is published (guard)`, alive.d !== 'no-probe');
       const box = await boxOf(P);
       const expectCut = kind !== 'normal' && !(mon.blob && kind === 'leg');
+      const expectTopple = !!mon.noStrip && kind === 'normal';   /* v2.3.3486 */
       /* a cut runs in 5x slow motion (window.__btDeathSlow, QA-only) so the
          pictures and probes land where they mean to: a headless screenshot
          takes longer than a whole real-time cut */
@@ -97,9 +116,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await kill(P, sp.id, kind);
       const t0 = Date.now();
       const at = async (simMs) => { const w = t0 + simMs * SLOW - Date.now(); if (w > 0) await P.page.waitForTimeout(w); };
-      if (!expectCut) {
-        await P.page.waitForTimeout(120);
-        const d = await state(P, sp.id);
+      if (expectTopple) {
+        /* v2.3.3486: never the frozen frame -- it topples */
+        await at(300);
+        if (box) await P.page.screenshot({ path: `${OUT}/${mon.key}-topple-1.png`, clip: box }).catch(() => {});
+        const mid = await state(P, sp.id);
+        rec.ok(`${mon.key}/${kind}: no death strip, so no frozen frame -- it topples (one piece)`,
+          !!(mid.d && mid.d.kind === 'topple' && mid.d.pieces === 1), mid.d);
+        rec.ok(`${mon.key}/${kind}: ...in its own colour, never the hit's red`,
+          !!(mid.d && Array.isArray(mid.d.tints) && mid.d.tints.every((t) => t != null && t !== 0xff8080)), mid.d && mid.d.tints);
+        await at(1250);
+        const settled = await state(P, sp.id);
+        rec.ok(`${mon.key}/${kind}: ...and lies on the ground`,
+          !!(settled.d && settled.d.rest && settled.d.rest.every(Boolean) && settled.d.ground && settled.d.ground.every((g) => Math.abs(g) < 0.05)), settled.d);
+        if (box) await P.page.screenshot({ path: `${OUT}/${mon.key}-topple-3.png`, clip: box }).catch(() => {});
+      } else if (!expectCut) {
+        /* v2.3.3486: until the first dead frame is drawn (this machine draws
+           a frame every ~200-400 ms; a fixed 120 ms read it before) */
+        let d = null;
+        for (let i = 0; i < 20; i++) {
+          await P.page.waitForTimeout(120);
+          d = await state(P, sp.id);
+          if (d.d) break;
+        }
         rec.ok(`${mon.key}/${kind}: plays the normal death${mon.blob && kind === 'leg' ? ' (a slime has no leg to lose)' : ''}`,
           !!(d.d && d.d.pieces === 0 && d.d.kind === 'normal'), d.d);
         if (box) await P.page.screenshot({ path: `${OUT}/${mon.key}-${kind}-0.png`, clip: box }).catch(() => {});
@@ -109,10 +148,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
           if (box) await P.page.screenshot({ path: `${OUT}/${mon.key}-${kind}-${k}.png`, clip: box }).catch(() => {});
         }
         const mid = await state(P, sp.id);
+        const live = await P.page.evaluate(() => window.__dcLiveTint || null);
+        rec.ok(`${mon.key}/${kind}: (guard) the killing blow's red was on the living body as it died`, !!(live && live.tint === 0xff8080), live && { tint: live.tint, baseTint: live.baseTint });
         rec.ok(`${mon.key}/${kind}: rolled ${kind} and cut into pieces`,
           !!(mid.d && mid.d.kind === kind && mid.d.pieces === 2), mid.d);
+        /* v2.3.3486 */
+        rec.ok(`${mon.key}/${kind}: the pieces wear the monster's own colour, not the killing blow's red, at its own shape (no squash), cut jagged`,
+          !!(mid.d && Array.isArray(mid.d.tints) && mid.d.tints.every((t) => t != null && t !== 0xff8080)
+            && Array.isArray(mid.d.scale) && Math.abs(Math.abs(mid.d.scale[0]) - Math.abs(mid.d.scale[1])) < 1e-3
+            && mid.d.style !== 'clean'), { tints: mid.d && mid.d.tints, scale: mid.d && mid.d.scale, style: mid.d && mid.d.style });
         await at(1250);
-        const settled = await state(P, sp.id);
+        let settled = await state(P, sp.id);
+        /* v2.3.3486: a head thrown its hardest is still rolling at 1.25 s now
+           and then (its seeded roll is new every run): give it until the fade
+           (FADE_FROM_MS 1.3 s .. 1.6 s) before calling it */
+        for (let i = 0; i < 6 && !(settled.d && settled.d.rest && settled.d.rest.every(Boolean)); i++) {
+          await at(1300 + i * 60);
+          settled = await state(P, sp.id);
+        }
         rec.ok(`${mon.key}/${kind}: the pieces come down and lie still`,
           !!(settled.d && settled.d.rest && settled.d.rest.every(Boolean)), settled.d);
         /* the goblin's first cut rolled over the end of his torch and stood
@@ -121,8 +174,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
           !!(settled.d && settled.d.ground && settled.d.ground.every((g) => Math.abs(g) < 0.04)), settled.d);
         if (box) await P.page.screenshot({ path: `${OUT}/${mon.key}-${kind}-3.png`, clip: box }).catch(() => {});
       }
-      await at(expectCut ? 1900 : 0);
-      await P.page.waitForTimeout(expectCut ? 400 : 2400);
+      await at(expectCut || expectTopple ? 1900 : 0);
+      await P.page.waitForTimeout(expectCut || expectTopple ? 400 : 2400);
       const gone = await state(P, sp.id);
       rec.ok(`${mon.key}/${kind}: the corpse is gone again afterwards`,
         !gone.s || gone.d === null, gone);

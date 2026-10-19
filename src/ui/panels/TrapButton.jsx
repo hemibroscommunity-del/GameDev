@@ -22,10 +22,29 @@ import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* warmed on t
  * through to whatever is underneath once the prompt changes.  Its own clock
  * (POLL_MS), re-rendering only when what it shows changes. */
 const POLL_MS = 120;
+/* ═══ v2.3.3486: A TAP WHILE YOU JOG ═══
+   The owner: "Make it so you can place a trap while jogging."  The worker
+   never minded (trapping.js _handleTrapArm has no standing-still rule); the
+   button did.  It acted on the click alone, and iPhone Safari makes no click
+   for a tap while another finger is down -- the left thumb on the move stick
+   -- so TRAP did nothing for anyone on the move (the canvas's own taps learnt
+   this long ago: BroTown's "the canvas onClick is unreliable on multitouch").
+   So a touch is its own tap, the sprint button's way (SprintButton.jsx): the
+   same finger lifted within TAP_SLOP_PX of where it went down, inside
+   TAP_MAX_MS, arms it, and the touchend's preventDefault takes the tap's
+   compatibility mouse events with it, so nothing falls through to whatever
+   is under the button once it changes -- the reason it was on the click (the
+   door's reasoning, v2.3.2617).  A mouse still clicks; a click that is the
+   echo of a touch already taken (GHOST_MS) is ignored. */
+const TAP_SLOP_PX = 14;
+const TAP_MAX_MS = 600;
+const GHOST_MS = 700;
 
 export function TrapButton({ stateRef }) {
   const [, setTick] = React.useState(0);
   const keyRef = React.useRef('');
+  const touchRef = React.useRef(null);
+  const lastTouchEndRef = React.useRef(0);
 
   React.useEffect(() => {
     const id = setInterval(() => {
@@ -48,6 +67,15 @@ export function TrapButton({ stateRef }) {
   const v = S ? trapButtonView(S) : null;
   if (!v) return null;
 
+  /* the press itself: arm it, or (grey) say again what stops it */
+  const act = () => {
+    const s = stateRef && stateRef.current;
+    if (!s) return;
+    const now = s ? trapButtonView(s) : null;
+    if (now && (now.kind === 'ready' || now.kind === 'grey')) armTrap(s);
+    keyRef.current = '';
+    setTick((x) => (x + 1) % 1000000);
+  };
   const grey = v.kind === 'grey';
   const armed = v.kind === 'armed';
   const pending = v.kind === 'pending';
@@ -70,13 +98,30 @@ export function TrapButton({ stateRef }) {
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        const s = stateRef && stateRef.current;
-        if (!s) return;
-        if (v.kind === 'ready' || v.kind === 'grey') armTrap(s);
-        keyRef.current = '';
-        setTick((x) => (x + 1) % 1000000);
+        if (Date.now() - lastTouchEndRef.current < GHOST_MS) return;   /* v2.3.3486: a touch's echo */
+        act();
       }}
-      onTouchStart={(e) => { e.stopPropagation(); }}
+      onTouchStart={(e) => {
+        e.stopPropagation();
+        const t = e.changedTouches && e.changedTouches[0];
+        touchRef.current = t ? { x: t.clientX, y: t.clientY, at: Date.now(), id: t.identifier } : null;
+      }}
+      onTouchMove={(e) => { e.stopPropagation(); }}
+      onTouchEnd={(e) => {
+        e.stopPropagation();
+        const st = touchRef.current;
+        touchRef.current = null;
+        if (!st) return;
+        let t = null;
+        const list = e.changedTouches || [];
+        for (let i = 0; i < list.length; i++) if (list[i].identifier === st.id) t = list[i];
+        if (!t) return;
+        e.preventDefault();
+        lastTouchEndRef.current = Date.now();
+        const dx = t.clientX - st.x, dy = t.clientY - st.y;
+        if (dx * dx + dy * dy <= TAP_SLOP_PX * TAP_SLOP_PX && Date.now() - st.at <= TAP_MAX_MS) act();
+      }}
+      onTouchCancel={(e) => { e.stopPropagation(); touchRef.current = null; }}
       style={{
         left: 'calc(50% - 10px)',
         bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + (raised ? 76 : 24) + 'px + var(--nml-lift, 0px))',
