@@ -428,11 +428,24 @@ export const STATES = [
   {
     id: 'dash-skill-detail', group: 'Dashboard', title: 'A life skill in detail',
     about: 'One life skill opened: what it unlocks at each level, the XP it pays, each hit\'s odds.',
+    /* v2.3.3479: the 2026-10-19 UI review -- the laptop's picture was the
+       ten-skill list, not the detail: the press went in while the band was
+       still unfolding (the last view of a run on a box drawing a few frames a
+       second) and landed on empty band, and the state said it had worked.  So
+       it checks for the detail's "‹ All skills", presses once more if it is
+       not there, and skips the picture if it still is not. */
     run: async ({ P }) => {
       await bus(P, 'open', 'skills');
       await wait(P, 600);
-      const e = await clickText(P, /^(mining|woodcutting|fishing)\b/i, DASH);
-      if (e) return e;
+      const backSel = DASH.split(',').map((s) => s.trim() + ' button').join(', ');
+      for (let k = 0; k < 2; k++) {
+        const e = await clickText(P, /^(mining|woodcutting|fishing)\b/i, DASH);
+        if (e) return e;
+        await wait(P, 500);
+        const open = await evalIn(P, (s) => Array.from(document.querySelectorAll(s)).some((b) => /all skills/i.test(b.innerText || '')), backSel);
+        if (open) return;
+      }
+      return 'the skill detail did not open';
     },
   },
   dash('encyclopedia', 'Codex', 'The Monster Codex: a card for each kind of monster, opened by the first kill.'),

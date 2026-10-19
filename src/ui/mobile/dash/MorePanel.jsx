@@ -12,6 +12,7 @@ import { hasUnseenLevelUps } from '../sheet/skillsModel.js';
 import { getBtPassphrase } from '@/networking/index.js';
 import { CODEX_KINDS, CODEX_TIERS } from '@/data/monsterCodex.js';   /* v2.3.3209 */
 import { codexCounts, codexFreshCount } from '@/game/monsterCodex.js';   /* v2.3.3209 */
+import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3479: the Clan tile's tooltip, once clans are parties */
 
 // v2.3.1224: swapped to the UI Bible icon set (docs/UI-BIBLE.md Part 4,
 // sliced by tools/process_icon_sheets.py); every tile has a real icon.
@@ -77,7 +78,10 @@ function statusFor(id, S) {
     case 'journey': {
       const j = R.journey || S?.journey || {};
       const n = (j.entries || j.recent || []).length;
-      return n > 0 ? `Travel log · ${n} entr${n === 1 ? 'y' : 'ies'}` : 'Your travels, logged live';
+      /* v2.3.3479: the 2026-10-19 UI review -- "logged live" claimed more
+         than the page does: nothing in the game or the server writes this
+         log yet (docs/UI-DESIGN-NOTES.md, More's Still open) */
+      return n > 0 ? `Travel log · ${n} entr${n === 1 ? 'y' : 'ies'}` : 'Your travels';
     }
     case 'encyclopedia': {
       /* v2.3.3209: the monster codex -- the monsters met and the pages with
@@ -107,6 +111,16 @@ function statusFor(id, S) {
       } catch (_e) { return 'Add friends · direct messages'; }
     }
     case 'clan': {
+      /* v2.3.3479: the 2026-10-19 UI review -- once clans are parties
+         (caps.clanparty, v2.3.3321) S._clanData is empty for everyone, so
+         this said "Not joined · player clans" even to a player in a party.
+         The page it opens shows the party (ClanPanel's PartyNowPage), so the
+         tooltip reads the same thing: the party the worker last sent. */
+      if (clanPartyOn(S)) {
+        const p = S && S._party && S._party.state === 'open' ? S._party : null;
+        const n = p && Array.isArray(p.members) ? p.members.length : 0;
+        return p ? `Your party · ${n} member${n === 1 ? '' : 's'}` : 'Clans are parties now';
+      }
       const c = S?._clanData;
       return c && (c.name || c.tag) ? (c.name || c.tag) : 'Not joined · player clans';
     }
@@ -192,6 +206,14 @@ export const MorePanel = () => {
     return () => clearInterval(id);
   }, []);
   const S = getState();
+  /* v2.3.3479: the 2026-10-19 UI review -- sideways the grid is two across in
+     rows of their own height (v2.3.2173), and six rows of 54 px tiles needed
+     ~350 px of the ~313-322 the side column has: the sixth row's label (Login
+     Key) sat in the scroller's clip and fade, against "every choice on one
+     screen".  There each tile's picture is 24 px and its padding 2 px (~44 px
+     a tile, ~290 px for all six rows); the same eleven tiles, order and
+     words, and upright is untouched (six across, rows that fill the band). */
+  const narrow = panelVw() < 260;
 
   return (
     <div style={{ ...panelStyle, overflowY: 'auto' }}>
@@ -232,10 +254,10 @@ export const MorePanel = () => {
            keeps its five-across one-screen grid (v2.3.1648). */
         /* v2.3.3120: six across -- Pets made eleven, and a third row of one
            would have shrunk every tile to fit it (the rows stretch, 1fr) */
-        gridTemplateColumns: panelVw() < 260 ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)',
-        gridAutoRows: panelVw() < 260 ? undefined : '1fr',
+        gridTemplateColumns: narrow ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)',
+        gridAutoRows: narrow ? undefined : '1fr',
         gap: 4,
-        height: panelVw() < 260 ? undefined : '100%', boxSizing: 'border-box',
+        height: narrow ? undefined : '100%', boxSizing: 'border-box',
       }}>
         {['quests', 'skills', 'pets', 'social', 'clan', 'guild',
           'journey', 'encyclopedia', 'leaderboard', 'settings', 'account'].map(id => {
@@ -253,11 +275,11 @@ export const MorePanel = () => {
               title={`${t.label} — ${statusFor(id, S)}`}
               style={{
                 ...cardBase,
-                flexDirection: 'column', gap: 2, padding: '4px 2px',
+                flexDirection: 'column', gap: 2, padding: narrow ? '2px 2px' : '4px 2px',
                 justifyContent: 'center',
                 minWidth: 0,
               }}>
-              <Icon t={t} px={30} />
+              <Icon t={t} px={narrow ? 24 : 30} />
               <span style={{
                 fontSize: 11, fontWeight: 700, color: COL.text,
                 lineHeight: 1.1, textAlign: 'center',

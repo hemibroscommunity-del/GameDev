@@ -588,6 +588,24 @@
   .bt-more-tile,.bt-more-card{transition:none}
   .bt-more-tile:active,.bt-more-card:active{transform:none}
 }
+/* ═══ v2.3.3479: BIGGER TARGETS, THE SAME LOOK (the 2026-10-19 UI review) ═══
+   Three of the dashboard's controls were under the 44 px guide and cannot
+   grow without moving something the owner fixed in place: the ten skill
+   pills ("fit on one screen without scrolling", v2.3.1337), Life Skills'
+   "‹ All skills", and the six buttons of the row ("Nothing in the row ever
+   moves").  Each gets an invisible ring, nothing drawn:
+   - a skill pill 2 px above and below, into the grid's 4 px gaps (28 -> 32
+     px tall, meeting its neighbour mid-gap; the columns are 4 px apart too,
+     so no sideways growth);
+   - "‹ All skills" into the empty row beside it and the top of the header
+     under it (53 x 25 -> ~95 x 39), held to the page's own padding above and
+     to its left, where the scroller clips;
+   - a row button 4 px up and down, to the rail's own padding, and 2 px into
+     each gap (sideways 26 x 40 -> 30 x 48).  ::before, because on a computer
+     its ::after is the key cap ([data-key]::after, below). */
+.bt-skill-pill::after{content:'';position:absolute;left:0;right:0;top:-2px;bottom:-2px}
+.bt-back-link::after{content:'';position:absolute;top:-4px;left:-6px;right:-36px;bottom:-10px}
+.bt-navrail [data-nav]::before{content:'';position:absolute;top:-4px;bottom:-4px;left:-2px;right:-2px}
 /* v2.3.1326 (owner correction of v2.3.1325: "shrink the icons again
    and add the labels back — I just wanted buttons bigger"): icon back
    to the classic 30px with the text label restored beneath it; the
