@@ -714,8 +714,12 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
      BEFORE your own mark so a name keeps its room (your mark is drawn over,
      as it always is), and wrapped onto two lines (twoLines) where one line
      would run into its neighbour's.  A shut one is grey, "shut" under its
-     name. */
+     name.
+     Your mark's own room is kept first (you arrive just south of the Town
+     Hall's door, where its name goes), and a name that finds no room under
+     its picture goes over it: every building keeps its name. */
   if (zr >= AT.town) {
+    if (P) placed.push([X(P.x) - 18, Y(P.y) - 18, X(P.x) + 18, Y(P.y) + 18]);
     let doors = [];
     try { doors = wheelTownDoors(); } catch (e) { doors = []; }
     const at = [];
@@ -733,16 +737,26 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
         more.buildingIcons++;
       } else houseAt(g, x, y - 9, d.closed ? '#8D9B98' : '#E6D5AE');
       placed.push([x - TOWN_ICON_PX / 2, top, x + TOWN_ICON_PX / 2, y - 2]);
-      at.push({ x, y, d });
+      at.push({ x, y, top, d });
     }
     more.buildingsAt = at.length;
     for (const b of at) {
       const d = b.d;
-      const opt = { size: 11, below: true, weight: 700, color: d.closed ? '#B6C1BE' : INK, subColor: '#8D9B98', subSize: 11 };
-      let ok = label(b.x, b.y, d.closed ? [d.name, 'shut'] : [d.name], opt);
-      if (!ok && !d.closed) {
-        const two = twoLines(d.name);
-        if (two) ok = label(b.x, b.y, two, Object.assign({}, opt, { same: true }));
+      const opt = { size: 11, weight: 700, color: d.closed ? '#B6C1BE' : INK, subColor: '#8D9B98', subSize: 11 };
+      /* one line, else two (a shut one is always its name over "shut");
+         under the picture, else over it -- 11 px a line, 3 between */
+      const two = d.closed ? null : twoLines(d.name);
+      const tries = d.closed ? [[[d.name, 'shut'], false]] : [[[d.name], false]].concat(two ? [[two, true]] : []);
+      let ok = false;
+      for (const [lines, same] of tries) {
+        if (ok) break;
+        ok = label(b.x, b.y, lines, Object.assign({}, opt, { below: true, same }));
+      }
+      for (const [lines, same] of tries) {
+        if (ok) break;
+        const bh = lines.length > 1 ? 25 : 11;
+        ok = label(b.x, b.top - 3 - bh / 2, lines, Object.assign({}, opt, { same }));
+        if (ok) more.buildingsOver = (more.buildingsOver || 0) + 1;
       }
       if (ok) more.buildings++;
     }
@@ -761,7 +775,12 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     g.fillStyle = INK; g.fill(); g.lineWidth = 1.5; g.strokeStyle = HALO; g.stroke();
     g.restore();
     placed.push([px - 18, py - 18, px + 18, py + 18]);
-    label(px, py + 12, ['You'], { size: 11, below: true, force: true, color: BRASS });
+    /* v2.3.3494: "You" under your mark where it clears what is placed (in
+       town, the buildings' names), else over it, else under it anyway */
+    if (!label(px, py + 12, ['You'], { size: 11, below: true, color: BRASS })
+      && !label(px, py - 26.5, ['You'], { size: 11, color: BRASS })) {
+      label(px, py + 12, ['You'], { size: 11, below: true, force: true, color: BRASS });
+    }
   }
   /* v2.3.3057: the quest's star keeps its own room */
   if (more.quest) { const qx = X(more.quest.x), qy = Y(more.quest.y); placed.push([qx - 11, qy - 11, qx + 11, qy + 11]); }
