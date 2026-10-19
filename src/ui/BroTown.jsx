@@ -12569,8 +12569,13 @@ export var BroTown = function BroTown(_ref0) {
     className: "bt-inspect",
     /* v2.3.2826: the Blacksmith sits LOW with a light scrim, so the smith
        is seen working above it (game/smithing.js) -- every other building
-       keeps the centred modal. */
-    style: buildingPanel === 'forge' ? { alignItems: 'flex-end', background: 'rgba(8,12,14,.18)' } : undefined,
+       keeps the centred modal.
+       v2.3.3479: the 2026-10-19 UI review -- except the Gem Works, whose
+       two tabs are one window (GemWorksPanel.jsx): centred, the short Cut
+       gems card sat ~130 px lower than the tall Set gems one, so every tab
+       press moved the window.  Both start at the top now, where Set gems
+       already did. */
+    style: buildingPanel === 'forge' ? { alignItems: 'flex-end', background: 'rgba(8,12,14,.18)' } : (buildingPanel === 'gemcut' || buildingPanel === 'enchant') ? { alignItems: 'flex-start' } : undefined,
     onClick: function onClick() {
       return setBuildingPanel(null);
     }

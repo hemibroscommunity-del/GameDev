@@ -107,6 +107,6 @@ export function BankPanel(props) {
       React.createElement("div", {
         style: { borderRadius: 8, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
       }, gearRow('Melee', meleeName, false),
-      gearRow('Ranged', rangedName, false),
+      gearRow('Bow' /* v2.3.3479: was 'Ranged' -- the bow slot, named as the Gem Works' Set gems and the hero sheet name it (the 2026-10-19 UI review) */, rangedName, false),
       gearRow('Armor', armorName, true))));
 }

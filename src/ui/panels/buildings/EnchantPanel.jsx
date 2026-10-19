@@ -113,7 +113,10 @@ export function EnchantPanel(props) {
         key: 'weapon',
         wpn: rpgState.weapon
       }, {
-        label: 'Ranged',
+        /* v2.3.3479: the 2026-10-19 UI review -- was 'Ranged', beside 'Staff',
+           which is ranged too; this slot is the bow, as the hero sheet, the
+           profile and the leaderboard call it (and the Bank's row) */
+        label: 'Bow',
         key: 'rangedWeapon',
         wpn: rpgState.rangedWeapon
       }, {
@@ -158,7 +161,10 @@ export function EnchantPanel(props) {
             color: (wpn === null || wpn === void 0 ? void 0 : wpn.name) ? LS.txt1 : LS.dis,
             marginBottom: 4
           }
-        }, (wpn === null || wpn === void 0 ? void 0 : wpn.name) || 'None'), /*#__PURE__*/React.createElement("div", {
+        }, (wpn === null || wpn === void 0 ? void 0 : wpn.name) || 'None'), /* v2.3.3479: the 2026-10-19 UI review -- the rarity row only for a
+           weapon that is there: with the slot empty it printed "Common (1×)"
+           under "None", as if something were equipped. */
+        wpn && /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 12,
             display: 'flex',
@@ -547,7 +553,11 @@ export function EnchantPanel(props) {
           fontSize: 11,
           color: LS.txt3
         }
-      }, "🛡️ Forge a shield at the Blacksmith to slot defensive gems here."), /*#__PURE__*/React.createElement("div", {
+      }, /* v2.3.3479: the 2026-10-19 UI review -- was "Forge a shield at the
+            Blacksmith to slot defensive gems here.", but the Blacksmith has
+            made no shields since its rebuild (v2.3.2826); and no emoji in
+            the window's words (v2.3.1235) */
+      "No shield equipped. Wear one to slot defensive gems here."), /*#__PURE__*/React.createElement("div", {
         /* v2.3.1235: state-correction §10 — sticky bottom fade (matches
            this panel's #202C32 sheet, not the shared #1E2E34); visible
            only while more content exists below the fold, gone at scroll

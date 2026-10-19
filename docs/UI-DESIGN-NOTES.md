@@ -941,7 +941,7 @@ Screens: building-gemcut, building-enchant
 - One gem building, not two (v2.3.3259). When the Assay Office's name came up the owner asked "what does that even mean", then: "I think one gem building is enough and can do both the gem cutting and gem setting maybe with two different NPCs in the same building." Asked what to do with the Assay Office, the owner chose "Remove it", and named the joined building "Gem Works".
 - The Assay Office never tested ore: its door opened the Enchanter, whose window already said "Enchanter", so the sign and the window disagreed.
 - One door ("Enter GEM WORKS") and one window with two tabs: Cut gems ("Raw to polished") and Set gems ("Polished into gear"). The building keeps its old sign, GEMS, which covers both jobs, so nothing was repainted.
-- The tab strip is the window's first row, written on the room like the other windows' titles. Each tab is at least 44 px tall. Switching tab changes the panel in place; the room picture is the same and is not loaded again, so it does not flash.
+- The tab strip is the window's first row, written on the room like the other windows' titles. Each tab is at least 44 px tall. Switching tab changes the panel in place; the room picture is the same and is not loaded again, so it does not flash. The window starts at the top of the screen for both tabs, so a tab press never moves it (v2.3.3479: centred like the other windows, the short Cut gems card sat about 130 px lower than Set gems).
 - The two old panels sit under the tabs unchanged, each with its own title strip (Gem Cutter, Enchanter). This was done so that a later rework of either panel cannot clash with the Gem Works change.
 - Cut gems lists each gem you hold, its raw and polished counts, and your success chance as a percentage, which rises with your Gem Cutting level. One tap per cut. A failed cut says "Gem shattered!", and the raw gem is used either way.
 - Set gems shows how many of each weapon's gem slots are used. A second slot (a "Fusion") needs Enchanting 20. A blocked button says why: "No polished gems", "Locked", or "No open gem slot". The amulet and the shield each take one gem, and a new gem replaces the old one, which is lost (the window says so).
@@ -951,6 +951,9 @@ Screens: building-gemcut, building-enchant
 **Tried before, and changed:**
 - Two buildings, the Gem Cutter and the Assay Office, until v2.3.3259. The Assay Office's building, door and room are gone; nothing else in town moved.
 - The first Gem Works (v2.3.3148) was built on the older look, with the room in a box at the top of the window. It was redone on the room-as-background look (v2.3.3258) before it shipped.
+- The empty Cut gems tab said "Harvest resources in elemental zones to collect raw gems!", but raw gems come only from monster kills (the harvesting gem rates were never used, amulet-forge.md); it says "No raw gems yet. Defeat monsters out in the lands to find them." since v2.3.3479. With no shield, Set gems sent you to forge one at the Blacksmith, which has made no shields since v2.3.2826; it says "No shield equipped. Wear one to slot defensive gems here." (v2.3.3479).
+- Set gems called the bow's section RANGED, beside STAFF (a staff is ranged too), and showed "Common (1×)" under an empty slot. Since v2.3.3479 it is BOW, and an empty slot shows only "None".
+- The Cut gems line said "polished slottable gems"; since v2.3.3479 "polished gems for your gear".
 
 **Please don't suggest:**
 - Splitting the gem jobs back into two buildings, or bringing back the Assay Office (the owner's call: "Remove it").
@@ -959,19 +962,17 @@ Screens: building-gemcut, building-enchant
 **Still open:**
 - The owner's two NPCs: a cutter and a setter outside the Gem Works, each opening his own tab. They wait on the owner's pictures. An optional new room picture with two work stations is on the art wishlist.
 - Putting a gem into a WEAPON is still done by the phone alone; moving it to the server waits on other work (shield-gems.md).
-- The empty Cut gems tab says "No gems yet. Harvest resources in elemental zones to collect raw gems!", but raw gems come from monster kills: the harvesting gem rates were never used (amulet-forge.md, v2.3.1198).
-- With no shield, Set gems says "Forge a shield at the Blacksmith to slot defensive gems here", but shield forging was removed from the Blacksmith in v2.3.2826.
 
 Sources: CLAUDE.md, docs/specs/gem-works.md, docs/specs/shield-gems.md, docs/specs/amulet-forge.md, docs/specs/blacksmith-rebuild.md, docs/specs/building-rooms.md, docs/ART-WISHLIST.md, src/ui/panels/buildings/GemWorksPanel.jsx, src/ui/panels/buildings/GemcutPanel.jsx, src/ui/panels/buildings/EnchantPanel.jsx, src/styles/game.css
 
 ## The Cookhouse
 Screens: building-cook
 
-**What it is for:** Raw fish are cooked here into healing food, and the farm's crops are cooked into meals and brews you carry and use later. Since v2.3.3132 food and drink come only from farming and recipes, so cooking (here, and at a campfire) is where they are made.
+**What it is for:** The farm's crops are cooked here into meals and brews you carry and use later, and the fish you cooked at a campfire can be eaten from here. Since v2.3.3132 food and drink come only from farming and recipes, so cooking (here, and at a campfire) is where they are made.
 
 **Decisions, and why:**
-- Three parts, top to bottom: "Cook Fish — Healing" (a timing bar: "Tap COOK when the marker is in the green zone!"), "Cooked — Ready to Eat" (your cooked fish, each with how much it heals and Eat), and "Meals & Brews — Herbs" (the farm's recipes).
-- Cooking a raw fish is a TIMING game, not a dice roll, on purpose: a server dice roll was considered and rejected, because the result is the player's timing and a roll would burn fish for players who timed it right (cooking.md). The raw fish is used whether you succeed or fail. Brass is kept for the one COOK button inside the timing bar, the window's one main action (v2.3.1232).
+- Raw fish are NOT cooked here (v2.3.3479, the owner: "Remove cookhouse fish game"). One line at the top says where: "Raw fish are cooked at a campfire, not here: tap a log in your bag, choose Light fire, then tap the fire." Then two parts: "Cooked — Ready to Eat" (your cooked fish, each with how much it heals and Eat, only while you carry one) and "Meals & Brews — Herbs" (the farm's recipes).
+- Cooking a raw fish at a campfire is a TIMING game (the pan's flip), not a dice roll, on purpose: a server dice roll was considered and rejected, because the result is the player's timing and a roll would burn fish for players who timed it right (cooking.md). The raw fish is used whether you succeed or fail.
 - A recipe MAKES something you carry (v2.3.3130). Cook puts the dish in your bag, to eat or drink when you want, give to a friend, or sell on the auction house, so a player who never farms can still buy a farmer's food. Owner: "Not sure what benefit farming will provide. Maybe temporary stat boosts, required quest items and selling for gold. I might remove Diego's potions", then on the plan: "Good. Go ahead and build it."
 - ONE MEAL AND ONE BREW at once. Eating replaces your meal, drinking replaces your brew, and neither touches the other. The line under the heading says so, and the bag's card says "· replaces your meal" or "· replaces your brew" (v2.3.3130).
 - Only a brew raises damage. The server's cheat check was sized for one strong brew (the Fury Tonic's double damage), and a damage meal on top of it would have crossed it. So no meal raises damage (v2.3.3130).
@@ -986,19 +987,20 @@ Screens: building-cook
 - Diego sold the tonics, the Cooked Minnow and the Stamina Salts until v2.3.3130 and v2.3.3132.
 - The Herb Bread first healed 2% of max HP a second, even mid-fight (v2.3.3127). As a half-hour meal that would refill a bar every fifty seconds in a fight, so it now doubles the healing out of combat only.
 - The Root Stew's chip said −15% while the server took 5%. Both say 5% now.
+- Until v2.3.3479 this window had a fish timing game of its own ("Cook Fish — Healing": a bar with a green zone and a brass COOK! button). It changed the bag on the phone alone and told the server nothing, so the cooked fish and Cooking XP it showed vanished at the next update from the server, and its fish never counted for "Learn a Trade": a button that lies, the kind the Blacksmith's rebuild removed (v2.3.2826). The owner: "Remove cookhouse fish game". The campfire's cook is the server's (`cook_request`).
+- The window's title said KITCHEN, the old town's name, under a door and a sign that say COOKHOUSE, until v2.3.3479.
 
 **Please don't suggest:**
 - A meal that raises damage, or running more than one meal and one brew at once.
 - Food or drink sold by Diego, or Diego buying cooked dishes (the owner's rule, and dishes must not turn the farm into a coin machine).
 - Unlimited healing during a fight (one bite every 15 s is deliberate).
-- Replacing the fish's timing game with a dice roll (considered and rejected).
+- Replacing the campfire's fish timing game with a dice roll (considered and rejected).
+- Bringing a fish game back to this window (the owner removed it).
 
 **Still open:**
 - Ten newer crops (five everyday, five magic) have no recipes yet. The owner decides what each does (v2.3.3135).
 - Two fight meals were offered, not built: an element-resist meal and a stamina meal.
 - A meal's 30 minutes keep running while you are logged out (pausing it is later polish).
-- The window's own title still says KITCHEN, the old town's name, while the door's button and the room's sign say COOKHOUSE. The doors opened every old window unchanged (v2.3.3032).
-- Found while writing these notes: this window's fish timing game changes the bag on the phone only. It tells the server nothing (the server's own fish cook, `cook_request`, is the campfire's), so the cooked fish and the Cooking XP it shows can vanish at the next update from the server: a button that lies, the kind the Blacksmith's rebuild removed (v2.3.2826). Not fixed yet.
 
 Sources: CLAUDE.md, docs/specs/meals.md, docs/specs/fight-food.md, docs/specs/cooking.md, docs/specs/bag-icons.md, docs/specs/wheel-doors.md, docs/ART-WISHLIST.md, src/ui/panels/buildings/CookPanel.jsx
 
