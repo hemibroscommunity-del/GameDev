@@ -3140,6 +3140,22 @@ remnant to migrate server-side, not a mode to preserve.
     - kill switch `itemdrop: false`; dev lever `/dev/dropage {ms}`;
       `itemdrop` suite, mirror-audit "item drop", `mp-itemdrop`:
       docs/specs/item-drop.md.
+    - since v2.3.3476 A DEAD PLAYER'S PILE LIVES ITS TWO MINUTES -- found
+      building the drop, the owner: "Yes do the fix". The worker keeps it
+      120 s (the dead player's for 60, then anyone's), and two faults stopped
+      it:
+      - effectsRenderer `_updateGroundLoot` took every pile off every screen
+        at 30 s; a death pile now goes at its own `expiry` and its last-call
+        pulse is its own last ten seconds (a monster's pile keeps 30 s);
+      - under it, EVERY MONSTER DEATH DESTROYED THE BAG: the pickup refused a
+        corpse by `ps.dead`, which the phone's own move writes, and the move
+        sent as a phone handles `player_died` still says alive, so the corpse
+        lying on its pile asked for it, was given it, and the respawn's wipe
+        took it out of the bag again (the pile on screen about a second);
+        `_handleLootPickup` asks `ps.dying` too, and a dead phone asks for
+        nothing (groundLoot.js `S._dying`): TRAPS §233;
+      - combat-lifecycle §5, `mp-deathpile` (a real death, in real time,
+        `BT_DP_TRACE=1` its timeline): item-drop.md "A dead player's pile".
   - Since v2.3.3209 THE MONSTER CODEX -- the owner: "After you kill a monster
     you learn more about it, what it does, where it's from, elemental type,
     special attack, (make up a backstory) etc.", "Also include drop tables

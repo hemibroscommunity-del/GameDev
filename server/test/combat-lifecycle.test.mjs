@@ -337,6 +337,24 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     && pile.deathItems.some((i) => i.key === 'wood_oak' && i.qty === 3)
     && pile.deathItems.some((i) => i.key === 'fish_minnow' && i.qty === 2), pile && pile.deathItems);
 
+  /* v2.3.3476: the corpse on its own pile takes nothing.  The move the phone
+     sends as its player_died lands still says alive (`dead: false`: the HP-0
+     player_state comes after), and movement.js writes ps.dead from it -- so the
+     pickup asks the worker's own `dying`.  Before, the dead player's phone was
+     given the pile a second after dying and the respawn's wipe destroyed it. */
+  if (pile) {
+    psA.dead = false;                        /* the death's own move, as movement.js writes it */
+    psA.x = pile.x; psA.y = pile.y;
+    wsA.sent.length = 0;
+    room._handleLootPickup(room.sessions.get(wsA), { lootId: pile.lootId, zone: 'meadow' });
+    check('death pile: the corpse on it takes nothing while dying, whatever its move said',
+      msgsOfType(wsA, 'loot_pickup_rejected').some((m) => m.payload.reason === 'dead')
+        && (room.loot.meadow || []).some((p) => p.lootId === pile.lootId)
+        && !psA.inventory.wood_oak && !psA.inventory.fish_minnow,
+      { sent: wsA.sent.map((m) => m && m.type), inv: psA.inventory });
+    psA.dead = true;
+  }
+
   // Owner-only window: another player is rejected until it elapses.
   if (pile) {
     psB.x = pile.x; psB.y = pile.y; psB.z = 'meadow'; psB.dead = false; psB.disconnected = false;
