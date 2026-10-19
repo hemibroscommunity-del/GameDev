@@ -43,7 +43,27 @@ async function fingerTap(P, sel) {
   await cdp.detach();
   return at;
 }
-const fig = (P, id) => P.page.evaluate((id) => (window.__btEmoteFigure ? window.__btEmoteFigure(id) : null), id);
+/* v2.3.3476: YOUR figure is drawn this frame's camera remainder further on
+   (v2.3.3469, pixiRenderer.js "YOU STAY WHERE YOU WERE ON SCREEN": the world
+   goes on whole device pixels and you are moved by what that took off, under
+   half a device pixel), so its place in the world changes as the camera
+   settles though nothing moved on screen -- after a walk the sweep of
+   2026-10-19 read the sleeper's feet 0.53 px from where they stood.  Read
+   where the scene had them, without that frame's shift
+   (window.__btCamSnap's selfDX/selfDY, read in the same evaluate). */
+const fig = (P, id) => P.page.evaluate((id) => {
+  const f = window.__btEmoteFigure ? window.__btEmoteFigure(id) : null;
+  const c = id === 'self' && window.__btCamSnap ? window.__btCamSnap() : null;
+  if (!f || !c || !c.on || (!c.selfDX && !c.selfDY)) return f;
+  const dx = c.selfDX || 0, dy = c.selfDY || 0;
+  const r = (v) => +v.toFixed(3);
+  f.x = r(f.x - dx); f.y = r(f.y - dy);
+  f.feetX = r(f.feetX - dx); f.feetY = r(f.feetY - dy);
+  if (f.plate) { f.plate.tx = r(f.plate.tx - dx); f.plate.ty = r(f.plate.ty - dy); }
+  if (f.body) { f.body.x = r(f.body.x - dx); f.body.y = r(f.body.y - dy); }
+  f.camShift = { dx: r(dx), dy: r(dy) };
+  return f;
+}, id);
 async function waitFig(P, id, pred, timeout = 4000) {
   const t0 = Date.now();
   let last = null;
