@@ -23,6 +23,12 @@
  *      paid at the next join (the record loads before the mail); a record that
  *      cannot be read keeps the achievement queued while the gold lands; a
  *      v2.3.3481 crown still in a mailbox goes through the achievement.
+ *      v2.3.3488's road (#1026): its mark `aponce:<pid>` {arena: 1} is the one
+ *      word on whether the arena's points were paid -- the achievement sets
+ *      it when it pays and pays nothing while it is set; a champion it marked
+ *      gets Gladiator at the join, quietly and with no points; its crowns
+ *      waiting in a mailbox go through the achievement; while the mark cannot
+ *      be read nothing is promised or paid and the achievement waits.
  *   6. LOCKED: a newer worker's record is never paid into or overwritten, nor
  *      a record whose read failed; the phone is told `unavailable`.
  *   7. THE KILL SWITCH: `achievements: false` -- no cap, no grant, no sweep;
@@ -376,6 +382,91 @@ const gotC = (id) => !!(rec('bp_av_c') && rec('bp_av_c').got && rec('bp_av_c').g
   const J2 = await join(wsJ2, 'bp_av_j');
   check('5j two v2.3.3481 crowns waiting in the mail: both their gold, the points once (Gladiator counted 2)',
     J2 && J2.coins >= 1000 && J2.achievementPoints === 500 && rec('bp_av_j').n.gladiator === 2, { coins: J2 && J2.coins, ap: J2 && J2.achievementPoints, rec: rec('bp_av_j') });
+
+  /* ── v2.3.3488's road (#1026): the arena's mark, honoured and set ── */
+  const markOf = (id) => state._store.get('aponce:' + id);
+  check('5k the achievement\'s 500 set the arena mark too, saved in its own record (never a field of the blob)',
+    G.apOnce && G.apOnce.arena === 1 && !!markOf('bp_av_g') && markOf('bp_av_g').arena === 1 && !('apOnce' in (state._store.get('rpg:bp_av_g') || {})),
+    { mark: markOf('bp_av_g'), ps: G.apOnce });
+  check('5k2 ...and so did the mailed ones (a champion away, a v2.3.3481 crown)',
+    !!markOf('bp_av_h') && markOf('bp_av_h').arena === 1 && !!markOf('bp_av_j') && markOf('bp_av_j').arena === 1, { h: markOf('bp_av_h'), j: markOf('bp_av_j') });
+
+  /* a champion v2.3.3488 paid before achievements: the mark, 500 in the total, no record */
+  state._store.set('aponce:bp_av_m', { arena: 1 });
+  const wsM = fakeWs('M');
+  const M0 = await join(wsM, 'bp_av_m');
+  M0.achievementPoints = 505;
+  await room._saveRpg('bp_av_m', M0);
+  await room.webSocketClose(wsM, 1000, 'bye', true);
+  await flush();
+  state._store.delete(ACHV_KEY('bp_av_m'));
+  room._achvForget('bp_av_m');
+  const wsM2 = fakeWs('M2');
+  const M = await join(wsM2, 'bp_av_m');
+  const stM = last(wsM2, 'achv_state');
+  check('5l a champion v2.3.3488 paid gets Gladiator at the join: quietly (retro), no second 500, counted once',
+    !!stM && Array.isArray(stM.retro) && stM.retro.includes('gladiator') && !stM.new && M.achievementPoints === 505
+      && rec('bp_av_m').got.gladiator > 0 && rec('bp_av_m').n.gladiator === 1, { st: stM, ap: M.achievementPoints, rec: rec('bp_av_m') });
+  await room.webSocketClose(wsM2, 1000, 'bye', true);
+  await flush();
+  const wsM3 = fakeWs('M3');
+  const M3 = await join(wsM3, 'bp_av_m');
+  check('5m ...and the next join grants nothing again (the row counts crowns, never logins)',
+    M3.achievementPoints === 505 && rec('bp_av_m').n.gladiator === 1 && !(last(wsM3, 'achv_state') || {}).retro, { ap: M3.achievementPoints, n: rec('bp_av_m').n });
+  const cM = crown('t_av_m', 'bp_av_m');
+  for (let i = 0; i < 6; i++) await flush();
+  await new Promise((r) => setTimeout(r, 20));
+  check('5n ...a crown after it: the box says no points, the gold lands, no points, counted 2',
+    cM && !cM.ap && M3.achievementPoints === 505 && rec('bp_av_m').n.gladiator === 2 && (M3.coins || 0) > 0, { cM, ap: M3.achievementPoints, n: rec('bp_av_m').n });
+
+  /* a marked champion with no record crowned BEFORE the join's sweep can run: through the mail */
+  state._store.set('aponce:bp_av_o', { arena: 1 });
+  const wsO = fakeWs('O');
+  await join(wsO, 'bp_av_o');
+  await room.webSocketClose(wsO, 1000, 'bye', true);
+  await flush();
+  await room._inboxAppend('bp_av_o', { opId: 'arenapot:v88a', source: 'arena', kind: 'gold', payload: { amount: 300, ap: 500, apOnce: 'arena' }, note: 'v2.3.3488' }, 'arenapot:v88a');
+  const wsO2 = fakeWs('O2');
+  const O2 = await join(wsO2, 'bp_av_o');
+  check('5o a v2.3.3488 crown in the mail of a character it already paid: its gold, no points, Gladiator granted',
+    O2 && O2.coins >= 300 && !(O2.achievementPoints > 0) && rec('bp_av_o').got.gladiator > 0, { coins: O2 && O2.coins, ap: O2 && O2.achievementPoints, rec: rec('bp_av_o') });
+
+  /* two v2.3.3488 crowns in the mail of a character never paid */
+  const wsP = fakeWs('P');
+  await join(wsP, 'bp_av_p');
+  await room.webSocketClose(wsP, 1000, 'bye', true);
+  await flush();
+  for (const k of ['v88b', 'v88c']) await room._inboxAppend('bp_av_p', { opId: 'arenapot:' + k, source: 'arena', kind: 'gold', payload: { amount: 300, ap: 500, apOnce: 'arena' }, note: 'v2.3.3488' }, 'arenapot:' + k);
+  const wsP2 = fakeWs('P2');
+  const P2 = await join(wsP2, 'bp_av_p');
+  check('5p two v2.3.3488 crowns in the mail of a character never paid: both golds, 500 once, the mark set, Gladiator 2',
+    P2 && P2.coins >= 600 && P2.achievementPoints === 500 && P2.apOnce && P2.apOnce.arena === 1 && rec('bp_av_p').n.gladiator === 2
+      && !!markOf('bp_av_p') && markOf('bp_av_p').arena === 1, { coins: P2 && P2.coins, ap: P2 && P2.achievementPoints, rec: rec('bp_av_p'), mark: markOf('bp_av_p') });
+
+  /* the arena's mark unreadable this session: nothing promised, nothing paid, the achievement waits */
+  const wsQ = fakeWs('Q');
+  await join(wsQ, 'bp_av_q');
+  await room.webSocketClose(wsQ, 1000, 'bye', true);
+  await flush();
+  state.failReads((k) => k === 'aponce:bp_av_q');
+  const wsQ2 = fakeWs('Q2');
+  const Q2 = await join(wsQ2, 'bp_av_q');
+  state.failReads(null);
+  check('5q the arena mark unreadable: _achvWouldPay cannot tell (null)', Q2 && Q2._apOnceFailed === true && room._achvWouldPay('bp_av_q', 'gladiator') === null, Q2 && Q2._apOnceFailed);
+  const cQ = crown('t_av_q', 'bp_av_q');
+  for (let i = 0; i < 6; i++) await flush();
+  await new Promise((r) => setTimeout(r, 20));
+  const boxQ = state._store.get('inbox:bp_av_q') || [];
+  const listQ = Array.isArray(boxQ) ? boxQ : (boxQ.entries || []);
+  check('5r ...a crown then: the box says no points, the gold lands, the achievement waits in the mail, nothing written to the mark',
+    cQ && !cQ.ap && (Q2.coins || 0) > 0 && !(Q2.achievementPoints > 0) && listQ.some((e) => e.kind === 'achv') && !markOf('bp_av_q') && !((rec('bp_av_q') || {}).got || {}).gladiator,
+    { cQ, coins: Q2.coins, ap: Q2.achievementPoints, listQ, mark: markOf('bp_av_q') });
+  await room.webSocketClose(wsQ2, 1000, 'bye', true);
+  await flush();
+  const wsQ3 = fakeWs('Q3');
+  const Q3 = await join(wsQ3, 'bp_av_q');
+  check('5s ...the next join reads the mark: paid then, and marked', Q3.achievementPoints === 500 && rec('bp_av_q').got.gladiator > 0 && !!markOf('bp_av_q') && markOf('bp_av_q').arena === 1,
+    { ap: Q3.achievementPoints, mark: markOf('bp_av_q') });
   room._arena = null; room._arenaClearAt = 0;
 }
 
@@ -403,6 +494,8 @@ const gotC = (id) => !!(rec('bp_av_c') && rec('bp_av_c').got && rec('bp_av_c').g
   const K = await join(wsK, 'bp_av_k', {});
   const sync = wsK.sent.find((m) => m.type === 'state_sync');
   check('7a achievements: false -- the cap is off', sync && sync.caps && sync.caps.achievements === false, sync && sync.caps && sync.caps.achievements);
+  check('7a2 ...and the arena\'s two AP caps say no crown pays them (its points are the Gladiator achievement\'s)',
+    sync && sync.caps && sync.caps.arenaap === false && sync.caps.arenaapfirst === false, sync && sync.caps && { arenaap: sync.caps.arenaap, first: sync.caps.arenaapfirst });
   const m = aMonster();
   standBy(K, m);
   kill(m, { bp_av_k: 50 }, 'bp_av_k');
@@ -442,6 +535,22 @@ const gotC = (id) => !!(rec('bp_av_c') && rec('bp_av_c').got && rec('bp_av_c').g
   const wsR3 = fakeWs('R3');
   const R3 = await join(wsR3, 'bp_av_r');
   check('8d the next join grants nothing again', R3.achievementPoints === 185 && !last(wsR3, 'achv_state').retro, { ap: R3.achievementPoints, st: last(wsR3, 'achv_state') });
+  /* a golden, big pet in the pets record: the sweep grants its two rows the
+     first time and never counts them again (it runs at every join) */
+  const book = room._petbookOf('bp_av_r');
+  check('8e (the pets record is loaded)', !!book && !!book.rec && Array.isArray(book.rec.list));
+  book.rec.list.push({ id: 'p_av_gold', kind: 'snowling', gold: true, size: PETBOOK.BIG_AT });
+  const ap8 = R3.achievementPoints;
+  room._achvSweep('bp_av_r', R3);
+  const n1 = { ...rec('bp_av_r').n };
+  const puts0 = state._store.get(ACHV_KEY('bp_av_r'));
+  room._achvSweep('bp_av_r', R3);
+  room._achvSweep('bp_av_r', R3);
+  check('8f the sweep grants a pet, a golden pet and a golden giant once: 10 + 100 + 1,000 AP, each counted 1, however often it runs (no write after the first)',
+    R3.achievementPoints === ap8 + 1110 && rec('bp_av_r').got.first_pet > 0 && n1.golden_pet === 1 && n1.golden_giant === 1
+      && rec('bp_av_r').n.golden_pet === 1 && rec('bp_av_r').n.golden_giant === 1 && state._store.get(ACHV_KEY('bp_av_r')) === puts0,
+    { ap: R3.achievementPoints, ap8, n1, n: rec('bp_av_r').n });
+  book.rec.list.pop();
 }
 
 /* ── 9. THE STAMP ──────────────────────────────────────────────────────────── */

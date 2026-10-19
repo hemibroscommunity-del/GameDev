@@ -141,6 +141,60 @@ in `arena.test.mjs` §12-§14:
   between the purse check and the queue, so two quick presses can no longer
   both pass "Already queued".
 
+## The champion's points, once (v2.3.3488)
+
+Since v2.3.3481 the champion is paid `ARENA.CHAMPION_AP` 500 achievement
+points with the gold. Paid on every win, two accounts in a 2-player bracket
+could crown each other in turn for 500 a tournament. Asked whether to pay
+every win or a character's first, the owner: "I don't want anyone exploiting
+the achievement points from it."
+
+- **The mark.** `ps.apOnce.arena = 1` the first time a character is paid the
+  champion's points. It is its own record, `aponce:<pid>` (handoff rule 1: a
+  new thing to keep never goes into the character's `rpg:` save). It is
+  written by `_saveRpg` in the same synchronous run as the save holding the
+  points (persistence.js, `ps._apOnceDirty`), so a crash keeps both or neither.
+  It is read at the join BEFORE the mail is delivered (inbox.js
+  `_apOnceLoadOnJoin`), through `cleanApOnce`, which keeps only the names in
+  `AP_ONCE`. A read that fails pays no once-points that session
+  (`_apOnceFailed`, the crown too) and never writes the record.
+- **The crown.** `_arenaCrown` gives a champion who already holds the mark the
+  gold alone: no `ap` on the crown, its event or the credit.
+- **The payment.** The credit carries `apOnce: 'arena'`. inbox.js
+  `_applyCreditToPs` pays the points only to a character not yet marked, and
+  marks it in the gold's own apply. So a prize that waited in the mail decides
+  when it is delivered, and two waiting prizes pay the points once. The gold
+  is always paid.
+- **The window** says "500 AP for your first win" against a worker advertising
+  `caps.arenaapfirst`.
+- A character who won before v2.3.3488 holds no mark, so their next win pays
+  the points once more.
+- A character restart starts with no points and no mark (`_resetCharacterData`
+  deletes `aponce:`), so nothing is gained by it.
+- An owner's restore of a daily snapshot (`rpgsnap:`, the save alone) puts back
+  the points of that day but keeps the mark: a restored winner is not paid
+  again.
+- Kill switch `arenaap: false` still pays no points at all.
+
+## The points become the Gladiator achievement's (v2.3.3485)
+
+With achievements (docs/specs/achievements.md) the champion's 500 are the
+Gladiator achievement's, once a character:
+
+- The crown pays its gold with no `ap`, and sends the achievement as its own
+  credit (`kind: 'achv'`).
+- The mark above stays the one word on whether a character was paid the
+  arena's points (achievements.js `AP_ONCE_OF`). The achievement pays only
+  while it is unset, and sets it when it pays, saved with the points.
+- A champion this section's road paid gets Gladiator at their next join,
+  quietly and with no second 500.
+- A crown of either older kind still waiting in a mailbox goes through the
+  achievement.
+- With `achievements: false` no crown pays AP, and `caps.arenaap` and
+  `caps.arenaapfirst` say so.
+- The window names the Gladiator achievement against `caps.achievements`, and
+  "for your first win" against a v2.3.3488 worker.
+
 ## Tests
 
 `server/test/arena.test.mjs` (23+ assertions, in `npm test`): entry

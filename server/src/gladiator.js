@@ -65,7 +65,9 @@ export const ARENA = {
      ... an arena winner should be included" (2026-10-19).  Paid with the
      champion's gold, in the same credit (one write: inbox.js adds a gold
      credit's `ap`), whatever the bracket's size; `arenaap: false` in
-     liveflags pays none and un-advertises caps.arenaap (_arenaApOff). */
+     liveflags pays none and un-advertises caps.arenaap (_arenaApOff).
+     v2.3.3488: a character's FIRST win only (_arenaCrown, inbox.js AP_ONCE):
+     a later win pays the gold alone. */
   CHAMPION_AP: 500,
   MAX_BRACKET: 8,          // design review: 16 never fills at prototype population
   GATHER_MS: 60000,        // start timer from the first join
@@ -613,13 +615,17 @@ export const arenaMethods = {
     const t = this._arena;
     if (!t || t.champion) return;
     const { prize, topUp } = this._arenaPrize(t.players.length, Date.now());
-    /* v2.3.3481: the champion's 500 AP.  v2.3.3485: ONCE A CHARACTER -- the
-       owner's "Go recommended" (achievements.js decision 2: a second account in
-       a two-player bracket made 500 every few minutes): the points are the
-       Gladiator achievement's, sent by the mail below, and a later crown pays
-       its gold and counts on the row.  The champion box says the points only
-       when this crown pays them (`_achvWouldPay`: 0 if earned before; null --
-       not known yet, the champion away -- says nothing). */
+    /* v2.3.3481: the champion's 500 AP.  v2.3.3488 (#1026): on a character's
+       FIRST win only, under a mark of its own (`aponce:<pid>`, inbox.js
+       AP_ONCE) -- the owner: "I don't want anyone exploiting the achievement
+       points from it" (two accounts could take turns crowning each other).
+       v2.3.3485: ONCE A CHARACTER as the GLADIATOR ACHIEVEMENT (achievements.js
+       decision 2), sent by the mail below; a later crown pays its gold and
+       counts on the row.  The achievement honours v2.3.3488's mark and sets
+       it when it pays (achievements.js AP_ONCE_OF), so a champion the mark's
+       road paid is never paid again.  The champion box says the points only
+       when this crown pays them (`_achvWouldPay`: 0 if earned or marked
+       before; null -- not known yet, the champion away -- says nothing). */
     const apOn = !this._arenaApOff();
     const ap = apOn && this._achvWouldPay ? (this._achvWouldPay(champion.playerId, 'gladiator') || 0) : 0;
     t.champion = { playerId: champion.playerId, playerName: champion.playerName, prize };
@@ -640,7 +646,7 @@ export const arenaMethods = {
         /* v2.3.3485: and the Gladiator achievement, its own credit (inbox.js
            `achv`): it stays queued until the champion's achievements record is
            loaded, while the gold above never waits on it */
-        if (apOn) await this._creditPlayer(champion.playerId, { opId: 'arenaachv:' + tid, source: 'arena', kind: 'achv', payload: { id: 'gladiator' }, note: 'Gladiator Arena champion' });
+        if (apOn && !this._achvOff()) await this._creditPlayer(champion.playerId, { opId: 'arenaachv:' + tid, source: 'arena', kind: 'achv', payload: { id: 'gladiator' }, note: 'Gladiator Arena champion' });
         for (const pid of entrants) await this.state.storage.delete('arena_entry:' + tid + ':' + pid);
       } catch (e) { /* sweep repairs */ }
     })();

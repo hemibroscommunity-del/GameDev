@@ -300,7 +300,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      on a corpse.  So the watcher records every frame for 700ms and keeps the
      worst one that had a corpse in it. */
   await W.page.evaluate(() => {
-    window.__dsWorst = null; window.__dsFrames = 0; window.__dsCorpseFrames = 0;
+    window.__dsWorst = null; window.__dsFrames = 0; window.__dsCorpseFrames = 0; window.__dsDone = false;
     const t0 = Date.now();
     const tick = () => {
       window.__dsFrames++;
@@ -314,7 +314,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
           if (!window.__dsWorst || near.length > window.__dsWorst.length) window.__dsWorst = near;
         }
       }
-      if (Date.now() - t0 < 700) requestAnimationFrame(tick);
+      /* v2.3.3483: 700 ms AND three frames with the corpse in them, at most
+         5 s.  700 ms is ~42 frames at 60 fps and was 7 on the QA machine
+         (the sweep of 2026-10-19: the corpse in 2 of them, the guard below
+         failed with the death drawn, TRAPS §200); every frame with a corpse
+         still feeds the worst one kept. */
+      const ms = Date.now() - t0;
+      if (ms < 5000 && (ms < 700 || window.__dsCorpseFrames < 3)) requestAnimationFrame(tick);
+      else window.__dsDone = true;
     };
     requestAnimationFrame(tick);
   });
@@ -350,7 +357,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       res(true);
     }, 130);
   }));
-  await W.page.waitForTimeout(1100);
+  await W.page.waitForFunction(() => window.__dsDone === true, null, { timeout: 8000 }).catch(() => {});   /* v2.3.3483: the sampler's own end */
 
   /* The worst frame the sampler saw, around the corpse itself.  The watcher is
      alive, so the one death frame on their screen IS the peer -- no

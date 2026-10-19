@@ -104,6 +104,10 @@ export function PartyPanel(props) {
      old path caps.arena turns off), so the window names the AP only against
      a worker that says it pays; an older one, or `arenaap: false`, pays none. */
   var arenaPaysAp = !!(stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.arenaap);
+  /* v2.3.3488: ...on a character's FIRST win only (server inbox.js AP_ONCE) --
+     the owner: "I don't want anyone exploiting the achievement points from
+     it" -- which the window says against a worker that says it does */
+  var arenaApFirst = arenaPaysAp && !!stateRef.current._serverCaps.arenaapfirst;
   /* v2.3.3485: and since achievements (server achievements.js, the owner's
      decision 2) the 500 are the GLADIATOR ACHIEVEMENT's, paid the FIRST time
      you win; a later crown pays its gold and counts on the achievement's row.
@@ -244,9 +248,13 @@ export function PartyPanel(props) {
      line says the gold alone. */
   "Enter a single elimination tournament of up to 8 fighters. Blind matchups \u2014 any level can face any level. No food or healing allowed. ",
   /* v2.3.3485: against a worker with achievements the AP are the first
-     win's (achvCaps above); the gold and the title every win */
+     win's (achvCaps above); the gold and the title every win.  v2.3.3488's
+     worker (no achievements yet) paid them on the first win too, under its
+     own mark (arenaApFirst above) */
   arenaPaysAp && achvCaps === true
     ? "Only the final victor earns the Gladiator title and up to 250G for every fighter in the bracket (2,000G for a full 8). Your first win also earns the Gladiator achievement and its " + ARENA_CHAMPION_REWARD.ap + " AP; later wins pay the gold."
+    : arenaApFirst && achvCaps !== false
+    ? "Only the final victor earns the Gladiator title and up to 250G for every fighter in the bracket (2,000G for a full 8), plus " + ARENA_CHAMPION_REWARD.ap + " AP for your first win."
     : arenaPaysAp && achvCaps !== false
     ? "Only the final victor earns the Gladiator title and " + ARENA_CHAMPION_REWARD.ap + " AP, plus up to 250G for every fighter in the bracket (2,000G for a full 8)."
     : "Only the final victor earns the Gladiator title and up to 250G for every fighter in the bracket (2,000G for a full 8)."), /*#__PURE__*/React.createElement("button", {

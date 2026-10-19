@@ -87,7 +87,10 @@ modelled on the codex (codex.js).
   waiting there finds its record. Then `_achvSweep` grants what the worker can
   already see you did before achievements existed: a kill (`svKills`), a combat
   level, the story's ends, the codex's nine kinds, a pet, a golden or golden
-  big one. It is quiet: one chat line on the phone, no banners. Dungeons,
+  big one, and Gladiator for a champion v2.3.3488 paid (its mark, below). It
+  is quiet: one chat line on the phone, no banners. A row that counts is
+  granted there only the first time: the sweep runs at every join, and a
+  second grant counted a golden pet again at every login. Dungeons,
   orders, duels, Outlaw, rolls, gear, H5 and the spin leave no trace the worker
   can read, so they wait for the next time.
 - **The arena:** `_arenaCrown` pays the gold as before (no `ap` in it any more)
@@ -99,6 +102,20 @@ modelled on the codex (codex.js).
   the champion is away and it cannot tell yet). A v2.3.3481 gold credit still
   carrying `ap` in a mailbox goes through the Gladiator achievement too, so it
   pays once.
+- **The arena's mark (v2.3.3488, #1026).** Before achievements, main paid the
+  champion's 500 on a character's first win only, under a mark of its own,
+  `aponce:<pid>` {arena: 1} (docs/specs/arena.md "The champion's points,
+  once"). That mark stays the ONE word on whether a character was paid the
+  arena's points (achievements.js `AP_ONCE_OF`):
+  - the Gladiator achievement pays only while the mark is unset, and sets it
+    when it pays (saved with the points by `_saveRpg`);
+  - a champion the mark's road paid gets Gladiator at the join's sweep,
+    quietly and with no second 500, and a later crown counts it;
+  - a v2.3.3488 crown waiting in a mailbox (`ap` with `apOnce`) goes through
+    the achievement like a v2.3.3481 one;
+  - while the mark cannot be read (`_apOnceFailed`) nothing is promised
+    (`_achvWouldPay` null), paid or marked: the achievement waits in the mail
+    for a join that reads it.
 - **The stamp:** the AP on the inspect card's blob (`rpgData.ap`) came from the
   phone's own `track`, so a modified page could show any number on its card, in
   the lists and on the leaderboard. `_achvStamp` writes the worker's total over
@@ -157,7 +174,10 @@ Master") and "rarest drop" ("Ancient Ember Crown"), the same on everyone's
 
 **Kill switch:** `achievements: false` in the live flags. Nothing is granted,
 counted or swept, the arena's crown sends no achievement, and the cap is off at
-the next join. What was earned stays, AP included.
+the next join. What was earned stays, AP included. No crown pays AP then (they
+are the Gladiator achievement's), so the join says so in the arena's own two
+caps too, `arenaap` and `arenaapfirst` false, for a phone from before
+achievements.
 
 ## The phone
 

@@ -497,6 +497,20 @@ remnant to migrate server-side, not a mode to preserve.
         handed to `sweepBlockPoint` / `attackBlocked`, and the staff, with no
         sight, asks `lowAimAlong`;
       - `mp-bowprops`: docs/specs/bow-at-props.md.
+      - since v2.3.3485 THE LINE IS NEVER ON A MONSTER BEHIND A ROCK -- found
+        by mp-hitreal's frost bow row: a snowman just behind a snowbank, its
+        hit circle reaching back over the bank to the bow, so the gate said
+        "on the snowman" and the bow loosed; but the hit test refuses a hit
+        with a prop between the arrow's ground point and the monster's FEET
+        (`_rockBetween`, v2.3.2701), and every arrow stuck in the bank for
+        nothing. `firstSightHit` now asks that question too, along the
+        stretch where the arrow meets the target (a player you may shoot
+        too); the line ends at the bank and the arrow sticks where it shows.
+        A new refusal in the hit test goes in the gate in the same change
+        (TRAPS §236). NOT changed, the owner's call: a shot's ground line
+        runs parallel to the drawn one, so an aimed shot judges props ~33 px
+        short of the target's feet; `mp-sightrock`: bow-at-props.md
+        "v2.3.3485".
     - since v2.3.3230 A BUILDING YOU KEEP HITTING CATCHES FIRE -- the owner:
       "add flame effects on the building after getting hit a while in the
       location where the building is getting struck and make the flames grow
@@ -3174,7 +3188,10 @@ remnant to migrate server-side, not a mode to preserve.
       limit, the arena's crown by the mail): common 10 AP, rare 100, the arena
       500, super-rare 1,000 (7,470 in all), each paid ONCE a character (a
       counting row counts again: a second crown pays its gold, never 500 AP
-      again -- v2.3.3481 paid it on every crown);
+      again -- v2.3.3481 paid it on every crown); v2.3.3488's arena mark
+      (`aponce:<pid>`, #1026) stays the one word on whether the arena's points
+      were paid: the achievement honours and sets it (`AP_ONCE_OF`), and a
+      champion it paid gets Gladiator quietly at the join;
     - the record `achv:<pid>` (`got` the stamp, written in the same synchronous
       run as the save carrying its points; a failed read or a newer `v` LOCKS
       it), loaded before the mail drains; `_achvSweep` grants quietly at the
@@ -3890,7 +3907,12 @@ Two protocol versions coexist; both must keep working:
     Cookhouse's fish game removed, a bow's or staff's hardening on
     Woodworking (hardening.js `hardenIsWood`, `caps.hardenwoodskill`), the
     arena's champion paid the 500 AP it always promised (gladiator.js
-    `ARENA.CHAMPION_AP`, `caps.arenaap`), the dialogue blur kept; and their
+    `ARENA.CHAMPION_AP`, `caps.arenaap`; since v2.3.3488 a character's FIRST
+    win only -- the owner: "I don't want anyone exploiting the achievement
+    points from it" -- the mark its own record `aponce:<pid>`, written with
+    the save that holds the points, decided where the gold is paid, inbox.js
+    `AP_ONCE`, `caps.arenaapfirst`: docs/specs/arena.md "The champion's
+    points, once"), the dialogue blur kept; and their
     icon picks -- every Wheel land's banner a scene from their sheet (the
     animated strips no longer loaded there), gold quest pins, the arena's
     helmet, the trade request's handshake, the jackpot's sack, the Pet House,

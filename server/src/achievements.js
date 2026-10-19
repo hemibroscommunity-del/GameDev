@@ -49,10 +49,12 @@
  *
  * WHAT YOU HAD BEFORE COUNTS: at the join, `_achvSweep` grants what the
  * worker can already see you have done -- a kill, a combat level, the story's
- * last quests, the codex's nine kinds, a pet, a golden one -- quietly (one
- * chat line on the phone, no banners), so nobody who finished the story
- * before this existed waits for a quest that will never come.  What leaves
- * no trace (a dungeon, an order, a duel, a roll) waits for the next one.
+ * last quests, the codex's nine kinds, a pet, a golden one, an arena crown
+ * v2.3.3488 paid (its mark, AP_ONCE_OF below) -- quietly (one chat line on
+ * the phone, no banners), so nobody who finished the story before this
+ * existed waits for a quest that will never come.  A row that counts is
+ * granted there only the first time.  What leaves no trace (a dungeon, an
+ * order, a duel, a roll) waits for the next one.
  *
  * WHAT OTHER PLAYERS SEE: the AP on a player's card, in the lists and on
  * the leaderboard came from the phone's own `track.rpgData.ap`, which a
@@ -172,6 +174,21 @@ export const ACHV = Object.freeze({
   ]),
 });
 
+/* ═══ THE ARENA'S POINTS, ONCE BY EITHER ROAD ═══
+   Before achievements, v2.3.3488 (#1026) paid the arena champion's 500 AP on
+   a character's FIRST win only, under a mark of its own: `aponce:<pid>`
+   {arena: 1} (inbox.js AP_ONCE, read at the join before the mail and saved
+   with the points by _saveRpg).  The Gladiator achievement pays those same
+   points now, so the mark stays the ONE word on whether a character was paid
+   them: the achievement pays only while it is unset, and sets it when it
+   pays.  A champion the old road paid gets the achievement with no second
+   500 (at the join's sweep, or at their next crown), and the old road, which
+   an arena credit still carrying points takes only with achievements off,
+   never pays a champion the achievement paid.  A character whose marks could
+   not be read is granted nothing it might owe twice: the achievement waits
+   (the mail keeps it queued) until a join reads them. */
+export const AP_ONCE_OF = Object.freeze({ gladiator: 'arena' });
+
 const BY_ID = Object.create(null);
 for (const a of LIST) BY_ID[a.id] = a;
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -286,7 +303,15 @@ export const achievementMethods = {
     if (this._achvOff() || !has(BY_ID, id)) return 0;
     const book = this._achvOf(pid);
     if (!book || book.locked || !book.rec) return null;
-    return has(book.rec.got, id) ? 0 : achvAp(id);
+    if (has(book.rec.got, id)) return 0;
+    /* the arena's mark (AP_ONCE_OF above): paid by v2.3.3488's road, or not
+       readable this session */
+    if (has(AP_ONCE_OF, id)) {
+      const ps = this.playerState && this.playerState[pid];
+      if (!ps || ps._apOnceFailed) return null;
+      if (ps.apOnce && ps.apOnce[AP_ONCE_OF[id]]) return 0;
+    }
+    return achvAp(id);
   },
 
   /* ═══ THE ONE GRANT ═══
@@ -307,9 +332,21 @@ export const achievementMethods = {
     const def = BY_ID[id], rec = book.rec;
     const isNew = !has(rec.got, id);
     if (!isNew && !def.count) return null;
+    /* the arena's points (AP_ONCE_OF): never granted while the mark that
+       says whether they were paid cannot be read */
+    const once = has(AP_ONCE_OF, id) ? AP_ONCE_OF[id] : null;
+    if (isNew && once && ps._apOnceFailed) return null;
     if (isNew) {
       rec.got[id] = typeof o.now === 'number' ? o.now : Date.now();
-      if (!o.dev) ps.achievementPoints = Math.max(0, Math.floor(Number(ps.achievementPoints) || 0)) + achvAp(id);
+      const paidBefore = !!(once && ps.apOnce && ps.apOnce[once]);
+      if (!o.dev && !paidBefore) {
+        ps.achievementPoints = Math.max(0, Math.floor(Number(ps.achievementPoints) || 0)) + achvAp(id);
+        if (once) {
+          if (!ps.apOnce || typeof ps.apOnce !== 'object') ps.apOnce = {};
+          ps.apOnce[once] = 1;
+          ps._apOnceDirty = true;   /* _saveRpg writes aponce:<pid> with the points */
+        }
+      }
     }
     if (def.count) rec.n[id] = Math.min(ACHV.N_MAX, (rec.n[id] || 0) + 1);
     this._achvPut(pid, book);
@@ -445,6 +482,7 @@ export const achievementMethods = {
     if (this._achvOff()) return true;
     const book = this._achvOf(pid);
     if (!ps || !book || book.locked || !book.rec) return false;
+    if (has(AP_ONCE_OF, id) && ps._apOnceFailed && !has(book.rec.got, id)) return false;   /* the arena's mark unread: wait */
     this._achvGrant(pid, ps, id);
     return true;
   },
@@ -463,11 +501,18 @@ export const achievementMethods = {
     this._achvOnSkill(pid, ps, q);
     this._achvOnQuest(pid, ps, q);
     this._achvCodexCheck(pid, ps, q);
+    /* a row that counts is granted here only the FIRST time: the sweep runs
+       at every join, and a second grant would count it again (a golden pet
+       counted at every login, and its record rewritten) */
+    const firstOnly = (id) => { if (!has(book.rec.got, id)) this._achvGrant(pid, ps, id, q); };
     const pets = this._petbookOf ? this._petbookOf(pid) : null;
     const list = pets && !pets.locked && pets.rec && Array.isArray(pets.rec.list) ? pets.rec.list : [];
     if (list.length) this._achvGrant(pid, ps, 'first_pet', q);
-    if (list.some((p) => p && p.gold)) this._achvGrant(pid, ps, 'golden_pet', q);
-    if (list.some((p) => p && p.gold && Number(p.size) >= PETBOOK.BIG_AT)) this._achvGrant(pid, ps, 'golden_giant', q);
+    if (list.some((p) => p && p.gold)) firstOnly('golden_pet');
+    if (list.some((p) => p && p.gold && Number(p.size) >= PETBOOK.BIG_AT)) firstOnly('golden_giant');
+    /* a champion v2.3.3488 paid (its arena mark, AP_ONCE_OF): the Gladiator
+       achievement, its points already in their total */
+    if (ps.apOnce && ps.apOnce.arena) firstOnly('gladiator');
     const retro = Object.keys(book.rec.got).filter((id) => !before.has(id));
     if (retro.length) this._saveRpg(pid, ps);
     return retro;
