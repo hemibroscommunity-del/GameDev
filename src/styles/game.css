@@ -1155,6 +1155,14 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
 /* v2.3.3479: ...and on a computer the ✕ wears its "Esc" key cap hanging under
    it (the KEY'S LETTER block below), which reaches 45 px down */
 @media (pointer:fine) { .bt-plist{padding-top:48px} }
+/* v2.3.3479: the 2026-10-19 UI review -- the list opens in the pinned quest
+   card's corner (the card: top 56, left 8, z 17, 248 px wide; BroTown.jsx),
+   over it but 48 px narrower and a little see-through, so the card's words
+   showed through and round it ("Bring 4 Snowman ... idge.").  The list is a
+   chooser, gone on a pick or its ✕, so the card steps out of sight while it
+   is up and comes back with it closed.  [data-quest-hud] marks the card's
+   outer box. */
+body:has(.bt-plist) [data-quest-hud]{visibility:hidden}
 .bt-plist-item{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;
   border-bottom:1px solid rgba(255,255,255,.06);transition:background .1s}
 .bt-plist-item:active{background:rgba(216,168,95,.25)}
