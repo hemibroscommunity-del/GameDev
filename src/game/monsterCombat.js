@@ -23,7 +23,7 @@ import {
   BT_AUDIO, DEATH_GOLD_PENALTY, DEATH_SCATTER_RECOVERY,
   ECHO_AGGRO_MULT, ELEMENTS, GEM_DROP_RATES, GOLD_NUGGET_DROP, GS_FORWARD_ARC,
   GS_INNER_RADIUS, GS_OUTER_RADIUS, ATK_PRESS_GRACE_MS, PVP_THREAT_DURATION,
-  QUEST_CHAINS, QUEST_STATUS, RARE_DROP_CHANCE, RARE_DROP_ITEMS, RARITY_TIERS,
+  QUEST_CHAINS, QUEST_STATUS, RARITY_TIERS,   /* v2.3.3484: RARE_DROP_* gone (the kill's note below) */
   RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, SPECIAL_ATK_MULT, specialAtkMultFor,
   SWING_ARC, SWING_COOLDOWN, weaponSwingMult /* v2.3.2265 */, SWING_RANGE, MELEE_CONTACT_MS /* v2.3.2200 */, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
   ZONES, ZONE_RESOURCES, applyStatus, awardWeaponXp, bowPierceCount, bowRangeMult, calcBlockReduction, calcCritChance,
@@ -2560,21 +2560,12 @@ export function updateMonsterCombat(S, deps) {
                     pushDmgPopup(S, m.x, m.y - 90, 'New Bestiary Entry!', '#00d4b8');
                   }
 
-                  /* ═══ RARE DROP — 0.1% chance on any kill ═══ */
-                  if (Math.random() < RARE_DROP_CHANCE) {
-                    var rareDrop = RARE_DROP_ITEMS[Math.floor(Math.random() * RARE_DROP_ITEMS.length)];
-                    _R6.achievementPoints = (_R6.achievementPoints || 0) + rareDrop.points;
-                    _R6._compStats.rareDropsFound++;
-                    pushDmgPopup(S, m.x, m.y - 80, rareDrop.emoji + ' RARE: ' + rareDrop.name + ' (+' + rareDrop.points + ' AP)', '#f5c542');
-                    S.screenShake = 4;
-                    BT_AUDIO.beep(800, 0.1, 0.12, 'sine');
-                    setTimeout(function () {
-                      return BT_AUDIO.beep(1000, 0.08, 0.1, 'sine');
-                    }, 80);
-                    setTimeout(function () {
-                      return BT_AUDIO.beep(1200, 0.1, 0.12, 'sine');
-                    }, 160);
-                  }
+                  /* v2.3.3484: the "RARE DROP" -- a 0.1% chance on this local
+                     kill of 3-10 achievement points (RARE_DROP_ITEMS) -- is
+                     gone.  It ran only where this phone kills its own monsters
+                     (!S._serverMonsters: no live zone), the worker never heard
+                     of it, and its "+N AP" was never real.  Achievement points
+                     are the worker's (server achievements.js). */
 
                   /* ═══ KILL SLOWMO — disabled, felt like lag ═══ */
 

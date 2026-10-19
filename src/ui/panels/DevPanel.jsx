@@ -255,6 +255,7 @@ const CAP_GATES = [
   'pvplunge' /* v2.3.3262: the sword's opening lunge lands on a player too, and dazes them (server/src/pvplunge.js) -- lower case, a kill switch */,
   'pvpextras' /* v2.3.3264: what a hit does to a monster it does to a player -- a gem's status, a collision, the splash, the burst, the bash, whirlwind and lunge, a kill's heal, a parry's stagger (server/src/pvpextras.js) -- lower case, a kill switch */,
   'spar' /* v2.3.3265: the Sparring section below -- clones of you that fight you through the real PvP code (server/src/spar.js) -- lower case, a kill switch */,
+  'achievements' /* v2.3.3484: the worker grants achievements and pays their AP (server/src/achievements.js): the Achievements page in More, a big one's banner, the arena's 500 AP on the first win, the AP board -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported
@@ -262,6 +263,8 @@ const CAP_GATES = [
    worse than the cap's own name, which at least matches what the flag is
    called and what OPERATIONS.md says about it. */
 const CAP_NOTES = {
+  /* v2.3.3484 */
+  achievements: 'achievements: More\'s Achievements page, a banner and sound for a rare one, the arena\'s 500 AP paid on the first win, your title on your card; without it: More\'s Journey tile and no achievements (what was earned stays)',
   prog3: 'the Points screen — combat levels read 0 without it',
   prog3x: 'the extra Points stats',
   prog3elem: 'Elem Pwr per weapon, plus the Elem Resist and Max Mana stats',
@@ -755,6 +758,36 @@ export const DevPanel = ({ onClose }) => {
                 </button>
               ))}
             </div>
+
+            {/* ═══ v2.3.3484: ACHIEVEMENTS ═══
+                The owner's lever (server devtools.js /dev/achv ->
+                achievements.js _achvDev): every row lit to see the page whole,
+                one big one to see its banner (the panel closes first, so the
+                banner is not under it), or all forgotten.  A grant here pays
+                NO points: AP is earned in play, and never taken back. */}
+            <div style={label}>Achievements</div>
+            {!(S && S._serverCaps && S._serverCaps.achievements) ? (
+              <div style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }} data-achv-dev-off="1">
+                This server does not grant achievements yet -- it needs the deploy that ships them.
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 4 }}>
+                  <button type="button" style={chip} disabled={busy || !myId} data-dev-achv="all"
+                    onClick={async () => { const j = await call('/dev/achv', { playerId: myId, all: true }); if (j && j.ok) setMsg('All ' + (j.ids ? j.ids.length : '') + ' achievements lit (no points paid) -- More, Achievements.'); }}>
+                    Light them all
+                  </button>
+                  <button type="button" style={chip} disabled={busy || !myId} data-dev-achv="clear"
+                    onClick={async () => { const j = await call('/dev/achv', { playerId: myId, clear: true }); if (j && j.ok) setMsg('Achievements forgotten (your AP stays).'); }}>
+                    Forget them all
+                  </button>
+                </div>
+                <button type="button" style={btn(false)} disabled={busy || !myId} data-dev-achv="banner"
+                  onClick={() => { if (onClose) onClose(); setTimeout(() => { call('/dev/achv', { playerId: myId, id: 'gladiator' }); }, 400); }}>
+                  Show a banner (Gladiator, no points)
+                </button>
+              </>
+            )}
 
             {/* ═══ v2.3.3430: TEST MODE ═══
                 The owner's option 2 (server/src/testmode.js through

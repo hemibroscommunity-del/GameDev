@@ -13,6 +13,7 @@ import { getBtPassphrase } from '@/networking/index.js';
 import { CODEX_KINDS, CODEX_TIERS } from '@/data/monsterCodex.js';   /* v2.3.3209 */
 import { codexCounts, codexFreshCount } from '@/game/monsterCodex.js';   /* v2.3.3209 */
 import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3481: the Clan tile's tooltip, once clans are parties */
+import { achvLive, achvSummary } from '@/game/achievements.js';   /* v2.3.3484: Journey's tile becomes Achievements */
 
 // v2.3.1224: swapped to the UI Bible icon set (docs/UI-BIBLE.md Part 4,
 // sliced by tools/process_icon_sheets.py); every tile has a real icon.
@@ -38,6 +39,17 @@ export const TILES = [
   { id: 'quests',      src: '/icons/ui/panel-quests.webp?v=2.3.1224',      label: 'Quests',   glyph: '📜', group: 'Progress',  iconScale: 1 },
   { id: 'skills',      src: '/icons/ui/nav-lifeskills.webp?v=2.3.1331',    label: 'Life Skills', glyph: '⛏', group: 'Progress', iconScale: 1 },
   { id: 'journey',     src: '/icons/ui/journey.webp?v=2.3.1224',           label: 'Journey',  glyph: '🛤', group: 'Progress',  iconScale: 1.18 },
+  /* ═══ v2.3.3484: JOURNEY'S PLACE BECOMES ACHIEVEMENTS ═══
+     The owner's decision 6 ("Go recommended on everything", server
+     achievements.js): the always-empty Journey tile -- nothing in the game or
+     the server writes its log -- is the Achievements page against a worker
+     that grants them (caps.achievements); without the cap it stays Journey
+     exactly as it was.  The journey scroll stays its picture.  `soft` is how
+     the label is DRAWN: "Achievements" is about 66 px of 11 px type, wider
+     than a six-across tile's ~56 (v2.3.2173's "the labels are getting cut
+     off"), so a soft hyphen lets it break "Achieve-" / "ments" on two lines
+     where it has to, and only there (sideways the tile is wide enough). */
+  { id: 'achievements', src: '/icons/ui/journey.webp?v=2.3.1224',          label: 'Achievements', soft: 'Achieve\u00ADments', glyph: '🏆', group: 'Progress', iconScale: 1.18 },
   { id: 'encyclopedia', src: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224', label: 'Codex',  glyph: '📚', group: 'Progress',  iconScale: 1 },
   { id: 'leaderboard', src: '/icons/ui/panel-leaderboard.webp?v=2.3.1224', label: 'Ranks',    glyph: '🏆', group: 'Progress',  iconScale: 1 },
   { id: 'social',      src: '/icons/ui/nav-friends.webp?v=2.3.1224',      label: 'Friends',  glyph: '👥', group: 'Community', iconScale: 1 },
@@ -82,6 +94,12 @@ function statusFor(id, S) {
          than the page does: nothing in the game or the server writes this
          log yet (docs/UI-DESIGN-NOTES.md, More's Still open) */
       return n > 0 ? `Travel log · ${n} entr${n === 1 ? 'y' : 'ies'}` : 'Your travels';
+    }
+    /* v2.3.3484: the worker's count (game/achievements.js), real state as
+       every line here */
+    case 'achievements': {
+      const sum = achvSummary(S);
+      return `${sum.earned} of ${sum.total} earned`;
     }
     case 'encyclopedia': {
       /* v2.3.3209: the monster codex -- the monsters met and the pages with
@@ -259,8 +277,10 @@ export const MorePanel = () => {
         gap: 4,
         height: narrow ? undefined : '100%', boxSizing: 'border-box',
       }}>
+        {/* v2.3.3484: Journey's place is Achievements against a worker that
+            grants them (the tile's note in TILES) */}
         {['quests', 'skills', 'pets', 'social', 'clan', 'guild',
-          'journey', 'encyclopedia', 'leaderboard', 'settings', 'account'].map(id => {
+          achvLive(S) ? 'achievements' : 'journey', 'encyclopedia', 'leaderboard', 'settings', 'account'].map(id => {
           const t = tile(id);
           if (!t) return null;
           return (
@@ -284,7 +304,10 @@ export const MorePanel = () => {
                 fontSize: 11, fontWeight: 700, color: COL.text,
                 lineHeight: 1.1, textAlign: 'center',
                 maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{t.label}</span>
+                /* v2.3.3484: a label with a soft hyphen breaks there, onto a
+                   second line, rather than lose its end to an ellipsis */
+                ...(t.soft ? { whiteSpace: 'normal', textOverflow: 'clip' } : null),
+              }}>{t.soft || t.label}</span>
             </button>
           );
         })}

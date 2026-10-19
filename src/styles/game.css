@@ -7124,6 +7124,42 @@ html[data-orient="landscape"] .bt-zone-banner.is-scene{--zb-scene-w:calc(var(--z
   [data-new-monster]{animation:none!important}
 }
 
+/* ═══ v2.3.3484: THE ACHIEVEMENT BANNER (src/ui/panels/AchievementBanner.jsx) ═══
+   A rare, arena or super-rare achievement's moment, about three seconds.  Its
+   layer is `position:fixed; inset:0` OUTSIDE the world's wrap, so it is the
+   window on a phone and #root's column on a computer (contain:paint); the
+   plate is centred on the WORLD's width inside it (--world-x, --play-w:
+   sideways the dashboard takes a side, as the zone banner's rule above), in
+   the NEW MONSTER card's spot -- under the minimap upright, near the top
+   sideways -- and under that card (`.is-low`, 76 px down: its 64 px and a gap)
+   when one is up.  Transform and opacity only, over the live canvas (TRAPS
+   §42); in over a quarter of a second, out over the last third of one. */
+.bt-achv-banner{
+  position:absolute;
+  left:calc(var(--world-x,0px) + var(--play-w,100%) / 2);
+  top:max(22%, calc(env(safe-area-inset-top,0px) + 192px));
+  width:min(320px, calc(var(--play-w,100%) - 32px));
+  box-sizing:border-box;min-height:64px;
+  display:flex;align-items:center;gap:10px;padding:8px 12px 8px 8px;border-radius:14px;
+  box-shadow:0 10px 28px rgba(0,0,0,.5);
+  color:#F4F0E7;font-family:'Source Sans 3',sans-serif;
+  pointer-events:none;
+  transform:translateX(-50%);
+  animation:bt-achv-banner var(--achv-ms,3200ms) linear both;
+}
+.bt-achv-banner.is-low{top:calc(max(22%, calc(env(safe-area-inset-top,0px) + 192px)) + 76px)}
+html[data-orient="landscape"] .bt-achv-banner{top:calc(env(safe-area-inset-top,0px) + 52px)}
+html[data-orient="landscape"] .bt-achv-banner.is-low{top:calc(env(safe-area-inset-top,0px) + 128px)}
+@keyframes bt-achv-banner{
+  0%{opacity:0;transform:translateX(-50%) translateY(-10px) scale(.96)}
+  8%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+  90%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+  100%{opacity:0;transform:translateX(-50%) translateY(-6px) scale(1)}
+}
+@media (prefers-reduced-motion: reduce){
+  .bt-achv-banner{animation:none!important}
+}
+
 /* ═══ v2.3.3336: A PICTURE THAT IS THE FACE (controlSkin SpecialFace) ═══
    The owner's special attacks fill the face inside the ring, over the face and
    its sheen -- so the press's darkening, which lives on the face, is drawn on

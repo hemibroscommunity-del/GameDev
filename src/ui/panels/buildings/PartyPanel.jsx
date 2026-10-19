@@ -104,6 +104,14 @@ export function PartyPanel(props) {
      old path caps.arena turns off), so the window names the AP only against
      a worker that says it pays; an older one, or `arenaap: false`, pays none. */
   var arenaPaysAp = !!(stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.arenaap);
+  /* v2.3.3484: and since achievements (server achievements.js, the owner's
+     decision 2) the 500 are the GLADIATOR ACHIEVEMENT's, paid the FIRST time
+     you win; a later crown pays its gold and counts on the achievement's row.
+     `achvCaps` is the worker's word on achievements: true (the first win
+     pays them), false (that worker's switch is off: no crown pays AP at
+     all), or absent (a worker from before them, which paid 500 every crown,
+     v2.3.3481). */
+  var achvCaps = stateRef.current && stateRef.current._serverCaps ? stateRef.current._serverCaps.achievements : undefined;
   return React.createElement("div", {
     /* v2.3.1232: LS shared buildings kit -- full-bleed panel surface;
        -20px margin counters the legacy .bt-inspect-card padding */
@@ -235,7 +243,11 @@ export function PartyPanel(props) {
      (`arenaPaysAp`, caps.arenaap); an older worker pays gold alone, and the
      line says the gold alone. */
   "Enter a single elimination tournament of up to 8 fighters. Blind matchups \u2014 any level can face any level. No food or healing allowed. ",
-  arenaPaysAp
+  /* v2.3.3484: against a worker with achievements the AP are the first
+     win's (achvCaps above); the gold and the title every win */
+  arenaPaysAp && achvCaps === true
+    ? "Only the final victor earns the Gladiator title and up to 250G for every fighter in the bracket (2,000G for a full 8). Your first win also earns the Gladiator achievement and its " + ARENA_CHAMPION_REWARD.ap + " AP; later wins pay the gold."
+    : arenaPaysAp && achvCaps !== false
     ? "Only the final victor earns the Gladiator title and " + ARENA_CHAMPION_REWARD.ap + " AP, plus up to 250G for every fighter in the bracket (2,000G for a full 8)."
     : "Only the final victor earns the Gladiator title and up to 250G for every fighter in the bracket (2,000G for a full 8)."), /*#__PURE__*/React.createElement("button", {
     onClick: /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee8() {
@@ -748,7 +760,11 @@ export function PartyPanel(props) {
      which gladiator.js _arenaCrown puts on the record only when it pays them
      (caps.arenaap).  A record without it was paid gold alone -- an older
      worker, or `arenaap: false` -- and the box said "+500AP" for points
-     nobody was given, so it names none. */
+     nobody was given, so it names none.
+     v2.3.3484: and since achievements a crown pays them only the first time
+     (the Gladiator achievement): the worker sets `champion.ap` only on a
+     crown that pays them (achievements.js _achvWouldPay), so a second
+     crown's box says the gold and the title alone. */
   typeof arenaTournament.champion.ap === 'number' && arenaTournament.champion.ap > 0 ? arenaTournament.champion.ap + "AP + " : " ", "\"Gladiator\" title")), arenaTournament.recentMatches.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,

@@ -18,6 +18,7 @@ Each of these is drawn in code, borrowed from somewhere else, or missing today. 
 5. **The Farmhouse and the Dungeon Workshop** (2 chats): their prompts are in `docs/art/FARM-ART-PROMPTS.md`.
 6. **Small icons, sheet 5, and the spin wheel** (2 chats).
 7. ~~**The ore veins, one a tier**~~: done in v2.3.3345 from your picture, with the trees (below, "Trees and ore, one a tier").
+8. **Achievement badges** (3 chats, v2.3.3484): a badge for each of the 23 achievements on two sheets, then the four tiers' frames (below, "Achievements").
 
 Not on the list unless you want them: each land's levels 21-40 monsters (recoloured today; the monster prompts make them), the Gem Works' inside with two stations, and the four lands' music (below).
 
@@ -901,6 +902,82 @@ Square image: three separate pieces of a fairground prize wheel for the Gambling
 Style: exactly the attached icons: chunky pixel art with a bold dark outline, a few flat tones per colour, bright and readable at a small size, lit from the upper left.
 
 No words, numbers, frames or shadows. Background: transparent, like the attached icons.
+```
+
+## Achievements (v2.3.3484)
+
+The 23 achievements (docs/specs/achievements.md) borrow pictures the game already has: the kills record's sword and skull for First Blood, the Codex's icon for two of them, the pet icon for three, the melee icon for three. Each needs a badge of its own, and the tiers a frame each.
+
+- **In the game:** each achievement's row on the Achievements page (More → Achievements), in place of the picture it borrows today; its banner when you earn a rare, the arena's or a super-rare one; the title and the rarest box on a player's card. The four frames go round a badge where it is shown big (the banner, the card's rarest box); on the page's rows the tier stays the coloured points pill.
+- **Attach:** `assets/icons-source/sheet-small-1-party.png`, your first small-icon sheet, so they match.
+- **How:** three landscape pictures, one chat each, sent in chat. A session cuts them as it cut your small icons (by each icon's own see-through edge) and puts each in its place.
+
+### Achievement badges, sheet 1 of 2: the seven common ones and five rare
+
+```text
+Landscape image (wider than tall): a sheet of 12 small game icons for BroTown, a 2D action RPG, achievement badges, in a 4×3 grid read like a page (each row left to right, rows top to bottom). Each icon sits centred in its own equal square cell, fills about three quarters of it, and touches nothing else. No round frame or medal behind them: each is the object alone.
+
+Row 1:
+1. First Blood: a short steel sword, point down, a single red drop falling from its tip.
+2. Blooded: two crossed steel swords with one small gold star above them.
+3. Into the Dark: a dark cave mouth in grey rock with a lit torch on the rock beside it.
+4. Gotcha: a small wooden box trap with its lid shut and a paw print burned into its side.
+Row 2:
+5. Farmhand: a wooden crate packed with orange carrots, their green tops sticking out, tied with a red ribbon.
+6. Duelist: two crossed fencing rapiers, thin blades with round brass guards.
+7. Outlaw: a red skull wearing a black outlaw's bandana mask over its eyes.
+8. Storyteller: an open leather-bound book with a quill pen lying across it and a gold ribbon bookmark.
+Row 3:
+9. Know Thy Enemy: a brass magnifying glass over a three-clawed monster footprint.
+10. Elder Hunter: an old cracked monster skull with two big curved horns and faint purple glowing eyes.
+11. Delver: an iron key ring holding three old keys, each a different shape.
+12. Veteran: a battered steel helmet with a dent in it and a small gold laurel at its base.
+
+Style: exactly the attached icons: chunky pixel art with a bold dark outline, a few flat tones per colour, bright and readable at a small size, lit from the upper left. All 12 the same weight and about the same size.
+
+No words, letters or numbers, no frames, cell lines or shadows. Background: transparent, like the attached icons.
+```
+
+### Achievement badges, sheet 2 of 2: four rare, the arena's and the six super-rare
+
+```text
+Landscape image (wider than tall): a sheet of 11 small game icons for BroTown, a 2D action RPG, achievement badges, in a 4×3 grid read like a page (each row left to right, rows top to bottom), the LAST cell (row 3, right) left EMPTY. Each icon sits centred in its own equal square cell, fills about three quarters of it, and touches nothing else. No round frame or medal behind them: each is the object alone.
+
+Row 1:
+1. Natural One: a white six-sided die showing a single red pip on its top face, with three tiny sparkles.
+2. Iron Great Sword: a big two-handed great sword of dark grey iron, point down.
+3. Golden Catch: a small round fluffy creature made of shining gold, with sparkles.
+4. Elite: a steel breastplate whose edge glows bright orange.
+Row 2:
+5. Gladiator: a bronze gladiator's helmet with a tall red crest, inside a gold laurel wreath.
+6. Perfectly Tempered: a glowing orange-hot sword blade lying on a black anvil, five small gold stars in an arc above it.
+7. Golden Giant: a big round creature made of shining gold sitting proudly, with a tiny ordinary one beside it to show how big it is.
+8. Elite Iron: the dark iron great sword again, its edge glowing bright orange and an orange gem in its hilt.
+Row 3:
+9. Breaking the House: a fairground prize wheel cracked in two, gold coins spilling out of the crack.
+10. Centurion: a gold crown resting on a crossed sword, bow and magic staff.
+11. Godly: a breastplate shining with rainbow light, short rays all round it.
+12. (empty: nothing in this cell)
+
+Style: exactly the attached icons: chunky pixel art with a bold dark outline, a few flat tones per colour, bright and readable at a small size, lit from the upper left. All 11 the same weight and about the same size, the six super-rare ones (cells 6 to 11) the shiniest.
+
+No words, letters or numbers, no frames, cell lines or shadows. Background: transparent, like the attached icons.
+```
+
+### The four tiers' frames
+
+The tiers' colours are the armour's grades (v2.3.3142): common grey, rare blue, the arena's orange, super-rare a rainbow.
+
+```text
+Landscape image (wider than tall): four round badge frames for BroTown, a 2D action RPG, side by side in one row with space between them, each a perfect circle seen straight on, all four exactly the same size, their bands the same thickness all the way round, and the middle of each EMPTY: no picture, no pattern, nothing inside the ring, only background.
+1. Common: a plain grey iron ring with four small rivets.
+2. Rare: a polished silver ring with four small blue gems at the top, bottom, left and right.
+3. Arena: a bronze ring with an orange glow, wrapped in a gold laurel wreath.
+4. Super-rare: a clear crystal ring shining in all the colours of the rainbow, with a few tiny sparkles on it.
+
+Style: exactly the attached icons: chunky pixel art with a bold dark outline, a few flat tones per colour, bright and readable at a small size, lit from the upper left.
+
+No words, numbers, shadows or anything inside the rings. Background: transparent, like the attached icons.
 ```
 
 ## Music
