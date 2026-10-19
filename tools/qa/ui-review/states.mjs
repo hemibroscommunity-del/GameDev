@@ -343,7 +343,9 @@ export const STATES = [
   /* ═══ ARRIVING ═══ */
   {
     id: 'welcome', group: 'Arriving in BroTown', title: 'Welcome, first seconds in the world',
-    about: 'A brand-new character just arrived in BroTown: the welcome plate (with Skip tutorial) and the first coach card, over the world with the dashboard folded.',
+    /* v2.3.3479: no coach card -- none is shown over the welcome plate, and the
+       review plays as a player who skipped the tutorial (capture.mjs) */
+    about: 'A brand-new character just arrived in BroTown: the welcome plate (with Skip tutorial) over the world with the dashboard folded.  The review then plays on as a player who pressed Skip tutorial, so no tutorial coach card is in the screens after this one.',
     settle: 400,
     run: async ({ P }) => {
       for (let i = 0; i < 40; i++) {

@@ -228,6 +228,15 @@ async function runView(browser, ports, view) {
   const P = await H.newPlayer(browser, {
     name: 'Reviewer', wsPort: ports.ws, webPort: ports.web, viewport: view.viewport,
     touch: !!view.touch, dpr: view.dpr, world: 'wheel',
+    /* v2.3.3479: the 2026-10-19 UI review found GEAR UP's coach card in screen
+       after screen of a review that "skipped the tutorial": the welcome's
+       after() pressed Skip tutorial only after its two pictures, by when the
+       plate was often gone (9 s), and its localStorage fallback came too late
+       for a page that reads the flag once and keeps it (onboardingPace.js
+       tutorialSkipped).  So the player's choice is made before the page
+       loads -- the very flag the button writes.  The welcome plate still
+       shows, with its button (it asks only whether you were welcomed). */
+    init: () => { try { localStorage.setItem('bt_tutorial_skipped', '1'); } catch (e) { /* private mode */ } },
   });
   P.view = view;   /* states.mjs tapAt: a finger on a phone, the mouse on a computer */
   const errors = [];
@@ -252,6 +261,10 @@ async function runView(browser, ports, view) {
     await H.enterWorld(P);
     ctx.inWorld = true;
     ctx.myId = await H.readState(P, (S) => S.myId);
+    /* v2.3.3479: ...and the run says so when the skip did not take (the coach
+       cards will then be in the pictures, as for a player who does not skip) */
+    const skipped = await P.page.evaluate(() => (window.__btPace ? !!window.__btPace().skipped : null)).catch(() => null);
+    if (skipped === false) log(`  note ${view.id}: the tutorial skip did not take -- coach cards will show`);
     await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading, n: (S.gatherNodes || []).length }),
       (v) => v.zone === 'wheel' && !v.loading && v.n > 0, { timeout: 150000, label: 'into the Wheel' });
     /* what makes the menus look lived-in: the tools, a kit, some gold and goods */
