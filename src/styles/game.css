@@ -4879,6 +4879,18 @@ body:has(.bt-inspect) .bt-kb-hints,
 body:has(.bt-inspect) .bt-kb-chip,
 body:has([data-trade-drawer]) .bt-kb-hints,
 body:has([data-trade-drawer]) .bt-kb-chip{display:none}
+/* v2.3.3479: the 2026-10-19 UI review -- ...and the world's prompts stand
+   aside under a window too.  A door's "Enter BANK" (and the shut door's
+   caption, the bed, the workshops, a dungeon's mouth, TRAP) is fixed at z 35,
+   over the windows' z 32 (zLayers.js), and was gated off only under a
+   BUILDING's window (v2.3.2617, BroTown `buildingPanel === null`).  Standing
+   at a door with any other window up -- your own Inspect card, a player's
+   card, a duel challenge -- it drew over the window and took its taps;
+   sideways the Inspect card reaches its slot.  Hidden, not unmounted, so
+   nearBuilding, E and the visit count are untouched and it is back when the
+   window closes.  !important because a Wheel door's prompt and TRAP set their
+   display inline (flex), which only !important outranks (as below). */
+body:has(.bt-inspect) .bt-interact-prompt{display:none!important}
 /* ═══ v2.3.3407: ...AND UNDER A PROMPT'S BUTTON (A DOOR, A BED, A WORKSHOP) ═══
    The owner: "Make sure all actions/buttons can be completed ... on the
    computer."  The UI review's numbered pictures (tools/qa/ui-review) showed
