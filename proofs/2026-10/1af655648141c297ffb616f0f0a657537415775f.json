@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1af655648141c297ffb616f0f0a657537415775f",
+  "tree": "3a71eccc3627270b2afc3f14e428d70f4c08c889",
+  "committedAt": "2026-10-19T16:51:06-07:00",
+  "subject": "Supporter pass plan: $2 of ETH on Hemi, no wallet signature, an attack table (v2.3.3490) (#1028)",
+  "files": 6088,
+  "bytes": 711635094,
+  "listingSha256": "326e8473cb78d4cf5e33ff33c17d7119e168e5671ecbde20598d041163ba335f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
