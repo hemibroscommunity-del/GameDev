@@ -51,6 +51,10 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/MEMORY-PLAN.md` (what the phone holds -- sound, canvases, heaps, not
   only textures -- what leaked, and the order of the memory work with each
   item's status, v2.3.3075; `mp-memledger` measures it),
+  `docs/GEM-PLAN.md` (shards into gems, gems into weapons: what the code does
+  today -- a weapon's gem is the phone's alone, shards make nothing -- the
+  recommended loop at the Gem Works, 14 owner decisions and five phases; a
+  plan, nothing built, v2.3.3497),
   `docs/FUN-SOCIAL-PLAN.md` (the owner's fun & social plan checked against
   the code, v2.3.3391 -- "Go recommended": emotes and dances that move the bro
   in code, two-player moves, farm-made toys, a playground town; its rules: a
