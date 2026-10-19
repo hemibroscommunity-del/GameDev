@@ -298,10 +298,17 @@ function chevron(x, y, ang, s) {
   const p = (u, v) => `${(x + bx * u + nx * v).toFixed(1)} ${(y + by * u + ny * v).toFixed(1)}`;
   return `M ${p(-s, -s)} L ${p(0, 0)} L ${p(-s, s)}`;
 }
+/* v2.3.3479: the 2026-10-19 UI review -- "the CHOP cue shows only a right-
+   pointing arrow", though the stroke goes both ways.  While the cue waits the
+   tool sits still at its track's START on its dark badge (r 15.5, drawn over
+   the arrows, TouchControls), and the chevron at that end lay wholly under
+   it: chop's left one (x 26 under a badge reaching 14.5-45.5), mine's top
+   one, cook's bottom one.  That end's chevron now sits 18 units in from it,
+   just past the badge, so the track reads both ways beside the tool. */
 const ARROWS = {
-  mining:      chevron(CX, V_TOP - 4, -Math.PI / 2, 4.5) + ' ' + chevron(CX, V_BOT + 4, Math.PI / 2, 4.5),
-  cooking:     chevron(CX, V_TOP - 4, -Math.PI / 2, 4.5) + ' ' + chevron(CX, V_BOT + 4, Math.PI / 2, 4.5),
-  woodcutting: chevron(H_L - 4, CY, Math.PI, 4.5) + ' ' + chevron(H_R + 4, CY, 0, 4.5),
+  mining:      chevron(CX, V_TOP + 18, -Math.PI / 2, 4.5) + ' ' + chevron(CX, V_BOT + 4, Math.PI / 2, 4.5),
+  cooking:     chevron(CX, V_TOP - 4, -Math.PI / 2, 4.5) + ' ' + chevron(CX, V_BOT - 18, Math.PI / 2, 4.5),
+  woodcutting: chevron(H_L + 18, CY, Math.PI, 4.5) + ' ' + chevron(H_R + 4, CY, 0, 4.5),
   fishing: [0, 1, 2].map((i) => {
     const a = -Math.PI / 2 + Math.PI / 3 + i * (2 * Math.PI / 3);   /* 1, 5 and 9 o'clock */
     return chevron(CX + Math.cos(a) * REEL_R, CY + Math.sin(a) * REEL_R, a + Math.PI / 2, 4);
