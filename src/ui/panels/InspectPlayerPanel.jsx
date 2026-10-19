@@ -20,6 +20,20 @@ import { shirtColorTarget } from '../../rendering/traits/shirtColorCatalog.js';
 import { PlayerProfilePanel, Lens } from './PlayerProfilePanel.jsx'; /* v2.3.2926 */
 import { profileFromPeer, profileFromSelf } from './playerProfile.js'; /* v2.3.2926: the Inspect card's data */
 import { dashboardPanelBus } from '../mobile/dashboardPanelBus.js'; /* v2.3.2926: its leaderboard / codex buttons */
+
+/* v2.3.3485: the Achievements page belongs to More (its tile, and the
+   "◂ ACHIEVEMENTS" header that carries the AP and the title since the owner's
+   ChatGPT review): from a card's title chip or rarest box it opens UNDER More,
+   as Life Skills' AP button does.  Opened as a root page it had no header --
+   no name on it and no way back to More. */
+function openFromCard(id) {
+  if (id === 'achievements') {
+    dashboardPanelBus.open('more');
+    dashboardPanelBus.push('achievements');
+    return;
+  }
+  dashboardPanelBus.open(id);
+}
 import { portraitSrc } from '../mobile/sheet/portraitStore.js'; /* v2.3.2926: your own portrait, for your own card */
 
 /* v2.3.1917: mirrors GameRoom.OPEN_PVP (server/src/index.js).  While it is
@@ -324,7 +338,7 @@ export function InspectPlayerPanel(props) {
     }),
     onClose: closeCard,
     onOpen: function onOpen(id) {
-      dashboardPanelBus.open(id);
+      openFromCard(id);
       setInspectPlayer(null);
     },
     dock: null
@@ -342,7 +356,7 @@ export function InspectPlayerPanel(props) {
     },
     onClose: closeCard,
     onOpen: function onOpen(id) {
-      dashboardPanelBus.open(id);
+      openFromCard(id);
       setInspectPlayer(null);
     },
     /* the same caps gates as the tiles: no party tile, no party command */

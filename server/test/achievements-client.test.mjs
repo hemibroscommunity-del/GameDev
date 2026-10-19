@@ -196,7 +196,7 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
   const more = src('src/ui/mobile/dash/MorePanel.jsx');
   check('7d More: the Journey tile is Achievements against a worker that grants them, Journey otherwise',
     /achvLive\(S\) \? 'achievements' : 'journey'/.test(more) && /id: 'achievements'/.test(more) && /\/icons\/ui\/journey\.webp/.test(more));
-  check('7e the dashboard knows the page', /achievements: \{ title: 'Achievements', Component: AchievementsPanel \}/.test(src('src/ui/mobile/BottomDashboard.jsx')));
+  check('7e the dashboard knows the page, with its Head', /achievements: \{ title: 'Achievements', Component: AchievementsPanel, Head: AchievementsHead \}/.test(src('src/ui/mobile/BottomDashboard.jsx')));
   check('7f the chat\'s mail line names an achievement', /_e\.kind === 'achv' \? achvMailPhrase\(_ep\)/.test(src('src/networking/gameEvents.js')));
   const idx = src('server/src/index.js');
   const priv = idx.slice(idx.indexOf('export const PRIVILEGED_EVENTS'), idx.indexOf(']);', idx.indexOf('export const PRIVILEGED_EVENTS')));
@@ -208,6 +208,48 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
   check('7k the Test panel lists the cap (precheck\'s cap-registry) and has the lever', /'achievements' \/\*/.test(dev) && /call\('\/dev\/achv'/.test(dev));
   check('7l the banner is drawn outside the world\'s wrap, beside QuestCoach',
     /React\.createElement\(QuestCoach, \{ stateRef: stateRef \}\),[\s\S]{0,400}React\.createElement\(AchievementBanner, \{ stateRef: stateRef \}\)/.test(src('src/ui/BroTown.jsx')));
+}
+
+/* ── 8. after the owner's ChatGPT review (2026-10-19): the page compacted ── */
+{
+  check('8a every row has a one-line clue (40 characters at most, no full stop) and keeps its whole `how`',
+    D.ACHIEVEMENTS.every((a) => typeof a.clue === 'string' && a.clue.length > 0 && a.clue.length <= 40 && !/\.$/.test(a.clue)
+      && typeof a.how === 'string' && a.how.length >= a.clue.length - 4),
+    D.ACHIEVEMENTS.filter((a) => !a.clue || a.clue.length > 40).map((a) => a.id));
+  const P = freshS({ rpg: { prog3: { sk: { sword: { level: 7 }, bow: { level: 12 }, staff: { level: 3 } } } },
+    _codex: { k: { snowling: [3, 1], gobling: [1, 0], wisplet: [0, 0] } } });
+  A.onAchvState(P, { got: {}, dg: { hollows: 1, sky: 1 } });
+  const sh = (id) => A.achvProgressShort(P, id);
+  check('8b a row\'s short progress: "best Lv 12", "2/9", "1/9", "2/3", and nothing on a row of chance',
+    sh('combat_10') === 'best Lv 12' && sh('combat_100') === 'best Lv 12' && sh('codex_all') === '2/9' && sh('elder_all') === '1/9'
+      && sh('dungeons_all') === '2/3' && sh('natural_one') === '' && sh('godly') === '',
+    { c: sh('combat_10'), k: sh('codex_all'), e: sh('elder_all'), d: sh('dungeons_all') });
+  check('8c ...and no guess before the worker said: no codex, no combat level',
+    A.achvProgressShort(freshS(), 'codex_all') === '' && A.achvProgressShort(freshS(), 'combat_10') === '' && A.achvProgressShort(freshS(), 'dungeons_all') === '0/3');
+  check('8d the total\'s two parts in one sentence (the page\'s last line and the total\'s tooltip)',
+    A.achvSplitWords({ apTotal: 1850, achvPts: 1840, otherPts: 10 }) === 'Your 1,850 AP: 1,840 from achievements, 10 from quests, guilds and more.'
+      && A.achvSplitWords({ apTotal: -3, achvPts: 0, otherPts: 0 }) === 'Your 0 AP: 0 from achievements, 0 from quests, guilds and more.');
+  const dash = src('src/ui/mobile/BottomDashboard.jsx');
+  check('8e the dashboard draws a page\'s Head on its drilled header, upright beside the back button and sideways under the title',
+    /const Head = active\?\.Head \|\| null;/.test(dash) && /data-dash-head-row=""[\s\S]{0,200}\{back\}[\s\S]{0,240}<Head \/>/.test(dash)
+      && /\{Head \? <div data-dash-head="" style=\{\{ flex: '1 1 100%'[\s\S]{0,80}<Head side \/><\/div> : null\}/.test(dash));
+  const page = src('src/ui/mobile/dash/AchievementsPanel.jsx');
+  check('8f the page: a row is a button that opens in place (aria-expanded), one open at a time, its title buttons only when open',
+    /role="button" tabIndex=\{0\} aria-expanded=\{open\}/.test(page) && /setOpen\(\(cur\) => \(cur === id \? null : id\)\)/.test(page)
+      && /\{open && got \? <div data-achv-detail=""><TitleLine /.test(page) && (page.match(/<TitleLine /g) || []).length === 1
+      && /\{open \? \([\s\S]{0,400}data-achv-how=""[\s\S]{0,900}\) : \([\s\S]{0,300}data-achv-clue=""/.test(page));
+  check('8g ...one line under the name (the clue, cut with an ellipsis), the summary on the page only with no header to ride',
+    /data-achv-clue=""[^>]*whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'/.test(page.replace(/\s+/g, ' '))
+      && /\{drilled\(\) \? null : <div style=\{\{ marginBottom: 2 \}\}><Summary S=\{S\} \/><\/div>\}/.test(page)
+      && /export const AchievementsHead = /.test(page));
+  const ins = src('src/ui/panels/InspectPlayerPanel.jsx');
+  check('8h a card\'s title chip and rarest box open Achievements UNDER More (its header, and a way back)',
+    /function openFromCard\(id\) \{\s*if \(id === 'achievements'\) \{\s*dashboardPanelBus\.open\('more'\);\s*dashboardPanelBus\.push\('achievements'\);/.test(ins)
+      && (ins.match(/openFromCard\(id\);/g) || []).length === 2 && !/dashboardPanelBus\.open\(id\);\s*setInspectPlayer/.test(ins));
+  const css = src('src/styles/game.css');
+  const sr = css.slice(css.indexOf('.bt-pin-drop[data-tier="superrare"]{'), css.indexOf('.bt-pin-drop[data-tier="superrare"]{') + 400);
+  check('8i the super-rare box is the rainbow EDGE on the card\'s slate (no purple fill), the title chip bounded',
+    /border:1\.5px solid transparent/.test(sr) && /border-box/.test(sr) && !/#46295F/.test(css) && /\.bt-pin-title\[data-achv\]\{max-width:60%\}/.test(css));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

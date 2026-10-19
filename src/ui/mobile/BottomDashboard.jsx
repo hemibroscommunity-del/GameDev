@@ -52,7 +52,7 @@ import { MapPanel }          from './dash/MapPanel.jsx';
 import { SocialPanel }       from './dash/SocialPanel.jsx';
 import { MorePanel }         from './dash/MorePanel.jsx';
 import { PetsPanel }         from './dash/PetsPanel.jsx'; /* v2.3.3120 */
-import { AchievementsPanel } from './dash/AchievementsPanel.jsx'; /* v2.3.3485 */
+import { AchievementsPanel, AchievementsHead } from './dash/AchievementsPanel.jsx'; /* v2.3.3485 */
 import { StatsPanel }        from './dash/StatsPanel.jsx';
 import { SkillsPanel }       from './dash/SkillsPanel.jsx';
 import { EncyclopediaPanel } from './dash/EncyclopediaPanel.jsx';
@@ -436,8 +436,10 @@ const PANELS = {
   journey:      { title: 'Journey',     Component: JourneyPanel },
   /* v2.3.3485: the Achievements page (dash/AchievementsPanel.jsx): More's
      Journey tile against a worker that grants them (the owner's decision 6),
-     and your AP number on Life Skills */
-  achievements: { title: 'Achievements', Component: AchievementsPanel },
+     and your AP number on Life Skills.  `Head`: drawn in the drilled page's
+     header row, right of "◂ ACHIEVEMENTS" (the owner's ChatGPT review: the
+     AP, the count and the title there, so the page's 191 px go to its rows) */
+  achievements: { title: 'Achievements', Component: AchievementsPanel, Head: AchievementsHead },
   /* v2.3.1265: Quests toolbar destination — read-only quest log.
      v2.3.1298: questDetail = the per-quest drill (objectives, rewards,
      tracking). */
@@ -1014,6 +1016,7 @@ export const BottomDashboard = () => {
      retired with its anchor). */
 
   const Active = active?.Component;
+  const Head = active?.Head || null;   /* v2.3.3485: a page's own words on its drilled header row */
   /* v2.3.1649: the top row shares the columns row's tracks — see the grid
      below.  One call, so the two rows can never disagree about where a
      column starts. */
@@ -1103,7 +1106,7 @@ export const BottomDashboard = () => {
               have had no way back.  Same chip, same title treatment, at
               the top of the container where the drill actually is. */}
           {drill && (
-            <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px 0' }}>
+            <div style={{ flex: 'none', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, padding: '6px 8px 0' }}>
               <button
                 onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
                 className="bt-chisel bt-chisel--chip"
@@ -1117,6 +1120,10 @@ export const BottomDashboard = () => {
                 textTransform: 'uppercase', color: COL.text,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>{active ? active.title : ''}</div>
+              {/* v2.3.3485: the page's Head (Achievements' AP and title): the
+                  side column is ~238 px, so it takes its own line under the
+                  title (flex-wrap) */}
+              {Head ? <div data-dash-head="" style={{ flex: '1 1 100%', minWidth: 0, display: 'flex', padding: '0 2px' }}><Head side /></div> : null}
             </div>
           )}
           {/* v2.3.2166: the bottom padding is the nav dock's zone.
@@ -1452,34 +1459,46 @@ export const BottomDashboard = () => {
                 alone, which is what a drilled panel gives for it.
                 The title still renders whole (mp-loginkey), now with the row's
                 full width beside one small chip instead of beside six. */}
-            {drill && (
-              <button
-                data-dash-back
-                aria-label={'Back' + (active && active.title ? ' from ' + active.title : '')}
-                onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
-                style={{
-                  flex: 'none',
-                  display: 'flex', alignItems: 'center', gap: 7,
-                  minHeight: 32, margin: 0, padding: '0 2px 2px',
-                  background: 'transparent', border: 'none', textAlign: 'left',
-                  cursor: 'pointer', touchAction: 'manipulation',
-                  fontFamily: 'inherit',
-                }}>
-                <span className="bt-chisel bt-chisel--chip" aria-hidden="true"
-                  style={{ ...chipStyle, width: 30, height: 30, fontSize: 18 }}>◂</span>
-                <span style={{
-                  minWidth: 0,
-                  fontSize: 13,
-                  fontWeight: 700,
-                  letterSpacing: '.10em',
-                  textTransform: 'uppercase',
-                  color: COL.text2,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}>{active ? active.title : ''}</span>
-              </button>
-            )}
+            {/* v2.3.3485: a page with a `Head` (Achievements) draws it on this
+                row, right of the back button: the row's free width, wrapping
+                under the button where there is none.  Every other page: the
+                button alone, as before. */}
+            {drill && (() => {
+              const back = (
+                <button
+                  data-dash-back
+                  aria-label={'Back' + (active && active.title ? ' from ' + active.title : '')}
+                  onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
+                  style={{
+                    flex: 'none',
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    minHeight: 32, margin: 0, padding: '0 2px 2px',
+                    background: 'transparent', border: 'none', textAlign: 'left',
+                    cursor: 'pointer', touchAction: 'manipulation',
+                    fontFamily: 'inherit',
+                  }}>
+                  <span className="bt-chisel bt-chisel--chip" aria-hidden="true"
+                    style={{ ...chipStyle, width: 30, height: 30, fontSize: 18 }}>◂</span>
+                  <span style={{
+                    minWidth: 0,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    letterSpacing: '.10em',
+                    textTransform: 'uppercase',
+                    color: COL.text2,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>{active ? active.title : ''}</span>
+                </button>
+              );
+              return Head ? (
+                <div data-dash-head-row="" style={{ flex: 'none', display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 10, rowGap: 2 }}>
+                  {back}
+                  <div data-dash-head="" style={{ flex: '1 1 140px', minWidth: 0, display: 'flex', justifyContent: 'flex-end', padding: '0 2px' }}><Head /></div>
+                </div>
+              ) : back;
+            })()}
             {Active && <Active />}
           </div>
         </>

@@ -3185,10 +3185,12 @@ remnant to migrate server-side, not a mode to preserve.
       (ACHV.RARITY): the placeholders "Fishing Master" and "Ancient Ember
       Crown" are gone;
     - the phone: More's Journey tile is Achievements
-      (src/ui/mobile/dash/AchievementsPanel.jsx, "Use as title"), a banner and
-      a sound for rare and up, a chat line for common (src/game/achievements.js,
-      ui/panels/AchievementBanner.jsx); the dormant BT_ACHIEVEMENTS checker and
-      the local "RARE DROP +AP" popup are gone;
+      (src/ui/mobile/dash/AchievementsPanel.jsx: since the owner's ChatGPT
+      review its AP and title on the page's header row -- PANELS' `Head` --
+      and 48 px one-line rows a tap opens, "Use as title" on the opened row),
+      a banner and a sound for rare and up, a chat line for common
+      (src/game/achievements.js, ui/panels/AchievementBanner.jsx); the dormant
+      BT_ACHIEVEMENTS checker and the local "RARE DROP +AP" popup are gone;
     - `caps.achievements`, kill switch `achievements: false`, lever
       `/dev/achv`; `achievements` suite, `achievements-client`, mirror-audit,
       cost-guard §5 (a first kill writes one more row) and §9c,

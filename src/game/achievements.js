@@ -315,6 +315,37 @@ export function achvProgress(S, id) {
   return '';
 }
 
+/** The same, short, for a row's one line beside its clue: "best Lv 23",
+ *  "4/9", "1/3" (the owner's ChatGPT review, 2026-10-19: a row is one line
+ *  until it is opened, where achvProgress's words are shown whole).  Only
+ *  what the worker already sent: nothing for a row of chance. */
+export function achvProgressShort(S, id) {
+  if (Object.prototype.hasOwnProperty.call(COMBAT_ROWS, id)) {
+    const top = bestCombatLevel(S);
+    return top > 0 ? 'best Lv ' + top : '';
+  }
+  if (id === 'codex_all' || id === 'elder_all') {
+    const k = S && S._codex && S._codex.k;
+    if (!k) return '';
+    const i = id === 'codex_all' ? 0 : 1;
+    const n = CODEX_KINDS.filter((kind) => has(k, kind) && Array.isArray(k[kind]) && Number(k[kind][i]) >= 1).length;
+    return n + '/' + CODEX_KINDS.length;
+  }
+  if (id === 'dungeons_all') {
+    const dg = S && S._achv && S._achv.dg;
+    return WHEEL_DUNGEON_HOMES.filter((land) => has(dg, land)).length + '/' + WHEEL_DUNGEON_HOMES.length;
+  }
+  return '';
+}
+
+/** The AP total's two parts in one sentence, for the end of the page and the
+ *  total's tooltip: why "1,850 AP" is more than the achievements' 1,840 (story
+ *  quests pay +5 each and the guild ladder pays AP too). */
+export function achvSplitWords(sum) {
+  const f = (v) => Math.max(0, Math.floor(Number(v) || 0)).toLocaleString('en-US');
+  return 'Your ' + f(sum.apTotal) + ' AP: ' + f(sum.achvPts) + ' from achievements, ' + f(sum.otherPts) + ' from quests, guilds and more.';
+}
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 /** When it was earned: "Oct 19" (and the year when it is not this one).
  *  Spelled out here rather than toLocaleDateString, so every phone reads the

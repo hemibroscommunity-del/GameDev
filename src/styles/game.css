@@ -1621,6 +1621,10 @@ body:has(.bt-pcard) [data-coach]{display:none}
   font-size:12.5px;font-weight:700;white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(255,214,128,.08)}
 .bt-pin-title img{flex:none;width:24px;height:24px}
 .bt-pin-title>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* v2.3.3485: a long achievement title ("Breaking the House") is cut with an
+   ellipsis inside the chip's own footprint, never pushing the clan box off:
+   at most three fifths of the row (the owner's ChatGPT review) */
+.bt-pin-title[data-achv]{max-width:60%}
 .bt-pin-clan{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:5px;height:30px;padding:0 4px;box-sizing:border-box;
   border:1px solid #3B5366;border-radius:8px;background:#1C2F3C;color:#EDF6FA;font-size:13px;font-weight:700}
 .bt-pin-clanic{flex:none;width:24px;height:24px}
@@ -1675,9 +1679,17 @@ button.bt-pin-drop{color:inherit;margin:0}
 .bt-pin-drop[data-tier="rare"] .bt-pin-drop-n{color:#E3EEFB}
 .bt-pin-drop[data-tier="arena"]{border-color:#E8893A;background:radial-gradient(circle at 50% 32%,#6B3A15 0%,#34200F 72%)}
 .bt-pin-drop[data-tier="arena"] .bt-pin-drop-r{color:#F2A869}
-.bt-pin-drop[data-tier="superrare"]{border-color:#C79BFF;background:radial-gradient(circle at 50% 32%,#46295F 0%,#20162E 72%)}
+/* the super-rare box: the card's own slate inside a RAINBOW EDGE, the label's
+   rainbow over a light name -- the owner's ChatGPT review: the purple fill
+   "did not instantly read as the same prismatic tier used on the badge pill
+   and Godly gear" (QUALITY_PRISM's colours; the edge 1.5 px as the pill's
+   ring, the padding half a pixel less so the box keeps its size) */
+.bt-pin-drop[data-tier="superrare"]{border:1.5px solid transparent;padding:5.5px 5.5px 7.5px;
+  background:radial-gradient(circle at 50% 32%,#24394A 0%,#172530 72%) padding-box,
+    linear-gradient(90deg,#FF6B6B,#FFD166,#6BFF95,#5CB8FF,#C77DFF) border-box}
 .bt-pin-drop[data-tier="superrare"] .bt-pin-drop-r{background:linear-gradient(90deg,#FF8A8A,#FFD36B,#7CE38B,#6BC7FF,#C79BFF);
   -webkit-background-clip:text;background-clip:text;color:transparent}
+.bt-pin-drop[data-tier="superrare"] .bt-pin-drop-n{color:#F3F7FF}
 .bt-pin-home{display:flex;flex-direction:column;min-width:0;border:1px solid #3B5366;border-radius:10px;background:#1C2F3C;overflow:hidden}
 .bt-pin-scene{position:relative;flex:none;height:84px;background:#1B2A20}
 .bt-pin-scene>img{display:block;width:100%;height:100%;object-fit:cover}

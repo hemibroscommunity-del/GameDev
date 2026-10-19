@@ -11,10 +11,11 @@
  *     1. the worker says it grants them (caps.achievements) and sends the
  *        record at the join; More's Journey tile is Achievements, "0 of 23
  *        earned", its label whole;
- *     2. the tile opens the page: 23 rows, "0 of 23", the worker's AP, the
- *        six super-rares SHOWN though not earned (decision 3), locked, and no
- *        "Use as title" on a row not earned; the chips filter (the arena's
- *        row under Rare);
+ *     2. the tile opens the page: 23 rows, "0/23", the worker's AP -- the
+ *        two on the header row beside "◂ ACHIEVEMENTS", and two whole rows in
+ *        view as it opens (the review: it showed one) -- the six super-rares
+ *        SHOWN though not earned (decision 3), locked, and no "Use as title"
+ *        on a row not earned; the chips filter (the arena's row under Rare);
  *     3. the owner's lever lights the Gladiator (its single-id path sends
  *        `new`): its row earned and dated, NO points paid, and a BIG one's
  *        moment -- the banner "Gladiator · +500 AP", its fanfare asked,
@@ -25,11 +26,14 @@
  *        +10 AP on the page and in S._achv, the same as the player_state
  *        echo, a chat line "Achievement: First Blood (+10 AP)", and no banner
  *        (a common one);
- *     5. a title: "Use as title" on First Blood -- the worker's next
- *        achv_state carries `t`, the row says "Your title" with "Remove
- *        title", the page's top names it;
+ *     5. a title: no title buttons until an earned row is OPENED (the owner's
+ *        ChatGPT review); First Blood opened, "Use as title" -- the worker's
+ *        next achv_state carries `t`, the row says "Your title" with "Remove
+ *        title", the header names it; Gladiator opened offers it, First
+ *        Blood's row closing (one open at a time) with its tick;
  *     6. your own Inspect card wears it (.bt-pin-title[data-achv]) and its
- *        rarest box is the worker's pick (.bt-pin-drop[data-rarest]);
+ *        rarest box is the worker's pick (.bt-pin-drop[data-rarest]); the
+ *        title chip opens the page UNDER More, its header and summary on;
  *   B, a computer, beside A:
  *     7. B sees A's card blob with A's worker AP and title;
  *     8. A's page FORGES its AP (S.rpg.achievementPoints = 99999) and its
@@ -112,18 +116,24 @@ const pageLook = (P, scope) => P.page.evaluate((scope) => {
     rows: rows.length,
     ids: rows.map((x) => x.dataset.achvRow),
     got: rows.filter((x) => x.dataset.achvGot === '1').map((x) => x.dataset.achvRow),
-    apTotal: (() => { const e = panel.querySelector('[data-achv-ap-total]'); return e ? Number(e.dataset.achvApTotal) : NaN; })(),
-    count: (panel.querySelector('[data-achv-count]') || {}).textContent || '',
+    /* the summary rides the drilled header row (data-dash-head), outside the
+       page; the split is the page's last line */
+    apTotal: (() => { const e = root.querySelector('[data-achv-ap-total]'); return e ? Number(e.dataset.achvApTotal) : NaN; })(),
+    count: (root.querySelector('[data-achv-count]') || {}).textContent || '',
     split: (panel.querySelector('[data-achv-split]') || {}).textContent || '',
-    titleNow: (panel.querySelector('[data-achv-title-current]') || { dataset: {} }).dataset.achvTitleCurrent || null,
+    titleNow: (root.querySelector('[data-achv-title-current]') || { dataset: {} }).dataset.achvTitleCurrent || null,
+    summaryAt: (() => { const e = root.querySelector('[data-achv-summary]'); return e ? e.dataset.achvSummary + (e.closest('[data-dash-head]') ? '@head' : '') : null; })(),
+    /* the rows wholly in view in the page's own scroll box, as it opened */
+    inView: (() => { const pr = panel.getBoundingClientRect(); return rows.filter((x) => { const b = x.getBoundingClientRect(); return b.top >= pr.top - 1 && b.bottom <= pr.bottom + 1; }).length; })(),
     superrare: rows.filter((x) => x.dataset.achvTier === 'superrare').map((x) => ({
       got: x.dataset.achvGot, name: ((x.querySelector('[data-achv-name]') || {}).textContent || '').trim(), lock: !!x.querySelector('[data-achv-lock]') })),
     useOnUnearned: rows.filter((x) => x.dataset.achvGot !== '1' && x.querySelector('[data-achv-title-use], [data-achv-title-off]')).map((x) => x.dataset.achvRow),
     box: { x: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width), y: Math.round(r.top) },
     sideScroll: panel.scrollWidth - panel.clientWidth,
-    /* a name or a how cut short (wider than its own box) */
-    cut: [...panel.querySelectorAll('[data-achv-name], [data-achv-how], [data-achv-chip] span')].filter((x) => x.scrollWidth > x.clientWidth + 1).map((x) => x.textContent.slice(0, 30)),
-    minFont: Math.min(...rows.slice(0, 8).flatMap((x) => [fs(x.querySelector('[data-achv-name]')), fs(x.querySelector('[data-achv-how]'))])),
+    /* a name or a chip cut short (wider than its own box); a row's one-line
+       clue is cut with an ellipsis on purpose (the whole of it when opened) */
+    cut: [...panel.querySelectorAll('[data-achv-name], [data-achv-chip] span')].filter((x) => x.scrollWidth > x.clientWidth + 1).map((x) => x.textContent.slice(0, 30)),
+    minFont: Math.min(...rows.slice(0, 8).flatMap((x) => [fs(x.querySelector('[data-achv-name]')), fs(x.querySelector('[data-achv-clue], [data-achv-how]'))])),
     minRowH: Math.min(...rows.map((x) => Math.round(x.getBoundingClientRect().height))),
     chipCols: (() => { const c = panel.querySelector('[data-achv-chip]'); const g = c && c.parentElement; return g ? getComputedStyle(g).gridTemplateColumns : null; })(),
     chips: [...panel.querySelectorAll('[data-achv-chip]')].map((x) => x.dataset.achvChip + (x.getAttribute('aria-pressed') === 'true' ? '*' : '')),
@@ -232,7 +242,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const up = await A.page.waitForSelector('[data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
     const p0 = up ? await pageLook(A) : null;
     rec.ok(`2a the tile opens the page: ${p0 && p0.rows} rows, "${p0 && p0.count}", the worker's AP (${p0 && p0.apTotal})`,
-      !!p0 && p0.rows === 23 && /^0 of 23$/.test(p0.count.trim()) && p0.apTotal === s0.ap && p0.got.length === 0, p0);
+      !!p0 && p0.rows === 23 && /^0\/23$/.test(p0.count.trim()) && p0.apTotal === s0.ap && p0.got.length === 0, p0);
+    /* the owner's ChatGPT review: the page showed ONE row as it opened */
+    rec.ok(`2a2 the AP and the count ride the header row ("${p0 && p0.summaryAt}"), and ${p0 && p0.inView} whole rows are in view as it opens (two at least)`,
+      !!p0 && p0.summaryAt === 'head@head' && p0.inView >= 2, p0 && { summaryAt: p0.summaryAt, inView: p0.inView, box: p0.box });
     rec.ok('2b the six super-rares are SHOWN before they are earned (decision 3): named, locked, never "???"',
       !!p0 && p0.superrare.length === 6 && p0.superrare.every((x) => x.got === '0' && x.lock && x.name && !/\?\?/.test(x.name)), p0 && p0.superrare);
     rec.ok('2c no row you have not earned offers "Use as title"', !!p0 && p0.useOnUnearned.length === 0, p0 && p0.useOnUnearned);
@@ -277,14 +290,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(1500);
     const q = await A.page.evaluate(() => (window.__btAchvBanner ? window.__btAchvBanner.ids.slice() : []));
     rec.ok('4c ...and no banner for a common one', !q.includes('first_blood'), q);
-    await A.page.waitForFunction(() => /^2 of 23$/.test(((document.querySelector('[data-achv-count]') || {}).textContent || '').trim()), null, { timeout: 8000, polling: 250 }).catch(() => {});
+    await A.page.waitForFunction(() => /^2\/23$/.test(((document.querySelector('[data-achv-count]') || {}).textContent || '').trim()), null, { timeout: 8000, polling: 250 }).catch(() => {});
     const p2 = await pageLook(A);
     rec.ok(`4d the page agrees: "${p2 && p2.count}", ${p2 && p2.apTotal} AP, "${p2 && p2.split.trim()}"`,
-      !!p2 && /^2 of 23$/.test(p2.count.trim()) && p2.apTotal === s2.ap && p2.got.includes('first_blood')
-        && /Achievements 510 AP/.test(p2.split), p2);
+      !!p2 && /^2\/23$/.test(p2.count.trim()) && p2.apTotal === s2.ap && p2.got.includes('first_blood')
+        && /510 from achievements/.test(p2.split), p2);
 
     /* ── 5 ── */
     const seenBefore = await A.page.evaluate(() => window.__achvSeen.length);
+    /* an earned row's title buttons are on the OPENED row (the review: they
+       no longer add a line to every earned row): no button before the tap */
+    const shut = await A.page.evaluate(() => !document.querySelector('[data-achv-title-use]'));
+    await tap(A, '[data-achv-row="first_blood"]');
+    const opened = await A.page.waitForSelector('[data-achv-row="first_blood"][data-achv-open="1"] [data-achv-title-use="first_blood"]', { timeout: 6000 }).then(() => true).catch(() => false);
+    rec.ok('5 no title buttons until an earned row is opened; a tap on First Blood opens it with "Use as title"', shut && opened, { shut, opened });
     await tap(A, '[data-achv-title-use="first_blood"]');
     const told = await A.page.waitForFunction((n) => {
       const s = window.__achvSeen.slice(n).find((x) => x.p && x.p.t);
@@ -297,11 +316,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       on: !!document.querySelector('[data-achv-row="first_blood"] [data-achv-title-on]'),
       off: !!document.querySelector('[data-achv-title-off="first_blood"]'),
       now: (document.querySelector('[data-achv-title-current]') || { dataset: {} }).dataset.achvTitleCurrent,
-      useOnGladiator: !!document.querySelector('[data-achv-title-use="gladiator"]'),
     }));
-    rec.ok('5b the row says "Your title" with "Remove title", the page\'s top names it, the other earned row still offers it',
-      s3.t === 'first_blood' && t1.on && t1.off && t1.now === 'first_blood' && t1.useOnGladiator, { s3, t1 });
     await A.page.screenshot({ path: join(OUT, 'achievements-3-title.png') });
+    /* the other earned row, opened, offers it -- and First Blood's closes */
+    await tap(A, '[data-achv-row="gladiator"]').catch(() => {});
+    await A.page.waitForSelector('[data-achv-row="gladiator"][data-achv-open="1"]', { timeout: 6000 }).catch(() => {});
+    const t2 = await A.page.evaluate(() => ({
+      useOnGladiator: !!document.querySelector('[data-achv-title-use="gladiator"]'),
+      fbShut: !!document.querySelector('[data-achv-row="first_blood"][data-achv-open="0"]') && !document.querySelector('[data-achv-title-off="first_blood"]'),
+      fbTick: !!document.querySelector('[data-achv-row="first_blood"] [data-achv-wearing]'),
+    }));
+    rec.ok('5b the row says "Your title" with "Remove title" and the header names it; the other earned row, opened, offers it (one open at a time, First Blood keeps its tick)',
+      s3.t === 'first_blood' && t1.on && t1.off && t1.now === 'first_blood' && t2.useOnGladiator && t2.fbShut && t2.fbTick, { s3, t1, t2 });
 
     /* ── 6 ── */
     await H.closeDest(A).catch(() => {});
@@ -315,9 +341,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (card) await A.page.screenshot({ path: join(OUT, 'achievements-4-card.png') });
     rec.ok(`6a your own card wears the title ("${card && card.text}") and its rarest box is the worker's pick (${card && card.rarest})`,
       !!card && card.title === 'first_blood' && /First Blood/.test(card.text) && card.rarest === s4.rarest && s4.rarest === 'gladiator' && card.tier === 'arena', { card, rarest: s4.rarest });
-    /* its ✕, else Esc (the window in front's own key) */
-    await A.page.click('.bt-inspect-close', { timeout: 3000 }).catch(() => A.page.keyboard.press('Escape').catch(() => {}));
-    await A.page.waitForFunction(() => !document.querySelector('.bt-pin-title'), null, { timeout: 6000, polling: 250 }).catch(() => {});
+    /* the chip is a button to the page: it opens UNDER More, with its
+       "◂ ACHIEVEMENTS" header and the summary on it (a root page had none) */
+    await tap(A, '.bt-pin-title[data-achv]').catch(() => {});
+    const fromCard = await A.page.waitForSelector('[data-achv-panel="1"]', { timeout: 8000 }).then(() => A.page.evaluate(() => ({
+      card: !!document.querySelector('.bt-pin-title'),
+      back: ((document.querySelector('[data-dash-back]') || {}).textContent || '').replace(/\s+/g, ' ').trim(),
+      head: !!document.querySelector('[data-dash-head] [data-achv-summary="head"]'),
+      stack: window.__broDashPanelBus ? window.__broDashPanelBus.state.stack.slice() : null,
+    }))).catch(() => null);
+    rec.ok(`6b the card's title chip opens the page under More ("${fromCard && fromCard.back}"), the summary on its header`,
+      !!fromCard && !fromCard.card && /ACHIEVEMENTS/i.test(fromCard.back) && fromCard.head && !!fromCard.stack && fromCard.stack.join() === 'more,achievements', fromCard);
+    await H.closeDest(A).catch(() => {});
 
     /* ── 7 ── */
     B = await H.newPlayer(browser, { name: 'Onlooker', wsPort, webPort, viewport: DESK, world: 'wheel' });
@@ -347,6 +382,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     const forged = await A.page.waitForFunction(() => (window.__trackAps || []).includes(99999), null, { timeout: 15000, polling: 250 }).then(() => true).catch(() => false);
     await openPage(A).catch(() => false);
+    await tap(A, '[data-achv-row="first_blood"]').catch(() => {});
     await A.page.waitForSelector('[data-achv-title-off="first_blood"]', { timeout: 8000 }).catch(() => {});
     const seenOff = await A.page.evaluate(() => window.__achvSeen.length);
     await tap(A, '[data-achv-title-off="first_blood"]').catch(() => {});
@@ -369,8 +405,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const bUp = await openPage(B).catch(() => false);
     const pb = bUp ? await pageLook(B) : null;
     const col = await B.page.evaluate(() => { const r = document.getElementById('root').getBoundingClientRect(); return { x: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width) }; });
-    rec.ok(`9a on a computer the page is in the game's column (${col.x}-${col.r}), no sideways scroll, 23 rows of 44 px and up, type 12 px and up`,
-      !!pb && pb.rows === 23 && pb.box.x >= col.x - 1 && pb.box.r <= col.r + 1 && pb.sideScroll <= 0 && pb.minRowH >= 44 && pb.minFont >= 12 && pb.cut.length === 0, { pb, col });
+    rec.ok(`9a on a computer the page is in the game's column (${col.x}-${col.r}), no sideways scroll, 23 rows of 48 px and up, type 12 px and up, two rows in view`,
+      !!pb && pb.rows === 23 && pb.box.x >= col.x - 1 && pb.box.r <= col.r + 1 && pb.sideScroll <= 0 && pb.minRowH >= 47 && pb.minFont >= 12 && pb.cut.length === 0
+        && pb.summaryAt === 'head@head' && pb.inView >= 2, { pb, col });
     await B.page.screenshot({ path: join(OUT, 'achievements-5-computer.png') });
     await H.devOp(wsPort, 'achv', bId, { id: 'golden_giant' }).catch(() => {});
     const bb = await B.page.waitForSelector('[data-achv-banner="golden_giant"]', { timeout: 15000 }).then(() => bannerLook(B)).catch(() => null);
@@ -399,9 +436,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await pointerUp(A, '.bt-land-sheet [data-more-tile="achievements"]');
     const sUp = await A.page.waitForSelector('.bt-land-sheet [data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
     const ps = sUp ? await pageLook(A, '.bt-land-sheet') : null;
-    rec.ok(`10b sideways the page is in the side column (${ps && ps.box.w} px), the chips two by two, no sideways scroll, nothing cut, rows readable`,
-      !!ps && ps.rows === 23 && ps.box.w <= 270 && ps.sideScroll <= 0 && ps.cut.length === 0 && ps.minFont >= 11.5 && ps.minRowH >= 44
-        && !!ps.chipCols && ps.chipCols.split(' ').length === 2, ps);
+    rec.ok(`10b sideways the page is in the side column (${ps && ps.box.w} px), the chips two by two, no sideways scroll, nothing cut, rows readable, the summary under the header`,
+      !!ps && ps.rows === 23 && ps.box.w <= 270 && ps.sideScroll <= 0 && ps.cut.length === 0 && ps.minFont >= 11.5 && ps.minRowH >= 47
+        && !!ps.chipCols && ps.chipCols.split(' ').length === 2 && ps.summaryAt === 'head@head', ps);
     await A.page.screenshot({ path: join(OUT, 'achievements-7-sideways.png') });
 
     /* ── 11 ── */

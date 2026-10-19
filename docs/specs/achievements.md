@@ -165,6 +165,35 @@ The page, the More tile, the moment, the mail line and the arena's words: see
 docs/UI-DESIGN-NOTES.md "Achievements". `src/data/achievements.js` holds each
 row's words and picture, held to the worker's list by mirror-audit.
 
+## After the owner's ChatGPT review (2026-10-19)
+
+The owner sent ChatGPT's review of the page (the kit: its brief and nine
+pictures). Each finding was checked against the code and the owner's
+decisions first:
+
+- **Built:**
+  - the AP, "9/23" and the title on the page's own header row, right of
+    "◂ ACHIEVEMENTS": a `Head` in BottomDashboard's PANELS, drawn on both
+    drilled headers (sideways on its own line under the title);
+  - 48 px rows with a one-line `clue` (src/data/achievements.js) and short
+    progress (`achvProgressShort`: "best Lv 23", "4/9", "1/3");
+  - a tap opens a row in place (its whole `how` and the progress in words;
+    on an earned row, the title buttons), one at a time;
+  - every name in the warm white;
+  - the AP split as the page's last line (`achvSplitWords`);
+  - the card's title chip and rarest box open the page under More
+    (InspectPlayerPanel `openFromCard`);
+  - the super-rare rarest box a rainbow edge on the card's slate;
+  - a long title cut with an ellipsis in its chip (`max-width: 60%`).
+
+  The page now opens on two whole rows where it opened on one (`mp-achievements` 2a2).
+- **Not built:**
+  - a "Closest first" sort: only six rows have progress the worker sends;
+  - the banner's smaller type: it would make the name smaller than its 16 px.
+- **Not wired:** the badge "drafts" ChatGPT drew in code (its own words: "NOT
+  claimed as the hand-painted art ... Approve/rework the appearance before
+  inserting"). They wait on the owner.
+
 ## Not built yet
 
 - The owner's own badge art: docs/ART-WISHLIST.md "Achievements".
