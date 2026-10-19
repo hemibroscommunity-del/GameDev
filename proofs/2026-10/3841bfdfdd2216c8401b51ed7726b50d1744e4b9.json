@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3841bfdfdd2216c8401b51ed7726b50d1744e4b9",
+  "tree": "4702595a29547fb01b1c7a58c794fde34741b01c",
+  "committedAt": "2026-10-18T17:30:38-07:00",
+  "subject": "A sprint that runs dry takes turns: your grunt, then your tired breath (v2.3.3475) (#1015)",
+  "files": 6045,
+  "bytes": 681742269,
+  "listingSha256": "566062607b17cf4545513e9c84568cdc79710cc818e2bf199bb74732ad2a0e5c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
