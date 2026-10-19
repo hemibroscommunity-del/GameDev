@@ -949,6 +949,9 @@ Screens: building-gemcut, building-enchant
 **Tried before, and changed:**
 - Two buildings, the Gem Cutter and the Assay Office, until v2.3.3259. The Assay Office's building, door and room are gone; nothing else in town moved.
 - The first Gem Works (v2.3.3148) was built on the older look, with the room in a box at the top of the window. It was redone on the room-as-background look (v2.3.3258) before it shipped.
+- The empty Cut gems tab said "Harvest resources in elemental zones to collect raw gems!", but raw gems come only from monster kills (the harvesting gem rates were never used, amulet-forge.md); it says "No raw gems yet. Defeat monsters out in the lands to find them." since v2.3.3479. With no shield, Set gems sent you to forge one at the Blacksmith, which has made no shields since v2.3.2826; it says "No shield equipped. Wear one to slot defensive gems here." (v2.3.3479).
+- Set gems called the bow's section RANGED, beside STAFF (a staff is ranged too), and showed "Common (1×)" under an empty slot. Since v2.3.3479 it is BOW, and an empty slot shows only "None".
+- The Cut gems line said "polished slottable gems"; since v2.3.3479 "polished gems for your gear".
 
 **Please don't suggest:**
 - Splitting the gem jobs back into two buildings, or bringing back the Assay Office (the owner's call: "Remove it").
@@ -957,8 +960,6 @@ Screens: building-gemcut, building-enchant
 **Still open:**
 - The owner's two NPCs: a cutter and a setter outside the Gem Works, each opening his own tab. They wait on the owner's pictures. An optional new room picture with two work stations is on the art wishlist.
 - Putting a gem into a WEAPON is still done by the phone alone; moving it to the server waits on other work (shield-gems.md).
-- The empty Cut gems tab says "No gems yet. Harvest resources in elemental zones to collect raw gems!", but raw gems come from monster kills: the harvesting gem rates were never used (amulet-forge.md, v2.3.1198).
-- With no shield, Set gems says "Forge a shield at the Blacksmith to slot defensive gems here", but shield forging was removed from the Blacksmith in v2.3.2826.
 
 Sources: CLAUDE.md, docs/specs/gem-works.md, docs/specs/shield-gems.md, docs/specs/amulet-forge.md, docs/specs/blacksmith-rebuild.md, docs/specs/building-rooms.md, docs/ART-WISHLIST.md, src/ui/panels/buildings/GemWorksPanel.jsx, src/ui/panels/buildings/GemcutPanel.jsx, src/ui/panels/buildings/EnchantPanel.jsx, src/styles/game.css
 

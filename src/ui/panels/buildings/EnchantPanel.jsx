@@ -553,7 +553,11 @@ export function EnchantPanel(props) {
           fontSize: 11,
           color: LS.txt3
         }
-      }, "🛡️ Forge a shield at the Blacksmith to slot defensive gems here."), /*#__PURE__*/React.createElement("div", {
+      }, /* v2.3.3479: the 2026-10-19 UI review -- was "Forge a shield at the
+            Blacksmith to slot defensive gems here.", but the Blacksmith has
+            made no shields since its rebuild (v2.3.2826); and no emoji in
+            the window's words (v2.3.1235) */
+      "No shield equipped. Wear one to slot defensive gems here."), /*#__PURE__*/React.createElement("div", {
         /* v2.3.1235: state-correction §10 — sticky bottom fade (matches
            this panel's #202C32 sheet, not the shared #1E2E34); visible
            only while more content exists below the fold, gone at scroll

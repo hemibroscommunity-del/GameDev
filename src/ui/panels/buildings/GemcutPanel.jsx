@@ -213,5 +213,9 @@ export function GemcutPanel(props) {
           border: '1px solid ' + LS.wellBorder,
           lineHeight: 1.5
         }
-      }, "No gems yet. Harvest resources in elemental zones to collect raw gems!")));
+      }, /* v2.3.3479: the 2026-10-19 UI review -- was "No gems yet. Harvest
+            resources in elemental zones to collect raw gems!", but a raw gem
+            is a kill drop only (the worker's _gemRawOnKill, 5%, the monster's
+            land's element); the harvesting gem rates were never read */
+      "No raw gems yet. Defeat monsters out in the lands to find them.")));
 }
