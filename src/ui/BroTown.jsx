@@ -2677,9 +2677,21 @@ export var BroTown = function BroTown(_ref0) {
       ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: (cat === 'species' || cat === 'eyestyle') ? 'column-reverse' : 'column', alignItems: 'center', justifyContent: 'center' } },
           /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/cc/cc-no-hair.webp?v=' + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
           /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, (cat === 'species' || cat === 'eyestyle') ? opt.name : "None"))   /* v2.3.2682: on the species strip 'none' is the Human; v2.3.3479: on the Eyes strip, Normal */
-      : /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
-          onError: function (e) { _thumbFallback(e, cat, opt.id); },
-          style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
+      /* v2.3.3479: the 2026-10-19 UI review -- the eye styles' tiles are
+         whole heads and shoulders (make_eyestyle_thumbs.py), so the eyes, the
+         one thing that differs, were a band ~6 CSS px tall and Sleepy read as
+         ordinary eyes.  On the Eyes strip only, the picture is drawn 1.7x
+         about the eyes (measured where the four thumbs differ: 38% across,
+         36-40% down) and clipped to the tile's panel; pixelated, so the scale
+         stays crisp.  The frame and every other strip are untouched. */
+      : cat === 'eyestyle'
+        ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden', borderRadius: 4 } },
+            /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
+              onError: function (e) { _thumbFallback(e, cat, opt.id); },
+              style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated', transform: 'scale(1.7)', transformOrigin: '38% 40%' } }))
+        : /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
+            onError: function (e) { _thumbFallback(e, cat, opt.id); },
+            style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
     null);   /* v2.3.2454: the check is painted into cc-tile-on.png */
   };
   /* v2.3.797: the collapsed-pill kit (_swOf/_miniThumb/_miniSwatch summary
