@@ -1,12 +1,12 @@
 import React from 'react';
-import { BT_AUDIO, REFORGE_BONUSES, STAT_LABELS, WEAPON_STASH_MAX, WEAPON_TYPES, WOODWORKING_TIERS, addLifeSkillXp, getGearStatReq, hardenChance, rollReforgeBonus } from '@/data/index.js';
+import { BT_AUDIO, STAT_LABELS, WEAPON_STASH_MAX, WEAPON_TYPES, WOODWORKING_TIERS, addLifeSkillXp, getGearStatReq } from '@/data/index.js'; /* v2.3.3481: REFORGE_BONUSES, hardenChance and rollReforgeBonus went with the browser-only Reforge & Harden row */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the woodworker's results heard */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { TrapsTab } from './TrapsTab.jsx'; /* v2.3.3120: box traps from logs */
-import { hardenCost as hardenAttemptCost } from '@/data/hardenCosts.js'; /* v2.3.3139: hardening takes a material and a doubling gold ladder (renamed: the legacy affix section below has a local hardenCost) */
+import { hardenCost as hardenAttemptCost, hardenIsWood, hardenTierOf } from '@/data/hardenCosts.js'; /* v2.3.3139: hardening takes a material and a doubling gold ladder (renamed: the legacy affix section below has a local hardenCost; v2.3.3481: that section is gone, the name stays); v2.3.3481: hardenIsWood and hardenTierOf name the skill and level a bow's or a staff's hardening asks for */
 import { HardenedWoodTab } from './HardenedWoodTab.jsx'; /* v2.3.3139: five logs into one hardened wood */
 /* === WoodworkPanel — buildingPanel === 'woodwork' sub-panel === */
 /* v2.3.873: extracted verbatim from the buildingPanel === 'woodwork' clause
@@ -52,18 +52,13 @@ function lsHeader(icon, emoji, title, subtitle) {
     React.createElement("div", { style: { fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 } }, title),
     subtitle ? React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginTop: 1 } }, subtitle) : null));
 }
-function lsGoldImg(dim) {
-  return React.createElement("img", {
-    src: '/icons/popups/gold.webp', alt: '', draggable: false,
-    style: { width: 16, height: 16, objectFit: 'contain', opacity: dim ? 0.55 : 1 /* v2.3.1235: batch-3 rollout — unaffordable rows stay readable, .55 opacity floor */ },
-    onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); }
-  });
-}
+/* v2.3.3481: lsGoldImg (the coin on the ready craft button) went with that
+   price-tag label: the button says "Craft" now (below). */
 export function WoodworkPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
     setRpgState = props.setRpgState;
-  var _rpgState$lifeSkills29, _rpgState$lifeSkills32, _stateRef$current17, _wpn$gearBase3;
+  var _rpgState$lifeSkills29; /* v2.3.3481: the Reforge & Harden row's three temps went with it */
   /* v2.3.1235: state-correction §10 — scroll-fade plumbing (pattern:
      InspectPlayerPanel ~128-139): sticky 24px bottom fade shows only
      while content remains below the fold. Display-only state. */
@@ -99,6 +94,15 @@ export function WoodworkPanel(props) {
     desc: 'Ranged AOE swipe'
   }].concat(_trapCraftOn ? [{ type: 'traps', label: 'Traps', desc: 'Box traps for pets' }] : [])
     .concat(_hwOn ? [{ type: 'hardwood', label: 'Harden', desc: 'Hardened wood' }] : []);
+  /* v2.3.3481: the 2026-10-19 UI review -- ON FIRST OPENING NO CHOICE WAS
+     LIT, though bows were listed: `_wwType` is unset until a choice is
+     tapped, and every reader below takes that as Bow (`_wwType || 'bow'`).
+     The lit card reads the same default, so it always names what is shown. */
+  var _selType = (stateRef.current && stateRef.current._wwType) || 'bow';
+  /* v2.3.3481: your Woodworking level, and the first wood above it -- the
+     craft list's one locked row (its filter, below) */
+  var _wwNow = (rpgState.lifeSkills && rpgState.lifeSkills.woodworking && rpgState.lifeSkills.woodworking.level) || 1;
+  var _wwNext = Object.keys(WOODWORKING_TIERS).find(function (k) { return WOODWORKING_TIERS[k].minLvl > _wwNow; });
   return React.createElement("div", { style: LS_WRAP },
     lsHeader('woodwork', '🪚', "Woodworker", "Woodworking Lv" + (((_rpgState$lifeSkills29 = rpgState.lifeSkills) === null || _rpgState$lifeSkills29 === void 0 || (_rpgState$lifeSkills29 = _rpgState$lifeSkills29.woodworking) === null || _rpgState$lifeSkills29 === void 0 ? void 0 : _rpgState$lifeSkills29.level) || 1)),
     React.createElement("div", {
@@ -113,7 +117,11 @@ export function WoodworkPanel(props) {
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 10, lineHeight: 1.5 } },
         _trapsMode ? "Make box traps for catching pets."
           : _hwMode ? "Five logs make one hardened wood. A bow or staff is hardened with its own wood's."
-          : "Craft bows and staves from harvested wood. Higher tiers unlock gem slots."),
+          /* v2.3.3481: the 2026-10-19 UI review -- "Higher tiers unlock gem
+             slots" read as none until later, but every wood has one (the
+             Pine Bow's row says "1 gem slot") and from Lv31 two
+             (WOODWORKING_TIERS); each row prints its own count. */
+          : "Craft bows and staves from harvested wood."),
       React.createElement("div", { style: LS_MOD }, (_trapCraftOn || _hwOn) ? "Make" : "Weapon type"),
       React.createElement("div", {
         "data-ww-make": _makeCards.length,
@@ -130,10 +138,9 @@ export function WoodworkPanel(props) {
           marginBottom: 12
         }
       }, _makeCards.map(function (wt) {
-        var _stateRef$current13, _stateRef$current14, _stateRef$current15;
         return /*#__PURE__*/React.createElement("button", {
           key: wt.type,
-          "data-ww-type": wt.type, /* v2.3.3139: a test hook -- the old Reforge & Harden row has a "Harden (...)" button too */
+          "data-ww-type": wt.type, /* v2.3.3139: a test hook -- the old Reforge & Harden row has a "Harden (...)" button too (v2.3.3481: that row is gone; mp-hardenbars still taps these by it) */
           style: {
             flex: 1,
             padding: '8px 10px',
@@ -142,9 +149,10 @@ export function WoodworkPanel(props) {
             fontSize: 13,
             fontWeight: 700,
             cursor: 'pointer',
-            background: ((_stateRef$current13 = stateRef.current) === null || _stateRef$current13 === void 0 ? void 0 : _stateRef$current13._wwType) === wt.type ? LS.brassFill : LS.raised,
-            border: ((_stateRef$current14 = stateRef.current) === null || _stateRef$current14 === void 0 ? void 0 : _stateRef$current14._wwType) === wt.type ? '1px solid ' + LS.brass : '1px solid ' + LS.border,
-            color: ((_stateRef$current15 = stateRef.current) === null || _stateRef$current15 === void 0 ? void 0 : _stateRef$current15._wwType) === wt.type ? LS.brass : LS.txt2
+            /* v2.3.3481: lit by `_selType` (above), so Bow is lit before anything is tapped */
+            background: _selType === wt.type ? LS.brassFill : LS.raised,
+            border: _selType === wt.type ? '1px solid ' + LS.brass : '1px solid ' + LS.border,
+            color: _selType === wt.type ? LS.brass : LS.txt2
           },
           onClick: function onClick() {
             stateRef.current._wwType = wt.type;
@@ -163,12 +171,15 @@ export function WoodworkPanel(props) {
         : _hwMode ? React.createElement(HardenedWoodTab, { rpgState: rpgState, stateRef: stateRef })
         : React.createElement("div", { style: LS_MOD }, "Craft"),
       _otherMode ? null : Object.entries(WOODWORKING_TIERS).filter(function (_ref139) {
-        var _rpgState$lifeSkills30;
         var _ref140 = _slicedToArray(_ref139, 2),
           key = _ref140[0],
           wt = _ref140[1];
-        var wwLvl = ((_rpgState$lifeSkills30 = rpgState.lifeSkills) === null || _rpgState$lifeSkills30 === void 0 || (_rpgState$lifeSkills30 = _rpgState$lifeSkills30.woodworking) === null || _rpgState$lifeSkills30 === void 0 ? void 0 : _rpgState$lifeSkills30.level) || 1;
-        return wt.minLvl <= wwLvl + 10;
+        /* v2.3.3481: the 2026-10-19 UI review -- what you can make now, plus
+           only the NEXT wood, locked, as the goal: the Blacksmith's rule
+           (SmithyPanel.jsx ForgeTab, the owner's v2.3.2826 rebuild).  The
+           list ran ten Woodworking levels ahead (`minLvl <= level + 10`),
+           two locked rows at Lv1. */
+        return wt.minLvl <= _wwNow || key === _wwNext;
       }).map(function (_ref141) {
         var _rpgState$lifeSkills31, _rpgState$inventory3, _stateRef$current16;
         var _ref142 = _slicedToArray(_ref141, 2),
@@ -186,6 +197,7 @@ export function WoodworkPanel(props) {
         var wwStatReq = getGearStatReq(craftType, wwFullIdx, rpgState);
         var wwMeetsStat = wwStatReq.value === 0 || (wwStatReq.prog3 ? wwStatReq.met : (rpgState[wwStatReq.stat] || 0) >= wwStatReq.value);
         var canCraft = canCraftSkill && wwMeetsStat;
+        var craftReady = canCraft && hasWood && hasGold; /* v2.3.3481: the button's one ready test (below) */
         return /*#__PURE__*/React.createElement("div", {
           key: key,
           /* v2.3.1235: batch-3 rollout — divided list rows replace the
@@ -260,22 +272,29 @@ export function WoodworkPanel(props) {
              prop added around the untouched handler; blocked buttons carry
              the need in their label so the price pill is never the only
              explanation. */
-          disabled: !(canCraft && hasWood && hasGold),
+          /* v2.3.3481: the 2026-10-19 UI review -- THE READY BUTTON READ AS A
+             PRICE TAG: a coin and "8" on a slate chip, while the row above it
+             already prints the cost ("Gold 2550/8").  It now says "Craft" on
+             the brass primary face, the pattern of the Attempt-H button below
+             and of the Blacksmith's Smelt and Forge: the class draws it, so
+             the inline colours step aside.  The blocked labels are unchanged. */
+          className: craftReady ? 'button-primary' : undefined,
+          disabled: !craftReady,
           style: {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
-            padding: '8px 10px',
+            padding: craftReady ? '8px 14px' : '8px 10px',
             minHeight: 44,
             borderRadius: 10,
             fontSize: 13,
             fontWeight: 700,
             fontVariantNumeric: 'tabular-nums',
-            background: canCraft && hasWood && hasGold ? LS.raised : '#1A292F',
-            border: '1px solid ' + (canCraft && hasWood && hasGold ? LS.borderStrong : LS.border),
-            color: canCraft && hasWood && hasGold ? LS.brass : LS.txt3,
+            background: craftReady ? undefined : '#1A292F',
+            border: craftReady ? undefined : '1px solid ' + LS.border,
+            color: craftReady ? undefined : LS.txt3,
             opacity: 1,
-            cursor: canCraft && hasWood && hasGold ? 'pointer' : 'default'
+            cursor: craftReady ? 'pointer' : 'default'
           },
           onClick: function onClick() {
             if (!canCraft || !hasWood || !hasGold) return;
@@ -338,18 +357,14 @@ export function WoodworkPanel(props) {
         }, /* v2.3.1235: state-correction — action label states: "Locked"
               for level/stat locks (state 3), the binding shortage for
               missing materials (state 2); only state 1 keeps the price
-              pill (which is then not the only explanation). */
-        !canCraft ? "Locked" : !hasWood ? "Need ".concat(wt.woodCost - ((rpgState.inventory || {})[woodKey] || 0), " ").concat(wt.wood.replace(/_/g, ' ')) : !hasGold ? "Need ".concat(wt.goldCost - (rpgState.coins || 0), "G more") : /*#__PURE__*/React.createElement("span", {
-          style: {
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5
-          }
-        }, lsGoldImg(false), wt.goldCost)));
+              pill (which is then not the only explanation).
+              v2.3.3481: state 1 says "Craft" (the price is on the row). */
+        !canCraft ? "Locked" : !hasWood ? "Need ".concat(wt.woodCost - ((rpgState.inventory || {})[woodKey] || 0), " ").concat(wt.wood.replace(/_/g, ' ')) : !hasGold ? "Need ".concat(wt.goldCost - (rpgState.coins || 0), "G more") : "Craft"));
       }), _otherMode ? null : function () {
         /* v2.3.1131: SS4.6c HARDENING for the active ranged/staff weapon
            (server ladder via harden_weapon -- see the ForgePanel twin;
-           distinct from the legacy hardenBonus affix below). */
+           distinct from the legacy hardenBonus affix below -- v2.3.3481:
+           that row is gone, this is the only hardening here). */
         var _Sh = stateRef.current;
         if (!(_Sh._serverCaps && _Sh._serverCaps.harden && _Sh.channel)) return null;
         var hCraft = (_Sh._wwType) || 'bow';
@@ -370,13 +385,28 @@ export function WoodworkPanel(props) {
         var hGoldOk = (rpgState.coins || 0) >= hCost;
         var hMatsOk = !hc.material || hMatsHave >= hc.amount;
         var hAfford = hGoldOk && hMatsOk;
+        /* v2.3.3481: WHICH SKILL HARDENING ASKS FOR.  The owner, asked
+           whether hardening a bow or a staff should ask for the Blacksmithing
+           level: "Do woodworking" (2026-10-19).  A worker that gates it so
+           says caps.hardenwoodskill (server/src/hardening.js: Woodworking
+           at least 5 x the weapon's tier, its own _weaponTierIndex, which
+           data/hardenCosts.js hardenTierOf mirrors -- a pine bow Woodworking
+           5), and then this line names Woodworking and that level.  An older
+           worker, or `hardenwoodskill: false`, still gates every weapon on
+           Blacksmithing, so the line keeps its old words there.  A sword
+           stays on Blacksmithing (the Blacksmith's Upgrade tab).  The words
+           only: as before, the worker's refusal names the level if it is
+           short. */
+        var hByWood = !!(_Sh._serverCaps && _Sh._serverCaps.hardenwoodskill) && hardenIsWood(hw, hSlot);
+        var hSkillLvl = hByWood ? hardenTierOf(hw) * 5 : 0;
         return /*#__PURE__*/React.createElement("div", {
           style: { marginTop: 12, padding: 10, borderRadius: 10, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
         }, /*#__PURE__*/React.createElement("div", {
           style: { fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */, fontWeight: 700, color: LS.txt1, marginBottom: 3 }
         }, "Hardening: ", hw.name, " — H", hLvl, "/5") /* v2.3.1235: batch-3 rollout — ⚒️ dropped, no emoji in chrome */, /*#__PURE__*/React.createElement("div", {
+          "data-harden-gate": hByWood ? 'woodworking:' + hSkillLvl : 'blacksmithing', /* v2.3.3481: mp-hardenbars reads which skill this line names */
           style: { fontSize: 11, color: LS.txt3, marginBottom: 8, lineHeight: 1.5 }
-        }, hMaxed ? 'Maximum hardness reached!' : "+1.04 base dmg per level \xB7 Success " + hOdds + "% \xB7 Fail resets hardness (Temper " + hTemper + " softens it) \xB7 Gated on Blacksmithing"), !hMaxed && /*#__PURE__*/React.createElement("button", {
+        }, hMaxed ? 'Maximum hardness reached!' : "+1.04 base dmg per level \xB7 Success " + hOdds + "% \xB7 Fail resets hardness (Temper " + hTemper + " softens it) \xB7 " + (hByWood ? "Needs Woodworking Lv" + hSkillLvl : "Gated on Blacksmithing")), !hMaxed && /*#__PURE__*/React.createElement("button", {
           /* v2.3.1235: batch-3 rollout — the surface's single gold
              primary adopts the shared .button-primary recipe (game.css)
              instead of a flat brass fill; 44px hitbox floor (was 40),
@@ -408,154 +438,16 @@ export function WoodworkPanel(props) {
         hAfford ? /*#__PURE__*/React.createElement("span", { "data-harden-cost": hc.material ? hc.material + ':' + hc.amount : 'gold' }, "Attempt H", hLvl + 1, " (", hCost, "G", hc.material ? " + " + hc.word(hc.amount) : "", " \xB7 ", hOdds, "%)")
           : !hGoldOk ? "Need ".concat(hCost - (rpgState.coins || 0), "G more")
           : "Need " + hc.word(hc.amount - hMatsHave) + " more"));
-      }(), _otherMode ? null : function (_stateRef$current17, _wpn$gearBase3, _rpgState$lifeSkills32) {
-        var craftType = ((_stateRef$current17 = stateRef.current) === null || _stateRef$current17 === void 0 ? void 0 : _stateRef$current17._wwType) || 'bow';
-        var wpnKey = craftType === 'bow' ? 'rangedWeapon' : 'staffWeapon';
-        var wpn = rpgState[wpnKey];
-        if (!(wpn !== null && wpn !== void 0 && (_wpn$gearBase3 = wpn.gearBase) !== null && _wpn$gearBase3 !== void 0 && _wpn$gearBase3.startsWith('ww_'))) return /*#__PURE__*/React.createElement("div", {
-          style: {
-            fontSize: 11,
-            color: LS.txt3,
-            marginTop: 10
-          }
-        }, "Craft a weapon first to unlock Reforge & Harden.");
-        var wwKey = wpn.gearBase.slice(3);
-        var wt = WOODWORKING_TIERS[wwKey];
-        if (!wt) return null;
-        var reforgeCost = Math.ceil(wt.woodCost * 0.5);
-        var reforgeWoodKey = 'wood_' + wt.wood;
-        var reforgeGold = Math.ceil(wt.goldCost * 0.3);
-        var hardenCost = wt.woodCost;
-        var hardenGold = Math.ceil(wt.goldCost * 0.5);
-        var hChance = hardenChance(wt.tierMult, ((_rpgState$lifeSkills32 = rpgState.lifeSkills) === null || _rpgState$lifeSkills32 === void 0 || (_rpgState$lifeSkills32 = _rpgState$lifeSkills32.woodworking) === null || _rpgState$lifeSkills32 === void 0 ? void 0 : _rpgState$lifeSkills32.level) || 1);
-        return /*#__PURE__*/React.createElement("div", {
-          style: {
-            marginTop: 12,
-            padding: 10,
-            borderRadius: 10,
-            background: LS.wellSoft,
-            border: '1px solid ' + LS.wellBorder
-          }
-        }, /*#__PURE__*/React.createElement("div", {
-          style: {
-            fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */,
-            fontWeight: 700,
-            color: LS.txt1,
-            marginBottom: 4
-          }
-        }, "Reforge & Harden: ", wpn.name) /* v2.3.1235: batch-3 rollout — 🔧 dropped, no emoji in chrome */, /*#__PURE__*/React.createElement("div", {
-          style: {
-            fontSize: 11,
-            color: LS.txt3,
-            marginBottom: 8
-          }
-        }, "Current: ", wpn.reforgeBonus ? "".concat(wpn.reforgeBonus.label, " +").concat(wpn.reforgeBonus.value).concat(wpn.reforgeBonus.unit) : 'No bonus', wpn.hardenBonus ? " \xB7 ".concat(wpn.hardenBonus.label, " +").concat(wpn.hardenBonus.value).concat(wpn.hardenBonus.unit) : ''), /*#__PURE__*/React.createElement("div", {
-          style: {
-            display: 'flex',
-            gap: 6
-          }
-        }, /*#__PURE__*/React.createElement("button", {
-          /* v2.3.1235: batch-3 rollout — secondary recipe (raised +
-             strong hairline, 10px radius — 11 is off the approved set)
-             at the 44px hitbox floor (was 40). */
-          style: {
-            flex: 1,
-            minHeight: 44,
-            padding: '6px 4px',
-            borderRadius: 10,
-            border: '1px solid ' + LS.borderStrong,
-            background: LS.raised,
-            color: LS.txt1,
-            fontSize: 11,
-            fontWeight: 700,
-            fontVariantNumeric: 'tabular-nums',
-            cursor: 'pointer'
-          },
-          onClick: function onClick() {
-            var R = stateRef.current.rpg;
-            if (!R.inventory) R.inventory = {};
-            if ((R.inventory[reforgeWoodKey] || 0) < reforgeCost || R.coins < reforgeGold) {
-              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + reforgeCost + 'x wood + ' + reforgeGold + 'g', '#D95C54');
-              return;
-            }
-            R.inventory[reforgeWoodKey] -= reforgeCost;
-            if (R.inventory[reforgeWoodKey] <= 0) delete R.inventory[reforgeWoodKey];
-            R.coins -= reforgeGold;
-            var bonus = rollReforgeBonus(wt.tierMult);
-            R[wpnKey].reforgeBonus = bonus;
-            addLifeSkillXp(R.lifeSkills, 'woodworking', Math.ceil(wt.minLvl * 2));
-            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Reforged! ' + bonus.label + ' +' + bonus.value + bonus.unit, '#d4a020');
-            cue('woodwork', 0.85, 1.1);   /* v2.3.3343: a beep(), silent */
-            setRpgState(_objectSpread({}, R));
-            try {
-              localStorage.setItem('bt_rpg', JSON.stringify(R));
-            } catch (e) {}
-          }
-        }, "Reforge (" /* v2.3.1235: batch-3 rollout — 🔧 dropped, no emoji in chrome */, reforgeCost, " wood + ", /*#__PURE__*/React.createElement("span", {
-          style: { color: LS.brass }
-        }, reforgeGold, "g"), ")"), /*#__PURE__*/React.createElement("button", {
-          /* v2.3.1235: batch-3 rollout — secondary recipe (raised +
-             strong hairline, 10px radius — 11 is off the approved set)
-             at the 44px hitbox floor (was 40); the already-hardened
-             state keeps a readable quiet outline + disabled text. */
-          style: {
-            flex: 1,
-            minHeight: 44,
-            padding: '6px 4px',
-            borderRadius: 10,
-            border: wpn.hardenBonus ? '1px solid ' + LS.border : '1px solid ' + LS.borderStrong,
-            background: wpn.hardenBonus ? LS.well : LS.raised,
-            color: wpn.hardenBonus ? LS.dis : LS.txt1,
-            fontSize: 11,
-            fontWeight: 700,
-            fontVariantNumeric: 'tabular-nums',
-            cursor: 'pointer'
-          },
-          onClick: function onClick() {
-            var R = stateRef.current.rpg;
-            if (R[wpnKey].hardenBonus) {
-              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Already hardened!', '#D95C54');
-              return;
-            }
-            if (!R[wpnKey].reforgeBonus) {
-              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Reforge first!', '#D95C54');
-              return;
-            }
-            if (!R.inventory) R.inventory = {};
-            if ((R.inventory[reforgeWoodKey] || 0) < hardenCost || R.coins < hardenGold) {
-              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + hardenCost + 'x wood + ' + hardenGold + 'g', '#D95C54');
-              return;
-            }
-            R.inventory[reforgeWoodKey] -= hardenCost;
-            if (R.inventory[reforgeWoodKey] <= 0) delete R.inventory[reforgeWoodKey];
-            R.coins -= hardenGold;
-            if (Math.random() < hChance) {
-              var bonus = rollReforgeBonus(wt.tierMult);
-              if (bonus.id === R[wpnKey].reforgeBonus.id) bonus.id = REFORGE_BONUSES[(REFORGE_BONUSES.findIndex(function (b) {
-                return b.id === bonus.id;
-              }) + 1) % REFORGE_BONUSES.length].id;
-              R[wpnKey].hardenBonus = bonus;
-              addLifeSkillXp(R.lifeSkills, 'woodworking', Math.ceil(wt.minLvl * 4));
-              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'HARDENED! +' + bonus.label + ' +' + bonus.value + bonus.unit, '#D8A94D');
-              stateRef.current.screenShake = 4;
-              cue('hardenOk');   /* v2.3.3343: collect() is a beep(), silent */
-            } else {
-              var oldName = R[wpnKey].name;
-              R[wpnKey].reforgeBonus = null;
-              R[wpnKey].hardenBonus = null;
-              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'BROKE! ' + oldName + ' lost all bonuses', '#D95C54');
-              stateRef.current.screenShake = 6;
-              cue('woodBreak');   /* v2.3.3343: the wood cracking (a beep(), silent) */
-            }
-            setRpgState(_objectSpread({}, R));
-            try {
-              localStorage.setItem('bt_rpg', JSON.stringify(R));
-            } catch (e) {}
-          }
-        }, "Harden (" /* v2.3.1235: batch-3 rollout — ⚒️ dropped, no emoji in chrome */, Math.round(hChance * 100), "% \xB7 ", hardenCost, " wood + ", /*#__PURE__*/React.createElement("span", {
-          style: { color: wpn.hardenBonus ? LS.dis : LS.brass }
-        }, hardenGold, "g"), ")")));
-      }(), /*#__PURE__*/React.createElement("div", {
+      }(), /* v2.3.3481: the 2026-10-19 UI review -- THE OLD "REFORGE & HARDEN"
+         ROW IS GONE (with its "Craft a weapon first to unlock Reforge &
+         Harden." line).  It spent wood and gold and rolled a reforge or
+         harden bonus in the browser alone: it sent the worker nothing, the
+         worker makes every weapon with neither bonus (gear.js) and never
+         reads them, so the next update from it undid the roll -- a button
+         that lies, which the Blacksmith's rebuild removed there (v2.3.2826:
+         "a button that lies is worse than no button").  The hardening above
+         (harden_weapon) is the real one, settled by the worker. */
+      /*#__PURE__*/React.createElement("div", {
         /* v2.3.1235: state-correction §10 — sticky bottom fade (matches
            the #1E2E34 sheet behind it); visible only while more content
            exists below the fold, gone at scroll end via measureFade. */

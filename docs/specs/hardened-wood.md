@@ -87,7 +87,14 @@ logs pay for (up to 50).
 - **The hardening skill gate is unchanged**: bows and staffs are still gated
   on Blacksmithing (the Woodworker's Harden row says so), as before this
   change. Moving it to Woodworking is a separate call.
+  (Decided in v2.3.3481, the owner: "Do woodworking". A worker that says
+  caps.hardenwoodskill gates a bow or a staff on Woodworking, 5 x its tier,
+  and the Woodworker's line says "Needs Woodworking Lv5"; a sword stays on
+  Blacksmithing.)
 - **The old "Reforge & Harden" row** at the Woodworker (paid in raw wood, a
   client-only affix, docs/specs/hardening.md "Name collision") is untouched.
+  (Removed in v2.3.3481, the 2026-10-19 UI review: the worker never kept its
+  rolls, so the next update undid them -- the Blacksmith's own was removed in
+  v2.3.2826 for the same reason.)
 - Painted art: the icons are processed from the log paintings; a prompt for
   painted ones is in docs/ART-WISHLIST.md.

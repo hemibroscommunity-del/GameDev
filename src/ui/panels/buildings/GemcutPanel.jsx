@@ -54,7 +54,12 @@ export function GemcutPanel(props) {
     lsHeader('gemcut', '💎', "Gem Cutter", "Gem Cutting Lv" + (((_rpgState$lifeSkills33 = rpgState.lifeSkills) === null || _rpgState$lifeSkills33 === void 0 || (_rpgState$lifeSkills33 = _rpgState$lifeSkills33.gemCutting) === null || _rpgState$lifeSkills33 === void 0 ? void 0 : _rpgState$lifeSkills33.level) || 1)),
     React.createElement("div", { style: LS_BODY },
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 12, lineHeight: 1.5 } },
-        "Cut raw gems into polished slottable gems. Higher skill = better success rate."),
+        /* v2.3.3481: the 2026-10-19 UI review -- was "Cut raw gems into
+           polished slottable gems. Higher skill = better success rate.":
+           "slottable" is jargon.  The rule is the same: the worker rolls the
+           cut from its own Gem Cutting level, 60% from Lv1 up to 98% at 60
+           (GEM_CUT_TIERS). */
+        "Cut raw gems into polished gems for your gear. Higher Gem Cutting raises your success chance."),
       React.createElement("div", { style: LS_MOD }, "Your gems"),
       Object.entries(ELEMENTS).map(function (_ref143) {
         var _rpgState$lifeSkills34, _rpgState$lifeSkills35, _ZONE_RESOURCES$elem, _ZONE_RESOURCES$elem2;
@@ -208,5 +213,9 @@ export function GemcutPanel(props) {
           border: '1px solid ' + LS.wellBorder,
           lineHeight: 1.5
         }
-      }, "No gems yet. Harvest resources in elemental zones to collect raw gems!")));
+      }, /* v2.3.3481: the 2026-10-19 UI review -- was "No gems yet. Harvest
+            resources in elemental zones to collect raw gems!", but a raw gem
+            is a kill drop only (the worker's _gemRawOnKill, 5%, the monster's
+            land's element); the harvesting gem rates were never read */
+      "No raw gems yet. Defeat monsters out in the lands to find them.")));
 }

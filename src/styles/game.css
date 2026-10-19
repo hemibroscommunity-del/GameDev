@@ -588,6 +588,24 @@
   .bt-more-tile,.bt-more-card{transition:none}
   .bt-more-tile:active,.bt-more-card:active{transform:none}
 }
+/* ═══ v2.3.3481: BIGGER TARGETS, THE SAME LOOK (the 2026-10-19 UI review) ═══
+   Three of the dashboard's controls were under the 44 px guide and cannot
+   grow without moving something the owner fixed in place: the ten skill
+   pills ("fit on one screen without scrolling", v2.3.1337), Life Skills'
+   "‹ All skills", and the six buttons of the row ("Nothing in the row ever
+   moves").  Each gets an invisible ring, nothing drawn:
+   - a skill pill 2 px above and below, into the grid's 4 px gaps (28 -> 32
+     px tall, meeting its neighbour mid-gap; the columns are 4 px apart too,
+     so no sideways growth);
+   - "‹ All skills" into the empty row beside it and the top of the header
+     under it (53 x 25 -> ~95 x 39), held to the page's own padding above and
+     to its left, where the scroller clips;
+   - a row button 4 px up and down, to the rail's own padding, and 2 px into
+     each gap (sideways 26 x 40 -> 30 x 48).  ::before, because on a computer
+     its ::after is the key cap ([data-key]::after, below). */
+.bt-skill-pill::after{content:'';position:absolute;left:0;right:0;top:-2px;bottom:-2px}
+.bt-back-link::after{content:'';position:absolute;top:-4px;left:-6px;right:-36px;bottom:-10px}
+.bt-navrail [data-nav]::before{content:'';position:absolute;top:-4px;bottom:-4px;left:-2px;right:-2px}
 /* v2.3.1326 (owner correction of v2.3.1325: "shrink the icons again
    and add the labels back — I just wanted buttons bigger"): icon back
    to the classic 30px with the text label restored beneath it; the
@@ -1032,6 +1050,15 @@ input{font-family:inherit}
   display:flex;align-items:center;justify-content:center;
   cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
 }
+/* v2.3.3481: the 2026-10-19 UI review -- sideways, the dashboard's ▴ chip
+   (BottomDashboard's landscape dock, bottom left) lay on the left end of an
+   invite's "Open trade", and a tap there opened the menu column instead.
+   While an INVITE is up the dock steps aside, but only at rest, when the ▴ is
+   all it holds (with the column open it is the column's own row).  The DOCK,
+   not the chip alone: a hidden chip would leave the dock's empty box over
+   the button, still taking the tap.  Only the invite: in a live trade the ▴
+   is how you open the bag sideways (TradeWindowPanel `kind`). */
+body:has([data-trade-drawer="invite"]) .bt-land-navdock:has([data-land-fold="min"]){visibility:hidden}
 
 .bt-nospin::-webkit-outer-spin-button,
 .bt-nospin::-webkit-inner-spin-button{-webkit-appearance:none;appearance:none;margin:0}
@@ -1145,7 +1172,33 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
    which is shown BEFORE you commit rather than after. */
 .bt-plist{position:absolute;top:46px;left:8px;z-index:25;width:200px;max-height:260px;
   background:rgba(17,25,29,.94);border:1px solid rgba(255,255,255,.15);border-radius:10px;
-  overflow-y:auto}
+  overflow-y:auto;
+  /* v2.3.3481: the 2026-10-19 UI review -- room for the list's new ✕
+     (PlayerListPanel.jsx; it had no way to close).  44 px, not less: the ✕'s
+     invisible ring (.bt-inspect-close::after, inset -8px) reaches 44 px down,
+     and a first row starting higher would lose the top of its right end to
+     it -- a tap there would close the list instead of picking the player. */
+  padding-top:44px}
+/* v2.3.3481: ...and on a computer the ✕ wears its "Esc" key cap hanging under
+   it (the KEY'S LETTER block below), which reaches 45 px down */
+@media (pointer:fine) { .bt-plist{padding-top:48px} }
+/* v2.3.3481: the 2026-10-19 UI review -- the list opens in the pinned quest
+   card's corner (the card: top 56, left 8, z 17, 248 px wide; BroTown.jsx),
+   over it but 48 px narrower and a little see-through, so the card's words
+   showed through and round it ("Bring 4 Snowman ... idge.").  The list is a
+   chooser, gone on a pick or its ✕, so the card steps out of sight while it
+   is up and comes back with it closed.  [data-quest-hud] marks the card's
+   outer box. */
+body:has(.bt-plist) [data-quest-hud]{visibility:hidden}
+/* v2.3.3481: ...and the tutorial coach stands aside too, as it does for the
+   player card (.bt-pcard, below) and every window (THE QUEST COACH STANDS
+   ASIDE UNDER A WINDOW): sideways its bottom-anchored card is held to the
+   top left, the list's corner, and GEAR UP lay over "No other players
+   nearby".  Stepping the card right of the quest card (QuestCoach `left`)
+   does not cover it: that card may be folded narrower than the list, or not
+   there at all.  The lesson is kept and comes back when the list closes; no
+   lesson points into the list. */
+body:has(.bt-plist) [data-coach]{display:none}
 .bt-plist-item{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;
   border-bottom:1px solid rgba(255,255,255,.06);transition:background .1s}
 .bt-plist-item:active{background:rgba(216,168,95,.25)}
@@ -1207,6 +1260,13 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
    28px is under the 44pt touch floor; an invisible inset:-8px pseudo
    grows the TAP target to 44px with zero visual change. */
 .bt-inspect-close::after{content:'';position:absolute;inset:-8px}
+/* v2.3.3481: the 2026-10-19 UI review -- the same for the bag item card's 26px
+   ⚓ pin (ItemDetailPopup.jsx): 9px a side makes a 44x44 press, ending 1px
+   inside the card's top and right edges (its 10px padding); the portrait well
+   below is far to the left and the "Anchored" word beside it is not a
+   control, so the ring covers nothing.  ::before, as a computer's key cap
+   owns [data-key]::after. */
+.bt-card-pin::before{content:'';position:absolute;inset:-9px}
 /* ═══ v2.3.3258: THE ROOM BEHIND THE MENU (BuildingRoom.jsx, data/buildingRooms.js) ═══
    The owner's picture of the inside of a building is the BACKGROUND of its
    window, and the menu is written over it -- the owner: "Have it open up as
@@ -1261,6 +1321,17 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
      wears a dark disc that reads on any of the rooms */
   .bt-inspect-card[data-room] > .bt-inspect-close{z-index:2;background:rgba(17,30,35,.78);color:#fff}
 }
+/* v2.3.3481: the 2026-10-19 UI review -- ON A SHORT SCREEN THE FORGE'S FIRST
+   ROW WAS HALF HIDDEN.  The forge's window stays low (its height is capped
+   to leave the smith in view, BroTown.jsx), so on a 1366 x 768 laptop it was
+   259px tall while its 90px band and tabs pushed the first Smelt row past the
+   bottom fade; an iPhone SE (667 tall) cut it the same way.  On screens up to
+   800px tall the band is slimmer instead (36px, not 90px), and the window
+   keeps its place and its height; 844px phones and taller computers are
+   unchanged. */
+@media (min-height:461px) and (max-height:800px){
+  .bt-inspect-card[data-room="blacksmith"]{--room-stage:min(36px, calc(25vw - 6px))}
+}
 @media (max-height:460px){.bt-room{display:none}}
 @media (prefers-reduced-motion:reduce){.bt-room-img{transition:none}}
 /* ═══ v2.3.3259: THE GEM WORKS (panels/buildings/GemWorksPanel.jsx) ═══
@@ -1309,6 +1380,28 @@ body:has([data-shop-panel]) [data-world-map-open]::after,
 body:has(.bt-npcdlg-scrim) [data-world-map-open]::after,
 body:has([data-ace-flip]) [data-world-map-open]::after,
 body:has([data-infopopup]) [data-world-map-open]::after{display:none}
+/* ═══ v2.3.3481: THE 2026-10-19 UI REVIEW -- ACE'S COIN ON A SHORT SCREEN ═══
+   Held sideways his 138 px coin well pushed the stake chips and the Flip
+   button below the first view.  The well is the coin's TOSS (its frame climbs
+   from y 117 to y 10 and back), so a short screen shrinks the WHOLE coin, arc
+   and all, instead of a smaller window that would crop it mid-air: the 92 x 138
+   coin stays centred in the overflow-hidden flex well and scales round its
+   middle to 39 x 58.  !important beats the well's inline height.  The face
+   still scrolls for the Flip button (v2.3.3407); upright, a computer and a
+   laptop are all taller than 460 px and unchanged. */
+@media (max-height:460px){
+  [data-ace-flip] .bt-ace-coinwell{height:58px !important}
+  [data-ace-flip] .bt-ace-coin{flex:none;transform:scale(.42)}
+}
+/* v2.3.3481: the review -- Ace's ✕ is 18 x 28; an invisible ring makes the
+   press 44 x 44 (the card's edge is 15 px to its right, the header 29 px above
+   and below).  ::before, because on a computer ::after is its Esc key cap. */
+.bt-ace-close::before{content:'';position:absolute;inset:-8px -13px}
+/* v2.3.3481: the review -- the bag's upright filter chips are 26 px tall; an
+   invisible ring makes each 41 px, the room between the button row (13 px
+   above) and the first bag tile (4 px below).  No sideways growth: the chips
+   sit 4 px apart. */
+.bt-bagchip::after{content:'';position:absolute;inset:-12px 0 -3px}
 /* ═══ v2.3.2627, moved here v2.3.3258: THE AUCTION HOUSE'S CLERK ═══
    The clerk the game draws into the Auction House's room (data/buildingRooms.js
    ROOM_KEEPERS; he was on the owner's first painting of it, v2.3.2627, and is
@@ -2105,6 +2198,14 @@ body:has(.bt-pcard) [data-coach]{display:none}
 .bt-cc-col-left>.bt-cc-play,
 .bt-cc-col-left>.bt-cc-login,
 .bt-cc-col-left>div:last-child{position:relative;z-index:1}
+/* v2.3.3481: the 2026-10-19 UI review -- Back is only the word, a 30x34
+   press box.  An invisible ring makes it ~46x44 and changes nothing seen.  On
+   a short phone (4px gaps) it reaches 1px under ENTER BRO TOWN and into the
+   version row, but both sit on z-index:1 above it and keep their own taps,
+   and the version row is no control.  position:relative also puts Back above
+   the bro's scaled stage, as v2.3.1527 put every control under him. */
+.bt-cc-back{position:relative}
+.bt-cc-back::after{content:"";position:absolute;inset:-5px -8px}
 /* v2.3.803: menu goes ROW — vertical tab rail left, drawer right
    (owner: tabs span down vertically, the container expands to the
    right).
@@ -3393,6 +3494,16 @@ body:has(.bt-pcard) [data-coach]{display:none}
    reflow the grid under the finger (the same reason .bt-cc-defcolor--on uses
    a shadow rather than a fatter border). */
 .bt-cc-ink-chip--on{border-color:var(--ui-brass);box-shadow:0 0 0 2px var(--ui-brass)}
+/* v2.3.3481: the 2026-10-19 UI review -- a 22px chip is a small target, and
+   a reflow would take the card's picture (the owner's call).  The no-trade
+   step: an invisible ring of 2px, half the 5px gap, so a near miss lands on
+   the nearest chip and no ring overlaps a neighbour's.  Up and to the sides
+   only, NOT down: this palette has no padding, so a ring under its last row
+   would add 2px of scroll to a palette that fits exactly (three rows at
+   390x844) and it would wobble under a thumb.  The row below a chip claims
+   that side of the gap with its own ring. */
+.bt-cc-ink-chip{position:relative}
+.bt-cc-ink-chip::after{content:"";position:absolute;inset:-2px -2px 0}
 /* The eraser reads as a hole, not as a colour -- the same checker the editor
    draws it with, because the same control must look like the same control in
    both places or the shared store is a lie. */
@@ -3413,6 +3524,15 @@ body:has(.bt-pcard) [data-coach]{display:none}
 }
 .bt-cc-ink-width:active{transform:scale(.96)}
 .bt-cc-ink-width--on{border-color:var(--ui-brass);box-shadow:0 0 0 2px var(--ui-brass);background:rgba(216,170,88,.18)}
+/* v2.3.3481: the 2026-10-19 UI review -- the brushes are 26px tall, and a
+   visible 44px would take the card's picture (the owner's call).  The
+   no-trade step: an invisible ring, 34px tall.  Down 6px into the tools' own
+   6px bottom padding (the row is the tools' last); 2px each side, half the
+   5px gap between brushes; 2px up, half the 5px gap under the palette -- the
+   other half stays dead, as the palette (a scroller) clips its chips' rings
+   at its own edge, so a tap between the two rows favours neither. */
+.bt-cc-ink-width{position:relative}
+.bt-cc-ink-width::after{content:"";position:absolute;inset:-2px -2px -6px}
 .bt-cc-ink-dot{display:block;border-radius:50%;background:#1E2C33}
 /* ── shoes: the pattern tiles instead ──
    Five across (plain, plus the four that survive eight pixels of boot), sized
@@ -3543,7 +3663,9 @@ body:has(.bt-pcard) [data-coach]{display:none}
    The caption's text is per-CANVAS (TARGETS[].note), so it changes length as
    your finger moves from the chest to an arm -- and its column is only
    --paint-size * .62 wide, so "Chest and arms. Draw straight on either..."
-   wraps to two more lines than "Goes on BOTH arms...".
+   wraps to two more lines than "Goes on BOTH arms...".  (v2.3.3481: the chest
+   caption is "Draw on the chest or the arms. ..." now, a little shorter; the
+   120px floor below stands, so nothing moves.)
 
    That was free until the zone picker went in the cell above it. Measured at
    390x844: the picker takes .bt-paint-side from 125.7px to 190.7px, which is
@@ -4006,7 +4128,12 @@ body:has(.bt-pcard) [data-coach]{display:none}
    already, so nothing painted is being taken away, and a 0px box holding a
    min-height:75px row is a clip waiting to be got wrong.
    Shirt is deliberately NOT in this set -- with a shirt on, that block holds
-   twelve real swatches. */
+   twelve real swatches.
+   v2.3.3481 (the 2026-10-19 UI review): set on EVERY tab where the block is a
+   ghost, not only the ink-card ones -- Hats with no hat (every new bro), Hair,
+   Beard and Eyewear with nothing worn held ~100px of hidden band under a grid
+   that hid rows under its fade.  The reasoning above holds for them too:
+   nothing in this panel can move the character. */
 .bt-cc-colors--yield{display:none}
 /* v2.3.2035: the DEFAULT colour button, above the swatches.  Fixed height so
    the row cannot vary with font metrics -- the constant-sheet-height
@@ -4075,6 +4202,14 @@ body:has(.bt-pcard) [data-coach]{display:none}
   box-shadow:0 0 0 2px var(--ui-brass),0 2px 7px rgba(5,8,10,.38);
 }
 .bt-cc-defcolor:active{transform:scale(.97)}
+/* v2.3.3481: the 2026-10-19 UI review -- DEFAULT is a 22px pill.  An
+   invisible ring makes its press box ~32px tall and 12px wider, the look
+   unchanged.  No further: above it is only the panel's 7px gap before the
+   option strip, whose last row is live tiles, and below it the head's 4px
+   margin and the colour row's 2px padding before the first swatch -- 6px up
+   and 4px down stop short of both.  Sideways the row-gap is 7px too. */
+.bt-cc-defcolor{position:relative}
+.bt-cc-defcolor::after{content:"";position:absolute;inset:-6px -6px -4px}
 .bt-cc-colors-row{display:grid;grid-template-columns:repeat(auto-fill,var(--cc-swatch));grid-auto-rows:var(--cc-swatch);gap:5px;justify-content:center;align-content:start;flex:0 1 auto;height:auto;min-height:calc(var(--cc-swatch)*2 + 9px);max-height:calc(var(--cc-swatch)*4 + 19px);min-width:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
 /* === v2.3.2396: THE COLOUR ROW STOPS HIDING COLOURS IT HAS ROOM FOR ===
    Owner, with a screenshot of the Hair tab: "For some reason the color picker
@@ -4109,6 +4244,15 @@ body:has(.bt-pcard) [data-coach]{display:none}
    is what lets the row give the room back on a tab like Hats. */
 .bt-cc-colors-row::-webkit-scrollbar{display:none}
 .bt-cc-colors-row>*{flex:none!important;width:var(--cc-swatch)!important;height:var(--cc-swatch)!important}
+/* v2.3.3481: the 2026-10-19 UI review -- sideways the swatches are ~31px (a
+   44px reflow would cost the sideways creator height it has not got: the
+   owner's call).  The no-trade step: an invisible 2px ring, half the 5px gap
+   (4px under 360px wide: the rings meet and never overlap), so a near miss
+   lands on the nearest colour; upright it helps the ~33px swatches the same
+   way.  The row's own 2px padding takes the outer rings, so it adds no
+   scroll.  Buttons only: the ghost row's placeholder is a bare div, and the
+   swatch buttons carry position:relative (_apTileStyle, BroTown.jsx). */
+.bt-cc-colors-row>button::after{content:"";position:absolute;inset:-2px}
 /* v2.3.1254: scroll affordance (owner: indicate there are more items) —
    each strip sits in a .bt-cc-scroll wrap; when content extends past
    the right edge, a sheet-colored fade + chevron fades in (driven by
@@ -4853,6 +4997,18 @@ body:has(.bt-inspect) .bt-kb-hints,
 body:has(.bt-inspect) .bt-kb-chip,
 body:has([data-trade-drawer]) .bt-kb-hints,
 body:has([data-trade-drawer]) .bt-kb-chip{display:none}
+/* v2.3.3481: the 2026-10-19 UI review -- ...and the world's prompts stand
+   aside under a window too.  A door's "Enter BANK" (and the shut door's
+   caption, the bed, the workshops, a dungeon's mouth, TRAP) is fixed at z 35,
+   over the windows' z 32 (zLayers.js), and was gated off only under a
+   BUILDING's window (v2.3.2617, BroTown `buildingPanel === null`).  Standing
+   at a door with any other window up -- your own Inspect card, a player's
+   card, a duel challenge -- it drew over the window and took its taps;
+   sideways the Inspect card reaches its slot.  Hidden, not unmounted, so
+   nearBuilding, E and the visit count are untouched and it is back when the
+   window closes.  !important because a Wheel door's prompt and TRAP set their
+   display inline (flex), which only !important outranks (as below). */
+body:has(.bt-inspect) .bt-interact-prompt{display:none!important}
 /* ═══ v2.3.3407: ...AND UNDER A PROMPT'S BUTTON (A DOOR, A BED, A WORKSHOP) ═══
    The owner: "Make sure all actions/buttons can be completed ... on the
    computer."  The UI review's numbered pictures (tools/qa/ui-review) showed
@@ -4874,6 +5030,14 @@ body:has([data-world-chat-toggle][aria-expanded="true"]) .bt-kb-hints{display:no
    review's laptop view).  Its own line says the keys the harvest takes
    ("Drag ↔ or hold E"), and the strip is back the moment it ends. */
 body:has(.bt-rjoy-zone[data-harvest="1"]) .bt-kb-hints{display:none}
+/* v2.3.3481: the 2026-10-19 UI review -- ...and the quest coach stands aside
+   for a harvest too, ring and card (as under a window, below).  Upright,
+   GEAR UP's card lay right over the lumberjack, his chest and the hit numbers
+   behind it, and over the bro held still waiting for the swipe.
+   `data-harvest` is on the right button's box for the whole harvest, from the
+   tap to its end (BroTown.jsx), so the card is back the moment it ends; the
+   lesson is untouched (its hit-test skips [data-coach]). */
+body:has(.bt-rjoy-zone[data-harvest="1"]) [data-coach]{display:none}
 /* v2.3.3407: ...and while the emote picker is up (EmotePanel, v2.3.3391): it
    sits centred just over the band, and on a computer the strip's rows lay
    over its second row of moves -- Sit, Sleep, Flop, Bounce -- so a click on
@@ -5253,6 +5417,16 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
   .bt-cc-panel-title{font-size:clamp(11px,calc(var(--cc-colw) * .03),14px)}
   .bt-cc-tab-label{font-size:clamp(9px,calc(var(--cc-colw) * .026),12px)}
   .bt-cc-rot{width:clamp(34px,calc(var(--cc-colw) * .115),50px);height:clamp(34px,calc(var(--cc-colw) * .115),50px)}
+  /* v2.3.3481: the 2026-10-19 UI review -- and the DRAWING EDITOR the same.
+     Its pane was min(52vw,52vh,288px), the window again: on a 1366x768 laptop
+     that took the 288px ceiling and the panel wanted ~505px (14 + the side
+     column at .62 of the pane + 10 + the pane + 14) in the 419px column, so it
+     scrolled sideways inside itself with Done, Select, Mirror and "To front"
+     off its edge, and Done has no Esc.  52% of the COLUMN instead: 218px and a
+     ~391px panel at 1366x768, 255px in 491 at 1440x900, 204px (a phone's own
+     size) at 1280x720, still 288 at 1920x1080.  PlayerPaint renders inside
+     .bt-name-modal, so it inherits --cc-colw. */
+  .bt-paint{--paint-size:min(calc(var(--cc-colw) * .52),52vh,288px)}
 }
 @media (pointer:fine) and (min-width:1000px) and (max-height:720px) {
   .bt-cc-logo{width:min(calc(var(--cc-colw) * .30),140px)}
@@ -5567,8 +5741,15 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
    UI block competing with the two that matter.  The sheet ships a painted
    note plate too; it is deliberately NOT used, because this string is the
    one piece of copy here that may still change. */
+/* v2.3.3481: the 2026-10-19 UI review -- on a 390 px phone the sentence
+   missed one line by ~2 px and left "device." alone on the second.  The box
+   is already narrower than its 360 px cap (the modal's and the shell's
+   padding), so the side padding goes 14 -> 6 px (326 px of text at 390, the
+   sentence ~312), and where it must wrap (360/320 px) `balance` makes two
+   even lines instead of an orphan.  The gradient (::before, 190% of the box)
+   still covers it. */
 .bt-login-note{
-  position:relative;margin-top:auto;padding:26px 14px 6px;
+  position:relative;margin-top:auto;padding:26px 6px 6px;text-wrap:balance;
   max-width:360px;font-size:12.5px;line-height:1.55;
   color:#F3E7CC;opacity:.86;
   text-shadow:0 1px 3px rgba(3,6,10,.95),0 0 8px rgba(3,6,10,.7);
@@ -5706,7 +5887,10 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
   background:var(--ui-line-strong);transition:background 140ms ease;
 }
 .bt-npcdlg-dot.on{background:var(--ui-accent,#D8AA58)}
-.bt-npcdlg-next{min-height:40px;padding:0 18px;font-size:14px;border-radius:9px;flex:0 0 auto}
+/* v2.3.3481: the 2026-10-19 UI review -- the button keeps to the right.  The
+   dots pushed it there, and a one-line answer draws no dots, so its Close
+   fell to the left, away from where Next had been under the finger. */
+.bt-npcdlg-next{min-height:40px;padding:0 18px;font-size:14px;border-radius:9px;flex:0 0 auto;margin-left:auto}
 
 /* ── the offer / claim window ── */
 .bt-qoffer{
@@ -6319,6 +6503,32 @@ html[data-orient="landscape"] .bt-dashboard{
    and the plaque alone for a land with no art of the owner's */
 .bt-zone-banner__icon{display:inline-block;width:22px;height:22px;margin:0 6px 0 0;vertical-align:-5px}
 .bt-zone-banner.is-plain .bt-zone-banner__orn{display:none}
+/* v2.3.3481: a Wheel land's banner is the land's SCENE from the owner's sheet
+   (their pick "1b", all eight lands) standing over the plaque -- the review's
+   look: the scene about the plaque's width, just above it.  Half the
+   banner's width (the plaque is 0.59 of it), at the picture's own shape
+   (--zb-scene-ar, written from the held picture); the box grows downward to
+   hold it, so the top stays clear of the header rail.  It rises in with the
+   plaque and lifts away as the plaque docks.  Transform and opacity only,
+   like the rest of the banner (TRAPS §42). */
+.bt-zone-banner.is-scene{
+  --zb-scene-w:calc(var(--zb-w) * .5);
+  --zb-scene-h:calc(var(--zb-scene-w) * var(--zb-scene-ar,.5));
+  height:calc(var(--zb-scene-h) + 2px + var(--zb-bar-h));
+}
+.bt-zone-banner.is-scene .bt-zone-banner__plaque{top:calc(var(--zb-scene-h) + 2px)}
+.bt-zone-banner__scene{
+  position:absolute;top:0;left:calc((var(--zb-w) - var(--zb-scene-w)) / 2);
+  width:var(--zb-scene-w);height:var(--zb-scene-h);
+  transform-origin:50% 100%;
+  opacity:0;transform:translateY(6px) scale(.96);
+  transition:opacity 220ms ease-out, transform 320ms cubic-bezier(.2,.8,.2,1);
+}
+.bt-zone-banner.is-in .bt-zone-banner__scene{opacity:1;transform:none}
+.bt-zone-banner.is-docking .bt-zone-banner__scene{
+  opacity:0;transform:translateY(-10px);
+  transition:opacity 260ms ease-in, transform 260ms ease-in;
+}
 .bt-zone-banner__orn--l{left:0}
 .bt-zone-banner__orn--r{right:0}
 .bt-zone-banner.is-in .bt-zone-banner__plaque{opacity:1;transform:translateY(0) scale(1)}
@@ -6354,9 +6564,11 @@ html[data-orient="landscape"] .bt-dashboard{
 .bt-zone-banner.is-static .bt-zone-banner__plaque{transition:opacity 220ms linear;transform:none}
 .bt-zone-banner.is-static .bt-zone-banner__name{transition:opacity 220ms linear;opacity:1}
 .bt-zone-banner.is-static .bt-zone-banner__orn{transition:opacity 220ms linear}
+.bt-zone-banner.is-static .bt-zone-banner__scene{transition:opacity 220ms linear;transform:none}  /* v2.3.3481 */
 .bt-zone-banner.is-static.is-out .bt-zone-banner__plaque,
 .bt-zone-banner.is-static.is-out .bt-zone-banner__name,
-.bt-zone-banner.is-static.is-out .bt-zone-banner__orn{opacity:0}
+.bt-zone-banner.is-static.is-out .bt-zone-banner__orn,
+.bt-zone-banner.is-static.is-out .bt-zone-banner__scene{opacity:0}
 @media (prefers-reduced-motion: reduce){
   .bt-zone-header__title.is-arriving{animation:none}
 }
@@ -6382,6 +6594,9 @@ html[data-orient="landscape"] .bt-zone-banner{
   --zb-bar-h:28px;
 }
 html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14px}
+/* v2.3.3481: sideways the screen is 360-390 px tall, so a land's scene is a
+   little smaller there (~150 px wide at most) */
+html[data-orient="landscape"] .bt-zone-banner.is-scene{--zb-scene-w:calc(var(--zb-w) * .42)}
 
 /* ═══ v2.3.3006: THE SPRINT BUTTON'S "NO" ═══
    A tap with too little stamina to start a sprint shakes the button's face

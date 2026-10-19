@@ -155,8 +155,13 @@ export const LeaderboardPanel = () => {
             flex: 1, minWidth: 0, fontSize: 13, color: COL.text,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>{r.name || r.id}</span>
+          {/* v2.3.3481: the 2026-10-19 UI review -- the number had no unit.
+              Every board but Kills is a level (the worker's series: Combat
+              the three combat levels added up, the name plate's level; each
+              other one that skill's), so it reads "Lv 3"; Kills stays a
+              count.  No number, no "Lv". */}
           <span style={{ fontSize: 16, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>
-            {r.value ?? r.score ?? '-'}
+            {(() => { const v = r.value ?? r.score; return v == null ? '-' : cat === 'kills' ? v : 'Lv ' + v; })()}
           </span>
         </div>
       ))}

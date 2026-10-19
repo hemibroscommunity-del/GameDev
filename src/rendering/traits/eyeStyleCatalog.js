@@ -90,10 +90,15 @@
  */
 export const EYE_STYLE_CATALOG = [
   /* 'none' is the eyes the body sheets paint -- the tile helper draws its
-     shared bald-head icon and the caption "None" for this id whatever the
-     name says, so the name matches what the tile shows rather than arguing
-     with it. */
-  { id: 'none', name: 'None' },
+     shared bald-head icon for this id.
+     v2.3.3481: the 2026-10-19 UI review -- and the caption is THIS NAME now,
+     not a fixed "None": on Hair or Hats 'none' means the thing is absent, but
+     here the bro still has eyes, his ordinary ones, and "None" said he had
+     none.  _thumbTile (BroTown.jsx) reads the name for 'eyestyle' as it does
+     for 'species', and puts it ABOVE the icon, because "Normal" is wider than
+     "None" and the picked tile's check is painted into its bottom-right
+     corner.  The id stays 'none' (stored, sent and baked everywhere). */
+  { id: 'none', name: 'Normal' },
   /* v2.3.2643: navy half-lidded eyes with a pale highlight in the inner corner.
      The subtlest of the four -- it is the same eye the body sheets paint, drawn
      droopy.  100% coverage of the whole eye box on every facing since v2.3.2644

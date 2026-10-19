@@ -1,6 +1,7 @@
 import React from 'react';
 import { WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';
 import { mailList, mailAge } from '@/game/postOffice.js';
+import { ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3481: the mail names items as the bag does */
 import { AlliancePart } from './AlliancePart.jsx';   /* v2.3.3313: the alliance, at the top of the Saloon */
 import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3321: clans are parties now */
 
@@ -104,11 +105,16 @@ function postOffice(props) {
     <div key="mail" data-hall-mail={mail.length}
       style={{ background: LS.well, border: '1px solid ' + LS.border, borderRadius: 10, padding: mail.length ? '4px 0' : '12px', maxHeight: 220, overflowY: 'auto' }}>
       {mail.length ? mail.map(function (m, i) {
+        /* v2.3.3481: the 2026-10-19 UI review -- "2× Meal garden stew" ->
+           "2× Garden Stew": an item the bag has a name for is named so
+           (postOffice.js keeps its key and count); the rest, and a line kept
+           before this version, read the line's own words. */
+        var what = m.key && ITEM_NAMES[m.key] ? m.n + '× ' + ITEM_NAMES[m.key] : m.what;
         return (
           <div key={i} data-mail-line="" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderTop: i ? '1px solid ' + LS.border : 'none' }}>
             {m.kind === 'gold' ? icon('/icons/popups/gold.webp', '🪙', 18) : icon('/icons/ui/evt-mail.webp', '📫', 18)}
             <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: m.kind === 'gold' ? LS.brass : LS.txt1, fontVariantNumeric: 'tabular-nums' }}>{m.what}</span>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: m.kind === 'gold' ? LS.brass : LS.txt1, fontVariantNumeric: 'tabular-nums' }}>{what}</span>
               {m.note ? <span style={{ display: 'block', fontSize: 11.5, color: LS.txt2, overflowWrap: 'anywhere' }}>{m.note}</span> : null}
             </span>
             <span style={{ fontSize: 11, color: LS.txt3, whiteSpace: 'nowrap' }}>{mailAge(m.ts, now)}</span>
@@ -165,8 +171,9 @@ export function WheelHallPanel(props) {
    always said -- where you team up:
      - your party as the worker last said it (S._party, party.js _partyWire:
        you first, each member's level), or how a party works;
-     - Find a party: the player list, where a player's card has Invite to
-       Party (InspectPlayerPanel) -- the same list as the Sheriff's duel row.
+     - Invite a player (v2.3.3481; "Find a party" until then): the player
+       list, where a player's card has Invite to Party (InspectPlayerPanel)
+       -- the same list as the Sheriff's duel row.
    Nothing new on the wire: invites, the roster, party chat and the HUD are
    v2.3.1185's (docs/specs/party.md). */
 export function SaloonPanel(props) {
@@ -176,6 +183,14 @@ export function SaloonPanel(props) {
   /* v2.3.3284: a party lasts and holds 50 against a worker that says so
      (party.js PARTY.KEEP_MAX); the strip shows six, this list everyone */
   var keeps = !!(S._serverCaps && S._serverCaps.partykeep);
+  /* v2.3.3481: the 2026-10-19 UI review -- the row was "Find a party", but it
+     opens the player list, where you INVITE someone: the worker refuses an
+     invite to anyone already in a party (party.js 'target-busy'), so this row
+     can never find you one -- joining a party takes one of its members
+     inviting you.  It says what it does now.  And with no party it comes
+     FIRST, above the words on how a party works: held sideways it started
+     below the screen's edge under them. */
+  var inviteRow = row('party', '/icons/ui/soc-party.webp', '🍺', 'Invite a player', 'Pick a player, then tap Invite to Party on their card', props.onPlayers);
   return (
     <div style={LS_WRAP} data-saloon="">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }}>
@@ -191,6 +206,7 @@ export function SaloonPanel(props) {
             as an alliance's list of members runs to 50 rows */}
         <AlliancePart stateRef={props.stateRef} party={party} />
         <div style={LS_MOD}>Your party</div>
+        {!members.length ? inviteRow : null}
         <div data-saloon-party={members.length}
           style={{ background: LS.well, border: '1px solid ' + LS.border, borderRadius: 10, padding: members.length ? '4px 0' : '12px' }}>
           {members.length ? members.map(function (m, i) {
@@ -211,7 +227,7 @@ export function SaloonPanel(props) {
             </div>
           )}
         </div>
-        {row('party', '/icons/ui/soc-party.webp', '🍺', 'Find a party', 'Pick a player, then tap Invite to Party on their card', props.onPlayers)}
+        {members.length ? inviteRow : null}
       </div>
     </div>
   );

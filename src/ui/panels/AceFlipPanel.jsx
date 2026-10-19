@@ -245,6 +245,11 @@ export function AceFlipPanel() {
   var stake = Math.min(aceFlipBus.stake, maxStake);
   var risk = stake * ACE_FLIP_RISK_MULT;
   var canFlip = stake >= ACE_FLIP_MIN_STAKE && risk <= coins && !aceFlipBus.pending;
+  /* v2.3.3481: the 2026-10-19 UI review -- his window always opens at a stake
+     of 0 (BroTown's tap and desktopControls' E both setStake(0)), so the Win
+     and Lose boxes read a green "+0" and a red "-0" before anything was
+     chosen.  Until a stake is picked they say "—" in the quiet grey. */
+  var picked = stake >= ACE_FLIP_MIN_STAKE;
   /* ═══ THE ODDS ARE DERIVED, NOT TYPED ═══
      Owner asked Ace to say the split out loud.  Both numbers come off
      ACE_FLIP_WIN_CHANCE (the mirror of the server's own constant) rather than
@@ -424,6 +429,11 @@ export function AceFlipPanel() {
         React.createElement('div', { style: { fontSize: 13.5, color: LS.txt3, marginTop: 2 } }, 'Gambler')),
       React.createElement('button', {
         onClick: close, 'aria-label': 'Close',
+        /* v2.3.3481: the 2026-10-19 UI review -- the ✕ is 18 x 28, under the
+           44 px touch floor: an invisible ring makes the press 44 x 44 with
+           no change to how it looks (game.css .bt-ace-close; ::before, as
+           ::after is the computer's Esc key cap). */
+        className: 'bt-ace-close',
         /* v2.3.3407: Esc presses it (game/deskKeys.js) */
         'data-esc': '', 'data-key': 'Esc', 'data-key-at': 'hang',
         style: { position: 'relative', border: 'none', background: 'transparent', color: LS.txt3, fontSize: 20, lineHeight: 1, cursor: 'pointer', padding: 4 },
@@ -478,8 +488,16 @@ export function AceFlipPanel() {
 
       /* ── the coin ── */
       React.createElement('div', {
+        /* v2.3.3481: the 2026-10-19 UI review -- held sideways the 138 px well
+           pushed the stake chips and the button below the first view.  The
+           well is not empty space: it is the coin's toss (it climbs from y 117
+           of its frame to y 10 and back), so a short screen shrinks the WHOLE
+           coin, arc and all, rather than cropping the frame (game.css
+           .bt-ace-coinwell / .bt-ace-coin). */
+        className: 'bt-ace-coinwell',
         style: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: COIN_H, background: LS.well, borderRadius: 11, border: '1px solid ' + LS.border, marginBottom: 12, overflow: 'hidden' },
       }, React.createElement('div', {
+        className: 'bt-ace-coin',
         style: {
           width: COIN_W, height: COIN_H,
           backgroundImage: 'url(' + strip + ')',
@@ -498,7 +516,10 @@ export function AceFlipPanel() {
       /* ── stake ── */
       React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 } },
         React.createElement('span', { style: { fontSize: 12.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: LS.txt3 } }, 'Your stake'),
-        React.createElement('span', { style: { fontSize: 12.5, color: LS.txt3 } }, 'Bag ', gold(coins, 13))),
+        /* v2.3.3481: the 2026-10-19 UI review -- "Bag 2550" beside the top
+           bar's "2,550": the balance takes the HUD's own call (ZoneHeader.jsx).
+           The stake chips and "Flip for 90g" are amounts, not the balance. */
+        React.createElement('span', { style: { fontSize: 12.5, color: LS.txt3 } }, 'Bag ', gold(Number(coins).toLocaleString(), 13))),
       /* THE LADDER IS BUILT, NOT LISTED.  A fixed Min / quarter / half / Max
          row reads as broken on a small bag: at 105 gold the max stake is 35,
          so the quarter is 8 -- BELOW the 10 minimum -- and the row rendered
@@ -520,10 +541,10 @@ export function AceFlipPanel() {
       },
         React.createElement('div', { style: { flex: 1, background: LS.raised, border: '1px solid ' + LS.border, borderRadius: 9, padding: '8px 10px' } },
           React.createElement('div', { style: { fontSize: 11.5, letterSpacing: '.12em', textTransform: 'uppercase', color: LS.txt3, marginBottom: 3 } }, 'Win (' + youPct + '%)'),
-          gold('+' + risk, 17, LS.win)),
+          gold(picked ? '+' + risk : '—', 17, picked ? LS.win : LS.txt3)),
         React.createElement('div', { style: { flex: 1, background: LS.raised, border: '1px solid ' + LS.border, borderRadius: 9, padding: '8px 10px' } },
           React.createElement('div', { style: { fontSize: 11.5, letterSpacing: '.12em', textTransform: 'uppercase', color: LS.txt3, marginBottom: 3 } }, 'Lose (' + acePct + '%)'),
-          gold('-' + risk, 17, LS.lose))),
+          gold(picked ? '-' + risk : '—', 17, picked ? LS.lose : LS.txt3))),
 
       maxStake < ACE_FLIP_MIN_STAKE ? React.createElement('div', {
         style: { fontSize: 14, color: LS.lose, textAlign: 'center', padding: '10px 0' },

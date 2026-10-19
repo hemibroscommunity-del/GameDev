@@ -1144,30 +1144,10 @@ export function getFishHealAmount(fishKey) {
 export const FISH_HEAL = Object.freeze({ minnow: 100, clownfish: 150, trout: 225, salmon: 325, pike: 475 });
 var _fishHealLadder = false;
 export function setFishHealEnabled(on) { _fishHealLadder = !!on; }
-export function getFishTierLevel(fishKey) {
-  var name = fishKey.replace(/^fish_/, '').toLowerCase();
-  var tier = FISHING_TIERS.find(function (t) {
-    return name.includes(t.name.toLowerCase().replace(/\s+/g, '_'));
-  });
-  return tier ? tier.lvl : 1;
-}
-
-/* Cooking minigame sweet spot: cookingLevel widens it, fishTier narrows it */
-/* Returns {center: 0-1, width: 0-1} — center is random, width is the green zone fraction */
-export function getCookingSweetSpot(cookingLevel, fishTierLvl) {
-  /* Base width: 40% of bar. Cooking level adds up to +30%. Fish tier subtracts up to -25%. */
-  var baseWidth = 0.40;
-  var skillBonus = Math.min(0.30, cookingLevel * 0.004); /* +0.4% per level, max +30% */
-  var tierPenalty = Math.min(0.25, fishTierLvl * 0.003); /* -0.3% per fish tier level, max -25% */
-  var width = Math.max(0.10, Math.min(0.65, baseWidth + skillBonus - tierPenalty));
-  /* Center is random but always allows the full sweet spot to fit */
-  var halfW = width / 2;
-  var center = halfW + Math.random() * (1 - width);
-  return {
-    center: center,
-    width: width
-  };
-}
+/* v2.3.3481: getFishTierLevel and getCookingSweetSpot (the Cookhouse fish
+   game's tier lookup and green zone) are gone with that game -- the owner:
+   "Remove cookhouse fish game".  Nothing else read them; fish are cooked at
+   a campfire, settled by the worker (cook_request). */
 
 /* §18.2 Farming — plant seeds, harvest after time */
 export const FARM_GROWTH_TIMES = [0, 3600, 14400, 43200, 86400, 172800]; /* seconds per tier */
@@ -1869,7 +1849,11 @@ export const FEEDBACK_CATEGORIES = [{
   desc: 'New feature idea'
 }, {
   id: 'qol',
-  label: '✨ QoL',
+  /* v2.3.3481: the 2026-10-19 UI review -- "QoL" is gamer shorthand a new
+     player may not know; the chip says Improve.  The id stays 'qol' (the
+     worker checks ids, feedback.js VALID_CATEGORIES), so old reports keep
+     their kind and read Improve on the board. */
+  label: '✨ Improve',
   color: '#a78bfa',
   desc: 'Quality of life'
 }, {
@@ -6579,6 +6563,12 @@ export const QUEST_CHAINS = {
     id: 'tut_1', npc: 'Mayor Bro', title: 'Cold Reception',
     desc: 'Bring 4 Snowman Remnants from Frost Ridge.',
     check: function (rpg) { return ((rpg.inventory || {}).snowman || 0) >= 4; },
+    /* v2.3.3481: the 2026-10-19 UI review -- what `check` counts, written as
+       data, so the quest log, the quest's page and the pinned card can say how
+       many you hold, "(2/4)" (questCountText).  Nothing printed a count before.
+       The same bag key and number as `check` above and the server's collect
+       objective (server/src/data.js tut_1): change all three together. */
+    need: { key: 'snowman', n: 4 },
     /* v2.3.3335 (owner: "Makes no sense to have to choose xp in something
        you've never used yet.  Just remove that little xp bonus"): no XP, so
        there is nothing to choose and QuestPanel pays it as the AUTO REWARD --
@@ -6646,6 +6636,7 @@ export const QUEST_CHAINS = {
     id: 'tut_2', npc: 'Mayor Bro', title: 'Into the Blue',
     desc: 'Bring 6 Slime Remnants from the Verdant Wilds.',
     check: function (rpg) { return ((rpg.inventory || {})['slime-remnants'] || 0) >= 6; },
+    need: { key: 'slime-remnants', n: 6 },   /* v2.3.3481: the count shown beside the errand -- see tut_1 */
     reward: { gold: 60, xp: 35 },
     next: 'tut_3',
     /* v2.3.1692: the staff moved to tut_1 — this step pays gold + xp. */
@@ -6673,6 +6664,7 @@ export const QUEST_CHAINS = {
     id: 'tut_3', npc: 'Mayor Bro', title: 'Bad Wind',
     desc: 'Bring 5 Skeleton Remnants from the Wind Dunes.',
     check: function (rpg) { return ((rpg.inventory || {})['skeleton-remnants'] || 0) >= 5; },
+    need: { key: 'skeleton-remnants', n: 5 },   /* v2.3.3481: the count shown beside the errand -- see tut_1 */
     reward: { gold: 150, xp: 53 },
     next: 'tut_4',
     dialogue: {
@@ -6687,6 +6679,7 @@ export const QUEST_CHAINS = {
     id: 'tut_4', npc: 'Mayor Bro', title: 'Bro Ascendant',
     desc: 'Bring 6 Fire Goblin Remnants from the Flame Fields.',
     check: function (rpg) { return ((rpg.inventory || {})['fire-goblin-remnants'] || 0) >= 6; },
+    need: { key: 'fire-goblin-remnants', n: 6 },   /* v2.3.3481: the count shown beside the errand -- see tut_1 */
     /* v2.3.1758 (owner: "copper to be the first armor in the game (you mine
        copper ore) so this should replace the iron armor.  The second tier of
        armor will be iron").  Mirrors server/src/data.js exactly — this row is
@@ -7567,6 +7560,22 @@ export function questObjectiveDone(quest, S, rpgFallback) {
   var rpg = (S && S.rpg) || rpgFallback || null;
   if (!rpg) return false;
   try { return !!quest.check(rpg, S); } catch (e) { return false; }
+}
+
+/* ═══ v2.3.3481: HOW MANY YOU HOLD ═══
+ * The 2026-10-19 UI review: "Bring 4 Snowman Remnants", and nothing in the
+ * game said how many were already in the bag -- not the quest log, not the
+ * quest's page, not the pinned card.  A quest that names what it collects
+ * (`need`: the bag key and the number, the same as its `check`) gets
+ * " (2/4)" after its objective; any other quest gets nothing.  Pass the LIVE
+ * rpg, as questObjectiveDone reads it, so the count and the green check never
+ * disagree.  Never more than the number asked: at that point the quest is
+ * ready, and a ready quest shows its objective alone. */
+export function questCountText(quest, rpg) {
+  var nd = quest && quest.need;
+  if (!nd || !nd.key || !(nd.n > 0)) return '';
+  var have = Number(((rpg && rpg.inventory) || {})[nd.key]) || 0;
+  return ' (' + Math.max(0, Math.min(have, nd.n)) + '/' + nd.n + ')';
 }
 
 /* ═══ v2.3.1972: A QUEST WHOSE TARGET IS NOT IN THE WORLD ═══

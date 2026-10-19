@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
-import { QUEST_CHAINS, questSteps } from '../../../data/gameSystems.js';   /* v2.3.2820: + questSteps */
+import { QUEST_CHAINS, questSteps, questCountText } from '../../../data/gameSystems.js';   /* v2.3.2820: + questSteps; v2.3.3481: + questCountText */
 import { deriveQuestLog, trackedQuestId, setTrackedQuest } from '../sheet/questModel.js';
 import { questDetailBus } from '../sheet/questDetailBus.js';
 import { NPC_DATA } from '../../../data/gameDisplay.js';
@@ -153,7 +153,9 @@ export const QuestDetailPanel = () => {
         Objective
       </div>
       <div style={{ fontSize: 13.5, lineHeight: 1.45, color: COL.text, padding: '0 2px 6px' }}>
-        {quest.desc}
+        {/* v2.3.3481: the 2026-10-19 UI review -- while it is in hand, how
+            many you hold, " (2/4)" (gameSystems questCountText) */}
+        {quest.desc}{status === 'Active' ? questCountText(quest, S && S.rpg) : ''}
       </div>
       {/* ═══ v2.3.2820: THE STEPS ═══ (life_1's checklist, gameSystems
           questSteps).  Owner: players "get stuck on the quest for cooking 2

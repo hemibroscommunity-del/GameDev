@@ -75,8 +75,15 @@ export function BankPanel(props) {
       /* v2.3.1235: state-correction — the old copy claimed gold is "always
          safe", contradicting the actual death rule (monsterCombat.js:
          DEATH_GOLD_PENALTY = 10% of carried coins). Copy now matches code. */
+      /* v2.3.3481: the 2026-10-19 UI review -- "The bank protects additional
+         items from death scatter" promised storage this window does not have
+         (it shows your gold and what you wear, and sends nothing), and
+         "Equipped items are always safe" is not true for a red skull a player
+         kills in No man's land (nomansland.js _nmlOnDeath, takeWorn). The
+         line now says what the window is, with no promise; the death rule
+         for gold is the line under the gold. */
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 12, lineHeight: 1.5 } },
-        "Equipped items are always safe. The bank protects additional items from death scatter."),
+        "Your gold and what you wear. Nothing can be stored here yet."),
       React.createElement("div", { style: LS_MOD }, "Gold on hand"),
       React.createElement("div", {
         style: {
@@ -89,12 +96,17 @@ export function BankPanel(props) {
       /* v2.3.2343: the worker owns coins and charges no death penalty, so
          the "10% is lost on death" line promised a loss that never happened
          (the client used to subtract it locally and the echo put it back). */
+      /* v2.3.3481: the 2026-10-19 UI review -- true of an ordinary death, not
+         of No man's land since v2.3.3316: a death there to a player under its
+         rule gives your gold to the killer, and a red skull's death to
+         anything takes it too (nomansland.js _nmlOnDeath: ps.coins = 0
+         whenever the kill is the rule's or the skull is red). */
       React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginBottom: 12 } },
-        "Carried gold stays with you on death."),
+        "Kept when you die, unless a player kills you in No man's land or you die with a red skull."),
       React.createElement("div", { style: LS_MOD }, "Equipped"),
       React.createElement("div", {
         style: { borderRadius: 8, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
       }, gearRow('Melee', meleeName, false),
-      gearRow('Ranged', rangedName, false),
+      gearRow('Bow' /* v2.3.3481: was 'Ranged' -- the bow slot, named as the Gem Works' Set gems and the hero sheet name it (the 2026-10-19 UI review) */, rangedName, false),
       gearRow('Armor', armorName, true))));
 }

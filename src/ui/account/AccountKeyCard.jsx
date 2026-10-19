@@ -29,6 +29,10 @@ export const AccountKeyCard = () => {
     );
   }
 
+  /* v2.3.3481: an eight-word key's field is kept for Copy's fallback but not
+     shown (the row below says why) */
+  const hideField = isNewKey(phrase);
+
   const copy = () => {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -74,15 +78,28 @@ export const AccountKeyCard = () => {
           on a phone, so the words are laid out two by four, numbered, the
           way they are typed; the input below still holds the whole key for
           Copy and select. */}
+      {/* ═══ v2.3.3481: FOUR ACROSS WHERE THEY FIT (the 2026-10-19 UI review) ═══
+          Two by four, the label and the words alone took ~155 px of the ~159
+          an upright phone's page has (169 on a laptop), so Copy and "There
+          is no email recovery" waited below the fold everywhere but sideways.
+          Now a row holds as many words as fit, each cell at least 80 px (a
+          five-letter word's: its number, the gap, 16 px mono and the padding)
+          and at least a quarter of the row less its gaps, so never more than
+          four: 4 + 4 on a phone 350 px wide and up, the laptop and the
+          computer (a plain auto-fill would have put five on their wider
+          rows, 5 + 3), 3 + 3 + 2 at 320, two by four sideways as before.  All
+          eight words and Copy are then in the first view; the order is still
+          1 to 8, row by row (mp-newkey reads it).  19 px is the three 6 px
+          gaps and a pixel to spare, so rounding never drops the fourth. */}
       {isNewKey(phrase) && (
         <ol data-bt="account-keycard-words" style={{
           listStyle: 'none', margin: '0 0 6px', padding: 0,
-          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 8px',
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(max(80px, calc((100% - 19px) / 4)), 1fr))', gap: '4px 6px',
         }}>
           {phrase.split('-').map((w, i) => (
             <li key={i} style={{
               display: 'flex', alignItems: 'baseline', gap: 6, minHeight: 28,
-              padding: '4px 8px', borderRadius: 6, background: 'var(--ui-well)',
+              padding: '4px 6px', borderRadius: 6, background: 'var(--ui-well)',
               border: '1px solid var(--ui-line-strong)',
             }}>
               <span style={{ fontSize: 11, color: 'var(--ui-text-muted)', fontVariantNumeric: 'tabular-nums', minWidth: 12 }}>{i + 1}</span>
@@ -91,13 +108,30 @@ export const AccountKeyCard = () => {
           ))}
         </ol>
       )}
-      <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
+      {/* ═══ v2.3.3481: AN EIGHT-WORD KEY IS COPIED, NOT READ OFF A FIELD (the 2026-10-19 UI review) ═══
+          The words above already show the key; beside them the field showed
+          only the joined key's start ("slept-hash-", sideways), which looked
+          like a key cut short.  It cannot simply go: it is what Copy selects
+          when the clipboard refuses (selectFallback), and mp-loginkey reads
+          it.  So for a new key it stays, out of sight -- over the row, see-
+          through, no pointer, no tab stop, still 16 px (smaller, and iPhone
+          Safari zooms the page when the fallback focuses it) -- and Copy
+          takes the row and says what it copies.  An old key's field and
+          Copy are as they were (its one line is the only place it shows).
+          The cost: no long-press on the joined key; the clipboard covers
+          iPhone Safari over HTTPS. */}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', position: 'relative' }}>
         <input
           ref={inputRef}
           readOnly
           value={phrase}
+          tabIndex={hideField ? -1 : undefined}
           onFocus={(e) => { try { e.target.select(); } catch (err) {} }}
-          style={{
+          style={hideField ? {
+            position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+            opacity: 0, pointerEvents: 'none',
+            fontSize: 16, border: 0, padding: 0, margin: 0,
+          } : {
             flex: 1, minWidth: 0,
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
             fontSize: 16, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
@@ -113,13 +147,14 @@ export const AccountKeyCard = () => {
           onClick={copy}
           className="button-secondary"
           style={{
-            flexShrink: 0, minWidth: 74, minHeight: 44,
+            ...(hideField ? { flex: 1 } : { flexShrink: 0 }),
+            minWidth: 74, minHeight: 44,
             color: copied ? '#55B98A' : 'var(--ui-text)',
             fontSize: 15,
             padding: '0 12px',
           }}
         >
-          {copied ? 'Copied!' : 'Copy'}
+          {copied ? 'Copied!' : hideField ? 'Copy Login Key' : 'Copy'}
         </button>
       </div>
       <div style={{ fontSize: 12, color: 'var(--ui-text-secondary)', marginTop: 8, lineHeight: 1.4 }}>

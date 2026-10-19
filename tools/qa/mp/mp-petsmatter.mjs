@@ -96,7 +96,7 @@ async function steps({ A, B, wsPort, rec, errors }) {
   }, made.pet) : null;
   rec.ok(`the Pets page says what it wards ("${ward && ward.text}")`, !!ward && ward.pct === '34' && /Softens chills 34%/.test(ward.text), ward);
   const house = page ? await A.page.evaluate(() => { const h = document.querySelector('[data-pet-house]'); return h ? { cap: h.getAttribute('data-pet-house'), text: h.innerText.replace(/\s+/g, ' ') } : null; }) : null;
-  rec.ok(`...and offers more room ("${house && house.text}")`, !!house && house.cap === '30' && /10 more places for 1,000 gold/.test(house.text), house);
+  rec.ok(`...and offers more room ("${house && house.text}")`, !!house && house.cap === '30' && /room for 10 more pets, 1,000 gold/.test(house.text), house);   /* v2.3.3481: the row says pets */
   await shot(A, 'pets-page');
   await H.closeDest(A).catch(() => {});
   await A.page.waitForTimeout(400);
@@ -152,7 +152,7 @@ async function steps({ A, B, wsPort, rec, errors }) {
   await A.page.click('[data-pet-house-buy="30"]').catch(() => {});
   await A.page.waitForTimeout(300);
   const asked = await A.page.evaluate(() => { const h = document.querySelector('[data-pet-house]'); return h ? h.innerText.replace(/\s+/g, ' ') : ''; });
-  rec.ok(`More room asks first ("${asked}")`, /Buy 10 more places for 1,000 gold\?/.test(asked), asked);
+  rec.ok(`More room asks first ("${asked}")`, /Buy room for 10 more pets for 1,000 gold\?/.test(asked), asked);   /* v2.3.3481 */
   await A.page.click('[data-pet-house-yes="30"]').catch(() => {});
   await A.page.waitForFunction(() => { const b = window._gameState.current._petBook; return b && b.cap === 40; }, null, { timeout: 8000 }).catch(() => {});
   await A.page.waitForFunction((c) => (window._gameState.current.rpg || {}).coins === c - 1000, coins0, { timeout: 8000 }).catch(() => {});

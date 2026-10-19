@@ -4,6 +4,8 @@ import { thumbFor, iconFor, ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.j
 import { armorIconFor, gearIdIcon } from '@/rendering/gearVariants.js'; /* v2.3.2531: gear listing art */
 import { storeBrowse, storeMine, storeBuy, storeBid, storeAccept, storeCancel, storeEnabled, storeMyId, storePetsEnabled } from '@/ui/storeApi.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
+import { dashMinBus } from '@/ui/mobile/dashMinBus.js';   /* v2.3.3481: "List an Item" unfolds the band (goList) */
+import { playIsLandscape } from '@/ui/mobile/playViewport.js';   /* v2.3.3481: ...or opens the column sideways */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the auction house heard */
 import { PlayerIcon } from '@/ui/PlayerIcon.jsx';   /* v2.3.2620: the same icon the player list draws */
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
@@ -266,9 +268,18 @@ export function StorePanel(props) {
 
   /* v2.3.2618: leave the store and land on the bag, open. Selling starts
      from an item card, so this is a way THERE, not a second sell flow. */
+  /* v2.3.3481: the 2026-10-19 UI review -- on the bag every other way shows,
+     where the Dashboard button lands (NavRail.jsx; deskKeys.js navKey): the
+     band at rest, unfolded, upright and on a computer; the dashboard column
+     sideways.  open('bag') here was the one way left into the retired
+     expanded bag page (v2.3.1654), five tiles across where the band's bag is
+     four (BAG_VIEW_COLS). */
   const goList = useCallback(() => {
     if (props.setBuildingPanel) props.setBuildingPanel(null);
-    try { dashboardPanelBus.open('bag'); } catch (e) { /* bus absent in a bare render */ }
+    try {
+      if (playIsLandscape()) dashboardPanelBus.open('dashboard');
+      else { dashboardPanelBus.toBar(); dashMinBus.set(false); }
+    } catch (e) { /* bus absent in a bare render */ }
   }, [props]);
 
   const refresh = useCallback(async (which) => {

@@ -474,7 +474,10 @@ const LESSONS = [
        tools/qa/mp/mp-ctltut.mjs; noted here because this is where it was
        found, and because the dead names are still tempting.) */
     anchors: [
-      { sel: '[data-tut="coach-gear"]', body: 'Tap it, then Equip.' },
+      /* v2.3.3481: the 2026-10-19 UI review -- "Tap it" named one item while
+         the first quest's sword AND shield both glow (gearFlash.js), and this
+         lesson ends only when a weapon and a shield are both worn: "each". */
+      { sel: '[data-tut="coach-gear"]', body: 'Tap each glowing item, then Equip.' },
       /* ═══ v2.3.2495: THE FALLBACK POINTED AT A BUTTON THAT NO LONGER EXISTS ═══
          `.bt-navrail [aria-label="Bag"]` has matched nothing since v2.3.1654
          took Bag out of the rail (the rail is Dashboard / Character / Quests /
@@ -1363,6 +1366,64 @@ export function QuestCoach(props) {
       return band + combatBandTopPx(playIsLandscape()) + 12;
     } catch (_e) { return 0; /* a card that cannot measure simply does not dodge */ }
   })();
+  /* ═══ v2.3.3481: ...AND OFF THE BRO HIMSELF ═══
+   * The 2026-10-19 UI review: "GEAR UP covers the character's lower body".
+   * Upright with the band folded, the band's lift leaves a bottom-anchored
+   * card (GEAR UP, Tap OPEN, Your reward) at y 392-455 on a 390 x 844 phone,
+   * x 8-228 -- and the camera keeps your bro in the middle, his head at ~367:
+   * only his head showed, beside the card.  So when the card would lie on him
+   * (his ring, the chatTap lesson's own screen math, up to the name plate
+   * over his head, S._selfBandTopY) it goes up to stop 8 px over the plate.
+   * Only when it then still fits -- under the 120 px cap, under the pinned
+   * quest card (`[data-quest-hud]`, when the page marks it) and off the
+   * minimap's open-map button -- else it stays where it was: over his body
+   * beats over the quest, the map's button or off the top.  Like
+   * the band's lift, only the CARD moves; the ring stays on its control.
+   * Sideways the band's lift is already at the cap, so nothing there moves.
+   * The card's left is worked out as the card's own `left` below works it
+   * out when that cap is not in force -- the only case this can lift in. */
+  const broClear = (() => {
+    if (!above) return 0;
+    try {
+      const S = stateRef && stateRef.current;
+      const P = S && S.player;
+      const chat = LESSONS.find(function (l) { return l.id === 'chatTap'; });
+      const ring = P && chat && chat.worldRect(S);
+      if (!ring) return 0;
+      const sx = S._worldScaleX || 1, sy = S._worldScaleY || 1;
+      const cyp = ring.top + ring.height / 2;   /* the ring's centre is P.y - 24 */
+      const plateTop = Number.isFinite(S._selfBandTopY) ? cyp + (S._selfBandTopY - (P.y - 24)) * sy : ring.top;
+      const broTop = Math.min(ring.top, plateTop) - box.y;
+      const broBot = ring.top + ring.height - box.y;
+      const broX = ring.left + ring.width / 2 - box.x;
+      const broHalf = Math.max(ring.width / 2, (S._selfBandHalfW || 0) * sx);
+      const cs = getComputedStyle(document.documentElement);
+      const wx = parseFloat(cs.getPropertyValue('--world-x')) || 0;
+      const pw = parseFloat(cs.getPropertyValue('--play-w')) || window.innerWidth;
+      const cardL = Math.min(Math.max(wx + 8, r.left + r.width / 2 - 110), Math.max(wx + 8, wx + pw - 228));
+      if (cardL + 220 <= broX - broHalf || cardL >= broX + broHalf) return 0;   /* beside him */
+      const cur = Math.max(Math.max(6, boxH - (r.top - pad - 10)), bandClear);
+      const el = document.querySelector('[data-coach-card]');
+      const cardH = (el && el.offsetHeight) || 72;   /* last paint's, else two lines' worth */
+      const cardBot = boxH - cur;
+      if (cardBot <= broTop || cardBot - cardH >= broBot) return 0;   /* over or under him already */
+      const lift = boxH - (broTop - 8);
+      if (lift > boxH - 120) return 0;
+      /* ...nor onto the minimap's invisible "open map" button (z 45, over the
+         coach), where a tap on the card would open the world map instead --
+         TRAPS §220's trap, reachable on a short phone */
+      const top = (boxH - lift) - cardH, bot = boxH - lift;
+      const clash = (sel) => {
+        const n = document.querySelector(sel);
+        const q = n && n.getBoundingClientRect();
+        if (!q || !(q.width > 0)) return false;
+        const ql = q.left - box.x, qt = q.top - box.y;
+        return cardL < ql + q.width + 8 && cardL + 220 > ql - 8 && top < qt + q.height + 8 && bot > qt - 8;
+      };
+      if (clash('[data-quest-hud]') || clash('[data-world-map-open]')) return 0;
+      return lift;
+    } catch (_e) { return 0; }
+  })();
   /* v2.3.2312: ONE dismiss, worn by the X and by the card body alike.  Both
      mark the lesson done in the same localStorage record the gesture would
      have -- a card you have explicitly put down, which then returns on the
@@ -1472,9 +1533,29 @@ export function QuestCoach(props) {
           const _cs = getComputedStyle(document.documentElement);
           const _wx = parseFloat(_cs.getPropertyValue('--world-x')) || 0;
           const _pw = parseFloat(_cs.getPropertyValue('--play-w')) || window.innerWidth;
-          return Math.min(
+          let _l = Math.min(
             Math.max(_wx + 8, r.left + r.width / 2 - 110),
             Math.max(_wx + 8, _wx + _pw - 228));
+          /* v2.3.3481: the 2026-10-19 UI review -- SIDEWAYS THE CARD SAT ON
+             THE PINNED QUEST CARD ("GEAR UP" over "Cold Reception").  Sideways
+             the combat band's lift always reaches the 120 px cap on `bottom`
+             below, so the card ends 120 px from the top, right across the
+             quest card's row (top 56, BroTown.jsx `data-quest-hud`).  Lower is
+             no answer: the left cluster's Quick-eat and Burst slots start at y
+             128 and 158, and the card clears them even before they are drawn.
+             So while that cap is in force the card steps RIGHT of the quest
+             card instead, still inside the world's span.  Upright the cap
+             never applies (the band's lift is far below it), so nothing there
+             moves. */
+          if (above && bandClear > boxH - 120) {
+            const qh = document.querySelector('[data-quest-hud]');
+            const qr = qh && qh.getBoundingClientRect();
+            if (qr && qr.width > 0) {
+              _l = Math.min(Math.max(_l, qr.right - box.x + 8),
+                Math.max(_wx + 8, _wx + _pw - 228));
+            }
+          }
+          return _l;
         })(),
         /* Anchored by its BOTTOM when it sits above the control, because the
            card's height is not knowable here — it is one, two or three lines
@@ -1487,12 +1568,13 @@ export function QuestCoach(props) {
            taking the max raises the card and never lowers it.  The 12px is the
            same breathing room the anchor gap above uses.  Capped at
            innerHeight - 120 so a very tall band cannot push the card off the
-           top edge -- see the note on `bandTop`. */
+           top edge -- see the note on `bandTop`.
+           v2.3.3481: ...and clear of the bro when it can be (`broClear`). */
         bottom: above
           ? Math.min(
             Math.max(
               Math.max(6, boxH - (r.top - pad - 10)),
-              bandClear),
+              bandClear, broClear),
             Math.max(6, boxH - 120))
           : undefined,
         width: 220,

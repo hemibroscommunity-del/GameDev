@@ -91,8 +91,13 @@ export function VendorPanel(props) {
      (server/src/data.js's header, v2.3.1151). The table is still here, still
      at that path, just no longer rendered -- see SHOP_STOCK below. */
   var storeOn = storeEnabled();
+  /* v2.3.3481: the 2026-10-19 UI review -- "Buy and sell with players" said
+     nothing the Marketplace (an order book by kind of gear) does not, and
+     nearly what the Market tile below says. A listing here is one seller's
+     goods at their own price, bought now or bid on (store.js header), so
+     the subtitle says that; the tile keeps its words. */
   return React.createElement("div", { style: LS_WRAP },
-    lsHeader('auctionhouse', '⚖', "Auction House", "Buy and sell with players"),
+    lsHeader('auctionhouse', '⚖', "Auction House", "Individual item listings and bids"),
     React.createElement("div", { style: LS_BODY },
       React.createElement("div", {
         style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }

@@ -3,6 +3,7 @@ import { COL } from './dash/common.js';
 import { thumbFor } from './dash/InventoryPanel.jsx';
 import { useModalGuard } from './modalGuardBus.js';
 import { tapDismiss, TAP_DISMISS_STYLE } from '../tapDismiss.js';
+import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3481: the free spin row's prize wheel */
 import {
   dailyRewardsBus, questsLive, spinLive, seasonLive, askReroll, askClaim, askRewards,
   questLabel, questIcon, grantLabel, untilText, claimableTiers, nextTier, tierNeed, coinsShort,
@@ -166,8 +167,13 @@ function TodayTab({ st }) {
           {(sk.fz || 0) + '/' + (sk.fzMax || 2)}
         </span>
       </div>
+      {/* v2.3.3481: the 2026-10-19 UI review -- "covers a missed day by
+          itself" did not say plainly that nothing has to be done: the worker
+          spends one freeze a missed day on its own (cadence.js
+          _cadenceLoginReward), and a gap longer than the freezes held starts
+          the streak again */}
       <div style={{ fontSize: 11.5, color: COL.muted, margin: '6px 2px 0', lineHeight: 1.4 }}>
-        A freeze covers a missed day by itself. You earn one every {sk.every || 7} days of streak.
+        A freeze is used automatically if you miss a day. You earn one every {sk.every || 7} days of streak.
       </div>
 
       {/* the spin */}
@@ -182,7 +188,11 @@ function TodayTab({ st }) {
           background: lit ? COL.accentFill : COL.well,
           border: '1px solid ' + (lit ? COL.edgeWarm : COL.border),
         }}>
-          <SpinGlyph size={30} />
+          {/* v2.3.3481: the owner's prize wheel (their icon pick 8), where the
+              little drawn wheel was; the bonus spins elsewhere keep SpinGlyph */}
+          <img src={OWNER_ICON.prizeWheel.src} alt="" draggable={false} width={OWNER_ICON.prizeWheel.w} height={OWNER_ICON.prizeWheel.h}
+            data-daily-spin-icon="" style={{ width: OWNER_ICON.prizeWheel.w, height: OWNER_ICON.prizeWheel.h, objectFit: 'contain', flex: 'none' }}
+            onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: COL.text }}>
               {spLocked ? 'The free daily spin' : (sp.open ? 'Your pot of ' + coinsShort(sp.pot) + ' coins is waiting' : (sp.ready ? 'Your free spin is ready' : (sp.extra > 0 ? sp.extra + ' bonus spin' + (sp.extra === 1 ? '' : 's') + ' to use' : 'Today\'s spin is done')))}

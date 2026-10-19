@@ -79,20 +79,14 @@ export const FeedbackPanel = () => {
       </div>
       {tab === 'submit' ? (
         <>
-          <div style={labelStyle}>What kind?</div>
-          <div style={chipRow}>
-            {FEEDBACK_CATEGORIES.map((c) => (
-              <button key={c.id} onClick={() => setCategory(c.id)} style={chip(category === c.id)}
-                data-fb-cat={c.id}>{plain(c.label)}</button>
-            ))}
-          </div>
-          <div style={labelStyle}>About</div>
-          <div style={chipRow}>
-            {FEEDBACK_TOPICS.map((t) => (
-              <button key={t.id} onClick={() => setTopic(t.id)} style={chip(topic === t.id)}
-                data-fb-topic={t.id}>{plain(t.label)}</button>
-            ))}
-          </div>
+          {/* ═══ v2.3.3481: THE BOX FIRST (the 2026-10-19 UI review) ═══
+              Under "What kind?" and the fifteen "About" chips (three to five
+              rows), the box started ~230 px down a page ~159 px tall (149 on
+              a laptop): every first view was chips, and nothing said where to
+              write.  The box now comes straight under Submit / Browse, then
+              the chips, then the count and Send, which stay below them (a
+              phone still scrolls to Send, as before).  Block, so the gap
+              under it is its own 8 px. */}
           <textarea
             value={text}
             onChange={(e) => { setText(e.target.value); if (status === 'error') setStatus('idle'); }}
@@ -100,8 +94,10 @@ export const FeedbackPanel = () => {
             maxLength={SUBMIT_MAX}
             data-fb-text=""
             style={{
+              display: 'block',
               width: '100%',
               boxSizing: 'border-box',
+              marginBottom: 8,
               minHeight: 72,
               padding: '10px 10px',
               background: COL.well,
@@ -116,6 +112,20 @@ export const FeedbackPanel = () => {
               outline: 'none',
             }}
           />
+          <div style={labelStyle}>What kind?</div>
+          <div style={chipRow}>
+            {FEEDBACK_CATEGORIES.map((c) => (
+              <button key={c.id} onClick={() => setCategory(c.id)} style={chip(category === c.id)}
+                data-fb-cat={c.id}>{plain(c.label)}</button>
+            ))}
+          </div>
+          <div style={labelStyle}>About</div>
+          <div style={chipRow}>
+            {FEEDBACK_TOPICS.map((t) => (
+              <button key={t.id} onClick={() => setTopic(t.id)} style={chip(topic === t.id)}
+                data-fb-topic={t.id}>{plain(t.label)}</button>
+            ))}
+          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: status === 'error' ? COL.danger : COL.muted, fontVariantNumeric: 'tabular-nums' }}
               data-fb-status={status}>

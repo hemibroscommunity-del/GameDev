@@ -1954,25 +1954,11 @@ export var BroTown = function BroTown(_ref0) {
     _useState134 = _slicedToArray(_useState133, 2),
     buildingPanel = _useState134[0],
     setBuildingPanel = _useState134[1]; /* 'shop'|'bank'|'enchant'|'cook'|'farm'|'party'|'exchange'|'forge'|'gemcut'|'woodwork' */
-  var _useState135 = useState(null),
-    _useState136 = _slicedToArray(_useState135, 2),
-    cookMinigame = _useState136[0],
-    setCookMinigame = _useState136[1]; /* {fishKey, fishName, healAmt, tier, started, result} */
-  var _useState137 = useState(0),
-    _useState138 = _slicedToArray(_useState137, 2),
-    cookTick = _useState138[0],
-    setCookTick = _useState138[1]; /* forces re-render for minigame animation */
-  React.useEffect(function () {
-    if (!cookMinigame || cookMinigame.result) return;
-    var id = setInterval(function () {
-      return setCookTick(function (t) {
-        return t + 1;
-      });
-    }, 50); /* 20fps animation */
-    return function () {
-      return clearInterval(id);
-    };
-  }, [cookMinigame === null || cookMinigame === void 0 ? void 0 : cookMinigame.started, cookMinigame === null || cookMinigame === void 0 ? void 0 : cookMinigame.result]);
+  /* v2.3.3481: the Cookhouse's fish game is gone (the owner: "Remove
+     cookhouse fish game"; CookPanel.jsx, NO FISH ARE COOKED HERE), and with
+     it its state here -- cookMinigame, and the 20 fps cookTick re-render that
+     moved its marker.  Fish are cooked at a campfire (the worker's
+     cook_request). */
   var _useState139 = useState(null),
     _useState140 = _slicedToArray(_useState139, 2),
     questPanel = _useState140[0],
@@ -2639,17 +2625,59 @@ export var BroTown = function BroTown(_ref0) {
     var sel = selId === opt.id;
     return /*#__PURE__*/React.createElement("button", {
       key: 's_' + opt.id, type: 'button', title: opt.name,
-      onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, sz)
+      /* v2.3.3481: the 2026-10-19 UI review -- a tab with no colour row now
+         gives its band to this grid (NameModal, .bt-cc-colors--yield), so the
+         first pick of a hat, hair or beard brings the row in and the strip
+         gets ~145px shorter; a tile tapped near the strip's foot would slide
+         under it.  After the pick has drawn, scroll THE STRIP (only) by what
+         the tile overhangs.  Arithmetic, not scrollIntoView, which can also
+         scroll the overflow:hidden creator itself (TRAPS §64).  The tapped
+         element is the one to keep: a picked tile has no class of its own
+         (its pick is only its background art). */
+      onClick: function (e) {
+        onSet(opt.id);
+        var b = e.currentTarget;
+        requestAnimationFrame(function () {
+          var s = b.parentNode;
+          if (!s) return;
+          var over = b.getBoundingClientRect().bottom - s.getBoundingClientRect().bottom;
+          if (over > 0) s.scrollTop += over + 4;
+        });
+      },
+      style: _apTileStyle(sel, sz)
     }, opt.id === 'none'
       /* v2.3.1307 (round-7): the dashed circle read as a missing asset /
          loading placeholder — the painted bald-head "none" icon with a
          tiny None caption replaces it. */
-      ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' } },
+      /* v2.3.3481: the 2026-10-19 UI review -- the picked "Human" tile read
+         "Huma" + the check: the check is PAINTED into cc-tile-on.png's
+         bottom-right corner, so it cannot be moved, and "Human" is wider than
+         "None".  On the species strip the caption goes ABOVE the icon, as
+         _buildTile's does for the same reason ("Averag" + the check); the check
+         then lands on the round icon's empty corner.  "None" tiles keep their
+         look.
+         v2.3.3481: and the Eyes strip the same: its 'none' is the bro's own
+         eyes, so it is captioned with its name, "Normal" (eyeStyleCatalog.js),
+         which is as wide as "Human" and goes above the icon for the same
+         reason. */
+      ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: (cat === 'species' || cat === 'eyestyle') ? 'column-reverse' : 'column', alignItems: 'center', justifyContent: 'center' } },
           /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/cc/cc-no-hair.webp?v=' + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
-          /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, cat === 'species' ? opt.name : "None"))   /* v2.3.2682: on the species strip 'none' is the Human */
-      : /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
-          onError: function (e) { _thumbFallback(e, cat, opt.id); },
-          style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
+          /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, (cat === 'species' || cat === 'eyestyle') ? opt.name : "None"))   /* v2.3.2682: on the species strip 'none' is the Human; v2.3.3481: on the Eyes strip, Normal */
+      /* v2.3.3481: the 2026-10-19 UI review -- the eye styles' tiles are
+         whole heads and shoulders (make_eyestyle_thumbs.py), so the eyes, the
+         one thing that differs, were a band ~6 CSS px tall and Sleepy read as
+         ordinary eyes.  On the Eyes strip only, the picture is drawn 1.7x
+         about the eyes (measured where the four thumbs differ: 38% across,
+         36-40% down) and clipped to the tile's panel; pixelated, so the scale
+         stays crisp.  The frame and every other strip are untouched. */
+      : cat === 'eyestyle'
+        ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden', borderRadius: 4 } },
+            /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
+              onError: function (e) { _thumbFallback(e, cat, opt.id); },
+              style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated', transform: 'scale(1.7)', transformOrigin: '38% 40%' } }))
+        : /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
+            onError: function (e) { _thumbFallback(e, cat, opt.id); },
+            style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
     null);   /* v2.3.2454: the check is painted into cc-tile-on.png */
   };
   /* v2.3.797: the collapsed-pill kit (_swOf/_miniThumb/_miniSwatch summary
@@ -3178,8 +3206,7 @@ export var BroTown = function BroTown(_ref0) {
     || showClanPanel || showGuildPanel || showFeedback || showPetHouse || showFurniture
     || showPlayerList || showDungeonCreator || showTrade || incomingTrade || trade2
     || duelRequest || threatIncoming || inspectPlayer || chatOpen || showEmotes || showInfo
-    || showIntro || showWelcome || showMayorGreeting || showTourPrompt || showNameModal
-    || cookMinigame);
+    || showIntro || showWelcome || showMayorGreeting || showTourPrompt || showNameModal);   /* v2.3.3481: `|| cookMinigame` went with the Cookhouse's fish game */
   stateRef.current._uiBusy = _anyPanelOpen;
   /* v2.3.2085: and out to the chrome mounted OUTSIDE this tree.  GameApp's
      WorldChatFeed has no path to this React state (its own comment says so),
@@ -8698,7 +8725,14 @@ export var BroTown = function BroTown(_ref0) {
             if (!S3._betsPaidOut) S3._betsPaidOut = {};
             S3._betsPaidOut[d.tournament.id] = true;
             var R3 = S3.rpg;
-            var myBets = ((R3 === null || R3 === void 0 ? void 0 : R3._arenaBets) || []).filter(function (b) {
+            /* v2.3.3481: the 2026-10-19 UI review -- this 3x payout is the
+               PAGE's own, for the old wells' page-only bets.  Against a worker
+               that settles stakes (caps.sponsor) those wells are not drawn
+               (PartyPanel's legacyBets) and the worker pays a real stake
+               itself (arena_stake_result), so nothing is paid here and no
+               "BET WON!" shows for a bet that did not exist.  The paid-out
+               mark above stays: the poll's fast/idle choice reads it. */
+            var myBets = (S3._serverCaps && S3._serverCaps.sponsor) ? [] : ((R3 === null || R3 === void 0 ? void 0 : R3._arenaBets) || []).filter(function (b) {
               return b.tournamentId === d.tournament.id;
             });
             if (myBets.length > 0) {
@@ -12588,8 +12622,13 @@ export var BroTown = function BroTown(_ref0) {
     className: "bt-inspect",
     /* v2.3.2826: the Blacksmith sits LOW with a light scrim, so the smith
        is seen working above it (game/smithing.js) -- every other building
-       keeps the centred modal. */
-    style: buildingPanel === 'forge' ? { alignItems: 'flex-end', background: 'rgba(8,12,14,.18)' } : undefined,
+       keeps the centred modal.
+       v2.3.3481: the 2026-10-19 UI review -- except the Gem Works, whose
+       two tabs are one window (GemWorksPanel.jsx): centred, the short Cut
+       gems card sat ~130 px lower than the tall Set gems one, so every tab
+       press moved the window.  Both start at the top now, where Set gems
+       already did. */
+    style: buildingPanel === 'forge' ? { alignItems: 'flex-end', background: 'rgba(8,12,14,.18)' } : (buildingPanel === 'gemcut' || buildingPanel === 'enchant') ? { alignItems: 'flex-start' } : undefined,
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
@@ -12642,7 +12681,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.3258: the Town Hall's rows -- the dashboard's Ranks page (More -> Leaderboard, as its tile opens it), and the Wheel's world map */
     onLeaderboard: function onLeaderboard() { setBuildingPanel(null); dashboardPanelBus.open('more'); dashboardPanelBus.push('leaderboard'); },
     onMap: function onMap() { setBuildingPanel(null); openWorldMap(); }
-  }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), /* v2.3.3258: the Saloon's door opens the Saloon -- where a party is formed (WheelHallPanel.jsx SaloonPanel) -- and the Gladiator Arena is its own window, 'arena', from the Sheriff's Office (the owner: "the gladiator arena is showing 'saloon' behind it") */
+  }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState /* v2.3.3481: no cookMinigame props -- the fish game is gone */ }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), /* v2.3.3258: the Saloon's door opens the Saloon -- where a party is formed (WheelHallPanel.jsx SaloonPanel) -- and the Gladiator Arena is its own window, 'arena', from the Sheriff's Office (the owner: "the gladiator arena is showing 'saloon' behind it") */
   buildingPanel === 'party' && /*#__PURE__*/React.createElement(SaloonPanel, { stateRef: stateRef, onPlayers: function onPlayers() { setBuildingPanel(null); setShowPlayerList(true); } }), buildingPanel === 'arena' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), (buildingPanel === 'gemcut' || buildingPanel === 'enchant') && /*#__PURE__*/React.createElement(GemWorksPanel, { tab: buildingPanel, onTab: setBuildingPanel, rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }) /* v2.3.3259: cut gems / set gems, one building */, /* v2.3.3258: the Land Office's window is a panel in the card now (it was a separate dialog under an empty card, panels/buildings/LandOfficePanel.jsx) */
   buildingPanel === 'farmhome' && /*#__PURE__*/React.createElement(LandOfficePanel, {
     onCancel: function onCancel() { return setBuildingPanel(null); },
@@ -13084,7 +13123,11 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       position: 'absolute',
       left: '50%',
-      top: '26%',
+      /* v2.3.3481: the 2026-10-19 UI review -- never higher than 150 px.  The
+         plate is placed by its MIDDLE, and on a sideways phone (390 px tall)
+         26% put its top under the 42 px top bar: "WELCOME" was cut in half.
+         Upright and on a computer 26% is already lower, so nothing moves. */
+      top: 'max(26%, 150px)',
       /* v2.3.1816: the fade starts 500ms before THIS banner's own hold
          ends — a fixed 1700ms here would have the long banners fade out and
          then sit invisible for two more seconds. */
@@ -13370,6 +13413,10 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.1914: live rpg, not the snapshot — one answer everywhere. */
     var done = DATA.questObjectiveDone(q, stateRef.current, rpgState);
     return /*#__PURE__*/React.createElement("div", {
+      /* v2.3.3481: the 2026-10-19 UI review -- the quest coach's card finds
+         this card by it, to step right of it when held sideways
+         (QuestCoach.jsx, the card's `left`). */
+      'data-quest-hud': '1',
       /* v2.3.1714: tap to fold the objective away, leaving just the title.
          onPointerDown stops the tap BEFORE it reaches the canvas — a bare
          onClick would fold the card and ALSO order the character to walk to
@@ -13475,7 +13522,11 @@ export var BroTown = function BroTown(_ref0) {
       var _st = null;
       try { _st = DATA.questSteps(q, rpgState, stateRef.current); } catch (e) { _st = null; }
       var _cur = _st && _st.find(function (x) { return x.current; });
-      return _cur ? 'Next: ' + _cur.label : q.desc;
+      /* v2.3.3481: the 2026-10-19 UI review -- and how many you hold, " (2/4)"
+         (gameSystems questCountText), from the LIVE rpg that `done` above
+         reads, so the count and the green check agree. */
+      return _cur ? 'Next: ' + _cur.label
+        : q.desc + DATA.questCountText(q, (stateRef.current && stateRef.current.rpg) || rpgState);
     }()));
   }(), null /* v2.3.1333: floating zone label retired — the zone name lives in the ZoneHeader rail (GameApp) */, function (_stateRef$current37, _ZONES$nearest$zone) {
     var dd = (_stateRef$current37 = stateRef.current) === null || _stateRef$current37 === void 0 ? void 0 : _stateRef$current37._deathDrops;
