@@ -221,6 +221,16 @@ export function updateSprint(S, now, f) {
 }
 
 /** Death, a respawn or a zone change: no sprint carries over. */
+/* v2.3.3475: a sprint that runs out of stamina is heard as the owner's grunt
+   and their tired breath TURN ABOUT -- the owner: "Maybe alternate between
+   grunt and tired breath" -- the first of a visit the grunt.  Counted on S, so
+   this stays pure; BroTown names both cues at its call, where the sound tests
+   read them.  True when this run-out is the breath's turn. */
+export function sprintOutBreathTurn(S) {
+  S._sprintRunOuts = (S._sprintRunOuts | 0) + 1;
+  return S._sprintRunOuts % 2 === 0;
+}
+
 export function clearSprint(S) {
   if (S && S._sprint) { S._sprint.on = false; S._sprint.moving = false; S._sprint.how = null; }
 }

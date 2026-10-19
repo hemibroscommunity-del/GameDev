@@ -139,6 +139,14 @@ Found on the way and fixed: the bag's **Drink** button called the browser's
 own window-close instead of the card's, so the card stayed open after a drink
 (and a tab the browser lets a script close could have closed the game).
 
+## Added in v2.3.3475: a tired breath
+
+A sprint that runs out of stamina takes turns: the owner's grunt, worn out
+(v2.3.3455), then their tired breath -- "Out of Breath Male", two breaths out
+with one in between -- then the grunt again. The owner: *"Maybe alternate
+between grunt and tired breath"*, then *"Here's the out of breath"*.
+`docs/specs/sprint.md` says how.
+
 ## Added in v2.3.3462 (the owner's recordings)
 
 The owner sent 21 recordings for the list below ("I have the rest of the
@@ -203,7 +211,6 @@ Get them from Pixabay, or Freesound as CC0 or CC BY. Never CC BY-NC.
 
 | Sound | For | Notes |
 |---|---|---|
-| **A tired breath** | a sprint running out of stamina, turn about with the grunt -- the owner, 2026-10-18: "Maybe alternate between grunt and tired breath" | until then running dry plays the owner's grunt alone, worn out (v2.3.3455); a breath made in code is out (v2.3.1103) |
 | **Creature voices** | each kind's idle, an "it noticed you" call and a hurt grunt | the fire goblin, the mummy's skeleton, the slimes and the snowman have one (v2.3.3340); the rock monster, thorn shambler, fishman, bog lurker, mire wisp and mummy still have none -- and so the Pebbling, Finling, Wisplet, Lurkling and Mumling pets come out without a voice |
 | **The other lands' air** | Frost Ridge, the Stone Hollows (cave drips), the Electric Foundry, the Water Caves, the Poison Forest | the Wind Dunes, the Verdant Wilds and the Flame Fields have theirs (v2.3.3462); one loop each, 10-20 s, goes under ZONE_AMBIENT |
 | **The town's buildings** | the Saloon's piano and chatter, the Old Mill's water wheel | the forge's anvil is done (v2.3.3434) |

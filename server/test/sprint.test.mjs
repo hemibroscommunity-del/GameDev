@@ -25,7 +25,8 @@
  *  10. WHAT THE OTHERS SEE (v2.3.3015): the tick's player carries `spr: 1`
  *      while a paid step is within WIRE_MS -- never on a marked move the
  *      worker did not pay for -- and a walking player's wire is unchanged;
- *      the client's push-off ('run' on a sprint's first stride) and dust.
+ *      the client's push-off ('run' on a sprint's first stride) and dust;
+ *      and (v2.3.3475) a run-out's grunt and tired breath, turn about.
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { SPRINT } from '../src/sprint.js';
@@ -384,6 +385,13 @@ async function run(n, step, gapMs, extra) {
   S.hitParticles.length = 0;
   C.sprintDust(S, 100, 200, 'lava', null, 1, 3);
   check('client: a ground it does not know is the dirt\'s', S.hitParticles.every((p) => C.SPRINT_DUST.dirt.includes(p.color)));
+
+  /* v2.3.3475: a sprint that runs dry is the owner's grunt and their tired
+     breath turn about, the first of a visit the grunt */
+  const ran = {};
+  const turns = [1, 2, 3, 4, 5].map(() => C.sprintOutBreathTurn(ran));
+  check('client: running dry takes turns -- the grunt first, then the tired breath, then the grunt again',
+    turns.join() === 'false,true,false,true,false' && ran._sprintRunOuts === 5, { turns, n: ran._sprintRunOuts });
 }
 
 Date.now = realNow;
