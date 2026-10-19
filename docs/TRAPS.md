@@ -7259,6 +7259,14 @@ the UI review's `--views=laptop` (tools/qa/ui-review/capture.mjs).
 answers a click at its middle, the picker has room, and the click takes a new
 bro into the game.
 
+**And again (v2.3.3479, the 2026-10-19 UI review):** the fix above covered the
+creator and missed the DRAWING EDITOR it opens: `.bt-paint`'s pane was
+`min(52vw,52vh,288px)`, so on a 1366 x 768 laptop it took 288 px and the panel
+wanted ~505 px in the 419 px column -- it scrolled sideways inside itself, Done
+off its edge. Its pane is `--cc-colw * .52` in the same computer block now;
+mp-deskreach 3b opens it there and clicks Done. Anything new drawn over the
+creator reads the column too.
+
 ## 215. "A lockout is a wrong key: answer 'auth'" (v2.3.3355)
 
 **Tempting:** five wrong keys for an id lock it out for a minute

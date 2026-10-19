@@ -5293,6 +5293,16 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
   .bt-cc-panel-title{font-size:clamp(11px,calc(var(--cc-colw) * .03),14px)}
   .bt-cc-tab-label{font-size:clamp(9px,calc(var(--cc-colw) * .026),12px)}
   .bt-cc-rot{width:clamp(34px,calc(var(--cc-colw) * .115),50px);height:clamp(34px,calc(var(--cc-colw) * .115),50px)}
+  /* v2.3.3479: the 2026-10-19 UI review -- and the DRAWING EDITOR the same.
+     Its pane was min(52vw,52vh,288px), the window again: on a 1366x768 laptop
+     that took the 288px ceiling and the panel wanted ~505px (14 + the side
+     column at .62 of the pane + 10 + the pane + 14) in the 419px column, so it
+     scrolled sideways inside itself with Done, Select, Mirror and "To front"
+     off its edge, and Done has no Esc.  52% of the COLUMN instead: 218px and a
+     ~391px panel at 1366x768, 255px in 491 at 1440x900, 204px (a phone's own
+     size) at 1280x720, still 288 at 1920x1080.  PlayerPaint renders inside
+     .bt-name-modal, so it inherits --cc-colw. */
+  .bt-paint{--paint-size:min(calc(var(--cc-colw) * .52),52vh,288px)}
 }
 @media (pointer:fine) and (min-width:1000px) and (max-height:720px) {
   .bt-cc-logo{width:min(calc(var(--cc-colw) * .30),140px)}
