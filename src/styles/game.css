@@ -2105,6 +2105,14 @@ body:has(.bt-pcard) [data-coach]{display:none}
 .bt-cc-col-left>.bt-cc-play,
 .bt-cc-col-left>.bt-cc-login,
 .bt-cc-col-left>div:last-child{position:relative;z-index:1}
+/* v2.3.3479: the 2026-10-19 UI review -- Back is only the word, a 30x34
+   press box.  An invisible ring makes it ~46x44 and changes nothing seen.  On
+   a short phone (4px gaps) it reaches 1px under ENTER BRO TOWN and into the
+   version row, but both sit on z-index:1 above it and keep their own taps,
+   and the version row is no control.  position:relative also puts Back above
+   the bro's scaled stage, as v2.3.1527 put every control under him. */
+.bt-cc-back{position:relative}
+.bt-cc-back::after{content:"";position:absolute;inset:-5px -8px}
 /* v2.3.803: menu goes ROW — vertical tab rail left, drawer right
    (owner: tabs span down vertically, the container expands to the
    right).
