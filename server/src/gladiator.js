@@ -65,7 +65,9 @@ export const ARENA = {
      ... an arena winner should be included" (2026-10-19).  Paid with the
      champion's gold, in the same credit (one write: inbox.js adds a gold
      credit's `ap`), whatever the bracket's size; `arenaap: false` in
-     liveflags pays none and un-advertises caps.arenaap (_arenaApOff). */
+     liveflags pays none and un-advertises caps.arenaap (_arenaApOff).
+     v2.3.3488: a character's FIRST win only (_arenaCrown, inbox.js AP_ONCE):
+     a later win pays the gold alone. */
   CHAMPION_AP: 500,
   MAX_BRACKET: 8,          // design review: 16 never fills at prototype population
   GATHER_MS: 60000,        // start timer from the first join
@@ -613,7 +615,17 @@ export const arenaMethods = {
     const t = this._arena;
     if (!t || t.champion) return;
     const { prize, topUp } = this._arenaPrize(t.players.length, Date.now());
-    const ap = this._arenaApOff() ? 0 : ARENA.CHAMPION_AP;   /* v2.3.3481 */
+    /* v2.3.3488: ...the FIRST time a character wins, never again -- the
+       owner: "I don't want anyone exploiting the achievement points from
+       it" (two accounts could take turns crowning each other).  A champion
+       already marked (ps.apOnce.arena, its own record aponce:<pid>) is
+       crowned with the gold alone, and
+       the credit carries `apOnce` so inbox.js pays the points only to a
+       character not yet marked, and marks it, in the gold's own write --
+       which also settles a prize that waits in the mail. */
+    const champPs = this.playerState[champion.playerId];
+    const hadAp = !!(champPs && (champPs._apOnceFailed || (champPs.apOnce && champPs.apOnce.arena)));   /* marks unread: none promised */
+    const ap = (this._arenaApOff() || hadAp) ? 0 : ARENA.CHAMPION_AP;   /* v2.3.3481 */
     t.champion = { playerId: champion.playerId, playerName: champion.playerName, prize };
     if (ap) t.champion.ap = ap;
     t.status = 'complete';
@@ -630,7 +642,7 @@ export const arenaMethods = {
         if (house) await this.state.storage.put('arena_house', house);
         /* v2.3.3481: the champion's AP ride the gold's credit -- one stamp,
            one write, the mail's too when the champion is away */
-        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: ap ? { amount: prize, ap } : { amount: prize }, note: 'Gladiator Arena champion' });
+        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: ap ? { amount: prize, ap, apOnce: 'arena' } : { amount: prize }, note: 'Gladiator Arena champion' });   /* v2.3.3488: + apOnce */
         for (const pid of entrants) await this.state.storage.delete('arena_entry:' + tid + ':' + pid);
       } catch (e) { /* sweep repairs */ }
     })();

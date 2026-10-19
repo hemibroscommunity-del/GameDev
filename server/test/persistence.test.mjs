@@ -233,5 +233,74 @@ check('reconnect restores the defense track', ps2.defenseSkill && ps2.defenseSki
   if (r7.tickInterval) { clearInterval(r7.tickInterval); r7.tickInterval = null; }
 }
 
+// ── 8. v2.3.3488: a once-a-character prize's mark, `aponce:<pid>` ──
+/* inbox.js marks the arena champion's points paid (ps.apOnce, AP_ONCE) and
+   _saveRpg writes the mark as its own record, in the same synchronous run as
+   the blob holding the points -- never a field of the blob (handoff rule 1). */
+{
+  const s8 = makeState();
+  const r8 = new GameRoom(s8, mockEnv);
+  const w8 = fakeWs('ap');
+  r8.sessions.set(w8, baseSession());
+  const join8 = async (ws) => {
+    r8.sessions.set(ws, baseSession());
+    await r8.webSocketMessage(ws, JSON.stringify({ type: 'join', id: 'bp_pt_ap', name: 'T', phrase: 'p-bp_pt_ap', data: { x: 0, y: 0, z: 'town' } }));
+  };
+  await join8(w8);
+  const p8 = r8.playerState.bp_pt_ap;
+  check('v2.3.3488: a new character holds no mark', !!p8 && !!p8.apOnce && Object.keys(p8.apOnce).length === 0 && !p8._apOnceFailed, p8 && p8.apOnce);
+  r8._applyCreditToPs(p8, { kind: 'gold', payload: { amount: 10, ap: 500, apOnce: 'arena' } }, 'bp_pt_ap');
+  const puts = [];
+  const put8 = s8.storage.put;
+  s8.storage.put = (k, v) => { puts.push(k); return put8(k, v); };
+  const saving = r8._saveRpg('bp_pt_ap', p8);
+  const sameRun = puts.slice();   /* what was issued before _saveRpg's first await */
+  await saving;
+  s8.storage.put = put8;
+  check('v2.3.3488: the mark and the blob are put in one synchronous run, the mark first',
+    sameRun.length === 2 && sameRun[0] === 'aponce:bp_pt_ap' && sameRun[1] === 'rpg:bp_pt_ap', sameRun);
+  const blob8 = s8._store.get('rpg:bp_pt_ap');
+  check('v2.3.3488: ...the record holds the mark, and the blob the points but no mark',
+    JSON.stringify(s8._store.get('aponce:bp_pt_ap')) === '{"arena":1}' && blob8.achievementPoints === 500
+      && !('apOnce' in blob8) && !('_apOnceDirty' in blob8) && !('_apOnceFailed' in blob8),
+    { mark: s8._store.get('aponce:bp_pt_ap'), keys: Object.keys(blob8).filter((k) => /ap/i.test(k)) });
+  const puts2 = [];
+  s8.storage.put = (k, v) => { puts2.push(k); return put8(k, v); };
+  await r8._saveRpg('bp_pt_ap', p8);
+  s8.storage.put = put8;
+  check('v2.3.3488: a save with nothing new to mark writes the blob alone', puts2.length === 1 && puts2[0] === 'rpg:bp_pt_ap', puts2);
+
+  /* a reconnect reads the mark before the mail is delivered: a champion's
+     prize that waited in the mailbox pays its gold and no points */
+  r8.webSocketClose(w8, 1000, 'bye', true);
+  delete r8.playerState.bp_pt_ap;
+  s8._store.set('inbox:bp_pt_ap', [{ kind: 'gold', payload: { amount: 250, ap: 500, apOnce: 'arena' }, note: 'arena', source: 'arena' }]);
+  const w8b = fakeWs('ap2');
+  await join8(w8b);
+  const p8b = r8.playerState.bp_pt_ap;
+  check('v2.3.3488: a reconnect loads the mark, and a waiting champion\'s prize pays its gold, no points',
+    !!p8b && p8b.apOnce && p8b.apOnce.arena === 1 && p8b.achievementPoints === 500 && p8b.coins === blob8.coins + 250 && !s8._store.get('inbox:bp_pt_ap'),
+    p8b && { mark: p8b.apOnce, ap: p8b.achievementPoints, coins: p8b.coins, was: blob8.coins });
+
+  /* a read that fails pays no once-points that session and never writes */
+  r8.webSocketClose(w8b, 1000, 'bye', true);
+  delete r8.playerState.bp_pt_ap;
+  const get8 = s8.storage.get;
+  s8.storage.get = async (k) => { if (String(k).startsWith('aponce:')) throw new Error('storage down'); return get8(k); };
+  const w8c = fakeWs('ap3');
+  await join8(w8c);
+  s8.storage.get = get8;
+  const p8c = r8.playerState.bp_pt_ap;
+  check('v2.3.3488: the mark unreadable at the join: no once-points that session', !!p8c && p8c._apOnceFailed === true && !p8c.apOnce.arena, p8c && { failed: p8c._apOnceFailed, mark: p8c.apOnce });
+  r8._applyCreditToPs(p8c, { kind: 'gold', payload: { amount: 5, ap: 500, apOnce: 'arena' } }, 'bp_pt_ap');
+  await r8._saveRpg('bp_pt_ap', p8c);
+  check('v2.3.3488: ...the gold paid, no points, and the stored mark never written over',
+    p8c.achievementPoints === 500 && JSON.stringify(s8._store.get('aponce:bp_pt_ap')) === '{"arena":1}', { ap: p8c.achievementPoints, mark: s8._store.get('aponce:bp_pt_ap') });
+
+  /* a character restart deletes the mark with the rest */
+  await r8._resetCharacterData('bp_pt_ap');
+  check('v2.3.3488: a character restart deletes aponce:<pid>', !s8._store.has('aponce:bp_pt_ap'), s8._store.get('aponce:bp_pt_ap'));
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
