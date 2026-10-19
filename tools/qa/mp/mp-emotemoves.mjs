@@ -43,7 +43,7 @@ async function fingerTap(P, sel) {
   await cdp.detach();
   return at;
 }
-/* v2.3.3476: YOUR figure is drawn this frame's camera remainder further on
+/* v2.3.3477: YOUR figure is drawn this frame's camera remainder further on
    (v2.3.3469, pixiRenderer.js "YOU STAY WHERE YOU WERE ON SCREEN": the world
    goes on whole device pixels and you are moved by what that took off, under
    half a device pixel), so its place in the world changes as the camera

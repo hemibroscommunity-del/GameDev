@@ -78,7 +78,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 2. AGAIN TOO SOON: HELD ON THE PHONE ── */
   a0 = await logLen(A);
-  /* v2.3.3476: "inside 5 s" of the last ask.  The waits above (both phones'
+  /* v2.3.3477: "inside 5 s" of the last ask.  The waits above (both phones'
      lines, the bubble, a picture) can take longer than that on a machine that
      draws a few frames a second (TRAPS §200), and then the second roll is
      rightly sent and rolled -- the sweep of 2026-10-19 saw "🎲 rolled 11".  So
