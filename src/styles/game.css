@@ -1163,6 +1163,15 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
    is up and comes back with it closed.  [data-quest-hud] marks the card's
    outer box. */
 body:has(.bt-plist) [data-quest-hud]{visibility:hidden}
+/* v2.3.3479: ...and the tutorial coach stands aside too, as it does for the
+   player card (.bt-pcard, below) and every window (THE QUEST COACH STANDS
+   ASIDE UNDER A WINDOW): sideways its bottom-anchored card is held to the
+   top left, the list's corner, and GEAR UP lay over "No other players
+   nearby".  Stepping the card right of the quest card (QuestCoach `left`)
+   does not cover it: that card may be folded narrower than the list, or not
+   there at all.  The lesson is kept and comes back when the list closes; no
+   lesson points into the list. */
+body:has(.bt-plist) [data-coach]{display:none}
 .bt-plist-item{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;
   border-bottom:1px solid rgba(255,255,255,.06);transition:background .1s}
 .bt-plist-item:active{background:rgba(216,168,95,.25)}
