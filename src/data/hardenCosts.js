@@ -67,6 +67,27 @@ export function hardenIsWood(w, slot) {
   return slot === 'rangedWeapon' || slot === 'staffWeapon';
 }
 
+/** v2.3.3485: the level hardening `w` (in `slot`) asks against
+    caps.forgeladder -- the owner: "Hardening should only require the same
+    smithing level as it takes to smithing that item tier".  The level that
+    MAKES its tier: its own row's minLvl, in the Woodworker's table for a `ww_`
+    gearBase (a pine bow 1, softwood 6 ...), the Blacksmith's for any other
+    (copper 1, iron 5, black steel 10 ...); a weapon whose gearBase names no
+    tier is ranked by tierMult (hardenTierOf) on the table of the bench that
+    makes its kind.  The worker's _hardenLevelFor (server/src/forgeladder.js),
+    held to it by mirror-audit.  Against an older worker the level is
+    hardenTierOf(w) x 5, as before. */
+export function hardenLevelFor(w, slot) {
+  const gb = w && typeof w.gearBase === 'string' ? w.gearBase : '';
+  const ww = gb.indexOf('ww_') === 0;
+  const mine = ww ? WOODWORKING_TIERS : BLACKSMITH_TIERS;
+  const key = ww ? gb.slice(3) : gb;
+  if (Object.keys(mine).indexOf(key) >= 0) return mine[key].minLvl;
+  const table = hardenIsWood(w, slot) ? WOODWORKING_TIERS : BLACKSMITH_TIERS;
+  const keys = Object.keys(table);
+  return table[keys[Math.min(Math.max(1, hardenTierOf(w)), keys.length) - 1]].minLvl;
+}
+
 /** The material a weapon of material tier `tierIdx` takes: its metal's bars,
     or for wood its wood's hardened wood (the worker's hardenMaterialFor). */
 export function hardenMaterialFor(tierIdx, wood) {
