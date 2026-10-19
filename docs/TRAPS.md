@@ -7896,3 +7896,30 @@ the capsule meets its circle. A new refusal added to the hit test is added to
 **Receipt:** the debug trace of 2026-10-19 (`frost-snowbank-e`, segD 4 and 0
 against 38.6, rock true twice), and `mp-sightrock`, which fails on the build
 before the gate and passes with it.
+
+## 237. "It is near the edge of the screen, so it is leaving" (v2.3.3489)
+
+**The plausible move.** A shot (or anything that flies) should end before it
+leaves the screen, so end it when its point comes within a margin of any edge.
+And whatever predicts the shot -- a fire gate, an aiming line -- keeps its own
+idea of how far it can go: the weapon's range.
+
+**Why it is wrong.** Near an edge is not leaving it. Where the camera stops at
+the world's edge, you can stand inside the margin, and every arrow loosed
+there came down at once, whichever way it flew: at a monster right in front of
+you, along the edge. And a prediction that knows only the range promises what
+the flight cannot deliver: the bow's gate counted a monster out to 675 px while
+an upright phone shows about 300 px to your side, so it fired at a monster off
+the screen, and every arrow came down at the edge, short of it. The line was
+drawn past every arrow.
+
+**The rule.** End a flight on the edge it is flying **toward**, measured along
+the flight (`arrowEdgeRoom`, src/game/arrowEdge.js). And whatever predicts it
+reads that one function: the gate counts a target only as far as the flight is
+sure to reach, and the line is drawn to where it comes down. A new limit on a
+flight goes in the function, not beside it.
+
+**Receipt:** `mp-hitreal`'s frost bow row, an arrow down at its shooter's feet
+by the map's east edge (`ground`, 431 ms); `mp-bowedge`, which fails on the
+build before the rule (0 damage by the edge, 3 arrows at a snowman off the
+screen) and passes with it.

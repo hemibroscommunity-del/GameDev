@@ -255,6 +255,54 @@ room._arena = null; room._arenaClearAt = 0;
     check('v2.3.3481: a gold credit pays its ap with the gold (a plain one and a negative one add none)',
       psX.coins === 107 && psX.achievementPoints === 507, psX);
   }
+  /* v2.3.3488: the champion's points a character's FIRST win only -- the
+     owner: "I don't want anyone exploiting the achievement points from it"
+     (two accounts could crown each other turn about).  The mark is
+     ps.apOnce.arena; the credit carries apOnce, and inbox.js decides where
+     it pays the gold, a mailed prize at the drain. */
+  {
+    const psA = room.playerState[P('a')], psB = room.playerState[P('b')];
+    check('v2.3.3488: the first win marked the champion (apOnce.arena)', !!psA.apOnce && psA.apOnce.arena === 1, psA.apOnce);
+    const markA = state._store.get('aponce:' + P('a')), rpgA = state._store.get('rpg:' + P('a'));
+    check('v2.3.3488: ...in its own record, aponce:<pid>, written with the save that holds the points (never a field of the rpg blob)',
+      !!markA && markA.arena === 1 && Object.keys(markA).length === 1 && !!rpgA && !('apOnce' in rpgA) && !('_apOnceDirty' in rpgA) && !('_apOnceFailed' in rpgA)
+        && rpgA.achievementPoints === psA.achievementPoints,
+      { markA, rpgKeys: rpgA && Object.keys(rpgA).filter((k) => /ap/i.test(k)), ap: rpgA && rpgA.achievementPoints });
+    const apA0 = psA.achievementPoints || 0;
+    const tAgain = await tour(P('a'), P('b'));
+    check('v2.3.3488: a second win pays the gold and no points, and its crown names none',
+      (psA.achievementPoints || 0) === apA0 && psA.coins > 1000 && !!tAgain && !!tAgain.champion && !('ap' in tAgain.champion)
+        && room.eventBuffer.some((e) => e.type === 'arena_tournament_complete' && e.payload.tid === tAgain.id && !('ap' in e.payload.champion)),
+      { ap: psA.achievementPoints, coins: psA.coins, champ: tAgain && tAgain.champion });
+    const apB0 = psB.achievementPoints || 0;
+    const tB = await tour(P('b'), P('a'));
+    check('v2.3.3488: ...while another character\'s first win still pays them, and marks it',
+      psB.achievementPoints === apB0 + ARENA.CHAMPION_AP && !!tB && tB.champion.ap === ARENA.CHAMPION_AP && !!psB.apOnce && psB.apOnce.arena === 1,
+      { ap: psB.achievementPoints, champ: tB && tB.champion, mark: psB.apOnce });
+    /* the mail: two champion prizes waiting for one character pay both
+       golds and the points once, decided as each is applied */
+    const psM = { coins: 0, achievementPoints: 0 };
+    room._applyCreditToPs(psM, { kind: 'gold', payload: { amount: 100, ap: 500, apOnce: 'arena' } }, 'bp_ap_once');
+    room._applyCreditToPs(psM, { kind: 'gold', payload: { amount: 100, ap: 500, apOnce: 'arena' } }, 'bp_ap_once');
+    check('v2.3.3488: two mailed champion prizes: both golds, the points once', psM.coins === 200 && psM.achievementPoints === 500 && psM.apOnce.arena === 1, psM);
+    /* a failed read of the mark pays no once-points that session: neither the
+       crown nor a waiting prize, and the record is never written over */
+    const psF = { coins: 0, achievementPoints: 0, apOnce: {}, _apOnceFailed: true };
+    room._applyCreditToPs(psF, { kind: 'gold', payload: { amount: 100, ap: 500, apOnce: 'arena' } }, 'bp_ap_failed');
+    check('v2.3.3488: the mark unreadable: the gold, no points, nothing to write',
+      psF.coins === 100 && psF.achievementPoints === 0 && !psF.apOnce.arena && !psF._apOnceDirty, psF);
+    const keepB = psB.apOnce;
+    psB.apOnce = {}; psB._apOnceFailed = true;
+    const apB1 = psB.achievementPoints || 0;
+    const tF = await tour(P('b'), P('a'));
+    check('v2.3.3488: ...and a champion whose mark was unreadable is crowned with the gold alone',
+      (psB.achievementPoints || 0) === apB1 && !!tF && !!tF.champion && !('ap' in tF.champion), { ap: psB.achievementPoints, champ: tF && tF.champion });
+    psB.apOnce = keepB; psB._apOnceFailed = false;
+    const psN = { coins: 0, achievementPoints: 0 };
+    room._applyCreditToPs(psN, { kind: 'gold', payload: { amount: 1, ap: 5, apOnce: '__proto__' } }, 'bp_ap_once2');
+    check('v2.3.3488: a name not on the list is no mark (paid as a plain credit; nothing written on a prototype)',
+      psN.achievementPoints === 5 && psN.apOnce === undefined && ({}).arena === undefined, psN);
+  }
   await tour(P('a'), P('b'));
   check('the next crown that hour takes the entries only', room.playerState[P('a')].coins === 900 + 200, room.playerState[P('a')].coins);
 

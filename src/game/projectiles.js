@@ -126,6 +126,17 @@ PROJ_BODY.magicBig = {
   front: PROJ_BODY.magicBolt.front * STAFF_BIG_BOLT_SCALE,
   half: PROJ_BODY.magicBolt.half * STAFF_BIG_BOLT_SCALE,
 };
+/* ═══ v2.3.3489: HOW FAR PAST WHERE IT COMES DOWN AN ARROW STILL HITS ═══
+   An arrow comes down short of the screen's edge (arrowEdge.js), and the gate
+   counts a monster only as far as the arrow is sure to reach (monsterCombat).
+   Its head leads its point by PROJ_BODY.arrow.front, and the last frame it is
+   tested on leaves its point within one 60 fps step of where it comes down --
+   ARROW_SPEED_PX x its range multiplier, the step this file takes -- so a
+   body that begins this far past that point is always met.  Negative for a
+   long-range bow, whose step outruns its head. */
+export function arrowSureReachPast(rangeMult) {
+  return PROJ_BODY.arrow.front - ARROW_SPEED_PX * (rangeMult > 0 ? rangeMult : 1);
+}
 /* ═══ v2.3.2473: THE HIT RADIUS, IN ONE PLACE ═══
  * Lifted verbatim out of the per-monster loop below so the BOW'S NEW SIGHT GATE
  * (firstSightHit, under this) can ask the same question the hit test answers.
@@ -856,6 +867,7 @@ import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/wo
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockShotPoint, torsoLift, monsterDrawScale /* v2.3.2845: aimed at, and landing round, the torso */, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */, STUCK_ARROW_MS, SCORCH_MS, scorchStyle, scorchGlow /* v2.3.2995 */, propHitHeight /* v2.3.3206: a hit on a prop is shown on the prop */ } from '@/game/combatHelpers.js';
 import { strikeWheelObject } from '@/game/wheelBreak.js'; /* v2.3.2995: the Wheel's objects take hits, break, and are mended */
 import { JUMP_OVER } from '@/game/jump.js'; /* v2.3.3206: what you can jump, a shot flies over */
+import { arrowEdgeRoom } from '@/game/arrowEdge.js'; /* v2.3.3489: where an arrow comes down at the screen's edge */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.3206: a duel target's ground is under its boots */
 import { arrowSnaps } from '@/data/arrowSnap.js'; /* v2.3.2731: one arrow in eight breaks on what it hits */
 import { BOW_VOLLEY, burnT0, burnLifeMs, volleyRested, volleyBurns, volleyShoves } from '@/game/bowVolley.js'; /* v2.3.2848: the special's three arrows share one train, one burn and one shove; v2.3.2849: + its burn length */
@@ -1472,12 +1484,12 @@ export function updateArrows(S, deps) {
                max flight distance, begin the downward plant rather than flying
                on forever. camera.x/y is the viewport top-left in world coords. */
             if (!a.isStaff && _released) {
-              var _edge = false;
-              if (typeof S._viewW === 'number' && typeof S._viewH === 'number' && S.camera) {
-                var _em = 24;
-                _edge = a._renderX < S.camera.x + _em || a._renderX > S.camera.x + S._viewW - _em
-                     || a._renderY < S.camera.y + _em || a._renderY > S.camera.y + S._viewH - _em;
-              }
+              /* v2.3.3489: 24 px of flight short of the edge it is flying
+                 TOWARD (arrowEdge.js) -- it was within 24 px of ANY edge, so an
+                 arrow loosed with the bow already in that band came down at
+                 once, at a monster right in front of you; the gate and the
+                 aiming line read the same rule from the grip (monsterCombat) */
+              var _edge = arrowEdgeRoom(S.camera, S._viewW, S._viewH, a._renderX, a._renderY, a.ang) <= 0;
               /* v2.3.1335 (owner): bow range -25% (900 -> 675). */
               if (_edge || a.dist > BOW_RANGE_PX * (a._rangeMult || 1)) {   /* v2.3.2448: named, and the sight stream draws to the same number */
                 a.planting = true;
