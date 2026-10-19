@@ -228,7 +228,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
            redirects 'bag' -> 'dashboard' in landscape, since the bag pane is
            portrait-only (the v2.3.2173 tourniquet). So the button lands on
            the bag upright and on the dashboard sideways, and asserting "bag"
-           in both would be asserting against the app. */
+           in both would be asserting against the app.
+           v2.3.3481 (the 2026-10-19 UI review): upright it lands where the
+           Dashboard button lands, the band AT REST and unfolded (mode 'bar',
+           the fold chip 'open'), whose four-across bag is the one a player
+           knows; open('bag') was the retired expanded page, five across.
+           Sideways it is the dashboard column, as before. */
         const listTap = await H.clickText(P, 'List an Item').then(() => null).catch((e) => String(e).slice(0, 120));
         if (listTap) {
           const b = P.page.locator('button:has-text("List an Item")').first();
@@ -239,17 +244,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const landed = await P.page.evaluate(() => {
           const b = window.__broDashPanelBus;
           const insp = document.querySelector('.bt-inspect');
+          const fold = document.querySelector('[data-dash-fold]');
           return {
             storeShut: !insp,
             inspectText: insp ? (insp.innerText || '').slice(0, 80) : null,
             root: b ? b.root() : null,
             mode: b ? b.state.mode : null,
+            fold: fold ? fold.getAttribute('data-dash-fold') : null,
           };
         });
-        const wantRoot = orient === 'landscape' ? 'dashboard' : 'bag';
         rec.ok(`${who}: "List an Item" closes the store`, landed.storeShut, landed);
-        rec.ok(`${who}: ...and opens the ${wantRoot} pane, where selling starts`,
-          landed.root === wantRoot && landed.mode === 'expanded', landed);
+        if (orient === 'landscape') {
+          rec.ok(`${who}: ...and opens the dashboard column, where selling starts`,
+            landed.root === 'dashboard' && landed.mode === 'expanded', landed);
+        } else {
+          rec.ok(`${who}: ...and rests the band unfolded on its bag, where selling starts`,
+            landed.mode === 'bar' && landed.fold === 'open', landed);
+        }
 
         /* back to a clean slate for the next orientation */
         await P.page.evaluate(() => {

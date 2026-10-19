@@ -230,14 +230,26 @@ function Header({ kind, e, n, n2, elder }) {
    and "‹ All monsters", which was a 40 px row of its own above the header,
    is its first button.  `reveal` keeps what a tap brings up just under it. */
 const TABS = [['drops', 'Drops'], ['info', 'Info'], ['locations', 'Locations']];
+/* ═══ v2.3.3481: THE WAY BACK SAYS SO, WHERE IT FITS (the 2026-10-19 UI review) ═══
+   The bar's first button was a bare "‹" -- its words only in its aria-label
+   and tooltip, so a finger never saw them, while Life Skills says "‹ All
+   skills".  Where the bar has the room it says "‹ All monsters" (~95 px), and
+   the three tabs share the rest; its height, so the pinned bar, the stage's
+   fit and where a tap lands, is unchanged.  The room is the point: on a
+   320 px phone, or in the sideways column, the words would leave each tab
+   ~65 px, under "Locations" with a button's own padding (~73), so those keep
+   the 38 px "‹" -- at 350 px and up each tab keeps ~75 px or more. */
+const BACK_WORDS_MIN_VW = 350;
 function Tabs({ tab, setTab, onBack }) {
+  const words = panelVw() >= BACK_WORDS_MIN_VW;
   return (
     <div data-cx-tabbar className="bt-cx-tabbar"
-      style={{ position: 'sticky', top: -4, zIndex: 3, display: 'grid', gridTemplateColumns: '38px repeat(3, minmax(0, 1fr))', gap: 5,
+      style={{ position: 'sticky', top: -4, zIndex: 3, display: 'grid', gridTemplateColumns: (words ? 'auto' : '38px') + ' repeat(3, minmax(0, 1fr))', gap: 5,
         padding: '3px 0 4px', margin: '0 0 2px' }}>
       <button onClick={onBack} data-cx-back aria-label="All monsters" title="All monsters"
-        style={{ minHeight: 34, borderRadius: 9, fontFamily: 'inherit', fontSize: 22, fontWeight: 800, lineHeight: 1, cursor: 'pointer', touchAction: 'manipulation',
-          border: '1px solid rgba(229,237,233,.18)', color: COL.accent, background: 'rgba(11,22,27,.45)', padding: 0 }}>‹</button>
+        style={{ minHeight: 34, borderRadius: 9, fontFamily: 'inherit', fontSize: words ? 12.5 : 22, fontWeight: 800, lineHeight: 1, cursor: 'pointer', touchAction: 'manipulation',
+          border: '1px solid rgba(229,237,233,.18)', color: COL.accent, background: 'rgba(11,22,27,.45)', padding: words ? '0 9px' : 0,
+          whiteSpace: 'nowrap' }}>{words ? '‹ All monsters' : '‹'}</button>
       {TABS.map(([id, label]) => {
         const on = tab === id;
         return (
@@ -322,37 +334,59 @@ function Dice({ h = 12 }) {
 }
 function DropsTab({ rows, sel, onPick, shared }) {
   const free = codexRollFreeFrom(rows, shared);
+  /* ═══ v2.3.3481: SIDEWAYS, THE NAME GETS THE MIDDLE (the 2026-10-19 UI review) ═══
+     In the side column (~190 px inside a row) the five tracks' fixed parts
+     -- picture 26, type 52, roll 64 and the gaps -- left the name and the
+     bar ~25 px between them: "Gold 5–18" wrapped a letter a line and
+     "Snowman Remnants" stood as a tall column.  There, and only there (the
+     grid's own `narrow` test), a row is three tracks: the picture, ONE
+     middle cell -- the name over the type and the bar -- and the roll.  The
+     name gets ~90 px (one or two lines), the stripes, the black panel, the
+     bars out of 100% and the exact roll ranges are as before; upright and
+     on a computer nothing changes. */
+  const narrow = panelVw() < 300;
+  const cols = narrow ? `26px minmax(0, 1fr) ${ROLL_W}px` : COLS;
   return (
     <div data-cx-drops={rows.length}>
       <div data-cx-drops-panel style={{ background: TABLE_BG, border: '1px solid rgba(229,237,233,.18)', borderRadius: 10, overflow: 'hidden',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,.04)' }}>
-      <div data-cx-drops-head style={{ display: 'grid', gridTemplateColumns: COLS, gap: 6, alignItems: 'center', padding: '4px 9px 3px', background: HEAD_BG,
+      <div data-cx-drops-head style={{ display: 'grid', gridTemplateColumns: cols, gap: 6, alignItems: 'center', padding: '4px 9px 3px', background: HEAD_BG,
         borderBottom: '1px solid rgba(229,237,233,.14)', ...SECTION, fontSize: 11, color: '#CBD5D2' }}>
         <span style={{ gridColumn: '1 / span 2' }}>Item</span>
-        <span>Type</span>
-        <span data-cx-roll-head style={{ gridColumn: '4 / span 2', justifySelf: 'end', display: 'inline-flex', alignItems: 'center', gap: 5 }}><Dice h={12} />Roll</span>
+        {narrow ? null : <span>Type</span>}
+        <span data-cx-roll-head style={{ gridColumn: narrow ? '3' : '4 / span 2', justifySelf: 'end', display: 'inline-flex', alignItems: 'center', gap: 5 }}><Dice h={12} />Roll</span>
       </div>
       <div style={{ padding: 2 }}>
         {rows.map((r, i) => {
           const on = sel === r.id;
           const w = barWidth(r.chance);
+          const name = (
+            <span data-cx-name-cell style={{ minWidth: 0, fontSize: 13.5, fontWeight: 700, lineHeight: 1.1, color: r.color || COL.text, overflowWrap: 'anywhere' }}>
+              {r.name}{r.amount ? <span style={{ color: '#B3BEBB', fontWeight: 600 }}> {r.amount}</span> : null}
+            </span>
+          );
+          const type = <span data-cx-type style={{ fontSize: 12.5, color: '#CBD3D0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.type}</span>;
+          const bar = (
+            <span data-cx-bar-track style={{ height: 8, borderRadius: 4, background: 'rgba(229,237,233,.18)', overflow: 'hidden', ...(narrow ? { flex: 1, minWidth: 24 } : null) }}>
+              <span data-cx-bar-fill style={{ display: 'block', width: w + '%', minWidth: w > 0 ? 2 : 0, height: '100%', borderRadius: 4, background: BAR }} />
+            </span>
+          );
           return (
             /* v2.3.3215: 42 -> 34 px a row, what the roll over its chance
                needs (a two-line name takes 36) -- the owner: "display more
                data without needing to scroll down so much" */
             <button key={r.id} onClick={() => onPick(r.id)} data-cx-drop={r.id} data-cx-sel={on ? 1 : 0} data-cx-who={r.who} data-cx-bar={w}
-              style={{ display: 'grid', gridTemplateColumns: COLS, gap: 6, alignItems: 'center', width: '100%', minHeight: 34, padding: '2px 6px',
+              style={{ display: 'grid', gridTemplateColumns: cols, gap: 6, alignItems: 'center', width: '100%', minHeight: 34, padding: '2px 6px',
                 fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer', touchAction: 'manipulation', color: COL.text, borderRadius: 7,
                 background: on ? 'rgba(216,170,88,.16)' : i % 2 ? STRIPE : 'transparent',
                 border: '1px solid ' + (on ? COL.accent : 'transparent') }}>
               <img src={r.icon} alt="" draggable={false} style={{ width: 26, height: 26, objectFit: 'contain' }} />
-              <span data-cx-name-cell style={{ minWidth: 0, fontSize: 13.5, fontWeight: 700, lineHeight: 1.1, color: r.color || COL.text, overflowWrap: 'anywhere' }}>
-                {r.name}{r.amount ? <span style={{ color: '#B3BEBB', fontWeight: 600 }}> {r.amount}</span> : null}
-              </span>
-              <span data-cx-type style={{ fontSize: 12.5, color: '#CBD3D0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.type}</span>
-              <span data-cx-bar-track style={{ height: 8, borderRadius: 4, background: 'rgba(229,237,233,.18)', overflow: 'hidden' }}>
-                <span data-cx-bar-fill style={{ display: 'block', width: w + '%', minWidth: w > 0 ? 2 : 0, height: '100%', borderRadius: 4, background: BAR }} />
-              </span>
+              {narrow ? (
+                <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {name}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>{type}{bar}</span>
+                </span>
+              ) : <>{name}{type}{bar}</>}
               <span data-cx-roll-cell style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 0, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                 <span data-cx-roll={r.from ? r.from + '-' + r.to : 'always'} style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.1, color: '#FFFFFF' }}>{rollRange(r) || 'Always'}</span>
                 <span data-cx-pct style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.1, color: '#B3BEBB' }}>({r.pct})</span>

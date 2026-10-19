@@ -420,7 +420,9 @@ key is restored) and the storage-key registry.
 `node tools/qa/mp/run.mjs eyestyle` — 42 assertions, all green, against a real
 worker and a real Chromium. What it establishes, beyond the guards:
 
-- all four styles are in the Eyes tab, with `None` first;
+- all four styles are in the Eyes tab, with `None` first (the tile named
+  "Normal" since v2.3.3481, the 2026-10-19 UI review: "None" said the bro had
+  no eyes; its id is still `none`);
 - the eye-**colour** row is live while the style is `None`;
 - the eye row is located by diffing two eye colours — the game's own answer to
   "where are the eyes", not a fraction of a bounding box (TRAPS §89) — and each

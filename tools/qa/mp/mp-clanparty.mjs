@@ -13,10 +13,10 @@
  *      socket was told the same (party_state, `fromClan`);
  *   3. the Saloon's Alliance part: "[GOLD] Gold Clan", "Your clan is this
  *      party now", its count toward 20;
- *   4. the dashboard's Clan page: the party's tag, and Find a party opens the
+ *   4. the dashboard's Clan page: the party's tag, and Invite a player opens the
  *      player list;
  *   5. the Guild Hall says "Clans are parties now", its row opens the clan
- *      window's word on it, and that window's Find a party opens the player
+ *      window's word on it, and that window's Invite a player opens the player
  *      list;
  *   6. no new clans: the friend's clan_create is answered "Clans are parties
  *      now";
@@ -196,7 +196,7 @@ async function runIt({ browser, wsPort, webPort, rec }) {
   await shot(A, '4-dash');
   await tap(A, '[data-dash-find-party]');
   const plist1 = await until(async () => A.page.evaluate(() => !!document.querySelector('.bt-plist')), 6000);
-  rec.ok('4. ...its Find a party opens the player list', !!plist1);
+  rec.ok('4. ...its Invite a player opens the player list', !!plist1);
   await A.page.evaluate(() => { if (window._uiPanels && window._uiPanels.playerList) window._uiPanels.playerList(false); });
   await A.page.waitForTimeout(400);
 
@@ -211,7 +211,7 @@ async function runIt({ browser, wsPort, webPort, rec }) {
   await shot(A, '5-clanwindow');
   await tap(A, '[data-clanparty-find]');
   const plist2 = await until(async () => A.page.evaluate(() => !!document.querySelector('.bt-plist') && !document.querySelector('[data-panel="clan"]')), 6000);
-  rec.ok('5. ...and its Find a party opens the player list (the window closing)', !!plist2);
+  rec.ok('5. ...and its Invite a player opens the player list (the window closing)', !!plist2);
   await A.page.evaluate(() => { if (window._uiPanels && window._uiPanels.playerList) window._uiPanels.playerList(false); });
 
   /* ── 6. no new clans ── */

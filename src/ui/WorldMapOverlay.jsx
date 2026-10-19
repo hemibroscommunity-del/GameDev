@@ -185,6 +185,9 @@ function WorldMap({ stateRef, onClose }) {
   const [zoomShown, setZoomShown] = useState([1, 1]);
   /* v2.3.3277: the key says "party" while one of yours is on the map */
   const [partyShown, setPartyShown] = useState(false);
+  /* v2.3.3481: the canvas's size in CSS px, for the key's width (below);
+     set by the draw loop, so a turn of the phone moves the key too */
+  const [cvBox, setCvBox] = useState(null);
 
   /* v2.3.3250: presence v2 (src/game/presence2.js) -- the worker sends the far
      players only while this map is open: say so now, keep saying so, and say
@@ -223,6 +226,7 @@ function WorldMap({ stateRef, onClose }) {
       if (!dirty.current && pk === lastP && t - last < 120) return;
       lastP = pk; last = t; dirty.current = false;
       const { w, h, dpr } = size();
+      setCvBox((o) => (o && o.w === w && o.h === h ? o : { w, h }));
       const out = draw(cv.getContext('2d'), w, h, dpr, map, V, P, S && S._renderFacing, t, S);
       const here = P ? wheelHere(P.x, P.y) : null;
       const words = here && here.words ? `${here.words.title}${here.words.sub ? ` · ${here.words.sub}` : ''}` : '';
@@ -315,6 +319,15 @@ function WorldMap({ stateRef, onClose }) {
   };
   const zoomBtn = (f) => { const cv = cvRef.current; if (cv) zoomAt(f, cv.clientWidth / 2, cv.clientHeight / 2); };
 
+  /* v2.3.3481: the 2026-10-19 UI review -- sideways the key, one row ~490 px
+     wide, ran on across the Wheel's south end and its gate: the Wheel is
+     drawn square, 0.96 x the canvas's height, in the middle (baseScale), and
+     the key sat on top of it.  On a canvas wider than tall the key keeps to
+     the empty margin left of the Wheel (8 px clear of it, never under 150 px)
+     and wraps into rows there; upright it is as it was. */
+  const keyMaxW = cvBox && cvBox.w > cvBox.h
+    ? Math.max(150, Math.floor((cvBox.w - 0.96 * cvBox.h) / 2) - 18)
+    : 'calc(100% - 90px)';
   const btn = { appearance: 'none', width: 46, height: 46, borderRadius: 10, border: '1px solid rgba(216,170,88,0.55)', background: 'rgba(17,30,35,0.92)',
     color: INK, fontSize: 22, fontWeight: 700, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', touchAction: 'manipulation' };
   return (
@@ -353,7 +366,7 @@ function WorldMap({ stateRef, onClose }) {
           <button type="button" aria-label="Zoom out" data-world-map-zoom-out="" onClick={() => zoomBtn(1 / 1.6)} style={btn}>−</button>
           <button type="button" aria-label="Back to you" data-world-map-me="" onClick={centreOnMe} style={{ ...btn, fontSize: 18 }}>◎</button>
         </div>
-        <div style={{ position: 'absolute', left: 10, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', display: 'flex', flexWrap: 'wrap', gap: '4px 10px', maxWidth: 'calc(100% - 90px)',
+        <div style={{ position: 'absolute', left: 10, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', display: 'flex', flexWrap: 'wrap', gap: '4px 10px', maxWidth: keyMaxW,
           padding: '6px 9px', borderRadius: 8, background: 'rgba(17,30,35,0.85)', color: INK, fontSize: 11 }}>
           <Key shape="square" color={INK}>town</Key>
           <Key shape="tri" color={KIND.camp.color}>camp</Key>

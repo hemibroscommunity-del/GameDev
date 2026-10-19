@@ -127,6 +127,16 @@ async function unfoldBand(P) {
   if (st.v === 'min') { const e = await tapSel(P, st.sel); if (e) return e; await wait(P, 900); }
   return null;
 }
+/* v2.3.3481 (the 2026-10-19 UI review): the bag a PLAYER sees -- upright and
+   on a computer the band at rest, unfolded (four across, BAG_VIEW_COLS);
+   sideways the dashboard column.  open('bag') was the retired expanded bag
+   page, which no button opens (v2.3.1654) and which fits five across at 390
+   px: the review read its five columns as the game's bag. */
+async function openBag(P, view) {
+  if (view.id === 'landscape') return bus(P, 'open', 'dashboard');
+  await evalIn(P, () => { if (window.__broDashPanelBus) window.__broDashPanelBus.toBar(); });
+  return unfoldBand(P);
+}
 const S_ = (P, fn) => H.readState(P, fn);
 
 /* Stand somewhere in the Wheel by walking there in hops the worker accepts
@@ -231,6 +241,47 @@ async function sparCloneId(P, timeout = 9000) {
   return null;
 }
 
+/* v2.3.3481: a sword in your hand and a shield on your arm, as a player arms
+   (the 2026-10-19 UI review, p11/spar-fight #1).  The Reviewer never put on
+   the sword and shield tut_1 gives (both phone views' controls read "Weapon:
+   Fists"), and with no weapon in hand the Special button stays away
+   (SpecialButton.jsx specialButtonLive), with no shield on the arm the Shield
+   button (shieldToggle.js shieldButtonLive) -- the fight's two buttons the
+   screen is about.  The quest's own pieces when the bag holds them (a full
+   run accepts tut_1 at quest-accepted), else the test panel's kit (a
+   `--only` retake).  The sword through the game's own equip_request
+   (harness equipWeapon); the shield the bag's way (ItemDetailPopup
+   onEquipStashShield: off the stash onto the arm, and the worker told which,
+   as shieldWear.js syncShieldWorn tells it). */
+async function armForFight(P, wsPort, myId) {
+  let r = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null);
+  if (!r || !r.ok) {
+    await H.devOp(wsPort, 'kit', myId, { what: 'weapons' }).catch(() => {});
+    for (let i = 0; i < 24 && !(r && r.ok); i++) {
+      await wait(P, 250);
+      r = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null);
+    }
+  }
+  const onArm = () => evalIn(P, () => {
+    const S = window._gameState.current, R = S && S.rpg;
+    if (!R) return false;
+    if (R.shield) return true;
+    if (!Array.isArray(R.shieldStash) || !R.shieldStash.length) return false;
+    const sh = R.shieldStash.shift();
+    R.shield = sh;
+    if (S.channel && S._serverCaps && S._serverCaps.shieldwear) {
+      const payload = (typeof sh.gid === 'string' && sh.gid) ? { gid: sh.gid }
+        : { sig: [sh.name || '', sh.gearBase || '', sh.tierMult == null ? '' : sh.tierMult, sh.tier || ''].join('|') };
+      try { S.channel.send({ type: 'shield_wear', payload }); } catch (e) { /* the next change reports it */ }
+    }
+    return true;
+  });
+  if (!(await onArm())) {
+    await H.devOp(wsPort, 'kit', myId, { what: 'shield' }).catch(() => {});
+    for (let i = 0; i < 24 && !(await onArm()); i++) await wait(P, 250);
+  }
+}
+
 export const STATES = [
   /* ═══ BEFORE THE WORLD ═══ */
   {
@@ -302,7 +353,9 @@ export const STATES = [
   /* ═══ ARRIVING ═══ */
   {
     id: 'welcome', group: 'Arriving in BroTown', title: 'Welcome, first seconds in the world',
-    about: 'A brand-new character just arrived in BroTown: the welcome plate (with Skip tutorial) and the first coach card, over the world with the dashboard folded.',
+    /* v2.3.3481: no coach card -- none is shown over the welcome plate, and the
+       review plays as a player who skipped the tutorial (capture.mjs) */
+    about: 'A brand-new character just arrived in BroTown: the welcome plate (with Skip tutorial) over the world with the dashboard folded.  The review then plays on as a player who pressed Skip tutorial, so no tutorial coach card is in the screens after this one.',
     settle: 400,
     run: async ({ P }) => {
       for (let i = 0; i < 40; i++) {
@@ -408,9 +461,17 @@ export const STATES = [
     about: 'The Character page on its Points tab: spending points on each weapon skill and on the character.',
     run: async ({ P }) => {
       await bus(P, 'open', 'hero');
-      await wait(P, 500);
-      const e = await clickText(P, /^points$/i, DASH);
+      /* v2.3.3481 (the 2026-10-19 UI review): the computer's picture showed
+         the Equipment tab.  Opening from the folded band is two renders and a
+         220 ms rise, and 500 ms on the software-drawn 2880 x 1800 page measured
+         the tab mid-rise, so the press landed on the bars under it.  Wait the
+         rise out, press the tab by its id (its words are the owner's copy),
+         and check it took: a miss is SKIPPED, never the wrong picture. */
+      await wait(P, 900);
+      const e = await tapSel(P, '[data-section="Build"]');
       if (e) return e;
+      await wait(P, 400);
+      if (!(await has(P, '[data-section="Build"][aria-pressed="true"]'))) return 'the Points tab did not take the press';
     },
   },
   dash('quests', 'Quests', 'The quest log: active quests with progress, the daily rewards card.'),
@@ -428,11 +489,24 @@ export const STATES = [
   {
     id: 'dash-skill-detail', group: 'Dashboard', title: 'A life skill in detail',
     about: 'One life skill opened: what it unlocks at each level, the XP it pays, each hit\'s odds.',
+    /* v2.3.3481: the 2026-10-19 UI review -- the laptop's picture was the
+       ten-skill list, not the detail: the press went in while the band was
+       still unfolding (the last view of a run on a box drawing a few frames a
+       second) and landed on empty band, and the state said it had worked.  So
+       it checks for the detail's "‹ All skills", presses once more if it is
+       not there, and skips the picture if it still is not. */
     run: async ({ P }) => {
       await bus(P, 'open', 'skills');
       await wait(P, 600);
-      const e = await clickText(P, /^(mining|woodcutting|fishing)\b/i, DASH);
-      if (e) return e;
+      const backSel = DASH.split(',').map((s) => s.trim() + ' button').join(', ');
+      for (let k = 0; k < 2; k++) {
+        const e = await clickText(P, /^(mining|woodcutting|fishing)\b/i, DASH);
+        if (e) return e;
+        await wait(P, 500);
+        const open = await evalIn(P, (s) => Array.from(document.querySelectorAll(s)).some((b) => /all skills/i.test(b.innerText || '')), backSel);
+        if (open) return;
+      }
+      return 'the skill detail did not open';
     },
   },
   dash('encyclopedia', 'Codex', 'The Monster Codex: a card for each kind of monster, opened by the first kill.'),
@@ -461,7 +535,8 @@ export const STATES = [
     id: 'dash-bag', group: 'Dashboard', title: 'Bag',
     about: 'The bag: everything you carry, filtered by kind; a tap on an item opens its card.',
     run: async ({ P, view }) => {
-      await bus(P, 'open', view.id === 'landscape' ? 'dashboard' : 'bag');
+      const e = await openBag(P, view);
+      if (e) return e;
       await wait(P, 600);
     },
   },
@@ -469,7 +544,8 @@ export const STATES = [
     id: 'item-card', group: 'Dashboard', title: 'An item card',
     about: 'A bag item opened: its picture, what it is, and its buttons (use, equip, sell, drop...).',
     run: async ({ P, view }) => {
-      await bus(P, 'open', view.id === 'landscape' ? 'dashboard' : 'bag');
+      const e0 = await openBag(P, view);
+      if (e0) return e0;
       await wait(P, 700);
       const e = await tapSel(P, '[data-bag-key]');
       if (e) return e;
@@ -625,7 +701,15 @@ export const STATES = [
       if (!node) return 'no tree near';
       (ctx.used = ctx.used || []).push(node.id);
       ctx.node = node;
-      await H.hopTo(P, node.x, node.y - 130);
+      /* v2.3.3481: the 2026-10-19 UI review read "Pine Log over empty grass,
+         no tree": 130 px NORTH of the node stood the bro behind the trunk,
+         under the crown, and a tree whose crown covers you is drawn see-through
+         (0.42, tierTrees.js behindTree) -- a green pine on green grass all but
+         gone in a JPEG.  In front of the trunk instead, as a player walking up
+         from the south stands: the woodcutter's own side of it, inside the reach
+         the next screen chops from (a tier-1 tree's reach box, BroTown
+         nodeReachDist), the boots south of its foot. */
+      await H.hopTo(P, node.x - 60, node.y + 10);
       await wait(P, 1500);
     },
   },
@@ -670,6 +754,7 @@ export const STATES = [
     settle: 2500,
     run: async ({ P, wsPort, myId }) => {
       await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
+      await armForFight(P, wsPort, myId);   /* v2.3.3481: so Special and Shield can come up */
       const r = await H.devOp(wsPort, 'spar', myId, { add: 'sword', skill: 'easy' }).catch((e) => ({ error: String(e) }));
       if (r && r.ok === false) return 'no clone: ' + (r.error || JSON.stringify(r));
       await wait(P, 3000);
@@ -680,9 +765,15 @@ export const STATES = [
         const S = window._gameState.current;
         const o = S.others && S.others[cid];
         if (o) S.lockedTarget = { type: 'player', id: cid, ref: o, spar: true };
+        /* v2.3.3481: and hold Attack, as a thumb on the button does, so the
+           blows land in the picture: the clone's HP bar shows only once it is
+           hurt, and the numbers only with a blow (the review's picture had
+           neither -- the bro never swung) */
+        S.autoAttack = true;
       }, id);
     },
     after: async ({ P, wsPort, myId }) => {
+      await evalIn(P, () => { const S = window._gameState.current; if (S) S.autoAttack = false; }).catch(() => {});   /* v2.3.3481 */
       await H.devOp(wsPort, 'spar', myId, { clear: true }).catch(() => {});
       await wait(P, 1000);
     },

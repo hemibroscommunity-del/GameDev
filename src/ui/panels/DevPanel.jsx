@@ -232,6 +232,8 @@ const CAP_GATES = [
   'pethouse' /* v2.3.3123: more room in the Pet House for gold -- lower case, a kill switch */,
   'hardenmats' /* v2.3.3139: hardening takes a material (bars, or a bow's hardened wood) and a doubling gold ladder -- lower case, a kill switch */,
   'hardenedwood' /* v2.3.3139: five logs into one hardened wood at the Woodworker -- lower case, a kill switch */,
+  'hardenwoodskill' /* v2.3.3481: a bow's or staff's hardening is gated on Woodworking, a sword's still on Blacksmithing (the owner: "Do woodworking") -- lower case, a kill switch */,
+  'arenaap' /* v2.3.3481: the arena's champion is paid 500 achievement points with the prize (the owner: "an arena winner should be included") -- lower case, a kill switch */,
   'movediet' /* v2.3.3204: a steady walk on the Wheel's safe ground sent every 66 ms -- lower case, a kill switch */,
   'codex' /* v2.3.3209: the monster codex's kill counts (server/src/codex.js) -- lower case, a kill switch */,
   'killroll' /* v2.3.3209: one roll a kill, each drop its own numbers, shown over the monster (server/src/killroll.js) -- lower case, a kill switch */,

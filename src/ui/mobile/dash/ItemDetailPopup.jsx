@@ -129,6 +129,19 @@ function shieldThumb(shield) {
   return shield ? `/icons/items/shield.webp${ITEMS_V}` : null;
 }
 
+/* v2.3.3481: the 2026-10-19 UI review -- a shield card said "Hold to block",
+   which a phone never does: there the Block button is a TOGGLE, one tap
+   raises the shield and the next lowers it, and it is shown only in a fight
+   (ShieldButton.jsx, shieldToggle.js shieldButtonLive).  On a computer that
+   button is hidden (game.css .bt-desktop-hide, pointer:fine) and Q is held
+   (desktopControls.js: down raises, up lowers).  Asked by the same
+   (pointer:fine) test that hides the button, so the card names the control
+   that is really there. */
+function shieldBlockHint() {
+  const fine = typeof matchMedia === 'function' && matchMedia('(pointer:fine)').matches;
+  return fine ? 'Hold Q to block' : 'Tap Block in a fight to raise it';
+}
+
 /* Which weapon slot does a `type` belong in. */
 function slotFor(type) {
   if (type === 'bow')   return 'rangedWeapon';
@@ -319,7 +332,7 @@ function resolveTarget(target) {
       thumb: shieldThumb(sh),
       glyph: '\u{1F6E1}',
       name: sh.name || 'Shield',
-      info: 'Hold to block',
+      info: shieldBlockHint(),   /* v2.3.3481: was 'Hold to block' (see shieldBlockHint) */
       desc: (sh.gearBase === 'wood' ? 'Wooden' : tierLabel(sh)) + ' · Shield',
       actions: { unequip: true },
     };
@@ -369,7 +382,7 @@ function resolveTarget(target) {
       thumb: shieldThumb(sh),
       glyph: '\u{1F6E1}',
       name: sh.name || 'Shield',
-      info: 'Hold to block',
+      info: shieldBlockHint(),   /* v2.3.3481: was 'Hold to block' (see shieldBlockHint) */
       delta,
       desc: (sh.gearBase === 'wood' ? 'Wooden' : tierLabel(sh)) + ' · Shield',
       /* v2.3.2531: Sell -- the store can take gear now (store phase 3,
@@ -1773,11 +1786,16 @@ export const ItemDetailPopup = () => {
             fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em',
             color: '#F0C878', opacity: locked ? 1 : 0,
           }}>Anchored</span>
-          <button type="button"
+          {/* v2.3.3481: the 2026-10-19 UI review -- a 26 px chip is under the
+              44 px touch floor.  .bt-card-pin (game.css) grows the PRESS to
+              44 x 44 with an invisible ::before, inside the card's 10 px
+              padding and clear of the portrait well, so it looks the same. */}
+          <button type="button" className="bt-card-pin"
             aria-label={locked ? 'Unpin from the top of the bag' : 'Pin to the top of the bag'}
             title={locked ? 'Unpin from the top of the bag' : 'Pin to the top of the bag'}
             onPointerUp={(e) => { e.stopPropagation(); onToggleLock(); }}
             style={{
+              position: 'relative',   /* v2.3.3481: holds the ::before tap ring */
               flex: '0 0 auto', width: 26, height: 26, lineHeight: '24px', textAlign: 'center', padding: 0,
               fontSize: 13, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
               border: '1px solid ' + (locked ? '#F0C878' : 'rgba(238, 242, 235, .14)'),

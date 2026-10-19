@@ -163,6 +163,9 @@ export const NAME_PLATE_ONLY = Object.freeze(new Set(['fishSpot']));
    your body */
 const BODY_HALF_W = 20, BODY_UP = 92, BODY_DOWN = 48;
 const CLEAR = 6;
+/* v2.3.3481: how clear of your name plate (or the HP bar in its place) a pill
+   level with it stops, CSS px -- see updateNodeLabel */
+const PLATE_CLEAR_CSS = 8;
 const SCALE_MIN = 0.25, SCALE_MAX = 4;
 /* how far over the art's top (or the school of fish) the pill's foot sits,
    world px */
@@ -311,9 +314,22 @@ export function updateNodeLabel(layer, node, S, at, full = true) {
   const P = S && S.player;
   if (full && P && typeof P.x === 'number' && p.mode === 'full') {
     const half = (p.w || 0) * s / 2, top = at.y - PILL_H * s, bot = at.y;
-    const bx0 = P.x - BODY_HALF_W, bx1 = P.x + BODY_HALF_W;
-    if (bot > P.y - BODY_UP && top < P.y + BODY_DOWN && at.x + half > bx0 && at.x - half < bx1) {
-      want = P.x >= at.x ? (bx0 - CLEAR - half) - at.x : (bx1 + CLEAR + half) - at.x;
+    /* v2.3.3481: the 2026-10-19 UI review (p11/harvest-near #4, p03/
+       desktop-window #1) -- "Pine Log" and "Reviewer 3" touched and read as
+       one: the box was your BODY's alone, 20 px either side, so a pill level
+       with your name plate (you under a crown, the label at its top) stopped
+       just beside the body, its "Lv 1" still under the plate, ~100 px either
+       side.  Where the pill meets the band (entityRenderer publishes its top,
+       bottom and half width, the HP bar's in a fight), the box is the plate's
+       width and the pill stops PLATE_CLEAR_CSS past it; a pill level with
+       your body still clears just the body, as before. */
+    const bT = S._selfBandTopY, bB = S._selfBandBotY;
+    const onBand = Number.isFinite(bT) && Number.isFinite(bB) && bot > bT && top < bB;
+    const hw = onBand ? Math.max(BODY_HALF_W, S._selfBandHalfW || 0) : BODY_HALF_W;
+    const gap = onBand ? Math.max(CLEAR, PLATE_CLEAR_CSS * s) : CLEAR;
+    const bx0 = P.x - hw, bx1 = P.x + hw;
+    if ((onBand || (bot > P.y - BODY_UP && top < P.y + BODY_DOWN)) && at.x + half > bx0 && at.x - half < bx1) {
+      want = P.x >= at.x ? (bx0 - gap - half) - at.x : (bx1 + gap + half) - at.x;
     }
   }
   p.dx = (p.dx || 0) + (want - (p.dx || 0)) * 0.35;

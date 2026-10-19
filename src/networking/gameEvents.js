@@ -1858,7 +1858,13 @@ export function processGameEvent(type, payload, S, deps) {
                     try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
                   }
                 }
-                var _what = _e.kind === 'gold' ? '+' + (_ep.amount || 0) + ' gold'
+                /* v2.3.3481: the 2026-10-19 UI review -- gold with its thousands
+                   separator (the top bar's "2,550", not "2550"), and the
+                   arena champion's achievement points named beside the prize:
+                   the worker pays them in the same credit since v2.3.3481
+                   (gladiator.js ARENA.CHAMPION_AP, payload `ap`). */
+                var _apIn = Math.floor(Number(_ep.ap) || 0);
+                var _what = _e.kind === 'gold' ? '+' + Math.floor(Number(_ep.amount) || 0).toLocaleString('en-US') + ' gold' + (_apIn > 0 ? ' and ' + _apIn + ' AP' : '')
                   : _e.kind === 'item' ? (_ep.count || 1) + '× ' + (_ep.invKey || 'item')
                   : _e.kind === 'weapon' ? ((_ep.weapon && _ep.weapon.name) || 'a weapon')
                   : _e.kind === 'gear' ? ((_ep.piece && _ep.piece.name) || 'a piece of gear')

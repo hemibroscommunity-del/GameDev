@@ -296,6 +296,7 @@ export const SettingsPanel = () => {
       <ChoiceRow
         label="Landscape menu side"
         hook="dashside"
+        minW={56}
         options={DASH_SIDES}
         value={dashSide}
         onChange={(id) => { setDashSide(setDashSidePref(id)); }}
@@ -396,7 +397,13 @@ export const SettingsPanel = () => {
 /* v2.3.2177: `hook` names the data-* attribute the buttons carry, so a
    second row can be selected by tests without inheriting the trail row's
    name.  Defaulted, so the original row is untouched. */
-const ChoiceRow = ({ label, options, value, onChange, hook = 'trailstyle' }) => {
+/* v2.3.3481: the 2026-10-19 UI review -- `minW` is a chip's narrowest.  In
+   the sideways column a row has ~194 px inside, and three 68 px chips and
+   their gaps need 216, so "Landscape menu side" wrapped two and one: Auto and
+   Left on a row, Right alone across the next, looking like the bigger choice.
+   That row asks for 56 (three ~60 px chips in one row, "Right" ~35 px of
+   it); the Quest path row's five chips ("Footprints") keep 68. */
+const ChoiceRow = ({ label, options, value, onChange, hook = 'trailstyle', minW = 68 }) => {
   const sel = options.find((o) => o.id === value) || null;
   return (
     <div style={{ padding: '10px 8px', borderBottom: `1px solid ${COL.divider}` }}>
@@ -412,7 +419,7 @@ const ChoiceRow = ({ label, options, value, onChange, hook = 'trailstyle' }) => 
               onPointerUp={(e) => { e.stopPropagation(); onChange(o.id); }}
               style={{
                 flex: '1 1 0',
-                minWidth: 68,
+                minWidth: minW,
                 minHeight: 44,
                 borderRadius: 8,
                 cursor: 'pointer',

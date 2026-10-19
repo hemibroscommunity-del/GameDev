@@ -18,7 +18,20 @@ export function PlayerListPanel(props) {
     setShowPlayerList = props.setShowPlayerList;
   return React.createElement("div", {
     className: "bt-plist"
-  }, playerList.length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, /* v2.3.3481: the 2026-10-19 UI review -- the list had NO way to close.
+       Only picking a row shut it, so "Find a party" or "Duel a player" with
+       nobody near left "No other players nearby" up until a reload, and
+       while it was up the game counted a window as open (BroTown `_uiBusy`),
+       which kept Mayor Bro's dialogue from opening.  The game's usual ✕
+       (its 44 px ring, and Esc on a computer) closes it the way a pick does. */
+  /*#__PURE__*/React.createElement("button", {
+    className: "bt-inspect-close",
+    "aria-label": "Close",
+    "data-esc": "",
+    onClick: function onClick() {
+      setShowPlayerList(false);
+    }
+  }, "✕"), playerList.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '16px 10px',
       textAlign: 'center',

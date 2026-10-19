@@ -347,9 +347,16 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
                     the sentence was pointing at a control that no longer
                     exists — the one thing a dead end must not do is give
                     directions.  Says the cap plainly instead, until delete has
-                    a home again. */}
-                You have all <b style={{ color: '#F4F0E7' }}>{ROSTER_MAX}</b> characters
-                this device can hold. Play one of them instead.
+                    a home again.
+                    v2.3.3481 (the 2026-10-19 UI review): it has one -- each
+                    card's ••• menu holds "Remove from this device" (CharacterPicker,
+                    v2.3.2194, behind a typed "yes"), which frees a slot and keeps
+                    the bro behind their Login Key.  So the card gives the way
+                    there in the menu's own words (not "Delete", which it does not
+                    say); "Choose a bro" below opens that very list. */}
+                You have all <b style={{ color: '#F4F0E7' }}>{ROSTER_MAX}</b> bros this
+                device can hold. Play one, or free a slot: tap a bro's ••• and choose
+                Remove from this device. Their Login Key still brings them back.
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
                 {/* Somewhere to GO, not just a refusal.  It used to say
@@ -405,9 +412,14 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
             package.json's number moves by hand and had sat at 2.3.1201 for ~900
             tags, whereas __BUILD_SHA__ comes from `git rev-parse` in the same
             build that emits version.json, so it is the same string buildWatch
-            compares.  Both are shown; the sha is the one to read out. */}
+            compares.  Both are shown; the sha is the one to read out.
+            v2.3.3481 (the 2026-10-19 UI review): and the number is now the
+            GAME's -- the newest v2.3.N in the build's commit titles
+            (BUILD_INFO.game, vite.config.js GAME_VERSION); it still read
+            2.3.2324 on a v2.3.3439 build.  BUILD_INFO.version stays the art's
+            `?v=` cache key, above. */}
         <div className="bt-login-ver" title={BUILD_INFO.time ? `Built ${BUILD_INFO.time}` : undefined}>
-          v{BUILD_INFO.version} · {BUILD_INFO.sha}
+          v{BUILD_INFO.game} · {BUILD_INFO.sha}
         </div>
       </div>
 

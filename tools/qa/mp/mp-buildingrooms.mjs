@@ -461,7 +461,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return r;
   };
   const saloon = await look('party', 'saloon-own');
-  rec.ok('the Saloon\'s door opens the Saloon -- your party and Find a party -- on its room, and no Gladiator Arena in it',
+  rec.ok('the Saloon\'s door opens the Saloon -- your party and Invite a player -- on its room, and no Gladiator Arena in it',
     saloon.key === 'party' && saloon.room === 'saloon' && saloon.saloon && saloon.find && !saloon.arena, saloon);
   const arenaW = await look('arena', 'arena-own');
   rec.ok('the Gladiator Arena (from the Sheriff\'s Office) is a window of its own with no room behind it -- no Saloon sign over the arena',

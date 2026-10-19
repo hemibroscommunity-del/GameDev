@@ -40,6 +40,32 @@ const WEBP_TWINS = scanWebpTwins(path.join(PUBLIC_DIR, 'sprites'), PUBLIC_DIR, [
 const GIT_SHA = safeExec('git rev-parse --short HEAD') || 'nogit';
 const GIT_DIRTY = safeExec('git status --porcelain') ? '+' : '';
 const BUILD_TIME = new Date().toISOString().replace('T', ' ').slice(0, 16) + 'Z';
+/* v2.3.3481: the 2026-10-19 UI review -- THE VERSION A PLAYER SEES.
+   package.json's version is moved by hand and read 2.3.2324 on a v2.3.3439
+   game (~1,150 tags without moving), so the door, the creator, the loading
+   badge and every crash report named the same old number whatever deploy
+   they came from.  The real number is in the commit titles (every merge
+   carries its "(v2.3.N)"), so the one SHOWN is the newest v2.3.N in the last
+   60 subjects, never below package.json's -- the session brief's own rule
+   (tools/dev/session-brief.mjs; capture.mjs gameVersion) -- and package.json's
+   when there is no git or no tagged title (a Pages build may clone shallow:
+   HEAD alone, which can be an untagged "Add files via upload").  It cannot
+   fail the build: safeExec answers '' on any error.
+   A LABEL ONLY.  pkg.version stays __BUILD_VERSION__ / BUILD_INFO.version,
+   because that is the `?v=` cache key on the door's and the creator's art:
+   moved on every deploy, it would send every returning player for that art
+   again after every merge. */
+const GAME_VERSION = (() => {
+  let hi = 0;
+  const p = /^2\.3\.(\d+)$/.exec(String(pkg.version || ''));
+  if (p) hi = +p[1];
+  for (const m of safeExec('git log -60 --format=%s').matchAll(/\bv2\.3\.(\d+)\b/g)) hi = Math.max(hi, +m[1]);
+  return hi ? '2.3.' + hi : String(pkg.version || 'dev');
+})();
+/* v2.3.3481: the commit a build is of, for the crash report: Cloudflare Pages
+   names it (CF_PAGES_COMMIT_SHA, the whole sha), else git, else ''. */
+const BUILD_COMMIT = String(process.env.CF_PAGES_COMMIT_SHA || '').trim().slice(0, 9)
+  || safeExec('git rev-parse --short HEAD');
 
 export default defineConfig({
   root: 'src',
@@ -54,6 +80,8 @@ export default defineConfig({
       transformIndexHtml(html) {
         return html
           .replaceAll('__BUILD_VERSION__', pkg.version)
+          /* v2.3.3481: the loading badge's number (see GAME_VERSION) */
+          .replaceAll('__GAME_VERSION__', GAME_VERSION)
           .replaceAll('__BUILD_SHA__', GIT_SHA + GIT_DIRTY);
       },
     },
@@ -71,7 +99,9 @@ export default defineConfig({
         this.emitFile({
           type: 'asset',
           fileName: 'version.json',
-          source: JSON.stringify({ sha: GIT_SHA + GIT_DIRTY, version: pkg.version, time: BUILD_TIME }),
+          /* v2.3.3481: `game`, the version a player is shown (GAME_VERSION);
+             buildWatch reads only `sha`. */
+          source: JSON.stringify({ sha: GIT_SHA + GIT_DIRTY, version: pkg.version, game: GAME_VERSION, time: BUILD_TIME }),
         });
       },
     },
@@ -82,6 +112,10 @@ export default defineConfig({
     __BUILD_VERSION__: JSON.stringify(pkg.version),
     __BUILD_SHA__: JSON.stringify(GIT_SHA + GIT_DIRTY),
     __BUILD_TIME__: JSON.stringify(BUILD_TIME),
+    /* v2.3.3481: the version shown and the commit, for display and the crash
+       report only; __BUILD_VERSION__ stays the art's cache key */
+    __GAME_VERSION__: JSON.stringify(GAME_VERSION),
+    __BUILD_COMMIT__: JSON.stringify(BUILD_COMMIT),
   },
   resolve: {
     alias: {

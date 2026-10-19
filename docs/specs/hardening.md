@@ -81,10 +81,15 @@ hardened wood, and gold that doubles" below.
 - **Failure resets hardness by the Temper pity band** (evaluated on
   the temper BEFORE this failure): 0–19 → reset to 0 · 20–49 → −2 ·
   50–99 → −1 · 100+ → no reset. Temper +1 per fail, 0 on success.
-- **Blacksmith skill gates ACCESS, never odds**: max hardenable
-  material tier index = `floor(blacksmithing / 5)` (tier index =
+- **The crafting skill gates ACCESS, never odds**: max hardenable
+  material tier index = `floor(skill / 5)` (tier index =
   position in the BLACKSMITH/WOODWORKING tier tables; legacy weapons
-  without a `gearBase` rank by tierMult).
+  without a `gearBase` rank by tierMult). The skill is Blacksmithing for a
+  sword and, since v2.3.3481, WOODWORKING for a bow or a staff
+  (`hardenIsWood`; the owner, asked which: "Do woodworking"). The refusal
+  names it: "Need Woodworking Lv5 for this tier". Kill switch
+  `hardenwoodskill: false` (Blacksmithing for every weapon, as before);
+  `caps.hardenwoodskill` tells the Woodworker's line which to say.
 - Gold is a pure sink, single mutation on live ps (gamble pattern).
   The guard gear lock (threats.md) blocks hardening — it mutates the
   equipped weapon.

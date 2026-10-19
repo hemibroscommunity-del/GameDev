@@ -1034,6 +1034,49 @@ Style: exactly the attached reference: glossy hand-painted item icons, clean dar
 No text, frames, cell lines or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the icons is magenta, pink or purple. Do not copy the reference's items or background.
 ```
 
+### Gems: raw and polished, for every element (v2.3.3481; two chats)
+
+- **Why (the 2026-10-19 icon review):** the element gems have no picture anywhere: the Gem Works writes "◇ Raw" and "◆ Polished" beside a coloured name, and the bag draws a ◇. The sheets of 2026-10-19 had eight cut gems, but not in the game's shapes, so they were left out (the Rare Gem already has its picture).
+- **The shapes are the game's own** (`src/data/elements.js`, each element's `shape`): a polished gem is cut in its element's shape and colour, so it reads the same as the element's other marks. A raw gem is the same stone before cutting: a rough chunk with that colour breaking through.
+- **Two pictures, because of the background:** the storm gem is violet and the dark gem has violet glints, which a magenta background would eat, so those three go on green.
+- **Attach (both chats):** `docs/art/bag-icon-style-key.png` (the game's own bag icons).
+- **In the game:** not yet. Send both pictures in chat; a session cuts them (like `tools/ui/cut-bag-icons.py`) into `public/icons/items/gem-raw-<element>.webp` and `gem-polished-<element>.webp` and puts them on the Gem Works' rows, the Set gems tab and the bag.
+
+**Chat 1 of 2: six elements on magenta**
+
+```text
+Landscape image (wider than tall): a sprite sheet of 12 item icons for a 2D action RPG, in a grid of 6 columns and 2 rows. Each icon sits centered in its own equal cell, fills about three quarters of it, and touches nothing else.
+
+Each column is one magical gem. The TOP row is the RAW gem: a rough, uncut chunk of plain grey stone with the gem's crystal breaking out of it in a few sharp points. The BOTTOM row is the same gem POLISHED: cut and faceted in its own shape, glossy, with one bright highlight. The polished gem has no setting, ring or chain.
+Columns, left to right:
+1. FLAME: deep ember red; polished as a diamond shape (a rhombus standing on its point).
+2. FROST: pale icy blue, almost white at the edges, with a little frost on the raw one; polished as a hexagon.
+3. WATER: clear ocean blue with a ripple of light inside; polished as a round dome (a cabochon).
+4. VENOM: poison green; polished as a teardrop, point up.
+5. STONE: warm amber-brown; polished as a square.
+6. WIND: pale silver-grey, almost clear like quartz; polished as a triangle, point up.
+
+Style: exactly the attached reference: glossy hand-painted item icons, clean dark outline, soft shading, small bright highlights, lit from the upper left. All 12 the same size so they read as one set.
+
+No text, frames, cell lines or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the icons is magenta, pink or purple. Do not copy the reference's items or background.
+```
+
+**Chat 2 of 2: three elements on green**
+
+```text
+Landscape image (wider than tall): a sprite sheet of 6 item icons for a 2D action RPG, in a grid of 3 columns and 2 rows. Each icon sits centered in its own equal cell, fills about three quarters of it, and touches nothing else.
+
+Each column is one magical gem. The TOP row is the RAW gem: a rough, uncut chunk of plain grey stone with the gem's crystal breaking out of it in a few sharp points. The BOTTOM row is the same gem POLISHED: cut and faceted in its own shape, glossy, with one bright highlight. The polished gem has no setting, ring or chain.
+Columns, left to right:
+1. STORM: bright violet with a tiny spark of light inside; polished as a five-pointed star.
+2. DARK: deep shadowy navy, nearly black, with faint violet glints; polished as a trefoil (three rounded lobes, like a club).
+3. LIGHT: radiant golden yellow; polished as a starburst (a sun with eight short sharp points).
+
+Style: exactly the attached reference: glossy hand-painted item icons, clean dark outline, soft shading, small bright highlights, lit from the upper left. All 6 the same size so they read as one set.
+
+No text, frames, cell lines or shadows. Background: one flat pure green (#00FF00) everywhere, no gradient or texture. Nothing in the icons is green. Do not copy the reference's items or background.
+```
+
 ## The farm
 
 The Feed & Seed's farm (v2.3.3127, docs/specs/farm.md) draws its crops, seeds and compost with emoji until these exist: the window's beds, the Seeds tab and the bag all use them.

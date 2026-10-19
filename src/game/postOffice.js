@@ -35,7 +35,7 @@ export function itemWords(invKey) {
 }
 
 /** One delivery (an inbox_delivered entry: { kind, source, note, payload })
- *  as a line of mail: { what, note, kind, source }. */
+ *  as a line of mail: { what, note, kind, source, key, n }. */
 /* v2.3.3122: a pet in the mail, in words, with no imports (see the header):
    its own name, else its kind's, and its level ("Snowball, Lv 4"). */
 function petWords(pet) {
@@ -49,16 +49,34 @@ export function mailLine(e) {
   const p = (e && e.payload) || {};
   const kind = e && typeof e.kind === 'string' ? e.kind : 'item';
   const source = e && typeof e.source === 'string' ? e.source : '';
+  /* v2.3.3481: the 2026-10-19 UI review -- the mail read "2× Meal garden
+     stew" and "4× Copper bar": itemWords only strips a few prefixes, and the
+     bag calls them "Garden Stew" and "Copper Bar".  The line keeps the item's
+     KEY and its count beside the words, so the Post Office
+     (WheelHallPanel.jsx) can name it as the bag does (ITEM_NAMES); a key the
+     bag has no name for (ores, fish, logs) keeps these words.  Still no
+     imports: the bag's table is read where the line is drawn. */
+  const n = Math.max(1, Math.round(Number(p.count) || 1));
+  const key = kind === 'item' && source !== 'daily' && typeof p.invKey === 'string' ? p.invKey : '';
   let what;
-  if (kind === 'gold') what = `+${Math.max(0, Math.round(Number(p.amount) || 0))} gold`;
-  else if (kind === 'item') what = source === 'daily' ? 'A daily chest' : `${Math.max(1, Math.round(Number(p.count) || 1))}× ${itemWords(p.invKey)}`;
+  /* v2.3.3481: the review -- "+2500 gold" beside the top bar's "2,550": the
+     HUD's own call (ZoneHeader.jsx) */
+  if (kind === 'gold') {
+    what = `+${Math.max(0, Math.round(Number(p.amount) || 0)).toLocaleString()} gold`;
+    /* v2.3.3481: a gold credit may carry ACHIEVEMENT POINTS paid with it --
+       the arena's champion ("+2,000 gold and 500 AP"; server gladiator.js
+       ARENA.CHAMPION_AP, inbox.js adds a gold credit's `ap`).  Read as the
+       worker pays it (a whole number, never below 0); no `ap`, no words. */
+    const ap = Math.max(0, Math.floor(Number(p.ap) || 0));
+    if (ap) what += ` and ${ap.toLocaleString()} AP`;
+  } else if (kind === 'item') what = source === 'daily' ? 'A daily chest' : `${n}× ${itemWords(p.invKey)}`;
   else if (kind === 'weapon') what = (p.weapon && typeof p.weapon.name === 'string' && p.weapon.name) || 'A weapon';
   else if (kind === 'gear') what = (p.piece && typeof p.piece.name === 'string' && p.piece.name) || 'A piece of gear';
   else if (kind === 'pet') what = petWords(p.pet);   /* v2.3.3122: a pet (a sale, a trade, an unsold one back) */
   else what = 'A delivery';
   let note = e && typeof e.note === 'string' ? e.note : '';
   if (!note && source === 'daily') note = 'Daily reward';
-  return { what, note: note.slice(0, 120), kind, source };
+  return { what, note: note.slice(0, 120), kind, source, key, n };
 }
 
 /** Keep delivery `e` in S._mail (oldest first, at most MAIL_KEEP). */
