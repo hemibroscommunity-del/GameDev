@@ -91,7 +91,10 @@ export function GamblePanel(props) {
   return React.createElement("div", { style: _objectSpread(_objectSpread({}, LS_WRAP), {}, { display: 'flex', flexDirection: 'column', maxHeight: '100%' }) /* v2.3.1235: state-correction §10 — flex column: fixed header + ONE scroll body */ },
     /* v2.3.3140: the free daily spin leads the window (DailySpin.jsx) --
        the day's reward lives here now, not in a window at login */
-    lsHeader('gamble', '🎰', "Gambling Den", "Free daily spin, coin flips & the weekly jackpot"),
+    /* v2.3.3479: the 2026-10-19 UI review -- the subtitle promised coin
+       flips, but this window holds the spin, the gold wager below and the
+       jackpot; the coin flip is Ace's own window, from Ace outside. */
+    lsHeader('gamble', '🎰', "Gambling Den", "Free daily spin, a gold wager & the weekly jackpot"),
     React.createElement("div", {
       ref: scrollBodyRef,
       onScroll: measureFade,
