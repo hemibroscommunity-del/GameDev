@@ -35,7 +35,7 @@ size it would be drawn, and the owner answered: "Icon picks: 1b, 2a, 3, 4, 5,
       Journey page.
 Not 7 (the compass): the owner kept today's.  Not 10 (leg armour and the chest
 to match): not answered yet -- a new entry in PIECES is all it would take.
-v2.3.3485: and the HAMMER (fantasy-rpg-crafting-ui-asset-sheet-1.png, the one
+v2.3.3488: and the HAMMER (fantasy-rpg-crafting-ui-asset-sheet-1.png, the one
 on its gold "Craft" button) for the Blacksmith's Upgrade tab -- the owner's
 playtest note: "Make the upgrade tab icon different for smithing.  Like a
 hammer" (it wore the currency strip's gold gem).  Its button is painted in a
@@ -52,7 +52,7 @@ HOW: the review page's own cuts, which the owner approved by eye.
          is the median of a ring of points 4 px inside the box (a card's border
          shading at its very corner is lighter than its fill), and a px within
          `tol` of it is see-through, fully solid past tol + `ramp`.
-  card   (v2.3.3485) an icon on a card painted top-to-bottom in a GRADIENT (the
+  card   (v2.3.3488) an icon on a card painted top-to-bottom in a GRADIENT (the
          gold "Craft" button runs 249,208,77 at its top to 192,133,47 at its
          foot, so one fill keyed a band of it out and left the rest): `key`
          row by row, each row's fill the median of its four px at either end
@@ -85,7 +85,7 @@ it); each is the piece's own tight box, the CSS sizing it to that shape:
   helmet 26 x 28 CSS          handshake 40 x 26 (it is wider than tall)
   sack 64 x 69                pet house 40 x 33
   wheel 34 x 37               treasure map 120 x 69
-  hammer 22 x 22 (v2.3.3485: the Upgrade tab's icon)
+  hammer 22 x 22 (v2.3.3488: the Upgrade tab's icon)
   land scenes: drawn about 180-215 CSS px wide (half the banner's width), so
                written at the sheet's own ~200 px -- the most it holds.
 The quest pins are drawn on the CANVAS, 32 x 38 world px each (today's badge
@@ -148,7 +148,7 @@ PIECES = [
          box=(68, 4, 456, 424), grow=4, css=(34, 37)),
     dict(name='icons/ui/journey-map', src='colorful-rpg-game-ui-asset-sheet.png', mode='alpha',
          box=(1208, 552, 1476, 708), grow=4, css=(120, 69)),
-    # v2.3.3485: the Blacksmith's Upgrade tab, drawn 22 x 22 CSS px
+    # v2.3.3488: the Blacksmith's Upgrade tab, drawn 22 x 22 CSS px
     dict(name='icons/ui/smith-hammer', src='fantasy-rpg-crafting-ui-asset-sheet-1.png', mode='card',
          box=(84, 309, 176, 387), css=(22, 22)),
 ]
@@ -203,7 +203,7 @@ def cut_key(src, box, tol=16, ramp=18):
 
 
 def cut_card(src, box, tol=16, ramp=18):
-    """v2.3.3485: `key` on a gradient card, row by row (see the header)."""
+    """v2.3.3488: `key` on a gradient card, row by row (see the header)."""
     c = sheet(src).crop(box)
     px = c.load()
     w, h = c.size

@@ -20,7 +20,7 @@
  * with their only consumers (mirror-audit still pins them). */
 
 import { BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES, AMULET_TIER_POWER, AMULET_GEMS, armorDefReq, isArmourLadderPiece /* v2.3.2664 */ } from './data.js';
-import { forgeLevelFor, forgeOffered } from './forgeladder.js'; /* v2.3.3485: the forge's ladder */
+import { forgeLevelFor, forgeOffered } from './forgeladder.js'; /* v2.3.3488: the forge's ladder */
 
 export const gearMethods = {
   // ═══ Equipment store (opaque blobs + equip_request) ═══
@@ -462,7 +462,7 @@ export const gearMethods = {
     if (!Object.prototype.hasOwnProperty.call(table, tierKey)) return;
     const tier = table[tierKey];
     if (!tier) return;
-    /* v2.3.3485: THE FORGE'S LADDER (forgeladder.js) -- the owner: "'wood
+    /* v2.3.3488: THE FORGE'S LADDER (forgeladder.js) -- the owner: "'wood
        greatsword' is not an actual weapon in the game.  Make the beginning
        weapon a copper greatsword (requiring smithing lvl 1)", and "Copper 1,
        iron 5, black steel 10 for smithing lvl req".  At the Blacksmith the
@@ -482,7 +482,7 @@ export const gearMethods = {
     // skill at tierIndex × 5 (§6) — this is also where the standing
     // sword mismatch dies (agility vs power: both are Melee now).
     // Client mirror: getGearStatReq/meetsGearReq (gameSystems.js).
-    /* v2.3.3485: at the Blacksmith, against the ladder, the gate is the WEAR
+    /* v2.3.3488: at the Blacksmith, against the ladder, the gate is the WEAR
        gate -- _prog3EquipOk on the very blade the forge would mint (copper and
        iron nothing, black steel Melee 10, five more a tier), where tierIndex
        x 5 asked Melee 5 of the copper greatsword a new character is meant to
@@ -560,7 +560,7 @@ export const gearMethods = {
     //   woodworking:   tier.minLvl * 5  (same formula)
     // v2.3.3141: a tier forged from bars pays its own `xp`, the armour forge's
     // rate for the same four bars (data.js BLACKSMITH_TIERS).
-    /* v2.3.3485: and every blacksmith tier past black steel carries its old
+    /* v2.3.3488: and every blacksmith tier past black steel carries its old
        `minLvl x 5` as `xp`, so the ladder's lower levels pay what they paid. */
     this._addLifeSkillXp(ps, skillName, tier.xp || (tier.minLvl || 1) * 5);
 

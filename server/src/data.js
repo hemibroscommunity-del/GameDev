@@ -973,7 +973,7 @@ export const BLACKSMITH_TIERS = {
          `wood:` is the woodworking table's own field, and the key resolvers on
          both sides prefer it, so one row change moves every consumer at once.
          oreName stays as the LABEL ("Wood 3/3"), which is what it reads as. */
-      /* ═══ v2.3.3485: AND IT IS NO LONGER FORGED ═══
+      /* ═══ v2.3.3488: AND IT IS NO LONGER FORGED ═══
          The owner's playtest notes (2026-10-19): "'wood greatsword' is not an
          actual weapon in the game.  Make the beginning weapon a copper
          greatsword (requiring smithing lvl 1)".  `forge: false`: the Forge tab
@@ -995,7 +995,7 @@ export const BLACKSMITH_TIERS = {
          `bars` replace `oreCost` on these three rows (gear.js reads them
          first); `oreName` stays the metal's name.  The gold is unchanged.  The
          metals past black steel have no bar yet and keep their ore. */
-      /* ═══ v2.3.3485: THE FORGE'S SMITHING LEVELS ARE THE SMELTER'S ═══
+      /* ═══ v2.3.3488: THE FORGE'S SMITHING LEVELS ARE THE SMELTER'S ═══
          The owner: "Make the beginning weapon a copper greatsword (requiring
          smithing lvl 1)", then "Copper 1, iron 5, black steel 10 for smithing
          lvl req" -- the levels the same metal's bars (smelting.js) and armour

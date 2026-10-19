@@ -8,7 +8,7 @@
  *      "?" beside the gold; the thirteen sheets kept in assets/, none left at
  *      the top of the repo;
  *   2. landSceneUrl: the eight lands, and nothing else (a null-prototype map);
- *   3. the places (v2.3.3485: + the Blacksmith's Upgrade tab's hammer): the arena's helmet (the Saloon keeps its mug), the trade
+ *   3. the places (v2.3.3488: + the Blacksmith's Upgrade tab's hammer): the arena's helmet (the Saloon keeps its mug), the trade
  *      request's handshake (only that card), the jackpot's sack, the Pet
  *      House row's house, the free spin's wheel (the bonus spins keep the drawn
  *      one), the empty Journey page's map, the quest pins over the townsfolk
@@ -47,7 +47,7 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     sd.length === 8 && sd.every(([w, h]) => w >= 180 && w <= 215 && h >= 80 && h <= 112 && w > h && w * h * 4 < 100 * 1024), sd);
   const icons = Object.entries(OI.OWNER_ICON);
   const gone = icons.filter(([, v]) => !existsSync(pub(v.src))).map(([k]) => k);
-  /* v2.3.3485: seven -- the Blacksmith's Upgrade tab's hammer */
+  /* v2.3.3488: seven -- the Blacksmith's Upgrade tab's hammer */
   check(`1c the seven window icons are files in public/icons/ui/ (${icons.map(([k]) => k).join(', ')})`, icons.length === 7 && gone.length === 0, gone);
   /* each drawn at its picture's own shape, written at up to 3x its CSS size and never stretched */
   const shape = gone.length ? [] : icons.map(([k, v]) => { const [w, h] = dims(v.src); return { k, w, h, css: [v.w, v.h], off: Math.abs(w / h - v.w / v.h) / (w / h) }; });
@@ -111,7 +111,7 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     && /_drawQuestBadge\(display\._qmBadge, display\._qmFill, _ready\);/.test(er) && /display\._qmState = _ready \? 'ready' : _wait \? 'waiting' : 'offer';/.test(er));
   const mm = src('src/rendering/systems/minimapRenderer.js');
   check('3h the zones\' minimap marks a waiting quest grey too (a neutral grey: red, green and blue equal)', /const C_QUEST_WAIT = 0xb0b0b0;/.test(mm));
-  /* v2.3.3485: the owner: "Make the upgrade tab icon different for smithing.
+  /* v2.3.3488: the owner: "Make the upgrade tab icon different for smithing.
      Like a hammer" -- the hammer, not the currency strip's gold gem */
   const sp = src('src/ui/panels/buildings/SmithyPanel.jsx');
   const up = sp.slice(sp.indexOf("id: 'upgrade'"), sp.indexOf("id: 'upgrade'") + 120);

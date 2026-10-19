@@ -235,7 +235,7 @@ export const EVENT_SOUNDS = {
 
   /* ── crafting results ──────────────────────────────────────────────── */
   smelt: [['mine-strike', 0.06, 0.35, 0.55, 0.8], ['pan-sizzle', 0.3, 0.8, 1.6, 1.15, 0.12, 0.3]],
-  forge: [['sword-hit', 0, 0.45, 0.6, 0.95], ['mine-strike', 0.58, 0.4, 0.45, 0.9, 0.04]],
+  forge: [['sword-hit', 0, 0.45, 0.6, 0.95], ['armor-hit-2', 0.06, 0.42, 0.22, 1.1, 0.04]],   /* v2.3.3488: the owner: "Forging sword makes flesh hit sound wrong sound" -- the slowed pickaxe layer (mine-strike 0.58 at 0.9: 48% of it under 250 Hz, a thud) is a metal clang now, the metal props' own (7%) */
   forgeFail: [['flip-lose', 0, 0.7, 0.45, 1]],
   armourForge: [['armor-hit-1', 0.12, 0.6, 0.22, 0.95, 0, 0.15], ['ui-equip', 0.095, 0.3, 2.4, 1, 0.12]],
   hardenOk: [['sword-hit2', 0, 0, 0.5, 1.25], ['quest-complete-v2', 0.05, 0.7, 0.5, 1, 0.08, 0.2]],
