@@ -545,6 +545,9 @@ export const gearMethods = {
     // rate for the same four bars (data.js BLACKSMITH_TIERS).
     this._addLifeSkillXp(ps, skillName, tier.xp || (tier.minLvl || 1) * 5);
 
+    /* v2.3.3484: an Elite or Godly blade is an achievement (achievements.js),
+       riding this save */
+    try { if (this._achvOnPiece) this._achvOnPiece(session.id, ps, ps[slot], 'forge'); } catch (e) { /* never break a forge */ }
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);

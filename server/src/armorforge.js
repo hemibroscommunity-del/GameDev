@@ -91,6 +91,9 @@ export const armorForgeMethods = {
       { name: r.name, mat: r.mat, slot: r.slot, tierMult: r.tierMult, quality: this._rollWeaponQuality() }, 'forge');
 
     const res = this._addLifeSkillXp(ps, 'blacksmithing', r.xp);
+    /* v2.3.3484: an Elite or Godly piece is an achievement (achievements.js),
+       riding this save */
+    try { if (this._achvOnPiece) this._achvOnPiece(session.id, ps, piece, 'forge'); } catch (e) { /* never break a forge */ }
     this._saveRpg(session.id, ps);
     const result = { recipe: key, piece, xp: r.xp, leveled: !!res.leveled, fromLevel: lvl, newLevel: res.newLevel };
     const ws = this._wsBySessionId(session.id);

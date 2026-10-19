@@ -337,10 +337,26 @@ export const inboxMethods = {
          arena's champion, gladiator.js ARENA.CHAMPION_AP) -- added here, in
          the same apply as the gold, so the points are paid exactly when the
          gold is: once, live or from the mail at the next join.  Only a
-         server-made credit ever carries `ap` (no client message builds one). */
+         server-made credit ever carries `ap` (no client message builds one).
+         v2.3.3484: no credit is made with it any more -- the arena's points
+         are the Gladiator achievement's (`achv` below) -- but one waiting in
+         a mailbox from v2.3.3481 is an arena crown: it goes through that
+         achievement, so it pays once a character like a new one (and its
+         gold, whatever becomes of the points). */
       const ap = Math.max(0, Math.floor(Number(p.ap) || 0));
-      if (ap) ps.achievementPoints = (ps.achievementPoints || 0) + ap;
+      if (ap) {
+        if (entry.source === 'arena' && this._achvFromMail) { try { this._achvFromMail(playerId, ps, 'gladiator'); } catch (e) { /* the gold stands */ } }
+        else ps.achievementPoints = (ps.achievementPoints || 0) + ap;
+      }
       return true;
+    }
+    /* ═══ v2.3.3484: AN ACHIEVEMENT BY THE MAIL (achievements.js) ═══
+       The arena's crown (gladiator.js).  FALSE -- the entry STAYS QUEUED --
+       while the player's achievements record is not loaded or is locked, the
+       pet's rule below: whether the points are owed is that record's to say.
+       The join loads it BEFORE it drains the mail (join.js). */
+    if (entry.kind === 'achv') {
+      return this._achvFromMail ? this._achvFromMail(playerId, ps, typeof p.id === 'string' ? p.id : '') : true;
     }
     if (entry.kind === 'item') {
       const k = typeof p.invKey === 'string' ? p.invKey : '';

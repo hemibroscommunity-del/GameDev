@@ -229,6 +229,11 @@ export const duelMethods = {
     if (duel.arenaMatch && this._arenaOnMatchResolved) {
       this._arenaOnMatchResolved(duel.arenaMatch, winnerId, how);
     }
+    /* v2.3.3484: Duelist (achievements.js) -- a duel won by the kill, never an
+       arena match (the arena has its own) nor a forfeit or a clock's */
+    else {
+      try { if (this._achvOnDuelWin) this._achvOnDuelWin(winnerId, how); } catch (e) { /* never break a duel */ }
+    }
     if (duel.wager > 0) {
       // Fire-and-forget settle; converges via opId idempotency + the
       // pot-stamp check in the stale-escrow sweep.

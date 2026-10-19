@@ -613,7 +613,15 @@ export const arenaMethods = {
     const t = this._arena;
     if (!t || t.champion) return;
     const { prize, topUp } = this._arenaPrize(t.players.length, Date.now());
-    const ap = this._arenaApOff() ? 0 : ARENA.CHAMPION_AP;   /* v2.3.3481 */
+    /* v2.3.3481: the champion's 500 AP.  v2.3.3484: ONCE A CHARACTER -- the
+       owner's "Go recommended" (achievements.js decision 2: a second account in
+       a two-player bracket made 500 every few minutes): the points are the
+       Gladiator achievement's, sent by the mail below, and a later crown pays
+       its gold and counts on the row.  The champion box says the points only
+       when this crown pays them (`_achvWouldPay`: 0 if earned before; null --
+       not known yet, the champion away -- says nothing). */
+    const apOn = !this._arenaApOff();
+    const ap = apOn && this._achvWouldPay ? (this._achvWouldPay(champion.playerId, 'gladiator') || 0) : 0;
     t.champion = { playerId: champion.playerId, playerName: champion.playerName, prize };
     if (ap) t.champion.ap = ap;
     t.status = 'complete';
@@ -628,9 +636,11 @@ export const arenaMethods = {
     (async () => {
       try {
         if (house) await this.state.storage.put('arena_house', house);
-        /* v2.3.3481: the champion's AP ride the gold's credit -- one stamp,
-           one write, the mail's too when the champion is away */
-        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: ap ? { amount: prize, ap } : { amount: prize }, note: 'Gladiator Arena champion' });
+        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: { amount: prize }, note: 'Gladiator Arena champion' });
+        /* v2.3.3484: and the Gladiator achievement, its own credit (inbox.js
+           `achv`): it stays queued until the champion's achievements record is
+           loaded, while the gold above never waits on it */
+        if (apOn) await this._creditPlayer(champion.playerId, { opId: 'arenaachv:' + tid, source: 'arena', kind: 'achv', payload: { id: 'gladiator' }, note: 'Gladiator Arena champion' });
         for (const pid of entrants) await this.state.storage.delete('arena_entry:' + tid + ':' + pid);
       } catch (e) { /* sweep repairs */ }
     })();

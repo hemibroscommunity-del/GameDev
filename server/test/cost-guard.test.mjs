@@ -237,9 +237,14 @@ const FAST = 110;
     const w1 = state.writes.length;
     kill(ms[1]);
     const second = mine(state, 'cg_kill', w1);
+    /* v2.3.3484: the FIRST kill a character ever makes is First Blood
+       (achievements.js), one row of its own, once a character -- so the first
+       kill may write three (codex, achv, rpg); the next writes no achv row */
     check(`5. a kill writes your record once (the first kill ${first.length} rows: ${Object.entries(byPrefix(first)).map((e) => e.join(' ')).join(', ')}; the next ${second.length})`,
-      first.filter((k) => k.startsWith('rpg:')).length === 1 && first.length <= 2
-      && second.filter((k) => k.startsWith('rpg:')).length === 1 && second.length <= 2, { first, second });
+      first.filter((k) => k.startsWith('rpg:')).length === 1 && first.length <= 3
+      && first.filter((k) => !k.startsWith('rpg:') && !k.startsWith('codex:') && !k.startsWith('achv:')).length === 0
+      && second.filter((k) => k.startsWith('rpg:')).length === 1 && second.length <= 2
+      && second.filter((k) => k.startsWith('achv:')).length === 0, { first, second });
     /* v2.3.3305: ...and so does a melee kill that HEALS you.  The monster
        hurt you, so the kill's lifesteal refunds it: the heal used to run
        after the recipients loop and save the whole record a second time

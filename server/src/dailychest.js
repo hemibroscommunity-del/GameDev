@@ -127,6 +127,9 @@ export const dailyChestMethods = {
       prize.piece = this._gearProvRecord(session.id, prize.piece.slot, { ...prize.piece }, 'chest');
     }
     if (opId && typeof opId === 'string') await this._opStamp('chestop:' + opId);
+    /* v2.3.3484: an Elite or Godly piece is an achievement (achievements.js),
+       after the await so its record goes out with this save */
+    try { if (prize.kind === 'armor' && this._achvOnPiece) this._achvOnPiece(session.id, ps, prize.piece, 'chest'); } catch (e) { /* never break a chest */ }
     this._saveRpg(session.id, ps);
 
     const ws = this._wsBySessionId(session.id);

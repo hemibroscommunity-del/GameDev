@@ -96,6 +96,7 @@ import { petbookMethods } from './petbook.js';
 /* v2.3.3209: the monster codex -- what each kill teaches you, codex:<pid>
    (codex.js).  docs/specs/monster-codex.md. */
 import { codexMethods } from './codex.js';
+import { achievementMethods } from './achievements.js';   /* v2.3.3484 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
 // loot layers (effective_base formula, forge quality roll, harden
@@ -652,6 +653,9 @@ export const PRIVILEGED_EVENTS = new Set([
   /* v2.3.3209: the monster codex's counts (codex.js), server-sent and private.
      Forged, it would paint facts the player never earned on their Codex page. */
   'codex_state',
+  /* v2.3.3484: the achievements (achievements.js), server-sent and private.
+     Forged, it would paint achievements never earned and play their banner. */
+  'achv_state',
   /* v2.3.3265: the sparring clones of the test panel (spar.js), to their
      owner only.  Forged, it would make a phone take any player for a clone
      it may aim at -- the worker still refuses every such hit (_sparPair) --
@@ -4613,6 +4617,12 @@ export class GameRoom {
       if (gemForMe) _justGot.push({ key: gemForMe, qty: 1 });
       if (_justGot.length) this._stampLootRecovered(ps, _justGot);
     }
+    /* v2.3.3484: a piece off a kill is an achievement's fact -- the Iron Great
+       Sword, an Elite or a Godly grade (achievements.js), riding this save */
+    try {
+      if (weaponForMe) this._achvOnPiece(session.id, ps, weaponForMe, 'kill');
+      if (armorForMe) for (const a of armorForMe) this._achvOnPiece(session.id, ps, a, 'kill');
+    } catch (e) { /* an achievement must never break a pickup */ }
     this._saveRpg(session.id, ps);
 
     // Private credit to the picker -- this is the authoritative grant.
@@ -5101,6 +5111,9 @@ export class GameRoom {
              registry owns the clan tag -- a blind merge of a client-supplied
              cosmetic is a forgery hole, and this cosmetic is a contest prize. */
           this._capeStamp(session.id, clean);
+          /* v2.3.3484: and the AP on the card is the worker's (achievements.js):
+             a modified page's track said any number it liked */
+          this._achvStamp(session.id, clean);
           /* v2.3.2690: and the stored character record is the whole look
              (join.js RECORD_LOOK_KEYS) -- a relay carrying another character's
              face tattoo or species, from a device that holds several, is
@@ -6113,6 +6126,8 @@ export class GameRoom {
          copied out now and written at the end with the pets record */
       _codexLeft = this._codexDirtyCopy(session.id);
       this._codexForget(session.id);
+      /* v2.3.3484: achievements hold nothing unwritten (achievements.js) */
+      this._achvForget(session.id);
       delete this.stateHistory[session.id];
       }
       /* v2.3.3322: the extraction record is NOT deleted here any more.  A
@@ -6362,6 +6377,7 @@ Object.assign(GameRoom.prototype, trappingMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, hardenedWoodMethods); /* v2.3.3139 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
+Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3484 */
 Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
 Object.assign(GameRoom.prototype, hardeningMethods);
