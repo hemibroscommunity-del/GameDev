@@ -420,7 +420,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     zb.reset();
     for (let i = 0; i < 80; i++) {
       const o = zb.onScreen();
-      if (o && o.scene && o.sceneBox && o.sceneBox.w > 0) return { ...o, vw: innerWidth };
+      if (o && o.scene && o.sceneDrawn && o.sceneBox && o.sceneBox.w > 0) return { ...o, vw: innerWidth };
       await new Promise((res) => setTimeout(res, 50));
     }
     return zb.onScreen();
