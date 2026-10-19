@@ -78,11 +78,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 2. AGAIN TOO SOON: HELD ON THE PHONE ── */
   a0 = await logLen(A);
+  /* v2.3.3477: "inside 5 s" of the last ask.  The waits above (both phones'
+     lines, the bubble, a picture) can take longer than that on a machine that
+     draws a few frames a second (TRAPS §200), and then the second roll is
+     rightly sent and rolled -- the sweep of 2026-10-19 saw "🎲 rolled 11".  So
+     when most of the 5 s has gone, a real ask opens the window again first,
+     and the second follows at once. */
+  const reopened = await A.page.evaluate(() => {
+    const S = window._gameState.current;
+    if (Date.now() - (S._diceAskAt || 0) <= 2500) return false;
+    window.__btSendChat('/roll');
+    return true;
+  });
+  if (reopened) await A.page.waitForTimeout(300);
   const w2 = (await H.wireCounts(A)).dice || 0;
-  await A.page.evaluate(() => window.__btSendChat('/roll'));
+  const since2 = await A.page.evaluate(() => { window.__btSendChat('/roll'); return Date.now() - (window._gameState.current._diceAskAt || 0); });
   await A.page.waitForTimeout(400);
   const held = await A.page.evaluate((from) => (window._gameState.current.chatLog || []).slice(from).map((l) => l.text), a0);
-  rec.ok('a second "/roll" inside 5 s is not sent', ((await H.wireCounts(A)).dice || 0) - w2 === 0);
+  rec.ok('a second "/roll" inside 5 s is not sent', ((await H.wireCounts(A)).dice || 0) - w2 === 0, { since: since2, reopened });
   rec.ok('...and the phone says when it may roll again', held.some((t) => /^Roll again in \d s$/.test(t)), held);
 
   /* ── 3. "/flip" AND "/roll 20" ── */
