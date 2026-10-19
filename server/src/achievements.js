@@ -342,7 +342,7 @@ export const achievementMethods = {
       if (!o.dev && !paidBefore) {
         ps.achievementPoints = Math.max(0, Math.floor(Number(ps.achievementPoints) || 0)) + achvAp(id);
         if (once) {
-          if (!ps.apOnce || typeof ps.apOnce !== 'object') ps.apOnce = {};
+          if (!ps.apOnce || typeof ps.apOnce !== 'object') ps.apOnce = Object.create(null);
           ps.apOnce[once] = 1;
           ps._apOnceDirty = true;   /* _saveRpg writes aponce:<pid> with the points */
         }
