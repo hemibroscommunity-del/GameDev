@@ -544,11 +544,18 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
       rec.ok(`${tag}: Whirlwind sits UP and to the LEFT of Special -- a diagonal, not a stack or a row `
         + `(dx ${Math.round(wMidX - sMidX)}, dy ${Math.round(wMidY - sMidY)})`,
         wMidX < sMidX && wMidY < sMidY, { special: r2.special, whirl: r2.whirl });
-      rec.ok(`${tag}: ...with real air between them -- ${gapX}px clear, at least half a button (${Math.round(size / 2)}px)`,
-        gapX >= size / 2, { gapX, size, special: r2.special, whirl: r2.whirl });
-      rec.ok(`${tag}: ...and their centres are more than a button apart (${centres}px vs ${size}px), `
-        + `so a thumb aimed at one is not on the other`,
-        centres > size * 1.4, { centres, size });
+      /* v2.3.3489: the owner, playtesting: "Whirlwind action button needs to
+         be placed closer to melee special attack (too far away)".  The pair is
+         held to air between the RINGS now (ShieldButton.jsx RCTL_PAIR_AIR:
+         9 px upright, 10 sideways), its boxes never touching side to side,
+         its centres within 1.3 buttons -- it was half a button of box air and
+         77 px between centres. */
+      const air = centres - size;
+      rec.ok(`${tag}: ...with real air between their rings -- ${air}px (floor 8px), the boxes ${gapX}px apart side to side`,
+        air >= 8 && gapX >= 1, { air, gapX, size, special: r2.special, whirl: r2.whirl });
+      rec.ok(`${tag}: ...and their centres are more than a button apart and within 1.3 buttons (${centres}px vs ${size}px) -- `
+        + `close, as the owner asked, and a thumb aimed at one is not on the other`,
+        centres > size && centres <= size * 1.3, { centres, size });
       rec.ok(`${tag}: ...and Whirlwind is on the right half too, beside it`,
         r2.whirl.left >= phone.width / 2, r2.whirl);
     }
