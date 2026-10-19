@@ -22,7 +22,7 @@ import * as H from './harness.mjs';
 const PHONE = { width: 390, height: 844 };
 
 const panelUp = (P) => P.page.evaluate(() => !!Array.from(document.querySelectorAll('strong')).find((n) => n.textContent === 'Test panel'));
-/* v2.3.3481: the finger stays down until the panel is up, as a person holds
+/* v2.3.3482: the finger stays down until the panel is up, as a person holds
    it.  The title opens the panel from a 1.2 s timer that lifting the finger
    cancels (ZoneHeader holdStart / holdEnd), and with three game pages
    drawing here a frame can run past the 2 s this used to hold: the lift is

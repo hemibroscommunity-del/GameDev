@@ -80,7 +80,7 @@ const throwBall = (P, b) => P.page.evaluate((b) => new Promise((resolve) => {
     for (const e of ((window.__btSlimeProj && window.__btSlimeProj()) || [])) {
       if (e.ownerId === b.id && e.visible) drawn.push([e.x, e.y]);
     }
-    /* v2.3.3481: watched until the ball's OWN flight ends, which is counted
+    /* v2.3.3482: watched until the ball's OWN flight ends, which is counted
        in 60 Hz frames (gameEvents.js: travelMs -> life, each frame taking
        S._dtScale of it, at most 3).  Below 20 frames a second the game runs
        slower than the clock, so the old cut-off of travelMs + 2 s stopped

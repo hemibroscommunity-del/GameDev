@@ -7835,7 +7835,7 @@ test whose pass depends on luck at odds a CI can roll.
 **Receipt:** dice.test 2a/2a2 (70 checks); the old 2a's failing run is in #1017's
 first CI (`test`, job 117846154027).
 
-## 235. "Spend the pool, wait a moment, read it" (v2.3.3481)
+## 235. "Spend the pool, wait a moment, read it" (v2.3.3482)
 
 **The plausible move.** A phone test spends mana or stamina through the worker
 (`ability_use` a few times, a pause between), waits for the answers, and reads

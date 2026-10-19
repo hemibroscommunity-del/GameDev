@@ -167,7 +167,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 2. the third: it smoulders ── */
   await fire(1, LEFT);
   let f2 = null;
-  /* v2.3.3481: up to 10 s for the first puff, not ten looks.  The fire's
+  /* v2.3.3482: up to 10 s for the first puff, not ten looks.  The fire's
      clock moves at most 0.1 s a frame (buildingFire.js `dt`), and a smoulder
      puffs 0.4 + 1.6 x its level a second from a random start, so on a machine
      drawing ~3 frames a second the first puff can take 3-9 s; ten looks

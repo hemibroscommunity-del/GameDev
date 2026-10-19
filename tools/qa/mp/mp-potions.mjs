@@ -274,7 +274,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      pool is full, and with a delta player_state it has no changed field to
      send -- so the drink "fills" a pool the server never saw empty and the
      number on screen is the client's own guess. Three specials is three blocks. */
-  /* ═══ v2.3.3481: SENT TOGETHER, AND THE WORKER'S POOL READ AT ONCE ═══
+  /* ═══ v2.3.3482: SENT TOGETHER, AND THE WORKER'S POOL READ AT ONCE ═══
      This stands in town, where the worker tops the pools off every regen
      tick (~670 ms: 10% of the bar plus the ordinary trickle, 13 of a 102
      bar -- index.js "HUB TOP-OFF").  Three specials take it 102 -> 42 (one

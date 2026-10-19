@@ -75,7 +75,7 @@ const pickTarget = (P) => P.page.evaluate(() => {
     const t = Math.max(0, Math.min(1, ((ox - P0.x) * vx + (oy - P0.y) * vy) / L));
     return Math.hypot(P0.x + vx * t - ox, P0.y + vy * t - oy) < 5 * 32;
   });
-  /* v2.3.3481: ...and only one the bro can walk straight to.  The walk below
+  /* v2.3.3482: ...and only one the bro can walk straight to.  The walk below
      steers the stick in a straight line, so a monster behind a rock, a tree or
      water stood him against it for the whole walk while it wandered off (the
      sweep of 2026-10-19: 489 px at the tap, 556 after the walk, 637 after).
@@ -90,7 +90,7 @@ const pickTarget = (P) => P.page.evaluate(() => {
     return true;
   };
   let best = null;
-  /* v2.3.3481: when there is nothing to tap, why (window.__tsPickWhy) */
+  /* v2.3.3482: when there is nothing to tap, why (window.__tsPickWhy) */
   const why = { alive: 0, onScreen: 0, passOut: 0, blocked: 0, outs: outs.length,
     me: { x: Math.round(P0.x), y: Math.round(P0.y) },
     nearestOut: outs.length ? Math.round(Math.min(...outs.map(([ox, oy]) => Math.hypot(ox - P0.x, oy - P0.y)))) : null };
@@ -99,7 +99,7 @@ const pickTarget = (P) => P.page.evaluate(() => {
     why.alive++;
     const cx = r.left + (m.x - S.camera.x) * sx;
     const cy = r.top + ((m.renderY != null ? m.renderY : m.y) - S.camera.y) * sy;
-    /* v2.3.3481: 40 px inside the screen, not 8.  A touch that starts within
+    /* v2.3.3482: 40 px inside the screen, not 8.  A touch that starts within
        EDGE_GUARD_PX (18) of the left edge is the iPhone's back swipe and the
        game absorbs it (BroTown's edge guard), so a tap on a monster drawn at
        x 13 locked nothing (the sweep of 2026-10-19: "lock src auto", tapped at
