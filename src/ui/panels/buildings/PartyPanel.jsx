@@ -5,6 +5,7 @@ import { _asyncToGenerator, _objectSpread, _regenerator, _toConsumableArray } fr
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3434: signing up heard */
+import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3479: the arena's helmet */
 /* === PartyPanel — buildingPanel === 'party' sub-panel === */
 /* v2.3.881: extracted verbatim from the buildingPanel === 'party'
    clause in BroTown.jsx (the Arena: live tournament bracket, betting
@@ -124,13 +125,19 @@ export function PartyPanel(props) {
       marginBottom: 2,
       paddingRight: 24
     }
-  }, /*#__PURE__*/React.createElement("img", {
-    src: "/icons/ui/bldg-tavern.webp",
+  }, /* v2.3.3479: the owner's gladiator helmet (their icon pick 2a), where the
+        Saloon's beer mug was -- a leftover from when the arena lived in the
+        Saloon (v2.3.3258 gave the Saloon its own window, which keeps the mug) */
+  /*#__PURE__*/React.createElement("img", {
+    src: OWNER_ICON.arenaHelmet.src,
     alt: "",
     draggable: false,
+    width: OWNER_ICON.arenaHelmet.w,
+    height: OWNER_ICON.arenaHelmet.h,
+    "data-arena-icon": "helmet",
     style: {
-      width: 26,
-      height: 26,
+      width: OWNER_ICON.arenaHelmet.w,
+      height: OWNER_ICON.arenaHelmet.h,
       objectFit: 'contain'
     },
     onError: function onError(e) {

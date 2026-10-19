@@ -52,23 +52,27 @@
  * memory back.
  */
 import { bannerStripFor, ZONE_BANNER_THEME } from '../data/zoneBanner.js';
+import { LAND_SCENE, landSceneUrl } from '../data/ownerIcons.js';   /* v2.3.3479: the Wheel's lands' scenes */
 
 /* theme -> the decoded Image we are holding.  Keyed by THEME rather than by
    zone so two zones that ever share one (none today, one line away) warm and
    free as a single asset instead of fetching it twice. */
 const _held = new Map();
 const _inflight = new Map();
+/* v2.3.3479: land id -> the decoded scene (see the land scenes, below) */
+const _scenes = new Map();
+const _sceneFlight = new Map();
 
-function warm(theme, src) {
+function warm(theme, src, held = _held, inflight = _inflight) {
   if (typeof Image === 'undefined') return Promise.resolve(null);
-  if (_held.has(theme)) return Promise.resolve(_held.get(theme));
-  const already = _inflight.get(theme);
+  if (held.has(theme)) return Promise.resolve(held.get(theme));
+  const already = inflight.get(theme);
   if (already) return already;
   const p = new Promise((resolve) => {
     const img = new Image();
     img.decoding = 'async';
     img.onload = () => {
-      const done = () => { _held.set(theme, img); resolve(img); };
+      const done = () => { held.set(theme, img); resolve(img); };
       if (typeof img.decode === 'function') img.decode().then(done, done);
       else done();
     };
@@ -77,8 +81,8 @@ function warm(theme, src) {
        the entry is silent rather than broken. */
     img.onerror = () => resolve(null);
     img.src = src;
-  }).then((img) => { _inflight.delete(theme); return img; });
-  _inflight.set(theme, p);
+  }).then((img) => { inflight.delete(theme); return img; });
+  inflight.set(theme, p);
   return p;
 }
 
@@ -127,3 +131,55 @@ export function freeZoneBanner(fromZoneId, toZoneId) {
 
 /** For rigs: which themes are resident. */
 export function zoneBannerResident() { return Array.from(_held.keys()); }
+
+/* ═══ v2.3.3479: THE WHEEL'S LANDS' SCENES (the owner's pick 1b) ═══
+ *
+ * Crossing into one of the Wheel's eight lands plays its banner
+ * (zoneBannerOverlay.js noteWheelLand), and since the owner's icon picks
+ * ("Icon picks: 1b, ...": "all eight from the sheet") that banner is the land's
+ * SCENE from their sheet over the game's name plate, for every land -- the four
+ * with the animated strips above too, so all eight match.  So the Wheel warms
+ * these eight and NOT the four strips (preloadAnimations.js preloadZoneAssets):
+ * about 0.6 MB decoded in all (eight pictures of ~190 x 100) where the strips
+ * held 15.7 (2,205 x 410 to 2,268 x 474 each).  The strips stay for the closed
+ * lands' own banners (`?trial=off`), loaded with those zones as before.
+ *
+ * The same terms as the strips: AWAITED behind the Wheel's loading screen, the
+ * decoded Image HELD (an unreferenced one is collectable, and the fetch would
+ * come back on first use), a cold or failed scene meaning the plain plaque
+ * rather than a load (landSceneHeld never kicks one), and let go on leaving the
+ * Wheel (freeZoneAssets). */
+let _sceneGen = 0;   /* moved on by every free: a warm that lands after it is let go too */
+export function preloadLandScenes() {
+  const gen = _sceneGen;
+  return Promise.all(Object.keys(LAND_SCENE).map((land) => warm(land, LAND_SCENE[land], _scenes, _sceneFlight).then((img) => {
+    if (!img || gen === _sceneGen) return img;
+    /* the Wheel was left while it loaded */
+    if (_scenes.get(land) === img) _scenes.delete(land);
+    try { img.src = ''; } catch (e) { /* a leak, not a crash */ }
+    return null;
+  })));
+}
+
+/** The decoded scene of Wheel land `land` if it is held RIGHT NOW, else null.
+ *  Cache-only, like zoneBannerReady. */
+export function landSceneHeld(land) {
+  return (landSceneUrl(land) && _scenes.get(land)) || null;
+}
+
+/** The exit half: every scene let go (the strips' release: src emptied
+ *  first).  Returns the lands released. */
+export function freeLandScenes() {
+  _sceneGen++;
+  _sceneFlight.clear();
+  const out = [];
+  for (const [land, img] of _scenes) {
+    try { img.src = ''; } catch (e) { /* a picture that will not release is a leak, not a crash */ }
+    out.push(land);
+  }
+  _scenes.clear();
+  return out;
+}
+
+/** For rigs: which lands' scenes are held. */
+export function landScenesResident() { return Array.from(_scenes.keys()); }

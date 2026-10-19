@@ -4,6 +4,7 @@ import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { DailySpin } from './DailySpin.jsx'; /* v2.3.3140: the free daily spin */
+import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3479: the jackpot's sack of gold */
 /* === GamblePanel — buildingPanel === 'gamble' sub-panel === */
 /* v2.3.880: extracted verbatim from the buildingPanel === 'gamble'
    clause in BroTown.jsx (the casino: coin-flip bet + jackpot deposit).
@@ -275,8 +276,17 @@ export function GamblePanel(props) {
         style: { fontSize: 11, color: LS.txt3, marginBottom: 6, lineHeight: 1.5 }
       }, "Every 50G you put in is one ticket. Each week one ticket wins the whole pot. The house takes nothing."),
       React.createElement("div", {
-        style: { fontSize: 18, fontWeight: 700, color: LS.brass, textAlign: 'center', marginBottom: 4, fontVariantNumeric: 'tabular-nums' }
-      }, stateRef.current._jackpotPool || '???', "g") /* v2.3.1235: batch-3 rollout — 🏆 dropped, no emoji in chrome */,
+        /* v2.3.3479: the owner's sack of gold beside the pool (their icon pick
+           5: the one gold prize in the game with no picture); the line's words
+           unchanged, the number in a span beside it */
+        "data-jackpot-pool": "",
+        style: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontSize: 18, fontWeight: 700, color: LS.brass, textAlign: 'center', marginBottom: 4, fontVariantNumeric: 'tabular-nums' }
+      }, React.createElement("img", {
+        src: OWNER_ICON.jackpotSack.src, alt: "", draggable: false,
+        width: OWNER_ICON.jackpotSack.w, height: OWNER_ICON.jackpotSack.h, "data-jackpot-sack": "",
+        style: { width: OWNER_ICON.jackpotSack.w, height: OWNER_ICON.jackpotSack.h, objectFit: 'contain', flex: 'none' },
+        onError: function onError(e) { e.currentTarget.style.display = 'none'; }
+      }), React.createElement("span", null, stateRef.current._jackpotPool || '???', "g")) /* v2.3.1235: batch-3 rollout — 🏆 dropped, no emoji in chrome */,
       /* v2.3.3479: the same review -- "Your deposits this week" read the
          browser's own tally (_compStats.jackpotDeposited, which nothing ever
          resets for a new week); the worker's count of YOUR tickets in this

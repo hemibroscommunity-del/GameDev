@@ -6495,6 +6495,32 @@ html[data-orient="landscape"] .bt-dashboard{
    and the plaque alone for a land with no art of the owner's */
 .bt-zone-banner__icon{display:inline-block;width:22px;height:22px;margin:0 6px 0 0;vertical-align:-5px}
 .bt-zone-banner.is-plain .bt-zone-banner__orn{display:none}
+/* v2.3.3479: a Wheel land's banner is the land's SCENE from the owner's sheet
+   (their pick "1b", all eight lands) standing over the plaque -- the review's
+   look: the scene about the plaque's width, just above it.  Half the
+   banner's width (the plaque is 0.59 of it), at the picture's own shape
+   (--zb-scene-ar, written from the held picture); the box grows downward to
+   hold it, so the top stays clear of the header rail.  It rises in with the
+   plaque and lifts away as the plaque docks.  Transform and opacity only,
+   like the rest of the banner (TRAPS §42). */
+.bt-zone-banner.is-scene{
+  --zb-scene-w:calc(var(--zb-w) * .5);
+  --zb-scene-h:calc(var(--zb-scene-w) * var(--zb-scene-ar,.5));
+  height:calc(var(--zb-scene-h) + 2px + var(--zb-bar-h));
+}
+.bt-zone-banner.is-scene .bt-zone-banner__plaque{top:calc(var(--zb-scene-h) + 2px)}
+.bt-zone-banner__scene{
+  position:absolute;top:0;left:calc((var(--zb-w) - var(--zb-scene-w)) / 2);
+  width:var(--zb-scene-w);height:var(--zb-scene-h);
+  transform-origin:50% 100%;
+  opacity:0;transform:translateY(6px) scale(.96);
+  transition:opacity 220ms ease-out, transform 320ms cubic-bezier(.2,.8,.2,1);
+}
+.bt-zone-banner.is-in .bt-zone-banner__scene{opacity:1;transform:none}
+.bt-zone-banner.is-docking .bt-zone-banner__scene{
+  opacity:0;transform:translateY(-10px);
+  transition:opacity 260ms ease-in, transform 260ms ease-in;
+}
 .bt-zone-banner__orn--l{left:0}
 .bt-zone-banner__orn--r{right:0}
 .bt-zone-banner.is-in .bt-zone-banner__plaque{opacity:1;transform:translateY(0) scale(1)}
@@ -6530,9 +6556,11 @@ html[data-orient="landscape"] .bt-dashboard{
 .bt-zone-banner.is-static .bt-zone-banner__plaque{transition:opacity 220ms linear;transform:none}
 .bt-zone-banner.is-static .bt-zone-banner__name{transition:opacity 220ms linear;opacity:1}
 .bt-zone-banner.is-static .bt-zone-banner__orn{transition:opacity 220ms linear}
+.bt-zone-banner.is-static .bt-zone-banner__scene{transition:opacity 220ms linear;transform:none}  /* v2.3.3479 */
 .bt-zone-banner.is-static.is-out .bt-zone-banner__plaque,
 .bt-zone-banner.is-static.is-out .bt-zone-banner__name,
-.bt-zone-banner.is-static.is-out .bt-zone-banner__orn{opacity:0}
+.bt-zone-banner.is-static.is-out .bt-zone-banner__orn,
+.bt-zone-banner.is-static.is-out .bt-zone-banner__scene{opacity:0}
 @media (prefers-reduced-motion: reduce){
   .bt-zone-header__title.is-arriving{animation:none}
 }
@@ -6558,6 +6586,9 @@ html[data-orient="landscape"] .bt-zone-banner{
   --zb-bar-h:28px;
 }
 html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14px}
+/* v2.3.3479: sideways the screen is 360-390 px tall, so a land's scene is a
+   little smaller there (~150 px wide at most) */
+html[data-orient="landscape"] .bt-zone-banner.is-scene{--zb-scene-w:calc(var(--zb-w) * .42)}
 
 /* ═══ v2.3.3006: THE SPRINT BUTTON'S "NO" ═══
    A tap with too little stamina to start a sprint shakes the button's face

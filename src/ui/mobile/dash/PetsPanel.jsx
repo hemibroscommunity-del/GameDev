@@ -8,6 +8,7 @@ import { petbookOn, petList, activePet, sendPetActive, sendPetName, sendPetRelea
 import { trapLevel, petlevelsOn, petwardsOn } from '@/game/trapping.js';
 import { ZONES } from '@/data/zones.js';
 import { landLook } from '@/data/wheelLands.js';
+import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3479: the Pet House row's picture */
 
 /* ═══ v2.3.3120: THE PETS PAGE ═══
  * Plan: docs/PET-TRAPPING-PLAN.md -- "Name, set active and release from a
@@ -165,6 +166,10 @@ export const PetsPanel = () => {
         }
         return (
           <div data-pet-house={cap} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '6px 10px', background: COL.well, borderRadius: 10 }}>
+            {/* v2.3.3479: the owner's pet house leads the row (their icon pick 6) */}
+            <img src={OWNER_ICON.petHouse.src} alt="" draggable={false} width={OWNER_ICON.petHouse.w} height={OWNER_ICON.petHouse.h}
+              data-pet-house-icon="" style={{ width: OWNER_ICON.petHouse.w, height: OWNER_ICON.petHouse.h, objectFit: 'contain', flex: 'none' }}
+              onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: COL.text2, lineHeight: 1.35 }}>
               {/* v2.3.3479: the 2026-10-19 UI review -- "10 more places" never
                   said what the places are for: the row says pets, in words
