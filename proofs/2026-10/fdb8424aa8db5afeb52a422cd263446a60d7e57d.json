@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fdb8424aa8db5afeb52a422cd263446a60d7e57d",
+  "tree": "5428398fd457cea25d26c0b00c5d79065b19bd25",
+  "committedAt": "2026-10-19T16:50:47-07:00",
+  "subject": "Repo safety: deploy only from main, the token behind a main-only environment, and your lock-down steps (v2.3.3491) (#1031)",
+  "files": 6088,
+  "bytes": 711600913,
+  "listingSha256": "06fb6eed2a7bf5db673f82816fcfa8969ecbe334499bfda705b67e297a5671dd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
