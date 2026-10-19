@@ -1371,9 +1371,10 @@ export function QuestCoach(props) {
    * only his head showed, beside the card.  So when the card would lie on him
    * (his ring, the chatTap lesson's own screen math, up to the name plate
    * over his head, S._selfBandTopY) it goes up to stop 8 px over the plate.
-   * Only when it then still fits -- under the 120 px cap and under the pinned
-   * quest card (`[data-quest-hud]`, when the page marks it) -- else it stays
-   * where it was: over his body beats over the quest or off the top.  Like
+   * Only when it then still fits -- under the 120 px cap, under the pinned
+   * quest card (`[data-quest-hud]`, when the page marks it) and off the
+   * minimap's open-map button -- else it stays where it was: over his body
+   * beats over the quest, the map's button or off the top.  Like
    * the band's lift, only the CARD moves; the ring stays on its control.
    * Sideways the band's lift is already at the cap, so nothing there moves.
    * The card's left is worked out as the card's own `left` below works it
@@ -1405,9 +1406,18 @@ export function QuestCoach(props) {
       if (cardBot <= broTop || cardBot - cardH >= broBot) return 0;   /* over or under him already */
       const lift = boxH - (broTop - 8);
       if (lift > boxH - 120) return 0;
-      const qh = document.querySelector('[data-quest-hud]');
-      const qr = qh && qh.getBoundingClientRect();
-      if (qr && qr.width > 0 && (boxH - lift) - cardH < qr.bottom - box.y + 8) return 0;
+      /* ...nor onto the minimap's invisible "open map" button (z 45, over the
+         coach), where a tap on the card would open the world map instead --
+         TRAPS §220's trap, reachable on a short phone */
+      const top = (boxH - lift) - cardH, bot = boxH - lift;
+      const clash = (sel) => {
+        const n = document.querySelector(sel);
+        const q = n && n.getBoundingClientRect();
+        if (!q || !(q.width > 0)) return false;
+        const ql = q.left - box.x, qt = q.top - box.y;
+        return cardL < ql + q.width + 8 && cardL + 220 > ql - 8 && top < qt + q.height + 8 && bot > qt - 8;
+      };
+      if (clash('[data-quest-hud]') || clash('[data-world-map-open]')) return 0;
       return lift;
     } catch (_e) { return 0; }
   })();
