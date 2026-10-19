@@ -119,9 +119,62 @@ while you walked it; it now holds eight scenes of about 190 x 100 (0.61 MB). The
 are DOM images, not Pixi textures, so no line of the memory budget
 (`tools/qa/mp/memory-budget.mjs`) measured them and none moves.
 
+## v2.3.3483: the legs and chest, and five more ("Go recommended on everything")
+
+Asked whether to use the sheet's leg armour (card 10, with the chest to match)
+and anything from card 11, the owner answered "Go recommended on everything":
+
+- **The bag's legs and chest** (card 10's 10a and 10b): the sheet's iron legs
+  and the chest beside them on the same armour row
+  (`brotown-rpg-ui-asset-sheet-1.png`), cut inside each card's light rim (the
+  review's boxes took two px of it, a line under the legs) and framed as
+  today's were (the art's larger side 0.89 of the square for the legs, 0.78
+  for the chest), written over `icons/items/greaves.webp` and
+  `chest-plate.webp`, the steel pictures every metal is made from:
+  `node tools/gear/make-metal-icons.mjs --only greaves,chest-plate` made
+  copper, iron and black steel from them with the renderer's own multiply.
+  The sheet has no black steel; this is how the game made its own. The catch
+  said on card 10 stands: the sheet's legs read as trousers with knee pads,
+  the bro wears plate greaves.
+- **Card 11's clearer five** (my note on each: "Sheet's is clearer"), each
+  under a new name the code points at, so a re-run of the tool that made
+  today's can never put the old one back:
+  - the orange paw (`icons/ui/pets-paw.webp`): More's Pets tile, the Pets page
+    and the Pet House row; the brown paw was muddy at 30 px on the dark tile;
+  - the gold crown and the blue pin (`party-crown.webp`, `party-pin.webp`,
+    64 x 64 as every small mark, `SMALL_ICON.partyLeader` / `partyAway`): the
+    party window's leader and "elsewhere" marks; the winged figure with a star
+    and the pin on a map were busy at 13-15 px. Blue, the party's colour on
+    the maps (the sheet also had a red one);
+  - the gavel (`bldg-auction-gavel.webp`): the Auction House's window header
+    and its door's Enter prompt; the market stall could have been any shop. A
+    gavel is half again as wide as tall, so it fills 0.84 of its square's width
+    (the stall's square shape filled 0.62);
+  - the plain no-entry sign (`ui/welcome/cc/cc-none.webp`): the creator's None
+    tile where None means nothing (hair, hats, eyewear, beard, the clothes);
+    the bald head said "no hair" on the glasses' and shirts' rows too. The
+    Skin tab's "Human" and the Eyes tab's "Normal" keep the bald head: there
+    the first choice is a plain human, and a no-entry sign over "Human" read
+    as "no human".
+- **Not used**: the five card 11 marked "worth a look" (the bow, the bag's All
+  tab, Ranks, Element Burst, Journey's lifetime gold), and the ones it called
+  "slightly clearer": the black steel bar is one of five bars one tool makes,
+  the settings gear one of More's eleven tiles, the farm's plant, feed and
+  harvest three of its five steps, and one picture in another hand would not
+  match the rest.
+- **The tool's trap, found on the way**: `make-metal-icons.mjs` ran
+  `tools/webp_icons.py --convert`, which converted and DELETED every .png under
+  `public/icons` -- the app's home-screen icons (which must stay PNG), the
+  badges and the stat icons: 45 files, restored before anything was committed.
+  `--convert` now takes the files to convert (`--all` is the old sweep), and the
+  generator names the six it wrote.
+
 ## Tests
 
-- `server/test/owner-icons.test.mjs`: every file in place at its size (each window
+- `server/test/owner-icons.test.mjs`: (§5, v2.3.3483) the legs and chest the
+  sheet's with every metal made at their size, the five new pictures in place
+  and used where the old ones were (the old ones nowhere); and every file in
+  place at its size (each window
   picture's CSS size its own shape, the pins one 72 x 86 frame, the grey "?"
   beside the gold), the thirteen sheets kept and none at the top of the repo,
   `landSceneUrl` for the eight lands and nothing else, each place using its

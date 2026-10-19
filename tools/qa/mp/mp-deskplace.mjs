@@ -203,9 +203,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 5. the level-up celebration ── */
     const kbShown = () => P.page.evaluate(() => { const k = document.querySelector('.bt-kb-hints'); return !!k && getComputedStyle(k).display !== 'none'; });
+    /* v2.3.3483: drawn in the margin beside the game, the strip covers nothing
+       of the column, so it stays up through the celebration */
+    const kbInMargin = () => P.page.evaluate(() => {
+      const k = document.querySelector('.bt-kb-hints');
+      const c = document.getElementById('root').getBoundingClientRect();
+      const r = k && getComputedStyle(k).display !== 'none' ? k.getBoundingClientRect() : null;
+      return !!(r && k.getAttribute('data-kb-place') === 'side' && r.right <= c.left);
+    });
     const kbBefore = await kbShown();
     const b = await burstAt(P);
     const kbDuring = await kbShown();
+    const kbMarginDuring = await kbInMargin();
     rec.ok('a level-up shows its medallion and caption (guard)', !!(b && b.icon && b.art && b.cap), b);
     if (b && b.icon && b.art && b.cap) {
       const cx = mid(col).x;
@@ -218,8 +227,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.screenshot({ path: 'tools/qa/mp/out/deskplace-5-levelup.png' }).catch(() => {});
     await burstEnd(P);
     const kbAfter = await kbShown();
-    rec.ok('...the keys strip stands aside while it plays, over its caption, and is back when it ends',
-      kbBefore && !kbDuring && kbAfter, { kbBefore, kbDuring, kbAfter });
+    rec.ok('...the keys strip is never over its caption -- in the margin beside the game, or standing aside while it plays -- and is up after it ends',
+      kbBefore && (kbMarginDuring || !kbDuring) && kbAfter, { kbBefore, kbDuring, kbMarginDuring, kbAfter });
 
     /* ── 6. the bag's item card, beside the tile ── */
     const tiles = await gearTiles(P);

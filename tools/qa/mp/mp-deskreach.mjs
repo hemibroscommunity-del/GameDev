@@ -78,11 +78,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return !!(el && b.contains(el));
       });
       const strip = document.querySelector('.bt-kb-hints');
+      const col = document.getElementById('root').getBoundingClientRect();
+      const sr = strip ? strip.getBoundingClientRect() : null;
       return { x: r.left + r.width * 0.25, y: r.top + r.height / 2, text: b.textContent.replace(/\s+/g, ' ').trim(), answers: pts,
-        strip: strip ? getComputedStyle(strip).display : 'none' };
+        strip: strip ? getComputedStyle(strip).display : 'none',
+        /* v2.3.3483: drawn in the margin beside the game it covers nothing */
+        margin: !!(strip && strip.getAttribute('data-kb-place') === 'side' && sr && sr.right <= col.left) };
     });
-    rec.ok('at the bank\'s door the Enter button answers a click anywhere on it (the key strip stands aside)',
-      !!btn && btn.answers.every(Boolean) && btn.strip === 'none', btn);
+    rec.ok('at the bank\'s door the Enter button answers a click anywhere on it (the key strip in the margin, or standing aside)',
+      !!btn && btn.answers.every(Boolean) && (btn.strip === 'none' || btn.margin), btn);
     if (btn) await P.page.mouse.click(btn.x, btn.y);
     await P.page.waitForTimeout(1200);
     const opened = await P.page.evaluate(() => {
@@ -220,7 +224,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         .then(() => true).catch(() => false);
       rec.ok('...and a mouse click on Done closes it', edClosed);
     }
-    await tab('Hair');   /* back to the tab ENTER was measured on */
+    await tab('Skin');   /* back to the tab ENTER was measured on (v2.3.3483: the creator opens on Skin) */
     await L.page.waitForTimeout(500);
 
     await L.page.fill('input.bt-cc-name', 'Laptop');

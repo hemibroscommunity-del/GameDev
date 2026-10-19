@@ -33,8 +33,39 @@ size it would be drawn, and the owner answered: "Icon picks: 1b, 2a, 3, 4, 5,
       Rewards window's free daily spin row.
   9   the treasure map (colorful-rpg-game-ui-asset-sheet.png) on the empty
       Journey page.
-Not 7 (the compass): the owner kept today's.  Not 10 (leg armour and the chest
-to match): not answered yet -- a new entry in PIECES is all it would take.
+Not 7 (the compass): the owner kept today's.
+
+v2.3.3483: and, to "Go recommended on everything" (the owner, 2026-10-19):
+  10a/10b  the IRON LEGS and the CHEST beside them on the same armour row
+      (brotown-rpg-ui-asset-sheet-1.png), written over the bag's two STEEL
+      pictures, icons/items/greaves and chest-plate -- the art every metal's
+      icon is made from (tools/gear/make-metal-icons.mjs --only
+      greaves,chest-plate, the renderer's own multiply), so copper, iron and
+      black steel match it.  Each card's light rim is outside the box (the
+      review's boxes took two px of its bottom edge, a line under the legs).
+  card 11, the five my notes called clearer than today's ("Sheet's is
+      clearer"), each under a NEW name and pointed at in the code, so a re-run
+      of the tool that made today's can never put the old one back: the orange
+      paw (Pets: More's tile, the Pets page, the Pet House), the gold crown
+      (the party's leader) and the blue pin (a member elsewhere: the party's
+      blue on the maps; 64 x 64, as every small mark is), the auction gavel
+      (the Auction House's window and door) and the plain no-entry sign (the
+      creator's None tile where None means nothing: a bald head said "no
+      hair" on the glasses' and shirts' rows too; the Skin tab's "Human" and
+      the Eyes tab's "Normal" keep the bald head, a plain human).  Not the five "worth a look" ones, nor
+      the "slightly clearer" ones: the black steel bar is one of a set of five
+      bars one tool makes, the gear one of More's eleven tiles, the farm's
+      three steps three of five, and one picture in another hand would not
+      match the rest.
+  FRAMES (`frame`): each sits in its square at the share of it the picture it
+  replaces fills -- the larger side of the art over the frame's side, measured
+  on today's files (the paw 0.67, the None sign 0.76, a party mark 0.77, the
+  steel legs 0.89 and chest 0.78 of their 256) -- so it is drawn the same
+  size in its slot.  The gavel is the exception: the market stall it replaces
+  is square (0.62 x 0.61), and a gavel half again as wide as it is tall set
+  at 0.62 of its width came out a sliver at 26 CSS px, so its width is 0.84.  `size` caps the frame
+  (3x the CSS px it is drawn at; 64 for the small marks, `exact`); with no
+  cap the frame is the art's own px padded, never scaled.
 
 HOW: the review page's own cuts, which the owner approved by eye.
   alpha  a free-standing piece on a transparent ground: its solid core (alpha
@@ -128,6 +159,21 @@ PIECES = [
          box=(68, 4, 456, 424), grow=4, css=(34, 37)),
     dict(name='icons/ui/journey-map', src='colorful-rpg-game-ui-asset-sheet.png', mode='alpha',
          box=(1208, 552, 1476, 708), grow=4, css=(120, 69)),
+    # v2.3.3483: 10a/10b and card 11's clearer five (the header)
+    dict(name='icons/items/greaves', src='brotown-rpg-ui-asset-sheet-1.png', mode='key',
+         box=(318, 462, 422, 566), frame=dict(fill=0.89), metal=True),
+    dict(name='icons/items/chest-plate', src='brotown-rpg-ui-asset-sheet-1.png', mode='key',
+         box=(576, 462, 682, 566), frame=dict(fill=0.78), metal=True),
+    dict(name='icons/ui/pets-paw', src='colorful-rpg-game-ui-asset-sheet.png', mode='key',
+         box=(812, 66, 880, 131), frame=dict(size=90, fill=0.67)),
+    dict(name='icons/ui/party-crown', src='brotown-rpg-ui-asset-sheet-1.png', mode='alpha',
+         box=(1076, 796, 1156, 868), grow=4, frame=dict(size=64, fill=0.77, exact=True)),
+    dict(name='icons/ui/party-pin', src='brotown-rpg-ui-icon-sheet-2.png', mode='alpha',
+         box=(1412, 516, 1496, 632), grow=4, frame=dict(size=64, fill=0.77, exact=True)),
+    dict(name='icons/ui/bldg-auction-gavel', src='fantasy-game-ui-icon-collection.png', mode='alpha',
+         box=(712, 764, 928, 908), grow=4, frame=dict(size=78, fill=0.84)),
+    dict(name='ui/welcome/cc/cc-none', src='pixel-style-character-creator-ui-sheet.png', mode='alpha',
+         box=(76, 24, 160, 112), grow=4, frame=dict(size=102, fill=0.76)),
 ]
 
 _sheets = {}
@@ -232,6 +278,22 @@ def to_pin(im):
     return out
 
 
+def to_frame(im, size=None, fill=0.8, exact=False):
+    """v2.3.3483: the art centred in a square, its larger side `fill` of the
+    square's (the header's FRAMES).  With `size` the square is at most that
+    (exactly that if `exact`), the art scaled down to fit; never scaled up."""
+    w, h = im.size
+    big = max(w, h)
+    side = round(big / fill)
+    if size is not None:
+        side = size if exact else min(size, side)
+    k = min(1.0, fill * side / big)
+    art = resize(im, (max(1, round(w * k)), max(1, round(h * k))))
+    out = Image.new('RGBA', (side, side), (0, 0, 0, 0))
+    out.alpha_composite(art, ((side - art.width) // 2, (side - art.height) // 2))
+    return out
+
+
 def grey(im):
     """Plain luminance, the alpha kept: the review page's greyed "?"."""
     g = ImageOps.grayscale(im.convert('RGB')).convert('RGBA')
@@ -287,6 +349,11 @@ def main():
         elif p.get('pin'):
             out = to_pin(im)
             print(f'  {short:16s} cut {raw[0]}x{raw[1]} -> {out.width}x{out.height} frame')
+        elif p.get('frame'):
+            out = to_frame(im, **p['frame'])
+            print(f'  {short:16s} cut {raw[0]}x{raw[1]} -> {out.width}x{out.height} frame'
+                  f' (art {im.width}x{im.height}, fill {p["frame"]["fill"]})'
+                  + ('  -- now run: node tools/gear/make-metal-icons.mjs --only greaves,chest-plate' if p.get('metal') else ''))
         else:
             out = to_css(im, p['css'])
             print(f'  {short:16s} cut {raw[0]}x{raw[1]} -> {out.width}x{out.height}'

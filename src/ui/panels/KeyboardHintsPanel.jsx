@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 /* === KeyboardHintsPanel — the desktop keyboard-hints overlay === */
 /* v2.3.889: extracted verbatim from the bt-kb-hints JSX subtree in
@@ -52,11 +53,68 @@ const KEYS = [
   ['C', 'Chat'], ['H', 'Hide'], ['Esc', 'Close'],
 ];
 
+/* ═══ v2.3.3483: IN THE BLACK MARGIN, BESIDE THE GAME ═══
+   The owner, of the 2026-10-19 review's "move the keyboard keys strip into the
+   black margin beside the game on a computer": "Go recommended on everything".
+   On a computer the game is a phone-shaped column in the middle of the window
+   (game.css, the `(pointer:fine) and (min-width:1000px)` #root rule), and this
+   strip lay over the column's bottom-left -- outside .brotown-wrap, so over
+   anything there whatever its z-index -- which is why it had to stand aside
+   for windows, prompts, the harvest's button, the emotes, a level-up, the chat
+   feed and the trade drawer (seven game.css rules), and still hid the bottom
+   of the world when it did not.  The margin beside the column is empty black.
+   Where it has room the strip is drawn there instead: portalled to the body
+   (#root's contain:paint clips anything of its own to the column), one key a
+   row, its right edge SIDE_GAP left of the column and the ⌨ under it, so it
+   covers nothing and never has to stand aside.  A window too narrow or too
+   short for it, or no column at all (a computer window under 1000 px), keeps
+   the strip in the column as before. */
+const COLUMN_QUERY = '(pointer:fine) and (min-width:1000px)';   /* game.css's column rule */
+const SIDE_GAP = 16;     /* between the strip and the column, and the window's bottom */
+const SIDE_MIN = 190;    /* the margin it needs: its 150 px + a gap each side */
+const SIDE_MIN_H = 520;  /* the window height its rows and the ⌨ need */
+
+function sideRoom() {
+  try {
+    if (typeof window === 'undefined' || !window.matchMedia || !window.matchMedia(COLUMN_QUERY).matches) return null;
+    if (window.innerHeight < SIDE_MIN_H) return null;
+    const root = document.getElementById('root');
+    const r = root && root.getBoundingClientRect();
+    if (!r || !(r.width > 0) || r.left < SIDE_MIN) return null;
+    return { right: Math.round(window.innerWidth - r.left + SIDE_GAP), bottom: Math.round(Math.max(0, window.innerHeight - r.bottom) + SIDE_GAP) };
+  } catch (_e) { return null; }
+}
+
+function useSideRoom() {
+  const [room, setRoom] = React.useState(sideRoom);
+  React.useEffect(() => {
+    let raf = 0;
+    const again = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setRoom((was) => {
+        const now = sideRoom();
+        return was && now && was.right === now.right && was.bottom === now.bottom ? was : now;
+      }));
+    };
+    window.addEventListener('resize', again);
+    let ro = null;
+    try {
+      const root = document.getElementById('root');
+      if (root && typeof ResizeObserver !== 'undefined') { ro = new ResizeObserver(again); ro.observe(root); }
+    } catch (_e) { /* no observer: the window's resize is enough */ }
+    again();
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', again); if (ro) ro.disconnect(); };
+  }, []);
+  return room;
+}
+
 export function KeyboardHintsPanel({ hidden, onToggle }) {
   /* The tap must not reach the world underneath — the canvas takes clicks as
      attack/aim, so a bare onClick here would also swing the sword. */
   const swallow = (e) => { e.stopPropagation(); };
   const toggle = (e) => { e.stopPropagation(); if (onToggle) onToggle(); };
+  const room = useSideRoom();
+  const place = room ? 'side' : 'column';
 
   /* ═══ v2.3.3470: THE ⌨ STAYS, BESIDE THE STRIP ═══
      The owner: "The computer keyboard icon is a nice touch for showing and
@@ -72,6 +130,7 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
     className: 'bt-kb-chip',
     key: 'chip',
     'data-open': hidden ? '0' : '1',
+    'data-kb-place': place,
     onPointerDown: swallow,
     onClick: toggle,
     title: hidden ? 'Show the keyboard controls (H)' : 'Hide the keyboard controls (H)',
@@ -79,12 +138,11 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
     'aria-pressed': hidden ? 'false' : 'true',
     'aria-label': hidden ? 'Show keyboard controls' : 'Hide keyboard controls',
   }, '⌨');
-  if (hidden) return chip;
-
-  return React.createElement(React.Fragment, null, chip, React.createElement('div', {
+  const strip = hidden ? null : React.createElement('div', {
     className: 'bt-kb-hints',
     key: 'strip',
     'data-beside': '1',
+    'data-kb-place': place,
     onPointerDown: swallow,
     onClick: toggle,
     title: 'Hide these (H)',
@@ -92,5 +150,16 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
     'aria-label': 'Hide keyboard controls',
   }, KEYS.map(([k, label]) => React.createElement('span', {
     className: 'bt-kb-key', key: k,
-  }, React.createElement('kbd', null, k), ' ' + label))));
+  }, React.createElement('kbd', null, k), ' ' + label)));
+
+  /* v2.3.3483: in the margin, the ⌨ under the rows (game.css .bt-kb-side:
+     column-reverse), so it stays where it is when the rows go */
+  if (room && typeof document !== 'undefined' && document.body) {
+    return createPortal(React.createElement('div', {
+      className: 'bt-kb-side', 'data-kb-side': '1',
+      style: { right: room.right + 'px', bottom: room.bottom + 'px' },
+    }, chip, strip), document.body);
+  }
+  if (hidden) return chip;
+  return React.createElement(React.Fragment, null, chip, strip);
 }

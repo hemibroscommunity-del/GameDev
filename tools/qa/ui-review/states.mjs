@@ -305,13 +305,15 @@ export const STATES = [
       await wait(P, 1800);
     },
   },
-  ...['hat', 'skin', 'eyes', 'eyewear', 'beard', 'shirt', 'pants', 'shoes'].map((t) => ({
+  /* v2.3.3483: 'hair' joins the list -- the creator opens on Skin now (the
+     owner's "Go recommended"), so the opening shot no longer shows Hair */
+  ...['hair', 'hat', 'skin', 'eyes', 'eyewear', 'beard', 'shirt', 'pants', 'shoes'].map((t) => ({
     id: 'creator-tab-' + t, group: 'Before the game', pre: true, keep: true, title: 'Creator: ' + t + ' tab',
     about: 'The character creator with the "' + t + '" tab of the Trait Picker open.',
     run: async ({ P }) => {
       const r = await evalIn(P, (tt) => {
         const tabs = Array.from(document.querySelectorAll('button.bt-cc-tab'));
-        const want = { hat: /hat/i, skin: /skin|species/i, eyes: /^eyes/i, eyewear: /eyewear/i, beard: /beard/i, shirt: /shirt/i, pants: /pants/i, shoes: /shoes/i }[tt];
+        const want = { hair: /^hair/i, hat: /hat/i, skin: /skin|species/i, eyes: /^eyes/i, eyewear: /eyewear/i, beard: /beard/i, shirt: /shirt/i, pants: /pants/i, shoes: /shoes/i }[tt];
         const b = tabs.find((x) => want.test((x.innerText || x.getAttribute('aria-label') || '').trim()));
         if (!b) return 'no tab ' + tt + ' (have: ' + tabs.map((x) => (x.innerText || '').trim()).join(', ') + ')';
         b.scrollIntoView({ block: 'nearest', inline: 'nearest' });

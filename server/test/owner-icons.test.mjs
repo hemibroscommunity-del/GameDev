@@ -16,7 +16,11 @@
  *   4. the loading: the pins on the loading screen, the land scenes behind the
  *      Wheel's and let go on leaving it, the four animated strips no longer the
  *      Wheel's, the handshake warmed with the controls; a land's banner never
- *      uses a closed zone's strip.
+ *      uses a closed zone's strip;
+ *   5. v2.3.3483 ("Go recommended on everything"): the bag's legs and chest
+ *      the sheet's, every metal made from them; card 11's clearer five -- the
+ *      orange paw, the party's crown and pin, the auction gavel, the creator's
+ *      none sign -- under new names the code points at.
  */
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 
@@ -133,6 +137,43 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   check('4f the scene\'s look: half the banner wide, over the plaque, transform and opacity only',
     /\.bt-zone-banner\.is-scene\{\s*--zb-scene-w:calc\(var\(--zb-w\) \* \.5\);/.test(css) && /\.bt-zone-banner__scene\{/.test(css)
     && !/\.bt-zone-banner__scene\{[^}]*filter/.test(css));
+}
+
+/* ── 5. v2.3.3483: "Go recommended on everything" -- the legs and chest
+   (card 10) and card 11's clearer five ── */
+{
+  /* the bag's steel legs and chest are the sheet's, framed as today's were
+     (the art's larger side 0.89 / 0.78 of a square), and every metal made from
+     them (make-metal-icons.mjs: the same size, the renderer's multiply) */
+  const legs = dims('/icons/items/greaves.webp'), chest = dims('/icons/items/chest-plate.webp');
+  const metals = ['copper', 'iron', 'blacksteel'];
+  const sameSize = metals.every((m) => dims('/icons/items/greaves-' + m + '.webp').join('x') === legs.join('x')
+    && dims('/icons/items/chest-plate-' + m + '.webp').join('x') === chest.join('x'));
+  check('5a the legs and chest are the sheet\'s (square, ~110-125 px, not the old 256), each metal made from them at their size',
+    legs[0] === legs[1] && chest[0] === chest[1] && legs[0] >= 100 && legs[0] <= 130 && chest[0] >= 100 && chest[0] <= 130 && sameSize,
+    { legs, chest, sameSize });
+  const cut = src('tools/ui/cut-owner-icons.py');
+  check('5b the cutter writes them (and says to run the metals after)', /name='icons\/items\/greaves'/.test(cut) && /name='icons\/items\/chest-plate'/.test(cut)
+    && /make-metal-icons\.mjs --only greaves,chest-plate/.test(cut));
+  /* each under a NEW name the code points at, so a re-run of the tool that
+     made today's can never put the old one back */
+  const NEW = { paw: '/icons/ui/pets-paw.webp', crown: '/icons/ui/party-crown.webp', pin: '/icons/ui/party-pin.webp',
+    gavel: '/icons/ui/bldg-auction-gavel.webp', none: '/ui/welcome/cc/cc-none.webp' };
+  const absent = Object.entries(NEW).filter(([, u]) => !existsSync(pub(u))).map(([k]) => k);
+  check('5c the five are files in public/', absent.length === 0, absent);
+  const SI = await import('../../src/data/smallIcons.js');
+  check('5d the party window\'s leader and elsewhere marks are the crown and the pin, 64 x 64 as every small mark',
+    /party-crown\.webp/.test(SI.SMALL_ICON.partyLeader) && /party-pin\.webp/.test(SI.SMALL_ICON.partyAway)
+    && dims(NEW.crown).join('x') === '64x64' && dims(NEW.pin).join('x') === '64x64', SI.SMALL_ICON);
+  const more = src('src/ui/mobile/dash/MorePanel.jsx'), pets = src('src/ui/mobile/dash/PetsPanel.jsx'), house = src('src/ui/panels/PetHousePanel.jsx');
+  check('5e the orange paw on More\'s Pets tile, the Pets page and the Pet House; the brown one nowhere',
+    [more, pets, house].every((t) => t.indexOf('/icons/ui/pets-paw.webp') >= 0 && t.indexOf('evt-pets.webp') < 0));
+  const bl = src('src/data/buildings.js'), vp = src('src/ui/panels/buildings/VendorPanel.jsx');
+  check('5f the Auction House\'s door and window wear the gavel', /iconSrc: '\/icons\/ui\/bldg-auction-gavel\.webp/.test(bl)
+    && /lsHeader\('auction-gavel'/.test(vp) && !/lsHeader\('auctionhouse'/.test(vp));
+  const bt = src('src/ui/BroTown.jsx');
+  check('5g the creator\'s None tile is the plain no-entry sign, and the species\' Human and the eyes\' Normal keep the bald head',
+    /\(cat === 'species' \|\| cat === 'eyestyle'\) \? '\/ui\/welcome\/cc\/cc-no-hair\.webp\?v=' : '\/ui\/welcome\/cc\/cc-none\.webp\?v='/.test(bt));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
