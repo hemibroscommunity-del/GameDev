@@ -183,7 +183,12 @@ export function ExchangePanel(props) {
       fontSize: 12, /* v2.3.1235: Checkpoint B — hint copy floor 12px */
       color: '#8D9B98'
     }
-  }, "Buy & sell \xB7 Listings last 24h, refunds by mail")), /*#__PURE__*/React.createElement("div", {
+  },
+  /* v2.3.3479: the 2026-10-19 UI review -- "Buy & sell · Listings" did not
+     say this is an order book: orders rest per KIND of gear (tier, type,
+     elements), buy and sell alike last 24h (market.js ORDER_EXPIRY), and an
+     expired or cancelled one is refunded through the mail (_creditPlayer). */
+  "Trade by gear type \xB7 Orders last 24h \xB7 Refunds by mail")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 2,
