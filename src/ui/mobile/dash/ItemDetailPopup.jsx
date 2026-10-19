@@ -129,6 +129,19 @@ function shieldThumb(shield) {
   return shield ? `/icons/items/shield.webp${ITEMS_V}` : null;
 }
 
+/* v2.3.3479: the 2026-10-19 UI review -- a shield card said "Hold to block",
+   which a phone never does: there the Block button is a TOGGLE, one tap
+   raises the shield and the next lowers it, and it is shown only in a fight
+   (ShieldButton.jsx, shieldToggle.js shieldButtonLive).  On a computer that
+   button is hidden (game.css .bt-desktop-hide, pointer:fine) and Q is held
+   (desktopControls.js: down raises, up lowers).  Asked by the same
+   (pointer:fine) test that hides the button, so the card names the control
+   that is really there. */
+function shieldBlockHint() {
+  const fine = typeof matchMedia === 'function' && matchMedia('(pointer:fine)').matches;
+  return fine ? 'Hold Q to block' : 'Tap Block in a fight to raise it';
+}
+
 /* Which weapon slot does a `type` belong in. */
 function slotFor(type) {
   if (type === 'bow')   return 'rangedWeapon';
@@ -319,7 +332,7 @@ function resolveTarget(target) {
       thumb: shieldThumb(sh),
       glyph: '\u{1F6E1}',
       name: sh.name || 'Shield',
-      info: 'Hold to block',
+      info: shieldBlockHint(),   /* v2.3.3479: was 'Hold to block' (see shieldBlockHint) */
       desc: (sh.gearBase === 'wood' ? 'Wooden' : tierLabel(sh)) + ' · Shield',
       actions: { unequip: true },
     };
@@ -369,7 +382,7 @@ function resolveTarget(target) {
       thumb: shieldThumb(sh),
       glyph: '\u{1F6E1}',
       name: sh.name || 'Shield',
-      info: 'Hold to block',
+      info: shieldBlockHint(),   /* v2.3.3479: was 'Hold to block' (see shieldBlockHint) */
       delta,
       desc: (sh.gearBase === 'wood' ? 'Wooden' : tierLabel(sh)) + ' · Shield',
       /* v2.3.2531: Sell -- the store can take gear now (store phase 3,

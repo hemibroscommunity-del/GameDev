@@ -5706,7 +5706,10 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
   background:var(--ui-line-strong);transition:background 140ms ease;
 }
 .bt-npcdlg-dot.on{background:var(--ui-accent,#D8AA58)}
-.bt-npcdlg-next{min-height:40px;padding:0 18px;font-size:14px;border-radius:9px;flex:0 0 auto}
+/* v2.3.3479: the 2026-10-19 UI review -- the button keeps to the right.  The
+   dots pushed it there, and a one-line answer draws no dots, so its Close
+   fell to the left, away from where Next had been under the finger. */
+.bt-npcdlg-next{min-height:40px;padding:0 18px;font-size:14px;border-radius:9px;flex:0 0 auto;margin-left:auto}
 
 /* ── the offer / claim window ── */
 .bt-qoffer{
