@@ -181,4 +181,8 @@ row's words and picture, held to the worker's list by mirror-audit.
 - `mirror-audit`: the page's list, tiers, points and counting rows are the
   worker's. `cost-guard` §5: the first kill's one extra row, none after.
   `wire-audit`: `achv_state` privileged. `arena` §4: the crown's points.
+- `server/test/achievements-client.test.mjs` (64): the phone's half, in node:
+  `achv_state` read and checked, the moments queued, the page's numbers, the
+  mail's words, the title's ask, and the wiring (the direct switch, the
+  shim's passthrough, the banner outside the world's wrap).
 - `mp-achievements` (a phone, sideways and a computer).
