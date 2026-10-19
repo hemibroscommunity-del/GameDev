@@ -113,7 +113,11 @@ export function WoodworkPanel(props) {
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 10, lineHeight: 1.5 } },
         _trapsMode ? "Make box traps for catching pets."
           : _hwMode ? "Five logs make one hardened wood. A bow or staff is hardened with its own wood's."
-          : "Craft bows and staves from harvested wood. Higher tiers unlock gem slots."),
+          /* v2.3.3479: the 2026-10-19 UI review -- "Higher tiers unlock gem
+             slots" read as none until later, but every wood has one (the
+             Pine Bow's row says "1 gem slot") and from Lv31 two
+             (WOODWORKING_TIERS); each row prints its own count. */
+          : "Craft bows and staves from harvested wood."),
       React.createElement("div", { style: LS_MOD }, (_trapCraftOn || _hwOn) ? "Make" : "Weapon type"),
       React.createElement("div", {
         "data-ww-make": _makeCards.length,
