@@ -166,9 +166,12 @@ export const PetsPanel = () => {
         return (
           <div data-pet-house={cap} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '6px 10px', background: COL.well, borderRadius: 10 }}>
             <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: COL.text2, lineHeight: 1.35 }}>
+              {/* v2.3.3479: the 2026-10-19 UI review -- "10 more places" never
+                  said what the places are for: the row says pets, in words
+                  (no "+" or "·"), the price still the worker's rule */}
               {houseAsk
-                ? <span>Buy {PET_HOUSE.STEP} more places for <b style={{ color: '#EAC675' }}>{hp.toLocaleString()} gold</b>?</span>
-                : <span>Pet House: {PET_HOUSE.STEP} more places for <b style={{ color: '#EAC675' }}>{hp.toLocaleString()} gold</b>{coins < hp ? <span style={{ color: COL.muted }}> (you have {coins.toLocaleString()})</span> : null}</span>}
+                ? <span>Buy room for {PET_HOUSE.STEP} more pets for <b style={{ color: '#EAC675' }}>{hp.toLocaleString()} gold</b>?</span>
+                : <span>Pet House: room for {PET_HOUSE.STEP} more pets, <b style={{ color: '#EAC675' }}>{hp.toLocaleString()} gold</b>{coins < hp ? <span style={{ color: COL.muted }}> (you have {coins.toLocaleString()})</span> : null}</span>}
             </div>
             {houseAsk ? (
               <>
