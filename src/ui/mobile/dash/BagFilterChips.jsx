@@ -147,7 +147,12 @@ export const BagFilterChips = ({ height, gutter, width, vertical }) => {
       {CATEGORIES.map((c) => {
         const on = c.id === sel;
         return (
-          <div key={c.id}
+          /* v2.3.3479: the 2026-10-19 UI review -- the upright row's chips
+             are 26 px tall (BAG_HEADER_H), under the 44 px touch floor: an
+             invisible ring (game.css .bt-bagchip) makes each press 41 px
+             tall, all the room there is between the button row above (13
+             px) and the first bag tile below (4 px).  No icon grows. */
+          <div key={c.id} className="bt-bagchip"
             role="button" aria-label={c.label} aria-pressed={on} title={c.label}
             onPointerUp={(e) => { e.stopPropagation(); bagFilterBus.set(c.id); }}
             style={{

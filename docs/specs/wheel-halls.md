@@ -65,7 +65,11 @@ closes the hall.
   That includes whatever drained at your join, which is "what came while you
   were away".
   - Nothing new is sent between the game and the worker, and nothing is stored.
-  - Item keys read as words ("3× Black steel ore").
+  - An item the bag has a name for is named as the bag names it ("2× Garden
+    Stew", "4× Copper Bar": the line keeps its key and count, and the window
+    reads the bag's `ITEM_NAMES`); any other key reads as words ("3× Black
+    steel ore"). Gold has the top bar's thousands separator ("+2,500 gold").
+    (v2.3.3479, the 2026-10-19 UI review: it read "2× Meal garden stew".)
   - The daily chest is "A daily chest".
 - **Messages from friends** already wait for an offline friend (friends.js
   `friend_dm` backlog, delivered at join). The Post Office opens them in the

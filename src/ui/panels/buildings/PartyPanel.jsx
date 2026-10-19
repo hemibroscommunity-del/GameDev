@@ -74,6 +74,28 @@ export function PartyPanel(props) {
     marginBottom: 6
   };
   var LS_DIV235 = '1px solid rgba(229,237,233,.11)';
+  /* ═══ v2.3.3479: THE 2026-10-19 UI REVIEW -- ONE BET, THE REAL ONE ═══
+     During a tournament this window could show five "Place Bet" wells.  Only
+     one of them (the round bet, "pick who you think will win this round")
+     sends the worker's settled `arena_sponsor`; the other four took the bet
+     off the PAGE's gold and sent `arena_bet`, a relay no worker settles, so
+     they placed bets that did not exist.  Against a worker that settles
+     stakes (caps.sponsor, which today's advertises) those four are not drawn;
+     an old worker keeps all five as they were (the deploy-order rule: legacy
+     paths are gated on caps).
+     And the real one was not drawn either: its gate asked arenaStatus.status
+     for 'none' or 'eliminated', but a settling worker's /status sends no
+     `status` (gladiator.js), so it showed only in the 3 s after you left the
+     queue.  Against such a worker a SPECTATOR is read off the tournament's
+     own roster instead -- not in it, or knocked out -- the rule the old
+     fifth well used (isSpectator below); the worker refuses a stake on your
+     own match anyway ('own-match'). */
+  var _betCaps = stateRef.current && stateRef.current._serverCaps;
+  var legacyBets = !(_betCaps && _betCaps.sponsor);
+  var _betMe = !legacyBets && arenaTournament && Array.isArray(arenaTournament.players) && stateRef.current ? arenaTournament.players.find(function (p) {
+    return p && p.id === stateRef.current.myId;
+  }) : null;
+  var sponsorSpectator = !legacyBets && !!arenaTournament && (!_betMe || !!_betMe.eliminated);
   return React.createElement("div", {
     /* v2.3.1232: LS shared buildings kit -- full-bleed panel surface;
        -20px margin counters the legacy .bt-inspect-card padding */
@@ -128,7 +150,16 @@ export function PartyPanel(props) {
       flexWrap: 'wrap',
       gap: 4
     }
-  }, /* v2.3.1235: state-correction: the bare balance beside a 100G fee was mistakable for the fee; label it. */ "Your gold: ", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G"), "\xB7 ", ARENA_ENTRY_FEE, "G entry \xB7 10 rounds \xB7 Single elimination \xB7 No healing"), function () {
+  }, /* v2.3.1235: state-correction: the bare balance beside a 100G fee was mistakable for the fee; label it. */ "Your gold: ", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } },
+  /* v2.3.3479: the 2026-10-19 UI review -- "2550G" beside the top bar's
+     "2,550": the HUD's own call (ZoneHeader.jsx), and no trailing G, as the
+     coin already says what the number is (Diego's balance, v2.3.2060).  The
+     100G entry stays a price. */
+  Number(rpgState.coins || 0).toLocaleString()), "\xB7 ", ARENA_ENTRY_FEE,
+  /* v2.3.3479: the review -- "10 rounds" was never true: a bracket is 2, 4
+     or 8 fighters (server gladiator.js MAX_BRACKET 8, the largest power of
+     two that fits the queue), so 1 to 3 rounds. */
+  "G entry \xB7 Up to 8 fighters \xB7 Single elimination \xB7 No healing"), function () {
     var S = stateRef.current;
     /* Poll arena status periodically */
     if (!S._arenaLastPoll || Date.now() - S._arenaLastPoll > ARENA_POLL_INTERVAL) {
@@ -176,7 +207,14 @@ export function PartyPanel(props) {
       marginBottom: 8,
       lineHeight: 1.5
     }
-  }, "Enter the arena for a 10-round single elimination tournament. Blind matchups \u2014 any level can face any level. No food or healing allowed. Only the final victor earns the Gladiator title and ", ARENA_CHAMPION_REWARD.ap, " AP!"), /*#__PURE__*/React.createElement("button", {
+  },
+  /* v2.3.3479: the 2026-10-19 UI review -- a bracket is 2, 4 or 8 fighters
+     (1 to 3 rounds), never "10-round"; and the gold prize was never named.
+     The worker pays the champion PRIZE_PER_ENTRANT 250 a fighter in the
+     bracket (server gladiator.js _arenaPrize: 2,000 for a full 8), "up to"
+     because the house's share is capped at 3,600 an hour game-wide.  The
+     title and the AP stay: the owner wants the champion to have the AP. */
+  "Enter a single elimination tournament of up to 8 fighters. Blind matchups \u2014 any level can face any level. No food or healing allowed. Only the final victor earns the Gladiator title and ", ARENA_CHAMPION_REWARD.ap, " AP, plus up to 250G for every fighter in the bracket (2,000G for a full 8)."), /*#__PURE__*/React.createElement("button", {
     onClick: /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee8() {
       var S, R, res, data, _t7;
       return _regenerator().w(function (_context8) {
@@ -706,7 +744,8 @@ export function PartyPanel(props) {
     })) === null || _arenaTournament$play === void 0 ? void 0 : _arenaTournament$play.name) || '?', " vs ", ((_arenaTournament$play2 = arenaTournament.players.find(function (p) {
       return p.id === m.p2;
     })) === null || _arenaTournament$play2 === void 0 ? void 0 : _arenaTournament$play2.name) || '?', " ", m.winnerId === m.p2 ? '✓' : '✗');
-  }))), arenaTournament && arenaTournament.status === 'active' && (!arenaStatus || arenaStatus.status === 'none' || arenaStatus.status === 'eliminated') && /*#__PURE__*/React.createElement("div", {
+  }))), /* v2.3.3479: an old worker's only (legacyBets above): a page-only bet */
+  legacyBets && arenaTournament && arenaTournament.status === 'active' && (!arenaStatus || arenaStatus.status === 'none' || arenaStatus.status === 'eliminated') && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 8,
       padding: 10,
@@ -885,7 +924,8 @@ export function PartyPanel(props) {
         padding: '1px 0'
       }
     }, b.amount, "G on ", (target === null || target === void 0 ? void 0 : target.name) || '???', " ", target !== null && target !== void 0 && target.eliminated ? '(eliminated)' : '' /* v2.3.1235: batch-3 rollout — status emoji dropped (chrome) */);
-  }))), arenaTournament && arenaTournament.status === 'active' && /*#__PURE__*/React.createElement("div", {
+  }))), /* v2.3.3479: an old worker's only (legacyBets above): a page-only bet */
+  legacyBets && arenaTournament && arenaTournament.status === 'active' && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 8,
       padding: 10,
@@ -1124,7 +1164,8 @@ export function PartyPanel(props) {
       } catch (_unused36) {}
     }
     return null;
-  }(), arenaTournament && arenaTournament.status === 'active' && (!arenaStatus || arenaStatus.status === 'none' || arenaStatus.status === 'eliminated') && /*#__PURE__*/React.createElement("div", {
+  }(), /* v2.3.3479: an old worker's only (legacyBets above): a page-only bet */
+  legacyBets && arenaTournament && arenaTournament.status === 'active' && (!arenaStatus || arenaStatus.status === 'none' || arenaStatus.status === 'eliminated') && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 6,
       padding: 10,
@@ -1341,7 +1382,10 @@ export function PartyPanel(props) {
       }
     }
     return null;
-  }(), arenaTournament && arenaTournament.status === 'active' && ((arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'none' || (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'eliminated') && function (_remaining$find) {
+  }(), /* v2.3.3479: THE REAL BET (arena_sponsor below), and the only one a
+     settling worker draws.  `sponsorSpectator` (above) lets a spectator see
+     it there, where /status carries no `status` for the two checks. */
+  arenaTournament && arenaTournament.status === 'active' && ((arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'none' || (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'eliminated' || sponsorSpectator) && function (_remaining$find) {
     var S = stateRef.current;
     var remaining = arenaTournament.players.filter(function (p) {
       return !p.eliminated;
@@ -1604,7 +1648,8 @@ export function PartyPanel(props) {
         }
       }, c.wins, "W \xB7 ", c.totalPlayers, "P"));
     })) /* v2.3.1235: batch-3 rollout — closes the hall-of-fame well */) : null;
-  }(), arenaTournament && arenaTournament.status === 'active' && function () {
+  }(), /* v2.3.3479: an old worker's only (legacyBets above): a page-only bet */
+  legacyBets && arenaTournament && arenaTournament.status === 'active' && function () {
     var S = stateRef.current;
     var myPlayer = arenaTournament.players.find(function (p) {
       return p.id === S.myId;
