@@ -174,3 +174,49 @@ export const WHEEL_KEEPERS = {
   'Blacksmith Bro': 'blacksmith',   /* the forge, at whose steps he stands */
   'Mayor Bro': 'townhall',          /* the Town Hall: its leaderboard and the world map */
 };
+
+/* ═══ v2.3.3489: EACH BUILDING'S PICTURE, ON THE MAPS ═══
+   The owner, playtesting: "Have icons representing each building on each
+   building in the minimap/compass."  Plot id -> the picture the minimap draws
+   on the building's footprint (wheelMinimap.js _buildTown) and the world map
+   at its door up close (WorldMapOverlay.jsx) -- the very pictures its Enter
+   button wears (TOWN_BUILDINGS' iconSrc, the halls' WHEEL_HALLS icon), the
+   same files and addresses, so the browser holds one copy of each:
+     the forge an anvil, the Woodworker a saw, the Gem Works a gem grinder,
+     the Saloon a mug, the Gambling Den dice, the Cookhouse a pot, the Feed &
+     Seed a barn, the Bank a vault, the General Store (its market) scales, the
+     Auction House a stall; the halls: the Town Hall's bell tower, the Guild
+     Hall's banner, the Post Office's envelope, the Sheriff's crossed swords.
+   Two plots had no picture of their own:
+     landoffice  its Enter button wore the Feed & Seed's barn (today's town's
+                 "YOUR FARM", the same family), which would put two barns on
+                 the map; the Land Office deals in deeds and maps, so it wears
+                 the game's parchment map (/icons/ui/map.webp) -- on its Enter
+                 button too (BroTown.jsx reads this table at a Wheel door);
+     hotel       shut: the owner's bed (the right stick's sleep picture),
+                 drawn grey as a shut building is.
+   No imports (test-world-core reads it): it checks every plot of the town has
+   one, a file in public/, no two buildings sharing one. */
+export const WHEEL_BUILDING_ICONS = {
+  townhall: '/icons/ui/bldg-townhall.webp',
+  blacksmith: '/icons/ui/bldg-forge.webp?v=2.3.1224',
+  woodworker: '/icons/ui/bldg-woodwork.webp?v=2.3.1224',
+  gemcutter: '/icons/ui/bldg-gemcut.webp?v=2.3.1224',
+  sheriff: '/icons/ui/evt-duel.webp',
+  saloon: '/icons/ui/bldg-tavern.webp?v=2.3.1224',
+  gambling: '/icons/ui/bldg-gamble.webp?v=2.3.1224',
+  hotel: '/ui/controls/sleep.webp?v=2.3.3279',
+  post: '/icons/ui/evt-mail.webp',
+  cookhouse: '/icons/ui/bldg-cook.webp?v=2.3.1224',
+  feedseed: '/icons/ui/bldg-farm.webp?v=2.3.1224',
+  landoffice: '/icons/ui/map.webp',
+  guildhall: '/icons/ui/panel-guild.webp',
+  bank: '/icons/ui/bldg-bank.webp?v=2.3.1224',
+  store: '/icons/ui/bldg-exchange.webp?v=2.3.1224',
+  auction: '/icons/ui/bldg-auctionhouse.webp?v=2.3.2624',
+};
+/** The picture for a plot id, or null (a plot the table does not know). */
+export function wheelBuildingIcon(plot) {
+  return typeof plot === 'string' && Object.prototype.hasOwnProperty.call(WHEEL_BUILDING_ICONS, plot)
+    ? WHEEL_BUILDING_ICONS[plot] : null;
+}
