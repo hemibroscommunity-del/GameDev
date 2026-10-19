@@ -5030,6 +5030,14 @@ body:has([data-world-chat-toggle][aria-expanded="true"]) .bt-kb-hints{display:no
    review's laptop view).  Its own line says the keys the harvest takes
    ("Drag ↔ or hold E"), and the strip is back the moment it ends. */
 body:has(.bt-rjoy-zone[data-harvest="1"]) .bt-kb-hints{display:none}
+/* v2.3.3479: the 2026-10-19 UI review -- ...and the quest coach stands aside
+   for a harvest too, ring and card (as under a window, below).  Upright,
+   GEAR UP's card lay right over the lumberjack, his chest and the hit numbers
+   behind it, and over the bro held still waiting for the swipe.
+   `data-harvest` is on the right button's box for the whole harvest, from the
+   tap to its end (BroTown.jsx), so the card is back the moment it ends; the
+   lesson is untouched (its hit-test skips [data-coach]). */
+body:has(.bt-rjoy-zone[data-harvest="1"]) [data-coach]{display:none}
 /* v2.3.3407: ...and while the emote picker is up (EmotePanel, v2.3.3391): it
    sits centred just over the band, and on a computer the strip's rows lay
    over its second row of moves -- Sit, Sleep, Flop, Bounce -- so a click on

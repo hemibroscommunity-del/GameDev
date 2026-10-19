@@ -8712,7 +8712,7 @@ export class EffectsRenderer {
    *  white rounded rectangle background + pointer tip + text.  Pooled
    *  per key as { container, bg (Graphics), text (Text), hasEmoji }
    *  in this.chatTexts.  Source can be either a player or an NPC. */
-  _renderChatBubble(key, sx, sy, text, age, totalMs = 5000, worldScale = 0, tipY = null) {
+  _renderChatBubble(key, sx, sy, text, age, totalMs = 5000, worldScale = 0, tipY = null, view = null) {
     const hasEmoji = !isAsciiOnly(text);
     let entry = this.chatTexts.get(key);
     if (entry && entry.text && entry.text.destroyed) {
@@ -8807,6 +8807,9 @@ export class EffectsRenderer {
       this.overlayLayer.addChild(container);
       this.chatTexts.set(key, entry);
     }
+    /* v2.3.3479: here, not in the block below, as the outline is also drawn
+       again further down, when the box slides inside the view */
+    const padX = 8, padY = 6, tipH = 6, radius = 8;
     /* Update text content + recompute bg only when text changed. */
     if (entry.lastText !== text) {
       entry.lastText = text;
@@ -8825,7 +8828,6 @@ export class EffectsRenderer {
         ? Math.max.apply(null, _m.lineWidths)
         : entry.text.width;
       const th = entry.text.height;
-      const padX = 8, padY = 6, tipH = 6, radius = 8;
       /* v2.3.1719: 160 -> 240.  This cap, not the wrap width, was what
          actually pinned the bubble's size: a message wider than 160-2*padX
          got a bubble clamped to 160 while its text wrapped at 140, so every
@@ -8839,48 +8841,15 @@ export class EffectsRenderer {
       entry._lineW = tw; entry._boxW = bw;   /* v2.3.2896: for the QA probe below */
       const bh = th + padY * 2;
       entry._boxH = bh + tipH;   /* v2.3.3391: an emoji pops above the whole bubble (_updateEmotePops) */
-      entry.bg.clear();
-      /* ═══ v2.3.2823: THE BUBBLE POPS ═══
-         Owner: "add a gray outline to the chat bubble ... I just want it to
-         pop a little more.  Maybe add a tiny gradient shading to it to give
-         it a more premium feel."
-         The box and its tip are now ONE outline (so the stroke runs around
-         the tip instead of cutting across it where two shapes met), filled
-         with a soft top-to-bottom white -> cool-grey gradient, ringed in a
-         mid-grey 2px stroke, and lifted off the ground by a faint shadow
-         2px below.  Opaque now: the 0.92 alpha let busy terrain show through
-         the text, which is the opposite of popping. */
-      const _bubblePath = (g, dy) => {
-        const x0 = -bw / 2, x1 = bw / 2, y0 = -bh - tipH + dy, y1 = -tipH + dy, r = radius;
-        g.moveTo(x0 + r, y0);
-        g.lineTo(x1 - r, y0);
-        g.quadraticCurveTo(x1, y0, x1, y0 + r);
-        g.lineTo(x1, y1 - r);
-        g.quadraticCurveTo(x1, y1, x1 - r, y1);
-        g.lineTo(5, y1);
-        g.lineTo(0, dy);
-        g.lineTo(-5, y1);
-        g.lineTo(x0 + r, y1);
-        g.quadraticCurveTo(x0, y1, x0, y1 - r);
-        g.lineTo(x0, y0 + r);
-        g.quadraticCurveTo(x0, y0, x0 + r, y0);
-        g.closePath();
-      };
-      _bubblePath(entry.bg, 2);
-      entry.bg.fill({ color: 0x000000, alpha: 0.18 });
-      _bubblePath(entry.bg, 0);
+      entry._bh = bh;            /* v2.3.3479: for the outline drawn below */
+      entry._pathDx = null;      /* ...at this frame's slide */
       /* v2.3.3395: Halloween week's skin -- purple, pumpkin-ringed, cream words */
       const _spooky = halloweenOn();
       entry.skin = _spooky ? 'halloween' : 'plain';
-      entry.bg.fill({ fill: _spooky ? spookyBubbleGradient() : chatBubbleGradient() });
-      entry.bg.stroke({ width: 2, color: _spooky ? SPOOKY_BUBBLE.stroke : 0x8a949a, alignment: 1 });
       const _ink = _spooky ? SPOOKY_BUBBLE.text : '#000000';
       if (entry.text.style.fill !== _ink) entry.text.style.fill = _ink;
-      /* Center the text inside the bubble. */
-      entry.text.x = 0;
       entry.text.y = -bh - tipH + padY;
     }
-    entry.container.x = sx;
     /* v2.3.2896: `tipY`, when the caller knows it, is where the point of the
        bubble goes -- see _updateChatBubbles.  sy - 32 is the old anchor, kept
        for a speaker whose head has not been measured yet (a first frame). */
@@ -8908,6 +8877,68 @@ export class EffectsRenderer {
     } else {
       entry.container.scale.set(1);
     }
+    /* ═══ v2.3.3479: THE BUBBLE STAYS INSIDE THE VIEW, ITS POINT ON THE SPEAKER ═══
+       The 2026-10-19 UI review: Lil Bro's bubble was cut off at the game
+       column's left edge (the laptop's 419 px column; any speaker within about
+       half a box, ~112 CSS px, of a side).  The box was centred on the speaker
+       with nothing keeping it in the view, as the messages over you are kept
+       (MSG_EDGE_PX).  Now, given the view (`view`, world px), the BOX slides
+       inside its own outline to stay 8 CSS px inside the view's sides while
+       the point stays on the speaker -- as far as the box's straight bottom
+       edge allows; only past that (a speaker at the very edge) does the whole
+       bubble move.  The outline is drawn again only when that slide changes
+       (whole bubble px), so a bubble away from the sides is drawn once a
+       line, as before. */
+    let _dx = 0, _cx = sx;
+    if (view && worldScale > 0.01 && entry._boxW > 0) {
+      const kx = Math.abs(entry.container.scale.x) || 1;
+      const half = entry._boxW / 2 * kx + 8 / worldScale;
+      const lo = view.l + half, hi = view.r - half;
+      const want = lo <= hi ? Math.min(hi, Math.max(lo, sx)) : (view.l + view.r) / 2;
+      const maxDx = Math.max(0, entry._boxW / 2 - radius - 6);   /* the point's 10 px base clear of the corners */
+      _dx = Math.max(-maxDx, Math.min(maxDx, Math.round((want - sx) / kx)));
+      _cx = want - _dx * kx;
+    }
+    entry.container.x = _cx;
+    if (entry._pathDx !== _dx) {
+      entry._pathDx = _dx;
+      const bw = entry._boxW, bh = entry._bh;
+      entry.bg.clear();
+      /* ═══ v2.3.2823: THE BUBBLE POPS ═══
+         Owner: "add a gray outline to the chat bubble ... I just want it to
+         pop a little more.  Maybe add a tiny gradient shading to it to give
+         it a more premium feel."
+         The box and its tip are now ONE outline (so the stroke runs around
+         the tip instead of cutting across it where two shapes met), filled
+         with a soft top-to-bottom white -> cool-grey gradient, ringed in a
+         mid-grey 2px stroke, and lifted off the ground by a faint shadow
+         2px below.  Opaque now: the 0.92 alpha let busy terrain show through
+         the text, which is the opposite of popping. */
+      const _bubblePath = (g, dy) => {
+        const x0 = _dx - bw / 2, x1 = _dx + bw / 2, y0 = -bh - tipH + dy, y1 = -tipH + dy, r = radius;
+        g.moveTo(x0 + r, y0);
+        g.lineTo(x1 - r, y0);
+        g.quadraticCurveTo(x1, y0, x1, y0 + r);
+        g.lineTo(x1, y1 - r);
+        g.quadraticCurveTo(x1, y1, x1 - r, y1);
+        g.lineTo(5, y1);
+        g.lineTo(0, dy);
+        g.lineTo(-5, y1);
+        g.lineTo(x0 + r, y1);
+        g.quadraticCurveTo(x0, y1, x0, y1 - r);
+        g.lineTo(x0, y0 + r);
+        g.quadraticCurveTo(x0, y0, x0 + r, y0);
+        g.closePath();
+      };
+      _bubblePath(entry.bg, 2);
+      entry.bg.fill({ color: 0x000000, alpha: 0.18 });
+      _bubblePath(entry.bg, 0);
+      const _spooky = entry.skin === 'halloween';   /* v2.3.3395's skin, chosen with the line above */
+      entry.bg.fill({ fill: _spooky ? spookyBubbleGradient() : chatBubbleGradient() });
+      entry.bg.stroke({ width: 2, color: _spooky ? SPOOKY_BUBBLE.stroke : 0x8a949a, alignment: 1 });
+      /* Center the text inside the bubble (v2.3.3479: inside the box, wherever it slid). */
+      entry.text.x = _dx;
+    }
     entry.container.alpha = age > totalMs - 500 ? (totalMs - age) / 500 : 1;
     entry.container.visible = true;
     /* v2.3.1912: QA probe (tools/qa/mp/mp-chatfont.mjs).  Reports the
@@ -8933,6 +8964,7 @@ export class EffectsRenderer {
         breakWords: !!entry.text.style.breakWords,
         lineW: entry._lineW,   /* the longest laid-out line, bubble-local px */
         boxW: entry._boxW,     /* the box drawn round it, same units */
+        slide: entry._pathDx || 0,   /* v2.3.3479: how far the box slid off its point to stay in the view, same units */
         skin: entry.skin || 'plain',   /* v2.3.3395: 'halloween' in Halloween week */
         ink: String(entry.text.style.fill),
       };
@@ -8948,6 +8980,9 @@ export class EffectsRenderer {
   _updateChatBubbles(S, now) {
     const bubbles = S.chatBubbles || {};
     const activeKeys = new Set();
+    /* v2.3.3479: the view's sides, world px, that a bubble keeps inside
+       (_renderChatBubble) */
+    const _view = (S.camera && S._viewW > 0) ? { l: S.camera.x, r: S.camera.x + S._viewW } : null;
 
     /* Player + others' bubbles. */
     const allSources = { [S.myId]: S.player };
@@ -9001,7 +9036,7 @@ export class EffectsRenderer {
       }
       const _ws = S._worldScaleY || S._worldScaleX || 0;
       const tipY = _top != null ? _top - (_ws > 0.01 ? 4 / _ws : 4) : null;
-      this._renderChatBubble(pid, sx, sy, bubble.text, age, 5000, S._worldScaleX || 0, tipY);
+      this._renderChatBubble(pid, sx, sy, bubble.text, age, 5000, S._worldScaleX || 0, tipY, _view);
       activeKeys.add(pid);
     }
 
@@ -9025,7 +9060,7 @@ export class EffectsRenderer {
       const _nt = npc._headTopY;
       const _nws = S._worldScaleY || S._worldScaleX || 0;
       const npcTip = (typeof _nt === 'number' && isFinite(_nt)) ? _nt - (_nws > 0.01 ? 4 / _nws : 4) : null;
-      this._renderChatBubble(key, npc.x, npc.y, npc.chatBubble.text, age, 5000, S._worldScaleX || 0, npcTip);
+      this._renderChatBubble(key, npc.x, npc.y, npc.chatBubble.text, age, 5000, S._worldScaleX || 0, npcTip, _view);
       activeKeys.add(key);
     }
 
@@ -10898,7 +10933,21 @@ export class EffectsRenderer {
     if (!spr || spr.destroyed) return;
     let want = 1;
     const P = S && S.player;
-    if (TREE_FADE && P) {
+    /* v2.3.3479: the 2026-10-19 UI review -- "the bro chops empty grass, the
+       bar floats over nothing".  During a chop your walking body is put away
+       and the lumberjack is drawn IN FRONT of the trunk (chopStandInSpot), but
+       the test below still read S.player, the hidden body, which stays where
+       you tapped -- anywhere in the reach box, up to 168 px north of the node,
+       behind the trunk and under the crown.  So a chop begun from behind the
+       tree kept the very tree you were chopping at 0.42 for the whole wind-up
+       and swipe: a ghost trunk, the bar over a ghost crown.  While your body
+       is away for the lumberjack (entityRenderer's S._standInBody, set earlier
+       this frame) the tree he is chopping stays solid; the node match is
+       _isMineTarget's. */
+    const ex = S && S._extraction;
+    const chopping = !!(S && S._standInBody && ex && ex.skill === 'woodcutting'
+      && (ex.nodeRef === node || (ex.nodeId != null && ex.nodeId === node.id)));
+    if (TREE_FADE && P && !chopping) {
       const fy = P.y + (playerGroundDy(S.currentZone, P.x, P.y) || 0);
       const bodyH = S._bodyDrawH > 20 ? S._bodyDrawH : 100;
       if (behindTree(g, P.x, fy, bodyH)) want = TREE_SEE_ALPHA;
