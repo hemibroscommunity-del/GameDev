@@ -123,6 +123,7 @@ import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   
 import { SMALL_TEX } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's party badge, threat skull and talk bubble */
 import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
 import { plateNameWithTag, myAllyTag } from '../../game/alliance.js';   /* v2.3.3313: an alliance member's plate says [TAG] before the name */
+import { isLiveClone } from '../../game/sparTargets.js';   /* v2.3.3479: a clone you spar with lifts its plate off yours (it imports nothing) */
 import { clipHair, hairClippedBy } from '../hairClip.js';   /* v2.3.3459: the hair clipped through the stencil, not a pass of its own */
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
@@ -12065,6 +12066,49 @@ export class EntityRenderer {
         const _bandTop = Math.min(PEER_HPBAR_Y - _bandHalf, display._peerBarUp ? PEER_BAR_Y - PEER_BAR_H / 2 : Infinity);
         other._bandTopY = display.visible
           ? display.y + _bandTop * Math.abs(display.scale.y || 1) : null;
+        /* ═══ v2.3.3479: AN OPPONENT'S PLATE STEPS UP OFF YOURS ═══
+           The 2026-10-19 UI review: "Reviewer 3" and "Sword Clone 3" on top
+           of each other, the opponent's name hidden (upright almost wholly).
+           A sword fight is at 50 px at most and a sword clone walks to within
+           28 of you (server spar.js), and each plate (or HP bar) sits at its
+           own height over its own head -- nothing kept them apart.  So while
+           this peer is the one you fight -- your lock (a duel, No man's
+           land's aim, a clone), a clone of yours, or a player you chose to
+           attack -- and their band would meet yours, theirs (plate, bar,
+           skull: this display's ui layer) goes up to stop 8 CSS px over the
+           top of yours (S._selfBandTopY / BotY / HalfW, your HUD pass's, a
+           frame old).  Yours stays put.  Measured from where their band
+           would be, so the lift never feeds itself; eased, so a fight
+           stepping round does not snap it; their band's top goes up with it,
+           so their chat bubble and the hits over them follow. */
+        const _lt = S.lockedTarget;
+        const _foeMap = S._nmlFoes;
+        const _engaged = (_lt && _lt.type === 'player' && String(_lt.id) === String(id))
+          || isLiveClone(S, id) || (_foeMap instanceof Map && _foeMap.has(String(id)));
+        const _sT = S._selfBandTopY, _sB = S._selfBandBotY;
+        let _want = 0;   /* world px */
+        if (_engaged && display.visible && S.player && other._bandTopY != null
+            && Number.isFinite(_sT) && Number.isFinite(_sB)) {
+          const _sy = Math.abs(display.scale.y || 1), _sx = Math.abs(display.scale.x || 1);
+          const _pHalf = Math.max(
+            (display._namePill && display._namePill.visible && display._pillW) ? display._pillW * (display._pillZoom || 1) / 2 : 0,
+            display._peerBarUp ? PEER_BAR_W / 2 : 0) * _sx;
+          const _pBot = display.y + Math.max(PEER_HPBAR_Y + _bandHalf,
+            display._peerBarUp ? PEER_BAR_Y + PEER_BAR_H / 2 : -Infinity) * _sy;
+          const _gap = 8 / (_plateWorldScale || 1);   /* 8 CSS px */
+          if (Math.abs(display.x - S.player.x) < (S._selfBandHalfW || 0) + _pHalf + _gap
+              && other._bandTopY < _sB + _gap && _pBot > _sT - _gap) {
+            _want = _pBot - (_sT - _gap);
+          }
+        }
+        let _lift = display._bandLift || 0;
+        _lift += (_want - _lift) * 0.35;
+        if (Math.abs(_want - _lift) < 0.5) _lift = _want;
+        display._bandLift = _lift;
+        const _ui = display._uiLayer;
+        const _uiY = _lift ? -_lift / Math.abs(display.scale.y || 1) : 0;
+        if (_ui && _ui.y !== _uiY) _ui.y = _uiY;
+        if (_lift && other._bandTopY != null) other._bandTopY -= _lift;
       }
       /* v2.3.2345: QA probe (mp-brobadge) -- did the badge sprite actually get
          ART, not merely a `visible` flag.  Reads the texture off the sprite
