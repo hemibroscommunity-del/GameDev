@@ -89,5 +89,8 @@ logs pay for (up to 50).
   change. Moving it to Woodworking is a separate call.
 - **The old "Reforge & Harden" row** at the Woodworker (paid in raw wood, a
   client-only affix, docs/specs/hardening.md "Name collision") is untouched.
+  (Removed in v2.3.3479, the 2026-10-19 UI review: the worker never kept its
+  rolls, so the next update undid them -- the Blacksmith's own was removed in
+  v2.3.2826 for the same reason.)
 - Painted art: the icons are processed from the log paintings; a prompt for
   painted ones is in docs/ART-WISHLIST.md.
