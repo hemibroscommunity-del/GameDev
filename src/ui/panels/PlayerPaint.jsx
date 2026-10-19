@@ -91,8 +91,13 @@ const TARGETS = {
     label: 'tattoo',
     pattern: null,
     /* v2.3.1994: the Body screen reaches the arms as well now, so the caption
-       says where a stroke will land before you make it. */
-    note: 'Chest and arms. Draw straight on either — a shirt or breastplate covers the chest, sleeves cover the upper arm.',
+       says where a stroke will land before you make it.
+       v2.3.3479: the 2026-10-19 UI review -- "Chest and arms. Draw straight on
+       either -- ..." read awkwardly.  Same two facts, plainer, and still the
+       exact rule (a shirt or breastplate covers the chest; sleeves the upper
+       arm, as tattooArm says) and still under the 120px the caption cell
+       reserves (game.css .bt-paint-note). */
+    note: 'Draw on the chest or the arms. A shirt or breastplate covers the chest; sleeves cover the upper arm.',
   },
   /* v2.3.1949 (owner: "Allow tattoos on the face and arms too").  Three skin
      canvases rather than one drawing stretched over three very differently

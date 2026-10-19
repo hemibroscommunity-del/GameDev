@@ -3561,7 +3561,9 @@ body:has(.bt-pcard) [data-coach]{display:none}
    The caption's text is per-CANVAS (TARGETS[].note), so it changes length as
    your finger moves from the chest to an arm -- and its column is only
    --paint-size * .62 wide, so "Chest and arms. Draw straight on either..."
-   wraps to two more lines than "Goes on BOTH arms...".
+   wraps to two more lines than "Goes on BOTH arms...".  (v2.3.3479: the chest
+   caption is "Draw on the chest or the arms. ..." now, a little shorter; the
+   120px floor below stands, so nothing moves.)
 
    That was free until the zone picker went in the cell above it. Measured at
    390x844: the picker takes .bt-paint-side from 125.7px to 190.7px, which is
