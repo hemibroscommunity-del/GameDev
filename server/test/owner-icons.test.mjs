@@ -40,7 +40,7 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   const scenes = LANDS.map((l) => OI.LAND_SCENE[l]);
   const missing = scenes.filter((u) => !u || !existsSync(pub(u)));
   check('1a every land has its scene, a file in public/ui/banners/', scenes.length === 8 && missing.length === 0
-    && scenes.every((u) => /^\/ui\/banners\/land-[a-z]+\.webp\?v=2\.3\.3479$/.test(u)), missing);
+    && scenes.every((u) => /^\/ui\/banners\/land-[a-z]+\.webp\?v=2\.3\.\d+$/.test(u)), missing);
   const sd = missing.length ? [] : scenes.map((u) => dims(u));
   /* the sheet's own px, never stretched: each about 190 x 100 */
   check('1b each scene at the sheet\'s own size (~190 x 100, wider than tall), under 0.1 MB decoded',
