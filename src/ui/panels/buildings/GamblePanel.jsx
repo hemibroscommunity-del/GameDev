@@ -109,10 +109,15 @@ export function GamblePanel(props) {
       lsGold(rpgState.coins + 'G', 16) /* v2.3.1235: batch-3 rollout — key numbers are 16-18/700 tabular */),
       React.createElement("span", { style: { fontSize: 12, color: LS.txt2, fontVariantNumeric: 'tabular-nums' } },
         rpgState.achievementPoints || 0, " AP") /* v2.3.1235: batch-3 rollout — ⭐ dropped, no emoji in chrome */),
-      React.createElement("div", { style: LS_MOD }, "Double or Nothing"),
+      /* v2.3.3479: the 2026-10-19 UI review -- the free spin above has its
+         own "Double or nothing" at 50% (dailyrewards.js DOUBLE_CHANCE), and
+         this wager was headed the same at 40% (gamble.js settles it at
+         0.40). Both numbers were right; the heading and the line now say
+         this one is a separate bet of your own gold. */
+      React.createElement("div", { style: LS_MOD }, "Wager \xB7 Double or Nothing"),
       React.createElement("div", {
         style: { fontSize: 11, color: LS.txt3, marginBottom: 8, lineHeight: 1.5 }
-      }, "40% chance to double your wager. 60% chance to lose it all. House always wins... eventually."),
+      }, "A separate bet with your own gold: 40% chance to double it, 60% chance to lose it."),
       React.createElement("div", {
         style: { display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }
       }, [10, 50, 100, 500, 1000, 5000].filter(function (v) {
