@@ -508,6 +508,7 @@ const gotC = (id) => !!(rec('bp_av_c') && rec('bp_av_c').got && rec('bp_av_c').g
   await flush();
   const st = last(wsC, 'achv_state');
   check('11d achv_title with one you have: kept on the record, one row, the phone told', rec('bp_av_card').t === 'story_done' && puts === 1 && st && st.t === 'story_done', { rec: rec('bp_av_card'), puts, st });
+  check('11d2 ...achv_state names the rarest, worked out by the worker', st && st.rarest === 'story_done' && last(wsA, 'achv_state').rarest === rarestOf(rec('bp_av_a')) && rarestOf(rec('bp_av_a')) === 'natural_one', { st, a: last(wsA, 'achv_state') });
 
   await track({ ap: 5, kills: 1, title: 'godly', rarest: 'godly' });
   check('11e the card\'s blob: the worker\'s title and rarest, the page\'s claim taken off', sess.data.rpgData.title === 'story_done' && sess.data.rpgData.rarest === 'story_done', sess.data.rpgData);

@@ -61,7 +61,7 @@
  * tag's and the cape's stamps): always, the kill switch or not.
  *
  * THE WIRE:
- *   achv_state {v, got, n, dg, t?, ap, new?: [id], retro?: [id]}   at the join
+ *   achv_state {v, got, n, dg, t?, rarest?, ap, new?: [id], retro?: [id]}   at the join
  *       (after the mail) and on every change: `new` the one just earned (the
  *       banner), `retro` the sweep's (a quiet line).  {unavailable} when the
  *       record is locked.  PRIVILEGED (index.js).
@@ -272,7 +272,10 @@ export const achievementMethods = {
     const ps = this.playerState && this.playerState[pid];
     const payload = (!book || book.locked || !book.rec)
       ? { unavailable: true }
-      : { ...plain(book.rec), ap: Math.max(0, Math.floor(Number(ps && ps.achievementPoints) || 0)), ...(extra || {}) };
+      : { ...plain(book.rec), ap: Math.max(0, Math.floor(Number(ps && ps.achievementPoints) || 0)),
+          /* v2.3.3484: the card's rarest, worked out here so the page never
+             keeps its own copy of the order */
+          ...(rarestOf(book.rec) ? { rarest: rarestOf(book.rec) } : {}), ...(extra || {}) };
     try { ws.send(JSON.stringify({ type: 'achv_state', payload })); } catch (e) {}
   },
 

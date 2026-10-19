@@ -148,7 +148,7 @@ Master") and "rarest drop" ("Ancient Ember Crown"), the same on everyone's
 
 | message | direction | when | payload |
 |---|---|---|---|
-| `achv_state` | worker -> phone, PRIVILEGED | at the join (after `codex_state`), on every change and in answer to `achv_title` | `{v, got, n, dg, t?, ap, new?: [id], retro?: [id]}`, or `{unavailable: true}` |
+| `achv_state` | worker -> phone, PRIVILEGED | at the join (after `codex_state`), on every change and in answer to `achv_title` | `{v, got, n, dg, t?, rarest?, ap, new?: [id], retro?: [id]}`, or `{unavailable: true}` |
 | `achv_title` | phone -> worker | "Use as title" on the page | `{id}`: an achievement you have, or `null` to take it off |
 | `rpgData.title`, `rpgData.rarest` | on the card's blob, relayed | the join and every track | achievement ids, the worker's (`_achvStamp`) |
 | `inbox_delivered` entry `kind: 'achv'` | worker -> phone | a Gladiator crown delivered | `{id: 'gladiator'}` |
