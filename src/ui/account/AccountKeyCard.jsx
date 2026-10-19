@@ -74,15 +74,28 @@ export const AccountKeyCard = () => {
           on a phone, so the words are laid out two by four, numbered, the
           way they are typed; the input below still holds the whole key for
           Copy and select. */}
+      {/* ═══ v2.3.3479: FOUR ACROSS WHERE THEY FIT (the 2026-10-19 UI review) ═══
+          Two by four, the label and the words alone took ~155 px of the ~159
+          an upright phone's page has (169 on a laptop), so Copy and "There
+          is no email recovery" waited below the fold everywhere but sideways.
+          Now a row holds as many words as fit, each cell at least 80 px (a
+          five-letter word's: its number, the gap, 16 px mono and the padding)
+          and at least a quarter of the row less its gaps, so never more than
+          four: 4 + 4 on a phone 350 px wide and up, the laptop and the
+          computer (a plain auto-fill would have put five on their wider
+          rows, 5 + 3), 3 + 3 + 2 at 320, two by four sideways as before.  All
+          eight words and Copy are then in the first view; the order is still
+          1 to 8, row by row (mp-newkey reads it).  19 px is the three 6 px
+          gaps and a pixel to spare, so rounding never drops the fourth. */}
       {isNewKey(phrase) && (
         <ol data-bt="account-keycard-words" style={{
           listStyle: 'none', margin: '0 0 6px', padding: 0,
-          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 8px',
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(max(80px, calc((100% - 19px) / 4)), 1fr))', gap: '4px 6px',
         }}>
           {phrase.split('-').map((w, i) => (
             <li key={i} style={{
               display: 'flex', alignItems: 'baseline', gap: 6, minHeight: 28,
-              padding: '4px 8px', borderRadius: 6, background: 'var(--ui-well)',
+              padding: '4px 6px', borderRadius: 6, background: 'var(--ui-well)',
               border: '1px solid var(--ui-line-strong)',
             }}>
               <span style={{ fontSize: 11, color: 'var(--ui-text-muted)', fontVariantNumeric: 'tabular-nums', minWidth: 12 }}>{i + 1}</span>
