@@ -418,9 +418,17 @@ export const STATES = [
     about: 'The Character page on its Points tab: spending points on each weapon skill and on the character.',
     run: async ({ P }) => {
       await bus(P, 'open', 'hero');
-      await wait(P, 500);
-      const e = await clickText(P, /^points$/i, DASH);
+      /* v2.3.3479 (the 2026-10-19 UI review): the computer's picture showed
+         the Equipment tab.  Opening from the folded band is two renders and a
+         220 ms rise, and 500 ms on the software-drawn 2880 x 1800 page measured
+         the tab mid-rise, so the press landed on the bars under it.  Wait the
+         rise out, press the tab by its id (its words are the owner's copy),
+         and check it took: a miss is SKIPPED, never the wrong picture. */
+      await wait(P, 900);
+      const e = await tapSel(P, '[data-section="Build"]');
       if (e) return e;
+      await wait(P, 400);
+      if (!(await has(P, '[data-section="Build"][aria-pressed="true"]'))) return 'the Points tab did not take the press';
     },
   },
   dash('quests', 'Quests', 'The quest log: active quests with progress, the daily rewards card.'),
