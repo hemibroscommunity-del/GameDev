@@ -7780,3 +7780,34 @@ starts on the vein and lands on the bag as before. mp-deskplace: the seven above
 each where it belongs (main fails 12 of its 23 checks, the rings by exactly
 421.8 px, the black margin's width), and on a phone the celebration and the
 item card where they were.
+
+## 233. "ps.dead says the player is dead" (v2.3.3476)
+
+**The plausible move.** The loot pickup refuses a dead player with
+`if (ps.dead) return reject('dead')`. The worker sets `ps.dead = true` in
+`_handlePlayerDeath`, so a corpse is refused.
+
+**Why it is wrong.** `ps.dead` is the PHONE's word: movement.js writes it from
+every move (`ps.dead = !!msg.dead`, the phone's `S.rpg.hp <= 0`). The worker
+sends `player_died` at once and the HP-0 `player_state` at the next flush, so
+the move a phone sends as it handles its death still says alive, and the
+worker's corpse is "not dead" from then on. The corpse lies on its own death
+pile (it is laid at the player's feet), so its phone asked for it the moment
+it landed, the pickup said yes, and five seconds later the respawn's wipe took
+it out of the bag again. Every monster death destroyed the bag's items: the
+pile was on every screen for about a second, nobody could recover it, and its
+"120s" countdown never mattered. Under it sat a second fault (the renderer's
+30 s cut, item-drop.md "A dead player's pile"), which hid that the first one
+existed.
+
+**The rule.** A gate on being dead asks `ps.dying` (set only by the worker,
+cleared only by its respawn) as well as `ps.dead` -- the full preamble §150
+names, which combat.js (v2.3.1628) and abilities.js already use. Treat
+anything a move writes as the phone's claim, not the worker's fact. And a
+corpse's phone asks for nothing (groundLoot.js stands still while `S._dying`).
+
+**Receipt:** combat-lifecycle §5 "the corpse on it takes nothing while dying,
+whatever its move said" fails on the old pickup (the corpse is given its wood
+and minnows back). mp-deathpile: a real death in the Wheel, the worker still
+holds the pile at 36 s and the dead player's phone sent no `loot_pickup`; a
+second phone takes it after its minute, and another is gone from both at two.

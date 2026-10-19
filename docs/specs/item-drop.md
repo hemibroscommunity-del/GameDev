@@ -110,10 +110,66 @@ drops `ms` older and tells the phones their new clocks (mp-itemdrop).
   it; at two minutes it flashes on both and is gone from both ten seconds
   later; walked away from and back onto, it is the dropper's again.
 
+## A dead player's pile (v2.3.3476)
+
+Found while building the drop, and fixed when the owner said "Yes do the fix".
+A death pile is the worker's for `DEATH_PILE_TOTAL_MS` 120 s: the dead
+player's alone for `DEATH_PILE_OWNER_MS` 60, then anyone's in the zone. Its
+countdown under the skull counts those two minutes. Two faults stopped it,
+the second hidden under the first.
+
+**The 30 s cut (the phone).** The renderer (`effectsRenderer.js
+_updateGroundLoot`) took every pile off every screen 30 s after it landed, the
+life of a monster's pile. So its owner lost the last 90 s the countdown said
+they had, and nobody else ever saw the minute it is theirs to take. Now a death
+pile goes at its own `expiry`, as a drop does, and its last-call pulse is the
+last ten seconds of its own life (counted from 30 s it would have pulsed at its
+end's full speed for 90 s). Its clocks are the worker's, sent as times, as
+`groundLoot.js` and the pickup gate already read them. A monster's pile keeps
+its 30 s.
+
+**The corpse took its own pile (the worker).** Found by the phone test for the
+first fix: with the cut gone, the pile was still gone from every screen and
+from the worker about a second after the death. The pickup refused a dead
+player by `ps.dead`, which is the phone's word: movement.js writes it from
+every move, and the move a phone sends as it handles `player_died` still says
+alive (the HP-0 `player_state` comes after). The pile is laid at the corpse's
+feet, so the dead player's phone asked for it as soon as it landed and was
+given it; five seconds later the respawn's wipe took it out of the bag again.
+**Every monster death destroyed the bag's items.** Measured on the old code
+(`room._handlePlayerDeath`, then the corpse's pickup, then the respawn): the
+bag empty, the pile holding the items; then the bag holding them and no pile;
+then after the respawn neither. Now:
+
+- `_handleLootPickup` refuses while `ps.dying` too, the worker's own word
+  (`ps.dead || ps.dying`, as nearly every other handler already asks: TRAPS
+  §150, §233);
+- the phone asks for nothing while it is dead (`groundLoot.js`: `S._dying`),
+  so a death no longer sends a refused `loot_pickup` a second for five
+  seconds.
+
+A death costs the bag as it was meant to: the pile lies where you fell for two
+minutes, yours to walk back to for the first one, then anyone's.
+
+`tools/qa/mp/mp-deathpile.mjs`, two phones in the Wheel and a real death (1 HP
+among the Flame Fields' level 1s), in real time: the watcher's screen draws the
+pile with its countdown; at 36 s it is still drawn and steady, its owner, back
+in BroTown, still holds it, the worker still has it and the dead player's
+phone sent no `loot_pickup`; the watcher on it inside its minute takes
+nothing, and past it takes it, gone from both screens; a second death's pile
+left alone is steady at 100 s, pulses in its last ten seconds and is gone from
+both screens at its end, in nobody's bag. `BT_DP_TRACE=1` prints the pile's
+first 40 s and every pile message each phone received and sent (how the
+corpse's ask was found). `combat-lifecycle` §5: the corpse on its pile is
+refused whatever its move said.
+
 ## Not done
 
 - Gear (weapons, armour, shields): see above. It would need the worker to
   move a piece's receipt to whoever picks it up.
-- A death pile is drawn for 30 s on every screen, though the worker keeps it
-  120 s and its own countdown says so (effectsRenderer's 30 s cut, which a
-  drop no longer gets). Found while building this; not changed here.
+- A death pile's clocks are the worker's own times, not time left as a drop's
+  are, so a phone whose clock is off sees its minute open and its end that
+  much off (as it always has).
+- Other places that ask only `ps.dead` were not changed here; one is a kill's
+  share (combat.js: a player whose damage is on a monster that dies in the
+  five seconds after their death is still counted for a share).

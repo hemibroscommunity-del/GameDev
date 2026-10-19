@@ -9663,7 +9663,14 @@ export class EffectsRenderer {
          phone's clock: wsClient _buildServerPile), never the 30 s here, which
          would take it off everyone's screen at half a minute -- and off the
          others' the moment it is shown them, a minute after it landed */
-      if (l._expired || ((l.dropped && l.expiry) ? now > l.expiry : age > 30)) {
+      /* v2.3.3476: and so does a DEAD PLAYER'S pile.  The worker keeps it
+         DEATH_PILE_TOTAL_MS 120 s -- the owner's alone for 60, then anyone's
+         -- and its own "Ns" below counted those two minutes, but this 30 s
+         cut took it off every screen at half a minute: its owner lost the
+         last 90 s of the time it said they had, and nobody else ever saw
+         the minute it is theirs to take.  Its `expiry` is the worker's
+         clock, as groundLoot.js and the pickup gate already read it. */
+      if (l._expired || ((l.expiry && (l.dropped || l.isDeathDrop)) ? now > l.expiry : age > 30)) {
         this._disposeLoot(l);
         this._knownLoot.delete(l);
         loot.splice(i, 1);
@@ -9722,7 +9729,11 @@ export class EffectsRenderer {
          last ten is age 20 onward. */
       const LOOT_LIFE = 30;
       const LOOT_FLASH_S = 10;
-      const _leftS = LOOT_LIFE - age;
+      /* v2.3.3476: a death pile's last call is the last ten seconds of ITS
+         life (its expiry, above), not of the 30 a monster's pile gets --
+         counted from 30 it would pulse at the end's full speed for its last
+         ninety seconds */
+      const _leftS = (l.isDeathDrop && l.expiry) ? (l.expiry - now) / 1000 : LOOT_LIFE - age;
       let alpha = 1;
       if (_leftS <= LOOT_FLASH_S) {
         const _urg = Math.max(0, Math.min(1, 1 - _leftS / LOOT_FLASH_S));
