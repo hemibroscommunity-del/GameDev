@@ -7811,3 +7811,26 @@ whatever its move said" fails on the old pickup (the corpse is given its wood
 and minnows back). mp-deathpile: a real death in the Wheel, the worker still
 holds the pile at 36 s and the dead player's phone sent no `loot_pickup`; a
 second phone takes it after its minute, and another is gone from both at two.
+
+## 234. "Roll the real dice 60,000 times and check they look fair" (v2.3.3478)
+
+**The plausible move.** A suite proves the worker's dice are fair by rolling
+`fairInt(6)` on the platform's crypto source 60,000 times and asking the
+chi-square to stay under the 0.1% line (20.5 for six faces).
+
+**Why it is wrong.** A 0.1% line is crossed by a PERFECTLY FAIR die one run in a
+thousand, by definition. The server suite runs on every PR and every merge, so
+that check was a red build waiting to happen, and on #1017 it was one: chi
+22.65, on a PR that changed two phone tests and nothing near the dice. Nothing
+was wrong with the dice. And it was not much of a guard: a modulo bias on a
+byte draw (the classic bug, 4 faces of 6 at 43/256) moves 60,000 rolls by
+only chi ~7, under the line anyway.
+
+**The rule.** A check of our arithmetic runs on a SEEDED source (dice.test 2a:
+mulberry32, the same numbers every run), so it passes or fails for a reason. A
+check of the platform's source, if one is wanted, takes a line a fair source
+never reaches in practice (2a2: 45.7, one run in a hundred million). Never a
+test whose pass depends on luck at odds a CI can roll.
+
+**Receipt:** dice.test 2a/2a2 (70 checks); the old 2a's failing run is in #1017's
+first CI (`test`, job 117846154027).
