@@ -511,6 +511,18 @@ remnant to migrate server-side, not a mode to preserve.
         runs parallel to the drawn one, so an aimed shot judges props ~33 px
         short of the target's feet; `mp-sightrock`: bow-at-props.md
         "v2.3.3485".
+      - since v2.3.3489 AN ARROW COMES DOWN WHERE THE AIMING LINE SAYS -- the
+        owner, offered "end the aiming line where the arrow comes down, and
+        let an arrow flying along the edge keep going": "Go recommended". One
+        rule (`src/game/arrowEdge.js` `arrowEdgeRoom`): 24 px of flight short
+        of the screen edge the arrow flies TOWARD (it was within 24 px of ANY
+        edge, so a bow held by the world's edge dropped every arrow at your
+        feet). The gate counts a monster or player only as far as an arrow is
+        sure to reach (the room + projectiles.js `arrowSureReachPast`): with
+        the range alone it fired at a monster off the screen to your side. The
+        empty aiming line is drawn to `S._bowSight.reach`, the nearer of the
+        range and the edge; `arrow-edge` suite, `mp-bowedge`: bow-at-props.md
+        "v2.3.3489", TRAPS §237.
     - since v2.3.3230 A BUILDING YOU KEEP HITTING CATCHES FIRE -- the owner:
       "add flame effects on the building after getting hit a while in the
       location where the building is getting struck and make the flames grow

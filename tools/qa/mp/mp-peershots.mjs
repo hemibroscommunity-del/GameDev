@@ -162,11 +162,17 @@ function offLine(sh) {
 }
 const last = (sh) => sh.samples[sh.samples.length - 1];
 
-/* somewhere GAP px from (bx, by) with a clear line to it, on open ground */
+/* somewhere GAP px from (bx, by) with a clear line to it, on open ground.
+   v2.3.3489: north or south of B first.  A bow's gate counts a target only as
+   far as an arrow flies before it comes down short of the screen's edge
+   (arrowEdge.js), and the 390 px phone is ~640 world px across: B 330 px to
+   A's side was past it once A's camera had settled (the first arrow went out
+   while it was still easing after the hop; the next ones never did).  Up and
+   down the screen there is room for GAP. */
 const clearSpot = (P, bx, by) => P.page.evaluate(({ bx, by, gap }) => {
   const S = window._gameState.current;
   const z = S.currentZone, boots = 52;
-  for (const deg of [180, 0, 90, 270, 135, 225, 45, 315, 160, 200, 20, 340]) {
+  for (const deg of [90, 270, 70, 110, 250, 290, 45, 135, 225, 315, 180, 0]) {
     const a = deg * Math.PI / 180;
     const x = bx + Math.cos(a) * gap, y = by + Math.sin(a) * gap;
     let solid = false;
