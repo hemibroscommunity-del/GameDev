@@ -102,9 +102,10 @@ Screens: all
 - Boxes inside boxes (nested cards); a third level inside the trade well.
 - A second rarity palette (the reveal and the bag must agree), or turning the drop reveal into a modal.
 - Raising the world's own labels to the 11 px floor (the owner chose to leave them).
+- Removing the dialogue backdrop's 2 px blur (the owner kept it, below).
 
-**Still open:**
-- One exception to the no-blur rule that nobody has decided on: the dark backdrop behind a character's dialogue and the quest windows blurs the world slightly (2 px, `.bt-npcdlg-scrim` in game.css).
+**Decided (2026-10-19):**
+- The one blur the game keeps, by the owner's choice: the dark backdrop behind a character's dialogue and the quest windows blurs the world slightly (2 px, `.bt-npcdlg-scrim` in game.css). Asked after the ChatGPT review of 2026-10-19, which suggested removing it, the owner: "Keep blur" (v2.3.3479). It stays the only exception to the no-blur rule.
 
 Sources: docs/LANTERN-SLATE-SPEC.md, docs/UI-BIBLE.md, docs/specs/small-icons.md, docs/specs/bag-icons.md, docs/specs/ui-sounds.md, docs/specs/rarity-reveal.md, docs/specs/armor-grade-look.md, docs/TRAPS.md (§42, §48), src/styles/game.css, src/ui/mobile/dash/common.js, CLAUDE.md
 
