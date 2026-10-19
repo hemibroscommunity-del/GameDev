@@ -27,16 +27,44 @@ import { friendsSrv } from '../sheet/friendsSync.js';            /* v2.3.1324 */
    REQUESTS tab, direct messages.  No away state exists either, so the
    dot is green/gray only. */
 
-const Empty = ({ line, sub, children }) => (
-  <div style={{ textAlign: 'center', padding: '22px 18px' }}>
+/* ═══ v2.3.3479: THE EMPTY FRIENDS PAGE SAYS SO IN THE FIRST VIEW (the 2026-10-19 UI review) ═══
+   Under Add Friend and the Friends / Requests tabs the stacked empty state
+   (22 px of padding, a 40 px icon, then the words) put the icon at the fold
+   of an upright phone's drilled page (~159 px tall) and "No friends yet",
+   with how to add one, below it: a new player saw an icon only.  `compact`
+   lays it out as one row from the top -- a 28 px icon beside the words, which
+   wrap the full width -- so the line and the start of the how-to are in the
+   first view.  The icon stays (the empty-state contract, v2.3.1235), and so
+   do the 14 / 12 px sizes; every other empty state is unchanged. */
+const Empty = ({ line, sub, children, compact = false }) => {
+  const icon = (
     <img src="/icons/ui/nav-friends.webp" alt="" draggable={false}
-      style={{ width: 40, height: 40, objectFit: 'contain', opacity: 0.4, margin: '0 auto' /* v2.3.1233: img{display:block} in game.css defeats textAlign centering */ }}
+      style={compact
+        ? { width: 28, height: 28, objectFit: 'contain', opacity: 0.4, flex: 'none' }
+        : { width: 40, height: 40, objectFit: 'contain', opacity: 0.4, margin: '0 auto' /* v2.3.1233: img{display:block} in game.css defeats textAlign centering */ }}
       onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('👥')); }} />
-    <div style={{ fontSize: 14, fontWeight: 700, color: COL.text, marginTop: 8 }}>{line}</div>
-    {sub && <div style={{ fontSize: 12, lineHeight: 1.4, color: COL.text2, marginTop: 4, maxWidth: 250, marginLeft: 'auto', marginRight: 'auto' }}>{sub}</div>}
-    {children}
-  </div>
-);
+  );
+  const words = (
+    <>
+      <div style={{ fontSize: 14, fontWeight: 700, color: COL.text, marginTop: compact ? 4 : 8 }}>{line}</div>
+      {sub && <div style={compact
+        ? { fontSize: 12, lineHeight: 1.4, color: COL.text2, marginTop: 4 }
+        : { fontSize: 12, lineHeight: 1.4, color: COL.text2, marginTop: 4, maxWidth: 250, marginLeft: 'auto', marginRight: 'auto' }}>{sub}</div>}
+      {children}
+    </>
+  );
+  return compact ? (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, textAlign: 'left', padding: '6px 4px' }}>
+      {icon}
+      <div style={{ flex: 1, minWidth: 0 }}>{words}</div>
+    </div>
+  ) : (
+    <div style={{ textAlign: 'center', padding: '22px 18px' }}>
+      {icon}
+      {words}
+    </div>
+  );
+};
 
 /* v2.3.1332 (owner: chiseled frames everywhere): colors come from the
    .bt-chisel classes; the factory keeps layout only. */
@@ -313,7 +341,7 @@ export const SocialPanel = () => {
       ) : !showBlocked && (!capsFriends || tab === 'friends') ? (
         rows.length === 0 ? (
           allRows.length === 0 ? (
-            <Empty line="No friends yet"
+            <Empty compact line="No friends yet"
               sub="Tap another player anywhere in Bro Town to view their profile and add them as a friend." />
           ) : (
             <Empty line="No matches" sub="Try a different name." />
