@@ -2391,5 +2391,24 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       worker: [ITEM_DROP.NO_DROP_ZONES, ITEM_DROP.PRIVATE_MS, ITEM_DROP.FLASH_MS, ITEM_DROP.GONE_MS] });
 }
 
+/* ═══ v2.3.3484: ACHIEVEMENTS (src/data/achievements.js vs server/src/achievements.js) ═══
+   The page's words and pictures are the phone's; which achievements exist,
+   their tiers, their points and which rows count are the worker's.  Ids are
+   append-only: a renamed or reordered id would show one achievement's words
+   on another's record. */
+{
+  const C = await import('../../src/data/achievements.js');
+  const { ACHV } = await import('../src/achievements.js');
+  const phone = C.ACHIEVEMENTS.map((a) => [a.id, a.tier, !!a.count]);
+  const worker = ACHV.LIST.map((a) => [a.id, a.tier, !!a.count]);
+  check('achievements: the page lists the worker\'s achievements, in its order, each its tier and whether it counts',
+    JSON.stringify(phone) === JSON.stringify(worker), { phone, worker });
+  check('achievements: each tier\'s points are the worker\'s (10 / 100 / 500 / 1,000)',
+    Object.keys(ACHV.TIER_AP).every((t) => C.ACHV_TIERS[t] && C.ACHV_TIERS[t].ap === ACHV.TIER_AP[t])
+      && Object.keys(C.ACHV_TIERS).length === Object.keys(ACHV.TIER_AP).length,
+    { phone: Object.fromEntries(Object.entries(C.ACHV_TIERS).map(([k, v]) => [k, v.ap])), worker: ACHV.TIER_AP });
+  check('achievements: every row has words and a picture', C.ACHIEVEMENTS.every((a) => a.name && a.how && a.icon && a.glyph));
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
