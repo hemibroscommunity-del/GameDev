@@ -6,7 +6,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the woodworker's results heard */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { TrapsTab } from './TrapsTab.jsx'; /* v2.3.3120: box traps from logs */
-import { hardenCost as hardenAttemptCost } from '@/data/hardenCosts.js'; /* v2.3.3139: hardening takes a material and a doubling gold ladder (renamed: the legacy affix section below has a local hardenCost; v2.3.3479: that section is gone, the name stays) */
+import { hardenCost as hardenAttemptCost, hardenIsWood, hardenTierOf } from '@/data/hardenCosts.js'; /* v2.3.3139: hardening takes a material and a doubling gold ladder (renamed: the legacy affix section below has a local hardenCost; v2.3.3479: that section is gone, the name stays); v2.3.3479: hardenIsWood and hardenTierOf name the skill and level a bow's or a staff's hardening asks for */
 import { HardenedWoodTab } from './HardenedWoodTab.jsx'; /* v2.3.3139: five logs into one hardened wood */
 /* === WoodworkPanel — buildingPanel === 'woodwork' sub-panel === */
 /* v2.3.873: extracted verbatim from the buildingPanel === 'woodwork' clause
@@ -385,13 +385,28 @@ export function WoodworkPanel(props) {
         var hGoldOk = (rpgState.coins || 0) >= hCost;
         var hMatsOk = !hc.material || hMatsHave >= hc.amount;
         var hAfford = hGoldOk && hMatsOk;
+        /* v2.3.3479: WHICH SKILL HARDENING ASKS FOR.  The owner, asked
+           whether hardening a bow or a staff should ask for the Blacksmithing
+           level: "Do woodworking" (2026-10-19).  A worker that gates it so
+           says caps.hardenwoodskill (server/src/hardening.js: Woodworking
+           at least 5 x the weapon's tier, its own _weaponTierIndex, which
+           data/hardenCosts.js hardenTierOf mirrors -- a pine bow Woodworking
+           5), and then this line names Woodworking and that level.  An older
+           worker, or `hardenwoodskill: false`, still gates every weapon on
+           Blacksmithing, so the line keeps its old words there.  A sword
+           stays on Blacksmithing (the Blacksmith's Upgrade tab).  The words
+           only: as before, the worker's refusal names the level if it is
+           short. */
+        var hByWood = !!(_Sh._serverCaps && _Sh._serverCaps.hardenwoodskill) && hardenIsWood(hw, hSlot);
+        var hSkillLvl = hByWood ? hardenTierOf(hw) * 5 : 0;
         return /*#__PURE__*/React.createElement("div", {
           style: { marginTop: 12, padding: 10, borderRadius: 10, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
         }, /*#__PURE__*/React.createElement("div", {
           style: { fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */, fontWeight: 700, color: LS.txt1, marginBottom: 3 }
         }, "Hardening: ", hw.name, " — H", hLvl, "/5") /* v2.3.1235: batch-3 rollout — ⚒️ dropped, no emoji in chrome */, /*#__PURE__*/React.createElement("div", {
+          "data-harden-gate": hByWood ? 'woodworking:' + hSkillLvl : 'blacksmithing', /* v2.3.3479: mp-hardenbars reads which skill this line names */
           style: { fontSize: 11, color: LS.txt3, marginBottom: 8, lineHeight: 1.5 }
-        }, hMaxed ? 'Maximum hardness reached!' : "+1.04 base dmg per level \xB7 Success " + hOdds + "% \xB7 Fail resets hardness (Temper " + hTemper + " softens it) \xB7 Gated on Blacksmithing"), !hMaxed && /*#__PURE__*/React.createElement("button", {
+        }, hMaxed ? 'Maximum hardness reached!' : "+1.04 base dmg per level \xB7 Success " + hOdds + "% \xB7 Fail resets hardness (Temper " + hTemper + " softens it) \xB7 " + (hByWood ? "Needs Woodworking Lv" + hSkillLvl : "Gated on Blacksmithing")), !hMaxed && /*#__PURE__*/React.createElement("button", {
           /* v2.3.1235: batch-3 rollout — the surface's single gold
              primary adopts the shared .button-primary recipe (game.css)
              instead of a flat brass fill; 44px hitbox floor (was 40),
