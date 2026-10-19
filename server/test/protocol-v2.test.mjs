@@ -196,7 +196,8 @@ ws1.sent.length = 0; ws2.sent.length = 0;
    tick.test.mjs. */
 for (const _pid of ['p1', 'p2']) {
   const _ps = room.playerState[_pid];
-  if (_ps) { if (!_ps._quests) _ps._quests = Object.create(null); _ps._quests.tut_1 = 'active'; }
+  /* v2.3.3486: tut_2 names frost now (the tour's finale; tut_1 is verdant's slimes) */
+  if (_ps) { if (!_ps._quests) _ps._quests = Object.create(null); _ps._quests.tut_2 = 'active'; }
 }
 await room.webSocketMessage(ws1, JSON.stringify({ type: 'move', x: 1, y: 1, z: 'frost' }));
 await room.webSocketMessage(ws2, JSON.stringify({ type: 'move', x: 1, y: 1, z: 'frost' }));

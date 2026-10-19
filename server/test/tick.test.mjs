@@ -787,12 +787,13 @@ check('forged monster_transform dropped by deny-list',
   ps.z = 'town';
 
   /* ── accepting the quest opens it ── */
-  ps._quests.tut_1 = 'active';
+  /* v2.3.3486: tut_2 names frost now (the tour's finale; tut_1 the slimes) */
+  ps._quests.tut_2 = 'active';
   await move('frost', 150, 150);
   check('accepting the quest that names frost opens frost', ps.z === 'frost', ps.z);
 
   /* ── and it does not close behind you ── */
-  ps._quests.tut_1 = 'turnedIn';
+  ps._quests.tut_2 = 'turnedIn';
   ps.z = 'town';
   await move('frost', 160, 160);
   check('...and a finished quest leaves its zone open, not locked again',

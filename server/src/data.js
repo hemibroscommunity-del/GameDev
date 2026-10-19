@@ -474,6 +474,9 @@ export const COOKING_RECIPES = [
          one, and a fight's stamina (a block, a dodge, a dash) is still
          something you can top up. */
       { ingredients: { crop_carrot: 2 },                             tier: 1, cookLvl: 1,  makes: 'staminaSalts' },
+      /* v2.3.3486: ZOOM JUICE (SHOP_ITEMS zoomJuice) -- Farmer Bro's farm_2,
+         three carrots and Cooking 1, so a new player brews it on the tour. */
+      { ingredients: { crop_carrot: 3 },                             tier: 1, cookLvl: 1,  makes: 'zoomJuice' },
     ];
 
 /* ═══ v2.3.3130: WHAT A DISH DOES ═══
@@ -645,6 +648,15 @@ export const SHOP_ITEMS = {
          player the server itself sold this to, and the arithmetic there is
          written against this value. */
       swiftDraught:  { cost: 30, effect: 'spdBuff', duration: 180, mult: 1.5 },
+      /* ═══ v2.3.3486: ZOOM JUICE, FROM THE FARM'S CARROTS ═══
+         Owner: "A quest where you have to get farm ingredients to make a food
+         recipe item that gives you a boost (let's say a 25% speed boost for 5
+         minutes)."  Farmer Bro's farm_2: three carrots at the Cookhouse
+         (COOKING_RECIPES row 9), a brew drunk like the Swift Draught -- the
+         same spdBuff the movement bound already widens for (movement.js
+         _moveSpeedK reads `spdMul`), at 1.25 for five minutes.  Never on
+         Diego's shelf (DIEGO_SHELF is empty) and never bought back. */
+      zoomJuice:     { cost: 20, effect: 'spdBuff', duration: 300, mult: 1.25 },
     };
 
 /* ═══ v2.3.3132: DIEGO SELLS NO FOOD OR DRINK ═══
@@ -738,8 +750,43 @@ export const QUEST_REWARDS = {
          the bow and staff flying to the HUD, no claim window (QuestPanel.jsx,
          v2.3.3030).  The client's copy is gameSystems.js tut_1 (mirror-audit
          §5); tut_2-4 still pay XP and still ask. */
-      tut_1: {gold:25,  xp:0,  next:'tut_2',
-              objective:{type:'collect', invKey:'snowman', count:4, consume:true, zone:'frost'},
+      /* ═══ v2.3.3486: THE TOUR -- ONE LINE, PASSED FROM HAND TO HAND ═══
+         Owner, a week before an exposé where reviewers give each game 20-30
+         minutes: "my quest line is almost exclusively going to 4 zones to
+         kill monsters and bring their remains back to mayor bro ... it would
+         be more fun if the quest line was more diversified", and the list --
+         the blacksmith's ore for bars, the woodworker's logs for hardened
+         wood and a softwood trade, farming, traps, a race, fish to cook, a
+         farm-made speed food.  "Mayor bro would hand off the quest to the
+         next person etc.  Or would it be better for each NPC to just have
+         their own quests?"  Handed off: a reviewer always has ONE next thing,
+         the road on the minimap leads to whoever gives it, and nobody offers
+         a quest out of turn.  Each giver's own side line opens after the tour.
+           tut_1   Mayor Bro         blue slimes (the explosions, first)
+           farm_1  Farmer Bro        plant and water carrots (they ripen while
+                                     you do the next four)
+           smith_1 Blacksmith Bro    5 copper ore -> 5 copper bars
+           smith_2 Blacksmith Bro    forge your own piece, sword or armour
+           wood_1  Woodworker Bro    5 pine logs -> 5 hardened pine
+           wood_2  Woodworker Bro    make a bow or a staff; he trades a pine
+                                     one for softwood at the hand-in (`trade`)
+           fish_1  Diego             2 cooked fish -> 10 cooked clownfish
+           farm_2  Farmer Bro        cook Zoom Juice from the carrots
+           race_1  Lil Bro           win his race round the square (race.js)
+           beast_1 Beastmaster Bro   make box traps
+           beast_2 Beastmaster Bro   spring them on monsters
+           tut_2   Mayor Bro         the burrowing snowmen, the finale
+         then tut_3 / tut_4 (the Mayor's) and the Beastmaster's beast_3/4.
+         Every step is checked here (`objective`); `next` is the hand-off, and
+         `after` (quests.js _questBarred) holds a giver's own later step back
+         where `next` no longer leads to it.  Mirrored, `after` included, by
+         QUEST_CHAINS in src/data/gameSystems.js (mirror-audit §5).
+         docs/specs/demo-quest-line.md. */
+      /* v2.3.3486: the SLIMES first (owner: "The slimes that blow up almost
+         always get a good reaction from people"); the snowmen, whose burrow is
+         the other showpiece, are the tour's finale (tut_2). */
+      tut_1: {gold:25,  xp:0,  next:'farm_1',
+              objective:{type:'collect', invKey:'slime-remnants', count:4, consume:true, zone:'verdant'},
               /* v2.3.1676 (owner: "He'll give you the sword and shield").  Paid
                  on ACCEPT, not turn-in — you cannot do the quest without them,
                  and the town gate will not let you leave until you have talked
@@ -796,8 +843,12 @@ export const QUEST_REWARDS = {
                 {kind:'weapon', weaponType:'staff', tierKey:'pine', name:"Pine Staff"},    /* v2.3.1772 */
               ]},
       /* v2.3.1692: tut_2 pays gold + xp only — its staff moved to tut_1. */
-      tut_2: {gold:60,  xp:35, next:'tut_3',
-              objective:{type:'collect', invKey:'slime-remnants', count:6, consume:true, zone:'verdant'}},
+      /* v2.3.3486: tut_2 is the TOUR'S FINALE, the snowmen (tut_1's old
+         errand) -- after the Beastmaster's traps, with the gear the tour made
+         you.  `after`: beast_2's `next` is this quest, so the Beastmaster's
+         own beast_3 waits on it (below). */
+      tut_2: {gold:200, xp:50, next:'tut_3', after:'beast_2',
+              objective:{type:'collect', invKey:'snowman', count:4, consume:true, zone:'frost'}},
       tut_3: {gold:150, xp:53, next:'tut_4',
               objective:{type:'collect', invKey:'skeleton-remnants', count:5, consume:true, zone:'sky'}},
       tut_4: {gold:400, xp:105, next:null,
@@ -816,6 +867,67 @@ export const QUEST_REWARDS = {
                  what the client renders and icons by; "Iron" is now reserved
                  for the tier above. */
               item:{kind:'legs', name:"Copper Greaves", mat:'copper', tierMult:1.0}},
+
+      /* ═══ v2.3.3486: THE TOUR'S HANDS (see the header at tut_1) ═══
+         Farmer Bro (the Feed & Seed), Blacksmith Bro, Woodworker Bro, Diego
+         and Lil Bro.  No combat XP anywhere here (xp 0): these are trades,
+         paid in the trade's own XP as you do them, so a hand-in needs no
+         Melee/Bow/Magic choice -- the auto reward (QuestPanel).  The tools
+         come from the man whose trade they are, on accept: the pickaxe from
+         the smith, the axe from the woodworker, the rod from Diego (`max: 1`,
+         so a player who already owns one is not handed a second). */
+      /* Plant and water three beds.  `farm` counts the beds an act touched
+         (farm.js); watering only takes on a planted, growing bed, so three
+         waters are three planted carrots.  Seeds and compost come with it, so
+         the farm is one trip: watered, they are ripe in six minutes, about
+         when farm_2 asks for them. */
+      farm_1:  {gold:40,  xp:0, next:'smith_1', after:'tut_1',
+                objective:{type:'farm', act:'water', count:3},
+                grantOnAccept:[{kind:'inv', key:'seed_carrot', n:3}, {kind:'inv', key:'compost', n:3}]},
+      /* Five copper ore, which he smelts into FIVE bars (five ore make one at
+         the bench: smelting.js) -- the owner: "making 5 bars on your own by
+         mining the ore would be too time consuming for the demo". */
+      smith_1: {gold:20,  xp:0, next:'smith_2', after:'farm_1',
+                objective:{type:'collect', invKey:'ore_copper_ore', count:5, consume:true},
+                grantOnAccept:[{kind:'inv', key:'mining_pickaxe', n:1, max:1}],
+                item:{kind:'inv', key:'bar_copper', n:5}},
+      /* "which you can make into your own weapon or armor - your choice":
+         anything forged at his anvil counts (`craft` 'smith': gear.js
+         forge_weapon, armorforge.js forge_armor). */
+      smith_2: {gold:60,  xp:0, next:'wood_1', after:'smith_1',
+                objective:{type:'craft', what:'smith', count:1}},
+      /* Five pine logs, which he hardens into FIVE hardened pine (five logs
+         make one at the bench: hardenedwood.js). */
+      wood_1:  {gold:20,  xp:0, next:'wood_2', after:'smith_2',
+                objective:{type:'collect', invKey:'wood_pine_log', count:5, consume:true},
+                grantOnAccept:[{kind:'inv', key:'woodcutting_axe', n:1, max:1}],
+                item:{kind:'inv', key:'hardened_pine', n:5}},
+      /* Make a bow or a staff at his bench (`craft` 'wood'), and at the
+         hand-in he trades one PINE bow or staff for the SOFTWOOD one --
+         "he'll trade you the better tier of weapon (after pine) if you turn
+         in a pine one" (quests.js _questTradePick: the player picks which).
+         Softwood is free to wear at any level (gear.js _isFreeTierGear) and
+         takes Woodworking 5 to make. */
+      wood_2:  {gold:60,  xp:0, next:'fish_1', after:'wood_1',
+                objective:{type:'craft', what:'wood', count:1},
+                trade:{from:'pine', to:'softwood', types:['bow', 'staff']}},
+      /* Two cooked fish (life_1's errand, Diego's now), and ten cooked
+         clownfish for them -- "rewarded with 10 of the tier 2 fish"; cooked,
+         so they heal (data.js FISH_HEAL: 150 each) for the rest of the tour. */
+      fish_1:  {gold:40,  xp:0, next:'farm_2', after:'wood_2',
+                objective:{type:'collect', invPrefix:'cooked_fish_', count:2, consume:true},
+                grantOnAccept:[{kind:'inv', key:'fishing_pole', n:1, max:1}],
+                item:{kind:'inv', key:'cooked_fish_clownfish', n:10}},
+      /* Cook ZOOM JUICE from the carrots (COOKING_RECIPES row 9: 25% faster
+         for five minutes) -- the owner's "farm ingredients to make a food
+         recipe item that gives you a boost".  `cook` counts what a recipe
+         MAKES (cooking.js); the juice stays in the bag, for the race. */
+      farm_2:  {gold:60,  xp:0, next:'race_1', after:'fish_1',
+                objective:{type:'cook', what:'zoomJuice', count:1}},
+      /* Beat Lil Bro round the square: race.js judges every flag and the
+         finish against his time and credits `race` on a win. */
+      race_1:  {gold:50,  xp:0, next:'beast_1', after:'farm_2',
+                objective:{type:'race', count:1}},
 
       /* ═══ v2.3.1680: THE LIFESKILL CHAIN ═══
          Owner: "gate and hide resource extraction for woodcutting, fishing,
@@ -836,6 +948,10 @@ export const QUEST_REWARDS = {
          to fish AND cook — two skills out of one quest, and the reason the
          axe rides along with the pole: firewood.  Counts are small on purpose;
          this is a tutorial, not a grind. */
+      /* v2.3.3486: RETIRED (QUEST_RETIRED below) -- the tour gives these
+         errands and their tools to the men whose trades they are: the fish to
+         Diego (fish_1), the ore to Blacksmith Bro (smith_1).  Kept so a save
+         holding one active can still hand it in. */
       life_1: {gold:60,  xp:28,  next:'life_2',
                objective:{type:'collect', invPrefix:'cooked_fish_', count:2, consume:true},
                grantOnAccept:[
@@ -885,14 +1001,18 @@ export const QUEST_REWARDS = {
          to choose at the hand-in; they pay gold and box traps.  beast_1 hands
          over the three pine logs its traps are made from.  Mirrored by
          QUEST_CHAINS in src/data/gameSystems.js (mirror-audit). */
-      beast_1:    {gold:40,  xp:0, next:'beast_2',
+      /* v2.3.3486: beast_1 and beast_2 are steps of the tour (the header at
+         tut_1): after Lil Bro's race, and handing on to the Mayor's finale --
+         three springs, not five, for a reviewer's half hour.  His own line
+         (beast_3, beast_4) opens once the tour is done. */
+      beast_1:    {gold:40,  xp:0, next:'beast_2', after:'race_1',
                    objective:{type:'traps_made', count:3},
                    grantOnAccept:[{kind:'inv', key:'wood_pine_log', n:3}],
                    item:{kind:'inv', key:'trap_box', n:2}},
-      beast_2:    {gold:100, xp:0, next:'beast_3',
-                   objective:{type:'trap_roll', count:5},
+      beast_2:    {gold:100, xp:0, next:'tut_2', after:'beast_1',
+                   objective:{type:'trap_roll', count:3},
                    item:{kind:'inv', key:'trap_box', n:5}},
-      beast_3:    {gold:250, xp:0, next:'beast_4',
+      beast_3:    {gold:250, xp:0, next:'beast_4', after:'tut_2',
                    objective:{type:'skill', skill:'trapping', level:6},
                    item:{kind:'inv', key:'trap_box', n:10}},
       beast_4:    {gold:500, xp:0, next:null,
@@ -956,6 +1076,17 @@ export const QUEST_DORMANT = Object.freeze([
  * (dailyrewards.js QUESTS.UNLOCK_QUEST). */
 export const QUEST_FIRST = 'tut_1';
 
+/* ═══ v2.3.3486: QUESTS NOBODY IS OFFERED ANY MORE ═══
+ * The tour (QUEST_REWARDS tut_1) hands their errands and tools to the men
+ * whose trades they are, so the Mayor no longer offers them: life_1's cooked
+ * fish are Diego's fish_1, life_2's ore is Blacksmith Bro's smith_1.  Unlike
+ * QUEST_DORMANT their giver is still in the world, and a save that already
+ * holds one ACTIVE may still hand it in -- only taking one is refused
+ * (quests.js _questBarred 'retired').  The game skips them in the same way
+ * (gameSystems.js getNpcQuest, `retired`); mirror-audit holds the two lists
+ * together. */
+export const QUEST_RETIRED = Object.freeze(['life_1', 'life_2']);
+
 export const BLACKSMITH_TIERS = {
       /* ═══ v2.3.2123: THE FIRST MELEE TIER IS MADE OF WOOD, AND NOW SAYS SO ═══
          Demo feedback (Alix, with a screenshot circling both halves): the
@@ -984,8 +1115,16 @@ export const BLACKSMITH_TIERS = {
          `bars` replace `oreCost` on these three rows (gear.js reads them
          first); `oreName` stays the metal's name.  The gold is unchanged.  The
          metals past black steel have no bar yet and keep their ore. */
-      copper:       {minLvl:6, slots:1, oreName:'copper',        bar:'bar_copper', bars:4, xp:800,  goldCost:20,   tierMult:1.12, statReq:10 },
-      iron:         {minLvl:11,slots:1, oreName:'iron',          bar:'bar_iron', bars:4, xp:1200,   goldCost:35,   tierMult:1.25, statReq:20 },
+      /* ═══ v2.3.3486: A BAR'S SWORD AT ITS BAR'S LEVEL ═══
+         Owner, for the tour's Blacksmith Bro: "he gives you 5 bars (which you
+         can make into your own weapon or armor - your choice)".  The armour
+         forge makes copper, iron and black steel at Smithing 1, 5 and 10
+         (armorforge.js), the bars smelt at 1, 5 and 10 (smelting.js) -- and the
+         swords from the very same four bars asked 6, 11 and 16, the old ore
+         ladder's levels, so a new player holding five copper bars could make
+         armour and not a sword.  Now 1 / 5 / 10, the bars' own. */
+      copper:       {minLvl:1, slots:1, oreName:'copper',        bar:'bar_copper', bars:4, xp:800,  goldCost:20,   tierMult:1.12, statReq:10 },
+      iron:         {minLvl:5, slots:1, oreName:'iron',          bar:'bar_iron', bars:4, xp:1200,   goldCost:35,   tierMult:1.25, statReq:20 },
       /* v2.3.3012 (owner: "let's plan on 'black steel' in like level 10+ areas
          and have its own ore to mine"): the tier after iron is BLACK STEEL, and
          its ore is the one the Wheel's levels 11-20 grow (gathering.js
@@ -993,7 +1132,7 @@ export const BLACKSMITH_TIERS = {
          is the gearBase every minted piece carries, and the native art's
          material name (materialTints.js); only the name and the ore move.
          No steel ore was ever minted, so no bag holds the old key. */
-      steel:        {minLvl:16,slots:1, oreName:'black_steel',   bar:'bar_black_steel', bars:4, xp:1600, goldCost:55, tierMult:1.40, statReq:30 },
+      steel:        {minLvl:10,slots:1, oreName:'black_steel',   bar:'bar_black_steel', bars:4, xp:1600, goldCost:55, tierMult:1.40, statReq:30 },
       titanium:     {minLvl:21,slots:1, oreName:'titanium',      oreCost:5,  goldCost:85,   tierMult:1.56, statReq:40 },
       obsidian:     {minLvl:26,slots:1, oreName:'obsidian',      oreCost:6,  goldCost:120,  tierMult:1.74, statReq:50 },
       mythril:      {minLvl:31,slots:2, oreName:'mythril',       oreCost:7,  goldCost:170,  tierMult:1.94, statReq:60 },
@@ -1017,14 +1156,30 @@ export const WOODWORKING_TIERS = {
          pine").  `wood: 'pine_log'` makes the tier consume `wood_pine_log` —
          the log the first tree actually drops (gathering.js).  The old first
          tier asked for `wood_wood`, which nothing produces. */
-      pine:         {minLvl:1, slots:1, wood:'pine_log',     woodCost:3,  goldCost:8,    tierMult:1.00, statReq:0  },
-      softwood:     {minLvl:6, slots:1, wood:'softwood',     woodCost:3,  goldCost:20,   tierMult:1.12, statReq:10 },
-      hardwood:     {minLvl:11,slots:1, wood:'hardwood',     woodCost:4,  goldCost:35,   tierMult:1.25, statReq:20 },
+      /* ═══ v2.3.3486: A BOW OR A STAFF IS MADE OF HARDENED WOOD ═══
+         Owner, for the tour's Woodworker Bro: "you give him 5 wood, he gives
+         you 5 hardened wood, and you can make your own bow or staff" -- the
+         wood side of the smith's "he gives you 5 bars (which you can make into
+         your own weapon or armor)", and the owner's own rule for hardened wood
+         (v2.3.3139: "so it mirrors the same structure").  So the five woods
+         that have a hardened wood (hardenedwood.js) make their bows and staffs
+         from FOUR of it, as a sword takes four bars (`hardened`, `hardenedCost`
+         read first by gear.js, before `wood`/`woodCost`, which stay as the
+         log's name), paying a sword's XP for the same work (two bars' worth a
+         piece: 800 / 1,200 / 1,600 / 2,000 / 2,400); and each at the level its
+         hardened wood is made at, Woodworking 1 / 5 / 10 / 15 / 20 -- "the
+         gate to create those items is lvl 5 woodworking" for softwood.  The
+         woods past maple have none yet and keep their logs.  Softwood is FREE
+         TO WEAR (gear.js _isFreeTierGear), as iron is: "The tier after pine
+         should still be wearable at lvl 1 magic/staff and lvl 1 bow". */
+      pine:         {minLvl:1, slots:1, wood:'pine_log',     woodCost:3,  hardened:'hardened_pine', hardenedCost:4, xp:800,  goldCost:8,    tierMult:1.00, statReq:0  },
+      softwood:     {minLvl:5, slots:1, wood:'softwood',     woodCost:3,  hardened:'hardened_softwood', hardenedCost:4, xp:1200, goldCost:20,   tierMult:1.12, statReq:10 },
+      hardwood:     {minLvl:10,slots:1, wood:'hardwood',     woodCost:4,  hardened:'hardened_hardwood', hardenedCost:4, xp:1600, goldCost:35,   tierMult:1.25, statReq:20 },
       /* v2.3.1763: was 'pine' — the name moved DOWN to tier one, so this tier
          is cedar.  Renamed rather than left as a second Pine: two tiers with
          one name is how a player buys the wrong bow. */
-      cedar:        {minLvl:16,slots:1, wood:'cedar_wood',   woodCost:5,  goldCost:55,   tierMult:1.40, statReq:30 },
-      maple:        {minLvl:21,slots:1, wood:'maple_wood',   woodCost:5,  goldCost:85,   tierMult:1.56, statReq:40 },
+      cedar:        {minLvl:15,slots:1, wood:'cedar_wood',   woodCost:5,  hardened:'hardened_cedar', hardenedCost:4, xp:2000, goldCost:55,   tierMult:1.40, statReq:30 },
+      maple:        {minLvl:20,slots:1, wood:'maple_wood',   woodCost:5,  hardened:'hardened_maple', hardenedCost:4, xp:2400, goldCost:85,   tierMult:1.56, statReq:40 },
       ironbark:     {minLvl:26,slots:1, wood:'ironbark',     woodCost:6,  goldCost:120,  tierMult:1.74, statReq:50 },
       crystalwood:  {minLvl:31,slots:2, wood:'crystal_wood', woodCost:7,  goldCost:170,  tierMult:1.94, statReq:60 },
       elder:        {minLvl:36,slots:2, wood:'elder_wood',   woodCost:8,  goldCost:240,  tierMult:2.16, statReq:70 },

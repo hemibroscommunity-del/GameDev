@@ -734,6 +734,11 @@ const B = room.playerState['bp_trap_b'];
   await send(wsG, 'make_traps', { log: 'wood_pine_log', count: 2 });
   check('beast_1: traps made before the quest count for nothing', !(G._questKills.beast_1) && G.inventory.trap_box === 2, G._questKills);
 
+  /* v2.3.3486: beast_1 is a step of the tour (data.js tut_1's header), after
+     Lil Bro's race: refused before it is handed in, taken once it is */
+  await send(wsG, 'quest_accept', { questId: 'beast_1' });
+  check('beast_1: refused before the tour reaches it (race_1 not handed in)', !G._quests.beast_1, G._quests);
+  G._quests.race_1 = 'turnedIn';
   await send(wsG, 'quest_accept', { questId: 'beast_1' });
   check('beast_1: accepted, and its three pine logs handed over', G._quests.beast_1 === 'active' && G.inventory.wood_pine_log === 3, { q: G._quests.beast_1, inv: G.inventory });
   await send(wsG, 'quest_turn_in', { questId: 'beast_1' });
@@ -761,7 +766,8 @@ const B = room.playerState['bp_trap_b'];
   kill(mark, { bp_trap_g: 100 }, 'bp_trap_g');
   check('beast_2: an arm that ran out springs nothing and counts nothing', !(G._questKills.beast_2), G._questKills);
   room._trapRng = () => 0.999;
-  for (let i = 0; i < 5; i++) {
+  /* v2.3.3486: three springs, not five (the tour's reviewers have half an hour) */
+  for (let i = 0; i < 3; i++) {
     const m = fs[i % fs.length];
     revive(m); standBy(G, m);
     room._trapRt('bp_trap_g').arms = [];
@@ -771,11 +777,16 @@ const B = room.playerState['bp_trap_b'];
     tick(4000);
   }
   clearRandom();
-  check('beast_2: five traps sprung (all broke) are five', G._questKills.beast_2 === 5, G._questKills);
+  check('beast_2: three traps sprung (all broke) are three', G._questKills.beast_2 === 3, G._questKills);
   await send(wsG, 'quest_turn_in', { questId: 'beast_2' });
-  check('beast_2: handed in, beast_3 offered', G._quests.beast_2 === 'turnedIn' && G._quests.beast_3 === 'available');
+  /* v2.3.3486: and it hands on to the Mayor's finale; his own beast_3 waits
+     on that (`after: 'tut_2'`) */
+  check('beast_2: handed in, and the tour goes on to the Mayor\'s finale (tut_2)', G._quests.beast_2 === 'turnedIn' && G._quests.tut_2 === 'available', G._quests);
 
   /* beast_3: the Trapping level, read at the hand-in */
+  await send(wsG, 'quest_accept', { questId: 'beast_3' });
+  check('beast_3: refused while the tour\'s finale is not handed in (after tut_2)', !G._quests.beast_3, G._quests);
+  G._quests.tut_2 = 'turnedIn';
   await send(wsG, 'quest_accept', { questId: 'beast_3' });
   G.lifeSkills.trapping = { level: 5, xp: 0 };
   await send(wsG, 'quest_turn_in', { questId: 'beast_3' });

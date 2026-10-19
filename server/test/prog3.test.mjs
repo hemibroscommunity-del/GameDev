@@ -572,23 +572,35 @@ const psA = room.playerState.pa;
     !!psA.rangedWeapon && psA.rangedWeapon.type === 'bow' && psA.weaponStash.length === 0,
     { slot: psA.rangedWeapon, stash: psA.weaponStash.length });
 
-  // forge_weapon: the stat gate reads the trained skill now.  Tier
-  // index 1 (statReq 10 legacy) → prog3 requirement Melee 5.
-  const tierKey = Object.keys(BLACKSMITH_TIERS)[1];
+  // forge_weapon: the stat gate reads the trained skill now.
+  /* v2.3.3486: and asks what WEARING the piece asks (gear.js _prog3EquipOk):
+     copper is rung zero and iron free, so the first tier that gates is black
+     steel (index 3: two rungs above copper, Melee 10).  It was tier index x 5
+     on its own -- a copper sword asked Melee 5 to make and nothing to wear. */
+  const tierKey = 'steel';
   const tier = BLACKSMITH_TIERS[tierKey];
   psA.lifeSkills = { blacksmithing: { level: 99, xp: 0 } };
   psA.coins = 100000;
-  /* v2.3.3141: tier 1 (copper) is forged from its bars now (data.js
-     BLACKSMITH_TIERS `bar`), every tier past black steel still from ore */
-  psA.inventory = { [tier.bar || ('ore_' + tier.oreName + '_ore')]: 999 };
+  /* v2.3.3141: copper, iron and black steel are forged from their bars now
+     (data.js BLACKSMITH_TIERS `bar`), every tier past black steel from ore */
+  psA.inventory = { [tier.bar || ('ore_' + tier.oreName + '_ore')]: 999, bar_copper: 999 };
   psA.weapon = null; psA.weaponStash = [];
-  p3.sk.sword.level = 1;
+  p3.sk.sword.level = 9;
   room._handleForgeWeapon(sess, { weaponType: 'sword', tierKey, isWoodwork: false });
   check('forge: under-trained mint rejected', psA.weapon === null, psA.weapon);
-  p3.sk.sword.level = 5;
+  p3.sk.sword.level = 10;
   room._handleForgeWeapon(sess, { weaponType: 'sword', tierKey, isWoodwork: false });
   check('forge: trained level unlocks the mint',
     !!psA.weapon && psA.weapon.gearBase === tierKey, psA.weapon);
+  /* v2.3.3486: the tour's smith_2 -- a new player makes a copper sword from
+     its bars at Melee 1 (and Smithing 1: data.js BLACKSMITH_TIERS copper) */
+  psA.weapon = null; psA.weaponStash = [];
+  p3.sk.sword.level = 1;
+  psA.lifeSkills = { blacksmithing: { level: 1, xp: 0 } };
+  room._handleForgeWeapon(sess, { weaponType: 'sword', tierKey: 'copper', isWoodwork: false });
+  check('forge: a copper sword is made at Melee 1 and Smithing 1, as copper armour is (v2.3.3486)',
+    !!psA.weapon && psA.weapon.gearBase === 'copper', psA.weapon);
+  psA.lifeSkills = { blacksmithing: { level: 99, xp: 0 } };
 
   // stats_update armor ingest: gates on defense POINTS; rejection
   // keeps the old armor (echo snaps the client back).

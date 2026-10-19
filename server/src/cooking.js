@@ -458,6 +458,9 @@ export const cookingMethods = {
 
     // Cooking XP grant -- mirrors addLifeSkillXp on the client.
     this._addLifeSkillXp(ps, 'cooking', (recipe.tier || 1) * 25);
+    /* v2.3.3486: what a recipe MAKES counts for the tour's farm_2 (quests.js
+       `cook`, its `what`: the Zoom Juice), saved with the cook below */
+    try { this._creditQuestObjective(session.id, 'cook', makes); } catch (e) { /* a quest must never undo the cook */ }
 
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);

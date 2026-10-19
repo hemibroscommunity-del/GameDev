@@ -104,9 +104,17 @@ const sess = { id: 'bp_t' };
 {
   const ids = ['tut_1', 'tut_2', 'tut_3', 'tut_4'];
   for (const id of ids) check(`${id} exists server-side`, !!QUEST_REWARDS[id], id);
-  check('the chain links tut_1 → … → tut_4 → end',
-    QUEST_REWARDS.tut_1.next === 'tut_2' && QUEST_REWARDS.tut_2.next === 'tut_3'
-    && QUEST_REWARDS.tut_3.next === 'tut_4' && QUEST_REWARDS.tut_4.next === null);
+  /* v2.3.3486: THE TOUR (data.js tut_1's header) -- tut_1 hands off to the
+     townsfolk and comes back to the Mayor at tut_2, the finale.  Walked by
+     `next`, every step of it checked by the worker. */
+  const TOUR = ['tut_1', 'farm_1', 'smith_1', 'smith_2', 'wood_1', 'wood_2', 'fish_1',
+    'farm_2', 'race_1', 'beast_1', 'beast_2', 'tut_2', 'tut_3', 'tut_4'];
+  const walked = [];
+  for (let q = 'tut_1'; q && walked.length < 40; q = QUEST_REWARDS[q] && QUEST_REWARDS[q].next) walked.push(q);
+  check('the chain links tut_1 → the tour → tut_2 → tut_3 → tut_4 → end',
+    walked.join() === TOUR.join(), walked);
+  check('every step of the tour is server-verified (has an objective)',
+    TOUR.every((id) => !!QUEST_REWARDS[id].objective), TOUR.filter((id) => !QUEST_REWARDS[id].objective));
   check('every tutorial step is server-verified (has an objective)',
     ids.every((id) => !!QUEST_REWARDS[id].objective));
   check('every tutorial step names a zone',
@@ -322,7 +330,7 @@ const sess = { id: 'bp_t' };
      in their own slots (rangedWeapon / staffWeapon), not ps.weapon.  Asserting
      ps.weapon here reported "no weapon granted" against a grant that had in
      fact worked perfectly — the slot routing is the thing worth pinning. */
-  ps.inventory = { snowman: 9 };
+  ps.inventory = { 'slime-remnants': 9 };   /* v2.3.3486: the slimes first */
   await room._handleQuestAccept(sess, { questId: 'tut_1' });
   await room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: 'bow' });
   /* v2.3.1676: accepting tut_1 hands over the sword+shield (grantOnAccept),
@@ -354,10 +362,8 @@ const sess = { id: 'bp_t' };
   check('the granted weapon is equippable under the prog3 tier gate',
     room._prog3EquipOk(ps, 'weapon', _stashed("Pine Bow")) === true);
 
-  /* And the STAFF from the next step goes somewhere else again. */
-  ps.inventory = { 'slime-remnants': 6 };
-  await room._handleQuestAccept(sess, { questId: 'tut_2' });
-  await room._handleQuestTurnIn(sess, { questId: 'tut_2', xpCat: 'staff' });
+  /* And the STAFF, which tut_1 pays beside the bow since v2.3.1692 (the
+     "next step" this said came before v2.3.1692, and before the tour). */
   check('a granted STAFF reaches the bag as well, staff slot untouched',
     ps.weaponStash.some((w) => w && w.type === 'staff') && !ps.staffWeapon,
     { stash: ps.weaponStash, equipped: ps.staffWeapon });
@@ -380,7 +386,7 @@ const sess = { id: 'bp_t' };
      stash-full path was unreachable; now every grant goes to the stash, so
      these two exist to show a failed grant leaves held gear alone. */
   ps.rangedWeapon = { type: 'bow', tierMult: 1, name: 'Old Bow' };
-  ps.inventory = { snowman: 9 };
+  ps.inventory = { 'slime-remnants': 9 };   /* v2.3.3486: the slimes first */
   /* v2.3.2420: measured as a DELTA, not against an absolute. The handlers
      await storage now (the inbox drain below), and an await is where the
      room's own background sweeps get to run -- _arenaEntrySweep refunded a
@@ -527,18 +533,21 @@ const sess = { id: 'bp_t' };
      skill.  The checks below that need an XP-paying quest use tut_2. */
   const _skSum = () => ['sword', 'bow', 'staff'].map((k) => ps.prog3.sk[k].level + ps.prog3.sk[k].xp).join(',');
   check('the first quest pays no XP', QUEST_REWARDS.tut_1.xp === 0, QUEST_REWARDS.tut_1.xp);
-  ps.inventory = { snowman: 4 };
+  ps.inventory = { 'slime-remnants': 4 };   /* v2.3.3486: the slimes first */
   await room._handleQuestAccept(sess, { questId: 'tut_1' });
   const _skBefore1 = _skSum();
   await room._handleQuestTurnIn(sess, { questId: 'tut_1' });
   check('...so its hand-in needs no skill named, and completes',
-    ps._quests.tut_1 === 'turnedIn' && ps.coins === QUEST_REWARDS.tut_1.gold && !ps.inventory.snowman,
+    ps._quests.tut_1 === 'turnedIn' && ps.coins === QUEST_REWARDS.tut_1.gold && !ps.inventory['slime-remnants'],
     { st: ps._quests.tut_1, coins: ps.coins, inv: ps.inventory });
   check('...and puts no XP into any skill', _skSum() === _skBefore1, { before: _skBefore1, after: _skSum() });
 
-  check('the second quest still pays XP', QUEST_REWARDS.tut_2.xp > 0, QUEST_REWARDS.tut_2.xp);
+  /* v2.3.3486: tut_2 is the tour's finale -- the Mayor's next quest, after
+     the townsfolk's (beast_2 hands on to it) -- and it pays XP */
+  check('the Mayor\'s second quest still pays XP', QUEST_REWARDS.tut_2.xp > 0, QUEST_REWARDS.tut_2.xp);
   ps.coins = 0;
-  ps.inventory = { 'slime-remnants': 6 };
+  ps._quests.beast_2 = 'turnedIn';
+  ps.inventory = { snowman: 4 };
   await room._handleQuestAccept(sess, { questId: 'tut_2' });
 
   /* No category, unknown category, prototype key — all refused, and
@@ -553,7 +562,7 @@ const sess = { id: 'bp_t' };
      remnants either — that gate fires BEFORE the consume step, which is the
      ordering this pins. */
   check('a turn-in refused for a missing skill keeps the items',
-    ps.inventory['slime-remnants'] === 6, ps.inventory);
+    ps.inventory.snowman === 4, ps.inventory);
 
   const bowBefore = ps.prog3.sk.bow.level + ps.prog3.sk.bow.xp;
   const swordBefore = ps.prog3.sk.sword.level + ps.prog3.sk.sword.xp;
