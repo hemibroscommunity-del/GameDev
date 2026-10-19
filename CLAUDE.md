@@ -3548,9 +3548,13 @@ remnant to migrate server-side, not a mode to preserve.
   owner's business model: free play capped at 2 h a day, a $2-a-month
   supporter pass for unlimited — the server counts the hours, and logging
   every room message would cost more than the game; since v2.3.3256 the pass
-  is on the backlog as $2 for 30 days in USDC on Hemi, no contract, and NO
-  PLAY CAPS for now -- the owner: "Dont ship any caps yet" --
-  `docs/SUPPORTER-PASS-PLAN.md`, waiting on the owner's pass address),
+  is on the backlog as $2 for 30 days, no contract, and NO PLAY CAPS for now
+  -- the owner: "Dont ship any caps yet"; since v2.3.3486 paid in $2 worth of
+  ETH on Hemi (the owner: USDC there is bridged by Stargate) into an address
+  of the character's own, with no wallet signature, the server holding no
+  key, only an address book the owner signs offline --
+  `docs/SUPPORTER-PASS-PLAN.md`, its attack table included, waiting on the
+  owner's answers and pass wallet),
   `docs/SERVER-SPLIT-PLAN.md` (v2.3.3208, the owner's "Hopefully 1000 while
   just as smooth is possible ... begin planning what the best server split
   would look like": MEASURED, about four fifths of the room's thread at 150
@@ -3741,9 +3745,10 @@ Two protocol versions coexist; both must keep working:
     socket; everything fails closed; kill switch `broCount: false`;
   - `broverify` suite (96), `onchain` (balanceOf), `mp-brobadge`:
     docs/specs/hemi-bro-count.md.  The $2 supporter pass the owner asked about
-    in the same message is NOT built: on the backlog as 2 USDC on Hemi, waiting
-    on the owner's own pass address, with no play caps ("Dont ship any caps
-    yet").
+    in the same message is NOT built: on the backlog, since v2.3.3486 as $2
+    worth of ETH on Hemi paid into an address of the character's own, with no
+    wallet signature (docs/SUPPORTER-PASS-PLAN.md), and no play caps ("Dont
+    ship any caps yet").
 - FAR PLAYERS LESS OFTEN, POSITIONS IN WHOLE PIXELS (v2.3.3197, the owner:
   "Send far away players less often and using shorter position numbers"):
   in the Wheel a v2 session gets the movers within `FAR_PLAYERS.NEAR_R` 2,400

@@ -647,15 +647,19 @@ strict deploy-order symmetry (rule 19). Danger: the current gate is
 adequate (local heal is prediction, the echo is the tiebreaker,
 rule 20) — this is symmetry polish, not a hole.
 
-### O. The supporter pass — waits on the owner's pass address (v2.3.3256)
-$2 for 30 days, paid in USDC on Hemi, 30 days from ACTIVATION, one pass
-for a wallet's characters (up to 10).  The design is NO CONTRACT: a plain
-USDC transfer to a dedicated pass address, read by the server like the
-Hemi Bro check (onchain.js), credited once per (tx hash, log index) under
-rule 5; the server never holds a key.  NO PLAY CAPS (owner: "Dont ship any
-caps yet").  Blocked on the owner's dedicated receiving address, and USDC's
-contract address on Hemi needs confirming from outside the sandbox.  Plan,
-checks and build order: `docs/SUPPORTER-PASS-PLAN.md`.
+### O. The supporter pass — waits on the owner's answers and pass wallet (v2.3.3256, rewritten v2.3.3486)
+$2 worth of ETH on Hemi for 30 days, 30 days from ACTIVATION, sharable
+later with the owner's other characters (up to 10).  v2.3.3486 (owner,
+2026-10-19: no wallet signatures; USDC on Hemi is Stargate-bridged, so ETH):
+NO CONTRACT and NO SIGNATURE -- each character gets its own payment address
+from an address book the owner makes and signs OFFLINE (the server and the
+phone accept only addresses with that signature); the server holds no key and
+no watch key, and credits from balance + its own record of what the owner
+moved out, read at a safe block from two providers, with a tripwire on any
+send it did not record.  Where the money goes changes only by the owner's
+hand (a check run from main against GitHub variables, a Cloudflare secret).
+NO PLAY CAPS (owner: "Dont ship any caps yet").  Plan, attack table, checks
+and build order: `docs/SUPPORTER-PASS-PLAN.md`.
 
 ### Shipped (v1 backlog — letters frozen, cited elsewhere)
 TRAPS.md and the spec docs cite these as "handoff item X"; the full
