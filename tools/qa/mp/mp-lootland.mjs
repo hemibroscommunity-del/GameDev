@@ -58,7 +58,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1200);
 
   /* ── 1. a fresh rare pile ── */
-  await drop(P, { lootId: 'qa-rare', coins: 12, skull: 'fodder', shard: 'shard_meadow', gem: 'rare_gem',
+  /* v2.3.3483: its landing roll fixed (`_landSeed`, which effectsRenderer's
+     lootHop otherwise draws from Math.random on the first frame): one roll in
+     32 leans all six items the same way (3.2% over 200,000 seeds, as six coin
+     flips), and on a machine drawing a few frames a second fewer of them are
+     caught mid-tilt, so "not all leaning the same way" failed now and then
+     (the sweep of 2026-10-19: one side seen).  0.618 leans three each way;
+     each item still takes its own height, delay and side from it. */
+  await drop(P, { lootId: 'qa-rare', _landSeed: 0.618, coins: 12, skull: 'fodder', shard: 'shard_meadow', gem: 'rare_gem',
     hasWeapon: true, weaponType: 'bow', weaponName: 'Bow',
     armor: [{ name: 'Iron Torso', slot: 'armor', mat: 'iron', mystery: false }] }, 110);
   const samples = [];
@@ -136,7 +143,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const o0 = pileOf(await rare(P), 'qa-old');
   await P.page.waitForTimeout(500);
   const o1 = pileOf(await rare(P), 'qa-old');
-  const oMoved = o0 && o1 && o0.parts.some((x) => { const s = o1.parts.find((y) => y.kind === x.kind && y.z === x.z); return s && Math.abs(x.y - s.y) > 3.5; });
+  /* v2.3.3483: each part against the pile's own base (its remains), not
+     against the world.  Everything on the ground bobs together, 2.5 px at
+     ~2.1 s a cycle (effectsRenderer, v2.3.2318), so half a second of it moves
+     the whole pile up to ~3.6 px -- the sweep of 2026-10-19 saw every part
+     3.8 px lower at once, past this 3.5 -- while a landing bounces each item
+     on its own (lootHop), which still moves it against the base. */
+  const baseY = (o) => { const b = o && o.parts.find((x) => x.kind === 'remnantOrCoin'); return b ? b.y : 0; };
+  const oMoved = o0 && o1 && o0.parts.some((x) => { const s = o1.parts.find((y) => y.kind === x.kind && y.z === x.z); return s && Math.abs((x.y - baseY(o0)) - (s.y - baseY(o1))) > 3.5; });
   rec.ok('an old pile (zone-entry sync) lies still -- no landing bounce', !oMoved, { o0, o1 });
   rec.ok('...and does not announce itself', !!o1 && !o1.rareTextVisible, o1);
   rec.ok('...but its rare item still shines', !!o1 && o1.parts.some((x) => x.kind === 'beam'), o1);
