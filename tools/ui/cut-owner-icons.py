@@ -35,7 +35,7 @@ size it would be drawn, and the owner answered: "Icon picks: 1b, 2a, 3, 4, 5,
       Journey page.
 Not 7 (the compass): the owner kept today's.
 
-v2.3.3486: and, to "Go recommended on everything" (the owner, 2026-10-19):
+v2.3.3487: and, to "Go recommended on everything" (the owner, 2026-10-19):
   10a/10b  the IRON LEGS and the CHEST beside them on the same armour row
       (brotown-rpg-ui-asset-sheet-1.png), written over the bag's two STEEL
       pictures, icons/items/greaves and chest-plate -- the art every metal's
@@ -67,7 +67,7 @@ v2.3.3486: and, to "Go recommended on everything" (the owner, 2026-10-19):
   (3x the CSS px it is drawn at; 64 for the small marks, `exact`); with no
   cap the frame is the art's own px padded, never scaled.
 
-v2.3.3486: and CARD 11, THE OWNER'S OWN PICKS -- "Icon picks: 1b, 2a, T3.3,
+v2.3.3487: and CARD 11, THE OWNER'S OWN PICKS -- "Icon picks: 1b, 2a, T3.3,
   T20.2, ... T128.1" (2026-10-19), 72 codes from the review page's card 11,
   every icon on the sheets the game already has a picture for, each with its
   candidates T<n>.1, T<n>.2...  The list is tools/ui/owner-picks-card11.json:
@@ -86,7 +86,7 @@ v2.3.3486: and CARD 11, THE OWNER'S OWN PICKS -- "Icon picks: 1b, 2a, T3.3,
            gold ring and the dark line inside it measured on 72 rays), edge to
            edge on its square; the game's ring carries the cooldown arc.
   With `grey`, a -grey copy (the controls' greyed palette, cut-small-icons.py's
-  own).  Five codes were already in the game from v2.3.3486's first cut (the
+  own).  Five codes were already in the game from v2.3.3487's first cut (the
   file's `done`), and the party leader's crown is now the one the owner picked,
   T112.2 (sheet 3's), not the first sheet's.  Two are NEW files the code points
   at: the Forge tab's anvil (today's tab wears the copper sword, the item's own
@@ -189,7 +189,7 @@ PIECES = [
          box=(68, 4, 456, 424), grow=4, css=(34, 37)),
     dict(name='icons/ui/journey-map', src='colorful-rpg-game-ui-asset-sheet.png', mode='alpha',
          box=(1208, 552, 1476, 708), grow=4, css=(120, 69)),
-    # v2.3.3486: 10a/10b and card 11's clearer five (the header)
+    # v2.3.3487: 10a/10b and card 11's clearer five (the header)
     dict(name='icons/items/greaves', src='brotown-rpg-ui-asset-sheet-1.png', mode='key',
          box=(318, 462, 422, 566), frame=dict(fill=0.89), metal=True),
     dict(name='icons/items/chest-plate', src='brotown-rpg-ui-asset-sheet-1.png', mode='key',
@@ -310,7 +310,7 @@ def to_pin(im):
 
 
 def to_frame(im, size=None, fill=0.8, exact=False):
-    """v2.3.3486: the art centred in a square, its larger side `fill` of the
+    """v2.3.3487: the art centred in a square, its larger side `fill` of the
     square's (the header's FRAMES).  With `size` the square is at most that
     (exactly that if `exact`), the art scaled down to fit; never scaled up."""
     w, h = im.size
@@ -351,7 +351,7 @@ def contact_sheet(cuts, path):
     print('contact sheet:', path)
 
 
-# ═══ v2.3.3486: CARD 11 -- the twins page's cuts (scratchpad twincut.py, the
+# ═══ v2.3.3487: CARD 11 -- the twins page's cuts (scratchpad twincut.py, the
 # page the owner picked from), and how each is sized ═══
 CARD11 = os.path.join(ROOT, 'tools', 'ui', 'owner-picks-card11.json')
 CARD11_SUMS = os.path.join(ROOT, 'tools', 'ui', 'owner-picks-card11.sha256')
@@ -659,7 +659,7 @@ def main():
             g = grey(out)
             cuts.append((p['name'] + '-grey', g))
             writes.append((p['name'] + '-grey', g))
-    # v2.3.3486: card 11, the owner's own picks (owner-picks-card11.json)
+    # v2.3.3487: card 11, the owner's own picks (owner-picks-card11.json)
     for e in card11_entries():
         short = e['name'].split('/')[-1]
         if only and short not in only and e['name'] not in only and e['code'] not in only:

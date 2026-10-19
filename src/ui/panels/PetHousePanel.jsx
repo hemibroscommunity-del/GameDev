@@ -100,7 +100,7 @@ export function PetHousePanel(props) {
       marginBottom: 4,
       minHeight: 24
     }
-  }, lsIcon('/icons/ui/pets-paw.webp?v=2.3.3486', '🐾', 20)   /* v2.3.3486: the orange paw, as More's Pets tile */, /*#__PURE__*/React.createElement("span", {
+  }, lsIcon('/icons/ui/pets-paw.webp?v=2.3.3487', '🐾', 20)   /* v2.3.3487: the orange paw, as More's Pets tile */, /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 13,
       fontWeight: 700,

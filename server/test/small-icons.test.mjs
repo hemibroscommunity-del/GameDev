@@ -84,7 +84,7 @@ const src = (p) => readFileSync(new URL(p, root), 'utf8');
     (def.match(/'Defense Lv ' \+ _defUp\w+\.level, '#60a5fa', \{ ts: Date\.now\(\) \+ 2, iconKey: 'defense', iconLead: true \}/g) || []).length === 4
     && !/'🛡️ Defense Lv '/.test(def));
   const cs = src('src/ui/panels/controlSkin.jsx');
-  /* v2.3.3486: the eight are the owner's card 11 picks now, at a new
+  /* v2.3.3487: the eight are the owner's card 11 picks now, at a new
      address (owner-icons.test §6) -- what this pins is the webp, not its ?v= */
   check('3h the stick\'s pictures and the ability art are the new files', /'\/ui\/controls\/talk\.webp\?v=2\.3\.\d+'/.test(cs)
     && /abilityArtUrl\(name, !!props\.grey\)/.test(cs) && !/talk\.svg|farm-dig\.svg/.test(cs));
