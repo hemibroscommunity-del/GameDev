@@ -103,7 +103,7 @@ import { TRAPPING as CLIENT_TRAPPING, trapChance as clientTrapChance, trapRollXp
 import { wheelTable as srvWheelTable, WHEEL_SIZES as SRV_WHEEL_SIZES } from '../src/wheeltables.js';   /* v2.3.3315: each Wheel's centre */
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
-  QUEST_TOUR as CLIENT_QUEST_TOUR, /* v2.3.3514: the tour's suggested order */
+  QUEST_TOUR as CLIENT_QUEST_TOUR, /* v2.3.3517: the tour's suggested order */
   NPC_DATA as CLIENT_NPC_DATA, /* v2.3.3179: who gives quests in the world */
   DISHES as CLIENT_DISHES, /* v2.3.3130: what a Cookhouse dish does */
   MONSTER_DMG_CURVE, monsterHpFlat as clientMonsterHpFlat, /* v2.3.3055 */
@@ -343,7 +343,7 @@ const room = Object.create(GameRoom.prototype);
   check('QUEST_REWARDS <-> QUEST_CHAINS gold/xp/next mirror, both directions', bad.length === 0, bad);
 }
 
-// ── 5a. v2.3.3514: THE TOUR'S ORDER -- `after` (a giver's line waits for
+// ── 5a. v2.3.3517: THE TOUR'S ORDER -- `after` (a giver's line waits for
 // another's quest: getNpcQuest on the page, _questBarred on the worker), the
 // retired quests (offered by neither), and a hand-in's trade, the same on both
 // sides.  A one-sided `after` offers a quest the worker refuses, or hides one
@@ -353,14 +353,14 @@ const room = Object.create(GameRoom.prototype);
   for (const [k, sv] of Object.entries(SRV.QUEST_REWARDS)) {
     const c = QUEST_CHAINS[k];
     if (!c) continue;
-    /* v2.3.3514: `after` may be a list (the Mayor's tut_2 waits for the whole town) */
+    /* v2.3.3517: `after` may be a list (the Mayor's tut_2 waits for the whole town) */
     if (JSON.stringify(c.after || null) !== JSON.stringify(sv.after || null)) bad.push({ quest: k, after: { server: sv.after || null, client: c.after || null } });
     if (JSON.stringify(c.trade || null) !== JSON.stringify(sv.trade || null)) bad.push({ quest: k, trade: { server: sv.trade || null, client: c.trade || null } });
   }
   const retiredC = Object.keys(QUEST_CHAINS).filter((k) => QUEST_CHAINS[k].retired).sort();
   const retiredS = (SRV.QUEST_RETIRED || []).slice().sort();
   if (retiredC.join() !== retiredS.join()) bad.push({ retired: { server: retiredS, client: retiredC } });
-  check('QUEST_REWARDS <-> QUEST_CHAINS `after`, `trade` and the retired quests mirror (v2.3.3514, the tour)', bad.length === 0, bad);
+  check('QUEST_REWARDS <-> QUEST_CHAINS `after`, `trade` and the retired quests mirror (v2.3.3517, the tour)', bad.length === 0, bad);
   /* the tour: the Mayor's first quest alone, then the whole town at once
      (the owner: "Maybe mayor bro is the only quest available for the first
      quest then after completing that other NPCs begin having quest icons
@@ -373,7 +373,7 @@ const room = Object.create(GameRoom.prototype);
   const early = (SRV.QUEST_TOUR || []).filter((q, i) => listOf((SRV.QUEST_REWARDS[q] || {}).after).some((a) => {
     const j = SRV.QUEST_TOUR.indexOf(a); return j < 0 || j >= i;
   }));
-  check('QUEST_TOUR is the same twelve steps on both sides, a tour step each, in an order a player may follow (v2.3.3514)',
+  check('QUEST_TOUR is the same twelve steps on both sides, a tour step each, in an order a player may follow (v2.3.3517)',
     tourS === tourC && tourS === 'tut_1,farm_1,smith_1,smith_2,wood_1,wood_2,fish_1,farm_2,race_1,beast_1,beast_2,tut_2'
       && SRV.QUEST_TOUR.slice(1).every((q) => QUEST_CHAINS[q] && QUEST_CHAINS[q].tour === true) && early.length === 0,
     { server: tourS, client: tourC, early });
@@ -396,7 +396,7 @@ const room = Object.create(GameRoom.prototype);
       if (g.when === 'accept' && !Array.isArray(sv.grantOnAccept)) {
         bad.push({ quest: k, icon: g.icon, reason: 'promises an item on accept, server has no grantOnAccept' });
       }
-      /* v2.3.3514: or a trade at the hand-in (wood_2's softwood swap) */
+      /* v2.3.3517: or a trade at the hand-in (wood_2's softwood swap) */
       if (g.when === 'complete' && !sv.item && !sv.trade) {
         bad.push({ quest: k, icon: g.icon, reason: 'promises an item on turn-in, server pays no item' });
       }

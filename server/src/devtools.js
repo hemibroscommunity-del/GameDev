@@ -46,7 +46,7 @@
  * _applyDamage rather than inventing a second immunity mechanism.
  */
 import { QUEST_ZONE_GATE } from './movement.js';
-import { AMULET_GEMS, QUEST_TOUR } from './data.js'; /* v2.3.3187: the kit's polished gems; v2.3.3514: the tour's steps */
+import { AMULET_GEMS, QUEST_TOUR } from './data.js'; /* v2.3.3187: the kit's polished gems; v2.3.3517: the tour's steps */
 import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills a level can be set on */
 import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills whose harvests and cooks are hits */
 import { PROG3 } from './prog3.js'; /* v2.3.3313: the combat skills a level can be set on */
@@ -276,7 +276,7 @@ export const devToolsMethods = {
     return { ok: true, finished: finished.length, quests: finished, total: Object.keys(table).length };
   },
 
-  /* ═══ v2.3.3514: A COUNTED OBJECTIVE, SET ═══
+  /* ═══ v2.3.3517: A COUNTED OBJECTIVE, SET ═══
      {quest, n}: what the worker has counted toward an ACTIVE quest whose
      objective it counts (quests.js QUEST_COUNTED: a kill, a farm act, a
      craft, a cook, a race, traps...) -- `_questKills[quest]`, 0 to 999.  The
@@ -299,7 +299,7 @@ export const devToolsMethods = {
     return { ok: true, quest, n };
   },
 
-  /* ═══ v2.3.3514: JUMP THE TOUR TO A STEP ═══
+  /* ═══ v2.3.3517: JUMP THE TOUR TO A STEP ═══
      {at}: every step of the tour before `at` handed in (no rewards paid, as
      "Finish all quests"), `at` offered, and every step after it forgotten,
      its count too -- so the owner can rehearse any step before the exposé
@@ -652,8 +652,8 @@ export const devToolsMethods = {
     else if (path === '/dev/kit') result = this._devKit(playerId, body);
     else if (path === '/dev/vitals') result = this._devVitals(playerId, body);
     else if (path === '/dev/quests') result = this._devFinishQuests(playerId, body);   /* v2.3.2277; v2.3.3121: + except */
-    else if (path === '/dev/tour') result = this._devTour(playerId, body);   /* v2.3.3514: {at} -- the tour jumped to that step (the Test panel's "Tour: jump to") */
-    else if (path === '/dev/questcount') result = this._devQuestCount(playerId, body);   /* v2.3.3514: {quest, n} -- a counted objective's count (the tour's farm, craft, cook, race) */
+    else if (path === '/dev/tour') result = this._devTour(playerId, body);   /* v2.3.3517: {at} -- the tour jumped to that step (the Test panel's "Tour: jump to") */
+    else if (path === '/dev/questcount') result = this._devQuestCount(playerId, body);   /* v2.3.3517: {quest, n} -- a counted objective's count (the tour's farm, craft, cook, race) */
     else if (path === '/dev/clearwave') result = this._devClearWave(playerId);   /* v2.3.3016 */
     else if (path === '/dev/daily') result = await this._drDev(playerId, body);   /* v2.3.3140: stars, bonus spins, a quest's count; v2.3.3400: a season tier from before the drop (seasonTier) */
     else if (path === '/dev/farmripe') result = await this._devFarmRipe(playerId);   /* v2.3.3127 */

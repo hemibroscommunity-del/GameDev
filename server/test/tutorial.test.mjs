@@ -25,7 +25,7 @@
  *   - the chain unlocks step by step and pays each step exactly once
  */
 import { GameRoom } from '../src/index.js';
-import { QUEST_REWARDS, QUEST_TOUR, BLACKSMITH_TIERS, WOODWORKING_TIERS, ZONES } from '../src/data.js';   /* v2.3.3514: + the tour's suggested order */
+import { QUEST_REWARDS, QUEST_TOUR, BLACKSMITH_TIERS, WOODWORKING_TIERS, ZONES } from '../src/data.js';   /* v2.3.3517: + the tour's suggested order */
 
 /* Can each named zone actually yield the remnant its step asks for?  Resolved
    from the LIVE spawn table + the same variant map the drop path uses, so a
@@ -104,7 +104,7 @@ const sess = { id: 'bp_t' };
 {
   const ids = ['tut_1', 'tut_2', 'tut_3', 'tut_4'];
   for (const id of ids) check(`${id} exists server-side`, !!QUEST_REWARDS[id], id);
-  /* v2.3.3514: THE TOUR (data.js tut_1's header) -- tut_1 alone, then the
+  /* v2.3.3517: THE TOUR (data.js tut_1's header) -- tut_1 alone, then the
      whole town at once, and back to the Mayor at tut_2, the finale (the tour
      suite holds its order).  The Mayor's own line from the finale on is
      walked by `next`, every step of the tour checked by the worker. */
@@ -330,7 +330,7 @@ const sess = { id: 'bp_t' };
      in their own slots (rangedWeapon / staffWeapon), not ps.weapon.  Asserting
      ps.weapon here reported "no weapon granted" against a grant that had in
      fact worked perfectly — the slot routing is the thing worth pinning. */
-  ps.inventory = { 'slime-remnants': 9 };   /* v2.3.3514: the slimes first */
+  ps.inventory = { 'slime-remnants': 9 };   /* v2.3.3517: the slimes first */
   await room._handleQuestAccept(sess, { questId: 'tut_1' });
   await room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: 'bow' });
   /* v2.3.1676: accepting tut_1 hands over the sword+shield (grantOnAccept),
@@ -386,7 +386,7 @@ const sess = { id: 'bp_t' };
      stash-full path was unreachable; now every grant goes to the stash, so
      these two exist to show a failed grant leaves held gear alone. */
   ps.rangedWeapon = { type: 'bow', tierMult: 1, name: 'Old Bow' };
-  ps.inventory = { 'slime-remnants': 9 };   /* v2.3.3514: the slimes first */
+  ps.inventory = { 'slime-remnants': 9 };   /* v2.3.3517: the slimes first */
   /* v2.3.2420: measured as a DELTA, not against an absolute. The handlers
      await storage now (the inbox drain below), and an await is where the
      room's own background sweeps get to run -- _arenaEntrySweep refunded a
@@ -533,7 +533,7 @@ const sess = { id: 'bp_t' };
      skill.  The checks below that need an XP-paying quest use tut_2. */
   const _skSum = () => ['sword', 'bow', 'staff'].map((k) => ps.prog3.sk[k].level + ps.prog3.sk[k].xp).join(',');
   check('the first quest pays no XP', QUEST_REWARDS.tut_1.xp === 0, QUEST_REWARDS.tut_1.xp);
-  ps.inventory = { 'slime-remnants': 4 };   /* v2.3.3514: the slimes first */
+  ps.inventory = { 'slime-remnants': 4 };   /* v2.3.3517: the slimes first */
   await room._handleQuestAccept(sess, { questId: 'tut_1' });
   const _skBefore1 = _skSum();
   await room._handleQuestTurnIn(sess, { questId: 'tut_1' });
@@ -542,7 +542,7 @@ const sess = { id: 'bp_t' };
     { st: ps._quests.tut_1, coins: ps.coins, inv: ps.inventory });
   check('...and puts no XP into any skill', _skSum() === _skBefore1, { before: _skBefore1, after: _skSum() });
 
-  /* v2.3.3514: tut_2 is the tour's finale -- the Mayor's next quest, once
+  /* v2.3.3517: tut_2 is the tour's finale -- the Mayor's next quest, once
      the whole town is done (its `after` lists every giver's last step) --
      and it pays XP */
   check('the Mayor\'s second quest still pays XP', QUEST_REWARDS.tut_2.xp > 0, QUEST_REWARDS.tut_2.xp);

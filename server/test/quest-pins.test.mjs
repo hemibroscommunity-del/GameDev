@@ -1,5 +1,5 @@
 /* The town opens after the Mayor's first quest, and its quest pins are on the
- * maps -- v2.3.3514 (src/game/questPins.js, src/data/gameSystems.js
+ * maps -- v2.3.3517 (src/game/questPins.js, src/data/gameSystems.js
  * getNpcQuest / questAfterMet / QUEST_TOUR).  docs/specs/demo-quest-line.md.
  *
  * The owner: "Maybe mayor bro is the only quest available for the first quest

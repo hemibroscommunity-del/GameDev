@@ -1018,7 +1018,7 @@ remnant to migrate server-side, not a mode to preserve.
       make armour?", the owner: "Yes": iron and black steel bars smelt too
       (Smithing 5 and 10, `SMELT.RECIPES`, icons by `tools/make_bar_icons.py
       iron blacksteel`), and the Blacksmith's ARMOR tab forges a torso or
-      greaves (4 bars each since v2.3.3141, 5 since v2.3.3514) in each metal -- copper Smithing 1, iron 5, black
+      greaves (4 bars each since v2.3.3141, 5 since v2.3.3517) in each metal -- copper Smithing 1, iron 5, black
       steel 10 (`server/src/armorforge.js` `ARMOR_FORGE.RECIPES`, mirrored by
       items.js `ARMOR_FORGE_RECIPES`): the drop's own piece `{name, mat, slot,
       tierMult, quality}` on the armour ladder (1/2/3, no gearBase or type),
@@ -1038,7 +1038,7 @@ remnant to migrate server-side, not a mode to preserve.
         BLACKSMITH_TIERS `bar`/`bars`/`xp` on copper, iron and `steel`, which
         replace their `oreCost`; the gold stays); a sword pays the armour's
         XP for the same bars (800 / 1,200 / 1,600); wood and the metals past
-        black steel are unchanged; FIVE bars since v2.3.3514 (the tour, below:
+        black steel are unchanged; FIVE bars since v2.3.3517 (the tour, below:
         "It should mirror the cost of making armor"), the XP 1,000 / 1,500 /
         2,000, salvage still two back;
       - the Blacksmith's SALVAGE tab (`server/src/salvage.js`): a CARRIED piece
@@ -3232,7 +3232,7 @@ remnant to migrate server-side, not a mode to preserve.
         nothing (groundLoot.js `S._dying`): TRAPS §233;
       - combat-lifecycle §5, `mp-deathpile` (a real death, in real time,
         `BT_DP_TRACE=1` its timeline): item-drop.md "A dead player's pile".
-  - Since v2.3.3514 THE TOUR -- the owner, a week before an exposé where
+  - Since v2.3.3517 THE TOUR -- the owner, a week before an exposé where
     reviewers give each game 20-30 minutes: "my quest line is almost
     exclusively going to 4 zones to kill monsters and bring their remains back
     to mayor bro ... Mayor bro would hand off the quest to the next person

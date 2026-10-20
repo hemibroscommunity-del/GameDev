@@ -313,13 +313,13 @@ function ForgeTab({ S, R, inv, coins, lvl, ask, busy, wtype, setWtype }) {
       {shown.map((key) => {
         const bt = BLACKSMITH_TIERS[key];
         /* v2.3.3141: copper, iron and black steel are forged from bars (five a
-           piece since v2.3.3514: `bars`) */
+           piece since v2.3.3517: `bars`) */
         const resKey = bt.bar ? bt.bar : bt.wood ? 'wood_' + bt.wood : 'ore_' + bt.oreName + '_ore';
         const resNeed = bt.bar ? bt.bars : bt.oreCost;
         const have = Math.floor(inv[resKey] || 0);
         const idx = keys.indexOf(key);
         let req = getGearStatReq(wtype, idx, R);
-        /* v2.3.3514: against a worker with the tour's gear rules
+        /* v2.3.3517: against a worker with the tour's gear rules
            (caps.tourgear, server/src/gear.js) the forge asks what WEARING the
            sword asks -- copper nothing, iron nothing, every rung above what
            its badge says -- where an older one asked tierIndex x 5 (Melee 5

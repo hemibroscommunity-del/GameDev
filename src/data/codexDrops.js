@@ -62,7 +62,7 @@
  * No game imports beyond plain data tables: the worker's mirror audit reads
  * this file too. */
 import { GOLD_NUGGET_DROP, GEM_DROP_RATES, ZONE_RESOURCES } from './items.js';
-import { REMAINS_NAMES } from './remains.js';   /* v2.3.3514: "remains", not "remnants" */
+import { REMAINS_NAMES } from './remains.js';   /* v2.3.3517: "remains", not "remnants" */
 import { ZONE_SHARDS } from './shards.js';
 import { WHEEL_LAND_LEVELS } from './wheelSignposts.js';
 import { CODEX_ENTRIES } from './monsterCodex.js';
@@ -159,7 +159,7 @@ const ICON = Object.freeze({
 });
 /* the quests' own names for them ("Bring 4 Snowman Remains from Frost
    Ridge") -- the bag's key for the snowman's is just 'snowman'.
-   v2.3.3514: "Remains", one table for the whole game (data/remains.js) */
+   v2.3.3517: "Remains", one table for the whole game (data/remains.js) */
 const REMNANT_NAMES = REMAINS_NAMES;
 const REMNANT_DESC = Object.freeze({
   'snowman': 'Coal, a carrot and some very cold snow: all that is left of a snowman.',

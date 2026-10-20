@@ -11,7 +11,7 @@
  *   1. caps.salvage, and a Salvage tab; with nothing carried it says what to
  *      carry;
  *   2. five copper bars make a torso and five the greaves (the Armor tab;
- *      four a piece until v2.3.3514 -- salvage still gives two back);
+ *      four a piece until v2.3.3517 -- salvage still gives two back);
  *   3. Salvage lists both, each "+2" bars; ONE tap only asks "Sure?", the
  *      second salvages: the torso leaves the bag, two copper bars come back,
  *      and the top line says so;
@@ -82,7 +82,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot(P, 'empty');
     rec.ok(`with nothing carried, it says what to carry ("${empty}")`, !!empty && /copper, iron or black steel/.test(empty), empty);
 
-    /* ── 2. five bars a piece (v2.3.3514; four since v2.3.3141) ── */
+    /* ── 2. five bars a piece (v2.3.3517; four since v2.3.3141) ── */
     await H.grant(wsPort, me, 'item', { invKey: 'bar_copper', count: 10 });
     await P.page.waitForFunction(() => ((window._gameState.current.rpg || {}).inventory || {}).bar_copper === 10, null, { timeout: 6000 }).catch(() => {});
     await tab('armor');

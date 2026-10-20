@@ -18,7 +18,7 @@
  * No imports but data/remains.js (itself import-free), so node can read its
  * rules.
  */
-import { remainsName } from '../data/remains.js';   /* v2.3.3514: "remains", not "remnants" */
+import { remainsName } from '../data/remains.js';   /* v2.3.3517: "remains", not "remnants" */
 
 export const MAIL_KEEP = 30;
 
@@ -27,7 +27,7 @@ const PREFIX = ['ore', 'fish', 'log', 'gem', 'food', 'bar', 'seed', 'item'];
 const KEEP_AFTER = ['ore', 'log', 'bar'];   /* "Iron ore", not "Iron" */
 export function itemWords(invKey) {
   const k = typeof invKey === 'string' && invKey ? invKey : 'item';
-  /* v2.3.3514: a monster's remains by their name (data/remains.js) */
+  /* v2.3.3517: a monster's remains by their name (data/remains.js) */
   const rem = remainsName(k);
   if (rem) return rem;
   let parts = k.split('_').filter(Boolean);

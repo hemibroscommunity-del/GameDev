@@ -134,7 +134,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('accepting a quest raises a QUEST ACCEPTED! banner',
     !!acc && /QUEST ACCEPTED!/.test(acc.text), afterAccept);
   rec.ok('...naming the quest you just took',
-    /* v2.3.3514: the tour's first step, the slimes' "Into the Blue" */
+    /* v2.3.3517: the tour's first step, the slimes' "Into the Blue" */
     !!acc && /Into the Blue/.test(acc.text), acc && acc.text);
   /* The owner's actual words were "over the quest modal menu". */
   rec.ok('...while the dialogue is still open, and stacked above it',
@@ -189,7 +189,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!done && /QUEST COMPLETE/.test(done.text), afterTurnIn.map((b) => b.kind));
   rec.ok('...carrying the reward it just paid',
     !!done && /\+\d+\s*g/i.test(done.text), done && done.text);
-  /* v2.3.3514: over his window while it is up.  The tour hands you on to
+  /* v2.3.3517: over his window while it is up.  The tour hands you on to
      Farmer Bro from here (his next quest, tut_2, waits for the tour's end), so
      his window closes as he pays -- the banner is still drawn out of
      .brotown-wrap, above anything the dialogue had up. */

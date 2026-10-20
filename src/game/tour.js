@@ -1,4 +1,4 @@
-/* ═══ v2.3.3514: THE TOUR'S BUTTONS ═══
+/* ═══ v2.3.3517: THE TOUR'S BUTTONS ═══
  *
  * The tour (gameSystems.js QUEST_CHAINS, the header above farm_1) sends a new
  * player round the town's givers, and half its steps are done AT the giver's own

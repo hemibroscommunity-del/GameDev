@@ -50,7 +50,7 @@ import * as H from './harness.mjs';
    exists to notice. */
 import { WORLD_PROPS, propsForZone } from '../../../src/data/worldProps.js';
 
-/* v2.3.3514: the Mayor Bro quests a player can actually finish before his
+/* v2.3.3517: the Mayor Bro quests a player can actually finish before his
    errands, and the objective item each one wants.  The tour (tut_1, the
    slimes, then ten steps for the other givers, then tut_2, the snowmen) is
    put behind this character by the operator's /dev/tour; his last three are
@@ -203,7 +203,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     let wouldHaveBeen = null;
     for (const [qid, q] of Object.entries(F.QUEST_CHAINS || {})) {
       if (!q || q.npc !== 'Mayor Bro') continue;
-      /* v2.3.3514: a RETIRED quest (life_1, life_2) is a different filter
+      /* v2.3.3517: a RETIRED quest (life_1, life_2) is a different filter
          from the one under test -- passed over here too, as getNpcQuest does */
       if (q.retired) continue;
       const st = (S.rpg && S.rpg._quests || {})[qid];
