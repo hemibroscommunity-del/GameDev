@@ -43,8 +43,8 @@ Before this phase:
 - **Shock (storm).** Once a monster is shocked, each hit on it **sparks** to the
   nearest other monster within 150 px of where the hit landed, for a quarter
   of the hit.
-  - The spark is drawn as a crackle along a jagged line between the two
-    monsters, and its number is in the storm's blue.
+  - The spark is drawn as a short bolt of lightning between the two monsters,
+    with a crackle of sparks along it, and its number is in the storm's blue.
   - It is your damage. If it kills the monster, the kill is yours, and it pulls
     that monster onto you as any hit does.
 - **The Gem Works says so.** In the Set gems tab and on a gem's card:
@@ -121,8 +121,12 @@ The numbers live in `server/src/elemental.js`, and the phone's copies in
   - It pulls the target onto the hitter.
   - It pays the weapon's trained XP, faded by the target's level.
 - **On the event.** `monster_hit` carries `spark`, the id of the monster it
-  leapt from, for the phone's line (`src/game/shockSpark.js`, into
-  `S.hitParticles`: nothing new to load or draw).
+  leapt from. The phone draws the leap (`src/game/shockSpark.js`): a bolt
+  between the two chests for 320 ms (`S._sparkArcs`, stroked by the effects
+  renderer with a fresh jag every frame, a pale core over a blue glow, as the
+  storm monster's own arc on a player is drawn) and a crackle of sparks along
+  it (`S.hitParticles`). Both are drawn in code in the particles layer, so
+  there is nothing new to load, make or free.
 
 ### Flags
 
@@ -138,7 +142,7 @@ The numbers live in `server/src/elemental.js`, and the phone's copies in
 
 ## Tests
 
-- **`server/test/gem-weight.test.mjs`** (42 checks) covers:
+- **`server/test/gem-weight.test.mjs`** (46 checks) covers:
   - the flags and the numbers;
   - every pair on the element wheel;
   - UP on a hit (a win, a loss with no penalty, no element, a claim the worker
@@ -148,7 +152,9 @@ The numbers live in `server/src/elemental.js`, and the phone's copies in
   - the spark: the nearest monster, a quarter of the hit, the hitter's credit
     and kill, the aggro pull, no chain, past the reach, a dead neighbour, from
     the impact point, and its switch;
-  - no row written.
+  - no row written;
+  - the phone's drawing of a spark: the bolt's jag, one bolt and its sparks a
+    spark, nothing for a stale id, at most 16 bolts held.
 - **Eight deliberate bugs, each caught:**
   - the old 0.75 penalty;
   - UP reading the claim's element;
@@ -160,6 +166,18 @@ The numbers live in `server/src/elemental.js`, and the phone's copies in
   - the burst never reading UP.
 - **`hit-door` §10b** knows the `soak` column.
 - **`mirror-audit`** holds the phone's numbers and matchups to the worker's.
-- **`mp-gemweight`** runs on a phone against a real worker: "UP" over a frost
-  monster hit with a flame gem, no "DN" with a storm gem, and a spark drawn
-  between two monsters.
+- **`mp-gemweight`** (7 checks) runs on a phone against a real worker at the
+  Flame Fields' goblins:
+  - the three caps;
+  - the Set gems tab's water line and a storm gem's card;
+  - a water gem's hits land "UP", from the worker's flag, and never "DN";
+  - a storm gem has no matchup there;
+  - a hit on a shocked goblin sparks to the goblin beside it, and the phone
+    draws it;
+  - no page errors.
+  - `gemweight-bolt.png` pictures a bolt held between two goblins.
+  - The swings go about 0.35 s apart. A test that reads the page between
+    swings spread them more than 4 s apart on the QA box, past the shock's
+    length, and saw no spark (the worker's own log showed the shock run out
+    just before each next swing). A player swinging every half second keeps a
+    monster shocked.

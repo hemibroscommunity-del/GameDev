@@ -63,7 +63,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(250);
     }
     await H.equipWeapon(P, 'greatsword', 'weapon', 'melee');
-    const water = await H.weaponGem(P, wsPort, me, 'weapon', 'water');
+    /* the sword in hand on the worker's word before a gem goes in (the gem
+       helper reads the hand, and once read it before the echo) */
+    for (let i = 0; i < 40; i++) {
+      if (await H.readState(P, (S) => !!(S.rpg && S.rpg.weapon && S.rpg.weapon.type === 'greatsword'))) break;
+      await P.page.waitForTimeout(250);
+    }
+    const gem = async (g) => (await H.weaponGem(P, wsPort, me, 'weapon', g))
+      || (await P.page.waitForTimeout(1000), await H.weaponGem(P, wsPort, me, 'weapon', g));
+    const water = await gem('water');
     let doors = [];
     for (let i = 0; i < 40 && doors.length < 16; i++) {
       doors = await P.page.evaluate(() => (window.__btWheelTownDoors ? window.__btWheelTownDoors.doors() : []));
@@ -157,23 +165,50 @@ export async function run({ browser, wsPort, webPort, rec }) {
       ups > 0 && seen.up > 0 && seen.dn === 0, { ups, seen });
 
     /* ── 4. a storm gem: no matchup, and the spark ── */
-    const storm = await H.weaponGem(P, wsPort, me, 'weapon', 'storm');
+    const storm = await gem('storm');
     seen.up = 0; seen.dn = 0;
     const up1 = await upLog();
     const sparkLog = () => P.page.evaluate(() => (window.__btSparkLog || []).filter((s) => s.mine));
+    const hitsOn = (id) => P.page.evaluate((mid) => (window.__btHitLog || []).filter((h) => h.id === mid && !h.spark).length, id);
+    /* two goblins standing close together (the phone's own positions), the
+       nearest pair near you: hit one, and the other is in the spark's reach */
+    const pairNear = () => P.page.evaluate(() => {
+      const S = window._gameState.current;
+      const gs = (S.monsters || []).filter((x) => x && x.home === 'ember' && x.alive !== false && x.hp > 0);
+      let best = null;
+      for (const a of gs) {
+        if (Math.hypot(a.x - S.player.x, a.y - S.player.y) > 2400) continue;
+        for (const b of gs) {
+          if (a === b) continue;
+          const d = Math.hypot(a.x - b.x, a.y - b.y);
+          if (!best || d < best.d) best = { a: { id: a.id, x: a.x, y: a.y }, b: b.id, d: Math.round(d), zone: S.currentZone };
+        }
+      }
+      return best;
+    });
     let sparks = [];
     let swings = 0;
-    for (let round = 0; round < 12 && !sparks.some((s) => s.drawn > 0); round++) {
-      const target = await nearestGoblin();
-      if (!target) { await P.page.waitForTimeout(500); continue; }
-      await H.hopTo(P, target.x, target.y + 10, { step: 60, tries: 20 });
-      /* the goblins chase you: a few hits, and the pack is round you */
+    let sparkShot = false;
+    const rounds = [];
+    for (let round = 0; round < 10 && !sparks.some((s) => s.drawn > 0); round++) {
+      const pair = await pairNear();
+      if (!pair) { await P.page.waitForTimeout(500); continue; }
+      await H.hopTo(P, pair.a.x, pair.a.y + 10, { step: 60, tries: 20 });
+      const h0 = await hitsOn(pair.a.id);
+      /* four swings at a player's pace, ~0.35 s apart: a shock lasts 4 s, and
+         on this box every read of the page takes long enough that reading it
+         between swings spread them past it (the worker saw the second swing
+         4.3 s after the first, the shock just gone) */
       for (let k = 0; k < 4; k++) {
-        await H.sendEvent(P, 'monster_damage', { monsterId: target.id, zone: target.zone, slot: 'melee' });
+        await H.sendEvent(P, 'monster_damage', { monsterId: pair.a.id, zone: pair.zone, slot: 'melee' });
         swings++;
-        await watchPopups(450);
+        await P.page.waitForTimeout(350);
+        /* the picture just after the second swing, the first that can spark */
+        if (k === 1 && !sparkShot) { sparkShot = true; await shot(P, 'spark-moment'); }
       }
+      await watchPopups(600);
       sparks = await sparkLog();
+      rounds.push({ a: pair.a.id, b: pair.b, apart: pair.d, landed: (await hitsOn(pair.a.id)) - h0, sparks: sparks.length });
       await H.devOp(wsPort, 'vitals', me, { heal: true, god: true });
     }
     await watchPopups(600);
@@ -183,7 +218,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`a storm gem has no matchup with flame: no "UP" from the worker or on the screen, and no "DN" (${(await upLog()) - up1} up, ${seen.up} UP, ${seen.dn} DN in ${swings} swings)`,
       storm && (await upLog()) === up1 && seen.up === 0 && seen.dn === 0, { storm, seen, swings });
     rec.ok(`a hit on a shocked goblin SPARKS to the goblin beside it: the worker names the one it leapt from and the phone draws the line (${sparks.length} spark(s); ${drawn ? drawn.from + ' -> ' + drawn.to + ', ' + drawn.dmg + ' damage, ' + drawn.drawn + ' sparks drawn' : 'none drawn'})`,
-      !!drawn && drawn.from !== drawn.to && drawn.dmg > 0, { sparks: sparks.slice(0, 4), swings });
+      !!drawn && drawn.from !== drawn.to && drawn.dmg > 0, { sparks: sparks.slice(0, 4), swings, rounds });
+    /* a picture of the bolt for the record (no check): one held 4 s between
+       the two goblins nearest you, as the effects renderer draws a spark's */
+    await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      const gs = (S.monsters || []).filter((m) => m && m.home === 'ember' && m.alive !== false && m.hp > 0)
+        .sort((a, b) => Math.hypot(a.x - S.player.x, a.y - S.player.y) - Math.hypot(b.x - S.player.x, b.y - S.player.y)).slice(0, 8);
+      /* a pair a spark could join that is not one goblin on top of another */
+      let pair = null;
+      for (const a of gs) for (const b of gs) {
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (a !== b && !pair && d >= 60 && d <= 300) pair = [a, b];
+      }
+      if (pair) (S._sparkArcs || (S._sparkArcs = [])).push({ x0: pair[0].x, y0: pair[0].y - 26, x1: pair[1].x, y1: pair[1].y - 26, ts: Date.now(), dur: 4000 });
+    });
+    await P.page.waitForTimeout(500);
+    await shot(P, 'bolt');
     await H.devOp(wsPort, 'vitals', me, { heal: true, god: false });
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 5));
   } finally {

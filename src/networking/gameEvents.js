@@ -2501,6 +2501,8 @@ export function processGameEvent(type, payload, S, deps) {
                  one-bite rule (fightFood.js noteDealt; the worker's
                  _lastDealtAt) -- before anything below decides what to draw */
               noteDealt(S, payload);
+              /* v2.3.3517: a test's record of your own landed hits (mp-gemweight) */
+              try { if (payload.attackerId === S.myId && typeof window !== 'undefined' && window.__btProbe) { var _hl = window.__btHitLog || (window.__btHitLog = []); _hl.push({ id: payload.monsterId, dmg: payload.dmg, up: !!payload.up, spark: payload.spark || null }); if (_hl.length > 300) _hl.shift(); } } catch (e) { /* probe only */ }
               /* A monster was hit — show damage number and hit effects for everyone */
               if (S.monsters) {
                 var hitM = S.monsters.find(function(m) { return m.id === payload.monsterId; });

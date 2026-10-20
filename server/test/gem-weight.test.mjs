@@ -403,5 +403,29 @@ park();
   check('a hit with UP and a spark that kills nothing writes no row', state.writes.length === w0, state.writes.slice(w0));
 }
 
+// ── 8. The phone's drawing of a spark (src/game/shockSpark.js) ──
+{
+  const SS = await import('../../src/game/shockSpark.js');
+  let seed = 7;
+  const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  const pts = SS.sparkZigzag(0, 0, 140, 0, rnd, 8);
+  check('the bolt\'s jag: its ends where the monsters are, a point every ~14 px, none more than its reach off the line',
+    pts[0][0] === 0 && pts[0][1] === 0 && pts[pts.length - 1][0] === 140 && pts[pts.length - 1][1] === 0
+      && pts.length === 11 && pts.every((p) => Math.abs(p[1]) <= 8), pts);
+  const S = { hitParticles: [] };
+  const n = SS.sparkLine(S, { x: 100, y: 200 }, { x: 160, renderX: 170, y: 220, renderY: 230 }, rnd);
+  check('a spark draws one bolt, chest to chest (drawn places when it has them), and its sparks',
+    n >= 10 && S.hitParticles.length === n && Array.isArray(S._sparkArcs) && S._sparkArcs.length === 1
+      && S._sparkArcs[0].x0 === 100 && S._sparkArcs[0].y0 === 200 - SS.SPARK_CHEST_DY && S._sparkArcs[0].x1 === 170 && S._sparkArcs[0].y1 === 230 - SS.SPARK_CHEST_DY
+      && S._sparkArcs[0].dur === SS.SPARK_ARC_MS, { n, arcs: S._sparkArcs });
+  const S2 = { hitParticles: [] };
+  check('...nothing for ends further apart than a spark reaches (a stale id) or not on the map',
+    SS.sparkLine(S2, { x: 0, y: 0 }, { x: SS.SPARK_MAX_PX + 50, y: 0 }) === 0 && SS.sparkLine(S2, { x: NaN, y: 0 }, { x: 10, y: 0 }) === 0
+      && SS.sparkLine(S2, null, { x: 1, y: 1 }) === 0 && S2.hitParticles.length === 0 && !S2._sparkArcs);
+  const S3 = {};
+  for (let i = 0; i < SS.SPARK_ARC_MAX + 9; i++) SS.sparkLine(S3, { x: 0, y: 0 }, { x: 60, y: 0 }, rnd);
+  check('...and never more than ' + SS.SPARK_ARC_MAX + ' bolts held at once (the oldest let go)', S3._sparkArcs.length === SS.SPARK_ARC_MAX);
+}
+
 console.log(failures ? '\n' + failures + ' FAILED' : '\nALL PASS');
 process.exit(failures ? 1 : 0);

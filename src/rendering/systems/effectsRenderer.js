@@ -6,6 +6,7 @@
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
 import { peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's axe, heard */
+import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3517: a shock's spark, drawn as a bolt */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { keepOnGpuOnly } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
@@ -5416,6 +5417,27 @@ export class EffectsRenderer {
       p.life -= 0.04;
       if (p.life <= 0) { parts.splice(i, 1); continue; }
       this._dot(p.x, p.y, (p.size || 2) * Math.min(1, p.life * 3), cssToHex(p.color), Math.min(1, p.life * 2));
+    }
+
+    /* ═══ v2.3.3517: A SHOCK'S SPARK (game/shockSpark.js) ═══
+       The bolt from a shocked monster to the one beside it: a fresh jag every
+       frame, a pale core over a wide blue glow (the storm monster's own arc
+       on a player, _updateElemStatusFx, in the same colours), fading out over
+       its SPARK_ARC_MS.  Reaped as it ends, like the lists below. */
+    const sparkArcs = S._sparkArcs;
+    if (sparkArcs && sparkArcs.length) {
+      for (let i = sparkArcs.length - 1; i >= 0; i--) {
+        const a = sparkArcs[i];
+        const age = (now - a.ts) / (a.dur || 320);
+        if (!(age < 1) || age < -0.5) { sparkArcs.splice(i, 1); continue; }
+        const fade = 1 - Math.max(0, age) * Math.max(0, age);
+        const pts = sparkZigzag(a.x0, a.y0, a.x1, a.y1, Math.random, 8);
+        for (let pass = 0; pass < 2; pass++) {
+          gfx.moveTo(pts[0][0], pts[0][1]);
+          for (let j = 1; j < pts.length; j++) gfx.lineTo(pts[j][0], pts[j][1]);
+          gfx.stroke({ color: pass ? 0xfffbe0 : 0x5fbcff, width: pass ? 3.2 : 10, alpha: (pass ? 0.98 : 0.5) * fade, cap: 'round', join: 'round' });
+        }
+      }
     }
 
     // Death explosion particles
