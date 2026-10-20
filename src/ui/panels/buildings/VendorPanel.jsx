@@ -97,7 +97,8 @@ export function VendorPanel(props) {
      goods at their own price, bought now or bid on (store.js header), so
      the subtitle says that; the tile keeps its words. */
   return React.createElement("div", { style: LS_WRAP },
-    lsHeader('auctionhouse', '⚖', "Auction House", "Individual item listings and bids"),
+    /* v2.3.3526: the gavel (icons/ui/bldg-auction-gavel.webp), as the door's prompt */
+    lsHeader('auction-gavel', '⚖', "Auction House", "Individual item listings and bids"),
     React.createElement("div", { style: LS_BODY },
       React.createElement("div", {
         style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }
@@ -149,4 +150,6 @@ export const SHOP_STOCK = [
   { id: 'manaShard', art: '/icons/items/potion-mana.webp', name: 'Mana Draught', icon: '\uD83D\uDCA0', cost: 30, desc: 'Cast specials nonstop for 3 min', effect: 'manaSurge' },
   { id: 'swiftDraught', art: '/icons/items/potion-antidote.webp', name: 'Swift Draught', icon: '\uD83C\uDF3F', cost: 30, desc: '1.5x run speed for 3 min', effect: 'spdBuff' },
   { id: 'whetstone', art: '/icons/items/potion-fury.webp', name: 'Fury Tonic', icon: '\uD83E\uDDEA', cost: 35, desc: 'Double damage for 3 min', effect: 'dmgBuff' },
+  /* v2.3.3525: cooked from three carrots, never sold (the tour's farm_2) */
+  { id: 'zoomJuice', art: '/icons/items/potion-zoom.webp', name: 'Zoom Juice', icon: '\uD83E\uDD55', cost: 20, desc: '25% faster for 5 min', effect: 'spdBuff' },
 ];

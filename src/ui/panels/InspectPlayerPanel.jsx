@@ -656,7 +656,8 @@ export function InspectPlayerPanel(props) {
         try {
           localStorage.setItem('bt_blocked', JSON.stringify(_updated3));
         } catch (e) {}
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Blocked: their chat and emotes are hidden', '#D95C54');
+        /* v2.3.3526: and their duel, trade and party requests (gameEvents.js) */
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Blocked: no chat, emotes or requests from them', '#D95C54');
       }
     }
   }, socIcon('block', '🚫'), isBlocked ? 'Blocked' : 'Block'),

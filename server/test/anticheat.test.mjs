@@ -116,7 +116,9 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      exists to prove gets BYPASSED on a zone change.  Granting the quest keeps
      the subject of the test intact. */
   if (!psA._quests) psA._quests = Object.create(null);
-  psA._quests.tut_1 = 'active';
+  /* v2.3.3525: the quest that names frost is tut_2 now (the tour's finale;
+     tut_1 is the slimes, verdant) */
+  psA._quests.tut_2 = 'active';
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 90000, y: 90000, z: 'frost' }));
   check('zone-change move bypasses gate', psA.z === 'frost' && psA.x === 90000, { z: psA.z, x: psA.x });
 
@@ -1214,6 +1216,8 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
 
   /* forge_weapon with a prototype tierKey used to pass EVERY gate,
      because each compared against undefined. */
+  /* v2.3.3524: as a GREATSWORD -- the game forges nothing else now, so the
+     prototype key, not the weapon type, is what this must be refused for. */
   const wsF = fakeWs('forge');
   room.sessions.set(wsF, baseSession());
   await room.webSocketMessage(wsF, JSON.stringify({
@@ -1224,10 +1228,10 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   psF.coins = 0;
   const stashBefore = (psF.weaponStash || []).length;
   await room.webSocketMessage(wsF, JSON.stringify({
-    type: 'forge_weapon', payload: { tierKey: 'constructor', weaponType: 'sword' },
+    type: 'forge_weapon', payload: { tierKey: 'constructor', weaponType: 'greatsword' },
   }));
   await room.webSocketMessage(wsF, JSON.stringify({
-    type: 'forge_weapon', payload: { tierKey: '__proto__', weaponType: 'sword' },
+    type: 'forge_weapon', payload: { tierKey: '__proto__', weaponType: 'greatsword' },
   }));
   check('forge: a prototype tierKey mints nothing',
     (psF.weaponStash || []).length === stashBefore

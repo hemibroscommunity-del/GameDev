@@ -92,6 +92,7 @@ import { petMethods, PETS } from './pets.js';
    pets record, pets:<pid> (petbook.js).  docs/specs/trapping.md. */
 import { trappingMethods } from './trapping.js';
 import { hardenedWoodMethods } from './hardenedwood.js'; /* v2.3.3139: logs into hardened wood */
+import { raceMethods } from './race.js'; /* v2.3.3525: Lil Bro's race round the square (the tour's race_1) */
 import { petbookMethods } from './petbook.js';
 /* v2.3.3209: the monster codex -- what each kill teaches you, codex:<pid>
    (codex.js).  docs/specs/monster-codex.md. */
@@ -102,6 +103,7 @@ import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill
 // ladder).  See hardening.js for the name-collision warning vs the
 // client's legacy hardenBonus affix.
 import { hardeningMethods } from './hardening.js';
+import { forgeLadderMethods } from './forgeladder.js'; /* v2.3.3524: the forge's ladder -- no wood tier, copper Smithing 1, the wear gate, hardening by the level that makes the tier */
 // v2.3.1148: operator toolkit -- owner-keyed admin API + daily rpg
 // snapshot ring (see admin.js header + docs/OPERATIONS.md).
 import { adminMethods } from './admin.js';
@@ -518,6 +520,10 @@ export const PRIVILEGED_EVENTS = new Set([
   /* v2.3.3139: its twin at the Woodworker (hardenedwood.js) -- hardened wood
      made and XP paid; a forged one would show wood that never reached a bag. */
   'hardened_wood_result',
+  /* v2.3.3525: Lil Bro's race (race.js) -- the course and the gun, a flag
+     touched, the result.  Forged into a relay, one would start or win a race
+     on another player's screen that the worker never ran. */
+  'race_state', 'race_cp', 'race_end',
   /* v2.3.3127: the farm (farm.js) -- the beds, what grows in them and when it
      is ready, and what an action paid.  A forged one would paint ripe crops
      and harvests the worker never settled on another player's screen. */
@@ -5376,6 +5382,13 @@ export class GameRoom {
         if (session.id) await this._handleSeasonClaim(session, msg.payload || msg).catch(() => {});
         break;
 
+      case 'race_start':
+        /* v2.3.3525: on your marks -- Lil Bro's race (race.js); the worker
+           judges every flag on the moves it accepts and the finish against
+           his time */
+        if (session.id) this._handleRaceStart(session);
+        break;
+
       case 'smelt_bar':
         /* v2.3.2822: smelt ore into bars at the blacksmith (smelting.js).  The
            worker takes the ore and pays the bars and the Smithing XP; the
@@ -6399,11 +6412,13 @@ Object.assign(GameRoom.prototype, threatMethods);
 Object.assign(GameRoom.prototype, petMethods);
 Object.assign(GameRoom.prototype, trappingMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, hardenedWoodMethods); /* v2.3.3139 */
+Object.assign(GameRoom.prototype, raceMethods); /* v2.3.3525 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
 Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
 Object.assign(GameRoom.prototype, hardeningMethods);
+Object.assign(GameRoom.prototype, forgeLadderMethods); /* v2.3.3524 */
 // v2.3.1132 (PR16): two-sided trade window -- see trade2.js.
 Object.assign(GameRoom.prototype, trade2Methods);
 // v2.3.1143: account-login pre-flight -- see account.js.

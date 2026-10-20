@@ -33,8 +33,74 @@ size it would be drawn, and the owner answered: "Icon picks: 1b, 2a, 3, 4, 5,
       Rewards window's free daily spin row.
   9   the treasure map (colorful-rpg-game-ui-asset-sheet.png) on the empty
       Journey page.
-Not 7 (the compass): the owner kept today's.  Not 10 (leg armour and the chest
-to match): not answered yet -- a new entry in PIECES is all it would take.
+Not 7 (the compass): the owner kept today's.
+v2.3.3524: and the HAMMER (fantasy-rpg-crafting-ui-asset-sheet-1.png, the one
+on its gold "Craft" button) for the Blacksmith's Upgrade tab -- the owner's
+playtest note: "Make the upgrade tab icon different for smithing.  Like a
+hammer" (it wore the currency strip's gold gem).  Its button is painted in a
+gradient, so it is cut by `card` below, not `key`.
+
+v2.3.3526: and, to "Go recommended on everything" (the owner, 2026-10-19):
+  10a/10b  the IRON LEGS and the CHEST beside them on the same armour row
+      (brotown-rpg-ui-asset-sheet-1.png), written over the bag's two STEEL
+      pictures, icons/items/greaves and chest-plate -- the art every metal's
+      icon is made from (tools/gear/make-metal-icons.mjs --only
+      greaves,chest-plate, the renderer's own multiply), so copper, iron and
+      black steel match it.  Each card's light rim is outside the box (the
+      review's boxes took two px of its bottom edge, a line under the legs).
+  card 11, the five my notes called clearer than today's ("Sheet's is
+      clearer"), each under a NEW name and pointed at in the code, so a re-run
+      of the tool that made today's can never put the old one back: the orange
+      paw (Pets: More's tile, the Pets page, the Pet House), the gold crown
+      (the party's leader) and the blue pin (a member elsewhere: the party's
+      blue on the maps; 64 x 64, as every small mark is), the auction gavel
+      (the Auction House's window and door) and the plain no-entry sign (the
+      creator's None tile where None means nothing: a bald head said "no
+      hair" on the glasses' and shirts' rows too; the Skin tab's "Human" and
+      the Eyes tab's "Normal" keep the bald head, a plain human).  Not the five "worth a look" ones, nor
+      the "slightly clearer" ones: the black steel bar is one of a set of five
+      bars one tool makes, the gear one of More's eleven tiles, the farm's
+      three steps three of five, and one picture in another hand would not
+      match the rest.
+  FRAMES (`frame`): each sits in its square at the share of it the picture it
+  replaces fills -- the larger side of the art over the frame's side, measured
+  on today's files (the paw 0.67, the None sign 0.76, a party mark 0.77, the
+  steel legs 0.89 and chest 0.78 of their 256) -- so it is drawn the same
+  size in its slot.  The gavel is the exception: the market stall it replaces
+  is square (0.62 x 0.61), and a gavel half again as wide as it is tall set
+  at 0.62 of its width came out a sliver at 26 CSS px, so its width is 0.84.  `size` caps the frame
+  (3x the CSS px it is drawn at; 64 for the small marks, `exact`); with no
+  cap the frame is the art's own px padded, never scaled.
+
+v2.3.3526: and CARD 11, THE OWNER'S OWN PICKS -- "Icon picks: 1b, 2a, T3.3,
+  T20.2, ... T128.1" (2026-10-19), 72 codes from the review page's card 11,
+  every icon on the sheets the game already has a picture for, each with its
+  candidates T<n>.1, T<n>.2...  The list is tools/ui/owner-picks-card11.json:
+  each pick's code, the sheet and the review page's own cut of it (the twins
+  page's, which the owner chose from by eye: key from the box's border colour,
+  alpha, a slate DISC keyed out round the art, or an OUTLINE flooded from the
+  edge; `erase` clears a count badge painted over a corner), and the file it is
+  written over, sized as today's is:
+    frame  today's canvas, the art's larger side the share of it today's art
+           fills, centred -- so it is drawn the same size in its slot;
+    tight  no padding, the larger side that many px (the stat glyphs and the
+           gold coin are tight today);
+    disc   the round ability buttons (Jump, the generic Special, the sword's
+           and the bow's): only the disc INSIDE the owner's ring, as sheet 5's
+           specials (v2.3.3336), `rin` of its outer radius (0.85: the stone or
+           gold ring and the dark line inside it measured on 72 rays), edge to
+           edge on its square; the game's ring carries the cooldown arc.
+  With `grey`, a -grey copy (the controls' greyed palette, cut-small-icons.py's
+  own).  Five codes were already in the game from v2.3.3526's first cut (the
+  file's `done`), and the party leader's crown is now the one the owner picked,
+  T112.2 (sheet 3's), not the first sheet's.  Two are NEW files the code points
+  at: the Forge tab's anvil (today's tab wears the copper sword, the item's own
+  picture) and the chat box's smiley (drawn in code until now).  The owner
+  ticked both luck stars (T69.1, T69.2), the same star twice: T69.2, from the
+  sheet the other stat picks come from.  Each file written is recorded with its
+  SHA-256 in tools/ui/owner-picks-card11.sha256: server/test/owner-icons.test
+  fails if another tool (process_icon_sheets.py, cut-small-icons.py...) ever
+  writes over one of them.
 
 HOW: the review page's own cuts, which the owner approved by eye.
   alpha  a free-standing piece on a transparent ground: its solid core (alpha
@@ -47,6 +113,19 @@ HOW: the review page's own cuts, which the owner approved by eye.
          is the median of a ring of points 4 px inside the box (a card's border
          shading at its very corner is lighter than its fill), and a px within
          `tol` of it is see-through, fully solid past tol + `ramp`.
+  card   (v2.3.3524) an icon on a card painted top-to-bottom in a GRADIENT (the
+         gold "Craft" button runs 249,208,77 at its top to 192,133,47 at its
+         foot, so one fill keyed a band of it out and left the rest): `key`
+         row by row, each row's fill the median of its four px at either end
+         (the piece must keep 5 px clear of the box's sides); then, within 3 px
+         of what was keyed out, a px on the line from black to the row's fill
+         (c = t x fill, within 24) is the piece's dark outline mixed with the
+         card -- black at alpha 1 - t, or nothing where t is 0.97 or more (the
+         card's own light rim round the piece); a px of the card's own hue
+         (saturated, within 0.04) is its shading, gone where t is 0.6 or more
+         -- so no edge keeps a rim of gold; anything under 40 alpha is dropped (the halo rule), and all
+         but the biggest island of solid px, grown 2 px (specks of the card's
+         shading, some hanging off the piece by a faint px).
   The boxes are the review's (its spec2 for the handshake), but for the
   helmet's: the review's [498, 522, 562, 580] took two px of the card's rounded
   corner (a speck at the cut's top left) and cut the helmet's chin off five
@@ -76,6 +155,7 @@ it); each is the piece's own tight box, the CSS sizing it to that shape:
   helmet 26 x 28 CSS          handshake 40 x 26 (it is wider than tall)
   sack 64 x 69                pet house 40 x 33
   wheel 34 x 37               treasure map 120 x 69
+  hammer 22 x 22 (v2.3.3524: the Upgrade tab's icon)
   land scenes: drawn about 180-215 CSS px wide (half the banner's width), so
                written at the sheet's own ~200 px -- the most it holds.
 The quest pins are drawn on the CANVAS, 32 x 38 world px each (today's badge
@@ -104,8 +184,9 @@ Writes a CONTACT SHEET (--contact out.png), each piece on the game's slate and
 on a light ground, to check by eye.  Refuses to overwrite an existing file
 without --force; --dry cuts and reports, writes nothing; --only a,b cuts those.
 
-  python3 tools/ui/cut-owner-icons.py [--force] [--dry] [--only name,..] [--contact out.png]
+  python3 tools/ui/cut-owner-icons.py [--force] [--dry] [--only name|code,..] [--contact out.png]
 """
+import colorsys
 import math
 import os
 import sys
@@ -154,6 +235,25 @@ PIECES = [
          box=(68, 4, 456, 424), grow=4, css=(34, 37)),
     dict(name='icons/ui/journey-map', src='colorful-rpg-game-ui-asset-sheet.png', mode='alpha',
          box=(1208, 552, 1476, 708), grow=4, css=(120, 69)),
+    # v2.3.3524: the Blacksmith's Upgrade tab, drawn 22 x 22 CSS px
+    dict(name='icons/ui/smith-hammer', src='fantasy-rpg-crafting-ui-asset-sheet-1.png', mode='card',
+         box=(84, 309, 176, 387), css=(22, 22)),
+    # v2.3.3526: 10a/10b and card 11's clearer five (the header)
+    dict(name='icons/items/greaves', src='brotown-rpg-ui-asset-sheet-1.png', mode='key',
+         box=(318, 462, 422, 566), frame=dict(fill=0.89), metal=True),
+    dict(name='icons/items/chest-plate', src='brotown-rpg-ui-asset-sheet-1.png', mode='key',
+         box=(576, 462, 682, 566), frame=dict(fill=0.78), metal=True),
+    dict(name='icons/ui/pets-paw', src='colorful-rpg-game-ui-asset-sheet.png', mode='key',
+         box=(812, 66, 880, 131), frame=dict(size=90, fill=0.67)),
+    # the owner's T112.2, sheet 3's crown (the first cut took the first sheet's)
+    dict(name='icons/ui/party-crown', src='brotown-rpg-ui-icon-sheet-2.png', mode='alpha',
+         box=(1160, 540, 1256, 620), grow=4, frame=dict(size=64, fill=0.77, exact=True)),
+    dict(name='icons/ui/party-pin', src='brotown-rpg-ui-icon-sheet-2.png', mode='alpha',
+         box=(1412, 516, 1496, 632), grow=4, frame=dict(size=64, fill=0.77, exact=True)),
+    dict(name='icons/ui/bldg-auction-gavel', src='fantasy-game-ui-icon-collection.png', mode='alpha',
+         box=(712, 764, 928, 908), grow=4, frame=dict(size=78, fill=0.84)),
+    dict(name='ui/welcome/cc/cc-none', src='pixel-style-character-creator-ui-sheet.png', mode='alpha',
+         box=(76, 24, 160, 112), grow=4, frame=dict(size=102, fill=0.76)),
     # v2.3.3522: the Block button's face (the header's note) -- a round button
     # of its own, so the disc inside its ring, 160 px like every control picture
     dict(name='ui/controls/abil-block', src='brotown-rpg-ui-asset-sheet-1.png', mode='disc',
@@ -221,6 +321,77 @@ def cut_key(src, box, tol=16, ramp=18):
             d = math.sqrt((r - f[0]) ** 2 + (g - f[1]) ** 2 + (b - f[2]) ** 2)
             k = 0 if d <= tol else (1 if d >= tol + ramp else (d - tol) / ramp)
             op[x, y] = (r, g, b, int(min(255, a * 255 / 250) * k))
+    bb = out.getbbox()
+    return out.crop(bb) if bb else out
+
+
+def cut_card(src, box, tol=16, ramp=18):
+    """v2.3.3524: `key` on a gradient card, row by row (see the header)."""
+    c = sheet(src).crop(box)
+    px = c.load()
+    w, h = c.size
+    fills = []
+    for y in range(h):
+        ends = [px[x, y] for x in (1, 2, 3, 4, w - 5, w - 4, w - 3, w - 2)]
+        fills.append(tuple(sorted(q[i] for q in ends)[len(ends) // 2] for i in range(3)))
+    out = Image.new('RGBA', c.size)
+    op = out.load()
+    gone = Image.new('L', c.size, 0)
+    gp = gone.load()
+    for y in range(h):
+        f = fills[y]
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            d = math.sqrt((r - f[0]) ** 2 + (g - f[1]) ** 2 + (b - f[2]) ** 2)
+            k = 0 if d <= tol else (1 if d >= tol + ramp else (d - tol) / ramp)
+            op[x, y] = (r, g, b, int(min(255, a * 255 / 250) * k))
+            if k == 0:
+                gp[x, y] = 255
+    band = gone.filter(ImageFilter.MaxFilter(7)).load()
+    for y in range(h):
+        f = fills[y]
+        ff = sum(v * v for v in f) or 1
+        fh = colorsys.rgb_to_hsv(f[0] / 255, f[1] / 255, f[2] / 255)[0]
+        for x in range(w):
+            if not band[x, y] or op[x, y][3] == 0:
+                continue
+            r, g, b, a = px[x, y]
+            t = (r * f[0] + g * f[1] + b * f[2]) / ff
+            on_line = math.sqrt((r - t * f[0]) ** 2 + (g - t * f[1]) ** 2 + (b - t * f[2]) ** 2) <= 24
+            ph, ps, _ = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+            card = ps > 0.5 and min(abs(ph - fh), 1 - abs(ph - fh)) < 0.04   # the card's own hue: its shading
+            if on_line:
+                op[x, y] = (0, 0, 0, 0) if t >= 0.97 else (6, 4, 3, int(255 * (1 - max(0.0, t))))
+            elif card:
+                op[x, y] = (0, 0, 0, 0) if t >= 0.6 else (6, 4, 3, int(255 * (1 - max(0.0, t))))
+    out.putalpha(out.getchannel('A').point(lambda v: 0 if v < 40 else v))
+    # specks the key left on the card (bits of its shading, apart from the
+    # piece or hanging off it by a faint px): the biggest island of SOLID px
+    # (alpha over 160) is the piece, and only what lies within 2 px of it is kept
+    al = out.load()
+    seen = set()
+    best = []
+    for y in range(h):
+        for x in range(w):
+            if al[x, y][3] <= 160 or (x, y) in seen:
+                continue
+            todo, isl = [(x, y)], []
+            seen.add((x, y))
+            while todo:
+                cx, cy = todo.pop()
+                isl.append((cx, cy))
+                for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
+                    if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in seen and al[nx, ny][3] > 160:
+                        seen.add((nx, ny))
+                        todo.append((nx, ny))
+            if len(isl) > len(best):
+                best = isl
+    core = Image.new('L', out.size, 0)
+    cpx = core.load()
+    for (x, y) in best:
+        cpx[x, y] = 255
+    keep = core.filter(ImageFilter.MaxFilter(5))
+    out.putalpha(Image.composite(out.getchannel('A'), Image.new('L', out.size, 0), keep))
     bb = out.getbbox()
     return out.crop(bb) if bb else out
 
@@ -320,6 +491,22 @@ def to_pin(im):
     return out
 
 
+def to_frame(im, size=None, fill=0.8, exact=False):
+    """v2.3.3526: the art centred in a square, its larger side `fill` of the
+    square's (the header's FRAMES).  With `size` the square is at most that
+    (exactly that if `exact`), the art scaled down to fit; never scaled up."""
+    w, h = im.size
+    big = max(w, h)
+    side = round(big / fill)
+    if size is not None:
+        side = size if exact else min(size, side)
+    k = min(1.0, fill * side / big)
+    art = resize(im, (max(1, round(w * k)), max(1, round(h * k))))
+    out = Image.new('RGBA', (side, side), (0, 0, 0, 0))
+    out.alpha_composite(art, ((side - art.width) // 2, (side - art.height) // 2))
+    return out
+
+
 def grey(im):
     """Plain luminance, the alpha kept: the review page's greyed "?"."""
     g = ImageOps.grayscale(im.convert('RGB')).convert('RGBA')
@@ -346,6 +533,270 @@ def contact_sheet(cuts, path):
     print('contact sheet:', path)
 
 
+# ═══ v2.3.3526: CARD 11 -- the twins page's cuts (scratchpad twincut.py, the
+# page the owner picked from), and how each is sized ═══
+CARD11 = os.path.join(ROOT, 'tools', 'ui', 'owner-picks-card11.json')
+CARD11_SUMS = os.path.join(ROOT, 'tools', 'ui', 'owner-picks-card11.sha256')
+
+
+def erase(img, box, marks):
+    """Clear each mark (sheet coords): [cx, cy, r] a circle, [x0, y0, x1, y1]
+    a rectangle -- a count badge painted over an item's corner."""
+    m = Image.new('L', img.size, 255)
+    d = ImageDraw.Draw(m)
+    for c in marks:
+        if len(c) == 4:
+            d.rectangle([c[0] - box[0], c[1] - box[1], c[2] - box[0], c[3] - box[1]], fill=0)
+        else:
+            x, y, r = c[0] - box[0], c[1] - box[1], c[2]
+            d.ellipse([x - r, y - r, x + r, y + r], fill=0)
+    img.putalpha(Image.composite(img.getchannel('A'), Image.new('L', img.size, 0), m))
+    return img
+
+
+def twin_alpha(src, box, amin=230, grow=6, marks=None):
+    c = sheet(src).crop(box)
+    if marks:
+        c = erase(c, box, marks)
+    a = c.getchannel('A')
+    core = a.point(lambda v: 255 if v > amin else 0)
+    region = core.filter(ImageFilter.MaxFilter(grow * 2 + 1))
+    c.putalpha(Image.composite(a, Image.new('L', a.size, 0), region))
+    c = lift_alpha(c)
+    c.putalpha(c.getchannel('A').point(lambda v: 0 if v < 40 else v))
+    return c.crop(c.getbbox())
+
+
+def twin_key(src, box, tol=18, ramp=22, flood=False, fill=None, marks=None):
+    """The card's flat fill (the median of the box's border, its solid px) and
+    every px within tol of it see-through; with `flood` only what the border
+    reaches through such px."""
+    c = sheet(src).crop(box)
+    if marks:
+        c = erase(c, box, marks)
+    px = c.load()
+    w, h = c.size
+    if fill:
+        f = tuple(fill)
+    else:
+        b = [px[x, 0] for x in range(w)] + [px[x, h - 1] for x in range(w)] + \
+            [px[0, y] for y in range(h)] + [px[w - 1, y] for y in range(h)]
+        b = [q for q in b if q[3] > 200] or b
+        f = tuple(sorted(q[i] for q in b)[len(b) // 2] for i in range(3))
+
+    def kf(q):
+        dd = math.dist(q[:3], f)
+        return 0.0 if dd <= tol else (1.0 if dd >= tol + ramp else (dd - tol) / ramp)
+    k = [[1.0] * w for _ in range(h)]
+    if flood:
+        st = [(x, y) for x in range(w) for y in (0, h - 1)] + [(x, y) for y in range(h) for x in (0, w - 1)]
+        seen = set()
+        while st:
+            x, y = st.pop()
+            if (x, y) in seen:
+                continue
+            seen.add((x, y))
+            v = kf(px[x, y])
+            if v >= 1.0:
+                continue
+            k[y][x] = v
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in seen:
+                    st.append((nx, ny))
+    else:
+        for y in range(h):
+            for x in range(w):
+                k[y][x] = kf(px[x, y])
+    out = Image.new('RGBA', c.size)
+    op = out.load()
+    for y in range(h):
+        for x in range(w):
+            r, g, b_, a = px[x, y]
+            op[x, y] = (r, g, b_, int(min(255, a * 255 / 250) * k[y][x]))
+    out.putalpha(out.getchannel('A').point(lambda v: 0 if v < 30 else v))
+    bb = out.getbbox()
+    return out.crop(bb) if bb else out
+
+
+def twin_disc(src, centre, r, tol=18, ramp=22):
+    """An icon painted on a round slate disc in a rim (the right stick's
+    pictures on the sheets): what is inside radius r, the disc's own fill (the
+    median of a thin ring just inside r) keyed out."""
+    cx, cy = centre
+    box = (int(cx - r), int(cy - r), int(cx + r + 1), int(cy + r + 1))
+    c = sheet(src).crop(box)
+    px = c.load()
+    w, h = c.size
+    ox, oy = cx - box[0], cy - box[1]
+    ring = [px[x, y] for y in range(h) for x in range(w) if r - 4 <= math.hypot(x - ox, y - oy) <= r - 1]
+    f = tuple(sorted(q[i] for q in ring)[len(ring) // 2] for i in range(3))
+    out = Image.new('RGBA', c.size)
+    op = out.load()
+    for y in range(h):
+        for x in range(w):
+            d = math.hypot(x - ox, y - oy)
+            if d > r:
+                continue
+            pr, pg, pb, pa = px[x, y]
+            dd = math.dist((pr, pg, pb), f)
+            k = 0.0 if dd <= tol else (1.0 if dd >= tol + ramp else (dd - tol) / ramp)
+            op[x, y] = (pr, pg, pb, int(min(255, pa * 255 / 250) * k * min(1.0, r - d)))
+    out.putalpha(out.getchannel('A').point(lambda v: 0 if v < 30 else v))
+    bb = out.getbbox()
+    return out.crop(bb) if bb else out
+
+
+def twin_outline(src, box, dark=70, marks=None):
+    """An icon in a dark outline on a light or gradient button (the Forge's
+    anvil on its gold Craft button): flooded from the box's edge through every
+    px brighter than `dark`; the outline stops it, so the icon is kept whole."""
+    c = sheet(src).crop(box)
+    if marks:
+        c = erase(c, box, marks)
+    px = c.load()
+    w, h = c.size
+    bg = [[False] * w for _ in range(h)]
+    st = [(x, y) for x in range(w) for y in (0, h - 1)] + [(x, y) for y in range(h) for x in (0, w - 1)]
+    while st:
+        x, y = st.pop()
+        if bg[y][x]:
+            continue
+        r, g, b_, a = px[x, y]
+        if a > 40 and max(r, g, b_) <= dark:
+            continue
+        bg[y][x] = True
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < w and 0 <= ny < h and not bg[ny][nx]:
+                st.append((nx, ny))
+    out = c.copy()
+    op = out.load()
+    for y in range(h):
+        for x in range(w):
+            r, g, b_, a = px[x, y]
+            if bg[y][x]:
+                op[x, y] = (r, g, b_, 0)
+            else:
+                nb = sum(1 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+                         if 0 <= x + dx < w and 0 <= y + dy < h and bg[y + dy][x + dx])
+                op[x, y] = (r, g, b_, int(min(255, a * 255 / 250) * (0.75 if nb >= 2 else 1.0)))
+    bb = out.getbbox()
+    return out.crop(bb) if bb else out
+
+
+def card11_cut(e):
+    c, src = e['cut'], e['src']
+    m = c.get('mode', 'alpha')
+    if m == 'alpha':
+        return twin_alpha(src, tuple(c['box']), c.get('amin', 230), c.get('grow', 6), c.get('erase'))
+    if m == 'key':
+        return twin_key(src, tuple(c['box']), c.get('tol', 18), c.get('ramp', 22), c.get('flood', False),
+                        c.get('fill'), c.get('erase'))
+    if m == 'disc':
+        return twin_disc(src, c['c'], c['r'], c.get('tol', 18), c.get('ramp', 22))
+    if m == 'outline':
+        return twin_outline(src, tuple(c['box']), c.get('dark', 70), c.get('erase'))
+    raise SystemExit(f'ABORT {e["code"]}: no cut mode {m}')
+
+
+def to_frame_wh(im, wh, fill):
+    """Today's canvas (w, h), the art's larger side `fill` of the canvas's
+    larger side -- the share today's art fills -- but never past the canvas
+    (1 px kept clear), centred."""
+    W, H = wh
+    w, h = im.size
+    k = min(fill * max(W, H) / max(w, h), (W - 2) / w, (H - 2) / h)
+    art = resize(im, (max(1, round(w * k)), max(1, round(h * k))))
+    out = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    out.alpha_composite(art, ((W - art.width) // 2, (H - art.height) // 2))
+    return out
+
+
+def to_tight(im, side):
+    w, h = im.size
+    k = side / max(w, h)
+    return resize(im, (max(1, round(w * k)), max(1, round(h * k))))
+
+
+def fit_circle(pts):
+    """Least squares (Kasa): the circle x^2 + y^2 + a x + b y + c = 0 through
+    the points, solved from its 3 x 3 normal equations."""
+    sxx = sxy = syy = sx = sy = n = 0.0
+    sxz = syz = sz = 0.0
+    for x, y in pts:
+        z = x * x + y * y
+        sxx += x * x; sxy += x * y; syy += y * y; sx += x; sy += y; n += 1
+        sxz += x * z; syz += y * z; sz += z
+    # [sxx sxy sx; sxy syy sy; sx sy n] [a b c]' = -[sxz syz sz]'
+    m = [[sxx, sxy, sx, -sxz], [sxy, syy, sy, -syz], [sx, sy, n, -sz]]
+    for i in range(3):
+        piv = max(range(i, 3), key=lambda r: abs(m[r][i]))
+        m[i], m[piv] = m[piv], m[i]
+        for r in range(3):
+            if r != i:
+                f = m[r][i] / m[i][i]
+                for c in range(i, 4):
+                    m[r][c] -= f * m[i][c]
+    a, b, c = (m[i][3] / m[i][i] for i in range(3))
+    cx, cy = -a / 2, -b / 2
+    return cx, cy, math.sqrt(max(0.0, cx * cx + cy * cy - c))
+
+
+def disc_inside_ring(im, rin):
+    """The round button's disc inside its own ring.  Its edge: on 72 rays from
+    the solid core's middle, the first solid px walked in from outside; a
+    circle fitted to those points, then fitted again without the ones more
+    than 3% off it (a sword's tip, an arrow, a spark or a stone through the
+    ring -- a ray-median centre was pulled off by them).  Kept: a circle of
+    rin times its radius, its edge supersampled 4x."""
+    w, h = im.size
+    px = im.load()
+    core = im.getchannel('A').point(lambda v: 255 if v > 200 else 0).getbbox()
+    ox, oy = (core[0] + core[2] - 1) / 2, (core[1] + core[3] - 1) / 2
+    pts = []
+    for k in range(72):
+        t = 2 * math.pi * k / 72
+        r = max(w, h)
+        while r > 0:
+            x, y = int(round(ox + r * math.cos(t))), int(round(oy + r * math.sin(t)))
+            if 0 <= x < w and 0 <= y < h and px[x, y][3] > 200:
+                pts.append((ox + r * math.cos(t), oy + r * math.sin(t)))
+                break
+            r -= 0.5
+    cx, cy, R = fit_circle(pts)
+    for _ in range(2):
+        keep = [q for q in pts if abs(math.hypot(q[0] - cx, q[1] - cy) - R) <= 0.03 * R]
+        cx, cy, R = fit_circle(keep)
+    if len(keep) < 36:
+        raise SystemExit(f'ABORT disc: the ring was found on only {len(keep)} of 72 rays')
+    ri = rin * R
+    side = int(math.ceil(ri * 2))
+    x0, y0 = int(round(cx - ri)), int(round(cy - ri))
+    disc = im.crop((x0, y0, x0 + side, y0 + side))
+    SS = 4
+    mk = Image.new('L', (side * SS, side * SS), 0)
+    ImageDraw.Draw(mk).ellipse((0, 0, side * SS - 1, side * SS - 1), fill=255)
+    mk = mk.resize((side, side), Image.LANCZOS)
+    from PIL import ImageChops
+    disc.putalpha(ImageChops.multiply(disc.getchannel('A'), mk))
+    return disc, (round(cx, 1), round(cy, 1), round(R, 1), len(keep))
+
+
+def controls_grey(im):
+    """The controls' greyed palette (cut-small-icons.py grey): luminance
+    squeezed into 30..214, the alpha kept."""
+    r, g, b_, a = im.split()
+    lum = Image.merge('RGB', (r, g, b_)).convert('L').point(lambda v: 30 + round(v * 0.72))
+    return Image.merge('RGBA', (lum, lum, lum, a))
+
+
+def card11_entries():
+    import json
+    with open(CARD11) as f:
+        return json.load(f)['picks']
+
+
 def main():
     force = '--force' in sys.argv
     dry = '--dry' in sys.argv
@@ -358,6 +809,8 @@ def main():
             continue
         if p['mode'] in ('alpha', 'disc'):
             im = cut_alpha(p['src'], p['box'], p.get('amin', 230), p.get('grow', 6))
+        elif p['mode'] == 'card':
+            im = cut_card(p['src'], p['box'], p.get('tol', 16), p.get('ramp', 18))
         else:
             im = cut_key(p['src'], p['box'], p.get('tol', 16), p.get('ramp', 18))
         raw = im.size
@@ -388,6 +841,11 @@ def main():
         elif p.get('pin'):
             out = to_pin(im)
             print(f'  {short:16s} cut {raw[0]}x{raw[1]} -> {out.width}x{out.height} frame')
+        elif p.get('frame'):
+            out = to_frame(im, **p['frame'])
+            print(f'  {short:16s} cut {raw[0]}x{raw[1]} -> {out.width}x{out.height} frame'
+                  f' (art {im.width}x{im.height}, fill {p["frame"]["fill"]})'
+                  + ('  -- now run: node tools/gear/make-metal-icons.mjs --only greaves,chest-plate' if p.get('metal') else ''))
         else:
             out = to_css(im, p['css'])
             print(f'  {short:16s} cut {raw[0]}x{raw[1]} -> {out.width}x{out.height}'
@@ -403,25 +861,79 @@ def main():
             g = small_icons_tool().grey(out)
             cuts.append((p['name'] + '-grey', g))
             writes.append((p['name'] + '-grey', g))
+    # v2.3.3526: card 11, the owner's own picks (owner-picks-card11.json)
+    for e in card11_entries():
+        short = e['name'].split('/')[-1]
+        if only and short not in only and e['name'] not in only and e['code'] not in only:
+            continue
+        im = card11_cut(e)
+        raw = im.size
+        o = e['out']
+        if 'disc' in o:
+            disc, (cx, cy, R, n) = disc_inside_ring(im, o['rin'])
+            out = resize(disc, (o['disc'], o['disc']))
+            how = f'disc r {R} at ({cx}, {cy}) on {n}/72 rays, kept {o["rin"]} -> {o["disc"]} square'
+        elif 'tight' in o:
+            out = to_tight(im, o['tight'])
+            how = f'tight {out.width}x{out.height}'
+        else:
+            out = to_frame_wh(im, tuple(o['frame']), o['fill'])
+            how = f'frame {o["frame"][0]}x{o["frame"][1]} fill {o["fill"]}'
+        print(f'  {e["code"]:7s} {short:22s} cut {raw[0]}x{raw[1]} -> {how}')
+        ext = '.' + e.get('ext', 'webp')
+        cuts.append((e['name'] + ext, out))
+        writes.append((e['name'] + ext, out))
+        if e.get('grey'):
+            g = controls_grey(out)
+            cuts.append((e['name'] + '-grey' + ext, g))
+            writes.append((e['name'] + '-grey' + ext, g))
     if contact:
         contact_sheet(cuts, contact)
     if dry:
         return 0
-    clash = [n for n, _ in writes if os.path.exists(os.path.join(PUB, n + '.webp'))]
+    def file_of(n):
+        # a card 11 name carries its own extension (a stat glyph is a PNG)
+        return n if n.endswith('.png') or n.endswith('.webp') else n + '.webp'
+    clash = [n for n, _ in writes if os.path.exists(os.path.join(PUB, file_of(n)))]
     if clash and not force:
         print('refusing to overwrite (pass --force to re-cut):\n  ' + '\n  '.join(clash))
         return 1
     total = decoded = 0
+    import hashlib
+    sums = {}
+    if os.path.exists(CARD11_SUMS):
+        with open(CARD11_SUMS) as f:
+            for line in f:
+                if line.strip():
+                    hx, path_ = line.split(None, 1)
+                    sums[path_.strip()] = hx
+    card11_names = set()
+    for e in card11_entries():
+        ext = '.' + e.get('ext', 'webp')
+        card11_names.add(e['name'] + ext)
+        if e.get('grey'):
+            card11_names.add(e['name'] + '-grey' + ext)
     for name, im in writes:
-        path = os.path.join(PUB, name + '.webp')
+        path = os.path.join(PUB, file_of(name))
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        im.save(path, 'WEBP', quality=QUALITY, method=6)
+        if path.endswith('.png'):
+            im.save(path, 'PNG', optimize=True)
+        else:
+            im.save(path, 'WEBP', quality=QUALITY, method=6)
+        if name in card11_names:
+            with open(path, 'rb') as f:
+                sums['public/' + file_of(name)] = hashlib.sha256(f.read()).hexdigest()
         n = os.path.getsize(path)
         total += n
         decoded += im.width * im.height * 4
         print(f'  wrote {os.path.relpath(path, ROOT)}  {im.width}x{im.height}  {n} bytes'
               f'  ({im.width * im.height * 4 / 1024:.0f} KB decoded)')
     print(f'{len(writes)} files, {total / 1024:.0f} KB, {decoded / 1024:.0f} KB decoded')
+    if sums:
+        with open(CARD11_SUMS, 'w') as f:
+            for path_ in sorted(sums):
+                f.write(f'{sums[path_]}  {path_}\n')
+        print(f'card 11: {len(sums)} files recorded in {os.path.relpath(CARD11_SUMS, ROOT)}')
     return 0
 
 

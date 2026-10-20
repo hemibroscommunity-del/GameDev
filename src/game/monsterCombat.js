@@ -1870,13 +1870,14 @@ export function updateMonsterCombat(S, deps) {
                      these to play the load/draw/release frames for the shot). */
                   S._bowShotAt = Date.now();
                   S._bowShotAng = arrAngle;
-                  /* v2.3.3343: the bow is DRAWN, then loosed -- bow-pullback, in
-                     the game since the bow and never played (SOUND-GAPS), as
-                     the pull starts, quickened to fit the quick draw; and the
-                     arrow's whoosh on the release frame (entityRenderer
-                     BOW_RELEASE_MS, 110 ms), where the arrow leaves the grip. */
-                  cue('bowDraw', 1, 1.3);
-                  BT_AUDIO.play('arrow-fly', { vol: 0.85, delay: 0.11 });
+                  /* v2.3.3343: the arrow's whoosh on the release frame
+                     (entityRenderer BOW_RELEASE_MS, 110 ms), where the arrow
+                     leaves the grip.  v2.3.3523: as the jump's rush of air
+                     (data/eventSounds.js bowLoose, the owner's "should be
+                     current 'jump' sound"), and no bow-pullback drawn first:
+                     quickened to fit the quick draw, it was the "duck
+                     squeak" the owner heard on every shot. */
+                  cue('bowLoose');
                 }
                 }   /* v2.3.2473: end of `if (_mayLoose)` -- see the sight gate above */
               } else if (!S.isSwinging) {

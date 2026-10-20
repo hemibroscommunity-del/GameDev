@@ -210,19 +210,22 @@ export const PROG3_LEGACY_ATK = {
 /* v2.3.2687: `edge` is each glyph's main colour, measured off the PNG by
    tools/glyph_edge_colors.mjs -- the Points grid outlines every cell in it so
    the frame matches the picture (owner).  Re-run the tool when a glyph is
-   re-exported; do not hand-pick. */
+   re-exported; do not hand-pick.
+   v2.3.3526: nine glyphs are the owner's card 11 picks (luck, special, elem,
+   hp, mana, stam, dodge, move, eres: tools/ui/cut-owner-icons.py), their
+   edges measured again by the tool. */
 export const PROG3_ATK_META = [
   { key: 'range',   label: 'Range', short: 'RANGE',     perText: '+0.5% reach', perTextRel: 'reach farther — the first points count most',                        pct: true, unit: '% farther',        hook: 'Hit from farther away.', iconSrc: '/icons/ui/stat/range.png?v=2.3.2642',     capsProg3Shared: true, dpsNote: 'reach, not damage' , tint: '#842D95', edge: '#22F6FA' },
   { key: 'dmg',     label: 'Power', short: 'POWER',     perText: '+0.5 damage per hit', perTextRel: 'hit harder — the first points count most', unitRel: '% more damage', pctRel: true,                unit: ' dmg',                        hook: 'Every hit lands harder.', iconSrc: '/icons/ui/stat/dmg.png?v=2.3.2642',            capsProg3x: true , tint: '#5C5851', edge: '#FE5D04' },
   /* Speed's points SHORTEN the swing, so its total is a reduction — the
      label below says "faster" rather than printing a negative. */
   { key: 'aspd',    label: 'Speed', short: 'SPEED',     perText: '−0.35% swing time', perTextRel: 'swing faster — the first points count most',                  pct: true, unit: '% faster',         hook: 'Attack faster.', iconSrc: '/icons/ui/stat/aspd.png?v=2.3.2642' , tint: '#2C4F59', edge: '#24F7F9' },
-  { key: 'luck',    label: 'Luck', short: 'LUCK',      perText: '+0.3% crit chance, +1% crit damage', perTextRel: 'more crits, and bigger — the first points count most', pct: true, unit: '% crit chance',    hook: 'More crits, and bigger ones.', iconSrc: '/icons/ui/stat/luck.png?v=2.3.2642',           capsProg3Shared: true , tint: '#8E3B1F', edge: '#E6EAEF' },
-  { key: 'special', label: 'Special', short: 'SPECIAL',   perText: '+1% special attack damage', perTextRel: 'stronger specials — the first points count most',          pct: true, unit: '% special damage', hook: 'Your special attack hits harder.', iconSrc: '/icons/ui/stat/special.png?v=2.3.2642',   capsProg3Shared: true, dpsNote: 'special attacks only' , tint: '#326762', edge: '#FCCA05' },
+  { key: 'luck',    label: 'Luck', short: 'LUCK',      perText: '+0.3% crit chance, +1% crit damage', perTextRel: 'more crits, and bigger — the first points count most', pct: true, unit: '% crit chance',    hook: 'More crits, and bigger ones.', iconSrc: '/icons/ui/stat/luck.png?v=2.3.2642',           capsProg3Shared: true , tint: '#8E3B1F', edge: '#F0EFEB' },
+  { key: 'special', label: 'Special', short: 'SPECIAL',   perText: '+1% special attack damage', perTextRel: 'stronger specials — the first points count most',          pct: true, unit: '% special damage', hook: 'Your special attack hits harder.', iconSrc: '/icons/ui/stat/special.png?v=2.3.2642',   capsProg3Shared: true, dpsNote: 'special attacks only' , tint: '#326762', edge: '#FAD418' },
   /* v2.3.2512: elemental power, per weapon — burns/roots/thorns and element
      collisions from THIS weapon scale off it.  The detonation drawing is
      still the closest the repo has; swap the day a dedicated icon exists. */
-  { key: 'elem',    label: 'Element', short: 'ELEM',   infoKey: 'Elemental', perText: '+1 elemental power', perTextRel: 'stronger burns and combos — the first points count most',                 unit: ' power',                      hook: 'Stronger burns and combos.', iconSrc: '/icons/ui/stat/elem.png?v=2.3.2642', capsProg3Elem: true , tint: '#48239F', edge: '#FD5205' },
+  { key: 'elem',    label: 'Element', short: 'ELEM',   infoKey: 'Elemental', perText: '+1 elemental power', perTextRel: 'stronger burns and combos — the first points count most',                 unit: ' power',                      hook: 'Stronger burns and combos.', iconSrc: '/icons/ui/stat/elem.png?v=2.3.2642', capsProg3Elem: true , tint: '#48239F', edge: '#FD5B03' },
   /* The RETIRED pair, drawn only against a worker that has not folded them
      into Luck — that worker still rolls off crit and critDmg, so those are
      the rows it must show (rule 19).  Same copy they shipped with. */
@@ -323,13 +326,13 @@ export const PROG3_BODY_META = [
      pre-agreed fallback for `move`. */
   /* v2.3.3260: '+8' is now ON SCREEN -- the one formula's 40 a point, shown
      divided by DISPLAY_SCALE_K 5 like every bar (it was the old worker's raw 8) */
-  { key: 'hp',    label: 'Max HP', short: 'HP',      perText: '+8 max HP',                    unit: ' HP',             hook: 'Take more hits before going down.', iconSrc: '/icons/ui/stat/hp.png?v=2.3.2642' , tint: '#592C32', edge: '#FC311D' } /* v2.3.1922: plain heart */,
+  { key: 'hp',    label: 'Max HP', short: 'HP',      perText: '+8 max HP',                    unit: ' HP',             hook: 'Take more hits before going down.', iconSrc: '/icons/ui/stat/hp.png?v=2.3.2642' , tint: '#592C32', edge: '#FD2623' } /* v2.3.1922: plain heart */,
   { key: 'def',   label: 'Defense', short: 'DEF',     perText: '−0.4% damage taken', perTextRel: 'take less damage — the first points count most',           pct: true, unit: '% less damage', hook: 'Every hit on you hurts less.', iconSrc: '/icons/ui/stat/def.png?v=2.3.2642' , tint: '#485A7A', edge: '#BAC5CD' },
-  { key: 'mana',  label: 'Max Mana', short: 'MP',    perText: '+2.5 max mana',                unit: ' mana',           hook: 'More specials and bursts per fight.', iconSrc: '/icons/ui/stat/mana.png?v=2.3.2642',             capsProg3Elem: true , tint: '#182D6D', edge: '#01A3FD' },
-  { key: 'stam',  label: 'Stamina', short: 'STAM',     perText: '+3 max stamina',               unit: ' stamina',        hook: 'More specials and dodges before a rest.', iconSrc: '/icons/ui/stat/stam.png?v=2.3.2642' , tint: '#1E6642', edge: '#FDC202' },
-  { key: 'dodge', label: 'Dodge', short: 'DODGE',       perText: '+0.4% dodge', perTextRel: 'dodge more hits — the first points count most',                  pct: true, unit: '%',    hook: 'Some hits miss you completely.', iconSrc: '/icons/ui/stat/dodge.png?v=2.3.2642' , tint: '#6D5C18', edge: '#FDC202' },
-  { key: 'move',  label: 'Speed', short: 'MOVE',       infoKey: 'Move Speed', perText: '+0.4% move speed', perTextRel: 'move faster — the first points count most',             pct: true, unit: '% faster', hook: 'Run faster.', iconSrc: '/icons/ui/stat/move.png?v=2.3.2642',   capsProg3Shared: true, dpsNote: 'movement, not damage' , tint: '#48661E', edge: '#1FF6F9' },
-  { key: 'eres',  label: 'Resist', short: 'RESIST',      infoKey: 'Elem Resist', perText: '−0.4% elemental damage taken', perTextRel: 'take less elemental damage — the first points count most', pct: true, unit: '% less elemental', hook: 'Burns and blasts hurt less.', iconSrc: '/icons/ui/stat/eres.png?v=2.3.2642', capsProg3Elem: true , tint: '#9F2357', edge: '#B3BDC5' },
+  { key: 'mana',  label: 'Max Mana', short: 'MP',    perText: '+2.5 max mana',                unit: ' mana',           hook: 'More specials and bursts per fight.', iconSrc: '/icons/ui/stat/mana.png?v=2.3.2642',             capsProg3Elem: true , tint: '#182D6D', edge: '#08A8FD' },
+  { key: 'stam',  label: 'Stamina', short: 'STAM',     perText: '+3 max stamina',               unit: ' stamina',        hook: 'More specials and dodges before a rest.', iconSrc: '/icons/ui/stat/stam.png?v=2.3.2642' , tint: '#1E6642', edge: '#FBD114' },
+  { key: 'dodge', label: 'Dodge', short: 'DODGE',       perText: '+0.4% dodge', perTextRel: 'dodge more hits — the first points count most',                  pct: true, unit: '%',    hook: 'Some hits miss you completely.', iconSrc: '/icons/ui/stat/dodge.png?v=2.3.2642' , tint: '#6D5C18', edge: '#FDD60A' },
+  { key: 'move',  label: 'Speed', short: 'MOVE',       infoKey: 'Move Speed', perText: '+0.4% move speed', perTextRel: 'move faster — the first points count most',             pct: true, unit: '% faster', hook: 'Run faster.', iconSrc: '/icons/ui/stat/move.png?v=2.3.2642',   capsProg3Shared: true, dpsNote: 'movement, not damage' , tint: '#48661E', edge: '#1BEDF3' },
+  { key: 'eres',  label: 'Resist', short: 'RESIST',      infoKey: 'Elem Resist', perText: '−0.4% elemental damage taken', perTextRel: 'take less elemental damage — the first points count most', pct: true, unit: '% less elemental', hook: 'Burns and blasts hurt less.', iconSrc: '/icons/ui/stat/eres.png?v=2.3.2642', capsProg3Elem: true , tint: '#9F2357', edge: '#CDD0D6' },
 ];
 
 /* v2.3.2680: the one sentence the ℹ️ window adds under a stat that fades

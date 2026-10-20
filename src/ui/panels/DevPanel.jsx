@@ -3,6 +3,18 @@ import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { WORLDVIEW_EXITS } from '../../data/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
+import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
+
+/* v2.3.3525: the tour's steps, in order, for "Tour: jump to" (the worker's
+   /dev/tour checks each is one) */
+const TOUR_STEPS = [
+  { id: 'tut_1', label: 'Tour 1: Slimes' }, { id: 'farm_1', label: '2: Plant' },
+  { id: 'smith_1', label: '3: Ore' }, { id: 'smith_2', label: '4: Forge' },
+  { id: 'wood_1', label: '5: Logs' }, { id: 'wood_2', label: '6: Bench' },
+  { id: 'fish_1', label: '7: Fish' }, { id: 'farm_2', label: '8: Zoom Juice' },
+  { id: 'race_1', label: '9: Race' }, { id: 'beast_1', label: '10: Traps' },
+  { id: 'beast_2', label: '11: Spring' }, { id: 'tut_2', label: '12: Snowmen' },
+];
 
 /* ═══ v2.3.2240: THE OWNER'S TEST PANEL ═══
  *
@@ -232,6 +244,9 @@ const CAP_GATES = [
   'petbook' /* v2.3.3120: the pets record and the Pets page -- lower case, a kill switch */,
   'petlevels' /* v2.3.3121: pets earn XP while out with you -- lower case, a kill switch */,
   'beastmaster' /* v2.3.3121: Beastmaster Bro and his quests -- lower case, a kill switch */,
+  'tour' /* v2.3.3525: the tour's two new townsfolk (Woodworker Bro, Farmer Bro) -- lower case, a kill switch */,
+  'race' /* v2.3.3525: Lil Bro's race -- lower case, a kill switch */,
+  'tourgear' /* v2.3.3525: the tour's gear rules in the forge's and bench's windows (hardened wood, the equip gate) -- no switch, the tables */,
   'pettrade' /* v2.3.3122: pets in trades, the auction house and the mail -- lower case, a kill switch */,
   'petwards' /* v2.3.3123: the land ward of the pet out with you -- lower case, a kill switch */,
   'petshow' /* v2.3.3123: the others see your pet -- lower case, a kill switch */,
@@ -239,6 +254,7 @@ const CAP_GATES = [
   'hardenmats' /* v2.3.3139: hardening takes a material (bars, or a bow's hardened wood) and a doubling gold ladder -- lower case, a kill switch */,
   'hardenedwood' /* v2.3.3139: five logs into one hardened wood at the Woodworker -- lower case, a kill switch */,
   'hardenwoodskill' /* v2.3.3481: a bow's or staff's hardening is gated on Woodworking, a sword's still on Blacksmithing (the owner: "Do woodworking") -- lower case, a kill switch */,
+  'forgeladder' /* v2.3.3524: the forge's ladder -- no wood tier, copper Smithing 1 / iron 5 / black steel 10, the forge's Melee gate the wear gate, hardening by the level that makes the tier (server/src/forgeladder.js) -- lower case, a kill switch */,
   'arenaap' /* v2.3.3481: the arena's champion is paid 500 achievement points with the prize (the owner: "an arena winner should be included") -- lower case, a kill switch */,
   'arenaapfirst' /* v2.3.3488: ...on a character's FIRST win only (server inbox.js AP_ONCE): the arena's window says so -- the owner: "I don't want anyone exploiting the achievement points from it" */,
   'movediet' /* v2.3.3204: a steady walk on the Wheel's safe ground sent every 66 ms -- lower case, a kill switch */,
@@ -667,6 +683,21 @@ export const DevPanel = ({ onClose }) => {
           Run the speed test
         </button>
 
+        {/* ═══ v2.3.3523: THE SOUND STUDIO ═══
+            The owner: "I think sounds were wired in the wrong places.  The
+            labels should tell you where they go.  Might need to build a quick
+            studio to show which sounds belong where."  Keyless: it only plays
+            sounds (ui/panels/SoundStudio.jsx). */}
+        <div style={label}>Sound studio</div>
+        <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
+          Every sound in the game under the moment it plays at, with a play button and the recording it
+          is made of. "Heard just now" names the last sounds the game played, so a wrong one can be found.
+        </div>
+        <button type="button" style={btn(false)} data-dev-sound-studio=""
+          onClick={() => { if (onClose) onClose(); setTimeout(() => { openSoundStudio(); }, 150); }}>
+          Open the sound studio
+        </button>
+
         {!key && (
           <>
             <div style={label}>Admin key</div>
@@ -935,6 +966,24 @@ export const DevPanel = ({ onClose }) => {
                   refresh();
                 }
               }}>Finish all quests (no rewards)</button>
+
+            {/* ═══ v2.3.3525: JUMP THE TOUR TO A STEP ═══
+                The tour (Mayor Bro -> Farmer Bro -> Blacksmith Bro -> ...) is
+                one line, each step waiting for the last; this puts this
+                character at any step (the ones before it handed in, no
+                rewards paid), so a step can be rehearsed without playing the
+                ones before it.  The worker's /dev/tour (devtools.js). */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0' }}>
+              {TOUR_STEPS.map((t) => (
+                <button
+                  key={t.id} type="button" style={{ ...chip, minHeight: 34 }} disabled={busy || !myId}
+                  data-dev-tour={t.id}
+                  onClick={async () => {
+                    const j = await call('/dev/tour', { playerId: myId, at: t.id });
+                    if (j) { setMsg('Tour: step ' + j.step + ' of ' + j.of + ' (' + t.label + ') is on offer now.'); refresh(); }
+                  }}>{t.label}</button>
+              ))}
+            </div>
 
             {/* ═══ v2.3.2412: LIVE FLAGS ═══
                 See the note by loadFlags for why this exists.  Two jobs, and

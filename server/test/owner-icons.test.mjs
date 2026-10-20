@@ -8,7 +8,7 @@
  *      "?" beside the gold; the thirteen sheets kept in assets/, none left at
  *      the top of the repo;
  *   2. landSceneUrl: the eight lands, and nothing else (a null-prototype map);
- *   3. the places: the arena's helmet (the Saloon keeps its mug), the trade
+ *   3. the places (v2.3.3524: + the Blacksmith's Upgrade tab's hammer): the arena's helmet (the Saloon keeps its mug), the trade
  *      request's handshake (only that card), the jackpot's sack, the Pet
  *      House row's house, the free spin's wheel (the bonus spins keep the drawn
  *      one), the empty Journey page's map, the quest pins over the townsfolk
@@ -16,15 +16,28 @@
  *   4. the loading: the pins on the loading screen, the land scenes behind the
  *      Wheel's and let go on leaving it, the four animated strips no longer the
  *      Wheel's, the handshake warmed with the controls; a land's banner never
- *      uses a closed zone's strip.
+ *      uses a closed zone's strip;
  *   5. (v2.3.3511, the owner after a playtest: "new land emblems look bad
  *      enlarged (revert or show below minimap)") the land's banner is the plain
  *      plaque again and its scene a small EMBLEM under the minimap
  *      (src/ui/landEmblem.js): drawn at one picture px a device px at the most,
  *      never blown up, on every screen; the held picture, never a load; kept
  *      clear of the controls; the plate's scroll ends cut off the pictures.
+ *   6. v2.3.3526 ("Go recommended on everything"): the bag's legs and chest
+ *      the sheet's, every metal made from them; card 11's clearer five -- the
+ *      orange paw, the party's crown and pin, the auction gavel, the creator's
+ *      none sign -- under new names the code points at.
+ *   7. v2.3.3526, card 11 as the owner picked it ("Icon picks: ... T3.3 ...
+ *      T129.1"): every one of the owner's 72 codes is in the cutter's list,
+ *      already in the game, or set aside with its reason; every file the
+ *      cutter wrote is still the one it wrote (its SHA-256 recorded: a re-run
+ *      of process_icon_sheets.py, cut-small-icons.py or another older tool
+ *      fails here), at the size its rule says; the Forge tab's anvil and the
+ *      chat box's smiley are pointed at; Jump and the generic Special drawn
+ *      as faces; the party's crown the owner's T112.2.
  */
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -53,11 +66,12 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     sd.length === 8 && sd.every(([w, h]) => w >= 180 && w <= 215 && h >= 80 && h <= 112 && w > h && w * h * 4 < 100 * 1024), sd);
   const icons = Object.entries(OI.OWNER_ICON);
   const gone = icons.filter(([, v]) => !existsSync(pub(v.src))).map(([k]) => k);
-  check(`1c the six window icons are files in public/icons/ui/ (${icons.map(([k]) => k).join(', ')})`, icons.length === 6 && gone.length === 0, gone);
+  /* v2.3.3524: seven -- the Blacksmith's Upgrade tab's hammer */
+  check(`1c the seven window icons are files in public/icons/ui/ (${icons.map(([k]) => k).join(', ')})`, icons.length === 7 && gone.length === 0, gone);
   /* each drawn at its picture's own shape, written at up to 3x its CSS size and never stretched */
   const shape = gone.length ? [] : icons.map(([k, v]) => { const [w, h] = dims(v.src); return { k, w, h, css: [v.w, v.h], off: Math.abs(w / h - v.w / v.h) / (w / h) }; });
   check('1d ...each one\'s CSS size is its picture\'s shape (within 6%) and its file no bigger than 3x it',
-    shape.length === 6 && shape.every((s) => s.off < 0.06 && s.w <= 3 * s.css[0] + 1 && s.h <= 3 * s.css[1] + 1), shape);
+    shape.length === 7 && shape.every((s) => s.off < 0.06 && s.w <= 3 * s.css[0] + 1 && s.h <= 3 * s.css[1] + 1), shape);
   const pins = Object.values(OI.QUEST_PIN);
   check('1e the three quest pins, one 72 x 86 frame each, drawn 32 x 38 world px', pins.length === 3 && pins.every((u) => existsSync(pub(u)) && dims(u).join('x') === '72x86')
     && OI.QUEST_PIN_WORLD.w === 32 && OI.QUEST_PIN_WORLD.h === 38, pins);
@@ -116,6 +130,14 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     && /_drawQuestBadge\(display\._qmBadge, display\._qmFill, _ready\);/.test(er) && /display\._qmState = _ready \? 'ready' : _wait \? 'waiting' : 'offer';/.test(er));
   const mm = src('src/rendering/systems/minimapRenderer.js');
   check('3h the zones\' minimap marks a waiting quest grey too (a neutral grey: red, green and blue equal)', /const C_QUEST_WAIT = 0xb0b0b0;/.test(mm));
+  /* v2.3.3524: the owner: "Make the upgrade tab icon different for smithing.
+     Like a hammer" -- the hammer, not the currency strip's gold gem */
+  const sp = src('src/ui/panels/buildings/SmithyPanel.jsx');
+  const up = sp.slice(sp.indexOf("id: 'upgrade'"), sp.indexOf("id: 'upgrade'") + 120);
+  check('3i the Blacksmith\'s Upgrade tab wears the hammer, not the gem', /icon: OWNER_ICON\.smithHammer\.src/.test(up) && !/icon: GEM/.test(up), up);
+  const cut = src('tools/ui/cut-owner-icons.py');
+  check('3j ...cut off the crafting sheet\'s gold "Craft" button by the gradient card\'s own key (`card`)',
+    /name='icons\/ui\/smith-hammer', src='fantasy-rpg-crafting-ui-asset-sheet-1\.png', mode='card'/.test(cut) && /def cut_card\(/.test(cut));
 }
 
 /* ── 4. the loading ── */
@@ -174,6 +196,107 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   check('5g the plate\'s scroll ends are cut off the scenes (rim_cut) and a dark ground line drawn in their place',
     /def rim_cut\(im\):/.test(cut) && /def ground_line\(im\):/.test(cut) && /im = ground_line\(im\.crop\(\(0, 0, im\.width, rim\)\)\)/.test(cut)
     && /SCENE_V = '\?v=2\.3\.3511'/.test(src('src/data/ownerIcons.js')));
+}
+
+/* ── 6. v2.3.3526: "Go recommended on everything" -- the legs and chest
+   (card 10) and card 11's clearer five ── */
+{
+  /* the bag's steel legs and chest are the sheet's, framed as today's were
+     (the art's larger side 0.89 / 0.78 of a square), and every metal made from
+     them (make-metal-icons.mjs: the same size, the renderer's multiply) */
+  const legs = dims('/icons/items/greaves.webp'), chest = dims('/icons/items/chest-plate.webp');
+  const metals = ['copper', 'iron', 'blacksteel'];
+  const sameSize = metals.every((m) => dims('/icons/items/greaves-' + m + '.webp').join('x') === legs.join('x')
+    && dims('/icons/items/chest-plate-' + m + '.webp').join('x') === chest.join('x'));
+  check('6a the legs and chest are the sheet\'s (square, ~110-125 px, not the old 256), each metal made from them at their size',
+    legs[0] === legs[1] && chest[0] === chest[1] && legs[0] >= 100 && legs[0] <= 130 && chest[0] >= 100 && chest[0] <= 130 && sameSize,
+    { legs, chest, sameSize });
+  const cut = src('tools/ui/cut-owner-icons.py');
+  check('6b the cutter writes them (and says to run the metals after)', /name='icons\/items\/greaves'/.test(cut) && /name='icons\/items\/chest-plate'/.test(cut)
+    && /make-metal-icons\.mjs --only greaves,chest-plate/.test(cut));
+  /* each under a NEW name the code points at, so a re-run of the tool that
+     made today's can never put the old one back */
+  const NEW = { paw: '/icons/ui/pets-paw.webp', crown: '/icons/ui/party-crown.webp', pin: '/icons/ui/party-pin.webp',
+    gavel: '/icons/ui/bldg-auction-gavel.webp', none: '/ui/welcome/cc/cc-none.webp' };
+  const absent = Object.entries(NEW).filter(([, u]) => !existsSync(pub(u))).map(([k]) => k);
+  check('6c the five are files in public/', absent.length === 0, absent);
+  const SI = await import('../../src/data/smallIcons.js');
+  check('6d the party window\'s leader and elsewhere marks are the crown and the pin, 64 x 64 as every small mark',
+    /party-crown\.webp/.test(SI.SMALL_ICON.partyLeader) && /party-pin\.webp/.test(SI.SMALL_ICON.partyAway)
+    && dims(NEW.crown).join('x') === '64x64' && dims(NEW.pin).join('x') === '64x64', SI.SMALL_ICON);
+  const more = src('src/ui/mobile/dash/MorePanel.jsx'), pets = src('src/ui/mobile/dash/PetsPanel.jsx'), house = src('src/ui/panels/PetHousePanel.jsx');
+  check('6e the orange paw on More\'s Pets tile, the Pets page and the Pet House; the brown one nowhere',
+    [more, pets, house].every((t) => t.indexOf('/icons/ui/pets-paw.webp') >= 0 && t.indexOf('evt-pets.webp') < 0));
+  const bl = src('src/data/buildings.js'), vp = src('src/ui/panels/buildings/VendorPanel.jsx');
+  check('6f the Auction House\'s door and window wear the gavel', /iconSrc: '\/icons\/ui\/bldg-auction-gavel\.webp/.test(bl)
+    && /lsHeader\('auction-gavel'/.test(vp) && !/lsHeader\('auctionhouse'/.test(vp));
+  const bt = src('src/ui/BroTown.jsx');
+  check('6g the creator\'s None tile is the plain no-entry sign, and the species\' Human and the eyes\' Normal keep the bald head',
+    /\(cat === 'species' \|\| cat === 'eyestyle'\) \? '\/ui\/welcome\/cc\/cc-no-hair\.webp\?v=' : '\/ui\/welcome\/cc\/cc-none\.webp\?v='/.test(bt));
+}
+
+/* ── 7. v2.3.3526: card 11, the owner's own picks ── */
+{
+  /* the owner's message, word for word (1b and 2a were #1020's) */
+  const OWNER = ('T3.3, T20.2, T54.4, T61.1, T64.1, T98.3, T103.2, T105.1, T106.1, T112.2, T114.2, T116.1, T124.1, T129.1, '
+    + 'T6.1, T7.2, T9.4, T11.1, T29.1, T30.1, T104.3, T8.3, T19.2, T24.1, T26.1, T31.1, T32.1, T33.1, T36.1, T37.1, T38.2, '
+    + 'T50.2, T51.1, T52.2, T55.2, T59.1, T60.1, T62.1, T63.2, T65.2, T69.1, T69.2, T70.2, T71.2, T72.2, T74.2, T75.2, T76.2, '
+    + 'T77.1, T78.1, T84.3, T85.3, T90.3, T91.3, T92.1, T97.4, T99.2, T100.3, T101.3, T102.1, T107.2, T108.2, T109.1, T111.1, '
+    + 'T113.1, T115.3, T118.1, T121.1, T123.1, T125.1, T127.1, T128.1').split(', ');
+  const spec = JSON.parse(src('tools/ui/owner-picks-card11.json'));
+  const inList = new Set(spec.picks.map((e) => e.code));
+  const accounted = OWNER.filter((c) => inList.has(c) || (spec.done && c in spec.done) || (spec.dropped && c in spec.dropped));
+  const extra = [...inList].filter((c) => OWNER.indexOf(c) < 0);
+  check('7a every one of the owner\'s 72 codes is cut, already in the game (5 from the first cut), or set aside with its reason (T69.1, the same star as T69.2)',
+    OWNER.length === 72 && accounted.length === 72 && extra.length === 0 && Object.keys(spec.done).length === 5 && Object.keys(spec.dropped).join() === 'T69.1',
+    { missing: OWNER.filter((c) => accounted.indexOf(c) < 0), extra });
+
+  const sums = Object.create(null);
+  for (const line of src('tools/ui/owner-picks-card11.sha256').split('\n')) {
+    const m = line.match(/^([0-9a-f]{64})\s+(\S+)$/);
+    if (m) sums[m[2]] = m[1];
+  }
+  const fileOf = (e, grey) => 'public/' + e.name + (grey ? '-grey' : '') + '.' + (e.ext || 'webp');
+  const want = [];
+  for (const e of spec.picks) { want.push([e, fileOf(e)]); if (e.grey) want.push([e, fileOf(e, true)]); }
+  const changed = want.filter(([, f]) => !sums[f] || !existsSync(new URL(f, root))
+    || createHash('sha256').update(readFileSync(new URL(f, root))).digest('hex') !== sums[f]).map(([e, f]) => e.code + ' ' + f);
+  check(`7b all ${want.length} files the cutter wrote are still the owner's picks, byte for byte (another tool writing over one fails here: run tools/ui/cut-owner-icons.py --force --only <code>)`,
+    want.length === 71 && changed.length === 0, changed);
+
+  /* each is the size its rule says (a PNG's from its IHDR) */
+  const size = (f) => {
+    const b = readFileSync(new URL(f, root));
+    if (f.endsWith('.png')) return [b.readUInt32BE(16), b.readUInt32BE(20)];
+    return dims(f.slice('public'.length));
+  };
+  const wrong = [];
+  for (const e of spec.picks) {
+    const [w, h] = size(fileOf(e));
+    const o = e.out;
+    const ok = o.frame ? (w === o.frame[0] && h === o.frame[1])
+      : o.disc ? (w === o.disc && h === o.disc)
+        : o.tight ? Math.max(w, h) === o.tight : false;
+    if (!ok) wrong.push({ code: e.code, file: fileOf(e), w, h, out: o });
+  }
+  check('7c each at its rule\'s size: today\'s canvas (frame), a square disc, or tight to its larger side', wrong.length === 0, wrong);
+
+  const smithy = src('src/ui/panels/buildings/SmithyPanel.jsx'), chat = src('src/ui/mobile/ChatBubble.jsx');
+  check('7d the Forge tab wears the anvil (not the copper sword, an item\'s own picture), the chat box the owner\'s smiley (not the drawn one)',
+    /id: 'forge', label: 'Forge', icon: '\/icons\/ui\/tab-forge\.webp/.test(smithy) && /src="\/icons\/ui\/chat-emotes\.webp/.test(chat)
+    && !/<circle cx="9" cy="10" r="1\.2"/.test(chat) && existsSync(pub('/icons/ui/tab-forge.webp')) && existsSync(pub('/icons/ui/chat-emotes.webp')));
+
+  const cs = src('src/ui/panels/controlSkin.jsx'), sb = src('src/ui/panels/SpecialButton.jsx'), jb = src('src/ui/panels/JumpButton.jsx');
+  check('7e Jump and the generic Special are round pictures drawn as the button\'s face (AbilityFace), at a new address, their greys beside them',
+    /export function AbilityFace\(props\)/.test(cs) && /AbilityFace, \{ size: size, name: 'special', grey: grey \}/.test(sb)
+    && /AbilityFace, \{ size: size, name: 'jump' \}/.test(jb) && /const ABILITY_ART_V = '2\.3\.3526'/.test(cs)
+    && /const SPECIAL_ART_V = '2\.3\.3526'/.test(cs) && !/JumpIcon|StarburstIcon/.test(cs + sb + jb)
+    && ['jump', 'special', 'burst', 'special-sword', 'special-bow'].every((n) => existsSync(pub('/ui/controls/abil-' + n + '-grey.webp'))));
+  const cut = src('tools/ui/cut-owner-icons.py');
+  check('7f the party leader\'s crown is the owner\'s T112.2 (sheet 3\'s), not the first sheet\'s',
+    /name='icons\/ui\/party-crown', src='brotown-rpg-ui-icon-sheet-2\.png', mode='alpha',\s*box=\(1160, 540, 1256, 620\)/.test(cut));
+  const rd = ['talk', 'door', 'sleep', 'farm-dig', 'farm-plant', 'farm-water', 'farm-feed', 'farm-harvest'];
+  check('7g the right stick\'s eight pictures are asked for at a new address', rd.every((n) => cs.indexOf("'/ui/controls/" + n + ".webp?v=2.3.3526'") >= 0));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

@@ -12,9 +12,12 @@
  *   1. the worker advertises caps.hardenmats (and caps.harden);
  *   2. sixty copper ore smelted at the Blacksmith (Smithing 5, twelve bars),
  *      a wooden greatsword forged into the hand -- the wood tier, so copper
- *      bars;
+ *      bars;  v2.3.3524: a COPPER greatsword from four of them (the wood tier
+ *      is not forged any more -- the owner: "'wood greatsword' is not an
+ *      actual weapon in the game"), eight left;  v2.3.3525: five of them (the
+ *      tour), seven left;
  *   3. the Upgrade tab's Harden row: the copper bar's picture "12/1" beside
- *      the gold "/500" and the 80%;
+ *      the gold "/500" and the 80%;  v2.3.3524: "8/1"; v2.3.3525: "7/1" (five bars a forge);
  *   4. Harden until the bars run short: before every attempt the row shows
  *      the ladder's price for its level (H+1 bars, 500 x 2^H gold), and the
  *      worker takes exactly that -- its answer says the same bars; a failure's
@@ -34,6 +37,9 @@
  *      "Do woodworking"; a pine bow is tier 1, 5 x 1), else "Gated on
  *      Blacksmithing" -- and against that worker Woodworking 5 is set (the
  *      admin lever) before the attempt, which it would refuse at Woodworking 1;
+ *      v2.3.3524: against caps.forgeladder "Needs Woodworking Lv1", the level
+ *      that makes pine (the owner: "Hardening should only require the same
+ *      smithing level as it takes to smithing that item tier");
  *   7. no page errors.
  * Pictures: tools/qa/mp/out/hardenbars-*.png.
  */
@@ -107,7 +113,9 @@ async function body({ P, wsPort, rec, errors }) {
   await P.page.waitForFunction(() => { const q = (window._gameState.current.rpg || {})._quests || {}; return q.tut_1 === 'turnedIn'; }, null, { timeout: 8000 }).catch(() => {});
   await H.closeNpcDialogue(P).catch(() => {});
   await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 60 });
-  await H.grant(wsPort, me, 'item', { invKey: 'wood_pine_log', count: 3 });
+  /* v2.3.3524: no pine logs -- they were the wood tier's three, and a copper
+     greatsword is forged from the bars; three left over made the Harden tab's
+     twelve-log count read fifteen */
   await H.grant(wsPort, me, 'gold', { amount: 30000 });
   await P.page.waitForFunction(() => { const R = window._gameState.current.rpg || {}; return ((R.inventory || {}).ore_copper_ore || 0) >= 60 && (R.coins || 0) >= 30000; }, null, { timeout: 8000 }).catch(() => {});
 
@@ -153,12 +161,14 @@ async function body({ P, wsPort, rec, errors }) {
   }, null, { timeout: 10000 }).catch(() => {});
   await P.page.waitForTimeout(800);
   await tab('forge');
-  await P.page.click('[data-forge-go="wood"]').catch(() => {});
-  await P.page.waitForFunction(() => { const w = window._gameState.current.rpg.weapon; return w && w.gearBase === 'wood'; }, null, { timeout: 8000 }).catch(() => {});
+  /* v2.3.3524: the copper greatsword (four of the bars), the wood tier gone;
+     v2.3.3525: five of them (the tour) */
+  await P.page.click('[data-forge-go="copper"]').catch(() => {});
+  await P.page.waitForFunction(() => { const w = window._gameState.current.rpg.weapon; return w && w.gearBase === 'copper'; }, null, { timeout: 8000 }).catch(() => {});
   const b0 = await bag();
   const lvl = await H.readState(P, (S) => ((S.rpg.lifeSkills || {}).blacksmithing || {}).level || 0);
-  rec.ok(`setup: twelve copper bars smelted (Smithing ${lvl}), a wooden greatsword in hand at H0`, b0.bars === 12 && lvl >= 5 && !!b0.w && b0.w.gb === 'wood' && b0.w.h === 0, { b0, lvl });
-  if (!(b0.w && b0.w.gb === 'wood')) return;
+  rec.ok(`setup: twelve copper bars smelted (Smithing ${lvl}), five forged into a copper greatsword in hand at H0`, b0.bars === 7 && lvl >= 5 && !!b0.w && b0.w.gb === 'copper' && b0.w.h === 0, { b0, lvl });
+  if (!(b0.w && b0.w.gb === 'copper')) return;
 
   /* ── 3. the Harden row ── */
   await tab('upgrade');
@@ -182,7 +192,7 @@ async function body({ P, wsPort, rec, errors }) {
   });
   const r0 = await readRow();
   rec.ok(`the row: the copper bar's picture "${r0 && r0.chip}" beside the gold "/${r0 && r0.goldNeed}" and 80% ("${r0 && r0.text}")`,
-    !!r0 && r0.bar === 'bar_copper' && r0.chip === '12/1' && r0.chipImg && r0.goldNeed === 500 && /80%/.test(r0.text) && r0.on, r0);
+    !!r0 && r0.bar === 'bar_copper' && r0.chip === '7/1' && r0.chipImg && r0.goldNeed === 500 && /80%/.test(r0.text) && r0.on, r0);
   await shot(P, 'row');
 
   /* ── 4. harden until the bars run short ── */
@@ -263,13 +273,16 @@ async function body({ P, wsPort, rec, errors }) {
      worker asks (5 x the tier) against caps.hardenwoodskill, else the old
      words (WoodworkPanel.jsx `data-harden-gate`) */
   const woodGate = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.hardenwoodskill));
+  /* v2.3.3524: against caps.forgeladder the level that makes pine, 1 */
+  const ladder = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.forgeladder));
+  const pineLvl = ladder ? 1 : 5;
   const gate0 = await P.page.evaluate(() => {
     const el = document.querySelector('[data-harden-gate]');
     return el ? { gate: el.getAttribute('data-harden-gate'), text: el.textContent.trim() } : null;
   });
-  rec.ok(`...and its line names the skill it asks for: ${woodGate ? 'Woodworking Lv5 (caps.hardenwoodskill)' : 'Blacksmithing (an older worker)'} ("${gate0 && gate0.text}")`,
-    !!gate0 && (woodGate ? gate0.gate === 'woodworking:5' && /Needs Woodworking Lv5$/.test(gate0.text)
-      : gate0.gate === 'blacksmithing' && /Gated on Blacksmithing$/.test(gate0.text)), { woodGate, gate0 });
+  rec.ok(`...and its line names the skill it asks for: ${woodGate ? 'Woodworking Lv' + pineLvl + ' (caps.hardenwoodskill' + (ladder ? ', caps.forgeladder' : '') + ')' : 'Blacksmithing (an older worker)'} ("${gate0 && gate0.text}")`,
+    !!gate0 && (woodGate ? gate0.gate === 'woodworking:' + pineLvl && new RegExp('Needs Woodworking Lv' + pineLvl + '$').test(gate0.text)
+      : gate0.gate === 'blacksmithing' && /Gated on Blacksmithing$/.test(gate0.text)), { woodGate, ladder, gate0 });
 
   /* the Harden choice: two by two with Bow, Staff and Traps */
   const make = await P.page.evaluate(() => {

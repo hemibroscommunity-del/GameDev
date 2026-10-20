@@ -33,6 +33,10 @@ import { SkillsPanel } from './panels/SkillsPanel.jsx';
 import { StatScreenPanel } from './panels/StatScreenPanel.jsx';
 /* v2.3.870: quest panel extraction (logic already in @/game/quests.js). */
 import { QuestPanel } from './panels/QuestPanel.jsx';
+import RaceHud from './mobile/RaceHud.jsx'; /* v2.3.3525: Lil Bro's race on the screen */
+import { raceTick, raceHeld, raceDriveNpc } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js judges it) */
+import { tourOffer } from '@/game/questRoute.js'; /* v2.3.3525: the tour's next step (where a step's door stands is game/questWays.js's since v2.3.3522) */
+import { TOUR_MEET } from '@/game/tour.js'; /* v2.3.3525 */
 import { QuestBannerLayer } from './panels/QuestBannerLayer.jsx'; /* v2.3.3030: the quest banners in the owner's art */
 import { InventoryPanel } from './panels/InventoryPanel.jsx';
 import { TradePanel } from './panels/TradePanel.jsx';
@@ -406,6 +410,7 @@ import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordD
 import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits } from '@/game/lifeSkillRewards.js'; /* tickGatherHits v2.3.2956 */
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
+import '@/game/soundStudio.js';   /* v2.3.3523: the sound studio's "heard just now" and its way in (the Test panel, ?sounds) */
 import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
 import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3434: the forge heard at work */
 import { tickMoveSounds, tickDanceMusic } from '@/game/moveSounds.js';   /* v2.3.3434: the emotes and moves heard; v2.3.3462: your dance's beat */
@@ -883,8 +888,11 @@ function _spawnWheelNpcs(S) {
   /* v2.3.3121: Beastmaster Bro only against a worker that knows his quests
      (`cap` on his WHEEL_TOWNSFOLK row; game/trapping.js beastmasterOn) */
   var _bmOn = beastmasterOn(S);
+  /* v2.3.3525: and any other `cap` -- the tour's Woodworker Bro and Farmer
+     Bro only against a worker that knows the tour (caps.tour) */
+  var _capOn = function (c) { return c === 'beastmaster' ? _bmOn : !!(S && S._serverCaps && S._serverCaps[c]); };
   WHEEL_TOWNSFOLK.forEach(function (f) {
-    if (f.cap === 'beastmaster' && !_bmOn) return;
+    if (f.cap && !_capOn(f.cap)) return;
     var door = doors.filter(function (d) { return d.id === f.door; })[0];
     if (!door) return;
     NPC_DATA.filter(function (n) { return n.name === f.name; }).forEach(function (npc) {
@@ -2332,8 +2340,15 @@ export var BroTown = function BroTown(_ref0) {
      creator always shows exactly one category.  v2.3.1251: always a TYPE
      key; NameModal derives the five-group tab state (Hair/Face/Top/
      Bottom/Feet) from it.  'hair' is the landing type (the mockup's
-     Hair group opens on its Hair subtype). */
-  var _catState = useState('hair'),
+     Hair group opens on its Hair subtype).
+     v2.3.3526 (the owner, of the 2026-10-19 review's "which tab the creator
+     opens on": "Go recommended on everything"): it opens on SKIN -- the
+     species and skin tone are what the rest is built on, and the Skin tab's
+     card shows the drawing (a tattoo) at once; Hair is one tap away.  The
+     camera still opens on the whole figure (previewZoom below), and a game
+     with no species and no skin recolour falls back to 'hair' (NameModal
+     `_activeType`). */
+  var _catState = useState('skin'),
     activeCat = _catState[0],
     setActiveCat = _catState[1];
   /* v2.3.1251: the v2.3.834/835 collapse-on-select state (objPicked/
@@ -2671,7 +2686,7 @@ export var BroTown = function BroTown(_ref0) {
          which is as wide as "Human" and goes above the icon for the same
          reason. */
       ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: (cat === 'species' || cat === 'eyestyle') ? 'column-reverse' : 'column', alignItems: 'center', justifyContent: 'center' } },
-          /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/cc/cc-no-hair.webp?v=' + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
+          /*#__PURE__*/React.createElement("img", { src: ((cat === 'species' || cat === 'eyestyle') ? '/ui/welcome/cc/cc-no-hair.webp?v=' : '/ui/welcome/cc/cc-none.webp?v=') + BUILD_INFO.version /* v2.3.3526: the owner's sheet's plain no-entry sign (card 11) where None means nothing -- the bald head said "no hair" on the glasses' and shirts' rows too; the species' "Human" and the eyes' "Normal" keep the plain bald head, a human with nothing added, not "no human" */, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
           /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, (cat === 'species' || cat === 'eyestyle') ? opt.name : "None"))   /* v2.3.2682: on the species strip 'none' is the Human; v2.3.3481: on the Eyes strip, Normal */
       /* v2.3.3481: the 2026-10-19 UI review -- the eye styles' tiles are
          whole heads and shoulders (make_eyestyle_thumbs.py), so the eyes, the
@@ -5267,6 +5282,9 @@ export var BroTown = function BroTown(_ref0) {
            player at the hub exit so the proximity trigger stays armed and
            the entry runs the instant the load resolves. */
         if (S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold || S._avatarArtHold) finalSpd = 0;   /* v2.3.3520: _avatarArtHold -- veiled while the straight-in road makes your bro's pictures (game/avatarHold.js) */   /* v2.3.3136: _farmArtHold -- veiled while your farm loads (game/farmTrip.js); v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
+        /* v2.3.3525: on the line for Lil Bro's countdown (game/race.js) -- the
+           worker calls a lap begun away from it a false start */
+        if (raceHeld(S)) finalSpd = 0;
         /* v2.3.2996: a monster's element on you -- a snowman's chill walks you
            at CHILL_MULT, a blue slime's goo holds you where you stand
            (game/elemHits.js; the worker said so on the hit). */
@@ -6952,6 +6970,9 @@ export var BroTown = function BroTown(_ref0) {
           }
         }
 
+        /* v2.3.3525: Lil Bro's race -- the countdown's beats, the gun, the end
+           (game/race.js) */
+        raceTick(S, Date.now());
         /* Update NPCs — §19.1 companion follow + quest interaction + wander */
         if (S.npcs) {
           S.npcs.forEach(function (npc) {
@@ -6963,6 +6984,12 @@ export var BroTown = function BroTown(_ref0) {
                 npc.x = npc.spawnX;
                 npc.y = npc.spawnY;
               }
+              return;
+            }
+            /* v2.3.3525: racing, Lil Bro runs the worker's path at the
+               worker's speed (game/race.js), not his wander */
+            if (raceDriveNpc(S, npc, Date.now())) {
+              if (npc.chatBubble && Date.now() - npc.chatBubble.ts > 5000) npc.chatBubble = null;
               return;
             }
 
@@ -8974,6 +9001,13 @@ export var BroTown = function BroTown(_ref0) {
     var door = wheelTownDoors().filter(function (d) { return d.id === npc.keeperOf; })[0];
     return enterWheelDoor(stateRef.current, door, { setBuildingPanel: setBuildingPanel });
   }, []);
+  /* v2.3.3525: a tour giver's "how's it going" line opens the building he
+     stands at (QuestPanel's action, game/tour.js `opens`): the same door, the
+     same window, the same visit counted, as walking to it */
+  var openWheelPlot = useCallback(function (plot) {
+    var door = wheelTownDoors().filter(function (d) { return d.id === plot; })[0];
+    return !!door && enterWheelDoor(stateRef.current, door, { setBuildingPanel: setBuildingPanel });
+  }, []);
   /* v2.3.3258: a QA probe -- open any building's window without walking to
      its door, so mp-buildingrooms can look at all sixteen rooms behind their
      menus quickly (the doors themselves are walked to in mp-wheeldoors) */
@@ -9471,7 +9505,9 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.3343: the blade drawn (two beep()s played nothing; SOUND-GAPS).
        Stamped as the gesture's own sound so the swap button's generic menu
        click yields to it (uiSfxDelegate: a specific sound wins the tap). */
-    cue('weaponSwap');
+    /* v2.3.3523: the weapon you took, heard (the owner: "Change weapon
+       switch sound") -- the blade, the bow's wood or the staff's shimmer */
+    if (nextSlot === 'ranged') cue('swapBow'); else if (nextSlot === 'staff') cue('swapStaff'); else cue('swapSword');
     try { BT_AUDIO._uiSpecificAt = BT_AUDIO._now(); } catch (e) { /* sound only */ }
     S2._weaponSwapFlash = Date.now();
   }, []);
@@ -9485,7 +9521,7 @@ export var BroTown = function BroTown(_ref0) {
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = slot === 'melee' ? (_S2$rpg$weapon2 = S2.rpg.weapon) === null || _S2$rpg$weapon2 === void 0 ? void 0 : _S2$rpg$weapon2.name : slot === 'ranged' ? (_S2$rpg$rangedWeapon2 = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon2 === void 0 ? void 0 : _S2$rpg$rangedWeapon2.name : 'Staff';
     pushDmgPopup(S2, S2.player.x, S2.player.y - 40, wpnName, '#D8A94D');
-    cue('weaponSwap');   /* v2.3.3343: as the cycle's */
+    if (slot === 'ranged') cue('swapBow'); else if (slot === 'staff') cue('swapStaff'); else cue('swapSword');   /* v2.3.3343: as the cycle's (v2.3.3523: by weapon) */
   }, []);
   var _desktopSpecialAttack = useCallback(function () {
     doSpecialAttack();
@@ -12954,7 +12990,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 700,
       color: '#D8A94D'
     }
-  }, "\uD83C\uDF1F Well Rested +10% XP \xB7 ", Math.ceil((rpgState._wellRestedUntil - Date.now()) / 60000), "min")), showSocialPanel && /*#__PURE__*/React.createElement(SocialPanel, { blockedList: blockedList, friendsList: friendsList, mutedList: mutedList, setBlockedList: setBlockedList, setFriendsList: setFriendsList, setMutedList: setMutedList, setShowSocialPanel: setShowSocialPanel, stateRef: stateRef }), showClanPanel && rpgState && /*#__PURE__*/React.createElement(ClanPanel, { rpgState: rpgState, clanCreateMode: clanCreateMode, setClanCreateMode: setClanCreateMode, clanData: clanData, setClanData: setClanData, setRpgState: setRpgState, setShowClanPanel: setShowClanPanel, stateRef: stateRef }), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), /* v2.3.3066: a clan invite raises its own card (ClanInviteCard) */ clanInvite && !duelRequest && /*#__PURE__*/React.createElement(ClanInviteCard, { stateRef: stateRef, invite: clanInvite, onDone: function onDone() { setClanInvite(null); } }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }), party && /*#__PURE__*/React.createElement(PartyHUD, { party: party, setParty: setParty, stateRef: stateRef }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
+  }, "\uD83C\uDF1F Well Rested +10% XP \xB7 ", Math.ceil((rpgState._wellRestedUntil - Date.now()) / 60000), "min")), showSocialPanel && /*#__PURE__*/React.createElement(SocialPanel, { blockedList: blockedList, friendsList: friendsList, mutedList: mutedList, setBlockedList: setBlockedList, setFriendsList: setFriendsList, setMutedList: setMutedList, setShowSocialPanel: setShowSocialPanel, stateRef: stateRef }), showClanPanel && rpgState && /*#__PURE__*/React.createElement(ClanPanel, { rpgState: rpgState, clanCreateMode: clanCreateMode, setClanCreateMode: setClanCreateMode, clanData: clanData, setClanData: setClanData, setRpgState: setRpgState, setShowClanPanel: setShowClanPanel, stateRef: stateRef }), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState, openPlot: openWheelPlot }), /* v2.3.3525: Lil Bro's race on the screen */ /*#__PURE__*/React.createElement(RaceHud, { stateRef: stateRef }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), /* v2.3.3066: a clan invite raises its own card (ClanInviteCard) */ clanInvite && !duelRequest && /*#__PURE__*/React.createElement(ClanInviteCard, { stateRef: stateRef, invite: clanInvite, onDone: function onDone() { setClanInvite(null); } }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }), party && /*#__PURE__*/React.createElement(PartyHUD, { party: party, setParty: setParty, stateRef: stateRef }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
    prototype era -- the step machine ran all along, only the display was
    gated, so veterans' bt_tutorial already reads 7/10 and never see it) */
   /* v2.3.1235: §6 — the banner yields to every blocking decision
@@ -13523,7 +13559,40 @@ export var BroTown = function BroTown(_ref0) {
         qid = _ref193[0];
       return QUEST_CHAINS[qid];
     }).filter(Boolean);
-    if (activeQuests.length === 0) return null;
+    if (activeQuests.length === 0) {
+      /* ═══ v2.3.3525: BETWEEN TWO STEPS OF THE TOUR, WHO IS NEXT ═══
+         After a hand-in there is no quest in hand and this card stood empty --
+         the moment a reviewer most needs a line.  It says who gives the step
+         the tour suggests next and where he stands; the gold road leads to him
+         (questRoute.js tourOffer).  Takes no taps. */
+      var _to = null;
+      try { _to = tourOffer((stateRef.current && stateRef.current.rpg) || rpgState, stateRef.current); } catch (e) { _to = null; }
+      if (!_to) return null;
+      return /*#__PURE__*/React.createElement("div", {
+        'data-quest-hud': '1',
+        'data-quest-hud-next': _to.quest.id,
+        style: {
+          position: 'absolute', top: 56, left: 8, zIndex: 17, pointerEvents: 'none',
+          background: 'rgba(17,25,29,.85)', padding: '4px 10px', borderRadius: 6,
+          border: '1px solid rgba(216,169,77,.35)', maxWidth: 248
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: { fontSize: 13, fontWeight: 700, lineHeight: 1.25, display: 'flex', alignItems: 'center', gap: 6, color: '#D8A94D' }
+      }, /*#__PURE__*/React.createElement("img", {
+        src: '/icons/ui/panel-quests.webp', alt: 'Quest', draggable: false,
+        style: { width: 18, height: 18, flex: '0 0 auto', objectFit: 'contain' }
+      }), /*#__PURE__*/React.createElement("span", { style: { flex: 1, minWidth: 0 } }, 'Next: ' + _to.quest.title)),
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontSize: 11, lineHeight: 1.3, marginTop: 1, color: 'rgba(255,255,255,.72)' }
+      }, 'Talk to ' + _to.npc + (TOUR_MEET[_to.npc] ? ' ' + TOUR_MEET[_to.npc] : '')),
+      /* v2.3.3525: the whole town opens after the Mayor's first quest, so this
+         is a suggestion -- say how many others have work too, and where they
+         show (the gold "!" over a head, on the minimap and the world map) */
+      _to.more > 0 && /*#__PURE__*/React.createElement("div", {
+        'data-quest-hud-more': _to.more,
+        style: { fontSize: 11, lineHeight: 1.3, marginTop: 1, color: 'rgba(216,169,77,.85)' }
+      }, '+' + _to.more + ' more: look for a gold ! on your map'));
+    }
     /* v2.3.3522: the quest you TRACK (the quest page's "Track this quest"),
        when it is one of these -- the owner tracked one and nothing outside the
        quest list changed ("I tapped track quest in quest menu but no golden

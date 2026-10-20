@@ -18,8 +18,8 @@ export const SALVAGE = Object.freeze({
     iron: Object.freeze({ bar: 'bar_iron', gearBase: 'iron', name: 'Iron' }),
     blacksteel: Object.freeze({ bar: 'bar_black_steel', gearBase: 'steel', name: 'Black Steel' }),
   }),
-  COST_BARS: 4,
-  BARS: 2,
+  COST_BARS: 5,   /* v2.3.3525: five bars a piece (server/src/salvage.js) */
+  BARS: 2,        /* half, rounded down */
   GRADES: Object.freeze(['normal', 'rare', 'elite', 'godly']),
   ESSENCE_GRADES: Object.freeze(['rare', 'elite', 'godly']),
   WEAPON_TYPES: Object.freeze(['sword', 'greatsword']),

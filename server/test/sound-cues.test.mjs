@@ -43,6 +43,16 @@
  *      explosion, the townsfolk's voices; the land's air, the sea's, the
  *      crowd's and a fire's beds, loaded where they play and let go; and the
  *      dance's beat on the music deck, never decoded.
+ *  12. v2.3.3523, the sound studio (the owner: "The labels should tell you
+ *      where they go.  Might need to build a quick studio to show which
+ *      sounds belong where"): every cue, and every key of BT_AUDIO's
+ *      HIT_VOICES, PROP_SOUNDS, SHOT_SOUNDS, ELEM_SOUNDS, MONSTER_NOISE_CLIPS
+ *      and the footstep clips, has its "where it plays" in data/soundStudio.js,
+ *      in a section the studio has -- a new sound is labelled in the same
+ *      change -- and nothing there names a sound that is gone; every other
+ *      row plays a recording in SFX_MANIFEST or a BT_AUDIO helper that
+ *      exists; game/soundStudio.js tags only helpers that exist, and cue()
+ *      says its cue's name while its samples start.
  */
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 
@@ -200,7 +210,7 @@ function namesIn(code) {
 const callRe = (fn) => new RegExp('(?<![\\w.$])' + fn + '\\(', 'g');
 
 const used = new Set(), unknown = [], indirect = [], unimported = [];
-const PLAYERS = ['cue', 'cueAt', 'cuePeer', 'peerShare', 'peerStepShare', 'peerOwn'];
+const PLAYERS = ['cue', 'cueAt', 'cuePeer', 'peerShare', 'peerStepShare', 'peerOwn', 'cueLater' /* v2.3.3523 */];
 for (const p of files) {
   if (p === PLAYER) continue;
   const text = src(p);
@@ -209,11 +219,11 @@ for (const p of files) {
     for (const m of text.matchAll(callRe(fn))) {
       if (/function\s+$/.test(text.slice(Math.max(0, m.index - 12), m.index))) continue;
       if (!imports.includes(fn)) unimported.push(p + ' ' + fn);
-      if (fn !== 'cue' && fn !== 'cueAt' && fn !== 'cuePeer') continue;
+      if (fn !== 'cue' && fn !== 'cueAt' && fn !== 'cuePeer' && fn !== 'cueLater') continue;
       const args = argsAt(text, m.index + fn.length);
       const line = text.slice(0, m.index).split('\n').length;
       if (!args) { unknown.push(p + ':' + line + ' unreadable'); continue; }
-      const arg = fn === 'cue' ? args[0] : args[1];
+      const arg = (fn === 'cue' || fn === 'cueLater') ? args[0] : args[1];
       const names = namesIn(arg || '');
       if (!names.length) { indirect.push({ p, line, arg }); continue; }
       for (const n of names) { if (has(EVENT_SOUNDS, n)) used.add(n); else unknown.push(p + ':' + line + ' ' + n); }
@@ -251,9 +261,14 @@ for (const p of files) {
       return out;
     },
   };
+  /* v2.3.3523: the sound studio plays EVERY cue for the owner to hear (its
+     ▶); that is no place in the game playing one, so it is no use here --
+     else 5d could never find a dead cue */
+  const STUDIO = 'src/ui/panels/SoundStudio.jsx name';
   const strange = [];
   for (const c of indirect) {
     const key = c.p + ' ' + c.arg;
+    if (key === STUDIO) continue;
     if (!has(KNOWN, key)) { strange.push(c); continue; }
     const names = KNOWN[key]();
     if (!names.length) strange.push({ ...c, why: 'no names found where it is set' });
@@ -561,12 +576,15 @@ for (const p of files) {
 
   /* the sources */
   const CUT = src('tools/audio/cut_owner_sounds.py');
-  const srcs = [...new Set([...CUT.matchAll(/'((?:player|ui|emote|world|npc)\/[^']+\.mp3)'/g)].map((m) => m[1]))];
-  /* the 21st, "Grunt 1", is the sprint's push-off (the owner's own ask; its
-     cutter keeps it in assets/sfx-source/voice/) */
+  const srcs = [...new Set([...CUT.matchAll(/'((?:player|ui|emote|world|npc|voice)\/[^']+\.mp3)'/g)].map((m) => m[1]))];
+  /* v2.3.3523: the sprint's grunt is the owner's angry grunt now (the effort;
+     tools/audio/cut_sprint_voice.py, assets/sfx-source/player/), and their
+     "Grunt 1" (voice/, it sounds hit) is cut here as the second hurt sound */
   check(`11zd the owner's recordings (${srcs.length} cut here -- the 21 less the sprint's grunt, and the splash and chime sent after -- and the sprint's grunt) are kept in assets/sfx-source/, none left at the top of the project`,
     srcs.length === 22 && srcs.every((f) => existsSync(new URL('assets/sfx-source/' + f, root)))
-    && existsSync(new URL('assets/sfx-source/voice/freesound_community-grunt-1-85280.mp3', root))
+    && srcs.includes('voice/freesound_community-grunt-1-85280.mp3') && !srcs.includes('player/freesound_community-angry-grunt-103204.mp3')
+    && existsSync(new URL('assets/sfx-source/player/freesound_community-angry-grunt-103204.mp3', root))
+    && /angry-grunt-103204\.mp3/.test(src('tools/audio/cut_sprint_voice.py'))
     && readdirSync(new URL('./', root)).filter((f) => /\.mp3$/i.test(f)).length === 0, srcs.filter((f) => !existsSync(new URL('assets/sfx-source/' + f, root))));
 
   /* the two sent after: the swim's splash and the points' chime */
@@ -589,6 +607,74 @@ for (const p of files) {
   check('11zi ...played on the worker\'s word: its confirmation of a spend (prog3_allocated, and the old stat_allocated), never the press',
     /cue\('pointsSpent'\)/.test(caseOf(WSC, 'prog3_allocated')) && /cue\('pointsSpent'\)/.test(caseOf(WSC, 'stat_allocated'))
       && !/pointsSpent/.test(src('src/ui/mobile/sheet/HeroExpanded.jsx')));
+}
+
+/* ── 12. v2.3.3523: the sound studio, every sound labelled ── */
+{
+  const ST = await import('../../src/data/soundStudio.js');
+  const { MONSTER_NOISE_CLIPS } = await import('../../src/data/monsterNoiseClips.js');
+  const { FOOTSTEP_CLIPS } = await import('../../src/data/footstepClips.js');
+  const SECTIONS = new Set(ST.STUDIO_SECTIONS.map((x) => x[0]));
+  const label = (v) => typeof v === 'string' && v.trim().length >= 4;
+  /* a BT_AUDIO table's top-level keys, read off gameDisplay.js's text */
+  const tableKeys = (name) => {
+    const a = GD.indexOf('BT_AUDIO.' + name + ' = {');
+    if (a < 0) return null;
+    const out = [];
+    for (const ln of GD.slice(a).split('\n').slice(1)) {
+      if (/^\};/.test(ln)) break;
+      const m = /^ {2}(['"]?)([A-Za-z0-9_-]+)\1:/.exec(ln);
+      if (m) out.push(m[2]);
+    }
+    return out;
+  };
+  const badCues = NAMES.filter((n) => !(has(ST.CUE_PLACES, n) && SECTIONS.has(ST.CUE_PLACES[n][0]) && label(ST.CUE_PLACES[n][1])));
+  const staleCues = Object.keys(ST.CUE_PLACES).filter((n) => !has(EVENT_SOUNDS, n));
+  check(`12a every cue (${NAMES.length}) says where it plays, in one of the studio's sections`, badCues.length === 0, badCues);
+  check('12b ...and the studio names no cue that is gone', staleCues.length === 0, staleCues);
+  const pairs = [
+    ['HIT_VOICES', ST.HIT_VOICE_PLACES], ['PROP_SOUNDS', ST.PROP_PLACES], ['SHOT_SOUNDS', ST.SHOT_PLACES], ['ELEM_SOUNDS', ST.ELEM_PLACES],
+  ];
+  for (const [t, places] of pairs) {
+    const keys = tableKeys(t) || [];
+    const missing = keys.filter((k) => !(has(places, k) && label(places[k])));
+    const stale = Object.keys(places).filter((k) => !keys.includes(k));
+    check(`12c BT_AUDIO.${t}: every key (${keys.length}) labelled, none gone`, keys.length >= 3 && missing.length === 0 && stale.length === 0, { missing, stale });
+  }
+  const noiseMiss = Object.keys(MONSTER_NOISE_CLIPS).filter((k) => !label(ST.NOISE_PLACES[k]));
+  const noiseStale = Object.keys(ST.NOISE_PLACES).filter((k) => !has(MONSTER_NOISE_CLIPS, k));
+  check('12d every monster noise labelled, none gone', noiseMiss.length === 0 && noiseStale.length === 0, { noiseMiss, noiseStale });
+  const grounds = ['dirt', ...Object.keys(FOOTSTEP_CLIPS).filter((k) => FOOTSTEP_CLIPS[k] !== FOOTSTEP_CLIPS.grass || k === 'grass')];
+  const stepMiss = grounds.filter((k) => !label(ST.STEP_PLACES[k]));
+  const stepStale = Object.keys(ST.STEP_PLACES).filter((k) => !grounds.includes(k));
+  check('12e every ground\'s footstep labelled (dirt included), none gone', stepMiss.length === 0 && stepStale.length === 0, { stepMiss, stepStale });
+  const kinds = new Set(ST.PROP_KINDS.map((x) => x[0]));
+  check('12f the object sounds\' kinds are PROP_SOUNDS\' own rows (hit, big, brk, tree, building), each label with a place for the words',
+    ['hit', 'big', 'brk', 'tree', 'building'].every((k) => kinds.has(k)) && ST.PROP_KINDS.every((x) => /%s/.test(x[1])));
+  const ids = new Set(); const badOther = [];
+  for (const [id, sec, lab, how] of ST.OTHER_PLAYS) {
+    if (ids.has(id)) badOther.push(id + ' twice');
+    ids.add(id);
+    if (!SECTIONS.has(sec) || !label(lab)) badOther.push(id + ' section/label');
+    if (how.sample && !has(MANIFEST, how.sample)) badOther.push(id + ' sample ' + how.sample);
+    if (how.fn && !new RegExp('(BT_AUDIO\\.' + how.fn + ' = function|^ {2}' + how.fn + ': function)', 'm').test(GD)) badOther.push(id + ' fn ' + how.fn);
+    if (!how.sample === !how.fn) badOther.push(id + ' plays neither or both');
+  }
+  check(`12g every other row (${ST.OTHER_PLAYS.length}) plays a recording in SFX_MANIFEST or a BT_AUDIO helper that exists`, badOther.length === 0, badOther);
+  const recMiss = Object.keys(ST.SAMPLE_SOURCES).filter((k) => !has(MANIFEST, k));
+  check('12h every recording the studio credits is in SFX_MANIFEST', recMiss.length === 0, recMiss);
+  const GS = src('src/game/soundStudio.js');
+  const tagBody = GS.slice(GS.indexOf('const TAGS = {'), GS.indexOf('let _installed'));
+  const tagged = [...tagBody.matchAll(/^ {2}([A-Za-z]+): /gm)].map((m) => m[1]);
+  const tagMiss = tagged.filter((fn) => !new RegExp('(BT_AUDIO\\.' + fn + ' = function|^ {2}' + fn + ': function)', 'm').test(GD));
+  check(`12i the studio's "heard just now" tags only BT_AUDIO helpers that exist (${tagged.length})`, tagged.length >= 15 && tagMiss.length === 0, tagMiss);
+  const EP = src('src/game/eventSounds.js');
+  check('12j cue(), cueLater() and peerOwn() say what they play while their samples start (BT_AUDIO._tag, put back after)',
+    (EP.match(/BT_AUDIO\._tag = 'cue:' \+ name/g) || []).length === 2 && /BT_AUDIO\._tag = 'peer:' \+ label/.test(EP)
+      && (EP.match(/finally \{ BT_AUDIO\._tag = prev; \}/g) || []).length === 3);
+  check('12k the studio is loaded only when it opens (a dynamic import), and the game imports its small part at boot',
+    /import\('@\/ui\/panels\/SoundStudio\.jsx'\)/.test(GS) && /import '@\/game\/soundStudio\.js';/.test(src('src/ui/BroTown.jsx'))
+      && !/from '@\/ui\/panels\/SoundStudio\.jsx'/.test(src('src/ui/BroTown.jsx')));
 }
 
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);

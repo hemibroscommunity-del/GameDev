@@ -134,7 +134,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('accepting a quest raises a QUEST ACCEPTED! banner',
     !!acc && /QUEST ACCEPTED!/.test(acc.text), afterAccept);
   rec.ok('...naming the quest you just took',
-    !!acc && /Cold Reception/.test(acc.text), acc && acc.text);
+    /* v2.3.3525: the tour's first step, the slimes' "Into the Blue" */
+    !!acc && /Into the Blue/.test(acc.text), acc && acc.text);
   /* The owner's actual words were "over the quest modal menu". */
   rec.ok('...while the dialogue is still open, and stacked above it',
     !!acc && acc.modalOpen === true && typeof acc.modalZ === 'number' && acc.z > acc.modalZ,
@@ -170,7 +171,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !(await onScreen()), { holdMs });
 
   /* ── TURN IN ── */
-  await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: 4 });
+  await H.grant(wsPort, myId, 'item', { invKey: 'slime-remnants', count: 4 });
   await P.page.waitForTimeout(1600);
   rec.ok('walking back up re-opens the dialogue for the hand-in', await approach());
   /* v2.3.3335: the first quest pays no XP, so there is nothing to choose and
@@ -188,8 +189,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!done && /QUEST COMPLETE/.test(done.text), afterTurnIn.map((b) => b.kind));
   rec.ok('...carrying the reward it just paid',
     !!done && /\+\d+\s*g/i.test(done.text), done && done.text);
-  rec.ok('...over his window (v2.3.3335: the auto reward goes straight on to his next quest)',
-    !!done && done.modalOpen === true && done.z > done.modalZ && done.inWrap === false,
+  /* v2.3.3525: over his window while it is up.  The tour hands you on to
+     Farmer Bro from here (his next quest, tut_2, waits for the tour's end), so
+     his window closes as he pays -- the banner is still drawn out of
+     .brotown-wrap, above anything the dialogue had up. */
+  rec.ok('...drawn out of .brotown-wrap, over his window while it is up',
+    !!done && done.inWrap === false && (!done.modalOpen || done.z > done.modalZ),
     done && { z: done.z, modalZ: done.modalZ, modalOpen: done.modalOpen, inWrap: done.inWrap });
 
   /* v2.3.1746 — owner: "play this sound upon quest completion." */

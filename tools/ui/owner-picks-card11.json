@@ -1,0 +1,1648 @@
+{
+ "_doc": "v2.3.3526: card 11 of the icon review, the owner's own picks (\"Icon picks: ... T3.3 ... T129.1\", 2026-10-19). Each entry: the code on the review page, what it is in the game, the sheet and the review page's own cut (cut), the file it is written to (name.ext, over today's), and how it is sized (out): frame = today's canvas with the art's larger side the share of it today's fills; tight = no padding, the larger side that many px; disc = only the disc inside its own ring (rin of its outer radius), edge to edge on a square that size. grey: a -grey copy as the controls' greyed states use. Cut by tools/ui/cut-owner-icons.py.",
+ "done": {
+  "T61.1": "icons/ui/pets-paw",
+  "T112.2": "icons/ui/party-crown",
+  "T114.2": "icons/ui/party-pin",
+  "T124.1": "icons/ui/bldg-auction-gavel",
+  "T129.1": "ui/welcome/cc/cc-none"
+ },
+ "dropped": {
+  "T69.1": "the owner ticked both luck stars, T69.1 and T69.2, nearly the same picture; T69.2 is used, from the same sheet as the other stat picks"
+ },
+ "picks": [
+  {
+   "code": "T3.3",
+   "what": "Bow (bag, Equipment slot)",
+   "src": "fantasy-rpg-game-ui-asset-sheet-1.png",
+   "note": "a bow with an arrow",
+   "cut": {
+    "box": [
+     1300,
+     392,
+     1400,
+     504
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/items/bow",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.781
+   }
+  },
+  {
+   "code": "T6.1",
+   "what": "Garden Stew (bag)",
+   "src": "brotown-rpg-ui-asset-sheet-1.png",
+   "note": "the stew in the sheet's bag; the count badge painted over its corner is cut out",
+   "cut": {
+    "box": [
+     836,
+     472,
+     926,
+     559
+    ],
+    "mode": "key",
+    "erase": [
+     [
+      915,
+      546,
+      18
+     ]
+    ]
+   },
+   "name": "icons/items/garden-stew",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.762
+   }
+  },
+  {
+   "code": "T7.2",
+   "what": "Pine log (bag)",
+   "src": "fantasy-rpg-crafting-ui-asset-sheet-1.png",
+   "note": "a rough grey-brown log; nearest game wood by colour",
+   "cut": {
+    "box": [
+     724,
+     516,
+     858,
+     636
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/items/wood-log",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.781
+   }
+  },
+  {
+   "code": "T8.3",
+   "what": "Copper bar (bag)",
+   "src": "fantasy-rpg-crafting-ui-asset-sheet-1.png",
+   "note": "the sheet's copper bar",
+   "cut": {
+    "box": [
+     28,
+     524,
+     140,
+     620
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/items/bar-copper",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.895
+   }
+  },
+  {
+   "code": "T9.4",
+   "what": "Minnow (bag)",
+   "src": "fantasy-rpg-crafting-ui-asset-sheet-1.png",
+   "note": "a blue fish",
+   "cut": {
+    "box": [
+     772,
+     652,
+     944,
+     756
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/items/fish-minnow",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.781
+   }
+  },
+  {
+   "code": "T11.1",
+   "what": "Titanium ore (bag)",
+   "src": "brotown-rpg-ui-asset-sheet-1.png",
+   "note": "a silver ore with gold flecks in the sheet's bag; the nearest game ore by colour; the count badge painted over its corner is cut out",
+   "cut": {
+    "box": [
+     578,
+     598,
+     686,
+     681
+    ],
+    "mode": "key",
+    "erase": [
+     [
+      673,
+      665,
+      19
+     ]
+    ]
+   },
+   "name": "icons/items/ore-titanium",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.781
+   }
+  },
+  {
+   "code": "T19.2",
+   "what": "Iron bar (bag)",
+   "src": "fantasy-rpg-crafting-ui-asset-sheet-1.png",
+   "note": "the sheet's iron bar",
+   "cut": {
+    "box": [
+     156,
+     524,
+     268,
+     620
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/items/bar-iron",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.895
+   }
+  },
+  {
+   "code": "T20.2",
+   "what": "Black steel bar (bag)",
+   "src": "fantasy-rpg-crafting-ui-asset-sheet-1.png",
+   "note": "the sheet's black steel bar",
+   "cut": {
+    "box": [
+     284,
+     524,
+     396,
+     620
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/items/bar-blacksteel",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.895
+   }
+  },
+  {
+   "code": "T24.1",
+   "what": "Wheat seeds (bag, Feed & Seed)",
+   "src": "fantasy-game-ui-icon-collection.png",
+   "note": "a paper seed bag with wheat",
+   "cut": {
+    "box": [
+     212,
+     576,
+     364,
+     736
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/items/seed-wheat",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.762
+   }
+  },
+  {
+   "code": "T26.1",
+   "what": "Strawberry seeds (bag, Feed & Seed)",
+   "src": "fantasy-game-ui-icon-collection.png",
+   "note": "a paper seed bag with strawberries",
+   "cut": {
+    "box": [
+     536,
+     580,
+     696,
+     736
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/items/seed-strawberry",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.762
+   }
+  },
+  {
+   "code": "T29.1",
+   "what": "Maple log (bag)",
+   "src": "fantasy-rpg-crafting-ui-asset-sheet-1.png",
+   "note": "a golden log; nearest game wood by colour",
+   "cut": {
+    "box": [
+     858,
+     516,
+     984,
+     632
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/items/wood-maple",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.781
+   }
+  },
+  {
+   "code": "T30.1",
+   "what": "Hardwood log (bag)",
+   "src": "fantasy-rpg-crafting-ui-asset-sheet-1.png",
+   "note": "a pair of dark logs; nearest game wood by colour",
+   "cut": {
+    "box": [
+     984,
+     516,
+     1216,
+     636
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/items/wood-hardwood",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.781
+   }
+  },
+  {
+   "code": "T31.1",
+   "what": "Cedar log (bag)",
+   "src": "fantasy-rpg-crafting-ui-asset-sheet-1.png",
+   "note": "a red-brown log; nearest game wood by colour",
+   "cut": {
+    "box": [
+     1236,
+     516,
+     1360,
+     636
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/items/wood-cedar",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.781
+   }
+  },
+  {
+   "code": "T32.1",
+   "what": "Softwood log (bag)",
+   "src": "fantasy-rpg-crafting-ui-asset-sheet-1.png",
+   "note": "a pale log; nearest game wood by colour",
+   "cut": {
+    "box": [
+     1376,
+     516,
+     1504,
+     632
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/items/wood-softwood",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.781
+   }
+  },
+  {
+   "code": "T33.1",
+   "what": "Cooked fish (bag, quick eat)",
+   "src": "fantasy-rpg-crafting-ui-asset-sheet-1.png",
+   "note": "a grilled fish on a plate with greens",
+   "cut": {
+    "box": [
+     956,
+     648,
+     1124,
+     756
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/items/cooked-minnow",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.777
+   }
+  },
+  {
+   "code": "T36.1",
+   "what": "Pickaxe (bag)",
+   "src": "fantasy-rpg-game-ui-asset-sheet-1.png",
+   "note": "a pickaxe",
+   "cut": {
+    "box": [
+     1028,
+     392,
+     1122,
+     512
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/items/mining-pickaxe",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     192,
+     192
+    ],
+    "fill": 1.0
+   }
+  },
+  {
+   "code": "T37.1",
+   "what": "Woodcutting axe (bag)",
+   "src": "fantasy-rpg-game-ui-asset-sheet-1.png",
+   "note": "a woodcutting axe (the sword's pommel beside it erased)",
+   "cut": {
+    "box": [
+     1124,
+     392,
+     1202,
+     512
+    ],
+    "mode": "alpha",
+    "grow": 4,
+    "erase": [
+     [
+      1190,
+      480,
+      1204,
+      516
+     ]
+    ]
+   },
+   "name": "icons/items/woodcutting-axe",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     192,
+     192
+    ],
+    "fill": 1.0
+   }
+  },
+  {
+   "code": "T38.2",
+   "what": "Bag tab: Potions",
+   "src": "fantasy-rpg-game-ui-asset-sheet-1.png",
+   "note": "the red potion on the sheet's 'Consumables' chip; cut off its bag filter chip (the word under it left out)",
+   "cut": {
+    "box": [
+     484,
+     230,
+     534,
+     290
+    ],
+    "mode": "key"
+   },
+   "name": "icons/bag/bag-potions",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.781
+   }
+  },
+  {
+   "code": "T50.2",
+   "what": "Duel challenge card header",
+   "src": "fantasy-rpg-game-ui-asset-sheet-1.png",
+   "note": "painted crossed swords",
+   "cut": {
+    "box": [
+     868,
+     540,
+     984,
+     656
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/ui/evt-duel",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.738
+   }
+  },
+  {
+   "code": "T51.1",
+   "what": "Close (player card, profile)",
+   "src": "fantasy-rpg-ui-asset-sheet-2.png",
+   "note": "a gold-rimmed square close button (whole button)",
+   "cut": {
+    "box": [
+     1388,
+     832,
+     1504,
+     952
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/ui/soc-close",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.762
+   }
+  },
+  {
+   "code": "T52.2",
+   "what": "Character button / profile header",
+   "src": "fantasy-rpg-ui-asset-sheet-1.png",
+   "note": "a magnifier in a gold ring",
+   "cut": {
+    "box": [
+     1076,
+     480,
+     1208,
+     616
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/ui/panel-self",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.723
+   }
+  },
+  {
+   "code": "T54.4",
+   "what": "Ranks (More tile, profile card)",
+   "src": "fantasy-rpg-game-ui-asset-sheet-1.png",
+   "note": "a gold trophy with laurels",
+   "cut": {
+    "box": [
+     1220,
+     828,
+     1380,
+     980
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/ui/panel-leaderboard",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.758
+   }
+  },
+  {
+   "code": "T55.2",
+   "what": "Dashboard button (bar chart)",
+   "src": "brotown-rpg-ui-icon-sheet-2.png",
+   "note": "the bar chart on sheet 3's dashboard row (its brass 'selected' tile keyed out)",
+   "cut": {
+    "box": [
+     798,
+     70,
+     876,
+     138
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/panel-stats",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.656
+   }
+  },
+  {
+   "code": "T59.1",
+   "what": "Journey (More tile)",
+   "src": "brotown-rpg-ui-asset-sheet-1.png",
+   "note": "the scroll on the sheet's Journey tab button",
+   "cut": {
+    "box": [
+     580,
+     57,
+     643,
+     124
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/journey",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.645
+   }
+  },
+  {
+   "code": "T60.1",
+   "what": "Codex (dashboard button, More tile)",
+   "src": "colorful-rpg-game-ui-asset-sheet.png",
+   "note": "the open book with a blue gem on sheet 4's dashboard row",
+   "cut": {
+    "box": [
+     470,
+     70,
+     546,
+     133
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/panel-encyclopedia",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.734
+   }
+  },
+  {
+   "code": "T62.1",
+   "what": "Friends (More tile)",
+   "src": "colorful-rpg-game-ui-asset-sheet.png",
+   "note": "the two people on sheet 4's Friends tile",
+   "cut": {
+    "box": [
+     1006,
+     70,
+     1078,
+     130
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/nav-friends",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.727
+   }
+  },
+  {
+   "code": "T63.2",
+   "what": "Login Key (More tile)",
+   "src": "colorful-rpg-game-ui-asset-sheet.png",
+   "note": "the key on sheet 4's password chip",
+   "cut": {
+    "box": [
+     1238,
+     942,
+     1290,
+     992
+    ],
+    "mode": "key",
+    "tol": 22
+   },
+   "name": "icons/ui/panel-account",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.645
+   }
+  },
+  {
+   "code": "T64.1",
+   "what": "Settings (More tile)",
+   "src": "colorful-rpg-game-ui-asset-sheet.png",
+   "note": "the gear on sheet 4's More row (labelled 'About' there)",
+   "cut": {
+    "box": [
+     1314,
+     66,
+     1380,
+     131
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/panel-settings",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.723
+   }
+  },
+  {
+   "code": "T65.2",
+   "what": "Feedback (window header)",
+   "src": "colorful-rpg-game-ui-asset-sheet.png",
+   "note": "a scroll with a quill and a green plus",
+   "cut": {
+    "box": [
+     1348,
+     776,
+     1476,
+     908
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/ui/panel-feedback",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.746
+   }
+  },
+  {
+   "code": "T69.2",
+   "what": "Luck / crit (Points cell, Equipment pill)",
+   "src": "brotown-rpg-ui-icon-sheet-2.png",
+   "note": "sheet 3's stat tile (the word above it left out)",
+   "cut": {
+    "box": [
+     415,
+     214,
+     487,
+     288
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/stat/luck",
+   "ext": "png",
+   "out": {
+    "tight": 80
+   }
+  },
+  {
+   "code": "T70.2",
+   "what": "Special (Points cell, Equipment pill)",
+   "src": "brotown-rpg-ui-icon-sheet-2.png",
+   "note": "sheet 3's stat tile (the word above it left out)",
+   "cut": {
+    "box": [
+     538,
+     216,
+     608,
+     288
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/stat/special",
+   "ext": "png",
+   "out": {
+    "tight": 80
+   }
+  },
+  {
+   "code": "T71.2",
+   "what": "Element (Points cell, Equipment pill)",
+   "src": "brotown-rpg-ui-icon-sheet-2.png",
+   "note": "sheet 3's stat tile (the word above it left out)",
+   "cut": {
+    "box": [
+     662,
+     214,
+     727,
+     293
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/stat/elem",
+   "ext": "png",
+   "out": {
+    "tight": 80
+   }
+  },
+  {
+   "code": "T72.2",
+   "what": "Max HP (Points cell)",
+   "src": "brotown-rpg-ui-icon-sheet-2.png",
+   "note": "sheet 3's stat tile (the word above it left out)",
+   "cut": {
+    "box": [
+     802,
+     244,
+     868,
+     305
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/stat/hp",
+   "ext": "png",
+   "out": {
+    "tight": 80
+   }
+  },
+  {
+   "code": "T74.2",
+   "what": "Max Mana (Points cell)",
+   "src": "brotown-rpg-ui-icon-sheet-2.png",
+   "note": "sheet 3's stat tile (the word above it left out)",
+   "cut": {
+    "box": [
+     1025,
+     242,
+     1075,
+     308
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/stat/mana",
+   "ext": "png",
+   "out": {
+    "tight": 80
+   }
+  },
+  {
+   "code": "T75.2",
+   "what": "Stamina (Points cell, Equipment pill)",
+   "src": "brotown-rpg-ui-icon-sheet-2.png",
+   "note": "sheet 3's stat tile (the word above it left out)",
+   "cut": {
+    "box": [
+     1127,
+     242,
+     1177,
+     306
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/stat/stam",
+   "ext": "png",
+   "out": {
+    "tight": 80
+   }
+  },
+  {
+   "code": "T76.2",
+   "what": "Dodge (Points cell, Equipment pill)",
+   "src": "brotown-rpg-ui-icon-sheet-2.png",
+   "note": "sheet 3's stat tile (the word above it left out)",
+   "cut": {
+    "box": [
+     1225,
+     242,
+     1286,
+     302
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/stat/dodge",
+   "ext": "png",
+   "out": {
+    "tight": 80
+   }
+  },
+  {
+   "code": "T77.1",
+   "what": "Move speed (Points cell, Equipment pill)",
+   "src": "brotown-rpg-ui-asset-sheet-1.png",
+   "note": "cut from its stat tile (the word painted above it left out) (MOVE)",
+   "cut": {
+    "box": [
+     620,
+     334,
+     685,
+     396
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/stat/move",
+   "ext": "png",
+   "out": {
+    "tight": 80
+   }
+  },
+  {
+   "code": "T78.1",
+   "what": "Elemental resist (Points cell, Equipment pill)",
+   "src": "brotown-rpg-ui-asset-sheet-1.png",
+   "note": "cut from its stat tile (the word painted above it left out) (RES)",
+   "cut": {
+    "box": [
+     738,
+     330,
+     797,
+     402
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/stat/eres",
+   "ext": "png",
+   "out": {
+    "tight": 80
+   }
+  },
+  {
+   "code": "T84.3",
+   "what": "Buff badge: Cursed",
+   "src": "fantasy-rpg-game-ui-asset-sheet-1.png",
+   "note": "a purple skull on its dark tile, keyed out",
+   "cut": {
+    "box": [
+     36,
+     692,
+     132,
+     784
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/buff-cursed",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     64,
+     64
+    ],
+    "fill": 0.766
+   }
+  },
+  {
+   "code": "T85.3",
+   "what": "Buff badge: Bleed",
+   "src": "fantasy-rpg-game-ui-asset-sheet-1.png",
+   "note": "a blood drop on its dark tile, keyed out",
+   "cut": {
+    "box": [
+     168,
+     692,
+     264,
+     784
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/buff-bleed",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     64,
+     64
+    ],
+    "fill": 0.766
+   }
+  },
+  {
+   "code": "T90.3",
+   "what": "Buff badge: XP",
+   "src": "fantasy-rpg-game-ui-asset-sheet-1.png",
+   "note": "'XP' with arrows on its dark tile, keyed out",
+   "cut": {
+    "box": [
+     828,
+     692,
+     924,
+     784
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/buff-xp",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     64,
+     64
+    ],
+    "fill": 0.766
+   }
+  },
+  {
+   "code": "T91.3",
+   "what": "Buff badge: Speed",
+   "src": "fantasy-rpg-game-ui-asset-sheet-1.png",
+   "note": "a green winged boot on its dark tile, keyed out",
+   "cut": {
+    "box": [
+     960,
+     692,
+     1056,
+     784
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/buff-speed",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     64,
+     64
+    ],
+    "fill": 0.766
+   }
+  },
+  {
+   "code": "T92.1",
+   "what": "Element: flame (land plates, hit numbers, chips)",
+   "src": "fantasy-game-ui-icon-collection.png",
+   "note": "a flame on a red diamond",
+   "cut": {
+    "box": [
+     464,
+     408,
+     612,
+     572
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/ui/elem-flame",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.758
+   }
+  },
+  {
+   "code": "T97.4",
+   "what": "Jump / dash button",
+   "src": "rpg-harvesting-and-combat-asset-sheet.png",
+   "note": "a leaping figure on a blue disc",
+   "cut": {
+    "box": [
+     988,
+     772,
+     1196,
+     984
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "ui/controls/abil-jump",
+   "ext": "webp",
+   "out": {
+    "disc": 160,
+    "rin": 0.85
+   },
+   "grey": true
+  },
+  {
+   "code": "T98.3",
+   "what": "Element Burst button",
+   "src": "rpg-harvesting-and-combat-asset-sheet.png",
+   "note": "fire, ice and lightning bursting from a disc",
+   "cut": {
+    "box": [
+     1220,
+     764,
+     1488,
+     996
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "ui/controls/abil-burst",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     160,
+     160
+    ],
+    "fill": 0.762
+   },
+   "grey": true
+  },
+  {
+   "code": "T99.2",
+   "what": "Right stick: talk",
+   "src": "brotown-rpg-ui-icon-sheet-2.png",
+   "note": "sheet 3's white speech bubble; its round slate disc and gold rim keyed out",
+   "cut": {
+    "box": [
+     811,
+     381,
+     893,
+     463
+    ],
+    "mode": "disc",
+    "c": [
+     851.9,
+     421.9
+    ],
+    "r": 36.3
+   },
+   "name": "ui/controls/talk",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     160,
+     160
+    ],
+    "fill": 0.762
+   }
+  },
+  {
+   "code": "T100.3",
+   "what": "Right stick: door",
+   "src": "fantasy-rpg-ui-asset-sheet-1.png",
+   "note": "the sheet's door with arrow; its round slate disc and gold rim keyed out",
+   "cut": {
+    "box": [
+     162,
+     875,
+     274,
+     987
+    ],
+    "mode": "disc",
+    "c": [
+     218.0,
+     931.0
+    ],
+    "r": 50.0
+   },
+   "name": "ui/controls/door",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     160,
+     160
+    ],
+    "fill": 0.762
+   }
+  },
+  {
+   "code": "T101.3",
+   "what": "Right stick: sleep (farm bed)",
+   "src": "fantasy-rpg-ui-asset-sheet-1.png",
+   "note": "the sheet's bed with Zzz; its round slate disc and gold rim keyed out",
+   "cut": {
+    "box": [
+     288,
+     874,
+     400,
+     986
+    ],
+    "mode": "disc",
+    "c": [
+     344.4,
+     930.5
+    ],
+    "r": 50.0
+   },
+   "name": "ui/controls/sleep",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     160,
+     160
+    ],
+    "fill": 0.762
+   }
+  },
+  {
+   "code": "T102.1",
+   "what": "Right stick: farm dig",
+   "src": "brotown-rpg-ui-asset-sheet-1.png",
+   "note": "the sheet's shovel; its round slate disc and gold rim keyed out",
+   "cut": {
+    "box": [
+     994,
+     892,
+     1086,
+     984
+    ],
+    "mode": "disc",
+    "c": [
+     1039.7,
+     937.8
+    ],
+    "r": 40.8
+   },
+   "name": "ui/controls/farm-dig",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     160,
+     160
+    ],
+    "fill": 0.762
+   }
+  },
+  {
+   "code": "T103.2",
+   "what": "Right stick: farm plant",
+   "src": "brotown-rpg-ui-icon-sheet-2.png",
+   "note": "sheet 3's sprout in soil; its round slate disc and gold rim keyed out",
+   "cut": {
+    "box": [
+     1159,
+     380,
+     1242,
+     463
+    ],
+    "mode": "disc",
+    "c": [
+     1200.8,
+     421.7
+    ],
+    "r": 36.6
+   },
+   "name": "ui/controls/farm-plant",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     160,
+     160
+    ],
+    "fill": 0.762
+   }
+  },
+  {
+   "code": "T104.3",
+   "what": "Right stick: farm water",
+   "src": "fantasy-rpg-ui-asset-sheet-1.png",
+   "note": "the sheet's green watering can; its round slate disc and gold rim keyed out",
+   "cut": {
+    "box": [
+     662,
+     875,
+     774,
+     987
+    ],
+    "mode": "disc",
+    "c": [
+     718.3,
+     931.2
+    ],
+    "r": 50.0
+   },
+   "name": "ui/controls/farm-water",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     160,
+     160
+    ],
+    "fill": 0.762
+   }
+  },
+  {
+   "code": "T105.1",
+   "what": "Right stick: farm fertilize",
+   "src": "brotown-rpg-ui-asset-sheet-1.png",
+   "note": "the sheet's seed sack; its round slate disc and gold rim keyed out",
+   "cut": {
+    "box": [
+     1306,
+     892,
+     1396,
+     981
+    ],
+    "mode": "disc",
+    "c": [
+     1351.0,
+     936.4
+    ],
+    "r": 39.9
+   },
+   "name": "ui/controls/farm-feed",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     160,
+     160
+    ],
+    "fill": 0.762
+   }
+  },
+  {
+   "code": "T106.1",
+   "what": "Right stick: farm harvest",
+   "src": "brotown-rpg-ui-asset-sheet-1.png",
+   "note": "the sheet's wheat and sickle; its round slate disc and gold rim keyed out",
+   "cut": {
+    "box": [
+     1409,
+     891,
+     1501,
+     983
+    ],
+    "mode": "disc",
+    "c": [
+     1454.9,
+     937.1
+    ],
+    "r": 41.3
+   },
+   "name": "ui/controls/farm-harvest",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     160,
+     160
+    ],
+    "fill": 0.762
+   }
+  },
+  {
+   "code": "T107.2",
+   "what": "Sword special button",
+   "src": "rpg-harvesting-and-combat-asset-sheet.png",
+   "note": "a golden sword slash disc",
+   "cut": {
+    "box": [
+     36,
+     776,
+     244,
+     984
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "ui/controls/abil-special-sword",
+   "ext": "webp",
+   "out": {
+    "disc": 160,
+    "rin": 0.85
+   },
+   "grey": true
+  },
+  {
+   "code": "T108.2",
+   "what": "Bow special button",
+   "src": "rpg-harvesting-and-combat-asset-sheet.png",
+   "note": "golden arrows disc",
+   "cut": {
+    "box": [
+     272,
+     776,
+     480,
+     984
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "ui/controls/abil-special-bow",
+   "ext": "webp",
+   "out": {
+    "disc": 160,
+    "rin": 0.85
+   },
+   "grey": true
+  },
+  {
+   "code": "T109.1",
+   "what": "Special button (generic)",
+   "src": "fantasy-rpg-ui-asset-sheet-1.png",
+   "note": "a blue starburst disc",
+   "cut": {
+    "box": [
+     232,
+     712,
+     380,
+     864
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "ui/controls/abil-special",
+   "ext": "webp",
+   "out": {
+    "disc": 160,
+    "rin": 0.85
+   },
+   "grey": true
+  },
+  {
+   "code": "T111.1",
+   "what": "Party badge on a name plate",
+   "src": "brotown-rpg-ui-asset-sheet-1.png",
+   "note": "the sheet's three blue figures",
+   "cut": {
+    "box": [
+     968,
+     796,
+     1056,
+     872
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/ui/party-member",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     64,
+     64
+    ],
+    "fill": 0.766
+   }
+  },
+  {
+   "code": "T113.1",
+   "what": "Threat skull over a head",
+   "src": "brotown-rpg-ui-asset-sheet-1.png",
+   "note": "the sheet's white skull",
+   "cut": {
+    "box": [
+     1184,
+     792,
+     1248,
+     872
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/ui/threat-skull",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     64,
+     64
+    ],
+    "fill": 0.766
+   }
+  },
+  {
+   "code": "T115.3",
+   "what": "Gold coin (top bar's gold, rewards)",
+   "src": "fantasy-game-ui-icon-collection.png",
+   "note": "a gold coin stamped with a crown",
+   "cut": {
+    "box": [
+     32,
+     756,
+     176,
+     904
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/popups/gold",
+   "ext": "webp",
+   "out": {
+    "tight": 170
+   }
+  },
+  {
+   "code": "T116.1",
+   "what": "Coin pile (Journey: Lifetime gold)",
+   "src": "brotown-rpg-ui-icon-sheet-2.png",
+   "note": "the pile of coins in sheet 3's bag",
+   "cut": {
+    "box": [
+     858,
+     698,
+     967,
+     800
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/hero/rec-gold",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.781
+   }
+  },
+  {
+   "code": "T118.1",
+   "what": "Chat box: emotes button",
+   "src": "brotown-pixel-ui-asset-sheet-2.png",
+   "note": "the smiley on the sheet's chat bar; the game draws a brass line smiley in code (ChatBubble.jsx)",
+   "cut": {
+    "box": [
+     1196,
+     170,
+     1242,
+     215
+    ],
+    "mode": "key"
+   },
+   "name": "icons/ui/chat-emotes",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     72,
+     72
+    ],
+    "fill": 0.83
+   }
+  },
+  {
+   "code": "T121.1",
+   "what": "Blacksmith's Forge tab (today: the copper sword)",
+   "src": "fantasy-blacksmith-ui-component-sheet-2.png",
+   "note": "an anvil on the sheet's gold 'Craft' button",
+   "cut": {
+    "box": [
+     1170,
+     250,
+     1294,
+     346
+    ],
+    "mode": "outline"
+   },
+   "name": "icons/ui/tab-forge",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     96,
+     96
+    ],
+    "fill": 0.82
+   }
+  },
+  {
+   "code": "T123.1",
+   "what": "Bank (window header)",
+   "src": "fantasy-game-ui-icon-collection.png",
+   "note": "a round vault door",
+   "cut": {
+    "box": [
+     508,
+     744,
+     696,
+     912
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/ui/bldg-bank",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.633
+   }
+  },
+  {
+   "code": "T125.1",
+   "what": "Market / Exchange (window header)",
+   "src": "fantasy-game-ui-icon-collection.png",
+   "note": "a pair of brass scales",
+   "cut": {
+    "box": [
+     1216,
+     768,
+     1376,
+     908
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/ui/bldg-exchange",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.664
+   }
+  },
+  {
+   "code": "T127.1",
+   "what": "Mail (Post Office rows)",
+   "src": "fantasy-rpg-game-ui-asset-sheet-1.png",
+   "note": "an envelope with a red seal",
+   "cut": {
+    "box": [
+     28,
+     544,
+     136,
+     632
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/ui/evt-mail",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.688
+   }
+  },
+  {
+   "code": "T128.1",
+   "what": "Saloon (window header)",
+   "src": "fantasy-rpg-game-ui-asset-sheet-1.png",
+   "note": "a foaming beer mug",
+   "cut": {
+    "box": [
+     660,
+     832,
+     792,
+     988
+    ],
+    "mode": "alpha",
+    "grow": 4
+   },
+   "name": "icons/ui/bldg-tavern",
+   "ext": "webp",
+   "out": {
+    "frame": [
+     256,
+     256
+    ],
+    "fill": 0.613
+   }
+  }
+ ]
+}

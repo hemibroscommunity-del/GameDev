@@ -85,6 +85,18 @@ the emotes' own button, the chat box's smiley, wears the B.
   while the chat feed the bell opens is up over the same corner, and while
   the emote picker is up: its rows lay over the picker's second row of moves,
   so a click on Sit, Sleep, Flop or Bounce hid the strip instead.
+- **Since v2.3.3526 it is in the black margin beside the game** (the first
+  ChatGPT review's suggestion; the owner: "Go recommended on everything").
+  Wherever the margin has room -- 190 px, and a window at least 520 px tall --
+  KeyboardHintsPanel portals the strip and the ⌨ into the body (#root's
+  `contain:paint` clips anything of its own to the column), one key a row,
+  their right edge 16 px left of the column and the ⌨ under the rows
+  (game.css `.bt-kb-side`, `data-kb-place="side"`). There it covers nothing,
+  so it no longer stands aside for anything (`display` !important against the
+  column rules). It moves the moment the window changes (a resize, or #root's
+  size). A window without that room -- 1000 x 1200, say, its margins 173 px --
+  or a computer window under 1000 px wide (no column) keeps it in the corner
+  of the game as above (`data-kb-place="column"`).
 
 ## Adding a key
 
@@ -98,7 +110,9 @@ the emotes' own button, the chat box's smiley, wears the B.
 ## Tests
 
 `mp-deskkeys` (a computer, real key presses; and a phone): the six letters
-and the M, the strip clear of the bell and listing 1-3; each key opens its
+and the M, the strip clear of the bell and listing 1-3, in the margin beside
+the game (and in the column on a 1000 x 1200 window, back in the margin
+after); each key opens its
 page and closes it, J then L swaps, I to rest and I folding the band; B
 opens the emotes, whose ✕ wears Esc and Esc closes them, every button in the
 picker answers a click (the strip stood over four), and the chat box's smiley

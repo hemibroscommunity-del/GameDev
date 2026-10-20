@@ -56,7 +56,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!rest && rest.route === null, rest);
   rec.ok('...and the control really was taken in town', !!rest && rest.zone === 'town', rest);
 
-  /* ── ACCEPT: the star sends you out of town, toward Frost Ridge ── */
+  /* ── ACCEPT: the star sends you out of town, toward the Verdant Wilds
+     (v2.3.3525: the tour's first step is the slimes'; Frost Ridge before) ── */
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } });
@@ -86,11 +87,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── THE BUG: four snowmen in the bag, and it still says "go to Frost" ──
      The objective is satisfied here, so the next step is the Mayor. The star
-     must stop selling a trip that is already done. */
+     must stop selling a trip that is already done.  (v2.3.3525: the slimes'
+     four remains now, tut_1's.) */
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     S.rpg.inventory = S.rpg.inventory || {};
-    S.rpg.inventory.snowman = 4;
+    S.rpg.inventory['slime-remnants'] = 4;
   });
   await P.page.waitForTimeout(1200);
   const done = await route(P);
@@ -110,12 +112,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!pins && (pins.questDone || 0) >= 1, pins);
 
   /* ── AND IT IS THE OBJECTIVE, NOT THE ACCEPT, THAT MOVED IT ──
-     Take the snowmen away again: the star must go back to pointing out of
+     Take the remains away again: the star must go back to pointing out of
      town. Without this, "complete hides the star" would pass on any change
      that simply broke the star. */
   await P.page.evaluate(() => {
     const S = window._gameState.current;
-    S.rpg.inventory.snowman = 0;
+    S.rpg.inventory['slime-remnants'] = 0;
   });
   await P.page.waitForTimeout(1200);
   const undone = await route(P);
@@ -130,7 +132,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      that quest."
 
      life_1 names no zone, because fishing holes spawn one per zone (server
-     gathering.js) and any of them will do. The old rule read that as "nothing
+     gathering.js) and any of them will do.  (v2.3.3525: the fish quest is
+     Diego's fish_1 in the tour now, life_1's steps and `anyZone` carried over;
+     life_1 is retired.) The old rule read that as "nothing
      to point at" and drew a blank map during an active quest -- which is how
      the demo player read it too: as no quest running.
 
@@ -165,7 +169,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── IN TOWN: the whole field is behind one gate, so mark the gate ── */
   await setQuests(F, { tut_1: 'turnedIn', tut_2: 'turnedIn', tut_3: 'turnedIn',
-    tut_4: 'turnedIn', life_1: 'active' });
+    tut_4: 'turnedIn', fish_1: 'active' });
   await F.page.waitForTimeout(1500);
   const townField = await route(F);
   rec.ok('the fish quest stars the way OUT of town instead of nothing',
@@ -190,7 +194,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* The travel echo can rewrite _quests from the server's copy, which never
        saw the turn-ins -- reassert the fixture on the far side. */
     await setQuests(F, { tut_1: 'turnedIn', tut_2: 'turnedIn', tut_3: 'turnedIn',
-      tut_4: 'turnedIn', life_1: 'active' });
+      tut_4: 'turnedIn', fish_1: 'active' });
     await F.page.waitForTimeout(2500);
     const hub = await route(F);
     const zones = (hub && hub.routes || []).map((r) => r.zoneId).sort();
@@ -215,7 +219,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.waitFor(F, (S) => S.currentZone, (z) => z === spoke,
         { timeout: 30000, label: 'reach ' + spoke }).catch(() => {});
       await setQuests(F, { tut_1: 'turnedIn', tut_2: 'turnedIn', tut_3: 'turnedIn',
-        tut_4: 'turnedIn', life_1: 'active' });
+        tut_4: 'turnedIn', fish_1: 'active' });
       await F.page.waitForTimeout(2500);
       const inField = await route(F);
       rec.ok('standing IN a zone the fish quest stops starring travel (fish here)',

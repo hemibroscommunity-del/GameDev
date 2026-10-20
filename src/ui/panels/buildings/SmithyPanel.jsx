@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, LIFE_SKILL_XP, NUGGETS_PER_BAR,
-  SMELT_RECIPES, WEAPON_STASH_MAX, gemExtractCost, getGearStatReq,
+  SMELT_RECIPES, WEAPON_STASH_MAX, gemExtractCost, /* v2.3.3524: getGearStatReq moved into data/forgeLadder.js forgeStatReq */
   ARMOR_FORGE_RECIPES, getArmorPieceDr, armorDefReq, /* v2.3.3092: bars into armor */
 } from '@/data/index.js';
 import { armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.3092: each metal's plate and greaves */
@@ -13,7 +13,10 @@ import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
 import { startSmithing, SMITH_STRIKE_MS } from '@/game/smithing.js';
 import { SALVAGE, GRADE_LABEL, armourMetal, weaponMetal, weaponSig, parseEssenceKey, essenceKey, essenceName, essenceIcon, gradeRank } from '@/data/salvage.js'; /* v2.3.3141 */
 import { salvageBus, salvageReasonText } from '@/game/salvage.js'; /* v2.3.3141 */
-import { hardenTierOf, hardenCost } from '@/data/hardenCosts.js'; /* v2.3.3139: bars and a doubling gold ladder */
+import { hardenTierOf, hardenCost, hardenLevelFor } from '@/data/hardenCosts.js'; /* v2.3.3139: bars and a doubling gold ladder; v2.3.3524: the level that makes the tier */
+import { forgeLevelFor, forgeOffered, forgeStatReq } from '@/data/forgeLadder.js'; /* v2.3.3524: the forge's ladder */
+import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3524: the Upgrade tab's hammer */
+import { BUFF_ICON } from '@/data/smallIcons.js'; /* v2.3.3524: the XP pill's "XP" star */
 
 /* ═══ v2.3.2826: THE BLACKSMITH, REBUILT ═══
  *
@@ -45,6 +48,15 @@ import { hardenTierOf, hardenCost } from '@/data/hardenCosts.js'; /* v2.3.3139: 
  *     screen), so the smith is visible above it while he works
  *     (game/smithing.js).
  *
+ * v2.3.3524: the owner's playtest notes -- "On blacksmith don't have two tabs
+ * for sword and greatsword.  Only greatswords are in the game" (the Forge tab
+ * forges greatswords, no switch), "'wood greatsword' is not an actual weapon
+ * in the game" (against caps.forgeladder its rows start at copper, Smithing 1;
+ * data/forgeLadder.js), "Make the upgrade tab icon different for smithing.
+ * Like a hammer" and "Make the xp pill for smith items a different icon (one
+ * that's more obviously 'xp')" -- the owner's star with "XP" on every XP pill,
+ * the Forge rows' too, which showed none.
+ *
  * Test hooks: data-smithy-tab, data-smelt-*, data-forge-row / data-forge-go,
  * data-armor-row / data-armor-go (v2.3.3092), data-harden-go, data-amulet-row,
  * data-salvage-row / data-salvage-go / data-essence-row / data-essence-go /
@@ -57,7 +69,11 @@ const C = {
 };
 const ITEMS_V = '?v=2.3.1774';
 const COIN = '/icons/ui/cur-gold.webp';
-const XP = '/icons/ui/cur-xp.webp';
+/* v2.3.3524: the owner's "XP" star (the buff badge's), not the plain gold
+   sparkle -- "Make the xp pill for smith items a different icon (one that's
+   more obviously 'xp')".  Warmed on the loading screen with the buff badges
+   (smallIcons.js smallIconDomUrls). */
+const XP = BUFF_ICON.xp;
 const GOLDBAR = '/icons/ui/cur-goldbar.webp';
 const NUGGET = '/icons/ui/cur-nugget.webp';
 const GEM = '/icons/ui/cur-gem.webp';
@@ -144,18 +160,20 @@ export function SmithyPanel({ rpgState, stateRef }) {
   const SC = S._serverCaps || {};
   const tabs = [
     SC.smelting && { id: 'smelt', label: 'Smelt', icon: BAR_THUMBS.bar_copper },
-    { id: 'forge', label: 'Forge', icon: '/icons/items/great-sword-copper.webp' + ITEMS_V },
+    /* v2.3.3526: the owner's pick (card 11, T121.1): an anvil -- the tab wore
+       the copper great sword, an item's own picture */
+    { id: 'forge', label: 'Forge', icon: '/icons/ui/tab-forge.webp?v=2.3.3526' },
     /* v2.3.3092: bars into armor (server armorforge.js) */
     (S._serverCaps && S._serverCaps.armorforge) && { id: 'armor', label: 'Armor', icon: '/icons/items/chest-plate-copper.webp' + ITEMS_V },
-    (S._serverCaps && (S._serverCaps.harden || S._serverCaps.gemExtract)) && { id: 'upgrade', label: 'Upgrade', icon: GEM },
+    /* v2.3.3524: the hammer (the owner: "Make the upgrade tab icon different
+       for smithing.  Like a hammer"), not the currency strip's gold gem */
+    (S._serverCaps && (S._serverCaps.harden || S._serverCaps.gemExtract)) && { id: 'upgrade', label: 'Upgrade', icon: OWNER_ICON.smithHammer.src },
     (S._serverCaps && S._serverCaps.amuletForge) && { id: 'amulet', label: 'Amulet', icon: '/icons/items/amulet.webp' + ITEMS_V },
     /* v2.3.3141: salvage for bars, and the grades' essences (server salvage.js) */
     (S._serverCaps && S._serverCaps.salvage) && { id: 'salvage', label: 'Salvage', icon: essenceIcon('essence_rare_iron') + ITEMS_V },
   ].filter(Boolean);
   const [tab, setTabState] = React.useState(() => (S._smithyTab && tabs.some((t) => t.id === S._smithyTab)) ? S._smithyTab : tabs[0].id);
   const setTab = (id) => { S._smithyTab = id; setTabState(id); };
-  const [wtype, setWtypeState] = React.useState(() => S._bsType === 'sword' ? 'sword' : 'greatsword');
-  const setWtype = (t) => { S._bsType = t; setWtypeState(t); };
 
   /* ── what the worker did ──
      A press records what it expects to change; when the player_state that
@@ -173,7 +191,10 @@ export function SmithyPanel({ rpgState, stateRef }) {
       /* v2.3.3343: the anvil's ring -- collect() is a beep(), silent
          (SOUND-GAPS).  A smelt and the armor forge sound from their own
          receipts (wsClient smelt_result / forge_armor_result). */
-      if (p.kind !== 'smelt' && p.kind !== 'armor') cue('forge');
+      /* v2.3.3524: nor a hardening, which is heard from its own answer
+         (gameEvents.js harden_result: hardenOk / hardenFail) -- it played
+         both, the forge's ring over the win or the loss */
+      if (p.kind !== 'smelt' && p.kind !== 'armor' && p.kind !== 'harden') cue('forge');
     }
     if (lvl > lvlSeen.current) {
       /* Smelting celebrates from its own receipt (wsClient smelt_result), and
@@ -233,7 +254,7 @@ export function SmithyPanel({ rpgState, stateRef }) {
       </div>
       <div className="ls-scrollbody" style={{ overflowY: 'auto', touchAction: 'pan-y', flex: '1 1 auto', minHeight: 0, padding: '0 12px 12px' }}>
         {tab === 'smelt' && <SmeltTab {...{ S, inv, lvl, ask, busy }} />}
-        {tab === 'forge' && <ForgeTab {...{ S, R, inv, coins, lvl, ask, busy, wtype, setWtype }} />}
+        {tab === 'forge' && <ForgeTab {...{ S, R, inv, coins, lvl, ask, busy }} />}
         {tab === 'armor' && <ArmorTab {...{ S, inv, lvl, ask, busy }} />}
         {tab === 'upgrade' && <UpgradeTab {...{ S, R, coins, lvl, caps, ask, busy }} />}
         {tab === 'amulet' && <AmuletTab {...{ S, R, coins, lvl, ask, busy }} />}
@@ -277,32 +298,33 @@ function SmeltTab({ S, inv, lvl, ask, busy }) {
   );
 }
 
-/* ── Forge: melee weapons (server gear.js forge_weapon) ── */
-function ForgeTab({ S, R, inv, coins, lvl, ask, busy, wtype, setWtype }) {
-  const keys = Object.keys(BLACKSMITH_TIERS);
+/* ── Forge: melee weapons (server gear.js forge_weapon) ──
+   v2.3.3524: GREATSWORDS ONLY -- the owner: "On blacksmith don't have two tabs
+   for sword and greatsword.  Only greatswords are in the game" (the one-handed
+   sword was a bamboo stick in every picture).  The worker still forges a sword
+   for an older page, and a sword you hold still shows on the Holding line and
+   salvages.  Against caps.forgeladder (data/forgeLadder.js, the worker's
+   forgeladder.js) the rows start at COPPER, Smithing 1 -- the owner: "'wood
+   greatsword' is not an actual weapon in the game.  Make the beginning weapon
+   a copper greatsword (requiring smithing lvl 1)" -- each tier at its new
+   level (iron 5, black steel 10, five more a tier), and the stat lock is what
+   WEARING the blade asks (copper and iron nothing); against an older worker
+   the old levels and lock, as that worker asks.  And each row says the XP it
+   pays (it showed none: 800 / 1,200 / 1,600 for the barred metals). */
+const WTYPE = 'greatsword';
+function ForgeTab({ S, R, inv, coins, lvl, ask, busy }) {
+  /* read straight off S._serverCaps so the caps audit sees the gate */
+  const old = !(S._serverCaps && S._serverCaps.forgeladder);
+  const keys = Object.keys(BLACKSMITH_TIERS).filter((k) => forgeOffered(k, old));
   /* Everything you can make now, plus the NEXT one you can't -- the goal.
      The old list ran ten levels ahead; a wall of locks is not information. */
-  let shown = keys.filter((k) => BLACKSMITH_TIERS[k].minLvl <= lvl);
-  const next = keys.find((k) => BLACKSMITH_TIERS[k].minLvl > lvl);
+  let shown = keys.filter((k) => forgeLevelFor(k, old) <= lvl);
+  const next = keys.find((k) => forgeLevelFor(k, old) > lvl);
   if (next) shown = shown.concat([next]);
   const stashFull = !!R.weapon && (R.weaponStash || []).length >= WEAPON_STASH_MAX;
   const cur = R.weapon && (R.weapon.type === 'greatsword' || R.weapon.type === 'sword') ? R.weapon : null;
   return (
     <div>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-        {['greatsword', 'sword'].map((t) => {
-          const ic = weaponIcon(t, 'copper');
-          return (
-            <button key={t} data-forge-type={t} onClick={() => setWtype(t)}
-              style={{ flex: 1, minHeight: 44, borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', display: 'flex',
-                alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, fontWeight: 800,
-                border: wtype === t ? '1px solid #D8AA58' : `1px solid ${C.line}`, background: wtype === t ? C.raised : C.card,
-                color: wtype === t ? C.text : C.mute }}>
-              <Icon src={ic.src} fallback={ic.fallback} size={24} />{TYPE_LABEL[t]}
-            </button>
-          );
-        })}
-      </div>
       {cur && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.mute, margin: '0 2px 8px' }}>
           <Icon {...(() => { const ic = weaponIcon(cur.type, cur.gearBase); return { src: ic.src, fallback: ic.fallback }; })()} size={18} />
@@ -312,31 +334,36 @@ function ForgeTab({ S, R, inv, coins, lvl, ask, busy, wtype, setWtype }) {
       )}
       {shown.map((key) => {
         const bt = BLACKSMITH_TIERS[key];
-        /* v2.3.3141: copper, iron and black steel are forged from four bars */
+        /* v2.3.3141: copper, iron and black steel are forged from bars (five a
+           piece since v2.3.3525: `bars`) */
         const resKey = bt.bar ? bt.bar : bt.wood ? 'wood_' + bt.wood : 'ore_' + bt.oreName + '_ore';
         const resNeed = bt.bar ? bt.bars : bt.oreCost;
         const have = Math.floor(inv[resKey] || 0);
-        const idx = keys.indexOf(key);
-        const req = getGearStatReq(wtype, idx, R);
+        const req = forgeStatReq(WTYPE, key, R, old);
         const meets = req.value === 0 || (req.prog3 ? req.met : (R[req.stat] || 0) >= req.value);
-        const skillOk = lvl >= bt.minLvl;
+        const needLvl = forgeLevelFor(key, old);
+        const skillOk = lvl >= needLvl;
         const ok = skillOk && meets && have >= resNeed && coins >= bt.goldCost && !stashFull;
-        const ic = weaponIcon(wtype, key);
-        const name = bt.label + ' ' + TYPE_LABEL[wtype];
+        const ic = weaponIcon(WTYPE, key);
+        const name = bt.label + ' ' + TYPE_LABEL[WTYPE];
+        /* the worker pays a tier's `xp`, else 5 x its level (gear.js) -- every
+           row carries its `xp` now but the old wood tier's 5 */
+        const xp = bt.xp || (bt.minLvl || 1) * 5;
         return (
           <Row key={key} data-forge-row={key} icon={ic.src} iconFallback={ic.fallback} title={name}
             badge={bt.slots > 1 ? bt.slots + '◆' : null}
             action={<Btn on={ok && !busy} primary data-forge-go={key} onClick={() => ask('forge', {
-              type: 'forge_weapon', payload: { weaponType: wtype, tierKey: key, isWoodwork: false },
+              type: 'forge_weapon', payload: { weaponType: WTYPE, tierKey: key, isWoodwork: false },
             }, {
               kind: 'forge', workMs: SMITH_STRIKE_MS * 4,
               sig: () => { const w = S.rpg && S.rpg.weapon; return w ? w.gearBase + ':' + w.type + ':' + (S.rpg.weaponStash || []).length : ''; },
               done: 'Forged ' + name + '!', fail: 'Could not forge',
             })}>Forge</Btn>}>
-            {!skillOk && <Lock>Smithing {bt.minLvl}</Lock>}
+            {!skillOk && <Lock>Smithing {needLvl}</Lock>}
             {skillOk && !meets && <Lock>{req.label} {req.value}</Lock>}
             <Cost icon={bt.bar ? BAR_THUMBS[bt.bar] : thumbFor(resKey)} have={have} need={resNeed} />
             <Cost icon={COIN} have={coins} need={bt.goldCost} />
+            <span data-forge-xp={xp} style={{ display: 'contents' }}><Chip icon={XP} color="#9FD3F0">+{xp}</Chip></span>
           </Row>
         );
       })}
@@ -393,7 +420,12 @@ const H_ODDS = [80, 20, 5, 1, 0.5];
    material tier i (1-based in its own table) needs Smithing i x 5.  Mirrored
    so the lock is shown instead of a button the worker will refuse.
    v2.3.3139: the one copy is data/hardenCosts.js hardenTierOf, which also
-   picks the bars the attempt takes. */
+   picks the bars the attempt takes.
+   v2.3.3524: against caps.forgeladder the gate is the level that MAKES the
+   weapon's tier (hardenCosts.js hardenLevelFor) -- the owner: "Hardening
+   should only require the same smithing level as it takes to smithing that
+   item tier": a copper greatsword Smithing 1, iron 5, black steel 10.  Against
+   an older worker, i x 5 as before. */
 function UpgradeTab({ S, R, coins, lvl, caps, ask, busy }) {
   const w = R.weapon;
   const rows = [];
@@ -408,7 +440,7 @@ function UpgradeTab({ S, R, coins, lvl, caps, ask, busy }) {
     const haveMats = hc.material ? Math.floor(((R.inventory || {})[hc.material]) || 0) : 0;
     const matsOk = !hc.material || haveMats >= hc.amount;
     const ic = weaponIcon(w.type, w.gearBase);
-    const needLvl = hardenTierOf(w) * 5;
+    const needLvl = (S._serverCaps && S._serverCaps.forgeladder) ? hardenLevelFor(w, 'weapon') : hardenTierOf(w) * 5;
     const skillOk = lvl >= needLvl;
     rows.push(
       <Row key="harden" data-harden-row="1" icon={w.type === 'bow' ? '/icons/items/bow.webp' : w.type === 'staff' ? '/icons/items/staff.webp' : ic.src}

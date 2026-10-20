@@ -71,13 +71,15 @@
  * before the Wheel opened (behind its loading screen); the lines and marks
  * are drawn once from numbers.
  */
-import { Container, Graphics, Sprite, Texture, CanvasSource, Text } from 'pixi.js';
+import { Container, Graphics, Sprite, Texture, CanvasSource, Text, Assets } from 'pixi.js';
 import { wheelOverviewLands, wheelMapInfo, wheelHere, wheelObjectsInfo, wheelLocalLands } from '@/game/wheelTrial.js';
 import { wheelTownDoors } from '@/game/wheelTownDoors.js';   /* v2.3.3146: the town's buildings */
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
 import { peerDotAt } from '@/game/peerDot.js';             /* v2.3.3243: a player's dot where they are now */
 import { PARTY_MARK, partyIdsOf, clampToBox } from '@/game/partyMarks.js';   /* v2.3.3277: your party, blue, and on the box's edge when off it */
+import { questPinsOf, MAP_PIN } from '@/game/questPins.js';   /* v2.3.3525: the townsfolk's quest pins */
+import { QUEST_PIN } from '@/data/ownerIcons.js';              /* v2.3.3525: ...in the owner's own pictures */
 import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
 import { noteNoMansLand } from '@/game/noMansLand.js';       /* v2.3.3058: No man's land's banner */
 import { noteWheelMusic } from '@/game/wheelMusic.js';      /* v2.3.3064: ...and its music */
@@ -563,6 +565,36 @@ export class WheelMinimap {
     this.used++;
   }
 
+  /* ═══ v2.3.3525: A QUEST PIN (src/game/questPins.js) ═══
+     The owner's pin from over the townsperson's head (data/ownerIcons.js
+     QUEST_PIN, loaded behind the loading screen for the heads and only looked
+     up here), its tip on where he stands; while its picture is not in, the
+     drawn disc the zones' box uses (minimapRenderer.js), in its colour.  On
+     the box's EDGE (a townsperson just off it), smaller, its middle on the
+     edge point.  Returns where it went in the box, for the probe. */
+  _pin(x, y, state, edge) {
+    const url = QUEST_PIN[state];
+    let tex = null;
+    try { tex = url && Assets.cache.has(url) ? Texture.from(url) : null; } catch (e) { tex = null; }
+    if (tex && tex.destroyed) tex = null;
+    let s = this.pool[this.used];
+    if (!s) { s = new Sprite(this.dotTex); s.anchor.set(0.5); this.marks.addChild(s); this.pool.push(s); }
+    const pw = edge ? MAP_PIN.EDGE_W : MAP_PIN.MINI_W, ph = edge ? MAP_PIN.EDGE_H : MAP_PIN.MINI_H;
+    if (tex) {
+      s.texture = tex;
+      s.tint = 0xffffff;
+      s.width = pw; s.height = ph;
+    } else {
+      s.texture = this.icons[state === 'ready' ? 'questDone' : state === 'waiting' ? 'questWait' : 'quest'] || this.dotTex;
+      s.tint = state === 'ready' ? 0x58b97b : state === 'waiting' ? 0xb0b0b0 : 0xd8aa58;
+      s.width = pw; s.height = pw;
+    }
+    s.x = x * SCALE; s.y = y * SCALE - (edge ? 0 : s.height / 2);
+    s.visible = true;
+    this.used++;
+    return { x: Math.round(s.x + this.pan.x), y: Math.round(s.y + this.pan.y), art: !!tex };
+  }
+
   update(S, cssW, cssH, canvas, topInset) {
     const P = S && S.player;
     const map = wheelMapInfo();
@@ -680,6 +712,29 @@ export class WheelMinimap {
       this._partyRimSig = rimSig;
     }
     for (const m of partyMarks) { delete m.mx; delete m.my; }
+    /* ═══ v2.3.3525: THE QUEST PINS (src/game/questPins.js) ═══
+       Every townsperson with a quest for you that the box shows, in the pin
+       over his head -- the owner: "Make the quest icons appear on the minimap
+       and map too".  After the Mayor's first quest the whole town offers one
+       at once, and the gold road can lead to only one of them.  Over the bros
+       and the party, under the quest's star.  One just off the box, near you
+       (MAP_PIN.EDGE_R), rides its edge on the line to him, smaller, as your
+       party does: from where you arrive the box holds only half the town. */
+    const questPins = [];
+    {
+      const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
+      const lo = QUEST_EDGE, hi = WHEEL_BOX - QUEST_EDGE, hiY = MAP_BOT - (QUEST_EDGE - FRAME);
+      for (const q of questPinsOf(S)) {
+        let x = q.x, y = q.y, edge = false;
+        if (!inBox(q.x, q.y)) {
+          if (Math.hypot(q.x - P.x, q.y - P.y) > MAP_PIN.EDGE_R) continue;
+          const c = clampToBox(pbx, pby, q.x * SCALE + this.pan.x, q.y * SCALE + this.pan.y, lo, hi, hiY);
+          x = (c.x - this.pan.x) / SCALE; y = (c.y - this.pan.y) / SCALE; edge = true;
+        }
+        const at = this._pin(x, y, q.state, edge);
+        questPins.push({ name: q.name, state: q.state, x: at.x, y: at.y, art: at.art, edge });
+      }
+    }
     /* v2.3.2990: the quest's way (above the bros and monsters: drawn last) */
     let quest = null;
     try { quest = questRoutePoint(S.currentZone, S.rpg || null, S); } catch (e) { quest = null; }
@@ -821,6 +876,9 @@ export class WheelMinimap {
         scale: SCALE,
         /* v2.3.3277: your party's marks (in the box, and whether on its edge) */
         party: partyMarks,
+        /* v2.3.3525: the quest pins drawn (who, which, where in the box, and
+           whether in the owner's picture) */
+        questPins,
       };
     } catch (e) { /* never breaks the frame */ }
   }

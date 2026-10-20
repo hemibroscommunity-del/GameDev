@@ -100,36 +100,43 @@ const ps = room.playerState['bp_ls_a'];
    level forge gate. */
 delete ps.prog3;
 
-// ── 1. forge happy path (iron sword: minLvl 11, 4 iron bars, 35g) ──
+// ── 1. forge happy path (iron greatsword: minLvl 5, 4 iron bars, 35g) ──
+/* v2.3.3524: a GREATSWORD at the new Smithing 5 -- the forge makes
+   greatswords only now (the owner: "Only greatswords are in the game") and
+   iron asks Smithing 5 (forgeladder.js; it was 11).  The worker still forges
+   a sword for an older page; forge-ladder.test.mjs keeps one. */
 const IRON = BLACKSMITH_TIERS.iron;
 // Governing stat comes from EQUIP_STAT_MAP (sword -> agility, NOT
 // power -- only greatswords gate on power); resolve it dynamically so
 // the test can't drift from the map.
-const SWORD_STAT = room._equipStatFor('sword');
-ps.lifeSkills = { blacksmithing: { level: 11, xp: 0 } };
+const SWORD_STAT = room._equipStatFor('greatsword');
+ps.lifeSkills = { blacksmithing: { level: IRON.minLvl, xp: 0 } };
 ps[SWORD_STAT] = IRON.statReq; // exactly meets the stat gate
 ps.coins = 1000;
-ps.inventory = { bar_iron: 5 };
+ps.inventory = { bar_iron: IRON.bars + 1 };   /* v2.3.3525: one left over, whatever a sword takes */
 ps.weapon = { type: 'sword', tierMult: 1, _old: true };
 ps.weaponStash = [];
-await send(ws, 'forge_weapon', { weaponType: 'sword', tierKey: 'iron', isWoodwork: false });
+await send(ws, 'forge_weapon', { weaponType: 'greatsword', tierKey: 'iron', isWoodwork: false });
 check('forge mints the tier shape (tierMult/gearBase/quality/H0)',
   ps.weapon && ps.weapon.tierMult === IRON.tierMult && ps.weapon.gearBase === 'iron'
   && typeof ps.weapon.quality === 'string' && ps.weapon.hardness === 0 && ps.weapon.hardenBonus === null,
   ps.weapon);
 check('forge debits EXACTLY the bar + gold costs',
-  IRON.bar === 'bar_iron' && ps.inventory.bar_iron === 5 - IRON.bars && ps.coins === 1000 - IRON.goldCost,
+  IRON.bar === 'bar_iron' && ps.inventory.bar_iron === 1 && ps.coins === 1000 - IRON.goldCost,
   { bars: ps.inventory.bar_iron, coins: ps.coins });
 check('forge swaps the old weapon into the stash (never destroys it)',
   ps.weaponStash.length === 1 && ps.weaponStash[0]._old === true);
-check('forge grants the tier\'s crafting XP (four bars\' worth, v2.3.3141)',
-  ps.lifeSkills.blacksmithing.xp === IRON.xp, ps.lifeSkills.blacksmithing);
+check('forge grants the tier\'s crafting XP (its bars\' worth, v2.3.3141)',
+  /* v2.3.3525: five bars' XP (1,500) crosses Smithing 5's level, so it is
+     counted across the level-up */
+  (ps.lifeSkills.blacksmithing.level > IRON.minLvl ? room._lifeSkillXpThreshold(IRON.minLvl) : 0) + ps.lifeSkills.blacksmithing.xp === IRON.xp,
+  ps.lifeSkills.blacksmithing);
 
 // ── 2. forge rejections: state must be UNTOUCHED ──
 const rejectCase = async (name, mutate, payload) => {
   // Reset to a known-good forgeable state, apply the case's mutation,
   // snapshot, attempt, compare.
-  ps.lifeSkills = { blacksmithing: { level: 11, xp: 0 } };
+  ps.lifeSkills = { blacksmithing: { level: IRON.minLvl, xp: 0 } };
   ps[SWORD_STAT] = IRON.statReq;
   ps.coins = 1000;
   ps.inventory = { bar_iron: 5 };
@@ -138,10 +145,10 @@ const rejectCase = async (name, mutate, payload) => {
   ps._gearLockUntil = 0;
   mutate();
   const before = econSnap(ps);
-  await send(ws, 'forge_weapon', payload || { weaponType: 'sword', tierKey: 'iron', isWoodwork: false });
+  await send(ws, 'forge_weapon', payload || { weaponType: 'greatsword', tierKey: 'iron', isWoodwork: false });
   check('forge rejection leaves state untouched: ' + name, econSnap(ps) === before, { before, after: econSnap(ps) });
 };
-await rejectCase('skill gate (mythril needs Lv31)', () => {}, { weaponType: 'sword', tierKey: 'mythril', isWoodwork: false });
+await rejectCase('skill gate (mythril needs Lv25 -- v2.3.3524; it was 31)', () => {}, { weaponType: 'greatsword', tierKey: 'mythril', isWoodwork: false });
 await rejectCase('stat gate (governing stat below statReq)', () => { ps[SWORD_STAT] = IRON.statReq - 1; });
 await rejectCase('insufficient bars', () => { ps.inventory = { bar_iron: IRON.bars - 1 }; });
 await rejectCase('iron ore is not iron bars (v2.3.3141)', () => { ps.inventory = { ore_iron_ore: 50 }; });

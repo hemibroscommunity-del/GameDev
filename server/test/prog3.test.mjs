@@ -574,21 +574,40 @@ const psA = room.playerState.pa;
 
   // forge_weapon: the stat gate reads the trained skill now.  Tier
   // index 1 (statReq 10 legacy) → prog3 requirement Melee 5.
-  const tierKey = Object.keys(BLACKSMITH_TIERS)[1];
+  /* v2.3.3524: against the forge's ladder (forgeladder.js) it is the WEAR
+     gate -- what wearing the blade asks (_prog3EquipOk): the copper
+     greatsword a new character forges first asks nothing, black steel (tier
+     index 3, two rungs past copper) Melee 10.  The old tierIndex x 5 is
+     forge-ladder.test.mjs's, under `forgeladder: false`. */
+  const tierKey = Object.keys(BLACKSMITH_TIERS)[3];
   const tier = BLACKSMITH_TIERS[tierKey];
   psA.lifeSkills = { blacksmithing: { level: 99, xp: 0 } };
   psA.coins = 100000;
-  /* v2.3.3141: tier 1 (copper) is forged from its bars now (data.js
-     BLACKSMITH_TIERS `bar`), every tier past black steel still from ore */
-  psA.inventory = { [tier.bar || ('ore_' + tier.oreName + '_ore')]: 999 };
+  /* v2.3.3141: copper, iron and black steel are forged from their bars now
+     (data.js BLACKSMITH_TIERS `bar`), every tier past black steel still from ore */
+  psA.inventory = { [tier.bar || ('ore_' + tier.oreName + '_ore')]: 999, bar_copper: 999 };
   psA.weapon = null; psA.weaponStash = [];
   p3.sk.sword.level = 1;
-  room._handleForgeWeapon(sess, { weaponType: 'sword', tierKey, isWoodwork: false });
-  check('forge: under-trained mint rejected', psA.weapon === null, psA.weapon);
-  p3.sk.sword.level = 5;
-  room._handleForgeWeapon(sess, { weaponType: 'sword', tierKey, isWoodwork: false });
-  check('forge: trained level unlocks the mint',
+  room._handleForgeWeapon(sess, { weaponType: 'greatsword', tierKey: 'copper', isWoodwork: false });
+  check('forge: a copper greatsword at Melee 1 -- the wear gate asks nothing of copper',
+    !!psA.weapon && psA.weapon.gearBase === 'copper', psA.weapon);
+  psA.weapon = null; psA.weaponStash = [];
+  p3.sk.sword.level = 9;
+  room._handleForgeWeapon(sess, { weaponType: 'greatsword', tierKey, isWoodwork: false });
+  check('forge: under-trained mint rejected (black steel at Melee 9)', psA.weapon === null, psA.weapon);
+  p3.sk.sword.level = 10;
+  room._handleForgeWeapon(sess, { weaponType: 'greatsword', tierKey, isWoodwork: false });
+  check('forge: trained level unlocks the mint (black steel at Melee 10, what wearing it asks)',
     !!psA.weapon && psA.weapon.gearBase === tierKey, psA.weapon);
+  /* v2.3.3525: the tour's smith_2 -- a new player makes a copper sword from
+     its bars at Melee 1 (and Smithing 1: data.js BLACKSMITH_TIERS copper) */
+  psA.weapon = null; psA.weaponStash = [];
+  p3.sk.sword.level = 1;
+  psA.lifeSkills = { blacksmithing: { level: 1, xp: 0 } };
+  room._handleForgeWeapon(sess, { weaponType: 'sword', tierKey: 'copper', isWoodwork: false });
+  check('forge: a copper sword is made at Melee 1 and Smithing 1, as copper armour is (v2.3.3525)',
+    !!psA.weapon && psA.weapon.gearBase === 'copper', psA.weapon);
+  psA.lifeSkills = { blacksmithing: { level: 99, xp: 0 } };
 
   // stats_update armor ingest: gates on defense POINTS; rejection
   // keeps the old armor (echo snaps the client back).

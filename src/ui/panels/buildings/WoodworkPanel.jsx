@@ -1,13 +1,14 @@
 import React from 'react';
-import { BT_AUDIO, STAT_LABELS, WEAPON_STASH_MAX, WEAPON_TYPES, WOODWORKING_TIERS, addLifeSkillXp, getGearStatReq } from '@/data/index.js'; /* v2.3.3481: REFORGE_BONUSES, hardenChance and rollReforgeBonus went with the browser-only Reforge & Harden row */
+import { BT_AUDIO, STAT_LABELS, WEAPON_STASH_MAX, WEAPON_TYPES, WOODWORKING_TIERS, addLifeSkillXp, getGearStatReq, getEquipReqLabel } from '@/data/index.js'; /* v2.3.3481: REFORGE_BONUSES, hardenChance and rollReforgeBonus went with the browser-only Reforge & Harden row */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the woodworker's results heard */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { TrapsTab } from './TrapsTab.jsx'; /* v2.3.3120: box traps from logs */
-import { hardenCost as hardenAttemptCost, hardenIsWood, hardenTierOf } from '@/data/hardenCosts.js'; /* v2.3.3139: hardening takes a material and a doubling gold ladder (renamed: the legacy affix section below has a local hardenCost; v2.3.3481: that section is gone, the name stays); v2.3.3481: hardenIsWood and hardenTierOf name the skill and level a bow's or a staff's hardening asks for */
+import { hardenCost as hardenAttemptCost, hardenIsWood, hardenTierOf, hardenLevelFor } from '@/data/hardenCosts.js'; /* v2.3.3139: hardening takes a material and a doubling gold ladder (renamed: the legacy affix section below has a local hardenCost; v2.3.3481: that section is gone, the name stays); v2.3.3481: hardenIsWood and hardenTierOf name the skill and level a bow's or a staff's hardening asks for; v2.3.3524: hardenLevelFor, that level against caps.forgeladder */
 import { HardenedWoodTab } from './HardenedWoodTab.jsx'; /* v2.3.3139: five logs into one hardened wood */
+import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3525: a bow or a staff is made of hardened wood */
 /* === WoodworkPanel — buildingPanel === 'woodwork' sub-panel === */
 /* v2.3.873: extracted verbatim from the buildingPanel === 'woodwork' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -187,14 +188,30 @@ export function WoodworkPanel(props) {
           wt = _ref142[1];
         var wwLvl = ((_rpgState$lifeSkills31 = rpgState.lifeSkills) === null || _rpgState$lifeSkills31 === void 0 || (_rpgState$lifeSkills31 = _rpgState$lifeSkills31.woodworking) === null || _rpgState$lifeSkills31 === void 0 ? void 0 : _rpgState$lifeSkills31.level) || 1;
         var canCraftSkill = wwLvl >= wt.minLvl;
-        var woodKey = 'wood_' + wt.wood;
-        var hasWood = (((_rpgState$inventory3 = rpgState.inventory) === null || _rpgState$inventory3 === void 0 ? void 0 : _rpgState$inventory3[woodKey]) || 0) >= wt.woodCost;
+        /* ═══ v2.3.3525: FIVE HARDENED WOOD, AND THE GATE WEARING IT HAS ═══
+           Against a worker with the tour's gear rules (caps.tourgear,
+           server/src/gear.js): a wood with a hardened wood makes its bow or
+           staff from five of it (the tier's `hardened`, `hardenedCost`), and
+           the bench asks what WEARING the piece asks (getEquipReqLabel, the
+           equip gate's own badge) -- pine and softwood nothing.  An older
+           worker takes the logs and asks tierIndex x 5, as before. */
+        var _tg = !!(stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.tourgear);
+        var _hw = _tg && wt.hardened ? wt.hardened : null;
+        var woodKey = _hw || ('wood_' + wt.wood);
+        var woodNeed = _hw ? wt.hardenedCost : wt.woodCost;
+        var woodName = _hw ? ((HARDENED_WOOD_RECIPES[_hw] || {}).name || 'Hardened wood') : (wt.wood.charAt(0).toUpperCase() + wt.wood.slice(1)).replace(/_/g, ' ');
+        var hasWood = (((_rpgState$inventory3 = rpgState.inventory) === null || _rpgState$inventory3 === void 0 ? void 0 : _rpgState$inventory3[woodKey]) || 0) >= woodNeed;
         var hasGold = rpgState.coins >= wt.goldCost;
         var craftType = ((_stateRef$current16 = stateRef.current) === null || _stateRef$current16 === void 0 ? void 0 : _stateRef$current16._wwType) || 'bow';
         var wwFullIdx = Object.keys(WOODWORKING_TIERS).indexOf(key);
         /* v2.3.1661 (prog3): rpg passed — the rebuild gates on the
            trained skill at tierIndex × 5 (met carried on the req). */
         var wwStatReq = getGearStatReq(craftType, wwFullIdx, rpgState);
+        if (_tg) {
+          var _eq = getEquipReqLabel({ type: craftType, gearBase: 'ww_' + key, tierMult: wt.tierMult }, 'weapon', rpgState);
+          wwStatReq = _eq ? { stat: _eq.stat, label: _eq.label, value: _eq.req, have: _eq.have, met: _eq.met !== false, prog3: !!_eq.prog3 }
+            : { stat: craftType, label: '', value: 0, met: true, prog3: true };
+        }
         var wwMeetsStat = wwStatReq.value === 0 || (wwStatReq.prog3 ? wwStatReq.met : (rpgState[wwStatReq.stat] || 0) >= wwStatReq.value);
         var canCraft = canCraftSkill && wwMeetsStat;
         var craftReady = canCraft && hasWood && hasGold; /* v2.3.3481: the button's one ready test (below) */
@@ -257,11 +274,11 @@ export function WoodworkPanel(props) {
           style: {
             color: hasWood ? '#55B98A' : '#D8635D'
           }
-        }, (wt.wood.charAt(0).toUpperCase() + wt.wood.slice(1)).replace(/_/g, ' '), " ", ((rpgState.inventory || {})[woodKey] || 0), "/", wt.woodCost), " \xB7 ", /*#__PURE__*/React.createElement("span", {
+        }, woodName, " ", ((rpgState.inventory || {})[woodKey] || 0), "/", woodNeed), " \xB7 ", /*#__PURE__*/React.createElement("span", {
           style: {
             color: hasGold ? '#55B98A' : '#D8635D'
           }
-        }, "Gold ", rpgState.coins || 0, "/", wt.goldCost)), !canCraft && /*#__PURE__*/React.createElement("span", null, wt.woodCost, "\xD7 ", wt.wood.replace(/_/g, ' '), " \xB7 ", /*#__PURE__*/React.createElement("span", {
+        }, "Gold ", rpgState.coins || 0, "/", wt.goldCost)), !canCraft && /*#__PURE__*/React.createElement("span", null, woodNeed, "\xD7 ", woodName, " \xB7 ", /*#__PURE__*/React.createElement("span", {
           className: "ls-lock",
           style: {
             marginRight: 3
@@ -317,7 +334,7 @@ export function WoodworkPanel(props) {
                 try { _Sww.channel.send({ type: 'forge_weapon', payload: { weaponType: wpnType, tierKey: key, isWoodwork: true } }); } catch (e) {}
               }
             }
-            R.inventory[woodKey] = (R.inventory[woodKey] || 0) - wt.woodCost;
+            R.inventory[woodKey] = (R.inventory[woodKey] || 0) - woodNeed;
             if (R.inventory[woodKey] <= 0) delete R.inventory[woodKey];
             R.coins -= wt.goldCost;
             var wpnKey = craftType === 'bow' ? 'rangedWeapon' : 'staffWeapon';
@@ -341,7 +358,9 @@ export function WoodworkPanel(props) {
               hardenBonus: null
             };
             var _wwLvlBefore = R.lifeSkills.woodworking.level;
-            var leveled = addLifeSkillXp(R.lifeSkills, 'woodworking', wt.minLvl * 5);
+            /* v2.3.3525: the tier's own XP where it has one (the worker's
+               `tier.xp || minLvl x 5`, gear.js) */
+            var leveled = addLifeSkillXp(R.lifeSkills, 'woodworking', (_tg && wt.xp) || wt.minLvl * 5);
             if (!R._questFlags) R._questFlags = {};
             R._questFlags.craftedWoodWeapon = true;
             pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Crafted ' + wt.label + ' ' + WEAPON_TYPES[wpnType].label + '!', '#8B6914');
@@ -359,7 +378,7 @@ export function WoodworkPanel(props) {
               missing materials (state 2); only state 1 keeps the price
               pill (which is then not the only explanation).
               v2.3.3481: state 1 says "Craft" (the price is on the row). */
-        !canCraft ? "Locked" : !hasWood ? "Need ".concat(wt.woodCost - ((rpgState.inventory || {})[woodKey] || 0), " ").concat(wt.wood.replace(/_/g, ' ')) : !hasGold ? "Need ".concat(wt.goldCost - (rpgState.coins || 0), "G more") : "Craft"));
+        !canCraft ? "Locked" : !hasWood ? "Need ".concat(woodNeed - ((rpgState.inventory || {})[woodKey] || 0), " ").concat(_hw ? 'hardened' : wt.wood.replace(/_/g, ' ')) : !hasGold ? "Need ".concat(wt.goldCost - (rpgState.coins || 0), "G more") : "Craft"));
       }), _otherMode ? null : function () {
         /* v2.3.1131: SS4.6c HARDENING for the active ranged/staff weapon
            (server ladder via harden_weapon -- see the ForgePanel twin;
@@ -398,7 +417,12 @@ export function WoodworkPanel(props) {
            only: as before, the worker's refusal names the level if it is
            short. */
         var hByWood = !!(_Sh._serverCaps && _Sh._serverCaps.hardenwoodskill) && hardenIsWood(hw, hSlot);
-        var hSkillLvl = hByWood ? hardenTierOf(hw) * 5 : 0;
+        /* v2.3.3524: against caps.forgeladder the level is the one that MAKES
+           the weapon's wood (hardenCosts.js hardenLevelFor: a pine bow
+           Woodworking 1, softwood 6, hardwood 11 ...) -- the owner: "Hardening
+           should only require the same smithing level as it takes to smithing
+           that item tier", on v2.3.3481's skill; else 5 x its tier, as before */
+        var hSkillLvl = hByWood ? ((_Sh._serverCaps && _Sh._serverCaps.forgeladder) ? hardenLevelFor(hw, hSlot) : hardenTierOf(hw) * 5) : 0;
         return /*#__PURE__*/React.createElement("div", {
           style: { marginTop: 12, padding: 10, borderRadius: 10, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
         }, /*#__PURE__*/React.createElement("div", {

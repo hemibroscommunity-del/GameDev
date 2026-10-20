@@ -878,6 +878,36 @@ remnant to migrate server-side, not a mode to preserve.
       - `sound-cues` §11, `mp-ownersounds`, `mp-cuelevels`, `mp-wheelswim`:
         docs/specs/owner-recordings.md; what is still needed:
         docs/SOUND-GAPS.md.
+    - since v2.3.3523 THE PLAYTEST'S SOUNDS AND THE SOUND STUDIO -- the owner:
+      "I think sounds were wired in the wrong places.  The labels should tell
+      you where they go.  Might need to build a quick studio to show which
+      sounds belong where", with a list (docs/specs/sounds-2026-10-19.md):
+      - the bow's "duck squeak" (`bowDraw`, a creak at 1.9-2.5 kHz) is gone:
+        `bowLoose`, the arrow's flight the jump's push-off was, at the release
+        (a volley's arrows and a peer's shot via `cueLater`); the jump's the
+        same rush, lower;
+      - the two grunts were the wrong way round for how they SOUND: the sprint
+        (SPRINT_PUSH, `sprintOut`) is the angry grunt now, the effort
+        (cut_sprint_voice.py, high-passed at 220 Hz, levelled by ear), and
+        "Grunt 1", which falls like the hurt "uh!", is `hurt-2`; mp-cuelevels
+        check 6, a grunt is a voice and not a thump (under 150 Hz);
+      - no thumps: a felled tree cracks and creaks (`treeFelled`, tree-fall's
+        first second; `PROP_SOUNDS.wood.tree` the same); the snowman's hit is
+        snow and ice, the rock's the pick WITH its click over gravel; big wood
+        the axe's dry knock, stone/coal/ice/crystal the pick's click;
+      - a weapon swap sounds like the weapon (`swapSword`/`swapBow`/
+        `swapStaff`); the ore cracks as the rock bursts (its first frame) and
+        its rubble settles as it lands; `pointsSpent` at 1.8x;
+      - THE SOUND STUDIO: the Test panel's "Sound studio" (or `?sounds`) --
+        every sound under the moment it plays at, in plain words, ▶ through
+        the game's own player, its recordings as chips (a tap shows every
+        place a recording plays), and "Heard just now", the last sounds the
+        game started by their labels (game/soundStudio.js wraps BT_AUDIO.play
+        and its helpers, `BT_AUDIO._tag`; cue/cueLater/peerOwn tag their
+        cue); the catalogue `src/data/soundStudio.js`, the screen
+        `ui/panels/SoundStudio.jsx` (its own chunk, loaded on opening);
+        A NEW SOUND GETS ITS LABEL THERE in the same change -- `sound-cues`
+        §12 fails for a cue or table key without one; `mp-soundstudio`.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
@@ -951,7 +981,9 @@ remnant to migrate server-side, not a mode to preserve.
       a tool that measures a sound reads the file's own channels, never
       ffmpeg's `-ac` (3 dB off either way: TRAPS §230); mp-sprintpeer,
       mp-sprint (6b runs dry twice), mp-cuelevels: docs/specs/sprint.md "the
-      owner's grunt".
+      owner's grunt"; since v2.3.3523 the grunt is their "Angry Grunt", the
+      effort -- "Grunt 1" sounded hurt and is the second hurt grunt now
+      (docs/specs/sounds-2026-10-19.md).
   - Since v2.3.3008 the Points window's MAX MP has its before/after scene,
     "the only one missing one": both lanes cast specials at one block of
     mana each (`statSim.js` `manaPass`) until "Out of mana", the "+n" bar
@@ -1054,7 +1086,7 @@ remnant to migrate server-side, not a mode to preserve.
       make armour?", the owner: "Yes": iron and black steel bars smelt too
       (Smithing 5 and 10, `SMELT.RECIPES`, icons by `tools/make_bar_icons.py
       iron blacksteel`), and the Blacksmith's ARMOR tab forges a torso or
-      greaves (4 bars each since v2.3.3141) in each metal -- copper Smithing 1, iron 5, black
+      greaves (4 bars each since v2.3.3141, 5 since v2.3.3525) in each metal -- copper Smithing 1, iron 5, black
       steel 10 (`server/src/armorforge.js` `ARMOR_FORGE.RECIPES`, mirrored by
       items.js `ARMOR_FORGE_RECIPES`): the drop's own piece `{name, mat, slot,
       tierMult, quality}` on the armour ladder (1/2/3, no gearBase or type),
@@ -1074,7 +1106,9 @@ remnant to migrate server-side, not a mode to preserve.
         BLACKSMITH_TIERS `bar`/`bars`/`xp` on copper, iron and `steel`, which
         replace their `oreCost`; the gold stays); a sword pays the armour's
         XP for the same bars (800 / 1,200 / 1,600); wood and the metals past
-        black steel are unchanged;
+        black steel are unchanged; FIVE bars since v2.3.3525 (the tour, below:
+        "It should mirror the cost of making armor"), the XP 1,000 / 1,500 /
+        2,000, salvage still two back;
       - the Blacksmith's SALVAGE tab (`server/src/salvage.js`): a CARRIED piece
         of those metals -- armour by its ledger id through `_gearSellable`
         and `_gearProvTake` (the auction house's own gate and escrow step:
@@ -3375,6 +3409,82 @@ remnant to migrate server-side, not a mode to preserve.
         nothing (groundLoot.js `S._dying`): TRAPS §233;
       - combat-lifecycle §5, `mp-deathpile` (a real death, in real time,
         `BT_DP_TRACE=1` its timeline): item-drop.md "A dead player's pile".
+  - Since v2.3.3525 THE TOUR -- the owner, a week before an exposé where
+    reviewers give each game 20-30 minutes: "my quest line is almost
+    exclusively going to 4 zones to kill monsters and bring their remains back
+    to mayor bro ... Mayor bro would hand off the quest to the next person
+    ... Keep the dialog witty and funny (it's an unserious game bro)", then
+    "Maybe mayor bro is the only quest available for the first quest then
+    after completing that other NPCs begin having quest icons appear above
+    their head":
+    - THE MAYOR FIRST, THEN THE WHOLE TOWN (server/src/data.js QUEST_REWARDS
+      tut_1's header; the phone's QUEST_CHAINS, the header above farm_1):
+      Mayor Bro's exploding slimes (tut_1) are the only quest a new player is
+      offered; once in, SIX townsfolk offer theirs at once (`after: 'tut_1'`)
+      -- Farmer Bro plants carrots (farm_1), Blacksmith Bro 5 copper ore for
+      5 bars (smith_1), Woodworker Bro 5 pine logs for 5 hardened pine
+      (wood_1), Diego 2 cooked fish for 10 cooked clownfish (fish_1, two pine
+      logs on accept for the fire), Lil Bro's race (race_1), Beastmaster Bro's
+      traps (beast_1); each giver's second step after his first: forge your
+      own piece (smith_2), a bow or staff and a pine one SWAPPED for softwood
+      at the hand-in (wood_2, `trade`), 3 springs (beast_2), Zoom Juice
+      (farm_2, after farm_1 AND fish_1: you can cook, the carrots have
+      grown); the Mayor's burrowing snowmen, the finale (tut_2), once the
+      whole town is in (`after` a LIST, every one handed in: the worker's
+      _questBarred, the phone's getNpcQuest STOP via `questAfterMet`), then
+      his lands (tut_3/4); `next` only within a giver's own line (a `next`
+      opens its step past any `after`); life_1/life_2 RETIRED (QUEST_RETIRED,
+      `retired`: never offered, one held still hands in); every line says why
+      he wants it, in any order; the counted kinds `farm`/`craft`/`cook`/
+      `race` (quests.js QUEST_COUNTED); a hand-in's trade asked on the claim
+      window (QuestPanel TradeChooser);
+    - QUEST_TOUR (both sides, mirror-audit §5a) is the order SUGGESTED: with
+      nothing in hand the gold road leads to the first step of it on offer
+      and the pinned card says "Next: <quest> / Talk to <him> <where>" and
+      "+N more: look for a gold ! on your map" (questRoute.js `tourOffer`,
+      `more`); a giver's "how's it going" line opens his building (game/
+      tour.js `opens`, NpcDialogue's `action`); and every step has a WAY
+      (game/questWays.js, v2.3.3522): the farm steps the Feed & Seed's
+      door, Zoom Juice the Cookhouse's, the forging the forge, the bow the
+      bench, the race Lil Bro (`way: 'giver'`, a kind of its own);
+    - THE QUEST PINS ON THE MAPS -- the owner: "Make the quest icons appear on
+      the minimap and map too": every townsperson's head pin (npc.
+      _questMarker, the owner's QUEST_PIN pictures, preloaded for the heads)
+      on the Wheel's minimap (wheelMinimap.js `_pin`; one just off the box,
+      within `MAP_PIN.EDGE_R`, smaller on its edge toward him -- from the
+      arrival the box holds half the town) and the
+      world map (WorldMapOverlay.jsx: at every zoom, bigger and named from
+      AT.town, the key's "has a quest"; its three pictures loaded as the map
+      opens and let go as it closes): src/game/questPins.js, no imports;
+      `__btMinimap.questPins`, `__btWorldMap.more.pins`; `quest-pins` suite;
+    - Woodworker Bro and Farmer Bro stand in the Wheel (WHEEL_TOWNSFOLK `cap:
+      'tour'`, keepers of their buildings), stand-in pictures by
+      tools/make_tour_townsfolk.py until the owner's; Blacksmith Bro and
+      Diego `quietProgress`;
+    - LIL BRO'S RACE (server/src/race.js, src/game/race.js, RaceHud.jsx,
+      rendering/raceFlags.js): four corner flags round the Town Hall's square
+      and back, judged on every accepted move, Lil Bro 165 px/s (a walk
+      loses, a sprint or Zoom Juice wins), held on the line through the
+      3-second countdown, a false start called; `race_start` / `race_state` /
+      `race_cp` / `race_end` (PRIVILEGED, the direct switch);
+    - ZOOM JUICE: Cookhouse row 9, 3 carrots, 25% faster for 5 minutes;
+    - the gear: copper/iron/black steel SWORDS at Smithing 1/5/10, the forge
+      asks what WEARING asks, bows and staffs from FIVE of their tier's
+      HARDENED wood at Woodworking 1/5/10/15/20 -- the owner: "Bows/staffs
+      should require 5 hard wood before making them (5 logs in that tier make
+      1 hard wood). It should mirror the cost of making armor" -- so swords,
+      greatswords, torsos and greaves take FIVE bars too (was four since
+      v2.3.3141), the XP with them (200 / 300 / 400 a bar), salvage still two
+      back (half, rounded down); the tour's five bars and five hardened pine
+      make exactly one piece each; SOFTWOOD free to wear like iron
+      (`caps.tourgear` for the windows);
+    - "REMAINS", not "remnants", wherever a player reads it
+      (src/data/remains.js; the keys stay);
+    - Test panel "Tour: jump to" (`/dev/tour {at}`), `/dev/questcount`;
+      kill switches `tour: false`, `race: false`; `tour` and `quest-pins`
+      suites, mirror-audit §5a, test-world-core, `mp-questline` (the whole
+      tour, CI's "playable", the six pins over heads and on both maps),
+      `mp-race`: docs/specs/demo-quest-line.md.
   - Since v2.3.3209 THE MONSTER CODEX -- the owner: "After you kill a monster
     you learn more about it, what it does, where it's from, elemental type,
     special attack, (make up a backstory) etc.", "Also include drop tables

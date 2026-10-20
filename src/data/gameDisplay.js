@@ -3502,14 +3502,26 @@ BT_AUDIO.HIT_VOICES = {
     layer: [['cook-success', 0.1, 0.2, 0.3, 1, 0.01, 0.06]],
     fb: ['monster-hit', 0, 0, 2.73],
   },
+  /* ═══ v2.3.3523: NO THUMP UNDER THE ROCK OR THE SNOWMAN ═══
+     The owner: "Hit made a fleshy sound on the snowman (maybe crit?) can't be
+     that sound.  Same fleshy sound for the rock monster on every hit."
+     Measured: the snowman's body was snowman-hit, the snowball's thud (91%
+     of it under 250 Hz -- the monster-hit family, the game's own "fleshy"
+     sample); the rock's every hit carried a step-stone layer, a footstep's
+     thump as loud as the pick, and half its hits the pick from 0.06 s, its
+     click cut off: a dull body, 40% under 250 Hz.  Now the rock is the pick
+     WITH its click (from 0.58 s, the town anvil's strike), two pitches, over
+     a scrape of gravel; the snowman is snow -- a crunch as the body, an icy
+     crack over it (~0.7 of a hit, 19% under 250 Hz).  Both clips are the
+     Wheel's footsteps, so outside it `fb` is what each made before. */
   stone: {
-    hit: [['mine-strike', 0.06, 0.4, 0.62], ['mine-strike', 0.58, 0.45, 0.5]],
-    layer: [['step-stone', 0.18, 0.06, 2.4, 0.9, 0.02], ['step-stone', 0.93, 0.1, 1.8, 0.9, 0.02]],
+    hit: [['mine-strike', 0.58, 0.45, 0.5], ['mine-strike', 0.58, 0.4, 0.46, 1.12]],
+    layer: [['step-gravel', 0.145, 0.3, 2.0, 0.95, 0.02], ['step-gravel', 0.145, 0.3, 1.8, 1.08, 0.02]],
     fb: ['sword-hit2', 0, 0, 0.63],
   },
   snow: {
-    hit: [['snowman-hit', 0.03, 0.27, 0.7]],
-    layer: [['step-snow', 0.295, 0.2, 1.6, 1, 0.015], ['step-snow', 0.765, 0.2, 1.7, 1, 0.015]],
+    hit: [['step-snow', 0.295, 0.2, 2.6, 1], ['step-snow', 0.765, 0.2, 2.6, 1.05]],
+    layer: [['step-ice', 0.145, 0.2, 1.2, 1.2, 0.005], ['step-ice', 0.607, 0.2, 1.2, 1.25, 0.005]],
     fb: ['snowman-hit', 0.03, 0.27, 0.75],
   },
   mud: {
@@ -3658,16 +3670,25 @@ BT_AUDIO._armorHitToggle = 0;
  * crunches off a pine, char puffs off a burnt tree, slime squelches.
  * A plant's own `fb` is what it made before (the soft thud), for a hit that
  * comes before the Wheel's clips. */
+/* ═══ v2.3.3523: NO THUMP UNDER A PROP'S KNOCK ═══
+   The owner: "Same with hitting crystals probably other props too", and "The
+   sound when a tree hits 0 hp is a fleshy sound.  Remove that."  The same low
+   thuds the monsters had: a big wooden thing (every tree, gate and building)
+   was wood-chop, 90% under 250 Hz -> the axe's own dry knock; the pick from
+   0.06 s (its click cut off, a dull body) under stone, coal, ice and crystal
+   -> the pick WITH its click, from 0.58 s; a crystal rings over an icy
+   crack; and a tree that falls cracks and creaks -- tree-fall's first second,
+   never its last, a thump 88-91% under 150 Hz. */
 BT_AUDIO.PROP_SOUNDS = {
   wood: {
     hit: [['axe-chop', 0.13, 0.3, 2.1], ['axe-chop', 1.135, 0.3, 1.7]],
-    big: [['wood-chop', 0.06, 0.38, 0.36, 1]], bigLayer: ['axe-chop', 0.13, 0.25, 1.6, 1],
+    big: [['axe-chop', 1.135, 0.3, 1.9, 0.9]], bigLayer: ['axe-chop', 0.13, 0.25, 1.6, 1],
     brk: [['tree-fall', 0, 0.7, 0.45, 1.3], ['axe-chop', 1.135, 0.3, 1.2, 0.9, 0.02]],
-    tree: [['tree-fall', 0, 2, 0.5, 1]],
+    tree: [['axe-chop', 1.135, 0.3, 1.9, 0.85], ['tree-fall', 0.12, 0.88, 0.5, 1.1, 0.03]],
     building: [['tree-fall', 0, 2, 0.5, 0.82], ['shield-bash', 0, 0.72, 0.4, 0.8, 0.05], ['skeleton-death', 0, 1.3, 0.45, 0.7, 0.3]],
   },
   stone: {
-    hit: [['mine-strike', 0.06, 0.4, 0.72], ['mine-strike', 0.58, 0.45, 0.54]],
+    hit: [['mine-strike', 0.58, 0.45, 0.6, 0.92], ['mine-strike', 0.58, 0.45, 0.54]],
     brk: [['mine-strike', 0.58, 0.45, 0.4, 0.78], ['skeleton-death', 0, 1.3, 0.45, 0.75, 0.04]],
     building: [['tree-fall', 1.1, 0.9, 0.42, 0.72], ['skeleton-death', 0, 1.3, 0.38, 0.62, 0.08], ['mine-strike', 0.06, 0.4, 0.28, 0.7, 0.02]],
   },
@@ -3701,15 +3722,15 @@ BT_AUDIO.PROP_SOUNDS = {
     brk: [['snowman-death', 0.13, 1.5, 0.55, 1.05]],
   },
   ice: {
-    hit: [['step-ice', 0.145, 0.39, 4.1], ['step-ice', 0.607, 0.34, 4.1]], layer: ['mine-strike', 0.06, 0.3, 0.4, 1.5],
+    hit: [['step-ice', 0.145, 0.39, 4.1], ['step-ice', 0.607, 0.34, 4.1]], layer: ['mine-strike', 0.58, 0.3, 0.35, 1.5],
     brk: [['skeleton-death', 0, 1.3, 0.45, 1.45], ['sword-hit2', 0, 0.3, 0.4, 1.3, 0.03], ['step-ice', 1.016, 0.35, 1.6, 0.9, 0.08]],
   },
   crystal: {
-    hit: [['sword-hit2', 0, 0.3, 0.67, 1.3]], layer: ['mine-strike', 0.06, 0.3, 0.4, 1.4],
+    hit: [['sword-hit2', 0, 0.3, 0.67, 1.37]], layer: ['step-ice', 0.145, 0.3, 2.0, 1.1, 0.01],
     brk: [['skeleton-death', 0, 1.3, 0.45, 1.5], ['sword-hit2', 0, 0.3, 0.45, 1.15], ['sword-hit2', 0, 0.3, 0.38, 1.45, 0.07]],
   },
   coal: {
-    hit: [['mine-strike', 0.06, 0.4, 0.6, 0.8]], layer: ['step-gravel', 0.145, 0.4, 3, 0.9],
+    hit: [['mine-strike', 0.58, 0.45, 0.5, 0.85]], layer: ['step-gravel', 0.145, 0.4, 3, 0.9],
     brk: [['skeleton-death', 0, 1.3, 0.42, 0.7], ['step-gravel', 0.145, 0.53, 3.5, 0.8], ['mine-strike', 0.58, 0.45, 0.3, 0.7, 0.05]],
   },
   /* v2.3.3001: 'soft' (the slime's thud on a plant) is gone: plant and
@@ -5799,6 +5820,12 @@ export const NPC_DATA = [{
     dirs: ['south', 'southwest', 'west', 'northwest',
       'north', 'northeast', 'east', 'southeast'],
   },
+  /* ═══ v2.3.3525: HE RACES YOU (the tour's race_1, game/race.js) ═══
+     Standing on the square he needs only his south strip (npcSprites.js
+     wheelWalkSources); racing round it -- west, north, east, back south --
+     he needs the four straight ones, loaded with the Wheel's cast behind its
+     loading screen (~1 MB). */
+  wheelDirs: ['south', 'west', 'north', 'east'],
   avatar: '🧒',
   color: '#7FB6E8',
   plateRole: 'Kid',
@@ -5840,6 +5867,7 @@ export const NPC_DATA = [{
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
   phrases: [
     'Betcha can’t catch me!',
+    'Bet you can’t beat me round the square!',   /* v2.3.3525: the race (race_1) */
     'My bro says the meadow’s got slimes.',
     'One day I’m gonna be a real adventurer.',
     'Did you see the fountain? It’s got FISH. Probably.',
@@ -5968,6 +5996,10 @@ export const NPC_DATA = [{
 }, {
   id: 'shopkeeper_bro',
   name: 'Diego',
+  /* v2.3.3525: a giver of the tour now (fish_1): while it runs, walking up to
+     him still opens his SHOP (BroTown's proximity opener skips a quiet
+     giver's "how's it going"); a tap or E answers about the fish */
+  quietProgress: true,
   /* The south strip. `sprite` is what npcSpriteScale keys on and what the
      preloader lists; the renderer binds a sliced FRAME rather than this raw
      strip (see entityRenderer v2.3.2046), so the four-in-one image is never
@@ -6080,6 +6112,11 @@ export const NPC_DATA = [{
      same reason his NAME is not -- getNpcQuest keys on the name, not on this,
      but keeping the two consistent avoids inviting the mistake. */
   plateRole: 'Blacksmith',
+  /* v2.3.3525: a giver of the tour now (smith_1, smith_2), at his forge's
+     steps: walking past him to its door does not stop you to say how his
+     quest is going (BroTown's proximity opener) -- an offer or a claim
+     still opens by itself, and a tap or E answers */
+  quietProgress: true,
   sprite: '/sprites/npc/blacksmith-bro.webp',
   portrait: '/sprites/npc/blacksmith-bro-head.webp',
   avatar: '🔨',
@@ -6187,6 +6224,96 @@ export const NPC_DATA = [{
     'One log, one trap. One trap, one chance.',
     'Every land has its own little beasts.',
     'Most traps break. That is trapping.',
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  /* ═══ v2.3.3525: WOODWORKER BRO AND FARMER BRO, FOR THE TOUR ═══
+     The owner, planning the quest line for an exposé: "a quest from a
+     woodworker where you give him 5 wood, he gives you 5 hardened wood", and
+     "a quest for farming too".  Two of the tour's givers had nobody to stand
+     in (QUEST_CHAINS wood_1/wood_2, farm_1/farm_2): docs/ART-WISHLIST.md's
+     keepers, sheet 1 of 2, already named them, and these are those two.
+
+     NAMES: checked against QUEST_CHAINS -- getNpcQuest keys on the NAME, and
+     neither matches a dormant chain (TRAPS' Trader Tix / Beastmaster Kai
+     trap, see Diego and Beastmaster Bro above).
+
+     `wheelOnly`, as Beastmaster Bro: they stand in the Wheel's Brotown and
+     nowhere else.  `needsCap: 'tour'`: only against a worker that knows the
+     tour's quests (caps.tour; WHEEL_TOWNSFOLK's `cap`, BroTown
+     _spawnWheelNpcs).  `quietProgress`: walking past one to his own door does
+     not stop you to say how his quest is going.  Each is his building's
+     KEEPER (wheelBuildingDoors.js WHEEL_KEEPERS): his quests done, talking to
+     him opens it.
+
+     ART: stand-ins made by tools/make_tour_townsfolk.py from figures the game
+     already has (the retired clerk, Diego), until the owner's own pictures
+     come -- the prompts are ART-WISHLIST's.  The NPC frame: 256 x 256, feet on
+     y = 223; one picture each, ~0.25 MB, with the Wheel's cast. */
+  id: 'woodworker_bro',
+  name: 'Woodworker Bro',     /* MUST equal QUEST_CHAINS[].npc -- getNpcQuest keys on it */
+  plateRole: 'Woodworker',
+  sprite: '/sprites/npc/woodworker-bro.webp',
+  portrait: '/sprites/npc/woodworker-bro-head.webp',
+  avatar: '🪚',
+  color: '#a3753f',
+  wheelOnly: true,
+  quietProgress: true,
+  needsCap: 'tour',
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs at his door */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 12000,
+  chatBubble: null,
+  /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
+  phrases: [
+    'Measure twice. Cut once. Cry never.',
+    'Hardened wood. It has seen things.',
+    'Nobody ever brings me logs.',
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'farmer_bro',
+  name: 'Farmer Bro',         /* MUST equal QUEST_CHAINS[].npc -- getNpcQuest keys on it */
+  plateRole: 'Farmer',
+  sprite: '/sprites/npc/farmer-bro.webp',
+  portrait: '/sprites/npc/farmer-bro-head.webp',
+  avatar: '👨‍🌾',
+  color: '#c9a227',
+  wheelOnly: true,
+  quietProgress: true,
+  needsCap: 'tour',
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs at his door */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    'Slimes ate my carrots. Then they exploded.',
+    'Water your crops. Water yourself.',
+    'Every bro gets a farm. It is in the fine print.',
   ],
   canFollow: false,
   followZones: [],

@@ -45,22 +45,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (S && S.channel) S.channel.send(m);
   }, msg);
 
-  /* Earn the torso the way the game pays it out. */
-  await send({ type: 'quest_accept', payload: { questId: 'life_1' } });
-  await P.page.waitForTimeout(900);
-  await H.grant(wsPort, myId, 'item', { invKey: 'cooked_fish_trout', count: 2 });
+  /* Earn the torso the way the game pays it out.  v2.3.3525: FORGED, from
+     five copper bars at the Blacksmith's Armor tab (armorforge.js) -- the
+     tour's ore errand pays the bars; life_2, which paid the torso for five
+     ore, is retired. */
+  await H.grant(wsPort, myId, 'item', { invKey: 'bar_copper', count: 5 });
   await P.page.waitForTimeout(1000);
-  await send({ type: 'quest_turn_in', payload: { questId: 'life_1', xpCat: 'sword' } });
-  await P.page.waitForTimeout(1400);
-  await send({ type: 'quest_accept', payload: { questId: 'life_2' } });
-  await P.page.waitForTimeout(900);
-  await H.grant(wsPort, myId, 'item', { invKey: 'ore_copper_ore', count: 5 });
-  await P.page.waitForTimeout(1000);
-  await send({ type: 'quest_turn_in', payload: { questId: 'life_2', xpCat: 'sword' } });
-  await P.page.waitForTimeout(2500);
+  await send({ type: 'forge_armor', payload: { recipe: 'copper_torso' } });
+  await H.waitFor(P, (S) => (S.rpg.armorStash || []).some((a) => a && a.name === 'Copper Torso'),
+    (v) => v === true, { timeout: 15000, label: 'the forged torso reaches the bag' }).catch(() => {});
+  await P.page.waitForTimeout(800);
 
   const bagged = await facts(P, wsPort, myId);
-  rec.ok('the quest torso is in the bag to start with',
+  rec.ok('the forged torso is in the bag to start with',
     bagged.stash.includes('Copper Torso') && !bagged.client, bagged);
 
   /* ── EQUIP through the bag ── */

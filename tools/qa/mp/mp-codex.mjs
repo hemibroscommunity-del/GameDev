@@ -630,7 +630,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok(`...and every page's drop table is its own (${every.map((e) => e.kind + ' ' + Object.keys(e.drops || {}).length).join(', ')})`,
       dropOff.length === 0, dropOff.map((e) => ({ kind: e.kind, drops: e.drops })));
-    rec.ok('...and no drop\'s name, type or chance is cut short on any of them ("Fire Goblin Remnants" in two lines at most)',
+    rec.ok('...and no drop\'s name, type or chance is cut short on any of them ("Fire Goblin Remains" in two lines at most)',
       every.every((e) => e.cut && e.cut.length === 0), every.filter((e) => !e.cut || e.cut.length).map((e) => ({ kind: e.kind, cut: e.cut })));
     /* Locations: the way there for all nine, and the three lands' dungeons
        with their own levels (WHEEL_DOORS) */

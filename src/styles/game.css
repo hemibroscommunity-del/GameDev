@@ -5154,6 +5154,22 @@ body:has([data-trade-drawer]) [data-coach]{display:none}
 .bt-kb-key kbd{display:inline-block;padding:1px 4px;background:rgba(255,255,255,.12);border-radius:2px;
   /* v2.3.1239: owner feedback — 10px font floor (was 8px); desktop-only kb hint */
   font-size:11px;font-weight:800;color:#fff;min-width:14px;text-align:center}
+/* ═══ v2.3.3526: THE KEYS IN THE BLACK MARGIN, ONE A ROW ═══
+   The owner: "Go recommended on everything" (the 2026-10-19 review's "move
+   the keyboard keys strip into the black margin beside the game").  Where the
+   margin has room KeyboardHintsPanel portals the strip and the ⌨ into the
+   body, in this box: fixed, its right edge 16 px left of the game's column and
+   its bottom 16 px over the window's (inline right/bottom, measured off #root),
+   the ⌨ at the bottom (column-reverse: it stays put when the rows go), the
+   rows above it.  Nothing in the column is under it, so it never stands aside:
+   `display` is !important against the seven `body:has(...) .bt-kb-hints` /
+   `.bt-kb-chip` rules above, which are for the strip drawn in the column. */
+.bt-kb-side{position:fixed;z-index:20;display:flex;flex-direction:column-reverse;align-items:flex-end;gap:6px;pointer-events:none}
+.bt-kb-side .bt-kb-chip,
+.bt-kb-side .bt-kb-hints{position:static;left:auto;bottom:auto;display:flex!important}
+.bt-kb-side .bt-kb-hints{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:3px;width:150px;max-width:none;opacity:.85}
+.bt-kb-side .bt-kb-key{padding:2px 8px}
+.bt-kb-side .bt-kb-key kbd{min-width:48px;margin-right:4px}
 .bt-crosshair-cursor{cursor:crosshair !important}
 
 /* ═══ v2.3.3407: A KEY'S LETTER BESIDE WHAT IT DOES -- ON A COMPUTER ═══
@@ -5951,6 +5967,15 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
    dots pushed it there, and a one-line answer draws no dots, so its Close
    fell to the left, away from where Next had been under the finger. */
 .bt-npcdlg-next{min-height:40px;padding:0 18px;font-size:14px;border-radius:9px;flex:0 0 auto;margin-left:auto}
+/* v2.3.3525: the thing he asks you to do (a tour giver's "Open the forge",
+   Lil Bro's "Race!": NpcDialogue `action`) is the brass button, at the right
+   where Next was under the finger; Close goes quiet to its left */
+.bt-npcdlg-act{min-height:40px;padding:0 18px;font-size:14px;border-radius:9px;flex:0 0 auto;margin-left:0;order:2}
+.bt-npcdlg-next--quiet{order:1;padding:0 14px}
+/* v2.3.3525: the race's countdown beat (ui/mobile/RaceHud.jsx) -- transform
+   and opacity only */
+.bt-race-beat{animation:bt-race-beat 420ms ease-out both}
+@keyframes bt-race-beat{from{transform:scale(1.6);opacity:0}to{transform:scale(1);opacity:1}}
 
 /* ── the offer / claim window ── */
 .bt-qoffer{

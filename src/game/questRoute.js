@@ -20,7 +20,8 @@
  * in town with nothing marked at all, which is worse than no feature: it
  * would read as "no quest is active".
  */
-import { QUEST_CHAINS, QUEST_STATUS, questSteps /* v2.3.3012: which node a gathering quest's next step needs */ } from '@/data/gameSystems.js';
+import { QUEST_CHAINS, QUEST_STATUS, questSteps /* v2.3.3012: which node a gathering quest's next step needs */, getNpcQuest /* v2.3.3525: the tour's next step */, QUEST_TOUR /* v2.3.3525: in its suggested order */ } from '@/data/gameSystems.js';
+import { raceRoutePoint } from '@/game/race.js';   /* v2.3.3525: the race's next flag */
 import { hasGatherTool, gatherNeed /* v2.3.3038 */ } from '@/data/lifeSkills.js';   /* v2.3.3012: never lead to a node that is not drawn */
 import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
 import { TILE } from '@/data/constants.js';
@@ -320,6 +321,9 @@ export function zoneUnlockQuest(zoneId) {
 const WELCOME_NPC = 'Mayor Bro';
 
 export function questRoutePoint(currentZone, rpg, S) {
+  /* v2.3.3525: racing Lil Bro, the road is the race's: the next flag */
+  const flag = raceRoutePoint(S);
+  if (flag) return flag;
   const exit = questRouteExit(currentZone, rpg, S);
   if (exit) return exit;
   if (currentZone !== QUEST_HOME_ZONE) return _wheelPoint(currentZone, rpg, S);
@@ -344,9 +348,64 @@ function _wantNpc(rpg, S) {
     return WELCOME_NPC;                          /* brand new: go meet him */
   }
   /* v2.3.3522: the tracked quest's giver first (_routeQuests) */
+  let anyActive = false;
   for (const { q, done } of _routeQuests(rpg, S)) {
+    anyActive = true;
     if (!q.npc) continue;
     if (done) return q.npc;                      /* hand it in */
+  }
+  /* v2.3.3525: and nothing in hand while the TOUR has its next step on
+     offer -- to whoever gives it, as the welcome leads to the Mayor
+     (tourOffer, below).  A step done at its giver's building or at another
+     door (the forge, the bench, the Feed & Seed, farm_2's Cookhouse) is its
+     `way` since the merge with v2.3.3522 (game/questWays.js, door:<plot>). */
+  if (!anyActive) {
+    const t = tourOffer(rpg, S);
+    if (t) return t.npc;
+  }
+  return null;
+}
+
+/* ═══ v2.3.3525: THE TOUR'S NEXT STEP ═══
+   Between two quests there is no quest in hand and nothing for the road to
+   follow -- the moment a reviewer most needs one.  Once the Mayor's first
+   quest is in the whole town offers its quests at once (gameSystems.js, the
+   header above farm_1), so this SUGGESTS one: the first step of QUEST_TOUR
+   that its giver offers now (getNpcQuest), and only while no quest is active:
+   the road never nags past the job you have.  `more` is how many other
+   townsfolk standing here offer a quest too, every one wearing the gold "!"
+   over his head and on the maps.  The pinned quest card says it (BroTown,
+   "Next:"). */
+export function tourOffer(rpg, S) {
+  const quests = (rpg && rpg._quests) || null;
+  if (!quests || !Object.keys(quests).length) return null;
+  for (const k of Object.keys(quests)) if (quests[k] === QUEST_STATUS.active) return null;
+  /* only a giver who stands here (the tour's two new ones stand only against
+     a worker that knows the tour) */
+  const here = (name) => !(S && Array.isArray(S.npcs)) || S.npcs.some((n) => n && n.name === name);
+  /* each giver asked once a call (the minimap asks every frame) */
+  const asked = new Map();
+  const offers = (name) => {
+    if (asked.has(name)) return asked.get(name);
+    let r = null;
+    try { r = getNpcQuest(rpg, name); } catch (e) { r = null; }
+    const q = r && r.status === QUEST_STATUS.available && r.quest ? r.quest : null;
+    asked.set(name, q);
+    return q;
+  };
+  for (const qid of QUEST_TOUR) {
+    const q = QUEST_CHAINS[qid];
+    if (!q || !q.npc || quests[qid] === QUEST_STATUS.turnedIn || !here(q.npc)) continue;
+    const on = offers(q.npc);
+    if (!on || on.id !== qid) continue;
+    let more = 0;
+    const seen = new Set([q.npc]);
+    for (const n of (S && Array.isArray(S.npcs) ? S.npcs : [])) {
+      if (!n || !n.name || seen.has(n.name)) continue;
+      seen.add(n.name);
+      if (offers(n.name)) more++;
+    }
+    return { quest: q, npc: q.npc, more };
   }
   return null;
 }
@@ -422,6 +481,13 @@ function _wheelPoint(currentZone, rpg, S) {
     /* the welcome (a brand-new player): his road to the Mayor, as before */
     const want = _wantNpc(rpg, S);
     return want ? _npcHere(S, want) : null;
+  }
+  /* v2.3.3525: nothing in hand while the tour suggests its next step: to
+     whoever gives it (tourOffer is null while any quest is active) */
+  const offer = tourOffer(rpg, S);
+  if (offer) {
+    const at = _npcHere(S, offer.npc);
+    if (at) return at;
   }
   const homes = zoneHomes(currentZone);
   const z = currentZone === 'wheel' && homes ? ZONES[currentZone] : null;

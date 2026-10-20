@@ -372,13 +372,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(400);
   rec.ok('with no active quest, no portal is starred', (await route()) === null, await route());
 
-  /* tut_1 sends you to FROST.  Standing in TOWN, the next step is not a frost
-     portal — town has none — it is the way up to the World View.  A literal
+  /* tut_1 sends you to the VERDANT WILDS (v2.3.3525: the tour's slimes; it
+     was Frost Ridge's snowmen).  Standing in TOWN, the next step is not a
+     verdant portal — town has none — it is the way up to the World View.  A literal
      destination match would star nothing here and read as "no quest". */
   await setQuests({ tut_1: 'active' });
   await P.page.waitForTimeout(400);
   const fromTown = await route();
-  rec.ok('a frost quest in TOWN stars the way out of town, not nothing',
+  rec.ok('a verdant quest in TOWN stars the way out of town, not nothing',
     !!(fromTown && fromTown.zoneId === 'worldview'), fromTown);
   /* And it is a real tile of this zone, not an off-map coordinate — the same
      failure two town reshapes have already caused for the exit tables. */
@@ -416,18 +417,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* Already IN the target zone: the star must go away.  Otherwise it points
      at the way home while the quest says hunt here. */
-  await P.page.evaluate(() => { window._gameState.current.currentZone = 'frost'; });
-  rec.ok('the minimap redrew in frost (guard for the poke)', await zoneShown('frost'));
+  await P.page.evaluate(() => { window._gameState.current.currentZone = 'verdant'; });
+  rec.ok('the minimap redrew in verdant (guard for the poke)', await zoneShown('verdant'));
   rec.ok('standing in the target zone stars nothing', (await route()) === null, await route());
 
   /* From the hub the spoke itself is present, so it is starred directly. */
   await P.page.evaluate(() => { window._gameState.current.currentZone = 'worldview'; });
   rec.ok('the minimap redrew in the World View (guard for the poke)', await zoneShown('worldview'));
   const fromHub = await route();
-  rec.ok('from the World View it stars the FROST spoke itself',
-    !!(fromHub && fromHub.zoneId === 'frost'), fromHub);
+  rec.ok('from the World View it stars the VERDANT spoke itself',
+    !!(fromHub && fromHub.zoneId === 'verdant'), fromHub);
   /* GUARD: a different quest must move the star, or the check above is
-     satisfied by a hardcoded frost. */
+     satisfied by a hardcoded verdant. */
   await setQuests({ tut_4: 'active' });
   await P.page.waitForTimeout(800);
   const emberHub = await route();
