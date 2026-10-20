@@ -596,14 +596,21 @@
    moves").  Each gets an invisible ring, nothing drawn:
    - a skill pill 2 px above and below, into the grid's 4 px gaps (28 -> 32
      px tall, meeting its neighbour mid-gap; the columns are 4 px apart too,
-     so no sideways growth);
+     so no sideways growth) -- v2.3.3522: retired with the pills, below;
    - "‹ All skills" into the empty row beside it and the top of the header
      under it (53 x 25 -> ~95 x 39), held to the page's own padding above and
      to its left, where the scroller clips;
    - a row button 4 px up and down, to the rail's own padding, and 2 px into
      each gap (sideways 26 x 40 -> 30 x 48).  ::before, because on a computer
      its ::after is the key cap ([data-key]::after, below). */
-.bt-skill-pill::after{content:'';position:absolute;left:0;right:0;top:-2px;bottom:-2px}
+/* v2.3.3522: the skill PILLS are gone (the owner: "Make the lifeskills menu
+   look more like iPhone apps instead of elongated pills"): each skill is an
+   app tile now (SkillsPanel.jsx), its button the tile and its name -- 52 x 68
+   px, no ring needed -- and a press shrinks the tile as a home screen's does
+   (transform only, the 90 ms press of Lantern Slate's motion) */
+.bt-skill-app .bt-skill-app-tile{transition:transform 90ms cubic-bezier(.2,.8,.2,1)}
+.bt-skill-app:active .bt-skill-app-tile{transform:scale(.94)}
+@media (prefers-reduced-motion: reduce){ .bt-skill-app .bt-skill-app-tile{transition:none} }
 .bt-back-link::after{content:'';position:absolute;top:-4px;left:-6px;right:-36px;bottom:-10px}
 .bt-navrail [data-nav]::before{content:'';position:absolute;top:-4px;bottom:-4px;left:-2px;right:-2px}
 /* v2.3.1326 (owner correction of v2.3.1325: "shrink the icons again
@@ -1260,6 +1267,37 @@ body:has(.bt-plist) [data-coach]{display:none}
    28px is under the 44pt touch floor; an invisible inset:-8px pseudo
    grows the TAP target to 44px with zero visual change. */
 .bt-inspect-close::after{content:'';position:absolute;inset:-8px}
+/* ═══ v2.3.3522: THE SHOPS' ✕, BIG AND ALWAYS IN THE CORNER ═══
+   The owner, playtesting: "Vendor menus need a more prominent escape icon in
+   the corner."  A building window's ✕ was a faint 28 px disc (white at 10%, a
+   60% grey cross) -- and it was a child of the card that SCROLLS, so in the
+   forge, the Woodworker or the Gem Works it scrolled away with the menu and
+   left no way out on screen but the dark edge round the card.  Diego's was a
+   30 px rounded square, Ace's a bare grey 20 px "×": three windows, three ✕s.
+   Now one, `.bt-xclose`: a 40 px dark disc (the well's ink, near-opaque so it
+   reads on any room picture), a light ring, a bold warm-white ✕, red when
+   pressed (Lantern Slate's destructive face) -- a 44 px press (its invisible
+   ring).  A building window keeps its in the corner while the menu scrolls
+   under it (.bt-inspect-closebar, sticky, BroTown.jsx).  The classes the game
+   finds it by stay: .bt-inspect-close (Esc, the close sound, the key cap) and
+   data-shop-close / data-esc. */
+.bt-xclose,.bt-inspect-close.bt-xclose{position:relative;box-sizing:border-box;width:40px;height:40px;padding:0;margin:0;flex:none;
+  border-radius:50%;background:rgba(13,22,27,.92);border:2px solid rgba(247,242,231,.78);
+  box-shadow:0 2px 6px rgba(0,0,0,.45);color:#F7F2E7;font:800 20px/1 'Source Sans 3',sans-serif;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;transition:background 90ms linear,border-color 90ms linear,transform 90ms linear}
+.bt-xclose:active,.bt-inspect-close.bt-xclose:active{background:#7C3431;border-color:#C7655F;transform:scale(.94)}
+/* the 44 px press: on ::after where a computer's Esc cap is the ::before
+   (.bt-inspect-close, below), on ::before where it is the ::after ([data-key]) */
+.bt-inspect-close.bt-xclose::after{inset:-4px;border-radius:50%}
+.bt-xclose[data-key]::before{content:'';position:absolute;inset:-4px;border-radius:50%}
+/* the building window's: a bar of no height at the top of the card, STICKY,
+   so the ✕ in it stays in the card's corner while the menu scrolls (the card
+   is the scroller, BroTown.jsx); the bar takes no taps, the ✕ does, over the
+   room and the panel (z 5 in the card's own stacking context) */
+.bt-inspect-closebar{position:sticky;top:20px;height:0;z-index:5;pointer-events:none;text-align:right}
+.bt-inspect-closebar > .bt-inspect-close.bt-xclose{position:absolute;top:-14px;right:-14px;pointer-events:auto}
+@media (prefers-reduced-motion: reduce){ .bt-xclose,.bt-inspect-close.bt-xclose{transition:none} }
 /* v2.3.3481: the 2026-10-19 UI review -- the same for the bag item card's 26px
    ⚓ pin (ItemDetailPopup.jsx): 9px a side makes a 44x44 press, ending 1px
    inside the card's top and right edges (its 10px padding); the portrait well
@@ -1346,9 +1384,11 @@ body:has(.bt-plist) [data-coach]{display:none}
 /* the tab strip keeps 44px clear on its right for the card's close button, which lies over
    it when there is no picture above (a sideways phone, a picture that cannot load); under a
    picture the button is on the picture and the tabs take the whole width */
-.bt-gw-tabs{padding:12px 44px 12px 14px}
+/* v2.3.3522: 44 -> 52, as the close button is 40 px 6 px in from the corner now
+   (.bt-xclose, the owner's "more prominent escape icon"): 46 px of it, and air */
+.bt-gw-tabs{padding:12px 52px 12px 14px}
 .bt-room + [data-gem-works] .bt-gw-tabs{padding-right:14px}
-@media (max-height:460px){.bt-room + [data-gem-works] .bt-gw-tabs{padding-right:44px}}
+@media (max-height:460px){.bt-room + [data-gem-works] .bt-gw-tabs{padding-right:52px}}
 /* ═══ v2.3.3516: THE CRACK (panels/buildings/ShardCrackPanel.jsx) ═══
    The worker cracks a land's shards and sends every roll; the tab plays them,
    one tile a shard: each one appears, then crumbles (no gem) or splits and
@@ -1414,10 +1454,9 @@ body:has([data-infopopup]) [data-world-map-open]::after{display:none}
   [data-ace-flip] .bt-ace-coinwell{height:58px !important}
   [data-ace-flip] .bt-ace-coin{flex:none;transform:scale(.42)}
 }
-/* v2.3.3481: the review -- Ace's ✕ is 18 x 28; an invisible ring makes the
-   press 44 x 44 (the card's edge is 15 px to its right, the header 29 px above
-   and below).  ::before, because on a computer ::after is its Esc key cap. */
-.bt-ace-close::before{content:'';position:absolute;inset:-8px -13px}
+/* v2.3.3481: the review -- Ace's ✕ was 18 x 28, made a 44 x 44 press by an
+   invisible ring (.bt-ace-close::before).  v2.3.3522: it is the windows' one
+   big ✕ now (.bt-xclose, its own 44 px ring), so the ring went with it. */
 /* v2.3.3481: the review -- the bag's upright filter chips are 26 px tall; an
    invisible ring makes each 41 px, the room between the button row (13 px
    above) and the first bag tile (4 px below).  No sideways growth: the chips

@@ -56,6 +56,7 @@ import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
+import { trackedFirst, onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3522: the pinned quest card shows the quest you track */
 import { treeGeom, treeTrunkEllipse, treeReachBox } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree -- its box, its trunk and where you chop it from */
 import { oreGeom, oreBlockEllipse } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock -- its box and its body */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
@@ -515,7 +516,7 @@ import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
 import { bedAt, farmExCode } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
-import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers */
+import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers; v2.3.3522: + each one's picture */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
 
@@ -1577,6 +1578,14 @@ export var BroTown = function BroTown(_ref0) {
     _useQuestHudFold2 = _slicedToArray(_useQuestHudFold, 2),
     questHudFolded = _useQuestHudFold2[0],
     setQuestHudFolded = _useQuestHudFold2[1];
+  /* v2.3.3522: the pinned quest card follows the quest you TRACK (the quest
+     page's Track button, game/trackedQuest.js): a change is told here, so the
+     card re-renders at once rather than at the next unrelated update */
+  var _useTrackTick = useState(0),
+    setTrackTick = _useTrackTick[1];
+  useEffect(function () {
+    return onTrackedQuest(function () { setTrackTick(function (v) { return v + 1; }); });
+  }, []);
   var _useState5 = useState(null),
     _useState6 = _slicedToArray(_useState5, 2),
     nearBuilding = _useState6[0],
@@ -12758,12 +12767,23 @@ export var BroTown = function BroTown(_ref0) {
       WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
       maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)'
     }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-close",
+  }, /* \u2550\u2550\u2550 v2.3.3522: THE \u2715 STAYS IN THE CORNER, AND IS EASY TO SEE \u2550\u2550\u2550
+       The owner, playtesting: "Vendor menus need a more prominent escape icon
+       in the corner."  It was a faint 28 px disc, a child of this card -- the
+       SCROLLER -- so in a long menu (the forge, the Woodworker, the Gem Works)
+       it scrolled away with the rows.  It is the shared 40 px dark disc now
+       (game.css .bt-xclose), in a sticky bar of no height at the top of the
+       card, so it stays in the corner while the menu scrolls under it.  Still
+       .bt-inspect-close: Esc presses it, the close sound and the computer's
+       key cap find it by that. */
+  /*#__PURE__*/React.createElement("div", { className: "bt-inspect-closebar" }, /*#__PURE__*/React.createElement("button", {
+    className: "bt-inspect-close bt-xclose",
+    "aria-label": "Close",
+    "data-building-close": "",
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement(BuildingRoom, { key: roomIdFor(buildingPanel) || buildingPanel, panel: buildingPanel }) /* v2.3.3258: the inside of the building, behind its window's menu; v2.3.3259: keyed by its ROOM, so the Gem Works' two tabs (one room) never load it again */, /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
+  }, "\u2715")), /*#__PURE__*/React.createElement(BuildingRoom, { key: roomIdFor(buildingPanel) || buildingPanel, panel: buildingPanel }) /* v2.3.3258: the inside of the building, behind its window's menu; v2.3.3259: keyed by its ROOM, so the Gem Works' two tabs (one room) never load it again */, /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
        opens the panel that does the work and closes the hall */
   Object.prototype.hasOwnProperty.call(WHEEL_HALLS, buildingPanel) && /*#__PURE__*/React.createElement(WheelHallPanel, {   /* v2.3.3258: every hall in the table, the Town Hall's too */
     hall: buildingPanel,
@@ -13504,6 +13524,12 @@ export var BroTown = function BroTown(_ref0) {
       return QUEST_CHAINS[qid];
     }).filter(Boolean);
     if (activeQuests.length === 0) return null;
+    /* v2.3.3522: the quest you TRACK (the quest page's "Track this quest"),
+       when it is one of these -- the owner tracked one and nothing outside the
+       quest list changed ("I tapped track quest in quest menu but no golden
+       stars were in minimap"); the card, the minimap's star and the world
+       map's road all follow it now.  Else the first, as before. */
+    activeQuests = trackedFirst(activeQuests.map(function (aq) { return { qid: aq.id, q: aq }; })).map(function (e) { return e.q; });
     var q = activeQuests[0];
     /* v2.3.1914: live rpg, not the snapshot — one answer everywhere. */
     var done = DATA.questObjectiveDone(q, stateRef.current, rpgState);
@@ -14324,8 +14350,13 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, "E"), (nearBuilding !== null ? BUILDINGS[nearBuilding].iconSrc : WHEEL_HALLS[nearHall].icon) ? /*#__PURE__*/React.createElement("img", {
     /* v2.3.1224: UI Bible building icon (bldg-*) in the enter prompt;
-       falls back to the emoji when iconSrc is absent. */
-    src: nearBuilding !== null ? BUILDINGS[nearBuilding].iconSrc : WHEEL_HALLS[nearHall].icon,
+       falls back to the emoji when iconSrc is absent.
+       v2.3.3522: at a Wheel door, the picture the maps wear for that building
+       (data/wheelBuildingDoors.js WHEEL_BUILDING_ICONS -- the same files, but
+       the Land Office's own parchment map where it borrowed the Feed & Seed's
+       barn), so the door and the map agree */
+    src: (nearDoorLabel && stateRef.current._nearWheelBuilding && wheelBuildingIcon(stateRef.current._nearWheelBuilding.id))
+      || (nearBuilding !== null ? BUILDINGS[nearBuilding].iconSrc : WHEEL_HALLS[nearHall].icon),
     alt: "",
     draggable: false,
     style: {

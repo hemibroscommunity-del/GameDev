@@ -294,8 +294,8 @@ Screens: hud, hud-band, hud-controls
 - Targeting is automatic: always the nearest monster, and a tap on a monster pins it ("Change the auto targeting system to always be nearest enemy. Only way to pick target and lock it on is to tap on the monster", v2.3.2251). A faint ring at monsters' feet shows when Attack can engage.
 - In a fight the attack disc turns warm orange and see-through, and almost vanishes over a monster under it. The owner first asked for see-through ("Attack button sometimes covers monster"), then said a faded button looked switched off: "Maybe only during combat it changes color (like to orange) keeping its transparency" (v2.3.2263–2264).
 - Every touch button follows the owner's mockup: a gold ring, a picture, no words ("Make the on screen buttons look more like the improved mockup", v2.3.3018). Words appear only as instructions (AIM, WAIT / PUMP / CHOP / REEL / FLIP). The base attack has no cooldown ring: "No cooldown for base attack though".
-- Sprint sits just above the attack disc ("put the sprint button near the right joystick instead of the left maybe just north of it", v2.3.3106), and its gold ring is your stamina running down. Special and Whirlwind made room for it ("Above, fights move up"): a row higher upright, beside it sideways. Half a button of space separates them, from the owner's "enough space between them for not accidentally pressing the other one".
-- Block is its own toggle at the attack disc's lower left, apart from the attack buttons "as a mental separation for combat purpose" (v2.3.2562). It shows in a fight with a shield on, and stays up until you attack, tap it again or run out of stamina ("Instead of dropping the shield at first hit I want it to keep being held", v2.3.2248). You cannot swing and block at once: "you can both swing and block at the same time. That is not right." Shield Bash appears beside the disc only while the shield is up.
+- Sprint sits just above the attack disc ("put the sprint button near the right joystick instead of the left maybe just north of it", v2.3.3106), and its gold ring is your stamina running down. Special and Whirlwind made room for it ("Above, fights move up"): a row higher upright, beside it sideways. They stay on a diagonal, from the owner's "enough space between them for not accidentally pressing the other one", but close: "Whirlwind action button needs to be placed closer to melee special attack (too far away)" (v2.3.3522). Their centres are 57 px apart upright (77 before) and 64 sideways (86), about 9 px of air between their rings.
+- Block is its own toggle at the attack disc's lower left, apart from the attack buttons "as a mental separation for combat purpose" (v2.3.2562). It wears the owner's round gold shield, cut from their UI sheet like the other ability pictures, with a baked grey copy while it waits ("Block button needs a new icon", v2.3.3522); it had drawn the shield you carry in the world, stretched. It shows in a fight with a shield on, and stays up until you attack, tap it again or run out of stamina ("Instead of dropping the shield at first hit I want it to keep being held", v2.3.2248). You cannot swing and block at once: "you can both swing and block at the same time. That is not right." Shield Bash appears beside the disc only while the shield is up.
 - Whirlwind shows only in a fight (the owner chose hiding over greying out, v2.3.2561). Special stays and greys out when you lack mana, so it can still be learned, and shows your weapon's own special picture (v2.3.3336).
 - The left thumb's cluster above the movement stick: Element Burst (enchanted weapons, level 6+) and Quick Eat (v2.3.3260). Quick Eat eats the right heal in one tap, because eating from the bag took four to six seconds of taps, longer than most fights between players. It shows only while you carry a heal and are missing health.
 - No man's land badge: a red skull and the ring number just above the band ("make the skull level (no mans land) appear above the center of the dashboard ... instead of the top bar. If you tap it it gives you info on what it means", v2.3.3107). Skull and number only, because words ran into the bell. Just left of centre since v2.3.3268, because centred it covered the Block button. The "Attack <name>?" window comes up at the top, under the minimap, out of the thumbs' way (v2.3.3253).
@@ -308,7 +308,8 @@ Screens: hud, hud-band, hud-controls
 - The shield was a hidden double-tap-and-hold gesture, then a button that dropped after one block (v2.3.2242), then held (v2.3.2248). Bow and staff lost the button for a gesture (v2.3.2446) and got it back (v2.3.2472).
 - Arrow buttons for switching targets (v2.3.2243) went when targeting became automatic (v2.3.2251).
 - The right stick's double tap swapped weapons (v2.3.2472) until the owner reverted it: "Weapon swapping goes back to the LEFT joystick only." (v2.3.2542).
-- Special and Whirlwind went right (v2.3.2542), left (v2.3.2562), right again ("Spec and swirl need to be on the right joystick. It was put on the left.", v2.3.2574), then up above Sprint (v2.3.3106). Sprint began right of the left stick (v2.3.3006).
+- Special and Whirlwind went right (v2.3.2542), left (v2.3.2562), right again ("Spec and swirl need to be on the right joystick. It was put on the left.", v2.3.2574), then up above Sprint (v2.3.3106). Sprint began right of the left stick (v2.3.3006). Half a button apart until v2.3.3522 ("too far away").
+- The Block button drew the 64 px shield sprite from the world, stretched (until v2.3.3522).
 - A JUMP button under the attack disc (v2.3.3017) became the right stick's tap ("I think this would work well instead of the smaller dedicated jump button", v2.3.3105). Its first full-strength picture was "way too intense", the mockup's faint arcs round the disc went ("remove the strange lines to the left and right of the button"), and the "Too far away!" message that ate taps near distant resources was removed (v2.3.3145).
 - The top bar showed the land and level band (v2.3.3009) before they moved under the minimap (v2.3.3108). The No man's land badge was on the top bar (v2.3.3058), then centred (v2.3.3107), then left of centre (v2.3.3268).
 
@@ -317,7 +318,7 @@ Screens: hud, hud-band, hud-controls
 - New always-on buttons on a phone. Buttons that appear and vanish with the situation are deliberate.
 - Words or labels on the touch buttons (the owner's mockup has none), beyond the instruction words.
 - Bringing back the right-stick double tap (swap or shield), the target-switch arrows, a fixed JUMP button or the arcs round the disc.
-- Moving Special and Whirlwind to the left again, or moving Sprint (it stays put; fight buttons make room).
+- Moving Special and Whirlwind to the left again, or moving Sprint (it stays put; fight buttons make room). Or spreading Special and Whirlwind apart again: the owner found half a button "too far away".
 - Greying Whirlwind out of combat, a cooldown on the base attack, or fading the whole attack disc (it read as switched off).
 - Zooming the view further out.
 - Blur, frosted glass or drop shadows over the game view: they cause grainy static on iPhone Safari and the design system bans them.
@@ -437,10 +438,13 @@ Screens: world-map
   - the sheet's painted plate is cut off, and since v2.3.3511 the plate's gold scroll ends that peeped out at each scene's foot too.
 - Marks on the minimap: you (a chevron the way you face), other bros (green), monsters (red), camps, passes, gates and landmarks, roads and the river as clean lines, and resources as small glyphs tinted by tier ("Show nodes on minimap", v2.3.3012). Townsfolk get no pins in the Wheel.
 - The quest's way: a gold road from you to a star where the quest leads, held at the box's edge when the spot is off it, so the box always says which way (v2.3.2990, v2.3.2992: "just rely on the gold road on the minimap of where to go").
+- The star follows the quest you TRACK (v2.3.3522: "I tapped track quest in quest menu but no golden stars were in minimap (I had two active quests - one from beast master and the other from mayor bro)"), and every quest leads somewhere: its land, its resource, a building's door (the Woodworker for traps, the Land Office for the dungeon), where the nearest land's monsters begin, a building you have not been in, or its giver when it is done. Standing where it leads, there is no star.
 - The way home: when town is off the box, a house badge rides the box's edge pointing at it ("the world feels hard to navigate without losing your sense of position relative to the town center", v2.3.3023). It steps aside while the quest star already leads to Mayor Bro in town.
 - Your party in blue, ringed so it reads on every land's colour, and riding the box's edge toward a member who is off it; on the world map at every zoom, named (v2.3.3277, the owner's "Yes do suggested").
 - Every building in town drawn where it stands, roof-coloured, a shut one grey, a notch at its door ("Also all the buildings in town should show on the minimap.", v2.3.3146).
+- Each building wears its picture there (v2.3.3522): "Have icons representing each building on each building in the minimap/compass." The picture its Enter button wears, 14 px on its footprint (a shut one grey), and on the world map up close at its door, over its name. The Land Office wears the game's parchment map: it had borrowed the Feed & Seed's barn, and two barns on a map say nothing. They load behind the Wheel's loading screen (about half a MB) and go when you leave it.
 - North is always up and neither map turns; a brass N on the minimap's frame and a compass on the world map say so (v2.3.3065). The lands are named by where they lie.
+- In BroTown the world map opens ON THE TOWN (v2.3.3522): "When you're in town make the expanded map zoomed in on the town so you can see which building is labeled where on the map." Every building is on the screen, named at its door with its picture; a name that would run into its neighbour's goes on two lines. Anywhere else it opens on the whole Wheel, and in town ◎ is the town's view too.
 - The world map is full screen, with "BroTown" and "You are in …" across the top, the ✕ top right, the compass top left, +, − and ◎ (back to you) bottom right, and a key bottom left that says "Zoom in for more". Sideways the key keeps to the margin left of the Wheel, in rows, so it no longer runs across the south gate (UI review, v2.3.3481). Drag, pinch or mouse wheel to move and zoom.
 - More appears as you zoom ("Make it so if you tap the minimap and zoom in you can see more details.", v2.3.3057): first the eight lands' names and the quest's road and star; then the other bros, the stages, level bands, camps and passes, resources and the monsters near you (the game is only sent the monsters around you, v2.3.3318), bridges and Bro Pond; up close, every building in town named at its door. A label only appears where it clears the ones already placed, so a crowded spot drops a name instead of piling them up.
 - Far from you, zoomed in, the land is drawn as sharply as round you, with finer pieces loaded only while shown (v2.3.3319).
@@ -450,7 +454,9 @@ Screens: world-map
 **Tried before, and changed:**
 - Where you are was printed under the box (v2.3.2966), then on the top bar (v2.3.3009), then on the plate under the box (v2.3.3108).
 - A thin frame on a slightly see-through box (until v2.3.3009).
-- The town was one white square (until v2.3.3146).
+- The town was one white square (until v2.3.3146), then plain footprints (until v2.3.3522).
+- The world map always opened on the whole Wheel, the town a dot, and ◎ stopped short of the buildings' names (until v2.3.3522).
+- The star ignored the quest you tracked, and half the quests had no star until handed in (until v2.3.3522).
 - The world map zoom stopped at 12 (28 since v2.3.3057, further on today's longer Wheel).
 - Party members were the same green dots as everyone, and the world map drew no other players until zoom 1.5 (until v2.3.3277).
 - A quest path drawn on the ground (put away in v2.3.2992 for the minimap's gold road).
@@ -465,11 +471,13 @@ Screens: world-map
 - Putting the stage's name on the plate, or text under 11 px there.
 - A road on the ground in place of, or next to, the minimap's gold road.
 - Showing every label at once on the world map: the zoom-gated labels are what keep it readable.
+- Opening the map on the whole Wheel while you stand in town (the owner asked for the town).
 
 **Still open:**
 - The land scenes are small on the sheet (about 190 px wide); shown at their own pixels they are about 64 CSS px wide on an iPhone. A bigger emblem would need the owner's new, bigger pictures, never these stretched.
 - No arrow at the edge of the screen for a party member off it; the minimap's edge mark does that job for now.
 - On a computer the world map covers the whole window, a little wider than the game's column (UI review, v2.3.3407).
+- The buildings' map pictures are the Enter button's small icons; a set drawn for a map (bolder shapes at 14 px) would read better.
 
 Sources: CLAUDE.md, docs/WORLD-MAP-PIPELINE.md, docs/specs/wheel-north.md, docs/specs/party-on-maps.md, docs/specs/desktop-keys.md, docs/specs/reach-every-button.md, docs/specs/owner-icons.md, src/rendering/systems/wheelMinimap.js, src/rendering/systems/minimapRenderer.js, src/ui/WorldMapOverlay.jsx, src/ui/zoneBannerOverlay.js, src/ui/landEmblem.js
 
@@ -487,6 +495,7 @@ Screens: chat
 - The smiley beside the mic opens the emotes (B on a computer). Emotes have no button of their own on screen: the owner-approved fun & social plan keeps every new always-on button off the phone, so they live in the chat box (v2.3.3391).
 - The emote picker opens on its Moves tab, twelve moves (wave, laugh, flex, shrug, facepalm, cheer; sit, sleep, flop and three dances held until you move), with the 30 emoji and 12 quick lines on the second tab (v2.3.3392). `/wave`, `/sit`, `/dance` and the rest work in chat, and `/roll` and `/flip` are rolled by the server (v2.3.3393). An emoji pops over your head for 2.6 s; a quick line is your speech bubble. Only players near you see them, one a second.
 - Speech bubbles last 5 s and are bigger and bolder ("Chat font (like tap on player to chat) should be chunkier and larger.", v2.3.1912). They size to the message, wrap long words ("Make it so that long text wraps into a second line.", v2.3.2896), carry a grey outline and soft shading ("I just want it to pop a little more", v2.3.2823), and point just above the name ("not on their face like it is currently", v2.3.2896). A whisper draws no bubble, so a private line is never shown to the people standing near.
+- Whose bubble is whose (v2.3.3522): "Make Npc dialog boxes white. Keep players the darker color to differentiate." A townsperson's bubble is always white with black words; a player's is dark with light words: the night-purple pumpkin bubble in Halloween week, a Lantern Slate slate the rest of the year, so the two never look alike.
 - The bell: "collapse all notifications (chat, special events, etc, into a little notification bell on the bottom left corner above the dashboard)" (v2.3.2155). It rests shut, with an unread count; a tap opens the World Chat feed, and one tap anywhere on the feed closes it again ("Make it so touching the world chat window once just closes it ... and you can remove the tiny down arrow minimizing button.", v2.3.2325). With nothing said yet the corner is empty.
 - The feed shows sent messages in the lower left, outside the chat box: "Just have the chat appear in the lower left area above the dashboards in a new 'World Chat' section" and "by chat appear I mean sent messages. Keep chat window where it is." (v2.3.2037). It keeps the last 40 lines, newest at the bottom, and cannot be scrolled: it sits over the movement stick, and a scrollable list there stopped players from walking.
 - Chat is the bottom layer: "Chat should always be the bottom layer if any menus open up beside it (want it beneath trade menus, player menus, etc)." (v2.3.2280). The chat box closes itself when a trade or other decision window opens ("during trade make the world notifications (chat, etc) UNDER those panels. I couldn't accept any trades because notifications blocked it.", v2.3.2145), and the bell hides under any window (v2.3.3407).
@@ -500,6 +509,7 @@ Screens: chat
 - A one-line input that cut long messages off (until v2.3.2039), and a Send button on the phone (until v2.3.2896).
 - Emotes had a button only on a toolbar hidden for a long time, and a sent emote drew nothing (until v2.3.3391).
 - A "golden tickets left" line in the corner during an event ("you can remove the golden ticket left notification. The event is over.", v2.3.2266).
+- Every bubble white, then in Halloween week every bubble purple, the townsfolk's too (from v2.3.3395), until townsfolk white and players dark (v2.3.3522).
 
 **Please don't suggest:**
 - A chat or emote button always on screen, or a Chat button back on the dashboard.
@@ -508,6 +518,7 @@ Screens: chat
 - A mute or silence switch in the bell's corner. The owner asked for one there ("give options to silence all notifications (on bottom left above dashboard of screen)"); three placements were tried and each broke walking or the tutorial, because that corner is the movement stick's touch area. It lives in Settings ("Notifications — silence all of them", v2.3.2147).
 - A one-tap Report next to Mute.
 - Speech bubbles for whispers, or remembering the Whisper lane after a reload.
+- One colour of bubble for everyone: white is a townsperson talking, dark is a player.
 - Chat drawn over menus or trade windows.
 
 **Still open:**
@@ -578,6 +589,7 @@ Screens: dash-hero, dash-hero-points
 - **The top row follows the weapon in your hand** (v2.3.3051, owner: "So if you have melee equipped show the points you've allocated for melee. If bow show for bow"). The weapon cell is a label, not a button (v2.3.2684, owner: "The weapon icon row is not meant to be button ... It's a tab in the confirm window. This should be for every allocable stat").
 - **One window explains and spends** (v2.3.2597, owner: "having the confirmation window be the same as the informational window would be better. It tells you what it does and asks you to confirm point at the bottom"). It is short on words (v2.3.2696, owner: "It's a lot of words but good information. What's a better solution to make the user understand without reading a manual?"): one line, big numbers, a bar of how far the stat is toward its maximum, and two chips, "Weaker vs. higher levels" and "Details".
 - **[-] n [+] [Spend]** (v2.3.2695, owner: "make it so you can add points more quickly using +/- buttons then confirm spend button to the right of it"). It never offers more than you have or the stat can take. With nothing to buy, the button stays and says why (the owner's "grayed out with that explanation"), and so it does while the connection is down (v2.3.3034).
+- **The window stays after Spend** (v2.3.3522, owner: "After spending a stat allocation point keep it on the menu confirmation window instead of closing it to return to the points main screen."). Spend reads "Spending…" until the server answers, then the same window shows the new value and the next point's before-and-after, with "✓ 3 points spent" under the button and the stepper back at 1. With no points left the button says why, as above. If no answer comes in about 3 s, Spend comes back.
 - **The scene is a real simulated fight** with the meadow slime, using your own character, weapon and points (v2.3.2979, owner: "shows real simulation of the hits against a slime monster"). "Now" plays above and "+n" below, at the same time and on the same dice (v2.3.3002, owner: "live side by side simulations of the before and after effects"; asked how, the owner chose stacked). Your bro moves with the world's own animations (v2.3.2986–2991), and Max MP has a scene too (v2.3.3008).
 - **The numbers match the bars.** Max HP shows the pool's new total, as its bar will (v2.3.3050: the owner saw "48hp for 6 points" when spending made it "actually 37"). DPS has two decimals (v2.3.2525, owner: "Decimals are fine for tuning combat skills"). Shared stats show no DPS line (owner: "Remove the line about DPS on this window for all shared points").
 
@@ -586,12 +598,14 @@ Screens: dash-hero, dash-hero-points
 - Icon-only tabs (v2.3.1657; words again in v2.3.1847).
 - Points layouts before the owner's grid: a list (v2.3.1660), a grid (v2.3.1668), weapon lanes one open at a time (v2.3.2176, owner: "I earned a point. Where do I want to spend it?"), columns opening sideways (v2.3.2592–2594), and a 2x2 you drill into (v2.3.2597).
 - A big [+] with a separate "are you sure" window (v2.3.2595); made-up, exaggerated scenes (v2.3.2222); before and after shown in turn; "N PTS" / "N SPENT" on every tile.
+- Spend closed the window back to the grid (until v2.3.3522).
 
 **Please don't suggest:**
 - Dropping the pills' pictures, or going back to list rows, to save room. The scroll is the agreed cost.
 - Icon-only tabs, or calling Points "Build".
 - A tappable weapon cell, or choosing the weapon anywhere but the window's tabs.
 - A second confirm window, a points-left count on every cell, or before and after shown in turn.
+- Closing the window after a spend (the owner asked for it to stay).
 - "Element Dmg +12%" in place of "Elem Power +12", or an item card that pushes the character or vitals around.
 
 **Still open:**
@@ -606,14 +620,15 @@ Screens: dash-quests, dash-quest-detail
 
 **Decisions, and why:**
 - **Three tabs with counts: Active · Available · Completed** (v2.3.1298, a ChatGPT review round the owner approved). They replaced one long list. They stay pinned while the list scrolls, and your tab is kept for the session.
-- **Active order:** ready to hand in first (a brass READY tag), then the one you track (★), then the rest. A row shows the title, then "Next: …" for a quest with steps (or its objective), then the giver and what the quest pays, for example Mayor Bro · pays 25g · 40 XP.
+- **Active order:** ready to hand in first (a brass READY tag), then the one you track (★), then the rest.
+- **Track leads the way** (v2.3.3522, owner: "I tapped track quest in quest menu but no golden stars were in minimap (I had two active quests - one from beast master and the other from mayor bro)"). "☆ Track this quest" on a quest's page now leads the minimap's gold star, the world map's road and the pinned quest card to that quest, and the page says so: "Your map's gold star follows this quest." With nothing tracked the star follows a quest ready to hand in or one naming a land, then the one taken first. Every quest has somewhere to lead (the world-map section). A row shows the title, then "Next: …" for a quest with steps (or its objective), then the giver and what the quest pays, for example Mayor Bro · pays 25g · 40 XP.
 - **How many you hold** (v2.3.3481, the 2026-10-19 UI review): a quest that asks you to bring things (the Mayor's four remnant errands) says how many are in your bag after its objective, "(2/4)", on its row, its page and the pinned card, until it is ready. Before, nothing did, and you had to count in the bag.
 - **"pays" is on every reward** (v2.3.1704, owner: "The quest UI is a little confusing what's rewards for the next quests vs what's rewarded for the current quest").
 - **One quest at a time.** While one is active, Available is empty, and it never shows more than one offer (v2.3.1681, owner: "Disable those and just keep it to mayor bro's quest in sequential order (must finish one to begin another)"). Quests whose giver is not in the world are never listed.
 - **No Accept and no Turn In buttons here; the owner removed both.** "Disable turning in quest rewards (completion) through the quest pane. It's getting messed up" (v2.3.1704). "the landscape quest module lets you accept a quest from the menu (this was disabled a while ago and should remain disabled)" (v2.3.2195): accepting from the menu skipped Mayor Bro handing over the starter weapons. A ready quest's page instead says to go and see its giver, who opens the conversation himself when you walk up.
 - **A quest's page:** title and state (ready brass, active blue, done green); the objective; a steps checklist with ✓ done and ▶ next (v2.3.2820: players would "get stuck on the quest for cooking 2 fish"); the giver; rewards in two parts, "He hands you now" (offers only) and "For finishing" the quest, with item pictures (v2.3.1710, owner: "Quest item thumbnail rewards are not shown in the quest panel until after you accept the quest (only xp and gold are shown)"); "☆ Track this quest"; and the giver's words with his face (v2.3.1673, owner: "show his head in the dialogue window").
 - **The Quests button's badge** lights only for a quest ready to hand in, never for an offer.
-- **The pinned quest card** (top left of the world) shows the active quest's title and next step, and a tap folds the objective away (v2.3.1714). Its scroll picture turns into a painted green check once you have everything (v2.3.3048, owner: "Make the quest notification turn to a green checkmark if you have everything you need to complete the quest").
+- **The pinned quest card** (top left of the world) shows the active quest's title and next step (the tracked one, when you track one: v2.3.3522), and a tap folds the objective away (v2.3.1714). Its scroll picture turns into a painted green check once you have everything (v2.3.3048, owner: "Make the quest notification turn to a green checkmark if you have everything you need to complete the quest").
 - **The giver's head says the same:** a gold "!" pin for an offer, a still grey "?" pin while he waits (never green: owner, v2.3.3336, "Green implies something is done"; grey, the owner's pick, v2.3.3481), and a gold ring with a green check when you can hand it in.
 - **The way to go is the gold road on the minimap** (v2.3.2992, owner: "I think I want to remove the footsteps and just rely on the gold road on the minimap of where to go"). So this page's "Quest path" switch (v2.3.2896) is hidden along with the road on the ground.
 - **The Daily rewards card at the top** opens the Daily Rewards window (v2.3.3140). It is here because this is where you look when deciding what to do next; the code notes the owner wants the HUD kept clear, and More's grid is full. Its edge is brass only while something waits. Since v2.3.3400 it says "free spin ready" or your streak, because the daily quests and the season were put away (owner: "Remove the daily quests they're randomly appearing as complete and it makes no sense to me", then "Yes drop the season"). Nothing opens at login (owner: "Personally I find the login page with the chest intrusive").
@@ -623,6 +638,7 @@ Screens: dash-quests, dash-quest-detail
 - Every old giver's quests, then Mayor Bro sorted first (v2.3.1669), then the giver filter and one at a time (v2.3.1681).
 - Rewards as text only (before v2.3.1710); a footprint road with its switch on this page (v2.3.2896, hidden v2.3.2992).
 - Daily quests and a season behind the card (v2.3.3140, put away v2.3.3400); a scroll emoji and a text "✓" on the pinned card.
+- Track only sorted this list (v2.3.1298 until v2.3.3522): the maps and the pinned card never read it.
 
 **Please don't suggest:**
 - Accept or Turn In buttons in the log.
@@ -638,7 +654,7 @@ Screens: dash-skills, dash-skill-detail
 **What it is for:** Your ten life skills at a glance, and a detail page for each. The detail gives your exact XP, what one hit can be now and at the next level, which resources still pay full XP, and what the next levels open.
 
 **Decisions, and why:**
-- **Ten pills, two to a row, all on one screen** (v2.3.1312b, owner: "make the expanded view pill shaped so they all fit without scrolling"). Each pill is an icon, the name, "Lv n" and a thin green XP line. Sideways they stack in one column, because two to a row cut every name to one letter (v2.3.2173, owner: "It's obvious that the labels are getting cut off").
+- **A home screen of ten app tiles, all on one screen** (v2.3.3522, owner: "Make the lifeskills menu look more like iPhone apps instead of elongated pills"). Five across in two rows: a rounded square tile tinted by the skill's own colour with its painted icon big in it, the name under it, the level on a chip at its corner, a thin green XP bar along its bottom edge, and the brass dot on a skill with a level-up you have not looked at. A press shrinks the tile, as a phone's home screen does. This REVERSES the owner's own earlier ask, "make the expanded view pill shaped so they all fit without scrolling" (v2.3.1312b); its other half, all ten on one screen with no scrolling, still holds. Sideways three across, and the column scrolls (it has height to spare and no width: two pills a row once cut every name to one letter, v2.3.2173).
 - **A fixed order that never re-sorts:** the five gathering skills (Woodcutting, Fishing, Mining, Farming, Trapping), then the five crafting skills (Cooking, Smithing, Woodworking, Gem Cutting, Enchanting). Spatial memory beats recency (v2.3.1296). The group headings went so all ten fit (v2.3.1337, owner: "fit on one screen without scrolling"); the order still keeps the groups apart.
 - **No "coming soon" cells** (v2.3.1312, owner: "they consume space, make the game look unfinished, and force six narrow columns").
 - **The detail opens inside the same page, at the same height,** with "‹ All skills" to go back (v2.3.1312). It shows the level, an XP bar, and your XP against what the next level needs; **Each hit** and **At Lv n+1** (Mining, Woodcutting, Fishing, Cooking), e.g. "1 (80%) · 2–3 (10% each)" at level 3; **Full XP** and **Less XP** (the three gathering skills); **Unlocked / Next unlock / Later** from the game's real tables; a **Benefit** line only where a real formula backs it; **Found at**; and one sentence on how the skill earns XP. Farming, Trapping and Enchanting have no level table, so no ladder is made up for them.
@@ -653,6 +669,7 @@ Screens: dash-skills, dash-skill-detail
 
 **Tried before, and changed:**
 - A 3-column card grid (v2.3.1286); group headings (v2.3.1312, removed v2.3.1337); two "SOON" cells (v2.3.1296, removed v2.3.1312); the detail as a separate page (until v2.3.1312).
+- Ten pills, two to a row (v2.3.1312b until v2.3.3522), one column sideways (v2.3.2173).
 - Hits rolled evenly from 1 to your level (until v2.3.3229). The old timer-based Benefit line shows only against a server that rolls no hits.
 - A locked tap that said "Need Mining Lv 5" with a beep (v2.3.3038); a name-and-level pill over every resource (v2.3.3040).
 - The harvest bar over your own head (v2.3.3027).
@@ -660,6 +677,7 @@ Screens: dash-skills, dash-skill-detail
 **Please don't suggest:**
 - Track / Find Trainer / View Recipes buttons, or "coming soon" skills.
 - Re-sorting the skills by level or by last use, or headings that push skills off the first screen.
+- The pills again: the owner asked for app tiles (v2.3.3522).
 - A name-and-level label over every resource, or a rod over the fish.
 - A plain refusal in place of the try you can watch fail, or a ladder invented for Farming, Trapping or Enchanting.
 
@@ -838,7 +856,7 @@ Screens: building-*
 - The room is the card's BACK layer, at the card's width (3:2). The menu starts a "stage" down it: the sign and the middle of the room, about 149 px on a phone, never more than 22% of the screen's height. The title and first rows are written on the room. Below them the room fades into the window's dark slate, so the words always read.
 - The room scrolls WITH the menu. A background that stayed still would put the words over the room's bright sign as they scrolled.
 - The picture's space is kept before it arrives, and it fades in, so nothing jumps. If a picture cannot load, the window looks exactly as it did before the pictures, with no empty slab.
-- Closing: the ✕ sits on the picture on a dark disc, so it reads on any room. It looks 28 px, but its touch area is 44 px (v2.3.1235). A tap on the dark area outside the card closes too. On a computer Esc closes the window in front, one window at a time (v2.3.3407).
+- Closing: one big ✕ in the card's top right corner, the same on every shop window, Diego's and Ace's included: "Vendor menus need a more prominent escape icon in the corner" (v2.3.3522). A 40 px dark disc with a light ring and a bold ✕, red while pressed, a 44 px press. It stays in the corner while the menu scrolls under it; it used to scroll away with long menus (the forge, the Woodworker), leaving no way out on screen. A tap on the dark area outside the card closes too. On a computer Esc closes the window in front, one window at a time (v2.3.3407).
 - Sideways (under 460 px tall) the whole window is only about 190 px, so the room steps aside and the menu looks as it always did.
 - Size: the card is 360 px wide, or the screen less 24 px (v2.3.1234: fixed widths left dead margins on phones). It stops at the dashboard band, so a menu never runs on behind it (v2.3.1235). Its bottom 18 px fades out to show it scrolls: at 390 px the Woodworker's hardening button was cut in half at the fold with no cue (v2.3.1235).
 - The forge is the one exception. Its window sits LOW so your own character is seen working at an anvil above it (v2.3.2826), and its room is a slim band: the sign, the fire, the anvil.
@@ -854,6 +872,7 @@ Screens: building-*
 
 **Tried before, and changed:**
 - The room in a box at the top of the window, with the menu under it (v2.3.3147). The owner then asked for backgrounds "behind" the menus.
+- A faint 28 px ✕ (white at 10%) that scrolled away with the menu, and a different ✕ in Diego's and Ace's windows (until v2.3.3522).
 - A solid sheet laid over the picture's lower part, the picture still while the menu scrolled. On a phone it still read as a picture above a menu. The fade is the version where the menu is visibly on the room.
 - The Saloon's door opened the arena from v2.3.881 until v2.3.3258. Two gem buildings (the Gem Cutter and the Assay Office) until v2.3.3259.
 
@@ -861,6 +880,7 @@ Screens: building-*
 - Walking into buildings. The owner decided against it (v2.3.3258).
 - Putting the room back in a box above the menu, or a solid sheet over it (both tried).
 - A background that stays still while the menu scrolls.
+- A small or faint ✕, or one that scrolls away with the menu (the owner asked for "a more prominent escape icon in the corner").
 - Centring the forge's window like the others. It sits low so your character can be seen working.
 - Loading every room on the loading screen: the game's memory budget is why it is not.
 
@@ -1199,6 +1219,7 @@ Screens: shop-diego
 - **The three tools, sold back (v2.3.3316).** A death in No man's land now takes the gathering tools, and the owner chose "Drop them, sell replacements": the axe, rod and pickaxe at 100 gold each, one at a time, only to a player whose quest gave that tool and who holds none. The row says why not: "You have one", or "Mayor Bro's quest gives the first". He never buys one back.
 - **Only things with a price (v2.3.3184).** An item outside his price families has none: he neither buys nor sells it.
 - **No room picture behind it**: his window is the owner's own design, growing out of the bag; the rooms are behind the building windows.
+- **His ✕ is the shop windows' one big ✕** (v2.3.3522, "Vendor menus need a more prominent escape icon in the corner"): a 40 px dark disc with a light ring, where his was a 30 px rounded square.
 
 **Tried before, and changed:**
 - A popup shop window (v2.3.2050 / v2.3.2057), replaced by the drawer (v2.3.2059).
@@ -1232,6 +1253,7 @@ Screens: ace-flip
 - **Items (v2.3.2619).** The owner: "you should be able to wager as many items as you want for double or nothing too. Same 45% chance win odds." A win doubles each staked stack, a loss takes it. Golden tickets cannot be staked (v2.3.3173): a won wager made two of a capped contest prize.
 - **Records (v2.3.2619).** The owner: "leaderboards of biggest wins and biggest losses (single). Have it list the player pfp next to the record too." Ten a board, one line per player (their best), gold only, each face as it looked when it took the bet.
 - **No room picture behind it**: it is his own window, designed by the owner, though he stands beside the Gambling Den (v2.3.3258).
+- **His ✕ is the shop windows' one big ✕** (v2.3.3522, "Vendor menus need a more prominent escape icon in the corner"), where his was a bare grey "×".
 - **Sideways (v2.3.3407).** The owner: "Make sure all actions/buttons can be completed in landscape mode and on the computer." The ~600 px window on a 390 px-tall screen did not scroll, so its tabs ran off the top and its Flip button off the bottom. Now it holds itself to the screen: his header and the three tabs stay, the face below them scrolls. An upright phone is unchanged.
 
 **Tried before, and changed:**
