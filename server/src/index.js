@@ -102,7 +102,7 @@ import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill
 // ladder).  See hardening.js for the name-collision warning vs the
 // client's legacy hardenBonus affix.
 import { hardeningMethods } from './hardening.js';
-import { forgeLadderMethods } from './forgeladder.js'; /* v2.3.3514: the forge's ladder -- no wood tier, copper Smithing 1, the wear gate, hardening by the level that makes the tier */
+import { forgeLadderMethods } from './forgeladder.js'; /* v2.3.3524: the forge's ladder -- no wood tier, copper Smithing 1, the wear gate, hardening by the level that makes the tier */
 // v2.3.1148: operator toolkit -- owner-keyed admin API + daily rpg
 // snapshot ring (see admin.js header + docs/OPERATIONS.md).
 import { adminMethods } from './admin.js';
@@ -6405,7 +6405,7 @@ Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
 Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
 Object.assign(GameRoom.prototype, hardeningMethods);
-Object.assign(GameRoom.prototype, forgeLadderMethods); /* v2.3.3514 */
+Object.assign(GameRoom.prototype, forgeLadderMethods); /* v2.3.3524 */
 // v2.3.1132 (PR16): two-sided trade window -- see trade2.js.
 Object.assign(GameRoom.prototype, trade2Methods);
 // v2.3.1143: account-login pre-flight -- see account.js.

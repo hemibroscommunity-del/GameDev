@@ -1214,7 +1214,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
 
   /* forge_weapon with a prototype tierKey used to pass EVERY gate,
      because each compared against undefined. */
-  /* v2.3.3514: as a GREATSWORD -- the game forges nothing else now, so the
+  /* v2.3.3524: as a GREATSWORD -- the game forges nothing else now, so the
      prototype key, not the weapon type, is what this must be refused for. */
   const wsF = fakeWs('forge');
   room.sessions.set(wsF, baseSession());

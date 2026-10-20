@@ -1,4 +1,4 @@
-/* ═══ v2.3.3514: THE FORGE'S LADDER -- the owner's playtest notes ═══
+/* ═══ v2.3.3524: THE FORGE'S LADDER -- the owner's playtest notes ═══
  *
  * The owner, at the Blacksmith (2026-10-19):
  *   "On blacksmith don't have two tabs for sword and greatsword.  Only
@@ -53,7 +53,7 @@ import { hardenIsWood } from './hardening.js';
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 export const FORGE_LADDER = Object.freeze({
-  /* The forge's Smithing level for each blacksmith tier before v2.3.3514:
+  /* The forge's Smithing level for each blacksmith tier before v2.3.3524:
      1 + 5 x its place in the table (wood 1, copper 6, iron 11, black steel 16
      ... worldbreaker 96). */
   OLD_LEVELS: Object.freeze(Object.fromEntries(Object.keys(BLACKSMITH_TIERS).map((k, i) => [k, 1 + 5 * i]))),

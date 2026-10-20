@@ -2926,7 +2926,7 @@ function applySquash(sp, sq, rot = 0) {
   sp.scale.set(sp.scale.x * (1 + 0.6 * sq), sp.scale.y * (1 - sq));
 }
 
-/* ═══ v2.3.3514: THE SMITH'S ANVIL IS THE OWNER'S PAINTED ONE ═══
+/* ═══ v2.3.3524: THE SMITH'S ANVIL IS THE OWNER'S PAINTED ONE ═══
    The owner's playtest note: "make a more realistic anvil for the animation
    when the character does smithing work".  It was drawn in code (a block, a
    waist, a horn and a face of flat colour); it is now the painted anvil the
@@ -12155,7 +12155,7 @@ export class EffectsRenderer {
        - a burst of sparks and the pick-on-rock clink on every strike frame.
      Drawn on the node-FRONT layer, above the body, exactly where an ore node
      sits when you mine.  Clears the moment S._smithing ends.
-     v2.3.3514: the ANVIL is the owner's painted one (SMITH_ANVIL above; the
+     v2.3.3524: the ANVIL is the owner's painted one (SMITH_ANVIL above; the
      owner: "make a more realistic anvil for the animation when the character
      does smithing work"), standing where the drawn one stood, the hot bar on
      its face.  And nothing is drawn again a frame: the anvil, bar and fire are
@@ -12281,7 +12281,7 @@ export class EffectsRenderer {
             color: i % 3 === 0 ? '#ffffff' : (i % 3 === 1 ? '#ffd27a' : '#ff9a3c'), size: 1.4 });
         }
       }
-      /* v2.3.3514: a hammer on an anvil, not a body blow -- the owner:
+      /* v2.3.3524: a hammer on an anvil, not a body blow -- the owner:
          "Forging sword makes flesh hit sound wrong sound".  It was the
          pickaxe's recording with its click cut off (mine-strike from 0.08):
          a dull body, 40% of its energy under 250 Hz.  Now the sword's own

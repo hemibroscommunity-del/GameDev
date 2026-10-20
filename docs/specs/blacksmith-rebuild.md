@@ -48,7 +48,7 @@ server handlers first.
 | Salvage (v2.3.3141) | `smith_salvage {field, gid \| idx+sig}`; `essence_apply {essence, field, gid \| idx+sig}` | salvage.js |
 
 Upgrade mirrors the worker's access gate: Smithing ≥ 5 × the weapon's tier,
-shown as a lock rather than a button the worker refuses. (v2.3.3514: against
+shown as a lock rather than a button the worker refuses. (v2.3.3524: against
 `caps.forgeladder`, the level that makes the weapon's tier -- copper 1, iron
 5, black steel 10; the Forge tab forges greatswords only and starts at
 copper: docs/specs/blacksmith-2026-10-19.md.) Gem removal is
@@ -64,12 +64,12 @@ closest (a two-handed overhead strike on the player's own body), so
 - **The pose:** entityRenderer draws `mine` (facing south, weapon and shield
   put away) while the work lasts.
 - **The anvil and fire:** effectsRenderer `_updateSmithing` draws, all in code:
-  - an iron anvil over the rock painted under the mine pose's boots (v2.3.3514:
+  - an iron anvil over the rock painted under the mine pose's boots (v2.3.3524:
     the owner's painted anvil, `public/sprites/fx/smith-anvil.webp`, in front
     of the smith -- docs/specs/blacksmith-2026-10-19.md);
   - a white-hot bar on the anvil that cools as the work runs;
   - a forge fire beside it (coals, four flame tongues, embers).
-- **The strike:** sparks and the pick clink on every strike frame (v2.3.3514:
+- **The strike:** sparks and the pick clink on every strike frame (v2.3.3524:
   a metal ring, the sword's own hit pitched up -- the clink was the pickaxe's
   dull thud).
 - **The forge building:** its chimney and furnace sparks run ×7 while you

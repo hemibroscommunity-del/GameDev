@@ -1,4 +1,4 @@
-/* ═══ v2.3.3514: THE FORGE'S LADDER (server/src/forgeladder.js) ═══
+/* ═══ v2.3.3524: THE FORGE'S LADDER (server/src/forgeladder.js) ═══
  *
  * The owner's playtest notes at the Blacksmith (2026-10-19, spec:
  * docs/specs/blacksmith-2026-10-19.md):

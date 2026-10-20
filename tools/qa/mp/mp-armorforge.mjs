@@ -66,14 +66,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     key: el.getAttribute('data-armor-row'), text: el.innerText.replace(/\s+/g, ' '),
     go: (() => { const b = el.querySelector('[data-armor-go]'); return b ? { t: b.textContent, d: b.disabled } : null; })(),
     img: (() => { const im = el.querySelector('img'); return !!(im && im.complete && im.naturalWidth > 0); })(),
-    imgs: Array.from(el.querySelectorAll('img')).map((im) => im.getAttribute('src')),   /* v2.3.3514: the XP pill's picture */
+    imgs: Array.from(el.querySelectorAll('img')).map((im) => im.getAttribute('src')),   /* v2.3.3524: the XP pill's picture */
   })));
   const row = (k) => rows.find((r) => r.key === k) || null;
   const torso = row('copper_torso'), irn = row('iron_torso');
   rec.ok(`copper's torso and greaves to make, iron's shown locked: ${rows.map((r) => r.key).join(', ')}`,
     !!torso && !!row('copper_greaves') && !!irn && !!row('iron_greaves') && !row('blacksteel_torso')
     && /Smithing 5/.test(irn.text) && irn.go && irn.go.d && /Locked/.test(irn.go.t), rows);
-  /* v2.3.3514: the XP pill wears the owner's "XP" star (the owner: "Make the
+  /* v2.3.3524: the XP pill wears the owner's "XP" star (the owner: "Make the
      xp pill for smith items a different icon (one that's more obviously
      'xp')"), not the plain gold sparkle */
   rec.ok(`...the torso row: its bars (8/4), what it stops and its XP on the XP star ("${torso && torso.text}")`,

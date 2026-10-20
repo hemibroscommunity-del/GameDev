@@ -106,7 +106,7 @@ export const BLACKSMITH_TIERS = {
     goldCost: 8,
     tierMult: 1.00,
     statReq: 0,
-    /* v2.3.3514: the owner's playtest notes -- "'wood greatsword' is not an
+    /* v2.3.3524: the owner's playtest notes -- "'wood greatsword' is not an
        actual weapon in the game.  Make the beginning weapon a copper
        greatsword".  Not forged against caps.forgeladder (data/forgeLadder.js,
        the Forge tab starts at copper); the row stays for the starter Pine
@@ -121,7 +121,7 @@ export const BLACKSMITH_TIERS = {
      pay the armour forge's XP for them.  Mirrors server/src/data.js
      BLACKSMITH_TIERS (mirror-audit); the worker settles, this draws the
      Forge tab's cost chip. */
-  /* v2.3.3514: the forge's Smithing levels -- the owner: "Copper 1, iron 5,
+  /* v2.3.3524: the forge's Smithing levels -- the owner: "Copper 1, iron 5,
      black steel 10 for smithing lvl req", every tier after five more (titanium
      15 ... worldbreaker 90; each was 6 more).  The levels before
      (`forgeladder: false`, or an older worker) are data/forgeLadder.js's
