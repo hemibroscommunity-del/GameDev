@@ -55,6 +55,7 @@ import { sendMapWatch, PRESENCE2_CLIENT } from '../game/presence2.js';   /* v2.3
 import { peerDotAt } from '../game/peerDot.js';                    /* v2.3.3243: a far player's dot glides between rosters */
 import { PARTY_MARK, partyIdsOf } from '../game/partyMarks.js';    /* v2.3.3277: your party, blue, at every zoom */
 import { mapDetailFor, freeMapDetail } from './worldMapDetail.js';   /* v2.3.3319: the long Wheel's lands up close */
+import { wheelBuildingIconCanvas } from '../rendering/wheelBuildingIcons.js';   /* v2.3.3522: each building's picture at its door */
 
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 /* v2.3.3057: 12 -> 28, so the town's buildings can be read by name */
@@ -73,6 +74,9 @@ function spanK(map) { return Math.max(1, Math.max(map.worldW, map.worldH) / WHEE
    town's buildings still come in at the same size on screen.  (All at `rel`
    left the long Wheel nine zoom-ins of the eight lands' names and nothing
    else.) */
+/* v2.3.3522: a building's picture at its door up close, CSS px (the
+   minimap's own, rendering/wheelBuildingIcons.js) */
+const TOWN_ICON_PX = 20;
 const AT = { landSub: 1.5, stage: 2.2, commons: 1.8, gateName: 1.6, camp: 3, pass: 3, site: 3.6, road: 4.6,
   /* v2.3.3057: the details that come in as you zoom */
   others: 1.5, tier: 2.6, node: 3, monster: 3, bridge: 3.6, tierLv: 4.2, town: 6, otherName: 6 };
@@ -204,7 +208,24 @@ function WorldMap({ stateRef, onClose }) {
     const map = wheelMapInfo();
     if (!cv || !map) return undefined;
     const V = view.current;
-    if (V.cx == null) { V.cx = map.worldW / 2; V.cy = map.worldH / 2; }
+    if (V.cx == null) {
+      /* ═══ v2.3.3522: IN TOWN, THE MAP OPENS ON THE TOWN ═══
+         The owner, playtesting: "When you're in town make the expanded map
+         zoomed in on the town so you can see which building is labeled where
+         on the map."  It always opened on the whole Wheel, where the town is
+         a dot and its buildings are named only past zoom 6 (AT.town) -- and
+         the ◎ button stopped short of that too.  Standing in BroTown it opens
+         on the town's buildings instead, every one of them on the screen
+         with its picture and its name (townView); anywhere else, the whole
+         Wheel as before. */
+      const S0 = stateRef.current;
+      const P0 = S0 && S0.player;
+      const tv = P0 && inTownNow(P0) ? townView(map, cv.clientWidth, cv.clientHeight) : null;
+      if (tv) {
+        V.zoom = tv.zoom; V.cx = tv.cx; V.cy = tv.cy;
+        setZoomShown([V.zoom, V.zoom / spanK(map)]);
+      } else { V.cx = map.worldW / 2; V.cy = map.worldH / 2; }
+    }
     let raf = 0, last = 0, lastP = '';
     const size = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 3);
@@ -311,8 +332,15 @@ function WorldMap({ stateRef, onClose }) {
     const S = stateRef.current, map = wheelMapInfo();
     if (!S || !S.player || !map) return;
     const V = view.current;
-    V.cx = S.player.x; V.cy = S.player.y;
-    V.zoom = Math.max(V.zoom, 4 * spanK(map));
+    /* v2.3.3522: in town, ◎ is the town's view (every building named), as
+       the map opens there -- 4x the short Wheel stopped short of the names */
+    const cv = cvRef.current;
+    const tv = cv && inTownNow(S.player) ? townView(map, cv.clientWidth, cv.clientHeight) : null;
+    if (tv) { V.zoom = tv.zoom; V.cx = tv.cx; V.cy = tv.cy; }
+    else {
+      V.cx = S.player.x; V.cy = S.player.y;
+      V.zoom = Math.max(V.zoom, 4 * spanK(map));
+    }
     clampView(V, map);
     setZoomShown([V.zoom, V.zoom / spanK(map)]);
     dirty.current = true;
@@ -406,6 +434,59 @@ function clampView(V, map) {
   V.cy = Math.max(0, Math.min(map.worldH, V.cy));
 }
 
+/* ═══ v2.3.3522: THE TOWN'S VIEW (the first effect's note) ═══
+   Every building's door on the screen with room round each for its picture
+   above and its name below, and clear of the map's own furniture -- the
+   compass (top left), the zoom buttons (right), the key (bottom).  The
+   buildings' doors (the feet of their steps, game px) are where the names
+   hang; the roofs above them are the picture's, not the names'.  Never under
+   the zoom the buildings are named from (AT.town, at the short Wheel's
+   scale), never past ZOOM_MAX.  Null before the worker has said where the
+   doors are (the map then opens as it always did). */
+const TOWN_PAD = { l: 52, r: 66, t: 64, b: 86 };   /* CSS px kept clear round the doors */
+function townDoorsBox() {
+  let doors = [];
+  try { doors = wheelTownDoors(); } catch (e) { doors = []; }
+  if (!doors.length) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const d of doors) { x0 = Math.min(x0, d.x); x1 = Math.max(x1, d.x); y0 = Math.min(y0, d.y); y1 = Math.max(y1, d.y); }
+  return { x0, y0, x1, y1, n: doors.length };
+}
+function townView(map, w, h) {
+  const b = townDoorsBox();
+  if (!b || !map || !(w > 0) || !(h > 0)) return null;
+  const aw = Math.max(40, w - TOWN_PAD.l - TOWN_PAD.r), ah = Math.max(40, h - TOWN_PAD.t - TOWN_PAD.b);
+  const k = Math.min(aw / Math.max(1, b.x1 - b.x0), ah / Math.max(1, b.y1 - b.y0));
+  const base = baseScale(w, h, map);
+  const zoom = Math.max(AT.town * spanK(map), Math.min(ZOOM_MAX * spanK(map), k / base));
+  const kz = base * zoom;
+  /* the padded box's middle on the screen's middle */
+  return { zoom,
+    cx: (b.x0 + b.x1) / 2 + (TOWN_PAD.r - TOWN_PAD.l) / 2 / kz,
+    cy: (b.y0 + b.y1) / 2 + (TOWN_PAD.b - TOWN_PAD.t) / 2 / kz };
+}
+/* In BroTown: the worker's word for the spot under you, or -- before it has
+   answered -- within a short walk of the town's doors */
+function inTownNow(P) {
+  try {
+    const here = wheelHere(P.x, P.y);
+    if (here && here.region) return here.region === 'town';
+  } catch (e) { /* no answer yet */ }
+  const b = townDoorsBox();
+  return !!b && P.x >= b.x0 - 300 && P.x <= b.x1 + 300 && P.y >= b.y0 - 500 && P.y <= b.y1 + 300;
+}
+/* A building's name in two lines, split at the space nearest its middle
+   ("Auction" / "House"), for a street where one line would not fit */
+function twoLines(name) {
+  const s = String(name || '');
+  const sp = [];
+  for (let i = 0; i < s.length; i++) if (s[i] === ' ') sp.push(i);
+  if (!sp.length) return null;
+  let at = sp[0];
+  for (const i of sp) if (Math.abs(i - s.length / 2) < Math.abs(at - s.length / 2)) at = i;
+  return [s.slice(0, at), s.slice(at + 1)];
+}
+
 /* v2.3.3319: the long Wheel's lands up close (src/ui/worldMapDetail.js), the
    tiles over the view, each to whole pixels so two side by side never leave a
    hairline of the coarse picture between them -- how many were drawn, or null
@@ -469,7 +550,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   line((r) => r.kind === 'road' && r.trunk, lw, 'rgba(242,228,194,0.95)');
 
   /* ── v2.3.3057: the details, under every label ── */
-  const more = { ticks: 0, nodes: 0, others: 0, monsters: 0, quest: null, buildings: 0, bridges: 0, ponds: 0, tierLabels: 0, party: 0, partyNames: 0,
+  const more = { ticks: 0, nodes: 0, others: 0, monsters: 0, quest: null, buildings: 0, buildingIcons: 0, buildingsAt: 0, bridges: 0, ponds: 0, tierLabels: 0, party: 0, partyNames: 0,
     detail: detailN };   /* v2.3.3319: the lands' tiles drawn up close (null: none to draw) */
   const onScreen = (x, y, pad = 30) => x > -pad && y > -pad && x < w + pad && y < h + pad;
   /* each land's level bands: a tick across the spoke every five levels */
@@ -576,7 +657,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     g.lineWidth = 6; g.strokeStyle = 'rgba(11,22,27,0.55)'; g.stroke();
     g.lineWidth = 3; g.strokeStyle = C_STAR; g.setLineDash([9, 6]); g.stroke(); g.setLineDash([]);
     starAt(g, qx, qy, 9);
-    more.quest = { x: Math.round(quest.x), y: Math.round(quest.y) };
+    more.quest = { x: Math.round(quest.x), y: Math.round(quest.y), qid: quest.qid || null, way: quest.way || null };   /* v2.3.3522: + whose road */
   }
 
   /* labels: placed in order of importance, each only where it clears the
@@ -594,9 +675,10 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     const size = opts.size || 12, sub = opts.subSize || Math.max(10, size - 2);
     g.font = `${opts.weight || 700} ${size}px system-ui, -apple-system, sans-serif`;
     const w0 = g.measureText(lines[0]).width;
-    g.font = `600 ${sub}px system-ui, -apple-system, sans-serif`;
+    /* v2.3.3522: `same` -- a name wrapped onto two lines keeps its own look */
+    g.font = opts.same ? `${opts.weight || 700} ${size}px system-ui, -apple-system, sans-serif` : `600 ${sub}px system-ui, -apple-system, sans-serif`;
     const w1 = lines[1] ? g.measureText(lines[1]).width : 0;
-    const bw = Math.max(w0, w1), bh = size + (lines[1] ? sub + 3 : 0);
+    const bw = Math.max(w0, w1), bh = size + (lines[1] ? (opts.same ? size : sub) + 3 : 0);
     /* `below`: (x, y) is the label's top middle, under an icon */
     const top = opts.below ? y : y - bh / 2;
     if (!opts.force && !free(x - bw / 2 - 3, top - 2, x + bw / 2 + 3, top + bh + 2)) return false;
@@ -606,9 +688,9 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     g.lineWidth = 3.5; g.strokeStyle = HALO; g.strokeText(lines[0], x, top);
     g.fillStyle = opts.color || INK; g.fillText(lines[0], x, top);
     if (lines[1]) {
-      g.font = `600 ${sub}px system-ui, -apple-system, sans-serif`;
+      g.font = opts.same ? `${opts.weight || 700} ${size}px system-ui, -apple-system, sans-serif` : `600 ${sub}px system-ui, -apple-system, sans-serif`;
       g.strokeText(lines[1], x, top + size + 3);
-      g.fillStyle = opts.subColor || BRASS; g.fillText(lines[1], x, top + size + 3);
+      g.fillStyle = opts.same ? (opts.color || INK) : (opts.subColor || BRASS); g.fillText(lines[1], x, top + size + 3);
     }
     return true;
   };
@@ -622,7 +704,65 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     g.lineWidth = 1.5; g.strokeStyle = HALO; g.stroke();
   };
 
-  /* you, first, so nothing covers you */
+  /* ═══ v2.3.3522: IN TOWN, THE BUILDINGS GO FIRST ═══
+     The owner: "When you're in town make the expanded map zoomed in on the
+     town so you can see which building is labeled where on the map", and of
+     the minimap, "Have icons representing each building on each building".
+     Up close (zr >= AT.town) each building wears its picture at its door --
+     the minimap's (rendering/wheelBuildingIcons.js; v2.3.3057's little drawn
+     house only while it has not loaded) -- and its name under it, placed
+     BEFORE your own mark so a name keeps its room (your mark is drawn over,
+     as it always is), and wrapped onto two lines (twoLines) where one line
+     would run into its neighbour's.  A shut one is grey, "shut" under its
+     name.
+     Your mark's own room is kept first (you arrive just south of the Town
+     Hall's door, where its name goes), and a name that finds no room under
+     its picture goes over it: every building keeps its name. */
+  if (zr >= AT.town) {
+    if (P) placed.push([X(P.x) - 18, Y(P.y) - 18, X(P.x) + 18, Y(P.y) + 18]);
+    let doors = [];
+    try { doors = wheelTownDoors(); } catch (e) { doors = []; }
+    const at = [];
+    for (const d of doors) {
+      const x = X(d.x), y = Y(d.y);
+      if (!onScreen(x, y, 60)) continue;
+      const pic = wheelBuildingIconCanvas(d.id, d.closed);
+      const top = y - TOWN_ICON_PX - 2;
+      if (pic) {
+        g.save();
+        if (d.closed) g.globalAlpha = 0.85;
+        g.imageSmoothingEnabled = true;
+        g.drawImage(pic, x - TOWN_ICON_PX / 2, top, TOWN_ICON_PX, TOWN_ICON_PX);
+        g.restore();
+        more.buildingIcons++;
+      } else houseAt(g, x, y - 9, d.closed ? '#8D9B98' : '#E6D5AE');
+      placed.push([x - TOWN_ICON_PX / 2, top, x + TOWN_ICON_PX / 2, y - 2]);
+      at.push({ x, y, top, d });
+    }
+    more.buildingsAt = at.length;
+    for (const b of at) {
+      const d = b.d;
+      const opt = { size: 11, weight: 700, color: d.closed ? '#B6C1BE' : INK, subColor: '#8D9B98', subSize: 11 };
+      /* one line, else two (a shut one is always its name over "shut");
+         under the picture, else over it -- 11 px a line, 3 between */
+      const two = d.closed ? null : twoLines(d.name);
+      const tries = d.closed ? [[[d.name, 'shut'], false]] : [[[d.name], false]].concat(two ? [[two, true]] : []);
+      let ok = false;
+      for (const [lines, same] of tries) {
+        if (ok) break;
+        ok = label(b.x, b.y, lines, Object.assign({}, opt, { below: true, same }));
+      }
+      for (const [lines, same] of tries) {
+        if (ok) break;
+        const bh = lines.length > 1 ? 25 : 11;
+        ok = label(b.x, b.top - 3 - bh / 2, lines, Object.assign({}, opt, { same }));
+        if (ok) more.buildingsOver = (more.buildingsOver || 0) + 1;
+      }
+      if (ok) more.buildings++;
+    }
+  }
+  /* you, first, so nothing covers you (v2.3.3522: up close in town, after
+     the buildings' names, above) */
   if (P) {
     const px = X(P.x), py = Y(P.y);
     const pulse = 10 + 6 * (0.5 + 0.5 * Math.sin(t / 260));
@@ -635,7 +775,12 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     g.fillStyle = INK; g.fill(); g.lineWidth = 1.5; g.strokeStyle = HALO; g.stroke();
     g.restore();
     placed.push([px - 18, py - 18, px + 18, py + 18]);
-    label(px, py + 12, ['You'], { size: 11, below: true, force: true, color: BRASS });
+    /* v2.3.3522: "You" under your mark where it clears what is placed (in
+       town, the buildings' names), else over it, else under it anyway */
+    if (!label(px, py + 12, ['You'], { size: 11, below: true, color: BRASS })
+      && !label(px, py - 26.5, ['You'], { size: 11, color: BRASS })) {
+      label(px, py + 12, ['You'], { size: 11, below: true, force: true, color: BRASS });
+    }
   }
   /* v2.3.3057: the quest's star keeps its own room */
   if (more.quest) { const qx = X(more.quest.x), qy = Y(more.quest.y); placed.push([qx - 11, qy - 11, qx + 11, qy + 11]); }
@@ -645,21 +790,15 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     placed.push([o.x - 9, o.y - 9, o.x + 9, o.y + 9]);
     if (o.name && label(o.x, o.y + 12, [o.name], { size: 11, below: true, weight: 700, color: '#CFE0F7' })) more.partyNames++;
   }
-  /* v2.3.3057: in town, every building at its door, named (a shut one dim) */
-  if (zr >= AT.town) {
-    let doors = [];
-    try { doors = wheelTownDoors(); } catch (e) { doors = []; }
-    for (const d of doors) {
-      const x = X(d.x), y = Y(d.y);
-      if (!onScreen(x, y, 60)) continue;
-      houseAt(g, x, y - 9, d.closed ? '#8D9B98' : '#E6D5AE');
-      if (label(x, y - 2, d.closed ? [d.name, 'shut for now'] : [d.name], { size: 11, below: true, weight: 700, color: d.closed ? '#B6C1BE' : INK, subColor: '#8D9B98', subSize: 9.5 })) more.buildings++;
-    }
-  }
-  /* the town */
+  /* v2.3.3057: in town, every building at its door, named (a shut one dim)
+     -- v2.3.3522: drawn first, above, with its picture */
+  /* the town (v2.3.3522: its square only while its buildings are not drawn,
+     as the minimap has it; its name where it clears theirs) */
   const T = map.hub.town;
-  g.fillStyle = INK; g.fillRect(X(T.x) - 5, Y(T.y) - 5, 10, 10);
-  g.lineWidth = 1.5; g.strokeStyle = HALO; g.strokeRect(X(T.x) - 5, Y(T.y) - 5, 10, 10);
+  if (!more.buildingsAt) {
+    g.fillStyle = INK; g.fillRect(X(T.x) - 5, Y(T.y) - 5, 10, 10);
+    g.lineWidth = 1.5; g.strokeStyle = HALO; g.strokeRect(X(T.x) - 5, Y(T.y) - 5, 10, 10);
+  }
   label(X(T.x), Y(T.y) + 8, [T.name], { size: 13, below: true, color: INK });
   /* the lands, until their stages take over: one line while the whole
      Wheel is on a phone's screen (eight names round a 370 px wheel only fit

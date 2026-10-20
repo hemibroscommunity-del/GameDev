@@ -26,6 +26,10 @@ import { infoPopupBus } from './infoPopupBus.js';
  * asides.  Registered in src/ui/zLayers.js.
  */
 
+/* v2.3.3522: how long a spend that stays (`action.stay`) may wait for its
+   opener to put the window up again before its button comes back by itself */
+const STAY_FALLBACK_MS = 3600;
+
 const COL = {
   dim:    'rgba(4,9,12,0.58)',
   card:   '#1E2E34',
@@ -90,6 +94,21 @@ export const InfoPopup = () => {
   const [stepState, setStepState] = React.useState({ of: null, n: 1 });
   /* v2.3.2696: which "tap to read more" chip is open, per window */
   const [chipState, setChipState] = React.useState({ of: null, key: null });
+  /* ═══ v2.3.3522: A SPEND ON ITS WAY ═══
+     The owner, playtesting: "After spending a stat allocation point keep it
+     on the menu confirmation window instead of closing it to return to the
+     points main screen."  An action marked `stay` (HeroExpanded's spend)
+     leaves the window up: its button says "Spending…" and takes no second
+     tap while the worker settles, and its opener puts up the window again
+     with the new numbers and "✓ n points spent" when the answer comes.  If
+     nothing has replaced the window after STAY_FALLBACK_MS, the button comes
+     back by itself (the opener gives up at 3 s, this a beat after). */
+  const [spendingOf, setSpendingOf] = React.useState(null);
+  React.useEffect(() => {
+    if (!cur || spendingOf !== cur) return undefined;
+    const id = setTimeout(() => setSpendingOf((v) => (v === cur ? null : v)), STAY_FALLBACK_MS);
+    return () => clearTimeout(id);
+  }, [cur, spendingOf]);
 
   /* Escape closes.  Bound only while open, so this adds no always-on key
      listener to a game whose own controls are keyboard-driven on desktop. */
@@ -213,9 +232,18 @@ export const InfoPopup = () => {
     </div>
   )}
   </>);
+  const spending = spendingOf === cur;   /* v2.3.3522 */
   const spend = () => {
     if (!cur.action || cur.action.blocked) return;
     const run = cur.action.run;
+    /* v2.3.3522: a spend that STAYS (the Points window): the window keeps
+       its place, "Spending…", and its opener answers with the new numbers */
+    if (cur.action.stay) {
+      if (spending) return;
+      setSpendingOf(cur);
+      try { if (run) run(stepN); } catch (_e) {}
+      return;
+    }
     infoPopupBus.close();
     try { if (run) run(stepN); } catch (_e) {}
   };
@@ -448,29 +476,44 @@ export const InfoPopup = () => {
             {lanesEl}
           </div>
         )}
+        {/* ═══ v2.3.3522: WHAT THE LAST SPEND BOUGHT ═══
+            The window stays after Spend (the owner: "keep it on the menu
+            confirmation window"), so it says what just happened: the opener
+            puts it up again with the new numbers and this line, in the
+            success green, over the stepper (which starts again at 1). */}
+        {cur.spentNote && (
+          <div data-infopopup-spent aria-live="polite" style={{
+            flex: 'none', marginTop: 10, fontSize: 12.5, fontWeight: 800,
+            color: '#59BF91', letterSpacing: '.01em',
+          }}>{cur.spentNote}</div>
+        )}
         {stepMax > 0 ? (
           /* v2.3.2695: [-] n [+] [Spend n points].  "Got it" steps aside for
              the width -- the x, the scrim and Escape still close it, which
              keeps three of v2.3.2131's four ways out on a spend window. */
-          <div data-infopopup-stepper style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6, marginTop: 12 }}>
-            <StepBtn label="One fewer point" glyph="−" disabled={stepN <= 1} onStep={() => stepBy(-1)} />
+          <div data-infopopup-stepper style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6, marginTop: cur.spentNote ? 8 : 12 }}>
+            <StepBtn label="One fewer point" glyph="−" disabled={stepN <= 1 || spending} onStep={() => stepBy(-1)} />
             <span data-infopopup-count={stepN} aria-live="polite"
               style={{
                 flex: 'none', minWidth: 30, textAlign: 'center',
                 fontSize: 18, fontWeight: 900, color: COL.text,
                 fontVariantNumeric: 'tabular-nums',
               }}>{stepN}</span>
-            <StepBtn label="One more point" glyph="+" disabled={stepN >= stepMax} onStep={() => stepBy(1)} />
+            <StepBtn label="One more point" glyph="+" disabled={stepN >= stepMax || spending} onStep={() => stepBy(1)} />
             <button type="button"
               data-infopopup-action
+              data-infopopup-spending={spending ? '1' : undefined}
+              aria-disabled={spending || undefined}
               onPointerUp={(e) => { e.stopPropagation(); spend(); }}
               style={{
                 flex: '1 1 auto', minWidth: 0, height: 40, padding: '0 10px',
                 background: COL.goldBg, color: COL.goldText,
                 border: 0, borderRadius: 9,
                 fontSize: 12.5, fontWeight: 900, whiteSpace: 'nowrap',
-                cursor: 'pointer', touchAction: 'manipulation',
-              }}>{`Spend ${stepN} point${stepN === 1 ? '' : 's'}`}</button>
+                cursor: spending ? 'default' : 'pointer', touchAction: 'manipulation',
+                /* v2.3.3522: waiting on the worker -- the same gold, quieter */
+                opacity: spending ? 0.6 : 1,
+              }}>{spending ? 'Spending…' : `Spend ${stepN} point${stepN === 1 ? '' : 's'}`}</button>
           </div>
         ) : (
         <div style={{ flex: 'none', display: 'flex', gap: 8, marginTop: 12 }}>

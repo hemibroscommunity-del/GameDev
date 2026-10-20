@@ -54,6 +54,15 @@
  * (844 x 390, 667 x 375), that it never lands on a control: under the box
  * upright, beside it sideways where under is the attack disc's
  * (wheelmap-04d-emblem-<w>x<h>.png).
+ * v2.3.3522, the owner: "Have icons representing each building on each
+ * building in the minimap/compass" -- 2 checks every footprint on the box
+ * wears its picture, loaded behind the loading screen, and 5 that leaving
+ * the Wheel lets them go; and "When you're in town make the expanded map
+ * zoomed in on the town so you can see which building is labeled where on
+ * the map" -- 3 checks the map opens on the town (every building on the
+ * screen, named, its picture at its door), then zooms out to the whole Wheel
+ * for the rest, and the target button in town is that view again
+ * (wheelmap-02-worldmap.png is the town view, 02b the whole Wheel).
  *
  * Pictures land in tools/qa/mp/out/wheelmap-*.png.
  */
@@ -218,6 +227,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (like(px(x, y), 0xa4553a, 26)) roof++;
     }
     rec.ok(`...drawn: the roofs' terracotta on the box round the square (${roof} CSS px)`, roof > 60, { roof });
+    /* v2.3.3522: each wears its picture (data/wheelBuildingDoors.js
+       WHEEL_BUILDING_ICONS), loaded behind the Wheel's loading screen */
+    const held = await P.page.evaluate(() => (window.__btBuildingIcons ? window.__btBuildingIcons() : null));
+    const bi = m && m.buildingIcons;
+    rec.ok(`...and each wears its building's picture, ${bi && bi.px} px on its footprint (${bi && bi.n} of ${bl.length}), the ${held && held.loaded} pictures loaded behind the loading screen (${held ? (held.bytes / 1048576).toFixed(2) : '?'} MB, ${held && held.grey} grey for the shut)`,
+      !!bi && bi.n === bl.length && bi.px === 14 && !!held && held.loaded >= bl.length && held.grey >= 1 && held.textures >= bl.length, { bi, held });
+    const r = await P.page.evaluate(() => window.__btWheelMini);
+    if (r) await P.page.screenshot({ path: join(OUT, 'wheelmap-01b-minimap-icons.png'), clip: { x: r.left, y: r.top, width: r.w, height: r.h } }).catch(() => {});
   }
   /* v2.3.3108: and the plate is drawn under it: its dark well, with lettering
      on it (light pixels among the dark) */
@@ -244,9 +261,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(900);
   let w = await wm(P);
   const opened = await P.page.evaluate(() => ({ el: !!document.querySelector('[data-world-map]'), where: (document.querySelector('[data-world-map-where]') || {}).textContent || '' }));
-  rec.ok('tapping it opens the world map: the whole Wheel, its eight lands named with their levels, and you', opened.el && w && w.open && w.labels && w.labels.lands === 8 && Math.abs(w.zoom - 1) < 0.01, { opened, w });
+  /* ═══ v2.3.3522: IN TOWN IT OPENS ON THE TOWN ═══
+     The owner: "When you're in town make the expanded map zoomed in on the
+     town so you can see which building is labeled where on the map."  It
+     opened on the whole Wheel, the town a dot.  Now, in BroTown: every
+     standing building's door on the screen, each named and wearing its
+     picture -- at the zoom the names come in or closer. */
+  const nDoors = (await P.page.evaluate(() => (window.__btWheelTownDoors ? window.__btWheelTownDoors.doors() : []))).length;
+  for (let i = 0; i < 10 && !(w && w.more && w.more.buildingsAt >= nDoors); i++) { await P.page.waitForTimeout(300); w = await wm(P); }
+  const rel = w && w.rel;
+  rec.ok(`tapping it in BroTown opens the world map ON THE TOWN: all ${w && w.more && w.more.buildingsAt} of the ${nDoors} buildings on the screen, ${w && w.more && w.more.buildings} named, ${w && w.more && w.more.buildingIcons} wearing their pictures, at zoom ${rel ? rel.toFixed(1) : '?'} (names from 6)`,
+    opened.el && !!w && w.open && nDoors >= 16 && w.more.buildingsAt === nDoors && w.more.buildings === nDoors && w.more.buildingIcons === nDoors && rel >= 6 - 1e-6,
+    { opened, w: w && { zoom: w.zoom, rel: w.rel, cx: w.cx, cy: w.cy, more: w.more } });
   rec.ok('...saying where you are', /You are in Brotown/.test(opened.where), opened);
   await shot(P, '02-worldmap');
+  /* ...and zoomed out, the whole Wheel as it always opened: its eight lands
+     named with their levels, and you */
+  for (let i = 0; i < 16 && !(w && Math.abs(w.zoom - 1) < 0.01); i++) {
+    await P.page.evaluate(() => document.querySelector('[data-world-map-zoom-out]').click());
+    await P.page.waitForTimeout(150);
+    w = await wm(P);
+  }
+  await P.page.waitForTimeout(400);
+  w = await wm(P);
+  rec.ok('...zoomed all the way out, the whole Wheel: its eight lands named with their levels, and you', !!w && w.labels && w.labels.lands === 8 && Math.abs(w.zoom - 1) < 0.01, w);
+  await shot(P, '02b-worldmap-wheel');
   const pxMap = await H.screenshotPixels(P);
   distinct = new Set();
   for (let y = 120; y < 700; y += 7) for (let x = 10; x < 380; x += 7) { const p = pxMap.at(Math.round(x * dpr), Math.round(y * dpr)); if (p) distinct.add(`${p[0] >> 4},${p[1] >> 4},${p[2] >> 4}`); }
@@ -284,7 +323,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(400);
   w = await wm(P);
-  rec.ok('the target button brings you back', meHit === 'button' && w && Math.abs(w.cx - ARRIVAL.x) < 200 && Math.abs(w.cy - ARRIVAL.y) < 200, { meHit, at: w && [w.cx, w.cy] });
+  /* v2.3.3522: in BroTown the target button is the town's view, as the map
+     opens there (every building on the screen, named) -- and that is where
+     you are */
+  rec.ok(`the target button brings you back: in BroTown to the town's view (${w && w.more && w.more.buildingsAt} buildings on the screen, zoom ${w && w.rel ? w.rel.toFixed(1) : '?'}), you on it`,
+    meHit === 'button' && !!w && Math.abs(w.cx - ARRIVAL.x) < 1500 && Math.abs(w.cy - ARRIVAL.y) < 1500 && w.more && w.more.buildingsAt === nDoors && w.rel >= 6 - 1e-6,
+    { meHit, at: w && [w.cx, w.cy], more: w && w.more });
+  /* out to about 4x the short Wheel again (where the target button used to
+     stop, under 5), for the next look: the lands' bands round town */
+  for (let i = 0; i < 5; i++) {
+    const z = await wm(P);
+    if (!z || !(z.rel > 5)) break;
+    await P.page.evaluate(() => document.querySelector('[data-world-map-zoom-out]').click());
+    await P.page.waitForTimeout(200);
+  }
+  await P.page.waitForTimeout(400);
   /* v2.3.3057 (owner: "if you tap the minimap and zoom in you can see more
      details"): what comes in as you zoom.  "Finish all quests" (above, to
      pass the Mayor's gate) left no quest to lead to, so the first one is put
@@ -577,5 +630,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const home = await mini(P);
   const btnHome = await P.page.evaluate(() => !!document.querySelector('[data-world-map-open]'));
   rec.ok('back in town, today\'s minimap is back and the world map\'s button is gone', back === 'town' && home && !home.wheel && home.box === 52 && !btnHome, { back, box: home && home.box, btnHome });
+  /* v2.3.3522: and the buildings' pictures were let go with the Wheel */
+  const heldHome = await P.page.evaluate(() => (window.__btBuildingIcons ? window.__btBuildingIcons() : null));
+  rec.ok('...and the buildings\' pictures went with the Wheel (none held)', !!heldHome && heldHome.loaded === 0 && heldHome.grey === 0 && heldHome.textures === 0, heldHome);
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));
 }

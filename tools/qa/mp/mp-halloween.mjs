@@ -14,6 +14,10 @@
  *      (the worker keeps it any day: a look, never a rule) and its pumpkin;
  *   4. his speech bubble is pumpkin-coloured on his phone and plain on the
  *      other: each phone's own calendar.
+ *      v2.3.3522 (the owner: "Make Npc dialog boxes white. Keep players the
+ *      darker color to differentiate"): "plain" is the DARK player bubble now
+ *      (game/bubbleSkins.js `player`), and a townsperson's line is white with
+ *      black words on both phones, in Halloween week or not.
  */
 import * as H from './harness.mjs';
 
@@ -116,5 +120,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('his own bubble is pumpkin-coloured in Halloween week (cream words)', mine.ok && mine.v.skin === 'halloween' && /ffe7c2/i.test(mine.v.ink), mine.v);
   await A.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/halloween-bubble.png` }).catch(() => {});
   const theirs = await until(B, (id) => { const b = window.__btChatBubbles && window.__btChatBubbles.get(id); return b ? { skin: b.skin, ink: b.ink } : null; }, aId, (v) => !!v, 6000);
-  rec.ok('...and plain on the phone out of it (each phone\'s calendar)', theirs.ok && theirs.v.skin === 'plain', theirs.v);
+  /* ═══ v2.3.3522: WHOSE BUBBLE IS WHOSE (game/bubbleSkins.js) ═══
+     The owner: "Make Npc dialog boxes white. Keep players the darker color to
+     differentiate."  A player's bubble out of Halloween week is the dark
+     Lantern Slate one (warm-white words), never the white -- so the phone
+     out of season still draws him dark, just not purple. */
+  rec.ok('...and the everyday DARK player bubble on the phone out of it (each phone\'s calendar), light words',
+    theirs.ok && theirs.v.skin === 'player' && /f7f2e7/i.test(theirs.v.ink), theirs.v);
+  /* ...and a townsperson's line is WHITE, black words, on both phones --
+     Halloween week or not. */
+  /* the pictures: the player's line and a townsperson's on one screen --
+     Lil Bro (low on the screen, his bubble clear of the top bar) where he
+     stands, the coach's tip put away, the player speaking again (a new line:
+     the chat guard takes one line once in 30 s) */
+  for (const P of [A, B]) await P.page.evaluate(() => { const x = document.querySelector('button[aria-label="Dismiss tip"]'); if (x) x.click(); });
+  await A.page.evaluate(() => window.__btSendChat('boo, bro!'));
+  for (const [P, nm, pic] of [[A, 'in Halloween week', 'halloween-npc-bubble'], [B, 'out of it', 'halloween-npc-bubble-everyday']]) {
+    const npcId = await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      const n = (S.npcs || []).find((x) => x && x.id === 'lil_bro') || (S.npcs || []).find((x) => x && x.id === 'mayor_bro') || (S.npcs || [])[0];
+      if (!n) return null;
+      n.chatBubble = { text: 'Happy Halloween, bro!', ts: Date.now() };
+      n.chatTimer = 60000;
+      return n.id;
+    });
+    rec.ok(`a townsperson is there to speak ${nm} (guard)`, !!npcId, { npcId });
+    if (!npcId) continue;
+    const nb = await until(P, (id) => { const b = window.__btChatBubbles && window.__btChatBubbles.get('npc:' + id); return b ? { skin: b.skin, ink: b.ink } : null; }, npcId, (v) => !!v, 6000);
+    rec.ok(`...and his bubble is WHITE with black words ${nm}`, nb.ok && nb.v.skin === 'plain' && /^#?0{6}$/i.test(String(nb.v.ink).replace(/^0x/i, '')), nb.v);
+    await P.page.waitForTimeout(500);
+    await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/${pic}.png` }).catch(() => {});
+  }
 }
