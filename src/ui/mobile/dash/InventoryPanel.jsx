@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { REMAINS_NAMES } from '@/data/remains.js';   /* v2.3.3486: "remains", not "remnants" */
+import { REMAINS_NAMES } from '@/data/remains.js';   /* v2.3.3500: "remains", not "remnants" */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { COL, panelStyle, getState } from './common.js';
@@ -187,7 +187,7 @@ const POTION_THUMBS = {
   swiftdraught: `/icons/items/potion-antidote.webp${ITEMS_V}`,
   manashard:    `/icons/items/potion-mana.webp${ITEMS_V}`,
   staminasalts: `/icons/items/potion-stamina.webp${ITEMS_V}`,
-  /* v2.3.3486: Zoom Juice, the stamina bottle in carrot orange
+  /* v2.3.3500: Zoom Juice, the stamina bottle in carrot orange
      (tools/make_tour_townsfolk.py) -- and so drinkable (isPotionKey) */
   zoomjuice:    `/icons/items/potion-zoom.webp${ITEMS_V}`,
   /* v2.3.2063: not a potion, but it sits on the same shelf and it had no art
@@ -291,7 +291,7 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
      one screen apart. The vendor label now matches this one. */
   manaShard: 'Mana Draught',
   staminaSalts: 'Stamina Tonic',   /* v2.3.3132: brewed at the Cookhouse from carrots, no longer Diego's salts */
-  zoomJuice: 'Zoom Juice',         /* v2.3.3486: three carrots at the Cookhouse, 25% faster for 5 minutes */
+  zoomJuice: 'Zoom Juice',         /* v2.3.3500: three carrots at the Cookhouse, 25% faster for 5 minutes */
   daily_chest: 'Daily Chest',   /* v2.3.2820: the daily login reward (server dailychest.js) */
   bar_copper: 'Copper Bar',     /* v2.3.2822: prettyName would say "Bar Copper" (server smelting.js) */
   /* v2.3.3127: seeds, crops and compost (server farm.js) -- prettyName would
@@ -303,7 +303,7 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
   bar_iron: 'Iron Bar',         /* v2.3.3092 */
   bar_black_steel: 'Black Steel Bar',   /* v2.3.3092: prettyName would say "Bar Black Steel" */
   trap_box: 'Box Trap',         /* v2.3.3120: one log at the Woodworker (server trapping.js); prettyName would say "Trap Box" */
-  /* v2.3.3486: a slain monster's REMAINS -- the owner: "change 'remnants' to
+  /* v2.3.3500: a slain monster's REMAINS -- the owner: "change 'remnants' to
      'remains' since it's a more common term" (data/remains.js; the keys stay) */
   ...REMAINS_NAMES,
   /* v2.3.3139: hardened wood (server hardenedwood.js) -- prettyName would say

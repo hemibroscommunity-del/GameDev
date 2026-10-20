@@ -474,7 +474,7 @@ export const COOKING_RECIPES = [
          one, and a fight's stamina (a block, a dodge, a dash) is still
          something you can top up. */
       { ingredients: { crop_carrot: 2 },                             tier: 1, cookLvl: 1,  makes: 'staminaSalts' },
-      /* v2.3.3486: ZOOM JUICE (SHOP_ITEMS zoomJuice) -- Farmer Bro's farm_2,
+      /* v2.3.3500: ZOOM JUICE (SHOP_ITEMS zoomJuice) -- Farmer Bro's farm_2,
          three carrots and Cooking 1, so a new player brews it on the tour. */
       { ingredients: { crop_carrot: 3 },                             tier: 1, cookLvl: 1,  makes: 'zoomJuice' },
     ];
@@ -648,7 +648,7 @@ export const SHOP_ITEMS = {
          player the server itself sold this to, and the arithmetic there is
          written against this value. */
       swiftDraught:  { cost: 30, effect: 'spdBuff', duration: 180, mult: 1.5 },
-      /* ═══ v2.3.3486: ZOOM JUICE, FROM THE FARM'S CARROTS ═══
+      /* ═══ v2.3.3500: ZOOM JUICE, FROM THE FARM'S CARROTS ═══
          Owner: "A quest where you have to get farm ingredients to make a food
          recipe item that gives you a boost (let's say a 25% speed boost for 5
          minutes)."  Farmer Bro's farm_2: three carrots at the Cookhouse
@@ -750,7 +750,7 @@ export const QUEST_REWARDS = {
          the bow and staff flying to the HUD, no claim window (QuestPanel.jsx,
          v2.3.3030).  The client's copy is gameSystems.js tut_1 (mirror-audit
          §5); tut_2-4 still pay XP and still ask. */
-      /* ═══ v2.3.3486: THE TOUR -- ONE LINE, PASSED FROM HAND TO HAND ═══
+      /* ═══ v2.3.3500: THE TOUR -- ONE LINE, PASSED FROM HAND TO HAND ═══
          Owner, a week before an exposé where reviewers give each game 20-30
          minutes: "my quest line is almost exclusively going to 4 zones to
          kill monsters and bring their remains back to mayor bro ... it would
@@ -782,7 +782,7 @@ export const QUEST_REWARDS = {
          where `next` no longer leads to it.  Mirrored, `after` included, by
          QUEST_CHAINS in src/data/gameSystems.js (mirror-audit §5).
          docs/specs/demo-quest-line.md. */
-      /* v2.3.3486: the SLIMES first (owner: "The slimes that blow up almost
+      /* v2.3.3500: the SLIMES first (owner: "The slimes that blow up almost
          always get a good reaction from people"); the snowmen, whose burrow is
          the other showpiece, are the tour's finale (tut_2). */
       tut_1: {gold:25,  xp:0,  next:'farm_1',
@@ -843,7 +843,7 @@ export const QUEST_REWARDS = {
                 {kind:'weapon', weaponType:'staff', tierKey:'pine', name:"Pine Staff"},    /* v2.3.1772 */
               ]},
       /* v2.3.1692: tut_2 pays gold + xp only — its staff moved to tut_1. */
-      /* v2.3.3486: tut_2 is the TOUR'S FINALE, the snowmen (tut_1's old
+      /* v2.3.3500: tut_2 is the TOUR'S FINALE, the snowmen (tut_1's old
          errand) -- after the Beastmaster's traps, with the gear the tour made
          you.  `after`: beast_2's `next` is this quest, so the Beastmaster's
          own beast_3 waits on it (below). */
@@ -868,7 +868,7 @@ export const QUEST_REWARDS = {
                  for the tier above. */
               item:{kind:'legs', name:"Copper Greaves", mat:'copper', tierMult:1.0}},
 
-      /* ═══ v2.3.3486: THE TOUR'S HANDS (see the header at tut_1) ═══
+      /* ═══ v2.3.3500: THE TOUR'S HANDS (see the header at tut_1) ═══
          Farmer Bro (the Feed & Seed), Blacksmith Bro, Woodworker Bro, Diego
          and Lil Bro.  No combat XP anywhere here (xp 0): these are trades,
          paid in the trade's own XP as you do them, so a hand-in needs no
@@ -948,7 +948,7 @@ export const QUEST_REWARDS = {
          to fish AND cook — two skills out of one quest, and the reason the
          axe rides along with the pole: firewood.  Counts are small on purpose;
          this is a tutorial, not a grind. */
-      /* v2.3.3486: RETIRED (QUEST_RETIRED below) -- the tour gives these
+      /* v2.3.3500: RETIRED (QUEST_RETIRED below) -- the tour gives these
          errands and their tools to the men whose trades they are: the fish to
          Diego (fish_1), the ore to Blacksmith Bro (smith_1).  Kept so a save
          holding one active can still hand it in. */
@@ -1001,7 +1001,7 @@ export const QUEST_REWARDS = {
          to choose at the hand-in; they pay gold and box traps.  beast_1 hands
          over the three pine logs its traps are made from.  Mirrored by
          QUEST_CHAINS in src/data/gameSystems.js (mirror-audit). */
-      /* v2.3.3486: beast_1 and beast_2 are steps of the tour (the header at
+      /* v2.3.3500: beast_1 and beast_2 are steps of the tour (the header at
          tut_1): after Lil Bro's race, and handing on to the Mayor's finale --
          three springs, not five, for a reviewer's half hour.  His own line
          (beast_3, beast_4) opens once the tour is done. */
@@ -1076,7 +1076,7 @@ export const QUEST_DORMANT = Object.freeze([
  * (dailyrewards.js QUESTS.UNLOCK_QUEST). */
 export const QUEST_FIRST = 'tut_1';
 
-/* ═══ v2.3.3486: QUESTS NOBODY IS OFFERED ANY MORE ═══
+/* ═══ v2.3.3500: QUESTS NOBODY IS OFFERED ANY MORE ═══
  * The tour (QUEST_REWARDS tut_1) hands their errands and tools to the men
  * whose trades they are, so the Mayor no longer offers them: life_1's cooked
  * fish are Diego's fish_1, life_2's ore is Blacksmith Bro's smith_1.  Unlike
@@ -1115,7 +1115,7 @@ export const BLACKSMITH_TIERS = {
          `bars` replace `oreCost` on these three rows (gear.js reads them
          first); `oreName` stays the metal's name.  The gold is unchanged.  The
          metals past black steel have no bar yet and keep their ore. */
-      /* ═══ v2.3.3486: A BAR'S SWORD AT ITS BAR'S LEVEL ═══
+      /* ═══ v2.3.3500: A BAR'S SWORD AT ITS BAR'S LEVEL ═══
          Owner, for the tour's Blacksmith Bro: "he gives you 5 bars (which you
          can make into your own weapon or armor - your choice)".  The armour
          forge makes copper, iron and black steel at Smithing 1, 5 and 10
@@ -1156,7 +1156,7 @@ export const WOODWORKING_TIERS = {
          pine").  `wood: 'pine_log'` makes the tier consume `wood_pine_log` —
          the log the first tree actually drops (gathering.js).  The old first
          tier asked for `wood_wood`, which nothing produces. */
-      /* ═══ v2.3.3486: A BOW OR A STAFF IS MADE OF HARDENED WOOD ═══
+      /* ═══ v2.3.3500: A BOW OR A STAFF IS MADE OF HARDENED WOOD ═══
          Owner, for the tour's Woodworker Bro: "you give him 5 wood, he gives
          you 5 hardened wood, and you can make your own bow or staff" -- the
          wood side of the smith's "he gives you 5 bars (which you can make into

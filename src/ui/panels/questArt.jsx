@@ -166,7 +166,7 @@ export function QuestSkillChip(props) {
   props.label);
 }
 
-/* v2.3.3486: the same chip for a hand-in's TRADE (Woodworker Bro's wood_2:
+/* v2.3.3500: the same chip for a hand-in's TRADE (Woodworker Bro's wood_2:
    which pine weapon he swaps for softwood) -- `data-trade`, not
    `data-xp-skill`, so nothing that picks an XP skill ever picks one of these */
 export function QuestTradeChip(props) {

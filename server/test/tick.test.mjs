@@ -787,7 +787,7 @@ check('forged monster_transform dropped by deny-list',
   ps.z = 'town';
 
   /* ── accepting the quest opens it ── */
-  /* v2.3.3486: tut_2 names frost now (the tour's finale; tut_1 the slimes) */
+  /* v2.3.3500: tut_2 names frost now (the tour's finale; tut_1 the slimes) */
   ps._quests.tut_2 = 'active';
   await move('frost', 150, 150);
   check('accepting the quest that names frost opens frost', ps.z === 'frost', ps.z);

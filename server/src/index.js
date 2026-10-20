@@ -92,7 +92,7 @@ import { petMethods, PETS } from './pets.js';
    pets record, pets:<pid> (petbook.js).  docs/specs/trapping.md. */
 import { trappingMethods } from './trapping.js';
 import { hardenedWoodMethods } from './hardenedwood.js'; /* v2.3.3139: logs into hardened wood */
-import { raceMethods } from './race.js'; /* v2.3.3486: Lil Bro's race round the square (the tour's race_1) */
+import { raceMethods } from './race.js'; /* v2.3.3500: Lil Bro's race round the square (the tour's race_1) */
 import { petbookMethods } from './petbook.js';
 /* v2.3.3209: the monster codex -- what each kill teaches you, codex:<pid>
    (codex.js).  docs/specs/monster-codex.md. */
@@ -517,7 +517,7 @@ export const PRIVILEGED_EVENTS = new Set([
   /* v2.3.3139: its twin at the Woodworker (hardenedwood.js) -- hardened wood
      made and XP paid; a forged one would show wood that never reached a bag. */
   'hardened_wood_result',
-  /* v2.3.3486: Lil Bro's race (race.js) -- the course and the gun, a flag
+  /* v2.3.3500: Lil Bro's race (race.js) -- the course and the gun, a flag
      touched, the result.  Forged into a relay, one would start or win a race
      on another player's screen that the worker never ran. */
   'race_state', 'race_cp', 'race_end',
@@ -5363,7 +5363,7 @@ export class GameRoom {
         break;
 
       case 'race_start':
-        /* v2.3.3486: on your marks -- Lil Bro's race (race.js); the worker
+        /* v2.3.3500: on your marks -- Lil Bro's race (race.js); the worker
            judges every flag on the moves it accepts and the finish against
            his time */
         if (session.id) this._handleRaceStart(session);
@@ -6372,7 +6372,7 @@ Object.assign(GameRoom.prototype, threatMethods);
 Object.assign(GameRoom.prototype, petMethods);
 Object.assign(GameRoom.prototype, trappingMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, hardenedWoodMethods); /* v2.3.3139 */
-Object.assign(GameRoom.prototype, raceMethods); /* v2.3.3486 */
+Object.assign(GameRoom.prototype, raceMethods); /* v2.3.3500 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
 Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */

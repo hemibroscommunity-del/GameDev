@@ -318,7 +318,7 @@ function ForgeTab({ S, R, inv, coins, lvl, ask, busy, wtype, setWtype }) {
         const have = Math.floor(inv[resKey] || 0);
         const idx = keys.indexOf(key);
         let req = getGearStatReq(wtype, idx, R);
-        /* v2.3.3486: against a worker with the tour's gear rules
+        /* v2.3.3500: against a worker with the tour's gear rules
            (caps.tourgear, server/src/gear.js) the forge asks what WEARING the
            sword asks -- copper nothing, iron nothing, every rung above what
            its badge says -- where an older one asked tierIndex x 5 (Melee 5

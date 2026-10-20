@@ -114,7 +114,7 @@ export const BLACKSMITH_TIERS = {
      pay the armour forge's XP for them.  Mirrors server/src/data.js
      BLACKSMITH_TIERS (mirror-audit); the worker settles, this draws the
      Forge tab's cost chip. */
-  /* v2.3.3486: a sword at its bars' own level -- copper Smithing 1, iron 5,
+  /* v2.3.3500: a sword at its bars' own level -- copper Smithing 1, iron 5,
      black steel 10, the levels the armour forge already asked for the same
      bars (armorforge.js) and the tour's first forge needs (smith_2: "you can
      make into your own weapon or armor - your choice").  Mirrors
@@ -394,7 +394,7 @@ export function isIronGear(item) {
   if (!item || typeof item !== 'object') return false;
   return item.mat === 'iron' || item.material === 'iron' || item.gearBase === 'iron';
 }
-/* ═══ v2.3.3486: AND SOFTWOOD, THE TIER AFTER PINE ═══
+/* ═══ v2.3.3500: AND SOFTWOOD, THE TIER AFTER PINE ═══
    The owner, for the tour's Woodworker Bro: "The tier after pine should still
    be wearable at lvl 1 magic/staff and lvl 1 bow but the gate to create those
    items is lvl 5 woodworking."  So a softwood bow or staff is free to wear,
@@ -483,7 +483,7 @@ export function canEquipItem(rpg, item, slotType) {
   /* v2.3.2125: every slot — see the note on isIronGear.  v2.3.2124 exempted
      the defence-gated slots only; the owner then asked for the weapons too
      ("Allow iron weapons to be equipped at any level"). */
-  if (isFreeTierGear(item)) return true;   /* v2.3.3486: iron, and softwood */
+  if (isFreeTierGear(item)) return true;   /* v2.3.3500: iron, and softwood */
   if (!item || !item.gearBase) return true; /* non-crafted items have no stat gate */
   var isWood = (_item$gearBase2 = item.gearBase) === null || _item$gearBase2 === void 0 ? void 0 : _item$gearBase2.startsWith('ww_');
   var tierKey = isWood ? item.gearBase.slice(3) : item.gearBase;
@@ -550,7 +550,7 @@ export function getEquipReqLabel(item, slotType, rpg) {
      canEquipItem returns true for it before looking at anything else.  A
      requirement badge on gear nothing gates is the label contradicting the
      gate, which is the whole fault this version fixes. */
-  if (isFreeTierGear(item)) return null;   /* v2.3.3486: iron, and softwood */
+  if (isFreeTierGear(item)) return null;   /* v2.3.3500: iron, and softwood */
   var isWood = (_item$gearBase3 = item.gearBase) === null || _item$gearBase3 === void 0 ? void 0 : _item$gearBase3.startsWith('ww_');
   var tierKey = isWood ? item.gearBase.slice(3) : item.gearBase;
   var tierTable = isWood ? WOODWORKING_TIERS : BLACKSMITH_TIERS;
@@ -588,7 +588,7 @@ export const WOODWORKING_TIERS = {
      be pine").  Mirrors server/src/data.js WOODWORKING_TIERS.pine exactly —
      including `wood: 'pine_log'`, which is the log the first tree drops.  A
      one-sided edit here would offer a craft the worker refuses. */
-  /* ═══ v2.3.3486: A BOW OR A STAFF IS MADE OF HARDENED WOOD ═══
+  /* ═══ v2.3.3500: A BOW OR A STAFF IS MADE OF HARDENED WOOD ═══
      Four of the tier's hardened wood (`hardened`, `hardenedCost`), a sword's
      XP for the same work, each at the level its hardened wood is made at
      (Woodworking 1 / 5 / 10 / 15 / 20) -- the owner's "he gives you 5
@@ -1142,7 +1142,7 @@ export const COOKING_RECIPES = [{
   makes: 'staminaSalts',
   desc: 'Restores 60 stamina at once'
 }, {
-  /* v2.3.3486: ZOOM JUICE -- the owner: "get farm ingredients to make a food
+  /* v2.3.3500: ZOOM JUICE -- the owner: "get farm ingredients to make a food
      recipe item that gives you a boost (let's say a 25% speed boost for 5
      minutes)".  Three carrots (the tour's farm_1 grows them, farm_2 cooks
      this), a bottle the worker knows (server data.js SHOP_ITEMS zoomJuice:
@@ -6558,7 +6558,7 @@ export function questSteps(quest, R, S) {
      progress (a fish already cooked means you clearly had a fire). */
   var lastDone = -1;
   for (var i = 0; i < out.length; i++) if (out[i].done) lastDone = i;
-  /* v2.3.3486: the exception below was life_1's, written for every quest;
+  /* v2.3.3500: the exception below was life_1's, written for every quest;
      it is the quest's own now (`stepsRedo`: life_1, the tour's fish_1, and
      beast_2, whose traps are needed again too), so a quest whose early steps
      are SPENT by a later one (farm_2's carrots go into the juice) keeps them
@@ -6618,7 +6618,7 @@ export const QUEST_CHAINS = {
 
        Mirrored by QUEST_ZONE in server/src/data.js, which is what actually
        enforces the lock; this side drives the marker and the UI. */
-    /* v2.3.3486: the SLIMES first -- the owner: "The slimes that blow up
+    /* v2.3.3500: the SLIMES first -- the owner: "The slimes that blow up
        almost always get a good reaction from people" -- and the snowmen, the
        other showpiece, are the tour's finale (tut_2).  The whole tour is
        written out at the server's copy (server/src/data.js QUEST_REWARDS
@@ -6639,7 +6639,7 @@ export const QUEST_CHAINS = {
        no "Choose where to train it", no claim window.  Mirrors
        server/src/data.js tut_1 (mirror-audit §5). */
     reward: { gold: 25, xp: 0 },
-    /* v2.3.3486: he hands you on, to Farmer Bro (the tour) */
+    /* v2.3.3500: he hands you on, to Farmer Bro (the tour) */
     next: 'farm_1',
     gives: [
       /* great-sword, not sword: weaponType 'sword' at wood tier is the
@@ -6689,7 +6689,7 @@ export const QUEST_CHAINS = {
          and let go"; the shield HOLD and the turn; the cycle gesture), and
          mp-questui now asserts the opposite of what it used to — that he is
          not reciting controls at all. */
-      /* ═══ v2.3.3486: WHY YOU ARE DOING THIS, AND THE JOKE THE OWNER LIKED ═══
+      /* ═══ v2.3.3500: WHY YOU ARE DOING THIS, AND THE JOKE THE OWNER LIKED ═══
          The owner, planning the quest line for an exposé: "the quest dialog
          could be better.  Like why is the character doing this?  None of that
          is explained.  Keep the dialog witty and funny (it's an unserious game
@@ -6706,7 +6706,7 @@ export const QUEST_CHAINS = {
          acknowledging his advice was too late").  The chunks split on a
          blank line (dialogueChunks), so the beat lands as taps: the warning,
          and the moment he hears himself.  It needs the slimes to be the quest
-         you just finished (v2.3.2224's bursting blue ones): since v2.3.3486
+         you just finished (v2.3.2224's bursting blue ones): since v2.3.3500
          that is this one. */
       complete: "You're back! And mostly the same shape you left in.\n\n"
         + "One thing, since you're headed back out. The blue ones swell up right before they go. When one does that, walk away. It bursts.\n\n"
@@ -6716,7 +6716,7 @@ export const QUEST_CHAINS = {
   },
   tut_2: {
     /* v2.3.1817: the zone this step opens and points at — see tut_1. */
-    /* v2.3.3486: the TOUR'S FINALE, the burrowing snowmen (tut_1's errand
+    /* v2.3.3500: the TOUR'S FINALE, the burrowing snowmen (tut_1's errand
        until now), after the Beastmaster's traps (`after`, below) -- by then
        you carry the gear the tour made you. */
     zone: 'frost',   /* Frost Ridge */
@@ -6725,7 +6725,7 @@ export const QUEST_CHAINS = {
     check: function (rpg) { return ((rpg.inventory || {}).snowman || 0) >= 4; },
     need: { key: 'snowman', n: 4 },   /* v2.3.3481: the count shown beside the errand -- see tut_1 */
     reward: { gold: 200, xp: 50 },
-    /* v2.3.3486: the tour comes back to him here: beast_2 (the Beastmaster's)
+    /* v2.3.3500: the tour comes back to him here: beast_2 (the Beastmaster's)
        hands on to this quest, so his line waits for it (getNpcQuest `after`;
        the worker's _questBarred the same) */
     after: 'beast_2',
@@ -6749,7 +6749,7 @@ export const QUEST_CHAINS = {
     reward: { gold: 150, xp: 53 },
     next: 'tut_4',
     dialogue: {
-      /* v2.3.3486: "remains", and a reason, as the tour's lines have */
+      /* v2.3.3500: "remains", and a reason, as the tour's lines have */
       start: "Mummies, out in the Wind Dunes. Hit one hard enough and the wrappings come off, and what's underneath is faster. And bonier.\n\n"
         + "Bring me 5 Skeleton Remains. The museum's paying. Don't ask what for.",
       progress: "5 Skeleton Remains, from the Wind Dunes.",
@@ -6776,7 +6776,7 @@ export const QUEST_CHAINS = {
          think that's accurate"): it was not -- after this he still has the
          life-skill errands and the town's own quests (life_1, mayor_1..3).
          It is the last stop of the TOUR, which his `complete` line closes. */
-      /* v2.3.3486: "remains", and a reason; "the tour" is the town's walk
+      /* v2.3.3500: "remains", and a reason; "the tour" is the town's walk
          round its townsfolk now (tut_1 .. tut_2), so he no longer calls the
          lands that */
       start: "Last land on my map: the Flame Fields. Fire goblins, and they're quick about it.\n\n"
@@ -6819,7 +6819,7 @@ export const QUEST_CHAINS = {
      this table it has no mirror in the server's QUEST_REWARDS. */
   life_1: {
     id: 'life_1', npc: 'Mayor Bro', title: 'Learn a Trade',
-    /* v2.3.3486: RETIRED (server/src/data.js QUEST_RETIRED) -- the tour gives
+    /* v2.3.3500: RETIRED (server/src/data.js QUEST_RETIRED) -- the tour gives
        this errand and its tools to the men whose trades they are: the fish to
        Diego (fish_1), the axe to Woodworker Bro (wood_1), the pickaxe and the
        ore to Blacksmith Bro (smith_1).  Never offered again (getNpcQuest);
@@ -6847,7 +6847,7 @@ export const QUEST_CHAINS = {
        so cooking the first fish, which spends the fire, does not un-tick the
        log and the fish for the second: the first step not done is always the
        honest next thing to do. */
-    /* v2.3.3486: the fish, log and fire steps are needed AGAIN for the
+    /* v2.3.3500: the fish, log and fire steps are needed AGAIN for the
        second fish (questSteps' `stepsRedo`, life_1's own rule until now) */
     stepsRedo: { upTo: 2, until: 4 },
     steps: [
@@ -6882,7 +6882,7 @@ export const QUEST_CHAINS = {
   },
   life_2: {
     id: 'life_2', npc: 'Mayor Bro', title: 'Rock Bottom',
-    retired: true,   /* v2.3.3486: see life_1 */
+    retired: true,   /* v2.3.3500: see life_1 */
     anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     node: 'oreVein',   /* v2.3.3012: the Wheel's gold road leads to the nearest vein (questRoute.js) */
     desc: 'Bring 5 Ore to Mayor Bro.',
@@ -6916,7 +6916,7 @@ export const QUEST_CHAINS = {
     },
   },
 
-  /* ═══ v2.3.3486: THE TOUR -- THE MAYOR HANDS YOU ROUND THE TOWN ═══
+  /* ═══ v2.3.3500: THE TOUR -- THE MAYOR HANDS YOU ROUND THE TOWN ═══
      The owner, a week before an exposé where reviewers give each game 20-30
      minutes: "my quest line is almost exclusively going to 4 zones to kill
      monsters and bring their remains back to mayor bro ... Mayor bro would
@@ -7172,12 +7172,12 @@ export const QUEST_CHAINS = {
 
      `after: 'tut_1'` (getNpcQuest): his line waits until the Mayor's first
      quest is handed in, so a new player's first steps stay the Mayor's.
-     v2.3.3486: beast_1 and beast_2 are steps of the TOUR now (after Lil
+     v2.3.3500: beast_1 and beast_2 are steps of the TOUR now (after Lil
      Bro's race, handing on to the Mayor's tut_2), and beast_3 waits for
      tut_2 -- the tour's header, above farm_1. */
   beast_1: {
     id: 'beast_1', npc: 'Beastmaster Bro', title: 'Box Traps',
-    /* v2.3.3486: a step of the tour now, after Lil Bro's race (`after`),
+    /* v2.3.3500: a step of the tour now, after Lil Bro's race (`after`),
        and the Woodworker's bench is right beside him (`opens`) */
     after: 'race_1', tour: true, opens: 'woodworker',
     desc: 'Make 3 box traps at the Woodworker.',
@@ -7198,7 +7198,7 @@ export const QUEST_CHAINS = {
   },
   beast_2: {
     id: 'beast_2', npc: 'Beastmaster Bro', title: 'Set and Spring',
-    /* v2.3.3486: three springs, not five, and he hands you back to the
+    /* v2.3.3500: three springs, not five, and he hands you back to the
        Mayor for the tour's finale (tut_2) */
     after: 'beast_1', tour: true,
     anyZone: true,
@@ -7206,7 +7206,7 @@ export const QUEST_CHAINS = {
     check: function (rpg) { return ((rpg._questKills && rpg._questKills.beast_2) || 0) >= 3; },
     need: { progress: true, n: 3 },
     /* the traps are needed again for each spring (life_1's rule, which
-       applied to every quest until v2.3.3486) */
+       applied to every quest until v2.3.3500) */
     stepsRedo: { upTo: 2, until: 4 },
     steps: [
       { label: 'Carry a box trap (the Woodworker makes them)',
@@ -7233,7 +7233,7 @@ export const QUEST_CHAINS = {
   },
   beast_3: {
     id: 'beast_3', npc: 'Beastmaster Bro', title: "A Trapper's Eye",
-    /* v2.3.3486: his own line again once the tour is done (beast_2 hands on
+    /* v2.3.3500: his own line again once the tour is done (beast_2 hands on
        to the Mayor's tut_2, so this waits for it) */
     after: 'tut_2',
     anyZone: true,
@@ -7927,14 +7927,14 @@ export function questCountText(quest, rpg) {
   var nd = quest && quest.need;
   if (!nd || !(nd.n > 0)) return '';
   var have;
-  /* v2.3.3486: or what the WORKER counted for this quest (`progress`): beds
+  /* v2.3.3500: or what the WORKER counted for this quest (`progress`): beds
      watered, traps sprung -- the counters it sends back in _questKills */
   if (nd.progress) have = questProgress(rpg, quest.id);
   else if (nd.key) have = Number(((rpg && rpg.inventory) || {})[nd.key]) || 0;
   else return '';
   return ' (' + Math.max(0, Math.min(have, nd.n)) + '/' + nd.n + ')';
 }
-/* v2.3.3486: what the worker has counted toward a quest whose objective it
+/* v2.3.3500: what the worker has counted toward a quest whose objective it
    counts (a farm act, a craft, a cook, a race, a trap...): its _questKills
    entry, sent back with the rest of the record */
 export function questProgress(rpg, questId) {
@@ -8113,7 +8113,7 @@ export function getNpcQuest(rpg, npcName) {
        first steps stay the Mayor's).  STOP, not skip: every later quest of
        this giver is behind this one, and skipping would offer the next. */
     if (quest.after && !state && questState[quest.after] !== QUEST_STATUS.turnedIn) return null;
-    /* ═══ v2.3.3486: A RETIRED QUEST IS NEVER OFFERED ═══
+    /* ═══ v2.3.3500: A RETIRED QUEST IS NEVER OFFERED ═══
        life_1 and life_2 gave their errands and tools to the tour's givers
        (server/src/data.js QUEST_RETIRED; the worker refuses to accept them).
        SKIP, so the Mayor's line goes on past them; one a save already holds

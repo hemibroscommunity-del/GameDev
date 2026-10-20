@@ -91,7 +91,7 @@ export const armorForgeMethods = {
       { name: r.name, mat: r.mat, slot: r.slot, tierMult: r.tierMult, quality: this._rollWeaponQuality() }, 'forge');
 
     const res = this._addLifeSkillXp(ps, 'blacksmithing', r.xp);
-    /* v2.3.3486: armour made counts for the tour's smith_2 as a sword does
+    /* v2.3.3500: armour made counts for the tour's smith_2 as a sword does
        (quests.js `craft` 'smith'), saved with the piece */
     try { this._creditQuestObjective(session.id, 'craft', 'smith'); } catch (e) { /* a quest must never undo the forge */ }
     this._saveRpg(session.id, ps);

@@ -342,7 +342,7 @@ const room = Object.create(GameRoom.prototype);
   check('QUEST_REWARDS <-> QUEST_CHAINS gold/xp/next mirror, both directions', bad.length === 0, bad);
 }
 
-// ── 5a. v2.3.3486: THE TOUR'S ORDER -- `after` (a giver's line waits for
+// ── 5a. v2.3.3500: THE TOUR'S ORDER -- `after` (a giver's line waits for
 // another's quest: getNpcQuest on the page, _questBarred on the worker), the
 // retired quests (offered by neither), and a hand-in's trade, the same on both
 // sides.  A one-sided `after` offers a quest the worker refuses, or hides one
@@ -358,7 +358,7 @@ const room = Object.create(GameRoom.prototype);
   const retiredC = Object.keys(QUEST_CHAINS).filter((k) => QUEST_CHAINS[k].retired).sort();
   const retiredS = (SRV.QUEST_RETIRED || []).slice().sort();
   if (retiredC.join() !== retiredS.join()) bad.push({ retired: { server: retiredS, client: retiredC } });
-  check('QUEST_REWARDS <-> QUEST_CHAINS `after`, `trade` and the retired quests mirror (v2.3.3486, the tour)', bad.length === 0, bad);
+  check('QUEST_REWARDS <-> QUEST_CHAINS `after`, `trade` and the retired quests mirror (v2.3.3500, the tour)', bad.length === 0, bad);
   /* the tour is ONE line: from tut_1, each quest's `next` is the following
      step and that step waits for it (`after`), giver to giver, back to the
      Mayor's tut_2 -- so only the next step is ever offered */
@@ -390,7 +390,7 @@ const room = Object.create(GameRoom.prototype);
       if (g.when === 'accept' && !Array.isArray(sv.grantOnAccept)) {
         bad.push({ quest: k, icon: g.icon, reason: 'promises an item on accept, server has no grantOnAccept' });
       }
-      /* v2.3.3486: or a trade at the hand-in (wood_2's softwood swap) */
+      /* v2.3.3500: or a trade at the hand-in (wood_2's softwood swap) */
       if (g.when === 'complete' && !sv.item && !sv.trade) {
         bad.push({ quest: k, icon: g.icon, reason: 'promises an item on turn-in, server pays no item' });
       }

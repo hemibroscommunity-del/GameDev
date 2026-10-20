@@ -104,7 +104,7 @@ const sess = { id: 'bp_t' };
 {
   const ids = ['tut_1', 'tut_2', 'tut_3', 'tut_4'];
   for (const id of ids) check(`${id} exists server-side`, !!QUEST_REWARDS[id], id);
-  /* v2.3.3486: THE TOUR (data.js tut_1's header) -- tut_1 hands off to the
+  /* v2.3.3500: THE TOUR (data.js tut_1's header) -- tut_1 hands off to the
      townsfolk and comes back to the Mayor at tut_2, the finale.  Walked by
      `next`, every step of it checked by the worker. */
   const TOUR = ['tut_1', 'farm_1', 'smith_1', 'smith_2', 'wood_1', 'wood_2', 'fish_1',
@@ -330,7 +330,7 @@ const sess = { id: 'bp_t' };
      in their own slots (rangedWeapon / staffWeapon), not ps.weapon.  Asserting
      ps.weapon here reported "no weapon granted" against a grant that had in
      fact worked perfectly — the slot routing is the thing worth pinning. */
-  ps.inventory = { 'slime-remnants': 9 };   /* v2.3.3486: the slimes first */
+  ps.inventory = { 'slime-remnants': 9 };   /* v2.3.3500: the slimes first */
   await room._handleQuestAccept(sess, { questId: 'tut_1' });
   await room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: 'bow' });
   /* v2.3.1676: accepting tut_1 hands over the sword+shield (grantOnAccept),
@@ -386,7 +386,7 @@ const sess = { id: 'bp_t' };
      stash-full path was unreachable; now every grant goes to the stash, so
      these two exist to show a failed grant leaves held gear alone. */
   ps.rangedWeapon = { type: 'bow', tierMult: 1, name: 'Old Bow' };
-  ps.inventory = { 'slime-remnants': 9 };   /* v2.3.3486: the slimes first */
+  ps.inventory = { 'slime-remnants': 9 };   /* v2.3.3500: the slimes first */
   /* v2.3.2420: measured as a DELTA, not against an absolute. The handlers
      await storage now (the inbox drain below), and an await is where the
      room's own background sweeps get to run -- _arenaEntrySweep refunded a
@@ -533,7 +533,7 @@ const sess = { id: 'bp_t' };
      skill.  The checks below that need an XP-paying quest use tut_2. */
   const _skSum = () => ['sword', 'bow', 'staff'].map((k) => ps.prog3.sk[k].level + ps.prog3.sk[k].xp).join(',');
   check('the first quest pays no XP', QUEST_REWARDS.tut_1.xp === 0, QUEST_REWARDS.tut_1.xp);
-  ps.inventory = { 'slime-remnants': 4 };   /* v2.3.3486: the slimes first */
+  ps.inventory = { 'slime-remnants': 4 };   /* v2.3.3500: the slimes first */
   await room._handleQuestAccept(sess, { questId: 'tut_1' });
   const _skBefore1 = _skSum();
   await room._handleQuestTurnIn(sess, { questId: 'tut_1' });
@@ -542,7 +542,7 @@ const sess = { id: 'bp_t' };
     { st: ps._quests.tut_1, coins: ps.coins, inv: ps.inventory });
   check('...and puts no XP into any skill', _skSum() === _skBefore1, { before: _skBefore1, after: _skSum() });
 
-  /* v2.3.3486: tut_2 is the tour's finale -- the Mayor's next quest, after
+  /* v2.3.3500: tut_2 is the tour's finale -- the Mayor's next quest, after
      the townsfolk's (beast_2 hands on to it) -- and it pays XP */
   check('the Mayor\'s second quest still pays XP', QUEST_REWARDS.tut_2.xp > 0, QUEST_REWARDS.tut_2.xp);
   ps.coins = 0;

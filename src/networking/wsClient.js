@@ -29,7 +29,7 @@ import { allyBus } from '@/game/alliance.js'; /* v2.3.3313: the alliance's answe
 import { monsterNoticed } from '@/game/monsterNoises.js'; /* v2.3.3340: a monster calls as it notices you */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
-import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3486: Lil Bro's race (server/src/race.js) */
+import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3500: Lil Bro's race (server/src/race.js) */
 import { cue, cueAt, cuePeer, peerOwn } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
 import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
@@ -1913,7 +1913,7 @@ export function setupWebSocket(ctx) {
             { try { onCodexState(S, msg.payload); } catch (_ce) { /* display only */ } break; }
           case 'make_traps_result':
             { try { onMakeTrapsResult(S, msg.payload); } catch (_te) { /* display only */ } break; }
-          /* ═══ v2.3.3486: LIL BRO'S RACE (server/src/race.js) ═══
+          /* ═══ v2.3.3500: LIL BRO'S RACE (server/src/race.js) ═══
              The course and the gun, a flag touched, the end.  Here, in the
              direct switch, not the default branch: that hands everything to
              gameEvents as a room event, which is where a forged one would come
@@ -5168,7 +5168,7 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
-        /* v2.3.3486: Lil Bro's race (game/race.js) -> race.js.  TRAPS #18:
+        /* v2.3.3500: Lil Bro's race (game/race.js) -> race.js.  TRAPS #18:
            without this line Race! would send nothing at all. */
         if (msg.type === 'race_start') {
           wsOut(msg);

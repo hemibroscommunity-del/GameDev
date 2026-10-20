@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3486: THE TOUR'S TWO NEW TOWNSFOLK, AND ZOOM JUICE'S BOTTLE, until the
+"""v2.3.3500: THE TOUR'S TWO NEW TOWNSFOLK, AND ZOOM JUICE'S BOTTLE, until the
 owner's own pictures arrive.
 
 The tour (server/src/data.js QUEST_REWARDS tut_1's header) hands a new player

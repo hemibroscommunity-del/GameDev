@@ -5730,7 +5730,7 @@ export const NPC_DATA = [{
     dirs: ['south', 'southwest', 'west', 'northwest',
       'north', 'northeast', 'east', 'southeast'],
   },
-  /* ═══ v2.3.3486: HE RACES YOU (the tour's race_1, game/race.js) ═══
+  /* ═══ v2.3.3500: HE RACES YOU (the tour's race_1, game/race.js) ═══
      Standing on the square he needs only his south strip (npcSprites.js
      wheelWalkSources); racing round it -- west, north, east, back south --
      he needs the four straight ones, loaded with the Wheel's cast behind its
@@ -5777,7 +5777,7 @@ export const NPC_DATA = [{
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
   phrases: [
     'Betcha can’t catch me!',
-    'Bet you can’t beat me round the square!',   /* v2.3.3486: the race (race_1) */
+    'Bet you can’t beat me round the square!',   /* v2.3.3500: the race (race_1) */
     'My bro says the meadow’s got slimes.',
     'One day I’m gonna be a real adventurer.',
     'Did you see the fountain? It’s got FISH. Probably.',
@@ -5904,7 +5904,7 @@ export const NPC_DATA = [{
 }, {
   id: 'shopkeeper_bro',
   name: 'Diego',
-  /* v2.3.3486: a giver of the tour now (fish_1): while it runs, walking up to
+  /* v2.3.3500: a giver of the tour now (fish_1): while it runs, walking up to
      him still opens his SHOP (BroTown's proximity opener skips a quiet
      giver's "how's it going"); a tap or E answers about the fish */
   quietProgress: true,
@@ -6018,7 +6018,7 @@ export const NPC_DATA = [{
      same reason his NAME is not -- getNpcQuest keys on the name, not on this,
      but keeping the two consistent avoids inviting the mistake. */
   plateRole: 'Blacksmith',
-  /* v2.3.3486: a giver of the tour now (smith_1, smith_2), at his forge's
+  /* v2.3.3500: a giver of the tour now (smith_1, smith_2), at his forge's
      steps: walking past him to its door does not stop you to say how his
      quest is going (BroTown's proximity opener) -- an offer or a claim
      still opens by itself, and a tap or E answers */
@@ -6137,7 +6137,7 @@ export const NPC_DATA = [{
   _questMarker: null,
   _hitThisSwing: false,
 }, {
-  /* ═══ v2.3.3486: WOODWORKER BRO AND FARMER BRO, FOR THE TOUR ═══
+  /* ═══ v2.3.3500: WOODWORKER BRO AND FARMER BRO, FOR THE TOUR ═══
      The owner, planning the quest line for an exposé: "a quest from a
      woodworker where you give him 5 wood, he gives you 5 hardened wood", and
      "a quest for farming too".  Two of the tour's givers had nobody to stand

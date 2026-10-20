@@ -135,7 +135,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
 
     /* ── 1. the axe and the pole, not the pickaxe ──
-       v2.3.3486: "Learn a Trade" is retired -- the tour's givers hand the
+       v2.3.3500: "Learn a Trade" is retired -- the tour's givers hand the
        tools out one by one (Blacksmith Bro the pickaxe, Woodworker Bro the
        axe, Diego the rod), so a player can walk the commons with some and not
        others; the two are put in the bag directly */

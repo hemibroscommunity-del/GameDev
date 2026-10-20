@@ -3189,7 +3189,7 @@ remnant to migrate server-side, not a mode to preserve.
         nothing (groundLoot.js `S._dying`): TRAPS §233;
       - combat-lifecycle §5, `mp-deathpile` (a real death, in real time,
         `BT_DP_TRACE=1` its timeline): item-drop.md "A dead player's pile".
-  - Since v2.3.3486 THE TOUR -- the owner, a week before an exposé where
+  - Since v2.3.3500 THE TOUR -- the owner, a week before an exposé where
     reviewers give each game 20-30 minutes: "my quest line is almost
     exclusively going to 4 zones to kill monsters and bring their remains back
     to mayor bro ... Mayor bro would hand off the quest to the next person

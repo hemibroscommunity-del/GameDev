@@ -27,7 +27,7 @@
 import { QUEST_REWARDS, QUEST_DORMANT, QUEST_FIRST, QUEST_RETIRED, WOODWORKING_TIERS } from './data.js';
 import { PROG3 } from './prog3.js';
 
-/* ═══ v2.3.3486: THE KINDS A QUEST COUNTS ═══
+/* ═══ v2.3.3500: THE KINDS A QUEST COUNTS ═══
    One list for the credit and the check: each is a counter in _questKills,
    credited by its own signal while the quest is active and read at the
    hand-in.  The tour's four new ones (data.js QUEST_REWARDS tut_1's header):
@@ -190,7 +190,7 @@ export const questMethods = {
   /* v2.3.3121: `amount` -- how many this signal is worth (default 1): a
      make_traps that makes five is five `traps_made` (trapping.js).  Clamped
      to 1-999 so a caller's bad number can never jump a counter. */
-  /* v2.3.3486: `arch` is the signal's WHAT for the tour's kinds -- a farm
+  /* v2.3.3500: `arch` is the signal's WHAT for the tour's kinds -- a farm
      act ('water'), a bench ('smith' / 'wood'), a dish ('zoomJuice') -- matched
      against the objective's `act` / `what`; one the objective does not name
      counts whatever it is.  Returns whether a counter moved, so a caller
@@ -209,8 +209,8 @@ export const questMethods = {
       const obj = table[qid] && table[qid].objective;
       if (!obj || obj.type !== kind) continue;
       if (kind === 'kill' && obj.arch && obj.arch !== arch) continue;
-      if (obj.act && obj.act !== arch) continue;    /* v2.3.3486: farm */
-      if (obj.what && obj.what !== arch) continue;  /* v2.3.3486: craft, cook */
+      if (obj.act && obj.act !== arch) continue;    /* v2.3.3500: farm */
+      if (obj.what && obj.what !== arch) continue;  /* v2.3.3500: craft, cook */
       if (obj.zone && obj.zone !== zone) continue;
       if (!ps._questKills) ps._questKills = Object.create(null); // rule 4: quest-id-keyed map
       ps._questKills[qid] = Math.min(99999, (ps._questKills[qid] || 0) + n);
@@ -236,7 +236,7 @@ export const questMethods = {
                    offers mayor_2 while mayor_1 is hidden.  A step the worker
                    itself opened ('available') is never refused here.
      Returns null when it may, else the rule's name. */
-  /* v2.3.3486: and 'retired' -- (accepting only) a quest the tour gave to
+  /* v2.3.3500: and 'retired' -- (accepting only) a quest the tour gave to
      someone else (data.js QUEST_RETIRED: life_1, life_2).  A save that holds
      one active still hands it in.  And a quest's own `after` names the step
      before it where `next` no longer does: beast_2 hands on to the Mayor's
@@ -284,7 +284,7 @@ export const questMethods = {
      a reward table typo must refuse the hand-in, never pay it. */
   _questObjectiveMet(ps, questId, obj) {
     if (!obj) return true;
-    /* v2.3.3486: one list (QUEST_COUNTED), the tour's farm/craft/cook/race in it */
+    /* v2.3.3500: one list (QUEST_COUNTED), the tour's farm/craft/cook/race in it */
     const counted = QUEST_COUNTED.indexOf(obj.type) >= 0;
     if (counted) return ((ps._questKills && ps._questKills[questId]) || 0) >= (obj.count || 1);
     if (obj.type === 'collect') return this._collectHeld(ps, obj) >= (obj.count || 1);
@@ -340,7 +340,7 @@ export const questMethods = {
     /* v2.3.3121: one check for every objective type (_questObjectiveMet) --
        trapping's four came in with Beastmaster Bro */
     if (_obj && !this._questObjectiveMet(ps, questId, _obj)) return;
-    /* ═══ v2.3.3486: A TRADE AT THE HAND-IN ═══
+    /* ═══ v2.3.3500: A TRADE AT THE HAND-IN ═══
        Woodworker Bro's wood_2 (data.js `trade`): "he'll trade you the better
        tier of weapon (after pine) if you turn in a pine one".  Picked HERE,
        after every gate and before anything is paid, as the XP skill is: a
@@ -367,7 +367,7 @@ export const questMethods = {
     }
     ps._quests[questId] = 'turnedIn';
     ps.coins = (ps.coins || 0) + (reward.gold || 0);
-    if (_trade) this._questTradeApply(ps, _trade, reward.trade);   /* v2.3.3486 */
+    if (_trade) this._questTradeApply(ps, _trade, reward.trade);   /* v2.3.3500 */
     // XP via _addCombatXp so level-up logic runs (including
     // pool restores via _recomputeMaxes inside).
     if (reward.xp > 0) {
@@ -445,7 +445,7 @@ export const questMethods = {
     await this._drOnQuestTurnIn(session.id, questId);
   },
 
-  /* ═══ v2.3.3486: THE TRADE AT A HAND-IN (data.js wood_2 `trade`) ═══
+  /* ═══ v2.3.3500: THE TRADE AT A HAND-IN (data.js wood_2 `trade`) ═══
      Which weapon goes: one of `trade.types` made of `trade.from` wood --
      `want` (the player's pick on the claim screen: 'bow' or 'staff') when it
      names one of them, else the first type that has one.  The one in your
@@ -730,7 +730,7 @@ export const questMethods = {
       if (item.kind === 'inv' && typeof item.key === 'string') {
         if (!ps.inventory) ps.inventory = Object.create(null);
         const n = Math.max(1, Math.min(999, Math.floor(Number(item.n) || 1)));
-        /* v2.3.3486: `max` -- the most of it a grant fills to.  The tour's
+        /* v2.3.3500: `max` -- the most of it a grant fills to.  The tour's
            tools are `max: 1`: a player who already holds a pickaxe (an old
            save's life_1/life_2 gave one) is not handed a second. */
         const cap = Number(item.max) > 0 ? Math.min(99999, Math.floor(Number(item.max))) : 99999;

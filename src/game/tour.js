@@ -1,4 +1,4 @@
-/* ═══ v2.3.3486: THE TOUR'S BUTTONS ═══
+/* ═══ v2.3.3500: THE TOUR'S BUTTONS ═══
  *
  * The tour (gameSystems.js QUEST_CHAINS, the header above farm_1) sends a new
  * player from giver to giver, and half its steps are done AT the giver's own

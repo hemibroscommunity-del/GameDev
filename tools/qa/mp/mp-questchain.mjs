@@ -5,7 +5,7 @@
  * the next quest bro ascendant."
  *
  * mp-questclaim already covers "Into the Blue" and passes, so this walks the
- * WHOLE chain — tut_1 to tut_4 (v2.3.3486: the tour's order) — asking the same
+ * WHOLE chain — tut_1 to tut_4 (v2.3.3500: the tour's order) — asking the same
  * question of each. If one step is
  * broken and its neighbours are not, that asymmetry is the bug; if all three
  * behave, the fault is in how the state is REACHED in real play rather than in
@@ -18,7 +18,7 @@
 import * as H from './harness.mjs';
 import { QUEST_REWARDS, QUEST_FIRST } from '../../../server/src/data.js';
 
-/* v2.3.3486: the Mayor's four, in the tour's order -- the slimes' "Into the
+/* v2.3.3500: the Mayor's four, in the tour's order -- the slimes' "Into the
    Blue" first (tut_1), the snowmen's "Cold Reception" after the tour's other
    ten steps (tut_2), then the dunes and the fields.  Their bag keys and counts
    are the worker's table's; what comes before each, the tour's own `next`

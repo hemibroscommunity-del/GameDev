@@ -686,7 +686,7 @@ export const movementMethods = {
       /* v2.3.3006: how far this move took the player, for the sprint's bill */
       const _stepPx = (!zoneChanged && typeof ps.x === 'number' && typeof ps.y === 'number')
         ? Math.sqrt((_toX - ps.x) * (_toX - ps.x) + (_toY - ps.y) * (_toY - ps.y)) : 0;
-      /* v2.3.3486: where they stood before this move, for Lil Bro's race
+      /* v2.3.3500: where they stood before this move, for Lil Bro's race
          (race.js: the flags are tested along the step, not at its end) */
       const _raceFromX = ps.x, _raceFromY = ps.y;
       /* v2.3.3325: where the bound put them -- the phone's place, or as far
@@ -778,7 +778,7 @@ export const movementMethods = {
       /* v2.3.3392: a held pose ends when the player really moves (poses.js):
          the worker's own word, so a walker is never drawn sitting */
       if (ps.po && this._poseEndsOn(ps, _stepPx, zoneChanged, msg)) ps.po = null;
-      /* v2.3.3486: a race under way judges the step the worker just took
+      /* v2.3.3500: a race under way judges the step the worker just took
          (race.js) -- one property read when there is none */
       if (ps._race && typeof this._raceOnMove === 'function') {
         this._raceOnMove(session.id, ps, zoneChanged ? ps.x : _raceFromX, zoneChanged ? ps.y : _raceFromY);
