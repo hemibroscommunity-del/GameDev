@@ -119,12 +119,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
        torso was never salvaged and every check after it failed.  A player
        taps the second time well inside the window. */
     const go = (key) => P.page.click(`[data-salvage-go="${key}"]`, { force: true });
-    await go(torsoRow.key);
-    await P.page.waitForTimeout(400);
-    const sure = await P.page.$eval(`[data-salvage-go="${torsoRow.key}"]`, (b) => b.textContent).catch(() => null);
-    const sMid = await state(P);
-    rec.ok(`one tap only asks ("${sure}"), nothing is salvaged yet`, sure === 'Sure?' && sMid.torsos.length === 1 && sMid.bars === 0, { sure, sMid });
-    await go(torsoRow.key);
+    /* v2.3.3517: the torso's two taps, and the look between them, IN THE
+       PAGE, back to back.  Measured here: one Playwright tap took 2.2 s even
+       with `force`, and with the label and the bag read between the taps the
+       second came 3.6 s after the first -- past the 3 s "Sure?", so it only
+       armed "Sure?" again, nothing was sent, and every check after failed
+       (the failure `force` was for, back as this box drew slower).  The rows
+       below tap twice 0.3 s apart and pass; a player's second tap is well
+       inside the window. */
+    const between = await P.page.evaluate(async (sel) => {
+      const btn = () => document.querySelector(sel);
+      const R = () => (window._gameState.current.rpg || {});
+      if (!btn()) return null;
+      btn().click();
+      await new Promise((r) => setTimeout(r, 120));   /* React draws the click's "Sure?" */
+      const sure = btn() ? btn().textContent : null;
+      const mid = { bars: (R().inventory || {}).bar_copper || 0, torsos: (R().armorStash || []).filter((p) => p && p.mat === 'copper').length };
+      if (btn()) btn().click();
+      return { sure, mid };
+    }, `[data-salvage-go="${torsoRow.key}"]`);
+    rec.ok(`one tap only asks ("${between && between.sure}"), nothing is salvaged yet`,
+      !!between && between.sure === 'Sure?' && between.mid.torsos === 1 && between.mid.bars === 0, between);
     let s1 = null;
     for (let i = 0; i < 20; i++) { s1 = await state(P); if (s1.bars === 2 && !s1.torsos.length) break; await P.page.waitForTimeout(250); }
     const line1 = await said(P);
