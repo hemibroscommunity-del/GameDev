@@ -127,6 +127,7 @@
  */
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { nmlLive, nmlCanAttack, nmlHere } from '@/game/noMansLand.js';
+import { NML } from '@/data/noMansLandRings.js'; /* v2.3.3530: SKULL_MS -- an attacker's right in `bys` dates their choice or blow */
 import { chooseFoe, isLiveFighter, pvpBoutAt, isLiveFoe, liveFoes, hitMeAt, attackersNow, FIGHT_QUIET_MS } from '@/game/sparTargets.js'; /* v2.3.3268: Attack is a choice that lasts; v2.3.3316: + who a swing already hits; v2.3.3528: + when a bout began; v2.3.3530: + who attacks you (a group joins your fight) */
 
 /* how long an unanswered window stays */
@@ -234,9 +235,47 @@ export function nmlAim(S, id) {
   chooseFoe(S, id);
   S.lockedTarget = { type: 'player', id, ref: o, nml: true };
   try { pushDmgPopup(S, o.x, o.y - 70, 'TARGET', '#ff6b5e', { ts: Date.now() }); } catch (e) { /* the reticle says it */ }
+  /* v2.3.3530: the choice IS the attack -- the worker starts both skulls now */
+  sendChoice(S, id);
   /* v2.3.3530: and everyone attacking you joins the fight you just chose */
   try { joinAttackers(S, Date.now()); } catch (e) { /* the next blow on you asks again */ }
   return true;
+}
+
+/* ═══ v2.3.3530: THE WINDOW'S ATTACK IS THE ATTACK ═══
+   The owner: "Whenever someone attacks you in no man's land you always get a
+   white skull above your head.  You only keep what you have equipped.
+   Doesn't matter if you attack back or not."  The skulls waited for the
+   first blow the worker resolved, and an attacker's opening shots can all
+   miss (the worker never hears of a miss) or be rolled through -- then the
+   one attacked had no white skull, and hitting back was, to the worker, the
+   first attack: THEY took the red skull.  So the choice goes to the worker
+   (`nml_attack {target}`, server/src/nomansland.js _handleNmlAttack): the
+   attacker red now, unless hitting back, and the one attacked white now,
+   before any arrow flies.  Against a worker that says caps.nmlchoice only. */
+function sendChoice(S, id) {
+  if (!S || id == null || !S.channel || typeof S.channel.send !== 'function') return false;
+  if (!(S._serverCaps && S._serverCaps.nmlchoice === true)) return false;
+  try { S.channel.send({ type: 'nml_attack', target: String(id) }); } catch (e) { return false; }
+  return true;
+}
+
+/** v2.3.3530: when `id` last attacked you -- a blow of theirs (sparTargets.js
+ *  hitMeAt) or their choice to (the worker's `bys`: each attacker's right to
+ *  be hit back runs SKULL_MS from their last blow or choice, so its ms left
+ *  dates it) -- or 0.  The owner's "already approved "attack" at you". */
+export function attackedMeAt(S, id, now) {
+  if (!S || id == null) return 0;
+  const key = String(id);
+  let at = hitMeAt(S, key);
+  const o = S._nmlSelf;
+  if (o && o.bys instanceof Map && o.bys.has(key)) {
+    const left = Number(o.bys.get(key)) || 0;
+    const when = (Number(o.at) || 0) - (NML.SKULL_MS - left);
+    const t = typeof now === 'number' ? now : Date.now();
+    if (left > 0 && when > at && when <= t) at = when;
+  }
+  return at;
 }
 
 /* v2.3.3530: is a group's joining on?  The asking, and a worker that keeps
@@ -258,7 +297,7 @@ export function nmlJoinFight(S, id, now) {
   const key = String(id);
   if (S.myId != null && key === String(S.myId)) return false;
   const t = typeof now === 'number' ? now : Date.now();
-  if (!(t - hitMeAt(S, key) < FIGHT_QUIET_MS)) return false;
+  if (!(t - attackedMeAt(S, key, t) < FIGHT_QUIET_MS)) return false;   /* v2.3.3530: a blow, or their choice to attack you */
   if (isLiveFoe(S, key, t)) return false;
   if (!liveFoes(S, t).some((f) => String(f.id) !== key)) return false;
   if (!S.others || !S.others[key] || !nmlCanAttack(S, key)) return false;
@@ -269,11 +308,27 @@ export function nmlJoinFight(S, id, now) {
   return true;
 }
 
-/* v2.3.3530: everyone attacking you now joins (nmlAim, as you choose) */
+/* v2.3.3530: everyone attacking you now joins (nmlAim, as you choose) -- a
+   blow of theirs on you, or their choice to attack you (`bys`) */
 function joinAttackers(S, now) {
   if (!nmlGroupOn(S)) return 0;
+  const ids = attackersNow(S, now);
+  const o = S && S._nmlSelf;
+  if (o && o.bys instanceof Map) for (const k of o.bys.keys()) if (ids.indexOf(k) < 0) ids.push(k);
   let n = 0;
-  for (const id of attackersNow(S, now)) if (nmlJoinFight(S, id, now)) n++;
+  for (const id of ids) if (nmlJoinFight(S, id, now)) n++;
+  return n;
+}
+
+/** v2.3.3530: the worker told you who attacks you (`nml_skull`'s `bys`, a
+ *  choice the moment it is made): while you fight one you chose, each of
+ *  them joins it (wsClient.js, after noMansLand.js applyNmlSkull). */
+export function nmlJoinFromBys(S) {
+  const o = S && S._nmlSelf;
+  if (!o || !(o.bys instanceof Map) || !o.bys.size || !nmlGroupOn(S)) return 0;
+  const now = Date.now();
+  let n = 0;
+  for (const k of o.bys.keys()) if (nmlJoinFight(S, k, now)) n++;
   return n;
 }
 

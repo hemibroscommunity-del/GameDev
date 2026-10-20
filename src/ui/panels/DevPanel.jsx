@@ -227,6 +227,7 @@ const CAP_GATES = [
   'wheeldungeons' /* v2.3.3016: lower case, a kill switch */,
   'nomansland' /* v2.3.3058: No man's land -- lower case, a kill switch */,
   'nmlgroup' /* v2.3.3530: a group attacks you, one window -- every attacker yours to hit back, joining a fight you chose (nmlAsk.js nmlJoinFight) -- lower case, a kill switch */,
+  'nmlchoice' /* v2.3.3530: the window's Attack is the attack -- `nml_attack` starts both skulls at once, the one attacked white before any blow (nomansland.js _handleNmlAttack) -- lower case, a kill switch */,
   'gatherreq' /* v2.3.3038: lower case, a kill switch */,
   'farm' /* v2.3.3127: the farm -- lower case, a kill switch */,
   'meals' /* v2.3.3130: meals and brews you carry -- lower case, a kill switch */,

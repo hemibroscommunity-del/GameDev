@@ -283,7 +283,9 @@ its stun is the lunge's daze. A player is named the way it named one: as
   last 10 s, it also reaches the players who struck YOU in the last 10 s: a
   group that attacks you is caught by your whirlwind once you fight back
   (no-mans-land.md "A group attacks you: one window"). Kill switch `nmlgroup:
-  false`: a blow of yours on each, as v2.3.3528.
+  false`: a blow of yours on each, as v2.3.3528. And the window's Attack counts as your blow
+  (no-mans-land.md "You are white the moment they choose"), so the whirlwind
+  reaches the one you chose at once.
 - **A player cannot be locked down.** A frozen monster stays frozen 3 s, and
   a fast frost sword keeps it there. On a player, a freeze or an ability's
   stun holds the way a rock monster's daze holds a player: 0.5 s, then 2.5 s

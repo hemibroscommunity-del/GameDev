@@ -41,6 +41,10 @@
  *     theirs with every hit, fought back or not;
  *   - the one hit gets a WHITE skull for the same 20 minutes, reset by every
  *     hit, remembering who gave it (that is all the retaliation rule needs).
+ *   Since v2.3.3530 both start at the window's Attack too, before any blow
+ *   (_handleNmlAttack: "Whenever someone attacks you in no man's land you
+ *   always get a white skull"), and the white one keeps EVERY attacker's
+ *   right to be hit back, not only the last's (`from`, _nmlHitsBack).
  *   Both count TIME IN THE GAME: _tickNml takes the tick's time off only
  *   while the player is connected (a disconnected player has no playerState
  *   at all), so logging out does not wait a skull out.  Stored in
@@ -123,6 +127,11 @@ export const NML = Object.freeze({
   /* v2.3.3530: the attackers whose hit-back right a player keeps at once
      (`from`, _nmlFromSet): a group's every member, and room to spare */
   FROM_CAP: 16,
+  /* v2.3.3530: the window's Attack (_handleNmlAttack): the one chosen this
+     near -- the near radius, past a bow's reach with every point in Range --
+     and one choice a player this often */
+  CHOOSE_R: 2400,
+  CHOOSE_GAP_MS: 300,
 });
 
 export const NML_KEY = (pid) => 'nml_state:' + pid;
@@ -233,6 +242,62 @@ export const noMansLandMethods = {
     return !(f && typeof f === 'object' && own(f, 'nmlgroup') && !f.nmlgroup);
   },
 
+  /* ═══ v2.3.3530: THE WINDOW'S ATTACK IS THE ATTACK ═══
+     The owner, 2026-10-20: "Whenever someone attacks you in no man's land
+     you always get a white skull above your head.  You only keep what you
+     have equipped.  Doesn't matter if you attack back or not."
+       The skulls came with the first blow the worker resolved.  But an
+     attacker's opening shots can all miss -- the worker never hears of a
+     miss -- or be rolled through (combat.js skips a blow in a roll's
+     i-frames), and then the one attacked carried no white skull: hitting
+     back was, to the worker, the first attack, so THEY took the red skull
+     (the one a player kill takes everything worn for) and the one who
+     started it a white one.  Now the game tells the worker the choice
+     itself -- `nml_attack {target}`, sent by the window's Attack
+     (src/game/nmlAsk.js nmlAim) -- and both skulls start at once, before any
+     blow: the attacker red (unless hitting back), the one attacked white
+     with the attacker's right to be hit back (_nmlSkulls).  Whoever chose to
+     attack you, you are white, and hitting them back keeps you white.
+       A choice kills nobody: it leaves `_nmlLastHitBy` alone, so a death in
+     the next seconds is a No man's land kill only by a real blow
+     (_nmlOnDeath), and it is no blow for the fight-food clock or the
+     linger.  It does count as the chooser's engagement (pvpextras.js
+     _notePvpEngage): their area moves reach the one they chose, as a blow of
+     theirs would let them, and the one attacked fights them back under
+     v2.3.3530's group rule.  Checked as a hit is: No man's land's rule
+     between the two (_nmlAllowed), no duel or arena pair, both alive and in
+     the Wheel, within CHOOSE_R, one choice a CHOOSE_GAP_MS.  An older game
+     sends none, and the skulls wait for the first blow as before.
+       Kill switch `nmlchoice: false`: the choice is ignored (the first blow
+     starts the skulls) and caps.nmlchoice is false at each phone's next
+     join. */
+  _nmlChoiceOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'nmlchoice') && !f.nmlchoice);
+  },
+
+  _handleNmlAttack(session, payload) {
+    if (this._nmlOff() || !this._nmlChoiceOn()) return false;
+    const aid = session && session.id;
+    if (typeof aid !== 'string' || !own(this.playerState, aid)) return false;
+    const a = this.playerState[aid];
+    if (!a || a.dead || a.dying || a.disconnected) return false;
+    const tid = payload && typeof payload.target === 'string' ? payload.target : null;
+    if (!tid || tid === aid || tid.length > 64 || !own(this.playerState, tid)) return false;
+    const t = this.playerState[tid];
+    if (!t || t.dead || t.dying || t.disconnected || !(t.hp > 0)) return false;
+    if (a.z !== WHEEL_ZONE || t.z !== WHEEL_ZONE) return false;
+    if (typeof a.x !== 'number' || typeof t.x !== 'number' || Math.hypot(t.x - a.x, t.y - a.y) > NML.CHOOSE_R) return false;
+    const now = Date.now();
+    if (now - (a._nmlChoiceAt || 0) < NML.CHOOSE_GAP_MS) return false;
+    if (!this._nmlAllowed(aid, tid)) return false;
+    if (this._pvpConsent && (this._pvpConsent.get(this._pvpPairKey(aid, tid)) || 0) > now) return false;
+    a._nmlChoiceAt = now;
+    this._nmlSkulls(aid, tid, now);
+    if (this._notePvpEngage) this._notePvpEngage(aid, tid, now);
+    return true;
+  },
+
   /* `pid` hit the holder of `s`: their right to be hit back, a full skull's
      time from now.  A Map (ids are players'), FROM_CAP at most: the one with
      the least time left gives way. */
@@ -281,6 +346,20 @@ export const noMansLandMethods = {
   _nmlOnHit(attackerId, targetId, now) {
     const a = this.playerState[attackerId], t = this.playerState[targetId];
     if (!a || !t) return;
+    /* the blow is what a death under the rule is judged by (_nmlOnDeath:
+       KILL_BLOW_MS) -- never a choice (_handleNmlAttack) */
+    t._nmlLastHitBy = attackerId;
+    t._nmlLastHitAt = now;
+    this._nmlSkulls(attackerId, targetId, now);
+  },
+
+  /* The skulls of one attack -- a landed hit (_nmlOnHit) or, since
+     v2.3.3530, the window's Attack (_handleNmlAttack): the attacker red
+     unless hitting back, the one attacked white with the attacker's right to
+     be hit back. */
+  _nmlSkulls(attackerId, targetId, now) {
+    const a = this.playerState[attackerId], t = this.playerState[targetId];
+    if (!a || !t) return;
     const sa = this._nmlState(a), st = this._nmlState(t);
     /* hitting back: you hold a white skull BY this player and no red of
        your own -- the one who started it keeps resetting theirs.
@@ -292,8 +371,6 @@ export const noMansLandMethods = {
     st.white = NML.SKULL_MS;
     st.whiteBy = attackerId;
     this._nmlFromSet(st, attackerId);
-    t._nmlLastHitBy = attackerId;
-    t._nmlLastHitAt = now;
     for (const [id, ps, was] of [[attackerId, a, aWas], [targetId, t, tWas]]) {
       const changed = this._nmlSkullOf(ps) !== was;
       if (changed) this.dirtyPlayers.add(id);

@@ -34,7 +34,11 @@
  *      a red skull a monster killed with the arm known and unknown;
  *  12. v2.3.3530: a group attacks you -- every attacker's right to be hit
  *      back is kept (no red skull for hitting back any of them), counted
- *      down on its own, stored, sent as `bys`; the kill switch `nmlgroup`.
+ *      down on its own, stored, sent as `bys`; the kill switch `nmlgroup`;
+ *  13. v2.3.3530: the window's Attack is the attack (`nml_attack`): both
+ *      skulls at once, before any blow, no kill stamped by it; the one
+ *      attacked who hits first stays white; refused cases; the rate; the
+ *      kill switch `nmlchoice` as a mutation; the caps.
  */
 import { GameRoom } from '../src/index.js';
 import { NML, nmlTierAt, nmlLevelAt, NML_KEY } from '../src/nomansland.js';
@@ -774,6 +778,103 @@ const ps = (k) => room.playerState[ids[k]];
   const sync2 = wsK2.sent.find((m) => m.type === 'state_sync');
   check('...and nmlgroup: false un-advertises it', !!sync2 && sync2.caps && sync2.caps.nmlgroup === false, sync2 && sync2.caps && sync2.caps.nmlgroup);
   room._liveFlags = keep;
+}
+
+// ── 13. v2.3.3530: the window's Attack is the attack ─────────────────────────
+/* The owner: "Whenever someone attacks you in no man's land you always get a
+   white skull above your head.  You only keep what you have equipped.
+   Doesn't matter if you attack back or not."  The skulls waited for the first
+   blow the worker resolved: an attacker whose opening shots all missed (or
+   were rolled through) left the one attacked with no white skull, and their
+   hitting back was, to the worker, the first attack -- a red skull for the
+   one attacked. */
+{
+  const idV = 'bp_nml_cv', idG = 'bp_nml_cg', idI = 'bp_nml_ci';
+  const wsV = fakeWs('cv'), wsG = fakeWs('cg'), wsI = fakeWs('ci');
+  await join(wsV, idV, 'NmlCV'); await join(wsG, idG, 'NmlCG'); await join(wsI, idI, 'NmlCI');
+  const V = room.playerState[idV], G = room.playerState[idG], I = room.playerState[idI];
+  const fresh = (P) => { P._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 }; P.dying = false; P.dead = false; P._nmlChoiceAt = 0; P._nmlLastHitBy = null; P._nmlLastHitAt = 0; };
+  const setup = () => {
+    place(V, at(RING(2)), 7); place(G, at(RING(2) + 60), 7); place(I, at(RING(2), 60), 7);
+    fresh(V); fresh(G); fresh(I);
+    room._pvpEngage = new Map(); room._pvpNmlStruck = new Map();
+  };
+  const choose = async (wsFrom, fromPs, toId) => { fromPs._nmlChoiceAt = 0; await room.webSocketMessage(wsFrom, JSON.stringify({ type: 'nml_attack', target: toId })); };
+  const hit = async (wsFrom, from, toId, to) => { room._pvpHitLanes && room._pvpHitLanes.clear(); await attack(wsFrom, from, toId, to); };
+
+  setup();
+  wsV.sent.length = 0; wsG.sent.length = 0; room.eventBuffer.length = 0;
+  await choose(wsG, G, idV);
+  check('the window\'s Attack starts both skulls at once, before any blow: the attacker red, the one attacked white',
+    room._nmlSkullOf(G) === 'r' && G._nml.red === NML.SKULL_MS && room._nmlSkullOf(V) === 'w' && V._nml.whiteBy === idG
+    && V._nml.from instanceof Map && V._nml.from.get(idG) === NML.SKULL_MS && !room.eventBuffer.some((e) => e.type === 'pvp_hit'), { g: G._nml, v: V._nml });
+  const toV = msgs(wsV, 'nml_skull').pop(), toG = msgs(wsG, 'nml_skull').pop();
+  check('...each told at once (nml_skull): the one attacked by whom (`by`, `bys`)', !!toV && toV.payload.by === idG && Array.isArray(toV.payload.bys)
+    && toV.payload.bys.some((e) => e[0] === idG) && !!toG && toG.payload.red === NML.SKULL_MS, { toV: toV && toV.payload, toG: toG && toG.payload });
+  check('...a choice is no blow: no kill is stamped with it (a death in the next seconds is no No man\'s land kill)',
+    !V._nmlLastHitBy && room._nmlOnDeath(V, idV, 'pvp:' + idG) === null, { last: V._nmlLastHitBy });
+  check('...but it is the chooser\'s engagement: their area moves reach the one chosen, not the other way round',
+    room._pvpEngaged(idG, idV, Date.now()) === true && room._pvpEngaged(idV, idG, Date.now()) === false);
+
+  /* THE INVERSION: the attacker's opening shots missed, and the one attacked
+     hits first */
+  await hit(wsV, V, idG, G);
+  check('the one attacked hits first (the attacker\'s shots all missed): still white -- hitting back, no red skull', room._nmlSkullOf(V) === 'w' && !(V._nml.red > 0), V._nml);
+  await hit(wsG, G, idV, V);
+  check('...and the one who started it stays red when their blows land at last', room._nmlSkullOf(G) === 'r' && G._nml.red === NML.SKULL_MS, G._nml);
+  /* the mutation: with the choice ignored, it is the old inversion */
+  setup();
+  const keep = room._liveFlags;
+  room._liveFlags = { ...(keep || {}), nmlchoice: false };
+  await choose(wsG, G, idV);
+  const noSkull = room._nmlSkullOf(G) === null && room._nmlSkullOf(V) === null;
+  await hit(wsV, V, idG, G);
+  const vRed = room._nmlSkullOf(V) === 'r';
+  await hit(wsG, G, idV, V);
+  const gWhite = room._nmlSkullOf(G) === 'w';
+  room._liveFlags = keep;
+  check('mutation: nmlchoice: false ignores the choice -- the one attacked hitting first takes the RED skull, the one who started it ends WHITE (the checks above catch it)',
+    noSkull && vRed && gWhite, { noSkull, vRed, gWhite, v: V._nml, g: G._nml });
+
+  /* refused: never a skull on anyone for these */
+  const refusedCase = async (label, prep, toId, fromWs, fromPs) => {
+    setup();
+    if (prep) prep();
+    await choose(fromWs || wsG, fromPs || G, toId);
+    const any = [V, G, I].some((P) => room._nmlSkullOf(P) !== null);
+    check('a choice is refused ' + label + ' -- no skull on anyone', !any, { v: V._nml, g: G._nml, i: I._nml });
+  };
+  await refusedCase('at yourself', null, idG);
+  await refusedCase('at nobody (an unknown id)', null, 'bp_nobody');
+  await refusedCase('at "__proto__"', null, '__proto__');
+  await refusedCase('when the one chosen is out of No man\'s land (the Lv 1-5 tier)', () => place(V, at(RING(1)), 7), idV);
+  await refusedCase('when the levels are too far apart for its rule', () => { V.level = 9; }, idV);
+  await refusedCase('past CHOOSE_R', () => place(V, at(RING(2) + NML.CHOOSE_R + 200), 7), idV);
+  await refusedCase('for a duel or arena pair (their consent rules)', () => {
+    if (!room._pvpConsent) room._pvpConsent = new Map();
+    room._pvpConsent.set(room._pvpPairKey(idG, idV), Date.now() + 60000);
+  }, idV);
+  room._pvpConsent && room._pvpConsent.delete(room._pvpPairKey(idG, idV));
+  await refusedCase('at a player who is dying', () => { V.dying = true; }, idV);
+  V.dying = false;
+  /* the rate: one choice a CHOOSE_GAP_MS */
+  setup();
+  await choose(wsG, G, idV);
+  await room.webSocketMessage(wsG, JSON.stringify({ type: 'nml_attack', target: idI }));   /* at once, no reset */
+  check('one choice a CHOOSE_GAP_MS: a second at once is ignored (the bystander stays unmarked)', room._nmlSkullOf(I) === null && room._nmlSkullOf(V) === 'w', { i: I._nml });
+
+  /* the kill switch and the caps */
+  const wsJ = fakeWs('cj');
+  await join(wsJ, 'bp_nml_cj', 'NmlCJ');
+  const sync = wsJ.sent.find((m) => m.type === 'state_sync');
+  check('caps.nmlchoice is advertised', !!sync && sync.caps && sync.caps.nmlchoice === true, sync && sync.caps && sync.caps.nmlchoice);
+  room._liveFlags = { ...(keep || {}), nmlchoice: false };
+  const wsK = fakeWs('ck');
+  await join(wsK, 'bp_nml_ck', 'NmlCK');
+  const sync2 = wsK.sent.find((m) => m.type === 'state_sync');
+  check('...and nmlchoice: false un-advertises it', !!sync2 && sync2.caps && sync2.caps.nmlchoice === false, sync2 && sync2.caps && sync2.caps.nmlchoice);
+  room._liveFlags = keep;
+  check('...and the choice is never rebroadcast to the room (its own router case)', !wsI.sent.some((m) => m.type === 'nml_attack' || (m.payload && m.payload.type === 'nml_attack')));
 }
 
 if (failures) { console.log(`\n${failures} FAILURE(S)`); process.exit(1); }

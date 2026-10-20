@@ -28,9 +28,10 @@
  *   5. Party sends the party invite, and the wanderer is asked to join;
  *   5b. on the computer too: the wanderer clicks the raider and the window
  *      asks, nothing over it (the keyboard hints step aside), Ignore works;
- *   6. a tap, then Attack: the raider AIMS (the `nml` lock, "TARGET"), a
- *      swing lands, and the red skull comes with it; the wanderer's game is
- *      told who gave its white skull (nml_skull `by`);
+ *   6. a tap, then Attack: the raider AIMS (the `nml` lock, "TARGET"), and
+ *      (v2.3.3530) both skulls come WITH the choice, before any blow -- the
+ *      raider red, the wanderer white, told by whom (nml_skull `by`), its HP
+ *      untouched; then a swing lands;
  *   7. (v2.3.3528) HITTING BACK GOES THROUGH THE WINDOW TOO -- the owner:
  *      "keep the behavior of needing to confirm the "attack" button that pops
  *      up in the window first before any damage is registered to either
@@ -583,10 +584,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
     requestAnimationFrame(look);
   });
+  const hp6pre0 = await hpB();
   await tapAsk(A, 'attack');
   await A.page.waitForTimeout(600);
   const a6b = await readAsk(A);
   const target = await A.page.evaluate(() => !!window.__nmlTarget);
+  /* v2.3.3530: the window's Attack IS the attack -- both skulls now, before
+     any blow (the owner: "Whenever someone attacks you in no man's land you
+     always get a white skull above your head") */
+  let sk6pre = null;
+  for (let i = 0; i < 16; i++) {
+    sk6pre = {
+      a: await H.readState(A, (S) => S._pvpSkullType || null),
+      b: await H.readState(B, (S) => ({ mine: S._pvpSkullType || null, by: (S._nmlSelf && S._nmlSelf.by) || null })),
+    };
+    if (sk6pre.a === 'red' && sk6pre.b.mine === 'white') break;
+    await A.page.waitForTimeout(250);
+  }
+  const hp6pre1 = await hpB();
+  rec.ok(`6. ...the skulls come WITH the choice, before any blow: the raider red (${sk6pre.a}), the wanderer white (${sk6pre.b.mine}, by the raider), its HP untouched (${hp6pre0} -> ${hp6pre1})`,
+    sk6pre.a === 'red' && sk6pre.b.mine === 'white' && sk6pre.b.by === idA && typeof hp6pre0 === 'number' && hp6pre1 === hp6pre0, { sk6pre, hp6pre0, hp6pre1 });
   rec.ok(`6. at a sword's reach (${a6 && a6.gap} px) a tap on the wanderer asks -- it no longer opens your own chat`,
     !!a6 && !!a6.dom && a6.dom.why === 'tap' && !a6.chat, a6 && { dom: !!a6.dom, chat: a6.chat, gap: a6.gap });
   rec.ok('6. a tap asks, and Attack AIMS at the wanderer (No man\'s land\'s lock, "TARGET"), the window gone',

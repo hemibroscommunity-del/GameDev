@@ -1756,7 +1756,21 @@ remnant to migrate server-side, not a mode to preserve.
         `_pvpNmlStruck`; a duel's blow not counted);
       - `caps.nmlgroup`, kill switch `nmlgroup: false`; `nomansland` §12,
         `pvp-extras` §1c, `spar` §16r, `mp-nmlfoe` step 8: no-mans-land.md "A
-        group attacks you: one window".
+        group attacks you: one window";
+      - and THE WINDOW'S ATTACK IS THE ATTACK -- the owner: "Whenever someone
+        attacks you in no man's land you always get a white skull above your
+        head.  You only keep what you have equipped.  Doesn't matter if you
+        attack back or not": an attacker's opening shots could all miss or be
+        rolled through, and then the one attacked, hitting back, took the RED
+        skull; now the window's Attack sends `nml_attack {target}`
+        (nmlAsk.js `nmlAim`) and the worker starts both skulls at once, before
+        any blow (nomansland.js `_handleNmlAttack` -> `_nmlSkulls`): no kill
+        is stamped by it (`_nmlLastHitBy` stays the blows'), it counts as the
+        chooser's engagement (their whirlwind reaches the one chosen at
+        once), and one who chose you joins a fight you chose (`bys`,
+        `nmlJoinFromBys`); `caps.nmlchoice`, kill switch `nmlchoice: false`;
+        `nomansland` §13, `mp-nmlask` step 6, `mp-nmlfoe` step 8:
+        no-mans-land.md "You are white the moment they choose".
     - since v2.3.3260 FIGHTS BETWEEN PLAYERS LAST, FISH MATTER IN THEM, AND
       LEAVING IS NO ESCAPE -- the owner, after the time-to-kill study: "I want
       you to plan and implement fixes for all of these including how much HP

@@ -589,8 +589,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await tapPeer(C, idB);
     c8 = await waitAsk(C, (v) => !!v.dom, 2000);
   }
+  const hp8w0 = await hpOf(idB);
   await tapAsk(C, 'attack');
   await C.page.waitForTimeout(800);
+  /* v2.3.3530: the bystander's Attack IS its attack -- the wanderer is white
+     by it at once, before any bolt (the owner: "Whenever someone attacks you
+     in no man's land you always get a white skull above your head") */
+  let wC8 = null;
+  for (let i = 0; i < 16; i++) {
+    wC8 = await H.readState(B, (S) => ({
+      mine: S._pvpSkullType || null, by: (S._nmlSelf && S._nmlSelf.by) || null,
+      bys: S._nmlSelf && S._nmlSelf.bys instanceof Map ? Array.from(S._nmlSelf.bys.keys()) : [],
+    }));
+    if (wC8.by === idC) break;
+    await B.page.waitForTimeout(250);
+  }
+  const sC8 = await H.readState(C, (S) => S._pvpSkullType || null);
+  const hp8w1 = await hpOf(idB);
+  rec.ok(`8. the bystander chooses Attack on the wanderer: the wanderer is WHITE by it at once (by ${wC8 && wC8.by === idC ? 'the bystander' : wC8 && wC8.by}), the bystander red (${sC8}), before any bolt (HP ${hp8w0} -> ${hp8w1})`,
+    !!wC8 && wC8.mine === 'white' && wC8.by === idC && wC8.bys.includes(idC) && sC8 === 'red' && typeof hp8w0 === 'number' && hp8w1 === hp8w0,
+    { wC8, sC8, hp8w0, hp8w1 });
   await heal(idB);
   const hp8g0 = await hpOf(idB);
   let hp8g1 = hp8g0;
