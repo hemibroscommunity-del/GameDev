@@ -61,7 +61,7 @@ export const DEATH_DONE = 2;   /* finished: let the display go */
 
 const KINDS_BODY = ['normal', 'slice', 'decap', 'leg'];
 const KINDS_BLOB = ['normal', 'slice', 'decap'];
-/* ═══ v2.3.3486: NO DEATH IS A FROZEN FRAME ═══
+/* ═══ v2.3.3499: NO DEATH IS A FROZEN FRAME ═══
    The owner: "Remove the death where the enemy is frozen in place (it's just a
    frame of the enemy still)."  Four monsters have no death strip of their own
    -- the fishman, the rock monster, the thorn shambler and the bog lurker
@@ -101,11 +101,11 @@ function rng(seed) {
 export function rollDeathKind(m, blob, noStrip) {
   let forced = null;
   try { forced = (typeof window !== 'undefined') ? window.__btDeathKind : null; } catch (e) { forced = null; }
-  /* v2.3.3486: a monster with no death strip never rolls `normal` (above) */
+  /* v2.3.3499: a monster with no death strip never rolls `normal` (above) */
   const kinds = noStrip ? (blob ? KINDS_BLOB_NOSTRIP : KINDS_BODY_NOSTRIP) : (blob ? KINDS_BLOB : KINDS_BODY);
   const fall = noStrip ? 'topple' : 'normal';
   /* a forced kind this body cannot do (a slime's `leg`) is the normal death
-     (v2.3.3486: or, with no strip to play it, the topple) */
+     (v2.3.3499: or, with no strip to play it, the topple) */
   if (forced && (KINDS_BODY.indexOf(forced) >= 0 || forced === 'topple')) return kinds.indexOf(forced) >= 0 ? forced : fall;
   const h = hash32(`${m.id}|${Math.round(m.x)}|${Math.round(m.y)}`);
   return kinds[h % kinds.length];
@@ -261,7 +261,7 @@ function solidRuns(cov, sx, sy, a, b) {
    resolution), with the odd deeper notch where the blade tore.  Styles and
    every offset still come from the death's seeded roll, so every client sees
    the same cut; the two halves share the one path, so they still fit. */
-/* ═══ v2.3.3486: JAGGED ENOUGH TO SEE ═══
+/* ═══ v2.3.3499: JAGGED ENOUGH TO SEE ═══
    The owner: "make the edges more jagged for the death blow when it slices
    them in half."  The teeth below were 3.4% of the body's height every 1/34th
    of it -- on a phone about a CSS px and a half of zigzag every px and a
@@ -289,7 +289,7 @@ function jagOffsets(n, H, rand, amp, ragged) {
        wobbling; now and then a notch two or three times as deep */
     let tt = (rand() - 0.5) * 2 * tooth;
     if (Math.sign(tt) === Math.sign(prev) && rand() < 0.6) tt = -tt;
-    /* v2.3.3486: and never a near-flat tooth -- at least half the depth */
+    /* v2.3.3499: and never a near-flat tooth -- at least half the depth */
     if (Math.abs(tt) < tooth * 0.5) tt = (tt < 0 ? -1 : 1) * tooth * (0.5 + rand() * 0.3);
     if (rand() < JAG_NOTCH) tt *= 1.8 + rand() * 1.4;
     prev = tt;
@@ -341,7 +341,7 @@ function splinterOffsets(n, H, rand, amp) {
 /* a jagged line from a to b (end points kept exactly), for the leg cut */
 function jagLine(a, b, H, rand, amp, splinter) {
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-  const n = Math.max(3, Math.round(len / Math.max(2, H / JAG_STEP)) + 1);   /* v2.3.3486: coarser teeth (was H / 28) */
+  const n = Math.max(3, Math.round(len / Math.max(2, H / JAG_STEP)) + 1);   /* v2.3.3499: coarser teeth (was H / 28) */
   const ux = (b[0] - a[0]) / (len || 1), uy = (b[1] - a[1]) / (len || 1);
   const off = splinter ? splinterOffsets(n, H, rand, amp) : jagOffsets(n, H, rand, amp, false);
   const pts = [];
@@ -356,7 +356,7 @@ function cutPath(cx, cy, dx, dy, W, H, rand, calm, splinter) {
   const far = W + H;
   const nx = -dy, ny = dx;
   const r = rand();
-  /* v2.3.3486: no `clean` style any more -- every cut is jagged (the owner:
+  /* v2.3.3499: no `clean` style any more -- every cut is jagged (the owner:
      "make the edges more jagged") */
   const style = calm ? 'ragged' : (r < 0.3 ? 'arc' : r < 0.7 ? 'ragged' : 'step');
   const amp = calm ? 0.6 : 1;
@@ -365,7 +365,7 @@ function cutPath(cx, cy, dx, dy, W, H, rand, calm, splinter) {
   const stepH = (rand() < 0.5 ? -1 : 1) * H * amp * (0.06 + rand() * 0.05);
   /* dense across the body (and a margin past it), in texels along the cut */
   const half = W / 2 * 1.35;
-  const ds = Math.max(2, H / JAG_STEP);   /* v2.3.3486: coarser teeth (was max(1.4, H / 34)) */
+  const ds = Math.max(2, H / JAG_STEP);   /* v2.3.3499: coarser teeth (was max(1.4, H / 34)) */
   const n = Math.max(12, Math.min(160, Math.round((2 * half) / ds) + 1));
   const off = splinter ? splinterOffsets(n, H, rand, amp) : jagOffsets(n, H, rand, amp, style === 'ragged');
   const pts = [[cx - dx * far, cy - dy * far]];
@@ -402,7 +402,7 @@ function makePiece(root, sb, mask, body, wounds) {
   const c = new Container();
   const spr = new Sprite(sb.texture);
   spr.anchor.set(sb.anchor.x, sb.anchor.y);
-  /* ═══ v2.3.3486: THE PIECES ARE THE MONSTER'S OWN COLOUR ═══
+  /* ═══ v2.3.3499: THE PIECES ARE THE MONSTER'S OWN COLOUR ═══
      The owner: "Don't turn enemies red on the final death flow (I'm thinking
      of when they got split in half and are kept the red 'hit' color)."  The
      pieces are made on the first dead frame -- inside the killing blow's
@@ -454,7 +454,7 @@ function makePiece(root, sb, mask, body, wounds) {
   c.position.set(body.com[0], body.com[1]);
   root.addChild(c);
   return {
-    c, spr, hull: body.hull, com: body.com,   /* v2.3.3486: + spr, for the probe's tint */
+    c, spr, hull: body.hull, com: body.com,   /* v2.3.3499: + spr, for the probe's tint */
     free: false, vx: 0, vy: 0, spin: 0, rest: false,
     hinge: null, hdir: 0, hdelay: 0, hmax: Math.PI / 2, hAt: null,
     slide: null, slump: null,
@@ -528,7 +528,7 @@ function qaSlow() {
 }
 
 /* The pieces' root: where the body sprite is, as it is drawn -- mirror
-   included.  v2.3.3486: ...and its own shape: the killing blow's squash (wider
+   included.  v2.3.3499: ...and its own shape: the killing blow's squash (wider
    and shorter for a moment, entityRenderer `_btSquash`) is taken back out, or
    the pieces would keep it for the whole death as they kept the red. */
 function deathRoot(display, sb) {
@@ -587,7 +587,7 @@ function build(kind, display, m, blob, now) {
     return { A, B, runs, pts, style: cp.style };
   };
 
-  /* ═══ v2.3.3486: TOPPLE -- the whole body falls over and fades ═══
+  /* ═══ v2.3.3499: TOPPLE -- the whole body falls over and fades ═══
      For a monster with no death strip (KINDS_*_NOSTRIP above): one piece, the
      whole picture, tipped over about its foot to lie on its side, a burst of
      what it is made of from its middle, then the deaths' own fade. */
@@ -915,7 +915,7 @@ function puff(st, x, y, n) {
  * new life), `blob` is true for anything on the slime sheets.
  * Returns DEATH_NONE (draw the normal death), DEATH_LIVE or DEATH_DONE.
  */
-export function drawMonsterDeath(m, display, deathKey, blob, now, S, noStrip) {   /* v2.3.2923: + S, for the cut's material bursts; v2.3.3486: + noStrip */
+export function drawMonsterDeath(m, display, deathKey, blob, now, S, noStrip) {   /* v2.3.2923: + S, for the cut's material bursts; v2.3.3499: + noStrip */
   if (!display || deathKey == null) return DEATH_NONE;
   let st = display._deathFx;
   if (st && st.key !== deathKey) { disposeFx(display); st = null; }
@@ -923,7 +923,7 @@ export function drawMonsterDeath(m, display, deathKey, blob, now, S, noStrip) { 
     /* decided ONCE per death, on the first dead frame -- while the body
        sprite still shows the pose it died in.  A cut that cannot be made
        (no art yet, the cut misses the body) is the normal death --
-       v2.3.3486: or, for a monster with no death strip of its own
+       v2.3.3499: or, for a monster with no death strip of its own
        (`noStrip`), the topple: never a frozen frame. */
     const kind = rollDeathKind(m, blob, noStrip);
     let built = null;
@@ -1017,7 +1017,7 @@ export function monsterDeathState(display) {
     /* how far each piece's lowest point is off the ground, in body heights:
        0 = standing or lying on it, negative = floating above it */
     ground: st.pieces.map((p) => +((lowestY(p) - gy) / st.H).toFixed(3)),
-    /* v2.3.3486: each piece's tint (never the hit flash's red) and the root's
+    /* v2.3.3499: each piece's tint (never the hit flash's red) and the root's
        scale (never the hit's squash) */
     tints: st.pieces.map((p) => (p.spr ? p.spr.tint : null)),
     scale: [+st.root.scale.x.toFixed(4), +st.root.scale.y.toFixed(4)],

@@ -1,4 +1,4 @@
-# Combat feel, from the playtest notes of 2026-10-19 (v2.3.3486)
+# Combat feel, from the playtest notes of 2026-10-19 (v2.3.3499)
 
 The owner's notes after more play, the ones about fighting and moving, and
 one asked for while this was being built. Everything here is the phone's
@@ -55,7 +55,7 @@ own; nothing on the worker changes, so it ships in either order.
 - `JUMP_OVER_H` 87 (70 x 1.25): the minecart and the rowboat join the list.
   Shots fly over what you can jump (v2.3.3206), so arrows and bolts fly over
   them too unless aimed at them.
-- docs/specs/jumping.md "v2.3.3486".
+- docs/specs/jumping.md "v2.3.3499".
 
 ## No lock across the map
 

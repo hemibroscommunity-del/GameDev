@@ -185,7 +185,7 @@ export function onTrapArmed(S, p) {
     x: m ? m.x : (S.player ? S.player.x : 0),
     y: m ? m.y : (S.player ? S.player.y : 0),
   };
-  cue('trapSet');   /* v2.3.3486: the latch (was a wooden knock: an arrow into a barrel's) */
+  cue('trapSet');   /* v2.3.3499: the latch (was a wooden knock: an arrow into a barrel's) */
   bump(S);
 }
 
@@ -225,7 +225,7 @@ export function onTrapResult(S, p) {
   S._trapLast = { ...p, at: t0 };
   bump(S);
 
-  /* the sounds, on the animation's own beats.  v2.3.3486: the box's own
+  /* the sounds, on the animation's own beats.  v2.3.3499: the box's own
      sounds (data/eventSounds.js trapSet..trapMiss) where wooden knocks and the
      old quest fanfare were -- the owner: "Make a sound when a monster gets
      trapped (your pet)" -- and the new pet answering in its kind's voice */
@@ -250,7 +250,7 @@ export function onTrapResult(S, p) {
         if (p.pet.gold === true) {
           words.push('Golden!');
           pushDmgPopup(S, x, y - 66, 'Golden!', '#EAC675');
-          /* v2.3.3486: the snap's cue carries the flip's win now, so a golden
+          /* v2.3.3499: the snap's cue carries the flip's win now, so a golden
              one gets the quest fanfare over it (a catch played it before) */
           try { BT_AUDIO.play('quest-complete', { vol: 0.6, delay: 0.25 }); } catch (e) { /* sound only */ }
         }
@@ -271,7 +271,7 @@ export function onTrapResult(S, p) {
         if (st.hidePet && st.hidePet.id === p.pet.id) { st.hidePet = null; S._petX = x; S._petY = y; }
         bump(S);
       } else {
-        /* v2.3.3486: the owner -- 'Put "Missed!" instead of "it broke free"
+        /* v2.3.3499: the owner -- 'Put "Missed!" instead of "it broke free"
            after attempting trap'; three shakes still says how near it was */
         pushDmgPopup(S, x, y - 46, 'Missed!', '#E59A94');
         if (shakes >= 3) pushDmgPopup(S, x, y - 30, 'So close!', '#E9B9B4');
@@ -357,7 +357,7 @@ function petVoice(kind, delay) {
   const c = clip && ownKey(MONSTER_NOISE_CLIPS, clip) ? MONSTER_NOISE_CLIPS[clip] : null;
   _petVoiceLast = c ? clip : 'none';
   if (!c) return false;
-  /* v2.3.3486: `delay` -- a catch's answer waits for the snap (trapSnap) */
+  /* v2.3.3499: `delay` -- a catch's answer waits for the snap (trapSnap) */
   try { return !!BT_AUDIO.play('noise-' + clip, { vol: c.vol * PET_VOICE_K, rate: PET_VOICE_RATE, delay: delay != null ? delay : 0.18 }); } catch (e) { return false; /* sound only */ }
 }
 

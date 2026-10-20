@@ -18,8 +18,8 @@
 - **The jump.** For 0.625 s the body rises up to 85 world px and comes back
   down on a smooth arc. The first cut went 34 px; the owner, having tried it:
   *"I'd also like it if the jump were about 2x as high"* (68 px, 0.56 s). Then,
-  since v2.3.3486: *"Try making jump 25% higher"* -- 85 px, in the air
-  sqrt(1.25) as long, the same pull of gravity (see the v2.3.3486 section).
+  since v2.3.3499: *"Try making jump 25% higher"* -- 85 px, in the air
+  sqrt(1.25) as long, the same pull of gravity (see the v2.3.3499 section).
   It holds one leaping frame of the jog for the way you face (one knee up, the
   other leg trailing): the owner's "jog directions", not a new animation. The
   weapon, cape and name plate rise with it.
@@ -36,7 +36,7 @@
   - barrels, crates, benches, troughs and hay bales;
   - stones, snow rocks, basalt, sea rocks, coal and scrap;
   - bushes, stumps and driftwood;
-  - since v2.3.3486, minecarts and rowboats (lower than the higher jump's top).
+  - since v2.3.3499, minecarts and rowboats (lower than the higher jump's top).
 
   You pass over one if the way you're going carries you out of it before you
   come down, give or take 0.16 s; once you have started across one you are
@@ -62,12 +62,12 @@
 The idea: **your position never leaves the ground.** Only the picture does.
 
 - **The rules** (`src/game/jump.js`, pure, no imports): `JUMP_MS` 625, `JUMP_PEAK`
-  85 (560 and 68 until v2.3.3486), the arc `4t(1-t)`.
+  85 (560 and 68 until v2.3.3499), the arc `4t(1-t)`.
   - Low things are cleared while the lift is at least `JUMP_CLEAR` (0.36 since
-    v2.3.3486, 0.45 before) of the peak, from about 62 ms to 563 ms.
+    v2.3.3499, 0.45 before) of the peak, from about 62 ms to 563 ms.
   - `JUMP_OVER` is the catalog ids that are cleared, everything `JUMP_OVER_H`
     (87) px tall or less as drawn. `JUMP_NOT` names the low ones left off (none
-    since v2.3.3486).
+    since v2.3.3499).
   - `jumpRefusal` says why a jump may not start. `overLow` is the crossing rule.
     `JUMP_FRAME` is the held frame per sheet (east 1, north 8, northeast 4,
     south 7, southwest 6; mirrored facings share them).
@@ -82,7 +82,7 @@ The idea: **your position never leaves the ground.** Only the picture does.
   - In the air the water isn't checked at all, so you fly over a stream.
   - With no stick you take the take-off direction.
   - `propFeetBlocked` lets the feet into a `JUMP_OVER` footprint only when
-    `overLow` says the crossing finishes in time (and, since v2.3.3486, latches
+    `overLow` says the crossing finishes in time (and, since v2.3.3499, latches
     it: `jumpLatched` / `jumpLatch`, then `landedOver` after the landing).
   - The speed it checks against is what this frame really moves (`S._frameMs`):
     below 20 fps the game's clock caps a step, and a crossing judged on the wall
@@ -333,7 +333,7 @@ resource extraction areas."
   clears nothing. The Wheel's objects are separate, and they're where clearing
   works.
 
-## v2.3.3486: 25% higher, and no more getting caught on a fence
+## v2.3.3499: 25% higher, and no more getting caught on a fence
 
 The owner, after more play: *"Try making jump 25% higher. Gets stuck on some
 props sometimes that it should be clearing."*

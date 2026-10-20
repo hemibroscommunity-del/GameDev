@@ -33,7 +33,7 @@
    the owner, having tried it: "I'd also like it if the jump were about 2x as
    high".  The time in the air stayed the same then, so the window for
    clearing low things did too. */
-/* ═══ v2.3.3486: 25% HIGHER, AND A LITTLE LONGER IN THE AIR ═══
+/* ═══ v2.3.3499: 25% HIGHER, AND A LITTLE LONGER IN THE AIR ═══
    The owner, after more play: "Try making jump 25% higher.  Gets stuck on
    some props sometimes that it should be clearing."  68 -> 85 px at the top,
    and 560 -> 625 ms in the air: the same pull of gravity (a height goes with
@@ -44,7 +44,7 @@ export const JUMP_MS = 625;
 export const JUMP_PEAK = 85;
 /* low things are cleared while the lift is at least this share of the peak:
    the middle 80% of the jump, from ~62 ms after take-off to ~62 ms before
-   touching down.  v2.3.3486: 0.45 -> 0.36 with the peak, so the feet are as
+   touching down.  v2.3.3499: 0.45 -> 0.36 with the peak, so the feet are as
    high off the ground (~31 px) as they were when a crossing could start --
    0.36 x 85 = 0.45 x 68 -- and the window is 500 ms where it was 415. */
 export const JUMP_CLEAR = 0.36;
@@ -64,7 +64,7 @@ export const JUMP_FRAME = Object.freeze({ east: 1, north: 8, northeast: 4, south
    (90), carts (94), haystacks (110) and everything taller are NOT cleared.
    test-world-core checks every id is in the catalog and every low thing with
    a footprint is here or named in JUMP_NOT.
-   v2.3.3486: the jump's 25% gave the list 25% too, 70 -> 87 px: the minecart
+   v2.3.3499: the jump's 25% gave the list 25% too, 70 -> 87 px: the minecart
    (79) and the rowboat (81), left off as "about as tall as a bro" while the
    jump was a bro's height, are lower than the new one's top. */
 export const JUMP_OVER_H = 87;
@@ -72,9 +72,9 @@ export const JUMP_OVER = new Set([
   'stump', 'charstump', 'driftwood', 'haybale', 'trough', 'stone', 'barrel',
   'bench', 'crate', 'bush', 'snowrock', 'scrap', 'stonewall', 'hitch',
   'fence', 'fence-down', 'basalt', 'coal', 'searock',
-  'minecart', 'rowboat',   /* v2.3.3486 */
+  'minecart', 'rowboat',   /* v2.3.3499 */
 ]);
-/* ...and the low things deliberately left off (none since v2.3.3486). */
+/* ...and the low things deliberately left off (none since v2.3.3499). */
 export const JUMP_NOT = new Set([]);
 
 /** The lift's share of the peak at phase t (0 taking off, 1 landing). */
@@ -156,7 +156,7 @@ export function startJump(S, now, dx, dy) {
 }
 
 /** Touch down (or cut short: a death, a zone change).
-    v2.3.3486: the low things this jump was crossing stay passable a moment
+    v2.3.3499: the low things this jump was crossing stay passable a moment
     after it (JUMP_LATCH_MS, landedOver), so feet that came down in one walk
     on out of it. */
 export function endJump(S, now) {
@@ -185,7 +185,7 @@ export function crossMs(b, h, x, fy, vx, vy) {
  * May the feet pass over this footprint?  Only a JUMP_OVER thing, only while
  * high enough, and only if the way you are going (vx, vy px a ms) takes the
  * feet box (half-size h, at x, fy -- where the step would put it) out of it
- * before you are too low -- give or take JUMP_LAND_GRACE_MS (v2.3.3486).
+ * before you are too low -- give or take JUMP_LAND_GRACE_MS (v2.3.3499).
  */
 export function overLow(b, j, now, h, x, fy, vx, vy) {
   if (!b || !JUMP_OVER.has(b.id)) return false;
@@ -194,7 +194,7 @@ export function overLow(b, j, now, h, x, fy, vx, vy) {
   return crossMs(b, h, x, fy, vx, vy) <= left + JUMP_LAND_GRACE_MS;
 }
 
-/* ═══ v2.3.3486: A CROSSING ONCE BEGUN IS NEVER JUDGED AGAIN ═══
+/* ═══ v2.3.3499: A CROSSING ONCE BEGUN IS NEVER JUDGED AGAIN ═══
    The owner: "Gets stuck on some props sometimes that it should be
    clearing."  overLow was asked afresh on EVERY frame of a crossing, with
    that frame's speed, so anything that slowed you over the fence -- a slow
@@ -257,6 +257,6 @@ export function peerJump(payload, now) {
   return {
     t0: now,
     dur: isFinite(dur) && dur > 0 ? Math.max(200, Math.min(900, dur)) : JUMP_MS,
-    peak: isFinite(peak) && peak > 0 ? Math.max(8, Math.min(120, peak)) : JUMP_PEAK,   /* room above JUMP_PEAK (85 since v2.3.3486) */
+    peak: isFinite(peak) && peak > 0 ? Math.max(8, Math.min(120, peak)) : JUMP_PEAK,   /* room above JUMP_PEAK (85 since v2.3.3499) */
   };
 }

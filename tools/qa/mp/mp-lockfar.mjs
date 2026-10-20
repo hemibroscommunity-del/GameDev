@@ -1,4 +1,4 @@
-/* ═══ NO LOCK ON A MONSTER ACROSS THE MAP (v2.3.3486) ═══
+/* ═══ NO LOCK ON A MONSTER ACROSS THE MAP (v2.3.3499) ═══
  *
  * The owner, after more play: "You can get stuck targeted to a monster way
  * across the map."  game/targeting.js lockTooFar drops ANY monster lock --

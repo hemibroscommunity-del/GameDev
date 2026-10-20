@@ -246,7 +246,7 @@ export const EVENT_SOUNDS = {
      a cue nothing plays fails the sound suite (sound-cues §5d). */
   hardWood: [['wood-chop', 0.05, 0.3, 0.14, 0.9], ['pan-sizzle', 0.3, 0.6, 1.2, 1.1, 0.08, 0.2]],
   trapsMade: [['axe-chop', 0.13, 0.25, 1.6, 1.15], ['axe-chop', 1.135, 0.25, 1.4, 1.2, 0.14]],
-  /* ── v2.3.3486: THE TRAP'S OWN SOUNDS ──
+  /* ── v2.3.3499: THE TRAP'S OWN SOUNDS ──
      The owner: "Make a sound when a trap gets placed on an enemy.  Make a
      sound when a monster gets trapped (your pet)."  Setting one played a
      wooden knock (an arrow into a barrel's, ~0.44) and a catch a big wooden

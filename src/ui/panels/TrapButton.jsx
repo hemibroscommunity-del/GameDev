@@ -22,7 +22,7 @@ import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* warmed on t
  * through to whatever is underneath once the prompt changes.  Its own clock
  * (POLL_MS), re-rendering only when what it shows changes. */
 const POLL_MS = 120;
-/* ═══ v2.3.3486: A TAP WHILE YOU JOG ═══
+/* ═══ v2.3.3499: A TAP WHILE YOU JOG ═══
    The owner: "Make it so you can place a trap while jogging."  The worker
    never minded (trapping.js _handleTrapArm has no standing-still rule); the
    button did.  It acted on the click alone, and iPhone Safari makes no click
@@ -98,7 +98,7 @@ export function TrapButton({ stateRef }) {
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (Date.now() - lastTouchEndRef.current < GHOST_MS) return;   /* v2.3.3486: a touch's echo */
+        if (Date.now() - lastTouchEndRef.current < GHOST_MS) return;   /* v2.3.3499: a touch's echo */
         act();
       }}
       onTouchStart={(e) => {

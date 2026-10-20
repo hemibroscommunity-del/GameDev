@@ -8692,7 +8692,7 @@ export class EntityRenderer {
         if (_dfxKey != null && !m._burstPeakFrom && !m._burstFrom
             && !(m._transformStart && now - m._transformStart < 5000)) {
           const _dfxD = this.monsterDisplays.get(m.id);
-          /* v2.3.3486: a look with no death strip of its own never plays the
+          /* v2.3.3499: a look with no death strip of its own never plays the
              normal death -- it was a frozen frame (monsterDeathFx noStrip) */
           const _dfxNoStrip = !!(variant && !variant.useSlimeSheets   /* a slime-sheet look has the slime's splat */
             && !(variantSprites && variantSprites.death && variantSprites.death.has()));
@@ -9351,7 +9351,7 @@ export class EntityRenderer {
           const sy = baseScale * sqy;
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
           if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
-          spriteBody._btSquash = (sqx !== 1 || sqy !== 1) ? [sqx, sqy] : null;   /* v2.3.3486: a death's pieces take it back out */
+          spriteBody._btSquash = (sqx !== 1 || sqy !== 1) ? [sqx, sqy] : null;   /* v2.3.3499: a death's pieces take it back out */
           if (spriteBody.y !== size) spriteBody.y = size;
           /* v2.3.1147: per-variant tint (reskins recolor shared sheets).
              v2.3.2200: hit-flash finally RENDERS — gameEvents has stamped
@@ -9426,7 +9426,7 @@ export class EntityRenderer {
           const sy = baseScale * sqy;
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
           if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
-          spriteBody._btSquash = (sqx !== 1 || sqy !== 1) ? [sqx, sqy] : null;   /* v2.3.3486: see the variant branch */
+          spriteBody._btSquash = (sqx !== 1 || sqy !== 1) ? [sqx, sqy] : null;   /* v2.3.3499: see the variant branch */
           /* v2.3.1824: anchor on the row the BLOB rests on, not the empty
              bottom of the cell — see SLIME_BASE_ROW.  y=0 then puts that row
              on the monster's own position, which is what makes the loot pile,

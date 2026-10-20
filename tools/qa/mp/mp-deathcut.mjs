@@ -15,7 +15,7 @@
  *     client sees the same death) and all four deaths turn up across kills.
  * Saves a contact sheet per monster (tools/qa/mp/out/deathcut/) for eyes.
  *
- * v2.3.3486 (the owner: "Don't turn enemies red on the final death flow ...
+ * v2.3.3499 (the owner: "Don't turn enemies red on the final death flow ...
  * make the edges more jagged ... Remove the death where the enemy is frozen in
  * place"): the pieces are killed INSIDE the blow's red flash and still wear
  * the monster's own colour (never 0xff8080) at its own shape (no squash); no
@@ -32,7 +32,7 @@ const MONS = [
   { key: 'slime',    arch: 'fodder', variant: null,          zone: null,      blob: true },
   { key: 'goblin',   arch: 'fodder', variant: 'fireGoblin',  zone: 'ember' },
   { key: 'skeleton', arch: 'fodder', variant: 'skeleton',    zone: 'sky' },
-  { key: 'rock',     arch: 'brute',  variant: 'rockmonster', zone: 'hollows', noStrip: true },   /* v2.3.3486: no death strip of its own */
+  { key: 'rock',     arch: 'brute',  variant: 'rockmonster', zone: 'hollows', noStrip: true },   /* v2.3.3499: no death strip of its own */
 ];
 const KINDS = ['slice', 'decap', 'leg', 'normal'];
 const SLOW = 5;
@@ -57,7 +57,7 @@ const kill = (P, id, kind) => P.page.evaluate(async ([mid, k]) => {
   if (k) window.__btDeathKind = k; else delete window.__btDeathKind;
   const m = S.monsters.find((x) => x.id === mid);
   if (!m) return false;
-  /* v2.3.3486: the killing blow lands first -- its red flash and its squash
+  /* v2.3.3499: the killing blow lands first -- its red flash and its squash
      drawn on the living body for a frame or two, as a real kill's are -- and
      the pieces must keep neither */
   /* (held for as long as the frames take on a slow test machine: a flash
@@ -108,7 +108,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${mon.key}/${kind}: the death probe is published (guard)`, alive.d !== 'no-probe');
       const box = await boxOf(P);
       const expectCut = kind !== 'normal' && !(mon.blob && kind === 'leg');
-      const expectTopple = !!mon.noStrip && kind === 'normal';   /* v2.3.3486 */
+      const expectTopple = !!mon.noStrip && kind === 'normal';   /* v2.3.3499 */
       /* a cut runs in 5x slow motion (window.__btDeathSlow, QA-only) so the
          pictures and probes land where they mean to: a headless screenshot
          takes longer than a whole real-time cut */
@@ -117,7 +117,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const t0 = Date.now();
       const at = async (simMs) => { const w = t0 + simMs * SLOW - Date.now(); if (w > 0) await P.page.waitForTimeout(w); };
       if (expectTopple) {
-        /* v2.3.3486: never the frozen frame -- it topples */
+        /* v2.3.3499: never the frozen frame -- it topples */
         await at(300);
         if (box) await P.page.screenshot({ path: `${OUT}/${mon.key}-topple-1.png`, clip: box }).catch(() => {});
         const mid = await state(P, sp.id);
@@ -131,7 +131,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           !!(settled.d && settled.d.rest && settled.d.rest.every(Boolean) && settled.d.ground && settled.d.ground.every((g) => Math.abs(g) < 0.05)), settled.d);
         if (box) await P.page.screenshot({ path: `${OUT}/${mon.key}-topple-3.png`, clip: box }).catch(() => {});
       } else if (!expectCut) {
-        /* v2.3.3486: until the first dead frame is drawn (this machine draws
+        /* v2.3.3499: until the first dead frame is drawn (this machine draws
            a frame every ~200-400 ms; a fixed 120 ms read it before) */
         let d = null;
         for (let i = 0; i < 20; i++) {
@@ -152,14 +152,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
         rec.ok(`${mon.key}/${kind}: (guard) the killing blow's red was on the living body as it died`, !!(live && live.tint === 0xff8080), live && { tint: live.tint, baseTint: live.baseTint });
         rec.ok(`${mon.key}/${kind}: rolled ${kind} and cut into pieces`,
           !!(mid.d && mid.d.kind === kind && mid.d.pieces === 2), mid.d);
-        /* v2.3.3486 */
+        /* v2.3.3499 */
         rec.ok(`${mon.key}/${kind}: the pieces wear the monster's own colour, not the killing blow's red, at its own shape (no squash), cut jagged`,
           !!(mid.d && Array.isArray(mid.d.tints) && mid.d.tints.every((t) => t != null && t !== 0xff8080)
             && Array.isArray(mid.d.scale) && Math.abs(Math.abs(mid.d.scale[0]) - Math.abs(mid.d.scale[1])) < 1e-3
             && mid.d.style !== 'clean'), { tints: mid.d && mid.d.tints, scale: mid.d && mid.d.scale, style: mid.d && mid.d.style });
         await at(1250);
         let settled = await state(P, sp.id);
-        /* v2.3.3486: a head thrown its hardest is still rolling at 1.25 s now
+        /* v2.3.3499: a head thrown its hardest is still rolling at 1.25 s now
            and then (its seeded roll is new every run): give it until the fade
            (FADE_FROM_MS 1.3 s .. 1.6 s) before calling it */
         for (let i = 0; i < 6 && !(settled.d && settled.d.rest && settled.d.rest.every(Boolean)); i++) {

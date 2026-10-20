@@ -52,7 +52,7 @@ const PROMISED = {
   sprintOut: 0.23,
   /* v2.3.3475: ...and every other time their tired breath */
   sprintOutBreath: 0.2,
-  /* v2.3.3486: the trap's own sounds */
+  /* v2.3.3499: the trap's own sounds */
   trapSet: 0.7, trapShake: 0.4, trapSnap: 1.6, trapMiss: 1.0,
 };
 

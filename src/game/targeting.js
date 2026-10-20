@@ -38,7 +38,7 @@ import { TARGET_PERIMETER_PX, TARGET_HYST } from '@/data/index.js';
 import { isIntangible } from '@/data/monsterVariants.js';
 import { isPlayerDead } from '@/game/combatHelpers.js'; /* v2.3.2251: a corpse acquires nothing */
 import { chosenNear, isLiveClone, isLiveFighter, clonePos } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones, monsters to your weapons; v2.3.3268: and the players you chose to attack */
-import { zoneHomes } from '@/data/zones.js';   /* v2.3.3486: the Wheel's far cull, which a lock may not outlive */
+import { zoneHomes } from '@/data/zones.js';   /* v2.3.3499: the Wheel's far cull, which a lock may not outlive */
 
 function monPos(m) {
   const x = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
@@ -341,7 +341,7 @@ function tapReleased(S) {
   return d2 > OUT * OUT;
 }
 
-/* ═══ v2.3.3486: NO LOCK ON A MONSTER ACROSS THE MAP ═══
+/* ═══ v2.3.3499: NO LOCK ON A MONSTER ACROSS THE MAP ═══
  * The owner: "You can get stuck targeted to a monster way across the map."
  * Three ways it happened, all of them in the Wheel, which is one zone, so the
  * zone change that clears every lock never comes while you roam:
@@ -569,7 +569,7 @@ export function updateTargeting(S) {
     S._lockDroppedWhy = 'gone';
     clearLockAim(S);
   }
-  /* v2.3.3486: ...nor one across the map (lockTooFar) */
+  /* v2.3.3499: ...nor one across the map (lockTooFar) */
   if (lockTooFar(S, Date.now())) {
     S.lockedTarget = null;
     S._lockDroppedAt = Date.now();

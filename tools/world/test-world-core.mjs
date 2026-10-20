@@ -2940,7 +2940,7 @@ console.log('jumping (v2.3.3017)');
   /* the crossing rule: a fence across your way, 160 wide and 12 deep, feet half 10 */
   const fence = { x0: -80, y0: -6, x1: 80, y1: 6, id: 'fence' };
   const mid = { t0, dur: J.JUMP_MS, peak: J.JUMP_PEAK };
-  const tm = t0 + J.JUMP_MS / 2;   /* the top: (CLEAR_TO - 0.5) x 625 = 250 ms of clearing left (v2.3.3486) */
+  const tm = t0 + J.JUMP_MS / 2;   /* the top: (CLEAR_TO - 0.5) x 625 = 250 ms of clearing left (v2.3.3499) */
   /* going south at a walk (2.5 px a frame = 0.15 px a ms), the feet's top edge just into it */
   ok('a fence is cleared going straight over it: out before you come down',
     J.crossMs(fence, 10, 0, -15, 0, 0.15) < J.clearMsLeft(mid, tm) && J.overLow(fence, mid, tm, 10, 0, -15, 0, 0.15));
@@ -2950,10 +2950,10 @@ console.log('jumping (v2.3.3017)');
     && !J.overLow(fence, mid, t0 + 10, 10, 0, -15, 0, 0.15) && !J.overLow(fence, null, tm, 10, 0, -15, 0, 0.15));
   ok('...and standing still in the air over it is never out: refused',
     J.crossMs(fence, 10, 0, 0, 0, 0) === Infinity && !J.overLow(fence, mid, tm, 10, 0, 0, 0, 0));
-  /* ── v2.3.3486: 25% higher, and a crossing once begun stays begun ──
+  /* ── v2.3.3499: 25% higher, and a crossing once begun stays begun ──
      The owner: "Try making jump 25% higher.  Gets stuck on some props
      sometimes that it should be clearing." */
-  ok('v2.3.3486: the jump is 25% higher (85 px), in the air sqrt(1.25) as long (625 ms), clearing from the same height off the ground (~31 px)',
+  ok('v2.3.3499: the jump is 25% higher (85 px), in the air sqrt(1.25) as long (625 ms), clearing from the same height off the ground (~31 px)',
     J.JUMP_PEAK === 85 && J.JUMP_MS === 625 && Math.abs(J.JUMP_PEAK / 68 - 1.25) < 1e-9 && Math.abs(J.JUMP_MS / 560 - Math.sqrt(1.25)) < 0.002
       && Math.abs(J.JUMP_CLEAR * J.JUMP_PEAK - 0.45 * 68) < 0.1);
   {
@@ -2990,13 +2990,13 @@ console.log('jumping (v2.3.3017)');
   const footed = (o) => footprintOf(o.id, o.kind, 0, 0, o.fit === 'w' ? o.size : o.size * (o.ar || 1), drawnH(o)).length > 0;
   const missing = [...J.JUMP_OVER, ...J.JUMP_NOT].filter((id) => !byId[id]);
   ok(`every id a jump clears (${J.JUMP_OVER.size}) or leaves (${J.JUMP_NOT.size}) is in the catalog`, missing.length === 0, missing);
-  /* v2.3.3486: the list grew with the jump, 70 -> JUMP_OVER_H 87 px */
+  /* v2.3.3499: the list grew with the jump, 70 -> JUMP_OVER_H 87 px */
   const lowUnlisted = cat.filter((o) => footed(o) && drawnH(o) <= J.JUMP_OVER_H && !J.JUMP_OVER.has(o.id) && !J.JUMP_NOT.has(o.id)).map((o) => o.id);
   ok(`every low thing with a footprint (${J.JUMP_OVER_H} px or less as drawn) is cleared or named as not`, lowUnlisted.length === 0, lowUnlisted);
   const tallListed = [...J.JUMP_OVER].filter((id) => byId[id] && drawnH(byId[id]) > J.JUMP_OVER_H && id !== 'fence-down');
   ok(`nothing taller than ${J.JUMP_OVER_H} px is cleared but the north-south fence (a fence drawn up the picture)`, tallListed.length === 0
     && byId['fence-down'] && byId['fence'] && drawnH(byId['fence']) <= J.JUMP_OVER_H, tallListed);
-  ok('v2.3.3486: the minecart and the rowboat are cleared now; the boulder and the cart still are not',
+  ok('v2.3.3499: the minecart and the rowboat are cleared now; the boulder and the cart still are not',
     J.JUMP_OVER.has('minecart') && J.JUMP_OVER.has('rowboat') && !J.JUMP_OVER.has('boulder') && !J.JUMP_OVER.has('cart')
       && byId['boulder'] && drawnH(byId['boulder']) > J.JUMP_OVER_H);
   const { WHEEL_MATERIALS } = await import('../../src/data/wheelMaterials.js');

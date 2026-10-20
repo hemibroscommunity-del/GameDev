@@ -1901,7 +1901,7 @@ remnant to migrate server-side, not a mode to preserve.
       "You need a tool for that") is gone, a farm bed out of reach the same
       (`_tapHarvestAtCss`, `_tapFarmBedAtCss`); `mp-tapstance`:
       docs/specs/jumping.md "v2.3.3145".
-    - since v2.3.3486 25% HIGHER, AND NEVER CAUGHT HALF WAY OVER A FENCE --
+    - since v2.3.3499 25% HIGHER, AND NEVER CAUGHT HALF WAY OVER A FENCE --
       the owner: "Try making jump 25% higher. Gets stuck on some props
       sometimes that it should be clearing": `JUMP_PEAK` 85, `JUMP_MS` 625,
       `JUMP_CLEAR` 0.36; a crossing once begun LATCHES (`jumpLatch`), 160 ms

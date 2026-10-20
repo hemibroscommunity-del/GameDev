@@ -13,7 +13,7 @@
  *   3. The worker's whirl hits land ~2s after the press, not on it.
  *   4. At the strike, the vortex and the edge ring are drawn at that same
  *      radius (the vortex used to be capped at 130 of 240).
- *   5. v2.3.3486 (owner: "when you do the whirlwind (wind up period after
+ *   5. v2.3.3499 (owner: "when you do the whirlwind (wind up period after
  *      tapping the button) it would be helpful if the monsters were
  *      highlighted"): through the wind-up every monster inside the ring wears
  *      the catch mark (window.__btWhirlCatch), and every monster the WORKER's
@@ -85,7 +85,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const e = (S._impactRings || []).find((r) => typeof r.settle === 'number');
       if (e && W.edge == null) W.edge = e.maxR;
       if (!S._whirlWindup && W.cleared == null) W.cleared = Date.now() - t0;
-      /* v2.3.3486: the last wind-up frame's catch, and the monsters inside
+      /* v2.3.3499: the last wind-up frame's catch, and the monsters inside
          the ring as THIS frame draws them, measured the worker's way */
       const c = window.__btWhirlCatch && window.__btWhirlCatch();
       if (c && S._whirlWindup) {
@@ -157,7 +157,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the worker\'s whirlwind hit landed ~1s after the press, not on it', first != null && first >= 800 && first <= 2200,
     { firstHitMs: first, hits: hitsAt.length });
 
-  /* ── 5. v2.3.3486: who the wind-up caught ── */
+  /* ── 5. v2.3.3499: who the wind-up caught ── */
   const caught = fire.caught;
   rec.ok('through the wind-up the monsters inside the ring wear the catch mark (the one beside you among them)',
     !!caught && fire.frames > 3 && caught.n >= 1 && caught.ids.includes(String(mon.id))

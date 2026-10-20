@@ -42,7 +42,7 @@ const SIDEWAYS = { width: 844, height: 390 };
    his feet out of the fence and he never moved (on main, and again here with
    the watcher closed: feet at 22,617 both times). */
 const AIR_MS = 3000;
-const PEAK = 85;          /* JUMP_PEAK (game/jump.js; 68 until v2.3.3486, the owner's "25% higher") */
+const PEAK = 85;          /* JUMP_PEAK (game/jump.js; 68 until v2.3.3499, the owner's "25% higher") */
 const HS = 10;            /* the walk box's half-width (hs in BroTown.jsx) */
 const FRAME = { east: 1, north: 8, northeast: 4, south: 7, southwest: 6 };   /* JUMP_FRAME */
 const OVER = ['fence'];   /* a long straight one, easiest to cross square-on */

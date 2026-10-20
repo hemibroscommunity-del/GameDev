@@ -295,7 +295,7 @@ import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, S
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
 import { variantSpritesFor } from '../monsterVariantSprites.js';
-import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.2923 */, isIntangible /* v2.3.3486: the whirlwind's catch is what it can hit */ } from '../../data/monsterVariants.js';
+import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.2923 */, isIntangible /* v2.3.3499: the whirlwind's catch is what it can hit */ } from '../../data/monsterVariants.js';
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
@@ -672,7 +672,7 @@ import { updateNodeLabel, killNodeLabel, nodeLabelWorldH, NODE_LABEL_GAP, nodeNa
 import { WheelDoors } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn */
 import { WheelSignposts, findGateSignposts } from '../wheelSignposts.js';   /* v2.3.3062: Brotown's signposts, named */
 import { TrapFx } from '../trapFx.js';   /* v2.3.3120: the trap's mark, shakes, snap and break */
-import { TRAP_ICON_URL } from '../controlsPreload.js';   /* v2.3.3486: ...drawn with the owner's box trap */
+import { TRAP_ICON_URL } from '../controlsPreload.js';   /* v2.3.3499: ...drawn with the owner's box trap */
 import { wheelObjectsInfo, wheelMapInfo } from '@/game/wheelTrial.js';      /* v2.3.3062: where they stand, and the lands */
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
@@ -1429,7 +1429,7 @@ Promise.all(Object.values(ZONE_SHARDS).map((s) =>
 const MAGIC_BOLT_FRAMES = [];
 const MAGIC_BOLT_ANCHOR = { x: 0.688, y: 0.534 };
 const MAGIC_BOLT_FRAME_MS = 90;
-/* v2.3.3486: the owner's box trap picture, for the trap in the world
+/* v2.3.3499: the owner's box trap picture, for the trap in the world
    (trapFx.js) -- the same file the TRAP pop-up, the bag and the Traps tab show
    (controlsPreload.js TRAP_ICON_URL), here as a texture: ~0.26 MB decoded */
 let _trapArt = null;
@@ -2820,7 +2820,7 @@ const LOOT_Z = {
 };
 /* v2.3.3473: a dropped item's picture, in world px (a bro is ~106 tall): a
    good deal bigger than a rare drop's icon (~26), as it is the whole pile.
-   v2.3.3486: 40 -> 60, the owner: "Make dropped items 50% larger (hard to
+   v2.3.3499: 40 -> 60, the owner: "Make dropped items 50% larger (hard to
    see)" -- its shadow, stand-in and count with it (all are shares of it), the
    count's type 16 -> 22, and the picture made at 128 px (dropIcons.js) so it
    is as sharp at the new size.  A dead player's pile (_updateGroundLoot's
@@ -2936,7 +2936,7 @@ function clearIfDrawn(g) {
   if (g && g.context && g.context.instructions.length) g.clear();
 }
 
-/* v2.3.3486: the whirlwind's cap if a wind-up does not carry its own (the
+/* v2.3.3499: the whirlwind's cap if a wind-up does not carry its own (the
    worker's STAM_ABILITIES.whirl.maxTargets, mirrored in data/abilities.js). */
 const WHIRL_CATCH_MAX = 16;
 
@@ -7626,7 +7626,7 @@ export class EffectsRenderer {
              the footprint sizing, the distance ramp, the screen-space line
              weight -- is untouched for the candidates that keep it. */
           if (isCur) continue;
-          /* v2.3.3486: a monster the whirlwind's wind-up has caught wears the
+          /* v2.3.3499: a monster the whirlwind's wind-up has caught wears the
              whirl's ring (_markWhirlCatch, drawn this frame before this
              loop) -- one monster, one ring. */
           if (this._whirlCaught && c.m && this._whirlCaught.has(c.m.id)) continue;
@@ -9812,7 +9812,7 @@ export class EffectsRenderer {
         const urgency = Math.max(0, Math.min(1, 1 - timeLeft / 30));
         const pulseRate = 2 + urgency * 6;
         const auraAlpha = (0.2 + Math.sin(age * pulseRate) * 0.15 + urgency * 0.2) * alpha;
-        /* v2.3.3486: everything here DROP_GROW (1.5x) bigger, as a dropped
+        /* v2.3.3499: everything here DROP_GROW (1.5x) bigger, as a dropped
            item is -- its 7 and 8 px words were ~5 CSS px on a phone */
         const G_ = DROP_GROW;
         gfx.circle(l.x, l.y + bob, 18 * G_);
@@ -11307,7 +11307,7 @@ export class EffectsRenderer {
     /* v2.3.3120: pet trapping -- the mark over an armed monster, and the trap
        springing where it fell (trapFx.js; the rules are game/trapping.js) */
     if ((S._trap && (S._trap.mark || S._trap.springs.length)) || (this._trapFx && this._trapFx.root)) {
-      if (!this._trapFx) this._trapFx = new TrapFx(this.monsterUiLayer, () => _trapArt);   /* v2.3.3486: + the picture */
+      if (!this._trapFx) this._trapFx = new TrapFx(this.monsterUiLayer, () => _trapArt);   /* v2.3.3499: + the picture */
       this._trapFx.update(S, now);
     }
     this._drawGatherHpBar(S, nodes, now);   /* v2.3.2956 */
@@ -12620,7 +12620,7 @@ export class EffectsRenderer {
     const w = S._whirlWindup;
     this._whirlCaught = null;
     this._whirlCatchProbe = null;
-    /* v2.3.3486: QA probe, house style -- who the wind-up has caught, this frame */
+    /* v2.3.3499: QA probe, house style -- who the wind-up has caught, this frame */
     if (typeof window !== 'undefined' && !window.__btWhirlCatch) {
       const self = this;
       window.__btWhirlCatch = () => self._whirlCatchProbe;
@@ -12643,7 +12643,7 @@ export class EffectsRenderer {
     }
   }
 
-  /* ═══ v2.3.3486: WHO THE WHIRLWIND WILL CATCH ═══
+  /* ═══ v2.3.3499: WHO THE WHIRLWIND WILL CATCH ═══
      Owner: "when you do the whirlwind (wind up period after tapping the
      button) it would be helpful if the monsters were highlighted (or some
      other visual cue that works best) to show if they're in the whirlwind
