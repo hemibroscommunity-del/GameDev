@@ -588,6 +588,30 @@ function npcDirFromDelta(dx, dy) {
    figure's own stride -- he is ~200px tall drawn at NPC scale, and a four
    frame cycle over ~26px reads as a step rather than a shuffle. */
 const NPC_WALK_PX_PER_FRAME = 6.5;
+/* v2.3.3495: the arm capsule's body clone and every clone riding on it
+   (shirt v2.3.2134, cape v2.3.2138, greaves and plate v2.3.3495), hidden
+   together.  The shield's and the empty hand's branches hid the body clone
+   alone, so the shirt's and cape's could linger a frame after a shield came up
+   mid east jog -- a stripe with nothing under it. */
+function _hideArmClones(display) {
+  if (!display) return;
+  if (display._handArmSprite) display._handArmSprite.visible = false;
+  if (display._handArmShirt) display._handArmShirt.visible = false;
+  if (display._handArmLegs) display._handArmLegs.visible = false;
+  if (display._handArmChest) display._handArmChest.visible = false;
+  if (display._handArmCape) display._handArmCape.visible = false;
+}
+/* ═══ v2.3.3495: A TOWNSPERSON WHO STANDS, STANDS ═══
+   The owner: "Ace" is "stuck in one walking frame", with his shadow apart
+   from him.  The Wheel's townsfolk never walk (pathRadius 0), and a still
+   walker was drawn on frame 0 of his walk -- for Ace a leap, both feet 8 px
+   off the ground, so his shadow (cast from the ground line) lay apart from
+   him, the coat flying, the legs splayed.  Each row may name the frame it
+   stands on (NPC_DATA `walk.stand`, measured: planted, centred); none says 0. */
+function npcStandFrame(npc) {
+  const n = npc && npc.walk && npc.walk.stand;
+  return Number.isInteger(n) && n >= 0 ? n : 0;
+}
 
 /* v2.3.1681: the quest badge behind the '!' (owner: "thick white outline or
    something to be more attention grabbing").  Radius in world px — the label
@@ -7424,6 +7448,40 @@ function createPlayerDisplay() {
   container.addChild(handArmShirtMask);
   container.addChild(handArmShirt);
 
+  /* ═══ v2.3.3495: AND THE ARMOUR -- THE COPPER TORSO'S SHOULDER ═══
+   * The owner: the east jog's armour shoulder on a copper torso, "fix it for
+   * all future tiers" -- "solved for iron torso" before.  Every metal shares
+   * one art set (gearVariants.js, a tint), so iron was never solved: an iron
+   * torso WITH iron greaves jogs as the full-set KNIGHT figure, whose body
+   * texture IS the armour, so the body clone above stamped armour on armour.
+   * Any other outfit -- a copper torso with other greaves, a torso alone --
+   * jogs layered: the body clone is the MASKED BAKE, whose head-and-shoulder
+   * band is the whole bare body, and the capsule (shoulder to hand, every east
+   * jog with a weapon out) stamped up to ~450 px of bare skin over the plate's
+   * shoulder and collar every frame (a torso alone: bands across the whole
+   * plate, ~1,050 px).  The shirt (v2.3.2134) and the cape (v2.3.2138) learnt
+   * to ride along; the plate and the greaves never did.  Now they do, the same
+   * way: a clone of the LIVE piece (its texture, transform and tint -- so
+   * every metal there is and every one added later is covered with no table),
+   * through the same capsule, stacked body -> shirt -> legs -> chest -> cape
+   * as the real layers are drawn. */
+  const handArmLegs = new Sprite();
+  handArmLegs.anchor.set(0.5, 0.5);
+  handArmLegs.visible = false;
+  const handArmLegsMask = new Graphics();
+  handArmLegsMask.visible = true;
+  handArmLegs.mask = handArmLegsMask;
+  container.addChild(handArmLegsMask);
+  container.addChild(handArmLegs);
+  const handArmChest = new Sprite();
+  handArmChest.anchor.set(0.5, 0.5);
+  handArmChest.visible = false;
+  const handArmChestMask = new Graphics();
+  handArmChestMask.visible = true;
+  handArmChest.mask = handArmChestMask;
+  container.addChild(handArmChestMask);
+  container.addChild(handArmChest);
+
   /* ═══ v2.3.2138: AND THE CAPE, FOR THE SAME REASON ═══
    * v2.3.2134 taught the SHIRT to ride along with the bare-skin arm clone and
    * stopped there.  The cape has the identical problem and it is visible in
@@ -7683,6 +7741,10 @@ function createPlayerDisplay() {
   container._handArmShirtMask = handArmShirtMask;   /* v2.3.2134 */
   container._handArmCape = handArmCape;             /* v2.3.2138 */
   container._handArmCapeMask = handArmCapeMask;     /* v2.3.2138 */
+  container._handArmLegs = handArmLegs;             /* v2.3.3495 */
+  container._handArmLegsMask = handArmLegsMask;     /* v2.3.3495 */
+  container._handArmChest = handArmChest;           /* v2.3.3495 */
+  container._handArmChestMask = handArmChestMask;   /* v2.3.3495 */
   container._shieldSprite = shieldSprite;
   container._blockCaretGfx = blockCaretGfx;     /* v2.3.1798 */
   container._blockArmSprite = blockArmSprite;   /* v2.3.1785 */
@@ -11002,6 +11064,8 @@ export class EntityRenderer {
         const _rKeep = [
           _crumble, _spriteBody, display._namePill, display._comboText,
           display._handCapMask, display._handArmMask,
+          /* v2.3.3495: every arm clone's mask, the shirt's and cape's too */
+          display._handArmShirtMask, display._handArmCapeMask, display._handArmLegsMask, display._handArmChestMask,
         ];
         _hideExceptDeep(display, _rKeep);
         continue;
@@ -12486,6 +12550,9 @@ export class EntityRenderer {
       const _deathKeep = [
         _selfCrumble, _selfSpriteBody, display._namePill, display._comboText,
         display._handCapMask, display._handArmMask,
+        /* v2.3.3495: every arm clone's mask (the shirt's and cape's were left
+           out, so a death hid them and nothing ever showed them again) */
+        display._handArmShirtMask, display._handArmCapeMask, display._handArmLegsMask, display._handArmChestMask,
         display._hudHpBarFrame, display._hudHpBarFill, display._hudHpRing,
         display._hudHpText, display._hudHpMaxText,
         display._hudMpEmpty, display._hudMpSprite, display._hudMpTextEmpty, display._hudMpTextFull,
@@ -12652,7 +12719,7 @@ export class EntityRenderer {
       if (display._weaponContainer) display._weaponContainer.visible = false;
       if (display._shieldSprite) display._shieldSprite.visible = false;
       if (display._handCapSprite) display._handCapSprite.visible = false;
-      if (display._handArmSprite) display._handArmSprite.visible = false;
+      _hideArmClones(display);   /* v2.3.3495 */
     }
 
     const body = display._body;
@@ -14420,6 +14487,36 @@ export class EntityRenderer {
                 _armShirt.visible = false;
               }
             }
+            /* v2.3.3495: the greaves and the plate through the same capsule,
+               over the shirt clone -- the bare-skin band the body clone (the
+               masked bake) laid over a copper torso's shoulder on every east
+               jog.  Copied from the LIVE pieces, so any metal and grade rides
+               along; hidden when the piece is not drawn (the knight figure,
+               whose body texture is already the armour, draws none). */
+            const _armPieces = [[display._handArmLegs, display._handArmLegsMask, display._gearLegs],
+              [display._handArmChest, display._handArmChestMask, display._gearChest]];
+            for (let _pi = 0; _pi < _armPieces.length; _pi++) {
+              const _ap = _armPieces[_pi][0], _apMask = _armPieces[_pi][1], _worn = _armPieces[_pi][2];
+              if (!_ap || !_apMask) continue;
+              if (_worn && _worn.visible && _worn.texture) {
+                _ap.texture = _worn.texture;
+                _ap.x = _worn.x;
+                _ap.y = _worn.y;
+                _ap.scale.x = _worn.scale.x;
+                _ap.scale.y = _worn.scale.y;
+                _ap.rotation = _worn.rotation;
+                _ap.anchor.set(_worn.anchor.x, _worn.anchor.y);
+                _ap.tint = _worn.tint;
+                _ap.alpha = _worn.alpha;
+                _ap.visible = true;
+                _apMask.clear();
+                _apMask.moveTo(shoulderX, shoulderY);
+                _apMask.lineTo(weaponSprite.x, weaponSprite.y);
+                _apMask.stroke({ color: 0xffffff, width: 16, cap: 'butt' });
+              } else {
+                _ap.visible = false;
+              }
+            }
             /* v2.3.2138: the cape through the same capsule, over the shirt
                clone.  Rotation and anchor come across too -- the cape is
                tilted and shoulder-pivoted on a jog, unlike the shirt, so a
@@ -14455,16 +14552,12 @@ export class EntityRenderer {
               }
             }
           } else if (handArm) {
-            handArm.visible = false;
-            if (display._handArmShirt) display._handArmShirt.visible = false;
-            if (display._handArmCape) display._handArmCape.visible = false;
+            _hideArmClones(display);   /* v2.3.3495: every clone together */
           }
         } else {
           weaponSprite.visible = false;
           if (display._handCapSprite) display._handCapSprite.visible = false;
-          if (display._handArmSprite) display._handArmSprite.visible = false;
-          if (display._handArmShirt) display._handArmShirt.visible = false;   /* v2.3.2134 */
-          if (display._handArmCape) display._handArmCape.visible = false;     /* v2.3.2138 */
+          _hideArmClones(display);   /* v2.3.2134 / v2.3.2138 / v2.3.3495: the body clone and every clone riding on it */
           /* Procedural fallback — abstract line / arc / orb. */
           if (wpn.type === 'bow') {
             // Bow arc
@@ -14517,14 +14610,14 @@ export class EntityRenderer {
            Guarded on !S._blockPose so it can never double up with the
            stand-in's own off-hand weapon: exactly one of the two draws. */
         if (display._handCapSprite) display._handCapSprite.visible = false;
-        if (display._handArmSprite) display._handArmSprite.visible = false;
+        _hideArmClones(display);   /* v2.3.3495: the shirt, cape and armour clones too -- they lingered a frame's stripe after a shield came up mid east jog */
       } else {
         /* No weapon equipped or shield is up — hide the icon Sprite
            so a stale icon doesn't linger from a previous loadout (or
            render on top of the shield arc during a block). */
         if (display._weaponSprite) display._weaponSprite.visible = false;
         if (display._handCapSprite) display._handCapSprite.visible = false;
-        if (display._handArmSprite) display._handArmSprite.visible = false;
+        _hideArmClones(display);   /* v2.3.3495 */
       }
       /* Z-order: weapon in front of body for forward facings (idx 0..3
          = E/SE/S/SW), weapon behind body for back facings (idx 4..7 =
@@ -14722,15 +14815,27 @@ export class EntityRenderer {
           const wantIdx = sIdx < bIdx ? bIdx : bIdx + 1;
           if (sIdx !== wantIdx) display.setChildIndex(_as, wantIdx);
         }
+        /* v2.3.3495: then the greaves' and the plate's clones, each directly
+           above whichever clone is on top so far -- body -> shirt -> legs ->
+           chest -> cape, the order the real layers are drawn in.  Same
+           splice-aware recompute as above. */
+        let _topClone = (_as && _as.visible) ? _as : display._handArmSprite;
+        for (const _pc of [display._handArmLegs, display._handArmChest]) {
+          if (!_pc || !_pc.visible) continue;
+          const tIdx = display.getChildIndex(_topClone);
+          const pIdx = display.getChildIndex(_pc);
+          const wantIdx = pIdx < tIdx ? tIdx : tIdx + 1;
+          if (pIdx !== wantIdx) display.setChildIndex(_pc, wantIdx);
+          _topClone = _pc;
+        }
         /* v2.3.2138: and the cape clone directly above whichever of those two
            is on top, so the stack stays body -> shirt -> cape, matching the
            order the real layers are drawn in.  Same splice-aware recompute as
-           above, for the same reason. */
+           above, for the same reason.  (v2.3.3495: above the armour clones
+           too, whichever is on top.) */
         const _ac = display._handArmCape;
         if (_ac && _ac.visible) {
-          const topIdx = (_as && _as.visible)
-            ? display.getChildIndex(_as)
-            : display.getChildIndex(display._handArmSprite);
+          const topIdx = display.getChildIndex(_topClone);
           const cIdx = display.getChildIndex(_ac);
           const wantIdx = cIdx < topIdx ? topIdx : topIdx + 1;
           if (cIdx !== wantIdx) display.setChildIndex(_ac, wantIdx);
@@ -16082,7 +16187,7 @@ export class EntityRenderer {
              raw would draw all four squashed into one body for the frame
              before the first update corrects it. */
           const fig = new Sprite(
-            (hasNpcWalk(npc.id) && getNpcWalkFrame(npc.id, 'south', 0))
+            (hasNpcWalk(npc.id) && getNpcWalkFrame(npc.id, 'south', npcStandFrame(npc)))
             || getNpcTexture(npc.sprite) || Texture.EMPTY);
           fig.anchor.set(0.5, NPC_FRAME_FEET_Y / 256);
           fig.scale.set(npcSpriteScale(npc.sprite));
@@ -16129,9 +16234,12 @@ export class EntityRenderer {
           display._walkPhase = (display._walkPhase || 0) + step;
         }
         const dir = display._walkDir || 'south';
-        const idx = moving ? Math.floor(display._walkPhase / NPC_WALK_PX_PER_FRAME) : 0;
+        /* v2.3.3495: standing, his own stand frame (npcStandFrame), not frame
+           0 -- the owner: "Ace is stuck in one walking frame" */
+        const idx = moving ? Math.floor(display._walkPhase / NPC_WALK_PX_PER_FRAME) : npcStandFrame(npc);
         const tex = getNpcWalkFrame(npc.id, dir, idx);
         if (tex && display._fig.texture !== tex) display._fig.texture = tex;
+        display._walkIdx = idx;   /* v2.3.3495: for the probe below (mp-wheelfolk) */
       }
 
       /* v2.3.1673: label headroom, POSITIONED rather than nudged.
@@ -16220,6 +16328,8 @@ export class EntityRenderer {
                this one is not ordered like the shopkeeper's -- so a test needs
                to see which way he was pointed and which file answered. */
             walkDir: display._walkDir || null,
+            /* v2.3.3495: the walk frame bound (a still walker: his stand frame) */
+            frame: typeof display._walkIdx === 'number' ? display._walkIdx : null,
             /* v2.3.2071: the PLATE as painted -- the two strings on it, how
                far below the feet it hangs, and whether the old above-head
                label is really gone. Owner: "Make every persons name or title

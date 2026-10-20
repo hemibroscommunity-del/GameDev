@@ -939,6 +939,17 @@ remnant to migrate server-side, not a mode to preserve.
     darker than a third of the skin -- TRAPS §129); enclosed windows turn
     under-armour shadow; the full set is untouched; `mp-greaveslegs`
     (`window.__btLegsPeek`), src/belt-harness.html `?wear=legs&pose=&tint=&clamp=off`.
+  - Since v2.3.3495 THE ARMOUR RIDES THE ARM CAPSULE -- the owner: the east
+    jog's shoulder on a copper torso, "fix it for all future tiers". The
+    capsule (v2.3.200) clones the body over the arm on every east jog with a
+    weapon out; in the layered figure that body is the masked bake, bare at
+    the shoulder, so it stamped skin over every plate but a matched set's (the
+    knight figure, whose body IS the armour: "solved for iron"). The plate and
+    greaves now ride along as the shirt and cape do (entityRenderer
+    `_handArmChest`/`_handArmLegs`, copies of the LIVE pieces, so every metal
+    and grade; `_hideArmClones` hides them all together); `mp-armcapsule`
+    (skin over the plate 49-233 px a frame -> the hand's 0-15):
+    docs/specs/visuals-2026-10-19.md.
   - Since v2.3.3011 the view is ANOTHER 25% further out -- the owner: "If it
     is already zoom it out another 25%" -- `VIEW_OUT` 0.64 (0.8 x 0.8) in
     worldViewport.js, the bro ~54 CSS px on the QA phone with the dashboard
@@ -2509,6 +2520,12 @@ remnant to migrate server-side, not a mode to preserve.
       screen; the five hold 1.83 MB (`window.__btWheelNpcArt()`);
     - test-world-core "the buildings' doors", `mp-wheelfolk`, `mp-wheeldoors`:
       docs/specs/wheel-doors.md.
+    - since v2.3.3495 A WALKER WHO STANDS STANDS -- the owner: "Ace is stuck
+      in one walking frame" (his shadow apart from him): a still walker drew
+      frame 0 of his walk, for Ace a leap with both feet off the ground; each
+      row names its standing frame (NPC_DATA `walk.stand`: Ace 3, Lil Bro 1,
+      Diego 2), entityRenderer `npcStandFrame`; `mp-wheelfolk` 4b:
+      docs/specs/visuals-2026-10-19.md.
   - Since v2.3.3127 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
     similar to the old FarmVille game ... Need to dig, plant seeds, fertilize,
     water", then, on the research (docs/FARMING-PLAN.md, its Phase 1): "Good.
