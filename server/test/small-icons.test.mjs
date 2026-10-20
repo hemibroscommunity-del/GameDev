@@ -51,8 +51,12 @@ const src = (p) => readFileSync(new URL(p, root), 'utf8');
   check('2b2 the small marks are 64 x 64, the buttons 160, the shield 128', small.every((d) => d === '64x64')
     && dims('/ui/controls/abil-whirl.webp').join('x') === '160x160' && dims('/ui/controls/talk.webp').join('x') === '160x160'
     && dims(SI.DEFENSE_POPUP_SRC).join('x') === '128x128', { small: [...new Set(small)], whirl: dims('/ui/controls/abil-whirl.webp') });
-  const abil = ['whirl', 'special', 'bash', 'jump', 'burst'].flatMap((n) => ['/ui/controls/abil-' + n + '.webp', '/ui/controls/abil-' + n + '-grey.webp']);
-  check('2c the five ability pictures, lit and grey', abil.every((u) => existsSync(pub(u))), abil.filter((u) => !existsSync(pub(u))));
+  /* v2.3.3522: and the Block button's (the owner's painted shield, the disc
+     inside its ring: tools/ui/cut-owner-icons.py), 160 like the rest */
+  const abil = ['whirl', 'special', 'bash', 'jump', 'burst', 'block'].flatMap((n) => ['/ui/controls/abil-' + n + '.webp', '/ui/controls/abil-' + n + '-grey.webp']);
+  check('2c the six ability pictures, lit and grey (Block\'s since v2.3.3522)', abil.every((u) => existsSync(pub(u))), abil.filter((u) => !existsSync(pub(u))));
+  check('2c2 the Block button\'s pair is 160 x 160, as the buttons are',
+    ['/ui/controls/abil-block.webp', '/ui/controls/abil-block-grey.webp'].every((u) => existsSync(pub(u)) && dims(u).join('x') === '160x160'));
   const stick = ['talk', 'door', 'sleep', 'farm-dig', 'farm-plant', 'farm-water', 'farm-feed', 'farm-harvest'].map((n) => '/ui/controls/' + n + '.webp');
   check('2d the right stick\'s eight, and none of the SVGs they replace', stick.every((u) => existsSync(pub(u)))
     && !stick.some((u) => existsSync(pub(u.replace('.webp', '.svg')))), stick);
@@ -89,6 +93,14 @@ const src = (p) => readFileSync(new URL(p, root), 'utf8');
   const pa = src('src/rendering/preloadAnimations.js'), cp = src('src/rendering/controlsPreload.js');
   check('3i nothing on first use: the canvas copies on the loading screen, the DOM ones warmed there',
     /smallIcons: preloadSmallIconTextures\(\)/.test(pa) && /urls\.push\(\.\.\.ABILITY_ART_URLS, \.\.\.smallIconDomUrls\(\)\)/.test(cp));
+  /* v2.3.3522: the owner -- "Block button needs a new icon": it wears the
+     owner's painted shield (BlockFace), warmed with the other ability art,
+     and the world's 64 px wood-shield sprite is no longer a control picture */
+  const sb = src('src/ui/panels/ShieldButton.jsx');
+  check('3j the Block button wears the owner\'s shield (BlockFace, lit and grey warmed), not the wood sprite',
+    /React\.createElement\(BlockFace, \{ size: size, grey: onCd \}\)/.test(sb) && !/'\/sprites\/shields\/wood-shield/.test(cs)
+      && /\.concat\(\[blockArtUrl\(false\), blockArtUrl\(true\)\]\)/.test(cs) && /'\/ui\/controls\/abil-block'/.test(cs)
+      && !/ICON_URL\.shield/.test(cp + sb));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

@@ -639,12 +639,17 @@ export class GlintSystem {
            art that normally carries a block has not loaded, but plate all the
            same */
         if (pd.visible && pd._blockArmGroup && pd._blockArmGroup.visible) pushVisible(s, pd._blockArmSleeve);
+        /* v2.3.3520: the plate's own clone in the east jog's arm capsule
+           (entityRenderer): the plate, so it shines and wears its grade as the
+           plate under it does */
+        if (pd.visible) pushVisible(s, pd._handArmChest);
         this._slot(out, 'self:c', s, cm, seenGrade(rpg.armor), 'c');
       }
       const lm = armourMetal(getEquip('legs'));
       if (lm) {
         const s = [];
         if (pd.visible) pushVisible(s, pd._gearLegs);
+        if (pd.visible) pushVisible(s, pd._handArmLegs);   /* v2.3.3520: the greaves' capsule clone */
         if (fx) for (const k of SELF_LEGS_STAND_INS) pushVisible(s, fx[k]);
         this._slot(out, 'self:l', s, lm, seenGrade(rpg.legsArmor), 'l');
       }

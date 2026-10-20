@@ -26,6 +26,9 @@ import { hasGatherTool, gatherNeed /* v2.3.3038 */ } from '@/data/lifeSkills.js'
 import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
 import { TILE } from '@/data/constants.js';
 import { ZONES, isWorldViewZone, zoneHomes, wheelLandAt /* v2.3.3320 */ } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel'; v2.3.2990: its lands */
+import { trackedQuestId } from './trackedQuest.js';   /* v2.3.3522: the quest you track leads */
+import { routeOrder, wheelWay } from './questWays.js';   /* v2.3.3522: where each quest leads in the Wheel */
+import { wheelTownDoors } from './wheelTownDoors.js';   /* v2.3.3522: the buildings' doors, for the quests that need one */
 
 /* v2.3.1906: where the quest givers stand.  Every live NPC is spawned by
    BroTown's _spawnTownNpcs, which is town-only, so a finished objective always
@@ -52,18 +55,39 @@ const QUEST_HOME_ZONE = 'town';
  * nothing rather than trying to walk to a zone called '*'. */
 export const ANY_FIELD_ZONE = '*';
 
-/** The zone the player's ACTIVE Mayor Bro step points at, or null.
- *  Null covers three ordinary cases and they are deliberately not
- *  distinguished: no quest running, a quest with no zone (cook / mine
- *  "any zone" steps), and a quest whose zone is not a place you travel to. */
-export function questTargetZone(rpg, S) {
+/* ═══ v2.3.3522: THE QUEST YOU TRACK LEADS ═══
+   The owner, playtesting: "I tapped track quest in quest menu but no golden
+   stars were in minimap (I had two active quests - one from beast master
+   and the other from mayor bro)."  The active quests, in the order every
+   reader below takes them (game/questWays.js routeOrder): the tracked one
+   first (game/trackedQuest.js, the quest page's "Track this quest"); then,
+   as before, one ready to hand in or naming a land; then the rest -- each in
+   the worker's order.  Each quest's `done` is its check() on live state,
+   asked once here (the v2.3.1906 note below says why it is wrapped). */
+function _routeQuests(rpg, S) {
   const quests = (rpg && rpg._quests) || null;
-  if (!quests) return null;
-  let anyField = false;                    /* v2.3.2128 */
+  if (!quests) return [];
+  const list = [];
   for (const qid of Object.keys(quests)) {
     if (quests[qid] !== QUEST_STATUS.active) continue;
     const q = QUEST_CHAINS[qid];
     if (!q) continue;
+    let done = false;
+    try { done = !!(q.check && q.check(rpg, S)); } catch (e) { done = false; }
+    list.push({ qid, q, done, zone: q.zone || null });
+  }
+  return routeOrder(list, trackedQuestId());
+}
+
+/** The zone the player's ACTIVE Mayor Bro step points at, or null.
+ *  Null covers three ordinary cases and they are deliberately not
+ *  distinguished: no quest running, a quest with no zone (cook / mine
+ *  "any zone" steps), and a quest whose zone is not a place you travel to.
+ *  v2.3.3522: the tracked quest first (_routeQuests). */
+export function questTargetZone(rpg, S) {
+  let anyField = false;                    /* v2.3.2128 */
+  const tracked = trackedQuestId();        /* v2.3.3522 */
+  for (const { qid, q, done } of _routeQuests(rpg, S)) {
     /* ═══ v2.3.1906: A FINISHED OBJECTIVE POINTS HOME ═══
        Owner: "The star on minimap for cold reception quest when it's complete
        needs to be updated.  It still shows you to go to the frozen shore even
@@ -81,15 +105,19 @@ export function questTargetZone(rpg, S) {
        button about whether a quest is finished. Wrapped because it is
        arbitrary per-quest code running on live state — a throw here would
        take the whole minimap down, and an unreadable objective should read
-       as "not done yet" rather than blank the star. */
-    let done = false;
-    try { done = !!(q.check && q.check(rpg, S)); } catch (e) { done = false; }
+       as "not done yet" rather than blank the star.  (v2.3.3522: asked once,
+       in _routeQuests.) */
     if (done) return QUEST_HOME_ZONE;      /* hand it in */
     if (q.zone) return q.zone;
     /* v2.3.2128: remembered rather than returned, so a NAMED zone on any
        other active quest still wins.  "Frost Ridge" is a better direction
-       than "anywhere", and holding both quests at once is normal. */
-    if (q.anyZone) anyField = true;
+       than "anywhere", and holding both quests at once is normal.
+       v2.3.3522: but not over the quest you TRACK -- that is the one you
+       asked to be led on. */
+    if (q.anyZone) {
+      if (qid === tracked) return ANY_FIELD_ZONE;
+      anyField = true;
+    }
   }
   return anyField ? ANY_FIELD_ZONE : null;
 }
@@ -319,24 +347,18 @@ function _wantNpc(rpg, S) {
     if (S && S._rpgFromServer === false) return null;
     return WELCOME_NPC;                          /* brand new: go meet him */
   }
-  let atGiver = null, anyActive = false;
-  for (const qid of Object.keys(quests)) {
-    if (quests[qid] !== QUEST_STATUS.active) continue;
-    const q = QUEST_CHAINS[qid];
-    if (!q || !q.npc) continue;
+  /* v2.3.3522: the tracked quest's giver first (_routeQuests) */
+  let anyActive = false;
+  for (const { q, done } of _routeQuests(rpg, S)) {
     anyActive = true;
-    let done = false;
-    try { done = !!(q.check && q.check(rpg, S)); } catch (e) { done = false; }
+    if (!q.npc) continue;
     if (done) return q.npc;                      /* hand it in */
-    /* v2.3.3519: a step done at its giver's building (the tour's `opens`:
-       the forge, the bench, the Feed & Seed) -- to him, whose line opens it;
-       unless the step names a door of its own (_wantDoor) */
-    if (!atGiver && q.opens && !_stepDoor(q, rpg, S)) atGiver = q.npc;
   }
-  if (atGiver) return atGiver;
   /* v2.3.3519: and nothing in hand while the TOUR has its next step on
      offer -- to whoever gives it, as the welcome leads to the Mayor
-     (tourOffer, below) */
+     (tourOffer, below).  A step done at its giver's building or at another
+     door (the forge, the bench, the Feed & Seed, farm_2's Cookhouse) is its
+     `way` since the merge with v2.3.3522 (game/questWays.js, door:<plot>). */
   if (!anyActive) {
     const t = tourOffer(rpg, S);
     if (t) return t.npc;
@@ -388,44 +410,6 @@ export function tourOffer(rpg, S) {
   return null;
 }
 
-/* ═══ v2.3.3519: A STEP DONE AT A DOOR ═══
-   farm_2's Zoom Juice is cooked at the Cookhouse -- not at its giver's -- so
-   that step names the door (`door`, a plot of the town), and the road leads
-   there.  Where a door stands is the ground worker's (game/wheelTownDoors.js),
-   handed in by BroTown (setQuestDoorFinder) so this module stays clear of the
-   renderer. */
-let _doorFinder = null;
-export function setQuestDoorFinder(fn) { _doorFinder = typeof fn === 'function' ? fn : null; }
-function _stepDoor(q, rpg, S) {
-  if (!q || !Array.isArray(q.steps)) return null;
-  let steps = null;
-  try { steps = questSteps(q, rpg, S); } catch (e) { steps = null; }
-  const cur = steps && steps.find((st) => st.current);
-  const i = cur ? steps.indexOf(cur) : -1;
-  return (i >= 0 && q.steps[i] && q.steps[i].door) || null;
-}
-function _wantDoor(rpg, S) {
-  const quests = (rpg && rpg._quests) || null;
-  if (!quests || !_doorFinder) return null;
-  for (const qid of Object.keys(quests)) {
-    if (quests[qid] !== QUEST_STATUS.active) continue;
-    const q = QUEST_CHAINS[qid];
-    let done = false;
-    try { done = !!(q && q.check && q.check(rpg, S)); } catch (e) { done = false; }
-    if (!q || done) continue;
-    const door = _stepDoor(q, rpg, S);
-    if (!door) continue;
-    let at = null;
-    try { at = _doorFinder(door); } catch (e) { at = null; }
-    if (at && typeof at.x === 'number' && typeof at.y === 'number') {
-      const P = (S && S.player) || null;
-      if (P && Math.hypot(P.x - at.x, P.y - at.y) < GATHER_HERE_R) return null;   /* there */
-      return { x: at.x, y: at.y, door };
-    }
-  }
-  return null;
-}
-
 /* Where that quest giver stands in the zone you are in, from the LIVE npc list
    (the note above questRoutePoint), or null when he is not here. */
 function _npcHere(S, name) {
@@ -463,7 +447,8 @@ function _npcHere(S, name) {
  *
  * Anywhere else this is what it was -- null -- as no other zone but town has
  * a live npc list or a `lands` table. */
-const LAND_HERE_R = 600;   /* game px: each land's monsters all stand within ~550 of its middle */
+/* (LAND_HERE_R 600 game px: each land's monsters all stand within ~550 of
+   its middle -- v2.3.3522: in game/questWays.js, with the rest of the ways) */
 /* ═══ v2.3.3320: ON THE LONG WHEEL, WHERE THE LAND'S MONSTERS BEGIN ═══
    The owner: "Yes do smooth 1 to 5" -- a land's first stretch climbs from
    level 1 at the town end to 5 at the far end (server/src/wheelzone.js).  On
@@ -473,34 +458,51 @@ const LAND_HERE_R = 600;   /* game px: each land's monsters all stand within ~55
    (ZONES.wheel.firstR, the long Wheel's only) the road leads to where the
    land's monsters begin -- its star LAND_IN_PX past their edge, among the
    level 1s -- and stops once you stand on that land's spoke at least that far
-   out, wherever on it you go.  The short Wheel is as it was. */
-const LAND_IN_PX = 300;
+   out, wherever on it you go.  The short Wheel is as it was.
+   (LAND_IN_PX 300 -- v2.3.3522: in game/questWays.js landStart.) */
 
+/* ═══ v2.3.3522: QUEST BY QUEST, THE TRACKED ONE FIRST ═══
+   The owner: "I tapped track quest in quest menu but no golden stars were in
+   minimap (I had two active quests - one from beast master and the other
+   from mayor bro)."  This asked questTargetZone for ONE zone and followed
+   it: a land, "anywhere" (a resource) or the giver -- and the Beastmaster's
+   quests, "Visit 3 buildings", "Kill 5 monsters" and "Clear any dungeon"
+   were none of those, so they had no road at all.  Now each active quest, in
+   _routeQuests' order, is asked where IT leads (game/questWays.js wheelWay:
+   its giver when done, its land, its resource, a building's door, the
+   nearest land's monsters, a building not yet visited), and the first that
+   has a place here is the road; "you are there" ends it.  A land, the doors
+   and the monsters are the Wheel's; elsewhere (the farm, a dungeon's arena)
+   only a giver standing there and the resources, as before.
+   The answer carries `qid` and `way` (the minimap's and world map's probes). */
 function _wheelPoint(currentZone, rpg, S) {
-  const target = questTargetZone(rpg, S);
-  if (target === ANY_FIELD_ZONE) return zoneHomes(currentZone) ? _wheelGatherPoint(rpg, S) : null;
-  if (target && target !== QUEST_HOME_ZONE) {
-    const homes = zoneHomes(currentZone);
-    const z = homes && homes.includes(target) ? ZONES[currentZone] : null;
-    const spot = z && z.lands && z.lands[target];
-    if (!spot) return null;
-    const P = (S && S.player) || null;
-    const r0 = z.firstR ? Number(z.firstR[target]) : 0;
-    if (r0 > 0) {
-      const c = (z.w * TILE) / 2, dx = spot[0] - c, dy = spot[1] - c, d = Math.hypot(dx, dy) || 1;
-      if (P && Math.hypot(P.x - c, P.y - c) >= r0 && wheelLandAt(currentZone, P.x, P.y) === target) return null;
-      return { x: Math.round(c + (dx / d) * (r0 + LAND_IN_PX)), y: Math.round(c + (dy / d) * (r0 + LAND_IN_PX)), zoneId: target, land: true };
-    }
-    if (P && Math.hypot(P.x - spot[0], P.y - spot[1]) < LAND_HERE_R) return null;
-    return { x: spot[0], y: spot[1], zoneId: target, land: true };
+  const quests = (rpg && rpg._quests) || null;
+  if (!quests || !Object.keys(quests).length) {
+    /* the welcome (a brand-new player): his road to the Mayor, as before */
+    const want = _wantNpc(rpg, S);
+    return want ? _npcHere(S, want) : null;
   }
-  /* v2.3.3519: a step done at a door (farm_2's Cookhouse), in the Wheel */
-  if (currentZone === 'wheel') {
-    const door = _wantDoor(rpg, S);
-    if (door) return door;
+  /* v2.3.3519: nothing in hand while the tour suggests its next step: to
+     whoever gives it (tourOffer is null while any quest is active) */
+  const offer = tourOffer(rpg, S);
+  if (offer) {
+    const at = _npcHere(S, offer.npc);
+    if (at) return at;
   }
-  const want = _wantNpc(rpg, S);
-  return want ? _npcHere(S, want) : null;
+  const homes = zoneHomes(currentZone);
+  const z = currentZone === 'wheel' && homes ? ZONES[currentZone] : null;
+  const wheel = !!(z && z.lands);
+  return wheelWay({
+    order: _routeQuests(rpg, S),
+    steps: (q) => questSteps(q, rpg, S),
+    P: (S && S.player) || null,
+    npcAt: (name) => _npcHere(S, name),
+    doors: wheel ? wheelTownDoors() : [],
+    visited: (S && S.stats && S.stats.visitedBuildings) || null,
+    nodeNear: homes ? (kind) => _nodeNear(kind, rpg, S) : null,
+    geom: wheel ? { c: (z.w * TILE) / 2, lands: z.lands, firstR: z.firstR || null, homes, safeR: z.safeR,
+      landAt: (x, y) => wheelLandAt(currentZone, x, y) } : null,
+  });
 }
 
 /* ═══ v2.3.3012: A GATHERING QUEST LEADS TO THE NEAREST NODE ═══
@@ -510,31 +512,12 @@ function _wheelPoint(currentZone, rpg, S) {
    Only live nodes you hold the tool for: a node without one is not drawn
    (effectsRenderer, v2.3.1680), and a road to something invisible is worse
    than none.  Within GATHER_HERE_R of it you are there, and the road stops,
-   as it does among a land's monsters. */
-const GATHER_HERE_R = 160;
-
-function _wantNode(rpg, S) {
-  const quests = (rpg && rpg._quests) || null;
-  if (!quests) return null;
-  for (const qid of Object.keys(quests)) {
-    if (quests[qid] !== QUEST_STATUS.active) continue;
-    const q = QUEST_CHAINS[qid];
-    if (!q || !q.anyZone) continue;
-    let done = false;
-    try { done = !!(q.check && q.check(rpg, S)); } catch (e) { done = false; }
-    if (done) continue;
-    const steps = questSteps(q, rpg, S);
-    if (steps) {
-      const cur = steps.find((st) => st.current);
-      return (cur && cur.node) || null;
-    }
-    return q.node || null;
-  }
-  return null;
-}
-
-function _wheelGatherPoint(rpg, S) {
-  const want = _wantNode(rpg, S);
+   as it does among a land's monsters.
+   v2.3.3522: which quest wants which kind is questWays.js wayOf now -- and a
+   quest that names NO kind passes to the next one (the old _wantNode stopped
+   there, so "Spring 5 traps" taken before "Bring 5 Ore" blanked the ore's
+   road).  This only finds the nearest live one of a kind: {x, y, d}. */
+function _nodeNear(want, rpg, S) {
   const P = (S && S.player) || null;
   if (!want || !P || !hasGatherTool(rpg, want)) return null;
   let best = null, bestD = Infinity;
@@ -549,9 +532,11 @@ function _wheelGatherPoint(rpg, S) {
     const d = Math.hypot(n.x - P.x, n.y - P.y);
     if (d < bestD) { bestD = d; best = n; }
   }
-  if (!best || bestD < GATHER_HERE_R) return null;
-  return { x: best.x, y: best.y, node: want };
+  /* v2.3.3522: the distance goes back too -- questWays.js says "you are
+     there" (GATHER_HERE_R) and ends the road */
+  return best ? { x: best.x, y: best.y, d: bestD } : null;
 }
+/* (GATHER_HERE_R 160 -- v2.3.3522: in game/questWays.js, which reads it) */
 
 /** Is `zoneId` open to this player?
  *

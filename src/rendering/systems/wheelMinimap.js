@@ -86,6 +86,7 @@ import { noteWheelMusic } from '@/game/wheelMusic.js';      /* v2.3.3064: ...and
 import { BT_AUDIO } from '@/data/gameDisplay.js';
 import { landLook } from '@/data/wheelLands.js';           /* v2.3.3108: the plate's land colour */
 import { landIconTexture, holdLandIcons, releaseLandIcons } from '../wheelSignposts.js';   /* v2.3.3108: the plate's icon */
+import { wheelBuildingIconTexture, holdBuildingIcons, releaseBuildingIcons } from '../wheelBuildingIcons.js';   /* v2.3.3522: each building's picture */
 
 export const WHEEL_BOX = 132;      /* CSS px a side (v2.3.3108: across; and tall, the plate included) */
 /* v2.3.3108: THE NAME PLATE (the header's note).  The map's window ends
@@ -162,6 +163,17 @@ const NORTH_R = 6.5, NORTH_Y = FRAME / 2, NORTH_FONT = 9, NORTH_UP = NORTH_R - N
    notch on the footprint's front edge, where the building's steps are. */
 const C_BUILDING = 0xa4553a, C_BUILDING_SHUT = 0x7d8a88, C_BUILDING_KEY = 0x0b161b, C_DOOR = 0xf2e4c2;
 const DOOR_W = 3.5, DOOR_H = 2;
+/* ═══ v2.3.3522: EACH BUILDING WEARS ITS PICTURE ═══
+   The owner, playtesting: "Have icons representing each building on each
+   building in the minimap/compass."  The footprints said where the buildings
+   stand, not which is which; now each wears the picture its Enter button does
+   (data/wheelBuildingDoors.js WHEEL_BUILDING_ICONS, loaded behind the Wheel's
+   loading screen: rendering/wheelBuildingIcons.js), BLD_ICON_PX across,
+   centred on its footprint a touch high (BLD_ICON_UP) so the door's notch
+   under it still shows, a shut one's in grey.  Made ONCE, with the town (a
+   Sprite each in townIcons, over the footprints, under every mark that
+   moves) -- never redrawn a frame. */
+const BLD_ICON_PX = 14, BLD_ICON_UP = 1.5;
 
 /* v2.3.3108: the land's colour lifted toward white to read on the dark plate,
    as the top bar had it (ZoneHeader.jsx landTint, k 0.42) */
@@ -201,7 +213,9 @@ export class WheelMinimap {
     this.marks = new Container();    /* bros and monsters: every frame */
     this.road = new Graphics();      /* v2.3.2992: the gold road to the quest's star (v2.3.3339: redrawn when it moves) */
     this.partyRims = new Graphics(); /* v2.3.3277: your party's marks' rims, over theirs: every frame */
-    this.pan.addChild(this.lines, this.buildings, this.places, this.townMark, this.road, this.marks, this.partyRims);
+    this.townIcons = new Container(); /* v2.3.3522: each building's picture: made once, with the town */
+    this.townIcons.label = 'wheel-minimap-building-icons';
+    this.pan.addChild(this.lines, this.buildings, this.townIcons, this.places, this.townMark, this.road, this.marks, this.partyRims);
     this.player = new Sprite(this.icons.self || this.dotTex);
     this.player.anchor.set(0.5);
     this.player.width = 15; this.player.height = 15;
@@ -295,6 +309,11 @@ export class WheelMinimap {
        ours first (a sprite on a destroyed texture throws in the next render) */
     this._iconHold = { clear: () => { this.plateIcon.texture = Texture.EMPTY; this.plateIcon.visible = false; this._plateKey = ''; } };
     holdLandIcons(this._iconHold);
+    /* v2.3.3522: the buildings' pictures go when you leave the Wheel: take the
+       sprites off them first, and make them again on the way back in */
+    this._bldIconsOn = false;
+    this._bldIconHold = { clear: () => { this._dropTownIcons(); } };
+    holdBuildingIcons(this._bldIconHold);
 
     this.pool = [];
     this.used = 0;
@@ -433,10 +452,44 @@ export class WheelMinimap {
         const dx = Math.max(bx + 1, Math.min(bx + bw - 1 - DOOR_W, d.x * SCALE - DOOR_W / 2));
         G.rect(dx, by + bh - DOOR_H, DOOR_W, DOOR_H).fill(C_DOOR);
         this._bld.push({ id: d.id, closed: !!d.closed, x0: Math.round(x0), y0: Math.round(y0), x1: Math.round(x1), y1: Math.round(y1),
-          w: +bw.toFixed(1), h: +bh.toFixed(1), doorX: Math.round(d.x), doorY: Math.round(d.y) });
+          w: +bw.toFixed(1), h: +bh.toFixed(1), doorX: Math.round(d.x), doorY: Math.round(d.y),
+          /* v2.3.3522: its picture's middle, in the pan (box px) */
+          iconX: +(bx + bw / 2).toFixed(1), iconY: +(by + bh / 2 - BLD_ICON_UP).toFixed(1), icon: false });
       }
     }
     this.townMark.visible = !this._bld.length;
+    this._dropTownIcons();
+    this._buildTownIcons();
+  }
+
+  /* ═══ v2.3.3522: THE BUILDINGS' PICTURES (BLD_ICON_PX's note) ═══
+     Once per town, when its footprints are drawn -- or the first frame the
+     pictures are there, if the town came first.  A building whose picture did
+     not load goes without, and is asked again only when the town is built
+     again (never a fetch on sight). */
+  _buildTownIcons() {
+    if (this._bldIconsOn || !this._bld.length) return;
+    let n = 0;
+    for (const b of this._bld) {
+      const tex = wheelBuildingIconTexture(b.id, b.closed);
+      if (!tex) continue;
+      const sp = new Sprite(tex);
+      sp.anchor.set(0.5);
+      sp.width = BLD_ICON_PX; sp.height = BLD_ICON_PX;
+      sp.x = b.iconX; sp.y = b.iconY;
+      /* a shut one is grey and a touch faint, as its footprint is grey */
+      if (b.closed) sp.alpha = 0.85;
+      sp.label = 'bld-icon-' + b.id;
+      this.townIcons.addChild(sp);
+      b.icon = true;
+      n++;
+    }
+    this._bldIconsOn = n > 0;
+  }
+  _dropTownIcons() {
+    for (const c of this.townIcons.removeChildren()) { try { c.destroy(); } catch (e) { /* gone */ } }
+    for (const b of this._bld) b.icon = false;
+    this._bldIconsOn = false;
   }
 
   _placeUnder(map) {
@@ -557,6 +610,9 @@ export class WheelMinimap {
     try { doors = wheelTownDoors(); } catch (e) { doors = []; }
     /* (none yet is a fresh [] on every call: nothing to redraw for it) */
     if ((doors.length ? doors : null) !== this._doorsFor) this._buildTown(doors);
+    /* v2.3.3522: the buildings' pictures, if the town was drawn before they
+       had loaded (a flag read a frame; built once) */
+    else if (!this._bldIconsOn && this._bld.length) this._buildTownIcons();
 
     /* centred on you, held at the world's edge like the camera */
     const spanW = map.worldW * SCALE, spanH = map.worldH * SCALE;
@@ -802,7 +858,9 @@ export class WheelMinimap {
         frame: FRAME, label: false,   /* v2.3.3009: the frame's width; nothing printed under the box */
         /* v2.3.3108: the map's window ends here, and the plate's two lines */
         h: WHEEL_H, mapBottom: MAP_BOT, plate: plate ? { ...plate, rect: this._plateRect || null } : null,
-        quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge, road } : null,
+        /* v2.3.3522: + whose road it is and where it leads (game/questWays.js) */
+        quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge, road,
+          qid: quest.qid || null, way: quest.way || null, door: quest.door || null } : null,
         /* v2.3.3023: the way home: whether town is off the box, whether its
            badge shows (and where, in the box), town's bearing from you
            (degrees, 0 east, 90 south) and how far, game px */
@@ -812,6 +870,9 @@ export class WheelMinimap {
         /* v2.3.3146: the town's buildings drawn (game px boxes, their size in
            the box, their doors), and whether the town's square still shows */
         buildings: this._bld.map((b) => ({ ...b })), townMark: !!this.townMark.visible,
+        /* v2.3.3522: the buildings' pictures on the box (how many, and their
+           size, CSS px) */
+        buildingIcons: { n: this.townIcons.children.length, px: BLD_ICON_PX },
         scale: SCALE,
         /* v2.3.3277: your party's marks (in the box, and whether on its edge) */
         party: partyMarks,
@@ -824,6 +885,7 @@ export class WheelMinimap {
 
   destroy() {
     releaseLandIcons(this._iconHold);
+    releaseBuildingIcons(this._bldIconHold);   /* v2.3.3522 */
     try { if (window.__btWheelPlate) window.__btWheelPlate = null; } catch (e) { /* no page */ }
     this._dropUnder();
     this._dropLocal();

@@ -35,7 +35,7 @@ import { StatScreenPanel } from './panels/StatScreenPanel.jsx';
 import { QuestPanel } from './panels/QuestPanel.jsx';
 import RaceHud from './mobile/RaceHud.jsx'; /* v2.3.3519: Lil Bro's race on the screen */
 import { raceTick, raceHeld, raceDriveNpc } from '@/game/race.js'; /* v2.3.3519: Lil Bro's race (server/src/race.js judges it) */
-import { tourOffer, setQuestDoorFinder } from '@/game/questRoute.js'; /* v2.3.3519: the tour's next step, and where a door stands */
+import { tourOffer } from '@/game/questRoute.js'; /* v2.3.3519: the tour's next step (where a step's door stands is game/questWays.js's since v2.3.3522) */
 import { TOUR_MEET } from '@/game/tour.js'; /* v2.3.3519 */
 import { QuestBannerLayer } from './panels/QuestBannerLayer.jsx'; /* v2.3.3030: the quest banners in the owner's art */
 import { InventoryPanel } from './panels/InventoryPanel.jsx';
@@ -60,6 +60,7 @@ import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
+import { trackedFirst, onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3522: the pinned quest card shows the quest you track */
 import { treeGeom, treeTrunkEllipse, treeReachBox } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree -- its box, its trunk and where you chop it from */
 import { oreGeom, oreBlockEllipse } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock -- its box and its body */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
@@ -355,6 +356,7 @@ import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
 import { handleZoneTransitions } from '@/game/zoneTransitions.js';
+import { holdForAvatar } from '@/game/avatarHold.js'; /* v2.3.3520: the straight-in road waits for your bro's pictures behind a veil */
 /* v2.3.789: desktop keyboard handlers extracted behavior-frozen (REBUILD-PLAN Phase 7). */
 import { setupDesktopControls } from '@/game/desktopControls.js';
 import { actionBus } from './mobile/actionBus.js'; /* v2.3.1562: quick-bar weapon swap */
@@ -518,7 +520,7 @@ import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
 import { bedAt, farmExCode } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
-import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers */
+import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers; v2.3.3522: + each one's picture */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
 
@@ -913,12 +915,6 @@ function _spawnWheelNpcs(S) {
 }
 /* the zones townsfolk stand in: today's town, and the Wheel's Brotown */
 function _npcZone(z) { return z === 'town' || isWheelTrialZone(z); }
-/* v2.3.3519: the gold road to a step done at a door (farm_2's Cookhouse,
-   questRoute.js _wantDoor) -- where the door stands is the ground worker's */
-setQuestDoorFinder(function (plot) {
-  var d = wheelTownDoors().filter(function (x) { return x.id === plot; })[0];
-  return d ? { x: d.x, y: d.y } : null;
-});
 
 export var BroTown = function BroTown(_ref0) {
   var _stateRef$current, _stateRef$current2, _minigameInstance$win, _minigameInstance$win2, _rpgState$lifeSkills3, _rpgState$lifeSkills4, _rpgState$lifeSkills5, _rpgState$lifeSkills6, _rpgState$lifeSkills0, _rpgState$weapon, _rpgState$rangedWeapo, _rpgState$armor, _rpgState$lifeSkills1, _ELEMENTS$rpgState$am2, _ELEMENTS$rpgState$sh2, _rpgState$lifeSkills14, _rpgState$lifeSkills18, _stateRef$current7, _rpgState$_compStats, _rpgState$_compStats2, _rpgState$_compStats3, _rpgState$_compStats4, _rpgState$_compStats5, _rpgState$_compStats6, _rpgState$_compStats7, _rpgState$_compStats8, _arenaStatus$currentM, _arenaStatus$currentM2, _arenaTournament$play5, _MKT_CATEGORIES$mktCa, _rpgState$lifeSkills21, _rpgState$lifeSkills29, _rpgState$lifeSkills33, _rpgState$lifeSkills36, _stateRef$current18, _stateRef$current19, _stateRef$current20, _stateRef$current$_sl, _stateRef$current21, _stateRef$current22, _stateRef$current$_fe, _stateRef$current23, _stateRef$current24, _stateRef$current$_sl2, _stateRef$current25, _clanData$members, _clanData$members2, _questPanel$npcRef, _incomingTrade$offer, _RARITY_TIERS$rpgStat, _rpgState$armor2, _rpgState$armor3, _rpgState$armor4, _AMULET_TIERS$rpgStat, _ELEMENTS$rpgState$am4, _ELEMENTS$rpgState$am5, _ELEMENTS$rpgState$am6, _BLACKSMITH_TIERS$rpg, _BLACKSMITH_TIERS$rpg2, _rpgState$lifeSkills37, _rpgState$lifeSkills38, _rpgState$lifeSkills39, _rpgState$lifeSkills40, _rpgState$lifeSkills42, _stateRef$current30, _REPUTATION$stateRef$, _REPUTATION$stateRef$2, _stateRef$current31, _ZONES, _stateRef$current33, _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current40, _stateRef$current41, _stateRef$current42, _stateRef$current43, _stateRef$current44, _stateRef$current45, _stateRef$current46, _stateRef$current47, _stateRef$current48, _stateRef$current49, _stateRef$current50, _stateRef$current51, _stateRef$current52, _stateRef$current53, _stateRef$current54, _stateRef$current55, _stateRef$current56, _stateRef$current57, _stateRef$current58, _stateRef$current$_ne, _stateRef$current$_ne2, _stateRef$current$_ne3, _stateRef$current$_ne4, _window$matchMedia, _window;
@@ -1589,6 +1585,14 @@ export var BroTown = function BroTown(_ref0) {
     _useQuestHudFold2 = _slicedToArray(_useQuestHudFold, 2),
     questHudFolded = _useQuestHudFold2[0],
     setQuestHudFolded = _useQuestHudFold2[1];
+  /* v2.3.3522: the pinned quest card follows the quest you TRACK (the quest
+     page's Track button, game/trackedQuest.js): a change is told here, so the
+     card re-renders at once rather than at the next unrelated update */
+  var _useTrackTick = useState(0),
+    setTrackTick = _useTrackTick[1];
+  useEffect(function () {
+    return onTrackedQuest(function () { setTrackTick(function (v) { return v + 1; }); });
+  }, []);
   var _useState5 = useState(null),
     _useState6 = _slicedToArray(_useState5, 2),
     nearBuilding = _useState6[0],
@@ -5269,7 +5273,7 @@ export var BroTown = function BroTown(_ref0) {
            behind the loading overlay (zoneTransitions.js), freeze the
            player at the hub exit so the proximity trigger stays armed and
            the entry runs the instant the load resolves. */
-        if (S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold) finalSpd = 0;   /* v2.3.3136: _farmArtHold -- veiled while your farm loads (game/farmTrip.js); v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
+        if (S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold || S._avatarArtHold) finalSpd = 0;   /* v2.3.3520: _avatarArtHold -- veiled while the straight-in road makes your bro's pictures (game/avatarHold.js) */   /* v2.3.3136: _farmArtHold -- veiled while your farm loads (game/farmTrip.js); v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
         /* v2.3.3519: on the line for Lil Bro's countdown (game/race.js) -- the
            worker calls a lap begun away from it a false start */
         if (raceHeld(S)) finalSpd = 0;
@@ -11767,6 +11771,12 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.init();
     BT_AUDIO.join();
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e2) { introWaitRef.current = null; }
+    /* v2.3.3520: ...and the bro's own pictures are waited for behind a veil
+       too, as the loading screen waits for them on the ordinary road -- the
+       world went up while his armour's masks were still being baked, and 26
+       of the first 58 frames drew the plain body under the plate
+       (game/avatarHold.js, mp-joinflicker) */
+    holdForAvatar(S, introWaitRef.current, (ZONES.wheel && ZONES.wheel.name) || 'BroTown');
     installWorldHold();   /* v2.3.2439: no loading screen on this road, so the veil is the gate */
     kickSfxAtGate(introWaitRef.current);
     holdZoneMusicAtGate(introWaitRef.current);   /* v2.3.2334 */
@@ -12775,12 +12785,23 @@ export var BroTown = function BroTown(_ref0) {
       WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
       maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)'
     }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-close",
+  }, /* \u2550\u2550\u2550 v2.3.3522: THE \u2715 STAYS IN THE CORNER, AND IS EASY TO SEE \u2550\u2550\u2550
+       The owner, playtesting: "Vendor menus need a more prominent escape icon
+       in the corner."  It was a faint 28 px disc, a child of this card -- the
+       SCROLLER -- so in a long menu (the forge, the Woodworker, the Gem Works)
+       it scrolled away with the rows.  It is the shared 40 px dark disc now
+       (game.css .bt-xclose), in a sticky bar of no height at the top of the
+       card, so it stays in the corner while the menu scrolls under it.  Still
+       .bt-inspect-close: Esc presses it, the close sound and the computer's
+       key cap find it by that. */
+  /*#__PURE__*/React.createElement("div", { className: "bt-inspect-closebar" }, /*#__PURE__*/React.createElement("button", {
+    className: "bt-inspect-close bt-xclose",
+    "aria-label": "Close",
+    "data-building-close": "",
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement(BuildingRoom, { key: roomIdFor(buildingPanel) || buildingPanel, panel: buildingPanel }) /* v2.3.3258: the inside of the building, behind its window's menu; v2.3.3259: keyed by its ROOM, so the Gem Works' two tabs (one room) never load it again */, /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
+  }, "\u2715")), /*#__PURE__*/React.createElement(BuildingRoom, { key: roomIdFor(buildingPanel) || buildingPanel, panel: buildingPanel }) /* v2.3.3258: the inside of the building, behind its window's menu; v2.3.3259: keyed by its ROOM, so the Gem Works' two tabs (one room) never load it again */, /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
        opens the panel that does the work and closes the hall */
   Object.prototype.hasOwnProperty.call(WHEEL_HALLS, buildingPanel) && /*#__PURE__*/React.createElement(WheelHallPanel, {   /* v2.3.3258: every hall in the table, the Town Hall's too */
     hall: buildingPanel,
@@ -13554,6 +13575,12 @@ export var BroTown = function BroTown(_ref0) {
         style: { fontSize: 11, lineHeight: 1.3, marginTop: 1, color: 'rgba(216,169,77,.85)' }
       }, '+' + _to.more + ' more: look for a gold ! on your map'));
     }
+    /* v2.3.3522: the quest you TRACK (the quest page's "Track this quest"),
+       when it is one of these -- the owner tracked one and nothing outside the
+       quest list changed ("I tapped track quest in quest menu but no golden
+       stars were in minimap"); the card, the minimap's star and the world
+       map's road all follow it now.  Else the first, as before. */
+    activeQuests = trackedFirst(activeQuests.map(function (aq) { return { qid: aq.id, q: aq }; })).map(function (e) { return e.q; });
     var q = activeQuests[0];
     /* v2.3.1914: live rpg, not the snapshot — one answer everywhere. */
     var done = DATA.questObjectiveDone(q, stateRef.current, rpgState);
@@ -14374,8 +14401,13 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, "E"), (nearBuilding !== null ? BUILDINGS[nearBuilding].iconSrc : WHEEL_HALLS[nearHall].icon) ? /*#__PURE__*/React.createElement("img", {
     /* v2.3.1224: UI Bible building icon (bldg-*) in the enter prompt;
-       falls back to the emoji when iconSrc is absent. */
-    src: nearBuilding !== null ? BUILDINGS[nearBuilding].iconSrc : WHEEL_HALLS[nearHall].icon,
+       falls back to the emoji when iconSrc is absent.
+       v2.3.3522: at a Wheel door, the picture the maps wear for that building
+       (data/wheelBuildingDoors.js WHEEL_BUILDING_ICONS -- the same files, but
+       the Land Office's own parchment map where it borrowed the Feed & Seed's
+       barn), so the door and the map agree */
+    src: (nearDoorLabel && stateRef.current._nearWheelBuilding && wheelBuildingIcon(stateRef.current._nearWheelBuilding.id))
+      || (nearBuilding !== null ? BUILDINGS[nearBuilding].iconSrc : WHEEL_HALLS[nearHall].icon),
     alt: "",
     draggable: false,
     style: {

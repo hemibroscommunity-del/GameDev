@@ -6555,8 +6555,10 @@ export function questSteps(quest, R, S) {
     if (whole && i < last) d = true;
     else { try { d = !!st.done(inv, S); } catch (e) { d = false; } }
     /* v2.3.3012: + the node kind the step is done at, if any -- the Wheel's
-       gold road leads to the nearest one (questRoute.js _wheelGatherPoint) */
-    return { label: st.label, done: d, current: false, node: st.node || null };
+       gold road leads to the nearest one (questRoute.js _wheelGatherPoint)
+       v2.3.3522: + the step's `way` (a door, a land's monsters), for a step
+       done at no resource: game/questWays.js */
+    return { label: st.label, done: d, current: false, node: st.node || null, way: st.way || null };
   });
   /* The first undone step is "current" -- but a later step being done means
      every step before it is behind you, so the pointer never sits BEHIND
@@ -6969,11 +6971,14 @@ export const QUEST_CHAINS = {
     check: function (rpg) { return questProgress(rpg, 'farm_1') >= 3; },
     need: { progress: true, n: 3 },
     steps: [
-      { label: 'Open the Feed & Seed and tap Visit Your Farm',
+      /* v2.3.3519: each step's way (game/questWays.js): the Feed & Seed's
+         door, whose Visit Your Farm takes you there -- on the farm no door
+         draws a road, and the beds say their next step themselves */
+      { label: 'Open the Feed & Seed and tap Visit Your Farm', way: 'door:feedseed',
         done: function (inv, S) { return !!(S && S.currentZone === 'farm_home') || questProgress(S && S.rpg, 'farm_1') > 0; } },
-      { label: 'Dig a bed, plant a carrot seed, then water it',
+      { label: 'Dig a bed, plant a carrot seed, then water it', way: 'door:feedseed',
         done: function (inv, S) { return questProgress(S && S.rpg, 'farm_1') >= 1; } },
-      { label: 'Water 3 planted carrots in all',
+      { label: 'Water 3 planted carrots in all', way: 'door:feedseed',
         done: function (inv, S) { return questProgress(S && S.rpg, 'farm_1') >= 3; } },
       { label: 'Back to Farmer Bro at the Feed & Seed',
         done: function () { return false; } },
@@ -7026,6 +7031,7 @@ export const QUEST_CHAINS = {
   smith_2: {
     id: 'smith_2', npc: 'Blacksmith Bro', title: 'Some Assembly Required',
     after: 'smith_1', tour: true, opens: 'blacksmith',
+    way: 'door:blacksmith',   /* v2.3.3519: forged at the forge (game/questWays.js) */
     desc: 'Forge a sword, a chest plate or greaves at the forge.',
     check: function (rpg) { return questProgress(rpg, 'smith_2') >= 1; },
     reward: { gold: 60, xp: 0 },
@@ -7071,6 +7077,7 @@ export const QUEST_CHAINS = {
   wood_2: {
     id: 'wood_2', npc: 'Woodworker Bro', title: 'Branching Out',
     after: 'wood_1', tour: true, opens: 'woodworker',
+    way: 'door:woodworker',   /* v2.3.3519: made at his bench (game/questWays.js) */
     desc: 'Make a bow or a staff at the Woodworker, then swap him a pine one for softwood.',
     check: function (rpg) { return questProgress(rpg, 'wood_2') >= 1; },
     /* the hand-in's trade (the worker's `trade`, quests.js _questTradePick):
@@ -7142,9 +7149,10 @@ export const QUEST_CHAINS = {
     desc: 'Pick 3 carrots and cook Zoom Juice at the Cookhouse.',
     check: function (rpg) { return questProgress(rpg, 'farm_2') >= 1; },
     steps: [
-      { label: 'Visit your farm and pick 3 ripe carrots',
+      { label: 'Visit your farm and pick 3 ripe carrots', way: 'door:feedseed',
         done: function (inv) { return (Number(inv.crop_carrot) || 0) >= 3; } },
-      { label: 'Cook Zoom Juice at the Cookhouse (3 carrots)', door: 'cookhouse',
+      /* v2.3.3519: cooked at the Cookhouse, not at its giver's: its way */
+      { label: 'Cook Zoom Juice at the Cookhouse (3 carrots)', way: 'door:cookhouse',
         done: function (inv, S) { return questProgress(S && S.rpg, 'farm_2') >= 1; } },
       { label: 'Back to Farmer Bro at the Feed & Seed',
         done: function () { return false; } },
@@ -7166,6 +7174,9 @@ export const QUEST_CHAINS = {
     /* the worker judges the race (server/src/race.js); his Race! button is
        game/race.js's, on his "how's it going" line */
     race: true,
+    /* v2.3.3519: to Lil Bro while it runs, his Race! on his line; racing,
+       the road is the race's own next flag (questRoute.js raceRoutePoint) */
+    way: 'giver',
     desc: 'Beat Lil Bro round the town square: touch all 4 corner flags and get back first.',
     check: function (rpg) { return questProgress(rpg, 'race_1') >= 1; },
     reward: { gold: 50, xp: 0 },
@@ -7200,11 +7211,22 @@ export const QUEST_CHAINS = {
      v2.3.3519: beast_1 and beast_2 are steps of the TOUR now, offered with
      the rest of the town once the Mayor's first quest is in, and beast_3
      waits for the tour's finale, tut_2 -- the tour's header, above farm_1. */
+  /* ═══ v2.3.3522: EVERY STEP HAS A WAY ═══
+     The owner, playtesting: "I tapped track quest in quest menu but no golden
+     stars were in minimap (I had two active quests - one from beast master
+     and the other from mayor bro)."  None of this line, nor mayor_1..3
+     below, led anywhere until handed in.  `way` (a quest's, or a step's) is
+     where the Wheel's gold road and the minimap's star lead
+     (game/questWays.js): 'door:<plot>' a building's door, 'monsters' where
+     the nearest land's monsters begin, 'visit' a building not yet visited.
+     server/test/quest-route.test.mjs holds every live quest to having one at
+     every step but a few done anywhere (life_1's fire and cooking). */
   beast_1: {
     id: 'beast_1', npc: 'Beastmaster Bro', title: 'Box Traps',
     /* v2.3.3519: a step of the tour now, offered with the rest of the town
        (`after`), and the Woodworker's bench is right beside him (`opens`) */
     after: 'tut_1', tour: true, opens: 'woodworker',
+    way: 'door:woodworker',   /* v2.3.3522: the traps are made at the Woodworker */
     desc: 'Make 3 box traps at the Woodworker.',
     check: function (rpg) { return ((rpg._questKills && rpg._questKills.beast_1) || 0) >= 3; },
     need: { progress: true, n: 3 },
@@ -7234,13 +7256,14 @@ export const QUEST_CHAINS = {
        applied to every quest until v2.3.3519) */
     stepsRedo: { upTo: 2, until: 4 },
     steps: [
-      { label: 'Carry a box trap (the Woodworker makes them)',
+      /* v2.3.3522: each step's `way` (the note above beast_1) */
+      { label: 'Carry a box trap (the Woodworker makes them)', way: 'door:woodworker',
         done: function (inv) { return (Number(inv.trap_box) || 0) > 0; } },
-      { label: 'Out in the lands, target a monster and tap TRAP',
+      { label: 'Out in the lands, target a monster and tap TRAP', way: 'monsters',
         done: function (inv, S) { return !!(S && S._trap && S._trap.mark) || ((S && S.rpg && S.rpg._questKills && S.rpg._questKills.beast_2) || 0) > 0; } },
-      { label: 'Kill it within 15 seconds: the trap springs',
+      { label: 'Kill it within 15 seconds: the trap springs', way: 'monsters',
         done: function (inv, S) { return ((S && S.rpg && S.rpg._questKills && S.rpg._questKills.beast_2) || 0) > 0; } },
-      { label: 'Spring 3 traps in all',
+      { label: 'Spring 3 traps in all', way: 'monsters',
         done: function (inv, S) { return ((S && S.rpg && S.rpg._questKills && S.rpg._questKills.beast_2) || 0) >= 3; } },
       { label: 'Back to Beastmaster Bro by the Woodworker',
         done: function () { return false; } },
@@ -7262,6 +7285,7 @@ export const QUEST_CHAINS = {
        its finale) */
     after: 'tut_2',
     anyZone: true,
+    way: 'monsters',   /* v2.3.3522: traps spring on monsters */
     desc: 'Reach Trapping level 6.',
     check: function (rpg) {
       var s = rpg.lifeSkills && rpg.lifeSkills.trapping;
@@ -7280,6 +7304,7 @@ export const QUEST_CHAINS = {
   beast_4: {
     id: 'beast_4', npc: 'Beastmaster Bro', title: 'Your Own Beast',
     anyZone: true,
+    way: 'monsters',   /* v2.3.3522: a pet is a monster trapped */
     desc: 'Catch a pet.',
     check: function (rpg) { return ((rpg._questKills && rpg._questKills.beast_4) || 0) >= 1; },
     reward: { gold: 500, xp: 0, item: '15 Box Traps' },
@@ -7299,6 +7324,7 @@ export const QUEST_CHAINS = {
     npc: 'Mayor Bro',
     title: 'Welcome Home',
     desc: 'Visit 3 buildings in town.',
+    way: 'visit',   /* v2.3.3522: the nearest building not yet visited (beast_1's note) */
     /* v2.3.1972: this quest needs a DOOR, and town has had none since
        TOWN_PROPS_ENABLED went false (worldProps.js, v2.3.1813).  Declared as
        data so questReachable can hide it while that is true and un-hide it the
@@ -7332,6 +7358,7 @@ export const QUEST_CHAINS = {
   mayor_2: {
     id: 'mayor_2',
     anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
+    way: 'monsters',   /* v2.3.3522: where the nearest land's monsters begin (beast_1's note) */
     npc: 'Mayor Bro',
     title: 'Into the Wild',
     desc: 'Kill 5 monsters in any zone.',
@@ -7356,6 +7383,9 @@ export const QUEST_CHAINS = {
     npc: 'Mayor Bro',
     title: 'Dungeon Delver',
     desc: 'Clear any dungeon.',
+    /* v2.3.3522: the Land Office's door -- your farm, and its Dungeon Workshop,
+       are behind it (beast_1's note) */
+    way: 'door:landoffice',
     /* v2.3.1972: there is no way into a dungeon.  The depth-tier entrance has
        been hard off since v2.3.54 (`if (false && tile === 10)` in
        zoneTransitions.js — "the depth-tier dungeons aren't ready for play
