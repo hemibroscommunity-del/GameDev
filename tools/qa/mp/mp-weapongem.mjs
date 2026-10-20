@@ -21,6 +21,10 @@
  *      burns them (its own copy's flame), the phone hears its burn ticks;
  *   7. Take out on the Set gems tab gives it back (the weapon bare, two flame
  *      gems again), and setting it again pays no XP; no page errors.
+ *      v2.3.3516: the XP is for gems a player MADE (weapongem.js "THE XP, ONCE
+ *      A GEM"), and the kit's two flame gems count as made -- two owed: the
+ *      first set pays 400 (one owed), Take out owes nothing more (still one),
+ *      and setting it again pays the second made gem's 400 (none owed).
  * Pictures: tools/qa/mp/out/weapongem-*.png.
  */
 import * as H from './harness.mjs';
@@ -58,7 +62,9 @@ const state = (P) => H.readState(P, (S) => {
   const en = (R.lifeSkills && R.lifeSkills.enchanting) || {};
   /* v2.3.3516: gems are bag items (`gem_<e>`), and any an old pouch still holds */
   const inv = R.inventory || {};
-  return { weapon: w, flame: (inv.gem_flame || 0) + (g.polished_flame || 0), frost: (inv.gem_frost || 0) + (g.polished_frost || 0), ench: (en.xp || 0) + 1e6 * ((en.level || 1) - 1) };
+  /* v2.3.3516: the flame gems the player made whose 400 XP is still to come */
+  const owed = ((R.lifeSkills && R.lifeSkills.gemsUnpaid) || {}).flame || 0;
+  return { weapon: w, flame: (inv.gem_flame || 0) + (g.polished_flame || 0), frost: (inv.gem_frost || 0) + (g.polished_frost || 0), ench: (en.xp || 0) + 1e6 * ((en.level || 1) - 1), owed };
 });
 const lastLog = (P) => P.page.evaluate(() => { const l = window.__btWeaponGemLog || []; return l.length ? l[l.length - 1] : null; });
 const server = async (wsPort, id) => {
@@ -158,9 +164,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     await H.equipWeapon(P, 'greatsword', 'weapon', 'melee');
     await H.devOp(wsPort, 'kit', me, { what: 'gems', count: 2 });
-    const s1 = await until(P, (s) => s.flame === 2 && s.frost === 2 && !!s.weapon && s.weapon.type === 'greatsword' && !s.weapon.e1, 40);
-    rec.ok('a plain greatsword in hand, with two polished gems of each element (the worker\'s count, on the screen)',
-      !!s1.weapon && s1.weapon.type === 'greatsword' && !s1.weapon.e1 && s1.flame === 2, s1);
+    const s1 = await until(P, (s) => s.flame === 2 && s.frost === 2 && s.owed === 2 && !!s.weapon && s.weapon.type === 'greatsword' && !s.weapon.e1, 40);
+    rec.ok('a plain greatsword in hand, with two polished gems of each element (the worker\'s count, on the screen), each flame gem made by the kit and owed its XP (v2.3.3516)',
+      !!s1.weapon && s1.weapon.type === 'greatsword' && !s1.weapon.e1 && s1.flame === 2 && s1.owed === 2, s1);
     if (!s1.weapon) return;
 
     /* ── 2. the Set gems tab's flame button ── */
@@ -267,14 +273,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(800);
       const left = await P.page.$('[data-weapon-gem-out="weapon"]');
       await shot(P, 'taken-out');
-      rec.ok(`Take out gives it back: "${s4.weapon && s4.weapon.name}" is bare, two flame gems, and no Take out button left`,
-        !!s4.weapon && !s4.weapon.e1 && s4.weapon.name === 'Copper Great Sword' && s4.flame === 2 && !left, { s4, left: !!left });
+      /* v2.3.3516: ...and taking it out owes no XP: one made gem's 400 is still
+         to come, as before the take-out (the set spent the other) */
+      rec.ok(`Take out gives it back: "${s4.weapon && s4.weapon.name}" is bare, two flame gems, no Take out button left, and no XP owed for it (${s4.owed} of the kit's two made gems still to pay)`,
+        !!s4.weapon && !s4.weapon.e1 && s4.weapon.name === 'Copper Great Sword' && s4.flame === 2 && !left && s4.owed === 1, { s4, left: !!left });
       const x1 = (await state(P)).ench;
       await P.page.waitForSelector('[data-weapon-gem="weapon:flame"]', { timeout: 6000 }).catch(() => {});
       await P.page.click('[data-weapon-gem="weapon:flame"]', { force: true }).catch(() => {});
-      const s5 = await until(P, (s) => s.weapon && s.weapon.e1 === 'flame' && s.flame === 1);
+      const s5 = await until(P, (s) => s.weapon && s.weapon.e1 === 'flame' && s.flame === 1 && s.owed === 0);
       const log5 = await lastLog(P);
-      rec.ok('setting that gem again works, and pays no XP (it paid when it first went in)', !!s5.weapon && s5.weapon.e1 === 'flame' && !!log5 && log5.ok && log5.xp === 0 && s5.ench === x1, { s5, log5, xp: s5.ench - x1 });
+      /* v2.3.3516: the second gem the kit MADE pays its own 400, once -- the
+         XP follows gems made, never gems set (two made, two paid, none owed) */
+      rec.ok("setting a gem again pays only for a gem you made that has not paid yet: the second of the kit's two (400), and none is owed after",
+        !!s5.weapon && s5.weapon.e1 === 'flame' && !!log5 && log5.ok && log5.xp === 400 && s5.ench - x1 === 400 && s5.owed === 0, { s5, log5, xp: s5.ench - x1 });
     }
     await closePanel();
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 5));
