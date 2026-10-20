@@ -8032,3 +8032,33 @@ shot then goes -- never leaves it to a line nothing asked about.
 **Receipt:** `mp-groundline` step 5, which fails on the build before (75 damage,
 the bow's line on nothing) and passes with it (0 damage, the bow's line on the
 bank, its arrows in it).
+
+## 242. "Count what came back, so it pays once" (v2.3.3516)
+
+**The plausible move.** A reward meant to be paid once per thing -- 400
+Enchanting XP per gem set -- is guarded by counting, per player, the things
+that came BACK to them (a take-out, a salvage): setting one of those pays
+nothing.  v2.3.3513 did exactly this (`lifeSkills.gemsBack`), and it held
+while gems lived in a pouch nothing could move between players.
+
+**Why it is wrong.** The moment the thing can change hands (v2.3.3516 put gems
+in the bag: tradeable, sellable, mailable), a per-player came-back count says
+nothing about a thing that came back to SOMEONE ELSE and was handed over.  Two
+players pass one gem -- or one gemmed sword -- back and forth: each take-out
+marks the taker, each set by the other pays 400 again, for 25-44 gold a round,
+about 60 times the honest rate, on a skill on the leaderboard.  Marking the
+RECEIVER instead needs a hook on every road into a bag (trades, mail, the
+auction house, Diego, Ace, pickups, death piles), and one missed road is the
+exploit back.
+
+**The rule.** Count what cannot change hands: what a player MADE.  Each gem a
+player makes (a combine, a Rare Gem's cut, the old cut) is owed one set's XP
+(`lifeSkills.gemsUnpaid`, weapongem.js `_gemMade`/`_gemSetXp`); a set pays
+while one is owed; anything bought, traded, won or taken out sets the same and
+pays nothing.  Deny by default: a new road into the bag owes nothing unless it
+MAKES a gem.  The same shape fits any once-per-item reward on an item that
+trades.
+
+**Receipt:** `server/test/weapon-gem.test.mjs` §9b (one gem passed between two
+players: 400, then 0, then 0; a gem the second player made, 400), and
+`shard-crack` §6 (a combined gem is owed its XP).

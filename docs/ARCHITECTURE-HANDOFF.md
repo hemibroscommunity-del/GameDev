@@ -434,6 +434,12 @@ v2.3.3513: DONE -- the weapon gem slot is server-settled (weapongem.js
 `weapon_gem`, caps.weapongem), the fight reads the worker's copy of the weapon
 instead of the claim, and the monsters' hold rule ships with it
 (docs/specs/weapon-gems.md).  Backlog A has no slot left on the phone.
+v2.3.3516: the plan's Phase 2 -- gems are BAG items (`gem_raw_<e>`,
+`gem_<e>`; every spend and payment through server/src/gems.js), shards are
+cracked and raw gems combined on the worker (shardcrack.js, caps.shardcrack),
+and the once-a-gem Enchanting XP counts the gems a player MADE
+(`lifeSkills.gemsUnpaid`), since a gem that trades breaks a came-back count
+(TRAPS §242; docs/specs/shard-crack.md).
 
 ### B. Spectator stake board
 Old item A's residue: sponsorship stakes are private — spectators see

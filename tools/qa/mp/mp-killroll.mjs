@@ -145,14 +145,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`a roll of 640, the Frost Shard's numbers: "${r2 && r2.text}" in gold (${p2 && p2.drawnColor}), held ${p2 && p2.hold} s of ${p2 && p2.ttl}, and the shard on the ground`,
       !!r2 && r2.rh === 'shard' && r2.text === '640 Frost Shard' && r2.over === 'monster' && !!p2 && p2.color === HIT && p2.drawnColor === HIT && p2.ttl > 3 && p2.hold > 1.5 && loot1 > loot0, { r2, p2, loot0, loot1 });
 
-    /* the raw gem's: into the bag */
-    const g0 = await H.readState(P, (S) => (S.rpg && S.rpg.lifeSkills && S.rpg.lifeSkills.gems && S.rpg.lifeSkills.gems.raw_frost) || 0);
+    /* v2.3.3516: no raw gem off a kill -- shards are cracked for them at the
+       Gem Works (server/src/shardcrack.js; the gem plan's decision 1) -- so
+       300, the raw gem's number before, is the Frost Shard's (112-1,111) and
+       no raw gem lands in the bag */
+    const g0 = await H.readState(P, (S) => ((S.rpg && S.rpg.inventory) || {}).gem_raw_frost || 0);
     ids[3] = await nextNear();
     await H.devOp(wsPort, 'killroll', me, { next: 300, kill: ids[3] });
     const r3 = await waitRoll(P, ids[3], 300);
-    const g1 = await H.waitFor(P, (S) => (S.rpg && S.rpg.lifeSkills && S.rpg.lifeSkills.gems && S.rpg.lifeSkills.gems.raw_frost) || 0, (v) => v > g0, { timeout: 5000, label: 'the raw gem in the bag' }).catch(() => null);
-    rec.ok(`a roll of 300, the raw gem's: "${r3 && r3.text}", and the gem in the bag (${g0} -> ${g1})`,
-      !!r3 && r3.rh === 'rawgem' && r3.text === '300 Raw Frost Gem' && g1 === g0 + 1, { r3, g0, g1 });
+    await P.page.waitForTimeout(600);
+    const g1 = await H.readState(P, (S) => ((S.rpg && S.rpg.inventory) || {}).gem_raw_frost || 0);
+    rec.ok(`a roll of 300 is the Frost Shard's now ("${r3 && r3.text}"): no raw gem off a kill, none in the bag (${g0} -> ${g1})`,
+      !!r3 && r3.rh === 'shard' && r3.text === '300 Frost Shard' && g1 === g0, { r3, g0, g1 });
 
     /* the nugget's one number */
     const nId = (await nextNear()) || ids[0];
