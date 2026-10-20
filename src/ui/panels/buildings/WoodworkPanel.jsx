@@ -188,10 +188,10 @@ export function WoodworkPanel(props) {
           wt = _ref142[1];
         var wwLvl = ((_rpgState$lifeSkills31 = rpgState.lifeSkills) === null || _rpgState$lifeSkills31 === void 0 || (_rpgState$lifeSkills31 = _rpgState$lifeSkills31.woodworking) === null || _rpgState$lifeSkills31 === void 0 ? void 0 : _rpgState$lifeSkills31.level) || 1;
         var canCraftSkill = wwLvl >= wt.minLvl;
-        /* ═══ v2.3.3500: FOUR HARDENED WOOD, AND THE GATE WEARING IT HAS ═══
+        /* ═══ v2.3.3500: FIVE HARDENED WOOD, AND THE GATE WEARING IT HAS ═══
            Against a worker with the tour's gear rules (caps.tourgear,
            server/src/gear.js): a wood with a hardened wood makes its bow or
-           staff from four of it (the tier's `hardened`, `hardenedCost`), and
+           staff from five of it (the tier's `hardened`, `hardenedCost`), and
            the bench asks what WEARING the piece asks (getEquipReqLabel, the
            equip gate's own badge) -- pine and softwood nothing.  An older
            worker takes the logs and asks tierIndex x 5, as before. */

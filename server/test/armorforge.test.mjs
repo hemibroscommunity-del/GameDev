@@ -3,12 +3,14 @@
  * Asked "Should smelted bars make armour?", the owner said "Yes".
  *
  *   1. caps.armorforge is advertised, under a name the liveflags route takes.
- *   2. A copper torso: exactly four copper bars taken (v2.3.3141: four a
- *      piece, the owner's "chest, legs, and sword each take 4 bars"), the piece minted into
+ *   2. A copper torso: exactly five copper bars taken (v2.3.3141: four a
+ *      piece, the owner's "chest, legs, and sword each take 4 bars"; v2.3.3500:
+ *      five, as a bow or a staff takes five hardened wood -- "It should mirror
+ *      the cost of making armor"), the piece minted into
  *      the ledger (src 'forge') with its id, metal, slot, step and a rolled
  *      grade -- and NO gearBase or type, which would move it off the armor
  *      ladder; the Smithing XP paid; forge_armor_result + player_state.
- *   3. Copper greaves: four bars too, the legs slot.
+ *   3. Copper greaves: five bars too, the legs slot.
  *   4. Refusals leave everything as it was: a Smithing level short, bars
  *      short, a junk / inherited / unknown recipe, a dead player.
  *   5. Iron at Smithing 5, black steel at 10: their own bars, their own step.
@@ -87,7 +89,7 @@ const after = (level, xp) => { const t = { lifeSkills: { s: { level, xp: 0 } } }
   const want = after(1, ARMOR_FORGE.RECIPES.copper_torso.xp);
   const r = await forge(ws, { recipe: 'copper_torso' });
   const p = r && r.payload && r.payload.piece;
-  check('a copper torso takes exactly four copper bars', ps().inventory.bar_copper === 3, ps().inventory);
+  check('a copper torso takes exactly five copper bars (v2.3.3500)', ARMOR_FORGE.RECIPES.copper_torso.bars === 5 && ps().inventory.bar_copper === 2, ps().inventory);
   check('...and makes the piece the game already knows: Copper Torso, copper, the chest, step 1',
     !!p && p.name === 'Copper Torso' && p.mat === 'copper' && p.slot === 'armor' && p.tierMult === 1, p);
   check('...with a grade rolled as every piece\'s is', !!p && ['normal', 'rare', 'elite', 'godly'].indexOf(p.quality) >= 0, p && p.quality);
@@ -104,10 +106,10 @@ const after = (level, xp) => { const t = { lifeSkills: { s: { level, xp: 0 } } }
 // ── 3. Copper greaves ──
 {
   setSmith(1);
-  ps().inventory.bar_copper = 4;
+  ps().inventory.bar_copper = 5;
   const r = await forge(ws, { recipe: 'copper_greaves' });
   const p = r && r.payload && r.payload.piece;
-  check('copper greaves take four bars, for the legs slot', !(ps().inventory.bar_copper > 0) && !!p && p.slot === 'legsArmor' && p.name === 'Copper Greaves'
+  check('copper greaves take five bars, for the legs slot', !(ps().inventory.bar_copper > 0) && !!p && p.slot === 'legsArmor' && p.name === 'Copper Greaves'
     && rows().some((x) => x.id === p.gid && x.slot === 'legsArmor'), { inv: ps().inventory, p });
 }
 
@@ -116,12 +118,12 @@ const after = (level, xp) => { const t = { lifeSkills: { s: { level, xp: 0 } } }
   const snap = () => JSON.stringify({ inv: ps().inventory, smith: smith(), rows: rows().length });
   setSmith(4);
   ps().inventory.bar_iron = 9;
-  ps().inventory.bar_copper = 3;
+  ps().inventory.bar_copper = 4;
   let s0 = snap();
   let r = await forge(ws, { recipe: 'iron_torso' });
   check('iron at Smithing 4: refused, nothing taken', r === null && snap() === s0);
   r = await forge(ws, { recipe: 'copper_torso' });
-  check('three copper bars for a torso: refused, nothing taken', r === null && snap() === s0);
+  check('four copper bars (the old price) for a torso: refused, nothing taken', r === null && snap() === s0);
   const junk = ['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'mythril_torso', '', 5, null, { recipe: 'copper_torso' }];
   let bad = 0;
   for (const k of junk) { if (await forge(ws, { recipe: k })) bad++; }
@@ -139,14 +141,14 @@ const after = (level, xp) => { const t = { lifeSkills: { s: { level, xp: 0 } } }
 // ── 5. Iron and black steel ──
 {
   setSmith(5);
-  ps().inventory.bar_iron = 4;
+  ps().inventory.bar_iron = 5;
   let r = await forge(ws, { recipe: 'iron_torso' });
   let p = r && r.payload && r.payload.piece;
-  check('iron at Smithing 5: an Iron Torso, step 2, from four iron bars', !!p && p.name === 'Iron Torso' && p.mat === 'iron' && p.tierMult === 2 && !(ps().inventory.bar_iron > 0), p);
+  check('iron at Smithing 5: an Iron Torso, step 2, from five iron bars', !!p && p.name === 'Iron Torso' && p.mat === 'iron' && p.tierMult === 2 && !(ps().inventory.bar_iron > 0), p);
   setSmith(9);
-  ps().inventory.bar_black_steel = 5;
+  ps().inventory.bar_black_steel = 6;
   r = await forge(ws, { recipe: 'blacksteel_greaves' });
-  check('black steel at Smithing 9: refused', r === null && ps().inventory.bar_black_steel === 5);
+  check('black steel at Smithing 9: refused', r === null && ps().inventory.bar_black_steel === 6);
   setSmith(10);
   r = await forge(ws, { recipe: 'blacksteel_greaves' });
   p = r && r.payload && r.payload.piece;

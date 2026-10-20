@@ -13442,11 +13442,10 @@ export var BroTown = function BroTown(_ref0) {
     }).filter(Boolean);
     if (activeQuests.length === 0) {
       /* ═══ v2.3.3500: BETWEEN TWO STEPS OF THE TOUR, WHO IS NEXT ═══
-         The tour hands you from giver to giver (gameSystems.js, the header
-         above farm_1), so after a hand-in there is no quest in hand and this
-         card stood empty -- the moment a reviewer most needs a line.  It says
-         who gives the next step and where he stands; the gold road leads to
-         him (questRoute.js tourOffer).  Takes no taps. */
+         After a hand-in there is no quest in hand and this card stood empty --
+         the moment a reviewer most needs a line.  It says who gives the step
+         the tour suggests next and where he stands; the gold road leads to him
+         (questRoute.js tourOffer).  Takes no taps. */
       var _to = null;
       try { _to = tourOffer((stateRef.current && stateRef.current.rpg) || rpgState, stateRef.current); } catch (e) { _to = null; }
       if (!_to) return null;
@@ -13466,7 +13465,14 @@ export var BroTown = function BroTown(_ref0) {
       }), /*#__PURE__*/React.createElement("span", { style: { flex: 1, minWidth: 0 } }, 'Next: ' + _to.quest.title)),
       /*#__PURE__*/React.createElement("div", {
         style: { fontSize: 11, lineHeight: 1.3, marginTop: 1, color: 'rgba(255,255,255,.72)' }
-      }, 'Talk to ' + _to.npc + (TOUR_MEET[_to.npc] ? ' ' + TOUR_MEET[_to.npc] : '')));
+      }, 'Talk to ' + _to.npc + (TOUR_MEET[_to.npc] ? ' ' + TOUR_MEET[_to.npc] : '')),
+      /* v2.3.3500: the whole town opens after the Mayor's first quest, so this
+         is a suggestion -- say how many others have work too, and where they
+         show (the gold "!" over a head, on the minimap and the world map) */
+      _to.more > 0 && /*#__PURE__*/React.createElement("div", {
+        'data-quest-hud-more': _to.more,
+        style: { fontSize: 11, lineHeight: 1.3, marginTop: 1, color: 'rgba(216,169,77,.85)' }
+      }, '+' + _to.more + ' more: look for a gold ! on your map'));
     }
     var q = activeQuests[0];
     /* v2.3.1914: live rpg, not the snapshot — one answer everywhere. */

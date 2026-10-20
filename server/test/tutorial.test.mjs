@@ -25,7 +25,7 @@
  *   - the chain unlocks step by step and pays each step exactly once
  */
 import { GameRoom } from '../src/index.js';
-import { QUEST_REWARDS, BLACKSMITH_TIERS, WOODWORKING_TIERS, ZONES } from '../src/data.js';
+import { QUEST_REWARDS, QUEST_TOUR, BLACKSMITH_TIERS, WOODWORKING_TIERS, ZONES } from '../src/data.js';   /* v2.3.3500: + the tour's suggested order */
 
 /* Can each named zone actually yield the remnant its step asks for?  Resolved
    from the LIVE spawn table + the same variant map the drop path uses, so a
@@ -104,15 +104,15 @@ const sess = { id: 'bp_t' };
 {
   const ids = ['tut_1', 'tut_2', 'tut_3', 'tut_4'];
   for (const id of ids) check(`${id} exists server-side`, !!QUEST_REWARDS[id], id);
-  /* v2.3.3500: THE TOUR (data.js tut_1's header) -- tut_1 hands off to the
-     townsfolk and comes back to the Mayor at tut_2, the finale.  Walked by
-     `next`, every step of it checked by the worker. */
-  const TOUR = ['tut_1', 'farm_1', 'smith_1', 'smith_2', 'wood_1', 'wood_2', 'fish_1',
-    'farm_2', 'race_1', 'beast_1', 'beast_2', 'tut_2', 'tut_3', 'tut_4'];
+  /* v2.3.3500: THE TOUR (data.js tut_1's header) -- tut_1 alone, then the
+     whole town at once, and back to the Mayor at tut_2, the finale (the tour
+     suite holds its order).  The Mayor's own line from the finale on is
+     walked by `next`, every step of the tour checked by the worker. */
+  const TOUR = QUEST_TOUR.concat(['tut_3', 'tut_4']);
   const walked = [];
-  for (let q = 'tut_1'; q && walked.length < 40; q = QUEST_REWARDS[q] && QUEST_REWARDS[q].next) walked.push(q);
-  check('the chain links tut_1 → the tour → tut_2 → tut_3 → tut_4 → end',
-    walked.join() === TOUR.join(), walked);
+  for (let q = 'tut_2'; q && walked.length < 40; q = QUEST_REWARDS[q] && QUEST_REWARDS[q].next) walked.push(q);
+  check('the Mayor\'s line links tut_2 → tut_3 → tut_4 → end, the tour before it (QUEST_TOUR, tut_1 first)',
+    walked.join() === 'tut_2,tut_3,tut_4' && QUEST_TOUR[0] === 'tut_1' && QUEST_TOUR[QUEST_TOUR.length - 1] === 'tut_2', walked);
   check('every step of the tour is server-verified (has an objective)',
     TOUR.every((id) => !!QUEST_REWARDS[id].objective), TOUR.filter((id) => !QUEST_REWARDS[id].objective));
   check('every tutorial step is server-verified (has an objective)',
@@ -542,11 +542,12 @@ const sess = { id: 'bp_t' };
     { st: ps._quests.tut_1, coins: ps.coins, inv: ps.inventory });
   check('...and puts no XP into any skill', _skSum() === _skBefore1, { before: _skBefore1, after: _skSum() });
 
-  /* v2.3.3500: tut_2 is the tour's finale -- the Mayor's next quest, after
-     the townsfolk's (beast_2 hands on to it) -- and it pays XP */
+  /* v2.3.3500: tut_2 is the tour's finale -- the Mayor's next quest, once
+     the whole town is done (its `after` lists every giver's last step) --
+     and it pays XP */
   check('the Mayor\'s second quest still pays XP', QUEST_REWARDS.tut_2.xp > 0, QUEST_REWARDS.tut_2.xp);
   ps.coins = 0;
-  ps._quests.beast_2 = 'turnedIn';
+  for (const q of QUEST_REWARDS.tut_2.after) ps._quests[q] = 'turnedIn';
   ps.inventory = { snowman: 4 };
   await room._handleQuestAccept(sess, { questId: 'tut_2' });
 

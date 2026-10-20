@@ -46,10 +46,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }, msg);
 
   /* Earn the torso the way the game pays it out.  v2.3.3500: FORGED, from
-     four copper bars at the Blacksmith's Armor tab (armorforge.js) -- the
+     five copper bars at the Blacksmith's Armor tab (armorforge.js) -- the
      tour's ore errand pays the bars; life_2, which paid the torso for five
      ore, is retired. */
-  await H.grant(wsPort, myId, 'item', { invKey: 'bar_copper', count: 4 });
+  await H.grant(wsPort, myId, 'item', { invKey: 'bar_copper', count: 5 });
   await P.page.waitForTimeout(1000);
   await send({ type: 'forge_armor', payload: { recipe: 'copper_torso' } });
   await H.waitFor(P, (S) => (S.rpg.armorStash || []).some((a) => a && a.name === 'Copper Torso'),

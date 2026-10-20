@@ -46,7 +46,7 @@
  * _applyDamage rather than inventing a second immunity mechanism.
  */
 import { QUEST_ZONE_GATE } from './movement.js';
-import { AMULET_GEMS, QUEST_FIRST } from './data.js'; /* v2.3.3187: the kit's polished gems; v2.3.3500: where the tour starts */
+import { AMULET_GEMS, QUEST_TOUR } from './data.js'; /* v2.3.3187: the kit's polished gems; v2.3.3500: the tour's steps */
 import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills a level can be set on */
 import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills whose harvests and cooks are hits */
 import { PROG3 } from './prog3.js'; /* v2.3.3313: the combat skills a level can be set on */
@@ -304,8 +304,9 @@ export const devToolsMethods = {
      "Finish all quests"), `at` offered, and every step after it forgotten,
      its count too -- so the owner can rehearse any step before the exposé
      (the Test panel's "Tour: jump to"), and mp-race can start at Lil Bro.
-     The tour is the `next` chain from the first quest to the Mayor's tut_2
-     (data.js QUEST_REWARDS tut_1's header).  The tools the steps before it
+     The tour's steps are QUEST_TOUR, in its suggested order (data.js; the
+     town opens all at once after tut_1, so "before" is that order's).  The
+     tools the steps before it
      hand over (the pickaxe, the axe, the rod) are given if missing; the
      starting kit is the Test panel's own "kit" button. */
   _devTour(playerId, body) {
@@ -313,11 +314,7 @@ export const devToolsMethods = {
     if (!t) return { ok: false, error: 'player not online' };
     const ps = t.ps;
     const table = this._QUEST_REWARDS_DATA();
-    const tour = [];
-    for (let q = QUEST_FIRST; q && Object.prototype.hasOwnProperty.call(table, q) && tour.length < 40; q = table[q].next) {
-      tour.push(q);
-      if (q === 'tut_2') break;
-    }
+    const tour = QUEST_TOUR.filter((q) => Object.prototype.hasOwnProperty.call(table, q));
     const at = body && typeof body.at === 'string' ? body.at : '';
     const i = tour.indexOf(at);
     if (i < 0) return { ok: false, error: 'not a step of the tour', tour };

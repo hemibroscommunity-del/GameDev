@@ -119,14 +119,18 @@ export const BLACKSMITH_TIERS = {
      bars (armorforge.js) and the tour's first forge needs (smith_2: "you can
      make into your own weapon or armor - your choice").  Mirrors
      server/src/data.js (mirror-audit). */
+  /* v2.3.3500: and FIVE bars a piece, the XP with them (1,000 / 1,500 /
+     2,000) -- as a bow or a staff takes five hardened wood, the owner's "It
+     should mirror the cost of making armor" (server/src/data.js, the five-bar
+     note). */
   copper: {
     minLvl: 1,
     label: 'Copper',
     slots: 1,
     oreName: 'copper',
     bar: 'bar_copper',
-    bars: 4,
-    xp: 800,
+    bars: 5,
+    xp: 1000,
     goldCost: 20,
     tierMult: 1.12,
     statReq: 10,
@@ -139,8 +143,8 @@ export const BLACKSMITH_TIERS = {
     slots: 1,
     oreName: 'iron',
     bar: 'bar_iron',
-    bars: 4,
-    xp: 1200,
+    bars: 5,
+    xp: 1500,
     goldCost: 35,
     tierMult: 1.25,
     statReq: 20,
@@ -159,8 +163,8 @@ export const BLACKSMITH_TIERS = {
     slots: 1,
     oreName: 'black_steel',
     bar: 'bar_black_steel',
-    bars: 4,
-    xp: 1600,
+    bars: 5,
+    xp: 2000,
     goldCost: 55,
     tierMult: 1.40,
     statReq: 30,
@@ -589,8 +593,9 @@ export const WOODWORKING_TIERS = {
      including `wood: 'pine_log'`, which is the log the first tree drops.  A
      one-sided edit here would offer a craft the worker refuses. */
   /* ═══ v2.3.3500: A BOW OR A STAFF IS MADE OF HARDENED WOOD ═══
-     Four of the tier's hardened wood (`hardened`, `hardenedCost`), a sword's
-     XP for the same work, each at the level its hardened wood is made at
+     Five of the tier's hardened wood (`hardened`, `hardenedCost`; four until
+     the owner's "Bows/staffs should require 5 hard wood ... It should mirror
+     the cost of making armor"), a sword's XP for the same work, each at the level its hardened wood is made at
      (Woodworking 1 / 5 / 10 / 15 / 20) -- the owner's "he gives you 5
      hardened wood, and you can make your own bow or staff", and "the gate to
      create those items is lvl 5 woodworking" for softwood.  Mirrors
@@ -603,8 +608,8 @@ export const WOODWORKING_TIERS = {
     wood: 'pine_log',
     woodCost: 3,
     hardened: 'hardened_pine',
-    hardenedCost: 4,
-    xp: 800,
+    hardenedCost: 5,
+    xp: 1000,
     goldCost: 8,
     tierMult: 1.00,
     statReq: 0,
@@ -618,8 +623,8 @@ export const WOODWORKING_TIERS = {
     wood: 'softwood',
     woodCost: 3,
     hardened: 'hardened_softwood',
-    hardenedCost: 4,
-    xp: 1200,
+    hardenedCost: 5,
+    xp: 1500,
     goldCost: 20,
     tierMult: 1.12,
     statReq: 10,
@@ -633,8 +638,8 @@ export const WOODWORKING_TIERS = {
     wood: 'hardwood',
     woodCost: 4,
     hardened: 'hardened_hardwood',
-    hardenedCost: 4,
-    xp: 1600,
+    hardenedCost: 5,
+    xp: 2000,
     goldCost: 35,
     tierMult: 1.25,
     statReq: 20,
@@ -650,8 +655,8 @@ export const WOODWORKING_TIERS = {
     wood: 'cedar_wood',
     woodCost: 5,
     hardened: 'hardened_cedar',
-    hardenedCost: 4,
-    xp: 2000,
+    hardenedCost: 5,
+    xp: 2500,
     goldCost: 55,
     tierMult: 1.40,
     statReq: 30,
@@ -665,8 +670,8 @@ export const WOODWORKING_TIERS = {
     wood: 'maple_wood',
     woodCost: 5,
     hardened: 'hardened_maple',
-    hardenedCost: 4,
-    xp: 2400,
+    hardenedCost: 5,
+    xp: 3000,
     goldCost: 85,
     tierMult: 1.56,
     statReq: 40,
@@ -6639,8 +6644,10 @@ export const QUEST_CHAINS = {
        no "Choose where to train it", no claim window.  Mirrors
        server/src/data.js tut_1 (mirror-audit §5). */
     reward: { gold: 25, xp: 0 },
-    /* v2.3.3500: he hands you on, to Farmer Bro (the tour) */
-    next: 'farm_1',
+    /* v2.3.3500: no `next` -- once this is handed in the WHOLE TOWN offers
+       its quests at once (each giver's first is `after: 'tut_1'`: the tour's
+       header above farm_1), and his own tut_2 waits for them all */
+    next: null,
     gives: [
       /* great-sword, not sword: weaponType 'sword' at wood tier is the
          bamboo stick, and the server now grants a greatsword (see
@@ -6711,7 +6718,8 @@ export const QUEST_CHAINS = {
       complete: "You're back! And mostly the same shape you left in.\n\n"
         + "One thing, since you're headed back out. The blue ones swell up right before they go. When one does that, walk away. It bursts.\n\n"
         + "...Four remains' worth, though. You'd have met one already.\n\n"
-        + "Right. Forget I said it. Here, a bow and a staff, on the town. Now go see Farmer Bro at the Feed & Seed. A slime blew up his carrots.",
+        + "Right. Forget I said it. Here, a bow and a staff, on the town.\n\n"
+        + "Now the whole town wants a piece of you. Anybody with a gold ! over his head has a job, and you'll see them on your map. Help them all, then come back. I've got a snowman problem, and I'm not discussing it in public.",
     },
   },
   tut_2: {
@@ -6725,14 +6733,14 @@ export const QUEST_CHAINS = {
     check: function (rpg) { return ((rpg.inventory || {}).snowman || 0) >= 4; },
     need: { key: 'snowman', n: 4 },   /* v2.3.3481: the count shown beside the errand -- see tut_1 */
     reward: { gold: 200, xp: 50 },
-    /* v2.3.3500: the tour comes back to him here: beast_2 (the Beastmaster's)
-       hands on to this quest, so his line waits for it (getNpcQuest `after`;
-       the worker's _questBarred the same) */
-    after: 'beast_2',
+    /* v2.3.3500: the tour comes back to him here once the WHOLE TOWN is done:
+       `after` lists every giver's last step (getNpcQuest, questAfterMet; the
+       worker's _questBarred the same) */
+    after: ['farm_2', 'smith_2', 'wood_2', 'fish_1', 'race_1', 'beast_2'],
     tour: true,
     next: 'tut_3',
     dialogue: {
-      start: "There you are! Bad news: the snowmen up on Frost Ridge learned to burrow. They dive under the snow and pop up right under you.\n\n"
+      start: "The whole town's singing your name. Badly, but they mean it. Now, bad news: the snowmen up on Frost Ridge learned to burrow. They dive under the snow and pop up right under you.\n\n"
         + "Bring me 4 Snowman Remains before they tunnel all the way into my office. Watch the ground, and mind the snowballs.",
       progress: "4 Snowman Remains, from Frost Ridge. If the ground moves, you move first.",
       complete: "You did it! Farmer Bro has carrots, Blacksmith Bro has a back brace and Lil Bro has humility. BroTown owes you.\n\n"
@@ -6916,25 +6924,35 @@ export const QUEST_CHAINS = {
     },
   },
 
-  /* ═══ v2.3.3500: THE TOUR -- THE MAYOR HANDS YOU ROUND THE TOWN ═══
+  /* ═══ v2.3.3500: THE TOUR -- THE MAYOR FIRST, THEN THE WHOLE TOWN ═══
      The owner, a week before an exposé where reviewers give each game 20-30
      minutes: "my quest line is almost exclusively going to 4 zones to kill
      monsters and bring their remains back to mayor bro ... Mayor bro would
-     hand off the quest to the next person etc."  One line, handed from giver
-     to giver, each step a different part of the game:
-       tut_1 Mayor Bro (slimes) -> farm_1 Farmer Bro (plant) -> smith_1 /
-       smith_2 Blacksmith Bro (ore for bars, then forge) -> wood_1 / wood_2
-       Woodworker Bro (logs for hardened pine, then a bow or staff and the
-       softwood swap) -> fish_1 Diego (cook fish) -> farm_2 Farmer Bro (Zoom
-       Juice) -> race_1 Lil Bro (the race) -> beast_1 / beast_2 Beastmaster
-       Bro (traps) -> tut_2 Mayor Bro (the burrowing snowmen)
-     The server's QUEST_REWARDS (server/src/data.js) is the authority and
-     says the same, `after` included (mirror-audit §5).  Here:
-       `after`  STOP a giver's line until that quest is handed in
-                (getNpcQuest) -- so only the tour's next step is ever offered;
-       `tour`   the gold road leads to the giver while his step is the one
-                on offer (game/questRoute.js), as it leads to the Mayor for a
-                new player;
+     hand off the quest to the next person etc."  The first cut was one line
+     handed from giver to giver; then the owner: "Maybe mayor bro is the only
+     quest available for the first quest then after completing that other NPCs
+     begin having quest icons appear above their head".  So:
+       tut_1 Mayor Bro (slimes) -- the only quest a new player is offered;
+       then, at once, SIX townsfolk (`after: 'tut_1'`): farm_1 Farmer Bro
+       (plant), smith_1 Blacksmith Bro (ore for bars), wood_1 Woodworker Bro
+       (logs for hardened pine), fish_1 Diego (cook fish), race_1 Lil Bro
+       (the race), beast_1 Beastmaster Bro (make traps);
+       each giver's own next step after his first: smith_2 (forge), wood_2
+       (a bow or staff and the softwood swap), beast_2 (spring the traps),
+       and farm_2 (Zoom Juice) -- which waits for Diego's fish_1 too, where
+       you learn to cook, so the carrots have grown by then;
+       tut_2 Mayor Bro (the burrowing snowmen) once the whole town is done.
+     QUEST_TOUR (beside getNpcQuest) is the order the gold road suggests them
+     in, one giver at a time; nothing makes a player follow it.  The server's
+     QUEST_REWARDS (server/src/data.js) is the authority and says the same,
+     `after` included (mirror-audit §5).  Here:
+       `after`  STOP a giver's line until that quest -- or every quest of a
+                list -- is handed in (getNpcQuest, questAfterMet);
+       `next`   only within a giver's own line: it opens his next step at
+                the hand-in (and the worker's the same);
+       `tour`   a step of the tour: the gold road leads to its giver while it
+                is the first step of QUEST_TOUR on offer (game/questRoute.js
+                tourOffer), as it leads to the Mayor for a new player;
        `opens`  the plot whose window the giver's "how's it going" line
                 opens with a button (he stands at its steps): the forge, the
                 bench, the Feed & Seed -- game/tour.js;
@@ -6960,7 +6978,7 @@ export const QUEST_CHAINS = {
         done: function () { return false; } },
     ],
     reward: { gold: 40, xp: 0 },
-    next: 'smith_1',
+    next: null,   /* v2.3.3500: farm_2 waits for Diego's fish_1 too (its `after`) */
     gives: [
       { when: 'accept', icon: '/icons/items/seed-carrot.webp', label: '3 Carrot Seeds' },
       { when: 'accept', icon: '/icons/items/compost.webp', label: '3 Compost' },
@@ -6971,12 +6989,12 @@ export const QUEST_CHAINS = {
         + "Head to your farm, dig a bed, plant a seed and water it. Three times. Watered carrots grow faster. Like people, but crunchier.",
       progress: "Plant 3 carrots on your farm and water all 3. My shop has the way there.",
       complete: "Three carrots, planted and watered! They grow up so fast. Literally: about six minutes.\n\n"
-        + "Leave 'em to it. Blacksmith Bro was yelling about ore earlier. Go see him at the forge before he yells at me.",
+        + "Leave 'em to it, and learn to cook while they grow. Diego at the General Store is looking for a cook, and I've got a recipe that needs one.",
     },
   },
   smith_1: {
     id: 'smith_1', npc: 'Blacksmith Bro', title: 'Heavy Metal',
-    after: 'farm_1', tour: true,
+    after: 'tut_1', tour: true,
     anyZone: true,   /* the copper is out on the grass (questRoute.js leads to the nearest vein) */
     desc: 'Bring 5 Copper Ore to Blacksmith Bro.',
     check: function (rpg) { return ((rpg.inventory || {}).ore_copper_ore || 0) >= 5; },
@@ -7010,18 +7028,18 @@ export const QUEST_CHAINS = {
     desc: 'Forge a sword, a chest plate or greaves at the forge.',
     check: function (rpg) { return questProgress(rpg, 'smith_2') >= 1; },
     reward: { gold: 60, xp: 0 },
-    next: 'wood_1',
+    next: null,
     dialogue: {
-      start: "Your bars, your call: a sword, a chest plate or greaves. Four bars makes one.\n\n"
+      start: "Your bars, your call: a sword, a chest plate or greaves. Five bars makes one, and I gave you five. That's called planning.\n\n"
         + "Heroes don't fight in T-shirts. Well, you did. But you shouldn't.",
       progress: "Make one thing at my forge. Sword, chest plate or greaves. I'll open it for you.",
       complete: "Look at that. Ugly, lopsided, and all yours. That's how every legend starts.\n\n"
-        + "Woodworker Bro's been asking for logs. He won't say why. He never says why.",
+        + "Now go on. Somebody else in this town needs a hero, and I need a nap. Look for the gold !.",
     },
   },
   wood_1: {
     id: 'wood_1', npc: 'Woodworker Bro', title: 'Knock on Wood',
-    after: 'smith_2', tour: true,
+    after: 'tut_1', tour: true,
     anyZone: true,   /* the pines are out on the grass (questRoute.js leads to the nearest tree) */
     desc: 'Bring 5 Pine Logs to Woodworker Bro.',
     check: function (rpg) { return ((rpg.inventory || {}).wood_pine_log || 0) >= 5; },
@@ -7058,23 +7076,23 @@ export const QUEST_CHAINS = {
        QuestPanel asks which of these the player swaps */
     trade: { from: 'pine', to: 'softwood', types: ['bow', 'staff'] },
     reward: { gold: 60, xp: 0, item: 'A Softwood Bow or Staff' },
-    next: 'fish_1',
+    next: null,
     gives: [
       { when: 'complete', icon: '/icons/items/bow.webp', label: 'Softwood Bow' },
       { when: 'complete', icon: '/icons/items/staff.webp', label: 'or Softwood Staff' },
     ],
     dialogue: {
-      start: "Make yourself a bow or a staff at my bench. Four hardened pine each.\n\n"
+      start: "Make yourself a bow or a staff at my bench. Five hardened pine each, which is exactly what I gave you. I'm good with numbers. Bad with people.\n\n"
         + "Then here's the deal: hand me a PINE bow or staff and I'll swap you a SOFTWOOD one. Takes Woodworking 5 to make, but any bro can swing it.\n\n"
         + "Why do I want your pine? I collect them. It's a whole wall. Don't make it weird.",
       progress: "Make a bow or a staff at my bench, then bring me a pine one to swap. I'll open the bench for you.",
       complete: "Pine for my wall, softwood for you. Everybody wins. Mostly me.\n\n"
-        + "Diego at the General Store has a fish problem. I'm not getting involved.",
+        + "Somebody in this town is always yelling for a hero. Today it's not me. I don't yell. I whittle.",
     },
   },
   fish_1: {
     id: 'fish_1', npc: 'Diego', title: 'Something Fishy',
-    after: 'wood_2', tour: true,
+    after: 'tut_1', tour: true,
     anyZone: true,   /* out in the field: fish, then a log for the fire */
     desc: 'Cook 2 fish and bring them to Diego.',
     check: function (rpg) { return questInvCount(rpg.inventory, 'cooked_fish_') >= 2; },
@@ -7085,7 +7103,10 @@ export const QUEST_CHAINS = {
     steps: [
       { label: 'Catch a fish at a fishing spot', node: 'fishSpot',
         done: function (inv) { return questInvCount(inv, 'fish_') > 0; } },
-      { label: 'Chop a tree to get a log', node: 'tree',
+      /* v2.3.3500: he hands you two logs (the town opens all at once, so
+         the Woodworker's axe may not be yours yet) -- a tree only once
+         they are burnt */
+      { label: 'Get a log for the fire (Diego gave you two, or chop a tree)', node: 'tree',
         done: function (inv, S) { return questInvCount(inv, 'wood_') > 0 || questFireLit(S); } },
       { label: 'Open your Bag and tap the log to light a campfire',
         done: function (inv, S) { return questFireLit(S); } },
@@ -7097,23 +7118,26 @@ export const QUEST_CHAINS = {
         done: function () { return false; } },
     ],
     reward: { gold: 40, xp: 0, item: '10 Cooked Clownfish' },
-    next: 'farm_2',
+    next: null,   /* v2.3.3500: the Farmer's farm_2 names this in its `after` */
     gives: [
       { when: 'accept', icon: '/icons/items/fishing-pole.webp', label: 'Fishing Pole' },
+      { when: 'accept', icon: '/icons/items/wood-log.webp', label: '2 Pine Logs' },
       { when: 'complete', icon: '/icons/items/cooked-clownfish.webp', label: '10 Cooked Clownfish' },
     ],
     dialogue: {
       start: "Amigo! I'm writing a cookbook. Chapter One: Fish. Small problem: I've never cooked a fish.\n\n"
         + "Bring me 2 fish you cooked yourself. For research. In return, my 10 cooked clownfish are yours. They tell jokes. Bad ones. Please take them.\n\n"
-        + "Here's a rod. Catch a fish, chop a log, tap the log in your Bag to light a fire, then tap the fire to cook.",
+        + "Here's a rod and two logs. Catch a fish, then tap a log in your Bag to light a fire, and tap the fire to cook.",
       progress: "2 cooked fish, amigo. Raw ones don't count. Fish, fire, cook.",
       complete: "Research complete. Chapter One: \"Fish, Cooked.\" Here are the clownfish. Eat one when you're hurt. They're less funny cooked.\n\n"
-        + "Farmer Bro says your carrots are ready. Go, before a slime finds them.",
+        + "And now you can cook! Farmer Bro was looking for a cook. Chapter Two is his problem.",
     },
   },
   farm_2: {
     id: 'farm_2', npc: 'Farmer Bro', title: 'Zoom Juice',
-    after: 'fish_1', tour: true, opens: 'feedseed',
+    /* v2.3.3500: after his own carrots AND Diego's fish_1 -- you have
+       learned to cook, and the carrots have had time to grow */
+    after: ['farm_1', 'fish_1'], tour: true, opens: 'feedseed',
     desc: 'Pick 3 carrots and cook Zoom Juice at the Cookhouse.',
     check: function (rpg) { return questProgress(rpg, 'farm_2') >= 1; },
     steps: [
@@ -7125,26 +7149,26 @@ export const QUEST_CHAINS = {
         done: function () { return false; } },
     ],
     reward: { gold: 60, xp: 0 },
-    next: 'race_1',
+    next: null,
     dialogue: {
-      start: "Your carrots are ripe! Pick 'em on your farm. You'll need 3.\n\n"
+      start: "Diego says you can cook now. Perfect. Your carrots should be ripe, or close: they take about six minutes, watered. Pick 3 on your farm.\n\n"
         + "Then take them to the Cookhouse and make Zoom Juice. You run 25% faster for 5 minutes. Not doctor approved. We don't have a doctor.\n\n"
         + "Why? Lil Bro's been bragging nobody can beat him round the square. He raced my scarecrow and won. The scarecrow has no legs, but still. It's personal.",
       progress: "Pick 3 carrots on your farm, then make Zoom Juice at the Cookhouse.",
-      complete: "That's the good stuff. Don't drink it yet. Drink it at the starting line.\n\n"
-        + "Lil Bro's on the town square, probably stretching. He doesn't need to stretch. He's nine.",
+      complete: "That's the good stuff. Racing Lil Bro? Drink it at the starting line. Running from something? Drink it now.\n\n"
+        + "Lil Bro's always on the town square, stretching. He doesn't need to stretch. He's nine.",
     },
   },
   race_1: {
     id: 'race_1', npc: 'Lil Bro', title: 'Race Day',
-    after: 'farm_2', tour: true,
+    after: 'tut_1', tour: true,
     /* the worker judges the race (server/src/race.js); his Race! button is
        game/race.js's, on his "how's it going" line */
     race: true,
     desc: 'Beat Lil Bro round the town square: touch all 4 corner flags and get back first.',
     check: function (rpg) { return questProgress(rpg, 'race_1') >= 1; },
     reward: { gold: 50, xp: 0 },
-    next: 'beast_1',
+    next: null,
     dialogue: {
       start: "You're the new hero? Betcha can't beat me round the square!\n\n"
         + "Touch all 4 corner flags and get back here before me. Sprinting helps. Zoom Juice helps more. Crying doesn't help. I tried.",
@@ -7172,14 +7196,14 @@ export const QUEST_CHAINS = {
 
      `after: 'tut_1'` (getNpcQuest): his line waits until the Mayor's first
      quest is handed in, so a new player's first steps stay the Mayor's.
-     v2.3.3500: beast_1 and beast_2 are steps of the TOUR now (after Lil
-     Bro's race, handing on to the Mayor's tut_2), and beast_3 waits for
-     tut_2 -- the tour's header, above farm_1. */
+     v2.3.3500: beast_1 and beast_2 are steps of the TOUR now, offered with
+     the rest of the town once the Mayor's first quest is in, and beast_3
+     waits for the tour's finale, tut_2 -- the tour's header, above farm_1. */
   beast_1: {
     id: 'beast_1', npc: 'Beastmaster Bro', title: 'Box Traps',
-    /* v2.3.3500: a step of the tour now, after Lil Bro's race (`after`),
-       and the Woodworker's bench is right beside him (`opens`) */
-    after: 'race_1', tour: true, opens: 'woodworker',
+    /* v2.3.3500: a step of the tour now, offered with the rest of the town
+       (`after`), and the Woodworker's bench is right beside him (`opens`) */
+    after: 'tut_1', tour: true, opens: 'woodworker',
     desc: 'Make 3 box traps at the Woodworker.',
     check: function (rpg) { return ((rpg._questKills && rpg._questKills.beast_1) || 0) >= 3; },
     need: { progress: true, n: 3 },
@@ -7190,7 +7214,7 @@ export const QUEST_CHAINS = {
       { when: 'complete', icon: '/icons/items/trap-box.webp', label: '2 Box Traps' },
     ],
     dialogue: {
-      start: "Lil Bro says you're fast. Doesn't matter. Pets aren't caught by running. They're caught with boxes.\n\n"
+      start: "Lil Bro says nobody's faster than him. Doesn't matter. Pets aren't caught by running. They're caught with boxes.\n\n"
         + "Here, 3 pine logs. Woodworker Bro turns each one into a box trap, in the Traps tab of his bench. Make me three.",
       progress: "3 box traps. The Woodworker's bench, the Traps tab. I'll open it for you.",
       complete: "Good boxes. Here are two more. Now we set them.",
@@ -7198,8 +7222,8 @@ export const QUEST_CHAINS = {
   },
   beast_2: {
     id: 'beast_2', npc: 'Beastmaster Bro', title: 'Set and Spring',
-    /* v2.3.3500: three springs, not five, and he hands you back to the
-       Mayor for the tour's finale (tut_2) */
+    /* v2.3.3500: three springs, not five; the Mayor's finale (tut_2) waits
+       for this with the rest of the town */
     after: 'beast_1', tour: true,
     anyZone: true,
     desc: 'Spring 3 traps: target a monster out in the lands, tap TRAP, then kill it.',
@@ -7221,20 +7245,20 @@ export const QUEST_CHAINS = {
         done: function () { return false; } },
     ],
     reward: { gold: 100, xp: 0, item: '5 Box Traps' },
-    next: 'tut_2',
+    next: null,
     gives: [{ when: 'complete', icon: '/icons/items/trap-box.webp', label: '5 Box Traps' }],
     dialogue: {
       start: "A trap only springs on a monster you kill. Out in the lands, target one, tap TRAP, then kill it within 15 seconds.\n\n"
         + "Spring 3 traps. Most will break. That's trapping. Every one still pays Trapping XP.",
       progress: "3 traps sprung. Target, TRAP, then the kill.",
       complete: "Three springs. You're a trapper now. A bad one, but a trapper. Five more traps for the road.\n\n"
-        + "The Mayor's been looking for you. Something about snowmen. He sounded nervous. He always sounds nervous.",
+        + "The Mayor keeps muttering about snowmen. He sounded nervous. He always sounds nervous.",
     },
   },
   beast_3: {
     id: 'beast_3', npc: 'Beastmaster Bro', title: "A Trapper's Eye",
-    /* v2.3.3500: his own line again once the tour is done (beast_2 hands on
-       to the Mayor's tut_2, so this waits for it) */
+    /* v2.3.3500: his own line again once the tour is done (the Mayor's tut_2,
+       its finale) */
     after: 'tut_2',
     anyZone: true,
     desc: 'Reach Trapping level 6.',
@@ -8093,6 +8117,26 @@ export function questReachable(quest) {
   return true;
 }
 
+/* ═══ v2.3.3500: THE TOUR'S SUGGESTED ORDER ═══
+   After the Mayor's first quest the whole town offers its quests at once (the
+   tour's header above farm_1); this is the order the gold road suggests them
+   in, one giver at a time (game/questRoute.js tourOffer), and the steps the
+   Test panel's "Tour: jump to" knows.  It decides nothing a player may do --
+   `after` does -- and every step's `after` comes before it.  Mirrors the
+   worker's QUEST_TOUR (server/src/data.js; mirror-audit §5a). */
+export const QUEST_TOUR = Object.freeze(['tut_1', 'farm_1', 'smith_1', 'smith_2', 'wood_1', 'wood_2', 'fish_1', 'farm_2', 'race_1', 'beast_1', 'beast_2', 'tut_2']);
+
+/* v2.3.3500: is a quest's `after` met -- one quest's id, or a list of them
+   (the Mayor's tut_2 waits for the whole town), every one handed in?  The
+   worker's _questBarred reads `after` the same way. */
+export function questAfterMet(questState, after) {
+  var list = Array.isArray(after) ? after : [after];
+  for (var i = 0; i < list.length; i++) {
+    if (typeof list[i] === 'string' && list[i] && (questState || {})[list[i]] !== QUEST_STATUS.turnedIn) return false;
+  }
+  return true;
+}
+
 export function getNpcQuest(rpg, npcName) {
   var questState = rpg._quests || {};
   /* Find first incomplete quest for this NPC */
@@ -8112,7 +8156,9 @@ export function getNpcQuest(rpg, npcName) {
        in (`after`: Beastmaster Bro's on the Mayor's first, so a new player's
        first steps stay the Mayor's).  STOP, not skip: every later quest of
        this giver is behind this one, and skipping would offer the next. */
-    if (quest.after && !state && questState[quest.after] !== QUEST_STATUS.turnedIn) return null;
+    /* v2.3.3500: `after` may be a list -- the Mayor's tut_2 waits for the
+       whole town -- every one handed in (questAfterMet) */
+    if (quest.after && !state && !questAfterMet(questState, quest.after)) return null;
     /* ═══ v2.3.3500: A RETIRED QUEST IS NEVER OFFERED ═══
        life_1 and life_2 gave their errands and tools to the tour's givers
        (server/src/data.js QUEST_RETIRED; the worker refuses to accept them).

@@ -10,7 +10,8 @@
  * a phone:
  *   1. caps.salvage, and a Salvage tab; with nothing carried it says what to
  *      carry;
- *   2. four copper bars make a torso and four the greaves (the Armor tab);
+ *   2. five copper bars make a torso and five the greaves (the Armor tab;
+ *      four a piece until v2.3.3500 -- salvage still gives two back);
  *   3. Salvage lists both, each "+2" bars; ONE tap only asks "Sure?", the
  *      second salvages: the torso leaves the bag, two copper bars come back,
  *      and the top line says so;
@@ -81,17 +82,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot(P, 'empty');
     rec.ok(`with nothing carried, it says what to carry ("${empty}")`, !!empty && /copper, iron or black steel/.test(empty), empty);
 
-    /* ── 2. four bars a piece ── */
-    await H.grant(wsPort, me, 'item', { invKey: 'bar_copper', count: 8 });
-    await P.page.waitForFunction(() => ((window._gameState.current.rpg || {}).inventory || {}).bar_copper === 8, null, { timeout: 6000 }).catch(() => {});
+    /* ── 2. five bars a piece (v2.3.3500; four since v2.3.3141) ── */
+    await H.grant(wsPort, me, 'item', { invKey: 'bar_copper', count: 10 });
+    await P.page.waitForFunction(() => ((window._gameState.current.rpg || {}).inventory || {}).bar_copper === 10, null, { timeout: 6000 }).catch(() => {});
     await tab('armor');
     await P.page.click('[data-armor-go="copper_torso"]').catch(() => {});
-    await P.page.waitForFunction(() => ((window._gameState.current.rpg || {}).inventory || {}).bar_copper === 4, null, { timeout: 6000 }).catch(() => {});
+    await P.page.waitForFunction(() => ((window._gameState.current.rpg || {}).inventory || {}).bar_copper === 5, null, { timeout: 6000 }).catch(() => {});
     await P.page.waitForFunction(() => { const b = document.querySelector('[data-armor-go="copper_greaves"]'); return b && !b.disabled; }, null, { timeout: 5000 }).catch(() => {});
     await P.page.click('[data-armor-go="copper_greaves"]').catch(() => {});
     let s0 = null;
     for (let i = 0; i < 20; i++) { s0 = await state(P); if (s0.bars === 0 && s0.torsos.length && s0.greaves.length) break; await P.page.waitForTimeout(300); }
-    rec.ok('four copper bars made a torso and four the greaves (8 -> 0)', s0.bars === 0 && s0.torsos.length === 1 && s0.greaves.length === 1
+    rec.ok('five copper bars made a torso and five the greaves (10 -> 0)', s0.bars === 0 && s0.torsos.length === 1 && s0.greaves.length === 1
       && !!s0.torsos[0].gid && !!s0.greaves[0].gid, s0);
 
     /* The forge rolls every piece's grade (9% Rare, 0.9% Elite): this test

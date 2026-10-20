@@ -239,8 +239,9 @@ export const questMethods = {
   /* v2.3.3500: and 'retired' -- (accepting only) a quest the tour gave to
      someone else (data.js QUEST_RETIRED: life_1, life_2).  A save that holds
      one active still hands it in.  And a quest's own `after` names the step
-     before it where `next` no longer does: beast_2 hands on to the Mayor's
-     tut_2, so the Beastmaster's beast_3 says `after: 'tut_2'`. */
+     before it where `next` does not: the town's six first steps say `after:
+     'tut_1'`, the Beastmaster's beast_3 `after: 'tut_2'` -- or a LIST, every
+     one handed in: the Mayor's tut_2 waits for the whole town. */
   _questBarred(ps, questId, reward, accepting) {
     if (!this.__questOrder) {
       const table = this._QUEST_REWARDS_DATA();
@@ -260,10 +261,14 @@ export const questMethods = {
     if (accepting && o.retired.has(questId)) return 'retired';
     if (!(reward && reward.objective) && questId !== QUEST_FIRST && q[QUEST_FIRST] !== 'turnedIn') return 'first';
     if (accepting && q[questId] !== 'available') {
-      const prev = (reward && typeof reward.after === 'string' && reward.after) || o.prev.get(questId);
+      const after = reward && reward.after;
+      const prevs = Array.isArray(after) ? after.filter((x) => typeof x === 'string' && x)
+        : [(typeof after === 'string' && after) || o.prev.get(questId)];
       const table = this._QUEST_REWARDS_DATA();
-      const before = prev && Object.prototype.hasOwnProperty.call(table, prev) ? table[prev] : null;
-      if (before && before.objective && q[prev] !== 'turnedIn') return 'order';
+      for (const prev of prevs) {
+        const before = prev && Object.prototype.hasOwnProperty.call(table, prev) ? table[prev] : null;
+        if (before && before.objective && q[prev] !== 'turnedIn') return 'order';
+      }
     }
     return null;
   },

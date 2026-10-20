@@ -121,9 +121,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }, msg);
   /* v2.3.3500: the tier-one TORSO is FORGED now -- Blacksmith Bro's ore
      errand in the tour pays five copper bars, and the forge's Armor tab makes
-     a torso from four (armorforge.js), "your choice" of a sword, a chest plate
+     a torso from five (armorforge.js), "your choice" of a sword, a chest plate
      or greaves.  life_2, which paid it for five ore, is retired. */
-  await H.grant(wsPort, aId, 'item', { invKey: 'bar_copper', count: 4 });
+  await H.grant(wsPort, aId, 'item', { invKey: 'bar_copper', count: 5 });
   await A.page.waitForTimeout(1000);
   await send(A, { type: 'forge_armor', payload: { recipe: 'copper_torso' } });
   await H.waitFor(A, (S) => (S.rpg.armorStash || []).some((a) => a && a.name === 'Copper Torso'),
@@ -131,7 +131,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const stash = await H.readState(A, (S) => (S.rpg.armorStash || [])
     .map((a) => ({ name: a && a.name, mat: a && a.mat })));
-  rec.ok('the forge makes a COPPER torso from four copper bars',
+  rec.ok('the forge makes a COPPER torso from five copper bars',
     stash.some((a) => a.name === 'Copper Torso'), stash);
   rec.ok('...and the piece carries its material into the bag (the art depends on it)',
     stash.some((a) => a.name === 'Copper Torso' && a.mat === 'copper'), stash);

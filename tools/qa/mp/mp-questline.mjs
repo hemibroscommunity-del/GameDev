@@ -1,13 +1,16 @@
 /* THE WHOLE QUEST LINE, START TO FINISH, THROUGH THE ONLY DOORS A PLAYER HAS.
  * v2.3.1707.
  *
- * v2.3.3500: THE LINE IS THE TOUR -- handed from Mayor Bro to Farmer Bro,
- * Blacksmith Bro, Woodworker Bro, Diego, Lil Bro and Beastmaster Bro and back
- * (ARC, below; server/src/data.js QUEST_REWARDS tut_1's header).  Each step
- * is accepted and handed in by walking up to ITS giver; a hand-in that passes
- * the line on checks the road leads to the next giver and the quest card
- * names him; the counted steps (the farm, the forge, the Cookhouse, the race,
- * traps) are seeded by count, as the collected ones by item.
+ * v2.3.3500: THE LINE IS THE TOUR -- Mayor Bro's first quest alone, then the
+ * whole town at once (Farmer Bro, Blacksmith Bro, Woodworker Bro, Diego, Lil
+ * Bro and Beastmaster Bro), and back to the Mayor (ARC, below; server/src/
+ * data.js QUEST_REWARDS tut_1's header).  Each step is accepted and handed in
+ * by walking up to ITS giver, in the order the tour suggests; after the first
+ * every townsperson wears his quest pin, over his head, on the minimap and on
+ * the world map; a hand-in whose giver has no next step of his own checks
+ * the road leads to the next one and the quest card names him; the counted
+ * steps (the farm, the forge, the Cookhouse, the race, traps) are seeded by
+ * count, as the collected ones by item.
  *
  * Owner: "do headless testing to start the quest flow from start to finish."
  * Judges play today, so the question this file answers is the blunt one — can
@@ -55,14 +58,16 @@ import * as H from './harness.mjs';
 import { QUEST_REWARDS } from '../../../server/src/data.js';
 
 /* ═══ v2.3.3500: THE TOUR, GIVER TO GIVER ═══
-   The owner: "Mayor bro would hand off the quest to the next person" -- the
-   line is the TOUR now (server/src/data.js QUEST_REWARDS tut_1's header): the
-   Mayor's slimes, Farmer Bro's carrots, Blacksmith Bro's ore and forge,
+   The owner: "Mayor bro would hand off the quest to the next person", then
+   "Maybe mayor bro is the only quest available for the first quest then after
+   completing that other NPCs begin having quest icons appear above their
+   head" -- the line is the TOUR (server/src/data.js QUEST_REWARDS tut_1's
+   header): the Mayor's slimes, then the town in the order the tour suggests
+   (QUEST_TOUR: Farmer Bro's carrots, Blacksmith Bro's ore and forge,
    Woodworker Bro's logs and bench (and his softwood swap), Diego's cooked
-   fish, Farmer Bro's Zoom Juice, Lil Bro's race, Beastmaster Bro's traps, and
-   back to the Mayor for the snowmen and the lands after.  In the order the
-   worker hands them on (each quest's `next`; `after` holds every other
-   giver's line back).  `npc` is who you walk up to; the objective is seeded
+   fish, Farmer Bro's Zoom Juice, Lil Bro's race, Beastmaster Bro's traps), and
+   back to the Mayor for the snowmen and the lands after.  `npc` is who you
+   walk up to; the objective is seeded
    as before (see the header) -- `give` an item, `count` what the worker counts
    (beds watered, a piece forged, a dish cooked, a race won, traps made and
    sprung) through the operator's /dev/questcount: the farm, the forge, the
@@ -87,6 +92,8 @@ const ARC = [
 /* each giver's name, for the road's answer (the minimap probe names him) */
 const NAME_OF = { mayor_bro: 'Mayor Bro', farmer_bro: 'Farmer Bro', blacksmith_bro: 'Blacksmith Bro',
   woodworker_bro: 'Woodworker Bro', shopkeeper_bro: 'Diego', lil_bro: 'Lil Bro', beastmaster_bro: 'Beastmaster Bro' };
+/* the six who offer their first quest once the Mayor's first is in */
+const TOWN = ['Farmer Bro', 'Blacksmith Bro', 'Woodworker Bro', 'Diego', 'Lil Bro', 'Beastmaster Bro'];
 
 export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.2990: the game as a player gets it -- the Wheel is the world, and a
@@ -495,14 +502,49 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ═══ v2.3.3500: HANDED ON -- THE ROAD LEADS TO THE NEXT GIVER ═══
        The tour's next step is usually someone else's: his window closes,
        the pinned quest card says who is next and the minimap's gold road
-       leads to him (questRoute.js tourOffer).  Only a giver with a next step
-       of his own (the smith, the woodworker, the Beastmaster's two, the
-       Mayor's lands) keeps talking, as v2.3.1713 has him do. */
-    const nextId = QUEST_REWARDS[step.id].next;
-    const nextStep = ARC.find((a) => a.id === nextId);
+       leads to him (questRoute.js tourOffer, in the tour's suggested order).
+       Only a giver whose own next step is the one suggested (the smith, the
+       woodworker, the Beastmaster's two, the Mayor's lands) keeps talking,
+       as v2.3.1713 has him do. */
+    const nextStep = ARC[ARC.indexOf(step) + 1] || null;
+    const nextId = nextStep ? nextStep.id : null;
     if (nextStep && nextStep.npc !== step.npc) {
       await P.page.waitForTimeout(2600);
       await H.leaveNpc(P, step.npc).catch(() => {});
+      if (step.id === 'tut_1') {
+        /* ═══ v2.3.3500: THE WHOLE TOWN, AT ONCE ═══
+           The Mayor's first quest in, every one of the six offers his first
+           at once: the pin over each head, on the minimap and on the world
+           map (src/game/questPins.js), and the card counts the others */
+        const heads = await H.waitFor(P, (S) => {
+          const out = {};
+          for (const n of (S.npcs || [])) if (n && n.name) out[n.name] = n._questMarker || null;
+          return out;
+        }, (v) => v && TOWN.every((n) => v[n] === '❗'), { timeout: 12000, label: 'the town\'s pins' }).catch(() => null);
+        rec.ok('the Mayor\'s first quest in, all six townsfolk wear the gold "!" at once', !!heads, heads);
+        rec.ok('...and the Mayor none (his snowmen wait for the whole town)', !!heads && !heads['Mayor Bro'], heads);
+        const mini = await H.waitFor(P, () => {
+          const m = window.__btMinimap;
+          return m && Array.isArray(m.questPins) ? m.questPins.map((q) => ({ name: q.name, state: q.state, art: q.art })) : null;
+        }, (v) => Array.isArray(v) && v.length >= 1, { timeout: 8000, label: 'the minimap\'s pins' }).catch(() => null);
+        rec.ok('...on the minimap too: the quest pin of every one the box shows, in the owner\'s picture',
+          Array.isArray(mini) && mini.length >= 1 && mini.every((q) => q.state === 'offer' && TOWN.includes(q.name) && q.art), mini);
+        const more = await H.readState(P, () => {
+          const c = document.querySelector('[data-quest-hud-more]');
+          return c ? { n: Number(c.getAttribute('data-quest-hud-more')), text: (c.innerText || '').trim() } : null;
+        });
+        rec.ok('...and the quest card says how many more have work: 5, on the map', !!more && more.n === 5 && /5 more/.test(more.text), more);
+        await P.page.evaluate(() => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(true); });
+        const big = await H.waitFor(P, () => {
+          const m = window.__btWorldMap;
+          return m && m.open && m.more && Array.isArray(m.more.pins) ? m.more.pins.map((q) => q.name + ':' + q.state) : null;
+        }, (v) => Array.isArray(v) && TOWN.every((n) => v.includes(n + ':offer')), { timeout: 12000, label: 'the world map\'s pins' }).catch(() => null);
+        rec.ok('...and on the world map, all six', !!big, big);
+        const keyPin = await H.readState(P, () => !!document.querySelector('[data-world-map-key="pin"]'));
+        rec.ok('...its key saying "has a quest"', keyPin);
+        await P.page.evaluate(() => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(false); });
+        await P.page.waitForTimeout(600);
+      }
       const road = await H.waitFor(P, () => {
         const m = window.__btMinimap, c = document.querySelector('[data-quest-hud-next]');
         return { npc: m && m.quest ? m.quest.npc : null, card: c ? c.getAttribute('data-quest-hud-next') : null,

@@ -20,7 +20,7 @@
  * in town with nothing marked at all, which is worse than no feature: it
  * would read as "no quest is active".
  */
-import { QUEST_CHAINS, QUEST_STATUS, questSteps /* v2.3.3012: which node a gathering quest's next step needs */, getNpcQuest /* v2.3.3500: the tour's next step */ } from '@/data/gameSystems.js';
+import { QUEST_CHAINS, QUEST_STATUS, questSteps /* v2.3.3012: which node a gathering quest's next step needs */, getNpcQuest /* v2.3.3500: the tour's next step */, QUEST_TOUR /* v2.3.3500: in its suggested order */ } from '@/data/gameSystems.js';
 import { raceRoutePoint } from '@/game/race.js';   /* v2.3.3500: the race's next flag */
 import { hasGatherTool, gatherNeed /* v2.3.3038 */ } from '@/data/lifeSkills.js';   /* v2.3.3012: never lead to a node that is not drawn */
 import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
@@ -345,30 +345,40 @@ function _wantNpc(rpg, S) {
 }
 
 /* ═══ v2.3.3500: THE TOUR'S NEXT STEP ═══
-   The tour (gameSystems.js QUEST_CHAINS, the header above farm_1) hands a new
-   player from giver to giver, so between two steps there is no quest in hand
-   and nothing for the road to follow -- the moment a reviewer most needs one.
-   This is the step on offer: the first `tour` quest a giver offers
-   (getNpcQuest -- its `after` holds every other giver's line back, so there
-   is one), and only while no quest is active: the road never nags past the
-   job you have.  The pinned quest card says it too (BroTown, "Next:"). */
+   Between two quests there is no quest in hand and nothing for the road to
+   follow -- the moment a reviewer most needs one.  Once the Mayor's first
+   quest is in the whole town offers its quests at once (gameSystems.js, the
+   header above farm_1), so this SUGGESTS one: the first step of QUEST_TOUR
+   that its giver offers now (getNpcQuest), and only while no quest is active:
+   the road never nags past the job you have.  `more` is how many other
+   townsfolk standing here offer a quest too, every one wearing the gold "!"
+   over his head and on the maps.  The pinned quest card says it (BroTown,
+   "Next:"). */
 export function tourOffer(rpg, S) {
   const quests = (rpg && rpg._quests) || null;
   if (!quests || !Object.keys(quests).length) return null;
   for (const k of Object.keys(quests)) if (quests[k] === QUEST_STATUS.active) return null;
-  const seen = new Set();
-  for (const qid of Object.keys(QUEST_CHAINS)) {
-    const q = QUEST_CHAINS[qid];
-    if (!q || !q.tour || !q.npc || seen.has(q.npc)) continue;
-    seen.add(q.npc);
+  /* only a giver who stands here (the tour's two new ones stand only against
+     a worker that knows the tour) */
+  const here = (name) => !(S && Array.isArray(S.npcs)) || S.npcs.some((n) => n && n.name === name);
+  const offers = (name) => {
     let r = null;
-    try { r = getNpcQuest(rpg, q.npc); } catch (e) { r = null; }
-    if (r && r.status === QUEST_STATUS.available && r.quest && r.quest.tour) {
-      /* only a giver who stands here (the tour's two new ones stand only
-         against a worker that knows the tour) */
-      if (S && Array.isArray(S.npcs) && !S.npcs.some((n) => n && n.name === r.quest.npc)) continue;
-      return { quest: r.quest, npc: r.quest.npc };
+    try { r = getNpcQuest(rpg, name); } catch (e) { r = null; }
+    return r && r.status === QUEST_STATUS.available && r.quest ? r.quest : null;
+  };
+  for (const qid of QUEST_TOUR) {
+    const q = QUEST_CHAINS[qid];
+    if (!q || !q.npc || quests[qid] === QUEST_STATUS.turnedIn || !here(q.npc)) continue;
+    const on = offers(q.npc);
+    if (!on || on.id !== qid) continue;
+    let more = 0;
+    const seen = new Set([q.npc]);
+    for (const n of (S && Array.isArray(S.npcs) ? S.npcs : [])) {
+      if (!n || !n.name || seen.has(n.name)) continue;
+      seen.add(n.name);
+      if (offers(n.name)) more++;
     }
+    return { quest: q, npc: q.npc, more };
   }
   return null;
 }

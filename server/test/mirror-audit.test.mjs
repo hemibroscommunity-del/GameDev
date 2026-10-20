@@ -103,6 +103,7 @@ import { TRAPPING as CLIENT_TRAPPING, trapChance as clientTrapChance, trapRollXp
 import { wheelTable as srvWheelTable, WHEEL_SIZES as SRV_WHEEL_SIZES } from '../src/wheeltables.js';   /* v2.3.3315: each Wheel's centre */
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
+  QUEST_TOUR as CLIENT_QUEST_TOUR, /* v2.3.3500: the tour's suggested order */
   NPC_DATA as CLIENT_NPC_DATA, /* v2.3.3179: who gives quests in the world */
   DISHES as CLIENT_DISHES, /* v2.3.3130: what a Cookhouse dish does */
   MONSTER_DMG_CURVE, monsterHpFlat as clientMonsterHpFlat, /* v2.3.3055 */
@@ -352,25 +353,30 @@ const room = Object.create(GameRoom.prototype);
   for (const [k, sv] of Object.entries(SRV.QUEST_REWARDS)) {
     const c = QUEST_CHAINS[k];
     if (!c) continue;
-    if ((c.after || null) !== (sv.after || null)) bad.push({ quest: k, after: { server: sv.after || null, client: c.after || null } });
+    /* v2.3.3500: `after` may be a list (the Mayor's tut_2 waits for the whole town) */
+    if (JSON.stringify(c.after || null) !== JSON.stringify(sv.after || null)) bad.push({ quest: k, after: { server: sv.after || null, client: c.after || null } });
     if (JSON.stringify(c.trade || null) !== JSON.stringify(sv.trade || null)) bad.push({ quest: k, trade: { server: sv.trade || null, client: c.trade || null } });
   }
   const retiredC = Object.keys(QUEST_CHAINS).filter((k) => QUEST_CHAINS[k].retired).sort();
   const retiredS = (SRV.QUEST_RETIRED || []).slice().sort();
   if (retiredC.join() !== retiredS.join()) bad.push({ retired: { server: retiredS, client: retiredC } });
   check('QUEST_REWARDS <-> QUEST_CHAINS `after`, `trade` and the retired quests mirror (v2.3.3500, the tour)', bad.length === 0, bad);
-  /* the tour is ONE line: from tut_1, each quest's `next` is the following
-     step and that step waits for it (`after`), giver to giver, back to the
-     Mayor's tut_2 -- so only the next step is ever offered */
-  const order = [];
-  for (let q = SRV.QUEST_FIRST; q && order.length < 20; q = (SRV.QUEST_REWARDS[q] || {}).next) {
-    order.push(q);
-    if (q === 'tut_2') break;
-  }
-  const broken = order.slice(1).filter((q, i) => (SRV.QUEST_REWARDS[q] || {}).after !== order[i]);
-  check('the tour runs tut_1 -> farm_1 -> smith_1 -> smith_2 -> wood_1 -> wood_2 -> fish_1 -> farm_2 -> race_1 -> beast_1 -> beast_2 -> tut_2, each step waiting for the one before',
-    order.join() === 'tut_1,farm_1,smith_1,smith_2,wood_1,wood_2,fish_1,farm_2,race_1,beast_1,beast_2,tut_2' && broken.length === 0
-      && order.slice(1).every((q) => QUEST_CHAINS[q] && QUEST_CHAINS[q].tour === true), { order, broken });
+  /* the tour: the Mayor's first quest alone, then the whole town at once
+     (the owner: "Maybe mayor bro is the only quest available for the first
+     quest then after completing that other NPCs begin having quest icons
+     appear above their head").  Its SUGGESTED order -- the gold road's, one
+     giver at a time (questRoute.js tourOffer), and the Test panel's "Tour:
+     jump to" -- is QUEST_TOUR on both sides; every step but the first is a
+     `tour` step on the page, and whatever a step waits on comes before it */
+  const tourS = (SRV.QUEST_TOUR || []).join(), tourC = (CLIENT_QUEST_TOUR || []).join();
+  const listOf = (af) => (Array.isArray(af) ? af : af ? [af] : []);
+  const early = (SRV.QUEST_TOUR || []).filter((q, i) => listOf((SRV.QUEST_REWARDS[q] || {}).after).some((a) => {
+    const j = SRV.QUEST_TOUR.indexOf(a); return j < 0 || j >= i;
+  }));
+  check('QUEST_TOUR is the same twelve steps on both sides, a tour step each, in an order a player may follow (v2.3.3500)',
+    tourS === tourC && tourS === 'tut_1,farm_1,smith_1,smith_2,wood_1,wood_2,fish_1,farm_2,race_1,beast_1,beast_2,tut_2'
+      && SRV.QUEST_TOUR.slice(1).every((q) => QUEST_CHAINS[q] && QUEST_CHAINS[q].tour === true) && early.length === 0,
+    { server: tourS, client: tourC, early });
 }
 
 // ── 5b. v2.3.1681: the quest dialog's item THUMBNAILS (`gives`) are display

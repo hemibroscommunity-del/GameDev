@@ -83,8 +83,10 @@ export const SALVAGE = Object.freeze({
   }),
   /* what a torso, greaves or sword of a metal takes to make (armorforge.js
      RECIPES, data.js BLACKSMITH_TIERS -- the salvage suite pins both) */
-  COST_BARS: 4,
-  /* what salvaging one gives back: half */
+  /* v2.3.3500: five (data.js, the five-bar note at BLACKSMITH_TIERS.copper) */
+  COST_BARS: 5,
+  /* what salvaging one gives back: half, rounded down (v2.3.3500: two of
+     five -- never more than half, so a forge and a salvage never pay) */
   BARS: 2,
   /* the grades, low to high (hardening.js / data.js QUALITY_GRADES) */
   GRADES: Object.freeze(['normal', 'rare', 'elite', 'godly']),

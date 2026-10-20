@@ -109,7 +109,7 @@ const SWORD_STAT = room._equipStatFor('sword');
 ps.lifeSkills = { blacksmithing: { level: 11, xp: 0 } };
 ps[SWORD_STAT] = IRON.statReq; // exactly meets the stat gate
 ps.coins = 1000;
-ps.inventory = { bar_iron: 5 };
+ps.inventory = { bar_iron: IRON.bars + 1 };   /* v2.3.3500: one left over, whatever a sword takes */
 ps.weapon = { type: 'sword', tierMult: 1, _old: true };
 ps.weaponStash = [];
 await send(ws, 'forge_weapon', { weaponType: 'sword', tierKey: 'iron', isWoodwork: false });
@@ -118,11 +118,11 @@ check('forge mints the tier shape (tierMult/gearBase/quality/H0)',
   && typeof ps.weapon.quality === 'string' && ps.weapon.hardness === 0 && ps.weapon.hardenBonus === null,
   ps.weapon);
 check('forge debits EXACTLY the bar + gold costs',
-  IRON.bar === 'bar_iron' && ps.inventory.bar_iron === 5 - IRON.bars && ps.coins === 1000 - IRON.goldCost,
+  IRON.bar === 'bar_iron' && ps.inventory.bar_iron === 1 && ps.coins === 1000 - IRON.goldCost,
   { bars: ps.inventory.bar_iron, coins: ps.coins });
 check('forge swaps the old weapon into the stash (never destroys it)',
   ps.weaponStash.length === 1 && ps.weaponStash[0]._old === true);
-check('forge grants the tier\'s crafting XP (four bars\' worth, v2.3.3141)',
+check('forge grants the tier\'s crafting XP (its bars\' worth, v2.3.3141)',
   ps.lifeSkills.blacksmithing.xp === IRON.xp, ps.lifeSkills.blacksmithing);
 
 // ── 2. forge rejections: state must be UNTOUCHED ──

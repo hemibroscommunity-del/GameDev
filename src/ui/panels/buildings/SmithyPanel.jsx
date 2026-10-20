@@ -312,7 +312,8 @@ function ForgeTab({ S, R, inv, coins, lvl, ask, busy, wtype, setWtype }) {
       )}
       {shown.map((key) => {
         const bt = BLACKSMITH_TIERS[key];
-        /* v2.3.3141: copper, iron and black steel are forged from four bars */
+        /* v2.3.3141: copper, iron and black steel are forged from bars (five a
+           piece since v2.3.3500: `bars`) */
         const resKey = bt.bar ? bt.bar : bt.wood ? 'wood_' + bt.wood : 'ore_' + bt.oreName + '_ore';
         const resNeed = bt.bar ? bt.bars : bt.oreCost;
         const have = Math.floor(inv[resKey] || 0);

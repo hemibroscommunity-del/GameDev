@@ -510,8 +510,9 @@ export const gearMethods = {
        are forged from four of their bars now (data.js BLACKSMITH_TIERS,
        salvage.js). */
     /* v2.3.3500: and the bows and staffs of the woods with a hardened wood
-       from four of it (data.js WOODWORKING_TIERS `hardened`), as a sword
-       from four bars. */
+       from five of it (data.js WOODWORKING_TIERS `hardened`), as a sword
+       from five bars (four of each until the owner's "It should mirror the
+       cost of making armor"). */
     const resourceKey = tier.bar ? tier.bar : tier.hardened ? tier.hardened : tier.wood ? ('wood_' + tier.wood) : ('ore_' + tier.oreName + '_ore');
     const have = ps.inventory[resourceKey] || 0;
     const cost = tier.bar ? tier.bars : tier.hardened ? tier.hardenedCost : wantWw ? tier.woodCost : tier.oreCost;
@@ -563,7 +564,7 @@ export const gearMethods = {
     //   blacksmithing: tier.minLvl * 5
     //   woodworking:   tier.minLvl * 5  (same formula)
     // v2.3.3141: a tier forged from bars pays its own `xp`, the armour forge's
-    // rate for the same four bars (data.js BLACKSMITH_TIERS).
+    // rate for the same bars (data.js BLACKSMITH_TIERS; five since v2.3.3500).
     this._addLifeSkillXp(ps, skillName, tier.xp || (tier.minLvl || 1) * 5);
     /* v2.3.3500: a piece made counts for the tour's smith_2 and wood_2
        (quests.js `craft`); saved with the piece below */
