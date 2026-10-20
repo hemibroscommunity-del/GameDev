@@ -72,6 +72,8 @@
  * un-advertises the cap and refuses both acts; pieces, bars and essences
  * already held are untouched. */
 
+import { gemGive } from './gems.js'; /* v2.3.3516: gems live in the bag */
+
 export const SALVAGE = Object.freeze({
   /* metal id (the armour's `mat`, materialTints.js) -> its bar (smelting.js),
      the forge tier key its weapons carry as `gearBase` (data.js
@@ -217,6 +219,7 @@ export const salvageMethods = {
     let metal;
     let grade;
     let ref;
+    let gemsBack = [];
     if (field === 'weaponStash') {
       const at = this._salvageWeaponAt(ps, payload || {});
       if (!at.w) return refuse(at.reason, { idx: payload && Number.isInteger(payload.idx) ? payload.idx : null });
@@ -224,6 +227,16 @@ export const salvageMethods = {
       metal = at.metal;
       grade = SALVAGE.GRADES.indexOf(at.w.quality) >= 0 ? at.w.quality : 'normal';
       ref = { idx: at.idx, name: typeof at.w.name === 'string' ? at.w.name.slice(0, 40) : null };
+      /* ═══ v2.3.3513: A SALVAGED WEAPON GIVES ITS GEMS BACK ═══
+         The owner's gem plan (docs/GEM-PLAN.md, "Setting"): a weapon's gem is
+         the worker's now (weapongem.js), so melting the blade must not melt
+         the gem.  The gems Take out would pay (amulet.js _extractableGems),
+         free here as the bars are, back into the count and counted as come
+         back (their XP was paid when they went in: _gemSetXp). */
+      gemsBack = typeof this._extractableGems === 'function' ? this._extractableGems(at.w, 'weapon') : [];
+      /* v2.3.3516: into the bag (gems.js), as Take out's -- and owed no XP:
+         only a gem a player makes is (weapongem.js "THE XP, ONCE A GEM") */
+      for (const key of gemsBack) gemGive(ps, key.slice('polished_'.length), false, 1);
     } else if (hasOwn(ARMOUR_FIELDS, field)) {
       const at = this._salvageArmourOf(pid, field, payload);
       if (!at.piece) return refuse(at.reason, { gid: payload && typeof payload.gid === 'string' ? payload.gid.slice(0, 40) : null });
@@ -245,7 +258,9 @@ export const salvageMethods = {
       ps.inventory[essence] = Math.floor(Number(ps.inventory[essence]) || 0) + 1;
     }
     this._saveRpg(pid, ps);
-    const result = { ok: true, field, ...ref, bar, bars: SALVAGE.BARS, essence, grade, metal };
+    /* v2.3.3513: + the gems it gave back -- v2.3.3516: by their bag keys
+       (`gem_<element>`, gems.js), what the bag now holds */
+    const result = { ok: true, field, ...ref, bar, bars: SALVAGE.BARS, essence, grade, metal, ...(gemsBack.length ? { gems: gemsBack.map((k) => 'gem_' + k.slice('polished_'.length)) } : null) };
     this._salvageSend(pid, 'smith_salvage_result', result, true);
     return result;
   },

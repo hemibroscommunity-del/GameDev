@@ -70,6 +70,8 @@
  * legacy kill-gem roll + local cut roll (rules 19/20). */
 
 import { AMULET_FORGE_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_MONSTER_DROP, AMULET_GEMS, GEM_CUT_TIERS, GEM_RAW_MONSTER_DROP, GEM_EXTRACT_BASE_COST, BLACKSMITH_TIER_LABELS, WOODWORKING_TIER_LABELS, WEAPON_TYPE_LABELS } from './data.js';
+import { GEM_ELEMENTS, gemCount, gemTake, gemGive, gemsIntoBag } from './gems.js';   /* v2.3.3516: gems live in the bag */
+import { WEAPON_GEM } from './weapongem.js';   /* v2.3.3516: UNPAID_MAX, the owed XP's bound */
 
 // One-time join-capture clamps for the previously client-local ledger.
 // Honest values are tiny (nuggets drop at 1-in-10k kills; mythic needs
@@ -182,11 +184,10 @@ export const amuletMethods = {
       // map (the client's EnchantPanel source, captured at join).
       // Deny-by-default when the server has none -- see the header's
       // trust-posture note on the client-local gem economy.
-      const gems = (ps.lifeSkills && ps.lifeSkills.gems) || null;
-      const polKey = 'polished_' + gem;
-      if (!gems || (gems[polKey] || 0) < 1) return;
-      gems[polKey] -= 1;
-      if (gems[polKey] <= 0) delete gems[polKey];
+      /* v2.3.3516: an elemental gem from the bag (gems.js: the bag, then any
+         the old pouch still holds) */
+      if (gemCount(ps, gem, false) < 1) return;
+      gemTake(ps, gem, false, 1);
       const label = AMULET_FORGE_TIERS[ps.amulet.tier].label;
       ps.amulet.gem = gem;
       ps.amulet.name = label + ' ' + gem.charAt(0).toUpperCase() + gem.slice(1) + ' Amulet';
@@ -200,7 +201,10 @@ export const amuletMethods = {
          is gone -- which is not theory: it is what amulet.test.mjs caught
          when the first cut of the resolve rebuilt every path. */
       this._gearProvTouch(session.id, ps.amulet);
-      this._addLifeSkillXp(ps, 'enchanting', 20);
+      /* v2.3.3513: GEM_SET_XP (400, the owner's decision 11, docs/GEM-PLAN.md;
+         was the game's 20) -- once a gem.  v2.3.3516: for a gem this player
+         made (weapongem.js _gemSetXp, "THE XP, ONCE A GEM"). */
+      this._gemSetXp(ps, gem);
 
     } else if (op === 'extract') {
       // v2.3.1209: pull gems/elements back out of a SERVER-held gear
@@ -245,9 +249,13 @@ export const amuletMethods = {
       const cost = this._gemExtractCost(item);
       if ((ps.coins || 0) < cost) return;
       ps.coins -= cost;
-      if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
-      if (!ps.lifeSkills.gems || typeof ps.lifeSkills.gems !== 'object') ps.lifeSkills.gems = {};
-      for (const key of gained) ps.lifeSkills.gems[key] = (ps.lifeSkills.gems[key] || 0) + 1;
+      /* v2.3.3516: back into the BAG (gems.js) -- an elemental gem, the item
+         the gem plan's decision 5 makes it */
+      for (const key of gained) gemGive(ps, key.slice('polished_'.length), false, 1);
+      /* v2.3.3513 counted these as come back, so setting one again paid no
+         XP.  v2.3.3516: a gem taken out is owed nothing -- only a gem a
+         player MAKES is (weapongem.js "THE XP, ONCE A GEM"), so there is
+         nothing to count here. */
       this._stripGems(item, kind);
       /* ═══ v2.3.2537: THE ROW FOLLOWS THIS MUTATION TOO ═══
          _stripGems REWRITES the piece in place -- a shield loses its `gem`
@@ -297,8 +305,10 @@ export const amuletMethods = {
          shield keeps its gem; it just cannot be cashed in. */
       if (item.prov === 'minted' && item.gem && AMULET_GEMS.has(item.gem)) out.push('polished_' + item.gem);
     } else {
-      if (item.element1 && AMULET_GEMS.has(item.element1)) out.push('polished_' + item.element1);
-      if (item.element2 && AMULET_GEMS.has(item.element2)) out.push('polished_' + item.element2);
+      /* v2.3.3516: any gem element (gems.js GEM_ELEMENTS) -- a weapon's Flora
+         gem (the gem plan's decision 7) is not an amulet's, and comes back too */
+      if (item.element1 && GEM_ELEMENTS.has(item.element1)) out.push('polished_' + item.element1);
+      if (item.element2 && GEM_ELEMENTS.has(item.element2)) out.push('polished_' + item.element2);
     }
     return out;
   },
@@ -398,6 +408,46 @@ export const amuletMethods = {
       }
     }
     ps.gemsCaptured = true;
+    /* ═══ v2.3.3516: THE POUCH INTO THE BAG, AND THE XP OWED ═══
+       Every gem in the pouch moves into the BAG (gems.js gemsIntoBag: the gem
+       plan's decision 5) -- at every join, as the capture above is a writer of
+       the pouch that runs after any stored record was loaded; an empty pouch
+       moves nothing.  First, the XP its polished gems are owed (weapongem.js
+       "THE XP, ONCE A GEM"): the pouch never traded, so every polished gem in
+       it was made by this player -- each one owed its 400, less the ones that
+       came back out of gear (v2.3.3513's `gemsBack`), which paid going in.  A
+       raw gem is owed when it is combined.  `gemsBack` goes with the move: the
+       XP is counted by the gems made now. */
+    const pouch = ps.lifeSkills.gems;
+    const back = ps.lifeSkills.gemsBack && typeof ps.lifeSkills.gemsBack === 'object' && !Array.isArray(ps.lifeSkills.gemsBack)
+      ? ps.lifeSkills.gemsBack : null;
+    if (pouch && typeof pouch === 'object') {
+      for (const k of Object.keys(pouch)) {
+        if (k.indexOf('polished_') !== 0) continue;
+        const e = k.slice(9);
+        if (!GEM_ELEMENTS.has(e)) continue;
+        const held = Math.max(0, Math.floor(Number(pouch[k]) || 0));
+        const came = back && Object.prototype.hasOwnProperty.call(back, e) ? Math.max(0, Math.floor(Number(back[e]) || 0)) : 0;
+        if (held - came > 0) this._gemMade(ps, e, held - came);
+      }
+    }
+    gemsIntoBag(ps);
+    delete ps.lifeSkills.gemsBack;
+    /* the owed count, healed: an element's own key, a whole number of at least
+       1, at most UNPAID_MAX -- anything else dropped.  Kept as an object (the
+       page never drops a lifeSkills key the worker leaves out) */
+    const owed = ps.lifeSkills.gemsUnpaid;
+    if (owed !== undefined) {
+      const healed = {};
+      if (owed && typeof owed === 'object' && !Array.isArray(owed)) {
+        for (const k of Object.keys(owed)) {
+          if (!GEM_ELEMENTS.has(k)) continue;
+          const n = Math.min(WEAPON_GEM.UNPAID_MAX, Math.floor(Number(owed[k]) || 0));
+          if (n > 0) healed[k] = n;
+        }
+      }
+      ps.lifeSkills.gemsUnpaid = healed;
+    }
   },
 
   // Raw-gem drop roll for a monster kill.  Called from
@@ -415,14 +465,16 @@ export const amuletMethods = {
      (killroll.js _killRollCan reads the same element).  True when it paid. */
   _gemRawOnKill(ps, zone, hit) {
     if (!ps) return false;
+    /* v2.3.3516: raw gems come only from cracking shards (shardcrack.js; the
+       gem plan's decision 1) -- none off a kill while that is on.  The kill
+       roll has no raw gem then either (killroll.js _killRollCan); this is
+       the roll-it-yourself road the kill roll's own switch leaves. */
+    if (typeof this._shardCrackOff === 'function' && !this._shardCrackOff()) return false;
     const cfg = this._getZoneConfig(zone);
     const elem = (cfg && cfg.element) || null;
     if (!elem || !AMULET_GEMS.has(elem)) return false;
     if (hit === undefined ? Math.random() >= GEM_RAW_MONSTER_DROP : !hit) return false;
-    if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
-    if (!ps.lifeSkills.gems || typeof ps.lifeSkills.gems !== 'object') ps.lifeSkills.gems = {};
-    const k = 'raw_' + elem;
-    ps.lifeSkills.gems[k] = (ps.lifeSkills.gems[k] || 0) + 1;
+    gemGive(ps, elem, true, 1);   /* v2.3.3516: into the bag (gems.js) */
     return true;
   },
 
@@ -442,13 +494,20 @@ export const amuletMethods = {
     const ps = this.playerState[session.id];
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
+    /* v2.3.3516: refused while the crack and the combine are on
+       (shardcrack.js): an elemental gem takes THREE raw gems now (the gem
+       plan's decision 3), and a page from before this version would make one
+       from one.  Its own prediction took a raw gem off, so the gems go back
+       to it. */
+    if (typeof this._shardCrackOff === 'function' && !this._shardCrackOff()) {
+      const w0 = this._wsBySessionId(session.id);
+      if (w0) this._resendPlayerState(w0, session.id, ['inventory', 'lifeSkills']);
+      return;
+    }
     const gem = payload && payload.gem;
     if (typeof gem !== 'string' || !AMULET_GEMS.has(gem)) return;
-    const gems = (ps.lifeSkills && ps.lifeSkills.gems) || null;
-    const rawKey = 'raw_' + gem;
-    if (!gems || (gems[rawKey] || 0) < 1) return; // deny-by-default, silent
-    gems[rawKey] -= 1;
-    if (gems[rawKey] <= 0) delete gems[rawKey];
+    /* v2.3.3516: from the bag (gems.js) */
+    if (!gemTake(ps, gem, true, 1)) return; // deny-by-default, silent
     // Success rate from the server-held skill level -- a modified
     // client can't claim a Perfect Cut rate at level 1.
     const gcLvl = (ps.lifeSkills.gemCutting && ps.lifeSkills.gemCutting.level) || 1;
@@ -461,10 +520,9 @@ export const amuletMethods = {
       }
     }
     const success = Math.random() < successRate;
-    if (success) {
-      const polKey = 'polished_' + gem;
-      gems[polKey] = (gems[polKey] || 0) + 1;
-    }
+    /* v2.3.3516: into the bag -- a gem this player made, so its set pays
+       the Enchanting XP (weapongem.js "THE XP, ONCE A GEM") */
+    if (success) { gemGive(ps, gem, false, 1); this._gemMade(ps, gem, 1); }
     const { leveled, newLevel } = this._addLifeSkillXp(ps, 'gemCutting', GEM_CUT_XP);
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);

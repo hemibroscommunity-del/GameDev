@@ -229,8 +229,8 @@ export const marketMethods = {
     const subtype = this._mktField(body.subtype);
     const tierKey = this._mktField(body.tierKey);
     if (!category || !subtype || !tierKey) return { ok: false, error: 'Missing fields' };
-    const element1 = body.element1 == null ? null : this._mktField(body.element1);
-    const element2 = body.element2 == null ? null : this._mktField(body.element2);
+    let element1 = body.element1 == null ? null : this._mktField(body.element1);   /* v2.3.3513: let -- a sell takes its item's */
+    let element2 = body.element2 == null ? null : this._mktField(body.element2);
     if ((body.element1 != null && !element1) || (body.element2 != null && !element2)) {
       return { ok: false, error: 'Invalid element' };
     }
@@ -255,6 +255,14 @@ export const marketMethods = {
       }
       item = this._sanitizeWeapon(ps.weaponStash[idx]);
       if (!item) return { ok: false, error: 'Item not in stash' };
+      /* ═══ v2.3.3513: A SELL ORDER SAYS THE GEMS ITS WEAPON HOLDS ═══
+         A weapon's gem is the worker's now (weapongem.js), and real: the
+         order's elements -- its place in the book, what a buyer's order is
+         matched against and what the listing shows -- were the seller's
+         word, so a plain blade could be listed as a Flame one.  A sell takes
+         them from the weapon it escrows; a buy still names what it wants. */
+      element1 = item.element1 || null;
+      element2 = item.element2 || null;
       ps.weaponStash.splice(idx, 1);
     } else {
       if ((ps.coins || 0) < p) return { ok: false, error: 'Not enough gold' };

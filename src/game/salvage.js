@@ -66,7 +66,10 @@ export function applySalvageResult(S, payload, save) {
     try { if (typeof save === 'function') save(S); } catch (e) { /* the echo carries the worker's own lists */ }
   }
   if (payload.ok) {
-    say(S, '+' + (payload.bars || 0) + ' bars' + (payload.essence ? ' · ' + (essenceName(payload.essence) || 'essence') : ''), payload.essence ? '#9FD3F0' : '#D8AA58');
+    /* v2.3.3513: a salvaged weapon gives its gems back too (salvage.js) */
+    const _gemsBack = Array.isArray(payload.gems) ? payload.gems.length : 0;
+    say(S, '+' + (payload.bars || 0) + ' bars' + (payload.essence ? ' · ' + (essenceName(payload.essence) || 'essence') : '')
+      + (_gemsBack ? ' · ' + (_gemsBack === 1 ? 'gem back' : _gemsBack + ' gems back') : ''), payload.essence ? '#9FD3F0' : '#D8AA58');
     cue('salvage');   /* v2.3.3343: the piece broken down -- collect() is a beep(), silent (SOUND-GAPS) */
     if (payload.essence) setTimeout(() => play('flip-win', { vol: 0.45 }), 160);
   }

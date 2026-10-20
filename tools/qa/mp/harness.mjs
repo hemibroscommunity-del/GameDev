@@ -1304,6 +1304,38 @@ export async function armWorker(P, wsPort, playerId, kinds = ['bow', 'staff']) {
   return armed;
 }
 
+/* ═══ v2.3.3513: A WEAPON'S GEM IS THE WORKER'S (server/src/weapongem.js) ═══
+ * The worker reads each hit's element from ITS copy of the weapon since
+ * v2.3.3513, never from the claim -- so a gem written on the page alone
+ * carries nothing.  A scenario that needs a weapon with an element sets it the
+ * way a player does: a polished gem from the dev kit, Take out (the
+ * Blacksmith's op) for a gem already in, then weapon_gem.  `gem` null takes the
+ * gem out.  True once the page's weapon (from the worker's player_state)
+ * shows it; false with no weapon in that slot. */
+export async function weaponGem(P, wsPort, playerId, slot = 'weapon', gem = null) {
+  const cur = () => P.page.evaluate((s) => {
+    const R = window._gameState && window._gameState.current && window._gameState.current.rpg;
+    const w = R && R[s];
+    return w ? (w.element1 || null) : undefined;
+  }, slot);
+  let now = await cur();
+  if (now === undefined) return false;
+  if (now === gem) return true;
+  if (now) {
+    await grant(wsPort, playerId, 'gold', { amount: 1000 });
+    await P.page.waitForTimeout(300);
+    await P.page.evaluate((s) => window._gameState.current.channel.send({ type: 'amulet_forge_request', payload: { op: 'extract', target: s } }), slot);
+    for (let i = 0; i < 40 && now; i++) { await P.page.waitForTimeout(250); now = await cur(); }
+    if (now) return false;
+  }
+  if (!gem) return true;
+  await devOp(wsPort, 'kit', playerId, { what: 'gems', count: 1 });
+  await P.page.waitForTimeout(400);
+  await P.page.evaluate(({ s, g }) => window._gameState.current.channel.send({ type: 'weapon_gem', payload: { slot: s, gem: g } }), { s: slot, g: gem });
+  for (let i = 0; i < 40 && now !== gem; i++) { await P.page.waitForTimeout(250); now = await cur(); }
+  return now === gem;
+}
+
 /* ═══ v2.3.2435: THE OWNER'S TEST KIT, OVER HTTP ═══
  * The four /api/admin/dev ops (devtools.js).  They are POSTs carrying the
  * player id IN THE BODY — only /dev/state takes it as a query param — and a

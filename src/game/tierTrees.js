@@ -70,6 +70,27 @@ export function treeGeom(node) {
   };
 }
 
+/* ═══ v2.3.3511: WHERE THE CROWN ENDS, IN WORLD PX ═══
+   The owner, of the Water Caves' trees: "water looks like sweating" -- the
+   drips were born inside the leaves and faded where they were.  A drip forms
+   on the crown's LOWER EDGE and falls from there (rendering/landAuras.js), so
+   this is that edge, as the picture has it (src/data/treeArt.js `crown`,
+   measured by tools/world/add-tree-art.mjs): one { x0, x1, y } a stretch of
+   the picture's width, left to right, none where the trunk's middle is.  A
+   tree whose picture has no measure gives none. */
+export function treeCrownEdge(node) {
+  const g = treeGeom(node);
+  const c = g.art && g.art.crown;
+  if (!Array.isArray(c) || !c.length) return [];
+  const span = (g.art.w / c.length) * TREE_PX;
+  const out = [];
+  for (let i = 0; i < c.length; i++) {
+    if (!(c[i] > 0)) continue;
+    out.push({ x0: g.left + i * span, x1: g.left + (i + 1) * span, y: g.top + c[i] * TREE_PX });
+  }
+  return out;
+}
+
 /* Where the name label and the harvest bar hang: over the crown, but never
    more than TREE_MARK_MAX_UP world px above the foot.  The maple's crown tops
    out 424 px up, and on an upright phone with the woodcutter at its trunk

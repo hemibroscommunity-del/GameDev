@@ -9,7 +9,7 @@
  *      privileged.
  *   2. A shield the worker made, on the arm: one polished gem taken from the
  *      worker's own count, the gem in, the shield renamed as the game names
- *      it, 20 Enchanting XP, a player_state after the receipt, the ledger
+ *      it, 400 Enchanting XP (v2.3.3513; 20 before), a player_state after the receipt, the ledger
  *      row following.
  *   3. It lasts: a reconnect keeps the gem, a claim of the same id is
  *      rebuilt WITH it, and the Blacksmith's Take out gives it back.
@@ -77,8 +77,36 @@ const PID = 'bp_shieldgem_a';
 let ws = fakeWs();
 await join(ws, PID);
 const ps = () => room.playerState[PID];
-const gems = () => ((ps().lifeSkills || {}).gems || {});
-const setGems = (g) => { ps().lifeSkills = ps().lifeSkills || {}; ps().lifeSkills.gems = { ...g }; };
+/* v2.3.3516: gems live in the BAG (gems.js: `gem_raw_<e>`, `gem_<e>`); these
+   checks read and set them in the old pouch's names -- the bag and any pouch
+   left, as `raw_<e>` / `polished_<e>` */
+const gemsOf = (p) => {
+  const out = {};
+  const add = (k, n) => { n = Math.floor(Number(n) || 0); if (n > 0) out[k] = (out[k] || 0) + n; };
+  const inv = (p && p.inventory) || {};
+  for (const k of Object.keys(inv)) {
+    if (k.startsWith('gem_raw_')) add('raw_' + k.slice(8), inv[k]);
+    else if (k.startsWith('gem_')) add('polished_' + k.slice(4), inv[k]);
+  }
+  const pouch = (p && p.lifeSkills && p.lifeSkills.gems) || {};
+  for (const k of Object.keys(pouch)) add(k, pouch[k]);
+  return out;
+};
+const gems = () => gemsOf(ps());
+const setGems = (g) => {
+  const p = ps();
+  if (!p.inventory || typeof p.inventory !== 'object') p.inventory = {};
+  for (const k of Object.keys(p.inventory)) if (k.startsWith('gem_')) delete p.inventory[k];
+  p.lifeSkills = p.lifeSkills || {};
+  p.lifeSkills.gems = {};
+  /* ...and the cut ones stand for gems the player MADE: owed their XP
+     (weapongem.js "THE XP, ONCE A GEM", v2.3.3516) */
+  p.lifeSkills.gemsUnpaid = {};
+  for (const k of Object.keys(g)) {
+    if (k.startsWith('raw_')) p.inventory['gem_raw_' + k.slice(4)] = g[k];
+    else if (k.startsWith('polished_')) { p.inventory['gem_' + k.slice(9)] = g[k]; p.lifeSkills.gemsUnpaid[k.slice(9)] = g[k]; }
+  }
+};
 const enchXp = () => { const e = (ps().lifeSkills || {}).enchanting; return e && typeof e === 'object' ? (e.xp || 0) + 1e6 * ((e.level || 1) - 1) : 0; };
 const rowOf = (gid) => ((room._gearProvOf(PID) || { list: [] }).list || []).find((r) => r.id === gid) || null;
 const slot = async (payload) => {
@@ -97,7 +125,8 @@ const mintShield = (extra) => room._gearProvRecord(PID, 'shield', { tier: 'commo
   check('caps.shieldgem is advertised', !!sync && sync.caps.shieldgem === true, sync && sync.caps.shieldgem);
   check('...under a name the liveflags route accepts (lower case: a kill switch)', LIVEOPS.FLAG_NAME_RE.test('shieldgem'));
   check('the receipt is privileged (a client cannot forge it on another screen)', PRIVILEGED_EVENTS.has('shield_gem_result'));
-  check('one slot pays the game\'s 20 Enchanting XP', SHIELD_GEM.XP === 20);
+  /* v2.3.3513: GEM_SET_XP, 400 -- the owner's decision 11 (docs/GEM-PLAN.md), was the game's 20 */
+  check('one slot pays 400 Enchanting XP (GEM_SET_XP, the owner\'s decision 11)', SHIELD_GEM.XP === 400);
 }
 
 // ── 2. A shield the worker made, on the arm ──
@@ -113,13 +142,13 @@ let P;
   check('...the worker\'s shield holds the gem', ps().shield.gem === 'flame');
   check('...renamed as the game names it ("Wood Flame Shield")', ps().shield.name === 'Wood Flame Shield' && r.name === 'Wood Flame Shield', ps().shield.name);
   check('...it is still the shield the worker made (same id, proven)', ps().shield.gid === P.gid && ps().shield.prov === 'minted');
-  check('...20 Enchanting XP', enchXp() - xp0 === 20, enchXp() - xp0);
+  check('...400 Enchanting XP (v2.3.3513), and the receipt says so', enchXp() - xp0 === 400 && r.xp === 400, { got: enchXp() - xp0, r: r && r.xp });
   check('...the ledger row follows (a rebuild from it keeps the gem)', !!rowOf(P.gid) && rowOf(P.gid).p.gem === 'flame' && rowOf(P.gid).p.name === 'Wood Flame Shield', rowOf(P.gid) && rowOf(P.gid).p);
   check('...a player_state follows the receipt (the gem count and the XP)',
     ws.sent.findIndex((m) => m.type === 'player_state') > ws.sent.findIndex((m) => m.type === 'shield_gem_result'));
   const stored = state._store.get('rpg:' + PID);
   check('...and it is saved: the stored shield has the gem, the stored count is one', !!stored && stored.shield && stored.shield.gem === 'flame'
-    && stored.lifeSkills && stored.lifeSkills.gems && stored.lifeSkills.gems.polished_flame === 1, stored && { shield: stored.shield, gems: stored.lifeSkills && stored.lifeSkills.gems });
+    && gemsOf(stored).polished_flame === 1, stored && { shield: stored.shield, gems: gemsOf(stored) });
   const last = await slot({ gem: 'flame', gid: P.gid });
   check('the last flame gem goes in too, and the count is gone, not zero', !!last && last.ok === true && !('polished_flame' in gems()), gems());
   const none = await slot({ gem: 'flame', gid: P.gid });

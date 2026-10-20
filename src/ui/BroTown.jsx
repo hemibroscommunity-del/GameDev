@@ -384,7 +384,7 @@ import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the s
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
 import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
-import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
+import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land over the band's middle */
 import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
 import { nmlAsk, nmlAskOn, nmlAim, nmlHitBack } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first */
@@ -4559,11 +4559,19 @@ export var BroTown = function BroTown(_ref0) {
         _avx = ((S.player && S.player.vx) || 0) * _pxMs;
         _avy = ((S.player && S.player.vy) || 0) * _pxMs;
       }
+      /* v2.3.3499: ...and once a jump has started across one, it is passed
+         for the rest of the jump, whatever this frame's speed, and a moment
+         after it (game/jump.js jumpLatched / landedOver): the owner's "gets
+         stuck on some props sometimes that it should be clearing". */
+      var _landNow = (!_air && S._jumpOver) ? Date.now() : 0;
       for (var i = 0; i < bx.length; i++) {
         var b = bx[i];
         if (px + h <= b.x0 || px - h >= b.x1 || fy + h <= b.y0 || fy - h >= b.y1) continue;
-        if (_air && overLow(b, _air, _airNow, h, px, fy, _avx, _avy)) continue;
+        if (_air && (jumpLatched(_air, b) || (overLow(b, _air, _airNow, h, px, fy, _avx, _avy) && jumpLatch(_air, b)))) continue;
         var inNow = !(curX + h <= b.x0 || curX - h >= b.x1 || cfy + h <= b.y0 || cfy - h >= b.y1);
+        /* v2.3.3499: only feet ALREADY in it walk on out -- never a step into
+           a fence you have just cleared, on the ground */
+        if (inNow && _landNow && landedOver(S, b, _landNow)) continue;
         if (!inNow) return true;
         if (_boxDepth(px, fy, b, h) > _boxDepth(curX, cfy, b, h)) return true;
       }
@@ -9770,7 +9778,11 @@ export var BroTown = function BroTown(_ref0) {
        now, on purpose. */
     var _lt = S.lockedTarget;
     if (_lt && _lt.ref && _lt.type === 'monster' && _lt.src !== 'tap') {
-      S.lockedTarget = { type: 'monster', id: _lt.id, ref: _lt.ref, src: 'tap' };
+      /* v2.3.3499: `near` -- an auto lock is only ever made inside the 220 px
+         perimeter, so the promoted tap has been there: without the latch a
+         press made with the monster 220-275 px off gave a sword a tap lock
+         that was never released (targeting.js tapReleased, lockTooFar) */
+      S.lockedTarget = { type: 'monster', id: _lt.id, ref: _lt.ref, src: 'tap', near: true };
     }
     /* ═══ v2.3.3145: A PRESS THAT MAY BE A TAP IS NOT AN ATTACK YET ═══
        The owner: "When you tap jump with bow equipped it shows you and your
@@ -10822,6 +10834,22 @@ export var BroTown = function BroTown(_ref0) {
       e.stopPropagation();
       var t = e.changedTouches[0];
       if (!t) return;
+      /* ═══ v2.3.3496: A FINGER THAT IS NOT ON THE SCREEN OWNS NOTHING ═══
+         The owner: "input dead after returning (needs tab switch)".  The
+         button's one-finger rule below kept the press of a finger whose lift
+         never reached the page -- the app switched, the notification shade
+         pulled, a call came, the screen locked, mid-press: iOS does not
+         always send that touch's touchend or touchcancel to a page it has
+         frozen -- and from then on EVERY press of the button was taken here
+         and thrown away (prevented and stopped above, so the stick under it
+         never saw it either), until a tab switch made WebKit cancel the touch
+         it still tracked.  A touch the screen no longer has (`e.touches` is
+         every finger on it now) is let go of as a lift, and this press takes
+         the button. */
+      if (bTouchId.current !== null && !findT(e.touches || [], bTouchId.current)) {
+        _staleTouch('button');
+        _releaseButton();
+      }
       if (bTouchId.current !== null) return;   /* one finger owns the button */
       bTouchId.current = t.identifier;
       rJoyActive.current = true;
@@ -11035,6 +11063,54 @@ export var BroTown = function BroTown(_ref0) {
       }
       handleRBtnRelease();
     };
+    /* ═══ v2.3.3496: THE PAGE GOING AWAY LETS GO OF EVERY FINGER ═══
+       The owner: "input dead after returning (needs tab switch)".  Every
+       press here is ended only by its own touchend or touchcancel -- and a
+       page iOS freezes mid-press (the app switched, the shade pulled, a call,
+       the lock button) may never get either: the stick kept walking, the
+       attack stayed held, and the button's one-finger rule (bS) swallowed
+       every later press.  The keyboard has had this since v2.3.3006
+       (desktopControls: a window blur lets every key go); the touch side had
+       nothing.  Now the page hiding, coming back (a bfcache restore too) or
+       losing focus ends every press here exactly as a lift would.  A finger
+       really still down is not harmed: it was never going to be heard again
+       on a page that went away, and its next touch starts fresh. */
+    var _releaseButton = function () {
+      bTouchId.current = null;
+      bSwipe.harvest = false;
+      bSwipe.toShield = false;
+      rJoyActive.current = false;
+      handleRBtnRelease();
+    };
+    var _staleTouch = function (what) {
+      try {
+        var Sx = stateRef.current;
+        if (Sx) Sx._staleTouches = (Sx._staleTouches || 0) + 1;
+        import('../debug/crashTrap.js').then(function (ct) {
+          ct.recordCrash('touch-stale', what + ' held by a finger the page never saw lift, let go (' + document.visibilityState + ')');
+        }).catch(function () {});
+      } catch (err) { /* evidence only */ }
+    };
+    var releaseAllTouches = function (why) {
+      var held = [];
+      if (lTouchId.current !== null) { held.push('stick'); lTouchId.current = null; handleJoystickEnd(); }
+      if (rTouchId.current !== null) { held.push('right'); rTouchId.current = null; handleRBtnRelease(); }
+      if (bTouchId.current !== null) { held.push('button'); _releaseButton(); }
+      try { window.__btTouchRelease = { why: why, at: Date.now(), held: held }; } catch (err) { /* probe only */ }
+      if (held.length) _staleTouch(held.join('+') + ' on ' + why);
+      return held;
+    };
+    var _onPageAway = function (e) {
+      releaseAllTouches(e && e.type === 'visibilitychange' ? 'visibility-' + document.visibilityState : (e && e.type) || 'away');
+    };
+    document.addEventListener('visibilitychange', _onPageAway);
+    window.addEventListener('pagehide', _onPageAway);
+    window.addEventListener('pageshow', _onPageAway);
+    window.addEventListener('blur', _onPageAway);
+    try {
+      window.__btReleaseTouches = releaseAllTouches;   /* QA probes (mp-comeback) */
+      window.__btButtonFinger = function () { return bTouchId.current; };
+    } catch (err) { /* QA probe */ }
     lBase.addEventListener('touchstart', lS, {
       passive: false
     });
@@ -11114,6 +11190,10 @@ export var BroTown = function BroTown(_ref0) {
       window.removeEventListener('pointerdown', _stampInput, { capture: true });
       window.removeEventListener('keydown', _stampInput, { capture: true });
       window.removeEventListener('wheel', _stampInput, { capture: true }); /* v2.3.1913 */
+      document.removeEventListener('visibilitychange', _onPageAway);   /* v2.3.3496 */
+      window.removeEventListener('pagehide', _onPageAway);
+      window.removeEventListener('pageshow', _onPageAway);
+      window.removeEventListener('blur', _onPageAway);
       lBase.removeEventListener('touchstart', lS);
       window.removeEventListener('touchmove', gM);
       window.removeEventListener('touchmove', lM);

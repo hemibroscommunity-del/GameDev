@@ -5,6 +5,7 @@ import { PROG3, burstRefusal, burstWeapon } from '@/data/prog3.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { elementBurst } from '@/game/playerActions.js';
 import { Skin, NovaIcon, pressOn, pressOff, useReadyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
+import { uiBusyBus } from './uiBusyBus.js'; /* v2.3.3513: stand aside while a window is open */
 
 /* ═══ v2.3.1734: ELEMENT BURST BUTTON (COMBAT-OVERHAUL-PLAN PR 6) ═══
  *
@@ -74,6 +75,16 @@ const SIZE = 46;
 export const ElementBurstButton = () => {
   const [, force] = useState(0);
   const [isLandscape, setIsLandscape] = useState(playIsLandscape());
+  /* ═══ v2.3.3513: UNDER A WINDOW, IT STANDS ASIDE ═══
+     This button is drawn by GameApp, OUTSIDE .brotown-wrap, so it paints over
+     an in-wrap window whatever the z-index ladder says (the lesson at
+     .bt-inspect in game.css; the bell's v2.3.3407 fix).  A weapon's gem is
+     the worker's now (weapongem.js) and lasts, so the button is up for good
+     once one is set -- and it sat over the Gem Works' own window, across its
+     "No open gem slot", the very window that set it (mp-weapongem's picture).
+     A window open is a window the thumb is using: hidden until it shuts. */
+  const [busy, setBusy] = useState(() => uiBusyBus.busy);
+  useEffect(() => uiBusyBus.subscribe(setBusy), []);
 
   useEffect(() => {
     let raf;
@@ -97,7 +108,7 @@ export const ElementBurstButton = () => {
   /* v2.3.3018: above the early returns (a hook) -- the glow swells once when
      the cooldown's arc closes. */
   const flash = useReadyFlash(!!(S && PROG3.BURST_CD_MS - (Date.now() - (S._lastBurstAt || 0)) > 0));
-  if (!R) return null;
+  if (!R || busy) return null;
 
   const wpn = burstWeapon(R);   /* NOT getActiveWeapon — see burstWeapon's note */
   /* Pass no cast time: the cooldown must NOT hide the button, or it would
