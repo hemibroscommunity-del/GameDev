@@ -420,7 +420,7 @@ mp-sprint 6 and 6b (running dry twice: the grunt, then the breath and not the
 grunt, each recording decoded); mp-cuelevels (sprintOutBreath's promised
 ~0.2, no clipping, no thump); the sound-cues suite.
 
-## v2.3.3498: the effort grunt, and the push-off a sprint begun mid-walk missed
+## v2.3.3521: the effort grunt, and the push-off a sprint begun mid-walk missed
 
 - The grunt is the owner's "Angry Grunt" now, the effort ("Wrong sound for
   starting sprint and ending sprint (hurt sound) instead of effort grunt").

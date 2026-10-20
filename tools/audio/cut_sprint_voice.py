@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """v2.3.3455: CUT THE OWNER'S SPRINT GRUNT.  v2.3.3475: AND THEIR TIRED BREATH.
 
-v2.3.3498: THE GRUNT IS THE ANGRY GRUNT NOW.  The owner, after more play:
+v2.3.3521: THE GRUNT IS THE ANGRY GRUNT NOW.  The owner, after more play:
 "Wrong sound for starting sprint and ending sprint (hurt sound) instead of
 effort grunt", and "I think sounds were wired in the wrong places.  The
 labels should tell you where they go."  Measured, the two grunts the owner
@@ -73,7 +73,7 @@ import numpy as np
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 VOICE = os.path.join(ROOT, 'assets', 'sfx-source', 'voice')
-SRC = os.path.join(ROOT, 'assets', 'sfx-source', 'player', 'freesound_community-angry-grunt-103204.mp3')   # v2.3.3498: the effort grunt (was voice/grunt-1, which sounds hurt)
+SRC = os.path.join(ROOT, 'assets', 'sfx-source', 'player', 'freesound_community-angry-grunt-103204.mp3')   # v2.3.3521: the effort grunt (was voice/grunt-1, which sounds hurt)
 OUT = os.path.join(ROOT, 'public', 'sfx', 'voice', 'sprint-grunt.mp3')
 DATA = os.path.join(ROOT, 'src', 'data', 'sprintGrunt.js')
 SRC_BREATH = os.path.join(VOICE, 'voicebosch-out-of-breath-male-176715.mp3')
@@ -87,7 +87,7 @@ PEAK_FILE, PEAK_PLAY = 0.9, 0.66
 # the monsters' calls -- 0.7 of the yardstick as a speaker plays it (the
 # first cut's 0.5 on ffmpeg's louder fold, the level the game was tested at)
 GRUNT_K = 0.7
-# v2.3.3498: the first grunt (Grunt 1 at GRUNT_K) by ear, 0.667 of a melee
+# v2.3.3521: the first grunt (Grunt 1 at GRUNT_K) by ear, 0.667 of a melee
 # hit's A-weighted loudness -- the level the owner heard and kept
 GRUNT_EAR_K = 0.667
 REF = ('sword-hit3', os.path.join(ROOT, 'public', 'sfx', 'sword', 'sword-hit3.mp3'), 0.55)
@@ -158,7 +158,7 @@ def write_data(path, tag, name, about, url, vol, back):
 
 
 def highpass(w, fc, order=4):
-    """v2.3.3498: a causal Butterworth high-pass (RBJ biquads in series:
+    """v2.3.3521: a causal Butterworth high-pass (RBJ biquads in series:
     order/2 of them at the Butterworth Q's) -- cut_owner_sounds.py's own."""
     import math
     y = w.copy()
@@ -181,7 +181,7 @@ def highpass(w, fc, order=4):
     return y
 
 
-# v2.3.3498: the angry grunt's fundamental sits at 80-90 Hz, and that rumble
+# v2.3.3521: the angry grunt's fundamental sits at 80-90 Hz, and that rumble
 # is the "fleshy" thump the owner heard in the old push-off (v2.3.3336;
 # mp-cuelevels' rush-of-air rule): taken off below GRUNT_HP Hz, its strain --
 # the harmonics a phone's speaker actually plays -- kept whole
@@ -197,14 +197,14 @@ def cut_grunt():
         raise SystemExit('ABORT: no grunt found in the recording')
     start = max(0.0, on[0] / 100 - 0.010)
     end = min(len(x) / SR, (on[-1] + 1) / 100 + 0.030)
-    if not (0.15 <= end - start <= 1.0):   # v2.3.3498: 0.2 -> 0.15, the angry grunt is a short one (~0.2 s)
+    if not (0.15 <= end - start <= 1.0):   # v2.3.3521: 0.2 -> 0.15, the angry grunt is a short one (~0.2 s)
         raise SystemExit(f'ABORT: the grunt found is {end - start:.2f} s long -- not the recording this was written for')
     w = x[int(start * SR):int(end * SR)].copy()
     fi, fo = int(FADE_IN * SR), int(FADE_OUT * SR)
     w[:fi] *= np.linspace(0, 1, fi)
     w[-fo:] *= np.linspace(1, 0, fo) ** 2
     back = encode(w, OUT)
-    # v2.3.3498: levelled BY EAR (A-weighted), to the first grunt's own level
+    # v2.3.3521: levelled BY EAR (A-weighted), to the first grunt's own level
     # by ear (GRUNT_EAR_K) -- the angry grunt's strain sits at 200-500 Hz,
     # where the ear is less keen, so on GRUNT_K's plain scale it came out
     # 3.6 dB quieter to the ear than the grunt it replaces
@@ -214,7 +214,7 @@ def cut_grunt():
     old = load(OLD[1])
     old_seg = old[int(OLD[2] * SR):int((OLD[2] + OLD[3]) * SR)]
     old_loud, new_loud = loudness(old_seg) * OLD[4], loudness(back) * vol
-    write_data(DATA, 'v2.3.3498', 'SPRINT_GRUNT',
+    write_data(DATA, 'v2.3.3521', 'SPRINT_GRUNT',
                "The owner's sprint grunt (their \"angry grunt\", the effort): its address, the volume at which it is\n"
                f"   {GRUNT_EAR_K} of a melee hit's loudness by ear (sword-hit3 at {REF[2]})",
                '/sfx/voice/sprint-grunt.mp3', vol, back)

@@ -656,7 +656,7 @@ function applyWoodReward(S, node, result, deps) {
     var accuracy = (result && result.accuracy) || 'good';
     var reward = MINIGAME_REWARDS[accuracy] || MINIGAME_REWARDS.good;
     /* v2.3.849: the felled-tree "timber" crash (was a placeholder beep). */
-    /* v2.3.3498: a crack and a creak, no thump (data/eventSounds.js
+    /* v2.3.3521: a crack and a creak, no thump (data/eventSounds.js
        treeFelled; the owner: "The sound when a tree hits 0 hp is a fleshy
        sound.  Remove that.") -- it was tree-fall whole, its 1.0-1.8 s a
        thump 3x a hit */

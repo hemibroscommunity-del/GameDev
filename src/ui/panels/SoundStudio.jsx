@@ -11,7 +11,7 @@ import {
   ELEM_PLACES, NOISE_PLACES, STEP_PLACES, OTHER_PLAYS, SAMPLE_SOURCES,
 } from '@/data/soundStudio.js';
 
-/* ═══ v2.3.3498: THE SOUND STUDIO ═══
+/* ═══ v2.3.3521: THE SOUND STUDIO ═══
  *
  * The owner: "I think sounds were wired in the wrong places.  The labels
  * should tell you where they go.  Might need to build a quick studio to show

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3498: THE SOUND STUDIO -- WHAT YOU JUST HEARD, AND THE WAY IN ═══
+/* ═══ v2.3.3521: THE SOUND STUDIO -- WHAT YOU JUST HEARD, AND THE WAY IN ═══
  *
  * The owner: "I think sounds were wired in the wrong places.  The labels
  * should tell you where they go.  Might need to build a quick studio to show

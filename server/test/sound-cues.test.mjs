@@ -43,7 +43,7 @@
  *      explosion, the townsfolk's voices; the land's air, the sea's, the
  *      crowd's and a fire's beds, loaded where they play and let go; and the
  *      dance's beat on the music deck, never decoded.
- *  12. v2.3.3498, the sound studio (the owner: "The labels should tell you
+ *  12. v2.3.3521, the sound studio (the owner: "The labels should tell you
  *      where they go.  Might need to build a quick studio to show which
  *      sounds belong where"): every cue, and every key of BT_AUDIO's
  *      HIT_VOICES, PROP_SOUNDS, SHOT_SOUNDS, ELEM_SOUNDS, MONSTER_NOISE_CLIPS
@@ -210,7 +210,7 @@ function namesIn(code) {
 const callRe = (fn) => new RegExp('(?<![\\w.$])' + fn + '\\(', 'g');
 
 const used = new Set(), unknown = [], indirect = [], unimported = [];
-const PLAYERS = ['cue', 'cueAt', 'cuePeer', 'peerShare', 'peerStepShare', 'peerOwn', 'cueLater' /* v2.3.3498 */];
+const PLAYERS = ['cue', 'cueAt', 'cuePeer', 'peerShare', 'peerStepShare', 'peerOwn', 'cueLater' /* v2.3.3521 */];
 for (const p of files) {
   if (p === PLAYER) continue;
   const text = src(p);
@@ -261,7 +261,7 @@ for (const p of files) {
       return out;
     },
   };
-  /* v2.3.3498: the sound studio plays EVERY cue for the owner to hear (its
+  /* v2.3.3521: the sound studio plays EVERY cue for the owner to hear (its
      ▶); that is no place in the game playing one, so it is no use here --
      else 5d could never find a dead cue */
   const STUDIO = 'src/ui/panels/SoundStudio.jsx name';
@@ -577,7 +577,7 @@ for (const p of files) {
   /* the sources */
   const CUT = src('tools/audio/cut_owner_sounds.py');
   const srcs = [...new Set([...CUT.matchAll(/'((?:player|ui|emote|world|npc|voice)\/[^']+\.mp3)'/g)].map((m) => m[1]))];
-  /* v2.3.3498: the sprint's grunt is the owner's angry grunt now (the effort;
+  /* v2.3.3521: the sprint's grunt is the owner's angry grunt now (the effort;
      tools/audio/cut_sprint_voice.py, assets/sfx-source/player/), and their
      "Grunt 1" (voice/, it sounds hit) is cut here as the second hurt sound */
   check(`11zd the owner's recordings (${srcs.length} cut here -- the 21 less the sprint's grunt, and the splash and chime sent after -- and the sprint's grunt) are kept in assets/sfx-source/, none left at the top of the project`,
@@ -609,7 +609,7 @@ for (const p of files) {
       && !/pointsSpent/.test(src('src/ui/mobile/sheet/HeroExpanded.jsx')));
 }
 
-/* ── 12. v2.3.3498: the sound studio, every sound labelled ── */
+/* ── 12. v2.3.3521: the sound studio, every sound labelled ── */
 {
   const ST = await import('../../src/data/soundStudio.js');
   const { MONSTER_NOISE_CLIPS } = await import('../../src/data/monsterNoiseClips.js');
