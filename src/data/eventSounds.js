@@ -82,7 +82,7 @@ export const EVENT_SOUNDS = {
   crit: [['sword-hit', 0, 0.4, 0.6, 1, 0, 0.06]],
   /* A parry: the bright clang with the shield under it. */
   parry: [['sword-hit2', 0, 0, 0.55, 1.05], ['shield-block', 0, 0, 0.4, 1.1, 0.02]],
-  /* ═══ v2.3.3521: THE BOW'S SHOT IS THE JUMP'S RUSH OF AIR ═══
+  /* ═══ v2.3.3523: THE BOW'S SHOT IS THE JUMP'S RUSH OF AIR ═══
      The owner: "Fix duck squeak sound effect for bow shot (should be current
      'jump' sound)."  The squeak was `bowDraw` -- bow-pullback at 3.6x and,
      as the shot played it, 1.3x the rate: a creak whose peaks sat at 1.9-2.5
@@ -105,7 +105,7 @@ export const EVENT_SOUNDS = {
   /* Something found for the first time: a new collision, a new Codex page.
      The quest chime's first notes, ~0.8. */
   discovery: [['quest-complete-v2', 0.05, 0.5, 0.3, 1.1, 0, 0.15]],
-  /* ═══ v2.3.3521: A WEAPON SWAP SOUNDS LIKE THE WEAPON ═══
+  /* ═══ v2.3.3523: A WEAPON SWAP SOUNDS LIKE THE WEAPON ═══
      The owner: "Change weapon switch sound."  It was the old swing whoosh,
      fast (0.46 of a hit) -- it read as an attack swung.  Now the hand taking
      the weapon (ui-equip's leather, the gear's own tick, soft) and the
@@ -118,7 +118,7 @@ export const EVENT_SOUNDS = {
 
   /* ── moving ────────────────────────────────────────────────────────── */
   /* A jump's push-off, over the footstep it already plays, ~0.4 (the
-     arrow's flight, quick: see `dodged`)...  v2.3.3521: the bow's shot is
+     arrow's flight, quick: see `dodged`)...  v2.3.3523: the bow's shot is
      this slice now (`bowLoose`, the owner's ask), so the jump's is the same
      rush a touch lower and slower, to tell the two apart. */
   jumpUp: [['arrow-fly', 0.03, 0.22, 2.6, 0.85, 0, 0.05]],
@@ -130,7 +130,7 @@ export const EVENT_SOUNDS = {
      touch lower and slower -- worn out -- where it was the arrow's flight
      slowed, the "loud incoherent" push's own family.  ~0.23, a breathy voice
      (12% under 400 Hz, mp-cuelevels): no thump.
-     v2.3.3521: the grunt is the owner's EFFORT grunt now ("Wrong sound for
+     v2.3.3523: the grunt is the owner's EFFORT grunt now ("Wrong sound for
      starting sprint and ending sprint (hurt sound) instead of effort grunt":
      their "angry grunt", cut_sprint_voice.py), its strain at 200-400 Hz:
      ~0.45 plain, which weighs that whole, ~0.3 by ear -- a voice, not a
@@ -261,7 +261,7 @@ export const EVENT_SOUNDS = {
   hardenOk: [['sword-hit2', 0, 0, 0.5, 1.25], ['quest-complete-v2', 0.05, 0.7, 0.5, 1, 0.08, 0.2]],
   hardenFail: [['mine-strike', 0.06, 0.35, 0.45, 0.6], ['flip-lose', 0, 0.7, 0.45, 1, 0.08]],
   woodwork: [['axe-chop', 0.13, 0.3, 1.8, 1.05], ['wood-chop', 0.05, 0.3, 0.12, 1.25, 0.1, 0.08]],
-  /* ═══ v2.3.3521: A TREE CHOPPED DOWN CRACKS AND CREAKS -- NO THUMP ═══
+  /* ═══ v2.3.3523: A TREE CHOPPED DOWN CRACKS AND CREAKS -- NO THUMP ═══
      The owner: "The sound when a tree hits 0 hp is a fleshy sound.  Remove
      that."  It was tree-fall whole, 2 s at 0.8: a crack, a creak, then from
      1.0 s a thump 88-91% under 150 Hz, louder than anything in a fight (3x a
@@ -427,7 +427,7 @@ export const EVENT_SOUNDS = {
      one of two, never the same twice running, at most one in a while):
      ~0.7, under the blow's own clang or thud.  (The owner's third grunt is
      the sprint's push-off, their own ask: BT_AUDIO.SPRINT_PUSH.) */
-  /* v2.3.3521: hurt-2 is the owner's "Grunt 1" now -- it falls ~330 -> 150
+  /* v2.3.3523: hurt-2 is the owner's "Grunt 1" now -- it falls ~330 -> 150
      Hz as hurt-1's "uh!" does, it sounds hit -- and their angry grunt, the
      effort it was, is the sprint's (tools/audio/cut_owner_sounds.py,
      cut_sprint_voice.py; the owner: "Wrong sound for starting sprint and
@@ -474,7 +474,7 @@ export const EVENT_SOUNDS = {
      points": their cute level-up chime, ~0.8, under a level-up's own
      fanfare (level-up-v1, 1.3); one for a whole batch (CUE_GAP_MS: a spend
      of five points is five confirmations a few ms apart).
-     v2.3.3521: QUICKER -- the owner: "Find different sound for the points
+     v2.3.3523: QUICKER -- the owner: "Find different sound for the points
      leveling up sound (maybe just speed the existing sound up?)": the file
      is a slow sweep from ~120 to 460 Hz and a ring to 1.5 s, most of the
      sweep under what a phone's speaker plays; at 1.8x it is a bright

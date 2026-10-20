@@ -3502,7 +3502,7 @@ BT_AUDIO.HIT_VOICES = {
     layer: [['cook-success', 0.1, 0.2, 0.3, 1, 0.01, 0.06]],
     fb: ['monster-hit', 0, 0, 2.73],
   },
-  /* ═══ v2.3.3521: NO THUMP UNDER THE ROCK OR THE SNOWMAN ═══
+  /* ═══ v2.3.3523: NO THUMP UNDER THE ROCK OR THE SNOWMAN ═══
      The owner: "Hit made a fleshy sound on the snowman (maybe crit?) can't be
      that sound.  Same fleshy sound for the rock monster on every hit."
      Measured: the snowman's body was snowman-hit, the snowball's thud (91%
@@ -3670,7 +3670,7 @@ BT_AUDIO._armorHitToggle = 0;
  * crunches off a pine, char puffs off a burnt tree, slime squelches.
  * A plant's own `fb` is what it made before (the soft thud), for a hit that
  * comes before the Wheel's clips. */
-/* ═══ v2.3.3521: NO THUMP UNDER A PROP'S KNOCK ═══
+/* ═══ v2.3.3523: NO THUMP UNDER A PROP'S KNOCK ═══
    The owner: "Same with hitting crystals probably other props too", and "The
    sound when a tree hits 0 hp is a fleshy sound.  Remove that."  The same low
    thuds the monsters had: a big wooden thing (every tree, gate and building)

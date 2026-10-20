@@ -406,7 +406,7 @@ import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordD
 import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits } from '@/game/lifeSkillRewards.js'; /* tickGatherHits v2.3.2956 */
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
-import '@/game/soundStudio.js';   /* v2.3.3521: the sound studio's "heard just now" and its way in (the Test panel, ?sounds) */
+import '@/game/soundStudio.js';   /* v2.3.3523: the sound studio's "heard just now" and its way in (the Test panel, ?sounds) */
 import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
 import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3434: the forge heard at work */
 import { tickMoveSounds, tickDanceMusic } from '@/game/moveSounds.js';   /* v2.3.3434: the emotes and moves heard; v2.3.3462: your dance's beat */
@@ -9472,7 +9472,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.3343: the blade drawn (two beep()s played nothing; SOUND-GAPS).
        Stamped as the gesture's own sound so the swap button's generic menu
        click yields to it (uiSfxDelegate: a specific sound wins the tap). */
-    /* v2.3.3521: the weapon you took, heard (the owner: "Change weapon
+    /* v2.3.3523: the weapon you took, heard (the owner: "Change weapon
        switch sound") -- the blade, the bow's wood or the staff's shimmer */
     if (nextSlot === 'ranged') cue('swapBow'); else if (nextSlot === 'staff') cue('swapStaff'); else cue('swapSword');
     try { BT_AUDIO._uiSpecificAt = BT_AUDIO._now(); } catch (e) { /* sound only */ }
@@ -9488,7 +9488,7 @@ export var BroTown = function BroTown(_ref0) {
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = slot === 'melee' ? (_S2$rpg$weapon2 = S2.rpg.weapon) === null || _S2$rpg$weapon2 === void 0 ? void 0 : _S2$rpg$weapon2.name : slot === 'ranged' ? (_S2$rpg$rangedWeapon2 = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon2 === void 0 ? void 0 : _S2$rpg$rangedWeapon2.name : 'Staff';
     pushDmgPopup(S2, S2.player.x, S2.player.y - 40, wpnName, '#D8A94D');
-    if (slot === 'ranged') cue('swapBow'); else if (slot === 'staff') cue('swapStaff'); else cue('swapSword');   /* v2.3.3343: as the cycle's (v2.3.3521: by weapon) */
+    if (slot === 'ranged') cue('swapBow'); else if (slot === 'staff') cue('swapStaff'); else cue('swapSword');   /* v2.3.3343: as the cycle's (v2.3.3523: by weapon) */
   }, []);
   var _desktopSpecialAttack = useCallback(function () {
     doSpecialAttack();

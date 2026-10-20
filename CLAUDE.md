@@ -878,7 +878,7 @@ remnant to migrate server-side, not a mode to preserve.
       - `sound-cues` §11, `mp-ownersounds`, `mp-cuelevels`, `mp-wheelswim`:
         docs/specs/owner-recordings.md; what is still needed:
         docs/SOUND-GAPS.md.
-    - since v2.3.3521 THE PLAYTEST'S SOUNDS AND THE SOUND STUDIO -- the owner:
+    - since v2.3.3523 THE PLAYTEST'S SOUNDS AND THE SOUND STUDIO -- the owner:
       "I think sounds were wired in the wrong places.  The labels should tell
       you where they go.  Might need to build a quick studio to show which
       sounds belong where", with a list (docs/specs/sounds-2026-10-19.md):
@@ -981,7 +981,7 @@ remnant to migrate server-side, not a mode to preserve.
       a tool that measures a sound reads the file's own channels, never
       ffmpeg's `-ac` (3 dB off either way: TRAPS §230); mp-sprintpeer,
       mp-sprint (6b runs dry twice), mp-cuelevels: docs/specs/sprint.md "the
-      owner's grunt"; since v2.3.3521 the grunt is their "Angry Grunt", the
+      owner's grunt"; since v2.3.3523 the grunt is their "Angry Grunt", the
       effort -- "Grunt 1" sounded hurt and is the second hurt grunt now
       (docs/specs/sounds-2026-10-19.md).
   - Since v2.3.3008 the Points window's MAX MP has its before/after scene,

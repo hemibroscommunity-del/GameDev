@@ -317,7 +317,7 @@ async function run(n, step, gapMs, extra) {
   check('client: ...and a new tap at 0 is refused', C.toggleSprint(S, 5000) === false && S._sprint.why === 'tired');
 
   S = mk(100);
-  /* v2.3.3521: Shift pressed while walking starts it and strides in one frame:
+  /* v2.3.3523: Shift pressed while walking starts it and strides in one frame:
      that frame is its push-off ('run'), never a bare 'start' nothing plays */
   check('client: Shift held while walking starts one (\'key\') and pushes off in the same frame (\'run\')', C.updateSprint(S, 0, { key: true, moving: true, dtMs: FR }) === 'run' && S._sprint.how === 'key');
   {

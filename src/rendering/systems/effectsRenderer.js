@@ -11821,7 +11821,7 @@ export class EffectsRenderer {
          later does not crack out of nowhere. */
       /* v2.3.3345: the split at ORE_SPLIT_MS (the strip's frame 7 was), the
          pieces left to fade at ORE_BREAK_LIE_MS -- the same rule: split first */
-      /* ═══ v2.3.3521: THE CRACK WHEN THE ROCK BURSTS ═══
+      /* ═══ v2.3.3523: THE CRACK WHEN THE ROCK BURSTS ═══
          The owner: "Breaking the ore sound doesn't sound right anymore. Old
          sound was better (almost positive it had a different sound before)."
          The sound never changed (ore-crack, v2.3.3040); its MOMENT did.  The
@@ -11861,7 +11861,7 @@ export class EffectsRenderer {
 
   /* ═══ v2.3.3040: THE ROCK CRACKS ═══
      Owner: "Add cracking sound when the ore splits when user completes the
-     gesture."  v2.3.3521: on the break's first frame, the one the rock
+     gesture."  v2.3.3523: on the break's first frame, the one the rock
      bursts on (see _advanceOreBreaks) -- the sound and the picture are one
      event, as they were on the old strip's split frame. */
   _oreCrack(fx, S, now) {
@@ -11875,7 +11875,7 @@ export class EffectsRenderer {
     } catch (e) { /* a sound never breaks the frame */ }
   }
 
-  /* The pieces land: the collected ore icon pops out, and (v2.3.3521) the
+  /* The pieces land: the collected ore icon pops out, and (v2.3.3523) the
      rubble settles -- a stone prop's break, quieter than the crack. */
   _oreSplit(fx, now, S) {
     this._spawnItemPopup(fx.icon || ORE_ICON_TEX, fx.x, fx.y - 6, now);

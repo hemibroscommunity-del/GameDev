@@ -1,4 +1,4 @@
-/* ═══ v2.3.3521: THE SOUND STUDIO, ON A PHONE ═══
+/* ═══ v2.3.3523: THE SOUND STUDIO, ON A PHONE ═══
  *
  * The owner: "I think sounds were wired in the wrong places.  The labels
  * should tell you where they go.  Might need to build a quick studio to show
