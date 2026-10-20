@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fd5d8ee198fd79cbfc2ff8294f0406219090b15e",
+  "tree": "e0095729fd0f60677658a85f1431322402e7618b",
+  "committedAt": "2026-10-20T03:51:59-07:00",
+  "subject": "The tour: the Mayor's quest first, then the whole town with quest pins on the maps; five bars or five hardened wood a piece (v2.3.3525) (#1034)",
+  "files": 6172,
+  "bytes": 712909034,
+  "listingSha256": "e8b277c7c884a03348e961f8605bd75c1072110b55d05d0fb9222ffaad5b535c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
