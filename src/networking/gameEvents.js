@@ -47,7 +47,7 @@ var _peerShotGame = null;
 function peerShotGame() {
   return _peerShotGame || (_peerShotGame = Object.freeze({ arrowPx: ARROW_SPEED_PX, reachPx: BOW_RANGE_PX, volleyK: BOW_VOLLEY.SPEED_K, peerPx: BOW_VOLLEY.PEER_PX_PER_FRAME }));
 }
-import { recordMail } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail */
+import { recordMail, itemWords } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail; v2.3.3516: + its words for an item */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
@@ -1866,7 +1866,7 @@ export function processGameEvent(type, payload, S, deps) {
                    (gladiator.js ARENA.CHAMPION_AP, payload `ap`). */
                 var _apIn = Math.floor(Number(_ep.ap) || 0);
                 var _what = _e.kind === 'gold' ? '+' + Math.floor(Number(_ep.amount) || 0).toLocaleString('en-US') + ' gold' + (_apIn > 0 ? ' and ' + _apIn + ' AP' : '')
-                  : _e.kind === 'item' ? (_ep.count || 1) + '× ' + (_ep.invKey || 'item')
+                  : _e.kind === 'item' ? (_ep.count || 1) + '× ' + itemWords(_ep.invKey)   /* v2.3.3516: words, not the key ("1× Frost gem") */
                   : _e.kind === 'weapon' ? ((_ep.weapon && _ep.weapon.name) || 'a weapon')
                   : _e.kind === 'gear' ? ((_ep.piece && _ep.piece.name) || 'a piece of gear')
                   : _e.kind === 'pet' ? petMailWords(_ep.pet)   /* v2.3.3122: a pet (store, trade, the mail) */
