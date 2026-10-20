@@ -60,7 +60,7 @@ export function DuelRequestPanel(props) {
   };
   return createPortal(React.createElement("div", {
     className: "bt-inspect",
-    'data-duel-request': '',   /* v2.3.3490: a hook for mp-blockasks, as the party card's data-party-invite */
+    'data-duel-request': '',   /* v2.3.3503: a hook for mp-blockasks, as the party card's data-party-invite */
     style: {
       /* v2.3.1235: Checkpoint B — fixed full-viewport scrim, PORTALED to
          document.body: .brotown-wrap is position:fixed and therefore its

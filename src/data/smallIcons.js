@@ -25,7 +25,7 @@ const ui = (name) => '/icons/ui/' + name + '.webp' + V;
 
 export const SMALL_ICON = Object.freeze({
   partyMember: ui('party-member'),
-  /* v2.3.3490: the owner's sheet's gold crown and blue pin ("Go recommended
+  /* v2.3.3503: the owner's sheet's gold crown and blue pin ("Go recommended
      on everything": card 11's "Sheet's is clearer"; tools/ui/cut-owner-icons.py,
      64 x 64 as every small mark) -- the winged figure and the pin on a map were
      busy at the 13-15 px the party window draws them.  New names, so a re-run

@@ -327,9 +327,9 @@ export const RDISC_ICONS = [
      at the farm's bed (desktopControls interactKind) -- the owner: "chat
      bubble for speaking [to NPCs], door for entering door"; drawn in the
      JUMP arrow's white-and-outline style */
-  ['talk', '/ui/controls/talk.webp?v=2.3.3490'],
-  ['door', '/ui/controls/door.webp?v=2.3.3490'],
-  ['sleep', '/ui/controls/sleep.webp?v=2.3.3490'],
+  ['talk', '/ui/controls/talk.webp?v=2.3.3503'],
+  ['door', '/ui/controls/door.webp?v=2.3.3503'],
+  ['sleep', '/ui/controls/sleep.webp?v=2.3.3503'],
   /* v2.3.3136: and at a bed on your farm, its next step (game/farmWalk.js;
      desktopControls interactKind 'farm-<step>') -- the owner: "You dig, you
      water, you fertilize, etc." -- a spade, a sprout, a watering can, a sack
@@ -337,13 +337,13 @@ export const RDISC_ICONS = [
      v2.3.3279: talk, door, sleep and the five farm steps are the owner's own
      painted pictures now (tools/ui/cut-small-icons.py), drawn whole over the
      disc like the weapon's, not see-through (game.css).
-     v2.3.3490: all eight are the ones the owner picked on the icon review's
+     v2.3.3503: all eight are the ones the owner picked on the icon review's
      card 11 (tools/ui/cut-owner-icons.py), at a new address */
-  ['farm-dig', '/ui/controls/farm-dig.webp?v=2.3.3490'],
-  ['farm-plant', '/ui/controls/farm-plant.webp?v=2.3.3490'],
-  ['farm-water', '/ui/controls/farm-water.webp?v=2.3.3490'],
-  ['farm-feed', '/ui/controls/farm-feed.webp?v=2.3.3490'],
-  ['farm-harvest', '/ui/controls/farm-harvest.webp?v=2.3.3490'],
+  ['farm-dig', '/ui/controls/farm-dig.webp?v=2.3.3503'],
+  ['farm-plant', '/ui/controls/farm-plant.webp?v=2.3.3503'],
+  ['farm-water', '/ui/controls/farm-water.webp?v=2.3.3503'],
+  ['farm-feed', '/ui/controls/farm-feed.webp?v=2.3.3503'],
+  ['farm-harvest', '/ui/controls/farm-harvest.webp?v=2.3.3503'],
   /* v2.3.3105: while the tap ATTACKS, the weapon in your hand -- the owner:
      "when attacking it should show the weapon type depending on what weapon
      is used".  The bag's own pictures (InventoryPanel's thumb: a sword or a
@@ -368,9 +368,9 @@ export const RDISC_ICONS = [
  *
  * The art sits in the icon set's 256 frame with a 12% margin; ABILITY_ART_K
  * draws it that much larger so it fills the button as the SVGs did. */
-/* v2.3.3490: the Jump, generic Special and Element Burst pictures are the
+/* v2.3.3503: the Jump, generic Special and Element Burst pictures are the
    owner's card 11 picks (tools/ui/cut-owner-icons.py), at a new address */
-const ABILITY_ART_V = '2.3.3490';
+const ABILITY_ART_V = '2.3.3503';
 export const ABILITY_ART_K = 1.18;
 export function abilityArtUrl(name, grey) {
   return '/ui/controls/abil-' + name + (grey ? '-grey' : '') + '.webp?v=' + ABILITY_ART_V;
@@ -387,8 +387,8 @@ export function abilityArtUrl(name, grey) {
  * grey and the lit states: so the cutter keeps the disc INSIDE the owner's
  * ring, and SpecialFace draws it filling the face inside the game's ring.  A
  * -grey copy for the cooldown and no-mana states, as the others. */
-/* v2.3.3490: the sword's and the bow's are the owner's card 11 picks */
-const SPECIAL_ART_V = '2.3.3490';
+/* v2.3.3503: the sword's and the bow's are the owner's card 11 picks */
+const SPECIAL_ART_V = '2.3.3503';
 export function specialArtUrl(kind, grey) {
   return '/ui/controls/abil-special-' + kind + (grey ? '-grey' : '') + '.webp?v=' + SPECIAL_ART_V;
 }
@@ -410,7 +410,7 @@ export function SpecialFace(props) {
     style: { display: 'block', width: d, height: d, borderRadius: '50%', pointerEvents: 'none' },
   }));
 }
-/* ═══ v2.3.3490: A ROUND ABILITY PICTURE AS THE BUTTON'S FACE ═══
+/* ═══ v2.3.3503: A ROUND ABILITY PICTURE AS THE BUTTON'S FACE ═══
  * The owner's card 11 picks for Jump and the generic Special are round buttons
  * too, like the special attacks above: a disc in its own ring.  So the cutter
  * keeps the disc inside that ring, and the face draws it filling the button

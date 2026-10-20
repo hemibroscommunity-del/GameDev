@@ -129,7 +129,7 @@ export const PetsPanel = () => {
   return (
     <div data-pets-panel="1" style={{ ...panelStyle, padding: '8px 10px 12px', color: COL.text, fontFamily: "'Source Sans 3',sans-serif" }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <img src="/icons/ui/pets-paw.webp?v=2.3.3490" alt="" draggable={false} style={{ width: 26, height: 26, objectFit: 'contain' }} />
+        <img src="/icons/ui/pets-paw.webp?v=2.3.3503" alt="" draggable={false} style={{ width: 26, height: 26, objectFit: 'contain' }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 800 }}>
             <span data-pets-count={list.length}>{list.length}{live ? '/' + cap : ''}</span>

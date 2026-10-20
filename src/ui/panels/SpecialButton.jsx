@@ -292,7 +292,7 @@ export function SpecialButton(props) {
     flash: flash && skinState === 'normal',
   }, specKind
     ? React.createElement(SpecialFace, { size: size, kind: specKind, grey: grey })
-    /* v2.3.3490: the owner's round starburst (card 11), a face as the
+    /* v2.3.3503: the owner's round starburst (card 11), a face as the
        specials are (controlSkin AbilityFace) */
     : React.createElement(AbilityFace, { size: size, name: 'special', grey: grey })),
   /* v2.3.2543: AIM, because that is the ACTION the state is asking for -- the

@@ -203,7 +203,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 5. the level-up celebration ── */
     const kbShown = () => P.page.evaluate(() => { const k = document.querySelector('.bt-kb-hints'); return !!k && getComputedStyle(k).display !== 'none'; });
-    /* v2.3.3490: drawn in the margin beside the game, the strip covers nothing
+    /* v2.3.3503: drawn in the margin beside the game, the strip covers nothing
        of the column, so it stays up through the celebration */
     const kbInMargin = () => P.page.evaluate(() => {
       const k = document.querySelector('.bt-kb-hints');
