@@ -28,6 +28,12 @@
  * prop, at nothing, or steered off its target (a staff bolt follows your
  * thumb), whose drawn line no longer passes through the target's circle.
  *
+ * v2.3.3515: a target behind a rock is aimed at too (the owner: "continue
+ * recommended") -- the first target on the line, covered or not
+ * (projectiles.js _sightLine's cover note).  Its ground runs from your boots
+ * into the rock, and the shot stops there; it used to keep the parallel line,
+ * which could pass beside the rock and hit what the rock covered.
+ *
  * No imports (server/test/shot-ground.test.mjs runs it as it is).
  */
 

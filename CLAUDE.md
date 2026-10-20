@@ -566,6 +566,19 @@ remnant to migrate server-side, not a mode to preserve.
         gate asks the rock rule once, boots to feet, and a target that passes
         it wins over a prop the parallel line met. `shot-ground` suite,
         `mp-groundline`: bow-at-props.md "v2.3.3501", TRAPS §239.
+      - since v2.3.3515 A TARGET BEHIND A ROCK IS STILL WHAT THE SHOT IS AT --
+        the owner, offered "a covered monster still counts as the target, so
+        the bolt stops at the rock": "continue recommended". The rock rule
+        passed a covered target over, so the shot carried no aim and kept the
+        parallel line; where that passed beside the rock a staff bolt hit the
+        monster (75 damage on the build before) and the bow waited, its line
+        on nothing. Now the first monster or player on the line is the shot's
+        aim, covered or not (projectiles.js `_sightLine`, which firstSightHit
+        and shotAimAt share): its ground runs boots to feet into the rock and
+        stops there, and the line ends at the rock (`_coverOf`), the bow
+        loosing into it as at any prop; a target further along is not reached
+        past it. `mp-groundline` step 5: bow-at-props.md "v2.3.3515", TRAPS
+        §241.
     - since v2.3.3230 A BUILDING YOU KEEP HITTING CATCHES FIRE -- the owner:
       "add flame effects on the building after getting hit a while in the
       location where the building is getting struck and make the flames grow
