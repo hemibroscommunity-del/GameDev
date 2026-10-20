@@ -159,7 +159,17 @@ const holdAt = (P, pid, ms, keepLock) => P.page.evaluate(({ pid, ms, keepLock })
     const o = S.others && S.others[pid];
     if (!o) return;
     const tx = o.renderX != null ? o.renderX : o.x, ty = (o.renderY != null ? o.renderY : o.y) - 24;
-    const a = Math.atan2(ty - S.player.y, tx - S.player.x);
+    /* v2.3.3530: a bow's line starts at its GRIP, the point its sight casts
+       from (S._bowSight.ox/oy, else the published grip offset: mp-hitreal's
+       rule), not the body's middle -- aimed from the middle, the line ran a
+       grip's width (~30 px) beside a player down and to one side, outside
+       their circle, and the bow, rightly, loosed at nothing (8c's bystander,
+       found by the probe below).  A thumb steers the line drawn from the grip. */
+    const R = S.rpg, bow = !!(R && R.activeSlot === 'ranged');
+    const bs = bow ? S._bowSight : null;
+    const fx = bs && typeof bs.ox === 'number' ? bs.ox : S.player.x + (bow && typeof S._bowGripDX === 'number' ? S._bowGripDX : 0);
+    const fy = bs && typeof bs.oy === 'number' ? bs.oy : S.player.y + (bow && typeof S._bowGripDY === 'number' ? S._bowGripDY : 0);
+    const a = Math.atan2(ty - fy, tx - fx);
     S._aimAngle = a; S._lastAimAngle = a; S._aiming = true; S.autoAttack = true;
   };
   const tick = () => {
