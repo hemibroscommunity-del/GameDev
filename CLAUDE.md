@@ -1993,6 +1993,30 @@ remnant to migrate server-side, not a mode to preserve.
       "You need a tool for that") is gone, a farm bed out of reach the same
       (`_tapHarvestAtCss`, `_tapFarmBedAtCss`); `mp-tapstance`:
       docs/specs/jumping.md "v2.3.3145".
+    - since v2.3.3499 25% HIGHER, AND NEVER CAUGHT HALF WAY OVER A FENCE --
+      the owner: "Try making jump 25% higher. Gets stuck on some props
+      sometimes that it should be clearing": `JUMP_PEAK` 85, `JUMP_MS` 625,
+      `JUMP_CLEAR` 0.36; a crossing once begun LATCHES (`jumpLatch`), 160 ms
+      of grace, the latches outlive the landing 450 ms for feet already in
+      one (`landedOver`); the minecart and rowboat can be jumped
+      (`JUMP_OVER_H` 87, so shots fly over them too). The same round of
+      notes: the whirlwind marks the monsters it will catch
+      (`_markWhirlCatch`), a lock lets go across the map (targeting.js
+      `lockTooFar`, 'far'), TRAP answers a touch while you jog, the owner's
+      trap picture in the world, "Missed!", the trap's sounds, death pieces
+      in their own colour, jaggier, no frozen death (`topple`), dropped items
+      1.5x: docs/specs/combat-feel-2026-10-19.md.
+    - and THE JUMP MOVES IN THE AIR -- the owner: "is there any 'jump effect'
+      you can add just using code that would make it look more realistic than
+      just the static frame?": four frames of the jog's stride by the jump's
+      phase (`JUMP_FRAMES`, `JUMP_FRAME_AT`: push-off, rise, split, reach,
+      picked by each frame's feet), and jumpFx squashes, stretches and leans
+      the whole figure ABOUT ITS FEET the emotes' way (`jumpLook`:
+      `jumpStretchAt`, `jumpLandStretch` over `JUMP_LAND_MS`, `jumpLeanAt` x
+      `JUMP_LEAN` by the speed across), the HUD held unsquashed, the feet read
+      back through `_jumpLift` / `_jumpXFix`; a kick of dust at the take-off
+      (worldFx `_takeOffDust`); nothing new loaded; `mp-jump` 2b:
+      docs/specs/jumping.md "a jump that moves".
   - Since v2.3.3017 a BLACK SCREEN LEAVES EVIDENCE -- the owner, on #782's
     preview: "I was fighting fire goblins and my screen went black", and the
     crash feed had nothing:

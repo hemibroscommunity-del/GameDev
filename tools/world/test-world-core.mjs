@@ -2940,7 +2940,7 @@ console.log('jumping (v2.3.3017)');
   /* the crossing rule: a fence across your way, 160 wide and 12 deep, feet half 10 */
   const fence = { x0: -80, y0: -6, x1: 80, y1: 6, id: 'fence' };
   const mid = { t0, dur: J.JUMP_MS, peak: J.JUMP_PEAK };
-  const tm = t0 + J.JUMP_MS / 2;   /* the top: ~(CLEAR_TO - 0.5) x 560 = ~206 ms of clearing left */
+  const tm = t0 + J.JUMP_MS / 2;   /* the top: (CLEAR_TO - 0.5) x 625 = 250 ms of clearing left (v2.3.3499) */
   /* going south at a walk (2.5 px a frame = 0.15 px a ms), the feet's top edge just into it */
   ok('a fence is cleared going straight over it: out before you come down',
     J.crossMs(fence, 10, 0, -15, 0, 0.15) < J.clearMsLeft(mid, tm) && J.overLow(fence, mid, tm, 10, 0, -15, 0, 0.15));
@@ -2950,6 +2950,36 @@ console.log('jumping (v2.3.3017)');
     && !J.overLow(fence, mid, t0 + 10, 10, 0, -15, 0, 0.15) && !J.overLow(fence, null, tm, 10, 0, -15, 0, 0.15));
   ok('...and standing still in the air over it is never out: refused',
     J.crossMs(fence, 10, 0, 0, 0, 0) === Infinity && !J.overLow(fence, mid, tm, 10, 0, 0, 0, 0));
+  /* ── v2.3.3499: 25% higher, and a crossing once begun stays begun ──
+     The owner: "Try making jump 25% higher.  Gets stuck on some props
+     sometimes that it should be clearing." */
+  ok('v2.3.3499: the jump is 25% higher (85 px), in the air sqrt(1.25) as long (625 ms), clearing from the same height off the ground (~31 px)',
+    J.JUMP_PEAK === 85 && J.JUMP_MS === 625 && Math.abs(J.JUMP_PEAK / 68 - 1.25) < 1e-9 && Math.abs(J.JUMP_MS / 560 - Math.sqrt(1.25)) < 0.002
+      && Math.abs(J.JUMP_CLEAR * J.JUMP_PEAK - 0.45 * 68) < 0.1);
+  {
+    const jl = { t0, dur: J.JUMP_MS, peak: J.JUMP_PEAK };
+    /* going south at a walk, admitted at the top, then slowed to a crawl (a slow frame, a held attack) */
+    const first = J.overLow(fence, jl, tm, 10, 0, -15, 0, 0.15) && J.jumpLatch(jl, fence);
+    const crawl = J.overLow(fence, jl, tm + 150, 10, 0, -2, 0, 0.01);
+    ok('...a crossing once begun is passed for the rest of the jump whatever the speed: the slowed step overLow alone refuses is passed, latched',
+      first && !crawl && J.jumpLatched(jl, fence) && J.jumpLatched(jl, { ...fence }) && !J.jumpLatched({ t0, dur: J.JUMP_MS }, fence));
+    ok('...and only a low thing is ever latched: a tree latched by mistake is still solid',
+      (J.jumpLatch(jl, { ...fence, id: 'oak' }), !J.jumpLatched(jl, { ...fence, id: 'oak' })));
+    /* a crossing that would come down a little short of clear is let start (the grace); much short is not */
+    const late = t0 + J.CLEAR_TO * J.JUMP_MS - 100;   /* 100 ms of clearing left */
+    const shortBy = (ms) => { const need = 100 + ms; const v = 31 / need; return J.overLow(fence, { t0, dur: J.JUMP_MS }, late, 10, 0, -15, 0, v); };
+    ok(`...a crossing out up to ${J.JUMP_LAND_GRACE_MS} ms after the clear window is let start, one further short is not`,
+      shortBy(J.JUMP_LAND_GRACE_MS - 20) && !shortBy(J.JUMP_LAND_GRACE_MS + 40));
+    /* touching down mid-crossing: the feet walk on out of it */
+    const SL = { player: { x: 0, y: 0 }, rpg: { hp: 50 }, _jump: jl };
+    J.endJump(SL, t0 + J.JUMP_MS);
+    ok(`...and the jump's latches outlive it ${J.JUMP_LATCH_MS} ms, so feet that came down in it walk on out (then gone)`,
+      !!SL._jumpOver && J.landedOver(SL, fence, t0 + J.JUMP_MS + 100) && !J.landedOver(SL, { ...fence, id: 'oak' }, t0 + J.JUMP_MS + 100)
+        && !J.landedOver(SL, fence, t0 + J.JUMP_MS + J.JUMP_LATCH_MS + 1) && SL._jumpOver === null);
+    const SN = { player: { x: 0, y: 0 }, rpg: { hp: 50 }, _jump: { t0, dur: J.JUMP_MS } };
+    J.endJump(SN, t0 + J.JUMP_MS);
+    ok('...a jump that crossed nothing leaves nothing behind', SN._jumpOver === null && !J.landedOver(SN, fence, t0 + J.JUMP_MS + 1));
+  }
   ok('a tree, a boulder or a building is never cleared, whatever the jump',
     ['oak', 'pine', 'boulder', 'cart', 'saloon', 'haystack'].every((id) => !J.overLow({ ...fence, id }, mid, tm, 10, 0, -15, 0, 0.15)));
   /* what is cleared is the catalog's low things */
@@ -2960,18 +2990,99 @@ console.log('jumping (v2.3.3017)');
   const footed = (o) => footprintOf(o.id, o.kind, 0, 0, o.fit === 'w' ? o.size : o.size * (o.ar || 1), drawnH(o)).length > 0;
   const missing = [...J.JUMP_OVER, ...J.JUMP_NOT].filter((id) => !byId[id]);
   ok(`every id a jump clears (${J.JUMP_OVER.size}) or leaves (${J.JUMP_NOT.size}) is in the catalog`, missing.length === 0, missing);
-  const lowUnlisted = cat.filter((o) => footed(o) && drawnH(o) <= 81 && !J.JUMP_OVER.has(o.id) && !J.JUMP_NOT.has(o.id)).map((o) => o.id);
-  ok('every low thing with a footprint (81 px or less as drawn) is cleared or named as not', lowUnlisted.length === 0, lowUnlisted);
-  const tallListed = [...J.JUMP_OVER].filter((id) => byId[id] && drawnH(byId[id]) > 70 && id !== 'fence-down');
-  ok('nothing taller than 70 px is cleared but the north-south fence (a fence drawn up the picture)', tallListed.length === 0
-    && byId['fence-down'] && byId['fence'] && drawnH(byId['fence']) <= 70, tallListed);
+  /* v2.3.3499: the list grew with the jump, 70 -> JUMP_OVER_H 87 px */
+  const lowUnlisted = cat.filter((o) => footed(o) && drawnH(o) <= J.JUMP_OVER_H && !J.JUMP_OVER.has(o.id) && !J.JUMP_NOT.has(o.id)).map((o) => o.id);
+  ok(`every low thing with a footprint (${J.JUMP_OVER_H} px or less as drawn) is cleared or named as not`, lowUnlisted.length === 0, lowUnlisted);
+  const tallListed = [...J.JUMP_OVER].filter((id) => byId[id] && drawnH(byId[id]) > J.JUMP_OVER_H && id !== 'fence-down');
+  ok(`nothing taller than ${J.JUMP_OVER_H} px is cleared but the north-south fence (a fence drawn up the picture)`, tallListed.length === 0
+    && byId['fence-down'] && byId['fence'] && drawnH(byId['fence']) <= J.JUMP_OVER_H, tallListed);
+  ok('v2.3.3499: the minecart and the rowboat are cleared now; the boulder and the cart still are not',
+    J.JUMP_OVER.has('minecart') && J.JUMP_OVER.has('rowboat') && !J.JUMP_OVER.has('boulder') && !J.JUMP_OVER.has('cart')
+      && byId['boulder'] && drawnH(byId['boulder']) > J.JUMP_OVER_H);
   const { WHEEL_MATERIALS } = await import('../../src/data/wheelMaterials.js');
   const bigListed = [...J.JUMP_OVER].filter((id) => WHEEL_MATERIALS[id] && (WHEEL_MATERIALS[id].big || WHEEL_MATERIALS[id].canopy));
   ok('...and nothing big or with a crown', bigListed.length === 0, bigListed);
   /* the frames held, and another player's jump clamped */
-  ok('the held leaping frame is inside each jog sheet (east 28, north 23, northeast 24, south 26, southwest 20)',
-    J.jumpFrame('east', 28) === 1 && J.jumpFrame('north', 23) === 8 && J.jumpFrame('northeast', 24) === 4 && J.jumpFrame('south', 26) === 7
-    && J.jumpFrame('southwest', 20) === 6 && J.jumpFrame('west', 28) === 0 && J.jumpFrame('east', 1) === 0);
+  /* v2.3.3499: four frames, by the jump's phase; with none, the rising one */
+  ok('the rising frame (a call with no phase) is inside each jog sheet (east 28, north 23, northeast 24, south 26, southwest 20)',
+    J.jumpFrame('east', 28) === 1 && J.jumpFrame('north', 23) === 3 && J.jumpFrame('northeast', 24) === 3 && J.jumpFrame('south', 26) === 14
+    && J.jumpFrame('southwest', 20) === 10 && J.jumpFrame('west', 28) === 0 && J.jumpFrame('east', 1) === 0);
+  {
+    const COUNT = { east: 28, north: 23, northeast: 24, south: 26, southwest: 20 };
+    const seqOk = Object.keys(COUNT).every((d) => {
+      const s = J.JUMP_FRAMES[d], n = COUNT[d];
+      return s && s.length === 4 && s.every((f) => Number.isInteger(f) && f >= 0 && f < n) && s[1] === J.JUMP_FRAME[d]
+        && J.jumpFrame(d, n, 0) === s[0] && J.jumpFrame(d, n, 0.2) === s[1] && J.jumpFrame(d, n, 0.55) === s[2] && J.jumpFrame(d, n, 0.95) === s[3];
+    });
+    ok('v2.3.3499: the stride\'s four frames, one after the other by the phase -- push-off, rise, split, reach -- each inside its sheet',
+      seqOk && J.JUMP_FRAME_AT.length === 3 && J.JUMP_FRAME_AT.every((v, i, a) => v > 0 && v < 1 && (i === 0 || v > a[i - 1])), J.JUMP_FRAMES);
+    /* and what each was chosen for, on the sheets themselves: the push-off's
+       feet on the ground (4 rows and more below the rise's and the split's),
+       the middle two the stride's highest feet (the split 6 rows and more
+       over the push-off), the reach's coming back down (4 and more below
+       the higher of the middle two) */
+    const fs = await import('node:fs'), zlib = await import('node:zlib');
+    const bottoms = (dir) => {
+      const buf = fs.readFileSync(new URL(`../../public/sprites/player/jog-${dir}.png`, import.meta.url));
+      const ch = {}; let o = 8;
+      while (o < buf.length) { const len = buf.readUInt32BE(o), type = buf.toString('latin1', o + 4, o + 8); (ch[type] = ch[type] || []).push(buf.subarray(o + 8, o + 8 + len)); o += 12 + len; }
+      const ih = ch.IHDR[0], W = ih.readUInt32BE(0), H = ih.readUInt32BE(4);
+      if (ih[8] !== 8 || ih[9] !== 6 || ih[12] !== 0) return null;   /* 8-bit RGBA, not interlaced */
+      const raw = zlib.inflateSync(Buffer.concat(ch.IDAT)), bpp = 4, stride = W * bpp;
+      const px = Buffer.alloc(H * stride);
+      for (let y = 0; y < H; y++) {
+        const ft = raw[y * (stride + 1)], src = y * (stride + 1) + 1, dst = y * stride;
+        for (let i = 0; i < stride; i++) {
+          const x = raw[src + i], a = i >= bpp ? px[dst + i - bpp] : 0, b = y ? px[dst - stride + i] : 0, c = (y && i >= bpp) ? px[dst - stride + i - bpp] : 0;
+          let v;
+          if (ft === 0) v = x; else if (ft === 1) v = x + a; else if (ft === 2) v = x + b; else if (ft === 3) v = x + ((a + b) >> 1);
+          else { const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c); v = x + (pa <= pb && pa <= pc ? a : (pb <= pc ? b : c)); }
+          px[dst + i] = v & 255;
+        }
+      }
+      const out = [];
+      for (let f = 0; f < Math.floor(W / H); f++) {
+        let low = -1;
+        for (let y = H - 1; y >= 0 && low < 0; y--) for (let x = f * H; x < (f + 1) * H; x++) if (px[y * stride + x * 4 + 3] > 40) { low = y; break; }
+        out.push(low);
+      }
+      return out;
+    };
+    const why = {};
+    const chosen = Object.keys(COUNT).every((d) => {
+      const b = bottoms(d), s = J.JUMP_FRAMES[d];
+      if (!b || b.length !== COUNT[d]) { why[d] = 'unreadable'; return false; }
+      const [push, rise, top, reach] = s.map((f) => b[f]);
+      why[d] = [push, rise, top, reach];
+      return push >= Math.max(rise, top) + 4 && top <= push - 6 && reach >= Math.min(rise, top) + 4;
+    });
+    ok('...and on the sheets: the push-off planted, the middle two the highest feet of the four, the reach coming down', chosen, why);
+    /* the squash and stretch */
+    const at = (f, a, b, n) => { const v = []; for (let i = 0; i <= n; i++) v.push(f(a + (b - a) * i / n)); return v; };
+    const air = at(J.jumpStretchAt, 0, 0.999, 400), land = at(J.jumpLandStretch, 0, 0.999, 400);
+    const step = (v) => Math.max(...v.slice(1).map((x, i) => Math.abs(x - v[i])));
+    ok('the stretch: crouched to 0.9 at the press, never past 1.08, round over the top, a little long reaching down; smooth',
+      J.jumpStretchAt(0) === 0.9 && Math.max(...air) <= 1.08 && Math.min(...air) >= 0.9 && J.jumpStretchAt(0.5) === 1
+        && J.jumpStretchAt(0.95) > 1 && J.jumpStretchAt(1) === 1 && J.jumpStretchAt(-0.1) === 1 && step(air) < 0.02, { max: Math.max(...air), step: step(air) });
+    ok('the touch-down: squashed to 0.86, springing back through a little stretch, settled at 1 by the end; smooth',
+      J.jumpLandStretch(0) === 0.86 && Math.min(...land) >= 0.86 && Math.max(...land) > 1.01 && Math.max(...land) < 1.04
+        && Math.abs(J.jumpLandStretch(0.999) - 1) < 0.002 && J.jumpLandStretch(1) === 1 && step(land) < 0.02, { max: Math.max(...land), step: step(land) });
+    ok('...wider squashed, thinner stretched',
+      Math.abs(J.jumpWidthFor(0.9) - 1.08) < 1e-9 && J.jumpWidthFor(1) === 1 && J.jumpWidthFor(1.07) < 1 && J.jumpWidthFor(1.07) > 0.94);
+    const lean = at(J.jumpLeanAt, 0, 0.999, 400);
+    ok('the lean: none at the press, all of it by 15%, nearly upright over the top, back a touch reaching down; smooth',
+      J.jumpLeanAt(0) === 0 && J.jumpLeanAt(0.15) === 1 && J.jumpLeanAt(0.5) < 0.4 && J.jumpLeanAt(0.95) < 0 && Math.min(...lean) > -0.4 && step(lean) < 0.05);
+    const jj = { t0: 5000, dur: J.JUMP_MS, peak: J.JUMP_PEAK }, mid = 5000 + J.JUMP_MS * 0.15;
+    const east = J.jumpLook(jj, mid, null, J.JUMP_LEAN_PX_MS * 2), west = J.jumpLook(jj, mid, null, -J.JUMP_LEAN_PX_MS), still = J.jumpLook(jj, mid, null, 0);
+    ok('a jump leans into the way it goes across -- east forward, west the other way, standing not at all, never past JUMP_LEAN',
+      east.rot > 0 && Math.abs(east.rot - J.JUMP_LEAN) < 1e-9 && west.rot < 0 && still.rot === 0 && still.air && still.lift > 0, { east: east.rot, west: west.rot });
+    const end = 5000 + J.JUMP_MS, landed = J.jumpLook(null, end + 1, { at: end, dur: J.JUMP_MS }, 0);
+    const slow = J.jumpLook(null, end + J.JUMP_LAND_MS * 2, { at: end, dur: J.JUMP_MS * 4 }, 0);
+    ok('...and lands squashed, upright, on the ground; over in JUMP_LAND_MS, which a longer jump (?jumpms=) stretches with it',
+      landed && !landed.air && landed.lift === 0 && landed.rot === 0 && landed.ky < 0.87 && landed.kx > 1.1
+        && J.jumpLook(null, end + J.JUMP_LAND_MS + 1, { at: end, dur: J.JUMP_MS }, 0) === null && slow && slow.ky !== 1
+        && J.jumpLook(null, end + 5, null, 0) === null);
+  }
   const pj = J.peerJump({ dur: 99999, peak: -5 }, 7), pk = J.peerJump({ dur: 'x', peak: 1e9 }, 7), pg = J.peerJump({ dur: 400, peak: 30 }, 7);
   ok('another player\'s jump: their numbers clamped, a garbled one the usual jump',
     pj.dur === 900 && pj.peak === J.JUMP_PEAK && pk.dur === J.JUMP_MS && pk.peak === 120 && pg.dur === 400 && pg.peak === 30 && pg.t0 === 7);

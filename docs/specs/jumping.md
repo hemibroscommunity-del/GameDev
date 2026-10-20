@@ -15,10 +15,11 @@
   (`docs/specs/control-redesign.md` §14).
 - **X on a keyboard.** Space is already the dodge roll and Shift the sprint, so
   the jump is X, under the left hand. The key hints list it.
-- **The jump.** For 0.56 s the body rises up to 68 world px (about a bro's own
-  height) and comes back down on a smooth arc. The first cut went half as high;
-  the owner, having tried it: *"I'd also like it if the jump were about 2x as
-  high"*. The time in the air didn't change, so what it clears didn't either.
+- **The jump.** For 0.625 s the body rises up to 85 world px and comes back
+  down on a smooth arc. The first cut went 34 px; the owner, having tried it:
+  *"I'd also like it if the jump were about 2x as high"* (68 px, 0.56 s). Then,
+  since v2.3.3499: *"Try making jump 25% higher"* -- 85 px, in the air
+  sqrt(1.25) as long, the same pull of gravity (see the v2.3.3499 section).
   It holds one leaping frame of the jog for the way you face (one knee up, the
   other leg trailing): the owner's "jog directions", not a new animation. The
   weapon, cape and name plate rise with it.
@@ -34,13 +35,15 @@
   - fences (both directions), stone walls and hitching rails;
   - barrels, crates, benches, troughs and hay bales;
   - stones, snow rocks, basalt, sea rocks, coal and scrap;
-  - bushes, stumps and driftwood.
+  - bushes, stumps and driftwood;
+  - since v2.3.3499, minecarts and rowboats (lower than the higher jump's top).
 
-  You only pass over one if the way you're going carries you out of it before
-  you come down, so you never land inside one.
+  You pass over one if the way you're going carries you out of it before you
+  come down, give or take 0.16 s; once you have started across one you are
+  never stopped half way over it, and feet that come down in it walk on out.
 - **Everything else stops you in the air** as it does on the ground: trees,
-  boulders, carts, minecarts, rowboats, haystacks, buildings, the resources,
-  monsters, people and the open sea.
+  boulders, carts, haystacks, buildings, the resources, monsters, people and
+  the open sea.
 - **In the air you keep going.** Let go of the stick and you carry on the way
   you took off. Hold it and you steer. You never go faster than your walk (or
   your sprint).
@@ -58,12 +61,13 @@
 
 The idea: **your position never leaves the ground.** Only the picture does.
 
-- **The rules** (`src/game/jump.js`, pure, no imports): `JUMP_MS` 560, `JUMP_PEAK`
-  68, the arc `4t(1-t)`.
-  - Low things are cleared while the lift is at least `JUMP_CLEAR` (0.45) of the
-    peak, from about 72 ms to 488 ms.
-  - `JUMP_OVER` is the catalog ids that are cleared. `JUMP_NOT` names the low
-    ones left off (minecart, rowboat).
+- **The rules** (`src/game/jump.js`, pure, no imports): `JUMP_MS` 625, `JUMP_PEAK`
+  85 (560 and 68 until v2.3.3499), the arc `4t(1-t)`.
+  - Low things are cleared while the lift is at least `JUMP_CLEAR` (0.36 since
+    v2.3.3499, 0.45 before) of the peak, from about 62 ms to 563 ms.
+  - `JUMP_OVER` is the catalog ids that are cleared, everything `JUMP_OVER_H`
+    (87) px tall or less as drawn. `JUMP_NOT` names the low ones left off (none
+    since v2.3.3499).
   - `jumpRefusal` says why a jump may not start. `overLow` is the crossing rule.
     `JUMP_FRAME` is the held frame per sheet (east 1, north 8, northeast 4,
     south 7, southwest 6; mirrored facings share them).
@@ -78,7 +82,8 @@ The idea: **your position never leaves the ground.** Only the picture does.
   - In the air the water isn't checked at all, so you fly over a stream.
   - With no stick you take the take-off direction.
   - `propFeetBlocked` lets the feet into a `JUMP_OVER` footprint only when
-    `overLow` says the crossing finishes in time.
+    `overLow` says the crossing finishes in time (and, since v2.3.3499, latches
+    it: `jumpLatched` / `jumpLatch`, then `landedOver` after the landing).
   - The speed it checks against is what this frame really moves (`S._frameMs`):
     below 20 fps the game's clock caps a step, and a crossing judged on the wall
     clock would come down inside the fence.
@@ -327,3 +332,155 @@ resource extraction areas."
 - Today's town: its props are stamped into its walk grid, so a jump there
   clears nothing. The Wheel's objects are separate, and they're where clearing
   works.
+
+## v2.3.3499: 25% higher, and no more getting caught on a fence
+
+The owner, after more play: *"Try making jump 25% higher. Gets stuck on some
+props sometimes that it should be clearing."*
+
+- **Higher.** `JUMP_PEAK` 68 -> 85 px, and `JUMP_MS` 560 -> 625: a height goes
+  with the square of the time under one gravity, so 25% higher is sqrt(1.25) =
+  1.118x as long in the air, and the bro still jumps like himself, only harder.
+  `JUMP_CLEAR` 0.45 -> 0.36, so a crossing may start with the feet as high off
+  the ground as before (0.36 x 85 = 0.45 x 68, ~31 px); the window is 500 ms
+  where it was 415.
+- **Why a jump got stuck** (measured off the code):
+  - the crossing rule was asked again EVERY frame with that frame's speed, so
+    anything that slowed you with your feet already over the fence -- a slow
+    frame (a frame moves at most three 60 fps steps), a sprint running dry, a
+    held attack's half pace, the stick eased or turned, the walk's x-then-y
+    slide -- turned the answer to "no" half way, and the walk's "never deeper
+    into a footprint" rule froze you there in the air: you came down IN the
+    fence and had to back out;
+  - and a jump taken a stride too far back reached the fence just after the
+    last moment it could be out before landing, and stopped dead at its edge
+    in mid-air (you had to take off within ~41 px of a fence, ~31 of a crate).
+- **The fix:**
+  - the first frame a jump may pass a low thing **latches** it on the jump
+    (`jumpLatch`), and a latched thing is passed for the rest of the jump
+    whatever the speed (`jumpLatched`);
+  - a crossing that would come down up to `JUMP_LAND_GRACE_MS` (160 ms) short
+    of clear is let start;
+  - the jump's latches outlive it by `JUMP_LATCH_MS` (450 ms, `endJump` ->
+    `S._jumpOver`, `landedOver`): feet that did come down inside one walk on
+    out of it. Only feet ALREADY inside -- a step into a fence you have just
+    cleared is refused as ever.
+  - Only a `JUMP_OVER` thing is ever latched: a tree, a building or the sea is
+    exactly as solid as before. With all three, a fence can be taken off for
+    from ~76 px away (was 41) and a crate from ~66 (was 31), and a crate can be
+    cleared on a diagonal.
+- **Minecarts and rowboats are cleared now** (79 and 81 px tall, under the new
+  85 px top; `JUMP_OVER_H` 87, 70 x 1.25). They were left off as "about as tall
+  as a bro" while the jump was a bro's height. Shots fly over what you can
+  jump (v2.3.3206, projectiles.js `_isLow`), so an arrow or a bolt now flies
+  over a minecart or a rowboat too, unless it is what the shot is aimed at.
+- Other players' screens draw the jump from the relay's own `dur` and `peak`
+  (`peerJump` clamps to 900 ms and 120 px), so an older page sees the new jump
+  too; nothing on the worker changes.
+- Tests: test-world-core "jumping" (the new numbers, the latch, the grace, the
+  landing, the longer list), `mp-jump` (the peak read as 85).
+
+## v2.3.3499: a jump that moves, not one held frame
+
+The owner, after the higher jump: *"Also is there any 'jump effect' you can
+add just using code that would make it look more realistic than just the
+static frame?"*
+
+Four things, all drawn in code on the art the game already has. Nothing new is
+loaded or held.
+
+- **The stride, slowed.** The body no longer holds one leaping frame for the
+  whole jump. It runs through four of the jog's own frames for the way it faces
+  (`JUMP_FRAMES` in game/jump.js), each held for its share of the air
+  (`JUMP_FRAME_AT`):
+  - the push-off, a knee driving up off the back foot (the first 7%, about
+    44 ms, a flash of the crouch);
+  - the rise (to 40%);
+  - the split over the top (to 70%);
+  - the front foot reaching for the ground.
+
+  They were picked off the sheets by eye and by each frame's lowest row of
+  feet (128 px frames):
+
+  | Sheet | Frames | Lowest feet row |
+  |---|---|---|
+  | east | 13, 1, 3, 4 | 109, 105, 97, 102 |
+  | north | 2, 3, 5, 6 | 117, 107, 104, 115 |
+  | northeast | 1, 3, 4, 5 | 113, 104, 103, 108 |
+  | south | 13, 14, 15, 16 | 114, 101, 102, 111 |
+  | southwest | 9, 10, 11, 12 | 118, 114, 103, 118 |
+
+  In each, the push-off is planted, the middle two are the stride's highest
+  feet, and the reach is coming down. The armour and the knight figure follow
+  each frame by its phase, as they followed the one before. Other players'
+  copies run the same frames from the relay's own clock.
+- **Squash and stretch, about the feet** (rendering/jumpFx.js, numbers in
+  game/jump.js):
+  - **In the air** (`jumpStretchAt`): crouched to 0.9 of his height at the
+    press, springing to 1.07 by 12% of the way (the push long), round again by
+    45%, and a little long (1.04) reaching down.
+  - **On the touch-down** (`jumpLandStretch`): squashed to 0.86 and springing
+    back through a little stretch, settled after `JUMP_LAND_MS` (220 ms). That
+    time is stretched with the air when `?jumpms=` lengthens a jump, so a slow
+    test machine sees it.
+  - **The width** (`jumpWidthFor`): wider as he squashes, thinner as he
+    stretches, four fifths of what keeps the area.
+- **The lean.** Into the way he goes across the screen
+  (`jumpLeanAt` x `JUMP_LEAN`, 0.09 rad, about 5 degrees):
+  - forward on the way up, nearly upright over the top, back a touch reaching
+    down to land;
+  - scaled by how fast he goes across (`JUMP_LEAN_PX_MS`, a walk's pace leans
+    in full), so a standing jump does not lean, nor one straight up or down the
+    screen;
+  - the speed is his WALK (`S.player.vx`, or a peer's `_vx` off the wire),
+    eased by the clock (jumpFx.js `ACROSS_TAU_MS`). The first cut timed where
+    two frames drew him and gave up past 250 ms between them, so a phone
+    drawing a few frames a second (and the QA box) never leant at all.
+- **A kick of dust at the take-off** (rendering/worldFx.js `_takeOffDust`):
+  three puffs back off the heels the way he was going, or two to the sides from
+  a standing jump. The landing keeps its ring of six, and nothing is kicked up
+  on water.
+
+**How it is drawn.** It is the emotes' way, `placeEmote` and `holdMatrix` from
+game/emoteMoves.js:
+
+- The whole figure is lifted, then squashed and leaned **about its feet**, so
+  the boots stay over the ground they stand on.
+- The HUD inside it (name plate, HP bar, the spend bars) is given the inverse
+  of the squash and lean. It rides up with the body but never squashes or
+  tilts.
+- `figureFeetY` reads the ground again through `_jumpLift` (now everything the
+  jump moved the feet by: the lift and the squash and lean about them).
+  `figureFeetX` reads it through `_jumpXFix`. So the shadows, the depth pass and
+  anything standing on the feet are where they were.
+- Everything jumpFx writes is put back at the start of the next frame wherever
+  nothing has written since. The entity pass writes position and scale fresh
+  every frame and the rotation never.
+- A figure drawn another way is only lifted, as before: hidden behind a
+  stand-in, tipped over in its death, or in the water.
+- The squash plays on a jump that came down on its own (jumpActions.js
+  `tickJump` sets `S._jumpLandFx`). One cut short by a death or a zone change
+  does not squash. Another player's plays from the relay's own end.
+
+**Not done.** A soft round shadow under the feet that shrinks with height:
+the world's ellipse shadows were taken out for the sun's cast shadows
+(entityRenderer's notes), and the sun's shadow already stays on the ground and
+slides away from the body as it rises.
+
+**Tests.**
+
+- test-world-core "jumping":
+  - the four frames in order, inside each sheet, and what each was chosen for,
+    read off the PNGs;
+  - the curves' ends, bounds and smoothness, the width, and the lean's sign
+    and its stillness standing;
+  - the landing's length, stretched with the jump.
+- `mp-jump`:
+  - the frames run through the four in order;
+  - the squash drawn as the curve says;
+  - the touch-down squashed;
+  - the feet read where they stand under the lift and the squash;
+  - the name plate never squashed or tilted;
+  - a standing take-off puffs two puffs;
+  - 2b, a running jump east leans forward and west the other way, as the rules
+    give for the speed he really went, and kicks three puffs back.

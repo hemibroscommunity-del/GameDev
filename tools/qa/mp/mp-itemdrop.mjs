@@ -140,7 +140,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('1d the bag 5 -> 3 logs', await held(A, 'wood_pine_log') === 3, await held(A, 'wood_pine_log'));
     rec.ok('1e the pile just in front of the dropper\'s feet, drawn as the log\'s own bag picture, "×2"',
       !!p1 && p1.picture && /wood/.test(p1.url || '') && p1.count === '×2' && p1.dropBy === aId
-        && Math.abs(p1.x - spot.x) < 30 && p1.y - spot.y > 0 && p1.y - spot.y < 70 && p1.pictureWorldPx > 30, p1);
+        && Math.abs(p1.x - spot.x) < 30 && p1.y - spot.y > 0 && p1.y - spot.y < 70 && p1.pictureWorldPx > 50 /* v2.3.3499: 60 world px, 1.5x the first cut's 40 */, p1);
     rec.ok('1f yours alone for a minute: about 60 s to its opening, 120 to its flashing, 130 to its end',
       !!p1 && p1.openInMs > 50000 && p1.openInMs <= 60000 && p1.flashInMs > 110000 && p1.goneInMs > 120000 && p1.goneInMs <= 130000, p1);
     await shot(A, '1-dropped');
