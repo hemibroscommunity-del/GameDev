@@ -40,7 +40,10 @@ remnant to migrate server-side, not a mode to preserve.
   thinking only, describing many systems that were never built and
   missing many that were. NEVER use them as a blueprint to change,
   "fix", or "restore" game behavior. Code is the source of truth.
-  Current, trustworthy docs: `docs/ARCHITECTURE-HANDOFF.md`,
+  Current, trustworthy docs: `docs/GDD-AS-BUILT.md` (the game AS BUILT,
+  written from the code and the specs for an outside evaluation, v2.3.3531:
+  every number read from server/src; the README's GDD stays history),
+  `docs/ARCHITECTURE-HANDOFF.md`,
   `docs/UI-BIBLE.md` (UI design law + icon-generation prompts, v2.3.1222),
   `docs/LANTERN-SLATE-SPEC.md` (the UI visual system — colors, depth,
   components; supersedes UI-BIBLE Part 2, v2.3.1227),
