@@ -3509,6 +3509,32 @@ console.log("the buildings' doors (v2.3.3032)");
     ok('...from every inbox_delivered entry, before the daily reward\'s quiet branch', evSrc.indexOf('recordMail(S, _e)') > 0
       && evSrc.indexOf('recordMail(S, _e)') < evSrc.indexOf("if (_e.source === 'daily')"), {});
   }
+  /* ═══ v2.3.3522: EACH BUILDING'S PICTURE, ON THE MAPS ═══
+     The owner: "Have icons representing each building on each building in
+     the minimap/compass" (data/wheelBuildingDoors.js WHEEL_BUILDING_ICONS) */
+  {
+    const { WHEEL_BUILDING_ICONS, wheelBuildingIcon } = await import('../../src/data/wheelBuildingDoors.js');
+    const ids = Object.keys(WHEEL_BUILDING_ICONS);
+    const files = ids.map((k) => WHEEL_BUILDING_ICONS[k].split('?')[0]);
+    const missing = ids.filter((k, i) => !fs.existsSync(new URL('../../public' + files[i], import.meta.url)));
+    ok(`every plot of the town has its picture for the maps (${ids.length}), a file in public/, no two buildings sharing one`,
+      lots.length === 16 && ids.length === 16 && lots.every((l) => !!wheelBuildingIcon(l.id)) && ids.every((k) => lotIds.has(k))
+        && missing.length === 0 && new Set(files).size === ids.length
+        && wheelBuildingIcon('__proto__') === null && wheelBuildingIcon('assay') === null && wheelBuildingIcon(null) === null,
+      { missing, dup: files.length - new Set(files).size, extra: ids.filter((k) => !lotIds.has(k)) });
+    const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+    const enterPic = (k) => has(WHEEL_BUILDING_DOORS, k) ? ((TOWN_BUILDINGS.find((b) => b.id === WHEEL_BUILDING_DOORS[k]) || {}).iconSrc || null)
+      : has(WHEEL_HALL_DOORS, k) ? WHEEL_HALLS[WHEEL_HALL_DOORS[k]].icon : null;
+    const differ = ids.filter((k) => enterPic(k) && enterPic(k) !== WHEEL_BUILDING_ICONS[k]);
+    ok('...each the very picture its Enter button wore, at the same address (one copy held), but the Land Office\'s: its own map, where it borrowed the Feed & Seed\'s barn',
+      differ.join() === 'landoffice' && WHEEL_BUILDING_ICONS.landoffice === '/icons/ui/map.webp', differ);
+    const src = (q) => fs.readFileSync(new URL('../../src/' + q, import.meta.url), 'utf8');
+    const mm = src('rendering/systems/wheelMinimap.js'), wm = src('ui/WorldMapOverlay.jsx'), pa = src('rendering/preloadAnimations.js'), bt = src('ui/BroTown.jsx');
+    ok('...drawn on the minimap\'s footprints once (a sprite each, a shut one grey) and at the world map\'s doors up close, loaded behind the Wheel\'s loading screen and let go on leaving it, and worn by its Enter button',
+      /wheelBuildingIconTexture\(b\.id, b\.closed\)/.test(mm) && /this\.townIcons\.addChild\(sp\)/.test(mm) && /wheelBuildingIconCanvas\(d\.id, d\.closed\)/.test(wm)
+        && /if \(zoneId === 'wheel'\) tasks\.push\(Promise\.resolve\(loadWheelBuildingIcons\(\)\)/.test(pa) && /freeWheelBuildingIcons\(\);/.test(pa)
+        && /wheelBuildingIcon\(stateRef\.current\._nearWheelBuilding\.id\)/.test(bt), {});
+  }
   /* the doors are far enough apart that the nearest simply wins */
   let minGap = Infinity;
   for (const a of doors) for (const b of doors) if (a !== b) minGap = Math.min(minGap, Math.hypot(a.x - b.x, a.y - b.y));
@@ -3881,10 +3907,11 @@ console.log('the Gem Works (v2.3.3259)');
   /* the room is the window's background (v2.3.3258): the window's first row is what is written on the room, a title in the others --
      here the tab strip, so the tabs sit on the room and the cutter's or setter's own title strip under them; the strip keeps clear of
      the close button only where that button lies over it (no room: a sideways phone, a picture that failed) */
-  ok('...its first row is the tab strip, so the tabs are written on the room where the other windows\' titles are, and the strip keeps 44 px clear for the close button only where no room is behind the window (sideways, or a picture that failed)',
+  /* v2.3.3522: 44 -> 52 px, the close button being the windows' one big 40 px ✕ now (.bt-xclose, the owner's "more prominent escape icon") */
+  ok('...its first row is the tab strip, so the tabs are written on the room where the other windows\' titles are, and the strip keeps 52 px clear for the close button only where no room is behind the window (sideways, or a picture that failed)',
     /return React\.createElement\("div", \{ style: LS_WRAP, "data-gem-works": tab \},\s*React\.createElement\("div", \{ role: 'tablist', className: 'bt-gw-tabs'/.test(gws)
-      && /\.bt-gw-tabs\{padding:12px 44px 12px 14px\}/.test(gcss) && /\.bt-room \+ \[data-gem-works\] \.bt-gw-tabs\{padding-right:14px\}/.test(gcss)
-      && /@media \(max-height:460px\)\{\.bt-room \+ \[data-gem-works\] \.bt-gw-tabs\{padding-right:44px\}\}/.test(gcss), {});
+      && /\.bt-gw-tabs\{padding:12px 52px 12px 14px\}/.test(gcss) && /\.bt-room \+ \[data-gem-works\] \.bt-gw-tabs\{padding-right:14px\}/.test(gcss)
+      && /@media \(max-height:460px\)\{\.bt-room \+ \[data-gem-works\] \.bt-gw-tabs\{padding-right:52px\}\}/.test(gcss), {});
   /* the east street, the mine side: the Bank alone on its north side, the Gem Works and the Auction House on its south */
   const east = (side) => plots.filter((l) => l.arm === 'east' && l.side === side).map((l) => l.id).sort().join();
   ok('the east street (the mine side) keeps the Bank alone on its north side and the Gem Works and the Auction House on its south', east('north') === 'bank' && east('south') === 'auction,gemcutter', { north: east('north'), south: east('south') });

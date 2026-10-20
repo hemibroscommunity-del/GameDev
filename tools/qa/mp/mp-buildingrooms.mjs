@@ -365,7 +365,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(400);
   const failed = await P.page.evaluate(() => {
     const card = document.querySelector('.bt-inspect-card');
-    const first = card && Array.from(card.children).find((q) => !q.classList.contains('bt-inspect-close'));
+    /* v2.3.3522: the ✕ sits in a sticky bar of its own now (.bt-inspect-closebar) */
+    const first = card && Array.from(card.children).find((q) => !q.classList.contains('bt-inspect-close') && !q.classList.contains('bt-inspect-closebar'));
     return { rooms: document.querySelectorAll('.bt-room').length, panelTop: first ? first.getBoundingClientRect().top : null, cardTop: card ? card.getBoundingClientRect().top : null,
       radius: first ? getComputedStyle(first).borderTopLeftRadius : null, bg: first ? getComputedStyle(first).backgroundColor : null };
   });
