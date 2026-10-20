@@ -7866,3 +7866,88 @@ points a tick. A pool read in town is a race with the top-off.
 
 **Receipt:** the sweep of 2026-10-19's batch 22 (68), the first mend's 102,
 and a probe through the real router (three swipes: 102, 82, 62, 42).
+
+## 236. "The sight is on the monster, so the shot lands" (v2.3.3485)
+
+**The plausible move.** A fire gate or an aiming line decides "this shot hits
+that monster" from the line and the monster's hit circle: the circle the hit
+test uses, the same radius, so it must agree.
+
+**Why it is wrong.** The hit test asks more than the circle. A hit also has to
+pass `_rockBetween` (projectiles.js, v2.3.2701): no prop between the arrow's
+GROUND point and the monster's FEET. A monster standing just behind a prop has
+a circle that reaches back over the prop toward you, so the circle says hit
+and the rock rule says no. `mp-hitreal`'s frost bow row:
+
+- a snowman 98 px off, on the far side of a snowbank;
+- the bow's line on it at distance 0, so the bow loosed;
+- the drawn arrow 0-4 px from its centre;
+- every frame refused;
+- the arrow stuck in the bank at its feet, for no damage.
+
+An arrow whose ground line passes beside such a prop flies on through the
+monster.
+
+**The rule.** The guide asks every question the hit test asks, from the same
+points: `firstSightHit` gates a target by the rock rule over the stretch where
+the capsule meets its circle. A new refusal added to the hit test is added to
+`firstSightHit` in the same change, or the line promises shots that cannot land.
+
+**Receipt:** the debug trace of 2026-10-19 (`frost-snowbank-e`, segD 4 and 0
+against 38.6, rock true twice), and `mp-sightrock`, which fails on the build
+before the gate and passes with it.
+
+## 237. "It is near the edge of the screen, so it is leaving" (v2.3.3489)
+
+**The plausible move.** A shot (or anything that flies) should end before it
+leaves the screen, so end it when its point comes within a margin of any edge.
+And whatever predicts the shot -- a fire gate, an aiming line -- keeps its own
+idea of how far it can go: the weapon's range.
+
+**Why it is wrong.** Near an edge is not leaving it. Where the camera stops at
+the world's edge, you can stand inside the margin, and every arrow loosed
+there came down at once, whichever way it flew: at a monster right in front of
+you, along the edge. And a prediction that knows only the range promises what
+the flight cannot deliver: the bow's gate counted a monster out to 675 px while
+an upright phone shows about 300 px to your side, so it fired at a monster off
+the screen, and every arrow came down at the edge, short of it. The line was
+drawn past every arrow.
+
+**The rule.** End a flight on the edge it is flying **toward**, measured along
+the flight (`arrowEdgeRoom`, src/game/arrowEdge.js). And whatever predicts it
+reads that one function: the gate counts a target only as far as the flight is
+sure to reach, and the line is drawn to where it comes down. A new limit on a
+flight goes in the function, not beside it.
+
+**Receipt:** `mp-hitreal`'s frost bow row, an arrow down at its shooter's feet
+by the map's east edge (`ground`, 431 ms); `mp-bowedge`, which fails on the
+build before the rule (0 damage by the edge, 3 arrows at a snowman off the
+screen) and passes with it.
+
+## 238. "Require that check on main" (v2.3.3491)
+
+**The plausible move.** Protecting `main`, make every CI check a required
+status check, and tick "Require branches to be up to date before merging":
+nothing reaches the players unless all of CI is green on the newest main.
+
+**Why it is wrong.** Two ways, both of which stop this repo's parallel
+sessions:
+
+- **A required check that skips some PRs blocks them for ever.** GitHub waits
+  for a required check by name. Client CI (`lint-build`, `playable`) and the
+  memory check (`memory-budget`) run only when their paths change
+  (client-ci.yml, memory.yml). A PR that touches none of those paths never
+  starts them, so it waits for a check that will never come. PR #1028, a
+  documents-only change, got only Server CI's `test` and Cloudflare Pages.
+- **"Up to date before merging" makes parallel sessions queue.** Every merge
+  makes every other open PR out of date, and each must take in main and run
+  CI again before it may merge. With several sessions merging, they wait in
+  line behind each other.
+
+**The rule.** Only a check that runs on EVERY PR may be required. Today that
+is Server CI's `test`. A path-filtered workflow is made to always run (and
+pass quickly when nothing of its own changed) before it is ever required.
+Leave "up to date before merging" off. docs/REPO-SAFETY.md step 4.
+
+**Receipt:** the trigger blocks of client-ci.yml and memory.yml, and #1028's
+check runs on 2026-10-19 (`test` and Cloudflare Pages only).

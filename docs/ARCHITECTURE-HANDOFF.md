@@ -69,6 +69,7 @@ extended.
    | `devlock:filled` | `{at, chars, devices}` — the one-time fill of every character's `devs` from the `device:` and `botstat:` records (v2.3.3344): present, a worker never scans again. A single key, never a prefix | device-lock.md |
    | `pets:<playerId>` | `{v, cap, active, moved, list:[{id, kind, look, home, stage, gold, size, name, lv, xp, at, caughtBy, owners, tradeAfter, legacy?}], journal:{'<kind>.<stage>': {tries, n, gold, big}}}` — the PETS RECORD (v2.3.3120, petbook.js): the only proof a pet is yours, written only by the worker. Ids `p_...` are the worker's and never change. One GET at join; a catch and every Pets-page action write at once, a miss's try only in memory (written at most once a minute and on disconnect); v2.3.3121: so is a pet's XP from kills (`lv`, `xp`), except a level-up, written at once. A newer `v` is left whole and untouched (a rollback must not destroy it). Old `lifeSkills.pets` move in once (`moved`), from a stored blob only, as `legacy`. v2.3.3123: `cap` grows by 10 for gold (`pet_house_buy`, 30 to 120), the gold off `rpg:` and the place on this record in one synchronous run; the pet out with you is mirrored onto playerState as `_petWire` (memory only, the tick's `pw`). Deleted by `_resetCharacterData`; not in the daily `rpgsnap:` | trapping.md |
    | `codex:<playerId>` | `{v, k: {<kind>: [kills, killsPastLevel20]}}` — the MONSTER CODEX (v2.3.3209, codex.js): each of the nine kinds (petbook.js PET_KINDS) this player has helped kill, counted at the kill's choke point for every XP recipient. One GET at join, cached for the session; a kill that crosses a threshold (`CODEX.TIERS`, a new fact on the Codex page) or a first second-stage kill is written at once, any other kill at most once a minute and on disconnect (a deploy loses at most a minute of counting, never a fact). A newer `v`, or a failed read, LOCKS it: never counted into or overwritten. Deleted by `_resetCharacterData`; not in the daily `rpgsnap:` | monster-codex.md |
+   | `aponce:<playerId>` | `{arena: 1}` — the ACHIEVEMENT POINTS PAID ONCE A CHARACTER (v2.3.3488, inbox.js `AP_ONCE`): a key is set the first time a credit carrying `apOnce: '<key>'` pays its AP (the arena champion's 500, gladiator.js), and a later such credit pays its gold alone. Read at the join BEFORE the inbox drains (`_apOnceLoadOnJoin`); written by `_saveRpg` in the same synchronous run as the rpg blob whose points it paid (`ps._apOnceDirty`), so a crash keeps both or neither; a failed read pays no once-AP that session (`_apOnceFailed`) and is never written over. Only the keys in `AP_ONCE` are kept (`cleanApOnce`). Deleted by `_resetCharacterData`; not in the daily `rpgsnap:` | arena.md |
    | `char:<playerId>` | `{name, look, createdAt}` the PERMANENT name + appearance; first write wins and a stored record beats the join payload | identity.md |
    | `inbox:<playerId>` | pending credit entries (offline mail); v2.3.3122: a `pet` entry (`{pet, from}`) STAYS QUEUED while the recipient's pets record is not loaded or full, and the join loads `pets:` before it drains | inbox-escrow.md |
    | `oplog:<opId>` | timestamp; idempotency journal, pruned >48h | inbox-escrow.md |
@@ -647,15 +648,22 @@ strict deploy-order symmetry (rule 19). Danger: the current gate is
 adequate (local heal is prediction, the echo is the tiebreaker,
 rule 20) — this is symmetry polish, not a hole.
 
-### O. The supporter pass — waits on the owner's pass address (v2.3.3256)
-$2 for 30 days, paid in USDC on Hemi, 30 days from ACTIVATION, one pass
-for a wallet's characters (up to 10).  The design is NO CONTRACT: a plain
-USDC transfer to a dedicated pass address, read by the server like the
-Hemi Bro check (onchain.js), credited once per (tx hash, log index) under
-rule 5; the server never holds a key.  NO PLAY CAPS (owner: "Dont ship any
-caps yet").  Blocked on the owner's dedicated receiving address, and USDC's
-contract address on Hemi needs confirming from outside the sandbox.  Plan,
-checks and build order: `docs/SUPPORTER-PASS-PLAN.md`.
+### O. The supporter pass — waits on the repo lock-down (docs/REPO-SAFETY.md) (v2.3.3256, rewritten v2.3.3490)
+$2 worth of ETH on Hemi for 30 days, 30 days from ACTIVATION, sharable
+later with the owner's other characters (up to 10).  v2.3.3490 (owner,
+2026-10-19: no wallet signatures; USDC on Hemi is Stargate-bridged, so ETH):
+NO CONTRACT and NO SIGNATURE -- each character gets its own payment address
+from an address book made by an offline tool and signed by the owner's
+HARDWARE WALLET (the server and the phone accept only addresses in a signed
+book); the server holds no key and no watch key, and credits from balance +
+the sends it built itself, read at a FINALIZED block from two providers, with
+tripwires on any send it did not build.  Two independent reviewers attacked
+the first draft; their fixes are in, and they found the repo itself must be
+locked down first (AI sessions act as the owner's admin account, `main` is
+unprotected, any branch can deploy the worker, previews reach the live
+server): the plan's "Before anything else".  NO PLAY CAPS (owner: "Dont ship
+any caps yet").  Plan, 41-row attack table, checks and build order:
+`docs/SUPPORTER-PASS-PLAN.md`.
 
 ### Shipped (v1 backlog — letters frozen, cited elsewhere)
 TRAPS.md and the spec docs cite these as "handoff item X"; the full

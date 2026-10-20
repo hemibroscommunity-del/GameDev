@@ -222,3 +222,178 @@ same line), which is always the grip's place on you.
     timed on a page drawing a few frames a second;
   - `mp-shotland`: a bolt's landing measured past LAND_MAX_MS.
 - `docs/shots/bowprops.md`: before and after on a phone.
+
+## v2.3.3485: the gate asks the hit test's rock question too
+
+Found by `mp-hitreal` on the QA machine, its frost bow row, with a scratch copy
+of the game that logged each arrow's own decisions frame by frame.
+
+**What was wrong.** You stood just south of the frost snowbank (its footprint
+202 x 42 px); a snowman stood just north of it, 98 px from you.
+
+- The gate said "on the snowman". Its hit circle (38.6 px) reaches right back
+  to your bow, so it was met at distance 0, before the snowbank's face 12 px
+  up the ground line. So the bow loosed.
+- The drawn arrow passed 4 px, then 0 px, from the snowman's centre.
+- The hit test refused it on both frames. A hit also has to pass
+  `_rockBetween`: no prop between the arrow's ground point and the monster's
+  FEET (v2.3.2701, the worker's own rule for a monster's hit on you), and the
+  snowbank stood between them.
+- The arrow stuck in the snowbank's face, drawn at the snowman's feet, and did
+  nothing.
+
+On screen: the line on the monster, the arrow in the monster's body, no
+damage. The gate exists so that never happens ("the fire gate and the drawn
+line must never disagree about where the shot is going to land, or the guide
+is lying").
+
+The same rule had a second face. An arrow whose own ground line passes BESIDE
+a prop that stands between that line and a monster's feet is never stopped,
+and flies on through the monster untouched.
+
+**What changed.** `firstSightHit` (projectiles.js) asks the hit test's
+question before it counts a monster, or a player you may shoot, as on the
+line.
+
+- **Where it asks.** Along the stretch where the arrow's capsule meets the
+  target's circle: from where the arrowhead first reaches it (`enter - front`)
+  to where the tail leaves it (`exit + back`). That stretch is cut short of the
+  face of the prop on the ground line, unless the target's feet are in that
+  prop's box (the let-in).
+- **What it asks.** Three ground points of that stretch: its start, the
+  nearest approach, its end. Each is asked "is a prop between here and the
+  feet?", with the low things flown over, as the hit test asks it at a step's
+  start.
+- **What follows.** If none is clear, the target is passed over. The line then
+  ends at the prop on the ground line, and the arrow sticks there as the line
+  shows. If no prop stands on the line, the bow waits.
+
+Only the game's own shots (`ground` given) take the gate. A shot that would
+land somewhere on that stretch keeps its target, so the gate only stops shots
+the hit test was going to refuse.
+
+**Not changed: the ground line itself.** A shot's ground line runs PARALLEL to
+the drawn shot, from your boots. Aimed at a monster's chest, it ends about
+33 px in front of the monster's feet. `mp-hitreal`'s frost magic row met it:
+
+- a snowman stood just past the end of the frost rock ridge, on your side of
+  it;
+- your boots were right on the ridge's edge line;
+- your bolt's ground line dipped into the ridge's end, and the bolt burst there.
+
+Aimed shots judged from your boots to the target's feet would change how every
+shot meets props. That is the owner's call, left open.
+
+**Checked by.**
+
+- `mp-sightrock` (new), in frost at that very snowbank, on a phone, with a real
+  bow held and the game's own gate and arrows deciding:
+  - your boots 12 px south of the bank's face, a snowman 41 px north of it on
+    the bow's line (where mp-hitreal's stood): the gate reads the bank, not the
+    snowman, and the drawn line stops at it;
+  - held, the arrows go into the bank and the snowman takes nothing;
+  - control: the same snowman on the near side of the bank, between you and
+    it: the gate reads the snowman, and it takes the arrows.
+  - On the build before the gate it failed as mp-hitreal had: the gate read
+    the snowman (distance 0), the bow fired 4 arrows, every one stuck in the
+    bank, and the snowman took nothing. The control passed (40 and 42 damage).
+  - With the gate it passes, 6 of 6 on two runs: the gate reads the bank,
+    12 px off, the line is drawn at its least, 24 px, every arrow goes into
+    the bank, and the snowman in front of it takes the arrows (39 and 41
+    damage).
+- A narrow thing is not this case: a tree's trunk is narrower than the bow's
+  offset to your side, so a monster on the bow's line behind a trunk is not
+  behind it from the arrow's ground line, and the arrows do hit it (tried
+  first: 30 damage on main's build, 28 with the gate).
+- The bow and prop phone tests with the gate, 13 scenarios: every check
+  passed (bowgate 22, bowmark 10, bowprops 26, buildingfire 18, hitsweep 5,
+  jetstream 46, lockaim 21, nmlfoe 33, peershots 12, propshots 30, pvpshield
+  16, sparfight 15, wheelbreak 30).
+- `mp-hitreal`'s frost bow and magic rows with the gate: 13 of 13 on three
+  runs of four. The fourth lost one arrow for an older reason this change
+  does not touch: a bow held within 24 px of the screen's edge drops its
+  arrow at once ("Still open", below).
+
+**The screen's edge** was still open here; v2.3.3489, below, closes it.
+
+## v2.3.3489: an arrow comes down where the aiming line says
+
+**What was wrong.** An arrow comes down before it would fly off the screen
+(v2.3.1095), and the arrow, the fire gate and the aiming line each had their own
+idea of where:
+
+- the **arrow** came down the frame its point was within 24 px of *any* edge,
+  whichever way it was flying. Where the camera stops at the world's edge (the
+  closed old lands), a bow held against it dropped every arrow at your feet,
+  even at a monster right in front of you: `mp-hitreal`'s frost bow row, a
+  snowman by the map's east edge;
+- the **gate** held props to the screen's edge (`ground.len`) but counted a
+  monster or a player out to the bow's 675 px range. An upright phone shows
+  about 250-320 px either side of you, so a monster off the screen to your
+  side, on the line, opened the gate, and every arrow came down at the edge,
+  short of it;
+- the **aiming line** was drawn to the range, off the screen, past every
+  arrow.
+
+**The owner**, offered "end the aiming line where the arrow comes down, and let
+an arrow flying along the edge keep going": "Go recommended".
+
+**What changed.** One rule, `src/game/arrowEdge.js` `arrowEdgeRoom`: an arrow
+comes down 24 px of flight short of the screen edge it is flying **toward**.
+
+- Head-on that is the old rule exactly. Along an edge, or away from it, it
+  flies on. At a slant it flies until its own last 24 px.
+- The arrow (projectiles.js) comes down when its room is 0.
+- The gate (monsterCombat) reads the room from the grip, the same rule
+  `ground.len` now uses. A monster or player counts only as far as an arrow
+  is sure to reach: the room, plus `arrowSureReachPast` -- its head's lead
+  (28.5 px) less one 60 fps step (24 px x the range multiplier).
+- `S._bowSight.reach` is where an arrow on the line comes down, the nearer of
+  the range and the edge. The empty aiming line is drawn to it
+  (effectsRenderer), so it now ends where the arrow will come down.
+
+**Checked by.**
+
+- `server/test/arrow-edge.test.mjs`, 14 checks:
+  - head-on, the old rule exactly;
+  - along an edge and away from it, it flies on;
+  - grazing outward, ~300 px before it leaves;
+  - against 2,000 random shots walked step by step.
+- `mp-bowedge` (new), in frost on a phone with a real bow:
+  - **by the map's east edge**, the bow 5 px from the screen's edge: a snowman
+    150 px south along the edge is the gate's and takes the arrows (38
+    damage). On main's build: 4 arrows fired, 0 damage, all four down at your
+    feet;
+  - **a snowman off the screen**, 470 px east, inside the range: the gate does
+    not read it, the bow does not fire, and the empty line is 179 px, where an
+    arrow comes down. On main's build: the gate read it, 3 arrows came down at
+    the edge, and the line ran to 431 px;
+  - **control**: the snowman 150 px east, on the screen, takes the arrows.
+- `mp-jetstream`: its target stood 500 px up, past the top of the 664 px
+  phone, so arrows flew most of the screen and came down short of it. It now
+  stands 60 px inside where an arrow comes down. The empty line is checked
+  against the nearer of the range and the edge, by the test's own copy of the
+  rule.
+- `mp-projlook`, `mp-solospecial` and `mp-peershots` put their bow's target off
+  the screen too, and the old gate fired at it:
+  - projlook 640 px at 0.9 rad, past the side of a computer window's play
+    column;
+  - solospecial 620 px at 0.4 rad on the 390 px phone;
+  - peershots 330 px to the side of the 390 px phone. Its first arrow went out
+    while the camera was still easing after the hop; once the camera settled,
+    the next ones never did.
+
+  Each target now stands on the screen: projlook's and solospecial's 60 px
+  inside the game's own `reach` (483 of 543 px, 235 of 295), peershots' shooter
+  above or below its target first.
+- 36 bow, staff and prop scenarios on a phone, 989 checks, all passing:
+  aimpath, arrowblast (+1 skip as on main), arrowsnap, arrowwound, bowedge,
+  bowgate, bowmark, bowprops, bowshield, bowside, bowvolley, buildingfire,
+  facebow, hitmat, hitmatrix, hitsweep, hitvoices, hotarrow, jetstream,
+  lockaim, nmlfoe, peershots, projlook, propshots, pvpshield, shotland,
+  sightrock, solospecial, sparfight, specialart, stuckarrow, tapstance,
+  wheelbreak, and ability, engage, orbline.
+  - The first run had 14 failures. Eight were the three tests above.
+  - Six were in hitmat and hitvoices: a sword's and a staff's hits, which the
+    rule does not touch, run while the server's test suites ran beside them.
+    Alone they pass 69/69 and 53/53.

@@ -8462,7 +8462,14 @@ export class EffectsRenderer {
          Unclipped when the line is empty, deliberately: the stream is then
          doing its other job, which is showing the player where they are
          pointing so they can bring it onto something. */
-      const _fullLen = BOW_RANGE_PX * bowRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);   /* v2.3.2790: x depth, as the arrow is */
+      /* v2.3.3489: and where the arrow comes down, the screen's edge as much
+         as the bow -- monsterCombat's own answer (`reach`), from the same grip
+         and heading as the gate.  Drawn to the range, the empty line ran off
+         the screen past every arrow; the owner, offered "end the aiming line
+         where the arrow comes down": "Go recommended" (arrowEdge.js). */
+      const _fullLen = (isBow && S._bowSight && typeof S._bowSight.reach === 'number' && isFinite(S._bowSight.reach))
+        ? S._bowSight.reach
+        : BOW_RANGE_PX * bowRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);   /* v2.3.2790: x depth, as the arrow is */
       const _sightD = (isBow && S._bowSight && typeof S._bowSight.d === 'number')
         ? S._bowSight.d : null;
       const _beamLen = isRanged

@@ -126,6 +126,17 @@ PROJ_BODY.magicBig = {
   front: PROJ_BODY.magicBolt.front * STAFF_BIG_BOLT_SCALE,
   half: PROJ_BODY.magicBolt.half * STAFF_BIG_BOLT_SCALE,
 };
+/* ═══ v2.3.3489: HOW FAR PAST WHERE IT COMES DOWN AN ARROW STILL HITS ═══
+   An arrow comes down short of the screen's edge (arrowEdge.js), and the gate
+   counts a monster only as far as the arrow is sure to reach (monsterCombat).
+   Its head leads its point by PROJ_BODY.arrow.front, and the last frame it is
+   tested on leaves its point within one 60 fps step of where it comes down --
+   ARROW_SPEED_PX x its range multiplier, the step this file takes -- so a
+   body that begins this far past that point is always met.  Negative for a
+   long-range bow, whose step outruns its head. */
+export function arrowSureReachPast(rangeMult) {
+  return PROJ_BODY.arrow.front - ARROW_SPEED_PX * (rangeMult > 0 ? rangeMult : 1);
+}
 /* ═══ v2.3.2473: THE HIT RADIUS, IN ONE PLACE ═══
  * Lifted verbatim out of the per-monster loop below so the BOW'S NEW SIGHT GATE
  * (firstSightHit, under this) can ask the same question the hit test answers.
@@ -637,7 +648,7 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
   /* The one place a ray meets a circle: project the centre onto the ray, and
      the entry point is that projection minus the half-chord.  A centre BEHIND
      the origin by more than its own radius can never be hit. */
-  var consider = function (cx, cy, r, id, ref) {
+  var consider = function (cx, cy, r, id, ref, gate) {
     if (!isFinite(cx) || !isFinite(cy)) return;
     var vx = cx - ox, vy = cy - oy;
     var t = vx * dx + vy * dy;
@@ -645,9 +656,13 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
     var perp2 = (vx * vx + vy * vy) - t * t;
     var r2 = r * r;
     if (perp2 > r2) return;
-    var enter = t - Math.sqrt(Math.max(0, r2 - perp2));
+    var hc = Math.sqrt(Math.max(0, r2 - perp2));
+    var enter = t - hc;
     if (enter < 0) enter = 0;          /* the origin is already inside it */
     if (enter > maxLen) return;
+    /* v2.3.3485: a target the hit test would refuse is not on the line (the
+       rock gate, below) */
+    if (gate && !gate(enter, t + hc, t)) return false;
     if (!best || enter < best.dist) best = { dist: enter, id: id, m: ref };
     return true;   /* v2.3.3206: on the line, for the prop's let-in below */
   };
@@ -686,6 +701,56 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
       if (lh && lh.box && (!ph || lh.t < ph.t)) low = { dist: lh.t * gLen, box: lh.box };
     }
   }
+  /* ═══ v2.3.3485: NOT BEHIND A ROCK, BY THE HIT TEST'S OWN RULE ═══
+     Found by mp-hitreal on the QA box: frost's bow row lost arrows that the
+     sight had promised.  A snowman stood just north of a snowbank (its box
+     202 x 42), you just south of it, 98 px apart.  Its hit circle reaches
+     back to the bow, so this gate said "on the snowman" at distance 0 and the
+     bow loosed; the drawn arrow passed 0-4 px from its centre, well inside the
+     38.6 px; and the hit test refused it on both frames, because a hit also
+     has to pass _rockBetween -- no prop between the arrow's ground point and
+     the monster's FEET -- and the snowbank stood between them.  The arrow
+     stuck in the snowbank's face, drawn at the snowman's feet, and it took
+     nothing.  Seen on the screen: a shot the line said would land, landing on
+     the monster's body for no damage -- the guide lying, which is what this
+     function is for (the header above).  And an arrow whose own ground track
+     passes BESIDE a prop that stands between that track and a monster's feet
+     flies on through the monster, untouched.
+     So a monster or player counts as on the line only if the hit test could
+     take it somewhere along the stretch where the arrow's capsule meets its
+     circle: from where the arrowhead first reaches it (enter - front) to where
+     the tail leaves it (exit + back), cut short of the face of the prop on the
+     ground track unless its feet are in that prop's box (the let-in).  Three
+     ground points of that stretch are asked -- its start, the nearest
+     approach, its end -- as the hit test asks at a step's start, with the low
+     things flown over (no low thing is aimed at when something else is on the
+     line).  If none is clear the target is passed over: the line ends at the
+     prop on the ground track, or at nothing, as the arrow will.
+     Only with `ground` (the game's own shots; firstSightHit's other askers
+     and a hand-made arrow keep the old meaning). */
+  var rockGate = null;
+  if (g && isFinite(g.x) && isFinite(g.y) && S.currentZone) {
+    var _gBody = (opts && opts.isSpecial) ? PROJ_BODY.arrowSpecial : PROJ_BODY.arrow;
+    var _gSkip = shotSkip(null);
+    rockGate = function (fx, fy) {
+      var cap = maxLen;
+      if (prop) {
+        var pb = prop.box;
+        var inBox = fx >= pb.x0 && fx <= pb.x1 && fy >= pb.y0 && fy <= pb.y1;
+        if (!inBox) cap = Math.min(cap, prop.dist - 1);   /* a step's start is always short of the face */
+      }
+      return function (enter, exit, t) {
+        var s0 = Math.max(0, enter - _gBody.front);
+        var s1 = Math.max(s0, Math.min(exit + _gBody.back, cap));
+        var sm = Math.max(s0, Math.min(t, s1));
+        var pts = [s0, sm, s1];
+        for (var k = 0; k < pts.length; k++) {
+          if (!attackBlocked(S.currentZone, g.x + dx * pts[k], g.y + dy * pts[k], fx, fy, _gSkip)) return true;
+        }
+        return false;
+      };
+    };
+  }
   var letIn = false;
   var list = S.monsters;
   if (list) {
@@ -698,7 +763,7 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
       var mArch = hitShapeOf(m.archetype || m.type);
       /* v2.3.2845: the monster the shot is aimed at, round its torso -- as the hit test will */
       var onLine = consider(mx, my - ((opts && opts.aimAt != null && opts.aimAt === m.id) ? torsoLift(m, S.currentZone) : monsterBodyOffsetY(mArch)),
-        monsterProjRadius(m, S, opts) + half, m.id, m);
+        monsterProjRadius(m, S, opts) + half, m.id, m, rockGate ? rockGate(mx, my) : null);   /* v2.3.3485: + the rock gate, at its feet */
       /* v2.3.3206: on the line with its feet in the prop's box: the arrow is let in */
       if (onLine && prop) {
         var b = prop.box;
@@ -727,7 +792,9 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
       var oyp = (typeof o.renderY === 'number' && isFinite(o.renderY)) ? o.renderY : o.y;
       var pr = PVP_BODY_R;
       if (opts && opts.isSpecial) pr *= 1.5;
-      consider(oxp, oyp - 24, Math.max(pr, PVP_BODY_R + half), 'p_' + pids[pk], o);
+      /* v2.3.3485: + the rock gate, at their boots (the PvP hit test's _pvpGy) */
+      consider(oxp, oyp - 24, Math.max(pr, PVP_BODY_R + half), 'p_' + pids[pk], o,
+        rockGate ? rockGate(oxp, oyp + playerGroundDy(S.currentZone, oxp, oyp)) : null);
     }
   }
   /* v2.3.3206: the prop, when it comes first and the arrow will not be let
@@ -800,6 +867,7 @@ import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/wo
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockShotPoint, torsoLift, monsterDrawScale /* v2.3.2845: aimed at, and landing round, the torso */, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */, STUCK_ARROW_MS, SCORCH_MS, scorchStyle, scorchGlow /* v2.3.2995 */, propHitHeight /* v2.3.3206: a hit on a prop is shown on the prop */ } from '@/game/combatHelpers.js';
 import { strikeWheelObject } from '@/game/wheelBreak.js'; /* v2.3.2995: the Wheel's objects take hits, break, and are mended */
 import { JUMP_OVER } from '@/game/jump.js'; /* v2.3.3206: what you can jump, a shot flies over */
+import { arrowEdgeRoom } from '@/game/arrowEdge.js'; /* v2.3.3489: where an arrow comes down at the screen's edge */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.3206: a duel target's ground is under its boots */
 import { arrowSnaps } from '@/data/arrowSnap.js'; /* v2.3.2731: one arrow in eight breaks on what it hits */
 import { BOW_VOLLEY, burnT0, burnLifeMs, volleyRested, volleyBurns, volleyShoves } from '@/game/bowVolley.js'; /* v2.3.2848: the special's three arrows share one train, one burn and one shove; v2.3.2849: + its burn length */
@@ -1416,12 +1484,12 @@ export function updateArrows(S, deps) {
                max flight distance, begin the downward plant rather than flying
                on forever. camera.x/y is the viewport top-left in world coords. */
             if (!a.isStaff && _released) {
-              var _edge = false;
-              if (typeof S._viewW === 'number' && typeof S._viewH === 'number' && S.camera) {
-                var _em = 24;
-                _edge = a._renderX < S.camera.x + _em || a._renderX > S.camera.x + S._viewW - _em
-                     || a._renderY < S.camera.y + _em || a._renderY > S.camera.y + S._viewH - _em;
-              }
+              /* v2.3.3489: 24 px of flight short of the edge it is flying
+                 TOWARD (arrowEdge.js) -- it was within 24 px of ANY edge, so an
+                 arrow loosed with the bow already in that band came down at
+                 once, at a monster right in front of you; the gate and the
+                 aiming line read the same rule from the grip (monsterCombat) */
+              var _edge = arrowEdgeRoom(S.camera, S._viewW, S._viewH, a._renderX, a._renderY, a.ang) <= 0;
               /* v2.3.1335 (owner): bow range -25% (900 -> 675). */
               if (_edge || a.dist > BOW_RANGE_PX * (a._rangeMult || 1)) {   /* v2.3.2448: named, and the sight stream draws to the same number */
                 a.planting = true;
