@@ -15,10 +15,19 @@ name: Deploy worker
 # were both bad: push a no-op commit to main purely to re-trigger, or deploy
 # by hand.
 #
-# Dispatching this deploys whatever `main` currently holds, which is exactly
-# what the push trigger would have done — same code, same wrangler, same
-# secret.  It adds no new authority: anyone who can dispatch it can already
-# merge to main and trigger it that way.
+# Dispatching this from main deploys whatever `main` currently holds, which
+# is exactly what the push trigger would have done — same code, same
+# wrangler, same secret.
+#
+# v2.3.3491: AND ONLY FROM MAIN.  The paragraph above used to end "It adds no
+# new authority", which did not hold: a manual run can be started from ANY
+# branch, and `actions/checkout` then takes that branch's code, so a branch
+# nobody had merged could be deployed to the players.  Now the deploy job
+# runs only when the run is on main (`if:` below), and it takes the
+# Cloudflare token from the `production` environment, which the owner limits
+# to main in GitHub's settings (docs/REPO-SAFETY.md).  The `if:` is for an
+# honest mistake; the environment is the lock, because a branch's own copy of
+# this file could drop the `if:` but cannot get the environment's secret.
 on:
   workflow_dispatch:
   push:
@@ -36,6 +45,10 @@ on:
 concurrency:
   group: deploy-worker
   cancel-in-progress: false
+# v2.3.3491: the token this workflow is handed may only read the repository;
+# nothing here writes to GitHub.
+permissions:
+  contents: read
 jobs:
   # v2.3.3302: THE SUITE BEFORE THE DEPLOY.  This workflow deployed whatever
   # main held without running a test (the architecture review, 2026-10-17):
@@ -66,6 +79,9 @@ jobs:
       - run: npm test
   deploy:
     needs: test
+    # v2.3.3491: main only, and the token from the main-only environment (top)
+    if: github.ref == 'refs/heads/main'
+    environment: production
     runs-on: ubuntu-latest
     env:
       # wrangler-action@v3 still declares node20, which GitHub retires

@@ -38,6 +38,7 @@ import { hurtGrunt } from '@/game/ownSounds.js'; /* v2.3.3462: your hurt grunt (
 import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
 import { peerShotFlight } from '@/game/peerShots.js'; /* v2.3.3266: another player's shot at their speed and reach */
 import { ARROW_SPEED_PX } from '@/game/projectiles.js'; /* v2.3.3266: ...the bow's own speed */
+import { shotAimFromWire } from '@/game/shotGround.js'; /* v2.3.3501: what a peer's shot is fired at */
 import { BOW_VOLLEY } from '@/game/bowVolley.js'; /* v2.3.3266: ...and the volley's */
 import { BOW_RANGE_PX } from '@/data/gameSystems.js'; /* v2.3.3266: ...and where an arrow comes down */
 /* v2.3.3266: the game's numbers peerShots.js works with, one copy of each --
@@ -2148,7 +2149,14 @@ export function processGameEvent(type, payload, S, deps) {
                    arrow stops on this screen. */
                 _lp: (Array.isArray(payload.lp) && payload.lp.length === 2
                   && Number.isFinite(Number(payload.lp[0])) && Number.isFinite(Number(payload.lp[1])))
-                  ? { x: Number(payload.lp[0]), y: Number(payload.lp[1]) } : null
+                  ? { x: Number(payload.lp[0]), y: Number(payload.lp[1]) } : null,
+                /* v2.3.3501: what the shot was fired at -- its circle and its
+                   feet -- so its ground line runs from the shooter's boots to
+                   those feet here too (visualSystems, shotGround.js).  Five
+                   numbers in range or nothing (shotGround.js shotAimFromWire):
+                   a peer's, and it decides only where a drawn copy meets a
+                   prop.  An older shooter sends none: the parallel line. */
+                _gf: shotAimFromWire(payload.gf)
               });
               /* v2.3.1011: a bow shot (non-staff) drives the remote bow-draw
                  stand-in (Phase 4 reads _bowShotAt/_bowShotAng). */
