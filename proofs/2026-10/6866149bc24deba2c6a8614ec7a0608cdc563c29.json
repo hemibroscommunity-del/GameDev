@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6866149bc24deba2c6a8614ec7a0608cdc563c29",
+  "tree": "b2c3c7dff8e7854dd9eb5a55026d0e6435af5270",
+  "committedAt": "2026-10-20T01:19:54-07:00",
+  "subject": "Every gem pulls its weight: \"UP\" really hits 25% harder, soaked monsters hit softer, shocked ones spark (v2.3.3518) (#1043)",
+  "files": 6110,
+  "bytes": 712068231,
+  "listingSha256": "9746aab52602358d6197bac84e46a3f276c7c02f1857e12e3403529f66720185",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
