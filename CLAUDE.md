@@ -1736,6 +1736,41 @@ remnant to migrate server-side, not a mode to preserve.
         kill switch `areachoice: false` (either way, as before);
       - `pvp-extras` §1b, `spar` §16q, `mp-nmlask` step 7, `mp-nmlfoe` step 8:
         no-mans-land.md "Hitting back goes through the window too".
+    - since v2.3.3530 A GROUP ATTACKS YOU: ONE WINDOW -- the owner: "If you
+      get attacked simultaneously by a group of people you don't need
+      additional windows to approve.  If the 2nd, 3rd, etc people already
+      approved "attack" at you you can immediately hit back at each of them
+      after that":
+      - the first window stays; once you chose a fight (a live foe), everyone
+        attacking you joins it with no window of their own -- on your Attack,
+        all who struck you in the last minute (sparTargets.js `attackersNow`),
+        and while you fight, each whose blow lands on you (gameEvents.js
+        pvp_hit -> nmlAsk.js `nmlJoinFight`); an earlier Ignore does not hold
+        one of them out;
+      - THE WORKER'S BUG: the white skull kept ONE giver (`whiteBy`, the last
+        to hit you), so hitting back the first of two attackers gave you a red
+        skull; now each attacker's right is kept (`nml_state`'s `from`, 20
+        minutes each, `bys` on nml_skull, nomansland.js `_nmlHitsBack`);
+      - an area move reaches who struck you too once you have struck someone
+        under the rule in the last 10 s (pvpextras.js `_pvpEngaged`,
+        `_pvpNmlStruck`; a duel's blow not counted);
+      - `caps.nmlgroup`, kill switch `nmlgroup: false`; `nomansland` §12,
+        `pvp-extras` §1c, `spar` §16r, `mp-nmlfoe` step 8: no-mans-land.md "A
+        group attacks you: one window";
+      - and THE WINDOW'S ATTACK IS THE ATTACK -- the owner: "Whenever someone
+        attacks you in no man's land you always get a white skull above your
+        head.  You only keep what you have equipped.  Doesn't matter if you
+        attack back or not": an attacker's opening shots could all miss or be
+        rolled through, and then the one attacked, hitting back, took the RED
+        skull; now the window's Attack sends `nml_attack {target}`
+        (nmlAsk.js `nmlAim`) and the worker starts both skulls at once, before
+        any blow (nomansland.js `_handleNmlAttack` -> `_nmlSkulls`): no kill
+        is stamped by it (`_nmlLastHitBy` stays the blows'), it counts as the
+        chooser's engagement (their whirlwind reaches the one chosen at
+        once), and one who chose you joins a fight you chose (`bys`,
+        `nmlJoinFromBys`); `caps.nmlchoice`, kill switch `nmlchoice: false`;
+        `nomansland` §13, `mp-nmlask` step 6, `mp-nmlfoe` step 8:
+        no-mans-land.md "You are white the moment they choose".
     - since v2.3.3260 FIGHTS BETWEEN PLAYERS LAST, FISH MATTER IN THEM, AND
       LEAVING IS NO ESCAPE -- the owner, after the time-to-kill study: "I want
       you to plan and implement fixes for all of these including how much HP
@@ -1858,7 +1893,8 @@ remnant to migrate server-side, not a mode to preserve.
         - an AREA move (whirlwind, burst, splash, blast) hits only players
           you are already fighting (a duel/arena pair, or a hit either way
           in the last 10 s: `_pvpEngaged`; since v2.3.3528 a hit YOU landed,
-          `areachoice: false` either way); a NAMED move (bash, lunge, a
+          `areachoice: false` either way; since v2.3.3530 also one who struck
+          you once you fight, `nmlgroup: false` not); a NAMED move (bash, lunge, a
           locked swing; a player named as `pid`, the dash's way below) only
           needs the fight to be allowed;
         - a player CANNOT BE LOCKED DOWN: a freeze or an ability's stun holds

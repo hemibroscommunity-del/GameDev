@@ -41,6 +41,10 @@
  *     theirs with every hit, fought back or not;
  *   - the one hit gets a WHITE skull for the same 20 minutes, reset by every
  *     hit, remembering who gave it (that is all the retaliation rule needs).
+ *   Since v2.3.3530 both start at the window's Attack too, before any blow
+ *   (_handleNmlAttack: "Whenever someone attacks you in no man's land you
+ *   always get a white skull"), and the white one keeps EVERY attacker's
+ *   right to be hit back, not only the last's (`from`, _nmlHitsBack).
  *   Both count TIME IN THE GAME: _tickNml takes the tick's time off only
  *   while the player is connected (a disconnected player has no playerState
  *   at all), so logging out does not wait a skull out.  Stored in
@@ -120,6 +124,14 @@ export const NML = Object.freeze({
   KILL_BLOW_MS: 5000,
   /* forfeited gear ids remembered per player */
   FORFEIT_CAP: 64,
+  /* v2.3.3530: the attackers whose hit-back right a player keeps at once
+     (`from`, _nmlFromSet): a group's every member, and room to spare */
+  FROM_CAP: 16,
+  /* v2.3.3530: the window's Attack (_handleNmlAttack): the one chosen this
+     near -- the near radius, past a bow's reach with every point in Range --
+     and one choice a player this often */
+  CHOOSE_R: 2400,
+  CHOOSE_GAP_MS: 300,
 });
 
 export const NML_KEY = (pid) => 'nml_state:' + pid;
@@ -203,8 +215,124 @@ export const noMansLandMethods = {
   },
 
   _nmlState(ps) {
-    if (!ps._nml) ps._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 };
+    if (!ps._nml) ps._nml = { red: 0, white: 0, whiteBy: null, from: null, forfeit: [], savedAt: 0 };
     return ps._nml;
+  },
+
+  /* ═══ v2.3.3530: A GROUP ATTACKS YOU, AND YOU MAY HIT BACK EVERY ONE ═══
+     The owner, 2026-10-20: "If you get attacked simultaneously by a group of
+     people you don't need additional windows to approve.  If the 2nd, 3rd,
+     etc people already approved "attack" at you you can immediately hit back
+     at each of them after that."
+       A white skull remembered ONE giver, `whiteBy`: the LAST player to hit
+     you.  So with two attackers, hitting back the first once the second had
+     hit you read as an attack, and gave you a red skull -- the skull a player
+     killed takes everything you wear for.  Now each attacker's right is kept
+     (`from`: id -> ms left, SKULL_MS from their last blow on you, counted down
+     with the skulls and stored with them), and hitting back ANY of them is no
+     red skull (_nmlHitsBack); `whiteBy` stays the last one, as `by` for an
+     older game.  The game is told them all (`bys` on nml_skull), so its
+     window says "Hit back" for each (src/game/nmlAsk.js nmlHitBack), and
+     against a worker that says `caps.nmlgroup` your attackers join a fight
+     you chose with no window of their own (nmlAsk.js nmlJoinFight).
+       Kill switch `nmlgroup: false` in the live flags: the last giver alone,
+     as before, no `bys`, and caps.nmlgroup false at each phone's next join. */
+  _nmlGroupOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'nmlgroup') && !f.nmlgroup);
+  },
+
+  /* ═══ v2.3.3530: THE WINDOW'S ATTACK IS THE ATTACK ═══
+     The owner, 2026-10-20: "Whenever someone attacks you in no man's land
+     you always get a white skull above your head.  You only keep what you
+     have equipped.  Doesn't matter if you attack back or not."
+       The skulls came with the first blow the worker resolved.  But an
+     attacker's opening shots can all miss -- the worker never hears of a
+     miss -- or be rolled through (combat.js skips a blow in a roll's
+     i-frames), and then the one attacked carried no white skull: hitting
+     back was, to the worker, the first attack, so THEY took the red skull
+     (the one a player kill takes everything worn for) and the one who
+     started it a white one.  Now the game tells the worker the choice
+     itself -- `nml_attack {target}`, sent by the window's Attack
+     (src/game/nmlAsk.js nmlAim) -- and both skulls start at once, before any
+     blow: the attacker red (unless hitting back), the one attacked white
+     with the attacker's right to be hit back (_nmlSkulls).  Whoever chose to
+     attack you, you are white, and hitting them back keeps you white.
+       A choice kills nobody: it leaves `_nmlLastHitBy` alone, so a death in
+     the next seconds is a No man's land kill only by a real blow
+     (_nmlOnDeath), and it is no blow for the fight-food clock or the
+     linger.  It does count as the chooser's engagement (pvpextras.js
+     _notePvpEngage): their area moves reach the one they chose, as a blow of
+     theirs would let them, and the one attacked fights them back under
+     v2.3.3530's group rule.  Checked as a hit is: No man's land's rule
+     between the two (_nmlAllowed), no duel or arena pair, both alive and in
+     the Wheel, within CHOOSE_R, one choice a CHOOSE_GAP_MS.  An older game
+     sends none, and the skulls wait for the first blow as before.
+       Kill switch `nmlchoice: false`: the choice is ignored (the first blow
+     starts the skulls) and caps.nmlchoice is false at each phone's next
+     join. */
+  _nmlChoiceOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'nmlchoice') && !f.nmlchoice);
+  },
+
+  _handleNmlAttack(session, payload) {
+    if (this._nmlOff() || !this._nmlChoiceOn()) return false;
+    const aid = session && session.id;
+    if (typeof aid !== 'string' || !own(this.playerState, aid)) return false;
+    const a = this.playerState[aid];
+    if (!a || a.dead || a.dying || a.disconnected) return false;
+    const tid = payload && typeof payload.target === 'string' ? payload.target : null;
+    if (!tid || tid === aid || tid.length > 64 || !own(this.playerState, tid)) return false;
+    const t = this.playerState[tid];
+    if (!t || t.dead || t.dying || t.disconnected || !(t.hp > 0)) return false;
+    if (a.z !== WHEEL_ZONE || t.z !== WHEEL_ZONE) return false;
+    if (typeof a.x !== 'number' || typeof t.x !== 'number' || Math.hypot(t.x - a.x, t.y - a.y) > NML.CHOOSE_R) return false;
+    const now = Date.now();
+    if (now - (a._nmlChoiceAt || 0) < NML.CHOOSE_GAP_MS) return false;
+    if (!this._nmlAllowed(aid, tid)) return false;
+    if (this._pvpConsent && (this._pvpConsent.get(this._pvpPairKey(aid, tid)) || 0) > now) return false;
+    a._nmlChoiceAt = now;
+    this._nmlSkulls(aid, tid, now);
+    if (this._notePvpEngage) this._notePvpEngage(aid, tid, now);
+    return true;
+  },
+
+  /* `pid` hit the holder of `s`: their right to be hit back, a full skull's
+     time from now.  A Map (ids are players'), FROM_CAP at most: the one with
+     the least time left gives way. */
+  _nmlFromSet(s, pid) {
+    if (!s || typeof pid !== 'string' || !pid) return;
+    if (!(s.from instanceof Map)) s.from = new Map();
+    s.from.delete(pid);
+    if (s.from.size >= NML.FROM_CAP) {
+      let low = null, lowMs = Infinity;
+      for (const [k, v] of s.from) if (v < lowMs) { low = k; lowMs = v; }
+      if (low != null) s.from.delete(low);
+    }
+    s.from.set(pid, NML.SKULL_MS);
+  },
+
+  /* Is a hit by the holder of `sa` on `targetId` hitting back?  A white skull
+     running, no red one, and `targetId` its giver -- the last (whiteBy) or,
+     v2.3.3530, any whose right still runs (`from`). */
+  _nmlHitsBack(sa, targetId) {
+    if (!sa || !(sa.white > 0) || sa.red > 0 || typeof targetId !== 'string') return false;
+    if (sa.whiteBy === targetId) return true;
+    if (!this._nmlGroupOn() || !(sa.from instanceof Map)) return false;
+    return (sa.from.get(targetId) || 0) > 0;
+  },
+
+  /* v2.3.3530: the givers whose right still runs, as [[id, ms left], ...]
+     most time left first, FROM_CAP at most -- nml_skull's `bys` and the
+     stored record's `from` -- or null */
+  _nmlBys(s) {
+    if (!s || !(s.white > 0) || !(s.from instanceof Map) || !s.from.size) return null;
+    const out = [];
+    for (const [k, v] of s.from) if (v > 0) out.push([k, clampMs(v)]);
+    if (!out.length) return null;
+    out.sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    return out.slice(0, NML.FROM_CAP);
   },
 
   /* 'r', 'w' or null: what the others draw over this player */
@@ -218,16 +346,31 @@ export const noMansLandMethods = {
   _nmlOnHit(attackerId, targetId, now) {
     const a = this.playerState[attackerId], t = this.playerState[targetId];
     if (!a || !t) return;
+    /* the blow is what a death under the rule is judged by (_nmlOnDeath:
+       KILL_BLOW_MS) -- never a choice (_handleNmlAttack) */
+    t._nmlLastHitBy = attackerId;
+    t._nmlLastHitAt = now;
+    this._nmlSkulls(attackerId, targetId, now);
+  },
+
+  /* The skulls of one attack -- a landed hit (_nmlOnHit) or, since
+     v2.3.3530, the window's Attack (_handleNmlAttack): the attacker red
+     unless hitting back, the one attacked white with the attacker's right to
+     be hit back. */
+  _nmlSkulls(attackerId, targetId, now) {
+    const a = this.playerState[attackerId], t = this.playerState[targetId];
+    if (!a || !t) return;
     const sa = this._nmlState(a), st = this._nmlState(t);
     /* hitting back: you hold a white skull BY this player and no red of
-       your own -- the one who started it keeps resetting theirs */
-    const retaliating = sa.white > 0 && sa.whiteBy === targetId && !(sa.red > 0);
+       your own -- the one who started it keeps resetting theirs.
+       v2.3.3530: by ANY player whose right still runs, not only the last
+       (_nmlHitsBack: a group's first attacker too) */
+    const retaliating = this._nmlHitsBack(sa, targetId);
     const aWas = this._nmlSkullOf(a), tWas = this._nmlSkullOf(t);
     if (!retaliating) sa.red = NML.SKULL_MS;
     st.white = NML.SKULL_MS;
     st.whiteBy = attackerId;
-    t._nmlLastHitBy = attackerId;
-    t._nmlLastHitAt = now;
+    this._nmlFromSet(st, attackerId);
     for (const [id, ps, was] of [[attackerId, a, aWas], [targetId, t, tWas]]) {
       const changed = this._nmlSkullOf(ps) !== was;
       if (changed) this.dirtyPlayers.add(id);
@@ -254,6 +397,11 @@ export const noMansLandMethods = {
         s.white = Math.max(0, s.white - dt);
         if (!s.white) s.whiteBy = null;
       }
+      /* v2.3.3530: each giver's right counts down with it, and goes with it */
+      if (s.from instanceof Map && s.from.size) {
+        if (!s.white) s.from.clear();
+        else for (const [k, v] of [...s.from]) { if (v - dt > 0) s.from.set(k, v - dt); else s.from.delete(k); }
+      }
       if (this._nmlSkullOf(ps) !== was) {
         this.dirtyPlayers.add(id);
         this._nmlSend(id, ps);
@@ -279,6 +427,11 @@ export const noMansLandMethods = {
        owner's "I want attacking other players to be intentional").  An older
        game ignores it, and a game against an older worker asks every time. */
     if (s && s.white > 0 && typeof s.whiteBy === 'string') payload.by = s.whiteBy;
+    /* v2.3.3530: ...and EVERY player who gave it whose right still runs, with
+       its ms left ([[id, ms], ...]): a group's members, each of them yours to
+       hit back (_nmlHitsBack).  An older game reads `by` alone. */
+    const bys = this._nmlGroupOn() ? this._nmlBys(s) : null;
+    if (bys) payload.bys = bys;
     try {
       ws.send(JSON.stringify({ type: 'nml_skull', payload }));
     } catch (e) { /* the next send will carry it */ }
@@ -293,6 +446,10 @@ export const noMansLandMethods = {
       whiteBy: s.white > 0 && typeof s.whiteBy === 'string' ? s.whiteBy : null,
       forfeit: (Array.isArray(s.forfeit) ? s.forfeit : []).slice(-NML.FORFEIT_CAP),
     };
+    /* v2.3.3530: each giver's right, so a reconnect keeps a group's (an
+       older worker ignores the field and keeps whiteBy) */
+    const from = this._nmlBys(s);
+    if (from) rec.from = from;
     try {
       const p = (!rec.red && !rec.white && !rec.forfeit.length)
         ? this.state.storage.delete(NML_KEY(id))
@@ -312,6 +469,16 @@ export const noMansLandMethods = {
     s.red = clampMs(rec.red);
     s.white = clampMs(rec.white);
     s.whiteBy = s.white > 0 && typeof rec.whiteBy === 'string' ? rec.whiteBy.slice(0, 64) : null;
+    /* v2.3.3530: each giver's right, as stored (a record from before it has
+       none, and whiteBy holds alone) */
+    s.from = new Map();
+    if (s.white > 0 && Array.isArray(rec.from)) {
+      for (const e of rec.from.slice(0, NML.FROM_CAP)) {
+        if (!Array.isArray(e) || typeof e[0] !== 'string' || !e[0] || e[0].length > 64) continue;
+        const ms = clampMs(e[1]);
+        if (ms > 0) s.from.set(e[0], ms);
+      }
+    }
     s.forfeit = Array.isArray(rec.forfeit) ? rec.forfeit.filter((g) => typeof g === 'string' && g.length <= 64).slice(-NML.FORFEIT_CAP) : [];
     s.savedAt = Date.now();
     if (this._nmlSkullOf(ps)) this.dirtyPlayers.add(id);

@@ -755,6 +755,26 @@ tools `{key, qty: null, tool: true, sell}`; a `shop_quoted` for one carries
 tool row (it lists staples and stock). Full rules: docs/specs/no-mans-land.md
 "Everything but what you wear".
 
+**No man's land: a group, and the window's Attack (v2.3.3530, caps.nmlgroup,
+caps.nmlchoice):**
+- **client -> server `nml_attack {target}`**: the window's Attack (and a tap
+  that aims at a chosen player). The worker starts both skulls at once,
+  before any blow: the attacker red unless hitting back, the one attacked
+  white with the attacker's right to be hit back. No kill is stamped by it.
+  Sent only to a worker that advertises `nmlchoice`; the page's channel names
+  it (TRAPS #18). Its own router case, never relayed.
+- **`nml_skull` gains `bys`**: `[[id, ms left], ...]`, every player whose
+  right to be hit back still runs (16 at most, most time first), beside `by`
+  (the last). An older game reads `by` alone.
+- **Storage:** `nml_state:<pid>` gains `from` (the same pairs).
+- **Deploy order.** A new phone against an older worker sends no `nml_attack`
+  and joins no attacker without a window; an older phone never sends it and
+  the skulls wait for the first blow. Kill switches `nmlgroup: false` (the
+  last attacker's right alone, no `bys`, no join, area moves as v2.3.3528)
+  and `nmlchoice: false` (the choice ignored). Full rules:
+  docs/specs/no-mans-land.md "A group attacks you: one window" and "You are
+  white the moment they choose".
+
 **Server-minted weapon drops (v2.3.1141, caps.weaponDrops):** no new
 message types. The loot pile broadcast (`loot_drop`/`zone_loot`/
 `state_sync.loot` via `_serializePile`) gains `hasWeapon`,

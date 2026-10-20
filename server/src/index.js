@@ -5451,6 +5451,14 @@ export class GameRoom {
         if (session.id) this._presence2Watch(session, msg.payload || msg);
         break;
 
+      case 'nml_attack':
+        /* v2.3.3530: the window's Attack is the attack (nomansland.js
+           _handleNmlAttack): both skulls at once, before any blow -- whoever
+           chose to attack you, you are white.  Its own case, so it is never
+           rebroadcast by the default branch. */
+        if (session.id) this._handleNmlAttack(session, msg.payload || msg);
+        break;
+
       case 'shield_wear':
         /* v2.3.3091: the shield on the arm (shieldwear.js) -- one the worker
            already holds for this player, named by id or signature; the arm's

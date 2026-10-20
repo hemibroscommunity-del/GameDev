@@ -111,9 +111,12 @@ export function openNmlInfo(S, lvl) {
           {/* v2.3.3316: the owner -- everything carried, the gold and the tools
               too; a red skull a monster kills keeps what it wears */}
           <Line><b>Killed by a player:</b> they get <b>everything you carry</b>: your bag, tools and ores too, your gold, and your spare weapons and armour. You keep what you wear. Diego sells a lost tool back.</Line>
-          <Line><b>Attack a player:</b> a <span style={{ color: NML_RED, fontWeight: 800 }}>red skull</span> for 20 minutes of play, starting over with every hit. Killed by a player with it, you lose <b>everything</b>, worn gear too; killed by a monster, everything but what you wear.</Line>
-          {/* v2.3.3528: hitting back goes through the window too (game/nmlAsk.js) */}
-          <Line><b>Get attacked:</b> a <b>white skull</b>. To hit back, swing, shoot or tap them and choose <b>Attack</b>: hitting back the player who hit you gives you no red skull.</Line>
+          {/* v2.3.3530: the skulls come with the window's Attack (nomansland.js _handleNmlAttack) */}
+          <Line><b>Attack a player:</b> a <span style={{ color: NML_RED, fontWeight: 800 }}>red skull</span> for 20 minutes of play from the moment you choose Attack, starting over with every hit. Killed by a player with it, you lose <b>everything</b>, worn gear too; killed by a monster, everything but what you wear.</Line>
+          {/* v2.3.3528: hitting back goes through the window too (game/nmlAsk.js);
+              v2.3.3530: white the moment they choose, whether you fight back or
+              not, and one Attack answers a whole group */}
+          <Line><b>Get attacked:</b> a <b>white skull</b> the moment they choose to attack you, whether you fight back or not. To hit back, swing, shoot or tap them and choose <b>Attack</b> once: hitting back anyone who attacked you gives you no red skull, and everyone attacking you is then yours to hit.</Line>
         </ul>
         <div>Walk back toward BroTown to leave.</div>
       </div>

@@ -343,7 +343,9 @@ as the worker can see it.
 One thing to know: a whirlwind (or burst) thrown after you choose Attack but
 before your first ordinary blow lands still passes them by, because the worker
 cannot see the window. That has always been true for the attacker too. Your
-first swing, arrow or bolt is what opens area moves on them.
+first swing, arrow or bolt is what opens area moves on them. (Since v2.3.3530 the
+window's Attack itself tells the worker, and opens them at once: "You are
+white the moment they choose".)
 
 **Code:**
 
@@ -372,15 +374,172 @@ does nothing until Attack, then lands with no lock and no red skull),
 `mp-nmlfoe` step 8 (the attacked player's bow looses nothing and asks; a tap
 asks too; Attack; the arrows land with no lock).
 
+## A group attacks you: one window (v2.3.3530)
+
+> Owner, 2026-10-20: *"If you get attacked simultaneously by a group of people
+> you don't need additional windows to approve. If the 2nd, 3rd, etc people
+> already approved "attack" at you you can immediately hit back at each of
+> them after that."*
+
+**The first window stays.** No blow of yours lands on anyone in No man's land
+before a window's Attack, as v2.3.3528 made it. But once you have chosen a
+fight (you have a live foe), everyone attacking you **joins it with no window
+of their own**. Their attack was their own choice: a blow of theirs lands only
+after their own window's Attack. So they become your foes too, and every swing,
+shot and bow line of yours lands on each of them, locked or not.
+
+- **When you choose.** The window's Attack (`nmlAsk.js` `nmlAim`) joins
+  everyone who struck you in the last minute (`FIGHT_QUIET_MS`;
+  `sparTargets.js` `attackersNow`, from each `pvp_hit` on you).
+- **While you fight.** A blow that lands on you from someone who is not yet
+  your foe makes them one as it lands (`gameEvents.js` `pvp_hit` →
+  `nmlJoinFight`). A window that happened to be up about them goes, since they
+  are your foe now.
+- **Without a fight of your choosing, nobody joins.** A group that hits you
+  while you have chosen no one still meets the window first.
+- **An earlier Ignore or Party does not hold one of them out.** They are
+  attacking you, and you have chosen to fight. (Ignore still means "leave me
+  alone" before you choose any fight.)
+
+**No red skull for hitting back any of them.** This was the worker's bug,
+found here. A white skull remembered **one** giver, `whiteBy`: the **last**
+player to hit you. With two attackers, hitting back the first, once the second
+had hit you, read as an attack and gave you a red skull. Killed by a player
+with a red skull, you lose everything you wear. Now the worker keeps each
+attacker's own right to be hit back (`nml_state`'s `from`: id → ms left, 20
+minutes from their last blow on you, counted down with the skulls). Hitting
+back **any** of them gives no red skull (`nomansland.js` `_nmlHitsBack`). The
+game is told them all (`nml_skull`'s `bys`), so the window says "Hit back" for
+each of them (`nmlAsk.js` `nmlHitBack`).
+
+**Area moves reach the group once you fight.** Under v2.3.3528's rule an area
+move waited for a blow of yours on each player, so a whirlwind into the group
+that attacked you hit only the one you had already struck. Now an area move
+also reaches a player who struck you in the last 10 s, while you have struck
+someone under No man's land's rule in the last 10 s (`pvpextras.js`
+`_pvpEngaged`, `_pvpNmlStruck`). A blow on a duel, arena or sparring partner
+does not count. Before your first blow it still reaches nobody who attacked
+you.
+
+**Code:**
+
+- `src/game/nmlAsk.js`: `nmlJoinFight`, the join on Attack in `nmlAim`,
+  `nmlHitBack` reading `bys`.
+- `src/game/sparTargets.js`: `notePvpBlow` keeps who struck you (`hitMeAt`,
+  `attackersNow`).
+- `src/networking/gameEvents.js`: a blow on you calls `nmlJoinFight`.
+- `src/game/noMansLand.js`: `applyNmlSkull` reads `bys`.
+- `server/src/nomansland.js`: `from`, `_nmlHitsBack`, `bys`, stored and read
+  back on join.
+- `server/src/pvpextras.js`: the group's area rule.
+
+**Switches:**
+
+- `nmlgroup: false` in the live flags: the last attacker's right alone (the
+  old rule), no `bys`, area moves wait for a blow of yours on each, and
+  `caps.nmlgroup` false at each phone's next join (no attacker joins without
+  their own window).
+- The game joins attackers only against a worker that says `caps.nmlgroup`.
+  An older worker would give a red skull for hitting back any attacker but the
+  last.
+
+**Tests:** `nomansland` suite §12 (both attackers' rights, `bys`, no red
+skull for hitting back the first of two, a bystander still an attack, the
+switch as a mutation, each right counting down on its own and going with the
+skull, stored and back on join, an older record, the cap of 16, the caps);
+`pvp-extras` §1c (no area move before your first blow, then the whole group,
+never a bystander, ENGAGE_MS on both sides, a duel's blow not counted, the
+switch, a real claim and whirlwind end to end); `spar` §16r (who struck you);
+`mp-nmlfoe` step 8 (the bystander attacks the wanderer too through its own
+window; the wanderer's one window for the raider joins the bystander; its
+arrows land on the bystander with nothing locked and nothing asked, and no red
+skull though the bystander hit it last).
+
+## You are white the moment they choose (v2.3.3530)
+
+> Owner, 2026-10-20: *"Another change too. Whenever someone attacks you in no
+> man's land you always get a white skull above your head. You only keep what
+> you have equipped. Doesn't matter if you attack back or not"*
+
+**What was wrong.** The skulls started with the first blow the worker
+resolved. But an attacker's opening shots can all **miss** (the worker never
+hears of a miss) or be **rolled through** (a blow in a roll's i-frames is
+skipped). Then the one attacked carried no white skull, and their hitting back
+was, to the worker, the first attack: **they** took the red skull, the one a
+player kill takes everything worn for, and the one who started it took a
+white one and could fight on as "hitting back".
+
+**Now the window's Attack is the attack.** The game tells the worker the
+choice itself (`nml_attack {target}`, sent by `nmlAsk.js` `nmlAim`: the
+window's Attack, or a tap that aims at a chosen player). Both skulls start at
+once, before any arrow flies (`nomansland.js` `_handleNmlAttack` →
+`_nmlSkulls`):
+
+- the attacker **red** (unless they are hitting back someone whose right
+  still runs);
+- the one attacked **white**, with the attacker's right to be hit back (the
+  group section's `from`).
+
+So whoever chooses to attack you, you are white, and hitting them back
+(through your own window's Attack, a swing, a shot) keeps you white. Killed by
+a player, a white skull keeps what it wears and loses what it carries (the
+death rules below, unchanged); only a red skull loses what it wears.
+
+**What a choice is not.**
+
+- **No kill is stamped by it.** It leaves `_nmlLastHitBy` alone, so a death
+  in the next few seconds is a No man's land kill only by a real blow
+  (`_nmlOnDeath`). A choice can never be used to claim the bag of someone a
+  monster is killing.
+- **No blow** for the fight-food clock or the linger.
+- **It counts as the chooser's engagement** (`pvpextras.js`
+  `_notePvpEngage`): their area moves reach the one they chose, as their
+  first blow would have let them. So the hitting-back window's Attack now opens
+  your whirlwind on them at once: v2.3.3528's "one thing to know" (a whirlwind
+  thrown right after Attack passing them by) is gone against this worker.
+
+**Checked as a hit is:** No man's land's rule between the two
+(`_nmlAllowed`: both in it, levels within it, not one party), no duel or arena
+pair, both alive and in the Wheel, within `NML.CHOOSE_R` (2,400 px), one choice
+a player every `NML.CHOOSE_GAP_MS` (300 ms). Anything else is ignored.
+
+**And the group joins on the choice too.** A player who chose to attack you is
+in `bys` before their first blow. While you fight one you chose, they join
+your fight with no window (`nmlAsk.js` `nmlJoinFromBys`, `attackedMeAt`: a
+right's time left dates their choice or blow). That is the owner's "already
+approved 'attack' at you", exactly.
+
+**A red skull of your own still shows.** If you attacked someone earlier and
+still carry red, being attacked does not wash it white: the red was earned
+elsewhere.
+
+**Switches:** `nmlchoice: false` in the live flags: the choice is ignored,
+the skulls wait for the first blow as before, and `caps.nmlchoice` is false at
+each phone's next join. An older game sends no choice.
+
+**Tests:** `nomansland` §13 (both skulls at the choice, before any blow; no
+kill stamped; the chooser's engagement; the one attacked hitting first stays
+white and the one who started it stays red; `nmlchoice: false` as the
+mutation, the old inversion; refused at yourself, nobody, `__proto__`, out of
+No man's land, levels too far apart, past `CHOOSE_R`, a duel pair, a dying
+player; the rate; the caps; never relayed); `mp-nmlask` step 6 (the raider red
+and the wanderer white at the raider's Attack, the wanderer's HP untouched);
+`mp-nmlfoe` step 8 (the bystander's Attack whitens the wanderer by the
+bystander before any bolt).
+
 ## The skulls
 
-- **Red:** you landed a hit on a player under the rule. It lasts 20 minutes,
-  and every new hit resets it to 20.
-- **White:** a player landed a hit on you. It lasts 20 minutes, reset by every
-  hit, and remembers who gave it.
+- **Red:** you landed a hit on a player under the rule (since v2.3.3530, from
+  the moment you choose Attack on them). It lasts 20 minutes, and every new
+  hit resets it to 20.
+- **White:** a player landed a hit on you (since v2.3.3530, from the moment
+  they choose to attack you). It lasts 20 minutes, reset by every hit, and
+  remembers who gave it.
 - **Hitting back is not attacking.** Hitting the player who gave you your white
   skull gives you no red one (as long as you have none of your own). The player
-  who started the fight keeps resetting theirs.
+  who started the fight keeps resetting theirs. Since v2.3.3530 that is any
+  player who hit you in the last 20 minutes, each on their own clock, not only
+  the last (a group: "A group attacks you: one window").
 - **Time in the game:** a skull only counts down while you are connected.
   Logging out does not wait it out.
 - Each skull is drawn **above the name plate** (or the HP bar in its place), at
@@ -603,11 +762,16 @@ switch: the live flag `fightlock: false`. Tests: `nomansland` suite §10.
 
 - **Client → worker:** attacks are the existing `player_attack`;
   `_pvpAllowed` asks `_nmlAllowed` before the `OPEN_PVP` master switch.
+  Since v2.3.3530, `nml_attack {target}`: the window's Attack, which starts
+  both skulls at once (`_handleNmlAttack`), sent only against a worker
+  advertising `caps.nmlchoice`.
   Since v2.3.3091, `shield_wear` `{gid | sig | none}` (server/src/shieldwear.js,
   client src/game/shieldWear.js), sent only against a worker advertising
   `caps.shieldwear`.
-- **Worker → client:** `nml_skull` `{red, white, by?}` (ms left; since
-  v2.3.3253 `by` is who gave you the white skull, only while it runs) and
+- **Worker → client:** `nml_skull` `{red, white, by?, bys?}` (ms left; since
+  v2.3.3253 `by` is who gave you the white skull, only while it runs; since
+  v2.3.3530 `bys` is every player whose right to be hit back still runs, as
+  `[[id, ms left], ...]`, most time first, 16 at most) and
   `nml_loss` `{by, red, weapons, gear: [{field, gid | sig}], worn, coins, bag}`
   -- since v2.3.3316 also `named: true` (the gear list names every piece
   taken, a red skull's too: the game takes out exactly those) and `keepWorn`
@@ -619,7 +783,10 @@ switch: the live flag `fightlock: false`. Tests: `nomansland` suite §10.
   `tool: true` and, when he will not sell it to you, `qty: 0` and `why`
   (`'have'`, `'quest'`, `'off'`); `shop_buy` of one buys one. The tick's player wire carries `sk`, absent
   with no skull.
-- **Storage:** `nml_state:<pid>` `{red, white, whiteBy, forfeit}`. It is written
+- **Storage:** `nml_state:<pid>` `{red, white, whiteBy, forfeit, from?}`
+  (`from` since v2.3.3530: `[[id, ms left], ...]`, each attacker's right to be
+  hit back; an older worker ignores it and a record without it keeps
+  `whiteBy`). It is written
   when a skull starts, changes colour or ends, and every 30 s while one runs (not
   on every hit). It is read back on join before the gear stashes are adopted,
   and deleted when empty. Registered in ARCHITECTURE-HANDOFF.
@@ -636,6 +803,12 @@ switch: the live flag `fightlock: false`. Tests: `nomansland` suite §10.
 - **The area moves' switch:** `areachoice: false` (v2.3.3528): an area move
   reaches a player after a blow between you either way, as before, instead of
   only after a blow you landed.
+- **The group's switch:** `nmlgroup: false` (v2.3.3530): only the last
+  attacker's right to be hit back, no `bys`, area moves wait for a blow of
+  yours on each, and `caps.nmlgroup` false (no attacker joins your fight
+  without a window of their own).
+- **The choice's switch:** `nmlchoice: false` (v2.3.3530): `nml_attack` is
+  ignored and the skulls wait for the first blow; `caps.nmlchoice` false.
 - **The shield's switch:** `shieldwear: false` (v2.3.3091) un-advertises
   `caps.shieldwear`, ignores every report, and an ordinary loss takes no shield
   again.

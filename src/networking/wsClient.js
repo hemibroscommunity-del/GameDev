@@ -161,6 +161,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
 import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
+import { nmlJoinFromBys } from '@/game/nmlAsk.js'; /* v2.3.3530: one who chose to attack you joins a fight you chose */
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyItemDropResult } from '@/game/itemDrop.js'; /* v2.3.3473: Drop's answer */
 import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
@@ -1790,6 +1791,9 @@ export function setupWebSocket(ctx) {
           case 'nml_skull':
             {
               if (msg.payload) applyNmlSkull(S, msg.payload);
+              /* v2.3.3530: a player who chose to attack you (`bys`) joins a
+                 fight you chose, with no window (nmlAsk.js) */
+              if (msg.payload) { try { nmlJoinFromBys(S); } catch (_nj) { /* their blow will */ } }
               break;
             }
           case 'nml_loss':
@@ -5309,6 +5313,14 @@ export function setupWebSocket(ctx) {
            without this line the watch never left the browser and the open map
            was sent no far player at all -- mp-presence2's first run. */
         if (msg.type === 'map_watch') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3530: the window's Attack is the attack (game/nmlAsk.js
+           sendChoice) -> nomansland.js _handleNmlAttack: both skulls at
+           once.  TRAPS #18: without this line the choice never leaves the
+           browser. */
+        if (msg.type === 'nml_attack') {
           wsOut(msg);
           return;
         }
