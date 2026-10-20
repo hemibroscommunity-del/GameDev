@@ -93,9 +93,13 @@ export function triggerJump(S) {
 export function tickJump(S, now, dead) {
   var j = S && S._jump;
   if (!j) return false;
-  if (dead || (j.zone && j.zone !== S.currentZone)) { endJump(S, now); return false; }
+  if (dead || (j.zone && j.zone !== S.currentZone)) { endJump(S, now); S._jumpLandFx = null; return false; }
   if (jumpActive(j, now)) return false;
   endJump(S, now);
+  /* v2.3.3499: a jump that came down on its own lands with a squash that
+     springs back (rendering/jumpFx.js, game/jump.js jumpLook), timed off the
+     jump's own end and length; one cut short (a death, a zone left) does not */
+  S._jumpLandFx = { at: j.t0 + j.dur, dur: j.dur };
   return true;
 }
 

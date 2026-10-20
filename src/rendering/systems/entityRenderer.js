@@ -101,7 +101,7 @@ import { footstepSurface, groundStepAt } from '@/game/worldTrial.js';   /* v2.3.
 import { peerStepShare, peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's footsteps and pick, heard */
 import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
 import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
-import { jumpActive, jumpFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog */
+import { jumpActive, jumpFrame, jumpPhase } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog; v2.3.3499: four, by its phase */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { activePet } from '../../game/petBook.js'; /* v2.3.3120: the pet out with you is the record's */
@@ -5597,6 +5597,9 @@ export function figureFeetY(display) {
      between body and shadow is the height) and where it stands.  Added back
      only while the y is still the one jumpFx left (the swim's rule,
      swimFx.js): the entity pass may have set a fresh y since. */
+  /* v2.3.3499: `_jumpLift` is everything the jump moved the feet by -- the
+     lift, and the squash and lean about them (jumpFx) -- so it is taken back
+     off whole */
   const lift = display._jumpY != null && display.y === display._jumpY ? (display._jumpLift || 0) : 0;
   /* v2.3.3392: and a figure that emotes (rendering/emoteFx.js) is drawn
      tilted, squashed or hopping ABOUT its feet, after the depth pass: its
@@ -5608,6 +5611,8 @@ export function figureFeetY(display) {
 /* v2.3.3392: the x a figure stands at -- its x, or, while it emotes, the x
    its feet are planted at (a tilt about the feet moves its origin) */
 export function figureFeetX(display) {
+  /* v2.3.3499: and while a jump leans it (rendering/jumpFx.js), the same */
+  if (display._jumpXw != null && display.x === display._jumpXw) return display.x - (display._jumpXFix || 0);
   return display._emoteXw != null && display.x === display._emoteXw ? display.x - (display._emoteXFix || 0) : display.x;
 }
 /* v2.3.3392: how far the boots are below a live figure's origin, in its own
@@ -8697,7 +8702,11 @@ export class EntityRenderer {
         if (_dfxKey != null && !m._burstPeakFrom && !m._burstFrom
             && !(m._transformStart && now - m._transformStart < 5000)) {
           const _dfxD = this.monsterDisplays.get(m.id);
-          const _dfx = drawMonsterDeath(m, _dfxD, _dfxKey, isFodder, now, S);   /* v2.3.2923: + S */
+          /* v2.3.3499: a look with no death strip of its own never plays the
+             normal death -- it was a frozen frame (monsterDeathFx noStrip) */
+          const _dfxNoStrip = !!(variant && !variant.useSlimeSheets   /* a slime-sheet look has the slime's splat */
+            && !(variantSprites && variantSprites.death && variantSprites.death.has()));
+          const _dfx = drawMonsterDeath(m, _dfxD, _dfxKey, isFodder, now, S, _dfxNoStrip);   /* v2.3.2923: + S */
           if (_dfx === DEATH_LIVE) {
             activeIds.add(m.id);
             _dfxD.x = m.x; _dfxD.y = m.y;
@@ -9352,6 +9361,7 @@ export class EntityRenderer {
           const sy = baseScale * sqy;
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
           if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
+          spriteBody._btSquash = (sqx !== 1 || sqy !== 1) ? [sqx, sqy] : null;   /* v2.3.3499: a death's pieces take it back out */
           if (spriteBody.y !== size) spriteBody.y = size;
           /* v2.3.1147: per-variant tint (reskins recolor shared sheets).
              v2.3.2200: hit-flash finally RENDERS — gameEvents has stamped
@@ -9426,6 +9436,7 @@ export class EntityRenderer {
           const sy = baseScale * sqy;
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
           if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
+          spriteBody._btSquash = (sqx !== 1 || sqy !== 1) ? [sqx, sqy] : null;   /* v2.3.3499: see the variant branch */
           /* v2.3.1824: anchor on the row the BLOB rests on, not the empty
              bottom of the cell — see SLIME_BASE_ROW.  y=0 then puts that row
              on the monster's own position, which is what makes the loot pile,
@@ -11320,7 +11331,7 @@ export class EntityRenderer {
           _rJogPhase = ((_rT / _rCyc) % 1 + 1) % 1;
           /* v2.3.3017: mid-jump, the leaping frame, held (as the local branch);
              no footfall dust in the air */
-          if (_rJump) { frameIdx = jumpFrame(dir, fc); _rJogPhase = (frameIdx + 0.5) / fc; }
+          if (_rJump) { frameIdx = jumpFrame(dir, fc, jumpPhase(_rJump, now)); _rJogPhase = (frameIdx + 0.5) / fc; }   /* v2.3.3499: the stride's four frames, by the jump's phase */
           /* ...and kicks up dust at each footfall of it, on its own foot-plant
              frames (the ground's colour is yours to look up only under your
              own boots: a peer's is the dirt's) */
@@ -13064,9 +13075,13 @@ export class EntityRenderer {
         /* v2.3.3017: mid-jump, the leaping frame, held (game/jump.js
            JUMP_FRAME), and the armour at the same place in its own loop.  No
            footstep: the plant test below sees no new frame, and the jump's
-           take-off and touch-down have their own (jumpActions.js). */
+           take-off and touch-down have their own (jumpActions.js).
+           v2.3.3499: not one frame but the stride's four, by the jump's
+           phase -- the push-off, the rise, the split, the reach (game/jump.js
+           JUMP_FRAMES; the owner: "more realistic than just the static
+           frame") -- the armour following each by its phase as before. */
         if (jumping) {
-          frameIdx = jumpFrame(dir, fc);
+          frameIdx = jumpFrame(dir, fc, jumpPhase(S._jump, now));
           _jogPhase = (frameIdx + 0.5) / fc;
           display._prevJogFrame = frameIdx;
           display._prevJogAt = now;

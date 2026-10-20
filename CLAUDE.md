@@ -1313,6 +1313,29 @@ remnant to migrate server-side, not a mode to preserve.
       the Wheel's loading screen (`landAurasWarm`) and freed on leaving
       (`landAurasFree`); the Wheel only, `?noauras`; `mp-landauras`:
       docs/specs/land-auras.md.
+      - since v2.3.3511 FIRE RISES AND WATER FALLS -- the owner, after a
+        playtest: "land tree effects: fire looks like sparkles, water looks
+        like sweating", and of v2.3.3481's banner scenes "new land emblems look
+        bad enlarged (revert or show below minimap)":
+        - an ember is a glowing streak pointed the way it flies, rising FASTER
+          and cooling redder as it goes out (no random blink), with smoke, coal
+          pops and a coal-flicker glow; a Water Caves drop forms on its crown's
+          lower edge (`crown` in treeArt.js, `add-tree-art.mjs --measure`,
+          tierTrees.js `treeCrownEdge`), hangs, falls and splashes on the
+          ground at the foot (a rock: ripples); the Foundry's sparks are bursts
+          that arc down; the Hollows' glints a rock's alone; the table is
+          `src/data/landAuras.js` (no imports);
+        - a resource's specks are a POOL made before its container joins the
+          layer: a speck born or gone only moves and changes alpha, never an
+          add/remove/blend/picture change (TRAPS §218); made only near the
+          screen (`AURA_VIEW_IN`);
+        - a land's banner is the plain plaque again, and its scene a small
+          EMBLEM under the minimap (src/ui/landEmblem.js) as the plaque docks:
+          one picture px a device px, never upscaled, clear of every control
+          (beside the box sideways), gone after 3.6 s; the plate's gold scroll
+          ends cut off the pictures (cut-owner-icons.py `rim_cut`);
+        - `land-auras` suite, `owner-icons` §5, `mp-landauras`, `mp-wheelmap`:
+          docs/specs/land-auras.md, docs/specs/owner-icons.md.
     - since v2.3.3407 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
       all actions/buttons can be completed in landscape mode and on the
       computer. For instance I don't think you can harvest lifeskills right now
@@ -1995,6 +2018,30 @@ remnant to migrate server-side, not a mode to preserve.
       "You need a tool for that") is gone, a farm bed out of reach the same
       (`_tapHarvestAtCss`, `_tapFarmBedAtCss`); `mp-tapstance`:
       docs/specs/jumping.md "v2.3.3145".
+    - since v2.3.3499 25% HIGHER, AND NEVER CAUGHT HALF WAY OVER A FENCE --
+      the owner: "Try making jump 25% higher. Gets stuck on some props
+      sometimes that it should be clearing": `JUMP_PEAK` 85, `JUMP_MS` 625,
+      `JUMP_CLEAR` 0.36; a crossing once begun LATCHES (`jumpLatch`), 160 ms
+      of grace, the latches outlive the landing 450 ms for feet already in
+      one (`landedOver`); the minecart and rowboat can be jumped
+      (`JUMP_OVER_H` 87, so shots fly over them too). The same round of
+      notes: the whirlwind marks the monsters it will catch
+      (`_markWhirlCatch`), a lock lets go across the map (targeting.js
+      `lockTooFar`, 'far'), TRAP answers a touch while you jog, the owner's
+      trap picture in the world, "Missed!", the trap's sounds, death pieces
+      in their own colour, jaggier, no frozen death (`topple`), dropped items
+      1.5x: docs/specs/combat-feel-2026-10-19.md.
+    - and THE JUMP MOVES IN THE AIR -- the owner: "is there any 'jump effect'
+      you can add just using code that would make it look more realistic than
+      just the static frame?": four frames of the jog's stride by the jump's
+      phase (`JUMP_FRAMES`, `JUMP_FRAME_AT`: push-off, rise, split, reach,
+      picked by each frame's feet), and jumpFx squashes, stretches and leans
+      the whole figure ABOUT ITS FEET the emotes' way (`jumpLook`:
+      `jumpStretchAt`, `jumpLandStretch` over `JUMP_LAND_MS`, `jumpLeanAt` x
+      `JUMP_LEAN` by the speed across), the HUD held unsquashed, the feet read
+      back through `_jumpLift` / `_jumpXFix`; a kick of dust at the take-off
+      (worldFx `_takeOffDust`); nothing new loaded; `mp-jump` 2b:
+      docs/specs/jumping.md "a jump that moves".
   - Since v2.3.3017 a BLACK SCREEN LEAVES EVIDENCE -- the owner, on #782's
     preview: "I was fighting fire goblins and my screen went black", and the
     crash feed had nothing:
