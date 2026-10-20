@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fcbfee79a05e1fc538ac1fd68578c209cff52413",
+  "tree": "bb55bf7302698cf858dd01293dbacae071b78d74",
+  "committedAt": "2026-10-20T03:13:58-07:00",
+  "subject": "The Blacksmith from your playtest notes: greatswords only, copper first, levels 1/5/10, hardening at the tier's level, hammer and XP icons, a real anvil (v2.3.3524) (#1027)",
+  "files": 6144,
+  "bytes": 712719919,
+  "listingSha256": "92db53dc5ec000142e871f5e14b0793d7e396d9433bd721a5aa6b57a2760df3b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
