@@ -62,7 +62,7 @@
  * No game imports beyond plain data tables: the worker's mirror audit reads
  * this file too. */
 import { GOLD_NUGGET_DROP, GEM_DROP_RATES, ZONE_RESOURCES } from './items.js';
-import { ZONE_SHARDS } from './shards.js';
+import { ZONE_SHARDS, SHARD_GEM_ELEMENT } from './shards.js';   /* v2.3.3515: + the lands whose shards hold a gem */
 import { WHEEL_LAND_LEVELS } from './wheelSignposts.js';
 import { CODEX_ENTRIES } from './monsterCodex.js';
 
@@ -234,9 +234,14 @@ const PARTY_PILE = 'In a party, only players who did at least 5% of its damage c
  *    tier        a weapon or armour piece's base rarity: 'common'
  *  or null for a kind with no page.
  *  `opts.shared` (default true): the worker rolls once a kill (caps.killroll);
- *  false, each drop on its own roll (an older worker, or `killroll: false`). */
+ *  false, each drop on its own roll (an older worker, or `killroll: false`).
+ *  `opts.crack` (v2.3.3515): the worker cracks shards for raw gems
+ *  (caps.shardcrack, the gem plan's decision 1) -- no raw gem off a kill, so
+ *  no raw gem row, and the shard's numbers move down to where its began; the
+ *  shard and the Rare Gem say what the Gem Works makes of them. */
 export function codexDropsFor(kind, opts) {
   const shared = !(opts && opts.shared === false);
+  const crack = !!(opts && opts.crack);
   const e = has(CODEX_ENTRIES, kind) ? CODEX_ENTRIES[kind] : null;
   if (!e) return null;
   const lo = WHEEL_LAND_LEVELS[0], hi = WHEEL_LAND_LEVELS[1];
@@ -260,19 +265,26 @@ export function codexDropsFor(kind, opts) {
   if (shard) {
     rows.push({ id: 'shard', key: shard.key, name: shard.label, icon: '/icons/items/' + shard.key + '.webp' + IV, type: 'Material',
       chance: CODEX_DROP_RATES.shard, who: 'pile', color: shard.color,
-      desc: 'A splinter of its land\'s own element, cold or hot or humming to the touch. Diego pays well for one.',
-      info: ['About ' + codexOneIn(CODEX_DROP_RATES.shard).toLowerCase() + ' kills drops one.', PARTY_PILE] });
+      desc: crack && has(SHARD_GEM_ELEMENT, land)
+        ? 'A splinter of its land\'s own element. Crack it at the Gem Works: some hold a raw ' + ZONE_SHARDS[land].label.replace(/ Shard$/, '') + ' gem. Diego pays well for one too.'
+        : 'A splinter of its land\'s own element, cold or hot or humming to the touch. Diego pays well for one.',
+      info: ['About ' + codexOneIn(CODEX_DROP_RATES.shard).toLowerCase() + ' kills drops one.',
+        ...(crack && has(SHARD_GEM_ELEMENT, land) ? ['At the Gem Works, 1 in 10 holds a raw gem (more as your Gem Cutting grows). Three raw gems make one elemental gem.'] : []),
+        PARTY_PILE] });
   }
-  if (CODEX_RAW_GEM_ELEMENTS.includes(e.element) && has(ZONE_RESOURCES, e.element)) {
+  if (!crack && CODEX_RAW_GEM_ELEMENTS.includes(e.element) && has(ZONE_RESOURCES, e.element)) {
     const zr = ZONE_RESOURCES[e.element];
-    rows.push({ id: 'rawgem', key: 'raw_' + e.element, name: 'Raw ' + zr.gem, icon: ICON.gem, type: 'Gem',
+    /* v2.3.3515: its key the bag's (gems are bag items, data/gems.js) */
+    rows.push({ id: 'rawgem', key: 'gem_raw_' + e.element, name: 'Raw ' + zr.gem, icon: ICON.gem, type: 'Gem',
       chance: GEM_DROP_RATES.monsterKill, who: 'killer', color: zr.gemColor,
       desc: 'A rough ' + zr.gem + ', still in its stone. The Gem Cutter polishes it into a gem for an amulet or a shield.',
       info: ['About ' + codexOneIn(GEM_DROP_RATES.monsterKill).toLowerCase() + ' kills drops one.',
         'It goes to whoever lands the killing blow, straight into the bag.'] });
   }
   rows.push({ id: 'raregem', key: 'rare_gem', name: 'Rare Gem', icon: ICON.gem, type: 'Gem', chance: CODEX_DROP_RATES.rareGem, who: 'pile',
-    desc: 'A bright stone, rare and pretty. Nothing is made from it yet: Diego buys it, and the season\'s rewards give a few.',
+    desc: crack
+      ? 'A bright stone, rare and pretty. The Gem Works cuts it into any of the eight elemental gems you choose.'
+      : 'A bright stone, rare and pretty. Nothing is made from it yet: Diego buys it, and the season\'s rewards give a few.',
     info: ['About ' + codexOneIn(CODEX_DROP_RATES.rareGem).toLowerCase() + ' kills drops one.', PARTY_PILE] });
   const gear = (pct) => ['After it drops, a separate roll decides its grade (shown above).',
     'The grade makes it stronger and colours its name in your bag, but does not change the ' + pct + ' drop chance.'];

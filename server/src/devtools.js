@@ -46,7 +46,8 @@
  * _applyDamage rather than inventing a second immunity mechanism.
  */
 import { QUEST_ZONE_GATE } from './movement.js';
-import { AMULET_GEMS } from './data.js'; /* v2.3.3187: the kit's polished gems */
+import { GEM_ELEMENTS, gemGive, gemCount } from './gems.js'; /* v2.3.3515: the kit's gems, in the bag */
+import { SHARD_CRACK } from './shardcrack.js'; /* v2.3.3515: the kit's shards */
 import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills a level can be set on */
 import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills whose harvests and cooks are hits */
 import { PROG3 } from './prog3.js'; /* v2.3.3313: the combat skills a level can be set on */
@@ -191,20 +192,36 @@ export const devToolsMethods = {
        tutorial's own Pine Shield through _grantQuestItem -- minted into the
        ledger exactly as tut_1 mints it, and only into an empty ps.shield, the
        quest's own rule -- and polished gems onto the worker's own count, the
-       elements the game has (AMULET_GEMS), `count` each (3; 1-50).  Neither is
+       elements the game has (v2.3.3515: gems.js GEM_ELEMENTS, into the bag), `count` each (3; 1-50).  Neither is
        part of 'all': the owner's kit button gives what it always gave. */
     if (want === 'shield') {
       try { out.shield = !!this._grantQuestItem(ps, { kind: 'shield', gearBase: 'wood', tierMult: 1.0, name: 'Pine Shield' }, playerId); } catch (e) { out.shield = false; }
     }
     if (want === 'gems') {
       const n = Math.max(1, Math.min(50, Math.floor(Number(opts && opts.count) || 3)));
-      if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
-      if (!ps.lifeSkills.gems || typeof ps.lifeSkills.gems !== 'object') ps.lifeSkills.gems = {};
+      /* v2.3.3515: into the BAG (gems.js: gems live there now), every gem
+         element -- the amulets' nine and Flora; `raw: true` for raw gems */
+      const raw = !!(opts && opts.raw === true);
       out.gems = {};
-      for (const g of AMULET_GEMS) {
-        const k = 'polished_' + g;
-        ps.lifeSkills.gems[k] = Math.floor(Number(ps.lifeSkills.gems[k]) || 0) + n;
-        out.gems[k] = ps.lifeSkills.gems[k];
+      for (const g of GEM_ELEMENTS) {
+        gemGive(ps, g, raw, n);
+        /* the kit's elemental gems stand for gems the player made: their
+           sets pay the Enchanting XP (weapongem.js "THE XP, ONCE A GEM") */
+        if (!raw) this._gemMade(ps, g, n);
+        out.gems[(raw ? 'gem_raw_' : 'gem_') + g] = gemCount(ps, g, raw);
+      }
+    }
+    /* ═══ v2.3.3515: SHARDS, for the crack (shardcrack.js) ═══
+       `count` (3; 1-200) of every land's shard that holds a gem -- the eight
+       of SHARD_CRACK.LANDS.  Not part of 'all'. */
+    if (want === 'shards') {
+      const n = Math.max(1, Math.min(200, Math.floor(Number(opts && opts.count) || 3)));
+      if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {};
+      out.shards = {};
+      for (const land of Object.keys(SHARD_CRACK.LANDS)) {
+        const k = 'shard_' + land;
+        ps.inventory[k] = Math.max(0, Math.floor(Number(ps.inventory[k]) || 0)) + n;
+        out.shards[k] = ps.inventory[k];
       }
     }
     if (want === 'all' || want === 'levels') {

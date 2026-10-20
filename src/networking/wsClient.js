@@ -164,6 +164,7 @@ import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v
 import { applyItemDropResult } from '@/game/itemDrop.js'; /* v2.3.3473: Drop's answer */
 import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
 import { applyWeaponGemResult, noteWeaponsArrived } from '@/game/weaponGem.js'; /* v2.3.3513: the weapon's gem, put in by the worker */
+import { applyShardCrackResult, applyGemCombineResult } from '@/game/shardCrack.js'; /* v2.3.3515: shards cracked and raw gems combined by the worker */
 import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's death heard by distance */
 import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
@@ -1900,6 +1901,22 @@ export function setupWebSocket(ctx) {
                  Enchanting XP ride the player_state that follows; this says
                  what happened and celebrates a level. */
               applyWeaponGemResult(S, msg.payload);
+              break;
+            }
+          case 'shard_crack_result':
+            {
+              /* v2.3.3515: the worker cracked a land's shards (shardcrack.js):
+                 every roll, in order, and the raw gems found -- the Gem Works
+                 plays the crack from them (ShardCrackPanel.jsx).  The bag and
+                 the Gem Cutting XP ride the player_state that follows. */
+              applyShardCrackResult(S, msg.payload);
+              break;
+            }
+          case 'gem_combine_result':
+            {
+              /* v2.3.3515: three raw gems (or a Rare Gem) made into an
+                 elemental gem, or why not (shardcrack.js); the bag follows */
+              applyGemCombineResult(S, msg.payload);
               break;
             }
           /* ═══ v2.3.3120: PET TRAPPING (game/trapping.js) ═══
@@ -5221,6 +5238,13 @@ export function setupWebSocket(ctx) {
         /* v2.3.3513: a gem into a weapon (game/weaponGem.js) -> weapongem.js.
            TRAPS #18: without this line the ask never leaves the browser. */
         if (msg.type === 'weapon_gem') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3515: a land's shards cracked, raw gems combined
+           (game/shardCrack.js) -> shardcrack.js.  TRAPS #18: without these
+           lines the asks never leave the browser. */
+        if (msg.type === 'shard_crack' || msg.type === 'gem_combine') {
           wsOut(msg);
           return;
         }

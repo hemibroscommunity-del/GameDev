@@ -569,7 +569,22 @@ export const STATES = [
   },
   building('forge', 'Blacksmith (forge)', 'The Blacksmith: smithing weapons and armour, hardening, smelting and salvage, its room behind the menu.'),
   building('woodwork', 'Woodworker', 'The Woodworker: bows, staffs, traps and hardened wood.'),
-  building('gemcut', 'Gem Works: cut gems', 'The Gem Works on its Cut gems tab.'),
+  /* v2.3.3515: the crack and the combine (ShardCrackPanel.jsx) -- seeded with
+     shards of every land and raw gems so the picture shows rows, not the
+     empty tab (the test panel's own two buttons) */
+  (() => {
+    const b = building('gemcut', 'Gem Works: cut gems', 'The Gem Works on its Cut gems tab: shards to gems -- a row a land to crack its shards for raw gems, three raw gems combined into an elemental gem, the Rare Gem cut into any.');
+    const open = b.run;
+    b.run = async (ctx) => {
+      if (ctx.wsPort && ctx.myId) {
+        await H.devOp(ctx.wsPort, 'kit', ctx.myId, { what: 'shards', count: 12 }).catch(() => {});
+        await H.devOp(ctx.wsPort, 'kit', ctx.myId, { what: 'gems', raw: true, count: 4 }).catch(() => {});
+        await wait(ctx.P, 800);
+      }
+      return open(ctx);
+    };
+    return b;
+  })(),
   building('enchant', 'Gem Works: set gems', 'The Gem Works on its Set gems tab (the enchanter).'),
   building('cook', 'Cookhouse', 'The Cookhouse: recipes to cook from what you carry.'),
   building('gamble', 'Gambling Den', 'The Gambling Den: the free daily spin and the games.'),

@@ -51,8 +51,8 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/MEMORY-PLAN.md` (what the phone holds -- sound, canvases, heaps, not
   only textures -- what leaked, and the order of the memory work with each
   item's status, v2.3.3075; `mp-memledger` measures it),
-  `docs/GEM-PLAN.md` (shards into gems, gems into weapons: what the code does
-  today -- a weapon's gem is the phone's alone, shards make nothing -- and the
+  `docs/GEM-PLAN.md` (shards into gems, gems into weapons: what the code did
+  before it -- a weapon's gem the phone's alone, shards making nothing -- and the
   owner's loop at the Gem Works: a cracked shard holds its land's raw gem 1
   time in 10, three raw gems combine into an elemental gem, the server keeps
   it in the weapon; 15 decisions, every recommended answer taken by the owner
@@ -66,7 +66,22 @@ remnant to migrate server-side, not a mode to preserve.
   freeze or root stops a monster 1.5 s (a boss half), then not again for 3 s,
   a frozen one chilled after (elemental.js `HOLD`, caps.monsterhold, kill
   switch `monsterhold: false`); `weapon-gem` suite, `mp-weapongem`:
-  docs/specs/weapon-gems.md),
+  docs/specs/weapon-gems.md; and Phase 2 BUILT in v2.3.3515: GEMS ARE BAG
+  ITEMS (`gem_raw_<e>`, `gem_<e>`; server/src/gems.js the one door --
+  `gemCount` reads the bag and any old pouch, `gemTake` the bag first,
+  `gemGive` the bag -- the pouch moved at the join, `gemsIntoBag`, not a
+  migration), the Gem Works' first tab cracks a land's shards (`shard_crack
+  {land, count}`, up to 50 an ask, 10% a shard rising to 20% with Gem
+  Cutting, the reveal played from the worker's own rolls) and combines three
+  raw gems (`gem_combine {element}`; `{element, rare: true}` one Rare Gem,
+  the eight lands only): server/src/shardcrack.js, ShardCrackPanel.jsx,
+  caps.shardcrack, kill switch `shardcrack: false` (the old one-raw-gem cut
+  and the kill's raw gem back); NO RAW GEM OFF A KILL (the shard at 112-1,111
+  on the roll); THE 400 ENCHANTING XP IS FOR GEMS YOU MADE
+  (`lifeSkills.gemsUnpaid`, owed by a combine or a Rare Gem's cut -- a
+  came-back count could not survive gems that trade); a death KEEPS gems, No
+  man's land's whole-bag loss takes them; Diego 1,200 / 4,000, the Rare Gem
+  4,000; `shard-crack` suite, `mp-shardcrack`: docs/specs/shard-crack.md),
   `docs/FUN-SOCIAL-PLAN.md` (the owner's fun & social plan checked against
   the code, v2.3.3391 -- "Go recommended": emotes and dances that move the bro
   in code, two-player moves, farm-made toys, a playground town; its rules: a

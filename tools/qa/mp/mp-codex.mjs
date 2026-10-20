@@ -374,7 +374,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ...and then: "Shouldn't these numbers not overlap each other? ... I
        think these should be number ranges" -- one roll a kill, each drop its
        own numbers, the rarest from 1 (server killroll.js) */
-    const want = { gold: ['100%', 'Currency', 'Always'], remnant: ['100%', 'Material', 'Always'], shard: ['10%', 'Material', '612–1,611'], rawgem: ['5%', 'Gem', '112–611'],
+    /* v2.3.3515: no raw gem off a kill -- shards are cracked for them at the
+       Gem Works (caps.shardcrack, the gem plan's decision 1) -- so no raw gem
+       row, and the shard's numbers where the raw gem's began */
+    const want = { gold: ['100%', 'Currency', 'Always'], remnant: ['100%', 'Material', 'Always'], shard: ['10%', 'Material', '112–1,111'],
       raregem: ['0.5%', 'Gem', '62–111'], irontorso: ['0.2%', 'Armor', '42–61'], irongreaves: ['0.2%', 'Armor', '22–41'], irongreatsword: ['0.2%', 'Weapon', '2–21'],
       nugget: ['0.01%', 'Craft', '1'] };
     const dOff = Object.keys(want).filter((k) => !d1[k] || d1[k].slice(0, 3).join('|') !== want[k].join('|') || d1[k][3] !== '(' + want[k][0] + ')');
@@ -382,8 +385,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const rollHead = await P.page.evaluate(() => { const h = document.querySelector('[data-cx-roll-head]'); const d = h && h.querySelector('span[aria-hidden]');
       return h ? { text: h.innerText.trim(), dice: !!d && /bldg-gamble/.test(getComputedStyle(d).backgroundImage) && d.getBoundingClientRect().width >= 10 } : null; });
     rec.ok(`...and its drop table from the first kill -- ITEM, TYPE, ROLL (${rollHead && rollHead.text}, its dice drawn), no random weapon: ${Object.keys(d1).map((k) => k + ' ' + d1[k][2] + ' ' + d1[k][3]).join(', ')}; "${diceKey}"`,
-      Object.keys(d1).length === 9 && !d1.weapon && dOff.length === 0 && !!rollHead && /^roll$/i.test(rollHead.text) && rollHead.dice
-        && /Each kill rolls once, 1–10,000\. The item whose numbers it lands on drops; 1,612–10,000 drops nothing more\./.test(diceKey || ''), { d1, dOff, diceKey, rollHead });
+      Object.keys(d1).length === 8 && !d1.weapon && !d1.rawgem && dOff.length === 0 && !!rollHead && /^roll$/i.test(rollHead.text) && rollHead.dice
+        && /Each kill rolls once, 1–10,000\. The item whose numbers it lands on drops; 1,112–10,000 drops nothing more\./.test(diceKey || ''), { d1, dOff, diceKey, rollHead });
     /* the owner: "The drops table needs a different background so the
        information can stand out more from the dashboard background. Maybe
        black?" -- its panel is near-black, well darker than the sheet */
@@ -439,15 +442,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     const striped = legible.bg.length > 2 && legible.bg[0] !== legible.bg[1] && legible.bg.every((c, i) => c === legible.bg[i % 2]);
     /* a fill is its chance x the track, a 2 px nub when that is under 2 */
-    const CH = { gold: 1, remnant: 1, shard: 0.1, rawgem: 0.05, raregem: 0.005, irontorso: 0.002, irongreaves: 0.002, irongreatsword: 0.002, nugget: 0.0001 };
+    const CH = { gold: 1, remnant: 1, shard: 0.1, raregem: 0.005, irontorso: 0.002, irongreaves: 0.002, irongreatsword: 0.002, nugget: 0.0001 };
     const fillOff = (legible.lay || []).filter((l) => !(l.id in CH) || Math.abs(l.fill - Math.max(2, CH[l.id] * l.barExact)) > 0.6);
     const byId = Object.fromEntries((legible.lay || []).map((l) => [l.id, l]));
-    rec.ok(`...readable on its black: every other row shaded, the headings on their own band (${legible.head}), no name cut short, and each bar its share of 100% (${['gold', 'shard', 'rawgem', 'raregem', 'nugget'].map((k) => k + ' ' + (byId[k] ? byId[k].fill : '?') + ' px').join(', ')} of ${byId.gold ? byId.gold.bar : '?'})`,
+    rec.ok(`...readable on its black: every other row shaded, the headings on their own band (${legible.head}), no name cut short, and each bar its share of 100% (${['gold', 'shard', 'raregem', 'nugget'].map((k) => k + ' ' + (byId[k] ? byId[k].fill : '?') + ' px').join(', ')} of ${byId.gold ? byId.gold.bar : '?'})`,
       striped && legible.head === 'rgb(16, 26, 31)' && legible.cut.length === 0 && legible.tall.length === 0
-        && legible.bars.gold === 100 && legible.bars.remnant === 100 && legible.bars.shard === 10 && legible.bars.rawgem === 5 && legible.bars.raregem === 0.5
+        && legible.bars.gold === 100 && legible.bars.remnant === 100 && legible.bars.shard === 10 && legible.bars.raregem === 0.5
         && legible.bars.irongreatsword === 0.2 && legible.bars.nugget === 0.01 && fillOff.length === 0, { striped, fillOff, ...legible });
     /* the bars ~2.5x the 44 px they had; the roll column no wider than its
-       widest text (the shard's "612–1,611": the grid's 6 px gap plus a few px
+       widest text (the shard's "112–1,111", v2.3.3515: the grid's 6 px gap plus a few px
        of slack from its bar's end -- in the old 76 px chance column a "100%"
        stood ~50 px off and a "5%" ~63; the shortest, "(0.2%)" under "2–21",
        ~35 now, the column 64 px for the shard's range), lined up on the
@@ -458,11 +461,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const barMin = Math.min(...lay.map((l) => l.bar));
     const gapMin = Math.min(...lay.map((l) => l.gap)), gapMax = Math.max(...lay.map((l) => l.gap));
     const twoLine = lay.filter((l) => l.nameLines === 2).map((l) => l.id);
-    const RUN = { gold: 'always', remnant: 'always', shard: '612-1611', rawgem: '112-611', raregem: '62-111', irontorso: '42-61', irongreaves: '22-41', irongreatsword: '2-21', nugget: '1-1' };
+    const RUN = { gold: 'always', remnant: 'always', shard: '112-1111', raregem: '62-111', irontorso: '42-61', irongreaves: '22-41', irongreatsword: '2-21', nugget: '1-1' };
     const rollOff = lay.filter((l) => !(l.roll && l.roll.fits && l.roll.oneLine && l.roll.under && l.roll.right <= 1 && l.roll.inRow
       && l.roll.n === RUN[l.id]));
     rec.ok(`...its bars ${barMin} px long (were 44), the roll column its widest text's width (${gapMin}-${gapMax} px from a bar's end to its text), each roll's range over its chance, names wrapping (${twoLine.join(', ')} on two lines; columns ${legible.cols})`,
-      lay.length === 9 && barMin >= 100 && gapMin <= 14 && gapMax <= 40 && lay.every((l) => l.typeFits && l.nameLines <= 2)
+      lay.length === 8 && barMin >= 100 && gapMin <= 14 && gapMax <= 40 && lay.every((l) => l.typeFits && l.nameLines <= 2)
         && twoLine.length >= 1 && rollOff.length === 0, { rollOff, lay });
     await P.page.screenshot({ path: join(OUT, 'codex-1-snowman.png') });
     const fr1 = await codex(P);
@@ -498,16 +501,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => { const b = document.querySelector('[data-cx-item-close]'); if (b) b.click(); });
     await P.page.waitForTimeout(300);
     rec.ok(`...its X comes back to the list with that row marked (${selNow.join(',')}) and in view (${selBox && selBox.at} px down the box); a Frost Shard's card is 10% ("${sc && sc.roll}") with no grades to roll`,
-      selNow.join(',') === 'irongreatsword' && !!selBox && selBox.seen && !!sc && sc.base === '10%' && sc.roll === 'drops on a roll of 612–1,611 out of 10,000' && sc.grades.length === 0 && sc.tier === null && /Frost Shard/.test(sc.text), { selNow, selBox, sc });
+      selNow.join(',') === 'irongreatsword' && !!selBox && selBox.seen && !!sc && sc.base === '10%' && sc.roll === 'drops on a roll of 112–1,111 out of 10,000' && sc.grades.length === 0 && sc.tier === null && /Frost Shard/.test(sc.text), { selNow, selBox, sc });
     /* the open tab tapped again (the list scrolled down to the shard's row) */
     await scrollTo(P, 0);
     await tab(P, 'drops');
     const dTop = await boxLook(P, '[data-cx-drops]');
     await P.page.screenshot({ path: join(OUT, 'codex-1c-table.png') });
-    /* v2.3.3209: and its middle rows (the raw gem's 112–611 down to the
-       greaves' 22–41), for the picture of the whole table; put back after */
+    /* v2.3.3209: and its middle rows (v2.3.3515: the rare gem's 62–111 down
+       to the greaves' 22–41), for the picture of the whole table; put back after */
     const keepTop = await boxLook(P, null);
-    await P.page.evaluate(() => { const r = document.querySelector('[data-cx-drop="rawgem"]'); if (r) r.scrollIntoView({ block: 'start' }); });
+    await P.page.evaluate(() => { const r = document.querySelector('[data-cx-drop="raregem"]'); if (r) r.scrollIntoView({ block: 'start' }); });
     await P.page.waitForTimeout(150);
     await P.page.screenshot({ path: join(OUT, 'codex-1e-table-middle.png') });
     await scrollTo(P, keepTop ? keepTop.top : 0);
@@ -611,17 +614,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       every.every((e) => (ZONED[e.kind] ? e.zones.length === 1 && e.zones[0] === ZONED[e.kind] : e.zones.length === 0)), every.map((e) => e.kind + ' ' + e.zones.join('/')));
     /* the drop tables: every pile drop on every page; remnants from the six
        kinds that leave them (the rock monster, the fishman and the bog lurker
-       leave none, index.js _isRemnantSkullArch); a raw gem from every land
-       but the Verdant Wilds (Flora is not a Gem Cutter element) */
-    const NO_REMNANT = ['pebbling', 'finling', 'lurkling'], NO_GEM = ['dewdrop'];
+       leave none, index.js _isRemnantSkullArch); v2.3.3515: a raw gem from
+       none (shards are cracked for them, caps.shardcrack), so every shard
+       112–1,111 */
+    const NO_REMNANT = ['pebbling', 'finling', 'lurkling'];
     const dropOff = every.filter((e) => {
       const d = e.drops || {};
       if (!['gold', 'shard', 'raregem', 'irontorso', 'irongreaves', 'irongreatsword', 'nugget'].every((id) => d[id]) || d.weapon) return true;
       /* v2.3.3209: every drop under 100% its dice, the rest none */
-      /* ...each its own numbers: the blue slime has no raw gem, so its shard is lower down */
-      if (d.shard[2] !== (NO_GEM.includes(e.kind) ? '112–1,111' : '612–1,611') || d.nugget[2] !== '1' || d.irongreatsword[2] !== '2–21' || d.gold[2] !== 'Always' || d.shard[3] !== '(10%)') return true;
+      /* ...each its own numbers: no raw gem on any, so every shard where the raw gem's began */
+      if (d.shard[2] !== '112–1,111' || d.nugget[2] !== '1' || d.irongreatsword[2] !== '2–21' || d.gold[2] !== 'Always' || d.shard[3] !== '(10%)') return true;
       if (!!d.remnant === NO_REMNANT.includes(e.kind)) return true;
-      if (!!d.rawgem === NO_GEM.includes(e.kind)) return true;
+      if (d.rawgem) return true;
       return d.shard[0] !== '10%';
     });
     rec.ok(`...and every page's drop table is its own (${every.map((e) => e.kind + ' ' + Object.keys(e.drops || {}).length).join(', ')})`,

@@ -4,6 +4,9 @@ import { SMELT_RECIPES } from '@/data/items.js';   /* v2.3.2822 */
 import { essenceInfo } from '@/data/salvage.js';   /* v2.3.3141: what an essence does */
 import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_BY_LOG } from '@/data/hardenedWood.js';   /* v2.3.3139 */
 import { dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
+import { parseGemKey, gemElementName } from '@/data/gems.js';   /* v2.3.3515: gems are bag items */
+import { SHARD_GEM_ELEMENT, RAW_PER_GEM, shardCrackChance } from '@/data/shards.js';   /* v2.3.3515: a shard may hold its land's raw gem */
+import { isWeaponGem, weaponGemEffect } from '@/data/weaponGems.js';   /* v2.3.3515: what a gem does on a weapon */
 import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player (v2.3.3260: in any fight) */
 import { pushDmgPopup, offlineRefused /* v2.3.3473: Drop never into a dead socket */ } from '@/game/combatHelpers.js'; /* v2.3.3133: ...and say how long */
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a listing heard */
@@ -48,6 +51,30 @@ import {
      (equipModel) owns that lookup now. */
   recalcDerived,
 } from '../../../data/gameSystems.js';
+
+/* v2.3.3515: the card's line for a gem, a shard with a gem in it, or the Rare
+   Gem -- null for anything else */
+function gemCardInfo(key, SR) {
+  const caps = (SR && SR._serverCaps) || {};
+  const crack = !!caps.shardcrack;
+  const g = parseGemKey(key);
+  if (g && g.raw) {
+    return crack ? RAW_PER_GEM + ' make a ' + gemElementName(g.element) + ' Gem at the Gem Works'
+      : 'Cut into a ' + gemElementName(g.element) + ' Gem at the Gem Works';
+  }
+  if (g) {
+    const does = isWeaponGem(g.element) ? weaponGemEffect(g.element, !!caps.monsterhold) : '';
+    return 'Set into your gear at the Gem Works' + (does ? ' · on a weapon: ' + does.charAt(0).toLowerCase() + does.slice(1) : '');
+  }
+  if (crack && typeof key === 'string' && key.indexOf('shard_') === 0 && Object.prototype.hasOwnProperty.call(SHARD_GEM_ELEMENT, key.slice(6))) {
+    const ls = SR && SR.rpg && SR.rpg.lifeSkills && SR.rpg.lifeSkills.gemCutting;
+    const lvl = ls && typeof ls === 'object' ? ls.level : 1;
+    return 'Crack at the Gem Works: ' + shardCrackChance(lvl) + '% hold a Raw ' + gemElementName(SHARD_GEM_ELEMENT[key.slice(6)]) + ' Gem';
+  }
+  if (crack && key === 'rare_gem') return 'Cut into any elemental gem at the Gem Works';
+  return null;
+}
+
 /* v2.3.2822: ore key -> the bar it smelts into, derived from the one table. */
 const SMELT_ORE_TO_BAR = Object.create(null);
 for (const _b of Object.keys(SMELT_RECIPES)) SMELT_ORE_TO_BAR[SMELT_RECIPES[_b].ore] = _b;
@@ -241,6 +268,10 @@ function resolveTarget(target) {
     else if (SMELT_RECIPES[key]) info = 'Smelted from ' + SMELT_RECIPES[key].oreCost + ' ' + SMELT_RECIPES[key].oreName;
     /* v2.3.3141: an essence -- where it is used, and on what */
     else if (essenceInfo(key) && SR && SR._serverCaps && SR._serverCaps.salvage) info = essenceInfo(key);
+    /* v2.3.3515: what a shard, a raw gem, a gem and the Rare Gem are for --
+       the Gem Works, which nothing in the bag pointed at (data/gems.js,
+       data/shards.js; the crack's words only against a worker that cracks) */
+    else if (gemCardInfo(key, SR)) info = gemCardInfo(key, SR);
     else if (count > 0) info = 'Quantity: ' + count;
     return {
       lockKey: key,

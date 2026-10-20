@@ -36,6 +36,7 @@ import { DISH_NAMES, dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cook
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* v2.3.3120: the box trap's picture */
 import { COOKED_FISH_ICONS, COOKED_FISH_ICON_DEFAULT } from '@/data/foodIcons.js';   /* v2.3.3260 */
 import { setDropThumbs } from '@/game/dropLook.js';   /* v2.3.3473: a dropped item is drawn on the ground as its bag picture */
+import { GEM_ELEMENTS, gemRawKey, gemCutKey, gemName, gemIcon, parseGemKey } from '@/data/gems.js';   /* v2.3.3515: gems are bag items */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -234,6 +235,12 @@ export const thumbFor = (key) => {
   if (farmPic)                      return farmPic;
   const dishPic = dishFor(k);
   if (dishPic && dishPic.icon)      return dishPic.icon;
+  /* v2.3.3515: a gem, raw or elemental (data/gems.js) -- its element's own
+     icon, already drawn in the gem's shape, until the owner's gem pictures
+     (the gem plan's Phase 3).  Exact keys (parseGemKey): 'gem_stone' must
+     never fall to the ore rule's 'stone'. */
+  const gemPic = gemIcon(k);
+  if (gemPic)                       return gemPic + ITEMS_V;
   if (k.startsWith('shard_'))       return `/icons/items/${k}.webp${ITEMS_V}`;
   /* v2.3.1924: the rare gem monsters drop at 1-in-200 (server/src/data.js
      RARE_GEM_KEY).  It borrows the gem icon this panel ALREADY uses for its
@@ -307,6 +314,13 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
    so a metal added there is named here without a line of its own. */
 for (const g of SALVAGE.ESSENCE_GRADES) {
   for (const m of Object.keys(SALVAGE.METALS)) ITEM_NAMES[essenceKey(g, m)] = essenceName(essenceKey(g, m));
+}
+/* v2.3.3515: the gems (data/gems.js) -- "Raw Frost Gem" and "Frost Gem", not
+   "Gem Raw Frost" out of the key; every screen that names an item from this
+   table (the card, the shop, the auction house, the trade, Ace) says it */
+for (const e of GEM_ELEMENTS) {
+  ITEM_NAMES[gemRawKey(e)] = gemName(gemRawKey(e));
+  ITEM_NAMES[gemCutKey(e)] = gemName(gemCutKey(e));
 }
 
 /* v2.3.2820: the daily chest -- opened from the bag, rolled by the worker. */
@@ -387,6 +401,9 @@ export const iconFor = (key) => {
      until dish art is made, as the crops have. */
   const dish = dishFor(key);
   if (dish && dish.look) return dish.look;
+  /* v2.3.3515: a gem -- above the ore rule, which 'gem_' and 'gem_stone'
+     would match (a pickaxe for a gem) */
+  if (parseGemKey(k)) return '\uD83D\uDC8E';
   /* v2.3.2052: the three town-shop consumables, by EXACT key and above every
      pattern below. They had no entry at all, so a whetstone in your bag drew
      the '◇' fallback -- and it did so before Shopkeeper Bro existed; putting
@@ -522,9 +539,14 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
     }} title={ikey}>
       {(() => {
         const thumb = thumbFor(ikey);
+        /* v2.3.3515: a raw gem and its elemental gem share the element's
+           picture until the owner's gem art (the gem plan's Phase 3): the raw
+           one is drawn smaller and dimmer, the crack tab's own way -- opacity
+           and size only, the life animations move transform alone */
+        const raw = !!(parseGemKey(ikey) || {}).raw;
         return thumb
           ? <img src={thumb} alt={ikey} draggable={false} className="bt-bag-art" data-life={life || undefined}
-              style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
+              style={{ width: raw ? '68%' : '85%', height: raw ? '68%' : '85%', objectFit: 'contain', imageRendering: 'auto', ...(raw ? { opacity: 0.78 } : null) }} />
           : <span className="bt-bag-art" data-life={life || undefined} style={{ display: 'inline-block' }}>{iconFor(ikey)}</span>;
       })()}
       {/* v2.3.2815: the glint and the arrival ring draw here (game.css) */}

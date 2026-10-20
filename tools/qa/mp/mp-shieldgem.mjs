@@ -39,14 +39,16 @@ const state = (P) => H.readState(P, (S) => {
   const R = S.rpg || {};
   const g = (R.lifeSkills && R.lifeSkills.gems) || {};
   const sh = R.shield ? { name: R.shield.name, gem: R.shield.gem || null, gid: R.shield.gid || null } : null;
-  return { shield: sh, flame: g.polished_flame || 0, frost: g.polished_frost || 0, bag: (R.shieldStash || []).map((p) => p && { name: p.name, gid: p.gid || null }) };
+  const inv = R.inventory || {};   /* v2.3.3515: gems are bag items (`gem_<e>`), and any an old pouch still holds */
+  return { shield: sh, flame: (inv.gem_flame || 0) + (g.polished_flame || 0), frost: (inv.gem_frost || 0) + (g.polished_frost || 0), bag: (R.shieldStash || []).map((p) => p && { name: p.name, gid: p.gid || null }) };
 });
 const lastLog = (P) => P.page.evaluate(() => { const l = window.__btShieldGemLog || []; return l.length ? l[l.length - 1] : null; });
 const server = async (wsPort, id) => {
   const a = await H.adminPlayer(wsPort, id);
   const rpg = (a && a.rpg) || {};
   const g = (rpg.lifeSkills && rpg.lifeSkills.gems) || {};
-  return { shield: rpg.shield ? { name: rpg.shield.name, gem: rpg.shield.gem || null, gid: rpg.shield.gid || null } : null, flame: g.polished_flame || 0 };
+  const inv = rpg.inventory || {};   /* v2.3.3515: gems are bag items */
+  return { shield: rpg.shield ? { name: rpg.shield.name, gem: rpg.shield.gem || null, gid: rpg.shield.gid || null } : null, flame: (inv.gem_flame || 0) + (g.polished_flame || 0) };
 };
 const until = async (P, pred, tries = 24, ms = 250) => {
   let s = null;

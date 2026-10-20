@@ -9,6 +9,7 @@ import { askShieldGem, shieldGemBus, shieldGemOnServer, shieldGemReasonText, SHI
 import { askWeaponGem, askWeaponGemOut, monsterHoldOn, weaponGemBus, weaponGemOnServer, weaponGemReasonText, WEAPON_GEM_WAIT_MS } from '@/game/weaponGem.js'; /* v2.3.3513: the weapon's gem, put in by the worker */
 import { FUSION_BASES, SECOND_SLOT_LVL, isVolatilePair, isWeaponGem, weaponGemEffect, weaponGemSlots } from '@/data/weaponGems.js'; /* v2.3.3513 */
 import { gemExtractCost } from '@/data/items.js'; /* v2.3.3513: Take out's price, the Blacksmith's own */
+import { gemCount, gemTakeLocal, gemXpOwedTotal } from '@/data/gems.js'; /* v2.3.3515: gems are bag items; the XP is for gems you made */
 /* === EnchantPanel — buildingPanel === 'enchant' sub-panel === */
 /* v2.3.874: extracted verbatim from the buildingPanel === 'enchant' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -76,7 +77,11 @@ export function EnchantPanel(props) {
      pouch (same lifeSkills.gems source every slotting pill reads) so each
      section can render an explicit control when the pickers would
      otherwise render nothing. */
-  var gemsOwned = (rpgState.lifeSkills && rpgState.lifeSkills.gems) || {};
+  /* v2.3.3515: gems are BAG items now (data/gems.js; the worker moves the
+     pouch into the bag at the join) -- every count reads both, as the worker
+     does: the bag, and any gems a pouch from an older worker still holds */
+  var polOf = function polOf(e) { return gemCount(rpgState, e, false); };
+  var xpOwed = gemXpOwedTotal(rpgState);
   /* v2.3.3187: against a worker that puts shield gems in (caps.shieldgem), the
      shield's buttons ASK and wait for its answer (game/shieldGem.js): each
      answer re-renders the window, a refusal says why under the buttons, and an
@@ -131,7 +136,14 @@ export function EnchantPanel(props) {
       style: LS_BODY
     },
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 12, lineHeight: 1.5 } },
-        "Slot polished gems into gear with open gem slots."),
+        "Slot polished gems into gear with open gem slots.",
+        /* v2.3.3515: the 400 Enchanting XP is for gems you MADE (the worker's
+           lifeSkills.gemsUnpaid, weapongem.js "THE XP, ONCE A GEM"): said
+           here so a bought or traded gem's set paying none is no surprise */
+        xpOwed === null ? null : React.createElement("div", { "data-gem-xp-owed": xpOwed, style: { fontSize: 11, color: LS.txt3, marginTop: 4 } },
+          xpOwed > 0
+            ? "Gems you made pay 400 Enchanting XP when set: " + xpOwed + " still to come."
+            : "Gems you make pay 400 Enchanting XP when set. Bought, traded or taken-out gems pay none.")),
       [{
         label: 'Melee',
         key: 'weapon',
@@ -175,7 +187,7 @@ export function EnchantPanel(props) {
            one explicit control — picker / "No polished gems" /
            "No open gem slot" / "Locked" (2nd slot behind Ench Lv20). */
         var hasAnyPolished = Object.keys(ELEMENTS).some(function (e) {
-          return offers(e) && e !== (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && (gemsOwned['polished_' + e] || 0) > 0;
+          return offers(e) && e !== (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && polOf(e) > 0;
         });
         var slotPickable = !!(wpn && openSlots > 0 && (!wpn.element1 || wpn.element1 && !wpn.element2 && canAddSecond));
         return /*#__PURE__*/React.createElement("div", {
@@ -270,13 +282,10 @@ export function EnchantPanel(props) {
             e = _ref86[0];
           return offers(e) && e !== (wpn === null || wpn === void 0 ? void 0 : wpn.element1);
         }).map(function (_ref87) {
-          var _rpgState$lifeSkills11;
           var _ref88 = _slicedToArray(_ref87, 2),
             elem = _ref88[0],
             edef = _ref88[1];
-          var gems = ((_rpgState$lifeSkills11 = rpgState.lifeSkills) === null || _rpgState$lifeSkills11 === void 0 ? void 0 : _rpgState$lifeSkills11.gems) || {};
-          var polKey = 'polished_' + elem;
-          var polCount = gems[polKey] || 0;
+          var polCount = polOf(elem);   /* v2.3.3515: the bag and any pouch */
           if (polCount <= 0) return null;
           /* Check volatile compatibility — only allowed on fusionReady gear */
           var wouldBeVolatile = (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && isVolatilePair(wpn.element1, elem);   /* v2.3.3513: the worker's own pairs (weaponGems.js) */
@@ -312,8 +321,7 @@ export function EnchantPanel(props) {
               }
               var R = stateRef.current.rpg;
               var sk = R.lifeSkills;
-              sk.gems[polKey]--;
-              if (sk.gems[polKey] <= 0) delete sk.gems[polKey];
+              gemTakeLocal(R, elem, false, 1);   /* v2.3.3515: the bag first, as the worker */
               var w = R[key];
               if (!w.element1) {
                 w.element1 = elem;
@@ -432,13 +440,10 @@ export function EnchantPanel(props) {
           flexWrap: 'wrap'
         }
       }, Object.entries(ELEMENTS).map(function (_ref93) {
-        var _rpgState$lifeSkills12;
         var _ref94 = _slicedToArray(_ref93, 2),
           elem = _ref94[0],
           edef = _ref94[1];
-        var gems = ((_rpgState$lifeSkills12 = rpgState.lifeSkills) === null || _rpgState$lifeSkills12 === void 0 ? void 0 : _rpgState$lifeSkills12.gems) || {};
-        var polKey = 'polished_' + elem;
-        var polCount = gems[polKey] || 0;
+        var polCount = polOf(elem);   /* v2.3.3515: the bag and any pouch */
         if (polCount <= 0) return null;
         var gemStat = AMULET_GEM_STATS[elem];
         if (!gemStat) return null;
@@ -463,7 +468,9 @@ export function EnchantPanel(props) {
             var R = stateRef.current.rpg;
             var sk = R.lifeSkills;
             if (!sk.gems) sk.gems = {};
-            if ((sk.gems[polKey] || 0) < 1) return;
+            /* v2.3.3515: a gem in the bag counts (it was the pouch alone, so
+               the ask was never sent once the worker had moved them) */
+            if (gemCount(R, elem, false) < 1) return;
             /* v2.3.1192: server-authoritative gem slot (amulet_forge_request
                op 'gem', server/src/amulet.js) -- the worker consumes one
                polished gem from ITS lifeSkills.gems copy and sets
@@ -478,7 +485,7 @@ export function EnchantPanel(props) {
                 try { _Sag.channel.send({ type: 'amulet_forge_request', payload: { op: 'gem', gem: elem } }); } catch (e) {}
               }
             }
-            sk.gems[polKey]--;
+            gemTakeLocal(R, elem, false, 1);   /* v2.3.3515: the bag first, as the worker */
             R.amulet.gem = elem;
             R.amulet.name = (((_AMULET_TIERS$R$amule = AMULET_TIERS[R.amulet.tier]) === null || _AMULET_TIERS$R$amule === void 0 ? void 0 : _AMULET_TIERS$R$amule.label) || 'Simple') + ' ' + elem.charAt(0).toUpperCase() + elem.slice(1) + ' Amulet';
             if (!R._questFlags) R._questFlags = {};
@@ -496,7 +503,7 @@ export function EnchantPanel(props) {
          amulet pill picker would render nothing (empty polished-gem
          pouch for the amulet-slottable elements). */
       !Object.keys(ELEMENTS).some(function (e) {
-        return AMULET_GEM_STATS[e] && (gemsOwned['polished_' + e] || 0) > 0;
+        return AMULET_GEM_STATS[e] && polOf(e) > 0;
       }) && /*#__PURE__*/React.createElement("button", {
         disabled: true,
         style: LS_DISBTN
@@ -546,13 +553,10 @@ export function EnchantPanel(props) {
           flexWrap: 'wrap'
         }
       }, Object.entries(ELEMENTS).map(function (_ref95) {
-        var _rpgState$lifeSkills13;
         var _ref96 = _slicedToArray(_ref95, 2),
           elem = _ref96[0],
           edef = _ref96[1];
-        var gems = ((_rpgState$lifeSkills13 = rpgState.lifeSkills) === null || _rpgState$lifeSkills13 === void 0 ? void 0 : _rpgState$lifeSkills13.gems) || {};
-        var polKey = 'polished_' + elem;
-        var polCount = gems[polKey] || 0;
+        var polCount = polOf(elem);   /* v2.3.3515: the bag and any pouch */
         if (polCount <= 0) return null;
         var gemStat = SHIELD_GEM_STATS[elem];
         if (!gemStat) return null;
@@ -580,7 +584,7 @@ export function EnchantPanel(props) {
             var R = stateRef.current.rpg;
             var sk = R.lifeSkills;
             if (!sk.gems) sk.gems = {};
-            if ((sk.gems[polKey] || 0) < 1) return;
+            if (gemCount(R, elem, false) < 1) return;   /* v2.3.3515: the bag and any pouch */
             /* v2.3.3187: the worker puts it in (server/src/shieldgem.js): the
                gem off ITS count, the shield it holds for you, the gear
                ledger's row following -- so the Blacksmith's Take out can give
@@ -591,7 +595,7 @@ export function EnchantPanel(props) {
               askShieldGem(stateRef.current, elem);
               return;
             }
-            sk.gems[polKey]--;
+            gemTakeLocal(R, elem, false, 1);   /* v2.3.3515: the bag first, as the worker */
             R.shield.gem = elem;
             R.shield.name = (((_BLACKSMITH_TIERS$R$s = BLACKSMITH_TIERS[R.shield.gearBase]) === null || _BLACKSMITH_TIERS$R$s === void 0 ? void 0 : _BLACKSMITH_TIERS$R$s.label) || 'Basic') + ' ' + elem.charAt(0).toUpperCase() + elem.slice(1) + ' Shield';
             recalcDerived(R);
@@ -616,7 +620,7 @@ export function EnchantPanel(props) {
          shield pill picker would render nothing (empty polished-gem
          pouch for the shield-slottable elements). */
       !Object.keys(ELEMENTS).some(function (e) {
-        return SHIELD_GEM_STATS[e] && (gemsOwned['polished_' + e] || 0) > 0;
+        return SHIELD_GEM_STATS[e] && polOf(e) > 0;
       }) && /*#__PURE__*/React.createElement("button", {
         disabled: true,
         style: LS_DISBTN

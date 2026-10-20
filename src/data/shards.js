@@ -75,3 +75,51 @@ export function rollHarvestShard(zoneId) {
 export function shardIconPath(shardKey) {
   return shardKey ? `/icons/shards/${shardKey}.webp` : null;
 }
+
+/* ═══ v2.3.3515: A SHARD MAY HOLD ITS LAND'S RAW GEM (the worker's
+   server/src/shardcrack.js) ═══
+   The owner, 2026-10-19: "a fun method would be for the shards to have a
+   certain percent chance of containing that elements raw gem.  Like maybe a
+   10% chance.  Then after collecting a certain number of raw gems they can be
+   combined into an elemental gem."  And on docs/GEM-PLAN.md: "All of that
+   sounds good".  The Gem Works' "Shards to gems" tab cracks a land's shards
+   (the worker rolls each one) and combines three raw gems into a gem.  These
+   are the worker's own rules, which the tab shows before it asks -- held equal
+   to shardcrack.js SHARD_CRACK by server/test/mirror-audit.test.mjs. */
+
+/* each land's shard and the element of the raw gem it may hold -- the land's
+   own element.  The meadow's "Verdant Shard" has no element: it holds none.
+   (SHARD_CRACK.LANDS) */
+export const SHARD_GEM_ELEMENT = Object.freeze({
+  frost: 'frost', ember: 'flame', sky: 'wind', hollows: 'stone',
+  thunder: 'storm', tidal: 'water', mist: 'venom', verdant: 'flora',
+});
+
+/* the chance a shard holds its raw gem, in percent, by Gem Cutting level
+   (SHARD_CRACK.CHANCE: the cut's own four steps, GEM_CUT_TIERS) */
+export const SHARD_CRACK_CHANCE = Object.freeze([
+  Object.freeze({ minLvl: 1, pct: 10 }),
+  Object.freeze({ minLvl: 15, pct: 12 }),
+  Object.freeze({ minLvl: 35, pct: 15 }),
+  Object.freeze({ minLvl: 60, pct: 20 }),
+]);
+export const SHARD_CRACK_SIDES = 100;   /* each crack rolls 1-100; at or under the chance holds a gem */
+export const SHARD_CRACK_MAX = 50;      /* the most one Crack all sends */
+export const RAW_PER_GEM = 3;           /* raw gems for one elemental gem; a combine never fails */
+export const SHARD_CRACK_XP = 40;       /* Gem Cutting XP a crack, found or not */
+export const GEM_COMBINE_XP = 200;      /* Gem Cutting XP a combine */
+
+/** The chance (percent) a shard holds a gem at Gem Cutting `level`. */
+export function shardCrackChance(level) {
+  const lv = Math.max(1, Math.floor(Number(level) || 1));
+  let pct = SHARD_CRACK_CHANCE[0].pct;
+  for (const step of SHARD_CRACK_CHANCE) if (lv >= step.minLvl) pct = step.pct;
+  return pct;
+}
+
+/** The next step up from `level`: {minLvl, pct}, or null at the top. */
+export function shardCrackNextStep(level) {
+  const lv = Math.max(1, Math.floor(Number(level) || 1));
+  for (const step of SHARD_CRACK_CHANCE) if (step.minLvl > lv) return step;
+  return null;
+}

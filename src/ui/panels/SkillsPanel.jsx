@@ -1,6 +1,7 @@
 import React from 'react';
 import { LIFE_SKILL_XP, QUEST_CHAINS, QUEST_STATUS, ZONE_RESOURCES, createDefaultCompStats, questObjectiveDone } from '@/data/index.js';
 import { _slicedToArray } from '@/lib/babelHelpers.js';
+import { GEM_ELEMENTS, gemCount } from '@/data/gems.js';   /* v2.3.3515: gems are bag items */
 
 /* ═══ SkillsPanel — life-skill levels / resources / quest progress ═══ */
 /* v2.3.865: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -274,14 +275,21 @@ export function SkillsPanel(props) {
       marginBottom: 8
     })
   }, "Gems"), function (_rpgState$lifeSkills46) {
-    var gems = ((_rpgState$lifeSkills46 = rpgState.lifeSkills) === null || _rpgState$lifeSkills46 === void 0 ? void 0 : _rpgState$lifeSkills46.gems) || {};
+    /* v2.3.3515: gems are bag items now (data/gems.js) -- read the bag and
+       any old pouch, as raw_/polished_ entries for the chips below */
+    var gems = {};
+    GEM_ELEMENTS.forEach(function (e) {
+      var r = gemCount(rpgState, e, true), c = gemCount(rpgState, e, false);
+      if (r > 0) gems['raw_' + e] = r;
+      if (c > 0) gems['polished_' + e] = c;
+    });
     var entries = Object.entries(gems).filter(function (_ref164) {
       var _ref165 = _slicedToArray(_ref164, 2),
         k = _ref165[0],
         v = _ref165[1];
       return v > 0;
     });
-    if (entries.length === 0) return lsEmpty("No gems yet. Harvest resources or kill monsters in elemental zones!");
+    if (entries.length === 0) return lsEmpty("No gems yet. Crack shards at the Gem Works to find them!");
     return /*#__PURE__*/React.createElement("div", {
       style: Object.assign({}, LS_WELL, {
         display: 'flex',

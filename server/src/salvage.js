@@ -72,6 +72,8 @@
  * un-advertises the cap and refuses both acts; pieces, bars and essences
  * already held are untouched. */
 
+import { gemGive } from './gems.js'; /* v2.3.3515: gems live in the bag */
+
 export const SALVAGE = Object.freeze({
   /* metal id (the armour's `mat`, materialTints.js) -> its bar (smelting.js),
      the forge tier key its weapons carry as `gearBase` (data.js
@@ -232,14 +234,9 @@ export const salvageMethods = {
          free here as the bars are, back into the count and counted as come
          back (their XP was paid when they went in: _gemSetXp). */
       gemsBack = typeof this._extractableGems === 'function' ? this._extractableGems(at.w, 'weapon') : [];
-      if (gemsBack.length) {
-        if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
-        if (!ps.lifeSkills.gems || typeof ps.lifeSkills.gems !== 'object') ps.lifeSkills.gems = {};
-        for (const key of gemsBack) {
-          ps.lifeSkills.gems[key] = Math.floor(Number(ps.lifeSkills.gems[key]) || 0) + 1;
-          this._gemBackAdd(ps, key.slice('polished_'.length));
-        }
-      }
+      /* v2.3.3515: into the bag (gems.js), as Take out's -- and owed no XP:
+         only a gem a player makes is (weapongem.js "THE XP, ONCE A GEM") */
+      for (const key of gemsBack) gemGive(ps, key.slice('polished_'.length), false, 1);
     } else if (hasOwn(ARMOUR_FIELDS, field)) {
       const at = this._salvageArmourOf(pid, field, payload);
       if (!at.piece) return refuse(at.reason, { gid: payload && typeof payload.gid === 'string' ? payload.gid.slice(0, 40) : null });
@@ -261,7 +258,9 @@ export const salvageMethods = {
       ps.inventory[essence] = Math.floor(Number(ps.inventory[essence]) || 0) + 1;
     }
     this._saveRpg(pid, ps);
-    const result = { ok: true, field, ...ref, bar, bars: SALVAGE.BARS, essence, grade, metal, ...(gemsBack.length ? { gems: gemsBack } : null) };   /* v2.3.3513: + the gems it gave back */
+    /* v2.3.3513: + the gems it gave back -- v2.3.3515: by their bag keys
+       (`gem_<element>`, gems.js), what the bag now holds */
+    const result = { ok: true, field, ...ref, bar, bars: SALVAGE.BARS, essence, grade, metal, ...(gemsBack.length ? { gems: gemsBack.map((k) => 'gem_' + k.slice('polished_'.length)) } : null) };
     this._salvageSend(pid, 'smith_salvage_result', result, true);
     return result;
   },

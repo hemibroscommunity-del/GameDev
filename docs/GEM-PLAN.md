@@ -11,7 +11,7 @@
 > raw gem. Like maybe a 10% chance. Then after collecting a certain number of
 > raw gems they can be combined into an elemental gem."*
 
-**This is a plan. Nothing in it is built yet.** It comes from reading the
+**This is a plan; Phases 1 and 2 are built (below).** It comes from reading the
 game's code, and each fact names the file it comes from. The loop is the
 owner's (the second quote above). Every remaining choice had a
 recommendation, listed under "Your decisions" near the end, and **the owner
@@ -23,6 +23,24 @@ hit reads it from there, plus the hold rule. What was built and where it went
 beyond this plan (each gem pays its XP once, the Element Burst button stands
 aside under a window, a sell order lists the gems its weapon holds, no phone
 copy of the hold): docs/specs/weapon-gems.md.
+
+**Phase 2 is built (v2.3.3515):** shards are cracked at the Gem Works, three
+raw gems combine into a gem, a Rare Gem cuts into any of the eight, and gems
+are bag items. Where it differs from this plan, each explained in
+docs/specs/shard-crack.md:
+- **The pouch moves into the bag at the join** instead of through a registry
+  migration. The join's own capture writes the pouch after a migration would
+  have run, and a migration would make a rollback refuse every character
+  saved since.
+- **The 400 Enchanting XP is for gems you made.** Each combine or Rare Gem cut
+  is owed one set's XP. Counting the gems that came back stopped working once
+  gems trade: two players could pass one gem back and forth and be paid every
+  round.
+- **A death keeps gems.** Only No man's land's whole-bag loss takes them, as
+  this plan says.
+- **The Rare Gem is worth an elemental gem at Diego's** (4,000, was 20).
+- **The crack plays under the row you tapped.** Below eight lands' rows it was
+  off the screen.
 
 ## The short answer
 

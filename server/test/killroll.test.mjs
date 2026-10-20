@@ -31,6 +31,11 @@
  *   9. THE TEST LEVER: /dev/killroll's `next` is the next kill's roll.
  *  10. THE CHANCES: over 300,000 rolls each drop comes up as often as its
  *      chance says.
+ *  11. v2.3.3515 -- SHARDS ARE CRACKED FOR RAW GEMS (shardcrack.js; the gem
+ *      plan's decision 1): with the crack on (the default) no monster has a
+ *      raw gem on its roll, every shard is at 112-1,111, and no roll puts a
+ *      raw gem in a bag.  §1-§10 are the roll as it is with the crack's kill
+ *      switch thrown (`shardcrack: false`), which brings the raw gem back.
  */
 import { GameRoom } from '../src/index.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
@@ -74,6 +79,9 @@ const withRandom = (vals, fn) => {
 
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
+/* v2.3.3515: §1-§10 with the raw gem on the roll -- the crack's kill switch
+   (shardcrack.js); §11 takes it off */
+room._liveFlags = Object.assign(Object.create(null), { shardcrack: false });
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 async function join(ws, id) {
   room.sessions.set(ws, baseSession());
@@ -103,7 +111,12 @@ function kill(m, contribs, killerId, roll) {
   const list = room.loot[WHEEL_ZONE] || [];
   return list.length > before ? list[list.length - 1] : null;
 }
-const gems = (ps, k) => ((ps.lifeSkills && ps.lifeSkills.gems && ps.lifeSkills.gems[k]) || 0);
+/* v2.3.3515: gems live in the BAG (gems.js): `raw_<e>` is `gem_raw_<e>` there
+   (and any the old pouch still holds) */
+const gems = (ps, k) => {
+  const bag = k.startsWith('raw_') ? 'gem_raw_' + k.slice(4) : 'gem_' + k.slice(9);
+  return ((ps.inventory && ps.inventory[bag]) || 0) + ((ps.lifeSkills && ps.lifeSkills.gems && ps.lifeSkills.gems[k]) || 0);
+};
 /* what one kill dropped of the seven, by the codex's ids */
 function dropped(pile, ps, gemKey, nug0, gem0) {
   const out = [];
@@ -340,6 +353,59 @@ const C = await join(wsC, 'bp_kr_c');
   }
   check('over 300,000 rolls each drop comes up at its chance (within five standard deviations), and about 84% drop nothing more',
     off.length === 0 && Math.abs(none / N - (1 - 0.1611)) < 0.005, { off, none: none / N });
+}
+
+// ── 11. v2.3.3515: THE CRACK'S ROLL -- no raw gem off a kill ────────────────
+{
+  delete room._liveFlags.shardcrack;              /* the default: shards are cracked */
+  check('with the crack on, a frost monster has its shard and NO raw gem; the blue slime the same',
+    JSON.stringify(room._killRollCan(WHEEL_ZONE, snow)) === JSON.stringify({ shard: true, rawgem: false })
+      && JSON.stringify(room._killRollCan(WHEEL_ZONE, ofHome('verdant'))) === JSON.stringify({ shard: true, rawgem: false }),
+    { snow: room._killRollCan(WHEEL_ZONE, snow), slime: room._killRollCan(WHEEL_ZONE, ofHome('verdant')) });
+  /* the snowman's numbers are the blue slime's now: the shard 112-1,111 */
+  const off = [];
+  for (const [roll, want] of [[62, 'raregem'], [111, 'raregem'], [112, 'shard'], [611, 'shard'], [612, 'shard'], [1111, 'shard'], [1112, null], [1611, null]]) {
+    standBy(A, snow);
+    const nug0 = A.goldNuggets || 0, gem0 = gems(A, 'raw_frost');
+    wsA.sent.length = 0;
+    const pile = kill(snow, { bp_kr_a: snow.maxHp }, 'bp_kr_a', roll);
+    const got = dropped(pile, A, 'raw_frost', nug0, gem0);
+    const c = last(wsA, 'combat_credit');
+    const okDrop = want ? (got.length === 1 && got[0] === want) : got.length === 0;
+    const okWire = !!c && c.roll === roll && (want ? c.rh === want : !('rh' in c));
+    if (!okDrop || !okWire) off.push({ roll, want, got, credit: c && { roll: c.roll, rh: c.rh } });
+  }
+  check('...a snowman\'s shard is 112-1,111 (where the raw gem began), 1,112 drops nothing, and no roll puts a raw gem in the bag',
+    off.length === 0, off);
+  /* the roll-it-yourself road (the kill roll's own switch, or an old caller):
+     a sure hit pays no raw gem either */
+  const t = { lifeSkills: {}, inventory: {} };
+  room._gemRawOnKill(t, 'frost', true);
+  check('...and _gemRawOnKill pays none even on a sure hit (the old road off a kill)',
+    gems(t, 'raw_frost') === 0 && Object.keys(t.inventory).length === 0, t);
+  standBy(A, snow);
+  revive(snow);
+  wsA.sent.length = 0;
+  const r = room._killRollDev('bp_kr_a', { next: 640, kill: snow.id });
+  const c = last(wsA, 'combat_credit');
+  check('/dev/killroll {next: 640, kill}: still the Frost Shard, with six drops on the layout',
+    r.ok && c && c.roll === 640 && c.rh === 'shard' && Array.isArray(r.layout) && r.layout.length === 6 && !r.layout.some((l) => l.id === 'rawgem'), { r, c });
+  const N = 300000;
+  const count = Object.create(null);
+  let none = 0;
+  for (let i = 0; i < N; i++) {
+    const kr = room._killRollFor(WHEEL_ZONE, snow, 'bp_kr_a');
+    if (kr.hit) count[kr.hit] = (count[kr.hit] || 0) + 1; else none++;
+  }
+  const NOGEM_IDS = NOGEM.map((l) => l.id);
+  const offc = [];
+  for (const id of NOGEM_IDS) {
+    const p = KILL_ROLL_CHANCES[id];
+    const sd = Math.sqrt(N * p * (1 - p));
+    if (Math.abs((count[id] || 0) - N * p) > 5 * sd + 2) offc.push({ id, got: count[id] || 0, want: N * p });
+  }
+  check('over 300,000 rolls: no raw gem ever, every other drop at its chance, and about 89% drop nothing more',
+    offc.length === 0 && !count.rawgem && Math.abs(none / N - (1 - 0.1111)) < 0.005, { offc, raw: count.rawgem || 0, none: none / N });
 }
 
 await flush();

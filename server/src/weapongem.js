@@ -49,9 +49,22 @@
  * weapon, an amulet or a shield (GEM_SET_XP).  A gem that came back out (Take
  * out, a salvaged weapon) goes back into the count, so without a rule set,
  * take out, set again would buy Enchanting levels with gold -- and Enchanting
- * is on the leaderboard and the chain score.  So the gems that came back are
- * counted (`lifeSkills.gemsBack`, by element), and setting one of those pays
- * nothing: each gem pays its XP once, the first time it goes in.
+ * is on the leaderboard and the chain score.  v2.3.3513 counted the gems that
+ * came back (`lifeSkills.gemsBack`) and paid nothing for setting one of those.
+ *
+ * v2.3.3515: THE XP IS FOR GEMS YOU MADE.  Gems are bag items now (gems.js),
+ * so they trade -- and a count of the gems that came back to ME says nothing
+ * of a gem that came back to someone else and was handed to me: two players
+ * passing one gem (or one gemmed sword) back and forth would each be paid 400
+ * a round.  So the XP is counted the other way round, by what cannot change
+ * hands: each gem a player MAKES -- a combine, a Rare Gem's cut, the old cut
+ * (shardcrack.js, amulet.js) -- is one owed (`lifeSkills.gemsUnpaid`, by
+ * element), and setting a gem of that element pays the 400 while one is owed.
+ * A gem bought, traded, won, picked up or taken out sets the same, and pays
+ * nothing: every gem still pays its XP once, to the player who made it.  The
+ * old pouch's polished gems were all made by their owner (it never traded),
+ * so the move into the bag owes each of them, less the ones that came back
+ * (amulet.js _gemsAdoptOnJoin).
  *
  * ONLY THE PALETTE (data.js WEAPON_GEMS): the eight lands' elements.  Dark and
  * Light are the realms', not built.
@@ -68,11 +81,16 @@
  * by _tickMonsters). */
 import { WEAPON_GEMS, GEM_SET_XP, BLACKSMITH_TIERS, WOODWORKING_TIERS, BLACKSMITH_TIER_LABELS, WOODWORKING_TIER_LABELS, WEAPON_TYPE_LABELS } from './data.js';
 import { ELEMENT_STATUS } from './elemental.js';
+import { GEM_ELEMENTS, gemCount, gemTake } from './gems.js'; /* v2.3.3515: gems live in the bag */
 
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 export const WEAPON_GEM = Object.freeze({
   XP: GEM_SET_XP,
+  /* v2.3.3515: the most gems of one element a player may be owed the XP for
+     (`lifeSkills.gemsUnpaid`) -- far past any player's making; a bound on a
+     stored number, healed to at the join */
+  UNPAID_MAX: 100000,
   /* the second slot's Enchanting level (EnchantPanel's canAddSecond) */
   SECOND_SLOT_LVL: 20,
   SLOTS: Object.freeze(['weapon', 'rangedWeapon', 'staffWeapon']),
@@ -173,45 +191,42 @@ export const weaponGemMethods = {
     if (withState) this._sendPlayerState(ws, pid);
   },
 
-  /* ═══ THE GEMS THAT CAME BACK (see "THE XP, ONCE A GEM" above) ═══
-     `lifeSkills.gemsBack` -- a count by element, kept with the gem count
-     itself (persisted with lifeSkills, healed at the join with it:
-     amulet.js _gemsAdoptOnJoin).  A null-prototype read on the way in: the
-     keys are elements, never a client's. */
-  _gemsBackOf(ps, create) {
+  /* ═══ THE GEMS A PLAYER MADE (see "THE XP, ONCE A GEM" above) ═══
+     `lifeSkills.gemsUnpaid` -- by element, the gems this player made whose
+     Enchanting XP is still to come.  Persisted with lifeSkills, healed at the
+     join (amulet.js _gemsAdoptOnJoin).  Always an object once made: the page
+     merges lifeSkills a key at a time and never drops one the worker left
+     out, so an emptied map is sent as {} (wsClient). */
+  _gemsUnpaidOf(ps, create) {
+    if (!ps) return null;
     if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') {
       if (!create) return null;
       ps.lifeSkills = {};
     }
-    const b = ps.lifeSkills.gemsBack;
-    if (b && typeof b === 'object' && !Array.isArray(b)) return b;
+    const u = ps.lifeSkills.gemsUnpaid;
+    if (u && typeof u === 'object' && !Array.isArray(u)) return u;
     if (!create) return null;
-    ps.lifeSkills.gemsBack = {};
-    return ps.lifeSkills.gemsBack;
+    ps.lifeSkills.gemsUnpaid = {};
+    return ps.lifeSkills.gemsUnpaid;
   },
 
-  /* a gem of `element` came back into the count (a take-out, a salvage) */
-  _gemBackAdd(ps, element) {
-    if (typeof element !== 'string' || !hasOwn(ELEMENT_STATUS, element)) return;
-    const b = this._gemsBackOf(ps, true);
-    b[element] = Math.floor(Number(hasOwn(b, element) ? b[element] : 0) || 0) + 1;
+  /* `n` gems of `element` were just MADE by this player (a combine, a Rare
+     Gem's cut, the old cut): each one's set will pay its XP */
+  _gemMade(ps, element, n = 1) {
+    const add = Math.floor(Number(n) || 0);
+    if (add < 1 || !GEM_ELEMENTS.has(element)) return;
+    const u = this._gemsUnpaidOf(ps, true);
+    u[element] = Math.min(WEAPON_GEM.UNPAID_MAX, Math.floor(Number(hasOwn(u, element) ? u[element] : 0) || 0) + add);
   },
 
-  /* A gem of `element` was just set (the count already debited, `had` the
-     count before).  Pays GEM_SET_XP Enchanting XP -- unless it is one that
-     came back, which paid when it first went in: then nothing, and one fewer
-     is counted.  Never more counted than were held (a count that ran ahead of
-     the gems, by any road, costs at most the XP of gems it names). */
-  _gemSetXp(ps, element, had) {
-    const b = this._gemsBackOf(ps, false);
-    if (b && hasOwn(b, element)) {
-      const back = Math.min(Math.floor(Number(b[element]) || 0), Math.max(0, Math.floor(Number(had) || 0)));
-      if (back > 0) {
-        if (back - 1 > 0) b[element] = back - 1; else delete b[element];
-        return { xp: 0, leveled: false, newLevel: null, fromLevel: null };
-      }
-      delete b[element];
-    }
+  /* A gem of `element` was just set.  Pays GEM_SET_XP Enchanting XP while
+     the player has made one of that element not yet paid for -- and counts it
+     paid -- else nothing (a gem bought, traded, won or taken out). */
+  _gemSetXp(ps, element) {
+    const u = this._gemsUnpaidOf(ps, false);
+    const owed = u && hasOwn(u, element) ? Math.floor(Number(u[element]) || 0) : 0;
+    if (owed < 1) return { xp: 0, leveled: false, newLevel: null, fromLevel: null };
+    if (owed - 1 > 0) u[element] = owed - 1; else delete u[element];
     const sk = ps.lifeSkills && ps.lifeSkills.enchanting;
     const fromLevel = sk && typeof sk === 'object' ? (Number(sk.level) || 1) : 1;
     const r = this._addLifeSkillXp(ps, 'enchanting', WEAPON_GEM.XP);
@@ -256,14 +271,12 @@ export const weaponGemMethods = {
       if (gem === e1) return refuse('same');
       if (isVolatilePair(e1, gem) && WEAPON_GEM.FUSION_BASES.indexOf(w.gearBase) < 0) return refuse('volatile');
     }
-    const gems = ps.lifeSkills && typeof ps.lifeSkills === 'object' && ps.lifeSkills.gems && typeof ps.lifeSkills.gems === 'object'
-      ? ps.lifeSkills.gems : null;
-    const key = 'polished_' + gem;
-    const have = gems && hasOwn(gems, key) ? Math.floor(Number(gems[key]) || 0) : 0;
+    /* v2.3.3515: an elemental gem from the bag (gems.js: the bag, then any
+       the old pouch still holds) */
+    const have = gemCount(ps, gem, false);
     if (have < 1) return refuse('no_gem');
 
-    gems[key] = have - 1;
-    if (gems[key] <= 0) delete gems[key];
+    gemTake(ps, gem, false, 1);
     if (!e1) {
       w.element1 = gem;
       w.tier = 'elemental';
@@ -273,7 +286,7 @@ export const weaponGemMethods = {
     }
     w.isVolatile = !!(w.element1 && w.element2 && isVolatilePair(w.element1, w.element2));
     w.name = weaponGemName(w);
-    const x = this._gemSetXp(ps, gem, have);
+    const x = this._gemSetXp(ps, gem);
     this._saveRpg(pid, ps);
     const r = {
       ok: true, slot, gem, name: w.name,

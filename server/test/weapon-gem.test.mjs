@@ -18,11 +18,13 @@
  *      special's element, no gem no element; `weapongem: false` puts the
  *      claim back.
  *   8. What a real gem switches on: the Element Burst, the flame amulet.
- *   9. Take out gives it back, counted as come back: set again pays no XP;
- *      a salvaged weapon gives its gem back too.
+ *   9. Take out gives it back, owed no XP: set again pays none; a salvaged
+ *      weapon gives its gem back too.  (v2.3.3515: the XP is for gems a
+ *      player MADE -- 9b: one gem passed between two players pays once.)
  *  10. The sanitizer: elements are status-table own keys, a lone second
  *      moves up, a pair is not twice one element, isVolatile is the pair's;
- *      an old drop's gems stay.  The come-back count is healed at the join.
+ *      an old drop's gems stay.  v2.3.3515: the join moves an old pouch into
+ *      the bag and owes its polished gems their XP, less those come back.
  *  11. A sell order lists the gems its weapon really holds.
  *  12. The hold rule: 1.5 s stopped, then chilled (freeze) or walking
  *      (root), not again for 3 s, half for a boss; the tick reads it; the
@@ -85,8 +87,36 @@ const PID = 'bp_weapongem_a';
 let ws = fakeWs();
 await join(ws, PID);
 const ps = () => room.playerState[PID];
-const gems = () => ((ps().lifeSkills || {}).gems || {});
-const setGems = (g) => { ps().lifeSkills = ps().lifeSkills || {}; ps().lifeSkills.gems = { ...g }; };
+/* v2.3.3515: gems live in the BAG (gems.js: `gem_raw_<e>`, `gem_<e>`); these
+   checks read and set them in the old pouch's names -- the bag and any pouch
+   left, as `raw_<e>` / `polished_<e>` */
+const gemsOf = (p) => {
+  const out = {};
+  const add = (k, n) => { n = Math.floor(Number(n) || 0); if (n > 0) out[k] = (out[k] || 0) + n; };
+  const inv = (p && p.inventory) || {};
+  for (const k of Object.keys(inv)) {
+    if (k.startsWith('gem_raw_')) add('raw_' + k.slice(8), inv[k]);
+    else if (k.startsWith('gem_')) add('polished_' + k.slice(4), inv[k]);
+  }
+  const pouch = (p && p.lifeSkills && p.lifeSkills.gems) || {};
+  for (const k of Object.keys(pouch)) add(k, pouch[k]);
+  return out;
+};
+const gems = () => gemsOf(ps());
+const setGems = (g) => {
+  const p = ps();
+  if (!p.inventory || typeof p.inventory !== 'object') p.inventory = {};
+  for (const k of Object.keys(p.inventory)) if (k.startsWith('gem_')) delete p.inventory[k];
+  p.lifeSkills = p.lifeSkills || {};
+  p.lifeSkills.gems = {};
+  /* ...and the cut ones stand for gems the player MADE: owed their XP
+     (weapongem.js "THE XP, ONCE A GEM", v2.3.3515) */
+  p.lifeSkills.gemsUnpaid = {};
+  for (const k of Object.keys(g)) {
+    if (k.startsWith('raw_')) p.inventory['gem_raw_' + k.slice(4)] = g[k];
+    else if (k.startsWith('polished_')) { p.inventory['gem_' + k.slice(9)] = g[k]; p.lifeSkills.gemsUnpaid[k.slice(9)] = g[k]; }
+  }
+};
 const ench = () => { const e = (ps().lifeSkills || {}).enchanting; return e && typeof e === 'object' ? e : { level: 1, xp: 0 }; };
 const enchTotal = () => { const e = ench(); return (e.xp || 0) + 1e6 * ((e.level || 1) - 1); };
 const copperSword = (extra) => ({ type: 'greatsword', tier: 'common', tierMult: 1.12, element1: null, element2: null, isVolatile: false, name: 'copper greatsword', gearBase: 'copper', reforgeBonus: null, hardenBonus: null, quality: 'normal', hardness: 0, temper: 0, ...(extra || {}) });
@@ -131,7 +161,7 @@ const ask = async (payload) => {
   check('...and that player_state carries the gemmed weapon', !!pst && pst.payload.weapon && pst.payload.weapon.element1 === 'flame', pst && pst.payload.weapon);
   const stored = state._store.get('rpg:' + PID);
   check('...saved before the answer: the stored weapon has the gem, the stored count is one', !!stored && stored.weapon && stored.weapon.element1 === 'flame'
-    && stored.lifeSkills && stored.lifeSkills.gems && stored.lifeSkills.gems.polished_flame === 1, stored && { w: stored.weapon, gems: stored.lifeSkills && stored.lifeSkills.gems });
+    && gemsOf(stored).polished_flame === 1, stored && { w: stored.weapon, gems: gemsOf(stored) });
   /* a level: the receipt carries what the game celebrates */
   ps().rangedWeapon = { type: 'bow', tier: 'common', tierMult: 1, gearBase: 'ww_pine', name: 'pine bow', element1: null, element2: null };
   setGems({ polished_frost: 1 });
@@ -303,12 +333,11 @@ const hit = async (m, extra) => {
   check('the flame amulet\'s bonus counts on a weapon with a gem (it never did on a phone-only gem)', gemmed > plain, { plain, gemmed });
 }
 
-// ── 9. Take out gives it back, counted as come back ──
+// ── 9. Take out gives it back, owed no XP (v2.3.3515: the XP is for gems you made) ──
 {
   ps().weapon = copperSword();
   setGems({ polished_flame: 1 });
   ps().lifeSkills.enchanting = { level: 1, xp: 0 };
-  delete ps().lifeSkills.gemsBack;
   let r = await ask({ slot: 'weapon', gem: 'flame' });
   check('(set: 400 XP)', !!r && r.ok && r.xp === 400, r);
   ps().coins = 5000;
@@ -318,11 +347,11 @@ const hit = async (m, extra) => {
   check('Take out gives the gem back to the count', gems().polished_flame === 1, gems());
   check('...for the Blacksmith\'s price (the tierMult x the base)', c0 - ps().coins === Math.ceil(GEM_EXTRACT_BASE_COST * 1.12), c0 - ps().coins);
   check('...the weapon bare again, common, its plain name', !ps().weapon.element1 && ps().weapon.tier === 'common' && ps().weapon.name === 'Copper Great Sword', ps().weapon);
-  check('...and the gem counted as come back', (ps().lifeSkills.gemsBack || {}).flame === 1, ps().lifeSkills.gemsBack);
+  check('...and owed no XP (the set spent the one made; a gem taken out adds none)', !((ps().lifeSkills.gemsUnpaid || {}).flame), ps().lifeSkills.gemsUnpaid);
   const x0 = enchTotal();
   r = await ask({ slot: 'weapon', gem: 'flame' });
   check('setting it again pays NO XP (it paid when it first went in; take out and set again must not buy levels with gold)',
-    !!r && r.ok && r.xp === 0 && enchTotal() === x0 && !(ps().lifeSkills.gemsBack && ps().lifeSkills.gemsBack.flame), { r, xp: enchTotal() - x0, back: ps().lifeSkills.gemsBack });
+    !!r && r.ok && r.xp === 0 && enchTotal() === x0, { r, xp: enchTotal() - x0, owed: ps().lifeSkills.gemsUnpaid });
   setGems({ polished_flame: 1 });
   ps().weapon = copperSword();
   r = await ask({ slot: 'weapon', gem: 'flame' });
@@ -337,8 +366,54 @@ const hit = async (m, extra) => {
   await room.webSocketMessage(ws, JSON.stringify({ type: 'smith_salvage', payload: { field: 'weaponStash', idx: 0, sig: weaponSig(ps().weaponStash[0]) } }));
   const sr = (ws.sent.find((m) => m.type === 'smith_salvage_result') || {}).payload;
   check('salvaging a gemmed sword gives its bars AND its gem back', !!sr && sr.ok && (ps().inventory.bar_copper || 0) === bars0 + 2 && gems().polished_stone === 1
-    && Array.isArray(sr.gems) && sr.gems[0] === 'polished_stone', { sr, gems: gems() });
-  check('...counted as come back', (ps().lifeSkills.gemsBack || {}).stone === 1, ps().lifeSkills.gemsBack);
+    && Array.isArray(sr.gems) && sr.gems[0] === 'gem_stone', { sr, gems: gems() });
+  check('...owed no XP (a gem out of a salvage was set before)', !((ps().lifeSkills.gemsUnpaid || {}).stone), ps().lifeSkills.gemsUnpaid);
+}
+
+// ── 9b. v2.3.3515: ONE GEM PASSED BETWEEN TWO PLAYERS PAYS ONCE ──
+// Gems trade now (they are bag items), and the v2.3.3513 rule counted only
+// the gems that came back to a player: a gem taken out by one player and
+// handed to another was a "new" gem there -- two players passing one gem (or
+// one gemmed sword) back and forth were paid 400 a round.  The XP is owed by
+// what cannot change hands: the gems a player MADE.
+{
+  const PB = 'bp_wgem_b';
+  let wsb = fakeWs();
+  await join(wsb, PB);
+  const pb = () => room.playerState[PB];
+  const askAs = async (sock, payload) => {
+    sock.sent.length = 0;
+    await room.webSocketMessage(sock, JSON.stringify({ type: 'weapon_gem', payload }));
+    const m = sock.sent.filter((x) => x.type === 'weapon_gem_result');
+    return m.length ? m[m.length - 1].payload : null;
+  };
+  ps().weapon = copperSword();
+  setGems({ polished_venom: 1 });                     /* A made one venom gem */
+  pb().weapon = copperSword();
+  pb().inventory = {};
+  pb().lifeSkills.gemsUnpaid = {};
+  pb().coins = 5000; ps().coins = 5000;
+  const a1 = await ask({ slot: 'weapon', gem: 'venom' });
+  /* A's sword goes to B (a trade); B takes the gem out; the gem goes back to A */
+  pb().weapon = ps().weapon; ps().weapon = copperSword();
+  await room.webSocketMessage(wsb, JSON.stringify({ type: 'amulet_forge_request', payload: { op: 'extract', target: 'weapon' } }));
+  const bHas = (pb().inventory || {}).gem_venom === 1;
+  delete pb().inventory.gem_venom; ps().inventory.gem_venom = 1;
+  const a2 = await ask({ slot: 'weapon', gem: 'venom' });
+  /* and the other way: A takes it out, hands the bare gem to B, B sets it */
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'amulet_forge_request', payload: { op: 'extract', target: 'weapon' } }));
+  delete ps().inventory.gem_venom; pb().inventory.gem_venom = 1;
+  pb().weapon = copperSword();
+  const b1 = await askAs(wsb, { slot: 'weapon', gem: 'venom' });
+  check('one gem passed between two players pays its 400 once: A\'s first set 400, A again after B took it out 0, B setting the gem A handed over 0',
+    bHas && !!a1 && a1.ok && a1.xp === 400 && !!a2 && a2.ok && a2.xp === 0 && !!b1 && b1.ok && b1.xp === 0, { bHas, a1: a1 && a1.xp, a2: a2 && a2.xp, b1: b1 && b1.xp });
+  /* B makes a gem of its own: three raw gems combined -- that one pays */
+  pb().inventory.gem_raw_venom = 3;
+  pb().weapon = copperSword();
+  await room.webSocketMessage(wsb, JSON.stringify({ type: 'gem_combine', payload: { element: 'venom' } }));
+  const b2 = await askAs(wsb, { slot: 'weapon', gem: 'venom' });
+  check('...while a gem B made itself (three raw gems combined) pays B its 400',
+    !!b2 && b2.ok && b2.xp === 400 && !((pb().lifeSkills.gemsUnpaid || {}).venom), { b2, owed: pb().lifeSkills.gemsUnpaid });
 }
 
 // ── 10. The sanitizer; the come-back count at the join ──
@@ -355,15 +430,30 @@ const hit = async (m, extra) => {
   const drop = s({ type: 'sword', tier: 'fusion', tierMult: 2.25, element1: 'frost', element2: 'storm', name: 'Froststorm Sword', isVolatile: true });
   check('an old server drop\'s gems stay (frost + storm, volatile)', drop.element1 === 'frost' && drop.element2 === 'storm' && drop.isVolatile === true && drop.tierMult === 2.25, drop);
   check('a weapon with no element fields gets none added', !('element1' in s({ type: 'sword', tierMult: 1, name: 'x' })));
-  /* the join heals the come-back count: own elements only, never more than held */
-  ps().lifeSkills.gems = { polished_flame: 2, polished_frost: 1 };
-  ps().lifeSkills.gemsBack = { flame: 9, frost: 1, venom: 3, __proto__: 4, plasma: 2 };
+  /* v2.3.3515: an OLD pouch (a record from before this version) at the join:
+     every gem into the bag, and each polished one owed its XP -- the pouch
+     never traded, so its owner made them -- less the ones v2.3.3513 counted
+     as come back (they paid going in) */
+  setGems({});
+  ps().lifeSkills.gems = { polished_flame: 3, polished_frost: 1, raw_storm: 2, polished_water: 2 };
+  ps().lifeSkills.gemsBack = { flame: 1, frost: 4, venom: 3 };
+  ps().lifeSkills.gemsUnpaid = { stone: 2, plasma: 2, __proto__: 4, wind: -1, water: 'x' };
   await room._saveRpg(PID, ps());
   ws = fakeWs();
   await join(ws, PID);
-  const gb = ps().lifeSkills.gemsBack || {};
-  check('the join heals the come-back count: at most the gems held, elements only', gb.flame === 2 && gb.frost === 1 && !('venom' in gb) && !('plasma' in gb)
-    && Object.keys(gb).length === 2, gb);
+  const owed = ps().lifeSkills.gemsUnpaid || {};
+  check('the join moves an old pouch into the bag, one for one, raw and cut', ps().inventory.gem_flame === 3 && ps().inventory.gem_frost === 1
+    && ps().inventory.gem_raw_storm === 2 && ps().inventory.gem_water === 2 && Object.keys(ps().lifeSkills.gems || {}).length === 0, { inv: ps().inventory, pouch: ps().lifeSkills.gems });
+  check('...owes each polished gem its XP, less the ones that came back (flame 3-1, water 2, frost 1-4 none; raw ones when combined)',
+    owed.flame === 2 && owed.water === 2 && !('frost' in owed) && !('storm' in owed), owed);
+  check('...keeps what was already owed, and heals the rest: own elements only, whole numbers of 1 or more',
+    owed.stone === 2 && !('plasma' in owed) && !('wind' in owed) && !Object.prototype.hasOwnProperty.call(owed, '__proto__') && Object.keys(owed).length === 3, owed);
+  check('...and the came-back count goes with the move', !('gemsBack' in ps().lifeSkills), ps().lifeSkills.gemsBack);
+  const ws2 = fakeWs();
+  await join(ws2, PID);
+  check('a second join moves and owes nothing more (the pouch is empty)', JSON.stringify(ps().lifeSkills.gemsUnpaid) === JSON.stringify(owed) && ps().inventory.gem_flame === 3,
+    { owed: ps().lifeSkills.gemsUnpaid, inv: ps().inventory });
+  ws = ws2;
 }
 
 // ── 11. A sell order lists the gems its weapon holds ──
