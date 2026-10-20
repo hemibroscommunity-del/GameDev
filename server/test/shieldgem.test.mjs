@@ -9,7 +9,7 @@
  *      privileged.
  *   2. A shield the worker made, on the arm: one polished gem taken from the
  *      worker's own count, the gem in, the shield renamed as the game names
- *      it, 20 Enchanting XP, a player_state after the receipt, the ledger
+ *      it, 400 Enchanting XP (v2.3.3513; 20 before), a player_state after the receipt, the ledger
  *      row following.
  *   3. It lasts: a reconnect keeps the gem, a claim of the same id is
  *      rebuilt WITH it, and the Blacksmith's Take out gives it back.
@@ -97,7 +97,8 @@ const mintShield = (extra) => room._gearProvRecord(PID, 'shield', { tier: 'commo
   check('caps.shieldgem is advertised', !!sync && sync.caps.shieldgem === true, sync && sync.caps.shieldgem);
   check('...under a name the liveflags route accepts (lower case: a kill switch)', LIVEOPS.FLAG_NAME_RE.test('shieldgem'));
   check('the receipt is privileged (a client cannot forge it on another screen)', PRIVILEGED_EVENTS.has('shield_gem_result'));
-  check('one slot pays the game\'s 20 Enchanting XP', SHIELD_GEM.XP === 20);
+  /* v2.3.3513: GEM_SET_XP, 400 -- the owner's decision 11 (docs/GEM-PLAN.md), was the game's 20 */
+  check('one slot pays 400 Enchanting XP (GEM_SET_XP, the owner\'s decision 11)', SHIELD_GEM.XP === 400);
 }
 
 // ── 2. A shield the worker made, on the arm ──
@@ -113,7 +114,7 @@ let P;
   check('...the worker\'s shield holds the gem', ps().shield.gem === 'flame');
   check('...renamed as the game names it ("Wood Flame Shield")', ps().shield.name === 'Wood Flame Shield' && r.name === 'Wood Flame Shield', ps().shield.name);
   check('...it is still the shield the worker made (same id, proven)', ps().shield.gid === P.gid && ps().shield.prov === 'minted');
-  check('...20 Enchanting XP', enchXp() - xp0 === 20, enchXp() - xp0);
+  check('...400 Enchanting XP (v2.3.3513), and the receipt says so', enchXp() - xp0 === 400 && r.xp === 400, { got: enchXp() - xp0, r: r && r.xp });
   check('...the ledger row follows (a rebuild from it keeps the gem)', !!rowOf(P.gid) && rowOf(P.gid).p.gem === 'flame' && rowOf(P.gid).p.name === 'Wood Flame Shield', rowOf(P.gid) && rowOf(P.gid).p);
   check('...a player_state follows the receipt (the gem count and the XP)',
     ws.sent.findIndex((m) => m.type === 'player_state') > ws.sent.findIndex((m) => m.type === 'shield_gem_result'));

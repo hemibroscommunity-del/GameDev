@@ -51,6 +51,22 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/MEMORY-PLAN.md` (what the phone holds -- sound, canvases, heaps, not
   only textures -- what leaked, and the order of the memory work with each
   item's status, v2.3.3075; `mp-memledger` measures it),
+  `docs/GEM-PLAN.md` (shards into gems, gems into weapons: what the code does
+  today -- a weapon's gem is the phone's alone, shards make nothing -- and the
+  owner's loop at the Gem Works: a cracked shard holds its land's raw gem 1
+  time in 10, three raw gems combine into an elemental gem, the server keeps
+  it in the weapon; 15 decisions, every recommended answer taken by the owner
+  on 2026-10-20 ("All of that sounds good"), and five phases, a PR each,
+  v2.3.3504; Phase 1 BUILT in v2.3.3513: the worker keeps a weapon's gem
+  (`weapon_gem {slot, gem}`, server/src/weapongem.js, caps.weapongem, kill
+  switch `weapongem: false`) and EVERY HIT'S ELEMENT IS ITS COPY'S, never the
+  claim's (`_weaponHitElement`; a test sets a gem with `H.weaponGem`, TRAPS
+  §240), 400 Enchanting XP a gem set once a gem (`lifeSkills.gemsBack`), Take
+  out on the Set gems tab, a salvaged weapon's gems back, and THE HOLD RULE: a
+  freeze or root stops a monster 1.5 s (a boss half), then not again for 3 s,
+  a frozen one chilled after (elemental.js `HOLD`, caps.monsterhold, kill
+  switch `monsterhold: false`); `weapon-gem` suite, `mp-weapongem`:
+  docs/specs/weapon-gems.md),
   `docs/FUN-SOCIAL-PLAN.md` (the owner's fun & social plan checked against
   the code, v2.3.3391 -- "Go recommended": emotes and dances that move the bro
   in code, two-player moves, farm-made toys, a playground town; its rules: a

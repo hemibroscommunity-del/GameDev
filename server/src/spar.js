@@ -379,7 +379,11 @@ export const sparMethods = {
     const mine = ownerPs[W.slot] && typeof ownerPs[W.slot] === 'object' ? JSON.parse(JSON.stringify(ownerPs[W.slot])) : null;
     const wpn = mine || this._sparStarterWeapon(weapon);
     const look0 = this._sparOwnerLook(ownerId, ownerPs);
-    if (look0.wpnType && this._sparCatOf(look0.wpnType) === W.cat) {
+    /* v2.3.3513: with weapon gems on the worker (weapongem.js) its copy above
+       already holds the gem -- the look's word for it is only the page's, so
+       it is read only with `weapongem: false`, as before */
+    if ((typeof this._weaponGemOff !== 'function' || this._weaponGemOff())
+      && look0.wpnType && this._sparCatOf(look0.wpnType) === W.cat) {
       if (look0.wpnE1 !== undefined) wpn.element1 = look0.wpnE1 || null;
       if (look0.wpnE2 !== undefined) wpn.element2 = look0.wpnE2 || null;
     }

@@ -7982,3 +7982,29 @@ shot at nothing, at a prop, or steered off its target keeps the parallel line.
 **Receipt:** `mp-groundline`, which fails on the build before it and passes
 with it, and `server/test/shot-ground.test.mjs` §4 (the frost ridge in its own
 numbers: the parallel line enters the ridge, boots to feet passes it).
+
+## 240. "Put the gem on the page's weapon" (v2.3.3513)
+
+**The plausible move.** A test (or a tool) that needs a weapon with an element
+writes `element1` on the page's own weapon -- `S.rpg.weapon.element1 =
+'flame'` -- exactly as the Enchanter's Set gems tab used to, and fights. The
+hit claim carries the element, the worker applies it.
+
+**Why it is wrong.** Since v2.3.3513 the worker reads each hit's element from
+ITS copy of the weapon (`weapongem.js _weaponHitElement`, called by combat.js
+`_handleMonsterDamage` and pvpextras.js `_pvpClaimElement`), never from the
+claim: a modified phone could claim any element without owning a gem. So a gem
+written on the page alone carries NOTHING -- no burn, no slow, no collision --
+and the next `player_state` with the weapon in it puts the plain weapon back.
+`mp-pvpextras` did exactly this and would have gone red.
+
+**The rule.** Set a weapon's gem the way a player does: `H.weaponGem(P,
+wsPort, id, slot, gem)` (a polished gem from the dev kit, the Blacksmith's
+Take out for a gem already in, then `weapon_gem`), or on the worker's own
+copy in a server suite. A page-only element is fine for a picture (a button's
+skin, a card), never for a fight. `weapongem: false` in liveflags is the old
+claim path, for an emergency, not for a test.
+
+**Receipt:** `server/test/weapon-gem.test.mjs` §7 (a claim of frost on a flame
+weapon burns; a claim of flame on a plain one does nothing) and `mp-weapongem`
+step 6; `mp-pvpextras` passes with `H.weaponGem`.

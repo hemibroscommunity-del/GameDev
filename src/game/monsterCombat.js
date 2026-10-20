@@ -2090,7 +2090,12 @@ export function updateMonsterCombat(S, deps) {
                 var specialMult = S._specialAttack ? specialAtkMultFor(_activeWpn.type, _R6) : 1; /* v2.3.1397: melee special 3x (owner); v2.3.2592: × the SPECIAL stat */
 
                 /* §9 — Apply element status on hit */
-                var hitElement = S._specialAttack ? _activeWpn.element2 : _activeWpn.element1;
+                /* v2.3.3513: a special carries the SECOND gem when there is
+                   one, else the first -- as the worker reads it
+                   (weapongem.js weaponHitElement).  `element2` alone left a
+                   one-gem weapon's special with no element here while the
+                   worker applied the first. */
+                var hitElement = S._specialAttack ? (_activeWpn.element2 || _activeWpn.element1) : _activeWpn.element1;
                 if (hitElement) {
                   var _ELEMENTS$hitElement;
                   var statusId = (_ELEMENTS$hitElement = ELEMENTS[hitElement]) === null || _ELEMENTS$hitElement === void 0 ? void 0 : _ELEMENTS$hitElement.status;

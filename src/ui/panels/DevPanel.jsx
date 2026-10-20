@@ -217,6 +217,8 @@ const CAP_GATES = [
   'wheelnodes' /* v2.3.3012: lower case, a kill switch */,
   'shieldwear' /* v2.3.3091: the shield on the arm -- lower case, a kill switch */,
   'shieldgem' /* v2.3.3187: a gem goes into a shield on the worker -- lower case, a kill switch */,
+  'weapongem' /* v2.3.3513: a gem goes into a weapon on the worker -- lower case, a kill switch */,
+  'monsterhold' /* v2.3.3513: a freeze or root stops a monster 1.5 s, then not again for 3 s -- lower case, a kill switch */,
   'wheeldungeons' /* v2.3.3016: lower case, a kill switch */,
   'nomansland' /* v2.3.3058: No man's land -- lower case, a kill switch */,
   'gatherreq' /* v2.3.3038: lower case, a kill switch */,

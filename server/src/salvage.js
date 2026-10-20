@@ -220,6 +220,7 @@ export const salvageMethods = {
     let metal;
     let grade;
     let ref;
+    let gemsBack = [];
     if (field === 'weaponStash') {
       const at = this._salvageWeaponAt(ps, payload || {});
       if (!at.w) return refuse(at.reason, { idx: payload && Number.isInteger(payload.idx) ? payload.idx : null });
@@ -227,6 +228,21 @@ export const salvageMethods = {
       metal = at.metal;
       grade = SALVAGE.GRADES.indexOf(at.w.quality) >= 0 ? at.w.quality : 'normal';
       ref = { idx: at.idx, name: typeof at.w.name === 'string' ? at.w.name.slice(0, 40) : null };
+      /* ═══ v2.3.3513: A SALVAGED WEAPON GIVES ITS GEMS BACK ═══
+         The owner's gem plan (docs/GEM-PLAN.md, "Setting"): a weapon's gem is
+         the worker's now (weapongem.js), so melting the blade must not melt
+         the gem.  The gems Take out would pay (amulet.js _extractableGems),
+         free here as the bars are, back into the count and counted as come
+         back (their XP was paid when they went in: _gemSetXp). */
+      gemsBack = typeof this._extractableGems === 'function' ? this._extractableGems(at.w, 'weapon') : [];
+      if (gemsBack.length) {
+        if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
+        if (!ps.lifeSkills.gems || typeof ps.lifeSkills.gems !== 'object') ps.lifeSkills.gems = {};
+        for (const key of gemsBack) {
+          ps.lifeSkills.gems[key] = Math.floor(Number(ps.lifeSkills.gems[key]) || 0) + 1;
+          this._gemBackAdd(ps, key.slice('polished_'.length));
+        }
+      }
     } else if (hasOwn(ARMOUR_FIELDS, field)) {
       const at = this._salvageArmourOf(pid, field, payload);
       if (!at.piece) return refuse(at.reason, { gid: payload && typeof payload.gid === 'string' ? payload.gid.slice(0, 40) : null });
@@ -248,7 +264,7 @@ export const salvageMethods = {
       ps.inventory[essence] = Math.floor(Number(ps.inventory[essence]) || 0) + 1;
     }
     this._saveRpg(pid, ps);
-    const result = { ok: true, field, ...ref, bar, bars: SALVAGE.BARS, essence, grade, metal };
+    const result = { ok: true, field, ...ref, bar, bars: SALVAGE.BARS, essence, grade, metal, ...(gemsBack.length ? { gems: gemsBack } : null) };   /* v2.3.3513: + the gems it gave back */
     this._salvageSend(pid, 'smith_salvage_result', result, true);
     return result;
   },
