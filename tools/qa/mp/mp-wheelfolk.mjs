@@ -12,7 +12,9 @@
  *   2. their pictures came in behind the loading screen: none of the six
  *      fetched after you arrive (the preload law), and what they hold;
  *   3. Lil Bro is on your screen where you arrive;
- *   4. each is drawn, the size Diego is, facing the street;
+ *   4. each is drawn, the size Diego is, facing the street; (v2.3.3520) the
+ *      walkers on their standing frames, never a stride (Ace's frame 0 was a
+ *      leap, both feet off the ground);
  *   5. a TAP on Ace opens his coin flip, and a flip there is settled by the
  *      worker (the coins move by three times the stake, either way);
  *   6. E beside him opens it too (it said "has nothing for you");
@@ -118,7 +120,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
     const drawnOf = (name) => P.page.evaluate((nm) => {
       const d = (window.__btNpcSprites ? window.__btNpcSprites() : []).find((n) => n.name === nm);
-      return d ? { h: Math.round(d.height), w: Math.round(d.width), x: Math.round(d.x), y: Math.round(d.y), dir: d.walkDir, src: d.src } : null;
+      return d ? { h: Math.round(d.height), w: Math.round(d.width), x: Math.round(d.x), y: Math.round(d.y), dir: d.walkDir, src: d.src, frame: d.frame } : null;
     }, name);
     const drawn = {};
     for (const f of WHEEL_TOWNSFOLK) {
@@ -135,6 +137,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       WHEEL_TOWNSFOLK.every((f) => { const d = drawn[f.name], w = where(f.name); return d && w && Math.abs(d.x - w.x) < 1 && Math.abs(d.y - w.y) < 1 && d.h > 60 && d.h < 240; })
         && ['Ace', 'Lil Bro', 'Diego'].every((n) => /-walk-south\.webp$/.test(drawn[n].src || '')) && dh > 100,
       drawn);
+
+    /* v2.3.3520: the owner: "Ace is stuck in one walking frame" -- a still
+       walker stands on his own stand frame (NPC_DATA walk.stand: planted,
+       centred), never frame 0 (Ace's is a leap, both feet off the ground) */
+    const standOf = (n) => { const row = NPC_DATA.find((r) => r.name === n); return row && row.walk ? row.walk.stand : null; };
+    rec.ok(`4b. the walkers stand on their standing frames: ${['Ace', 'Lil Bro', 'Diego'].map((n) => n + ' ' + (drawn[n] ? drawn[n].frame : '?') + ' (his ' + standOf(n) + ')').join(', ')}`,
+      ['Ace', 'Lil Bro', 'Diego'].every((n) => drawn[n] && Number.isInteger(standOf(n)) && drawn[n].frame === standOf(n)) && standOf('Ace') === 3,
+      ['Ace', 'Lil Bro', 'Diego'].map((n) => drawn[n]));
 
     /* ── 5. a tap on Ace opens his coin flip, and a flip is settled ── */
     await H.grant(wsPort, id, 'gold', { amount: 600 });
