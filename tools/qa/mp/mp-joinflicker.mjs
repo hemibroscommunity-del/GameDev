@@ -171,6 +171,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const roads = [];
   const report = async (road, w) => {
     roads.push({ road, w });
+    /* v2.3.3495: how far the bro's preload got (pixiRenderer _preStep), and
+       the bake worker's queue -- a step that never finishes is named here */
+    const pre = await P.page.evaluate(() => {
+      const s = window.__btPreloadSteps || {}, t0 = s.start || 0;
+      const steps = Object.keys(s).filter((k) => k !== 'start').map((k) => `${k} +${s[k] - t0} ms`);
+      const bw = window.__btBakeWorker ? window.__btBakeWorker() : null;
+      return { steps, bw: bw && { alive: bw.alive, dead: bw.dead, busy: bw.busy, queued: bw.queued, pending: bw.pending, worker: bw.worker, failed: bw.failed, inline: bw.inline, late: bw.local && bw.local.late } };
+    }).catch(() => null);
+    if (pre) console.log(`      preload: ${pre.steps.join(', ') || 'no step stamped'}; bake worker ${JSON.stringify(pre.bw)}`);
     const summary = Object.entries(w.layers).map(([k, v]) => `${k.replace(/^_/, '')} ${v.blinks}b/${v.swapsBack}s/${v.changes}c`).join(', ');
     console.log(`    ${road}: ${w.frames} frames, ${w.plain} plain body frames (${w.hits} baked); ${summary}`);
     /* which frames were drawn plain, and was their body picture one the
