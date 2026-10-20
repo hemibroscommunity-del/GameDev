@@ -305,7 +305,8 @@ async function body({ P, wsPort, rec, OUT, errors }) {
     rec.ok('Diego\'s two pine logs came with the rod (the fish quest\'s log step already done)', logs0 >= 2, logs0);
     await P.page.evaluate((n) => {
       const S = window._gameState.current;
-      if (S && S.channel) S.channel.send({ type: 'item_drop', payload: { key: 'wood_pine_log', qty: n } });
+      /* the bag's own message (src/game/itemDrop.js sendItemDrop): its fields at the top */
+      if (S && S.channel) S.channel.send({ type: 'item_drop', key: 'wood_pine_log', qty: n });
     }, logs0);
     const logs1 = await H.waitFor(P, (S) => ((S.rpg && S.rpg.inventory) || {}).wood_pine_log || 0, (v) => v === 0, { timeout: 8000, label: 'the logs dropped' }).catch(() => null);
     rec.ok('...dropped from the bag, as a player drops them', logs1 === 0, logs1);
