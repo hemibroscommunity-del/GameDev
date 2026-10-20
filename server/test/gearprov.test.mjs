@@ -1025,7 +1025,8 @@ let amuletGid = null;
   await send(room, wsX, { type: 'amulet_forge_request', payload: { op: 'extract', target: 'shield' } });
   check('extraction strips the gem from the live shield',
     ps.shield.gem === null, ps.shield);
-  check('...and credits the polished gem', (ps.lifeSkills.gems.polished_flame || 0) === 1, ps.lifeSkills.gems);
+  /* v2.3.3516: into the bag (gems.js), as the Flame Gem it is */
+  check('...and credits the polished gem (to the bag)', ((ps.inventory || {}).gem_flame || 0) === 1, ps.inventory);
   check('...AND the ledger row follows it',
     findProvRow(room._gearProvOf(PIDX), gid).p.gem === null,
     findProvRow(room._gearProvOf(PIDX), gid).p);

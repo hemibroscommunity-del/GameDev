@@ -51,13 +51,37 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/MEMORY-PLAN.md` (what the phone holds -- sound, canvases, heaps, not
   only textures -- what leaked, and the order of the memory work with each
   item's status, v2.3.3075; `mp-memledger` measures it),
-  `docs/GEM-PLAN.md` (shards into gems, gems into weapons: what the code does
-  today -- a weapon's gem is the phone's alone, shards make nothing -- and the
+  `docs/GEM-PLAN.md` (shards into gems, gems into weapons: what the code did
+  before it -- a weapon's gem the phone's alone, shards making nothing -- and the
   owner's loop at the Gem Works: a cracked shard holds its land's raw gem 1
   time in 10, three raw gems combine into an elemental gem, the server keeps
   it in the weapon; 15 decisions, every recommended answer taken by the owner
-  on 2026-10-20 ("All of that sounds good"), and five phases, a PR each; a
-  plan, nothing built yet, v2.3.3504),
+  on 2026-10-20 ("All of that sounds good"), and five phases, a PR each,
+  v2.3.3504; Phase 1 BUILT in v2.3.3513: the worker keeps a weapon's gem
+  (`weapon_gem {slot, gem}`, server/src/weapongem.js, caps.weapongem, kill
+  switch `weapongem: false`) and EVERY HIT'S ELEMENT IS ITS COPY'S, never the
+  claim's (`_weaponHitElement`; a test sets a gem with `H.weaponGem`, TRAPS
+  §240), 400 Enchanting XP a gem set once a gem (`lifeSkills.gemsBack`), Take
+  out on the Set gems tab, a salvaged weapon's gems back, and THE HOLD RULE: a
+  freeze or root stops a monster 1.5 s (a boss half), then not again for 3 s,
+  a frozen one chilled after (elemental.js `HOLD`, caps.monsterhold, kill
+  switch `monsterhold: false`); `weapon-gem` suite, `mp-weapongem`:
+  docs/specs/weapon-gems.md; and Phase 2 BUILT in v2.3.3516: GEMS ARE BAG
+  ITEMS (`gem_raw_<e>`, `gem_<e>`; server/src/gems.js the one door --
+  `gemCount` reads the bag and any old pouch, `gemTake` the bag first,
+  `gemGive` the bag -- the pouch moved at the join, `gemsIntoBag`, not a
+  migration), the Gem Works' first tab cracks a land's shards (`shard_crack
+  {land, count}`, up to 50 an ask, 10% a shard rising to 20% with Gem
+  Cutting, the reveal played from the worker's own rolls) and combines three
+  raw gems (`gem_combine {element}`; `{element, rare: true}` one Rare Gem,
+  the eight lands only): server/src/shardcrack.js, ShardCrackPanel.jsx,
+  caps.shardcrack, kill switch `shardcrack: false` (the old one-raw-gem cut
+  and the kill's raw gem back); NO RAW GEM OFF A KILL (the shard at 112-1,111
+  on the roll); THE 400 ENCHANTING XP IS FOR GEMS YOU MADE
+  (`lifeSkills.gemsUnpaid`, owed by a combine or a Rare Gem's cut -- a
+  came-back count could not survive gems that trade); a death KEEPS gems, No
+  man's land's whole-bag loss takes them; Diego 1,200 / 4,000, the Rare Gem
+  4,000; `shard-crack` suite, `mp-shardcrack`: docs/specs/shard-crack.md),
   `docs/FUN-SOCIAL-PLAN.md` (the owner's fun & social plan checked against
   the code, v2.3.3391 -- "Go recommended": emotes and dances that move the bro
   in code, two-player moves, farm-made toys, a playground town; its rules: a
@@ -542,6 +566,19 @@ remnant to migrate server-side, not a mode to preserve.
         gate asks the rock rule once, boots to feet, and a target that passes
         it wins over a prop the parallel line met. `shot-ground` suite,
         `mp-groundline`: bow-at-props.md "v2.3.3501", TRAPS §239.
+      - since v2.3.3515 A TARGET BEHIND A ROCK IS STILL WHAT THE SHOT IS AT --
+        the owner, offered "a covered monster still counts as the target, so
+        the bolt stops at the rock": "continue recommended". The rock rule
+        passed a covered target over, so the shot carried no aim and kept the
+        parallel line; where that passed beside the rock a staff bolt hit the
+        monster (75 damage on the build before) and the bow waited, its line
+        on nothing. Now the first monster or player on the line is the shot's
+        aim, covered or not (projectiles.js `_sightLine`, which firstSightHit
+        and shotAimAt share): its ground runs boots to feet into the rock and
+        stops there, and the line ends at the rock (`_coverOf`), the bow
+        loosing into it as at any prop; a target further along is not reached
+        past it. `mp-groundline` step 5: bow-at-props.md "v2.3.3515", TRAPS
+        §241.
     - since v2.3.3230 A BUILDING YOU KEEP HITTING CATCHES FIRE -- the owner:
       "add flame effects on the building after getting hit a while in the
       location where the building is getting struck and make the flames grow

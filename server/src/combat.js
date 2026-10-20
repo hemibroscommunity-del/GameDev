@@ -1406,7 +1406,17 @@ export const combatMethods = {
     // of the client order (monsterCombat.js:1478/1548): the hit's own
     // status applies first, then a collision consumes the OLDEST
     // different-element status already on the monster.
-    if (m.hp > 0 && element && ELEMENT_STATUS[element] && attackerPs) {
+    /* v2.3.3513: ...and the element is the WORKER'S now (weapongem.js): the
+       gem in its own copy of the weapon the hit was made with -- the first,
+       or on a special the second when there is one -- never the claim's
+       `element`, which a modified phone could fill with any element it
+       liked, gem or no gem.  `isSpecial` is the one this hit was paid as
+       (hitproof.js).  `weapongem: false` in liveflags puts the claim back. */
+    const _gemEl = typeof this._weaponHitElement === 'function' ? this._weaponHitElement(attackerPs, _effSlot, isSpecial) : null;
+    const _hitElement = (typeof this._weaponGemOff === 'function' && !this._weaponGemOff())
+      ? (_gemEl ? _gemEl.element : null)
+      : element;
+    if (m.hp > 0 && _hitElement && Object.prototype.hasOwnProperty.call(ELEMENT_STATUS, _hitElement) && attackerPs) {
       const _now = Date.now();
       /* v2.3.2199: the snapshot prices the whole DoT (burn/root ticks and
          the thorn recoil read st.power) — prog3 players snapshot their
@@ -1415,7 +1425,7 @@ export const combatMethods = {
          priced off the CATEGORY the server itself resolved (_effSlot), never
          the client's raw slot claim. */
       const _elCat = this._prog3CatFor(_effSlot === 'ranged' ? 'bow' : _effSlot);
-      applyElementStatus(m, element, session.id, elemAttackStat(attackerPs, 'power', _elCat, m.level), _now,  /* v2.3.2680: the edge */
+      applyElementStatus(m, _hitElement, session.id, elemAttackStat(attackerPs, 'power', _elCat, m.level), _now,  /* v2.3.2680: the edge; v2.3.3513: the worker's gem */
         this._attuneMult(attackerPs));
       // Volatile mirrors _computeAttackDamage's slot resolution.
       const _eff = (slot === 'melee' || slot === 'ranged' || slot === 'staff')
@@ -1423,7 +1433,7 @@ export const combatMethods = {
       const _w = _eff === 'ranged' ? attackerPs.rangedWeapon
                : _eff === 'staff' ? attackerPs.staffWeapon
                : attackerPs.weapon;
-      const col = resolveElementCollision(m, element, attackerPs, !!(_w && _w.isVolatile), _now, _elCat); /* v2.3.2512 */
+      const col = resolveElementCollision(m, _hitElement, attackerPs, !!(_w && _w.isVolatile), _now, _elCat); /* v2.3.2512; v2.3.3513: the worker's gem */
       if (col) {
         const colDmg = Math.min(col.dmg, Math.max(0, m.hp));
         m.hp -= colDmg;
@@ -2360,7 +2370,7 @@ export const combatMethods = {
          yes to.  Their call: docs/specs/one-formula.md "Not on players yet". */
       let _xw = null, _xcol = null;
       if (_xtra) {
-        const _el = this._pvpClaimElement(attackerPs, kind, payload);
+        const _el = this._pvpClaimElement(attackerPs, kind, payload, _special);   /* v2.3.3513: + the special it was taken as */
         const _ab = this._pvpAfterBlow(attackerId, attackerPs, targetId, targetPs, dmgResult, {
           slot: kind, cat: kind === 'ranged' ? 'bow' : kind === 'staff' ? 'staff' : 'sword',
           ...(_el ? { element: _el.element, volatile: !!_el.w.isVolatile } : null),

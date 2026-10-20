@@ -2266,7 +2266,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     const shard = rows.find((r) => r.id === 'shard');
     if (!z || e.element !== z.element) eOff.push([kind, 'element', e.element, z && z.element]);
     if (!!gem !== SRV.AMULET_GEMS.has(z && z.element)) eOff.push([kind, 'raw gem', !!gem]);
-    if (gem && gem.key !== 'raw_' + z.element) eOff.push([kind, 'raw gem key', gem.key]);
+    if (gem && gem.key !== 'gem_raw_' + z.element) eOff.push([kind, 'raw gem key', gem.key]);   /* v2.3.3516: the bag's key */
     if (!shard || shard.key !== 'shard_' + e.home) eOff.push([kind, 'shard', shard && shard.key]);
     for (const id of ['gold', 'shard', 'raregem', 'irontorso', 'irongreaves', 'irongreatsword', 'nugget']) if (!ids.includes(id)) eOff.push([kind, 'missing', id]);
     if (ids.includes('weapon')) eOff.push([kind, 'a random weapon row']);
@@ -2304,18 +2304,29 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     JSON.stringify(SRV_KILL_ROLL.ORDER) === JSON.stringify(CLIENT_CODEX_ROLL_ORDER) && SRV_KILL_ROLL.SIDES === CLIENT_CODEX_ROLL_SIDES
       && chanceOff.length === 0 && SRV_KILL_ROLL.ORDER[0] === 'nugget' && SRV_KILL_ROLL.ORDER[SRV_KILL_ROLL.ORDER.length - 1] === 'shard',
     { server: SRV_KILL_ROLL.ORDER, client: CLIENT_CODEX_ROLL_ORDER, chanceOff });
+  /* v2.3.3516: twice -- the worker as it starts (shards are cracked for raw
+     gems: no raw gem on the roll) against the page's table with `crack`
+     (caps.shardcrack), and with the crack's kill switch thrown (the raw gem
+     back on the roll) against the page's table without it */
   const layOff = [];
-  for (const kind of CLIENT_CODEX_KINDS) {
-    const m = wheel.find((x) => srvPetKindOf(x) === kind);
-    if (!m) { layOff.push([kind, 'no Wheel monster']); continue; }
-    const srv = srvKillRollLayout(room._killRollCan(SRV_WHEEL_ZONE, m));
-    const cli = (clientCodexDropsFor(kind) || []).filter((r) => r.from).map((r) => ({ id: r.id, from: r.from, to: r.to }))
-      .sort((a, b) => a.from - b.from);
-    if (JSON.stringify(srv) !== JSON.stringify(cli)) layOff.push([kind, srv, cli]);
-    /* never two drops on one number, none past the die, from 1 with no gap */
-    let at = 1;
-    for (const l of srv) { if (l.from !== at || l.to < l.from || l.to > SRV_KILL_ROLL.SIDES) layOff.push([kind, 'run', l]); at = l.to + 1; }
-  }
+  const layOfKind = (crack) => {
+    room._liveFlags = crack ? {} : { shardcrack: false };
+    for (const kind of CLIENT_CODEX_KINDS) {
+      const m = wheel.find((x) => srvPetKindOf(x) === kind);
+      if (!m) { layOff.push([kind, 'no Wheel monster']); continue; }
+      const srv = srvKillRollLayout(room._killRollCan(SRV_WHEEL_ZONE, m));
+      const cli = (clientCodexDropsFor(kind, { crack }) || []).filter((r) => r.from).map((r) => ({ id: r.id, from: r.from, to: r.to }))
+        .sort((a, b) => a.from - b.from);
+      if (JSON.stringify(srv) !== JSON.stringify(cli)) layOff.push([kind, crack ? 'crack' : 'no crack', srv, cli]);
+      if (crack && srv.some((l) => l.id === 'rawgem')) layOff.push([kind, 'a raw gem on the roll while shards are cracked']);
+      /* never two drops on one number, none past the die, from 1 with no gap */
+      let at = 1;
+      for (const l of srv) { if (l.from !== at || l.to < l.from || l.to > SRV_KILL_ROLL.SIDES) layOff.push([kind, 'run', l]); at = l.to + 1; }
+    }
+    room._liveFlags = {};
+  };
+  layOfKind(true);
+  layOfKind(false);
   const snow = srvKillRollLayout({ shard: true, rawgem: true });
   check('kill roll: every kind\'s numbers on the page are the worker\'s own, laid from 1 with no gap and no overlap (a snowman: nugget 1, iron great sword 2-21, greaves 22-41, torso 42-61, rare gem 62-111, raw gem 112-611, shard 612-1,611; the blue slime, with no raw gem, its shard 112-1,111)',
     layOff.length === 0 && JSON.stringify(snow) === JSON.stringify(clientCodexRollLayout(rowRate))
@@ -2389,6 +2400,63 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       && C.DROP_PRIVATE_MS === ITEM_DROP.PRIVATE_MS && C.DROP_FLASH_MS === ITEM_DROP.FLASH_MS && C.DROP_GONE_MS === ITEM_DROP.GONE_MS,
     { phone: [C.NO_DROP_ZONES, C.DROP_PRIVATE_MS, C.DROP_FLASH_MS, C.DROP_GONE_MS],
       worker: [ITEM_DROP.NO_DROP_ZONES, ITEM_DROP.PRIVATE_MS, ITEM_DROP.FLASH_MS, ITEM_DROP.GONE_MS] });
+}
+
+/* ═══ v2.3.3513: A WEAPON'S GEM RULES ARE THE WORKER'S ═══
+   The Enchanter offers a weapon only the gems, slots and pairs the worker
+   takes (src/data/weaponGems.js, server/src/weapongem.js + data.js), so it
+   never shows a button the worker refuses -- and says the XP it pays. */
+{
+  const C = await import('../../src/data/weaponGems.js');
+  const W = await import('../src/weapongem.js');
+  const pairKey = (l) => l.map((p) => p.slice().sort().join('+')).sort().join(',');
+  check('weapon gems: the phone offers the worker\'s gems (the eight lands\' elements)',
+    JSON.stringify(C.WEAPON_GEMS.slice().sort()) === JSON.stringify([...SRV.WEAPON_GEMS].sort()), { phone: C.WEAPON_GEMS, worker: [...SRV.WEAPON_GEMS] });
+  check('weapon gems: the volatile pairs, the second slot\'s level, the fusion bases and the XP are the worker\'s',
+    pairKey(C.VOLATILE_PAIRS) === pairKey(W.WEAPON_GEM.VOLATILE_PAIRS) && C.SECOND_SLOT_LVL === W.WEAPON_GEM.SECOND_SLOT_LVL
+      && JSON.stringify(C.FUSION_BASES) === JSON.stringify(W.WEAPON_GEM.FUSION_BASES) && C.GEM_SET_XP === SRV.GEM_SET_XP,
+    { phone: [pairKey(C.VOLATILE_PAIRS), C.SECOND_SLOT_LVL, C.FUSION_BASES, C.GEM_SET_XP], worker: [pairKey(W.WEAPON_GEM.VOLATILE_PAIRS), W.WEAPON_GEM.SECOND_SLOT_LVL, W.WEAPON_GEM.FUSION_BASES, SRV.GEM_SET_XP] });
+  const bases = Object.keys(SRV.BLACKSMITH_TIERS).concat(Object.keys(SRV.WOODWORKING_TIERS).map((k) => 'ww_' + k), [undefined, 'nope', '__proto__']);
+  const off = bases.filter((b) => C.weaponGemSlots({ gearBase: b }) !== W.weaponGemSlots({ gearBase: b }));
+  check('weapon gems: every forge base has the same number of gem slots on both sides (a drop with no base: 1)', off.length === 0, off);
+}
+
+/* ═══ v2.3.3516: THE CRACK'S RULES AND THE GEMS' KEYS ARE THE WORKER'S ═══
+   The Gem Works' first tab shows each land's chance and the raw gems a gem
+   takes before it asks (src/data/shards.js, src/data/gems.js), and the bag
+   names a gem by its key: held to server/src/shardcrack.js and gems.js. */
+{
+  const CS = await import('../../src/data/shards.js');
+  const CG = await import('../../src/data/gems.js');
+  const SC = await import('../src/shardcrack.js');
+  const SG = await import('../src/gems.js');
+  check('crack: each land\'s shard holds the same element\'s raw gem on both sides (and the meadow none)',
+    JSON.stringify(CS.SHARD_GEM_ELEMENT) === JSON.stringify(SC.SHARD_CRACK.LANDS) && !('meadow' in CS.SHARD_GEM_ELEMENT),
+    { phone: CS.SHARD_GEM_ELEMENT, worker: SC.SHARD_CRACK.LANDS });
+  const landOff = Object.keys(SC.SHARD_CRACK.LANDS).filter((l) => !SRV.ZONES[l] || SRV.ZONES[l].element !== SC.SHARD_CRACK.LANDS[l]);
+  check('crack: a shard\'s gem is its land\'s own element (data.js ZONES)', landOff.length === 0, landOff);
+  check('crack: the chance by Gem Cutting level, the die, the most a Crack all sends, the raw gems a gem takes and the XP are the worker\'s',
+    JSON.stringify(CS.SHARD_CRACK_CHANCE) === JSON.stringify(SC.SHARD_CRACK.CHANCE) && CS.SHARD_CRACK_SIDES === SC.SHARD_CRACK.SIDES
+      && CS.SHARD_CRACK_MAX === SC.SHARD_CRACK.MAX_PER_ASK && CS.RAW_PER_GEM === SC.SHARD_CRACK.RAW_PER_GEM
+      && CS.SHARD_CRACK_XP === SC.SHARD_CRACK.CRACK_XP && CS.GEM_COMBINE_XP === SC.SHARD_CRACK.COMBINE_XP,
+    { phone: [CS.SHARD_CRACK_CHANCE, CS.SHARD_CRACK_SIDES, CS.SHARD_CRACK_MAX, CS.RAW_PER_GEM, CS.SHARD_CRACK_XP, CS.GEM_COMBINE_XP] });
+  const lvOff = [];
+  for (let lv = 0; lv <= 101; lv++) if (CS.shardCrackChance(lv) !== SC.shardCrackChance(lv)) lvOff.push(lv);
+  check('crack: the chance at every level 0-101 is the same number on both sides (10, 12 from 15, 15 from 35, 20 from 60)',
+    lvOff.length === 0 && SC.shardCrackChance(1) === 10 && SC.shardCrackChance(15) === 12 && SC.shardCrackChance(35) === 15 && SC.shardCrackChance(60) === 20, lvOff);
+  check('gems: the elements a gem can be are the worker\'s ten (the amulets\' nine and Flora)',
+    JSON.stringify(CG.GEM_ELEMENTS.slice().sort()) === JSON.stringify([...SG.GEM_ELEMENTS].sort()) && CG.GEM_ELEMENTS.length === 10,
+    { phone: CG.GEM_ELEMENTS, worker: [...SG.GEM_ELEMENTS] });
+  const keyOff = [];
+  for (const k of ['gem_raw_frost', 'gem_frost', 'gem_flora', 'gem_raw_light', 'gem_bogus', 'gem_', 'gem_raw_', 'rare_gem', 'gem_raw___proto__', '__proto__', 'raw_frost', 'polished_frost']) {
+    if (JSON.stringify(CG.parseGemKey(k)) !== JSON.stringify(SG.parseGemKey(k))) keyOff.push(k);
+  }
+  check('gems: the phone reads a bag key as a gem exactly where the worker does', keyOff.length === 0
+    && CG.gemRawKey('frost') === SG.gemRawKey('frost') && CG.gemCutKey('frost') === SG.gemCutKey('frost'), keyOff);
+  const ps = { inventory: { gem_flame: 2, gem_raw_flame: 1 }, lifeSkills: { gems: { polished_flame: 1, raw_flame: 4 } } };
+  check('gems: a count reads the bag and an old pouch on both sides alike',
+    CG.gemCount(ps, 'flame', false) === SG.gemCount(ps, 'flame', false) && CG.gemCount(ps, 'flame', true) === SG.gemCount(ps, 'flame', true)
+      && CG.gemCount(ps, 'flame', false) === 3, [CG.gemCount(ps, 'flame', false), SG.gemCount(ps, 'flame', false)]);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

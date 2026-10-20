@@ -118,7 +118,12 @@ export const killRollMethods = {
     const rz = this._rewardZone ? this._rewardZone(zone, m) : zone;
     const cfg = typeof rz === 'string' && has(ZONES, rz) ? ZONES[rz] : null;
     const elem = (cfg && cfg.element) || null;
-    return { shard: !!cfg, rawgem: !!elem && AMULET_GEMS.has(elem) };
+    /* v2.3.3516: no raw gem off a kill while shards are cracked for them
+       (shardcrack.js; the gem plan's decision 1) -- its numbers go, and the
+       shard's move down to where the raw gem's began (the codex's page drops
+       the row with caps.shardcrack) */
+    const crack = typeof this._shardCrackOff === 'function' && !this._shardCrackOff();
+    return { shard: !!cfg, rawgem: !crack && !!elem && AMULET_GEMS.has(elem) };
   },
 
   /* THE KILL'S ROLL: { roll, hit, minted } -- `minted` set by whichever drop

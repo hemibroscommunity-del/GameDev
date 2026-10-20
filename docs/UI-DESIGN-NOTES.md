@@ -935,7 +935,7 @@ Sources: CLAUDE.md, docs/specs/hardened-wood.md, docs/specs/trapping.md, docs/PE
 ## The Gem Works (cut gems, set gems)
 Screens: building-gemcut, building-enchant
 
-**What it is for:** One building for both gem jobs. Cut gems turns a raw gem into a polished one. Set gems puts a polished gem into a weapon, an amulet or a shield.
+**What it is for:** One building for both gem jobs. Cut gems turns shards into gems: it cracks a land's shards for its raw gem and combines three raw gems into an elemental gem (since v2.3.3516; before, it cut one raw gem into a polished one). Set gems puts a gem into a weapon, an amulet or a shield.
 
 **Decisions, and why:**
 - One gem building, not two (v2.3.3259). When the Assay Office's name came up the owner asked "what does that even mean", then: "I think one gem building is enough and can do both the gem cutting and gem setting maybe with two different NPCs in the same building." Asked what to do with the Assay Office, the owner chose "Remove it", and named the joined building "Gem Works".
@@ -943,10 +943,14 @@ Screens: building-gemcut, building-enchant
 - One door ("Enter GEM WORKS") and one window with two tabs: Cut gems ("Raw to polished") and Set gems ("Polished into gear"). The building keeps its old sign, GEMS, which covers both jobs, so nothing was repainted.
 - The tab strip is the window's first row, written on the room like the other windows' titles. Each tab is at least 44 px tall. Switching tab changes the panel in place; the room picture is the same and is not loaded again, so it does not flash. The window starts at the top of the screen for both tabs, so a tab press never moves it (v2.3.3481: centred like the other windows, the short Cut gems card sat about 130 px lower than Set gems).
 - The two old panels sit under the tabs unchanged, each with its own title strip (Gem Cutter, Enchanter). This was done so that a later rework of either panel cannot clash with the Gem Works change.
-- Cut gems lists each gem you hold, its raw and polished counts, and your success chance as a percentage, which rises with your Gem Cutting level. One tap per cut. A failed cut says "Gem shattered!", and the raw gem is used either way.
+- Cut gems listed each gem you hold, its raw and polished counts, and your success chance as a percentage, which rises with your Gem Cutting level. One tap per cut. A failed cut says "Gem shattered!", and the raw gem is used either way. Since v2.3.3516 this is only what an older server (or the crack's kill switch) shows; the crack and the combine replaced it.
 - Set gems shows how many of each weapon's gem slots are used. A second slot (a "Fusion") needs Enchanting 20. A blocked button says why: "No polished gems", "Locked", or "No open gem slot". The amulet and the shield each take one gem, and a new gem replaces the old one, which is lost (the window says so).
 - A shield's gem is put in by the server (v2.3.3187, the owner's "Go recommended fixes"). Before that the game did it alone, so the gem was never really spent, and taking it out again could not work. Now a tap waits for the server's answer (buttons held up to 4 s, because each tap spends a real gem), and a refusal says why under the buttons.
 - Taking a gem back OUT is done at the Blacksmith's Upgrade tab, for a price.
+- A WEAPON's gem is put in by the server too (v2.3.3513, the gem plan's Phase 1; the owner: "All of that sounds good"). A tap waits for the server's answer (up to 4 s) and a refusal is written under the weapon it was about. A weapon whose slot is full is never overwritten (the owner's decision 10), so the weapon's section has its own Take out button with its price ("the gem comes back") -- the Blacksmith's own take-out, offered here too. Each gem in a weapon gets one line saying what it does on a hit ("◆ flame · Burns what it hits"), in the server's own rules. Only the eight lands' gems are offered for a weapon (no Dark or Light). Every gem set pays 400 Enchanting XP once: a gem that came back out pays nothing the second time (docs/specs/weapon-gems.md).
+- The Element Burst button stands aside while any window is open (v2.3.3513): it is drawn outside the game's frame, so it painted over the Gem Works' own window, on the very weapon section that had just set its gem.
+- CRACK AND COMBINE (v2.3.3516, the gem plan's Phase 2; the owner: "a fun method would be for the shards to have a certain percent chance of containing that elements raw gem ... Then after collecting a certain number of raw gems they can be combined into an elemental gem", and "All of that sounds good" to every recommendation). The first tab's line says "Shards to gems", the second's "Gems into gear"; the tab names stay. One row per land you hold shards of, with its count and your chance (10% a shard at Gem Cutting 1, rising at 15, 35 and 60), Crack (one) and All (up to 50, one request). The crack plays UNDER THE ROW YOU TAPPED, one tile a shard from the server's own dice, each crumbling or splitting to show its raw gem, and is scrolled into view: below eight lands' rows it was off the screen. Raw gems have a row per element with what is still needed ("1 more for a Frost Gem"); Combine takes three and never fails (decision 4: the luck is in the crack). The Rare Gem takes two taps, a gem picked and then "Cut into a Frost Gem", because it is a 4,000-gold stone (decision 6: any of the eight lands' gems). "Your gems" lists the elemental gems held and points to Set gems.
+- Gems are bag items since v2.3.3516 (decision 5), named "Raw Frost Gem" and "Frost Gem", drawn with the element's own picture until the owner's gem art (Phase 3), a raw one smaller and dimmer. The Set gems tab says which sets pay XP: "Gems you made pay 400 Enchanting XP when set: N still to come" -- the XP is for gems a player made, so a bought or traded gem's set paying none is not a surprise (docs/specs/shard-crack.md, "The XP is for gems you made").
 
 **Tried before, and changed:**
 - Two buildings, the Gem Cutter and the Assay Office, until v2.3.3259. The Assay Office's building, door and room are gone; nothing else in town moved.
@@ -954,16 +958,19 @@ Screens: building-gemcut, building-enchant
 - The empty Cut gems tab said "Harvest resources in elemental zones to collect raw gems!", but raw gems come only from monster kills (the harvesting gem rates were never used, amulet-forge.md); it says "No raw gems yet. Defeat monsters out in the lands to find them." since v2.3.3481. With no shield, Set gems sent you to forge one at the Blacksmith, which has made no shields since v2.3.2826; it says "No shield equipped. Wear one to slot defensive gems here." (v2.3.3481).
 - Set gems called the bow's section RANGED, beside STAFF (a staff is ranged too), and showed "Common (1×)" under an empty slot. Since v2.3.3481 it is BOW, and an empty slot shows only "None".
 - The Cut gems line said "polished slottable gems"; since v2.3.3481 "polished gems for your gear".
+- A weapon's rarity line printed "(1.5×)" after a gem was set, a damage multiplier the server never used. Since v2.3.3513 (against a server that sets weapon gems) it shows the rarity alone, and the gem's own line says what it does.
 
 **Please don't suggest:**
 - Splitting the gem jobs back into two buildings, or bringing back the Assay Office (the owner's call: "Remove it").
 - Walking inside the Gem Works (the owner chose keepers outside and the room behind the menu).
+- A combine that can fail, or more or fewer than three raw gems a gem (the owner's decisions 3 and 4: the luck is in the crack).
+- Raw gems from monsters again (decision 1: they come only from cracking shards).
 
 **Still open:**
 - The owner's two NPCs: a cutter and a setter outside the Gem Works, each opening his own tab. They wait on the owner's pictures. An optional new room picture with two work stations is on the art wishlist.
-- Putting a gem into a WEAPON is still done by the phone alone; moving it to the server waits on other work (shield-gems.md).
+- Gems come from shards next (the gem plan's Phase 2: crack shards at the Cut gems tab, combine three raw gems into an elemental gem), docs/GEM-PLAN.md.
 
-Sources: CLAUDE.md, docs/specs/gem-works.md, docs/specs/shield-gems.md, docs/specs/amulet-forge.md, docs/specs/blacksmith-rebuild.md, docs/specs/building-rooms.md, docs/ART-WISHLIST.md, src/ui/panels/buildings/GemWorksPanel.jsx, src/ui/panels/buildings/GemcutPanel.jsx, src/ui/panels/buildings/EnchantPanel.jsx, src/styles/game.css
+Sources: CLAUDE.md, docs/specs/gem-works.md, docs/specs/shield-gems.md, docs/specs/weapon-gems.md, docs/GEM-PLAN.md, docs/specs/amulet-forge.md, docs/specs/blacksmith-rebuild.md, docs/specs/building-rooms.md, docs/ART-WISHLIST.md, src/ui/panels/buildings/GemWorksPanel.jsx, src/ui/panels/buildings/GemcutPanel.jsx, src/ui/panels/buildings/EnchantPanel.jsx, src/styles/game.css
 
 ## The Cookhouse
 Screens: building-cook
