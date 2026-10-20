@@ -212,7 +212,8 @@ async function body(P, wsPort, rec) {
     !!O && O.frame === 11 && O.frameOk, O && { frame: O.frame, ok: O.frameOk });
   rec.ok('...every picture in it decoded', !!O && O.imgsOk, O);
   rec.ok('...and not one CSS filter in it (iOS grain, TRAPS §42)', !!O && O.filtered === 0, O && O.filtered);
-  rec.ok('...titled NEW QUEST / Cold Reception', !!O && /new quest/i.test(O.kicker) && /Cold Reception/.test(O.title), O && { k: O.kicker, t: O.title });
+  /* v2.3.3525: the tour's first step, the slimes' "Into the Blue" */
+  rec.ok('...titled NEW QUEST / Into the Blue', !!O && /new quest/i.test(O.kicker) && /Into the Blue/.test(O.title), O && { k: O.kicker, t: O.title });
   const gAcc = O && O.groups.find((g) => g.when === 'accept');
   const gFin = O && O.groups.find((g) => g.when === 'complete');
   rec.ok('...the hand-over (sword, shield) and the finishing (bow, staff) items, each in a painted slot',
@@ -255,9 +256,9 @@ async function body(P, wsPort, rec) {
   };
   const skAll = (r) => ['sword', 'bow', 'staff'].map((k) => skOf(r, k)).join(',');
   const before = await srv();
-  await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: 4 });
+  await H.grant(wsPort, myId, 'item', { invKey: 'slime-remnants', count: TUT1.objective.count });
   await P.page.waitForTimeout(1600);
-  rec.ok('back at Mayor Bro with the remnants (guard)', await approach());
+  rec.ok('back at Mayor Bro with the remains (guard)', await approach());
   /* a claim window or a skill chip must never appear, not even for a frame */
   await P.page.evaluate(() => {
     window.__qwChoice = false;
@@ -301,10 +302,24 @@ async function body(P, wsPort, rec) {
   rec.ok('...no claim window and no skill chip at any moment', !(await P.page.evaluate(() => window.__qwChoice)));
   await P.page.evaluate(() => { if (window.__qwChoiceObs) window.__qwChoiceObs.disconnect(); });
   const next1 = await P.page.evaluate(() => ({ dialogue: !!document.querySelector('.bt-npcdlg'), offer: !!document.querySelector('.bt-qoffer') }));
-  rec.ok('...and he goes straight on to his next quest', next1.dialogue || next1.offer, next1);
+  /* v2.3.3525: and he offers nothing in its place -- the tour hands you on
+     to Farmer Bro (the gold road and the pinned card's "Next:" lead there,
+     mp-questline), and his own next quest, the snowmen, waits for the tour's
+     end, so his window puts itself away as he pays (quests.js turnInQuest:
+     getNpcQuest has nothing for him) */
+  rec.ok('...and he offers nothing else in its place (the tour hands you on)', !next1.offer, next1);
 
-  /* ── 4. the claim window: the next quest pays XP, so there is a choice ── */
+  /* ── 4. the claim window: the next quest pays XP, so there is a choice ──
+     v2.3.3525: the Mayor's next quest is the tour's finale, tut_2 "Cold
+     Reception" (the snowmen), taken once the tour's other ten steps are
+     handed in (`after`): the operator's /dev/tour puts this character there,
+     the steps before it handed in, nothing paid. */
   const TUT2 = QUEST_REWARDS.tut_2;
+  await H.closeNpcDialogue(P).catch(() => {});
+  const toured = await H.devOp(wsPort, 'tour', myId, { at: 'tut_2' });
+  rec.ok('the tour jumped to the Mayor\'s snowmen (tut_2 on offer) (guard)', !!toured && toured.ok === true, toured);
+  await P.page.waitForTimeout(1500);
+  rec.ok('back at Mayor Bro for his next quest (guard)', await approach());
   const landed2 = await H.advanceNpcDialogue(P);
   rec.ok('his next quest\'s NEW QUEST window (guard)', landed2 === 'offer', { landed2 });
   rec.ok('...and a finger on its Accept Quest (guard)', await tap(P, '[data-tut="qoffer-confirm"]'));
@@ -312,16 +327,16 @@ async function body(P, wsPort, rec) {
   await H.closeNpcDialogue(P).catch(() => {});
   const before2 = await srv();
   rec.ok('the WORKER has the second quest active (guard)', !!before2 && (before2._quests || {}).tut_2 === 'active', before2 && before2._quests);
-  await H.grant(wsPort, myId, 'item', { invKey: 'slime-remnants', count: 6 });
+  await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: TUT2.objective.count });
   await P.page.waitForTimeout(1600);
-  rec.ok('back at Mayor Bro with its remnants (guard)', await approach());
+  rec.ok('back at Mayor Bro with its remains (guard)', await approach());
   const landedBack = await H.advanceNpcDialogue(P);
   rec.ok('...his lines lead to the CLAIM window, as there is a choice to make (guard)', landedBack === 'offer', { landedBack });
   await P.page.waitForTimeout(500);
   const C = await win(P);
   await shot('choose');
   console.log('    QUESTWIN choose: ' + JSON.stringify(C));
-  rec.ok('the claim window: QUEST COMPLETE / Into the Blue', !!C && /quest complete/i.test(C.kicker) && /Into the Blue/.test(C.title), C && { k: C.kicker, t: C.title });
+  rec.ok('the claim window: QUEST COMPLETE / Cold Reception', !!C && /quest complete/i.test(C.kicker) && /Cold Reception/.test(C.title), C && { k: C.kicker, t: C.title });
   rec.ok(`...paying +${TUT2.gold} Gold and +${TUT2.xp} XP, with the HUD's coin and XP pictures`,
     !!C && TUT2.xp > 0 && C.gold.includes(`+${TUT2.gold} Gold`) && C.xp.includes(`+${TUT2.xp} XP`), C && { g: C.gold, x: C.xp });
   rec.ok('...the three skill chips, none chosen',

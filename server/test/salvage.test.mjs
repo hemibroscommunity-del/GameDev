@@ -101,16 +101,19 @@ const bars = (k) => Math.floor(inv()[k] || 0);
   const sync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);
   check('caps.salvage is advertised', !!sync && sync.caps.salvage === true);
   check('...under a name the liveflags route accepts (lower case: a kill switch)', LIVEOPS.FLAG_NAME_RE.test('salvage'));
-  check('salvage gives back half of what a piece takes: two of four bars', SALVAGE.COST_BARS === 4 && SALVAGE.BARS === 2);
-  check('the armour forge takes four bars for every torso and greaves (the owner\'s "4 bars")',
+  /* v2.3.3525: five bars a piece (the owner's bows and staffs from five
+     hardened wood, "It should mirror the cost of making armor"), two back:
+     half, rounded down */
+  check('salvage gives back half of what a piece takes, rounded down: two of five bars', SALVAGE.COST_BARS === 5 && SALVAGE.BARS === Math.floor(SALVAGE.COST_BARS / 2) && SALVAGE.BARS === 2);
+  check('the armour forge takes five bars for every torso and greaves (v2.3.3525)',
     Object.values(ARMOR_FORGE.RECIPES).every((r) => r.bars === SALVAGE.COST_BARS), Object.values(ARMOR_FORGE.RECIPES).map((r) => r.bars));
   const metals = Object.keys(SALVAGE.METALS);
   check('every metal salvage knows is one the smelter makes a bar of', metals.every((m) => Object.prototype.hasOwnProperty.call(SMELT.RECIPES, SALVAGE.METALS[m].bar)));
-  check('...and its swords are forged from four of those bars (data.js BLACKSMITH_TIERS)',
+  check('...and its swords are forged from five of those bars (data.js BLACKSMITH_TIERS)',
     metals.every((m) => { const t = BLACKSMITH_TIERS[SALVAGE.METALS[m].gearBase]; return !!t && t.bar === SALVAGE.METALS[m].bar && t.bars === SALVAGE.COST_BARS && !('oreCost' in t); }),
     metals.map((m) => BLACKSMITH_TIERS[SALVAGE.METALS[m].gearBase]));
   check('...and its armour from them too', metals.every((m) => Object.values(ARMOR_FORGE.RECIPES).some((r) => r.mat === m && r.bar === SALVAGE.METALS[m].bar)));
-  check('a sword pays the armour forge\'s XP for the same four bars',
+  check('a sword pays the armour forge\'s XP for the same five bars',
     metals.every((m) => { const t = BLACKSMITH_TIERS[SALVAGE.METALS[m].gearBase]; const a = Object.values(ARMOR_FORGE.RECIPES).find((r) => r.mat === m); return t.xp === a.xp; }));
   check('the metals past black steel keep their ore (no bar yet)', !BLACKSMITH_TIERS.titanium.bar && BLACKSMITH_TIERS.titanium.oreCost > 0 && !BLACKSMITH_TIERS.wood.bar);
 }
@@ -151,12 +154,12 @@ const bars = (k) => Math.floor(inv()[k] || 0);
   ws.sent.length = 0;
   await room.webSocketMessage(ws, JSON.stringify({ type: 'forge_weapon', payload: { weaponType: 'greatsword', tierKey: 'copper', isWoodwork: false } }));
   check('copper ore alone forges no copper sword any more', !ps().weapon && inv().ore_copper_ore === 10 && ps().coins === 100, ps().weapon);
-  inv().bar_copper = 5;
+  inv().bar_copper = 6;
   const xp0 = ps().lifeSkills.blacksmithing.xp;
   await room.webSocketMessage(ws, JSON.stringify({ type: 'forge_weapon', payload: { weaponType: 'greatsword', tierKey: 'copper', isWoodwork: false } }));
   const w = ps().weapon;
   const smith = ps().lifeSkills.blacksmithing;
-  check('four copper bars and the gold forge a copper greatsword', !!w && w.gearBase === 'copper' && w.type === 'greatsword' && bars('bar_copper') === 1
+  check('five copper bars and the gold forge a copper greatsword', !!w && w.gearBase === 'copper' && w.type === 'greatsword' && bars('bar_copper') === 1
     && ps().coins === 100 - BLACKSMITH_TIERS.copper.goldCost && inv().ore_copper_ore === 10, { w, inv: inv(), coins: ps().coins });
   check('...paying the bars\' XP (' + BLACKSMITH_TIERS.copper.xp + ')', smith.level > 1 || smith.xp - xp0 === BLACKSMITH_TIERS.copper.xp, smith);
 }

@@ -122,12 +122,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
      On the SECOND player: the first one just opened a chest, and a chest can
      roll 10 cooked fish -- which completes this quest outright and ticks
      every step, a pass/fail decided by the dice. */
+  /* v2.3.3525: the cooking quest is Diego's "Something Fishy" (fish_1) in
+     the tour, life_1's steps carried over -- the operator's /dev/tour puts
+     the second player at his step (the steps before it handed in, nothing
+     paid), and it is accepted over the wire */
+  const bId = await H.readState(B, (S) => S.myId);
+  await H.devOp(wsPort, 'tour', bId, { at: 'fish_1' });
+  await B.page.waitForTimeout(800);
   await B.page.evaluate(() => {
     const S = window._gameState.current;
-    S.channel.send({ type: 'quest_accept', payload: { questId: 'life_1' } });
+    S.channel.send({ type: 'quest_accept', payload: { questId: 'fish_1' } });
   });
-  await H.waitFor(B, (S) => S.rpg && S.rpg._quests && S.rpg._quests.life_1, (v) => v === 'active',
-    { timeout: 10000, label: 'life_1 active' }).catch(() => {});
+  await H.waitFor(B, (S) => S.rpg && S.rpg._quests && S.rpg._quests.fish_1, (v) => v === 'active',
+    { timeout: 10000, label: 'fish_1 active' }).catch(() => {});
   await B.page.waitForFunction(() => (window.__btToastLog || []).some((t) => /^Next: Catch a fish/.test(t)), null, { timeout: 6000 }).catch(() => {});
   rec.ok('accepting the quest says the first step', await B.page.evaluate(() => (window.__btToastLog || []).some((t) => /^Next: Catch a fish/.test(t))));
   const myId = await H.readState(B, (S) => S.myId);
@@ -139,7 +146,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.openDest(B, 'Quests');
   await B.page.waitForFunction(() => document.body.innerText.includes('Next: Open your Bag'), null, { timeout: 6000 }).catch(() => {});
   rec.ok('the Quests list shows the next step on the quest row', await bodyHas(B, 'Next: Open your Bag'));
-  await H.clickText(B, 'Learn a Trade');
+  await H.clickText(B, 'Something Fishy');
   await B.page.waitForSelector('[data-quest-steps]', { timeout: 6000 }).catch(() => {});
   const steps = await B.page.evaluate(() => Array.from(document.querySelectorAll('[data-step-state]')).map((e) => e.getAttribute('data-step-state')));
   rec.ok('the quest page lists every step: fish and log ticked, lighting the fire next',

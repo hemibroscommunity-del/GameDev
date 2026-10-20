@@ -82,10 +82,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a fresh character walking up gets his dialogue (guard)', await open(), await probe());
   await H.closeNpcDialogue(P);
 
-  /* ── A. the reported case: approach with a finished "Into the Blue" ── */
+  /* ── A. the reported case: approach with a finished "Into the Blue" ──
+     v2.3.3525: the slimes are his FIRST quest now (tut_1, 4 remains); they
+     were tut_2's 6 */
   await place(420, 0);
   await P.page.waitForTimeout(700);
-  await setState({ tut_1: 'turnedIn', tut_2: 'active' }, { 'slime-remnants': 6 });
+  await setState({ tut_1: 'active' }, { 'slime-remnants': 4 });
   await P.page.waitForTimeout(600);
   await place(0, 34);
   await P.page.waitForTimeout(1200);
@@ -113,7 +115,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.closeNpcDialogue(P);
   await place(420, 0);
   await P.page.waitForTimeout(600);
-  await setState({ tut_1: 'turnedIn', tut_2: 'active' }, { 'slime-remnants': 2 });
+  await setState({ tut_1: 'active' }, { 'slime-remnants': 2 });
   await P.page.waitForTimeout(600);
   await place(0, 34);
   await P.page.waitForTimeout(1100);
@@ -123,7 +125,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(900);
   rec.ok('C: ...and stays shut while nothing has changed (the latch still holds)',
     !(await open()), await probe());
-  await setState({ tut_1: 'turnedIn', tut_2: 'active' }, { 'slime-remnants': 6 });
+  await setState({ tut_1: 'active' }, { 'slime-remnants': 4 });
   await P.page.waitForTimeout(1200);
   rec.ok('C: THE FIX — finishing it while stood next to him opens the claim, unmoved',
     await open(), await probe());
@@ -186,7 +188,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return b;
   };
 
-  /* Stand at him with the quest READY, so the claim face is up. */
+  /* Stand at him with the quest READY, so the claim face is up.
+     v2.3.3525: on his snowmen, tut_2 -- a quest that pays XP, so its claim
+     has a payout CARD (the first quest's is the auto reward, no card), as
+     "Into the Blue" was before the tour moved it first.  Walked away first so
+     the latch lets go, as in A. */
+  await H.closeNpcDialogue(P);
+  await place(420, 0);
+  await P.page.waitForTimeout(700);
+  await setState({ tut_1: 'turnedIn', tut_2: 'active' }, { snowman: 4 });
+  await P.page.waitForTimeout(600);
   await place(0, 34);
   await P.page.waitForTimeout(1200);
   const face = () => P.page.evaluate(() => ({

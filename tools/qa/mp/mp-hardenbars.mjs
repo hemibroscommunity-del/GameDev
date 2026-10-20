@@ -14,9 +14,10 @@
  *      a wooden greatsword forged into the hand -- the wood tier, so copper
  *      bars;  v2.3.3524: a COPPER greatsword from four of them (the wood tier
  *      is not forged any more -- the owner: "'wood greatsword' is not an
- *      actual weapon in the game"), eight left;
+ *      actual weapon in the game"), eight left;  v2.3.3525: five of them (the
+ *      tour), seven left;
  *   3. the Upgrade tab's Harden row: the copper bar's picture "12/1" beside
- *      the gold "/500" and the 80%;  v2.3.3524: "8/1";
+ *      the gold "/500" and the 80%;  v2.3.3524: "8/1"; v2.3.3525: "7/1" (five bars a forge);
  *   4. Harden until the bars run short: before every attempt the row shows
  *      the ladder's price for its level (H+1 bars, 500 x 2^H gold), and the
  *      worker takes exactly that -- its answer says the same bars; a failure's
@@ -160,12 +161,13 @@ async function body({ P, wsPort, rec, errors }) {
   }, null, { timeout: 10000 }).catch(() => {});
   await P.page.waitForTimeout(800);
   await tab('forge');
-  /* v2.3.3524: the copper greatsword (four of the bars), the wood tier gone */
+  /* v2.3.3524: the copper greatsword (four of the bars), the wood tier gone;
+     v2.3.3525: five of them (the tour) */
   await P.page.click('[data-forge-go="copper"]').catch(() => {});
   await P.page.waitForFunction(() => { const w = window._gameState.current.rpg.weapon; return w && w.gearBase === 'copper'; }, null, { timeout: 8000 }).catch(() => {});
   const b0 = await bag();
   const lvl = await H.readState(P, (S) => ((S.rpg.lifeSkills || {}).blacksmithing || {}).level || 0);
-  rec.ok(`setup: twelve copper bars smelted (Smithing ${lvl}), four forged into a copper greatsword in hand at H0`, b0.bars === 8 && lvl >= 5 && !!b0.w && b0.w.gb === 'copper' && b0.w.h === 0, { b0, lvl });
+  rec.ok(`setup: twelve copper bars smelted (Smithing ${lvl}), five forged into a copper greatsword in hand at H0`, b0.bars === 7 && lvl >= 5 && !!b0.w && b0.w.gb === 'copper' && b0.w.h === 0, { b0, lvl });
   if (!(b0.w && b0.w.gb === 'copper')) return;
 
   /* ── 3. the Harden row ── */
@@ -190,7 +192,7 @@ async function body({ P, wsPort, rec, errors }) {
   });
   const r0 = await readRow();
   rec.ok(`the row: the copper bar's picture "${r0 && r0.chip}" beside the gold "/${r0 && r0.goldNeed}" and 80% ("${r0 && r0.text}")`,
-    !!r0 && r0.bar === 'bar_copper' && r0.chip === '8/1' && r0.chipImg && r0.goldNeed === 500 && /80%/.test(r0.text) && r0.on, r0);
+    !!r0 && r0.bar === 'bar_copper' && r0.chip === '7/1' && r0.chipImg && r0.goldNeed === 500 && /80%/.test(r0.text) && r0.on, r0);
   await shot(P, 'row');
 
   /* ── 4. harden until the bars run short ── */

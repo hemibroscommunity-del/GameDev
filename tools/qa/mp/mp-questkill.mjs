@@ -42,7 +42,13 @@ import * as H from './harness.mjs';
 /* Where the objective item comes from, straight out of the shipped table. */
 import { QUEST_REWARDS } from '../../../server/src/data.js';
 
-const WANT = QUEST_REWARDS.tut_1.objective;   /* {collect, invKey:'snowman', count:4, zone:'frost'} */
+const WANT = QUEST_REWARDS.tut_1.objective;   /* {collect, invKey:'slime-remnants', count:4, zone:'verdant'} */
+/* v2.3.3525: the first quest is the tour's slimes in the Verdant Wilds (it
+   was Frost Ridge's snowmen).  Everything below follows the table: the land
+   walked to, and the monsters hunted first -- the ones whose remains it asks
+   for (index.js _invKeyForSkull: every slime and wisp drops slime remains). */
+const LAND_NAME = { verdant: 'the Verdant Wilds', frost: 'Frost Ridge', sky: 'the Wind Dunes', ember: 'the Flame Fields' }[WANT.zone] || WANT.zone;
+const PREY = { 'slime-remnants': 'slime|fodder|wisp', snowman: 'snow', 'skeleton-remnants': 'mummy|skeleton', 'fire-goblin-remnants': 'goblin' }[WANT.invKey] || '.';
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Hunter', wsPort, webPort });
@@ -52,9 +58,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const srv = () => H.adminPlayer(wsPort, myId).then((a) => (a && a.rpg) || null).catch(() => null);
 
   rec.ok('the first quest asks for an item, from a named zone (guard on the table)',
-    !!WANT && WANT.type === 'collect' && WANT.invKey === 'snowman' && WANT.zone === 'frost', WANT);
+    !!WANT && WANT.type === 'collect' && WANT.invKey === 'slime-remnants' && WANT.zone === 'verdant', WANT);
 
-  /* ── accept tut_1, which is also what arms you and opens Frost Ridge ──
+  /* ── accept tut_1, which is also what arms you and opens its land ──
      v2.3.2195: BY WALKING UP TO HIM.  This used to tap "Accept from Mayor Bro"
      in the quest list; the owner had that door removed ("this was disabled a
      while ago and should remain disabled") after accepting there granted the
@@ -102,14 +108,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.readState(P, (S) => S.rpg && S.rpg.weapon));
 
   /* ── travel to the quest zone, on the game's own trail-heads ── */
-  const marks = await P.page.evaluate(() => {
+  const marks = await P.page.evaluate((z) => {
     const f = window._gameFns;
     if (!f || !f.TOWN_EXITS || !f.WORLDVIEW_EXITS) return null;
     return {
       out: f.TOWN_EXITS.find((e) => e.zoneId === 'worldview'),
-      frost: f.WORLDVIEW_EXITS.find((e) => e.zoneId === 'frost'),
+      land: f.WORLDVIEW_EXITS.find((e) => e.zoneId === z),
     };
-  });
+  }, WANT.zone);
   const stand = (tx, ty) => P.page.evaluate(({ x, y }) => {
     const S = window._gameState && window._gameState.current;
     if (!S || !S.player) return false;
@@ -128,8 +134,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the trail-heads are on the autotest bridge (guard)', !!marks, marks);
   if (marks) {
     await travel(marks.out.tx, marks.out.ty, 'worldview');
-    rec.ok('the quest opened Frost Ridge and the character walked in',
-      await travel(marks.frost.tx, marks.frost.ty, 'frost'),
+    rec.ok(`the quest opened ${LAND_NAME} and the character walked in`,
+      await travel(marks.land.tx, marks.land.ty, WANT.zone),
       await H.readState(P, (S) => S.currentZone));
   }
   /* v2.3.3425: full health for the idle seconds before the hunt (the hunt's
@@ -141,8 +147,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the same result and this file proves nothing. */
   const spawned = await H.waitFor(P,
     (S) => (S.monsters || []).filter((m) => m && m.alive !== false && (m.curHp === undefined || m.curHp > 0)).length,
-    (n) => n > 0, { timeout: 20000, label: 'frost has monsters' }).catch(() => 0);
-  rec.ok('Frost Ridge actually spawned something to kill (guard)', spawned > 0, { alive: spawned });
+    (n) => n > 0, { timeout: 20000, label: WANT.zone + ' has monsters' }).catch(() => 0);
+  rec.ok(`${LAND_NAME} actually spawned something to kill (guard)`, spawned > 0, { alive: spawned });
 
   /* ── the hunt ──
      Park beside the nearest live monster and let the game's own auto-attack
@@ -218,11 +224,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (pass > 0 && pass % 3 === 0) await heal();
     const hpNow = await H.readState(P, (S) => (S.rpg && typeof S.rpg.hp === 'number' ? S.rpg.hp : null)).catch(() => null);
     if (typeof hpNow === 'number' && (lowHp == null || hpNow < lowHp)) lowHp = hpNow;
-    const step = await P.page.evaluate(() => {
+    const step = await P.page.evaluate(({ zone, prey }) => {
       const S = window._gameState && window._gameState.current;
       if (!S || !S.player) return { err: 'no-state' };
       if (S.rpg && S.rpg.hp !== undefined && S.rpg.hp <= 0) return { err: 'dead', zone: S.currentZone };
-      if (S.currentZone !== 'frost') return { err: 'left-zone', zone: S.currentZone };
+      if (S.currentZone !== zone) return { err: 'left-zone', zone: S.currentZone };
       const P0 = S.player;
       /* A pile on the ground beats a live monster: it expires, and the whole
          point of the kill was what fell out of it. */
@@ -238,8 +244,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
         return { act: 'loot', id: String(best.lootId), d: Math.round(bd) };
       }
-      const live = (S.monsters || []).filter((m) => m && m.alive !== false && (m.curHp === undefined || m.curHp > 0));
-      if (!live.length) return { act: 'wait-respawn' };
+      const all = (S.monsters || []).filter((m) => m && m.alive !== false && (m.curHp === undefined || m.curHp > 0));
+      if (!all.length) return { act: 'wait-respawn' };
+      /* v2.3.3525: the kinds that drop what the quest asks for, first */
+      const re = new RegExp(prey, 'i');
+      const want = all.filter((m) => re.test(String(m.arch || '') + ' ' + String(m.type || '') + ' ' + String(m.name || '')));
+      const live = want.length ? want : all;
       let tgt = live[0], td = Infinity;
       for (const m of live) {
         const d = Math.hypot(m.x - P0.x, m.y - P0.y);
@@ -247,7 +257,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       S.autoAttack = true;
       return { act: 'fight', id: String(tgt.id), arch: tgt.arch || tgt.type, hp: Math.round(tgt.curHp || 0), was: Math.round(td) };
-    });
+    }, { zone: WANT.zone, prey: PREY });
     if (step && step.err === 'dead') { died = true; break; }
     if (step && step.err === 'left-zone') { died = true; log.push(step); break; }
     if (step && step.id && (step.act === 'loot' || step.act === 'fight')) await walkTo(step.act, step.id);
@@ -258,7 +268,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   const endSrv = await srv();
-  rec.ok(`killing snowmen actually drops '${WANT.invKey}' into the worker's bag`,
+  rec.ok(`killing its monsters actually drops '${WANT.invKey}' into the worker's bag`,
     got > 0, { got, died, log, zone: endSrv && endSrv.z, inv: endSrv && endSrv.inventory });
   rec.ok(`...and the character survived the errand (a corpse cannot finish it; healed ${heals} times, ${lowHp} HP at the lowest)`,
     !died, { died, log, heals, lowHp });
@@ -293,7 +303,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (ready === true) break;
     await P.page.waitForTimeout(500);
   }
-  const clientHeld = await H.readState(P, (S) => (S.rpg && S.rpg.inventory && S.rpg.inventory.snowman) || 0);
+  const clientHeld = await P.page.evaluate((k) => { const S = window._gameState.current; return (S.rpg && S.rpg.inventory && S.rpg.inventory[k]) || 0; }, WANT.invKey);
   rec.ok('...which makes the turn-in claimable without any seeding',
     ready === true, { ready, workerHeld: got, clientHeld });
 

@@ -5571,6 +5571,12 @@ export const NPC_DATA = [{
     dirs: ['south', 'southwest', 'west', 'northwest',
       'north', 'northeast', 'east', 'southeast'],
   },
+  /* ═══ v2.3.3525: HE RACES YOU (the tour's race_1, game/race.js) ═══
+     Standing on the square he needs only his south strip (npcSprites.js
+     wheelWalkSources); racing round it -- west, north, east, back south --
+     he needs the four straight ones, loaded with the Wheel's cast behind its
+     loading screen (~1 MB). */
+  wheelDirs: ['south', 'west', 'north', 'east'],
   avatar: '🧒',
   color: '#7FB6E8',
   plateRole: 'Kid',
@@ -5612,6 +5618,7 @@ export const NPC_DATA = [{
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
   phrases: [
     'Betcha can’t catch me!',
+    'Bet you can’t beat me round the square!',   /* v2.3.3525: the race (race_1) */
     'My bro says the meadow’s got slimes.',
     'One day I’m gonna be a real adventurer.',
     'Did you see the fountain? It’s got FISH. Probably.',
@@ -5740,6 +5747,10 @@ export const NPC_DATA = [{
 }, {
   id: 'shopkeeper_bro',
   name: 'Diego',
+  /* v2.3.3525: a giver of the tour now (fish_1): while it runs, walking up to
+     him still opens his SHOP (BroTown's proximity opener skips a quiet
+     giver's "how's it going"); a tap or E answers about the fish */
+  quietProgress: true,
   /* The south strip. `sprite` is what npcSpriteScale keys on and what the
      preloader lists; the renderer binds a sliced FRAME rather than this raw
      strip (see entityRenderer v2.3.2046), so the four-in-one image is never
@@ -5852,6 +5863,11 @@ export const NPC_DATA = [{
      same reason his NAME is not -- getNpcQuest keys on the name, not on this,
      but keeping the two consistent avoids inviting the mistake. */
   plateRole: 'Blacksmith',
+  /* v2.3.3525: a giver of the tour now (smith_1, smith_2), at his forge's
+     steps: walking past him to its door does not stop you to say how his
+     quest is going (BroTown's proximity opener) -- an offer or a claim
+     still opens by itself, and a tap or E answers */
+  quietProgress: true,
   sprite: '/sprites/npc/blacksmith-bro.webp',
   portrait: '/sprites/npc/blacksmith-bro-head.webp',
   avatar: '🔨',
@@ -5959,6 +5975,96 @@ export const NPC_DATA = [{
     'One log, one trap. One trap, one chance.',
     'Every land has its own little beasts.',
     'Most traps break. That is trapping.',
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  /* ═══ v2.3.3525: WOODWORKER BRO AND FARMER BRO, FOR THE TOUR ═══
+     The owner, planning the quest line for an exposé: "a quest from a
+     woodworker where you give him 5 wood, he gives you 5 hardened wood", and
+     "a quest for farming too".  Two of the tour's givers had nobody to stand
+     in (QUEST_CHAINS wood_1/wood_2, farm_1/farm_2): docs/ART-WISHLIST.md's
+     keepers, sheet 1 of 2, already named them, and these are those two.
+
+     NAMES: checked against QUEST_CHAINS -- getNpcQuest keys on the NAME, and
+     neither matches a dormant chain (TRAPS' Trader Tix / Beastmaster Kai
+     trap, see Diego and Beastmaster Bro above).
+
+     `wheelOnly`, as Beastmaster Bro: they stand in the Wheel's Brotown and
+     nowhere else.  `needsCap: 'tour'`: only against a worker that knows the
+     tour's quests (caps.tour; WHEEL_TOWNSFOLK's `cap`, BroTown
+     _spawnWheelNpcs).  `quietProgress`: walking past one to his own door does
+     not stop you to say how his quest is going.  Each is his building's
+     KEEPER (wheelBuildingDoors.js WHEEL_KEEPERS): his quests done, talking to
+     him opens it.
+
+     ART: stand-ins made by tools/make_tour_townsfolk.py from figures the game
+     already has (the retired clerk, Diego), until the owner's own pictures
+     come -- the prompts are ART-WISHLIST's.  The NPC frame: 256 x 256, feet on
+     y = 223; one picture each, ~0.25 MB, with the Wheel's cast. */
+  id: 'woodworker_bro',
+  name: 'Woodworker Bro',     /* MUST equal QUEST_CHAINS[].npc -- getNpcQuest keys on it */
+  plateRole: 'Woodworker',
+  sprite: '/sprites/npc/woodworker-bro.webp',
+  portrait: '/sprites/npc/woodworker-bro-head.webp',
+  avatar: '🪚',
+  color: '#a3753f',
+  wheelOnly: true,
+  quietProgress: true,
+  needsCap: 'tour',
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs at his door */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 12000,
+  chatBubble: null,
+  /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
+  phrases: [
+    'Measure twice. Cut once. Cry never.',
+    'Hardened wood. It has seen things.',
+    'Nobody ever brings me logs.',
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'farmer_bro',
+  name: 'Farmer Bro',         /* MUST equal QUEST_CHAINS[].npc -- getNpcQuest keys on it */
+  plateRole: 'Farmer',
+  sprite: '/sprites/npc/farmer-bro.webp',
+  portrait: '/sprites/npc/farmer-bro-head.webp',
+  avatar: '👨‍🌾',
+  color: '#c9a227',
+  wheelOnly: true,
+  quietProgress: true,
+  needsCap: 'tour',
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs at his door */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    'Slimes ate my carrots. Then they exploded.',
+    'Water your crops. Water yourself.',
+    'Every bro gets a farm. It is in the fine print.',
   ],
   canFollow: false,
   followZones: [],

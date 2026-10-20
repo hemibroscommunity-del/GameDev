@@ -1086,7 +1086,7 @@ remnant to migrate server-side, not a mode to preserve.
       make armour?", the owner: "Yes": iron and black steel bars smelt too
       (Smithing 5 and 10, `SMELT.RECIPES`, icons by `tools/make_bar_icons.py
       iron blacksteel`), and the Blacksmith's ARMOR tab forges a torso or
-      greaves (4 bars each since v2.3.3141) in each metal -- copper Smithing 1, iron 5, black
+      greaves (4 bars each since v2.3.3141, 5 since v2.3.3525) in each metal -- copper Smithing 1, iron 5, black
       steel 10 (`server/src/armorforge.js` `ARMOR_FORGE.RECIPES`, mirrored by
       items.js `ARMOR_FORGE_RECIPES`): the drop's own piece `{name, mat, slot,
       tierMult, quality}` on the armour ladder (1/2/3, no gearBase or type),
@@ -1106,7 +1106,9 @@ remnant to migrate server-side, not a mode to preserve.
         BLACKSMITH_TIERS `bar`/`bars`/`xp` on copper, iron and `steel`, which
         replace their `oreCost`; the gold stays); a sword pays the armour's
         XP for the same bars (800 / 1,200 / 1,600); wood and the metals past
-        black steel are unchanged;
+        black steel are unchanged; FIVE bars since v2.3.3525 (the tour, below:
+        "It should mirror the cost of making armor"), the XP 1,000 / 1,500 /
+        2,000, salvage still two back;
       - the Blacksmith's SALVAGE tab (`server/src/salvage.js`): a CARRIED piece
         of those metals -- armour by its ledger id through `_gearSellable`
         and `_gearProvTake` (the auction house's own gate and escrow step:
@@ -3382,6 +3384,82 @@ remnant to migrate server-side, not a mode to preserve.
         nothing (groundLoot.js `S._dying`): TRAPS §233;
       - combat-lifecycle §5, `mp-deathpile` (a real death, in real time,
         `BT_DP_TRACE=1` its timeline): item-drop.md "A dead player's pile".
+  - Since v2.3.3525 THE TOUR -- the owner, a week before an exposé where
+    reviewers give each game 20-30 minutes: "my quest line is almost
+    exclusively going to 4 zones to kill monsters and bring their remains back
+    to mayor bro ... Mayor bro would hand off the quest to the next person
+    ... Keep the dialog witty and funny (it's an unserious game bro)", then
+    "Maybe mayor bro is the only quest available for the first quest then
+    after completing that other NPCs begin having quest icons appear above
+    their head":
+    - THE MAYOR FIRST, THEN THE WHOLE TOWN (server/src/data.js QUEST_REWARDS
+      tut_1's header; the phone's QUEST_CHAINS, the header above farm_1):
+      Mayor Bro's exploding slimes (tut_1) are the only quest a new player is
+      offered; once in, SIX townsfolk offer theirs at once (`after: 'tut_1'`)
+      -- Farmer Bro plants carrots (farm_1), Blacksmith Bro 5 copper ore for
+      5 bars (smith_1), Woodworker Bro 5 pine logs for 5 hardened pine
+      (wood_1), Diego 2 cooked fish for 10 cooked clownfish (fish_1, two pine
+      logs on accept for the fire), Lil Bro's race (race_1), Beastmaster Bro's
+      traps (beast_1); each giver's second step after his first: forge your
+      own piece (smith_2), a bow or staff and a pine one SWAPPED for softwood
+      at the hand-in (wood_2, `trade`), 3 springs (beast_2), Zoom Juice
+      (farm_2, after farm_1 AND fish_1: you can cook, the carrots have
+      grown); the Mayor's burrowing snowmen, the finale (tut_2), once the
+      whole town is in (`after` a LIST, every one handed in: the worker's
+      _questBarred, the phone's getNpcQuest STOP via `questAfterMet`), then
+      his lands (tut_3/4); `next` only within a giver's own line (a `next`
+      opens its step past any `after`); life_1/life_2 RETIRED (QUEST_RETIRED,
+      `retired`: never offered, one held still hands in); every line says why
+      he wants it, in any order; the counted kinds `farm`/`craft`/`cook`/
+      `race` (quests.js QUEST_COUNTED); a hand-in's trade asked on the claim
+      window (QuestPanel TradeChooser);
+    - QUEST_TOUR (both sides, mirror-audit §5a) is the order SUGGESTED: with
+      nothing in hand the gold road leads to the first step of it on offer
+      and the pinned card says "Next: <quest> / Talk to <him> <where>" and
+      "+N more: look for a gold ! on your map" (questRoute.js `tourOffer`,
+      `more`); a giver's "how's it going" line opens his building (game/
+      tour.js `opens`, NpcDialogue's `action`); and every step has a WAY
+      (game/questWays.js, v2.3.3522): the farm steps the Feed & Seed's
+      door, Zoom Juice the Cookhouse's, the forging the forge, the bow the
+      bench, the race Lil Bro (`way: 'giver'`, a kind of its own);
+    - THE QUEST PINS ON THE MAPS -- the owner: "Make the quest icons appear on
+      the minimap and map too": every townsperson's head pin (npc.
+      _questMarker, the owner's QUEST_PIN pictures, preloaded for the heads)
+      on the Wheel's minimap (wheelMinimap.js `_pin`; one just off the box,
+      within `MAP_PIN.EDGE_R`, smaller on its edge toward him -- from the
+      arrival the box holds half the town) and the
+      world map (WorldMapOverlay.jsx: at every zoom, bigger and named from
+      AT.town, the key's "has a quest"; its three pictures loaded as the map
+      opens and let go as it closes): src/game/questPins.js, no imports;
+      `__btMinimap.questPins`, `__btWorldMap.more.pins`; `quest-pins` suite;
+    - Woodworker Bro and Farmer Bro stand in the Wheel (WHEEL_TOWNSFOLK `cap:
+      'tour'`, keepers of their buildings), stand-in pictures by
+      tools/make_tour_townsfolk.py until the owner's; Blacksmith Bro and
+      Diego `quietProgress`;
+    - LIL BRO'S RACE (server/src/race.js, src/game/race.js, RaceHud.jsx,
+      rendering/raceFlags.js): four corner flags round the Town Hall's square
+      and back, judged on every accepted move, Lil Bro 165 px/s (a walk
+      loses, a sprint or Zoom Juice wins), held on the line through the
+      3-second countdown, a false start called; `race_start` / `race_state` /
+      `race_cp` / `race_end` (PRIVILEGED, the direct switch);
+    - ZOOM JUICE: Cookhouse row 9, 3 carrots, 25% faster for 5 minutes;
+    - the gear: copper/iron/black steel SWORDS at Smithing 1/5/10, the forge
+      asks what WEARING asks, bows and staffs from FIVE of their tier's
+      HARDENED wood at Woodworking 1/5/10/15/20 -- the owner: "Bows/staffs
+      should require 5 hard wood before making them (5 logs in that tier make
+      1 hard wood). It should mirror the cost of making armor" -- so swords,
+      greatswords, torsos and greaves take FIVE bars too (was four since
+      v2.3.3141), the XP with them (200 / 300 / 400 a bar), salvage still two
+      back (half, rounded down); the tour's five bars and five hardened pine
+      make exactly one piece each; SOFTWOOD free to wear like iron
+      (`caps.tourgear` for the windows);
+    - "REMAINS", not "remnants", wherever a player reads it
+      (src/data/remains.js; the keys stay);
+    - Test panel "Tour: jump to" (`/dev/tour {at}`), `/dev/questcount`;
+      kill switches `tour: false`, `race: false`; `tour` and `quest-pins`
+      suites, mirror-audit §5a, test-world-core, `mp-questline` (the whole
+      tour, CI's "playable", the six pins over heads and on both maps),
+      `mp-race`: docs/specs/demo-quest-line.md.
   - Since v2.3.3527 ACHIEVEMENTS -- the owner: "Achievement points are
     something I'd like in the game. You get it by completing the game. Some of
     them are through super rare achievements. Although not as rare, an arena

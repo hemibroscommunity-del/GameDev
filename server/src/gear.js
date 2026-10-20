@@ -350,6 +350,16 @@ export const gearMethods = {
     if (!item || typeof item !== 'object') return false;
     return item.mat === 'iron' || item.material === 'iron' || item.gearBase === 'iron';
   },
+  /* ═══ v2.3.3525: SOFTWOOD IS THE WOOD'S IRON ═══
+     Owner, for the tour's Woodworker Bro, who trades a pine bow or staff for a
+     softwood one: "The tier after pine should still be wearable at lvl 1
+     magic/staff and lvl 1 bow".  Iron, the metal after copper, has been free
+     to wear since v2.3.2124; softwood is the wood after pine, and is free the
+     same way, in every slot.  The ladder above it still gates.  MIRROR:
+     src/data/gameSystems.js isFreeTierGear (mirror-audit sweeps the two). */
+  _isFreeTierGear(item) {
+    return this._isIronGear(item) || (!!item && typeof item === 'object' && item.gearBase === 'ww_softwood');
+  },
   _prog3EquipOk(ps, slot, item) {
     if (!ps || !ps.prog3 || !item || typeof item !== 'object') return true;
     /* ═══ v2.3.2125: EVERY SLOT, NOT JUST THE DEFENCE ONES ═══
@@ -378,7 +388,7 @@ export const gearMethods = {
     if (slot === 'armor' && isArmourLadderPiece(item)) {
       return this._prog3GearOk(ps, 'defense', armorDefReq(item));
     }
-    if (this._isIronGear(item)) return true;
+    if (this._isFreeTierGear(item)) return true;   /* v2.3.3525: iron, and softwood */
     let tierIdx = -1;
     let baseIdx = 0;
     if (typeof item.gearBase === 'string') {
@@ -507,8 +517,18 @@ export const gearMethods = {
        iron nothing, black steel Melee 10, five more a tier), where tierIndex
        x 5 asked Melee 5 of the copper greatsword a new character is meant to
        forge first.  The game's copy: src/data/forgeLadder.js forgeStatReq. */
-    if (ps.prog3 && !wantWw && !ladderOld) {
-      if (!this._prog3EquipOk(ps, 'weapon', { type: weaponType, gearBase: tierKey, tierMult: tier.tierMult })) return;
+    if (ps.prog3 && (wantWw || !ladderOld)) {
+      /* ═══ v2.3.3525: THE FORGE ASKS WHAT WEARING IT ASKS ═══
+         This was `tierIndex x 5` on its own: a copper sword (the table's
+         second row, after the vestigial wood) asked Melee 5 to MAKE while
+         wearing it asks nothing (v2.3.1765, "copper counts as rung zero"),
+         and iron asked Melee 10 to make and nothing to wear (v2.3.2125).  So
+         the tour's "make your own weapon or armor" from five copper bars was
+         armour only for a new player.  Now the forge asks _prog3EquipOk's own
+         question of the piece it is about to make -- copper and pine 0, iron
+         and softwood free, every rung above them what wearing it asks. */
+      const slotFor = weaponType === 'bow' ? 'rangedWeapon' : weaponType === 'staff' ? 'staffWeapon' : 'weapon';
+      if (!this._prog3EquipOk(ps, slotFor, { type: weaponType, gearBase: wantWw ? ('ww_' + tierKey) : tierKey, tierMult: tier.tierMult })) return;
     } else if (ps.prog3) {
       const tierIdx = Object.keys(table).indexOf(tierKey);
       const cat = weaponType === 'bow' ? 'bow' : weaponType === 'staff' ? 'staff' : 'sword';
@@ -528,9 +548,13 @@ export const gearMethods = {
     /* v2.3.3141: and `tier.bar` before both -- copper, iron and black steel
        are forged from four of their bars now (data.js BLACKSMITH_TIERS,
        salvage.js). */
-    const resourceKey = tier.bar ? tier.bar : tier.wood ? ('wood_' + tier.wood) : ('ore_' + tier.oreName + '_ore');
+    /* v2.3.3525: and the bows and staffs of the woods with a hardened wood
+       from five of it (data.js WOODWORKING_TIERS `hardened`), as a sword
+       from five bars (four of each until the owner's "It should mirror the
+       cost of making armor"). */
+    const resourceKey = tier.bar ? tier.bar : tier.hardened ? tier.hardened : tier.wood ? ('wood_' + tier.wood) : ('ore_' + tier.oreName + '_ore');
     const have = ps.inventory[resourceKey] || 0;
-    const cost = tier.bar ? tier.bars : wantWw ? tier.woodCost : tier.oreCost;
+    const cost = tier.bar ? tier.bars : tier.hardened ? tier.hardenedCost : wantWw ? tier.woodCost : tier.oreCost;
     if (have < cost) return;
 
     // Active slot for the new weapon (matches client logic).
@@ -579,10 +603,13 @@ export const gearMethods = {
     //   blacksmithing: tier.minLvl * 5
     //   woodworking:   tier.minLvl * 5  (same formula)
     // v2.3.3141: a tier forged from bars pays its own `xp`, the armour forge's
-    // rate for the same four bars (data.js BLACKSMITH_TIERS).
+    // rate for the same bars (data.js BLACKSMITH_TIERS; five since v2.3.3525).
     /* v2.3.3524: and every blacksmith tier past black steel carries its old
        `minLvl x 5` as `xp`, so the ladder's lower levels pay what they paid. */
     this._addLifeSkillXp(ps, skillName, tier.xp || (tier.minLvl || 1) * 5);
+    /* v2.3.3525: a piece made counts for the tour's smith_2 and wood_2
+       (quests.js `craft`); saved with the piece below */
+    try { this._creditQuestObjective(session.id, 'craft', wantWw ? 'wood' : 'smith'); } catch (e) { /* a quest must never undo the forge */ }
 
     /* v2.3.3527: an Elite or Godly blade is an achievement (achievements.js),
        riding this save */

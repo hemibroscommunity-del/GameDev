@@ -10,7 +10,9 @@ import { questObjectiveDone } from '@/data/index.js'; /* v2.3.1914 */
    split rather than restyled. */
 import { NpcDialogue } from './NpcDialogue.jsx';
 import { QuestOfferPanel } from './QuestOfferPanel.jsx';
-import { QuestSkillChip } from './questArt.jsx'; /* v2.3.3030: the owner's skill chips */
+import { QuestSkillChip, QuestTradeChip } from './questArt.jsx'; /* v2.3.3030: the owner's skill chips; v2.3.3525: and a trade's */
+import { questAction, tradeChoices } from '@/game/tour.js'; /* v2.3.3525: the tour's buttons */
+import { requestRace } from '@/game/race.js'; /* v2.3.3525: Lil Bro's Race! */
 
 /* v2.3.3030: how long the claim's confirmation ("Rewards claimed!") stays
    before he offers his next quest -- long enough for the coins and the items
@@ -104,6 +106,33 @@ export function XpChooser(props) {
     })));
 }
 
+/* ═══ v2.3.3525: WHICH WEAPON HE SWAPS ═══
+   Woodworker Bro's wood_2 hands in with a TRADE (the worker's `trade`,
+   quests.js _questTradePick): "he'll trade you the better tier of weapon
+   (after pine) if you turn in a pine one to him" -- the owner.  On the claim's
+   own green panel, the XpChooser's shape: a chip for each pine weapon you
+   carry (in your hands or the bag), the one you hold pre-picked when it is the
+   only one; none at all and the claim stays grey, saying what to bring. */
+export function TradeChooser(props) {
+  var choices = props.choices || [], pick = props.pick, setPick = props.setPick, quest = props.quest;
+  var to = quest && quest.trade ? quest.trade.to : 'softwood';
+  var To = to.charAt(0).toUpperCase() + to.slice(1);
+  return React.createElement("div", { className: 'bt-qw-green', 'data-trade-chooser': '' },
+    React.createElement("div", { className: 'bt-qw-green-head' },
+      React.createElement("b", { className: 'bt-xp-payout' }, To + '!'),
+      ' ',
+      React.createElement("span", { 'data-xp-caption': '' },
+        choices.length ? 'Pick the pine one he swaps' : 'Bring a Pine Bow or Pine Staff')),
+    React.createElement("div", { className: 'bt-qw-chips' }, ['bow', 'staff'].map(function (t) {
+      var c = choices.filter(function (x) { return x.type === t; })[0];
+      return React.createElement(QuestTradeChip, {
+        key: t, type: t, selected: pick === t, disabled: !c,
+        label: (t === 'bow' ? 'Bow' : 'Staff') + (c && c.where === 'hand' ? ' (held)' : ''),
+        onClick: function () { setPick(t); },
+      });
+    })));
+}
+
 /* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) — panel
    surface + 11/600 section headers + recessed objective well + 44px
    brass primary. Styles/structure only; handlers untouched. */
@@ -128,6 +157,11 @@ export function QuestPanel(props) {
   var _xpCatState = React.useState(null),
     xpCat = _xpCatState[0],
     setXpCat = _xpCatState[1];
+  /* v2.3.3525: a hand-in with a trade (wood_2) asks which weapon goes --
+     local to the open dialogue, like xpCat */
+  var _tradeState = React.useState(null),
+    tradePick = _tradeState[0],
+    setTradePick = _tradeState[1];
   var _xpAmt = (questPanel.quest.reward && questPanel.quest.reward.xp) || 0;
   /* v2.3.1820: restored verbatim — the tidy-up that removed the old card's
      redeem-label block took these two with it, and they are not part of it:
@@ -243,6 +277,7 @@ export function QuestPanel(props) {
   };
   React.useEffect(function () {
     setStage('talk');
+    setTradePick(null);   /* v2.3.3525: a new subject asks again */
     /* v2.3.3462: he speaks as the talk opens -- his own hum, however you
        reached him (a tap, E, walking up to him): game/npcVoices.js */
     npcSpeaks(stateRef.current, questPanel.npc);
@@ -275,11 +310,29 @@ export function QuestPanel(props) {
      and that is the end of it, so his last button closes rather than opening
      an offer screen with no offer on it. */
   var _hasDecision = _isOffer || _canTurnIn;
+  /* v2.3.3525: the trade's choices, from the LIVE bag, and the one picked --
+     yours if you picked, else the only one there is */
+  var _trades = (_canTurnIn && questPanel.quest.trade) ? tradeChoices(questPanel.quest, _liveRpg) : [];
+  var _tradeType = tradePick || (_trades.length === 1 ? _trades[0].type : null);
+  /* ...and the button on his "how's it going" line: the building he stands at,
+     or Lil Bro's Race! (game/tour.js) -- the panel closes first */
+  var _act = (!_isOffer && !_canTurnIn) ? questAction(questPanel.quest, questPanel.status, stateRef.current) : null;
+  var _action = _act ? {
+    label: _act.label,
+    qa: _act.kind === 'race' ? 'race-go' : 'quest-open',
+    onClick: function () {
+      var St = stateRef.current;
+      setQuestPanel(null);
+      if (_act.kind === 'race') requestRace(St);
+      else if (props.openPlot) props.openPlot(_act.plot);
+    },
+  } : null;
 
   if (stage === 'talk') {
     return React.createElement(NpcDialogue, {
       npcName: questPanel.quest.npc,
       text: _speech,
+      action: _action,
       ctaLabel: _isOffer ? 'See the quest' : (_canTurnIn ? 'Claim reward' : 'Close'),
       /* v2.3.2289: lock the backdrop only on the face that leads to a payout.
          An offer stays dismissible (nothing is owed yet) and so does a
@@ -291,7 +344,7 @@ export function QuestPanel(props) {
            the mockup's AUTO REWARD: no window at all, the rewards paid at
            once, the banner with its laurel check, the coins and items flying
            straight to the HUD (turnInQuest `auto`), and his next quest. */
-        if (!_isOffer && _canTurnIn && !_needsXpChoice) {
+        if (!_isOffer && _canTurnIn && !_needsXpChoice && !questPanel.quest.trade) {
           turnInQuest(stateRef.current, questPanel,
             { setRpgState: setRpgState, setQuestPanel: setQuestPanel }, undefined, { auto: true });
           return;
@@ -311,9 +364,11 @@ export function QuestPanel(props) {
        _needsXpChoice is computed above and unchanged. */
     extra: (!_isOffer && _needsXpChoice)
       ? React.createElement(XpChooser, { xp: _xpAmt, xpCat: xpCat, setXpCat: setXpCat })
-      : null,
+      : (!_isOffer && questPanel.quest.trade)
+        ? React.createElement(TradeChooser, { quest: questPanel.quest, choices: _trades, pick: _tradeType, setPick: setTradePick })
+        : null,
     confirmClass: _isOffer ? null : 'bt-quest-turnin',
-    confirmDisabled: !_isOffer && _needsXpChoice && !xpCat,
+    confirmDisabled: !_isOffer && ((_needsXpChoice && !xpCat) || (!!questPanel.quest.trade && !_tradeType)),
     claimed: !_isOffer ? claimed : null,
     onClaimedDone: _finishClaim,
     onClose: function () { return _closeQuestPanel(); },
@@ -328,7 +383,7 @@ export function QuestPanel(props) {
          `compact` puts the QUEST COMPLETE! banner at the top of the screen,
          clear of the confirmation window */
       var _next = turnInQuest(stateRef.current, questPanel,
-        { setRpgState: setRpgState, setQuestPanel: setQuestPanel }, xpCat, { deferNext: true, compact: true });
+        { setRpgState: setRpgState, setQuestPanel: setQuestPanel }, xpCat, { deferNext: true, compact: true, trade: _tradeType || undefined });
       _claimRef.current = { next: _next, timer: setTimeout(_finishClaim, QUEST_CLAIMED_MS) };
       setClaimed({ xpCat: xpCat });
     },

@@ -49,14 +49,19 @@ export const ARMOR_FORGE = Object.freeze({
      v2.3.3141: FOUR bars a piece, torso and greaves alike (was five and
      three) -- the owner: "maybe chest, legs, and sword each take 4 bars to
      make (5 ore makes 1 bar).  If you salvage them you get 2 bars back"
-     (salvage.js).  The XP moves with the bars (800 / 1,200 / 1,600). */
+     (salvage.js).  The XP moves with the bars (800 / 1,200 / 1,600).
+     v2.3.3525: FIVE bars a piece, as a bow or a staff takes five hardened
+     wood -- the owner: "Bows/staffs should require 5 hard wood ... It should
+     mirror the cost of making armor" (data.js, the five-bar note at
+     BLACKSMITH_TIERS.copper).  The XP moves with them again, 200 / 300 / 400
+     a bar (1,000 / 1,500 / 2,000); salvage still gives two back. */
   RECIPES: Object.freeze({
-    copper_torso: Object.freeze({ bar: 'bar_copper', bars: 4, slot: 'armor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 800, name: 'Copper Torso' }),
-    copper_greaves: Object.freeze({ bar: 'bar_copper', bars: 4, slot: 'legsArmor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 800, name: 'Copper Greaves' }),
-    iron_torso: Object.freeze({ bar: 'bar_iron', bars: 4, slot: 'armor', mat: 'iron', tierMult: 2, minLvl: 5, xp: 1200, name: 'Iron Torso' }),
-    iron_greaves: Object.freeze({ bar: 'bar_iron', bars: 4, slot: 'legsArmor', mat: 'iron', tierMult: 2, minLvl: 5, xp: 1200, name: 'Iron Greaves' }),
-    blacksteel_torso: Object.freeze({ bar: 'bar_black_steel', bars: 4, slot: 'armor', mat: 'blacksteel', tierMult: 3, minLvl: 10, xp: 1600, name: 'Black Steel Torso' }),
-    blacksteel_greaves: Object.freeze({ bar: 'bar_black_steel', bars: 4, slot: 'legsArmor', mat: 'blacksteel', tierMult: 3, minLvl: 10, xp: 1600, name: 'Black Steel Greaves' }),
+    copper_torso: Object.freeze({ bar: 'bar_copper', bars: 5, slot: 'armor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 1000, name: 'Copper Torso' }),
+    copper_greaves: Object.freeze({ bar: 'bar_copper', bars: 5, slot: 'legsArmor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 1000, name: 'Copper Greaves' }),
+    iron_torso: Object.freeze({ bar: 'bar_iron', bars: 5, slot: 'armor', mat: 'iron', tierMult: 2, minLvl: 5, xp: 1500, name: 'Iron Torso' }),
+    iron_greaves: Object.freeze({ bar: 'bar_iron', bars: 5, slot: 'legsArmor', mat: 'iron', tierMult: 2, minLvl: 5, xp: 1500, name: 'Iron Greaves' }),
+    blacksteel_torso: Object.freeze({ bar: 'bar_black_steel', bars: 5, slot: 'armor', mat: 'blacksteel', tierMult: 3, minLvl: 10, xp: 2000, name: 'Black Steel Torso' }),
+    blacksteel_greaves: Object.freeze({ bar: 'bar_black_steel', bars: 5, slot: 'legsArmor', mat: 'blacksteel', tierMult: 3, minLvl: 10, xp: 2000, name: 'Black Steel Greaves' }),
   }),
 });
 
@@ -91,6 +96,9 @@ export const armorForgeMethods = {
       { name: r.name, mat: r.mat, slot: r.slot, tierMult: r.tierMult, quality: this._rollWeaponQuality() }, 'forge');
 
     const res = this._addLifeSkillXp(ps, 'blacksmithing', r.xp);
+    /* v2.3.3525: armour made counts for the tour's smith_2 as a sword does
+       (quests.js `craft` 'smith'), saved with the piece */
+    try { this._creditQuestObjective(session.id, 'craft', 'smith'); } catch (e) { /* a quest must never undo the forge */ }
     /* v2.3.3527: an Elite or Godly piece is an achievement (achievements.js),
        riding this save */
     try { if (this._achvOnPiece) this._achvOnPiece(session.id, ps, piece, 'forge'); } catch (e) { /* never break a forge */ }

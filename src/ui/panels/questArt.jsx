@@ -166,6 +166,25 @@ export function QuestSkillChip(props) {
   props.label);
 }
 
+/* v2.3.3525: the same chip for a hand-in's TRADE (Woodworker Bro's wood_2:
+   which pine weapon he swaps for softwood) -- `data-trade`, not
+   `data-xp-skill`, so nothing that picks an XP skill ever picks one of these */
+export function QuestTradeChip(props) {
+  var on = !!props.selected;
+  return h('button', {
+    type: 'button',
+    className: 'bt-qw-chip' + (on ? ' bt-qw-chip--on' : ''),
+    'data-trade': props.type,
+    'aria-pressed': on,
+    disabled: !!props.disabled,
+    style: props.disabled ? { opacity: 0.45 } : undefined,
+    onClick: function (e) { e.stopPropagation(); if (!props.disabled && props.onClick) props.onClick(e); },
+  },
+  art(QUEST_CHIP[props.type] || QUEST_CHIP.bow, 'bt-qw-chip-art'),
+  on ? art(QUEST_ART.chipRing, 'bt-qw-chip-ring') : null,
+  props.label);
+}
+
 /** The claim button: grey until it can be pressed, gold when it can, the
     owner's glowing gold under a finger. */
 export function QuestClaimButton(props) {

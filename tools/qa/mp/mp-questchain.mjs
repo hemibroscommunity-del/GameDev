@@ -4,8 +4,9 @@
  * by proximity to mayor bro. Same proximity turn in quest reward issue with
  * the next quest bro ascendant."
  *
- * mp-questclaim already covers tut_2 and passes, so this walks the WHOLE chain
- * — tut_2, tut_3, tut_4 — asking the same question of each. If one step is
+ * mp-questclaim already covers "Into the Blue" and passes, so this walks the
+ * WHOLE chain — tut_1 to tut_4 (v2.3.3525: the tour's order) — asking the same
+ * question of each. If one step is
  * broken and its neighbours are not, that asymmetry is the bug; if all three
  * behave, the fault is in how the state is REACHED in real play rather than in
  * the opener, and that is worth knowing too.
@@ -15,11 +16,22 @@
  * second one — a panel that opens on his progress line is still a failure.
  */
 import * as H from './harness.mjs';
+import { QUEST_REWARDS, QUEST_TOUR } from '../../../server/src/data.js';
 
+/* v2.3.3525: the Mayor's four, in the tour's order -- the slimes' "Into the
+   Blue" first (tut_1), the snowmen's "Cold Reception" after the tour's other
+   ten steps (tut_2), then the dunes and the fields.  Their bag keys and counts
+   are the worker's table's; what comes before each, the tour's own steps
+   (QUEST_TOUR: the town opens at once after tut_1, so no `next` walk reaches
+   them). */
+const TOUR = QUEST_TOUR.slice(0, QUEST_TOUR.indexOf('tut_2'));
+const done = (ids) => Object.fromEntries(ids.map((id) => [id, 'turnedIn']));
+const step = (id, title, prior) => ({ id, title, key: QUEST_REWARDS[id].objective.invKey, n: QUEST_REWARDS[id].objective.count, prior });
 const STEPS = [
-  { id: 'tut_2', title: 'Into the Blue',  key: 'slime-remnants',       n: 6, prior: { tut_1: 'turnedIn' } },
-  { id: 'tut_3', title: 'Bad Wind',       key: 'skeleton-remnants',    n: 5, prior: { tut_1: 'turnedIn', tut_2: 'turnedIn' } },
-  { id: 'tut_4', title: 'Bro Ascendant',  key: 'fire-goblin-remnants', n: 6, prior: { tut_1: 'turnedIn', tut_2: 'turnedIn', tut_3: 'turnedIn' } },
+  step('tut_1', 'Into the Blue', {}),
+  step('tut_2', 'Cold Reception', done(TOUR)),
+  step('tut_3', 'Bad Wind', done([...TOUR, 'tut_2'])),
+  step('tut_4', 'Bro Ascendant', done([...TOUR, 'tut_2', 'tut_3'])),
 ];
 
 const pin = (quests, items) => `(() => {
@@ -52,7 +64,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     P.page.evaluate((src) => { eval(src); }, pin(quests, items));   // eslint-disable-line no-eval
   const panelText = () => P.page.evaluate(() => {
     const p = document.querySelector('.bt-qoffer') || document.querySelector('.bt-npcdlg');
-    return p ? (p.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 200) : null;
+    /* v2.3.3525: whole -- a long last line put the claim button past 200 */
+    return p ? (p.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 600) : null;
   });
 
   for (const st of STEPS) {

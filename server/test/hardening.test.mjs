@@ -88,7 +88,7 @@ check('v2.3.3481: state_sync advertises caps.hardenwoodskill (bows and staffs on
 /* v2.3.3524: a copper greatsword -- the wood tier is not forged any more and
    the forge makes greatswords only (forgeladder.js; the owner: "'wood
    greatsword' is not an actual weapon in the game") */
-ps.inventory.bar_copper = 99 + 4 * 4;   /* four bars a forge, the 99 kept for §6 */
+ps.inventory.bar_copper = 99 + 4 * 5;   /* five bars a forge (v2.3.3525, the tour; four before), the 99 kept for §6 */
 const forge = () => room.webSocketMessage(ws, JSON.stringify({ type: 'forge_weapon', payload: { weaponType: 'greatsword', tierKey: 'copper', isWoodwork: false } }));
 for (const [r, expect] of [[0.5, 'normal'], [0.05, 'rare'], [0.005, 'elite'], [0.0000001, 'godly']]) {
   Math.random = () => r;
@@ -481,21 +481,21 @@ check('reaching H5 appends the INV-27 global log', ps.weapon.hardness === 5 && A
   const coins0 = ps.coins;
   /* a smith with no woodworking: the bow is refused, by name, nothing taken */
   ps.lifeSkills.blacksmithing.level = 99;
-  ps.lifeSkills.woodworking = { level: 5, xp: 0 };
+  ps.lifeSkills.woodworking = { level: 4, xp: 0 };   /* v2.3.3525: softwood is made at 5 (the tour; it was 6) */
   ws.sent.length = 0;
   await harden(ws, 'rangedWeapon');
   let r = lastHR(ws);
-  check('woodworking gate: a softwood bow with Woodworking 5 is refused "Need Woodworking Lv6" though Blacksmithing is 99, nothing taken',
-    !!r && r.error === 'skill-gate' && /Need Woodworking Lv6 /.test(r.message) && ps.coins === coins0 && ps.inventory.hardened_softwood === 9 && ps.rangedWeapon.hardness === 0, r);
-  /* Woodworking 6 opens it (a sure success) */
-  ps.lifeSkills.woodworking.level = 6;
+  check('woodworking gate: a softwood bow with Woodworking 4 is refused "Need Woodworking Lv5" though Blacksmithing is 99, nothing taken',
+    !!r && r.error === 'skill-gate' && /Need Woodworking Lv5 /.test(r.message) && ps.coins === coins0 && ps.inventory.hardened_softwood === 9 && ps.rangedWeapon.hardness === 0, r);
+  /* Woodworking 5 opens it (a sure success) */
+  ps.lifeSkills.woodworking.level = 5;
   ps.lifeSkills.blacksmithing.level = 1;
   ws.sent.length = 0;
   Math.random = () => 0.0;
   await harden(ws, 'rangedWeapon');
   Math.random = realRandom;
   r = lastHR(ws);
-  check('woodworking gate: Woodworking 6 with Blacksmithing 1 hardens the softwood bow to H1, its hardened softwood and 500 gold taken',
+  check('woodworking gate: Woodworking 5 with Blacksmithing 1 hardens the softwood bow to H1, its hardened softwood and 500 gold taken',
     !!r && r.success === true && ps.rangedWeapon.hardness === 1 && ps.inventory.hardened_softwood === 8 && ps.coins === coins0 - 500, { r, inv: ps.inventory, coins: ps.coins });
   /* a sword still asks Blacksmithing, whatever the Woodworking */
   ps.lifeSkills.woodworking.level = 99;
@@ -512,8 +512,8 @@ check('reaching H5 appends the INV-27 global log', ps.weapon.hardness === 5 && A
   ws.sent.length = 0;
   await harden(ws, 'rangedWeapon');
   r = lastHR(ws);
-  check('woodworking switch: hardenwoodskill false -- the bow asks "Need Blacksmithing" again (its wood\'s level, 6)',
-    !!r && r.error === 'skill-gate' && /Need Blacksmithing Lv6 /.test(r.message), r);
+  check('woodworking switch: hardenwoodskill false -- the bow asks "Need Blacksmithing" again (its wood\'s level, 5)',
+    !!r && r.error === 'skill-gate' && /Need Blacksmithing Lv5 /.test(r.message), r);
   const wsK = fakeWs('k');
   await join(wsK, 'bp_hd_k');
   const syncK = wsK.sent.find((m) => m.type === 'state_sync');

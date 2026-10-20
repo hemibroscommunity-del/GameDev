@@ -117,23 +117,24 @@ async function forged(tierKey, weaponType) {
     Object.keys(BLACKSMITH_TIERS).map((k) => k + ':' + forgeLevelFor(k)));
   bench(1, 1);
   const cu = await forged('copper');
-  check('3b a copper greatsword at Smithing 1 (and Melee 1): forged from four bars and 20 gold',
-    !!cu && cu.gearBase === 'copper' && cu.type === 'greatsword' && ps.inventory.bar_copper === 36 && ps.coins === 100000 - 20, { cu, inv: ps.inventory });
-  check('3c ...paying its 800 Smithing XP, as before', ps.lifeSkills.blacksmithing.xp + (ps.lifeSkills.blacksmithing.level > 1 ? 1000 : 0) === 800, ps.lifeSkills.blacksmithing);
+  /* v2.3.3525: five bars a piece since the tour (four before), the XP with them */
+  check('3b a copper greatsword at Smithing 1 (and Melee 1): forged from five bars and 20 gold',
+    !!cu && cu.gearBase === 'copper' && cu.type === 'greatsword' && ps.inventory.bar_copper === 35 && ps.coins === 100000 - 20, { cu, inv: ps.inventory });
+  check('3c ...paying its bars\' 1,000 Smithing XP (200 a bar, as before)', ps.lifeSkills.blacksmithing.xp + (ps.lifeSkills.blacksmithing.level > 1 ? 1000 : 0) === BLACKSMITH_TIERS.copper.xp && BLACKSMITH_TIERS.copper.xp === 1000, ps.lifeSkills.blacksmithing);
   bench(4, 99);
   let before = snap();
   await forge('iron');
   check('3d an iron greatsword refused at Smithing 4, nothing taken', ps.weapon === null && snap() === before);
   bench(5, 1);
   const fe = await forged('iron');
-  check('3e ...and forged at Smithing 5 (and Melee 1: iron asks nothing to wear)', !!fe && fe.gearBase === 'iron' && ps.inventory.bar_iron === 36, fe);
+  check('3e ...and forged at Smithing 5 (and Melee 1: iron asks nothing to wear)', !!fe && fe.gearBase === 'iron' && ps.inventory.bar_iron === 35, fe);
   bench(9, 99);
   before = snap();
   await forge('steel');
   check('3f a black steel greatsword refused at Smithing 9', ps.weapon === null && snap() === before);
   bench(10, 10);
   const bs = await forged('steel');
-  check('3g ...and forged at Smithing 10', !!bs && bs.gearBase === 'steel' && ps.inventory.bar_black_steel === 36, bs);
+  check('3g ...and forged at Smithing 10', !!bs && bs.gearBase === 'steel' && ps.inventory.bar_black_steel === 35, bs);
   bench(14, 99);
   before = snap();
   await forge('titanium');
@@ -195,14 +196,16 @@ async function tryHarden(slot, w, skill, lvl) {
   check('6d a black steel greatsword at Smithing 9: refused "Lv10"', !!r && r.error === 'skill-gate' && /Lv10 /.test(r.message), r);
   r = await tryHarden('rangedWeapon', { type: 'bow', gearBase: 'ww_pine', tierMult: 1, name: 'Pine Bow' }, 'woodworking', 1);
   check('6e a pine bow hardens at Woodworking 1 (the level that makes pine; it asked 5)', !!r && r.success === true && ps.inventory.hardened_pine === 19, r);
+  /* v2.3.3525: the tour's Woodworker makes softwood at 5 (1 / 5 / 10 / 15 / 20,
+     the levels hardened wood is made at; it was 6) */
+  r = await tryHarden('rangedWeapon', { type: 'bow', gearBase: 'ww_softwood', tierMult: 1.12, name: 'Softwood Bow' }, 'woodworking', 4);
+  check('6f a softwood bow at Woodworking 4: refused "Need Woodworking Lv5" (the Woodworker\'s own level for softwood)',
+    !!r && r.error === 'skill-gate' && /Need Woodworking Lv5 /.test(r.message), r);
   r = await tryHarden('rangedWeapon', { type: 'bow', gearBase: 'ww_softwood', tierMult: 1.12, name: 'Softwood Bow' }, 'woodworking', 5);
-  check('6f a softwood bow at Woodworking 5: refused "Need Woodworking Lv6" (the Woodworker\'s own level for softwood)',
-    !!r && r.error === 'skill-gate' && /Need Woodworking Lv6 /.test(r.message), r);
-  r = await tryHarden('rangedWeapon', { type: 'bow', gearBase: 'ww_softwood', tierMult: 1.12, name: 'Softwood Bow' }, 'woodworking', 6);
-  check('6g ...and hardened at Woodworking 6', !!r && r.success === true && ps.inventory.hardened_softwood === 19, r);
+  check('6g ...and hardened at Woodworking 5', !!r && r.success === true && ps.inventory.hardened_softwood === 19, r);
   check('6h a legacy blade with no gearBase is ranked by its tierMult: 1.25 asks iron\'s 5, 1.0 the wood tier\'s 1, a bow by the Woodworker\'s table',
     room._hardenLevelFor({ type: 'sword', tierMult: 1.25 }, 'weapon') === 5 && room._hardenLevelFor({ type: 'sword', tierMult: 1 }, 'weapon') === 1
-      && room._hardenLevelFor({ type: 'bow', tierMult: 1.25 }, 'rangedWeapon') === 11 && room._hardenLevelFor({ gearBase: '__proto__' }, 'weapon') === 1,
+      && room._hardenLevelFor({ type: 'bow', tierMult: 1.25 }, 'rangedWeapon') === 10 && room._hardenLevelFor({ gearBase: '__proto__' }, 'weapon') === 1,
     [room._hardenLevelFor({ type: 'sword', tierMult: 1.25 }, 'weapon'), room._hardenLevelFor({ type: 'bow', tierMult: 1.25 }, 'rangedWeapon')]);
   check('6i the tier index that picks the material did not move: an iron blade still takes iron bars, tier 3',
     room._weaponTierIndex({ gearBase: 'iron' }) === 3 && room._weaponTierIndex({ gearBase: 'wood' }) === 1);

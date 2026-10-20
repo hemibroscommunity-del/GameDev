@@ -525,7 +525,14 @@ export const farmMethods = {
       /* dig and water change only the farm; plant, feed and harvest change
          the bag too.  _saveRpg for those three only. */
       const bagChanged = op === 'plant' || op === 'feed' || op === 'harvest';
-      this._farmCommit(session.id, bagChanged ? ps : null, rec);
+      /* v2.3.3525: the beds an act touched count for the tour's farm_1
+         (quests.js `farm`, its `act`).  A count that moved is on the player,
+         so a dig or a water that moved one saves the player as well -- only
+         while such a quest is running, so a farmer's every watering is still
+         one row. */
+      let questMoved = false;
+      try { questMoved = !!this._creditQuestObjective(session.id, 'farm', op, null, did.n); } catch (e) { /* a quest must never undo the farm */ }
+      this._farmCommit(session.id, (bagChanged || questMoved) ? ps : null, rec);
       const view = this._farmView(rec, now);
       view.did = did;
       if (err) view.err = err;   /* e.g. seeds ran out partway through a drag */
