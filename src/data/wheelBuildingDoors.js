@@ -152,6 +152,17 @@ export const WHEEL_TOWNSFOLK = [
      against a worker that knows his quests (caps.beastmaster; BroTown.jsx
      _spawnWheelNpcs). */
   { name: 'Beastmaster Bro', door: 'woodworker', dx: 105, dy: 34, cap: 'beastmaster' },
+  /* ═══ v2.3.3525: THE TOUR'S TWO NEW GIVERS ═══
+     Woodworker Bro WEST of his own steps (the Beastmaster has the east, his
+     Snowling beside him; the bench's crate is 193 px west, so -105 is clear
+     of it and of the steps), and Farmer Bro by the Feed & Seed's, each the
+     keeper of his building (WHEEL_KEEPERS below).  Only against a worker that
+     knows the tour (caps.tour).  The two at the Woodworker are 210 px apart
+     (a tap finds one within 44 CSS px, ~73 world px at the Wheel's zoom), and
+     a player at the door is ~119 px from each, past the 90 a quest opens at
+     by itself.  test-world-core checks each spot's ground. */
+  { name: 'Woodworker Bro', door: 'woodworker', dx: -105, dy: 34, cap: 'tour' },
+  { name: 'Farmer Bro', door: 'feedseed', dx: -105, dy: 34, cap: 'tour' },
 ];
 
 /* ═══ v2.3.3258: THE KEEPERS -- TALK TO HIM, AND HIS BUILDING OPENS ═══
@@ -173,6 +184,8 @@ export const WHEEL_TOWNSFOLK = [
 export const WHEEL_KEEPERS = {
   'Blacksmith Bro': 'blacksmith',   /* the forge, at whose steps he stands */
   'Mayor Bro': 'townhall',          /* the Town Hall: its leaderboard and the world map */
+  'Woodworker Bro': 'woodworker',   /* v2.3.3525: the bench (bows, staffs, traps, hardened wood) */
+  'Farmer Bro': 'feedseed',         /* v2.3.3525: the Feed & Seed (seeds, your farm, the orders) */
 };
 
 /* ═══ v2.3.3522: EACH BUILDING'S PICTURE, ON THE MAPS ═══

@@ -13,6 +13,7 @@
  * evidence of payment either way.
  */
 import * as H from './harness.mjs';
+import { QUEST_REWARDS } from '../../../server/src/data.js';
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Looper', wsPort, webPort });
@@ -81,8 +82,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !rightAfterAccept.offer || !/Quest Complete|Claim Reward/i.test(rightAfterAccept.offer),
     rightAfterAccept);
 
-  /* ── finish it, WITHOUT walking away ── */
-  await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: 4 });
+  /* ── finish it, WITHOUT walking away ──
+     v2.3.3525: the first quest is the slimes' (tut_1, 4 remains) */
+  await H.grant(wsPort, myId, 'item', { invKey: 'slime-remnants', count: QUEST_REWARDS.tut_1.objective.count });
   await P.page.waitForTimeout(2000);
 
   /* The panel is still open on his NEXT offer, so close it once and let the
@@ -125,7 +127,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* The gold is paid once.  Read from the STORED blob: the client adds it
      optimistically, so its own number would say "paid" either way. */
   rec.ok('the gold is paid exactly once',
-    !!before && !!after && (after.coins - before.coins) === 25,
+    !!before && !!after && (after.coins - before.coins) === QUEST_REWARDS.tut_1.gold,
     { before: before && before.coins, after: after && after.coins,
       delta: after && before && (after.coins - before.coins) });
   rec.ok('...and what is on screen afterwards is his NEXT quest, not the one just paid',
@@ -133,14 +135,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── VARIANT B: double-tap the claim.  A finger on a phone bounces, and
      the panel stays open through the hand-in (v2.3.1713), so the button is
-     still under the thumb when the second tap lands. ── */
+     still under the thumb when the second tap lands.
+     v2.3.3525: on the Mayor's snowmen, tut_2, which pays XP (so a claim
+     panel) -- taken once the tour's other ten steps are handed in, so the
+     operator's /dev/tour puts this character there, nothing paid. ── */
   await H.closeNpcDialogue(P);
+  const toured = await H.devOp(wsPort, 'tour', myId, { at: 'tut_2' });
+  rec.ok('the tour jumped to the Mayor\'s snowmen (tut_2 on offer) (guard)', !!toured && toured.ok === true, toured);
   await place(420, 0); await P.page.waitForTimeout(600);
   await place(0, 34);  await P.page.waitForTimeout(1500);
   await H.advanceNpcDialogue(P);
   await H.confirmQuestOffer(P);          // accept tut_2
   await P.page.waitForTimeout(1600);
-  await H.grant(wsPort, myId, 'item', { invKey: 'slime-remnants', count: 6 });
+  await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: QUEST_REWARDS.tut_2.objective.count });
   await P.page.waitForTimeout(1800);
   await H.closeNpcDialogue(P);
   await place(420, 0); await P.page.waitForTimeout(600);

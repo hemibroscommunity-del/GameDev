@@ -1,6 +1,17 @@
 /* THE WHOLE QUEST LINE, START TO FINISH, THROUGH THE ONLY DOORS A PLAYER HAS.
  * v2.3.1707.
  *
+ * v2.3.3525: THE LINE IS THE TOUR -- Mayor Bro's first quest alone, then the
+ * whole town at once (Farmer Bro, Blacksmith Bro, Woodworker Bro, Diego, Lil
+ * Bro and Beastmaster Bro), and back to the Mayor (ARC, below; server/src/
+ * data.js QUEST_REWARDS tut_1's header).  Each step is accepted and handed in
+ * by walking up to ITS giver, in the order the tour suggests; after the first
+ * every townsperson wears his quest pin, over his head, on the minimap and on
+ * the world map; a hand-in whose giver has no next step of his own checks
+ * the road leads to the next one and the quest card names him; the counted
+ * steps (the farm, the forge, the Cookhouse, the race, traps) are seeded by
+ * count, as the collected ones by item.
+ *
  * Owner: "do headless testing to start the quest flow from start to finish."
  * Judges play today, so the question this file answers is the blunt one — can
  * one character get from a fresh spawn to the end of every chain Mayor Bro
@@ -46,17 +57,43 @@ import * as H from './harness.mjs';
    panel) is the worker's own table's to say, not this file's */
 import { QUEST_REWARDS } from '../../../server/src/data.js';
 
-/* The four-step tutorial arc and the two-step life-skill chain, in the order
-   Mayor Bro offers them.  `objective` is what the worker demands before it
-   will pay; `pays` is what must be in the bag afterwards. */
+/* ═══ v2.3.3525: THE TOUR, GIVER TO GIVER ═══
+   The owner: "Mayor bro would hand off the quest to the next person", then
+   "Maybe mayor bro is the only quest available for the first quest then after
+   completing that other NPCs begin having quest icons appear above their
+   head" -- the line is the TOUR (server/src/data.js QUEST_REWARDS tut_1's
+   header): the Mayor's slimes, then the town in the order the tour suggests
+   (QUEST_TOUR: Farmer Bro's carrots, Blacksmith Bro's ore and forge,
+   Woodworker Bro's logs and bench (and his softwood swap), Diego's cooked
+   fish, Farmer Bro's Zoom Juice, Lil Bro's race, Beastmaster Bro's traps), and
+   back to the Mayor for the snowmen and the lands after.  `npc` is who you
+   walk up to; the objective is seeded
+   as before (see the header) -- `give` an item, `count` what the worker counts
+   (beds watered, a piece forged, a dish cooked, a race won, traps made and
+   sprung) through the operator's /dev/questcount: the farm, the forge, the
+   Cookhouse and the race each have their own scenario.  `trade` the weapon
+   the claim's chooser swaps (wood_2). */
 const ARC = [
-  { id: 'tut_1', title: 'Cold Reception', give: { invKey: 'snowman', count: 4 } },
-  { id: 'tut_2', give: { invKey: 'slime-remnants', count: 6 } },
-  { id: 'tut_3', give: { invKey: 'skeleton-remnants', count: 5 } },
-  { id: 'tut_4', give: { invKey: 'fire-goblin-remnants', count: 6 } },
-  { id: 'life_1', give: { invKey: 'cooked_fish_minnow', count: 2 } },
-  { id: 'life_2', give: { invKey: 'ore_copper', count: 5 } },
+  { id: 'tut_1', npc: 'mayor_bro', title: 'Into the Blue', give: { invKey: 'slime-remnants', count: 4 } },
+  { id: 'farm_1', npc: 'farmer_bro', title: 'Carrot Comeback', count: 3 },
+  { id: 'smith_1', npc: 'blacksmith_bro', title: 'Heavy Metal', give: { invKey: 'ore_copper_ore', count: 5 } },
+  { id: 'smith_2', npc: 'blacksmith_bro', count: 1 },
+  { id: 'wood_1', npc: 'woodworker_bro', title: 'Knock on Wood', give: { invKey: 'wood_pine_log', count: 5 } },
+  { id: 'wood_2', npc: 'woodworker_bro', count: 1, trade: 'bow' },
+  { id: 'fish_1', npc: 'shopkeeper_bro', title: 'Something Fishy', give: { invKey: 'cooked_fish_minnow', count: 2 } },
+  { id: 'farm_2', npc: 'farmer_bro', title: 'Zoom Juice', count: 1 },
+  { id: 'race_1', npc: 'lil_bro', title: 'Race Day', count: 1 },
+  { id: 'beast_1', npc: 'beastmaster_bro', title: 'Box Traps', count: 3 },
+  { id: 'beast_2', npc: 'beastmaster_bro', count: 3 },
+  { id: 'tut_2', npc: 'mayor_bro', title: 'Cold Reception', give: { invKey: 'snowman', count: 4 } },
+  { id: 'tut_3', npc: 'mayor_bro', give: { invKey: 'skeleton-remnants', count: 5 } },
+  { id: 'tut_4', npc: 'mayor_bro', give: { invKey: 'fire-goblin-remnants', count: 6 } },
 ];
+/* each giver's name, for the road's answer (the minimap probe names him) */
+const NAME_OF = { mayor_bro: 'Mayor Bro', farmer_bro: 'Farmer Bro', blacksmith_bro: 'Blacksmith Bro',
+  woodworker_bro: 'Woodworker Bro', shopkeeper_bro: 'Diego', lil_bro: 'Lil Bro', beastmaster_bro: 'Beastmaster Bro' };
+/* the six who offer their first quest once the Mayor's first is in */
+const TOWN = ['Farmer Bro', 'Blacksmith Bro', 'Woodworker Bro', 'Diego', 'Lil Bro', 'Beastmaster Bro'];
 
 export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.2990: the game as a player gets it -- the Wheel is the world, and a
@@ -177,8 +214,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.2195: the walk-up moved to the harness (H.approachNpc) — the note
      above finally became literal when the quest panel's Accept was removed and
      two more scenarios had to walk up to him.  Same three steps, same reasons;
-     they are just written down once now. */
-  const approach = () => H.approachNpc(P, 'mayor_bro');
+     they are just written down once now.
+     v2.3.3525: up to whichever townsperson gives the step (the tour) */
+  const approach = (npc) => H.approachNpc(P, npc || 'mayor_bro');
 
   /* ── the line starts here ── */
   const start = await srv();
@@ -187,8 +225,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   let walked = null;
   for (const step of ARC) {
+    const who = NAME_OF[step.npc] || step.npc;
     /* ── ACCEPT, by walking up and tapping ── */
-    rec.ok(`${step.id}: walking up to Mayor Bro opens his dialogue`, await approach());
+    rec.ok(`${step.id}: walking up to ${who} opens his dialogue`, await approach(step.npc));
     /* Talk him out first: his lines come in chunks now, and the offer panel
        (which is what carries the title and the Accept) is behind them. */
     const landed = await H.advanceNpcDialogue(P);
@@ -385,12 +424,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
 
     /* ── the objective (see the header: seeded on purpose) ── */
-    await H.grant(wsPort, myId, 'item', step.give);
+    if (step.give) await H.grant(wsPort, myId, 'item', step.give);
+    /* v2.3.3525: or what the worker counts (the farm, the forge, the
+       Cookhouse, the race, traps) -- each its own scenario's to play */
+    if (step.count) {
+      const set = await H.devOp(wsPort, 'questcount', myId, { quest: step.id, n: step.count });
+      rec.ok(`${step.id}: the worker's count for it is seeded (${step.count})`, !!set && set.ok === true, set);
+    }
     await P.page.waitForTimeout(1600);
 
     /* ── TURN IN, through the dialogue — the only door left ── */
-    rec.ok(`${step.id}: walking back up opens the dialogue again`, await approach());
-    if (!(QUEST_REWARDS[step.id].xp > 0)) {
+    rec.ok(`${step.id}: walking back up opens the dialogue again`, await approach(step.npc));
+    if (step.trade) {
+      /* v2.3.3525: Woodworker Bro's softwood swap -- the claim panel asks
+         which pine weapon he takes (QuestPanel's TradeChooser), and the
+         claim stays grey until one is picked */
+      const landedT = await H.advanceNpcDialogue(P);
+      rec.ok(`${step.id}: ...his lines lead to the claim panel with the swap`, landedT === 'offer', { landedT });
+      rec.ok(`${step.id}: ...which waits for the weapon to swap`, await H.questOfferBlocked(P));
+      const pickedT = await P.page.evaluate((t) => {
+        const b = document.querySelector('[data-trade="' + t + '"]');
+        if (!b || b.disabled) return false;
+        b.click();
+        return true;
+      }, step.trade);
+      rec.ok(`${step.id}: the pine ${step.trade} could be picked`, pickedT);
+      await P.page.waitForTimeout(300);
+      const _turnedT = await H.clickSel(P, 'button.bt-quest-turnin').then(() => true).catch(() => false);
+      rec.ok(`${step.id}: the turn-in button could be clicked`, _turnedT);
+    } else if (!(QUEST_REWARDS[step.id].xp > 0)) {
       /* v2.3.3335: a quest that pays no XP has nothing to choose (tut_1 --
          the owner: "Makes no sense to have to choose xp in something you've
          never used yet"), so it is the AUTO REWARD: his last line's "Claim
@@ -437,6 +499,62 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!done && (done._quests || {})[step.id] === 'turnedIn',
       done && done._quests);
 
+    /* ═══ v2.3.3525: HANDED ON -- THE ROAD LEADS TO THE NEXT GIVER ═══
+       The tour's next step is usually someone else's: his window closes,
+       the pinned quest card says who is next and the minimap's gold road
+       leads to him (questRoute.js tourOffer, in the tour's suggested order).
+       Only a giver whose own next step is the one suggested (the smith, the
+       woodworker, the Beastmaster's two, the Mayor's lands) keeps talking,
+       as v2.3.1713 has him do. */
+    const nextStep = ARC[ARC.indexOf(step) + 1] || null;
+    const nextId = nextStep ? nextStep.id : null;
+    if (nextStep && nextStep.npc !== step.npc) {
+      await P.page.waitForTimeout(2600);
+      await H.leaveNpc(P, step.npc).catch(() => {});
+      if (step.id === 'tut_1') {
+        /* ═══ v2.3.3525: THE WHOLE TOWN, AT ONCE ═══
+           The Mayor's first quest in, every one of the six offers his first
+           at once: the pin over each head, on the minimap and on the world
+           map (src/game/questPins.js), and the card counts the others */
+        const heads = await H.waitFor(P, (S) => {
+          const out = {};
+          for (const n of (S.npcs || [])) if (n && n.name) out[n.name] = n._questMarker || null;
+          return out;
+        }, (v) => v && TOWN.every((n) => v[n] === '❗'), { timeout: 12000, label: 'the town\'s pins' }).catch(() => null);
+        rec.ok('the Mayor\'s first quest in, all six townsfolk wear the gold "!" at once', !!heads, heads);
+        rec.ok('...and the Mayor none (his snowmen wait for the whole town)', !!heads && !heads['Mayor Bro'], heads);
+        const mini = await H.waitFor(P, () => {
+          const m = window.__btMinimap;
+          return m && Array.isArray(m.questPins) ? m.questPins.map((q) => ({ name: q.name, state: q.state, art: q.art })) : null;
+        }, (v) => Array.isArray(v) && v.length >= 1, { timeout: 8000, label: 'the minimap\'s pins' }).catch(() => null);
+        rec.ok('...on the minimap too: the quest pin of every one the box shows, in the owner\'s picture',
+          Array.isArray(mini) && mini.length >= 1 && mini.every((q) => q.state === 'offer' && TOWN.includes(q.name) && q.art), mini);
+        const more = await H.readState(P, () => {
+          const c = document.querySelector('[data-quest-hud-more]');
+          return c ? { n: Number(c.getAttribute('data-quest-hud-more')), text: (c.innerText || '').trim() } : null;
+        });
+        rec.ok('...and the quest card says how many more have work: 5, on the map', !!more && more.n === 5 && /5 more/.test(more.text), more);
+        await P.page.evaluate(() => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(true); });
+        const big = await H.waitFor(P, () => {
+          const m = window.__btWorldMap;
+          return m && m.open && m.more && Array.isArray(m.more.pins) ? m.more.pins.map((q) => q.name + ':' + q.state) : null;
+        }, (v) => Array.isArray(v) && TOWN.every((n) => v.includes(n + ':offer')), { timeout: 12000, label: 'the world map\'s pins' }).catch(() => null);
+        rec.ok('...and on the world map, all six', !!big, big);
+        const keyPin = await H.readState(P, () => !!document.querySelector('[data-world-map-key="pin"]'));
+        rec.ok('...its key saying "has a quest"', keyPin);
+        await P.page.evaluate(() => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(false); });
+        await P.page.waitForTimeout(600);
+      }
+      const road = await H.waitFor(P, () => {
+        const m = window.__btMinimap, c = document.querySelector('[data-quest-hud-next]');
+        return { npc: m && m.quest ? m.quest.npc : null, card: c ? c.getAttribute('data-quest-hud-next') : null,
+          text: c ? (c.innerText || '').replace(/\s+/g, ' ').trim() : '' };
+      }, (v) => v && v.npc === NAME_OF[nextStep.npc] && v.card === nextId, { timeout: 12000, label: 'the road to ' + nextStep.npc }).catch(() => null);
+      rec.ok(`${step.id}: handed on -- the road leads to ${NAME_OF[nextStep.npc]} and the quest card says "Next: ${nextStep.title || nextId}"`,
+        !!road, road);
+      continue;
+    }
+
     /* ═══ v2.3.1713: THE DIALOGUE SURVIVES THE HAND-IN ═══
        Owner: "make it so that turning in the quest after completion launches
        the quest dialog window (same behavior as when you first begin a
@@ -473,6 +591,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const q = (end && end._quests) || {};
   rec.ok('every quest in the line is turned in',
     ARC.every((s) => q[s.id] === 'turnedIn'), q);
+  /* ═══ v2.3.3525: WHAT THE TOUR'S HANDS PAID ═══ */
+  const inv = (end && end.inventory) || {};
+  rec.ok('the tour handed over each trade\'s tool -- the pickaxe (the smith), the axe (the woodworker), the rod (Diego)',
+    ['mining_pickaxe', 'woodcutting_axe', 'fishing_pole'].every((k) => (inv[k] || 0) >= 1), inv);
+  rec.ok('...five copper bars for five copper ore, five hardened pine for five pine logs, ten cooked clownfish for two cooked fish',
+    (inv.bar_copper || 0) >= 5 && (inv.hardened_pine || 0) >= 5 && (inv.cooked_fish_clownfish || 0) >= 10, inv);
+  const allW = [end && end.weapon, end && end.rangedWeapon, end && end.staffWeapon].concat((end && end.weaponStash) || []).filter(Boolean);
+  rec.ok('...and Woodworker Bro swapped the pine bow for a SOFTWOOD one, the pine staff kept',
+    allW.some((w) => w.type === 'bow' && w.gearBase === 'ww_softwood' && /Softwood Bow/.test(w.name || ''))
+      && !allW.some((w) => w.type === 'bow' && w.gearBase === 'ww_pine')
+      && allW.some((w) => w.type === 'staff' && w.gearBase === 'ww_pine'),
+    allW.map((w) => [w.type, w.gearBase, w.name]));
+  rec.ok('...and the retired life-skill quests were never offered (their errands are the tour\'s now)',
+    !q.life_1 && !q.life_2, { life_1: q.life_1, life_2: q.life_2 });
   /* ── the two armour rewards ──
      Read from the CLIENT's bag, and that is correct rather than a shortcut:
      there is deliberately NO server-side armour stash.  Handoff rule 1
@@ -493,12 +625,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      tier above. */
   rec.ok('the fire-goblin quest paid the Copper Greaves into the bag',
     bags.legs.includes('Copper Greaves'), bags);
-  /* v2.3.1704 (owner: "Prospectors vest and prospectors greaves are the wrong
-     description ... the legs were an earlier reward already so it would just
-     be torso"): one chest piece, and NOT a second pair of legs. */
-  rec.ok('the mining quest paid the Copper Torso into the bag',
-    bags.chest.includes('Copper Torso'), bags);
-  rec.ok('...and did NOT pay a second pair of legs',
+  /* v2.3.1704: one pair of legs, never a second.  v2.3.3525: the mining
+     quest that paid the Copper Torso (life_2) is retired -- its ore is the
+     smith's errand now, paid in bars you forge your own piece from. */
+  rec.ok('...one pair of legs, never a second',
     bags.legs.filter(Boolean).length === 1, bags);
 
   /* ── v2.3.1746: and neither piece was announced as a hazard ── */
@@ -512,7 +642,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const lineBanners = await (async () => {
     const read = () => P.page.evaluate(() => (window.__questCalls || []).slice());
     let seen = await read();
-    for (let i = 0; i < 16 && seen.filter((b) => b.kind === 'reward').length < 2; i++) {
+    for (let i = 0; i < 16 && seen.filter((b) => b.kind === 'reward').length < 1; i++) {   /* v2.3.3525: the greaves alone (the torso's quest is retired) */
       await P.page.waitForTimeout(500);
       seen = await read();
     }
@@ -565,23 +695,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(500);
   await H.clickText(P, 'Equip').catch(() => {});
   await P.page.waitForTimeout(1800);
-  await P.page.evaluate(() => {
-    const bus = window._itemDetailBus;
-    const S = window._gameState && window._gameState.current;
-    if (!bus || !S) return;
-    const chest = (S.rpg.armorStash || [])[0];
-    if (chest) bus.open({ kind: 'stashArmor', armor: chest, index: 0 });
-  });
-  await P.page.waitForTimeout(500);
-  await H.clickText(P, 'Equip').catch(() => {});
-  await P.page.waitForTimeout(1800);
   const wornSrv = await srv();
   rec.ok('equipping the greaves reaches the WORKER (so they reduce damage)',
     !!wornSrv && wornSrv.legsArmor && wornSrv.legsArmor.name === 'Copper Greaves',
     wornSrv && wornSrv.legsArmor);
-  rec.ok('equipping the torso reaches the WORKER too',
-    !!wornSrv && wornSrv.armor && wornSrv.armor.name === 'Copper Torso',
-    wornSrv && wornSrv.armor);
   /* And the character actually wears them — the v2.3.1703 derived layer. */
   const layer = await P.page.evaluate(() => {
     const g = window._gameFns && window._gameFns.getEquip;
@@ -590,8 +707,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.1758: the layer id carries the METAL, so this pins the colour too —
      a tier-one piece rendering as 'steelgreaves' would mean the material never
      reached the renderer. */
-  rec.ok('...and both show on the character, in copper',
-    !!layer && layer.legs === 'coppergreaves' && layer.chest === 'copperplate', layer);
+  rec.ok('...and they show on the character, in copper',
+    !!layer && layer.legs === 'coppergreaves', layer);
 
   rec.ok('all three primary weapons were handed over across the line',
     !!end && ['greatsword', 'bow', 'staff'].every((t) =>

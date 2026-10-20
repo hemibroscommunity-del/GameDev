@@ -599,6 +599,15 @@ const psA = room.playerState.pa;
   room._handleForgeWeapon(sess, { weaponType: 'greatsword', tierKey, isWoodwork: false });
   check('forge: trained level unlocks the mint (black steel at Melee 10, what wearing it asks)',
     !!psA.weapon && psA.weapon.gearBase === tierKey, psA.weapon);
+  /* v2.3.3525: the tour's smith_2 -- a new player makes a copper sword from
+     its bars at Melee 1 (and Smithing 1: data.js BLACKSMITH_TIERS copper) */
+  psA.weapon = null; psA.weaponStash = [];
+  p3.sk.sword.level = 1;
+  psA.lifeSkills = { blacksmithing: { level: 1, xp: 0 } };
+  room._handleForgeWeapon(sess, { weaponType: 'sword', tierKey: 'copper', isWoodwork: false });
+  check('forge: a copper sword is made at Melee 1 and Smithing 1, as copper armour is (v2.3.3525)',
+    !!psA.weapon && psA.weapon.gearBase === 'copper', psA.weapon);
+  psA.lifeSkills = { blacksmithing: { level: 99, xp: 0 } };
 
   // stats_update armor ingest: gates on defense POINTS; rejection
   // keeps the old armor (echo snaps the client back).

@@ -20,9 +20,9 @@ import * as H from './harness.mjs';
    Smithing 1, nothing asked of Melee (the owner: "'wood greatsword' is not an
    actual weapon in the game.  Make the beginning weapon a copper greatsword
    (requiring smithing lvl 1)"); the wood tier (v2.3.2123: three pine logs and
-   8 gold) is not forged any more */
+   8 gold) is not forged any more.  v2.3.3525: five bars (the tour) */
 const ORE = 'bar_copper';
-const NEED_ORE = 4, NEED_GOLD = 20;
+const NEED_ORE = 5, NEED_GOLD = 20;   /* v2.3.3525: five bars a piece (the tour; four before) */
 
 const put = (P, x, y) => P.page.evaluate(({ px, py }) => {
   const S = window._gameState.current;

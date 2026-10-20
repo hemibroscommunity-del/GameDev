@@ -28,7 +28,9 @@
  *                       yet (S.stats.visitedBuildings, BUILDINGS indexes --
  *                       mayor_1's own count; the halls do not count);
  *        'monsters'     where the nearest land's monsters begin, its level
- *                       1s -- the very spot a quest naming a land leads to.
+ *                       1s -- the very spot a quest naming a land leads to;
+ *        'giver'        (v2.3.3525, the tour) the quest's own giver while it
+ *                       runs: Lil Bro's race starts at him, his Race!.
  *
  *   3. A QUEST WITH NOWHERE TO GO HID THE ONE BEHIND IT.  The old _wantNode
  *      stopped at the first any-zone quest and returned "nothing" when it
@@ -70,11 +72,12 @@ export function routeOrder(entries, tracked) {
 }
 
 /** A way written on a quest or a step, as data: 'monsters', 'visit',
-    'door:<plot>' -- or null. */
+    'door:<plot>', 'giver' (v2.3.3525) -- or null. */
 export function parseWay(w) {
   if (typeof w !== 'string' || !w) return null;
   if (w === 'monsters') return { kind: 'monsters' };
   if (w === 'visit') return { kind: 'visit' };
+  if (w === 'giver') return { kind: 'giver' };
   if (w.indexOf('door:') === 0 && w.length > 5) return { kind: 'door', plot: w.slice(5) };
   return null;
 }
@@ -86,13 +89,19 @@ export function wayOf(q, steps, done) {
   if (!q) return null;
   if (done) return q.npc ? { kind: 'giver', npc: q.npc } : null;
   if (q.zone) return { kind: 'land', land: q.zone };
+  let w;
   if (Array.isArray(steps) && steps.length) {
     const cur = steps.find((s) => s && s.current);
     if (cur && cur.node) return { kind: 'node', node: cur.node };
-    return parseWay((cur && cur.way) || q.way);
+    w = parseWay((cur && cur.way) || q.way);
+  } else {
+    if (q.node) return { kind: 'node', node: q.node };
+    w = parseWay(q.way);
   }
-  if (q.node) return { kind: 'node', node: q.node };
-  return parseWay(q.way);
+  /* v2.3.3525: 'giver' is the quest's own, named here -- a way written as
+     data says no name (and one with no giver leads nowhere) */
+  if (w && w.kind === 'giver') return q.npc ? { kind: 'giver', npc: q.npc } : null;
+  return w;
 }
 
 /** The buildings you have been through: a Set of BUILDINGS indexes however

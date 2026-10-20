@@ -405,6 +405,11 @@ const NPC_SCALE_MULT = Object.assign(Object.create(null), {
      man in a tall hat and reads as the showiest thing on the street, so 1.15
      puts him at ~138: a little over the mayor, well under Diego's coat. */
   '/sprites/npc/cardsharp-bro-walk-south.webp': 1.15,
+  /* v2.3.3525: the tour's two new townsfolk -- Woodworker Bro a craftsman's
+     size, the blacksmith's; Farmer Bro (Diego's figure, the Beastmaster's
+     too) a shade over the Beastmaster, under Diego's coat */
+  '/sprites/npc/woodworker-bro.webp': 1.14,
+  '/sprites/npc/farmer-bro.webp': 1.10,
 });
 const npcSpriteScale = (src) => NPC_SPRITE_SCALE * (NPC_SCALE_MULT[src] || 1);
 

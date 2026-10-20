@@ -74,8 +74,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForFunction(() => !document.body.innerText.includes('WELCOME'), null, { timeout: 15000 }).catch(() => {});
   const me = await H.readState(P, (S) => S.myId);
   /* v2.3.3524: 25 ore -- five bars: four for the copper greatsword, one for
-     its first hardening (there is no wood tier to forge from logs any more) */
-  await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 25 });
+     its first hardening (there is no wood tier to forge from logs any more).
+     v2.3.3525: 30 ore, six bars -- the tour made it FIVE a piece */
+  await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 30 });
   await H.grant(wsPort, me, 'gold', { amount: 600 });
   await P.page.waitForTimeout(1200);
 
@@ -134,7 +135,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const strikes = await P.page.evaluate(() => window.__btSmithStrikes || 0);
   rec.ok('...the hammer lands (strike sparks + clink) on the swing\'s contact frame', strikes >= 2, { strikes });
   const bars = await H.readState(P, (S) => (S.rpg.inventory || {}).bar_copper || 0);
-  rec.ok('...and the worker made the bars (25 ore -> 5)', bars === 5, { bars });
+  rec.ok('...and the worker made the bars (30 ore -> 6)', bars === 6, { bars });
   /* v2.3.3524: the XP pill wears the owner's "XP" star (the owner: "Make the
      xp pill for smith items a different icon (one that's more obviously
      'xp')") */
@@ -162,11 +163,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('no Greatsword / Sword switch, and no wood tier: the rows start at copper', switches === 0 && forgeRows.length >= 1 && forgeRows[0].key === 'copper'
     && !forgeRows.some((r) => r.key === 'wood'), { switches, rows: forgeRows.map((r) => r.key) });
   const cu = forgeRows.find((r) => r.key === 'copper') || null;
-  rec.ok(`the copper greatsword at Smithing 1: four bars and 20 gold as chips, "+800" on the XP star, no lock ("${cu && cu.text}")`,
-    !!cu && /Copper Greatsword/.test(cu.text) && /5\/4/.test(cu.text) && /\/20/.test(cu.text) && /\+800/.test(cu.text) && cu.xp === '800'
+  rec.ok(`the copper greatsword at Smithing 1: five bars and 20 gold as chips, "+1,000" on the XP star, no lock ("${cu && cu.text}")`,
+    !!cu && /Copper Greatsword/.test(cu.text) && /6\/5/.test(cu.text) && /\/20/.test(cu.text) && /\+1,?000/.test(cu.text) && cu.xp === '1000'
       && cu.imgs.some((u) => /\/icons\/ui\/buff-xp\.webp/.test(u)) && !/Smithing/.test(cu.text), cu);
   const lockRow = (forgeRows.find((r) => r.key === 'iron') || {}).text || '';
-  rec.ok('...and the next tier, iron, shows the ONE thing missing as a lock: Smithing 5', /Smithing 5/.test(lockRow) && /\+1200/.test(lockRow), lockRow);
+  rec.ok('...and the next tier, iron, shows the ONE thing missing as a lock: Smithing 5', /Smithing 5/.test(lockRow) && /\+1,?500/.test(lockRow), lockRow);
   await shot(P, 'forge');
   await P.page.click('[data-forge-go="copper"]');
   const forged = await P.page.waitForFunction(() => {

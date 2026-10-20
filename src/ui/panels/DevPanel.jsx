@@ -5,6 +5,17 @@ import { WORLDVIEW_EXITS } from '../../data/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
 import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
 
+/* v2.3.3525: the tour's steps, in order, for "Tour: jump to" (the worker's
+   /dev/tour checks each is one) */
+const TOUR_STEPS = [
+  { id: 'tut_1', label: 'Tour 1: Slimes' }, { id: 'farm_1', label: '2: Plant' },
+  { id: 'smith_1', label: '3: Ore' }, { id: 'smith_2', label: '4: Forge' },
+  { id: 'wood_1', label: '5: Logs' }, { id: 'wood_2', label: '6: Bench' },
+  { id: 'fish_1', label: '7: Fish' }, { id: 'farm_2', label: '8: Zoom Juice' },
+  { id: 'race_1', label: '9: Race' }, { id: 'beast_1', label: '10: Traps' },
+  { id: 'beast_2', label: '11: Spring' }, { id: 'tut_2', label: '12: Snowmen' },
+];
+
 /* ═══ v2.3.2240: THE OWNER'S TEST PANEL ═══
  *
  * Owner: "Is there a test suite you can build that allows me to test features
@@ -233,6 +244,9 @@ const CAP_GATES = [
   'petbook' /* v2.3.3120: the pets record and the Pets page -- lower case, a kill switch */,
   'petlevels' /* v2.3.3121: pets earn XP while out with you -- lower case, a kill switch */,
   'beastmaster' /* v2.3.3121: Beastmaster Bro and his quests -- lower case, a kill switch */,
+  'tour' /* v2.3.3525: the tour's two new townsfolk (Woodworker Bro, Farmer Bro) -- lower case, a kill switch */,
+  'race' /* v2.3.3525: Lil Bro's race -- lower case, a kill switch */,
+  'tourgear' /* v2.3.3525: the tour's gear rules in the forge's and bench's windows (hardened wood, the equip gate) -- no switch, the tables */,
   'pettrade' /* v2.3.3122: pets in trades, the auction house and the mail -- lower case, a kill switch */,
   'petwards' /* v2.3.3123: the land ward of the pet out with you -- lower case, a kill switch */,
   'petshow' /* v2.3.3123: the others see your pet -- lower case, a kill switch */,
@@ -952,6 +966,24 @@ export const DevPanel = ({ onClose }) => {
                   refresh();
                 }
               }}>Finish all quests (no rewards)</button>
+
+            {/* ═══ v2.3.3525: JUMP THE TOUR TO A STEP ═══
+                The tour (Mayor Bro -> Farmer Bro -> Blacksmith Bro -> ...) is
+                one line, each step waiting for the last; this puts this
+                character at any step (the ones before it handed in, no
+                rewards paid), so a step can be rehearsed without playing the
+                ones before it.  The worker's /dev/tour (devtools.js). */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0' }}>
+              {TOUR_STEPS.map((t) => (
+                <button
+                  key={t.id} type="button" style={{ ...chip, minHeight: 34 }} disabled={busy || !myId}
+                  data-dev-tour={t.id}
+                  onClick={async () => {
+                    const j = await call('/dev/tour', { playerId: myId, at: t.id });
+                    if (j) { setMsg('Tour: step ' + j.step + ' of ' + j.of + ' (' + t.label + ') is on offer now.'); refresh(); }
+                  }}>{t.label}</button>
+              ))}
+            </div>
 
             {/* ═══ v2.3.2412: LIVE FLAGS ═══
                 See the note by loadFlags for why this exists.  Two jobs, and

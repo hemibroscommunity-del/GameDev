@@ -106,8 +106,10 @@ const read = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
 const LIVE = new Set((NPC_DATA || []).map((n) => n && n.name).filter(Boolean));
 const live = Object.keys(QUEST_CHAINS).filter((k) => LIVE.has(QUEST_CHAINS[k].npc));
 /* the steps done anywhere: light a fire from the bag, cook at it (life_1) --
-   and every quest's last step, the hand-in, which is its giver once done */
-const ANYWHERE = { life_1: [2, 3, 4] };
+   and every quest's last step, the hand-in, which is its giver once done.
+   v2.3.3525: the tour's fish_1 is Diego's copy of life_1's fishing and
+   cooking, its fire and cooking the same three steps */
+const ANYWHERE = { life_1: [2, 3, 4], fish_1: [2, 3, 4] };
 {
   check(`3a the live givers' quests are the ones this checks (${live.length}): the Mayor's tutorial and life quests, the Beastmaster's four, the Mayor's three`,
     ['tut_1', 'tut_2', 'tut_3', 'tut_4', 'life_1', 'life_2', 'beast_1', 'beast_2', 'beast_3', 'beast_4', 'mayor_1', 'mayor_2', 'mayor_3'].every((k) => live.includes(k)), live);
@@ -122,7 +124,7 @@ const ANYWHERE = { life_1: [2, 3, 4] };
       }
     } else if (!wayOf(q, null, false)) none.push(k);
   }
-  check('3b every live quest has a way at every step while in progress (a land, a resource, a door, the monsters, a building to visit) but life_1\'s fire and cooking',
+  check('3b every live quest has a way at every step while in progress (a land, a resource, a door, the monsters, a building to visit, its giver) but life_1\'s and fish_1\'s fire and cooking',
     none.length === 0, none);
   const anywhere = [];
   for (const k of Object.keys(ANYWHERE)) for (const i of ANYWHERE[k]) {
@@ -141,6 +143,21 @@ const ANYWHERE = { life_1: [2, 3, 4] };
   check('3f the Woodworker for the traps, the monsters for springing, catching and the Mayor\'s five kills, a building for his visits, the Land Office for his dungeon',
     kinds.beast_1 === 'door:woodworker' && kinds.beast_2 === 'door' && kinds.beast_3 === 'monsters' && kinds.beast_4 === 'monsters'
       && kinds.mayor_1 === 'visit' && kinds.mayor_2 === 'monsters' && kinds.mayor_3 === 'door:landoffice', kinds);
+  /* v2.3.3525: the tour's steps (data/gameSystems.js, the header above
+     farm_1): to its giver's building, the Cookhouse for the juice, Lil Bro
+     for his race */
+  const at = (k, i) => {
+    const q = QUEST_CHAINS[k];
+    const steps = q.steps ? q.steps.map((s, j) => ({ current: j === i, node: s.node || null, way: s.way || null })) : null;
+    const w = wayOf(q, steps, false) || {};
+    return w.kind + (w.plot ? ':' + w.plot : '') + (w.npc ? ':' + w.npc : '') + (w.node ? ':' + w.node : '');
+  };
+  const tour = { farm_1: [at('farm_1', 0), at('farm_1', 1), at('farm_1', 2)], farm_2: [at('farm_2', 0), at('farm_2', 1)],
+    smith_1: at('smith_1', 0), smith_2: at('smith_2'), wood_1: at('wood_1', 0), wood_2: at('wood_2'), fish_1: at('fish_1', 0), race_1: at('race_1') };
+  check('3g the tour: the farm steps the Feed & Seed, Zoom Juice the Cookhouse, the forging the forge, the bow the bench, the ore and logs their resources, the race Lil Bro',
+    tour.farm_1.every((w) => w === 'door:feedseed') && tour.farm_2[0] === 'door:feedseed' && tour.farm_2[1] === 'door:cookhouse'
+      && tour.smith_2 === 'door:blacksmith' && tour.wood_2 === 'door:woodworker' && tour.smith_1 === 'node:oreVein' && tour.wood_1 === 'node:tree'
+      && tour.fish_1 === 'node:fishSpot' && tour.race_1 === 'giver:Lil Bro', tour);
 }
 
 /* ── 4. every way written means something ─────────────────────────────────── */
@@ -245,8 +262,9 @@ const geomFor = (size) => {
   const RB = (traps, kills) => ({ _quests: { beast_2: QUEST_STATUS.active }, inventory: { trap_box: traps }, _questKills: { beast_2: kills } });
   const SB = (R) => ({ rpg: R });
   const step = (traps, kills) => { const R = RB(traps, kills); const S = SB(R); return wheelWay(ctxOf([E('beast_2', false, R, S)], null, { R, S })); };
-  const s0 = step(0, 0), s1 = step(2, 0), s2 = step(2, 3), s3 = step(2, 5);
-  check(`6k "Set and Spring": no trap yet, the Woodworker (${s0 && s0.door}); a trap in the bag, the monsters (${s1 && s1.zoneId}); three sprung, still the monsters; five, back to Beastmaster Bro`,
+  /* v2.3.3525: three springs in the tour (it was five) */
+  const s0 = step(0, 0), s1 = step(2, 0), s2 = step(2, 2), s3 = step(2, 3);
+  check(`6k "Set and Spring": no trap yet, the Woodworker (${s0 && s0.door}); a trap in the bag, the monsters (${s1 && s1.zoneId}); two sprung, still the monsters; three, back to Beastmaster Bro`,
     !!s0 && s0.door === 'woodworker' && !!s1 && s1.way === 'monsters' && !!s2 && s2.way === 'monsters' && !!s3 && s3.way === 'giver' && s3.npc === 'Beastmaster Bro', { s0, s1, s2, s3 });
   /* THE OLD _wantNode: a quest with nowhere to go hid the one behind it */
   const RL = { _quests: { life_1: QUEST_STATUS.active, beast_3: QUEST_STATUS.active }, inventory: { fish_minnow: 1, wood_pine_log: 1 } };
@@ -267,7 +285,9 @@ const geomFor = (size) => {
   /* a hand-in whose giver is not here passes too; and outside the Wheel only a giver who stands there */
   const RD = { _quests: { beast_1: QUEST_STATUS.active, tut_2: QUEST_STATUS.active }, inventory: {}, _questKills: { beast_1: 3 } };
   const away = wheelWay(ctxOf([E('beast_1', false, RD), E('tut_2', false, RD)], null, { R: RD, npcAt: () => null }));
-  check('6n a quest ready to hand in whose giver is not in sight passes to the next (here a land\'s)', !!away && away.qid === 'tut_2' && away.way === 'land' && away.zoneId === 'verdant', away);
+  /* v2.3.3525: tut_2's land is the table's -- the tour made it the snowmen of
+     Frost Ridge, its finale (tut_1 the Verdant Wilds' slimes) */
+  check(`6n a quest ready to hand in whose giver is not in sight passes to the next (here a land's: ${QUEST_CHAINS.tut_2.zone})`, !!away && away.qid === 'tut_2' && away.way === 'land' && away.zoneId === QUEST_CHAINS.tut_2.zone && !!QUEST_CHAINS.tut_2.zone, away);
   const farm = wheelWay(ctxOf(owner, 'mayor_2', { R: R0, geom: null, doors: [] }));
   const farmGiver = wheelWay(ctxOf([E('beast_1', false, RD)], null, { R: RD, geom: null, doors: [] }));
   check('6o off the Wheel (the farm, a dungeon\'s arena) a land, the monsters and a door lead nowhere; a giver standing there still does',

@@ -50,16 +50,16 @@ import * as H from './harness.mjs';
    exists to notice. */
 import { WORLD_PROPS, propsForZone } from '../../../src/data/worldProps.js';
 
-/* The six Mayor Bro quests a player can actually finish, and the objective
-   item each one wants.  Same table as mp-questline's ARC — kept local rather
-   than exported, because the two files ask different questions of it. */
+/* v2.3.3525: the Mayor Bro quests a player can actually finish before his
+   errands, and the objective item each one wants.  The tour (tut_1, the
+   slimes, then ten steps for the other givers, then tut_2, the snowmen) is
+   put behind this character by the operator's /dev/tour; his last three are
+   done over the wire.  His old life_1 and life_2 are RETIRED (their errands
+   went to the tour's givers): never offered, so no longer his. */
 const ARC = [
-  { id: 'tut_1', give: { invKey: 'snowman', count: 4 } },
-  { id: 'tut_2', give: { invKey: 'slime-remnants', count: 6 } },
+  { id: 'tut_2', give: { invKey: 'snowman', count: 4 } },
   { id: 'tut_3', give: { invKey: 'skeleton-remnants', count: 5 } },
   { id: 'tut_4', give: { invKey: 'fire-goblin-remnants', count: 6 } },
-  { id: 'life_1', give: { invKey: 'cooked_fish_minnow', count: 2 } },
-  { id: 'life_2', give: { invKey: 'ore_copper', count: 5 } },
 ];
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -69,7 +69,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const myId = await H.readState(P, (S) => S.myId);
   const srv = () => H.adminPlayer(wsPort, myId).then((a) => (a && a.rpg) || null).catch(() => null);
 
-  /* ── clear his completable chain, over the wire ── */
+  /* ── clear his completable chain: the tour, then the rest over the wire ── */
+  const toured = await H.devOp(wsPort, 'tour', myId, { at: 'tut_2' });
+  rec.ok('the tour is behind this character (setup)', !!toured && toured.ok === true, toured);
+  await P.page.waitForTimeout(800);
   for (const step of ARC) {
     await P.page.evaluate((qid) => {
       const S = window._gameState && window._gameState.current;
@@ -88,8 +91,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   const cleared = await srv();
   const q = (cleared && cleared._quests) || {};
-  rec.ok('the six completable Mayor Bro quests are turned in (setup)',
-    ARC.every((s) => q[s.id] === 'turnedIn'), q);
+  rec.ok('the Mayor\'s four completable quests are turned in (setup)',
+    q.tut_1 === 'turnedIn' && ARC.every((s) => q[s.id] === 'turnedIn'), q);
 
   /* ── 1. NO BUILDING IN THE GAME RAISES AN ENTER PROMPT ──
      Stand dead-centre on every TOWN_BUILDINGS rectangle AND on every
@@ -200,6 +203,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     let wouldHaveBeen = null;
     for (const [qid, q] of Object.entries(F.QUEST_CHAINS || {})) {
       if (!q || q.npc !== 'Mayor Bro') continue;
+      /* v2.3.3525: a RETIRED quest (life_1, life_2) is a different filter
+         from the one under test -- passed over here too, as getNpcQuest does */
+      if (q.retired) continue;
       const st = (S.rpg && S.rpg._quests || {})[qid];
       if (st === 'turnedIn') continue;
       wouldHaveBeen = qid;

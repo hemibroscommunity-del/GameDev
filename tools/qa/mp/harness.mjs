@@ -35,6 +35,16 @@ import { existsSync } from 'node:fs';
 import { extname, join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
+import { QUEST_REWARDS as _QR, QUEST_FIRST as _QF } from '../../../server/src/data.js';   /* v2.3.3525: FIRST_LAND */
+
+/* ═══ v2.3.3525: THE LAND THE FIRST QUEST OPENS ═══
+ * In the old lands (`trial=off`, every scenario's default) a land opens when
+ * the quest that names it is taken (QUEST_ZONE_GATE, movement.js), and the
+ * checks that walk into "the land the first quest opens" took tut_1 and walked
+ * to Frost Ridge.  The tour (data.js QUEST_REWARDS tut_1's header) put the
+ * slimes first, so tut_1 names the Verdant Wilds now.  Read off the worker's
+ * own table, so the next reorder moves these checks with it. */
+export const FIRST_LAND = (_QR[_QF] && _QR[_QF].objective && _QR[_QF].objective.zone) || 'verdant';
 
 /* v2.3.1729: derived from this file's own location, not hardcoded to the
    dev sandbox's /home/user/GameDev.  The absolute path made the whole mp

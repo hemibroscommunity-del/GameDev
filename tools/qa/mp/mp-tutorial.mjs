@@ -54,22 +54,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.clickText(P, 'Available').catch(() => {});
   await P.page.waitForTimeout(500);
   const questsBody = await H.bodyText(P);
+  /* v2.3.3525: the tour's first step is the slimes' "Into the Blue" in the
+     Verdant Wilds (the Mayor's snowmen are the tour's finale now, tut_2) */
   rec.ok('the Quests panel offers the first tutorial quest',
-    /Cold Reception/.test(questsBody), questsBody.slice(0, 400));
+    /Into the Blue/.test(questsBody), questsBody.slice(0, 400));
 
-  const opened = await H.clickText(P, 'Cold Reception').then(() => true).catch(() => false);
+  const opened = await H.clickText(P, 'Into the Blue').then(() => true).catch(() => false);
   rec.ok('the quest row opens its detail page', opened);
   await P.page.waitForTimeout(500);
 
   const detail = await H.bodyText(P);
   rec.ok('the detail page states the objective and the zone',
-    /Frost Ridge/.test(detail), detail.slice(0, 400));
+    /Verdant Wilds/.test(detail), detail.slice(0, 400));
   /* v2.3.1673: the arc asks for REMNANTS now, not a kill count.  Pinned here
      because the client `check` and the server objective are two tables that
      have to agree, and the symptom of disagreement is a Turn In button that
      refuses without saying why. */
-  rec.ok('the objective asks for remnants, not a kill count',
-    /Snowman Remnants/i.test(detail) && !/Defeat \d/i.test(detail), detail.slice(0, 400));
+  /* v2.3.3525: "remains" -- the owner: "change remnants to remains" */
+  rec.ok('the objective asks for remains, not a kill count',
+    /Slime Remains/i.test(detail) && !/Remnant/i.test(detail) && !/Defeat \d/i.test(detail), detail.slice(0, 400));
   rec.ok("the quest giver's portrait is shown in the dialogue block",
     await P.page.evaluate(() => !!document.querySelector('img[src*="mayor-bro-head"]')));
   rec.ok('the detail page shows the quest giver speaking',
@@ -93,7 +96,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      accept, and the payout for coming back).  Asserting the quest TITLE
      appears in the heading is what stops it drifting back to a bare label. */
   rec.ok('the reward block says which quest the figures belong to',
-    /For finishing “Cold Reception”/.test(detail), detail.slice(0, 600));
+    /For finishing “Into the Blue”/.test(detail), detail.slice(0, 600));
   rec.ok('...and who pays them, and when',
     /Paid by Mayor Bro when you hand this quest in/.test(detail), detail.slice(0, 600));
 
@@ -249,13 +252,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
      CONTROL is gone, and that the pane still says a hand-in is waiting and
      names the person to see.  A pane that just dropped the button would be a
      quest with no visible way to finish. */
-  await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: 4 });
+  await H.grant(wsPort, myId, 'item', { invKey: 'slime-remnants', count: 4 });
   await P.page.waitForTimeout(2200);
   await H.openDest(P, 'Quests');
   await P.page.waitForTimeout(800);
   await H.clickText(P, 'Active').catch(() => {});
   await P.page.waitForTimeout(500);
-  await H.clickText(P, 'Cold Reception').catch(() => {});
+  await H.clickText(P, 'Into the Blue').catch(() => {});
   await P.page.waitForTimeout(700);
 
   const readyPane = await H.bodyText(P);
@@ -343,14 +346,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const expanded = await readCard();
   rec.ok('the quest reminder is expanded by default', !!expanded
-    && /Snowman Remnants/i.test(expanded.text), expanded);
+    && /Slime Remains/i.test(expanded.text), expanded);
 
   await tapCard();
   await P.page.waitForTimeout(400);
   const folded = await readCard();
   rec.ok('tapping the reminder hides the objective, leaving the title',
-    !!folded && /Cold Reception/.test(folded.text)
-    && !/Snowman Remnants/i.test(folded.text), folded);
+    !!folded && /Into the Blue/.test(folded.text)
+    && !/Slime Remains/i.test(folded.text), folded);
   /* v2.3.3399: by a LINE, not by more than 15 px.  Folded, the card loses its
      objective, one line of the card's type -- 15 px on this phone (43 -> 28)
      -- and "more than 15" failed on exactly the one line it was asking for.
@@ -369,13 +372,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await backIn();
   const remembered = await readCard();
   rec.ok('the folded choice survives a reload — it is a preference, not a toggle',
-    !!remembered && !/Snowman Remnants/i.test(remembered.text), remembered);
+    !!remembered && !/Slime Remains/i.test(remembered.text), remembered);
 
   await tapCard();
   await P.page.waitForTimeout(400);
   const reopened = await readCard();
   rec.ok('...and tapping again brings the objective back',
-    !!reopened && /Snowman Remnants/i.test(reopened.text), reopened);
+    !!reopened && /Slime Remains/i.test(reopened.text), reopened);
 
   await P.ctx.close().catch(() => {});
 }

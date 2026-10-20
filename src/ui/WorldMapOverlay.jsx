@@ -55,7 +55,29 @@ import { sendMapWatch, PRESENCE2_CLIENT } from '../game/presence2.js';   /* v2.3
 import { peerDotAt } from '../game/peerDot.js';                    /* v2.3.3243: a far player's dot glides between rosters */
 import { PARTY_MARK, partyIdsOf } from '../game/partyMarks.js';    /* v2.3.3277: your party, blue, at every zoom */
 import { mapDetailFor, freeMapDetail } from './worldMapDetail.js';   /* v2.3.3319: the long Wheel's lands up close */
+import { questPinsOf, MAP_PIN } from '../game/questPins.js';       /* v2.3.3525: the townsfolk's quest pins */
+import { QUEST_PIN } from '../data/ownerIcons.js';                 /* v2.3.3525: ...in the owner's own pictures */
 import { wheelBuildingIconCanvas } from '../rendering/wheelBuildingIcons.js';   /* v2.3.3522: each building's picture at its door */
+
+/* ═══ v2.3.3525: THE QUEST PINS' PICTURES ═══
+   The owner's pins from over the townsfolk's heads (data/ownerIcons.js
+   QUEST_PIN), drawn on the map's canvas: loaded as the map opens, as a window
+   loads its pictures, and let go of as it closes (three 72 x 86 pictures); a
+   drawn gold, grey or green disc until one is in (the loop redraws every
+   120 ms). */
+let _pinImgs = null;
+function pinImg(state) {
+  if (typeof Image === 'undefined' || !QUEST_PIN[state]) return null;
+  if (!_pinImgs) _pinImgs = Object.create(null);
+  let img = _pinImgs[state];
+  if (!img) {
+    img = new Image();
+    img.decoding = 'async';
+    img.src = QUEST_PIN[state];
+    _pinImgs[state] = img;
+  }
+  return img.complete && img.naturalWidth ? img : null;
+}
 
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 /* v2.3.3057: 12 -> 28, so the town's buildings can be read by name */
@@ -189,6 +211,8 @@ function WorldMap({ stateRef, onClose }) {
   const [zoomShown, setZoomShown] = useState([1, 1]);
   /* v2.3.3277: the key says "party" while one of yours is on the map */
   const [partyShown, setPartyShown] = useState(false);
+  /* v2.3.3525: ...and "has a quest" while a townsperson's pin is */
+  const [pinsShown, setPinsShown] = useState(false);
   /* v2.3.3481: the canvas's size in CSS px, for the key's width (below);
      set by the draw loop, so a turn of the phone moves the key too */
   const [cvBox, setCvBox] = useState(null);
@@ -254,6 +278,8 @@ function WorldMap({ stateRef, onClose }) {
       setWhere((o) => (o === words ? o : words));
       const ps = !!(out && out.more && out.more.party > 0);
       setPartyShown((o) => (o === ps ? o : ps));
+      const qs = !!(out && out.more && out.more.questPins > 0);
+      setPinsShown((o) => (o === qs ? o : qs));
       try { window.__btWorldMap = { open: true, zoom: V.zoom, rel: V.zoom / spanK(map), cx: Math.round(V.cx), cy: Math.round(V.cy), ...out }; } catch (e) { /* no page */ }
     };
     raf = requestAnimationFrame(loop);
@@ -278,6 +304,8 @@ function WorldMap({ stateRef, onClose }) {
       try { cv.width = 0; cv.height = 0; } catch (e) { /* gone */ }
       /* v2.3.3319: and the lands' tiles it brought in up close go with it */
       freeMapDetail();
+      /* v2.3.3525: and the quest pins' pictures */
+      _pinImgs = null;
     };
   }, [stateRef]);
 
@@ -404,6 +432,7 @@ function WorldMap({ stateRef, onClose }) {
           <Key shape="line" color="#F2E4C2">road</Key>
           <Key shape="line" color="#5AAEE8">river</Key>
           <Key shape="star" color={C_STAR}>quest</Key>
+          {pinsShown ? <Key shape="pin">has a quest</Key> : null}
           {partyShown ? <Key shape="dot" color={PARTY_MARK.CSS}>party</Key> : null}
           {zoomShown[0] >= AT.others ? <Key shape="dot" color={C_OTHER}>bro</Key> : null}
           {zoomShown[1] >= AT.monster ? <Key shape="dot" color={C_MONSTER}>monster</Key> : null}
@@ -424,6 +453,8 @@ function Key({ shape, color, children }) {
   if (shape === 'tri') Object.assign(s, { background: 'none', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderBottom: `9px solid ${color}` });
   if (shape === 'line') Object.assign(s, { height: 3, width: 12, borderRadius: 2, verticalAlign: 2 });
   if (shape === 'star') return <span style={{ whiteSpace: 'nowrap' }}><span style={{ color, marginRight: 3, fontSize: 12, lineHeight: 1 }}>★</span>{children}</span>;
+  /* v2.3.3525: the townsfolk's quest pin, the owner's picture */
+  if (shape === 'pin') return <span data-world-map-key="pin" style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}><img src={QUEST_PIN.offer} alt="" draggable={false} style={{ width: 10, height: 12, marginRight: 4, flex: '0 0 auto' }} />{children}</span>;
   return <span style={{ whiteSpace: 'nowrap' }}><span style={s} />{children}</span>;
 }
 
@@ -551,6 +582,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
 
   /* ── v2.3.3057: the details, under every label ── */
   const more = { ticks: 0, nodes: 0, others: 0, monsters: 0, quest: null, buildings: 0, buildingIcons: 0, buildingsAt: 0, bridges: 0, ponds: 0, tierLabels: 0, party: 0, partyNames: 0,
+    questPins: 0, questPinNames: 0, pins: [],   /* v2.3.3525: the townsfolk's quest pins */
     detail: detailN };   /* v2.3.3319: the lands' tiles drawn up close (null: none to draw) */
   const onScreen = (x, y, pad = 30) => x > -pad && y > -pad && x < w + pad && y < h + pad;
   /* each land's level bands: a tick across the spoke every five levels */
@@ -659,6 +691,21 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     starAt(g, qx, qy, 9);
     more.quest = { x: Math.round(quest.x), y: Math.round(quest.y), qid: quest.qid || null, way: quest.way || null };   /* v2.3.3522: + whose road */
   }
+  /* ═══ v2.3.3525: THE QUEST PINS (src/game/questPins.js) ═══
+     Every townsperson with a quest for you, in the pin over his head -- the
+     owner: "Make the quest icons appear on the minimap and map too".  At every
+     zoom (the town's few in the middle of the Wheel, zoomed out), bigger once
+     the buildings are named, then named themselves (below); its tip just over
+     where he stands, so the quest's star there still shows.  Found here,
+     drawn with the buildings (drawPins, below). */
+  const pinsAt = [];
+  const pinBig = zr >= AT.town;
+  const pw = pinBig ? MAP_PIN.TOWN_W : MAP_PIN.WORLD_W, ph = pinBig ? MAP_PIN.TOWN_H : MAP_PIN.WORLD_H;
+  for (const q of questPinsOf(S)) {
+    const x = X(q.x), y = Y(q.y) - 4;
+    if (!onScreen(x, y, 40)) continue;
+    pinsAt.push({ x, y, name: q.name, state: q.state });
+  }
 
   /* labels: placed in order of importance, each only where it clears the
      ones before it */
@@ -704,6 +751,33 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     g.lineWidth = 1.5; g.strokeStyle = HALO; g.stroke();
   };
 
+  /* v2.3.3525: the quest pins, drawn once the buildings' pictures are -- a
+     keeper stands at his own door, under his building's picture -- with
+     their room kept, and once the buildings are named each named before
+     them (he is who you are looking for) */
+  let pinsDrawn = false;
+  const drawPins = () => {
+    if (pinsDrawn) return;
+    pinsDrawn = true;
+    for (const p of pinsAt) {
+      const img = pinImg(p.state);
+      if (img) g.drawImage(img, p.x - pw / 2, p.y - ph, pw, ph);
+      else {
+        g.beginPath(); g.arc(p.x, p.y - ph / 2, pw / 2, 0, Math.PI * 2);
+        g.fillStyle = p.state === 'ready' ? '#58B97B' : p.state === 'waiting' ? '#B0B0B0' : '#D8AA58';
+        g.fill(); g.lineWidth = 1.5; g.strokeStyle = HALO; g.stroke();
+      }
+      placed.push([p.x - pw / 2, p.y - ph, p.x + pw / 2, p.y]);
+      more.questPins++;
+      more.pins.push({ name: p.name, state: p.state, x: Math.round(p.x), y: Math.round(p.y), w: pw, h: ph, art: !!img });
+    }
+    if (pinBig) {
+      for (const p of pinsAt) {
+        if (p.name && label(p.x, p.y + 2, [p.name], { size: 11, below: true, weight: 700, color: '#F2C14E' })) more.questPinNames++;
+      }
+    }
+  };
+
   /* ═══ v2.3.3522: IN TOWN, THE BUILDINGS GO FIRST ═══
      The owner: "When you're in town make the expanded map zoomed in on the
      town so you can see which building is labeled where on the map", and of
@@ -740,6 +814,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       at.push({ x, y, top, d });
     }
     more.buildingsAt = at.length;
+    drawPins();   /* v2.3.3525: over the pictures, named before the buildings */
     for (const b of at) {
       const d = b.d;
       const opt = { size: 11, weight: 700, color: d.closed ? '#B6C1BE' : INK, subColor: '#8D9B98', subSize: 11 };
@@ -761,6 +836,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       if (ok) more.buildings++;
     }
   }
+  drawPins();   /* v2.3.3525: farther out, where the buildings are not drawn */
   /* you, first, so nothing covers you (v2.3.3522: up close in town, after
      the buildings' names, above) */
   if (P) {
