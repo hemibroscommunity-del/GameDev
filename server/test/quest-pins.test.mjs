@@ -1,5 +1,5 @@
 /* The town opens after the Mayor's first quest, and its quest pins are on the
- * maps -- v2.3.3500 (src/game/questPins.js, src/data/gameSystems.js
+ * maps -- v2.3.3510 (src/game/questPins.js, src/data/gameSystems.js
  * getNpcQuest / questAfterMet / QUEST_TOUR).  docs/specs/demo-quest-line.md.
  *
  * The owner: "Maybe mayor bro is the only quest available for the first quest
@@ -86,7 +86,8 @@ const done = (...ids) => { const q = Object.create(null); for (const id of ids) 
   check('...where they stand', pins[1].x === 30 && pins[1].y === 40, pins[1]);
   check('...none with no townsfolk', questPinsOf({}).length === 0 && questPinsOf(null).length === 0 && questPinsOf({ npcs: 5 }).length === 0);
   check('the pins keep the head pin\'s shape (72 x 86), a little narrower than tall',
-    [['MINI_W', 'MINI_H'], ['WORLD_W', 'WORLD_H'], ['TOWN_W', 'TOWN_H']].every(([w, h]) => Math.abs(MAP_PIN[w] / MAP_PIN[h] - 72 / 86) < 0.04), MAP_PIN);
+    [['MINI_W', 'MINI_H'], ['EDGE_W', 'EDGE_H'], ['WORLD_W', 'WORLD_H'], ['TOWN_W', 'TOWN_H']].every(([w, h]) => Math.abs(MAP_PIN[w] / MAP_PIN[h] - 72 / 86) < 0.04)
+      && MAP_PIN.EDGE_H < MAP_PIN.MINI_H && MAP_PIN.EDGE_R > 0, MAP_PIN);
 }
 
 console.log(failures ? `\n${failures} QUEST PIN FAILURE(S)` : '\nquest-pins: ALL PASS');

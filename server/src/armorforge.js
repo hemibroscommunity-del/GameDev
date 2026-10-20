@@ -50,7 +50,7 @@ export const ARMOR_FORGE = Object.freeze({
      three) -- the owner: "maybe chest, legs, and sword each take 4 bars to
      make (5 ore makes 1 bar).  If you salvage them you get 2 bars back"
      (salvage.js).  The XP moves with the bars (800 / 1,200 / 1,600).
-     v2.3.3500: FIVE bars a piece, as a bow or a staff takes five hardened
+     v2.3.3510: FIVE bars a piece, as a bow or a staff takes five hardened
      wood -- the owner: "Bows/staffs should require 5 hard wood ... It should
      mirror the cost of making armor" (data.js, the five-bar note at
      BLACKSMITH_TIERS.copper).  The XP moves with them again, 200 / 300 / 400
@@ -96,7 +96,7 @@ export const armorForgeMethods = {
       { name: r.name, mat: r.mat, slot: r.slot, tierMult: r.tierMult, quality: this._rollWeaponQuality() }, 'forge');
 
     const res = this._addLifeSkillXp(ps, 'blacksmithing', r.xp);
-    /* v2.3.3500: armour made counts for the tour's smith_2 as a sword does
+    /* v2.3.3510: armour made counts for the tour's smith_2 as a sword does
        (quests.js `craft` 'smith'), saved with the piece */
     try { this._creditQuestObjective(session.id, 'craft', 'smith'); } catch (e) { /* a quest must never undo the forge */ }
     this._saveRpg(session.id, ps);

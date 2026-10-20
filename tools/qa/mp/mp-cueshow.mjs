@@ -115,7 +115,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return (await H.readState(P, (S) => S.currentZone)) === zoneId;
   };
   await travel(marks.townExit.tx, marks.townExit.ty, 'worldview');
-  const spoke = marks.spokes.find((s) => s.zoneId === H.FIRST_LAND) || marks.spokes[0];   /* v2.3.3500: the land tut_1 opens (Frost Ridge until the tour) */
+  const spoke = marks.spokes.find((s) => s.zoneId === H.FIRST_LAND) || marks.spokes[0];   /* v2.3.3510: the land tut_1 opens (Frost Ridge until the tour) */
   const arrived = await travel(spoke.tx, spoke.ty, spoke.zoneId);
   rec.ok(`arrived in a gathering zone (${spoke.zoneId}) (guard)`, arrived === true, { spoke });
   if (!arrived) { await P.ctx.close().catch(() => {}); return; }

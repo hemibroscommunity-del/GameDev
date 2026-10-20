@@ -329,7 +329,7 @@ export const gearMethods = {
     if (!item || typeof item !== 'object') return false;
     return item.mat === 'iron' || item.material === 'iron' || item.gearBase === 'iron';
   },
-  /* ═══ v2.3.3500: SOFTWOOD IS THE WOOD'S IRON ═══
+  /* ═══ v2.3.3510: SOFTWOOD IS THE WOOD'S IRON ═══
      Owner, for the tour's Woodworker Bro, who trades a pine bow or staff for a
      softwood one: "The tier after pine should still be wearable at lvl 1
      magic/staff and lvl 1 bow".  Iron, the metal after copper, has been free
@@ -367,7 +367,7 @@ export const gearMethods = {
     if (slot === 'armor' && isArmourLadderPiece(item)) {
       return this._prog3GearOk(ps, 'defense', armorDefReq(item));
     }
-    if (this._isFreeTierGear(item)) return true;   /* v2.3.3500: iron, and softwood */
+    if (this._isFreeTierGear(item)) return true;   /* v2.3.3510: iron, and softwood */
     let tierIdx = -1;
     let baseIdx = 0;
     if (typeof item.gearBase === 'string') {
@@ -483,7 +483,7 @@ export const gearMethods = {
     // sword mismatch dies (agility vs power: both are Melee now).
     // Client mirror: getGearStatReq/meetsGearReq (gameSystems.js).
     if (ps.prog3) {
-      /* ═══ v2.3.3500: THE FORGE ASKS WHAT WEARING IT ASKS ═══
+      /* ═══ v2.3.3510: THE FORGE ASKS WHAT WEARING IT ASKS ═══
          This was `tierIndex x 5` on its own: a copper sword (the table's
          second row, after the vestigial wood) asked Melee 5 to MAKE while
          wearing it asks nothing (v2.3.1765, "copper counts as rung zero"),
@@ -509,7 +509,7 @@ export const gearMethods = {
     /* v2.3.3141: and `tier.bar` before both -- copper, iron and black steel
        are forged from four of their bars now (data.js BLACKSMITH_TIERS,
        salvage.js). */
-    /* v2.3.3500: and the bows and staffs of the woods with a hardened wood
+    /* v2.3.3510: and the bows and staffs of the woods with a hardened wood
        from five of it (data.js WOODWORKING_TIERS `hardened`), as a sword
        from five bars (four of each until the owner's "It should mirror the
        cost of making armor"). */
@@ -564,9 +564,9 @@ export const gearMethods = {
     //   blacksmithing: tier.minLvl * 5
     //   woodworking:   tier.minLvl * 5  (same formula)
     // v2.3.3141: a tier forged from bars pays its own `xp`, the armour forge's
-    // rate for the same bars (data.js BLACKSMITH_TIERS; five since v2.3.3500).
+    // rate for the same bars (data.js BLACKSMITH_TIERS; five since v2.3.3510).
     this._addLifeSkillXp(ps, skillName, tier.xp || (tier.minLvl || 1) * 5);
-    /* v2.3.3500: a piece made counts for the tour's smith_2 and wood_2
+    /* v2.3.3510: a piece made counts for the tour's smith_2 and wood_2
        (quests.js `craft`); saved with the piece below */
     try { this._creditQuestObjective(session.id, 'craft', wantWw ? 'wood' : 'smith'); } catch (e) { /* a quest must never undo the forge */ }
 

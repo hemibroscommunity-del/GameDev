@@ -28,7 +28,7 @@
  */
 import * as H from './harness.mjs';
 
-/* v2.3.3500: the Mayor's last three -- the tour (his slimes first, then ten
+/* v2.3.3510: the Mayor's last three -- the tour (his slimes first, then ten
    steps for the other givers) is put behind this character by the operator's
    /dev/tour, which pays nothing; tut_4 is the one that pays the greaves */
 const STEPS = [
@@ -163,7 +163,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      legs were an earlier reward already so it would just be torso."
      life_2 paid a two-piece armorSet beside tut_4's greaves, so a second pair
      of legs appeared in the stash.
-     v2.3.3500: life_1 and life_2 are RETIRED -- their errands and tools went
+     v2.3.3510: life_1 and life_2 are RETIRED -- their errands and tools went
      to the tour's givers (Diego's fish, Blacksmith Bro's ore, which pays bars
      you forge yourself), and the worker refuses to start either.  So what is
      left to pin is the same relationship from the other side: asked for the

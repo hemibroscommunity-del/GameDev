@@ -39,7 +39,7 @@ export const SMELT_RECIPES = {
    forge from its own copy, this one only draws the Armour tab's rows.  `mat` is
    the metal's material id (materialTints.js), `slot` the gear slot.
    v2.3.3141: four bars a piece (salvage.js gives two back).
-   v2.3.3500: five, as a bow or a staff takes five hardened wood (the owner's
+   v2.3.3510: five, as a bow or a staff takes five hardened wood (the owner's
    "It should mirror the cost of making armor"), the XP with them. */
 export const ARMOR_FORGE_RECIPES = {
   copper_torso: { bar: 'bar_copper', bars: 5, slot: 'armor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 1000, name: 'Copper Torso' },

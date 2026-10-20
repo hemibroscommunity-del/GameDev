@@ -734,7 +734,7 @@ const B = room.playerState['bp_trap_b'];
   await send(wsG, 'make_traps', { log: 'wood_pine_log', count: 2 });
   check('beast_1: traps made before the quest count for nothing', !(G._questKills.beast_1) && G.inventory.trap_box === 2, G._questKills);
 
-  /* v2.3.3500: beast_1 is a step of the tour (data.js tut_1's header),
+  /* v2.3.3510: beast_1 is a step of the tour (data.js tut_1's header),
      offered with the rest of the town once the Mayor's first quest is in:
      refused before it is handed in, taken once it is */
   await send(wsG, 'quest_accept', { questId: 'beast_1' });
@@ -767,7 +767,7 @@ const B = room.playerState['bp_trap_b'];
   kill(mark, { bp_trap_g: 100 }, 'bp_trap_g');
   check('beast_2: an arm that ran out springs nothing and counts nothing', !(G._questKills.beast_2), G._questKills);
   room._trapRng = () => 0.999;
-  /* v2.3.3500: three springs, not five (the tour's reviewers have half an hour) */
+  /* v2.3.3510: three springs, not five (the tour's reviewers have half an hour) */
   for (let i = 0; i < 3; i++) {
     const m = fs[i % fs.length];
     revive(m); standBy(G, m);
@@ -780,7 +780,7 @@ const B = room.playerState['bp_trap_b'];
   clearRandom();
   check('beast_2: three traps sprung (all broke) are three', G._questKills.beast_2 === 3, G._questKills);
   await send(wsG, 'quest_turn_in', { questId: 'beast_2' });
-  /* v2.3.3500: the Mayor's finale waits for the whole town, so this opens
+  /* v2.3.3510: the Mayor's finale waits for the whole town, so this opens
      nothing (the tour suite); his own beast_3 waits on the finale (`after:
      'tut_2'`) */
   check('beast_2: handed in, opening nothing by itself (the finale waits for the whole town)', G._quests.beast_2 === 'turnedIn' && !G._quests.tut_2, G._quests);

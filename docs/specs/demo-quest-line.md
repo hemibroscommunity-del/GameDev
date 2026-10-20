@@ -1,4 +1,4 @@
-# The tour: a quest line handed round the town (v2.3.3500)
+# The tour: the Mayor's quest, then the whole town (v2.3.3510)
 
 The owner, a week before an exposé where reviewers give each game 20-30
 minutes:
@@ -12,17 +12,21 @@ minutes:
 > why is the character doing this? ... Keep the dialog witty and funny (it's
 > an unserious game bro)."
 
-## The call: one line, handed on
+## The call: the Mayor first, then the whole town
 
-A reviewer has 20-30 minutes and has never seen the game. So the line is
-**handed from giver to giver**: there is always exactly ONE next thing, the
-giver who has it says why he wants it and who to see next, the gold road on
-the minimap leads to him, and the pinned quest card says his name. Each
-townsperson's own side line (the Beastmaster's later traps, the Mayor's
-far lands) opens after the tour.
+The first cut handed one line from giver to giver. Then the owner:
 
-Each step shows a different part of the game, in the order a new player can
-do them:
+> "Maybe mayor bro is the only quest available for the first quest then
+> after completing that other NPCs begin having quest icons appear above
+> their head"
+
+So **the Mayor's slimes are the only quest a new player is offered**, and
+once they are handed in **six townsfolk offer their quests at once**, each
+wearing the gold "!" over his head, on the minimap and on the world map. Each
+giver's second step follows his first. The Mayor's snowmen, the finale, wait
+until the whole town is done. The gold road still suggests one giver at a
+time, in the order below, so a reviewer who just follows it sees everything;
+one who wanders can take any of them.
 
 | # | Giver | Quest | What you do | You get |
 |---|---|---|---|---|
@@ -38,6 +42,18 @@ do them:
 | 10 | Beastmaster Bro | Box Traps | make 3 box traps at the Woodworker | 3 pine logs on accept; 2 traps, 40 gold |
 | 11 | Beastmaster Bro | Set and Spring | spring 3 traps on monsters | 5 traps, 100 gold |
 | 12 | Mayor Bro | Cold Reception | 4 Snowman Remains from Frost Ridge (the burrowing snowmen, the finale) | 200 gold, 50 XP |
+
+When each can be taken:
+
+- 1 first and alone.
+- 2, 3, 5, 7, 9 and 10 the moment 1 is handed in, all at once.
+- 4 after 3, 6 after 5, 11 after 10 (each giver's own next step).
+- 8 (Zoom Juice) after 2 **and** 7: Diego's fish is where you learn to cook,
+  and by then the carrots have grown (about six minutes, watered).
+- 12 after 4, 6, 7, 8, 9 and 11: the whole town.
+
+Diego hands over two pine logs with his rod, for the cooking fire: the town
+opens all at once, so the Woodworker's axe may not be yours yet.
 
 Then the Mayor's Wind Dunes and Flame Fields (tut_3, tut_4) and the
 Beastmaster's Trapping 6 and first pet (beast_3, beast_4).
@@ -62,10 +78,13 @@ have learned to burrow toward the Mayor's office. Every line is in
 ## How it works
 
 - **The worker decides.** `server/src/data.js` QUEST_REWARDS has every step:
-  its objective, its pay, `next` (the hand-off) and `after` (the quest that
-  must be handed in before this one can be taken: `_questBarred` on the
-  worker, `getNpcQuest` on the phone). The phone's QUEST_CHAINS mirrors it
-  (mirror-audit checks `after`, the retired list and the trade too).
+  its objective, its pay, `after` (the quest, or the list of quests, that
+  must all be handed in before this one can be taken: `_questBarred` on the
+  worker, `getNpcQuest` and `questAfterMet` on the phone) and `next` (only
+  within a giver's own line: a `next` opens its step at once, past any
+  `after`, so it never crosses to another giver). `QUEST_TOUR` is the order
+  the road suggests. The phone's QUEST_CHAINS and QUEST_TOUR mirror it
+  (mirror-audit checks `after`, the retired list, the trade and the order).
 - **New objective types** the worker counts (quests.js `QUEST_COUNTED`):
   `farm` (beds worked, by act: farm.js), `craft` (a piece made at the forge
   or the bench: gear.js, armorforge.js), `cook` (a dish by what it makes:
@@ -74,13 +93,30 @@ have learned to burrow toward the Mayor's office. Every line is in
   bow or staff (the one you pick on the claim window; the one in your hands
   before one in the bag) and remakes it in softwood, its grade, gems and
   hardening kept (quests.js `_questTradePick`, `_questTradeApply`).
-- **The road** (src/game/questRoute.js): between steps it leads to the next
-  giver (`tourOffer`); during a step done at a building, to its giver, whose
+- **The road** (src/game/questRoute.js): with no quest in hand it leads to
+  the giver of the first step of QUEST_TOUR he offers now (`tourOffer`);
+  during a step done at a building, to its giver, whose
   "how's it going" line has a button that opens the building (game/tour.js
   `opens`); to the Cookhouse's door for the juice (a step's `door`); and to
   the next flag during the race.
 - **The pinned quest card** says "Next: <quest>" and who to talk to, where,
-  when no quest is in hand (BroTown.jsx).
+  when no quest is in hand, and "+5 more: look for a gold ! on your map" when
+  others have work too (BroTown.jsx, `tourOffer`'s `more`).
+
+### The quest pins on the maps
+
+The owner: "Make the quest icons appear on the minimap and map too". The pin
+over a townsperson's head (his `_questMarker`: a gold "!" to take, the grey
+"?" waiting on you, the green check to hand in, in the owner's own pictures)
+is drawn on the Wheel's minimap for everyone the box shows (and, smaller, on
+the box's edge toward anyone just off it: from where you arrive the box holds
+about half the town), and on the world
+map at every zoom, bigger and named once the town's buildings are, with "has
+a quest" in the key (`src/game/questPins.js`, `wheelMinimap.js`,
+`WorldMapOverlay.jsx`). One source, the head's own mark, so a map never
+disagrees with the head. The minimap's pictures are the heads' (loaded on
+the loading screen); the world map loads its copies as it opens and lets go
+of them as it closes, as a window does.
 
 ### The gear the tour hands out
 
@@ -88,10 +124,17 @@ have learned to burrow toward the Mayor's office. Every line is in
   armour forge already asked for the same bars. And the forge now asks what
   WEARING the piece asks (gear.js), so a new player can make the copper sword
   their bars are for (it used to need Melee 5 to make and nothing to wear).
-- **Bows and staffs are made from hardened wood**: four of their tier's
-  hardened wood, the way a sword takes four bars; each at the Woodworking
-  level its hardened wood is made at (1 / 5 / 10 / 15 / 20); the woods past
-  maple keep their logs.
+- **Bows and staffs are made from hardened wood**: five of their tier's
+  hardened wood (the owner: "Bows/staffs should require 5 hard wood before
+  making them (5 logs in that tier make 1 hard wood). It should mirror the
+  cost of making armor"); each at the Woodworking level its hardened wood is
+  made at (1 / 5 / 10 / 15 / 20); the woods past maple keep their logs.
+- **So the metal side mirrors it: five bars** for a sword, a greatsword, a
+  torso or greaves (four since v2.3.3141). 25 ore or 25 logs a piece, and
+  the tour's five bars and five hardened pine make exactly one each. The XP
+  moves with the bars (200 / 300 / 400 a bar: 1,000 / 1,500 / 2,000 a piece;
+  a bow or staff 1,000 to 3,000). Salvage still gives two bars back (half,
+  rounded down, so a forge and a salvage never pay).
 - **Softwood is free to wear** at any level, like iron: the owner's "the tier
   after pine should still be wearable at lvl 1 magic/staff and lvl 1 bow but
   the gate to create those items is lvl 5 woodworking".
@@ -150,15 +193,21 @@ market, the codex, the mail (`src/data/remains.js`, one table). The item keys
 
 ## Tests
 
-- `tour` suite (server): the table, the order, every step through its real
-  handler, the swap, softwood, Zoom Juice, every race rule, the levers.
-- `mirror-audit`: the two tables agree on `after`, the trade, the retired
-  quests, and the tour's order.
+- `tour` suite (server): the table (the Mayor alone, then six at once, the
+  finale on the whole town, no `next` past an `after`), the order, every
+  step through its real handler, the swap, softwood, five bars and five
+  hardened wood, Zoom Juice, every race rule, the levers.
+- `quest-pins` suite: the phone's side -- who offers what at each point
+  (getNpcQuest), `questAfterMet`, and the pins.
+- `mirror-audit`: the two tables agree on `after` (lists too), the trade,
+  the retired quests, and QUEST_TOUR.
 - `test-world-core`: the two new townsfolk's spots and keepers; the race
   starts at Lil Bro's spot and its flags and his line are clear of every
   building and prop.
 - `mp-questline` (CI's "playable"): the whole tour on a phone, giver to giver,
-  through the real dialogues, the road and the card checked at every hand-off.
+  through the real dialogues, the road and the card checked at every hand-off;
+  after the Mayor's first quest, the six pins over heads, on the minimap and
+  on the world map, and the card's "+5 more".
 - `mp-race`: the race on a phone, a win and a false start.
 
 ## Not done

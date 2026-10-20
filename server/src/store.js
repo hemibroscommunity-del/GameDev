@@ -94,7 +94,7 @@
 import { SHOP_ITEMS } from './data.js';
 import { petPublic } from './petbook.js';   /* v2.3.3122: pet listings (what a buyer is shown) */
 
-/* v2.3.3500: the four remains keys in words (the game's src/data/remains.js) */
+/* v2.3.3510: the four remains keys in words (the game's src/data/remains.js) */
 const REMAINS_WORDS = Object.freeze({
   'snowman': 'Snowman Remains', 'slime-remnants': 'Slime Remains',
   'skeleton-remnants': 'Skeleton Remains', 'fire-goblin-remnants': 'Fire Goblin Remains',
@@ -226,7 +226,7 @@ export const storeMethods = {
 
   _stLabel(rec) {
     const n0 = (rec.disp && rec.disp.name) || 'item';
-    /* v2.3.3500: a monster's remains by their name in the mail's words
+    /* v2.3.3510: a monster's remains by their name in the mail's words
        ("outbid on 3x Slime Remains"), the owner's "remains", not the key */
     const n = Object.prototype.hasOwnProperty.call(REMAINS_WORDS, n0) ? REMAINS_WORDS[n0] : n0;
     if (rec.kind === 'weapon' || rec.kind === 'gear' || rec.kind === 'pet') return n;   /* v2.3.3122: + pet */

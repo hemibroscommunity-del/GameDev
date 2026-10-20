@@ -1,4 +1,4 @@
-/* ═══ v2.3.3500: THE QUEST PINS ON THE MAPS ═══
+/* ═══ v2.3.3510: THE QUEST PINS ON THE MAPS ═══
  *
  * The owner: "Make the quest icons appear on the minimap and map too" -- with
  * "mayor bro is the only quest available for the first quest then after
@@ -45,10 +45,15 @@ export function questPinsOf(S) {
 }
 
 /* each map's pin, in CSS px, the head pin's own shape (72 x 86): the Wheel's
-   minimap a little bigger than a bro's dot (13 px), the world map as big as
-   its quest star, and bigger again once the town's buildings are named */
+   minimap a little bigger than a bro's dot (13 px), smaller on the box's edge
+   for a townsperson just off it (EDGE: within EDGE_R game px of you, a box's
+   width -- from the town square the minimap's window holds only some of the
+   town, and further out the way home is the home badge's), the world map as
+   big as its quest star, and bigger again once the town's buildings are
+   named */
 export const MAP_PIN = Object.freeze({
   MINI_W: 14, MINI_H: 17,
+  EDGE_W: 10, EDGE_H: 12, EDGE_R: 3200,
   WORLD_W: 16, WORLD_H: 19,
   TOWN_W: 22, TOWN_H: 26,
 });

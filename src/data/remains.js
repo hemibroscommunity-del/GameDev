@@ -1,4 +1,4 @@
-/* ═══ v2.3.3500: "REMAINS", NOT "REMNANTS" ═══
+/* ═══ v2.3.3510: "REMAINS", NOT "REMNANTS" ═══
  *
  * The owner: "please change 'remnants' to 'remains' since it's a more common
  * term that won't confuse people."  What a slain monster leaves for the

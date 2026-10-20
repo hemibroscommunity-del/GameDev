@@ -5,7 +5,7 @@
  * the next quest bro ascendant."
  *
  * mp-questclaim already covers "Into the Blue" and passes, so this walks the
- * WHOLE chain — tut_1 to tut_4 (v2.3.3500: the tour's order) — asking the same
+ * WHOLE chain — tut_1 to tut_4 (v2.3.3510: the tour's order) — asking the same
  * question of each. If one step is
  * broken and its neighbours are not, that asymmetry is the bug; if all three
  * behave, the fault is in how the state is REACHED in real play rather than in
@@ -16,15 +16,15 @@
  * second one — a panel that opens on his progress line is still a failure.
  */
 import * as H from './harness.mjs';
-import { QUEST_REWARDS, QUEST_FIRST } from '../../../server/src/data.js';
+import { QUEST_REWARDS, QUEST_TOUR } from '../../../server/src/data.js';
 
-/* v2.3.3500: the Mayor's four, in the tour's order -- the slimes' "Into the
+/* v2.3.3510: the Mayor's four, in the tour's order -- the slimes' "Into the
    Blue" first (tut_1), the snowmen's "Cold Reception" after the tour's other
    ten steps (tut_2), then the dunes and the fields.  Their bag keys and counts
-   are the worker's table's; what comes before each, the tour's own `next`
-   walk. */
-const TOUR = [];
-for (let q = QUEST_FIRST; q && q !== 'tut_2' && TOUR.length < 40; q = (QUEST_REWARDS[q] || {}).next) TOUR.push(q);
+   are the worker's table's; what comes before each, the tour's own steps
+   (QUEST_TOUR: the town opens at once after tut_1, so no `next` walk reaches
+   them). */
+const TOUR = QUEST_TOUR.slice(0, QUEST_TOUR.indexOf('tut_2'));
 const done = (ids) => Object.fromEntries(ids.map((id) => [id, 'turnedIn']));
 const step = (id, title, prior) => ({ id, title, key: QUEST_REWARDS[id].objective.invKey, n: QUEST_REWARDS[id].objective.count, prior });
 const STEPS = [

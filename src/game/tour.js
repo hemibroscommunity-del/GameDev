@@ -1,7 +1,7 @@
-/* ═══ v2.3.3500: THE TOUR'S BUTTONS ═══
+/* ═══ v2.3.3510: THE TOUR'S BUTTONS ═══
  *
  * The tour (gameSystems.js QUEST_CHAINS, the header above farm_1) sends a new
- * player from giver to giver, and half its steps are done AT the giver's own
+ * player round the town's givers, and half its steps are done AT the giver's own
  * building: Blacksmith Bro's forge, Woodworker Bro's bench, Farmer Bro's
  * Feed & Seed (whose window holds Visit Your Farm).  So the giver's "how's it
  * going" line carries a button that opens it -- the quest's `opens`, the plot

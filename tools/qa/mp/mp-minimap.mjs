@@ -372,7 +372,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(400);
   rec.ok('with no active quest, no portal is starred', (await route()) === null, await route());
 
-  /* tut_1 sends you to the VERDANT WILDS (v2.3.3500: the tour's slimes; it
+  /* tut_1 sends you to the VERDANT WILDS (v2.3.3510: the tour's slimes; it
      was Frost Ridge's snowmen).  Standing in TOWN, the next step is not a
      verdant portal — town has none — it is the way up to the World View.  A literal
      destination match would star nothing here and read as "no quest". */

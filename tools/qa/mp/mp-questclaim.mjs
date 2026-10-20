@@ -83,7 +83,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.closeNpcDialogue(P);
 
   /* ── A. the reported case: approach with a finished "Into the Blue" ──
-     v2.3.3500: the slimes are his FIRST quest now (tut_1, 4 remains); they
+     v2.3.3510: the slimes are his FIRST quest now (tut_1, 4 remains); they
      were tut_2's 6 */
   await place(420, 0);
   await P.page.waitForTimeout(700);
@@ -189,7 +189,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   };
 
   /* Stand at him with the quest READY, so the claim face is up.
-     v2.3.3500: on his snowmen, tut_2 -- a quest that pays XP, so its claim
+     v2.3.3510: on his snowmen, tut_2 -- a quest that pays XP, so its claim
      has a payout CARD (the first quest's is the auto reward, no card), as
      "Into the Blue" was before the tour moved it first.  Walked away first so
      the latch lets go, as in A. */

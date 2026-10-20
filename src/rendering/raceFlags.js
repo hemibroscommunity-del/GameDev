@@ -1,4 +1,4 @@
-/* ═══ v2.3.3500: LIL BRO'S RACE COURSE, IN THE WORLD ═══
+/* ═══ v2.3.3510: LIL BRO'S RACE COURSE, IN THE WORLD ═══
  *
  * The four corner flags and the finish of the tour's race (game/race.js; the
  * worker's course, server/src/race.js, sent in race_state), drawn in code --

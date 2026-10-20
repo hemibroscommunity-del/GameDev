@@ -671,7 +671,7 @@ import { wheelNodeView, WheelFish, wheelFishTop /* v2.3.3035: the harvest's bar 
 import { updateNodeLabel, killNodeLabel, nodeLabelWorldH, NODE_LABEL_GAP, nodeNameNode } from '../nodeLabels.js';   /* v2.3.3040: the tool, the name and the level over a resource; v2.3.3059: words for the nearest only */
 import { WheelDoors } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn */
 import { WheelSignposts, findGateSignposts } from '../wheelSignposts.js';   /* v2.3.3062: Brotown's signposts, named */
-import { RaceFlags } from '../raceFlags.js';   /* v2.3.3500: Lil Bro's race course (game/race.js) */
+import { RaceFlags } from '../raceFlags.js';   /* v2.3.3510: Lil Bro's race course (game/race.js) */
 import { TrapFx } from '../trapFx.js';   /* v2.3.3120: the trap's mark, shakes, snap and break */
 import { wheelObjectsInfo, wheelMapInfo } from '@/game/wheelTrial.js';      /* v2.3.3062: where they stand, and the lands */
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
@@ -11288,7 +11288,7 @@ export class EffectsRenderer {
       if (!this._wheelSigns) this._wheelSigns = new WheelSignposts(this.monsterUiLayer);
       this._wheelSigns.update(_posts || [], _map ? _map.lands : null, S.player);
     }
-    /* v2.3.3500: Lil Bro's race -- its flags while one is on (raceFlags.js;
+    /* v2.3.3510: Lil Bro's race -- its flags while one is on (raceFlags.js;
        the race is game/race.js's, judged by the worker) */
     if ((S._race && S._race.flags) || (this._raceFlags && this._raceFlags.root)) {
       if (!this._raceFlags) this._raceFlags = new RaceFlags(this.lootLayer);
