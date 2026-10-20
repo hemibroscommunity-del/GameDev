@@ -513,7 +513,7 @@ async function placeAt(P, id, reach) {
    (with the player's collision pad and a little), and with nothing between
    that spot and the target. */
 async function sidestep(P, g, boots, grip) {
-  const goal = await P.page.evaluate(({ q, boots, grip }) => {
+  const goal = await P.page.evaluate(({ q, boots }) => {
     const S = window._gameState.current, z = S.currentZone;
     const boxes = (window.__btBlockers && window.__btBlockers(z)) || [];
     const inBox = (x, y) => boxes.some((b) => x >= b.x0 - 14 && x <= b.x1 + 14 && y >= b.y0 - 14 && y <= b.y1 + 14);
@@ -522,21 +522,39 @@ async function sidestep(P, g, boots, grip) {
     /* v2.3.3399: for a shot, the line the game asks about -- its ground
        track, from your boots to the aim point carried back by the bow
        grip's offset (`grip`; a staff bolt has none) and down as far
-       (projectiles.js `_ox`, `_goy`), and the chest line as well */
+       (projectiles.js `_ox`, `_goy`), and the chest line as well.
+       v2.3.3501: an AIMED shot's ground now runs from your boots to the
+       target's feet, bow and staff alike (src/game/shotGround.js), and the
+       row's cover question asks that line -- so does this.  Asked of the old
+       parallel track, a step could land where boots to feet was still behind
+       the rock: frost's magic row (2026-10-20) was walked from one covered
+       spot to the next 13 times and never fired.  `grip` no longer changes
+       the line; it is kept for the callers. */
     /* the boots' depth the game stamps on a shot (trackShot keeps the last
        one, per zone), else the stand-in's plant below you (entityRenderer) */
     const gdy = typeof window.__hrGdy === 'number' ? window.__hrGdy
       : (typeof S._standInFootY === 'number' && S.player ? S._standInFootY - S.player.y : 52);
-    const gx = boots && grip && typeof S._bowGripDX === 'number' ? S._bowGripDX : 0;
-    const gy = boots && grip && typeof S._bowGripDY === 'number' ? S._bowGripDY : 0;
     const clear = (sx, sy) => !window.__btAttackBlocked(z, sx, sy, q.x, q.y)
-      && (!boots || !window.__btAttackBlocked(z, sx, sy + gdy, q.x - gx, q.aimY - gy + gdy));
+      && (!boots || !window.__btAttackBlocked(z, sx, sy + gdy, q.x, q.y));
     for (const k of [90, -90, 170, -170, 250, -250]) {
       const sx = q.px + nx * k, sy = q.py + ny * k;
       if (!inBox(sx, sy) && clear(sx, sy)) return { x: Math.round(sx), y: Math.round(sy) };
     }
+    /* v2.3.3501: ...else round the TARGET, at the gap you stand at now, the
+       nearest way first (20 degrees a step).  Boots to feet is blocked from
+       more places than the old track was -- every spot south of frost's
+       ridge for a snowman north of it -- and a sideways step from where you
+       stand stays south of it: in the run of 2026-10-20 the magic rows never
+       left that side, 14 and 15 attempts behind the ridge.  Round the target
+       finds its open side. */
+    const R = Math.hypot(q.px - q.x, q.py - q.y), a0 = Math.atan2(q.py - q.y, q.px - q.x);
+    for (let i = 1; i <= 18; i++) {
+      const a = a0 + Math.ceil(i / 2) * (Math.PI / 9) * (i % 2 ? 1 : -1);
+      const sx = q.x + Math.cos(a) * R, sy = q.y + Math.sin(a) * R;
+      if (!inBox(sx, sy) && clear(sx, sy)) return { x: Math.round(sx), y: Math.round(sy) };
+    }
     return null;
-  }, { q: g, boots: !!boots, grip: !!grip });
+  }, { q: g, boots: !!boots, grip: !!grip });   /* `grip`: the callers' word, unread since v2.3.3501 */
   if (!goal) return false;
   for (let i = 0; i < PLACE_TRIES; i++) {
     const done = await P.page.evaluate(({ gx, gy, step }) => {
@@ -998,17 +1016,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
            of the ridge, the ground track ran into it a step from the boots,
            and the bolt burst on the rock before the tracker's first look
            (`ends: []`).  Both lines are asked, so nothing the old test
-           called covered is scored now. */
+           called covered is scored now.
+           ═══ v2.3.3501: ...AND NOW ONE LINE, BOOTS TO THE TARGET'S FEET ═══
+           A bolt fired at a target runs its ground from your boots to the
+           target's feet (src/game/shotGround.js), and the gate and the hit
+           test ask that one line: the cover question is the game's own again
+           (TRAPS #35, §239).  The two lines asked above are gone from the game
+           for an aimed bolt, and the parallel one could end INSIDE a rock,
+           which attackBlocked ignores (a point in a footprint is AT the prop,
+           not behind it): the batch of 2026-10-20 scored as a miss a bolt that
+           burst on the rock ridge's corner, cast from just past its east end,
+           boots to feet through its east face.  Asked alone, so a bolt the
+           game now lands past a rock the old lines met is scored, as it should
+           be. */
         if (atk.slot === 'staff' && await P.page.evaluate((q) => {
           const S = window._gameState.current, z = S.currentZone;
           if (!window.__btAttackBlocked) return false;
-          if (window.__btAttackBlocked(z, q.px, q.py, q.x, q.y)) return true;
           const gdy = typeof window.__hrGdy === 'number' ? window.__hrGdy
             : (typeof S._standInFootY === 'number' && S.player ? S._standInFootY - S.player.y : 52);
-          const dx = q.x - q.px, dy = q.aimY - q.py, L = Math.hypot(dx, dy) || 1;
-          const k = Math.max(0, L - q.r) / L;   /* where the bolt meets the body */
-          return !!window.__btAttackBlocked(z, q.px, q.py + gdy, q.px + dx * k, q.py + gdy + dy * k);
-        }, { ...g, r: stop.body || 0 })) {
+          return !!window.__btAttackBlocked(z, q.px, q.py + gdy, q.x, q.y);
+        }, { ...g })) {
           row.void++; row.covered++;
           await sidestep(P, g, true, false);
           continue;
