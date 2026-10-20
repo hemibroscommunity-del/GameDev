@@ -272,12 +272,14 @@ export function SkinTag(props) {
  * they were drawn here in SVG, flat colour bands under a dark outline like the
  * painted icons, with a grey palette for the greyed states.  v2.3.3279: the
  * owner drew all five ability pictures (abilityArt, below). */
+/* v2.3.3522: `shield` (the world's 64 px wood-shield sprite) is gone from this
+   list -- the Block button wears the owner's own painted shield now
+   (blockArtUrl, below), and nothing else drew the sprite as a control. */
 export const ICON_URL = {
   melee: '/icons/ui/hero/melee.webp?v=2.3.1311',
   ranged: '/icons/ui/hero/bow.webp?v=2.3.1311',
   staff: '/icons/ui/hero/magic.webp?v=2.3.1311',
   boot: '/icons/ui/hero/move-speed.webp?v=2.3.3006',
-  shield: '/sprites/shields/wood-shield-front.png?v=2.3.1875',
 };
 /* The pictures the attack disc can wear (TouchControls), all in the DOM from
    the start and warmed on the loading screen (controlsPreload.js), so a
@@ -398,17 +400,22 @@ export function specialArtKind(weapon) {
   if (!weapon) return null;
   return weapon.type === 'bow' ? 'bow' : weapon.type === 'staff' ? 'staff' : 'sword';
 }
-/** The owner's special picture as a Skin's face, inside its ring. */
-export function SpecialFace(props) {
-  var size = props.size;
+/* A picture that IS the face, filling the disc inside the Skin's ring
+   (v2.3.3336's SpecialFace, shared by the Block button since v2.3.3522):
+   `attrs` names it for the probes. */
+function faceArt(size, src, attrs) {
   var d = size - 2 * skinRing(size);
-  return React.createElement('span', {
-    className: 'bt-skin-faceart', 'data-special-art': props.kind,
+  return React.createElement('span', Object.assign({
+    className: 'bt-skin-faceart',
     style: { position: 'relative', display: 'block', width: d, height: d, borderRadius: '50%' },
-  }, React.createElement('img', {
-    src: specialArtUrl(props.kind, !!props.grey), alt: '', draggable: false, width: d, height: d,
+  }, attrs), React.createElement('img', {
+    src: src, alt: '', draggable: false, width: d, height: d,
     style: { display: 'block', width: d, height: d, borderRadius: '50%', pointerEvents: 'none' },
   }));
+}
+/** The owner's special picture as a Skin's face, inside its ring. */
+export function SpecialFace(props) {
+  return faceArt(props.size, specialArtUrl(props.kind, !!props.grey), { 'data-special-art': props.kind });
 }
 /* ═══ v2.3.3519: A ROUND ABILITY PICTURE AS THE BUTTON'S FACE ═══
  * The owner's card 11 picks for Jump and the generic Special are round buttons
@@ -418,20 +425,34 @@ export function SpecialFace(props) {
  * have covered the ring that carries the cooldown arc.  `data-icon` as
  * abilityArt's, so "which picture is up" reads the same. */
 export function AbilityFace(props) {
-  var size = props.size;
-  var d = size - 2 * skinRing(size);
-  return React.createElement('span', {
-    className: 'bt-skin-faceart', 'data-icon': props.name, 'data-ability-face': props.name,
-    style: { position: 'relative', display: 'block', width: d, height: d, borderRadius: '50%' },
-  }, React.createElement('img', {
-    src: abilityArtUrl(props.name, !!props.grey), alt: '', draggable: false, width: d, height: d,
-    style: { display: 'block', width: d, height: d, borderRadius: '50%', pointerEvents: 'none' },
-  }));
+  return faceArt(props.size, abilityArtUrl(props.name, !!props.grey), { 'data-icon': props.name, 'data-ability-face': props.name });
+}
+/* ═══ v2.3.3522: THE BLOCK BUTTON WEARS THE OWNER'S SHIELD ═══
+ * The owner, playtesting: "Block button needs a new icon."  It drew the 64 px
+ * wood shield the WORLD hangs on your arm (/sprites/shields/wood-shield-front
+ * .png), stretched to 30 px and pixelated: the one control on the right
+ * cluster not in the owner's painted style.  Its face is now the owner's own
+ * round gold shield on a gold burst (brotown-rpg-ui-asset-sheet-1.png, cut by
+ * tools/ui/cut-owner-icons.py into public/ui/controls/abil-block.webp), drawn
+ * as the specials are: it was painted as a whole round button, so only the disc
+ * inside the owner's ring is kept and it fills the face inside the game's ring,
+ * which still carries the cooldown arc and the lit "shield up" state.  The
+ * -grey copy is the cooldown's (never a CSS filter, TRAPS §42).  Shield Bash
+ * keeps its own picture (the shield striking), so the two stay two pictures. */
+const BLOCK_ART_V = '2.3.3494';
+export function blockArtUrl(grey) {
+  return '/ui/controls/abil-block' + (grey ? '-grey' : '') + '.webp?v=' + BLOCK_ART_V;
+}
+export function BlockFace(props) {
+  return faceArt(props.size, blockArtUrl(!!props.grey), { 'data-icon': 'block' });
 }
 export const ABILITY_ART_URLS = ['whirl', 'special', 'bash', 'jump', 'burst']
   .reduce(function (a, n) { a.push(abilityArtUrl(n, false), abilityArtUrl(n, true)); return a; }, [])
   /* v2.3.3336: and the three special attacks, warmed with them */
-  .concat(['sword', 'bow', 'staff'].reduce(function (a, k) { a.push(specialArtUrl(k, false), specialArtUrl(k, true)); return a; }, []));
+  .concat(['sword', 'bow', 'staff'].reduce(function (a, k) { a.push(specialArtUrl(k, false), specialArtUrl(k, true)); return a; }, []))
+  /* v2.3.3522: and the Block button's, lit and grey -- it comes up the moment
+     a fight starts with a shield on, never while a loading screen is up */
+  .concat([blockArtUrl(false), blockArtUrl(true)]);
 function abilityArt(name, props, under) {
   var s = props.size || 28;
   var d = Math.round(s * ABILITY_ART_K);

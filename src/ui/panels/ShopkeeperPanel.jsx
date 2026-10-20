@@ -377,16 +377,18 @@ export function ShopkeeperPanel() {
               data-shop-coins above stays the raw number: tests read it. */}
           {Number(coins).toLocaleString()}
         </div>
+        {/* ═══ v2.3.3522: THE SHARED BIG ✕ ═══
+            The owner, playtesting: "Vendor menus need a more prominent escape
+            icon in the corner."  It was a 30 px rounded square in the strip's
+            own slate; it is the windows' one ✕ now (game.css .bt-xclose: a
+            40 px dark disc, a light ring, a bold cross, red when pressed),
+            its negative margin keeping the strip its height -- the drawer is
+            a fixed 226 px and the shelf keeps every pixel it had. */}
         <button type="button" onClick={() => shopBus.setOpen(false)} aria-label="Close"
           data-shop-close=""
+          className="bt-xclose"
           data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3407: Esc presses it (game/deskKeys.js) */
-          style={{
-            position: 'relative',   /* its key cap's anchor */
-            width: 30, height: 30, borderRadius: 8, padding: 0, flex: 'none',
-            background: '#293B41', border: '1px solid rgba(229,237,233,.20)',
-            color: 'var(--ui-text, #F4F0E7)', fontSize: 14, cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}>✕</button>
+          style={{ margin: '-5px 0' }}>✕</button>
       </div>
 
       {/* ── HIS SHELF ── one row, swiped sideways when he has more than five */}

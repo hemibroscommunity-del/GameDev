@@ -23,7 +23,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles/game.css';
-import { Skin, TornadoIcon, AbilityFace, BashIcon, NovaIcon, PaintedIcon, ICON_URL } from './ui/panels/controlSkin.jsx';
+import { Skin, TornadoIcon, AbilityFace, BashIcon, NovaIcon, PaintedIcon, BlockFace, ICON_URL } from './ui/panels/controlSkin.jsx'; /* v2.3.3522: BlockFace, the owner's shield */
 
 const h = React.createElement;
 const STATES = ['normal', 'pressed', 'cooldown', 'ready', 'disabled'];
@@ -66,7 +66,7 @@ function attackCell(state) {
 const ROWS = [
   ['Whirl', 48, 'slate', (s, g) => h(TornadoIcon, { size: Math.round(s * 0.7), grey: g })],
   ['Spec', 48, 'slate', (s, g) => h(AbilityFace, { size: s, name: 'special', grey: g })],
-  ['Block', 45, 'slate', (s, g) => h(PaintedIcon, { src: ICON_URL.shield, size: Math.round(s * 0.62), dim: g, pixelated: true })],
+  ['Block', 45, 'slate', (s, g) => h(BlockFace, { size: s, grey: g })],   /* v2.3.3522: the owner's painted shield, the face inside the ring */
   ['Bash', 48, 'slate', (s, g) => h(BashIcon, { size: Math.round(s * 0.7), grey: g })],
   ['Jump', 48, 'slate', (s, g) => h(AbilityFace, { size: s, name: 'jump', grey: g })],
   ['Sprint', 48, 'slate', (s, g) => h(PaintedIcon, { src: ICON_URL.boot, size: Math.round(s * 0.7), dim: g })],

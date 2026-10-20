@@ -1,7 +1,7 @@
 import React from 'react';
 import { TARGET_PERIMETER_PX } from '@/data/index.js';
 import { toggleShield, shieldButtonLive } from '@/game/shieldToggle.js';
-import { Skin, PaintedIcon, ICON_URL, pressOn, pressOff, useReadyFlash } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
+import { Skin, BlockFace, pressOn, pressOff, useReadyFlash } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3522: the owner's shield on Block */
 
 /* ═══ v2.3.2242: THE SHIELD BUTTON ═══
  *
@@ -36,7 +36,8 @@ import { Skin, PaintedIcon, ICON_URL, pressOn, pressOff, useReadyFlash } from '.
  * (rZoneRef, z6) and a tap that fell through it would forward a lock-on click
  * to the canvas.
  */
-const SHIELD_SPRITE = ICON_URL.shield;   /* v2.3.3018: one copy of the URL, in controlSkin */
+/* v2.3.3522: the button's picture is the owner's painted shield now
+   (controlSkin BlockFace) -- it was the world's wood-shield sprite, SHIELD_SPRITE. */
 /* How long the shield stays out of reach after the stamina ran it down
    (BroTown's `_shieldCdUntil = now + 2000`), so the cooldown arc can say how
    far through it is. */
@@ -414,7 +415,9 @@ export function jumpAnchor(isLandscape) {
  * MEASURED, because "enough space" is a number: 24px of clear air and 77px
  * centre to centre at 390 and 360, 27px and 86px in landscape.  mp-abilslot
  * asserts both and prints them, since whether it is enough for a real thumb is
- * the owner's judgement and not this file's.
+ * the owner's judgement and not this file's.  (v2.3.3522: and the owner's
+ * judgement was "too far away" -- 57 px and 9 px of air between the rings
+ * now, 64 and 10 sideways: RCTL_PAIR_AIR below.)
  *
  * WHY IT STEPS LEFT RATHER THAN RIGHT.  Slot 0 already hangs at RBTN.right
  * (50px in from the screen edge, the disc's own margin) and stepping outward
@@ -461,11 +464,39 @@ export const RCTL_SLOT = { special: 0, whirl: 1 };
  *     the movement disc, which is the price of clearing the minimap. */
 export const RCTL_SPRINT_CLEAR = 0.5;   /* of a button, Sprint <-> slot 0 */
 
+/* ═══ v2.3.3522: WHIRLWIND COMES IN TOWARD SPECIAL ═══
+ * The owner, playtesting: "Whirlwind action button needs to be placed closer
+ * to melee special attack (too far away)."  Half a button of air on the
+ * horizontal alone (the step above, a full button and a half) put their
+ * centres 77 px apart upright (86 sideways): the thumb that fired the special
+ * had to travel a button and a half to whirl.
+ *
+ * The diagonal stays -- it is the owner's own guard against "accidentally
+ * pressing the other one" (v2.3.2562) -- and the rise with it (a little over
+ * half a button, so the pair still reads as up-and-left).  What changes is the
+ * DISTANCE: the step is now whatever puts the two rings RCTL_PAIR_AIR of a
+ * button apart along the line between their centres -- the air a thumb
+ * actually crosses, between two round buttons (a round button's corners are
+ * not part of it: hit-testing follows the border radius).  Upright: centres 57
+ * px apart (77 before), 9 px of air between the rings, 3 px between their
+ * boxes side to side; sideways 64 px, 10 px of air.  Nothing else moves:
+ * Special keeps its pixels (slot 0 still hangs at the disc's right margin, or
+ * beside Sprint sideways), Whirlwind keeps its height (so the health-bar
+ * ceiling and the coach's band, combatBandTopPx, are unchanged), and it moves
+ * TOWARD Special, away from the movement half and the minimap.
+ * mp-abilslot and mp-btnlayout measure the pair by that air (8 px at the
+ * least, centres under 1.3 buttons apart) instead of the half-button box gap
+ * every other pair keeps. */
+export const RCTL_PAIR_AIR = 0.2;   /* of a button: Whirlwind's ring <-> Special's, centre line */
+
 export function rightCluster(isLandscape) {
   var size = Math.max(CTL_MIN_SIZE, isLandscape ? 54 : 48);
   var spr = sprintAnchor(isLandscape);
   var rise = Math.round(size * 0.55);
-  var step = size + Math.round(size * LCTL_THUMB_FRAC);
+  /* v2.3.3522: the step that leaves RCTL_PAIR_AIR between the rings (above);
+     it was `size + size * LCTL_THUMB_FRAC`, the left cluster's */
+  var pair = size * (1 + RCTL_PAIR_AIR);
+  var step = Math.round(Math.sqrt(Math.max(0, pair * pair - rise * rise)));
   var clear = Math.round(size * RCTL_SPRINT_CLEAR);
   if (isLandscape) {
     return {
@@ -478,9 +509,9 @@ export function rightCluster(isLandscape) {
   var base = spr.bottomPx + spr.size + clear;
   return {
     size: size,
-    /* Slot 0 hangs at the disc's own right margin; each slot steps LEFT by a
-       full button plus the thumb gap, which is what guarantees the separation
-       on the horizontal axis alone. */
+    /* Slot 0 hangs at the disc's own right margin; each slot steps LEFT by
+       `step` (v2.3.3522: a little over a button, RCTL_PAIR_AIR's air between
+       the rings; it was a button and a half). */
     rightPx: function (slot) { return RBTN.right + slot * step; },
     bottomPx: function (slot) { return Math.round(base + slot * rise); },
   };
@@ -668,10 +699,13 @@ export function ShieldButton(props) {
     progress: onCd ? 1 - Math.min(1, cdLeft / SHIELD_CD_MS) : null,
     flash: flash && skinState === 'normal',
   },
-  React.createElement(PaintedIcon, {
-    src: SHIELD_SPRITE, name: 'shield', pixelated: true,
-    size: Math.round(size * 0.62), dim: onCd,
-  })));
+  /* ═══ v2.3.3522: THE OWNER'S SHIELD, FILLING THE FACE ═══
+     The owner: "Block button needs a new icon."  It was the world's 64 px
+     wood shield stretched to 30 px and pixelated.  Now the owner's painted
+     gold shield fills the face inside the ring (controlSkin BlockFace, the
+     specials' way), grey while the stamina's cooldown runs; the ring, its
+     arc, the glow and the sparkles still say down / UP / cooling. */
+  React.createElement(BlockFace, { size: size, grey: onCd })));
 }
 
 /* v2.3.2246's note on the icon, kept with the button it was written for:
