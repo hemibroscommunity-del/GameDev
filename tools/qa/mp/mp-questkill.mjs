@@ -43,7 +43,7 @@ import * as H from './harness.mjs';
 import { QUEST_REWARDS } from '../../../server/src/data.js';
 
 const WANT = QUEST_REWARDS.tut_1.objective;   /* {collect, invKey:'slime-remnants', count:4, zone:'verdant'} */
-/* v2.3.3517: the first quest is the tour's slimes in the Verdant Wilds (it
+/* v2.3.3519: the first quest is the tour's slimes in the Verdant Wilds (it
    was Frost Ridge's snowmen).  Everything below follows the table: the land
    walked to, and the monsters hunted first -- the ones whose remains it asks
    for (index.js _invKeyForSkull: every slime and wisp drops slime remains). */
@@ -246,7 +246,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       const all = (S.monsters || []).filter((m) => m && m.alive !== false && (m.curHp === undefined || m.curHp > 0));
       if (!all.length) return { act: 'wait-respawn' };
-      /* v2.3.3517: the kinds that drop what the quest asks for, first */
+      /* v2.3.3519: the kinds that drop what the quest asks for, first */
       const re = new RegExp(prey, 'i');
       const want = all.filter((m) => re.test(String(m.arch || '') + ' ' + String(m.type || '') + ' ' + String(m.name || '')));
       const live = want.length ? want : all;

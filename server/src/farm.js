@@ -525,7 +525,7 @@ export const farmMethods = {
       /* dig and water change only the farm; plant, feed and harvest change
          the bag too.  _saveRpg for those three only. */
       const bagChanged = op === 'plant' || op === 'feed' || op === 'harvest';
-      /* v2.3.3517: the beds an act touched count for the tour's farm_1
+      /* v2.3.3519: the beds an act touched count for the tour's farm_1
          (quests.js `farm`, its `act`).  A count that moved is on the player,
          so a dig or a water that moved one saves the player as well -- only
          while such a quest is running, so a farmer's every watering is still

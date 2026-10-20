@@ -54,7 +54,7 @@ export const NpcDialogue = (props) => {
   /* v2.3.2289: `lockScrim` makes the backdrop inert. Opt-in and default-off,
      so every existing caller behaves exactly as before -- see the note on the
      scrim below for which screen asks for it and why. */
-  /* v2.3.3517: `action` -- { label, onClick, qa } -- a second button on the
+  /* v2.3.3519: `action` -- { label, onClick, qa } -- a second button on the
      LAST line, the thing he is asking you to do (a tour giver's "Open the
      forge", Lil Bro's "Race!": game/tour.js).  It is the brass one then, and
      the line's own button (Close) goes quiet beside it; never on an offer or

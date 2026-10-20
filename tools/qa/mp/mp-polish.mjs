@@ -122,7 +122,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      On the SECOND player: the first one just opened a chest, and a chest can
      roll 10 cooked fish -- which completes this quest outright and ticks
      every step, a pass/fail decided by the dice. */
-  /* v2.3.3517: the cooking quest is Diego's "Something Fishy" (fish_1) in
+  /* v2.3.3519: the cooking quest is Diego's "Something Fishy" (fish_1) in
      the tour, life_1's steps carried over -- the operator's /dev/tour puts
      the second player at his step (the steps before it handed in, nothing
      paid), and it is accepted over the wire */

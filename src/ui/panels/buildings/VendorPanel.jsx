@@ -149,6 +149,6 @@ export const SHOP_STOCK = [
   { id: 'manaShard', art: '/icons/items/potion-mana.webp', name: 'Mana Draught', icon: '\uD83D\uDCA0', cost: 30, desc: 'Cast specials nonstop for 3 min', effect: 'manaSurge' },
   { id: 'swiftDraught', art: '/icons/items/potion-antidote.webp', name: 'Swift Draught', icon: '\uD83C\uDF3F', cost: 30, desc: '1.5x run speed for 3 min', effect: 'spdBuff' },
   { id: 'whetstone', art: '/icons/items/potion-fury.webp', name: 'Fury Tonic', icon: '\uD83E\uDDEA', cost: 35, desc: 'Double damage for 3 min', effect: 'dmgBuff' },
-  /* v2.3.3517: cooked from three carrots, never sold (the tour's farm_2) */
+  /* v2.3.3519: cooked from three carrots, never sold (the tour's farm_2) */
   { id: 'zoomJuice', art: '/icons/items/potion-zoom.webp', name: 'Zoom Juice', icon: '\uD83E\uDD55', cost: 20, desc: '25% faster for 5 min', effect: 'spdBuff' },
 ];

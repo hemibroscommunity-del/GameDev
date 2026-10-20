@@ -212,7 +212,7 @@ async function body(P, wsPort, rec) {
     !!O && O.frame === 11 && O.frameOk, O && { frame: O.frame, ok: O.frameOk });
   rec.ok('...every picture in it decoded', !!O && O.imgsOk, O);
   rec.ok('...and not one CSS filter in it (iOS grain, TRAPS §42)', !!O && O.filtered === 0, O && O.filtered);
-  /* v2.3.3517: the tour's first step, the slimes' "Into the Blue" */
+  /* v2.3.3519: the tour's first step, the slimes' "Into the Blue" */
   rec.ok('...titled NEW QUEST / Into the Blue', !!O && /new quest/i.test(O.kicker) && /Into the Blue/.test(O.title), O && { k: O.kicker, t: O.title });
   const gAcc = O && O.groups.find((g) => g.when === 'accept');
   const gFin = O && O.groups.find((g) => g.when === 'complete');
@@ -302,7 +302,7 @@ async function body(P, wsPort, rec) {
   rec.ok('...no claim window and no skill chip at any moment', !(await P.page.evaluate(() => window.__qwChoice)));
   await P.page.evaluate(() => { if (window.__qwChoiceObs) window.__qwChoiceObs.disconnect(); });
   const next1 = await P.page.evaluate(() => ({ dialogue: !!document.querySelector('.bt-npcdlg'), offer: !!document.querySelector('.bt-qoffer') }));
-  /* v2.3.3517: and he offers nothing in its place -- the tour hands you on
+  /* v2.3.3519: and he offers nothing in its place -- the tour hands you on
      to Farmer Bro (the gold road and the pinned card's "Next:" lead there,
      mp-questline), and his own next quest, the snowmen, waits for the tour's
      end, so his window puts itself away as he pays (quests.js turnInQuest:
@@ -310,7 +310,7 @@ async function body(P, wsPort, rec) {
   rec.ok('...and he offers nothing else in its place (the tour hands you on)', !next1.offer, next1);
 
   /* ── 4. the claim window: the next quest pays XP, so there is a choice ──
-     v2.3.3517: the Mayor's next quest is the tour's finale, tut_2 "Cold
+     v2.3.3519: the Mayor's next quest is the tour's finale, tut_2 "Cold
      Reception" (the snowmen), taken once the tour's other ten steps are
      handed in (`after`): the operator's /dev/tour puts this character there,
      the steps before it handed in, nothing paid. */

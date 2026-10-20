@@ -71,7 +71,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.clickText(P, 'Available').catch(() => {});
   await P.page.waitForTimeout(500);
   let pane = await H.bodyText(P);
-  /* v2.3.3517: the tour's first step, the slimes' "Into the Blue" */
+  /* v2.3.3519: the tour's first step, the slimes' "Into the Blue" */
   rec.ok('the quest pane offers Mayor Bro\'s first quest', /Into the Blue/.test(pane), pane.slice(0, 300));
   rec.ok('...and does NOT offer quests from givers who are not in the world',
     !/First Purchase|First Spark/i.test(pane), pane.slice(0, 600));
@@ -247,7 +247,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!art && /He hands you now/i.test(art.text), art && art.text.slice(0, 300));
   /* Case-INSENSITIVE deliberately: `art.text` is innerText, which applies the
      CSS `text-transform: uppercase` these captions carry — so the string on
-     the wire here is "FOR FINISHING “INTO THE BLUE”" (v2.3.3517: the tour's
+     the wire here is "FOR FINISHING “INTO THE BLUE”" (v2.3.3519: the tour's
      first step; it was "Cold Reception").  (mp-tutorial asserts
      the same idea against H.bodyText, which reads textContent and is NOT
      transformed — hence the different casing there.  Same fact, two readers.) */
@@ -388,7 +388,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('and the first quest\'s remains are consumed', paid1.slime === 0, paid1);
 
   /* ── the claim card and the XP choice, on the Mayor's next quest ──
-     v2.3.3517: his next quest is the tour's finale, tut_2 "Cold Reception"
+     v2.3.3519: his next quest is the tour's finale, tut_2 "Cold Reception"
      (the snowmen), taken only once the tour's other ten steps are handed in
      (`after`), so the operator's /dev/tour puts this character there -- the
      steps before it handed in, nothing paid.  It still pays XP, so the

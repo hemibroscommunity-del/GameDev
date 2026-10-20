@@ -3402,7 +3402,7 @@ console.log("the buildings' doors (v2.3.3032)");
     blocked.length === 0, blocked.map((d) => [d.id, hit(d.x, d.y + 30, 10)]));
   /* Diego keeps the General Store (v2.3.3067: and the rest of town's cast) */
   const sp = WHEEL_TOWNSFOLK.map((f) => ({ f, d: byDoor[f.door] })).map(({ f, d }) => ({ name: f.name, x: d.x + f.dx, y: d.y + f.dy, d }));
-  ok('each of the townsfolk has a door to stand by, in no footprint with room round them, on the town\'s ground: Diego, Ace, Blacksmith Bro, Lil Bro, Beastmaster Bro, and the tour\'s Woodworker Bro and Farmer Bro (v2.3.3517)',
+  ok('each of the townsfolk has a door to stand by, in no footprint with room round them, on the town\'s ground: Diego, Ace, Blacksmith Bro, Lil Bro, Beastmaster Bro, and the tour\'s Woodworker Bro and Farmer Bro (v2.3.3519)',
     sp.map((q) => q.name).join() === 'Diego,Ace,Blacksmith Bro,Lil Bro,Beastmaster Bro,Woodworker Bro,Farmer Bro' && sp.every((q) => q.d && hit(q.x, q.y, 24).length === 0 && dbp.regionIds[dbp.reg[cellG(q.x, q.y)]] === 'town'),
     sp.map((q) => [q.name, hit(q.x, q.y, 24)]));
   /* ...and standing at the General Store's door does not open his window by
@@ -3440,14 +3440,14 @@ console.log("the buildings' doors (v2.3.3032)");
     const toDoors = Math.min.apply(null, doors.map((d) => Math.hypot(d.x - lb.x, d.y - lb.y)));
     ok(`Lil Bro is on the square, met on arrival (${Math.round(toArrive)} px from where you land), on the side away from Mayor Bro (${Math.round(toMayor)} px), beyond every door's reach (${Math.round(toDoors)} px from the nearest)`,
       toArrive > 200 && toArrive < 320 && lb.x < arrive.x && ms2.x > arrive.x && toMayor > 300 && toDoors > 2 * WHEEL_DOOR_REACH, { toArrive, toMayor, toDoors });
-    /* v2.3.3517: the Woodworker's two (its keeper and the Beastmaster) stand
+    /* v2.3.3519: the Woodworker's two (its keeper and the Beastmaster) stand
        either side of its steps, 210 px apart: a tap finds the nearest within
        44 CSS px (~73 world px at the Wheel's 0.606) and a quest opens by
        itself within 90, so 200 keeps every tap and every opener one man's */
     let closest = Infinity;
     for (const a of sp) for (const b of sp) if (a !== b) closest = Math.min(closest, Math.hypot(a.x - b.x, a.y - b.y));
     ok(`no two of them within reach of one tap or one quest's opener (${Math.round(closest)} px apart at the closest)`, closest > 200, closest);
-    /* ═══ v2.3.3517: THE TOUR'S TWO NEW GIVERS, AND LIL BRO'S RACE ═══ */
+    /* ═══ v2.3.3519: THE TOUR'S TWO NEW GIVERS, AND LIL BRO'S RACE ═══ */
     const ww = at['Woodworker Bro'], fb = at['Farmer Bro'];
     const wwRow = row('Woodworker Bro'), fbRow = row('Farmer Bro');
     const tourRow = (r) => !!r && r.wheelOnly === true && r.needsCap === 'tour' && r.quietProgress === true
@@ -3729,7 +3729,7 @@ console.log("the keepers (v2.3.3258)");
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const bad = Object.entries(WHEEL_KEEPERS).filter(([name, plot]) => !((name === 'Mayor Bro' || WHEEL_TOWNSFOLK.some((f) => f.name === name && f.door === plot))
     && (own(WHEEL_BUILDING_DOORS, plot) || own(WHEEL_HALL_DOORS, plot))));
-  ok('each keeper stands at the very building he opens (Mayor Bro on the Town Hall\'s steps, the rest a WHEEL_TOWNSFOLK row at that door), and it is one with a window -- a building or a hall: Blacksmith Bro the forge, Mayor Bro the Town Hall, and the tour\'s Woodworker Bro the bench and Farmer Bro the Feed & Seed (v2.3.3517)',
+  ok('each keeper stands at the very building he opens (Mayor Bro on the Town Hall\'s steps, the rest a WHEEL_TOWNSFOLK row at that door), and it is one with a window -- a building or a hall: Blacksmith Bro the forge, Mayor Bro the Town Hall, and the tour\'s Woodworker Bro the bench and Farmer Bro the Feed & Seed (v2.3.3519)',
     Object.keys(WHEEL_KEEPERS).length === 4 && WHEEL_KEEPERS['Blacksmith Bro'] === 'blacksmith' && WHEEL_KEEPERS['Mayor Bro'] === 'townhall'
       && WHEEL_KEEPERS['Woodworker Bro'] === 'woodworker' && WHEEL_KEEPERS['Farmer Bro'] === 'feedseed' && bad.length === 0, bad);
   const bt = fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');

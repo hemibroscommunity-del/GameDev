@@ -10,9 +10,9 @@ import { questObjectiveDone } from '@/data/index.js'; /* v2.3.1914 */
    split rather than restyled. */
 import { NpcDialogue } from './NpcDialogue.jsx';
 import { QuestOfferPanel } from './QuestOfferPanel.jsx';
-import { QuestSkillChip, QuestTradeChip } from './questArt.jsx'; /* v2.3.3030: the owner's skill chips; v2.3.3517: and a trade's */
-import { questAction, tradeChoices } from '@/game/tour.js'; /* v2.3.3517: the tour's buttons */
-import { requestRace } from '@/game/race.js'; /* v2.3.3517: Lil Bro's Race! */
+import { QuestSkillChip, QuestTradeChip } from './questArt.jsx'; /* v2.3.3030: the owner's skill chips; v2.3.3519: and a trade's */
+import { questAction, tradeChoices } from '@/game/tour.js'; /* v2.3.3519: the tour's buttons */
+import { requestRace } from '@/game/race.js'; /* v2.3.3519: Lil Bro's Race! */
 
 /* v2.3.3030: how long the claim's confirmation ("Rewards claimed!") stays
    before he offers his next quest -- long enough for the coins and the items
@@ -106,7 +106,7 @@ export function XpChooser(props) {
     })));
 }
 
-/* ═══ v2.3.3517: WHICH WEAPON HE SWAPS ═══
+/* ═══ v2.3.3519: WHICH WEAPON HE SWAPS ═══
    Woodworker Bro's wood_2 hands in with a TRADE (the worker's `trade`,
    quests.js _questTradePick): "he'll trade you the better tier of weapon
    (after pine) if you turn in a pine one to him" -- the owner.  On the claim's
@@ -157,7 +157,7 @@ export function QuestPanel(props) {
   var _xpCatState = React.useState(null),
     xpCat = _xpCatState[0],
     setXpCat = _xpCatState[1];
-  /* v2.3.3517: a hand-in with a trade (wood_2) asks which weapon goes --
+  /* v2.3.3519: a hand-in with a trade (wood_2) asks which weapon goes --
      local to the open dialogue, like xpCat */
   var _tradeState = React.useState(null),
     tradePick = _tradeState[0],
@@ -277,7 +277,7 @@ export function QuestPanel(props) {
   };
   React.useEffect(function () {
     setStage('talk');
-    setTradePick(null);   /* v2.3.3517: a new subject asks again */
+    setTradePick(null);   /* v2.3.3519: a new subject asks again */
     /* v2.3.3462: he speaks as the talk opens -- his own hum, however you
        reached him (a tap, E, walking up to him): game/npcVoices.js */
     npcSpeaks(stateRef.current, questPanel.npc);
@@ -310,7 +310,7 @@ export function QuestPanel(props) {
      and that is the end of it, so his last button closes rather than opening
      an offer screen with no offer on it. */
   var _hasDecision = _isOffer || _canTurnIn;
-  /* v2.3.3517: the trade's choices, from the LIVE bag, and the one picked --
+  /* v2.3.3519: the trade's choices, from the LIVE bag, and the one picked --
      yours if you picked, else the only one there is */
   var _trades = (_canTurnIn && questPanel.quest.trade) ? tradeChoices(questPanel.quest, _liveRpg) : [];
   var _tradeType = tradePick || (_trades.length === 1 ? _trades[0].type : null);

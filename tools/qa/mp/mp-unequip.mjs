@@ -45,7 +45,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (S && S.channel) S.channel.send(m);
   }, msg);
 
-  /* Earn the torso the way the game pays it out.  v2.3.3517: FORGED, from
+  /* Earn the torso the way the game pays it out.  v2.3.3519: FORGED, from
      five copper bars at the Blacksmith's Armor tab (armorforge.js) -- the
      tour's ore errand pays the bars; life_2, which paid the torso for five
      ore, is retired. */

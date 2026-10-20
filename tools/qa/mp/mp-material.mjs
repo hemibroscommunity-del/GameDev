@@ -119,7 +119,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState && window._gameState.current;
     if (S && S.channel) S.channel.send(m);
   }, msg);
-  /* v2.3.3517: the tier-one TORSO is FORGED now -- Blacksmith Bro's ore
+  /* v2.3.3519: the tier-one TORSO is FORGED now -- Blacksmith Bro's ore
      errand in the tour pays five copper bars, and the forge's Armor tab makes
      a torso from five (armorforge.js), "your choice" of a sword, a chest plate
      or greaves.  life_2, which paid it for five ore, is retired. */

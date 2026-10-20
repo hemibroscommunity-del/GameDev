@@ -101,11 +101,11 @@ const bars = (k) => Math.floor(inv()[k] || 0);
   const sync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);
   check('caps.salvage is advertised', !!sync && sync.caps.salvage === true);
   check('...under a name the liveflags route accepts (lower case: a kill switch)', LIVEOPS.FLAG_NAME_RE.test('salvage'));
-  /* v2.3.3517: five bars a piece (the owner's bows and staffs from five
+  /* v2.3.3519: five bars a piece (the owner's bows and staffs from five
      hardened wood, "It should mirror the cost of making armor"), two back:
      half, rounded down */
   check('salvage gives back half of what a piece takes, rounded down: two of five bars', SALVAGE.COST_BARS === 5 && SALVAGE.BARS === Math.floor(SALVAGE.COST_BARS / 2) && SALVAGE.BARS === 2);
-  check('the armour forge takes five bars for every torso and greaves (v2.3.3517)',
+  check('the armour forge takes five bars for every torso and greaves (v2.3.3519)',
     Object.values(ARMOR_FORGE.RECIPES).every((r) => r.bars === SALVAGE.COST_BARS), Object.values(ARMOR_FORGE.RECIPES).map((r) => r.bars));
   const metals = Object.keys(SALVAGE.METALS);
   check('every metal salvage knows is one the smelter makes a bar of', metals.every((m) => Object.prototype.hasOwnProperty.call(SMELT.RECIPES, SALVAGE.METALS[m].bar)));

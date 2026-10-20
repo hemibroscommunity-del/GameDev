@@ -33,10 +33,10 @@ import { SkillsPanel } from './panels/SkillsPanel.jsx';
 import { StatScreenPanel } from './panels/StatScreenPanel.jsx';
 /* v2.3.870: quest panel extraction (logic already in @/game/quests.js). */
 import { QuestPanel } from './panels/QuestPanel.jsx';
-import RaceHud from './mobile/RaceHud.jsx'; /* v2.3.3517: Lil Bro's race on the screen */
-import { raceTick, raceHeld, raceDriveNpc } from '@/game/race.js'; /* v2.3.3517: Lil Bro's race (server/src/race.js judges it) */
-import { tourOffer, setQuestDoorFinder } from '@/game/questRoute.js'; /* v2.3.3517: the tour's next step, and where a door stands */
-import { TOUR_MEET } from '@/game/tour.js'; /* v2.3.3517 */
+import RaceHud from './mobile/RaceHud.jsx'; /* v2.3.3519: Lil Bro's race on the screen */
+import { raceTick, raceHeld, raceDriveNpc } from '@/game/race.js'; /* v2.3.3519: Lil Bro's race (server/src/race.js judges it) */
+import { tourOffer, setQuestDoorFinder } from '@/game/questRoute.js'; /* v2.3.3519: the tour's next step, and where a door stands */
+import { TOUR_MEET } from '@/game/tour.js'; /* v2.3.3519 */
 import { QuestBannerLayer } from './panels/QuestBannerLayer.jsx'; /* v2.3.3030: the quest banners in the owner's art */
 import { InventoryPanel } from './panels/InventoryPanel.jsx';
 import { TradePanel } from './panels/TradePanel.jsx';
@@ -885,7 +885,7 @@ function _spawnWheelNpcs(S) {
   /* v2.3.3121: Beastmaster Bro only against a worker that knows his quests
      (`cap` on his WHEEL_TOWNSFOLK row; game/trapping.js beastmasterOn) */
   var _bmOn = beastmasterOn(S);
-  /* v2.3.3517: and any other `cap` -- the tour's Woodworker Bro and Farmer
+  /* v2.3.3519: and any other `cap` -- the tour's Woodworker Bro and Farmer
      Bro only against a worker that knows the tour (caps.tour) */
   var _capOn = function (c) { return c === 'beastmaster' ? _bmOn : !!(S && S._serverCaps && S._serverCaps[c]); };
   WHEEL_TOWNSFOLK.forEach(function (f) {
@@ -913,7 +913,7 @@ function _spawnWheelNpcs(S) {
 }
 /* the zones townsfolk stand in: today's town, and the Wheel's Brotown */
 function _npcZone(z) { return z === 'town' || isWheelTrialZone(z); }
-/* v2.3.3517: the gold road to a step done at a door (farm_2's Cookhouse,
+/* v2.3.3519: the gold road to a step done at a door (farm_2's Cookhouse,
    questRoute.js _wantDoor) -- where the door stands is the ground worker's */
 setQuestDoorFinder(function (plot) {
   var d = wheelTownDoors().filter(function (x) { return x.id === plot; })[0];
@@ -5262,7 +5262,7 @@ export var BroTown = function BroTown(_ref0) {
            player at the hub exit so the proximity trigger stays armed and
            the entry runs the instant the load resolves. */
         if (S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold) finalSpd = 0;   /* v2.3.3136: _farmArtHold -- veiled while your farm loads (game/farmTrip.js); v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
-        /* v2.3.3517: on the line for Lil Bro's countdown (game/race.js) -- the
+        /* v2.3.3519: on the line for Lil Bro's countdown (game/race.js) -- the
            worker calls a lap begun away from it a false start */
         if (raceHeld(S)) finalSpd = 0;
         /* v2.3.2996: a monster's element on you -- a snowman's chill walks you
@@ -6950,7 +6950,7 @@ export var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* v2.3.3517: Lil Bro's race -- the countdown's beats, the gun, the end
+        /* v2.3.3519: Lil Bro's race -- the countdown's beats, the gun, the end
            (game/race.js) */
         raceTick(S, Date.now());
         /* Update NPCs — §19.1 companion follow + quest interaction + wander */
@@ -6966,7 +6966,7 @@ export var BroTown = function BroTown(_ref0) {
               }
               return;
             }
-            /* v2.3.3517: racing, Lil Bro runs the worker's path at the
+            /* v2.3.3519: racing, Lil Bro runs the worker's path at the
                worker's speed (game/race.js), not his wander */
             if (raceDriveNpc(S, npc, Date.now())) {
               if (npc.chatBubble && Date.now() - npc.chatBubble.ts > 5000) npc.chatBubble = null;
@@ -8981,7 +8981,7 @@ export var BroTown = function BroTown(_ref0) {
     var door = wheelTownDoors().filter(function (d) { return d.id === npc.keeperOf; })[0];
     return enterWheelDoor(stateRef.current, door, { setBuildingPanel: setBuildingPanel });
   }, []);
-  /* v2.3.3517: a tour giver's "how's it going" line opens the building he
+  /* v2.3.3519: a tour giver's "how's it going" line opens the building he
      stands at (QuestPanel's action, game/tour.js `opens`): the same door, the
      same window, the same visit counted, as walking to it */
   var openWheelPlot = useCallback(function (plot) {
@@ -12939,7 +12939,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 700,
       color: '#D8A94D'
     }
-  }, "\uD83C\uDF1F Well Rested +10% XP \xB7 ", Math.ceil((rpgState._wellRestedUntil - Date.now()) / 60000), "min")), showSocialPanel && /*#__PURE__*/React.createElement(SocialPanel, { blockedList: blockedList, friendsList: friendsList, mutedList: mutedList, setBlockedList: setBlockedList, setFriendsList: setFriendsList, setMutedList: setMutedList, setShowSocialPanel: setShowSocialPanel, stateRef: stateRef }), showClanPanel && rpgState && /*#__PURE__*/React.createElement(ClanPanel, { rpgState: rpgState, clanCreateMode: clanCreateMode, setClanCreateMode: setClanCreateMode, clanData: clanData, setClanData: setClanData, setRpgState: setRpgState, setShowClanPanel: setShowClanPanel, stateRef: stateRef }), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState, openPlot: openWheelPlot }), /* v2.3.3517: Lil Bro's race on the screen */ /*#__PURE__*/React.createElement(RaceHud, { stateRef: stateRef }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), /* v2.3.3066: a clan invite raises its own card (ClanInviteCard) */ clanInvite && !duelRequest && /*#__PURE__*/React.createElement(ClanInviteCard, { stateRef: stateRef, invite: clanInvite, onDone: function onDone() { setClanInvite(null); } }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }), party && /*#__PURE__*/React.createElement(PartyHUD, { party: party, setParty: setParty, stateRef: stateRef }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
+  }, "\uD83C\uDF1F Well Rested +10% XP \xB7 ", Math.ceil((rpgState._wellRestedUntil - Date.now()) / 60000), "min")), showSocialPanel && /*#__PURE__*/React.createElement(SocialPanel, { blockedList: blockedList, friendsList: friendsList, mutedList: mutedList, setBlockedList: setBlockedList, setFriendsList: setFriendsList, setMutedList: setMutedList, setShowSocialPanel: setShowSocialPanel, stateRef: stateRef }), showClanPanel && rpgState && /*#__PURE__*/React.createElement(ClanPanel, { rpgState: rpgState, clanCreateMode: clanCreateMode, setClanCreateMode: setClanCreateMode, clanData: clanData, setClanData: setClanData, setRpgState: setRpgState, setShowClanPanel: setShowClanPanel, stateRef: stateRef }), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState, openPlot: openWheelPlot }), /* v2.3.3519: Lil Bro's race on the screen */ /*#__PURE__*/React.createElement(RaceHud, { stateRef: stateRef }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), /* v2.3.3066: a clan invite raises its own card (ClanInviteCard) */ clanInvite && !duelRequest && /*#__PURE__*/React.createElement(ClanInviteCard, { stateRef: stateRef, invite: clanInvite, onDone: function onDone() { setClanInvite(null); } }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }), party && /*#__PURE__*/React.createElement(PartyHUD, { party: party, setParty: setParty, stateRef: stateRef }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
    prototype era -- the step machine ran all along, only the display was
    gated, so veterans' bt_tutorial already reads 7/10 and never see it) */
   /* v2.3.1235: §6 — the banner yields to every blocking decision
@@ -13509,7 +13509,7 @@ export var BroTown = function BroTown(_ref0) {
       return QUEST_CHAINS[qid];
     }).filter(Boolean);
     if (activeQuests.length === 0) {
-      /* ═══ v2.3.3517: BETWEEN TWO STEPS OF THE TOUR, WHO IS NEXT ═══
+      /* ═══ v2.3.3519: BETWEEN TWO STEPS OF THE TOUR, WHO IS NEXT ═══
          After a hand-in there is no quest in hand and this card stood empty --
          the moment a reviewer most needs a line.  It says who gives the step
          the tour suggests next and where he stands; the gold road leads to him
@@ -13534,7 +13534,7 @@ export var BroTown = function BroTown(_ref0) {
       /*#__PURE__*/React.createElement("div", {
         style: { fontSize: 11, lineHeight: 1.3, marginTop: 1, color: 'rgba(255,255,255,.72)' }
       }, 'Talk to ' + _to.npc + (TOUR_MEET[_to.npc] ? ' ' + TOUR_MEET[_to.npc] : '')),
-      /* v2.3.3517: the whole town opens after the Mayor's first quest, so this
+      /* v2.3.3519: the whole town opens after the Mayor's first quest, so this
          is a suggestion -- say how many others have work too, and where they
          show (the gold "!" over a head, on the minimap and the world map) */
       _to.more > 0 && /*#__PURE__*/React.createElement("div", {

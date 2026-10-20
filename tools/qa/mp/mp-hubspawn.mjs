@@ -388,7 +388,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      blocked" when what this block tests is that the ARRIVAL POINT has a clear
      line to a spoke.  Frost tests the same line against a zone this player is
      actually allowed into.  The gate itself is covered by mp-zonegate. */
-  /* v2.3.3517: the land tut_1 opens -- the Verdant Wilds since the tour (H.FIRST_LAND) */
+  /* v2.3.3519: the land tut_1 opens -- the Verdant Wilds since the tour (H.FIRST_LAND) */
   const spoke = marks.spokes.find((s2) => s2.zoneId === H.FIRST_LAND) || marks.spokes[0];
   await stand(P, spoke.tx, spoke.ty);
   const atSpoke = await H.waitFor(P, (S) => S.currentZone, (z) => z === spoke.zoneId,

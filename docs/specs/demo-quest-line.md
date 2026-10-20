@@ -1,4 +1,4 @@
-# The tour: the Mayor's quest, then the whole town (v2.3.3517)
+# The tour: the Mayor's quest, then the whole town (v2.3.3519)
 
 The owner, a week before an exposé where reviewers give each game 20-30
 minutes:
