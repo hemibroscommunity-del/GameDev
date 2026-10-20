@@ -44,7 +44,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armou
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */, shotGroundDy /* v2.3.3206: a shot's ground is under the boots */ } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
-import { firstSightHit, shotLowAim, lowAimAlong } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at */
+import { firstSightHit, shotLowAim, lowAimAlong, arrowSureReachPast, shotAimAt } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at */
 import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player a shot is aimed at, for the others' screens */
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -64,22 +64,20 @@ import { brewMulNow, pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: the br
 import { pvpBalanceOn, pvpSwingClaimOk, pvpLockInReach, PVP_SWING } from '@/game/pvpSwing.js'; /* v2.3.3260: one sword claim a swing */
 import { fightersInSwing, isLiveFighter } from '@/game/sparTargets.js'; /* v2.3.3267: every swing lands on the sparring clones in its arc, locked or not; v2.3.3268: and on the players you chose to attack */
 import { nmlSwingAsk } from '@/game/nmlAsk.js'; /* v2.3.3316: a swing at a player you have not chosen asks "Attack <name>?" */
+import { arrowEdgeRoom } from '@/game/arrowEdge.js'; /* v2.3.3489: where an arrow comes down at the screen's edge */
+import { shotAimWire } from '@/game/shotGround.js';   /* v2.3.3501: what a shot is fired at, on the wire */
 
 /* ═══ v2.3.3206: HOW FAR A PLAIN ARROW FLIES BEFORE THE SCREEN'S EDGE ═══
-   projectiles.js plants a bow arrow once its drawn point comes within 24 px of
-   the view's edge (v2.3.1095).  The bow's sight hands this to firstSightHit as
-   `ground.len`, so a prop past the edge -- out of the arrow's reach -- never
-   opens the gate.  From the grip, along the shot, in world px; Infinity
-   without a view to measure. */
+   projectiles.js plants a bow arrow before its drawn point leaves the view
+   (v2.3.1095).  The bow's sight hands this to firstSightHit as `ground.len`,
+   so a prop past the edge -- out of the arrow's reach -- never opens the gate.
+   From the grip, along the shot, in world px; Infinity without a view to
+   measure.  v2.3.3489: the arrow's own rule (arrowEdge.js), one copy -- this
+   measured to a band 24 px inside EVERY edge while the arrow was tested
+   against it from wherever it was, so a bow held inside the band dropped
+   arrows the gate had sent; and it caps a monster or a player now too, below. */
 function _viewEdgeDist(S, ox, oy, ang) {
-  var cam = S && S.camera;
-  if (!cam || !(S._viewW > 0) || !(S._viewH > 0) || !isFinite(ox) || !isFinite(oy) || !isFinite(ang)) return Infinity;
-  var m = 24;
-  var x0 = cam.x + m, x1 = cam.x + S._viewW - m, y0 = cam.y + m, y1 = cam.y + S._viewH - m;
-  var c = Math.cos(ang), sn = Math.sin(ang), t = Infinity;
-  if (c > 1e-9) t = Math.min(t, (x1 - ox) / c); else if (c < -1e-9) t = Math.min(t, (x0 - ox) / c);
-  if (sn > 1e-9) t = Math.min(t, (y1 - oy) / sn); else if (sn < -1e-9) t = Math.min(t, (y0 - oy) / sn);
-  return Math.max(0, t);
+  return arrowEdgeRoom(S && S.camera, S && S._viewW, S && S._viewH, ox, oy, ang);
 }
 
 export function updateMonsterCombat(S, deps) {
@@ -1512,20 +1510,34 @@ export function updateMonsterCombat(S, deps) {
                circle is centred there (projectiles _projCentreLift) -- so is the gate's */
             var _bsAimAt = (_bsAim.src === 'lock' && S.lockedTarget && S.lockedTarget.ref) ? S.lockedTarget.ref.id : null;
             var _bsHit = null;
+            /* ═══ v2.3.3489: AS FAR AS THE ARROW FLIES, NOT THE BOW'S RANGE ═══
+               An arrow comes down short of the screen's edge (arrowEdge.js), so
+               a monster or a player past that point is out of this shot: with
+               only the 675 px range here, one off the screen to your side, on
+               the line, opened the gate and every arrow came down at the edge,
+               short of it.  `_bsRoom` is the flight left from the grip, and
+               arrowSureReachPast how far past it the arrow's head is always
+               tested.  The props were already held to it (`ground.len`). */
+            var _bsRange = BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1) * depthK(S.currentZone, P.y);
+            var _bsRoom = _viewEdgeDist(S, _bsX, _bsY, _bsA);
             try {
               /* v2.3.3206: + `ground`, your boots, so a prop on the line -- a
                  building, a tree, a barrel -- opens the gate and ends the line
                  where the arrow will stop (firstSightHit's prop note) */
               _bsHit = firstSightHit(S, _bsX, _bsY, _bsA,
-                BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1) * depthK(S.currentZone, P.y), { isStaff: false, isSpecial: false, aimAt: _bsAimAt,
-                  ground: { x: P.x, y: P.y + shotGroundDy(S), len: _viewEdgeDist(S, _bsX, _bsY, _bsA) } });   /* v2.3.2790: the sight line ends where the (depth-scaled) arrow does */
+                Math.min(_bsRange, _bsRoom + arrowSureReachPast(bowRangeMult(S.rpg) || 1)), { isStaff: false, isSpecial: false, aimAt: _bsAimAt,
+                  ground: { x: P.x, y: P.y + shotGroundDy(S), len: _bsRoom } });   /* v2.3.2790: the sight line ends where the (depth-scaled) arrow does */
             } catch (e) { _bsHit = null; }
             S._bowSight = { ang: _bsA, d: _bsHit ? _bsHit.dist : null,
               id: _bsHit ? _bsHit.id : null, at: Date.now(),
               ox: _bsX, oy: _bsY,
               /* v2.3.3206: a low thing it is aimed at (nothing else on the
                  line), the one low thing its arrow will not fly over */
-              lp: shotLowAim(_bsHit) };
+              lp: shotLowAim(_bsHit),
+              /* v2.3.3489: where an arrow on this line comes down -- the
+                 bow's range or the screen's edge, the nearer -- which the
+                 aiming line is drawn to when nothing is on it */
+              reach: Math.min(_bsRange, _bsRoom) };
           } else if (S._bowSight) {
             S._bowSight = null;
           }
@@ -1728,10 +1740,31 @@ export function updateMonsterCombat(S, deps) {
                 var _shotLp = !isStaff ? ((S._bowSight && S._bowSight.lp) || null)
                   : lowAimAlong(S, _shotX, _shotY, arrAngle, staffOrbLife(S.rpg) * depthK(S.currentZone, P.y) * 5,
                     P.x, P.y + shotGroundDy(S), { isStaff: true });   /* a bolt flies 5 px a tick for its life */
+                /* ═══ v2.3.3501: ...AND WHAT IT IS FIRED AT, BOOTS TO FEET ═══
+                   The target on the shot's line by the gate's own rule
+                   (projectiles.js shotAimAt): its ground line then runs from
+                   your boots to that target's feet (shotGround.js), and the
+                   watchers' copies take it as `gf`.  The bow asks as its gate
+                   did (its reach the nearer of the range and the screen's edge);
+                   the staff along its bolt's reach, as `_shotLp` above. */
+                var _shotLock = (S.lockedTarget && S.lockedTarget.ref && rangedAimAngle(S, _shotX, _shotY).src === 'lock') ? S.lockedTarget.ref.id : null;
+                var _shotGd = { x: P.x, y: P.y + shotGroundDy(S) };
+                var _shotGf = null;
+                if (!isStaff) {
+                  var _sgRoom = _viewEdgeDist(S, _shotX, _shotY, arrAngle);
+                  _shotGd.len = _sgRoom;
+                  _shotGf = shotAimAt(S, _shotX, _shotY, arrAngle,
+                    Math.min(BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1) * depthK(S.currentZone, P.y), _sgRoom + arrowSureReachPast(bowRangeMult(S.rpg) || 1)),
+                    { isStaff: false, isSpecial: false, aimAt: _shotLock, ground: _shotGd });
+                } else {
+                  _shotGd.len = staffOrbLife(S.rpg) * depthK(S.currentZone, P.y) * 5;
+                  _shotGf = shotAimAt(S, _shotX, _shotY, arrAngle, _shotGd.len, { isStaff: true, aimAt: _shotLock, ground: _shotGd });
+                }
                 S.arrows.push({
                   ang: arrAngle,
                   _shotTs: _shotTs,
                   _lp: _shotLp || undefined,   /* v2.3.3206 */
+                  _gf: _shotGf || undefined,   /* v2.3.3501: boots to its target's feet */
                   /* v2.3.937: bow shots nock at the teal grip and launch at the
                      (early) release -- start near the player and let projectiles.js
                      hold them at the grip until BOW_RELEASE_MS.  Staff bolts keep
@@ -1782,6 +1815,10 @@ export function updateMonsterCombat(S, deps) {
                      every screen and flies over the rest (visualSystems.js).
                      Additive: an older client ignores it. */
                   lp: _shotLp ? [Math.round(_shotLp.x), Math.round(_shotLp.y)] : undefined,
+                  /* v2.3.3501: what it is fired at -- its circle and its feet --
+                     so it meets the same props on every screen
+                     (visualSystems.js).  Additive: an older client ignores it. */
+                  gf: shotAimWire(_shotGf),
                   /* v2.3.2592: the RANGE stat lengthens the flight, so the peer
                      mirror needs the life too or a remote orb dies at 675 px
                      while it flew 1012 on the caster's screen (the v2.3.2387

@@ -52,6 +52,29 @@ const arm = (P, slot, el1, el2) => P.page.evaluate(({ slot, el1, el2, ang, d }) 
   return { slot: R.activeSlot, el1, el2: el2 || null };
 }, { slot, el1, el2, ang: ANG, d: DIST });
 
+/* v2.3.3489: THE ARROW'S TARGET ON THE SCREEN.  The bow's gate counts a
+   monster only as far as an arrow flies before it comes down short of the
+   screen's edge (arrowEdge.js); DIST at ANG was past the side of the play
+   column, where the old gate opened and the arrow came down at the edge, short
+   of it.  So for the arrow the fodder is moved onto the bow's line, DIST px
+   from the grip or 60 px inside where an arrow comes down (the game's own
+   `reach`), the nearer.  The bolt keeps DIST: a staff's bolt does not come
+   down at the edge, and its fade is measured at the end of its flight. */
+const fitArrowTarget = (P) => P.page.evaluate((a) => new Promise((resolve) => {
+  const S = window._gameState.current, F = window._gameFns || {};
+  S._aimAngle = a.ang; S._lastAimAngle = a.ang;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const m = (S.monsters || [])[0], sight = S._bowSight || {};
+    if (!m || typeof sight.reach !== 'number' || !isFinite(sight.reach)) { resolve({ none: true }); return; }
+    const gx = isFinite(sight.ox) ? sight.ox : S.player.x, gy = isFinite(sight.oy) ? sight.oy : S.player.y;
+    const d = Math.min(a.d, sight.reach - 60);
+    const lift = (F.monsterBodyOffsetY && F.monsterBodyOffsetY('fodder')) || 0;
+    m.x = gx + Math.cos(a.ang) * d; m.y = gy + Math.sin(a.ang) * d + lift;
+    m.renderX = m.x; m.renderY = m.y;
+    resolve({ d: Math.round(d), reach: Math.round(sight.reach) });
+  }));
+}), { ang: ANG, d: DIST });
+
 const look = (P, who, kind) => P.page.evaluate(({ who, kind }) => {
   const L = window.__btShotLook ? window.__btShotLook() : null;
   return L ? L.filter((s) => s.who === who && s.kind === kind) : null;
@@ -128,6 +151,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const c of [{ slot: 'ranged', el: 'flame', kind: 'arrow' }, { slot: 'staff', el: 'frost', kind: 'bolt' }]) {
     const armed = await arm(B, c.slot, c.el);
     await B.page.waitForTimeout(400);
+    if (c.kind === 'arrow') console.log(`    arrow target: ${JSON.stringify(await fitArrowTarget(B))}`);
     await B.page.evaluate((ang) => {
       const S = window._gameState.current;
       S._aimAngle = ang; S._aiming = true; S.swingTimer = 0; S.autoAttack = true;
