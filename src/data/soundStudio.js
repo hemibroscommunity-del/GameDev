@@ -170,6 +170,11 @@ export const CUE_PLACES = {
   petOut: ['pets', 'Taking your pet out'],
   petAway: ['pets', 'Putting your pet away'],
   petFree: ['pets', 'Releasing your pet to the wild'],
+  /* v2.3.3521: the trap's own sounds (#1025's v2.3.3499), labelled when the two met */
+  trapSet: ['pets', 'Setting a trap on a monster: the latch'],
+  trapShake: ['pets', 'The trap rattling, once for each shake'],
+  trapSnap: ['pets', 'The trap slamming shut on a catch'],
+  trapMiss: ['pets', 'The trap breaking apart on a miss'],
   rested: ['gather', "A night in your farm's bed"],
   duelAsk: ['players', 'A duel challenge for you'],
   tradeAsk: ['social', 'Someone asking to trade with you'],
