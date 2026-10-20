@@ -142,7 +142,9 @@ export function preloadPlayerAssets() {
          (lightfx/sheenBatch.js), so the first armoured player on screen does
          not compile it either */
       .then(() => { try { if (lightFxOn()) warmSheenBatch(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ } })
-      .then(() => results)
+      /* v2.3.3495: QA (mp-joinflicker) -- when the bro's pictures were all
+         made, to set beside when the world was shown */
+      .then(() => { try { window.__btAvatarReadyAt = Date.now(); } catch (e) { /* no window */ } return results; })
   );
 }
 

@@ -2024,6 +2024,18 @@ remnant to migrate server-side, not a mode to preserve.
       clear colour Pixi keeps untouched), and one that comes back see-through
       everywhere was not copied and is taken the old way. `?wdgeterror` asks
       every time; `mp-wdsample` counts the calls.
+    - since v2.3.3495 THE RECOVERY RELOAD WAITS FOR YOUR BRO -- the owner:
+      "flicker of hair/torso after returning/joining":
+      - the straight-in road (the watchdog's reload, a picker row that
+        switches keys) has no loading screen, and showed the world while the
+        armour's masks were still being baked: 26 of 58 frames drew the plain
+        body under the plate;
+      - it now holds a veil of its own until `preloadPlayerAssets` is done
+        (src/game/avatarHold.js, 20 s at most, `S._avatarArtHold`);
+      - the loading screen also waits for your hair, hat and beard colours and
+        the hat's hair-clip shapes (entityRenderer `preloadTraits`);
+      - `mp-joinflicker` (real armour from the kit; `window.__btLocalMisses()`
+        names each plain frame): docs/specs/visuals-2026-10-19.md §3.
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:

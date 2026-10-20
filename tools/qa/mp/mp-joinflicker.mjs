@@ -12,8 +12,11 @@
  *   tab      -- the page hidden and shown again (no rebuild);
  *   recovery -- the black-screen watchdog's reload (`bt_resume_now`): no
  *               loading screen, straight back into the world (BroTown's
- *               auto-rejoin, v2.3.777), the avatar's pictures preloading
- *               behind a spinner while the world already shows.
+ *               auto-rejoin, v2.3.777).  The avatar's pictures preloaded
+ *               behind a spinner while the world already showed: 26 of 58
+ *               frames plain under the armour.  Since v2.3.3495 that road
+ *               waits behind a veil of its own (game/avatarHold.js), and
+ *               the watch starts when it comes down, as a player's eyes do.
  *
  * For each layer (body, hair, hat, beard, shirt, plate, greaves, head
  * overlay) it counts the BLINKS (shown, hidden, shown again within 400 ms)
@@ -21,9 +24,9 @@
  * body the PLAIN frames: a frame of a jog or stand drawn with the plain body
  * under the armour because its masked bake was not ready
  * (window.__btBakeWorker().local.plain, entityRenderer _localMaskedFrame).
- * A character dressed to reach every bake: a recoloured afro, a beard, a
- * copper torso and iron greaves (the layered figure), a tee; standing for
- * 3 s, then jogging east.
+ * A character dressed to reach every bake: a recoloured afro and a beard in
+ * its saved look, a copper torso and iron greaves the worker minted and holds
+ * as worn (the layered figure), a tee; standing for 3 s, then jogging east.
  *
  *   node tools/qa/mp/run.mjs joinflicker
  */
@@ -88,25 +91,82 @@ const displayUp = (P, label) => H.waitFor(P, () => {
   return !!(R && R.playerDisplayRaw && R.playerDisplayRaw());
 }, (v) => v, { timeout: 90000, label });
 
+/* v2.3.3495: the look is the CHARACTER's.  Put in the stores before the
+   creator opens (its pickers start from them), so the record the creator's
+   join writes keeps it and every join brings the same look back.  Set on the
+   page alone after joining, each join's record (characterRecord.js) put the
+   creator's look back over it -- a hair change the test made, not the game.
+   First load only. */
+const SEED_LOOK = () => {
+  try {
+    if (!localStorage.getItem('qa-jf-look')) {
+      localStorage.setItem('bt-hair', 'afro');
+      localStorage.setItem('bt-haircolor', 'auburn');
+      localStorage.setItem('bt-facialhair', 'beard');
+      localStorage.setItem('qa-jf-look', '1');
+    }
+  } catch (e) { /* reported below */ }
+};
+
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Flicker', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true });
+  /* avatarholdms: this box makes the bro's pictures more slowly than the
+     hold's 20 s cap (a phone does not), so the recovery road's veil waits for
+     the pictures themselves here -- what the road does when they are ready */
+  const P = await H.newPlayer(browser, { name: 'Flicker', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, init: SEED_LOOK, query: 'avatarholdms=170000' });
   const errs = [];
   P.page.on('pageerror', (e) => errs.push(String(e).slice(0, 200)));
   await H.enterWorld(P);
-  const dress = () => P.page.evaluate(() => {
-    try {
-      window.__btGearSet('shirt', 'tshirt');
-      window.__btGearSet('chest', 'copperplate');
-      window.__btGearSet('legs', 'irongreaves');
-      if (window.__btSetHair) window.__btSetHair('afro');
-      /* a recoloured afro and a beard: their stores are read at load */
-      localStorage.setItem('bt-haircolor', 'auburn');
-      localStorage.setItem('bt-facialhair', 'beard');
-    } catch (e) { /* reported below */ }
+  await P.page.waitForTimeout(1500);
+  const myId = await H.readState(P, (S) => S.myId);
+  /* ═══ v2.3.3495: REAL ARMOUR, WORN THE REAL WAY ═══
+     The first cut put the plate on with window.__btGearSet -- the drawn layer
+     alone, which the worker never hears of.  Its next full player_state took
+     the plate off again (wsClient's armour echo drives the layer,
+     gearCatalog.syncArmorLayers), so the reload started bare and every "plain
+     frame after joining" it counted was the first bake after the test put the
+     plate back on.  Now the admin kit mints a copper torso and iron greaves
+     and they are worn through the equip lane (stats_update by id, as the
+     game's own equip does), so the worker keeps them and the reload starts
+     armoured, as a returning player's does. */
+  await H.devOp(wsPort, 'kit', myId, { what: 'armor' });
+  let pieces = null;
+  for (let i = 0; i < 40 && !pieces; i++) {
+    pieces = await P.page.evaluate(() => {
+      const R = window._gameState.current.rpg || {};
+      const t = (R.armorStash || []).find((x) => x && x.mat === 'copper' && x.gid);
+      const l = (R.legsStash || []).find((x) => x && x.mat === 'iron' && x.gid);
+      return t && l ? { t: t.gid, l: l.gid } : null;
+    });
+    if (!pieces) await P.page.waitForTimeout(300);
+  }
+  rec.ok('setup: the admin kit hands out a copper torso and iron greaves the worker minted (guard)', !!pieces, pieces);
+  if (pieces) {
+    await P.page.evaluate((p) => {
+      const S = window._gameState.current;
+      const R = S.rpg;
+      const ti = (R.armorStash || []).findIndex((x) => x && x.gid === p.t);
+      const li = (R.legsStash || []).findIndex((x) => x && x.gid === p.l);
+      if (ti >= 0) { R.armor = R.armorStash[ti]; R.armorStash.splice(ti, 1); }
+      if (li >= 0) { R.legsArmor = R.legsStash[li]; R.legsStash.splice(li, 1); }
+      if (window.__btSyncArmorLayers) window.__btSyncArmorLayers(R);
+      S.channel.send({ type: 'stats_update', payload: { armorRef: p.t, legsArmorRef: p.l } });
+    }, pieces);
+  }
+  /* the worker's echo says it is on */
+  const worn = await H.waitFor(P, (S) => ({
+    t: S.rpg && S.rpg.armor && S.rpg.armor.gid, l: S.rpg && S.rpg.legsArmor && S.rpg.legsArmor.gid,
+    chest: window.__btGetGear ? window.__btGetGear('chest') : null, legs: window.__btGetGear ? window.__btGetGear('legs') : null,
+  }), (v) => !!(pieces && v && v.t === pieces.t && v.l === pieces.l && v.chest === 'copperplate' && v.legs === 'irongreaves'),
+  { timeout: 15000, label: 'the armour worn' }).catch((e) => ({ err: String(e.message || e).slice(0, 200) }));
+  const look = await P.page.evaluate(() => { const r = window.__btCharRecord ? window.__btCharRecord() : null; return r && r.look ? { hr: r.look.hr, hc: r.look.hc, fh: r.look.fh } : null; });
+  rec.ok('setup: the copper torso and iron greaves are worn and drawn, and the character\'s record keeps the auburn afro and the beard (guard)',
+    !!(worn && !worn.err && look && look.hr === 'afro' && look.hc === 'auburn' && look.fh === 'beard'), { worn, look });
+  /* the greatsword in hand: the page's own state is enough for the figure */
+  const arm = () => P.page.evaluate(() => {
     const S = window._gameState.current;
     if (S && S.rpg) { S.rpg.weapon = { name: 'Copper Greatsword', type: 'greatsword', gearBase: 'copper' }; S.rpg.activeSlot = 'melee'; }
   });
-  await dress();
+  await arm();
   await P.page.waitForTimeout(3000);
   const roads = [];
   const report = async (road, w) => {
@@ -127,11 +187,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   };
 
-  /* 1. JOIN: a reload and the returning player's road */
+  /* 1. JOIN: a reload and the returning player's road -- nothing put on
+     after it: what the worker and the record bring back is what is drawn */
   await P.page.reload({ waitUntil: 'domcontentloaded' });
   await H.enterWorld(P);
-  await dress();
+  await arm();
   await displayUp(P, 'back in the world');
+  /* the loading screen lifts on the same 20 s cap when the pictures take
+     longer (this box): say which it was, as a frame drawn plain then is the
+     cap's, not the road's */
+  const lifted = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return { shown: S.__introLiftedAt || 0, ready: window.__btAvatarReadyAt || 0 };
+  });
+  console.log(`    join: the loading screen lifted ${lifted.ready && lifted.shown ? (lifted.ready <= lifted.shown ? 'after the bro\'s pictures were made' : `${lifted.ready - lifted.shown} ms BEFORE they were (its 20 s cap, on this box)`) : '(unknown)'}`);
   await report('join', await watchStandThenJog(P, 8000));
 
   /* 2. REBUILD: the renderer made again, as after a lost context */
@@ -165,9 +234,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const route = await P.page.waitForFunction(() => window.__btBootRoute || null, null, { timeout: 30000, polling: 100 })
       .then((h) => h.jsonValue()).catch(() => null);
     await displayUp(P, 'back in after the recovery reload');
+    /* v2.3.3495: this road holds the world behind a veil of its own until the
+       bro's pictures are made (game/avatarHold.js) -- what a player sees
+       starts when it comes down, and a veil still up is not that */
+    const hold = await P.page.waitForFunction(() => {
+      const h = window.__btAvatarHold;
+      return h && h.liftedAt && !document.querySelector('.bt-zone-loading') ? { ms: h.liftedAt - h.t, why: h.why } : null;
+    }, null, { timeout: 190000, polling: 100 }).then((x) => x.jsonValue()).catch(() => null);
+    console.log(`    recovery: the bro's veil ${hold ? `held ${hold.ms} ms (${hold.why})` : 'never seen'}`);
+    rec.ok('the straight-in road holds the world behind a veil until the bro\'s pictures are made, and lets it go',
+      !!hold && hold.why === 'ready', hold);
     const rw = await watchStandThenJog(P, 8000);
     rw.route = route;
     await report('recovery (' + route + ')', rw);
+    rec.ok(`...and once it is down no frame of the bro is drawn plain under his armour (${rw.plain} of ${rw.frames})`,
+      rw.plain === 0 && rw.frames > 5, { plain: rw.plain, frames: rw.frames, misses: rw.misses });
   } catch (e) {
     console.log('    recovery: not reached -- ' + String(e && e.message || e).slice(0, 160));
   }

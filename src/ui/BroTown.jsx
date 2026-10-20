@@ -351,6 +351,7 @@ import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
 import { handleZoneTransitions } from '@/game/zoneTransitions.js';
+import { holdForAvatar } from '@/game/avatarHold.js'; /* v2.3.3495: the straight-in road waits for your bro's pictures behind a veil */
 /* v2.3.789: desktop keyboard handlers extracted behavior-frozen (REBUILD-PLAN Phase 7). */
 import { setupDesktopControls } from '@/game/desktopControls.js';
 import { actionBus } from './mobile/actionBus.js'; /* v2.3.1562: quick-bar weapon swap */
@@ -5248,7 +5249,7 @@ export var BroTown = function BroTown(_ref0) {
            behind the loading overlay (zoneTransitions.js), freeze the
            player at the hub exit so the proximity trigger stays armed and
            the entry runs the instant the load resolves. */
-        if (S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold) finalSpd = 0;   /* v2.3.3136: _farmArtHold -- veiled while your farm loads (game/farmTrip.js); v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
+        if (S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold || S._avatarArtHold) finalSpd = 0;   /* v2.3.3495: _avatarArtHold -- veiled while the straight-in road makes your bro's pictures (game/avatarHold.js) */   /* v2.3.3136: _farmArtHold -- veiled while your farm loads (game/farmTrip.js); v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
         /* v2.3.2996: a monster's element on you -- a snowman's chill walks you
            at CHILL_MULT, a blue slime's goo holds you where you stand
            (game/elemHits.js; the worker said so on the hit). */
@@ -11655,6 +11656,12 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.init();
     BT_AUDIO.join();
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e2) { introWaitRef.current = null; }
+    /* v2.3.3495: ...and the bro's own pictures are waited for behind a veil
+       too, as the loading screen waits for them on the ordinary road -- the
+       world went up while his armour's masks were still being baked, and 26
+       of the first 58 frames drew the plain body under the plate
+       (game/avatarHold.js, mp-joinflicker) */
+    holdForAvatar(S, introWaitRef.current, (ZONES.wheel && ZONES.wheel.name) || 'BroTown');
     installWorldHold();   /* v2.3.2439: no loading screen on this road, so the veil is the gate */
     kickSfxAtGate(introWaitRef.current);
     holdZoneMusicAtGate(introWaitRef.current);   /* v2.3.2334 */
