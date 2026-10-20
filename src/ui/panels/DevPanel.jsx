@@ -3,6 +3,7 @@ import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { WORLDVIEW_EXITS } from '../../data/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
+import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
 
 /* ═══ v2.3.2240: THE OWNER'S TEST PANEL ═══
  *
@@ -665,6 +666,21 @@ export const DevPanel = ({ onClose }) => {
         <button type="button" style={btn(false)} data-dev-speed-test=""
           onClick={() => { if (onClose) onClose(); setTimeout(() => { runSpeedTest(); }, 400); }}>
           Run the speed test
+        </button>
+
+        {/* ═══ v2.3.3523: THE SOUND STUDIO ═══
+            The owner: "I think sounds were wired in the wrong places.  The
+            labels should tell you where they go.  Might need to build a quick
+            studio to show which sounds belong where."  Keyless: it only plays
+            sounds (ui/panels/SoundStudio.jsx). */}
+        <div style={label}>Sound studio</div>
+        <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
+          Every sound in the game under the moment it plays at, with a play button and the recording it
+          is made of. "Heard just now" names the last sounds the game played, so a wrong one can be found.
+        </div>
+        <button type="button" style={btn(false)} data-dev-sound-studio=""
+          onClick={() => { if (onClose) onClose(); setTimeout(() => { openSoundStudio(); }, 150); }}>
+          Open the sound studio
         </button>
 
         {!key && (

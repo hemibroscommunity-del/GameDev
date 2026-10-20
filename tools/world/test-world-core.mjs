@@ -2646,11 +2646,22 @@ console.log('hits sound like what they hit (v2.3.3001)');
   const vs = Object.fromEntries(voiceNames.map((v) => [v, entryOf(voices, v) || '']));
   ok('the mummy stays BONY: the bone voice is sword-hit3 alone, as the owner chose ("Bony is mummy", v2.3.2452)',
     JSON.stringify([...new Set(samplesIn(vs.bone))]) === '["sword-hit3"]' && !/fb:/.test(vs.bone), vs.bone);
-  ok('a slime squelches (mud over its thud), a snowman crunches (snow over his thud), a rock takes the pickaxe -- not the sword clang',
+  /* v2.3.3523: the owner -- "Hit made a fleshy sound on the snowman ...
+     Same fleshy sound for the rock monster on every hit": the snowman is
+     snow and ice now, never the snowball's thud but outside the Wheel (`fb`),
+     and the rock the pick WITH its click over gravel, no footstep thump */
+  ok('a slime squelches (mud over its thud), a snowman crunches (snow and ice, no thud), a rock takes the pickaxe -- not the sword clang',
     samplesIn(vs.goo).includes('step-mud') && samplesIn(vs.goo)[0] === 'monster-hit'
-      && samplesIn(vs.snow)[0] === 'snowman-hit' && samplesIn(vs.snow).includes('step-snow') && !/'monster-hit'/.test(vs.snow)
-      && samplesIn(vs.stone)[0] === 'mine-strike' && !samplesIn(vs.stone.split('fb:')[0]).includes('sword-hit2'),
+      && samplesIn(vs.snow)[0] === 'step-snow' && samplesIn(vs.snow).includes('step-ice') && !samplesIn(vs.snow.split('fb:')[0]).includes('snowman-hit') && !/'monster-hit'/.test(vs.snow)
+      && samplesIn(vs.stone)[0] === 'mine-strike' && !samplesIn(vs.stone.split('fb:')[0]).includes('sword-hit2')
+      && !samplesIn(vs.stone).includes('step-stone'),
     { goo: vs.goo, snow: vs.snow, stone: vs.stone });
+  ok('v2.3.3523: no hit or layer anywhere plays the pick from 0.06 s (its click cut off, a dull body) or wood-chop (90% under 250 Hz)',
+    !/\['mine-strike', 0\.06/.test(voices) && !/(hit|layer|big): \[*\['(wood-chop)'/.test(props)
+      && !/\n    (hit|layer): [^\n]*'mine-strike', 0\.06/.test(props), null);
+  ok('v2.3.3523: a tree that falls cracks and creaks, never tree-fall\'s thump (its 1.0-2.0 s)',
+    (() => { const t = entryOf(props, 'wood') || ''; const m = t.match(/tree: (\[[^\n]*\]),/); if (!m) return false;
+      const L = [...m[1].matchAll(/\['tree-fall', ([0-9.]+), ([0-9.]+)/g)]; return L.length > 0 && L.every((x) => +x[1] + +x[2] <= 1.0001); })(), null);
   ok('...a fire goblin sizzles, a fishman splashes, a bog lurker squelches',
     samplesIn(vs.ember).includes('cook-success') && samplesIn(vs.wet).includes('fish-on-hook') && samplesIn(vs.mud)[0] === 'step-mud', { ember: vs.ember, wet: vs.wet, mud: vs.mud });
   /* never silent: a voice that needs a Wheel clip has today's sound to fall
