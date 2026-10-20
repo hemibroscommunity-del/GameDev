@@ -2463,5 +2463,24 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       worker: [ITEM_DROP.NO_DROP_ZONES, ITEM_DROP.PRIVATE_MS, ITEM_DROP.FLASH_MS, ITEM_DROP.GONE_MS] });
 }
 
+/* ═══ v2.3.3513: A WEAPON'S GEM RULES ARE THE WORKER'S ═══
+   The Enchanter offers a weapon only the gems, slots and pairs the worker
+   takes (src/data/weaponGems.js, server/src/weapongem.js + data.js), so it
+   never shows a button the worker refuses -- and says the XP it pays. */
+{
+  const C = await import('../../src/data/weaponGems.js');
+  const W = await import('../src/weapongem.js');
+  const pairKey = (l) => l.map((p) => p.slice().sort().join('+')).sort().join(',');
+  check('weapon gems: the phone offers the worker\'s gems (the eight lands\' elements)',
+    JSON.stringify(C.WEAPON_GEMS.slice().sort()) === JSON.stringify([...SRV.WEAPON_GEMS].sort()), { phone: C.WEAPON_GEMS, worker: [...SRV.WEAPON_GEMS] });
+  check('weapon gems: the volatile pairs, the second slot\'s level, the fusion bases and the XP are the worker\'s',
+    pairKey(C.VOLATILE_PAIRS) === pairKey(W.WEAPON_GEM.VOLATILE_PAIRS) && C.SECOND_SLOT_LVL === W.WEAPON_GEM.SECOND_SLOT_LVL
+      && JSON.stringify(C.FUSION_BASES) === JSON.stringify(W.WEAPON_GEM.FUSION_BASES) && C.GEM_SET_XP === SRV.GEM_SET_XP,
+    { phone: [pairKey(C.VOLATILE_PAIRS), C.SECOND_SLOT_LVL, C.FUSION_BASES, C.GEM_SET_XP], worker: [pairKey(W.WEAPON_GEM.VOLATILE_PAIRS), W.WEAPON_GEM.SECOND_SLOT_LVL, W.WEAPON_GEM.FUSION_BASES, SRV.GEM_SET_XP] });
+  const bases = Object.keys(SRV.BLACKSMITH_TIERS).concat(Object.keys(SRV.WOODWORKING_TIERS).map((k) => 'ww_' + k), [undefined, 'nope', '__proto__']);
+  const off = bases.filter((b) => C.weaponGemSlots({ gearBase: b }) !== W.weaponGemSlots({ gearBase: b }));
+  check('weapon gems: every forge base has the same number of gem slots on both sides (a drop with no base: 1)', off.length === 0, off);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

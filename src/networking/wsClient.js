@@ -163,6 +163,7 @@ import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull } from '@/game/
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyItemDropResult } from '@/game/itemDrop.js'; /* v2.3.3473: Drop's answer */
 import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
+import { applyWeaponGemResult, noteWeaponsArrived } from '@/game/weaponGem.js'; /* v2.3.3513: the weapon's gem, put in by the worker */
 import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's death heard by distance */
 import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
@@ -1892,6 +1893,15 @@ export function setupWebSocket(ctx) {
               applyShieldGemResult(S, msg.payload, saveRpgSoon);
               break;
             }
+          case 'weapon_gem_result':
+            {
+              /* v2.3.3513: the worker put a gem into a weapon, or says why not
+                 (weapongem.js).  The weapon itself, the gem count and the
+                 Enchanting XP ride the player_state that follows; this says
+                 what happened and celebrates a level. */
+              applyWeaponGemResult(S, msg.payload);
+              break;
+            }
           /* ═══ v2.3.3120: PET TRAPPING (game/trapping.js) ═══
              The worker's four answers: the mark set (or why not), the trap
              sprung at a kill (the shakes, a catch), the pets record, and the
@@ -2527,6 +2537,11 @@ export function setupWebSocket(ctx) {
               if ('weapon' in msg.payload) S.rpg.weapon = msg.payload.weapon;
               if ('rangedWeapon' in msg.payload) S.rpg.rangedWeapon = msg.payload.rangedWeapon;
               if ('staffWeapon' in msg.payload) S.rpg.staffWeapon = msg.payload.staffWeapon;
+              /* v2.3.3513: a gem taken out at the Enchanter is done when its
+                 weapon comes back bare (game/weaponGem.js) */
+              if ('weapon' in msg.payload || 'rangedWeapon' in msg.payload || 'staffWeapon' in msg.payload) {
+                try { noteWeaponsArrived(S); } catch (e) { /* the wait lets go by itself */ }
+              }
               /* activeSlot: server's value applies only when the user
                  hasn't explicitly cycled in this session.  Without this
                  guard, ANY stale persisted activeSlot on the worker
@@ -5200,6 +5215,12 @@ export function setupWebSocket(ctx) {
         /* v2.3.3187: a gem into the shield (game/shieldGem.js) -> shieldgem.js.
            TRAPS #18: without this line the ask never leaves the browser. */
         if (msg.type === 'shield_gem') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3513: a gem into a weapon (game/weaponGem.js) -> weapongem.js.
+           TRAPS #18: without this line the ask never leaves the browser. */
+        if (msg.type === 'weapon_gem') {
           wsOut(msg);
           return;
         }

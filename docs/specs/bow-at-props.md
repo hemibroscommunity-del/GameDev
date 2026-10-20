@@ -49,7 +49,8 @@ was the one left at the chest.
 the arrow's own prop test along the arrow's own ground track: `sweepBlockPoint`
 from the boots, at the same heading, as far as the arrow flies. The track runs
 parallel to the drawn line, so a distance along one is the same distance along
-the other. The answer is whichever comes first, a monster, the duel target or
+the other. (Since v2.3.3501 a shot fired at a target runs its track from your
+boots to the target's feet instead: below.) The answer is whichever comes first, a monster, the duel target or
 a prop. For a prop the gate's `id` is `prop:<the object's number>`:
 
 - the gate opens on a prop, so the bow fires;
@@ -282,7 +283,8 @@ the drawn shot, from your boots. Aimed at a monster's chest, it ends about
 - your bolt's ground line dipped into the ridge's end, and the bolt burst there.
 
 Aimed shots judged from your boots to the target's feet would change how every
-shot meets props. That is the owner's call, left open.
+shot meets props. That was the owner's call; offered it, they said "Go
+recommended": v2.3.3501, below.
 
 **Checked by.**
 
@@ -397,3 +399,88 @@ comes down 24 px of flight short of the screen edge it is flying **toward**.
   - Six were in hitmat and hitvoices: a sword's and a staff's hits, which the
     rule does not touch, run while the server's test suites ran beside them.
     Alone they pass 69/69 and 53/53.
+
+## v2.3.3501: an aimed shot is judged from your feet to its target's
+
+**What was wrong.** A shot is drawn at the height it flies (from the bow's
+grip, or the staff) and asks the ground below it about props: a building, a
+tree or a rock stops it, and it flies over the low things you can jump. That
+ground line ran PARALLEL to the drawn shot, from your boots (projectiles.js
+`_goy`, v2.3.3206). Aimed at a target's body, a parallel line ends about a
+torso's height short of the target's feet, and off to the side by the grip's
+own offset, so it could meet a rock the target was not behind:
+
+- `mp-hitreal`'s frost magic row: a snowman just past the east end of frost's
+  rock ridge, on your side of it, your boots on the ridge's edge line, and
+  every bolt burst on the ridge's end;
+- meanwhile the hit test asked a different question, a rock between the shot's
+  ground point and the target's FEET (`_rockBetween`, v2.3.2701), and since
+  v2.3.3485 the bow's gate asked that one, at three points of the parallel
+  line.
+
+**The owner**, offered "aimed shots judge props along the line from your feet
+to the target's feet": "Go recommended".
+
+**What changed.** `src/game/shotGround.js`:
+
+- A shot fired AT something carries it as it leaves (`shotAim`: the target's
+  hit circle and its feet), found by the gate's own rule (projectiles.js
+  `shotAimAt`, firstSightHit): the lock when the shot is aimed at it, else the
+  first monster or player on its line that the rock rule lets through.
+- While the drawn point runs from where the shot left to its nearest approach
+  to that circle, the ground point runs from your boots to the target's feet
+  (`shotGroundOffset`); past it, on from the feet, parallel to the flight.
+  One straight line on the ground, boots to feet: the question `_rockBetween`
+  and the gate already ask.
+- A shot at nothing, at a prop or at a low thing keeps the parallel line, and
+  so does one steered off its target (a staff bolt follows your thumb): its
+  drawn line no longer passes through the target's circle.
+- A locked bolt is steered at its target every frame, so its aim follows the
+  target (the circle and the feet moved together). An arrow's line was fixed
+  as it left, and so is its aim.
+- Every game shot asks it: the bow and the staff (monsterCombat), the volley
+  and the big bolt (playerActions), the retreat shot (dodge.js). It is sent as
+  `gf` (five whole numbers; a peer's are checked, `shotAimFromWire`), so a
+  watcher's copy meets the same props (visualSystems). An older page sends
+  none, and its shots keep the parallel line.
+- The gate (firstSightHit with `ground`) asks the rock rule once, boots to
+  feet, and a target that passes it wins over a prop the parallel line would
+  have met: that prop is not on the shot's ground any more.
+
+**Checked by.**
+
+- `server/test/shot-ground.test.mjs` (17): no target, the parallel line at
+  every distance; aimed, boots at the start, the feet as the drawn point
+  reaches the target, collinear between, parallel past; steered off or behind,
+  the parallel line; the frost ridge in its own numbers (the parallel line
+  enters the ridge, boots to feet passes it); the wire both ways.
+- `mp-groundline` (new), in frost at its rock ridge on a phone, a real staff
+  and bow, the game's own casts, arrows and gate deciding:
+  - **the ridge's end:** your boots on the ridge's top edge line, 55 px past
+    its east end; a snowman 62 px inside that end, 22 px north of the ridge.
+    The staff's bolts reach it (4 cast, 65 damage) and so do the bow's arrows
+    (the sight on the snowman, 41 damage). On the build before: the bolts did
+    0 damage, every one burst on the ridge's end. And the bow's line read the
+    ridge while its arrows hit the snowman for 54: the line and the flight
+    disagreed;
+  - **control:** a snowman behind the ridge, your boots and its feet either
+    side of it: the bolts do 0 damage and the bow's sight reads the ridge, on
+    both builds.
+- `mp-hitreal`'s staff rows now ask the game's question of cover, boots to the
+  target's feet (they asked the old parallel track and the chest line), and
+  its sidestep looks for the target's open side with that line, round the
+  target at the same gap, when a sideways step does not clear it. Asked of
+  the old track, a bolt that burst on the rock ridge's corner, cast from just
+  past its east end, was scored as a miss: boots to feet ran through the
+  ridge's east face, the old track ended inside it, which `attackBlocked`
+  does not count. Its frost rows, twice: 33/33 each, every row 5/5.
+- 38 bow, staff and prop scenarios on a phone, 1,019 checks, 1,016 passing.
+  The three failures were tests, none this change:
+  - hitreal's frost magic row, the miss above (4/5);
+  - mp-propshots: a live frost snowman's snowball burst while the test's own
+    ball flew, and the test read the last burst seen. Its own ball burst on
+    the rock face, as it should;
+  - mp-facebow: Halloween's dark purple speech bubbles over the player count
+    as the face tattoo's ink, and with them hushed the bow-shot figure's
+    tattoo is drawn too pale to count. It fails the same way on the build
+    before this change.

@@ -422,6 +422,18 @@ migration (fold the gem consume into that slice, on the
 gate on a narrow caps flag). Danger: the shield and weapon slot paths
 differ (elements vs a single gem — check both consume sites); the
 amulet gem slot is already server-settled (the v2.3.1192 gem op).
+v2.3.3504: the "nothing authoritative to validate" reason no longer holds.
+The worker applies a weapon's status, collision and DoT on every hit
+(v2.3.1114), taking the element from the hit's CLAIM (combat.js
+`_handleMonsterDamage`, pvpextras.js `_pvpClaimElement`), while the burst,
+the abilities and the flame amulet read its own copy, which no server path
+ever gives an element. The plan for this item, and for shards becoming
+gems, is decided (the owner took every recommended answer, 2026-10-20):
+docs/GEM-PLAN.md (its Phase 1 is this item).
+v2.3.3513: DONE -- the weapon gem slot is server-settled (weapongem.js
+`weapon_gem`, caps.weapongem), the fight reads the worker's copy of the weapon
+instead of the claim, and the monsters' hold rule ships with it
+(docs/specs/weapon-gems.md).  Backlog A has no slot left on the phone.
 
 ### B. Spectator stake board
 Old item A's residue: sponsorship stakes are private — spectators see
@@ -648,15 +660,22 @@ strict deploy-order symmetry (rule 19). Danger: the current gate is
 adequate (local heal is prediction, the echo is the tiebreaker,
 rule 20) — this is symmetry polish, not a hole.
 
-### O. The supporter pass — waits on the owner's pass address (v2.3.3256)
-$2 for 30 days, paid in USDC on Hemi, 30 days from ACTIVATION, one pass
-for a wallet's characters (up to 10).  The design is NO CONTRACT: a plain
-USDC transfer to a dedicated pass address, read by the server like the
-Hemi Bro check (onchain.js), credited once per (tx hash, log index) under
-rule 5; the server never holds a key.  NO PLAY CAPS (owner: "Dont ship any
-caps yet").  Blocked on the owner's dedicated receiving address, and USDC's
-contract address on Hemi needs confirming from outside the sandbox.  Plan,
-checks and build order: `docs/SUPPORTER-PASS-PLAN.md`.
+### O. The supporter pass — waits on the repo lock-down (docs/REPO-SAFETY.md) (v2.3.3256, rewritten v2.3.3490)
+$2 worth of ETH on Hemi for 30 days, 30 days from ACTIVATION, sharable
+later with the owner's other characters (up to 10).  v2.3.3490 (owner,
+2026-10-19: no wallet signatures; USDC on Hemi is Stargate-bridged, so ETH):
+NO CONTRACT and NO SIGNATURE -- each character gets its own payment address
+from an address book made by an offline tool and signed by the owner's
+HARDWARE WALLET (the server and the phone accept only addresses in a signed
+book); the server holds no key and no watch key, and credits from balance +
+the sends it built itself, read at a FINALIZED block from two providers, with
+tripwires on any send it did not build.  Two independent reviewers attacked
+the first draft; their fixes are in, and they found the repo itself must be
+locked down first (AI sessions act as the owner's admin account, `main` is
+unprotected, any branch can deploy the worker, previews reach the live
+server): the plan's "Before anything else".  NO PLAY CAPS (owner: "Dont ship
+any caps yet").  Plan, 41-row attack table, checks and build order:
+`docs/SUPPORTER-PASS-PLAN.md`.
 
 ### Shipped (v1 backlog — letters frozen, cited elsewhere)
 TRAPS.md and the spec docs cite these as "handoff item X"; the full

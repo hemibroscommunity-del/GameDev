@@ -178,6 +178,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => { try { if (window.__btSetHair) window.__btSetHair('none'); } catch (e) {} });
   await P.page.waitForTimeout(600);
 
+  /* ═══ v2.3.3502: NO SPEECH BUBBLE OVER THE FACE ═══
+     A townsperson holding your quest follows you and says how it goes, a
+     bubble over you every 12-20 s (BroTown's follower loop, npc.chatBubble),
+     and Halloween's bubbles are a dark purple that the ink test below counts
+     as ink (red and blue both clear of green).  On 2026-10-20 two of them lay
+     over the jog-east crop (all 62 rows "inked", the face in a strip between
+     them) and one over the top of the jog-south crop, whose rows were then
+     taken for the face's.  The face itself reached the jaw both times.  So the
+     townsfolk keep quiet while this test photographs: every frame their
+     bubbles come down and their next line waits. */
+  await P.page.evaluate(() => {
+    const hush = () => {
+      const S = window._gameState && window._gameState.current;
+      for (const n of (S && S.npcs) || []) {
+        if (!n) continue;
+        if (n.chatBubble) n.chatBubble = null;
+        n.chatTimer = Math.max(n.chatTimer || 0, 60000);
+      }
+      requestAnimationFrame(hush);
+    };
+    requestAnimationFrame(hush);
+  });
+  await P.page.waitForTimeout(300);
+
   /* ── THE CONTROL: the WALKING body, which the owner says is fine ──
      Every claim about the bow frames is a comparison against this. */
   await P.page.keyboard.down('s'); await P.page.waitForTimeout(400);

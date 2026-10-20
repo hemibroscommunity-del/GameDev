@@ -217,6 +217,7 @@ import { pvpExtrasMethods } from './pvpextras.js'; /* v2.3.3264: what a hit does
 import { sparMethods } from './spar.js'; /* v2.3.3265: sparring clones of yourself, from the test panel */
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
 import { shieldGemMethods } from './shieldgem.js'; /* v2.3.3187: a gem goes into a shield on the worker */
+import { weaponGemMethods } from './weapongem.js'; /* v2.3.3513: a gem goes into a weapon on the worker, and the monsters' hold rule */
 import { aggroGridMethods } from './aggrogrid.js'; /* v2.3.3201: a monster looks for players near it, not through every one */
 import { tickPaceMethods } from './tickpace.js'; /* v2.3.3202: the world keeps its speed in a busy room */
 import { steadyMoversMethods } from './steadymovers.js'; /* v2.3.3203: a player walking steadily is sent less often */
@@ -537,6 +538,10 @@ export const PRIVILEGED_EVENTS = new Set([
      into a shield and names the shield.  Forgeable, it would put a gem in
      another player's shield on their screen that the worker never put there. */
   'shield_gem_result',
+  /* v2.3.3513: the weapon gem's receipt (weapongem.js) -- it says a gem went
+     into a weapon and what XP it paid.  Forgeable, it would put a gem in
+     another player's weapon on their screen that the worker never put there. */
+  'weapon_gem_result',
   /* v2.3.2047: the shopkeeper's two answers. Both are SERVER-EMITTED and
      both carry money -- `shop_result` names coins paid and `shop_state` is
      the public pile every client prices against. Forgeable, they would let
@@ -1855,6 +1860,9 @@ export class GameRoom {
   _tickMonsters() {
     const now = Date.now();
     const activeZones = this._activeZones();
+    /* v2.3.3513: the hold rule (elemental.js HOLD), off with `monsterhold:
+       false` in liveflags -- read once a tick, not once a monster */
+    const _holdOn = !this._monsterHoldOff();
 
     // v2.3.1183: one pass over playerState per tick, not one per active
     // zone -- and slim {id,x,y,blocking} records instead of spreading
@@ -1946,6 +1954,7 @@ export class GameRoom {
                credit back onto a corpse.  Belt and braces on the field that
                decides who owns the loot. */
             m.statuses = Object.create(null); // v2.3.1709: null-proto, rule 4
+            m._holdUntil = 0; m._holdImmuneUntil = 0;   /* v2.3.3513: a fresh life is never held or immune (elemental.js HOLD) */
             m.dmgByPlayer = Object.create(null);
             /* v2.3.2215: a wind-up must not survive death — a respawned
                monster carrying _bwUntil would resolve a swing it started in
@@ -2039,7 +2048,7 @@ export class GameRoom {
            swing, no snowball, no telegraph start — from one line, instead
            of four places that could each be forgotten. */
         const _stunned = m._stunUntil && now < m._stunUntil;
-        const ccMoveMult = _stunned ? 0 : elementMoveMult(m);
+        const ccMoveMult = _stunned ? 0 : elementMoveMult(m, now, _holdOn);   /* v2.3.3513: + the hold rule */
         /* v2.3.2238: lay a fire patch if he has walked far enough since the
            last one.  ABOVE the resolve chain and the aggro branch on
            purpose -- every one of those can `continue`, and the trail must
@@ -5434,6 +5443,14 @@ export class GameRoom {
         if (session.id) this._handleShieldGem(session, msg.payload || msg);
         break;
 
+      case 'weapon_gem':
+        /* v2.3.3513: a polished gem into a weapon the player has equipped
+           (weapongem.js) -- by its slot, the gem taken from the worker's own
+           count; answered by weapon_gem_result.  Synchronous: nothing to
+           await (quiet-phone §9). */
+        if (session.id) this._handleWeaponGem(session, msg.payload || msg);
+        break;
+
       case 'cape_redeem':
         /* v2.3.2026: the player tapped Open on a golden ticket in the bag.
            The client never consumes it or grants the cape -- see the
@@ -6435,6 +6452,7 @@ Object.assign(GameRoom.prototype, wheelTableMethods); /* v2.3.3315 */
 Object.assign(GameRoom.prototype, noMansLandMethods); /* v2.3.3058 */
 Object.assign(GameRoom.prototype, shieldWearMethods); /* v2.3.3091 */
 Object.assign(GameRoom.prototype, shieldGemMethods); /* v2.3.3187 */
+Object.assign(GameRoom.prototype, weaponGemMethods); /* v2.3.3513 */
 Object.assign(GameRoom.prototype, aggroGridMethods); /* v2.3.3201 */
 Object.assign(GameRoom.prototype, tickPaceMethods); /* v2.3.3202 */
 Object.assign(GameRoom.prototype, steadyMoversMethods); /* v2.3.3203 */
