@@ -9,10 +9,12 @@
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
 import { staffBoltK } from '@/data/oneFormula.js'; /* v2.3.3260: the big bolt's worth under the one formula */
-import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult, STAFF_BIG_BOLT_ORBS, STAFF_BIG_BOLT_BAND } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat; v2.3.2842: the one-bolt special; v2.3.2849: its band */
+import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult, STAFF_BIG_BOLT_ORBS, STAFF_BIG_BOLT_BAND, BOW_RANGE_PX /* v2.3.3501 */ } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat; v2.3.2842: the one-bolt special; v2.3.2849: its band */
 import { depthK, ZONES } from '@/data/zones.js';   /* v2.3.2790; v2.3.3266: + whether the zone is safe (peerShots.js) */
 import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player a special is aimed at, for the others' screens */
-import { ARROW_SPEED_PX, lowAimAlong } from '@/game/projectiles.js';   /* v2.3.2848: the volley's stagger is sized from it; v2.3.3206: + the low thing a shot is aimed at */
+import { ARROW_SPEED_PX, lowAimAlong, shotAimAt, arrowSureReachPast } from '@/game/projectiles.js';   /* v2.3.2848: the volley's stagger is sized from it; v2.3.3206: + the low thing a shot is aimed at */
+import { arrowEdgeRoom } from '@/game/arrowEdge.js';   /* v2.3.3501: the volley's target, as far as its gate reaches */
+import { shotAimWire } from '@/game/shotGround.js';   /* v2.3.3501: what a shot is fired at, on the wire */
 import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /* v2.3.2848 */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, staggerRefused /* v2.3.3264 */, airRefused /* v2.3.3017 */, shotGroundDy /* v2.3.3206 */ } from '@/game/combatHelpers.js';   /* v2.3.2845: lockShotPoint, the torso; v2.3.3206: shotGroundDy, a shot's ground under the boots */
@@ -378,6 +380,20 @@ export function specialAttack(S) {
          before. */
       var _vgx = S._bowGripDX, _vgy = S._bowGripDY;
       var _vGrip = typeof _vgx === 'number' && typeof _vgy === 'number' && isFinite(_vgx) && isFinite(_vgy);
+      /* ═══ v2.3.3501: WHAT THE VOLLEY IS FIRED AT, BOOTS TO FEET ═══
+         The target on its line by the gate's own rule (projectiles.js
+         shotAimAt), from the grip it leaves from and as far as an arrow flies
+         before the screen's edge, as the gate measures: its arrows' ground
+         lines run from your boots to that target's feet (shotGround.js), on
+         every screen (`gf`). */
+      var _bgX = S.player.x + (_vGrip ? _vgx : 0), _bgY = S.player.y + (_vGrip ? _vgy : 0);
+      /* a lock: the line from the grip, as projectiles.js re-aims it at release */
+      var _bgAng = _sLock ? Math.atan2(_sLock.y - _bgY, _sLock.x - _bgX) : aimAng;
+      var _bgRoom = arrowEdgeRoom(S.camera, S._viewW, S._viewH, _bgX, _bgY, _bgAng);
+      var _bowGf = shotAimAt(S, _bgX, _bgY, _bgAng,
+        Math.min(BOW_RANGE_PX * _bowRange, _bgRoom + arrowSureReachPast(_bowStat)),
+        { isSpecial: true, aimAt: _sLock ? S.lockedTarget.ref.id : null,
+          ground: { x: S.player.x, y: S.player.y + shotGroundDy(S), len: _bgRoom } });
       for (var bvi = 0; bvi < _bowN; bvi++) {
         S.arrows.push({
           ang: aimAng,
@@ -403,6 +419,7 @@ export function specialAttack(S) {
           pierce: true,
           _gdy: shotGroundDy(S),   /* v2.3.3206: its ground is under your boots (projectiles.js _goy) */
           _lp: _bowLp || undefined,   /* v2.3.3206 */
+          _gf: _bowGf || undefined,   /* v2.3.3501 */
           _rangeMult: _bowRange, /* v2.3.2592: the special reaches as far as an ordinary arrow does; v2.3.2790 x depth */
           element: hasElement || null
         });
@@ -422,6 +439,7 @@ export function specialAttack(S) {
             delayMs: Math.round(volleyDelayMs(bvj, BOW_VOLLEY.PEER_PX_PER_FRAME)),
             volley: _bowVolley ? 1 : undefined,   /* v2.3.2849: additive -- a peer burns it out on the volley's 2.5 s, not the lone arrow's 4 */
             lp: _bowLp ? [Math.round(_bowLp.x), Math.round(_bowLp.y)] : undefined,   /* v2.3.3206: additive */
+            gf: shotAimWire(_bowGf),   /* v2.3.3501: additive */
             life: Math.round(90 * _bowStat * depthK(S.currentZone, S.player.y)), /* v2.3.2592: peers see the stat's reach too; v2.3.2790 x depth */
             tg: _shotTg,   /* v2.3.3266: the player it is aimed at (monsterCombat's shot); it pierces, so it flies on through */
           }});
@@ -523,6 +541,10 @@ export function specialAttack(S) {
          else on its line) -- projectiles.js shotSkip / lowAimAlong */
       var _orbLp = lowAimAlong(S, S.player.x, S.player.y, aimAng, _ORB_RANGE_PX,
         S.player.x, S.player.y + shotGroundDy(S), { isSpecial: true });
+      /* v2.3.3501: ...and what it is fired at, boots to feet (shotGround.js) */
+      var _orbGf = shotAimAt(S, S.player.x, S.player.y, aimAng, _ORB_RANGE_PX,
+        { isSpecial: true, isStaff: true, aimAt: _sLock ? S.lockedTarget.ref.id : null,
+          ground: { x: S.player.x, y: S.player.y + shotGroundDy(S), len: _ORB_RANGE_PX } });
       /* ═══ v2.3.2842: ONE BIG BOLT (gameSystems STAFF_BIG_BOLT_*) ═══
          Owner: "Instead of the current special attack with 3 orbs I want to
          see what just one moderately larger bolt attack would look like."
@@ -552,6 +574,7 @@ export function specialAttack(S) {
           big: true,
           _gdy: shotGroundDy(S),   /* v2.3.3206 */
           _lp: _orbLp || undefined,   /* v2.3.3206 */
+          _gf: _orbGf || undefined,   /* v2.3.3501 */
           orbs: STAFF_BIG_BOLT_ORBS,
           element: hasElement || null
         });
@@ -569,6 +592,7 @@ export function specialAttack(S) {
             speedPx: _ORB_SPEED,
             life: _bigLife,
             lp: _orbLp ? [Math.round(_orbLp.x), Math.round(_orbLp.y)] : undefined,   /* v2.3.3206: additive */
+            gf: shotAimWire(_orbGf),   /* v2.3.3501: additive */
             tg: shotTargetId(S, (ZONES[S.currentZone] || {}).safe) || undefined,   /* v2.3.3266: it chases them on every screen, as on yours */
             ts: now
           }});
@@ -595,7 +619,8 @@ export function specialAttack(S) {
             element: hasElement || null,
             ice: true,
             _gdy: shotGroundDy(S),   /* v2.3.3206 */
-            _lp: _orbLp || undefined   /* v2.3.3206 */
+            _lp: _orbLp || undefined,   /* v2.3.3206 */
+            _gf: _orbGf || undefined   /* v2.3.3501 */
           });
         }
         /* v2.3.840: broadcast the staff special so peers see it.
@@ -611,6 +636,7 @@ export function specialAttack(S) {
               speedPx: _ORB_SPEEDS[_bcj],   /* v2.3.2262: peers see the same fast/medium/slow spread */
               life: Math.round(_ORB_RANGE_PX / _ORB_SPEEDS[_bcj]), /* v2.3.2592: ...and the same reach */
               lp: _orbLp ? [Math.round(_orbLp.x), Math.round(_orbLp.y)] : undefined,   /* v2.3.3206: additive */
+              gf: shotAimWire(_orbGf),   /* v2.3.3501: additive */
               tg: shotTargetId(S, (ZONES[S.currentZone] || {}).safe) || undefined,   /* v2.3.3266 */
               ts: now
             }});

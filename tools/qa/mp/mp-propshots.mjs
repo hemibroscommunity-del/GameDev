@@ -88,7 +88,19 @@ const throwBall = (P, b) => P.page.evaluate((b) => new Promise((resolve) => {
        the sweep of 2026-10-19, at ~4 frames a second: TRAPS §200).  The
        clock is only the guard against a ball that never ends. */
     if (!alive || performance.now() - t0 > Math.max(b.ms * 12, 15000)) {
-      resolve({ spawn, track, drawn, alive, bursts: window.__qaBursts.slice(),
+      /* v2.3.3502: THIS ball's bursts -- the ones on its own line.  Every
+         burst queued while it flies is recorded, and the frost snowmen the
+         worker runs throw at the player all the while: in the batch of
+         2026-10-19 one of theirs burst at (447.6, 487.8) after this ball's own
+         on the face (440, 517.8), and the check, reading the LAST burst, failed
+         a ball that had done exactly the right thing. */
+      const all = window.__qaBursts.slice();
+      const dx = b.tx - b.x, dy = b.ty - b.y, L2 = dx * dx + dy * dy || 1;
+      const offLine = (q) => {
+        const t = Math.max(0, Math.min(1, ((q.x - b.x) * dx + (q.y - b.y) * dy) / L2));
+        return Math.hypot(q.x - (b.x + dx * t), q.y - (b.y + dy * t));
+      };
+      resolve({ spawn, track, drawn, alive, bursts: all.filter((q) => offLine(q) < 2), allBursts: all,
         ms: Math.round(performance.now() - t0) });
       return;
     }
@@ -371,7 +383,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const st = maxStep(thr.track);
     rec.ok('snowball: it BURST, on the rock face (within one frame\'s step of it), rather than vanishing',
       !!b && Math.abs(b.x - 440) < 2 && b.y <= RIDGE.y0 + 1 && b.y >= RIDGE.y0 - st - 0.5,
-      { burst: b, step: +st.toFixed(1), bursts: thr.bursts });
+      { burst: b, step: +st.toFixed(1), bursts: thr.bursts, allBursts: thr.allBursts });
   }
 
   /* ── 2. CONTROL: ONE THAT NOTHING IS IN THE WAY OF FLIES ITS WHOLE LINE ──
@@ -389,7 +401,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('control: it flew to within one frame\'s step of its aim point', maxY >= ctlLine.ty - st - 0.5,
       { maxY, aim: ctlLine.ty, step: +st.toFixed(1) });
     rec.ok('control: and burst THERE, which proves the burst above was the rock and not the end of a flight',
-      !!b && b.y >= ctlLine.ty - st - 0.5, { burst: b, step: +st.toFixed(1) });
+      !!b && b.y >= ctlLine.ty - st - 0.5, { burst: b, step: +st.toFixed(1), allBursts: clr.allBursts });
   }
 
   /* ── 3. THE PLAYER'S OWN ARROW STOPS AT THE RIDGE ──

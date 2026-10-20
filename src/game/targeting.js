@@ -38,6 +38,7 @@ import { TARGET_PERIMETER_PX, TARGET_HYST } from '@/data/index.js';
 import { isIntangible } from '@/data/monsterVariants.js';
 import { isPlayerDead } from '@/game/combatHelpers.js'; /* v2.3.2251: a corpse acquires nothing */
 import { chosenNear, isLiveClone, isLiveFighter, clonePos } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones, monsters to your weapons; v2.3.3268: and the players you chose to attack */
+import { zoneHomes } from '@/data/zones.js';   /* v2.3.3499: the Wheel's far cull, which a lock may not outlive */
 
 function monPos(m) {
   const x = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
@@ -340,6 +341,47 @@ function tapReleased(S) {
   return d2 > OUT * OUT;
 }
 
+/* ═══ v2.3.3499: NO LOCK ON A MONSTER ACROSS THE MAP ═══
+ * The owner: "You can get stuck targeted to a monster way across the map."
+ * Three ways it happened, all of them in the Wheel, which is one zone, so the
+ * zone change that clears every lock never comes while you roam:
+ *   - a bow or staff tap lock is never released by range (tapReleased: the
+ *     675 px snipe needs it), so it lasted until the monster died, you tapped
+ *     it again, or you tapped empty ground;
+ *   - a sword's tap lock is released only once it has been inside the 220 px
+ *     perimeter (the latch), so one tapped from afar and never closed on, or an
+ *     auto lock the ATTACK press promoted to a tap with no latch (BroTown), was
+ *     never released at all;
+ *   - and past 2,400 px the worker stops telling this phone about a monster
+ *     while the copy stays in S.monsters, alive where it was last seen: a
+ *     frozen ghost the renderer no longer draws (FAR_MARGIN, entityRenderer),
+ *     that your body still turned to face and your bow still aimed at.
+ * So ANY monster lock -- tapped or automatic, every weapon -- goes ('far')
+ * when the monster is past LOCK_FAR_PX (25% past the longest bow a Range
+ * stat can make, 675 x 2.0), or when, in a zone that culls far monsters (one
+ * with `homes`), it has been off the drawn circle for LOCK_UNDRAWN_MS: a
+ * monster you cannot see is not your target.  Both are far outside every
+ * shipped lock: a tap at 730 px walked to (mp-tapswing), a bow's 620 px snipe
+ * (mp-target). */
+export const LOCK_FAR_PX = 1700;
+export const LOCK_UNDRAWN_MS = 1500;
+const LOCK_DRAW_MARGIN = 400;   /* entityRenderer's FAR_MARGIN: the circle a monster is drawn in */
+function lockTooFar(S, now) {
+  const lt = monsterLock(S);
+  if (!lt || !S.player) return false;
+  const p = monPos(lt.ref);
+  if (!p) return false;
+  const dx = p.x - S.player.x, dy = p.y - S.player.y;
+  if (dx * dx + dy * dy > LOCK_FAR_PX * LOCK_FAR_PX) return true;
+  if (!(zoneHomes(S.currentZone) && S.camera && S._viewW > 0 && S._viewH > 0)) { lt.undrawnSince = 0; return false; }
+  const cx = S.camera.x + S._viewW / 2, cy = S.camera.y + S._viewH / 2;
+  const R = Math.hypot(S._viewW, S._viewH) / 2 + LOCK_DRAW_MARGIN;
+  const ex = p.x - cx, ey = p.y - cy;
+  if (ex * ex + ey * ey <= R * R) { lt.undrawnSince = 0; return false; }
+  if (!lt.undrawnSince) { lt.undrawnSince = now; return false; }
+  return now - lt.undrawnSince >= LOCK_UNDRAWN_MS;
+}
+
 /* Once per frame (monsterCombat's tick): refresh the candidate list, then
    ACQUIRE.  Cheap -- one pass over the zone's monsters. */
 /* ═══ v2.3.2258: ONLY A BLADE FINDS ITS OWN TARGET ═══
@@ -525,6 +567,13 @@ export function updateTargeting(S) {
     S.lockedTarget = null;
     S._lockDroppedAt = Date.now();
     S._lockDroppedWhy = 'gone';
+    clearLockAim(S);
+  }
+  /* v2.3.3499: ...nor one across the map (lockTooFar) */
+  if (lockTooFar(S, Date.now())) {
+    S.lockedTarget = null;
+    S._lockDroppedAt = Date.now();
+    S._lockDroppedWhy = 'far';
     clearLockAim(S);
   }
   if (S._dying || S._zoneLoading || isPlayerDead(S)) {

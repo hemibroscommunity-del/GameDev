@@ -29,42 +29,166 @@
  * it, rendering/jumpFx.js draws it. */
 
 /* how long you are in the air, and how high you go at the top (world px; a
-   bro is ~66 tall at the Wheel's scale, so about his own height).  68 is
-   twice the first cut's 34 -- the owner, having tried it: "I'd also like it
-   if the jump were about 2x as high".  The time in the air is the same, so
-   the window for clearing low things is too: only the picture rises higher,
-   and the things it clears (JUMP_OVER, 70 px tall or less) are now about as
-   tall as the jump. */
-export const JUMP_MS = 560;
-export const JUMP_PEAK = 68;
+   bro is ~66 tall at the Wheel's scale).  68 was twice the first cut's 34 --
+   the owner, having tried it: "I'd also like it if the jump were about 2x as
+   high".  The time in the air stayed the same then, so the window for
+   clearing low things did too. */
+/* ═══ v2.3.3499: 25% HIGHER, AND A LITTLE LONGER IN THE AIR ═══
+   The owner, after more play: "Try making jump 25% higher.  Gets stuck on
+   some props sometimes that it should be clearing."  68 -> 85 px at the top,
+   and 560 -> 625 ms in the air: the same pull of gravity (a height goes with
+   the square of the time, so 25% higher is sqrt(1.25) = 1.118x the time), so
+   it still reads as the same bro jumping, only harder.  The longer air is
+   also more ground covered while you are high enough to clear something. */
+export const JUMP_MS = 625;
+export const JUMP_PEAK = 85;
 /* low things are cleared while the lift is at least this share of the peak:
-   the middle ~74% of the jump, from ~70 ms after take-off to ~70 ms before
-   touching down */
-export const JUMP_CLEAR = 0.45;
+   the middle 80% of the jump, from ~62 ms after take-off to ~62 ms before
+   touching down.  v2.3.3499: 0.45 -> 0.36 with the peak, so the feet are as
+   high off the ground (~31 px) as they were when a crossing could start --
+   0.36 x 85 = 0.45 x 68 -- and the window is 500 ms where it was 415. */
+export const JUMP_CLEAR = 0.36;
 /* on the ground at least this long between two jumps */
 export const JUMP_REST_MS = 120;
 
 /* The leaping frame of each jog sheet: one knee up, the other leg trailing
    (chosen by eye off the sheets -- the flight phase of the stride).  West,
    northwest and southeast are mirrors of east, northeast and southwest, so
-   they share these. */
-export const JUMP_FRAME = Object.freeze({ east: 1, north: 8, northeast: 4, south: 7, southwest: 6 });
+   they share these.  v2.3.3499: the RISING frame of the four below; a call
+   with no phase still gets it. */
+export const JUMP_FRAME = Object.freeze({ east: 1, north: 3, northeast: 3, south: 14, southwest: 10 });
+
+/* ═══ v2.3.3499: A JUMP THAT MOVES -- THE STRIDE, THE SQUASH, THE LEAN ═══
+   The owner, after the 25% higher jump: "is there any 'jump effect' you can
+   add just using code that would make it look more realistic than just the
+   static frame?"  Four things, all drawn in code on the art the game has (no
+   new picture, no new memory):
+     1. THE STRIDE, SLOWED.  Not one held frame but four of the jog's own,
+        one after the other, for the way you face (JUMP_FRAMES): the push-off
+        (a knee driving up off the back foot), the rise, the split over the
+        top and the front foot reaching for the ground.  Picked off the
+        sheets by eye and by the feet's lowest row (128 px frames): east
+        109 -> 105 -> 97 -> 102, north 117 -> 107 -> 104 -> 115, northeast
+        113 -> 104 -> 103 -> 108, south 114 -> 101 -> 102 -> 111, southwest
+        118 -> 114 -> 103 -> 118 -- planted, then the stride's highest feet,
+        then coming down.  Each holds its share of the air (JUMP_FRAME_AT).
+     2. SQUASH AND STRETCH about the feet: crouched at the press, springing
+        long on the way up, round over the top, a little long reaching down
+        (jumpStretchAt); on the touch-down a squash that springs back over
+        JUMP_LAND_MS (jumpLandStretch); wider as it squashes, thinner as it
+        stretches (jumpWidthFor).
+     3. THE LEAN into the way you go: forward on the way up, upright over the
+        top, back a touch to land (jumpLeanAt x JUMP_LEAN radians, times how
+        fast you go across the screen: a standing jump does not lean, nor one
+        straight up or down the screen).
+     4. A kick of dust behind the boots at the take-off (rendering/worldFx.js),
+        where the landing already had its ring.
+   rendering/jumpFx.js draws 2 and 3 on the whole figure ABOUT ITS FEET, the
+   emotes' way (game/emoteMoves.js placeEmote): the name plate and HP bar
+   ride up with the body but never squash or tilt, and the feet the depth
+   pass and the shadows read stay on the ground. */
+export const JUMP_FRAMES = Object.freeze({
+  east: Object.freeze([13, 1, 3, 4]),
+  north: Object.freeze([2, 3, 5, 6]),
+  northeast: Object.freeze([1, 3, 4, 5]),
+  south: Object.freeze([13, 14, 15, 16]),
+  southwest: Object.freeze([9, 10, 11, 12]),
+});
+/* where in the air each frame gives way to the next: the push-off for the
+   first 7% (~44 ms, a flash of the crouch), the rise to 40%, the split to
+   70%, then the reach */
+export const JUMP_FRAME_AT = Object.freeze([0.07, 0.4, 0.7]);
+/* the touch-down's squash and spring, ms (x the jump's length over JUMP_MS:
+   `?jumpms=` stretches it with the air, so a slow test machine sees it) */
+export const JUMP_LAND_MS = 220;
+/* the most the body leans into a run, radians (~5 degrees) */
+export const JUMP_LEAN = 0.09;
+/* how fast across the screen leans in full (world px a ms: a walk's pace) */
+export const JUMP_LEAN_PX_MS = 0.22;
+
+const _easeOut = (u) => 1 - (1 - u) * (1 - u);
+const _easeInOut = (u) => (u < 0.5 ? 2 * u * u : 1 - 2 * (1 - u) * (1 - u));
+
+/** The body's height as a share of its own (1 = as drawn) at phase t of the
+    air: 0.9 at the press (the crouch), springing to 1.07 by 12% (the push
+    long), round again by 45%, then a little long (1.04) reaching down. */
+export function jumpStretchAt(t) {
+  if (!(t >= 0) || !(t < 1)) return 1;
+  if (t < 0.12) return 0.9 + 0.17 * _easeOut(t / 0.12);
+  if (t < 0.45) return 1.07 - 0.07 * _easeInOut((t - 0.12) / 0.33);
+  if (t < 0.6) return 1;
+  return 1 + 0.04 * Math.sin(((t - 0.6) / 0.4) * Math.PI / 2);
+}
+
+/** After the touch-down, u = the landing's share gone (0..1): squashed to
+    0.86, springing back through a little stretch, settled by the end. */
+export function jumpLandStretch(u) {
+  if (!(u >= 0) || !(u < 1)) return 1;
+  /* a damped spring, its last tenth faded out so it ends exactly at 1 */
+  const s = 1 - 0.14 * Math.exp(-4 * u) * Math.cos(7.5 * u);
+  return u > 0.9 ? 1 + (s - 1) * ((1 - u) / 0.1) : s;
+}
+
+/** The width that goes with a height: wider squashed, thinner stretched
+    (four fifths of what keeps the area, so a stretch never looks thin). */
+export function jumpWidthFor(ky) {
+  return 1 + (1 - ky) * 0.8;
+}
+
+/** How far into the run the body leans at phase t, as a share of
+    JUMP_LEAN: forward as it rises, easing upright over the top, back a
+    touch as the foot reaches down. */
+export function jumpLeanAt(t) {
+  if (!(t >= 0) || !(t < 1)) return 0;
+  if (t < 0.15) return _easeOut(t / 0.15);
+  if (t < 0.55) return 1 - 0.8 * _easeInOut((t - 0.15) / 0.4);
+  return 0.2 - 0.55 * _easeInOut((t - 0.55) / 0.45);
+}
+
+/**
+ * The whole look of a jumping figure, or null when there is nothing to
+ * draw: in the air (`j` active) its lift, stretch, width and lean; in the
+ * touch-down's squash (`land` = {at, dur} of a jump just landed) the
+ * squash alone.  `across` is how fast it goes across the screen, world px a
+ * ms (+ east), for the lean.
+ */
+export function jumpLook(j, now, land, across) {
+  const ax = Number.isFinite(across) ? Math.max(-1, Math.min(1, across / JUMP_LEAN_PX_MS)) : 0;
+  const t = jumpPhase(j, now);
+  if (t >= 0 && t < 1) {
+    const ky = jumpStretchAt(t);
+    return { air: true, t, lift: jumpHeight(j, now), ky, kx: jumpWidthFor(ky), rot: JUMP_LEAN * jumpLeanAt(t) * ax };
+  }
+  if (land && land.at > 0) {
+    const ms = JUMP_LAND_MS * (land.dur > 0 ? land.dur / JUMP_MS : 1);
+    const u = (now - land.at) / ms;
+    if (u >= 0 && u < 1) {
+      const ky = jumpLandStretch(u);
+      return { air: false, t: 1, u, lift: 0, ky, kx: jumpWidthFor(ky), rot: 0 };
+    }
+  }
+  return null;
+}
 
 /* What a jump clears, by the Wheel catalog's id (public/tools/objects/
-   catalog.js): the low things with a footprint, 70 game px tall or less as
-   drawn -- and `fence-down`, a fence running north-south, drawn 170 tall
-   because it runs up the picture but no higher than `fence`.  Boulders (90),
-   carts (94), minecarts (79), rowboats (81), haystacks (110) and everything
-   taller are NOT cleared.  test-world-core checks every id is in the catalog
-   and every low thing with a footprint is here or named in JUMP_NOT. */
+   catalog.js): the low things with a footprint, JUMP_OVER_H game px tall or
+   less as drawn -- and `fence-down`, a fence running north-south, drawn 170
+   tall because it runs up the picture but no higher than `fence`.  Boulders
+   (90), carts (94), haystacks (110) and everything taller are NOT cleared.
+   test-world-core checks every id is in the catalog and every low thing with
+   a footprint is here or named in JUMP_NOT.
+   v2.3.3499: the jump's 25% gave the list 25% too, 70 -> 87 px: the minecart
+   (79) and the rowboat (81), left off as "about as tall as a bro" while the
+   jump was a bro's height, are lower than the new one's top. */
+export const JUMP_OVER_H = 87;
 export const JUMP_OVER = new Set([
   'stump', 'charstump', 'driftwood', 'haybale', 'trough', 'stone', 'barrel',
   'bench', 'crate', 'bush', 'snowrock', 'scrap', 'stonewall', 'hitch',
   'fence', 'fence-down', 'basalt', 'coal', 'searock',
+  'minecart', 'rowboat',   /* v2.3.3499 */
 ]);
-/* ...and the low things deliberately left off: a minecart and a rowboat are
-   about as tall as a bro on the picture. */
-export const JUMP_NOT = new Set(['minecart', 'rowboat']);
+/* ...and the low things deliberately left off (none since v2.3.3499). */
+export const JUMP_NOT = new Set([]);
 
 /** The lift's share of the peak at phase t (0 taking off, 1 landing). */
 export function jumpLiftAt(t) {
@@ -144,9 +268,14 @@ export function startJump(S, now, dx, dy) {
   return S._jump;
 }
 
-/** Touch down (or cut short: a death, a zone change). */
+/** Touch down (or cut short: a death, a zone change).
+    v2.3.3499: the low things this jump was crossing stay passable a moment
+    after it (JUMP_LATCH_MS, landedOver), so feet that came down in one walk
+    on out of it. */
 export function endJump(S, now) {
   if (!S) return;
+  const j = S._jump;
+  S._jumpOver = (j && j.over && j.over.size) ? { keys: j.over, until: now + JUMP_LATCH_MS } : null;
   S._jump = null;
   S._jumpLandAt = now;
 }
@@ -169,19 +298,75 @@ export function crossMs(b, h, x, fy, vx, vy) {
  * May the feet pass over this footprint?  Only a JUMP_OVER thing, only while
  * high enough, and only if the way you are going (vx, vy px a ms) takes the
  * feet box (half-size h, at x, fy -- where the step would put it) out of it
- * before you are too low: you never come down inside one.
+ * before you are too low -- give or take JUMP_LAND_GRACE_MS (v2.3.3499).
  */
 export function overLow(b, j, now, h, x, fy, vx, vy) {
   if (!b || !JUMP_OVER.has(b.id)) return false;
   const left = clearMsLeft(j, now);
   if (!(left > 0)) return false;
-  return crossMs(b, h, x, fy, vx, vy) <= left;
+  return crossMs(b, h, x, fy, vx, vy) <= left + JUMP_LAND_GRACE_MS;
 }
 
-/** The held jog frame for a sheet direction (the five that are drawn). */
-export function jumpFrame(dir, frameCount) {
-  const f = JUMP_FRAME[dir];
+/* ═══ v2.3.3499: A CROSSING ONCE BEGUN IS NEVER JUDGED AGAIN ═══
+   The owner: "Gets stuck on some props sometimes that it should be
+   clearing."  overLow was asked afresh on EVERY frame of a crossing, with
+   that frame's speed, so anything that slowed you over the fence -- a slow
+   frame (a frame moves at most three 60 fps steps: S._dtScale's cap), a
+   sprint running dry, a held attack's half pace, the stick eased or turned,
+   the walk's x-then-y slide -- turned the answer to no with the feet already
+   in it, and the walk test's "never deeper into a footprint" froze them
+   there in mid-air: you came down IN the fence and had to back out.  And a
+   jump taken a stride too far back reached the fence just after the last
+   moment it could be out before landing, and stopped dead at its edge in
+   the air.
+   So: the first frame a jump may pass a low thing LATCHES it (jumpLatch, on
+   the jump), and a latched thing is passed for the rest of the jump
+   whatever the speed (jumpLatched); a crossing that comes down up to
+   JUMP_LAND_GRACE_MS short is let start; and the jump's latches outlive it
+   by JUMP_LATCH_MS (endJump, landedOver), so feet that did come down inside
+   walk on out of it instead of being held.  Only a JUMP_OVER thing is ever
+   latched, so a tree, a building or the sea is exactly as solid as before. */
+export const JUMP_LAND_GRACE_MS = 160;
+export const JUMP_LATCH_MS = 450;
+
+/** A footprint's key: the same box every frame, whatever array it came in. */
+export function jumpBoxKey(b) {
+  return Math.round(b.x0) + ',' + Math.round(b.y0) + ',' + Math.round(b.x1) + ',' + Math.round(b.y1);
+}
+
+/** Has this jump already started across box b? */
+export function jumpLatched(j, b) {
+  return !!(j && j.over && b && JUMP_OVER.has(b.id) && j.over.has(jumpBoxKey(b)));
+}
+
+/** Start across box b on this jump (true, so a test can read `overLow(...) && jumpLatch(...)`). */
+export function jumpLatch(j, b) {
+  if (!j || !b) return false;
+  if (!j.over) j.over = new Set();
+  j.over.add(jumpBoxKey(b));
+  return true;
+}
+
+/** Just landed from a jump that was crossing box b: the feet may walk on out of it. */
+export function landedOver(S, b, now) {
+  const L = S && S._jumpOver;
+  if (!L || !L.keys || !b || !JUMP_OVER.has(b.id)) return false;
+  if (!(now < L.until)) { S._jumpOver = null; return false; }
+  return L.keys.has(jumpBoxKey(b));
+}
+
+/** The jog frame for a sheet direction (the five that are drawn) at phase t
+    of the air (v2.3.3499: JUMP_FRAMES, one after the other); with no phase,
+    the rising one (JUMP_FRAME). */
+export function jumpFrame(dir, frameCount, t) {
   const n = frameCount > 0 ? frameCount : 24;
+  const seq = JUMP_FRAMES[dir];
+  let f = JUMP_FRAME[dir];
+  if (seq && Number.isFinite(t)) {
+    let i = 0;
+    while (i < JUMP_FRAME_AT.length && t >= JUMP_FRAME_AT[i]) i++;
+    f = seq[i];
+  }
   return typeof f === 'number' ? Math.min(n - 1, Math.max(0, f)) : 0;
 }
 
@@ -193,6 +378,6 @@ export function peerJump(payload, now) {
   return {
     t0: now,
     dur: isFinite(dur) && dur > 0 ? Math.max(200, Math.min(900, dur)) : JUMP_MS,
-    peak: isFinite(peak) && peak > 0 ? Math.max(8, Math.min(120, peak)) : JUMP_PEAK,   /* room above JUMP_PEAK 68 */
+    peak: isFinite(peak) && peak > 0 ? Math.max(8, Math.min(120, peak)) : JUMP_PEAK,   /* room above JUMP_PEAK (85 since v2.3.3499) */
   };
 }

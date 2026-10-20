@@ -199,9 +199,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const P of [A, B, C]) await recordPops(P);
 
   const heal = async () => { await H.devOp(wsPort, 'vitals', aId, {}); await H.devOp(wsPort, 'vitals', bId, {}); };
-  /* the striker's page, as the Enchant window leaves it (EnchantPanel.jsx sets
-     element1 on the page's own weapon), and its lock on the duel opponent */
-  const gem = (el) => A.page.evaluate((el) => { const S = window._gameState.current; if (S.rpg.weapon) S.rpg.weapon.element1 = el; return !!S.rpg.weapon; }, el);
+  /* the striker's sword with a gem in it, and its lock on the duel opponent.
+     v2.3.3513: the gem is the WORKER'S (weapongem.js) -- a hit's element is
+     read from its copy of the weapon, never the claim -- so it is set the way
+     a player sets it (H.weaponGem: a polished gem, Take out, weapon_gem), not
+     written on the page alone as the Enchant window once did */
+  const gem = (el) => H.weaponGem(A, wsPort, aId, 'weapon', el);
   const lockB = () => A.page.evaluate((bId) => {
     const S = window._gameState.current; const o = S.others && S.others[bId];
     if (!o) return false;
@@ -244,7 +247,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (step(1)) {
     /* ── 1. a wind gem's slow, from the page's own swing ── */
     await heal();
-    rec.ok('the striker\'s sword takes a wind gem on the page (guard)', await gem('wind'));
+    rec.ok('the striker\'s sword takes a wind gem from the worker (guard)', await gem('wind'));
     const fx0 = { A: await fxDrawn(A), B: await fxDrawn(B), C: await fxDrawn(C) };
     /* a FRESH slow to walk in: on this box a swing's pvp_hit can reach the
        target's page after swingFor has moved on, and the hit it then finds is

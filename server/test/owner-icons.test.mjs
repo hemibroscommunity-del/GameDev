@@ -17,6 +17,12 @@
  *      Wheel's and let go on leaving it, the four animated strips no longer the
  *      Wheel's, the handshake warmed with the controls; a land's banner never
  *      uses a closed zone's strip.
+ *   5. (v2.3.3511, the owner after a playtest: "new land emblems look bad
+ *      enlarged (revert or show below minimap)") the land's banner is the plain
+ *      plaque again and its scene a small EMBLEM under the minimap
+ *      (src/ui/landEmblem.js): drawn at one picture px a device px at the most,
+ *      never blown up, on every screen; the held picture, never a load; kept
+ *      clear of the controls; the plate's scroll ends cut off the pictures.
  */
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 
@@ -124,15 +130,50 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     /export function preloadLandScenes\(\)/.test(zp) && /export function landSceneHeld\(land\)/.test(zp) && /export function freeLandScenes\(\)/.test(zp)
     && /img\.src = '';/.test(zp.slice(zp.indexOf('export function freeLandScenes'))));
   const zo = src('src/ui/zoneBannerOverlay.js');
-  check('4d a land\'s banner asks for its scene, and never a closed zone\'s strip of the same id',
-    /playZoneBanner\(region, S, \{ title, plain: true, scene: region,/.test(zo) && /const art = opts\.scene \? null : bannerStripFor\(zoneId\);/.test(zo)
-    && /const scene = !strip && opts\.scene \? landSceneHeld\(opts\.scene\) : null;/.test(zo));
+  /* v2.3.3511: the plain plaque (no scene over it), never a closed zone's
+     strip of the same id; the scene goes under the minimap as the plaque docks */
+  check('4d a land\'s banner is the plain plaque -- no scene over it, never a closed zone\'s strip -- and its scene goes under the minimap as it docks',
+    /playZoneBanner\(region, S, \{ title, plain: true, icon: look\.icon,/.test(zo) && !/scene: region/.test(zo)
+    && /const art = opts\.plain \? null : bannerStripFor\(zoneId\);/.test(zo) && !/landSceneHeld/.test(zo)
+    && /if \(shown\) showLandEmblem\(region, \{ delay: prefersReducedMotion\(\) \? 900 : ZONE_BANNER_PLAY_MS \+ LAND_HOLD_MS \}\);/.test(zo));
   const cp = src('src/rendering/controlsPreload.js');
   check('4e the trade request\'s handshake is warmed with the controls (the card pops up mid-play)', /urls\.push\(OWNER_ICON\.tradeHandshake\.src\);/.test(cp));
   const css = src('src/styles/game.css');
-  check('4f the scene\'s look: half the banner wide, over the plaque, transform and opacity only',
-    /\.bt-zone-banner\.is-scene\{\s*--zb-scene-w:calc\(var\(--zb-w\) \* \.5\);/.test(css) && /\.bt-zone-banner__scene\{/.test(css)
-    && !/\.bt-zone-banner__scene\{[^}]*filter/.test(css));
+  /* v2.3.3511: the enlarged scene's rules gone; the emblem's: fixed, no
+     touch, transform and opacity only (TRAPS §42) */
+  const em = (css.match(/\.bt-land-emblem[^{]*\{[^}]*\}/g) || []).join('\n');
+  check('4f the banner draws no scene any more; the emblem under the minimap takes no touch and uses no filter',
+    !/\.bt-zone-banner\.is-scene\{/.test(css) && !/\.bt-zone-banner__scene\{/.test(css)
+    && /\.bt-land-emblem\{[^}]*position:fixed;z-index:21;pointer-events:none;/.test(css) && em.length > 0 && !/filter/.test(em), em.slice(0, 300));
+}
+
+/* ── 5. the emblem under the minimap (v2.3.3511) ── */
+{
+  const LE = await import('../../src/ui/landEmblem.js');
+  const sd = LANDS.map((l) => dims(OI.LAND_SCENE[l]));
+  const at = (dpr) => sd.map(([w, h]) => LE.emblemSize(w, h, dpr));
+  const all = [1, 1.5, 2, 2.625, 3, 3.5, 4].map((dpr) => ({ dpr, s: at(dpr) }));
+  check('5a never blown up: on every screen (1x to 4x) at most one picture px a device px, never wider than EMBLEM_MAX_W',
+    all.every(({ s }) => s.every((x) => x.devPerArt <= 1 + 1e-9 && x.w <= LE.EMBLEM_MAX_W + 1e-9)), all.map(({ dpr, s }) => `${dpr}x: ${s.map((x) => x.w.toFixed(1)).join(' ')}`));
+  const three = at(3);
+  check('5b on a 3x phone exactly its own pixels, about 62-69 CSS px wide, its own shape',
+    three.every((x, i) => Math.abs(x.devPerArt - 1) < 1e-9 && x.w >= 60 && x.w <= 70 && Math.abs(x.w / x.h - sd[i][0] / sd[i][1]) < 1e-6), three.map((x) => [x.w.toFixed(1), x.h.toFixed(1)]));
+  check('5c on a computer at 1x held to the cap (112 CSS px), a little under its pixels',
+    at(1).every((x) => x.w === LE.EMBLEM_MAX_W && x.devPerArt < 1), at(1).map((x) => x.devPerArt.toFixed(2)));
+  const le = src('src/ui/landEmblem.js');
+  check('5d the held, decoded scene and its address -- never a load of its own',
+    /const scene = landSceneHeld\(land\);/.test(le) && /img\.src = scene\.src;/.test(le) && !/new Image\(/.test(le) && !/fetch\(/.test(le));
+  check('5e kept clear of every control: buttons, the sticks, the sprint button, the quest card, the No man\'s land and party cards, the coach, the map\'s button, a prompt',
+    ['button', '[data-disc]', '[data-sprint]', '[data-quest-hud]', '[data-nml-ask]', '[data-party-invite]', '[data-coach-card]', '[data-world-map-open]', '.bt-interact-prompt']
+      .every((k) => le.indexOf(k) >= 0) && /const on = ctl\.find\(\(q\) => hits\(r, q, EMBLEM_CLEAR\)\);/.test(le));
+  check('5f under the minimap, or beside it at its top, on whole device px; shown for its few seconds, then fading',
+    /\{ at: 'below', left: mini\.left \+ \(mini\.w - w\) \/ 2, top: mini\.top \+ mini\.h \+ EMBLEM_GAP \}/.test(le)
+    && /\{ at: 'beside', left: mini\.left - EMBLEM_GAP - w, top: mini\.top \+ 8 \}/.test(le) && /const snap = \(v\) => Math\.round\(v \* d\) \/ d;/.test(le)
+    && LE.EMBLEM_HOLD_MS >= 2500 && LE.EMBLEM_HOLD_MS <= 6000 && /hideLandEmblem\(EMBLEM_OUT_MS\)/.test(le));
+  const cut = src('tools/ui/cut-owner-icons.py');
+  check('5g the plate\'s scroll ends are cut off the scenes (rim_cut) and a dark ground line drawn in their place',
+    /def rim_cut\(im\):/.test(cut) && /def ground_line\(im\):/.test(cut) && /im = ground_line\(im\.crop\(\(0, 0, im\.width, rim\)\)\)/.test(cut)
+    && /SCENE_V = '\?v=2\.3\.3511'/.test(src('src/data/ownerIcons.js')));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

@@ -38,6 +38,7 @@ import { hurtGrunt } from '@/game/ownSounds.js'; /* v2.3.3462: your hurt grunt (
 import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
 import { peerShotFlight } from '@/game/peerShots.js'; /* v2.3.3266: another player's shot at their speed and reach */
 import { ARROW_SPEED_PX } from '@/game/projectiles.js'; /* v2.3.3266: ...the bow's own speed */
+import { shotAimFromWire } from '@/game/shotGround.js'; /* v2.3.3501: what a peer's shot is fired at */
 import { BOW_VOLLEY } from '@/game/bowVolley.js'; /* v2.3.3266: ...and the volley's */
 import { BOW_RANGE_PX } from '@/data/gameSystems.js'; /* v2.3.3266: ...and where an arrow comes down */
 /* v2.3.3266: the game's numbers peerShots.js works with, one copy of each --
@@ -46,7 +47,7 @@ var _peerShotGame = null;
 function peerShotGame() {
   return _peerShotGame || (_peerShotGame = Object.freeze({ arrowPx: ARROW_SPEED_PX, reachPx: BOW_RANGE_PX, volleyK: BOW_VOLLEY.SPEED_K, peerPx: BOW_VOLLEY.PEER_PX_PER_FRAME }));
 }
-import { recordMail } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail */
+import { recordMail, itemWords } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail; v2.3.3516: + its words for an item */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
@@ -68,6 +69,7 @@ import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHe
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
 import { petMailWords } from '@/data/trapping.js';   /* v2.3.3122: a pet in the mail */
 import { noteWard } from '@/game/trapping.js';   /* v2.3.3123: a hit the pet out with you softened */
+import { sparkLine } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn */
 
 /* ═══ v2.3.2232: THE DAMAGE NUMBER NAMES THE WEAPON THAT DEALT IT ═══
  *
@@ -1865,7 +1867,7 @@ export function processGameEvent(type, payload, S, deps) {
                    (gladiator.js ARENA.CHAMPION_AP, payload `ap`). */
                 var _apIn = Math.floor(Number(_ep.ap) || 0);
                 var _what = _e.kind === 'gold' ? '+' + Math.floor(Number(_ep.amount) || 0).toLocaleString('en-US') + ' gold' + (_apIn > 0 ? ' and ' + _apIn + ' AP' : '')
-                  : _e.kind === 'item' ? (_ep.count || 1) + '× ' + (_ep.invKey || 'item')
+                  : _e.kind === 'item' ? (_ep.count || 1) + '× ' + itemWords(_ep.invKey)   /* v2.3.3516: words, not the key ("1× Frost gem") */
                   : _e.kind === 'weapon' ? ((_ep.weapon && _ep.weapon.name) || 'a weapon')
                   : _e.kind === 'gear' ? ((_ep.piece && _ep.piece.name) || 'a piece of gear')
                   : _e.kind === 'pet' ? petMailWords(_ep.pet)   /* v2.3.3122: a pet (store, trade, the mail) */
@@ -2148,7 +2150,14 @@ export function processGameEvent(type, payload, S, deps) {
                    arrow stops on this screen. */
                 _lp: (Array.isArray(payload.lp) && payload.lp.length === 2
                   && Number.isFinite(Number(payload.lp[0])) && Number.isFinite(Number(payload.lp[1])))
-                  ? { x: Number(payload.lp[0]), y: Number(payload.lp[1]) } : null
+                  ? { x: Number(payload.lp[0]), y: Number(payload.lp[1]) } : null,
+                /* v2.3.3501: what the shot was fired at -- its circle and its
+                   feet -- so its ground line runs from the shooter's boots to
+                   those feet here too (visualSystems, shotGround.js).  Five
+                   numbers in range or nothing (shotGround.js shotAimFromWire):
+                   a peer's, and it decides only where a drawn copy meets a
+                   prop.  An older shooter sends none: the parallel line. */
+                _gf: shotAimFromWire(payload.gf)
               });
               /* v2.3.1011: a bow shot (non-staff) drives the remote bow-draw
                  stand-in (Phase 4 reads _bowShotAt/_bowShotAng). */
@@ -2494,6 +2503,8 @@ export function processGameEvent(type, payload, S, deps) {
                  one-bite rule (fightFood.js noteDealt; the worker's
                  _lastDealtAt) -- before anything below decides what to draw */
               noteDealt(S, payload);
+              /* v2.3.3518: a test's record of your own landed hits (mp-gemweight) */
+              try { if (payload.attackerId === S.myId && typeof window !== 'undefined' && window.__btProbe) { var _hl = window.__btHitLog || (window.__btHitLog = []); _hl.push({ id: payload.monsterId, dmg: payload.dmg, up: !!payload.up, spark: payload.spark || null }); if (_hl.length > 300) _hl.shift(); } } catch (e) { /* probe only */ }
               /* A monster was hit — show damage number and hit effects for everyone */
               if (S.monsters) {
                 var hitM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
@@ -2604,7 +2615,8 @@ export function processGameEvent(type, payload, S, deps) {
                      (owner report, first playtest).  Everything
                      echo-driven now sits behind the same gate. */
                   if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst
-                      || payload.splash /* v2.3.2481: a splashed neighbour has no local hit site of its own */) {
+                      || payload.splash /* v2.3.2481: a splashed neighbour has no local hit site of its own */
+                      || payload.spark /* v2.3.3518: nor has a shock's spark */) {
                     hitM._hitFlash = Date.now();
                     if (hitM.curHp > 0) {
                       hitM._hitAnimStart = Date.now();
@@ -2628,7 +2640,7 @@ export function processGameEvent(type, payload, S, deps) {
                        weapon of their own and take the generic spray.  The
                        soft decal is retired: the pieces that land are the
                        mark now. */
-                    var _dbW = payload.splash ? 'splash'
+                    var _dbW = (payload.splash || payload.spark) ? 'splash'   /* v2.3.3518: a spark is a lighter echo too */
                       : (payload.ability || payload.burst || payload.thorns) ? null
                       : payload.slot === 'melee' ? 'sword'
                       : payload.slot === 'ranged' ? 'arrow'
@@ -2656,7 +2668,7 @@ export function processGameEvent(type, payload, S, deps) {
                       x: hitM.x || hitM.renderX, y: monsterPopupY(hitM, -20),
                       text: '-' + _popDmg,   /* v2.3.2481 */
                       color: payload.isCrit ? DMG_CRIT_COLOR
-                        : (payload.splash ? '#c4b5fd' : '#ff8888'),   /* v2.3.2481: peer splash reads as splash too */
+                        : (payload.splash ? '#c4b5fd' : payload.spark ? '#9fd8ff' : '#ff8888'),   /* v2.3.2481: peer splash reads as splash too; v2.3.3518: a spark in the storm's blue */
                       /* v2.3.2211: the server's crit gets the same treatment
                          the local swing gets -- big number + the crit mark.
                          These two doors painted the same event differently,
@@ -2729,7 +2741,7 @@ export function processGameEvent(type, payload, S, deps) {
                            tell the bolt's own target from the neighbours it
                            caught.  Crit colour still wins -- a crit is the
                            louder fact. */
-                        payload.isCrit ? DMG_CRIT_COLOR : (payload.splash ? '#c4b5fd' : '#ffd08a'),
+                        payload.isCrit ? DMG_CRIT_COLOR : (payload.splash ? '#c4b5fd' : payload.spark ? '#9fd8ff' /* v2.3.3518: a shock's spark */ : '#ffd08a'),
                         /* v2.3.2232: the weapon that dealt it, not a flat sword.
                            v2.3.2233: ...and that now includes the crit, which
                            carried a bladed burst on bow and staff hits alike. */
@@ -2755,6 +2767,28 @@ export function processGameEvent(type, payload, S, deps) {
                        land in silence on their own screen while every
                        OTHER player in the zone saw the numbers. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + _popDmg, '#c084fc');   /* v2.3.2481 */
+                  }
+                  /* ═══ v2.3.3518: EVERY GEM PULLS ITS WEIGHT (docs/GEM-PLAN.md
+                     Phase 4; server elemental.js has the story) ═══
+                     "UP": the worker landed YOUR hit 25% harder because its
+                     gem beats this monster's element -- printed beside the
+                     worker's own number, never guessed (monsterCombat.js's
+                     guess is for an older worker); and the quest step that
+                     asks for a hit like it is counted here.
+                     A spark: the monster it leapt from, drawn on every screen
+                     (game/shockSpark.js). */
+                  if (payload.up && payload.attackerId === S.myId && S._serverCaps && S._serverCaps.elemup) {
+                    pushDmgPopup(S, (hitM.x || hitM.renderX) + 12, (hitM.y || hitM.renderY) - 10, 'UP', '#3dd497');
+                    if (S.rpg) {
+                      if (!S.rpg._questFlags) S.rpg._questFlags = {};
+                      S.rpg._questFlags.usedEffectiveness = true;
+                    }
+                    try { if (typeof window !== 'undefined' && window.__btProbe) (window.__btUpLog || (window.__btUpLog = [])).push({ id: payload.monsterId, dmg: payload.dmg, at: Date.now() }); } catch (e) { /* probe only */ }
+                  }
+                  if (payload.spark != null) {
+                    var _sparkFrom = S.monsters.find(function(m) { return m.id === payload.spark; });
+                    var _sparkDrawn = _sparkFrom ? sparkLine(S, _sparkFrom, hitM) : 0;
+                    try { if (typeof window !== 'undefined' && window.__btProbe) (window.__btSparkLog || (window.__btSparkLog = [])).push({ from: payload.spark, to: payload.monsterId, dmg: payload.dmg, drawn: _sparkDrawn, mine: payload.attackerId === S.myId, at: Date.now() }); } catch (e) { /* probe only */ }
                   }
                   /* v2.3.2844: the three flat dots that used to follow here
                      (v2.3.2200b, same gate as the flash above) are gone.  Every

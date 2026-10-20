@@ -20,9 +20,31 @@
  * kept: a spring is dropped when its animation ends, the whole container when
  * there is nothing left to draw (memory rule: anything made per fight is
  * destroyed when it goes). */
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, Sprite } from 'pixi.js';
 import { SHAKE_MS, SHAKE_GAP, DROP_MS, END_MS, springMs } from '../game/trapping.js';
 import { PET_BIG_AT } from '../data/trapping.js';   /* v2.3.3123: the Big reveal */
+import { WheelShatter } from './wheelShatter.js';   /* v2.3.3499: a missed trap breaks into pieces of its picture */
+
+/* ═══ v2.3.3499: THE OWNER'S BOX TRAP, IN THE WORLD ═══
+   The owner: "More detailed trap for the roll after monster dies."  The box
+   that dropped, shook and snapped was a 26 x 18 rectangle and a lid drawn in
+   code; the owner's own box trap -- the rough pine crate propped open on a
+   roped stick, a carrot for bait, the picture already in the bag, on the
+   Woodworker's Traps tab and on the TRAP pop-up (tools/ui/cut-bag-icons.py,
+   /icons/items/trap-box.webp, 256 px) -- is now the box in the world: over
+   the marked monster's health bar, dropping onto where it fell, rattling with
+   each shake, slamming shut on a catch (squashed down onto the ground as the
+   prop gives way, with the flash and the stars), and on a miss broken into
+   pieces of its own picture (wheelShatter.js, the mined-out rock's way) with
+   "Missed!".  Loaded with the effects on the loading screen (effectsRenderer
+   _fxLoad: ~0.26 MB decoded, the one picture); until it is there, and if it
+   ever fails, the drawn box below stands in. */
+/* the picture's crate: its base at row 203 of 256, centred on column ~127.5,
+   195 px from the stick's tip to the crate's far side (measured off the file) */
+const ART_FOOT_V = 203 / 256, ART_CX_U = 127.5 / 256, ART_CRATE_W = 195;
+const ART_BOX_W = 60;            /* world px across the springing crate (the drawn box was ~49) */
+const ART_MARK_W = 36;           /* ...and the little one over the health bar */
+const MISS_FADE_MS = 1100;       /* a missed trap's pieces lie this long before they fade */
 
 const WOOD = 0x8b5a2b, WOOD_DARK = 0x3b2512, WOOD_LIGHT = 0xb37a43, BRASS = 0xd8aa58, BRASS_HI = 0xeac675;
 const AFTER_MS = 900;            /* how long a snap's glow or a break's planks linger */
@@ -40,10 +62,17 @@ const BOX_S = 1.9;               /* the springing box's scale (26 x 18 at 1) */
 const RING_X = 44, RING_Y = 17;  /* the mark's ring at the monster's feet */
 
 export class TrapFx {
-  constructor(layer) {
+  /* v2.3.3499: `getArt` hands over the owner's box trap picture once it has
+     loaded (effectsRenderer), or null */
+  constructor(layer, getArt) {
     this.layer = layer;
+    this.getArt = typeof getArt === 'function' ? getArt : null;
     this.root = null;
     this.g = null;
+    this._sprs = new Map();      /* v2.3.3499: the picture, one sprite a mark or spring, by key */
+    this._shatter = null;        /* v2.3.3499: missed traps' pieces */
+    this._shatterAt = 0;
+    this._used = null;
   }
 
   _ensure() {
@@ -60,6 +89,24 @@ export class TrapFx {
       try { this.root.removeFromParent(); this.root.destroy({ children: true }); } catch (e) { /* gone */ }
     }
     this.root = null; this.g = null;
+    this._sprs.clear();          /* destroyed with the root (their texture is the effects' own, kept) */
+    /* clear(), never destroy(): destroy() frees the dust texture every
+       WheelShatter shares (the mined rocks' too) */
+    if (this._shatter) { try { this._shatter.clear(); } catch (e) { /* gone */ } }
+  }
+
+  /* v2.3.3499: the picture's sprite for `key`, made once and kept while drawn */
+  _spr(key, art) {
+    let s = this._sprs.get(key);
+    if (!s || s.destroyed) {
+      s = new Sprite(art);
+      s.anchor.set(ART_CX_U, ART_FOOT_V);
+      s.label = 'trapArt';
+      this.root.addChild(s);
+      this._sprs.set(key, s);
+    } else if (s.texture !== art) s.texture = art;
+    if (this._used) this._used.add(key);
+    return s;
   }
 
   /** Draw the mark and every spring in flight; returns how many things it drew. */
@@ -68,11 +115,20 @@ export class TrapFx {
     const mark = st && st.mark && st.mark.until > now ? st.mark : null;
     if (st && st.springs.length) st.springs = st.springs.filter((sp) => now - sp.t0 < springMs(sp.shakes) + afterOf(sp));
     const springs = st ? st.springs : [];
-    if (!mark && !springs.length) { this.destroy(); return 0; }
+    /* v2.3.3499: a missed trap's pieces fall on their own clock */
+    if (this._shatter && this._shatter.heaps.size) {
+      const pn = performance.now();
+      this._shatter.update(this._shatterAt ? pn - this._shatterAt : 16);
+      this._shatterAt = pn;
+    } else this._shatterAt = 0;
+    const pieces = !!(this._shatter && this._shatter.heaps.size);
+    if (!mark && !springs.length && !pieces) { this.destroy(); return 0; }
     this._ensure();
     const g = this.g;
     g.clear();
     let drawn = 0;
+    const art = this._artOk();
+    this._used = new Set();
 
     if (mark) {
       const m = (S.monsters || []).find((x) => x && x.id === mark.monsterId);
@@ -98,11 +154,18 @@ export class TrapFx {
       const bob = Math.sin(now / (urgent ? 90 : 260)) * 2;
       const hx = x, hy = y + (mark.top || -120) - 14 + bob;
       g.circle(hx, hy - 10, 22).fill({ color: 0x111e23, alpha: 0.75 }).stroke({ color: BRASS, width: 2, alpha: 0.95 });
-      const s = 0.85;
-      const w = 26 * s, h = 18 * s;
-      g.rect(hx - w / 2, hy - h + 1, w, h).fill({ color: WOOD }).stroke({ color: WOOD_DARK, width: 1.6 });
-      g.moveTo(hx - w / 2, hy - h + 1).lineTo(hx - w / 2 + 5 * s, hy - h - 11 * s).lineTo(hx + w / 2 + 3 * s, hy - h - 8 * s).lineTo(hx + w / 2, hy - h + 1)
-        .fill({ color: WOOD_LIGHT }).stroke({ color: WOOD_DARK, width: 1.4 });
+      if (art) {
+        /* v2.3.3499: the owner's picture in the disc */
+        const k = ART_MARK_W / ART_CRATE_W;
+        const sp = this._spr('mark', art);
+        sp.x = hx; sp.y = hy + 2; sp.rotation = 0; sp.scale.set(k, k); sp.alpha = 1; sp.visible = true;
+      } else {
+        const s = 0.85;
+        const w = 26 * s, h = 18 * s;
+        g.rect(hx - w / 2, hy - h + 1, w, h).fill({ color: WOOD }).stroke({ color: WOOD_DARK, width: 1.6 });
+        g.moveTo(hx - w / 2, hy - h + 1).lineTo(hx - w / 2 + 5 * s, hy - h - 11 * s).lineTo(hx + w / 2 + 3 * s, hy - h - 8 * s).lineTo(hx + w / 2, hy - h + 1)
+          .fill({ color: WOOD_LIGHT }).stroke({ color: WOOD_DARK, width: 1.4 });
+      }
       drawn++;
     }
 
@@ -163,7 +226,20 @@ export class TrapFx {
           g.moveTo(px, py - z).lineTo(px + z * 0.6, py).lineTo(px, py + z).lineTo(px - z * 0.6, py).closePath()
             .fill({ color: gold ? GOLD : BRASS_HI, alpha: fade });
         }
-        this._box(g, sp.x, sp.y, BOX_S * (1 + (big ? 0.26 : 0.14) * Math.sin(endK * Math.PI)), true, 0, 1, fade);
+        if (art) {
+          /* v2.3.3499: the picture slams shut -- squashed down onto its base
+             as the prop gives way, a beat of bounce, the swell of the catch */
+          const sl = Math.min(1, (t - shakeEnd) / 110);
+          const bounce = 0.06 * Math.sin(Math.min(1, (t - shakeEnd) / 320) * Math.PI);
+          const swell = 1 + (big ? 0.26 : 0.14) * Math.sin(endK * Math.PI);
+          const k = (ART_BOX_W / ART_CRATE_W) * swell;
+          g.ellipse(sp.x, sp.y + 1, ART_BOX_W * 0.42 * swell, 7).fill({ color: 0x000000, alpha: 0.22 * fade });
+          const a = this._spr(this._key(sp), art);
+          a.x = sp.x; a.y = sp.y; a.rotation = 0; a.scale.set(k * (1 + 0.08 * sl), k * (1 - 0.3 * sl + bounce)); a.alpha = fade; a.visible = true;
+        } else this._box(g, sp.x, sp.y, BOX_S * (1 + (big ? 0.26 : 0.14) * Math.sin(endK * Math.PI)), true, 0, 1, fade);
+      } else if (ended && !sp.caught && art && this._missBreak(sp, art)) {
+        /* v2.3.3499: BREAK, the owner's box in pieces (_missBreak) and a puff */
+        g.circle(sp.x, sp.y - 10, 12 + 34 * endK).fill({ color: 0xcdb89a, alpha: 0.3 * (1 - endK) });
       } else if (ended && !sp.caught) {
         /* BREAK: planks fly apart and fall */
         const tt = (t - shakeEnd) / 1000;
@@ -179,12 +255,63 @@ export class TrapFx {
           g.moveTo(px - cx, py - cy).lineTo(px + cx, py + cy).stroke({ color: i % 2 ? WOOD : WOOD_LIGHT, width: 5.5, alpha: fade });
         }
         g.circle(sp.x, sp.y - 10, 12 + 34 * endK).fill({ color: 0xcdb89a, alpha: 0.35 * (1 - endK) });
+      } else if (art) {
+        /* v2.3.3499: the picture drops and rattles, tipped about its base */
+        g.ellipse(sp.x, sp.y + 1, ART_BOX_W * 0.42, 7).fill({ color: 0x000000, alpha: 0.22 * alpha * (dy < 0 ? 0.5 + 0.5 * (1 + dy / 56) : 1) });
+        const k = ART_BOX_W / ART_CRATE_W;
+        const a = this._spr(this._key(sp), art);
+        a.x = sp.x; a.y = sp.y + dy; a.rotation = rot; a.scale.set(k, k * sq); a.alpha = alpha; a.visible = true;
       } else {
         this._box(g, sp.x, sp.y + dy, BOX_S, false, rot, sq, alpha);
       }
       drawn++;
     }
-    return drawn;
+    /* v2.3.3499: a sprite nobody drew this frame (its spring over, the mark
+       gone) is let go */
+    for (const [key, spr] of this._sprs) {
+      if (this._used.has(key)) continue;
+      try { spr.destroy(); } catch (e) { /* gone */ }
+      this._sprs.delete(key);
+    }
+    this._used = null;
+    if (typeof window !== 'undefined' && window.__btProbe) {   /* QA (mp-trapping) */
+      window.__btTrapArt = { art: !!art, sprites: this._sprs.size, pieces: this._shatter ? this._shatter.probe().length : 0,
+        broken: (this._broken || 0) };
+    }
+    return drawn + (pieces ? 1 : 0);
+  }
+
+  /* v2.3.3499: the picture, when it has loaded and is still alive */
+  _artOk() {
+    let t = null;
+    try { t = this.getArt ? this.getArt() : null; } catch (e) { t = null; }
+    return t && !t.destroyed && t.source && !t.source.destroyed ? t : null;
+  }
+
+  _key(sp) { return 's:' + sp.t0 + ':' + sp.monsterId; }
+
+  /* v2.3.3499: a missed trap: the box breaks into pieces of its picture
+     (once, at the end of its shakes), which fall and lie MISS_FADE_MS, then
+     fade.  False if the pieces could not be cut (the planks stand in). */
+  _missBreak(sp, art) {
+    if (sp._broke === true) return true;
+    if (sp._broke === false) return false;
+    if (!this._shatter) this._shatter = new WheelShatter(this.layer);
+    const key = 'trap:' + this._key(sp);
+    let ok = false;
+    try {
+      ok = this._shatter.add(key, art, {
+        x: sp.x, y: sp.y, ax: ART_CX_U, ks: ART_BOX_W / ART_CRATE_W, flip: false,
+        hitX: sp.x, hitY: sp.y - 22, ang: -Math.PI / 2, weapon: 'sword', as: 'small', depth: 18, dust: 0xcdb89a,
+      });
+    } catch (e) { ok = false; }
+    sp._broke = !!ok;
+    if (ok) {
+      this._broken = (this._broken || 0) + 1;
+      const sh = this._shatter;
+      try { setTimeout(() => { try { sh.remove(key); } catch (e) { /* gone */ } }, MISS_FADE_MS); } catch (e) { /* timers only */ }
+    }
+    return sp._broke;
   }
 
   /* A box trap drawn at (x, y), tipped by `rot` about its foot. */

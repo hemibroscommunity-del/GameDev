@@ -63,6 +63,8 @@ const PROMISED = {
   sprintOutBreath: 0.2,
   /* v2.3.3498: the weapon swapped to, the tree felled */
   swapSword: 0.4, swapBow: 0.4, swapStaff: 0.4, treeFelled: 1.4,
+  /* v2.3.3499: the trap's own sounds */
+  trapSet: 0.7, trapShake: 0.4, trapSnap: 1.6, trapMiss: 1.0,
 };
 
 /* v2.3.3434: cues kept quieter than 0.08 of a hit on purpose, and why -- each

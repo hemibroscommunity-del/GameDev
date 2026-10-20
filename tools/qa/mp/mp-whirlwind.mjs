@@ -13,6 +13,11 @@
  *   3. The worker's whirl hits land ~2s after the press, not on it.
  *   4. At the strike, the vortex and the edge ring are drawn at that same
  *      radius (the vortex used to be capped at 130 of 240).
+ *   5. v2.3.3499 (owner: "when you do the whirlwind (wind up period after
+ *      tapping the button) it would be helpful if the monsters were
+ *      highlighted"): through the wind-up every monster inside the ring wears
+ *      the catch mark (window.__btWhirlCatch), and every monster the WORKER's
+ *      strike then hit was one of them.
  */
 import * as H from './harness.mjs';
 
@@ -27,7 +32,7 @@ const recordWhirlHits = () => {
     ws.addEventListener('message', (ev) => {
       try {
         const m = JSON.parse(ev.data);
-        const look = (e) => { if (e && e.type === 'monster_hit' && e.payload && e.payload.ability === 'whirl') window.__whirlHits.push(Date.now()); };
+        const look = (e) => { if (e && e.type === 'monster_hit' && e.payload && e.payload.ability === 'whirl') { window.__whirlHits.push(Date.now()); (window.__whirlHitIds = window.__whirlHitIds || []).push(String(e.payload.monsterId)); } };
         look(m);
         if (m && Array.isArray(m.events)) m.events.forEach(look);
         if (m && Array.isArray(m.batch)) m.batch.forEach(look);
@@ -71,7 +76,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     window.__whirlHits.length = 0;
     /* Watch every frame for the strike's look -- it lives ~half a second. */
-    window.__whirlSeen = { fx: null, edge: null, cleared: null };
+    window.__whirlSeen = { fx: null, edge: null, cleared: null, caught: null, frames: 0 };
+    window.__whirlHitIds = [];
     const t0 = Date.now();
     const watch = () => {
       const W = window.__whirlSeen;
@@ -79,6 +85,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const e = (S._impactRings || []).find((r) => typeof r.settle === 'number');
       if (e && W.edge == null) W.edge = e.maxR;
       if (!S._whirlWindup && W.cleared == null) W.cleared = Date.now() - t0;
+      /* v2.3.3499: the last wind-up frame's catch, and the monsters inside
+         the ring as THIS frame draws them, measured the worker's way */
+      const c = window.__btWhirlCatch && window.__btWhirlCatch();
+      if (c && S._whirlWindup) {
+        const R = c.r, px = S.player.x, py = S.player.y;
+        const dist = (m) => Math.hypot((m.renderX != null ? m.renderX : m.x) - px, (m.renderY != null ? m.renderY : m.y) - py);
+        const inside = (S.monsters || []).filter((m) => m && m.alive && !(m.curHp <= 0) && dist(m) <= R)
+          .sort((a, b) => dist(a) - dist(b)).map((m) => String(m.id));
+        W.caught = { ids: c.ids.map(String), n: c.n, r: R, inside };
+        W.frames++;
+      }
       if (Date.now() - t0 < 4000) requestAnimationFrame(watch);
     };
     requestAnimationFrame(watch);
@@ -139,4 +156,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const first = hitsAt.length ? hitsAt[0] - press.at : null;
   rec.ok('the worker\'s whirlwind hit landed ~1s after the press, not on it', first != null && first >= 800 && first <= 2200,
     { firstHitMs: first, hits: hitsAt.length });
+
+  /* ── 5. v2.3.3499: who the wind-up caught ── */
+  const caught = fire.caught;
+  rec.ok('through the wind-up the monsters inside the ring wear the catch mark (the one beside you among them)',
+    !!caught && fire.frames > 3 && caught.n >= 1 && caught.ids.includes(String(mon.id))
+      && caught.inside.slice(0, 16).every((id) => caught.ids.includes(id)), { caught, frames: fire.frames, mon: mon.id });
+  const struck = await A.page.evaluate(() => (window.__whirlHitIds || []).slice());
+  const strays = struck.filter((id) => !(caught && caught.ids.includes(id)));
+  rec.ok('...and every monster the worker\'s strike hit wore it (one on the edge may go either way)',
+    struck.length >= 1 && strays.length <= 1, { struck, strays, caught: caught && caught.ids });
+  await A.page.evaluate(() => { const S = window._gameState.current; S._whirlWindup = null; });
+  const after = await A.page.evaluate(() => window.__btWhirlCatch && window.__btWhirlCatch());
+  rec.ok('...and the marks go with the ring', after == null, after);
 }

@@ -1128,6 +1128,23 @@ export const AMULET_TIER_POWER = { simple: 1.0, ornate: 1.5, regal: 2.2, mythic:
  * intact through the sanitize pass. */
 export const AMULET_GEMS = new Set(['flame', 'frost', 'water', 'venom', 'storm', 'stone', 'wind', 'dark', 'light']);
 
+/* ═══ v2.3.3513: THE GEMS A WEAPON TAKES (weapongem.js, docs/GEM-PLAN.md) ═══
+ * The eight lands' elements -- the palette, Flora with them (the owner's
+ * decision 7: "Yes, for weapons now"), Dark and Light not: they are the
+ * realms', which are not built, and their collisions (eclipse is the biggest
+ * number in the table) are not meant to reach a weapon yet.  A Flora gem is
+ * never held before Phase 2 (the pouch keeps AMULET_GEMS only), so it simply
+ * never comes up until then.
+ *   WEAPON_GEMS <-> src/data/weaponGems.js WEAPON_GEMS (mirror-audit) */
+export const WEAPON_GEMS = new Set(['flame', 'frost', 'water', 'venom', 'storm', 'stone', 'wind', 'flora']);
+
+/* v2.3.3513: Enchanting XP for a gem set into a weapon, an amulet or a
+ * shield -- the owner's decision 11 (docs/GEM-PLAN.md: 400 each, was 20 for
+ * an amulet or shield and 25 on the phone alone for a weapon).  A gem that
+ * came back out of a weapon or shield pays it once only (weapongem.js
+ * `_gemSetXp`), or Take out and set again would buy the XP with gold. */
+export const GEM_SET_XP = 400;
+
 /* v2.3.1192 (item I follow-up): server amulet forge (amulet.js) -- the
  * forge mint tables.  Until this slice amulets were a client-crafted
  * blob and the residual forgery ceiling was a free legit-shaped mythic
