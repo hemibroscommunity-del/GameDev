@@ -138,12 +138,13 @@ const samePlace = (a, b) => !!a && !!b && a.top === b.top && a.left === b.left &
 export default function NmlAskCard({ stateRef }) {
   const [ask, setAsk] = useState(() => nmlAskCurrent());
   const [place, setPlace] = useState(null);
-  /* v2.3.3523: hitting back (see the header) */
-  const [back, setBack] = useState(() => !!(ask && ask.back));
+  /* v2.3.3523: hitting back (see the header) -- read live by the clock below,
+     for THIS window only (a new window starts from its own `back`, so one of
+     the other kind never shows for a frame) */
+  const [liveBack, setLiveBack] = useState(null);   /* { ask, v } */
   useEffect(() => nmlAskSubscribe(() => setAsk(nmlAskCurrent())), []);
   useEffect(() => {
     if (!ask) return undefined;
-    setBack(!!ask.back);
     let until = Date.now() + nmlAskMs();
     let at = cardPlace();
     setPlace(at);
@@ -158,7 +159,7 @@ export default function NmlAskCard({ stateRef }) {
       /* v2.3.3523: they attacked you while it was up, or your white skull ran out */
       let b = false;
       try { b = nmlHitBack(S, ask.id, now); } catch (e) { b = false; }
-      setBack(b);
+      setLiveBack((cur) => (cur && cur.ask === ask && cur.v === b ? cur : { ask, v: b }));
       /* the minimap or the screen moved (a turn of the phone, the band) */
       const nx = cardPlace();
       if (!samePlace(nx, at)) { at = nx; setPlace(nx); }
@@ -185,6 +186,7 @@ export default function NmlAskCard({ stateRef }) {
     openNmlInfo(St, lvl || 1);
   };
   /* v2.3.3523: hitting back says so, with the white skull you carry */
+  const back = liveBack && liveBack.ask === ask ? liveBack.v : !!ask.back;
   const title = back ? `Hit back ${ask.name}?` : `Attack ${ask.name}?`;
   return createPortal(
     <div data-nml-ask={ask.why} data-nml-ask-id={ask.id} data-nml-ask-at={pl.at} data-nml-ask-stacked={pl.stacked ? '1' : undefined}
