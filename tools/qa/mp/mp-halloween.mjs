@@ -129,10 +129,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     theirs.ok && theirs.v.skin === 'player' && /f7f2e7/i.test(theirs.v.ink), theirs.v);
   /* ...and a townsperson's line is WHITE, black words, on both phones --
      Halloween week or not. */
-  for (const [P, nm] of [[A, 'in Halloween week'], [B, 'out of it']]) {
+  /* the pictures: the player's line and a townsperson's on one screen --
+     Lil Bro (low on the screen, his bubble clear of the top bar) where he
+     stands, the coach's tip put away, the player speaking again (a new line:
+     the chat guard takes one line once in 30 s) */
+  for (const P of [A, B]) await P.page.evaluate(() => { const x = document.querySelector('button[aria-label="Dismiss tip"]'); if (x) x.click(); });
+  await A.page.evaluate(() => window.__btSendChat('boo, bro!'));
+  for (const [P, nm, pic] of [[A, 'in Halloween week', 'halloween-npc-bubble'], [B, 'out of it', 'halloween-npc-bubble-everyday']]) {
     const npcId = await P.page.evaluate(() => {
       const S = window._gameState.current;
-      const n = (S.npcs || []).find((x) => x && x.id === 'mayor_bro') || (S.npcs || [])[0];
+      const n = (S.npcs || []).find((x) => x && x.id === 'lil_bro') || (S.npcs || []).find((x) => x && x.id === 'mayor_bro') || (S.npcs || [])[0];
       if (!n) return null;
       n.chatBubble = { text: 'Happy Halloween, bro!', ts: Date.now() };
       n.chatTimer = 60000;
@@ -142,6 +148,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!npcId) continue;
     const nb = await until(P, (id) => { const b = window.__btChatBubbles && window.__btChatBubbles.get('npc:' + id); return b ? { skin: b.skin, ink: b.ink } : null; }, npcId, (v) => !!v, 6000);
     rec.ok(`...and his bubble is WHITE with black words ${nm}`, nb.ok && nb.v.skin === 'plain' && /^#?0{6}$/i.test(String(nb.v.ink).replace(/^0x/i, '')), nb.v);
-    if (P === A) await A.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/halloween-npc-bubble.png` }).catch(() => {});
+    await P.page.waitForTimeout(500);
+    await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/${pic}.png` }).catch(() => {});
   }
 }
