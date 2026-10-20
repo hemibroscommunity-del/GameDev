@@ -126,6 +126,18 @@ const POINT_LANES = ['sword', 'staff', 'bow']
    the same chain for a character level-up and a second copy would drift. */
 const SHARED_ICON_FALLBACK = PORTRAIT_FALLBACK_SRC;
 
+/* v2.3.3522: the points a stat holds -- a weapon stat in its lane, a shared
+   stat in the shared pool -- as the Points window's spend reads them (the
+   window that stays after Spend counts what landed by it) */
+function statPtsIn(R, st, laneCat) {
+  if (!R || !st) return 0;
+  return Number(st.atk ? prog3AtkPts(R, laneCat, st.key) : prog3Pts(R, st.key)) || 0;
+}
+/* v2.3.3522: how long the window that stays waits for the worker to spend
+   every point sent before it is put up again with what did land (InfoPopup
+   gives its button back a beat after, STAY_FALLBACK_MS) */
+const STAY_WAIT_MS = 3000;
+
 /* v2.3.1657: the v2.3.1332 chiseled text segments (segCls/seg) are retired
    with the text — see the icon chip row in the render. */
 
@@ -139,6 +151,23 @@ export const HeroExpanded = () => {
   const [buildCatState, setBuildCat] = useState(null);
   /* v2.3.3051: the held weapon's lane last render, to notice a swap */
   const heldCatRef = useRef(undefined);
+  /* ═══ v2.3.3522: THE POINTS WINDOW STAYS AFTER SPEND ═══
+     The owner, playtesting: "After spending a stat allocation point keep it
+     on the menu confirmation window instead of closing it to return to the
+     points main screen."  Spend (InfoPopup, `action.stay`) leaves the window
+     up and records here what it sent; after each render this render's own
+     check (stayCheckRef, set where the window is built, with this render's
+     numbers) puts the window up again once the worker has spent them all --
+     or after STAY_WAIT_MS, whatever it did spend -- with the stat's new
+     value, the next point's preview, the stepper back at 1 and
+     "✓ n points spent".  Closing the window meanwhile drops it. */
+  const stayRef = useRef(null);
+  const stayCheckRef = useRef(null);
+  useEffect(() => {
+    const f = stayCheckRef.current;
+    if (f) { try { f(); } catch (_e) { stayRef.current = null; } }
+  });
+  stayCheckRef.current = null;   /* set again below, only while the Points window can be built */
   /* ═══ v2.3.2315: AN ACCORDION THAT CLOSES ═══
      Owner: "the stat allocation accordion menu doesn't collapse when I tap
      on it."  It did not, and the header said why: it called
@@ -1465,7 +1494,9 @@ export const HeroExpanded = () => {
                 },
               };
             };
-            const openStatInfo = (st, cat, spend) => {
+            /* v2.3.3522: `extra.spent` -- the points the last Spend bought, for
+               the window put up again after it (stayRef, above) */
+            const openStatInfo = (st, cat, spend, extra) => {
               try {
                 /* v2.3.2592: the row says WHICH lane it belongs to now (four are
                    on screen at once); a shared row belongs to none and takes
@@ -1544,7 +1575,10 @@ export const HeroExpanded = () => {
                    the data-infopopup key three QA scenarios match on, and
                    it is never drawn while titleParts is set. */
                 const laneMeta = st.atk ? (PROG3_SKILL_META.find((k) => k.key === laneCat) || {}) : null;
-                infoPopupBus.open({
+                /* v2.3.3522: held in a name, so the Spend that stays knows its
+                   own window (stayRef) */
+                const spentN = extra && extra.spent > 0 ? Math.floor(extra.spent) : 0;
+                const payload = {
                   title: info.title + (st.atk
                     ? ' · ' + (laneMeta.label || '')
                     : ' · Shared'),
@@ -1629,8 +1663,22 @@ export const HeroExpanded = () => {
                     label: 'Spend point',
                     blocked: spend.blocked,
                     stepMax: spend.max,
-                    run: spend.run,
+                    /* ═══ v2.3.3522: SPEND, AND STAY ═══
+                       The owner: "keep it on the menu confirmation window
+                       instead of closing it".  `stay` keeps the window up
+                       (InfoPopup); this records what was sent, from the
+                       live character, and this sheet's check puts the
+                       window up again with the new numbers (stayRef). */
+                    stay: true,
+                    run: (n) => {
+                      const count = Math.max(1, Math.floor(Number(n) || 1));
+                      const R0 = (getState() || {}).rpg || R;
+                      stayRef.current = { st, cat, laneCat, n: count, at: Date.now(), was: statPtsIn(R0, st, laneCat), payload };
+                      spend.run(count);
+                    },
                   } : undefined,
+                  /* v2.3.3522: what the last Spend bought ("✓ 2 points spent") */
+                  spentNote: spentN > 0 ? `✓ ${spentN} point${spentN === 1 ? '' : 's'} spent` : null,
                   /* ═══ v2.3.2684: THE LANE IS CHOSEN HERE NOW ═══
                      Owner: "The button to change which of the 3 combat skills
                      it's applied to ... is a tab in the confirm window.  This
@@ -1669,8 +1717,26 @@ export const HeroExpanded = () => {
                   /* v2.3.2695: the "Melee points available: 2" line is gone
                      (owner: "Remove the redundant 'shared points available'")
                      -- the highlighted tab above carries the same number. */
-                });
+                };
+                infoPopupBus.open(payload);
               } catch (e) { /* an explainer must never block a spend */ }
+            };
+            /* ═══ v2.3.3522: THE WINDOW AGAIN, AFTER THE WORKER ANSWERS ═══
+               This render's check for a Spend that stayed (stayRef, at the
+               top): run after the render, with this render's character.  Once
+               the stat holds every point sent -- or after STAY_WAIT_MS, with
+               whatever did land -- the window goes up again through the same
+               openStatInfo, so it shows the new value, the next point's
+               preview and the stepper at 1, plus "✓ n points spent".  The
+               player closing it (or a lane tab replacing it) drops the wait. */
+            stayCheckRef.current = () => {
+              const p = stayRef.current;
+              if (!p) return;
+              if (infoPopupBus.current() !== p.payload) { stayRef.current = null; return; }
+              const got = Math.max(0, statPtsIn(R, p.st, p.laneCat) - p.was);
+              if (got < p.n && Date.now() - p.at < STAY_WAIT_MS) return;
+              stayRef.current = null;
+              openStatInfo(p.st, p.cat, spendFor(p.st, p.cat), { spent: got });
             };
             /* Short forms for the collapsed lane summary only — the mockup's
                "CRIT 2/4  DMG 1/4  SPD 0/4".  The rows themselves keep the

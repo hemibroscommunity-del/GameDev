@@ -75,7 +75,13 @@ try { Assets.setPreferences({ preferCreateImageBitmap: false }); } catch (e) { /
  * intro overlay can hold until the avatar is guaranteed flicker-free.
  * Uses allSettled so a single missing asset can't stall the gate.
  */
+/* v2.3.3520: QA (mp-joinflicker) -- when each step of the bro's preload
+   finished, so a step that never does can be named (window.__btPreloadSteps) */
+function _preStep(k) {
+  try { const o = window.__btPreloadSteps || (window.__btPreloadSteps = {}); o[k] = Date.now(); } catch (e) { /* no window */ }
+}
 export function preloadPlayerAssets() {
+  _preStep('start');
   return Promise.allSettled([
     loadPlayerSprites(),
     loadWeaponSprites(),
@@ -107,7 +113,7 @@ export function preloadPlayerAssets() {
        behind the loading overlay on entry (zoneTransitions.js).  Only the
        starting-zone (town) map is warmed here, above. */
     preloadWorldAnimations(),
-  ]).then((results) =>
+  ]).then((results) => (_preStep('loads'), results)).then((results) =>
     /* Bake the armored-body masked frames while the intro overlay is still
        up (needs the body + gear sheets above resolved first), so the
        silhouette-confinement cost is paid here instead of as hitches during
@@ -119,15 +125,18 @@ export function preloadPlayerAssets() {
        post-join idle trickle, which traded a long warm-up for early-play
        frame-rate dips. */
     (planPrewarmProgress(), prewarmMaskedBodyFrames().catch(() => {}))
-      .then(() => prewarmAltWornSets({ fast: true }).catch(() => {}))
+      .then(() => { _preStep('masks'); return prewarmAltWornSets({ fast: true }).catch(() => {}); })
+      .then(() => _preStep('alt'))
       /* v2.3.701: force GPU upload of the baked textures behind the intro
          so early play doesn't pay lazy first-draw upload stalls. */
       .then(() => uploadBakedTextures(_appRef && _appRef.renderer).catch(() => {}))
+      .then(() => _preStep('upload'))
       /* v2.3.1022: also GPU-upload the gear sheets (idle/jog + the preloaded
          swing/bowshot strips) so a first armored turn/swing doesn't pay a
          lazy first-draw upload.  Staggered + dedup'd; appended here so it runs
          after the bake and never blocks the parallel network preloads above. */
       .then(() => uploadGearTextures(_appRef && _appRef.renderer).catch(() => {}))
+      .then(() => _preStep('gear'))
       /* v2.3.1361: init the damage-popup BitmapText pipe (batcher/shader
          + glyph-atlas GPU upload) behind the intro — it was the last
          first-use render init left, paid on the first HIT of the session
@@ -142,7 +151,9 @@ export function preloadPlayerAssets() {
          (lightfx/sheenBatch.js), so the first armoured player on screen does
          not compile it either */
       .then(() => { try { if (lightFxOn()) warmSheenBatch(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ } })
-      .then(() => results)
+      /* v2.3.3520: QA (mp-joinflicker) -- when the bro's pictures were all
+         made, to set beside when the world was shown */
+      .then(() => { _preStep('done'); try { window.__btAvatarReadyAt = Date.now(); } catch (e) { /* no window */ } return results; })
   );
 }
 

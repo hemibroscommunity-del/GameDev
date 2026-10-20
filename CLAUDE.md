@@ -51,8 +51,8 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/MEMORY-PLAN.md` (what the phone holds -- sound, canvases, heaps, not
   only textures -- what leaked, and the order of the memory work with each
   item's status, v2.3.3075; `mp-memledger` measures it),
-  `docs/GEM-PLAN.md` (shards into gems, gems into weapons: what the code does
-  today -- a weapon's gem is the phone's alone, shards make nothing -- and the
+  `docs/GEM-PLAN.md` (shards into gems, gems into weapons: what the code did
+  before it -- a weapon's gem the phone's alone, shards making nothing -- and the
   owner's loop at the Gem Works: a cracked shard holds its land's raw gem 1
   time in 10, three raw gems combine into an elemental gem, the server keeps
   it in the weapon; 15 decisions, every recommended answer taken by the owner
@@ -66,7 +66,32 @@ remnant to migrate server-side, not a mode to preserve.
   freeze or root stops a monster 1.5 s (a boss half), then not again for 3 s,
   a frozen one chilled after (elemental.js `HOLD`, caps.monsterhold, kill
   switch `monsterhold: false`); `weapon-gem` suite, `mp-weapongem`:
-  docs/specs/weapon-gems.md),
+  docs/specs/weapon-gems.md; and Phase 2 BUILT in v2.3.3516: GEMS ARE BAG
+  ITEMS (`gem_raw_<e>`, `gem_<e>`; server/src/gems.js the one door --
+  `gemCount` reads the bag and any old pouch, `gemTake` the bag first,
+  `gemGive` the bag -- the pouch moved at the join, `gemsIntoBag`, not a
+  migration), the Gem Works' first tab cracks a land's shards (`shard_crack
+  {land, count}`, up to 50 an ask, 10% a shard rising to 20% with Gem
+  Cutting, the reveal played from the worker's own rolls) and combines three
+  raw gems (`gem_combine {element}`; `{element, rare: true}` one Rare Gem,
+  the eight lands only): server/src/shardcrack.js, ShardCrackPanel.jsx,
+  caps.shardcrack, kill switch `shardcrack: false` (the old one-raw-gem cut
+  and the kill's raw gem back); NO RAW GEM OFF A KILL (the shard at 112-1,111
+  on the roll); THE 400 ENCHANTING XP IS FOR GEMS YOU MADE
+  (`lifeSkills.gemsUnpaid`, owed by a combine or a Rare Gem's cut -- a
+  came-back count could not survive gems that trade); a death KEEPS gems, No
+  man's land's whole-bag loss takes them; Diego 1,200 / 4,000, the Rare Gem
+  4,000; `shard-crack` suite, `mp-shardcrack`: docs/specs/shard-crack.md;
+  and Phase 4 BUILT in v2.3.3518, EVERY GEM PULLS ITS WEIGHT: a hit whose gem
+  BEATS the monster's element lands 1.25x (elemental.js `ELEM_UP`, beside
+  fracture after the ceiling, the gem's hit and the Element Burst; monster_hit
+  `up`; no penalty, "DN" gone), a SOAKED monster's own blows land 0.8x before
+  the rail (hits.js the door's `soak` column), and a hit on a monster SHOCKED
+  before it SPARKS to the nearest other within 150 px of the impact for a
+  quarter of the hit (combat.js `_shockSpark`, monster_hit `spark`, the
+  phone's line src/game/shockSpark.js); caps/kill switches `elemup`,
+  `soakhit`, `shockspark`; `gem-weight` suite, `mp-gemweight`:
+  docs/specs/gem-weight.md),
   `docs/FUN-SOCIAL-PLAN.md` (the owner's fun & social plan checked against
   the code, v2.3.3391 -- "Go recommended": emotes and dances that move the bro
   in code, two-player moves, farm-made toys, a playground town; its rules: a
@@ -551,6 +576,19 @@ remnant to migrate server-side, not a mode to preserve.
         gate asks the rock rule once, boots to feet, and a target that passes
         it wins over a prop the parallel line met. `shot-ground` suite,
         `mp-groundline`: bow-at-props.md "v2.3.3501", TRAPS §239.
+      - since v2.3.3515 A TARGET BEHIND A ROCK IS STILL WHAT THE SHOT IS AT --
+        the owner, offered "a covered monster still counts as the target, so
+        the bolt stops at the rock": "continue recommended". The rock rule
+        passed a covered target over, so the shot carried no aim and kept the
+        parallel line; where that passed beside the rock a staff bolt hit the
+        monster (75 damage on the build before) and the bow waited, its line
+        on nothing. Now the first monster or player on the line is the shot's
+        aim, covered or not (projectiles.js `_sightLine`, which firstSightHit
+        and shotAimAt share): its ground runs boots to feet into the rock and
+        stops there, and the line ends at the rock (`_coverOf`), the bow
+        loosing into it as at any prop; a target further along is not reached
+        past it. `mp-groundline` step 5: bow-at-props.md "v2.3.3515", TRAPS
+        §241.
     - since v2.3.3230 A BUILDING YOU KEEP HITTING CATCHES FIRE -- the owner:
       "add flame effects on the building after getting hit a while in the
       location where the building is getting struck and make the flames grow
@@ -967,6 +1005,17 @@ remnant to migrate server-side, not a mode to preserve.
     darker than a third of the skin -- TRAPS §129); enclosed windows turn
     under-armour shadow; the full set is untouched; `mp-greaveslegs`
     (`window.__btLegsPeek`), src/belt-harness.html `?wear=legs&pose=&tint=&clamp=off`.
+  - Since v2.3.3520 THE ARMOUR RIDES THE ARM CAPSULE -- the owner: the east
+    jog's shoulder on a copper torso, "fix it for all future tiers". The
+    capsule (v2.3.200) clones the body over the arm on every east jog with a
+    weapon out; in the layered figure that body is the masked bake, bare at
+    the shoulder, so it stamped skin over every plate but a matched set's (the
+    knight figure, whose body IS the armour: "solved for iron"). The plate and
+    greaves now ride along as the shirt and cape do (entityRenderer
+    `_handArmChest`/`_handArmLegs`, copies of the LIVE pieces, so every metal
+    and grade; `_hideArmClones` hides them all together); `mp-armcapsule`
+    (skin over the plate 49-233 px a frame -> the hand's 0-15):
+    docs/specs/visuals-2026-10-19.md.
   - Since v2.3.3011 the view is ANOTHER 25% further out -- the owner: "If it
     is already zoom it out another 25%" -- `VIEW_OUT` 0.64 (0.8 x 0.8) in
     worldViewport.js, the bro ~54 CSS px on the QA phone with the dashboard
@@ -1273,6 +1322,29 @@ remnant to migrate server-side, not a mode to preserve.
       the Wheel's loading screen (`landAurasWarm`) and freed on leaving
       (`landAurasFree`); the Wheel only, `?noauras`; `mp-landauras`:
       docs/specs/land-auras.md.
+      - since v2.3.3511 FIRE RISES AND WATER FALLS -- the owner, after a
+        playtest: "land tree effects: fire looks like sparkles, water looks
+        like sweating", and of v2.3.3481's banner scenes "new land emblems look
+        bad enlarged (revert or show below minimap)":
+        - an ember is a glowing streak pointed the way it flies, rising FASTER
+          and cooling redder as it goes out (no random blink), with smoke, coal
+          pops and a coal-flicker glow; a Water Caves drop forms on its crown's
+          lower edge (`crown` in treeArt.js, `add-tree-art.mjs --measure`,
+          tierTrees.js `treeCrownEdge`), hangs, falls and splashes on the
+          ground at the foot (a rock: ripples); the Foundry's sparks are bursts
+          that arc down; the Hollows' glints a rock's alone; the table is
+          `src/data/landAuras.js` (no imports);
+        - a resource's specks are a POOL made before its container joins the
+          layer: a speck born or gone only moves and changes alpha, never an
+          add/remove/blend/picture change (TRAPS §218); made only near the
+          screen (`AURA_VIEW_IN`);
+        - a land's banner is the plain plaque again, and its scene a small
+          EMBLEM under the minimap (src/ui/landEmblem.js) as the plaque docks:
+          one picture px a device px, never upscaled, clear of every control
+          (beside the box sideways), gone after 3.6 s; the plate's gold scroll
+          ends cut off the pictures (cut-owner-icons.py `rim_cut`);
+        - `land-auras` suite, `owner-icons` §5, `mp-landauras`, `mp-wheelmap`:
+          docs/specs/land-auras.md, docs/specs/owner-icons.md.
     - since v2.3.3407 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
       all actions/buttons can be completed in landscape mode and on the
       computer. For instance I don't think you can harvest lifeskills right now
@@ -1955,6 +2027,30 @@ remnant to migrate server-side, not a mode to preserve.
       "You need a tool for that") is gone, a farm bed out of reach the same
       (`_tapHarvestAtCss`, `_tapFarmBedAtCss`); `mp-tapstance`:
       docs/specs/jumping.md "v2.3.3145".
+    - since v2.3.3499 25% HIGHER, AND NEVER CAUGHT HALF WAY OVER A FENCE --
+      the owner: "Try making jump 25% higher. Gets stuck on some props
+      sometimes that it should be clearing": `JUMP_PEAK` 85, `JUMP_MS` 625,
+      `JUMP_CLEAR` 0.36; a crossing once begun LATCHES (`jumpLatch`), 160 ms
+      of grace, the latches outlive the landing 450 ms for feet already in
+      one (`landedOver`); the minecart and rowboat can be jumped
+      (`JUMP_OVER_H` 87, so shots fly over them too). The same round of
+      notes: the whirlwind marks the monsters it will catch
+      (`_markWhirlCatch`), a lock lets go across the map (targeting.js
+      `lockTooFar`, 'far'), TRAP answers a touch while you jog, the owner's
+      trap picture in the world, "Missed!", the trap's sounds, death pieces
+      in their own colour, jaggier, no frozen death (`topple`), dropped items
+      1.5x: docs/specs/combat-feel-2026-10-19.md.
+    - and THE JUMP MOVES IN THE AIR -- the owner: "is there any 'jump effect'
+      you can add just using code that would make it look more realistic than
+      just the static frame?": four frames of the jog's stride by the jump's
+      phase (`JUMP_FRAMES`, `JUMP_FRAME_AT`: push-off, rise, split, reach,
+      picked by each frame's feet), and jumpFx squashes, stretches and leans
+      the whole figure ABOUT ITS FEET the emotes' way (`jumpLook`:
+      `jumpStretchAt`, `jumpLandStretch` over `JUMP_LAND_MS`, `jumpLeanAt` x
+      `JUMP_LEAN` by the speed across), the HUD held unsquashed, the feet read
+      back through `_jumpLift` / `_jumpXFix`; a kick of dust at the take-off
+      (worldFx `_takeOffDust`); nothing new loaded; `mp-jump` 2b:
+      docs/specs/jumping.md "a jump that moves".
   - Since v2.3.3017 a BLACK SCREEN LEAVES EVIDENCE -- the owner, on #782's
     preview: "I was fighting fire goblins and my screen went black", and the
     crash feed had nothing:
@@ -2041,6 +2137,18 @@ remnant to migrate server-side, not a mode to preserve.
       clear colour Pixi keeps untouched), and one that comes back see-through
       everywhere was not copied and is taken the old way. `?wdgeterror` asks
       every time; `mp-wdsample` counts the calls.
+    - since v2.3.3520 THE RECOVERY RELOAD WAITS FOR YOUR BRO -- the owner:
+      "flicker of hair/torso after returning/joining":
+      - the straight-in road (the watchdog's reload, a picker row that
+        switches keys) has no loading screen, and showed the world while the
+        armour's masks were still being baked: 26 of 58 frames drew the plain
+        body under the plate;
+      - it now holds a veil of its own until `preloadPlayerAssets` is done
+        (src/game/avatarHold.js, 20 s at most, `S._avatarArtHold`);
+      - the loading screen also waits for your hair, hat and beard colours and
+        the hat's hair-clip shapes (entityRenderer `preloadTraits`);
+      - `mp-joinflicker` (real armour from the kit; `window.__btLocalMisses()`
+        names each plain frame): docs/specs/visuals-2026-10-19.md §3.
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:
@@ -2367,6 +2475,25 @@ remnant to migrate server-side, not a mode to preserve.
       not live ("Reconnecting…"), the Points window's Spend greyed with the
       reason, and `channelShim.reconnectNow()` bringing the session back;
     - TRAPS §138: docs/specs/dead-connection.md.
+    - since v2.3.3496 COMING BACK TO THE GAME WORKS WITHOUT A TAB SWITCH --
+      the owner: "input dead after returning (needs tab switch)", "Sound only
+      returns via OPEN/weapon-swap buttons":
+      - the page hiding, coming back or losing focus ends every held press as
+        a lift (BroTown `releaseAllTouches`, the keyboard's v2.3.3006 blur
+        rule for touches), and the attack button lets go of a finger no longer
+        on the screen (`e.touches`) -- its one-finger rule had swallowed every
+        later press; `touch-stale` in the crash log, quiet;
+      - the sound's recovery runs on touchend, click, keydown and mousedown
+        only (GameApp: pointerdown/touchstart are no moment an iPhone lets
+        sound start, and spent the one-shot reclaim refused), ending with
+        `BT_AUDIO.gestureKick` (resume whatever the context says, a silent
+        sample into the speaker) while armed after a return (`armKick`:
+        visible, pageshow, focus, or a freeze the 1 s beat sees, the reclaim
+        too past 15 s); a refused reclaim tried once more;
+      - a connect stuck in CONNECTING over `CONNECT_STALL_MS` 10 s is closed
+        and made again (it held the bro still, `_netHold`), a thaw past 5 s is
+        a return (`_resumeRecover('thaw', gap)`), "I'm back" hears touchend
+        and click; `mp-comeback`: docs/specs/return-to-game.md.
   - Since v2.3.3035 THE HARVEST'S BAR IS GREEN, OVER THE RESOURCE, AND READS
     "7/10" -- the owner: "I want resource harvesting bar to be green and to
     appear above the resource, not the player head. It should also list the
@@ -2537,6 +2664,12 @@ remnant to migrate server-side, not a mode to preserve.
       screen; the five hold 1.83 MB (`window.__btWheelNpcArt()`);
     - test-world-core "the buildings' doors", `mp-wheelfolk`, `mp-wheeldoors`:
       docs/specs/wheel-doors.md.
+    - since v2.3.3520 A WALKER WHO STANDS STANDS -- the owner: "Ace is stuck
+      in one walking frame" (his shadow apart from him): a still walker drew
+      frame 0 of his walk, for Ace a leap with both feet off the ground; each
+      row names its standing frame (NPC_DATA `walk.stand`: Ace 3, Lil Bro 1,
+      Diego 2), entityRenderer `npcStandFrame`; `mp-wheelfolk` 4b:
+      docs/specs/visuals-2026-10-19.md.
   - Since v2.3.3127 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
     similar to the old FarmVille game ... Need to dig, plant seeds, fertilize,
     water", then, on the research (docs/FARMING-PLAN.md, its Phase 1): "Good.

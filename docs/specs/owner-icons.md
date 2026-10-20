@@ -1,4 +1,4 @@
-# The owner's chosen icons (v2.3.3481)
+# The owner's chosen icons (v2.3.3481; the land scenes moved under the minimap, v2.3.3511)
 
 The owner, 2026-10-19, uploaded thirteen ChatGPT sheets of game UI art. Most of
 what is on them is ChatGPT redrawing pictures the game already shows (it drew
@@ -11,7 +11,7 @@ today, at the size it would be drawn. The owner answered: *"Icon picks: 1b, 2a,
 
 | Pick | Where | Was | Now | Drawn at |
 |---|---|---|---|---|
-| 1b | Crossing into one of the Wheel's eight lands (the land banner) | The owner's animated ornaments for Frost Ridge, Flame Fields, Wind Dunes and Verdant Wilds; the name plate alone for the other four | Every land's **scene** from the sheet, standing over the game's own name plate, all eight matching ("pick 1b and I'll use the sheet's eight for every land") | about half the banner's width: ~176-211 CSS px upright, ~150 sideways |
+| 1b | Crossing into one of the Wheel's eight lands (the land banner) | The owner's animated ornaments for Frost Ridge, Flame Fields, Wind Dunes and Verdant Wilds; the name plate alone for the other four | Every land's **scene** from the sheet, all eight matching ("pick 1b and I'll use the sheet's eight for every land"): over the game's own name plate until v2.3.3511, small **under the minimap** since (below) | v2.3.3481: half the banner's width (~176-211 CSS px upright). v2.3.3511: one picture px a device px (~64 CSS px on a 3x phone), never more |
 | 2a | The Gladiator Arena window's header (from the Sheriff's Office) | The Saloon's beer mug, left over from when the arena lived in the Saloon | The gladiator **helmet** | 24 x 28 CSS px |
 | 3 | The trade request card, "*name* wants to trade" | No picture | The **handshake**, as the duel challenge card shows its swords | 40 x 26 CSS px |
 | 4 | The quest marks over a townsperson | Drawn discs: a gold "!", a still yellow "?", a green disc with a drawn check | The owner's **pins**: a gold "!" pin, the "?" pin baked **grey** (still), a gold ring with a green check | 32 x 38 world px (the disc was 32) |
@@ -82,16 +82,56 @@ Kept as they were:
 
 ### The land banner
 
-- `noteWheelLand` (src/ui/zoneBannerOverlay.js) asks `playZoneBanner` for the
-  land's `scene`. A land's banner never uses the ornament strip of the closed zone
-  with the same id; a scene that is not held (cold, or failed to load) plays the
-  plain plate, as before, and is never loaded there and then.
-- The scene stands 2 px over the plate, half the banner's width at its own shape
-  (`.bt-zone-banner.is-scene`, `--zb-scene-ar` written from the held picture).
-  The banner's box grows downward to hold it, so its top stays clear of the top
-  bar. It rises in with the plate and lifts away as the plate docks into the
-  minimap's name plate, on the plain plate's clock (1.35 s, then the 0.4 s dock);
-  with reduced motion it fades. Transform and opacity only (TRAPS §42).
+- (v2.3.3481) `noteWheelLand` (src/ui/zoneBannerOverlay.js) asked
+  `playZoneBanner` for the land's `scene`, which stood 2 px over the plate, half
+  the banner's width (~191 CSS px on a 390 phone).
+
+### v2.3.3511: the land's emblem, small, under the minimap
+
+The owner, after a playtest (2026-10-19): *"new land emblems look bad enlarged
+(revert or show below minimap)"*. A scene is about 190 x 100 picture px; drawn
+191 CSS px wide on a 3x phone it was three times its own pixels, soft, and the
+painted plate's gold scroll ends showed at its foot. Of the two ways offered,
+the second:
+
+- **The banner is the plain plate again** for every land: the element icon and
+  the name in the land's colour, docking into the minimap's plate
+  (`playZoneBanner(region, S, { title, plain: true, icon, color })`). `plain` is
+  the plate alone: never the ornament strip of the closed zone with the same id
+  (the strips stay out of the Wheel: 15.7 MB), never a picture over it; the
+  `.is-scene` rules are gone.
+- **The scene is an emblem under the minimap** (src/ui/landEmblem.js), shown as
+  the plate docks (`ZONE_BANNER_PLAY_MS + LAND_HOLD_MS`, 1.35 s; 0.9 s with
+  reduced motion), for `EMBLEM_HOLD_MS` 3.6 s, then fading over 0.6 s:
+  - its size is ONE PICTURE PX A DEVICE PX: its width over `devicePixelRatio`
+    (~62-68 CSS px on a 3x phone, ~93-103 on a 2x), never wider than
+    `EMBLEM_MAX_W` 112 (a computer at 1x draws it a little under its pixels),
+    so it is never blown up (`emblemSize`);
+  - its place: centred under the minimap's box, `EMBLEM_GAP` 8 px below it, on
+    whole device px; where that lies on a control, beside the box at its top
+    (sideways the attack disc is 34 px under the box);
+    where neither is clear it is not shown, the plate naming the land
+    (`emblemPlace`). A control is anything that takes a tap, the sticks, the
+    sprint button, the quest card, a No man's land or party card, the coach, the
+    map's own button, a prompt -- kept 6 px clear (its soft halo reaches that
+    far); a control that comes up under it while it shows (or the minimap
+    moving, or leaving the Wheel) sends it away at once;
+  - transient, not a fixture, because the owner keeps the room round the
+    minimap clear (*"It'll free up more room around the minimap"*, v2.3.3009;
+    the plate made by shrinking the map *"rather than enlargen it further"*,
+    v2.3.3108) and the plate already names the land; and it shows only when the
+    banner does (not again within 45 s, not on a walk along a border);
+  - a soft dark halo painted behind it (a radial gradient, no filter: TRAPS
+    §42) so its thin outline reads on bright ground; z 21, takes no touch;
+  - nothing new to load: the held, decoded scene and its own address
+    (`landSceneHeld`), never a load of its own.
+- **The scroll ends are cut off.** `cut-owner-icons.py` cuts each scene again
+  just above them (`rim_cut`: in the outer quarter each side, the highest of the
+  last nine rows holding a gold or brown px with the scene's dark outline right
+  above it) and makes the new last row its dark ground line (`ground_line`);
+  every land had them (ember's at rows 96-100, x 8-16). The eight files are
+  smaller by 4-12 rows (186 x 96 to 205 x 103) at a new address
+  (`SCENE_V` `?v=2.3.3511`).
 
 ### The quest pins
 
@@ -109,7 +149,7 @@ Kept as they were:
 
 | What | Loaded | Let go | Files | Decoded |
 |---|---|---|---|---|
-| The eight land scenes | behind the Wheel's loading screen (`preloadZoneAssets('wheel')` -> `preloadLandScenes`, zoneBannerPreload.js), held | on leaving the Wheel (`freeLandScenes`) | 70 KB | 0.61 MB |
+| The eight land scenes | behind the Wheel's loading screen (`preloadZoneAssets('wheel')` -> `preloadLandScenes`, zoneBannerPreload.js), held | on leaving the Wheel (`freeLandScenes`) | 64 KB | 0.56 MB (v2.3.3511: cut above the scroll ends) |
 | The four animated strips | **no longer in the Wheel**: only with the closed lands' own zones | as before | -- | **-15.7 MB in the Wheel** |
 | The three quest pins | on the loading screen (`preloadWorldAnimations` `questPins`), global | -- | 9 KB | 0.07 MB |
 | The handshake | warmed with the controls (`controlsPreload.js`): the card pops up mid-play | -- | 2.5 KB | 0.02 MB |
@@ -130,9 +170,17 @@ are DOM images, not Pixi textures, so no line of the memory budget
   drawn wheel kept for bonus spins, the disc kept as the pins' fallback), and the
   loading: the pins on the loading screen, the scenes behind the Wheel's and let
   go on leaving, no strips in the Wheel, the handshake warmed.
-- `mp-wheelmap`: the Wheel holds the eight scenes and none of the strips, and
-  Frost Ridge's banner, played again, shows the frost scene over its plate
-  (`wheelmap-04c-landbanner.png`).
+- `mp-wheelmap`: the Wheel holds the eight scenes and none of the strips; since
+  v2.3.3511 Frost Ridge's banner, played again, is the plain plate (the icon and
+  the name, no picture, no ornaments), and as it docks the frost emblem comes
+  up under the minimap at one picture px a device px, centred under the box,
+  on no control, and goes after its few seconds (`wheelmap-04c-emblem.png`);
+  none of the eight pictures keeps a scroll end at its foot; and turned to 320,
+  375, 390 and 430 wide and on its side (844 x 390, 667 x 375) the emblem
+  never lands on a control -- under the box upright, beside it sideways
+  (`wheelmap-04d-emblem-<size>.png`).
+- `owner-icons` §4d/§4f/§5 (v2.3.3511): the plain plate, the emblem's size on
+  every screen from 1x to 4x, its place and its time, the cut.
 - `mp-questguide`: Mayor Bro's offer is the "!" pin (38 world px), the waiting
   mark the grey "?" pin, the ready mark the green check pin
   (`window.__btNpcMarks`: `badge` is now the pin's state, `badgeArt`, `badgeSrc`,

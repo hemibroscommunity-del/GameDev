@@ -105,6 +105,35 @@ const forge = (ws, payload) =>
   room.webSocketMessage(ws, JSON.stringify({ type: 'amulet_forge_request', payload }));
 const lastPlayerState = (ws) => [...ws.sent].reverse().find((m) => m.type === 'player_state');
 const realRandom = Math.random;
+/* v2.3.3516: gems live in the BAG (gems.js) -- `gem_raw_<e>` and `gem_<e>`.
+   These sections were written against the old pouch's names, so they read
+   and set gems in those names through two helpers: gemsOf (the bag and any
+   pouch left, as `raw_<e>` / `polished_<e>`) and setGems (into the bag). */
+function gemsOf(ps) {
+  const out = {};
+  const add = (k, n) => { n = Math.floor(Number(n) || 0); if (n > 0) out[k] = (out[k] || 0) + n; };
+  const inv = (ps && ps.inventory) || {};
+  for (const k of Object.keys(inv)) {
+    if (k.startsWith('gem_raw_')) add('raw_' + k.slice(8), inv[k]);
+    else if (k.startsWith('gem_')) add('polished_' + k.slice(4), inv[k]);
+  }
+  const pouch = (ps && ps.lifeSkills && ps.lifeSkills.gems) || {};
+  for (const k of Object.keys(pouch)) add(k, pouch[k]);
+  return out;
+}
+function setGems(ps, map) {
+  if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {};
+  for (const k of Object.keys(ps.inventory)) if (k.startsWith('gem_')) delete ps.inventory[k];
+  if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
+  ps.lifeSkills.gems = {};
+  /* ...and the cut ones stand for gems the player MADE: owed their XP
+     (weapongem.js "THE XP, ONCE A GEM", v2.3.3516) */
+  ps.lifeSkills.gemsUnpaid = {};
+  for (const k of Object.keys(map || {})) {
+    if (k.startsWith('raw_')) ps.inventory['gem_raw_' + k.slice(4)] = map[k];
+    else if (k.startsWith('polished_')) { ps.inventory['gem_' + k.slice(9)] = map[k]; ps.lifeSkills.gemsUnpaid[k.slice(9)] = map[k]; }
+  }
+}
 
 // ── 1. join ingestion: a first connect takes no claimed ledger ──
 /* v2.3.3138: it used to CAPTURE the claim (clamped to 250 nuggets / 50
@@ -191,17 +220,17 @@ check('craft mythic consumes 10 bars + 1200g',
   { bars: ps.goldBars, coins: ps.coins, amulet: ps.amulet });
 
 // ── 4. gem ──
-ps.lifeSkills.gems = { polished_flame: 1 };
+setGems(ps, { polished_flame: 1 });
 ps.lifeSkills.enchanting = { level: 1, xp: 0 };
 await forge(ws, { op: 'gem', gem: 'nuclear' }); // not one of the nine
 check('unknown gem denies', ps.amulet.gem === null, ps.amulet);
 await forge(ws, { op: 'gem', gem: 'frost' }); // no polished_frost held
-check('gem denies without a server-held polished gem', ps.amulet.gem === null, { amulet: ps.amulet, gems: ps.lifeSkills.gems });
+check('gem denies without a server-held polished gem', ps.amulet.gem === null, { amulet: ps.amulet, gems: gemsOf(ps) });
 await forge(ws, { op: 'gem', gem: 'flame' });
 check('gem consumes the polished gem and activates the amulet',
   ps.amulet.gem === 'flame' && ps.amulet.name === 'Mythic Flame Amulet'
-  && !('polished_flame' in ps.lifeSkills.gems),
-  { amulet: ps.amulet, gems: ps.lifeSkills.gems });
+  && !('polished_flame' in gemsOf(ps)),
+  { amulet: ps.amulet, gems: gemsOf(ps) });
 /* v2.3.3513: GEM_SET_XP, 400 -- the owner's decision 11 (docs/GEM-PLAN.md),
    was the game's 20 */
 check('gem grants enchanting XP 400 (GEM_SET_XP, the owner\'s decision 11)', ps.lifeSkills.enchanting.xp === 400, ps.lifeSkills.enchanting);
@@ -219,9 +248,9 @@ ps.goldBars = 1; ps.coins = 50;
 const lockedAmulet = JSON.stringify(ps.amulet);
 await forge(ws, { op: 'craft', tierKey: 'simple' });
 check('gear lock blocks craft', JSON.stringify(ps.amulet) === lockedAmulet && ps.goldBars === 1 && ps.coins === 50, ps.amulet);
-ps.lifeSkills.gems = { polished_frost: 1 };
+setGems(ps, { polished_frost: 1 });
 await forge(ws, { op: 'gem', gem: 'frost' });
-check('gear lock blocks gem slot', ps.amulet.gem === 'flame' && ps.lifeSkills.gems.polished_frost === 1, ps.amulet);
+check('gear lock blocks gem slot', ps.amulet.gem === 'flame' && gemsOf(ps).polished_frost === 1, ps.amulet);
 ps.goldNuggets = NUGGETS_PER_BAR;
 await forge(ws, { op: 'smelt' });
 check('gear lock does NOT block smelt (resource conversion, not gear)', ps.goldNuggets === 0 && ps.goldBars === 2, { n: ps.goldNuggets, b: ps.goldBars });
@@ -279,6 +308,12 @@ const cut = (wsx, payload) =>
   room.webSocketMessage(wsx, JSON.stringify({ type: 'gem_cut_request', payload }));
 const lastCutResult = (wsx) => [...wsx.sent].reverse().find((m) => m.type === 'gem_cut_result');
 
+/* v2.3.3516: §9-§12b are the OLD gem income -- a raw gem off a kill and the
+   one-raw-gem cut -- which live on behind the crack's kill switch
+   (shardcrack.js): `shardcrack: false` brings both back.  With the switch on
+   (the default) both are refused: the shard-crack suite checks that. */
+room._liveFlags = { ...(room._liveFlags || {}), shardcrack: false };
+
 // ── 9. raw-gem kill roll (zone element, killer-only call site) ──
 {
   const target = { lifeSkills: {} };
@@ -291,9 +326,9 @@ const lastCutResult = (wsx) => [...wsx.sent].reverse().find((m) => m.type === 'g
   room._gemRawOnKill(target, 'dungeon:crypt-1'); // ...and instances have no zone config
   Math.random = realRandom;
   check('_gemRawOnKill pays raw_<zone element> exactly on a sub-rate roll',
-    target.lifeSkills.gems && target.lifeSkills.gems.raw_flame === 1
-    && Object.keys(target.lifeSkills.gems).length === 1,
-    target.lifeSkills.gems);
+    gemsOf(target) && gemsOf(target).raw_flame === 1
+    && Object.keys(gemsOf(target)).length === 1,
+    gemsOf(target));
 }
 
 // ── 10. gem_cut_request: server-held raw consume + server-rolled cut ──
@@ -302,66 +337,65 @@ const lastCutResult = (wsx) => [...wsx.sent].reverse().find((m) => m.type === 'g
 const wsc = fakeWs('cutter');
 await join(wsc, 'bp_gem_cutter', {});
 const psc = room.playerState['bp_gem_cutter'];
-psc.lifeSkills.gems = { raw_flame: 2 };
+setGems(psc, { raw_flame: 2 });
 psc.lifeSkills.gemCutting = { level: 1, xp: 0 };
 wsc.sent.length = 0;
 Math.random = () => 0.59; // level 1 -> rough 0.6 rate: 0.59 succeeds
 await cut(wsc, { gem: 'flame' });
 Math.random = realRandom;
 check('cut consumes the raw gem and mints the polished gem on a success roll',
-  psc.lifeSkills.gems.raw_flame === 1 && psc.lifeSkills.gems.polished_flame === 1,
-  psc.lifeSkills.gems);
+  gemsOf(psc).raw_flame === 1 && gemsOf(psc).polished_flame === 1,
+  gemsOf(psc));
 check('cut grants gemCutting XP 15 (client parity)', psc.lifeSkills.gemCutting.xp === 15, psc.lifeSkills.gemCutting);
 {
   const res = lastCutResult(wsc);
   check('cut answers with the private gem_cut_result (success:true)',
     res && res.payload.gem === 'flame' && res.payload.success === true, res && res.payload);
   const echo = lastPlayerState(wsc);
-  check('cut echoes player_state with the new gems map',
-    echo && echo.payload.lifeSkills && echo.payload.lifeSkills.gems
-    && echo.payload.lifeSkills.gems.polished_flame === 1,
-    echo && echo.payload.lifeSkills && echo.payload.lifeSkills.gems);
+  check('cut echoes player_state with the new gem in the bag',
+    echo && echo.payload.inventory && echo.payload.inventory.gem_flame === 1,
+    echo && echo.payload.inventory);
 }
 wsc.sent.length = 0;
 Math.random = () => 0.61; // level 1 -> rough 0.6 rate: 0.61 shatters
 await cut(wsc, { gem: 'flame' });
 Math.random = realRandom;
 check('a failed roll consumes the raw gem WITHOUT minting (shatter, raw key deleted at zero)',
-  !('raw_flame' in psc.lifeSkills.gems) && psc.lifeSkills.gems.polished_flame === 1,
-  psc.lifeSkills.gems);
+  !('raw_flame' in gemsOf(psc)) && gemsOf(psc).polished_flame === 1,
+  gemsOf(psc));
 check('shatter still grants the XP (client parity: 15 either way)', psc.lifeSkills.gemCutting.xp === 30, psc.lifeSkills.gemCutting);
 {
   const res = lastCutResult(wsc);
   check('shatter answers gem_cut_result success:false', res && res.payload.success === false, res && res.payload);
 }
 // success ladder reads the SERVER-held skill level
-psc.lifeSkills.gems = { raw_frost: 1 };
+setGems(psc, { raw_frost: 1 });
 psc.lifeSkills.gemCutting.level = 60; // perfect cut: 0.98
 Math.random = () => 0.9; // fails rough (0.6) but succeeds perfect (0.98)
 await cut(wsc, { gem: 'frost' });
 Math.random = realRandom;
 check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held level',
-  psc.lifeSkills.gems.polished_frost === 1 && GEM_CUT_TIERS.perfect.successRate === 0.98,
-  psc.lifeSkills.gems);
+  gemsOf(psc).polished_frost === 1 && GEM_CUT_TIERS.perfect.successRate === 0.98,
+  gemsOf(psc));
 // denial gates -- silent, state untouched
 {
-  const gemsBefore = JSON.stringify(psc.lifeSkills.gems);
+  const gemsBefore = JSON.stringify(gemsOf(psc));
   await cut(wsc, { gem: 'frost' }); // no raw_frost held
   await cut(wsc, { gem: 'nuclear' }); // not one of the nine
   await cut(wsc, { gem: '__proto__' }); // prototype key can't be a gem
   await cut(wsc, {}); // missing field
   check('cut denies silently on no-raw / unknown gem / prototype key / missing field',
-    JSON.stringify(psc.lifeSkills.gems) === gemsBefore, psc.lifeSkills.gems);
-  psc.lifeSkills.gems.raw_flame = 1;
+    JSON.stringify(gemsOf(psc)) === gemsBefore, gemsOf(psc));
+  psc.inventory.gem_raw_flame = 1;
   psc.dead = true;
   await cut(wsc, { gem: 'flame' });
-  check('dead players cannot cut', psc.lifeSkills.gems.raw_flame === 1, psc.lifeSkills.gems);
+  check('dead players cannot cut', gemsOf(psc).raw_flame === 1, gemsOf(psc));
   psc.dead = false;
 }
 
 // ── 11. end-to-end: a server-cut gem satisfies the amulet gem op ──
 {
-  psc.lifeSkills.gems = { raw_venom: 1 };
+  setGems(psc, { raw_venom: 1 });
   psc.lifeSkills.gemCutting = { level: 60, xp: 0 };
   Math.random = () => 0.5;
   await cut(wsc, { gem: 'venom' });
@@ -369,8 +403,8 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   psc.amulet = { tier: 'mythic', gem: null, name: 'Mythic Gold Amulet' };
   await forge(wsc, { op: 'gem', gem: 'venom' });
   check('the amulet gem op accepts a gem earned through the server cut (the hole this slice closes)',
-    psc.amulet.gem === 'venom' && !('polished_venom' in psc.lifeSkills.gems),
-    { amulet: psc.amulet, gems: psc.lifeSkills.gems });
+    psc.amulet.gem === 'venom' && !('polished_venom' in gemsOf(psc)),
+    { amulet: psc.amulet, gems: gemsOf(psc) });
 }
 
 // ── 12. join adoption: whitelist + clamp + one-time capture ──
@@ -387,7 +421,7 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
      new character starts from the server's defaults) -- and is stamped, so
      no later join adopts any either. */
   check('a first connect takes no claimed gems',
-    Object.keys(psg.lifeSkills.gems || {}).length === 0, psg.lifeSkills.gems);
+    Object.keys(gemsOf(psg) || {}).length === 0, gemsOf(psg));
   check('first connect stamps gemsCaptured into the stored record',
     psg.gemsCaptured === true && state._store.get('rpg:bp_gem_p').gemsCaptured === true,
     state._store.get('rpg:bp_gem_p').gemsCaptured);
@@ -396,8 +430,8 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   await join(wsg2, 'bp_gem_p', { rpgLifeSkills: { gems: { raw_flame: 200, polished_light: 200 } } });
   const psg2 = room.playerState['bp_gem_p'];
   check('reconnect ignores the gems claim (stored wins, gemsCaptured stamped)',
-    !psg2.lifeSkills.gems.raw_flame && !psg2.lifeSkills.gems.polished_light,
-    psg2.lifeSkills.gems);
+    !gemsOf(psg2).raw_flame && !gemsOf(psg2).polished_light,
+    gemsOf(psg2));
   // pre-slice stored record (no stamp) max-merges the claim ONCE --
   // max, not add: the stored map already holds what the original
   // bootstrap captured, adding would double-count it.  The claim goes
@@ -409,12 +443,12 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   await join(wsg3, 'bp_gem_p', { rpgLifeSkills: { gems: { ...forgedGems, raw_flame: 2, polished_water: 4 } } });
   const psg3 = room.playerState['bp_gem_p'];
   check('pre-slice stored record max-merges the claim once (server-earned counts never shrink)',
-    psg3.lifeSkills.gems.raw_flame === 3 && psg3.lifeSkills.gems.polished_water === 4,
-    psg3.lifeSkills.gems);
+    gemsOf(psg3).raw_flame === 3 && gemsOf(psg3).polished_water === 4,
+    gemsOf(psg3));
   check('...through the whitelist and the clamp (junk keys dropped, 999999 held to 200)',
-    psg3.lifeSkills.gems.polished_frost === 200 && !('raw_bogus' in psg3.lifeSkills.gems) && !('coins_hack' in psg3.lifeSkills.gems)
-      && !('raw_storm' in psg3.lifeSkills.gems) && !('polished_wind' in psg3.lifeSkills.gems),
-    psg3.lifeSkills.gems);
+    gemsOf(psg3).polished_frost === 200 && !('raw_bogus' in gemsOf(psg3)) && !('coins_hack' in gemsOf(psg3))
+      && !('raw_storm' in gemsOf(psg3)) && !('polished_wind' in gemsOf(psg3)),
+    gemsOf(psg3));
   // caps advertisement (deploy-order gate, rule 19) -- narrow flag, NOT
   // amuletForge: a v2.3.1192 worker advertises amuletForge but has no
   // cut op.
@@ -431,19 +465,19 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   const wsq = fakeWs('q1');
   await join(wsq, 'bp_gem_q', {});
   const psq = room.playerState['bp_gem_q'];
-  psq.lifeSkills.gems = { raw_flame: 10, polished_flame: 199 };
+  setGems(psq, { raw_flame: 10, polished_flame: 199 });
   psq.lifeSkills.gemCutting = { level: 60, xp: 0 };
   const realRandom12b = Math.random;
   Math.random = () => 0.5;                       // every cut succeeds
   try { for (let i = 0; i < 3; i++) await cut(wsq, { gem: 'flame' }); } finally { Math.random = realRandom12b; }
   check('setup: three server cuts take polished flame past 200',
-    psq.lifeSkills.gems.polished_flame === 202 && state._store.get('rpg:bp_gem_q').lifeSkills.gems.polished_flame === 202,
-    { live: psq.lifeSkills.gems, stored: state._store.get('rpg:bp_gem_q').lifeSkills.gems });
+    gemsOf(psq).polished_flame === 202 && gemsOf(state._store.get('rpg:bp_gem_q')).polished_flame === 202,
+    { live: gemsOf(psq), stored: gemsOf(state._store.get('rpg:bp_gem_q')) });
   const wsq2 = fakeWs('q2');
   await join(wsq2, 'bp_gem_q', { rpgLifeSkills: { gems: { polished_flame: 5 } } });
   const psq2 = room.playerState['bp_gem_q'];
   check('a reconnect keeps every gem the server paid (202, not clamped to 200)',
-    psq2.lifeSkills.gems.polished_flame === 202, psq2.lifeSkills.gems);
+    gemsOf(psq2).polished_flame === 202, gemsOf(psq2));
   // a record from before the capture stamp is still healed by the clamp
   const recq = state._store.get('rpg:bp_gem_q');
   delete recq.gemsCaptured;
@@ -451,8 +485,10 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   const wsq3 = fakeWs('q3');
   await join(wsq3, 'bp_gem_q', {});
   check('...while a record from before the capture stamp is still held to 200',
-    room.playerState['bp_gem_q'].lifeSkills.gems.polished_frost === 200, room.playerState['bp_gem_q'].lifeSkills.gems);
+    gemsOf(room.playerState['bp_gem_q']).polished_frost === 200, gemsOf(room.playerState['bp_gem_q']));
 }
+
+delete room._liveFlags.shardcrack;   /* v2.3.3516: the crack back on (above §9) */
 
 // ── 13. v2.3.1209 gem EXTRACTION (op:'extract'): server-settled strip
 // of the gear blob + polished-gem credit, mirroring ForgePanel's two
@@ -463,7 +499,7 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   await join(wsx, 'bp_ext_p', {});
   const px = room.playerState['bp_ext_p'];
   px.lifeSkills = px.lifeSkills || {};
-  px.lifeSkills.gems = {};
+  setGems(px, {});
 
   // caps advertisement (deploy-order gate, rule 19) -- narrow flag
   {
@@ -486,14 +522,14 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
     px.weapon.element1 === null && px.weapon.element2 === null
     && px.weapon.tier === 'common' && px.weapon.isVolatile === false
     && px.weapon.name === 'Iron Great Sword'
-    && px.lifeSkills.gems.polished_flame === 1 && px.lifeSkills.gems.polished_storm === 1
+    && gemsOf(px).polished_flame === 1 && gemsOf(px).polished_storm === 1
     && px.coins === 43,
-    { weapon: px.weapon, gems: px.lifeSkills.gems, coins: px.coins });
+    { weapon: px.weapon, gems: gemsOf(px), coins: px.coins });
   check('extract echoes player_state', !!lastPlayerState(wsx), null);
   {
-    const before = JSON.stringify({ w: px.weapon, g: px.lifeSkills.gems, c: px.coins });
+    const before = JSON.stringify({ w: px.weapon, g: gemsOf(px), c: px.coins });
     await forge(wsx, { op: 'extract', target: 'weapon' }); // stripped now
-    check('extract on an element-less weapon is a silent no-op', JSON.stringify({ w: px.weapon, g: px.lifeSkills.gems, c: px.coins }) === before, before);
+    check('extract on an element-less weapon is a silent no-op', JSON.stringify({ w: px.weapon, g: gemsOf(px), c: px.coins }) === before, before);
   }
 
   // --- ranged/staff slots are extractable too (all four gearBase slots) ---
@@ -504,7 +540,7 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   // client computes the identical Math.ceil, so the coin gate matches.
   check('extract rangedWeapon slot strips + credits (ceil(25*1.12)=29)',
     px.rangedWeapon.element1 === null && px.rangedWeapon.name === 'Copper Bow'
-    && px.lifeSkills.gems.polished_wind === 1 && px.coins === 71,
+    && gemsOf(px).polished_wind === 1 && px.coins === 71,
     { ranged: px.rangedWeapon, coins: px.coins });
 
   // --- woodworking weapon: the multi-word label table is exercised ---
@@ -512,7 +548,7 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   px.staffWeapon = { type: 'staff', gearBase: 'ww_crystalwood', tier: 'elemental', tierMult: 1, element1: 'frost', element2: null, isVolatile: false, name: 'Frost Staff' };
   await forge(wsx, { op: 'extract', target: 'staffWeapon' });
   check('extract woodworking staff rebuilds the multi-word tier label',
-    px.staffWeapon.name === 'Crystal Wood Staff' && px.lifeSkills.gems.polished_frost === 1 && px.coins === 75,
+    px.staffWeapon.name === 'Crystal Wood Staff' && gemsOf(px).polished_frost === 1 && px.coins === 75,
     { name: px.staffWeapon.name, coins: px.coins });
 
   // --- shield extraction: single gem, blacksmith label, flat 25g (no tierMult) ---
@@ -527,16 +563,16 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
      BLACKSMITH_TIER_LABELS -- the owner's ore after iron), so the rebuilt
      name is too; the gearBase key is still 'steel' */
   check('extract shield: gem removed + blacksmith name rebuilt + polished credited + flat 25g',
-    px.shield.gem === null && px.shield.name === 'Black Steel Shield' && px.lifeSkills.gems.polished_venom === 1 && px.coins === 75,
+    px.shield.gem === null && px.shield.name === 'Black Steel Shield' && gemsOf(px).polished_venom === 1 && px.coins === 75,
     { shield: px.shield, coins: px.coins });
 
   // --- insufficient coins: no partial spend (gear + gems untouched) ---
   px.coins = 10;
   px.shield = { gearBase: 'steel', gem: 'water', name: 'Water Shield', prov: 'minted' };
-  const gemsBefore = JSON.stringify(px.lifeSkills.gems);
+  const gemsBefore = JSON.stringify(gemsOf(px));
   await forge(wsx, { op: 'extract', target: 'shield' }); // 25 > 10
   check('extract denied on insufficient coins leaves gear + gems untouched',
-    px.shield.gem === 'water' && px.coins === 10 && JSON.stringify(px.lifeSkills.gems) === gemsBefore,
+    px.shield.gem === 'water' && px.coins === 10 && JSON.stringify(gemsOf(px)) === gemsBefore,
     { shield: px.shield, coins: px.coins });
 
   // --- stash extraction by index; out-of-range / non-integer deny ---
@@ -551,8 +587,8 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   await forge(wsx, { op: 'extract', target: 'stash', stashIdx: 0 });
   check('extract stash strips the indexed weapon + credits + charges',
     px.weaponStash[0].element1 === null && px.weaponStash[0].tier === 'common'
-    && px.weaponStash[0].name === 'Iron Sword' && px.lifeSkills.gems.polished_dark === 1 && px.coins === 75,
-    { stash: px.weaponStash, gems: px.lifeSkills.gems, coins: px.coins });
+    && px.weaponStash[0].name === 'Iron Sword' && gemsOf(px).polished_dark === 1 && px.coins === 75,
+    { stash: px.weaponStash, gems: gemsOf(px), coins: px.coins });
 
   // --- unknown / dormant-amulet target denies ---
   {
@@ -574,8 +610,8 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   check('gear lock blocks equipped extraction', px.shield.gem === 'light' && px.coins === 100, { shield: px.shield, coins: px.coins });
   await forge(wsx, { op: 'extract', target: 'stash', stashIdx: 0 });
   check('gear lock does NOT block stash extraction (not equipped gear)',
-    px.weaponStash[0].element1 === null && px.lifeSkills.gems.polished_stone === 1,
-    { stash: px.weaponStash, gems: px.lifeSkills.gems });
+    px.weaponStash[0].element1 === null && gemsOf(px).polished_stone === 1,
+    { stash: px.weaponStash, gems: gemsOf(px) });
   px._gearLockUntil = 0;
 
   // --- dead players cannot extract ---
@@ -603,13 +639,13 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   const pc = room.playerState[PIDC];
   pc.coins = 100;
   pc.lifeSkills = pc.lifeSkills || {};
-  pc.lifeSkills.gems = {};
+  setGems(pc, {});
   await room.webSocketMessage(wsc2, JSON.stringify({ type: 'shield_wear', payload: { sig: 'Wood Shield flame|wood|0.001|common' } }));
   check('setup: the claimed shield, gem and all, is on the arm',
     pc.shield && pc.shield.gem === 'flame' && pc.shield.prov !== 'minted', pc.shield);
   await forge(wsc2, { op: 'extract', target: 'shield' });
   check('extracting a claimed shield\'s gem pays no polished gem',
-    !pc.lifeSkills.gems.polished_flame, pc.lifeSkills.gems);
+    !gemsOf(pc).polished_flame, gemsOf(pc));
   check('...and charges nothing, the gem staying where it is',
     pc.coins === 100 && pc.shield.gem === 'flame', { coins: pc.coins, shield: pc.shield });
 }

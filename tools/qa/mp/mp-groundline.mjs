@@ -19,12 +19,23 @@
  *   3. ...and the bow's arrows;
  *   4. CONTROL: a snowman BEHIND the ridge, your boots and its feet either side
  *      of it: the bolts do not reach it, and the bow's sight reads the ridge;
- *   5. no page errors.
+ *   5. v2.3.3515, A TARGET BEHIND A ROCK IS STILL WHAT THE SHOT IS AT (the
+ *      owner: "continue recommended"): your boots in the gap west of the east
+ *      snowbank, a snowman past its south-west corner; the line from your
+ *      boots to its feet clips that corner, and the parallel line the shot
+ *      used to keep for a covered target passes south of it (guard, asked of
+ *      the game) -- the staff's bolts stop at the bank (on the build before,
+ *      they flew past it and hit), and the bow's sight reads the bank and its
+ *      arrows go into it (before, it waited, its line on nothing);
+ *   6. no page errors.
  */
 import * as H from './harness.mjs';
 
 const PHONE = { width: 390, height: 844 };
 const RIDGE = 'frost-rock-ridge';
+const BANK = 'frost-snowbank-e';   /* v2.3.3515 */
+/* v2.3.3515: a snowman's feet must not stand in the bank (it would be AT it, not behind it) */
+const feetOutside = (b, x, y) => !(x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1);
 
 /* A bow or a staff in hand, the attack let go, every shot the game fires
    counted (its broadcast: one a shot). */
@@ -96,12 +107,15 @@ const atSnowman = (P, fx, fy, ms) => P.page.evaluate(({ fx, fy, ms }) => new Pro
       if (!stopAt) aimNow();
       if (!gate && tt > 300 && bow) {
         const g = S._bowSight;
-        gate = g ? { d: g.d == null ? null : Math.round(g.d * 10) / 10, id: g.id } : { none: true };
+        /* v2.3.3515: + the grip the sight looked from, aimed at the snowman */
+        gate = g ? { d: g.d == null ? null : Math.round(g.d * 10) / 10, id: g.id, ox: g.ox, oy: g.oy } : { none: true };
       }
       if (tt >= ms && !stopAt) { S.autoAttack = false; S._aiming = false; stopAt = tt; }
       const flying = (S.arrows || []).some((a) => a && !a.stuckIn && !a.planted && !a.planting);
       if (stopAt && (!flying || tt - stopAt > 4000)) {
-        const out = { gate, mid: m.id, shots: window.__qaShots, monsterHits: m.maxHp - m.curHp,
+        /* v2.3.3515: + how each arrow ended (mp-sightrock's reading) */
+        const ends = (S.arrows || []).map((a) => (a.stuckIn ? 'stuck' : a.planted ? (a._inProp ? 'prop' : 'ground') : a.planting ? 'spent' : 'flying'));
+        const out = { gate, mid: m.id, shots: window.__qaShots, monsterHits: m.maxHp - m.curHp, ends,
           you: [Math.round(S.player.x), Math.round(S.player.y)], feet: [fx, fy] };
         S.monsters = keep || []; S._serverMonsters = serverWas;
         resolve(out);
@@ -180,8 +194,57 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log(`    behind the ridge: ${JSON.stringify({ staff: hidS, bow: hidB })}`);
   rec.ok(`4. CONTROL: a snowman behind the ridge -- the bolts do not reach it (${hidS.shots} cast, ${hidS.monsterHits} damage), and the bow's sight reads the ridge (${hidB.gate && hidB.gate.id}, ${hidB.monsterHits} damage)`,
     hidS.shots >= 1 && hidS.monsterHits === 0 && !!hidB.gate && hidB.gate.id === 'prop:' + RIDGE && hidB.monsterHits === 0, { hidS, hidB });
+  await P.page.waitForTimeout(600);
 
-  rec.ok('5. no page errors', errors.length === 0, errors);
+  /* ── 5. v2.3.3515: covered from your boots, past the parallel line ──
+     Your boots in the gap west of the east snowbank, a snowman 120 px past
+     its west face on the line from your boots through a point 6 px inside its
+     south edge there: that line clips the bank's south-west corner (covered),
+     and the parallel line -- the drawn shot's heading, from your boots, which
+     a covered target's shot kept until now -- runs south of the bank, where
+     nothing stands.  Its feet are placed from where your boots really landed. */
+  const bank = await P.page.evaluate((bid) => {
+    const b = (window.__btBlockers ? window.__btBlockers('frost') : []).find((x) => x && x.id === bid);
+    return b ? { x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1 } : null;
+  }, BANK);
+  if (!bank) {
+    rec.ok(`5. the ${BANK} in frost's props (guard)`, false, { bank });
+  } else {
+    /* the line the shot keeps without an aim, from your boots along the drawn
+       heading (the staff from you, the bow from its grip) to past the snowman:
+       what does it meet? */
+    const parallelHit = (B, fx, fy, from) => P.page.evaluate(({ B, fx, fy, from }) => {
+      const F = window._gameFns || {};
+      const lift = (F.monsterBodyOffsetY && F.monsterBodyOffsetY('snowman')) || 0;
+      const vx = fx - from.x, vy = (fy - lift) - from.y, n = Math.hypot(vx, vy);
+      const len = n + 60;
+      const h = window.__btSweepBlockPoint('frost', B.x, B.y, B.x + (vx / n) * len, B.y + (vy / n) * len);
+      return h && h.box ? h.box.id : null;
+    }, { B, fx, fy, from });
+    await arm(P, 'staff');
+    const cAt = await bootsAt(P, bank.x0 - 74, bank.y1 - 18, dy);
+    const B = cAt.boots;
+    const qx = bank.x0, qy = bank.y1 - 6;
+    const cfx = Math.round(bank.x0 + 120);
+    const cfy = Math.round(B.y + (qy - B.y) * (cfx - B.x) / (qx - B.x));
+    const covered = await P.page.evaluate(({ B, fx, fy }) => window.__btAttackBlocked('frost', B.x, B.y, fx, fy), { B, fx: cfx, fy: cfy });
+    const parS = await parallelHit(B, cfx, cfy, { x: cAt.x, y: cAt.y });
+    const cS = await atSnowman(P, cfx, cfy, 3600);
+    await P.page.waitForTimeout(600);
+    await arm(P, 'ranged');
+    await bootsAt(P, bank.x0 - 74, bank.y1 - 18, dy);
+    const cB = await atSnowman(P, cfx, cfy, 2600);
+    const parB = (cB.gate && isFinite(cB.gate.ox)) ? await parallelHit(B, cfx, cfy, { x: cB.gate.ox, y: cB.gate.oy }) : 'no sight';
+    console.log(`    the bank's corner: ${JSON.stringify({ bank, boots: B, feet: [cfx, cfy], covered, parS, parB, staff: cS, bow: cB })}`);
+    rec.ok(`5. guard: the ${BANK}'s south-west corner between your boots and a snowman's feet ${cfx - Math.round(B.x)} px east, ${cfy - Math.round(B.y)} px south (covered: ${covered}), the parallel line clear of every prop (staff: ${parS}, bow: ${parB})`,
+      covered === true && feetOutside(bank, cfx, cfy) && parS === null && parB === null, { bank, B, cfx, cfy, covered, parS, parB });
+    rec.ok(`5. ...the staff's bolts stop at the bank (${cS.shots} cast, ${cS.monsterHits} damage)`,
+      cS.shots >= 1 && cS.monsterHits === 0, cS);
+    rec.ok(`5. ...the bow's sight reads the bank (${cB.gate && cB.gate.id}) and its arrows go into it (${cB.shots} fired: ${cB.ends.join(', ')}; ${cB.monsterHits} damage)`,
+      !!cB.gate && cB.gate.id === 'prop:' + BANK && cB.shots >= 1 && cB.monsterHits === 0 && cB.ends.length > 0 && cB.ends.every((e) => e === 'prop'), cB);
+  }
+
+  rec.ok('6. no page errors', errors.length === 0, errors);
   stopAlive = true;
   await P.ctx.close().catch(() => {});
 }

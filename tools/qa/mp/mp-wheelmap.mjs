@@ -43,6 +43,27 @@
  * animated strips, and that Frost Ridge's banner, played again, shows the
  * frost scene over its plaque (wheelmap-04c-landbanner.png).
  *
+ * v2.3.3511, the owner after a playtest: "new land emblems look bad enlarged
+ * (revert or show below minimap)" -- 4 now checks the banner is the PLAIN
+ * plaque (the frost icon and the name, no picture over it, no ornaments), and
+ * that as it docks the frost scene comes up UNDER THE MINIMAP: one picture px
+ * a device px (never blown up), centred under the box, clear of every control
+ * on the screen, and gone after its few seconds (wheelmap-04c-emblem.png);
+ * that none of the eight pictures keeps the plate's gold scroll ends at its
+ * foot; and, the phone turned to 320, 375, 390 and 430 wide and on its side
+ * (844 x 390, 667 x 375), that it never lands on a control: under the box
+ * upright, beside it sideways where under is the attack disc's
+ * (wheelmap-04d-emblem-<w>x<h>.png).
+ * v2.3.3522, the owner: "Have icons representing each building on each
+ * building in the minimap/compass" -- 2 checks every footprint on the box
+ * wears its picture, loaded behind the loading screen, and 5 that leaving
+ * the Wheel lets them go; and "When you're in town make the expanded map
+ * zoomed in on the town so you can see which building is labeled where on
+ * the map" -- 3 checks the map opens on the town (every building on the
+ * screen, named, its picture at its door), then zooms out to the whole Wheel
+ * for the rest, and the target button in town is that view again
+ * (wheelmap-02-worldmap.png is the town view, 02b the whole Wheel).
+ *
  * Pictures land in tools/qa/mp/out/wheelmap-*.png.
  */
 import * as H from './harness.mjs';
@@ -206,6 +227,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (like(px(x, y), 0xa4553a, 26)) roof++;
     }
     rec.ok(`...drawn: the roofs' terracotta on the box round the square (${roof} CSS px)`, roof > 60, { roof });
+    /* v2.3.3522: each wears its picture (data/wheelBuildingDoors.js
+       WHEEL_BUILDING_ICONS), loaded behind the Wheel's loading screen */
+    const held = await P.page.evaluate(() => (window.__btBuildingIcons ? window.__btBuildingIcons() : null));
+    const bi = m && m.buildingIcons;
+    rec.ok(`...and each wears its building's picture, ${bi && bi.px} px on its footprint (${bi && bi.n} of ${bl.length}), the ${held && held.loaded} pictures loaded behind the loading screen (${held ? (held.bytes / 1048576).toFixed(2) : '?'} MB, ${held && held.grey} grey for the shut)`,
+      !!bi && bi.n === bl.length && bi.px === 14 && !!held && held.loaded >= bl.length && held.grey >= 1 && held.textures >= bl.length, { bi, held });
+    const r = await P.page.evaluate(() => window.__btWheelMini);
+    if (r) await P.page.screenshot({ path: join(OUT, 'wheelmap-01b-minimap-icons.png'), clip: { x: r.left, y: r.top, width: r.w, height: r.h } }).catch(() => {});
   }
   /* v2.3.3108: and the plate is drawn under it: its dark well, with lettering
      on it (light pixels among the dark) */
@@ -232,9 +261,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(900);
   let w = await wm(P);
   const opened = await P.page.evaluate(() => ({ el: !!document.querySelector('[data-world-map]'), where: (document.querySelector('[data-world-map-where]') || {}).textContent || '' }));
-  rec.ok('tapping it opens the world map: the whole Wheel, its eight lands named with their levels, and you', opened.el && w && w.open && w.labels && w.labels.lands === 8 && Math.abs(w.zoom - 1) < 0.01, { opened, w });
+  /* ═══ v2.3.3522: IN TOWN IT OPENS ON THE TOWN ═══
+     The owner: "When you're in town make the expanded map zoomed in on the
+     town so you can see which building is labeled where on the map."  It
+     opened on the whole Wheel, the town a dot.  Now, in BroTown: every
+     standing building's door on the screen, each named and wearing its
+     picture -- at the zoom the names come in or closer. */
+  const nDoors = (await P.page.evaluate(() => (window.__btWheelTownDoors ? window.__btWheelTownDoors.doors() : []))).length;
+  for (let i = 0; i < 10 && !(w && w.more && w.more.buildingsAt >= nDoors); i++) { await P.page.waitForTimeout(300); w = await wm(P); }
+  const rel = w && w.rel;
+  rec.ok(`tapping it in BroTown opens the world map ON THE TOWN: all ${w && w.more && w.more.buildingsAt} of the ${nDoors} buildings on the screen, ${w && w.more && w.more.buildings} named, ${w && w.more && w.more.buildingIcons} wearing their pictures, at zoom ${rel ? rel.toFixed(1) : '?'} (names from 6)`,
+    opened.el && !!w && w.open && nDoors >= 16 && w.more.buildingsAt === nDoors && w.more.buildings === nDoors && w.more.buildingIcons === nDoors && rel >= 6 - 1e-6,
+    { opened, w: w && { zoom: w.zoom, rel: w.rel, cx: w.cx, cy: w.cy, more: w.more } });
   rec.ok('...saying where you are', /You are in Brotown/.test(opened.where), opened);
   await shot(P, '02-worldmap');
+  /* ...and zoomed out, the whole Wheel as it always opened: its eight lands
+     named with their levels, and you */
+  for (let i = 0; i < 16 && !(w && Math.abs(w.zoom - 1) < 0.01); i++) {
+    await P.page.evaluate(() => document.querySelector('[data-world-map-zoom-out]').click());
+    await P.page.waitForTimeout(150);
+    w = await wm(P);
+  }
+  await P.page.waitForTimeout(400);
+  w = await wm(P);
+  rec.ok('...zoomed all the way out, the whole Wheel: its eight lands named with their levels, and you', !!w && w.labels && w.labels.lands === 8 && Math.abs(w.zoom - 1) < 0.01, w);
+  await shot(P, '02b-worldmap-wheel');
   const pxMap = await H.screenshotPixels(P);
   distinct = new Set();
   for (let y = 120; y < 700; y += 7) for (let x = 10; x < 380; x += 7) { const p = pxMap.at(Math.round(x * dpr), Math.round(y * dpr)); if (p) distinct.add(`${p[0] >> 4},${p[1] >> 4},${p[2] >> 4}`); }
@@ -272,7 +323,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(400);
   w = await wm(P);
-  rec.ok('the target button brings you back', meHit === 'button' && w && Math.abs(w.cx - ARRIVAL.x) < 200 && Math.abs(w.cy - ARRIVAL.y) < 200, { meHit, at: w && [w.cx, w.cy] });
+  /* v2.3.3522: in BroTown the target button is the town's view, as the map
+     opens there (every building on the screen, named) -- and that is where
+     you are */
+  rec.ok(`the target button brings you back: in BroTown to the town's view (${w && w.more && w.more.buildingsAt} buildings on the screen, zoom ${w && w.rel ? w.rel.toFixed(1) : '?'}), you on it`,
+    meHit === 'button' && !!w && Math.abs(w.cx - ARRIVAL.x) < 1500 && Math.abs(w.cy - ARRIVAL.y) < 1500 && w.more && w.more.buildingsAt === nDoors && w.rel >= 6 - 1e-6,
+    { meHit, at: w && [w.cx, w.cy], more: w && w.more });
+  /* out to about 4x the short Wheel again (where the target button used to
+     stop, under 5), for the next look: the lands' bands round town */
+  for (let i = 0; i < 5; i++) {
+    const z = await wm(P);
+    if (!z || !(z.rel > 5)) break;
+    await P.page.evaluate(() => document.querySelector('[data-world-map-zoom-out]').click());
+    await P.page.waitForTimeout(200);
+  }
+  await P.page.waitForTimeout(400);
   /* v2.3.3057 (owner: "if you tap the minimap and zoom in you can see more
      details"): what comes in as you zoom.  "Finish all quests" (above, to
      pass the Mayor's gate) left no quest to lead to, so the first one is put
@@ -411,25 +476,138 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   rec.ok(`...and out there, town off the box, its HOME BADGE rides the box's edge toward it: town ${hm.deg} degrees from you (south-east), ${hm.dist} game px away, the badge at (${hm.x}, ${hm.y}) in the box, drawn (${badge ? `${badge.white} white, ${badge.brass} brass, ${badge.dark} dark px` : 'not shown'})`,
     hm.edge === true && hm.shown === true && hm.deg >= 30 && hm.deg <= 60 && hm.x > 66 && hm.y > 66 && !!badge && badge.white >= 8 && badge.brass >= 6 && badge.dark >= 20, { home: hm, badge, quest: now4.quest || null });
-  /* v2.3.3481: the banner played again (its history forgotten, the land watch
-     asks once more 600 ms on) and caught on screen, read in the page: the
-     owner's frost SCENE, decoded, over the plaque and on the screen */
+  /* v2.3.3511: the banner played again (its history forgotten, the land watch
+     asks once more 600 ms on): the PLAIN plaque -- and as it docks, the frost
+     scene small under the minimap (src/ui/landEmblem.js) */
   const sb = await P.page.evaluate(async () => {
-    const zb = window.__btZoneBanner;
-    if (!zb || !zb.reset || !zb.onScreen) return null;
+    const zb = window.__btZoneBanner, le = window.__btLandEmblem;
+    if (!zb || !zb.reset || !zb.onScreen || !le) return null;
+    le.hide();
     zb.reset();
-    for (let i = 0; i < 80; i++) {
+    let banner = null, em = null;
+    for (let i = 0; i < 160 && !(banner && em); i++) {
       const o = zb.onScreen();
-      if (o && o.scene && o.sceneDrawn && o.sceneBox && o.sceneBox.w > 0) return { ...o, vw: innerWidth };
+      if (o && o.text && !banner) banner = o;
+      const e = le.onScreen();
+      if (e && e.drawn && e.opacity > 0.9) em = e;
       await new Promise((res) => setTimeout(res, 50));
     }
-    return zb.onScreen();
+    return { banner, em, mini: window.__btWheelMini, plate: window.__btWheelPlate, dpr: devicePixelRatio, vw: innerWidth, vh: innerHeight, log: le.log() };
   });
-  await shot(P, '04c-landbanner');
-  rec.ok(`...and the land's banner is the owner's SCENE over the plaque: "${sb && sb.text}", ${sb && sb.scene ? sb.scene.split('?')[0] : 'no scene'}${sb && sb.sceneBox ? ` ${sb.sceneBox.w}x${sb.sceneBox.h} at (${sb.sceneBox.l}, ${sb.sceneBox.t}), the plaque from y ${sb.plaqueTop}` : ''}`,
-    !!sb && /\/ui\/banners\/land-frost\.webp/.test(sb.scene || '') && sb.sceneDrawn === true && sb.text === 'Frost Ridge'
-      && sb.sceneBox.l >= 0 && sb.sceneBox.l + sb.sceneBox.w <= sb.vw && sb.sceneBox.w >= 120
-      && sb.sceneBox.t + sb.sceneBox.h <= sb.plaqueTop + 10, sb);
+  rec.ok(`...and the land's banner is the PLAIN plaque: "${sb && sb.banner && sb.banner.text}", the frost icon before it, no picture over it and no ornaments`,
+    !!sb && !!sb.banner && sb.banner.text === 'Frost Ridge' && sb.banner.plain === true && !!sb.banner.icon && sb.banner.scene === null && sb.banner.orn === false, sb && sb.banner);
+  const em = sb && sb.em;
+  await shot(P, '04c-emblem');
+  /* the controls on the screen right now, read here and not from the
+     emblem's own list: whatever takes a tap, the sticks, the cards */
+  const CONTROLS = () => Array.from(document.querySelectorAll('button, [role="button"], a[href], input, [data-disc], [data-sprint], [data-quest-hud], [data-nml-ask], [data-party-invite], [data-coach-card], [data-world-map-open], .bt-interact-prompt'))
+    .map((n) => ({ n, r: n.getBoundingClientRect() }))
+    .filter(({ n, r }) => r.width > 0 && r.height > 0 && r.width * r.height < 0.4 * innerWidth * innerHeight
+      && (typeof n.checkVisibility !== 'function' || n.checkVisibility({ opacityProperty: true, visibilityProperty: true })))
+    .map(({ n, r }) => ({ what: (n.getAttribute('data-disc') != null ? 'disc ' : '') + (n.tagName || '').toLowerCase() + (n.getAttribute('aria-label') ? ' ' + n.getAttribute('aria-label').slice(0, 24) : (n.textContent || '').trim().slice(0, 16) ? ' "' + (n.textContent || '').trim().slice(0, 16) + '"' : ''),
+      l: r.left, t: r.top, r: r.right, b: r.bottom }));
+  const onAny = (box, ctl) => ctl.filter((q) => box.l < q.r && box.l + box.w > q.l && box.t < q.b && box.t + box.h > q.t);
+  const ctl0 = await P.page.evaluate(`(${CONTROLS.toString()})()`);
+  const hit0 = em ? onAny(em.box, ctl0) : [];
+  rec.ok(em ? `...and as it docks the frost scene comes up UNDER THE MINIMAP, ${em.box.w.toFixed(1)} x ${em.box.h.toFixed(1)} CSS px from its ${em.nw} x ${em.nh}: ${(em.devW / em.nw).toFixed(2)} device px a picture px at ${sb.dpr}x (never blown up), centred under the box, ${Math.round(em.box.t - (sb.mini.top + sb.mini.h))} px below it`
+    : `...and as it docks the frost scene comes up under the minimap (${JSON.stringify(sb && sb.log && sb.log.slice(-2))})`,
+    !!em && em.land === 'frost' && em.at === 'below' && /\/ui\/banners\/land-frost\.webp\?v=2\.3\.3511/.test(em.src || '')
+      && em.devW <= em.nw + 0.5 && Math.abs(em.devW - em.nw) <= 0.5
+      && em.box.t >= sb.mini.top + sb.mini.h && em.box.t <= sb.mini.top + sb.mini.h + 12
+      && Math.abs(em.box.l + em.box.w / 2 - (sb.mini.left + sb.mini.w / 2)) <= 1
+      && em.box.l >= 0 && em.box.l + em.box.w <= sb.vw, { em, mini: sb && sb.mini });
+  rec.ok(`...and lies on no control (${ctl0.length} on the screen${hit0.length ? ': on ' + hit0.map((q) => q.what).join(', ') : ''})`, !!em && hit0.length === 0, { hit0, em: em && em.box });
+  /* gone after its few seconds */
+  const gone = await P.page.evaluate(async () => {
+    const le = window.__btLandEmblem;
+    const t0 = Date.now();
+    for (let i = 0; i < 200; i++) {
+      if (!le.onScreen()) return { ms: Date.now() - t0, since: Date.now() };
+      await new Promise((res) => setTimeout(res, 100));
+    }
+    return null;
+  });
+  const shownMs = gone && em ? gone.since - em.since : null;
+  rec.ok(`...and goes after its few seconds (on screen ${shownMs != null ? (shownMs / 1000).toFixed(1) + ' s' : 'still'}), leaving the area round the minimap clear`,
+    !!gone && shownMs != null && shownMs >= 3000 && shownMs <= 7000, { gone, shownMs });
+  /* none of the eight pictures keeps the plate's gold scroll ends at its foot
+     (tools/ui/cut-owner-icons.py rim_cut's own test: in the outer quarter each
+     side of the last FIVE rows -- where they lay, under the scene's dark
+     outline -- a gold or brown px with a dark px right above it; v2.3.3481's
+     pictures had 59 to 93 such px each, and a row higher up the same test
+     finds the scene's own lava, sand and lamps over its outline) */
+  const rims = await P.page.evaluate(async () => {
+    const out = [];
+    for (const land of ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant']) {
+      const img = new Image();
+      img.src = `/ui/banners/land-${land}.webp?v=2.3.3511`;
+      try { await img.decode(); } catch (e) { out.push({ land, err: 'no picture' }); continue; }
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      const px = (x, y) => { const o = (y * c.width + x) * 4; return [d[o], d[o + 1], d[o + 2], d[o + 3]]; };
+      const curl = ([r, gg, b, a]) => a > 128 && r > 120 && gg > 80 && b < 140 && r - b > 30 && r >= gg;
+      const dark = ([r, gg, b, a]) => a > 128 && Math.max(r, gg, b) < 70;
+      let n = 0;
+      for (let y = Math.max(1, c.height - 5); y < c.height; y++) {
+        for (let x = 0; x < c.width; x++) {
+          if (x >= c.width * 0.25 && x < c.width * 0.75) continue;
+          if (curl(px(x, y)) && [1, 2, 3].some((k) => y - k >= 0 && dark(px(x, y - k)))) n++;
+        }
+      }
+      out.push({ land, w: c.width, h: c.height, rim: n });
+    }
+    return out;
+  });
+  rec.ok(`...and none of the eight pictures keeps the plate's gold scroll ends at its foot (${rims.map((r) => `${r.land} ${r.rim != null ? r.rim : r.err}`).join(', ')})`,
+    rims.length === 8 && rims.every((r) => r.rim === 0), rims);
+
+  /* the phone turned: at each size it never lands on a control -- under the
+     box upright, beside it (or not at all) where under is taken */
+  const SIZES = [{ width: 320, height: 568 }, { width: 375, height: 667 }, { width: 390, height: 844 }, { width: 430, height: 932 }, { width: 844, height: 390 }, { width: 667, height: 375 }];
+  const sweep = [];
+  for (const vp of SIZES) {
+    await P.page.setViewportSize(vp);
+    /* the minimap re-placed for this size (its box flush with the play area's right edge, published in a frame) */
+    let mini = null;
+    for (let i = 0; i < 40; i++) {
+      await P.page.waitForTimeout(300);
+      mini = await P.page.evaluate(() => {
+        const m = window.__btWheelMini, w = document.querySelector('.brotown-wrap');
+        const r = w ? w.getBoundingClientRect() : null;
+        return m && r ? { ...m, right: r.right, vw: innerWidth, orient: document.documentElement.getAttribute('data-orient') } : null;
+      });
+      if (mini && mini.vw === vp.width && Math.abs(mini.left + mini.w - mini.right) <= 2) break;
+    }
+    await P.page.waitForTimeout(800);
+    const r = await P.page.evaluate(async () => {
+      const le = window.__btLandEmblem;
+      le.hide();
+      le.show('frost', 0);
+      let em = null;
+      for (let i = 0; i < 40; i++) {
+        await new Promise((res) => setTimeout(res, 50));
+        const e = le.onScreen();
+        if (e && e.drawn && e.opacity > 0.9) { em = e; break; }
+      }
+      return { em, log: le.log().slice(-1)[0], mini: window.__btWheelMini, dpr: devicePixelRatio, vw: innerWidth, vh: innerHeight };
+    });
+    const ctl = await P.page.evaluate(`(${CONTROLS.toString()})()`);
+    const hit = r.em ? onAny(r.em.box, ctl) : [];
+    const tag = `${vp.width}x${vp.height}`;
+    await shot(P, `04d-emblem-${tag}`);
+    sweep.push({ tag, upright: vp.height > vp.width, at: r.em ? r.em.at : null, why: r.em ? null : (r.log && r.log.why), hit: hit.map((q) => q.what),
+      inside: r.em ? r.em.box.l >= 0 && r.em.box.t >= 0 && r.em.box.l + r.em.box.w <= r.vw && r.em.box.t + r.em.box.h <= r.vh : true,
+      under: r.em && r.mini ? r.em.box.t >= r.mini.top + r.mini.h : null, devPerArt: r.em ? +(r.em.devW / r.em.nw).toFixed(3) : null, controls: ctl.length });
+    await P.page.evaluate(() => window.__btLandEmblem.hide());
+  }
+  await P.page.setViewportSize(PHONE);
+  await P.page.waitForTimeout(1500);
+  rec.ok(`...and turned to every size it lands on no control: ${sweep.map((x) => `${x.tag} ${x.at || 'not shown (' + x.why + ')'}${x.hit.length ? ' ON ' + x.hit.join('/') : ''}`).join('; ')}`,
+    sweep.length === SIZES.length && sweep.every((x) => x.hit.length === 0 && x.inside && (x.devPerArt == null || x.devPerArt <= 1.001))
+      && sweep.filter((x) => x.upright).every((x) => x.at === 'below' && x.under === true), sweep);
   for (let i = 0; i < 24; i++) {
     const pl = await P.page.evaluate(() => (window.__btZoneBanner && window.__btZoneBanner.playing ? window.__btZoneBanner.playing() : null));
     if (!pl) break;
@@ -452,5 +630,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const home = await mini(P);
   const btnHome = await P.page.evaluate(() => !!document.querySelector('[data-world-map-open]'));
   rec.ok('back in town, today\'s minimap is back and the world map\'s button is gone', back === 'town' && home && !home.wheel && home.box === 52 && !btnHome, { back, box: home && home.box, btnHome });
+  /* v2.3.3522: and the buildings' pictures were let go with the Wheel */
+  const heldHome = await P.page.evaluate(() => (window.__btBuildingIcons ? window.__btBuildingIcons() : null));
+  rec.ok('...and the buildings\' pictures went with the Wheel (none held)', !!heldHome && heldHome.loaded === 0 && heldHome.grey === 0 && heldHome.textures === 0, heldHome);
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));
 }

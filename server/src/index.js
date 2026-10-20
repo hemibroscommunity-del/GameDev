@@ -218,6 +218,7 @@ import { sparMethods } from './spar.js'; /* v2.3.3265: sparring clones of yourse
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
 import { shieldGemMethods } from './shieldgem.js'; /* v2.3.3187: a gem goes into a shield on the worker */
 import { weaponGemMethods } from './weapongem.js'; /* v2.3.3513: a gem goes into a weapon on the worker, and the monsters' hold rule */
+import { shardCrackMethods } from './shardcrack.js'; /* v2.3.3516: shards cracked for raw gems, three combined into a gem */
 import { aggroGridMethods } from './aggrogrid.js'; /* v2.3.3201: a monster looks for players near it, not through every one */
 import { tickPaceMethods } from './tickpace.js'; /* v2.3.3202: the world keeps its speed in a busy room */
 import { steadyMoversMethods } from './steadymovers.js'; /* v2.3.3203: a player walking steadily is sent less often */
@@ -542,6 +543,10 @@ export const PRIVILEGED_EVENTS = new Set([
      into a weapon and what XP it paid.  Forgeable, it would put a gem in
      another player's weapon on their screen that the worker never put there. */
   'weapon_gem_result',
+  /* v2.3.3516: the crack's and the combine's receipts (shardcrack.js) -- each
+     says what was found or made.  Forgeable, they would put gems that do not
+     exist on another player's screen. */
+  'shard_crack_result', 'gem_combine_result',
   /* v2.3.2047: the shopkeeper's two answers. Both are SERVER-EMITTED and
      both carry money -- `shop_result` names coins paid and `shop_state` is
      the public pile every client prices against. Forgeable, they would let
@@ -3276,6 +3281,11 @@ export class GameRoom {
            splash is the first source here that has a weapon to name. */
         ...(opts && opts.slot ? { slot: opts.slot } : null),
         ...(opts && opts.splash ? { splash: true } : null),
+        /* v2.3.3518: a shock's spark names the monster it leapt from (the
+           phone's arc), and an Element Burst that beat the monster's element
+           says so (its "UP"); display only (combat.js _shockSpark, burst.js) */
+        ...(opts && opts.spark ? { spark: opts.spark } : null),
+        ...(opts && opts.up ? { up: 1 } : null),
         hpPct: Math.max(0, m.hp / m.maxHp),
       },
     });
@@ -5451,6 +5461,18 @@ export class GameRoom {
         if (session.id) this._handleWeaponGem(session, msg.payload || msg);
         break;
 
+      case 'shard_crack':
+        /* v2.3.3516: a land's shards cracked for its raw gem (shardcrack.js),
+           up to 50 a message; answered by shard_crack_result.  Synchronous. */
+        if (session.id) this._handleShardCrack(session, msg.payload || msg);
+        break;
+
+      case 'gem_combine':
+        /* v2.3.3516: three raw gems -- or one Rare Gem -- into an elemental gem
+           (shardcrack.js); answered by gem_combine_result.  Synchronous. */
+        if (session.id) this._handleGemCombine(session, msg.payload || msg);
+        break;
+
       case 'cape_redeem':
         /* v2.3.2026: the player tapped Open on a golden ticket in the bag.
            The client never consumes it or grants the cape -- see the
@@ -6453,6 +6475,7 @@ Object.assign(GameRoom.prototype, noMansLandMethods); /* v2.3.3058 */
 Object.assign(GameRoom.prototype, shieldWearMethods); /* v2.3.3091 */
 Object.assign(GameRoom.prototype, shieldGemMethods); /* v2.3.3187 */
 Object.assign(GameRoom.prototype, weaponGemMethods); /* v2.3.3513 */
+Object.assign(GameRoom.prototype, shardCrackMethods); /* v2.3.3516 */
 Object.assign(GameRoom.prototype, aggroGridMethods); /* v2.3.3201 */
 Object.assign(GameRoom.prototype, tickPaceMethods); /* v2.3.3202 */
 Object.assign(GameRoom.prototype, steadyMoversMethods); /* v2.3.3203 */

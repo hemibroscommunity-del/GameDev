@@ -201,6 +201,7 @@ export const GameApp = () => {
       if (!BT_AUDIO) return;
       if (document.visibilityState === 'hidden') { try { BT_AUDIO.noteHidden(); } catch (e) {} return; }
       try { BT_AUDIO.noteVisible(); } catch (e) {}
+      try { BT_AUDIO.armKick('visible'); } catch (e) {}   /* v2.3.3496 */
       onResume(true);
     };
     document.addEventListener('visibilitychange', onVis);
@@ -225,6 +226,18 @@ export const GameApp = () => {
        to the master bus rather than by believing ctx.state.
        onResume still runs when the state does say asleep, because a real user
        gesture is the only moment iOS reliably honours resume() (v2.3.780). */
+    /* ═══ v2.3.3496: ONLY A MOMENT iOS LETS SOUND START ═══
+       The owner: "Sound only returns via OPEN/weapon-swap buttons".  This ran
+       on pointerdown and touchstart as well -- and on an iPhone neither is a
+       moment a page may start sound (a touch can still turn into a scroll;
+       iOS 9 moved the permission to touchend).  The first touch back spent
+       the one-shot session reclaim there, refused, and the touchend after it
+       found nothing left to do.  So the recovery runs on the events iOS (and
+       every desktop browser) does let sound start from -- touchend, click,
+       keydown, mousedown -- and ends with BT_AUDIO.gestureKick, which starts
+       a sound inside that moment even when the tap itself plays none (the
+       sticks and the attack button make no sound on their touchend).  The
+       press events keep the music deck's own retry, which costs nothing. */
     const onGesture = () => {
       if (!BT_AUDIO || !BT_AUDIO.ctx) return;
       /* v2.3.3073: the streamed music's <audio> may be waiting for a tap (iOS
@@ -238,8 +251,22 @@ export const GameApp = () => {
          graph looks perfectly healthy; the sound simply has no route to the
          speaker, and nothing downstream of here can tell. */
       try { if (BT_AUDIO.reclaimIfNeeded()) return; } catch (e) {}
+      try { BT_AUDIO.gestureKick(); } catch (e) {}   /* v2.3.3496 */
       if (BT_AUDIO.ctx.state !== 'running') onResume(true);
-      else { try { BT_AUDIO._audioHealthCheck(); } catch (e) {} }
+      else {
+        /* v2.3.3496: a held key repeats ~30 times a second; the bus is
+           listened to at most every 250 ms (a tap is one touchend, mousedown
+           and click, which this lets through once) */
+        const now = Date.now();
+        if (now - _checkedAt < 250) return;
+        _checkedAt = now;
+        try { BT_AUDIO._audioHealthCheck(); } catch (e) {}
+      }
+    };
+    let _checkedAt = 0;
+    const onPress = () => {
+      if (!BT_AUDIO || !BT_AUDIO.ctx) return;
+      try { if (BT_AUDIO._deckGesture) BT_AUDIO._deckGesture(); } catch (e) {}
     };
     /* v2.3.1596: CAPTURE phase, and touchend as well as touchstart.
        Confirmed on the owner's iPhone: iOS refuses ctx.resume() outside a user
@@ -251,9 +278,36 @@ export const GameApp = () => {
        `unlock` listeners above already use capture for the same reason.
        touchend is added because a touch that turns into a drag (the joystick,
        a swipe) can have its touchstart consumed by the input layer. */
-    document.addEventListener('pointerdown', onGesture, { capture: true, passive: true });
-    document.addEventListener('touchstart', onGesture, { capture: true, passive: true });
+    document.addEventListener('pointerdown', onPress, { capture: true, passive: true });
+    document.addEventListener('touchstart', onPress, { capture: true, passive: true });
     document.addEventListener('touchend', onGesture, { capture: true, passive: true });
+    /* v2.3.3496: + click, keydown, mousedown (see onGesture) */
+    document.addEventListener('click', onGesture, { capture: true, passive: true });
+    document.addEventListener('keydown', onGesture, { capture: true, passive: true });
+    document.addEventListener('mousedown', onGesture, { capture: true, passive: true });
+    /* ═══ v2.3.3496: A FREEZE IS A RETURN, EVEN WITH NO EVENT TO SAY SO ═══
+       iOS does not always fire visibilitychange (or pageshow) for a page it
+       froze and thawed -- the reason v2.3.2492 treats a bfcache restore as a
+       long absence.  A page whose timer comes round seconds late WAS frozen:
+       treated the same way (the session reclaim armed, the kick armed), so
+       the next tap mends the sound whatever the browser told us.  The kick
+       (cheap) after 4 s; the session reclaim (a new context, every sound
+       decoded again) only after FREEZE_RECLAIM_MS, which no page that stayed
+       on screen goes without a beat for -- a long load's busy seconds must
+       not cost a rebuild. */
+    const FREEZE_RECLAIM_MS = 15000;
+    let _beatAt = Date.now();
+    const _beat = setInterval(() => {
+      const now = Date.now();
+      const gap = now - _beatAt;
+      _beatAt = now;
+      if (gap > 4000 && typeof document !== 'undefined' && document.visibilityState === 'visible' && BT_AUDIO) {
+        try {
+          if (gap > FREEZE_RECLAIM_MS) BT_AUDIO.noteRestored();
+          BT_AUDIO.armKick('freeze ' + Math.round(gap / 1000) + 's');
+        } catch (e) {}
+      }
+    }, 1000);
     /* pageshow fires on iOS Safari when restoring from the bfcache
        (back/forward navigation or returning from a backgrounded tab
        that the browser unloaded).  visibilitychange does not always
@@ -284,17 +338,22 @@ export const GameApp = () => {
           if (e && e.persisted) BT_AUDIO.noteRestored();
           else BT_AUDIO.noteVisible();
         } catch (_e) {}
+        try { if (e && e.persisted) BT_AUDIO.armKick('bfcache'); } catch (_e) {}   /* v2.3.3496 */
       }
       onResume(true);
     };
-    const onFocus = () => onResume(false);
+    const onFocus = () => { try { if (BT_AUDIO) BT_AUDIO.armKick('focus'); } catch (e) {} onResume(false); };
     window.addEventListener('pageshow', onPageShow);
     window.addEventListener('focus', onFocus);
     return () => {
       document.removeEventListener('visibilitychange', onVis);
-      document.removeEventListener('pointerdown', onGesture, { capture: true });
-      document.removeEventListener('touchstart', onGesture, { capture: true });
+      document.removeEventListener('pointerdown', onPress, { capture: true });
+      document.removeEventListener('touchstart', onPress, { capture: true });
       document.removeEventListener('touchend', onGesture, { capture: true });
+      document.removeEventListener('click', onGesture, { capture: true });
+      document.removeEventListener('keydown', onGesture, { capture: true });
+      document.removeEventListener('mousedown', onGesture, { capture: true });
+      clearInterval(_beat);
       window.removeEventListener('pageshow', onPageShow);
       window.removeEventListener('focus', onFocus);
     };

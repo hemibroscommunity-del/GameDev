@@ -9,7 +9,11 @@
  *   1b  LAND_SCENE: each of the Wheel's eight lands, its scene over the land
  *       banner's name plate as you cross into it (ui/zoneBannerOverlay.js
  *       noteWheelLand); loaded behind the Wheel's loading screen and let go on
- *       leaving it (rendering/zoneBannerPreload.js);
+ *       leaving it (rendering/zoneBannerPreload.js).  v2.3.3511, the owner
+ *       after a playtest: "new land emblems look bad enlarged (revert or show
+ *       below minimap)" -- the banner is the plain plaque again and the scene
+ *       a small EMBLEM under the minimap for a few seconds, never drawn past
+ *       its own pixels (ui/landEmblem.js);
  *   2a  the Gladiator Arena window's helmet (was the Saloon's beer mug);
  *   3   the trade request card's handshake (warmed with the controls: the card
  *       pops up in the middle of play);
@@ -29,12 +33,16 @@
  * No imports: node-tested (server/test/owner-icons.test.mjs).
  */
 const V = '?v=2.3.3481';
+/* v2.3.3511: the scenes were cut again, the plate's scroll ends under them
+   gone (tools/ui/cut-owner-icons.py rim_cut): a new address, so a phone
+   holding the old pictures fetches these */
+const SCENE_V = '?v=2.3.3511';
 
 /* Keyed by the plan's region ids, which reach here from the game's state:
    a null prototype, so '__proto__' or 'toString' is no land (CLAUDE.md) */
 const SCENES = Object.create(null);
 for (const land of ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant']) {
-  SCENES[land] = '/ui/banners/land-' + land + '.webp' + V;
+  SCENES[land] = '/ui/banners/land-' + land + '.webp' + SCENE_V;
 }
 export const LAND_SCENE = Object.freeze(SCENES);
 

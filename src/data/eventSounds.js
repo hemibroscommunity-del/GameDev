@@ -246,6 +246,24 @@ export const EVENT_SOUNDS = {
      a cue nothing plays fails the sound suite (sound-cues §5d). */
   hardWood: [['wood-chop', 0.05, 0.3, 0.14, 0.9], ['pan-sizzle', 0.3, 0.6, 1.2, 1.1, 0.08, 0.2]],
   trapsMade: [['axe-chop', 0.13, 0.25, 1.6, 1.15], ['axe-chop', 1.135, 0.25, 1.4, 1.2, 0.14]],
+  /* ── v2.3.3499: THE TRAP'S OWN SOUNDS ──
+     The owner: "Make a sound when a trap gets placed on an enemy.  Make a
+     sound when a monster gets trapped (your pet)."  Setting one played a
+     wooden knock (an arrow into a barrel's, ~0.44) and a catch a big wooden
+     thunk and the old quest fanfare -- nothing that said TRAP.  Now:
+       trapSet    the latch: the menu click's snap and a clack of leather and
+                  wood (~0.7), on the worker's answer that the trap is set;
+       trapShake  the box rattling, once a shake (~0.4);
+       trapSnap   the door slamming shut -- the pick's bright ring, short --
+                  with the box's rattle, then the coin flip's win (~1.6, a
+                  catch is a reward: a quest turn-in is ~2.4); the new pet
+                  then answers in its kind's own voice (game/trapping.js
+                  petVoice);
+       trapMiss   the box splintering and the flip's loss (~1.0). */
+  trapSet: [['ui-click', 0.042, 0.17, 1.0, 0.8], ['ui-equip', 0.095, 0.3, 2.4, 0.9, 0.05]],
+  trapShake: [['ui-equip', 0.095, 0.3, 1.6, 1.25], ['axe-chop', 1.135, 0.12, 0.5, 1.6, 0.04, 0.05]],
+  trapSnap: [['mine-strike', 0.55, 0.15, 0.35, 1.5], ['ui-equip', 0.095, 0.3, 2.0, 0.85, 0.03], ['flip-win', 0, 1.6, 0.45, 1, 0.2, 0.2]],
+  trapMiss: [['axe-chop', 1.135, 0.3, 1.15, 1.05], ['axe-chop', 0.13, 0.2, 0.7, 1.35, 0.06], ['flip-lose', 0, 0.7, 0.35, 1, 0.14]],
   /* A gem polished or shattered: the crystal prop's own hit and break
      (PROP_SOUNDS.crystal), at its levels. */
   gemCut: [['sword-hit2', 0, 0.3, 0.6, 1.3], ['mine-strike', 0.06, 0.3, 0.35, 1.4]],

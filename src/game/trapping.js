@@ -185,7 +185,7 @@ export function onTrapArmed(S, p) {
     x: m ? m.x : (S.player ? S.player.x : 0),
     y: m ? m.y : (S.player ? S.player.y : 0),
   };
-  try { BT_AUDIO.propHit('wood', { vol: 0.24 }); } catch (e) { /* sound only */ }
+  cue('trapSet');   /* v2.3.3499: the latch (was a wooden knock: an arrow into a barrel's) */
   bump(S);
 }
 
@@ -225,18 +225,21 @@ export function onTrapResult(S, p) {
   S._trapLast = { ...p, at: t0 };
   bump(S);
 
-  /* the sounds, on the animation's own beats */
+  /* the sounds, on the animation's own beats.  v2.3.3499: the box's own
+     sounds (data/eventSounds.js trapSet..trapMiss) where wooden knocks and the
+     old quest fanfare were -- the owner: "Make a sound when a monster gets
+     trapped (your pet)" -- and the new pet answering in its kind's voice */
   const at = (ms, fn) => { try { setTimeout(fn, ms); } catch (e) { /* timers only */ } };
   at(DROP_MS * 0.6, () => { try { BT_AUDIO.propHit('wood', { vol: 0.3 }); } catch (e) {} });
   for (let i = 0; i < shakes; i++) {
-    at(DROP_MS + i * (SHAKE_MS + SHAKE_GAP) + SHAKE_MS * 0.3, () => { try { BT_AUDIO.propHit('wood', { vol: 0.2 }); } catch (e) {} });
+    at(DROP_MS + i * (SHAKE_MS + SHAKE_GAP) + SHAKE_MS * 0.3, () => { cue('trapShake'); });
   }
   const end = DROP_MS + shakes * (SHAKE_MS + SHAKE_GAP);
   at(end, () => {
-    try {
-      if (p.caught) { BT_AUDIO.propHit('wood', { vol: 0.5, big: true }); setTimeout(() => { try { BT_AUDIO.play('quest-complete', { vol: 0.7 }); } catch (e) {} }, 180); }
-      else BT_AUDIO.propBreak('wood', 'small', { vol: 0.42 });
-    } catch (e) { /* sound only */ }
+    if (p.caught) {
+      cue('trapSnap');
+      if (p.pet && p.pet.kind) petVoice(p.pet.kind, 0.55);
+    } else cue('trapMiss');
     /* v2.3.3123: THE REVEAL (Phase 4) -- a golden one (about one catch in
        fifty) or a Big one says so AT THE SNAP, over the trap, with the rays
        and the ring trapFx.js draws then, and the coin flip's win for gold: the
@@ -247,7 +250,9 @@ export function onTrapResult(S, p) {
         if (p.pet.gold === true) {
           words.push('Golden!');
           pushDmgPopup(S, x, y - 66, 'Golden!', '#EAC675');
-          try { BT_AUDIO.play('flip-win', { vol: 0.55 }); } catch (e) { /* sound only */ }
+          /* v2.3.3499: the snap's cue carries the flip's win now, so a golden
+             one gets the quest fanfare over it (a catch played it before) */
+          try { BT_AUDIO.play('quest-complete', { vol: 0.6, delay: 0.25 }); } catch (e) { /* sound only */ }
         }
         if (Number(p.pet.size) >= PET_BIG_AT) {
           words.push('Big one!');
@@ -266,7 +271,10 @@ export function onTrapResult(S, p) {
         if (st.hidePet && st.hidePet.id === p.pet.id) { st.hidePet = null; S._petX = x; S._petY = y; }
         bump(S);
       } else {
-        pushDmgPopup(S, x, y - 46, shakes >= 3 ? 'So close!' : 'It broke free', '#E59A94');
+        /* v2.3.3499: the owner -- 'Put "Missed!" instead of "it broke free"
+           after attempting trap'; three shakes still says how near it was */
+        pushDmgPopup(S, x, y - 46, 'Missed!', '#E59A94');
+        if (shakes >= 3) pushDmgPopup(S, x, y - 30, 'So close!', '#E9B9B4');
       }
       if (p.xp > 0) pushDmgPopup(S, x, y - 30, '+' + p.xp + ' Trapping XP', '#D8A94D');
       if (p.leveled && p.newLevel) celebrateLifeSkillLevel(S, 'trapping', p.newLevel, p.newLevel - 1);
@@ -344,12 +352,13 @@ export function petVoiceClip(kind) {
   return k && ownKey(NOISE_OF, k.look) ? NOISE_OF[k.look] : null;
 }
 let _petVoiceLast = null;   /* the clip the last pet taken out answered with, for the tests (trapProbe) */
-function petVoice(kind) {
+function petVoice(kind, delay) {
   const clip = petVoiceClip(kind);
   const c = clip && ownKey(MONSTER_NOISE_CLIPS, clip) ? MONSTER_NOISE_CLIPS[clip] : null;
   _petVoiceLast = c ? clip : 'none';
   if (!c) return false;
-  try { return !!BT_AUDIO.play('noise-' + clip, { vol: c.vol * PET_VOICE_K, rate: PET_VOICE_RATE, delay: 0.18 }); } catch (e) { return false; /* sound only */ }
+  /* v2.3.3499: `delay` -- a catch's answer waits for the snap (trapSnap) */
+  try { return !!BT_AUDIO.play('noise-' + clip, { vol: c.vol * PET_VOICE_K, rate: PET_VOICE_RATE, delay: delay != null ? delay : 0.18 }); } catch (e) { return false; /* sound only */ }
 }
 
 /* ═══ v2.3.3121: PET XP (Phase 2) ═══

@@ -305,7 +305,9 @@ async function body(P, rec) {
   console.log('    BTNSKIN shield: ' + JSON.stringify(U.block) + ' ' + JSON.stringify(uf));
   rec.ok('one real tap on Block raises the shield (not up-then-down)', uf.up === true, uf);
   rec.ok('the shield UP: Block is ON -- the warm face, the ring lit, the glow', U.block && U.block.state === 'on' && U.block.tone === 'warm' && U.block.glowOp === 1, U.block);
-  rec.ok('...still the shield\'s own picture, unfiltered (mp-rbutton\'s check)', U.block && U.block.imgs === 1 && /wood-shield/.test(U.block.imgSrc[0] || '') && U.block.filtered.length === 0, U.block);
+  /* v2.3.3522: the owner's painted shield (abil-block), not the world's wood
+     sprite -- the owner: "Block button needs a new icon" -- lit, not its grey */
+  rec.ok('...still the shield\'s own picture (the owner\'s painted shield), unfiltered (mp-rbutton\'s check)', U.block && U.block.imgs === 1 && /\/ui\/controls\/abil-block\.webp/.test(U.block.imgSrc[0] || '') && U.block.filtered.length === 0, U.block);
   rec.ok('...and Shield Bash is up beside it, in the skin, with its picture', U.bash && U.bash.shown && U.bash.state === 'normal' && U.bash.svgs.indexOf('bash') >= 0, U.bash);
   rec.ok('...neither with a word on it', ['block', 'bash'].every((k) => !U[k] || U[k].words.length === 0), ['block', 'bash'].map((k) => U[k] && U[k].words));
   await tapCentre(P, '[data-shield]');            /* and down */

@@ -65,6 +65,7 @@
 import { AMULET_GEMS, BLACKSMITH_TIER_LABELS, GEM_SET_XP } from './data.js';   /* v2.3.3513: + GEM_SET_XP */
 import { GEAR_PROV_FIELD } from './gearprov.js';
 import { shieldSig } from './shieldwear.js';
+import { gemCount, gemTake } from './gems.js'; /* v2.3.3516: gems live in the bag */
 
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
@@ -146,16 +147,14 @@ export const shieldGemMethods = {
     if (this._threatGearLocked(pid, ps)) return refuse('locked');
     const at = this._shieldGemPiece(ps, p);
     if (!at.piece) return refuse(at.reason);
-    const gems = ps.lifeSkills && typeof ps.lifeSkills === 'object' && ps.lifeSkills.gems && typeof ps.lifeSkills.gems === 'object'
-      ? ps.lifeSkills.gems : null;
-    const key = 'polished_' + gem;
-    const have = gems ? Math.floor(Number(gems[key]) || 0) : 0;
+    /* v2.3.3516: an elemental gem from the bag (gems.js: the bag, then any
+       the old pouch still holds) */
+    const have = gemCount(ps, gem, false);
     if (have < 1) return refuse('no_gem');
 
     const piece = at.piece;
     const made = !!gidOf(piece);
-    gems[key] = have - 1;
-    if (gems[key] <= 0) delete gems[key];
+    gemTake(ps, gem, false, 1);
     piece.gem = gem;
     /* only a shield known by its id takes the new name (see the header) */
     if (made) piece.name = shieldGemName(piece.gearBase, gem);
@@ -165,7 +164,7 @@ export const shieldGemMethods = {
        no-op for a piece with no id. */
     this._gearProvTouch(pid, piece);
     /* v2.3.3513: once a gem (weapongem.js _gemSetXp) -- `xp` says what it paid */
-    const x = this._gemSetXp(ps, gem, have);
+    const x = this._gemSetXp(ps, gem);
     this._saveRpg(pid, ps);
     const r = { ok: true, gem, name: piece.name, gid: gidOf(piece), sig: made ? null : shieldSig(piece), worn: at.worn, xp: x.xp };
     this._shieldGemSend(pid, r, true);

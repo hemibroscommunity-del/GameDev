@@ -484,3 +484,78 @@ to the target's feet": "Go recommended".
     as the face tattoo's ink, and with them hushed the bow-shot figure's
     tattoo is drawn too pale to count. It fails the same way on the build
     before this change.
+
+## v2.3.3515: a target behind a rock is still what the shot is at
+
+**What was wrong.** Since v2.3.3485 the gate asks the hit test's rock question
+before it counts a target: a monster or player with a rock between your boots
+and its feet is passed over. Passed over, the shot carried no aim (v2.3.3501's
+`shotAimAt` named only a target the rock rule let through), so it kept the
+PARALLEL ground line. Where that line ran beside the rock:
+
+- a staff bolt (the staff has no gate) flew on past the rock, met the monster's
+  circle, and the hit test asked about a rock between its ground point THERE,
+  beside the monster and past the rock, and the monster's feet: none, so the
+  bolt hit what the rule had called covered;
+- the bow's gate found nothing on its line and waited.
+
+On the build before, `mp-groundline`'s new step: 75 damage from four bolts to a
+snowman covered from your boots, and no arrow.
+
+**The owner**, offered "a covered monster still counts as the target, so the
+bolt stops at the rock": "continue recommended".
+
+**What changed.** projectiles.js `_sightLine`, which firstSightHit (the gate and
+the aiming line) and shotAimAt (what a shot is fired at) now share:
+
+- The first monster or player on the shot's line is what it is aimed at,
+  behind a rock or not. When it is behind one, the shot carries its aim, so its
+  ground runs from your boots to its feet (v2.3.3501), meets the rock and stops
+  there.
+- The gate's answer is that rock, at the drawn distance where the shot's ground
+  reaches it (`_coverOf`): the aiming line ends there, and the bow looses into
+  it as at any prop on its line (v2.3.3206). Its arrows stick in the rock, as
+  `mp-sightrock`'s bank already showed where the parallel line met it too.
+- As in flight: another target the shot meets before the rock, with no rock
+  between where the shot's ground is then and its feet, is hit first; a monster
+  standing IN the rock lets the shot in, and is what it lands on; and past
+  where the shot goes it stops at nothing (the bow waits). The farm's edge
+  stops a shot but is not a thing to aim at.
+- **What a player sees differently:** a target further along the line is not
+  reached past a covered one in front of it, even one you locked: the shot
+  stops at the covered one's rock, and the aiming line shows it. A prop the
+  parallel line would have met is not on the shot's ground either.
+- A target whose centre is not ahead of the shot's start keeps the old answer
+  (the aim does not apply there: `shotGroundOffset`).
+- The aim goes on the wire as `gf`, as before, so a watcher's copy stops at the
+  same rock. No worker change.
+
+**Not changed:** the code of the hit test and the flight (a shot at a covered
+target changes only by the aim it now carries), the wire's shape, and every
+shot at a target nothing covers.
+
+**Checked by.**
+
+- `mp-groundline` step 5 (new), in frost at the east snowbank on a phone: your
+  boots in the gap west of it, a snowman past its south-west corner, 194 px
+  east and 32 px south, its feet placed from where your boots really landed.
+  Guarded by the game's own answers: covered from your boots, and the parallel
+  line clear of every prop for the staff and for the bow.
+  - On the build before: the staff's 4 bolts did 75 damage to the covered
+    snowman, and the bow's sight read nothing, so it never fired.
+  - With it: 0 damage, the bolts stopping at the bank; the bow's sight on the
+    bank at 71 px (38% of the way from your boots to its feet, 38% of the
+    flight to its body), its arrows stuck in the bank, 0 damage.
+  - Steps 1-4 pass on both builds.
+- The 38 bow, staff and prop scenarios of v2.3.3501 on a phone, and
+  `mp-hitreal`'s frost and ember rows (65/65): 1,022 checks in one batch,
+  1,001 passing. The failures:
+  - `mp-hotarrow` (18): its first volley was queued, the aiming line empty at
+    the press. A lone target nothing covers gets the same answer from the gate
+    as before, and it passed alone;
+  - `mp-orbrange` and `mp-bowshield`, one check each; with hotarrow, 78/78
+    run alone;
+  - `mp-facebow`: the south bow shot's face colour, which fails on main too
+    (the owner's call).
+- On main after #1040 (gems in weapons): `mp-groundline`, `mp-sightrock`,
+  `mp-bowprops` and `mp-weapongem`, 53/53.

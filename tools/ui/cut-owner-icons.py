@@ -77,6 +77,15 @@ the first run of rows at least 85% dark (of the row's solid px) is the edge,
 and the first row after it that is 75% parchment is the plate.  The review
 measured four by eye (hollows 104, mist 89, thunder 101, tidal 98) and this
 tool refuses to write anything unless it measures the same four the same.
+v2.3.3511: AND THE PLATE'S CURLS GO TOO.  The owner, of the scenes drawn big
+over the land banner: "new land emblems look bad enlarged (revert or show
+below minimap)" -- and at their own size under the minimap the plate's two
+scroll ends still showed, gold arcs curling up into the scene's bottom
+corners (in all eight: ember's at rows 96-100, x 8-16).  So the scene is cut
+again just above them (rim_cut: in the outer quarter each side, the highest
+row of the last nine holding a gold or brown px with the scene's dark outline
+right above it) and its new last row is made the dark ground line its foot
+always had (ground_line).
 
 SIZES: a DOM picture at three times the CSS px it is DRAWN at (a 3x phone),
 never upscaled (a picture is held decoded at its own size, so a bigger file is
@@ -92,6 +101,23 @@ The quest pins are drawn on the CANVAS, 32 x 38 world px each (today's badge
 was a 32 px disc), and written into one 72 x 86 frame, centred (2.25x their
 world size, as the 64 px talk bubble is for 28 world px: a much bigger texture
 only shimmers as the view slides, cut-small-icons.py's note).  All WebP 90.
+
+v2.3.3522: THE BLOCK BUTTON'S PICTURE.  The owner, playtesting: "Block button
+needs a new icon."  The button drew the 64 px wood shield the WORLD draws on
+your arm, stretched to 30 px and pixelated -- the one control on the right
+cluster not in the owner's painted style.  Its new face is the owner's own
+round gold shield on a gold burst (brotown-rpg-ui-asset-sheet-1.png, the
+bottom row's third disc, box [293, 856, 416, 983]: the transparent columns and
+rows either side of it, measured, so no neighbour's rim comes in), cut the way
+the special attacks were (cut-small-icons.py sheet 5, v2.3.3336): it is drawn
+as a WHOLE button -- its own gold ring -- and the game's Block button keeps its
+own ring (the cooldown arc, the lit "shield up" state), so only the disc
+INSIDE the owner's ring is kept (mode `disc`: that tool's inner_disc and
+fit_disc, read from it, not copied), written edge to edge at the button's 160
+px, with a `-grey` copy in the controls' grey palette (its `grey`) for the
+cooldown -- never a CSS filter on a control (TRAPS §42).  Shield Bash keeps its
+own picture (the shield striking, a free-standing piece), so the two are never
+one picture.
 
 Writes a CONTACT SHEET (--contact out.png), each piece on the game's slate and
 on a light ground, to check by eye.  Refuses to overwrite an existing file
@@ -151,7 +177,27 @@ PIECES = [
     # v2.3.3514: the Blacksmith's Upgrade tab, drawn 22 x 22 CSS px
     dict(name='icons/ui/smith-hammer', src='fantasy-rpg-crafting-ui-asset-sheet-1.png', mode='card',
          box=(84, 309, 176, 387), css=(22, 22)),
+    # v2.3.3522: the Block button's face (the header's note) -- a round button
+    # of its own, so the disc inside its ring, 160 px like every control picture
+    dict(name='ui/controls/abil-block', src='brotown-rpg-ui-asset-sheet-1.png', mode='disc',
+         box=(293, 856, 416, 983), grow=4, px=160, control_grey=True),
 ]
+
+_csi = None
+
+
+def small_icons_tool():
+    """v2.3.3522: cut-small-icons.py, read once (its file name has hyphens, so
+    it is loaded by path): the round control pictures' inner_disc, fit_disc and
+    grey live there, and are used from there rather than copied."""
+    global _csi
+    if _csi is None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            'cut_small_icons', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cut-small-icons.py'))
+        _csi = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_csi)
+    return _csi
 
 _sheets = {}
 
@@ -302,6 +348,48 @@ def plate_top(im):
     return y
 
 
+def _curl(r, g, b, a):
+    """v2.3.3511: a px of the plate's scroll ends: gold to brown."""
+    return a > 128 and r > 120 and g > 80 and b < 140 and r - b > 30 and r >= g
+
+
+def _dark(r, g, b, a):
+    return a > 128 and max(r, g, b) < 70
+
+
+def rim_cut(im):
+    """v2.3.3511: the first row of the plate's scroll ends left under a
+    scene cut at plate_top - 3 (THE LANDS' PLATE), or None: in the outer
+    quarter each side, the highest row of the last nine holding a curl px
+    with a dark px (the scene's outline) within three rows straight above it.
+    Sand and lava are as gold, but sit ABOVE the outline."""
+    w, h = im.size
+    px = im.load()
+    top = None
+    for y in range(max(1, h - 9), h):
+        for x in list(range(0, int(w * 0.25))) + list(range(int(w * 0.75), w)):
+            if not _curl(*px[x, y]):
+                continue
+            if any(_dark(*px[x, yy]) for yy in range(max(0, y - 3), y)):
+                if top is None or y < top:
+                    top = y
+    return top
+
+
+def ground_line(im):
+    """v2.3.3511: each column's lowest solid px dark, as the plate's dark top
+    edge was: the scene's ground line, after rim_cut took the rows under it."""
+    px = im.load()
+    for x in range(im.width):
+        for y in range(im.height - 1, -1, -1):
+            r, g, b, a = px[x, y]
+            if a > 128:
+                if max(r, g, b) >= 70:
+                    px[x, y] = (int(r * 0.18), int(g * 0.14), int(b * 0.12), a)
+                break
+    return im
+
+
 def resize(im, size):
     """Lanczos on premultiplied colour, so a see-through px's colour never
     bleeds into the edge (cut-bag-icons.py fit)."""
@@ -362,7 +450,7 @@ def main():
         short = p['name'].split('/')[-1]
         if only and short not in only and p['name'] not in only:
             continue
-        if p['mode'] == 'alpha':
+        if p['mode'] in ('alpha', 'disc'):
             im = cut_alpha(p['src'], p['box'], p.get('amin', 230), p.get('grow', 6))
         elif p['mode'] == 'card':
             im = cut_card(p['src'], p['box'], p.get('tol', 16), p.get('ramp', 18))
@@ -377,9 +465,22 @@ def main():
                 return 1
             im = im.crop((0, 0, im.width, top - 3))
             im = im.crop(im.getbbox())
+            # v2.3.3511: and the plate's scroll ends under it (the header)
+            rim = rim_cut(im)
+            if rim is None:
+                print(f'ABORT {short}: no scroll ends found under the scene (the sheet changed?)')
+                return 1
+            im = ground_line(im.crop((0, 0, im.width, rim)))
+            im = im.crop(im.getbbox())
             print(f'  {short:16s} vignette {raw[0]}x{raw[1]}, plate from row {top}'
-                  f'{" (the review: " + str(want) + ")" if want is not None else ""}, scene {im.width}x{im.height}')
+                  f'{" (the review: " + str(want) + ")" if want is not None else ""}, scroll ends from row {rim},'
+                  f' scene {im.width}x{im.height}')
             out = im
+        elif p['mode'] == 'disc':
+            # v2.3.3522: a round button's face -- the disc inside its own ring
+            csi = small_icons_tool()
+            out = csi.fit_disc(csi.inner_disc(im), p['px'])
+            print(f'  {short:16s} cut {raw[0]}x{raw[1]} -> the disc inside its ring, {out.width}x{out.height}')
         elif p.get('pin'):
             out = to_pin(im)
             print(f'  {short:16s} cut {raw[0]}x{raw[1]} -> {out.width}x{out.height} frame')
@@ -391,6 +492,11 @@ def main():
         writes.append((p['name'], out))
         if p.get('grey'):
             g = grey(out)
+            cuts.append((p['name'] + '-grey', g))
+            writes.append((p['name'] + '-grey', g))
+        if p.get('control_grey'):
+            # v2.3.3522: the controls' grey palette, as every -grey control picture
+            g = small_icons_tool().grey(out)
             cuts.append((p['name'] + '-grey', g))
             writes.append((p['name'] + '-grey', g))
     if contact:

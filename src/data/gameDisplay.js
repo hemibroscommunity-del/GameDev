@@ -1968,12 +1968,21 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   SILENT_WAV: 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=',
   /* Re-assert the audio session category.  Cheap, silent, and safe to repeat. */
   _reclaimSession: function _reclaimSession() {
+    var self = this;
     try {
       var a = new Audio(this.SILENT_WAV);
       a.setAttribute('playsinline', '');
       a.setAttribute('webkit-playsinline', '');
       var pr = a.play();
-      if (pr && pr.catch) pr.catch(function () {});
+      /* v2.3.3496: a claim iOS REFUSED (not a moment it lets sound start) is
+         tried once more on the next one, never more -- each try rebuilds the
+         context, and a page refused every time must not rebuild on every tap */
+      if (pr && pr.catch) pr.catch(function (err) {
+        if (err && err.name === 'NotAllowedError' && !self._reclaimRetried) {
+          self._reclaimRetried = true;
+          self._needsSessionReclaim = true;
+        }
+      });
     } catch (e) {}
   },
   noteHidden: function noteHidden() { this._hiddenAt = Date.now(); },
@@ -2008,6 +2017,64 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   noteRestored: function noteRestored() {
     this._hiddenAt = 0;
     this._needsSessionReclaim = true;
+  },
+  /* ═══ v2.3.3496: THE FIRST TAP BACK STARTS A SOUND ═══
+     The owner: "Sound only returns via OPEN/weapon-swap buttons".  Measured
+     in the code: the game's gesture handler did its recovery on pointerdown
+     and touchstart too -- and on an iPhone those are NOT moments it lets a
+     page start sound (a touch can still become a scroll; iOS 9 moved the
+     permission to touchend).  The one-shot session reclaim (v2.3.1604) was
+     spent there, refused, on the very first touch back; the world's own
+     controls (the sticks, the button) make no sound inside a touchend; and
+     nothing ever asked a context that READS 'running' to resume -- the
+     state iOS leaves it in with no route to the speaker.  The OPEN pill
+     (pointerup -> the menu click) and the weapon swap (touchend -> its
+     sound) were the only taps that started a sound inside the moment iOS
+     allows, which is why only they brought it back.
+     GameApp now runs the recovery on touchend, click, keydown and mousedown
+     only, and this is its last step: ask the context to resume whatever it
+     says it is, and start a one-sample silent sound straight into the
+     speaker, so a tap that plays nothing of its own still gives iOS the
+     sound start it waits for.  Armed for KICK_ARMED_MS after a return
+     (armKick: visible, pageshow, focus, a freeze) and whenever the context
+     is not running; otherwise a tap costs nothing. */
+  KICK_ARMED_MS: 20000,
+  armKick: function armKick(why) {
+    this._kickUntil = Date.now() + this.KICK_ARMED_MS;
+    this._kickWhy = why || 'return';
+    this._reclaimRetried = false;
+  },
+  gestureKick: function gestureKick() {
+    if (!this.ctx) return false;
+    var st = this.ctx.state;
+    if (st === 'running' && !(this._kickUntil > Date.now())) return false;
+    try {
+      var p = this.ctx.resume && this.ctx.resume();
+      if (p && p.catch) p.catch(function () {});
+    } catch (e) {}
+    try {
+      if (!this._kickBuf || this._kickCtx !== this.ctx) {
+        this._kickBuf = this.ctx.createBuffer(1, 1, this.ctx.sampleRate);
+        this._kickCtx = this.ctx;
+      }
+      var src = this.ctx.createBufferSource();
+      src.buffer = this._kickBuf;
+      src.connect(this.ctx.destination);
+      src.onended = function () { try { src.disconnect(); } catch (e2) {} };
+      src.start(0);
+    } catch (e) {}
+    this._kicks = (this._kicks || 0) + 1;
+    /* the evidence, once a return: what the context said when the tap came */
+    if (this._kickWhy) {
+      var why = this._kickWhy;
+      this._kickWhy = null;
+      try {
+        import('../debug/crashTrap.js').then(function (ct) {
+          ct.recordCrash('audio-kick', 'first tap after ' + why + ': context was ' + st);
+        }).catch(function () {});
+      } catch (e) {}
+    }
+    return true;
   },
   /* Called from the touch handler.  A gesture is the only moment iOS honours
      either half of this. */
@@ -5727,6 +5794,8 @@ export const NPC_DATA = [{
   walk: {
     base: '/sprites/npc/lil-bro-walk-',
     frames: 4,
+    /* v2.3.3520: the frame he STANDS on (entityRenderer _updateNPCs) -- planted and centred (frame 0 leans 11 px right of his spot) */
+    stand: 1,
     dirs: ['south', 'southwest', 'west', 'northwest',
       'north', 'northeast', 'east', 'southeast'],
   },
@@ -5857,6 +5926,8 @@ export const NPC_DATA = [{
   walk: {
     base: '/sprites/npc/cardsharp-bro-walk-',
     frames: 4,
+    /* v2.3.3520: the frame he STANDS on (entityRenderer _updateNPCs) -- the owner: "Ace is stuck in one walking frame" (and a shadow apart from him): a still walker was drawn on frame 0, which for Ace is mid-leap, both feet 8 px off the ground (his shadow is cast from the ground line, so it lay apart from him); frame 3 is planted, feet together, centred */
+    stand: 3,
     dirs: ['south', 'southwest', 'west', 'northwest',
       'north', 'northeast', 'east', 'southeast'],
   },
@@ -5909,6 +5980,8 @@ export const NPC_DATA = [{
   walk: {
     base: '/sprites/npc/shopkeeper-bro-walk-',
     frames: 4,
+    /* v2.3.3520: the frame he STANDS on (entityRenderer _updateNPCs) -- planted and nearest his spot (frame 0 stands 21 px right of it) */
+    stand: 2,
     dirs: ['south', 'southwest', 'west', 'northwest',
       'north', 'northeast', 'east', 'southeast'],
   },

@@ -6,6 +6,7 @@
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
 import { peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's axe, heard */
+import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn as a bolt */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { keepOnGpuOnly } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
@@ -295,7 +296,7 @@ import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, S
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
 import { variantSpritesFor } from '../monsterVariantSprites.js';
-import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.2923 */ } from '../../data/monsterVariants.js';
+import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.2923 */, isIntangible /* v2.3.3499: the whirlwind's catch is what it can hit */ } from '../../data/monsterVariants.js';
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
@@ -672,11 +673,13 @@ import { updateNodeLabel, killNodeLabel, nodeLabelWorldH, NODE_LABEL_GAP, nodeNa
 import { WheelDoors } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn */
 import { WheelSignposts, findGateSignposts } from '../wheelSignposts.js';   /* v2.3.3062: Brotown's signposts, named */
 import { TrapFx } from '../trapFx.js';   /* v2.3.3120: the trap's mark, shakes, snap and break */
+import { TRAP_ICON_URL } from '../controlsPreload.js';   /* v2.3.3499: ...drawn with the owner's box trap */
 import { wheelObjectsInfo, wheelMapInfo } from '@/game/wheelTrial.js';      /* v2.3.3062: where they stand, and the lands */
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 import { DEFENSE_POPUP_KEY, DEFENSE_POPUP_SRC } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's shield on "Defense Lv N" */
 import { halloweenOn } from '@/game/season.js';   /* v2.3.3395: Halloween week's speech bubbles */
+import { BUBBLE_SKINS, bubbleSkinFor } from '@/game/bubbleSkins.js';   /* v2.3.3522: a townsperson's bubble white, a player's dark */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -1428,6 +1431,11 @@ Promise.all(Object.values(ZONE_SHARDS).map((s) =>
 const MAGIC_BOLT_FRAMES = [];
 const MAGIC_BOLT_ANCHOR = { x: 0.688, y: 0.534 };
 const MAGIC_BOLT_FRAME_MS = 90;
+/* v2.3.3499: the owner's box trap picture, for the trap in the world
+   (trapFx.js) -- the same file the TRAP pop-up, the bag and the Traps tab show
+   (controlsPreload.js TRAP_ICON_URL), here as a texture: ~0.26 MB decoded */
+let _trapArt = null;
+_fxLoad(TRAP_ICON_URL).then((tex) => { _trapArt = tex; }).catch(() => { /* the drawn box stands in */ });
 _fxLoad('/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334').then((tex) => {
   if (!tex || !tex.source) return;
   const fw = Math.floor(tex.source.width / 4);
@@ -2646,25 +2654,27 @@ const EMOTE_POP_PX = 30;
    load): a night-purple bubble ringed in pumpkin orange, its words cream,
    18 October (the 24th until v2.3.3463) to 1 November by the phone's
    calendar.  Made once, as the everyday gradient is. */
-let _spookyBubbleGrad = null;
-const SPOOKY_BUBBLE = Object.freeze({ stroke: 0xFF8A1F, text: '#FFE7C2' });
-function spookyBubbleGradient() {
-  if (!_spookyBubbleGrad) {
-    _spookyBubbleGrad = new FillGradient({
+/* ═══ v2.3.3522: A SKIN BY WHO IS SPEAKING (game/bubbleSkins.js) ═══
+   The owner: "Make Npc dialog boxes white. Keep players the darker color to
+   differentiate."  A townsperson's bubble is the white one always, a player's
+   dark always -- Halloween's purple in its week, Lantern Slate's the rest of
+   the year.  The three skins' colours are data (bubbleSkins.js); each one's
+   gradient made once, as v2.3.2823's was (`_chatBubbleGrad` above is the
+   white one's, kept by its name). */
+const _bubbleGrads = Object.create(null);
+function bubbleGradient(skin) {
+  const sk = BUBBLE_SKINS[skin] || BUBBLE_SKINS.plain;
+  const k = BUBBLE_SKINS[skin] ? skin : 'plain';
+  if (k === 'plain' && _chatBubbleGrad) return _chatBubbleGrad;
+  if (!_bubbleGrads[k]) {
+    const g = new FillGradient({
       type: 'linear', start: { x: 0, y: 0 }, end: { x: 0, y: 1 }, textureSpace: 'local',
-      colorStops: [{ offset: 0, color: '#4A2C66' }, { offset: 0.55, color: '#3A2152' }, { offset: 1, color: '#26153A' }],
+      colorStops: [{ offset: 0, color: sk.stops[0] }, { offset: 0.55, color: sk.stops[1] }, { offset: 1, color: sk.stops[2] }],
     });
+    _bubbleGrads[k] = g;
+    if (k === 'plain') _chatBubbleGrad = g;
   }
-  return _spookyBubbleGrad;
-}
-function chatBubbleGradient() {
-  if (!_chatBubbleGrad) {
-    _chatBubbleGrad = new FillGradient({
-      type: 'linear', start: { x: 0, y: 0 }, end: { x: 0, y: 1 }, textureSpace: 'local',
-      colorStops: [{ offset: 0, color: '#FFFFFF' }, { offset: 0.55, color: '#F6F7F8' }, { offset: 1, color: '#DCE2E5' }],
-    });
-  }
-  return _chatBubbleGrad;
+  return _bubbleGrads[k];
 }
 
 /* Emoji-safe label style for chat bubbles, NPC names, etc. that may
@@ -2813,15 +2823,22 @@ const LOOT_Z = {
   weapon: 30, gem: 40, armor: 50, beam: 55, label: 60, owner: 70, rareText: 80,
 };
 /* v2.3.3473: a dropped item's picture, in world px (a bro is ~106 tall): a
-   good deal bigger than a rare drop's icon (~26), as it is the whole pile */
-const DROP_ICON_WORLD = 40;
+   good deal bigger than a rare drop's icon (~26), as it is the whole pile.
+   v2.3.3499: 40 -> 60, the owner: "Make dropped items 50% larger (hard to
+   see)" -- its shadow, stand-in and count with it (all are shares of it), the
+   count's type 16 -> 22, and the picture made at 128 px (dropIcons.js) so it
+   is as sharp at the new size.  A dead player's pile (_updateGroundLoot's
+   death branch) grows by the same DROP_GROW.  The pickup and magnet reach are
+   groundLoot.js's own numbers and do not move. */
+const DROP_GROW = 1.5;
+const DROP_ICON_WORLD = 40 * DROP_GROW;
 /* ...and its count, in the owner label's type (_renderOwnerLabel), a size up */
 const DROP_COUNT_STYLE = new TextStyle({
   fontFamily: 'Source Sans 3, sans-serif',
-  fontSize: 16,
+  fontSize: 22,
   fontWeight: '700',
   fill: '#ffffff',
-  stroke: { color: '#000000', width: 3 },
+  stroke: { color: '#000000', width: 4 },
 });
 /* A rare item is anything rarer than 1 in 100 -- the weapon, gem and armour
    lanes.  What earns the RARE DROP! call and the shine. */
@@ -2948,6 +2965,10 @@ const SMITH_FLAME_H0 = 40;
 function clearIfDrawn(g) {
   if (g && g.context && g.context.instructions.length) g.clear();
 }
+
+/* v2.3.3499: the whirlwind's cap if a wind-up does not carry its own (the
+   worker's STAM_ABILITIES.whirl.maxTargets, mirrored in data/abilities.js). */
+const WHIRL_CATCH_MAX = 16;
 
 export class EffectsRenderer {
   constructor(layers) {
@@ -5444,6 +5465,27 @@ export class EffectsRenderer {
       this._dot(p.x, p.y, (p.size || 2) * Math.min(1, p.life * 3), cssToHex(p.color), Math.min(1, p.life * 2));
     }
 
+    /* ═══ v2.3.3518: A SHOCK'S SPARK (game/shockSpark.js) ═══
+       The bolt from a shocked monster to the one beside it: a fresh jag every
+       frame, a pale core over a wide blue glow (the storm monster's own arc
+       on a player, _updateElemStatusFx, in the same colours), fading out over
+       its SPARK_ARC_MS.  Reaped as it ends, like the lists below. */
+    const sparkArcs = S._sparkArcs;
+    if (sparkArcs && sparkArcs.length) {
+      for (let i = sparkArcs.length - 1; i >= 0; i--) {
+        const a = sparkArcs[i];
+        const age = (now - a.ts) / (a.dur || 320);
+        if (!(age < 1) || age < -0.5) { sparkArcs.splice(i, 1); continue; }
+        const fade = 1 - Math.max(0, age) * Math.max(0, age);
+        const pts = sparkZigzag(a.x0, a.y0, a.x1, a.y1, Math.random, 8);
+        for (let pass = 0; pass < 2; pass++) {
+          gfx.moveTo(pts[0][0], pts[0][1]);
+          for (let j = 1; j < pts.length; j++) gfx.lineTo(pts[j][0], pts[j][1]);
+          gfx.stroke({ color: pass ? 0xfffbe0 : 0x5fbcff, width: pass ? 3.2 : 10, alpha: (pass ? 0.98 : 0.5) * fade, cap: 'round', join: 'round' });
+        }
+      }
+    }
+
     // Death explosion particles
     const explosions = S.deathExplosions || [];
     for (let i = explosions.length - 1; i >= 0; i--) {
@@ -7635,6 +7677,10 @@ export class EffectsRenderer {
              the footprint sizing, the distance ramp, the screen-space line
              weight -- is untouched for the candidates that keep it. */
           if (isCur) continue;
+          /* v2.3.3499: a monster the whirlwind's wind-up has caught wears the
+             whirl's ring (_markWhirlCatch, drawn this frame before this
+             loop) -- one monster, one ring. */
+          if (this._whirlCaught && c.m && this._whirlCaught.has(c.m.id)) continue;
           /* ═══ v2.3.2253: THE RING FOLLOWS THE ARROW ═══
              It used to go red only for a TAPPED target, which meant the ground
              mark and the arrow above the head could disagree about what red
@@ -8876,10 +8922,13 @@ export class EffectsRenderer {
       entry._boxH = bh + tipH;   /* v2.3.3391: an emoji pops above the whole bubble (_updateEmotePops) */
       entry._bh = bh;            /* v2.3.3481: for the outline drawn below */
       entry._pathDx = null;      /* ...at this frame's slide */
-      /* v2.3.3395: Halloween week's skin -- purple, pumpkin-ringed, cream words */
-      const _spooky = halloweenOn();
-      entry.skin = _spooky ? 'halloween' : 'plain';
-      const _ink = _spooky ? SPOOKY_BUBBLE.text : '#000000';
+      /* v2.3.3395: Halloween week's skin -- purple, pumpkin-ringed, cream words.
+         v2.3.3522: by who is speaking (game/bubbleSkins.js) -- the owner: "Make
+         Npc dialog boxes white. Keep players the darker color to
+         differentiate": a townsperson's ('npc:' key) white always, a
+         player's dark always (Halloween's purple in its week) */
+      entry.skin = bubbleSkinFor(key, halloweenOn());
+      const _ink = (BUBBLE_SKINS[entry.skin] || BUBBLE_SKINS.plain).text;
       if (entry.text.style.fill !== _ink) entry.text.style.fill = _ink;
       entry.text.y = -bh - tipH + padY;
     }
@@ -8966,9 +9015,10 @@ export class EffectsRenderer {
       _bubblePath(entry.bg, 2);
       entry.bg.fill({ color: 0x000000, alpha: 0.18 });
       _bubblePath(entry.bg, 0);
-      const _spooky = entry.skin === 'halloween';   /* v2.3.3395's skin, chosen with the line above */
-      entry.bg.fill({ fill: _spooky ? spookyBubbleGradient() : chatBubbleGradient() });
-      entry.bg.stroke({ width: 2, color: _spooky ? SPOOKY_BUBBLE.stroke : 0x8a949a, alignment: 1 });
+      /* v2.3.3395's skin, chosen with the line above (v2.3.3522: by speaker) */
+      const _sk = BUBBLE_SKINS[entry.skin] || BUBBLE_SKINS.plain;
+      entry.bg.fill({ fill: bubbleGradient(entry.skin) });
+      entry.bg.stroke({ width: 2, color: _sk.stroke, alpha: _sk.strokeAlpha, alignment: 1 });
       /* Center the text inside the bubble (v2.3.3481: inside the box, wherever it slid). */
       entry.text.x = _dx;
     }
@@ -8998,8 +9048,16 @@ export class EffectsRenderer {
         lineW: entry._lineW,   /* the longest laid-out line, bubble-local px */
         boxW: entry._boxW,     /* the box drawn round it, same units */
         slide: entry._pathDx || 0,   /* v2.3.3481: how far the box slid off its point to stay in the view, same units */
-        skin: entry.skin || 'plain',   /* v2.3.3395: 'halloween' in Halloween week */
+        skin: entry.skin || 'plain',   /* v2.3.3395: 'halloween' in Halloween week; v2.3.3522: 'plain' a townsperson's, 'player' a player's the rest of the year */
         ink: String(entry.text.style.fill),
+        /* v2.3.3522: the skin's fill, top to bottom, and where the bubble is
+           on the screen -- its point (last frame's transform, the stage's
+           CSS px) and the box's height, bubble-local -- for mp-chatfont,
+           which finds a dark bubble in the pixels only where it is */
+        fill: (BUBBLE_SKINS[entry.skin] || BUBBLE_SKINS.plain).stops.slice(),
+        screenX: _wt ? _wt.tx : null,
+        screenY: _wt ? _wt.ty : null,
+        boxH: entry._boxH,
       };
       /* ...and per bubble, because the single probe above is whichever
          bubble drew LAST this frame -- an NPC's, as often as not.  A Map:
@@ -9824,23 +9882,26 @@ export class EffectsRenderer {
         const urgency = Math.max(0, Math.min(1, 1 - timeLeft / 30));
         const pulseRate = 2 + urgency * 6;
         const auraAlpha = (0.2 + Math.sin(age * pulseRate) * 0.15 + urgency * 0.2) * alpha;
-        gfx.circle(l.x, l.y + bob, 18);
+        /* v2.3.3499: everything here DROP_GROW (1.5x) bigger, as a dropped
+           item is -- its 7 and 8 px words were ~5 CSS px on a phone */
+        const G_ = DROP_GROW;
+        gfx.circle(l.x, l.y + bob, 18 * G_);
         gfx.fill({ color: 0xea580c, alpha: auraAlpha });
         const ringColor = urgency > 0.7 ? 0xff5e6c : 0xea580c;
-        gfx.circle(l.x, l.y + bob, 15);
-        gfx.stroke({ color: ringColor, width: 2, alpha });
+        gfx.circle(l.x, l.y + bob, 15 * G_);
+        gfx.stroke({ color: ringColor, width: 2 * G_, alpha });
         /* Bag emoji icon. */
         if (!l._pixiIcon || l._pixiIcon.destroyed) {
-          l._pixiIcon = new Text({ text: '💀', style: { ...LABEL_STYLE_EMOJI, fontSize: 18 } });
+          l._pixiIcon = new Text({ text: '💀', style: { ...LABEL_STYLE_EMOJI, fontSize: 18 * G_ } });
           l._pixiIcon.anchor.set(0.5, 0.5);
           this.lootLayer.addChild(l._pixiIcon);
         }
         l._pixiIcon.x = l.x;
-        l._pixiIcon.y = l.y + 6 + bob;
+        l._pixiIcon.y = l.y + 6 * G_ + bob;
         l._pixiIcon.alpha = alpha;
         /* Timer text below. */
         if (!l._pixiTimer || l._pixiTimer.destroyed) {
-          l._pixiTimer = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 8, fontWeight: '700' } });
+          l._pixiTimer = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 8 * G_, fontWeight: '700' } });
           l._pixiTimer.anchor.set(0.5, 0);
           this.lootLayer.addChild(l._pixiTimer);
         }
@@ -9848,11 +9909,11 @@ export class EffectsRenderer {
         if (l._pixiTimer.text !== tStr) l._pixiTimer.text = tStr;
         l._pixiTimer.style.fill = urgency > 0.7 ? '#ff5e6c' : '#ea580c';
         l._pixiTimer.x = l.x;
-        l._pixiTimer.y = l.y + 22 + bob;
+        l._pixiTimer.y = l.y + 22 * G_ + bob;
         l._pixiTimer.alpha = alpha;
         /* Item count above. */
         if (!l._pixiCount || l._pixiCount.destroyed) {
-          l._pixiCount = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700' } });
+          l._pixiCount = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7 * G_, fontWeight: '700' } });
           l._pixiCount.anchor.set(0.5, 1);
           this.lootLayer.addChild(l._pixiCount);
         }
@@ -9860,7 +9921,7 @@ export class EffectsRenderer {
         const cStr = itemTotal + ' items';
         if (l._pixiCount.text !== cStr) l._pixiCount.text = cStr;
         l._pixiCount.x = l.x;
-        l._pixiCount.y = l.y - 12 + bob;
+        l._pixiCount.y = l.y - 12 * G_ + bob;
         l._pixiCount.alpha = alpha;
         if (timeLeft <= 0) l._expired = true;
         continue;
@@ -11293,7 +11354,11 @@ export class EffectsRenderer {
     if (_near && AURAS_ON) {
       if (!this._landAuras) this._landAuras = new LandAuras(this.entityLayer);
       const _at = performance.now();
-      this._landAuras.update(nodes, this._landAurasAt ? _at - this._landAurasAt : 16);
+      /* v2.3.3511: + the screen in world px -- a resource's specks are made
+         only near it (the node view reaches 480 px past it) */
+      const _view = (S.camera && S._viewW > 0 && S._viewH > 0)
+        ? { x0: S.camera.x, y0: S.camera.y, x1: S.camera.x + S._viewW, y1: S.camera.y + S._viewH } : null;
+      this._landAuras.update(nodes, this._landAurasAt ? _at - this._landAurasAt : 16, _view);
       this._landAurasAt = _at;
     } else if (this._landAuras && this._landAuras.at.size) {
       this._landAuras.clear();
@@ -11316,7 +11381,7 @@ export class EffectsRenderer {
     /* v2.3.3120: pet trapping -- the mark over an armed monster, and the trap
        springing where it fell (trapFx.js; the rules are game/trapping.js) */
     if ((S._trap && (S._trap.mark || S._trap.springs.length)) || (this._trapFx && this._trapFx.root)) {
-      if (!this._trapFx) this._trapFx = new TrapFx(this.monsterUiLayer);
+      if (!this._trapFx) this._trapFx = new TrapFx(this.monsterUiLayer, () => _trapArt);   /* v2.3.3499: + the picture */
       this._trapFx.update(S, now);
     }
     this._drawGatherHpBar(S, nodes, now);   /* v2.3.2956 */
@@ -12697,7 +12762,17 @@ export class EffectsRenderer {
       }
     };
     const w = S._whirlWindup;
-    if (w && now < w.until + 50) draw(S.player.x, S.player.y, w);
+    this._whirlCaught = null;
+    this._whirlCatchProbe = null;
+    /* v2.3.3499: QA probe, house style -- who the wind-up has caught, this frame */
+    if (typeof window !== 'undefined' && !window.__btWhirlCatch) {
+      const self = this;
+      window.__btWhirlCatch = () => self._whirlCatchProbe;
+    }
+    if (w && now < w.until + 50) {
+      draw(S.player.x, S.player.y, w);
+      this._markWhirlCatch(S, w, now, rk);
+    }
     const pw = S._peerWindups;
     if (pw) {
       for (const id of Object.keys(pw)) {
@@ -12710,6 +12785,90 @@ export class EffectsRenderer {
         if (typeof ox === 'number' && typeof oy === 'number') draw(ox, oy, e);
       }
     }
+  }
+
+  /* ═══ v2.3.3499: WHO THE WHIRLWIND WILL CATCH ═══
+     Owner: "when you do the whirlwind (wind up period after tapping the
+     button) it would be helpful if the monsters were highlighted (or some
+     other visual cue that works best) to show if they're in the whirlwind
+     effective area".
+     The worker strikes, as the wind-up ends, the nearest `maxTargets` (16)
+     damageable monsters whose position is within `radius` (240) x depthK of
+     where it has you, feet to feet (server abilities.js, the whirl's scan).
+     So every frame of the ring the same question is asked here of the
+     monsters this screen holds, nearest first and at most as many, and each
+     one caught gets a bright double ring on the ground at its feet that beats
+     with the wind-up's pulse and burns brighter as the strike comes, with a
+     small chevron on the ground pointing at you: the vortex PULLS them in
+     (pullTo 34).  Step a monster out of the circle and its marks go; step one
+     in and it lights -- the tactical half of the owner's v2.3.2824 ask.
+     Rings, not a tint: the tint is the hit flash's (and the death's), and an
+     outline filter is a pass in the middle of the frame (TRAPS §221).
+     Measured where each monster is DRAWN, as the ring is drawn round where
+     you are drawn: a mark has to agree with what the eye sees inside the
+     ring.  The worker's copy can be a tick apart, so a monster right ON the
+     edge may go either way; the edge ring already reads as a line.
+     `this._whirlCaught` (their ids) lets the engage rings stand aside for
+     them (_updateOverlays runs after this): one monster, one ring. */
+  _markWhirlCatch(S, w, now, rk) {
+    const g = this.windupGfx;
+    const ms = S.monsters;
+    if (!g || !ms || !ms.length || !S.player) return;
+    const R = (w.r || 240) * depthK(S.currentZone, S.player.y);
+    const R2 = R * R;
+    const px = S.player.x, py = S.player.y;
+    const hits = [];
+    for (let i = 0; i < ms.length; i++) {
+      const m = ms[i];
+      if (!m || !m.alive || (typeof m.curHp === 'number' && m.curHp <= 0) || isIntangible(m)) continue;
+      if (m.zone && S.currentZone && m.zone !== S.currentZone) continue;
+      const mx = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
+      const my = (typeof m.renderY === 'number' && isFinite(m.renderY)) ? m.renderY : m.y;
+      if (typeof mx !== 'number' || typeof my !== 'number' || !isFinite(mx) || !isFinite(my)) continue;
+      const dx = mx - px, dy = my - py, d2 = dx * dx + dy * dy;
+      if (d2 <= R2) hits.push({ m, mx, my, d2 });
+    }
+    if (!hits.length) { this._whirlCaught = new Set(); this._whirlCatchProbe = { n: 0, inside: 0, r: R, ids: [] }; return; }
+    hits.sort((a, b) => a.d2 - b.d2);
+    const cap = Math.max(1, (w.max | 0) || WHIRL_CATCH_MAX);
+    const n = Math.min(hits.length, cap);
+    const span = Math.max(1, w.until - w.t0);
+    const p = Math.max(0, Math.min(1, (now - w.t0) / span));
+    const beat = 0.5 + 0.5 * Math.cos(((now - w.t0) % 700) / 700 * Math.PI * 2);
+    const caught = new Set();
+    for (let i = 0; i < n; i++) {
+      const h = hits[i];
+      const m = h.m;
+      caught.add(m.id);
+      const rx = (monsterMeleeHitRadius(m.arch || m.archetype || m.type) || 24) + 12;
+      const ry = rx * 0.38;
+      /* the keyline, then the bright ring, then a second one inside it */
+      g.ellipse(h.mx, h.my, rx, ry);
+      g.fill({ color: 0xff9a3c, alpha: 0.10 + 0.14 * p });
+      g.ellipse(h.mx, h.my, rx, ry);
+      g.stroke({ color: 0x2a1406, width: 5 * rk, alpha: 0.45 });
+      g.ellipse(h.mx, h.my, rx, ry);
+      g.stroke({ color: 0xffe0a8, width: (2.6 + 1.4 * p) * rk, alpha: 0.7 + 0.3 * beat });
+      g.ellipse(h.mx, h.my, rx * 0.62, ry * 0.62);
+      g.stroke({ color: 0xffb347, width: 1.8 * rk, alpha: 0.45 + 0.4 * beat });
+      /* the pull: a chevron on the ground just past the ring, pointing at you */
+      const d = Math.sqrt(h.d2);
+      if (d > rx + 18) {
+        const ux = (px - h.mx) / d, uy = (py - h.my) / d;
+        const cx = h.mx + ux * (rx + 10 + 6 * beat), cy = h.my + uy * (ry + 10 + 6 * beat);
+        const s = 9 * rk, nx = -uy, ny = ux;
+        g.moveTo(cx - ux * s + nx * s, cy - uy * s + ny * s);
+        g.lineTo(cx, cy);
+        g.lineTo(cx - ux * s - nx * s, cy - uy * s - ny * s);
+        g.stroke({ color: 0x2a1406, width: 5 * rk, alpha: 0.4 });
+        g.moveTo(cx - ux * s + nx * s, cy - uy * s + ny * s);
+        g.lineTo(cx, cy);
+        g.lineTo(cx - ux * s - nx * s, cy - uy * s - ny * s);
+        g.stroke({ color: 0xffe0a8, width: 2.6 * rk, alpha: 0.6 + 0.4 * beat });
+      }
+    }
+    this._whirlCaught = caught;
+    this._whirlCatchProbe = { n, inside: hits.length, r: R, ids: Array.from(caught) };
   }
 
   /* ── Catch flight (v2.3.845) ──

@@ -486,12 +486,22 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
     rec.ok(`${tag}: Whirlwind is UP and to the LEFT of Special -- a diagonal, not a stack and not a row `
       + `(dx ${dx}, dy ${dy})`,
       dx < 0 && dy < 0, { whirl: d.whirl, special: d.special });
-    /* The owner's own reason, as a number. */
-    rec.ok(`${tag}: ...with ${gapX}px of clear air between them, at least half a button (${Math.round(size / 2)}px)`,
-      gapX >= size / 2, { gapX, size, whirl: d.whirl, special: d.special });
-    rec.ok(`${tag}: ...and centres ${centres}px apart, more than a button and a half (${Math.round(size * 1.4)}px), `
-      + `so a thumb aimed at one is not on the other`,
-      centres > size * 1.4, { centres, size });
+    /* The owner's own reason, as a number.
+       ═══ v2.3.3522: CLOSER, STILL APART ═══
+       The owner, playtesting: "Whirlwind action button needs to be placed
+       closer to melee special attack (too far away)" -- it was 77 px centre to
+       centre with half a button of box air.  Now the two RINGS (round buttons:
+       a press on a corner outside the ring is not theirs) are RCTL_PAIR_AIR of
+       a button apart along the line between them -- 9 px upright, 10 sideways
+       -- and the boxes still never touch side to side.  Floored at 8 px of
+       air (the owner's "not accidentally pressing the other one") and capped
+       at 1.3 buttons (the "closer" itself), both printed. */
+    const air = centres - size;
+    rec.ok(`${tag}: ...with ${air}px of air between their rings (floor 8px) and their boxes ${gapX}px apart side to side (never touching)`,
+      air >= 8 && gapX >= 1, { air, gapX, size, whirl: d.whirl, special: d.special });
+    rec.ok(`${tag}: ...and centres ${centres}px apart, closer than a button and three tenths (${Math.round(size * 1.3)}px) -- `
+      + `the owner's "closer" -- and more than a button (${size}px)`,
+      centres <= size * 1.3 && centres > size, { centres, size });
     /* v2.3.2574: the disc they must clear is the ATTACK one now.  It fades
        after 2s of no input like the movement disc does, so this asks only when
        the browser actually painted it rather than asserting against a null. */
@@ -818,6 +828,10 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
     let worst = null;
     for (let i = 0; i < named.length; i++) for (let j = i + 1; j < named.length; j++) {
       const [an, a] = named[i], [bn, b] = named[j];
+      /* v2.3.3522: Whirlwind and Special are the one pair the owner asked to
+         be CLOSER ("too far away") -- measured ring to ring above, 8 px of air
+         at the least -- so this half-button box floor holds every other pair */
+      if ((an === 'Whirlwind' && bn === 'Special') || (an === 'Special' && bn === 'Whirlwind')) continue;
       const dx = Math.max(0, Math.max(a.x - b.r2, b.x - a.r2));
       const dy = Math.max(0, Math.max(a.y - b.b2, b.y - a.b2));
       const gap = Math.round(Math.hypot(dx, dy));
