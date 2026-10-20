@@ -81,7 +81,17 @@ remnant to migrate server-side, not a mode to preserve.
   (`lifeSkills.gemsUnpaid`, owed by a combine or a Rare Gem's cut -- a
   came-back count could not survive gems that trade); a death KEEPS gems, No
   man's land's whole-bag loss takes them; Diego 1,200 / 4,000, the Rare Gem
-  4,000; `shard-crack` suite, `mp-shardcrack`: docs/specs/shard-crack.md),
+  4,000; `shard-crack` suite, `mp-shardcrack`: docs/specs/shard-crack.md;
+  and Phase 4 BUILT in v2.3.3518, EVERY GEM PULLS ITS WEIGHT: a hit whose gem
+  BEATS the monster's element lands 1.25x (elemental.js `ELEM_UP`, beside
+  fracture after the ceiling, the gem's hit and the Element Burst; monster_hit
+  `up`; no penalty, "DN" gone), a SOAKED monster's own blows land 0.8x before
+  the rail (hits.js the door's `soak` column), and a hit on a monster SHOCKED
+  before it SPARKS to the nearest other within 150 px of the impact for a
+  quarter of the hit (combat.js `_shockSpark`, monster_hit `spark`, the
+  phone's line src/game/shockSpark.js); caps/kill switches `elemup`,
+  `soakhit`, `shockspark`; `gem-weight` suite, `mp-gemweight`:
+  docs/specs/gem-weight.md),
   `docs/FUN-SOCIAL-PLAN.md` (the owner's fun & social plan checked against
   the code, v2.3.3391 -- "Go recommended": emotes and dances that move the bro
   in code, two-player moves, farm-made toys, a playground town; its rules: a
