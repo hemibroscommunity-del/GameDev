@@ -1005,7 +1005,7 @@ remnant to migrate server-side, not a mode to preserve.
     darker than a third of the skin -- TRAPS §129); enclosed windows turn
     under-armour shadow; the full set is untouched; `mp-greaveslegs`
     (`window.__btLegsPeek`), src/belt-harness.html `?wear=legs&pose=&tint=&clamp=off`.
-  - Since v2.3.3512 THE ARMOUR RIDES THE ARM CAPSULE -- the owner: the east
+  - Since v2.3.3520 THE ARMOUR RIDES THE ARM CAPSULE -- the owner: the east
     jog's shoulder on a copper torso, "fix it for all future tiers". The
     capsule (v2.3.200) clones the body over the arm on every east jog with a
     weapon out; in the layered figure that body is the masked bake, bare at
@@ -2137,7 +2137,7 @@ remnant to migrate server-side, not a mode to preserve.
       clear colour Pixi keeps untouched), and one that comes back see-through
       everywhere was not copied and is taken the old way. `?wdgeterror` asks
       every time; `mp-wdsample` counts the calls.
-    - since v2.3.3512 THE RECOVERY RELOAD WAITS FOR YOUR BRO -- the owner:
+    - since v2.3.3520 THE RECOVERY RELOAD WAITS FOR YOUR BRO -- the owner:
       "flicker of hair/torso after returning/joining":
       - the straight-in road (the watchdog's reload, a picker row that
         switches keys) has no loading screen, and showed the world while the
@@ -2664,7 +2664,7 @@ remnant to migrate server-side, not a mode to preserve.
       screen; the five hold 1.83 MB (`window.__btWheelNpcArt()`);
     - test-world-core "the buildings' doors", `mp-wheelfolk`, `mp-wheeldoors`:
       docs/specs/wheel-doors.md.
-    - since v2.3.3512 A WALKER WHO STANDS STANDS -- the owner: "Ace is stuck
+    - since v2.3.3520 A WALKER WHO STANDS STANDS -- the owner: "Ace is stuck
       in one walking frame" (his shadow apart from him): a still walker drew
       frame 0 of his walk, for Ace a leap with both feet off the ground; each
       row names its standing frame (NPC_DATA `walk.stand`: Ace 3, Lil Bro 1,

@@ -197,7 +197,7 @@ function _capCache() {
   }
 }
 
-/* v2.3.3512: each build's promise while it runs (coloredHatReady) */
+/* v2.3.3520: each build's promise while it runs (coloredHatReady) */
 const _building = Object.create(null);
 function build(hatId, colorId) {
   const target = hatColorTarget(colorId);
@@ -223,7 +223,7 @@ function build(hatId, colorId) {
   });
 }
 
-/** v2.3.3512: settles once (hatId, colorId)'s recolour is made (at once when
+/** v2.3.3520: settles once (hatId, colorId)'s recolour is made (at once when
  *  there is none to make, or it is made) -- the loading screen waits for it. */
 export function coloredHatReady(hatId, colorId) {
   getColoredHatTextures(hatId, colorId);

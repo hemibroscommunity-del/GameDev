@@ -1,4 +1,4 @@
-/* ═══ v2.3.3512: DOES ANY OF YOUR BRO'S LAYERS FLICKER WHEN YOU COME BACK? ═══
+/* ═══ v2.3.3520: DOES ANY OF YOUR BRO'S LAYERS FLICKER WHEN YOU COME BACK? ═══
  *
  * The owner: "flicker of hair/torso after returning/joining".  This watches
  * your own figure, every frame, for the first seconds after each way of
@@ -14,7 +14,7 @@
  *               loading screen, straight back into the world (BroTown's
  *               auto-rejoin, v2.3.777).  The avatar's pictures preloaded
  *               behind a spinner while the world already showed: 26 of 58
- *               frames plain under the armour.  Since v2.3.3512 that road
+ *               frames plain under the armour.  Since v2.3.3520 that road
  *               waits behind a veil of its own (game/avatarHold.js), and
  *               the watch starts when it comes down, as a player's eyes do.
  *
@@ -91,7 +91,7 @@ const displayUp = (P, label) => H.waitFor(P, () => {
   return !!(R && R.playerDisplayRaw && R.playerDisplayRaw());
 }, (v) => v, { timeout: 90000, label });
 
-/* v2.3.3512: the look is the CHARACTER's.  Put in the stores before the
+/* v2.3.3520: the look is the CHARACTER's.  Put in the stores before the
    creator opens (its pickers start from them), so the record the creator's
    join writes keeps it and every join brings the same look back.  Set on the
    page alone after joining, each join's record (characterRecord.js) put the
@@ -118,7 +118,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(P);
   await P.page.waitForTimeout(1500);
   const myId = await H.readState(P, (S) => S.myId);
-  /* ═══ v2.3.3512: REAL ARMOUR, WORN THE REAL WAY ═══
+  /* ═══ v2.3.3520: REAL ARMOUR, WORN THE REAL WAY ═══
      The first cut put the plate on with window.__btGearSet -- the drawn layer
      alone, which the worker never hears of.  Its next full player_state took
      the plate off again (wsClient's armour echo drives the layer,
@@ -171,7 +171,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const roads = [];
   const report = async (road, w) => {
     roads.push({ road, w });
-    /* v2.3.3512: how far the bro's preload got (pixiRenderer _preStep), and
+    /* v2.3.3520: how far the bro's preload got (pixiRenderer _preStep), and
        the bake worker's queue -- a step that never finishes is named here */
     const pre = await P.page.evaluate(() => {
       const s = window.__btPreloadSteps || {}, t0 = s.start || 0;
@@ -246,7 +246,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const route = await P.page.waitForFunction(() => window.__btBootRoute || null, null, { timeout: 30000, polling: 100 })
       .then((h) => h.jsonValue()).catch(() => null);
     await displayUp(P, 'back in after the recovery reload');
-    /* v2.3.3512: this road holds the world behind a veil of its own until the
+    /* v2.3.3520: this road holds the world behind a veil of its own until the
        bro's pictures are made (game/avatarHold.js) -- what a player sees
        starts when it comes down, and a veil still up is not that */
     const hold = await P.page.waitForFunction(() => {

@@ -1,11 +1,11 @@
-/* ═══ v2.3.3512: THE ARMOUR RIDES THE ARM CAPSULE -- THE COPPER SHOULDER ═══
+/* ═══ v2.3.3520: THE ARMOUR RIDES THE ARM CAPSULE -- THE COPPER SHOULDER ═══
  *
  * The owner: the east jog's armour shoulder on a COPPER torso, "fix it for all
  * future tiers" ("it was solved for iron").  The arm capsule (entityRenderer,
  * v2.3.200) re-draws a clone of the BODY from shoulder to hand over everything
  * on an east jog with a weapon out, so the arm covers a slung shield; the shirt
  * (v2.3.2134) and cape (v2.3.2138) clones ride along over it, and since
- * v2.3.3512 the greaves' and the plate's do too.  Iron "was solved" only as a
+ * v2.3.3520 the greaves' and the plate's do too.  Iron "was solved" only as a
  * full iron SET, which jogs as the knight figure (its body texture IS the
  * armour); any other outfit jogs layered, and its body clone is the masked
  * bake, whose shoulders are bare.

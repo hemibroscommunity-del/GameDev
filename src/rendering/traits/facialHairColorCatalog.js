@@ -105,7 +105,7 @@ function _capCache() {
   }
 }
 
-/* v2.3.3512: each build's promise while it runs (coloredFacialHairReady) */
+/* v2.3.3520: each build's promise while it runs (coloredFacialHairReady) */
 const _building = Object.create(null);
 function build(fhId, colorId) {
   const target = facialHairColorTarget(colorId);
@@ -123,7 +123,7 @@ function build(fhId, colorId) {
   })).then(() => { _cache[key] = tex; _capCache(); delete _building[key]; });
 }
 
-/** v2.3.3512: settles once (fhId, colorId)'s recolour is made (at once when
+/** v2.3.3520: settles once (fhId, colorId)'s recolour is made (at once when
  *  there is none to make, or it is made) -- the loading screen waits for it. */
 export function coloredFacialHairReady(fhId, colorId) {
   getColoredFacialHairTextures(fhId, colorId);
