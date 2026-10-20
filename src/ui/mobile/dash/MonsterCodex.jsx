@@ -664,7 +664,7 @@ function Page({ kind, S, onBack }) {
   useLayoutEffect(() => { if (tabTap && body.current) reveal(body.current, 'top', barInset(root.current)); }, [tabTap]);
   const known = n >= CODEX_OPEN_AT;
   const shared = killRollLive(S);   /* v2.3.3209: one roll a kill, each drop its own numbers */
-  /* v2.3.3515: no raw gem off a kill where shards are cracked for them
+  /* v2.3.3516: no raw gem off a kill where shards are cracked for them
      (caps.shardcrack, the gem plan's decision 1): no row, the shard lower */
   const crack = !!(S && S._serverCaps && S._serverCaps.shardcrack);
   const rows = known ? (codexDropsFor(kind, { shared, crack }) || []) : [];

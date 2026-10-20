@@ -1,4 +1,4 @@
-/* ═══ v2.3.3515: GEMS ARE BAG ITEMS (the worker's server/src/gems.js) ═══
+/* ═══ v2.3.3516: GEMS ARE BAG ITEMS (the worker's server/src/gems.js) ═══
  *
  * The owner, 2026-10-20, on docs/GEM-PLAN.md: "All of that sounds good" --
  * decision 5, "In the bag, raw and finished: tradeable, sellable, bankable,

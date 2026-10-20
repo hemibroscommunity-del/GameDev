@@ -62,7 +62,7 @@
  * No game imports beyond plain data tables: the worker's mirror audit reads
  * this file too. */
 import { GOLD_NUGGET_DROP, GEM_DROP_RATES, ZONE_RESOURCES } from './items.js';
-import { ZONE_SHARDS, SHARD_GEM_ELEMENT } from './shards.js';   /* v2.3.3515: + the lands whose shards hold a gem */
+import { ZONE_SHARDS, SHARD_GEM_ELEMENT } from './shards.js';   /* v2.3.3516: + the lands whose shards hold a gem */
 import { WHEEL_LAND_LEVELS } from './wheelSignposts.js';
 import { CODEX_ENTRIES } from './monsterCodex.js';
 
@@ -235,7 +235,7 @@ const PARTY_PILE = 'In a party, only players who did at least 5% of its damage c
  *  or null for a kind with no page.
  *  `opts.shared` (default true): the worker rolls once a kill (caps.killroll);
  *  false, each drop on its own roll (an older worker, or `killroll: false`).
- *  `opts.crack` (v2.3.3515): the worker cracks shards for raw gems
+ *  `opts.crack` (v2.3.3516): the worker cracks shards for raw gems
  *  (caps.shardcrack, the gem plan's decision 1) -- no raw gem off a kill, so
  *  no raw gem row, and the shard's numbers move down to where its began; the
  *  shard and the Rare Gem say what the Gem Works makes of them. */
@@ -274,7 +274,7 @@ export function codexDropsFor(kind, opts) {
   }
   if (!crack && CODEX_RAW_GEM_ELEMENTS.includes(e.element) && has(ZONE_RESOURCES, e.element)) {
     const zr = ZONE_RESOURCES[e.element];
-    /* v2.3.3515: its key the bag's (gems are bag items, data/gems.js) */
+    /* v2.3.3516: its key the bag's (gems are bag items, data/gems.js) */
     rows.push({ id: 'rawgem', key: 'gem_raw_' + e.element, name: 'Raw ' + zr.gem, icon: ICON.gem, type: 'Gem',
       chance: GEM_DROP_RATES.monsterKill, who: 'killer', color: zr.gemColor,
       desc: 'A rough ' + zr.gem + ', still in its stone. The Gem Cutter polishes it into a gem for an amulet or a shield.',

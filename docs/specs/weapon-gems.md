@@ -116,14 +116,14 @@ So the worker counts gems that came back:
 - **Healed at each join** (`amulet.js _gemsAdoptOnJoin`): only elements are
   kept, and never more than the gems of that element you hold.
 
-**Since v2.3.3515 the count is the other way round.** Gems are bag items in
+**Since v2.3.3516 the count is the other way round.** Gems are bag items in
 Phase 2, so they trade, and a count of the gems that came back to one player
 says nothing about a gem handed to another: two players passing one gem back
 and forth were paid 400 a round. The worker now counts the gems each player
 MADE (`lifeSkills.gemsUnpaid`: a combine, a Rare Gem's cut, the old cut), and a
 set pays while one of that element is owed. `gemsBack` is gone: the move into
 the bag owed each old polished gem its XP, less the ones it counted.
-docs/specs/shard-crack.md, "The XP is for gems you made"; TRAPS §241.
+docs/specs/shard-crack.md, "The XP is for gems you made"; TRAPS §242.
 
 ### Getting a gem back
 

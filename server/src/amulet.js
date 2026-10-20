@@ -70,8 +70,8 @@
  * legacy kill-gem roll + local cut roll (rules 19/20). */
 
 import { AMULET_FORGE_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_MONSTER_DROP, AMULET_GEMS, GEM_CUT_TIERS, GEM_RAW_MONSTER_DROP, GEM_EXTRACT_BASE_COST, BLACKSMITH_TIER_LABELS, WOODWORKING_TIER_LABELS, WEAPON_TYPE_LABELS } from './data.js';
-import { GEM_ELEMENTS, gemCount, gemTake, gemGive, gemsIntoBag } from './gems.js';   /* v2.3.3515: gems live in the bag */
-import { WEAPON_GEM } from './weapongem.js';   /* v2.3.3515: UNPAID_MAX, the owed XP's bound */
+import { GEM_ELEMENTS, gemCount, gemTake, gemGive, gemsIntoBag } from './gems.js';   /* v2.3.3516: gems live in the bag */
+import { WEAPON_GEM } from './weapongem.js';   /* v2.3.3516: UNPAID_MAX, the owed XP's bound */
 
 // One-time join-capture clamps for the previously client-local ledger.
 // Honest values are tiny (nuggets drop at 1-in-10k kills; mythic needs
@@ -184,7 +184,7 @@ export const amuletMethods = {
       // map (the client's EnchantPanel source, captured at join).
       // Deny-by-default when the server has none -- see the header's
       // trust-posture note on the client-local gem economy.
-      /* v2.3.3515: an elemental gem from the bag (gems.js: the bag, then any
+      /* v2.3.3516: an elemental gem from the bag (gems.js: the bag, then any
          the old pouch still holds) */
       if (gemCount(ps, gem, false) < 1) return;
       gemTake(ps, gem, false, 1);
@@ -202,7 +202,7 @@ export const amuletMethods = {
          when the first cut of the resolve rebuilt every path. */
       this._gearProvTouch(session.id, ps.amulet);
       /* v2.3.3513: GEM_SET_XP (400, the owner's decision 11, docs/GEM-PLAN.md;
-         was the game's 20) -- once a gem.  v2.3.3515: for a gem this player
+         was the game's 20) -- once a gem.  v2.3.3516: for a gem this player
          made (weapongem.js _gemSetXp, "THE XP, ONCE A GEM"). */
       this._gemSetXp(ps, gem);
 
@@ -249,11 +249,11 @@ export const amuletMethods = {
       const cost = this._gemExtractCost(item);
       if ((ps.coins || 0) < cost) return;
       ps.coins -= cost;
-      /* v2.3.3515: back into the BAG (gems.js) -- an elemental gem, the item
+      /* v2.3.3516: back into the BAG (gems.js) -- an elemental gem, the item
          the gem plan's decision 5 makes it */
       for (const key of gained) gemGive(ps, key.slice('polished_'.length), false, 1);
       /* v2.3.3513 counted these as come back, so setting one again paid no
-         XP.  v2.3.3515: a gem taken out is owed nothing -- only a gem a
+         XP.  v2.3.3516: a gem taken out is owed nothing -- only a gem a
          player MAKES is (weapongem.js "THE XP, ONCE A GEM"), so there is
          nothing to count here. */
       this._stripGems(item, kind);
@@ -305,7 +305,7 @@ export const amuletMethods = {
          shield keeps its gem; it just cannot be cashed in. */
       if (item.prov === 'minted' && item.gem && AMULET_GEMS.has(item.gem)) out.push('polished_' + item.gem);
     } else {
-      /* v2.3.3515: any gem element (gems.js GEM_ELEMENTS) -- a weapon's Flora
+      /* v2.3.3516: any gem element (gems.js GEM_ELEMENTS) -- a weapon's Flora
          gem (the gem plan's decision 7) is not an amulet's, and comes back too */
       if (item.element1 && GEM_ELEMENTS.has(item.element1)) out.push('polished_' + item.element1);
       if (item.element2 && GEM_ELEMENTS.has(item.element2)) out.push('polished_' + item.element2);
@@ -408,7 +408,7 @@ export const amuletMethods = {
       }
     }
     ps.gemsCaptured = true;
-    /* ═══ v2.3.3515: THE POUCH INTO THE BAG, AND THE XP OWED ═══
+    /* ═══ v2.3.3516: THE POUCH INTO THE BAG, AND THE XP OWED ═══
        Every gem in the pouch moves into the BAG (gems.js gemsIntoBag: the gem
        plan's decision 5) -- at every join, as the capture above is a writer of
        the pouch that runs after any stored record was loaded; an empty pouch
@@ -465,7 +465,7 @@ export const amuletMethods = {
      (killroll.js _killRollCan reads the same element).  True when it paid. */
   _gemRawOnKill(ps, zone, hit) {
     if (!ps) return false;
-    /* v2.3.3515: raw gems come only from cracking shards (shardcrack.js; the
+    /* v2.3.3516: raw gems come only from cracking shards (shardcrack.js; the
        gem plan's decision 1) -- none off a kill while that is on.  The kill
        roll has no raw gem then either (killroll.js _killRollCan); this is
        the roll-it-yourself road the kill roll's own switch leaves. */
@@ -474,7 +474,7 @@ export const amuletMethods = {
     const elem = (cfg && cfg.element) || null;
     if (!elem || !AMULET_GEMS.has(elem)) return false;
     if (hit === undefined ? Math.random() >= GEM_RAW_MONSTER_DROP : !hit) return false;
-    gemGive(ps, elem, true, 1);   /* v2.3.3515: into the bag (gems.js) */
+    gemGive(ps, elem, true, 1);   /* v2.3.3516: into the bag (gems.js) */
     return true;
   },
 
@@ -494,7 +494,7 @@ export const amuletMethods = {
     const ps = this.playerState[session.id];
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
-    /* v2.3.3515: refused while the crack and the combine are on
+    /* v2.3.3516: refused while the crack and the combine are on
        (shardcrack.js): an elemental gem takes THREE raw gems now (the gem
        plan's decision 3), and a page from before this version would make one
        from one.  Its own prediction took a raw gem off, so the gems go back
@@ -506,7 +506,7 @@ export const amuletMethods = {
     }
     const gem = payload && payload.gem;
     if (typeof gem !== 'string' || !AMULET_GEMS.has(gem)) return;
-    /* v2.3.3515: from the bag (gems.js) */
+    /* v2.3.3516: from the bag (gems.js) */
     if (!gemTake(ps, gem, true, 1)) return; // deny-by-default, silent
     // Success rate from the server-held skill level -- a modified
     // client can't claim a Perfect Cut rate at level 1.
@@ -520,7 +520,7 @@ export const amuletMethods = {
       }
     }
     const success = Math.random() < successRate;
-    /* v2.3.3515: into the bag -- a gem this player made, so its set pays
+    /* v2.3.3516: into the bag -- a gem this player made, so its set pays
        the Enchanting XP (weapongem.js "THE XP, ONCE A GEM") */
     if (success) { gemGive(ps, gem, false, 1); this._gemMade(ps, gem, 1); }
     const { leveled, newLevel } = this._addLifeSkillXp(ps, 'gemCutting', GEM_CUT_XP);

@@ -66,7 +66,7 @@ remnant to migrate server-side, not a mode to preserve.
   freeze or root stops a monster 1.5 s (a boss half), then not again for 3 s,
   a frozen one chilled after (elemental.js `HOLD`, caps.monsterhold, kill
   switch `monsterhold: false`); `weapon-gem` suite, `mp-weapongem`:
-  docs/specs/weapon-gems.md; and Phase 2 BUILT in v2.3.3515: GEMS ARE BAG
+  docs/specs/weapon-gems.md; and Phase 2 BUILT in v2.3.3516: GEMS ARE BAG
   ITEMS (`gem_raw_<e>`, `gem_<e>`; server/src/gems.js the one door --
   `gemCount` reads the bag and any old pouch, `gemTake` the bag first,
   `gemGive` the bag -- the pouch moved at the join, `gemsIntoBag`, not a

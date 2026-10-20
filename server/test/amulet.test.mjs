@@ -105,7 +105,7 @@ const forge = (ws, payload) =>
   room.webSocketMessage(ws, JSON.stringify({ type: 'amulet_forge_request', payload }));
 const lastPlayerState = (ws) => [...ws.sent].reverse().find((m) => m.type === 'player_state');
 const realRandom = Math.random;
-/* v2.3.3515: gems live in the BAG (gems.js) -- `gem_raw_<e>` and `gem_<e>`.
+/* v2.3.3516: gems live in the BAG (gems.js) -- `gem_raw_<e>` and `gem_<e>`.
    These sections were written against the old pouch's names, so they read
    and set gems in those names through two helpers: gemsOf (the bag and any
    pouch left, as `raw_<e>` / `polished_<e>`) and setGems (into the bag). */
@@ -127,7 +127,7 @@ function setGems(ps, map) {
   if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
   ps.lifeSkills.gems = {};
   /* ...and the cut ones stand for gems the player MADE: owed their XP
-     (weapongem.js "THE XP, ONCE A GEM", v2.3.3515) */
+     (weapongem.js "THE XP, ONCE A GEM", v2.3.3516) */
   ps.lifeSkills.gemsUnpaid = {};
   for (const k of Object.keys(map || {})) {
     if (k.startsWith('raw_')) ps.inventory['gem_raw_' + k.slice(4)] = map[k];
@@ -308,7 +308,7 @@ const cut = (wsx, payload) =>
   room.webSocketMessage(wsx, JSON.stringify({ type: 'gem_cut_request', payload }));
 const lastCutResult = (wsx) => [...wsx.sent].reverse().find((m) => m.type === 'gem_cut_result');
 
-/* v2.3.3515: §9-§12b are the OLD gem income -- a raw gem off a kill and the
+/* v2.3.3516: §9-§12b are the OLD gem income -- a raw gem off a kill and the
    one-raw-gem cut -- which live on behind the crack's kill switch
    (shardcrack.js): `shardcrack: false` brings both back.  With the switch on
    (the default) both are refused: the shard-crack suite checks that. */
@@ -488,7 +488,7 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
     gemsOf(room.playerState['bp_gem_q']).polished_frost === 200, gemsOf(room.playerState['bp_gem_q']));
 }
 
-delete room._liveFlags.shardcrack;   /* v2.3.3515: the crack back on (above §9) */
+delete room._liveFlags.shardcrack;   /* v2.3.3516: the crack back on (above §9) */
 
 // ── 13. v2.3.1209 gem EXTRACTION (op:'extract'): server-settled strip
 // of the gear blob + polished-gem credit, mirroring ForgePanel's two

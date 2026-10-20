@@ -72,7 +72,7 @@
  * un-advertises the cap and refuses both acts; pieces, bars and essences
  * already held are untouched. */
 
-import { gemGive } from './gems.js'; /* v2.3.3515: gems live in the bag */
+import { gemGive } from './gems.js'; /* v2.3.3516: gems live in the bag */
 
 export const SALVAGE = Object.freeze({
   /* metal id (the armour's `mat`, materialTints.js) -> its bar (smelting.js),
@@ -234,7 +234,7 @@ export const salvageMethods = {
          free here as the bars are, back into the count and counted as come
          back (their XP was paid when they went in: _gemSetXp). */
       gemsBack = typeof this._extractableGems === 'function' ? this._extractableGems(at.w, 'weapon') : [];
-      /* v2.3.3515: into the bag (gems.js), as Take out's -- and owed no XP:
+      /* v2.3.3516: into the bag (gems.js), as Take out's -- and owed no XP:
          only a gem a player makes is (weapongem.js "THE XP, ONCE A GEM") */
       for (const key of gemsBack) gemGive(ps, key.slice('polished_'.length), false, 1);
     } else if (hasOwn(ARMOUR_FIELDS, field)) {
@@ -258,7 +258,7 @@ export const salvageMethods = {
       ps.inventory[essence] = Math.floor(Number(ps.inventory[essence]) || 0) + 1;
     }
     this._saveRpg(pid, ps);
-    /* v2.3.3513: + the gems it gave back -- v2.3.3515: by their bag keys
+    /* v2.3.3513: + the gems it gave back -- v2.3.3516: by their bag keys
        (`gem_<element>`, gems.js), what the bag now holds */
     const result = { ok: true, field, ...ref, bar, bars: SALVAGE.BARS, essence, grade, metal, ...(gemsBack.length ? { gems: gemsBack.map((k) => 'gem_' + k.slice('polished_'.length)) } : null) };
     this._salvageSend(pid, 'smith_salvage_result', result, true);

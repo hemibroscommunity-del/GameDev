@@ -1,7 +1,7 @@
 import { LIFE_SKILLS, FISHING_TIERS, WOODCUTTING_TIERS, MINING_TIERS, gatherLadderLvl, GATHER_REQ_LVL } from '../../../data/lifeSkills.js';
 import { xpDecayMult } from '../../../data/xpDecay.js';   /* v2.3.3251 */
 import { BLACKSMITH_TIERS, WOODWORKING_TIERS, GEM_CUT_TIERS, COOKING_RECIPES } from '../../../data/gameSystems.js';
-import { shardCrackChance } from '../../../data/shards.js';   /* v2.3.3515: the crack's chance by level */
+import { shardCrackChance } from '../../../data/shards.js';   /* v2.3.3516: the crack's chance by level */
 
 /* v2.3.1312: normalize the four crafting unlock tables that always
    existed in gameSystems.js but were never wired to the skills UI —
@@ -68,7 +68,7 @@ const META = {
   cooking:       { icon: '🍳', name: 'Cooking',      iconSrc: '/icons/ui/skill-cooking.webp?v=2.3.1224',      group: 'process', accent: '#E0955A', iconScale: 1.0,  tiers: COOK_LADDER, earnHint: 'Cook raw food at a campfire — perfect timing pays.', hits: true, passive: (lvl) => `Cook timing window +${Math.min(30, lvl * 0.4).toFixed(1)}%` },
   blacksmithing: { icon: '🔨', name: 'Smithing',     iconSrc: '/icons/ui/skill-blacksmithing.webp?v=2.3.1224', group: 'process', accent: '#9AA6B0', iconScale: 1.15, tiers: SMITH_LADDER, earnHint: 'Smelt ore and forge gear at the blacksmith.' },
   woodworking:   { icon: '🛠',  name: 'Woodworking',  iconSrc: '/icons/ui/skill-woodworking.webp?v=2.3.1224',  group: 'process', accent: '#B09A6A', iconScale: 1.15, tiers: WOODWORK_LADDER, earnHint: 'Turn lumber into planks, handles and furniture.' },
-  /* v2.3.3515: the gem plan's Phase 2 -- shards are cracked for raw gems at
+  /* v2.3.3516: the gem plan's Phase 2 -- shards are cracked for raw gems at
      the Gem Works, the chance rising at the cut's own four steps
      (data/shards.js shardCrackChance), and three raw gems combined; the
      XP a gem set pays is for gems you made (data/gems.js gemXpOwed) */

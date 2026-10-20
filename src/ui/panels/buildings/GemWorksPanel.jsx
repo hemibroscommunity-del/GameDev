@@ -1,7 +1,7 @@
 import React from 'react';
 import { GemcutPanel } from './GemcutPanel.jsx';
 import { EnchantPanel } from './EnchantPanel.jsx';
-import { shardCrackOnServer } from '@/game/shardCrack.js'; /* v2.3.3515: the tabs' lines */
+import { shardCrackOnServer } from '@/game/shardCrack.js'; /* v2.3.3516: the tabs' lines */
 
 /* ═══ v2.3.3259: THE GEM WORKS -- CUTTING AND SETTING, ONE WINDOW ═══
  *
@@ -46,7 +46,7 @@ var TABS = [
   { key: 'gemcut', label: 'Cut gems', desc: 'Raw to polished' },
   { key: 'enchant', label: 'Set gems', desc: 'Polished into gear' }
 ];
-/* v2.3.3515: against a worker that cracks shards (caps.shardcrack) the first
+/* v2.3.3516: against a worker that cracks shards (caps.shardcrack) the first
    tab cracks shards and combines raw gems (ShardCrackPanel.jsx) -- the gem
    plan's "Shards to gems" and "Gems into gear".  The tab names stay. */
 var TABS_CRACK = [

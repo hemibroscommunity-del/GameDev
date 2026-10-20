@@ -118,7 +118,7 @@ export const killRollMethods = {
     const rz = this._rewardZone ? this._rewardZone(zone, m) : zone;
     const cfg = typeof rz === 'string' && has(ZONES, rz) ? ZONES[rz] : null;
     const elem = (cfg && cfg.element) || null;
-    /* v2.3.3515: no raw gem off a kill while shards are cracked for them
+    /* v2.3.3516: no raw gem off a kill while shards are cracked for them
        (shardcrack.js; the gem plan's decision 1) -- its numbers go, and the
        shard's move down to where the raw gem's began (the codex's page drops
        the row with caps.shardcrack) */

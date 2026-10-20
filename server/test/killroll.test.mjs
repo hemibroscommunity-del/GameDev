@@ -31,7 +31,7 @@
  *   9. THE TEST LEVER: /dev/killroll's `next` is the next kill's roll.
  *  10. THE CHANCES: over 300,000 rolls each drop comes up as often as its
  *      chance says.
- *  11. v2.3.3515 -- SHARDS ARE CRACKED FOR RAW GEMS (shardcrack.js; the gem
+ *  11. v2.3.3516 -- SHARDS ARE CRACKED FOR RAW GEMS (shardcrack.js; the gem
  *      plan's decision 1): with the crack on (the default) no monster has a
  *      raw gem on its roll, every shard is at 112-1,111, and no roll puts a
  *      raw gem in a bag.  §1-§10 are the roll as it is with the crack's kill
@@ -79,7 +79,7 @@ const withRandom = (vals, fn) => {
 
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
-/* v2.3.3515: §1-§10 with the raw gem on the roll -- the crack's kill switch
+/* v2.3.3516: §1-§10 with the raw gem on the roll -- the crack's kill switch
    (shardcrack.js); §11 takes it off */
 room._liveFlags = Object.assign(Object.create(null), { shardcrack: false });
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
@@ -111,7 +111,7 @@ function kill(m, contribs, killerId, roll) {
   const list = room.loot[WHEEL_ZONE] || [];
   return list.length > before ? list[list.length - 1] : null;
 }
-/* v2.3.3515: gems live in the BAG (gems.js): `raw_<e>` is `gem_raw_<e>` there
+/* v2.3.3516: gems live in the BAG (gems.js): `raw_<e>` is `gem_raw_<e>` there
    (and any the old pouch still holds) */
 const gems = (ps, k) => {
   const bag = k.startsWith('raw_') ? 'gem_raw_' + k.slice(4) : 'gem_' + k.slice(9);
@@ -355,7 +355,7 @@ const C = await join(wsC, 'bp_kr_c');
     off.length === 0 && Math.abs(none / N - (1 - 0.1611)) < 0.005, { off, none: none / N });
 }
 
-// ── 11. v2.3.3515: THE CRACK'S ROLL -- no raw gem off a kill ────────────────
+// ── 11. v2.3.3516: THE CRACK'S ROLL -- no raw gem off a kill ────────────────
 {
   delete room._liveFlags.shardcrack;              /* the default: shards are cracked */
   check('with the crack on, a frost monster has its shard and NO raw gem; the blue slime the same',

@@ -19,11 +19,11 @@
  *      claim back.
  *   8. What a real gem switches on: the Element Burst, the flame amulet.
  *   9. Take out gives it back, owed no XP: set again pays none; a salvaged
- *      weapon gives its gem back too.  (v2.3.3515: the XP is for gems a
+ *      weapon gives its gem back too.  (v2.3.3516: the XP is for gems a
  *      player MADE -- 9b: one gem passed between two players pays once.)
  *  10. The sanitizer: elements are status-table own keys, a lone second
  *      moves up, a pair is not twice one element, isVolatile is the pair's;
- *      an old drop's gems stay.  v2.3.3515: the join moves an old pouch into
+ *      an old drop's gems stay.  v2.3.3516: the join moves an old pouch into
  *      the bag and owes its polished gems their XP, less those come back.
  *  11. A sell order lists the gems its weapon really holds.
  *  12. The hold rule: 1.5 s stopped, then chilled (freeze) or walking
@@ -87,7 +87,7 @@ const PID = 'bp_weapongem_a';
 let ws = fakeWs();
 await join(ws, PID);
 const ps = () => room.playerState[PID];
-/* v2.3.3515: gems live in the BAG (gems.js: `gem_raw_<e>`, `gem_<e>`); these
+/* v2.3.3516: gems live in the BAG (gems.js: `gem_raw_<e>`, `gem_<e>`); these
    checks read and set them in the old pouch's names -- the bag and any pouch
    left, as `raw_<e>` / `polished_<e>` */
 const gemsOf = (p) => {
@@ -110,7 +110,7 @@ const setGems = (g) => {
   p.lifeSkills = p.lifeSkills || {};
   p.lifeSkills.gems = {};
   /* ...and the cut ones stand for gems the player MADE: owed their XP
-     (weapongem.js "THE XP, ONCE A GEM", v2.3.3515) */
+     (weapongem.js "THE XP, ONCE A GEM", v2.3.3516) */
   p.lifeSkills.gemsUnpaid = {};
   for (const k of Object.keys(g)) {
     if (k.startsWith('raw_')) p.inventory['gem_raw_' + k.slice(4)] = g[k];
@@ -333,7 +333,7 @@ const hit = async (m, extra) => {
   check('the flame amulet\'s bonus counts on a weapon with a gem (it never did on a phone-only gem)', gemmed > plain, { plain, gemmed });
 }
 
-// ── 9. Take out gives it back, owed no XP (v2.3.3515: the XP is for gems you made) ──
+// ── 9. Take out gives it back, owed no XP (v2.3.3516: the XP is for gems you made) ──
 {
   ps().weapon = copperSword();
   setGems({ polished_flame: 1 });
@@ -370,7 +370,7 @@ const hit = async (m, extra) => {
   check('...owed no XP (a gem out of a salvage was set before)', !((ps().lifeSkills.gemsUnpaid || {}).stone), ps().lifeSkills.gemsUnpaid);
 }
 
-// ── 9b. v2.3.3515: ONE GEM PASSED BETWEEN TWO PLAYERS PAYS ONCE ──
+// ── 9b. v2.3.3516: ONE GEM PASSED BETWEEN TWO PLAYERS PAYS ONCE ──
 // Gems trade now (they are bag items), and the v2.3.3513 rule counted only
 // the gems that came back to a player: a gem taken out by one player and
 // handed to another was a "new" gem there -- two players passing one gem (or
@@ -430,7 +430,7 @@ const hit = async (m, extra) => {
   const drop = s({ type: 'sword', tier: 'fusion', tierMult: 2.25, element1: 'frost', element2: 'storm', name: 'Froststorm Sword', isVolatile: true });
   check('an old server drop\'s gems stay (frost + storm, volatile)', drop.element1 === 'frost' && drop.element2 === 'storm' && drop.isVolatile === true && drop.tierMult === 2.25, drop);
   check('a weapon with no element fields gets none added', !('element1' in s({ type: 'sword', tierMult: 1, name: 'x' })));
-  /* v2.3.3515: an OLD pouch (a record from before this version) at the join:
+  /* v2.3.3516: an OLD pouch (a record from before this version) at the join:
      every gem into the bag, and each polished one owed its XP -- the pouch
      never traded, so its owner made them -- less the ones v2.3.3513 counted
      as come back (they paid going in) */

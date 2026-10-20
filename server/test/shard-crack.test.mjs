@@ -1,5 +1,5 @@
 /* Shards cracked for raw gems, three raw gems combined into a gem, gems in
- * the bag -- v2.3.3515 (server/src/shardcrack.js, gems.js; docs/GEM-PLAN.md,
+ * the bag -- v2.3.3516 (server/src/shardcrack.js, gems.js; docs/GEM-PLAN.md,
  * its Phase 2: the owner took every recommended answer, 2026-10-20).
  *
  *   1. The flags: caps.shardcrack, under a kill-switch name; both receipts

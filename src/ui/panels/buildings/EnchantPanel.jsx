@@ -9,7 +9,7 @@ import { askShieldGem, shieldGemBus, shieldGemOnServer, shieldGemReasonText, SHI
 import { askWeaponGem, askWeaponGemOut, monsterHoldOn, weaponGemBus, weaponGemOnServer, weaponGemReasonText, WEAPON_GEM_WAIT_MS } from '@/game/weaponGem.js'; /* v2.3.3513: the weapon's gem, put in by the worker */
 import { FUSION_BASES, SECOND_SLOT_LVL, isVolatilePair, isWeaponGem, weaponGemEffect, weaponGemSlots } from '@/data/weaponGems.js'; /* v2.3.3513 */
 import { gemExtractCost } from '@/data/items.js'; /* v2.3.3513: Take out's price, the Blacksmith's own */
-import { gemCount, gemTakeLocal, gemXpOwedTotal } from '@/data/gems.js'; /* v2.3.3515: gems are bag items; the XP is for gems you made */
+import { gemCount, gemTakeLocal, gemXpOwedTotal } from '@/data/gems.js'; /* v2.3.3516: gems are bag items; the XP is for gems you made */
 /* === EnchantPanel — buildingPanel === 'enchant' sub-panel === */
 /* v2.3.874: extracted verbatim from the buildingPanel === 'enchant' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -77,7 +77,7 @@ export function EnchantPanel(props) {
      pouch (same lifeSkills.gems source every slotting pill reads) so each
      section can render an explicit control when the pickers would
      otherwise render nothing. */
-  /* v2.3.3515: gems are BAG items now (data/gems.js; the worker moves the
+  /* v2.3.3516: gems are BAG items now (data/gems.js; the worker moves the
      pouch into the bag at the join) -- every count reads both, as the worker
      does: the bag, and any gems a pouch from an older worker still holds */
   var polOf = function polOf(e) { return gemCount(rpgState, e, false); };
@@ -137,7 +137,7 @@ export function EnchantPanel(props) {
     },
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 12, lineHeight: 1.5 } },
         "Slot polished gems into gear with open gem slots.",
-        /* v2.3.3515: the 400 Enchanting XP is for gems you MADE (the worker's
+        /* v2.3.3516: the 400 Enchanting XP is for gems you MADE (the worker's
            lifeSkills.gemsUnpaid, weapongem.js "THE XP, ONCE A GEM"): said
            here so a bought or traded gem's set paying none is no surprise */
         xpOwed === null ? null : React.createElement("div", { "data-gem-xp-owed": xpOwed, style: { fontSize: 11, color: LS.txt3, marginTop: 4 } },
@@ -285,7 +285,7 @@ export function EnchantPanel(props) {
           var _ref88 = _slicedToArray(_ref87, 2),
             elem = _ref88[0],
             edef = _ref88[1];
-          var polCount = polOf(elem);   /* v2.3.3515: the bag and any pouch */
+          var polCount = polOf(elem);   /* v2.3.3516: the bag and any pouch */
           if (polCount <= 0) return null;
           /* Check volatile compatibility — only allowed on fusionReady gear */
           var wouldBeVolatile = (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && isVolatilePair(wpn.element1, elem);   /* v2.3.3513: the worker's own pairs (weaponGems.js) */
@@ -321,7 +321,7 @@ export function EnchantPanel(props) {
               }
               var R = stateRef.current.rpg;
               var sk = R.lifeSkills;
-              gemTakeLocal(R, elem, false, 1);   /* v2.3.3515: the bag first, as the worker */
+              gemTakeLocal(R, elem, false, 1);   /* v2.3.3516: the bag first, as the worker */
               var w = R[key];
               if (!w.element1) {
                 w.element1 = elem;
@@ -443,7 +443,7 @@ export function EnchantPanel(props) {
         var _ref94 = _slicedToArray(_ref93, 2),
           elem = _ref94[0],
           edef = _ref94[1];
-        var polCount = polOf(elem);   /* v2.3.3515: the bag and any pouch */
+        var polCount = polOf(elem);   /* v2.3.3516: the bag and any pouch */
         if (polCount <= 0) return null;
         var gemStat = AMULET_GEM_STATS[elem];
         if (!gemStat) return null;
@@ -468,7 +468,7 @@ export function EnchantPanel(props) {
             var R = stateRef.current.rpg;
             var sk = R.lifeSkills;
             if (!sk.gems) sk.gems = {};
-            /* v2.3.3515: a gem in the bag counts (it was the pouch alone, so
+            /* v2.3.3516: a gem in the bag counts (it was the pouch alone, so
                the ask was never sent once the worker had moved them) */
             if (gemCount(R, elem, false) < 1) return;
             /* v2.3.1192: server-authoritative gem slot (amulet_forge_request
@@ -485,7 +485,7 @@ export function EnchantPanel(props) {
                 try { _Sag.channel.send({ type: 'amulet_forge_request', payload: { op: 'gem', gem: elem } }); } catch (e) {}
               }
             }
-            gemTakeLocal(R, elem, false, 1);   /* v2.3.3515: the bag first, as the worker */
+            gemTakeLocal(R, elem, false, 1);   /* v2.3.3516: the bag first, as the worker */
             R.amulet.gem = elem;
             R.amulet.name = (((_AMULET_TIERS$R$amule = AMULET_TIERS[R.amulet.tier]) === null || _AMULET_TIERS$R$amule === void 0 ? void 0 : _AMULET_TIERS$R$amule.label) || 'Simple') + ' ' + elem.charAt(0).toUpperCase() + elem.slice(1) + ' Amulet';
             if (!R._questFlags) R._questFlags = {};
@@ -556,7 +556,7 @@ export function EnchantPanel(props) {
         var _ref96 = _slicedToArray(_ref95, 2),
           elem = _ref96[0],
           edef = _ref96[1];
-        var polCount = polOf(elem);   /* v2.3.3515: the bag and any pouch */
+        var polCount = polOf(elem);   /* v2.3.3516: the bag and any pouch */
         if (polCount <= 0) return null;
         var gemStat = SHIELD_GEM_STATS[elem];
         if (!gemStat) return null;
@@ -584,7 +584,7 @@ export function EnchantPanel(props) {
             var R = stateRef.current.rpg;
             var sk = R.lifeSkills;
             if (!sk.gems) sk.gems = {};
-            if (gemCount(R, elem, false) < 1) return;   /* v2.3.3515: the bag and any pouch */
+            if (gemCount(R, elem, false) < 1) return;   /* v2.3.3516: the bag and any pouch */
             /* v2.3.3187: the worker puts it in (server/src/shieldgem.js): the
                gem off ITS count, the shield it holds for you, the gear
                ledger's row following -- so the Blacksmith's Take out can give
@@ -595,7 +595,7 @@ export function EnchantPanel(props) {
               askShieldGem(stateRef.current, elem);
               return;
             }
-            gemTakeLocal(R, elem, false, 1);   /* v2.3.3515: the bag first, as the worker */
+            gemTakeLocal(R, elem, false, 1);   /* v2.3.3516: the bag first, as the worker */
             R.shield.gem = elem;
             R.shield.name = (((_BLACKSMITH_TIERS$R$s = BLACKSMITH_TIERS[R.shield.gearBase]) === null || _BLACKSMITH_TIERS$R$s === void 0 ? void 0 : _BLACKSMITH_TIERS$R$s.label) || 'Basic') + ' ' + elem.charAt(0).toUpperCase() + elem.slice(1) + ' Shield';
             recalcDerived(R);

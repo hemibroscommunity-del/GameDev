@@ -20,7 +20,7 @@ import { TRAPPING } from '../src/trapping.js';
 import { FARM } from '../src/farm.js';
 import { SALVAGE, essenceKey } from '../src/salvage.js';
 import { CHEST } from '../src/dailychest.js';
-import { GEM_ELEMENTS, gemRawKey, gemCutKey } from '../src/gems.js';   /* v2.3.3515: gems are bag items */
+import { GEM_ELEMENTS, gemRawKey, gemCutKey } from '../src/gems.js';   /* v2.3.3516: gems are bag items */
 import { SHARD_CRACK, shardCrackChance } from '../src/shardcrack.js';
 import { EVENT_CAPES, capeItemKey } from '../src/eventcapes.js';
 
@@ -254,7 +254,7 @@ check('...and a huge one is capped', many.items.length < 100, many.items.length)
   for (const k of ['fire-goblin-remnants', 'skeleton-remnants', 'slime-remnants', 'snowman']) add(k, 'remains');
   for (const z of Object.keys(DATA.ZONES)) add('shard_' + z, 'shard');
   add(DATA.RARE_GEM_KEY, 'rare gem');
-  for (const e of GEM_ELEMENTS) { add(gemRawKey(e), 'raw gem'); add(gemCutKey(e), 'gem'); }   /* v2.3.3515 */
+  for (const e of GEM_ELEMENTS) { add(gemRawKey(e), 'raw gem'); add(gemCutKey(e), 'gem'); }   /* v2.3.3516 */
   add(CHEST.KEY, 'daily chest');
   for (const [id, def] of Object.entries(EVENT_CAPES)) { add(def.ticket, 'ticket'); add(capeItemKey(id), 'cape'); }
   for (const q of Object.values(DATA.QUEST_REWARDS)) {
@@ -280,7 +280,7 @@ check('...and a huge one is capped', many.items.length < 100, many.items.length)
     dropped.length === 0 && [...keys.values()].filter((v) => NO_PRICE.has(v)).length >= 6, dropped);
   check('...and the box trap and burnt dust keep that 20 as their own price',
     room._shopBaseValue('trap_box') === 20 && room._shopBaseValue('burnt_dust') === 20);
-  /* v2.3.3515: THE GEMS' PRICES (the gem plan, Phase 2).  The Rare Gem cuts
+  /* v2.3.3516: THE GEMS' PRICES (the gem plan, Phase 2).  The Rare Gem cuts
      into any of the eight elemental gems now (shardcrack.js), so it is worth
      one; a raw gem is about ten shards' cracking and an elemental gem three
      raw gems, each priced above what went into it, so cracking and combining
@@ -330,7 +330,7 @@ check('...and a huge one is capped', many.items.length < 100, many.items.length)
   check('...and sells none of them: a cape for 20, a pickaxe without the quest', !r3.ok && !r4.ok && buyer.coins === 1000 && !buyer.inventory[tk] && (await room._shopStock())[tk] === 2, { r3, r4 });
   const gemSeller = { coins: 0, inventory: { rare_gem: 1 } };
   const r5 = await room._shopSell(gemSeller, 'rare_gem', 1);
-  /* v2.3.3515: an elemental gem's price, half of it paid (shop.js) */
+  /* v2.3.3516: an elemental gem's price, half of it paid (shop.js) */
   check('...the rare gem sells for 2,000 now (half its 4,000: it cuts into a gem)', r5.ok && gemSeller.coins === 2000, r5);
 }
 

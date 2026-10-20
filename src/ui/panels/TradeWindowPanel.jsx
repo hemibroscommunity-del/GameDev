@@ -33,7 +33,7 @@ import { petDisplayName, petKindName, petTradeView, worldSafeText, PET_TRADE_MAX
 import { petList, petbookOn } from '@/game/petBook.js';
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '../../rendering/characterPortrait.js';
 import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3481: the trade request's handshake */
-import { gemName, parseGemKey } from '@/data/gems.js';   /* v2.3.3515: gems are bag items */
+import { gemName, parseGemKey } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
 
 /* === TradeWindowPanel — the two-sided trade window (v2.3.1132) === */
 /* Handoff item H: both players stage items + gold, both confirm, the
@@ -110,7 +110,7 @@ const GOLD_STEPS = [1, 5, 25, 50, 100, 500, 1000];
    ("Wheat Seeds", not "📦 seed wheat") -- sixteen crops now trade.  Read with
    hasOwnProperty: a key here is the other player's word. */
 const farmName = (k) => (Object.prototype.hasOwnProperty.call(FARM_ITEM_NAMES, k) ? FARM_ITEM_NAMES[k] : null);
-/* v2.3.3515: a gem trades now (data/gems.js) -- "Raw Frost Gem", not "raw frost" */
+/* v2.3.3516: a gem trades now (data/gems.js) -- "Raw Frost Gem", not "raw frost" */
 const emojiFor = (k) => ITEM_EMOJI[k] || farmLookFor(k) || (parseGemKey(k) ? '💎' : k.startsWith('skull') ? '💀' : k.startsWith('shard') ? '💠' : '📦');
 const labelFor = (k) => farmName(k) || gemName(k) || k.replace(/^(fish|cooked_fish|wood|ore|herb)_/, '').replace(/_/g, ' ');
 /* v2.3.1235: batch-4 state-correction — hoisted from the component so

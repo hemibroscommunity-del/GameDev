@@ -374,7 +374,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ...and then: "Shouldn't these numbers not overlap each other? ... I
        think these should be number ranges" -- one roll a kill, each drop its
        own numbers, the rarest from 1 (server killroll.js) */
-    /* v2.3.3515: no raw gem off a kill -- shards are cracked for them at the
+    /* v2.3.3516: no raw gem off a kill -- shards are cracked for them at the
        Gem Works (caps.shardcrack, the gem plan's decision 1) -- so no raw gem
        row, and the shard's numbers where the raw gem's began */
     const want = { gold: ['100%', 'Currency', 'Always'], remnant: ['100%', 'Material', 'Always'], shard: ['10%', 'Material', '112–1,111'],
@@ -450,7 +450,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && legible.bars.gold === 100 && legible.bars.remnant === 100 && legible.bars.shard === 10 && legible.bars.raregem === 0.5
         && legible.bars.irongreatsword === 0.2 && legible.bars.nugget === 0.01 && fillOff.length === 0, { striped, fillOff, ...legible });
     /* the bars ~2.5x the 44 px they had; the roll column no wider than its
-       widest text (the shard's "112–1,111", v2.3.3515: the grid's 6 px gap plus a few px
+       widest text (the shard's "112–1,111", v2.3.3516: the grid's 6 px gap plus a few px
        of slack from its bar's end -- in the old 76 px chance column a "100%"
        stood ~50 px off and a "5%" ~63; the shortest, "(0.2%)" under "2–21",
        ~35 now, the column 64 px for the shard's range), lined up on the
@@ -507,7 +507,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await tab(P, 'drops');
     const dTop = await boxLook(P, '[data-cx-drops]');
     await P.page.screenshot({ path: join(OUT, 'codex-1c-table.png') });
-    /* v2.3.3209: and its middle rows (v2.3.3515: the rare gem's 62–111 down
+    /* v2.3.3209: and its middle rows (v2.3.3516: the rare gem's 62–111 down
        to the greaves' 22–41), for the picture of the whole table; put back after */
     const keepTop = await boxLook(P, null);
     await P.page.evaluate(() => { const r = document.querySelector('[data-cx-drop="raregem"]'); if (r) r.scrollIntoView({ block: 'start' }); });
@@ -614,7 +614,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       every.every((e) => (ZONED[e.kind] ? e.zones.length === 1 && e.zones[0] === ZONED[e.kind] : e.zones.length === 0)), every.map((e) => e.kind + ' ' + e.zones.join('/')));
     /* the drop tables: every pile drop on every page; remnants from the six
        kinds that leave them (the rock monster, the fishman and the bog lurker
-       leave none, index.js _isRemnantSkullArch); v2.3.3515: a raw gem from
+       leave none, index.js _isRemnantSkullArch); v2.3.3516: a raw gem from
        none (shards are cracked for them, caps.shardcrack), so every shard
        112–1,111 */
     const NO_REMNANT = ['pebbling', 'finling', 'lurkling'];

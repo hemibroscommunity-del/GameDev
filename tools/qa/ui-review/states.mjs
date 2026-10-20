@@ -569,7 +569,7 @@ export const STATES = [
   },
   building('forge', 'Blacksmith (forge)', 'The Blacksmith: smithing weapons and armour, hardening, smelting and salvage, its room behind the menu.'),
   building('woodwork', 'Woodworker', 'The Woodworker: bows, staffs, traps and hardened wood.'),
-  /* v2.3.3515: the crack and the combine (ShardCrackPanel.jsx) -- seeded with
+  /* v2.3.3516: the crack and the combine (ShardCrackPanel.jsx) -- seeded with
      shards of every land and raw gems so the picture shows rows, not the
      empty tab (the test panel's own two buttons) */
   (() => {

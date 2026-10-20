@@ -77,7 +77,7 @@
  *          retired branch did. */
 import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3012: the Wheel's baked nodes */
 import { xpDecayMult, xpAfterDecay } from './xpdecay.js'; /* v2.3.3251: XP fades 5+ levels below you */
-import { parseGemKey } from './gems.js';   /* v2.3.3515: gems are kept through a death (_keptThroughDeath) */
+import { parseGemKey } from './gems.js';   /* v2.3.3516: gems are kept through a death (_keptThroughDeath) */
 
 export const GATHER_HITS = {
   MS: { mining: 650, woodcutting: 540, fishing: 650, cooking: 650 },
@@ -806,7 +806,7 @@ export const gatheringMethods = {
    *   1. the gathering TOOLS (v2.3.1688) — equipment held in the bag;
    *   2. QUEST OBJECTIVE items (v2.3.1701) — derived from the shipped quest
    *      table, see quests.js `_isQuestObjectiveItem` for the rationale;
-   *   3. GEMS (v2.3.3515) — raw and elemental (gems.js `gem_raw_<e>`,
+   *   3. GEMS (v2.3.3516) — raw and elemental (gems.js `gem_raw_<e>`,
    *      `gem_<e>`).  They were a pouch beside the bag until this version,
    *      and the pouch was never lost; the owner's gem plan moved them into
    *      the bag (decision 5) saying only that they go "if another player

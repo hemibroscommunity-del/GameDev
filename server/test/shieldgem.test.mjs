@@ -77,7 +77,7 @@ const PID = 'bp_shieldgem_a';
 let ws = fakeWs();
 await join(ws, PID);
 const ps = () => room.playerState[PID];
-/* v2.3.3515: gems live in the BAG (gems.js: `gem_raw_<e>`, `gem_<e>`); these
+/* v2.3.3516: gems live in the BAG (gems.js: `gem_raw_<e>`, `gem_<e>`); these
    checks read and set them in the old pouch's names -- the bag and any pouch
    left, as `raw_<e>` / `polished_<e>` */
 const gemsOf = (p) => {
@@ -100,7 +100,7 @@ const setGems = (g) => {
   p.lifeSkills = p.lifeSkills || {};
   p.lifeSkills.gems = {};
   /* ...and the cut ones stand for gems the player MADE: owed their XP
-     (weapongem.js "THE XP, ONCE A GEM", v2.3.3515) */
+     (weapongem.js "THE XP, ONCE A GEM", v2.3.3516) */
   p.lifeSkills.gemsUnpaid = {};
   for (const k of Object.keys(g)) {
     if (k.startsWith('raw_')) p.inventory['gem_raw_' + k.slice(4)] = g[k];

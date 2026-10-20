@@ -2266,7 +2266,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     const shard = rows.find((r) => r.id === 'shard');
     if (!z || e.element !== z.element) eOff.push([kind, 'element', e.element, z && z.element]);
     if (!!gem !== SRV.AMULET_GEMS.has(z && z.element)) eOff.push([kind, 'raw gem', !!gem]);
-    if (gem && gem.key !== 'gem_raw_' + z.element) eOff.push([kind, 'raw gem key', gem.key]);   /* v2.3.3515: the bag's key */
+    if (gem && gem.key !== 'gem_raw_' + z.element) eOff.push([kind, 'raw gem key', gem.key]);   /* v2.3.3516: the bag's key */
     if (!shard || shard.key !== 'shard_' + e.home) eOff.push([kind, 'shard', shard && shard.key]);
     for (const id of ['gold', 'shard', 'raregem', 'irontorso', 'irongreaves', 'irongreatsword', 'nugget']) if (!ids.includes(id)) eOff.push([kind, 'missing', id]);
     if (ids.includes('weapon')) eOff.push([kind, 'a random weapon row']);
@@ -2304,7 +2304,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     JSON.stringify(SRV_KILL_ROLL.ORDER) === JSON.stringify(CLIENT_CODEX_ROLL_ORDER) && SRV_KILL_ROLL.SIDES === CLIENT_CODEX_ROLL_SIDES
       && chanceOff.length === 0 && SRV_KILL_ROLL.ORDER[0] === 'nugget' && SRV_KILL_ROLL.ORDER[SRV_KILL_ROLL.ORDER.length - 1] === 'shard',
     { server: SRV_KILL_ROLL.ORDER, client: CLIENT_CODEX_ROLL_ORDER, chanceOff });
-  /* v2.3.3515: twice -- the worker as it starts (shards are cracked for raw
+  /* v2.3.3516: twice -- the worker as it starts (shards are cracked for raw
      gems: no raw gem on the roll) against the page's table with `crack`
      (caps.shardcrack), and with the crack's kill switch thrown (the raw gem
      back on the roll) against the page's table without it */
@@ -2421,7 +2421,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('weapon gems: every forge base has the same number of gem slots on both sides (a drop with no base: 1)', off.length === 0, off);
 }
 
-/* ═══ v2.3.3515: THE CRACK'S RULES AND THE GEMS' KEYS ARE THE WORKER'S ═══
+/* ═══ v2.3.3516: THE CRACK'S RULES AND THE GEMS' KEYS ARE THE WORKER'S ═══
    The Gem Works' first tab shows each land's chance and the raw gems a gem
    takes before it asks (src/data/shards.js, src/data/gems.js), and the bag
    names a gem by its key: held to server/src/shardcrack.js and gems.js. */

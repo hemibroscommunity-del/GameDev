@@ -1,4 +1,4 @@
-/* ═══ v2.3.3515: GEMS LIVE IN THE BAG (the gem plan's Phase 2, decision 5) ═══
+/* ═══ v2.3.3516: GEMS LIVE IN THE BAG (the gem plan's Phase 2, decision 5) ═══
  *
  * The owner, 2026-10-20, on docs/GEM-PLAN.md: "All of that sounds good" --
  * decision 5, "In the bag, raw and finished: tradeable, sellable, bankable,

@@ -6,7 +6,7 @@ import { thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { askShardCrack, askGemCombine, shardCrackBus, shardCrackReasonText, SHARD_CRACK_WAIT_MS } from '@/game/shardCrack.js';
 import { cue } from '@/game/eventSounds.js';
 
-/* ═══ v2.3.3515: THE GEM WORKS' FIRST TAB -- SHARDS TO GEMS ═══
+/* ═══ v2.3.3516: THE GEM WORKS' FIRST TAB -- SHARDS TO GEMS ═══
  *
  * The owner, 2026-10-19: "a fun method would be for the shards to have a
  * certain percent chance of containing that elements raw gem.  Like maybe a

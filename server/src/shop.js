@@ -258,12 +258,12 @@ export const SHOP = {
        (below) and are worth selling to him, kept at exactly that price: the
        rare gem has no other use yet (a drop and a season reward), a box trap
        is made from one log, burnt dust is a burnt fish's leftovers. */
-    /* v2.3.3515: the Rare Gem cuts into any of the eight elemental gems now
+    /* v2.3.3516: the Rare Gem cuts into any of the eight elemental gems now
        (shardcrack.js gem_combine {rare}; the gem plan's decision 6), so it is
        worth one: at 20 he would sell one for 20 that the Gem Works turns into
        a gem he pays 2,000 for. */
     rare_gem: 4000, trap_box: 20, burnt_dust: 20,
-    /* ═══ v2.3.3515: GEMS ARE BAG ITEMS (gems.js; the gem plan) ═══
+    /* ═══ v2.3.3516: GEMS ARE BAG ITEMS (gems.js; the gem plan) ═══
        A raw gem is about ten shards' worth (a shard holds one 1 time in 10,
        shardcrack.js) and an elemental gem three raw gems, so each is priced
        above what went into it (10 x 110 = 1,100; 3 x 1,200 = 3,600): cracking

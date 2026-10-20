@@ -5,7 +5,7 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a cut or a shattered gem heard (the old local path) */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
-import { shardCrackOnServer } from '@/game/shardCrack.js'; /* v2.3.3515: shards cracked, raw gems combined, by the worker */
+import { shardCrackOnServer } from '@/game/shardCrack.js'; /* v2.3.3516: shards cracked, raw gems combined, by the worker */
 import { ShardCrackPanel } from './ShardCrackPanel.jsx';
 /* === GemcutPanel — buildingPanel === 'gemcut' sub-panel === */
 /* v2.3.875: extracted verbatim from the buildingPanel === 'gemcut' clause
@@ -51,7 +51,7 @@ export function GemcutPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
     setRpgState = props.setRpgState;
-  /* v2.3.3515: against a worker that cracks shards (caps.shardcrack) this tab
+  /* v2.3.3516: against a worker that cracks shards (caps.shardcrack) this tab
      is the crack and the combine (ShardCrackPanel.jsx; the gem plan's Phase
      2) -- the one-raw-gem cut below is refused there.  An older worker, or
      the kill switch, keeps the cut. */

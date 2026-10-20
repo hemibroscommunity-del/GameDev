@@ -52,7 +52,7 @@
  * is on the leaderboard and the chain score.  v2.3.3513 counted the gems that
  * came back (`lifeSkills.gemsBack`) and paid nothing for setting one of those.
  *
- * v2.3.3515: THE XP IS FOR GEMS YOU MADE.  Gems are bag items now (gems.js),
+ * v2.3.3516: THE XP IS FOR GEMS YOU MADE.  Gems are bag items now (gems.js),
  * so they trade -- and a count of the gems that came back to ME says nothing
  * of a gem that came back to someone else and was handed to me: two players
  * passing one gem (or one gemmed sword) back and forth would each be paid 400
@@ -81,13 +81,13 @@
  * by _tickMonsters). */
 import { WEAPON_GEMS, GEM_SET_XP, BLACKSMITH_TIERS, WOODWORKING_TIERS, BLACKSMITH_TIER_LABELS, WOODWORKING_TIER_LABELS, WEAPON_TYPE_LABELS } from './data.js';
 import { ELEMENT_STATUS } from './elemental.js';
-import { GEM_ELEMENTS, gemCount, gemTake } from './gems.js'; /* v2.3.3515: gems live in the bag */
+import { GEM_ELEMENTS, gemCount, gemTake } from './gems.js'; /* v2.3.3516: gems live in the bag */
 
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 export const WEAPON_GEM = Object.freeze({
   XP: GEM_SET_XP,
-  /* v2.3.3515: the most gems of one element a player may be owed the XP for
+  /* v2.3.3516: the most gems of one element a player may be owed the XP for
      (`lifeSkills.gemsUnpaid`) -- far past any player's making; a bound on a
      stored number, healed to at the join */
   UNPAID_MAX: 100000,
@@ -271,7 +271,7 @@ export const weaponGemMethods = {
       if (gem === e1) return refuse('same');
       if (isVolatilePair(e1, gem) && WEAPON_GEM.FUSION_BASES.indexOf(w.gearBase) < 0) return refuse('volatile');
     }
-    /* v2.3.3515: an elemental gem from the bag (gems.js: the bag, then any
+    /* v2.3.3516: an elemental gem from the bag (gems.js: the bag, then any
        the old pouch still holds) */
     const have = gemCount(ps, gem, false);
     if (have < 1) return refuse('no_gem');

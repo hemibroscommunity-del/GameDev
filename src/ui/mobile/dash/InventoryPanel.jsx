@@ -36,7 +36,7 @@ import { DISH_NAMES, dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cook
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* v2.3.3120: the box trap's picture */
 import { COOKED_FISH_ICONS, COOKED_FISH_ICON_DEFAULT } from '@/data/foodIcons.js';   /* v2.3.3260 */
 import { setDropThumbs } from '@/game/dropLook.js';   /* v2.3.3473: a dropped item is drawn on the ground as its bag picture */
-import { GEM_ELEMENTS, gemRawKey, gemCutKey, gemName, gemIcon, parseGemKey } from '@/data/gems.js';   /* v2.3.3515: gems are bag items */
+import { GEM_ELEMENTS, gemRawKey, gemCutKey, gemName, gemIcon, parseGemKey } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -235,7 +235,7 @@ export const thumbFor = (key) => {
   if (farmPic)                      return farmPic;
   const dishPic = dishFor(k);
   if (dishPic && dishPic.icon)      return dishPic.icon;
-  /* v2.3.3515: a gem, raw or elemental (data/gems.js) -- its element's own
+  /* v2.3.3516: a gem, raw or elemental (data/gems.js) -- its element's own
      icon, already drawn in the gem's shape, until the owner's gem pictures
      (the gem plan's Phase 3).  Exact keys (parseGemKey): 'gem_stone' must
      never fall to the ore rule's 'stone'. */
@@ -315,7 +315,7 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
 for (const g of SALVAGE.ESSENCE_GRADES) {
   for (const m of Object.keys(SALVAGE.METALS)) ITEM_NAMES[essenceKey(g, m)] = essenceName(essenceKey(g, m));
 }
-/* v2.3.3515: the gems (data/gems.js) -- "Raw Frost Gem" and "Frost Gem", not
+/* v2.3.3516: the gems (data/gems.js) -- "Raw Frost Gem" and "Frost Gem", not
    "Gem Raw Frost" out of the key; every screen that names an item from this
    table (the card, the shop, the auction house, the trade, Ace) says it */
 for (const e of GEM_ELEMENTS) {
@@ -401,7 +401,7 @@ export const iconFor = (key) => {
      until dish art is made, as the crops have. */
   const dish = dishFor(key);
   if (dish && dish.look) return dish.look;
-  /* v2.3.3515: a gem -- above the ore rule, which 'gem_' and 'gem_stone'
+  /* v2.3.3516: a gem -- above the ore rule, which 'gem_' and 'gem_stone'
      would match (a pickaxe for a gem) */
   if (parseGemKey(k)) return '\uD83D\uDC8E';
   /* v2.3.2052: the three town-shop consumables, by EXACT key and above every
@@ -539,7 +539,7 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
     }} title={ikey}>
       {(() => {
         const thumb = thumbFor(ikey);
-        /* v2.3.3515: a raw gem and its elemental gem share the element's
+        /* v2.3.3516: a raw gem and its elemental gem share the element's
            picture until the owner's gem art (the gem plan's Phase 3): the raw
            one is drawn smaller and dimmer, the crack tab's own way -- opacity
            and size only, the life animations move transform alone */

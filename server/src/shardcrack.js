@@ -1,4 +1,4 @@
-/* ═══ v2.3.3515: SHARDS INTO RAW GEMS INTO ELEMENTAL GEMS ═══
+/* ═══ v2.3.3516: SHARDS INTO RAW GEMS INTO ELEMENTAL GEMS ═══
  *
  * The owner, 2026-10-19: "a fun method would be for the shards to have a
  * certain percent chance of containing that elements raw gem.  Like maybe a

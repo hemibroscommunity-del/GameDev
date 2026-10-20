@@ -1,7 +1,7 @@
 import React from 'react';
 import { LIFE_SKILL_XP, QUEST_CHAINS, QUEST_STATUS, ZONE_RESOURCES, createDefaultCompStats, questObjectiveDone } from '@/data/index.js';
 import { _slicedToArray } from '@/lib/babelHelpers.js';
-import { GEM_ELEMENTS, gemCount } from '@/data/gems.js';   /* v2.3.3515: gems are bag items */
+import { GEM_ELEMENTS, gemCount } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
 
 /* ═══ SkillsPanel — life-skill levels / resources / quest progress ═══ */
 /* v2.3.865: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -275,7 +275,7 @@ export function SkillsPanel(props) {
       marginBottom: 8
     })
   }, "Gems"), function (_rpgState$lifeSkills46) {
-    /* v2.3.3515: gems are bag items now (data/gems.js) -- read the bag and
+    /* v2.3.3516: gems are bag items now (data/gems.js) -- read the bag and
        any old pouch, as raw_/polished_ entries for the chips below */
     var gems = {};
     GEM_ELEMENTS.forEach(function (e) {

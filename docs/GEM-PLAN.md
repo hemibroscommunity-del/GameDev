@@ -24,7 +24,7 @@ beyond this plan (each gem pays its XP once, the Element Burst button stands
 aside under a window, a sell order lists the gems its weapon holds, no phone
 copy of the hold): docs/specs/weapon-gems.md.
 
-**Phase 2 is built (v2.3.3515):** shards are cracked at the Gem Works, three
+**Phase 2 is built (v2.3.3516):** shards are cracked at the Gem Works, three
 raw gems combine into a gem, a Rare Gem cuts into any of the eight, and gems
 are bag items. Where it differs from this plan, each explained in
 docs/specs/shard-crack.md:

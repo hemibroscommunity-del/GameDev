@@ -8009,7 +8009,7 @@ claim path, for an emergency, not for a test.
 weapon burns; a claim of flame on a plain one does nothing) and `mp-weapongem`
 step 6; `mp-pvpextras` passes with `H.weaponGem`.
 
-## 241. "Count what came back, so it pays once" (v2.3.3515)
+## 242. "Count what came back, so it pays once" (v2.3.3516)
 
 **The plausible move.** A reward meant to be paid once per thing -- 400
 Enchanting XP per gem set -- is guarded by counting, per player, the things
@@ -8017,7 +8017,7 @@ that came BACK to them (a take-out, a salvage): setting one of those pays
 nothing.  v2.3.3513 did exactly this (`lifeSkills.gemsBack`), and it held
 while gems lived in a pouch nothing could move between players.
 
-**Why it is wrong.** The moment the thing can change hands (v2.3.3515 put gems
+**Why it is wrong.** The moment the thing can change hands (v2.3.3516 put gems
 in the bag: tradeable, sellable, mailable), a per-player came-back count says
 nothing about a thing that came back to SOMEONE ELSE and was handed over.  Two
 players pass one gem -- or one gemmed sword -- back and forth: each take-out

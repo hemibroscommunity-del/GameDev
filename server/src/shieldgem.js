@@ -65,7 +65,7 @@
 import { AMULET_GEMS, BLACKSMITH_TIER_LABELS, GEM_SET_XP } from './data.js';   /* v2.3.3513: + GEM_SET_XP */
 import { GEAR_PROV_FIELD } from './gearprov.js';
 import { shieldSig } from './shieldwear.js';
-import { gemCount, gemTake } from './gems.js'; /* v2.3.3515: gems live in the bag */
+import { gemCount, gemTake } from './gems.js'; /* v2.3.3516: gems live in the bag */
 
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
@@ -147,7 +147,7 @@ export const shieldGemMethods = {
     if (this._threatGearLocked(pid, ps)) return refuse('locked');
     const at = this._shieldGemPiece(ps, p);
     if (!at.piece) return refuse(at.reason);
-    /* v2.3.3515: an elemental gem from the bag (gems.js: the bag, then any
+    /* v2.3.3516: an elemental gem from the bag (gems.js: the bag, then any
        the old pouch still holds) */
     const have = gemCount(ps, gem, false);
     if (have < 1) return refuse('no_gem');

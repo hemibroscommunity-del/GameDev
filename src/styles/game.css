@@ -1349,7 +1349,7 @@ body:has(.bt-plist) [data-coach]{display:none}
 .bt-gw-tabs{padding:12px 44px 12px 14px}
 .bt-room + [data-gem-works] .bt-gw-tabs{padding-right:14px}
 @media (max-height:460px){.bt-room + [data-gem-works] .bt-gw-tabs{padding-right:44px}}
-/* ═══ v2.3.3515: THE CRACK (panels/buildings/ShardCrackPanel.jsx) ═══
+/* ═══ v2.3.3516: THE CRACK (panels/buildings/ShardCrackPanel.jsx) ═══
    The worker cracks a land's shards and sends every roll; the tab plays them,
    one tile a shard: each one appears, then crumbles (no gem) or splits and
    lets its raw gem out (the element's own icon, ringed in its colour).  Each

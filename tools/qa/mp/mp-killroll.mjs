@@ -145,7 +145,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`a roll of 640, the Frost Shard's numbers: "${r2 && r2.text}" in gold (${p2 && p2.drawnColor}), held ${p2 && p2.hold} s of ${p2 && p2.ttl}, and the shard on the ground`,
       !!r2 && r2.rh === 'shard' && r2.text === '640 Frost Shard' && r2.over === 'monster' && !!p2 && p2.color === HIT && p2.drawnColor === HIT && p2.ttl > 3 && p2.hold > 1.5 && loot1 > loot0, { r2, p2, loot0, loot1 });
 
-    /* v2.3.3515: no raw gem off a kill -- shards are cracked for them at the
+    /* v2.3.3516: no raw gem off a kill -- shards are cracked for them at the
        Gem Works (server/src/shardcrack.js; the gem plan's decision 1) -- so
        300, the raw gem's number before, is the Frost Shard's (112-1,111) and
        no raw gem lands in the bag */

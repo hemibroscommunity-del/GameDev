@@ -56,7 +56,7 @@ const state = (P) => H.readState(P, (S) => {
   const g = (R.lifeSkills && R.lifeSkills.gems) || {};
   const w = R.weapon ? { type: R.weapon.type, name: R.weapon.name, e1: R.weapon.element1 || null, e2: R.weapon.element2 || null, tier: R.weapon.tier, tm: R.weapon.tierMult } : null;
   const en = (R.lifeSkills && R.lifeSkills.enchanting) || {};
-  /* v2.3.3515: gems are bag items (`gem_<e>`), and any an old pouch still holds */
+  /* v2.3.3516: gems are bag items (`gem_<e>`), and any an old pouch still holds */
   const inv = R.inventory || {};
   return { weapon: w, flame: (inv.gem_flame || 0) + (g.polished_flame || 0), frost: (inv.gem_frost || 0) + (g.polished_frost || 0), ench: (en.xp || 0) + 1e6 * ((en.level || 1) - 1) };
 });
@@ -65,7 +65,7 @@ const server = async (wsPort, id) => {
   const a = await H.adminPlayer(wsPort, id);
   const rpg = (a && a.rpg) || {};
   const g = (rpg.lifeSkills && rpg.lifeSkills.gems) || {};
-  const inv = rpg.inventory || {};   /* v2.3.3515: gems are bag items */
+  const inv = rpg.inventory || {};   /* v2.3.3516: gems are bag items */
   return { weapon: rpg.weapon ? { name: rpg.weapon.name, e1: rpg.weapon.element1 || null, tm: rpg.weapon.tierMult } : null, flame: (inv.gem_flame || 0) + (g.polished_flame || 0) };
 };
 const until = async (P, pred, tries = 24, ms = 250) => {
