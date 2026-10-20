@@ -12,6 +12,7 @@ import { zoneLeavesPrints, printsAt } from '@/rendering/footprintSprites.js'; /*
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';   /* v2.3.3000: prints are where the boots are */
 import { jumpActive } from '@/game/jump.js';   /* v2.3.3017: no prints in the air */
 import { sweepBlockPoint, boxFace } from '@/data/worldProps.js';   /* v2.3.2730: a peer's shot stops at a prop on your screen too */
+import { shotGroundOffset } from '@/game/shotGround.js';   /* v2.3.3501: a peer's aimed shot meets props boots to feet */
 import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap, STUCK_ARROW_MS, SCORCH_MS, scorchStyle, propHitHeight } from '@/game/combatHelpers.js';   /* v2.3.2730; v2.3.2731 the snap; v2.3.2995 what stays in the Wheel's objects; v2.3.3206 how high a hit shows */
 import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: a peer's shot hits the Wheel's objects on your screen too */
 import { earVol } from '@/game/hitSounds.js';   /* v2.3.3343: a peer's shot on a prop, heard by distance */
@@ -423,7 +424,13 @@ export function updateVisualSystems(S) {
                older client says nothing, and flies over them all. */
             var _rpG = playerGroundDy(S.currentZone, originX, originY);
             if (!rp._skip) rp._skip = shotSkip(rp._lp || null);
-            var _rpHit = sweepBlockPoint(S.currentZone, _rpX0, _rpY0 + _rpG, rp._renderX, rp._renderY + _rpG, rp._skip);
+            /* v2.3.3501: a shot fired at a target (`gf`) asks the ground from
+               the shooter's boots to that target's feet, as their own copy does
+               (shotGround.js): the drawn point less a sliding offset, which
+               without one is the parallel line, (0, -_rpG) */
+            var _rpOff0 = shotGroundOffset(originX, originY, rp.ang, 0, -_rpG, rp._gf || null, rp.dist - _rpStep);
+            var _rpOff1 = shotGroundOffset(originX, originY, rp.ang, 0, -_rpG, rp._gf || null, rp.dist);
+            var _rpHit = sweepBlockPoint(S.currentZone, _rpX0 - _rpOff0[0], _rpY0 - _rpOff0[1], rp._renderX - _rpOff1[0], rp._renderY - _rpOff1[1], rp._skip);
             if (_rpHit) {
               var _rpId = _rpHit.box ? _rpHit.box.id : null;
               if (_rpId) {
@@ -435,7 +442,12 @@ export function updateVisualSystems(S) {
                    v2.3.3206: where it was drawn flying, _rpG over the contact,
                    and on a low thing in its upper part, as your own
                    (combatHelpers.propHitHeight). */
-                var _rpY = _rpHit.y - propHitHeight(_rpHit.box, _rpG);
+                /* v2.3.3501: at the height it flew THERE, and over the point it
+                   was drawn at (the offset where it met the prop) */
+                var _rpOffS = shotGroundOffset(originX, originY, rp.ang, 0, -_rpG, rp._gf || null,
+                  rp.dist - _rpStep + _rpStep * (isFinite(_rpHit.t) ? _rpHit.t : 1));
+                var _rpMx = _rpHit.x + _rpOffS[0];
+                var _rpY = _rpHit.y - propHitHeight(_rpHit.box, -_rpOffS[1]);
                 /* v2.3.2995: one of the Wheel's objects takes it as it takes
                    yours -- its material, its shake, a hit toward breaking it --
                    so two players shooting one barrel both see it go */
@@ -447,19 +459,19 @@ export function updateVisualSystems(S) {
                    as beside you (SOUND-GAPS "Also wrong") */
                 var _rpK = earVol(S, _rpHit.x, _rpHit.y);
                 if (_rpOi != null) {
-                  _rpW = strikeWheelObject(S, { oi: _rpOi, x: _rpHit.x, y: _rpY, gy: _rpHit.y, ang: rp.ang + Math.PI,
+                  _rpW = strikeWheelObject(S, { oi: _rpOi, x: _rpMx, y: _rpY, gy: _rpHit.y, ang: rp.ang + Math.PI,
                     weapon: rp.isStaff ? 'bolt' : 'arrow', special: !!rp.isSpecial, vol: 0.22 * _rpK, peer: true, k: _rpK });
                 } else {
-                  spawnPropDebris(S, { id: _rpId, x: _rpHit.x, y: _rpY, gy: _rpHit.y,
+                  spawnPropDebris(S, { id: _rpId, x: _rpMx, y: _rpY, gy: _rpHit.y,
                     ang: rp.ang + Math.PI, weapon: rp.isStaff ? 'bolt' : 'arrow' });
                   if (_rpK > 0.02) propImpactSound(_rpId, 0.22 * _rpK);   /* someone else's shot: quieter than your own */
                 }
                 if (rp.isStaff) {
-                  orbCrashFx(S, _rpHit.x, _rpY, rp.isSpecial ? '#f5c542' : '#a78bfa');
+                  orbCrashFx(S, _rpMx, _rpY, rp.isSpecial ? '#f5c542' : '#a78bfa');
                   /* v2.3.2995: its mark, as yours leaves one (a peer's bolt
                      carries no element here: a plain burn) */
                   if (_rpW && !_rpW.broke && _rpFace !== 'n') {
-                    markProp(S, { kind: 'scorch', id: _rpId, oi: _rpOi, x: _rpHit.x, y: _rpY, gy: _rpHit.y, face: _rpFace,
+                    markProp(S, { kind: 'scorch', id: _rpId, oi: _rpOi, x: _rpMx, y: _rpY, gy: _rpHit.y, face: _rpFace,
                       r: rp.isSpecial ? 18 : 11, style: scorchStyle(null), glow: rp.isSpecial ? 0xf5c542 : null, ttl: SCORCH_MS });
                   }
                 } else if (_rpW && _rpW.broke) {
@@ -468,9 +480,9 @@ export function updateVisualSystems(S) {
                 } else if (!rp.isSpecial && arrowSnaps(rp.ownerId, rp.shotTs)) {
                   /* v2.3.2731: the same one-in-eight snap the shooter rolled --
                      same id, same shot timestamp, same answer (arrowSnap.js) */
-                  queueArrowSnap(S, _rpHit.x, _rpY, _rpHit.y, rp.ang, 0.18 * _rpK);
+                  queueArrowSnap(S, _rpMx, _rpY, _rpHit.y, rp.ang, 0.18 * _rpK);
                 } else {
-                  markProp(S, { kind: 'arrow', id: _rpId, oi: _rpOi, x: _rpHit.x, y: _rpY, gy: _rpHit.y,
+                  markProp(S, { kind: 'arrow', id: _rpId, oi: _rpOi, x: _rpMx, y: _rpY, gy: _rpHit.y,
                     face: _rpFace, ang: rp.ang,
                     /* v2.3.2995: a plain arrow stays in one of the Wheel's objects */
                     ttl: rp.isSpecial ? (rp.volley ? BOW_VOLLEY.BURN_MS : LONE_BURN_MS) : (_rpOi != null ? STUCK_ARROW_MS : 2000), special: !!rp.isSpecial });   /* v2.3.2849: a volley's 2.5 s */
