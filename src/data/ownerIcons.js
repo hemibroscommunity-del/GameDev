@@ -23,6 +23,10 @@
  *   6   the pet house at the start of the Pets page's "Pet House" row;
  *   8   the prize wheel on the Daily Rewards window's free spin row;
  *   9   the treasure map on the empty Journey page.
+ * v2.3.3524: and the hammer off the gold "Craft" button of the crafting sheet,
+ * for the Blacksmith's Upgrade tab -- the owner's playtest note: "Make the
+ * upgrade tab icon different for smithing.  Like a hammer" (it wore the
+ * currency strip's gold gem).
  * OWNER_ICON's w and h are the CSS px each is drawn at -- its picture's own
  * shape, written at about three times that (a 3x phone).
  *
@@ -48,7 +52,7 @@ export function landSceneUrl(id) {
   return typeof id === 'string' && Object.prototype.hasOwnProperty.call(LAND_SCENE, id) ? LAND_SCENE[id] : null;
 }
 
-const icon = (name, w, h) => Object.freeze({ src: '/icons/ui/' + name + '.webp' + V, w, h });
+const icon = (name, w, h, v) => Object.freeze({ src: '/icons/ui/' + name + '.webp' + (v || V), w, h });
 export const OWNER_ICON = Object.freeze({
   arenaHelmet: icon('arena-helmet', 24, 28),
   tradeHandshake: icon('trade-handshake', 40, 26),
@@ -56,6 +60,7 @@ export const OWNER_ICON = Object.freeze({
   petHouse: icon('pet-house', 40, 33),
   prizeWheel: icon('prize-wheel', 34, 37),
   journeyMap: icon('journey-map', 120, 69),
+  smithHammer: icon('smith-hammer', 22, 21, '?v=2.3.3493'),   /* v2.3.3524: the Blacksmith's Upgrade tab */
 });
 
 /* The quest pins over a townsperson, by the state entityRenderer reads off

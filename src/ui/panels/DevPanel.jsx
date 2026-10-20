@@ -3,6 +3,7 @@ import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { WORLDVIEW_EXITS } from '../../data/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
+import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
 
 /* ═══ v2.3.2240: THE OWNER'S TEST PANEL ═══
  *
@@ -239,6 +240,7 @@ const CAP_GATES = [
   'hardenmats' /* v2.3.3139: hardening takes a material (bars, or a bow's hardened wood) and a doubling gold ladder -- lower case, a kill switch */,
   'hardenedwood' /* v2.3.3139: five logs into one hardened wood at the Woodworker -- lower case, a kill switch */,
   'hardenwoodskill' /* v2.3.3481: a bow's or staff's hardening is gated on Woodworking, a sword's still on Blacksmithing (the owner: "Do woodworking") -- lower case, a kill switch */,
+  'forgeladder' /* v2.3.3524: the forge's ladder -- no wood tier, copper Smithing 1 / iron 5 / black steel 10, the forge's Melee gate the wear gate, hardening by the level that makes the tier (server/src/forgeladder.js) -- lower case, a kill switch */,
   'arenaap' /* v2.3.3481: the arena's champion is paid 500 achievement points with the prize (the owner: "an arena winner should be included") -- lower case, a kill switch */,
   'arenaapfirst' /* v2.3.3488: ...on a character's FIRST win only (server inbox.js AP_ONCE): the arena's window says so -- the owner: "I don't want anyone exploiting the achievement points from it" */,
   'movediet' /* v2.3.3204: a steady walk on the Wheel's safe ground sent every 66 ms -- lower case, a kill switch */,
@@ -665,6 +667,21 @@ export const DevPanel = ({ onClose }) => {
         <button type="button" style={btn(false)} data-dev-speed-test=""
           onClick={() => { if (onClose) onClose(); setTimeout(() => { runSpeedTest(); }, 400); }}>
           Run the speed test
+        </button>
+
+        {/* ═══ v2.3.3523: THE SOUND STUDIO ═══
+            The owner: "I think sounds were wired in the wrong places.  The
+            labels should tell you where they go.  Might need to build a quick
+            studio to show which sounds belong where."  Keyless: it only plays
+            sounds (ui/panels/SoundStudio.jsx). */}
+        <div style={label}>Sound studio</div>
+        <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
+          Every sound in the game under the moment it plays at, with a play button and the recording it
+          is made of. "Heard just now" names the last sounds the game played, so a wrong one can be found.
+        </div>
+        <button type="button" style={btn(false)} data-dev-sound-studio=""
+          onClick={() => { if (onClose) onClose(); setTimeout(() => { openSoundStudio(); }, 150); }}>
+          Open the sound studio
         </button>
 
         {!key && (

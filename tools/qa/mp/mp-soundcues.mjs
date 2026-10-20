@@ -154,8 +154,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(400);
   await P.page.keyboard.press('1');
   await P.page.waitForTimeout(400);
-  const swap = await P.page.evaluate(() => ({ n: window.__btCues.stats.played.weaponSwap || 0, slot: window._gameState.current.rpg.activeSlot }));
-  rec.ok(`2b. a weapon changed and changed back (2, 1): the blade drawn each time (${swap.n})`, slot0 === 'melee' && swap.n === 2 && swap.slot === 'melee', { slot0, swap });
+  /* v2.3.3523: each weapon its own swap sound (the owner: "Change weapon switch sound") */
+  const swap = await P.page.evaluate(() => { const p = window.__btCues.stats.played; return { bow: p.swapBow || 0, sword: p.swapSword || 0, staff: p.swapStaff || 0, slot: window._gameState.current.rpg.activeSlot }; });
+  rec.ok(`2b. a weapon changed and changed back (2, 1): the bow's sound, then the sword's (${swap.bow}, ${swap.sword})`,
+    slot0 === 'melee' && swap.bow === 1 && swap.sword === 1 && swap.staff === 0 && swap.slot === 'melee', { slot0, swap });
 
   /* the shield the admin panel hands out, worn as the bag's Equip wears it */
   await H.devOp(wsPort, 'kit', myId, { what: 'shield' });
