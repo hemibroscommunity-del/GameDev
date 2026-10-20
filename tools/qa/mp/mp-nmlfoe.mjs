@@ -152,6 +152,9 @@ const holdAt = (P, pid, ms, keepLock) => P.page.evaluate(({ pid, ms, keepLock })
   if (!keepLock) S.lockedTarget = null;
   S.swingTimer = 0;
   let locks = 0, frames = 0;
+  /* what the bow's sight said on each frame (its own answer, monsterCombat's
+     S._bowSight) and what the game made of the target -- a failure's story */
+  const seen = [];
   const aim = () => {
     const o = S.others && S.others[pid];
     if (!o) return;
@@ -163,10 +166,19 @@ const holdAt = (P, pid, ms, keepLock) => P.page.evaluate(({ pid, ms, keepLock })
     aim();
     frames++;
     if (S.lockedTarget) locks++;
+    if (seen.length < 6) {
+      const bs = S._bowSight, o = S.others && S.others[pid];
+      const ab = window.__btNmlAsk && window.__btNmlAsk.about ? window.__btNmlAsk.about(pid) : null;
+      seen.push({
+        sight: bs ? { id: bs.id, d: bs.d != null ? Math.round(bs.d) : null, reach: bs.reach != null ? Math.round(bs.reach) : null } : null,
+        about: ab, them: o ? { x: Math.round(o.renderX != null ? o.renderX : o.x), y: Math.round(o.renderY != null ? o.renderY : o.y), lv: o.rpgLv, away: !!o._away } : null,
+        me: { x: Math.round(S.player.x), y: Math.round(S.player.y), lv: S.rpg && S.rpg.level, shield: !!S._shieldUp },
+      });
+    }
     const t = performance.now() - t0;
     if (t >= ms) {
       S.autoAttack = false; S._aiming = false;
-      setTimeout(() => resolve({ ms: Math.round(t), frames, lockedFrames: locks }), 900);
+      setTimeout(() => resolve({ ms: Math.round(t), frames, lockedFrames: locks, seen }), 900);
       return;
     }
     requestAnimationFrame(tick);

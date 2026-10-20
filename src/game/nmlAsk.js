@@ -449,6 +449,14 @@ try {
       off: OFF,
       /* v2.3.3530: the attackers who joined a fight you chose, no window */
       joins: () => _joins.map((j) => Object.assign({}, j)),
+      /* v2.3.3530: what the game makes of a player now -- may you fight them
+         (No man's land's rule), and are they a live foe of yours (the bow's,
+         the swing's and the shot's list) */
+      about: (id) => {
+        const S = window._gameState && window._gameState.current;
+        if (!S || id == null) return null;
+        return { can: !!nmlCanAttack(S, id), live: !!isLiveFoe(S, id), attackedAt: attackedMeAt(S, id) };
+      },
       setMs: (ms) => { _msOverride = ms ? Math.max(1000, Math.min(60000, Number(ms) || NML_ASK_MS)) : 0; },
     };
   }
