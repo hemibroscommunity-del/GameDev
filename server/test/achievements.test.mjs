@@ -52,6 +52,7 @@ import { PACE } from '../src/flood.js';
 import { CODEX } from '../src/codex.js';
 import { HARDEN } from '../src/hardening.js';
 import { PETBOOK } from '../src/petbook.js';
+import { QUEST_REWARDS, QUEST_DORMANT, QUEST_RETIRED } from '../src/data.js';
 
 function makeState() {
   const store = new Map();
@@ -122,7 +123,19 @@ const aMonster = () => wheel.find((m) => m.home === 'frost' && !m.tier) || wheel
     ACHV.TIER_AP.common === 10 && ACHV.TIER_AP.rare === 100 && ACHV.TIER_AP.arena === 500 && ACHV.TIER_AP.superrare === 1000 && achvAp('gladiator') === 500);
   const total = ACHV.LIST.reduce((n, a) => n + ACHV.TIER_AP[a.tier], 0);
   check('0d every achievement is worth 7,470 AP in all', total === 7470, total);
-  check('0e the story ends are the last quest of every live chain', ['tut_4', 'life_2', 'beast_4', 'mayor_3'].every((q) => ACHV.STORY_ENDS.includes(q)) && ACHV.STORY_ENDS.length === 4, ACHV.STORY_ENDS);
+  /* v2.3.3527: worked out from the quest table, never a list of names -- the
+     tour (v2.3.3525) added chains and RETIRED life_2, a chain's end that
+     nobody is offered any more */
+  const gone = new Set([...QUEST_DORMANT, ...QUEST_RETIRED]);
+  const liveQ = Object.keys(QUEST_REWARDS).filter((q) => !gone.has(q));
+  const liveNext = (q) => { const nx = QUEST_REWARDS[q].next; return !!nx && !gone.has(nx) && Object.prototype.hasOwnProperty.call(QUEST_REWARDS, nx); };
+  const wantEnds = liveQ.filter((q) => !liveNext(q));
+  check('0e the story ends are the last quest of every live chain: every live quest is an end or leads to a live one, and nothing else',
+    ACHV.STORY_ENDS.length === wantEnds.length && wantEnds.every((q) => ACHV.STORY_ENDS.includes(q))
+      && liveQ.every((q) => ACHV.STORY_ENDS.includes(q) !== liveNext(q)), { got: ACHV.STORY_ENDS, want: wantEnds });
+  check('0e2 ...never a quest nobody is offered (retired or dormant), so Storyteller can always be earned',
+    QUEST_RETIRED.length > 0 && ACHV.STORY_ENDS.every((q) => !gone.has(q)) && !ACHV.STORY_ENDS.includes('life_2')
+      && ['tut_4', 'beast_4', 'mayor_3'].every((q) => ACHV.STORY_ENDS.includes(q)), ACHV.STORY_ENDS);
   check('0f Delver needs the Wheel\'s three dungeons', ACHV.DUNGEONS.length === 3 && ['hollows', 'thunder', 'sky'].every((d) => ACHV.DUNGEONS.includes(d)), ACHV.DUNGEONS);
 }
 
@@ -254,10 +267,12 @@ const gotC = (id) => !!(rec('bp_av_c') && rec('bp_av_c').got && rec('bp_av_c').g
 
   /* the story */
   C._quests = Object.create(null);
-  for (const q of ['tut_4', 'life_2', 'beast_4']) C._quests[q] = 'turnedIn';
+  const ends = ACHV.STORY_ENDS.slice();
+  for (const q of ends.slice(0, -1)) C._quests[q] = 'turnedIn';
+  C._quests.life_2 = 'turnedIn';   /* a retired quest handed in counts for nothing either way */
   room._achvOnQuest('bp_av_c', C);
-  check('3p three of the four chains\' ends: no Storyteller', !gotC('story_done'), rec('bp_av_c'));
-  C._quests.mayor_3 = 'turnedIn';
+  check(`3p all but one of the ${ends.length} chains' ends: no Storyteller`, ends.length > 1 && !gotC('story_done'), rec('bp_av_c'));
+  C._quests[ends[ends.length - 1]] = 'turnedIn';
   room._achvOnQuest('bp_av_c', C);
   check('3q every chain\'s end handed in: Storyteller', gotC('story_done'), rec('bp_av_c'));
 

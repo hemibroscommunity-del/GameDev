@@ -55,10 +55,17 @@ answered "Go recommended on everything".
 | combat_100 | Centurion | super-rare | 1,000 | a combat skill to 100 | prog3.js |
 | godly | Godly | super-rare | 1,000 | a Godly piece, found or forged (counted) | as Elite |
 
-"The story" is the last quest of every live chain (tut_4, life_2, beast_4,
-mayor_3), worked out from the quest table: a chain's middle can be skipped
-(mayor_1 hid itself while the Wheel's buildings had no doors), and a skipped
-quest must never make the achievement impossible.
+"The story" is the last quest of every live chain, worked out from the quest
+table (`ACHV.STORY_ENDS`): a chain's middle can be skipped (mayor_1 hid itself
+while the Wheel's buildings had no doors), and a skipped quest must never make
+the achievement impossible. A quest nobody is offered is not live: neither a
+dormant one nor, since the tour (v2.3.3525), a RETIRED one (data.js
+`QUEST_RETIRED`) -- life_2 was a chain's end, and counted, no new player could
+ever be a Storyteller (found merging the tour, v2.3.3527). Since the tour the
+ends are eleven: tut_1, tut_4, farm_1, farm_2, smith_2, wood_2, fish_1,
+race_1, beast_2, beast_4 and mayor_3, each one a player can be offered
+(beast_3 and beast_4 open after the Mayor's finale, tut_2).
+`achievements` §0e holds the rule, not the names.
 
 Left out on purpose: life-skill levels (the guild ladder already pays AP for
 them), owning Hemi Bros (buying, not playing), logins and streaks (not

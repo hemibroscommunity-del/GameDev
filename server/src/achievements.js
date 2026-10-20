@@ -91,7 +91,7 @@ import { PETBOOK } from './petbook.js';
 import { PROG3 } from './prog3.js';
 import { HARDEN } from './hardening.js';
 import { WHEEL_DUNGEON } from './wheeldungeon.js';
-import { QUEST_REWARDS, QUEST_DORMANT } from './data.js';
+import { QUEST_REWARDS, QUEST_DORMANT, QUEST_RETIRED } from './data.js';
 import { PACE } from './flood.js';
 
 export const ACHV_KEY = (playerId) => 'achv:' + playerId;
@@ -127,17 +127,20 @@ const LIST = Object.freeze([
 ].map((a) => Object.freeze({ count: false, ...a })));
 
 /* The story is done when the LAST quest of every live chain is handed in:
-   each live quest whose `next` is nothing or a dormant quest.  Today
-   tut_4, life_2, beast_4 and mayor_3 -- the ends, not all thirteen, because
-   a chain's middle can be skipped (mayor_1 hid itself while the Wheel's
-   buildings had no doors, v2.3.3029) and a skipped quest must never make the
-   achievement impossible.  Worked out from the table, so a new chain is in. */
+   each live quest whose `next` is nothing or a quest nobody is offered.  The
+   ends, not every quest, because a chain's middle can be skipped (mayor_1 hid
+   itself while the Wheel's buildings had no doors, v2.3.3029) and a skipped
+   quest must never make the achievement impossible.  Worked out from the
+   table, so a new chain is in.
+   v2.3.3527: and a RETIRED quest is not live either (data.js QUEST_RETIRED,
+   v2.3.3525's tour): life_2 was a chain's end, and nobody is offered it any
+   more -- counted, Storyteller could never be earned by a new player. */
 const STORY_ENDS = (() => {
-  const dormant = new Set(QUEST_DORMANT);
-  const live = Object.keys(QUEST_REWARDS).filter((q) => !dormant.has(q));
+  const gone = new Set([...QUEST_DORMANT, ...QUEST_RETIRED]);
+  const live = Object.keys(QUEST_REWARDS).filter((q) => !gone.has(q));
   return Object.freeze(live.filter((q) => {
     const nx = QUEST_REWARDS[q] && QUEST_REWARDS[q].next;
-    return !nx || dormant.has(nx) || !Object.prototype.hasOwnProperty.call(QUEST_REWARDS, nx);
+    return !nx || gone.has(nx) || !Object.prototype.hasOwnProperty.call(QUEST_REWARDS, nx);
   }));
 })();
 
