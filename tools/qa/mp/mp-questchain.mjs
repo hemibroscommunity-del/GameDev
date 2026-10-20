@@ -64,7 +64,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     P.page.evaluate((src) => { eval(src); }, pin(quests, items));   // eslint-disable-line no-eval
   const panelText = () => P.page.evaluate(() => {
     const p = document.querySelector('.bt-qoffer') || document.querySelector('.bt-npcdlg');
-    return p ? (p.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 200) : null;
+    /* v2.3.3510: whole -- a long last line put the claim button past 200 */
+    return p ? (p.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 600) : null;
   });
 
   for (const st of STEPS) {

@@ -6719,7 +6719,8 @@ export const QUEST_CHAINS = {
         + "One thing, since you're headed back out. The blue ones swell up right before they go. When one does that, walk away. It bursts.\n\n"
         + "...Four remains' worth, though. You'd have met one already.\n\n"
         + "Right. Forget I said it. Here, a bow and a staff, on the town.\n\n"
-        + "Now the whole town wants a piece of you. Anybody with a gold ! over his head has a job, and you'll see them on your map. Help them all, then come back. I've got a snowman problem, and I'm not discussing it in public.",
+        + "Now the whole town wants a piece of you. Anyone with a gold ! over his head has a job, and they're on your map too.\n\n"
+        + "Help them all, then come back. I've got a snowman problem. Don't tell anyone.",
     },
   },
   tut_2: {
