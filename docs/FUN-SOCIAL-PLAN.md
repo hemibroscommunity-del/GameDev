@@ -235,7 +235,7 @@ Start when about 20 people play regularly, or at the first spam complaint:
 - a word filter (slurs always; other words by each player's setting);
 - escalating timeouts (1 minute, 10 minutes, 24 hours);
 - Block kept on the server, stopping trades, duel challenges and invites too
-  (since v2.3.3519 the phone drops a blocked player's duel challenges, trade
+  (since v2.3.3526 the phone drops a blocked player's duel challenges, trade
   requests and party invites; on the server the block would follow you to
   every device and the request would never be sent);
 - throws and Big text unlocked when you finish the Mayor's first quest (the

@@ -270,7 +270,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const col = document.getElementById('root').getBoundingClientRect();
         const sr = strip ? strip.getBoundingClientRect() : null;
         return { strip: strip ? getComputedStyle(strip).display : 'gone', hits,
-          /* v2.3.3519: drawn in the margin beside the game it covers nothing */
+          /* v2.3.3526: drawn in the margin beside the game it covers nothing */
           margin: !!(strip && strip.getAttribute('data-kb-place') === 'side' && sr && sr.right <= col.left) };
       });
       rec.ok('4. ...and the keys strip covers none of it (in the margin beside the game, or standing aside): a click anywhere across the button reaches it',

@@ -149,6 +149,6 @@ export function JumpButton(props) {
     },
   },
   React.createElement(Skin, { size: size, tone: air ? 'warm' : 'slate', state: air ? 'on' : 'normal' },
-    /* v2.3.3519: the owner's round jump (card 11), the button's face */
+    /* v2.3.3526: the owner's round jump (card 11), the button's face */
     React.createElement(AbilityFace, { size: size, name: 'jump' })));
 }
