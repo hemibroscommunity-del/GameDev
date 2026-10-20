@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7b0d67a6ada3d8212b83ec6d055473a022e04309",
+  "tree": "2f2459ad9313f1e12152abf240b06e95b25bba4e",
+  "committedAt": "2026-10-20T03:12:17-07:00",
+  "subject": "Playtest sounds: the bow's shot, the effort grunt, no fleshy thumps, weapon swaps, the ore's crack, a quicker points chime -- and a Sound studio (v2.3.3523) (#1033)",
+  "files": 6137,
+  "bytes": 712623601,
+  "listingSha256": "ae0f48850e9d798f3f6f61962bd3f8054867b2cc7050c7eb31c9890853131b61",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
