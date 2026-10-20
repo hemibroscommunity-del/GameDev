@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8048bf1bb8ce65278d149303ae6e93782ee50d75",
+  "tree": "41b0f012a3092b263bb3ec584185b157303b7441",
+  "committedAt": "2026-10-19T23:12:57-07:00",
+  "subject": "A shot at a monster behind a rock stops at the rock (v2.3.3515) (#1041)",
+  "files": 6098,
+  "bytes": 711851914,
+  "listingSha256": "ce888cadf5fccb3509cdf6269fe2b1c125384d33f77be827930373890ebdec2c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
