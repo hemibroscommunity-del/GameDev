@@ -218,7 +218,11 @@ export const burstMethods = {
          server put there itself.  Exactly the posture collision damage has
          had since v2.3.1114 (it bypasses dmgCap and carries its own
          COLLISION_BURST_CAP instead). */
-      dmg = Math.max(1, Math.round(dmg * this._fractureDmgMult(m)));
+      /* v2.3.3517: ...and UP beside it (elemental.js ELEM_UP): the burst is
+         the gem's own element, so one that beats the monster's lands harder,
+         as the gem's ordinary hit does (combat.js), never softer. */
+      const up = this._elemUpMult ? this._elemUpMult(m, element) : 1;
+      dmg = Math.max(1, Math.round(dmg * this._fractureDmgMult(m) * up));
 
       /* Status BEFORE the damage, so a monster the burst kills has already
          shown the element that killed it (matches the client's hit order
@@ -236,7 +240,7 @@ export const burstMethods = {
          damage SOURCE would not grow a second copy of kill credit); `tag`
          rides through to the monster_hit payload so the caster's client can
          draw its own popup. */
-      const got = this._applyMonsterDot(zone, m, dmg, session.id, null, { burst: true });
+      const got = this._applyMonsterDot(zone, m, dmg, session.id, null, { burst: true, up: up > 1 });   /* v2.3.3517: + its UP */
       dealt += got;
       xpDealt += got * this._combatXpDecay(ps, slot === 'ranged' ? 'bow' : slot === 'staff' ? 'staff' : 'sword', m.level);
     }

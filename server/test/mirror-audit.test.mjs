@@ -2419,6 +2419,21 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const bases = Object.keys(SRV.BLACKSMITH_TIERS).concat(Object.keys(SRV.WOODWORKING_TIERS).map((k) => 'ww_' + k), [undefined, 'nope', '__proto__']);
   const off = bases.filter((b) => C.weaponGemSlots({ gearBase: b }) !== W.weaponGemSlots({ gearBase: b }));
   check('weapon gems: every forge base has the same number of gem slots on both sides (a drop with no base: 1)', off.length === 0, off);
+  /* v2.3.3517: every gem pulls its weight (elemental.js ELEM_UP, SOAK_HIT,
+     SHOCK_SPARK): the Gem Works says the worker's numbers and the worker's
+     matchups -- "25% harder on Frost monsters" for the gem the worker lands
+     25% harder on them */
+  const EL = await import('../src/elemental.js');
+  check('gem weight: UP, soak and the spark\'s reach and share are the worker\'s numbers on the phone',
+    C.ELEM_UP_MULT === EL.ELEM_UP.MULT && C.SOAK_HIT_MULT === EL.SOAK_HIT.MULT && C.SHOCK_SPARK_R === EL.SHOCK_SPARK.R && C.SHOCK_SPARK_PCT === EL.SHOCK_SPARK.PCT,
+    { phone: [C.ELEM_UP_MULT, C.SOAK_HIT_MULT, C.SHOCK_SPARK_R, C.SHOCK_SPARK_PCT], worker: [EL.ELEM_UP.MULT, EL.SOAK_HIT.MULT, EL.SHOCK_SPARK.R, EL.SHOCK_SPARK.PCT] });
+  const ELEMS = ['flame', 'frost', 'water', 'venom', 'storm', 'stone', 'wind', 'flora', 'dark', 'light'];
+  const beatOff = C.WEAPON_GEMS.filter((g) => {
+    const said = C.weaponGemBeats(g);
+    const beaten = ELEMS.filter((t) => EL.elementUpMult(g, t) > 1);
+    return beaten.length !== 1 || beaten[0] !== said;
+  });
+  check('gem weight: each gem beats the one element the worker lands it harder on, and the phone names that one', beatOff.length === 0, beatOff);
 }
 
 /* ═══ v2.3.3516: THE CRACK'S RULES AND THE GEMS' KEYS ARE THE WORKER'S ═══

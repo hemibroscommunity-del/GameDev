@@ -2135,14 +2135,21 @@ export function updateMonsterCombat(S, deps) {
                       BT_AUDIO.beep(pitches[hitElement] || 400, 0.04, 0.06, 'sine');
                     }
                     /* §10.2 Effectiveness indicator — green/red arrow on hit */
-                    if (m.element) {
+                    /* ═══ v2.3.3517: "UP" IS THE WORKER'S, AND "DN" IS GONE ═══
+                       The owner's decision 14 (docs/GEM-PLAN.md): a gem that
+                       beats the monster's element hits 25% harder, and there
+                       is no penalty the other way.  Against a worker that does
+                       it (caps.elemup) the "UP" comes with the worker's own
+                       number, off its monster_hit `up` (gameEvents.js), so
+                       none is guessed here; an older worker still gets the old
+                       guess.  "DN" said a weak matchup hit softer, which no
+                       hit ever has: never shown now. */
+                    if (m.element && !(S._serverCaps && S._serverCaps.elemup)) {
                       var eff = getEffectiveness(hitElement, m.element);
                       if (eff > 1.0) {
                         pushDmgPopup(S, m.x + 12, m.y - 10, 'UP', '#3dd497');
                         if (!_R6._questFlags) _R6._questFlags = {};
                         _R6._questFlags.usedEffectiveness = true;
-                      } else if (eff < 1.0) {
-                        pushDmgPopup(S, m.x + 12, m.y - 10, 'DN', '#ff5e6c');
                       }
                     }
                   }

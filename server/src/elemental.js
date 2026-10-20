@@ -98,6 +98,48 @@ export function getEffectiveness(attackElem, targetElem) {
   return 1.0;
 }
 
+/* ═══ v2.3.3517: EVERY GEM PULLS ITS WEIGHT (docs/GEM-PLAN.md, Phase 4) ═══
+ * The owner's decisions 13 and 14, "All of that sounds good" (2026-10-20).
+ * Until now two of the eight gems did nothing a player could see beyond
+ * setting up a collision -- soak and shock were combo starters only -- and
+ * the "UP" a hit showed over a monster its element beats was a word, the
+ * damage unchanged (only a collision read getEffectiveness).
+ *
+ * UP.  A hit carrying an element that BEATS the monster's (the wheel above)
+ * lands UP.MULT harder: the gem's own hit (combat.js _handleMonsterDamage)
+ * and the Element Burst (burst.js).  No penalty the other way -- a gem that
+ * loses the matchup hits as hard as no gem, and the phone's "DN" goes.
+ * Applied where FRACTURE is, after the attacker's ceiling: like fracture it
+ * is the worker's own fact about the TARGET (its own copy of the gem against
+ * the monster's element), nothing a claim can raise, so the ceiling that
+ * bounds the attacker's roll does not move.  A collision keeps its own
+ * effectiveness (resolveElementCollision, 0.75 to 1.25), as before.
+ *
+ * SOAK.  A soaked monster's blows land SOAK_HIT.MULT as hard: every blow it
+ * delivers itself (hits.js, the door's `soak` column), its storm arcs
+ * included; not a burn or poison it left on you, nor ground it set alight.
+ *
+ * SHOCK.  A hit on a monster that was already shocked SPARKS to the nearest
+ * other monster within SHOCK_SPARK.R, for SHOCK_SPARK.PCT of the hit (combat.js
+ * _shockSpark): one monster, no chain, the hitter's damage and credit.
+ *
+ * Kill switches: `elemup`, `soakhit`, `shockspark` -- each `false` in the
+ * live flags puts its part back as it was (combat.js). */
+export const ELEM_UP = Object.freeze({ MULT: 1.25 });
+export const SOAK_HIT = Object.freeze({ MULT: 0.8 });
+export const SHOCK_SPARK = Object.freeze({ R: 150, PCT: 0.25 });
+
+/* What a hit of `attackElem` lands for on a monster of `targetElem`: UP.MULT
+   when it wins the matchup, else 1 -- never less (decision 14). */
+export function elementUpMult(attackElem, targetElem) {
+  return getEffectiveness(attackElem, targetElem) > 1 ? ELEM_UP.MULT : 1;
+}
+
+/* How hard a monster's own blow lands while it is soaked. */
+export function soakHitMult(m) {
+  return (m && m.statuses && m.statuses.soak) ? SOAK_HIT.MULT : 1;
+}
+
 export function lookupCollision(a, b) {
   return COLLISION_TABLE[a + '|' + b] || COLLISION_TABLE[b + '|' + a] || null;
 }

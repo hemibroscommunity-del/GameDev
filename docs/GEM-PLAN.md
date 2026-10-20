@@ -11,7 +11,7 @@
 > raw gem. Like maybe a 10% chance. Then after collecting a certain number of
 > raw gems they can be combined into an elemental gem."*
 
-**This is a plan; Phases 1 and 2 are built (below).** It comes from reading the
+**This is a plan; Phases 1, 2 and 4 are built (below).** It comes from reading the
 game's code, and each fact names the file it comes from. The loop is the
 owner's (the second quote above). Every remaining choice had a
 recommendation, listed under "Your decisions" near the end, and **the owner
@@ -41,6 +41,21 @@ docs/specs/shard-crack.md:
 - **The Rare Gem is worth an elemental gem at Diego's** (4,000, was 20).
 - **The crack plays under the row you tapped.** Below eight lands' rows it was
   off the screen.
+
+**Phase 4 is built (v2.3.3517), before Phase 3,** which waits on the owner's
+gem pictures. Water and storm now do something of their own, and "UP" is
+real: docs/specs/gem-weight.md. Where it differs from this plan:
+- **The anticheat ceiling does not move.** UP is applied where fracture is,
+  after the ceiling, because it is the worker's own fact about the target (its
+  own gem against the monster's element). Widening the ceiling would only have
+  been needed for a multiplier inside the attacker's roll.
+- **UP is on the gem's own hit and on the Element Burst.** The staff splash,
+  the bow special's blast, the lunge and the ticks carry no gem element.
+- **A spark leaps from where the hit landed**, before the hit's shove, as the
+  staff splash does, and only from a monster that was shocked before the hit.
+- **The Gem Works says what each gem beats** ("25% harder on Frost monsters"),
+  and water and storm say their effect, each only against a worker that does
+  it (caps.elemup, caps.soakhit, caps.shockspark).
 
 ## The short answer
 

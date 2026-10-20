@@ -440,6 +440,12 @@ cracked and raw gems combined on the worker (shardcrack.js, caps.shardcrack),
 and the once-a-gem Enchanting XP counts the gems a player MADE
 (`lifeSkills.gemsUnpaid`), since a gem that trades breaks a came-back count
 (TRAPS §242; docs/specs/shard-crack.md).
+v2.3.3517: the plan's Phase 4 -- a gem that beats the monster's element
+lands 1.25x, a soaked monster hits 0.8x (the door's `soak` column, hits.js),
+a hit on a shocked monster sparks to the nearest other (combat.js
+`_shockSpark`).  UP rides beside fracture, AFTER the attacker's ceiling: a
+fact the worker stamped about the target, not the attacker's roll, so the
+ceiling did not move (docs/specs/gem-weight.md).
 
 ### B. Spectator stake board
 Old item A's residue: sponsorship stakes are private — spectators see

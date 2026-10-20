@@ -6,7 +6,7 @@ import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_BY_LOG } from '@/data/hardenedWood
 import { dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
 import { parseGemKey, gemElementName } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
 import { SHARD_GEM_ELEMENT, RAW_PER_GEM, shardCrackChance } from '@/data/shards.js';   /* v2.3.3516: a shard may hold its land's raw gem */
-import { isWeaponGem, weaponGemEffect } from '@/data/weaponGems.js';   /* v2.3.3516: what a gem does on a weapon */
+import { isWeaponGem, weaponGemEffect, weaponGemEdge } from '@/data/weaponGems.js';   /* v2.3.3516: what a gem does on a weapon; v2.3.3517: + what it beats */
 import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player (v2.3.3260: in any fight) */
 import { pushDmgPopup, offlineRefused /* v2.3.3473: Drop never into a dead socket */ } from '@/game/combatHelpers.js'; /* v2.3.3133: ...and say how long */
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a listing heard */
@@ -63,8 +63,14 @@ function gemCardInfo(key, SR) {
       : 'Cut into a ' + gemElementName(g.element) + ' Gem at the Gem Works';
   }
   if (g) {
-    const does = isWeaponGem(g.element) ? weaponGemEffect(g.element, !!caps.monsterhold) : '';
-    return 'Set into your gear at the Gem Works' + (does ? ' · on a weapon: ' + does.charAt(0).toLowerCase() + does.slice(1) : '');
+    /* v2.3.3517: what the worker does: water's softer blows, storm's spark,
+       and the matchup (weaponGems.js) */
+    const has = !!(SR && SR._serverCaps);
+    const weight = { elemup: has && !!SR._serverCaps.elemup, soakhit: has && !!SR._serverCaps.soakhit, shockspark: has && !!SR._serverCaps.shockspark };
+    const does = isWeaponGem(g.element) ? weaponGemEffect(g.element, !!caps.monsterhold, weight) : '';
+    const edge = isWeaponGem(g.element) ? weaponGemEdge(g.element, weight) : '';
+    return 'Set into your gear at the Gem Works' + (does ? ' · on a weapon: ' + does.charAt(0).toLowerCase() + does.slice(1) : '')
+      + (edge ? ' · ' + edge : '');
   }
   if (crack && typeof key === 'string' && key.indexOf('shard_') === 0 && Object.prototype.hasOwnProperty.call(SHARD_GEM_ELEMENT, key.slice(6))) {
     const ls = SR && SR.rpg && SR.rpg.lifeSkills && SR.rpg.lifeSkills.gemCutting;

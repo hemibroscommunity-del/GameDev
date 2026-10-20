@@ -201,7 +201,9 @@ It then runs the steps in one order:
 4. a rock in the way;
 5. the shield: its cost and its parry (v2.3.3296: or a hit of 0, the pile's
    and the wrong-way ball's, gone with decisions 2 and 9);
-6. the dice (`_applyDamage`), after the one-hit rail;
+6. the dice (`_applyDamage`), after the one-hit rail. Since v2.3.3517, a
+   soaked monster's own blow first lands 0.8x as hard, and the rail comes
+   after that (the row's `soak` column; docs/specs/gem-weight.md);
 7. what the monster's own blow does after (thorn's answer, the hexer's curse,
    the element's status);
 8. the event, the save and the death.
