@@ -656,7 +656,11 @@ function applyWoodReward(S, node, result, deps) {
     var accuracy = (result && result.accuracy) || 'good';
     var reward = MINIGAME_REWARDS[accuracy] || MINIGAME_REWARDS.good;
     /* v2.3.849: the felled-tree "timber" crash (was a placeholder beep). */
-    try { if (BT_AUDIO.play) BT_AUDIO.play('tree-fall', { vol: 0.8 }); else BT_AUDIO.beep(500, 0.03, 0.06, 'triangle'); } catch (e) {}
+    /* v2.3.3523: a crack and a creak, no thump (data/eventSounds.js
+       treeFelled; the owner: "The sound when a tree hits 0 hp is a fleshy
+       sound.  Remove that.") -- it was tree-fall whole, its 1.0-1.8 s a
+       thump 3x a hit */
+    cue('treeFelled');
     node.alive = false;
     node.respawnAt = Date.now() + (node.respawnTime || 30000);
     /* v2.3.849: a wood-log icon pops out of the felled tree and flies into

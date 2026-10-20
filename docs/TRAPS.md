@@ -7982,3 +7982,83 @@ shot at nothing, at a prop, or steered off its target keeps the parallel line.
 **Receipt:** `mp-groundline`, which fails on the build before it and passes
 with it, and `server/test/shot-ground.test.mjs` §4 (the frost ridge in its own
 numbers: the parallel line enters the ridge, boots to feet passes it).
+
+## 240. "Put the gem on the page's weapon" (v2.3.3513)
+
+**The plausible move.** A test (or a tool) that needs a weapon with an element
+writes `element1` on the page's own weapon -- `S.rpg.weapon.element1 =
+'flame'` -- exactly as the Enchanter's Set gems tab used to, and fights. The
+hit claim carries the element, the worker applies it.
+
+**Why it is wrong.** Since v2.3.3513 the worker reads each hit's element from
+ITS copy of the weapon (`weapongem.js _weaponHitElement`, called by combat.js
+`_handleMonsterDamage` and pvpextras.js `_pvpClaimElement`), never from the
+claim: a modified phone could claim any element without owning a gem. So a gem
+written on the page alone carries NOTHING -- no burn, no slow, no collision --
+and the next `player_state` with the weapon in it puts the plain weapon back.
+`mp-pvpextras` did exactly this and would have gone red.
+
+**The rule.** Set a weapon's gem the way a player does: `H.weaponGem(P,
+wsPort, id, slot, gem)` (a polished gem from the dev kit, the Blacksmith's
+Take out for a gem already in, then `weapon_gem`), or on the worker's own
+copy in a server suite. A page-only element is fine for a picture (a button's
+skin, a card), never for a fight. `weapongem: false` in liveflags is the old
+claim path, for an emergency, not for a test.
+
+**Receipt:** `server/test/weapon-gem.test.mjs` §7 (a claim of frost on a flame
+weapon burns; a claim of flame on a plain one does nothing) and `mp-weapongem`
+step 6; `mp-pvpextras` passes with `H.weaponGem`.
+
+## 241. "A target the shot cannot hit is not on its line" (v2.3.3515)
+
+**The plausible move.** A monster behind a rock cannot be hit -- the hit test
+refuses it -- so the sight passes it over: it is not on the line, and the line
+goes on to whatever comes next, or to nothing.
+
+**Why it is wrong.** The shot still flies at it. Passed over, the shot carried
+no aim, so it kept the parallel ground line (§239's other line), which nothing
+had judged. Where that line passed beside the rock, a staff bolt (no gate of its
+own) flew on, reached the monster, and the hit test -- asking from the shot's
+ground point there, beside the monster and past the rock -- let it hit. The bow,
+its line on nothing, waited. `mp-groundline` step 5 on the build before: 75
+damage to a snowman covered from your boots, and no arrow.
+
+**The rule.** The first target on a shot's line is what the shot is at, whether
+it can be hit or not. If a rock covers it, the shot's ground runs into the rock
+and stops there, and the line ends at the rock (projectiles.js `_sightLine`,
+`_coverOf`). Anything that takes a target out of consideration says where the
+shot then goes -- never leaves it to a line nothing asked about.
+
+**Receipt:** `mp-groundline` step 5, which fails on the build before (75 damage,
+the bow's line on nothing) and passes with it (0 damage, the bow's line on the
+bank, its arrows in it).
+
+## 242. "Count what came back, so it pays once" (v2.3.3516)
+
+**The plausible move.** A reward meant to be paid once per thing -- 400
+Enchanting XP per gem set -- is guarded by counting, per player, the things
+that came BACK to them (a take-out, a salvage): setting one of those pays
+nothing.  v2.3.3513 did exactly this (`lifeSkills.gemsBack`), and it held
+while gems lived in a pouch nothing could move between players.
+
+**Why it is wrong.** The moment the thing can change hands (v2.3.3516 put gems
+in the bag: tradeable, sellable, mailable), a per-player came-back count says
+nothing about a thing that came back to SOMEONE ELSE and was handed over.  Two
+players pass one gem -- or one gemmed sword -- back and forth: each take-out
+marks the taker, each set by the other pays 400 again, for 25-44 gold a round,
+about 60 times the honest rate, on a skill on the leaderboard.  Marking the
+RECEIVER instead needs a hook on every road into a bag (trades, mail, the
+auction house, Diego, Ace, pickups, death piles), and one missed road is the
+exploit back.
+
+**The rule.** Count what cannot change hands: what a player MADE.  Each gem a
+player makes (a combine, a Rare Gem's cut, the old cut) is owed one set's XP
+(`lifeSkills.gemsUnpaid`, weapongem.js `_gemMade`/`_gemSetXp`); a set pays
+while one is owed; anything bought, traded, won or taken out sets the same and
+pays nothing.  Deny by default: a new road into the bag owes nothing unless it
+MAKES a gem.  The same shape fits any once-per-item reward on an item that
+trades.
+
+**Receipt:** `server/test/weapon-gem.test.mjs` §9b (one gem passed between two
+players: 400, then 0, then 0; a gem the second player made, 400), and
+`shard-crack` §6 (a combined gem is owed its XP).

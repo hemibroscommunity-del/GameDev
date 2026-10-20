@@ -267,10 +267,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const el = document.elementFromPoint(b.left + b.width * f, b.top + b.height / 2);
           return !!(el && z.contains(el));
         });
-        return { strip: strip ? getComputedStyle(strip).display : 'gone', hits };
+        const col = document.getElementById('root').getBoundingClientRect();
+        const sr = strip ? strip.getBoundingClientRect() : null;
+        return { strip: strip ? getComputedStyle(strip).display : 'gone', hits,
+          /* v2.3.3526: drawn in the margin beside the game it covers nothing */
+          margin: !!(strip && strip.getAttribute('data-kb-place') === 'side' && sr && sr.right <= col.left) };
       });
-      rec.ok('4. ...and the keys strip stands aside while it is up: a click anywhere across the button reaches it',
-        !!clear && (clear.strip === 'none' || clear.strip === 'gone') && clear.hits.every(Boolean), clear);
+      rec.ok('4. ...and the keys strip covers none of it (in the margin beside the game, or standing aside): a click anywhere across the button reaches it',
+        !!clear && (clear.strip === 'none' || clear.strip === 'gone' || clear.margin) && clear.hits.every(Boolean), clear);
       const fb = await P.page.evaluate(async () => {
         const st = document.createElement('style');
         st.textContent = 'html body .bt-rjoy-zone[data-harvest]{display:none!important}';   /* out-ranks game.css's own [data-harvest] rule */

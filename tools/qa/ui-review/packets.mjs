@@ -24,7 +24,7 @@ export const MAX_PICTURES = 9;
    in "Other screens" (packetsFor) until it is placed in one here */
 export const PACKETS = [
   { slug: 'door-and-creator', title: 'The door and the character creator',
-    screens: ['login-door', 'creator', 'creator-tab-hat', 'creator-tab-skin', 'creator-tab-eyes'] },
+    screens: ['login-door', 'creator', 'creator-tab-hair', 'creator-tab-hat', 'creator-tab-skin', 'creator-tab-eyes'] },
   { slug: 'creator-tabs', title: 'The creator\'s other tabs and the drawing editor',
     screens: ['creator-tab-eyewear', 'creator-tab-beard', 'creator-tab-shirt', 'creator-tab-pants', 'creator-tab-shoes', 'creator-paint'] },
   { slug: 'arriving-and-the-world', title: 'Arriving, the world screen and talking to Mayor Bro',

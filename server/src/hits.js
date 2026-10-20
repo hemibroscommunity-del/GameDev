@@ -111,10 +111,16 @@ import { thornRecoil } from './elemental.js';
  *            thorn's answer (Flora's status on the monster), the hexer's
  *            curse, the element's status (monsterstatus.js _elemOnHit) and the
  *            monster marked moved for the tick; 'elem' -- the element's status
- *            only; null -- nothing. */
+ *            only; null -- nothing.
+ *   soak     v2.3.3518: a soak on the monster (a water gem's status) softens
+ *            this blow, x SOAK_HIT.MULT before the rail (elemental.js;
+ *            combat.js _soakHitMult, kill switch `soakhit: false`): true for
+ *            every blow the monster delivers itself, its storm arcs included;
+ *            false for a burn or poison it left on you and for ground it set
+ *            alight, which are not its blow. */
 const row = (r) => Object.freeze({
   shield: null, shelter: null, roll: false, sight: null, block: null,
-  rail: 0, elemental: false, own: null, ...r,
+  rail: 0, elemental: false, own: null, soak: false, ...r,
 });
 const block = (b) => Object.freeze({ cost: 0, parry: false, thorns: false, ...b });
 
@@ -123,14 +129,14 @@ export const MONSTER_HITS = Object.freeze({
   swing: row({
     shield: 'door', shelter: 'door', roll: true, sight: 'door',
     block: block({ cost: BLOCK_STAMINA_COST, parry: true, thorns: true }),
-    own: 'contact',
+    own: 'contact', soak: true,
   }),
   /* a snowman's ball, where it lands (index.js _tickMonsters); blocked free
      facing the thrower -- "that cost is tied to the melee cadence" */
   snowball: row({
     shield: 'door', shelter: 'door', roll: true, sight: 'flight',
     block: block({ cost: 0 }),
-    own: 'contact',
+    own: 'contact', soak: true,
   }),
   /* the snow pile's touch (telegraph.js _resolveBurrow) -- and every direct
      call of _monsterStrikePlayer, whose behaviour this row was.  A roll does
@@ -139,27 +145,27 @@ export const MONSTER_HITS = Object.freeze({
   pile: row({
     shield: 'door', shelter: 'door', sight: 'door',
     block: block({ cost: BLOCK_STAMINA_COST, parry: true }),
-    own: 'contact',
+    own: 'contact', soak: true,
   }),
   /* a telegraphed cast: the brute's slam, the fodder's lunge
      (telegraph.js _resolveMonsterTelegraph -> _telegraphHitPlayer) */
   kit: row({
     shield: 'door', shelter: 'door', roll: true, sight: 'door',
     block: block({ cost: BLOCK_STAMINA_COST, parry: true }),
-    rail: TELEGRAPH.MAX_HIT_PCT, own: 'elem',
+    rail: TELEGRAPH.MAX_HIT_PCT, own: 'elem', soak: true,
   }),
   /* a blue slime going off (telegraph.js _resolveSlimeBurst) */
   burst: row({
     shield: 'door', shelter: 'door', roll: true, sight: 'door',
     block: block({ cost: BLOCK_STAMINA_COST, parry: true }),
-    rail: TELEGRAPH.MAX_HIT_PCT, elemental: true, own: 'elem',
+    rail: TELEGRAPH.MAX_HIT_PCT, elemental: true, own: 'elem', soak: true,
   }),
   /* a dungeon boss's ability (dungeon.js _dungeonBossHitPlayer); no safe
      ground in a dungeon */
   boss: row({
     shield: 'door', roll: true, sight: 'door',
     block: block({ cost: BLOCK_STAMINA_COST, parry: true }),
-    rail: BOSS_ABILITIES.MAX_HIT_PCT,
+    rail: BOSS_ABILITIES.MAX_HIT_PCT, soak: true,
   }),
   /* ground a fire goblin set alight (firetrail.js _tickFireTrail); the
      rail is the telegraph's 0.5, which firetrail.js always wrote out.  Under
@@ -167,7 +173,7 @@ export const MONSTER_HITS = Object.freeze({
   fire: row({ shield: 'door', shelter: 'tick', rail: 0.5, elemental: true }),
   /* a storm monster's arc to a player near the one it struck
      (monsterstatus.js _shockArcs) */
-  shock: row({ shield: 'tick', shelter: 'tick', rail: SHOCK.MAX_HP_PCT, elemental: true }),
+  shock: row({ shield: 'tick', shelter: 'tick', rail: SHOCK.MAX_HP_PCT, elemental: true, soak: true }),
   /* a burn's and a poison's tick (monsterstatus.js _tickDots) */
   burn: row({ shield: 'tick', shelter: 'tick', rail: BURN.MAX_HP_PCT, elemental: true }),
   poison: row({ shield: 'tick', shelter: 'tick', rail: POISON.MAX_HP_PCT, elemental: true }),
@@ -210,8 +216,11 @@ export const hitMethods = {
       if (this._blockArcCovers(ps, from.x, from.y)) return this._hitStopped(h, R.block, ps, now);
     }
 
-    /* 6: the dice */
-    const raw = R.rail > 0 ? Math.min(h.raw, Math.max(1, Math.floor((ps.maxHp || 100) * R.rail))) : h.raw;
+    /* 6: the dice.  v2.3.3518: a soaked monster's own blow first lands
+       SOAK_HIT.MULT as hard (the row's `soak`), then the rail */
+    const soaked = R.soak && m && this._soakHitMult ? this._soakHitMult(m) : 1;
+    const blow = soaked < 1 ? Math.max(1, Math.round(h.raw * soaked)) : h.raw;
+    const raw = R.rail > 0 ? Math.min(blow, Math.max(1, Math.floor((ps.maxHp || 100) * R.rail))) : blow;
     const res = this._applyDamage(ps, raw, false, R.elemental ? { elemental: true, attackerLevel: h.lvl } : { attackerLevel: h.lvl });
 
     /* 7: what the monster's own blow does after */

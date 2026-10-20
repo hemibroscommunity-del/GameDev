@@ -148,6 +148,7 @@ export const BOW_VOLLEY_WORTH = 2;
 import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision, fractureDmgMult,
   elemAttackStat, // v2.3.2199: prog3 `elem` stat resolver for the DoT power snapshot
+  elementUpMult, soakHitMult, SHOCK_SPARK, // v2.3.3518: every gem pulls its weight
 } from './elemental.js';
 import { AMULET_TIER_POWER, t2CounterRate, QUALITY_GRADES /* v2.3.1925 */, weaponTierFactor, weaponQualityMult /* v2.3.2664 */ } from './data.js';
 import { PROV_MINTED } from './gearprov.js'; /* v2.3.2664: godly armour needs a ledger row */ // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
@@ -190,6 +191,62 @@ export const combatMethods = {
      whether it lives in combat.js, index.js or burst.js — the module
      function itself is in elemental.js beside the table it reads. */
   _fractureDmgMult(m) { return fractureDmgMult(m); },
+
+  /* ═══ v2.3.3518: EVERY GEM PULLS ITS WEIGHT (elemental.js has the story) ═══
+     Three kill switches, one a part: `elemup`, `soakhit`, `shockspark` --
+     `false` in the live flags puts that part back as it was. */
+  _gemWeightOff(name) {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, name) && !f[name]);
+  },
+  /* UP: what a hit of `element` lands for on `m` -- ELEM_UP.MULT when the
+     element beats the monster's, else 1 (never a penalty).  Beside fracture,
+     after the attacker's ceiling: the worker's own gem against the monster's
+     own element, nothing a claim can raise. */
+  _elemUpMult(m, element) {
+    if (!m || !m.element || !element || this._gemWeightOff('elemup')) return 1;
+    return elementUpMult(element, m.element);
+  },
+  /* SOAK: how hard a monster's own blow lands (hits.js, the door's `soak`) */
+  _soakHitMult(m) {
+    return this._gemWeightOff('soakhit') ? 1 : soakHitMult(m);
+  },
+  /* SHOCK: a hit of `dmg` on `m`, which was shocked BEFORE the hit, sparks to
+     the nearest other live monster within SHOCK_SPARK.R of where the hit
+     landed (ox, oy: read before the hit's knockback, as the staff splash
+     reads it) for SHOCK_SPARK.PCT of the hit -- one monster, no chain (a
+     spark is no hit: it sparks nothing and sets no status).  The hitter's
+     damage: through _applyMonsterDot (overkill clamp, credit, monster_hit,
+     the kill), the target's fracture as the staff splash takes it, the
+     target pulled onto the hitter as any hit pulls it, and the weapon's
+     trained XP faded by the target's level.  `spark` on the event is the
+     monster it came from, for the phone's arc (display only).  Returns the
+     damage it did. */
+  _shockSpark(zone, m, ox, oy, attackerId, attackerPs, dmg, slot) {
+    if (this._gemWeightOff('shockspark')) return 0;
+    if (!m || typeof ox !== 'number' || typeof oy !== 'number' || !(dmg > 0)) return 0;
+    const monsters = this.monsters[zone] || [];
+    const r2 = SHOCK_SPARK.R * SHOCK_SPARK.R;
+    let best = null, bestD2 = Infinity;
+    for (const o of monsters) {
+      if (!o || o === m || o.id === m.id) continue;
+      if (!this._monsterDamageable(o)) continue;
+      if (typeof o.x !== 'number' || typeof o.y !== 'number') continue;
+      const dx = o.x - ox, dy = o.y - oy, d2 = dx * dx + dy * dy;
+      if (d2 > r2) continue;
+      if (d2 < bestD2 || (d2 === bestD2 && String(o.id) < String(best.id))) { best = o; bestD2 = d2; }
+    }
+    if (!best) return 0;
+    best._aggroOverrideTarget = attackerId;
+    best._aggroOverrideUntil = Date.now() + 10000;
+    const spark = Math.max(1, Math.round(dmg * SHOCK_SPARK.PCT * this._fractureDmgMult(best)));
+    const got = this._applyMonsterDot(zone, best, spark, attackerId, null, { spark: m.id, slot });
+    if (got > 0 && attackerPs && attackerPs.prog3) {
+      const cat = slot === 'ranged' ? 'bow' : slot === 'staff' ? 'staff' : 'sword';
+      this._prog3AwardXp(attackerId, attackerPs, cat, got * this._combatXpDecay(attackerPs, cat, best.level));
+    }
+    return got;
+  },
 
   /* ═══ v2.3.2361: THE STATUS HALF OF AN ELEMENTAL HIT, ON THE PROTOTYPE ═══
      The owner's answer ("Yes lunge damage should take effect") made a SECOND
@@ -1339,6 +1396,23 @@ export const combatMethods = {
        The same roll a hit on a player takes (pvpbalance.js _pvpRollFor): the
        edge by this monster's level, the bolt, the volley, the ceiling.  One
        hit, whoever takes it -- see _rollHit above. */
+    /* v2.3.3513: the element is the WORKER'S now (weapongem.js): the gem in its
+       own copy of the weapon the hit was made with -- the first, or on a
+       special the second when there is one -- never the claim's `element`,
+       which a modified phone could fill with any element it liked, gem or no
+       gem.  `isSpecial` is the one this hit was paid as (hitproof.js).
+       `weapongem: false` in liveflags puts the claim back.
+       v2.3.3518: worked out HERE, before the roll, as the damage reads it
+       now (UP, below); the status and the collision further down read the
+       same value. */
+    const _gemEl = typeof this._weaponHitElement === 'function' ? this._weaponHitElement(attackerPs, _effSlot, isSpecial) : null;
+    const _hitElement = (typeof this._weaponGemOff === 'function' && !this._weaponGemOff())
+      ? (_gemEl ? _gemEl.element : null)
+      : element;
+    /* v2.3.3518: SHOCK -- was the monster shocked BEFORE this hit?  Asked
+       before this hit's own status goes on (a storm hit sets it up; the next
+       hit sparks) and before a collision can consume it. */
+    const _wasShocked = !!(m.statuses && m.statuses.shock);
     const rolled = this._rollHit(attackerPs, slot, isSpecial,
       { targetLevel: m.level, bigBolt: _bigBolt, orbs: _orbs, part: payload.part });  /* v2.3.2680: the edge */
     /* v2.3.1734: FRACTURE applies here, AFTER the attacker ceiling and
@@ -1353,7 +1427,15 @@ export const combatMethods = {
        ONE roll now (above), and summing three draws is exactly what had evened
        the staff's swing out -- see STAFF_BOLT. */
     const _cappedDmg = rolled.dmg;
-    const rawDmg = Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m)));
+    /* v2.3.3518: UP (elemental.js): a gem that beats the monster's element
+       lands ELEM_UP.MULT harder -- beside fracture, after the ceiling, for
+       the same reason: the worker's own fact about the target (its own gem
+       against the monster's own element), nothing a claim can raise.  1 for
+       every other hit, so nothing else moves.  The worker's gem ONLY, never
+       _hitElement's fallback to the claim under `weapongem: false`: there a
+       modified phone could claim the winning element on every hit. */
+    const _up = this._elemUpMult(m, _gemEl ? _gemEl.element : null);
+    const rawDmg = Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m) * _up));
     const actualDmg = Math.min(rawDmg, Math.max(0, m.hp));
     // Subtract actualDmg (capped at remaining hp) so m.hp doesn't go
     // negative on overkill -- otherwise the broadcast hpPct goes < 0
@@ -1406,7 +1488,9 @@ export const combatMethods = {
     // of the client order (monsterCombat.js:1478/1548): the hit's own
     // status applies first, then a collision consumes the OLDEST
     // different-element status already on the monster.
-    if (m.hp > 0 && element && ELEMENT_STATUS[element] && attackerPs) {
+    /* v2.3.3513: ...and the element is the WORKER'S now (weapongem.js) --
+       _hitElement, worked out above the roll since v2.3.3518 (UP reads it). */
+    if (m.hp > 0 && _hitElement && Object.prototype.hasOwnProperty.call(ELEMENT_STATUS, _hitElement) && attackerPs) {
       const _now = Date.now();
       /* v2.3.2199: the snapshot prices the whole DoT (burn/root ticks and
          the thorn recoil read st.power) — prog3 players snapshot their
@@ -1415,7 +1499,7 @@ export const combatMethods = {
          priced off the CATEGORY the server itself resolved (_effSlot), never
          the client's raw slot claim. */
       const _elCat = this._prog3CatFor(_effSlot === 'ranged' ? 'bow' : _effSlot);
-      applyElementStatus(m, element, session.id, elemAttackStat(attackerPs, 'power', _elCat, m.level), _now,  /* v2.3.2680: the edge */
+      applyElementStatus(m, _hitElement, session.id, elemAttackStat(attackerPs, 'power', _elCat, m.level), _now,  /* v2.3.2680: the edge; v2.3.3513: the worker's gem */
         this._attuneMult(attackerPs));
       // Volatile mirrors _computeAttackDamage's slot resolution.
       const _eff = (slot === 'melee' || slot === 'ranged' || slot === 'staff')
@@ -1423,7 +1507,7 @@ export const combatMethods = {
       const _w = _eff === 'ranged' ? attackerPs.rangedWeapon
                : _eff === 'staff' ? attackerPs.staffWeapon
                : attackerPs.weapon;
-      const col = resolveElementCollision(m, element, attackerPs, !!(_w && _w.isVolatile), _now, _elCat); /* v2.3.2512 */
+      const col = resolveElementCollision(m, _hitElement, attackerPs, !!(_w && _w.isVolatile), _now, _elCat); /* v2.3.2512; v2.3.3513: the worker's gem */
       if (col) {
         const colDmg = Math.min(col.dmg, Math.max(0, m.hp));
         m.hp -= colDmg;
@@ -1564,9 +1648,20 @@ export const combatMethods = {
            its own at any price: another player's weapon is not knowable
            locally, so peer numbers carried no mark at all. */
         slot: _effSlot,
+        /* v2.3.3518: the gem beat the monster's element (UP, above): the phone
+           prints its "UP" from this, not from its own guess.  Display only. */
+        ...(_up > 1 ? { up: 1 } : null),
         hpPct: Math.max(0, m.hp / m.maxHp),
       }
     });
+
+    /* v2.3.3518: SHOCK -- a hit on a monster that was shocked before it sparks
+       to the nearest other monster within reach, for a quarter of the hit as
+       rolled (rawDmg, the number the hit was), from where it landed (the
+       impact point, as the splash below); after the hit's own event, so the
+       numbers arrive in the order they happened, and before the kill check
+       (the splash's rule). */
+    if (_wasShocked) this._shockSpark(zone, m, _impactX, _impactY, session.id, attackerPs, rawDmg, _effSlot);
 
     /* v2.3.2481: THE SPLASH.  Basic staff bolts only — a special is already
        a three-bolt cone with its own cadence lane, and the owner's ask was
@@ -2365,7 +2460,7 @@ export const combatMethods = {
          yes to.  Their call: docs/specs/one-formula.md "Not on players yet". */
       let _xw = null, _xcol = null;
       if (_xtra) {
-        const _el = this._pvpClaimElement(attackerPs, kind, payload);
+        const _el = this._pvpClaimElement(attackerPs, kind, payload, _special);   /* v2.3.3513: + the special it was taken as */
         const _ab = this._pvpAfterBlow(attackerId, attackerPs, targetId, targetPs, dmgResult, {
           slot: kind, cat: kind === 'ranged' ? 'bow' : kind === 'staff' ? 'staff' : 'sword',
           ...(_el ? { element: _el.element, volatile: !!_el.w.isVolatile } : null),

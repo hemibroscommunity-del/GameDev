@@ -20,6 +20,9 @@
  * with their only consumers (mirror-audit still pins them). */
 
 import { BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES, AMULET_TIER_POWER, AMULET_GEMS, armorDefReq, isArmourLadderPiece /* v2.3.2664 */ } from './data.js';
+import { forgeLevelFor, forgeOffered } from './forgeladder.js'; /* v2.3.3524: the forge's ladder */
+import { ELEMENT_STATUS } from './elemental.js'; /* v2.3.3513: a weapon's gems are checked on the way in */
+import { isVolatilePair } from './weapongem.js'; /* v2.3.3513 */
 
 export const gearMethods = {
   // ═══ Equipment store (opaque blobs + equip_request) ═══
@@ -132,6 +135,24 @@ export const gearMethods = {
           ? Math.min(9999, Math.floor(out.temper)) : 0;
       }
     }
+    /* ═══ v2.3.3513: A WEAPON'S GEMS ARE WORKER STATE NOW (weapongem.js) ═══
+       The fight reads them from this copy instead of the claim, as the burst
+       and the flame amulet always did, and Take out pays a polished gem for
+       each.  So each is an element the status table has -- an own key (TRAPS
+       #6: '__proto__' and 'constructor' are nothing) -- or none; a second
+       with no first moves up (the worker only ever fills the first first);
+       the same element twice is one; and `isVolatile`, which makes every
+       collision hit 1.3x, is the PAIR's answer, never a stored flag's.
+       Nothing else changes: a weapon's gems from before this version (an old
+       server drop's, a claim the first join took before v2.3.3138) stay. */
+    const el = (e) => (typeof e === 'string' && Object.prototype.hasOwnProperty.call(ELEMENT_STATUS, e) ? e : null);
+    let e1 = el(out.element1);
+    let e2 = el(out.element2);
+    if (!e1 && e2) { e1 = e2; e2 = null; }
+    if (e1 && e2 === e1) e2 = null;
+    if ('element1' in out || e1) out.element1 = e1;
+    if ('element2' in out || e2) out.element2 = e2;
+    if ('isVolatile' in out || e2) out.isVolatile = !!(e1 && e2 && isVolatilePair(e1, e2));
     return out;
   },
 
@@ -461,18 +482,34 @@ export const gearMethods = {
     if (!Object.prototype.hasOwnProperty.call(table, tierKey)) return;
     const tier = table[tierKey];
     if (!tier) return;
+    /* v2.3.3524: THE FORGE'S LADDER (forgeladder.js) -- the owner: "'wood
+       greatsword' is not an actual weapon in the game.  Make the beginning
+       weapon a copper greatsword (requiring smithing lvl 1)", and "Copper 1,
+       iron 5, black steel 10 for smithing lvl req".  At the Blacksmith the
+       wood tier is not forged, the Smithing level is the table's new one, and
+       the Melee gate is what WEARING the blade asks (below).  `forgeladder:
+       false` in liveflags puts the three back as they were. */
+    const ladderOld = !wantWw && this._forgeLadderOff();
+    if (!wantWw && !forgeOffered(tierKey, ladderOld)) return;
 
     // Skill level gate
     const skillName = wantWw ? 'woodworking' : 'blacksmithing';
     const skillLvl = (ps.lifeSkills && ps.lifeSkills[skillName] && ps.lifeSkills[skillName].level) || 1;
-    if (skillLvl < tier.minLvl) return;
+    if (skillLvl < (wantWw ? tier.minLvl : forgeLevelFor(tierKey, ladderOld))) return;
 
     // Stat gate (per EQUIP_STAT_MAP)
     // v2.3.1661 (prog3): the rebuild gates on the matching TRAINED
     // skill at tierIndex × 5 (§6) — this is also where the standing
     // sword mismatch dies (agility vs power: both are Melee now).
     // Client mirror: getGearStatReq/meetsGearReq (gameSystems.js).
-    if (ps.prog3) {
+    /* v2.3.3524: at the Blacksmith, against the ladder, the gate is the WEAR
+       gate -- _prog3EquipOk on the very blade the forge would mint (copper and
+       iron nothing, black steel Melee 10, five more a tier), where tierIndex
+       x 5 asked Melee 5 of the copper greatsword a new character is meant to
+       forge first.  The game's copy: src/data/forgeLadder.js forgeStatReq. */
+    if (ps.prog3 && !wantWw && !ladderOld) {
+      if (!this._prog3EquipOk(ps, 'weapon', { type: weaponType, gearBase: tierKey, tierMult: tier.tierMult })) return;
+    } else if (ps.prog3) {
       const tierIdx = Object.keys(table).indexOf(tierKey);
       const cat = weaponType === 'bow' ? 'bow' : weaponType === 'staff' ? 'staff' : 'sword';
       if (!this._prog3GearOk(ps, cat, tierIdx * 5)) return;
@@ -543,6 +580,8 @@ export const gearMethods = {
     //   woodworking:   tier.minLvl * 5  (same formula)
     // v2.3.3141: a tier forged from bars pays its own `xp`, the armour forge's
     // rate for the same four bars (data.js BLACKSMITH_TIERS).
+    /* v2.3.3524: and every blacksmith tier past black steel carries its old
+       `minLvl x 5` as `xp`, so the ladder's lower levels pay what they paid. */
     this._addLifeSkillXp(ps, skillName, tier.xp || (tier.minLvl || 1) * 5);
 
     /* v2.3.3504: an Elite or Godly blade is an achievement (achievements.js),

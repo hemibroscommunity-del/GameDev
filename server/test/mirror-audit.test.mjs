@@ -33,6 +33,9 @@ import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { HARDEN as SRV_HARDEN, HARDEN_BAR_BY_TIER as SRV_HARDEN_BAR_BY_TIER, HARDEN_WOOD_BY_TIER as SRV_HARDEN_WOOD_BY_TIER, HARDEN_MATERIAL_NAMES as SRV_HARDEN_NAMES, hardenGoldFor as srvHardenGold, hardenAmountFor as srvHardenAmount, hardenMaterialFor as srvHardenMat, hardenIsWood as srvHardenIsWood } from '../src/hardening.js'; /* v2.3.3139 */
 import { HARDENED_WOOD as SRV_HARDENED_WOOD } from '../src/hardenedwood.js'; /* v2.3.3139 */
+import { FORGE_LADDER as SRV_FORGE_LADDER, forgeLevelFor as srvForgeLevel, forgeOffered as srvForgeOffered } from '../src/forgeladder.js'; /* v2.3.3524 */
+import { FORGE_LADDER as CLIENT_FORGE_LADDER, forgeLevelFor as clientForgeLevel, forgeOffered as clientForgeOffered, forgeStatReq as clientForgeStatReq } from '../../src/data/forgeLadder.js'; /* v2.3.3524 */
+import { hardenLevelFor as clientHardenLevel } from '../../src/data/hardenCosts.js'; /* v2.3.3524 */
 import { HARDEN_COSTS as CLIENT_HARDEN, HARDEN_MATERIAL_NAMES as CLIENT_HARDEN_NAMES, hardenGoldFor as clientHardenGold, hardenAmountFor as clientHardenAmount, hardenMaterialFor as clientHardenMat, hardenIsWood as clientHardenIsWood, hardenTierOf as clientHardenTier } from '../../src/data/hardenCosts.js'; /* v2.3.3139 */
 import { HARDENED_WOOD_RECIPES as CLIENT_HARDENED_WOOD, HARDENED_WOOD_MAX_PER_REQUEST as CLIENT_HW_MAX, HARDEN_WOOD_BY_TIER as CLIENT_HARDEN_WOOD_BY_TIER } from '../../src/data/hardenedWood.js'; /* v2.3.3139 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
@@ -2174,6 +2177,75 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     JSON.stringify(CLIENT_HARDEN_WOOD_BY_TIER) === JSON.stringify(SRV_HARDEN_WOOD_BY_TIER), { client: CLIENT_HARDEN_WOOD_BY_TIER, server: SRV_HARDEN_WOOD_BY_TIER });
 }
 
+/* ═══ v2.3.3524: THE FORGE'S LADDER (server/src/forgeladder.js, src/data/forgeLadder.js) ═══
+   The owner's playtest notes: "'wood greatsword' is not an actual weapon in
+   the game.  Make the beginning weapon a copper greatsword (requiring smithing
+   lvl 1)", "Copper 1, iron 5, black steel 10 for smithing lvl req", and
+   "Hardening should only require the same smithing level as it takes to
+   smithing that item tier".  The Forge tab's rows, levels and lock and the
+   Upgrade tab's (and the Woodworker's) hardening level are the game's copy;
+   each must be what the worker asks, on both ladders (the kill switch's old
+   one too), or a button shows that the worker refuses. */
+{
+  const keys = Object.keys(SRV.BLACKSMITH_TIERS);
+  const off = [];
+  for (const k of keys.concat(['__proto__', 'constructor', 'nope'])) {
+    for (const old of [false, true]) {
+      if (srvForgeLevel(k, old) !== clientForgeLevel(k, old)) off.push(['level', k, old, srvForgeLevel(k, old), clientForgeLevel(k, old)]);
+      if (srvForgeOffered(k, old) !== clientForgeOffered(k, old)) off.push(['offered', k, old]);
+    }
+  }
+  check('forge ladder: every tier forged (or not) and at the same Smithing level on both sides, on the new ladder and the old',
+    off.length === 0 && JSON.stringify(SRV_FORGE_LADDER.OLD_LEVELS) === JSON.stringify(CLIENT_FORGE_LADDER.OLD_LEVELS), off.slice(0, 6));
+  check('forge ladder: the owner\'s numbers -- no wood, copper 1, iron 5, black steel 10, titanium 15; the old ladder wood 1, copper 6, iron 11, black steel 16',
+    srvForgeOffered('wood') === false && srvForgeOffered('wood', true) === true && srvForgeOffered('copper') === true
+      && ['copper', 'iron', 'steel', 'titanium'].map((k) => srvForgeLevel(k)).join() === '1,5,10,15'
+      && ['wood', 'copper', 'iron', 'steel'].map((k) => srvForgeLevel(k, true)).join() === '1,6,11,16',
+    { now: keys.map((k) => srvForgeLevel(k)), old: keys.map((k) => srvForgeLevel(k, true)) });
+  /* no tier's pay moved: a tier pays `xp`, else 5 x its level (gear.js), and
+     on the old ladder every tier past black steel paid 5 x its old level */
+  const pay = keys.filter((k) => k !== 'wood').filter((k) => {
+    const t = SRV.BLACKSMITH_TIERS[k];
+    return (t.xp || t.minLvl * 5) !== (['copper', 'iron', 'steel'].includes(k) ? t.xp : SRV_FORGE_LADDER.OLD_LEVELS[k] * 5);
+  });
+  check('forge ladder: every tier pays the XP it paid before (the bar metals their own, the rest their old level x 5, pinned)', pay.length === 0, pay);
+  /* the lock the Forge tab shows is the worker's wear gate, at every trained level */
+  setProg3Enabled(true);
+  const gOff = [];
+  for (let lvl = 0; lvl <= 30; lvl++) {
+    const ps = { prog3: { sk: { sword: { level: lvl }, bow: { level: lvl }, staff: { level: lvl } }, alloc: {}, atk: {}, pool: {}, ms: {} } };
+    const rpg = { prog3: ps.prog3 };
+    for (const k of keys) {
+      const t = SRV.BLACKSMITH_TIERS[k];
+      const srvOk = room._prog3EquipOk(ps, 'weapon', { type: 'greatsword', gearBase: k, tierMult: t.tierMult });
+      const req = clientForgeStatReq('greatsword', k, rpg, false);
+      const cliOk = req.value === 0 || !!req.met;
+      if (srvOk !== cliOk) gOff.push({ lvl, k, server: srvOk, client: cliOk, req });
+    }
+  }
+  const lockAt = (k, lvl) => clientForgeStatReq('greatsword', k, { prog3: { sk: { sword: { level: lvl } }, alloc: {}, atk: {}, pool: {}, ms: {} } }, false);
+  check('forge ladder: the Forge tab\'s Melee lock is the worker\'s wear gate at every level 0-30 (copper and iron nothing, black steel Melee 10)',
+    gOff.length === 0 && lockAt('copper', 0).value === 0 && lockAt('iron', 0).value === 0 && lockAt('steel', 0).value === 10 && lockAt('titanium', 0).value === 15,
+    gOff.slice(0, 6));
+  setProg3Enabled(false);
+  /* hardening's level: the level that makes the tier, the same on both sides */
+  const hOff = [];
+  const weapons = [{ type: 'greatsword', gearBase: 'wood' }, { type: 'greatsword', gearBase: 'copper' }, { type: 'greatsword', gearBase: 'iron' },
+    { type: 'sword', gearBase: 'steel' }, { type: 'greatsword', gearBase: 'titanium' }, { type: 'greatsword', gearBase: 'worldbreaker' },
+    { type: 'bow', gearBase: 'ww_pine' }, { type: 'bow', gearBase: 'ww_softwood' }, { type: 'staff', gearBase: 'ww_maple' }, { type: 'staff', gearBase: 'ww_worldbreaker' },
+    { type: 'bow', gearBase: 'ww_nope', tierMult: 1.3 }, { type: 'sword', tierMult: 1.3 }, { type: 'bow', tierMult: 1.6 }, { tierMult: 2.2 }, {},
+    { gearBase: '__proto__' }, { gearBase: 'ww_constructor' }];
+  for (const w of weapons) {
+    for (const slot of ['weapon', 'rangedWeapon', 'staffWeapon']) {
+      if (room._hardenLevelFor(w, slot) !== clientHardenLevel(w, slot)) hOff.push([w, slot, room._hardenLevelFor(w, slot), clientHardenLevel(w, slot)]);
+    }
+  }
+  check('forge ladder: hardening asks the same level on both sides for every weapon (the level that makes its tier: copper 1, iron 5, black steel 10, a pine bow 1, softwood 6)',
+    hOff.length === 0 && clientHardenLevel({ gearBase: 'copper' }, 'weapon') === 1 && clientHardenLevel({ gearBase: 'iron' }, 'weapon') === 5
+      && clientHardenLevel({ gearBase: 'steel' }, 'weapon') === 10 && clientHardenLevel({ type: 'bow', gearBase: 'ww_pine' }, 'rangedWeapon') === 1
+      && clientHardenLevel({ type: 'bow', gearBase: 'ww_softwood' }, 'rangedWeapon') === 6, hOff.slice(0, 6));
+}
+
 /* ═══ v2.3.3209: THE MONSTER CODEX (server/src/codex.js, src/data/monsterCodex.js) ═══
    The worker writes a kill to storage at once when it crosses a threshold,
    because that kill opens a fact on the phone's page: the two lists must be
@@ -2266,7 +2338,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     const shard = rows.find((r) => r.id === 'shard');
     if (!z || e.element !== z.element) eOff.push([kind, 'element', e.element, z && z.element]);
     if (!!gem !== SRV.AMULET_GEMS.has(z && z.element)) eOff.push([kind, 'raw gem', !!gem]);
-    if (gem && gem.key !== 'raw_' + z.element) eOff.push([kind, 'raw gem key', gem.key]);
+    if (gem && gem.key !== 'gem_raw_' + z.element) eOff.push([kind, 'raw gem key', gem.key]);   /* v2.3.3516: the bag's key */
     if (!shard || shard.key !== 'shard_' + e.home) eOff.push([kind, 'shard', shard && shard.key]);
     for (const id of ['gold', 'shard', 'raregem', 'irontorso', 'irongreaves', 'irongreatsword', 'nugget']) if (!ids.includes(id)) eOff.push([kind, 'missing', id]);
     if (ids.includes('weapon')) eOff.push([kind, 'a random weapon row']);
@@ -2304,18 +2376,29 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     JSON.stringify(SRV_KILL_ROLL.ORDER) === JSON.stringify(CLIENT_CODEX_ROLL_ORDER) && SRV_KILL_ROLL.SIDES === CLIENT_CODEX_ROLL_SIDES
       && chanceOff.length === 0 && SRV_KILL_ROLL.ORDER[0] === 'nugget' && SRV_KILL_ROLL.ORDER[SRV_KILL_ROLL.ORDER.length - 1] === 'shard',
     { server: SRV_KILL_ROLL.ORDER, client: CLIENT_CODEX_ROLL_ORDER, chanceOff });
+  /* v2.3.3516: twice -- the worker as it starts (shards are cracked for raw
+     gems: no raw gem on the roll) against the page's table with `crack`
+     (caps.shardcrack), and with the crack's kill switch thrown (the raw gem
+     back on the roll) against the page's table without it */
   const layOff = [];
-  for (const kind of CLIENT_CODEX_KINDS) {
-    const m = wheel.find((x) => srvPetKindOf(x) === kind);
-    if (!m) { layOff.push([kind, 'no Wheel monster']); continue; }
-    const srv = srvKillRollLayout(room._killRollCan(SRV_WHEEL_ZONE, m));
-    const cli = (clientCodexDropsFor(kind) || []).filter((r) => r.from).map((r) => ({ id: r.id, from: r.from, to: r.to }))
-      .sort((a, b) => a.from - b.from);
-    if (JSON.stringify(srv) !== JSON.stringify(cli)) layOff.push([kind, srv, cli]);
-    /* never two drops on one number, none past the die, from 1 with no gap */
-    let at = 1;
-    for (const l of srv) { if (l.from !== at || l.to < l.from || l.to > SRV_KILL_ROLL.SIDES) layOff.push([kind, 'run', l]); at = l.to + 1; }
-  }
+  const layOfKind = (crack) => {
+    room._liveFlags = crack ? {} : { shardcrack: false };
+    for (const kind of CLIENT_CODEX_KINDS) {
+      const m = wheel.find((x) => srvPetKindOf(x) === kind);
+      if (!m) { layOff.push([kind, 'no Wheel monster']); continue; }
+      const srv = srvKillRollLayout(room._killRollCan(SRV_WHEEL_ZONE, m));
+      const cli = (clientCodexDropsFor(kind, { crack }) || []).filter((r) => r.from).map((r) => ({ id: r.id, from: r.from, to: r.to }))
+        .sort((a, b) => a.from - b.from);
+      if (JSON.stringify(srv) !== JSON.stringify(cli)) layOff.push([kind, crack ? 'crack' : 'no crack', srv, cli]);
+      if (crack && srv.some((l) => l.id === 'rawgem')) layOff.push([kind, 'a raw gem on the roll while shards are cracked']);
+      /* never two drops on one number, none past the die, from 1 with no gap */
+      let at = 1;
+      for (const l of srv) { if (l.from !== at || l.to < l.from || l.to > SRV_KILL_ROLL.SIDES) layOff.push([kind, 'run', l]); at = l.to + 1; }
+    }
+    room._liveFlags = {};
+  };
+  layOfKind(true);
+  layOfKind(false);
   const snow = srvKillRollLayout({ shard: true, rawgem: true });
   check('kill roll: every kind\'s numbers on the page are the worker\'s own, laid from 1 with no gap and no overlap (a snowman: nugget 1, iron great sword 2-21, greaves 22-41, torso 42-61, rare gem 62-111, raw gem 112-611, shard 612-1,611; the blue slime, with no raw gem, its shard 112-1,111)',
     layOff.length === 0 && JSON.stringify(snow) === JSON.stringify(clientCodexRollLayout(rowRate))
@@ -2408,6 +2491,78 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       && Object.keys(C.ACHV_TIERS).length === Object.keys(ACHV.TIER_AP).length,
     { phone: Object.fromEntries(Object.entries(C.ACHV_TIERS).map(([k, v]) => [k, v.ap])), worker: ACHV.TIER_AP });
   check('achievements: every row has words and a picture', C.ACHIEVEMENTS.every((a) => a.name && a.how && a.icon && a.glyph));
+}
+
+/* ═══ v2.3.3513: A WEAPON'S GEM RULES ARE THE WORKER'S ═══
+   The Enchanter offers a weapon only the gems, slots and pairs the worker
+   takes (src/data/weaponGems.js, server/src/weapongem.js + data.js), so it
+   never shows a button the worker refuses -- and says the XP it pays. */
+{
+  const C = await import('../../src/data/weaponGems.js');
+  const W = await import('../src/weapongem.js');
+  const pairKey = (l) => l.map((p) => p.slice().sort().join('+')).sort().join(',');
+  check('weapon gems: the phone offers the worker\'s gems (the eight lands\' elements)',
+    JSON.stringify(C.WEAPON_GEMS.slice().sort()) === JSON.stringify([...SRV.WEAPON_GEMS].sort()), { phone: C.WEAPON_GEMS, worker: [...SRV.WEAPON_GEMS] });
+  check('weapon gems: the volatile pairs, the second slot\'s level, the fusion bases and the XP are the worker\'s',
+    pairKey(C.VOLATILE_PAIRS) === pairKey(W.WEAPON_GEM.VOLATILE_PAIRS) && C.SECOND_SLOT_LVL === W.WEAPON_GEM.SECOND_SLOT_LVL
+      && JSON.stringify(C.FUSION_BASES) === JSON.stringify(W.WEAPON_GEM.FUSION_BASES) && C.GEM_SET_XP === SRV.GEM_SET_XP,
+    { phone: [pairKey(C.VOLATILE_PAIRS), C.SECOND_SLOT_LVL, C.FUSION_BASES, C.GEM_SET_XP], worker: [pairKey(W.WEAPON_GEM.VOLATILE_PAIRS), W.WEAPON_GEM.SECOND_SLOT_LVL, W.WEAPON_GEM.FUSION_BASES, SRV.GEM_SET_XP] });
+  const bases = Object.keys(SRV.BLACKSMITH_TIERS).concat(Object.keys(SRV.WOODWORKING_TIERS).map((k) => 'ww_' + k), [undefined, 'nope', '__proto__']);
+  const off = bases.filter((b) => C.weaponGemSlots({ gearBase: b }) !== W.weaponGemSlots({ gearBase: b }));
+  check('weapon gems: every forge base has the same number of gem slots on both sides (a drop with no base: 1)', off.length === 0, off);
+  /* v2.3.3518: every gem pulls its weight (elemental.js ELEM_UP, SOAK_HIT,
+     SHOCK_SPARK): the Gem Works says the worker's numbers and the worker's
+     matchups -- "25% harder on Frost monsters" for the gem the worker lands
+     25% harder on them */
+  const EL = await import('../src/elemental.js');
+  check('gem weight: UP, soak and the spark\'s reach and share are the worker\'s numbers on the phone',
+    C.ELEM_UP_MULT === EL.ELEM_UP.MULT && C.SOAK_HIT_MULT === EL.SOAK_HIT.MULT && C.SHOCK_SPARK_R === EL.SHOCK_SPARK.R && C.SHOCK_SPARK_PCT === EL.SHOCK_SPARK.PCT,
+    { phone: [C.ELEM_UP_MULT, C.SOAK_HIT_MULT, C.SHOCK_SPARK_R, C.SHOCK_SPARK_PCT], worker: [EL.ELEM_UP.MULT, EL.SOAK_HIT.MULT, EL.SHOCK_SPARK.R, EL.SHOCK_SPARK.PCT] });
+  const ELEMS = ['flame', 'frost', 'water', 'venom', 'storm', 'stone', 'wind', 'flora', 'dark', 'light'];
+  const beatOff = C.WEAPON_GEMS.filter((g) => {
+    const said = C.weaponGemBeats(g);
+    const beaten = ELEMS.filter((t) => EL.elementUpMult(g, t) > 1);
+    return beaten.length !== 1 || beaten[0] !== said;
+  });
+  check('gem weight: each gem beats the one element the worker lands it harder on, and the phone names that one', beatOff.length === 0, beatOff);
+}
+
+/* ═══ v2.3.3516: THE CRACK'S RULES AND THE GEMS' KEYS ARE THE WORKER'S ═══
+   The Gem Works' first tab shows each land's chance and the raw gems a gem
+   takes before it asks (src/data/shards.js, src/data/gems.js), and the bag
+   names a gem by its key: held to server/src/shardcrack.js and gems.js. */
+{
+  const CS = await import('../../src/data/shards.js');
+  const CG = await import('../../src/data/gems.js');
+  const SC = await import('../src/shardcrack.js');
+  const SG = await import('../src/gems.js');
+  check('crack: each land\'s shard holds the same element\'s raw gem on both sides (and the meadow none)',
+    JSON.stringify(CS.SHARD_GEM_ELEMENT) === JSON.stringify(SC.SHARD_CRACK.LANDS) && !('meadow' in CS.SHARD_GEM_ELEMENT),
+    { phone: CS.SHARD_GEM_ELEMENT, worker: SC.SHARD_CRACK.LANDS });
+  const landOff = Object.keys(SC.SHARD_CRACK.LANDS).filter((l) => !SRV.ZONES[l] || SRV.ZONES[l].element !== SC.SHARD_CRACK.LANDS[l]);
+  check('crack: a shard\'s gem is its land\'s own element (data.js ZONES)', landOff.length === 0, landOff);
+  check('crack: the chance by Gem Cutting level, the die, the most a Crack all sends, the raw gems a gem takes and the XP are the worker\'s',
+    JSON.stringify(CS.SHARD_CRACK_CHANCE) === JSON.stringify(SC.SHARD_CRACK.CHANCE) && CS.SHARD_CRACK_SIDES === SC.SHARD_CRACK.SIDES
+      && CS.SHARD_CRACK_MAX === SC.SHARD_CRACK.MAX_PER_ASK && CS.RAW_PER_GEM === SC.SHARD_CRACK.RAW_PER_GEM
+      && CS.SHARD_CRACK_XP === SC.SHARD_CRACK.CRACK_XP && CS.GEM_COMBINE_XP === SC.SHARD_CRACK.COMBINE_XP,
+    { phone: [CS.SHARD_CRACK_CHANCE, CS.SHARD_CRACK_SIDES, CS.SHARD_CRACK_MAX, CS.RAW_PER_GEM, CS.SHARD_CRACK_XP, CS.GEM_COMBINE_XP] });
+  const lvOff = [];
+  for (let lv = 0; lv <= 101; lv++) if (CS.shardCrackChance(lv) !== SC.shardCrackChance(lv)) lvOff.push(lv);
+  check('crack: the chance at every level 0-101 is the same number on both sides (10, 12 from 15, 15 from 35, 20 from 60)',
+    lvOff.length === 0 && SC.shardCrackChance(1) === 10 && SC.shardCrackChance(15) === 12 && SC.shardCrackChance(35) === 15 && SC.shardCrackChance(60) === 20, lvOff);
+  check('gems: the elements a gem can be are the worker\'s ten (the amulets\' nine and Flora)',
+    JSON.stringify(CG.GEM_ELEMENTS.slice().sort()) === JSON.stringify([...SG.GEM_ELEMENTS].sort()) && CG.GEM_ELEMENTS.length === 10,
+    { phone: CG.GEM_ELEMENTS, worker: [...SG.GEM_ELEMENTS] });
+  const keyOff = [];
+  for (const k of ['gem_raw_frost', 'gem_frost', 'gem_flora', 'gem_raw_light', 'gem_bogus', 'gem_', 'gem_raw_', 'rare_gem', 'gem_raw___proto__', '__proto__', 'raw_frost', 'polished_frost']) {
+    if (JSON.stringify(CG.parseGemKey(k)) !== JSON.stringify(SG.parseGemKey(k))) keyOff.push(k);
+  }
+  check('gems: the phone reads a bag key as a gem exactly where the worker does', keyOff.length === 0
+    && CG.gemRawKey('frost') === SG.gemRawKey('frost') && CG.gemCutKey('frost') === SG.gemCutKey('frost'), keyOff);
+  const ps = { inventory: { gem_flame: 2, gem_raw_flame: 1 }, lifeSkills: { gems: { polished_flame: 1, raw_flame: 4 } } };
+  check('gems: a count reads the bag and an old pouch on both sides alike',
+    CG.gemCount(ps, 'flame', false) === SG.gemCount(ps, 'flame', false) && CG.gemCount(ps, 'flame', true) === SG.gemCount(ps, 'flame', true)
+      && CG.gemCount(ps, 'flame', false) === 3, [CG.gemCount(ps, 'flame', false), SG.gemCount(ps, 'flame', false)]);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

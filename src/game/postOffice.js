@@ -27,6 +27,10 @@ const PREFIX = ['ore', 'fish', 'log', 'gem', 'food', 'bar', 'seed', 'item'];
 const KEEP_AFTER = ['ore', 'log', 'bar'];   /* "Iron ore", not "Iron" */
 export function itemWords(invKey) {
   const k = typeof invKey === 'string' && invKey ? invKey : 'item';
+  /* v2.3.3516: a gem (data/gems.js's keys) -- "Raw frost gem", "Frost gem";
+     the 'gem' prefix below would leave only "Frost" */
+  const gm = /^gem_(raw_)?([a-z]+)$/.exec(k);
+  if (gm) { const g = (gm[1] ? 'raw ' : '') + gm[2] + ' gem'; return g.charAt(0).toUpperCase() + g.slice(1); }
   let parts = k.split('_').filter(Boolean);
   if (parts.length > 1 && PREFIX.includes(parts[0])) {
     const pre = parts[0];

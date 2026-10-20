@@ -120,12 +120,47 @@ async function answerConfirm(P, which, settle) {
      spend window's close is the x -- "Got it" stepped aside for the stepper. */
   const ok = await finger(P, which === 'confirm' ? '[data-infopopup-action]' : '[data-infopopup-x]');
   if (!ok) return { err: 'no ' + which };
+  let res = null;
   for (let i = 0; i < 40; i++) {
     await P.page.waitForTimeout(100);
     const now = await pools(P);
-    if (settle(now)) return { ok: true, now };
+    if (settle(now)) { res = { ok: true, now }; break; }
   }
-  return { ok: false, now: await pools(P) };
+  if (!res) res = { ok: false, now: await pools(P) };
+  /* ═══ v2.3.3522: THE WINDOW STAYS ═══
+     The owner: "After spending a stat allocation point keep it on the menu
+     confirmation window instead of closing it to return to the points main
+     screen."  So a confirm leaves the window up and, once the worker has
+     spent the points, puts it up again with "✓ n points spent" and the
+     stepper back at 1.  Read that here (the callers assert it), then close
+     the window with its ✕, so the next step taps the grid behind it. */
+  if (which === 'confirm') {
+    let stay = null;
+    for (let i = 0; i < 30; i++) {
+      stay = await P.page.evaluate(() => {
+        const w = document.querySelector('[data-infopopup]');
+        const sp = document.querySelector('[data-infopopup-spent]');
+        const c = document.querySelector('[data-infopopup-count]');
+        const a = document.querySelector('[data-infopopup-action]');
+        return { open: !!w, spent: sp ? (sp.textContent || '').trim() : null,
+          count: c ? Number(c.getAttribute('data-infopopup-count')) : null,
+          spending: !!(a && a.getAttribute('data-infopopup-spending')),
+          blocked: !!document.querySelector('[data-infopopup-blocked]'),
+          action: a ? (a.textContent || '').trim() : null };
+      });
+      if (stay && stay.open && stay.spent && !stay.spending) break;
+      await P.page.waitForTimeout(150);
+    }
+    res.stay = stay;
+    /* the first window that stayed, pictured (catgrid-spent-stays.png) */
+    if (stay && stay.open && stay.spent && !answerConfirm.shot) {
+      answerConfirm.shot = true;
+      await P.page.screenshot({ path: `${OUT}/catgrid-spent-stays.png` }).catch(() => {});
+    }
+    if (stay && stay.open) await finger(P, '[data-infopopup-x]');
+    await P.page.waitForTimeout(250);
+  }
+  return res;
 }
 
 async function openPoints(P) {
@@ -503,6 +538,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     const spent = await answerConfirm(P, 'confirm', (n) => (n.poolBy || {})[laneNow] === (before.poolBy || {})[laneNow] - K);
     rec.ok(`${label}: answering the window actually buys the points`, !!spent.ok && K === 2, spent.now && { pool: spent.now.pool, K });
+    /* v2.3.3522: the owner's "keep it on the menu confirmation window" */
+    rec.ok(`${label}: ...and the window STAYS, saying "✓ ${K} points spent", its stepper back at 1 and its Spend button live again`,
+      !!spent.stay && spent.stay.open && spent.stay.spent === `✓ ${K} points spent` && !spent.stay.spending
+        && (spent.stay.blocked || (spent.stay.count === 1 && /^Spend 1 point$/.test(spent.stay.action || ''))), spent.stay);
     if (spent.ok) {
       const n = spent.now || {};
       rec.ok(`${label}: ...and the WORKER charged the lane THE TAB named ${K} points, not the shared pool`,
@@ -542,6 +581,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: a SHARED stat spends the SHARED pool`,
       !!sSpent.ok && (sSpent.now || {}).shared === b2.shared - 1,
       { before: b2.shared, after: sSpent.now && sSpent.now.shared });
+    rec.ok(`${label}: ...and its window stays too, "✓ 1 point spent"`,
+      !!sSpent.stay && sSpent.stay.open && sSpent.stay.spent === '✓ 1 point spent', sSpent.stay);
     rec.ok(`${label}: ...and no weapon lane paid for it`,
       !!sSpent.ok && JSON.stringify((sSpent.now || {}).poolBy) === JSON.stringify(b2.poolBy),
       { before: b2.poolBy, after: sSpent.now && sSpent.now.poolBy });

@@ -62,16 +62,20 @@
  * switch on, the game keeps its old local slot.  KILL SWITCH (lower case,
  * TRAPS §117): `shieldgem: false` in liveflags un-advertises it and refuses
  * every ask ('off'). */
-import { AMULET_GEMS, BLACKSMITH_TIER_LABELS } from './data.js';
+import { AMULET_GEMS, BLACKSMITH_TIER_LABELS, GEM_SET_XP } from './data.js';   /* v2.3.3513: + GEM_SET_XP */
 import { GEAR_PROV_FIELD } from './gearprov.js';
 import { shieldSig } from './shieldwear.js';
+import { gemCount, gemTake } from './gems.js'; /* v2.3.3516: gems live in the bag */
 
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 export const SHIELD_GEM = Object.freeze({
   /* Enchanting XP a slot pays -- the game's own literal at its slot site
-     (EnchantPanel: addLifeSkillXp(sk, 'enchanting', 20)), the amulet's too */
-  XP: 20,
+     (EnchantPanel: addLifeSkillXp(sk, 'enchanting', 20)), the amulet's too.
+     v2.3.3513: GEM_SET_XP, 400 -- the owner's decision 11 (docs/GEM-PLAN.md),
+     the same for a weapon, an amulet and a shield; a gem that came back out
+     pays it once only (weapongem.js _gemSetXp). */
+  XP: GEM_SET_XP,
   /* the longest id or signature read, as shield_wear reads them */
   GID_MAX: 40,
   SIG_MAX: 200,
@@ -143,16 +147,14 @@ export const shieldGemMethods = {
     if (this._threatGearLocked(pid, ps)) return refuse('locked');
     const at = this._shieldGemPiece(ps, p);
     if (!at.piece) return refuse(at.reason);
-    const gems = ps.lifeSkills && typeof ps.lifeSkills === 'object' && ps.lifeSkills.gems && typeof ps.lifeSkills.gems === 'object'
-      ? ps.lifeSkills.gems : null;
-    const key = 'polished_' + gem;
-    const have = gems ? Math.floor(Number(gems[key]) || 0) : 0;
+    /* v2.3.3516: an elemental gem from the bag (gems.js: the bag, then any
+       the old pouch still holds) */
+    const have = gemCount(ps, gem, false);
     if (have < 1) return refuse('no_gem');
 
     const piece = at.piece;
     const made = !!gidOf(piece);
-    gems[key] = have - 1;
-    if (gems[key] <= 0) delete gems[key];
+    gemTake(ps, gem, false, 1);
     piece.gem = gem;
     /* only a shield known by its id takes the new name (see the header) */
     if (made) piece.name = shieldGemName(piece.gearBase, gem);
@@ -161,9 +163,10 @@ export const shieldGemMethods = {
        on the far side of a reconnect -- and Take out would find none.  A
        no-op for a piece with no id. */
     this._gearProvTouch(pid, piece);
-    this._addLifeSkillXp(ps, 'enchanting', SHIELD_GEM.XP);
+    /* v2.3.3513: once a gem (weapongem.js _gemSetXp) -- `xp` says what it paid */
+    const x = this._gemSetXp(ps, gem);
     this._saveRpg(pid, ps);
-    const r = { ok: true, gem, name: piece.name, gid: gidOf(piece), sig: made ? null : shieldSig(piece), worn: at.worn };
+    const r = { ok: true, gem, name: piece.name, gid: gidOf(piece), sig: made ? null : shieldSig(piece), worn: at.worn, xp: x.xp };
     this._shieldGemSend(pid, r, true);
     return r;
   },

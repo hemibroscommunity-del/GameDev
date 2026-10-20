@@ -4,7 +4,7 @@ import { triggerJump } from '@/game/jumpActions.js';
 import { jumpAirborne } from '@/game/jump.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
 import { jumpButtonWanted } from '@/game/tapJump.js'; /* v2.3.3105 */
-import { Skin, JumpIcon, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
+import { Skin, AbilityFace, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
 
 /* ═══ v2.3.3017: THE JUMP BUTTON, BENEATH THE ATTACK DISC ═══
  *
@@ -149,5 +149,6 @@ export function JumpButton(props) {
     },
   },
   React.createElement(Skin, { size: size, tone: air ? 'warm' : 'slate', state: air ? 'on' : 'normal' },
-    React.createElement(JumpIcon, { size: Math.round(size * 0.62) })));
+    /* v2.3.3526: the owner's round jump (card 11), the button's face */
+    React.createElement(AbilityFace, { size: size, name: 'jump' })));
 }

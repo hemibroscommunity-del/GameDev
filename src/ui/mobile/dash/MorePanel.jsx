@@ -78,7 +78,10 @@ export const TILES = [
   { id: 'account',     src: '/icons/ui/panel-account.webp?v=2.3.2038',     label: 'Login Key', glyph: '🔑', group: 'System',    iconScale: 1 },
   /* v2.3.3120: the Pets page (docs/PET-TRAPPING-PLAN.md: "More -> Pets, with
      the paw-print icon"), beside Life Skills, whose Trapping it belongs to */
-  { id: 'pets',        src: '/icons/ui/evt-pets.webp?v=2.3.1232',            label: 'Pets',     glyph: '🐾', group: 'Progress',  iconScale: 1 },
+  /* v2.3.3526: the owner's sheet's orange paw ("Go recommended on everything":
+     the review page's card 11, "Sheet's is clearer"; tools/ui/cut-owner-icons.py)
+     -- the brown one was muddy at 30 px on the dark tile */
+  { id: 'pets',        src: '/icons/ui/pets-paw.webp?v=2.3.3526',          label: 'Pets',     glyph: '🐾', group: 'Progress',  iconScale: 1 },
 ];
 
 /* v2.3.1299 (round-6): one short LIVE status line per destination —
@@ -212,6 +215,13 @@ const Icon = ({ t, px }) => t.src ? (
 const OWN_BUTTON = new Set(['encyclopedia']);
 const open = (id) => (OWN_BUTTON.has(id) ? dashboardPanelBus.open(id) : dashboardPanelBus.push(id));
 const tile = (id) => TILES.find(t => t.id === id);
+/* v2.3.3526 (the owner, of the 2026-10-19 review's leftovers: "Go recommended
+   on everything" -- rename More's Clan tile to Party): once clans are parties
+   (caps.clanparty, v2.3.3321) the page it opens is your party, so the tile
+   says so.  Under the kill switch (`clanparty: false`) clans are clans again
+   and it says Clan, as the page does.  The id stays 'clan' (TRAPS §29: tests
+   and the panel registry key on it). */
+const labelFor = (t, S) => (t.id === 'clan' && clanPartyOn(S) ? 'Party' : t.label);
 
 /* v2.3.1299 (ChatGPT round-6, owner-approved): expanded More = a
    STATUS HUB.  Progress: three status cards; Community: two wider
@@ -295,7 +305,7 @@ export const MorePanel = () => {
                  and asserts nothing. */
               data-more-tile={id}
               onPointerUp={(e) => { e.stopPropagation(); open(id); }}
-              title={`${t.label} — ${statusFor(id, S)}`}
+              title={`${labelFor(t, S)} — ${statusFor(id, S)}`}
               style={{
                 ...cardBase,
                 flexDirection: 'column', gap: 2, padding: narrow ? '2px 2px' : '4px 2px',
@@ -310,7 +320,7 @@ export const MorePanel = () => {
                 /* v2.3.3504: a label with a soft hyphen breaks there, onto a
                    second line, rather than lose its end to an ellipsis */
                 ...(t.soft ? { whiteSpace: 'normal', textOverflow: 'clip' } : null),
-              }}>{t.soft || t.label}</span>
+              }}>{t.soft || labelFor(t, S)}</span>
             </button>
           );
         })}

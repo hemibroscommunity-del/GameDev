@@ -6,7 +6,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the woodworker's results heard */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { TrapsTab } from './TrapsTab.jsx'; /* v2.3.3120: box traps from logs */
-import { hardenCost as hardenAttemptCost, hardenIsWood, hardenTierOf } from '@/data/hardenCosts.js'; /* v2.3.3139: hardening takes a material and a doubling gold ladder (renamed: the legacy affix section below has a local hardenCost; v2.3.3481: that section is gone, the name stays); v2.3.3481: hardenIsWood and hardenTierOf name the skill and level a bow's or a staff's hardening asks for */
+import { hardenCost as hardenAttemptCost, hardenIsWood, hardenTierOf, hardenLevelFor } from '@/data/hardenCosts.js'; /* v2.3.3139: hardening takes a material and a doubling gold ladder (renamed: the legacy affix section below has a local hardenCost; v2.3.3481: that section is gone, the name stays); v2.3.3481: hardenIsWood and hardenTierOf name the skill and level a bow's or a staff's hardening asks for; v2.3.3524: hardenLevelFor, that level against caps.forgeladder */
 import { HardenedWoodTab } from './HardenedWoodTab.jsx'; /* v2.3.3139: five logs into one hardened wood */
 /* === WoodworkPanel — buildingPanel === 'woodwork' sub-panel === */
 /* v2.3.873: extracted verbatim from the buildingPanel === 'woodwork' clause
@@ -398,7 +398,12 @@ export function WoodworkPanel(props) {
            only: as before, the worker's refusal names the level if it is
            short. */
         var hByWood = !!(_Sh._serverCaps && _Sh._serverCaps.hardenwoodskill) && hardenIsWood(hw, hSlot);
-        var hSkillLvl = hByWood ? hardenTierOf(hw) * 5 : 0;
+        /* v2.3.3524: against caps.forgeladder the level is the one that MAKES
+           the weapon's wood (hardenCosts.js hardenLevelFor: a pine bow
+           Woodworking 1, softwood 6, hardwood 11 ...) -- the owner: "Hardening
+           should only require the same smithing level as it takes to smithing
+           that item tier", on v2.3.3481's skill; else 5 x its tier, as before */
+        var hSkillLvl = hByWood ? ((_Sh._serverCaps && _Sh._serverCaps.forgeladder) ? hardenLevelFor(hw, hSlot) : hardenTierOf(hw) * 5) : 0;
         return /*#__PURE__*/React.createElement("div", {
           style: { marginTop: 12, padding: 10, borderRadius: 10, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
         }, /*#__PURE__*/React.createElement("div", {

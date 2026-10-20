@@ -159,10 +159,12 @@ psB._gearLockNotifAt = 0;
 await room.webSocketMessage(wss.b, JSON.stringify({ type: 'unequip_request', payload: { slot: 'armor' } }));
 check('unequip rejected while locked', psB.armor && psB.armor.name === 'Old Plate');
 psB._gearLockNotifAt = 0;
-psB.inventory = { ore_iron_ore: 99 };
+/* v2.3.3524: an iron GREATSWORD from its BARS (v2.3.3141) -- a forge that
+   would mint if the lock were off, so the lock is what refuses it */
+psB.inventory = { bar_iron: 99 };
 psB.lifeSkills = { blacksmithing: { level: 99, xp: 0 } };
 const coinsPreForge = psB.coins;
-await room.webSocketMessage(wss.b, JSON.stringify({ type: 'forge_weapon', payload: { weaponType: 'sword', tierKey: 'iron', isWoodwork: false } }));
+await room.webSocketMessage(wss.b, JSON.stringify({ type: 'forge_weapon', payload: { weaponType: 'greatsword', tierKey: 'iron', isWoodwork: false } }));
 check('forge rejected while locked (no mint, no spend)', psB.coins === coinsPreForge && psB.weaponStash.length === 1);
 
 // expiry restores equips

@@ -107,12 +107,13 @@ const pagePoint = (P, wx, wy) => P.page.evaluate(([x, y]) => {
 }, [wx, wy]);
 
 /* everything of the attack from now on, watched every frame: a swing (the
-   swing's clock moved), an arrow made, the bow's draw played, the attack held */
+   swing's clock moved), an arrow made, the bow's shot heard (bowLoose since
+   v2.3.3523, the draw's squeak gone), the attack held */
 const watchAttack = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
   const st = window.__btCues && window.__btCues.stats;
   const w = { auto: false, swing0: S.swingTimer || 0, arrows: 0, seen: new Set(S.arrows || []),
-    draw0: st && st.played ? (st.played.bowDraw || 0) : 0, frames: 0 };
+    draw0: st && st.played ? (st.played.bowLoose || 0) : 0, frames: 0 };
   window.__btDeskPress = null;
   window.__dcWatch = w;
   const tick = () => {
@@ -131,7 +132,7 @@ const readWatch = (P) => P.page.evaluate(() => {
   if (!w) return null;
   for (const a of S.arrows || []) if (!w.seen.has(a)) { w.seen.add(a); w.arrows++; }
   return { auto: w.auto, swung: (S.swingTimer || 0) !== w.swing0, arrows: w.arrows, frames: w.frames,
-    draws: (st && st.played ? (st.played.bowDraw || 0) : 0) - w.draw0,
+    draws: (st && st.played ? (st.played.bowLoose || 0) : 0) - w.draw0,
     press: window.__btDeskPress ? window.__btDeskPress.kind : null };
 });
 const quiet = (w) => !!w && !w.auto && !w.swung && w.arrows === 0 && w.draws === 0;

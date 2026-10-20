@@ -16,13 +16,20 @@
  *   4. the quiet ones stay quiet: the reveal's and the spin's ticks under the
  *      menu click's own level, a status wearing off under a blow;
  *   5. a rush of air is air: the dodge, the roll, the jump's push-off, the
- *      sprint running dry (the owner's grunt since v2.3.3455, a breathy
- *      voice: 12%; and since v2.3.3475 their tired breath, every other
- *      time) and the mummy's unwrapping each put at most 0.6 of
+ *      sprint's tired breath (v2.3.3475, every other sprint that runs dry)
+ *      and the mummy's unwrapping each put at most 0.6 of
  *      the old sprint push-off's share of their energy below 400 Hz -- the
  *      owner heard that slowed special swipe's body thump as "a fleshy sound"
  *      (v2.3.3336; measured through a 400 Hz low-pass, which lets a little
- *      above it through, hence the comparison and not a fixed number).
+ *      above it through, hence the comparison and not a fixed number);
+ *   6. v2.3.3523: a grunt is a voice, not a thump: the sprint running dry
+ *      (the owner's effort grunt since v2.3.3523, their "angry grunt" -- a
+ *      low strained "hnh" whose strain sits at 200-400 Hz, so check 5's 400
+ *      Hz line no longer tells it from a thump; until then "Grunt 1", a
+ *      breathy voice, 12%, sat in check 5) and the two hurt grunts each put
+ *      at most 0.6 of that push-off's share of their energy below 150 Hz,
+ *      where a body's thump lives (the bare thud is ~90% there) and a voice
+ *      high-passed at 220 Hz (cut_sprint_voice.py) has next to nothing.
  *
  * Prints every cue's level, so a retune starts from numbers.
  *
@@ -34,7 +41,7 @@ import { EVENT_SOUNDS } from '../../../src/data/eventSounds.js';
 /* the levels the table's comments promise (data/eventSounds.js) */
 const PROMISED = {
   shieldBlock: 1.4, shieldBall: 0.6, shieldUp: 0.55, shieldDown: 0.35, dodged: 0.5, dodgeRoll: 0.6,
-  crit: 0.65, bowDraw: 0.5, discovery: 0.8, jumpUp: 0.4, jumpLand: 0.4, statusEnd: 0.2,
+  crit: 0.65, bowLoose: 0.4 /* v2.3.3523: was bowDraw 0.5, the squeak */, discovery: 0.8, jumpUp: 0.4, jumpLand: 0.4, statusEnd: 0.2,
   throwSnow: 0.5, door: 0.65, gatherReady: 0.45, lootDrop: 0.25, dungeonClear: 2.5,
   /* v2.3.3434: the second round ("Look for more too") */
   farmHarvest: 0.6, betIn: 0.6, betWon: 1.5, betLost: 1.0, jackpotWin: 1.7, guildQuest: 2.4,
@@ -48,10 +55,16 @@ const PROMISED = {
   notify: 0.8, denied: 0.45, laugh: 0.6, snore: 0.45,
   npcVoice0: 0.5, npcVoice1: 0.5, npcVoice2: 0.5, npcVoice3: 0.5, npcVoice4: 0.5, pointsSpent: 0.8,
   dungeonWave: 1.2, arenaStart: 1.0, allianceWar: 1.1, bossArrive: 1.5, bossEnrage: 1.3, blueBurst: 1.3,
-  /* v2.3.3455: a sprint running dry is the owner's grunt, worn out */
-  sprintOut: 0.23,
+  /* v2.3.3455: a sprint running dry is the owner's grunt, worn out (~0.23);
+     v2.3.3523: their effort grunt now, ~0.45 plain -- its strain sits at
+     200-400 Hz, which the plain measure weighs whole (~0.3 by ear) */
+  sprintOut: 0.45,
   /* v2.3.3475: ...and every other time their tired breath */
   sprintOutBreath: 0.2,
+  /* v2.3.3523: the weapon swapped to, the tree felled */
+  swapSword: 0.4, swapBow: 0.4, swapStaff: 0.4, treeFelled: 1.4,
+  /* v2.3.3499: the trap's own sounds */
+  trapSet: 0.7, trapShake: 0.4, trapSnap: 1.6, trapMiss: 1.0,
 };
 
 /* v2.3.3434: cues kept quieter than 0.08 of a hit on purpose, and why -- each
@@ -104,6 +117,7 @@ try {
     /* as BT_AUDIO._playLayer plays a layer: vol x hg x gain, the rate, the
        slice, the delay, and a fade over the slice's last `fade` seconds */
     const render = async (layers, vol, hg) => {
+      /* lp: a low-pass's corner in Hz (v2.3.3523: 400 for check 5, 150 for check 6), or none */
       const once = async (aw, lp) => {
         let len = 0.2;
         for (const L of layers) {
@@ -113,7 +127,7 @@ try {
         const oc = new OfflineAudioContext(1, Math.ceil(SR * len), SR);
         let bus = oc.destination;
         if (aw) for (let i = AW.length - 1; i >= 0; i--) { const f = oc.createIIRFilter(AW[i][0], AW[i][1]); f.connect(bus); bus = f; }
-        if (lp) for (let i = 0; i < 2; i++) { const f = oc.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 400; f.Q.value = 0.7071; f.connect(bus); bus = f; }
+        if (lp) for (let i = 0; i < 2; i++) { const f = oc.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; f.Q.value = 0.7071; f.connect(bus); bus = f; }
         for (const L of layers) {
           const src = oc.createBufferSource();
           src.buffer = bufs[L[0]];
@@ -137,8 +151,9 @@ try {
       let peak = 0;
       for (let i = 0; i < plain.length; i++) if (Math.abs(plain[i]) > peak) peak = Math.abs(plain[i]);
       const energy = (ch) => { let e = 0; for (let i = 0; i < ch.length; i++) e += ch[i] * ch[i]; return e; };
-      const low = energy(await once(false, true)) / Math.max(1e-12, energy(plain));
-      return { peak, rms: loudest(plain), arms: loudest(await once(true)), low };
+      const low = energy(await once(false, 400)) / Math.max(1e-12, energy(plain));
+      const low150 = energy(await once(false, 150)) / Math.max(1e-12, energy(plain));
+      return { peak, rms: loudest(plain), arms: loudest(await once(true)), low, low150 };
     };
     const ref = await render([['sword-hit3', 0, 0, 1]], 0.55, A.HIT_GAIN);
     /* the old sprint push-off, the slowed special swipe ("a fleshy sound") */
@@ -148,9 +163,9 @@ try {
     const out = {};
     for (const n of Object.keys(table)) {
       const r = await render(table[n], 1, 1);
-      out[n] = { peak: r.peak, plain: r.rms / ref.rms, ear: r.arms / ref.arms, low: r.low };
+      out[n] = { peak: r.peak, plain: r.rms / ref.rms, ear: r.arms / ref.arms, low: r.low, low150: r.low150 };
     }
-    return { out, click: { plain: click.rms / ref.rms, ear: click.arms / ref.arms }, fleshyLow: fleshy.low };
+    return { out, click: { plain: click.rms / ref.rms, ear: click.arms / ref.arms }, fleshyLow: fleshy.low, fleshyLow150: fleshy.low150 };
   }, EVENT_SOUNDS);
 
   const f2 = (v) => v.toFixed(2);
@@ -168,9 +183,13 @@ try {
   const ticks = ['revealTick', 'spinTick'].filter((n) => !(res.out[n].plain <= res.click.plain * 1.15));
   ok(ticks.length === 0 && res.out.statusEnd.plain < 0.5,
     `4. the quiet ones stay quiet: the reveal's and spin's ticks at or under the menu click (${f2(res.out.revealTick.plain)}, ${f2(res.out.spinTick.plain)} vs ${f2(res.click.plain)}), a status wearing off under half a blow (${f2(res.out.statusEnd.plain)})`);
-  const AIRY = ['dodged', 'dodgeRoll', 'jumpUp', 'sprintOut', 'sprintOutBreath', 'unwrap'];
+  const AIRY = ['dodged', 'dodgeRoll', 'jumpUp', 'sprintOutBreath', 'unwrap'];
   const thump = AIRY.filter((n) => !(res.out[n].low <= 0.6 * res.fleshyLow));
   ok(thump.length === 0, `5. a rush of air is air: ${AIRY.map((n) => n + ' ' + Math.round(res.out[n].low * 100) + '%').join(', ')} of its energy under 400 Hz (the old "fleshy" push-off ${Math.round(res.fleshyLow * 100)}%; at most 0.6 of it)`);
+  /* v2.3.3523: the grunts -- a voice, whose strain is under 400 Hz, but no thump */
+  const VOICES = ['sprintOut', 'hurtA', 'hurtB'];
+  const thud = VOICES.filter((n) => !(res.out[n].low150 <= 0.6 * res.fleshyLow150));
+  ok(thud.length === 0, `6. a grunt is a voice, not a thump: ${VOICES.map((n) => n + ' ' + Math.round(res.out[n].low150 * 100) + '%').join(', ')} of its energy under 150 Hz (the old "fleshy" push-off ${Math.round(res.fleshyLow150 * 100)}%; at most 0.6 of it)`);
   ok(errs.length === 0, `no page errors (${errs.slice(0, 2).join(' | ')})`);
 } finally {
   await b.close();

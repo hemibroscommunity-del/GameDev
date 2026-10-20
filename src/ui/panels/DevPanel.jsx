@@ -3,6 +3,7 @@ import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { WORLDVIEW_EXITS } from '../../data/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
+import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
 
 /* ═══ v2.3.2240: THE OWNER'S TEST PANEL ═══
  *
@@ -206,6 +207,12 @@ const CAP_GATES = [
   'wheelnodes' /* v2.3.3012: lower case, a kill switch */,
   'shieldwear' /* v2.3.3091: the shield on the arm -- lower case, a kill switch */,
   'shieldgem' /* v2.3.3187: a gem goes into a shield on the worker -- lower case, a kill switch */,
+  'weapongem' /* v2.3.3513: a gem goes into a weapon on the worker -- lower case, a kill switch */,
+  'monsterhold' /* v2.3.3513: a freeze or root stops a monster 1.5 s, then not again for 3 s -- lower case, a kill switch */,
+  'shardcrack' /* v2.3.3516: shards cracked for raw gems, three combined into a gem, gems in the bag -- lower case, a kill switch */,
+  'elemup' /* v2.3.3518: a gem that beats the monster's element lands 25% harder, and the phone's "UP" is the worker's -- a kill switch */,
+  'soakhit' /* v2.3.3518: a soaked monster's blows land 20% softer -- a kill switch */,
+  'shockspark' /* v2.3.3518: a hit on a shocked monster sparks to the one beside it -- a kill switch */,
   'wheeldungeons' /* v2.3.3016: lower case, a kill switch */,
   'nomansland' /* v2.3.3058: No man's land -- lower case, a kill switch */,
   'gatherreq' /* v2.3.3038: lower case, a kill switch */,
@@ -233,6 +240,7 @@ const CAP_GATES = [
   'hardenmats' /* v2.3.3139: hardening takes a material (bars, or a bow's hardened wood) and a doubling gold ladder -- lower case, a kill switch */,
   'hardenedwood' /* v2.3.3139: five logs into one hardened wood at the Woodworker -- lower case, a kill switch */,
   'hardenwoodskill' /* v2.3.3481: a bow's or staff's hardening is gated on Woodworking, a sword's still on Blacksmithing (the owner: "Do woodworking") -- lower case, a kill switch */,
+  'forgeladder' /* v2.3.3524: the forge's ladder -- no wood tier, copper Smithing 1 / iron 5 / black steel 10, the forge's Melee gate the wear gate, hardening by the level that makes the tier (server/src/forgeladder.js) -- lower case, a kill switch */,
   'arenaap' /* v2.3.3481: the arena's champion is paid 500 achievement points with the prize (the owner: "an arena winner should be included") -- lower case, a kill switch */,
   'arenaapfirst' /* v2.3.3488: ...on a character's FIRST win only (server inbox.js AP_ONCE): the arena's window says so -- the owner: "I don't want anyone exploiting the achievement points from it" */,
   'movediet' /* v2.3.3204: a steady walk on the Wheel's safe ground sent every 66 ms -- lower case, a kill switch */,
@@ -664,6 +672,21 @@ export const DevPanel = ({ onClose }) => {
           Run the speed test
         </button>
 
+        {/* ═══ v2.3.3523: THE SOUND STUDIO ═══
+            The owner: "I think sounds were wired in the wrong places.  The
+            labels should tell you where they go.  Might need to build a quick
+            studio to show which sounds belong where."  Keyless: it only plays
+            sounds (ui/panels/SoundStudio.jsx). */}
+        <div style={label}>Sound studio</div>
+        <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
+          Every sound in the game under the moment it plays at, with a play button and the recording it
+          is made of. "Heard just now" names the last sounds the game played, so a wrong one can be found.
+        </div>
+        <button type="button" style={btn(false)} data-dev-sound-studio=""
+          onClick={() => { if (onClose) onClose(); setTimeout(() => { openSoundStudio(); }, 150); }}>
+          Open the sound studio
+        </button>
+
         {!key && (
           <>
             <div style={label}>Admin key</div>
@@ -725,6 +748,19 @@ export const DevPanel = ({ onClose }) => {
                   {q.charAt(0).toUpperCase() + q.slice(1)} armor
                 </button>
               ))}
+            </div>
+            {/* v2.3.3516: the gem plan's Phase 2 to try at once -- each land's
+                shards to crack, and raw gems to combine (devtools.js /dev/kit
+                'shards', and 'gems' with raw) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 4 }}>
+              <button type="button" style={chip} disabled={busy} data-dev-kit-shards
+                onClick={async () => { const j = await call('/dev/kit', { playerId: myId, what: 'shards', count: 20 }); if (j) { setMsg('20 shards of each land — crack them at the Gem Works.'); refresh(); } }}>
+                20 shards each
+              </button>
+              <button type="button" style={chip} disabled={busy} data-dev-kit-rawgems
+                onClick={async () => { const j = await call('/dev/kit', { playerId: myId, what: 'gems', raw: true, count: 3 }); if (j) { setMsg('3 raw gems of each element — combine them at the Gem Works.'); refresh(); } }}>
+                3 raw gems each
+              </button>
             </div>
             <button type="button" style={btn(false)} disabled={busy}
               onClick={async () => { const j = await call('/dev/vitals', { playerId: myId, heal: true }); if (j) { setMsg('Topped up.'); refresh(); } }}>

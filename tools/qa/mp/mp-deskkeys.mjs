@@ -80,11 +80,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const s = document.querySelector('.bt-kb-hints');
       const bell = document.querySelector('[data-world-chat-toggle]');
       const r = s && s.getBoundingClientRect(), b = bell && bell.getBoundingClientRect();
+      const col = document.getElementById('root').getBoundingClientRect();
       const keys = s ? Array.from(s.querySelectorAll('kbd')).map((k) => k.textContent) : [];
-      return { keys, left: r && Math.round(r.left), bellRight: b && Math.round(b.right),
+      return { keys, left: r && Math.round(r.left), right: r && Math.round(r.right), top: r && Math.round(r.top),
+        colLeft: Math.round(col.left), place: s && s.getAttribute('data-kb-place'), bellRight: b && Math.round(b.right),
         overlap: !!(r && b && b.width && r.left < b.right && r.right > b.left && r.top < b.bottom && r.bottom > b.top) };
     });
     rec.ok('the keys strip lists 1-3, and lies clear of the bell', strip.keys.includes('1-3') && !strip.overlap, strip);
+    /* v2.3.3526 (the owner's "Go recommended" on the review's "move the keys
+       strip into the black margin beside the game"): on this window it is in
+       the margin, wholly left of the game's column and on the screen */
+    rec.ok('...in the black margin beside the game: wholly left of the column, every row on the screen',
+      strip.place === 'side' && strip.right <= strip.colLeft - 8 && strip.left >= 0 && strip.top >= 0, strip);
 
     /* ── 1b. v2.3.3470: THE ⌨ STAYS BESIDE THE OPEN STRIP ──
        The owner: "once the computer controls are open it's hidden behind the
@@ -101,13 +108,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const ov = (a, z) => !!(a && z && a.l < z.r && a.r > z.l && a.t < z.b && a.b > z.t);
       let onTop = false;
       if (c) { const at = document.elementFromPoint((c.l + c.r) / 2, (c.t + c.b) / 2); onTop = !!(at && (at === chip || chip.contains(at))); }
-      return { chip: c, strip: !!st, open: chip ? chip.getAttribute('data-open') : null, onStrip: ov(c, st), onBell: ov(c, b), onTop,
-        inCol: !!(c && col && c.l >= col.l && c.r <= col.r), stripInCol: !st || !!(col && st.l >= col.l - 0.5 && st.r <= col.r + 0.5),
+      /* v2.3.3526: drawn in the margin (data-kb-place="side") the ⌨ and the
+         rows are wholly LEFT of the column; drawn in it, inside it, as before */
+      const side = !!chip && chip.getAttribute('data-kb-place') === 'side';
+      const inCol = (a) => !!(a && col && a.l >= col.l && a.r <= col.r);
+      const inMargin = (a) => !!(a && col && a.l >= 0 && a.r <= col.l);
+      return { chip: c, strip: !!st, open: chip ? chip.getAttribute('data-open') : null, onStrip: ov(c, st), onBell: ov(c, b), onTop, side,
+        placed: side ? inMargin(c) && (!st || inMargin(st)) : inCol(c) && (!st || !!(col && st.l >= col.l - 0.5 && st.r <= col.r + 0.5)),
         at: c ? [Math.round((c.l + c.r) / 2), Math.round((c.t + c.b) / 2)] : null };
     });
     const kb1 = await kbState();
-    rec.ok('the ⌨ is still on screen beside the open strip: lit, clear of the strip and the bell, inside the game\'s column, and what a click there reaches',
-      kb1.strip && !!kb1.chip && kb1.open === '1' && !kb1.onStrip && !kb1.onBell && kb1.inCol && kb1.stripInCol && kb1.onTop, kb1);
+    rec.ok('the ⌨ is still on screen beside the open strip: lit, clear of the strip and the bell, in the margin beside the game with it, and what a click there reaches',
+      kb1.strip && !!kb1.chip && kb1.open === '1' && !kb1.onStrip && !kb1.onBell && kb1.side && kb1.placed && kb1.onTop, kb1);
     if (kb1.at) await P.page.mouse.click(kb1.at[0], kb1.at[1]);
     await P.page.waitForTimeout(400);
     const kb2 = await kbState();
@@ -116,6 +128,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const kb3 = await kbState();
     rec.ok('...one click on it hides the strip (the ⌨ stays, unlit), one more brings the strip back',
       !kb2.strip && !!kb2.chip && kb2.open === '0' && kb3.strip && kb3.open === '1', { kb2, kb3 });
+
+    /* ── 1c. v2.3.3526: A WINDOW WITH NO ROOM BESIDE THE GAME ──
+       1000 x 1200: the column is 654 px wide and the margins 173, under the
+       190 the strip needs, so it is drawn in the column, as before, the ⌨
+       with it; back to this window, it goes back to the margin -- each the
+       moment the window changes. */
+    await P.page.setViewportSize({ width: 1000, height: 1200 });
+    await P.page.waitForTimeout(900);
+    const kbNarrow = await kbState();
+    await P.page.setViewportSize(DESK);
+    await P.page.waitForTimeout(900);
+    const kbWide = await kbState();
+    rec.ok('...on a window with no room beside the game (1000 x 1200) the strip and the ⌨ are in the column, and back in the margin on this one',
+      kbNarrow.strip && !kbNarrow.side && kbNarrow.placed && kbWide.strip && kbWide.side && kbWide.placed, { kbNarrow, kbWide });
 
     /* ── 2. EACH KEY ITS PAGE, AND AGAIN TO CLOSE IT ── */
     for (const [id, k] of [['quests', 'J'], ['hero', 'P'], ['skills', 'L'], ['encyclopedia', 'K'], ['more', 'O']]) {
@@ -161,10 +187,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return !(at && (at === b || b.contains(at)));
       }).map((b) => b.getAttribute('aria-label') || b.textContent.trim().slice(0, 16));
       const strip = document.querySelector('.bt-kb-hints');
-      return { buttons: all.length, hidden, strip: !!strip && getComputedStyle(strip).display !== 'none' };
+      const col = document.getElementById('root').getBoundingClientRect();
+      const sr = strip ? strip.getBoundingClientRect() : null;
+      return { buttons: all.length, hidden, strip: !!strip && getComputedStyle(strip).display !== 'none',
+        /* v2.3.3526: in the margin it covers nothing, so it stays */
+        margin: !!(strip && strip.getAttribute('data-kb-place') === 'side' && sr && sr.right <= col.left) };
     });
-    rec.ok('...every button in it answers a click, the keys strip standing aside',
-      reach.buttons >= 8 && reach.hidden.length === 0 && !reach.strip, reach);
+    rec.ok('...every button in it answers a click, the keys strip in the margin beside the game (or standing aside)',
+      reach.buttons >= 8 && reach.hidden.length === 0 && (!reach.strip || reach.margin), reach);
     await key(P, 'Escape', 700);
     const e2 = await picker();
     await key(P, 'KeyB', 700);

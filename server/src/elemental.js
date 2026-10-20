@@ -98,6 +98,48 @@ export function getEffectiveness(attackElem, targetElem) {
   return 1.0;
 }
 
+/* ═══ v2.3.3518: EVERY GEM PULLS ITS WEIGHT (docs/GEM-PLAN.md, Phase 4) ═══
+ * The owner's decisions 13 and 14, "All of that sounds good" (2026-10-20).
+ * Until now two of the eight gems did nothing a player could see beyond
+ * setting up a collision -- soak and shock were combo starters only -- and
+ * the "UP" a hit showed over a monster its element beats was a word, the
+ * damage unchanged (only a collision read getEffectiveness).
+ *
+ * UP.  A hit carrying an element that BEATS the monster's (the wheel above)
+ * lands UP.MULT harder: the gem's own hit (combat.js _handleMonsterDamage)
+ * and the Element Burst (burst.js).  No penalty the other way -- a gem that
+ * loses the matchup hits as hard as no gem, and the phone's "DN" goes.
+ * Applied where FRACTURE is, after the attacker's ceiling: like fracture it
+ * is the worker's own fact about the TARGET (its own copy of the gem against
+ * the monster's element), nothing a claim can raise, so the ceiling that
+ * bounds the attacker's roll does not move.  A collision keeps its own
+ * effectiveness (resolveElementCollision, 0.75 to 1.25), as before.
+ *
+ * SOAK.  A soaked monster's blows land SOAK_HIT.MULT as hard: every blow it
+ * delivers itself (hits.js, the door's `soak` column), its storm arcs
+ * included; not a burn or poison it left on you, nor ground it set alight.
+ *
+ * SHOCK.  A hit on a monster that was already shocked SPARKS to the nearest
+ * other monster within SHOCK_SPARK.R, for SHOCK_SPARK.PCT of the hit (combat.js
+ * _shockSpark): one monster, no chain, the hitter's damage and credit.
+ *
+ * Kill switches: `elemup`, `soakhit`, `shockspark` -- each `false` in the
+ * live flags puts its part back as it was (combat.js). */
+export const ELEM_UP = Object.freeze({ MULT: 1.25 });
+export const SOAK_HIT = Object.freeze({ MULT: 0.8 });
+export const SHOCK_SPARK = Object.freeze({ R: 150, PCT: 0.25 });
+
+/* What a hit of `attackElem` lands for on a monster of `targetElem`: UP.MULT
+   when it wins the matchup, else 1 -- never less (decision 14). */
+export function elementUpMult(attackElem, targetElem) {
+  return getEffectiveness(attackElem, targetElem) > 1 ? ELEM_UP.MULT : 1;
+}
+
+/* How hard a monster's own blow lands while it is soaked. */
+export function soakHitMult(m) {
+  return (m && m.statuses && m.statuses.soak) ? SOAK_HIT.MULT : 1;
+}
+
 export function lookupCollision(a, b) {
   return COLLISION_TABLE[a + '|' + b] || COLLISION_TABLE[b + '|' + a] || null;
 }
@@ -127,13 +169,60 @@ export function applyElementStatus(m, element, sourceId, power, now, durMult) {
     if (def.maxStacks && existing.stacks < def.maxStacks) existing.stacks++;
     existing.sourceId = sourceId;
     existing.power = power || 0;
+    startElementHold(m, statusId, now);   /* v2.3.3513: the hold rule (below) */
     return true;
   }
   m.statuses[statusId] = {
     id: statusId, element, remaining: def.dur * dm, maxDur: (def.maxDur || def.dur) * dm,
     stacks: 1, sourceId, power: power || 0, appliedAt: now, lastTick: now,
   };
+  startElementHold(m, statusId, now);   /* v2.3.3513: the hold rule (below) */
   return true;
+}
+
+/* ═══ v2.3.3513: THE HOLD RULE FOR MONSTERS ═══
+ * The owner's decision 8 (docs/GEM-PLAN.md): "Stopped for 1.5 s, then 3 s
+ * before another stop; bosses half".  A freeze or a root stopped a monster
+ * for as long as the status lasted, and every hit topped the status up
+ * (STATUS_DEFS refresh) -- nothing made it immune, not even a boss.  It hardly
+ * showed while a weapon's gem was the phone's alone and gone at the next
+ * join; with real gems (weapongem.js) a frost or venom weapon would keep
+ * everything it hit standing still, and nothing could hit back.
+ *
+ * Now a freeze or a root that LANDS starts a hold: the monster is stopped for
+ * HOLD.MS (half for a dungeon boss, `_dungeonBoss`), and then cannot be
+ * stopped again for HOLD.IMMUNE_MS after it.  A landing inside the hold or
+ * the immune time starts nothing.  The STATUS keeps its own length and does
+ * what it always did beyond the stop: a frozen monster past its hold is
+ * CHILLED, at HOLD.CHILL_MULT of its speed (it can attack), and a rooted one
+ * walks freely while the root's poison keeps ticking (tickElementStatuses).
+ * The same shape as a player's own hold (pvpextras.js _pvpHold: DAZE 0.5 s
+ * then 2.5 s, STUCK 0.7 s then 2 s, monsterstatus.js), with a monster's
+ * numbers.  Attunement (durMult) lengthens the status, never the hold.
+ *
+ * Stamped on any holder applyElementStatus is handed; only a monster's are
+ * read (elementMoveMult, from _tickMonsters).  A player hit by a weapon is
+ * held by the player's own rule, as before.  A respawn clears both stamps
+ * (index.js, beside the statuses).  `monsterhold: false` in liveflags puts the
+ * old lock back (weapongem.js _monsterHoldOff, read by _tickMonsters). */
+export const HOLD = Object.freeze({
+  MS: 1500,
+  IMMUNE_MS: 3000,
+  BOSS_K: 0.5,
+  CHILL_MULT: 0.5,
+});
+
+/* Start a hold for a freeze or root that just landed, unless the monster is
+   held or immune.  Returns the ms it holds, or 0. */
+export function startElementHold(m, statusId, now) {
+  if (statusId !== 'freeze' && statusId !== 'root') return 0;
+  if (!m || typeof m !== 'object') return 0;
+  const t = typeof now === 'number' ? now : Date.now();
+  if (t < (m._holdImmuneUntil || 0)) return 0;
+  const ms = Math.round(HOLD.MS * (m._dungeonBoss ? HOLD.BOSS_K : 1));
+  m._holdUntil = t + ms;
+  m._holdImmuneUntil = t + ms + HOLD.IMMUNE_MS;
+  return ms;
 }
 
 /* v2.3.1139 (item I): CC movement multiplier for the server AI.
@@ -141,12 +230,24 @@ export function applyElementStatus(m, element, sourceId, power, now, durMult) {
  * moveMult block): freeze or root -> full stop (0), slow -> x0.4,
  * else x1.  The client also gates ATTACKS on moveMult > 0 -- the
  * caller (_tickMonsters) mirrors that.  No influence duration
- * scaling (retired stat). */
-export function elementMoveMult(m) {
+ * scaling (retired stat).
+ * v2.3.3513: `hold` -- the hold rule (above): freeze or root stop the monster
+ * only while its hold lasts (0); after it a freeze CHILLS (HOLD.CHILL_MULT)
+ * and a root lets it walk; slow is 0.4 either way, the stronger of the two
+ * when both.  A caller that does not say gets the old lock, the
+ * `monsterhold: false` behaviour -- _tickMonsters, the one caller, says. */
+export function elementMoveMult(m, now, hold) {
   if (!m || !m.statuses) return 1;
-  if (m.statuses.freeze || m.statuses.root) return 0;
-  if (m.statuses.slow) return 0.4;
-  return 1;
+  const st = m.statuses;
+  if (st.freeze || st.root) {
+    if (!hold) return 0;
+    const t = typeof now === 'number' ? now : Date.now();
+    if (t < (m._holdUntil || 0)) return 0;
+  }
+  let k = 1;
+  if (st.freeze) k = HOLD.CHILL_MULT;
+  if (st.slow) k = Math.min(k, 0.4);
+  return k;
 }
 
 /* ═══ v2.3.1734: FRACTURE STOPS BEING A DECORATION ═══

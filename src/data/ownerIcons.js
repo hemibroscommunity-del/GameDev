@@ -9,7 +9,11 @@
  *   1b  LAND_SCENE: each of the Wheel's eight lands, its scene over the land
  *       banner's name plate as you cross into it (ui/zoneBannerOverlay.js
  *       noteWheelLand); loaded behind the Wheel's loading screen and let go on
- *       leaving it (rendering/zoneBannerPreload.js);
+ *       leaving it (rendering/zoneBannerPreload.js).  v2.3.3511, the owner
+ *       after a playtest: "new land emblems look bad enlarged (revert or show
+ *       below minimap)" -- the banner is the plain plaque again and the scene
+ *       a small EMBLEM under the minimap for a few seconds, never drawn past
+ *       its own pixels (ui/landEmblem.js);
  *   2a  the Gladiator Arena window's helmet (was the Saloon's beer mug);
  *   3   the trade request card's handshake (warmed with the controls: the card
  *       pops up in the middle of play);
@@ -19,18 +23,26 @@
  *   6   the pet house at the start of the Pets page's "Pet House" row;
  *   8   the prize wheel on the Daily Rewards window's free spin row;
  *   9   the treasure map on the empty Journey page.
+ * v2.3.3524: and the hammer off the gold "Craft" button of the crafting sheet,
+ * for the Blacksmith's Upgrade tab -- the owner's playtest note: "Make the
+ * upgrade tab icon different for smithing.  Like a hammer" (it wore the
+ * currency strip's gold gem).
  * OWNER_ICON's w and h are the CSS px each is drawn at -- its picture's own
  * shape, written at about three times that (a 3x phone).
  *
  * No imports: node-tested (server/test/owner-icons.test.mjs).
  */
 const V = '?v=2.3.3481';
+/* v2.3.3511: the scenes were cut again, the plate's scroll ends under them
+   gone (tools/ui/cut-owner-icons.py rim_cut): a new address, so a phone
+   holding the old pictures fetches these */
+const SCENE_V = '?v=2.3.3511';
 
 /* Keyed by the plan's region ids, which reach here from the game's state:
    a null prototype, so '__proto__' or 'toString' is no land (CLAUDE.md) */
 const SCENES = Object.create(null);
 for (const land of ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant']) {
-  SCENES[land] = '/ui/banners/land-' + land + '.webp' + V;
+  SCENES[land] = '/ui/banners/land-' + land + '.webp' + SCENE_V;
 }
 export const LAND_SCENE = Object.freeze(SCENES);
 
@@ -40,7 +52,7 @@ export function landSceneUrl(id) {
   return typeof id === 'string' && Object.prototype.hasOwnProperty.call(LAND_SCENE, id) ? LAND_SCENE[id] : null;
 }
 
-const icon = (name, w, h) => Object.freeze({ src: '/icons/ui/' + name + '.webp' + V, w, h });
+const icon = (name, w, h, v) => Object.freeze({ src: '/icons/ui/' + name + '.webp' + (v || V), w, h });
 export const OWNER_ICON = Object.freeze({
   arenaHelmet: icon('arena-helmet', 24, 28),
   tradeHandshake: icon('trade-handshake', 40, 26),
@@ -48,6 +60,7 @@ export const OWNER_ICON = Object.freeze({
   petHouse: icon('pet-house', 40, 33),
   prizeWheel: icon('prize-wheel', 34, 37),
   journeyMap: icon('journey-map', 120, 69),
+  smithHammer: icon('smith-hammer', 22, 21, '?v=2.3.3493'),   /* v2.3.3524: the Blacksmith's Upgrade tab */
 });
 
 /* The quest pins over a townsperson, by the state entityRenderer reads off

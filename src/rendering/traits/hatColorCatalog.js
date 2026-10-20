@@ -197,6 +197,8 @@ function _capCache() {
   }
 }
 
+/* v2.3.3520: each build's promise while it runs (coloredHatReady) */
+const _building = Object.create(null);
 function build(hatId, colorId) {
   const target = hatColorTarget(colorId);
   const key = hatId + '/' + colorId;
@@ -204,7 +206,7 @@ function build(hatId, colorId) {
   const tex = {};
   /* Load every facing FIRST, derive one shared reference, then recolour each
      with it -> identical tone per angle. */
-  Promise.all(DIRS.map(dir =>
+  _building[key] = Promise.all(DIRS.map(dir =>
     loadImg(`/sprites/traits/headwear/${hatId}/${dir}.png?v=${TRAIT_VER}`).then(img => ({ dir, img })).catch(() => ({ dir, img: null }))
   )).then(loaded => {
     const prof = _refCache[hatId] || (_refCache[hatId] = _pooledProfile(loaded.map(l => l.img), hatId));
@@ -217,7 +219,16 @@ function build(hatId, colorId) {
     }
     _cache[key] = tex;
     _capCache();
+    delete _building[key];
   });
+}
+
+/** v2.3.3520: settles once (hatId, colorId)'s recolour is made (at once when
+ *  there is none to make, or it is made) -- the loading screen waits for it. */
+export function coloredHatReady(hatId, colorId) {
+  getColoredHatTextures(hatId, colorId);
+  const p = _building[hatId + '/' + colorId];
+  return p ? p.catch(() => {}) : Promise.resolve();
 }
 
 /** Recolored hat texture map for (hatId, colorId), or null for the default

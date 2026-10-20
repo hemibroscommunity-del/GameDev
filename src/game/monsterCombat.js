@@ -1852,13 +1852,14 @@ export function updateMonsterCombat(S, deps) {
                      these to play the load/draw/release frames for the shot). */
                   S._bowShotAt = Date.now();
                   S._bowShotAng = arrAngle;
-                  /* v2.3.3343: the bow is DRAWN, then loosed -- bow-pullback, in
-                     the game since the bow and never played (SOUND-GAPS), as
-                     the pull starts, quickened to fit the quick draw; and the
-                     arrow's whoosh on the release frame (entityRenderer
-                     BOW_RELEASE_MS, 110 ms), where the arrow leaves the grip. */
-                  cue('bowDraw', 1, 1.3);
-                  BT_AUDIO.play('arrow-fly', { vol: 0.85, delay: 0.11 });
+                  /* v2.3.3343: the arrow's whoosh on the release frame
+                     (entityRenderer BOW_RELEASE_MS, 110 ms), where the arrow
+                     leaves the grip.  v2.3.3523: as the jump's rush of air
+                     (data/eventSounds.js bowLoose, the owner's "should be
+                     current 'jump' sound"), and no bow-pullback drawn first:
+                     quickened to fit the quick draw, it was the "duck
+                     squeak" the owner heard on every shot. */
+                  cue('bowLoose');
                 }
                 }   /* v2.3.2473: end of `if (_mayLoose)` -- see the sight gate above */
               } else if (!S.isSwinging) {
@@ -2090,7 +2091,12 @@ export function updateMonsterCombat(S, deps) {
                 var specialMult = S._specialAttack ? specialAtkMultFor(_activeWpn.type, _R6) : 1; /* v2.3.1397: melee special 3x (owner); v2.3.2592: × the SPECIAL stat */
 
                 /* §9 — Apply element status on hit */
-                var hitElement = S._specialAttack ? _activeWpn.element2 : _activeWpn.element1;
+                /* v2.3.3513: a special carries the SECOND gem when there is
+                   one, else the first -- as the worker reads it
+                   (weapongem.js weaponHitElement).  `element2` alone left a
+                   one-gem weapon's special with no element here while the
+                   worker applied the first. */
+                var hitElement = S._specialAttack ? (_activeWpn.element2 || _activeWpn.element1) : _activeWpn.element1;
                 if (hitElement) {
                   var _ELEMENTS$hitElement;
                   var statusId = (_ELEMENTS$hitElement = ELEMENTS[hitElement]) === null || _ELEMENTS$hitElement === void 0 ? void 0 : _ELEMENTS$hitElement.status;
@@ -2130,14 +2136,21 @@ export function updateMonsterCombat(S, deps) {
                       BT_AUDIO.beep(pitches[hitElement] || 400, 0.04, 0.06, 'sine');
                     }
                     /* §10.2 Effectiveness indicator — green/red arrow on hit */
-                    if (m.element) {
+                    /* ═══ v2.3.3518: "UP" IS THE WORKER'S, AND "DN" IS GONE ═══
+                       The owner's decision 14 (docs/GEM-PLAN.md): a gem that
+                       beats the monster's element hits 25% harder, and there
+                       is no penalty the other way.  Against a worker that does
+                       it (caps.elemup) the "UP" comes with the worker's own
+                       number, off its monster_hit `up` (gameEvents.js), so
+                       none is guessed here; an older worker still gets the old
+                       guess.  "DN" said a weak matchup hit softer, which no
+                       hit ever has: never shown now. */
+                    if (m.element && !(S._serverCaps && S._serverCaps.elemup)) {
                       var eff = getEffectiveness(hitElement, m.element);
                       if (eff > 1.0) {
                         pushDmgPopup(S, m.x + 12, m.y - 10, 'UP', '#3dd497');
                         if (!_R6._questFlags) _R6._questFlags = {};
                         _R6._questFlags.usedEffectiveness = true;
-                      } else if (eff < 1.0) {
-                        pushDmgPopup(S, m.x + 12, m.y - 10, 'DN', '#ff5e6c');
                       }
                     }
                   }

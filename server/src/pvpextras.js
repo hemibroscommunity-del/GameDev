@@ -240,7 +240,15 @@ export const pvpExtrasMethods = {
      has (an own key: '__proto__' and 'constructor' are nothing).  Volatile
      from the worker's copy, as on a monster.  No claimed element (an older
      page): the worker's copy. */
-  _pvpClaimElement(ps, slot, payload) {
+  /* v2.3.3513: the gem is the WORKER'S now (weapongem.js): its copy of the
+     weapon in that slot, the second gem on a special when there is one --
+     exactly what a hit on a monster reads -- and the claim's `element` only
+     with `weapongem: false` in liveflags, as before.  `special` is the special
+     this blow was taken as (combat.js `_special`). */
+  _pvpClaimElement(ps, slot, payload, special) {
+    if (typeof this._weaponGemOff === 'function' && !this._weaponGemOff()) {
+      return this._weaponHitElement(ps, slot, !!special);
+    }
     const e = payload && payload.element;
     if (typeof e === 'string' && own(ELEMENT_STATUS, e)) {
       const w = !ps ? null : slot === 'ranged' ? ps.rangedWeapon : slot === 'staff' ? ps.staffWeapon : ps.weapon;

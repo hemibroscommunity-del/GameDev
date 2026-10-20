@@ -164,6 +164,8 @@ import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull } from '@/game/
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyItemDropResult } from '@/game/itemDrop.js'; /* v2.3.3473: Drop's answer */
 import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
+import { applyWeaponGemResult, noteWeaponsArrived } from '@/game/weaponGem.js'; /* v2.3.3513: the weapon's gem, put in by the worker */
+import { applyShardCrackResult, applyGemCombineResult } from '@/game/shardCrack.js'; /* v2.3.3516: shards cracked and raw gems combined by the worker */
 import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's death heard by distance */
 import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
@@ -448,6 +450,7 @@ export function setupWebSocket(ctx) {
       }
       try {
         ws = new WebSocket(WS_URL);
+        _connectAt = Date.now();   /* v2.3.3496: a connect that never finishes is retried (_aliveTimer) */
       } catch (e) {
         scheduleReconnect();
         return;
@@ -463,6 +466,7 @@ export function setupWebSocket(ctx) {
            anyway.  Cheap, and true of any close that beats the open. */
         if (ws.readyState !== 1) return;
         S._realtimeStatus = 'connected';
+        _connectAt = 0;   /* v2.3.3496: connected */
         _lastInboundAt = Date.now();   /* v2.3.3034: a fresh socket gets a fresh window */
         _settleSentAt = 0;
         reconnectDelay = 1000;
@@ -1893,6 +1897,31 @@ export function setupWebSocket(ctx) {
               applyShieldGemResult(S, msg.payload, saveRpgSoon);
               break;
             }
+          case 'weapon_gem_result':
+            {
+              /* v2.3.3513: the worker put a gem into a weapon, or says why not
+                 (weapongem.js).  The weapon itself, the gem count and the
+                 Enchanting XP ride the player_state that follows; this says
+                 what happened and celebrates a level. */
+              applyWeaponGemResult(S, msg.payload);
+              break;
+            }
+          case 'shard_crack_result':
+            {
+              /* v2.3.3516: the worker cracked a land's shards (shardcrack.js):
+                 every roll, in order, and the raw gems found -- the Gem Works
+                 plays the crack from them (ShardCrackPanel.jsx).  The bag and
+                 the Gem Cutting XP ride the player_state that follows. */
+              applyShardCrackResult(S, msg.payload);
+              break;
+            }
+          case 'gem_combine_result':
+            {
+              /* v2.3.3516: three raw gems (or a Rare Gem) made into an
+                 elemental gem, or why not (shardcrack.js); the bag follows */
+              applyGemCombineResult(S, msg.payload);
+              break;
+            }
           /* ═══ v2.3.3120: PET TRAPPING (game/trapping.js) ═══
              The worker's four answers: the mark set (or why not), the trap
              sprung at a kill (the shakes, a catch), the pets record, and the
@@ -2539,6 +2568,11 @@ export function setupWebSocket(ctx) {
               if ('weapon' in msg.payload) S.rpg.weapon = msg.payload.weapon;
               if ('rangedWeapon' in msg.payload) S.rpg.rangedWeapon = msg.payload.rangedWeapon;
               if ('staffWeapon' in msg.payload) S.rpg.staffWeapon = msg.payload.staffWeapon;
+              /* v2.3.3513: a gem taken out at the Enchanter is done when its
+                 weapon comes back bare (game/weaponGem.js) */
+              if ('weapon' in msg.payload || 'rangedWeapon' in msg.payload || 'staffWeapon' in msg.payload) {
+                try { noteWeaponsArrived(S); } catch (e) { /* the wait lets go by itself */ }
+              }
               /* activeSlot: server's value applies only when the user
                  hasn't explicitly cycled in this session.  Without this
                  guard, ANY stale persisted activeSlot on the worker
@@ -4508,6 +4542,17 @@ export function setupWebSocket(ctx) {
        _lastInboundAt, because our own freeze moves that clock (below). */
     var _lastStrike = null;
     var _heldForRejoin = [];
+    /* ═══ v2.3.3496: A CONNECT THAT NEVER FINISHES IS TRIED AGAIN ═══
+       The owner: "input dead after returning (needs tab switch)".  A socket
+       opened as the page comes back can sit in CONNECTING with nothing ever
+       answering it -- a network iOS has not woken yet -- and every road back
+       stepped round it: _resumeRecover ("a connect is already in flight"),
+       _comeBack (one socket at a time), this timer (an OPEN socket only).
+       The world stays held for the server (_netHold: no walking) until
+       something kills that socket, which a tab switch did.  A connect older
+       than CONNECT_STALL_MS is closed and made again. */
+    var CONNECT_STALL_MS = 10000;
+    var _connectAt = 0;
     var _aliveTimer = setInterval(function () {
       var now = Date.now();
       var gap = now - _lastAliveAt;
@@ -4517,8 +4562,24 @@ export function setupWebSocket(ctx) {
          an action waiting on an answer waits its full window from now too
          (never erased: a strike sent just before a freeze is exactly the one
          that can go down a pipe the freeze broke). */
-      if (gap > 3000) { _lastInboundAt = now; if (_settleSentAt) _settleSentAt = now; return; }
+      if (gap > 3000) {
+        _lastInboundAt = now; if (_settleSentAt) _settleSentAt = now;
+        if (_connectAt) _connectAt = now;   /* v2.3.3496: a connect's wait counts from the thaw too */
+        /* v2.3.3496: ...and a page that was frozen long enough has a stale
+           world, whether or not iOS fired visibilitychange or pageshow for
+           it (it does not always): the same recovery as a return */
+        if (gap > RESYNC_AWAY_MS && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+          try { _resumeRecover('thaw', gap); } catch (e) { /* the next return tries again */ }
+        }
+        return;
+      }
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      if (ws && ws.readyState === 0 && _connectAt && now - _connectAt > CONNECT_STALL_MS) {
+        _connectAt = 0;
+        try { (window.__btConnectStalls || (window.__btConnectStalls = [])).push({ at: now }); } catch (e) { /* probe only */ }
+        _forceRejoin('connect-stall', 'still connecting after ' + Math.round(CONNECT_STALL_MS / 1000) + 's');
+        return;
+      }
       if (!ws || ws.readyState !== 1 || S._realtimeStatus !== 'connected') return;
       var silent = now - _lastInboundAt;
       var why = silent > DEAD_PIPE_MS ? 'silent ' + Math.round(silent / 1000) + 's'
@@ -4605,6 +4666,10 @@ export function setupWebSocket(ctx) {
         window.addEventListener('pointerdown', _onComeBackInput, { passive: true, capture: true });
         window.addEventListener('touchstart', _onComeBackInput, { passive: true, capture: true });
         window.addEventListener('keydown', _onComeBackInput, { passive: true, capture: true });
+        /* v2.3.3496: + the end of a touch and a click -- after a return the
+           press events are not always the ones that arrive */
+        window.addEventListener('touchend', _onComeBackInput, { passive: true, capture: true });
+        window.addEventListener('click', _onComeBackInput, { passive: true, capture: true });
       } catch (e) {}
     }
     function _disarmComeBack() {
@@ -4614,6 +4679,8 @@ export function setupWebSocket(ctx) {
         window.removeEventListener('pointerdown', _onComeBackInput, { capture: true });
         window.removeEventListener('touchstart', _onComeBackInput, { capture: true });
         window.removeEventListener('keydown', _onComeBackInput, { capture: true });
+        window.removeEventListener('touchend', _onComeBackInput, { capture: true });
+        window.removeEventListener('click', _onComeBackInput, { capture: true });
       } catch (e) {}
     }
     function _comeBack() {
@@ -4629,7 +4696,7 @@ export function setupWebSocket(ctx) {
       reconnectDelay = 1000;
       try { connect(); } catch (e) {}
     }
-    function _resumeRecover(tag) {
+    function _resumeRecover(tag, awayMs) {
       try {
         import('../debug/crashTrap.js').then(function (ct) {
           ct.recordCrash('resume', tag + ' wsState=' + (ws ? ws.readyState : 'none'));
@@ -4642,7 +4709,7 @@ export function setupWebSocket(ctx) {
       if (S._realtimeStatus !== 'superseded' && S._realtimeStatus !== 'idle') {
         var _hiddenMs = _hiddenAt ? (Date.now() - _hiddenAt) : 0;
         var _frozenMs = Date.now() - _lastAliveAt - 1100; /* heartbeat period + slack */
-        var _awayMs = Math.max(_hiddenMs, _frozenMs);
+        var _awayMs = Math.max(_hiddenMs, _frozenMs, awayMs || 0);   /* v2.3.3496: + a thaw's own measure */
         if (!ws || ws.readyState === 2 || ws.readyState === 3) {
           /* dead socket: reconnect immediately, skip backoff (v2.3.771) */
           if (reconnectTimer) clearTimeout(reconnectTimer);
@@ -5228,6 +5295,19 @@ export function setupWebSocket(ctx) {
         /* v2.3.3187: a gem into the shield (game/shieldGem.js) -> shieldgem.js.
            TRAPS #18: without this line the ask never leaves the browser. */
         if (msg.type === 'shield_gem') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3513: a gem into a weapon (game/weaponGem.js) -> weapongem.js.
+           TRAPS #18: without this line the ask never leaves the browser. */
+        if (msg.type === 'weapon_gem') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3516: a land's shards cracked, raw gems combined
+           (game/shardCrack.js) -> shardcrack.js.  TRAPS #18: without these
+           lines the asks never leave the browser. */
+        if (msg.type === 'shard_crack' || msg.type === 'gem_combine') {
           wsOut(msg);
           return;
         }

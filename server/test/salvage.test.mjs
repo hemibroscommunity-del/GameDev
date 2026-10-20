@@ -135,27 +135,30 @@ const bars = (k) => Math.floor(inv()[k] || 0);
 }
 
 // ── 3. A sword from four bars ──
+/* v2.3.3524: a GREATSWORD (the game forges nothing else now) at Smithing 1,
+   the copper tier's new level (forgeladder.js) */
 {
-  setSmith(6);
+  setSmith(1);
   ps().coins = 100;
   ps().weapon = null;
-  /* the forge's own stat gate (gear.js): a copper blade asks trained sword 5,
-     or agility 10 on a legacy save -- not what this section is about */
+  /* the forge's own stat gate (gear.js): a copper blade asks nothing of a
+     trained sword now (v2.3.3524: the wear gate; it asked 5), or power 10 on
+     a legacy save -- not what this section is about */
   ps().agility = 50; ps().power = 50;
   if (ps().prog3) { ps().prog3.sk = ps().prog3.sk || {}; ps().prog3.sk.sword = { ...(ps().prog3.sk.sword || {}), level: 20 }; }
   inv().ore_copper_ore = 10;
   delete inv().bar_copper;
   ws.sent.length = 0;
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'forge_weapon', payload: { weaponType: 'sword', tierKey: 'copper', isWoodwork: false } }));
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'forge_weapon', payload: { weaponType: 'greatsword', tierKey: 'copper', isWoodwork: false } }));
   check('copper ore alone forges no copper sword any more', !ps().weapon && inv().ore_copper_ore === 10 && ps().coins === 100, ps().weapon);
   inv().bar_copper = 5;
   const xp0 = ps().lifeSkills.blacksmithing.xp;
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'forge_weapon', payload: { weaponType: 'sword', tierKey: 'copper', isWoodwork: false } }));
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'forge_weapon', payload: { weaponType: 'greatsword', tierKey: 'copper', isWoodwork: false } }));
   const w = ps().weapon;
   const smith = ps().lifeSkills.blacksmithing;
-  check('four copper bars and the gold forge a copper sword', !!w && w.gearBase === 'copper' && w.type === 'sword' && bars('bar_copper') === 1
+  check('four copper bars and the gold forge a copper greatsword', !!w && w.gearBase === 'copper' && w.type === 'greatsword' && bars('bar_copper') === 1
     && ps().coins === 100 - BLACKSMITH_TIERS.copper.goldCost && inv().ore_copper_ore === 10, { w, inv: inv(), coins: ps().coins });
-  check('...paying the bars\' XP (' + BLACKSMITH_TIERS.copper.xp + ')', smith.level > 6 || smith.xp - xp0 === BLACKSMITH_TIERS.copper.xp, smith);
+  check('...paying the bars\' XP (' + BLACKSMITH_TIERS.copper.xp + ')', smith.level > 1 || smith.xp - xp0 === BLACKSMITH_TIERS.copper.xp, smith);
 }
 
 // ── 4. Armour salvaged ──

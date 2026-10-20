@@ -36,8 +36,20 @@ tools/shards/build_shards.py that nothing references.  Converting them would
 overwrite live art with an older picture at half the resolution.
 
 Usage:
-  python3 tools/webp_icons.py            # measure only, writes nothing
-  python3 tools/webp_icons.py --convert  # write the .webp files, remove the .png
+  python3 tools/webp_icons.py                       # measure only, writes nothing
+  python3 tools/webp_icons.py --convert FILE.png..  # write those .webp files, remove those .png
+  python3 tools/webp_icons.py --convert --all       # every .png under public/icons (see below)
+
+v2.3.3526: --convert takes the FILES to convert.  It used to convert every
+.png under public/icons, which was right when this was written (they were all
+inventory icons waiting to move) and is wrong now: the app icons
+(public/icons/app/*.png: the manifest's and iOS's home-screen icons, which
+must stay PNG), the badges and the stat icons were added as PNG on purpose
+since, and tools/gear/make-metal-icons.mjs ran this after writing its six
+metal pictures -- making the owner's new leg and chest icons converted and
+DELETED forty-five other files (restored before anything shipped).  The
+generator now names its own files; `--all` is the old sweep, for when every
+.png there really is meant to go.
 """
 import io
 import os
@@ -94,9 +106,18 @@ def damage(src, dec, scale=1):
 
 def main():
     convert = '--convert' in sys.argv[1:]
+    named = [a for a in sys.argv[1:] if not a.startswith('--')]
+    if convert and not named and '--all' not in sys.argv[1:]:
+        print('--convert needs the .png files to convert (or --all for every .png under public/icons)')
+        return 2
+    files = [os.path.relpath(os.path.abspath(f), ICONS) for f in named] if named else png_files()
+    bad = [f for f in files if f.startswith('..') or not f.lower().endswith('.png') or not os.path.exists(os.path.join(ICONS, f))]
+    if bad:
+        print('not a .png under public/icons: ' + ', '.join(bad))
+        return 2
     before = after = 0
     print(f'{"file":42} {"mode":8} {"png":>8} {"webp":>8}  {"alpha":>5}  mean/max  >8%   (at draw size)')
-    for rel in png_files():
+    for rel in files:
         p = os.path.join(ICONS, rel)
         src = Image.open(p).convert('RGBA')
         lossy = rel.replace(os.sep, '/') in LOSSY_FILES

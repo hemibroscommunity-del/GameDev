@@ -33,7 +33,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armou
 import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
 import { applyElemHit, applyHitShove, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3014: + the poison's and the storm's ticks; v2.3.3264: + a player's blow's shove */
 import { echoHitSfx, heroHitSfx, earVol, deathVol, shotHitMe } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's; v2.3.3248: a far death, slam or blast heard and felt by distance; v2.3.3343: + was a blocked blow the ball */
-import { cue, cueAt, peerShare, cuePeer } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
+import { cue, cueAt, peerShare, cuePeer, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game; v2.3.3523: + cueLater, a peer's shot */
 import { hurtGrunt } from '@/game/ownSounds.js'; /* v2.3.3462: your hurt grunt (the owner's recordings) */
 import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
 import { peerShotFlight } from '@/game/peerShots.js'; /* v2.3.3266: another player's shot at their speed and reach */
@@ -47,7 +47,7 @@ var _peerShotGame = null;
 function peerShotGame() {
   return _peerShotGame || (_peerShotGame = Object.freeze({ arrowPx: ARROW_SPEED_PX, reachPx: BOW_RANGE_PX, volleyK: BOW_VOLLEY.SPEED_K, peerPx: BOW_VOLLEY.PEER_PX_PER_FRAME }));
 }
-import { recordMail } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail */
+import { recordMail, itemWords } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail; v2.3.3516: + its words for an item */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
@@ -61,7 +61,7 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, heroPopupY, peerPopupY /* v2.3.3026: a hit on you pops over your head */, isAttackInShieldArc, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
 import { dropShield, noteShieldThreat } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield; v2.3.3260: and faces who hit you */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent, handleDiceEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes; v2.3.3393: + a /roll or /flip */
-import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
+import { applyServerMuteList, isBlockedId } from '@/game/chatMute.js'; /* v2.3.1981; v2.3.3526: a block stops requests */
 import { pushAbilityRings, BASH_POSE_MS } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave; v2.3.2920 + its pose window */
 import { depthK } from '@/data/zones.js'; /* v2.3.2824: a peer's whirlwind is as wide as its (depth-scaled) hit */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
@@ -70,6 +70,7 @@ import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
 import { petMailWords } from '@/data/trapping.js';   /* v2.3.3122: a pet in the mail */
 import { achvMailPhrase } from '@/game/achievements.js';   /* v2.3.3504: an achievement in the mail (the arena's crown) */
 import { noteWard } from '@/game/trapping.js';   /* v2.3.3123: a hit the pet out with you softened */
+import { sparkLine } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn */
 
 /* ═══ v2.3.2232: THE DAMAGE NUMBER NAMES THE WEAPON THAT DEALT IT ═══
  *
@@ -1867,7 +1868,7 @@ export function processGameEvent(type, payload, S, deps) {
                    (gladiator.js ARENA.CHAMPION_AP, payload `ap`). */
                 var _apIn = Math.floor(Number(_ep.ap) || 0);
                 var _what = _e.kind === 'gold' ? '+' + Math.floor(Number(_ep.amount) || 0).toLocaleString('en-US') + ' gold' + (_apIn > 0 ? ' and ' + _apIn + ' AP' : '')
-                  : _e.kind === 'item' ? (_ep.count || 1) + '× ' + (_ep.invKey || 'item')
+                  : _e.kind === 'item' ? (_ep.count || 1) + '× ' + itemWords(_ep.invKey)   /* v2.3.3516: words, not the key ("1× Frost gem") */
                   : _e.kind === 'weapon' ? ((_ep.weapon && _ep.weapon.name) || 'a weapon')
                   : _e.kind === 'gear' ? ((_ep.piece && _ep.piece.name) || 'a piece of gear')
                   : _e.kind === 'pet' ? petMailWords(_ep.pet)   /* v2.3.3122: a pet (store, trade, the mail) */
@@ -2206,7 +2207,9 @@ export function processGameEvent(type, payload, S, deps) {
                   var _pak = peerShare(S, _psX, _psY);
                   if (_pak > 0) {
                     var _pad = Math.max(0, Math.min(2, (Number(payload.delayMs) || 0) / 1000));
-                    BT_AUDIO.play('arrow-fly', { vol: 0.85 * _pak, delay: _pad });
+                    /* v2.3.3523: the shot's own sound (bowLoose), at the
+                       relay's moment -- its release frame came with it */
+                    cueLater('bowLoose', _pad - 0.11, _pak);
                     if (payload.isSpecial && _psFirst) BT_AUDIO.specialSwipe({ vol: 0.55 * _pak });
                   }
                 }
@@ -2505,6 +2508,8 @@ export function processGameEvent(type, payload, S, deps) {
                  one-bite rule (fightFood.js noteDealt; the worker's
                  _lastDealtAt) -- before anything below decides what to draw */
               noteDealt(S, payload);
+              /* v2.3.3518: a test's record of your own landed hits (mp-gemweight) */
+              try { if (payload.attackerId === S.myId && typeof window !== 'undefined' && window.__btProbe) { var _hl = window.__btHitLog || (window.__btHitLog = []); _hl.push({ id: payload.monsterId, dmg: payload.dmg, up: !!payload.up, spark: payload.spark || null }); if (_hl.length > 300) _hl.shift(); } } catch (e) { /* probe only */ }
               /* A monster was hit — show damage number and hit effects for everyone */
               if (S.monsters) {
                 var hitM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
@@ -2615,7 +2620,8 @@ export function processGameEvent(type, payload, S, deps) {
                      (owner report, first playtest).  Everything
                      echo-driven now sits behind the same gate. */
                   if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst
-                      || payload.splash /* v2.3.2481: a splashed neighbour has no local hit site of its own */) {
+                      || payload.splash /* v2.3.2481: a splashed neighbour has no local hit site of its own */
+                      || payload.spark /* v2.3.3518: nor has a shock's spark */) {
                     hitM._hitFlash = Date.now();
                     if (hitM.curHp > 0) {
                       hitM._hitAnimStart = Date.now();
@@ -2639,7 +2645,7 @@ export function processGameEvent(type, payload, S, deps) {
                        weapon of their own and take the generic spray.  The
                        soft decal is retired: the pieces that land are the
                        mark now. */
-                    var _dbW = payload.splash ? 'splash'
+                    var _dbW = (payload.splash || payload.spark) ? 'splash'   /* v2.3.3518: a spark is a lighter echo too */
                       : (payload.ability || payload.burst || payload.thorns) ? null
                       : payload.slot === 'melee' ? 'sword'
                       : payload.slot === 'ranged' ? 'arrow'
@@ -2667,7 +2673,7 @@ export function processGameEvent(type, payload, S, deps) {
                       x: hitM.x || hitM.renderX, y: monsterPopupY(hitM, -20),
                       text: '-' + _popDmg,   /* v2.3.2481 */
                       color: payload.isCrit ? DMG_CRIT_COLOR
-                        : (payload.splash ? '#c4b5fd' : '#ff8888'),   /* v2.3.2481: peer splash reads as splash too */
+                        : (payload.splash ? '#c4b5fd' : payload.spark ? '#9fd8ff' : '#ff8888'),   /* v2.3.2481: peer splash reads as splash too; v2.3.3518: a spark in the storm's blue */
                       /* v2.3.2211: the server's crit gets the same treatment
                          the local swing gets -- big number + the crit mark.
                          These two doors painted the same event differently,
@@ -2740,7 +2746,7 @@ export function processGameEvent(type, payload, S, deps) {
                            tell the bolt's own target from the neighbours it
                            caught.  Crit colour still wins -- a crit is the
                            louder fact. */
-                        payload.isCrit ? DMG_CRIT_COLOR : (payload.splash ? '#c4b5fd' : '#ffd08a'),
+                        payload.isCrit ? DMG_CRIT_COLOR : (payload.splash ? '#c4b5fd' : payload.spark ? '#9fd8ff' /* v2.3.3518: a shock's spark */ : '#ffd08a'),
                         /* v2.3.2232: the weapon that dealt it, not a flat sword.
                            v2.3.2233: ...and that now includes the crit, which
                            carried a bladed burst on bow and staff hits alike. */
@@ -2766,6 +2772,28 @@ export function processGameEvent(type, payload, S, deps) {
                        land in silence on their own screen while every
                        OTHER player in the zone saw the numbers. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + _popDmg, '#c084fc');   /* v2.3.2481 */
+                  }
+                  /* ═══ v2.3.3518: EVERY GEM PULLS ITS WEIGHT (docs/GEM-PLAN.md
+                     Phase 4; server elemental.js has the story) ═══
+                     "UP": the worker landed YOUR hit 25% harder because its
+                     gem beats this monster's element -- printed beside the
+                     worker's own number, never guessed (monsterCombat.js's
+                     guess is for an older worker); and the quest step that
+                     asks for a hit like it is counted here.
+                     A spark: the monster it leapt from, drawn on every screen
+                     (game/shockSpark.js). */
+                  if (payload.up && payload.attackerId === S.myId && S._serverCaps && S._serverCaps.elemup) {
+                    pushDmgPopup(S, (hitM.x || hitM.renderX) + 12, (hitM.y || hitM.renderY) - 10, 'UP', '#3dd497');
+                    if (S.rpg) {
+                      if (!S.rpg._questFlags) S.rpg._questFlags = {};
+                      S.rpg._questFlags.usedEffectiveness = true;
+                    }
+                    try { if (typeof window !== 'undefined' && window.__btProbe) (window.__btUpLog || (window.__btUpLog = [])).push({ id: payload.monsterId, dmg: payload.dmg, at: Date.now() }); } catch (e) { /* probe only */ }
+                  }
+                  if (payload.spark != null) {
+                    var _sparkFrom = S.monsters.find(function(m) { return m.id === payload.spark; });
+                    var _sparkDrawn = _sparkFrom ? sparkLine(S, _sparkFrom, hitM) : 0;
+                    try { if (typeof window !== 'undefined' && window.__btProbe) (window.__btSparkLog || (window.__btSparkLog = [])).push({ from: payload.spark, to: payload.monsterId, dmg: payload.dmg, drawn: _sparkDrawn, mine: payload.attackerId === S.myId, at: Date.now() }); } catch (e) { /* probe only */ }
                   }
                   /* v2.3.2844: the three flat dots that used to follow here
                      (v2.3.2200b, same gate as the flash above) are gone.  Every
@@ -4454,6 +4482,21 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'duel_request':
             {
+              /* ═══ v2.3.3526: A BLOCKED PLAYER'S REQUESTS NEVER REACH YOU ═══
+                 The owner, of the 2026-10-19 review's "should blocking a
+                 player also stop their trade and duel requests?": "Go
+                 recommended on everything".  Block (the player card's, and
+                 the friends list's) was chat and emotes only (chat.js), so a
+                 blocked player could still put a duel challenge, a trade
+                 request or a party invite in front of you, over and over.
+                 Now this phone drops each from anyone on its block list --
+                 no card, no popup, no sound -- and the request runs out on
+                 the sender's side as an unanswered one does (duel: their
+                 card's own clock; trade: trade2.js's invite TTL; party:
+                 PARTY.INVITE_TTL), so nothing tells them they are blocked.
+                 The block list is this device's (bt_blocked), as it always
+                 was; Mute is the one the worker keeps. */
+              if (isBlockedId(payload.from)) break;
               if (payload.target === S.myId) {
                 setDuelRequest({
                   fromId: payload.from,
@@ -4645,6 +4688,7 @@ export function processGameEvent(type, payload, S, deps) {
                  accept/decline card (accepting sends trade2_open back,
                  which completes the mutual open server-side). */
               if (!payload || !payload.from) break;
+              if (isBlockedId(payload.from)) break;   /* v2.3.3526: a blocked player's request never reaches you (duel_request) */
               if (setTrade2) setTrade2({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', ts: Date.now() });
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🤝 ' + (payload.fromName || 'Someone') + ' wants to trade!', '#3dd497');
               cue('tradeAsk');   /* v2.3.3434: two coins' clink (a beep(), silent) */
@@ -4791,6 +4835,7 @@ export function processGameEvent(type, payload, S, deps) {
                  (accepting sends party_accept, validated against the
                  inviter's own recorded invite server-side). */
               if (!payload || !payload.from) break;
+              if (isBlockedId(payload.from)) break;   /* v2.3.3526: a blocked player's request never reaches you (duel_request) */
               var _piTs = Date.now();
               if (setParty) setParty({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', partySize: payload.partySize || 1, ts: _piTs });
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🎪 ' + (payload.fromName || 'Someone') + ' invites you to a party!', '#fbbf24');

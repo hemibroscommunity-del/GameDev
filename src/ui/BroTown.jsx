@@ -56,6 +56,7 @@ import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
+import { trackedFirst, onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3522: the pinned quest card shows the quest you track */
 import { treeGeom, treeTrunkEllipse, treeReachBox } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree -- its box, its trunk and where you chop it from */
 import { oreGeom, oreBlockEllipse } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock -- its box and its body */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
@@ -351,6 +352,7 @@ import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
 import { handleZoneTransitions } from '@/game/zoneTransitions.js';
+import { holdForAvatar } from '@/game/avatarHold.js'; /* v2.3.3520: the straight-in road waits for your bro's pictures behind a veil */
 /* v2.3.789: desktop keyboard handlers extracted behavior-frozen (REBUILD-PLAN Phase 7). */
 import { setupDesktopControls } from '@/game/desktopControls.js';
 import { actionBus } from './mobile/actionBus.js'; /* v2.3.1562: quick-bar weapon swap */
@@ -383,7 +385,7 @@ import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the s
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
 import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
-import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
+import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land over the band's middle */
 import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
 import { nmlAsk, nmlAskOn, nmlAim, nmlHitBack } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first */
@@ -405,6 +407,7 @@ import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordD
 import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits } from '@/game/lifeSkillRewards.js'; /* tickGatherHits v2.3.2956 */
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
+import '@/game/soundStudio.js';   /* v2.3.3523: the sound studio's "heard just now" and its way in (the Test panel, ?sounds) */
 import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
 import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3434: the forge heard at work */
 import { tickMoveSounds, tickDanceMusic } from '@/game/moveSounds.js';   /* v2.3.3434: the emotes and moves heard; v2.3.3462: your dance's beat */
@@ -515,7 +518,7 @@ import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
 import { bedAt, farmExCode } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
-import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers */
+import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers; v2.3.3522: + each one's picture */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
 
@@ -1576,6 +1579,14 @@ export var BroTown = function BroTown(_ref0) {
     _useQuestHudFold2 = _slicedToArray(_useQuestHudFold, 2),
     questHudFolded = _useQuestHudFold2[0],
     setQuestHudFolded = _useQuestHudFold2[1];
+  /* v2.3.3522: the pinned quest card follows the quest you TRACK (the quest
+     page's Track button, game/trackedQuest.js): a change is told here, so the
+     card re-renders at once rather than at the next unrelated update */
+  var _useTrackTick = useState(0),
+    setTrackTick = _useTrackTick[1];
+  useEffect(function () {
+    return onTrackedQuest(function () { setTrackTick(function (v) { return v + 1; }); });
+  }, []);
   var _useState5 = useState(null),
     _useState6 = _slicedToArray(_useState5, 2),
     nearBuilding = _useState6[0],
@@ -2320,8 +2331,15 @@ export var BroTown = function BroTown(_ref0) {
      creator always shows exactly one category.  v2.3.1251: always a TYPE
      key; NameModal derives the five-group tab state (Hair/Face/Top/
      Bottom/Feet) from it.  'hair' is the landing type (the mockup's
-     Hair group opens on its Hair subtype). */
-  var _catState = useState('hair'),
+     Hair group opens on its Hair subtype).
+     v2.3.3526 (the owner, of the 2026-10-19 review's "which tab the creator
+     opens on": "Go recommended on everything"): it opens on SKIN -- the
+     species and skin tone are what the rest is built on, and the Skin tab's
+     card shows the drawing (a tattoo) at once; Hair is one tap away.  The
+     camera still opens on the whole figure (previewZoom below), and a game
+     with no species and no skin recolour falls back to 'hair' (NameModal
+     `_activeType`). */
+  var _catState = useState('skin'),
     activeCat = _catState[0],
     setActiveCat = _catState[1];
   /* v2.3.1251: the v2.3.834/835 collapse-on-select state (objPicked/
@@ -2659,7 +2677,7 @@ export var BroTown = function BroTown(_ref0) {
          which is as wide as "Human" and goes above the icon for the same
          reason. */
       ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: (cat === 'species' || cat === 'eyestyle') ? 'column-reverse' : 'column', alignItems: 'center', justifyContent: 'center' } },
-          /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/cc/cc-no-hair.webp?v=' + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
+          /*#__PURE__*/React.createElement("img", { src: ((cat === 'species' || cat === 'eyestyle') ? '/ui/welcome/cc/cc-no-hair.webp?v=' : '/ui/welcome/cc/cc-none.webp?v=') + BUILD_INFO.version /* v2.3.3526: the owner's sheet's plain no-entry sign (card 11) where None means nothing -- the bald head said "no hair" on the glasses' and shirts' rows too; the species' "Human" and the eyes' "Normal" keep the plain bald head, a human with nothing added, not "no human" */, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
           /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, (cat === 'species' || cat === 'eyestyle') ? opt.name : "None"))   /* v2.3.2682: on the species strip 'none' is the Human; v2.3.3481: on the Eyes strip, Normal */
       /* v2.3.3481: the 2026-10-19 UI review -- the eye styles' tiles are
          whole heads and shoulders (make_eyestyle_thumbs.py), so the eyes, the
@@ -4548,11 +4566,19 @@ export var BroTown = function BroTown(_ref0) {
         _avx = ((S.player && S.player.vx) || 0) * _pxMs;
         _avy = ((S.player && S.player.vy) || 0) * _pxMs;
       }
+      /* v2.3.3499: ...and once a jump has started across one, it is passed
+         for the rest of the jump, whatever this frame's speed, and a moment
+         after it (game/jump.js jumpLatched / landedOver): the owner's "gets
+         stuck on some props sometimes that it should be clearing". */
+      var _landNow = (!_air && S._jumpOver) ? Date.now() : 0;
       for (var i = 0; i < bx.length; i++) {
         var b = bx[i];
         if (px + h <= b.x0 || px - h >= b.x1 || fy + h <= b.y0 || fy - h >= b.y1) continue;
-        if (_air && overLow(b, _air, _airNow, h, px, fy, _avx, _avy)) continue;
+        if (_air && (jumpLatched(_air, b) || (overLow(b, _air, _airNow, h, px, fy, _avx, _avy) && jumpLatch(_air, b)))) continue;
         var inNow = !(curX + h <= b.x0 || curX - h >= b.x1 || cfy + h <= b.y0 || cfy - h >= b.y1);
+        /* v2.3.3499: only feet ALREADY in it walk on out -- never a step into
+           a fence you have just cleared, on the ground */
+        if (inNow && _landNow && landedOver(S, b, _landNow)) continue;
         if (!inNow) return true;
         if (_boxDepth(px, fy, b, h) > _boxDepth(curX, cfy, b, h)) return true;
       }
@@ -5246,7 +5272,7 @@ export var BroTown = function BroTown(_ref0) {
            behind the loading overlay (zoneTransitions.js), freeze the
            player at the hub exit so the proximity trigger stays armed and
            the entry runs the instant the load resolves. */
-        if (S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold) finalSpd = 0;   /* v2.3.3136: _farmArtHold -- veiled while your farm loads (game/farmTrip.js); v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
+        if (S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold || S._avatarArtHold) finalSpd = 0;   /* v2.3.3520: _avatarArtHold -- veiled while the straight-in road makes your bro's pictures (game/avatarHold.js) */   /* v2.3.3136: _farmArtHold -- veiled while your farm loads (game/farmTrip.js); v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
         /* v2.3.2996: a monster's element on you -- a snowman's chill walks you
            at CHILL_MULT, a blue slime's goo holds you where you stand
            (game/elemHits.js; the worker said so on the hit). */
@@ -9416,7 +9442,9 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.3343: the blade drawn (two beep()s played nothing; SOUND-GAPS).
        Stamped as the gesture's own sound so the swap button's generic menu
        click yields to it (uiSfxDelegate: a specific sound wins the tap). */
-    cue('weaponSwap');
+    /* v2.3.3523: the weapon you took, heard (the owner: "Change weapon
+       switch sound") -- the blade, the bow's wood or the staff's shimmer */
+    if (nextSlot === 'ranged') cue('swapBow'); else if (nextSlot === 'staff') cue('swapStaff'); else cue('swapSword');
     try { BT_AUDIO._uiSpecificAt = BT_AUDIO._now(); } catch (e) { /* sound only */ }
     S2._weaponSwapFlash = Date.now();
   }, []);
@@ -9430,7 +9458,7 @@ export var BroTown = function BroTown(_ref0) {
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = slot === 'melee' ? (_S2$rpg$weapon2 = S2.rpg.weapon) === null || _S2$rpg$weapon2 === void 0 ? void 0 : _S2$rpg$weapon2.name : slot === 'ranged' ? (_S2$rpg$rangedWeapon2 = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon2 === void 0 ? void 0 : _S2$rpg$rangedWeapon2.name : 'Staff';
     pushDmgPopup(S2, S2.player.x, S2.player.y - 40, wpnName, '#D8A94D');
-    cue('weaponSwap');   /* v2.3.3343: as the cycle's */
+    if (slot === 'ranged') cue('swapBow'); else if (slot === 'staff') cue('swapStaff'); else cue('swapSword');   /* v2.3.3343: as the cycle's (v2.3.3523: by weapon) */
   }, []);
   var _desktopSpecialAttack = useCallback(function () {
     doSpecialAttack();
@@ -9724,7 +9752,11 @@ export var BroTown = function BroTown(_ref0) {
        now, on purpose. */
     var _lt = S.lockedTarget;
     if (_lt && _lt.ref && _lt.type === 'monster' && _lt.src !== 'tap') {
-      S.lockedTarget = { type: 'monster', id: _lt.id, ref: _lt.ref, src: 'tap' };
+      /* v2.3.3499: `near` -- an auto lock is only ever made inside the 220 px
+         perimeter, so the promoted tap has been there: without the latch a
+         press made with the monster 220-275 px off gave a sword a tap lock
+         that was never released (targeting.js tapReleased, lockTooFar) */
+      S.lockedTarget = { type: 'monster', id: _lt.id, ref: _lt.ref, src: 'tap', near: true };
     }
     /* ═══ v2.3.3145: A PRESS THAT MAY BE A TAP IS NOT AN ATTACK YET ═══
        The owner: "When you tap jump with bow equipped it shows you and your
@@ -10776,6 +10808,22 @@ export var BroTown = function BroTown(_ref0) {
       e.stopPropagation();
       var t = e.changedTouches[0];
       if (!t) return;
+      /* ═══ v2.3.3496: A FINGER THAT IS NOT ON THE SCREEN OWNS NOTHING ═══
+         The owner: "input dead after returning (needs tab switch)".  The
+         button's one-finger rule below kept the press of a finger whose lift
+         never reached the page -- the app switched, the notification shade
+         pulled, a call came, the screen locked, mid-press: iOS does not
+         always send that touch's touchend or touchcancel to a page it has
+         frozen -- and from then on EVERY press of the button was taken here
+         and thrown away (prevented and stopped above, so the stick under it
+         never saw it either), until a tab switch made WebKit cancel the touch
+         it still tracked.  A touch the screen no longer has (`e.touches` is
+         every finger on it now) is let go of as a lift, and this press takes
+         the button. */
+      if (bTouchId.current !== null && !findT(e.touches || [], bTouchId.current)) {
+        _staleTouch('button');
+        _releaseButton();
+      }
       if (bTouchId.current !== null) return;   /* one finger owns the button */
       bTouchId.current = t.identifier;
       rJoyActive.current = true;
@@ -10989,6 +11037,54 @@ export var BroTown = function BroTown(_ref0) {
       }
       handleRBtnRelease();
     };
+    /* ═══ v2.3.3496: THE PAGE GOING AWAY LETS GO OF EVERY FINGER ═══
+       The owner: "input dead after returning (needs tab switch)".  Every
+       press here is ended only by its own touchend or touchcancel -- and a
+       page iOS freezes mid-press (the app switched, the shade pulled, a call,
+       the lock button) may never get either: the stick kept walking, the
+       attack stayed held, and the button's one-finger rule (bS) swallowed
+       every later press.  The keyboard has had this since v2.3.3006
+       (desktopControls: a window blur lets every key go); the touch side had
+       nothing.  Now the page hiding, coming back (a bfcache restore too) or
+       losing focus ends every press here exactly as a lift would.  A finger
+       really still down is not harmed: it was never going to be heard again
+       on a page that went away, and its next touch starts fresh. */
+    var _releaseButton = function () {
+      bTouchId.current = null;
+      bSwipe.harvest = false;
+      bSwipe.toShield = false;
+      rJoyActive.current = false;
+      handleRBtnRelease();
+    };
+    var _staleTouch = function (what) {
+      try {
+        var Sx = stateRef.current;
+        if (Sx) Sx._staleTouches = (Sx._staleTouches || 0) + 1;
+        import('../debug/crashTrap.js').then(function (ct) {
+          ct.recordCrash('touch-stale', what + ' held by a finger the page never saw lift, let go (' + document.visibilityState + ')');
+        }).catch(function () {});
+      } catch (err) { /* evidence only */ }
+    };
+    var releaseAllTouches = function (why) {
+      var held = [];
+      if (lTouchId.current !== null) { held.push('stick'); lTouchId.current = null; handleJoystickEnd(); }
+      if (rTouchId.current !== null) { held.push('right'); rTouchId.current = null; handleRBtnRelease(); }
+      if (bTouchId.current !== null) { held.push('button'); _releaseButton(); }
+      try { window.__btTouchRelease = { why: why, at: Date.now(), held: held }; } catch (err) { /* probe only */ }
+      if (held.length) _staleTouch(held.join('+') + ' on ' + why);
+      return held;
+    };
+    var _onPageAway = function (e) {
+      releaseAllTouches(e && e.type === 'visibilitychange' ? 'visibility-' + document.visibilityState : (e && e.type) || 'away');
+    };
+    document.addEventListener('visibilitychange', _onPageAway);
+    window.addEventListener('pagehide', _onPageAway);
+    window.addEventListener('pageshow', _onPageAway);
+    window.addEventListener('blur', _onPageAway);
+    try {
+      window.__btReleaseTouches = releaseAllTouches;   /* QA probes (mp-comeback) */
+      window.__btButtonFinger = function () { return bTouchId.current; };
+    } catch (err) { /* QA probe */ }
     lBase.addEventListener('touchstart', lS, {
       passive: false
     });
@@ -11068,6 +11164,10 @@ export var BroTown = function BroTown(_ref0) {
       window.removeEventListener('pointerdown', _stampInput, { capture: true });
       window.removeEventListener('keydown', _stampInput, { capture: true });
       window.removeEventListener('wheel', _stampInput, { capture: true }); /* v2.3.1913 */
+      document.removeEventListener('visibilitychange', _onPageAway);   /* v2.3.3496 */
+      window.removeEventListener('pagehide', _onPageAway);
+      window.removeEventListener('pageshow', _onPageAway);
+      window.removeEventListener('blur', _onPageAway);
       lBase.removeEventListener('touchstart', lS);
       window.removeEventListener('touchmove', gM);
       window.removeEventListener('touchmove', lM);
@@ -11618,6 +11718,12 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.init();
     BT_AUDIO.join();
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e2) { introWaitRef.current = null; }
+    /* v2.3.3520: ...and the bro's own pictures are waited for behind a veil
+       too, as the loading screen waits for them on the ordinary road -- the
+       world went up while his armour's masks were still being baked, and 26
+       of the first 58 frames drew the plain body under the plate
+       (game/avatarHold.js, mp-joinflicker) */
+    holdForAvatar(S, introWaitRef.current, (ZONES.wheel && ZONES.wheel.name) || 'BroTown');
     installWorldHold();   /* v2.3.2439: no loading screen on this road, so the veil is the gate */
     kickSfxAtGate(introWaitRef.current);
     holdZoneMusicAtGate(introWaitRef.current);   /* v2.3.2334 */
@@ -12626,12 +12732,23 @@ export var BroTown = function BroTown(_ref0) {
       WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
       maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)'
     }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-close",
+  }, /* \u2550\u2550\u2550 v2.3.3522: THE \u2715 STAYS IN THE CORNER, AND IS EASY TO SEE \u2550\u2550\u2550
+       The owner, playtesting: "Vendor menus need a more prominent escape icon
+       in the corner."  It was a faint 28 px disc, a child of this card -- the
+       SCROLLER -- so in a long menu (the forge, the Woodworker, the Gem Works)
+       it scrolled away with the rows.  It is the shared 40 px dark disc now
+       (game.css .bt-xclose), in a sticky bar of no height at the top of the
+       card, so it stays in the corner while the menu scrolls under it.  Still
+       .bt-inspect-close: Esc presses it, the close sound and the computer's
+       key cap find it by that. */
+  /*#__PURE__*/React.createElement("div", { className: "bt-inspect-closebar" }, /*#__PURE__*/React.createElement("button", {
+    className: "bt-inspect-close bt-xclose",
+    "aria-label": "Close",
+    "data-building-close": "",
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement(BuildingRoom, { key: roomIdFor(buildingPanel) || buildingPanel, panel: buildingPanel }) /* v2.3.3258: the inside of the building, behind its window's menu; v2.3.3259: keyed by its ROOM, so the Gem Works' two tabs (one room) never load it again */, /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
+  }, "\u2715")), /*#__PURE__*/React.createElement(BuildingRoom, { key: roomIdFor(buildingPanel) || buildingPanel, panel: buildingPanel }) /* v2.3.3258: the inside of the building, behind its window's menu; v2.3.3259: keyed by its ROOM, so the Gem Works' two tabs (one room) never load it again */, /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
        opens the panel that does the work and closes the hall */
   Object.prototype.hasOwnProperty.call(WHEEL_HALLS, buildingPanel) && /*#__PURE__*/React.createElement(WheelHallPanel, {   /* v2.3.3258: every hall in the table, the Town Hall's too */
     hall: buildingPanel,
@@ -13372,6 +13489,12 @@ export var BroTown = function BroTown(_ref0) {
       return QUEST_CHAINS[qid];
     }).filter(Boolean);
     if (activeQuests.length === 0) return null;
+    /* v2.3.3522: the quest you TRACK (the quest page's "Track this quest"),
+       when it is one of these -- the owner tracked one and nothing outside the
+       quest list changed ("I tapped track quest in quest menu but no golden
+       stars were in minimap"); the card, the minimap's star and the world
+       map's road all follow it now.  Else the first, as before. */
+    activeQuests = trackedFirst(activeQuests.map(function (aq) { return { qid: aq.id, q: aq }; })).map(function (e) { return e.q; });
     var q = activeQuests[0];
     /* v2.3.1914: live rpg, not the snapshot — one answer everywhere. */
     var done = DATA.questObjectiveDone(q, stateRef.current, rpgState);
@@ -14192,8 +14315,13 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, "E"), (nearBuilding !== null ? BUILDINGS[nearBuilding].iconSrc : WHEEL_HALLS[nearHall].icon) ? /*#__PURE__*/React.createElement("img", {
     /* v2.3.1224: UI Bible building icon (bldg-*) in the enter prompt;
-       falls back to the emoji when iconSrc is absent. */
-    src: nearBuilding !== null ? BUILDINGS[nearBuilding].iconSrc : WHEEL_HALLS[nearHall].icon,
+       falls back to the emoji when iconSrc is absent.
+       v2.3.3522: at a Wheel door, the picture the maps wear for that building
+       (data/wheelBuildingDoors.js WHEEL_BUILDING_ICONS -- the same files, but
+       the Land Office's own parchment map where it borrowed the Feed & Seed's
+       barn), so the door and the map agree */
+    src: (nearDoorLabel && stateRef.current._nearWheelBuilding && wheelBuildingIcon(stateRef.current._nearWheelBuilding.id))
+      || (nearBuilding !== null ? BUILDINGS[nearBuilding].iconSrc : WHEEL_HALLS[nearHall].icon),
     alt: "",
     draggable: false,
     style: {

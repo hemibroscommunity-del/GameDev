@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { skillXpRequired } from '../../../data/items.js';
 import { gatherHitOddsText } from '../../../data/lifeSkills.js'; /* v2.3.3229: the hit ladder's odds */
-import { SKILL_GATHER, SKILL_CRAFT, SKILL_ROSTER, skillUnlocks, markSkillsSeen, skillXpFade, xpShareText } from '../sheet/skillsModel.js';
+import { SKILL_GATHER, SKILL_CRAFT, SKILL_ROSTER, skillUnlocks, markSkillsSeen, skillXpFade, xpShareText, unseenSkillKeys /* v2.3.3522 */ } from '../sheet/skillsModel.js';
 import { xpDecayOn } from '../../../data/xpDecay.js'; /* v2.3.3251: the XP fade's lines */
 import { skillDetailBus } from '../sheet/skillDetailBus.js';
 import { panelVw } from '../playViewport.js'; /* v2.3.2173: the sheet's width, not the shell's */
@@ -40,6 +40,10 @@ import { panelVw } from '../playViewport.js'; /* v2.3.2173: the sheet's width, n
 export const SkillsPanel = () => {
   const [, force] = useState(0);
   const [detailKey, setDetailKey] = useState(() => skillDetailBus.consumeOpen());
+  /* v2.3.3522: the skills with a level-up not yet looked at, read as the page
+     opens -- before opening it marks them seen (below) -- so each tile can
+     wear the dashboard's dot for this visit */
+  const [fresh] = useState(() => { const S0 = getState(); return unseenSkillKeys((S0 && S0.rpg) || {}); });
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 600);
     return () => clearInterval(id);
@@ -147,88 +151,115 @@ export const SkillsPanel = () => {
     );
   }
 
-  /* ── Roster: two labeled sections of PILLS (v2.3.1312b, owner: "make
-     the expanded view pill shaped so they all fit without scrolling").
-     Horizontal pills, two per row — icon, name, Lv, and the thin XP
-     line along the pill's bottom edge.  Exact XP moved into the detail
-     view (one tap away); all ten skills + both labels clear the fold. */
-  const pill = (sd) => {
+  /* ═══ v2.3.3522: A HOME SCREEN OF SKILLS, NOT A LIST OF PILLS ═══
+     The owner, playtesting: "Make the lifeskills menu look more like iPhone
+     apps instead of elongated pills."  This reverses the owner's own
+     v2.3.1312b ask ("make the expanded view pill shaped so they all fit
+     without scrolling") -- its other half, all ten on one screen with no
+     scroll, stays.
+     Five across, two rows -- the roster's own order, the five gathering
+     skills over the five crafting ones (META's "Five columns, gathering row
+     then crafting row"), never re-sorted.  Each skill is an app: a
+     rounded-square tile (22% corners) on a dark ground tinted by the skill's
+     own accent, its painted icon big in it, its name under it in one line
+     (an ellipsis if a phone is too narrow, as a home screen does), its level
+     on a chip at the tile's top right, its XP a thin green bar along the
+     tile's bottom edge, and the dashboard's brass dot at its top left while a
+     level-up waits to be seen.  A press shrinks the tile (game.css
+     .bt-skill-app, transform only).  Sideways (the column under 260 px) three
+     across, scrolling, as that column has height to spare and no width.
+     `data-skill` stays on each button: the scenarios tap skills by it. */
+  const sideways = panelVw() < 260;
+  const tile = (sd) => {
     const sk = ls[sd.key] || { level: 0, xp: 0 };
-    const need = Math.max(1, skillXpRequired(sk.level || 1));   /* v2.3.3041: the worker's price */
+    const lvl = sk.level || 1;   /* v2.3.3041: a skill is never level 0 */
+    const need = Math.max(1, skillXpRequired(lvl));   /* v2.3.3041: the worker's price */
     const pct = Math.min(100, ((sk.xp || 0) / need) * 100);
-    /* v2.3.3481: the 2026-10-19 UI review -- a pill is 28 px tall, and a
-       taller one would push the tenth under the fold ("fit on one screen
-       without scrolling", v2.3.1337).  So only its TARGET grows: game.css
-       .bt-skill-pill draws an invisible ring 2 px above and below, into the
-       grid's 4 px gaps (32 px, meeting its neighbour mid-gap).  overflow:
-       hidden went with it, as it clipped the ring: nothing inside spills
-       (the name ellipsises itself, the XP line sits 12 px in). */
+    const acc = sd.accent || '#8B9695';
+    const iconPx = Math.min(44, Math.round(38 * (sd.iconScale || 1)));
     return (
-      <button key={sd.key} data-skill={sd.key} className="bt-skill-pill"
+      <button key={sd.key} data-skill={sd.key} className="bt-skill-app"
+        aria-label={`${sd.name}, level ${lvl}`}
         onPointerUp={(e) => {
           e.stopPropagation();
           skillDetailBus.select(sd.key);
           setDetailKey(sd.key);
         }}
         style={{
-          position: 'relative',
-          display: 'flex', alignItems: 'center', gap: 6,
-          height: 28, /* v2.3.1337: 32 -> 28, part of the no-scroll budget */
-          padding: '0 11px 0 7px',
-          background: COL.wellSoft,
-          border: `1px solid ${COL.tileBor}`,
-          borderRadius: 999,
-          minWidth: 0,
-          cursor: 'pointer',
-          touchAction: 'manipulation',
-          fontFamily: 'Source Sans 3, sans-serif',
-          color: COL.text,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+          minWidth: 0, padding: 0, margin: 0, border: 0, background: 'transparent',
+          cursor: 'pointer', touchAction: 'manipulation',
+          fontFamily: 'Source Sans 3, sans-serif', color: COL.text,
         }}>
-        {sd.iconSrc
-          ? <img src={sd.iconSrc} alt="" draggable={false}
-              style={{ width: Math.round(21 * (sd.iconScale || 1)), height: Math.round(21 * (sd.iconScale || 1)), objectFit: 'contain', flex: 'none' }}
-              onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(sd.icon)); }} />
-          : <span style={{ fontSize: 16, flex: 'none' }}>{sd.icon}</span>}
-        <span style={{
-          flex: 1, fontSize: 11.5, fontWeight: 700, color: COL.text, textAlign: 'left',
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
-        }}>{sd.name}</span>
-        <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
-          Lv {sk.level || 1}
+        <span className="bt-skill-app-tile" data-skill-tile={sd.key} style={{
+          position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: SKILL_TILE_PX, height: SKILL_TILE_PX, borderRadius: '22%', boxSizing: 'border-box',
+          /* the skill's accent, laid thin over the dark slate: a tint, never a
+             bright fill (Lantern Slate: content colour ~10%) */
+          background: `linear-gradient(160deg, ${hexA(acc, 0.42)} 0%, ${hexA(acc, 0.16)} 55%, rgba(0,0,0,0) 100%), #182227`,
+          border: `1px solid ${hexA(acc, 0.55)}`,
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,.10), 0 2px 4px rgba(0,0,0,.35)',
+        }}>
+          {sd.iconSrc
+            ? <img src={sd.iconSrc} alt="" draggable={false}
+                style={{ width: iconPx, height: iconPx, objectFit: 'contain', pointerEvents: 'none' }}
+                onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(sd.icon)); }} />
+            : <span style={{ fontSize: 26 }}>{sd.icon}</span>}
+          {/* the level, on a chip at the tile's corner */}
+          <span data-skill-level={lvl} style={{
+            position: 'absolute', top: -5, right: -6,
+            minWidth: 18, padding: '0 4px', boxSizing: 'border-box',
+            fontSize: 11, fontWeight: 800, lineHeight: '15px', textAlign: 'center',
+            color: COL.text, background: '#121B20',
+            border: `1px solid ${hexA(acc, 0.75)}`, borderRadius: 8,
+            fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+          }}>{`Lv ${lvl}`}</span>
+          {/* a level-up not yet looked at: the dashboard's brass dot */}
+          {fresh.indexOf(sd.key) >= 0 && <span data-skill-new="1" aria-hidden="true" style={{
+            position: 'absolute', top: -3, left: -3, width: 9, height: 9, borderRadius: '50%',
+            background: '#D8AA58', border: '1px solid rgba(0,0,0,.5)', pointerEvents: 'none',
+          }} />}
+          {/* the XP, a thin bar along the tile's bottom edge: green is
+              progress, dark is none (the old pill's signals) */}
+          <span style={{
+            position: 'absolute', left: 7, right: 7, bottom: 4,
+            height: 3, borderRadius: 999, overflow: 'hidden',
+            background: 'rgba(10,19,24,.85)', pointerEvents: 'none',
+          }}>
+            {pct > 0 && <span style={{ display: 'block', width: pct + '%', height: '100%', borderRadius: 999, background: COL.xp }} />}
+          </span>
         </span>
-        {/* thin XP line along the pill's bottom edge: green = progress,
-            dark = zero (same signals as the compact tiles). */}
-        <div style={{
-          position: 'absolute', left: 12, right: 12, bottom: 2,
-          height: 2.5, borderRadius: 999, overflow: 'hidden',
-          background: '#0A1318', pointerEvents: 'none',
-        }}>
-          {pct > 0 && <div style={{ width: pct + '%', height: '100%', borderRadius: 999, background: COL.xp }} />}
-        </div>
+        <span style={{
+          display: 'block', maxWidth: '100%', fontSize: 11, fontWeight: 700, lineHeight: '13px',
+          color: COL.text, textAlign: 'center',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{sd.name}</span>
       </button>
     );
   };
 
-  /* v2.3.1337: labels removed + pills 32->28 and gap 5->4 so all ten
-     clear the fold on a real iPhone Safari viewport (owner: "fit on one
-     screen without scrolling"). */
   return (
     <div style={{ ...panelStyle, overflowY: 'auto', WebkitMaskImage: 'none', maskImage: 'none' }}>
-      <div style={{
+      <div data-skill-grid={sideways ? 'side' : 'home'} style={{
         display: 'grid',
-        /* v2.3.2173 (owner: "It's obvious that the labels are getting cut
-           off"): in the skinny landscape column two pills share ~96px each
-           and every skill name ellipsised to ONE LETTER ("W Lv 0").  One
-           column there — the sideways pane has vertical room to burn and
-           no width to spare; portrait keeps its two-across fit-one-screen
-           layout (v2.3.1337). */
-        gridTemplateColumns: panelVw() < 260 ? '1fr' : 'repeat(2, 1fr)',
-        gap: 4,
-        paddingBottom: 4,
+        gridTemplateColumns: sideways ? 'repeat(3, minmax(0, 1fr))' : 'repeat(5, minmax(0, 1fr))',
+        columnGap: 4, rowGap: 8,
+        /* room above the first row for the level chips and the dots, which
+           hang a few px outside their tiles */
+        padding: '6px 2px 4px',
       }}>
-        {SKILL_GATHER.map(pill)}
-        {SKILL_CRAFT.map(pill)}
+        {SKILL_GATHER.map(tile)}
+        {SKILL_CRAFT.map(tile)}
       </div>
     </div>
   );
 };
+
+/* v2.3.3522: a skill's tile, CSS px a side (the home screen's app) */
+const SKILL_TILE_PX = 52;
+/* #RRGGBB at alpha `a`, for the tiles' accent tint and edge */
+function hexA(hex, a) {
+  const v = parseInt(String(hex).replace('#', ''), 16);
+  if (!Number.isFinite(v)) return `rgba(139,150,149,${a})`;
+  return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`;
+}

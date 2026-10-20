@@ -30,12 +30,22 @@ const PUB = path.join(ROOT, 'public');
 /* The pieces that come in metals, and the icon each borrows from.  A weapon
  * whose art is not near-neutral must NOT be listed here — the tint would fight
  * the art's own colour (see the note in materialTints.js). */
-const SOURCES = [
+const ALL_SOURCES = [
   { key: 'chest-plate', src: 'icons/items/chest-plate.webp' },
   { key: 'greaves', src: 'icons/items/greaves.webp' },
   { key: 'great-sword', src: 'icons/items/great-sword.webp' },
   { key: 'sword', src: 'icons/items/sword.webp' },
 ];
+/* v2.3.3526: `--only greaves,chest-plate` makes those pieces' metals alone --
+   the owner's new leg and chest pictures (tools/ui/cut-owner-icons.py) -- and
+   leaves the swords' files untouched rather than re-encoding them */
+const onlyAt = process.argv.indexOf('--only');
+const ONLY = onlyAt > 0 ? new Set((process.argv[onlyAt + 1] || '').split(',').filter(Boolean)) : null;
+const SOURCES = ONLY ? ALL_SOURCES.filter((s) => ONLY.has(s.key)) : ALL_SOURCES;
+if (ONLY && SOURCES.length !== ONLY.size) {
+  console.error(`--only: no such piece in ${[...ONLY].filter((k) => !ALL_SOURCES.some((s) => s.key === k)).join(', ')}`);
+  process.exit(2);
+}
 
 async function materials() {
   /* Read the table without importing the module: it pulls in pixi-adjacent
@@ -97,6 +107,7 @@ const page = await browser.newPage();
 await page.goto('http://127.0.0.1:4271/__gen.html');
 
 let wrote = 0, skipped = 0;
+const written = [];   /* v2.3.3526: the PNGs this run wrote, and only they, go to the WebP step */
 for (const [mat, tint] of Object.entries(MATS)) {
   /* 'steel' is the art as drawn — a white multiply is a no-op, and shipping a
      byte-identical copy under a second name is how two files drift apart. */
@@ -110,6 +121,7 @@ for (const [mat, tint] of Object.entries(MATS)) {
        PNG is an intermediate, not the shipped file. */
     const out = path.join(PUB, 'icons/items', `${s.key}-${mat}.png`);
     fs.writeFileSync(out, Buffer.from(got.png.split(',')[1], 'base64'));
+    written.push(out);
     console.log(`  wrote ${path.relative(PUB, out)}  (${got.w}x${got.h}, tint ${tint.join(',')})`);
     wrote++;
   }
@@ -123,7 +135,11 @@ srv.close();
    leaving it to whoever adds the next metal is the whole point of the "add a
    row, run this, done" claim at the top of this file. */
 if (wrote) {
-  const r = spawnSync('python3', [path.join(ROOT, 'tools/webp_icons.py'), '--convert'],
+  /* v2.3.3526: ITS OWN FILES.  `--convert` alone converted -- and deleted --
+     every .png under public/icons, the app icons (which must stay PNG), the
+     badges and the stat icons included: 45 files, the first time the owner's
+     new leg and chest pictures were run through here (tools/webp_icons.py). */
+  const r = spawnSync('python3', [path.join(ROOT, 'tools/webp_icons.py'), '--convert', ...written],
     { cwd: ROOT, stdio: 'inherit' });
   if (r.status !== 0) {
     /* ═══ v2.3.2519: A CHROMIUM FALLBACK, BECAUSE THIS SANDBOX HAS NO NUMPY ═══
@@ -140,7 +156,7 @@ if (wrote) {
        docs/TRAPS.md section 53 describes).  Python stays the preferred path and
        runs first; this only runs when it cannot. */
     console.log('  webp_icons.py unavailable — falling back to the Chromium encoder');
-    const r2 = spawnSync('node', [path.join(ROOT, 'tools/gear/icons-to-webp.mjs'), '--all'],
+    const r2 = spawnSync('node', [path.join(ROOT, 'tools/gear/icons-to-webp.mjs'), ...written],
       { cwd: ROOT, stdio: 'inherit' });
     if (r2.status !== 0) {
       console.log('  !! webp conversion failed — the new icons are still .png and');
