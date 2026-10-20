@@ -19,7 +19,7 @@ today, at the size it would be drawn. The owner answered: *"Icon picks: 1b, 2a,
 | 6 | The Pets page's "Pet House: 10 more places for ... gold" row | No picture | The **pet house** at the start of the row | 40 x 33 CSS px |
 | 8 | The Daily Rewards window's free daily spin row | A small wheel drawn in code (`SpinGlyph`) | The **prize wheel** | 34 x 37 CSS px |
 | 9 | The Journey page before you have done anything | The Journey button's own icon, 40 px, dimmed to 0.4 | The **treasure map**, not dimmed | 120 x 69 CSS px |
-| (v2.3.3493) | The Blacksmith's Upgrade tab (the owner's playtest note: "Make the upgrade tab icon different for smithing.  Like a hammer") | The currency strip's gold gem | The **hammer** off the crafting sheet's gold "Craft" button, cut by the tool's `card` mode (the button is a gradient, so it is keyed row by row; docs/specs/blacksmith-2026-10-19.md) | 22 x 21 CSS px |
+| (v2.3.3514) | The Blacksmith's Upgrade tab (the owner's playtest note: "Make the upgrade tab icon different for smithing.  Like a hammer") | The currency strip's gold gem | The **hammer** off the crafting sheet's gold "Craft" button, cut by the tool's `card` mode (the button is a gradient, so it is keyed row by row; docs/specs/blacksmith-2026-10-19.md) | 22 x 21 CSS px |
 
 Not picked: **7**, the world map's compass (the owner kept today's). **10**, the
 leg armour and the chest to match: not answered yet; a new entry in the cutter's
@@ -113,7 +113,7 @@ Kept as they were:
 | The four animated strips | **no longer in the Wheel**: only with the closed lands' own zones | as before | -- | **-15.7 MB in the Wheel** |
 | The three quest pins | on the loading screen (`preloadWorldAnimations` `questPins`), global | -- | 9 KB | 0.07 MB |
 | The handshake | warmed with the controls (`controlsPreload.js`): the card pops up mid-play | -- | 2.5 KB | 0.02 MB |
-| The helmet, sack, pet house, prize wheel, treasure map (v2.3.3493: and the Upgrade tab's hammer, 2.4 KB, 0.02 MB) | with their window, as every window's pictures | with the window | 49 KB | 0.41 MB at most |
+| The helmet, sack, pet house, prize wheel, treasure map (v2.3.3514: and the Upgrade tab's hammer, 2.4 KB, 0.02 MB) | with their window, as every window's pictures | with the window | 49 KB | 0.41 MB at most |
 
 The Wheel held the four strips decoded (2,205 x 410 to 2,268 x 474 each, 15.7 MB)
 while you walked it; it now holds eight scenes of about 190 x 100 (0.61 MB). They

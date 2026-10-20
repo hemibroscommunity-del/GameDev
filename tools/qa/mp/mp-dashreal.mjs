@@ -80,7 +80,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const myId = await H.readState(P, (S) => S.myId);
   await H.grant(wsPort, myId, 'gold', { amount: 500 }).catch(() => {});
-  await H.grant(wsPort, myId, 'item', { invKey: 'bar_copper', count: 4 }).catch(() => {});   /* v2.3.3493: a COPPER greatsword from four bars -- the wood tier is not forged any more (the owner: "'wood greatsword' is not an actual weapon in the game"; copper asks Smithing 1 and nothing of Melee) */
+  await H.grant(wsPort, myId, 'item', { invKey: 'bar_copper', count: 4 }).catch(() => {});   /* v2.3.3514: a COPPER greatsword from four bars -- the wood tier is not forged any more (the owner: "'wood greatsword' is not an actual weapon in the game"; copper asks Smithing 1 and nothing of Melee) */
   await P.page.waitForTimeout(1200);
   await P.page.evaluate(() => {
     const S = window._gameState.current;
@@ -278,7 +278,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const myId2 = await H.readState(P2, (S) => S.myId);
   await H.grant(wsPort, myId2, 'gold', { amount: 500 }).catch(() => {});
-  await H.grant(wsPort, myId2, 'item', { invKey: 'bar_copper', count: 4 }).catch(() => {});   /* v2.3.3493: a COPPER greatsword from four bars -- the wood tier is not forged any more (the owner: "'wood greatsword' is not an actual weapon in the game"; copper asks Smithing 1 and nothing of Melee) */
+  await H.grant(wsPort, myId2, 'item', { invKey: 'bar_copper', count: 4 }).catch(() => {});   /* v2.3.3514: a COPPER greatsword from four bars -- the wood tier is not forged any more (the owner: "'wood greatsword' is not an actual weapon in the game"; copper asks Smithing 1 and nothing of Melee) */
   await P2.page.waitForTimeout(1200);
   await P2.page.evaluate(() => {
     const S = window._gameState.current;

@@ -12,7 +12,7 @@ import { BLACKSMITH_TIERS, WOODWORKING_TIERS, GEM_CUT_TIERS, COOKING_RECIPES } f
 const _fromMinLvl = (table) => Object.values(table)
   .map(t => ({ lvl: t.minLvl, name: t.label }))
   .sort((a, b) => a.lvl - b.lvl);
-/* v2.3.3493: the wood tier is not forged (`forge: false` -- the owner:
+/* v2.3.3514: the wood tier is not forged (`forge: false` -- the owner:
    "'wood greatsword' is not an actual weapon in the game"), so the ladder
    starts at copper, Smithing 1 */
 const SMITH_LADDER = _fromMinLvl(Object.values(BLACKSMITH_TIERS).filter((t) => t.forge !== false));

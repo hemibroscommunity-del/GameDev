@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, LIFE_SKILL_XP, NUGGETS_PER_BAR,
-  SMELT_RECIPES, WEAPON_STASH_MAX, gemExtractCost, /* v2.3.3493: getGearStatReq moved into data/forgeLadder.js forgeStatReq */
+  SMELT_RECIPES, WEAPON_STASH_MAX, gemExtractCost, /* v2.3.3514: getGearStatReq moved into data/forgeLadder.js forgeStatReq */
   ARMOR_FORGE_RECIPES, getArmorPieceDr, armorDefReq, /* v2.3.3092: bars into armor */
 } from '@/data/index.js';
 import { armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.3092: each metal's plate and greaves */
@@ -13,10 +13,10 @@ import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
 import { startSmithing, SMITH_STRIKE_MS } from '@/game/smithing.js';
 import { SALVAGE, GRADE_LABEL, armourMetal, weaponMetal, weaponSig, parseEssenceKey, essenceKey, essenceName, essenceIcon, gradeRank } from '@/data/salvage.js'; /* v2.3.3141 */
 import { salvageBus, salvageReasonText } from '@/game/salvage.js'; /* v2.3.3141 */
-import { hardenTierOf, hardenCost, hardenLevelFor } from '@/data/hardenCosts.js'; /* v2.3.3139: bars and a doubling gold ladder; v2.3.3493: the level that makes the tier */
-import { forgeLevelFor, forgeOffered, forgeStatReq } from '@/data/forgeLadder.js'; /* v2.3.3493: the forge's ladder */
-import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3493: the Upgrade tab's hammer */
-import { BUFF_ICON } from '@/data/smallIcons.js'; /* v2.3.3493: the XP pill's "XP" star */
+import { hardenTierOf, hardenCost, hardenLevelFor } from '@/data/hardenCosts.js'; /* v2.3.3139: bars and a doubling gold ladder; v2.3.3514: the level that makes the tier */
+import { forgeLevelFor, forgeOffered, forgeStatReq } from '@/data/forgeLadder.js'; /* v2.3.3514: the forge's ladder */
+import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3514: the Upgrade tab's hammer */
+import { BUFF_ICON } from '@/data/smallIcons.js'; /* v2.3.3514: the XP pill's "XP" star */
 
 /* ═══ v2.3.2826: THE BLACKSMITH, REBUILT ═══
  *
@@ -48,7 +48,7 @@ import { BUFF_ICON } from '@/data/smallIcons.js'; /* v2.3.3493: the XP pill's "X
  *     screen), so the smith is visible above it while he works
  *     (game/smithing.js).
  *
- * v2.3.3493: the owner's playtest notes -- "On blacksmith don't have two tabs
+ * v2.3.3514: the owner's playtest notes -- "On blacksmith don't have two tabs
  * for sword and greatsword.  Only greatswords are in the game" (the Forge tab
  * forges greatswords, no switch), "'wood greatsword' is not an actual weapon
  * in the game" (against caps.forgeladder its rows start at copper, Smithing 1;
@@ -69,7 +69,7 @@ const C = {
 };
 const ITEMS_V = '?v=2.3.1774';
 const COIN = '/icons/ui/cur-gold.webp';
-/* v2.3.3493: the owner's "XP" star (the buff badge's), not the plain gold
+/* v2.3.3514: the owner's "XP" star (the buff badge's), not the plain gold
    sparkle -- "Make the xp pill for smith items a different icon (one that's
    more obviously 'xp')".  Warmed on the loading screen with the buff badges
    (smallIcons.js smallIconDomUrls). */
@@ -163,7 +163,7 @@ export function SmithyPanel({ rpgState, stateRef }) {
     { id: 'forge', label: 'Forge', icon: '/icons/items/great-sword-copper.webp' + ITEMS_V },
     /* v2.3.3092: bars into armor (server armorforge.js) */
     (S._serverCaps && S._serverCaps.armorforge) && { id: 'armor', label: 'Armor', icon: '/icons/items/chest-plate-copper.webp' + ITEMS_V },
-    /* v2.3.3493: the hammer (the owner: "Make the upgrade tab icon different
+    /* v2.3.3514: the hammer (the owner: "Make the upgrade tab icon different
        for smithing.  Like a hammer"), not the currency strip's gold gem */
     (S._serverCaps && (S._serverCaps.harden || S._serverCaps.gemExtract)) && { id: 'upgrade', label: 'Upgrade', icon: OWNER_ICON.smithHammer.src },
     (S._serverCaps && S._serverCaps.amuletForge) && { id: 'amulet', label: 'Amulet', icon: '/icons/items/amulet.webp' + ITEMS_V },
@@ -189,7 +189,7 @@ export function SmithyPanel({ rpgState, stateRef }) {
       /* v2.3.3343: the anvil's ring -- collect() is a beep(), silent
          (SOUND-GAPS).  A smelt and the armor forge sound from their own
          receipts (wsClient smelt_result / forge_armor_result). */
-      /* v2.3.3493: nor a hardening, which is heard from its own answer
+      /* v2.3.3514: nor a hardening, which is heard from its own answer
          (gameEvents.js harden_result: hardenOk / hardenFail) -- it played
          both, the forge's ring over the win or the loss */
       if (p.kind !== 'smelt' && p.kind !== 'armor' && p.kind !== 'harden') cue('forge');
@@ -297,7 +297,7 @@ function SmeltTab({ S, inv, lvl, ask, busy }) {
 }
 
 /* ── Forge: melee weapons (server gear.js forge_weapon) ──
-   v2.3.3493: GREATSWORDS ONLY -- the owner: "On blacksmith don't have two tabs
+   v2.3.3514: GREATSWORDS ONLY -- the owner: "On blacksmith don't have two tabs
    for sword and greatsword.  Only greatswords are in the game" (the one-handed
    sword was a bamboo stick in every picture).  The worker still forges a sword
    for an older page, and a sword you hold still shows on the Holding line and
@@ -418,7 +418,7 @@ const H_ODDS = [80, 20, 5, 1, 0.5];
    so the lock is shown instead of a button the worker will refuse.
    v2.3.3139: the one copy is data/hardenCosts.js hardenTierOf, which also
    picks the bars the attempt takes.
-   v2.3.3493: against caps.forgeladder the gate is the level that MAKES the
+   v2.3.3514: against caps.forgeladder the gate is the level that MAKES the
    weapon's tier (hardenCosts.js hardenLevelFor) -- the owner: "Hardening
    should only require the same smithing level as it takes to smithing that
    item tier": a copper greatsword Smithing 1, iron 5, black steel 10.  Against

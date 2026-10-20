@@ -12,17 +12,17 @@
  *   2. Smelt: the smith works -- mining swing, anvil, fire, strike sparks.
  *   3. Forge: a wooden greatsword is forged by the WORKER (3 pine logs +
  *      8 gold), and the panel says so.
- *      v2.3.3493 (the owner's playtest notes): greatswords only -- no
+ *      v2.3.3514 (the owner's playtest notes): greatswords only -- no
  *      Greatsword / Sword switch -- and no wood tier: the first row is the
  *      COPPER greatsword at Smithing 1 (four copper bars + 20 gold, "+800" on
  *      the owner's XP star), iron's row locked at Smithing 5; the worker mints
  *      the copper greatsword.
  *   4. Upgrade: a harden attempt is settled by the worker (500 gold and,
- *      since v2.3.3139, a copper bar).  v2.3.3493: the tab wears the hammer,
+ *      since v2.3.3139, a copper bar).  v2.3.3514: the tab wears the hammer,
  *      and a copper greatsword asks Smithing 1 to harden ("the same smithing
  *      level as it takes to smithing that item tier"), so no lock.
  *   5. Amulet: the rows are there, and costs are chips, not sentences.
- *   6. v2.3.3493: the smith works on the owner's painted anvil
+ *   6. v2.3.3514: the smith works on the owner's painted anvil
  *      (window.__btSmithAnvil), as wide as the rock it hides.
  */
 import * as H from './harness.mjs';
@@ -67,13 +67,13 @@ const recordReplies = () => {
 };
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  /* v2.3.3493: dpr 2, so the pictures of the smith at work show the owner's
+  /* v2.3.3514: dpr 2, so the pictures of the smith at work show the owner's
      painted anvil, not a smudge (smithy-work*.png) */
   const P = await H.newPlayer(browser, { name: 'Smithy', wsPort, webPort, viewport: { width: 390, height: 844 }, dpr: 2, init: recordReplies });
   await H.enterWorld(P);
   await P.page.waitForFunction(() => !document.body.innerText.includes('WELCOME'), null, { timeout: 15000 }).catch(() => {});
   const me = await H.readState(P, (S) => S.myId);
-  /* v2.3.3493: 25 ore -- five bars: four for the copper greatsword, one for
+  /* v2.3.3514: 25 ore -- five bars: four for the copper greatsword, one for
      its first hardening (there is no wood tier to forge from logs any more) */
   await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 25 });
   await H.grant(wsPort, me, 'gold', { amount: 600 });
@@ -92,7 +92,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const tabs = await P.page.$$eval('[data-smithy-tab]', (b) => b.map((x) => x.getAttribute('data-smithy-tab')));
   /* v2.3.3092: + Armor, bars into armor (armorforge.js); v2.3.3141: + Salvage (salvage.js) */
   rec.ok('six tabs: Smelt, Forge, Armor, Upgrade, Amulet, Salvage', tabs.join(',') === 'smelt,forge,armor,upgrade,amulet,salvage', tabs);
-  /* v2.3.3493: the owner: "Make the upgrade tab icon different for smithing.
+  /* v2.3.3514: the owner: "Make the upgrade tab icon different for smithing.
      Like a hammer" -- the hammer, drawn, not the gold gem */
   const upIcon = await P.page.$eval('[data-smithy-tab="upgrade"] img', (im) => ({ src: im.getAttribute('src'), ok: im.complete && im.naturalWidth > 0 })).catch(() => null);
   rec.ok(`the Upgrade tab wears the hammer (${upIcon && upIcon.src})`, !!upIcon && /\/icons\/ui\/smith-hammer\.webp/.test(upIcon.src) && upIcon.ok, upIcon);
@@ -135,12 +135,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...the hammer lands (strike sparks + clink) on the swing\'s contact frame', strikes >= 2, { strikes });
   const bars = await H.readState(P, (S) => (S.rpg.inventory || {}).bar_copper || 0);
   rec.ok('...and the worker made the bars (25 ore -> 5)', bars === 5, { bars });
-  /* v2.3.3493: the XP pill wears the owner's "XP" star (the owner: "Make the
+  /* v2.3.3514: the XP pill wears the owner's "XP" star (the owner: "Make the
      xp pill for smith items a different icon (one that's more obviously
      'xp')") */
   const smeltXp = await P.page.$eval('[data-smelt-row="bar_copper"]', (el) => Array.from(el.querySelectorAll('img')).map((im) => im.getAttribute('src'))).catch(() => []);
   rec.ok('the Smelt row\'s XP pill wears the XP star', smeltXp.some((u) => /\/icons\/ui\/buff-xp\.webp/.test(u)) && !smeltXp.some((u) => /cur-xp/.test(u)), smeltXp);
-  /* v2.3.3493: the owner's painted anvil under the hammer (the owner: "make a
+  /* v2.3.3514: the owner's painted anvil under the hammer (the owner: "make a
      more realistic anvil for the animation when the character does smithing
      work"), about as wide as the rock painted under the mining pose (~49 px) */
   const anvil = await P.page.evaluate(() => window.__btSmithAnvil || null);
@@ -148,7 +148,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!anvil && anvil.painted && anvil.worldW >= 60 && anvil.worldW <= 90 && anvil.layer === 'front', anvil);
 
   /* ── 3. Forge ──
-     v2.3.3493: the owner: "On blacksmith don't have two tabs for sword and
+     v2.3.3514: the owner: "On blacksmith don't have two tabs for sword and
      greatsword.  Only greatswords are in the game", "'wood greatsword' is not
      an actual weapon in the game.  Make the beginning weapon a copper
      greatsword (requiring smithing lvl 1)", "Copper 1, iron 5, black steel 10" */
@@ -180,7 +180,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const c0 = await H.readState(P, (S) => S.rpg.coins || 0);
   const hRow = await P.page.$eval('[data-harden-row]', (el) => el.innerText).catch(() => '');
   rec.ok('Upgrade shows H0 → H1 with its cost and odds', /H0 → H1/.test(hRow) && /\/500/.test(hRow) && /80%/.test(hRow), hRow);
-  /* v2.3.3493: hardening asks the level that MAKES the weapon's tier (the
+  /* v2.3.3514: hardening asks the level that MAKES the weapon's tier (the
      owner: "Hardening should only require the same smithing level as it
      takes to smithing that item tier") -- a copper greatsword Smithing 1, so
      no lock and the button on.  (It asked 5 x the tier, the wood tier's 5,

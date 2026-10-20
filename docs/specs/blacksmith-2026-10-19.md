@@ -1,4 +1,4 @@
-# The Blacksmith, from the owner's playtest notes (v2.3.3493)
+# The Blacksmith, from the owner's playtest notes (v2.3.3514)
 
 The owner's notes at the Blacksmith, 2026-10-19, word for word:
 
