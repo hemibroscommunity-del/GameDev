@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ebc07c45783227baf56d477d2c8f7e3d0ed14396",
+  "tree": "a69c6f9857f90c2cb89cca60dc84fe0c29dcde63",
+  "committedAt": "2026-10-20T02:26:07-07:00",
+  "subject": "Whirlwind shows who it will catch, a higher jump that never snags, no lock across the map, a real trap with its own sounds, cleaner deaths, bigger drops (v2.3.3499) (#1025)",
+  "files": 6114,
+  "bytes": 712200239,
+  "listingSha256": "d126995d0a2590a7e3480053ab2b25abc53ebb9c58072bec31e915e6ee1d5fd9",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
