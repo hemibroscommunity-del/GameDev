@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "51afecca7ce362669ceb5a8f69f6cdb98f68833a",
+  "tree": "114f711887a73293bd5e3516b2a9245e1f678657",
+  "committedAt": "2026-10-19T23:43:35-07:00",
+  "subject": "Shards crack open for raw gems, three raw gems make an elemental gem, and gems live in your bag (v2.3.3516) (#1042)",
+  "files": 6106,
+  "bytes": 711993965,
+  "listingSha256": "52a38c40ff127ef9714480f1c9970a67ccbb76e41b02252264961a79040a39b5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
