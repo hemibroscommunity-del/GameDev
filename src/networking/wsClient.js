@@ -449,6 +449,7 @@ export function setupWebSocket(ctx) {
       }
       try {
         ws = new WebSocket(WS_URL);
+        _connectAt = Date.now();   /* v2.3.3496: a connect that never finishes is retried (_aliveTimer) */
       } catch (e) {
         scheduleReconnect();
         return;
@@ -464,6 +465,7 @@ export function setupWebSocket(ctx) {
            anyway.  Cheap, and true of any close that beats the open. */
         if (ws.readyState !== 1) return;
         S._realtimeStatus = 'connected';
+        _connectAt = 0;   /* v2.3.3496: connected */
         _lastInboundAt = Date.now();   /* v2.3.3034: a fresh socket gets a fresh window */
         _settleSentAt = 0;
         reconnectDelay = 1000;
@@ -4521,6 +4523,17 @@ export function setupWebSocket(ctx) {
        _lastInboundAt, because our own freeze moves that clock (below). */
     var _lastStrike = null;
     var _heldForRejoin = [];
+    /* ═══ v2.3.3496: A CONNECT THAT NEVER FINISHES IS TRIED AGAIN ═══
+       The owner: "input dead after returning (needs tab switch)".  A socket
+       opened as the page comes back can sit in CONNECTING with nothing ever
+       answering it -- a network iOS has not woken yet -- and every road back
+       stepped round it: _resumeRecover ("a connect is already in flight"),
+       _comeBack (one socket at a time), this timer (an OPEN socket only).
+       The world stays held for the server (_netHold: no walking) until
+       something kills that socket, which a tab switch did.  A connect older
+       than CONNECT_STALL_MS is closed and made again. */
+    var CONNECT_STALL_MS = 10000;
+    var _connectAt = 0;
     var _aliveTimer = setInterval(function () {
       var now = Date.now();
       var gap = now - _lastAliveAt;
@@ -4530,8 +4543,24 @@ export function setupWebSocket(ctx) {
          an action waiting on an answer waits its full window from now too
          (never erased: a strike sent just before a freeze is exactly the one
          that can go down a pipe the freeze broke). */
-      if (gap > 3000) { _lastInboundAt = now; if (_settleSentAt) _settleSentAt = now; return; }
+      if (gap > 3000) {
+        _lastInboundAt = now; if (_settleSentAt) _settleSentAt = now;
+        if (_connectAt) _connectAt = now;   /* v2.3.3496: a connect's wait counts from the thaw too */
+        /* v2.3.3496: ...and a page that was frozen long enough has a stale
+           world, whether or not iOS fired visibilitychange or pageshow for
+           it (it does not always): the same recovery as a return */
+        if (gap > RESYNC_AWAY_MS && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+          try { _resumeRecover('thaw', gap); } catch (e) { /* the next return tries again */ }
+        }
+        return;
+      }
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      if (ws && ws.readyState === 0 && _connectAt && now - _connectAt > CONNECT_STALL_MS) {
+        _connectAt = 0;
+        try { (window.__btConnectStalls || (window.__btConnectStalls = [])).push({ at: now }); } catch (e) { /* probe only */ }
+        _forceRejoin('connect-stall', 'still connecting after ' + Math.round(CONNECT_STALL_MS / 1000) + 's');
+        return;
+      }
       if (!ws || ws.readyState !== 1 || S._realtimeStatus !== 'connected') return;
       var silent = now - _lastInboundAt;
       var why = silent > DEAD_PIPE_MS ? 'silent ' + Math.round(silent / 1000) + 's'
@@ -4618,6 +4647,10 @@ export function setupWebSocket(ctx) {
         window.addEventListener('pointerdown', _onComeBackInput, { passive: true, capture: true });
         window.addEventListener('touchstart', _onComeBackInput, { passive: true, capture: true });
         window.addEventListener('keydown', _onComeBackInput, { passive: true, capture: true });
+        /* v2.3.3496: + the end of a touch and a click -- after a return the
+           press events are not always the ones that arrive */
+        window.addEventListener('touchend', _onComeBackInput, { passive: true, capture: true });
+        window.addEventListener('click', _onComeBackInput, { passive: true, capture: true });
       } catch (e) {}
     }
     function _disarmComeBack() {
@@ -4627,6 +4660,8 @@ export function setupWebSocket(ctx) {
         window.removeEventListener('pointerdown', _onComeBackInput, { capture: true });
         window.removeEventListener('touchstart', _onComeBackInput, { capture: true });
         window.removeEventListener('keydown', _onComeBackInput, { capture: true });
+        window.removeEventListener('touchend', _onComeBackInput, { capture: true });
+        window.removeEventListener('click', _onComeBackInput, { capture: true });
       } catch (e) {}
     }
     function _comeBack() {
@@ -4642,7 +4677,7 @@ export function setupWebSocket(ctx) {
       reconnectDelay = 1000;
       try { connect(); } catch (e) {}
     }
-    function _resumeRecover(tag) {
+    function _resumeRecover(tag, awayMs) {
       try {
         import('../debug/crashTrap.js').then(function (ct) {
           ct.recordCrash('resume', tag + ' wsState=' + (ws ? ws.readyState : 'none'));
@@ -4655,7 +4690,7 @@ export function setupWebSocket(ctx) {
       if (S._realtimeStatus !== 'superseded' && S._realtimeStatus !== 'idle') {
         var _hiddenMs = _hiddenAt ? (Date.now() - _hiddenAt) : 0;
         var _frozenMs = Date.now() - _lastAliveAt - 1100; /* heartbeat period + slack */
-        var _awayMs = Math.max(_hiddenMs, _frozenMs);
+        var _awayMs = Math.max(_hiddenMs, _frozenMs, awayMs || 0);   /* v2.3.3496: + a thaw's own measure */
         if (!ws || ws.readyState === 2 || ws.readyState === 3) {
           /* dead socket: reconnect immediately, skip backoff (v2.3.771) */
           if (reconnectTimer) clearTimeout(reconnectTimer);

@@ -2405,6 +2405,25 @@ remnant to migrate server-side, not a mode to preserve.
       not live ("Reconnecting…"), the Points window's Spend greyed with the
       reason, and `channelShim.reconnectNow()` bringing the session back;
     - TRAPS §138: docs/specs/dead-connection.md.
+    - since v2.3.3496 COMING BACK TO THE GAME WORKS WITHOUT A TAB SWITCH --
+      the owner: "input dead after returning (needs tab switch)", "Sound only
+      returns via OPEN/weapon-swap buttons":
+      - the page hiding, coming back or losing focus ends every held press as
+        a lift (BroTown `releaseAllTouches`, the keyboard's v2.3.3006 blur
+        rule for touches), and the attack button lets go of a finger no longer
+        on the screen (`e.touches`) -- its one-finger rule had swallowed every
+        later press; `touch-stale` in the crash log, quiet;
+      - the sound's recovery runs on touchend, click, keydown and mousedown
+        only (GameApp: pointerdown/touchstart are no moment an iPhone lets
+        sound start, and spent the one-shot reclaim refused), ending with
+        `BT_AUDIO.gestureKick` (resume whatever the context says, a silent
+        sample into the speaker) while armed after a return (`armKick`:
+        visible, pageshow, focus, or a freeze the 1 s beat sees, the reclaim
+        too past 15 s); a refused reclaim tried once more;
+      - a connect stuck in CONNECTING over `CONNECT_STALL_MS` 10 s is closed
+        and made again (it held the bro still, `_netHold`), a thaw past 5 s is
+        a return (`_resumeRecover('thaw', gap)`), "I'm back" hears touchend
+        and click; `mp-comeback`: docs/specs/return-to-game.md.
   - Since v2.3.3035 THE HARVEST'S BAR IS GREEN, OVER THE RESOURCE, AND READS
     "7/10" -- the owner: "I want resource harvesting bar to be green and to
     appear above the resource, not the player head. It should also list the
