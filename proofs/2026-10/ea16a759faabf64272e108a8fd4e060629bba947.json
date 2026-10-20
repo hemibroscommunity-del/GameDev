@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ea16a759faabf64272e108a8fd4e060629bba947",
+  "tree": "084ccee30e3e44432ed3d1a71752577ffe4aedab",
+  "committedAt": "2026-10-20T12:30:50-07:00",
+  "subject": "A failed hardening keeps its level: the worst a failure does is cost the gold and bars (v2.3.3529) (#1046)",
+  "files": 6172,
+  "bytes": 712956771,
+  "listingSha256": "c5a88bccc665212899ed26cfc5223ccb92086b852c9090a98132d7b598e07d92",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
