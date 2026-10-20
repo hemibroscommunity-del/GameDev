@@ -264,7 +264,7 @@ const CAP_GATES = [
   'pvplunge' /* v2.3.3262: the sword's opening lunge lands on a player too, and dazes them (server/src/pvplunge.js) -- lower case, a kill switch */,
   'pvpextras' /* v2.3.3264: what a hit does to a monster it does to a player -- a gem's status, a collision, the splash, the burst, the bash, whirlwind and lunge, a kill's heal, a parry's stagger (server/src/pvpextras.js) -- lower case, a kill switch */,
   'spar' /* v2.3.3265: the Sparring section below -- clones of you that fight you through the real PvP code (server/src/spar.js) -- lower case, a kill switch */,
-  'achievements' /* v2.3.3504: the worker grants achievements and pays their AP (server/src/achievements.js): the Achievements page in More, a big one's banner, the arena's 500 AP on the first win, the AP board -- lower case, a kill switch */,
+  'achievements' /* v2.3.3527: the worker grants achievements and pays their AP (server/src/achievements.js): the Achievements page in More, a big one's banner, the arena's 500 AP on the first win, the AP board -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported
@@ -272,7 +272,7 @@ const CAP_GATES = [
    worse than the cap's own name, which at least matches what the flag is
    called and what OPERATIONS.md says about it. */
 const CAP_NOTES = {
-  /* v2.3.3504 */
+  /* v2.3.3527 */
   achievements: 'achievements: More\'s Achievements page, a banner and sound for a rare one, the arena\'s 500 AP paid on the first win, your title on your card; without it: More\'s Journey tile and no achievements (what was earned stays)',
   prog3: 'the Points screen — combat levels read 0 without it',
   prog3x: 'the extra Points stats',
@@ -796,7 +796,7 @@ export const DevPanel = ({ onClose }) => {
               ))}
             </div>
 
-            {/* ═══ v2.3.3504: ACHIEVEMENTS ═══
+            {/* ═══ v2.3.3527: ACHIEVEMENTS ═══
                 The owner's lever (server devtools.js /dev/achv ->
                 achievements.js _achvDev): every row lit to see the page whole,
                 one big one to see its banner (the panel closes first, so the

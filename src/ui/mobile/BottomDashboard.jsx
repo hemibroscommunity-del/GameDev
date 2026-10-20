@@ -54,7 +54,7 @@ import { MapPanel }          from './dash/MapPanel.jsx';
 import { SocialPanel }       from './dash/SocialPanel.jsx';
 import { MorePanel }         from './dash/MorePanel.jsx';
 import { PetsPanel }         from './dash/PetsPanel.jsx'; /* v2.3.3120 */
-import { AchievementsPanel, AchievementsHead } from './dash/AchievementsPanel.jsx'; /* v2.3.3504 */
+import { AchievementsPanel, AchievementsHead } from './dash/AchievementsPanel.jsx'; /* v2.3.3527 */
 import { StatsPanel }        from './dash/StatsPanel.jsx';
 import { SkillsPanel }       from './dash/SkillsPanel.jsx';
 import { EncyclopediaPanel } from './dash/EncyclopediaPanel.jsx';
@@ -433,10 +433,10 @@ const PANELS = {
      deeper toolbar destination that opens the full item surface. */
   inventory:    { title: 'Inventory',   Component: InventoryPanel },
   self:         { title: 'Self',        Component: SelfPanel },
-  /* v2.3.3504: kept for a stale drill id and a worker without
+  /* v2.3.3527: kept for a stale drill id and a worker without
      caps.achievements, where More's tile is still Journey */
   journey:      { title: 'Journey',     Component: JourneyPanel },
-  /* v2.3.3504: the Achievements page (dash/AchievementsPanel.jsx): More's
+  /* v2.3.3527: the Achievements page (dash/AchievementsPanel.jsx): More's
      Journey tile against a worker that grants them (the owner's decision 6),
      and your AP number on Life Skills.  `Head`: drawn in the drilled page's
      header row, right of "◂ ACHIEVEMENTS" (the owner's ChatGPT review: the
@@ -1021,7 +1021,7 @@ export const BottomDashboard = () => {
      retired with its anchor). */
 
   const Active = active?.Component;
-  const Head = active?.Head || null;   /* v2.3.3504: a page's own words on its drilled header row */
+  const Head = active?.Head || null;   /* v2.3.3527: a page's own words on its drilled header row */
   /* v2.3.1649: the top row shares the columns row's tracks — see the grid
      below.  One call, so the two rows can never disagree about where a
      column starts. */
@@ -1125,7 +1125,7 @@ export const BottomDashboard = () => {
                 textTransform: 'uppercase', color: COL.text,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>{active ? active.title : ''}</div>
-              {/* v2.3.3504: the page's Head (Achievements' AP and title): the
+              {/* v2.3.3527: the page's Head (Achievements' AP and title): the
                   side column is ~238 px, so it takes its own line under the
                   title (flex-wrap) */}
               {Head ? <div data-dash-head="" style={{ flex: '1 1 100%', minWidth: 0, display: 'flex', padding: '0 2px' }}><Head side /></div> : null}
@@ -1464,7 +1464,7 @@ export const BottomDashboard = () => {
                 alone, which is what a drilled panel gives for it.
                 The title still renders whole (mp-loginkey), now with the row's
                 full width beside one small chip instead of beside six. */}
-            {/* v2.3.3504: a page with a `Head` (Achievements) draws it on this
+            {/* v2.3.3527: a page with a `Head` (Achievements) draws it on this
                 row, right of the back button: the row's free width, wrapping
                 under the button where there is none.  Every other page: the
                 button alone, as before. */}

@@ -239,7 +239,7 @@ const FAST = 110;
     const w1 = state.writes.length;
     kill(ms[1]);
     const second = mine(state, 'cg_kill', w1);
-    /* v2.3.3504: the FIRST kill a character ever makes is First Blood
+    /* v2.3.3527: the FIRST kill a character ever makes is First Blood
        (achievements.js), one row of its own, once a character -- so the first
        kill may write three (codex, achv, rpg); the next writes no achv row */
     check(`5. a kill writes your record once (the first kill ${first.length} rows: ${Object.entries(byPrefix(first)).map((e) => e.join(' ')).join(', ')}; the next ${second.length})`,
@@ -401,7 +401,7 @@ const FAST = 110;
   check('9b. ...and the weapon is in exactly one place, the stash or the window', inStash + inTrade === 1, { inStash, inTrade });
 }
 {
-  /* v2.3.3504: the title on your card (achievements.js _achvTitle) -- one
+  /* v2.3.3527: the title on your card (achievements.js _achvTitle) -- one
      row a change, refused past its burst, never held */
   const { room, state } = await makeRoom();
   const p = await join(room, 'cg_title');

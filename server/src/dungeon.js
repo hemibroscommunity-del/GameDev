@@ -777,7 +777,7 @@ export const dungeonMethods = {
       // and payout because there is no roll.
       ps.coins = (ps.coins || 0) + gold;
       this._addCombatXp(ps, xp);
-      /* v2.3.3504: Into the Dark and Delver (achievements.js: a Wheel dungeon,
+      /* v2.3.3527: Into the Dark and Delver (achievements.js: a Wheel dungeon,
          `cfg.home`; never the Workshop), riding this save */
       try { this._achvOnDungeon(pid, ps, cfg); } catch (e) { /* never break a clear */ }
       this._saveRpg(pid, ps);

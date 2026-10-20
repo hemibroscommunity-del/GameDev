@@ -584,7 +584,7 @@ export const gearMethods = {
        `minLvl x 5` as `xp`, so the ladder's lower levels pay what they paid. */
     this._addLifeSkillXp(ps, skillName, tier.xp || (tier.minLvl || 1) * 5);
 
-    /* v2.3.3504: an Elite or Godly blade is an achievement (achievements.js),
+    /* v2.3.3527: an Elite or Godly blade is an achievement (achievements.js),
        riding this save */
     try { if (this._achvOnPiece) this._achvOnPiece(session.id, ps, ps[slot], 'forge'); } catch (e) { /* never break a forge */ }
     this._saveRpg(session.id, ps);

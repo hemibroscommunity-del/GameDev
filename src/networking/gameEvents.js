@@ -68,7 +68,7 @@ import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
 import { petMailWords } from '@/data/trapping.js';   /* v2.3.3122: a pet in the mail */
-import { achvMailPhrase } from '@/game/achievements.js';   /* v2.3.3504: an achievement in the mail (the arena's crown) */
+import { achvMailPhrase } from '@/game/achievements.js';   /* v2.3.3527: an achievement in the mail (the arena's crown) */
 import { noteWard } from '@/game/trapping.js';   /* v2.3.3123: a hit the pet out with you softened */
 import { sparkLine } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn */
 
@@ -1872,7 +1872,7 @@ export function processGameEvent(type, payload, S, deps) {
                   : _e.kind === 'weapon' ? ((_ep.weapon && _ep.weapon.name) || 'a weapon')
                   : _e.kind === 'gear' ? ((_ep.piece && _ep.piece.name) || 'a piece of gear')
                   : _e.kind === 'pet' ? petMailWords(_ep.pet)   /* v2.3.3122: a pet (store, trade, the mail) */
-                  /* v2.3.3504: an achievement (server inbox.js `achv`: the
+                  /* v2.3.3527: an achievement (server inbox.js `achv`: the
                      arena's crown, gladiator.js) -- "the Gladiator
                      achievement", its name from the phone's table, never "?" */
                   : _e.kind === 'achv' ? achvMailPhrase(_ep)

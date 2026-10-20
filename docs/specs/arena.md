@@ -176,7 +176,7 @@ the achievement points from it."
   again.
 - Kill switch `arenaap: false` still pays no points at all.
 
-## The points become the Gladiator achievement's (v2.3.3504)
+## The points become the Gladiator achievement's (v2.3.3527)
 
 With achievements (docs/specs/achievements.md) the champion's 500 are the
 Gladiator achievement's, once a character:

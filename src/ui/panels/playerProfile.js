@@ -19,7 +19,7 @@
  *   placeholders are acceptable").  Every one is marked `preview: true`,
  *   which the card renders as data-preview="1" -- so a QA run, or the next
  *   session, can find every stand-in on the screen.
- *   v2.3.3504: the title and the "rarest drop" were placeholders too
+ *   v2.3.3527: the title and the "rarest drop" were placeholders too
  *   ("Fishing Master", "Ancient Ember Crown" on everyone's card); they are
  *   the achievements now -- the title one you chose, the rarest the worker
  *   works out -- or nothing (achvTitleCard / achvRarestCard below).
@@ -46,7 +46,7 @@ import { activePet } from '@/game/petBook.js';   /* v2.3.3120 */
 import { PET_KINDS, petKindName, petDisplayName, worldSafeText } from '@/data/trapping.js';   /* v2.3.3120 */
 import { getEquippedSlots, peerEquippedSlots } from '../mobile/sheet/equipModel.js';
 import { broBadgeOf, broCountOf } from '@/networking/broWallet.js';   /* v2.3.3255: the checkmark and the count */
-import { achvById, ACHV_TIERS } from '@/data/achievements.js';   /* v2.3.3504: the card's title and rarest */
+import { achvById, ACHV_TIERS } from '@/data/achievements.js';   /* v2.3.3527: the card's title and rarest */
 
 /* Pet rarity, from the owner's direction: "White Normal, Blue Rare, Orange
    Elite, Prismatic Godly".  The game has no pet rarity yet, so every real pet
@@ -69,7 +69,7 @@ export const PROFILE_PREVIEW = Object.freeze({
 
 const COMBAT_CATS = [['melee', 'sword'], ['bow', 'bow'], ['staff', 'staff']];
 
-/* ═══ v2.3.3504: THE TITLE AND THE RAREST -- ACHIEVEMENTS ═══
+/* ═══ v2.3.3527: THE TITLE AND THE RAREST -- ACHIEVEMENTS ═══
    Both arrive as an achievement's id: another player's on their card's blob,
    stamped there by the WORKER (achievements.js _achvStamp: a page's own claim
    is taken off), yours in its achv_state (S._achv).  An id this page does not
@@ -171,7 +171,7 @@ export function profileRelayFields(R, S) {
      sends it -- the number the Hero sheet's Record shows, so your card and
      your own sheet cannot disagree */
   if (typeof R.svKills === 'number') out.svKills = R.svKills;
-  /* v2.3.3504: your title and rarest achievement, as the worker last said
+  /* v2.3.3527: your title and rarest achievement, as the worker last said
      (S._achv) -- here only so a change is news and the look goes at once
      (lookrelay.js); the worker stamps its own over them either way */
   const av = S && S._achv;
@@ -254,7 +254,7 @@ export function profileFromPeer(ip, live, rel) {
     equipment: peerEquippedSlots(o),
     showcase: {
       lifetimeKills: has ? (num(r.svKills) != null ? num(r.svKills) : num(r.kills)) : null,
-      /* v2.3.3504: their rarest achievement (was the placeholder crown);
+      /* v2.3.3527: their rarest achievement (was the placeholder crown);
          undefined until their blob lands, null for none */
       rarest: has ? achvRarestCard(r.rarest) : undefined,
     },
@@ -298,7 +298,7 @@ export function profileFromSelf(S) {
     })),
     showcase: {
       lifetimeKills: num(R.svKills) != null ? R.svKills : (num(cs.monstersKilled) || 0),
-      rarest: achvRarestCard(S && S._achv && S._achv.rarest),   /* v2.3.3504 */
+      rarest: achvRarestCard(S && S._achv && S._achv.rarest),   /* v2.3.3527 */
     },
     pet: petCardOf(pet),   /* v2.3.3120: yours, or none (was the sample Frost Fox) */
     homestead: { previewSrc: PROFILE_PREVIEW.homesteadSrc, plotsReady: farmPlotsReady(R.lifeSkills) },

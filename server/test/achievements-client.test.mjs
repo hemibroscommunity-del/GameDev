@@ -1,4 +1,4 @@
-/* ═══ v2.3.3504: ACHIEVEMENTS, THE PHONE'S HALF (src/game/achievements.js) ═══
+/* ═══ v2.3.3527: ACHIEVEMENTS, THE PHONE'S HALF (src/game/achievements.js) ═══
  *
  * The worker decides every achievement (server/src/achievements.js, its own
  * suite achievements.test.mjs).  This holds the phone to what it is told:

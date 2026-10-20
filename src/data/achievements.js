@@ -1,4 +1,4 @@
-/* ═══ v2.3.3504: ACHIEVEMENTS -- WHAT THE PAGE SAYS ABOUT EACH ONE ═══
+/* ═══ v2.3.3527: ACHIEVEMENTS -- WHAT THE PAGE SAYS ABOUT EACH ONE ═══
  *
  * The owner, 2026-10-19: "Achievement points are something I'd like in the
  * game. You get it by completing the game. Some of them are through super
@@ -30,7 +30,7 @@ export const ACHV_TIERS = Object.freeze({
   superrare: Object.freeze({ ap: 1000, label: 'Super-rare', color: 'prismatic' }),
 });
 
-/* v2.3.3504: THE OWNER'S BADGES -- "I think this is everything", then their
+/* v2.3.3527: THE OWNER'S BADGES -- "I think this is everything", then their
    two painted sheets (2026-10-19), cut by tools/ui/cut-achievement-badges.py
    into public/icons/achievements/<id>.webp, 150 px square: three times the 50
    CSS px of the card's rarest box, the biggest place one is drawn (a page row
@@ -38,7 +38,7 @@ export const ACHV_TIERS = Object.freeze({
    page's own medal (More's tile, the empty page).  Was a picture borrowed from
    elsewhere in the game for each.  A re-cut changes ACHV_BADGE_V, so no phone
    keeps the old one. */
-export const ACHV_BADGE_V = '2.3.3504';
+export const ACHV_BADGE_V = '2.3.3527';
 export function achvBadgeSrc(id) {
   return '/icons/achievements/' + id + '.webp?v=' + ACHV_BADGE_V;
 }

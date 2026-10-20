@@ -23,7 +23,7 @@ import {
   BT_AUDIO, DEATH_GOLD_PENALTY, DEATH_SCATTER_RECOVERY,
   ECHO_AGGRO_MULT, ELEMENTS, GEM_DROP_RATES, GOLD_NUGGET_DROP, GS_FORWARD_ARC,
   GS_INNER_RADIUS, GS_OUTER_RADIUS, ATK_PRESS_GRACE_MS, PVP_THREAT_DURATION,
-  QUEST_CHAINS, QUEST_STATUS, RARITY_TIERS,   /* v2.3.3504: RARE_DROP_* gone (the kill's note below) */
+  QUEST_CHAINS, QUEST_STATUS, RARITY_TIERS,   /* v2.3.3527: RARE_DROP_* gone (the kill's note below) */
   RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, SPECIAL_ATK_MULT, specialAtkMultFor,
   SWING_ARC, SWING_COOLDOWN, weaponSwingMult /* v2.3.2265 */, SWING_RANGE, MELEE_CONTACT_MS /* v2.3.2200 */, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
   ZONES, ZONE_RESOURCES, applyStatus, awardWeaponXp, bowPierceCount, bowRangeMult, calcBlockReduction, calcCritChance,
@@ -2610,7 +2610,7 @@ export function updateMonsterCombat(S, deps) {
                     pushDmgPopup(S, m.x, m.y - 90, 'New Bestiary Entry!', '#00d4b8');
                   }
 
-                  /* v2.3.3504: the "RARE DROP" -- a 0.1% chance on this local
+                  /* v2.3.3527: the "RARE DROP" -- a 0.1% chance on this local
                      kill of 3-10 achievement points (RARE_DROP_ITEMS) -- is
                      gone.  It ran only where this phone kills its own monsters
                      (!S._serverMonsters: no live zone), the worker never heard
