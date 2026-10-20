@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f688938b83a8e7260e798cd791548d7671265b7a",
+  "tree": "d9e2096650ad0a8446f7ca662800e74294267096",
+  "committedAt": "2026-10-20T02:25:50-07:00",
+  "subject": "Coming back to the game works without a tab switch: stuck fingers let go, sound mended on the first real tap, a hung connection retried (v2.3.3496) (#1030)",
+  "files": 6112,
+  "bytes": 712103919,
+  "listingSha256": "8601cf65d463fef7d822f4cf1f52cfbfa41e59eda202ac892c78f9877aeaf448",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
