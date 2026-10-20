@@ -33,6 +33,9 @@ import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { HARDEN as SRV_HARDEN, HARDEN_BAR_BY_TIER as SRV_HARDEN_BAR_BY_TIER, HARDEN_WOOD_BY_TIER as SRV_HARDEN_WOOD_BY_TIER, HARDEN_MATERIAL_NAMES as SRV_HARDEN_NAMES, hardenGoldFor as srvHardenGold, hardenAmountFor as srvHardenAmount, hardenMaterialFor as srvHardenMat, hardenIsWood as srvHardenIsWood } from '../src/hardening.js'; /* v2.3.3139 */
 import { HARDENED_WOOD as SRV_HARDENED_WOOD } from '../src/hardenedwood.js'; /* v2.3.3139 */
+import { FORGE_LADDER as SRV_FORGE_LADDER, forgeLevelFor as srvForgeLevel, forgeOffered as srvForgeOffered } from '../src/forgeladder.js'; /* v2.3.3524 */
+import { FORGE_LADDER as CLIENT_FORGE_LADDER, forgeLevelFor as clientForgeLevel, forgeOffered as clientForgeOffered, forgeStatReq as clientForgeStatReq } from '../../src/data/forgeLadder.js'; /* v2.3.3524 */
+import { hardenLevelFor as clientHardenLevel } from '../../src/data/hardenCosts.js'; /* v2.3.3524 */
 import { HARDEN_COSTS as CLIENT_HARDEN, HARDEN_MATERIAL_NAMES as CLIENT_HARDEN_NAMES, hardenGoldFor as clientHardenGold, hardenAmountFor as clientHardenAmount, hardenMaterialFor as clientHardenMat, hardenIsWood as clientHardenIsWood, hardenTierOf as clientHardenTier } from '../../src/data/hardenCosts.js'; /* v2.3.3139 */
 import { HARDENED_WOOD_RECIPES as CLIENT_HARDENED_WOOD, HARDENED_WOOD_MAX_PER_REQUEST as CLIENT_HW_MAX, HARDEN_WOOD_BY_TIER as CLIENT_HARDEN_WOOD_BY_TIER } from '../../src/data/hardenedWood.js'; /* v2.3.3139 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
@@ -2172,6 +2175,75 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     hOff.length === 0 && CLIENT_HW_MAX === SRV_HARDENED_WOOD.MAX_PER_REQUEST && Object.keys(RC).length === 5, hOff);
   check('hardened wood: the woods by tier read off the same table on both sides',
     JSON.stringify(CLIENT_HARDEN_WOOD_BY_TIER) === JSON.stringify(SRV_HARDEN_WOOD_BY_TIER), { client: CLIENT_HARDEN_WOOD_BY_TIER, server: SRV_HARDEN_WOOD_BY_TIER });
+}
+
+/* ═══ v2.3.3524: THE FORGE'S LADDER (server/src/forgeladder.js, src/data/forgeLadder.js) ═══
+   The owner's playtest notes: "'wood greatsword' is not an actual weapon in
+   the game.  Make the beginning weapon a copper greatsword (requiring smithing
+   lvl 1)", "Copper 1, iron 5, black steel 10 for smithing lvl req", and
+   "Hardening should only require the same smithing level as it takes to
+   smithing that item tier".  The Forge tab's rows, levels and lock and the
+   Upgrade tab's (and the Woodworker's) hardening level are the game's copy;
+   each must be what the worker asks, on both ladders (the kill switch's old
+   one too), or a button shows that the worker refuses. */
+{
+  const keys = Object.keys(SRV.BLACKSMITH_TIERS);
+  const off = [];
+  for (const k of keys.concat(['__proto__', 'constructor', 'nope'])) {
+    for (const old of [false, true]) {
+      if (srvForgeLevel(k, old) !== clientForgeLevel(k, old)) off.push(['level', k, old, srvForgeLevel(k, old), clientForgeLevel(k, old)]);
+      if (srvForgeOffered(k, old) !== clientForgeOffered(k, old)) off.push(['offered', k, old]);
+    }
+  }
+  check('forge ladder: every tier forged (or not) and at the same Smithing level on both sides, on the new ladder and the old',
+    off.length === 0 && JSON.stringify(SRV_FORGE_LADDER.OLD_LEVELS) === JSON.stringify(CLIENT_FORGE_LADDER.OLD_LEVELS), off.slice(0, 6));
+  check('forge ladder: the owner\'s numbers -- no wood, copper 1, iron 5, black steel 10, titanium 15; the old ladder wood 1, copper 6, iron 11, black steel 16',
+    srvForgeOffered('wood') === false && srvForgeOffered('wood', true) === true && srvForgeOffered('copper') === true
+      && ['copper', 'iron', 'steel', 'titanium'].map((k) => srvForgeLevel(k)).join() === '1,5,10,15'
+      && ['wood', 'copper', 'iron', 'steel'].map((k) => srvForgeLevel(k, true)).join() === '1,6,11,16',
+    { now: keys.map((k) => srvForgeLevel(k)), old: keys.map((k) => srvForgeLevel(k, true)) });
+  /* no tier's pay moved: a tier pays `xp`, else 5 x its level (gear.js), and
+     on the old ladder every tier past black steel paid 5 x its old level */
+  const pay = keys.filter((k) => k !== 'wood').filter((k) => {
+    const t = SRV.BLACKSMITH_TIERS[k];
+    return (t.xp || t.minLvl * 5) !== (['copper', 'iron', 'steel'].includes(k) ? t.xp : SRV_FORGE_LADDER.OLD_LEVELS[k] * 5);
+  });
+  check('forge ladder: every tier pays the XP it paid before (the bar metals their own, the rest their old level x 5, pinned)', pay.length === 0, pay);
+  /* the lock the Forge tab shows is the worker's wear gate, at every trained level */
+  setProg3Enabled(true);
+  const gOff = [];
+  for (let lvl = 0; lvl <= 30; lvl++) {
+    const ps = { prog3: { sk: { sword: { level: lvl }, bow: { level: lvl }, staff: { level: lvl } }, alloc: {}, atk: {}, pool: {}, ms: {} } };
+    const rpg = { prog3: ps.prog3 };
+    for (const k of keys) {
+      const t = SRV.BLACKSMITH_TIERS[k];
+      const srvOk = room._prog3EquipOk(ps, 'weapon', { type: 'greatsword', gearBase: k, tierMult: t.tierMult });
+      const req = clientForgeStatReq('greatsword', k, rpg, false);
+      const cliOk = req.value === 0 || !!req.met;
+      if (srvOk !== cliOk) gOff.push({ lvl, k, server: srvOk, client: cliOk, req });
+    }
+  }
+  const lockAt = (k, lvl) => clientForgeStatReq('greatsword', k, { prog3: { sk: { sword: { level: lvl } }, alloc: {}, atk: {}, pool: {}, ms: {} } }, false);
+  check('forge ladder: the Forge tab\'s Melee lock is the worker\'s wear gate at every level 0-30 (copper and iron nothing, black steel Melee 10)',
+    gOff.length === 0 && lockAt('copper', 0).value === 0 && lockAt('iron', 0).value === 0 && lockAt('steel', 0).value === 10 && lockAt('titanium', 0).value === 15,
+    gOff.slice(0, 6));
+  setProg3Enabled(false);
+  /* hardening's level: the level that makes the tier, the same on both sides */
+  const hOff = [];
+  const weapons = [{ type: 'greatsword', gearBase: 'wood' }, { type: 'greatsword', gearBase: 'copper' }, { type: 'greatsword', gearBase: 'iron' },
+    { type: 'sword', gearBase: 'steel' }, { type: 'greatsword', gearBase: 'titanium' }, { type: 'greatsword', gearBase: 'worldbreaker' },
+    { type: 'bow', gearBase: 'ww_pine' }, { type: 'bow', gearBase: 'ww_softwood' }, { type: 'staff', gearBase: 'ww_maple' }, { type: 'staff', gearBase: 'ww_worldbreaker' },
+    { type: 'bow', gearBase: 'ww_nope', tierMult: 1.3 }, { type: 'sword', tierMult: 1.3 }, { type: 'bow', tierMult: 1.6 }, { tierMult: 2.2 }, {},
+    { gearBase: '__proto__' }, { gearBase: 'ww_constructor' }];
+  for (const w of weapons) {
+    for (const slot of ['weapon', 'rangedWeapon', 'staffWeapon']) {
+      if (room._hardenLevelFor(w, slot) !== clientHardenLevel(w, slot)) hOff.push([w, slot, room._hardenLevelFor(w, slot), clientHardenLevel(w, slot)]);
+    }
+  }
+  check('forge ladder: hardening asks the same level on both sides for every weapon (the level that makes its tier: copper 1, iron 5, black steel 10, a pine bow 1, softwood 6)',
+    hOff.length === 0 && clientHardenLevel({ gearBase: 'copper' }, 'weapon') === 1 && clientHardenLevel({ gearBase: 'iron' }, 'weapon') === 5
+      && clientHardenLevel({ gearBase: 'steel' }, 'weapon') === 10 && clientHardenLevel({ type: 'bow', gearBase: 'ww_pine' }, 'rangedWeapon') === 1
+      && clientHardenLevel({ type: 'bow', gearBase: 'ww_softwood' }, 'rangedWeapon') === 6, hOff.slice(0, 6));
 }
 
 /* ═══ v2.3.3209: THE MONSTER CODEX (server/src/codex.js, src/data/monsterCodex.js) ═══
