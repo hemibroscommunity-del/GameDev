@@ -8008,3 +8008,27 @@ claim path, for an emergency, not for a test.
 **Receipt:** `server/test/weapon-gem.test.mjs` §7 (a claim of frost on a flame
 weapon burns; a claim of flame on a plain one does nothing) and `mp-weapongem`
 step 6; `mp-pvpextras` passes with `H.weaponGem`.
+
+## 241. "A target the shot cannot hit is not on its line" (v2.3.3515)
+
+**The plausible move.** A monster behind a rock cannot be hit -- the hit test
+refuses it -- so the sight passes it over: it is not on the line, and the line
+goes on to whatever comes next, or to nothing.
+
+**Why it is wrong.** The shot still flies at it. Passed over, the shot carried
+no aim, so it kept the parallel ground line (§239's other line), which nothing
+had judged. Where that line passed beside the rock, a staff bolt (no gate of its
+own) flew on, reached the monster, and the hit test -- asking from the shot's
+ground point there, beside the monster and past the rock -- let it hit. The bow,
+its line on nothing, waited. `mp-groundline` step 5 on the build before: 75
+damage to a snowman covered from your boots, and no arrow.
+
+**The rule.** The first target on a shot's line is what the shot is at, whether
+it can be hit or not. If a rock covers it, the shot's ground runs into the rock
+and stops there, and the line ends at the rock (projectiles.js `_sightLine`,
+`_coverOf`). Anything that takes a target out of consideration says where the
+shot then goes -- never leaves it to a line nothing asked about.
+
+**Receipt:** `mp-groundline` step 5, which fails on the build before (75 damage,
+the bow's line on nothing) and passes with it (0 damage, the bow's line on the
+bank, its arrows in it).
