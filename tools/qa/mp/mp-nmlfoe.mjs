@@ -28,9 +28,14 @@
  *      the raider is on (a blow within the minute: sparTargets.js
  *      fightingNow) -- under the thumb; a real tap raises the guard facing the
  *      raider, and the raider's swings are BLOCKED by the worker;
- *   8. the wanderer hits back: a tap on the raider aims at once (no window),
- *      and with the lock let go its arrows still land on the raider (its
- *      choice lasts too), giving it no red skull;
+ *   8. (v2.3.3523) the wanderer hits back THROUGH THE WINDOW -- the owner:
+ *      "keep the behavior of needing to confirm the "attack" button that pops
+ *      up in the window first before any damage is registered to either
+ *      player": its BOW held at the raider, nothing chosen, looses nothing and
+ *      asks "Hit back Raider?" (the bow's line, why 'aim'); Ignore, and a tap
+ *      on the raider asks again; Attack chooses them, and with the lock let go
+ *      its arrows land on the raider (its choice lasts too), giving it no red
+ *      skull;
  *   9. a quiet minute (the clocks aged, nothing else touched): the raider's
  *      choice lapses -- its bolts fly through the wanderer, nothing sent --
  *      and a tap asks again;
@@ -75,7 +80,8 @@ const readAsk = (P) => P.page.evaluate(() => {
   return {
     cur: h ? h.current() : null,
     dom: el ? { why: el.getAttribute('data-nml-ask'), id: el.getAttribute('data-nml-ask-id'),
-      name: ((el.querySelector('[data-nml-ask-name]') || {}).textContent || '').trim() } : null,
+      name: ((el.querySelector('[data-nml-ask-name]') || {}).textContent || '').trim(),
+      back: el.getAttribute('data-nml-ask-back') === '1' } : null,   /* v2.3.3523: hitting back */
     lock: lt ? { type: lt.type, id: lt.id, nml: !!lt.nml, src: lt.src || null } : null,
   };
 });
@@ -539,18 +545,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.evaluate(() => { const S = window._gameState.current; if (S._shieldUp) { S._shieldUp = false; } });
   await H.hopTo(A, spot.x, spot.y, { tries: 30, step: 60 });
 
-  /* ── 8. the wanderer hits back: one tap, and the choice lasts ── */
+  /* ── 8. v2.3.3523: the wanderer hits back, through the window, and the choice lasts ── */
   await heal(idA);
-  let b8 = null;
-  for (let i = 0; i < 4 && !(b8 && b8.lock && b8.lock.id === idA); i++) {
-    await tapPeer(B, idA);
-    b8 = await readAsk(B);
-  }
-  const foes8 = await foes(B);
-  rec.ok('8. the wanderer taps the raider who attacked them: no window, aimed at once, and chosen',
-    !!b8 && !b8.dom && !!b8.lock && b8.lock.id === idA && b8.lock.nml && foes8.includes(idA), { b8, foes8 });
   const eqB8 = await H.equipWeapon(B, 'bow', 'rangedWeapon', 'ranged');
   await B.page.waitForTimeout(1500);
+  /* the BOW held at the raider, nothing chosen: it looses nothing, and asks */
+  const hp8o = await hpOf(idA);
+  const t8o = Date.now();
+  let b8a = null;
+  for (let i = 0; i < 3 && !(b8a && b8a.dom); i++) {
+    await holdAt(B, idA, 2500);
+    b8a = await waitAsk(B, (v) => !!v.dom, 2000);
+  }
+  await settleShots(B);
+  const w8o = await wireSince(B, t8o);
+  const hp8o2 = await hpOf(idA);
+  rec.ok(`8. the wanderer's BOW held at the raider who attacked it, nothing chosen: no arrow (${w8o.shots}), nothing sent (${w8o.attacks}), the HP unchanged (${hp8o} -> ${hp8o2}) -- and the window asks: "${b8a && b8a.dom && b8a.dom.name}" (why: ${b8a && b8a.dom && b8a.dom.why})`,
+    eqB8.ok && !!b8a && !!b8a.dom && b8a.dom.id === idA && b8a.dom.why === 'aim' && b8a.dom.back && b8a.dom.name === 'Hit back Raider?'
+      && w8o.shots === 0 && w8o.attacks === 0 && typeof hp8o === 'number' && hp8o2 === hp8o,
+    { eqB8, b8a: b8a && b8a.dom, w8o, hp8o, hp8o2 });
+  await shot(B, '8-hitback');
+  await tapAsk(B, 'ignore');
+  await B.page.waitForTimeout(600);
+  /* a tap asks every time, the one who attacked you as anyone */
+  let b8 = null;
+  for (let i = 0; i < 4 && !(b8 && b8.dom); i++) {
+    await tapPeer(B, idA);
+    b8 = await waitAsk(B, (v) => !!v.dom, 2000);
+  }
+  const lock8pre = b8 && b8.lock;
+  await tapAsk(B, 'attack');
+  await B.page.waitForTimeout(800);
+  const b8b = await readAsk(B);
+  const foes8 = await foes(B);
+  rec.ok('8. ...a tap on the raider asks too ("Hit back", not aimed until answered), and its Attack aims and CHOOSES them',
+    !!b8 && !!b8.dom && b8.dom.why === 'tap' && b8.dom.back && b8.dom.id === idA && !(lock8pre && lock8pre.id === idA)
+      && !b8b.dom && !!b8b.lock && b8b.lock.id === idA && b8b.lock.nml && foes8.includes(idA),
+    { b8: b8 && b8.dom, lock8pre, b8b, foes8 });
   const hp8a = await hpOf(idA);
   const t8 = Date.now();
   const h8 = await holdAt(B, idA, 3500);

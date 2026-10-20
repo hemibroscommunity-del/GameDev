@@ -43,7 +43,7 @@ import { BOW_VOLLEY } from '../../src/game/bowVolley.js';
 /* v2.3.3267: the page's half -- your clones are monsters to your weapons */
 import { isLiveClone, clonesNear, shotPlayerTargets, fightersInSwing, fightOn, FIGHT_R,
   setFoeRule, chooseFoe, isLiveFoe, liveFoes, isLiveFighter, fightersNear, chosenNear, fightingNow, notePvpBlow,
-  FIGHT_QUIET_MS } from '../../src/game/sparTargets.js';
+  FIGHT_QUIET_MS, pvpBoutAt } from '../../src/game/sparTargets.js';
 import { pvpSwingClaimOk, PVP_SWING } from '../../src/game/pvpSwing.js';
 /* the page's numbers (projectiles.js ARROW_SPEED_PX, gameSystems.js BOW_RANGE_PX;
    peer-shots.test.mjs holds them to the source) */
@@ -673,7 +673,7 @@ room._sparDev(OWNER, { skill: 'easy' });
     F._spar = null;
     notePvpBlow(F, { attacker: 'p3', target: 'me' }, T0);
     const now = fightingNow(F, T0 + 1000).map((c) => c.id).join();
-    check('16k a player who hit you is a fight (fightingNow) -- not a target of yours until you choose (a tap on them aims at once)',
+    check('16k a player who hit you is a fight (fightingNow) -- not a target of yours until you choose (v2.3.3523: the window\'s Attack, as for anyone)',
       now === 'p3' && !isLiveFighter(F, 'p3') && !shotPlayerTargets(F, null).includes('p3') && swing(F, Math.PI) === '', now);
     const later = fightingNow(F, T0 + FIGHT_QUIET_MS + 1000).length;
     notePvpBlow(F, { attacker: 'p3', target: 'me' }, T0);
@@ -711,6 +711,28 @@ room._sparDev(OWNER, { skill: 'easy' });
     return r;
   })();
   check('16p with no rule handed in (no No man\'s land), no player is ever a foe or a fight', noRule === false);
+  /* v2.3.3523: the BOUT -- the first blow either way after a quiet
+     FIGHT_QUIET_MS; No man's land's window asks again about one who attacks
+     you in a bout that began after your last answer (nmlAsk.js
+     nmlAttackedSince) */
+  {
+    const T1 = 9_000_000;
+    const B1 = mk();
+    const none = pvpBoutAt(B1, 'p3');
+    notePvpBlow(B1, { attacker: 'p3', target: 'me' }, T1);
+    const first = pvpBoutAt(B1, 'p3');
+    notePvpBlow(B1, { attacker: 'me', target: 'p3' }, T1 + 30000);
+    notePvpBlow(B1, { attacker: 'p3', target: 'me' }, T1 + 80000);
+    const same = pvpBoutAt(B1, 'p3');
+    notePvpBlow(B1, { attacker: 'p3', target: 'me' }, T1 + 80000 + FIGHT_QUIET_MS);
+    const fresh = pvpBoutAt(B1, 'p3');
+    check('16q a bout begins with the first blow either way, goes on while blows come within FIGHT_QUIET_MS of each other, and a blow after a quiet minute begins a new one',
+      none === 0 && first === T1 && same === T1 && fresh === T1 + 80000 + FIGHT_QUIET_MS && pvpBoutAt(B1, 'p1') === 0,
+      { none, first, same, fresh });
+    for (let i = 0; i < 40; i++) notePvpBlow(B1, { attacker: 'b' + i, target: 'me' }, T1);
+    check('16q2 ...kept short (at most 32), and never for a blow that is not yours', B1._pvpBouts.size <= 32
+      && !notePvpBlow(B1, { attacker: 'p1', target: 'p2' }, T1) && pvpBoutAt(B1, 'p2') === 0, B1._pvpBouts.size);
+  }
   setFoeRule(null);
 }
 
