@@ -4,12 +4,20 @@
    that grows it (a node's gatherLvl): each picture's size in picture px (2 a
    game px), `foot` where it meets the ground (its trunk's middle, at its
    lowest row) and `trunk` the trunk's half-width in picture px, read just
-   above the roots. */
+   above the roots.  v2.3.3511: `crown` the crown's lower edge, a picture row
+   every ~6 px across the picture (0: no crown there, the trunk's
+   middle) -- where a drip of the Water Caves forms (src/rendering/
+   landAuras.js); `--measure` writes it again from the finished pictures. */
 export const TREE_ART_V = "2026-10-18T02:43:02.602Z";
 export const TREE_ART = {
-  1: { name: "pine", url: '/sprites/trees/wood-pine.png', w: 171, h: 318, foot: [86, 318], trunk: 12 },
-  6: { name: "softwood", url: '/sprites/trees/wood-softwood.png', w: 381, h: 424, foot: [197, 424], trunk: 39 },
-  11: { name: "hardwood", url: '/sprites/trees/wood-hardwood.png', w: 570, h: 530, foot: [296, 530], trunk: 65 },
-  16: { name: "cedar", url: '/sprites/trees/wood-cedar.png', w: 345, h: 636, foot: [179, 636], trunk: 20 },
-  21: { name: "maple", url: '/sprites/trees/wood-maple.png', w: 855, h: 847, foot: [452, 847], trunk: 31 },
+  1: { name: "pine", url: '/sprites/trees/wood-pine.png', w: 171, h: 318, foot: [86, 318], trunk: 12,
+    crown: [200, 206, 240, 247, 247, 247, 245, 254, 254, 251, 251, 253, 0, 0, 0, 0, 0, 254, 254, 251, 254, 256, 248, 248, 251, 245, 243, 212, 206] },
+  6: { name: "softwood", url: '/sprites/trees/wood-softwood.png', w: 381, h: 424, foot: [197, 424], trunk: 39,
+    crown: [254, 272, 275, 259, 297, 317, 310, 287, 316, 352, 354, 339, 330, 357, 373, 371, 356, 335, 318, 310, 329, 342, 342, 328, 310, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 332, 325, 310, 349, 355, 339, 358, 371, 371, 358, 332, 300, 288, 304, 299, 313, 327, 322, 300, 268, 270, 251] },
+  11: { name: "hardwood", url: '/sprites/trees/wood-hardwood.png', w: 570, h: 530, foot: [296, 530], trunk: 65,
+    crown: [217, 220, 223, 329, 335, 335, 332, 346, 352, 352, 348, 352, 347, 335, 339, 343, 344, 340, 340, 359, 361, 365, 365, 355, 359, 359, 352, 339, 339, 339, 343, 345, 348, 361, 368, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 359, 367, 370, 373, 368, 372, 374, 373, 369, 329, 343, 344, 348, 348, 343, 345, 338, 343, 343, 339, 339, 343, 343, 335, 332, 307, 304, 301, 295, 295, 290] },
+  16: { name: "cedar", url: '/sprites/trees/wood-cedar.png', w: 345, h: 636, foot: [179, 636], trunk: 20,
+    crown: [490, 483, 483, 552, 548, 572, 565, 562, 554, 554, 567, 570, 559, 559, 551, 544, 556, 564, 557, 553, 538, 538, 545, 531, 528, 513, 0, 0, 0, 0, 0, 0, 0, 0, 0, 554, 540, 543, 540, 565, 560, 575, 580, 579, 585, 593, 576, 553, 559, 554, 545, 554, 553, 555, 563, 490, 485, 490] },
+  21: { name: "maple", url: '/sprites/trees/wood-maple.png', w: 855, h: 847, foot: [452, 847], trunk: 31,
+    crown: [397, 402, 434, 432, 432, 429, 432, 424, 430, 441, 555, 558, 568, 566, 586, 604, 610, 603, 607, 599, 587, 603, 618, 617, 627, 640, 636, 633, 624, 626, 629, 634, 633, 614, 615, 590, 590, 599, 635, 664, 662, 662, 664, 676, 688, 691, 685, 674, 682, 683, 687, 684, 666, 667, 648, 642, 651, 656, 657, 649, 647, 646, 646, 636, 600, 607, 615, 626, 634, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 612, 619, 644, 641, 643, 636, 644, 644, 660, 659, 670, 682, 678, 676, 668, 679, 681, 686, 676, 665, 664, 636, 638, 644, 640, 640, 663, 660, 659, 653, 664, 673, 669, 656, 659, 656, 658, 616, 611, 618, 613, 620, 633, 629, 625, 639, 640, 645, 640, 632, 613, 625, 616, 608, 606, 497, 497, 499, 487, 439, 436] },
 };

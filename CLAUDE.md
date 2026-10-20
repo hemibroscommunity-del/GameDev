@@ -1264,6 +1264,29 @@ remnant to migrate server-side, not a mode to preserve.
       the Wheel's loading screen (`landAurasWarm`) and freed on leaving
       (`landAurasFree`); the Wheel only, `?noauras`; `mp-landauras`:
       docs/specs/land-auras.md.
+      - since v2.3.3511 FIRE RISES AND WATER FALLS -- the owner, after a
+        playtest: "land tree effects: fire looks like sparkles, water looks
+        like sweating", and of v2.3.3481's banner scenes "new land emblems look
+        bad enlarged (revert or show below minimap)":
+        - an ember is a glowing streak pointed the way it flies, rising FASTER
+          and cooling redder as it goes out (no random blink), with smoke, coal
+          pops and a coal-flicker glow; a Water Caves drop forms on its crown's
+          lower edge (`crown` in treeArt.js, `add-tree-art.mjs --measure`,
+          tierTrees.js `treeCrownEdge`), hangs, falls and splashes on the
+          ground at the foot (a rock: ripples); the Foundry's sparks are bursts
+          that arc down; the Hollows' glints a rock's alone; the table is
+          `src/data/landAuras.js` (no imports);
+        - a resource's specks are a POOL made before its container joins the
+          layer: a speck born or gone only moves and changes alpha, never an
+          add/remove/blend/picture change (TRAPS §218); made only near the
+          screen (`AURA_VIEW_IN`);
+        - a land's banner is the plain plaque again, and its scene a small
+          EMBLEM under the minimap (src/ui/landEmblem.js) as the plaque docks:
+          one picture px a device px, never upscaled, clear of every control
+          (beside the box sideways), gone after 3.6 s; the plate's gold scroll
+          ends cut off the pictures (cut-owner-icons.py `rim_cut`);
+        - `land-auras` suite, `owner-icons` §5, `mp-landauras`, `mp-wheelmap`:
+          docs/specs/land-auras.md, docs/specs/owner-icons.md.
     - since v2.3.3407 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
       all actions/buttons can be completed in landscape mode and on the
       computer. For instance I don't think you can harvest lifeskills right now

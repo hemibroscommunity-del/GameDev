@@ -11267,7 +11267,11 @@ export class EffectsRenderer {
     if (_near && AURAS_ON) {
       if (!this._landAuras) this._landAuras = new LandAuras(this.entityLayer);
       const _at = performance.now();
-      this._landAuras.update(nodes, this._landAurasAt ? _at - this._landAurasAt : 16);
+      /* v2.3.3511: + the screen in world px -- a resource's specks are made
+         only near it (the node view reaches 480 px past it) */
+      const _view = (S.camera && S._viewW > 0 && S._viewH > 0)
+        ? { x0: S.camera.x, y0: S.camera.y, x1: S.camera.x + S._viewW, y1: S.camera.y + S._viewH } : null;
+      this._landAuras.update(nodes, this._landAurasAt ? _at - this._landAurasAt : 16, _view);
       this._landAurasAt = _at;
     } else if (this._landAuras && this._landAuras.at.size) {
       this._landAuras.clear();

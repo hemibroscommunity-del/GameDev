@@ -59,6 +59,15 @@ the first run of rows at least 85% dark (of the row's solid px) is the edge,
 and the first row after it that is 75% parchment is the plate.  The review
 measured four by eye (hollows 104, mist 89, thunder 101, tidal 98) and this
 tool refuses to write anything unless it measures the same four the same.
+v2.3.3511: AND THE PLATE'S CURLS GO TOO.  The owner, of the scenes drawn big
+over the land banner: "new land emblems look bad enlarged (revert or show
+below minimap)" -- and at their own size under the minimap the plate's two
+scroll ends still showed, gold arcs curling up into the scene's bottom
+corners (in all eight: ember's at rows 96-100, x 8-16).  So the scene is cut
+again just above them (rim_cut: in the outer quarter each side, the highest
+row of the last nine holding a gold or brown px with the scene's dark outline
+right above it) and its new last row is made the dark ground line its foot
+always had (ground_line).
 
 SIZES: a DOM picture at three times the CSS px it is DRAWN at (a 3x phone),
 never upscaled (a picture is held decoded at its own size, so a bigger file is
@@ -208,6 +217,48 @@ def plate_top(im):
     return y
 
 
+def _curl(r, g, b, a):
+    """v2.3.3511: a px of the plate's scroll ends: gold to brown."""
+    return a > 128 and r > 120 and g > 80 and b < 140 and r - b > 30 and r >= g
+
+
+def _dark(r, g, b, a):
+    return a > 128 and max(r, g, b) < 70
+
+
+def rim_cut(im):
+    """v2.3.3511: the first row of the plate's scroll ends left under a
+    scene cut at plate_top - 3 (THE LANDS' PLATE), or None: in the outer
+    quarter each side, the highest row of the last nine holding a curl px
+    with a dark px (the scene's outline) within three rows straight above it.
+    Sand and lava are as gold, but sit ABOVE the outline."""
+    w, h = im.size
+    px = im.load()
+    top = None
+    for y in range(max(1, h - 9), h):
+        for x in list(range(0, int(w * 0.25))) + list(range(int(w * 0.75), w)):
+            if not _curl(*px[x, y]):
+                continue
+            if any(_dark(*px[x, yy]) for yy in range(max(0, y - 3), y)):
+                if top is None or y < top:
+                    top = y
+    return top
+
+
+def ground_line(im):
+    """v2.3.3511: each column's lowest solid px dark, as the plate's dark top
+    edge was: the scene's ground line, after rim_cut took the rows under it."""
+    px = im.load()
+    for x in range(im.width):
+        for y in range(im.height - 1, -1, -1):
+            r, g, b, a = px[x, y]
+            if a > 128:
+                if max(r, g, b) >= 70:
+                    px[x, y] = (int(r * 0.18), int(g * 0.14), int(b * 0.12), a)
+                break
+    return im
+
+
 def resize(im, size):
     """Lanczos on premultiplied colour, so a see-through px's colour never
     bleeds into the edge (cut-bag-icons.py fit)."""
@@ -281,8 +332,16 @@ def main():
                 return 1
             im = im.crop((0, 0, im.width, top - 3))
             im = im.crop(im.getbbox())
+            # v2.3.3511: and the plate's scroll ends under it (the header)
+            rim = rim_cut(im)
+            if rim is None:
+                print(f'ABORT {short}: no scroll ends found under the scene (the sheet changed?)')
+                return 1
+            im = ground_line(im.crop((0, 0, im.width, rim)))
+            im = im.crop(im.getbbox())
             print(f'  {short:16s} vignette {raw[0]}x{raw[1]}, plate from row {top}'
-                  f'{" (the review: " + str(want) + ")" if want is not None else ""}, scene {im.width}x{im.height}')
+                  f'{" (the review: " + str(want) + ")" if want is not None else ""}, scroll ends from row {rim},'
+                  f' scene {im.width}x{im.height}')
             out = im
         elif p.get('pin'):
             out = to_pin(im)
