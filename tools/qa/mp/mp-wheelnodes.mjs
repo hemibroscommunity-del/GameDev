@@ -295,8 +295,22 @@ async function body({ P, wsPort, rec, OUT, errors }) {
       await travel(P, wsPort, myId, away.x, away.y);
       tree = await nearest('tree', true);
     }
+    /* v2.3.3510: Diego hands two pine logs with the rod (the town opens all
+       at once, so the Woodworker's axe may not be yours yet): with them in the
+       bag the log step is done and the next is the fire, which needs no node.
+       Dropped -- the bag's own Drop (item_drop), standing still so the pile is
+       not walked back over -- the step is back, and the road leads on to the
+       nearest tree. */
+    const logs0 = await H.readState(P, (S) => ((S.rpg && S.rpg.inventory) || {}).wood_pine_log || 0);
+    rec.ok('Diego\'s two pine logs came with the rod (the fish quest\'s log step already done)', logs0 >= 2, logs0);
+    await P.page.evaluate((n) => {
+      const S = window._gameState.current;
+      if (S && S.channel) S.channel.send({ type: 'item_drop', payload: { key: 'wood_pine_log', qty: n } });
+    }, logs0);
+    const logs1 = await H.waitFor(P, (S) => ((S.rpg && S.rpg.inventory) || {}).wood_pine_log || 0, (v) => v === 0, { timeout: 8000, label: 'the logs dropped' }).catch(() => null);
+    rec.ok('...dropped from the bag, as a player drops them', logs1 === 0, logs1);
     const road2 = await H.waitFor(P, () => (window.__btMinimap && window.__btMinimap.quest) || null, (q) => !!q && typeof q.x === 'number', { timeout: 8000, label: 'the road on' }).catch(() => null);
-    rec.ok('with a fish in the bag, the road moves on to the nearest tree the player can chop (the quest\'s next step)',
+    rec.ok('with a fish in the bag and no log, the road moves on to the nearest tree the player can chop (the quest\'s next step)',
       !!road2 && !!tree && road2.x === Math.round(tree.x) && road2.y === Math.round(tree.y), { road2, tree });
     /* v2.3.3012: no chop from the water -- a woodcutter has no seat to climb
        out to, and only your head is out of it.  Trees grow 72 px clear of
