@@ -35,9 +35,9 @@ import { existsSync } from 'node:fs';
 import { extname, join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
-import { QUEST_REWARDS as _QR, QUEST_FIRST as _QF } from '../../../server/src/data.js';   /* v2.3.3510: FIRST_LAND */
+import { QUEST_REWARDS as _QR, QUEST_FIRST as _QF } from '../../../server/src/data.js';   /* v2.3.3514: FIRST_LAND */
 
-/* ═══ v2.3.3510: THE LAND THE FIRST QUEST OPENS ═══
+/* ═══ v2.3.3514: THE LAND THE FIRST QUEST OPENS ═══
  * In the old lands (`trial=off`, every scenario's default) a land opens when
  * the quest that names it is taken (QUEST_ZONE_GATE, movement.js), and the
  * checks that walk into "the land the first quest opens" took tut_1 and walked

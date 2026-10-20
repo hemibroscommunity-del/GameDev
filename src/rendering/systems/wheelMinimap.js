@@ -78,8 +78,8 @@ import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the ques
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
 import { peerDotAt } from '@/game/peerDot.js';             /* v2.3.3243: a player's dot where they are now */
 import { PARTY_MARK, partyIdsOf, clampToBox } from '@/game/partyMarks.js';   /* v2.3.3277: your party, blue, and on the box's edge when off it */
-import { questPinsOf, MAP_PIN } from '@/game/questPins.js';   /* v2.3.3510: the townsfolk's quest pins */
-import { QUEST_PIN } from '@/data/ownerIcons.js';              /* v2.3.3510: ...in the owner's own pictures */
+import { questPinsOf, MAP_PIN } from '@/game/questPins.js';   /* v2.3.3514: the townsfolk's quest pins */
+import { QUEST_PIN } from '@/data/ownerIcons.js';              /* v2.3.3514: ...in the owner's own pictures */
 import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
 import { noteNoMansLand } from '@/game/noMansLand.js';       /* v2.3.3058: No man's land's banner */
 import { noteWheelMusic } from '@/game/wheelMusic.js';      /* v2.3.3064: ...and its music */
@@ -512,7 +512,7 @@ export class WheelMinimap {
     this.used++;
   }
 
-  /* ═══ v2.3.3510: A QUEST PIN (src/game/questPins.js) ═══
+  /* ═══ v2.3.3514: A QUEST PIN (src/game/questPins.js) ═══
      The owner's pin from over the townsperson's head (data/ownerIcons.js
      QUEST_PIN, loaded behind the loading screen for the heads and only looked
      up here), its tip on where he stands; while its picture is not in, the
@@ -656,7 +656,7 @@ export class WheelMinimap {
       this._partyRimSig = rimSig;
     }
     for (const m of partyMarks) { delete m.mx; delete m.my; }
-    /* ═══ v2.3.3510: THE QUEST PINS (src/game/questPins.js) ═══
+    /* ═══ v2.3.3514: THE QUEST PINS (src/game/questPins.js) ═══
        Every townsperson with a quest for you that the box shows, in the pin
        over his head -- the owner: "Make the quest icons appear on the minimap
        and map too".  After the Mayor's first quest the whole town offers one
@@ -815,7 +815,7 @@ export class WheelMinimap {
         scale: SCALE,
         /* v2.3.3277: your party's marks (in the box, and whether on its edge) */
         party: partyMarks,
-        /* v2.3.3510: the quest pins drawn (who, which, where in the box, and
+        /* v2.3.3514: the quest pins drawn (who, which, where in the box, and
            whether in the owner's picture) */
         questPins,
       };

@@ -54,7 +54,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.clickText(P, 'Available').catch(() => {});
   await P.page.waitForTimeout(500);
   const questsBody = await H.bodyText(P);
-  /* v2.3.3510: the tour's first step is the slimes' "Into the Blue" in the
+  /* v2.3.3514: the tour's first step is the slimes' "Into the Blue" in the
      Verdant Wilds (the Mayor's snowmen are the tour's finale now, tut_2) */
   rec.ok('the Quests panel offers the first tutorial quest',
     /Into the Blue/.test(questsBody), questsBody.slice(0, 400));
@@ -70,7 +70,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      because the client `check` and the server objective are two tables that
      have to agree, and the symptom of disagreement is a Turn In button that
      refuses without saying why. */
-  /* v2.3.3510: "remains" -- the owner: "change remnants to remains" */
+  /* v2.3.3514: "remains" -- the owner: "change remnants to remains" */
   rec.ok('the objective asks for remains, not a kill count',
     /Slime Remains/i.test(detail) && !/Remnant/i.test(detail) && !/Defeat \d/i.test(detail), detail.slice(0, 400));
   rec.ok("the quest giver's portrait is shown in the dialogue block",

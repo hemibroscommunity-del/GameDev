@@ -5891,12 +5891,12 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
    dots pushed it there, and a one-line answer draws no dots, so its Close
    fell to the left, away from where Next had been under the finger. */
 .bt-npcdlg-next{min-height:40px;padding:0 18px;font-size:14px;border-radius:9px;flex:0 0 auto;margin-left:auto}
-/* v2.3.3510: the thing he asks you to do (a tour giver's "Open the forge",
+/* v2.3.3514: the thing he asks you to do (a tour giver's "Open the forge",
    Lil Bro's "Race!": NpcDialogue `action`) is the brass button, at the right
    where Next was under the finger; Close goes quiet to its left */
 .bt-npcdlg-act{min-height:40px;padding:0 18px;font-size:14px;border-radius:9px;flex:0 0 auto;margin-left:0;order:2}
 .bt-npcdlg-next--quiet{order:1;padding:0 14px}
-/* v2.3.3510: the race's countdown beat (ui/mobile/RaceHud.jsx) -- transform
+/* v2.3.3514: the race's countdown beat (ui/mobile/RaceHud.jsx) -- transform
    and opacity only */
 .bt-race-beat{animation:bt-race-beat 420ms ease-out both}
 @keyframes bt-race-beat{from{transform:scale(1.6);opacity:0}to{transform:scale(1);opacity:1}}

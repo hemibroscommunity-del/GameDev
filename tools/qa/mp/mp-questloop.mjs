@@ -83,7 +83,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rightAfterAccept);
 
   /* ── finish it, WITHOUT walking away ──
-     v2.3.3510: the first quest is the slimes' (tut_1, 4 remains) */
+     v2.3.3514: the first quest is the slimes' (tut_1, 4 remains) */
   await H.grant(wsPort, myId, 'item', { invKey: 'slime-remnants', count: QUEST_REWARDS.tut_1.objective.count });
   await P.page.waitForTimeout(2000);
 
@@ -136,7 +136,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── VARIANT B: double-tap the claim.  A finger on a phone bounces, and
      the panel stays open through the hand-in (v2.3.1713), so the button is
      still under the thumb when the second tap lands.
-     v2.3.3510: on the Mayor's snowmen, tut_2, which pays XP (so a claim
+     v2.3.3514: on the Mayor's snowmen, tut_2, which pays XP (so a claim
      panel) -- taken once the tour's other ten steps are handed in, so the
      operator's /dev/tour puts this character there, nothing paid. ── */
   await H.closeNpcDialogue(P);

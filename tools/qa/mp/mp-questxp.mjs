@@ -99,7 +99,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await place(420, 0);
   await H.closeNpcDialogue(P);
   await P.page.waitForTimeout(700);
-  /* v2.3.3510: the Mayor's quest that pays XP is his snowmen, tut_2 "Cold
+  /* v2.3.3514: the Mayor's quest that pays XP is his snowmen, tut_2 "Cold
      Reception" (4 Snowman Remains), the tour's finale */
   await P.page.evaluate((src) => { eval(src); }, pin({ tut_1: 'turnedIn', tut_2: 'active' }, { snowman: 4 }));   // eslint-disable-line no-eval
   await P.page.waitForTimeout(700);

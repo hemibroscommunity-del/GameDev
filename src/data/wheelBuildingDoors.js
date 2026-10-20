@@ -152,7 +152,7 @@ export const WHEEL_TOWNSFOLK = [
      against a worker that knows his quests (caps.beastmaster; BroTown.jsx
      _spawnWheelNpcs). */
   { name: 'Beastmaster Bro', door: 'woodworker', dx: 105, dy: 34, cap: 'beastmaster' },
-  /* ═══ v2.3.3510: THE TOUR'S TWO NEW GIVERS ═══
+  /* ═══ v2.3.3514: THE TOUR'S TWO NEW GIVERS ═══
      Woodworker Bro WEST of his own steps (the Beastmaster has the east, his
      Snowling beside him; the bench's crate is 193 px west, so -105 is clear
      of it and of the steps), and Farmer Bro by the Feed & Seed's, each the
@@ -184,6 +184,6 @@ export const WHEEL_TOWNSFOLK = [
 export const WHEEL_KEEPERS = {
   'Blacksmith Bro': 'blacksmith',   /* the forge, at whose steps he stands */
   'Mayor Bro': 'townhall',          /* the Town Hall: its leaderboard and the world map */
-  'Woodworker Bro': 'woodworker',   /* v2.3.3510: the bench (bows, staffs, traps, hardened wood) */
-  'Farmer Bro': 'feedseed',         /* v2.3.3510: the Feed & Seed (seeds, your farm, the orders) */
+  'Woodworker Bro': 'woodworker',   /* v2.3.3514: the bench (bows, staffs, traps, hardened wood) */
+  'Farmer Bro': 'feedseed',         /* v2.3.3514: the Feed & Seed (seeds, your farm, the orders) */
 };

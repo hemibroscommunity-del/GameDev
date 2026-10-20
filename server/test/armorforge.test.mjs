@@ -4,7 +4,7 @@
  *
  *   1. caps.armorforge is advertised, under a name the liveflags route takes.
  *   2. A copper torso: exactly five copper bars taken (v2.3.3141: four a
- *      piece, the owner's "chest, legs, and sword each take 4 bars"; v2.3.3510:
+ *      piece, the owner's "chest, legs, and sword each take 4 bars"; v2.3.3514:
  *      five, as a bow or a staff takes five hardened wood -- "It should mirror
  *      the cost of making armor"), the piece minted into
  *      the ledger (src 'forge') with its id, metal, slot, step and a rolled
@@ -89,7 +89,7 @@ const after = (level, xp) => { const t = { lifeSkills: { s: { level, xp: 0 } } }
   const want = after(1, ARMOR_FORGE.RECIPES.copper_torso.xp);
   const r = await forge(ws, { recipe: 'copper_torso' });
   const p = r && r.payload && r.payload.piece;
-  check('a copper torso takes exactly five copper bars (v2.3.3510)', ARMOR_FORGE.RECIPES.copper_torso.bars === 5 && ps().inventory.bar_copper === 2, ps().inventory);
+  check('a copper torso takes exactly five copper bars (v2.3.3514)', ARMOR_FORGE.RECIPES.copper_torso.bars === 5 && ps().inventory.bar_copper === 2, ps().inventory);
   check('...and makes the piece the game already knows: Copper Torso, copper, the chest, step 1',
     !!p && p.name === 'Copper Torso' && p.mat === 'copper' && p.slot === 'armor' && p.tierMult === 1, p);
   check('...with a grade rolled as every piece\'s is', !!p && ['normal', 'rare', 'elite', 'godly'].indexOf(p.quality) >= 0, p && p.quality);

@@ -15,7 +15,7 @@
  *      every node -- but with no tools in the bag none is drawn (v2.3.1680's
  *      rule, unchanged);
  *   2. the gold road of Diego's "Something Fishy" (fish_1; "Learn a Trade" until
- *      v2.3.3510) leads to the NEAREST fishing
+ *      v2.3.3514) leads to the NEAREST fishing
  *      spot (it led nowhere in the Wheel before);
  *   3. at a fishing spot by town there are FISH, in the water: the spot and
  *      everywhere they swim is water as the ground is DRAWN, and the
@@ -110,7 +110,7 @@ async function body({ P, wsPort, rec, OUT, errors }) {
   rec.ok('with no tools in the bag, no node of the Wheel\'s is drawn -- nor marked on the minimap', bare.tools.length === 0 && !!bare.wn && bare.wn.total > 100 && bare.wn.drawn === 0 && bare.fish === 0 && bare.mini === 0, bare);
 
   /* ── the tools, the way a player gets them ──
-     v2.3.3510: the tour hands them out one giver at a time -- Blacksmith
+     v2.3.3514: the tour hands them out one giver at a time -- Blacksmith
      Bro's ore errand the pickaxe, Woodworker Bro's logs the axe, Diego's
      "Something Fishy" (fish_1) the rod, on accepting each.  The operator's
      /dev/tour puts this character at Diego's step (the steps before it handed
@@ -295,7 +295,7 @@ async function body({ P, wsPort, rec, OUT, errors }) {
       await travel(P, wsPort, myId, away.x, away.y);
       tree = await nearest('tree', true);
     }
-    /* v2.3.3510: Diego hands two pine logs with the rod (the town opens all
+    /* v2.3.3514: Diego hands two pine logs with the rod (the town opens all
        at once, so the Woodworker's axe may not be yours yet): with them in the
        bag the log step is done and the next is the fire, which needs no node.
        Dropped -- the bag's own Drop (item_drop), standing still so the pile is
@@ -383,7 +383,7 @@ async function body({ P, wsPort, rec, OUT, errors }) {
   });
   rec.ok('a land\'s levels 1-10 grow iron (guard)', !!iron && iron.name === 'Iron Ore', iron);
   /* out past the Mayor's gate now: tut_1 arms you and opens it
-     (v2.3.3510: the tour's jump above handed it in already, which opens it
+     (v2.3.3514: the tour's jump above handed it in already, which opens it
      too -- accepted only when it is still to take) */
   const tut1 = await H.readState(P, (S) => ((S.rpg || {})._quests || {}).tut_1 || null);
   if (tut1 !== 'turnedIn') {

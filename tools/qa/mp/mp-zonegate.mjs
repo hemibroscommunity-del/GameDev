@@ -38,7 +38,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* tut_1 names FROST.  Accepting it also clears the v2.3.1676 town gate, so
      this one accept is what makes the rest of the file reachable at all.
-     v2.3.3510: tut_1 names the VERDANT WILDS since the tour put the slimes
+     v2.3.3514: tut_1 names the VERDANT WILDS since the tour put the slimes
      first (H.FIRST_LAND, read off the worker's table) -- "frost" below is
      the land tut_1 opens, whichever that is. */
   await P.page.evaluate(() => {

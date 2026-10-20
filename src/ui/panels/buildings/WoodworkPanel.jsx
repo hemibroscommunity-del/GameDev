@@ -8,7 +8,7 @@ import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.25
 import { TrapsTab } from './TrapsTab.jsx'; /* v2.3.3120: box traps from logs */
 import { hardenCost as hardenAttemptCost, hardenIsWood, hardenTierOf } from '@/data/hardenCosts.js'; /* v2.3.3139: hardening takes a material and a doubling gold ladder (renamed: the legacy affix section below has a local hardenCost; v2.3.3481: that section is gone, the name stays); v2.3.3481: hardenIsWood and hardenTierOf name the skill and level a bow's or a staff's hardening asks for */
 import { HardenedWoodTab } from './HardenedWoodTab.jsx'; /* v2.3.3139: five logs into one hardened wood */
-import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3510: a bow or a staff is made of hardened wood */
+import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3514: a bow or a staff is made of hardened wood */
 /* === WoodworkPanel — buildingPanel === 'woodwork' sub-panel === */
 /* v2.3.873: extracted verbatim from the buildingPanel === 'woodwork' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -188,7 +188,7 @@ export function WoodworkPanel(props) {
           wt = _ref142[1];
         var wwLvl = ((_rpgState$lifeSkills31 = rpgState.lifeSkills) === null || _rpgState$lifeSkills31 === void 0 || (_rpgState$lifeSkills31 = _rpgState$lifeSkills31.woodworking) === null || _rpgState$lifeSkills31 === void 0 ? void 0 : _rpgState$lifeSkills31.level) || 1;
         var canCraftSkill = wwLvl >= wt.minLvl;
-        /* ═══ v2.3.3510: FIVE HARDENED WOOD, AND THE GATE WEARING IT HAS ═══
+        /* ═══ v2.3.3514: FIVE HARDENED WOOD, AND THE GATE WEARING IT HAS ═══
            Against a worker with the tour's gear rules (caps.tourgear,
            server/src/gear.js): a wood with a hardened wood makes its bow or
            staff from five of it (the tier's `hardened`, `hardenedCost`), and
@@ -358,7 +358,7 @@ export function WoodworkPanel(props) {
               hardenBonus: null
             };
             var _wwLvlBefore = R.lifeSkills.woodworking.level;
-            /* v2.3.3510: the tier's own XP where it has one (the worker's
+            /* v2.3.3514: the tier's own XP where it has one (the worker's
                `tier.xp || minLvl x 5`, gear.js) */
             var leveled = addLifeSkillXp(R.lifeSkills, 'woodworking', (_tg && wt.xp) || wt.minLvl * 5);
             if (!R._questFlags) R._questFlags = {};

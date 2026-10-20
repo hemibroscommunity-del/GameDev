@@ -1,4 +1,4 @@
-/* LIL BRO'S RACE, ON A PHONE -- v2.3.3510.
+/* LIL BRO'S RACE, ON A PHONE -- v2.3.3514.
  *
  * The owner: "a quest racing an npc (like a clone of you) where you have to
  * sprint around a simple course."  The tour's race_1 (src/game/race.js on the
@@ -121,7 +121,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const done = await H.adminPlayer(wsPort, myId);
   rec.ok('the WORKER marks race_1 turned in',
     !!done && done.rpg && done.rpg._quests.race_1 === 'turnedIn', done && done.rpg && done.rpg._quests);
-  /* v2.3.3510: the town opens all at once after the Mayor's first quest, so
+  /* v2.3.3514: the town opens all at once after the Mayor's first quest, so
      nothing is handed on by `next`; the road and the pinned card suggest the
      tour's next step (QUEST_TOUR: the Beastmaster's traps) */
   await H.leaveNpc(P, 'lil_bro').catch(() => {});
