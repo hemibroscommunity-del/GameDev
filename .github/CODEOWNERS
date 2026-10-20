@@ -1,0 +1,12 @@
+# v2.3.3491: what only the owner may approve (docs/REPO-SAFETY.md).
+#
+# Once main's ruleset asks for a code owner's review, a PR that changes any of
+# these waits for the owner's Approve before it can merge.  Every other PR
+# merges as before.  Kept to what decides who can deploy, with what secret,
+# and where: in the 30 days before this file, 4 of 52 merges touched them.
+#
+# - .github/: the workflows hold the deploy token, and this file itself.
+# - server/wrangler.toml: where the worker is deployed, its routes, the sites
+#   it accepts players from (ORIGINS).
+/.github/              @hemibroscommunity-del
+/server/wrangler.toml  @hemibroscommunity-del

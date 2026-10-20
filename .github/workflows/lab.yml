@@ -53,6 +53,14 @@ permissions:
   contents: read
 jobs:
   lab:
+    # v2.3.3491: MAIN ONLY.  This job hands the Cloudflare token to code it
+    # checks out (run.mjs, tools/lab/wrangler.toml), and a run started from a
+    # branch checks out that branch -- whose wrangler.toml could just as well
+    # name brotown-server.  So the lab runs from main, and takes the token from
+    # the `production` environment, which the owner limits to main
+    # (docs/REPO-SAFETY.md).  To try a change to the lab, merge it first.
+    if: github.ref == 'refs/heads/main'
+    environment: production
     runs-on: ubuntu-latest
     # v2.3.3257: the limit test waits for its window and, if refused, past
     # midnight for the reset (run.mjs LIMIT)

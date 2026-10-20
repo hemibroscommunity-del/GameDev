@@ -7923,3 +7923,31 @@ flight goes in the function, not beside it.
 by the map's east edge (`ground`, 431 ms); `mp-bowedge`, which fails on the
 build before the rule (0 damage by the edge, 3 arrows at a snowman off the
 screen) and passes with it.
+
+## 238. "Require that check on main" (v2.3.3491)
+
+**The plausible move.** Protecting `main`, make every CI check a required
+status check, and tick "Require branches to be up to date before merging":
+nothing reaches the players unless all of CI is green on the newest main.
+
+**Why it is wrong.** Two ways, both of which stop this repo's parallel
+sessions:
+
+- **A required check that skips some PRs blocks them for ever.** GitHub waits
+  for a required check by name. Client CI (`lint-build`, `playable`) and the
+  memory check (`memory-budget`) run only when their paths change
+  (client-ci.yml, memory.yml). A PR that touches none of those paths never
+  starts them, so it waits for a check that will never come. PR #1028, a
+  documents-only change, got only Server CI's `test` and Cloudflare Pages.
+- **"Up to date before merging" makes parallel sessions queue.** Every merge
+  makes every other open PR out of date, and each must take in main and run
+  CI again before it may merge. With several sessions merging, they wait in
+  line behind each other.
+
+**The rule.** Only a check that runs on EVERY PR may be required. Today that
+is Server CI's `test`. A path-filtered workflow is made to always run (and
+pass quickly when nothing of its own changed) before it is ever required.
+Leave "up to date before merging" off. docs/REPO-SAFETY.md step 4.
+
+**Receipt:** the trigger blocks of client-ci.yml and memory.yml, and #1028's
+check runs on 2026-10-19 (`test` and Cloudflare Pages only).
