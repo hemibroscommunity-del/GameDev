@@ -507,10 +507,7 @@ remnant to migrate server-side, not a mode to preserve.
         stretch where the arrow meets the target (a player you may shoot
         too); the line ends at the bank and the arrow sticks where it shows.
         A new refusal in the hit test goes in the gate in the same change
-        (TRAPS §236). NOT changed, the owner's call: a shot's ground line
-        runs parallel to the drawn one, so an aimed shot judges props ~33 px
-        short of the target's feet; `mp-sightrock`: bow-at-props.md
-        "v2.3.3485".
+        (TRAPS §236); `mp-sightrock`: bow-at-props.md "v2.3.3485".
       - since v2.3.3489 AN ARROW COMES DOWN WHERE THE AIMING LINE SAYS -- the
         owner, offered "end the aiming line where the arrow comes down, and
         let an arrow flying along the edge keep going": "Go recommended". One
@@ -523,6 +520,21 @@ remnant to migrate server-side, not a mode to preserve.
         empty aiming line is drawn to `S._bowSight.reach`, the nearer of the
         range and the edge; `arrow-edge` suite, `mp-bowedge`: bow-at-props.md
         "v2.3.3489", TRAPS §237.
+      - since v2.3.3501 AN AIMED SHOT IS JUDGED FROM YOUR FEET TO ITS
+        TARGET'S -- the owner, offered "aimed shots judge props along the
+        line from your feet to the target's feet": "Go recommended". A shot's
+        ground line ran PARALLEL to the drawn one from your boots, so aimed at
+        a body it ended ~33 px short of the feet and to one side, and met a
+        rock the target was not behind (`mp-hitreal`'s frost magic row, every
+        bolt burst on the rock ridge's end). A shot fired AT a target carries
+        it as it leaves (projectiles.js `shotAimAt`, the gate's own rule; `gf`
+        on the wire), and its ground runs from your boots to that target's
+        feet, then on parallel (src/game/shotGround.js `shotGroundOffset`); a
+        shot at nothing, a prop or a low thing, or steered off its target,
+        keeps the parallel line; a locked bolt's aim follows its target. The
+        gate asks the rock rule once, boots to feet, and a target that passes
+        it wins over a prop the parallel line met. `shot-ground` suite,
+        `mp-groundline`: bow-at-props.md "v2.3.3501", TRAPS §239.
     - since v2.3.3230 A BUILDING YOU KEEP HITTING CATCHES FIRE -- the owner:
       "add flame effects on the building after getting hit a while in the
       location where the building is getting struck and make the flames grow
