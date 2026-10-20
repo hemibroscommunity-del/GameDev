@@ -23,7 +23,7 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const ORDER = ['woodcutting', 'fishing', 'mining', 'farming', 'trapping', 'cooking', 'smithing', 'woodworking', 'gemcutting', 'enchanting'];
+const ORDER = ['woodcutting', 'fishing', 'mining', 'farming', 'trapping', 'cooking', 'blacksmithing', 'woodworking', 'gemCutting', 'enchanting'];
 
 const openSkills = async (P) => {
   await P.page.evaluate(() => window.__broDashPanelBus.open('skills'));
@@ -122,21 +122,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const gs = await readGrid(P);
     const cols = gs ? [...new Set(gs.tiles.map((t) => t.tile && t.tile.l))].length : 0;
     let reach = 0;
+    const missed = [];
     if (gs) {
       for (const k of ORDER) {
+        /* the TILE's middle (the picture a finger aims at), what is on top there */
         const seen = await P.page.evaluate((key) => {
           const b = document.querySelector(`[data-skill="${key}"]`);
-          if (!b) return false;
+          if (!b) return { ok: false, why: 'none' };
           b.scrollIntoView({ block: 'nearest' });
-          const r = b.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+          const t = b.querySelector('[data-skill-tile]') || b;
+          const r = t.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
           const top = document.elementFromPoint(x, y);
-          return !!top && (top === b || b.contains(top));
+          const ok = !!top && (top === b || b.contains(top));
+          return { ok, why: ok ? null : (top ? `${top.tagName.toLowerCase()}.${String(top.className || '').slice(0, 40)} ${(top.textContent || '').slice(0, 30)}` : 'nothing'), x: Math.round(x), y: Math.round(y) };
         }, k);
-        if (seen) reach++;
+        if (seen.ok) reach++; else missed.push({ k, ...seen });
       }
     }
     rec.ok(`4. sideways: three across (${cols}), and every tile reachable in the column (${reach} of 10, scrolled to)`, !!gs && gs.mode === 'side' && cols === 3 && reach === 10,
-      gs && { mode: gs.mode, cols, page: gs.page, scroll: gs.scroll });
+      gs && { mode: gs.mode, cols, page: gs.page, scroll: gs.scroll, missed });
     await P.page.evaluate(() => { const g = document.querySelector('[data-skill-grid]'); if (g && g.parentElement) g.parentElement.scrollTop = 0; });
     await P.page.screenshot({ path: join(OUT, 'skillapps-side.png') }).catch(() => {});
     await closeDash(P);

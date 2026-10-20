@@ -56,7 +56,7 @@ import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
-import { trackedFirst } from '@/game/trackedQuest.js';   /* v2.3.3494: the pinned quest card shows the quest you track */
+import { trackedFirst, onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3494: the pinned quest card shows the quest you track */
 import { treeGeom, treeTrunkEllipse, treeReachBox } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree -- its box, its trunk and where you chop it from */
 import { oreGeom, oreBlockEllipse } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock -- its box and its body */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
@@ -1577,6 +1577,14 @@ export var BroTown = function BroTown(_ref0) {
     _useQuestHudFold2 = _slicedToArray(_useQuestHudFold, 2),
     questHudFolded = _useQuestHudFold2[0],
     setQuestHudFolded = _useQuestHudFold2[1];
+  /* v2.3.3494: the pinned quest card follows the quest you TRACK (the quest
+     page's Track button, game/trackedQuest.js): a change is told here, so the
+     card re-renders at once rather than at the next unrelated update */
+  var _useTrackTick = useState(0),
+    setTrackTick = _useTrackTick[1];
+  useEffect(function () {
+    return onTrackedQuest(function () { setTrackTick(function (v) { return v + 1; }); });
+  }, []);
   var _useState5 = useState(null),
     _useState6 = _slicedToArray(_useState5, 2),
     nearBuilding = _useState6[0],

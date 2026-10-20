@@ -67,6 +67,16 @@ const read = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
     ev[1]({ key: 'bt_trackedQuest', newValue: null });
     check('1f ...its own key only: tracked, untouched by another key, untracked', a === 'beast_3' && b === 'beast_3' && T.trackedQuestId() === null, { a, b });
   }
+  /* the pinned quest card re-renders when told (BroTown.jsx onTrackedQuest) */
+  const told = [];
+  const stop = T.onTrackedQuest((id) => told.push(id));
+  T.setTrackedQuest('mayor_1');
+  T.setTrackedQuest('mayor_1');   /* the same again: no news */
+  if (ev) ev[1]({ key: 'bt_trackedQuest', newValue: 'tut_2' });
+  stop();
+  T.setTrackedQuest(null);
+  check('1f2 a change is told to whoever listens -- here or from another tab -- once a change, and no more after they stop listening',
+    JSON.stringify(told) === '["mayor_1","tut_2"]' && T.trackedQuestId() === null, told);
   check('1g trackedFirst: the tracked one first, the rest in their own order; one not in the list changes nothing',
     JSON.stringify(T.trackedFirst(['a', 'b', 'c'], 'b')) === '["b","a","c"]' && JSON.stringify(T.trackedFirst(['a', 'b'], 'z')) === '["a","b"]'
       && JSON.stringify(T.trackedFirst([{ qid: 'x' }, { qid: 'y' }], 'y').map((e) => e.qid)) === '["y","x"]' && T.trackedFirst(null, 'a').length === 0);
@@ -277,7 +287,9 @@ const geomFor = (size) => {
   const qm = read('../../src/ui/mobile/sheet/questModel.js');
   check('7c the quest page and list keep their two calls, from the one module', /export \{ trackedQuestId, setTrackedQuest \} from '\.\.\/\.\.\/\.\.\/game\/trackedQuest\.js'/.test(qm) && !/localStorage/.test(qm.split('export { trackedQuestId')[0].slice(-400)));
   const bt = read('../../src/ui/BroTown.jsx');
-  check('7d the pinned quest card shows the tracked quest (BroTown.jsx)', /import \{ trackedFirst \} from '@\/game\/trackedQuest\.js'/.test(bt) && /activeQuests = trackedFirst\(activeQuests\.map/.test(bt));
+  check('7d the pinned quest card shows the tracked quest, and re-renders the moment it changes (BroTown.jsx)',
+    /import \{ trackedFirst, onTrackedQuest \} from '@\/game\/trackedQuest\.js'/.test(bt) && /activeQuests = trackedFirst\(activeQuests\.map/.test(bt)
+      && /return onTrackedQuest\(function \(\) \{ setTrackTick\(/.test(bt));
   const mm = read('../../src/rendering/systems/wheelMinimap.js'), wm = read('../../src/ui/WorldMapOverlay.jsx');
   check('7e the minimap\'s star and the world map\'s road say whose road it is (their probes)', /qid: quest\.qid \|\| null, way: quest\.way \|\| null/.test(mm) && /qid: quest\.qid \|\| null, way: quest\.way \|\| null/.test(wm));
   const gs = read('../../src/data/gameSystems.js');

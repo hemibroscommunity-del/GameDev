@@ -23,6 +23,11 @@ export const TRACK_KEY = 'bt_trackedQuest';
 
 let _read = false;
 let _id = null;
+/* who wants to hear a change (the pinned quest card: BroTown re-renders it) */
+const _subs = new Set();
+function _tell() {
+  for (const fn of _subs) { try { fn(_id); } catch (e) { /* a reader's own trouble */ } }
+}
 
 function _storage() {
   try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch (e) { return null; }
@@ -32,7 +37,7 @@ function _listen() {
   try {
     if (typeof window === 'undefined' || !window.addEventListener) return;
     window.addEventListener('storage', (e) => {
-      if (e && e.key === TRACK_KEY) _id = (typeof e.newValue === 'string' && e.newValue) ? e.newValue : null;
+      if (e && e.key === TRACK_KEY) { _id = (typeof e.newValue === 'string' && e.newValue) ? e.newValue : null; _tell(); }
     });
   } catch (e) { /* no window: nothing to hear */ }
 }
@@ -50,14 +55,28 @@ export function trackedQuestId() {
 
 /** Track a quest (an id), or nothing (null). */
 export function setTrackedQuest(id) {
-  _read = true;
+  if (!_read) trackedQuestId();   /* the storage listener, once */
+  const was = _id;
   _id = (typeof id === 'string' && id) ? id : null;
   const ls = _storage();
   try {
-    if (!ls) return;
-    if (_id) ls.setItem(TRACK_KEY, _id);
-    else ls.removeItem(TRACK_KEY);
+    if (ls) {
+      if (_id) ls.setItem(TRACK_KEY, _id);
+      else ls.removeItem(TRACK_KEY);
+    }
   } catch (e) { /* private mode: kept for this page */ }
+  if (_id !== was) _tell();
+}
+
+/** Hear every change of the tracked quest (here or in another tab); returns
+    the function that stops listening.  The minimap and the world map ask
+    every frame and need no telling; the pinned quest card is React, and
+    re-renders only when told. */
+export function onTrackedQuest(fn) {
+  if (typeof fn !== 'function') return () => {};
+  trackedQuestId();
+  _subs.add(fn);
+  return () => { _subs.delete(fn); };
 }
 
 /** Ids with the tracked one first (when it is among them), the rest in their
