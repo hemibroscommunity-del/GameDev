@@ -28,6 +28,9 @@
  * per level (GDD's +5 ÷ 4.8 code scale).  Failure resets hardness by
  * the TEMPER pity band (checked on the temper BEFORE this failure):
  * 0-19 → reset to 0 · 20-49 → -2 · 50-99 → -1 · 100+ → no reset.
+ * (v2.3.3529: a failure KEEPS the level now -- the owner: "if you complete
+ * hardening 2 the worst that can happen is you just stay at hardening 2 and
+ * lose resources"; the band only with `hardenkeep: false`, _hardenKeepOff.)
  * Temper +1 per fail, 0 on success.  Blacksmith skill gates ACCESS
  * (max hardenable tier index = floor(skill/5)), never odds.
  * (v2.3.3524: the access gate is the level that MAKES the weapon's tier --
@@ -195,6 +198,15 @@ export const hardeningMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'hardenwoodskill') && !f.hardenwoodskill);
   },
 
+  /* v2.3.3529: `hardenkeep: false` in liveflags brings back the temper pity
+     band (a failure drops the weapon back, to H0 for its first 19 failures in
+     a row) and un-advertises caps.hardenkeep, so the game's windows say so
+     again (see _handleHardenWeapon). */
+  _hardenKeepOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'hardenkeep') && !f.hardenkeep);
+  },
+
   _hardenSend(playerId, payload) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
@@ -270,6 +282,16 @@ export const hardeningMethods = {
     if (success) {
       w.hardness = hardness + 1;
       w.temper = 0;
+    } else if (!this._hardenKeepOff()) {
+      /* v2.3.3529: A FAILURE KEEPS THE LEVEL -- the owner: "after a
+         successful harden completes you don't revert back to a hardening
+         level prior.. so if you complete hardening 2 the worst that can happen
+         is you just stay at hardening 2 and lose resources".  The gold and
+         the material are already taken above; the weapon stays as it was.
+         Temper still counts the failures in a row, for the kill switch's band
+         and the ledger; nothing else reads it. */
+      w.hardness = hardness;
+      w.temper = temperBefore + 1;
     } else {
       // Pity band uses the temper BEFORE this failure.
       if (temperBefore < 20) w.hardness = 0;

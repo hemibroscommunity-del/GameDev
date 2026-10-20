@@ -456,7 +456,11 @@ function UpgradeTab({ S, R, coins, lvl, caps, ask, busy }) {
         {!maxed && hc.material && <span data-harden-mat={hc.material} style={{ display: 'contents' }}><Cost icon={thumbFor(hc.material)} have={haveMats} need={hc.amount} /></span>}
         {!maxed && <Cost icon={COIN} have={coins} need={cost} />}
         {!maxed && <Chip color={H_ODDS[h] >= 20 ? C.good : '#E5B36A'}>{H_ODDS[h]}%</Chip>}
-        {!maxed && h > 0 && <Chip color={C.mute}>Fail → H0</Chip>}
+        {/* v2.3.3529: against caps.hardenkeep a failure keeps the level, the
+            gold and bars still spent (the owner: "the worst that can happen is
+            you just stay at hardening 2 and lose resources"); an older worker
+            still drops it back, to H0 for its first 19 failures in a row */}
+        {!maxed && h > 0 && <Chip color={C.mute}>{(S._serverCaps && S._serverCaps.hardenkeep) ? 'Fail keeps H' + h : 'Fail → H0'}</Chip>}
       </Row>,
     );
   }
