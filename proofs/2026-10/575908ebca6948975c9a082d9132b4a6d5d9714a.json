@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "575908ebca6948975c9a082d9132b4a6d5d9714a",
+  "tree": "c4b17f4a1b4d9949d47762f2b2de3c0a7d07cb08",
+  "committedAt": "2026-10-19T21:15:27-07:00",
+  "subject": "A plan for shards becoming gems and gems going into weapons: crack a shard, combine raw gems (v2.3.3504) (#1032)",
+  "files": 6092,
+  "bytes": 711719699,
+  "listingSha256": "6d490eb8d5ccfed7222a6da078b8bcd673859c56074d0c928b8024986c3e5285",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
