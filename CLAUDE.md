@@ -3095,6 +3095,16 @@ remnant to migrate server-side, not a mode to preserve.
       material) and `caps.hardenedwood` (`hardenedwood: false`: no making, and
       bows and staffs back on gold alone); `hardening` §8b/§8c, `hardenedwood`
       suite, `mp-hardenbars`: docs/specs/hardening.md, hardened-wood.md.
+    - since v2.3.3529 A FAILED HARDENING KEEPS ITS LEVEL -- the owner: "if you
+      complete hardening 2 the worst that can happen is you just stay at
+      hardening 2 and lose resources": the gold and the bars or hardened wood
+      are still taken, the weapon stays as it was (hardening.js
+      `_handleHardenWeapon`); the temper pity band (to H0 for the first 19
+      failures in a row) only with the kill switch `hardenkeep: false`; the
+      Upgrade tab, the Woodworker's line and the failure's words say "keep"
+      against `caps.hardenkeep`; on average H5 now takes 326 attempts, ~2
+      million gold and ~1,471 bars (was ~4.3 million attempts); `hardening`
+      §6: docs/specs/hardening.md "v2.3.3529: a failure keeps the level".
   - Since v2.3.3140 DAILY REWARDS, NOTHING AT LOGIN -- the owner's layered
     brief ("a small reward just for logging in, daily quests ... feeding a
     longer progression track"), then: "I find the login page with the chest

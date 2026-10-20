@@ -81,6 +81,9 @@ hardened wood, and gold that doubles" below.
 - **Failure resets hardness by the Temper pity band** (evaluated on
   the temper BEFORE this failure): 0–19 → reset to 0 · 20–49 → −2 ·
   50–99 → −1 · 100+ → no reset. Temper +1 per fail, 0 on success.
+  **Since v2.3.3529 a failure KEEPS the level** and the band applies only
+  with the `hardenkeep: false` kill switch: "v2.3.3529: a failure keeps the
+  level" below.
 - **The crafting skill gates ACCESS, never odds**: max hardenable
   material tier index = `floor(skill / 5)` (tier index =
   position in the BLACKSMITH/WOODWORKING tier tables; legacy weapons
@@ -252,3 +255,63 @@ takes its metal's bars, and only a weapon with no type at all (a legacy blob)
 still goes by its slot. For every weapon the game's own screens can seat, the
 answer is the one the slot gave. No price, odd or rule changed.
 `hardening.test.mjs` §8b: three new checks (two fail on main).
+
+## v2.3.3529: a failure keeps the level
+
+The owner: "after a successful harden completes you don't revert back to a
+hardening level prior.. so if you complete hardening 2 the worst that can
+happen is you just stay at hardening 2 and lose resources."
+
+Before this, a failed attempt dropped the weapon back by the Temper pity band.
+Temper counts the failures since the last success and is 0 right after one, so
+nearly every failure sent the weapon all the way back to H0. The Upgrade tab
+said so: "Fail → H0".
+
+**Now.** A failed attempt leaves the weapon at the level it had
+(`hardening.js` `_handleHardenWeapon`):
+
+- the gold and the bars or hardened wood are still taken, as on any attempt;
+- the odds, the gold ladder and the materials are unchanged;
+- Temper still counts the failures in a row (the ledger records it, and the
+  kill switch's band reads it), but nothing else uses it.
+
+**What it costs now.** To reach each level starting from H0, on average:
+
+| Reach | Before (the pity band, about) | Now |
+|---|---|---|
+| H1 | 1.25 attempts, 625 gold, 1 material | the same |
+| H2 | 11 attempts, 7,800 gold, 16 material | 6.25 attempts, 5,625 gold, 11 material |
+| H3 | 214 attempts, 177,000 gold, 336 material | 26 attempts, 45,625 gold, 71 material |
+| H4 | ~21,000 attempts, ~18 million gold | 126 attempts, 445,625 gold, 471 material |
+| H5 | ~4.3 million attempts, ~3.6 billion gold | 326 attempts, 2,045,625 gold, 1,471 material |
+
+The "Before" column for H1 to H3 is simulated with the band (2026-10-20). For
+H4 and H5 it is worked out as "every failure goes back to H0", which the band
+softens only slightly. "Material" means bars for a sword, or hardened wood for
+a bow or staff (five logs each).
+
+H5 goes from all but impossible to a long, costly grind. The owner once called
+it "almost impossibly hard". If it should stay rarer, the levers are the odds
+at H3 to H5 (`HARDEN.ODDS`) or the cost of an attempt, not the reset.
+
+**The game says so** against `caps.hardenkeep`; an older worker keeps the old
+words:
+
+- the Blacksmith's Upgrade tab shows "Fail keeps H2" where it said "Fail → H0";
+- the Woodworker's Harden line says "Fail keeps H2" where it said "Fail resets
+  hardness (Temper N softens it)";
+- a failed attempt's words are "Hardening failed! (-2000G, -3 Copper Bars)"
+  and "You keep H2", with no temper line.
+
+**Kill switch.** `hardenkeep: false` in the live flags brings the pity band
+back and un-advertises `caps.hardenkeep`, so the windows say the old rule again.
+
+**Tests.** `hardening.test.mjs` §6:
+
+- at temper 0, 5, 25 and 55 a failure keeps H3;
+- the owner's own case: a failure at H2 stays H2 and still takes the 2,000
+  gold and 3 bars;
+- under `hardenkeep: false`, the four bands as before and the cap off.
+
+§8b's iron blade and §8c's pine bow now keep H1 after their failure (both had
+counted on dropping to H0).

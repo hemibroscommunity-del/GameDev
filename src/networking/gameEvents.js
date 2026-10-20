@@ -4949,8 +4949,18 @@ export function processGameEvent(type, payload, S, deps) {
                 var _hBars = payload.amount > 0 && typeof payload.material === 'string'
                   ? ', -' + hardenMaterialWord(payload.material, payload.amount)
                   : '';
-                pushDmgPopup(S, S.player.x, S.player.y - 45, 'Hardening failed! (-' + (payload.cost || 0) + 'G' + _hBars + ') → H' + payload.hardness, '#ff5e6c');
-                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Temper ' + (payload.temper || 0) + ' (pity softens future resets)', 'rgba(255,255,255,.5)');
+                /* v2.3.3529: against caps.hardenkeep a failure KEEPS the
+                   level (the owner: "the worst that can happen is you just
+                   stay at hardening 2 and lose resources"): the words say what
+                   was spent and that the level held, and no longer speak of
+                   temper or resets; an older worker still drops it back */
+                if (S._serverCaps && S._serverCaps.hardenkeep) {
+                  pushDmgPopup(S, S.player.x, S.player.y - 45, 'Hardening failed! (-' + (payload.cost || 0) + 'G' + _hBars + ')', '#ff5e6c');
+                  pushDmgPopup(S, S.player.x, S.player.y - 30, 'You keep H' + payload.hardness, 'rgba(255,255,255,.5)');
+                } else {
+                  pushDmgPopup(S, S.player.x, S.player.y - 45, 'Hardening failed! (-' + (payload.cost || 0) + 'G' + _hBars + ') → H' + payload.hardness, '#ff5e6c');
+                  pushDmgPopup(S, S.player.x, S.player.y - 30, 'Temper ' + (payload.temper || 0) + ' (pity softens future resets)', 'rgba(255,255,255,.5)');
+                }
                 cue('hardenFail');   /* v2.3.3343: a dull strike and the loss sting (a beep(), silent) */
               }
               if (S.rpg) setRpgState(_objectSpread({}, S.rpg));
