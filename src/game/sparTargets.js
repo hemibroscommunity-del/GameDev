@@ -38,8 +38,9 @@
  * In No man's land your weapons tried a real player only while you were
  * LOCKED on them (the window's Attack aims: nmlAsk.js nmlAim).  Tap a monster
  * or the ground and the lock went, and with it every hit on them.  Now Attack
- * is a choice that LASTS: nmlAim -- the window's Attack, or a tap on the one
- * who attacked you, which needs no window -- records the player as a FOE
+ * is a choice that LASTS: nmlAim -- the window's Attack (v2.3.3528: for the
+ * one who attacked you too, whose tap needed no window before) -- records the
+ * player as a FOE
  * (`chooseFoe`), and to your weapons a foe is what a clone is: the sword's
  * automatic target takes the nearest one as it takes the nearest monster, the
  * bow looses when one is on its line, an arrow or a bolt that reaches one hits
@@ -135,7 +136,11 @@ function peerOf(S, key) {
 
 /** A blow between you and another player, either way -- yours on them, theirs
  *  on you, blocked or dodged too (gameEvents.js, pvp_hit).  It keeps the fight
- *  with them on.  A Map (an id off the wire), kept short. */
+ *  with them on.  A Map (an id off the wire), kept short.
+ *  v2.3.3528: and a blow with none in the FIGHT_QUIET_MS before it starts a
+ *  new BOUT with them (`pvpBoutAt`): No man's land's window asks again about
+ *  a player whose new bout of attacking you began after your last answer
+ *  about them (nmlAsk.js nmlAttackedSince). */
 export function notePvpBlow(S, payload, now) {
   if (!S || !payload || S.myId == null) return false;
   const me = String(S.myId);
@@ -143,9 +148,15 @@ export function notePvpBlow(S, payload, now) {
   const t = payload.target != null ? String(payload.target) : null;
   const other = a === me ? t : (t === me ? a : null);
   if (other == null || other === me) return false;
+  const at = typeof now === 'number' ? now : Date.now();
   if (!(S._pvpBlows instanceof Map)) S._pvpBlows = new Map();
+  if (!(at - blowAt(S, other) < FIGHT_QUIET_MS)) {
+    if (!(S._pvpBouts instanceof Map)) S._pvpBouts = new Map();
+    if (S._pvpBouts.size >= 32 && !S._pvpBouts.has(other)) S._pvpBouts.clear();
+    S._pvpBouts.set(other, at);
+  }
   if (S._pvpBlows.size >= 32 && !S._pvpBlows.has(other)) S._pvpBlows.clear();
-  S._pvpBlows.set(other, typeof now === 'number' ? now : Date.now());
+  S._pvpBlows.set(other, at);
   return true;
 }
 
@@ -154,8 +165,16 @@ function blowAt(S, key) {
   return (m instanceof Map && m.get(key)) || 0;
 }
 
-/** You chose to attack `id`: the window's Attack, or hitting back the one who
- *  attacked you (nmlAsk.js nmlAim).  A Map (an id off the wire), kept short. */
+/** v2.3.3528: when the bout between you and `id` began -- the first blow
+ *  either way after FIGHT_QUIET_MS with none (notePvpBlow) -- or 0. */
+export function pvpBoutAt(S, id) {
+  const m = S && S._pvpBouts;
+  return (m instanceof Map && id != null && m.get(String(id))) || 0;
+}
+
+/** You chose to attack `id`: the window's Attack -- to attack them, or since
+ *  v2.3.3528 to hit back the one who attacked you (nmlAsk.js nmlAim).  A Map
+ *  (an id off the wire), kept short. */
 export function chooseFoe(S, id, now) {
   if (!S || id == null) return;
   if (!(S._nmlFoes instanceof Map)) S._nmlFoes = new Map();
@@ -214,9 +233,9 @@ export function liveFighters(S) {
 /** The players you are fighting NOW: a blow between you within FIGHT_QUIET_MS
  *  (the one who hit you, or the one you hit), drawn, up, and No man's land
  *  still letting the two of you fight -- as { id, o, x, y }.  Not targets of
- *  yours unless you chose them (a foe: the window's Attack, or a tap on the
- *  one who attacked you, which aims at once), but the fight with them is on:
- *  the shield is wanted. */
+ *  yours unless you chose them (a foe: the window's Attack -- v2.3.3528: for
+ *  the one who attacked you too), but the fight with them is on: the shield
+ *  is wanted. */
 export function fightingNow(S, now) {
   const out = [];
   const m = S && S._pvpBlows;

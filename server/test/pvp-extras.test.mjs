@@ -6,6 +6,9 @@
  *   1. who an area move may hit: the players you are already fighting (a duel,
  *      a trade of blows in the last ENGAGE_MS), never a bystander; a NAMED
  *      target only needs the fight to be allowed;
+ *  1b. v2.3.3528: WHICH WAY -- a blow YOU landed, not one landed on you: the
+ *      one attacked does not catch the attacker in an area move before their
+ *      own first blow (the kill switch `areachoice: false` is either way);
  *   2. the weapon's element on a player -- the claim's, read where a hit on a
  *      monster reads it, the monster table's own durations and ticks: burn,
  *      root (held by the slime's rule), freeze (dazed by the rock's rule),
@@ -153,6 +156,71 @@ function monster(id, x, y, level) {
   room._liveFlags = { pvpextras: false };
   check('pvpextras: false -- no player in any circle', near(0, 0, 5000).length === 0);
   room._liveFlags = {};
+}
+
+// ── 1b. v2.3.3528: WHICH WAY -- an area move reaches a player its caster struck ──
+/* The owner: "keep the behavior of needing to confirm the "attack" button
+   that pops up in the window first before any damage is registered to either
+   player in the wilderness".  Being struck is not choosing to fight: the one
+   attacked must not catch the attacker in a whirlwind (a burst, a splash, a
+   blast) before their own first blow -- which the game sends only after its
+   window's Attack (src/game/nmlAsk.js "Hit back <name>?"). */
+{
+  resetAll(); T += 10000;
+  const near = (who, x, y, r) => room._pvpAreaPlayers(IDS[who], P[who], x, y, r, T).map((p) => p.pid);
+  const realAllowed = room._pvpAllowed;
+  room._pvpAllowed = () => true;   /* No man's land: allowed, nobody consented */
+  P.C.x = 50;
+  room._notePvpEngage(IDS.C, IDS.A, T);   /* C struck A */
+  check('1b. C struck A: C is fighting A (its area moves reach A)', near('C', 50, 0, 100).includes(IDS.A));
+  check('1b. ...but A, who was only struck, is NOT fighting C: its area moves pass C by', !near('A', 0, 0, 100).includes(IDS.C), near('A', 0, 0, 100));
+  room._notePvpEngage(IDS.A, IDS.C, T + 1);   /* A strikes back */
+  check('1b. ...until A lands a blow on C: then both are', near('A', 0, 0, 100).includes(IDS.C) && near('C', 50, 0, 100).includes(IDS.A));
+  T += PVP_EXTRAS.ENGAGE_MS + 2;
+  check('1b. ...and ENGAGE_MS after the last blow neither is', !near('A', 0, 0, 100).includes(IDS.C) && !near('C', 50, 0, 100).includes(IDS.A));
+  /* the pair keyed either way round: the lower id first (_pvpPairKey) */
+  room._notePvpEngage(IDS.A, IDS.C, T);
+  check('1b. the direction holds whichever id sorts first (A struck C: A fights C, C not A)',
+    near('A', 0, 0, 100).includes(IDS.C) && !near('C', 50, 0, 100).includes(IDS.A));
+  /* the kill switch: either way, as before */
+  T += PVP_EXTRAS.ENGAGE_MS + 2;
+  room._notePvpEngage(IDS.C, IDS.A, T);
+  room._liveFlags = { areachoice: false };
+  check('1b. areachoice: false -- a blow either way, as before v2.3.3528 (C struck A: A fights C)', near('A', 0, 0, 100).includes(IDS.C));
+  room._liveFlags = {};
+  check('1b. ...and back on, the struck one is not fighting again', !near('A', 0, 0, 100).includes(IDS.C));
+
+  /* end to end: C's real sword claim lands on A, then A whirls */
+  const whirl = () => {
+    P.A._abilCd = null; P.A.stamina = P.A.maxStamina;
+    room._handleAbility(sess('A'), { kind: 'whirl' }); T += STAM_ABILITIES.whirl.windupMs;
+    room.eventBuffer.length = 0; room._tickAbilityWindups(T);
+    return hitsOn('C').length;
+  };
+  resetAll(); P.B.x = 9000; P.C.x = 60; T += 10000;
+  room._pvpAllowed = () => true;
+  room._pvpHitLanes = new Map(); T += 300; room.eventBuffer.length = 0;
+  room._resolvePvPAttack(sess('C'), { range: 900, arc: 3, angle: Math.PI, target: IDS.A, kind: 'melee', sw: ++swN });
+  const cHit = hitsOn('A').length;
+  const struckOnly = whirl();
+  room._pvpHitLanes = new Map(); T += 300; room.eventBuffer.length = 0;
+  room._resolvePvPAttack(sess('A'), { range: 900, arc: 3, angle: 0, target: IDS.C, kind: 'melee', sw: ++swN });
+  const aHit = hitsOn('C').length;
+  const afterOwn = whirl();
+  check(`1b. C's claim lands on A (${cHit}); A's whirlwind then passes C by (${struckOnly} hits) -- A never struck C`,
+    cHit === 1 && struckOnly === 0, { cHit, struckOnly });
+  check(`1b. ...A's own blow on C lands (${aHit}), and then A's whirlwind catches C (${afterOwn})`,
+    aHit === 1 && afterOwn === 1, { aHit, afterOwn });
+  /* the mutation: the old rule (either way) would have hit C on the first whirl */
+  resetAll(); P.B.x = 9000; P.C.x = 60; T += 10000;
+  room._pvpAllowed = () => true;
+  room._pvpHitLanes = new Map(); T += 300; room.eventBuffer.length = 0;
+  room._resolvePvPAttack(sess('C'), { range: 900, arc: 3, angle: Math.PI, target: IDS.A, kind: 'melee', sw: ++swN });
+  room._liveFlags = { areachoice: false };
+  const oldRule = whirl();
+  room._liveFlags = {};
+  check(`mutation: with the old either-way rule the struck one's whirlwind catches the attacker (${oldRule}) -- the check above catches it`, oldRule === 1, { oldRule });
+  room._pvpAllowed = realAllowed;
 }
 
 // ── 2. the weapon's element on a player ──

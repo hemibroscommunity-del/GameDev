@@ -18,7 +18,9 @@
  *     become player_attack; the worker decides every one of them.  Since
  *     v2.3.3253 the tap ASKS first, in a small window, and so does a stray
  *     shot through them, once (game/nmlAsk.js): Attack aims, Party invites,
- *     Ignore lets it go; the one who attacked you is still aimed at by a tap.
+ *     Ignore lets it go.  Since v2.3.3528 the one who attacked you is asked
+ *     about too ("Hit back <name>?"): the window's Attack comes before any
+ *     blow, from either player.
  *   - THE SKULLS: others' from the tick (`sk`), yours from `nml_skull`, both
  *     into the anchors the threat skull already draws from (entityRenderer).
  *   - A DEATH THERE: `nml_loss` -- clear from your own bag what the worker
@@ -154,8 +156,9 @@ export function applyNmlSkull(S, payload) {
   const now = Date.now();
   const wasRed = S._pvpSkullType === 'red';
   const wasWhite = S._pvpSkullType === 'white';
-  /* v2.3.3253: `by`, who gave you the white skull -- a tap on them is hitting
-     back, and aims at once (nmlAsk.js nmlHitBack) */
+  /* v2.3.3253: `by`, who gave you the white skull -- a hit on them is hitting
+     back (nmlAsk.js nmlHitBack), which the window says ("Hit back <name>?",
+     v2.3.3528; it aimed at once with no window before) */
   const by = white > 0 && typeof payload.by === 'string' && payload.by.length <= 64 ? payload.by : null;
   S._nmlSelf = { red, white, by, at: now };
   if (red > 0) { S._pvpSkullType = 'red'; S._pvpSkullUntil = now + red; }

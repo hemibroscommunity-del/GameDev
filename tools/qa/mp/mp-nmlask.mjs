@@ -31,8 +31,14 @@
  *   6. a tap, then Attack: the raider AIMS (the `nml` lock, "TARGET"), a
  *      swing lands, and the red skull comes with it; the wanderer's game is
  *      told who gave its white skull (nml_skull `by`);
- *   7. HITTING BACK is one tap: the wanderer taps the raider -- no window,
- *      aimed at once -- and its swing lands with no red skull;
+ *   7. (v2.3.3528) HITTING BACK GOES THROUGH THE WINDOW TOO -- the owner:
+ *      "keep the behavior of needing to confirm the "attack" button that pops
+ *      up in the window first before any damage is registered to either
+ *      player".  The wanderer, attacked, swings back with nothing locked (it
+ *      pressed Ignore on the raider in 5b: the raider's attack is a new
+ *      question): "Hit back Raider?" with the WHITE skull, the swing doing
+ *      nothing until it is answered; Attack chooses the raider, and with the
+ *      lock let go the swings land, no red skull;
  *   8. a window left alone goes by itself (the QA handle's setMs), and one
  *      whose player walks out of No man's land goes at once;
  *   9. held SIDEWAYS (844 x 390) the window sits beside the minimap, inside
@@ -159,6 +165,9 @@ const readAsk = (P) => P.page.evaluate(() => {
       name: ((el.querySelector('[data-nml-ask-name]') || {}).textContent || '').trim(),
       l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), b: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height),
       skull: !!el.querySelector('[data-nml-ask-info] svg'), info: !!el.querySelector('[data-nml-ask-info]'),
+      /* v2.3.3528: hitting back -- the attribute, and the skull's own colour */
+      back: el.getAttribute('data-nml-ask-back') === '1',
+      fill: ((el.querySelector('[data-nml-ask-info] svg path') || { getAttribute: () => null }).getAttribute('fill') || '').toUpperCase(),
       btns: Array.from(el.querySelectorAll('button')).filter((b) => !b.hasAttribute('data-nml-ask-info'))
         .map((b) => { const q = b.getBoundingClientRect(); return { t: b.textContent.trim(), w: Math.round(q.width), h: Math.round(q.height), top: Math.round(q.top), bottom: Math.round(q.bottom) }; }),
     } : null,
@@ -599,25 +608,48 @@ export async function run({ browser, wsPort, webPort, rec }) {
     sk6B.mine === 'white' && sk6B.by === idA, sk6B);
   await shot(A, '6-attack');
 
-  /* ── 7. hitting back is one tap ── */
+  /* ── 7. v2.3.3528: hitting back goes through the window too ── */
   const eqB = await H.equipWeapon(B, 'greatsword', 'weapon', 'melee');
   await B.page.waitForTimeout(1500);
   await closeIn(B, wsPort, idB, idA, 34);
-  await clickPeer(B, idA);
-  const b7 = await readAsk(B);
-  rec.ok('7. the wanderer taps the raider who attacked them: no window, aimed at once',
-    eqB.ok && !b7.dom && !b7.cur && !!b7.lock && b7.lock.id === idA && b7.lock.nml, { eqB, b7 });
+  /* the wanderer pressed Ignore on the raider in 5b, before the raider's
+     attack (step 6): that attack is a new question, so its swing asks */
   const hp7a = await hpA();
-  let hp7b = hp7a;
+  let h7 = null, b7 = null;
+  for (let i = 0; i < 3 && !(b7 && b7.dom); i++) {
+    await closeIn(B, wsPort, idB, idA, 34);
+    h7 = await holdAt(B, idA, 5000, true);
+    b7 = await waitAsk(B, (v) => !!v.dom, 3000);
+  }
+  const hp7a2 = await hpA();
+  console.log('    hit back: ' + JSON.stringify({ eqB, h7, b7: b7 && b7.dom }));
+  rec.ok(`7. the wanderer, attacked, swings back at the raider with nothing locked: the window asks first -- "${b7 && b7.dom && b7.dom.name}" (why: ${b7 && b7.dom && b7.dom.why})`,
+    eqB.ok && !!b7 && !!b7.dom && b7.dom.why === 'swing' && b7.dom.id === idA && b7.dom.name === 'Hit back Raider?' && b7.dom.back,
+    { eqB, h7, b7: b7 && b7.dom });
+  rec.ok(`7. ...with the WHITE skull it carries (${b7 && b7.dom && b7.dom.fill}), not the red one: hitting back gives no red skull`,
+    !!b7 && !!b7.dom && b7.dom.skull && b7.dom.fill === '#F2F2F2' && b7.dom.btns.map((b) => b.t).join('|') === 'Attack|Party|Ignore', b7 && b7.dom);
+  rec.ok(`7. ...and until it is answered the swing does the raider nothing: no player_attack sent (${h7 && h7.attacks}), the HP unchanged (${hp7a} -> ${hp7a2})`,
+    !!h7 && h7.attacks === 0 && typeof hp7a === 'number' && hp7a2 === hp7a, { h7, hp7a, hp7a2 });
+  await shot(B, '7-hitback');
+  await tapAsk(B, 'attack', true);
+  await B.page.waitForTimeout(600);
+  const b7b = await readAsk(B);
+  const foe7 = await B.page.evaluate((aid) => { const S = window._gameState.current; return S._nmlFoes instanceof Map && S._nmlFoes.has(aid); }, idA);
+  rec.ok('7. its Attack (a real click) chooses the raider: aimed, and a foe of the wanderer\'s, the window gone',
+    !b7b.dom && !!b7b.lock && b7b.lock.id === idA && b7b.lock.nml && foe7, { b7b, foe7 });
+  /* the lock let go (holdAt starts with none): the choice lasts, and the
+     swings land on the raider anyway */
+  let hp7b = hp7a, w7 = 0;
   for (let i = 0; i < 8 && !(hp7b < hp7a); i++) {
     await closeIn(B, wsPort, idB, idA, 34);
-    await clickPeer(B, idA, 220);
+    const h = await holdAt(B, idA, 1500, false);
+    w7 += h.attacks;
     hp7b = await hpA();
   }
   await B.page.waitForTimeout(1500);
-  const sk7B = await H.readState(B, (S) => ({ mine: S._pvpSkullType || null, red: (S._nmlSelf && S._nmlSelf.red) || 0 }));
-  rec.ok(`7. ...the wanderer's swing lands (the raider's HP ${hp7a} -> ${hp7b}) and gives them no red skull (${sk7B.mine})`,
-    typeof hp7a === 'number' && hp7b < hp7a && sk7B.mine === 'white' && !sk7B.red, { hp7a, hp7b, sk7B });
+  const sk7B = await H.readState(B, (S) => ({ mine: S._pvpSkullType || null, red: (S._nmlSelf && S._nmlSelf.red) || 0, lock: S.lockedTarget ? (S.lockedTarget.src || 'tap') : null }));
+  rec.ok(`7. ...with the lock let go the wanderer's swings land (${w7} claims, the raider's HP ${hp7a} -> ${hp7b}) and give them no red skull (${sk7B.mine})`,
+    typeof hp7a === 'number' && hp7b < hp7a && w7 >= 1 && sk7B.mine === 'white' && !sk7B.red, { hp7a, hp7b, w7, sk7B });
 
   /* ── 8. a window goes by itself ── */
   /* v2.3.3268: the raider CHOSE the wanderer in step 6, and while that fight

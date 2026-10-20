@@ -392,7 +392,7 @@ import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land over the band's middle */
 import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
-import { nmlAsk, nmlAskOn, nmlAim, nmlHitBack } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first */
+import { nmlAsk, nmlAskOn, nmlAim } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first; v2.3.3528: about the one who attacked you too */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
 import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
@@ -10327,7 +10327,7 @@ export var BroTown = function BroTown(_ref0) {
        such a player under the finger -- inside the world tap's own 25 px of
        them, and nearer them than your own body -- takes the tap: it is
        forwarded to the world, whose player branch raises the window (or aims,
-       hitting back).  Only there, and only for a player the rule lets you
+       at a player you already chose; v2.3.3528: hitting back asks too).  Only there, and only for a player the rule lets you
        fight: everywhere else your own circle still opens chat. */
     /* v2.3.3265: ...and one of your sparring clones (game/spar.js), anywhere:
        at a sword's reach a tap on it aimed nowhere and opened your chat */
@@ -12610,16 +12610,24 @@ export var BroTown = function BroTown(_ref0) {
                  and the first hit a red skull.  It now raises the small
                  window (ui/mobile/NmlAskCard.jsx): Attack aims exactly as
                  this tap did (nmlAim: the `nml` lock and "TARGET"), Party
-                 invites, Ignore lets it go.  Except the one who attacked you
-                 (nml_skull's `by`, and you carry no red skull): hitting them
-                 back gives no red skull, so the tap aims at once, as before.
+                 invites, Ignore lets it go.
                  ?nmlask=0, or a worker without No man's land, aims as before.
                  v2.3.3268: and a player you already chose to attack, while the
                  fight with them lasts (sparTargets.js isLiveFoe): the choice
                  was made, so the tap aims at once -- a window in the middle
-                 of that fight would cost it. */
+                 of that fight would cost it.
+                 ═══ v2.3.3528: THE ONE WHO ATTACKED YOU IS ASKED ABOUT TOO ═══
+                 The owner: "keep the behavior of needing to confirm the
+                 "attack" button that pops up in the window first before any
+                 damage is registered to either player in the wilderness".
+                 A tap on the player who gave you your white skull aimed at
+                 once, with no window (v2.3.3253's "hitting back is one tap"),
+                 so the one being attacked fought back without ever choosing.
+                 It asks now, as for anyone -- the window saying "Hit back",
+                 with the white skull, as hitting them back gives you no red
+                 one (game/nmlAsk.js) -- and its Attack chooses them. */
               var _nmlAsked = false;
-              try { _nmlAsked = nmlAskOn(S) && !nmlHitBack(S, id) && !isLiveFoe(S, id) && nmlAsk(S, id, 'tap'); } catch (e) { _nmlAsked = false; }
+              try { _nmlAsked = nmlAskOn(S) && !isLiveFoe(S, id) && nmlAsk(S, id, 'tap'); } catch (e) { _nmlAsked = false; }
               if (!_nmlAsked) nmlAim(S, id);
             }
             return;

@@ -44,7 +44,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armou
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */, shotGroundDy /* v2.3.3206: a shot's ground is under the boots */ } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
-import { firstSightHit, shotLowAim, lowAimAlong, arrowSureReachPast, shotAimAt } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at */
+import { firstSightHit, shotLowAim, lowAimAlong, arrowSureReachPast, shotAimAt, nmlSightAsk } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at; v2.3.3528: + No man's land's ask on an empty line */
 import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player a shot is aimed at, for the others' screens */
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -1520,13 +1520,17 @@ export function updateMonsterCombat(S, deps) {
                tested.  The props were already held to it (`ground.len`). */
             var _bsRange = BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1) * depthK(S.currentZone, P.y);
             var _bsRoom = _viewEdgeDist(S, _bsX, _bsY, _bsA);
+            /* v2.3.3528: the length and the ground the gate tests, named once
+               for the No man's land ask below */
+            var _bsLen = Math.min(_bsRange, _bsRoom + arrowSureReachPast(bowRangeMult(S.rpg) || 1));
+            var _bsGround = { x: P.x, y: P.y + shotGroundDy(S), len: _bsRoom };
             try {
               /* v2.3.3206: + `ground`, your boots, so a prop on the line -- a
                  building, a tree, a barrel -- opens the gate and ends the line
                  where the arrow will stop (firstSightHit's prop note) */
               _bsHit = firstSightHit(S, _bsX, _bsY, _bsA,
-                Math.min(_bsRange, _bsRoom + arrowSureReachPast(bowRangeMult(S.rpg) || 1)), { isStaff: false, isSpecial: false, aimAt: _bsAimAt,
-                  ground: { x: P.x, y: P.y + shotGroundDy(S), len: _bsRoom } });   /* v2.3.2790: the sight line ends where the (depth-scaled) arrow does */
+                _bsLen, { isStaff: false, isSpecial: false, aimAt: _bsAimAt,
+                  ground: _bsGround });   /* v2.3.2790: the sight line ends where the (depth-scaled) arrow does */
             } catch (e) { _bsHit = null; }
             S._bowSight = { ang: _bsA, d: _bsHit ? _bsHit.dist : null,
               id: _bsHit ? _bsHit.id : null, at: Date.now(),
@@ -1538,6 +1542,20 @@ export function updateMonsterCombat(S, deps) {
                  bow's range or the screen's edge, the nearer -- which the
                  aiming line is drawn to when nothing is on it */
               reach: Math.min(_bsRange, _bsRoom) };
+            /* ═══ v2.3.3528: AN EMPTY LINE ON A PLAYER YOU HAVE NOT CHOSEN ASKS ═══
+               The owner: the one being attacked "can't attack back unless they
+               lock on target ... Apply that there too.  But keep ... needing to
+               confirm the "attack" button that pops up in the window first".
+               The bow looses only at something, and in No man's land a player
+               you have not chosen is nothing to it, so a bow held at the one
+               who attacked you just waited -- no arrow crossed them, so no
+               window asked, as a swing or a bolt at them does.  While you hold
+               the attack, or a special waits for its line, an empty line asks
+               about the first such player on it (projectiles.js nmlSightAsk);
+               nothing is fired at them until you choose Attack. */
+            if (!_bsHit && (S.autoAttack || (S._bowSpecialQueued && Date.now() - S._bowSpecialQueued < BOW_SPECIAL_QUEUE_MS))) {
+              try { nmlSightAsk(S, _bsX, _bsY, _bsA, _bsLen, _bsGround); } catch (_nsa) { /* asking is never worth a frame */ }
+            }
           } else if (S._bowSight) {
             S._bowSight = null;
           }

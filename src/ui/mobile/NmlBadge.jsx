@@ -112,7 +112,8 @@ export function openNmlInfo(S, lvl) {
               too; a red skull a monster kills keeps what it wears */}
           <Line><b>Killed by a player:</b> they get <b>everything you carry</b>: your bag, tools and ores too, your gold, and your spare weapons and armour. You keep what you wear. Diego sells a lost tool back.</Line>
           <Line><b>Attack a player:</b> a <span style={{ color: NML_RED, fontWeight: 800 }}>red skull</span> for 20 minutes of play, starting over with every hit. Killed by a player with it, you lose <b>everything</b>, worn gear too; killed by a monster, everything but what you wear.</Line>
-          <Line><b>Get attacked:</b> a <b>white skull</b>. Hitting back the player who hit you gives you no red one.</Line>
+          {/* v2.3.3528: hitting back goes through the window too (game/nmlAsk.js) */}
+          <Line><b>Get attacked:</b> a <b>white skull</b>. To hit back, swing, shoot or tap them and choose <b>Attack</b>: hitting back the player who hit you gives you no red skull.</Line>
         </ul>
         <div>Walk back toward BroTown to leave.</div>
       </div>

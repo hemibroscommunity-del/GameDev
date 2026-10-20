@@ -1632,7 +1632,7 @@ remnant to migrate server-side, not a mode to preserve.
         real hit test's capsule; the shot does them nothing);
       - HITTING BACK stays one tap: the worker's `nml_skull` now carries `by`
         (whiteBy), and a tap on the one who attacked you, with no red skull of
-        your own, aims at once;
+        your own, aims at once (GONE since v2.3.3528, below);
       - AT THE TOP, out of the thumbs' way: under the minimap (beside it when
         there is room), under a party invite card (`data-party-invite`),
         portalled to the body -- over the badge, its Attack sat where a left
@@ -1712,6 +1712,30 @@ remnant to migrate server-side, not a mode to preserve.
       - `nomansland` §5-6 and §11 (100 checks), `shop` suite "a lost tool",
         `mp-nmlask` step 0, `mp-nomansland` 4b, `mp-toolshelf`:
         no-mans-land.md "Everything but what you wear".
+    - since v2.3.3528 HITTING BACK GOES THROUGH THE WINDOW TOO -- the owner:
+      "the other player can't attack back unless they lock on target ... Apply
+      that there too.  But keep the behavior of needing to confirm the
+      "attack" button that pops up in the window first before any damage is
+      registered to either player in the wilderness":
+      - the one who attacked you was the window's exception: a swing or bolt
+        at them asked nothing and did nothing, a bow held at them never
+        loosed, and a tap aimed at once with NO window; now a swing, a shot, a
+        tap and THE BOW'S LINE (projectiles.js `nmlSightAsk`, why 'aim': the
+        bow looses only at something, so it never shot through anyone to ask)
+        all ask, the window saying "Hit back <name>?" with the WHITE skull
+        (`back`; no red skull for hitting back), its Attack making them a foe
+        whose every blow lands, locked or not (nmlAsk.js);
+      - their attack re-opens an earlier answer, once a BOUT (a blow either
+        way after a quiet FIGHT_QUIET_MS: sparTargets.js `pvpBoutAt`, nmlAsk.js
+        `nmlAttackedSince`), so an Ignore given to a passer-by never stops you
+        answering their attack;
+      - the worker: an AREA move (whirlwind, burst, splash, blast) reaches only
+        a player its caster STRUCK in the last 10 s, not one who struck them
+        (pvpextras.js `_pvpEngaged`, each pair keeping both ways), so being
+        attacked never turns your whirlwind on the attacker before you choose;
+        kill switch `areachoice: false` (either way, as before);
+      - `pvp-extras` §1b, `spar` §16q, `mp-nmlask` step 7, `mp-nmlfoe` step 8:
+        no-mans-land.md "Hitting back goes through the window too".
     - since v2.3.3260 FIGHTS BETWEEN PLAYERS LAST, FISH MATTER IN THEM, AND
       LEAVING IS NO ESCAPE -- the owner, after the time-to-kill study: "I want
       you to plan and implement fixes for all of these including how much HP
@@ -1833,7 +1857,8 @@ remnant to migrate server-side, not a mode to preserve.
           points on average (one-formula.md "Not on players yet");
         - an AREA move (whirlwind, burst, splash, blast) hits only players
           you are already fighting (a duel/arena pair, or a hit either way
-          in the last 10 s: `_pvpEngaged`); a NAMED move (bash, lunge, a
+          in the last 10 s: `_pvpEngaged`; since v2.3.3528 a hit YOU landed,
+          `areachoice: false` either way); a NAMED move (bash, lunge, a
           locked swing; a player named as `pid`, the dash's way below) only
           needs the fight to be allowed;
         - a player CANNOT BE LOCKED DOWN: a freeze or an ability's stun holds
