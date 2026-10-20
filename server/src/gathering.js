@@ -77,6 +77,7 @@
  *          retired branch did. */
 import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3012: the Wheel's baked nodes */
 import { xpDecayMult, xpAfterDecay } from './xpdecay.js'; /* v2.3.3251: XP fades 5+ levels below you */
+import { parseGemKey } from './gems.js';   /* v2.3.3516: gems are kept through a death (_keptThroughDeath) */
 
 export const GATHER_HITS = {
   MS: { mining: 650, woodcutting: 540, fishing: 650, cooking: 650 },
@@ -804,10 +805,19 @@ export const gatheringMethods = {
    * the ground, which is the bug the v2.3.1688 tool pass had to avoid too:
    *   1. the gathering TOOLS (v2.3.1688) — equipment held in the bag;
    *   2. QUEST OBJECTIVE items (v2.3.1701) — derived from the shipped quest
-   *      table, see quests.js `_isQuestObjectiveItem` for the rationale.
+   *      table, see quests.js `_isQuestObjectiveItem` for the rationale;
+   *   3. GEMS (v2.3.3516) — raw and elemental (gems.js `gem_raw_<e>`,
+   *      `gem_<e>`).  They were a pouch beside the bag until this version,
+   *      and the pouch was never lost; the owner's gem plan moved them into
+   *      the bag (decision 5) saying only that they go "if another player
+   *      kills you in No man's land" -- which still holds, as a death there
+   *      takes the whole bag, carve-outs and all (`all`, nomansland.js).  An
+   *      elemental gem is about an hour's cracking: a monster's kill on the
+   *      far side of a land, the pile 60 s yours, would have cost it.
    * Everything else still drops. */
   _keptThroughDeath(key) {
     if (this._GATHER_TOOL_KEYS().has(key)) return true;
+    if (parseGemKey(key)) return true;
     return this._isQuestObjectiveItem ? this._isQuestObjectiveItem(key) : false;
   },
 

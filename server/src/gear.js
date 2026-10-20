@@ -20,6 +20,8 @@
  * with their only consumers (mirror-audit still pins them). */
 
 import { BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES, AMULET_TIER_POWER, AMULET_GEMS, armorDefReq, isArmourLadderPiece /* v2.3.2664 */ } from './data.js';
+import { ELEMENT_STATUS } from './elemental.js'; /* v2.3.3513: a weapon's gems are checked on the way in */
+import { isVolatilePair } from './weapongem.js'; /* v2.3.3513 */
 
 export const gearMethods = {
   // ═══ Equipment store (opaque blobs + equip_request) ═══
@@ -132,6 +134,24 @@ export const gearMethods = {
           ? Math.min(9999, Math.floor(out.temper)) : 0;
       }
     }
+    /* ═══ v2.3.3513: A WEAPON'S GEMS ARE WORKER STATE NOW (weapongem.js) ═══
+       The fight reads them from this copy instead of the claim, as the burst
+       and the flame amulet always did, and Take out pays a polished gem for
+       each.  So each is an element the status table has -- an own key (TRAPS
+       #6: '__proto__' and 'constructor' are nothing) -- or none; a second
+       with no first moves up (the worker only ever fills the first first);
+       the same element twice is one; and `isVolatile`, which makes every
+       collision hit 1.3x, is the PAIR's answer, never a stored flag's.
+       Nothing else changes: a weapon's gems from before this version (an old
+       server drop's, a claim the first join took before v2.3.3138) stay. */
+    const el = (e) => (typeof e === 'string' && Object.prototype.hasOwnProperty.call(ELEMENT_STATUS, e) ? e : null);
+    let e1 = el(out.element1);
+    let e2 = el(out.element2);
+    if (!e1 && e2) { e1 = e2; e2 = null; }
+    if (e1 && e2 === e1) e2 = null;
+    if ('element1' in out || e1) out.element1 = e1;
+    if ('element2' in out || e2) out.element2 = e2;
+    if ('isVolatile' in out || e2) out.isVolatile = !!(e1 && e2 && isVolatilePair(e1, e2));
     return out;
   },
 

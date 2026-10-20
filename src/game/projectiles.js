@@ -641,14 +641,23 @@ if (typeof window !== 'undefined') {
  * thing the shot is aimed at, nothing else being on the line.)
  */
 export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
+  var s = _sightLine(S, ox, oy, ang, maxLen, opts);
+  return s ? s.best : null;
+}
+/* v2.3.3515: firstSightHit's answer and what a shot fired now is aimed at
+   (shotAimAt), worked out together, as { best, aim } -- or null */
+function _sightLine(S, ox, oy, ang, maxLen, opts) {
   if (!S || typeof ox !== 'number' || typeof oy !== 'number' || !isFinite(ang)) return null;
   var half = ((opts && opts.isSpecial) ? PROJ_BODY.arrowSpecial : PROJ_BODY.arrow).half;
   var dx = Math.cos(ang), dy = Math.sin(ang);
   var best = null;
+  /* v2.3.3515: every target on the line, behind a rock or not, and the first
+     of them -- what the shot is aimed at (the cover note, below) */
+  var cands = [], first = null;
   /* The one place a ray meets a circle: project the centre onto the ray, and
      the entry point is that projection minus the half-chord.  A centre BEHIND
      the origin by more than its own radius can never be hit. */
-  var consider = function (cx, cy, r, id, ref, gate) {
+  var consider = function (cx, cy, r, id, ref, gate, fx, fy, mon) {
     if (!isFinite(cx) || !isFinite(cy)) return;
     var vx = cx - ox, vy = cy - oy;
     var t = vx * dx + vy * dy;
@@ -661,9 +670,16 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
     if (enter < 0) enter = 0;          /* the origin is already inside it */
     if (enter > maxLen) return;
     /* v2.3.3485: a target the hit test would refuse is not on the line (the
-       rock gate, below) */
-    if (gate && !gate(enter, t + hc, t)) return false;
-    if (!best || enter < best.dist) best = { dist: enter, id: id, m: ref };
+       rock gate, below) -- v2.3.3515: but it is still on it, for the cover
+       note below; `t` its nearest approach, as shotGroundOffset measures it */
+    var clear = !gate || !!gate(enter, t + hc, t);
+    /* v2.3.3501: + what a shot fired now is aimed at (shotGround.js): the
+       circle measured here and the feet the rock gate asked from */
+    var on = { dist: enter, id: id, m: ref, aim: shotAim(cx, cy, r, fx, fy), t: t, fx: fx, fy: fy, clear: clear, mon: !!mon };
+    cands.push(on);
+    if (!first || enter < first.dist) first = on;
+    if (!clear) return false;
+    if (!best || enter < best.dist) best = { dist: enter, id: id, m: ref, aim: on.aim };
     return true;   /* v2.3.3206: on the line, for the prop's let-in below */
   };
   /* ═══ v2.3.3206: AND THE PROPS -- a building, a tree, a barrel ═══
@@ -728,27 +744,20 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
      prop on the ground track, or at nothing, as the arrow will.
      Only with `ground` (the game's own shots; firstSightHit's other askers
      and a hand-made arrow keep the old meaning). */
+  /* ═══ v2.3.3501: ...ALONG THE LINE THE SHOT NOW TAKES, BOOTS TO FEET ═══
+     A shot fired at a target now asks the ground from your boots to its feet
+     (shotGround.js), so the question is that one line, the very one
+     _rockBetween asks of the hit: clear (the low things flown over), and the
+     arrow's ground line meets no prop before the target, so the target is on
+     the line whatever the parallel line would have met (below); blocked, and
+     the target is passed over -- the line ends at the prop, or at nothing, as
+     the arrow will.  (v2.3.3485 sampled three points of the parallel line, the
+     ground the shot then took.) */
   var rockGate = null;
   if (g && isFinite(g.x) && isFinite(g.y) && S.currentZone) {
-    var _gBody = (opts && opts.isSpecial) ? PROJ_BODY.arrowSpecial : PROJ_BODY.arrow;
     var _gSkip = shotSkip(null);
     rockGate = function (fx, fy) {
-      var cap = maxLen;
-      if (prop) {
-        var pb = prop.box;
-        var inBox = fx >= pb.x0 && fx <= pb.x1 && fy >= pb.y0 && fy <= pb.y1;
-        if (!inBox) cap = Math.min(cap, prop.dist - 1);   /* a step's start is always short of the face */
-      }
-      return function (enter, exit, t) {
-        var s0 = Math.max(0, enter - _gBody.front);
-        var s1 = Math.max(s0, Math.min(exit + _gBody.back, cap));
-        var sm = Math.max(s0, Math.min(t, s1));
-        var pts = [s0, sm, s1];
-        for (var k = 0; k < pts.length; k++) {
-          if (!attackBlocked(S.currentZone, g.x + dx * pts[k], g.y + dy * pts[k], fx, fy, _gSkip)) return true;
-        }
-        return false;
-      };
+      return function () { return !attackBlocked(S.currentZone, g.x, g.y, fx, fy, _gSkip); };
     };
   }
   var letIn = false;
@@ -763,7 +772,7 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
       var mArch = hitShapeOf(m.archetype || m.type);
       /* v2.3.2845: the monster the shot is aimed at, round its torso -- as the hit test will */
       var onLine = consider(mx, my - ((opts && opts.aimAt != null && opts.aimAt === m.id) ? torsoLift(m, S.currentZone) : monsterBodyOffsetY(mArch)),
-        monsterProjRadius(m, S, opts) + half, m.id, m, rockGate ? rockGate(mx, my) : null);   /* v2.3.3485: + the rock gate, at its feet */
+        monsterProjRadius(m, S, opts) + half, m.id, m, rockGate ? rockGate(mx, my) : null, mx, my, true);   /* v2.3.3485: + the rock gate, at its feet; v2.3.3501: + the feet; v2.3.3515: a monster */
       /* v2.3.3206: on the line with its feet in the prop's box: the arrow is let in */
       if (onLine && prop) {
         var b = prop.box;
@@ -794,13 +803,36 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
       if (opts && opts.isSpecial) pr *= 1.5;
       /* v2.3.3485: + the rock gate, at their boots (the PvP hit test's _pvpGy) */
       consider(oxp, oyp - 24, Math.max(pr, PVP_BODY_R + half), 'p_' + pids[pk], o,
-        rockGate ? rockGate(oxp, oyp + playerGroundDy(S.currentZone, oxp, oyp)) : null);
+        rockGate ? rockGate(oxp, oyp + playerGroundDy(S.currentZone, oxp, oyp)) : null,
+        oxp, oyp + playerGroundDy(S.currentZone, oxp, oyp));   /* v2.3.3501: + their boots */
     }
+  }
+  /* ═══ v2.3.3515: A TARGET BEHIND A ROCK IS STILL WHAT THE SHOT IS AT ═══
+     The owner, offered "a covered monster still counts as the target, so the
+     bolt stops at the rock": "continue recommended".  Until now the rock gate
+     passed a covered target over: no aim, so the shot kept the PARALLEL ground
+     line, and where that line passed beside the rock a staff bolt (no gate of
+     its own) flew on, met the monster's circle, and asked _rockBetween from
+     its ground point there -- beside the monster, past the rock -- and HIT
+     what the gate had called covered; the bow, meanwhile, waited with its line
+     on nothing.  Now the first target on the line is what the shot is aimed
+     at, behind a rock or not: its ground runs boots to feet (shotGround.js),
+     meets the rock, and stops there -- and the line ends at that rock, so the
+     bow looses into it as at any prop (v2.3.3206; mp-sightrock's bank).  A
+     target further along is not reached, nor a prop the parallel line meets;
+     _coverOf says where it stops.  Only with `ground` (the rock gate), and
+     only when the target is ahead of the shot's start (`t` > 1: else the
+     aim does not apply, shotGroundOffset, and the line is as before). */
+  if (rockGate && first && !first.clear && first.t > 1) {
+    return { best: _coverOf(S, g, first, gLen, cands), aim: first.aim };
   }
   /* v2.3.3206: the prop, when it comes first and the arrow will not be let
      into it.  `id` says which (the Wheel's object number, else the prop's
-     own id), for a scenario reading the gate. */
-  if (prop && !letIn && (!best || prop.dist < best.dist)) {
+     own id), for a scenario reading the gate.
+     v2.3.3501: with `ground`, only when NO target is on the line: one that
+     passed the rock gate is reached along boots-to-feet, past any prop the
+     parallel line meets (shotGround.js).  Without `ground` as before. */
+  if (prop && !letIn && (!best || (!rockGate && prop.dist < best.dist))) {
     best = { dist: prop.dist, id: 'prop:' + (prop.box.oi != null ? prop.box.oi : prop.box.id), m: null, prop: prop.box };
   }
   /* v2.3.3206: nothing else on the line -- the low thing is what the shot is
@@ -809,7 +841,63 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
   if (!best && low) {
     best = { dist: low.dist, id: 'prop:' + (low.box.oi != null ? low.box.oi : low.box.id), m: null, prop: low.box, low: true };
   }
-  return best;
+  return { best: best, aim: (best && best.m && best.aim) ? best.aim : null };
+}
+/* ═══ v2.3.3515: WHERE A SHOT AT A TARGET BEHIND A ROCK STOPS ═══
+   Its ground runs from your boots to the target's feet, so it stops at the
+   first prop on that line that it does not fly over and the target is not
+   standing in -- attackBlocked's own boxes, the rock gate's answer
+   (sweepBlockPoint never counts the box the boots are in) -- at the drawn
+   distance where its ground gets there: `k` of the way to the feet is `k` of
+   the way to the target's nearest approach (`first.t`, shotGroundOffset).
+   As in flight:
+     - another target met before that, with no rock between where the
+       shot's ground is then and its feet (_rockBetween), is hit first;
+     - a monster on the line standing IN that rock lets the shot in
+       (_quarryInBox), and is what it lands on;
+     - past where the shot goes (`gLen`) it stops at nothing, and the farm's
+       edge stops it but is not a thing to aim at (above): null.
+   Null too if no box is found -- attackBlocked said there is one. */
+function _coverOf(S, g, first, gLen, cands) {
+  var fx = first.fx, fy = first.fy;
+  var ph = sweepBlockPoint(S.currentZone, g.x, g.y, fx, fy, function (b) {
+    return _isLow(b) || (fx >= b.x0 && fx <= b.x1 && fy >= b.y0 && fy <= b.y1);
+  });
+  var d = (ph && ph.box) ? ph.t * first.t : Infinity;
+  var lowSkip = shotSkip(null);
+  var hitFirst = null;
+  for (var i = 0; i < cands.length; i++) {
+    var c = cands[i];
+    if (c === first || !(c.dist < d) || (hitFirst && c.dist >= hitFirst.dist)) continue;
+    var k = c.dist / first.t;
+    if (!attackBlocked(S.currentZone, g.x + (fx - g.x) * k, g.y + (fy - g.y) * k, c.fx, c.fy, lowSkip)) hitFirst = c;
+  }
+  if (hitFirst) return { dist: hitFirst.dist, id: hitFirst.id, m: hitFirst.m, aim: hitFirst.aim };
+  if (!ph || !ph.box || ph.box.id === 'edge' || !(d <= gLen)) return null;
+  var b = ph.box, inside = null;
+  for (var j = 0; j < cands.length; j++) {
+    var cj = cands[j];
+    if (cj.mon && cj.fx >= b.x0 && cj.fx <= b.x1 && cj.fy >= b.y0 && cj.fy <= b.y1 && (!inside || cj.dist < inside.dist)) inside = cj;
+  }
+  if (inside) return { dist: inside.dist, id: inside.id, m: inside.m, aim: inside.aim };
+  return { dist: d, id: 'prop:' + (b.oi != null ? b.oi : b.id), m: null, prop: b };
+}
+/* ═══ v2.3.3501: WHAT A SHOT IS FIRED AT, AS IT LEAVES ═══
+   The target on its line by the gate's own rule -- the lock when it is aimed
+   at it (`aimAt`), else the first monster or player on the line that the rock
+   gate lets through -- as shotGround.js wants it: the hit circle the gate
+   measured, and the feet it asked from.  Null for a shot at a prop, at a low
+   thing or at nothing: it keeps the parallel ground line.  Every game shot
+   asks this as it is made (monsterCombat, playerActions, dodge.js), and sends
+   it with the shot (`gf`, shotGround.js shotAimWire) so it meets the same
+   props on every screen.
+   v2.3.3515: ...or the first target on the line when it is behind a rock, as
+   the gate's answer is then the rock (_sightLine's cover note): its ground
+   runs into the rock, and it stops there. */
+export function shotAimAt(S, ox, oy, ang, len, opts) {
+  var s = null;
+  try { s = _sightLine(S, ox, oy, ang, len, opts); } catch (e) { s = null; }
+  return (s && s.aim) ? s.aim : null;
 }
 
 function _segGap(px, py, ax, ay, bx, by) {
@@ -868,6 +956,7 @@ import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonster
 import { strikeWheelObject } from '@/game/wheelBreak.js'; /* v2.3.2995: the Wheel's objects take hits, break, and are mended */
 import { JUMP_OVER } from '@/game/jump.js'; /* v2.3.3206: what you can jump, a shot flies over */
 import { arrowEdgeRoom } from '@/game/arrowEdge.js'; /* v2.3.3489: where an arrow comes down at the screen's edge */
+import { shotAim, shotGroundOffset } from '@/game/shotGround.js'; /* v2.3.3501: an aimed shot's ground line runs from your boots to its target's feet */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.3206: a duel target's ground is under its boots */
 import { arrowSnaps } from '@/data/arrowSnap.js'; /* v2.3.2731: one arrow in eight breaks on what it hits */
 import { BOW_VOLLEY, burnT0, burnLifeMs, volleyRested, volleyBurns, volleyShoves } from '@/game/bowVolley.js'; /* v2.3.2848: the special's three arrows share one train, one burn and one shove; v2.3.2849: + its burn length */
@@ -1578,10 +1667,25 @@ export function updateArrows(S, deps) {
                inside never stops at -- the owner's "shoot at ... buildings",
                point blank, went straight through.  With `_gdy` (_goy above) dist
                0 is the boots. */
+            /* ═══ v2.3.3501: AN AIMED SHOT'S GROUND RUNS BOOTS TO FEET ═══
+               The drawn point minus (_ox, _goy) is the parallel line; a shot
+               fired at a target (`_gf`, shotAimAt) slides that offset so its
+               ground point reaches the target's FEET as the drawn point reaches
+               it (shotGround.js).  At this step's start (`_off0`, also every
+               rock-between and stray-shot question below) and its end. */
+            /* A locked BOLT is steered at its target every frame (above), so
+               its aim follows the target, circle and feet moved together; an
+               arrow's line was fixed as it left, and so is its aim. */
+            if (a._gf && a.isStaff && lockPt && lockId != null && a._aimAt === lockId
+              && (lockPt.x !== a._gf.cx || lockPt.y !== a._gf.cy)) {
+              a._gf = shotAim(lockPt.x, lockPt.y, a._gf.r, a._gf.fx + (lockPt.x - a._gf.cx), a._gf.fy + (lockPt.y - a._gf.cy));
+            }
+            var _off0 = shotGroundOffset(_bx, _by, a.ang, _ox, _goy, a._gf || null, _dist0);
+            var _off1 = shotGroundOffset(_bx, _by, a.ang, _ox, _goy, a._gf || null, a.dist);
             var _propStop = null;
             if (_released && !a.planting) {
-              var _gx0 = a._prevX - _ox, _gy0 = a._prevY - _goy;   /* v2.3.3206: _goy, to the boots */
-              var _gx1 = a._renderX - _ox, _gy1 = a._renderY - _goy;
+              var _gx0 = a._prevX - _off0[0], _gy0 = a._prevY - _off0[1];   /* v2.3.3206: _goy, to the boots; v2.3.3501: _off0 */
+              var _gx1 = a._renderX - _off1[0], _gy1 = a._renderY - _off1[1];
               /* Out the far side of a rock it was let into: that face ends it. */
               var _ib = a._inBox;
               if (_ib && !(_gx1 >= _ib.x0 && _gx1 <= _ib.x1 && _gy1 >= _ib.y0 && _gy1 <= _ib.y1)) {
@@ -1604,7 +1708,10 @@ export function updateArrows(S, deps) {
               /* Put it back into flight space to draw, so the arrow stops
                  against the face of the rock it is drawn against -- and so
                  the loop below sweeps only the part of the step before it. */
-              if (_propStop) { a._renderX = _propStop.x + _ox; a._renderY = _propStop.y + _goy; }
+              /* v2.3.3501: by the offset where it stopped, part way along the step */
+              var _offS = _propStop ? shotGroundOffset(_bx, _by, a.ang, _ox, _goy, a._gf || null,
+                _dist0 + (a.dist - _dist0) * (isFinite(_propStop.t) ? _propStop.t : 1)) : null;
+              if (_propStop) { a._renderX = _propStop.x + _offS[0]; a._renderY = _propStop.y + _offS[1]; }
             }
             var hit = false;
             if (S.monsters) S.monsters.forEach(function (m) {
@@ -1675,7 +1782,7 @@ export function updateArrows(S, deps) {
               var _segD = _segGap(_hitX, _mProjY, _capAx, _capAy, _capBx, _capBy);
               var _hitRE = _hitR + _hitHalf;
               /* v2.3.2701: touching is not enough if a rock stands between. */
-              if (_segD < _hitRE && _rockBetween(S, a, _ox, _goy, _hitX, _hitBaseY)) return;
+              if (_segD < _hitRE && _rockBetween(S, a, _off0[0], _off0[1], _hitX, _hitBaseY)) return;   /* v2.3.3501: _off0 */
               if (_segD < _hitRE) {
                 /* ═══ PUT THE IMPACT WHERE IT HAPPENED ═══
                    Only in the case the old test would have MISSED, which keeps
@@ -2342,7 +2449,7 @@ export function updateArrows(S, deps) {
                    shot fired with `_gdy` looks for rocks at the ground, so the
                    other end of the line is their boots too. */
                 var _pvpGy = a._gdy ? _pvpY + playerGroundDy(S.currentZone, _pvpX, _pvpY) : _pvpY;
-                if (_pvpGap < _pvpHitR && _rockBetween(S, a, _ox, _goy, _pvpX, _pvpGy)) _pvpGap = Infinity;
+                if (_pvpGap < _pvpHitR && _rockBetween(S, a, _off0[0], _off0[1], _pvpX, _pvpGy)) _pvpGap = Infinity;   /* v2.3.3501: _off0 */
                 /* Impact FX go where the path crossed, and only for a shot the
                    old point test would have missed — see the monster branch. */
                 if (_pvpGap < _pvpHitR && _pvpPointGap >= _pvpHitR) { a._renderX = _segHitX; a._renderY = _segHitY; }
@@ -2440,7 +2547,7 @@ export function updateArrows(S, deps) {
             /* v2.3.3253: no hit, but through a player you could fight in No
                man's land who is not your aim: ask (once) whether to attack
                them -- the shot itself does them nothing (_nmlStrayShot) */
-            if (!hit) _nmlStrayShot(S, a, _ox, _goy);
+            if (!hit) _nmlStrayShot(S, a, _off0[0], _off0[1]);   /* v2.3.3501: _off0 */
             /* Non-piercing arrows die on the first hit.  Piercing
                arrows survive each hit and only expire when a.life
                (line 8954, decrements each frame) hits zero -- so
@@ -2464,7 +2571,10 @@ export function updateArrows(S, deps) {
                  bench or a barrel hit at the boots takes the arrow in its upper
                  part rather than in the air over it (combatHelpers.propHitHeight).
                  What it hit, its face and its ground line are unchanged. */
-              var _impX = _propStop.x + _ox, _impY = _propStop.y - propHitHeight(_propStop.box, -_goy);
+              /* v2.3.3501: the height it flew THERE: an aimed shot's comes down
+                 toward its target's body as its ground nears the feet (_offS) */
+              var _offH = _offS || [_ox, _goy];
+              var _impX = _propStop.x + _offH[0], _impY = _propStop.y - propHitHeight(_propStop.box, -_offH[1]);
               a._renderX = _impX; a._renderY = _impY;
               a._inBox = null;
               /* ═══ v2.3.2730: AND THE PROP FEELS IT ═══
