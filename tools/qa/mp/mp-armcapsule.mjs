@@ -171,7 +171,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       + `changed now ${JSON.stringify(now)} (skin ${JSON.stringify(skinNow)}), without the armour's clones ${JSON.stringify(before)} (skin ${JSON.stringify(skinBefore)})`);
     if (o.knight) {
       rec.ok(`${o.key}. ${o.label}: jogs as the knight, no armour clone needed, the armour's clones change nothing and no skin is laid over it (${maxSkin} px at most over ${got.length} frames)`,
-        got.length >= 3 && got.every((g) => g.fullset && !g.chestClone && !g.legsClone && g.now.n === g.before.n) && maxSkin <= 4, got);
+        got.length >= 3 && got.every((g) => g.fullset && !g.chestClone && !g.legsClone && g.now.n === g.before.n) && maxSkin <= HAND_SKIN, got);
     } else {
       rec.ok(`${o.key}. ${o.label}: the capsule lays the plate back over its own arm -- at most ${maxSkin} px of skin a frame, the hand (${sum(skinNow)} over ${got.length} frames; without the armour's clones, as before this version, ${sum(skinBefore)}: the bare arm over the plate)`,
         got.length >= 3 && got.every((g) => !g.fullset && g.chestClone) && maxSkin <= HAND_SKIN

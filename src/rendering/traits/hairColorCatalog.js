@@ -145,12 +145,16 @@ function _capCache() {
   }
 }
 
+/* v2.3.3495: each build's promise while it runs, so the loading screen can
+   wait for the local player's own recolour (coloredHairReady) instead of
+   showing the hair in its native colour for its first frames */
+const _building = Object.create(null);
 function build(hairId, colorId) {
   const target = hairColorTarget(colorId);
   const key = hairId + '/' + colorId;
   _cache[key] = 'loading';
   const tex = {};
-  Promise.all(DIRS.map(async dir => {
+  _building[key] = Promise.all(DIRS.map(async dir => {
     try {
       const img = await loadImg(`/sprites/traits/hair/${hairId}/${dir}.png?v=${TRAIT_VER}`);
       const cv = recolorHairToCanvas(img, target);
@@ -158,7 +162,16 @@ function build(hairId, colorId) {
       if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; }
       tex[dir] = t;
     } catch (e) { /* dir missing -> renderer falls back */ }
-  })).then(() => { _cache[key] = tex; _capCache(); });
+  })).then(() => { _cache[key] = tex; _capCache(); delete _building[key]; });
+}
+
+/** v2.3.3495: a promise that settles once (hairId, colorId)'s recolour is
+ *  made -- at once when there is none to make (the native colour, long hair)
+ *  or it is already made.  Kicks the build if nothing has asked yet. */
+export function coloredHairReady(hairId, colorId) {
+  getColoredHairTextures(hairId, colorId);
+  const p = _building[hairId + '/' + colorId];
+  return p ? p.catch(() => {}) : Promise.resolve();
 }
 
 /** Recolored hair texture map for (hairId, colorId), or null for the default

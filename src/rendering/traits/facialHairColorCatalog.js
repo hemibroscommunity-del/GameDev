@@ -105,12 +105,14 @@ function _capCache() {
   }
 }
 
+/* v2.3.3495: each build's promise while it runs (coloredFacialHairReady) */
+const _building = Object.create(null);
 function build(fhId, colorId) {
   const target = facialHairColorTarget(colorId);
   const key = fhId + '/' + colorId;
   _cache[key] = 'loading';
   const tex = {};
-  Promise.all(DIRS.map(async dir => {
+  _building[key] = Promise.all(DIRS.map(async dir => {
     try {
       const img = await loadImg(`/sprites/traits/facialhair/${fhId}/${dir}.png?v=${TRAIT_VER}`);
       const cv = recolorHairToCanvas(img, target);
@@ -118,7 +120,15 @@ function build(fhId, colorId) {
       if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; }
       tex[dir] = t;
     } catch (e) { /* dir missing -> renderer falls back */ }
-  })).then(() => { _cache[key] = tex; _capCache(); });
+  })).then(() => { _cache[key] = tex; _capCache(); delete _building[key]; });
+}
+
+/** v2.3.3495: settles once (fhId, colorId)'s recolour is made (at once when
+ *  there is none to make, or it is made) -- the loading screen waits for it. */
+export function coloredFacialHairReady(fhId, colorId) {
+  getColoredFacialHairTextures(fhId, colorId);
+  const p = _building[fhId + '/' + colorId];
+  return p ? p.catch(() => {}) : Promise.resolve();
 }
 
 /** Recolored beard texture map for (fhId, colorId), or null for the default

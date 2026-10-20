@@ -83,9 +83,9 @@ import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120:
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
 import { getCapeTexture, getCapeHoodTexture, getCapeHoodMaskTexture } from '../capeSprites.js'; /* v2.3.2023: the cosmetic cape; v2.3.2186: its hood half + the hair clip */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2023 */
-import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
-import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
-import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
+import { getHairColor, getColoredHairTextures, coloredHairReady } from '../traits/hairColorCatalog.js';   /* v2.3.3495: + the gate waits for yours */
+import { getHatColor, getColoredHatTextures, coloredHatReady } from '../traits/hatColorCatalog.js';
+import { getFacialHairColor, getColoredFacialHairTextures, coloredFacialHairReady } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture, frameBounds, packTrimmed } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
@@ -3124,6 +3124,13 @@ if (typeof window !== 'undefined') {
   window.__btBakeWorker = () => ({ ..._bakeWorkerStats, alive: !!_bakeWorker, dead: _bakeWorkerDead, pending: _bakeJobs.size,
     queued: _bakeQueue.length, busy: _bakeBusy,
     peer: { ..._peerBakeStats, queued: _peerQueue.length }, local: { ..._localBakeStats } });
+  /* v2.3.3495: QA -- the last local frames drawn plain, and the body pictures
+     the cache holds bakes for (each key starts with its body texture's uid) */
+  window.__btLocalMisses = () => {
+    const uids = Object.create(null);
+    for (const k of _maskedBodyCache.keys()) { const u = String(k).split('|')[0]; uids[u] = (uids[u] || 0) + 1; }
+    return { misses: _localMisses.slice(), cachedUids: uids };
+  };
 }
 
 /* ═══ v2.3.2904: YOUR OWN ARMOUR, NEVER BAKED INSIDE YOUR FRAME ═══
@@ -3157,6 +3164,7 @@ if (typeof window !== 'undefined') {
    -- on a loaded machine the jobs' main-thread share is the bottleneck, not
    the worker.  Measure on a phone before trying it again. */
 const _localBakeStats = { hits: 0, plain: 0, inline: 0, late: 0, delivered: 0 };
+const _localMisses = [];   /* v2.3.3495: QA -- the last 32 drawn plain (window.__btLocalMisses) */
 const _LOCAL_PATIENCE_MS = 1000;
 let _localMissKey = null, _localEpoch = 0;
 function _localMaskedFrame(bodyTex, worn, dilate, poseInfo) {
@@ -3179,6 +3187,11 @@ function _localMaskedFrame(bodyTex, worn, dilate, poseInfo) {
     _prewarmBake(bodyTex, worn, dilate, poseInfo, _localEpoch).catch(() => { /* best-effort */ });
   }
   _localBakeStats.plain++;
+  /* v2.3.3495: QA (mp-joinflicker) -- which frames were drawn plain, and with
+     which body picture, so a test can tell a frame never baked from a body
+     picture made again after the loading screen baked the old one */
+  if (_localMisses.length >= 32) _localMisses.shift();
+  _localMisses.push({ at: Date.now(), pose: poseInfo.pose, dir: poseInfo.dir, f: poseInfo.frameIdx, uid: bodyTex.uid, worn: worn.map((w) => w.k).join(',') });
   return bodyTex;
 }
 
@@ -4117,11 +4130,13 @@ function _ensureHairMaskLoaded(hatId) {
   }
   if (!e.loadStarted) {
     e.loadStarted = true;
-    for (const dir of Object.keys(e.tex)) {
+    /* v2.3.3495: kept as one promise (`ready`), so the loading screen can
+       wait for YOUR hat's five -- a direction whose mask was not in yet drew
+       the hair unclipped through the hat for its first frames */
+    e.ready = Promise.allSettled(Object.keys(e.tex).map((dir) =>
       Assets.load(`/sprites/traits/headwear/${hatId}/hairmask/${dir}.png?v=${TRAIT_VER}`)
         .then(t => { e.tex[dir] = t; if (t && t.source) t.source.scaleMode = 'linear'; })
-        .catch(() => {});  // a hat without a hairmask just won't clip
-    }
+        .catch(() => {})));  // a hat without a hairmask just won't clip
   }
   return e;
 }
@@ -4928,12 +4943,20 @@ export function preloadTraits() {
       if (e && e.ready) urls.push(e.ready);
     }
   }
-  /* Local player's live selection: recolors + hair-clip mask + NFT face. */
+  /* Local player's live selection: recolors + hair-clip mask + NFT face.
+     v2.3.3495: AWAITED now, with the base art -- they were only kicked, and
+     the owner saw the "flicker of hair ... after returning/joining": with no
+     loading screen to cover them (the auto-rejoin's road) the hair, hat and
+     beard showed in their native colours for their first frames, and the
+     hair poked through a hat while its clip shape loaded.  A failure still
+     never holds the gate (allSettled). */
+  const own = [];
   try {
-    getColoredHatTextures(getHeadwear(), getHatColor());
-    getColoredHairTextures(getHair(), getHairColor());
-    getColoredFacialHairTextures(getFacialHair(), getFacialHairColor());
-    _ensureHairMaskLoaded(getHeadwear());
+    own.push(coloredHatReady(getHeadwear(), getHatColor()));
+    own.push(coloredHairReady(getHair(), getHairColor()));
+    own.push(coloredFacialHairReady(getFacialHair(), getFacialHairColor()));
+    const _mask = _ensureHairMaskLoaded(getHeadwear());
+    if (_mask && _mask.ready) own.push(_mask.ready);
     _ensureTraitTextures();
     _ensureHudBarTextures();
   } catch (e) { /* individual warms are best-effort */ }
@@ -4945,6 +4968,7 @@ export function preloadTraits() {
   return Promise.allSettled([
     _ensureBodyData(),
     ...urls,   /* v2.3.2776: the trait loads themselves (allSettled inside) */
+    ...own,    /* v2.3.3495: your recolours and your hat's clip shapes */
     /* v2.3.2682: every species' art (piece, fur twins, per-frame strips) on
        the gate, and the local player's skin build made from it before the
        intro lifts -- the build is a canvas pass, not a load, but it is the
