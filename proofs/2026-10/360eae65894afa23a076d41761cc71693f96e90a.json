@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "360eae65894afa23a076d41761cc71693f96e90a",
+  "tree": "24618f579040825217311ee21c114649c70a0d1a",
+  "committedAt": "2026-10-20T06:31:01-07:00",
+  "subject": "Hitting back in No man's land goes through the Attack window too, and lands without a lock (v2.3.3528) (#1044)",
+  "files": 6172,
+  "bytes": 712943451,
+  "listingSha256": "fef7efbaf18e309758d64b7ca6b06f908d8e23fe7e7d77bf816c033f09620762",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
