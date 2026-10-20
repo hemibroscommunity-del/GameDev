@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a0efcb79d640cf1d787e6ce8f61fe1f8fe7f7062",
+  "tree": "57898148ff5c48527085ef500f952ca0e86e6a88",
+  "committedAt": "2026-10-20T02:39:02-07:00",
+  "subject": "Ace stands still properly, the copper shoulder fixed for every metal, and no flicker after coming back (v2.3.3520) (#1035)",
+  "files": 6122,
+  "bytes": 712356738,
+  "listingSha256": "70cb7d6431527962a90237caf4252408600317c5ecb6f88fc15a49c9b7df1330",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
