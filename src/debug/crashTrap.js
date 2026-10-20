@@ -36,7 +36,11 @@ const _IMMEDIATE = new Set(['error', 'rejection', 'CONTEXT_LOST', 'pixi-init-fai
    -- context for the next real event, not events: a tab switch ('resume'),
    a death ('died': was a black screen right after one the respawn's veils?),
    a page iOS let go of in the background ('evicted', see markAlive) */
-const _QUIET = new Set(['resume', 'died', 'evicted']);
+/* v2.3.3496: + 'touch-stale' (a press the page never saw lift, let go of on
+   the way back) and 'audio-kick' -- the evidence for the owner's "input dead
+   / sound dead after returning", riding along with whatever is sent next,
+   never sent on its own (an app switch mid-press is ordinary) */
+const _QUIET = new Set(['resume', 'died', 'evicted', 'touch-stale', 'audio-kick']);
 let _flushTimer = null;
 let _flushAt = 0;
 let _lastSentLen = -1;

@@ -17,11 +17,17 @@
  *      Wheel's and let go on leaving it, the four animated strips no longer the
  *      Wheel's, the handshake warmed with the controls; a land's banner never
  *      uses a closed zone's strip;
- *   5. v2.3.3519 ("Go recommended on everything"): the bag's legs and chest
+ *   5. (v2.3.3511, the owner after a playtest: "new land emblems look bad
+ *      enlarged (revert or show below minimap)") the land's banner is the plain
+ *      plaque again and its scene a small EMBLEM under the minimap
+ *      (src/ui/landEmblem.js): drawn at one picture px a device px at the most,
+ *      never blown up, on every screen; the held picture, never a load; kept
+ *      clear of the controls; the plate's scroll ends cut off the pictures.
+ *   6. v2.3.3519 ("Go recommended on everything"): the bag's legs and chest
  *      the sheet's, every metal made from them; card 11's clearer five -- the
  *      orange paw, the party's crown and pin, the auction gavel, the creator's
  *      none sign -- under new names the code points at.
- *   6. v2.3.3519, card 11 as the owner picked it ("Icon picks: ... T3.3 ...
+ *   7. v2.3.3519, card 11 as the owner picked it ("Icon picks: ... T3.3 ...
  *      T129.1"): every one of the owner's 72 codes is in the cutter's list,
  *      already in the game, or set aside with its reason; every file the
  *      cutter wrote is still the one it wrote (its SHA-256 recorded: a re-run
@@ -137,18 +143,53 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     /export function preloadLandScenes\(\)/.test(zp) && /export function landSceneHeld\(land\)/.test(zp) && /export function freeLandScenes\(\)/.test(zp)
     && /img\.src = '';/.test(zp.slice(zp.indexOf('export function freeLandScenes'))));
   const zo = src('src/ui/zoneBannerOverlay.js');
-  check('4d a land\'s banner asks for its scene, and never a closed zone\'s strip of the same id',
-    /playZoneBanner\(region, S, \{ title, plain: true, scene: region,/.test(zo) && /const art = opts\.scene \? null : bannerStripFor\(zoneId\);/.test(zo)
-    && /const scene = !strip && opts\.scene \? landSceneHeld\(opts\.scene\) : null;/.test(zo));
+  /* v2.3.3511: the plain plaque (no scene over it), never a closed zone's
+     strip of the same id; the scene goes under the minimap as the plaque docks */
+  check('4d a land\'s banner is the plain plaque -- no scene over it, never a closed zone\'s strip -- and its scene goes under the minimap as it docks',
+    /playZoneBanner\(region, S, \{ title, plain: true, icon: look\.icon,/.test(zo) && !/scene: region/.test(zo)
+    && /const art = opts\.plain \? null : bannerStripFor\(zoneId\);/.test(zo) && !/landSceneHeld/.test(zo)
+    && /if \(shown\) showLandEmblem\(region, \{ delay: prefersReducedMotion\(\) \? 900 : ZONE_BANNER_PLAY_MS \+ LAND_HOLD_MS \}\);/.test(zo));
   const cp = src('src/rendering/controlsPreload.js');
   check('4e the trade request\'s handshake is warmed with the controls (the card pops up mid-play)', /urls\.push\(OWNER_ICON\.tradeHandshake\.src\);/.test(cp));
   const css = src('src/styles/game.css');
-  check('4f the scene\'s look: half the banner wide, over the plaque, transform and opacity only',
-    /\.bt-zone-banner\.is-scene\{\s*--zb-scene-w:calc\(var\(--zb-w\) \* \.5\);/.test(css) && /\.bt-zone-banner__scene\{/.test(css)
-    && !/\.bt-zone-banner__scene\{[^}]*filter/.test(css));
+  /* v2.3.3511: the enlarged scene's rules gone; the emblem's: fixed, no
+     touch, transform and opacity only (TRAPS §42) */
+  const em = (css.match(/\.bt-land-emblem[^{]*\{[^}]*\}/g) || []).join('\n');
+  check('4f the banner draws no scene any more; the emblem under the minimap takes no touch and uses no filter',
+    !/\.bt-zone-banner\.is-scene\{/.test(css) && !/\.bt-zone-banner__scene\{/.test(css)
+    && /\.bt-land-emblem\{[^}]*position:fixed;z-index:21;pointer-events:none;/.test(css) && em.length > 0 && !/filter/.test(em), em.slice(0, 300));
 }
 
-/* ── 5. v2.3.3519: "Go recommended on everything" -- the legs and chest
+/* ── 5. the emblem under the minimap (v2.3.3511) ── */
+{
+  const LE = await import('../../src/ui/landEmblem.js');
+  const sd = LANDS.map((l) => dims(OI.LAND_SCENE[l]));
+  const at = (dpr) => sd.map(([w, h]) => LE.emblemSize(w, h, dpr));
+  const all = [1, 1.5, 2, 2.625, 3, 3.5, 4].map((dpr) => ({ dpr, s: at(dpr) }));
+  check('5a never blown up: on every screen (1x to 4x) at most one picture px a device px, never wider than EMBLEM_MAX_W',
+    all.every(({ s }) => s.every((x) => x.devPerArt <= 1 + 1e-9 && x.w <= LE.EMBLEM_MAX_W + 1e-9)), all.map(({ dpr, s }) => `${dpr}x: ${s.map((x) => x.w.toFixed(1)).join(' ')}`));
+  const three = at(3);
+  check('5b on a 3x phone exactly its own pixels, about 62-69 CSS px wide, its own shape',
+    three.every((x, i) => Math.abs(x.devPerArt - 1) < 1e-9 && x.w >= 60 && x.w <= 70 && Math.abs(x.w / x.h - sd[i][0] / sd[i][1]) < 1e-6), three.map((x) => [x.w.toFixed(1), x.h.toFixed(1)]));
+  check('5c on a computer at 1x held to the cap (112 CSS px), a little under its pixels',
+    at(1).every((x) => x.w === LE.EMBLEM_MAX_W && x.devPerArt < 1), at(1).map((x) => x.devPerArt.toFixed(2)));
+  const le = src('src/ui/landEmblem.js');
+  check('5d the held, decoded scene and its address -- never a load of its own',
+    /const scene = landSceneHeld\(land\);/.test(le) && /img\.src = scene\.src;/.test(le) && !/new Image\(/.test(le) && !/fetch\(/.test(le));
+  check('5e kept clear of every control: buttons, the sticks, the sprint button, the quest card, the No man\'s land and party cards, the coach, the map\'s button, a prompt',
+    ['button', '[data-disc]', '[data-sprint]', '[data-quest-hud]', '[data-nml-ask]', '[data-party-invite]', '[data-coach-card]', '[data-world-map-open]', '.bt-interact-prompt']
+      .every((k) => le.indexOf(k) >= 0) && /const on = ctl\.find\(\(q\) => hits\(r, q, EMBLEM_CLEAR\)\);/.test(le));
+  check('5f under the minimap, or beside it at its top, on whole device px; shown for its few seconds, then fading',
+    /\{ at: 'below', left: mini\.left \+ \(mini\.w - w\) \/ 2, top: mini\.top \+ mini\.h \+ EMBLEM_GAP \}/.test(le)
+    && /\{ at: 'beside', left: mini\.left - EMBLEM_GAP - w, top: mini\.top \+ 8 \}/.test(le) && /const snap = \(v\) => Math\.round\(v \* d\) \/ d;/.test(le)
+    && LE.EMBLEM_HOLD_MS >= 2500 && LE.EMBLEM_HOLD_MS <= 6000 && /hideLandEmblem\(EMBLEM_OUT_MS\)/.test(le));
+  const cut = src('tools/ui/cut-owner-icons.py');
+  check('5g the plate\'s scroll ends are cut off the scenes (rim_cut) and a dark ground line drawn in their place',
+    /def rim_cut\(im\):/.test(cut) && /def ground_line\(im\):/.test(cut) && /im = ground_line\(im\.crop\(\(0, 0, im\.width, rim\)\)\)/.test(cut)
+    && /SCENE_V = '\?v=2\.3\.3511'/.test(src('src/data/ownerIcons.js')));
+}
+
+/* ── 6. v2.3.3519: "Go recommended on everything" -- the legs and chest
    (card 10) and card 11's clearer five ── */
 {
   /* the bag's steel legs and chest are the sheet's, framed as today's were
@@ -158,34 +199,34 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   const metals = ['copper', 'iron', 'blacksteel'];
   const sameSize = metals.every((m) => dims('/icons/items/greaves-' + m + '.webp').join('x') === legs.join('x')
     && dims('/icons/items/chest-plate-' + m + '.webp').join('x') === chest.join('x'));
-  check('5a the legs and chest are the sheet\'s (square, ~110-125 px, not the old 256), each metal made from them at their size',
+  check('6a the legs and chest are the sheet\'s (square, ~110-125 px, not the old 256), each metal made from them at their size',
     legs[0] === legs[1] && chest[0] === chest[1] && legs[0] >= 100 && legs[0] <= 130 && chest[0] >= 100 && chest[0] <= 130 && sameSize,
     { legs, chest, sameSize });
   const cut = src('tools/ui/cut-owner-icons.py');
-  check('5b the cutter writes them (and says to run the metals after)', /name='icons\/items\/greaves'/.test(cut) && /name='icons\/items\/chest-plate'/.test(cut)
+  check('6b the cutter writes them (and says to run the metals after)', /name='icons\/items\/greaves'/.test(cut) && /name='icons\/items\/chest-plate'/.test(cut)
     && /make-metal-icons\.mjs --only greaves,chest-plate/.test(cut));
   /* each under a NEW name the code points at, so a re-run of the tool that
      made today's can never put the old one back */
   const NEW = { paw: '/icons/ui/pets-paw.webp', crown: '/icons/ui/party-crown.webp', pin: '/icons/ui/party-pin.webp',
     gavel: '/icons/ui/bldg-auction-gavel.webp', none: '/ui/welcome/cc/cc-none.webp' };
   const absent = Object.entries(NEW).filter(([, u]) => !existsSync(pub(u))).map(([k]) => k);
-  check('5c the five are files in public/', absent.length === 0, absent);
+  check('6c the five are files in public/', absent.length === 0, absent);
   const SI = await import('../../src/data/smallIcons.js');
-  check('5d the party window\'s leader and elsewhere marks are the crown and the pin, 64 x 64 as every small mark',
+  check('6d the party window\'s leader and elsewhere marks are the crown and the pin, 64 x 64 as every small mark',
     /party-crown\.webp/.test(SI.SMALL_ICON.partyLeader) && /party-pin\.webp/.test(SI.SMALL_ICON.partyAway)
     && dims(NEW.crown).join('x') === '64x64' && dims(NEW.pin).join('x') === '64x64', SI.SMALL_ICON);
   const more = src('src/ui/mobile/dash/MorePanel.jsx'), pets = src('src/ui/mobile/dash/PetsPanel.jsx'), house = src('src/ui/panels/PetHousePanel.jsx');
-  check('5e the orange paw on More\'s Pets tile, the Pets page and the Pet House; the brown one nowhere',
+  check('6e the orange paw on More\'s Pets tile, the Pets page and the Pet House; the brown one nowhere',
     [more, pets, house].every((t) => t.indexOf('/icons/ui/pets-paw.webp') >= 0 && t.indexOf('evt-pets.webp') < 0));
   const bl = src('src/data/buildings.js'), vp = src('src/ui/panels/buildings/VendorPanel.jsx');
-  check('5f the Auction House\'s door and window wear the gavel', /iconSrc: '\/icons\/ui\/bldg-auction-gavel\.webp/.test(bl)
+  check('6f the Auction House\'s door and window wear the gavel', /iconSrc: '\/icons\/ui\/bldg-auction-gavel\.webp/.test(bl)
     && /lsHeader\('auction-gavel'/.test(vp) && !/lsHeader\('auctionhouse'/.test(vp));
   const bt = src('src/ui/BroTown.jsx');
-  check('5g the creator\'s None tile is the plain no-entry sign, and the species\' Human and the eyes\' Normal keep the bald head',
+  check('6g the creator\'s None tile is the plain no-entry sign, and the species\' Human and the eyes\' Normal keep the bald head',
     /\(cat === 'species' \|\| cat === 'eyestyle'\) \? '\/ui\/welcome\/cc\/cc-no-hair\.webp\?v=' : '\/ui\/welcome\/cc\/cc-none\.webp\?v='/.test(bt));
 }
 
-/* ── 6. v2.3.3519: card 11, the owner's own picks ── */
+/* ── 7. v2.3.3519: card 11, the owner's own picks ── */
 {
   /* the owner's message, word for word (1b and 2a were #1020's) */
   const OWNER = ('T3.3, T20.2, T54.4, T61.1, T64.1, T98.3, T103.2, T105.1, T106.1, T112.2, T114.2, T116.1, T124.1, T129.1, '
@@ -197,7 +238,7 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   const inList = new Set(spec.picks.map((e) => e.code));
   const accounted = OWNER.filter((c) => inList.has(c) || (spec.done && c in spec.done) || (spec.dropped && c in spec.dropped));
   const extra = [...inList].filter((c) => OWNER.indexOf(c) < 0);
-  check('6a every one of the owner\'s 72 codes is cut, already in the game (5 from the first cut), or set aside with its reason (T69.1, the same star as T69.2)',
+  check('7a every one of the owner\'s 72 codes is cut, already in the game (5 from the first cut), or set aside with its reason (T69.1, the same star as T69.2)',
     OWNER.length === 72 && accounted.length === 72 && extra.length === 0 && Object.keys(spec.done).length === 5 && Object.keys(spec.dropped).join() === 'T69.1',
     { missing: OWNER.filter((c) => accounted.indexOf(c) < 0), extra });
 
@@ -211,7 +252,7 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   for (const e of spec.picks) { want.push([e, fileOf(e)]); if (e.grey) want.push([e, fileOf(e, true)]); }
   const changed = want.filter(([, f]) => !sums[f] || !existsSync(new URL(f, root))
     || createHash('sha256').update(readFileSync(new URL(f, root))).digest('hex') !== sums[f]).map(([e, f]) => e.code + ' ' + f);
-  check(`6b all ${want.length} files the cutter wrote are still the owner's picks, byte for byte (another tool writing over one fails here: run tools/ui/cut-owner-icons.py --force --only <code>)`,
+  check(`7b all ${want.length} files the cutter wrote are still the owner's picks, byte for byte (another tool writing over one fails here: run tools/ui/cut-owner-icons.py --force --only <code>)`,
     want.length === 71 && changed.length === 0, changed);
 
   /* each is the size its rule says (a PNG's from its IHDR) */
@@ -229,24 +270,24 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
         : o.tight ? Math.max(w, h) === o.tight : false;
     if (!ok) wrong.push({ code: e.code, file: fileOf(e), w, h, out: o });
   }
-  check('6c each at its rule\'s size: today\'s canvas (frame), a square disc, or tight to its larger side', wrong.length === 0, wrong);
+  check('7c each at its rule\'s size: today\'s canvas (frame), a square disc, or tight to its larger side', wrong.length === 0, wrong);
 
   const smithy = src('src/ui/panels/buildings/SmithyPanel.jsx'), chat = src('src/ui/mobile/ChatBubble.jsx');
-  check('6d the Forge tab wears the anvil (not the copper sword, an item\'s own picture), the chat box the owner\'s smiley (not the drawn one)',
+  check('7d the Forge tab wears the anvil (not the copper sword, an item\'s own picture), the chat box the owner\'s smiley (not the drawn one)',
     /id: 'forge', label: 'Forge', icon: '\/icons\/ui\/tab-forge\.webp/.test(smithy) && /src="\/icons\/ui\/chat-emotes\.webp/.test(chat)
     && !/<circle cx="9" cy="10" r="1\.2"/.test(chat) && existsSync(pub('/icons/ui/tab-forge.webp')) && existsSync(pub('/icons/ui/chat-emotes.webp')));
 
   const cs = src('src/ui/panels/controlSkin.jsx'), sb = src('src/ui/panels/SpecialButton.jsx'), jb = src('src/ui/panels/JumpButton.jsx');
-  check('6e Jump and the generic Special are round pictures drawn as the button\'s face (AbilityFace), at a new address, their greys beside them',
+  check('7e Jump and the generic Special are round pictures drawn as the button\'s face (AbilityFace), at a new address, their greys beside them',
     /export function AbilityFace\(props\)/.test(cs) && /AbilityFace, \{ size: size, name: 'special', grey: grey \}/.test(sb)
     && /AbilityFace, \{ size: size, name: 'jump' \}/.test(jb) && /const ABILITY_ART_V = '2\.3\.3519'/.test(cs)
     && /const SPECIAL_ART_V = '2\.3\.3519'/.test(cs) && !/JumpIcon|StarburstIcon/.test(cs + sb + jb)
     && ['jump', 'special', 'burst', 'special-sword', 'special-bow'].every((n) => existsSync(pub('/ui/controls/abil-' + n + '-grey.webp'))));
   const cut = src('tools/ui/cut-owner-icons.py');
-  check('6f the party leader\'s crown is the owner\'s T112.2 (sheet 3\'s), not the first sheet\'s',
+  check('7f the party leader\'s crown is the owner\'s T112.2 (sheet 3\'s), not the first sheet\'s',
     /name='icons\/ui\/party-crown', src='brotown-rpg-ui-icon-sheet-2\.png', mode='alpha',\s*box=\(1160, 540, 1256, 620\)/.test(cut));
   const rd = ['talk', 'door', 'sleep', 'farm-dig', 'farm-plant', 'farm-water', 'farm-feed', 'farm-harvest'];
-  check('6g the right stick\'s eight pictures are asked for at a new address', rd.every((n) => cs.indexOf("'/ui/controls/" + n + ".webp?v=2.3.3519'") >= 0));
+  check('7g the right stick\'s eight pictures are asked for at a new address', rd.every((n) => cs.indexOf("'/ui/controls/" + n + ".webp?v=2.3.3519'") >= 0));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

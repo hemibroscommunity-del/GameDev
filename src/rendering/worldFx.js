@@ -296,6 +296,7 @@ export class WorldFx {
         puffs: this._puffs.filter((p) => p.visible).length,
         lastDust: this._lastDust || null,   /* v2.3.2825: {ground, puff} of the last step */
         landDust: this._landDust || null,   /* v2.3.3017: where your last jump came down, and its puffs */
+        liftDust: this._liftDust || null,   /* v2.3.3499: where it took off, and its kick of dust */
         drops: this._drops.filter((p) => p.visible).length,
         splats: this._splats.filter((p) => p.visible).length,
         lastBlood: this._lastBlood || null,
@@ -759,6 +760,10 @@ export class WorldFx {
     const set = this._inAir || (this._inAir = new Set());
     if (air) {
       const w = this._walkers.get(key);
+      /* v2.3.3499: the take-off kicks a little dust back off the heels -- the
+         way it was going, from the last stride (the walker), or to both sides
+         from a standing jump; the landing keeps its ring below */
+      if (!set.has(key)) this._takeOffDust(key, w, x, y, color, now, zone);
       if (w) { w.x = x; w.y = y; } else this._walkers.set(key, { x, y, side: 1 });
       set.add(key);
       return true;
@@ -776,6 +781,30 @@ export class WorldFx {
     }
     if (key === 'me') this._landDust = { x: Math.round(x), y: Math.round(y), n, at: now };
     return false;
+  }
+
+  /* v2.3.3499: three puffs behind the boots at a take-off (two, one each
+     side, from a standing jump), smaller than the landing's ring; nothing on
+     water.  `w` is the walker as it was before this frame. */
+  _takeOffDust(key, w, x, y, color, now, zone) {
+    const ground = isWheelTrialZone(zone) ? wheelGroundColor(x, y) : groundColorAt(zone, x, y);
+    if (ground === -1) return;
+    const puffC = ground != null ? dustOf(ground) : color;
+    const dx = w ? x - w.x : 0, dy = w ? y - w.y : 0;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    let n = 0;
+    if (d > 3 && d < 90) {
+      const ux = dx / d, uy = dy / d;
+      for (const a of [-0.45, 0, 0.45]) {
+        const c = Math.cos(a), s = Math.sin(a);
+        const bx = -(ux * c - uy * s), by = -(ux * s + uy * c) * 0.55;
+        this._spawnPuff(x + bx * 5, y + by * 5, puffC, now, bx * 0.8, by * 0.8);
+        n++;
+      }
+    } else {
+      for (const side of [-1, 1]) { this._spawnPuff(x + side * 6, y, puffC, now, side * 0.7, 0); n++; }
+    }
+    if (key === 'me') this._liftDust = { x: Math.round(x), y: Math.round(y), n, at: now, run: d > 3 && d < 90 };
   }
 
   _walk(key, x, y, color, now, zone) {
