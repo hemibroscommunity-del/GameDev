@@ -61,7 +61,7 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, heroPopupY, peerPopupY /* v2.3.3026: a hit on you pops over your head */, isAttackInShieldArc, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
 import { dropShield, noteShieldThreat } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield; v2.3.3260: and faces who hit you */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent, handleDiceEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes; v2.3.3393: + a /roll or /flip */
-import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
+import { applyServerMuteList, isBlockedId } from '@/game/chatMute.js'; /* v2.3.1981; v2.3.3526: a block stops requests */
 import { pushAbilityRings, BASH_POSE_MS } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave; v2.3.2920 + its pose window */
 import { depthK } from '@/data/zones.js'; /* v2.3.2824: a peer's whirlwind is as wide as its (depth-scaled) hit */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
@@ -4477,6 +4477,21 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'duel_request':
             {
+              /* ═══ v2.3.3526: A BLOCKED PLAYER'S REQUESTS NEVER REACH YOU ═══
+                 The owner, of the 2026-10-19 review's "should blocking a
+                 player also stop their trade and duel requests?": "Go
+                 recommended on everything".  Block (the player card's, and
+                 the friends list's) was chat and emotes only (chat.js), so a
+                 blocked player could still put a duel challenge, a trade
+                 request or a party invite in front of you, over and over.
+                 Now this phone drops each from anyone on its block list --
+                 no card, no popup, no sound -- and the request runs out on
+                 the sender's side as an unanswered one does (duel: their
+                 card's own clock; trade: trade2.js's invite TTL; party:
+                 PARTY.INVITE_TTL), so nothing tells them they are blocked.
+                 The block list is this device's (bt_blocked), as it always
+                 was; Mute is the one the worker keeps. */
+              if (isBlockedId(payload.from)) break;
               if (payload.target === S.myId) {
                 setDuelRequest({
                   fromId: payload.from,
@@ -4668,6 +4683,7 @@ export function processGameEvent(type, payload, S, deps) {
                  accept/decline card (accepting sends trade2_open back,
                  which completes the mutual open server-side). */
               if (!payload || !payload.from) break;
+              if (isBlockedId(payload.from)) break;   /* v2.3.3526: a blocked player's request never reaches you (duel_request) */
               if (setTrade2) setTrade2({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', ts: Date.now() });
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🤝 ' + (payload.fromName || 'Someone') + ' wants to trade!', '#3dd497');
               cue('tradeAsk');   /* v2.3.3434: two coins' clink (a beep(), silent) */
@@ -4814,6 +4830,7 @@ export function processGameEvent(type, payload, S, deps) {
                  (accepting sends party_accept, validated against the
                  inviter's own recorded invite server-side). */
               if (!payload || !payload.from) break;
+              if (isBlockedId(payload.from)) break;   /* v2.3.3526: a blocked player's request never reaches you (duel_request) */
               var _piTs = Date.now();
               if (setParty) setParty({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', partySize: payload.partySize || 1, ts: _piTs });
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🎪 ' + (payload.fromName || 'Someone') + ' invites you to a party!', '#fbbf24');

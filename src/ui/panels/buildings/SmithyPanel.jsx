@@ -160,7 +160,9 @@ export function SmithyPanel({ rpgState, stateRef }) {
   const SC = S._serverCaps || {};
   const tabs = [
     SC.smelting && { id: 'smelt', label: 'Smelt', icon: BAR_THUMBS.bar_copper },
-    { id: 'forge', label: 'Forge', icon: '/icons/items/great-sword-copper.webp' + ITEMS_V },
+    /* v2.3.3526: the owner's pick (card 11, T121.1): an anvil -- the tab wore
+       the copper great sword, an item's own picture */
+    { id: 'forge', label: 'Forge', icon: '/icons/ui/tab-forge.webp?v=2.3.3526' },
     /* v2.3.3092: bars into armor (server armorforge.js) */
     (S._serverCaps && S._serverCaps.armorforge) && { id: 'armor', label: 'Armor', icon: '/icons/items/chest-plate-copper.webp' + ITEMS_V },
     /* v2.3.3524: the hammer (the owner: "Make the upgrade tab icon different
