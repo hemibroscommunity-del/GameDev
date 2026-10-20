@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4ea699feb1a3b4652212d19b3e54e80b8a291144",
+  "tree": "83d15e4a00597b64bbeead823cd974edfa943352",
+  "committedAt": "2026-10-19T18:08:40-07:00",
+  "subject": "Two phone tests mended: propshots judges its own snowball, facebow keeps the townsfolk's Halloween bubbles off the face (v2.3.3502) (#1037)",
+  "files": 6091,
+  "bytes": 711679725,
+  "listingSha256": "82b1989af9f74a05d52ad4950fb4ae4193bb6d9f7da7f506e607977bc166fd90",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
