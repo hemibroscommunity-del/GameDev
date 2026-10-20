@@ -46,8 +46,14 @@ import { figureFeetY, figureFeetX, figureFeetUnits } from './systems/entityRende
 import { jumpActive, jumpLook } from '../game/jump.js';
 import { placeEmote, holdMatrix } from '../game/emoteMoves.js';
 
-/* how fast a figure goes across, eased so a frame's jitter does not rock it */
-const ACROSS_EASE = 0.35;
+/* v2.3.3499: how fast a figure goes across, from its WALK -- yours
+   (S.player.vx) or a peer's off the wire (`_vx`), both px a 60 Hz frame --
+   never from where two frames drew it: a phone drawing a few frames a second
+   (or the QA box) saw no two frames close enough together and leant nothing.
+   Eased by the clock (ACROSS_TAU_MS), so a slow frame lands where quick ones
+   would, and a change of stick does not snap the figure over. */
+const FRAME_MS = 1000 / 60;
+const ACROSS_TAU_MS = 60;
 
 export class JumpFx {
   constructor() {
@@ -70,7 +76,7 @@ export class JumpFx {
       if (pd && !pd.destroyed) {
         this._restore(pd);
         const j = S._jump && jumpActive(S._jump, now) ? S._jump : null;
-        const across = this._across(pd, now);
+        const across = this._across(pd, now, S.player ? S.player.vx : 0);
         const dead = !!(S._dying || (S.rpg && S.rpg.hp <= 0));
         const look = dead ? null : jumpLook(j, now, S._jumpLandFx || null, across);
         const shaped = look ? this._apply(pd, look) : false;
@@ -78,7 +84,7 @@ export class JumpFx {
           p.self = {
             lift: look ? +look.lift.toFixed(2) : 0, y: +pd.y.toFixed(1), feet: +figureFeetY(pd).toFixed(2), feetX: +figureFeetX(pd).toFixed(2),
             pose: pd._lastPoseKey || null, dir: pd._lastFacingKey || null, frame: pd._jumpFrameIdx != null ? pd._jumpFrameIdx : null,
-            air: !!j, t: look ? +look.t.toFixed(3) : null,
+            air: !!j, t: look ? +look.t.toFixed(3) : null, u: look && !look.air ? +look.u.toFixed(3) : null,
             ky: shaped ? +look.ky.toFixed(3) : 1, kx: shaped ? +look.kx.toFixed(3) : 1, rot: shaped ? +look.rot.toFixed(4) : 0,
             shaped, across: +across.toFixed(3), hud: this._hudProbe(pd),
           };
@@ -99,7 +105,7 @@ export class JumpFx {
             o._jump = null;
             j = null;
           }
-          const across = this._across(d, now);
+          const across = this._across(d, now, o ? o._vx : 0);
           if (!d.visible || (o && o._isDead)) { d._jfxLand = null; continue; }
           const look = jumpLook(j, now, d._jfxLand || null, across);
           if (!look) { d._jfxLand = null; continue; }
@@ -111,17 +117,17 @@ export class JumpFx {
     p.ms = +(performance.now() - t0).toFixed(3);
   }
 
-  /* how fast the figure goes across the screen, world px a ms (+ east),
-     read off where the entity pass put it (after _restore: its own x) */
-  _across(d, now) {
-    const x = d.x;
+  /* how fast the figure goes across the screen, world px a ms (+ east), from
+     its walk (`vxFrame`, px a 60 Hz frame), eased by the clock */
+  _across(d, now, vxFrame) {
+    const target = Number.isFinite(vxFrame) ? vxFrame / FRAME_MS : 0;
     const last = d._jfxAt;
-    let v = 0;
-    if (last && now > last.t && now - last.t < 250) {
-      const raw = (x - last.x) / (now - last.t);
-      v = last.v + (raw - last.v) * ACROSS_EASE;
+    let v = target;
+    if (last && now > last.t && now - last.t < 1000) {
+      const k = 1 - Math.exp(-(now - last.t) / ACROSS_TAU_MS);
+      v = last.v + (target - last.v) * k;
     }
-    d._jfxAt = { x, t: now, v: Number.isFinite(v) ? v : 0 };
+    d._jfxAt = { t: now, v: Number.isFinite(v) ? v : 0 };
     return d._jfxAt.v;
   }
 

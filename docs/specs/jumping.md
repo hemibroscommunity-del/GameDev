@@ -431,7 +431,11 @@ loaded or held.
     down to land;
   - scaled by how fast he goes across (`JUMP_LEAN_PX_MS`, a walk's pace leans
     in full), so a standing jump does not lean, nor one straight up or down the
-    screen.
+    screen;
+  - the speed is his WALK (`S.player.vx`, or a peer's `_vx` off the wire),
+    eased by the clock (jumpFx.js `ACROSS_TAU_MS`). The first cut timed where
+    two frames drew him and gave up past 250 ms between them, so a phone
+    drawing a few frames a second (and the QA box) never leant at all.
 - **A kick of dust at the take-off** (rendering/worldFx.js `_takeOffDust`):
   three puffs back off the heels the way he was going, or two to the sides from
   a standing jump. The landing keeps its ring of six, and nothing is kicked up

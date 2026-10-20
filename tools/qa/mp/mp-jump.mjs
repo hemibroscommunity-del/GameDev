@@ -52,7 +52,7 @@ const PEAK = 85;          /* JUMP_PEAK (game/jump.js; 68 until v2.3.3499, the ow
 const HS = 10;            /* the walk box's half-width (hs in BroTown.jsx) */
 /* v2.3.3499: the stride's four frames and the look's numbers, from the rules
    themselves (game/jump.js is pure) */
-import { JUMP_FRAMES, JUMP_LEAN, JUMP_LEAN_PX_MS, jumpStretchAt, jumpLeanAt } from '../../../src/game/jump.js';
+import { JUMP_FRAMES, JUMP_LEAN, JUMP_LEAN_PX_MS, jumpStretchAt, jumpLeanAt, jumpLandStretch } from '../../../src/game/jump.js';
 const OVER = ['fence'];   /* a long straight one, easiest to cross square-on */
 const TREES = ['oak', 'pine', 'birch', 'orchard'];
 
@@ -262,10 +262,21 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
   const kys = airS.map((r) => r.self.ky);
   const offCurve = Math.max(0, ...airS.map((r) => Math.abs(r.self.ky - jumpStretchAt(r.self.t))));
   rec.ok(`...squashed at the press and long on the way up, as the rules draw it (${Math.min(...kys).toFixed(3)} to ${Math.max(...kys).toFixed(3)}; ${offCurve.toFixed(4)} off the curve at the most)`,
-    airS.every((r) => r.self.shaped) && offCurve < 0.002 && Math.max(...kys) > 1.02, { kys, ts: airS.map((r) => r.self.t) });
+    /* a frame on the curve's flat top with no lean is drawn as it is
+       (`shaped` false: nothing to squash), every other one shaped */
+    airS.every((r) => r.self.shaped || (Math.abs(jumpStretchAt(r.self.t) - 1) < 1e-4 && r.self.rot === 0))
+      && offCurve < 0.002 && Math.max(...kys) > 1.02, { kys, ts: airS.map((r) => r.self.t), shaped: airS.map((r) => r.self.shaped) });
+  /* v2.3.3499: judged on the curve at the share of the landing each frame
+     was drawn at (`u`) -- this box draws a frame every few hundred ms, and a
+     first run caught the bottom (0.891) where a second drew only the spring
+     back (1.013, then settled); a frame in its first eighth (the curve
+     under 0.95 there) must be squashed */
   const minLand = landS.length ? Math.min(...landS.map((r) => r.self.ky)) : null;
-  rec.ok(`...and squashed again touching down, springing back (${landS.length} frames, down to ${minLand != null ? minLand.toFixed(3) : '?'})`,
-    landS.length >= 1 && minLand < 0.97 && landS.every((r) => r.self.rot === 0 && r.self.lift === 0), landS.map((r) => ({ u: r.self.t, ky: r.self.ky })));
+  const landOff = Math.max(0, ...landS.map((r) => Math.abs(r.self.ky - jumpLandStretch(r.self.u))));
+  rec.ok(`...and squashed again touching down, springing back as the rules draw it (${landS.length} frames, down to ${minLand != null ? minLand.toFixed(3) : '?'}; ${landOff.toFixed(4)} off the curve)`,
+    landS.length >= 1 && landS.every((r) => typeof r.self.u === 'number') && landOff < 0.002
+      && landS.every((r) => r.self.u >= 0.12 || r.self.ky < 0.97)
+      && landS.every((r) => r.self.rot === 0 && r.self.lift === 0), landS.map((r) => ({ u: r.self.u, ky: r.self.ky })));
   /* about his feet: what the shadows and anything else standing on them read,
      after the lift and the squash, is where the depth pass had them */
   const feetOff = Math.max(0, ...[...airS, ...landS].filter((r) => r.ground).map((r) => Math.max(Math.abs(r.self.feet - r.ground.y), Math.abs(r.self.feetX - r.ground.x))));
