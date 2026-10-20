@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e75ba3d951c50862943cbddf6c757fa77ff73fbd",
+  "tree": "cb328cba3e73b2871a79bb26757795f48533400f",
+  "committedAt": "2026-10-19T18:08:27-07:00",
+  "subject": "An aimed shot is judged from your feet to its target's feet, not along a line beside it (v2.3.3501) (#1036)",
+  "files": 6091,
+  "bytes": 711677730,
+  "listingSha256": "cd9fc6566dd39f59f022092c1b80b6032e983a98f31015702a5343bfd7026a09",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
