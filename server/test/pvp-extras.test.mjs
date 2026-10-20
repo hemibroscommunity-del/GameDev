@@ -6,7 +6,7 @@
  *   1. who an area move may hit: the players you are already fighting (a duel,
  *      a trade of blows in the last ENGAGE_MS), never a bystander; a NAMED
  *      target only needs the fight to be allowed;
- *  1b. v2.3.3523: WHICH WAY -- a blow YOU landed, not one landed on you: the
+ *  1b. v2.3.3528: WHICH WAY -- a blow YOU landed, not one landed on you: the
  *      one attacked does not catch the attacker in an area move before their
  *      own first blow (the kill switch `areachoice: false` is either way);
  *   2. the weapon's element on a player -- the claim's, read where a hit on a
@@ -158,7 +158,7 @@ function monster(id, x, y, level) {
   room._liveFlags = {};
 }
 
-// ── 1b. v2.3.3523: WHICH WAY -- an area move reaches a player its caster struck ──
+// ── 1b. v2.3.3528: WHICH WAY -- an area move reaches a player its caster struck ──
 /* The owner: "keep the behavior of needing to confirm the "attack" button
    that pops up in the window first before any damage is registered to either
    player in the wilderness".  Being struck is not choosing to fight: the one
@@ -186,7 +186,7 @@ function monster(id, x, y, level) {
   T += PVP_EXTRAS.ENGAGE_MS + 2;
   room._notePvpEngage(IDS.C, IDS.A, T);
   room._liveFlags = { areachoice: false };
-  check('1b. areachoice: false -- a blow either way, as before v2.3.3523 (C struck A: A fights C)', near('A', 0, 0, 100).includes(IDS.C));
+  check('1b. areachoice: false -- a blow either way, as before v2.3.3528 (C struck A: A fights C)', near('A', 0, 0, 100).includes(IDS.C));
   room._liveFlags = {};
   check('1b. ...and back on, the struck one is not fighting again', !near('A', 0, 0, 100).includes(IDS.C));
 

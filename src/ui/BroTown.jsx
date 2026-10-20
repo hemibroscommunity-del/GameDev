@@ -388,7 +388,7 @@ import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land over the band's middle */
 import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
-import { nmlAsk, nmlAskOn, nmlAim } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first; v2.3.3523: about the one who attacked you too */
+import { nmlAsk, nmlAskOn, nmlAim } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first; v2.3.3528: about the one who attacked you too */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
 import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
@@ -10291,7 +10291,7 @@ export var BroTown = function BroTown(_ref0) {
        such a player under the finger -- inside the world tap's own 25 px of
        them, and nearer them than your own body -- takes the tap: it is
        forwarded to the world, whose player branch raises the window (or aims,
-       at a player you already chose; v2.3.3523: hitting back asks too).  Only there, and only for a player the rule lets you
+       at a player you already chose; v2.3.3528: hitting back asks too).  Only there, and only for a player the rule lets you
        fight: everywhere else your own circle still opens chat. */
     /* v2.3.3265: ...and one of your sparring clones (game/spar.js), anywhere:
        at a sword's reach a tap on it aimed nowhere and opened your chat */
@@ -12580,7 +12580,7 @@ export var BroTown = function BroTown(_ref0) {
                  fight with them lasts (sparTargets.js isLiveFoe): the choice
                  was made, so the tap aims at once -- a window in the middle
                  of that fight would cost it.
-                 ═══ v2.3.3523: THE ONE WHO ATTACKED YOU IS ASKED ABOUT TOO ═══
+                 ═══ v2.3.3528: THE ONE WHO ATTACKED YOU IS ASKED ABOUT TOO ═══
                  The owner: "keep the behavior of needing to confirm the
                  "attack" button that pops up in the window first before any
                  damage is registered to either player in the wilderness".

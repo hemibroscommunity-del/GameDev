@@ -274,7 +274,7 @@ its stun is the lunge's daze. A player is named the way it named one: as
   names. A move that hits an area (the whirlwind, the burst, a splash or a
   blast) hits only players you are already fighting: a duel or arena partner,
   or someone you traded a hit with in the last 10 s. Your whirlwind in No
-  man's land never starts a fight with a bystander. Since v2.3.3523 the hit
+  man's land never starts a fight with a bystander. Since v2.3.3528 the hit
   must be one YOU landed on them, not one they landed on you: being attacked
   is not choosing to fight back, and the game asks the one attacked first
   ("Hit back <name>?", no-mans-land.md "Hitting back goes through the window

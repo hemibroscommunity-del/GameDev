@@ -43,7 +43,7 @@
  * gives you no red skull (nomansland.js _nmlOnHit), so the window's warning
  * would be wrong, and a window in the middle of being attacked would cost you
  * the fight.  An older worker sends no `by`, and every tap asks.
- * (GONE in v2.3.3523, below: the owner wants the window's Attack before any
+ * (GONE in v2.3.3528, below: the owner wants the window's Attack before any
  * blow, for both players -- it now says "Hit back", with the white skull.)
  *
  * `?nmlask=0` is the game as it was (the tap aims, a stray shot asks
@@ -66,7 +66,7 @@
  * fight was the only one that player would ever raise, until the page was
  * reloaded; Ignore still means never again.
  *
- * ═══ v2.3.3523: HITTING BACK GOES THROUGH THE WINDOW TOO ═══
+ * ═══ v2.3.3528: HITTING BACK GOES THROUGH THE WINDOW TOO ═══
  * The owner, 2026-10-20: "If a red skull player (first to attack in
  * wilderness) attacks, the other player can't attack back unless they lock on
  * target (tap the enemy player).  You recently made a fix where registering
@@ -103,7 +103,7 @@
  */
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { nmlLive, nmlCanAttack, nmlHere } from '@/game/noMansLand.js';
-import { chooseFoe, isLiveFighter, pvpBoutAt } from '@/game/sparTargets.js'; /* v2.3.3268: Attack is a choice that lasts; v2.3.3316: + who a swing already hits; v2.3.3523: + when a bout began */
+import { chooseFoe, isLiveFighter, pvpBoutAt } from '@/game/sparTargets.js'; /* v2.3.3268: Attack is a choice that lasts; v2.3.3316: + who a swing already hits; v2.3.3528: + when a bout began */
 
 /* how long an unanswered window stays */
 export const NML_ASK_MS = 10000;
@@ -111,7 +111,7 @@ export const NML_ASK_MS = 10000;
    be asked about again by a shot or a swing (a tap asks every time) */
 export const NML_ASK_AGAIN_MS = 15000;
 
-let _ask = null;   /* { id, name, lv, why: 'shot' | 'swing' | 'aim' | 'tap', back, at } | null -- v2.3.3523: + 'aim' (the bow's line), `back` (hitting back) */
+let _ask = null;   /* { id, name, lv, why: 'shot' | 'swing' | 'aim' | 'tap', back, at } | null -- v2.3.3528: + 'aim' (the bow's line), `back` (hitting back) */
 const _subs = new Set();
 function emit() {
   for (const fn of _subs) {
@@ -156,7 +156,7 @@ function askedSet(S) {
 export function nmlAsked(S, id) {
   return !!(S && S._nmlAsked instanceof Set && S._nmlAsked.has(String(id)));
 }
-/* v2.3.3523: and WHEN each came up (a Map, ids off the wire), for
+/* v2.3.3528: and WHEN each came up (a Map, ids off the wire), for
    nmlAttackedSince: kept short, and a cleared one only asks again */
 function askedAtMap(S) {
   if (!(S._nmlAskedAt instanceof Map)) S._nmlAskedAt = new Map();
@@ -173,7 +173,7 @@ export function nmlHitBack(S, id, now) {
   return white > 0 && !(red > 0);
 }
 
-/** v2.3.3523: has `id` attacked you SINCE you were last asked about them?
+/** v2.3.3528: has `id` attacked you SINCE you were last asked about them?
  *  Hitting them back is open to you (nmlHitBack: they gave you your white
  *  skull), and the BOUT between you began after that window came up
  *  (sparTargets.js pvpBoutAt: the first blow after FIGHT_QUIET_MS with none,
@@ -193,7 +193,7 @@ export function nmlAttackedSince(S, id, now) {
  *  ═══ v2.3.3268: AND THE CHOICE LASTS ═══
  *  The owner: "I want attacks against real players to hit them even when not
  *  locked on target but only if you select the attack option that pops up on
- *  the window".  Every road here is that choice -- the window's Attack (v2.3.3523:
+ *  the window".  Every road here is that choice -- the window's Attack (v2.3.3528:
  *  for the one who attacked you too: hitting back no longer skips the window)
  *  -- so it is recorded (game/sparTargets.js chooseFoe): your swings, arrows
  *  and bolts hit them whatever you have locked, while No man's land still lets
@@ -217,10 +217,10 @@ export function nmlPartyInvite(S, id) {
 
 /** Raise the window about `id`.  why 'shot': a stray shot passed through
  *  them; why 'swing' (v2.3.3316): your swing reached them; why 'aim'
- *  (v2.3.3523): your bow's line is on them and nothing else -- each once per
+ *  (v2.3.3528): your bow's line is on them and nothing else -- each once per
  *  player until it is answered (an unanswered window may ask again
  *  NML_ASK_AGAIN_MS after it went), never over an open window; and since
- *  v2.3.3523 your attacker too, an earlier answer about them holding only
+ *  v2.3.3528 your attacker too, an earlier answer about them holding only
  *  until they attack you after it (nmlAttackedSince).  why 'tap': you tapped
  *  them -- every time, replacing a window about someone else.  True when the
  *  window is up about them.  `back` on it: hitting them back (nmlHitBack). */
@@ -231,7 +231,7 @@ export function nmlAsk(S, id, why) {
   const quiet = why === 'shot' || why === 'swing' || why === 'aim';
   if (quiet) {
     if (_ask) return false;
-    /* v2.3.3523: not "never your attacker" any more -- and their attack since
+    /* v2.3.3528: not "never your attacker" any more -- and their attack since
        your last answer about them is a new question */
     const fresh = nmlAttackedSince(S, key);
     if (nmlAsked(S, key) && !fresh) return false;
@@ -272,7 +272,7 @@ export function nmlAskClose(S) {
  *  hands in what its claims use, `slack` a stride as theirs): the first player
  *  in it you could fight here -- not your lock, not one you chose or your
  *  sparring clone (the swing already lands on those), not drawn-away; since
- *  v2.3.3523 the one who attacked you too -- is asked about, as a stray
+ *  v2.3.3528 the one who attacked you too -- is asked about, as a stray
  *  shot's is.  The swing does them nothing.  Called on
  *  every frame of a swing's sweep: a window up, or none of this in No man's
  *  land, and it is gone at once.  True when it raised the window. */

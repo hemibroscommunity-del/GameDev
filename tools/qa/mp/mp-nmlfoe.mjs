@@ -28,7 +28,7 @@
  *      the raider is on (a blow within the minute: sparTargets.js
  *      fightingNow) -- under the thumb; a real tap raises the guard facing the
  *      raider, and the raider's swings are BLOCKED by the worker;
- *   8. (v2.3.3523) the wanderer hits back THROUGH THE WINDOW -- the owner:
+ *   8. (v2.3.3528) the wanderer hits back THROUGH THE WINDOW -- the owner:
  *      "keep the behavior of needing to confirm the "attack" button that pops
  *      up in the window first before any damage is registered to either
  *      player": its BOW held at the raider, nothing chosen, looses nothing and
@@ -81,7 +81,7 @@ const readAsk = (P) => P.page.evaluate(() => {
     cur: h ? h.current() : null,
     dom: el ? { why: el.getAttribute('data-nml-ask'), id: el.getAttribute('data-nml-ask-id'),
       name: ((el.querySelector('[data-nml-ask-name]') || {}).textContent || '').trim(),
-      back: el.getAttribute('data-nml-ask-back') === '1' } : null,   /* v2.3.3523: hitting back */
+      back: el.getAttribute('data-nml-ask-back') === '1' } : null,   /* v2.3.3528: hitting back */
     lock: lt ? { type: lt.type, id: lt.id, nml: !!lt.nml, src: lt.src || null } : null,
   };
 });
@@ -545,7 +545,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.evaluate(() => { const S = window._gameState.current; if (S._shieldUp) { S._shieldUp = false; } });
   await H.hopTo(A, spot.x, spot.y, { tries: 30, step: 60 });
 
-  /* ── 8. v2.3.3523: the wanderer hits back, through the window, and the choice lasts ── */
+  /* ── 8. v2.3.3528: the wanderer hits back, through the window, and the choice lasts ── */
   await heal(idA);
   const eqB8 = await H.equipWeapon(B, 'bow', 'rangedWeapon', 'ranged');
   await B.page.waitForTimeout(1500);

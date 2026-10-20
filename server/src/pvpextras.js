@@ -53,7 +53,7 @@
  *     with nothing named) hits only players you are already fighting: a duel
  *     or arena partner, or someone you traded a hit with in the last
  *     ENGAGE_MS.  So a whirlwind in No man's land never starts a fight with a
- *     bystander, and never misses the one you are in.  v2.3.3523: a hit YOU
+ *     bystander, and never misses the one you are in.  v2.3.3528: a hit YOU
  *     landed on them, not one they landed on you (_pvpEngaged, "which way"):
  *     being attacked is not choosing to fight back.
  *   - A PLAYER CANNOT BE LOCKED DOWN.  The one thing that is the target's own,
@@ -101,7 +101,7 @@ import { STAFF_BOLT, STAFF_SPLASH, LIFESTEAL_REFUND } from './combat.js';
 export const PVP_EXTRAS = Object.freeze({
   /* "already fighting": a hit between the two, either way, this recently --
      the fight-food window (cooking.js PVP_HEAL.WINDOW_MS), the same length.
-     v2.3.3523: a hit by the CASTER on them (_pvpEngaged; either way with
+     v2.3.3528: a hit by the CASTER on them (_pvpEngaged; either way with
      `areachoice: false`) */
   ENGAGE_MS: 10000,
   /* pairs kept before the stale ones are swept (a room holds 120) */
@@ -126,7 +126,7 @@ export const PVP_STATUSES = Object.freeze(['slow', 'fracture', 'thorn']);
 
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 const SLOT_CAT = (slot) => (slot === 'ranged' ? 'bow' : slot === 'staff' ? 'staff' : 'sword');
-/* v2.3.3523: a pair's last blow either way ({ab, ba}: _notePvpEngage) */
+/* v2.3.3528: a pair's last blow either way ({ab, ba}: _notePvpEngage) */
 const lastBlowOf = (e) => (e && typeof e === 'object' ? Math.max(e.ab || 0, e.ba || 0) : 0);
 
 export const pvpExtrasMethods = {
@@ -140,7 +140,7 @@ export const pvpExtrasMethods = {
   },
 
   /* ═══ WHO IS FIGHTING WHOM ═══
-     ═══ v2.3.3523: ...AND WHICH WAY ═══
+     ═══ v2.3.3528: ...AND WHICH WAY ═══
      The owner, 2026-10-20: "keep the behavior of needing to confirm the
      "attack" button that pops up in the window first before any damage is
      registered to either player in the wilderness".  A blow between two
@@ -171,14 +171,14 @@ export const pvpExtrasMethods = {
     if (a < b) e.ab = now; else e.ba = now;
   },
 
-  /* v2.3.3523: is the area rule "a blow YOU landed" (the default), or a blow
+  /* v2.3.3528: is the area rule "a blow YOU landed" (the default), or a blow
      either way (`areachoice: false`)? */
   _areaChoiceOn() {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && own(f, 'areachoice') && !f.areachoice);
   },
 
-  /* A duel or arena partner (a live consent pair), or -- v2.3.3523 -- a hit
+  /* A duel or arena partner (a live consent pair), or -- v2.3.3528 -- a hit
      `a` landed on `b` within ENGAGE_MS (`a` is the caster). */
   _pvpEngaged(a, b, now) {
     /* v2.3.3265: a sparring clone and its owner are always fighting (spar.js) */

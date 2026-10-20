@@ -44,7 +44,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armou
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */, shotGroundDy /* v2.3.3206: a shot's ground is under the boots */ } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
-import { firstSightHit, shotLowAim, lowAimAlong, arrowSureReachPast, shotAimAt, nmlSightAsk } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at; v2.3.3523: + No man's land's ask on an empty line */
+import { firstSightHit, shotLowAim, lowAimAlong, arrowSureReachPast, shotAimAt, nmlSightAsk } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at; v2.3.3528: + No man's land's ask on an empty line */
 import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player a shot is aimed at, for the others' screens */
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -1520,7 +1520,7 @@ export function updateMonsterCombat(S, deps) {
                tested.  The props were already held to it (`ground.len`). */
             var _bsRange = BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1) * depthK(S.currentZone, P.y);
             var _bsRoom = _viewEdgeDist(S, _bsX, _bsY, _bsA);
-            /* v2.3.3523: the length and the ground the gate tests, named once
+            /* v2.3.3528: the length and the ground the gate tests, named once
                for the No man's land ask below */
             var _bsLen = Math.min(_bsRange, _bsRoom + arrowSureReachPast(bowRangeMult(S.rpg) || 1));
             var _bsGround = { x: P.x, y: P.y + shotGroundDy(S), len: _bsRoom };
@@ -1542,7 +1542,7 @@ export function updateMonsterCombat(S, deps) {
                  bow's range or the screen's edge, the nearer -- which the
                  aiming line is drawn to when nothing is on it */
               reach: Math.min(_bsRange, _bsRoom) };
-            /* ═══ v2.3.3523: AN EMPTY LINE ON A PLAYER YOU HAVE NOT CHOSEN ASKS ═══
+            /* ═══ v2.3.3528: AN EMPTY LINE ON A PLAYER YOU HAVE NOT CHOSEN ASKS ═══
                The owner: the one being attacked "can't attack back unless they
                lock on target ... Apply that there too.  But keep ... needing to
                confirm the "attack" button that pops up in the window first".

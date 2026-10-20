@@ -673,7 +673,7 @@ room._sparDev(OWNER, { skill: 'easy' });
     F._spar = null;
     notePvpBlow(F, { attacker: 'p3', target: 'me' }, T0);
     const now = fightingNow(F, T0 + 1000).map((c) => c.id).join();
-    check('16k a player who hit you is a fight (fightingNow) -- not a target of yours until you choose (v2.3.3523: the window\'s Attack, as for anyone)',
+    check('16k a player who hit you is a fight (fightingNow) -- not a target of yours until you choose (v2.3.3528: the window\'s Attack, as for anyone)',
       now === 'p3' && !isLiveFighter(F, 'p3') && !shotPlayerTargets(F, null).includes('p3') && swing(F, Math.PI) === '', now);
     const later = fightingNow(F, T0 + FIGHT_QUIET_MS + 1000).length;
     notePvpBlow(F, { attacker: 'p3', target: 'me' }, T0);
@@ -711,7 +711,7 @@ room._sparDev(OWNER, { skill: 'easy' });
     return r;
   })();
   check('16p with no rule handed in (no No man\'s land), no player is ever a foe or a fight', noRule === false);
-  /* v2.3.3523: the BOUT -- the first blow either way after a quiet
+  /* v2.3.3528: the BOUT -- the first blow either way after a quiet
      FIGHT_QUIET_MS; No man's land's window asks again about one who attacks
      you in a bout that began after your last answer (nmlAsk.js
      nmlAttackedSince) */

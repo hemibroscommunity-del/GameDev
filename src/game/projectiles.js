@@ -520,7 +520,7 @@ function _rockBetween(S, a, ox, oy, fx, fy) {
    the very test a real hit uses (the drawn capsule swept this frame, the same
    radius, not through a rock), so "it would have hit them" means what it says.
    The shot flies on and does them nothing.  nmlAsk keeps the rules: once per
-   player, never over an open window, never in a duel (v2.3.3523: and no
+   player, never over an open window, never in a duel (v2.3.3528: and no
    longer "never your attacker" -- hitting back goes through the window too).
    Asked only while you stand in No man's land (nmlHere), and of players drawn
    on your screen; the geometry first, the rule only for a player the shot
@@ -549,7 +549,7 @@ function _nmlStrayShot(S, a, ox, goy) {
     if (nmlAsk(S, id, 'shot')) return;
   }
 }
-/* ═══ v2.3.3523: THE BOW'S LINE ON A PLAYER YOU HAVE NOT CHOSEN ASKS ═══
+/* ═══ v2.3.3528: THE BOW'S LINE ON A PLAYER YOU HAVE NOT CHOSEN ASKS ═══
    The owner: "If a red skull player ... attacks, the other player can't attack
    back unless they lock on target ... Apply that there too.  But keep the
    behavior of needing to confirm the "attack" button that pops up in the

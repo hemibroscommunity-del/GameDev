@@ -38,7 +38,7 @@
  * nmlAskMs() (10 s) has passed untouched -- held while the explainer is open,
  * and 4 s more after it closes.
  *
- * ═══ v2.3.3523: "HIT BACK <NAME>?" ═══
+ * ═══ v2.3.3528: "HIT BACK <NAME>?" ═══
  * The one who attacked you is asked about too now (game/nmlAsk.js: the owner
  * wants the window's Attack before any blow, from either player).  Hitting
  * them back gives you no red skull (server nomansland.js _nmlOnHit), so for
@@ -78,7 +78,7 @@ const ATTACK = { background: '#7C3431', color: '#FFF1EE', border: '1px solid #C7
 const SECONDARY = { background: 'linear-gradient(180deg,#34444B,#2B3940)', color: '#F7F2E7', border: '1px solid rgba(238,242,235,.14)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' };
 const QUIET = { background: 'transparent', color: '#B9C1BF', border: '1px solid rgba(238,242,235,.10)' };
 export const NML_ASK_W = 264;
-/* v2.3.3523: the white skull, the badge's own (NmlBadge.jsx) */
+/* v2.3.3528: the white skull, the badge's own (NmlBadge.jsx) */
 const WHITE_SKULL = '#F2F2F2';
 /* its height, for the stacking test (the window measures 92) */
 const CARD_H = 96;
@@ -138,7 +138,7 @@ const samePlace = (a, b) => !!a && !!b && a.top === b.top && a.left === b.left &
 export default function NmlAskCard({ stateRef }) {
   const [ask, setAsk] = useState(() => nmlAskCurrent());
   const [place, setPlace] = useState(null);
-  /* v2.3.3523: hitting back (see the header) -- read live by the clock below,
+  /* v2.3.3528: hitting back (see the header) -- read live by the clock below,
      for THIS window only (a new window starts from its own `back`, so one of
      the other kind never shows for a frame) */
   const [liveBack, setLiveBack] = useState(null);   /* { ask, v } */
@@ -156,7 +156,7 @@ export default function NmlAskCard({ stateRef }) {
       try { ok = nmlCanAttack(S, ask.id); } catch (e) { ok = false; }
       /* v2.3.3316: with the game's state, so an unanswered window may ask again later */
       if (!ok || now >= until) { nmlAskClose(S); return; }
-      /* v2.3.3523: they attacked you while it was up, or your white skull ran out */
+      /* v2.3.3528: they attacked you while it was up, or your white skull ran out */
       let b = false;
       try { b = nmlHitBack(S, ask.id, now); } catch (e) { b = false; }
       setLiveBack((cur) => (cur && cur.ask === ask && cur.v === b ? cur : { ask, v: b }));
@@ -185,7 +185,7 @@ export default function NmlAskCard({ stateRef }) {
     try { lvl = nmlHere(St); } catch (er) { lvl = 0; }
     openNmlInfo(St, lvl || 1);
   };
-  /* v2.3.3523: hitting back says so, with the white skull you carry */
+  /* v2.3.3528: hitting back says so, with the white skull you carry */
   const back = liveBack && liveBack.ask === ask ? liveBack.v : !!ask.back;
   const title = back ? `Hit back ${ask.name}?` : `Attack ${ask.name}?`;
   return createPortal(

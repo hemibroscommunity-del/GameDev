@@ -135,7 +135,7 @@ apart, a party, or they are gone.
 |---|---|
 | **A stray shot** | One of *your* arrows, bolts or specials passes through a player you could fight who is not your aim. It uses the real hit test's capsule and radius, and never counts through a rock. The shot flies on and does them nothing. **Once per player** (the owner's "won't pop up again"), never over an open window, never in a duel. |
 | **A swing** (v2.3.3316) | Your sword's (or greatsword's) swing reaches such a player, by the reach and arc the swing's own claims use. The swing does them nothing. The same rules as a shot. Before v2.3.3316 a swing asked nothing at all, which is what the owner found: "Attacks without locking on target did not pop up the window". |
-| **The bow's line** (v2.3.3523) | You hold the attack (or a special waits for its line) with a bow whose line is on such a player and nothing else. The bow looses only at something, so it never shot through them to ask. It fires nothing at them. The same rules as a shot. |
+| **The bow's line** (v2.3.3528) | You hold the attack (or a special waits for its line) with a bow whose line is on such a player and nothing else. The bow looses only at something, so it never shot through them to ask. It fires nothing at them. The same rules as a shot. |
 | **A tap** | On such a player you are not already aiming at. Every time; it replaces a window about someone else. A tap on the one you aim at keeps the aim. |
 
 **"Once" means once per answer (v2.3.3316).** Attack, Party and Ignore are
@@ -146,10 +146,10 @@ them again 15 seconds after it went (`NML_ASK_AGAIN_MS`). Before, a window that
 timed out unseen in the middle of a fight was the only one that player would
 ever raise until the page was reloaded.
 
-**Hitting back stayed one tap (until v2.3.3523).** If the player gave you
+**Hitting back stayed one tap (until v2.3.3528).** If the player gave you
 your white skull and you carried no red one, a tap on them aimed at once, with
 no window, and a stray shot or a swing through them asked nothing. Since
-v2.3.3523 hitting back goes through the window like everything else: see
+v2.3.3528 hitting back goes through the window like everything else: see
 "Hitting back goes through the window too" below. The worker says who attacked
 you: `nml_skull`'s `by`, the retaliation rule's own `whiteBy`, sent only while
 a white skull runs. Against an older worker there is no `by`, and the window
@@ -270,7 +270,7 @@ the badge keeps clear of the shield and lies over the bell's right half.
 **Tests:** `spar` suite §16 (the rules: choose, lapse, a minute's quiet, a lock,
 blows, the fight round you), `mp-nmlfoe` (three phones).
 
-## Hitting back goes through the window too (v2.3.3523)
+## Hitting back goes through the window too (v2.3.3528)
 
 > Owner, 2026-10-20: *"If a red skull player (first to attack in wilderness)
 > attacks, the other player can't attack back unless they lock on target (tap
@@ -361,7 +361,7 @@ first swing, arrow or bolt is what opens area moves on them.
 **Switches:**
 
 - `areachoice: false` in the live flags: area moves count a blow either way
-  again, as before v2.3.3523.
+  again, as before v2.3.3528.
 - `?nmlask=0` is still the game before v2.3.3253 (a tap aims at once, nothing
   asks).
 
@@ -633,7 +633,7 @@ switch: the live flag `fightlock: false`. Tests: `nomansland` suite §10.
 - **The tool shelf's switch:** `toolshop: false` (v2.3.3316) takes the tools
   off Diego's shelf and refuses every buy of one. (The death still takes the
   tools; set `nomansland: false` to stop that.)
-- **The area moves' switch:** `areachoice: false` (v2.3.3523): an area move
+- **The area moves' switch:** `areachoice: false` (v2.3.3528): an area move
   reaches a player after a blow between you either way, as before, instead of
   only after a blow you landed.
 - **The shield's switch:** `shieldwear: false` (v2.3.3091) un-advertises

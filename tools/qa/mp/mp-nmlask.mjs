@@ -31,7 +31,7 @@
  *   6. a tap, then Attack: the raider AIMS (the `nml` lock, "TARGET"), a
  *      swing lands, and the red skull comes with it; the wanderer's game is
  *      told who gave its white skull (nml_skull `by`);
- *   7. (v2.3.3523) HITTING BACK GOES THROUGH THE WINDOW TOO -- the owner:
+ *   7. (v2.3.3528) HITTING BACK GOES THROUGH THE WINDOW TOO -- the owner:
  *      "keep the behavior of needing to confirm the "attack" button that pops
  *      up in the window first before any damage is registered to either
  *      player".  The wanderer, attacked, swings back with nothing locked (it
@@ -165,7 +165,7 @@ const readAsk = (P) => P.page.evaluate(() => {
       name: ((el.querySelector('[data-nml-ask-name]') || {}).textContent || '').trim(),
       l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), b: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height),
       skull: !!el.querySelector('[data-nml-ask-info] svg'), info: !!el.querySelector('[data-nml-ask-info]'),
-      /* v2.3.3523: hitting back -- the attribute, and the skull's own colour */
+      /* v2.3.3528: hitting back -- the attribute, and the skull's own colour */
       back: el.getAttribute('data-nml-ask-back') === '1',
       fill: ((el.querySelector('[data-nml-ask-info] svg path') || { getAttribute: () => null }).getAttribute('fill') || '').toUpperCase(),
       btns: Array.from(el.querySelectorAll('button')).filter((b) => !b.hasAttribute('data-nml-ask-info'))
@@ -608,7 +608,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     sk6B.mine === 'white' && sk6B.by === idA, sk6B);
   await shot(A, '6-attack');
 
-  /* ── 7. v2.3.3523: hitting back goes through the window too ── */
+  /* ── 7. v2.3.3528: hitting back goes through the window too ── */
   const eqB = await H.equipWeapon(B, 'greatsword', 'weapon', 'melee');
   await B.page.waitForTimeout(1500);
   await closeIn(B, wsPort, idB, idA, 34);

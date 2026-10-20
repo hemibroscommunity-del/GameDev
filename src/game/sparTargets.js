@@ -38,7 +38,7 @@
  * In No man's land your weapons tried a real player only while you were
  * LOCKED on them (the window's Attack aims: nmlAsk.js nmlAim).  Tap a monster
  * or the ground and the lock went, and with it every hit on them.  Now Attack
- * is a choice that LASTS: nmlAim -- the window's Attack (v2.3.3523: for the
+ * is a choice that LASTS: nmlAim -- the window's Attack (v2.3.3528: for the
  * one who attacked you too, whose tap needed no window before) -- records the
  * player as a FOE
  * (`chooseFoe`), and to your weapons a foe is what a clone is: the sword's
@@ -137,7 +137,7 @@ function peerOf(S, key) {
 /** A blow between you and another player, either way -- yours on them, theirs
  *  on you, blocked or dodged too (gameEvents.js, pvp_hit).  It keeps the fight
  *  with them on.  A Map (an id off the wire), kept short.
- *  v2.3.3523: and a blow with none in the FIGHT_QUIET_MS before it starts a
+ *  v2.3.3528: and a blow with none in the FIGHT_QUIET_MS before it starts a
  *  new BOUT with them (`pvpBoutAt`): No man's land's window asks again about
  *  a player whose new bout of attacking you began after your last answer
  *  about them (nmlAsk.js nmlAttackedSince). */
@@ -165,7 +165,7 @@ function blowAt(S, key) {
   return (m instanceof Map && m.get(key)) || 0;
 }
 
-/** v2.3.3523: when the bout between you and `id` began -- the first blow
+/** v2.3.3528: when the bout between you and `id` began -- the first blow
  *  either way after FIGHT_QUIET_MS with none (notePvpBlow) -- or 0. */
 export function pvpBoutAt(S, id) {
   const m = S && S._pvpBouts;
@@ -173,7 +173,7 @@ export function pvpBoutAt(S, id) {
 }
 
 /** You chose to attack `id`: the window's Attack -- to attack them, or since
- *  v2.3.3523 to hit back the one who attacked you (nmlAsk.js nmlAim).  A Map
+ *  v2.3.3528 to hit back the one who attacked you (nmlAsk.js nmlAim).  A Map
  *  (an id off the wire), kept short. */
 export function chooseFoe(S, id, now) {
   if (!S || id == null) return;
@@ -233,7 +233,7 @@ export function liveFighters(S) {
 /** The players you are fighting NOW: a blow between you within FIGHT_QUIET_MS
  *  (the one who hit you, or the one you hit), drawn, up, and No man's land
  *  still letting the two of you fight -- as { id, o, x, y }.  Not targets of
- *  yours unless you chose them (a foe: the window's Attack -- v2.3.3523: for
+ *  yours unless you chose them (a foe: the window's Attack -- v2.3.3528: for
  *  the one who attacked you too), but the fight with them is on: the shield
  *  is wanted. */
 export function fightingNow(S, now) {
