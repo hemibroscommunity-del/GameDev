@@ -11,7 +11,9 @@
  *   6.  Harden: success advances + resets temper + exact gold cost
  *       ladder (500×4^H); failure applies the temper pity bands
  *       (0-19 → reset 0, 20-49 → −2, 50-99 → −1, 100+ → none) and
- *       increments temper; odds thresholds per rung.
+ *       increments temper; odds thresholds per rung.  (v2.3.3529: a
+ *       failure KEEPS the level at every temper; the bands only with the
+ *       `hardenkeep: false` kill switch, checked under it.)
  *   7.  Gates: blacksmith tier access (floor(skill/5); v2.3.3524: the
  *       level that makes the tier, forge-ladder.test.mjs), maxed, no-gold,
  *       no-weapon, guard gear lock (no charge while locked).
@@ -192,9 +194,44 @@ const bandCase = async (h, temper, expectH) => {
   Math.random = realRandom;
   return ps.weapon.hardness === expectH && ps.weapon.temper === temper + 1;
 };
-check('temper 0-19: full reset to 0', await bandCase(3, 5, 0));
-check('temper 20-49: −2', await bandCase(3, 25, 1));
-check('temper 50-99: −1', await bandCase(3, 55, 2));
+/* v2.3.3529: A FAILURE KEEPS THE LEVEL -- the owner: "if you complete
+   hardening 2 the worst that can happen is you just stay at hardening 2 and
+   lose resources".  Every temper keeps H3 now (temper still counts the fails);
+   the old pity band only with `hardenkeep: false` (_hardenKeepOff). */
+check('v2.3.3529: state_sync advertises caps.hardenkeep (a failure keeps the level)', sync && sync.caps && sync.caps.hardenkeep === true, sync && sync.caps && sync.caps.hardenkeep);
+check('v2.3.3529: temper 0 (just after a success): a failure keeps H3', await bandCase(3, 0, 3));
+check('v2.3.3529: temper 0-19: a failure keeps H3', await bandCase(3, 5, 3));
+check('v2.3.3529: temper 20-49: a failure keeps H3', await bandCase(3, 25, 3));
+check('v2.3.3529: temper 50-99: a failure keeps H3', await bandCase(3, 55, 3));
+{
+  const coinsBefore = 1000000;
+  ps.weapon.hardness = 2; ps.weapon.temper = 0;
+  ps.coins = coinsBefore; ps.inventory.bar_copper = 10;
+  ws.sent.length = 0;
+  Math.random = () => 0.99;   // a failure (H2 -> H3 is 5%)
+  await harden(ws, 'weapon');
+  Math.random = realRandom;
+  const kr = lastHR(ws);
+  check('v2.3.3529: the owner\'s case -- a failure at H2 stays H2 and still takes the 2,000 gold and 3 bars, and says so',
+    ps.weapon.hardness === 2 && ps.coins === coinsBefore - 2000 && ps.inventory.bar_copper === 7
+      && kr && kr.success === false && kr.hardness === 2 && kr.cost === 2000 && kr.amount === 3,
+    { w: ps.weapon, coins: ps.coins, inv: ps.inventory, kr });
+  ps.inventory.bar_copper = 99;   // bars enough for the band and odds cases below (an H3 attempt takes 4)
+}
+/* the kill switch: `hardenkeep: false` brings the temper pity band back */
+room._liveFlags = { ...(room._liveFlags || {}), hardenkeep: false };
+check('hardenkeep: false -- temper 0-19: full reset to 0', await bandCase(3, 5, 0));
+check('hardenkeep: false -- temper 20-49: −2', await bandCase(3, 25, 1));
+check('hardenkeep: false -- temper 50-99: −1', await bandCase(3, 55, 2));
+check('hardenkeep: false -- temper 100+: no reset', await bandCase(3, 120, 3));
+{
+  const ws2 = fakeWs('h2');
+  await join(ws2, 'bp_hd_p_off');
+  const s2 = ws2.sent.find((m) => m.type === 'state_sync');
+  check('hardenkeep: false un-advertises caps.hardenkeep (the game says the old rule again)', !!s2 && !!s2.caps && s2.caps.hardenkeep === false, s2 && s2.caps && s2.caps.hardenkeep);
+}
+room._liveFlags = { ...(room._liveFlags || {}) };
+delete room._liveFlags.hardenkeep;
 // odds threshold at H1 (20%)
 ps.weapon.hardness = 1; ps.weapon.temper = 200;
 Math.random = () => 0.19;
@@ -323,7 +360,10 @@ check('reaching H5 appends the INV-27 global log', ps.weapon.hardness === 5 && A
   check('bars: an iron blade\'s attempt at H2 takes 2 iron bars (all it holds) and 1,000 gold, both spent on a failure, the copper untouched',
     !!r && r.success === false && r.amount === 2 && r.material === 'bar_iron' && r.cost === 1000 && !('bar_iron' in ps.inventory) && ps.inventory.bar_copper === 50 && ps.coins === 4000,
     { r, inv: ps.inventory, coins: ps.coins });
-  /* now at H0 again (temper 0: a full reset) -- set H3 and run out */
+  /* v2.3.3529: a failure keeps the level -- still H1, at temper 0 (it was "now
+     at H0 again (temper 0: a full reset)") */
+  check('v2.3.3529: the iron blade\'s failure kept H1 (temper 0 dropped it to H0 before)', ps.weapon.hardness === 1 && ps.weapon.temper === 1, ps.weapon);
+  /* set H3 and run out */
   ps.weapon.hardness = 3; ps.weapon.temper = 120;
   ps.inventory = { bar_copper: 50, bar_iron: 3 };   // the attempt at H4 takes 4
   ps.coins = 100000;
@@ -414,13 +454,15 @@ check('reaching H5 appends the INV-27 global log', ps.weapon.hardness === 5 && A
   check('wood: a pine bow\'s attempt at H2 takes 2 Hardened Pine Wood and 1,000 gold, spent on a failure; the copper bars and the logs untouched',
     !!r && r.success === false && r.material === 'hardened_pine' && r.amount === 2 && r.cost === 1000 && !('hardened_pine' in ps.inventory)
       && ps.inventory.bar_copper === 50 && ps.inventory.wood_pine_log === 40 && ps.coins === 4000, { r, inv: ps.inventory, coins: ps.coins });
-  /* back at H0 (temper 0 resets): one hardened pine needed, and only bars and logs in the bag */
+  /* v2.3.3529: the failure KEPT H1 (it was "back at H0 (temper 0 resets): one
+     hardened pine needed"), so the next attempt is at H2 again: two hardened
+     pine needed, and only bars and logs in the bag */
   ws.sent.length = 0;
   await harden(ws, 'rangedWeapon');
   r = lastHR(ws);
-  check('wood: bars and raw logs never pay for a bow -- "Need 1 Hardened Pine Wood", nothing taken',
-    !!r && r.error === 'no-materials' && /Need 1 Hardened Pine Wood/.test(r.message) && ps.inventory.bar_copper === 50 && ps.inventory.wood_pine_log === 40
-      && ps.coins === 4000 && ps.rangedWeapon.hardness === 0, { r, inv: ps.inventory });
+  check('wood: bars and raw logs never pay for a bow -- "Need 2 Hardened Pine Wood" (the failure kept H1), nothing taken',
+    !!r && r.error === 'no-materials' && /Need 2 Hardened Pine Wood/.test(r.message) && ps.inventory.bar_copper === 50 && ps.inventory.wood_pine_log === 40
+      && ps.coins === 4000 && ps.rangedWeapon.hardness === 1, { r, inv: ps.inventory });
   /* a maple staff: hardened maple, by its wood */
   ps.staffWeapon = { type: 'staff', gearBase: 'ww_maple', tierMult: 1.56, name: 'Maple Staff', quality: 'normal', hardness: 0, temper: 0 };
   ps.inventory = { hardened_maple: 1, hardened_pine: 9 };
