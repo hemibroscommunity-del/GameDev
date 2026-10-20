@@ -209,7 +209,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     return { shown: S.__introLiftedAt || 0, ready: window.__btAvatarReadyAt || 0 };
   });
-  console.log(`    join: the loading screen lifted ${lifted.ready && lifted.shown ? (lifted.ready <= lifted.shown ? 'after the bro\'s pictures were made' : `${lifted.ready - lifted.shown} ms BEFORE they were (its 20 s cap, on this box)`) : '(unknown)'}`);
+  console.log(`    join: the loading screen lifted ${!lifted.shown ? '(unknown)'
+    : !lifted.ready ? 'BEFORE the bro\'s pictures were made -- they still were (its 20 s cap, on this box)'
+    : lifted.ready <= lifted.shown ? 'after the bro\'s pictures were made'
+    : `${lifted.ready - lifted.shown} ms BEFORE they were (its 20 s cap, on this box)`}`);
   await report('join', await watchStandThenJog(P, 8000));
 
   /* 2. REBUILD: the renderer made again, as after a lost context */
