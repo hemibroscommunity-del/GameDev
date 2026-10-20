@@ -42,7 +42,7 @@ docs/specs/shard-crack.md:
 - **The crack plays under the row you tapped.** Below eight lands' rows it was
   off the screen.
 
-**Phase 4 is built (v2.3.3517), before Phase 3,** which waits on the owner's
+**Phase 4 is built (v2.3.3518), before Phase 3,** which waits on the owner's
 gem pictures. Water and storm now do something of their own, and "UP" is
 real: docs/specs/gem-weight.md. Where it differs from this plan:
 - **The anticheat ceiling does not move.** UP is applied where fracture is,

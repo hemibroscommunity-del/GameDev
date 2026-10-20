@@ -1,4 +1,4 @@
-/* EVERY GEM PULLS ITS WEIGHT (v2.3.3517)
+/* EVERY GEM PULLS ITS WEIGHT (v2.3.3518)
  *
  * The owner's decisions 13 and 14 (docs/GEM-PLAN.md Phase 4, "All of that
  * sounds good"): a gem that beats the monster's element hits 25% harder, and

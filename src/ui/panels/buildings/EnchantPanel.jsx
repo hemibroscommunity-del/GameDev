@@ -7,7 +7,7 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a gem set, heard */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { askShieldGem, shieldGemBus, shieldGemOnServer, shieldGemReasonText, SHIELD_GEM_WAIT_MS } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
 import { askWeaponGem, askWeaponGemOut, monsterHoldOn, weaponGemBus, weaponGemOnServer, weaponGemReasonText, WEAPON_GEM_WAIT_MS } from '@/game/weaponGem.js'; /* v2.3.3513: the weapon's gem, put in by the worker */
-import { FUSION_BASES, SECOND_SLOT_LVL, isVolatilePair, isWeaponGem, weaponGemEffect, weaponGemEdge, weaponGemSlots } from '@/data/weaponGems.js'; /* v2.3.3513; v2.3.3517: + the matchup */
+import { FUSION_BASES, SECOND_SLOT_LVL, isVolatilePair, isWeaponGem, weaponGemEffect, weaponGemEdge, weaponGemSlots } from '@/data/weaponGems.js'; /* v2.3.3513; v2.3.3518: + the matchup */
 import { gemExtractCost } from '@/data/items.js'; /* v2.3.3513: Take out's price, the Blacksmith's own */
 import { gemCount, gemTakeLocal, gemXpOwedTotal } from '@/data/gems.js'; /* v2.3.3516: gems are bag items; the XP is for gems you made */
 /* === EnchantPanel — buildingPanel === 'enchant' sub-panel === */
@@ -116,7 +116,7 @@ export function EnchantPanel(props) {
   var wgWait = wgOnServer ? weaponGemBus.pending() : null;
   var wgLast = wgOnServer ? weaponGemBus.get() : null;
   var wgHold = monsterHoldOn(stateRef.current);
-  /* v2.3.3517: what the worker does, for what water, storm and the matchup
+  /* v2.3.3518: what the worker does, for what water, storm and the matchup
      say (weaponGems.js weaponGemEffect / weaponGemEdge) */
   var _wgS = stateRef.current;
   var _wgHas = !!(_wgS && _wgS._serverCaps);
@@ -261,7 +261,7 @@ export function EnchantPanel(props) {
             'data-weapon-gem-effect': e,
             style: { fontSize: 11.5, color: LS.txt2, marginBottom: 6, lineHeight: 1.4 }
           }, /*#__PURE__*/React.createElement("span", { style: { color: _ed && _ed.color, fontWeight: 700 } }, "◆ ", e), " · ", weaponGemEffect(e, wgHold, _wgCaps),
-          /* v2.3.3517: ...and what it beats (caps.elemup): "25% harder on Frost monsters" */
+          /* v2.3.3518: ...and what it beats (caps.elemup): "25% harder on Frost monsters" */
           weaponGemEdge(e, _wgCaps) ? " · " + weaponGemEdge(e, _wgCaps) : null);
         }), /* v2.3.1235: state-correction §6 — the "Choose…" instructions only
            render when the picker below them will actually show pills; an

@@ -1,4 +1,4 @@
-# Every gem pulls its weight: "UP" made real, soak and shock (v2.3.3517)
+# Every gem pulls its weight: "UP" made real, soak and shock (v2.3.3518)
 
 This is **Phase 4** of `docs/GEM-PLAN.md`. On 2026-10-20 the owner said "All of
 that sounds good" about the plan, which accepted every recommended answer,

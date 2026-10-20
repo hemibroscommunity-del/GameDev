@@ -98,7 +98,7 @@ export function getEffectiveness(attackElem, targetElem) {
   return 1.0;
 }
 
-/* ═══ v2.3.3517: EVERY GEM PULLS ITS WEIGHT (docs/GEM-PLAN.md, Phase 4) ═══
+/* ═══ v2.3.3518: EVERY GEM PULLS ITS WEIGHT (docs/GEM-PLAN.md, Phase 4) ═══
  * The owner's decisions 13 and 14, "All of that sounds good" (2026-10-20).
  * Until now two of the eight gems did nothing a player could see beyond
  * setting up a collision -- soak and shock were combo starters only -- and

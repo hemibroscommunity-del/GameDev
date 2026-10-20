@@ -2419,7 +2419,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const bases = Object.keys(SRV.BLACKSMITH_TIERS).concat(Object.keys(SRV.WOODWORKING_TIERS).map((k) => 'ww_' + k), [undefined, 'nope', '__proto__']);
   const off = bases.filter((b) => C.weaponGemSlots({ gearBase: b }) !== W.weaponGemSlots({ gearBase: b }));
   check('weapon gems: every forge base has the same number of gem slots on both sides (a drop with no base: 1)', off.length === 0, off);
-  /* v2.3.3517: every gem pulls its weight (elemental.js ELEM_UP, SOAK_HIT,
+  /* v2.3.3518: every gem pulls its weight (elemental.js ELEM_UP, SOAK_HIT,
      SHOCK_SPARK): the Gem Works says the worker's numbers and the worker's
      matchups -- "25% harder on Frost monsters" for the gem the worker lands
      25% harder on them */

@@ -2135,7 +2135,7 @@ export function updateMonsterCombat(S, deps) {
                       BT_AUDIO.beep(pitches[hitElement] || 400, 0.04, 0.06, 'sine');
                     }
                     /* §10.2 Effectiveness indicator — green/red arrow on hit */
-                    /* ═══ v2.3.3517: "UP" IS THE WORKER'S, AND "DN" IS GONE ═══
+                    /* ═══ v2.3.3518: "UP" IS THE WORKER'S, AND "DN" IS GONE ═══
                        The owner's decision 14 (docs/GEM-PLAN.md): a gem that
                        beats the monster's element hits 25% harder, and there
                        is no penalty the other way.  Against a worker that does

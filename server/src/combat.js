@@ -148,7 +148,7 @@ export const BOW_VOLLEY_WORTH = 2;
 import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision, fractureDmgMult,
   elemAttackStat, // v2.3.2199: prog3 `elem` stat resolver for the DoT power snapshot
-  elementUpMult, soakHitMult, SHOCK_SPARK, // v2.3.3517: every gem pulls its weight
+  elementUpMult, soakHitMult, SHOCK_SPARK, // v2.3.3518: every gem pulls its weight
 } from './elemental.js';
 import { AMULET_TIER_POWER, t2CounterRate, QUALITY_GRADES /* v2.3.1925 */, weaponTierFactor, weaponQualityMult /* v2.3.2664 */ } from './data.js';
 import { PROV_MINTED } from './gearprov.js'; /* v2.3.2664: godly armour needs a ledger row */ // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
@@ -192,7 +192,7 @@ export const combatMethods = {
      function itself is in elemental.js beside the table it reads. */
   _fractureDmgMult(m) { return fractureDmgMult(m); },
 
-  /* ═══ v2.3.3517: EVERY GEM PULLS ITS WEIGHT (elemental.js has the story) ═══
+  /* ═══ v2.3.3518: EVERY GEM PULLS ITS WEIGHT (elemental.js has the story) ═══
      Three kill switches, one a part: `elemup`, `soakhit`, `shockspark` --
      `false` in the live flags puts that part back as it was. */
   _gemWeightOff(name) {
@@ -1402,14 +1402,14 @@ export const combatMethods = {
        which a modified phone could fill with any element it liked, gem or no
        gem.  `isSpecial` is the one this hit was paid as (hitproof.js).
        `weapongem: false` in liveflags puts the claim back.
-       v2.3.3517: worked out HERE, before the roll, as the damage reads it
+       v2.3.3518: worked out HERE, before the roll, as the damage reads it
        now (UP, below); the status and the collision further down read the
        same value. */
     const _gemEl = typeof this._weaponHitElement === 'function' ? this._weaponHitElement(attackerPs, _effSlot, isSpecial) : null;
     const _hitElement = (typeof this._weaponGemOff === 'function' && !this._weaponGemOff())
       ? (_gemEl ? _gemEl.element : null)
       : element;
-    /* v2.3.3517: SHOCK -- was the monster shocked BEFORE this hit?  Asked
+    /* v2.3.3518: SHOCK -- was the monster shocked BEFORE this hit?  Asked
        before this hit's own status goes on (a storm hit sets it up; the next
        hit sparks) and before a collision can consume it. */
     const _wasShocked = !!(m.statuses && m.statuses.shock);
@@ -1427,7 +1427,7 @@ export const combatMethods = {
        ONE roll now (above), and summing three draws is exactly what had evened
        the staff's swing out -- see STAFF_BOLT. */
     const _cappedDmg = rolled.dmg;
-    /* v2.3.3517: UP (elemental.js): a gem that beats the monster's element
+    /* v2.3.3518: UP (elemental.js): a gem that beats the monster's element
        lands ELEM_UP.MULT harder -- beside fracture, after the ceiling, for
        the same reason: the worker's own fact about the target (its own gem
        against the monster's own element), nothing a claim can raise.  1 for
@@ -1489,7 +1489,7 @@ export const combatMethods = {
     // status applies first, then a collision consumes the OLDEST
     // different-element status already on the monster.
     /* v2.3.3513: ...and the element is the WORKER'S now (weapongem.js) --
-       _hitElement, worked out above the roll since v2.3.3517 (UP reads it). */
+       _hitElement, worked out above the roll since v2.3.3518 (UP reads it). */
     if (m.hp > 0 && _hitElement && Object.prototype.hasOwnProperty.call(ELEMENT_STATUS, _hitElement) && attackerPs) {
       const _now = Date.now();
       /* v2.3.2199: the snapshot prices the whole DoT (burn/root ticks and
@@ -1648,14 +1648,14 @@ export const combatMethods = {
            its own at any price: another player's weapon is not knowable
            locally, so peer numbers carried no mark at all. */
         slot: _effSlot,
-        /* v2.3.3517: the gem beat the monster's element (UP, above): the phone
+        /* v2.3.3518: the gem beat the monster's element (UP, above): the phone
            prints its "UP" from this, not from its own guess.  Display only. */
         ...(_up > 1 ? { up: 1 } : null),
         hpPct: Math.max(0, m.hp / m.maxHp),
       }
     });
 
-    /* v2.3.3517: SHOCK -- a hit on a monster that was shocked before it sparks
+    /* v2.3.3518: SHOCK -- a hit on a monster that was shocked before it sparks
        to the nearest other monster within reach, for a quarter of the hit as
        rolled (rawDmg, the number the hit was), from where it landed (the
        impact point, as the splash below); after the hit's own event, so the

@@ -69,7 +69,7 @@ import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHe
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
 import { petMailWords } from '@/data/trapping.js';   /* v2.3.3122: a pet in the mail */
 import { noteWard } from '@/game/trapping.js';   /* v2.3.3123: a hit the pet out with you softened */
-import { sparkLine } from '@/game/shockSpark.js';   /* v2.3.3517: a shock's spark, drawn */
+import { sparkLine } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn */
 
 /* ═══ v2.3.2232: THE DAMAGE NUMBER NAMES THE WEAPON THAT DEALT IT ═══
  *
@@ -2501,7 +2501,7 @@ export function processGameEvent(type, payload, S, deps) {
                  one-bite rule (fightFood.js noteDealt; the worker's
                  _lastDealtAt) -- before anything below decides what to draw */
               noteDealt(S, payload);
-              /* v2.3.3517: a test's record of your own landed hits (mp-gemweight) */
+              /* v2.3.3518: a test's record of your own landed hits (mp-gemweight) */
               try { if (payload.attackerId === S.myId && typeof window !== 'undefined' && window.__btProbe) { var _hl = window.__btHitLog || (window.__btHitLog = []); _hl.push({ id: payload.monsterId, dmg: payload.dmg, up: !!payload.up, spark: payload.spark || null }); if (_hl.length > 300) _hl.shift(); } } catch (e) { /* probe only */ }
               /* A monster was hit — show damage number and hit effects for everyone */
               if (S.monsters) {
@@ -2614,7 +2614,7 @@ export function processGameEvent(type, payload, S, deps) {
                      echo-driven now sits behind the same gate. */
                   if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst
                       || payload.splash /* v2.3.2481: a splashed neighbour has no local hit site of its own */
-                      || payload.spark /* v2.3.3517: nor has a shock's spark */) {
+                      || payload.spark /* v2.3.3518: nor has a shock's spark */) {
                     hitM._hitFlash = Date.now();
                     if (hitM.curHp > 0) {
                       hitM._hitAnimStart = Date.now();
@@ -2638,7 +2638,7 @@ export function processGameEvent(type, payload, S, deps) {
                        weapon of their own and take the generic spray.  The
                        soft decal is retired: the pieces that land are the
                        mark now. */
-                    var _dbW = (payload.splash || payload.spark) ? 'splash'   /* v2.3.3517: a spark is a lighter echo too */
+                    var _dbW = (payload.splash || payload.spark) ? 'splash'   /* v2.3.3518: a spark is a lighter echo too */
                       : (payload.ability || payload.burst || payload.thorns) ? null
                       : payload.slot === 'melee' ? 'sword'
                       : payload.slot === 'ranged' ? 'arrow'
@@ -2666,7 +2666,7 @@ export function processGameEvent(type, payload, S, deps) {
                       x: hitM.x || hitM.renderX, y: monsterPopupY(hitM, -20),
                       text: '-' + _popDmg,   /* v2.3.2481 */
                       color: payload.isCrit ? DMG_CRIT_COLOR
-                        : (payload.splash ? '#c4b5fd' : payload.spark ? '#9fd8ff' : '#ff8888'),   /* v2.3.2481: peer splash reads as splash too; v2.3.3517: a spark in the storm's blue */
+                        : (payload.splash ? '#c4b5fd' : payload.spark ? '#9fd8ff' : '#ff8888'),   /* v2.3.2481: peer splash reads as splash too; v2.3.3518: a spark in the storm's blue */
                       /* v2.3.2211: the server's crit gets the same treatment
                          the local swing gets -- big number + the crit mark.
                          These two doors painted the same event differently,
@@ -2739,7 +2739,7 @@ export function processGameEvent(type, payload, S, deps) {
                            tell the bolt's own target from the neighbours it
                            caught.  Crit colour still wins -- a crit is the
                            louder fact. */
-                        payload.isCrit ? DMG_CRIT_COLOR : (payload.splash ? '#c4b5fd' : payload.spark ? '#9fd8ff' /* v2.3.3517: a shock's spark */ : '#ffd08a'),
+                        payload.isCrit ? DMG_CRIT_COLOR : (payload.splash ? '#c4b5fd' : payload.spark ? '#9fd8ff' /* v2.3.3518: a shock's spark */ : '#ffd08a'),
                         /* v2.3.2232: the weapon that dealt it, not a flat sword.
                            v2.3.2233: ...and that now includes the crit, which
                            carried a bladed burst on bow and staff hits alike. */
@@ -2766,7 +2766,7 @@ export function processGameEvent(type, payload, S, deps) {
                        OTHER player in the zone saw the numbers. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + _popDmg, '#c084fc');   /* v2.3.2481 */
                   }
-                  /* ═══ v2.3.3517: EVERY GEM PULLS ITS WEIGHT (docs/GEM-PLAN.md
+                  /* ═══ v2.3.3518: EVERY GEM PULLS ITS WEIGHT (docs/GEM-PLAN.md
                      Phase 4; server elemental.js has the story) ═══
                      "UP": the worker landed YOUR hit 25% harder because its
                      gem beats this monster's element -- printed beside the

@@ -541,7 +541,7 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
       && okBlock(R.block)
       && typeof R.rail === 'number' && R.rail >= 0 && R.rail < 1 && typeof R.elemental === 'boolean'
       && oneOf(R.own, [null, 'contact', 'elem'])
-      && typeof R.soak === 'boolean'   /* v2.3.3517: a soak on the monster softens it (gem-weight.test) */
+      && typeof R.soak === 'boolean'   /* v2.3.3518: a soak on the monster softens it (gem-weight.test) */
       && Object.keys(R).every((k) => ['shield', 'shelter', 'roll', 'sight', 'block', 'rail', 'elemental', 'own', 'soak'].includes(k)));
   });
   check('10b. every cell of every row is one the door reads', bad.length === 0, bad);

@@ -82,7 +82,7 @@ remnant to migrate server-side, not a mode to preserve.
   came-back count could not survive gems that trade); a death KEEPS gems, No
   man's land's whole-bag loss takes them; Diego 1,200 / 4,000, the Rare Gem
   4,000; `shard-crack` suite, `mp-shardcrack`: docs/specs/shard-crack.md;
-  and Phase 4 BUILT in v2.3.3517, EVERY GEM PULLS ITS WEIGHT: a hit whose gem
+  and Phase 4 BUILT in v2.3.3518, EVERY GEM PULLS ITS WEIGHT: a hit whose gem
   BEATS the monster's element lands 1.25x (elemental.js `ELEM_UP`, beside
   fracture after the ceiling, the gem's hit and the Element Burst; monster_hit
   `up`; no penalty, "DN" gone), a SOAKED monster's own blows land 0.8x before

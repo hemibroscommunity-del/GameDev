@@ -14,7 +14,7 @@
  *   GEM_SET_XP       data.js GEM_SET_XP (decision 11: 400 a gem, once)
  *   weaponGemSlots   weapongem.js weaponGemSlots (a drop with no base: 1)
  *   ELEM_UP_MULT, SOAK_HIT_MULT, SHOCK_SPARK_R, SHOCK_SPARK_PCT
- *                    v2.3.3517: elemental.js ELEM_UP, SOAK_HIT, SHOCK_SPARK
+ *                    v2.3.3518: elemental.js ELEM_UP, SOAK_HIT, SHOCK_SPARK
  *                    (every gem pulls its weight, docs/GEM-PLAN.md Phase 4)
  *
  * No imports but the forge tables and the elements' wheel, so the audit can
@@ -30,7 +30,7 @@ export const VOLATILE_PAIRS = Object.freeze([
 
 export const SECOND_SLOT_LVL = 20;
 export const GEM_SET_XP = 400;
-/* v2.3.3517: a hit whose gem beats the monster's element lands this much
+/* v2.3.3518: a hit whose gem beats the monster's element lands this much
    harder (caps.elemup); a soaked monster's blows land this much as hard
    (caps.soakhit); a hit on a shocked monster sparks this far, for this share
    of the hit (caps.shockspark) */
@@ -67,7 +67,7 @@ export function weaponGemSlots(w) {
 /* What each gem does to what it hits -- the worker's rules in plain words
    (elemental.js, monsterstatus.js), for the Enchanter's one line.  `hold`:
    the hold rule is on (caps.monsterhold), so a freeze or a root stops a
-   monster for 1.5 s, not for as long as it lasts.  v2.3.3517: `caps`, the
+   monster for 1.5 s, not for as long as it lasts.  v2.3.3518: `caps`, the
    worker's (S._serverCaps): water and storm say what they do on their own
    only against a worker that does it (soakhit, shockspark). */
 export function weaponGemEffect(e, hold, caps) {
@@ -89,7 +89,7 @@ export function weaponGemEffect(e, hold, caps) {
   }
 }
 
-/* ═══ v2.3.3517: THE MATCHUP ("UP"), IN WORDS ═══
+/* ═══ v2.3.3518: THE MATCHUP ("UP"), IN WORDS ═══
    The element a gem's hit beats on the elements' wheel (gameSystems.js
    EFFECTIVENESS, the worker's own table), or null; and the line that says so
    -- "25% harder on Frost monsters" -- shown only against a worker that does

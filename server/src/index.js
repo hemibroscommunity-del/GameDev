@@ -3280,7 +3280,7 @@ export class GameRoom {
            splash is the first source here that has a weapon to name. */
         ...(opts && opts.slot ? { slot: opts.slot } : null),
         ...(opts && opts.splash ? { splash: true } : null),
-        /* v2.3.3517: a shock's spark names the monster it leapt from (the
+        /* v2.3.3518: a shock's spark names the monster it leapt from (the
            phone's arc), and an Element Burst that beat the monster's element
            says so (its "UP"); display only (combat.js _shockSpark, burst.js) */
         ...(opts && opts.spark ? { spark: opts.spark } : null),

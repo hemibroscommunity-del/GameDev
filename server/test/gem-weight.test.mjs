@@ -1,4 +1,4 @@
-/* Every gem pulls its weight -- v2.3.3517 (docs/GEM-PLAN.md Phase 4; the
+/* Every gem pulls its weight -- v2.3.3518 (docs/GEM-PLAN.md Phase 4; the
  * owner's decisions 13 and 14, "All of that sounds good", 2026-10-20;
  * server/src/elemental.js ELEM_UP / SOAK_HIT / SHOCK_SPARK, combat.js,
  * burst.js, hits.js).

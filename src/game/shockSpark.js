@@ -1,4 +1,4 @@
-/* ═══ v2.3.3517: A SHOCK'S SPARK, DRAWN ═══
+/* ═══ v2.3.3518: A SHOCK'S SPARK, DRAWN ═══
  *
  * The owner's decision 13 (docs/GEM-PLAN.md, Phase 4, "All of that sounds
  * good"): a hit on a monster a storm gem has shocked sparks to the nearest

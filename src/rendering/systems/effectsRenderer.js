@@ -6,7 +6,7 @@
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
 import { peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's axe, heard */
-import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3517: a shock's spark, drawn as a bolt */
+import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn as a bolt */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { keepOnGpuOnly } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
@@ -5419,7 +5419,7 @@ export class EffectsRenderer {
       this._dot(p.x, p.y, (p.size || 2) * Math.min(1, p.life * 3), cssToHex(p.color), Math.min(1, p.life * 2));
     }
 
-    /* ═══ v2.3.3517: A SHOCK'S SPARK (game/shockSpark.js) ═══
+    /* ═══ v2.3.3518: A SHOCK'S SPARK (game/shockSpark.js) ═══
        The bolt from a shocked monster to the one beside it: a fresh jag every
        frame, a pale core over a wide blue glow (the storm monster's own arc
        on a player, _updateElemStatusFx, in the same colours), fading out over

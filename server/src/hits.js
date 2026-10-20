@@ -112,7 +112,7 @@ import { thornRecoil } from './elemental.js';
  *            curse, the element's status (monsterstatus.js _elemOnHit) and the
  *            monster marked moved for the tick; 'elem' -- the element's status
  *            only; null -- nothing.
- *   soak     v2.3.3517: a soak on the monster (a water gem's status) softens
+ *   soak     v2.3.3518: a soak on the monster (a water gem's status) softens
  *            this blow, x SOAK_HIT.MULT before the rail (elemental.js;
  *            combat.js _soakHitMult, kill switch `soakhit: false`): true for
  *            every blow the monster delivers itself, its storm arcs included;
@@ -216,7 +216,7 @@ export const hitMethods = {
       if (this._blockArcCovers(ps, from.x, from.y)) return this._hitStopped(h, R.block, ps, now);
     }
 
-    /* 6: the dice.  v2.3.3517: a soaked monster's own blow first lands
+    /* 6: the dice.  v2.3.3518: a soaked monster's own blow first lands
        SOAK_HIT.MULT as hard (the row's `soak`), then the rail */
     const soaked = R.soak && m && this._soakHitMult ? this._soakHitMult(m) : 1;
     const blow = soaked < 1 ? Math.max(1, Math.round(h.raw * soaked)) : h.raw;
