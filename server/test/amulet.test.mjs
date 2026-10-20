@@ -202,7 +202,9 @@ check('gem consumes the polished gem and activates the amulet',
   ps.amulet.gem === 'flame' && ps.amulet.name === 'Mythic Flame Amulet'
   && !('polished_flame' in ps.lifeSkills.gems),
   { amulet: ps.amulet, gems: ps.lifeSkills.gems });
-check('gem grants enchanting XP 20 (client parity)', ps.lifeSkills.enchanting.xp === 20, ps.lifeSkills.enchanting);
+/* v2.3.3513: GEM_SET_XP, 400 -- the owner's decision 11 (docs/GEM-PLAN.md),
+   was the game's 20 */
+check('gem grants enchanting XP 400 (GEM_SET_XP, the owner\'s decision 11)', ps.lifeSkills.enchanting.xp === 400, ps.lifeSkills.enchanting);
 {
   // the minted+gemmed amulet is exactly what the sanitizer whitelists
   const sane = room._sanitizeAmulet(ps.amulet);

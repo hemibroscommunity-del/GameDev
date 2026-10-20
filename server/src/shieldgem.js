@@ -62,7 +62,7 @@
  * switch on, the game keeps its old local slot.  KILL SWITCH (lower case,
  * TRAPS §117): `shieldgem: false` in liveflags un-advertises it and refuses
  * every ask ('off'). */
-import { AMULET_GEMS, BLACKSMITH_TIER_LABELS } from './data.js';
+import { AMULET_GEMS, BLACKSMITH_TIER_LABELS, GEM_SET_XP } from './data.js';   /* v2.3.3513: + GEM_SET_XP */
 import { GEAR_PROV_FIELD } from './gearprov.js';
 import { shieldSig } from './shieldwear.js';
 
@@ -70,8 +70,11 @@ const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 export const SHIELD_GEM = Object.freeze({
   /* Enchanting XP a slot pays -- the game's own literal at its slot site
-     (EnchantPanel: addLifeSkillXp(sk, 'enchanting', 20)), the amulet's too */
-  XP: 20,
+     (EnchantPanel: addLifeSkillXp(sk, 'enchanting', 20)), the amulet's too.
+     v2.3.3513: GEM_SET_XP, 400 -- the owner's decision 11 (docs/GEM-PLAN.md),
+     the same for a weapon, an amulet and a shield; a gem that came back out
+     pays it once only (weapongem.js _gemSetXp). */
+  XP: GEM_SET_XP,
   /* the longest id or signature read, as shield_wear reads them */
   GID_MAX: 40,
   SIG_MAX: 200,
@@ -161,9 +164,10 @@ export const shieldGemMethods = {
        on the far side of a reconnect -- and Take out would find none.  A
        no-op for a piece with no id. */
     this._gearProvTouch(pid, piece);
-    this._addLifeSkillXp(ps, 'enchanting', SHIELD_GEM.XP);
+    /* v2.3.3513: once a gem (weapongem.js _gemSetXp) -- `xp` says what it paid */
+    const x = this._gemSetXp(ps, gem, have);
     this._saveRpg(pid, ps);
-    const r = { ok: true, gem, name: piece.name, gid: gidOf(piece), sig: made ? null : shieldSig(piece), worn: at.worn };
+    const r = { ok: true, gem, name: piece.name, gid: gidOf(piece), sig: made ? null : shieldSig(piece), worn: at.worn, xp: x.xp };
     this._shieldGemSend(pid, r, true);
     return r;
   },

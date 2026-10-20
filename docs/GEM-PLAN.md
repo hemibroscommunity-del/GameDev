@@ -18,6 +18,12 @@ recommendation, listed under "Your decisions" near the end, and **the owner
 took them all** on 2026-10-20: *"All of that sounds good."* The phases are
 built one PR each, Phase 1 first.
 
+**Phase 1 is built (v2.3.3513):** the worker keeps a weapon's gem and every
+hit reads it from there, plus the hold rule. What was built and where it went
+beyond this plan (each gem pays its XP once, the Element Burst button stands
+aside under a window, a sell order lists the gems its weapon holds, no phone
+copy of the hold): docs/specs/weapon-gems.md.
+
 ## The short answer
 
 1. **Shards keep dropping as they do now.** A land's monsters drop its shard

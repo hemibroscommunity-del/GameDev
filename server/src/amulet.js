@@ -69,7 +69,7 @@
  * cutting against it) gates the client's gem_cut_request send + its
  * legacy kill-gem roll + local cut roll (rules 19/20). */
 
-import { AMULET_FORGE_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_MONSTER_DROP, AMULET_GEMS, GEM_CUT_TIERS, GEM_RAW_MONSTER_DROP, GEM_EXTRACT_BASE_COST, BLACKSMITH_TIER_LABELS, WOODWORKING_TIER_LABELS, WEAPON_TYPE_LABELS } from './data.js';
+import { AMULET_FORGE_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_MONSTER_DROP, AMULET_GEMS, WEAPON_GEMS, GEM_CUT_TIERS, GEM_RAW_MONSTER_DROP, GEM_EXTRACT_BASE_COST, BLACKSMITH_TIER_LABELS, WOODWORKING_TIER_LABELS, WEAPON_TYPE_LABELS } from './data.js';   /* v2.3.3513: + WEAPON_GEMS */
 
 // One-time join-capture clamps for the previously client-local ledger.
 // Honest values are tiny (nuggets drop at 1-in-10k kills; mythic needs
@@ -185,6 +185,7 @@ export const amuletMethods = {
       const gems = (ps.lifeSkills && ps.lifeSkills.gems) || null;
       const polKey = 'polished_' + gem;
       if (!gems || (gems[polKey] || 0) < 1) return;
+      const _had = Math.floor(Number(gems[polKey]) || 0);   /* v2.3.3513: for _gemSetXp */
       gems[polKey] -= 1;
       if (gems[polKey] <= 0) delete gems[polKey];
       const label = AMULET_FORGE_TIERS[ps.amulet.tier].label;
@@ -200,7 +201,10 @@ export const amuletMethods = {
          is gone -- which is not theory: it is what amulet.test.mjs caught
          when the first cut of the resolve rebuilt every path. */
       this._gearProvTouch(session.id, ps.amulet);
-      this._addLifeSkillXp(ps, 'enchanting', 20);
+      /* v2.3.3513: GEM_SET_XP (400, the owner's decision 11, docs/GEM-PLAN.md;
+         was the game's 20) -- once a gem: one that came back out of a weapon
+         or a shield paid when it first went in (weapongem.js _gemSetXp). */
+      this._gemSetXp(ps, gem, _had);
 
     } else if (op === 'extract') {
       // v2.3.1209: pull gems/elements back out of a SERVER-held gear
@@ -248,6 +252,10 @@ export const amuletMethods = {
       if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
       if (!ps.lifeSkills.gems || typeof ps.lifeSkills.gems !== 'object') ps.lifeSkills.gems = {};
       for (const key of gained) ps.lifeSkills.gems[key] = (ps.lifeSkills.gems[key] || 0) + 1;
+      /* v2.3.3513: ...and counted as come back: each paid its Enchanting XP
+         when it first went in, so setting it again pays none (weapongem.js
+         _gemSetXp; without it, take out and set again bought XP with gold). */
+      for (const key of gained) this._gemBackAdd(ps, key.slice('polished_'.length));
       this._stripGems(item, kind);
       /* ═══ v2.3.2537: THE ROW FOLLOWS THIS MUTATION TOO ═══
          _stripGems REWRITES the piece in place -- a shield loses its `gem`
@@ -398,6 +406,24 @@ export const amuletMethods = {
       }
     }
     ps.gemsCaptured = true;
+    /* v2.3.3513: the count of gems that came back (weapongem.js _gemSetXp):
+       an element's own key, a whole number of at least 1, never more than
+       the polished gems of it held -- anything else is dropped, so a stored
+       count can never make more than those gems pay no XP. */
+    const back = ps.lifeSkills.gemsBack;
+    if (back !== undefined) {
+      const healed = {};
+      if (back && typeof back === 'object' && !Array.isArray(back)) {
+        for (const k of Object.keys(back)) {
+          if (!AMULET_GEMS.has(k) && !WEAPON_GEMS.has(k)) continue;
+          const held = Math.floor(Number(ps.lifeSkills.gems['polished_' + k]) || 0);
+          const n = Math.min(held, Math.floor(Number(back[k]) || 0));
+          if (n > 0) healed[k] = n;
+        }
+      }
+      if (Object.keys(healed).length) ps.lifeSkills.gemsBack = healed;
+      else delete ps.lifeSkills.gemsBack;
+    }
   },
 
   // Raw-gem drop roll for a monster kill.  Called from

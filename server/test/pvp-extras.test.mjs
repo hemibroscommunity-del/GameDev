@@ -157,15 +157,23 @@ function monster(id, x, y, level) {
 
 // ── 2. the weapon's element on a player ──
 {
-  resetAll();
-  /* the gem rides the claim, where a hit on a monster reads it (combat.js,
-     monster_damage's `element`): setting a gem is the page's alone, so the
-     worker's copy of a weapon carries none once its record exists */
-  const h = claim('melee', { element: 'flame' })[0];
+  /* v2.3.3513: the gem is the WORKER'S copy of the weapon (weapongem.js), the
+     same as a hit on a monster reads -- never the claim's `element`, which
+     names frost here.  (Until v2.3.3513 it was the claim's: setting a gem was
+     the page's alone, and the worker's copy carried none.) */
+  resetAll(); reset('A', 0, { element: 'flame' });
+  const h = claim('melee', { element: 'frost' })[0];
   const st = P.B._wst && P.B._wst.statuses;
   check('a flame gem burns a player: the hit says elem flame, st burn', !!h && h.elem === 'flame' && h.st === 'burn' && h.stMs === 4000, h);
-  check('...the element is the claim\'s, read where a hit on a monster reads it (the worker\'s copy has none)',
-    !P.A.weapon.element1 && !!st && !!st.burn && Object.keys(st).length === 1, st && Object.keys(st));
+  check('...the element is the worker\'s copy of the weapon, never the claim\'s (which named frost)',
+    P.A.weapon.element1 === 'flame' && !!st && !!st.burn && Object.keys(st).length === 1, st && Object.keys(st));
+  resetAll();
+  const hNone = claim('melee', { element: 'flame' })[0];
+  check('...and a claimed element with no gem in the weapon is no element at all', !!hNone && !hNone.st && !hNone.elem && !P.B._wst, hNone);
+  room._liveFlags = { weapongem: false };
+  const hWire = claim('melee', { element: 'flame' })[0];
+  room._liveFlags = {};
+  check('...unless `weapongem: false` in liveflags: the claim\'s again, as before', !!hWire && hWire.elem === 'flame' && hWire.st === 'burn', hWire);
   for (const bad of ['__proto__', 'constructor', 'toString', 'lava', 7, null]) {
     resetAll();
     const hb0 = claim('melee', { element: bad })[0];
@@ -174,7 +182,7 @@ function monster(id, x, y, level) {
   resetAll(); reset('A', 0, { element: 'flame' });
   const hOld = claim('melee')[0];
   check('...and a claim with none (an older page) takes the worker\'s copy of the weapon', !!hOld && hOld.elem === 'flame' && hOld.st === 'burn', hOld);
-  resetAll();
+  resetAll(); reset('A', 0, { element: 'flame' });   /* v2.3.3513: the gem in the weapon */
   claim('melee', { element: 'flame' });
   const power = elemAttackStat(P.A, 'power', 'sword', opp('B'));
   check('...its power the attacker\'s, priced against the target\'s level as a monster\'s is', st && st.burn.power === power, { got: st && st.burn.power, power });
@@ -536,13 +544,17 @@ for (const flag of ['pvpextras', 'oneformula', 'pvpbalance']) {
   const again = hitsOn('B').find((p) => p.ability === 'bash');
   room._pvpHold = realHold;
   check('mutation: without the immunity a second bash holds again (the check catches it)', !!again && again.st === 'daze', again);
-  /* the element from the claim instead of the weapon would freeze */
+  /* the element from the claim instead of the weapon would freeze -- v2.3.3513:
+     the worker reads its own copy (flame: a burn), and a mutant that takes the
+     claim's `element` (frost) dazes */
   resetAll(); reset('A', 0, { element: 'flame' }); T += 10000;
-  const realEl = room._pvpSlotElement;
-  room._pvpSlotElement = () => ({ element: 'frost', w: {} });
+  const honestEl = claim('melee', { element: 'frost' })[0];
+  resetAll(); reset('A', 0, { element: 'flame' }); T += 10000;
+  const realEl = room._weaponHitElement;
+  room._weaponHitElement = function (ps, kind) { return { element: 'frost', w: ps.weapon || {} }; };
   const forged = claim('melee', { element: 'frost' })[0];
-  room._pvpSlotElement = realEl;
-  check('mutation: an element taken from the wire would freeze (the check catches it)', !!forged && forged.st === 'daze', forged);
+  room._weaponHitElement = realEl;
+  check('mutation: an element taken from the wire would freeze (the check catches it)', !!honestEl && honestEl.st === 'burn' && !!forged && forged.st === 'daze', { honestEl, forged });
 }
 void ELEMENT_STATUS;
 

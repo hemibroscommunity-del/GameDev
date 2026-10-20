@@ -6,6 +6,9 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a gem set, heard */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { askShieldGem, shieldGemBus, shieldGemOnServer, shieldGemReasonText, SHIELD_GEM_WAIT_MS } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
+import { askWeaponGem, askWeaponGemOut, monsterHoldOn, weaponGemBus, weaponGemOnServer, weaponGemReasonText, WEAPON_GEM_WAIT_MS } from '@/game/weaponGem.js'; /* v2.3.3513: the weapon's gem, put in by the worker */
+import { FUSION_BASES, SECOND_SLOT_LVL, isVolatilePair, isWeaponGem, weaponGemEffect, weaponGemSlots } from '@/data/weaponGems.js'; /* v2.3.3513 */
+import { gemExtractCost } from '@/data/items.js'; /* v2.3.3513: Take out's price, the Blacksmith's own */
 /* === EnchantPanel — buildingPanel === 'enchant' sub-panel === */
 /* v2.3.874: extracted verbatim from the buildingPanel === 'enchant' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -95,6 +98,27 @@ export function EnchantPanel(props) {
     }, SHIELD_GEM_WAIT_MS + 50);
     return function () { clearTimeout(t); };
   }, [sgWait && sgWait.at]);
+  /* v2.3.3513: the WEAPONS' gems are the worker's too (game/weaponGem.js),
+     against a worker that says caps.weapongem: a gem button asks and waits,
+     an answer re-renders the window, a refusal says why under its weapon,
+     and Take out (the Blacksmith's own ask) is offered here too. */
+  React.useEffect(function () {
+    return weaponGemBus.subscribe(function () {
+      try { setRpgState(_objectSpread({}, stateRef.current.rpg)); } catch (e) { /* the next echo re-renders */ }
+    });
+  }, []);
+  var wgOnServer = weaponGemOnServer(stateRef.current);
+  var wgWait = wgOnServer ? weaponGemBus.pending() : null;
+  var wgLast = wgOnServer ? weaponGemBus.get() : null;
+  var wgHold = monsterHoldOn(stateRef.current);
+  var wgCanOut = !!(stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.gemExtract);
+  React.useEffect(function () {
+    if (!wgWait) return undefined;
+    var t = setTimeout(function () {
+      try { setRpgState(_objectSpread({}, stateRef.current.rpg)); } catch (e) { /* closed */ }
+    }, WEAPON_GEM_WAIT_MS + 50);
+    return function () { clearTimeout(t); };
+  }, [wgWait && wgWait.at]);
   return React.createElement("div", { style: LS_WRAP },
     lsHeader('enchant', '✨', "Enchanter", "Enchanting Lv" + (((_rpgState$lifeSkills1 = rpgState.lifeSkills) === null || _rpgState$lifeSkills1 === void 0 || (_rpgState$lifeSkills1 = _rpgState$lifeSkills1.enchanting) === null || _rpgState$lifeSkills1 === void 0 ? void 0 : _rpgState$lifeSkills1.level) || 1)),
     React.createElement("div", {
@@ -131,12 +155,19 @@ export function EnchantPanel(props) {
         /* Determine available slots: crafted gear uses BLACKSMITH_TIERS/WOODWORKING_TIERS slots, dropped gear gets 2 free slots */
         var wwKey = wpn !== null && wpn !== void 0 && (_wpn$gearBase = wpn.gearBase) !== null && _wpn$gearBase !== void 0 && _wpn$gearBase.startsWith('ww_') ? wpn.gearBase.slice(3) : null;
         var maxSlots = wwKey ? ((_WOODWORKING_TIERS$ww = WOODWORKING_TIERS[wwKey]) === null || _WOODWORKING_TIERS$ww === void 0 ? void 0 : _WOODWORKING_TIERS$ww.slots) || 0 : wpn !== null && wpn !== void 0 && wpn.gearBase ? ((_BLACKSMITH_TIERS$wpn = BLACKSMITH_TIERS[wpn.gearBase]) === null || _BLACKSMITH_TIERS$wpn === void 0 ? void 0 : _BLACKSMITH_TIERS$wpn.slots) || 0 : wpn ? 2 : 0;
+        /* v2.3.3513: against the worker, ITS count (weaponGems.js mirrors
+           weapongem.js): a weapon with no known base -- a drop -- has one */
+        if (wgOnServer) maxSlots = wpn ? weaponGemSlots(wpn) : 0;
         var usedSlots = (wpn !== null && wpn !== void 0 && wpn.element1 ? 1 : 0) + (wpn !== null && wpn !== void 0 && wpn.element2 ? 1 : 0);
         var openSlots = Math.max(0, maxSlots - usedSlots);
         /* Fusion requires enchanting Lv20+, fusion-compatible gear base for volatile */
         var enchLvl = ((_rpgState$lifeSkills10 = rpgState.lifeSkills) === null || _rpgState$lifeSkills10 === void 0 || (_rpgState$lifeSkills10 = _rpgState$lifeSkills10.enchanting) === null || _rpgState$lifeSkills10 === void 0 ? void 0 : _rpgState$lifeSkills10.level) || 1;
-        var canAddSecond = enchLvl >= 20 && maxSlots >= 2;
-        var isFusionReady = (wpn === null || wpn === void 0 ? void 0 : wpn.gearBase) === 'worldbreaker' || (wpn === null || wpn === void 0 ? void 0 : wpn.gearBase) === 'ww_worldbreaker';
+        var canAddSecond = enchLvl >= SECOND_SLOT_LVL && maxSlots >= 2;
+        var isFusionReady = FUSION_BASES.indexOf(wpn === null || wpn === void 0 ? void 0 : wpn.gearBase) >= 0;
+        /* v2.3.3513: a gem the worker puts in a weapon is one of the eight
+           lands' (weaponGems.js WEAPON_GEMS) -- the others are an amulet's */
+        var offers = function offers(e) { return !wgOnServer || isWeaponGem(e); };
+        var waiting = !!wgWait;
         /* v2.3.1235: state-correction §6 — derived display state only:
            hasAnyPolished mirrors the picker's own polCount>0 filter
            (minus the already-slotted element), slotPickable is the
@@ -144,7 +175,7 @@ export function EnchantPanel(props) {
            one explicit control — picker / "No polished gems" /
            "No open gem slot" / "Locked" (2nd slot behind Ench Lv20). */
         var hasAnyPolished = Object.keys(ELEMENTS).some(function (e) {
-          return e !== (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && (gemsOwned['polished_' + e] || 0) > 0;
+          return offers(e) && e !== (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && (gemsOwned['polished_' + e] || 0) > 0;
         });
         var slotPickable = !!(wpn && openSlots > 0 && (!wpn.element1 || wpn.element1 && !wpn.element2 && canAddSecond));
         return /*#__PURE__*/React.createElement("div", {
@@ -177,7 +208,12 @@ export function EnchantPanel(props) {
           style: {
             color: ((_RARITY_TIERS$wpn$tie = RARITY_TIERS[wpn === null || wpn === void 0 ? void 0 : wpn.tier]) === null || _RARITY_TIERS$wpn$tie === void 0 ? void 0 : _RARITY_TIERS$wpn$tie.color) || LS.txt3
           }
-        }, ((_RARITY_TIERS$wpn$tie2 = RARITY_TIERS[wpn === null || wpn === void 0 ? void 0 : wpn.tier]) === null || _RARITY_TIERS$wpn$tie2 === void 0 ? void 0 : _RARITY_TIERS$wpn$tie2.label) || 'Common', " (", (wpn === null || wpn === void 0 ? void 0 : wpn.tierMult) || 1, "\xD7)"), (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && /*#__PURE__*/React.createElement("span", {
+        }, ((_RARITY_TIERS$wpn$tie2 = RARITY_TIERS[wpn === null || wpn === void 0 ? void 0 : wpn.tier]) === null || _RARITY_TIERS$wpn$tie2 === void 0 ? void 0 : _RARITY_TIERS$wpn$tie2.label) || 'Common',
+        /* v2.3.3513: no "(1.5x)" against the worker -- a gem never changed
+           the worker's damage roll (the owner's decision 9: the metal's
+           damage stays, the element is the gain), so the number it printed
+           after a local slot was never true */
+        wgOnServer ? null : " (", wgOnServer ? null : (wpn === null || wpn === void 0 ? void 0 : wpn.tierMult) || 1, wgOnServer ? null : "\xD7)"), (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && /*#__PURE__*/React.createElement("span", {
           style: {
             color: (_ELEMENTS$wpn$element3 = ELEMENTS[wpn.element1]) === null || _ELEMENTS$wpn$element3 === void 0 ? void 0 : _ELEMENTS$wpn$element3.color
           }
@@ -197,7 +233,18 @@ export function EnchantPanel(props) {
             color: LS.txt3,
             marginBottom: 6
           }
-        }, "Gem slots: ", usedSlots, "/", maxSlots, " used", maxSlots === 0 && ' · Craft slotted gear at the Blacksmith or Woodworker first', (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && !(wpn !== null && wpn !== void 0 && wpn.element2) && maxSlots >= 2 && !canAddSecond && ' · Req Enchanting Lv20 for 2nd slot'), /* v2.3.1235: state-correction §6 — the "Choose…" instructions only
+        }, "Gem slots: ", usedSlots, "/", maxSlots, " used", maxSlots === 0 && ' · Craft slotted gear at the Blacksmith or Woodworker first', (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && !(wpn !== null && wpn !== void 0 && wpn.element2) && maxSlots >= 2 && !canAddSecond && ' · Req Enchanting Lv20 for 2nd slot'),
+        /* v2.3.3513: what the gem does, one line a gem, in the worker's words
+           (weaponGems.js weaponGemEffect) -- the window used to promise a
+           damage number instead, which was never the gem's */
+        wgOnServer && wpn && [wpn.element1, wpn.element2].filter(Boolean).map(function (e) {
+          var _ed = ELEMENTS[e];
+          return /*#__PURE__*/React.createElement("div", {
+            key: 'fx-' + e,
+            'data-weapon-gem-effect': e,
+            style: { fontSize: 11.5, color: LS.txt2, marginBottom: 6, lineHeight: 1.4 }
+          }, /*#__PURE__*/React.createElement("span", { style: { color: _ed && _ed.color, fontWeight: 700 } }, "◆ ", e), " · ", weaponGemEffect(e, wgHold));
+        }), /* v2.3.1235: state-correction §6 — the "Choose…" instructions only
            render when the picker below them will actually show pills; an
            instruction must never lead to blank space. */
         hasAnyPolished && wpn && openSlots > 0 && !wpn.element1 && /*#__PURE__*/React.createElement("div", {
@@ -221,7 +268,7 @@ export function EnchantPanel(props) {
         }, Object.entries(ELEMENTS).filter(function (_ref85) {
           var _ref86 = _slicedToArray(_ref85, 1),
             e = _ref86[0];
-          return e !== (wpn === null || wpn === void 0 ? void 0 : wpn.element1);
+          return offers(e) && e !== (wpn === null || wpn === void 0 ? void 0 : wpn.element1);
         }).map(function (_ref87) {
           var _rpgState$lifeSkills11;
           var _ref88 = _slicedToArray(_ref87, 2),
@@ -232,15 +279,7 @@ export function EnchantPanel(props) {
           var polCount = gems[polKey] || 0;
           if (polCount <= 0) return null;
           /* Check volatile compatibility — only allowed on fusionReady gear */
-          var wouldBeVolatile = (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && function () {
-            var volPairs = [['flame', 'water'], ['water', 'venom'], ['venom', 'wind'], ['wind', 'stone'], ['stone', 'storm'], ['storm', 'frost'], ['frost', 'flame']];
-            return volPairs.some(function (_ref89) {
-              var _ref90 = _slicedToArray(_ref89, 2),
-                a = _ref90[0],
-                b = _ref90[1];
-              return wpn.element1 === a && elem === b || wpn.element1 === b && elem === a;
-            });
-          }();
+          var wouldBeVolatile = (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && isVolatilePair(wpn.element1, elem);   /* v2.3.3513: the worker's own pairs (weaponGems.js) */
           var blockedVolatile = wouldBeVolatile && !isFusionReady;
           return /*#__PURE__*/React.createElement("button", {
             key: elem,
@@ -257,9 +296,18 @@ export function EnchantPanel(props) {
               cursor: 'pointer'
             },
             title: blockedVolatile ? 'Volatile combo requires Fusion-Compatible gear base' : '',
+            disabled: waiting,
+            'data-weapon-gem': key + ':' + elem,
             onClick: function onClick() {
               if (blockedVolatile) {
                 pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Needs Fusion-Compatible gear!', '#D95C54');
+                return;
+              }
+              /* v2.3.3513: against the worker, ASK -- the gem, the weapon and
+                 the XP come back on its answer and the player_state after it
+                 (game/weaponGem.js); nothing changes here first */
+              if (wgOnServer) {
+                askWeaponGem(stateRef.current, key, elem);
                 return;
               }
               var R = stateRef.current.rpg;
@@ -314,7 +362,31 @@ export function EnchantPanel(props) {
         }, "No polished gems"), !slotPickable && /*#__PURE__*/React.createElement("button", {
           disabled: true,
           style: LS_DISBTN
-        }, wpn && openSlots > 0 ? "Locked" : "No open gem slot"));
+        }, wpn && openSlots > 0 ? "Locked" : "No open gem slot"),
+        /* v2.3.3513: the worker's refusal, under the weapon it was about */
+        wgOnServer && wgLast && !wgLast.ok && wgLast.slot === key && Date.now() - wgLast.at < 8000 && /*#__PURE__*/React.createElement("div", {
+          'data-weapon-gem-refused': wgLast.reason || 'bad',
+          style: { fontSize: 11.5, color: '#E58C7A', marginTop: 6 }
+        }, weaponGemReasonText(wgLast.reason)),
+        /* v2.3.3513: Take out, here too -- the Blacksmith's own ask (amulet.js
+           op 'extract', its price); the gem comes back to the count.  A full
+           weapon is never overwritten (the owner's decision 10), so this is
+           how a gem is changed. */
+        wgOnServer && wgCanOut && wpn && (wpn.element1 || wpn.element2) && function () {
+          var cost = gemExtractCost(wpn);
+          var coins = (rpgState && rpgState.coins) || 0;
+          var can = coins >= cost && !waiting;
+          return /*#__PURE__*/React.createElement("div", {
+            style: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }
+          }, /*#__PURE__*/React.createElement("button", {
+            'data-weapon-gem-out': key,
+            disabled: !can,
+            style: can ? { minHeight: 36, padding: '0 12px', borderRadius: 10, fontSize: 12, fontWeight: 700, border: '1px solid ' + LS.border, background: LS.raised, color: LS.txt1, cursor: 'pointer', fontFamily: 'inherit' } : LS_DISBTN,
+            onClick: function onClick() { if (can) askWeaponGemOut(stateRef.current, key); }
+          }, waiting && wgWait && wgWait.out && wgWait.slot === key ? 'Taking out…' : 'Take out'), /*#__PURE__*/React.createElement("span", {
+            style: { fontSize: 11.5, color: coins >= cost ? LS.txt3 : '#E58C7A', fontVariantNumeric: 'tabular-nums' }
+          }, cost, " gold · the gem comes back"));
+        }());
       }), rpgState.amulet && /*#__PURE__*/React.createElement("div", {
         style: {
           marginBottom: 12,

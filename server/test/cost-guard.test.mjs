@@ -27,6 +27,8 @@
  *      as it likes writes a bounded number of rows -- a shield on and off
  *      200 times in 2 s, a weapon in and out of a trade window 100 times
  *      (they wrote 200 and ~250);
+ *  10. v2.3.3513: a gem set into a weapon writes the record once, and a
+ *      refused ask writes nothing (weapongem.js);
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -392,6 +394,31 @@ const FAST = 110;
     rows <= 3 * PACE.T2WPN.BURST, byPrefix(mine(state, 'cg_ta', w0)));
   const inStash = (psA.weaponStash || []).length, inTrade = staged().length;
   check('9b. ...and the weapon is in exactly one place, the stash or the window', inStash + inTrade === 1, { inStash, inTrade });
+}
+
+/* ── 10. a gem into a weapon (v2.3.3513, weapongem.js) ──────────────────── */
+/* One row a gem set, saved before its answer (handoff rule 10: the gem and the
+   XP are things a player sees); a refusal writes nothing, however fast. */
+{
+  const { room, state } = await makeRoom();
+  const p = await join(room, 'cg_gem');
+  const ps = room.playerState.cg_gem;
+  ps.weapon = { type: 'greatsword', tier: 'common', tierMult: 1.12, gearBase: 'copper', name: 'copper greatsword', element1: null, element2: null, isVolatile: false };
+  ps.lifeSkills = ps.lifeSkills || {};
+  ps.lifeSkills.gems = { polished_flame: 1 };
+  const w0 = state.writes.length;
+  NOW += 50;
+  await send(room, p, { type: 'weapon_gem', payload: { slot: 'weapon', gem: 'flame' } });
+  const set = mine(state, 'cg_gem', w0);
+  check(`10. a gem set into a weapon writes the record once (${set.length} row(s): ${set.join(', ')})`,
+    ps.weapon.element1 === 'flame' && set.filter((k) => k.startsWith('rpg:')).length === 1 && set.length <= 1, set);
+  const w1 = state.writes.length;
+  for (let i = 0; i < 100; i++) {
+    NOW += 9;
+    await send(room, p, { type: 'weapon_gem', payload: { slot: 'weapon', gem: 'flame' } });
+  }
+  const refused = mine(state, 'cg_gem', w1);
+  check(`10. ...and 100 refused asks in ~1 s write ${refused.length} rows (none)`, refused.length === 0, byPrefix(refused));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
