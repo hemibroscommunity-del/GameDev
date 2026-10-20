@@ -56,6 +56,17 @@ own; nothing on the worker changes, so it ships in either order.
   Shots fly over what you can jump (v2.3.3206), so arrows and bolts fly over
   them too unless aimed at them.
 - docs/specs/jumping.md "v2.3.3499".
+- **And it moves in the air** -- the owner, after: "is there any 'jump effect'
+  you can add just using code that would make it look more realistic than just
+  the static frame?":
+  - the body runs through four frames of the jog's own stride for the way it
+    faces (push-off, rise, split, reach: `JUMP_FRAMES`) instead of holding one;
+  - the whole figure is squashed at the press, long on the way up, round over
+    the top and squashed again landing, springing back, about its feet;
+  - it leans about 5 degrees into a run (none standing);
+  - the take-off kicks a little dust back.
+  - The name plate rides up but never squashes or tilts. Nothing new is loaded.
+  - docs/specs/jumping.md "a jump that moves".
 
 ## No lock across the map
 
@@ -122,7 +133,9 @@ own; nothing on the worker changes, so it ships in either order.
 - `mp-whirlwind` §5: the monsters inside the ring wear the mark through the
   wind-up and every monster the worker's strike hit wore it.
 - `mp-jump`: the peak read as 85; the fence is now cleared on this slow test
-  machine too.
+  machine too; the stride's four frames in order, the squash and stretch as the
+  curve draws it, the landing's squash, the feet and the name plate held, the
+  take-off's dust, and a running jump's lean east and west (2b).
 - `mp-lockfar` (new): a 500 px snipe kept, a lock past the drawn circle
   dropped 'far' ~1.5 s later, one 2,200 px off at once, the promotion latched.
 - `mp-deathcut`: killed inside a held hit flash and squash, the pieces wear

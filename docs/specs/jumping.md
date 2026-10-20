@@ -379,3 +379,104 @@ props sometimes that it should be clearing."*
   too; nothing on the worker changes.
 - Tests: test-world-core "jumping" (the new numbers, the latch, the grace, the
   landing, the longer list), `mp-jump` (the peak read as 85).
+
+## v2.3.3499: a jump that moves, not one held frame
+
+The owner, after the higher jump: *"Also is there any 'jump effect' you can
+add just using code that would make it look more realistic than just the
+static frame?"*
+
+Four things, all drawn in code on the art the game already has. Nothing new is
+loaded or held.
+
+- **The stride, slowed.** The body no longer holds one leaping frame for the
+  whole jump. It runs through four of the jog's own frames for the way it faces
+  (`JUMP_FRAMES` in game/jump.js), each held for its share of the air
+  (`JUMP_FRAME_AT`):
+  - the push-off, a knee driving up off the back foot (the first 7%, about
+    44 ms, a flash of the crouch);
+  - the rise (to 40%);
+  - the split over the top (to 70%);
+  - the front foot reaching for the ground.
+
+  They were picked off the sheets by eye and by each frame's lowest row of
+  feet (128 px frames):
+
+  | Sheet | Frames | Lowest feet row |
+  |---|---|---|
+  | east | 13, 1, 3, 4 | 109, 105, 97, 102 |
+  | north | 2, 3, 5, 6 | 117, 107, 104, 115 |
+  | northeast | 1, 3, 4, 5 | 113, 104, 103, 108 |
+  | south | 13, 14, 15, 16 | 114, 101, 102, 111 |
+  | southwest | 9, 10, 11, 12 | 118, 114, 103, 118 |
+
+  In each, the push-off is planted, the middle two are the stride's highest
+  feet, and the reach is coming down. The armour and the knight figure follow
+  each frame by its phase, as they followed the one before. Other players'
+  copies run the same frames from the relay's own clock.
+- **Squash and stretch, about the feet** (rendering/jumpFx.js, numbers in
+  game/jump.js):
+  - **In the air** (`jumpStretchAt`): crouched to 0.9 of his height at the
+    press, springing to 1.07 by 12% of the way (the push long), round again by
+    45%, and a little long (1.04) reaching down.
+  - **On the touch-down** (`jumpLandStretch`): squashed to 0.86 and springing
+    back through a little stretch, settled after `JUMP_LAND_MS` (220 ms). That
+    time is stretched with the air when `?jumpms=` lengthens a jump, so a slow
+    test machine sees it.
+  - **The width** (`jumpWidthFor`): wider as he squashes, thinner as he
+    stretches, four fifths of what keeps the area.
+- **The lean.** Into the way he goes across the screen
+  (`jumpLeanAt` x `JUMP_LEAN`, 0.09 rad, about 5 degrees):
+  - forward on the way up, nearly upright over the top, back a touch reaching
+    down to land;
+  - scaled by how fast he goes across (`JUMP_LEAN_PX_MS`, a walk's pace leans
+    in full), so a standing jump does not lean, nor one straight up or down the
+    screen.
+- **A kick of dust at the take-off** (rendering/worldFx.js `_takeOffDust`):
+  three puffs back off the heels the way he was going, or two to the sides from
+  a standing jump. The landing keeps its ring of six, and nothing is kicked up
+  on water.
+
+**How it is drawn.** It is the emotes' way, `placeEmote` and `holdMatrix` from
+game/emoteMoves.js:
+
+- The whole figure is lifted, then squashed and leaned **about its feet**, so
+  the boots stay over the ground they stand on.
+- The HUD inside it (name plate, HP bar, the spend bars) is given the inverse
+  of the squash and lean. It rides up with the body but never squashes or
+  tilts.
+- `figureFeetY` reads the ground again through `_jumpLift` (now everything the
+  jump moved the feet by: the lift and the squash and lean about them).
+  `figureFeetX` reads it through `_jumpXFix`. So the shadows, the depth pass and
+  anything standing on the feet are where they were.
+- Everything jumpFx writes is put back at the start of the next frame wherever
+  nothing has written since. The entity pass writes position and scale fresh
+  every frame and the rotation never.
+- A figure drawn another way is only lifted, as before: hidden behind a
+  stand-in, tipped over in its death, or in the water.
+- The squash plays on a jump that came down on its own (jumpActions.js
+  `tickJump` sets `S._jumpLandFx`). One cut short by a death or a zone change
+  does not squash. Another player's plays from the relay's own end.
+
+**Not done.** A soft round shadow under the feet that shrinks with height:
+the world's ellipse shadows were taken out for the sun's cast shadows
+(entityRenderer's notes), and the sun's shadow already stays on the ground and
+slides away from the body as it rises.
+
+**Tests.**
+
+- test-world-core "jumping":
+  - the four frames in order, inside each sheet, and what each was chosen for,
+    read off the PNGs;
+  - the curves' ends, bounds and smoothness, the width, and the lean's sign
+    and its stillness standing;
+  - the landing's length, stretched with the jump.
+- `mp-jump`:
+  - the frames run through the four in order;
+  - the squash drawn as the curve says;
+  - the touch-down squashed;
+  - the feet read where they stand under the lift and the squash;
+  - the name plate never squashed or tilted;
+  - a standing take-off puffs two puffs;
+  - 2b, a running jump east leans forward and west the other way, as the rules
+    give for the speed he really went, and kicks three puffs back.

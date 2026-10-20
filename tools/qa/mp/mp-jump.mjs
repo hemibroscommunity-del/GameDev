@@ -16,6 +16,12 @@
  *      shadows read stay on the ground (the shadow's pivot does not rise);
  *      no step is heard in the air, one at take-off and one at touch-down,
  *      and the touch-down raises dust;
+ *      (v2.3.3499) the frames run through the stride's four (push-off, rise,
+ *      split, reach) in order; the figure is squashed at the press, long on
+ *      the way up and squashed again landing, about its feet, its name plate
+ *      never squashed or tilted; a little dust kicks up at the take-off;
+ *   2b. (v2.3.3499) a running jump leans into the run, east forward, west the
+ *      other way, by how fast it goes across, and kicks its dust back;
  *   3. in the air a second press, a roll and an attack all wait;
  *   4. another player sees it: the relay lands and their copy of you is
  *      lifted;
@@ -44,7 +50,9 @@ const SIDEWAYS = { width: 844, height: 390 };
 const AIR_MS = 3000;
 const PEAK = 85;          /* JUMP_PEAK (game/jump.js; 68 until v2.3.3499, the owner's "25% higher") */
 const HS = 10;            /* the walk box's half-width (hs in BroTown.jsx) */
-const FRAME = { east: 1, north: 8, northeast: 4, south: 7, southwest: 6 };   /* JUMP_FRAME */
+/* v2.3.3499: the stride's four frames and the look's numbers, from the rules
+   themselves (game/jump.js is pure) */
+import { JUMP_FRAMES, JUMP_LEAN, JUMP_LEAN_PX_MS, jumpStretchAt, jumpLeanAt } from '../../../src/game/jump.js';
 const OVER = ['fence'];   /* a long straight one, easiest to cross square-on */
 const TREES = ['oak', 'pine', 'birch', 'orchard'];
 
@@ -213,7 +221,9 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
         const o = peerId && S.others ? S.others[peerId] : null;
         window.__qaRec.push({ t: Date.now(), air: !!(window.__btJumpBtn && window.__btJumpBtn().air), self: fx && fx.self ? { ...fx.self } : null,
           peers: fx ? fx.peers : 0, groundY: g ? g.y : null, py: S.player.y, shadowPy: sh ? sh.py : null, lightOn: !!(lf && lf.on),
-          peerJump: !!(o && o._jump), steps: steps(), dust: window.__btWorldFx ? window.__btWorldFx().landDust : null });
+          peerJump: !!(o && o._jump), steps: steps(), dust: window.__btWorldFx ? window.__btWorldFx().landDust : null,
+          liftDust: window.__btWorldFx ? window.__btWorldFx().liftDust : null,
+          ground: g ? { x: g.x, y: g.y } : null });
       } catch (e) { /* a frame's trouble is its own */ }
       requestAnimationFrame(f);
     };
@@ -235,13 +245,37 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
   await H.waitFor(P, () => window.__btJumpBtn().air, (v) => v === false, { timeout: AIR_MS + 4000, label: 'down again' }).catch(() => null);
   await P.page.waitForTimeout(700);
   const recP = await STOP(P), recQ = await STOP(Q);
-  const airS = recP.filter((r) => r.self && r.t >= t0);
+  /* v2.3.3499: the probe reports the touch-down's squash too (air false) */
+  const airS = recP.filter((r) => r.self && r.self.air && r.t >= t0);
+  const landS = recP.filter((r) => r.self && r.self.air === false && r.t >= t0);
   const maxLift = Math.max(0, ...airS.map((r) => r.self.lift));
   rec.ok(`a press takes off: in the air ${airS.length} frames, the body lifted ${maxLift.toFixed(1)} px at the most (the peak is ${PEAK})`,
     pressed && airS.length >= 4 && maxLift > PEAK * 0.85 && maxLift <= PEAK + 0.01, { pressed, n: airS.length, lifts: airS.map((r) => r.self.lift) });
-  const poses = [...new Set(airS.map((r) => `${r.self.pose}/${r.self.dir}/${r.self.frame}`))];
-  rec.ok(`...holding the jog's leaping frame for the way he faces (${poses.join(', ')})`,
-    airS.length > 0 && airS.every((r) => r.self.pose === 'jog' && r.self.frame === FRAME[r.self.dir]), poses);
+  /* v2.3.3499: the stride's four frames, in order, for the way he faces */
+  const poses = airS.map((r) => `${r.self.dir}/${r.self.frame}`);
+  const seqIdx = airS.map((r) => (JUMP_FRAMES[r.self.dir] || []).indexOf(r.self.frame));
+  const seen = [...new Set(seqIdx)];
+  rec.ok(`...running through the stride's four frames for the way he faces, in order (${[...new Set(poses)].join(' -> ')})`,
+    airS.length > 0 && airS.every((r) => r.self.pose === 'jog') && seqIdx.every((i) => i >= 0)
+      && seqIdx.every((i, k) => k === 0 || i >= seqIdx[k - 1]) && seen.length >= 3, { poses, seqIdx });
+  /* the squash and stretch, about his feet, drawn as the rules say */
+  const kys = airS.map((r) => r.self.ky);
+  const offCurve = Math.max(0, ...airS.map((r) => Math.abs(r.self.ky - jumpStretchAt(r.self.t))));
+  rec.ok(`...squashed at the press and long on the way up, as the rules draw it (${Math.min(...kys).toFixed(3)} to ${Math.max(...kys).toFixed(3)}; ${offCurve.toFixed(4)} off the curve at the most)`,
+    airS.every((r) => r.self.shaped) && offCurve < 0.002 && Math.max(...kys) > 1.02, { kys, ts: airS.map((r) => r.self.t) });
+  const minLand = landS.length ? Math.min(...landS.map((r) => r.self.ky)) : null;
+  rec.ok(`...and squashed again touching down, springing back (${landS.length} frames, down to ${minLand != null ? minLand.toFixed(3) : '?'})`,
+    landS.length >= 1 && minLand < 0.97 && landS.every((r) => r.self.rot === 0 && r.self.lift === 0), landS.map((r) => ({ u: r.self.t, ky: r.self.ky })));
+  /* about his feet: what the shadows and anything else standing on them read,
+     after the lift and the squash, is where the depth pass had them */
+  const feetOff = Math.max(0, ...[...airS, ...landS].filter((r) => r.ground).map((r) => Math.max(Math.abs(r.self.feet - r.ground.y), Math.abs(r.self.feetX - r.ground.x))));
+  rec.ok(`...about his feet: under the lift and the squash they read where they stand (${feetOff.toFixed(3)} px off at the most)`, feetOff < 0.05, feetOff);
+  const huds = [...airS, ...landS].map((r) => r.self.hud).filter(Boolean);
+  const hudOff = Math.max(0, ...huds.map((h) => Math.max(h.tilt, Math.abs(h.kx - 1), Math.abs(h.ky - 1))));
+  rec.ok(`...while his name plate and HP bar ride up with him and never squash or tilt (${huds.length} frames, ${hudOff.toFixed(4)} off at the most)`,
+    huds.length >= 3 && hudOff < 0.001, huds.slice(0, 4));
+  const lift0 = recP.length ? recP[recP.length - 1].liftDust : null;
+  rec.ok('...and a standing take-off puffs a little dust to both sides', !!lift0 && lift0.n === 2 && lift0.run === false && lift0.at >= t0 - 50, lift0);
   /* the feet, from his position, all through the air: one number (the
      leaping frame's own drop -- a few px off standing's, as the jog's is)
      while the lift runs from nothing to the peak */
@@ -306,6 +340,26 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
   /* the attack zone's tap may have left a held attack or an aim: let go */
   await P.page.evaluate(() => { const S = window._gameState.current; S.autoAttack = false; S._aiming = false; S.isSwinging = false; S.stickX = 0; S.stickY = 0; });
   console.log('    (section 3 done)');
+
+  /* ── 2b. v2.3.3499: a running jump leans into the run ── */
+  for (const [key, sign, name] of [['d', 1, 'east'], ['a', -1, 'west']]) {
+    await P.page.evaluate(() => { window.__qaLean = []; window.__qaLeanOn = true;
+      const f = () => { if (!window.__qaLeanOn) return; const fx = window.__btJumpFx(); if (fx.self && fx.self.air) window.__qaLean.push({ ...fx.self, liftDust: window.__btWorldFx ? window.__btWorldFx().liftDust : null }); requestAnimationFrame(f); };
+      requestAnimationFrame(f); });
+    let jumped = false;
+    await walk(P, key, AIR_MS + 3000, (o) => jumped && o.length > 6 && !o[o.length - 1].air && o.slice(-4).some((s) => s.air),
+      async (o) => { if (!jumped && o.length >= 6) { jumped = true; await press(P); } });
+    const ls = await P.page.evaluate(() => { window.__qaLeanOn = false; return window.__qaLean || []; });
+    /* the lean the rules give for the speed he really went across, and its sign */
+    const want = (r) => JUMP_LEAN * jumpLeanAt(r.t) * Math.max(-1, Math.min(1, r.across / JUMP_LEAN_PX_MS));
+    const off = Math.max(0, ...ls.map((r) => Math.abs(r.rot - want(r))));
+    const most = ls.length ? ls.reduce((m, r) => (Math.abs(r.rot) > Math.abs(m) ? r.rot : m), 0) : 0;
+    const dust = ls.length ? ls[ls.length - 1].liftDust : null;
+    rec.ok(`2b. a running jump ${name} leans into the run (${(most * 180 / Math.PI).toFixed(1)} degrees at the most, going across at ${ls.length ? Math.max(...ls.map((r) => Math.abs(r.across))).toFixed(3) : '?'} px a ms), as the rules say (${off.toFixed(4)} off), and kicks its dust back`,
+      ls.length >= 3 && Math.sign(most) === sign && Math.abs(most) > 0.004 && off < 0.002 && !!dust && dust.run === true && dust.n === 3,
+      { n: ls.length, most, off, dust, sample: ls.slice(0, 3).map((r) => ({ t: r.t, rot: r.rot, across: r.across })) });
+  }
+  await P.page.evaluate(() => { const S = window._gameState.current; S.stickX = 0; S.stickY = 0; });
 
   /* ── 5. a fence: stopped walking, cleared jumping ── */
   await P.page.evaluate(() => { window._gameState.current.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } }); });
