@@ -1,4 +1,4 @@
-/* mp-blockasks (v2.3.3505): a blocked player's duel challenge, trade request
+/* mp-blockasks (v2.3.3519): a blocked player's duel challenge, trade request
  * and party invite never reach you.  The owner, of the 2026-10-19 UI review's
  * "should blocking a player also stop their trade and duel requests?": "Go
  * recommended on everything".  Block (the player card's, and the friends

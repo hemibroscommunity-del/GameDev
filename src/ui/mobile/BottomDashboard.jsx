@@ -32,8 +32,8 @@ import { friendsSrv } from './sheet/friendsSync.js';               /* v2.3.1324 
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
 import { rewardsWaiting } from '@/game/dailyRewards.js';          /* v2.3.3140: a season tier to claim lights the Quests dot */
 import { codexFreshCount } from '@/game/monsterCodex.js';        /* v2.3.3215: a page with something new marks the Codex's button */
-import { clanPartyOn } from '@/game/alliance.js';              /* v2.3.3505: the clan page is headed Party once clans are parties */
-import { getState } from './dash/common.js';                    /* v2.3.3505 */
+import { clanPartyOn } from '@/game/alliance.js';              /* v2.3.3519: the clan page is headed Party once clans are parties */
+import { getState } from './dash/common.js';                    /* v2.3.3519 */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
 import { bagLife, startBagLife } from './dash/bagLife.js'; /* v2.3.2815: the bag's small motions */
@@ -461,7 +461,7 @@ const PANELS = {
      and the profile's button still say Leaderboard: they describe the
      board, and renaming them is the owner's taste. */
   leaderboard:  { title: 'Ranks',       Component: LeaderboardPanel },
-  /* v2.3.3505: headed as its More tile is labelled -- Party once clans are
+  /* v2.3.3519: headed as its More tile is labelled -- Party once clans are
      parties (caps.clanparty), Clan under the kill switch (MorePanel
      `labelFor`; v2.3.2038's rule: what you tap and what opens carry one name) */
   clan:         { get title() { return clanPartyOn(getState()) ? 'Party' : 'Clan'; }, Component: ClanPanel },

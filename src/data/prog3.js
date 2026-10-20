@@ -211,7 +211,7 @@ export const PROG3_LEGACY_ATK = {
    tools/glyph_edge_colors.mjs -- the Points grid outlines every cell in it so
    the frame matches the picture (owner).  Re-run the tool when a glyph is
    re-exported; do not hand-pick.
-   v2.3.3505: nine glyphs are the owner's card 11 picks (luck, special, elem,
+   v2.3.3519: nine glyphs are the owner's card 11 picks (luck, special, elem,
    hp, mana, stam, dodge, move, eres: tools/ui/cut-owner-icons.py), their
    edges measured again by the tool. */
 export const PROG3_ATK_META = [

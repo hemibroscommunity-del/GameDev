@@ -575,10 +575,10 @@ export const ChatBubble = () => {
                 padding: 0,
               }}
             >
-              {/* v2.3.3505: the owner's own smiley (card 11, T118.1), a
+              {/* v2.3.3519: the owner's own smiley (card 11, T118.1), a
                   picture, not an emoji -- the mic's reason: one look on every
                   phone.  It was a brass line smiley drawn here in SVG. */}
-              <img src="/icons/ui/chat-emotes.webp?v=2.3.3505" alt="" aria-hidden="true" draggable={false}
+              <img src="/icons/ui/chat-emotes.webp?v=2.3.3519" alt="" aria-hidden="true" draggable={false}
                 width={24} height={24} style={{ display: 'block', width: 24, height: 24, pointerEvents: 'none' }} />
             </button>
           ) : null}
