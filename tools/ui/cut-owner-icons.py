@@ -35,6 +35,11 @@ size it would be drawn, and the owner answered: "Icon picks: 1b, 2a, 3, 4, 5,
       Journey page.
 Not 7 (the compass): the owner kept today's.  Not 10 (leg armour and the chest
 to match): not answered yet -- a new entry in PIECES is all it would take.
+v2.3.3524: and the HAMMER (fantasy-rpg-crafting-ui-asset-sheet-1.png, the one
+on its gold "Craft" button) for the Blacksmith's Upgrade tab -- the owner's
+playtest note: "Make the upgrade tab icon different for smithing.  Like a
+hammer" (it wore the currency strip's gold gem).  Its button is painted in a
+gradient, so it is cut by `card` below, not `key`.
 
 HOW: the review page's own cuts, which the owner approved by eye.
   alpha  a free-standing piece on a transparent ground: its solid core (alpha
@@ -47,6 +52,19 @@ HOW: the review page's own cuts, which the owner approved by eye.
          is the median of a ring of points 4 px inside the box (a card's border
          shading at its very corner is lighter than its fill), and a px within
          `tol` of it is see-through, fully solid past tol + `ramp`.
+  card   (v2.3.3524) an icon on a card painted top-to-bottom in a GRADIENT (the
+         gold "Craft" button runs 249,208,77 at its top to 192,133,47 at its
+         foot, so one fill keyed a band of it out and left the rest): `key`
+         row by row, each row's fill the median of its four px at either end
+         (the piece must keep 5 px clear of the box's sides); then, within 3 px
+         of what was keyed out, a px on the line from black to the row's fill
+         (c = t x fill, within 24) is the piece's dark outline mixed with the
+         card -- black at alpha 1 - t, or nothing where t is 0.97 or more (the
+         card's own light rim round the piece); a px of the card's own hue
+         (saturated, within 0.04) is its shading, gone where t is 0.6 or more
+         -- so no edge keeps a rim of gold; anything under 40 alpha is dropped (the halo rule), and all
+         but the biggest island of solid px, grown 2 px (specks of the card's
+         shading, some hanging off the piece by a faint px).
   The boxes are the review's (its spec2 for the handshake), but for the
   helmet's: the review's [498, 522, 562, 580] took two px of the card's rounded
   corner (a speck at the cut's top left) and cut the helmet's chin off five
@@ -76,6 +94,7 @@ it); each is the piece's own tight box, the CSS sizing it to that shape:
   helmet 26 x 28 CSS          handshake 40 x 26 (it is wider than tall)
   sack 64 x 69                pet house 40 x 33
   wheel 34 x 37               treasure map 120 x 69
+  hammer 22 x 22 (v2.3.3524: the Upgrade tab's icon)
   land scenes: drawn about 180-215 CSS px wide (half the banner's width), so
                written at the sheet's own ~200 px -- the most it holds.
 The quest pins are drawn on the CANVAS, 32 x 38 world px each (today's badge
@@ -106,6 +125,7 @@ without --force; --dry cuts and reports, writes nothing; --only a,b cuts those.
 
   python3 tools/ui/cut-owner-icons.py [--force] [--dry] [--only name,..] [--contact out.png]
 """
+import colorsys
 import math
 import os
 import sys
@@ -154,6 +174,9 @@ PIECES = [
          box=(68, 4, 456, 424), grow=4, css=(34, 37)),
     dict(name='icons/ui/journey-map', src='colorful-rpg-game-ui-asset-sheet.png', mode='alpha',
          box=(1208, 552, 1476, 708), grow=4, css=(120, 69)),
+    # v2.3.3524: the Blacksmith's Upgrade tab, drawn 22 x 22 CSS px
+    dict(name='icons/ui/smith-hammer', src='fantasy-rpg-crafting-ui-asset-sheet-1.png', mode='card',
+         box=(84, 309, 176, 387), css=(22, 22)),
     # v2.3.3522: the Block button's face (the header's note) -- a round button
     # of its own, so the disc inside its ring, 160 px like every control picture
     dict(name='ui/controls/abil-block', src='brotown-rpg-ui-asset-sheet-1.png', mode='disc',
@@ -221,6 +244,77 @@ def cut_key(src, box, tol=16, ramp=18):
             d = math.sqrt((r - f[0]) ** 2 + (g - f[1]) ** 2 + (b - f[2]) ** 2)
             k = 0 if d <= tol else (1 if d >= tol + ramp else (d - tol) / ramp)
             op[x, y] = (r, g, b, int(min(255, a * 255 / 250) * k))
+    bb = out.getbbox()
+    return out.crop(bb) if bb else out
+
+
+def cut_card(src, box, tol=16, ramp=18):
+    """v2.3.3524: `key` on a gradient card, row by row (see the header)."""
+    c = sheet(src).crop(box)
+    px = c.load()
+    w, h = c.size
+    fills = []
+    for y in range(h):
+        ends = [px[x, y] for x in (1, 2, 3, 4, w - 5, w - 4, w - 3, w - 2)]
+        fills.append(tuple(sorted(q[i] for q in ends)[len(ends) // 2] for i in range(3)))
+    out = Image.new('RGBA', c.size)
+    op = out.load()
+    gone = Image.new('L', c.size, 0)
+    gp = gone.load()
+    for y in range(h):
+        f = fills[y]
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            d = math.sqrt((r - f[0]) ** 2 + (g - f[1]) ** 2 + (b - f[2]) ** 2)
+            k = 0 if d <= tol else (1 if d >= tol + ramp else (d - tol) / ramp)
+            op[x, y] = (r, g, b, int(min(255, a * 255 / 250) * k))
+            if k == 0:
+                gp[x, y] = 255
+    band = gone.filter(ImageFilter.MaxFilter(7)).load()
+    for y in range(h):
+        f = fills[y]
+        ff = sum(v * v for v in f) or 1
+        fh = colorsys.rgb_to_hsv(f[0] / 255, f[1] / 255, f[2] / 255)[0]
+        for x in range(w):
+            if not band[x, y] or op[x, y][3] == 0:
+                continue
+            r, g, b, a = px[x, y]
+            t = (r * f[0] + g * f[1] + b * f[2]) / ff
+            on_line = math.sqrt((r - t * f[0]) ** 2 + (g - t * f[1]) ** 2 + (b - t * f[2]) ** 2) <= 24
+            ph, ps, _ = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+            card = ps > 0.5 and min(abs(ph - fh), 1 - abs(ph - fh)) < 0.04   # the card's own hue: its shading
+            if on_line:
+                op[x, y] = (0, 0, 0, 0) if t >= 0.97 else (6, 4, 3, int(255 * (1 - max(0.0, t))))
+            elif card:
+                op[x, y] = (0, 0, 0, 0) if t >= 0.6 else (6, 4, 3, int(255 * (1 - max(0.0, t))))
+    out.putalpha(out.getchannel('A').point(lambda v: 0 if v < 40 else v))
+    # specks the key left on the card (bits of its shading, apart from the
+    # piece or hanging off it by a faint px): the biggest island of SOLID px
+    # (alpha over 160) is the piece, and only what lies within 2 px of it is kept
+    al = out.load()
+    seen = set()
+    best = []
+    for y in range(h):
+        for x in range(w):
+            if al[x, y][3] <= 160 or (x, y) in seen:
+                continue
+            todo, isl = [(x, y)], []
+            seen.add((x, y))
+            while todo:
+                cx, cy = todo.pop()
+                isl.append((cx, cy))
+                for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
+                    if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in seen and al[nx, ny][3] > 160:
+                        seen.add((nx, ny))
+                        todo.append((nx, ny))
+            if len(isl) > len(best):
+                best = isl
+    core = Image.new('L', out.size, 0)
+    cpx = core.load()
+    for (x, y) in best:
+        cpx[x, y] = 255
+    keep = core.filter(ImageFilter.MaxFilter(5))
+    out.putalpha(Image.composite(out.getchannel('A'), Image.new('L', out.size, 0), keep))
     bb = out.getbbox()
     return out.crop(bb) if bb else out
 
@@ -358,6 +452,8 @@ def main():
             continue
         if p['mode'] in ('alpha', 'disc'):
             im = cut_alpha(p['src'], p['box'], p.get('amin', 230), p.get('grow', 6))
+        elif p['mode'] == 'card':
+            im = cut_card(p['src'], p['box'], p.get('tol', 16), p.get('ramp', 18))
         else:
             im = cut_key(p['src'], p['box'], p.get('tol', 16), p.get('ramp', 18))
         raw = im.size

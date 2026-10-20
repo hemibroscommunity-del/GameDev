@@ -1130,7 +1130,18 @@ export const BLACKSMITH_TIERS = {
          `wood:` is the woodworking table's own field, and the key resolvers on
          both sides prefer it, so one row change moves every consumer at once.
          oreName stays as the LABEL ("Wood 3/3"), which is what it reads as. */
-      wood:         {minLvl:1, slots:1, oreName:'wood', wood:'pine_log', oreCost:3,  goldCost:8,    tierMult:1.00, statReq:0  },
+      /* ═══ v2.3.3524: AND IT IS NO LONGER FORGED ═══
+         The owner's playtest notes (2026-10-19): "'wood greatsword' is not an
+         actual weapon in the game.  Make the beginning weapon a copper
+         greatsword (requiring smithing lvl 1)".  `forge: false`: the Forge tab
+         leaves it out and the worker refuses it (gear.js, forgeladder.js),
+         against caps.forgeladder.  The ROW STAYS: the starter Pine Shield and
+         every old wooden weapon carry gearBase 'wood' (their label and
+         tierMult are read here), and every tier index after it -- the
+         hardening bars (hardening.js HARDEN_BAR_BY_TIER), the equip ladder
+         (gear.js _prog3BaseIdx) -- counts it.  Mirrored field for field in
+         src/data/gameSystems.js (mirror-audit). */
+      wood:         {minLvl:1, slots:1, oreName:'wood', wood:'pine_log', oreCost:3,  goldCost:8,    tierMult:1.00, statReq:0, forge:false },
       /* ═══ v2.3.3141: THE METALS WITH BARS ARE FORGED FROM BARS ═══
          Owner: "maybe chest, legs, and sword each take 4 bars to make (5 ore
          makes 1 bar).  If you salvage them you get 2 bars back" (salvage.js).
@@ -1141,14 +1152,20 @@ export const BLACKSMITH_TIERS = {
          `bars` replace `oreCost` on these three rows (gear.js reads them
          first); `oreName` stays the metal's name.  The gold is unchanged.  The
          metals past black steel have no bar yet and keep their ore. */
-      /* ═══ v2.3.3525: A BAR'S SWORD AT ITS BAR'S LEVEL ═══
-         Owner, for the tour's Blacksmith Bro: "he gives you 5 bars (which you
-         can make into your own weapon or armor - your choice)".  The armour
-         forge makes copper, iron and black steel at Smithing 1, 5 and 10
-         (armorforge.js), the bars smelt at 1, 5 and 10 (smelting.js) -- and the
-         swords from the very same four bars asked 6, 11 and 16, the old ore
-         ladder's levels, so a new player holding five copper bars could make
-         armour and not a sword.  Now 1 / 5 / 10, the bars' own. */
+      /* ═══ v2.3.3524: THE FORGE'S SMITHING LEVELS ARE THE SMELTER'S ═══
+         The owner: "Make the beginning weapon a copper greatsword (requiring
+         smithing lvl 1)", then "Copper 1, iron 5, black steel 10 for smithing
+         lvl req" -- the levels the same metal's bars (smelting.js) and armour
+         (armorforge.js) already ask.  Every tier past black steel keeps the
+         five-a-step ladder from there (titanium 15, obsidian 20 ... worldbreaker
+         90: each was 6 more).  They were 1 + 5 x the row's place (wood 1, copper
+         6, iron 11 ... 96), which `forgeladder: false` still asks
+         (forgeladder.js FORGE_LADDER.OLD_LEVELS).  The XP a tier pays does not
+         move: the three bar rows carry their `xp`, and from titanium on the
+         old `minLvl x 5` is pinned as `xp` (gear.js pays `tier.xp ||
+         minLvl x 5`), so lowering a level never lowers its pay. */
+      /* v2.3.3525: the tour asked the same levels (its Blacksmith Bro's five
+         bars must make a sword as well as armour). */
       /* ═══ v2.3.3525: FIVE BARS A PIECE ═══
          The owner, of the tour's bows and staffs: "Bows/staffs should require
          5 hard wood before making them (5 logs in that tier make 1 hard wood).
@@ -1170,22 +1187,22 @@ export const BLACKSMITH_TIERS = {
          material name (materialTints.js); only the name and the ore move.
          No steel ore was ever minted, so no bag holds the old key. */
       steel:        {minLvl:10,slots:1, oreName:'black_steel',   bar:'bar_black_steel', bars:5, xp:2000, goldCost:55, tierMult:1.40, statReq:30 },
-      titanium:     {minLvl:21,slots:1, oreName:'titanium',      oreCost:5,  goldCost:85,   tierMult:1.56, statReq:40 },
-      obsidian:     {minLvl:26,slots:1, oreName:'obsidian',      oreCost:6,  goldCost:120,  tierMult:1.74, statReq:50 },
-      mythril:      {minLvl:31,slots:2, oreName:'mythril',       oreCost:7,  goldCost:170,  tierMult:1.94, statReq:60 },
-      diamond:      {minLvl:36,slots:2, oreName:'diamond',       oreCost:8,  goldCost:240,  tierMult:2.16, statReq:70 },
-      abyssal:      {minLvl:41,slots:2, oreName:'abyssal',       oreCost:9,  goldCost:330,  tierMult:2.40, statReq:80 },
-      dragonbone:   {minLvl:46,slots:2, oreName:'dragonbone',    oreCost:10, goldCost:440,  tierMult:2.68, statReq:90 },
-      shadowsteel:  {minLvl:51,slots:2, oreName:'shadowsteel',   oreCost:11, goldCost:570,  tierMult:2.98, statReq:100},
-      bloodstone:   {minLvl:56,slots:2, oreName:'bloodstone',    oreCost:12, goldCost:720,  tierMult:3.32, statReq:110},
-      runestone:    {minLvl:61,slots:2, oreName:'runite',        oreCost:13, goldCost:900,  tierMult:3.70, statReq:120},
-      sunstone:     {minLvl:66,slots:2, oreName:'sunstone',      oreCost:14, goldCost:1100, tierMult:4.12, statReq:130},
-      demonite:     {minLvl:71,slots:2, oreName:'demonite',      oreCost:15, goldCost:1350, tierMult:4.58, statReq:140},
-      spiritforge:  {minLvl:76,slots:2, oreName:'spiritore',     oreCost:16, goldCost:1650, tierMult:5.10, statReq:150},
-      starforged:   {minLvl:81,slots:2, oreName:'starite',       oreCost:18, goldCost:2000, tierMult:5.68, statReq:160},
-      celestial:    {minLvl:86,slots:2, oreName:'celestite',     oreCost:20, goldCost:2500, tierMult:6.32, statReq:170},
-      antimatter:   {minLvl:91,slots:2, oreName:'antimatter',    oreCost:22, goldCost:3200, tierMult:7.04, statReq:180},
-      worldbreaker: {minLvl:96,slots:2, oreName:'voidcrystal',   oreCost:25, goldCost:4200, tierMult:7.84, statReq:190},
+      titanium:     {minLvl:15,slots:1, oreName:'titanium',      xp:105, oreCost:5,  goldCost:85,   tierMult:1.56, statReq:40 },
+      obsidian:     {minLvl:20,slots:1, oreName:'obsidian',      xp:130, oreCost:6,  goldCost:120,  tierMult:1.74, statReq:50 },
+      mythril:      {minLvl:25,slots:2, oreName:'mythril',       xp:155, oreCost:7,  goldCost:170,  tierMult:1.94, statReq:60 },
+      diamond:      {minLvl:30,slots:2, oreName:'diamond',       xp:180, oreCost:8,  goldCost:240,  tierMult:2.16, statReq:70 },
+      abyssal:      {minLvl:35,slots:2, oreName:'abyssal',       xp:205, oreCost:9,  goldCost:330,  tierMult:2.40, statReq:80 },
+      dragonbone:   {minLvl:40,slots:2, oreName:'dragonbone',    xp:230, oreCost:10, goldCost:440,  tierMult:2.68, statReq:90 },
+      shadowsteel:  {minLvl:45,slots:2, oreName:'shadowsteel',   xp:255, oreCost:11, goldCost:570,  tierMult:2.98, statReq:100},
+      bloodstone:   {minLvl:50,slots:2, oreName:'bloodstone',    xp:280, oreCost:12, goldCost:720,  tierMult:3.32, statReq:110},
+      runestone:    {minLvl:55,slots:2, oreName:'runite',        xp:305, oreCost:13, goldCost:900,  tierMult:3.70, statReq:120},
+      sunstone:     {minLvl:60,slots:2, oreName:'sunstone',      xp:330, oreCost:14, goldCost:1100, tierMult:4.12, statReq:130},
+      demonite:     {minLvl:65,slots:2, oreName:'demonite',      xp:355, oreCost:15, goldCost:1350, tierMult:4.58, statReq:140},
+      spiritforge:  {minLvl:70,slots:2, oreName:'spiritore',     xp:380, oreCost:16, goldCost:1650, tierMult:5.10, statReq:150},
+      starforged:   {minLvl:75,slots:2, oreName:'starite',       xp:405, oreCost:18, goldCost:2000, tierMult:5.68, statReq:160},
+      celestial:    {minLvl:80,slots:2, oreName:'celestite',     xp:430, oreCost:20, goldCost:2500, tierMult:6.32, statReq:170},
+      antimatter:   {minLvl:85,slots:2, oreName:'antimatter',    xp:455, oreCost:22, goldCost:3200, tierMult:7.04, statReq:180},
+      worldbreaker: {minLvl:90,slots:2, oreName:'voidcrystal',   xp:480, oreCost:25, goldCost:4200, tierMult:7.84, statReq:190},
     };
 
 export const WOODWORKING_TIERS = {

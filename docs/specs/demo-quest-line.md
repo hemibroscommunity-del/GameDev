@@ -33,7 +33,7 @@ one who wanders can take any of them.
 | 1 | Mayor Bro | Into the Blue | 4 Slime Remains from the Verdant Wilds (the exploding blue slimes, first: "they almost always get a good reaction") | sword + shield on accept; bow + staff, 25 gold |
 | 2 | Farmer Bro | Carrot Comeback | plant and water 3 carrots on your farm | 3 carrot seeds + 3 compost on accept; 40 gold |
 | 3 | Blacksmith Bro | Heavy Metal | 5 copper ore (the rocks just outside town) | pickaxe on accept; **5 copper bars**, 20 gold |
-| 4 | Blacksmith Bro | Some Assembly Required | forge one thing from the bars: a sword, a chest plate or greaves ("your choice") | 60 gold |
+| 4 | Blacksmith Bro | Some Assembly Required | forge one thing from the bars: a greatsword, a chest plate or greaves ("your choice"; the forge makes greatswords only since v2.3.3524) | 60 gold |
 | 5 | Woodworker Bro | Knock on Wood | 5 pine logs | axe on accept; **5 hardened pine**, 20 gold |
 | 6 | Woodworker Bro | Branching Out | make a bow or a staff at his bench, then swap him a pine one | your pine bow or staff **becomes softwood**, 60 gold |
 | 7 | Diego | Something Fishy | catch and cook 2 fish | fishing rod on accept; **10 cooked clownfish**, 40 gold |

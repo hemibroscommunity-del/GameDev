@@ -317,7 +317,16 @@ async function run(n, step, gapMs, extra) {
   check('client: ...and a new tap at 0 is refused', C.toggleSprint(S, 5000) === false && S._sprint.why === 'tired');
 
   S = mk(100);
-  check('client: Shift held starts one (\'key\')', C.updateSprint(S, 0, { key: true, moving: true, dtMs: FR }) === 'start' && S._sprint.how === 'key');
+  /* v2.3.3523: Shift pressed while walking starts it and strides in one frame:
+     that frame is its push-off ('run'), never a bare 'start' nothing plays */
+  check('client: Shift held while walking starts one (\'key\') and pushes off in the same frame (\'run\')', C.updateSprint(S, 0, { key: true, moving: true, dtMs: FR }) === 'run' && S._sprint.how === 'key');
+  {
+    const S2 = mk(100);
+    const a = C.updateSprint(S2, 0, { key: true, moving: false, dtMs: FR });
+    const b = C.updateSprint(S2, FR, { key: true, moving: true, dtMs: FR });
+    const c = C.updateSprint(S2, 2 * FR, { key: true, moving: true, dtMs: FR });
+    check('client: ...Shift pressed standing starts it (\'start\'), the first stride pushes off (\'run\'), once', a === 'start' && b === 'run' && c === null, { a, b, c });
+  }
   frames(S, FR, 1, { key: true, moving: false });
   C.updateSprint(S, 5000, { key: true, moving: false, dtMs: FR });
   check('client: ...standing still with Shift held keeps it armed', C.sprintArmed(S));

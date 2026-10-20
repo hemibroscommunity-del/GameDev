@@ -2927,6 +2927,32 @@ function applySquash(sp, sq, rot = 0) {
   sp.scale.set(sp.scale.x * (1 + 0.6 * sq), sp.scale.y * (1 - sq));
 }
 
+/* ═══ v2.3.3524: THE SMITH'S ANVIL IS THE OWNER'S PAINTED ONE ═══
+   The owner's playtest note: "make a more realistic anvil for the animation
+   when the character does smithing work".  It was drawn in code (a block, a
+   waist, a horn and a face of flat colour); it is now the painted anvil the
+   town already has by the Blacksmith's door, in a copy of its own
+   (public/sprites/fx/smith-anvil.webp, tools/make_smith_anvil.py: 180 x 155,
+   its alpha lifted to solid), so freeing today's town's art -- the prop is in
+   its bundle -- never destroys the picture the smith draws (TRAPS §49).  Loaded
+   here through _fxLoad, so on the loading screen (the preloading law); about
+   108 KB decoded.  Drawn by _updateSmithing. */
+const SMITH_ANVIL = { tex: null };
+_fxLoad('/sprites/fx/smith-anvil.webp?v=2.3.3493').then((tex) => {
+  if (tex && tex.source) SMITH_ANVIL.tex = tex;
+}).catch((err) => console.warn('[smith-anvil] load failed', err));
+/* Where it stands, in the smith effect's own units (x SMITH_SCALE = world px,
+   around the point SMITH_ANVIL_DX/DY from the player): its base's middle and
+   foot where the old drawn block stood, over the rock painted under the
+   mining pose's boots, and wide enough to hide it (~73 world px); the face the
+   hot bar lies on and the sparks fly from, the top of the painted face. */
+const SMITH_ANVIL_W = 52;
+const SMITH_ANVIL_X = -4;
+const SMITH_ANVIL_FOOT = 17;
+const SMITH_FACE_Y = -17;
+/* the forge fire's tongues are drawn once at this height and stretched */
+const SMITH_FLAME_H0 = 40;
+
 /* ═══ v2.3.3339: AN EMPTY GRAPHIC IS NOT CLEARED AGAIN ═══
    Found by the frame-rate hunt after the owner's "around 30fps to 40ish fps":
    Graphics.clear() on a graphic that is already empty draws nothing new, but
@@ -11828,6 +11854,22 @@ export class EffectsRenderer {
          later does not crack out of nowhere. */
       /* v2.3.3345: the split at ORE_SPLIT_MS (the strip's frame 7 was), the
          pieces left to fade at ORE_BREAK_LIE_MS -- the same rule: split first */
+      /* ═══ v2.3.3523: THE CRACK WHEN THE ROCK BURSTS ═══
+         The owner: "Breaking the ore sound doesn't sound right anymore. Old
+         sound was better (almost positive it had a different sound before)."
+         The sound never changed (ore-crack, v2.3.3040); its MOMENT did.  The
+         old strip split on its frame 7, ORE_SPLIT_MS in, and the crack played
+         there, on the split; since v2.3.3345 the rock bursts into its pieces
+         the moment the break begins and they have nearly landed by 350 ms,
+         so the crack came after the burst, a lone crack under falling
+         rubble.  Now it cracks on the break's first frame, with the burst,
+         and as the pieces land (ORE_SPLIT_MS, with the ore's pop) the stone
+         break settles them -- a broken rock prop's own sound (PROP_SOUNDS
+         stone brk), quieter. */
+      if (!fx.cracked) {
+        fx.cracked = true;
+        if (t <= ORE_POP_LATE_MS) this._oreCrack(fx, S, now);
+      }
       if (!fx.popped && t >= ORE_SPLIT_MS) {
         fx.popped = true;
         if (t <= ORE_POP_LATE_MS) this._oreSplit(fx, now, S);
@@ -11840,28 +11882,39 @@ export class EffectsRenderer {
     }
   }
 
-  /* The rock splits: the collected ore icon pops out of it, and it cracks. */
-  _oreSplit(fx, now, S) {
-    this._spawnItemPopup(fx.icon || ORE_ICON_TEX, fx.x, fx.y - 6, now);
-    /* ═══ v2.3.3040: ...AND IT CRACKS ═══
-       Owner: "Add cracking sound when the ore splits when user completes
-       the gesture."  On this frame, the one the rock visibly splits on
-       (~350 ms after the gesture lands), not at the gesture: the sound
-       and the picture are one event.  Yours at full voice; a peer's
-       vein, which breaks the same way on your screen, softer and fading
-       with distance, so a busy quarry is a texture rather than a din. */
+  /* How loud a break is heard here: yours at full voice; a peer's vein,
+     which breaks the same way on your screen, softer and fading with
+     distance, so a busy quarry is a texture rather than a din (v2.3.3040). */
+  _oreBreakVol(fx, S) {
+    if (fx.self) return 1;
+    const P = S && S.player;
+    const d = P ? Math.hypot(P.x - fx.x, P.y - fx.y) : 0;
+    return d > 1400 ? 0 : (0.3 / 0.72) * (1 - d / 1400);
+  }
+
+  /* ═══ v2.3.3040: THE ROCK CRACKS ═══
+     Owner: "Add cracking sound when the ore splits when user completes the
+     gesture."  v2.3.3523: on the break's first frame, the one the rock
+     bursts on (see _advanceOreBreaks) -- the sound and the picture are one
+     event, as they were on the old strip's split frame. */
+  _oreCrack(fx, S, now) {
     try {
-      let vol = 0.72;
-      if (!fx.self) {
-        const P = S && S.player;
-        const d = P ? Math.hypot(P.x - fx.x, P.y - fx.y) : 0;
-        vol = d > 1400 ? 0 : 0.3 * (1 - d / 1400);
-      }
+      const vol = 0.72 * this._oreBreakVol(fx, S);
       if (vol > 0.02) BT_AUDIO.play('ore-crack', { vol, pitchVar: 0.06 });
       if (typeof window !== 'undefined' && window.__btProbe) {
         (window.__btOreCracks || (window.__btOreCracks = [])).push({ at: Date.now(), self: !!fx.self, vol: +vol.toFixed(3),
           late: Math.round(now - fx.startedAt) });   /* v2.3.3146: how far into the break it was played */
       }
+    } catch (e) { /* a sound never breaks the frame */ }
+  }
+
+  /* The pieces land: the collected ore icon pops out, and (v2.3.3523) the
+     rubble settles -- a stone prop's break, quieter than the crack. */
+  _oreSplit(fx, now, S) {
+    this._spawnItemPopup(fx.icon || ORE_ICON_TEX, fx.x, fx.y - 6, now);
+    try {
+      const k = this._oreBreakVol(fx, S);
+      if (k > 0.03) BT_AUDIO.propBreak('stone', 'small', { vol: 0.32 * k });
     } catch (e) { /* a sound never breaks the frame */ }
   }
 
@@ -12135,56 +12188,118 @@ export class EffectsRenderer {
          hotter) throwing embers,
        - a burst of sparks and the pick-on-rock clink on every strike frame.
      Drawn on the node-FRONT layer, above the body, exactly where an ore node
-     sits when you mine.  Clears the moment S._smithing ends. */
-  _updateSmithing(S, now) {
-    let g = this.smithGfx;
-    if (!g || g.destroyed) {
-      g = this.smithGfx = new Graphics();
-      this.nodeFrontLayer.addChild(g);
+     sits when you mine.  Clears the moment S._smithing ends.
+     v2.3.3524: the ANVIL is the owner's painted one (SMITH_ANVIL above; the
+     owner: "make a more realistic anvil for the animation when the character
+     does smithing work"), standing where the drawn one stood, the hot bar on
+     its face.  And nothing is drawn again a frame: the anvil, bar and fire are
+     built ONCE (_buildSmithFx) and the work only moves, tints and stretches
+     them -- the bar's glow and fade, each tongue of flame's height and sway --
+     and shows the whole once as it starts and hides it once as it ends.  The
+     old Graphics was wiped and redrawn every frame, in gatherNodesFront, one
+     of the big layers whose draw list any change to a small Graphics rebuilds
+     (TRAPS §218). */
+  _buildSmithFx() {
+    const fx = new Container();
+    fx.label = 'smithFx';
+    fx.visible = false;
+    /* its ground line is the anvil's FOOT, not the point it is placed at: the
+       depth pass (depthSort.js groundOf) pivots on the smith's boots, and the
+       placing point lies a couple of px north of them, so the anvil was put
+       BEHIND him -- the drawn one too, since v2.3.2748 -- his legs and the
+       rock painted under the mining pose drawn over it.  At its foot it stands
+       south of his boots, in front of him, where he strikes it. */
+    fx._groundDy = SMITH_ANVIL_FOOT * SMITH_SCALE;
+    /* the anvil: its picture as it loads (the loading screen waits for it) */
+    const anvil = new Sprite(SMITH_ANVIL.tex || Texture.EMPTY);
+    anvil.anchor.set(0.5, 1);
+    anvil.position.set(SMITH_ANVIL_X, SMITH_ANVIL_FOOT);
+    fx.addChild(anvil);
+    /* the hot bar on the face: a glow, the bar (drawn white, tinted by the
+       heat), and its shine */
+    const glow = new Graphics();
+    glow.ellipse(3, SMITH_FACE_Y + 3, 16, 6); glow.fill({ color: 0xff8a2a });
+    const bar = new Graphics();
+    bar.roundRect(-6, SMITH_FACE_Y, 18, 5, 2); bar.fill({ color: 0xffffff, alpha: 0.95 });
+    const shine = new Graphics();
+    shine.roundRect(-5, SMITH_FACE_Y + 0.5, 16, 2, 1); shine.fill({ color: 0xffffff });
+    fx.addChild(glow, bar, shine);
+    /* the forge fire beside it: a bed of coals and four tongues of flame,
+       each drawn once from its base at SMITH_FLAME_H0 and stretched */
+    const fxX = SMITH_FIRE_DX, fyY = 12;
+    const coals = new Graphics();
+    coals.ellipse(fxX, fyY, 24, 9); coals.fill({ color: 0xff8a3c, alpha: 0.25 });
+    coals.roundRect(fxX - 15, fyY - 3, 30, 7, 3); coals.fill({ color: 0x2a1d14 });
+    coals.roundRect(fxX - 12, fyY - 3, 24, 3, 1.5); coals.fill({ color: 0xff5a1a, alpha: 0.85 });   /* live coals */
+    fx.addChild(coals);
+    const flames = [];
+    for (let i = 0; i < 4; i++) {
+      const t = new Graphics();
+      t.moveTo(-6, 0);
+      t.quadraticCurveTo(0, -SMITH_FLAME_H0, 6, 0);
+      t.fill({ color: i === 1 || i === 2 ? 0xffc23a : 0xff5e14, alpha: 0.92 });
+      t.moveTo(-3, 0);
+      t.quadraticCurveTo(0, -SMITH_FLAME_H0 * 0.55, 3, 0);
+      t.fill({ color: 0xfff0b0, alpha: 0.85 });
+      t.position.set(fxX + (i - 1.5) * 7, fyY - 1);
+      fx.addChild(t);
+      flames.push(t);
     }
-    g.clear();
+    this.nodeFrontLayer.addChild(fx);
+    this.smithFx = fx;
+    this._smith = { anvil, glow, bar, shine, flames };
+    return fx;
+  }
+
+  _updateSmithing(S, now) {
+    let fx = this.smithFx;
+    if (!fx || fx.destroyed) fx = this._buildSmithFx();
     const w = S && S._smithing;
-    if (!w || now >= w.until || !S.player) { this._smithFrame = -1; return; }
+    if (!w || now >= w.until || !S.player) {
+      this._smithFrame = -1;
+      if (fx.visible) fx.visible = false;   /* once, as the work ends: nothing is touched while idle */
+      return;
+    }
+    const P = this._smith;
     const x = S.player.x + SMITH_ANVIL_DX, y = S.player.y + SMITH_ANVIL_DY;
     const K = SMITH_SCALE;
     /* drawn in local units around the anvil's foot, scaled once */
-    g.position.set(x, y);
-    g.scale.set(K);
+    fx.position.set(x, y);
+    fx.scale.set(K);
+    if (!fx.visible) fx.visible = true;
+    /* the anvil's picture, the moment it is there (a texture swap of a sprite
+       that is not drawn yet changes nothing that is drawn) */
+    if (SMITH_ANVIL.tex && P.anvil.texture !== SMITH_ANVIL.tex) P.anvil.texture = SMITH_ANVIL.tex;
+    if (P.anvil.texture !== Texture.EMPTY) {
+      const k = SMITH_ANVIL_W / P.anvil.texture.width;
+      if (P.anvil.scale.x !== k) P.anvil.scale.set(k);
+    }
+    /* QA (mp-smithy): the painted anvil is what the smith works on, at its size */
+    if (typeof window !== 'undefined' && window.__btProbe) {
+      window.__btSmithAnvil = { painted: P.anvil.texture === SMITH_ANVIL.tex && !!SMITH_ANVIL.tex, worldW: P.anvil.width * K,
+        worldH: P.anvil.height * K, footX: x + SMITH_ANVIL_X * K, footY: y + SMITH_ANVIL_FOOT * K, layer: fx.parent === this.nodeFrontLayer ? 'front' : 'other' };
+    }
     const life = Math.max(0, Math.min(1, (w.until - now) / Math.max(1, w.until - w.t0)));
-    /* the anvil: horn to the left, a heavy face, a waisted foot on a block */
-    g.roundRect(-20, 8, 40, 9, 2); g.fill({ color: 0x3a2a1c });                   /* wooden block */
-    g.moveTo(-9, 8); g.lineTo(-6, -2); g.lineTo(6, -2); g.lineTo(9, 8); g.closePath();
-    g.fill({ color: 0x2c3136 });                                                  /* waist */
-    g.moveTo(-30, -9); g.quadraticCurveTo(-20, -4, -13, -3); g.lineTo(-13, -11); g.closePath();
-    g.fill({ color: 0x3b4147 });                                                  /* horn */
-    g.roundRect(-14, -12, 34, 10, 2); g.fill({ color: 0x40474e });                /* body */
-    g.roundRect(-14, -13, 34, 3, 1.5); g.fill({ color: 0x7d868e });               /* polished face */
-    g.roundRect(-20, 8, 40, 9, 2); g.stroke({ color: 0x1a120c, width: 1, alpha: 0.6 });
-    /* the hot bar on the face */
+    /* the hot bar: glows with the hammer's beat and cools as the work goes on */
     const pulse = 0.75 + 0.25 * Math.sin(now / 80);
-    g.ellipse(3, -14, 16, 6); g.fill({ color: 0xff8a2a, alpha: 0.3 * pulse * (0.4 + 0.6 * life) });
-    g.roundRect(-6, -17, 18, 5, 2); g.fill({ color: life > 0.35 ? 0xffe9a8 : 0xff9a3c, alpha: 0.95 });
-    g.roundRect(-5, -16.5, 16, 2, 1); g.fill({ color: 0xffffff, alpha: 0.55 * pulse * life });
-    /* the forge fire beside it: a bed of coals and four tongues of flame */
-    const fx = SMITH_FIRE_DX, fy = 12;
-    g.ellipse(fx, fy, 24, 9); g.fill({ color: 0xff8a3c, alpha: 0.25 });
-    g.roundRect(fx - 15, fy - 3, 30, 7, 3); g.fill({ color: 0x2a1d14 });
-    g.roundRect(fx - 12, fy - 3, 24, 3, 1.5); g.fill({ color: 0xff5a1a, alpha: 0.85 });   /* live coals */
+    P.glow.alpha = 0.3 * pulse * (0.4 + 0.6 * life);
+    const heat = life > 0.35 ? 0xffe9a8 : 0xff9a3c;
+    if (P.bar.tint !== heat) P.bar.tint = heat;
+    P.shine.alpha = 0.55 * pulse * life;
+    /* the fire: each tongue its height, swaying -- a shear that moves its tip
+       `fl * 5` across, as the redrawn curve's control point did */
     const fl = Math.sin(now / 90) * 0.5 + Math.sin(now / 47) * 0.5;
     for (let i = 0; i < 4; i++) {
-      const tx = fx + (i - 1.5) * 7;
       /* a quadratic's peak is HALF its control height, so these are drawn
          twice as tall as they read: 20-34px flames */
       const h = (40 + (i === 1 || i === 2 ? 22 : 0)) * (0.8 + 0.2 * Math.sin(now / 65 + i * 1.7));
-      g.moveTo(tx - 6, fy - 1);
-      g.quadraticCurveTo(tx + fl * 5, fy - h, tx + 6, fy - 1);
-      g.fill({ color: i === 1 || i === 2 ? 0xffc23a : 0xff5e14, alpha: 0.92 });
-      g.moveTo(tx - 3, fy - 1);
-      g.quadraticCurveTo(tx + fl * 3, fy - h * 0.55, tx + 3, fy - 1);
-      g.fill({ color: 0xfff0b0, alpha: 0.85 });
+      const t = P.flames[i];
+      t.scale.y = h / SMITH_FLAME_H0;
+      t.skew.x = Math.asin(Math.max(-1, Math.min(1, -fl * 5 / h)));
     }
+    const fxX = SMITH_FIRE_DX, fyY = 12;
     if (S.hitParticles && Math.random() < 0.4) {
-      S.hitParticles.push({ x: x + (fx + (Math.random() - 0.5) * 18) * K, y: y + (fy - 18) * K, vx: (Math.random() - 0.5) * 1.2, vy: -1.3 - Math.random() * 1.8, life: 0.8, color: Math.random() < 0.5 ? '#ffb050' : '#ffe28a', size: 1.4 });
+      S.hitParticles.push({ x: x + (fxX + (Math.random() - 0.5) * 18) * K, y: y + (fyY - 18) * K, vx: (Math.random() - 0.5) * 1.2, vy: -1.3 - Math.random() * 1.8, life: 0.8, color: Math.random() < 0.5 ? '#ffb050' : '#ffe28a', size: 1.4 });
     }
     /* a strike on the mine swing's contact frame: sparks off the bar, and
        the same clink mining makes */
@@ -12196,11 +12311,19 @@ export class EffectsRenderer {
         for (let i = 0; i < 12; i++) {
           const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4;
           const sp = 2 + Math.random() * 3.5;
-          S.hitParticles.push({ x: x + 3 * K, y: y - 16 * K, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.5 + Math.random() * 0.3,
+          S.hitParticles.push({ x: x + 3 * K, y: y + (SMITH_FACE_Y + 1) * K, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.5 + Math.random() * 0.3,
             color: i % 3 === 0 ? '#ffffff' : (i % 3 === 1 ? '#ffd27a' : '#ff9a3c'), size: 1.4 });
         }
       }
-      try { BT_AUDIO.play('mine-strike', { offset: 0.08, duration: 0.4, vol: 0.45 }); } catch (e) { /* sound only */ }
+      /* v2.3.3524: a hammer on an anvil, not a body blow -- the owner:
+         "Forging sword makes flesh hit sound wrong sound".  It was the
+         pickaxe's recording with its click cut off (mine-strike from 0.08):
+         a dull body, 40% of its energy under 250 Hz.  Now the sword's own
+         metal hit, short and pitched up: 16% under 250 Hz, at about the old
+         level (the loudest 50 ms 0.037 against 0.034).  The town anvil's
+         ring (mine-strike from 0.58, pitched up) keeps that dull body (42%)
+         under its click, so it was not used (docs/specs/blacksmith-2026-10-19.md). */
+      try { BT_AUDIO.play('sword-hit2', { offset: 0, duration: 0.25, vol: 0.22, rate: 1.2 + (Math.random() - 0.5) * 0.06 }); } catch (e) { /* sound only */ }
       if (typeof window !== 'undefined' && window.__btProbe) window.__btSmithStrikes = (window.__btSmithStrikes || 0) + 1;
     }
   }

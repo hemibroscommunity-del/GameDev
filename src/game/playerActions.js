@@ -19,7 +19,7 @@ import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /*
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, staggerRefused /* v2.3.3264 */, airRefused /* v2.3.3017 */, shotGroundDy /* v2.3.3206 */ } from '@/game/combatHelpers.js';   /* v2.3.2845: lockShotPoint, the torso; v2.3.3206: shotGroundDy, a shot's ground under the boots */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the specials' and the burst's own sounds */
+import { cue, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the specials' and the burst's own sounds; v2.3.3523: + cueLater, the volley's arrows */
 import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: a special carries the damage brew too */
 
 export function swingAttack(S) {
@@ -445,13 +445,14 @@ export function specialAttack(S) {
           }});
         }
       }
-      /* v2.3.3343: the bow drawn and each arrow of the volley loosed as it
-         leaves (its own launch wait), under the special's swoosh below --
-         the bow's own layer was two beep()s, which play nothing
-         (SOUND-GAPS: the bow special sounded like the sword's) */
-      cue('bowDraw', 1, 1.15);
+      /* v2.3.3343: each arrow of the volley loosed as it leaves (its own
+         launch wait), under the special's swoosh below -- the bow's own
+         layer was two beep()s, which play nothing (SOUND-GAPS: the bow
+         special sounded like the sword's).  v2.3.3523: as the shot's own
+         sound (bowLoose, the jump's rush), and no bow-pullback first: the
+         owner's "duck squeak" */
       for (var bva = 0; bva < _bowN; bva++) {
-        try { BT_AUDIO.play('arrow-fly', { vol: 0.85, delay: Math.min(2, volleyDelayMs(bva, _bowSpd || ARROW_SPEED_PX * _bowStat) / 1000) }); } catch (e) { /* sound only */ }
+        cueLater('bowLoose', Math.min(2, volleyDelayMs(bva, _bowSpd || ARROW_SPEED_PX * _bowStat) / 1000) - 0.11);
       }
     } else if (activeWpn.type === 'staff') {
       /* STAFF heavy — burst of 3 projectiles in a cone.  isStaff:true so
