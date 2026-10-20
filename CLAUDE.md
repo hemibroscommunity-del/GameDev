@@ -81,7 +81,17 @@ remnant to migrate server-side, not a mode to preserve.
   (`lifeSkills.gemsUnpaid`, owed by a combine or a Rare Gem's cut -- a
   came-back count could not survive gems that trade); a death KEEPS gems, No
   man's land's whole-bag loss takes them; Diego 1,200 / 4,000, the Rare Gem
-  4,000; `shard-crack` suite, `mp-shardcrack`: docs/specs/shard-crack.md),
+  4,000; `shard-crack` suite, `mp-shardcrack`: docs/specs/shard-crack.md;
+  and Phase 4 BUILT in v2.3.3518, EVERY GEM PULLS ITS WEIGHT: a hit whose gem
+  BEATS the monster's element lands 1.25x (elemental.js `ELEM_UP`, beside
+  fracture after the ceiling, the gem's hit and the Element Burst; monster_hit
+  `up`; no penalty, "DN" gone), a SOAKED monster's own blows land 0.8x before
+  the rail (hits.js the door's `soak` column), and a hit on a monster SHOCKED
+  before it SPARKS to the nearest other within 150 px of the impact for a
+  quarter of the hit (combat.js `_shockSpark`, monster_hit `spark`, the
+  phone's line src/game/shockSpark.js); caps/kill switches `elemup`,
+  `soakhit`, `shockspark`; `gem-weight` suite, `mp-gemweight`:
+  docs/specs/gem-weight.md),
   `docs/FUN-SOCIAL-PLAN.md` (the owner's fun & social plan checked against
   the code, v2.3.3391 -- "Go recommended": emotes and dances that move the bro
   in code, two-player moves, farm-made toys, a playground town; its rules: a
@@ -2397,6 +2407,25 @@ remnant to migrate server-side, not a mode to preserve.
       not live ("Reconnecting…"), the Points window's Spend greyed with the
       reason, and `channelShim.reconnectNow()` bringing the session back;
     - TRAPS §138: docs/specs/dead-connection.md.
+    - since v2.3.3496 COMING BACK TO THE GAME WORKS WITHOUT A TAB SWITCH --
+      the owner: "input dead after returning (needs tab switch)", "Sound only
+      returns via OPEN/weapon-swap buttons":
+      - the page hiding, coming back or losing focus ends every held press as
+        a lift (BroTown `releaseAllTouches`, the keyboard's v2.3.3006 blur
+        rule for touches), and the attack button lets go of a finger no longer
+        on the screen (`e.touches`) -- its one-finger rule had swallowed every
+        later press; `touch-stale` in the crash log, quiet;
+      - the sound's recovery runs on touchend, click, keydown and mousedown
+        only (GameApp: pointerdown/touchstart are no moment an iPhone lets
+        sound start, and spent the one-shot reclaim refused), ending with
+        `BT_AUDIO.gestureKick` (resume whatever the context says, a silent
+        sample into the speaker) while armed after a return (`armKick`:
+        visible, pageshow, focus, or a freeze the 1 s beat sees, the reclaim
+        too past 15 s); a refused reclaim tried once more;
+      - a connect stuck in CONNECTING over `CONNECT_STALL_MS` 10 s is closed
+        and made again (it held the bro still, `_netHold`), a thaw past 5 s is
+        a return (`_resumeRecover('thaw', gap)`), "I'm back" hears touchend
+        and click; `mp-comeback`: docs/specs/return-to-game.md.
   - Since v2.3.3035 THE HARVEST'S BAR IS GREEN, OVER THE RESOURCE, AND READS
     "7/10" -- the owner: "I want resource harvesting bar to be green and to
     appear above the resource, not the player head. It should also list the
