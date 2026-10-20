@@ -656,7 +656,7 @@ export function InspectPlayerPanel(props) {
         try {
           localStorage.setItem('bt_blocked', JSON.stringify(_updated3));
         } catch (e) {}
-        /* v2.3.3503: and their duel, trade and party requests (gameEvents.js) */
+        /* v2.3.3505: and their duel, trade and party requests (gameEvents.js) */
         pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Blocked: no chat, emotes or requests from them', '#D95C54');
       }
     }

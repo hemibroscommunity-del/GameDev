@@ -2323,7 +2323,7 @@ export var BroTown = function BroTown(_ref0) {
      key; NameModal derives the five-group tab state (Hair/Face/Top/
      Bottom/Feet) from it.  'hair' is the landing type (the mockup's
      Hair group opens on its Hair subtype).
-     v2.3.3503 (the owner, of the 2026-10-19 review's "which tab the creator
+     v2.3.3505 (the owner, of the 2026-10-19 review's "which tab the creator
      opens on": "Go recommended on everything"): it opens on SKIN -- the
      species and skin tone are what the rest is built on, and the Skin tab's
      card shows the drawing (a tattoo) at once; Hair is one tap away.  The
@@ -2668,7 +2668,7 @@ export var BroTown = function BroTown(_ref0) {
          which is as wide as "Human" and goes above the icon for the same
          reason. */
       ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: (cat === 'species' || cat === 'eyestyle') ? 'column-reverse' : 'column', alignItems: 'center', justifyContent: 'center' } },
-          /*#__PURE__*/React.createElement("img", { src: ((cat === 'species' || cat === 'eyestyle') ? '/ui/welcome/cc/cc-no-hair.webp?v=' : '/ui/welcome/cc/cc-none.webp?v=') + BUILD_INFO.version /* v2.3.3503: the owner's sheet's plain no-entry sign (card 11) where None means nothing -- the bald head said "no hair" on the glasses' and shirts' rows too; the species' "Human" and the eyes' "Normal" keep the plain bald head, a human with nothing added, not "no human" */, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
+          /*#__PURE__*/React.createElement("img", { src: ((cat === 'species' || cat === 'eyestyle') ? '/ui/welcome/cc/cc-no-hair.webp?v=' : '/ui/welcome/cc/cc-none.webp?v=') + BUILD_INFO.version /* v2.3.3505: the owner's sheet's plain no-entry sign (card 11) where None means nothing -- the bald head said "no hair" on the glasses' and shirts' rows too; the species' "Human" and the eyes' "Normal" keep the plain bald head, a human with nothing added, not "no human" */, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
           /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, (cat === 'species' || cat === 'eyestyle') ? opt.name : "None"))   /* v2.3.2682: on the species strip 'none' is the Human; v2.3.3481: on the Eyes strip, Normal */
       /* v2.3.3481: the 2026-10-19 UI review -- the eye styles' tiles are
          whole heads and shoulders (make_eyestyle_thumbs.py), so the eyes, the

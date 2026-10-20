@@ -53,7 +53,7 @@ const KEYS = [
   ['C', 'Chat'], ['H', 'Hide'], ['Esc', 'Close'],
 ];
 
-/* ═══ v2.3.3503: IN THE BLACK MARGIN, BESIDE THE GAME ═══
+/* ═══ v2.3.3505: IN THE BLACK MARGIN, BESIDE THE GAME ═══
    The owner, of the 2026-10-19 review's "move the keyboard keys strip into the
    black margin beside the game on a computer": "Go recommended on everything".
    On a computer the game is a phone-shaped column in the middle of the window
@@ -152,7 +152,7 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
     className: 'bt-kb-key', key: k,
   }, React.createElement('kbd', null, k), ' ' + label)));
 
-  /* v2.3.3503: in the margin, the ⌨ under the rows (game.css .bt-kb-side:
+  /* v2.3.3505: in the margin, the ⌨ under the rows (game.css .bt-kb-side:
      column-reverse), so it stays where it is when the rows go */
   if (room && typeof document !== 'undefined' && document.body) {
     return createPortal(React.createElement('div', {

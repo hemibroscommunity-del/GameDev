@@ -36,7 +36,7 @@ const ALL_SOURCES = [
   { key: 'great-sword', src: 'icons/items/great-sword.webp' },
   { key: 'sword', src: 'icons/items/sword.webp' },
 ];
-/* v2.3.3503: `--only greaves,chest-plate` makes those pieces' metals alone --
+/* v2.3.3505: `--only greaves,chest-plate` makes those pieces' metals alone --
    the owner's new leg and chest pictures (tools/ui/cut-owner-icons.py) -- and
    leaves the swords' files untouched rather than re-encoding them */
 const onlyAt = process.argv.indexOf('--only');
@@ -107,7 +107,7 @@ const page = await browser.newPage();
 await page.goto('http://127.0.0.1:4271/__gen.html');
 
 let wrote = 0, skipped = 0;
-const written = [];   /* v2.3.3503: the PNGs this run wrote, and only they, go to the WebP step */
+const written = [];   /* v2.3.3505: the PNGs this run wrote, and only they, go to the WebP step */
 for (const [mat, tint] of Object.entries(MATS)) {
   /* 'steel' is the art as drawn — a white multiply is a no-op, and shipping a
      byte-identical copy under a second name is how two files drift apart. */
@@ -135,7 +135,7 @@ srv.close();
    leaving it to whoever adds the next metal is the whole point of the "add a
    row, run this, done" claim at the top of this file. */
 if (wrote) {
-  /* v2.3.3503: ITS OWN FILES.  `--convert` alone converted -- and deleted --
+  /* v2.3.3505: ITS OWN FILES.  `--convert` alone converted -- and deleted --
      every .png under public/icons, the app icons (which must stay PNG), the
      badges and the stat icons included: 45 files, the first time the owner's
      new leg and chest pictures were run through here (tools/webp_icons.py). */

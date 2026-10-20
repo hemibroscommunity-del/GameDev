@@ -119,7 +119,7 @@ while you walked it; it now holds eight scenes of about 190 x 100 (0.61 MB). The
 are DOM images, not Pixi textures, so no line of the memory budget
 (`tools/qa/mp/memory-budget.mjs`) measured them and none moves.
 
-## v2.3.3503: the legs and chest, and five more ("Go recommended on everything")
+## v2.3.3505: the legs and chest, and five more ("Go recommended on everything")
 
 Asked whether to use the sheet's leg armour (card 10, with the chest to match)
 and anything from card 11, the owner answered "Go recommended on everything":
@@ -169,7 +169,7 @@ and anything from card 11, the owner answered "Go recommended on everything":
   `--convert` now takes the files to convert (`--all` is the old sweep), and the
   generator names the six it wrote.
 
-## v2.3.3503: card 11, as the owner picked it
+## v2.3.3505: card 11, as the owner picked it
 
 The owner went through card 11 (every icon on the sheets the game already has a
 picture for, each with its candidates T<n>.1, T<n>.2...) and answered: *"Icon
@@ -214,7 +214,7 @@ picks: 1b, 2a, T3.3, T20.2, ... T128.1"* -- 72 codes (1b and 2a were #1020's).
   (`tools/glyph_edge_colors.mjs`, v2.3.2687). The nine new glyphs' colours were
   measured again into prog3.js, so each cell's frame matches its picture.
 - **The pictures are asked for again:** the stick's eight and the ability
-  pictures at a new `?v=` (2.3.3503). Everything else is served with no long
+  pictures at a new `?v=` (2.3.3505). Everything else is served with no long
   cache (public/_headers keeps only the hashed and world trees), so a phone
   fetches the new file at its next load.
 - **Kept the owner's:** the cutter records the SHA-256 of each of the 71 files it
@@ -234,13 +234,13 @@ picks: 1b, 2a, T3.3, T20.2, ... T128.1"* -- 72 codes (1b and 2a were #1020's).
 
 ## Tests
 
-- `server/test/owner-icons.test.mjs` §6 (v2.3.3503, card 11): every one of the
+- `server/test/owner-icons.test.mjs` §6 (v2.3.3505, card 11): every one of the
   owner's 72 codes cut, already in the game or set aside with its reason; the 71
   files the cutter wrote still byte for byte its own; each at its rule's size;
   the anvil and the smiley pointed at; Jump and the generic Special drawn as
   faces at a new address with their greys; the crown the owner's T112.2.
   `small-icons` §3h pins the stick's pictures as files, whatever their `?v=`.
-- `server/test/owner-icons.test.mjs`: (§5, v2.3.3503) the legs and chest the
+- `server/test/owner-icons.test.mjs`: (§5, v2.3.3505) the legs and chest the
   sheet's with every metal made at their size, the five new pictures in place
   and used where the old ones were (the old ones nowhere); and every file in
   place at its size (each window
