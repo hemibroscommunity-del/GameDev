@@ -951,6 +951,8 @@ Screens: building-gemcut, building-enchant
 - Set gems shows how many of each weapon's gem slots are used. A second slot (a "Fusion") needs Enchanting 20. A blocked button says why: "No polished gems", "Locked", or "No open gem slot". The amulet and the shield each take one gem, and a new gem replaces the old one, which is lost (the window says so).
 - A shield's gem is put in by the server (v2.3.3187, the owner's "Go recommended fixes"). Before that the game did it alone, so the gem was never really spent, and taking it out again could not work. Now a tap waits for the server's answer (buttons held up to 4 s, because each tap spends a real gem), and a refusal says why under the buttons.
 - Taking a gem back OUT is done at the Blacksmith's Upgrade tab, for a price.
+- A WEAPON's gem is put in by the server too (v2.3.3513, the gem plan's Phase 1; the owner: "All of that sounds good"). A tap waits for the server's answer (up to 4 s) and a refusal is written under the weapon it was about. A weapon whose slot is full is never overwritten (the owner's decision 10), so the weapon's section has its own Take out button with its price ("the gem comes back") -- the Blacksmith's own take-out, offered here too. Each gem in a weapon gets one line saying what it does on a hit ("◆ flame · Burns what it hits"), in the server's own rules. Only the eight lands' gems are offered for a weapon (no Dark or Light). Every gem set pays 400 Enchanting XP once: a gem that came back out pays nothing the second time (docs/specs/weapon-gems.md).
+- The Element Burst button stands aside while any window is open (v2.3.3513): it is drawn outside the game's frame, so it painted over the Gem Works' own window, on the very weapon section that had just set its gem.
 
 **Tried before, and changed:**
 - Two buildings, the Gem Cutter and the Assay Office, until v2.3.3259. The Assay Office's building, door and room are gone; nothing else in town moved.
@@ -958,6 +960,7 @@ Screens: building-gemcut, building-enchant
 - The empty Cut gems tab said "Harvest resources in elemental zones to collect raw gems!", but raw gems come only from monster kills (the harvesting gem rates were never used, amulet-forge.md); it says "No raw gems yet. Defeat monsters out in the lands to find them." since v2.3.3481. With no shield, Set gems sent you to forge one at the Blacksmith, which has made no shields since v2.3.2826; it says "No shield equipped. Wear one to slot defensive gems here." (v2.3.3481).
 - Set gems called the bow's section RANGED, beside STAFF (a staff is ranged too), and showed "Common (1×)" under an empty slot. Since v2.3.3481 it is BOW, and an empty slot shows only "None".
 - The Cut gems line said "polished slottable gems"; since v2.3.3481 "polished gems for your gear".
+- A weapon's rarity line printed "(1.5×)" after a gem was set, a damage multiplier the server never used. Since v2.3.3513 (against a server that sets weapon gems) it shows the rarity alone, and the gem's own line says what it does.
 
 **Please don't suggest:**
 - Splitting the gem jobs back into two buildings, or bringing back the Assay Office (the owner's call: "Remove it").
@@ -965,9 +968,9 @@ Screens: building-gemcut, building-enchant
 
 **Still open:**
 - The owner's two NPCs: a cutter and a setter outside the Gem Works, each opening his own tab. They wait on the owner's pictures. An optional new room picture with two work stations is on the art wishlist.
-- Putting a gem into a WEAPON is still done by the phone alone; moving it to the server waits on other work (shield-gems.md).
+- Gems come from shards next (the gem plan's Phase 2: crack shards at the Cut gems tab, combine three raw gems into an elemental gem), docs/GEM-PLAN.md.
 
-Sources: CLAUDE.md, docs/specs/gem-works.md, docs/specs/shield-gems.md, docs/specs/amulet-forge.md, docs/specs/blacksmith-rebuild.md, docs/specs/building-rooms.md, docs/ART-WISHLIST.md, src/ui/panels/buildings/GemWorksPanel.jsx, src/ui/panels/buildings/GemcutPanel.jsx, src/ui/panels/buildings/EnchantPanel.jsx, src/styles/game.css
+Sources: CLAUDE.md, docs/specs/gem-works.md, docs/specs/shield-gems.md, docs/specs/weapon-gems.md, docs/GEM-PLAN.md, docs/specs/amulet-forge.md, docs/specs/blacksmith-rebuild.md, docs/specs/building-rooms.md, docs/ART-WISHLIST.md, src/ui/panels/buildings/GemWorksPanel.jsx, src/ui/panels/buildings/GemcutPanel.jsx, src/ui/panels/buildings/EnchantPanel.jsx, src/styles/game.css
 
 ## The Cookhouse
 Screens: building-cook

@@ -493,7 +493,10 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 // ── 6c. v2.3.1114: server-authoritative elemental (status/DoT/collision) ──
 {
   psA.z = 'meadow'; psA.dead = false; psA.dying = false; psA.disconnected = false;
-  psA.weapon = { type: 'sword', tierMult: 1 };
+  /* v2.3.3513: the element is the gem in the WORKER'S copy of the weapon now
+     (weapongem.js), never the claim's -- so the weapon holds the gem each hit
+     below names (weapon-gem.test.mjs covers the claim being ignored) */
+  psA.weapon = { type: 'sword', tierMult: 1, element1: 'flame' };
   psA.rangedWeapon = null; psA.staffWeapon = null;
   psA.power = 20; psA.weaponSpecs = {};
   const me = meadowMonsters[5];
@@ -525,6 +528,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   // v2.3.1134: clear the hit-cadence tracker -- in real play these two
   // swings are >=450ms apart; the test fires them back-to-back.
   if (psA._monHitCad) psA._monHitCad.clear();
+  psA.weapon.element1 = 'frost';   /* v2.3.3513: a frost gem now */
   const hpBeforeCol = me.hp;
   room.eventBuffer.length = 0;
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: me.id, zone: 'meadow', element: 'frost', slot: 'melee' } }));
@@ -541,6 +545,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   const mk = meadowMonsters[6];
   mk.alive = true; mk.hp = 1; mk.maxHp = Math.max(10, mk.maxHp); mk.dmgByPlayer = {};
   mk.statuses = undefined; mk._wanderPausedUntil = Date.now() + 600000;
+  psA.weapon.element1 = 'flame';   /* v2.3.3513: the flame gem back */
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: mk.id, zone: 'meadow', element: 'flame', slot: 'melee' } }));
   if (mk.alive) {   // weapon roll may have left >0 hp; force the DoT to be the killer
     mk.hp = 1;
@@ -607,7 +612,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 // +0.5%/pt from SERVER-clamped weaponSpecs.staff.attunement; 99 pts =
 // x1.495 on both remaining and maxDur.  Burn base dur = 4s.
 {
-  psA.z = 'meadow'; psA.dead = false; psA.weapon = { type: 'sword', tierMult: 1 };
+  psA.z = 'meadow'; psA.dead = false; psA.weapon = { type: 'sword', tierMult: 1, element1: 'flame' };   /* v2.3.3513: the worker's gem, not the claim */
   psA.power = 20;
   const ma = meadowMonsters[9];
   ma.alive = true; ma.hp = ma.maxHp = 10000; ma.dmgByPlayer = {}; ma.statuses = undefined;
