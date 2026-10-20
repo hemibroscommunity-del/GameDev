@@ -422,14 +422,14 @@ migration (fold the gem consume into that slice, on the
 gate on a narrow caps flag). Danger: the shield and weapon slot paths
 differ (elements vs a single gem — check both consume sites); the
 amulet gem slot is already server-settled (the v2.3.1192 gem op).
-v2.3.3497: the "nothing authoritative to validate" reason no longer holds.
+v2.3.3504: the "nothing authoritative to validate" reason no longer holds.
 The worker applies a weapon's status, collision and DoT on every hit
 (v2.3.1114), taking the element from the hit's CLAIM (combat.js
 `_handleMonsterDamage`, pvpextras.js `_pvpClaimElement`), while the burst,
 the abilities and the flame amulet read its own copy, which no server path
-ever gives an element. A plan for this item, and for shards becoming
-gems, waits on the owner's decisions: docs/GEM-PLAN.md (its Phase 1 is
-this item).
+ever gives an element. The plan for this item, and for shards becoming
+gems, is decided (the owner took every recommended answer, 2026-10-20):
+docs/GEM-PLAN.md (its Phase 1 is this item).
 
 ### B. Spectator stake board
 Old item A's residue: sponsorship stakes are private — spectators see

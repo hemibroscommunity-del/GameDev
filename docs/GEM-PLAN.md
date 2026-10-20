@@ -1,4 +1,4 @@
-# Shards into gems, gems into weapons (v2.3.3497)
+# Shards into gems, gems into weapons (v2.3.3504)
 
 > Owner, 2026-10-19: *"Right now I don't have any way of applying elements to
 > weapons in Brotown. There's shards that drop in each zone (by element). But I
@@ -13,9 +13,10 @@
 
 **This is a plan. Nothing in it is built yet.** It comes from reading the
 game's code, and each fact names the file it comes from. The loop is the
-owner's (the second quote above). Every remaining choice has a
-recommendation, and they are all listed under "Your decisions" near the end,
-so "Go recommended" takes them all.
+owner's (the second quote above). Every remaining choice had a
+recommendation, listed under "Your decisions" near the end, and **the owner
+took them all** on 2026-10-20: *"All of that sounds good."* The phases are
+built one PR each, Phase 1 first.
 
 ## The short answer
 
@@ -385,8 +386,11 @@ Later, each as its own question:
 
 ## Your decisions
 
-The first answer in each row is the recommended one. "Go recommended" takes
-them all.
+**Decided, 2026-10-20.** The owner, on this list: *"All of that sounds
+good."* Every recommended answer below stands, and the "Or" column is what
+was turned down.
+
+The first answer in each row is the recommended one.
 
 | # | Question | Recommended | Or |
 |---|---|---|---|

@@ -55,8 +55,9 @@ remnant to migrate server-side, not a mode to preserve.
   today -- a weapon's gem is the phone's alone, shards make nothing -- and the
   owner's loop at the Gem Works: a cracked shard holds its land's raw gem 1
   time in 10, three raw gems combine into an elemental gem, the server keeps
-  it in the weapon; 15 owner decisions and five phases; a plan, nothing built,
-  v2.3.3497),
+  it in the weapon; 15 decisions, every recommended answer taken by the owner
+  on 2026-10-20 ("All of that sounds good"), and five phases, a PR each; a
+  plan, nothing built yet, v2.3.3504),
   `docs/FUN-SOCIAL-PLAN.md` (the owner's fun & social plan checked against
   the code, v2.3.3391 -- "Go recommended": emotes and dances that move the bro
   in code, two-player moves, farm-made toys, a playground town; its rules: a
