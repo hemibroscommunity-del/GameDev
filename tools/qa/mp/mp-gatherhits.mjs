@@ -704,7 +704,7 @@ async function body({ P, wsPort, rec }) {
 
   /* ── THE TRIP ──  Every gathering skill has its node in each spoke zone. */
   await travel(marks.townExit.tx, marks.townExit.ty, 'worldview');
-  const spoke = marks.spokes.find((s) => s.zoneId === H.FIRST_LAND) || marks.spokes[0];   /* v2.3.3519: the land tut_1 opens (Frost Ridge until the tour) */
+  const spoke = marks.spokes.find((s) => s.zoneId === H.FIRST_LAND) || marks.spokes[0];   /* v2.3.3525: the land tut_1 opens (Frost Ridge until the tour) */
   const arrived = await travel(spoke.tx, spoke.ty, spoke.zoneId);
   rec.ok(`arrived in a gathering zone (${spoke.zoneId}) (guard)`, arrived === true, { spoke });
   if (!arrived) return;

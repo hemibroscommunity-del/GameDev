@@ -57,7 +57,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the control really was taken in town', !!rest && rest.zone === 'town', rest);
 
   /* ── ACCEPT: the star sends you out of town, toward the Verdant Wilds
-     (v2.3.3519: the tour's first step is the slimes'; Frost Ridge before) ── */
+     (v2.3.3525: the tour's first step is the slimes'; Frost Ridge before) ── */
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } });
@@ -87,7 +87,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── THE BUG: four snowmen in the bag, and it still says "go to Frost" ──
      The objective is satisfied here, so the next step is the Mayor. The star
-     must stop selling a trip that is already done.  (v2.3.3519: the slimes'
+     must stop selling a trip that is already done.  (v2.3.3525: the slimes'
      four remains now, tut_1's.) */
   await P.page.evaluate(() => {
     const S = window._gameState.current;
@@ -132,7 +132,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      that quest."
 
      life_1 names no zone, because fishing holes spawn one per zone (server
-     gathering.js) and any of them will do.  (v2.3.3519: the fish quest is
+     gathering.js) and any of them will do.  (v2.3.3525: the fish quest is
      Diego's fish_1 in the tour now, life_1's steps and `anyZone` carried over;
      life_1 is retired.) The old rule read that as "nothing
      to point at" and drew a blank map during an active quest -- which is how

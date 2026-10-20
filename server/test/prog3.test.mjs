@@ -573,7 +573,7 @@ const psA = room.playerState.pa;
     { slot: psA.rangedWeapon, stash: psA.weaponStash.length });
 
   // forge_weapon: the stat gate reads the trained skill now.
-  /* v2.3.3519: and asks what WEARING the piece asks (gear.js _prog3EquipOk):
+  /* v2.3.3525: and asks what WEARING the piece asks (gear.js _prog3EquipOk):
      copper is rung zero and iron free, so the first tier that gates is black
      steel (index 3: two rungs above copper, Melee 10).  It was tier index x 5
      on its own -- a copper sword asked Melee 5 to make and nothing to wear. */
@@ -592,13 +592,13 @@ const psA = room.playerState.pa;
   room._handleForgeWeapon(sess, { weaponType: 'sword', tierKey, isWoodwork: false });
   check('forge: trained level unlocks the mint',
     !!psA.weapon && psA.weapon.gearBase === tierKey, psA.weapon);
-  /* v2.3.3519: the tour's smith_2 -- a new player makes a copper sword from
+  /* v2.3.3525: the tour's smith_2 -- a new player makes a copper sword from
      its bars at Melee 1 (and Smithing 1: data.js BLACKSMITH_TIERS copper) */
   psA.weapon = null; psA.weaponStash = [];
   p3.sk.sword.level = 1;
   psA.lifeSkills = { blacksmithing: { level: 1, xp: 0 } };
   room._handleForgeWeapon(sess, { weaponType: 'sword', tierKey: 'copper', isWoodwork: false });
-  check('forge: a copper sword is made at Melee 1 and Smithing 1, as copper armour is (v2.3.3519)',
+  check('forge: a copper sword is made at Melee 1 and Smithing 1, as copper armour is (v2.3.3525)',
     !!psA.weapon && psA.weapon.gearBase === 'copper', psA.weapon);
   psA.lifeSkills = { blacksmithing: { level: 99, xp: 0 } };
 

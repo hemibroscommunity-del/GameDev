@@ -1,4 +1,4 @@
-/* ═══ v2.3.3519: LIL BRO'S RACE, ON THE SCREEN ═══
+/* ═══ v2.3.3525: LIL BRO'S RACE, ON THE SCREEN ═══
  *
  * The tour's race_1 (game/race.js has the rules, server/src/race.js the
  * judging).  Three faces, all small, none covering the world:

@@ -1,4 +1,4 @@
-# The tour: the Mayor's quest, then the whole town (v2.3.3519)
+# The tour: the Mayor's quest, then the whole town (v2.3.3525)
 
 The owner, a week before an exposé where reviewers give each game 20-30
 minutes:
@@ -95,10 +95,14 @@ have learned to burrow toward the Mayor's office. Every line is in
   hardening kept (quests.js `_questTradePick`, `_questTradeApply`).
 - **The road** (src/game/questRoute.js): with no quest in hand it leads to
   the giver of the first step of QUEST_TOUR he offers now (`tourOffer`);
-  during a step done at a building, to its giver, whose
-  "how's it going" line has a button that opens the building (game/tour.js
-  `opens`); to the Cookhouse's door for the juice (a step's `door`); and to
-  the next flag during the race.
+  during the race, to the next flag; otherwise each step's WAY (main's
+  v2.3.3522, src/game/questWays.js, merged in at v2.3.3525): the farm steps
+  to the Feed & Seed's door (its Visit Your Farm), Zoom Juice to the
+  Cookhouse's, the forging to the forge's, the bow or staff to the bench's,
+  the race to Lil Bro (`way: 'giver'`, added for it), the ore, logs and fish
+  to their nearest resource. A giver's "how's it going" line still has a
+  button that opens his building (game/tour.js `opens`).
+  server/test/quest-route.test.mjs §3g holds every one.
 - **The pinned quest card** says "Next: <quest>" and who to talk to, where,
   when no quest is in hand, and "+5 more: look for a gold ! on your map" when
   others have work too (BroTown.jsx, `tourOffer`'s `more`).

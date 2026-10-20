@@ -17,7 +17,7 @@
  * and a sword or greatsword forged from one (its `gearBase`, the blacksmith's
  * tier key -- black steel's is still 'steel', data.js BLACKSMITH_TIERS) each
  * take FOUR bars to make now (armorforge.js, data.js), and SALVAGING one gives
- * back TWO: half.  (v2.3.3519: FIVE bars, as a bow or a staff takes five
+ * back TWO: half.  (v2.3.3525: FIVE bars, as a bow or a staff takes five
  * hardened wood -- still two back, half rounded down.)  Wood, the dropped weapons (no `gearBase`, no metal) and the
  * metals past black steel (no bar yet) are not salvaged; a metal joins
  * METALS the day its bar does.
@@ -86,9 +86,9 @@ export const SALVAGE = Object.freeze({
   }),
   /* what a torso, greaves or sword of a metal takes to make (armorforge.js
      RECIPES, data.js BLACKSMITH_TIERS -- the salvage suite pins both) */
-  /* v2.3.3519: five (data.js, the five-bar note at BLACKSMITH_TIERS.copper) */
+  /* v2.3.3525: five (data.js, the five-bar note at BLACKSMITH_TIERS.copper) */
   COST_BARS: 5,
-  /* what salvaging one gives back: half, rounded down (v2.3.3519: two of
+  /* what salvaging one gives back: half, rounded down (v2.3.3525: two of
      five -- never more than half, so a forge and a salvage never pay) */
   BARS: 2,
   /* the grades, low to high (hardening.js / data.js QUALITY_GRADES) */

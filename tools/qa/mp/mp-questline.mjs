@@ -1,7 +1,7 @@
 /* THE WHOLE QUEST LINE, START TO FINISH, THROUGH THE ONLY DOORS A PLAYER HAS.
  * v2.3.1707.
  *
- * v2.3.3519: THE LINE IS THE TOUR -- Mayor Bro's first quest alone, then the
+ * v2.3.3525: THE LINE IS THE TOUR -- Mayor Bro's first quest alone, then the
  * whole town at once (Farmer Bro, Blacksmith Bro, Woodworker Bro, Diego, Lil
  * Bro and Beastmaster Bro), and back to the Mayor (ARC, below; server/src/
  * data.js QUEST_REWARDS tut_1's header).  Each step is accepted and handed in
@@ -57,7 +57,7 @@ import * as H from './harness.mjs';
    panel) is the worker's own table's to say, not this file's */
 import { QUEST_REWARDS } from '../../../server/src/data.js';
 
-/* ═══ v2.3.3519: THE TOUR, GIVER TO GIVER ═══
+/* ═══ v2.3.3525: THE TOUR, GIVER TO GIVER ═══
    The owner: "Mayor bro would hand off the quest to the next person", then
    "Maybe mayor bro is the only quest available for the first quest then after
    completing that other NPCs begin having quest icons appear above their
@@ -215,7 +215,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      above finally became literal when the quest panel's Accept was removed and
      two more scenarios had to walk up to him.  Same three steps, same reasons;
      they are just written down once now.
-     v2.3.3519: up to whichever townsperson gives the step (the tour) */
+     v2.3.3525: up to whichever townsperson gives the step (the tour) */
   const approach = (npc) => H.approachNpc(P, npc || 'mayor_bro');
 
   /* ── the line starts here ── */
@@ -425,7 +425,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── the objective (see the header: seeded on purpose) ── */
     if (step.give) await H.grant(wsPort, myId, 'item', step.give);
-    /* v2.3.3519: or what the worker counts (the farm, the forge, the
+    /* v2.3.3525: or what the worker counts (the farm, the forge, the
        Cookhouse, the race, traps) -- each its own scenario's to play */
     if (step.count) {
       const set = await H.devOp(wsPort, 'questcount', myId, { quest: step.id, n: step.count });
@@ -436,7 +436,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── TURN IN, through the dialogue — the only door left ── */
     rec.ok(`${step.id}: walking back up opens the dialogue again`, await approach(step.npc));
     if (step.trade) {
-      /* v2.3.3519: Woodworker Bro's softwood swap -- the claim panel asks
+      /* v2.3.3525: Woodworker Bro's softwood swap -- the claim panel asks
          which pine weapon he takes (QuestPanel's TradeChooser), and the
          claim stays grey until one is picked */
       const landedT = await H.advanceNpcDialogue(P);
@@ -499,7 +499,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!done && (done._quests || {})[step.id] === 'turnedIn',
       done && done._quests);
 
-    /* ═══ v2.3.3519: HANDED ON -- THE ROAD LEADS TO THE NEXT GIVER ═══
+    /* ═══ v2.3.3525: HANDED ON -- THE ROAD LEADS TO THE NEXT GIVER ═══
        The tour's next step is usually someone else's: his window closes,
        the pinned quest card says who is next and the minimap's gold road
        leads to him (questRoute.js tourOffer, in the tour's suggested order).
@@ -512,7 +512,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(2600);
       await H.leaveNpc(P, step.npc).catch(() => {});
       if (step.id === 'tut_1') {
-        /* ═══ v2.3.3519: THE WHOLE TOWN, AT ONCE ═══
+        /* ═══ v2.3.3525: THE WHOLE TOWN, AT ONCE ═══
            The Mayor's first quest in, every one of the six offers his first
            at once: the pin over each head, on the minimap and on the world
            map (src/game/questPins.js), and the card counts the others */
@@ -591,7 +591,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const q = (end && end._quests) || {};
   rec.ok('every quest in the line is turned in',
     ARC.every((s) => q[s.id] === 'turnedIn'), q);
-  /* ═══ v2.3.3519: WHAT THE TOUR'S HANDS PAID ═══ */
+  /* ═══ v2.3.3525: WHAT THE TOUR'S HANDS PAID ═══ */
   const inv = (end && end.inventory) || {};
   rec.ok('the tour handed over each trade\'s tool -- the pickaxe (the smith), the axe (the woodworker), the rod (Diego)',
     ['mining_pickaxe', 'woodcutting_axe', 'fishing_pole'].every((k) => (inv[k] || 0) >= 1), inv);
@@ -625,7 +625,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      tier above. */
   rec.ok('the fire-goblin quest paid the Copper Greaves into the bag',
     bags.legs.includes('Copper Greaves'), bags);
-  /* v2.3.1704: one pair of legs, never a second.  v2.3.3519: the mining
+  /* v2.3.1704: one pair of legs, never a second.  v2.3.3525: the mining
      quest that paid the Copper Torso (life_2) is retired -- its ore is the
      smith's errand now, paid in bars you forge your own piece from. */
   rec.ok('...one pair of legs, never a second',
@@ -642,7 +642,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const lineBanners = await (async () => {
     const read = () => P.page.evaluate(() => (window.__questCalls || []).slice());
     let seen = await read();
-    for (let i = 0; i < 16 && seen.filter((b) => b.kind === 'reward').length < 1; i++) {   /* v2.3.3519: the greaves alone (the torso's quest is retired) */
+    for (let i = 0; i < 16 && seen.filter((b) => b.kind === 'reward').length < 1; i++) {   /* v2.3.3525: the greaves alone (the torso's quest is retired) */
       await P.page.waitForTimeout(500);
       seen = await read();
     }

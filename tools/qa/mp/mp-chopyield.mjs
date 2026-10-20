@@ -115,7 +115,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      character survives long enough to finish a harvest -- and take whatever it
      rolled.  The tree assertion below then reports honestly rather than the
      fixture wandering off to hunt for one. */
-  const spoke = marks.spokes.find((s) => s.zoneId === H.FIRST_LAND) || marks.spokes[0];   /* v2.3.3519: the land tut_1 opens (Frost Ridge until the tour) */
+  const spoke = marks.spokes.find((s) => s.zoneId === H.FIRST_LAND) || marks.spokes[0];   /* v2.3.3525: the land tut_1 opens (Frost Ridge until the tour) */
   let zone = null, tree = null;
   for (let attempt = 0; attempt < 3 && !tree; attempt++) {
     if (!await travel(spoke.tx, spoke.ty, spoke.zoneId)) continue;

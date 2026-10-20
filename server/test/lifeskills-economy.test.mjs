@@ -109,7 +109,7 @@ const SWORD_STAT = room._equipStatFor('sword');
 ps.lifeSkills = { blacksmithing: { level: 11, xp: 0 } };
 ps[SWORD_STAT] = IRON.statReq; // exactly meets the stat gate
 ps.coins = 1000;
-ps.inventory = { bar_iron: IRON.bars + 1 };   /* v2.3.3519: one left over, whatever a sword takes */
+ps.inventory = { bar_iron: IRON.bars + 1 };   /* v2.3.3525: one left over, whatever a sword takes */
 ps.weapon = { type: 'sword', tierMult: 1, _old: true };
 ps.weaponStash = [];
 await send(ws, 'forge_weapon', { weaponType: 'sword', tierKey: 'iron', isWoodwork: false });

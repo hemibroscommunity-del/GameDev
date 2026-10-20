@@ -1054,7 +1054,7 @@ remnant to migrate server-side, not a mode to preserve.
       make armour?", the owner: "Yes": iron and black steel bars smelt too
       (Smithing 5 and 10, `SMELT.RECIPES`, icons by `tools/make_bar_icons.py
       iron blacksteel`), and the Blacksmith's ARMOR tab forges a torso or
-      greaves (4 bars each since v2.3.3141, 5 since v2.3.3519) in each metal -- copper Smithing 1, iron 5, black
+      greaves (4 bars each since v2.3.3141, 5 since v2.3.3525) in each metal -- copper Smithing 1, iron 5, black
       steel 10 (`server/src/armorforge.js` `ARMOR_FORGE.RECIPES`, mirrored by
       items.js `ARMOR_FORGE_RECIPES`): the drop's own piece `{name, mat, slot,
       tierMult, quality}` on the armour ladder (1/2/3, no gearBase or type),
@@ -1074,7 +1074,7 @@ remnant to migrate server-side, not a mode to preserve.
         BLACKSMITH_TIERS `bar`/`bars`/`xp` on copper, iron and `steel`, which
         replace their `oreCost`; the gold stays); a sword pays the armour's
         XP for the same bars (800 / 1,200 / 1,600); wood and the metals past
-        black steel are unchanged; FIVE bars since v2.3.3519 (the tour, below:
+        black steel are unchanged; FIVE bars since v2.3.3525 (the tour, below:
         "It should mirror the cost of making armor"), the XP 1,000 / 1,500 /
         2,000, salvage still two back;
       - the Blacksmith's SALVAGE tab (`server/src/salvage.js`): a CARRIED piece
@@ -3352,7 +3352,7 @@ remnant to migrate server-side, not a mode to preserve.
         nothing (groundLoot.js `S._dying`): TRAPS §233;
       - combat-lifecycle §5, `mp-deathpile` (a real death, in real time,
         `BT_DP_TRACE=1` its timeline): item-drop.md "A dead player's pile".
-  - Since v2.3.3519 THE TOUR -- the owner, a week before an exposé where
+  - Since v2.3.3525 THE TOUR -- the owner, a week before an exposé where
     reviewers give each game 20-30 minutes: "my quest line is almost
     exclusively going to 4 zones to kill monsters and bring their remains back
     to mayor bro ... Mayor bro would hand off the quest to the next person
@@ -3386,8 +3386,10 @@ remnant to migrate server-side, not a mode to preserve.
       and the pinned card says "Next: <quest> / Talk to <him> <where>" and
       "+N more: look for a gold ! on your map" (questRoute.js `tourOffer`,
       `more`); a giver's "how's it going" line opens his building (game/
-      tour.js `opens`, NpcDialogue's `action`); farm_2's Cookhouse is a
-      step's `door`;
+      tour.js `opens`, NpcDialogue's `action`); and every step has a WAY
+      (game/questWays.js, v2.3.3522): the farm steps the Feed & Seed's
+      door, Zoom Juice the Cookhouse's, the forging the forge, the bow the
+      bench, the race Lil Bro (`way: 'giver'`, a kind of its own);
     - THE QUEST PINS ON THE MAPS -- the owner: "Make the quest icons appear on
       the minimap and map too": every townsperson's head pin (npc.
       _questMarker, the owner's QUEST_PIN pictures, preloaded for the heads)

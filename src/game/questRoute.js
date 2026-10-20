@@ -20,8 +20,8 @@
  * in town with nothing marked at all, which is worse than no feature: it
  * would read as "no quest is active".
  */
-import { QUEST_CHAINS, QUEST_STATUS, questSteps /* v2.3.3012: which node a gathering quest's next step needs */, getNpcQuest /* v2.3.3519: the tour's next step */, QUEST_TOUR /* v2.3.3519: in its suggested order */ } from '@/data/gameSystems.js';
-import { raceRoutePoint } from '@/game/race.js';   /* v2.3.3519: the race's next flag */
+import { QUEST_CHAINS, QUEST_STATUS, questSteps /* v2.3.3012: which node a gathering quest's next step needs */, getNpcQuest /* v2.3.3525: the tour's next step */, QUEST_TOUR /* v2.3.3525: in its suggested order */ } from '@/data/gameSystems.js';
+import { raceRoutePoint } from '@/game/race.js';   /* v2.3.3525: the race's next flag */
 import { hasGatherTool, gatherNeed /* v2.3.3038 */ } from '@/data/lifeSkills.js';   /* v2.3.3012: never lead to a node that is not drawn */
 import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
 import { TILE } from '@/data/constants.js';
@@ -321,7 +321,7 @@ export function zoneUnlockQuest(zoneId) {
 const WELCOME_NPC = 'Mayor Bro';
 
 export function questRoutePoint(currentZone, rpg, S) {
-  /* v2.3.3519: racing Lil Bro, the road is the race's: the next flag */
+  /* v2.3.3525: racing Lil Bro, the road is the race's: the next flag */
   const flag = raceRoutePoint(S);
   if (flag) return flag;
   const exit = questRouteExit(currentZone, rpg, S);
@@ -354,7 +354,7 @@ function _wantNpc(rpg, S) {
     if (!q.npc) continue;
     if (done) return q.npc;                      /* hand it in */
   }
-  /* v2.3.3519: and nothing in hand while the TOUR has its next step on
+  /* v2.3.3525: and nothing in hand while the TOUR has its next step on
      offer -- to whoever gives it, as the welcome leads to the Mayor
      (tourOffer, below).  A step done at its giver's building or at another
      door (the forge, the bench, the Feed & Seed, farm_2's Cookhouse) is its
@@ -366,7 +366,7 @@ function _wantNpc(rpg, S) {
   return null;
 }
 
-/* ═══ v2.3.3519: THE TOUR'S NEXT STEP ═══
+/* ═══ v2.3.3525: THE TOUR'S NEXT STEP ═══
    Between two quests there is no quest in hand and nothing for the road to
    follow -- the moment a reviewer most needs one.  Once the Mayor's first
    quest is in the whole town offers its quests at once (gameSystems.js, the
@@ -482,7 +482,7 @@ function _wheelPoint(currentZone, rpg, S) {
     const want = _wantNpc(rpg, S);
     return want ? _npcHere(S, want) : null;
   }
-  /* v2.3.3519: nothing in hand while the tour suggests its next step: to
+  /* v2.3.3525: nothing in hand while the tour suggests its next step: to
      whoever gives it (tourOffer is null while any quest is active) */
   const offer = tourOffer(rpg, S);
   if (offer) {

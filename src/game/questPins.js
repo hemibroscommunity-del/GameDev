@@ -1,4 +1,4 @@
-/* ═══ v2.3.3519: THE QUEST PINS ON THE MAPS ═══
+/* ═══ v2.3.3525: THE QUEST PINS ON THE MAPS ═══
  *
  * The owner: "Make the quest icons appear on the minimap and map too" -- with
  * "mayor bro is the only quest available for the first quest then after

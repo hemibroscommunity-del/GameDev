@@ -29,7 +29,7 @@
  *                       mayor_1's own count; the halls do not count);
  *        'monsters'     where the nearest land's monsters begin, its level
  *                       1s -- the very spot a quest naming a land leads to;
- *        'giver'        (v2.3.3519, the tour) the quest's own giver while it
+ *        'giver'        (v2.3.3525, the tour) the quest's own giver while it
  *                       runs: Lil Bro's race starts at him, his Race!.
  *
  *   3. A QUEST WITH NOWHERE TO GO HID THE ONE BEHIND IT.  The old _wantNode
@@ -72,7 +72,7 @@ export function routeOrder(entries, tracked) {
 }
 
 /** A way written on a quest or a step, as data: 'monsters', 'visit',
-    'door:<plot>', 'giver' (v2.3.3519) -- or null. */
+    'door:<plot>', 'giver' (v2.3.3525) -- or null. */
 export function parseWay(w) {
   if (typeof w !== 'string' || !w) return null;
   if (w === 'monsters') return { kind: 'monsters' };
@@ -98,7 +98,7 @@ export function wayOf(q, steps, done) {
     if (q.node) return { kind: 'node', node: q.node };
     w = parseWay(q.way);
   }
-  /* v2.3.3519: 'giver' is the quest's own, named here -- a way written as
+  /* v2.3.3525: 'giver' is the quest's own, named here -- a way written as
      data says no name (and one with no giver leads nowhere) */
   if (w && w.kind === 'giver') return q.npc ? { kind: 'giver', npc: q.npc } : null;
   return w;

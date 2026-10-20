@@ -116,7 +116,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      exists to prove gets BYPASSED on a zone change.  Granting the quest keeps
      the subject of the test intact. */
   if (!psA._quests) psA._quests = Object.create(null);
-  /* v2.3.3519: the quest that names frost is tut_2 now (the tour's finale;
+  /* v2.3.3525: the quest that names frost is tut_2 now (the tour's finale;
      tut_1 is the slimes, verdant) */
   psA._quests.tut_2 = 'active';
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 90000, y: 90000, z: 'frost' }));
