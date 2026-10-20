@@ -425,7 +425,7 @@ export const trappingMethods = {
         this._creditQuestObjective(pid, 'trap_roll');
         if (caught && pet) this._creditQuestObjective(pid, 'catch');
       } catch (e) { /* a quest must never undo a roll */ }
-      /* v2.3.3491: Gotcha, Golden Catch, Golden Giant (achievements.js),
+      /* v2.3.3504: Gotcha, Golden Catch, Golden Giant (achievements.js),
          riding this save */
       try { if (caught && pet) this._achvOnCatch(pid, ps, pet); } catch (e) { /* never undo a catch */ }
       this._saveRpg(pid, ps);

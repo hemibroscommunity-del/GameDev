@@ -39,7 +39,7 @@ const CATS = [
   { id: 'trapping',     label: 'Trapping' },
 ];
 
-/* ═══ v2.3.3491: AP IS BACK, AND IT IS THE WORKER'S ═══
+/* ═══ v2.3.3504: AP IS BACK, AND IT IS THE WORKER'S ═══
    AP left this row (above) because it was the phone's own claim: the
    board's `ap` came from the inspect-card blob a page sent in `track`.
    Since achievements the worker writes its own total over that blob at the
@@ -127,7 +127,7 @@ export const LeaderboardPanel = () => {
 
   const S = getState();
   const meId = S && S.myId;
-  /* v2.3.3491: the AP board leaves off everyone at 0 (above) */
+  /* v2.3.3504: the AP board leaves off everyone at 0 (above) */
   const board = (boards[cat] || []).filter((r) => cat !== 'ap' || Math.floor(Number(r && r.ap) || 0) > 0);
 
   return (
@@ -179,7 +179,7 @@ export const LeaderboardPanel = () => {
               the three combat levels added up, the name plate's level; each
               other one that skill's), so it reads "Lv 3"; Kills stays a
               count.  No number, no "Lv". */}
-          {/* v2.3.3491: the AP board reads the row's `ap` (rowValue) */}
+          {/* v2.3.3504: the AP board reads the row's `ap` (rowValue) */}
           <span data-lb-value="" style={{ fontSize: 16, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>
             {rowValue(cat, r)}
           </span>

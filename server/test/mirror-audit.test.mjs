@@ -2391,7 +2391,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       worker: [ITEM_DROP.NO_DROP_ZONES, ITEM_DROP.PRIVATE_MS, ITEM_DROP.FLASH_MS, ITEM_DROP.GONE_MS] });
 }
 
-/* ═══ v2.3.3491: ACHIEVEMENTS (src/data/achievements.js vs server/src/achievements.js) ═══
+/* ═══ v2.3.3504: ACHIEVEMENTS (src/data/achievements.js vs server/src/achievements.js) ═══
    The page's words and pictures are the phone's; which achievements exist,
    their tiers, their points and which rows count are the worker's.  Ids are
    append-only: a renamed or reordered id would show one achievement's words

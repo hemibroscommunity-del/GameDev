@@ -286,7 +286,7 @@ export const farmOrderMethods = {
     } catch (e) {
       console.error('[farm] order XP for', pid, e && e.message);
     }
-    /* v2.3.3491: Farmhand (achievements.js), its points in the same batch */
+    /* v2.3.3504: Farmhand (achievements.js), its points in the same batch */
     try { this._achvOnOrder(pid, ps); } catch (e) { /* never break a delivery */ }
     /* One batch: the board's put, then _saveRpg, no await between. */
     this._farmOrdersPut(pid, rec);

@@ -148,7 +148,7 @@ export function getSalvageReturns(item, BLACKSMITH_TIERS, WOODWORKING_TIERS) {
 }
 
 /* ═══ ACHIEVEMENT POINTS ═══ */
-/* v2.3.3491: RARE_DROP_CHANCE and RARE_DROP_ITEMS -- a 0.1% "RARE: Dragon
+/* v2.3.3504: RARE_DROP_CHANCE and RARE_DROP_ITEMS -- a 0.1% "RARE: Dragon
    Eye (+10 AP)" on a kill this phone resolved itself (monsterCombat.js, no
    live zone since the worker owns every monster) -- are gone: points the
    worker never heard of.  AP is the worker's (server achievements.js);

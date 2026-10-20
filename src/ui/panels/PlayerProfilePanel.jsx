@@ -117,7 +117,7 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
   const pet = p.pet;
   const rar = (pet && PET_RARITY[pet.rarity]) || PET_RARITY.normal;
   const title = p.equippedTitle;
-  /* v2.3.3491: the rarest ACHIEVEMENT (was a placeholder "rarest drop"):
+  /* v2.3.3504: the rarest ACHIEVEMENT (was a placeholder "rarest drop"):
      undefined until another player's blob lands, null for none */
   const rarest = p.showcase.rarest;
   const plots = p.homestead.plotsReady;
@@ -193,7 +193,7 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
         </div>
 
         <div className="bt-pin-tags">
-          {/* v2.3.3491: an achievement they chose (achievements.js
+          {/* v2.3.3504: an achievement they chose (achievements.js
               _achvTitle), or none -- was the placeholder "Fishing Master";
               a tap opens the Achievements page */}
           {title && (
@@ -254,7 +254,7 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
                 <span>Lifetime Kills</span>
               </div>
             </div>
-            {/* v2.3.3491: the rarest achievement, the worker's pick
+            {/* v2.3.3504: the rarest achievement, the worker's pick
                 (achievements.js ACHV.RARITY), in its tier's colour; a tap
                 opens the Achievements page */}
             {rarest !== undefined && (

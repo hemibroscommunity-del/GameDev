@@ -391,7 +391,7 @@ import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their ch
 import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
 import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
 import { NewMonsterCard } from '@/ui/panels/NewMonsterCard.jsx';   /* v2.3.3336: NEW MONSTER, a tap opens its codex page */
-import { AchievementBanner } from '@/ui/panels/AchievementBanner.jsx';   /* v2.3.3491: a big achievement's banner, outside the wrap beside QuestCoach */
+import { AchievementBanner } from '@/ui/panels/AchievementBanner.jsx';   /* v2.3.3504: a big achievement's banner, outside the wrap beside QuestCoach */
 import { activePet } from '@/game/petBook.js';   /* v2.3.3120: the pet out with you is the record's */
 import { beastmasterOn } from '@/game/trapping.js';   /* v2.3.3121: Beastmaster Bro stands only against a worker that knows his quests */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
@@ -423,7 +423,7 @@ import { shardByKey } from '@/data/shards.js';
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {
   TILE, TOWN_SPAWN, PLAYER_COLORS, ZONES, ELEMENTS, TOWN_BUILDINGS, TOWN_EXITS, WORLDVIEW_EXITS, BLOCK_ARC_HALF,
-  BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES, RARITY_TIERS, BT_AUDIO,   /* v2.3.3491: BT_ACHIEVEMENTS gone (the checker below) */
+  BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES, RARITY_TIERS, BT_AUDIO,   /* v2.3.3504: BT_ACHIEVEMENTS gone (the checker below) */
   BUILDINGS, NPC_DATA, TILE_SOLID, TILE_COLORS,
   updateZoneDimensions,
   STAT_POINTS_PER_LEVEL, LEVEL_CAP, GEAR_STAT_REQ,
@@ -467,7 +467,7 @@ const {
   ELEMENT_FLAVOR, flavorName, canAccessDepth,
   GAMBLE_WIN_CHANCE, GAMBLE_MIN_BET, GAMBLE_MAX_BET,
   JACKPOT_HOUSE_CUT, JACKPOT_MIN_DEPOSIT,
-  QUEST_AP_REWARD,   /* v2.3.3491: RARE_DROP_CHANCE / RARE_DROP_ITEMS gone (monsterCombat.js) */
+  QUEST_AP_REWARD,   /* v2.3.3504: RARE_DROP_CHANCE / RARE_DROP_ITEMS gone (monsterCombat.js) */
   FEEDBACK_CATEGORIES, FEEDBACK_TOPICS,
   ARENA_ENTRY_FEE, ARENA_BET_MIN, ARENA_BET_MAX,
   ARENA_WIN_REWARD, ARENA_POLL_INTERVAL, ARENA_IDLE_POLL_INTERVAL,
@@ -1127,7 +1127,7 @@ export var BroTown = function BroTown(_ref0) {
     /* when shield expires */
     stats: null
     /* persistent player stats */
-    /* v2.3.3491: `badges` (the ids the dormant BT_ACHIEVEMENTS checker
+    /* v2.3.3504: `badges` (the ids the dormant BT_ACHIEVEMENTS checker
        recorded, read by nothing) went with it -- achievements are the
        worker's now (S._achv, game/achievements.js) */
   });
@@ -1663,7 +1663,7 @@ export var BroTown = function BroTown(_ref0) {
     _useState24 = _slicedToArray(_useState23, 2),
     collectMsg = _useState24[0],
     setCollectMsg = _useState24[1]; /* {emoji, text, ts} */
-  /* v2.3.3491: `myBadges` (the dormant checker's copy of S.badges, read by
+  /* v2.3.3504: `myBadges` (the dormant checker's copy of S.badges, read by
      nothing) went with BT_ACHIEVEMENTS */
   var _useState27 = useState(null),
     _useState28 = _slicedToArray(_useState27, 2),
@@ -8547,13 +8547,13 @@ export var BroTown = function BroTown(_ref0) {
          in town, for a list nobody was looking at.  The panel reads it on open
          within the same half-second, so it is never more than one tick stale.
          The stats save below still runs every tick as it always did
-         (v2.3.3491: the achievement check that ran with it is gone). */
+         (v2.3.3504: the achievement check that ran with it is gone). */
       if (showPlayerListRef.current) setPlayerList(list);
       /* Save the player's stats (this was "Check achievements") */
       var S2 = stateRef.current;
       if (S2.stats) {
         var _stateRef$current$sta;
-        /* ═══ v2.3.3491: THE DORMANT ACHIEVEMENT CHECKER IS GONE ═══
+        /* ═══ v2.3.3504: THE DORMANT ACHIEVEMENT CHECKER IS GONE ═══
            BT_ACHIEVEMENTS (data/gameDisplay.js) was thirty-two badges checked
            here twice a second against the phone's own S.stats -- copied into
            `_combatLevel`, `_arenaWins`, `_mythicPets` and the rest just for
@@ -14924,7 +14924,7 @@ export var BroTown = function BroTown(_ref0) {
      in-wrap modals, which it must NOT cover — QuestCoach handles that
      itself, by only drawing on a control a finger can actually reach. */
   /*#__PURE__*/React.createElement(QuestCoach, { stateRef: stateRef }),
-  /* v2.3.3491: a rare, arena or super-rare achievement's banner -- here, out
+  /* v2.3.3504: a rare, arena or super-rare achievement's banner -- here, out
      of the wrap with QuestCoach for the same reason, so its fixed layer is the
      game's column on a computer (ui/panels/AchievementBanner.jsx) */
   /*#__PURE__*/React.createElement(AchievementBanner, { stateRef: stateRef }), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, { hidden: kbHintsOff, onToggle: toggleKbHints }), staleBuild && /*#__PURE__*/React.createElement(UpdateBanner, { info: staleBuild, onReload: function () { try { window.location.reload(); } catch (e) {} }, onDismiss: function () { setStaleBuild(null); } }), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));

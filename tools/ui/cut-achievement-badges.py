@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3491: THE OWNER'S ACHIEVEMENT BADGES, CUT FROM THEIR TWO SHEETS.
+"""v2.3.3504: THE OWNER'S ACHIEVEMENT BADGES, CUT FROM THEIR TWO SHEETS.
 
 The owner, 2026-10-19, after the achievements kit's badge prompts
 (docs/ART-WISHLIST.md "Achievements", the painted look they picked on card
@@ -222,7 +222,7 @@ def main():
         return 1
     os.makedirs(PUB, exist_ok=True)
     total = 0
-    lines = ['# v2.3.3491: the owner\'s achievement badges, written by tools/ui/cut-achievement-badges.py.',
+    lines = ['# v2.3.3504: the owner\'s achievement badges, written by tools/ui/cut-achievement-badges.py.',
              '# server/test/achievements-client.test.mjs fails if any of these files changes.']
     for name, im in frames:
         path = os.path.join(ROOT, rel(name))

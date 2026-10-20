@@ -108,7 +108,7 @@ export function PartyPanel(props) {
      the owner: "I don't want anyone exploiting the achievement points from
      it" -- which the window says against a worker that says it does */
   var arenaApFirst = arenaPaysAp && !!stateRef.current._serverCaps.arenaapfirst;
-  /* v2.3.3491: and since achievements (server achievements.js, the owner's
+  /* v2.3.3504: and since achievements (server achievements.js, the owner's
      decision 2) the 500 are the GLADIATOR ACHIEVEMENT's, paid the FIRST time
      you win; a later crown pays its gold and counts on the achievement's row.
      `achvCaps` is the worker's word on achievements: true (the first win
@@ -247,7 +247,7 @@ export function PartyPanel(props) {
      (`arenaPaysAp`, caps.arenaap); an older worker pays gold alone, and the
      line says the gold alone. */
   "Enter a single elimination tournament of up to 8 fighters. Blind matchups \u2014 any level can face any level. No food or healing allowed. ",
-  /* v2.3.3491: against a worker with achievements the AP are the first
+  /* v2.3.3504: against a worker with achievements the AP are the first
      win's (achvCaps above); the gold and the title every win.  v2.3.3488's
      worker (no achievements yet) paid them on the first win too, under its
      own mark (arenaApFirst above) */
@@ -769,7 +769,7 @@ export function PartyPanel(props) {
      (caps.arenaap).  A record without it was paid gold alone -- an older
      worker, or `arenaap: false` -- and the box said "+500AP" for points
      nobody was given, so it names none.
-     v2.3.3491: and since achievements a crown pays them only the first time
+     v2.3.3504: and since achievements a crown pays them only the first time
      (the Gladiator achievement): the worker sets `champion.ap` only on a
      crown that pays them (achievements.js _achvWouldPay), so a second
      crown's box says the gold and the title alone. */

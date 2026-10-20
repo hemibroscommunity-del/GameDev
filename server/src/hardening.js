@@ -266,7 +266,7 @@ export const hardeningMethods = {
       else w.hardness = hardness; // 100+: no reset
       w.temper = temperBefore + 1;
     }
-    /* v2.3.3491: Perfectly Tempered (achievements.js), a success to H5,
+    /* v2.3.3504: Perfectly Tempered (achievements.js), a success to H5,
        riding this save */
     try { if (success && this._achvOnHarden) this._achvOnHarden(session.id, ps, w.hardness); } catch (e) { /* never break a harden */ }
     this._saveRpg(session.id, ps);

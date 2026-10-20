@@ -484,7 +484,7 @@ export const CUE_GAP_MS = {
   heartbeat: 300,
   /* a batch of points is one chime: every point is its own confirmation */
   pointsSpent: 1000,
-  /* v2.3.3491: the champion's fanfare is also every big achievement's
+  /* v2.3.3504: the champion's fanfare is also every big achievement's
      banner (ui/panels/AchievementBanner.jsx) -- the arena's crown plays it
      and its Gladiator banner comes about half a second later (the banner
      waits 0.4 s to settle), one fanfare; far under the banner's own 3.2 s,

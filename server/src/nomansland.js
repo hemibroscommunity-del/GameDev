@@ -403,7 +403,7 @@ export const noMansLandMethods = {
     const red = !!(ps._nml && ps._nml.red > 0);
     if (!nmlKill && !red) return null;
     const to = nmlKill ? killerId : null;
-    /* v2.3.3491: Outlaw (achievements.js) -- the killer of a player under No
+    /* v2.3.3504: Outlaw (achievements.js) -- the killer of a player under No
        man's land's rule, its points saved there */
     if (nmlKill && killerId !== playerId) {
       try { if (this._achvOnNmlKill) this._achvOnNmlKill(killerId); } catch (e) { /* never break a death */ }

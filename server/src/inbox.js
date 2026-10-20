@@ -370,7 +370,7 @@ export const inboxMethods = {
          the same apply as the gold, so the points are paid exactly when the
          gold is: once, live or from the mail at the next join.  Only a
          server-made credit ever carries `ap` (no client message builds one).
-         v2.3.3491: no credit is made with it any more -- the arena's points
+         v2.3.3504: no credit is made with it any more -- the arena's points
          are the Gladiator achievement's (`achv` below) -- but one waiting in
          a mailbox from v2.3.3481 is an arena crown: it goes through that
          achievement, so it pays once a character like a new one (and its
@@ -385,7 +385,7 @@ export const inboxMethods = {
          as the gold, so a mailed prize decides at the drain, and the mark is
          saved with the gold in the one write that follows (`ps.apOnce`,
          persistence.js).  The gold is paid either way.
-         v2.3.3491: an ARENA credit still carrying points (v2.3.3481's, or
+         v2.3.3504: an ARENA credit still carrying points (v2.3.3481's, or
          v2.3.3488's with `apOnce`, waiting in a mailbox) pays them through
          the Gladiator achievement above all, which honours the same mark
          and sets it when it pays (achievements.js AP_ONCE_OF): once a
@@ -408,7 +408,7 @@ export const inboxMethods = {
       } else if (ap) ps.achievementPoints = (ps.achievementPoints || 0) + ap;
       return true;
     }
-    /* ═══ v2.3.3491: AN ACHIEVEMENT BY THE MAIL (achievements.js) ═══
+    /* ═══ v2.3.3504: AN ACHIEVEMENT BY THE MAIL (achievements.js) ═══
        The arena's crown (gladiator.js).  FALSE -- the entry STAYS QUEUED --
        while the player's achievements record is not loaded or is locked, the
        pet's rule below: whether the points are owed is that record's to say.

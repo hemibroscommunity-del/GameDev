@@ -229,7 +229,7 @@ export const duelMethods = {
     if (duel.arenaMatch && this._arenaOnMatchResolved) {
       this._arenaOnMatchResolved(duel.arenaMatch, winnerId, how);
     }
-    /* v2.3.3491: Duelist (achievements.js) -- a duel won by the kill, never an
+    /* v2.3.3504: Duelist (achievements.js) -- a duel won by the kill, never an
        arena match (the arena has its own) nor a forfeit or a clock's */
     else {
       try { if (this._achvOnDuelWin) this._achvOnDuelWin(winnerId, how); } catch (e) { /* never break a duel */ }
