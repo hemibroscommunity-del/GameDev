@@ -119,8 +119,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and his last line\'s "Claim reward" pays it', claimed);
   await P.page.waitForTimeout(2200);
   const done = await H.adminPlayer(wsPort, myId);
-  rec.ok('the WORKER marks race_1 turned in and hands on to the Beastmaster',
-    !!done && done.rpg && done.rpg._quests.race_1 === 'turnedIn' && done.rpg._quests.beast_1 === 'available', done && done.rpg && done.rpg._quests);
+  rec.ok('the WORKER marks race_1 turned in',
+    !!done && done.rpg && done.rpg._quests.race_1 === 'turnedIn', done && done.rpg && done.rpg._quests);
+  /* v2.3.3510: the town opens all at once after the Mayor's first quest, so
+     nothing is handed on by `next`; the road and the pinned card suggest the
+     tour's next step (QUEST_TOUR: the Beastmaster's traps) */
+  await H.leaveNpc(P, 'lil_bro').catch(() => {});
+  const nextCard = await H.waitFor(P, () => {
+    const c = document.querySelector('[data-quest-hud-next]');
+    return c ? c.getAttribute('data-quest-hud-next') : null;
+  }, (v) => v === 'beast_1', { timeout: 12000, label: 'the card\'s next step' }).catch(() => null);
+  rec.ok('...and the quest card suggests the Beastmaster\'s traps next', nextCard === 'beast_1', nextCard);
 
   /* ── 5. a false start ── */
   await H.devOp(wsPort, 'tour', myId, { at: 'race_1' });
