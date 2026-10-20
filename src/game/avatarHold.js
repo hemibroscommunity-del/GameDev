@@ -1,4 +1,4 @@
-/* ═══ v2.3.3495: THE ROAD WITH NO LOADING SCREEN WAITS FOR YOUR BRO TOO ═══
+/* ═══ v2.3.3512: THE ROAD WITH NO LOADING SCREEN WAITS FOR YOUR BRO TOO ═══
  *
  * The owner, playtesting: "flicker of hair/torso after returning/joining".
  *

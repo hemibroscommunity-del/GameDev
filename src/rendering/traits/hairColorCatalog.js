@@ -145,7 +145,7 @@ function _capCache() {
   }
 }
 
-/* v2.3.3495: each build's promise while it runs, so the loading screen can
+/* v2.3.3512: each build's promise while it runs, so the loading screen can
    wait for the local player's own recolour (coloredHairReady) instead of
    showing the hair in its native colour for its first frames */
 const _building = Object.create(null);
@@ -165,7 +165,7 @@ function build(hairId, colorId) {
   })).then(() => { _cache[key] = tex; _capCache(); delete _building[key]; });
 }
 
-/** v2.3.3495: a promise that settles once (hairId, colorId)'s recolour is
+/** v2.3.3512: a promise that settles once (hairId, colorId)'s recolour is
  *  made -- at once when there is none to make (the native colour, long hair)
  *  or it is already made.  Kicks the build if nothing has asked yet. */
 export function coloredHairReady(hairId, colorId) {

@@ -75,7 +75,7 @@ try { Assets.setPreferences({ preferCreateImageBitmap: false }); } catch (e) { /
  * intro overlay can hold until the avatar is guaranteed flicker-free.
  * Uses allSettled so a single missing asset can't stall the gate.
  */
-/* v2.3.3495: QA (mp-joinflicker) -- when each step of the bro's preload
+/* v2.3.3512: QA (mp-joinflicker) -- when each step of the bro's preload
    finished, so a step that never does can be named (window.__btPreloadSteps) */
 function _preStep(k) {
   try { const o = window.__btPreloadSteps || (window.__btPreloadSteps = {}); o[k] = Date.now(); } catch (e) { /* no window */ }
@@ -151,7 +151,7 @@ export function preloadPlayerAssets() {
          (lightfx/sheenBatch.js), so the first armoured player on screen does
          not compile it either */
       .then(() => { try { if (lightFxOn()) warmSheenBatch(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ } })
-      /* v2.3.3495: QA (mp-joinflicker) -- when the bro's pictures were all
+      /* v2.3.3512: QA (mp-joinflicker) -- when the bro's pictures were all
          made, to set beside when the world was shown */
       .then(() => { _preStep('done'); try { window.__btAvatarReadyAt = Date.now(); } catch (e) { /* no window */ } return results; })
   );

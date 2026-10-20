@@ -83,7 +83,7 @@ import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120:
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
 import { getCapeTexture, getCapeHoodTexture, getCapeHoodMaskTexture } from '../capeSprites.js'; /* v2.3.2023: the cosmetic cape; v2.3.2186: its hood half + the hair clip */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2023 */
-import { getHairColor, getColoredHairTextures, coloredHairReady } from '../traits/hairColorCatalog.js';   /* v2.3.3495: + the gate waits for yours */
+import { getHairColor, getColoredHairTextures, coloredHairReady } from '../traits/hairColorCatalog.js';   /* v2.3.3512: + the gate waits for yours */
 import { getHatColor, getColoredHatTextures, coloredHatReady } from '../traits/hatColorCatalog.js';
 import { getFacialHairColor, getColoredFacialHairTextures, coloredFacialHairReady } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
@@ -588,8 +588,8 @@ function npcDirFromDelta(dx, dy) {
    figure's own stride -- he is ~200px tall drawn at NPC scale, and a four
    frame cycle over ~26px reads as a step rather than a shuffle. */
 const NPC_WALK_PX_PER_FRAME = 6.5;
-/* v2.3.3495: the arm capsule's body clone and every clone riding on it
-   (shirt v2.3.2134, cape v2.3.2138, greaves and plate v2.3.3495), hidden
+/* v2.3.3512: the arm capsule's body clone and every clone riding on it
+   (shirt v2.3.2134, cape v2.3.2138, greaves and plate v2.3.3512), hidden
    together.  The shield's and the empty hand's branches hid the body clone
    alone, so the shirt's and cape's could linger a frame after a shield came up
    mid east jog -- a stripe with nothing under it. */
@@ -601,7 +601,7 @@ function _hideArmClones(display) {
   if (display._handArmChest) display._handArmChest.visible = false;
   if (display._handArmCape) display._handArmCape.visible = false;
 }
-/* ═══ v2.3.3495: A TOWNSPERSON WHO STANDS, STANDS ═══
+/* ═══ v2.3.3512: A TOWNSPERSON WHO STANDS, STANDS ═══
    The owner: "Ace" is "stuck in one walking frame", with his shadow apart
    from him.  The Wheel's townsfolk never walk (pathRadius 0), and a still
    walker was drawn on frame 0 of his walk -- for Ace a leap, both feet 8 px
@@ -3124,7 +3124,7 @@ if (typeof window !== 'undefined') {
   window.__btBakeWorker = () => ({ ..._bakeWorkerStats, alive: !!_bakeWorker, dead: _bakeWorkerDead, pending: _bakeJobs.size,
     queued: _bakeQueue.length, busy: _bakeBusy,
     peer: { ..._peerBakeStats, queued: _peerQueue.length }, local: { ..._localBakeStats } });
-  /* v2.3.3495: QA -- the last local frames drawn plain, and the body pictures
+  /* v2.3.3512: QA -- the last local frames drawn plain, and the body pictures
      the cache holds bakes for (each key starts with its body texture's uid) */
   window.__btLocalMisses = () => {
     const uids = Object.create(null);
@@ -3164,7 +3164,7 @@ if (typeof window !== 'undefined') {
    -- on a loaded machine the jobs' main-thread share is the bottleneck, not
    the worker.  Measure on a phone before trying it again. */
 const _localBakeStats = { hits: 0, plain: 0, inline: 0, late: 0, delivered: 0 };
-const _localMisses = [];   /* v2.3.3495: QA -- the last 32 drawn plain (window.__btLocalMisses) */
+const _localMisses = [];   /* v2.3.3512: QA -- the last 32 drawn plain (window.__btLocalMisses) */
 const _LOCAL_PATIENCE_MS = 1000;
 let _localMissKey = null, _localEpoch = 0;
 function _localMaskedFrame(bodyTex, worn, dilate, poseInfo) {
@@ -3187,7 +3187,7 @@ function _localMaskedFrame(bodyTex, worn, dilate, poseInfo) {
     _prewarmBake(bodyTex, worn, dilate, poseInfo, _localEpoch).catch(() => { /* best-effort */ });
   }
   _localBakeStats.plain++;
-  /* v2.3.3495: QA (mp-joinflicker) -- which frames were drawn plain, and with
+  /* v2.3.3512: QA (mp-joinflicker) -- which frames were drawn plain, and with
      which body picture, so a test can tell a frame never baked from a body
      picture made again after the loading screen baked the old one */
   if (_localMisses.length >= 32) _localMisses.shift();
@@ -4130,7 +4130,7 @@ function _ensureHairMaskLoaded(hatId) {
   }
   if (!e.loadStarted) {
     e.loadStarted = true;
-    /* v2.3.3495: kept as one promise (`ready`), so the loading screen can
+    /* v2.3.3512: kept as one promise (`ready`), so the loading screen can
        wait for YOUR hat's five -- a direction whose mask was not in yet drew
        the hair unclipped through the hat for its first frames */
     e.ready = Promise.allSettled(Object.keys(e.tex).map((dir) =>
@@ -4944,7 +4944,7 @@ export function preloadTraits() {
     }
   }
   /* Local player's live selection: recolors + hair-clip mask + NFT face.
-     v2.3.3495: AWAITED now, with the base art -- they were only kicked, and
+     v2.3.3512: AWAITED now, with the base art -- they were only kicked, and
      the owner saw the "flicker of hair ... after returning/joining": with no
      loading screen to cover them (the auto-rejoin's road) the hair, hat and
      beard showed in their native colours for their first frames, and the
@@ -4968,7 +4968,7 @@ export function preloadTraits() {
   return Promise.allSettled([
     _ensureBodyData(),
     ...urls,   /* v2.3.2776: the trait loads themselves (allSettled inside) */
-    ...own,    /* v2.3.3495: your recolours and your hat's clip shapes */
+    ...own,    /* v2.3.3512: your recolours and your hat's clip shapes */
     /* v2.3.2682: every species' art (piece, fur twins, per-frame strips) on
        the gate, and the local player's skin build made from it before the
        intro lifts -- the build is a canvas pass, not a load, but it is the
@@ -7472,7 +7472,7 @@ function createPlayerDisplay() {
   container.addChild(handArmShirtMask);
   container.addChild(handArmShirt);
 
-  /* ═══ v2.3.3495: AND THE ARMOUR -- THE COPPER TORSO'S SHOULDER ═══
+  /* ═══ v2.3.3512: AND THE ARMOUR -- THE COPPER TORSO'S SHOULDER ═══
    * The owner: the east jog's armour shoulder on a copper torso, "fix it for
    * all future tiers" -- "solved for iron torso" before.  Every metal shares
    * one art set (gearVariants.js, a tint), so iron was never solved: an iron
@@ -7765,10 +7765,10 @@ function createPlayerDisplay() {
   container._handArmShirtMask = handArmShirtMask;   /* v2.3.2134 */
   container._handArmCape = handArmCape;             /* v2.3.2138 */
   container._handArmCapeMask = handArmCapeMask;     /* v2.3.2138 */
-  container._handArmLegs = handArmLegs;             /* v2.3.3495 */
-  container._handArmLegsMask = handArmLegsMask;     /* v2.3.3495 */
-  container._handArmChest = handArmChest;           /* v2.3.3495 */
-  container._handArmChestMask = handArmChestMask;   /* v2.3.3495 */
+  container._handArmLegs = handArmLegs;             /* v2.3.3512 */
+  container._handArmLegsMask = handArmLegsMask;     /* v2.3.3512 */
+  container._handArmChest = handArmChest;           /* v2.3.3512 */
+  container._handArmChestMask = handArmChestMask;   /* v2.3.3512 */
   container._shieldSprite = shieldSprite;
   container._blockCaretGfx = blockCaretGfx;     /* v2.3.1798 */
   container._blockArmSprite = blockArmSprite;   /* v2.3.1785 */
@@ -11088,7 +11088,7 @@ export class EntityRenderer {
         const _rKeep = [
           _crumble, _spriteBody, display._namePill, display._comboText,
           display._handCapMask, display._handArmMask,
-          /* v2.3.3495: every arm clone's mask, the shirt's and cape's too */
+          /* v2.3.3512: every arm clone's mask, the shirt's and cape's too */
           display._handArmShirtMask, display._handArmCapeMask, display._handArmLegsMask, display._handArmChestMask,
         ];
         _hideExceptDeep(display, _rKeep);
@@ -12574,7 +12574,7 @@ export class EntityRenderer {
       const _deathKeep = [
         _selfCrumble, _selfSpriteBody, display._namePill, display._comboText,
         display._handCapMask, display._handArmMask,
-        /* v2.3.3495: every arm clone's mask (the shirt's and cape's were left
+        /* v2.3.3512: every arm clone's mask (the shirt's and cape's were left
            out, so a death hid them and nothing ever showed them again) */
         display._handArmShirtMask, display._handArmCapeMask, display._handArmLegsMask, display._handArmChestMask,
         display._hudHpBarFrame, display._hudHpBarFill, display._hudHpRing,
@@ -12743,7 +12743,7 @@ export class EntityRenderer {
       if (display._weaponContainer) display._weaponContainer.visible = false;
       if (display._shieldSprite) display._shieldSprite.visible = false;
       if (display._handCapSprite) display._handCapSprite.visible = false;
-      _hideArmClones(display);   /* v2.3.3495 */
+      _hideArmClones(display);   /* v2.3.3512 */
     }
 
     const body = display._body;
@@ -14511,7 +14511,7 @@ export class EntityRenderer {
                 _armShirt.visible = false;
               }
             }
-            /* v2.3.3495: the greaves and the plate through the same capsule,
+            /* v2.3.3512: the greaves and the plate through the same capsule,
                over the shirt clone -- the bare-skin band the body clone (the
                masked bake) laid over a copper torso's shoulder on every east
                jog.  Copied from the LIVE pieces, so any metal and grade rides
@@ -14576,12 +14576,12 @@ export class EntityRenderer {
               }
             }
           } else if (handArm) {
-            _hideArmClones(display);   /* v2.3.3495: every clone together */
+            _hideArmClones(display);   /* v2.3.3512: every clone together */
           }
         } else {
           weaponSprite.visible = false;
           if (display._handCapSprite) display._handCapSprite.visible = false;
-          _hideArmClones(display);   /* v2.3.2134 / v2.3.2138 / v2.3.3495: the body clone and every clone riding on it */
+          _hideArmClones(display);   /* v2.3.2134 / v2.3.2138 / v2.3.3512: the body clone and every clone riding on it */
           /* Procedural fallback — abstract line / arc / orb. */
           if (wpn.type === 'bow') {
             // Bow arc
@@ -14634,14 +14634,14 @@ export class EntityRenderer {
            Guarded on !S._blockPose so it can never double up with the
            stand-in's own off-hand weapon: exactly one of the two draws. */
         if (display._handCapSprite) display._handCapSprite.visible = false;
-        _hideArmClones(display);   /* v2.3.3495: the shirt, cape and armour clones too -- they lingered a frame's stripe after a shield came up mid east jog */
+        _hideArmClones(display);   /* v2.3.3512: the shirt, cape and armour clones too -- they lingered a frame's stripe after a shield came up mid east jog */
       } else {
         /* No weapon equipped or shield is up — hide the icon Sprite
            so a stale icon doesn't linger from a previous loadout (or
            render on top of the shield arc during a block). */
         if (display._weaponSprite) display._weaponSprite.visible = false;
         if (display._handCapSprite) display._handCapSprite.visible = false;
-        _hideArmClones(display);   /* v2.3.3495 */
+        _hideArmClones(display);   /* v2.3.3512 */
       }
       /* Z-order: weapon in front of body for forward facings (idx 0..3
          = E/SE/S/SW), weapon behind body for back facings (idx 4..7 =
@@ -14839,7 +14839,7 @@ export class EntityRenderer {
           const wantIdx = sIdx < bIdx ? bIdx : bIdx + 1;
           if (sIdx !== wantIdx) display.setChildIndex(_as, wantIdx);
         }
-        /* v2.3.3495: then the greaves' and the plate's clones, each directly
+        /* v2.3.3512: then the greaves' and the plate's clones, each directly
            above whichever clone is on top so far -- body -> shirt -> legs ->
            chest -> cape, the order the real layers are drawn in.  Same
            splice-aware recompute as above. */
@@ -14855,7 +14855,7 @@ export class EntityRenderer {
         /* v2.3.2138: and the cape clone directly above whichever of those two
            is on top, so the stack stays body -> shirt -> cape, matching the
            order the real layers are drawn in.  Same splice-aware recompute as
-           above, for the same reason.  (v2.3.3495: above the armour clones
+           above, for the same reason.  (v2.3.3512: above the armour clones
            too, whichever is on top.) */
         const _ac = display._handArmCape;
         if (_ac && _ac.visible) {
@@ -16258,12 +16258,12 @@ export class EntityRenderer {
           display._walkPhase = (display._walkPhase || 0) + step;
         }
         const dir = display._walkDir || 'south';
-        /* v2.3.3495: standing, his own stand frame (npcStandFrame), not frame
+        /* v2.3.3512: standing, his own stand frame (npcStandFrame), not frame
            0 -- the owner: "Ace is stuck in one walking frame" */
         const idx = moving ? Math.floor(display._walkPhase / NPC_WALK_PX_PER_FRAME) : npcStandFrame(npc);
         const tex = getNpcWalkFrame(npc.id, dir, idx);
         if (tex && display._fig.texture !== tex) display._fig.texture = tex;
-        display._walkIdx = idx;   /* v2.3.3495: for the probe below (mp-wheelfolk) */
+        display._walkIdx = idx;   /* v2.3.3512: for the probe below (mp-wheelfolk) */
       }
 
       /* v2.3.1673: label headroom, POSITIONED rather than nudged.
@@ -16352,7 +16352,7 @@ export class EntityRenderer {
                this one is not ordered like the shopkeeper's -- so a test needs
                to see which way he was pointed and which file answered. */
             walkDir: display._walkDir || null,
-            /* v2.3.3495: the walk frame bound (a still walker: his stand frame) */
+            /* v2.3.3512: the walk frame bound (a still walker: his stand frame) */
             frame: typeof display._walkIdx === 'number' ? display._walkIdx : null,
             /* v2.3.2071: the PLATE as painted -- the two strings on it, how
                far below the feet it hangs, and whether the old above-head

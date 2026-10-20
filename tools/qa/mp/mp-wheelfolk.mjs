@@ -12,7 +12,7 @@
  *   2. their pictures came in behind the loading screen: none of the six
  *      fetched after you arrive (the preload law), and what they hold;
  *   3. Lil Bro is on your screen where you arrive;
- *   4. each is drawn, the size Diego is, facing the street; (v2.3.3495) the
+ *   4. each is drawn, the size Diego is, facing the street; (v2.3.3512) the
  *      walkers on their standing frames, never a stride (Ace's frame 0 was a
  *      leap, both feet off the ground);
  *   5. a TAP on Ace opens his coin flip, and a flip there is settled by the
@@ -138,7 +138,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && ['Ace', 'Lil Bro', 'Diego'].every((n) => /-walk-south\.webp$/.test(drawn[n].src || '')) && dh > 100,
       drawn);
 
-    /* v2.3.3495: the owner: "Ace is stuck in one walking frame" -- a still
+    /* v2.3.3512: the owner: "Ace is stuck in one walking frame" -- a still
        walker stands on his own stand frame (NPC_DATA walk.stand: planted,
        centred), never frame 0 (Ace's is a leap, both feet off the ground) */
     const standOf = (n) => { const row = NPC_DATA.find((r) => r.name === n); return row && row.walk ? row.walk.stand : null; };

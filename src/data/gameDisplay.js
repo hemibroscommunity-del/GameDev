@@ -5727,7 +5727,7 @@ export const NPC_DATA = [{
   walk: {
     base: '/sprites/npc/lil-bro-walk-',
     frames: 4,
-    /* v2.3.3495: the frame he STANDS on (entityRenderer _updateNPCs) -- planted and centred (frame 0 leans 11 px right of his spot) */
+    /* v2.3.3512: the frame he STANDS on (entityRenderer _updateNPCs) -- planted and centred (frame 0 leans 11 px right of his spot) */
     stand: 1,
     dirs: ['south', 'southwest', 'west', 'northwest',
       'north', 'northeast', 'east', 'southeast'],
@@ -5859,7 +5859,7 @@ export const NPC_DATA = [{
   walk: {
     base: '/sprites/npc/cardsharp-bro-walk-',
     frames: 4,
-    /* v2.3.3495: the frame he STANDS on (entityRenderer _updateNPCs) -- the owner: "Ace is stuck in one walking frame" (and a shadow apart from him): a still walker was drawn on frame 0, which for Ace is mid-leap, both feet 8 px off the ground (his shadow is cast from the ground line, so it lay apart from him); frame 3 is planted, feet together, centred */
+    /* v2.3.3512: the frame he STANDS on (entityRenderer _updateNPCs) -- the owner: "Ace is stuck in one walking frame" (and a shadow apart from him): a still walker was drawn on frame 0, which for Ace is mid-leap, both feet 8 px off the ground (his shadow is cast from the ground line, so it lay apart from him); frame 3 is planted, feet together, centred */
     stand: 3,
     dirs: ['south', 'southwest', 'west', 'northwest',
       'north', 'northeast', 'east', 'southeast'],
@@ -5913,7 +5913,7 @@ export const NPC_DATA = [{
   walk: {
     base: '/sprites/npc/shopkeeper-bro-walk-',
     frames: 4,
-    /* v2.3.3495: the frame he STANDS on (entityRenderer _updateNPCs) -- planted and nearest his spot (frame 0 stands 21 px right of it) */
+    /* v2.3.3512: the frame he STANDS on (entityRenderer _updateNPCs) -- planted and nearest his spot (frame 0 stands 21 px right of it) */
     stand: 2,
     dirs: ['south', 'southwest', 'west', 'northwest',
       'north', 'northeast', 'east', 'southeast'],
