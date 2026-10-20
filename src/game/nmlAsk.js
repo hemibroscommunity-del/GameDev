@@ -100,10 +100,34 @@
  * reaches only players YOU have struck, not ones who struck you
  * (server/src/pvpextras.js _pvpEngaged), so being attacked never turns your
  * whirlwind on the attacker before you choose.
+ *
+ * ═══ v2.3.3530: A GROUP ATTACKS YOU: ONE WINDOW ═══
+ * The owner, 2026-10-20: "If you get attacked simultaneously by a group of
+ * people you don't need additional windows to approve.  If the 2nd, 3rd, etc
+ * people already approved "attack" at you you can immediately hit back at
+ * each of them after that."
+ *   One window still comes first: no blow of yours lands on anyone in No
+ * man's land before its Attack.  But once you have chosen a fight -- a live
+ * foe of yours -- every player attacking you joins it with no window of their
+ * own (`nmlJoinFight`).  Their attack was their choice (a blow of theirs
+ * lands only after their own window's Attack), so they become your foes too,
+ * and your swings, shots and bow land on each of them, locked or not:
+ *   - the moment you choose (nmlAim: the window's Attack), everyone who struck
+ *     you within FIGHT_QUIET_MS joins (sparTargets.js attackersNow);
+ *   - while you fight, anyone whose blow lands on you joins as it lands
+ *     (gameEvents.js pvp_hit);
+ *   - a window up about one of them goes: they are your foe now.
+ * An earlier Ignore or Party on one of them does not hold them out: they are
+ * attacking you, and you have chosen to fight.  Only against a worker that
+ * says caps.nmlgroup: it keeps every attacker's right to be hit back (an
+ * older worker gave a red skull for hitting back any but the LAST to hit you:
+ * server/src/nomansland.js _nmlHitsBack, and `bys`, which nmlHitBack reads),
+ * and lets your area moves reach the group once you fight (pvpextras.js
+ * _pvpEngaged).
  */
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { nmlLive, nmlCanAttack, nmlHere } from '@/game/noMansLand.js';
-import { chooseFoe, isLiveFighter, pvpBoutAt } from '@/game/sparTargets.js'; /* v2.3.3268: Attack is a choice that lasts; v2.3.3316: + who a swing already hits; v2.3.3528: + when a bout began */
+import { chooseFoe, isLiveFighter, pvpBoutAt, isLiveFoe, liveFoes, hitMeAt, attackersNow, FIGHT_QUIET_MS } from '@/game/sparTargets.js'; /* v2.3.3268: Attack is a choice that lasts; v2.3.3316: + who a swing already hits; v2.3.3528: + when a bout began; v2.3.3530: + who attacks you (a group joins your fight) */
 
 /* how long an unanswered window stays */
 export const NML_ASK_MS = 10000;
@@ -164,13 +188,19 @@ function askedAtMap(S) {
 }
 
 /** Did `id` give you your white skull, and you carry no red one?  Then a hit
- *  on them is hitting back, which the worker gives no red skull for. */
+ *  on them is hitting back, which the worker gives no red skull for.
+ *  v2.3.3530: `id` the last to hit you (`by`), or any player whose right to
+ *  be hit back still runs (`bys`, each counted down on its own) -- a group's
+ *  every member, as the worker reads it (nomansland.js _nmlHitsBack). */
 export function nmlHitBack(S, id, now) {
   const o = S && S._nmlSelf;
-  if (!o || o.by == null || id == null || String(o.by) !== String(id)) return false;
+  if (!o || id == null) return false;
+  const key = String(id);
   const gone = Math.max(0, (typeof now === 'number' ? now : Date.now()) - (o.at || 0));
   const red = (Number(o.red) || 0) - gone, white = (Number(o.white) || 0) - gone;
-  return white > 0 && !(red > 0);
+  if (!(white > 0) || red > 0) return false;
+  if (o.by != null && String(o.by) === key) return true;
+  return o.bys instanceof Map && (Number(o.bys.get(key)) || 0) - gone > 0;
 }
 
 /** v2.3.3528: has `id` attacked you SINCE you were last asked about them?
@@ -204,7 +234,47 @@ export function nmlAim(S, id) {
   chooseFoe(S, id);
   S.lockedTarget = { type: 'player', id, ref: o, nml: true };
   try { pushDmgPopup(S, o.x, o.y - 70, 'TARGET', '#ff6b5e', { ts: Date.now() }); } catch (e) { /* the reticle says it */ }
+  /* v2.3.3530: and everyone attacking you joins the fight you just chose */
+  try { joinAttackers(S, Date.now()); } catch (e) { /* the next blow on you asks again */ }
   return true;
+}
+
+/* v2.3.3530: is a group's joining on?  The asking, and a worker that keeps
+   every attacker's right to be hit back (caps.nmlgroup). */
+function nmlGroupOn(S) {
+  return nmlAskOn(S) && !!(S && S._serverCaps && S._serverCaps.nmlgroup === true);
+}
+
+const _joins = [];   /* the last few joins, for the QA handle: { id, at } */
+
+/** ═══ v2.3.3530: ONE OF A GROUP JOINS THE FIGHT YOU CHOSE ═══
+ *  `id` struck you within FIGHT_QUIET_MS (sparTargets.js hitMeAt) while you
+ *  are fighting another player you chose -- a live foe -- and No man's land
+ *  lets you fight them: they become your foe too, with no window of their own
+ *  (one up about them goes).  The first window stays: with no fight of your
+ *  choosing nobody joins.  True when they joined. */
+export function nmlJoinFight(S, id, now) {
+  if (!S || id == null || S._inDuel || !nmlGroupOn(S)) return false;
+  const key = String(id);
+  if (S.myId != null && key === String(S.myId)) return false;
+  const t = typeof now === 'number' ? now : Date.now();
+  if (!(t - hitMeAt(S, key) < FIGHT_QUIET_MS)) return false;
+  if (isLiveFoe(S, key, t)) return false;
+  if (!liveFoes(S, t).some((f) => String(f.id) !== key)) return false;
+  if (!S.others || !S.others[key] || !nmlCanAttack(S, key)) return false;
+  chooseFoe(S, key, t);
+  if (_ask && String(_ask.id) === key) { _ask = null; emit(); }
+  _joins.push({ id: key, at: t });
+  if (_joins.length > 16) _joins.shift();
+  return true;
+}
+
+/* v2.3.3530: everyone attacking you now joins (nmlAim, as you choose) */
+function joinAttackers(S, now) {
+  if (!nmlGroupOn(S)) return 0;
+  let n = 0;
+  for (const id of attackersNow(S, now)) if (nmlJoinFight(S, id, now)) n++;
+  return n;
 }
 
 /** The player card's party invite (InspectPlayerPanel), for this window. */
@@ -322,6 +392,8 @@ try {
         return S && S._nmlAsked instanceof Set ? Array.from(S._nmlAsked) : [];
       },
       off: OFF,
+      /* v2.3.3530: the attackers who joined a fight you chose, no window */
+      joins: () => _joins.map((j) => Object.assign({}, j)),
       setMs: (ms) => { _msOverride = ms ? Math.max(1000, Math.min(60000, Number(ms) || NML_ASK_MS)) : 0; },
     };
   }

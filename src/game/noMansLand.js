@@ -160,7 +160,21 @@ export function applyNmlSkull(S, payload) {
      back (nmlAsk.js nmlHitBack), which the window says ("Hit back <name>?",
      v2.3.3528; it aimed at once with no window before) */
   const by = white > 0 && typeof payload.by === 'string' && payload.by.length <= 64 ? payload.by : null;
-  S._nmlSelf = { red, white, by, at: now };
+  /* v2.3.3530: `bys`, EVERY player whose blow gave it with the ms left of
+     their right to be hit back ([[id, ms], ...]: server nomansland.js
+     _nmlBys) -- a group's each member is "Hit back" (nmlAsk.js nmlHitBack).
+     A Map (ids off the wire); an older worker sends none, and `by` alone
+     holds. */
+  let bys = null;
+  if (white > 0 && Array.isArray(payload.bys)) {
+    bys = new Map();
+    for (const e of payload.bys.slice(0, 16)) {
+      if (!Array.isArray(e) || typeof e[0] !== 'string' || !e[0] || e[0].length > 64) continue;
+      const ms = Math.max(0, Math.min(white, Number(e[1]) || 0));
+      if (ms > 0) bys.set(e[0], ms);
+    }
+  }
+  S._nmlSelf = { red, white, by, bys, at: now };
   if (red > 0) { S._pvpSkullType = 'red'; S._pvpSkullUntil = now + red; }
   else if (white > 0) { S._pvpSkullType = 'white'; S._pvpSkullUntil = now + white; }
   else { S._pvpSkullType = null; S._pvpSkullUntil = 0; }

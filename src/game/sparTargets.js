@@ -157,12 +157,42 @@ export function notePvpBlow(S, payload, now) {
   }
   if (S._pvpBlows.size >= 32 && !S._pvpBlows.has(other)) S._pvpBlows.clear();
   S._pvpBlows.set(other, at);
+  /* v2.3.3530: and THEIR blows on you, by whom (`hitMeAt`, `attackersNow`):
+     a group that attacks you joins the fight you choose with one window
+     (nmlAsk.js nmlJoinFight) */
+  if (t === me) {
+    if (!(S._pvpHitBy instanceof Map)) S._pvpHitBy = new Map();
+    if (S._pvpHitBy.size >= 32 && !S._pvpHitBy.has(other)) S._pvpHitBy.clear();
+    S._pvpHitBy.set(other, at);
+  }
   return true;
 }
 
 function blowAt(S, key) {
   const m = S && S._pvpBlows;
   return (m instanceof Map && m.get(key)) || 0;
+}
+
+/** v2.3.3530: when `id` last struck YOU (a blow of theirs, landed, blocked or
+ *  dodged: notePvpBlow), or 0. */
+export function hitMeAt(S, id) {
+  const m = S && S._pvpHitBy;
+  return (m instanceof Map && id != null && m.get(String(id))) || 0;
+}
+
+/** v2.3.3530: the players who struck you within FIGHT_QUIET_MS, ids, the most
+ *  recent first -- the ones attacking you in the fight that is on. */
+export function attackersNow(S, now) {
+  const m = S && S._pvpHitBy;
+  if (!(m instanceof Map) || !m.size) return [];
+  const t = typeof now === 'number' ? now : Date.now();
+  const out = [];
+  for (const [id, at] of [...m]) {
+    if (!(t - at < FIGHT_QUIET_MS)) { m.delete(id); continue; }
+    out.push([id, at]);
+  }
+  out.sort((p, q) => q[1] - p[1]);
+  return out.map((p) => p[0]);
 }
 
 /** v2.3.3528: when the bout between you and `id` began -- the first blow
@@ -173,8 +203,10 @@ export function pvpBoutAt(S, id) {
 }
 
 /** You chose to attack `id`: the window's Attack -- to attack them, or since
- *  v2.3.3528 to hit back the one who attacked you (nmlAsk.js nmlAim).  A Map
- *  (an id off the wire), kept short. */
+ *  v2.3.3528 to hit back the one who attacked you (nmlAsk.js nmlAim); since
+ *  v2.3.3530 also one of a group attacking you, once you chose a fight
+ *  (nmlAsk.js nmlJoinFight: no second window).  A Map (an id off the wire),
+ *  kept short. */
 export function chooseFoe(S, id, now) {
   if (!S || id == null) return;
   if (!(S._nmlFoes instanceof Map)) S._nmlFoes = new Map();

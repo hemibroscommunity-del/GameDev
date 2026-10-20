@@ -31,7 +31,10 @@
  *   7. a forfeited piece offered again on the next join is refused;
  *   8. the kill switch: no hit, no skull, nothing taken; caps advertise it;
  *  11. v2.3.3316: the spare amulets, a status tick's kill, the respawn wipe,
- *      a red skull a monster killed with the arm known and unknown.
+ *      a red skull a monster killed with the arm known and unknown;
+ *  12. v2.3.3530: a group attacks you -- every attacker's right to be hit
+ *      back is kept (no red skull for hitting back any of them), counted
+ *      down on its own, stored, sent as `bys`; the kill switch `nmlgroup`.
  */
 import { GameRoom } from '../src/index.js';
 import { NML, nmlTierAt, nmlLevelAt, NML_KEY } from '../src/nomansland.js';
@@ -661,6 +664,116 @@ const ps = (k) => room.playerState[ids[k]];
       { shield: L.shield && L.shield.gid, left });
     L.dying = false; L.dead = false; L.hp = L.maxHp;
   }
+}
+
+// ── 12. v2.3.3530: a group attacks you -- you may hit back every one ────────
+/* The owner: "If you get attacked simultaneously by a group of people you
+   don't need additional windows to approve.  If the 2nd, 3rd, etc people
+   already approved "attack" at you you can immediately hit back at each of
+   them after that."  The white skull remembered one giver, the LAST: with two
+   attackers, hitting back the first gave you a red skull. */
+{
+  const idV = 'bp_nml_gv', idG = 'bp_nml_gg', idH = 'bp_nml_gh', idI = 'bp_nml_gi';
+  const wsV = fakeWs('gv'), wsG = fakeWs('gg'), wsH = fakeWs('gh'), wsI = fakeWs('gi');
+  await join(wsV, idV, 'NmlV'); await join(wsG, idG, 'NmlG'); await join(wsH, idH, 'NmlH'); await join(wsI, idI, 'NmlI');
+  const V = room.playerState[idV], G = room.playerState[idG], H = room.playerState[idH], I = room.playerState[idI];
+  const fresh = (P) => { P._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 }; P.dying = false; P.dead = false; };
+  const hit = async (wsFrom, from, toId, to) => { room._pvpHitLanes && room._pvpHitLanes.clear(); await attack(wsFrom, from, toId, to); };
+  const setup = () => {
+    place(V, at(RING(2)), 7); place(G, at(RING(2) + 60), 7); place(H, at(RING(2), 60), 7); place(I, at(RING(2), -60), 7);
+    fresh(V); fresh(G); fresh(H); fresh(I);
+  };
+  setup();
+  wsV.sent.length = 0;
+  await hit(wsG, G, idV, V);   /* G attacks V */
+  await hit(wsH, H, idV, V);   /* then H */
+  check('a group attacks: both attackers red, the one attacked white, the LAST giver its whiteBy',
+    room._nmlSkullOf(G) === 'r' && room._nmlSkullOf(H) === 'r' && room._nmlSkullOf(V) === 'w' && V._nml.whiteBy === idH, { g: G._nml, h: H._nml, v: V._nml });
+  check('...and BOTH givers\' rights kept, a skull\'s time each (from)', V._nml.from instanceof Map && V._nml.from.get(idG) === NML.SKULL_MS && V._nml.from.get(idH) === NML.SKULL_MS,
+    V._nml.from && [...V._nml.from]);
+  const toV = msgs(wsV, 'nml_skull').pop();
+  const bysIds = toV && Array.isArray(toV.payload.bys) ? toV.payload.bys.map((e) => e[0]).sort() : [];
+  check('...the one attacked is told them all (`bys`: [id, ms left]), `by` still the last',
+    !!toV && toV.payload.by === idH && JSON.stringify(bysIds) === JSON.stringify([idG, idH].sort())
+    && toV.payload.bys.every((e) => e[1] > 0 && e[1] <= NML.SKULL_MS), toV && toV.payload);
+  await hit(wsV, V, idG, G);   /* V hits back the FIRST attacker */
+  check('hitting back the FIRST of the group is no red skull (the bug: whiteBy was the second)', room._nmlSkullOf(V) === 'w' && !(V._nml.red > 0), V._nml);
+  await hit(wsV, V, idH, H);
+  check('...nor the second', room._nmlSkullOf(V) === 'w' && !(V._nml.red > 0), V._nml);
+  await hit(wsV, V, idI, I);
+  check('...but a bystander who never hit you: that is an attack (red)', room._nmlSkullOf(V) === 'r', V._nml);
+
+  /* the mutation: the switch off is the old rule -- the last giver alone */
+  setup();
+  await hit(wsG, G, idV, V); await hit(wsH, H, idV, V);
+  const keep = room._liveFlags;
+  room._liveFlags = { ...(keep || {}), nmlgroup: false };
+  wsV.sent.length = 0;
+  await hit(wsH, H, idV, V);   /* one more blow, to see what V is told with the switch off */
+  const offMsg = msgs(wsV, 'nml_skull').pop();
+  await hit(wsV, V, idG, G);
+  check('mutation: nmlgroup: false is the old rule -- hitting back the first of two is a red skull (the checks above catch it)',
+    room._nmlSkullOf(V) === 'r', V._nml);
+  check('...and no `bys` is sent with it off, `by` alone', !!offMsg && offMsg.payload.by === idH && !('bys' in offMsg.payload), offMsg && offMsg.payload);
+  room._liveFlags = keep;
+
+  /* each giver's right counts down, and goes, on its own */
+  setup();
+  await hit(wsG, G, idV, V); await hit(wsH, H, idV, V);
+  V._nml.from.set(idG, 500);   /* G's blow long ago, H's just now */
+  room._nmlTickAt = Date.now() - 1000;
+  room._tickNml(Date.now());
+  check('the tick counts each right down: G\'s gone, H\'s still runs', !V._nml.from.has(idG) && V._nml.from.get(idH) > NML.SKULL_MS - 2000, [...V._nml.from]);
+  await hit(wsV, V, idG, G);
+  check('...so hitting G now is an attack (red), as G\'s right ran out', room._nmlSkullOf(V) === 'r', V._nml);
+  setup();
+  await hit(wsG, G, idV, V);
+  V._nml.white = 500; V._nml.from.set(idG, 500);
+  room._nmlTickAt = Date.now() - 1000;
+  room._tickNml(Date.now());
+  check('...and the white skull running out takes every right with it', room._nmlSkullOf(V) === null && V._nml.from.size === 0 && V._nml.whiteBy === null, V._nml);
+
+  /* stored, and back on join */
+  setup();
+  await hit(wsG, G, idV, V); await hit(wsH, H, idV, V);
+  room._nmlSave(idV, V);
+  const rec = state._store.get(NML_KEY(idV));
+  check('every right is stored (nml_state: `from`, [id, ms])', !!rec && Array.isArray(rec.from) && rec.from.length === 2
+    && rec.from.every((e) => (e[0] === idG || e[0] === idH) && e[1] > 0), rec);
+  const wsV2 = fakeWs('gv2');
+  await join(wsV2, idV, 'NmlV');
+  const V2 = room.playerState[idV];
+  const back = msgs(wsV2, 'nml_skull').pop();
+  check('...and back on join: both rights, and `bys` sent', V2._nml.from instanceof Map && V2._nml.from.has(idG) && V2._nml.from.has(idH)
+    && !!back && Array.isArray(back.payload.bys) && back.payload.bys.length === 2, { from: V2._nml.from && [...V2._nml.from], back: back && back.payload });
+  /* a record from before v2.3.3530: whiteBy alone, still a right */
+  state._store.set(NML_KEY(idV), { red: 0, white: 60000, whiteBy: idG, forfeit: [] });
+  const wsV3 = fakeWs('gv3');
+  await join(wsV3, idV, 'NmlV');
+  const V3 = room.playerState[idV];
+  place(V3, at(RING(2)), 7); V3.dying = false;
+  await hit(wsV3, V3, idG, G);
+  check('a record from before it (whiteBy, no from) loads, and its giver is still yours to hit back', room._nmlSkullOf(V3) === 'w' && !(V3._nml.red > 0), V3._nml);
+
+  /* FROM_CAP: a mob is kept to the cap, the one with the least time left giving way */
+  setup();
+  V._nml.white = NML.SKULL_MS;
+  for (let k = 0; k < NML.FROM_CAP; k++) { room._nmlFromSet(V._nml, 'bp_mob_' + k); V._nml.from.set('bp_mob_' + k, NML.SKULL_MS - (k + 1) * 1000); }
+  room._nmlFromSet(V._nml, 'bp_mob_new');
+  check('a mob past FROM_CAP keeps the cap: the right with the least time left gives way', V._nml.from.size === NML.FROM_CAP
+    && V._nml.from.has('bp_mob_new') && !V._nml.from.has('bp_mob_' + (NML.FROM_CAP - 1)) && V._nml.from.has('bp_mob_0'), [...V._nml.from.keys()]);
+
+  /* the caps */
+  const wsJ = fakeWs('gj');
+  await join(wsJ, 'bp_nml_gj', 'NmlJ');
+  const sync = wsJ.sent.find((m) => m.type === 'state_sync');
+  check('caps.nmlgroup is advertised', !!sync && sync.caps && sync.caps.nmlgroup === true, sync && sync.caps && sync.caps.nmlgroup);
+  room._liveFlags = { ...(keep || {}), nmlgroup: false };
+  const wsK2 = fakeWs('gk');
+  await join(wsK2, 'bp_nml_gk', 'NmlK2');
+  const sync2 = wsK2.sent.find((m) => m.type === 'state_sync');
+  check('...and nmlgroup: false un-advertises it', !!sync2 && sync2.caps && sync2.caps.nmlgroup === false, sync2 && sync2.caps && sync2.caps.nmlgroup);
+  room._liveFlags = keep;
 }
 
 if (failures) { console.log(`\n${failures} FAILURE(S)`); process.exit(1); }
