@@ -489,6 +489,8 @@ Style: crisp pixel art like the attached townsfolk: hard-edged square pixels, no
 
 Beastmaster Bro stands beside the Woodworker and gives the trapping quests (v2.3.3121). Until your picture comes he wears Diego's coat in green with a Snowling at his side, made by `tools/make_beastmaster.py` from art the game already has.
 
+Since v2.3.3486 **Woodworker Bro** and **Farmer Bro** stand in the Wheel's BroTown too, as givers of the tour's quests (docs/specs/demo-quest-line.md) and keepers of the Woodworker and the Feed & Seed. Until your pictures come they are stand-ins made by `tools/make_tour_townsfolk.py` from art the game already has: Woodworker Bro is the old shop clerk in a green cap and a canvas apron, Farmer Bro is Diego's figure in a straw hat and denim. The prompts above (sheet 1: numbers 3 and 5) are theirs; when a picture arrives, it replaces `public/sprites/npc/woodworker-bro.webp` or `farmer-bro.webp` (256 x 256, feet on y = 223, and the head crop beside it).
+
 ### Beastmaster Bro: his figure
 
 - **In the game:** Standing east of the Woodworker's steps in BroTown, and his head in the dialogue window (a crop of the same picture).

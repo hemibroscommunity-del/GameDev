@@ -32,6 +32,8 @@
  *      order, tested along the step; a win before Lil Bro's time credits and
  *      saves, a late one does not; leaving the Wheel ends it; the switch.
  *  10. The tour's tail: beast_2 hands on to tut_2, tut_2 to tut_3.
+ *  11. The owner's levers: /dev/tour jumps to a step, /dev/questcount sets a
+ *      counted step's count.
  */
 import { GameRoom } from '../src/index.js';
 import { QUEST_REWARDS, QUEST_RETIRED, WOODWORKING_TIERS, BLACKSMITH_TIERS, COOKING_RECIPES, SHOP_ITEMS } from '../src/data.js';
@@ -489,6 +491,40 @@ const accept = (P, questId) => send(P.ws, 'quest_accept', { questId });
   const c0 = P.ps.coins;
   await turnIn(P, 'tut_2', { xpCat: 'sword' });
   check('tut_2, the finale: four snowman remains, 200 gold, and on to tut_3', P.ps._quests.tut_2 === 'turnedIn' && P.ps.coins === c0 + 200 && P.ps._quests.tut_3 === 'available', P.ps._quests);
+}
+
+// ── 11. the owner's levers: jump the tour to a step, set a counted step ──
+{
+  const P = await fresh('bp_tour_lever');
+  const r = room._devTour('bp_tour_lever', { at: 'race_1' });
+  const before = ['tut_1', 'farm_1', 'smith_1', 'smith_2', 'wood_1', 'wood_2', 'fish_1', 'farm_2'];
+  check('/dev/tour: every step before race_1 handed in, race_1 offered, the steps after it forgotten, the tools given',
+    r.ok && r.step === 9 && r.of === 12 && before.every((q) => P.ps._quests[q] === 'turnedIn')
+      && P.ps._quests.race_1 === 'available' && !P.ps._quests.beast_1 && !P.ps._quests.tut_2
+      && ['mining_pickaxe', 'woodcutting_axe', 'fishing_pole'].every((k) => P.ps.inventory[k] === 1),
+    { r, q: P.ps._quests, inv: P.ps.inventory });
+  await accept(P, 'race_1');
+  check('...and the worker takes it from there (race_1 accepted)', P.ps._quests.race_1 === 'active', P.ps._quests);
+  const back = room._devTour('bp_tour_lever', { at: 'smith_1' });
+  check('...jumped back, the later steps are forgotten (race_1 too) and the tools are not given twice',
+    back.ok && P.ps._quests.smith_1 === 'available' && !P.ps._quests.race_1 && !P.ps._quests.smith_2
+      && P.ps.inventory.mining_pickaxe === 1 && P.ps.inventory.fishing_pole === 1, { back, q: P.ps._quests, inv: P.ps.inventory });
+  check('/dev/tour: a quest off the tour (beast_3), or none, is refused', !room._devTour('bp_tour_lever', { at: 'beast_3' }).ok
+    && !room._devTour('bp_tour_lever', {}).ok);
+  const off = room._devQuestCount('bp_tour_lever', { quest: 'farm_1', n: 3 });
+  room._devTour('bp_tour_lever', { at: 'farm_1' });
+  await accept(P, 'farm_1');
+  const on = room._devQuestCount('bp_tour_lever', { quest: 'farm_1', n: 3 });
+  check('/dev/questcount: refused while the quest is not active; set while it is, and it hands in',
+    !off.ok && on.ok && P.ps._questKills.farm_1 === 3, { off, on });
+  await turnIn(P, 'farm_1');
+  check('...the seeded farm_1 handed in, smith_1 next', P.ps._quests.farm_1 === 'turnedIn' && P.ps._quests.smith_1 === 'available', P.ps._quests);
+  room._devTour('bp_tour_lever', { at: 'smith_2' });
+  await accept(P, 'smith_2');
+  const big = room._devQuestCount('bp_tour_lever', { quest: 'smith_2', n: 5000 });
+  const neg = room._devQuestCount('bp_tour_lever', { quest: 'smith_2', n: -4 });
+  check('/dev/questcount: an unknown quest is refused, a count is clamped to 0-999',
+    !room._devQuestCount('bp_tour_lever', { quest: 'nope', n: 1 }).ok && big.n === 999 && neg.n === 0 && P.ps._questKills.smith_2 === 0, { big, neg });
 }
 
 Date.now = realNow;

@@ -3177,6 +3177,53 @@ remnant to migrate server-side, not a mode to preserve.
         nothing (groundLoot.js `S._dying`): TRAPS §233;
       - combat-lifecycle §5, `mp-deathpile` (a real death, in real time,
         `BT_DP_TRACE=1` its timeline): item-drop.md "A dead player's pile".
+  - Since v2.3.3486 THE TOUR -- the owner, a week before an exposé where
+    reviewers give each game 20-30 minutes: "my quest line is almost
+    exclusively going to 4 zones to kill monsters and bring their remains back
+    to mayor bro ... Mayor bro would hand off the quest to the next person
+    ... Keep the dialog witty and funny (it's an unserious game bro)":
+    - ONE LINE HANDED FROM GIVER TO GIVER (server/src/data.js QUEST_REWARDS
+      tut_1's header; the phone's QUEST_CHAINS, the header above farm_1):
+      Mayor Bro's exploding slimes (tut_1, first) -> Farmer Bro plants carrots
+      (farm_1) -> Blacksmith Bro, 5 copper ore for 5 bars, then forge your own
+      piece (smith_1/2) -> Woodworker Bro, 5 pine logs for 5 hardened pine,
+      then a bow or staff and a pine one SWAPPED for softwood at the hand-in
+      (wood_1/2, `trade`) -> Diego, 2 cooked fish for 10 cooked clownfish
+      (fish_1) -> Farmer Bro, Zoom Juice (farm_2) -> Lil Bro's race (race_1)
+      -> Beastmaster Bro's traps (beast_1/2, 3 springs) -> the Mayor's
+      burrowing snowmen, the finale (tut_2), then his lands (tut_3/4); each
+      step's `after` (the worker's _questBarred, the phone's getNpcQuest STOP)
+      so only the next step is ever offered; life_1/life_2 RETIRED
+      (QUEST_RETIRED, `retired`: never offered, one held still hands in);
+      every line says why he wants it and who is next; the counted kinds
+      `farm`/`craft`/`cook`/`race` (quests.js QUEST_COUNTED); a hand-in's
+      trade asked on the claim window (QuestPanel TradeChooser);
+    - between steps the gold road leads to the next giver and the pinned card
+      says "Next: <quest> / Talk to <him> <where>" (questRoute.js
+      `tourOffer`); a giver's "how's it going" line opens his building
+      (game/tour.js `opens`, NpcDialogue's `action`); farm_2's Cookhouse is a
+      step's `door`;
+    - Woodworker Bro and Farmer Bro stand in the Wheel (WHEEL_TOWNSFOLK `cap:
+      'tour'`, keepers of their buildings), stand-in pictures by
+      tools/make_tour_townsfolk.py until the owner's; Blacksmith Bro and
+      Diego `quietProgress`;
+    - LIL BRO'S RACE (server/src/race.js, src/game/race.js, RaceHud.jsx,
+      rendering/raceFlags.js): four corner flags round the Town Hall's square
+      and back, judged on every accepted move, Lil Bro 165 px/s (a walk
+      loses, a sprint or Zoom Juice wins), held on the line through the
+      3-second countdown, a false start called; `race_start` / `race_state` /
+      `race_cp` / `race_end` (PRIVILEGED, the direct switch);
+    - ZOOM JUICE: Cookhouse row 9, 3 carrots, 25% faster for 5 minutes;
+    - the gear: copper/iron/black steel SWORDS at Smithing 1/5/10, the forge
+      asks what WEARING asks, bows and staffs from four of their tier's
+      HARDENED wood at Woodworking 1/5/10/15/20, SOFTWOOD free to wear like
+      iron (`caps.tourgear` for the windows);
+    - "REMAINS", not "remnants", wherever a player reads it
+      (src/data/remains.js; the keys stay);
+    - Test panel "Tour: jump to" (`/dev/tour {at}`), `/dev/questcount`;
+      kill switches `tour: false`, `race: false`; `tour` suite, mirror-audit
+      §5a, test-world-core, `mp-questline` (the whole tour, CI's "playable"),
+      `mp-race`: docs/specs/demo-quest-line.md.
   - Since v2.3.3209 THE MONSTER CODEX -- the owner: "After you kill a monster
     you learn more about it, what it does, where it's from, elemental type,
     special attack, (make up a backstory) etc.", "Also include drop tables

@@ -71,7 +71,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.clickText(P, 'Available').catch(() => {});
   await P.page.waitForTimeout(500);
   let pane = await H.bodyText(P);
-  rec.ok('the quest pane offers Mayor Bro\'s first quest', /Cold Reception/.test(pane), pane.slice(0, 300));
+  /* v2.3.3486: the tour's first step, the slimes' "Into the Blue" */
+  rec.ok('the quest pane offers Mayor Bro\'s first quest', /Into the Blue/.test(pane), pane.slice(0, 300));
   rec.ok('...and does NOT offer quests from givers who are not in the world',
     !/First Purchase|First Spark/i.test(pane), pane.slice(0, 600));
   /* v2.3.1704 (owner: "The quest UI is a little confusing what's rewards for
@@ -246,11 +247,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!art && /He hands you now/i.test(art.text), art && art.text.slice(0, 300));
   /* Case-INSENSITIVE deliberately: `art.text` is innerText, which applies the
      CSS `text-transform: uppercase` these captions carry — so the string on
-     the wire here is "FOR FINISHING “COLD RECEPTION”".  (mp-tutorial asserts
+     the wire here is "FOR FINISHING “INTO THE BLUE”" (v2.3.3486: the tour's
+     first step; it was "Cold Reception").  (mp-tutorial asserts
      the same idea against H.bodyText, which reads textContent and is NOT
      transformed — hence the different casing there.  Same fact, two readers.) */
   rec.ok('...and the gold/XP line names the quest it is the reward for',
-    !!art && /for finishing “cold reception”/i.test(art.text), art && art.text.slice(0, 600));
+    !!art && /for finishing “into the blue”/i.test(art.text), art && art.text.slice(0, 600));
 
   /* ── he does NOT recite the controls ── */
   /* v2.3.1831 (owner: "remove the quest dialog from mayor bro about the
@@ -267,7 +269,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* Guard the guard: an empty script would satisfy the line above without
      him having said anything at all. */
   rec.ok('...and he is still saying something — the errand and the handover',
-    /sword and the shield/i.test(script) && /frost ridge/i.test(script),
+    /sword and the shield/i.test(script) && /verdant wilds/i.test(script),
     { script: script.slice(0, 600) });
 
   /* ── accept, then re-check the leak ── */
@@ -325,7 +327,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      applied gold, XP and 'turnedIn' locally, so it LOOKED paid until the next
      player_state took it back.  This walks the whole thing at the giver. */
   const pid = await H.readState(P, (S) => S.myId);
-  await H.grant(wsPort, pid, 'item', { invKey: 'snowman', count: 4 });
+  await H.grant(wsPort, pid, 'item', { invKey: 'slime-remnants', count: TUT1.objective.count });
   await P.page.waitForTimeout(2000);
 
   const tapMayor = async () => {
@@ -373,7 +375,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const paid1 = await H.readState(P, (S) => ({
     quest: S.rpg._quests.tut_1,
     wstash: (S.rpg.weaponStash || []).map((w) => w && w.name),
-    snowman: (S.rpg.inventory || {}).snowman || 0,
+    slime: (S.rpg.inventory || {})['slime-remnants'] || 0,
   }));
   rec.ok('the first quest\'s turn-in completes', paid1.quest === 'turnedIn', paid1);
   rec.ok('the worker pays the bow and the staff into the bag',
@@ -383,16 +385,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!svr1Before && !!svr1After && (svr1After.coins || 0) >= (svr1Before.coins || 0) + TUT1.gold
       && skillOf(svr1After, 'sword') != null && skillsOf(svr1After) === skillsOf(svr1Before),
     { coins: [svr1Before && svr1Before.coins, svr1After && svr1After.coins], skills: [skillsOf(svr1Before), skillsOf(svr1After)] });
-  rec.ok('and the first quest\'s remnants are consumed', paid1.snowman === 0, paid1);
+  rec.ok('and the first quest\'s remains are consumed', paid1.slime === 0, paid1);
 
-  /* ── the claim card and the XP choice, on the second quest ── */
+  /* ── the claim card and the XP choice, on the Mayor's next quest ──
+     v2.3.3486: his next quest is the tour's finale, tut_2 "Cold Reception"
+     (the snowmen), taken only once the tour's other ten steps are handed in
+     (`after`), so the operator's /dev/tour puts this character there -- the
+     steps before it handed in, nothing paid.  It still pays XP, so the
+     chooser is asked on it as before. */
   const TUT2 = QUEST_REWARDS.tut_2;
+  await H.closeNpcDialogue(P).catch(() => {});
+  const _toured = await H.devOp(wsPort, 'tour', pid, { at: 'tut_2' });
+  rec.ok('the tour jumped to the Mayor\'s snowmen (tut_2 on offer) (guard)', !!_toured && _toured.ok === true, _toured);
+  await P.page.waitForTimeout(1500);
+  await tapMayor();
   const _landedOffer2 = await H.advanceNpcDialogue(P);
-  rec.ok('he goes straight on to his next quest: his lines lead to its offer', _landedOffer2 === 'offer', { _landedOffer2 });
+  rec.ok('the Mayor\'s lines lead to his next quest\'s offer', _landedOffer2 === 'offer', { _landedOffer2 });
   rec.ok('...which can be accepted', await H.confirmQuestOffer(P));
   await P.page.waitForTimeout(1500);
   await H.closeNpcDialogue(P).catch(() => {});
-  await H.grant(wsPort, pid, 'item', { invKey: 'slime-remnants', count: 6 });
+  await H.grant(wsPort, pid, 'item', { invKey: 'snowman', count: TUT2.objective.count });
   await P.page.waitForTimeout(2000);
   await tapMayor();
 
@@ -409,7 +421,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the moment it exists — the chooser is only on screen between "quest ready"
      and "skill picked", which is a hard state to reach by hand. */
   await P.page.screenshot({ path: 'tools/qa/mp/out/questui-chooser.png' }).catch(() => {});
-  rec.ok('with the remnants in hand the giver offers the turn-in',
+  rec.ok('with the remains in hand the giver offers the turn-in',
     /Claim Reward|Choose a skill to train/.test(dlg), dlg.slice(0, 300));
   /* v2.3.1704: the SAME slot that showed the sword and shield now shows the
      bow and staff, so the caption has to say which moment these belong to. */
@@ -417,10 +429,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Case-insensitive because the caption is uppercased in CSS. */
   /* v2.3.3335: the claim card is the second quest's, which hands over no
      item.  Which items FINISHING pays -- the bow and the staff, under "For
-     finishing “Cold Reception”" -- is checked on the first quest's offer above:
+     finishing “Into the Blue”" -- is checked on the first quest's offer above:
      its claim has no card any more. */
-  rec.ok('the claim card is the second quest\'s',
-    /into the blue/i.test(dlg), dlg.slice(0, 400));
+  rec.ok('the claim card is the Mayor\'s snowmen quest\'s',
+    /cold reception/i.test(dlg), dlg.slice(0, 400));
   /* v2.3.1793: asserts the PROPERTY, not the sentence.  This used to require
      the literal string "Train 30 XP into", so restyling the chooser into a
      reward card broke a passing test that had found no bug — the same trap
@@ -492,7 +504,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       quest: S.rpg._quests.tut_2,
       coins: S.rpg.coins,
       bowXp: b ? (b.level || 0) * 1e6 + (b.xp || 0) : 0,
-      slime: (S.rpg.inventory || {})['slime-remnants'] || 0,
+      snowman: (S.rpg.inventory || {}).snowman || 0,
     };
   });
   rec.ok('the turn-in completes', paid.quest === 'turnedIn', paid);
@@ -506,7 +518,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the gold is paid in the STORED blob, not just on screen',
     svrCoinsBefore != null && svrCoinsAfter >= svrCoinsBefore + TUT2.gold,
     { before: svrCoinsBefore, after: svrCoinsAfter, clientSays: paid.coins });
-  rec.ok('and the remnants are consumed', paid.slime === 0, paid);
+  rec.ok('and the remains are consumed', paid.snowman === 0, paid);
 
   await P.ctx.close().catch(() => {});
 }

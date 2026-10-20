@@ -122,7 +122,7 @@ export default function RaceHud({ stateRef }) {
       {lost && <div style={{ fontSize: 11, color: '#B9C1BF', marginTop: 4 }}>Sprint, and drink Zoom Juice at the start line.</div>}
       <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
         {canAgain && <button type="button" data-race-again="" onClick={again} style={Object.assign({}, BTN, PRIMARY)}>Race again</button>}
-        <button type="button" data-race-ok="" onClick={close} style={Object.assign({}, BTN, QUIET)}>OK</button>
+        <button type="button" data-race-ok="" data-esc="" onClick={close} style={Object.assign({}, BTN, QUIET)}>OK</button>
       </div>
     </div>,
     document.body

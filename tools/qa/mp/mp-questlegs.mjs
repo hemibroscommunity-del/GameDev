@@ -28,9 +28,11 @@
  */
 import * as H from './harness.mjs';
 
+/* v2.3.3486: the Mayor's last three -- the tour (his slimes first, then ten
+   steps for the other givers) is put behind this character by the operator's
+   /dev/tour, which pays nothing; tut_4 is the one that pays the greaves */
 const STEPS = [
-  { id: 'tut_1', invKey: 'snowman', count: 4 },
-  { id: 'tut_2', invKey: 'slime-remnants', count: 6 },
+  { id: 'tut_2', invKey: 'snowman', count: 4 },
   { id: 'tut_3', invKey: 'skeleton-remnants', count: 5 },
   { id: 'tut_4', invKey: 'fire-goblin-remnants', count: 6 },
 ];
@@ -46,6 +48,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (S && S.channel) S.channel.send(m);
   }, msg);
 
+  const toured = await H.devOp(wsPort, 'tour', myId, { at: 'tut_2' });
+  rec.ok('the tour is behind this character (setup)', !!toured && toured.ok === true, toured);
+  await P.page.waitForTimeout(900);
   for (const step of STEPS) {
     await send({ type: 'quest_accept', payload: { questId: step.id } });
     await P.page.waitForTimeout(900);
@@ -156,49 +161,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Owner: "Prospectors vest and prospectors greaves are the wrong description
      of quest awards for iron torso and iron legs for mining quest.  Also the
      legs were an earlier reward already so it would just be torso."
-     life_2 paid a two-piece armorSet — a "Prospector's Vest" AND a
-     "Prospector's Greaves" — while tut_4 above had already paid Iron Greaves
-     since v2.3.1692.  Nothing errored: armour overflows to the bag rather
-     than dressing you (v2.3.1695), so the second pair of legs simply appeared
-     in the stash next to the first, under a name from a family that matched
-     nothing else the player owned.
-     This belongs in THIS scenario rather than a new one precisely because the
-     bug is a relationship BETWEEN the two quests — the assertion that matters
-     is that the legs stash still holds exactly the one pair tut_4 paid after
-     the mining quest has also been turned in, which only a run that walks
-     both arcs can make.
-     Driven over the wire (the DOM paths for accept/turn-in are covered by
-     mp-tutorial and mp-questui); what is under test here is the payout. */
-  const LIFE = [
-    { id: 'life_1', invKey: 'cooked_fish_minnow', count: 2 },
-    { id: 'life_2', invKey: 'ore_copper', count: 5 },
-  ];
-  for (const step of LIFE) {
-    await send({ type: 'quest_accept', payload: { questId: step.id } });
+     life_2 paid a two-piece armorSet beside tut_4's greaves, so a second pair
+     of legs appeared in the stash.
+     v2.3.3486: life_1 and life_2 are RETIRED -- their errands and tools went
+     to the tour's givers (Diego's fish, Blacksmith Bro's ore, which pays bars
+     you forge yourself), and the worker refuses to start either.  So what is
+     left to pin is the same relationship from the other side: asked for the
+     two old quests, the worker starts neither, and the whole arc still leaves
+     ONE pair of legs, tut_4's. */
+  for (const id of ['life_1', 'life_2']) {
+    await send({ type: 'quest_accept', payload: { questId: id } });
     await P.page.waitForTimeout(900);
-    await H.grant(wsPort, myId, 'item', { invKey: step.invKey, count: step.count });
-    await P.page.waitForTimeout(1200);
-    await send({ type: 'quest_turn_in', payload: { questId: step.id, xpCat: 'sword' } });
-    await P.page.waitForTimeout(1600);
   }
   const mining = await H.adminPlayer(wsPort, myId);
-  rec.ok('the mining quest completed server-side',
-    !!(mining && mining.rpg && mining.rpg._quests && mining.rpg._quests.life_2 === 'turnedIn'),
-    mining && mining.rpg && mining.rpg._quests);
+  const mq = (mining && mining.rpg && mining.rpg._quests) || {};
+  rec.ok('the retired mining and fishing quests cannot be started (the worker refuses them)',
+    mq.life_1 !== 'active' && mq.life_1 !== 'turnedIn' && mq.life_2 !== 'active' && mq.life_2 !== 'turnedIn', mq);
 
   const after2 = await H.readState(P, (S) => ({
     chest: (S.rpg.armorStash || []).map((a) => a && a.name),
     legs: (S.rpg.legsStash || []).map((a) => a && a.name),
     wornLegs: S.rpg.legsArmor && S.rpg.legsArmor.name,
   }));
-  rec.ok('the mining quest pays an IRON TORSO into the chest bag',
-    after2.chest.includes('Copper Torso'), after2);
   /* The name is half the report — "Prospector's" was the family that did not
      exist, so its absence is worth asserting rather than assuming. */
   rec.ok('...and nothing is called "Prospector\'s" anything any more',
     !after2.chest.concat(after2.legs).some((n) => /Prospector/i.test(String(n))), after2);
   /* The headline: ONE pair of legs in the whole arc, and it is tut_4's. */
-  rec.ok('the mining quest pays NO second pair of legs',
+  rec.ok('the whole arc pays ONE pair of legs, tut_4\'s',
     after2.legs.filter((n) => n === 'Copper Greaves').length === 1
     && after2.legs.length === 1, after2);
 

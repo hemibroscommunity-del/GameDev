@@ -46,7 +46,7 @@
  * _applyDamage rather than inventing a second immunity mechanism.
  */
 import { QUEST_ZONE_GATE } from './movement.js';
-import { AMULET_GEMS } from './data.js'; /* v2.3.3187: the kit's polished gems */
+import { AMULET_GEMS, QUEST_FIRST } from './data.js'; /* v2.3.3187: the kit's polished gems; v2.3.3486: where the tour starts */
 import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills a level can be set on */
 import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills whose harvests and cooks are hits */
 import { PROG3 } from './prog3.js'; /* v2.3.3313: the combat skills a level can be set on */
@@ -274,6 +274,70 @@ export const devToolsMethods = {
        because "finish quests" and "open zones" are two different asks and the
        owner should not have to guess which button did what. */
     return { ok: true, finished: finished.length, quests: finished, total: Object.keys(table).length };
+  },
+
+  /* ═══ v2.3.3486: A COUNTED OBJECTIVE, SET ═══
+     {quest, n}: what the worker has counted toward an ACTIVE quest whose
+     objective it counts (quests.js QUEST_COUNTED: a kill, a farm act, a
+     craft, a cook, a race, traps...) -- `_questKills[quest]`, 0 to 999.  The
+     tour's phone scenario (mp-questline) seeds a counted step this way, as it
+     seeds a collected one with an item: the beds, the forge, the Cookhouse
+     and the race each have their own scenario.  Never a hand-in: the quest
+     is still the player's to claim. */
+  _devQuestCount(playerId, body) {
+    const t = this._devTarget(playerId);
+    if (!t) return { ok: false, error: 'player not online' };
+    const ps = t.ps;
+    const quest = body && typeof body.quest === 'string' ? body.quest : '';
+    const table = this._QUEST_REWARDS_DATA();
+    if (!quest || !Object.prototype.hasOwnProperty.call(table, quest)) return { ok: false, error: 'no such quest' };
+    if (!ps._quests || ps._quests[quest] !== 'active') return { ok: false, error: 'quest not active' };
+    const n = Math.max(0, Math.min(999, Math.floor(Number(body.n) || 0)));
+    if (!ps._questKills || typeof ps._questKills !== 'object') ps._questKills = Object.create(null);   /* rule 4 */
+    ps._questKills[quest] = n;
+    this._devPush(playerId, ps);
+    return { ok: true, quest, n };
+  },
+
+  /* ═══ v2.3.3486: JUMP THE TOUR TO A STEP ═══
+     {at}: every step of the tour before `at` handed in (no rewards paid, as
+     "Finish all quests"), `at` offered, and every step after it forgotten,
+     its count too -- so the owner can rehearse any step before the exposé
+     (the Test panel's "Tour: jump to"), and mp-race can start at Lil Bro.
+     The tour is the `next` chain from the first quest to the Mayor's tut_2
+     (data.js QUEST_REWARDS tut_1's header).  The tools the steps before it
+     hand over (the pickaxe, the axe, the rod) are given if missing; the
+     starting kit is the Test panel's own "kit" button. */
+  _devTour(playerId, body) {
+    const t = this._devTarget(playerId);
+    if (!t) return { ok: false, error: 'player not online' };
+    const ps = t.ps;
+    const table = this._QUEST_REWARDS_DATA();
+    const tour = [];
+    for (let q = QUEST_FIRST; q && Object.prototype.hasOwnProperty.call(table, q) && tour.length < 40; q = table[q].next) {
+      tour.push(q);
+      if (q === 'tut_2') break;
+    }
+    const at = body && typeof body.at === 'string' ? body.at : '';
+    const i = tour.indexOf(at);
+    if (i < 0) return { ok: false, error: 'not a step of the tour', tour };
+    if (!ps._quests) ps._quests = Object.create(null);   /* rule 4 */
+    if (!ps._questKills || typeof ps._questKills !== 'object') ps._questKills = Object.create(null);
+    const tools = [];
+    tour.forEach((q, k) => {
+      if (k < i) {
+        ps._quests[q] = 'turnedIn';
+        for (const g of (Array.isArray(table[q].grantOnAccept) ? table[q].grantOnAccept : [])) {
+          if (g && g.kind === 'inv' && g.max === 1 && this._grantQuestItem(ps, g, playerId)) tools.push(g.key);
+        }
+      } else {
+        if (k === i) ps._quests[q] = 'available';
+        else delete ps._quests[q];
+        delete ps._questKills[q];
+      }
+    });
+    this._devPush(playerId, ps);
+    return { ok: true, at, step: i + 1, of: tour.length, tools };
   },
 
   /* ═══ VITALS: refill, and optionally stop taking damage ═══ */
@@ -591,6 +655,8 @@ export const devToolsMethods = {
     else if (path === '/dev/kit') result = this._devKit(playerId, body);
     else if (path === '/dev/vitals') result = this._devVitals(playerId, body);
     else if (path === '/dev/quests') result = this._devFinishQuests(playerId, body);   /* v2.3.2277; v2.3.3121: + except */
+    else if (path === '/dev/tour') result = this._devTour(playerId, body);   /* v2.3.3486: {at} -- the tour jumped to that step (the Test panel's "Tour: jump to") */
+    else if (path === '/dev/questcount') result = this._devQuestCount(playerId, body);   /* v2.3.3486: {quest, n} -- a counted objective's count (the tour's farm, craft, cook, race) */
     else if (path === '/dev/clearwave') result = this._devClearWave(playerId);   /* v2.3.3016 */
     else if (path === '/dev/daily') result = await this._drDev(playerId, body);   /* v2.3.3140: stars, bonus spins, a quest's count; v2.3.3400: a season tier from before the drop (seasonTier) */
     else if (path === '/dev/farmripe') result = await this._devFarmRipe(playerId);   /* v2.3.3127 */

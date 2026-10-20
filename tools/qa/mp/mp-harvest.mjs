@@ -91,7 +91,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      0.4) with a 900 ms telegraphed throw, so an unarmed fresh character can
      reach a node there and still be alive to harvest it.  The scenario is
      about the harvest wire, not about surviving ember. */
-  const spoke = marks.spokes.find((s) => s.zoneId === 'frost') || marks.spokes[0];
+  const spoke = marks.spokes.find((s) => s.zoneId === H.FIRST_LAND) || marks.spokes[0];   /* v2.3.3486: the land tut_1 opens (Frost Ridge until the tour) */
   /* Re-STAND rather than wait once.  A trail-head fires from the game loop's
      proximity scan, and a single position write can land on a frame the loop
      skips (a zone-loading overlay, a dropped rAF) — which reads as "the town

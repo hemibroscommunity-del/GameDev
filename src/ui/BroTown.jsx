@@ -5261,10 +5261,10 @@ export var BroTown = function BroTown(_ref0) {
            behind the loading overlay (zoneTransitions.js), freeze the
            player at the hub exit so the proximity trigger stays armed and
            the entry runs the instant the load resolves. */
-        if (S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold) finalSpd = 0;
+        if (S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold) finalSpd = 0;   /* v2.3.3136: _farmArtHold -- veiled while your farm loads (game/farmTrip.js); v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
         /* v2.3.3486: on the line for Lil Bro's countdown (game/race.js) -- the
            worker calls a lap begun away from it a false start */
-        if (raceHeld(S)) finalSpd = 0;   /* v2.3.3136: _farmArtHold -- veiled while your farm loads (game/farmTrip.js); v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
+        if (raceHeld(S)) finalSpd = 0;
         /* v2.3.2996: a monster's element on you -- a snowman's chill walks you
            at CHILL_MULT, a blue slime's goo holds you where you stand
            (game/elemHits.js; the worker said so on the hit). */

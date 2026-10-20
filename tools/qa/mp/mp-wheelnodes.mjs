@@ -14,7 +14,8 @@
  *   1. the worker advertises caps.wheelnodes and the Wheel's zone_state brings
  *      every node -- but with no tools in the bag none is drawn (v2.3.1680's
  *      rule, unchanged);
- *   2. the gold road of "Learn a Trade" (life_1) leads to the NEAREST fishing
+ *   2. the gold road of Diego's "Something Fishy" (fish_1; "Learn a Trade" until
+ *      v2.3.3486) leads to the NEAREST fishing
  *      spot (it led nowhere in the Wheel before);
  *   3. at a fishing spot by town there are FISH, in the water: the spot and
  *      everywhere they swim is water as the ground is DRAWN, and the
@@ -108,16 +109,22 @@ async function body({ P, wsPort, rec, OUT, errors }) {
     tools: ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe'].filter((k) => ((window._gameState.current.rpg || {}).inventory || {})[k] > 0) }));
   rec.ok('with no tools in the bag, no node of the Wheel\'s is drawn -- nor marked on the minimap', bare.tools.length === 0 && !!bare.wn && bare.wn.total > 100 && bare.wn.drawn === 0 && bare.fish === 0 && bare.mini === 0, bare);
 
-  /* ── the tools, the way a player gets them: life_1 hands you the axe and
-     the pole; the pickaxe is life_1's REWARD, so it is granted.  life_1 ALONE
-     for now: a quest that names a land (tut_1's) wins the road over an "any
-     zone" one (questTargetZone), and the commons' spot is inside the Mayor's
-     gate anyway ── */
+  /* ── the tools, the way a player gets them ──
+     v2.3.3486: the tour hands them out one giver at a time -- Blacksmith
+     Bro's ore errand the pickaxe, Woodworker Bro's logs the axe, Diego's
+     "Something Fishy" (fish_1) the rod, on accepting each.  The operator's
+     /dev/tour puts this character at Diego's step (the steps before it handed
+     in, their tools in the bag, nothing paid), and fish_1 is accepted over
+     the wire.  fish_1 ALONE is active: a quest that names a land wins the
+     road over an "any zone" one (questTargetZone), and its first step is a
+     fishing spot (the steps of life_1, which it took over) ── */
+  const toured = await H.devOp(wsPort, 'tour', myId, { at: 'fish_1' });
+  rec.ok('the tour jumped to Diego\'s fish (fish_1 on offer) (guard)', !!toured && toured.ok === true, toured);
+  await P.page.waitForTimeout(800);
   await P.page.evaluate(() => {
     const S = window._gameState.current;
-    S.channel.send({ type: 'quest_accept', payload: { questId: 'life_1' } });
+    S.channel.send({ type: 'quest_accept', payload: { questId: 'fish_1' } });
   });
-  await H.grant(wsPort, myId, 'item', { invKey: 'mining_pickaxe', count: 1 }).catch(() => {});
   await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 15 });
   const tools = await H.waitFor(P, (S) => ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe'].filter((k) => ((S.rpg || {}).inventory || {})[k] > 0).length,
     (n) => n === 3, { timeout: 20000, label: 'the tools reach the bag' }).catch(() => 0);
@@ -150,7 +157,7 @@ async function body({ P, wsPort, rec, OUT, errors }) {
   }, [type, !!workable]);
   const road1 = await H.waitFor(P, () => (window.__btMinimap && window.__btMinimap.quest) || null, (q) => !!q && typeof q.x === 'number', { timeout: 10000, label: 'the road' }).catch(() => null);
   const spot = await nearest('fishSpot');
-  rec.ok('the gold road of "Learn a Trade" leads to the nearest fishing spot',
+  rec.ok('the gold road of Diego\'s "Something Fishy" leads to the nearest fishing spot',
     !!road1 && !!spot && road1.x === Math.round(spot.x) && road1.y === Math.round(spot.y), { road1, spot });
   rec.ok('...one of the safe ground\'s, a minnow pond (tier 1, the commons)', !!spot && spot.tier === 1 && /^wn-commons-/.test(spot.id), spot);
   if (!spot) return;
@@ -360,9 +367,14 @@ async function body({ P, wsPort, rec, OUT, errors }) {
     return best;
   });
   rec.ok('a land\'s levels 1-10 grow iron (guard)', !!iron && iron.name === 'Iron Ore', iron);
-  /* out past the Mayor's gate now: tut_1 arms you and opens it */
-  await P.page.evaluate(() => { window._gameState.current.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } }); });
-  await H.waitFor(P, (S) => ((S.rpg || {})._quests || {}).tut_1 || null, (v) => v === 'active', { timeout: 10000, label: 'tut_1' }).catch(() => null);
+  /* out past the Mayor's gate now: tut_1 arms you and opens it
+     (v2.3.3486: the tour's jump above handed it in already, which opens it
+     too -- accepted only when it is still to take) */
+  const tut1 = await H.readState(P, (S) => ((S.rpg || {})._quests || {}).tut_1 || null);
+  if (tut1 !== 'turnedIn') {
+    await P.page.evaluate(() => { window._gameState.current.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } }); });
+    await H.waitFor(P, (S) => ((S.rpg || {})._quests || {}).tut_1 || null, (v) => v === 'active', { timeout: 10000, label: 'tut_1' }).catch(() => null);
+  }
   await closeTalk(P);
   if (iron) {
     /* to the vein's side, so the picture shows it beside the bro rather than

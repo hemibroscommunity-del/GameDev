@@ -134,12 +134,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const myId = await H.readState(P, (S) => S.myId);
     await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
 
-    /* ── 1. "Learn a Trade": the axe and the pole, not the pickaxe ── */
-    await P.page.evaluate(() => { window._gameState.current.channel.send({ type: 'quest_accept', payload: { questId: 'life_1' } }); });
+    /* ── 1. the axe and the pole, not the pickaxe ──
+       v2.3.3486: "Learn a Trade" is retired -- the tour's givers hand the
+       tools out one by one (Blacksmith Bro the pickaxe, Woodworker Bro the
+       axe, Diego the rod), so a player can walk the commons with some and not
+       others; the two are put in the bag directly */
+    await H.grant(wsPort, myId, 'item', { invKey: 'woodcutting_axe', count: 1 });
+    await H.grant(wsPort, myId, 'item', { invKey: 'fishing_pole', count: 1 });
     await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 20 });
     const tools = await H.waitFor(P, (S) => ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe'].filter((k) => ((S.rpg || {}).inventory || {})[k] > 0),
       (t) => t.length === 2, { timeout: 20000, label: 'the axe and the pole' }).catch(() => null);
-    rec.ok(`on "Learn a Trade": the axe and the pole in the bag, no pickaxe (${tools}) (guard)`, !!tools && tools.indexOf('mining_pickaxe') < 0, tools);
+    rec.ok(`the axe and the pole in the bag, no pickaxe (${tools}) (guard)`, !!tools && tools.indexOf('mining_pickaxe') < 0, tools);
     await closeTalk(P);
 
     /* ── a copper vein by town with open ground either side of it, and no

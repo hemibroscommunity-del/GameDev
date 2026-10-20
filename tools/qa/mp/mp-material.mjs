@@ -119,24 +119,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState && window._gameState.current;
     if (S && S.channel) S.channel.send(m);
   }, msg);
-  /* life_2 pays the tier-one TORSO for five ore — the copper-ore quest the
-     owner named ("you mine copper ore"). */
-  await send(A, { type: 'quest_accept', payload: { questId: 'life_1' } });
-  await A.page.waitForTimeout(900);
-  await H.grant(wsPort, aId, 'item', { invKey: 'cooked_fish_trout', count: 2 });
+  /* v2.3.3486: the tier-one TORSO is FORGED now -- Blacksmith Bro's ore
+     errand in the tour pays five copper bars, and the forge's Armor tab makes
+     a torso from four (armorforge.js), "your choice" of a sword, a chest plate
+     or greaves.  life_2, which paid it for five ore, is retired. */
+  await H.grant(wsPort, aId, 'item', { invKey: 'bar_copper', count: 4 });
   await A.page.waitForTimeout(1000);
-  await send(A, { type: 'quest_turn_in', payload: { questId: 'life_1', xpCat: 'sword' } });
-  await A.page.waitForTimeout(1400);
-  await send(A, { type: 'quest_accept', payload: { questId: 'life_2' } });
-  await A.page.waitForTimeout(900);
-  await H.grant(wsPort, aId, 'item', { invKey: 'ore_copper_ore', count: 5 });
-  await A.page.waitForTimeout(1000);
-  await send(A, { type: 'quest_turn_in', payload: { questId: 'life_2', xpCat: 'sword' } });
-  await A.page.waitForTimeout(2000);
+  await send(A, { type: 'forge_armor', payload: { recipe: 'copper_torso' } });
+  await H.waitFor(A, (S) => (S.rpg.armorStash || []).some((a) => a && a.name === 'Copper Torso'),
+    (v) => v === true, { timeout: 15000, label: 'the forged torso reaches the bag' }).catch(() => {});
 
   const stash = await H.readState(A, (S) => (S.rpg.armorStash || [])
     .map((a) => ({ name: a && a.name, mat: a && a.mat })));
-  rec.ok('the mining quest pays a COPPER torso',
+  rec.ok('the forge makes a COPPER torso from four copper bars',
     stash.some((a) => a.name === 'Copper Torso'), stash);
   rec.ok('...and the piece carries its material into the bag (the art depends on it)',
     stash.some((a) => a.name === 'Copper Torso' && a.mat === 'copper'), stash);
@@ -153,10 +148,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (window.__btSyncArmorLayers) window.__btSyncArmorLayers(R);
     return 'worn';
   });
-  rec.ok('the quest piece can be worn', wore === 'worn', wore);
+  rec.ok('the forged piece can be worn', wore === 'worn', wore);
   await A.page.waitForTimeout(1800);
   const wornTint = armour(await gearTints(A)).find((x) => x.slot === 'chest');
-  rec.ok('a worn quest torso renders in COPPER, from its material alone',
+  rec.ok('a worn forged torso renders in COPPER, from its material alone',
     !!wornTint && wornTint.visible && wornTint.tint === COPPER, wornTint);
 
   /* ── and the other player sees it ──

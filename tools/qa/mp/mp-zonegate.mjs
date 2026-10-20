@@ -37,22 +37,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const myId = await H.readState(P, (S) => S.myId);
 
   /* tut_1 names FROST.  Accepting it also clears the v2.3.1676 town gate, so
-     this one accept is what makes the rest of the file reachable at all. */
+     this one accept is what makes the rest of the file reachable at all.
+     v2.3.3486: tut_1 names the VERDANT WILDS since the tour put the slimes
+     first (H.FIRST_LAND, read off the worker's table) -- "frost" below is
+     the land tut_1 opens, whichever that is. */
   await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
     if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } });
   });
   await P.page.waitForTimeout(1800);
 
-  const marks = await P.page.evaluate(() => {
+  const marks = await P.page.evaluate((first) => {
     const f = window._gameFns;
     if (!f || !f.WORLDVIEW_EXITS || !f.TOWN_EXITS) return { err: 'no exit tables on the bridge' };
     return {
       townExit: f.TOWN_EXITS.find((e) => e.zoneId === 'worldview') || null,
-      frost: f.WORLDVIEW_EXITS.find((e) => e.zoneId === 'frost') || null,
+      frost: f.WORLDVIEW_EXITS.find((e) => e.zoneId === first) || null,
       ember: f.WORLDVIEW_EXITS.find((e) => e.zoneId === 'ember') || null,
     };
-  });
+  }, H.FIRST_LAND);
   if (marks.err || !marks.townExit || !marks.frost || !marks.ember) {
     rec.skip('zone gating', marks.err || 'exit markers missing');
     await P.ctx.close().catch(() => {});
@@ -81,11 +84,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and you are still in the hub, not stranded',
     (await zoneOf(P)) === 'worldview', { zone: await zoneOf(P) });
 
-  /* ── OPEN: frost is what tut_1 names ── */
+  /* ── OPEN: the land tut_1 names (H.FIRST_LAND) ── */
   await stand(P, marks.frost.tx, marks.frost.ty);
-  await H.waitFor(P, (S) => S.currentZone, (z) => z === 'frost', 12000).catch(() => {});
+  await H.waitFor(P, (S) => S.currentZone, (z) => z === H.FIRST_LAND, 12000).catch(() => {});
   const afterFrost = await zoneOf(P);
-  rec.ok('the spoke your quest NAMES lets you through', afterFrost === 'frost', { afterFrost });
+  rec.ok('the spoke your quest NAMES lets you through', afterFrost === H.FIRST_LAND, { afterFrost });
   /* Poll rather than read once: the zone change re-registers the player with
      the room, so a single read can land in the gap and come back empty — which
      is indistinguishable from "the worker disagrees" if you assert on it. */
@@ -101,11 +104,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (let i = 0; i < 16; i++) {
     const got = await H.serverPlayer(wsPort, myId);
     if (got && got.zone) srvFrost = got;
-    if (srvFrost && srvFrost.zone === 'frost') break;
+    if (srvFrost && srvFrost.zone === H.FIRST_LAND) break;
     await P.page.waitForTimeout(500);
   }
   rec.ok('...and the WORKER put you there too (the client is not pretending)',
-    !!(srvFrost && srvFrost.zone === 'frost'), { workerZone: srvFrost && srvFrost.zone });
+    !!(srvFrost && srvFrost.zone === H.FIRST_LAND), { workerZone: srvFrost && srvFrost.zone });
 
   await P.ctx.close().catch(() => {});
 }

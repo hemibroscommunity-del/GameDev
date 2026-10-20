@@ -5904,6 +5904,10 @@ export const NPC_DATA = [{
 }, {
   id: 'shopkeeper_bro',
   name: 'Diego',
+  /* v2.3.3486: a giver of the tour now (fish_1): while it runs, walking up to
+     him still opens his SHOP (BroTown's proximity opener skips a quiet
+     giver's "how's it going"); a tap or E answers about the fish */
+  quietProgress: true,
   /* The south strip. `sprite` is what npcSpriteScale keys on and what the
      preloader lists; the renderer binds a sliced FRAME rather than this raw
      strip (see entityRenderer v2.3.2046), so the four-in-one image is never
@@ -6014,6 +6018,11 @@ export const NPC_DATA = [{
      same reason his NAME is not -- getNpcQuest keys on the name, not on this,
      but keeping the two consistent avoids inviting the mistake. */
   plateRole: 'Blacksmith',
+  /* v2.3.3486: a giver of the tour now (smith_1, smith_2), at his forge's
+     steps: walking past him to its door does not stop you to say how his
+     quest is going (BroTown's proximity opener) -- an offer or a claim
+     still opens by itself, and a tap or E answers */
+  quietProgress: true,
   sprite: '/sprites/npc/blacksmith-bro.webp',
   portrait: '/sprites/npc/blacksmith-bro-head.webp',
   avatar: '🔨',
