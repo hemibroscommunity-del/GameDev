@@ -1,4 +1,4 @@
-/* ═══ v2.3.3494: THE QUEST YOU TRACK, ONE ANSWER FOR EVERY READER ═══
+/* ═══ v2.3.3522: THE QUEST YOU TRACK, ONE ANSWER FOR EVERY READER ═══
  *
  * The owner, playtesting: "I tapped track quest in quest menu but no golden
  * stars were in minimap (I had two active quests - one from beast master and

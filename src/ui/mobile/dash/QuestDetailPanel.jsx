@@ -265,7 +265,7 @@ export const QuestDetailPanel = () => {
       )}
 
       {/* Track toggle — active quests only (a pin for "what am I doing").
-          v2.3.3494: and now the minimap's star, the world map's gold road and
+          v2.3.3522: and now the minimap's star, the world map's gold road and
           the pinned quest card follow it (game/trackedQuest.js, questRoute.js;
           the owner: "I tapped track quest in quest menu but no golden stars
           were in minimap"); data-quest-track for mp-trackquest */}
@@ -292,7 +292,7 @@ export const QuestDetailPanel = () => {
           }}
         >{tracked ? '★ Tracked — tap to untrack' : '☆ Track this quest'}</button>
       )}
-      {/* v2.3.3494: what tracking does, said once it is on */}
+      {/* v2.3.3522: what tracking does, said once it is on */}
       {status === 'Active' && tracked && (
         <div data-quest-track-note="" style={{ fontSize: 11, color: COL.muted, padding: '6px 2px 0', textAlign: 'center' }}>
           Your map's gold star follows this quest.

@@ -42,7 +42,7 @@ const LIGHT = (r, g, b) => NEUTRAL(r, g, b) && Math.min(r, g, b) >= 185;
 const INK = (r, g, b) => NEUTRAL(r, g, b) && Math.max(r, g, b) <= 165;
 const MIN_LIGHT = 18;
 
-/* ═══ v2.3.3494: A PLAYER'S BUBBLE IS DARK ═══
+/* ═══ v2.3.3522: A PLAYER'S BUBBLE IS DARK ═══
    The owner: "Make Npc dialog boxes white. Keep players the darker color to
    differentiate" (game/bubbleSkins.js) -- so the line this scene says, a
    player's, is drawn dark: Lantern Slate's slate with warm-white words, or in
@@ -86,10 +86,10 @@ function skinPredicates(probe) {
 function measureInk(img, { yTo, yFrom = 0, xFrom = 0, xTo = Infinity, SLAB = LIGHT, INKP = INK, windowed = false }) {
   const { width, height } = img;
   const rows = [];
-  /* v2.3.3494: within the window the probe gives (skinPredicates' note) */
+  /* v2.3.3522: within the window the probe gives (skinPredicates' note) */
   const xa = Math.max(0, Math.floor(xFrom)), xb = Math.min(width, Math.ceil(xTo));
   for (let y = Math.max(0, Math.floor(yFrom)); y < Math.min(height, yTo); y++) {
-    /* v2.3.3494: inside the probe's window a row of the bubble is one carrying
+    /* v2.3.3522: inside the probe's window a row of the bubble is one carrying
        its fill OR its letters -- light letters on a dark bubble leave a text
        row too little fill to count, and broke the stack at the first line */
     let light = 0, x0 = -1, x1 = -1, inked = 0;
@@ -194,14 +194,14 @@ async function say(P, text) {
   await P.page.waitForTimeout(900);
 }
 
-/* v2.3.3494: the player's own bubble's probe (the map keyed by speaker) */
+/* v2.3.3522: the player's own bubble's probe (the map keyed by speaker) */
 const ownBubble = (P) => P.page.evaluate(() => {
   const S = window._gameState && window._gameState.current;
   const m = window.__btChatBubbles;
   return (S && m && m.get(S.myId)) || null;
 });
 
-/* v2.3.3494: where to look, in the screenshot's px -- the box the probe says it
+/* v2.3.3522: where to look, in the screenshot's px -- the box the probe says it
    drew (its point on the screen, its width and height in bubble px times the
    bubble's screen scale), with 12 CSS px to spare -- and the skin's colours.
    A probe that cannot say (an older build) looks where it always did. */
@@ -239,7 +239,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await say(P, SAY);
 
-  /* v2.3.3494: YOUR bubble's probe, by your id -- the single __btChatBubble is
+  /* v2.3.3522: YOUR bubble's probe, by your id -- the single __btChatBubble is
      whichever bubble drew last, and in the Wheel's BroTown that is as often a
      townsperson's line (Diego's, measured) as yours */
   const probe = await ownBubble(P);

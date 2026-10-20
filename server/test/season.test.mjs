@@ -57,7 +57,7 @@ const seasonal = EMOTE_MOVE_IDS.filter((id) => EMOTE_MOVES[id].season);
 check('4a the Zombie Shuffle is Halloween\'s', seasonal.length === 1 && seasonal[0] === 'zombie' && EMOTE_MOVES.zombie.season === 'halloween', seasonal);
 check('4b ...a held dance the worker keeps any day', seasonal.every((id) => EMOTE_MOVES[id].kind === 'hold' && EMOTE_MOVES[id].dance && POSE.IDS.includes(id)));
 
-/* ── 5. v2.3.3494: whose bubble is whose (src/game/bubbleSkins.js) ──────────
+/* ── 5. v2.3.3522: whose bubble is whose (src/game/bubbleSkins.js) ──────────
    The owner: "Make Npc dialog boxes white. Keep players the darker color to
    differentiate."  A townsperson's line (the renderer's 'npc:<id>' key) is the
    white bubble always; a player's is dark always: Halloween's purple in its

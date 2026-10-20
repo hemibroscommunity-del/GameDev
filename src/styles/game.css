@@ -596,14 +596,14 @@
    moves").  Each gets an invisible ring, nothing drawn:
    - a skill pill 2 px above and below, into the grid's 4 px gaps (28 -> 32
      px tall, meeting its neighbour mid-gap; the columns are 4 px apart too,
-     so no sideways growth) -- v2.3.3494: retired with the pills, below;
+     so no sideways growth) -- v2.3.3522: retired with the pills, below;
    - "‹ All skills" into the empty row beside it and the top of the header
      under it (53 x 25 -> ~95 x 39), held to the page's own padding above and
      to its left, where the scroller clips;
    - a row button 4 px up and down, to the rail's own padding, and 2 px into
      each gap (sideways 26 x 40 -> 30 x 48).  ::before, because on a computer
      its ::after is the key cap ([data-key]::after, below). */
-/* v2.3.3494: the skill PILLS are gone (the owner: "Make the lifeskills menu
+/* v2.3.3522: the skill PILLS are gone (the owner: "Make the lifeskills menu
    look more like iPhone apps instead of elongated pills"): each skill is an
    app tile now (SkillsPanel.jsx), its button the tile and its name -- 52 x 68
    px, no ring needed -- and a press shrinks the tile as a home screen's does
@@ -1267,7 +1267,7 @@ body:has(.bt-plist) [data-coach]{display:none}
    28px is under the 44pt touch floor; an invisible inset:-8px pseudo
    grows the TAP target to 44px with zero visual change. */
 .bt-inspect-close::after{content:'';position:absolute;inset:-8px}
-/* ═══ v2.3.3494: THE SHOPS' ✕, BIG AND ALWAYS IN THE CORNER ═══
+/* ═══ v2.3.3522: THE SHOPS' ✕, BIG AND ALWAYS IN THE CORNER ═══
    The owner, playtesting: "Vendor menus need a more prominent escape icon in
    the corner."  A building window's ✕ was a faint 28 px disc (white at 10%, a
    60% grey cross) -- and it was a child of the card that SCROLLS, so in the
@@ -1384,7 +1384,7 @@ body:has(.bt-plist) [data-coach]{display:none}
 /* the tab strip keeps 44px clear on its right for the card's close button, which lies over
    it when there is no picture above (a sideways phone, a picture that cannot load); under a
    picture the button is on the picture and the tabs take the whole width */
-/* v2.3.3494: 44 -> 52, as the close button is 40 px 6 px in from the corner now
+/* v2.3.3522: 44 -> 52, as the close button is 40 px 6 px in from the corner now
    (.bt-xclose, the owner's "more prominent escape icon"): 46 px of it, and air */
 .bt-gw-tabs{padding:12px 52px 12px 14px}
 .bt-room + [data-gem-works] .bt-gw-tabs{padding-right:14px}
@@ -1455,7 +1455,7 @@ body:has([data-infopopup]) [data-world-map-open]::after{display:none}
   [data-ace-flip] .bt-ace-coin{flex:none;transform:scale(.42)}
 }
 /* v2.3.3481: the review -- Ace's ✕ was 18 x 28, made a 44 x 44 press by an
-   invisible ring (.bt-ace-close::before).  v2.3.3494: it is the windows' one
+   invisible ring (.bt-ace-close::before).  v2.3.3522: it is the windows' one
    big ✕ now (.bt-xclose, its own 44 px ring), so the ring went with it. */
 /* v2.3.3481: the review -- the bag's upright filter chips are 26 px tall; an
    invisible ring makes each 41 px, the room between the button row (13 px

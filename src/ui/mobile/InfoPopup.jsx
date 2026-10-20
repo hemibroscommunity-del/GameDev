@@ -26,7 +26,7 @@ import { infoPopupBus } from './infoPopupBus.js';
  * asides.  Registered in src/ui/zLayers.js.
  */
 
-/* v2.3.3494: how long a spend that stays (`action.stay`) may wait for its
+/* v2.3.3522: how long a spend that stays (`action.stay`) may wait for its
    opener to put the window up again before its button comes back by itself */
 const STAY_FALLBACK_MS = 3600;
 
@@ -94,7 +94,7 @@ export const InfoPopup = () => {
   const [stepState, setStepState] = React.useState({ of: null, n: 1 });
   /* v2.3.2696: which "tap to read more" chip is open, per window */
   const [chipState, setChipState] = React.useState({ of: null, key: null });
-  /* ═══ v2.3.3494: A SPEND ON ITS WAY ═══
+  /* ═══ v2.3.3522: A SPEND ON ITS WAY ═══
      The owner, playtesting: "After spending a stat allocation point keep it
      on the menu confirmation window instead of closing it to return to the
      points main screen."  An action marked `stay` (HeroExpanded's spend)
@@ -232,11 +232,11 @@ export const InfoPopup = () => {
     </div>
   )}
   </>);
-  const spending = spendingOf === cur;   /* v2.3.3494 */
+  const spending = spendingOf === cur;   /* v2.3.3522 */
   const spend = () => {
     if (!cur.action || cur.action.blocked) return;
     const run = cur.action.run;
-    /* v2.3.3494: a spend that STAYS (the Points window): the window keeps
+    /* v2.3.3522: a spend that STAYS (the Points window): the window keeps
        its place, "Spending…", and its opener answers with the new numbers */
     if (cur.action.stay) {
       if (spending) return;
@@ -476,7 +476,7 @@ export const InfoPopup = () => {
             {lanesEl}
           </div>
         )}
-        {/* ═══ v2.3.3494: WHAT THE LAST SPEND BOUGHT ═══
+        {/* ═══ v2.3.3522: WHAT THE LAST SPEND BOUGHT ═══
             The window stays after Spend (the owner: "keep it on the menu
             confirmation window"), so it says what just happened: the opener
             puts it up again with the new numbers and this line, in the
@@ -511,7 +511,7 @@ export const InfoPopup = () => {
                 border: 0, borderRadius: 9,
                 fontSize: 12.5, fontWeight: 900, whiteSpace: 'nowrap',
                 cursor: spending ? 'default' : 'pointer', touchAction: 'manipulation',
-                /* v2.3.3494: waiting on the worker -- the same gold, quieter */
+                /* v2.3.3522: waiting on the worker -- the same gold, quieter */
                 opacity: spending ? 0.6 : 1,
               }}>{spending ? 'Spending…' : `Spend ${stepN} point${stepN === 1 ? '' : 's'}`}</button>
           </div>

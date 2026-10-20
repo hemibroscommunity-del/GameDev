@@ -1,4 +1,4 @@
-/* ═══ TRACK A QUEST, AND THE GOLD STAR FOLLOWS IT (v2.3.3494) ═══
+/* ═══ TRACK A QUEST, AND THE GOLD STAR FOLLOWS IT (v2.3.3522) ═══
  *
  * The owner, playtesting: "I tapped track quest in quest menu but no golden
  * stars were in minimap (I had two active quests - one from beast master and
@@ -8,7 +8,7 @@
  * owner's kind of pair: Beastmaster Bro's "Box Traps" and Mayor Bro's "Into
  * the Wild" (Kill 5 monsters) -- taken out of order for the test (the
  * worker's test mode, /dev/testmode), as the owner's own were.  Neither
- * named a land or a resource, so before v2.3.3494 there was no star at all:
+ * named a land or a resource, so before v2.3.3522 there was no star at all:
  *   1. nothing tracked: a star, and the gold road to it -- the first quest
  *      taken leads, Box Traps: the Woodworker's door;
  *   2. the quest log's "Track this quest" on Into the Wild (the real taps:
@@ -117,7 +117,7 @@ async function body({ P, wsPort, rec, errors, OUT }) {
   /* ── 1. nothing tracked ── */
   await P.page.evaluate(() => window.__btTrackedQuest && window.__btTrackedQuest.set(null));
   const s1 = await starWhen(P, (q) => !!q && q.qid === 'beast_1');
-  rec.ok(`1. two quests, one from each giver, nothing tracked: a gold star (before v2.3.3494, none) -- the first taken, Box Traps, at the Woodworker's door (${s1 && s1.x},${s1 && s1.y}), its road drawn`,
+  rec.ok(`1. two quests, one from each giver, nothing tracked: a gold star (before v2.3.3522, none) -- the first taken, Box Traps, at the Woodworker's door (${s1 && s1.x},${s1 && s1.y}), its road drawn`,
     !!s1 && s1.qid === 'beast_1' && s1.way === 'door' && s1.door === 'woodworker' && s1.x === Math.round(ww.x) && s1.y === Math.round(ww.y) && (!!s1.road || s1.edge === true), s1);
   const box = await P.page.evaluate(() => window.__btWheelMini || null);
   const miniClip = box ? { x: box.left - 6, y: box.top - 4, width: box.w + 10, height: box.h + 8 } : undefined;

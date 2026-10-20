@@ -377,7 +377,7 @@ export function ShopkeeperPanel() {
               data-shop-coins above stays the raw number: tests read it. */}
           {Number(coins).toLocaleString()}
         </div>
-        {/* ═══ v2.3.3494: THE SHARED BIG ✕ ═══
+        {/* ═══ v2.3.3522: THE SHARED BIG ✕ ═══
             The owner, playtesting: "Vendor menus need a more prominent escape
             icon in the corner."  It was a 30 px rounded square in the strip's
             own slate; it is the windows' one ✕ now (game.css .bt-xclose: a

@@ -84,7 +84,7 @@ import { noteWheelMusic } from '@/game/wheelMusic.js';      /* v2.3.3064: ...and
 import { BT_AUDIO } from '@/data/gameDisplay.js';
 import { landLook } from '@/data/wheelLands.js';           /* v2.3.3108: the plate's land colour */
 import { landIconTexture, holdLandIcons, releaseLandIcons } from '../wheelSignposts.js';   /* v2.3.3108: the plate's icon */
-import { wheelBuildingIconTexture, holdBuildingIcons, releaseBuildingIcons } from '../wheelBuildingIcons.js';   /* v2.3.3494: each building's picture */
+import { wheelBuildingIconTexture, holdBuildingIcons, releaseBuildingIcons } from '../wheelBuildingIcons.js';   /* v2.3.3522: each building's picture */
 
 export const WHEEL_BOX = 132;      /* CSS px a side (v2.3.3108: across; and tall, the plate included) */
 /* v2.3.3108: THE NAME PLATE (the header's note).  The map's window ends
@@ -161,7 +161,7 @@ const NORTH_R = 6.5, NORTH_Y = FRAME / 2, NORTH_FONT = 9, NORTH_UP = NORTH_R - N
    notch on the footprint's front edge, where the building's steps are. */
 const C_BUILDING = 0xa4553a, C_BUILDING_SHUT = 0x7d8a88, C_BUILDING_KEY = 0x0b161b, C_DOOR = 0xf2e4c2;
 const DOOR_W = 3.5, DOOR_H = 2;
-/* ═══ v2.3.3494: EACH BUILDING WEARS ITS PICTURE ═══
+/* ═══ v2.3.3522: EACH BUILDING WEARS ITS PICTURE ═══
    The owner, playtesting: "Have icons representing each building on each
    building in the minimap/compass."  The footprints said where the buildings
    stand, not which is which; now each wears the picture its Enter button does
@@ -211,7 +211,7 @@ export class WheelMinimap {
     this.marks = new Container();    /* bros and monsters: every frame */
     this.road = new Graphics();      /* v2.3.2992: the gold road to the quest's star (v2.3.3339: redrawn when it moves) */
     this.partyRims = new Graphics(); /* v2.3.3277: your party's marks' rims, over theirs: every frame */
-    this.townIcons = new Container(); /* v2.3.3494: each building's picture: made once, with the town */
+    this.townIcons = new Container(); /* v2.3.3522: each building's picture: made once, with the town */
     this.townIcons.label = 'wheel-minimap-building-icons';
     this.pan.addChild(this.lines, this.buildings, this.townIcons, this.places, this.townMark, this.road, this.marks, this.partyRims);
     this.player = new Sprite(this.icons.self || this.dotTex);
@@ -307,7 +307,7 @@ export class WheelMinimap {
        ours first (a sprite on a destroyed texture throws in the next render) */
     this._iconHold = { clear: () => { this.plateIcon.texture = Texture.EMPTY; this.plateIcon.visible = false; this._plateKey = ''; } };
     holdLandIcons(this._iconHold);
-    /* v2.3.3494: the buildings' pictures go when you leave the Wheel: take the
+    /* v2.3.3522: the buildings' pictures go when you leave the Wheel: take the
        sprites off them first, and make them again on the way back in */
     this._bldIconsOn = false;
     this._bldIconHold = { clear: () => { this._dropTownIcons(); } };
@@ -451,7 +451,7 @@ export class WheelMinimap {
         G.rect(dx, by + bh - DOOR_H, DOOR_W, DOOR_H).fill(C_DOOR);
         this._bld.push({ id: d.id, closed: !!d.closed, x0: Math.round(x0), y0: Math.round(y0), x1: Math.round(x1), y1: Math.round(y1),
           w: +bw.toFixed(1), h: +bh.toFixed(1), doorX: Math.round(d.x), doorY: Math.round(d.y),
-          /* v2.3.3494: its picture's middle, in the pan (box px) */
+          /* v2.3.3522: its picture's middle, in the pan (box px) */
           iconX: +(bx + bw / 2).toFixed(1), iconY: +(by + bh / 2 - BLD_ICON_UP).toFixed(1), icon: false });
       }
     }
@@ -460,7 +460,7 @@ export class WheelMinimap {
     this._buildTownIcons();
   }
 
-  /* ═══ v2.3.3494: THE BUILDINGS' PICTURES (BLD_ICON_PX's note) ═══
+  /* ═══ v2.3.3522: THE BUILDINGS' PICTURES (BLD_ICON_PX's note) ═══
      Once per town, when its footprints are drawn -- or the first frame the
      pictures are there, if the town came first.  A building whose picture did
      not load goes without, and is asked again only when the town is built
@@ -578,7 +578,7 @@ export class WheelMinimap {
     try { doors = wheelTownDoors(); } catch (e) { doors = []; }
     /* (none yet is a fresh [] on every call: nothing to redraw for it) */
     if ((doors.length ? doors : null) !== this._doorsFor) this._buildTown(doors);
-    /* v2.3.3494: the buildings' pictures, if the town was drawn before they
+    /* v2.3.3522: the buildings' pictures, if the town was drawn before they
        had loaded (a flag read a frame; built once) */
     else if (!this._bldIconsOn && this._bld.length) this._buildTownIcons();
 
@@ -803,7 +803,7 @@ export class WheelMinimap {
         frame: FRAME, label: false,   /* v2.3.3009: the frame's width; nothing printed under the box */
         /* v2.3.3108: the map's window ends here, and the plate's two lines */
         h: WHEEL_H, mapBottom: MAP_BOT, plate: plate ? { ...plate, rect: this._plateRect || null } : null,
-        /* v2.3.3494: + whose road it is and where it leads (game/questWays.js) */
+        /* v2.3.3522: + whose road it is and where it leads (game/questWays.js) */
         quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge, road,
           qid: quest.qid || null, way: quest.way || null, door: quest.door || null } : null,
         /* v2.3.3023: the way home: whether town is off the box, whether its
@@ -815,7 +815,7 @@ export class WheelMinimap {
         /* v2.3.3146: the town's buildings drawn (game px boxes, their size in
            the box, their doors), and whether the town's square still shows */
         buildings: this._bld.map((b) => ({ ...b })), townMark: !!this.townMark.visible,
-        /* v2.3.3494: the buildings' pictures on the box (how many, and their
+        /* v2.3.3522: the buildings' pictures on the box (how many, and their
            size, CSS px) */
         buildingIcons: { n: this.townIcons.children.length, px: BLD_ICON_PX },
         scale: SCALE,
@@ -827,7 +827,7 @@ export class WheelMinimap {
 
   destroy() {
     releaseLandIcons(this._iconHold);
-    releaseBuildingIcons(this._bldIconHold);   /* v2.3.3494 */
+    releaseBuildingIcons(this._bldIconHold);   /* v2.3.3522 */
     try { if (window.__btWheelPlate) window.__btWheelPlate = null; } catch (e) { /* no page */ }
     this._dropUnder();
     this._dropLocal();

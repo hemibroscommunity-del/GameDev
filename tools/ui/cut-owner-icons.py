@@ -83,7 +83,7 @@ was a 32 px disc), and written into one 72 x 86 frame, centred (2.25x their
 world size, as the 64 px talk bubble is for 28 world px: a much bigger texture
 only shimmers as the view slides, cut-small-icons.py's note).  All WebP 90.
 
-v2.3.3494: THE BLOCK BUTTON'S PICTURE.  The owner, playtesting: "Block button
+v2.3.3522: THE BLOCK BUTTON'S PICTURE.  The owner, playtesting: "Block button
 needs a new icon."  The button drew the 64 px wood shield the WORLD draws on
 your arm, stretched to 30 px and pixelated -- the one control on the right
 cluster not in the owner's painted style.  Its new face is the owner's own
@@ -154,7 +154,7 @@ PIECES = [
          box=(68, 4, 456, 424), grow=4, css=(34, 37)),
     dict(name='icons/ui/journey-map', src='colorful-rpg-game-ui-asset-sheet.png', mode='alpha',
          box=(1208, 552, 1476, 708), grow=4, css=(120, 69)),
-    # v2.3.3494: the Block button's face (the header's note) -- a round button
+    # v2.3.3522: the Block button's face (the header's note) -- a round button
     # of its own, so the disc inside its ring, 160 px like every control picture
     dict(name='ui/controls/abil-block', src='brotown-rpg-ui-asset-sheet-1.png', mode='disc',
          box=(293, 856, 416, 983), grow=4, px=160, control_grey=True),
@@ -164,7 +164,7 @@ _csi = None
 
 
 def small_icons_tool():
-    """v2.3.3494: cut-small-icons.py, read once (its file name has hyphens, so
+    """v2.3.3522: cut-small-icons.py, read once (its file name has hyphens, so
     it is loaded by path): the round control pictures' inner_disc, fit_disc and
     grey live there, and are used from there rather than copied."""
     global _csi
@@ -381,7 +381,7 @@ def main():
                   f' scene {im.width}x{im.height}')
             out = im
         elif p['mode'] == 'disc':
-            # v2.3.3494: a round button's face -- the disc inside its own ring
+            # v2.3.3522: a round button's face -- the disc inside its own ring
             csi = small_icons_tool()
             out = csi.fit_disc(csi.inner_disc(im), p['px'])
             print(f'  {short:16s} cut {raw[0]}x{raw[1]} -> the disc inside its ring, {out.width}x{out.height}')
@@ -399,7 +399,7 @@ def main():
             cuts.append((p['name'] + '-grey', g))
             writes.append((p['name'] + '-grey', g))
         if p.get('control_grey'):
-            # v2.3.3494: the controls' grey palette, as every -grey control picture
+            # v2.3.3522: the controls' grey palette, as every -grey control picture
             g = small_icons_tool().grey(out)
             cuts.append((p['name'] + '-grey', g))
             writes.append((p['name'] + '-grey', g))

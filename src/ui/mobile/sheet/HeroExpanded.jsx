@@ -126,14 +126,14 @@ const POINT_LANES = ['sword', 'staff', 'bow']
    the same chain for a character level-up and a second copy would drift. */
 const SHARED_ICON_FALLBACK = PORTRAIT_FALLBACK_SRC;
 
-/* v2.3.3494: the points a stat holds -- a weapon stat in its lane, a shared
+/* v2.3.3522: the points a stat holds -- a weapon stat in its lane, a shared
    stat in the shared pool -- as the Points window's spend reads them (the
    window that stays after Spend counts what landed by it) */
 function statPtsIn(R, st, laneCat) {
   if (!R || !st) return 0;
   return Number(st.atk ? prog3AtkPts(R, laneCat, st.key) : prog3Pts(R, st.key)) || 0;
 }
-/* v2.3.3494: how long the window that stays waits for the worker to spend
+/* v2.3.3522: how long the window that stays waits for the worker to spend
    every point sent before it is put up again with what did land (InfoPopup
    gives its button back a beat after, STAY_FALLBACK_MS) */
 const STAY_WAIT_MS = 3000;
@@ -151,7 +151,7 @@ export const HeroExpanded = () => {
   const [buildCatState, setBuildCat] = useState(null);
   /* v2.3.3051: the held weapon's lane last render, to notice a swap */
   const heldCatRef = useRef(undefined);
-  /* ═══ v2.3.3494: THE POINTS WINDOW STAYS AFTER SPEND ═══
+  /* ═══ v2.3.3522: THE POINTS WINDOW STAYS AFTER SPEND ═══
      The owner, playtesting: "After spending a stat allocation point keep it
      on the menu confirmation window instead of closing it to return to the
      points main screen."  Spend (InfoPopup, `action.stay`) leaves the window
@@ -1494,7 +1494,7 @@ export const HeroExpanded = () => {
                 },
               };
             };
-            /* v2.3.3494: `extra.spent` -- the points the last Spend bought, for
+            /* v2.3.3522: `extra.spent` -- the points the last Spend bought, for
                the window put up again after it (stayRef, above) */
             const openStatInfo = (st, cat, spend, extra) => {
               try {
@@ -1575,7 +1575,7 @@ export const HeroExpanded = () => {
                    the data-infopopup key three QA scenarios match on, and
                    it is never drawn while titleParts is set. */
                 const laneMeta = st.atk ? (PROG3_SKILL_META.find((k) => k.key === laneCat) || {}) : null;
-                /* v2.3.3494: held in a name, so the Spend that stays knows its
+                /* v2.3.3522: held in a name, so the Spend that stays knows its
                    own window (stayRef) */
                 const spentN = extra && extra.spent > 0 ? Math.floor(extra.spent) : 0;
                 const payload = {
@@ -1663,7 +1663,7 @@ export const HeroExpanded = () => {
                     label: 'Spend point',
                     blocked: spend.blocked,
                     stepMax: spend.max,
-                    /* ═══ v2.3.3494: SPEND, AND STAY ═══
+                    /* ═══ v2.3.3522: SPEND, AND STAY ═══
                        The owner: "keep it on the menu confirmation window
                        instead of closing it".  `stay` keeps the window up
                        (InfoPopup); this records what was sent, from the
@@ -1677,7 +1677,7 @@ export const HeroExpanded = () => {
                       spend.run(count);
                     },
                   } : undefined,
-                  /* v2.3.3494: what the last Spend bought ("✓ 2 points spent") */
+                  /* v2.3.3522: what the last Spend bought ("✓ 2 points spent") */
                   spentNote: spentN > 0 ? `✓ ${spentN} point${spentN === 1 ? '' : 's'} spent` : null,
                   /* ═══ v2.3.2684: THE LANE IS CHOSEN HERE NOW ═══
                      Owner: "The button to change which of the 3 combat skills
@@ -1721,7 +1721,7 @@ export const HeroExpanded = () => {
                 infoPopupBus.open(payload);
               } catch (e) { /* an explainer must never block a spend */ }
             };
-            /* ═══ v2.3.3494: THE WINDOW AGAIN, AFTER THE WORKER ANSWERS ═══
+            /* ═══ v2.3.3522: THE WINDOW AGAIN, AFTER THE WORKER ANSWERS ═══
                This render's check for a Spend that stayed (stayRef, at the
                top): run after the render, with this render's character.  Once
                the stat holds every point sent -- or after STAY_WAIT_MS, with

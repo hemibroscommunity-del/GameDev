@@ -14,7 +14,7 @@
  *      (the worker keeps it any day: a look, never a rule) and its pumpkin;
  *   4. his speech bubble is pumpkin-coloured on his phone and plain on the
  *      other: each phone's own calendar.
- *      v2.3.3494 (the owner: "Make Npc dialog boxes white. Keep players the
+ *      v2.3.3522 (the owner: "Make Npc dialog boxes white. Keep players the
  *      darker color to differentiate"): "plain" is the DARK player bubble now
  *      (game/bubbleSkins.js `player`), and a townsperson's line is white with
  *      black words on both phones, in Halloween week or not.
@@ -120,7 +120,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('his own bubble is pumpkin-coloured in Halloween week (cream words)', mine.ok && mine.v.skin === 'halloween' && /ffe7c2/i.test(mine.v.ink), mine.v);
   await A.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/halloween-bubble.png` }).catch(() => {});
   const theirs = await until(B, (id) => { const b = window.__btChatBubbles && window.__btChatBubbles.get(id); return b ? { skin: b.skin, ink: b.ink } : null; }, aId, (v) => !!v, 6000);
-  /* ═══ v2.3.3494: WHOSE BUBBLE IS WHOSE (game/bubbleSkins.js) ═══
+  /* ═══ v2.3.3522: WHOSE BUBBLE IS WHOSE (game/bubbleSkins.js) ═══
      The owner: "Make Npc dialog boxes white. Keep players the darker color to
      differentiate."  A player's bubble out of Halloween week is the dark
      Lantern Slate one (warm-white words), never the white -- so the phone

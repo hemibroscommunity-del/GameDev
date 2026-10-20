@@ -1,7 +1,7 @@
 import React from 'react';
 import { TARGET_PERIMETER_PX } from '@/data/index.js';
 import { toggleShield, shieldButtonLive } from '@/game/shieldToggle.js';
-import { Skin, BlockFace, pressOn, pressOff, useReadyFlash } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3494: the owner's shield on Block */
+import { Skin, BlockFace, pressOn, pressOff, useReadyFlash } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3522: the owner's shield on Block */
 
 /* ═══ v2.3.2242: THE SHIELD BUTTON ═══
  *
@@ -36,7 +36,7 @@ import { Skin, BlockFace, pressOn, pressOff, useReadyFlash } from './controlSkin
  * (rZoneRef, z6) and a tap that fell through it would forward a lock-on click
  * to the canvas.
  */
-/* v2.3.3494: the button's picture is the owner's painted shield now
+/* v2.3.3522: the button's picture is the owner's painted shield now
    (controlSkin BlockFace) -- it was the world's wood-shield sprite, SHIELD_SPRITE. */
 /* How long the shield stays out of reach after the stamina ran it down
    (BroTown's `_shieldCdUntil = now + 2000`), so the cooldown arc can say how
@@ -415,7 +415,7 @@ export function jumpAnchor(isLandscape) {
  * MEASURED, because "enough space" is a number: 24px of clear air and 77px
  * centre to centre at 390 and 360, 27px and 86px in landscape.  mp-abilslot
  * asserts both and prints them, since whether it is enough for a real thumb is
- * the owner's judgement and not this file's.  (v2.3.3494: and the owner's
+ * the owner's judgement and not this file's.  (v2.3.3522: and the owner's
  * judgement was "too far away" -- 57 px and 9 px of air between the rings
  * now, 64 and 10 sideways: RCTL_PAIR_AIR below.)
  *
@@ -464,7 +464,7 @@ export const RCTL_SLOT = { special: 0, whirl: 1 };
  *     the movement disc, which is the price of clearing the minimap. */
 export const RCTL_SPRINT_CLEAR = 0.5;   /* of a button, Sprint <-> slot 0 */
 
-/* ═══ v2.3.3494: WHIRLWIND COMES IN TOWARD SPECIAL ═══
+/* ═══ v2.3.3522: WHIRLWIND COMES IN TOWARD SPECIAL ═══
  * The owner, playtesting: "Whirlwind action button needs to be placed closer
  * to melee special attack (too far away)."  Half a button of air on the
  * horizontal alone (the step above, a full button and a half) put their
@@ -493,7 +493,7 @@ export function rightCluster(isLandscape) {
   var size = Math.max(CTL_MIN_SIZE, isLandscape ? 54 : 48);
   var spr = sprintAnchor(isLandscape);
   var rise = Math.round(size * 0.55);
-  /* v2.3.3494: the step that leaves RCTL_PAIR_AIR between the rings (above);
+  /* v2.3.3522: the step that leaves RCTL_PAIR_AIR between the rings (above);
      it was `size + size * LCTL_THUMB_FRAC`, the left cluster's */
   var pair = size * (1 + RCTL_PAIR_AIR);
   var step = Math.round(Math.sqrt(Math.max(0, pair * pair - rise * rise)));
@@ -510,7 +510,7 @@ export function rightCluster(isLandscape) {
   return {
     size: size,
     /* Slot 0 hangs at the disc's own right margin; each slot steps LEFT by
-       `step` (v2.3.3494: a little over a button, RCTL_PAIR_AIR's air between
+       `step` (v2.3.3522: a little over a button, RCTL_PAIR_AIR's air between
        the rings; it was a button and a half). */
     rightPx: function (slot) { return RBTN.right + slot * step; },
     bottomPx: function (slot) { return Math.round(base + slot * rise); },
@@ -699,7 +699,7 @@ export function ShieldButton(props) {
     progress: onCd ? 1 - Math.min(1, cdLeft / SHIELD_CD_MS) : null,
     flash: flash && skinState === 'normal',
   },
-  /* ═══ v2.3.3494: THE OWNER'S SHIELD, FILLING THE FACE ═══
+  /* ═══ v2.3.3522: THE OWNER'S SHIELD, FILLING THE FACE ═══
      The owner: "Block button needs a new icon."  It was the world's 64 px
      wood shield stretched to 30 px and pixelated.  Now the owner's painted
      gold shield fills the face inside the ring (controlSkin BlockFace, the

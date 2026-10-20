@@ -272,7 +272,7 @@ export function SkinTag(props) {
  * they were drawn here in SVG, flat colour bands under a dark outline like the
  * painted icons, with a grey palette for the greyed states.  v2.3.3279: the
  * owner drew all five ability pictures (abilityArt, below). */
-/* v2.3.3494: `shield` (the world's 64 px wood-shield sprite) is gone from this
+/* v2.3.3522: `shield` (the world's 64 px wood-shield sprite) is gone from this
    list -- the Block button wears the owner's own painted shield now
    (blockArtUrl, below), and nothing else drew the sprite as a control. */
 export const ICON_URL = {
@@ -396,7 +396,7 @@ export function specialArtKind(weapon) {
   return weapon.type === 'bow' ? 'bow' : weapon.type === 'staff' ? 'staff' : 'sword';
 }
 /* A picture that IS the face, filling the disc inside the Skin's ring
-   (v2.3.3336's SpecialFace, shared by the Block button since v2.3.3494):
+   (v2.3.3336's SpecialFace, shared by the Block button since v2.3.3522):
    `attrs` names it for the probes. */
 function faceArt(size, src, attrs) {
   var d = size - 2 * skinRing(size);
@@ -412,7 +412,7 @@ function faceArt(size, src, attrs) {
 export function SpecialFace(props) {
   return faceArt(props.size, specialArtUrl(props.kind, !!props.grey), { 'data-special-art': props.kind });
 }
-/* ═══ v2.3.3494: THE BLOCK BUTTON WEARS THE OWNER'S SHIELD ═══
+/* ═══ v2.3.3522: THE BLOCK BUTTON WEARS THE OWNER'S SHIELD ═══
  * The owner, playtesting: "Block button needs a new icon."  It drew the 64 px
  * wood shield the WORLD hangs on your arm (/sprites/shields/wood-shield-front
  * .png), stretched to 30 px and pixelated: the one control on the right
@@ -435,7 +435,7 @@ export const ABILITY_ART_URLS = ['whirl', 'special', 'bash', 'jump', 'burst']
   .reduce(function (a, n) { a.push(abilityArtUrl(n, false), abilityArtUrl(n, true)); return a; }, [])
   /* v2.3.3336: and the three special attacks, warmed with them */
   .concat(['sword', 'bow', 'staff'].reduce(function (a, k) { a.push(specialArtUrl(k, false), specialArtUrl(k, true)); return a; }, []))
-  /* v2.3.3494: and the Block button's, lit and grey -- it comes up the moment
+  /* v2.3.3522: and the Block button's, lit and grey -- it comes up the moment
      a fight starts with a shield on, never while a loading screen is up */
   .concat([blockArtUrl(false), blockArtUrl(true)]);
 function abilityArt(name, props, under) {

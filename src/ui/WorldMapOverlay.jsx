@@ -55,7 +55,7 @@ import { sendMapWatch, PRESENCE2_CLIENT } from '../game/presence2.js';   /* v2.3
 import { peerDotAt } from '../game/peerDot.js';                    /* v2.3.3243: a far player's dot glides between rosters */
 import { PARTY_MARK, partyIdsOf } from '../game/partyMarks.js';    /* v2.3.3277: your party, blue, at every zoom */
 import { mapDetailFor, freeMapDetail } from './worldMapDetail.js';   /* v2.3.3319: the long Wheel's lands up close */
-import { wheelBuildingIconCanvas } from '../rendering/wheelBuildingIcons.js';   /* v2.3.3494: each building's picture at its door */
+import { wheelBuildingIconCanvas } from '../rendering/wheelBuildingIcons.js';   /* v2.3.3522: each building's picture at its door */
 
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 /* v2.3.3057: 12 -> 28, so the town's buildings can be read by name */
@@ -74,7 +74,7 @@ function spanK(map) { return Math.max(1, Math.max(map.worldW, map.worldH) / WHEE
    town's buildings still come in at the same size on screen.  (All at `rel`
    left the long Wheel nine zoom-ins of the eight lands' names and nothing
    else.) */
-/* v2.3.3494: a building's picture at its door up close, CSS px (the
+/* v2.3.3522: a building's picture at its door up close, CSS px (the
    minimap's own, rendering/wheelBuildingIcons.js) */
 const TOWN_ICON_PX = 20;
 const AT = { landSub: 1.5, stage: 2.2, commons: 1.8, gateName: 1.6, camp: 3, pass: 3, site: 3.6, road: 4.6,
@@ -209,7 +209,7 @@ function WorldMap({ stateRef, onClose }) {
     if (!cv || !map) return undefined;
     const V = view.current;
     if (V.cx == null) {
-      /* ═══ v2.3.3494: IN TOWN, THE MAP OPENS ON THE TOWN ═══
+      /* ═══ v2.3.3522: IN TOWN, THE MAP OPENS ON THE TOWN ═══
          The owner, playtesting: "When you're in town make the expanded map
          zoomed in on the town so you can see which building is labeled where
          on the map."  It always opened on the whole Wheel, where the town is
@@ -332,7 +332,7 @@ function WorldMap({ stateRef, onClose }) {
     const S = stateRef.current, map = wheelMapInfo();
     if (!S || !S.player || !map) return;
     const V = view.current;
-    /* v2.3.3494: in town, ◎ is the town's view (every building named), as
+    /* v2.3.3522: in town, ◎ is the town's view (every building named), as
        the map opens there -- 4x the short Wheel stopped short of the names */
     const cv = cvRef.current;
     const tv = cv && inTownNow(S.player) ? townView(map, cv.clientWidth, cv.clientHeight) : null;
@@ -434,7 +434,7 @@ function clampView(V, map) {
   V.cy = Math.max(0, Math.min(map.worldH, V.cy));
 }
 
-/* ═══ v2.3.3494: THE TOWN'S VIEW (the first effect's note) ═══
+/* ═══ v2.3.3522: THE TOWN'S VIEW (the first effect's note) ═══
    Every building's door on the screen with room round each for its picture
    above and its name below, and clear of the map's own furniture -- the
    compass (top left), the zoom buttons (right), the key (bottom).  The
@@ -657,7 +657,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     g.lineWidth = 6; g.strokeStyle = 'rgba(11,22,27,0.55)'; g.stroke();
     g.lineWidth = 3; g.strokeStyle = C_STAR; g.setLineDash([9, 6]); g.stroke(); g.setLineDash([]);
     starAt(g, qx, qy, 9);
-    more.quest = { x: Math.round(quest.x), y: Math.round(quest.y), qid: quest.qid || null, way: quest.way || null };   /* v2.3.3494: + whose road */
+    more.quest = { x: Math.round(quest.x), y: Math.round(quest.y), qid: quest.qid || null, way: quest.way || null };   /* v2.3.3522: + whose road */
   }
 
   /* labels: placed in order of importance, each only where it clears the
@@ -675,7 +675,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     const size = opts.size || 12, sub = opts.subSize || Math.max(10, size - 2);
     g.font = `${opts.weight || 700} ${size}px system-ui, -apple-system, sans-serif`;
     const w0 = g.measureText(lines[0]).width;
-    /* v2.3.3494: `same` -- a name wrapped onto two lines keeps its own look */
+    /* v2.3.3522: `same` -- a name wrapped onto two lines keeps its own look */
     g.font = opts.same ? `${opts.weight || 700} ${size}px system-ui, -apple-system, sans-serif` : `600 ${sub}px system-ui, -apple-system, sans-serif`;
     const w1 = lines[1] ? g.measureText(lines[1]).width : 0;
     const bw = Math.max(w0, w1), bh = size + (lines[1] ? (opts.same ? size : sub) + 3 : 0);
@@ -704,7 +704,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     g.lineWidth = 1.5; g.strokeStyle = HALO; g.stroke();
   };
 
-  /* ═══ v2.3.3494: IN TOWN, THE BUILDINGS GO FIRST ═══
+  /* ═══ v2.3.3522: IN TOWN, THE BUILDINGS GO FIRST ═══
      The owner: "When you're in town make the expanded map zoomed in on the
      town so you can see which building is labeled where on the map", and of
      the minimap, "Have icons representing each building on each building".
@@ -761,7 +761,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       if (ok) more.buildings++;
     }
   }
-  /* you, first, so nothing covers you (v2.3.3494: up close in town, after
+  /* you, first, so nothing covers you (v2.3.3522: up close in town, after
      the buildings' names, above) */
   if (P) {
     const px = X(P.x), py = Y(P.y);
@@ -775,7 +775,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     g.fillStyle = INK; g.fill(); g.lineWidth = 1.5; g.strokeStyle = HALO; g.stroke();
     g.restore();
     placed.push([px - 18, py - 18, px + 18, py + 18]);
-    /* v2.3.3494: "You" under your mark where it clears what is placed (in
+    /* v2.3.3522: "You" under your mark where it clears what is placed (in
        town, the buildings' names), else over it, else under it anyway */
     if (!label(px, py + 12, ['You'], { size: 11, below: true, color: BRASS })
       && !label(px, py - 26.5, ['You'], { size: 11, color: BRASS })) {
@@ -791,8 +791,8 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     if (o.name && label(o.x, o.y + 12, [o.name], { size: 11, below: true, weight: 700, color: '#CFE0F7' })) more.partyNames++;
   }
   /* v2.3.3057: in town, every building at its door, named (a shut one dim)
-     -- v2.3.3494: drawn first, above, with its picture */
-  /* the town (v2.3.3494: its square only while its buildings are not drawn,
+     -- v2.3.3522: drawn first, above, with its picture */
+  /* the town (v2.3.3522: its square only while its buildings are not drawn,
      as the minimap has it; its name where it clears theirs) */
   const T = map.hub.town;
   if (!more.buildingsAt) {

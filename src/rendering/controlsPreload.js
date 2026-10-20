@@ -59,7 +59,7 @@ function warm(url) {
 
 export function controlsPreloadUrls() {
   const urls = RDISC_ICONS.map((ic) => ic[1]);
-  /* v2.3.3494: the wood shield sprite is no longer the Block button's picture
+  /* v2.3.3522: the wood shield sprite is no longer the Block button's picture
      (the owner's painted shield is, warmed in ABILITY_ART_URLS below) */
   urls.push(ICON_URL.boot);
   /* v2.3.3120: the TRAP pop-up's box trap (ui/panels/TrapButton.jsx) -- it

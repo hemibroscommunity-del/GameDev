@@ -28,7 +28,7 @@ and for tests); `?halloween=0` turns it off.
   you now and then. Everyone near you sees it, in season or not.
 - **Pumpkin speech bubbles.** A PLAYER'S speech bubble is night-purple,
   ringed in pumpkin orange, with cream words. Drawn in code: nothing to load.
-  Since v2.3.3494 a townsperson's line is the white bubble with black words
+  Since v2.3.3522 a townsperson's line is the white bubble with black words
   even this week, and a player's is dark all year (Lantern Slate's slate with
   warm-white words outside Halloween week) -- the owner, playtesting on 19
   October: "Make Npc dialog boxes white. Keep players the darker color to
@@ -49,17 +49,17 @@ and for tests); `?halloween=0` turns it off.
 - `src/ui/panels/EmotePanel.jsx`: a season's tile only in its season.
 - `src/game/interactions.js` `sendMove`: a season's move only in its season.
 - `src/rendering/systems/effectsRenderer.js` `_renderChatBubble`: the skin
-  (v2.3.3494: `bubbleGradient(skin)` from `src/game/bubbleSkins.js`
+  (v2.3.3522: `bubbleGradient(skin)` from `src/game/bubbleSkins.js`
   `BUBBLE_SKINS` -- `plain` a townsperson's, `halloween` a player's this
   week, `player` a player's the rest of the year, chosen by `bubbleSkinFor`);
-  the bubble probe says `skin`, `ink` and (v2.3.3494) `fill`.
+  the bubble probe says `skin`, `ink` and (v2.3.3522) `fill`.
 - `src/game/townsfolkReact.js`: Diego's zombie lines.
 
 ## Tests
 
 - `server/test/season.test.mjs` (30): the window's edges, any year, the
   address override, seasons, the season's move being a held dance the
-  worker keeps, and (v2.3.3494, §5) whose bubble is whose: a townsperson's
+  worker keeps, and (v2.3.3522, §5) whose bubble is whose: a townsperson's
   white in and out of the week, a player's purple in it and slate out of it.
 - `server/test/emotes.test.mjs`: thirteen moves, the shuffle's frames all
   numbers, its tilt never squashing, the same frame on two phones.
@@ -68,7 +68,7 @@ and for tests); `?halloween=0` turns it off.
   thirteen tiles and twelve, every tile's name whole (the shuffle's
   "Zombie"); a finger on the shuffle, the bro lurches and the
   worker keeps it; the phone out of season still sees it and its pumpkin; the
-  bubble pumpkin-coloured on one phone and (v2.3.3494) the dark everyday
+  bubble pumpkin-coloured on one phone and (v2.3.3522) the dark everyday
   player bubble on the other, and a townsperson's line white with black words
   on both. Pictures: `tools/qa/mp/out/halloween-*.png`.
 

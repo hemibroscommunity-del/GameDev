@@ -62,7 +62,7 @@ import { preloadControls } from './controlsPreload.js'; /* v2.3.3018: the touch 
 import { preloadQuestArt } from './questArtPreload.js'; /* v2.3.3030: the quest windows' painted art (the owner's sheets) */
 import { preloadZoneBanner, freeZoneBanner, preloadLandScenes, freeLandScenes } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE; v2.3.3481: + the Wheel's lands' scenes */
 import { loadSignpostIcons, freeSignpostIcons } from './wheelSignposts.js';   /* v2.3.3062: Brotown's signposts' icons */
-import { loadWheelBuildingIcons, freeWheelBuildingIcons } from './wheelBuildingIcons.js';   /* v2.3.3494: each building's picture on the maps */
+import { loadWheelBuildingIcons, freeWheelBuildingIcons } from './wheelBuildingIcons.js';   /* v2.3.3522: each building's picture on the maps */
 import { preloadFarmArt, freeFarmArt } from './farmWorld.js';   /* v2.3.3136: your farm's barn, props, beds and crops */
 import { ensureStandIn } from './standIns.js';   /* v2.3.3136: the farmer kneels in the cook's figure */
 import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
@@ -146,7 +146,7 @@ export async function preloadZoneAssets(zoneId) {
   /* v2.3.3062: and the lands' icons for Brotown's signposts (wheelSignposts.js),
      drawn down to 64 px as they land; let go on leaving (below) */
   if (zoneId === 'wheel') tasks.push(Promise.resolve(loadSignpostIcons()).catch(() => {}));
-  /* v2.3.3494: and each of BroTown's buildings' pictures for the minimap and
+  /* v2.3.3522: and each of BroTown's buildings' pictures for the minimap and
      the world map (the owner: "Have icons representing each building on each
      building in the minimap/compass"), drawn down to 64 px as they land; let
      go on leaving (below) -- ~0.5 MB while in the Wheel */
@@ -289,7 +289,7 @@ export async function freeZoneAssets(fromZoneId, toZoneId) {
     try { bannersFreed = bannersFreed.concat(freeLandScenes().map((land) => 'scene:' + land)); } catch (e) { /* a leak, not a crash */ }
     /* v2.3.3062: and the signposts' icons (their plates taken down first) */
     try { freeSignpostIcons(); } catch (e) { /* a leak, not a crash */ }
-    /* v2.3.3494: and the buildings' pictures (the minimap's taken off first) */
+    /* v2.3.3522: and the buildings' pictures (the minimap's taken off first) */
     try { freeWheelBuildingIcons(); } catch (e) { /* a leak, not a crash */ }
   }
   /* v2.3.3136: and the farm's pictures, leaving it */

@@ -433,7 +433,7 @@ export function AceFlipPanel() {
            44 px touch floor: an invisible ring makes the press 44 x 44 with
            no change to how it looks (game.css .bt-ace-close; ::before, as
            ::after is the computer's Esc key cap).
-           v2.3.3494: the owner, playtesting -- "Vendor menus need a more
+           v2.3.3522: the owner, playtesting -- "Vendor menus need a more
            prominent escape icon in the corner": a bare grey "×" was the
            faintest of the three; it is the windows' one big ✕ now (game.css
            .bt-xclose, its own 44 px ring on ::before as this one's was) */

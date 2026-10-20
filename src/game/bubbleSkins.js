@@ -1,4 +1,4 @@
-/* ═══ v2.3.3494: WHOSE BUBBLE IS WHOSE (effectsRenderer _renderChatBubble) ═══
+/* ═══ v2.3.3522: WHOSE BUBBLE IS WHOSE (effectsRenderer _renderChatBubble) ═══
  *
  * The owner, playtesting in Halloween week: "Make Npc dialog boxes white. Keep
  * players the darker color to differentiate."
@@ -33,7 +33,7 @@ export const BUBBLE_SKINS = Object.freeze({
     stops: Object.freeze(['#4A2C66', '#3A2152', '#26153A']),
     stroke: 0xFF8A1F, strokeAlpha: 1, text: '#FFE7C2',
   }),
-  /* v2.3.3494: a player's the rest of the year -- Lantern Slate's raised card
+  /* v2.3.3522: a player's the rest of the year -- Lantern Slate's raised card
      (#2B3940) into its panel (#202C32), text-1 words, border-strong's light
      edge a touch firmer (it sits on the world, not on a panel) */
   player: Object.freeze({
