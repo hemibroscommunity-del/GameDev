@@ -247,7 +247,9 @@ export function codexDropsFor(kind, opts) {
   const g0 = codexGoldAt(lo), g1 = codexGoldAt(hi);
   const amount = g0 === g1 ? String(g0) : g0 + '–' + g1;
   rows.push({ id: 'gold', key: 'coins', name: 'Gold', icon: ICON.gold, type: 'Currency', chance: 1, amount, who: 'pile',
-    desc: 'The Wheel\'s money: every shop, bench and auction in BroTown takes it.',
+    /* v2.3.3552: "world", never "Wheel" -- the owner: "no player has a concept
+       of what 'wheel' means in reference to the shape of the map" */
+    desc: 'The world\'s money: every shop, bench and auction in BroTown takes it.',
     chanceNote: amount + ' gold every kill, more the higher its level',
     info: ['Every kill drops ' + g0 + ' to ' + g1 + ' gold: ' + g0 + ' at Lv ' + lo + ', ' + g1 + ' at Lv ' + hi + '.',
       'In a party it is shared by everyone who did at least 5% of its damage, split by the damage each did.'] });

@@ -4,7 +4,8 @@
  * level instead of primary combat skill level and defense level."  What you
  * wear asks the CHARACTER level (one level: the best weapon's) at the numbers
  * it asked in Defense points.  A real client against a real worker, through
- * the real doors:
+ * the real doors, IN THE WORLD (v2.3.3552: `world: 'wheel'` -- the old map,
+ * where this was first written, is retired; tools/qa/mp/oldMap.mjs):
  *   1. the worker advertises caps.gearlevel;
  *   2. the Blacksmith's Armor tab says the Black Steel Torso is "Level 5 to
  *      wear" (not "Defense 5"), and forges it into the bag with its id;
@@ -19,10 +20,6 @@
 import * as H from './harness.mjs';
 
 const shot = (P, name) => P.page.screenshot({ path: `tools/qa/mp/out/gearlevel-${name}.png` }).catch(() => {});
-const put = (P, x, y) => P.page.evaluate(({ px, py }) => {
-  const S = window._gameState.current;
-  S.player.x = px; S.player.y = py; S.player.vx = 0; S.player.vy = 0;
-}, { px: x, py: y });
 const torsoInBag = (P) => H.readState(P, (S) => {
   const list = (S.rpg && S.rpg.armorStash) || [];
   const i = list.findIndex((p) => p && p.name === 'Black Steel Torso');
@@ -41,7 +38,7 @@ const openCard = (P) => P.page.evaluate(() => {
 const words = (P) => P.page.evaluate(() => ((window._gameState.current || {}).dmgNumbers || []).map((d) => String(d.text || '')).filter(Boolean)).catch(() => []);
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Plated', wsPort, webPort });
+  const P = await H.newPlayer(browser, { name: 'Plated', wsPort, webPort, world: 'wheel' });
   await H.enterWorld(P);
   await P.page.waitForTimeout(1500);
   if (await P.page.$('[data-chest-window]')) { await P.page.click('text=Later').catch(() => {}); await P.page.waitForTimeout(300); }
@@ -59,12 +56,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 2. the forge's word, and the torso ── */
   await P.page.waitForFunction(() => !document.body.innerText.includes('WELCOME'), null, { timeout: 15000 }).catch(() => {});
-  const forge = await P.page.evaluate(() => (window.__btWorldProps ? window.__btWorldProps() : []).find((p) => p.action === 'forge') || null);
-  if (!forge) { rec.ok('the Blacksmith building is in town (guard)', false); await P.ctx.close().catch(() => {}); return; }
-  await put(P, forge.x, forge.y + 55);
-  await P.page.waitForTimeout(500);
-  await P.page.keyboard.press('e');
-  await P.page.waitForSelector('[data-smithy-tab="armor"]', { timeout: 5000 }).catch(() => {});
+  /* the world's Blacksmith: stand at the foot of its steps and press Enter,
+     as a player does (mp-hardenbars' way in) */
+  const doors = await H.waitFor(P, () => (window.__btWheelTownDoors ? window.__btWheelTownDoors.doors() : []), (d) => d.length > 0,
+    { timeout: 20000, label: 'the town\'s doors' }).catch(() => []);
+  const smith = doors.find((d) => d.id === 'blacksmith') || null;
+  const zone = await H.readState(P, (S) => S.currentZone);
+  if (!smith) { rec.ok(`the Blacksmith has a door in the world (guard; zone "${zone}")`, false, doors.map((d) => d.id)); await P.ctx.close().catch(() => {}); return; }
+  for (let k = 0; k < 4; k++) {
+    const dy = await P.page.evaluate(() => { const S = window._gameState.current, g = window.__btPlayerGround(); return g.y - S.player.y; });
+    await H.hopTo(P, smith.x, smith.y + 30 - dy, { step: 100, gap: 260, tries: 90 });
+    await P.page.waitForTimeout(800);
+    const g = await P.page.evaluate(() => window.__btPlayerGround());
+    if (Math.hypot(g.x - smith.x, g.y - (smith.y + 30)) < 14) break;
+  }
+  await P.page.waitForTimeout(600);
+  await P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Enter /.test(q.textContent || '')); if (b) b.click(); });
+  await P.page.waitForSelector('[data-smithy-tab="armor"]', { timeout: 6000 }).catch(() => {});
+  rec.ok(`in the world (zone "${zone}"), the Blacksmith's door opens the forge`, zone === 'wheel' && !!(await P.page.$('[data-smithy-tab="armor"]')), { zone });
   await P.page.click('[data-smithy-tab="armor"]').catch(() => {});
   await P.page.waitForSelector('[data-armor-row="blacksteel_torso"]', { timeout: 5000 }).catch(() => {});
   const row = await P.page.evaluate(() => {

@@ -139,7 +139,8 @@ function postOffice(props) {
 function townHall(props) {
   return [
     row('leaderboard', '/icons/ui/panel-leaderboard.webp', '🏆', 'Leaderboard', 'A ranking for every combat and life skill, and where you stand', props.onLeaderboard),
-    row('map', '/icons/ui/nav-map.webp', '🗺', 'World map', 'The whole Wheel: its lands and levels, camps, passes and gates, and where you are', props.onMap),
+    /* v2.3.3552: "world", never "Wheel" -- a player never hears the map's shape named */
+    row('map', '/icons/ui/nav-map.webp', '🗺', 'World map', 'The whole world: its lands and levels, camps, passes and gates, and where you are', props.onMap),
   ];
 }
 

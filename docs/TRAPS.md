@@ -8062,3 +8062,40 @@ trades.
 **Receipt:** `server/test/weapon-gem.test.mjs` §9b (one gem passed between two
 players: 400, then 0, then 0; a gem the second player made, 400), and
 `shard-crack` §6 (a combined gem is owed its XP).
+
+## 244. "A phone test with no `world` plays the game" (v2.3.3552)
+
+**The plausible move.** Open a player with `H.newPlayer(browser, { name, wsPort,
+webPort })` (or `H.joinPair`), as most scenarios in the folder do, and test the
+feature.  The page comes up, the character is made, the dashboard works, and
+every check passes.
+
+**Why it is wrong.** The harness was written for the old map, so a player with
+no `world` gets `trial=off&nospawn`: TODAY'S TOWN, the old World View and the
+old lands, the map the owner retired on 2026-10-02 ("The Wheel is the world").
+No player sees it.  A test there proves nothing about the world: other
+townsfolk and buildings, other doors, no Wheel minimap, other monsters.  It
+happened again and again: on 2026-10-21 the owner caught a screenshot with
+"Town" on the top bar and the old fountain: "Hold on you're in the old map
+(this was retired).  You keep making that mistake so flag it in a way you
+won't accidentally do that anymore."  Of 571 scenarios, 421 opened the old
+map, two of them written that same day.
+
+**The rule.** A phone test plays the world: `world: 'wheel'` on every
+`newPlayer` / `joinPair` call (`world: 'old'` only to test the retired map
+itself).  You can tell the two apart at a glance: the world's top bar says
+"BroTown", with the Town Hall and "Brotown · safe" under the minimap. The old
+map's top bar says "Town", with the old fountain.  It is enforced in four
+places:
+- `tools/qa/mp/oldMap.mjs` freezes the 419 old scenarios; the list only shrinks
+  (take a scenario's name off when you move it to the world);
+- the harness REFUSES any other scenario that opens a player with no `world`
+  (`newPlayer` throws, naming the fix);
+- every picture saved from the old map is stamped "OLD MAP · RETIRED";
+- `tools/dev/precheck.mjs` (`old-map`) and the session brief say so before a
+  push and at every session's start.
+
+**Receipt:** `server/test/old-map.test.mjs` (every scenario off the list names
+its world; the list never grows; the harness refuses before a browser is
+opened), and `mp-pointsreset`, `mp-gearlevel`, `mp-achvtitle`, `mp-pointstips`
+moved to the world.

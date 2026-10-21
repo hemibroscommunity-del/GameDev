@@ -2,7 +2,8 @@
  *
  * The owner: "I value SIMPLICITY and INTELLIGIBILITY" -- the after-review
  * list's second item: one button gives every placed point back.  One real
- * player against a real worker, on a phone (390 x 844, touch):
+ * player against a real worker, on a phone (390 x 844, touch), IN THE WORLD
+ * (v2.3.3552: `world: 'wheel'` -- the old map is retired, tools/qa/mp/oldMap.mjs):
  *   1. Melee 5 (the test lever deals its points), three points placed by the
  *      page's own spend message;
  *   2. the Points tab shows "Reset points (free)" at the foot of its grid;
@@ -25,13 +26,14 @@ const PHONE = { width: 390, height: 844 };
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'Resetter', wsPort, webPort, viewport: PHONE, touch: true });
+  const P = await H.newPlayer(browser, { name: 'Resetter', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });
   const shot = (name) => P.page.screenshot({ path: join(OUT, `pointsreset-${name}.png`) }).catch(() => {});
   await H.enterWorld(P);
   await P.page.waitForTimeout(1200);
   const id = await H.readState(P, (S) => S.myId);
   const caps = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.pointsreset));
-  rec.ok('the worker resets points (caps.pointsreset)', caps === true, caps);
+  const zone = await H.readState(P, (S) => S.currentZone);
+  rec.ok(`in the world (zone "${zone}"), and the worker resets points (caps.pointsreset)`, caps === true && zone === 'wheel', { caps, zone });
 
   /* ── 1. points to place ── */
   const dealt = await H.devOp(wsPort, 'combat', id, { skill: 'sword', level: 5, deal: true });

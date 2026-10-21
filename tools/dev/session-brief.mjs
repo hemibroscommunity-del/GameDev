@@ -56,9 +56,12 @@ if (inflight.length) {
   console.log('\nno claude/* branches pushed in the last 72h (or offline — verify before claiming a tag).');
 }
 console.log(`
-Protocol (5 lines):
+Protocol (6 lines):
   1. ONE system per PR; check open PRs + the branches above before claiming a backlog item.
   2. Run \`node tools/dev/precheck.mjs\` before EVERY push (the sandbox blocks npm install — this is your local gate).
   3. Read docs/ARCHITECTURE-HANDOFF.md before ANY server change; it is load-bearing.
   4. Objects keyed by client-supplied ids: Object.create(null) or Map — plain {} no-ops on '__proto__' (3 incidents on 2026-07-07).
-  5. Claim a v2.3.N tag ABOVE the high-water and tag every change with it (rule 25).`);
+  5. Claim a v2.3.N tag ABOVE the high-water and tag every change with it (rule 25).
+  6. THE OLD MAP IS RETIRED (owner, 2026-10-21: "You keep making that mistake").  The world is the Wheel's
+     BroTown ("BroTown" on the top bar, the Town Hall); "Town" on the top bar is the retired map.  Every phone
+     test passes world: 'wheel' -- the harness refuses a new one that does not (tools/qa/mp/oldMap.mjs).`);
