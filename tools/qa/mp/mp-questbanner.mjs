@@ -190,7 +190,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...carrying the reward it just paid',
     !!done && /\+\d+\s*g/i.test(done.text), done && done.text);
   /* v2.3.3525: over his window while it is up.  The tour hands you on to
-     Farmer Bro from here (his next quest, tut_2, waits for the tour's end), so
+     Blacksmith Bro from here (v2.3.3533; his next quest, tut_2, waits for the
+     ore and the fish), so
      his window closes as he pays -- the banner is still drawn out of
      .brotown-wrap, above anything the dialogue had up. */
   rec.ok('...drawn out of .brotown-wrap, over his window while it is up',

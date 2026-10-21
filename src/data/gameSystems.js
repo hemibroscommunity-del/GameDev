@@ -6746,7 +6746,8 @@ export const QUEST_CHAINS = {
         + "...Four remains' worth, though. You'd have met one already.\n\n"
         + "Right. Forget I said it. Here, a bow and a staff, on the town.\n\n"
         + "Now the whole town wants a piece of you. Anyone with a gold ! over his head has a job, and they're on your map too.\n\n"
-        + "Help them all, then come back. I've got a snowman problem. Don't tell anyone.",
+        /* v2.3.3533: the snowmen wait on two of them now (tut_2 `after`) */
+        + "See Blacksmith Bro and Diego first, then come back. I've got a snowman problem. Don't tell anyone.",
     },
   },
   tut_2: {
@@ -6754,6 +6755,8 @@ export const QUEST_CHAINS = {
     /* v2.3.3525: the TOUR'S FINALE, the burrowing snowmen (tut_1's errand
        until now), after the Beastmaster's traps (`after`, below) -- by then
        you carry the gear the tour made you. */
+    /* v2.3.3533: no longer the finale: the fifth step, after the ore and the
+       fish (`after`, below), the rest of the town after it. */
     zone: 'frost',   /* Frost Ridge */
     id: 'tut_2', npc: 'Mayor Bro', title: 'Cold Reception',
     desc: 'Bring 4 Snowman Remains from Frost Ridge.',
@@ -6762,16 +6765,20 @@ export const QUEST_CHAINS = {
     reward: { gold: 200, xp: 50 },
     /* v2.3.3525: the tour comes back to him here once the WHOLE TOWN is done:
        `after` lists every giver's last step (getNpcQuest, questAfterMet; the
-       worker's _questBarred the same) */
-    after: ['farm_2', 'smith_2', 'wood_2', 'fish_1', 'race_1', 'beast_2'],
+       worker's _questBarred the same).
+       v2.3.3533: once Blacksmith Bro's ore and Diego's fish are in -- the
+       clownfish are the fight's food -- and the rest of the town after. */
+    after: ['smith_1', 'fish_1'],
     tour: true,
     next: 'tut_3',
     dialogue: {
-      start: "The whole town's singing your name. Badly, but they mean it. Now, bad news: the snowmen up on Frost Ridge learned to burrow. They dive under the snow and pop up right under you.\n\n"
-        + "Bring me 4 Snowman Remains before they tunnel all the way into my office. Watch the ground, and mind the snowballs.",
+      /* v2.3.3533: said after two townsfolk, not the whole town */
+      start: "Blacksmith Bro has his ore and Diego has his research. Word travels fast in a town this size. Now, bad news: the snowmen up on Frost Ridge learned to burrow. They dive under the snow and pop up right under you.\n\n"
+        + "Bring me 4 Snowman Remains before they tunnel all the way into my office. Watch the ground, mind the snowballs, and eat one of Diego's clownfish if it gets ugly.",
       progress: "4 Snowman Remains, from Frost Ridge. If the ground moves, you move first.",
-      complete: "You did it! Farmer Bro has carrots, Blacksmith Bro has a back brace and Lil Bro has humility. BroTown owes you.\n\n"
-        + "Officially, you're our hero. Unofficially, you're our only one. When you're ready, the Wind Dunes are next.",
+      /* v2.3.3533: the rest of the town comes after him now */
+      complete: "You did it! The snowmen are back to being decorations. BroTown owes you.\n\n"
+        + "Officially, you're our hero. Unofficially, you're our only one. The rest of the town still has jobs for you: look for the gold !. And when you're ready, the Wind Dunes are next.",
     },
   },
   tut_3: {
@@ -6968,7 +6975,11 @@ export const QUEST_CHAINS = {
        (a bow or staff and the softwood swap), beast_2 (spring the traps),
        and farm_2 (Zoom Juice) -- which waits for Diego's fish_1 too, where
        you learn to cook, so the carrots have grown by then;
-       tut_2 Mayor Bro (the burrowing snowmen) once the whole town is done.
+       tut_2 Mayor Bro (the burrowing snowmen) once the whole town is done --
+       v2.3.3533: once Blacksmith Bro's ore (smith_1) and Diego's fish (fish_1)
+       are in, the rest of the town after (the owner: "SIMPLICITY and
+       INTELLIGIBILITY"; ten quests and a six-minute carrot stood between a
+       reviewer and the snowmen).
      QUEST_TOUR (beside getNpcQuest) is the order the gold road suggests them
      in, one giver at a time; nothing makes a player follow it.  The server's
      QUEST_REWARDS (server/src/data.js) is the authority and says the same,
@@ -7019,7 +7030,8 @@ export const QUEST_CHAINS = {
         + "Head to your farm, dig a bed, plant a seed and water it. Three times. Watered carrots grow faster. Like people, but crunchier.",
       progress: "Plant 3 carrots on your farm and water all 3. My shop has the way there.",
       complete: "Three carrots, planted and watered! They grow up so fast. Literally: about six minutes.\n\n"
-        + "Leave 'em to it, and learn to cook while they grow. Diego at the General Store is looking for a cook, and I've got a recipe that needs one.",
+        /* v2.3.3533: true whether or not Diego's fish_1 is in yet */
+        + "Leave 'em to it. When they're up, come back: I've got a recipe that needs a cook. Diego teaches cooking, if he hasn't already.",
     },
   },
   smith_1: {
@@ -7162,7 +7174,8 @@ export const QUEST_CHAINS = {
         + "Here's a rod and two logs. Catch a fish, then tap a log in your Bag to light a fire, and tap the fire to cook.",
       progress: "2 cooked fish, amigo. Raw ones don't count. Fish, fire, cook.",
       complete: "Research complete. Chapter One: \"Fish, Cooked.\" Here are the clownfish. Eat one when you're hurt. They're less funny cooked.\n\n"
-        + "And now you can cook! Farmer Bro was looking for a cook. Chapter Two is his problem.",
+        /* v2.3.3533: the road leads to the Mayor's snowmen next */
+        + "And now you can cook! The Mayor's been asking for you. Something about snowmen. Take the clownfish.",
     },
   },
   farm_2: {
@@ -8178,8 +8191,10 @@ export function questReachable(quest) {
    in, one giver at a time (game/questRoute.js tourOffer), and the steps the
    Test panel's "Tour: jump to" knows.  It decides nothing a player may do --
    `after` does -- and every step's `after` comes before it.  Mirrors the
-   worker's QUEST_TOUR (server/src/data.js; mirror-audit §5a). */
-export const QUEST_TOUR = Object.freeze(['tut_1', 'farm_1', 'smith_1', 'smith_2', 'wood_1', 'wood_2', 'fish_1', 'farm_2', 'race_1', 'beast_1', 'beast_2', 'tut_2']);
+   worker's QUEST_TOUR (server/src/data.js; mirror-audit §5a).
+   v2.3.3533: the snowmen fifth -- the Mayor, Blacksmith Bro's ore and forge,
+   Diego's fish, the snowmen, then the rest of the town. */
+export const QUEST_TOUR = Object.freeze(['tut_1', 'smith_1', 'smith_2', 'fish_1', 'tut_2', 'farm_1', 'wood_1', 'wood_2', 'farm_2', 'race_1', 'beast_1', 'beast_2']);
 
 /* v2.3.3525: is a quest's `after` met -- one quest's id, or a list of them
    (the Mayor's tut_2 waits for the whole town), every one handed in?  The

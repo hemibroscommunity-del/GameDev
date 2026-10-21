@@ -41,20 +41,20 @@ const done = (...ids) => { const q = Object.create(null); for (const id of ids) 
   const one = done('tut_1');
   const firsts = TOWN.map((n) => offers(one, n));
   check('with it handed in, all six townsfolk offer their first quest at once', firsts.join() === 'farm_1,smith_1,wood_1,fish_1,race_1,beast_1', firsts);
-  check('...and the Mayor offers nothing (his snowmen wait for the town)', offers(one, 'Mayor Bro') === null, offers(one, 'Mayor Bro'));
+  check('...and the Mayor offers nothing (his snowmen wait for the ore and the fish)', offers(one, 'Mayor Bro') === null, offers(one, 'Mayor Bro'));
   check('the Farmer\'s Zoom Juice waits for Diego\'s fish too', offers(done('tut_1', 'farm_1'), 'Farmer Bro') === null
     && offers(done('tut_1', 'farm_1', 'fish_1'), 'Farmer Bro') === 'farm_2');
   check('a giver\'s second step follows his first', offers(done('tut_1', 'smith_1'), 'Blacksmith Bro') === 'smith_2'
     && offers(done('tut_1', 'wood_1'), 'Woodworker Bro') === 'wood_2' && offers(done('tut_1', 'beast_1'), 'Beastmaster Bro') === 'beast_2');
-  const town = QUEST_TOUR.slice(0, -1);
-  /* each giver's LAST step left undone (an earlier one undone with its last
-     done is no state a player can be in: the last waits on it) */
+  /* v2.3.3533: the snowmen wait on Blacksmith Bro's ore and Diego's fish, no
+     longer on every giver's last step */
   const ends = QUEST_CHAINS.tut_2.after;
-  const short = ends.filter((q) => offers(done(...town.filter((x) => x !== q)), 'Mayor Bro') !== null);
-  check('the Mayor\'s finale is not offered while any one of the six givers\' last steps is left', ends.length === 6 && short.length === 0, { ends, short });
-  check('...and is once they are all in', offers(done(...town), 'Mayor Bro') === 'tut_2', offers(done(...town), 'Mayor Bro'));
-  check('the suggested order is the page\'s tour steps, the Mayor first and last',
-    QUEST_TOUR[0] === 'tut_1' && QUEST_TOUR[QUEST_TOUR.length - 1] === 'tut_2' && QUEST_TOUR.slice(1).every((q) => QUEST_CHAINS[q] && QUEST_CHAINS[q].tour), QUEST_TOUR);
+  const short = ends.filter((q) => offers(done('tut_1', ...ends.filter((x) => x !== q)), 'Mayor Bro') !== null);
+  check('the Mayor\'s snowmen are not offered while either the ore or the fish is left', ends.join() === 'smith_1,fish_1' && short.length === 0, { ends, short });
+  check('...and are once both are in, the rest of the town still to do', offers(done('tut_1', ...ends), 'Mayor Bro') === 'tut_2', offers(done('tut_1', ...ends), 'Mayor Bro'));
+  check('the suggested order is the page\'s tour steps: the Mayor first, his snowmen fifth, after their two steps',
+    QUEST_TOUR[0] === 'tut_1' && QUEST_TOUR.indexOf('tut_2') === 4 && ends.every((q) => QUEST_TOUR.indexOf(q) > 0 && QUEST_TOUR.indexOf(q) < 4)
+      && QUEST_TOUR.slice(1).every((q) => QUEST_CHAINS[q] && QUEST_CHAINS[q].tour), QUEST_TOUR);
 }
 
 // ── 2. questAfterMet ──
