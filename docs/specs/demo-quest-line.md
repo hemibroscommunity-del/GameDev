@@ -12,6 +12,62 @@ minutes:
 > why is the character doing this? ... Keep the dialog witty and funny (it's
 > an unserious game bro)."
 
+## v2.3.3533: the snowmen after two
+
+The owner, 2026-10-21, a week before the review: *"I value SIMPLICITY and
+INTELLIGIBILITY it's far more important for me that the player understands
+the game than to have precise finely tuned details."* Before this, the
+Mayor's snowmen waited for the whole town: ten quests, carrots that grow for
+six minutes among them. A reviewer with 20-30 minutes met the game's
+showpiece monsters last, or never.
+
+Now the snowmen wait on two quests: Blacksmith Bro's ore and Diego's fish,
+whose ten cooked clownfish are the food for the fight. The rest of the town
+stays open the whole time; it just comes after. The gold road suggests:
+
+| # | Giver | Quest |
+|---|---|---|
+| 1 | Mayor Bro | Into the Blue (the slimes) |
+| 2 | Blacksmith Bro | Heavy Metal (5 copper ore) |
+| 3 | Blacksmith Bro | Some Assembly Required (forge one thing; he offers it at the hand-in) |
+| 4 | Diego | Something Fishy (catch and cook 2 fish) |
+| 5 | Mayor Bro | Cold Reception (4 Snowman Remains) |
+| 6 | Farmer Bro | Carrot Comeback |
+| 7 | Woodworker Bro | Knock on Wood |
+| 8 | Woodworker Bro | Branching Out |
+| 9 | Farmer Bro | Zoom Juice (the carrots grew while you worked the wood) |
+| 10 | Lil Bro | Race Day |
+| 11 | Beastmaster Bro | Box Traps |
+| 12 | Beastmaster Bro | Set and Spring |
+
+- `tut_2` waits on `smith_1` and `fish_1` (`after`, server `data.js` and the
+  game's `gameSystems.js`, mirror-audit §5); nothing else changed when a
+  quest can be taken.
+- `QUEST_TOUR` is the order above on both sides (mirror-audit §5a), so the
+  road and the quest card lead the Mayor, Blacksmith Bro, Diego, the Mayor,
+  then the town. The Test panel's "Tour: jump to" follows it too.
+- Four lines said the old order and now say the new one: the Mayor's
+  first hand-in ("See Blacksmith Bro and Diego first, then come back"), his
+  snowmen's offer and hand-in (no longer "the whole town's singing your
+  name"; the rest of the town after), Diego's hand-in (on to the Mayor), and
+  Farmer Bro's carrots (true whether or not you can cook yet).
+- With no live players there is nothing to migrate. Deploy order: a new
+  game against the old worker would offer the snowmen early and have the
+  accept refused until the worker deploys, minutes after on a merge.
+
+Tests: `tour` (§1 the order and the gate, §10 the snowmen refused with
+either step missing and taken with both, the town still there after, §11
+"Tour: jump to" in the new order), `quest-pins`, `tutorial`, `mirror-audit`
+§5a; the phone check `mp-questline` (CI's "playable") walks the new order,
+the road naming each next giver (187 checks). It found one thing, in the
+test: with the snowmen fifth the Mayor has his next quest to offer by Lil
+Bro's turn ("Welcome Home", after tut_4), and the harness's "step back, then
+walk up" spot east of Lil Bro stood beside the Mayor, whose window opened and
+stayed over Lil Bro's. The scenario now puts away a window that is not the
+one it walked up to, and a claim that fails says what was on screen.
+
+The tables below are the tour as v2.3.3525 shipped it.
+
 ## The call: the Mayor first, then the whole town
 
 The first cut handed one line from giver to giver. Then the owner:

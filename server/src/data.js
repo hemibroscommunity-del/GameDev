@@ -784,6 +784,16 @@ export const QUEST_REWARDS = {
          and the Mayor's finale once the whole town is done:
            tut_2   Mayor Bro         the burrowing snowmen (`after` every
                                      giver's last step)
+         v2.3.3533: THE SNOWMEN AFTER TWO.  The owner, 2026-10-21, a week
+         before reviewers give the game 20-30 minutes, valuing "SIMPLICITY
+         and INTELLIGIBILITY": the whole town before the snowmen was ten
+         quests, carrots that grow for six minutes among them, so a reviewer
+         met the game's showpiece monsters last or never.  tut_2 now waits
+         on Blacksmith Bro's ore (smith_1) and Diego's fish (fish_1, whose
+         ten cooked clownfish are the fight's food); QUEST_TOUR leads the
+         Mayor, Blacksmith Bro's ore and forge, Diego, the snowmen, then
+         the rest of the town.  docs/specs/demo-quest-line.md "The snowmen
+         after two".
          then tut_3 / tut_4 (the Mayor's) and the Beastmaster's beast_3/4.
          QUEST_TOUR (below) is the order the game's gold road suggests them
          in, one giver at a time, and the Test panel's "Tour: jump to"
@@ -859,7 +869,9 @@ export const QUEST_REWARDS = {
          errand) -- once the WHOLE TOWN is done, with the gear the tour made
          you: `after` lists every giver's last step.  The Beastmaster's own
          beast_3 waits on it (below). */
-      tut_2: {gold:200, xp:50, next:'tut_3', after:['farm_2', 'smith_2', 'wood_2', 'fish_1', 'race_1', 'beast_2'],
+      /* v2.3.3533: after Blacksmith Bro's ore and Diego's fish, no longer the
+         whole town (the header above tut_1) */
+      tut_2: {gold:200, xp:50, next:'tut_3', after:['smith_1', 'fish_1'],
               objective:{type:'collect', invKey:'snowman', count:4, consume:true, zone:'frost'}},
       tut_3: {gold:150, xp:53, next:'tut_4',
               objective:{type:'collect', invKey:'skeleton-remnants', count:5, consume:true, zone:'sky'}},
@@ -1099,8 +1111,13 @@ export const QUEST_FIRST = 'tut_1';
  * from the game's own copy in gameSystems.js -- mirror-audit §5a), and the
  * steps the Test panel's "Tour: jump to" knows (devtools.js /dev/tour).  It
  * decides nothing a player may do -- `after` does -- and every step's `after`
- * comes before it (the tour suite checks). */
-export const QUEST_TOUR = Object.freeze(['tut_1', 'farm_1', 'smith_1', 'smith_2', 'wood_1', 'wood_2', 'fish_1', 'farm_2', 'race_1', 'beast_1', 'beast_2', 'tut_2']);
+ * comes before it (the tour suite checks).
+ * v2.3.3533: the snowmen fifth, once their two steps are in: the Mayor,
+ * Blacksmith Bro's ore and his forge (he offers it at the hand-in, "Let's
+ * make you something"), Diego's fish, the Mayor's snowmen, then the rest of
+ * the town -- the farm before the woodworker's two steps, so the carrots
+ * grow while they are done and Zoom Juice follows. */
+export const QUEST_TOUR = Object.freeze(['tut_1', 'smith_1', 'smith_2', 'fish_1', 'tut_2', 'farm_1', 'wood_1', 'wood_2', 'farm_2', 'race_1', 'beast_1', 'beast_2']);
 
 /* ═══ v2.3.3525: QUESTS NOBODY IS OFFERED ANY MORE ═══
  * The tour (QUEST_REWARDS tut_1) hands their errands and tools to the men

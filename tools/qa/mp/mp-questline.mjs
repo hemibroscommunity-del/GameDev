@@ -73,21 +73,28 @@ import { QUEST_REWARDS } from '../../../server/src/data.js';
    sprung) through the operator's /dev/questcount: the farm, the forge, the
    Cookhouse and the race each have their own scenario.  `trade` the weapon
    the claim's chooser swaps (wood_2). */
+/* v2.3.3533: the snowmen after Blacksmith Bro's ore and Diego's fish (the
+   owner: "SIMPLICITY and INTELLIGIBILITY" -- ten quests and a six-minute carrot
+   stood between a reviewer and them): QUEST_TOUR is the Mayor, Blacksmith
+   Bro's ore and forge, Diego's fish, the Mayor's snowmen, then the rest of the
+   town.  The Mayor's lands (tut_3, tut_4) follow his snowmen here, as he offers
+   each at the hand-in before (`next`), and the road then leads to the first
+   town step still on offer, Farmer Bro's carrots. */
 const ARC = [
   { id: 'tut_1', npc: 'mayor_bro', title: 'Into the Blue', give: { invKey: 'slime-remnants', count: 4 } },
-  { id: 'farm_1', npc: 'farmer_bro', title: 'Carrot Comeback', count: 3 },
   { id: 'smith_1', npc: 'blacksmith_bro', title: 'Heavy Metal', give: { invKey: 'ore_copper_ore', count: 5 } },
   { id: 'smith_2', npc: 'blacksmith_bro', count: 1 },
+  { id: 'fish_1', npc: 'shopkeeper_bro', title: 'Something Fishy', give: { invKey: 'cooked_fish_minnow', count: 2 } },
+  { id: 'tut_2', npc: 'mayor_bro', title: 'Cold Reception', give: { invKey: 'snowman', count: 4 } },
+  { id: 'tut_3', npc: 'mayor_bro', give: { invKey: 'skeleton-remnants', count: 5 } },
+  { id: 'tut_4', npc: 'mayor_bro', give: { invKey: 'fire-goblin-remnants', count: 6 } },
+  { id: 'farm_1', npc: 'farmer_bro', title: 'Carrot Comeback', count: 3 },
   { id: 'wood_1', npc: 'woodworker_bro', title: 'Knock on Wood', give: { invKey: 'wood_pine_log', count: 5 } },
   { id: 'wood_2', npc: 'woodworker_bro', count: 1, trade: 'bow' },
-  { id: 'fish_1', npc: 'shopkeeper_bro', title: 'Something Fishy', give: { invKey: 'cooked_fish_minnow', count: 2 } },
   { id: 'farm_2', npc: 'farmer_bro', title: 'Zoom Juice', count: 1 },
   { id: 'race_1', npc: 'lil_bro', title: 'Race Day', count: 1 },
   { id: 'beast_1', npc: 'beastmaster_bro', title: 'Box Traps', count: 3 },
   { id: 'beast_2', npc: 'beastmaster_bro', count: 3 },
-  { id: 'tut_2', npc: 'mayor_bro', title: 'Cold Reception', give: { invKey: 'snowman', count: 4 } },
-  { id: 'tut_3', npc: 'mayor_bro', give: { invKey: 'skeleton-remnants', count: 5 } },
-  { id: 'tut_4', npc: 'mayor_bro', give: { invKey: 'fire-goblin-remnants', count: 6 } },
 ];
 /* each giver's name, for the road's answer (the minimap probe names him) */
 const NAME_OF = { mayor_bro: 'Mayor Bro', farmer_bro: 'Farmer Bro', blacksmith_bro: 'Blacksmith Bro',
@@ -216,7 +223,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
      two more scenarios had to walk up to him.  Same three steps, same reasons;
      they are just written down once now.
      v2.3.3525: up to whichever townsperson gives the step (the tour) */
-  const approach = (npc) => H.approachNpc(P, npc || 'mayor_bro');
+  /* v2.3.3533: HIS window, not a neighbour's.  The harness steps away 420 px
+     east of a townsperson before walking up, and with the snowmen fifth the
+     Mayor has an offer by Lil Bro's turn (his "Welcome Home", after tut_4):
+     the step away from Lil Bro stood beside the Mayor, whose window opened and
+     stayed up over Lil Bro's ("Welcome! Visit three buildings to learn the
+     town.", race_1's claim never reached).  Stood at the one walked up to,
+     away from the Mayor, a window that is not his is put away, and his own
+     opens as you stand there (a giver's window opens on proximity). */
+  const dlgName = () => P.page.evaluate(() => {
+    const n = document.querySelector('.bt-npcdlg-name');
+    return n ? (n.innerText || '').trim().toLowerCase() : null;
+  });
+  const approach = async (npc) => {
+    const id = npc || 'mayor_bro';
+    const name = (NAME_OF[id] || id).toLowerCase();
+    let open = await H.approachNpc(P, id);
+    for (let i = 0; open && i < 3; i++) {
+      const who = await dlgName();
+      if (who === null || who === name) return open;   /* his, or the offer panel (no name) */
+      await H.closeNpcDialogue(P);
+      await P.page.waitForTimeout(1100);
+      open = await H.npcDialogueOpen(P);
+    }
+    return open;
+  };
 
   /* ── the line starts here ── */
   const start = await srv();
@@ -458,8 +489,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
          never used yet"), so it is the AUTO REWARD: his last line's "Claim
          reward" pays at once and he goes straight on to his next quest, with
          no claim panel and no skill chooser.  A real tap, as the panel's is. */
+      /* v2.3.3533: what he showed, kept for the record -- a claim that fails
+         said only "undefined" (his line, its button, and the phone's own count
+         of the objective, which the line goes by: questProgress) */
+      const _saw = await P.page.evaluate((qid) => {
+        const S = window._gameState && window._gameState.current;
+        const b = document.querySelector('.bt-npcdlg-next');
+        const t = document.querySelector('.bt-npcdlg-text');
+        return { button: b ? (b.innerText || '').trim() : null, line: t ? (t.innerText || '').replace(/\s+/g, ' ').slice(0, 120) : null,
+          count: S && S.rpg && S.rpg._questKills ? S.rpg._questKills[qid] : null, state: S && S.rpg && S.rpg._quests ? S.rpg._quests[qid] : null };
+      }, step.id);
       const _tapped = await H.claimOnLastLine(P);
-      rec.ok(`${step.id}: nothing to choose, so his last line's "Claim reward" pays it at once`, _tapped);
+      rec.ok(`${step.id}: nothing to choose, so his last line's "Claim reward" pays it at once`, _tapped, _saw);
       const _noPanel = await P.page.evaluate(() => !document.querySelector('.bt-quest-turnin, [data-xp-skill]'));
       rec.ok(`${step.id}: ...with no claim window and no skill to choose`, _noPanel,
         await cardText().then((t) => t.slice(0, 200)));
@@ -522,7 +563,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           return out;
         }, (v) => v && TOWN.every((n) => v[n] === '❗'), { timeout: 12000, label: 'the town\'s pins' }).catch(() => null);
         rec.ok('the Mayor\'s first quest in, all six townsfolk wear the gold "!" at once', !!heads, heads);
-        rec.ok('...and the Mayor none (his snowmen wait for the whole town)', !!heads && !heads['Mayor Bro'], heads);
+        rec.ok('...and the Mayor none (his snowmen wait for the ore and the fish)', !!heads && !heads['Mayor Bro'], heads);
         const mini = await H.waitFor(P, () => {
           const m = window.__btMinimap;
           return m && Array.isArray(m.questPins) ? m.questPins.map((q) => ({ name: q.name, state: q.state, art: q.art })) : null;

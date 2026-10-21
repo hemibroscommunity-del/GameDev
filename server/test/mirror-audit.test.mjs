@@ -376,8 +376,8 @@ const room = Object.create(GameRoom.prototype);
   const early = (SRV.QUEST_TOUR || []).filter((q, i) => listOf((SRV.QUEST_REWARDS[q] || {}).after).some((a) => {
     const j = SRV.QUEST_TOUR.indexOf(a); return j < 0 || j >= i;
   }));
-  check('QUEST_TOUR is the same twelve steps on both sides, a tour step each, in an order a player may follow (v2.3.3525)',
-    tourS === tourC && tourS === 'tut_1,farm_1,smith_1,smith_2,wood_1,wood_2,fish_1,farm_2,race_1,beast_1,beast_2,tut_2'
+  check('QUEST_TOUR is the same twelve steps on both sides, a tour step each, in an order a player may follow (v2.3.3525; v2.3.3533: the snowmen fifth)',
+    tourS === tourC && tourS === 'tut_1,smith_1,smith_2,fish_1,tut_2,farm_1,wood_1,wood_2,farm_2,race_1,beast_1,beast_2'
       && SRV.QUEST_TOUR.slice(1).every((q) => QUEST_CHAINS[q] && QUEST_CHAINS[q].tour === true) && early.length === 0,
     { server: tourS, client: tourC, early });
 }

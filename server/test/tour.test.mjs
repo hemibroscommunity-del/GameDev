@@ -15,7 +15,8 @@
  *   1. THE TABLE: the suggested order (QUEST_TOUR) a player may follow; the
  *      Mayor's first quest opening nothing by `next` and six townsfolk waiting
  *      on it; each giver's second step on his first; Zoom Juice on the carrots
- *      AND Diego's cooking; the finale on the whole town; no `next` that skips
+ *      AND Diego's cooking; the snowmen on Blacksmith Bro's ore and Diego's
+ *      fish (v2.3.3533; it was the whole town); no `next` that skips
  *      an `after`; every step checked; the retired errands; tools `max: 1`.
  *   2. ORDER: a step is refused before what it waits for is handed in; with
  *      tut_1 in, all six first steps are taken at once; farm_2 waits for
@@ -40,7 +41,9 @@
  *   9. race_1 / race.js: every refusal; nothing before the gun; the flags in
  *      order, tested along the step; a win before Lil Bro's time credits and
  *      saves, a late one does not; leaving the Wheel ends it; the switch.
- *  10. The tour's tail: the finale waits for the whole town, then tut_3.
+ *  10. The Mayor's snowmen (v2.3.3533): refused until both the ore and the
+ *      fish are in, taken then with the rest of the town still to do, then
+ *      tut_3, and the town still there after them.
  *  11. The owner's levers: /dev/tour jumps to a step, /dev/questcount sets a
  *      counted step's count.
  */
@@ -99,13 +102,14 @@ const settle = () => new Promise((r) => setTimeout(r, 0));
 
 const TOUR = QUEST_TOUR;
 const FIRSTS = ['farm_1', 'smith_1', 'wood_1', 'fish_1', 'race_1', 'beast_1'];
-const TOWN_ENDS = ['farm_2', 'smith_2', 'wood_2', 'fish_1', 'race_1', 'beast_2'];
+/* v2.3.3533: the Mayor's snowmen wait on these two, no longer the whole town */
+const SNOW_GATE = ['smith_1', 'fish_1'];
 const listOf = (af) => (Array.isArray(af) ? af : af ? [af] : []);
 
 // ── 1. THE TABLE ──
 {
-  check('the tour\'s suggested order: the Mayor\'s slimes, the town, the Mayor\'s snowmen',
-    TOUR.join() === 'tut_1,farm_1,smith_1,smith_2,wood_1,wood_2,fish_1,farm_2,race_1,beast_1,beast_2,tut_2', TOUR);
+  check('the tour\'s suggested order: the Mayor\'s slimes, Blacksmith Bro\'s ore and forge, Diego\'s fish, the Mayor\'s snowmen, then the rest of the town (v2.3.3533)',
+    TOUR.join() === 'tut_1,smith_1,smith_2,fish_1,tut_2,farm_1,wood_1,wood_2,farm_2,race_1,beast_1,beast_2', TOUR);
   check('every step of the tour is checked by the worker', TOUR.every((q) => !!QUEST_REWARDS[q].objective), TOUR.filter((q) => !QUEST_REWARDS[q].objective));
   check('the Mayor\'s first quest opens nothing by `next`, and six townsfolk wait on it (`after: tut_1`)',
     !QUEST_REWARDS.tut_1.next && FIRSTS.every((q) => QUEST_REWARDS[q].after === 'tut_1'), FIRSTS.map((q) => [q, QUEST_REWARDS[q].after]));
@@ -113,8 +117,8 @@ const listOf = (af) => (Array.isArray(af) ? af : af ? [af] : []);
     [['smith_1', 'smith_2'], ['wood_1', 'wood_2'], ['beast_1', 'beast_2']].every(([a, b]) => QUEST_REWARDS[b].after === a && QUEST_REWARDS[a].next === b));
   check('Zoom Juice waits on the carrots AND Diego\'s cooking (farm_2 after farm_1 and fish_1), and neither opens it early',
     JSON.stringify(QUEST_REWARDS.farm_2.after) === '["farm_1","fish_1"]' && !QUEST_REWARDS.farm_1.next && !QUEST_REWARDS.fish_1.next, QUEST_REWARDS.farm_2.after);
-  check('the Mayor\'s finale waits on the whole town: every giver\'s last step',
-    JSON.stringify(QUEST_REWARDS.tut_2.after) === JSON.stringify(TOWN_ENDS) && TOWN_ENDS.every((q) => !QUEST_REWARDS[q].next), QUEST_REWARDS.tut_2.after);
+  check('the Mayor\'s snowmen wait on Blacksmith Bro\'s ore and Diego\'s fish, not the whole town (v2.3.3533)',
+    JSON.stringify(QUEST_REWARDS.tut_2.after) === JSON.stringify(SNOW_GATE), QUEST_REWARDS.tut_2.after);
   /* a `next` opens its step at once, and the worker never refuses a step it
      opened -- so a `next` that led to a step waiting on more than the step
      before it would open it early */
@@ -126,12 +130,12 @@ const listOf = (af) => (Array.isArray(af) ? af : af ? [af] : []);
   check('no `next` opens a step that waits on anything more than the step that opened it', leaks.length === 0, leaks);
   const early = TOUR.filter((q, i) => listOf(QUEST_REWARDS[q].after).some((a) => { const j = TOUR.indexOf(a); return j < 0 || j >= i; }));
   check('the suggested order is one a player may follow: whatever a step waits on comes before it', early.length === 0, early);
-  check('the Beastmaster\'s own line waits on the finale (beast_3 after tut_2)', QUEST_REWARDS.beast_3.after === 'tut_2', QUEST_REWARDS.beast_3);
+  check('the Beastmaster\'s own line waits on the snowmen (beast_3 after tut_2)', QUEST_REWARDS.beast_3.after === 'tut_2', QUEST_REWARDS.beast_3);
   check('every objective type the tour uses is a counted kind or collect', TOUR.every((q) => {
     const t = QUEST_REWARDS[q].objective.type;
     return t === 'collect' || QUEST_COUNTED.indexOf(t) >= 0;
   }), TOUR.map((q) => QUEST_REWARDS[q].objective.type));
-  check('the tour pays no combat XP until the Mayor\'s finale (the trades pay their own XP)', TOUR.slice(0, -1).every((q) => QUEST_REWARDS[q].xp === 0) && QUEST_REWARDS.tut_2.xp > 0,
+  check('no step of the tour but the Mayor\'s snowmen pays combat XP (the trades pay their own XP)', TOUR.filter((q) => q !== 'tut_2').every((q) => QUEST_REWARDS[q].xp === 0) && QUEST_REWARDS.tut_2.xp > 0,
     TOUR.map((q) => [q, QUEST_REWARDS[q].xp]));
   check('life_1 and life_2 are retired', QUEST_RETIRED.indexOf('life_1') >= 0 && QUEST_RETIRED.indexOf('life_2') >= 0, QUEST_RETIRED);
   const tools = [['smith_1', 'mining_pickaxe'], ['wood_1', 'woodcutting_axe'], ['fish_1', 'fishing_pole']];
@@ -521,36 +525,40 @@ const accept = (P, questId) => send(P.ws, 'quest_accept', { questId });
   check('race: never in the saved player', !('_race' in (state._store.get('rpg:bp_tour_race_late') || {})), Object.keys(state._store.get('rpg:bp_tour_race_late') || {}));
 }
 
-// ── 10. the tour's tail ──
+// ── 10. the Mayor's snowmen, after the ore and the fish (v2.3.3533) ──
 {
   const P = await fresh('bp_tour_tail');
-  P.ps._quests.beast_1 = 'turnedIn';
-  await accept(P, 'beast_2');
-  P.ps._questKills.beast_2 = 3;
-  await turnIn(P, 'beast_2');
-  check('beast_2: handed in, and it opens nothing -- the finale waits for the whole town', P.ps._quests.beast_2 === 'turnedIn' && !P.ps._quests.tut_2, P.ps._quests);
+  P.ps._quests.tut_1 = 'turnedIn';
   await accept(P, 'tut_2');
-  check('...so the Mayor\'s tut_2 is refused with the rest of the town still to do', !P.ps._quests.tut_2, P.ps._quests);
-  for (const q of ['tut_1', 'farm_1', 'smith_1', 'smith_2', 'wood_1', 'wood_2', 'fish_1', 'race_1']) P.ps._quests[q] = 'turnedIn';
+  check('tut_2 is refused with only the Mayor\'s first quest in', !P.ps._quests.tut_2, P.ps._quests);
+  P.ps._quests.smith_1 = 'turnedIn';
   await accept(P, 'tut_2');
-  check('...and still with one left (farm_2)', !P.ps._quests.tut_2, P.ps._quests);
-  P.ps._quests.farm_2 = 'turnedIn';
+  check('...and with Blacksmith Bro\'s ore in but not Diego\'s fish', !P.ps._quests.tut_2, P.ps._quests);
+  delete P.ps._quests.smith_1;
+  P.ps._quests.fish_1 = 'turnedIn';
   await accept(P, 'tut_2');
-  check('...and taken once every giver\'s last step is in', P.ps._quests.tut_2 === 'active', P.ps._quests);
+  check('...and with Diego\'s fish in but not the ore', !P.ps._quests.tut_2, P.ps._quests);
+  P.ps._quests.smith_1 = 'turnedIn';
+  await accept(P, 'tut_2');
+  check('...and taken once both are in, with the rest of the town still to do', P.ps._quests.tut_2 === 'active'
+    && ['smith_2', 'farm_1', 'wood_1', 'race_1', 'beast_1'].every((q) => !P.ps._quests[q]), P.ps._quests);
   P.ps.inventory.snowman = 4;
   const c0 = P.ps.coins;
   await turnIn(P, 'tut_2', { xpCat: 'sword' });
-  check('tut_2, the finale: four snowman remains, 200 gold, and on to tut_3', P.ps._quests.tut_2 === 'turnedIn' && P.ps.coins === c0 + 200 && P.ps._quests.tut_3 === 'available', P.ps._quests);
+  check('tut_2: four snowman remains, 200 gold, and on to tut_3', P.ps._quests.tut_2 === 'turnedIn' && P.ps.coins === c0 + 200 && P.ps._quests.tut_3 === 'available', P.ps._quests);
+  await accept(P, 'farm_1');
+  check('...and the rest of the town is still there after the snowmen (farm_1 taken)', P.ps._quests.farm_1 === 'active', P.ps._quests);
 }
 
 // ── 11. the owner's levers: jump the tour to a step, set a counted step ──
 {
   const P = await fresh('bp_tour_lever');
   const r = room._devTour('bp_tour_lever', { at: 'race_1' });
-  const before = ['tut_1', 'farm_1', 'smith_1', 'smith_2', 'wood_1', 'wood_2', 'fish_1', 'farm_2'];
+  /* v2.3.3533: in the new order the snowmen (tut_2) come before race_1 */
+  const before = ['tut_1', 'smith_1', 'smith_2', 'fish_1', 'tut_2', 'farm_1', 'wood_1', 'wood_2', 'farm_2'];
   check('/dev/tour: every step before race_1 handed in, race_1 offered, the steps after it forgotten, the tools given',
-    r.ok && r.step === 9 && r.of === 12 && before.every((q) => P.ps._quests[q] === 'turnedIn')
-      && P.ps._quests.race_1 === 'available' && !P.ps._quests.beast_1 && !P.ps._quests.tut_2
+    r.ok && r.step === 10 && r.of === 12 && before.every((q) => P.ps._quests[q] === 'turnedIn')
+      && P.ps._quests.race_1 === 'available' && !P.ps._quests.beast_1 && !P.ps._quests.beast_2
       && ['mining_pickaxe', 'woodcutting_axe', 'fishing_pole'].every((k) => P.ps.inventory[k] === 1),
     { r, q: P.ps._quests, inv: P.ps.inventory });
   await accept(P, 'race_1');

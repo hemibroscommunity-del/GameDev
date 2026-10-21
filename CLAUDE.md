@@ -3475,10 +3475,16 @@ remnant to migrate server-side, not a mode to preserve.
       own piece (smith_2), a bow or staff and a pine one SWAPPED for softwood
       at the hand-in (wood_2, `trade`), 3 springs (beast_2), Zoom Juice
       (farm_2, after farm_1 AND fish_1: you can cook, the carrots have
-      grown); the Mayor's burrowing snowmen, the finale (tut_2), once the
-      whole town is in (`after` a LIST, every one handed in: the worker's
-      _questBarred, the phone's getNpcQuest STOP via `questAfterMet`), then
-      his lands (tut_3/4); `next` only within a giver's own line (a `next`
+      grown); the Mayor's burrowing snowmen (tut_2), once the whole town was
+      in -- SINCE v2.3.3533 once Blacksmith Bro's ore and Diego's fish are
+      (`after: ['smith_1', 'fish_1']`, a LIST, every one handed in: the
+      worker's _questBarred, the phone's getNpcQuest STOP via
+      `questAfterMet`; the owner, a week before the review: "SIMPLICITY and
+      INTELLIGIBILITY" -- the snowmen were step 12 of 12), then his lands
+      (tut_3/4), the rest of the town open throughout; the road's order
+      `QUEST_TOUR` tut_1, smith_1, smith_2, fish_1, tut_2, then the town
+      (docs/specs/demo-quest-line.md "v2.3.3533"); `next` only within a
+      giver's own line (a `next`
       opens its step past any `after`); life_1/life_2 RETIRED (QUEST_RETIRED,
       `retired`: never offered, one held still hands in); every line says why
       he wants it, in any order; the counted kinds `farm`/`craft`/`cook`/
