@@ -219,13 +219,13 @@ const setEligible = () => {
 
 {
   setEligible();
-  check('setup: Σ trained level is 6', room._prog3CharLevel(ps) === 6, room._prog3CharLevel(ps));
+  check('setup: the character level is 4 (v2.3.3538: the highest skill; the sum was 6)', room._prog3CharLevel(ps) === 4, room._prog3CharLevel(ps));
   cast();
   check('an eligible cast fires a nova', novas().length === 1, room.eventBuffer.map((e) => e.type));
 }
 {
   setEligible();
-  ps.prog3.sk.sword.level = 1;          // Σ = 3, a fresh character
+  ps.prog3.sk.sword.level = 1;          // a fresh character (v2.3.3538: level 1; the sum was 3)
   room._prog3Recompute(ps);
   cast();
   /* v2.3.2662: was 'GATE level' -- a level-3 cast refused with "level".  The

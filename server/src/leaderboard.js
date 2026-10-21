@@ -58,7 +58,7 @@ export class Leaderboard {
      claim carried in the rpgData blob, and is kept only so the old desktop
      panel keeps working. */
   static SERIES_CATEGORIES = {
-    combat: null,           // null = sum of the three combat skills
+    combat: null,           // null = the character level, worked out below (v2.3.3538: the highest of the three)
     melee: 'melee', bow: 'bow', magic: 'magic',
     kills: 'kills',
     woodcutting: 'woodcutting', fishing: 'fishing', mining: 'mining',
@@ -72,8 +72,11 @@ export class Leaderboard {
     if (category === 'combat') {
       /* Character level IS the sum of the trained skills (prog3), so it is
          derived rather than stored — one number that cannot disagree with
-         the three it is made of. */
-      return (s.melee || 0) + (s.bow || 0) + (s.magic || 0);
+         the three it is made of.
+         v2.3.3538: ONE LEVEL -- the character level is the HIGHEST of the
+         three (prog3.js _prog3CharLevel), so the board that prints "Lv N"
+         prints the level every name plate shows. */
+      return Math.max(s.melee || 0, s.bow || 0, s.magic || 0);
     }
     return s[Leaderboard.SERIES_CATEGORIES[category]] || 0;
   }

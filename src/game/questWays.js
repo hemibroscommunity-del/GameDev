@@ -30,7 +30,11 @@
  *        'monsters'     where the nearest land's monsters begin, its level
  *                       1s -- the very spot a quest naming a land leads to;
  *        'giver'        (v2.3.3525, the tour) the quest's own giver while it
- *                       runs: Lil Bro's race starts at him, his Race!.
+ *                       runs: Lil Bro's race starts at him, his Race!;
+ *        'dungeon:<land>'  (v2.3.3540) a Wheel dungeon's mouth, the land's
+ *                       landmark (game/wheelDungeons.js), when this worker
+ *                       opens it: the Mayor's "Clear any dungeon" leads to
+ *                       the Goo Grotto, the starter dungeon near town.
  *
  *   3. A QUEST WITH NOWHERE TO GO HID THE ONE BEHIND IT.  The old _wantNode
  *      stopped at the first any-zone quest and returned "nothing" when it
@@ -52,6 +56,9 @@ export const GATHER_HERE_R = 160; /* at a resource: the road stops */
    BOOTS (data/wheelBuildingDoors.js WHEEL_DOOR_REACH); this is measured from
    the body's middle, ~45 px above them */
 export const DOOR_HERE_R = 200;
+/* v2.3.3540: at a dungeon's mouth the road stops where its Enter button comes
+   up (data/wheelDungeons.js DOOR_R, from the body's middle) */
+export const DUNGEON_HERE_R = 200;
 
 /** "You are there": no star, and no other quest's either. */
 export const HERE = Object.freeze({ here: true });
@@ -72,13 +79,15 @@ export function routeOrder(entries, tracked) {
 }
 
 /** A way written on a quest or a step, as data: 'monsters', 'visit',
-    'door:<plot>', 'giver' (v2.3.3525) -- or null. */
+    'door:<plot>', 'giver' (v2.3.3525), 'dungeon:<land>' (v2.3.3540) -- or
+    null. */
 export function parseWay(w) {
   if (typeof w !== 'string' || !w) return null;
   if (w === 'monsters') return { kind: 'monsters' };
   if (w === 'visit') return { kind: 'visit' };
   if (w === 'giver') return { kind: 'giver' };
   if (w.indexOf('door:') === 0 && w.length > 5) return { kind: 'door', plot: w.slice(5) };
+  if (w.indexOf('dungeon:') === 0 && w.length > 8) return { kind: 'dungeon', land: w.slice(8) };
   return null;
 }
 
@@ -205,6 +214,14 @@ export function pointFor(w, ctx) {
       if (_near(P, d, DOOR_HERE_R)) return HERE;
       return { x: d.x, y: d.y, door: d.id };
     }
+    case 'dungeon': {
+      /* v2.3.3540: its mouth, if this worker opens it (`ctx.dungeons`: the
+         game's wheelDungeonDoorsOpen, [{ id (its land), x, y }]) */
+      const d = (ctx.dungeons || []).find((o) => o && o.id === w.land);
+      if (!d) return null;
+      if (_near(P, d, DUNGEON_HERE_R)) return HERE;
+      return { x: d.x, y: d.y, dungeon: d.id };
+    }
     case 'visit': {
       const seen = visitedSet(ctx.visited);
       const left = (ctx.doors || []).filter((o) => o && o.index >= 0 && !o.closed && !seen.has(o.index));
@@ -221,7 +238,7 @@ export function pointFor(w, ctx) {
 /** The road's end for the active quests, in routeOrder: the first quest whose
     way has a place here; null when one says you are there, or none has one.
     `ctx`: { order (routeOrder's), steps(q), P, npcAt(name), doors, visited,
-    nodeNear(kind) -> {x, y, d}, geom }.  The answer carries `qid` (whose road
+    nodeNear(kind) -> {x, y, d}, geom, dungeons }.  The answer carries `qid` (whose road
     it is) and `way` (its kind). */
 export function wheelWay(ctx) {
   const order = (ctx && ctx.order) || [];

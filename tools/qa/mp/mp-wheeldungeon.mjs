@@ -3,7 +3,9 @@
  * Offered "Dungeons in the Wheel", the owner: "Yes continue working on those
  * items".  One real player against a real worker:
  *   1. the client knows the three mouths (the Great Cave, the Foundry Dome,
- *      the Buried City) from the Wheel's own map, where the worker baked them;
+ *      the Buried City) from the Wheel's own map, where the worker baked them
+ *      (v2.3.3540: and the Verdant Wilds' Goo Grotto, the starter dungeon --
+ *      mp-googrotto walks it);
  *   2. walked to the Great Cave, its mouth is drawn and "Enter the Great
  *      Cave" comes up (and not a step before, far off);
  *   3. a tap opens the dungeon: the loading screen, then the arena, its
@@ -54,14 +56,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 1. the mouths ── */
   let doors = [];
-  for (let i = 0; i < 30 && doors.length < 3; i++) {
+  for (let i = 0; i < 30 && doors.length < 4; i++) {
     doors = await P.page.evaluate(() => (window.__btWheelDungeons ? window.__btWheelDungeons.doors() : []));
-    if (doors.length < 3) await P.page.waitForTimeout(500);
+    if (doors.length < 4) await P.page.waitForTimeout(500);
   }
   const cave = doors.find((d) => d.id === 'hollows');
   const W = WHEEL_DOORS.hollows;
-  rec.ok(`the client knows the three mouths from the Wheel's map, where the worker baked them (${doors.map((d) => d.name).join(', ')})`,
-    z0 === 'wheel' && doors.length === 3 && !!cave && cave.name === 'the Great Cave' && Math.hypot(cave.x - W.at[0], cave.y - W.at[1]) < 2,
+  /* v2.3.3540: four -- the Goo Grotto too */
+  const goo = doors.find((d) => d.id === 'verdant');
+  rec.ok(`the client knows the four mouths from the Wheel's map, where the worker baked them (${doors.map((d) => d.name).join(', ')})`,
+    z0 === 'wheel' && doors.length === 4 && !!cave && cave.name === 'the Great Cave' && Math.hypot(cave.x - W.at[0], cave.y - W.at[1]) < 2
+      && !!goo && goo.name === 'the Goo Grotto' && Math.hypot(goo.x - WHEEL_DOORS.verdant.at[0], goo.y - WHEEL_DOORS.verdant.at[1]) < 2,
     { z0, doors, baked: W });
 
   /* ── 2. walk to the Great Cave ── */

@@ -92,7 +92,12 @@ export function wheelMap(plan, bp) {
       const rd = plan.regions[p.region], realm = rd && rd.realm && realms[rd.realm];
       places.push({ kind: 'gate', id: p.id, name: p.name, region: p.region, to: realm ? realm.name : null, x, y });
     } else if (p.kind === 'landmark' || p.kind === 'place' || p.kind === 'falls' || p.kind === 'bridge' || p.kind === 'pond') { /* v2.3.3057: + the ponds (Bro Pond) */
-      places.push({ kind: p.kind === 'place' ? 'site' : p.kind, id: p.id, name: p.name, region: p.region || null, x, y });
+      const q = { kind: p.kind === 'place' ? 'site' : p.kind, id: p.id, name: p.name, region: p.region || null, x, y };
+      /* v2.3.3540: a landmark with a tier is a dungeon's way in (the bake's
+         WHEEL_DOORS): its levels, for the world map's "dungeon · Lv 1–5" */
+      const lm = p.kind === 'landmark' && p.region && plan.regions[p.region] && plan.regions[p.region].landmark;
+      if (lm && lm.tier > 0) q.levels = W.levels(lm.tier);
+      places.push(q);
     }
   }
   /* the lines: the roads (the trunks down the spokes, the passes, the paths

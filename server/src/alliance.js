@@ -18,7 +18,9 @@
  * ALLIANCE.AT 20, and stays one until they fall below ALLIANCE.DROP 15, so a
  * party hovering at 20 does not flicker.  Active: played in the last
  * ACTIVE_MS 7 days (online now, or their `seen` in the party record) and
- * level ACTIVE_LEVEL 5 or more (ps.level, the three combat skills added up).
+ * level ACTIVE_LEVEL 5 or more (ps.level, the three combat skills added up;
+ * since v2.3.3538 the HIGHEST of the three, prog3.js -- a new character is 1,
+ * so 5 is a weapon at level 5).
  * The count is taken when something could change it -- a member's join, a
  * member joining or leaving, a rename -- and on the party's vitals echo while
  * someone is on (a member reaching level 5 mid-visit).  Never by an alarm:

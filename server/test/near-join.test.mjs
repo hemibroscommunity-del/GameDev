@@ -232,7 +232,8 @@ mA.pump(); mB.pump();
   const extra = Object.keys(pa.pfar).filter((k) => !LIST.has(k));
   check('1e a list entry carries the lists\' fields only (no look: no hair, colours, drawings)', extra.length === 0 && !('hr' in pa.pfar) && !('bt' in pa.pfar), { extra, e: pa.pfar });
   check('1f ...its name, level and zone (the Wheel, from its state, not the join\'s town)',
-    pa.pfar.name === 'N_pfar' && pa.pfar.rpgLv === lookFor(3).rpgLv && pa.pfar.z === 'wheel', pa.pfar);
+    /* v2.3.3538: the level is the worker's own (prog3.js _levelStamp), never the join's claim */
+    pa.pfar.name === 'N_pfar' && pa.pfar.rpgLv === room.playerState.pfar.level && pa.pfar.z === 'wheel', pa.pfar);
   const rd = pa.pfar.rpgData || {};
   check('1g ...and the inspect card\'s parts the lists read (kills, gold, playtime, clan) and no more',
     rd.kills === lookFor(3).rpgData.kills && rd.goldEarned === lookFor(3).rpgData.goldEarned && rd.playtime === lookFor(3).rpgData.playtime

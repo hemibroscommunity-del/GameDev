@@ -35,6 +35,7 @@
  */
 import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js';
 import { noteOnboardingPlate, noteWelcomePending } from '@/ui/onboardingPace.js'; /* v2.3.2888; v2.3.2890 + pending */
+import { prog3FreshLevel } from '@/data/prog3.js'; /* v2.3.3538: a new character's level (1 under one level) */
 
 const SEEN_KEY = 'bt_welcome_seen';
 
@@ -56,7 +57,7 @@ const markSeen = () => {
 const TUT_IDS = ['tut_1', 'tut_2', 'tut_3', 'tut_4'];
 function looksBrandNew(rpg) {
   if (!rpg) return false;
-  if ((rpg.level || 1) > 3) return false;
+  if ((rpg.level || 1) > prog3FreshLevel()) return false;   /* v2.3.3538: was 3, the sum's new character */
   const q = rpg._quests || null;
   if (!q) return true;
   for (const id of TUT_IDS) if (q[id]) return false;
