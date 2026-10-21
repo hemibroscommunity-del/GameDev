@@ -900,6 +900,7 @@ Screens: building-forge
 **Decisions, and why:**
 - Rebuilt from scratch (v2.3.2826). Owner: "I hate the blacksmithing menu. I almost want to Delete it and start from scratch. Nobody wants to read a novel to know how it works." The old panel stacked every job in one scroll with a paragraph above each.
 - One job per tab, each an icon and one word: Smelt, Forge, Armor (v2.3.3092), Upgrade, Amulet, Salvage (v2.3.3141). A tab only shows when the server can do that job.
+- The Amulet tab shows only once you hold something it works on: a gold nugget, a gold bar, or an amulet, worn or spare (v2.3.3535). A nugget drops 1 kill in 10,000 and a bar takes five, so for nearly every player, and every reviewer the tour sends to the forge, it was a recipe they could never start. Owner, a week before the review: "I value SIMPLICITY and INTELLIGIBILITY it's far more important for me that the player understands the game than to have precise finely tuned details."
 - Pictures and numbers, not sentences. Every cost is a chip: the item's picture and HAVE/NEED, green when you have enough and red when you don't. A lock is a chip naming the one thing missing ("Smithing 5", "Melee 10"). The forge's phone test checks a word budget for each tab.
 - Every XP pill wears the owner's star with "XP" on it (v2.3.3524, the buff badge's picture), and every Forge row has one now; it was a plain gold sparkle, and the Forge rows showed none. Owner: "Make the xp pill for smith items a different icon (one that's more obviously 'xp')".
 - Forge and Armor list what you can make now plus only the NEXT tier, locked, as the goal. The old list ran ten levels ahead, and a wall of locks told the player nothing.
@@ -924,6 +925,7 @@ Screens: building-forge
 
 **Please don't suggest:**
 - Explanations or paragraphs in the tabs (the owner's "novel" complaint).
+- Showing the Amulet tab to everyone again while gold nuggets stay this rare.
 - Listing every future tier, or showing a result before the server confirms it.
 - Centring or raising the forge's window: it sits low so your character is seen working.
 - Dropping the second tap on Salvage or an essence.

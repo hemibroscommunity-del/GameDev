@@ -56,6 +56,11 @@
  *        gem the server paid past 200; a pre-stamp record is still healed.
  *   13b. a shield gem pays only on a shield this server made: a claimed
  *        shield, worn through shield_wear, pays and charges nothing.
+ *
+ * v2.3.3535:
+ *   14. the forge's Amulet tab shows only to someone holding a nugget, a
+ *       bar or an amulet (src/game/forgeTabs.js), and the premise -- a
+ *       nugget is 1 kill in 10,000 -- still holds.
  */
 import { GameRoom } from '../src/index.js';
 import { AMULET_FORGE_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_MONSTER_DROP, GEM_RAW_MONSTER_DROP, GEM_CUT_TIERS } from '../src/data.js';
@@ -648,6 +653,26 @@ delete room._liveFlags.shardcrack;   /* v2.3.3516: the crack back on (above §9)
     !gemsOf(pc).polished_flame, gemsOf(pc));
   check('...and charges nothing, the gem staying where it is',
     pc.coins === 100 && pc.shield.gem === 'flame', { coins: pc.coins, shield: pc.shield });
+}
+
+// ── 14. v2.3.3535: the forge's Amulet tab only to someone holding gold for it ──
+{
+  const { amuletTabShown } = await import('../../src/game/forgeTabs.js');
+  check('14. a fresh character sees no Amulet tab (no nugget, bar or amulet)',
+    amuletTabShown({}) === false && amuletTabShown(null) === false && amuletTabShown(undefined) === false);
+  check('14. one gold nugget shows it', amuletTabShown({ goldNuggets: 1 }) === true);
+  check('14. one gold bar shows it', amuletTabShown({ goldBars: 1 }) === true);
+  check('14. a worn amulet shows it', amuletTabShown({ amulet: { tier: 'bronze', gem: null } }) === true);
+  check('14. a spare amulet shows it', amuletTabShown({ amuletStash: [{ tier: 'bronze' }] }) === true);
+  check('14. zeros, junk and an empty or junk stash do not',
+    amuletTabShown({ goldNuggets: 0, goldBars: '0', amulet: null, amuletStash: [] }) === false
+      && amuletTabShown({ goldNuggets: 'x', goldBars: NaN, amulet: 'bronze', amuletStash: [null, 3] }) === false
+      && amuletTabShown({ goldNuggets: -2, goldBars: 0.5 }) === false);
+  /* the rule's premise: a nugget is rare enough that nearly nobody holds one.
+     If they ever become common, show the tab to everyone again
+     (src/game/forgeTabs.js). */
+  check('14. the premise holds: a nugget drops 1 kill in 10,000 or rarer, and a bar takes 5',
+    GOLD_NUGGET_MONSTER_DROP <= 0.0001 && NUGGETS_PER_BAR >= 5, { GOLD_NUGGET_MONSTER_DROP, NUGGETS_PER_BAR });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

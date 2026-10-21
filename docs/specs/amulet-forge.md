@@ -235,3 +235,27 @@ in `amulet.test.mjs` §12b and §13b:
   fixes the filter, add `op:'extract'`/`op:'salvage'` here first.
 - Non-flame gem stat bonuses remain client-side point-of-use effects
   (v2.3.1139 posture unchanged).
+
+## v2.3.3535: the Amulet tab only with gold for it
+
+The owner, 2026-10-21, a week before reviewers play the game for 20-30
+minutes each: *"I value SIMPLICITY and INTELLIGIBILITY it's far more
+important for me that the player understands the game than to have precise
+finely tuned details."*
+
+A gold nugget drops 1 kill in 10,000 (`GOLD_NUGGET_MONSTER_DROP`) and a bar
+takes five (`NUGGETS_PER_BAR`), so an amulet takes about 50,000 kills. The
+tour sends every new player to the forge (Blacksmith Bro's ore and his
+forge), where the Amulet tab showed "Gold Bar ×0" and every row locked: a
+recipe they could never start.
+
+- The Blacksmith's window shows the Amulet tab only once you hold something
+  it works on: a nugget, a bar, or an amulet, worn or spare
+  (`src/game/forgeTabs.js` `amuletTabShown`, read by SmithyPanel.jsx).
+- A tab you were on that is no longer listed shows the first tab instead.
+- Nothing about amulets changed: the worker settles smelting and crafting as
+  before, and the Upgrade tab still takes a gem out of a worn amulet.
+
+Tests: `amulet` §14 (the rule, and its premise: if nuggets stop being rare,
+show the tab to everyone again); `mp-smithy` (a new character sees five
+tabs; with a nugget the sixth comes back and lists the tiers).
