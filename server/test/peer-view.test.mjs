@@ -113,14 +113,18 @@ const eA = sync && sync.players ? sync.players[A] : null;
   await join('bp_cccccccccccccccccccc_cy', Object.assign({}, LOOK, CLAIMS, { name: 'Cy' }));
   const sC = [...room.sessions.values()].find((x) => x.id === 'bp_cccccccccccccccccccc_cy');
   check('3- (the room does hold the join\'s claims for a character on file, so the broadcast is what is tested)',
-    !!sC && sC.data && sC.data.rpgCoins === 4321 && sC.data.rpgLv === 7, sC && sC.data && { rpgCoins: sC.data.rpgCoins, rpgLv: sC.data.rpgLv });
+    /* v2.3.3538: ...except the level it shows, which is the worker's own
+       (prog3.js _levelStamp, join.js) -- never the phone's claimed 7 */
+    !!sC && sC.data && sC.data.rpgCoins === 4321 && sC.data.rpgLv === room.playerState.bp_cccccccccccccccccccc_cy.level && sC.data.rpgLv !== 7,
+    sC && sC.data && { rpgCoins: sC.data.rpgCoins, rpgLv: sC.data.rpgLv });
   const pj = msgs(wsB, 'player_join').find((m) => m.id === 'bp_cccccccccccccccccccc_cy');
   const d = pj ? pj.data || {} : null;
   const notPublic = d ? Object.keys(d).filter((k) => !PUBLIC.has(k)) : null;
   check('3a player_join tells the others only public keys', !!d && notPublic.length === 0, { notPublic, keys: d && Object.keys(d) });
   check('3b ...not the phone\'s coins, bag, skills, level or weapon claims', !!d && d.rpgCoins === undefined && d.rpgInventory === undefined
     && d.rpgLifeSkills === undefined && d.rpgLevel === undefined && d.rpgWeapon === undefined && d.rpgGoldNuggets === undefined, d);
-  check('3c ...and its look, position and the level it shows', !!d && d.hw === 'cap' && d.sk === 'tan' && d.eqc === 'iron' && d.x === 1000 && d.rpgLv === 7, d);
+  check('3c ...and its look, position and the level it shows (the worker\'s, v2.3.3538)', !!d && d.hw === 'cap' && d.sk === 'tan' && d.eqc === 'iron' && d.x === 1000
+    && d.rpgLv === room.playerState.bp_cccccccccccccccccccc_cy.level, d);
   const u = room._peerPublic(null, { data: Object.assign({}, LOOK, CLAIMS) });
   const kept = Object.keys(CLAIMS).filter((k) => k in u).sort().join(',');
   check('3d of the join\'s claims only the level and HP it shows go out', kept === 'rpgHp,rpgLv,rpgMaxHp', kept);

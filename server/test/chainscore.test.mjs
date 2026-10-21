@@ -129,17 +129,26 @@ function mk(over) {
 // ── 2. Milestone selection ──
 {
   const room = new GameRoom(makeState(), { LEADERBOARD });
-  check('level 3 (a fresh prog3 character) is below the first milestone',
-    room._chainScoreMilestone(3) === 0, room._chainScoreMilestone(3));
-  /* v2.3.1683: first milestone is 4 — one level-up from a fresh character
-     (level 3), so the chain shows something within minutes of play. */
-  check('level 4 (the FIRST level-up) hits the first milestone', room._chainScoreMilestone(4) === 4);
-  check('level 9 stays on milestone 4', room._chainScoreMilestone(9) === 4);
+  /* v2.3.3538: ONE LEVEL -- the character level is the highest skill
+     (1..100), a fresh character 1, so the first level-up is 2 and the ladder
+     [2, 5, 10, 20, 30, 40, 50, 75, 100]; the sum's own ladder under
+     `onelevel: false`. */
+  check('level 1 (a fresh prog3 character) is below the first milestone',
+    room._chainScoreMilestone(1) === 0, room._chainScoreMilestone(1));
+  /* v2.3.1683: the first milestone is one level-up from a fresh character,
+     so the chain shows something within minutes of play. */
+  check('level 2 (the FIRST level-up) hits the first milestone', room._chainScoreMilestone(2) === 2);
+  check('level 4 stays on milestone 2', room._chainScoreMilestone(4) === 2);
   check('level 10 advances to 10', room._chainScoreMilestone(10) === 10);
-  check('level 137 resolves to 100', room._chainScoreMilestone(137) === 100, room._chainScoreMilestone(137));
-  check('level 300 (the cap) resolves to 300', room._chainScoreMilestone(300) === 300);
-  check('milestones are ascending and unique',
-    CHAIN_SCORE.MILESTONES.every((m, i, a) => i === 0 || m > a[i - 1]));
+  check('level 25 resolves to 20', room._chainScoreMilestone(25) === 20, room._chainScoreMilestone(25));
+  check('level 100 (the cap) resolves to 100', room._chainScoreMilestone(100) === 100);
+  check('milestones are ascending and unique, nine of them, topping at the cap',
+    CHAIN_SCORE.MILESTONES.every((m, i, a) => i === 0 || m > a[i - 1])
+      && CHAIN_SCORE.MILESTONES.length === 9 && CHAIN_SCORE.MILESTONES[8] === 100);
+  room._liveFlags = { onelevel: false };
+  check('onelevel false: the sum\'s ladder (3 below it, 4 the first, 300 the cap)',
+    room._chainScoreMilestone(3) === 0 && room._chainScoreMilestone(4) === 4 && room._chainScoreMilestone(300) === 300);
+  room._liveFlags = null;
 }
 
 // ── 3. The happy path writes once, stores, and receipts the player ──
@@ -154,13 +163,13 @@ function mk(over) {
   const ps = { level: 25, svKills: 40 };
   const res = await room._chainScoreCheckpoint('bp_c', ps);
   check('checkpoint succeeds', res.ok === true, res);
-  check('checkpoint reports the crossed milestone', res.milestone === 25, res.milestone);
+  check('checkpoint reports the crossed milestone (level 25: 20, v2.3.3538)', res.milestone === 20, res.milestone);
   check('checkpoint broadcast a raw transaction', calls.includes('eth_sendRawTransaction'), calls);
 
   const stored = state._store.get(CHAIN_SCORE.KEY('bp_c'));
   check('the attestation is stored under the registered prefix', !!stored, stored);
   check('stored record carries milestone/nonce/level/kills/txHash',
-    stored && stored.milestone === 25 && stored.nonce === 1
+    stored && stored.milestone === 20 && stored.nonce === 1
     && stored.level === 25 && stored.kills === 40 && /^0x/.test(stored.txHash), stored);
 
   const receipt = ws.sent.filter((m) => m.type === 'chain_score_recorded');
@@ -561,14 +570,14 @@ function mk(over) {
   r = await call('/chainstatus?id=bp_st', 'sesame');
   j = await r.json();
   check('chainstatus?id returns the stored write with an explorer link',
-    j.player && j.player.milestone === 25 && /\/tx\/0x/.test(j.player.explorer), j.player);
+    j.player && j.player.milestone === 20 && /\/tx\/0x/.test(j.player.explorer), j.player);
   check('chainstatus?id hands the operator the player key (no by-hand keccak)',
     j.player && /^0x[0-9a-f]{64}$/.test(j.player.playerKey), j.player && j.player.playerKey);
 
   r = await call('/chainstatus', 'sesame');
   j = await r.json();
   check('the aggregate view counts writes and shows the newest',
-    j.writes === 1 && j.lastWrite && j.lastWrite.milestone === 25, j);
+    j.writes === 1 && j.lastWrite && j.lastWrite.milestone === 20, j);
 
   const noAdmin = new GameRoom(makeState(), { LEADERBOARD });
   const r404 = await noAdmin._adminFetch(new Request('http://x/api/admin/chainstatus'));

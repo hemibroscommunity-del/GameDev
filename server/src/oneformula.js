@@ -12,7 +12,10 @@
  *
  *   1. HEALTH.  A character's max HP is 100 + 50 a level + 40 a Max HP point
  *      (it was 100 + 6 a level + 8 a point).  A level is the character level
- *      (the three weapon skills summed, prog3.js _prog3CharLevel).  Health now
+ *      (the three weapon skills summed, prog3.js _prog3CharLevel; since
+ *      v2.3.3538 the HIGHEST of the three, read here as the sum read a
+ *      character with one weapon trained -- level + MATCH_LEVEL, so 200 + 50 a
+ *      level: healthAt's `oneLevel`).  Health now
  *      grows with level about as fast as damage does, so two equal players
  *      take about as long to finish each other at level 10 as at level 30
  *      (the old +6 a level made a level-30 fight a third the length of a
@@ -21,7 +24,10 @@
  *   2. MONSTERS HIT HARDER BY THE SAME AMOUNT, so fighting them feels exactly
  *      as it did: a monster of level M hits a player whose weapon skill is M
  *      (character level M + 2, the other two skills at 1 -- MATCH_LEVEL) for
- *      the same share of their health as before.  `monsterHitK(M)` is that
+ *      the same share of their health as before.  (v2.3.3538: under one level
+ *      that player IS level M, and healthAt reads them at M + MATCH_LEVEL, so
+ *      the same health and the same k -- monsterHitK needs no change.)
+ *      `monsterHitK(M)` is that
  *      player's new health over their old; every monster's `dmg` is built
  *      with it (index.js _makeZoneMonster, dungeon.js _dungeonMonster), and
  *      the two flat amounts (the blue slime's burst, the fire trail) take it
@@ -101,10 +107,16 @@ export const ONE_FORMULA = Object.freeze({
 });
 
 /** Max HP at a character level with `pts` Max HP points: the new formula, or
- *  the old one when `on` is false.  Floored, as the worker always has. */
-export function healthAt(charLevel, pts, on) {
+ *  the old one when `on` is false.  Floored, as the worker always has.
+ *  v2.3.3538: `oneLevel` -- the level is the HIGHEST weapon skill (prog3.js
+ *  _prog3CharLevel), not the three added up.  The bar reads it as the sum read
+ *  a character with one weapon trained and the other two at 1 (+ MATCH_LEVEL),
+ *  so 200 + 50 a level + 40 a point: a new character's 250, and every
+ *  one-weapon character's bar, exactly as before -- only a character who
+ *  trained two or three weapons no longer has the others' HP too. */
+export function healthAt(charLevel, pts, on, oneLevel) {
   const H = on === false ? ONE_FORMULA.OLD_HEALTH : ONE_FORMULA.HEALTH;
-  const L = Math.max(0, Number(charLevel) || 0);
+  const L = Math.max(0, Number(charLevel) || 0) + (oneLevel ? ONE_FORMULA.MATCH_LEVEL : 0);
   const P = Math.max(0, Number(pts) || 0);
   return Math.floor(H.BASE + L * H.PER_LEVEL + P * H.PER_POINT);
 }

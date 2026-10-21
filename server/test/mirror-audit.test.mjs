@@ -59,7 +59,7 @@ import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wh
 import { PVP_HEAL as CLIENT_PVP_HEAL } from '../../src/game/fightFood.js'; /* v2.3.3133 */
 import * as SRV_ONE from '../src/oneformula.js'; /* v2.3.3260: one formula for every fight */
 import * as CLIENT_ONE from '../../src/data/oneFormula.js';
-import { setOneFormulaEnabled as clientSetOneFormula } from '../../src/data/oneFormula.js';
+import { setOneFormulaEnabled as clientSetOneFormula, setOneLevelEnabled as clientSetOneLevel } from '../../src/data/oneFormula.js'; /* v2.3.3538: + one level */
 import { recalcDerived as clientRecalcDerived } from '../../src/data/gameSystems.js';
 import { WHEEL_SPAWNS as SRV_WHEEL_SPAWNS } from '../src/wheelspawns.js'; /* v2.3.3089 */
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
@@ -299,7 +299,10 @@ const room = Object.create(GameRoom.prototype);
   let bad = [];
   for (const on of [true, false]) {
     for (let lvl = 0; lvl <= 300; lvl += 7) for (const pts of [0, 1, 6, 37, 100]) {
-      if (CLIENT_ONE.healthAt(lvl, pts, on) !== SRV_ONE.healthAt(lvl, pts, on)) bad.push(['health', on, lvl, pts]);
+      /* v2.3.3538: with one level and without (healthAt's `oneLevel`) */
+      for (const one of [true, false]) {
+        if (CLIENT_ONE.healthAt(lvl, pts, on, one) !== SRV_ONE.healthAt(lvl, pts, on, one)) bad.push(['health', on, one, lvl, pts]);
+      }
     }
     for (let lvl = 1; lvl <= 100; lvl++) {
       if (CLIENT_ONE.monsterHitK(lvl, on) !== SRV_ONE.monsterHitK(lvl, on)) bad.push(['hitK', on, lvl]);
@@ -314,21 +317,25 @@ const room = Object.create(GameRoom.prototype);
   const room1 = Object.create(GameRoom.prototype);
   bad = [];
   setProg3Enabled(true);
-  for (const on of [true, false]) {
-    room1._liveFlags = on ? {} : { oneformula: false };
+  /* v2.3.3538: and with ONE LEVEL on and off (the worker's `onelevel` flag,
+     the page's caps.onelevel switch): the level AND the bar agree */
+  for (const on of [true, false]) for (const one of [true, false]) {
+    room1._liveFlags = Object.assign({}, on ? {} : { oneformula: false }, one ? {} : { onelevel: false });
     clientSetOneFormula(on);
+    clientSetOneLevel(one);
     for (const [sw, bw, st, hp] of [[1, 1, 1, 0], [5, 1, 1, 3], [10, 1, 1, 0], [20, 7, 3, 12], [40, 40, 40, 100]]) {
       const prog3 = { sk: { sword: { level: sw, xp: 0 }, bow: { level: bw, xp: 0 }, staff: { level: st, xp: 0 } }, atk: {}, alloc: { hp }, pool: 0 };
       const ps = { prog3: JSON.parse(JSON.stringify(prog3)) };
       room1._prog3Recompute(ps);
       const rpg = { prog3: JSON.parse(JSON.stringify(prog3)), hp: 1, maxHp: 1 };
       clientRecalcDerived(rpg);
-      if (ps.maxHp !== rpg.maxHp) bad.push({ on, sw, bw, st, hp, worker: ps.maxHp, page: rpg.maxHp });
+      if (ps.maxHp !== rpg.maxHp || ps.level !== rpg.level) bad.push({ on, one, sw, bw, st, hp, worker: [ps.level, ps.maxHp], page: [rpg.level, rpg.maxHp] });
     }
   }
   clientSetOneFormula(false);
+  clientSetOneLevel(false);
   setProg3Enabled(false);
-  check('ONE_FORMULA mirror: the page\'s bar is the worker\'s, the formula on and off', bad.length === 0, bad.slice(0, 4));
+  check('ONE_FORMULA mirror: the page\'s level and bar are the worker\'s, the formula and one level on and off', bad.length === 0, bad.slice(0, 4));
 }
 
 // ── 5. QUEST_REWARDS vs QUEST_CHAINS: payouts + chain links, BOTH

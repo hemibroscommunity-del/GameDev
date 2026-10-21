@@ -14,6 +14,7 @@ import {
   prog3DefPct, prog3SkillLevel, prog3XpRequired, PROG3,
   PROG3_SKILL_META, /* v2.3.1848: bestWeaponProgress needs the icons */
 } from '../../../data/prog3.js';
+import { isOneLevelEnabled } from '../../../data/oneFormula.js'; /* v2.3.3538: one level */
 
 /* v2.3.1286: data model for the Hero destination (nav-system spec) —
    the combat/character dashboard that replaces the retired Build panel
@@ -193,12 +194,19 @@ export function bestWeaponProgress(R) {
 export function combatLevelProgress(R) {
   /* v2.3.1660 (prog3): the next character level arrives when the
      best-progressed TRAINED skill crosses its threshold (level = Σ
-     trained) — same "best track" idea, new tracks. */
+     trained) — same "best track" idea, new tracks.  (v2.3.3538: under one
+     level, the best-progressed of the skills at the top level.) */
   if (prog3Live(R)) {
+    /* v2.3.3538: ONE LEVEL -- the character level is the highest skill, so
+       only a skill AT that level brings the next one; a skill below it
+       levels up without raising yours.  Against an older worker, any. */
+    const one = isOneLevelEnabled();
+    const top = one ? Math.max(...PROG3.SKILLS.map((c) => prog3SkillLevel(R, c))) : 0;
     let bestP3 = null;
     for (const cat of PROG3.SKILLS) {
       const lvl = prog3SkillLevel(R, cat);
       if (lvl >= PROG3.LEVEL_CAP) continue;
+      if (one && lvl < top) continue;
       const sk = (R.prog3.sk && R.prog3.sk[cat]) || {};
       const p = { prog: Math.floor(sk.xp || 0), thresh: Math.max(1, prog3XpRequired(lvl)) };
       if (!bestP3 || p.prog / p.thresh > bestP3.prog / bestP3.thresh) bestP3 = p;
