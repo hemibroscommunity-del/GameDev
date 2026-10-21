@@ -153,7 +153,9 @@ const xpOf = (ps, cat) => ps.prog3.sk[cat].xp + 1e6 * ps.prog3.sk[cat].level;   
 // ── 3. the yardstick: the trained skill, never the character level ──
 {
   const { room, ps, session } = await setup(null, { sword: 12, bow: 40, staff: 40 });
-  check('yardstick: setup -- Melee 12, Bow 40, Magic 40 is character level 92 (guard)', ps.level === 92, ps.level);
+  /* v2.3.3538: ONE LEVEL -- the character level is the highest skill, 40
+     (the sum was 92); the point stands: a lane fades by its own skill */
+  check('yardstick: setup -- Melee 12, Bow 40, Magic 40 is character level 40 (guard)', ps.level === 40, ps.level);
   const [m] = place(room, [{ x: ps.x, y: ps.y, level: 12 }]);
   ps._monHitCad = new Map();
   const hp0 = m.hp, xp0 = xpOf(ps, 'sword');

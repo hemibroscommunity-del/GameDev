@@ -1811,6 +1811,19 @@ remnant to migrate server-side, not a mode to preserve.
         join (`_keepBarFullness`); Lv 12 copper set: sword 9.9 s, bow 12.2,
         staff 13.3 (12.4 since v2.3.3263); kill switch `oneformula: false`
         (re-sizes every bar and live monster at once, liveops.js);
+      - since v2.3.3538 ONE LEVEL -- the after-review plan ("I value SIMPLICITY
+        and INTELLIGIBILITY"): the character level is the HIGHEST weapon skill,
+        not the three added up (prog3.js `_prog3CharLevel`, the page's
+        `prog3CharLevel` on `caps.onelevel`); a new character is 1; max HP
+        200 + 50 a level (healthAt `oneLevel`: read as level + MATCH_LEVEL, so a
+        new character's and every one-weapon bar, and every monster hit, are
+        unchanged); shared points 3 a CHARACTER level (a weapon below your best
+        pays its lane points only), so the per-stat bound never strands one;
+        every character's points re-dealt once (`prog3Redeal`, migration v18,
+        `olr`); the worker stamps `rpgLv` (`_levelStamp`), so plates and No
+        man's land read its level; the Combat rank is the level; chain
+        milestones 2..100; kill switch `onelevel: false` (the sum again);
+        `one-level` suite: docs/specs/one-level.md;
       - since v2.3.3263 ONE VERSION -- the owner, after #916 merged: "the numbers for damage
         between PVP and PVE can be exactly the same for each combat skill type
         ... A fish heals the same fixed amount always ... Everything is 1

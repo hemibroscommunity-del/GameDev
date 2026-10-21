@@ -64,10 +64,11 @@ const CASES = {
  * (wsClient.js) so the SPLIT is what is under test: one server message has to
  * raise two notifications, and a rig that pushed two messages itself would
  * pass on a build where the handler still raises one — the build the owner
- * reported.  charLevel 14 = 6 + 7 + 1, a sum the client can also compute. */
+ * reported.  charLevel 14 = 6 + 7 + 1, a sum the client can also compute.
+ * v2.3.3538: ONE LEVEL -- the highest of 6, 7 and 1: 7. */
 const PROG3_FRAME = {
   type: 'prog3_level',
-  payload: { skill: 'bow', level: 7, charLevel: 14, shared: 3, bonusPoints: 0 },
+  payload: { skill: 'bow', level: 7, charLevel: 7, shared: 3, bonusPoints: 0 },
 };
 
 const VIEWS = [

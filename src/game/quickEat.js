@@ -15,7 +15,8 @@
  *
  *   - the heals eaten at once you carry (fightFood.js isInstantHeal: a cooked
  *     fish, the Garden Stew, the old minnow bottle) -- never a meal or a
- *     brew, which are half-hour effects with a slot of their own;
+ *     brew, which are half-hour effects with a slot of their own, and
+ *     (v2.3.3537) never a raw crop, which the bag's Eat eats;
  *   - of those, the SMALLEST that fills what you are missing, else the
  *     BIGGEST -- so a scratch never costs your pike and a deep wound gets
  *     the most you carry; a tie goes to the one you carry more of;
@@ -36,6 +37,7 @@
  * heal function is handed in (the button passes calcDisplayHeal). */
 import { isInstantHeal, pvpHealWaitMs, PVP_HEAL } from './fightFood.js';
 import { dishFor } from '../data/dishes.js';
+import { farmCropOfItem } from '../data/farmCrops.js';   /* v2.3.3537 */
 
 /* The heals you could eat now: [{ key, count, heal }], heal as it would land. */
 export function quickEatChoices(S, healOf, now) {
@@ -49,6 +51,11 @@ export function quickEatChoices(S, healOf, now) {
     if (n <= 0) continue;
     var dish = dishFor(key);
     if (!isInstantHeal(key, dish)) continue;
+    /* v2.3.3537: never a crop.  Any crop is eaten raw from the bag for a small
+       heal (farmCrops.js CROP_HEAL), but a crop is also a recipe's makings and
+       a quest's errand (Zoom Juice's carrots), which one tap in a fight must
+       not use up.  The one tap eats cooked food. */
+    if (farmCropOfItem(key)) continue;
     var h = Number(healOf(R, key)) || 0;
     if (!(h > 0)) continue;
     out.push({ key: key, count: n, heal: h });
