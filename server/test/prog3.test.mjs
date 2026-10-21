@@ -630,18 +630,39 @@ const psA = room.playerState.pa;
   // v2.3.2664: armour is priced on its OWN ladder now (data.js armorDefReq;
   // owner: "I'll go with your defense requirements for next tiers") — a
   // tier-4 plate asks 10 Defense, where the weapon table's fallback asked 90.
+  /* v2.3.3544: Defense points are the `gearlevel: false` switch's rule now
+     (gear.js _gearOnLevel) -- the level's below */
+  const _flagsWas = room._liveFlags;
+  room._liveFlags = { gearlevel: false };
   psA.armor = null;
   p3.alloc.def = 9;
   room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } }); // tier 4 → req 10
-  check('armor ingest: over-tier swap rejected (defense points too low)', psA.armor === null, psA.armor);
+  check('(gearlevel: false) armor ingest: over-tier swap rejected (defense points too low)', psA.armor === null, psA.armor);
   p3.alloc.def = 10;
   room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } });
-  check('armor ingest: defense allocation unlocks the tier',
+  check('(gearlevel: false) armor ingest: defense allocation unlocks the tier',
     !!psA.armor && psA.armor.name === 'Test Plate', psA.armor);
   // Unequip always passes (grandfather rule: only SWAPS are gated).
   p3.alloc.def = 0;
   room._handleStatsUpdate(sess, { armor: null });
   check('armor ingest: unequip always passes', psA.armor === null, psA.armor);
+  /* v2.3.3544: by default the plate asks the CHARACTER level -- the best
+     weapon's -- and Defense points do not count */
+  room._liveFlags = {};
+  const _skWas = JSON.stringify(p3.sk);
+  for (const k of ['sword', 'bow', 'staff']) p3.sk[k] = { level: 1, xp: 0 };
+  p3.sk.bow = { level: 9, xp: 0 };
+  p3.alloc.def = 30;
+  room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } });
+  check('armor ingest: a tier-4 plate refused at level 9, whatever the Defense points (30)', psA.armor === null, psA.armor);
+  p3.sk.bow = { level: 10, xp: 0 };
+  p3.alloc.def = 0;
+  room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } });
+  check('armor ingest: ...and worn at level 10 with no Defense point (a Bow 10 character)',
+    !!psA.armor && psA.armor.name === 'Test Plate', psA.armor);
+  room._handleStatsUpdate(sess, { armor: null });
+  Object.assign(p3.sk, JSON.parse(_skWas));
+  room._liveFlags = _flagsWas;
 }
 
 // ── 8. _saveRpg carries prog3 + the v10 stamp ──

@@ -59,7 +59,7 @@ import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wh
 import { PVP_HEAL as CLIENT_PVP_HEAL } from '../../src/game/fightFood.js'; /* v2.3.3133 */
 import * as SRV_ONE from '../src/oneformula.js'; /* v2.3.3260: one formula for every fight */
 import * as CLIENT_ONE from '../../src/data/oneFormula.js';
-import { setOneFormulaEnabled as clientSetOneFormula, setOneLevelEnabled as clientSetOneLevel } from '../../src/data/oneFormula.js'; /* v2.3.3538: + one level */
+import { setOneFormulaEnabled as clientSetOneFormula, setOneLevelEnabled as clientSetOneLevel, setGearOnLevel as clientSetGearOnLevel } from '../../src/data/oneFormula.js'; /* v2.3.3538: + one level; v2.3.3544: + gear on level */
 import { recalcDerived as clientRecalcDerived } from '../../src/data/gameSystems.js';
 import { WHEEL_SPAWNS as SRV_WHEEL_SPAWNS } from '../src/wheelspawns.js'; /* v2.3.3089 */
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
@@ -131,6 +131,7 @@ import {
      DIFFERENT roads — the worker by tier index, the client by statReq/2 — so
      they can drift without either looking wrong on its own. */
   canEquipItem as clientCanEquip,
+  getEquipReqLabel as clientEquipReqLabel, /* v2.3.3544: the card's words for a piece you wear */
   /* v2.3.2664: the armour ladder's Defense requirement, both halves. */
   armorDefReq as clientArmorDefReq, isArmourLadderPiece as clientIsArmourLadderPiece,
   ARMOR_FREE_TIERS as CLIENT_ARMOR_FREE_TIERS, ARMOR_DEF_REQ_PER_TIER as CLIENT_ARMOR_DEF_REQ_PER_TIER,
@@ -920,6 +921,11 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const reqBad = [...armourItems, weaponShape].filter((it) => SRV.armorDefReq(it) !== clientArmorDefReq(it)
     || SRV.isArmourLadderPiece(it) !== clientIsArmourLadderPiece(it));
   check('armorDefReq / isArmourLadderPiece agree server<->client on every shape', reqBad.length === 0, reqBad.slice(0, 6));
+  /* v2.3.3544: Defense points are the `gearlevel: false` switch's rule now
+     (the page's own switch off, as against an older worker) -- the level's
+     sweep is below */
+  room._liveFlags = { gearlevel: false };
+  clientSetGearOnLevel(false);
   const armBad = [];
   let armRefused = 0;
   for (let def = 0; def <= 35; def += 1) {
@@ -932,9 +938,52 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       if (srvOk !== cliOk) armBad.push({ def, item, server: srvOk, client: cliOk });
     }
   }
-  check('armour equip gate agrees server<->client across tiers 0-9 and Defense 0-35',
+  check('(gearlevel: false) armour equip gate agrees server<->client across tiers 0-9 and Defense 0-35',
     armBad.length === 0, armBad.slice(0, 6));
   check('...and it does refuse something (guard: an always-yes gate agrees trivially)', armRefused > 0, armRefused);
+
+  /* ═══ v2.3.3544: ...AND BY DEFAULT EVERYTHING YOU WEAR ASKS YOUR LEVEL ═══
+     Armour, shields and amulets against the CHARACTER level (one level: the
+     best weapon's) -- the worker's _gearOnLevel / _prog3GearOk('level'), the
+     page's wearHave against caps.gearlevel.  Swept across every tier, every
+     best weapon and level 1-35, with Defense points that must no longer
+     count, and shields and amulets off both tables. */
+  room._liveFlags = {};
+  clientSetOneLevel(true);
+  clientSetGearOnLevel(true);
+  const wearItems = [
+    ...armourItems.map((it) => ({ slot: 'armor', item: it })),
+    ...Object.keys(SRV.BLACKSMITH_TIERS).map((k) => ({ slot: 'shield', item: { gearBase: k, tierMult: 1, name: 'x' } })),
+    ...Object.keys(SRV.WOODWORKING_TIERS).map((k) => ({ slot: 'shield', item: { gearBase: 'ww_' + k, tierMult: 1, name: 'x' } })),
+  ];
+  const lvlBad = [];
+  let lvlRefused = 0, lvlWorn = 0;
+  for (let L = 1; L <= 35; L += 1) {
+    for (const cat of ['sword', 'bow', 'staff']) {
+      const sk = { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } };
+      sk[cat] = { level: L };
+      const ps = { prog3: { sk, alloc: { def: (L * 7) % 36 }, atk: {}, pool: {}, ms: {} } };
+      for (const { slot, item } of wearItems) {
+        const srvOk = room._prog3EquipOk(ps, slot, item);
+        const cliOk = clientCanEquip({ prog3: ps.prog3 }, item, slot);
+        if (srvOk) lvlWorn++; else lvlRefused++;
+        if (srvOk !== cliOk) lvlBad.push({ L, cat, slot, item, server: srvOk, client: cliOk });
+      }
+    }
+  }
+  check('everything you wear agrees server<->client on the LEVEL: armour and shields across every tier, best weapon and level 1-35 (Defense points no longer count)',
+    lvlBad.length === 0, lvlBad.slice(0, 6));
+  check('...and the level gate both refuses and allows (guard)', lvlRefused > 0 && lvlWorn > 0, { lvlRefused, lvlWorn });
+  /* the label says the gate's own number and words */
+  const bst = { name: 'Black Steel Torso', tierMult: 3, mat: 'blacksteel' };
+  const at4 = { prog3: { sk: { sword: { level: 4 }, bow: { level: 1 }, staff: { level: 1 } }, alloc: { def: 30 }, atk: {}, pool: {}, ms: {} } };
+  const lab = clientEquipReqLabel(bst, 'armor', at4);
+  check('...and the card reads the gate: a Black Steel Torso "Level 5", you 4, not met',
+    !!lab && lab.stat === 'level' && lab.label === 'Level' && lab.req === 5 && lab.have === 4 && lab.met === false
+      && room._prog3EquipOk(at4, 'armor', bst) === false, lab);
+  clientSetGearOnLevel(false);
+  clientSetOneLevel(false);
+  room._liveFlags = {};
 }
 
 /* ═══ 13. v2.3.1812: TELEGRAPH KINDS vs THE CLIENT'S RENDER WHITELIST ═══

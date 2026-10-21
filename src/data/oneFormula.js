@@ -43,6 +43,15 @@ var _oneLevel = false;
 export function setOneLevelEnabled(on) { _oneLevel = !!on; }
 export function isOneLevelEnabled() { return _oneLevel; }
 
+/* v2.3.3544: ARMOUR, SHIELDS AND AMULETS ASK YOUR LEVEL -- the character
+   level (one level's best weapon), not Defense points or Magic, when the
+   worker advertises caps.gearlevel (wsClient sets this from it; server
+   gear.js _gearOnLevel).  Read by gameSystems.js canEquipItem,
+   getEquipReqLabel and prog3GearReq, and the forge's "Level 5 to wear". */
+var _gearOnLevel = false;
+export function setGearOnLevel(on) { _gearOnLevel = !!on; }
+export function isGearOnLevel() { return _gearOnLevel; }
+
 /* `on` omitted: the formula the worker advertised */
 function onNow(on) { return on === undefined ? _on : on !== false; }
 

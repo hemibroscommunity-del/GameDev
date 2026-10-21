@@ -13,6 +13,7 @@ import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
 import { startSmithing, SMITH_STRIKE_MS } from '@/game/smithing.js';
 import { SALVAGE, GRADE_LABEL, armourMetal, weaponMetal, weaponSig, parseEssenceKey, essenceKey, essenceName, essenceIcon, gradeRank } from '@/data/salvage.js'; /* v2.3.3141 */
 import { salvageBus, salvageReasonText } from '@/game/salvage.js'; /* v2.3.3141 */
+import { isGearOnLevel } from '@/data/oneFormula.js'; /* v2.3.3544: armour asks your level */
 import { hardenTierOf, hardenCost, hardenLevelFor } from '@/data/hardenCosts.js'; /* v2.3.3139: bars and a doubling gold ladder; v2.3.3524: the level that makes the tier */
 import { forgeLevelFor, forgeOffered, forgeStatReq } from '@/data/forgeLadder.js'; /* v2.3.3524: the forge's ladder */
 import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3524: the Upgrade tab's hammer */
@@ -412,7 +413,9 @@ function ArmorTab({ S, inv, lvl, ask, busy }) {
             <Cost icon={BAR_THUMBS[r.bar]} have={have} need={r.bars} />
             <Chip icon="/icons/ui/stat-defense.webp" color="#CFE3D8">-{dr}%</Chip>
             <Chip icon={XP} color="#9FD3F0">+{r.xp}</Chip>
-            {def > 0 && <Chip>Defense {def} to wear</Chip>}
+            {/* v2.3.3544: what wearing it asks -- your level (gear.js
+                _gearOnLevel), or Defense points against an older worker */}
+            {def > 0 && <Chip>{isGearOnLevel() ? 'Level' : 'Defense'} {def} to wear</Chip>}
           </Row>
         );
       })}

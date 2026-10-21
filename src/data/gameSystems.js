@@ -46,7 +46,7 @@ import {
    ladder; the old-worker prediction is legacyStaminaMult (imported above). */
 import { blocksAt } from './abilities.js';
 /* v2.3.3260: one formula for every fight -- the bar, a monster's hit, the specials */
-import { healthAt, monsterHitK, specialMultFor, isOneFormulaEnabled } from './oneFormula.js';
+import { healthAt, monsterHitK, specialMultFor, isOneFormulaEnabled, isGearOnLevel } from './oneFormula.js';   /* v2.3.3544: + gear on level */
 
 /* v2.3.1186: pure-display exports (BT_AUDIO, BT_ACHIEVEMENTS, MASKS,
    tile colors, generateZoneMap, emote/NPC tables) moved to
@@ -499,6 +499,23 @@ export function prog3EquipReq(tier, slotType, isWood) {
   return Math.max(0, Math.ceil(((tier.statReq || 0) - baseReq) / 2));
 }
 
+/* ═══ v2.3.3544: WHAT A PIECE YOU WEAR IS MEASURED AGAINST ═══
+   Armour, shields and amulets ask the CHARACTER level (prog3CharLevel: under
+   one level, the best weapon's) against a worker that advertises
+   caps.gearlevel (oneFormula.js isGearOnLevel) -- "Level 5 to wear" -- else,
+   as before, allocated Defense points (armour, shields) or the Magic level
+   (amulets).  Weapons keep their own skill.  EXACT mirror of server gear.js
+   _gearOnLevel / _prog3GearOk('level'), swept by mirror-audit. */
+function wearHave(rpg, slotType) {
+  if (isGearOnLevel()) return prog3CharLevel(rpg);
+  return slotType === 'amulet' ? prog3SkillLevel(rpg, 'staff') : prog3Pts(rpg, 'def');
+}
+/* ...and how a requirement on one reads: {stat, label} */
+function wearReqWords(slotType) {
+  if (isGearOnLevel()) return { stat: 'level', label: 'Level' };
+  return slotType === 'amulet' ? { stat: 'staff', label: 'Magic Lv' } : { stat: 'defensePts', label: 'Defense' };
+}
+
 export function canEquipItem(rpg, item, slotType) {
   var _item$gearBase2;
   /* v2.3.2664: body armour is priced on its own ladder (armorDefReq), asked
@@ -506,7 +523,7 @@ export function canEquipItem(rpg, item, slotType) {
      tier 2 and free either way.  Legacy (non-prog3) characters pass, as they
      do on the worker (_prog3GearOk). */
   if (slotType === 'armor' && isArmourLadderPiece(item)) {
-    return !prog3Live(rpg) || prog3Pts(rpg, 'def') >= armorDefReq(item);
+    return !prog3Live(rpg) || wearHave(rpg, 'armor') >= armorDefReq(item);   /* v2.3.3544: the level, or Defense points */
   }
   /* v2.3.2125: every slot — see the note on isIronGear.  v2.3.2124 exempted
      the defence-gated slots only; the owner then asked for the weapons too
@@ -541,8 +558,7 @@ export function canEquipItem(rpg, item, slotType) {
   if (prog3Live(rpg)) {
     /* v2.3.2132: shared with getEquipReqLabel — see prog3EquipReq's note. */
     var p3req = prog3EquipReq(tier, slotType, isWood);
-    if (slotType === 'armor' || slotType === 'shield') return prog3Pts(rpg, 'def') >= p3req;
-    if (slotType === 'amulet') return prog3SkillLevel(rpg, 'staff') >= p3req;
+    if (slotType === 'armor' || slotType === 'shield' || slotType === 'amulet') return wearHave(rpg, slotType) >= p3req;   /* v2.3.3544 */
     var p3cat = item.type === 'bow' ? 'bow' : item.type === 'staff' ? 'staff' : 'sword';
     return prog3SkillLevel(rpg, p3cat) >= p3req;
   }
@@ -570,8 +586,9 @@ export function getEquipReqLabel(item, slotType, rpg) {
   if (slotType === 'armor' && isArmourLadderPiece(item)) {
     var areq = armorDefReq(item);
     if (!(areq > 0)) return null;
-    var ahave = rpg && prog3Live(rpg) ? prog3Pts(rpg, 'def') : 0;
-    return { stat: 'defensePts', req: areq, label: 'Defense', have: ahave, met: !(rpg && prog3Live(rpg)) || ahave >= areq, prog3: true };
+    var ahave = rpg && prog3Live(rpg) ? wearHave(rpg, 'armor') : 0;   /* v2.3.3544: the level, or Defense points */
+    var awords = wearReqWords('armor');
+    return { stat: awords.stat, req: areq, label: awords.label, have: ahave, met: !(rpg && prog3Live(rpg)) || ahave >= areq, prog3: true };
   }
   if (!item || !item.gearBase) return null;
   /* v2.3.2132: iron is free in every slot (v2.3.2124/2125, owner) and
@@ -592,8 +609,10 @@ export function getEquipReqLabel(item, slotType, rpg) {
        `statReq / 2` on its own and overstated every metal requirement by the
        copper baseline. */
     var p3q = prog3EquipReq(tier, slotType, isWood);
-    if (slotType === 'armor' || slotType === 'shield') {
-      return { stat: 'defensePts', req: p3q, label: 'Defense', have: prog3Pts(rpg, 'def'), met: prog3Pts(rpg, 'def') >= p3q, prog3: true };
+    /* v2.3.3544: what you wear asks the level (or Defense points / Magic) */
+    if (slotType === 'armor' || slotType === 'shield' || (slotType === 'amulet' && isGearOnLevel())) {
+      var wwords = wearReqWords(slotType), whave = wearHave(rpg, slotType);
+      return { stat: wwords.stat, req: p3q, label: wwords.label, have: whave, met: whave >= p3q, prog3: true };
     }
     var p3cat = slotType === 'amulet' ? 'staff'
       : item.type === 'bow' ? 'bow' : item.type === 'staff' ? 'staff' : 'sword';
@@ -2888,9 +2907,10 @@ export const GEAR_STAT_REQ = {
    wherever only the table row is in hand. */
 export function prog3GearReq(rpg, gearType, tierIndex) {
   var value = tierIndex * 5;
-  if (gearType === 'armor' || gearType === 'shield') {
-    var defPts = prog3Pts(rpg, 'def');
-    return { stat: 'defensePts', label: 'Defense', value: value, have: defPts, met: defPts >= value, prog3: true };
+  /* v2.3.3544: what you wear asks the level (wearHave), else Defense points */
+  if (gearType === 'armor' || gearType === 'shield' || (gearType === 'amulet' && isGearOnLevel())) {
+    var wHave = wearHave(rpg, gearType), wWords = wearReqWords(gearType);
+    return { stat: wWords.stat, label: wWords.label, value: value, have: wHave, met: wHave >= value, prog3: true };
   }
   var cat = gearType === 'bow' ? 'bow' : (gearType === 'staff' || gearType === 'amulet') ? 'staff' : 'sword';
   var label = (cat === 'sword' ? 'Melee' : cat === 'bow' ? 'Bow' : 'Magic') + ' Lv';

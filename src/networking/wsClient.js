@@ -54,7 +54,7 @@ import { nearJoinOn, parkFar, applyPeerLooks } from '@/game/nearJoin.js'; /* v2.
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
-import { setOneFormulaEnabled, setOneLevelEnabled } from '@/data/oneFormula.js'; /* v2.3.3260: one formula for every fight; v2.3.3538: one level */
+import { setOneFormulaEnabled, setOneLevelEnabled, setGearOnLevel } from '@/data/oneFormula.js'; /* v2.3.3260: one formula for every fight; v2.3.3538: one level; v2.3.3544: gear on level */
 import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled /* v2.3.2592 */, setProg3RelEnabled /* v2.3.2680 */, setGearQEnabled /* v2.3.2664 */, setFishHealEnabled /* v2.3.3260 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, setMilestonesRetired /* v2.3.2662 */, PROG3_SKILL_META, setZoneDepthLive /* v2.3.2790 */ } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
@@ -1654,6 +1654,11 @@ export function setupWebSocket(ctx) {
                    that says so: an older one (or its switch thrown) counts the
                    three added up. */
                 setOneLevelEnabled(!!(S._serverCaps && S._serverCaps.onelevel));
+                /* v2.3.3544: armour, shields and amulets ask the character
+                   level (gear.js _gearOnLevel), and say "Level N" -- only
+                   against a worker that says so: an older one (or its switch
+                   thrown) asks Defense points and Magic. */
+                setGearOnLevel(!!(S._serverCaps && S._serverCaps.gearlevel));
                 /* v2.3.2662: the milestone ladder is gone on a worker that
                    says so.  Display only: against an older worker the client
                    keeps predicting its level-6 Burst gate and its x1.25

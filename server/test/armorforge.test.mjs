@@ -169,7 +169,8 @@ const after = (level, xp) => { const t = { lifeSkills: { s: { level, xp: 0 } } }
   const had = ps().armor && ps().armor.gid;
   await send({ armorRef: bs.gid });
   const def = room._prog3EquipOk ? room._prog3EquipOk(ps(), 'armor', bs) : null;
-  check('black steel asks 5 Defense first: without it, the copper stays on', def === false && !!ps().armor && ps().armor.gid === had, { def, worn: ps().armor && ps().armor.name });
+  /* v2.3.3544: it asks level 5 (gear-level.test; 5 Defense under `gearlevel: false`) */
+  check('black steel asks level 5 first: at level 1, the copper stays on', def === false && !!ps().armor && ps().armor.gid === had, { def, worn: ps().armor && ps().armor.name });
 }
 
 // ── 7. Kill switch ──

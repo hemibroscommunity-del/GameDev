@@ -95,6 +95,9 @@ for (const _b of Object.keys(SMELT_RECIPES)) SMELT_ORE_TO_BAR[SMELT_RECIPES[_b].
 function armorReqText(ar, S) {
   const req = getEquipReqLabel(ar, 'armor', S && S.rpg);
   if (!req) return '';
+  /* v2.3.3544: "Needs level 5" where armour asks your level (gear.js
+     _gearOnLevel); Defense points against an older worker */
+  if (req.stat === 'level') return ' · Needs level ' + req.req + (req.met ? '' : ' (you are ' + req.have + ')');
   return ' · Needs ' + req.req + ' Defense' + (req.met ? '' : ' (you have ' + req.have + ')');
 }
 
