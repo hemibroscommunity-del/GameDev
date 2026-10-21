@@ -3933,7 +3933,19 @@ export function setupWebSocket(ctx) {
                  arrives without it is a rare breastplate wearing normal
                  stats — the same class of bug as v2.3.1758 dropping `mat`
                  and rendering iron as steel. */
-              quality: typeof _pc.quality === 'string' ? _pc.quality : undefined });
+              quality: typeof _pc.quality === 'string' ? _pc.quality : undefined,
+              /* ═══ v2.3.3545: AND THE WORKER'S MARK THAT IT MINTED IT ═══
+                 Rebuilt from a list of fields, the piece lost `prov`, so the
+                 bag's card read a Copper Torso forged a second ago as
+                 "Earned before the game kept receipts -- it still works, but
+                 it cannot be sold" (gearSellReason.js asks prov === 'minted')
+                 until the next join re-read the ledger: no Sell button, and
+                 a sentence that was not true.  The quest's armour has carried
+                 it since v2.3.3142 (quest_reward_stashed); the forge's, a
+                 pile's and the chest's come this way.  Only 'minted', never
+                 a client's word: the worker settles every sale against its
+                 own ledger. */
+              prov: _pc.prov === 'minted' ? 'minted' : undefined });
             _gotArmor++;
             pushDmgPopup(S, S.player.x, S.player.y - 46 - _ai * 14, 'BAG: ' + _pcName, '#f5c542', { ts: Date.now() + 2 + _ai });
           }

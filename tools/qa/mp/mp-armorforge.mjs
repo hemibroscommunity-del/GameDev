@@ -13,7 +13,10 @@
  *      Smithing XP up by the row's promise;
  *   3. the greaves: five bars too, into the legs' bag;
  *   4. out of bars, Forge is off and the cost reads 0/5;
- *   5. the bars' bag names ("Iron Bar", not "Bar Iron").
+ *   5. the bars' bag names ("Iron Bar", not "Bar Iron");
+ *   6. v2.3.3545: the forged torso keeps the worker's "minted" mark in the
+ *      bag, so its card offers Sell, not "Earned before the game kept
+ *      receipts -- it cannot be sold".
  * Pictures: tools/qa/mp/out/armorforge-*.png.
  */
 import * as H from './harness.mjs';
@@ -125,6 +128,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return el ? el.innerText : '';
   });
   rec.ok('...and the panel names the armor, not the bar\'s key', /Iron Torso/.test(names) && !/bar_iron/.test(names), names);
+
+  /* ── 6. v2.3.3545: the forged torso can be SOLD -- the worker's "minted"
+     mark kept in the bag (wsClient _applyLootCredit dropped it, and the card
+     read "Earned before the game kept receipts -- it cannot be sold" until
+     the next join) ── */
+  await P.page.keyboard.press('Escape');
+  await P.page.waitForTimeout(500);
+  const marked = await H.readState(P, (S) => {
+    const p = ((S.rpg && S.rpg.armorStash) || []).find((a) => a && a.name === 'Copper Torso');
+    return p ? { gid: p.gid || null, prov: p.prov || null } : null;
+  });
+  await P.page.evaluate(() => {
+    const bus = window._itemDetailBus;
+    const S = window._gameState && window._gameState.current;
+    const list = (S && S.rpg && S.rpg.armorStash) || [];
+    const i = list.findIndex((a) => a && a.name === 'Copper Torso');
+    if (bus && i >= 0) bus.open({ kind: 'stashArmor', armor: list[i], index: i });
+  });
+  await P.page.waitForTimeout(700);
+  const card = await P.page.evaluate(() => {
+    const sell = Array.from(document.querySelectorAll('button')).find((b) => /^\s*Sell\s*$/i.test(b.textContent || ''));
+    return { receipts: /kept receipts/i.test(document.body.innerText || ''), sell: sell ? { off: !!sell.disabled } : null };
+  });
+  await shot(P, 'card');
+  rec.ok('the forged torso keeps the worker\'s "minted" mark in the bag, and its card offers Sell (no "Earned before the game kept receipts")',
+    !!marked && typeof marked.gid === 'string' && marked.prov === 'minted' && !card.receipts && !!card.sell && card.sell.off === false,
+    { marked, card });
+  await P.page.keyboard.press('Escape');
   const errs = P.logs.filter((l) => /pageerror/.test(l));
   rec.ok(`no page errors (${errs.length})`, errs.length === 0, errs.slice(0, 5));
   await P.ctx.close().catch(() => {});

@@ -131,8 +131,27 @@ was only worth its vendor price.
   - the recipes on both sides, every field;
   - every recipe's bar is one the smelter makes;
   - no armor opens before its bar.
-- `mp-armorforge` (12 checks, a real client against a real worker): the tab
+- `mp-armorforge` (13 checks, a real client against a real worker): the tab
   and its rows, a torso and greaves forged into the bag with the worker's id,
-  the popups and the XP, Forge off at 0/5, the bars' pictures. Pictures:
-  `armorforge-*.png`.
+  the popups and the XP, Forge off at 0/5, the bars' pictures, and (v2.3.3545)
+  the forged torso's card offering Sell. Pictures: `armorforge-*.png`.
 - `mp-smithy`: five tabs now, and the Armor tab's text budget.
+
+## v2.3.3545: a forged piece can be sold at once
+
+Found while testing gear-level: a Copper Torso forged a second ago read, on
+its bag card, "Earned before the game kept receipts — it still works, but it
+cannot be sold", with the Sell button greyed, until the next join.
+
+- **The cause:** the worker sends the piece with its ledger id (`gid`) and its
+  mark that it minted it (`prov: 'minted'`). The page's bag intake
+  (`wsClient.js` `_applyLootCredit`, shared by the forge, a pile and the daily
+  chest) rebuilt the piece from a list of fields and left `prov` out. The card
+  asks `prov === 'minted'` (`gearSellReason.js` `gearSellCheck`), so a brand
+  new piece read as legacy gear.
+- **The fix:** the mark is carried through, as the quest's armour has carried
+  it since v2.3.3142 (`quest_reward_stashed`). Only `'minted'` is kept, and the
+  worker still settles every sale against its own ledger.
+- **Checked by:** `mp-armorforge` step 6. On the old page it fails (no mark,
+  the receipts sentence, Sell greyed); with the fix it passes.
+
