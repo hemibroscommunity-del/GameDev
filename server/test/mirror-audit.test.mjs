@@ -39,8 +39,8 @@ import { hardenLevelFor as clientHardenLevel } from '../../src/data/hardenCosts.
 import { HARDEN_COSTS as CLIENT_HARDEN, HARDEN_MATERIAL_NAMES as CLIENT_HARDEN_NAMES, hardenGoldFor as clientHardenGold, hardenAmountFor as clientHardenAmount, hardenMaterialFor as clientHardenMat, hardenIsWood as clientHardenIsWood, hardenTierOf as clientHardenTier } from '../../src/data/hardenCosts.js'; /* v2.3.3139 */
 import { HARDENED_WOOD_RECIPES as CLIENT_HARDENED_WOOD, HARDENED_WOOD_MAX_PER_REQUEST as CLIENT_HW_MAX, HARDEN_WOOD_BY_TIER as CLIENT_HARDEN_WOOD_BY_TIER } from '../../src/data/hardenedWood.js'; /* v2.3.3139 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
-import { FARM as SRV_FARM, farmGrowMs as srvFarmGrowMs, farmYield as srvFarmYield } from '../src/farm.js'; /* v2.3.3127 */
-import { FARM as CLIENT_FARM, FARM_CROP_ORDER as CLIENT_FARM_ORDER, farmGrowMs as clientFarmGrowMs, farmYieldShown as clientFarmYieldShown } from '../../src/data/farmCrops.js'; /* v2.3.3127 */
+import { FARM as SRV_FARM, farmGrowMs as srvFarmGrowMs, farmYield as srvFarmYield, CROP_HEAL as SRV_CROP_HEAL, cropHealFor as srvCropHeal } from '../src/farm.js'; /* v2.3.3127; v2.3.3537: what a crop heals */
+import { FARM as CLIENT_FARM, FARM_CROP_ORDER as CLIENT_FARM_ORDER, farmGrowMs as clientFarmGrowMs, farmYieldShown as clientFarmYieldShown, CROP_HEAL as CLIENT_CROP_HEAL, farmCropHeal as clientCropHeal } from '../../src/data/farmCrops.js'; /* v2.3.3127; v2.3.3537 */
 import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3092 */
 import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3092 */
 import * as SRV_SALVAGE from '../src/salvage.js'; /* v2.3.3141 */
@@ -152,7 +152,8 @@ import {
   propFootprint as clientPropFootprint, attackBlocked as clientAttackBlocked,
 } from '../../src/data/worldProps.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
-import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES, GEM_EXTRACT_BASE_COST } from '../../src/data/items.js';
+import { AMULET_TIERS, AMULET_GEM_STATS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES, GEM_EXTRACT_BASE_COST } from '../../src/data/items.js';
+import { AMULET_STAMINA_REGEN as SRV_AMULET_STAMINA_REGEN } from '../src/staminaregen.js'; /* v2.3.3536 */
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -505,6 +506,15 @@ tierMirror('WOODWORKING', SRV.WOODWORKING_TIERS, WOODWORKING_TIERS);
 {
   const bad = Object.entries(SRV.AMULET_TIER_POWER).filter(([k, v]) => !AMULET_TIERS[k] || AMULET_TIERS[k].basePower !== v).map(([k]) => k);
   check('AMULET_TIER_POWER <-> AMULET_TIERS basePower (drives the flame-gem elemDmg roll)', bad.length === 0, bad);
+}
+{
+  /* v2.3.3536: the regen tick works a light amulet's stamina regen out
+     itself (staminaregen.js), never the phone's claim -- so the worker's row
+     is the one the amulet's card prints */
+  const G = AMULET_GEM_STATS[SRV_AMULET_STAMINA_REGEN.gem];
+  check('AMULET_STAMINA_REGEN <-> AMULET_GEM_STATS.light (the stamina regen the tick pays)',
+    !!G && G.stat === 'staminaRegen' && G.base === SRV_AMULET_STAMINA_REGEN.base && G.perPower === SRV_AMULET_STAMINA_REGEN.perPower,
+    { client: G, server: SRV_AMULET_STAMINA_REGEN });
 }
 {
   const bad = Object.entries(SRV.RARITY_TIERS).filter(([k, v]) => !RARITY_TIERS[k] || RARITY_TIERS[k].mult !== v.mult).map(([k]) => k);
@@ -1626,6 +1636,13 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       && String(clientFarmYieldShown(b, true)) === (lo === hi ? String(lo) : lo + '\u2013' + hi),
       { plain: [srvFarmYield(a, false), clientFarmYieldShown(b, false)], fed: [lo, hi, clientFarmYieldShown(b, true)] });
   }
+  /* v2.3.3537: every crop is food -- the heal the bag's card promises is the
+     one the worker's eat gives (farm.js CROP_HEAL) */
+  check('farm: CROP_HEAL matches (what a crop eaten raw heals, by its level)',
+    JSON.stringify(SRV_CROP_HEAL) === JSON.stringify(CLIENT_CROP_HEAL), { srv: SRV_CROP_HEAL, cli: CLIENT_CROP_HEAL });
+  const healOff = Object.keys(SRV_FARM.CROPS).filter((id) => srvCropHeal(SRV_FARM.CROPS[id].item) !== clientCropHeal(SRV_FARM.CROPS[id].item)
+    || !(srvCropHeal(SRV_FARM.CROPS[id].item) > 0));
+  check('farm: every crop heals, and the same on both sides', healOff.length === 0, healOff);
 }
 
 // ── v2.3.3092: THE ARMOR FORGE -- the Armor tab's rows are the worker's ──

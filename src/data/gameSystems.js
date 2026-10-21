@@ -1192,6 +1192,7 @@ export const COOKING_RECIPES = [{
    recipes that make them are, and where mirror-audit looks. */
 export { DISHES, dishFor } from './dishes.js';
 import { dishFor as _dishFor } from './dishes.js';   /* v2.3.3131: calcDisplayHeal */
+import { farmCropHeal as _farmCropHeal } from './farmCrops.js';   /* v2.3.3537: calcDisplayHeal */
 
 /* §18 Fish Healing — fish must be COOKED via minigame to become edible */
 /* Raw fish → cooking minigame → cooked fish (heals) or burnt fish (wasted) */
@@ -5860,6 +5861,10 @@ export function calcDisplayHeal(rpg, invKey) {
      always": against a worker that heals by the new ladder (caps.fishheal) a
      fish or the stew heals its own number and nothing on top (cooking.js);
      an older worker still adds the old HP grid's Recovery. */
+  /* v2.3.3537: a crop, eaten raw, heals its own fixed number (the worker's
+     farm.js CROP_HEAL: half a fish of its level), nothing on top */
+  var _crop = _farmCropHeal(invKey);
+  if (_crop > 0) return _crop;
   var _rec = _fishHealLadder ? 0 : getRecoveryFlat(rpg);
   /* v2.3.3131: a dish eaten at once (the Garden Stew) heals its own amount,
      the worker's cooking.js _applyDish -- plus the same Recovery. */

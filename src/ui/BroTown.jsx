@@ -323,6 +323,7 @@ import { wireOrientationSync } from '@/game/orientationSync.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
 import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
 import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player (v2.3.3260: in any fight) */
+import { FARM_ITEM_NAMES, farmCropOfItem } from '@/data/farmCrops.js'; /* v2.3.3537: "Ate Carrot" -- every crop is food */
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822: stuck-dead watchdog */
 /* v2.3.2330: the SFX manifest loads once the loading gate has what it was
    waiting for -- see BT_AUDIO.unlock for why it no longer loads at the login
@@ -9425,7 +9426,9 @@ export var BroTown = function BroTown(_ref0) {
         try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
       }
       pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + toDisplayDamage(actual) + ' HP', '#59BF91');   /* v2.3.2520: display scale */
-      pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate ' + (_meal ? _meal.name : 'cooked fish'), '#D8A94D');   /* v2.3.3131: or the stew */
+      /* v2.3.3131: or the stew; v2.3.3537: or a crop, by its name */
+      var _ateName = _meal ? _meal.name : farmCropOfItem(key) ? FARM_ITEM_NAMES[key] : 'cooked fish';
+      pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate ' + _ateName, '#D8A94D');
       cue('munch');   /* v2.3.3462: the owner's munch (a beep(), silent since v2.3.1103) */
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
