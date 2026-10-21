@@ -640,6 +640,10 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     }));
     room.state.storage.get = origGetN;
     const psR = room.playerState.pn;
+    /* v2.3.3536: the regen tick no longer reads these claims (it works the
+       amulet's bonus out from ps.amulet, staminaregen.js), nor a prog3
+       character's frozen Endurance; both bounds below still hold for the
+       old tick under `amuletregen: false` (stamina-regen.test.mjs §3, §6). */
     check('rejoin on file: amulet regen mults clamp to 100, same ceiling as stats_update',
       psR.amuletHpRegen === 100 && psR.amuletStaminaRegen === 100,
       { hp: psR.amuletHpRegen, stam: psR.amuletStaminaRegen });

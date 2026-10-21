@@ -152,7 +152,8 @@ import {
   propFootprint as clientPropFootprint, attackBlocked as clientAttackBlocked,
 } from '../../src/data/worldProps.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
-import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES, GEM_EXTRACT_BASE_COST } from '../../src/data/items.js';
+import { AMULET_TIERS, AMULET_GEM_STATS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES, GEM_EXTRACT_BASE_COST } from '../../src/data/items.js';
+import { AMULET_STAMINA_REGEN as SRV_AMULET_STAMINA_REGEN } from '../src/staminaregen.js'; /* v2.3.3536 */
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -498,6 +499,15 @@ tierMirror('WOODWORKING', SRV.WOODWORKING_TIERS, WOODWORKING_TIERS);
 {
   const bad = Object.entries(SRV.AMULET_TIER_POWER).filter(([k, v]) => !AMULET_TIERS[k] || AMULET_TIERS[k].basePower !== v).map(([k]) => k);
   check('AMULET_TIER_POWER <-> AMULET_TIERS basePower (drives the flame-gem elemDmg roll)', bad.length === 0, bad);
+}
+{
+  /* v2.3.3536: the regen tick works a light amulet's stamina regen out
+     itself (staminaregen.js), never the phone's claim -- so the worker's row
+     is the one the amulet's card prints */
+  const G = AMULET_GEM_STATS[SRV_AMULET_STAMINA_REGEN.gem];
+  check('AMULET_STAMINA_REGEN <-> AMULET_GEM_STATS.light (the stamina regen the tick pays)',
+    !!G && G.stat === 'staminaRegen' && G.base === SRV_AMULET_STAMINA_REGEN.base && G.perPower === SRV_AMULET_STAMINA_REGEN.perPower,
+    { client: G, server: SRV_AMULET_STAMINA_REGEN });
 }
 {
   const bad = Object.entries(SRV.RARITY_TIERS).filter(([k, v]) => !RARITY_TIERS[k] || RARITY_TIERS[k].mult !== v.mult).map(([k]) => k);
