@@ -109,7 +109,9 @@ async function settle(P, want, shotName) {
       const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
       return !(at && g.contains(at)) && at !== g;
     });
-    if (!covered && want(h)) break;
+    /* ...and the numerals it now draws decoded (a new count's files load
+       after the render that names them) */
+    if (!covered && want(h) && Object.values(h.out).every((v) => v.decoded)) break;
     await P.page.waitForTimeout(250);
   }
   await P.page.waitForTimeout(300);
@@ -121,6 +123,22 @@ async function settle(P, want, shotName) {
   });
   if (box) await shoot(P, join(OUT, `pointheads-${shotName}.png`), box);
   return h;
+}
+
+/* The window's ✕ closes on a finger's lift, so a real finger closes it */
+async function closeWindow(P) {
+  const at = await P.page.evaluate(() => {
+    const x = document.querySelector('[data-infopopup-x]');
+    if (!x) return null;
+    const r = x.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  });
+  if (at) await P.page.touchscreen.tap(at.x, at.y);
+  for (let i = 0; i < 20; i++) {
+    if (!(await P.page.evaluate(() => !!document.querySelector('[data-infopopup]')))) break;
+    await P.page.waitForTimeout(150);
+  }
+  await P.page.waitForTimeout(250);
 }
 
 const counts = (h) => Object.fromEntries(Object.entries(h.out).map(([k, v]) => [k, `${v.text} ${v.tone}${v.breathes ? ' ~' : ''}`]));
@@ -186,13 +204,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${view}: a weapon stat's window wears the sheet's sword, staff and bow on its three lane tabs`,
         !!laneTabs && laneTabs.map((t) => `${t.lane}:${(t.icon || '').split('/').pop()}`).join(' ') === 'sword:sword.png staff:staff.png bow:bow.png'
           && laneTabs.every((t) => t.w > 0 && /^\/icons\/ui\/points\//.test(t.icon)), laneTabs);
-      await P.page.evaluate(() => { const x = document.querySelector('[data-infopopup-x]'); if (x) x.click(); });
-      await P.page.waitForTimeout(500);
+      await closeWindow(P);
       const sharedTabs = await tabs('[data-prog3-row^="shared:"]');
       rec.ok(`${view}: ...and a shared stat's one tab wears the bust with the up arrow`,
         !!sharedTabs && sharedTabs.length === 1 && /\/icons\/ui\/points\/character\.png$/.test(sharedTabs[0].icon || '') && sharedTabs[0].w > 0, sharedTabs);
-      await P.page.evaluate(() => { const x = document.querySelector('[data-infopopup-x]'); if (x) x.click(); });
-      await P.page.waitForTimeout(500);
+      await closeWindow(P);
 
       /* ── 3. Bow 4 alone: gold beside grey ── */
       await H.devOp(wsPort, 'combat', id, { skill: 'all', level: 1, deal: true });
