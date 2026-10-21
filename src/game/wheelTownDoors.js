@@ -18,7 +18,7 @@
  * now" instead of a door that seems broken.
  */
 import { BUILDINGS } from '@/data/index.js';
-import { WHEEL_DOOR_REACH, WHEEL_BUILDING_DOORS, WHEEL_SHUT_DOORS, WHEEL_HALL_DOORS } from '@/data/wheelBuildingDoors.js';
+import { WHEEL_DOOR_REACH, WHEEL_BUILDING_DOORS, WHEEL_SHUT_DOORS, WHEEL_HALL_DOORS, WHEEL_HALL_CAPS } from '@/data/wheelBuildingDoors.js';
 import { wheelObjectsInfo } from './wheelTrial.js';
 import { isWheelTrialZone } from './worldTrial.js';
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';
@@ -26,6 +26,30 @@ import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 
 let _src = null, _doors = [];
+
+/* ═══ v2.3.3539: A HALL THAT WAITS FOR ITS WORKER ═══
+   The Hotel opens onto a rest the worker pays (server/src/rest.js), so it is
+   a hall only against a worker that says so (WHEEL_HALL_CAPS: caps.rest);
+   against an older one it stands shut, as it always did.  wsClient hands the
+   caps over at every state_sync (setWheelHallCaps), and a change makes the
+   door list again: a new list, so the minimap and the world map, which keep
+   theirs by identity, draw the building again in its new colour. */
+let _hallCapsOn = Object.create(null);
+/** The worker's caps (state_sync.caps), or null: which cap-gated halls open. */
+export function setWheelHallCaps(caps) {
+  const on = Object.create(null);
+  for (const plot of Object.keys(WHEEL_HALL_CAPS)) {
+    const cap = WHEEL_HALL_CAPS[plot];
+    if (caps && typeof caps === 'object' && own(caps, cap) && caps[cap]) on[plot] = true;
+  }
+  const same = Object.keys(WHEEL_HALL_CAPS).every((plot) => !!on[plot] === !!_hallCapsOn[plot]);
+  _hallCapsOn = on;
+  if (!same) _src = null;
+}
+/* a hall with no cap to wait for is always open */
+function hallOpen(plot) {
+  return !own(WHEEL_HALL_CAPS, plot) || !!_hallCapsOn[plot];
+}
 /** The doors, [{ id, name, label, x, y, index, hall, closed }]: `index` the
     BUILDINGS entry it opens (-1: none), `hall` the Wheel's own hall it opens
     instead (v2.3.3066, WHEEL_HALL_DOORS; null: none), `closed` true for a
@@ -46,9 +70,12 @@ export function wheelTownDoors() {
       index = BUILDINGS.findIndex((b) => b.id === bid);
     }
     const name = typeof d.name === 'string' && d.name ? d.name : d.id;
-    const hall = index < 0 && own(WHEEL_HALL_DOORS, d.id) ? WHEEL_HALL_DOORS[d.id] : null;
+    const isHall = index < 0 && own(WHEEL_HALL_DOORS, d.id);
+    const hall = isHall && hallOpen(d.id) ? WHEEL_HALL_DOORS[d.id] : null;
+    /* shut: a plot listed shut, or a hall still waiting for its worker
+       (v2.3.3539: the Hotel against a worker that does not rest) */
     _doors.push({ id: d.id, name, label: name.toUpperCase(), x: d.x, y: d.y, index, hall,
-      closed: index < 0 && !hall && WHEEL_SHUT_DOORS.indexOf(d.id) >= 0 });
+      closed: index < 0 && !hall && (isHall || WHEEL_SHUT_DOORS.indexOf(d.id) >= 0) });
   }
   return _doors;
 }

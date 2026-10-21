@@ -374,7 +374,15 @@ for (const p of files) {
   check('9d signing up for the arena is heard', /'Entered arena queue!'[^\n]*\n\s*cue\('arenaJoin'\)/.test(src('src/ui/panels/buildings/PartyPanel.jsx')));
   const BT = src('src/ui/BroTown.jsx');
   const rests = BT.split(/'Fully Rested!'|'Zzz\.\.\. Stats restored!'/).slice(1).map((t) => t.slice(0, 400));
-  check('9e every way to rest in the farm\'s bed (3) is heard', rests.length === 3 && rests.every((t) => /cue\('rested'\)/.test(t) && !silent.test(t)), rests.length);
+  /* v2.3.3539: the worker pays a rest now (server/src/rest.js): the bed's
+     Sleep button was a copy of the E key's rest and calls it, so the phone has
+     two of its own (for an older worker), and the worker's answer is heard
+     through game/rest.js, which plays the cue wsClient hands it */
+  const RJ = src('src/game/rest.js');
+  check('9e every way to rest is heard: the farm bed\'s two on the phone, and the worker\'s rest at the Hotel or the bed',
+    rests.length === 2 && rests.every((t) => /cue\('rested'\)/.test(t) && !silent.test(t))
+      && /out\.sound\('rested'\)/.test(RJ) && /sound: cue,/.test(caseOf(WS, 'rest_result')) && !silent.test(caseOf(WS, 'rest_result')),
+    { rests: rests.length, played: /out\.sound\('rested'\)/.test(RJ), handed: /sound: cue,/.test(caseOf(WS, 'rest_result')) });
 
   /* the pets: out, away, released -- and the four kinds whose wild look has
      a recording answer with it */

@@ -71,7 +71,7 @@
 import { GameRoom } from '../src/index.js';
 import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from '../src/data.js'; /* v2.3.1704: NOT from index.js — see the note on the flag */
 import { DUNGEONS, BOSS_ABILITIES } from '../src/dungeon.js';
-import { MONSTER_HP_CURVE, MONSTER_DMG_CURVE, monsterHpFlat } from '../src/data.js'; /* v2.3.3055: the dmg curve, the growing flat */
+import { MONSTER_HP_CURVE, MONSTER_DMG_CURVE, monsterHpFlat, DUNGEON_BOSS_UP } from '../src/data.js'; /* v2.3.3055: the dmg curve, the growing flat; v2.3.3540: + the boss at the dungeon's level */
 
 function makeState() {
   const store = new Map();
@@ -207,16 +207,19 @@ wsB.sent.length = 0;
 room._tickDungeons(Date.now());
 const boss = room.monsters[zone].find((m) => m.id.endsWith('-boss'));
 check('boss spawned after final wave', !!boss && boss.alive && inst.bossSpawned === true, boss && boss.id);
-// Expected hp: fodder base at lvl cfg.monsterLevel+5, x mult 8, x 1.6 (two players inside)
+// Expected hp: fodder base at the dungeon's level, x mult 8, x 1.6 (two players inside)
 // v2.3.1140: HP curve imported (was a hardcoded copy of the pre-BF-1 ramp).
-const baseHp = Math.ceil(room._monsterStat(MONSTER_HP_CURVE.base, cfg.monsterLevel + 5, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame) * 0.6);
-const baseDmg = Math.ceil(room._monsterStat(MONSTER_DMG_CURVE.base, cfg.monsterLevel + 5, MONSTER_DMG_CURVE.ramp, MONSTER_DMG_CURVE.plateau, MONSTER_DMG_CURVE.endgame) * 0.8);
+// v2.3.3540: at the dungeon's level (data.js DUNGEON_BOSS_UP 0; it was + 5)
+const bossLv = cfg.monsterLevel + DUNGEON_BOSS_UP;
+check('the boss is at the dungeon\'s level (DUNGEON_BOSS_UP 0, v2.3.3540)', DUNGEON_BOSS_UP === 0 && !!boss && boss.level === cfg.monsterLevel, boss && { lv: boss.level, cfg: cfg.monsterLevel });
+const baseHp = Math.ceil(room._monsterStat(MONSTER_HP_CURVE.base, bossLv, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame) * 0.6);
+const baseDmg = Math.ceil(room._monsterStat(MONSTER_DMG_CURVE.base, bossLv, MONSTER_DMG_CURVE.ramp, MONSTER_DMG_CURVE.plateau, MONSTER_DMG_CURVE.endgame) * 0.8);
 // v2.3.1346: the flat is added AFTER boss/party multipliers (exact, like all monsters); v2.3.3055: the level's own flat.
-const bossFlat = monsterHpFlat(cfg.monsterLevel + 5);
+const bossFlat = monsterHpFlat(bossLv);
 check('boss hp = base x mult x party scale 1.6 + flat', boss.hp === Math.ceil(baseHp * 8 * 1.6) + bossFlat, { hp: boss.hp, expected: Math.ceil(baseHp * 8 * 1.6) + bossFlat });
 /* v2.3.3260: x the one formula's hit multiplier at its level first, as every
    monster is built (oneformula.js _monsterHitStamp) */
-const _bossBase = Math.ceil(baseDmg * room._monsterHitK(cfg.monsterLevel + 5));
+const _bossBase = Math.ceil(baseDmg * room._monsterHitK(bossLv));
 check('boss dmg = base x 1.5', boss.dmg === Math.ceil(_bossBase * 1.5), { dmg: boss.dmg, expected: Math.ceil(_bossBase * 1.5) });
 check('dungeon_boss emitted to both players', msgsOfType(wsA, 'dungeon_boss').length === 1 && msgsOfType(wsB, 'dungeon_boss').length === 1);
 
@@ -237,6 +240,15 @@ check('outsider not paid', psC.coins === 0, psC.coins);
 check('dungeon_complete private to insiders only', msgsOfType(wsA, 'dungeon_complete').length === 1 && msgsOfType(wsB, 'dungeon_complete').length === 1 && msgsOfType(wsC, 'dungeon_complete').length === 0);
 check('completion event carries the totals', msgsOfType(wsA, 'dungeon_complete')[0].payload.gold === expGold && msgsOfType(wsA, 'dungeon_complete')[0].payload.boss === true);
 check('instance marked done', inst.state === 'done');
+/* v2.3.3540: the clear is RECORDED for each insider (lifeSkills.dungeonClears,
+   the Workshop's key) -- the Mayor's "Clear any dungeon" (mayor_3) reads it,
+   and only the old phone-run dungeons ever wrote it -- and not for the
+   outsider */
+check('the clear is recorded for each insider (lifeSkills.dungeonClears.workshop), not the outsider (v2.3.3540)',
+  !!(psA.lifeSkills && psA.lifeSkills.dungeonClears && psA.lifeSkills.dungeonClears.workshop === true)
+    && !!(psB.lifeSkills && psB.lifeSkills.dungeonClears && psB.lifeSkills.dungeonClears.workshop === true)
+    && !(psC.lifeSkills && psC.lifeSkills.dungeonClears && psC.lifeSkills.dungeonClears.workshop),
+  { a: psA.lifeSkills && psA.lifeSkills.dungeonClears, c: psC.lifeSkills && psC.lifeSkills.dungeonClears });
 
 // ── 10. done sweep + no-boss completion formula ──
 room._tickDungeons(Date.now() + 301000); // past the hard done-linger cap

@@ -118,12 +118,36 @@ export function wheelDungeonsSupported(S) {
   return !!(S && S._serverCaps && S._serverCaps.wheeldungeons);
 }
 
+/* v2.3.3540: HOW MANY of WHEEL_DUNGEON_HOMES this worker opens, in order
+   (caps.dungeonLands; a worker before it opened the first three) -- a newer
+   page never draws or offers the Goo Grotto to a worker that would refuse it
+   (TRAPS §9, the Cookhouse's caps.cookRows rule) */
+const DUNGEON_LANDS_BEFORE = 3;
+function dungeonLandsOpen(S) {
+  const n = S && S._serverCaps && S._serverCaps.dungeonLands;
+  return typeof n === 'number' && n >= 0 ? n : DUNGEON_LANDS_BEFORE;
+}
+/** Is mouth `id` (its land) one this worker opens? */
+export function wheelDungeonOpen(S, id) {
+  const k = WHEEL_DUNGEON_HOMES.indexOf(id);
+  return k >= 0 && k < dungeonLandsOpen(S) && wheelDungeonsSupported(S);
+}
+let _openOf = null, _openN = -1, _open = [];
+/** The mouths this worker opens (wheelDungeonDoors, the first caps.dungeonLands). */
+export function wheelDungeonDoorsOpen(S) {
+  const all = wheelDungeonDoors(), n = dungeonLandsOpen(S);
+  if (all === _openOf && n === _openN) return _open;
+  _openOf = all; _openN = n;
+  _open = all.filter((d) => WHEEL_DUNGEON_HOMES.indexOf(d.id) < n);
+  return _open;
+}
+
 /** The mouth you stand at in the Wheel (within DOOR_R), or null. */
 export function wheelDoorAt(S) {
   if (!S || S.currentZone !== 'wheel' || !S.player || !wheelDungeonsSupported(S)) return null;
   const P = S.player;
   let best = null, bestD = DOOR_R * DOOR_R;
-  for (const d of wheelDungeonDoors()) {
+  for (const d of wheelDungeonDoorsOpen(S)) {
     const dx = d.x - P.x, dy = d.y - P.y, d2 = dx * dx + dy * dy;
     if (d2 <= bestD) { bestD = d2; best = d; }
   }
@@ -135,7 +159,7 @@ export function wheelDoorAt(S) {
     dungeon_error (its message over your head).  Once a second: a double tap
     is one request. */
 export function enterWheelDungeon(S, id) {
-  if (!S || !S.channel || !wheelDungeonsSupported(S) || !WHEEL_DUNGEON_HOMES.includes(id)) return false;
+  if (!S || !S.channel || !wheelDungeonOpen(S, id)) return false;   /* v2.3.3540: one this worker opens */
   if (S._serverDungeon || S._dying) return false;
   const now = Date.now();
   if (S._wheelDoorAskedAt && now - S._wheelDoorAskedAt < 1000) return false;
