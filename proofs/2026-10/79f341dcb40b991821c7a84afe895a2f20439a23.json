@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "79f341dcb40b991821c7a84afe895a2f20439a23",
+  "tree": "9f249ac46c40956eecbadf70138d8a14dbe90ba2",
+  "committedAt": "2026-10-21T05:47:31-07:00",
+  "subject": "Every crop is food: any crop eaten raw heals half a fish of its level (v2.3.3537) (#1054)",
+  "files": 6183,
+  "bytes": 713280861,
+  "listingSha256": "f412096827237b66510c590242da4163b91b8c5b29db81e8e82cbf3a02b33ffb",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
