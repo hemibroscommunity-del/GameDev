@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "df2102762a3c6b8d7da017f0c3d2a027aa0bb257",
+  "tree": "9bfc8b4d6dae72a1f7189445cf0cafdfb6976e22",
+  "committedAt": "2026-10-21T16:31:51-07:00",
+  "subject": "Fix: the farm's Sleep, Workshop and Pet House buttons show when you stand there (v2.3.3548) (#1065)",
+  "files": 6241,
+  "bytes": 718946612,
+  "listingSha256": "12cf2716502435ca02be0c925c44e8ff3ca688db2d58993c2cad4db3df34f50d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
