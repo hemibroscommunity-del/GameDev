@@ -697,8 +697,11 @@ const sess = { id: 'bp_t' };
   const rpgAt = (extra) => ({ _quests: Object.assign(Object.create(null), ahead, extra || {}) });
   C.setClosedDoorZones(null);
   const open0 = C.questReachable(m1);
-  check('road open: today\'s town\'s three doors count, so mayor_1 is offered after the arc',
-    open0 === true && (C.getNpcQuest(rpgAt(), 'Mayor Bro') || {}).quest === m1,
+  /* v2.3.3550: mayor_1 is RETIRED (the owner: "Retire the old welcome home
+     quest"), so even with its doors in reach the Mayor offers mayor_2 after
+     the arc; the door guard itself still answers as before */
+  check('road open: today\'s town\'s three doors count, but mayor_1 is retired: the Mayor offers mayor_2 after the arc',
+    open0 === true && (C.getNpcQuest(rpgAt(), 'Mayor Bro') || {}).quest === C.QUEST_CHAINS.mayor_2,
     { reachable: open0, offered: ((C.getNpcQuest(rpgAt(), 'Mayor Bro') || {}).quest || {}).id });
   C.setClosedDoorZones(['town']);
   const shut = C.getNpcQuest(rpgAt(), 'Mayor Bro');
@@ -723,9 +726,9 @@ const sess = { id: 'bp_t' };
   const bare = [C.questReachable(m1), C.questReachable(m3)];
   C.setWheelDoorsOpen(true);
   const withWheel = C.getNpcQuest(rpgAt(), 'Mayor Bro');
-  check('the Wheel\'s doors count: with today\'s town shut, mayor_1 is offered again (eleven doors, three wanted) and mayor_3 finds its Farm',
+  check('the Wheel\'s doors count: with today\'s town shut, mayor_1\'s doors are back (eleven doors, three wanted), the Mayor offers mayor_2 (mayor_1 is retired, v2.3.3550) and mayor_3 finds its Farm',
     bare[0] === false && C.questReachable(m1) === true && C.questReachable(m3) === true
-      && withWheel && withWheel.quest === m1 && bare[1] === false,
+      && withWheel && withWheel.quest === C.QUEST_CHAINS.mayor_2 && bare[1] === false,
     { bare, now: [C.questReachable(m1), C.questReachable(m3)], offered: withWheel && withWheel.quest && withWheel.quest.id });
   const doorTable = (await import('../../src/data/wheelBuildingDoors.js')).WHEEL_BUILDING_DOORS;
   const opened = Object.values(doorTable);

@@ -1893,6 +1893,18 @@ remnant to migrate server-side, not a mode to preserve.
         `points_reset_result` (PRIVILEGED); `/dev/combat` takes `deal: true`;
         `caps.pointsreset`, kill switch `pointsreset: false`; `points-reset`
         suite, `mp-pointsreset`: docs/specs/points-reset.md;
+      - since v2.3.3551 YOUR FIRST POINTS, SHOWN -- the owner: "Leave tips for
+        first natural level up.  I don't want players choosing xp to train in
+        for weapons they haven't used yet.  Go with your guided level up": the
+        coach's `points` lesson (QuestCoach.jsx, its rules and words
+        src/game/pointsTips.js) rings OPEN, Character, the Points tab and the
+        grid's top row with the count waiting, while points wait and none was
+        ever placed, out of a fight; the coach's one `anytime` lesson (past the
+        Mayor's tutorial it is walked alone); a tap or a placed point puts it
+        away for good, unanswered it snoozes and gives up after three; the first
+        Spend names the free reset (`firstSpendHint`, InfoPopup `spentHint`);
+        nothing sent, no stat picked; `points-tips` suite, `mp-pointstips`:
+        docs/specs/levelup-tips.md;
       - since v2.3.3544 WHAT YOU WEAR ASKS YOUR LEVEL -- the owner: "I'm
         thinking of gating armor and weapons on combat level instead of
         primary combat skill level and defense level": armour, shields and
@@ -3608,7 +3620,9 @@ remnant to migrate server-side, not a mode to preserve.
       (docs/specs/demo-quest-line.md "v2.3.3533"); `next` only within a
       giver's own line (a `next`
       opens its step past any `after`); life_1/life_2 RETIRED (QUEST_RETIRED,
-      `retired`: never offered, one held still hands in); every line says why
+      `retired`: never offered, one held still hands in; since v2.3.3550
+      mayor_1 too, "Welcome Home" -- the owner: "Retire the old welcome home
+      quest" -- so mayor_2 follows tut_4); every line says why
       he wants it, in any order; the counted kinds `farm`/`craft`/`cook`/
       `race` (quests.js QUEST_COUNTED); a hand-in's trade asked on the claim
       window (QuestPanel TradeChooser);
