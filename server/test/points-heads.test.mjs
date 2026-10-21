@@ -12,8 +12,10 @@
  *   3. each frame's slice holds its whole corner and its stroke, and is under
  *      half the frame (a nine-slice past that draws nothing in the middle);
  *   4. the Points tab reads them: HeroExpanded imports the data, its heads and
- *      the spend window's lane tabs wear the sheet's icons, and nothing of the
- *      old heads is drawn (the blue badges, the diagonal, the portrait);
+ *      the spend window's lane tabs wear the sheet's icons, nothing of the
+ *      old heads is drawn (the blue badges, the diagonal, the portrait), and
+ *      the weapons are parted by the carved seam the owner picked, with no
+ *      diamond on it;
  *   5. a count with points to spend breathes by transform and opacity only,
  *      never a filter (the iOS grain rule), and is still with reduced motion;
  *      SLOWLY, the owner's "slowly grow then shrink": a 3.2 s breath.
@@ -96,6 +98,17 @@ const DIGITS = ['gold', 'grey'].flatMap((t) => [...Array(10).keys()].map((d) => 
   check('4e nothing of the old heads is drawn (the blue badges, the diagonal, the portrait\'s badge)', old.length === 0, old);
   check('4f the handles the scenarios read are kept',
     ['data-prog3-head-badge={key}', 'data-count={v}', "'data-prog3-held': c.key", 'data-prog3-lane={isLane ? buildCat : \'shared\'}'].every((s) => hx.includes(s)));
+  /* the owner, of the first cut's gold rule with a small diamond in its
+     middle: "remove the diamonds on the little separators between the 3
+     combat skills ... It just muddles the nice crisp image differentiating
+     the 3 combat types", then, of seven ways drawn on the tab: "Carved seam
+     is the best" */
+  const rule = /const headRule = \(k\) => \(([\s\S]*?)\n\s*\);/.exec(code);
+  check('4g the weapons are parted by the carved seam the owner picked -- a dark line over a faint warm one -- with nothing on it (no diamond)',
+    !!rule && rule[1].includes("borderTop: '1px solid rgba(0,0,0,.55)'") && rule[1].includes("borderBottom: '1px solid rgba(229,202,157,.2)'")
+      && /\/>\s*$/.test(rule[1]) && (rule[1].match(/<span/g) || []).length === 1 && !/rotate\(45deg\)/.test(code),
+    rule && rule[1]);
+  check('4h ...and the seam picture the owner chose from is kept with the spec', existsSync(new URL('docs/shots/points-heads-dividers.webp', root)));
 }
 
 /* ── 5. the breathing ── */

@@ -2399,9 +2399,8 @@ export const HeroExpanded = () => {
                the sides stretched), so one picture fits every cell:
                  - the weapons' frame holds three ROWS, sword, staff and bow
                    (the owner's order, POINT_LANES), each with what it can
-                   spend on its right and a hairline with a small diamond
-                   between them -- the mockup's arrangement, no shape behind
-                   any icon;
+                   spend on its right and a carved seam between them -- the
+                   mockup's arrangement, no shape behind any icon;
                  - the character's frame holds the gold bust with the up arrow
                    over what the shared pool can spend.  Over, not beside it
                    as in the mockup: the head is taller than it is wide (about
@@ -2428,8 +2427,8 @@ export const HeroExpanded = () => {
             /* COMPACT: sideways the head is ~33 px wide (HEAD_FR 1.45), where
                the sheet's numerals read 10 px tall beside 13 px icons -- the
                brass 7 px pill this replaced was smaller.  The frame's gold
-               thins to 2 px there, nothing pads it, and the hairlines lose
-               their diamond. */
+               thins to 2 px there and nothing pads it; the seams are the
+               same. */
             const HEAD_COMPACT = HEAD_W < 34;
             const PH_S = HEAD_COMPACT ? 2 : 3;          /* the frame's gold, CSS px */
             const PH_PAD = HEAD_COMPACT ? 0 : 2;        /* inside it */
@@ -2440,7 +2439,8 @@ export const HeroExpanded = () => {
             const PH_CH = CELL_H - 2 * (PH_S + PH_PAD);
             /* A weapon row: its icon, then two numerals 0.76 of its height
                (two of the sheet's are ~1.48 of their height wide), as large as
-               a third of the frame's height and its width allow. */
+               a third of the frame's height (less a px a seam: headRule says
+               why not two) and its width allow. */
             const PH_ICON = Math.max(8, Math.floor(Math.min((PH_CH - 2) / 3, (PH_CW - PH_GAP) / (1 + 0.76 * 1.48))));
             const PH_DIG = Math.round(PH_ICON * 0.76);
             const PH_NUM_W = PH_CW - PH_ICON - PH_GAP;
@@ -2493,20 +2493,24 @@ export const HeroExpanded = () => {
                 </span>
               );
             };
-            /* The mockup's rule between two weapons: a hairline in the frame's
-               gold, fading at its ends, with a small diamond in its middle */
+            /* The rule between two weapons is a CARVED SEAM: a dark line over
+               a faint warm one (Lantern Slate's edge-warm), as if the slate
+               were cut there; square-ended, nothing on it.  The owner picked
+               it from seven ways drawn on the tab (docs/shots/points-heads-
+               dividers.webp): "Carved seam is the best".  The first cut's
+               gold hairline had a small diamond in its middle, which "just
+               muddles the nice crisp image differentiating the 3 combat
+               types" -- the third diamond the owner has taken out of the UI
+               (v2.3.2207, v2.3.2388).  Two px tall: PH_ICON above still
+               counts a px a rule, so at 390 a row is 16.3 px for its 17 px
+               icon, as in the picture the owner chose; the box reaches a
+               third of a px into a seam, where the art is 1-2 of its 96 px
+               (0.2-0.35 px) clear of its edge (the bow 10). */
             const headRule = (k) => (
               <span key={'rule-' + k} aria-hidden="true" data-points-rule style={{
-                flex: 'none', height: 1, position: 'relative', margin: `0 ${PH_PAD}px`,
-                background: 'linear-gradient(90deg, rgba(216,170,88,0), rgba(216,170,88,.55) 28%, rgba(216,170,88,.55) 72%, rgba(216,170,88,0))',
-              }}>
-                {!HEAD_COMPACT && (
-                  <span style={{
-                    position: 'absolute', left: '50%', top: 0.5, width: 3, height: 3,
-                    transform: 'translate(-50%, -50%) rotate(45deg)', background: COL.accent,
-                  }} />
-                )}
-              </span>
+                flex: 'none', height: 0, margin: `0 ${PH_PAD}px`,
+                borderTop: '1px solid rgba(0,0,0,.55)', borderBottom: '1px solid rgba(229,202,157,.2)',
+              }} />
             );
             const headCell = (kind) => {
               const isLane = kind === 'lane';

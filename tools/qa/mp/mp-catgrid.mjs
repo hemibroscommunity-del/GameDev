@@ -387,6 +387,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
           .filter((u) => /^data:|\/hero\/|portrait|\/badge\/(d\d|circle|pill|plus)/.test(u)) : null,
         widths: fw && fc ? [+r(fw).width.toFixed(1), +r(fc).width.toFixed(1)] : null,
         lefts: fw && fc ? [+r(fw).left.toFixed(1), +r(fc).left.toFixed(1)] : null,
+        /* the seams between the weapons, as the page draws them */
+        seams: fw ? [...fw.querySelectorAll('[data-points-rule]')].map((s) => {
+          const cs = getComputedStyle(s);
+          const rows = [...fw.querySelectorAll('[data-points-row]')];
+          return {
+            kids: s.childElementCount,
+            top: `${cs.borderTopWidth} ${cs.borderTopColor}`, bottom: `${cs.borderBottomWidth} ${cs.borderBottomColor}`,
+            bg: cs.backgroundImage, h: +r(s).height.toFixed(2),
+            /* across the rows it parts, centred, inset at most the frame's
+               2 px padding a side */
+            wide: rows.length ? (r(rows[0]).width - r(s).width <= 4.5 && r(s).width <= r(rows[0]).width + 0.5
+              && Math.abs((r(s).left + r(s).right) / 2 - (r(rows[0]).left + r(rows[0]).right) / 2) <= 0.5) : false,
+            /* and between two of them */
+            between: rows.some((x) => Math.abs(r(x).bottom - r(s).top) <= 0.5) && rows.some((x) => Math.abs(r(x).top - r(s).bottom) <= 0.5),
+          };
+        }) : [],
       };
     });
     rec.ok(`${label}: both heads are the owner's gold frames (v2.3.3554), and each frame's picture decodes`,
@@ -403,6 +419,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: ...and the two frames are one width, one over the other, as the mockup stands them`,
       !!heads.widths && Math.abs(heads.widths[0] - heads.widths[1]) <= 1 && Math.abs(heads.lefts[0] - heads.lefts[1]) <= 1,
       { widths: heads.widths, lefts: heads.lefts });
+    /* The owner, of the first cut's gold rule with a diamond in its middle:
+       "remove the diamonds on the little separators between the 3 combat
+       skills ... It just muddles the nice crisp image", then, of seven ways
+       drawn: "Carved seam is the best" -- a dark line over a faint warm one,
+       nothing on it */
+    rec.ok(`${label}: ...between the weapons two CARVED SEAMS, a dark line over a faint warm one, nothing on them (no diamond), across the rows`,
+      heads.seams.length === 2 && heads.seams.every((s) => s.kids === 0 && s.bg === 'none'
+        && s.top === '1px rgba(0, 0, 0, 0.55)' && s.bottom === '1px rgba(229, 202, 157, 0.2)'
+        && Math.abs(s.h - 2) <= 0.01 && s.wide && s.between), heads.seams);
 
     /* ── IT FITS ── */
     rec.ok(`${label}: nothing in the grid hangs off the viewport`,

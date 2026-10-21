@@ -13,7 +13,7 @@ how it goes together (kept as `assets/icons-source/sheet-points-heads.png` and
 
 | Where | Was | Now |
 |---|---|---|
-| The weapons' head (the top row's first cell) | the sword, bow and staff fanned down a diagonal, each with a blue badge of the points it can spend | a gold frame holding three rows -- sword, staff, bow -- each with its count on its right, and a fine gold rule with a small diamond between two rows |
+| The weapons' head (the top row's first cell) | the sword, bow and staff fanned down a diagonal, each with a blue badge of the points it can spend | a gold frame holding three rows -- sword, staff, bow -- each with its count on its right, and a carved seam between two rows: a dark line over a faint warm one, nothing on it |
 | The character's head (the bottom row's first cell) | your portrait with a blue badge | a gold frame holding the gold bust with the up arrow, its count under it |
 | The counts | the badge numerals on blue circles and pills; "99+" past 99; sideways a plain 7 px brass pill | the sheet's numerals: **gold** while that pool has a point to spend, **grey** at 0 (the sheet's "NUMBER COLOR RULES"); the exact count, a long one drawn smaller to fit ("147"); the same upright and sideways |
 | The weapon in your hand | on a small brass plate | its row lit in the frame |
@@ -39,9 +39,36 @@ From `mp-pointheads` on the QA phone (390 x 844 at 3x, and sideways):
 - `docs/shots/points-heads-states.webp` -- Bow 4 alone (grey 0s beside gold
   9s), nothing to spend, three numerals;
 - `docs/shots/points-heads-sideways.webp` -- before and after, sideways;
-- `docs/shots/points-heads-window.webp` -- the spend window's lane tabs.
+- `docs/shots/points-heads-window.webp` -- the spend window's lane tabs;
+- `docs/shots/points-heads-dividers.webp` -- the seven dividers the owner chose
+  the seam from (below), every pool full above and Bow 4 alone below.
 
 ## Decided here, and why
+
+- **The weapons are parted by a carved seam** -- the owner's pick. The first
+  cut had a gold hairline fading at its ends with a small diamond in its
+  middle, and the owner, seeing it on the phone: "The new method is MUCH
+  improved. But I want you to remove the diamonds on the little separators
+  between the 3 combat skills if possible. It just muddles the nice crisp
+  image differentiating the 3 combat types. Or maybe use a different divider
+  style or one that you create yourself from code". Seven ways were drawn on
+  the real tab, at 390 and sideways (`docs/shots/points-heads-dividers.webp`,
+  left to right): the first cut; the same with no diamond; a carved seam; a
+  gold line one device pixel thin; the UI's own divider colour; a flat gold
+  line; no line. The owner: "Carved seam is the best". It is a 1 px dark line
+  (`rgba(0,0,0,.55)`) over a 1 px warm one (Lantern Slate's edge-warm at .2),
+  square-ended, across the frame's inside less its padding, with nothing on
+  it. It is the third diamond the owner has taken out of the UI (the
+  creator's Create button, v2.3.2207; its plate's divider, v2.3.2388), so
+  docs/UI-DESIGN-NOTES.md now says not to suggest one. The seam is 2 px where
+  the rule was 1, and the icons kept their size: at 390 a row is 16.3 px for
+  its 17 px icon, as in the picture the owner chose; the icon's box reaches a
+  third of a px into a seam, where the sword's and staff's art is 1-2 of its
+  96 px (0.2-0.35 CSS px) clear of the edge.
+  - The one-device-pixel gold line was the thinnest, but drawn as a box that
+    thin it vanished sideways (0.34 px rounds to nothing at some heights): a
+    line under a CSS pixel must be a border, which a browser never draws under
+    one device pixel.
 
 - **No shapes behind the icons**, as asked: the mockup's red square, blue
   circle and green diamond are not drawn. The weapon in your hand used to sit
@@ -116,7 +143,8 @@ A three-numeral count is drawn smaller to fit its column (at 390 a weapon's
   numerals, gold with points and grey at 0, inside its head; both frames the
   sheet's and decoding; the three rows sword, staff, bow; every icon the
   sheet's; nothing of the old heads left; the two frames one width, one over
-  the other; the held weapon's row lit.
+  the other; between the weapons two carved seams, a dark line over a warm
+  one, with nothing on them, across the rows; the held weapon's row lit.
 - `mp-pointheads` (390, 320, sideways; pictures of each state in
   `tools/qa/mp/out/pointheads-*.png`): every pool full (all gold, breathing);
   the spend window's tabs; Bow 4 alone (grey 0s beside gold, only the gold
@@ -127,3 +155,7 @@ A three-numeral count is drawn smaller to fit its column (at 390 a weapon's
 - `mp-statcols`, `mp-prog3`, `mp-landscape-dash`, `mp-statpeek`, `mp-charfit`,
   `mp-pointsreset`, `mp-nozoom`, `mp-pointsglow`, `mp-freshpoints`: the Points
   tab's other scenarios, run on the change.
+- `server/test/points-heads.test.mjs` (every PR's server suite): every picture
+  a file at the size the data says, the frames' slices, the Points tab
+  reading them, nothing of the old heads, the carved seam with no diamond on
+  it, and the slow breath.
