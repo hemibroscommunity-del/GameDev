@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e8cc4419ff501b1d0e93e7a601fc9ecef2f68248",
+  "tree": "9902a228003739f44fe954ad24de3b61c81d91c8",
+  "committedAt": "2026-10-21T16:44:56-07:00",
+  "subject": "Your achievement points ride the top bar, and every rise is seen (v2.3.3553) (#1069)",
+  "files": 6251,
+  "bytes": 719042296,
+  "listingSha256": "fa7d67d00486e761e2349677bd62809a439d94921b9e79383971b3cb6442ac70",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

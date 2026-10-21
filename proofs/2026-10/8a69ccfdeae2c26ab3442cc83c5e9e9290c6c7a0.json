@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8a69ccfdeae2c26ab3442cc83c5e9e9290c6c7a0",
+  "tree": "bdee5e1d3366b45089aa65c3c69c9d05ab0171b6",
+  "committedAt": "2026-10-21T16:45:14-07:00",
+  "subject": "\"Woodworking\" whole on the sideways Life Skills page, and the world-map test since the Hotel opened (v2.3.3555) (#1071)",
+  "files": 6251,
+  "bytes": 719042794,
+  "listingSha256": "1f34dae324a154cbc7f3e2c4fbff3c9644ec49f20b61324a99db15c298b09bed",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
