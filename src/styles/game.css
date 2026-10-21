@@ -1150,22 +1150,24 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
 /* ═══ v2.3.3052: THE POINT BUBBLES BREATHE ═══
    Owner: "Make the bubble points for all 3 weapons and for the character glow
    and grow and shrink if there are still points that need to be allocated."
-   The Points tab's per-weapon and character bubbles (HeroExpanded headBadge)
-   carry this class while their count is above zero: a warm glow behind the
-   bubble (its ::before, opacity only) and a swell of the bubble itself
-   (transform only) -- never a filter, the iOS grain rule.  In step with the
-   tab's own glow (bt-pts-glow, 1.6 s).  It swells from its top-right corner:
-   the header clips, and the bubbles sit flush with its top and right edges.
-   Reduced motion: lit and still. */
-@keyframes bt-pts-bubble{0%,100%{transform:scale(1)}50%{transform:scale(1.16)}}
-@keyframes bt-pts-bubble-glow{0%,100%{opacity:.25}50%{opacity:1}}
-.bt-pts-bubble{transform-origin:100% 0;animation:bt-pts-bubble 1.6s ease-in-out infinite}
-.bt-pts-bubble::before{content:'';position:absolute;inset:-3px;border-radius:999px;pointer-events:none;z-index:-1;
-  box-shadow:0 0 8px 3px rgba(255,206,102,.85),inset 0 0 4px 1px rgba(255,226,150,.6);
-  animation:bt-pts-bubble-glow 1.6s ease-in-out infinite}
+   ═══ v2.3.3553: ...AS THE COUNTS IN THE OWNER'S GOLD FRAMES ═══
+   The bubbles are gone: the owner's Points art (HeroExpanded, THE TWO HEADS IN
+   THE OWNER'S POINTS ART) puts each pool's count in its frame in gold
+   numerals with nothing round them.  So a count above zero carries this
+   class: a swell of the count from its MIDDLE (transform only; it sits inside
+   its frame, where the bubbles hung off the header's corner) and a warm haze
+   behind its numerals (its ::before, opacity only), where the bubble had a
+   ring round its pill -- never a filter, the iOS grain rule.  In step with the
+   tab's own glow (bt-pts-glow, 1.6 s).  Reduced motion: lit and still. */
+@keyframes bt-pts-count{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+@keyframes bt-pts-count-glow{0%,100%{opacity:.3}50%{opacity:1}}
+.bt-pts-count{transform-origin:50% 50%;animation:bt-pts-count 1.6s ease-in-out infinite}
+.bt-pts-count::before{content:'';position:absolute;inset:-3px -4px;border-radius:999px;pointer-events:none;z-index:-1;
+  background:radial-gradient(closest-side,rgba(255,206,102,.62),rgba(255,206,102,.24) 62%,rgba(255,206,102,0));
+  animation:bt-pts-count-glow 1.6s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){
-  .bt-pts-bubble{animation:none}
-  .bt-pts-bubble::before{animation:none;opacity:.8}
+  .bt-pts-count{animation:none}
+  .bt-pts-count::before{animation:none;opacity:.8}
 }
 /* v2.3.2599: THE POINT-LANDED ORB IS RETIRED.  Owner: "Remove the small circle
    icon to the left of the plus sign."  It was v2.3.2329's answer to "when you

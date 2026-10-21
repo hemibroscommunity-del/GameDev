@@ -277,9 +277,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
        Read against the WORKER's pools (R.prog3.poolBy / .shared), not against
        the client helper that draws them -- a badge that agreed with its own
        formula and not with the server would pass a test of the formula. */
-    /* v2.3.3052: a live bubble breathes (game.css bt-pts-bubble, a transform);
-       its box is measured at rest, so where it SITS is what is asserted */
-    await P.page.addStyleTag({ content: '.bt-pts-bubble{animation:none !important}' }).catch(() => {});
+    /* v2.3.3052: a live count breathes (game.css bt-pts-count since
+       v2.3.3553, a transform); its box is measured at rest, so where it SITS
+       is what is asserted */
+    await P.page.addStyleTag({ content: '.bt-pts-count,.bt-pts-count::before{animation:none !important}' }).catch(() => {});
     const badges = () => P.page.evaluate(() => {
       const R = window._gameState && window._gameState.current && window._gameState.current.rpg;
       const p = (R && R.prog3) || {};
@@ -290,22 +291,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const hr = head ? head.getBoundingClientRect() : null;
         /* v2.3.2691: the count is drawn in the owner's numeral SPRITES, so
            it has no text -- it is read back off the images actually on
-           screen (d6.png d4.png -> "64"), which is a stronger check than
-           text was: a wrong or missing file shows up as a wrong number.
-           naturalWidth guards against a path that 404s into an empty box. */
+           screen, which is a stronger check than text was: a wrong or
+           missing file shows up as a wrong number.  naturalWidth guards
+           against a path that 404s into an empty box.
+           v2.3.3553: the owner's Points sheet's numerals, gold-6.png
+           gold-4.png -> "64", grey-0.png -> "0" -- upright AND sideways (the
+           plain brass pill sideways is gone), and the exact count however
+           big (no "99+"). */
         const imgs = [...b.querySelectorAll('img')];
-        const cs = getComputedStyle(b);
+        const tones = imgs.map((i) => { const m = /\/(gold|grey)-\d\.png/.exec(i.getAttribute('src') || ''); return m ? m[1] : '?'; });
         out[b.getAttribute('data-prog3-head-badge')] = {
-          /* sideways the header is too narrow for the sprite pill and the
-             badge is the plain brass one (v2.3.2691) -- its text IS the count */
           sprite: imgs.length > 0,
-          text: imgs.length
-            ? imgs.map((i) => { const m = /\/(d(\d)|plus)\.png/.exec(i.getAttribute('src') || ''); return !m ? '?' : m[2] != null ? m[2] : '+'; }).join('')
-            : (b.textContent || '').trim(),
+          text: imgs.map((i) => { const m = /\/(?:gold|grey)-(\d)\.png/.exec(i.getAttribute('src') || ''); return m ? m[1] : '?'; }).join(''),
           decoded: imgs.every((i) => i.naturalWidth > 0),
-          /* v2.3.2692: the owner's blue, baked into its own files */
-          bg: /circle-blue\.png/.test(cs.backgroundImage) ? 'circle' : /pill-blue\.png/.test(cs.borderImageSource) ? 'pill'
-            : (cs.backgroundColor && !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor) ? 'plain' : null),
+          /* the sheet's NUMBER COLOR RULES: one tone for the whole count */
+          tone: tones.length && tones.every((t) => t === tones[0]) ? tones[0] : tones.join(','),
           inHead: !!hr && r.left >= hr.left - 0.5 && r.right <= hr.right + 0.5 && r.top >= hr.top - 0.5 && r.bottom <= hr.bottom + 0.5,
           box: [r.left, r.top, r.right, r.bottom].map((v) => +v.toFixed(1)),
           head: hr ? [hr.left, hr.top, hr.right, hr.bottom].map((v) => +v.toFixed(1)) : null,
@@ -325,7 +325,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { out, spend, poolBy: JSON.parse(JSON.stringify(pb)), shared: p.shared, free };
     });
     const b0 = await badges();
-    const badgeText = (n) => (n > 99 ? '99+' : String(n || 0));
+    const badgeText = (n) => String(n || 0);   /* v2.3.3553: exact, never "99+" */
     /* ═══ v2.3.2692: EVERY CELL'S DRAWN NUMBER IS ITS REAL COUNT ═══
        The thirteen counts are the owner's white-outline numeral SPRITES now,
        so the number on screen is a row of image files.  Read it back off
@@ -350,13 +350,59 @@ export async function run({ browser, wsPort, webPort, rec }) {
       { badges: Object.fromEntries(Object.entries(b0.out).map(([k, v]) => [k, v.text])), spend: b0.spend, poolBy: b0.poolBy, free: b0.free });
     rec.ok(`${label}: ...and the character's badge is what the shared pool can spend`,
       !!b0.out.shared && b0.out.shared.text === badgeText(b0.spend.shared), { badge: b0.out.shared && b0.out.shared.text, spend: b0.spend.shared });
-    rec.ok(`${label}: ...on the owner's badge art — round for one digit, the pill for two or more (v2.3.2691; plain brass sideways, where the art cannot fit)`,
-      Object.values(b0.out).every((v) => (land ? v.bg === 'plain' : v.sprite && v.bg === (v.text.length === 1 ? 'circle' : 'pill'))),
-      Object.fromEntries(Object.entries(b0.out).map(([k, v]) => [k, { text: v.text, bg: v.bg }])));
+    rec.ok(`${label}: ...in the owner's Points numerals, GOLD with points to spend and GREY at 0 (v2.3.3553, the sheet's colour rule; upright and sideways)`,
+      Object.values(b0.out).every((v) => v.sprite && v.tone === (Number(v.text) > 0 ? 'gold' : 'grey')),
+      Object.fromEntries(Object.entries(b0.out).map(([k, v]) => [k, { text: v.text, tone: v.tone }])));
     rec.ok(`${label}: ...and every numeral sprite actually decoded (a wrong path is an invisible box)`,
       Object.values(b0.out).every((v) => v.decoded), Object.fromEntries(Object.entries(b0.out).map(([k, v]) => [k, v.decoded])));
     rec.ok(`${label}: ...and every badge sits inside its header, not clipped off its edge`,
       Object.values(b0.out).every((v) => v.inHead), b0.out);
+
+    /* ═══ v2.3.3553: THE TWO HEADS IN THE OWNER'S POINTS ART ═══
+       Owner: "On the character points screen swap out the old style icons
+       with these.  It should look similar to the second screenshot mockup but
+       it won't have the shaped backgrounds behind the icons.  Also the
+       character icon should have the up arrow instead of the 4 point star."
+       So: each head a gold frame (the sheet's brackets, a border-image), the
+       weapons' frame three rows in the owner's order, the character's the gold
+       bust with the up arrow -- every picture the sheet's (a wrong path is an
+       empty box), none of the old (the portrait, the hero webps), and the two
+       frames one width, one over the other, as the mockup stands them. */
+    const heads = await P.page.evaluate(async () => {
+      const g = document.querySelector('[data-prog3-grid]');
+      const fw = g && g.querySelector('[data-points-frame="weapons"]');
+      const fc = g && g.querySelector('[data-points-frame="character"]');
+      const srcOf = (el) => { const m = /url\("?([^")]+)"?\)/.exec(el ? getComputedStyle(el).borderImageSource : ''); return m ? m[1] : null; };
+      const decodes = async (u) => { if (!u) return false; try { const im = new Image(); im.src = u; await im.decode(); return im.naturalWidth > 0; } catch (e) { return false; } };
+      const imgs = fw && fc ? [...fw.querySelectorAll('[data-points-row] > img'), ...fc.querySelectorAll(':scope > img')] : [];
+      const r = (el) => el.getBoundingClientRect();
+      return {
+        frames: !!(fw && fc),
+        frameSrc: [srcOf(fw), srcOf(fc)].map((u) => (u || '').split('/').pop().split('?')[0]),
+        frameDecoded: [await decodes(srcOf(fw)), await decodes(srcOf(fc))],
+        rows: fw ? [...fw.querySelectorAll('[data-points-row]')].map((x) => x.getAttribute('data-points-row')) : [],
+        icons: imgs.map((i) => ({ src: (i.getAttribute('src') || '').split('?')[0], w: i.naturalWidth })),
+        /* nothing of the old heads: the portrait, the hero icons, the blue badges */
+        oldArt: g ? [...g.querySelectorAll('[data-prog3-lane] img')].map((i) => i.getAttribute('src') || '')
+          .filter((u) => /^data:|\/hero\/|portrait|\/badge\/(d\d|circle|pill|plus)/.test(u)) : null,
+        widths: fw && fc ? [+r(fw).width.toFixed(1), +r(fc).width.toFixed(1)] : null,
+        lefts: fw && fc ? [+r(fw).left.toFixed(1), +r(fc).left.toFixed(1)] : null,
+      };
+    });
+    rec.ok(`${label}: both heads are the owner's gold frames (v2.3.3553), and each frame's picture decodes`,
+      heads.frames && heads.frameSrc[0] === 'frame-weapons.png' && heads.frameSrc[1] === 'frame-character.png'
+        && heads.frameDecoded.every(Boolean), heads);
+    rec.ok(`${label}: ...the weapons' frame holds three rows in the owner's order, sword, staff, bow`,
+      JSON.stringify(heads.rows) === JSON.stringify(['sword', 'staff', 'bow']), heads.rows);
+    rec.ok(`${label}: ...every icon is the sheet's (the character the bust with the up arrow) and decoded`,
+      heads.icons.length === 4 && heads.icons.every((i) => i.w > 0)
+        && heads.icons.map((i) => i.src.split('/').pop()).join(',') === 'sword.png,staff.png,bow.png,character.png'
+        && heads.icons.every((i) => i.src.startsWith('/icons/ui/points/')), heads.icons);
+    rec.ok(`${label}: ...and none of the old heads' art is left (the portrait, the hero icons, the blue badges)`,
+      Array.isArray(heads.oldArt) && heads.oldArt.length === 0, heads.oldArt);
+    rec.ok(`${label}: ...and the two frames are one width, one over the other, as the mockup stands them`,
+      !!heads.widths && Math.abs(heads.widths[0] - heads.widths[1]) <= 1 && Math.abs(heads.lefts[0] - heads.lefts[1]) <= 1,
+      { widths: heads.widths, lefts: heads.lefts });
 
     /* ── IT FITS ── */
     rec.ok(`${label}: nothing in the grid hangs off the viewport`,
@@ -562,7 +608,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const plate = document.querySelector('[data-prog3-grid] [data-prog3-held]');
         return { lane: h ? h.getAttribute('data-prog3-lane') : null, held, plate: plate ? plate.getAttribute('data-prog3-held') : null };
       });
-      rec.ok(`${label}: ...and the grid still shows the weapon in your hand (${headNow.held}), on its brass plate`,
+      rec.ok(`${label}: ...and the grid still shows the weapon in your hand (${headNow.held}), its row lit in the weapons' frame`,
         headNow.lane === headNow.held && headNow.plate === headNow.held, { aimed: laneNow, got: headNow });
       /* v2.3.2689: the badge is live -- the spend just made must show up on
          the weapon that paid for it, and only there */

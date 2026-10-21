@@ -100,7 +100,8 @@ moved it. Now:
   name, still shows that lane until you swap.
 
 The held lane wears a small brass plate (`data-prog3-held`). Tested by
-`mp-catgrid`.
+`mp-catgrid`. (Since v2.3.3553 its ROW is lit in the weapons' gold frame
+instead: docs/specs/points-heads.md.)
 
 ## The point bubbles breathe (v2.3.3052)
 
@@ -118,6 +119,11 @@ their count is above zero:
 
 Tested by `mp-catgrid` (which pauses the animation to measure) and
 `mp-pointsglow`.
+
+Since v2.3.3553 the bubbles are gone: each pool's count sits in the owner's
+gold frames in gold numerals, and it is the COUNT that breathes
+(`bt-pts-count`, from its middle, a warm haze behind it):
+docs/specs/points-heads.md.
 
 ## Max HP in the spend window says what the bar will say (v2.3.3050)
 

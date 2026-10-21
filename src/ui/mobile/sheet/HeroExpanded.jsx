@@ -29,6 +29,7 @@ import { StatDemo, STAT_DEMO_KEYS } from './StatDemo.jsx';                      
 import { useScrollTap } from './scrollTap.js';                                  /* v2.3.2326: a tap the scroller confiscated is still a tap */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
+import { POINTS_ART_DIR, POINTS_ART_V, POINTS_DIGIT_H, POINTS_DIGIT_W, POINTS_FRAMES } from '../../../data/pointsHeadArt.js'; /* v2.3.3553: the owner's Points-tab art (GENERATED) */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
 import { playIsLandscape, panelVw } from '../playViewport.js';                    /* v2.3.2171: the sideways pane stacks; panelVw v2.3.2382 */
 import { StatCaption, STAT_CAPTION_SHORT } from './StatCaption.jsx';            /* v2.3.3324: a stat's name whole or short, never cut */
@@ -126,6 +127,16 @@ const POINT_LANES = ['sword', 'staff', 'bow']
 /* v2.3.2615: one definition, in portraitStore.js — the level-up medallion reads
    the same chain for a character level-up and a second copy would drift. */
 const SHARED_ICON_FALLBACK = PORTRAIT_FALLBACK_SRC;
+/* v2.3.3553: the owner's Points-tab pictures (tools/ui/cut-points-heads.py):
+   the weapons as the Points tab draws them, and the character -- the gold
+   bust with the up arrow -- where the Shared column wore your portrait.  The
+   grid's two heads and the spend window's lane tabs both read this. */
+const POINTS_ICONS = Object.freeze({
+  sword: `${POINTS_ART_DIR}sword.png?v=${POINTS_ART_V}`,
+  staff: `${POINTS_ART_DIR}staff.png?v=${POINTS_ART_V}`,
+  bow: `${POINTS_ART_DIR}bow.png?v=${POINTS_ART_V}`,
+  shared: `${POINTS_ART_DIR}character.png?v=${POINTS_ART_V}`,
+});
 
 /* v2.3.3522: the points a stat holds -- a weapon stat in its lane, a shared
    stat in the shared pool -- as the Points window's spend reads them (the
@@ -1702,12 +1713,16 @@ export const HeroExpanded = () => {
                   lanes: {
                     active: st.atk ? laneCat : 'shared',
                     options: st.atk
+                      /* v2.3.3553: each tab wears the Points tab's own
+                         picture of its pool (the owner's art), so the window
+                         and the grid behind it show one sword, one staff,
+                         one bow and one character */
                       ? POINT_LANES.filter((c) => !c.shared).map((c) => ({
-                          key: c.key, label: c.label, icon: c.iconSrc, pts: laneAvail(c.key),
+                          key: c.key, label: c.label, icon: POINTS_ICONS[c.key] || c.iconSrc, pts: laneAvail(c.key),
                         }))
                       /* v2.3.2695: owner -- "on the highlighted button instead
                          of 'shared' just say 'Unspent Points'". */
-                      : [{ key: 'shared', label: 'Unspent Points', icon: sharedIcon, pts: sharedAvail }],
+                      : [{ key: 'shared', label: 'Unspent Points', icon: POINTS_ICONS.shared, pts: sharedAvail }],
                     onPick: st.atk ? ((k) => {
                       /* v2.3.3051: the tab aims the WINDOW only; the grid behind
                          it stays on the weapon in your hand (the owner's "show
@@ -2211,7 +2226,14 @@ export const HeroExpanded = () => {
                tipped SPECIAL and DODGE into an ellipsis at 390.  Caught in a
                capture, not by arithmetic: the number is measured against the
                real screen either way, so the tray belongs IN it. */
-            const CELL_W = Math.max(22, (panelVw() - 66) / 7.15);
+            /* v2.3.3553: the head's share of the lane row, 1.15 of a cell
+               upright as ever, 1.45 sideways: there the owner's Points art
+               lays each weapon's icon BESIDE its count in a head ~27 px wide,
+               where the icons came out 9 px (the diagonal's were 18); at
+               1.45 they are 13, and each stat cell gives up a px (its short
+               caption, PWR or SPCL, still fits -- StatCaption.jsx). */
+            const HEAD_FR = landPane ? 1.45 : 1.15;
+            const CELL_W = Math.max(22, (panelVw() - 66) / (6 + HEAD_FR));
             /* v2.3.2685: a quarter off every glyph (owner: "shrink each icon
                25%.  Too large").  The cell keeps its height, so what the
                glyph gives up goes to the caption and the number -- which is
@@ -2226,7 +2248,11 @@ export const HeroExpanded = () => {
                silly" at 0.62 OF the old glyph.  A head cell is 1.15x as wide
                as a stat cell and carries no caption and no number, so it has
                room the stat cells do not, and it should use its own. */
-            const HEAD_W = CELL_W * 1.15;
+            const HEAD_W = CELL_W * HEAD_FR;
+            /* v2.3.3553: the shared row's head is as wide as the lane row's
+               (the two frames stand one over the other, THE TWO HEADS below):
+               of eight columns, with one more 4 px gap, that is this share */
+            const SHARED_FR = +Math.min(3, Math.max(1, 7 * HEAD_W / Math.max(1, panelVw() - 70 - HEAD_W))).toFixed(3);
             /* Height stays capped sideways: the landscape pane is short and a
                tall cell there costs the second row its place on screen. */
             /* v2.3.2686: the tray each row now sits in costs 10px a row (its
@@ -2236,21 +2262,14 @@ export const HeroExpanded = () => {
                guessed: 75 -> 65 at 390 puts the grid's foot back on 842 of
                844, and 60 -> 52 at 320 on 562 of 568. */
             const CELL_H = landPane ? 52 : Math.round(Math.max(52, Math.min(68, CELL_W * 1.40)));
-            /* One weapon icon: the full width of the head cell, a third of
-               its height, whichever binds first.  The portrait has no stack
-               to make room for, so it takes the cell short of its padding. */
-            const LANE_ICON = Math.round(Math.max(18, Math.min(34, Math.min(CELL_H * 0.42, HEAD_W * 0.60))));
-            /* v2.3.2689: HEAD_W - 14, not - 10.  The portrait now carries a
-               badge pinned 3px past its top-right corner, and in the narrow
-               landscape pane the portrait filled the head so exactly that
-               the badge poked a pixel past the header's edge -- mp-catgrid
-               measured it.  4px of slack each side holds the 3px overhang. */
-            const LANE_NUDGE = Math.round(LANE_ICON * 0.26);
-            const HEAD_ICON = Math.round(Math.max(22, Math.min(40, Math.min(CELL_H - 14, HEAD_W - 14))));
+            /* v2.3.3553: the heads' own sizes (the diagonal's LANE_ICON and
+               the portrait's HEAD_ICON) went with them -- see THE TWO HEADS
+               IN THE OWNER'S POINTS ART below. */
             const CAP_FS = Math.max(7.5, Math.min(10.5, CELL_W / 4.7));
             const NUM_FS = Math.max(12.5, Math.min(18, CELL_W * 0.38));
-            /* v2.3.2692: the owner's numeral art -- shared by the header
-               badges and the stat cells, so declared above both. */
+            /* v2.3.2692: the owner's numeral art for the stat cells' counts
+               (the heads' counts were drawn in it too until v2.3.3553, which
+               gave them the Points sheet's own gold and grey numerals). */
             const BADGE = '/icons/ui/badge/';
             const BADGE_V = '?v=2.3.2670';
             const statCell = (st, cat) => {
@@ -2353,146 +2372,141 @@ export const HeroExpanded = () => {
               );
             };
 
-            /* The head of each row: the weapons cell picks which lane the six
-               stats above belong to, the portrait just names the shared row. */
+            /* The head of each row names it: the weapons cell is the lane
+               row's (whose six stats are the weapon in your hand's), the
+               character's is the shared row's. */
             /* ═══ v2.3.2684: THE WEAPON ROW IS A LABEL, NOT A CONTROL ═══
                Owner: "The weapon icon row is not meant to be button.  The
                button to change which of the 3 combat skills it's applied to is
                shown in the second attached image.  It's a tab in the confirm
                window.  This should be for every allocable stat."
-               So the head cell stops being tappable and goes back to naming
-               the row, and the lane CHOICE moves into the confirm window where
-               the owner drew it -- next to the points it would spend, at the
-               moment you are deciding to spend one.  That is a better place
-               for it than a cell you had to know was a control. */
-            /* ═══ v2.3.2689: WHAT EACH POOL STILL HAS, ON ITS OWN HEADER ═══
-               Owner: "I want a badge on a fill background on each row header
-               showing how many allocable points there still are.  One number
-               on each combat type icon (melee, bow, staff) then just one for
-               the character on the second row header."
-               This partly reverses v2.3.2683's "no points-remaining anywhere
-               in the grid", by the same owner and deliberately: the STAT
-               cells still carry no remaining count (a cell shows what it has
-               bought), and the count moves to the one place a pool has a
-               picture -- its header.  Three weapons, three pools, three
-               badges; one shared pool, one badge.
-               Pinned to each icon's top-right corner.  The diagonal leaves
-               exactly those corners free -- each icon's next neighbour starts
-               below and right of it -- so no badge sits on another weapon.
-               A pool at 0 keeps its badge, muted, rather than vanishing: "0"
-               is an answer to "how many are left", and a badge that comes and
-               goes would make the three weapons look unlike each other for
-               no reason a player can see.  Past 99 it reads 99+, because a
-               44px cell cannot hold a three-digit pill beside an icon. */
-            /* COMPACT: the sideways pane squeezes a header to ~21px, narrower
-               than a normal "99+" pill (27px) -- mp-catgrid measured it
-               clipped there, and then clipped again at 7.5px (22px wide).  So
-               below 34px of header the badge is a 7px pill with its padding
-               and tracking pared to fit a three-character count, and the
-               character's badge pins to the HEADER's corner instead of the
-               portrait's, because in a 21px header the portrait is wider than
-               the room it has. */
+               So the head is not tappable and names the row, and the lane
+               CHOICE lives in the confirm window, next to the points it would
+               spend, at the moment you are deciding to spend one. */
+            /* ═══ v2.3.3553: THE TWO HEADS IN THE OWNER'S POINTS ART ═══
+               Owner, with a sheet of art and a mockup (assets/icons-source/
+               sheet-points-heads.png, mock-points-heads.png): "On the
+               character points screen swap out the old style icons with
+               these.  It should look similar to the second screenshot mockup
+               but it won't have the shaped backgrounds behind the icons.
+               Also the character icon should have the up arrow instead of the
+               4 point star."
+               WHAT IT REPLACES: the three weapons fanned down a diagonal
+               (v2.3.2685), each with a blue badge of what it can spend
+               (v2.3.2689-2692), and your portrait with its badge.
+               NOW each head is a gold FRAME, the sheet's two brackets drawn
+               as a nine-slice border-image (POINTS_FRAMES: the corners whole,
+               the sides stretched), so one picture fits every cell:
+                 - the weapons' frame holds three ROWS, sword, staff and bow
+                   (the owner's order, POINT_LANES), each with what it can
+                   spend on its right and a hairline with a small diamond
+                   between them -- the mockup's arrangement, no shape behind
+                   any icon;
+                 - the character's frame holds the gold bust with the up arrow
+                   over what the shared pool can spend.  Over, not beside it
+                   as in the mockup: the head is taller than it is wide (about
+                   55 x 63 at 390) and side by side the bust would be 19 px and
+                   its count 14; stacked they are 35 and 17.
+               The counts are the sheet's numerals, GOLD while the pool has a
+               point to spend and GREY at 0 (the sheet's "NUMBER COLOR RULES"),
+               each numeral at its known width so nothing jumps as they load,
+               and the exact number however big -- a run too wide for its
+               column is drawn smaller, never "99+".
+               KEPT: a count with points waiting glows and swells (v2.3.3052,
+               the owner's "glow and grow and shrink if there are still points
+               that need to be allocated": game.css bt-pts-count); the weapon
+               in your hand is marked, its row lit (v2.3.3051 sat it on a
+               brass plate, a shape behind an icon the owner no longer wants);
+               and the scenarios' handles: data-prog3-lane on each head,
+               data-prog3-head-badge + data-count on each count,
+               data-prog3-held on the held weapon's row.
+               BOTH HEADS ARE ONE WIDTH (SHARED_FR, the shared row's share of
+               eight columns that is the lane row's HEAD_FR of seven), so the
+               two frames stand one over the other as the mockup draws them;
+               the seven shared cells give up under a px each for it upright. */
+            /* COMPACT: sideways the head is ~33 px wide (HEAD_FR 1.45), where
+               the sheet's numerals read 10 px tall beside 13 px icons -- the
+               brass 7 px pill this replaced was smaller.  The frame's gold
+               thins to 2 px there, nothing pads it, and the hairlines lose
+               their diamond. */
             const HEAD_COMPACT = HEAD_W < 34;
-            /* ═══ v2.3.2691: THE OWNER'S OWN BADGE ART ═══
-               Owner, with a sheet of a round badge, a pill badge and the
-               numerals 0-9 and "+": "Use this sprite sheet for the tiny
-               numbers.  I want to see if it looks good."
-               Sliced by tools/slice_badge_sheet.mjs into public/icons/ui/badge.
-               One character sits on the ROUND badge; two or three on the PILL,
-               which is drawn as a border-image so its rounded ends stay round
-               and only the middle stretches -- a "99+" and a "64" share one
-               piece of art instead of the pill being squashed to fit.
-               The numerals are images laid in a row, not text, so the count
-               has no font size of its own: it is as tall as the art makes it.
-               A pool at 0 keeps its badge and goes grey (grayscale + dim),
-               the same "0 still answers the question" rule as before, in the
-               art's own shapes rather than a second palette. */
-            const headBadge = (n, key, pin) => {
-              const live = n > 0;
-              const c = HEAD_COMPACT;
-              /* ═══ v2.3.2691: THE SIDEWAYS PANE KEEPS THE PLAIN PILL ═══
-                 A landscape header is ~18px wide inside, and the sprite pill
-                 for "64" is 22px at the smallest size its numerals still read
-                 at -- mp-catgrid measured it clipped off the header's left
-                 edge.  The art cannot shrink further without the numerals
-                 turning to mush, so there (and only there) the badge is the
-                 v2.3.2689 brass pill in 7px type, which fits.  Portrait, the
-                 layout the owner approved from a capture, is all sprite. */
-              if (c) {
-                return (
-                  /* v2.3.3052: a bubble with points to spend breathes (game.css
-                     bt-pts-bubble) -- the owner's "glow and grow and shrink if
-                     there are still points that need to be allocated" */
-                  <span data-prog3-head-badge={key} data-count={n} aria-hidden="true" className={live ? 'bt-pts-bubble' : undefined} style={{
-                    position: 'absolute', zIndex: 5, ...(pin || { top: -3, right: -3 }),
-                    minWidth: 12, height: 12, padding: '0 1px', boxSizing: 'border-box',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    borderRadius: 8,
-                    background: live ? COL.accent : COL.raised, color: live ? COL.onAccent : COL.muted,
-                    boxShadow: `0 0 0 1.5px ${COL.well}`,
-                    fontSize: 7, fontWeight: 900, lineHeight: 1, letterSpacing: '-0.04em',
-                    fontVariantNumeric: 'tabular-nums', pointerEvents: 'none', whiteSpace: 'nowrap',
-                  }}>{n > 99 ? '99+' : n}</span>
-                );
-              }
-              const chars = (n > 99 ? '99+' : String(Math.max(0, n | 0))).split('');
-              const bh = c ? 12 : 16;                  /* badge height */
-              const gh = Math.round(bh * 0.66);        /* numeral height */
-              const round = chars.length === 1;
-              const cap = Math.round(bh * 0.42);       /* pill end drawn this wide */
+            const PH_S = HEAD_COMPACT ? 2 : 3;          /* the frame's gold, CSS px */
+            const PH_PAD = HEAD_COMPACT ? 0 : 2;        /* inside it */
+            const PH_GAP = HEAD_COMPACT ? 0 : 2;        /* icon to count (an icon's own clear edge is the gap sideways) */
+            /* a px under the estimate: the head is the grid's to size, and a
+               row must fit it at every width */
+            const PH_CW = Math.floor(HEAD_W - 1) - 2 * (PH_S + PH_PAD);
+            const PH_CH = CELL_H - 2 * (PH_S + PH_PAD);
+            /* A weapon row: its icon, then two numerals 0.76 of its height
+               (two of the sheet's are ~1.48 of their height wide), as large as
+               a third of the frame's height and its width allow. */
+            const PH_ICON = Math.max(8, Math.floor(Math.min((PH_CH - 2) / 3, (PH_CW - PH_GAP) / (1 + 0.76 * 1.48))));
+            const PH_DIG = Math.round(PH_ICON * 0.76);
+            const PH_NUM_W = PH_CW - PH_ICON - PH_GAP;
+            /* The character: its count under the bust, kept in step with the
+               weapons' counts (at most 1.4x them) and two numerals wide at
+               most; the bust takes the height that leaves. */
+            const PC_DIG = Math.max(PH_DIG, Math.round(Math.min(PH_CH * 0.32, PH_DIG * 1.4, (PH_CW + 1) / 1.48)));
+            const PC_ICON = Math.max(10, Math.floor(Math.min(PH_CW, PH_CH - PC_DIG - 1)));
+            /* The frame: the slice drawn so its gold is PH_S px on screen
+               (the art's stroke is POINTS_FRAMES[k].stroke of its slice) */
+            const frameStyle = (kind) => {
+              const f = POINTS_FRAMES[kind];
+              const bw = (PH_S * f.slice / f.stroke).toFixed(2);
+              return {
+                boxSizing: 'border-box', width: '100%', height: '100%',
+                borderStyle: 'solid', borderColor: 'transparent', borderWidth: PH_S,
+                borderImage: `url(${POINTS_ART_DIR}${f.file}?v=${POINTS_ART_V}) ${f.slice} / ${bw}px stretch`,
+                padding: PH_PAD, pointerEvents: 'none',
+              };
+            };
+            /* One pool's count in the sheet's numerals, `h` tall, shrunk to
+               `maxW` if the run is wider.  The numerals' dark rims overlap a
+               little, as the badge numerals did (-1 px), so a "63" reads as
+               one number. */
+            const ptsNumber = (v, h, maxW) => {
+              const tone = v > 0 ? 'gold' : 'grey';
+              const s = String(v);
+              const ws = s.split('').map((ch) => POINTS_DIGIT_W[tone][+ch] * h / POINTS_DIGIT_H);
+              const lap = Math.max(1, h * 0.06);
+              const full = ws.reduce((a, w) => a + w, 0) - lap * (s.length - 1);
+              const k = full > maxW ? maxW / full : 1;
+              return s.split('').map((ch, i) => (
+                <img key={i} alt="" draggable={false} src={`${POINTS_ART_DIR}${tone}-${ch}.png?v=${POINTS_ART_V}`}
+                  style={{
+                    display: 'block', flex: 'none', height: +(h * k).toFixed(2), width: +(ws[i] * k).toFixed(2),
+                    marginLeft: i ? -(lap * k) : 0, pointerEvents: 'none',
+                  }} />
+              ));
+            };
+            const headCount = (n, key, h, maxW) => {
+              const v = Math.max(0, Math.floor(Number(n) || 0));
               return (
-                /* ═══ v2.3.3052: A BUBBLE WITH POINTS TO SPEND BREATHES ═══
-                   Owner: "Make the bubble points for all 3 weapons and for the
-                   character glow and grow and shrink if there are still points
-                   that need to be allocated."  game.css bt-pts-bubble: a warm
-                   glow behind it and a gentle swell, transform and opacity
-                   only, from its top-right corner (the header clips, and the
-                   badges sit flush with its top and right edges).  An empty
-                   bubble stays still and grey, as before. */
-                <span data-prog3-head-badge={key} data-count={n} aria-hidden="true" className={live ? 'bt-pts-bubble' : undefined} style={{
-                  position: 'absolute', zIndex: 5,
-                  /* Off the icon's corner rather than on it: the first cut
-                     sat 3px out and covered the TIP of every weapon -- the
-                     sword, staff and bow are all drawn pointing up-right, so
-                     the top-right corner is the part that says which weapon
-                     it is.  7px out, the badge clips the corner instead. */
-                  /* v2.3.2691: the owner chose this top-right placement off
-                     the capture ("this image nearly has it") -- the badges
-                     stay put and the WEAPONS move out from under them; see
-                     LANE_NUDGE on the icons below. */
-                  ...(pin || (c ? { top: -3, right: -3 } : { top: -5, right: -7 })),
-                  height: bh, minWidth: bh, boxSizing: 'border-box',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  ...(round
-                    /* v2.3.2692: the owner's pick off the mockups -- the
-                       normal blue, with the numerals left gold.  Baked
-                       (slice_badge_sheet.mjs) rather than a CSS filter, so the
-                       gold numerals on top are not dragged blue with it. */
-                    ? { background: `url(${BADGE}circle-blue.png${BADGE_V}) center / 100% 100% no-repeat` }
-                    : {
-                        /* the pill's ends are half its height in the art (32 of
-                           64px); drawn `cap` wide, the digits overlap them a
-                           little, which is how the art itself is spaced */
-                        borderStyle: 'solid', borderWidth: `0 ${cap}px`,
-                        borderImage: `url(${BADGE}pill-blue.png${BADGE_V}) 0 32 fill / 0 ${cap}px stretch`,
-                      }),
-                  filter: live ? 'none' : 'grayscale(1) brightness(0.62)',
-                  pointerEvents: 'none', whiteSpace: 'nowrap',
-                }}>
-                  {chars.map((ch, i) => (
-                    <img key={i} alt="" draggable={false}
-                      src={`${BADGE}${ch === '+' ? 'plus' : 'd' + ch}.png${BADGE_V}`}
-                      style={{
-                        height: ch === '+' ? Math.round(gh * 0.8) : gh, width: 'auto',
-                        /* the numerals carry their own dark outer ring; a
-                           pixel of overlap reads as one number, not three
-                           stickers side by side */
-                        marginLeft: i ? -1 : 0, display: 'block', pointerEvents: 'none',
-                      }} />
-                  ))}
+                /* v2.3.3052: a count with points to spend breathes (game.css
+                   bt-pts-count: a warm glow behind it and a gentle swell from
+                   its middle, transform and opacity only); a 0 stays still */
+                <span data-prog3-head-badge={key} data-count={v} aria-hidden="true"
+                  className={v > 0 ? 'bt-pts-count' : undefined}
+                  style={{ position: 'relative', zIndex: 0, display: 'flex', alignItems: 'center', flex: 'none', pointerEvents: 'none' }}>
+                  {ptsNumber(v, h, maxW)}
                 </span>
               );
             };
+            /* The mockup's rule between two weapons: a hairline in the frame's
+               gold, fading at its ends, with a small diamond in its middle */
+            const headRule = (k) => (
+              <span key={'rule-' + k} aria-hidden="true" data-points-rule style={{
+                flex: 'none', height: 1, position: 'relative', margin: `0 ${PH_PAD}px`,
+                background: 'linear-gradient(90deg, rgba(216,170,88,0), rgba(216,170,88,.55) 28%, rgba(216,170,88,.55) 72%, rgba(216,170,88,0))',
+              }}>
+                {!HEAD_COMPACT && (
+                  <span style={{
+                    position: 'absolute', left: '50%', top: 0.5, width: 3, height: 3,
+                    transform: 'translate(-50%, -50%) rotate(45deg)', background: COL.accent,
+                  }} />
+                )}
+              </span>
+            );
             const headCell = (kind) => {
               const isLane = kind === 'lane';
               return (
@@ -2505,126 +2519,48 @@ export const HeroExpanded = () => {
                   title={isLane ? 'Weapon stats — pick the weapon when you spend' : 'Shared stats'}
                   style={{
                     height: CELL_H, minWidth: 0, boxSizing: 'border-box',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: 3,
-                    /* ═══ v2.3.2686: THE HEAD BELONGS TO ITS ROW ═══
-                       Owner: "is there a way to visually connect the row
-                       headers to the rows?  Right now they're floating
-                       distinct cells."  They were: same border, same fill,
-                       same radius as the six stat cells beside them, so the
-                       weapons read as a seventh stat rather than as the
-                       heading of the six.
-                       So the head gives up its box entirely -- no border, no
-                       fill, no radius -- and the ROW gains one (the tray in
-                       statGrid below).  What is left between the head and the
-                       stats is a single hairline, which is a divider inside
-                       one surface instead of a gap between two.  That is the
-                       Lantern Slate reading of a table head, and it needs no
-                       new colour: COL.well is the tray role and COL.wellSoft
-                       the cell role, so the chips sit IN something. */
-                    borderRight: `1px solid ${isLane ? COL.edgeWarm : COL.divider}`,
-                    position: 'relative',
-                    cursor: 'default', overflow: 'hidden',
+                    /* v2.3.2686's hairline after the head is the frame's own
+                       edge now; the head still sits INSIDE its row's tray */
+                    position: 'relative', cursor: 'default', overflow: 'hidden',
                   }}>
-                  {isLane
-                    /* ═══ v2.3.2685: THREE WEAPONS DOWN THE DIAGONAL ═══
-                       Owner: "try making the first row (with all 3 combat
-                       icons) diagonally aligned so they fit better.  Right now
-                       those icons are super tiny and look silly."
-                       In a row they had to share the cell's WIDTH three ways
-                       -- about 17px each at 390, which is where "tiny" comes
-                       from -- while the cell's 75px of HEIGHT went unused.
-                       Down the diagonal each one gets the width of the whole
-                       cell and a third of its height, so they come out ~31px:
-                       nearly double, from the same box.  They overlap a little
-                       and that is the point -- a fanned stack of three cards,
-                       which reads as a SET rather than as three shrunken
-                       buttons, and the lit one sits on top of the other two.
-                       i/2 of the free space, so the first is flush top-left,
-                       the last flush bottom-right and the middle centred; the
-                       percentages are the cell's own box, so it re-fits at
-                       every width without a second breakpoint. */
-                    ? (
-                      /* v2.3.2689: the stack gives up 4px on the right and
-                         2px on top, so the LAST weapon's badge and the FIRST
-                         one's can overhang their icons by the same amount as
-                         the middle one's without being cut off by the
-                         header's edge. */
-                      <div style={{ position: 'relative', width: 'calc(100% - 4px)', height: 'calc(100% - 2px)', margin: '2px 4px 0 0' }}>
-                        {POINT_LANES.filter((c) => !c.shared).map((c, i, a) => {
-                          const on = c.key === buildCat;
-                          const t = a.length > 1 ? i / (a.length - 1) : 0;
-                          /* v2.3.2689: the icon and its badge move as one box,
-                             so the count stays pinned to ITS weapon's corner
-                             wherever the diagonal puts it. */
-                          return (
-                            <div key={c.key} style={{
-                              position: 'absolute',
-                              left: `calc(${t * 100}% - ${t * LANE_ICON}px)`,
-                              top: `calc(${t * 100}% - ${t * LANE_ICON}px)`,
-                              width: LANE_ICON, height: LANE_ICON,
-                              zIndex: on ? 2 : 1, pointerEvents: 'none',
+                  {isLane ? (
+                    <div data-points-frame="weapons" style={{ ...frameStyle('weapons'), display: 'flex', flexDirection: 'column' }}>
+                      {POINT_LANES.filter((c) => !c.shared).flatMap((c, i) => {
+                        const on = c.key === buildCat;
+                        const row = (
+                          <div key={c.key} data-points-row={c.key}
+                            /* v2.3.3051: the weapon in your hand, whose six
+                               numbers the cells show (the owner's "based on
+                               your active equipped weapon") -- its row lit */
+                            {...(on ? { 'data-prog3-held': c.key } : null)}
+                            style={{
+                              flex: '1 1 0', minHeight: 0, display: 'flex', alignItems: 'center', gap: PH_GAP,
+                              borderRadius: 3, background: on ? 'rgba(216,170,88,.17)' : 'transparent',
                             }}>
-                            {/* v2.3.3051: the weapon in your hand -- whose six
-                                numbers the cells show (the owner's "based on your
-                                active equipped weapon") -- sits on a brass plate */}
-                            {on && (
-                              <span data-prog3-held={c.key} aria-hidden="true" style={{
-                                position: 'absolute', inset: 1, borderRadius: 999, pointerEvents: 'none',
-                                background: 'radial-gradient(circle, rgba(216,170,88,.38) 0%, rgba(216,170,88,.14) 58%, rgba(216,170,88,0) 72%)',
-                                boxShadow: `0 0 0 1.5px ${COL.accent}`,
-                                transform: `translate(${-LANE_NUDGE}px, ${LANE_NUDGE}px)`,
-                              }} />
-                            )}
-                            <img src={c.iconSrc} alt="" draggable={false} style={{
-                              width: '100%', height: '100%', objectFit: 'contain', display: 'block',
-                              /* ═══ v2.3.2691: THE WEAPON STEPS OUT FROM UNDER ITS BADGE ═══
-                                 Owner, on the top-right capture: "you just need
-                                 to nudge all weapon icons diagonally
-                                 (southwest)".  The badge is pinned to the BOX
-                                 and the art moves inside it, so each count
-                                 stays exactly where the owner approved it
-                                 while the sword, staff and bow slide down-left
-                                 and their tips come out from under the pill.
-                                 A fraction of the icon, not a pixel count, so
-                                 the nudge scales with the icon at every width. */
-                              transform: `translate(${-LANE_NUDGE}px, ${LANE_NUDGE}px)`,
-                              /* v2.3.2688: all three at full strength (owner:
-                                 "have all of the icons in the first row not
-                                 dimmed").  The dimming was the head's way of
-                                 saying WHICH weapon's numbers the six cells
-                                 show, from when the head was the lane
-                                 switch; that choice lives in the confirm
-                                 window's tabs now, so the head is a label
-                                 for "the weapons" and reads as one.  The lane
-                                 in use still sits on top of the stack --
-                                 a quiet cue that costs the other two
-                                 nothing. */
-                              opacity: 1,
+                            <img src={POINTS_ICONS[c.key] || c.iconSrc} alt="" draggable={false} style={{
+                              width: PH_ICON, height: PH_ICON, flex: 'none', objectFit: 'contain', display: 'block',
                               pointerEvents: 'none',
                             }} />
-                            {headBadge(laneAvail(c.key), c.key)}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )
-                    : (
-                      <div style={{ position: 'relative', width: HEAD_ICON, height: HEAD_ICON, pointerEvents: 'none' }}>
-                        <img src={sharedIcon} alt="" draggable={false}
-                          onError={(e) => { if (e.currentTarget.src.indexOf(SHARED_ICON_FALLBACK) < 0) e.currentTarget.src = SHARED_ICON_FALLBACK; }}
-                          style={{
-                            width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6, display: 'block',
-                            imageRendering: 'pixelated', pointerEvents: 'none',
-                          }} />
-                        {/* 3px out, not 7: the portrait nearly fills its
-                            header, so the weapons' 7px overhang ran this
-                            badge into the divider (a clipped "99+" in the
-                            390 capture). */}
-                        {!HEAD_COMPACT && headBadge(sharedAvail, 'shared', { top: -5, right: -3 })}
-                      </div>
-                    )}
-                  {!isLane && HEAD_COMPACT && headBadge(sharedAvail, 'shared', { top: 1, right: 1 })}
+                            <span style={{ flex: '1 1 0', minWidth: 0, display: 'flex', justifyContent: 'center' }}>
+                              {headCount(laneAvail(c.key), c.key, PH_DIG, PH_NUM_W)}
+                            </span>
+                          </div>
+                        );
+                        return i ? [headRule(i), row] : [row];
+                      })}
+                    </div>
+                  ) : (
+                    <div data-points-frame="character" style={{
+                      ...frameStyle('character'),
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
+                    }}>
+                      <img src={POINTS_ICONS.shared} alt="" draggable={false} style={{
+                        width: PC_ICON, height: PC_ICON, flex: 'none', objectFit: 'contain', display: 'block',
+                        pointerEvents: 'none',
+                      }} />
+                      {headCount(sharedAvail, 'shared', PC_DIG, PH_CW)}
+                    </div>
+                  )}
                 </div>
               );
             };
@@ -2633,7 +2569,8 @@ export const HeroExpanded = () => {
                The header connects to its row by being INSIDE the same
                surface as it: one bordered, filled band per row, with the
                cells as chips on it and the head as a label at its left, cut
-               off by a hairline.  COL.well is Lantern Slate's tray role and
+               off by a hairline (v2.3.3553: by the head's own gold frame now).
+               COL.well is Lantern Slate's tray role and
                COL.wellSoft its cell role (docs/LANTERN-SLATE-SPEC.md), so
                the depth reads correctly without inventing a colour -- the
                cells are LIGHTER than the tray they sit in, the way every
@@ -2653,11 +2590,13 @@ export const HeroExpanded = () => {
                  flush against the panel edge -- at 0 the Element and Resist
                  cells lost their right border to the clip. */
               <div data-prog3-grid style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0, padding: '0 2px' }}>
-                <div data-prog3-band="lane" style={{ ...bandStyle(true), gridTemplateColumns: '1.15fr repeat(6, 1fr)' }}>
+                <div data-prog3-band="lane" style={{ ...bandStyle(true), gridTemplateColumns: `${HEAD_FR}fr repeat(6, 1fr)` }}>
                   {headCell('lane')}
                   {prog3AtkMeta().map((st) => statCell({ ...st, atk: true }, buildCat))}
                 </div>
-                <div data-prog3-band="shared" style={{ ...bandStyle(false), gridTemplateColumns: '1.15fr repeat(7, 1fr)' }}>
+                {/* v2.3.3553: SHARED_FR of eight is the lane row's HEAD_FR of seven,
+                    so the two heads' frames are one width (THE TWO HEADS above) */}
+                <div data-prog3-band="shared" style={{ ...bandStyle(false), gridTemplateColumns: `${SHARED_FR}fr repeat(7, 1fr)` }}>
                   {headCell('shared')}
                   {prog3BodyMeta().map((st) => statCell({ ...st, atk: false }, null))}
                 </div>
