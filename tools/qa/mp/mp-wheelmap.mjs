@@ -232,7 +232,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const held = await P.page.evaluate(() => (window.__btBuildingIcons ? window.__btBuildingIcons() : null));
     const bi = m && m.buildingIcons;
     rec.ok(`...and each wears its building's picture, ${bi && bi.px} px on its footprint (${bi && bi.n} of ${bl.length}), the ${held && held.loaded} pictures loaded behind the loading screen (${held ? (held.bytes / 1048576).toFixed(2) : '?'} MB, ${held && held.grey} grey for the shut)`,
-      !!bi && bi.n === bl.length && bi.px === 14 && !!held && held.loaded >= bl.length && held.grey >= 1 && held.textures >= bl.length, { bi, held });
+      /* v2.3.3555: a grey copy for each SHUT building, however many that is --
+         it was `>= 1`, and since the Hotel opened (v2.3.3539) none is shut */
+      !!bi && bi.n === bl.length && bi.px === 14 && !!held && held.loaded >= bl.length
+        && held.grey >= bl.filter((b) => b.closed).length && held.textures >= bl.length, { bi, held, shut: bl.filter((b) => b.closed).length });
     const r = await P.page.evaluate(() => window.__btWheelMini);
     if (r) await P.page.screenshot({ path: join(OUT, 'wheelmap-01b-minimap-icons.png'), clip: { x: r.left, y: r.top, width: r.w, height: r.h } }).catch(() => {});
   }
