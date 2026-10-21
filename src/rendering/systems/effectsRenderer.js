@@ -676,7 +676,7 @@ import { RaceFlags } from '../raceFlags.js';   /* v2.3.3525: Lil Bro's race cour
 import { TrapFx } from '../trapFx.js';   /* v2.3.3120: the trap's mark, shakes, snap and break */
 import { TRAP_ICON_URL } from '../controlsPreload.js';   /* v2.3.3499: ...drawn with the owner's box trap */
 import { wheelObjectsInfo, wheelMapInfo } from '@/game/wheelTrial.js';      /* v2.3.3062: where they stand, and the lands */
-import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
+import { wheelDungeonDoorsOpen, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 import { DEFENSE_POPUP_KEY, DEFENSE_POPUP_SRC } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's shield on "Defense Lv N" */
 import { halloweenOn } from '@/game/season.js';   /* v2.3.3395: Halloween week's speech bubbles */
@@ -11366,7 +11366,7 @@ export class EffectsRenderer {
     }
     /* v2.3.3016: the Wheel's dungeon mouths at its landmarks (wheelDoors.js)
        -- and, anywhere else or against a worker that opens none, none */
-    const _doors = (S.currentZone === 'wheel' && wheelDungeonsSupported(S)) ? wheelDungeonDoors() : null;
+    const _doors = (S.currentZone === 'wheel' && wheelDungeonsSupported(S)) ? wheelDungeonDoorsOpen(S) : null;   /* v2.3.3540: the mouths this worker opens */
     if (_doors || (this._wheelDoors && this._wheelDoors.size)) {
       if (!this._wheelDoors) this._wheelDoors = new WheelDoors(this.lootLayer);
       this._wheelDoors.update(_doors || [], S, now);

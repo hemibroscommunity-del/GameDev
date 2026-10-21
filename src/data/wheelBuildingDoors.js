@@ -20,7 +20,8 @@
  * and the Hotel stands shut, saying so (WHEEL_SHUT_DOORS) instead of leaving
  * a player to wonder whether the door is broken.  Since v2.3.3258 the Town
  * Hall is a fourth hall (Mayor Bro still stands on its steps), so only the
- * Hotel is shut.
+ * Hotel was shut -- and since v2.3.3539 it is a fifth, open against a worker
+ * that pays its rest (WHEEL_HALL_CAPS).
  */
 
 /* How near a door (game px) the Enter button comes up: from your BOOTS to the
@@ -71,6 +72,21 @@ export const WHEEL_HALL_DOORS = {
   post: 'post',
   sheriff: 'sheriff',
   townhall: 'townhall',     /* v2.3.3258, below */
+  hotel: 'hotel',           /* v2.3.3539, below: a rest the worker pays, against a worker that says so (WHEEL_HALL_CAPS) */
+};
+
+/* ═══ v2.3.3539: THE HOTEL OPENS ═══
+   The owner, 2026-10-21: "I value SIMPLICITY and INTELLIGIBILITY" -- the
+   after-review list's fifth item.  The Hotel stood shut because its rest
+   would have been the farm bed's, which only the phone believed (it set its
+   own bars, which the worker's next echo put back, and a +10% XP the worker
+   never paid).  The worker pays a rest now (server/src/rest.js): full health,
+   stamina and mana, and Well Rested, +10% of a fight's XP for 30 minutes.
+   A hall in this table opens only against a worker that says its cap
+   (caps.rest); against one that does not, the door stands shut and says so,
+   as the Hotel's always did (game/wheelTownDoors.js). */
+export const WHEEL_HALL_CAPS = {
+  hotel: 'rest',
 };
 
 /* What each hall is called and wears: its window's header and the Enter
@@ -92,18 +108,23 @@ export const WHEEL_HALLS = {
      BOOTS (a body's middle is ~52 px above them), so a new character does not
      start with it showing -- it comes as you walk up to the Mayor. */
   townhall: { title: 'Town Hall', sub: 'Rankings and the world map', icon: '/icons/ui/bldg-townhall.webp', emoji: '🏛' },
+  /* v2.3.3539: the Hotel, a rest the worker pays (WHEEL_HALL_CAPS above); its
+     picture the owner's bed, the right stick's sleep picture at its address
+     (ui/panels/controlSkin.jsx), so the browser holds one copy */
+  hotel: { title: 'Hotel', sub: 'A bed for the night', icon: '/ui/controls/sleep.webp?v=2.3.3526', emoji: '🛏' },
 };
 
-/* The plot with nothing to open yet: the Hotel ("(new: rest, respawn)") --
-   its rest is the farm bed's, on this device only (no message, nothing the
-   worker settles: the HP it restores is the worker's to give), so it stays
-   shut until the worker can pay it.  Stood at, it shows its name and "Shut
-   for now" (BroTown.jsx) instead of leaving a player to wonder whether the
-   door is broken.  (The Town Hall was in no list until v2.3.3258: Mayor Bro
-   stands on its steps; it is a hall now.)  MIRROR: plan.js's own `today`
-   words -- test-world-core checks the shut one and the three halls beside
-   it are the four "(new: ...)" plots. */
-export const WHEEL_SHUT_DOORS = ['hotel'];
+/* The plots with nothing to open: none since v2.3.3539.  The Hotel ("(new:
+   rest, respawn)") stood here, shut because its rest was the farm bed's, on
+   the phone alone; the worker pays a rest now and the Hotel is a hall
+   (WHEEL_HALL_DOORS), shut only against a worker that does not
+   (WHEEL_HALL_CAPS) -- stood at, a shut door shows its name and "Shut for
+   now" (BroTown.jsx) instead of leaving a player to wonder whether it is
+   broken.  (The Town Hall was in no list until v2.3.3258: Mayor Bro stands
+   on its steps; it is a hall too.)  Kept, empty, for a plot that may stand
+   shut again.  MIRROR: plan.js's own `today` words -- test-world-core checks
+   the halls and any shut one are the "(new: ...)" plots and the Town Hall. */
+export const WHEEL_SHUT_DOORS = [];
 
 /* Who stands at which door, besides Mayor Bro (who has the Town Hall's steps,
    placing.js mayorSpot): `dx`, `dy` game px from the door's foot (+x east, +y
@@ -206,8 +227,9 @@ export const WHEEL_KEEPERS = {
                  the map; the Land Office deals in deeds and maps, so it wears
                  the game's parchment map (/icons/ui/map.webp) -- on its Enter
                  button too (BroTown.jsx reads this table at a Wheel door);
-     hotel       shut: the owner's bed (the right stick's sleep picture),
-                 drawn grey as a shut building is.
+     hotel       the owner's bed (the right stick's sleep picture), drawn
+                 grey while it is shut (v2.3.3539: a hall against a worker
+                 that rests, WHEEL_HALL_CAPS; at the right stick's address).
    No imports (test-world-core reads it): it checks every plot of the town has
    one, a file in public/, no two buildings sharing one. */
 export const WHEEL_BUILDING_ICONS = {
@@ -218,7 +240,7 @@ export const WHEEL_BUILDING_ICONS = {
   sheriff: '/icons/ui/evt-duel.webp',
   saloon: '/icons/ui/bldg-tavern.webp?v=2.3.1224',
   gambling: '/icons/ui/bldg-gamble.webp?v=2.3.1224',
-  hotel: '/ui/controls/sleep.webp?v=2.3.3279',
+  hotel: '/ui/controls/sleep.webp?v=2.3.3526',   /* v2.3.3539: the right stick's address, so one copy (was ?v=2.3.3279, the picture before v2.3.3526) */
   post: '/icons/ui/evt-mail.webp',
   cookhouse: '/icons/ui/bldg-cook.webp?v=2.3.1224',
   feedseed: '/icons/ui/bldg-farm.webp?v=2.3.1224',

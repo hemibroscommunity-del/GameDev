@@ -93,6 +93,22 @@ export function farmCropOfItem(key) {
   return null;
 }
 
+/* ═══ v2.3.3537: EVERY CROP IS FOOD ═══
+   Any crop is eaten raw for half what a fish heals at its level (the Farming
+   level a crop asks against the Fishing level its fish's spot asks: 1, 5, 10,
+   15, 20) -- the worker's server/src/farm.js CROP_HEAL, which mirror-audit
+   pins this to.  10, 15, 23, 33, 48 on the game's screen.  The bag offers
+   Eat on a crop only against a worker with caps.cropeat. */
+export const CROP_HEAL = { 1: 50, 5: 75, 10: 113, 15: 163, 20: 238 };
+
+/* What eating one of this bag key heals (0 for anything that is not a crop). */
+export function farmCropHeal(key) {
+  const id = farmCropOfItem(key);
+  if (!id) return 0;
+  const lvl = FARM.CROPS[id].lvl;
+  return Object.prototype.hasOwnProperty.call(CROP_HEAL, lvl) ? CROP_HEAL[lvl] : 0;
+}
+
 /* The bag's name and glyph for every farm key (InventoryPanel ITEM_NAMES and
    iconFor), built from the table so a crop added here is named there too. */
 export const FARM_ITEM_NAMES = FARM_CROP_ORDER.reduce((m, id) => {

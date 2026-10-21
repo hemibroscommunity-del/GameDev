@@ -417,6 +417,7 @@ const legacyBlob = () => ({
   const b = {
     _v: 13,
     prog3: {
+      olr: 1,   /* v2.3.3538: so v18's re-deal leaves v14's back-pay to be read (the v18 block has the re-deal) */
       sk: { sword: { level: 5, xp: 0 }, bow: { level: 2, xp: 0 }, staff: { level: 1, xp: 0 } },
       alloc: { def: 0, hp: 0, dodge: 0, stam: 0 },
       atk: {},
@@ -450,6 +451,7 @@ const legacyBlob = () => ({
   const b = {
     _v: 16,
     prog3: {
+      olr: 1,   /* v2.3.3538: so v18's re-deal leaves v17's fold and grant to be read */
       sk: { sword: { level: 5, xp: 0 }, bow: { level: 2, xp: 0 }, staff: { level: 1, xp: 0 } },
       alloc: { def: 1, hp: 0, dodge: 0, stam: 0, eres: 0, mana: 0 },
       atk: { sword: { crit: 7, critDmg: 4, aspd: 1, dmg: 2, elem: 0 }, bow: { crit: 2, critDmg: 0, aspd: 0, dmg: 0, elem: 0 }, staff: {} },
@@ -476,6 +478,51 @@ const legacyBlob = () => ({
     { shared: era.prog3.shared });
   const bare = { _v: 16 };
   check('v17 survives a blob with no prog3 at all',
+    runRpgMigrations(bare).failed === null && bare._v === RPG_SCHEMA_VERSION, bare);
+}
+
+/* ── v18: ONE LEVEL -- every character's points dealt again once
+   (v2.3.3538, prog3.js prog3Redeal) ── */
+{
+  const { PROG3 } = await import('../src/prog3.js');
+  /* A character who trained all three: the old rule minted 3 shared points a
+     SKILL level (3 x (9+4+2) = 45), with body and lane points placed. */
+  const b = {
+    _v: 17,
+    coins: 77,
+    prog3: {
+      sk: { sword: { level: 10, xp: 50 }, bow: { level: 5, xp: 7 }, staff: { level: 3, xp: 0 } },
+      alloc: { def: 9, hp: 6, dodge: 2, stam: 0, eres: 0, mana: 0, move: 1 },
+      atk: { sword: { range: 1, luck: 3, aspd: 2, dmg: 9, elem: 0, special: 2 }, bow: { range: 0, luck: 4, aspd: 0, dmg: 4, elem: 0, special: 0 }, staff: {} },
+      pool: 3, poolBy: { sword: 0, bow: 0, staff: 3 }, shared: 27, ms: 0, ppl: 3, spl: 3,
+    },
+  };
+  const r = runRpgMigrations(b);
+  check('v18 runs clean to the current version', r.failed === null && b._v === RPG_SCHEMA_VERSION && RPG_SCHEMA_VERSION >= 18, { r, v: b._v });
+  check('v18 hands every placed point back',
+    Object.values(b.prog3.alloc).every((v) => v === 0)
+      && PROG3.SKILLS.every((c) => Object.values(b.prog3.atk[c]).every((v) => v === 0)),
+    { alloc: b.prog3.alloc, atk: b.prog3.atk });
+  check('v18: each lane pool is 3 a level of its own skill past 1 (27 / 12 / 6), pool their sum',
+    b.prog3.poolBy.sword === 27 && b.prog3.poolBy.bow === 12 && b.prog3.poolBy.staff === 6 && b.prog3.pool === 45,
+    { pool: b.prog3.pool, poolBy: b.prog3.poolBy });
+  check('v18: the shared pool is 3 a CHARACTER level past 1 -- the highest skill, 10: 27',
+    b.prog3.shared === PROG3.SHARED_POINTS_PER_LEVEL * (10 - 1), b.prog3.shared);
+  check('v18 keeps the skills, their XP and everything else',
+    b.prog3.sk.sword.level === 10 && b.prog3.sk.sword.xp === 50 && b.prog3.sk.bow.level === 5 && b.prog3.sk.bow.xp === 7
+      && b.prog3.sk.staff.level === 3 && b.coins === 77, { sk: b.prog3.sk, coins: b.coins });
+  check('v18 stamps the deal (olr) and is idempotent: a second pass changes nothing',
+    b.prog3.olr === 1 && runRpgMigrations(b).changed === false && b.prog3.pool === 45, b.prog3);
+  /* a character spent after the deal is never dealt again */
+  b.prog3.alloc.def = 5; b.prog3.shared -= 5;
+  runRpgMigrations(b);
+  check('v18: points spent after the deal stay spent', b.prog3.alloc.def === 5 && b.prog3.shared === 22, b.prog3);
+  const fresh = { _v: 17, prog3: { sk: { sword: { level: 1, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } }, alloc: {}, atk: {}, pool: 0, poolBy: {}, shared: 0, ppl: 3, spl: 3 } };
+  runRpgMigrations(fresh);
+  check('v18 on a new character: nothing to deal (all pools 0)',
+    fresh.prog3.pool === 0 && fresh.prog3.shared === 0 && fresh.prog3.olr === 1, fresh.prog3);
+  const bare = { _v: 17 };
+  check('v18 survives a blob with no prog3 at all',
     runRpgMigrations(bare).failed === null && bare._v === RPG_SCHEMA_VERSION, bare);
 }
 

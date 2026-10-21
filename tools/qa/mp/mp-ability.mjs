@@ -46,7 +46,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 2. the milestone gate hides the buttons ── */
   const level = await H.readState(P, (S) => (S.rpg && S.rpg.level) || null);
-  rec.ok('a fresh character is character level 3 (the ungated floor)', level === 3, level);
+  rec.ok('a fresh character is character level 1 (the ungated floor; v2.3.3538: the highest skill)', level === 1, level);
   const status = await P.page.evaluate(() => {
     const F = window._gameFns || {};
     if (!F.abilityStatus) return { __noBridge: true };

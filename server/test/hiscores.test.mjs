@@ -91,15 +91,18 @@ async function seed(lb, rows) {
     /* `level` here is deliberately a LIE — 999 — to prove the combat board
        does not read it.  Character level is the sum of the trained skills by
        definition (prog3), so deriving it is the only way it cannot drift
-       away from the three numbers it is made of. */
+       away from the three numbers it is made of.  (v2.3.3538: the highest
+       of them now.) */
     { playerId: 'bp_x', name: 'Liar', level: 999, series: { melee: 3, bow: 3, magic: 3 } },
     { playerId: 'bp_y', name: 'Real', level: 4, series: { melee: 20, bow: 10, magic: 5 } },
   ]);
   const combat = await lb.getTop('combat', 50);
-  check('combat = melee + bow + magic', combat[0].name === 'Real' && combat[0].value === 35,
+  /* v2.3.3538: ONE LEVEL -- the character level is the HIGHEST of the three
+     (prog3.js), so the board that prints "Lv N" is that: 20, not 35 */
+  check('combat = the highest of melee, bow and magic (v2.3.3538)', combat[0].name === 'Real' && combat[0].value === 20,
     combat.map((p) => [p.name, p.value]));
   check('a stored level cannot inflate the combat board',
-    combat[1].name === 'Liar' && combat[1].value === 9, combat[1] && combat[1].value);
+    combat[1].name === 'Liar' && combat[1].value === 3, combat[1] && combat[1].value);
 }
 
 // ── 3. The new categories cannot be forged from the client blob ──

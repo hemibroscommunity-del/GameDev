@@ -1533,7 +1533,8 @@ remnant to migrate server-side, not a mode to preserve.
     - a land's LANDMARK is its dungeon's mouth: the Great Cave (hollows,
       levels 26-30), the Foundry Dome (thunder, 26-30), the Buried City (sky,
       41-45) -- `WHEEL_DUNGEON.LANDS` in `server/src/wheeldungeon.js`; the
-      other five lands have no landmark on their spokes yet;
+      other five lands have no landmark on their spokes yet (four since
+      v2.3.3540's Goo Grotto, below);
     - where each stands and the way back out are BAKED with the monsters'
       places (`WHEEL_DOORS`, bake-wheel-spawns.mjs); the client finds the
       mouths in the worker's own map (`wheelMapInfo().places`), only WHICH
@@ -1544,7 +1545,8 @@ remnant to migrate server-side, not a mode to preserve.
       worker judging the rest within 260 px (`_wheelDungeonConfig`);
     - inside: dungeon.js's instance, its waves the land's own spawn list
       built by `_makeZoneMonster` with `home` (their looks, shards, quests),
-      the boss its last kind five levels up; the level the place's top but
+      the boss its last kind five levels up (at the dungeon's level since
+      v2.3.3540, below); the level the place's top but
       never above yours; its looks loaded behind the loading screen
       (`loadLandLooks`) and the arena's zone given the land as `homes`;
     - the ARENA is its own, not the Workshop's (`wheelArenaMap`): 36 x 52
@@ -1573,6 +1575,40 @@ remnant to migrate server-side, not a mode to preserve.
     - Found on the way: the Wheel's buildings have NO DOORS yet -- the
       forge, the bank, the shop and the farm (the Dungeon Workshop) are
       unreachable from the Wheel. (They have doors since v2.3.3032, below.)
+    - since v2.3.3540 THE GOO GROTTO, A STARTER DUNGEON -- the owner: "I
+      value SIMPLICITY and INTELLIGIBILITY", the after-review list's fourth
+      item, a dungeon near town with every boss at its dungeon's level:
+      - the Verdant Wilds' LANDMARK (plan.js, tier 1, side 0.6, r 200): the
+        middle of their first stretch, levels 1-5, ~36 s' walk from where
+        you arrive (23 on the short Wheel), where the Mayor's first quest
+        sends you; its footpath off the West Road from the trunk's commons
+        point (a path must leave from a trunk POINT: a road wobbles between
+        its points, layout.js, and test-world-core checks every fork);
+        `WHEEL_DUNGEON.LANDS.verdant`, its blue slimes inside, the mossy
+        floor `verdant-3`, its mouth slime green;
+      - EVERY BOSS AT ITS DUNGEON'S LEVEL (data.js `DUNGEON_BOSS_UP` 0, was
+        +5): the Wheel's, the Workshop's and the phone's own copy;
+      - NOTHING DRAWN OVER A MOUTH: no object's picture (placing.js
+        `MOUTH_CLEAR`, every layer, both placings) nor resource's
+        (bake-wheel-spawns.mjs, seeded into `nodeDrawn`) reaches into a box
+        round any dungeon's mouth, its name or the ground in front -- a
+        found clearing could not work in the Verdant Wilds' 400 px jungle;
+        re-baked: 3 monster places and 28 resources moved, the other three
+        mouths where they were;
+      - `caps.dungeonLands`, HOW MANY of the lands the worker opens, in order
+        (mirror-audit holds both lists' order): the phone draws, offers,
+        labels and leads to only the first that many (game/wheelDungeons.js
+        `wheelDungeonOpen`, TRAPS §9);
+      - the world map names every dungeon "dungeon · Lv a–b" (wheelmap.js
+        gives a tiered landmark its `levels`); the Blue Slime's codex page
+        names the Grotto;
+      - THE MAYOR'S "CLEAR ANY DUNGEON" (mayor_3) COULD NEVER BE FINISHED:
+        its check reads `lifeSkills.dungeonClears`, which only the old
+        phone-run dungeons wrote -- the worker now records every clear
+        (dungeon.js `_dungeonComplete`: `wheel_<land>` or `workshop`), and
+        its road leads to the Grotto (questWays.js `dungeon:<land>`);
+      - `wheeldungeon` §1/§6/§10, `dungeon`, `quest-route`, mirror-audit,
+        test-world-core, `mp-googrotto`: docs/specs/starter-dungeon.md.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack
@@ -1811,6 +1847,30 @@ remnant to migrate server-side, not a mode to preserve.
         join (`_keepBarFullness`); Lv 12 copper set: sword 9.9 s, bow 12.2,
         staff 13.3 (12.4 since v2.3.3263); kill switch `oneformula: false`
         (re-sizes every bar and live monster at once, liveops.js);
+      - since v2.3.3538 ONE LEVEL -- the after-review plan ("I value SIMPLICITY
+        and INTELLIGIBILITY"): the character level is the HIGHEST weapon skill,
+        not the three added up (prog3.js `_prog3CharLevel`, the page's
+        `prog3CharLevel` on `caps.onelevel`); a new character is 1; max HP
+        200 + 50 a level (healthAt `oneLevel`: read as level + MATCH_LEVEL, so a
+        new character's and every one-weapon bar, and every monster hit, are
+        unchanged); shared points 3 a CHARACTER level (a weapon below your best
+        pays its lane points only), so the per-stat bound never strands one;
+        every character's points re-dealt once (`prog3Redeal`, migration v18,
+        `olr`); the worker stamps `rpgLv` (`_levelStamp`), so plates and No
+        man's land read its level; the Combat rank is the level; chain
+        milestones 2..100; kill switch `onelevel: false` (the sum again);
+        `one-level` suite: docs/specs/one-level.md;
+      - since v2.3.3541 THE FREE POINTS RESET -- the after-review plan: "one
+        button gives them back, so you can try a different build": the Points
+        tab's "↺ Reset points (free)" (two taps, its own words the confirm;
+        shown only with a point placed, src/game/pointsReset.js) sends
+        `points_reset`, and the worker (server/src/pointsreset.js) gives every
+        placed point back by one level's own deal (`prog3RespecPoints`):
+        levels, XP and gear kept, worn gear stays worn; refused in a fight
+        (cooking.js `_anyFightAt`) or within a minute (one row each), answered
+        `points_reset_result` (PRIVILEGED); `/dev/combat` takes `deal: true`;
+        `caps.pointsreset`, kill switch `pointsreset: false`; `points-reset`
+        suite, `mp-pointsreset`: docs/specs/points-reset.md;
       - since v2.3.3263 ONE VERSION -- the owner, after #916 merged: "the numbers for damage
         between PVP and PVE can be exactly the same for each combat skill type
         ... A fish heals the same fixed amount always ... Everything is 1
@@ -2747,6 +2807,32 @@ remnant to migrate server-side, not a mode to preserve.
       mouths, the four lands' music);
     - test-world-core "the buildings' doors", `mp-wheelhalls`, `mp-wheeldoors`:
       docs/specs/wheel-halls.md.
+    - since v2.3.3539 THE HOTEL OPENS, A REST THE WORKER PAYS -- the owner: "I
+      value SIMPLICITY and INTELLIGIBILITY" (the after-review list): the farm
+      bed's rest was the phone's alone (bars the next echo put back, a +10% XP
+      only the phone's retired popups read):
+      - `rest_request {where: 'hotel' | 'farm'}` -> `server/src/rest.js`: within
+        `REST.HOTEL_R` 260 of the Hotel's door (`REST.HOTEL`, an offset from
+        the Wheel's middle that test-world-core holds to the placed door), or
+        on your farm; refused in a fight (a blow either way in 10 s, or a fight
+        with a player), within `GAP_MS` a minute of the last rest, or dead;
+        fills HP, stamina and mana and starts WELL RESTED, `_buffs.wellRested`
+        (not the Herb Bread's `rest`) for 30 minutes: +10% of a fight's XP
+        (prog3.js `_prog3AwardXp`, ADDED to the Pumpkin Pie's, never a flat
+        award); one saved row; answered `rest_result` (PRIVILEGED); free;
+      - the Hotel is a fifth hall (`WHEEL_HALL_DOORS.hotel`), open only
+        against `caps.rest` (`WHEEL_HALL_CAPS`, wheelTownDoors.js
+        `setWheelHallCaps` from wsClient; `WHEEL_SHUT_DOORS` is empty), its
+        window one row, Rest, over its room (`BUILDING_ROOMS.hotel`,
+        `SPARE_ROOMS` empty); the farm bed's E key, stick and Sleep button ask
+        the worker too (BroTown `_desktopSleep`, game/rest.js), the phone's own
+        rest kept for an older worker; Well Rested is a "Rested" chip with the
+        timed effects (`BUFF_ICON.rested`, the owner's bed made 64 px by
+        tools/ui/make-rested-badge.py), the top-right badge over the minimap
+        gone; kill switch `rest: false`;
+      - `rest` suite (48, fifteen mutations caught), `mp-hotel` (13), and
+        mp-wheeldoors runs under `rest: false` (the Hotel shut, as an older
+        worker leaves it): docs/specs/hotel-rest.md.
   - Since v2.3.3067 THE REST OF TOWN'S CAST STANDS IN THE WHEEL'S BROTOWN --
     the owner: "keep going with pragmatic enhancements":
     - Ace west of the Gambling Den's steps, Blacksmith Bro east of the forge's,

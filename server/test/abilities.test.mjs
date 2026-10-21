@@ -165,19 +165,20 @@ const cast = async (kind) => {
 };
 const rejects = () => msgsOfType(wsA, 'ability_rejected').map((m) => m.payload);
 const hits = () => room.eventBuffer.filter((e) => e.type === 'monster_hit');
-/* Character level is Σ trained levels; set all three so the sum is exact. */
+/* Character level is Σ trained levels; set all three so the sum is exact.
+   v2.3.3538: ONE LEVEL -- the highest trained skill, so the sword at `lvl`
+   and the other two at 1. */
 const setCharLevel = (lvl) => {
-  const per = Math.max(1, Math.floor(lvl / 3));
-  psA.prog3.sk.sword.level = lvl - 2 * per;
-  psA.prog3.sk.bow.level = per;
-  psA.prog3.sk.staff.level = per;
+  psA.prog3.sk.sword.level = lvl;
+  psA.prog3.sk.bow.level = 1;
+  psA.prog3.sk.staff.level = 1;
   room._prog3Recompute(psA);
 };
 
 // ── 2. Milestone gating ──
 {
   readyPlayer();
-  check('a fresh character is level 3 (the floor)', psA.level === 3, psA.level);
+  check('a fresh character is level 1 (the floor; v2.3.3538: the highest skill)', psA.level === 1, psA.level);
   const m = arm(meadow[0], psA.x + 20, psA.y);
   const hp0 = m.hp;
   const stam0 = psA.stamina;

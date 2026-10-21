@@ -991,7 +991,19 @@ export function processGameEvent(type, payload, S, deps) {
                 setRpgState(_objectSpread({}, _dcR));
               }
               pushDmgPopup(S, S.player.x, S.player.y - 60, 'DUNGEON CLEARED!', '#f5c542');
-              pushDmgPopup(S, S.player.x, S.player.y - 45, '+' + (payload.gold || 0) + 'G +' + (payload.xp || 0) + 'XP', '#f5c542');
+              /* ═══ v2.3.3543: SAY ONLY WHAT THE CLEAR PAYS ═══
+                 The worker pays a clear's XP through _addCombatXp
+                 (dungeon.js _dungeonComplete), and under prog3 that is the
+                 old single-level counter: it moves no skill, no bar and no
+                 level.  So "+40G +265XP" promised 265 XP that went nowhere --
+                 a player who looked for it on the Skills page found nothing.
+                 Under prog3 the line says the gold alone, as the kill's
+                 popup has since v2.3.1727; a pre-prog3 character, for whom
+                 the number is real, still sees it.  (Paying the clear's XP
+                 into a real skill -- the weapon in your hand -- is a balance
+                 call for the owner: docs/specs/dungeon-clear-words.md.) */
+              var _dcXp = payload.xp > 0 && !prog3Live(_dcR) ? ' +' + payload.xp + 'XP' : '';
+              pushDmgPopup(S, S.player.x, S.player.y - 45, '+' + (payload.gold || 0) + 'G' + _dcXp, '#f5c542');
               cue('dungeonClear');   /* v2.3.3343: the old quest fanfare -- levelUp() is beep()s only, silent */
               S.screenShake = 10;
               setTimeout(function () {

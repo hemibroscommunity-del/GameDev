@@ -56,7 +56,22 @@ import { gridInfo } from './grid.js';
 import { wheelInfo } from './wheel.js';
 import { objectCatalog } from '../../objects/catalog.js';
 
-export const PLACING = 'v2.3.3031';
+export const PLACING = 'v2.3.3540';   /* v2.3.3540: + MOUTH_CLEAR (below) */
+
+/* ═══ v2.3.3540: A DUNGEON'S MOUTH IS NEVER UNDER A PICTURE ═══
+   A landmark with a tier is a dungeon's way in (tools/world/
+   bake-wheel-spawns.mjs WHEEL_DOORS), and its mouth is drawn ON THE GROUND at
+   the landmark's middle (src/rendering/wheelDoors.js: an opening RX 92 x RY
+   40, its glow 1.7x that, its name LABEL_Y 190 above it), under everything
+   that stands.  Nothing wild stands ON a landmark (KEEP_CLEAR), but a tall
+   thing standing south of one reached over it: the Goo Grotto, in the
+   Verdant Wilds' jungle of 400 px trees, would have been a name under the
+   leaves.  So no picture may reach into this box round the mouth (game px
+   from it): the opening and its glow, its name, and the ground in front
+   where you stand to go in.  Every land's dungeons, every layer, both
+   placings; the bake's resources keep off it too (bake-wheel-spawns.mjs) and
+   test-world-core checks both. */
+export const MOUTH_CLEAR = Object.freeze({ left: -200, right: 200, top: -260, bottom: 170 });
 
 /* ── how much ground each object stops you on ──
    Shares of its picture's game size: `w` of its width, centred on its foot,
@@ -904,6 +919,20 @@ export function placeObjects(plan, bp, opts = {}) {
   }
 
   const landOf = (r) => LANDS[bp.regionIds[r]] || null;
+  /* v2.3.3540: the dungeons' mouths (MOUTH_CLEAR above), as boxes in game px:
+     every landmark with a tier, where layout.js pass 8 put it */
+  const mouths = [];
+  for (const p of bp.pois || []) {
+    const lm = p.kind === 'landmark' && plan.regions[p.region] && plan.regions[p.region].landmark;
+    if (!lm || !(lm.tier > 0)) continue;
+    const mx = (p.x - bp.x0) * WPA, my = (p.y - bp.y0) * WPA;
+    mouths.push({ x0: mx + MOUTH_CLEAR.left, x1: mx + MOUTH_CLEAR.right, y0: my + MOUTH_CLEAR.top, y1: my + MOUTH_CLEAR.bottom });
+  }
+  /* whether a picture (foot x, y; w x h) reaches into a mouth's box */
+  const coversMouth = (x, y, w, h) => {
+    for (const m of mouths) if (x - w / 2 < m.x1 && x + w / 2 > m.x0 && y - h < m.y1 && y > m.y0) return true;
+    return false;
+  };
   /* a big thing's picture must not cover the town: its top corners and
      middle are checked against the town's cells */
   const coversTown = (x, y, w, h) => {
@@ -989,7 +1018,7 @@ export function placeObjects(plan, bp, opts = {}) {
         if (bp.cls[c] !== C.ground && bp.cls[c] !== C.obstacle) continue;
         if (keepNear(c) || nearFoot(x, y, 40)) continue;
         const h = e.fit === 'w' ? e.size / (e.ar || 1) : e.size, w = e.fit === 'w' ? e.size : e.size * (e.ar || 1);
-        if (coversTown(x, y, w, h)) continue;
+        if (coversTown(x, y, w, h) || coversMouth(x, y, w, h)) continue;
         /* leaning in: drawn leaning left, so mirrored west of the pool (and
            either way, by the hash, right above or below it) */
         const flip = Math.abs(ux) < 0.25 ? hash2(pi + k, pj, ps + 3) < 0.5 : ux < 0;
@@ -1023,7 +1052,7 @@ export function placeObjects(plan, bp, opts = {}) {
     return HALO.floor + (1 - HALO.floor) * t * t * (3 - 2 * t);
   };
   /* v2.3.2999: `?placing=2`, the woods, groups and undergrowth of PLACING v2 */
-  if (opts.v === 2) natureV2({ plan, bp, seed, cellOf, cellPx, BW, BH, N, worldW, worldH, clear, wet, byId, landOf, townR, commonsR, coversTown, nearOasis, nearFoot, put, counts });
+  if (opts.v === 2) natureV2({ plan, bp, seed, cellOf, cellPx, BW, BH, N, worldW, worldH, clear, wet, byId, landOf, townR, commonsR, coversTown, coversMouth, nearOasis, nearFoot, put, counts });
   else for (const L of LAYERS) {
     const st = L.step;
     /* v2.3.3315: the lattice from the named corner (NX), over the whole map */
@@ -1075,6 +1104,7 @@ export function placeObjects(plan, bp, opts = {}) {
          off the town */
       const h = e.fit === 'w' ? e.size / (e.ar || 1) : e.size, w = e.fit === 'w' ? e.size : e.size * (e.ar || 1);
       if (L.id === 'big' && coversTown(x, y, w, h)) continue;
+      if (coversMouth(x, y, w, h)) continue;   /* v2.3.3540 */
       if (L.id === 'big' && oasisFeet.length && nearOasis(x, y, OASIS.clearBig)) continue;
       const piece = Math.floor(hash2(i, j, ls + 4) * (e.count || 1));
       put(id, x, y, piece, !NO_FLIP.has(id) && hash2(i, j, ls + 5) < 0.5, L.id === 'big' ? 26 : L.id === 'mid' ? 14 : 8);
@@ -1233,7 +1263,7 @@ function hardCore(cand, worldW, reach) {
 }
 
 function natureV2(X) {
-  const { plan, bp, seed, cellOf, cellPx, BW, BH, N, worldW, worldH, clear, wet, byId, landOf, townR, commonsR, coversTown, nearOasis, nearFoot, put, counts } = X;
+  const { plan, bp, seed, cellOf, cellPx, BW, BH, N, worldW, worldH, clear, wet, byId, landOf, townR, commonsR, coversTown, coversMouth, nearOasis, nearFoot, put, counts } = X;
   const s0 = seed + 7121;
   const weightAt = (w, stage) => (Array.isArray(w) ? w[Math.max(0, Math.min(3, stage))] : w);
   const sizeOf = (e) => (e.fit === 'w' ? { w: e.size, h: e.size / (e.ar || 1) } : { w: e.size * (e.ar || 1), h: e.size });
@@ -1357,7 +1387,7 @@ function natureV2(X) {
     const e = id == null ? null : byId[id];
     if (!e) continue;
     const { w, h } = sizeOf(e);
-    if (coversTown(x, y, w, h) || nearOasis(x, y, OASIS.clearBig)) continue;
+    if (coversTown(x, y, w, h) || coversMouth(x, y, w, h) || nearOasis(x, y, OASIS.clearBig)) continue;
     if (covers(x, y, w, h)) continue;
     const spacing = Math.sqrt(SCREEN_AREA / Math.max(0.05, per));
     cand.push({ x, y, i, j, id, e, w, h, r: Math.max(T.crown * w, Math.min(260, T.core * spacing)), pri: hash2(i, j, lsT + 4) });
@@ -1415,6 +1445,8 @@ function natureV2(X) {
       const cls = bp.cls[c];
       if ((cls !== C.ground && cls !== C.obstacle) || clear[c] < 1) continue;
       if (nearFoot(x, y, 8)) continue;
+      const us = sizeOf(e);
+      if (coversMouth(x, y, us.w, us.h)) continue;   /* v2.3.3540 */
       const fb = feetOf(id, e, x, y);
       if (fb.length && slit(fb, null)) continue;
       put(id, x, y, Math.floor(hash2(q.i, q.j, hk + 4) * (e.count || 1)), !NO_FLIP.has(id) && hash2(q.i, q.j, hk + 5) < 0.5, 8);
@@ -1481,7 +1513,7 @@ function natureV2(X) {
       if ((cls !== C.ground && cls !== C.obstacle) || clear[c] < (k === 0 ? M.clear : 1)) continue;
       if (nearFoot(x, y, 6)) continue;
       const ps = sizeOf(p.e);
-      if (covers(x, y, ps.w, ps.h) || coversTown(x, y, ps.w, ps.h)) continue;
+      if (covers(x, y, ps.w, ps.h) || coversTown(x, y, ps.w, ps.h) || coversMouth(x, y, ps.w, ps.h)) continue;
       const fb = feetOf(p.id, p.e, x, y);
       if (fb.length && slit(fb, group)) continue;
       put(p.id, x, y, (piece0 + k) % cnt, !NO_FLIP.has(p.id) && hash2(p.i, p.j, hk + 2) < 0.5, 14);
@@ -1514,6 +1546,8 @@ function natureV2(X) {
     if (!e) continue;
     if (land.shore && land.shore.includes(id) && !shore && hash2(i, j, lsL + 6) < 0.92) continue;
     if (nearFoot(x, y, 20)) continue;
+    const ss = sizeOf(e);
+    if (coversMouth(x, y, ss.w, ss.h)) continue;   /* v2.3.3540 */
     const fb = feetOf(id, e, x, y);
     if (fb.length && slit(fb, null)) continue;
     put(id, x, y, Math.floor(hash2(i, j, lsL + 4) * (e.count || 1)), !NO_FLIP.has(id) && hash2(i, j, lsL + 5) < 0.5, 8);
