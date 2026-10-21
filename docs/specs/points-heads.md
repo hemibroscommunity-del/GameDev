@@ -20,11 +20,15 @@ how it goes together (kept as `assets/icons-source/sheet-points-heads.png` and
 | The spend window's lane tabs | the hero sheet's weapon icons and your portrait | the same sword, staff, bow and bust as the grid |
 | The two heads | different widths (the shared row has one more column) | one width, the two frames standing one over the other as the mockup draws them |
 
-Kept: a count with points waiting still glows and swells (v2.3.3052, the
-owner's "glow and grow and shrink if there are still points that need to be
-allocated"), now from its middle with a warm haze behind its numerals
-(`game.css` `bt-pts-count`; transform and opacity only, still with reduced
-motion). The heads still name their rows and are not buttons (v2.3.2684); the
+Kept, and slowed: a count with points waiting still glows and swells
+(v2.3.3052, the owner's "glow and grow and shrink if there are still points
+that need to be allocated"), now from its middle with a warm haze behind its
+numerals, and SLOWLY -- the owner, on this change: "If there are unallocated
+numbers waiting to be spent make them slowly grow then shrink". One breath is
+3.2 s (1.6 s growing to 1.16x, 1.6 s shrinking back, eased), twice the Points
+tab's own 1.6 s glow so the two still meet every other beat; a grey 0 never
+moves (`game.css` `bt-pts-count`; transform and opacity only, still with
+reduced motion). The heads still name their rows and are not buttons (v2.3.2684); the
 weapon is chosen on the spend window's tabs.
 
 ## Decided here, and why
@@ -106,7 +110,9 @@ A three-numeral count is drawn smaller to fit its column (at 390 a weapon's
 - `mp-pointheads` (390, 320, sideways; pictures of each state in
   `tools/qa/mp/out/pointheads-*.png`): every pool full (all gold, breathing);
   the spend window's tabs; Bow 4 alone (grey 0s beside gold, only the gold
-  breathing); nothing to spend (all grey, still); three numerals ("147", whole,
+  breathing, and the breath watched on the page: 1.16x and back, 1.6 s from
+  small to big, the 0 beside it never moving); nothing to spend (all grey,
+  still); three numerals ("147", whole,
   inside its head, no stat name cut); sideways icons 12 px or more.
 - `mp-statcols`, `mp-prog3`, `mp-landscape-dash`, `mp-statpeek`, `mp-charfit`,
   `mp-pointsreset`, `mp-nozoom`, `mp-pointsglow`, `mp-freshpoints`: the Points

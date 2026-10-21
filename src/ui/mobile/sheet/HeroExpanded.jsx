@@ -2414,7 +2414,8 @@ export const HeroExpanded = () => {
                column is drawn smaller, never "99+".
                KEPT: a count with points waiting glows and swells (v2.3.3052,
                the owner's "glow and grow and shrink if there are still points
-               that need to be allocated": game.css bt-pts-count); the weapon
+               that need to be allocated"), slowly -- "make them slowly grow
+               then shrink", a 3.2 s breath (game.css bt-pts-count); the weapon
                in your hand is marked, its row lit (v2.3.3051 sat it on a
                brass plate, a shape behind an icon the owner no longer wants);
                and the scenarios' handles: data-prog3-lane on each head,

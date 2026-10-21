@@ -1157,14 +1157,19 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
    class: a swell of the count from its MIDDLE (transform only; it sits inside
    its frame, where the bubbles hung off the header's corner) and a warm haze
    behind its numerals (its ::before, opacity only), where the bubble had a
-   ring round its pill -- never a filter, the iOS grain rule.  In step with the
-   tab's own glow (bt-pts-glow, 1.6 s).  Reduced motion: lit and still. */
-@keyframes bt-pts-count{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+   ring round its pill -- never a filter, the iOS grain rule.
+   SLOWLY: the owner, on this change: "If there are unallocated numbers
+   waiting to be spent make them slowly grow then shrink".  One breath is
+   3.2 s, 1.6 s growing and 1.6 s shrinking, eased at both ends -- twice the
+   tab's own glow (bt-pts-glow, 1.6 s), so the two still meet every other
+   beat.  A 0 (nothing to spend) never carries the class and stays still.
+   Reduced motion: lit and still. */
+@keyframes bt-pts-count{0%,100%{transform:scale(1)}50%{transform:scale(1.16)}}
 @keyframes bt-pts-count-glow{0%,100%{opacity:.3}50%{opacity:1}}
-.bt-pts-count{transform-origin:50% 50%;animation:bt-pts-count 1.6s ease-in-out infinite}
+.bt-pts-count{transform-origin:50% 50%;animation:bt-pts-count 3.2s ease-in-out infinite}
 .bt-pts-count::before{content:'';position:absolute;inset:-3px -4px;border-radius:999px;pointer-events:none;z-index:-1;
   background:radial-gradient(closest-side,rgba(255,206,102,.62),rgba(255,206,102,.24) 62%,rgba(255,206,102,0));
-  animation:bt-pts-count-glow 1.6s ease-in-out infinite}
+  animation:bt-pts-count-glow 3.2s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){
   .bt-pts-count{animation:none}
   .bt-pts-count::before{animation:none;opacity:.8}

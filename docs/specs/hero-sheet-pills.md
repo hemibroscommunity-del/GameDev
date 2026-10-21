@@ -121,8 +121,8 @@ Tested by `mp-catgrid` (which pauses the animation to measure) and
 `mp-pointsglow`.
 
 Since v2.3.3553 the bubbles are gone: each pool's count sits in the owner's
-gold frames in gold numerals, and it is the COUNT that breathes
-(`bt-pts-count`, from its middle, a warm haze behind it):
+gold frames in gold numerals, and it is the COUNT that breathes, slowly
+(`bt-pts-count`, from its middle, a warm haze behind it, a 3.2 s breath):
 docs/specs/points-heads.md.
 
 ## Max HP in the spend window says what the bar will say (v2.3.3050)

@@ -15,7 +15,8 @@
  *      the spend window's lane tabs wear the sheet's icons, and nothing of the
  *      old heads is drawn (the blue badges, the diagonal, the portrait);
  *   5. a count with points to spend breathes by transform and opacity only,
- *      never a filter (the iOS grain rule), and is still with reduced motion.
+ *      never a filter (the iOS grain rule), and is still with reduced motion;
+ *      SLOWLY, the owner's "slowly grow then shrink": a 3.2 s breath.
  */
 import { readFileSync, existsSync } from 'node:fs';
 
@@ -105,6 +106,13 @@ const DIGITS = ['gold', 'grey'].flatMap((t) => [...Array(10).keys()].map((d) => 
     && /\.bt-pts-count::before\{/.test(css));
   check('5b ...by transform and opacity only, never a filter', !/filter/.test(rules) && /transform:scale/.test(css.slice(css.indexOf('@keyframes bt-pts-count{'))) , rules.slice(0, 300));
   check('5c ...and still with reduced motion', /prefers-reduced-motion: reduce\)\{\s*\.bt-pts-count\{animation:none\}/.test(css));
+  /* the owner: "If there are unallocated numbers waiting to be spent make
+     them slowly grow then shrink" -- one breath 3.2 s, the swell and its glow
+     in step, and enough of a swell to be seen at that pace */
+  const dur = [...css.matchAll(/animation:(bt-pts-count(?:-glow)?) ([\d.]+)s ease-in-out infinite/g)].map((m) => [m[1], +m[2]]);
+  const peak = /@keyframes bt-pts-count\{0%,100%\{transform:scale\(1\)\}50%\{transform:scale\(([\d.]+)\)\}\}/.exec(css);
+  check('5e ...SLOWLY: one breath of 3 s or more, half growing and half shrinking, its glow in step',
+    dur.length === 2 && dur.every(([, s]) => s >= 3 && s === dur[0][1]) && !!peak && +peak[1] >= 1.1 && +peak[1] <= 1.25, { dur, peak: peak && peak[1] });
   check('5d the old bubbles\' class is gone with them', !/bt-pts-bubble/.test(css) && !/bt-pts-bubble/.test(src('src/ui/mobile/sheet/HeroExpanded.jsx')));
 }
 

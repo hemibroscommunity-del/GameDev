@@ -15,7 +15,11 @@
  *      sword, staff and bow, a shared stat's one tab its bust;
  *   3. Bow 4 alone (the test lever deals its points): the sword's and staff's
  *      counts GREY 0 and still, the bow's and the character's GOLD 9 and
- *      breathing -- the sheet's colour rule, per pool;
+ *      breathing -- the sheet's colour rule, per pool; and the breath is SLOW
+ *      (the owner: "If there are unallocated numbers waiting to be spent make
+ *      them slowly grow then shrink"): watched for 3.6 s on the page, the bow's
+ *      9 swells to 1.12x or more and back, 1.6 s from small to big, while the
+ *      sword's 0 never moves;
  *   4. every weapon level 1: every count a grey 0, nothing breathing;
  *   5. every weapon level 50: three numerals, "147", drawn whole (never
  *      "99+") and inside its head, upright at 390 and 320 and sideways;
@@ -75,6 +79,23 @@ const readHeads = (P) => P.page.evaluate(() => {
   return { out, want, icons, cut };
 });
 
+/* The pictures are of a count at rest: its breath is held only while one is
+   taken (the breath itself is checked, step 3). */
+const still = (P, on) => P.page.evaluate((v) => {
+  let el = document.getElementById('bt-qa-still');
+  if (v && !el) {
+    el = document.createElement('style');
+    el.id = 'bt-qa-still';
+    el.textContent = '.bt-pts-count,.bt-pts-count::before{animation:none !important}';
+    document.head.appendChild(el);
+  } else if (!v && el) el.remove();
+}, on).catch(() => {});
+const shoot = async (P, path, clip) => {
+  await still(P, true);
+  await P.page.screenshot(clip ? { path, clip } : { path }).catch(() => {});
+  await still(P, false);
+};
+
 /* Wait for what the test lever changed to reach the heads, and for anything
    drawn over the grid (a level-up's celebration) to go, then picture it. */
 async function settle(P, want, shotName) {
@@ -98,7 +119,7 @@ async function settle(P, want, shotName) {
     const r = g.getBoundingClientRect();
     return { x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 };
   });
-  if (box) await P.page.screenshot({ path: join(OUT, `pointheads-${shotName}.png`), clip: box }).catch(() => {});
+  if (box) await shoot(P, join(OUT, `pointheads-${shotName}.png`), box);
   return h;
 }
 
@@ -119,8 +140,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(1500);
     if (land) { await P.page.setViewportSize(vp); await P.page.waitForTimeout(1100); }
     const id = await H.readState(P, (S) => S.myId);
-    /* the pictures are of a count at rest; whether it breathes is its class */
-    await P.page.addStyleTag({ content: '.bt-pts-count,.bt-pts-count::before{animation:none !important}' }).catch(() => {});
 
     if (view === '390') {
       /* ── 1. every pool full ── */
@@ -163,7 +182,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return t;
       };
       const laneTabs = await tabs('[data-prog3-row^="sword:"]');
-      await P.page.screenshot({ path: join(OUT, `pointheads-${view}-window.png`) }).catch(() => {});
+      await shoot(P, join(OUT, `pointheads-${view}-window.png`));
       rec.ok(`${view}: a weapon stat's window wears the sheet's sword, staff and bow on its three lane tabs`,
         !!laneTabs && laneTabs.map((t) => `${t.lane}:${(t.icon || '').split('/').pop()}`).join(' ') === 'sword:sword.png staff:staff.png bow:bow.png'
           && laneTabs.every((t) => t.w > 0 && /^\/icons\/ui\/points\//.test(t.icon)), laneTabs);
@@ -186,6 +205,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
           && !!o.bow && Number(o.bow.text) === mixed.want.bow && mixed.want.bow > 0 && o.bow.tone === 'gold' && o.bow.breathes
           && !!o.shared && Number(o.shared.text) === mixed.want.shared && mixed.want.shared > 0 && o.shared.tone === 'gold' && o.shared.breathes,
         { counts: counts(mixed), want: mixed.want });
+      /* ...and the breath, watched: the scale the page draws, every 100 ms */
+      const breath = await P.page.evaluate(async () => {
+        const el = (k) => document.querySelector(`[data-prog3-grid] [data-prog3-head-badge="${k}"]`);
+        const scaleOf = (e) => {
+          const t = e ? getComputedStyle(e).transform : 'none';
+          if (!t || t === 'none') return 1;
+          const m = /matrix\(([^,]+)/.exec(t);
+          return m ? +(+m[1]).toFixed(3) : 1;
+        };
+        const t0 = performance.now();
+        const gold = [];
+        const grey = [];
+        while (performance.now() - t0 < 3600) {
+          gold.push([Math.round(performance.now() - t0), scaleOf(el('bow'))]);
+          grey.push(scaleOf(el('sword')));
+          await new Promise((r) => setTimeout(r, 100));
+        }
+        const cs = el('bow') ? getComputedStyle(el('bow')) : null;
+        return { gold, grey, name: cs && cs.animationName, dur: cs && cs.animationDuration,
+          greyName: el('sword') ? getComputedStyle(el('sword')).animationName : null };
+      });
+      const gs = breath.gold.map((g) => g[1]);
+      const top = breath.gold[gs.indexOf(Math.max(...gs))];
+      const low = breath.gold[gs.indexOf(Math.min(...gs))];
+      const half = top && low ? Math.abs(top[0] - low[0]) / 1000 : null;
+      rec.ok(`${view}: ...the waiting 9 SLOWLY grows then shrinks -- a ${breath.dur} breath, ${Math.min(...gs)}x to ${Math.max(...gs)}x, ${half}s from small to big -- and the 0 beside it never moves`,
+        breath.name === 'bt-pts-count' && breath.dur === '3.2s' && Math.max(...gs) >= 1.12 && Math.min(...gs) <= 1.04
+          && half !== null && Math.abs(half - 1.6) <= 0.45
+          && breath.greyName === 'none' && breath.grey.every((v) => v === 1),
+        { name: breath.name, dur: breath.dur, greyName: breath.greyName, half, gold: breath.gold.filter((_, i) => i % 3 === 0) });
 
       /* ── 4. nothing to spend ── */
       await H.devOp(wsPort, 'combat', id, { skill: 'all', level: 1, deal: true });
