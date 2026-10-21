@@ -1860,6 +1860,17 @@ remnant to migrate server-side, not a mode to preserve.
         man's land read its level; the Combat rank is the level; chain
         milestones 2..100; kill switch `onelevel: false` (the sum again);
         `one-level` suite: docs/specs/one-level.md;
+      - since v2.3.3541 THE FREE POINTS RESET -- the after-review plan: "one
+        button gives them back, so you can try a different build": the Points
+        tab's "↺ Reset points (free)" (two taps, its own words the confirm;
+        shown only with a point placed, src/game/pointsReset.js) sends
+        `points_reset`, and the worker (server/src/pointsreset.js) gives every
+        placed point back by one level's own deal (`prog3RespecPoints`):
+        levels, XP and gear kept, worn gear stays worn; refused in a fight
+        (cooking.js `_anyFightAt`) or within a minute (one row each), answered
+        `points_reset_result` (PRIVILEGED); `/dev/combat` takes `deal: true`;
+        `caps.pointsreset`, kill switch `pointsreset: false`; `points-reset`
+        suite, `mp-pointsreset`: docs/specs/points-reset.md;
       - since v2.3.3263 ONE VERSION -- the owner, after #916 merged: "the numbers for damage
         between PVP and PVE can be exactly the same for each combat skill type
         ... A fish heals the same fixed amount always ... Everything is 1

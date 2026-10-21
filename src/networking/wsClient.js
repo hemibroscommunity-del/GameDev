@@ -166,6 +166,7 @@ import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull } from '@/game/
 import { nmlJoinFromBys } from '@/game/nmlAsk.js'; /* v2.3.3530: one who chose to attack you joins a fight you chose */
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyItemDropResult } from '@/game/itemDrop.js'; /* v2.3.3473: Drop's answer */
+import { onPointsResetResult } from '@/game/pointsReset.js'; /* v2.3.3541: the free points reset's answer */
 import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
 import { applyWeaponGemResult, noteWeaponsArrived } from '@/game/weaponGem.js'; /* v2.3.3513: the weapon's gem, put in by the worker */
 import { applyShardCrackResult, applyGemCombineResult } from '@/game/shardCrack.js'; /* v2.3.3516: shards cracked and raw gems combined by the worker */
@@ -1874,6 +1875,23 @@ export function setupWebSocket(ctx) {
                 if (_sr.leveled && _sr.newLevel > _sr.fromLevel) {
                   try { celebrateLifeSkillLevel(S, 'blacksmithing', _sr.newLevel, _sr.fromLevel); } catch (_ce) {}
                 }
+              }
+              break;
+            }
+          case 'points_reset_result':
+            {
+              /* v2.3.3541: the worker's answer to Reset points
+                 (pointsreset.js): the new points rode the player_state echo;
+                 this is the line over your bro and its sound
+                 (game/pointsReset.js).  Server-only (PRIVILEGED_EVENTS); a
+                 relay never carries it. */
+              if (!msg.from) {
+                try {
+                  onPointsResetResult(S, msg.payload, {
+                    say: function (text, color, k) { if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 44 - 26 * (k || 0), text, color); },
+                    sound: cue,
+                  });
+                } catch (_pr) { /* display only */ }
               }
               break;
             }
@@ -5475,6 +5493,13 @@ export function setupWebSocket(ctx) {
           return;
         }
         if (msg.type === 'prog3_allocate') { /* v2.3.1660: trained-rebuild point spend */
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3541: the free points reset (game/pointsReset.js -> the
+           worker's pointsreset.js).  TRAPS #18: without this line the Reset
+           button would ask and never hear back. */
+        if (msg.type === 'points_reset') {
           wsOut(msg);
           return;
         }

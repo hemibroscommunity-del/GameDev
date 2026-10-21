@@ -225,6 +225,7 @@ const CAP_GATES = [
   'soakhit' /* v2.3.3518: a soaked monster's blows land 20% softer -- a kill switch */,
   'shockspark' /* v2.3.3518: a hit on a shocked monster sparks to the one beside it -- a kill switch */,
   'wheeldungeons' /* v2.3.3016: lower case, a kill switch */,
+  'pointsreset' /* v2.3.3541: the free points reset -- lower case, a kill switch */,
   'dungeonLands' /* v2.3.3540: how many of the Wheel's dungeons the worker opens -- a number, never a switch */,
   'nomansland' /* v2.3.3058: No man's land -- lower case, a kill switch */,
   'nmlgroup' /* v2.3.3530: a group attacks you, one window -- every attacker yours to hit back, joining a fight you chose (nmlAsk.js nmlJoinFight) -- lower case, a kill switch */,
