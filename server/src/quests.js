@@ -326,7 +326,10 @@ export const questMethods = {
        with nowhere to put it is refused whole rather than half-applied,
        which is what would strand the quest in 'turnedIn' with the reward
        unpaid and no way to retry. */
-    const _needsCat = !!(ps.prog3 && reward.xp > 0);
+    /* v2.3.3542: a quest that names its skill (`xpTo`: tut_1's Melee) pays
+       it there, whatever the page sends -- no choice to make, so none asked */
+    const _fixedCat = typeof reward.xpTo === 'string' && PROG3.SKILLS.indexOf(reward.xpTo) >= 0 ? reward.xpTo : null;
+    const _needsCat = !!(ps.prog3 && reward.xp > 0 && !_fixedCat);
     if (_needsCat && (typeof xpCat !== 'string' || PROG3.SKILLS.indexOf(xpCat) < 0)) return;
     if (!ps._quests) ps._quests = Object.create(null); // rule 4: client-id-keyed map
     // Must be 'active' to turn in.  This is the spam-defeat:
@@ -376,7 +379,9 @@ export const questMethods = {
     // XP via _addCombatXp so level-up logic runs (including
     // pool restores via _recomputeMaxes inside).
     if (reward.xp > 0) {
-      if (_needsCat) {
+      if (_fixedCat && ps.prog3) {
+        this._prog3AwardXp(session.id, ps, _fixedCat, reward.xp, { flat: true });   /* v2.3.3542 */
+      } else if (_needsCat) {
         /* Straight into the chosen trained skill — same path a monster
            kill uses, so a quest that pushes you over a threshold levels
            you, grants the point, restores your pools and fires

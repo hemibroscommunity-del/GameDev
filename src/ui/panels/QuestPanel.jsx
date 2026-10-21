@@ -169,7 +169,9 @@ export function QuestPanel(props) {
      (v2.3.1685).  Read from stateRef first because rpgState can lag a frame
      behind the worker's echo. */
   var _liveRpg = (stateRef && stateRef.current && stateRef.current.rpg) || rpgState;
-  var _needsXpChoice = prog3Live(_liveRpg) && _xpAmt > 0;
+  /* v2.3.3542: ...and a quest that names its skill (`xpTo`, tut_1's Melee)
+     has nothing to choose: the AUTO REWARD (the owner's v2.3.3335 rule) */
+  var _needsXpChoice = prog3Live(_liveRpg) && _xpAmt > 0 && !questPanel.quest.xpTo;
   /* ═══ v2.3.1764: SAY WHAT THE BUTTON DOES ═══
      Owner: "When you turn in a quest it needs to be more obvious that you're
      redeeming a reward."  "Turn In Quest" describes handing something OVER —

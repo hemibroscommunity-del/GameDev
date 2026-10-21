@@ -3469,7 +3469,9 @@ remnant to migrate server-side, not a mode to preserve.
     - THE MAYOR FIRST, THEN THE WHOLE TOWN (server/src/data.js QUEST_REWARDS
       tut_1's header; the phone's QUEST_CHAINS, the header above farm_1):
       Mayor Bro's exploding slimes (tut_1) are the only quest a new player is
-      offered; once in, SIX townsfolk offer theirs at once (`after: 'tut_1'`)
+      offered (since v2.3.3542 its hand-in pays 300 XP into Melee, NAMED by
+      the quest's `xpTo` -- a first level-up with nothing to choose, the auto
+      reward kept: docs/specs/first-levelup.md); once in, SIX townsfolk offer theirs at once (`after: 'tut_1'`)
       -- Farmer Bro plants carrots (farm_1), Blacksmith Bro 5 copper ore for
       5 bars (smith_1), Woodworker Bro 5 pine logs for 5 hardened pine
       (wood_1), Diego 2 cooked fish for 10 cooked clownfish (fish_1, two pine

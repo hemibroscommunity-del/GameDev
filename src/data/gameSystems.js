@@ -6669,7 +6669,14 @@ export const QUEST_CHAINS = {
        there is nothing to choose and QuestPanel pays it as the AUTO REWARD --
        no "Choose where to train it", no claim window.  Mirrors
        server/src/data.js tut_1 (mirror-audit §5). */
-    reward: { gold: 25, xp: 0 },
+    /* v2.3.3542: a first level-up at the hand-in -- 300 XP straight into
+       MELEE (`xpTo`), level 2 needing 280: the review found a new player
+       never saw a level-up or a point to spend in the tutorial.  Still no
+       "choose where to train it" (the owner's v2.3.3335 rule above):
+       QuestPanel shows no chooser for a quest that names its skill, so this is
+       still the AUTO REWARD.  Mirrors server/src/data.js tut_1. */
+    reward: { gold: 25, xp: 300 },
+    xpTo: 'sword',
     /* v2.3.3525: no `next` -- once this is handed in the WHOLE TOWN offers
        its quests at once (each giver's first is `after: 'tut_1'`: the tour's
        header above farm_1), and his own tut_2 waits for them all */

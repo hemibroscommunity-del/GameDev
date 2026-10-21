@@ -807,7 +807,18 @@ export const QUEST_REWARDS = {
       /* v2.3.3525: the SLIMES first (owner: "The slimes that blow up almost
          always get a good reaction from people"); the snowmen, whose burrow is
          the other showpiece, are the tour's finale (tut_2). */
-      tut_1: {gold:25,  xp:0,  next:null,   /* v2.3.3525: the whole town opens on its hand-in (`after: 'tut_1'`) */
+      /* v2.3.3542: A FIRST LEVEL-UP AT THE HAND-IN -- an outside review of
+         the game as built: the Mayor's first quest paid no combat XP, and
+         level 2 is 280 XP (prog3XpRequired(1)), 1,400 damage, where its four
+         slimes are ~232 -- so a new player finished the tutorial, armed with
+         all three weapons, and never saw a level-up or a point to spend.  300
+         XP straight into MELEE (`xpTo`) -- the one weapon used by then -- is
+         one level-up at the hand-in and no more (level 3 is 605 in all), and
+         keeps the owner's v2.3.3335 rule below: NO "choose where to train
+         it", the hand-in still the AUTO REWARD (_handleQuestTurnIn takes
+         `xpTo` over any xpCat sent; QuestPanel never shows the chooser for a
+         quest that names its skill).  Mirrors gameSystems.js tut_1. */
+      tut_1: {gold:25,  xp:300, xpTo:'sword',  next:null,   /* v2.3.3525: the whole town opens on its hand-in (`after: 'tut_1'`) */
               objective:{type:'collect', invKey:'slime-remnants', count:4, consume:true, zone:'verdant'},
               /* v2.3.1676 (owner: "He'll give you the sword and shield").  Paid
                  on ACCEPT, not turn-in — you cannot do the quest without them,

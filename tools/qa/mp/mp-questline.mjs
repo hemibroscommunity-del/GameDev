@@ -483,7 +483,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(300);
       const _turnedT = await H.clickSel(P, 'button.bt-quest-turnin').then(() => true).catch(() => false);
       rec.ok(`${step.id}: the turn-in button could be clicked`, _turnedT);
-    } else if (!(QUEST_REWARDS[step.id].xp > 0)) {
+    } else if (!(QUEST_REWARDS[step.id].xp > 0) || QUEST_REWARDS[step.id].xpTo) {   /* v2.3.3542: or XP whose skill the quest names (tut_1's Melee) */
       /* v2.3.3335: a quest that pays no XP has nothing to choose (tut_1 --
          the owner: "Makes no sense to have to choose xp in something you've
          never used yet"), so it is the AUTO REWARD: his last line's "Claim
@@ -504,6 +504,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const _noPanel = await P.page.evaluate(() => !document.querySelector('.bt-quest-turnin, [data-xp-skill]'));
       rec.ok(`${step.id}: ...with no claim window and no skill to choose`, _noPanel,
         await cardText().then((t) => t.slice(0, 200)));
+      /* v2.3.3542: the first quest's 300 Melee XP is a first level-up at the
+         hand-in, with the points it brings (the worker's own echo) */
+      if (QUEST_REWARDS[step.id].xpTo) {
+        const sk = QUEST_REWARDS[step.id].xpTo;
+        const all = await H.waitFor(P, (S) => {
+          const p3 = S.rpg && S.rpg.prog3;
+          if (!p3 || !p3.sk) return null;
+          const out = { shared: p3.shared };
+          for (const k of ['sword', 'bow', 'staff']) out[k] = p3.sk[k] ? { level: p3.sk[k].level, lane: p3.poolBy ? p3.poolBy[k] : null } : null;
+          return out;
+        }, (v) => v && v[sk] && v[sk].level >= 2, { timeout: 12000, label: 'the first level-up' }).catch(() => null);
+        const lv = all && all[sk];
+        const skName = { sword: 'Melee', bow: 'Bow', staff: 'Magic' }[sk] || sk;
+        rec.ok(`${step.id}: ...and its ${QUEST_REWARDS[step.id].xp} XP into ${skName} is a first level-up at the hand-in (${skName} ${lv && lv.level}, ${lv && lv.lane} points to spend there)`,
+          !!lv && lv.level === 2 && lv.lane >= 3, lv);
+      }
     } else {
       const landedBack = await H.advanceNpcDialogue(P);
       rec.ok(`${step.id}: ...and his lines lead to the claim panel`,

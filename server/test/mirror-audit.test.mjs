@@ -338,12 +338,13 @@ const room = Object.create(GameRoom.prototype);
   for (const [k, sv] of Object.entries(SRV.QUEST_REWARDS)) {
     const c = QUEST_CHAINS[k];
     if (!c) { bad.push({ quest: k, missing: 'client' }); continue; }
-    if (c.reward.gold !== sv.gold || c.reward.xp !== sv.xp || (c.next || null) !== (sv.next || null)) {
-      bad.push({ quest: k, server: { gold: sv.gold, xp: sv.xp, next: sv.next }, client: { ...c.reward, next: c.next } });
+    /* v2.3.3542: + `xpTo`, the skill a quest pays its XP into (tut_1's Melee) */
+    if (c.reward.gold !== sv.gold || c.reward.xp !== sv.xp || (c.next || null) !== (sv.next || null) || (c.xpTo || null) !== (sv.xpTo || null)) {
+      bad.push({ quest: k, server: { gold: sv.gold, xp: sv.xp, next: sv.next, xpTo: sv.xpTo }, client: { ...c.reward, next: c.next, xpTo: c.xpTo } });
     }
   }
   for (const k of Object.keys(QUEST_CHAINS)) if (!SRV.QUEST_REWARDS[k]) bad.push({ quest: k, missing: 'server' });
-  check('QUEST_REWARDS <-> QUEST_CHAINS gold/xp/next mirror, both directions', bad.length === 0, bad);
+  check('QUEST_REWARDS <-> QUEST_CHAINS gold/xp/next/xpTo mirror, both directions', bad.length === 0, bad);
 }
 
 // ── 5a. v2.3.3525: THE TOUR'S ORDER -- `after` (a giver's line waits for

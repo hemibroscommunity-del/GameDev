@@ -151,8 +151,11 @@ export function turnInQuest(S, questPanel, deps, xpCat, opts) {
        hand-in names Melee, the one skill a player has used by then.  A
        worker whose quest pays no XP ignores it (_needsCat is false); a
        quest that pays XP still never goes without the player's own choice. */
+    /* v2.3.3542: a quest that names its skill sends it (the worker pays it
+       there in any case) */
     var _sendCat = typeof xpCat === 'string' ? xpCat
-      : (questPanel.quest.reward && questPanel.quest.reward.xp > 0 ? undefined : 'sword');
+      : (typeof questPanel.quest.xpTo === 'string' ? questPanel.quest.xpTo
+        : (questPanel.quest.reward && questPanel.quest.reward.xp > 0 ? undefined : 'sword'));
     if (_Sqt.channel) {
       try {
         _Sqt.channel.send({ type: 'quest_turn_in', payload: {
@@ -201,7 +204,7 @@ export function turnInQuest(S, questPanel, deps, xpCat, opts) {
         target: 'xpBar',
         text: '+' + questPanel.quest.reward.xp + ' XP',
         color: '#60a5fa',
-        cat: (typeof xpCat === 'string' && xpCat) ? xpCat : undefined,
+        cat: (typeof xpCat === 'string' && xpCat) ? xpCat : (typeof questPanel.quest.xpTo === 'string' ? questPanel.quest.xpTo : undefined),   /* v2.3.3542 */
       });
     } catch (e) { /* feedback only — never break a turn-in */ }
   }

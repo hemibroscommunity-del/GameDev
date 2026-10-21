@@ -40,6 +40,12 @@ Cold Reception pays 25 gold and no XP (`server/src/data.js` and
 pays at once and the bow and staff fly from the banner. The claim window and
 its chips come from the second quest on, which still pays XP.
 
+**v2.3.3542: and it still pays a first level-up** (docs/specs/first-levelup.md).
+Its 300 XP goes into MELEE, the one weapon a player has used by then, and the
+quest NAMES it (`xpTo: 'sword'`), so there is still nothing to choose: the
+worker pays it there whatever the page sends, QuestPanel shows no chooser, and
+*Claim reward* is still the auto reward. Melee reaches level 2, never 3.
+
 A worker from before this change still pays tut_1 15 XP and refuses a hand-in
 that names no skill. So a hand-in with nothing chosen names Melee
 (`turnInQuest`), the one skill a player has used by then; a worker whose quest

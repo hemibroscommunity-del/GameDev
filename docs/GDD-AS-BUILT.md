@@ -212,7 +212,7 @@ Nine tabs in a 3×3 grid, opening on Skin: **Hair** (none + 8 styles, 14 colours
 |---|---|
 | Skills | **Melee**, **Bow**, **Magic**, each 1–100, trained only by use (0.2 XP per point of damage dealt with that weapon; a special trains the weapon that fired it). |
 | Character level | the three added together (3 to 300). A new character is level 3. |
-| Quest XP | paid flat into a chosen skill (the first quest pays none). All quest XP was halved with the damage rate in v2.3.3054. |
+| Quest XP | paid flat into a chosen skill (the first quest's 300 go straight to Melee, which it names, so nothing is chosen; v2.3.3542). All quest XP was halved with the damage rate in v2.3.3054. |
 | XP fade | a monster 5+ levels below the trained skill pays a third, then 15% less per level; full XP down to 4 below. Its name plate turns grey. |
 | XP curve | to go from level L to L+1: ceil(280 × 1.16^(L−1)): 280 at 1, 1,065 at 10, 4,698 at 20, 20,723 at 30, 403,274 at 50, ~581 million at 99. Cumulative to 100 is ~4.2 billion; at 0.2 XP per damage point this is a lifetime curve by construction. |
 | At a level-up | HP, stamina and mana fully restored; 3 **lane points** stamped to the skill that earned them and 3 **shared points**. |
@@ -263,7 +263,7 @@ Regen per ~0.67 s tick: HP 10% of max in today's town, the farm and the old hub;
 
 ### 3.5 A fresh start
 
-50 coins; Melee 1, Bow 1, Magic 1; 250 HP; no weapons, armour, shield or amulet; all ten life skills at 1; no pet; 1% crit. An unarmed character cannot leave the safe commons (a gate that moves with you, 2,937 px around the Town Hall, "Speak to Mayor Bro first — he'll arm you") until Mayor Bro's first quest is accepted, which puts a Copper Great Sword and a Pine Shield in the bag; its hand-in pays 25 gold, a Pine Bow and a Pine Staff. The tools for gathering come from the tour's other givers.
+50 coins; Melee 1, Bow 1, Magic 1; 250 HP; no weapons, armour, shield or amulet; all ten life skills at 1; no pet; 1% crit. An unarmed character cannot leave the safe commons (a gate that moves with you, 2,937 px around the Town Hall, "Speak to Mayor Bro first — he'll arm you") until Mayor Bro's first quest is accepted, which puts a Copper Great Sword and a Pine Shield in the bag; its hand-in pays 25 gold, a Pine Bow, a Pine Staff and 300 Melee XP (v2.3.3542: Melee 2, a first level-up). The tools for gathering come from the tour's other givers.
 
 ### 3.6 Death (the ordinary rule)
 
@@ -358,7 +358,7 @@ Chat opens by tapping your own bro; the emote picker is the chat box's smiley; t
 2. **The creator** (Part 3.2): the bro on a pedestal between braziers, BRO NAME with a reroll, Randomize, Reset, ENTER BRO TOWN (always pressable, says why not).
 3. **One loading screen**: the owner's "washed ashore" beach clip with the loading bar painted into the film; the server, the animations and your arrival waited for behind it; the Wheel's monster looks load as you walk.
 4. **Arrival** on the Town Hall's stairs, unarmed, held inside the commons; the WELCOME plate ("Find Mayor Bro — he wants a word. Follow the gold road on your map.") with one button, Skip tutorial; the band folded with a coach ring on OPEN; the gold road to the Mayor.
-5. **The first quest**: the Mayor's exploding slimes; on accept a sword and shield land in the bag and their tiles flash until worn; the **quest coach** rings each control as the quest gives you its thing, one card at a time beside the control, never blocking (eleven lessons: open the dashboard, move, equip, the dashboard after the hand-in, equip everything, cycle weapons, block a ranged attack, attack, the special as "a quick swipe", tap yourself to chat, save your Login Key); the hand-in pays 25 gold, the bow and staff (no XP choice), unlocks the free spin, and six townsfolk offer their quests at once.
+5. **The first quest**: the Mayor's exploding slimes; on accept a sword and shield land in the bag and their tiles flash until worn; the **quest coach** rings each control as the quest gives you its thing, one card at a time beside the control, never blocking (eleven lessons: open the dashboard, move, equip, the dashboard after the hand-in, equip everything, cycle weapons, block a ranged attack, attack, the special as "a quick swipe", tap yourself to chat, save your Login Key); the hand-in pays 25 gold, the bow and staff, and 300 XP into Melee, a first level-up with points to spend (no XP choice: the quest names Melee, v2.3.3542), unlocks the free spin, and six townsfolk offer their quests at once.
 6. **Pacing**: the welcome first and alone; a coach card never over a plate, 2.6 s quiet between cards, at least 20 s between tutorial pop-ups; a returning player (a tutorial quest on record, or level above 3) is never welcomed or coached again; a manual controls tour lives in Settings.
 
 ### 4.7 Not built, open
@@ -940,7 +940,7 @@ The design document that sizes the free spin says "an hour of fighting earns ~1�
 
 | Quest | Giver | Objective | Pays | On accept / at the hand-in | After |
 |---|---|---|---|---|---|
-| Into the Blue | Mayor Bro | bring 4 Slime Remains from the Verdant Wilds | 25 g | Copper Great Sword + Pine Shield / Pine Bow + Pine Staff | — (the only first quest) |
+| Into the Blue | Mayor Bro | bring 4 Slime Remains from the Verdant Wilds | 25 g, 300 Melee XP (v2.3.3542) | Copper Great Sword + Pine Shield / Pine Bow + Pine Staff | — (the only first quest) |
 | Carrot Comeback | Farmer Bro | plant and water 3 carrots on your farm | 40 g | 3 carrot seeds + 3 compost | tut_1 |
 | Heavy Metal | Blacksmith Bro | bring 5 Copper Ore | 20 g | the pickaxe / 5 Copper Bars | tut_1 |
 | Some Assembly Required | Blacksmith Bro | forge one thing at his anvil | 60 g | — | smith_1 |

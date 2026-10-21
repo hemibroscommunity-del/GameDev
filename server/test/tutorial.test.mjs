@@ -26,6 +26,7 @@
  */
 import { GameRoom } from '../src/index.js';
 import { QUEST_REWARDS, QUEST_TOUR, BLACKSMITH_TIERS, WOODWORKING_TIERS, ZONES } from '../src/data.js';   /* v2.3.3525: + the tour's suggested order */
+import { prog3XpRequired } from '../src/prog3.js';   /* v2.3.3542: the first quest's XP counted in total */
 
 /* Can each named zone actually yield the remnant its step asks for?  Resolved
    from the LIVE spawn table + the same variant map the drop path uses, so a
@@ -529,19 +530,28 @@ const sess = { id: 'bp_t' };
 
   /* v2.3.3335 (owner: "Makes no sense to have to choose xp in something
      you've never used yet.  Just remove that little xp bonus"): the FIRST
-     quest pays no XP, so its hand-in needs no skill -- the game sends none
-     (QuestPanel's auto reward) -- and pays its gold and nothing to any
-     skill.  The checks below that need an XP-paying quest use tut_2. */
-  const _skSum = () => ['sword', 'bow', 'staff'].map((k) => ps.prog3.sk[k].level + ps.prog3.sk[k].xp).join(',');
-  check('the first quest pays no XP', QUEST_REWARDS.tut_1.xp === 0, QUEST_REWARDS.tut_1.xp);
+     quest's hand-in needs no skill named -- the game sends none (QuestPanel's
+     auto reward).  v2.3.3542: and it pays a first level-up all the same, its
+     XP NAMED (`xpTo`: Melee, the one weapon used by then), so there is still
+     nothing to choose: 300 XP, level 2 at 280, never level 3.  The checks
+     below that need an XP-paying quest with a choice use tut_2. */
+  const _sk = (k) => ps.prog3.sk[k];
+  check('the first quest pays a first level-up\'s XP into Melee, named, so nothing to choose (300 into sword; level 2 needs 280, level 3 605)',
+    QUEST_REWARDS.tut_1.xp === 300 && QUEST_REWARDS.tut_1.xpTo === 'sword', QUEST_REWARDS.tut_1);
   ps.inventory = { 'slime-remnants': 4 };   /* v2.3.3525: the slimes first */
   await room._handleQuestAccept(sess, { questId: 'tut_1' });
-  const _skBefore1 = _skSum();
-  await room._handleQuestTurnIn(sess, { questId: 'tut_1' });
-  check('...so its hand-in needs no skill named, and completes',
+  const _lv0 = { sword: _sk('sword').level, bow: _sk('bow').level, staff: _sk('staff').level, xp: _sk('sword').xp };
+  /* a hand-in naming NO skill (the auto reward), or the wrong one: Melee's all the same */
+  await room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: 'staff' });
+  check('...so its hand-in completes whatever skill the page names, and pays its gold',
     ps._quests.tut_1 === 'turnedIn' && ps.coins === QUEST_REWARDS.tut_1.gold && !ps.inventory['slime-remnants'],
     { st: ps._quests.tut_1, coins: ps.coins, inv: ps.inventory });
-  check('...and puts no XP into any skill', _skSum() === _skBefore1, { before: _skBefore1, after: _skSum() });
+  /* all 300 of it in Melee (counted in total XP: this suite's player trained
+     the sword before), the others untouched */
+  const _cum = (lv, xp) => { let t = xp; for (let l = 1; l < lv; l++) t += prog3XpRequired(l); return t; };
+  check('...and all 300 of its XP lands in Melee, the others untouched',
+    _cum(_sk('sword').level, _sk('sword').xp) - _cum(_lv0.sword, _lv0.xp) === 300 && _sk('bow').level === _lv0.bow && _sk('staff').level === _lv0.staff,
+    { before: _lv0, after: { sword: _sk('sword'), bow: _sk('bow').level, staff: _sk('staff').level } });
 
   /* v2.3.3525: tut_2 is the tour's finale -- the Mayor's next quest, once
      the whole town is done (its `after` lists every giver's last step) --

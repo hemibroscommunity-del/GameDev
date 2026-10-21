@@ -135,8 +135,12 @@ const listOf = (af) => (Array.isArray(af) ? af : af ? [af] : []);
     const t = QUEST_REWARDS[q].objective.type;
     return t === 'collect' || QUEST_COUNTED.indexOf(t) >= 0;
   }), TOUR.map((q) => QUEST_REWARDS[q].objective.type));
-  check('no step of the tour but the Mayor\'s snowmen pays combat XP (the trades pay their own XP)', TOUR.filter((q) => q !== 'tut_2').every((q) => QUEST_REWARDS[q].xp === 0) && QUEST_REWARDS.tut_2.xp > 0,
-    TOUR.map((q) => [q, QUEST_REWARDS[q].xp]));
+  /* v2.3.3542: and the first quest's Melee XP, a first level-up at the
+     hand-in -- named (`xpTo`), so still no skill to choose */
+  check('no step of the tour but the Mayor\'s snowmen and his first quest\'s fixed Melee XP pays combat XP (the trades pay their own XP)',
+    TOUR.filter((q) => q !== 'tut_2' && q !== 'tut_1').every((q) => QUEST_REWARDS[q].xp === 0) && QUEST_REWARDS.tut_2.xp > 0
+      && QUEST_REWARDS.tut_1.xp > 0 && QUEST_REWARDS.tut_1.xpTo === 'sword',
+    TOUR.map((q) => [q, QUEST_REWARDS[q].xp, QUEST_REWARDS[q].xpTo || null]));
   check('life_1 and life_2 are retired', QUEST_RETIRED.indexOf('life_1') >= 0 && QUEST_RETIRED.indexOf('life_2') >= 0, QUEST_RETIRED);
   const tools = [['smith_1', 'mining_pickaxe'], ['wood_1', 'woodcutting_axe'], ['fish_1', 'fishing_pole']];
   check('each tool comes from the man whose trade it is, on accept, never a second', tools.every(([q, k]) =>
