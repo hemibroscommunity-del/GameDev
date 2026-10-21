@@ -951,7 +951,7 @@ The design document that sizes the free spin says "an hour of fighting earns ~1�
 | Race Day | Lil Bro | beat Lil Bro round the square | 50 g | — | tut_1 |
 | Box Traps | Beastmaster Bro | make 3 box traps | 40 g | 3 pine logs / 2 traps | tut_1 |
 | Set and Spring | Beastmaster Bro | spring 3 traps | 100 g | 5 traps | beast_1 |
-| Cold Reception | Mayor Bro | bring 4 Snowman Remains from Frost Ridge (the finale: the burrowing snowmen) | 200 g, 50 XP | — | the whole town's lines |
+| Cold Reception | Mayor Bro | bring 4 Snowman Remains from Frost Ridge (the finale: four ordinary snowmen and their burrow; there is no snowman boss) | 200 g, 50 XP | — | the whole town's lines |
 | Bad Wind | Mayor Bro | 5 Skeleton Remains from the Wind Dunes | 150 g, 53 XP | — | tut_2 |
 | Bro Ascendant | Mayor Bro | 6 Fire Goblin Remains from the Flame Fields | 400 g, 105 XP | Copper Greaves | tut_3 |
 | A Trapper's Eye | Beastmaster Bro | reach Trapping 6 | 250 g | 10 traps | tut_2 |
@@ -1124,7 +1124,7 @@ The owner has tried, seen and turned down many obvious suggestions. Each of the 
 
 **Capacity, measured** with bots on a copy of the room: smooth (33+ ticks a second) to about 145 players; at 120, 39 ticks a second with the thread about 80% busy; the room's memory under 10 MB after GC with bots, 80 MB with 1,000 played characters (231 MB with every stash at its cap, over Cloudflare's 128 MB; fixes not built). About four fifths of the room's work at 150 players is per-phone (taking messages in, building and compressing each phone's tick); the world itself is small. The plan past 1,000 (not built) splits by **connections**, front doors doing per-phone work in front of one world, about $245 a month at 1,000 concurrent.
 
-**The account is on Cloudflare's free plan.** Durable Objects have account-wide daily limits (100,000 requests, 13,000 GB-s awake, 100,000 rows written, reset at 00:00 UTC) and refuse work past them; a measured test showed socket messages count 20 to 1, so the account allows roughly **20–55 player-hours of play a day** (the busiest playtest so far was ~4–5% of a day). The $5-a-month paid plan "comes before anything else" and is the owner's call. The game is tuned to write little: standing and walking write nothing, a kill or a harvest writes one row, and a test on every PR holds those lines.
+**The account is on Cloudflare's free plan.** Durable Objects have account-wide daily limits (100,000 requests, 13,000 GB-s awake, 100,000 rows written, reset at 00:00 UTC) and refuse work past them; a measured test showed socket messages count 20 to 1, so the account allows roughly **20–55 player-hours of play a day** (the busiest playtest so far was ~4–5% of a day). The owner has decided the free plan is enough for the review period (2026-10-21: "The games free tier will work just fine for the review period"): reviewers play 20–30 minutes each, so a day's allowance covers roughly 40–110 half-hour sessions, and the busiest playtest used about 4–5% of it. The game is tuned to write little: standing and walking write nothing, a kill or a harvest writes one row, and a test on every PR holds those lines.
 
 ### 12.2 Fairness and anti-cheat
 
@@ -1214,7 +1214,7 @@ These are not the evaluator's findings; they are the questions the owner, the sp
 10. **The farm's ten uncooked crops** and the three magic herbs' land pairing: the owner's next decision is "what each one does" (the suggestion on record: everyday meals and one land's-status guard per magic crop).
 11. **Pets as a feature**: a pet follows, vacuums loot, copies poses and wards one element; the plan's phase 5 (a helping bite, eggs, featured days) waits on the owner; the catch rate is about 1% at best by design, with no mercy rule.
 12. **Cooked-or-burnt and gesture fingerprints are the phone's word**, by policy ("flag, never act"); whether to act on evidence, to make new accounts earn the right to move value, or to judge hours online per device are listed policy items.
-13. **The room cap of 120** and the free Cloudflare plan's ~20–55 player-hours a day are the live capacity; the paid plan is "the owner's call", and the split past 1,000 is planned, not built.
+13. **The room cap of 120** and the free Cloudflare plan's ~20–55 player-hours a day are the live capacity; the owner has decided the free plan is enough for the review period, and the split past 1,000 is planned, not built.
 14. **The Hotel is shut** because its rest would be client-only; a server-paid rest (and what rest should do when pools already refill at 10% a tick in town) is undecided.
 15. **The second stage's monsters are recolours**; the codex reserves Winged and Insectoid types; the owner has said new kinds are wanted over more recolours but has not chosen them.
 16. **Music and ambience for four and five lands**, voices for six monster kinds, keepers for nine buildings and the three dungeon mouths' pictures are the art and sound wishlist, in the owner's order.
