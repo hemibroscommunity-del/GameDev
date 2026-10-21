@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d562b5f845345cb2e9dc94d5cc5ad81cfc8ef6a4",
+  "tree": "1fb519d6fc06bfd049754bb1aaa0d5aa92df5836",
+  "committedAt": "2026-10-21T06:13:33-07:00",
+  "subject": "What you wear asks your level, not Defense points (v2.3.3544) (#1061)",
+  "files": 6203,
+  "bytes": 713528816,
+  "listingSha256": "05c36f7c793f8d1c3370a0095b2f795fc782dd1ac6f10435b0b2020164ea7e77",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
