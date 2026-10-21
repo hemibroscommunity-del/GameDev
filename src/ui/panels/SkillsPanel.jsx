@@ -1,6 +1,7 @@
 import React from 'react';
 import { LIFE_SKILL_XP, QUEST_CHAINS, QUEST_STATUS, ZONE_RESOURCES, createDefaultCompStats, questObjectiveDone } from '@/data/index.js';
 import { _slicedToArray } from '@/lib/babelHelpers.js';
+import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.3527: your AP opens the Achievements page */
 import { GEM_ELEMENTS, gemCount } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
 
 /* ═══ SkillsPanel — life-skill levels / resources / quest progress ═══ */
@@ -122,6 +123,16 @@ export function SkillsPanel(props) {
     stateRef = props.stateRef,
     setShowSkills = props.setShowSkills;
   var _rpgState$lifeSkills46;
+  /* v2.3.3527: against a worker that grants achievements (caps.achievements,
+     server achievements.js) the AP number below is a door to the
+     Achievements page, under More where its tile is -- this window shuts
+     first, so the page is not left under it */
+  var _achvOn = !!(stateRef && stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.achievements);
+  var _openAchv = function _openAchv(e) {
+    if (e) e.stopPropagation();
+    setShowSkills(false);
+    try { dashboardPanelBus.open('more'); dashboardPanelBus.push('achievements'); } catch (_e) { /* no dashboard */ }
+  };
   return React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
@@ -412,7 +423,31 @@ export function SkillsPanel(props) {
     }
   }, /*#__PURE__*/React.createElement("span", {
     style: LS_HEADER
-  }, "Achievement Points"), /*#__PURE__*/React.createElement("span", {
+  }, "Achievement Points"), _achvOn ? /*#__PURE__*/React.createElement("button", {
+    /* v2.3.3527: the number opens the Achievements page (above): a 44 px
+       target, the same 16/700 number, a chevron saying it goes somewhere */
+    type: 'button',
+    'data-skills-ap': '1',
+    'aria-label': 'Achievement points: ' + (rpgState.achievementPoints || 0) + '. Open your achievements',
+    onClick: _openAchv,
+    style: {
+      minHeight: 44,
+      margin: '-8px -6px -8px 0',
+      padding: '0 6px',
+      background: 'transparent',
+      border: 'none',
+      cursor: 'pointer',
+      touchAction: 'manipulation',
+      fontFamily: 'inherit',
+      fontSize: 16,
+      fontWeight: 700,
+      fontVariantNumeric: 'tabular-nums',
+      color: 'var(--ui-text)'
+    }
+  }, rpgState.achievementPoints || 0, /*#__PURE__*/React.createElement("span", {
+    'aria-hidden': 'true',
+    style: { marginLeft: 6, color: 'var(--ui-text-muted)' }
+  }, "›")) : /*#__PURE__*/React.createElement("span", {
     /* v2.3.1235: batch-2 rollout — the section's one key number moves
        onto the locked 16-18/700 tabular rung (was 14). */
     style: {

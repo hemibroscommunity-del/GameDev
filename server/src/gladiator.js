@@ -615,17 +615,19 @@ export const arenaMethods = {
     const t = this._arena;
     if (!t || t.champion) return;
     const { prize, topUp } = this._arenaPrize(t.players.length, Date.now());
-    /* v2.3.3488: ...the FIRST time a character wins, never again -- the
-       owner: "I don't want anyone exploiting the achievement points from
-       it" (two accounts could take turns crowning each other).  A champion
-       already marked (ps.apOnce.arena, its own record aponce:<pid>) is
-       crowned with the gold alone, and
-       the credit carries `apOnce` so inbox.js pays the points only to a
-       character not yet marked, and marks it, in the gold's own write --
-       which also settles a prize that waits in the mail. */
-    const champPs = this.playerState[champion.playerId];
-    const hadAp = !!(champPs && (champPs._apOnceFailed || (champPs.apOnce && champPs.apOnce.arena)));   /* marks unread: none promised */
-    const ap = (this._arenaApOff() || hadAp) ? 0 : ARENA.CHAMPION_AP;   /* v2.3.3481 */
+    /* v2.3.3481: the champion's 500 AP.  v2.3.3488 (#1026): on a character's
+       FIRST win only, under a mark of its own (`aponce:<pid>`, inbox.js
+       AP_ONCE) -- the owner: "I don't want anyone exploiting the achievement
+       points from it" (two accounts could take turns crowning each other).
+       v2.3.3527: ONCE A CHARACTER as the GLADIATOR ACHIEVEMENT (achievements.js
+       decision 2), sent by the mail below; a later crown pays its gold and
+       counts on the row.  The achievement honours v2.3.3488's mark and sets
+       it when it pays (achievements.js AP_ONCE_OF), so a champion the mark's
+       road paid is never paid again.  The champion box says the points only
+       when this crown pays them (`_achvWouldPay`: 0 if earned or marked
+       before; null -- not known yet, the champion away -- says nothing). */
+    const apOn = !this._arenaApOff();
+    const ap = apOn && this._achvWouldPay ? (this._achvWouldPay(champion.playerId, 'gladiator') || 0) : 0;
     t.champion = { playerId: champion.playerId, playerName: champion.playerName, prize };
     if (ap) t.champion.ap = ap;
     t.status = 'complete';
@@ -640,9 +642,11 @@ export const arenaMethods = {
     (async () => {
       try {
         if (house) await this.state.storage.put('arena_house', house);
-        /* v2.3.3481: the champion's AP ride the gold's credit -- one stamp,
-           one write, the mail's too when the champion is away */
-        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: ap ? { amount: prize, ap, apOnce: 'arena' } : { amount: prize }, note: 'Gladiator Arena champion' });   /* v2.3.3488: + apOnce */
+        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: { amount: prize }, note: 'Gladiator Arena champion' });
+        /* v2.3.3527: and the Gladiator achievement, its own credit (inbox.js
+           `achv`): it stays queued until the champion's achievements record is
+           loaded, while the gold above never waits on it */
+        if (apOn && !this._achvOff()) await this._creditPlayer(champion.playerId, { opId: 'arenaachv:' + tid, source: 'arena', kind: 'achv', payload: { id: 'gladiator' }, note: 'Gladiator Arena champion' });
         for (const pid of entrants) await this.state.storage.delete('arena_entry:' + tid + ':' + pid);
       } catch (e) { /* sweep repairs */ }
     })();

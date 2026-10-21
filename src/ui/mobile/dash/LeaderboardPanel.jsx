@@ -39,6 +39,24 @@ const CATS = [
   { id: 'trapping',     label: 'Trapping' },
 ];
 
+/* ═══ v2.3.3527: AP IS BACK, AND IT IS THE WORKER'S ═══
+   AP left this row (above) because it was the phone's own claim: the
+   board's `ap` came from the inspect-card blob a page sent in `track`.
+   Since achievements the worker writes its own total over that blob at the
+   join and on every track (server achievements.js _achvStamp), so the
+   Leaderboard's `ap` column (leaderboard.js getTop, the 'ap' key) is the
+   worker's number -- against a worker that says so (caps.achievements),
+   after Kills.  Its rows carry `ap`, not `value`; a 0 is left off, as the
+   per-skill boards leave off a skill nobody trained. */
+const AP_CAT = { id: 'ap', label: 'AP' };
+const catsFor = (S) => (S && S._serverCaps && S._serverCaps.achievements
+  ? [...CATS.slice(0, 5), AP_CAT, ...CATS.slice(5)] : CATS);
+const rowValue = (cat, r) => {
+  if (cat === 'ap') { const v = Math.floor(Number(r.ap) || 0); return v > 0 ? v.toLocaleString('en-US') + ' AP' : '-'; }
+  const v = r.value ?? r.score;
+  return v == null ? '-' : cat === 'kills' ? v : 'Lv ' + v;
+};
+
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — category
    buttons become spec chips (32px / pill radius; selected = brass-fill
    #3B3427 + brass label, NOT solid brass: brass is an accent, never a
@@ -109,13 +127,14 @@ export const LeaderboardPanel = () => {
 
   const S = getState();
   const meId = S && S.myId;
-  const board = boards[cat] || [];
+  /* v2.3.3527: the AP board leaves off everyone at 0 (above) */
+  const board = (boards[cat] || []).filter((r) => cat !== 'ap' || Math.floor(Number(r && r.ap) || 0) > 0);
 
   return (
     <div style={panelStyle}>
       <div style={{ display: 'flex', gap: 6, marginBottom: 6, overflowX: 'auto', padding: '2px 0' }}>
-        {CATS.map(c => (
-          <button key={c.id} onClick={() => setCat(c.id)} style={chipHit}>
+        {catsFor(S).map(c => (
+          <button key={c.id} data-lb-cat={c.id} onClick={() => setCat(c.id)} style={chipHit}>
             <span style={chip(c.id === cat)}>{c.label}</span>
           </button>
         ))}
@@ -128,7 +147,7 @@ export const LeaderboardPanel = () => {
             style={{ width: 40, height: 40, objectFit: 'contain', opacity: 0.4, margin: '0 auto' /* v2.3.1233: img{display:block} in game.css defeats textAlign centering */ }}
             onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('🏆')); }} />
           <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2, marginTop: 6 }}>
-            {loading ? 'Loading…' : 'Nobody has trained this yet.'}
+            {loading ? 'Loading…' : cat === 'ap' ? 'Nobody has achievement points yet.' : 'Nobody has trained this yet.'}
           </div>
         </div>
       ) : board.slice(0, 30).map((r, i) => (
@@ -160,8 +179,9 @@ export const LeaderboardPanel = () => {
               the three combat levels added up, the name plate's level; each
               other one that skill's), so it reads "Lv 3"; Kills stays a
               count.  No number, no "Lv". */}
-          <span style={{ fontSize: 16, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>
-            {(() => { const v = r.value ?? r.score; return v == null ? '-' : cat === 'kills' ? v : 'Lv ' + v; })()}
+          {/* v2.3.3527: the AP board reads the row's `ap` (rowValue) */}
+          <span data-lb-value="" style={{ fontSize: 16, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>
+            {rowValue(cat, r)}
           </span>
         </div>
       ))}

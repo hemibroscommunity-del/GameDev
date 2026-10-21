@@ -239,9 +239,14 @@ const FAST = 110;
     const w1 = state.writes.length;
     kill(ms[1]);
     const second = mine(state, 'cg_kill', w1);
+    /* v2.3.3527: the FIRST kill a character ever makes is First Blood
+       (achievements.js), one row of its own, once a character -- so the first
+       kill may write three (codex, achv, rpg); the next writes no achv row */
     check(`5. a kill writes your record once (the first kill ${first.length} rows: ${Object.entries(byPrefix(first)).map((e) => e.join(' ')).join(', ')}; the next ${second.length})`,
-      first.filter((k) => k.startsWith('rpg:')).length === 1 && first.length <= 2
-      && second.filter((k) => k.startsWith('rpg:')).length === 1 && second.length <= 2, { first, second });
+      first.filter((k) => k.startsWith('rpg:')).length === 1 && first.length <= 3
+      && first.filter((k) => !k.startsWith('rpg:') && !k.startsWith('codex:') && !k.startsWith('achv:')).length === 0
+      && second.filter((k) => k.startsWith('rpg:')).length === 1 && second.length <= 2
+      && second.filter((k) => k.startsWith('achv:')).length === 0, { first, second });
     /* v2.3.3305: ...and so does a melee kill that HEALS you.  The monster
        hurt you, so the kill's lifesteal refunds it: the heal used to run
        after the recipients loop and save the whole record a second time
@@ -394,6 +399,23 @@ const FAST = 110;
     rows <= 3 * PACE.T2WPN.BURST, byPrefix(mine(state, 'cg_ta', w0)));
   const inStash = (psA.weaponStash || []).length, inTrade = staged().length;
   check('9b. ...and the weapon is in exactly one place, the stash or the window', inStash + inTrade === 1, { inStash, inTrade });
+}
+{
+  /* v2.3.3527: the title on your card (achievements.js _achvTitle) -- one
+     row a change, refused past its burst, never held */
+  const { room, state } = await makeRoom();
+  const p = await join(room, 'cg_title');
+  const ps = room.playerState.cg_title;
+  room._achvGrant('cg_title', ps, 'first_blood');
+  room._achvGrant('cg_title', ps, 'combat_10');
+  const w0 = state.writes.length;
+  for (let i = 0; i < 200; i++) {
+    NOW += 9;
+    await send(room, p, { type: 'achv_title', payload: { id: i % 2 ? 'first_blood' : 'combat_10' } });
+  }
+  const rows = mine(state, 'cg_title', w0).length;
+  check(`9c. a title changed 200 times in 2 s writes ${rows} rows (${Object.entries(byPrefix(mine(state, 'cg_title', w0))).map((e) => e.join(' ')).join(', ') || 'none'}), at most PACE.ACHVT's burst (${PACE.ACHVT.BURST})`,
+    rows >= 1 && rows <= PACE.ACHVT.BURST, byPrefix(mine(state, 'cg_title', w0)));
 }
 
 /* ── 10. a gem into a weapon (v2.3.3513, weapongem.js) ──────────────────── */

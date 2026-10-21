@@ -3637,6 +3637,48 @@ remnant to migrate server-side, not a mode to preserve.
       suites, mirror-audit §5a, test-world-core, `mp-questline` (the whole
       tour, CI's "playable", the six pins over heads and on both maps),
       `mp-race`: docs/specs/demo-quest-line.md.
+  - Since v2.3.3527 ACHIEVEMENTS -- the owner: "Achievement points are
+    something I'd like in the game. You get it by completing the game. Some of
+    them are through super rare achievements. Although not as rare, an arena
+    winner should be included in that", then "Go recommended on everything":
+    - 23, decided by the WORKER where the game already settles each fact
+      (server/src/achievements.js: a kill, a combat level, a Wheel dungeon, a
+      catch, an order, a duel won by the kill, a No man's land kill, every story
+      chain's last quest, gear off a kill or a forge, H5, the spin's house
+      limit, the arena's crown by the mail): common 10 AP, rare 100, the arena
+      500, super-rare 1,000 (7,470 in all), each paid ONCE a character (a
+      counting row counts again: a second crown pays its gold, never 500 AP
+      again -- v2.3.3481 paid it on every crown); v2.3.3488's arena mark
+      (`aponce:<pid>`, #1026) stays the one word on whether the arena's points
+      were paid: the achievement honours and sets it (`AP_ONCE_OF`), and a
+      champion it paid gets Gladiator quietly at the join;
+    - the record `achv:<pid>` (`got` the stamp, written in the same synchronous
+      run as the save carrying its points; a failed read or a newer `v` LOCKS
+      it), loaded before the mail drains; `_achvSweep` grants quietly at the
+      join what you did before (a kill, a level, the story, the codex, pets);
+    - the AP on a card, in the lists and on the leaderboard is the worker's
+      (`_achvStamp` over the phone's `rpgData.ap`), and so are the card's
+      TITLE (one you have, `achv_title`, paced by PACE.ACHVT) and RAREST
+      (ACHV.RARITY): the placeholders "Fishing Master" and "Ancient Ember
+      Crown" are gone;
+    - the phone: More's Journey tile is Achievements
+      (src/ui/mobile/dash/AchievementsPanel.jsx: since the owner's ChatGPT
+      review its AP and title on the page's header row -- PANELS' `Head` --
+      and 48 px one-line rows a tap opens, "Use as title" on the opened row),
+      a banner and a sound for rare and up, a chat line for common
+      (src/game/achievements.js, ui/panels/AchievementBanner.jsx); the dormant
+      BT_ACHIEVEMENTS checker and the local "RARE DROP +AP" popup are gone;
+    - EACH ITS OWN BADGE, the owner's two painted sheets (they waited for them
+      over ChatGPT's code-drawn stand-ins): `tools/ui/cut-achievement-badges.py`
+      (sources assets/icons-source/achievements-2026-10-19/) writes
+      public/icons/achievements/<id>.webp, 150 px (3x the card's 50 CSS px
+      rarest box), and the page's medal (More's tile); `achvBadgeSrc`,
+      `ACHV_BADGE_V` in src/data/achievements.js; every file's SHA-256 in
+      tools/ui/achievement-badges.sha256 (achievements-client §9);
+    - `caps.achievements`, kill switch `achievements: false`, lever
+      `/dev/achv`; `achievements` suite, `achievements-client`, mirror-audit,
+      cost-guard §5 (a first kill writes one more row) and §9c,
+      `mp-achievements`, `mp-achvtitle`: docs/specs/achievements.md.
   - Since v2.3.3209 THE MONSTER CODEX -- the owner: "After you kill a monster
     you learn more about it, what it does, where it's from, elemental type,
     special attack, (make up a backstory) etc.", "Also include drop tables

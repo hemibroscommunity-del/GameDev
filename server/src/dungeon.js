@@ -778,6 +778,9 @@ export const dungeonMethods = {
       // and payout because there is no roll.
       ps.coins = (ps.coins || 0) + gold;
       this._addCombatXp(ps, xp);
+      /* v2.3.3527: Into the Dark and Delver (achievements.js: a Wheel dungeon,
+         `cfg.home`; never the Workshop), riding this save */
+      try { this._achvOnDungeon(pid, ps, cfg); } catch (e) { /* never break a clear */ }
       /* v2.3.3540: AND THE CLEAR IS RECORDED (lifeSkills.dungeonClears, its
          key the worker's own: a Wheel dungeon's land, or the Workshop).  The
          Mayor's "Clear any dungeon" (mayor_3) is ready when that holds a key

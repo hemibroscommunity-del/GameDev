@@ -2055,6 +2055,11 @@ export const combatMethods = {
         // MONSTER KILL", now gated off under caps.gems).  Rides the
         // same _saveRpg + player_state flush as the nugget roll above.
         if (rid === killerId && this._gemRawOnKill(recipPs, this._rewardZone(zone, m), kr ? kr.hit === 'rawgem' : undefined) && kr) kr.minted = true;   /* v2.3.2978: its home's element; v2.3.3209: the kill's roll */
+        /* v2.3.3527: and the achievements this kill settles (achievements.js:
+           First Blood and Natural One for the killing blow, the codex's nine for
+           everyone it counted) -- their points ride this save; nothing new is
+           written on an ordinary kill.  Inside a try, as the codex. */
+        try { this._achvOnKill(rid, recipPs, m, kr, rid === killerId); } catch (e) { /* never break a kill */ }
         this._saveRpg(rid, recipPs);
         if (rid === killerId) killerSaved = true;   /* v2.3.3305: the heals above ride this save */
         const recipWs = this._wsBySessionId(rid);

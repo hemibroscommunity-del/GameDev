@@ -29,6 +29,7 @@ import { allyBus } from '@/game/alliance.js'; /* v2.3.3313: the alliance's answe
 import { monsterNoticed } from '@/game/monsterNoises.js'; /* v2.3.3340: a monster calls as it notices you */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
+import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527: the achievements the worker granted (server/src/achievements.js) */
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
 import { onRestResult, restMapsBuffs } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
 import { setWheelHallCaps } from '@/game/wheelTownDoors.js'; /* v2.3.3539: the Hotel opens against a worker that rests */
@@ -1979,6 +1980,17 @@ export function setupWebSocket(ctx) {
              PRIVILEGED_EVENTS, so the worker never relays one). */
           case 'codex_state':
             { try { onCodexState(S, msg.payload); } catch (_ce) { /* display only */ } break; }
+          /* v2.3.3527: the achievements (server/src/achievements.js) -- at the
+             join, beside codex_state, and on every change: what you have, the
+             worker's AP, the one just earned (`new`, the moment) and what the
+             join granted for what you had already done (`retro`, one line).
+             Here, not the default branch, for codex_state's reason; and a
+             relayed copy (`from`) is never taken, as key_new: a worker from
+             before achievements does not list achv_state as privileged.  No
+             caps gate: a crown paid by the mail is granted before state_sync
+             (game/achievements.js holds its banner until the world shows). */
+          case 'achv_state':
+            { if (msg.from) break; try { onAchvState(S, msg.payload); } catch (_ae) { /* display only */ } break; }
           case 'make_traps_result':
             { try { onMakeTrapsResult(S, msg.payload); } catch (_te) { /* display only */ } break; }
           /* ═══ v2.3.3525: LIL BRO'S RACE (server/src/race.js) ═══
@@ -2769,7 +2781,14 @@ export function setupWebSocket(ctx) {
               if (msg.payload._quests && typeof msg.payload._quests === 'object') S.rpg._quests = msg.payload._quests;
               if (msg.payload._questFlags && typeof msg.payload._questFlags === 'object') S.rpg._questFlags = msg.payload._questFlags;
               if (msg.payload._questKills && typeof msg.payload._questKills === 'object') S.rpg._questKills = msg.payload._questKills;
-              if (typeof msg.payload.achievementPoints === 'number') S.rpg.achievementPoints = msg.payload.achievementPoints;
+              if (typeof msg.payload.achievementPoints === 'number') {
+                S.rpg.achievementPoints = msg.payload.achievementPoints;
+                /* v2.3.3527: and the Achievements page's total is this echo's
+                   too -- a quest's +5 or a guild rung moves it with no
+                   achv_state, and the page never reads the phone's own
+                   prediction (game/achievements.js noteServerAp) */
+                try { noteServerAp(S, msg.payload.achievementPoints); } catch (_ap) { /* display only */ }
+              }
               /* v2.3.1021: weapon/defense skill track -- worker is now the
                  durable store.  Adopt the echoed values (present-gated) so a
                  reconnect / device switch restores trained levels / points /
@@ -5360,6 +5379,15 @@ export function setupWebSocket(ctx) {
            itemdrop.js.  TRAPS #18: without this line the ask never leaves the
            browser, and the item would stay in the bag with nothing said. */
         if (msg.type === 'item_drop') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3527: the title on your card, from the Achievements page
+           (game/achievements.js sendAchvTitle) -> achievements.js _achvTitle,
+           which answers with a fresh achv_state.  TRAPS #18: without this line
+           the ask never leaves the browser and "Use as title" waits for an
+           answer that never comes. */
+        if (msg.type === 'achv_title') {
           wsOut(msg);
           return;
         }

@@ -1681,6 +1681,10 @@ body:has(.bt-pcard) [data-coach]{display:none}
   font-size:12.5px;font-weight:700;white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(255,214,128,.08)}
 .bt-pin-title img{flex:none;width:24px;height:24px}
 .bt-pin-title>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* v2.3.3527: a long achievement title ("Breaking the House") is cut with an
+   ellipsis inside the chip's own footprint, never pushing the clan box off:
+   at most three fifths of the row (the owner's ChatGPT review) */
+.bt-pin-title[data-achv]{max-width:60%}
 .bt-pin-clan{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:5px;height:30px;padding:0 4px;box-sizing:border-box;
   border:1px solid #3B5366;border-radius:8px;background:#1C2F3C;color:#EDF6FA;font-size:13px;font-weight:700}
 .bt-pin-clanic{flex:none;width:24px;height:24px}
@@ -1720,6 +1724,32 @@ body:has(.bt-pcard) [data-coach]{display:none}
 .bt-pin-drop-art svg{display:block;width:50px;height:50px}
 .bt-pin-drop-r{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#FF9C6B}
 .bt-pin-drop-n{font-size:12.5px;line-height:1.2;color:#FFE6CF}
+/* v2.3.3527: the box is the rarest ACHIEVEMENT, a button to the page, in its
+   tier's colours (the armour grades': rare blue, the arena orange, super-rare
+   a rainbow); the title chip a button too, keeping the mockup's gold */
+button.bt-pin-drop,button.bt-pin-title{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button.bt-pin-drop{color:inherit;margin:0}
+.bt-pin-drop-art img,.bt-pin-drop-art .bt-pcard-glyph{display:block;width:50px;height:50px;object-fit:contain;font-size:34px;line-height:50px}
+.bt-pin-drop[data-tier="none"],.bt-pin-drop[data-tier="common"]{border-color:#3B5366;background:#1C2F3C}
+.bt-pin-drop[data-tier="none"] .bt-pin-drop-r,.bt-pin-drop[data-tier="common"] .bt-pin-drop-r{color:#A9B4BA}
+.bt-pin-drop[data-tier="common"] .bt-pin-drop-n{color:#EDF6FA}
+.bt-pin-drop-n.is-none{color:#8E9AA3;font-weight:600}
+.bt-pin-drop[data-tier="rare"]{border-color:#5D93D2;background:radial-gradient(circle at 50% 32%,#22446B 0%,#14263B 72%)}
+.bt-pin-drop[data-tier="rare"] .bt-pin-drop-r{color:#8DB9EC}
+.bt-pin-drop[data-tier="rare"] .bt-pin-drop-n{color:#E3EEFB}
+.bt-pin-drop[data-tier="arena"]{border-color:#E8893A;background:radial-gradient(circle at 50% 32%,#6B3A15 0%,#34200F 72%)}
+.bt-pin-drop[data-tier="arena"] .bt-pin-drop-r{color:#F2A869}
+/* the super-rare box: the card's own slate inside a RAINBOW EDGE, the label's
+   rainbow over a light name -- the owner's ChatGPT review: the purple fill
+   "did not instantly read as the same prismatic tier used on the badge pill
+   and Godly gear" (QUALITY_PRISM's colours; the edge 1.5 px as the pill's
+   ring, the padding half a pixel less so the box keeps its size) */
+.bt-pin-drop[data-tier="superrare"]{border:1.5px solid transparent;padding:5.5px 5.5px 7.5px;
+  background:radial-gradient(circle at 50% 32%,#24394A 0%,#172530 72%) padding-box,
+    linear-gradient(90deg,#FF6B6B,#FFD166,#6BFF95,#5CB8FF,#C77DFF) border-box}
+.bt-pin-drop[data-tier="superrare"] .bt-pin-drop-r{background:linear-gradient(90deg,#FF8A8A,#FFD36B,#7CE38B,#6BC7FF,#C79BFF);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.bt-pin-drop[data-tier="superrare"] .bt-pin-drop-n{color:#F3F7FF}
 .bt-pin-home{display:flex;flex-direction:column;min-width:0;border:1px solid #3B5366;border-radius:10px;background:#1C2F3C;overflow:hidden}
 .bt-pin-scene{position:relative;flex:none;height:84px;background:#1B2A20}
 .bt-pin-scene>img{display:block;width:100%;height:100%;object-fit:cover}
@@ -1793,6 +1823,7 @@ body:has(.bt-pcard) [data-coach]{display:none}
   .bt-pin-equip{margin-top:6px}
   .bt-pin-kills{padding:5px 8px}
   .bt-pin-drop-art svg{width:40px;height:40px}
+  .bt-pin-drop-art img,.bt-pin-drop-art .bt-pcard-glyph{width:40px;height:40px;line-height:40px;font-size:28px}
   .bt-pin-scene{height:64px}
   .bt-pin-species{min-height:28px}
   .bt-pin-plots{padding:0 8px 6px}
@@ -1826,6 +1857,7 @@ body:has(.bt-pcard) [data-coach]{display:none}
   .bt-pin-kills{padding:5px 8px}
   .bt-pin-drop{padding:4px 6px 6px}
   .bt-pin-drop-art svg{width:40px;height:40px}
+  .bt-pin-drop-art img,.bt-pin-drop-art .bt-pcard-glyph{width:40px;height:40px;line-height:40px;font-size:28px}
   .bt-pin-scene{height:56px}
   .bt-pin-species{min-height:28px}
   .bt-pin-plots{padding:0 8px 6px}
@@ -7187,6 +7219,42 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 }
 @media (prefers-reduced-motion: reduce){
   [data-new-monster]{animation:none!important}
+}
+
+/* ═══ v2.3.3527: THE ACHIEVEMENT BANNER (src/ui/panels/AchievementBanner.jsx) ═══
+   A rare, arena or super-rare achievement's moment, about three seconds.  Its
+   layer is `position:fixed; inset:0` OUTSIDE the world's wrap, so it is the
+   window on a phone and #root's column on a computer (contain:paint); the
+   plate is centred on the WORLD's width inside it (--world-x, --play-w:
+   sideways the dashboard takes a side, as the zone banner's rule above), in
+   the NEW MONSTER card's spot -- under the minimap upright, near the top
+   sideways -- and under that card (`.is-low`, 76 px down: its 64 px and a gap)
+   when one is up.  Transform and opacity only, over the live canvas (TRAPS
+   §42); in over a quarter of a second, out over the last third of one. */
+.bt-achv-banner{
+  position:absolute;
+  left:calc(var(--world-x,0px) + var(--play-w,100%) / 2);
+  top:max(22%, calc(env(safe-area-inset-top,0px) + 192px));
+  width:min(320px, calc(var(--play-w,100%) - 32px));
+  box-sizing:border-box;min-height:64px;
+  display:flex;align-items:center;gap:10px;padding:8px 12px 8px 8px;border-radius:14px;
+  box-shadow:0 10px 28px rgba(0,0,0,.5);
+  color:#F4F0E7;font-family:'Source Sans 3',sans-serif;
+  pointer-events:none;
+  transform:translateX(-50%);
+  animation:bt-achv-banner var(--achv-ms,3200ms) linear both;
+}
+.bt-achv-banner.is-low{top:calc(max(22%, calc(env(safe-area-inset-top,0px) + 192px)) + 76px)}
+html[data-orient="landscape"] .bt-achv-banner{top:calc(env(safe-area-inset-top,0px) + 52px)}
+html[data-orient="landscape"] .bt-achv-banner.is-low{top:calc(env(safe-area-inset-top,0px) + 128px)}
+@keyframes bt-achv-banner{
+  0%{opacity:0;transform:translateX(-50%) translateY(-10px) scale(.96)}
+  8%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+  90%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+  100%{opacity:0;transform:translateX(-50%) translateY(-6px) scale(1)}
+}
+@media (prefers-reduced-motion: reduce){
+  .bt-achv-banner{animation:none!important}
 }
 
 /* ═══ v2.3.3336: A PICTURE THAT IS THE FACE (controlSkin SpecialFace) ═══

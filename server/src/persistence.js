@@ -518,6 +518,10 @@ export const persistenceMethods = {
        (a flush would write the old counts straight back). */
     try { await this.state.storage.delete('codex:' + pid); } catch (e) { /* best-effort, as above */ }
     this._codexForget(pid);
+    /* v2.3.3527: and the achievements (achievements.js): a restarted character
+       has earned none -- its AP went with the rpg blob above */
+    try { await this.state.storage.delete('achv:' + pid); } catch (e) { /* best-effort, as above */ }
+    this._achvForget(pid);
     /* v2.3.3430: and test mode (testmode.js): a restarted character starts as
        a new player would, every honesty check on.  The Test panel turns it on
        again in one tap. */

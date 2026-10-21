@@ -15,10 +15,11 @@
  * Nothing new on the wire: this only remembers what the event already says.
  * Kept in S._mail, MAIL_KEEP of them; nothing stored.
  *
- * No imports but data/remains.js (itself import-free), so node can read its
- * rules.
+ * No imports but data/remains.js (itself import-free) and game/achievements.js
+ * (relative, its own imports import-free), so node can still read its rules.
  */
 import { remainsName } from '../data/remains.js';   /* v2.3.3525: "remains", not "remnants" */
+import { achvMailWords } from './achievements.js';   /* v2.3.3527: an achievement in the mail */
 
 export const MAIL_KEEP = 30;
 
@@ -83,6 +84,9 @@ export function mailLine(e) {
   else if (kind === 'weapon') what = (p.weapon && typeof p.weapon.name === 'string' && p.weapon.name) || 'A weapon';
   else if (kind === 'gear') what = (p.piece && typeof p.piece.name === 'string' && p.piece.name) || 'A piece of gear';
   else if (kind === 'pet') what = petWords(p.pet);   /* v2.3.3122: a pet (a sale, a trade, an unsold one back) */
+  /* v2.3.3527: an achievement (server inbox.js `achv`: the arena's crown) --
+     "Gladiator achievement", its name from the phone's table, never "?" */
+  else if (kind === 'achv') what = achvMailWords(p);
   else what = 'A delivery';
   let note = e && typeof e.note === 'string' ? e.note : '';
   if (!note && source === 'daily') note = 'Daily reward';

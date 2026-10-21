@@ -399,6 +399,7 @@ import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their ch
 import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
 import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
 import { NewMonsterCard } from '@/ui/panels/NewMonsterCard.jsx';   /* v2.3.3336: NEW MONSTER, a tap opens its codex page */
+import { AchievementBanner } from '@/ui/panels/AchievementBanner.jsx';   /* v2.3.3527: a big achievement's banner, outside the wrap beside QuestCoach */
 import { activePet } from '@/game/petBook.js';   /* v2.3.3120: the pet out with you is the record's */
 import { beastmasterOn } from '@/game/trapping.js';   /* v2.3.3121: Beastmaster Bro stands only against a worker that knows his quests */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
@@ -431,7 +432,7 @@ import { shardByKey } from '@/data/shards.js';
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {
   TILE, TOWN_SPAWN, PLAYER_COLORS, ZONES, ELEMENTS, TOWN_BUILDINGS, TOWN_EXITS, WORLDVIEW_EXITS, BLOCK_ARC_HALF,
-  BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES, RARITY_TIERS, BT_AUDIO, BT_ACHIEVEMENTS,
+  BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES, RARITY_TIERS, BT_AUDIO,   /* v2.3.3527: BT_ACHIEVEMENTS gone (the checker below) */
   BUILDINGS, NPC_DATA, TILE_SOLID, TILE_COLORS,
   updateZoneDimensions,
   STAT_POINTS_PER_LEVEL, LEVEL_CAP, GEAR_STAT_REQ,
@@ -475,7 +476,7 @@ const {
   ELEMENT_FLAVOR, flavorName, canAccessDepth,
   GAMBLE_WIN_CHANCE, GAMBLE_MIN_BET, GAMBLE_MAX_BET,
   JACKPOT_HOUSE_CUT, JACKPOT_MIN_DEPOSIT,
-  RARE_DROP_CHANCE, RARE_DROP_ITEMS, QUEST_AP_REWARD,
+  QUEST_AP_REWARD,   /* v2.3.3527: RARE_DROP_CHANCE / RARE_DROP_ITEMS gone (monsterCombat.js) */
   FEEDBACK_CATEGORIES, FEEDBACK_TOPICS,
   ARENA_ENTRY_FEE, ARENA_BET_MIN, ARENA_BET_MAX,
   ARENA_WIN_REWARD, ARENA_POLL_INTERVAL, ARENA_IDLE_POLL_INTERVAL,
@@ -1136,9 +1137,11 @@ export var BroTown = function BroTown(_ref0) {
     /* timestamp when shield activated */
     shieldEnd: 0,
     /* when shield expires */
-    stats: null,
+    stats: null
     /* persistent player stats */
-    badges: [] /* earned achievement IDs */
+    /* v2.3.3527: `badges` (the ids the dormant BT_ACHIEVEMENTS checker
+       recorded, read by nothing) went with it -- achievements are the
+       worker's now (S._achv, game/achievements.js) */
   });
   /* Expose state for autotest */
   window._gameState = stateRef;
@@ -1369,7 +1372,6 @@ export var BroTown = function BroTown(_ref0) {
         var _S = stateRef.current;
         if (stats) {
           _S.stats = stats;
-          _S.badges = stats.badges || [];
         } else {
           _S.stats = {
             steps: 0,
@@ -1423,7 +1425,6 @@ export var BroTown = function BroTown(_ref0) {
             playTimeSeconds: 0,
             _sessionStart: Date.now()
           };
-          _S.badges = [];
         }
         /* Track daily visits */
         var today = new Date().toDateString();
@@ -1485,7 +1486,6 @@ export var BroTown = function BroTown(_ref0) {
           playTimeSeconds: 0,
           _sessionStart: Date.now()
         };
-        _S2.badges = [];
       }
       /* Spawn outside the building we entered from */
       var lastBldg = localStorage.getItem('bt_lastBuilding');
@@ -1683,10 +1683,8 @@ export var BroTown = function BroTown(_ref0) {
     _useState24 = _slicedToArray(_useState23, 2),
     collectMsg = _useState24[0],
     setCollectMsg = _useState24[1]; /* {emoji, text, ts} */
-  var _useState25 = useState([]),
-    _useState26 = _slicedToArray(_useState25, 2),
-    myBadges = _useState26[0],
-    setMyBadges = _useState26[1];
+  /* v2.3.3527: `myBadges` (the dormant checker's copy of S.badges, read by
+     nothing) went with BT_ACHIEVEMENTS */
   var _useState27 = useState(null),
     _useState28 = _slicedToArray(_useState27, 2),
     achievementMsg = _useState28[0],
@@ -8595,62 +8593,27 @@ export var BroTown = function BroTown(_ref0) {
          ~167 createElement calls and 113 inline style objects, standing still
          in town, for a list nobody was looking at.  The panel reads it on open
          within the same half-second, so it is never more than one tick stale.
-         The achievement check below still runs every tick as it always did. */
+         The stats save below still runs every tick as it always did
+         (v2.3.3527: the achievement check that ran with it is gone). */
       if (showPlayerListRef.current) setPlayerList(list);
-      /* Check achievements */
+      /* Save the player's stats (this was "Check achievements") */
       var S2 = stateRef.current;
       if (S2.stats) {
         var _stateRef$current$sta;
-        /* Sync RPG stats to stats object for achievement checks */
-        if (S2.rpg) {
-          var _S2$rpg$_compStats, _S2$rpg$_compStats2, _S2$rpg$_compStats3, _S2$rpg$_customDungeo, _S2$rpg$_compStats4, _S2$rpg$lifeSkills, _S2$rpg$_compStats5, _S2$rpg$_compStats6, _S2$rpg$_compStats7, _S2$rpg$_compStats8;
-          S2.stats._combatLevel = S2.rpg.level || 1;
-          S2.stats._arenaEntered = ((_S2$rpg$_compStats = S2.rpg._compStats) === null || _S2$rpg$_compStats === void 0 ? void 0 : _S2$rpg$_compStats.arenaEntered) || S2.stats._arenaEntered || 0;
-          S2.stats._arenaWins = ((_S2$rpg$_compStats2 = S2.rpg._compStats) === null || _S2$rpg$_compStats2 === void 0 ? void 0 : _S2$rpg$_compStats2.arenaWins) || S2.stats._arenaWins || 0;
-          S2.stats._arenaChampion = ((_S2$rpg$_compStats3 = S2.rpg._compStats) === null || _S2$rpg$_compStats3 === void 0 ? void 0 : _S2$rpg$_compStats3.arenaChampion) || S2.stats._arenaChampion || 0;
-          S2.stats._furnitureCrafted = S2.rpg._furniture ? Object.keys(S2.rpg._furniture).length : 0;
-          S2.stats._dungeonsCreated = ((_S2$rpg$_customDungeo = S2.rpg._customDungeons) === null || _S2$rpg$_customDungeo === void 0 ? void 0 : _S2$rpg$_customDungeo.length) || 0;
-          S2.stats._petsEvolved = ((_S2$rpg$_compStats4 = S2.rpg._compStats) === null || _S2$rpg$_compStats4 === void 0 ? void 0 : _S2$rpg$_compStats4.petsEvolved) || S2.stats._petsEvolved || 0;
-          var _petsArr = ((_S2$rpg$lifeSkills = S2.rpg.lifeSkills) === null || _S2$rpg$lifeSkills === void 0 ? void 0 : _S2$rpg$lifeSkills.pets) || [];
-          if (!Array.isArray(_petsArr)) _petsArr = Object.values(_petsArr); /* v2.3.768 shape guard */
-          S2.stats._mythicPets = _petsArr.filter(function (p) {
-            return (p.evolutionTier || 0) >= 3;
-          }).length;
-          S2.stats._mktTrades = ((_S2$rpg$_compStats5 = S2.rpg._compStats) === null || _S2$rpg$_compStats5 === void 0 ? void 0 : _S2$rpg$_compStats5.mktTrades) || S2.stats._mktTrades || 0;
-          S2.stats._customDungeonsCleared = ((_S2$rpg$_compStats6 = S2.rpg._compStats) === null || _S2$rpg$_compStats6 === void 0 ? void 0 : _S2$rpg$_compStats6.customDungeonsCleared) || S2.stats._customDungeonsCleared || 0;
-          S2.stats._warsParticipated = ((_S2$rpg$_compStats7 = S2.rpg._compStats) === null || _S2$rpg$_compStats7 === void 0 ? void 0 : _S2$rpg$_compStats7.warsParticipated) || S2.stats._warsParticipated || 0;
-          S2.stats._warMvps = ((_S2$rpg$_compStats8 = S2.rpg._compStats) === null || _S2$rpg$_compStats8 === void 0 ? void 0 : _S2$rpg$_compStats8.warMvps) || S2.stats._warMvps || 0;
-          /* Guild stats */
-          var gp = S2.rpg._guildProgress || {};
-          S2.stats._guildRanksEarned = Object.values(gp).reduce(function (s, v) {
-            return s + v;
-          }, 0);
-          S2.stats._guildMasterCount = LIFE_SKILLS.filter(function (k) {
-            var _S2$rpg$lifeSkills2;
-            return (((_S2$rpg$lifeSkills2 = S2.rpg.lifeSkills) === null || _S2$rpg$lifeSkills2 === void 0 || (_S2$rpg$lifeSkills2 = _S2$rpg$lifeSkills2[k]) === null || _S2$rpg$lifeSkills2 === void 0 ? void 0 : _S2$rpg$lifeSkills2.level) || 0) >= 70;
-          }).length;
-          S2.stats._guildJourneymanAll = LIFE_SKILLS.every(function (k) {
-            var _S2$rpg$lifeSkills3;
-            return (((_S2$rpg$lifeSkills3 = S2.rpg.lifeSkills) === null || _S2$rpg$lifeSkills3 === void 0 || (_S2$rpg$lifeSkills3 = _S2$rpg$lifeSkills3[k]) === null || _S2$rpg$lifeSkills3 === void 0 ? void 0 : _S2$rpg$lifeSkills3.level) || 0) >= 25;
-          });
-        }
-        /* v2.3.820: achievement toast notifications removed at the owner's
-           request ("First Steps", "Renaissance", etc. -- none were
-           intentional content).  Badges are still recorded silently so any
-           profile/stat that reads S.badges keeps working; only the popup +
-           its sound are suppressed.  Level-up, XP, damage, and chat
-           feedback are untouched (separate systems). */
-        BT_ACHIEVEMENTS.forEach(function (a) {
-          if (!S2.badges.includes(a.id) && a.check(S2.stats)) {
-            S2.badges.push(a.id);
-            S2.stats.badges = _toConsumableArray(S2.badges);
-            setMyBadges(_toConsumableArray(S2.badges));
-          }
-        });
+        /* ═══ v2.3.3527: THE DORMANT ACHIEVEMENT CHECKER IS GONE ═══
+           BT_ACHIEVEMENTS (data/gameDisplay.js) was thirty-two badges checked
+           here twice a second against the phone's own S.stats -- copied into
+           `_combatLevel`, `_arenaWins`, `_mythicPets` and the rest just for
+           that -- and recorded silently in S.badges, which nothing read
+           (v2.3.820: the owner had their toasts removed, "none were
+           intentional content"; many named systems long gone).  Achievements
+           are the WORKER's now (server achievements.js, the owner's "Go
+           recommended on everything"): the list, this check, S.badges and
+           `myBadges` went together.  S.stats stays (other code reads it) and
+           is saved below as before. */
         /* Save stats periodically */
         var statsToSave = _objectSpread(_objectSpread({}, S2.stats), {}, {
-          visitedBuildings: S2.stats.visitedBuildings instanceof Set ? _toConsumableArray(S2.stats.visitedBuildings) : S2.stats.visitedBuildings,
-          badges: S2.badges
+          visitedBuildings: S2.stats.visitedBuildings instanceof Set ? _toConsumableArray(S2.stats.visitedBuildings) : S2.stats.visitedBuildings
         });
         /* v2.3.3339: only when it changed -- this runs twice a second, and a
            localStorage write is a synchronous one on the main thread (on an
@@ -15157,5 +15120,9 @@ export var BroTown = function BroTown(_ref0) {
      The cost of being outside is that the mark now also outranks the
      in-wrap modals, which it must NOT cover — QuestCoach handles that
      itself, by only drawing on a control a finger can actually reach. */
-  /*#__PURE__*/React.createElement(QuestCoach, { stateRef: stateRef }), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, { hidden: kbHintsOff, onToggle: toggleKbHints }), staleBuild && /*#__PURE__*/React.createElement(UpdateBanner, { info: staleBuild, onReload: function () { try { window.location.reload(); } catch (e) {} }, onDismiss: function () { setStaleBuild(null); } }), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));
+  /*#__PURE__*/React.createElement(QuestCoach, { stateRef: stateRef }),
+  /* v2.3.3527: a rare, arena or super-rare achievement's banner -- here, out
+     of the wrap with QuestCoach for the same reason, so its fixed layer is the
+     game's column on a computer (ui/panels/AchievementBanner.jsx) */
+  /*#__PURE__*/React.createElement(AchievementBanner, { stateRef: stateRef }), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, { hidden: kbHintsOff, onToggle: toggleKbHints }), staleBuild && /*#__PURE__*/React.createElement(UpdateBanner, { info: staleBuild, onReload: function () { try { window.location.reload(); } catch (e) {} }, onDismiss: function () { setStaleBuild(null); } }), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));
 };

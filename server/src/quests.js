@@ -442,6 +442,10 @@ export const questMethods = {
     if (reward.next && !ps._quests[reward.next]) {
       ps._quests[reward.next] = 'available';
     }
+    /* v2.3.3527: Storyteller (achievements.js: every chain's last quest handed
+       in), here and not beside the AP above: the weapons' drain awaits between
+       them, and the record's write must go out with the save of its points */
+    try { if (this._achvOnQuest) this._achvOnQuest(session.id, ps); } catch (e) { /* never break a hand-in */ }
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);

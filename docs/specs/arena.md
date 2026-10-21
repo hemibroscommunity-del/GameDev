@@ -176,6 +176,25 @@ the achievement points from it."
   again.
 - Kill switch `arenaap: false` still pays no points at all.
 
+## The points become the Gladiator achievement's (v2.3.3527)
+
+With achievements (docs/specs/achievements.md) the champion's 500 are the
+Gladiator achievement's, once a character:
+
+- The crown pays its gold with no `ap`, and sends the achievement as its own
+  credit (`kind: 'achv'`).
+- The mark above stays the one word on whether a character was paid the
+  arena's points (achievements.js `AP_ONCE_OF`). The achievement pays only
+  while it is unset, and sets it when it pays, saved with the points.
+- A champion this section's road paid gets Gladiator at their next join,
+  quietly and with no second 500.
+- A crown of either older kind still waiting in a mailbox goes through the
+  achievement.
+- With `achievements: false` no crown pays AP, and `caps.arenaap` and
+  `caps.arenaapfirst` say so.
+- The window names the Gladiator achievement against `caps.achievements`, and
+  "for your first win" against a v2.3.3488 worker.
+
 ## Tests
 
 `server/test/arena.test.mjs` (23+ assertions, in `npm test`): entry

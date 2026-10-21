@@ -637,6 +637,9 @@ export const gearMethods = {
        (quests.js `craft`); saved with the piece below */
     try { this._creditQuestObjective(session.id, 'craft', wantWw ? 'wood' : 'smith'); } catch (e) { /* a quest must never undo the forge */ }
 
+    /* v2.3.3527: an Elite or Godly blade is an achievement (achievements.js),
+       riding this save */
+    try { if (this._achvOnPiece) this._achvOnPiece(session.id, ps, ps[slot], 'forge'); } catch (e) { /* never break a forge */ }
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);

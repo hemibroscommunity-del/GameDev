@@ -149,15 +149,13 @@ export function getSalvageReturns(item, BLACKSMITH_TIERS, WOODWORKING_TIERS) {
   return returns;
 }
 
-/* ═══ RARE DROPS + ACHIEVEMENT POINTS ═══ */
-export const RARE_DROP_CHANCE = 0.001;
-export const RARE_DROP_ITEMS = [
-  { id: 'rare_crystal', name: 'Prismatic Shard', emoji: '🌈', points: 5, desc: 'A shimmering crystal fragment' },
-  { id: 'rare_fossil',  name: 'Ancient Fossil',  emoji: '🦴', points: 3, desc: 'Preserved from a forgotten age' },
-  { id: 'rare_star',    name: 'Fallen Star',     emoji: '⭐', points: 8, desc: 'Still warm from the heavens' },
-  { id: 'rare_eye',     name: 'Dragon Eye',      emoji: '👁️', points: 10, desc: 'Seems to watch you' },
-  { id: 'rare_feather', name: 'Phoenix Feather',  emoji: '🪶', points: 7, desc: 'Glows with inner fire' },
-];
+/* ═══ ACHIEVEMENT POINTS ═══ */
+/* v2.3.3527: RARE_DROP_CHANCE and RARE_DROP_ITEMS -- a 0.1% "RARE: Dragon
+   Eye (+10 AP)" on a kill this phone resolved itself (monsterCombat.js, no
+   live zone since the worker owns every monster) -- are gone: points the
+   worker never heard of.  AP is the worker's (server achievements.js);
+   QUEST_AP_REWARD stays, the +5 a story quest's hand-in predicts and the
+   worker pays the same. */
 export const QUEST_AP_REWARD = 5;
 
 /* ═══ GAMBLING SYSTEM ═══ */

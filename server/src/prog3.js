@@ -1327,6 +1327,9 @@ export const prog3Methods = {
       if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
       if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
+      /* v2.3.3527: Blooded, Veteran, Centurion (achievements.js: the highest of
+         the three at 10, 50, 100), riding this save */
+      try { if (this._achvOnSkill) this._achvOnSkill(playerId, ps); } catch (e) { /* never break a level */ }
       this._saveRpg(playerId, ps);
       const ws = this._wsBySessionId(playerId);
       if (ws) {

@@ -99,6 +99,9 @@ export const armorForgeMethods = {
     /* v2.3.3525: armour made counts for the tour's smith_2 as a sword does
        (quests.js `craft` 'smith'), saved with the piece */
     try { this._creditQuestObjective(session.id, 'craft', 'smith'); } catch (e) { /* a quest must never undo the forge */ }
+    /* v2.3.3527: an Elite or Godly piece is an achievement (achievements.js),
+       riding this save */
+    try { if (this._achvOnPiece) this._achvOnPiece(session.id, ps, piece, 'forge'); } catch (e) { /* never break a forge */ }
     this._saveRpg(session.id, ps);
     const result = { recipe: key, piece, xp: r.xp, leveled: !!res.leveled, fromLevel: lvl, newLevel: res.newLevel };
     const ws = this._wsBySessionId(session.id);

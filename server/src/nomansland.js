@@ -573,6 +573,11 @@ export const noMansLandMethods = {
     const red = !!(ps._nml && ps._nml.red > 0);
     if (!nmlKill && !red) return null;
     const to = nmlKill ? killerId : null;
+    /* v2.3.3527: Outlaw (achievements.js) -- the killer of a player under No
+       man's land's rule, its points saved there */
+    if (nmlKill && killerId !== playerId) {
+      try { if (this._achvOnNmlKill) this._achvOnNmlKill(killerId); } catch (e) { /* never break a death */ }
+    }
     /* v2.3.3316: what is WORN goes only with a red skull a player killed */
     const takeWorn = red && nmlKill;
     const killerSession = to && this._sessionById ? this._sessionById(to) : null;

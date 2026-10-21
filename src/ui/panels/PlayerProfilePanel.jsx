@@ -94,43 +94,6 @@ export function Lens() {
   );
 }
 
-/* A STAND-IN for the rarest drop's sprite -- there is no rarest-drop record
-   (or crown art) yet, so the mockup's "Ancient Ember Crown" is drawn here in
-   SVG.  When the drop record lands, its item icon replaces this. */
-function EmberCrown() {
-  return (
-    <svg viewBox="0 0 64 64" aria-hidden="true">
-      <defs>
-        <radialGradient id="bt-pin-glow" cx="50%" cy="60%" r="50%">
-          <stop offset="0" stopColor="#FF8A3D" stopOpacity=".6" />
-          <stop offset="1" stopColor="#FF8A3D" stopOpacity="0" />
-        </radialGradient>
-        <linearGradient id="bt-pin-gold" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#FFEBA8" />
-          <stop offset=".5" stopColor="#F0AE38" />
-          <stop offset="1" stopColor="#A65C19" />
-        </linearGradient>
-        <radialGradient id="bt-pin-gem" cx="35%" cy="30%" r="75%">
-          <stop offset="0" stopColor="#FFD8C2" />
-          <stop offset=".35" stopColor="#FF5A36" />
-          <stop offset="1" stopColor="#8E1A0E" />
-        </radialGradient>
-      </defs>
-      <circle cx="32" cy="36" r="30" fill="url(#bt-pin-glow)" />
-      <path d="M11 45L8 21l12 10 12-18 12 18 12-10-3 24z" fill="url(#bt-pin-gold)"
-        stroke="#5B2F0C" strokeWidth="2" strokeLinejoin="round" />
-      <rect x="10" y="43" width="44" height="9" rx="2" fill="url(#bt-pin-gold)" stroke="#5B2F0C" strokeWidth="2" />
-      <circle cx="8" cy="20" r="3" fill="url(#bt-pin-gold)" stroke="#5B2F0C" strokeWidth="1.5" />
-      <circle cx="32" cy="12" r="3.5" fill="url(#bt-pin-gem)" stroke="#5B2F0C" strokeWidth="1.5" />
-      <circle cx="56" cy="20" r="3" fill="url(#bt-pin-gold)" stroke="#5B2F0C" strokeWidth="1.5" />
-      <circle cx="32" cy="33" r="5" fill="url(#bt-pin-gem)" stroke="#5B2F0C" strokeWidth="1.5" />
-      <circle cx="20" cy="47.5" r="2.6" fill="url(#bt-pin-gem)" />
-      <circle cx="32" cy="47.5" r="2.6" fill="url(#bt-pin-gem)" />
-      <circle cx="44" cy="47.5" r="2.6" fill="url(#bt-pin-gem)" />
-    </svg>
-  );
-}
-
 const dash = (v) => (v == null ? '–' : v);
 
 /**
@@ -154,7 +117,9 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
   const pet = p.pet;
   const rar = (pet && PET_RARITY[pet.rarity]) || PET_RARITY.normal;
   const title = p.equippedTitle;
-  const drop = p.showcase.rarestDrop;
+  /* v2.3.3527: the rarest ACHIEVEMENT (was a placeholder "rarest drop"):
+     undefined until another player's blob lands, null for none */
+  const rarest = p.showcase.rarest;
   const plots = p.homestead.plotsReady;
   const open = (id) => () => { if (onOpen) onOpen(id); };
 
@@ -228,11 +193,15 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
         </div>
 
         <div className="bt-pin-tags">
+          {/* v2.3.3527: an achievement they chose (achievements.js
+              _achvTitle), or none -- was the placeholder "Fishing Master";
+              a tap opens the Achievements page */}
           {title && (
-            <span className="bt-pin-title" data-preview={title.preview ? '1' : undefined} title="Title">
-              <Ic src={title.iconSrc} glyph="🎖️" />
+            <button type="button" className="bt-pin-title" data-achv={title.id} data-tier={title.tier}
+              title="Title: an achievement" onClick={open('achievements')}>
+              <Ic src={title.iconSrc} glyph={title.glyph || '🎖️'} />
               <span>{title.text}</span>
-            </span>
+            </button>
           )}
           <span className={'bt-pin-clan' + (p.clan ? '' : ' is-none')} data-stat="clan">
             <Ic className="bt-pin-clanic" src="/icons/ui/clan.webp" glyph="👥" />
@@ -285,12 +254,27 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
                 <span>Lifetime Kills</span>
               </div>
             </div>
-            {drop && (
-              <div className="bt-pin-drop" data-preview={drop.preview ? '1' : undefined}>
-                <div className="bt-pin-drop-art"><EmberCrown /></div>
-                <span className="bt-pin-drop-r">{drop.rarity} Drop</span>
-                <b className="bt-pin-drop-n">{drop.name}</b>
-              </div>
+            {/* v2.3.3527: the rarest achievement, the worker's pick
+                (achievements.js ACHV.RARITY), in its tier's colour; a tap
+                opens the Achievements page */}
+            {rarest !== undefined && (
+              <button type="button" className="bt-pin-drop" data-stat="rarest"
+                data-rarest={rarest ? rarest.id : 'none'} data-tier={rarest ? rarest.tier : 'none'}
+                aria-label={rarest ? 'Rarest achievement: ' + rarest.name : 'No achievements yet'}
+                onClick={open('achievements')}>
+                {rarest ? (
+                  <>
+                    <div className="bt-pin-drop-art"><Ic src={rarest.iconSrc} glyph={rarest.glyph} /></div>
+                    <span className="bt-pin-drop-r">{rarest.tierLabel} achievement</span>
+                    <b className="bt-pin-drop-n">{rarest.name}</b>
+                  </>
+                ) : (
+                  <>
+                    <span className="bt-pin-drop-r">Rarest achievement</span>
+                    <b className="bt-pin-drop-n is-none">None yet</b>
+                  </>
+                )}
+              </button>
             )}
           </div>
           <div className="bt-pin-home" data-stat="homestead">

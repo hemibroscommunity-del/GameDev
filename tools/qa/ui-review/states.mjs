@@ -529,6 +529,29 @@ export const STATES = [
   more('pets', 'Pets', 'Your pets: the ones you caught, the one out with you, the journal of kinds.'),
   more('leaderboard', 'Ranks (leaderboard)', 'The leaderboard.'),
   more('social', 'Friends', 'Friends: your friends list and messages.'),
+  /* v2.3.3527: Journey's tile is Achievements while the server grants them
+     (the review's own worker does); the Journey page stays the fallback.
+     Two common ones are earned first by the owner's lever (/dev/achv: no
+     points, a common one a chat line and no banner, so nothing covers the
+     page) and one worn as the title, so the picture has earned rows, a title
+     and the locked super-rares together -- a new character's page is 23
+     locked rows */
+  Object.assign(more('achievements', 'Achievements', 'Your achievements: all 23, which you have and when, each tier\'s points, the six super-rares shown before they are earned, and the one you wear as your title.'), {
+    run: async ({ P, wsPort, myId }) => {
+      for (const id of ['first_blood', 'combat_10']) await H.devOp(wsPort, 'achv', myId, { id }).catch(() => {});
+      await wait(P, 600);
+      const e = await bus(P, 'open', 'more');
+      if (e) return e;
+      await wait(P, 300);
+      await bus(P, 'push', 'achievements');
+      await P.page.waitForSelector('[data-achv-panel]', { timeout: 6000 }).catch(() => {});
+      const state = await evalIn(P, () => { const p = document.querySelector('[data-achv-panel]'); return p ? p.dataset.achvPanel : null; });
+      if (state !== '1') return 'the Achievements page is ' + (state ? '"' + state + '"' : 'not there');
+      await evalIn(P, () => { const b = document.querySelector('[data-achv-title-use="first_blood"]'); if (b) b.click(); });
+      /* the worker's answer names it; the picture goes either way */
+      await P.page.waitForSelector('[data-achv-title-current="first_blood"]', { timeout: 6000 }).catch(() => {});
+    },
+  }),
   more('journey', 'Journey', 'Your journey so far.'),
   more('account', 'Login Key', 'Your Login Key: how to carry this character to another device.'),
   more('about', 'About & privacy', 'About the game, privacy, rules and credits.'),
@@ -689,7 +712,7 @@ export const STATES = [
   },
   {
     id: 'inspect-self', group: 'Other players', title: 'An Inspect card (your own)',
-    about: 'The Inspect card, a player\'s profile (level, achievement points, the three combat levels, what they wear, kills), here your own -- the one way to show it without a second player.  For another player it opens from the portrait on their card, with Invite to Party, Trade and Duel at its foot; nothing in the game opens your own yet (where its button goes is the owner\'s call).',
+    about: 'The Inspect card, a player\'s profile (level, achievement points, the title they chose and their rarest achievement, the three combat levels, what they wear, kills), here your own -- the one way to show it without a second player.  For another player it opens from the portrait on their card, with Invite to Party, Trade and Duel at its foot; nothing in the game opens your own yet (where its button goes is the owner\'s call).',
     run: async ({ P }) => { await evalIn(P, () => { if (window.__broInspectSelf) window.__broInspectSelf(); }); },
   },
   {

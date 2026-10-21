@@ -369,9 +369,14 @@ export const inboxMethods = {
          arena's champion, gladiator.js ARENA.CHAMPION_AP) -- added here, in
          the same apply as the gold, so the points are paid exactly when the
          gold is: once, live or from the mail at the next join.  Only a
-         server-made credit ever carries `ap` (no client message builds one). */
+         server-made credit ever carries `ap` (no client message builds one).
+         v2.3.3527: no credit is made with it any more -- the arena's points
+         are the Gladiator achievement's (`achv` below) -- but one waiting in
+         a mailbox from v2.3.3481 is an arena crown: it goes through that
+         achievement, so it pays once a character like a new one (and its
+         gold, whatever becomes of the points). */
       const ap = Math.max(0, Math.floor(Number(p.ap) || 0));
-      /* ═══ v2.3.3488: ...ONCE A CHARACTER, WHEN THE CREDIT SAYS SO ═══
+      /* ═══ v2.3.3488 (#1026): ...ONCE A CHARACTER, WHEN THE CREDIT SAYS SO ═══
          The owner, on the arena's 500 AP on every win (two accounts in a
          2-player bracket could farm them): "I don't want anyone exploiting
          the achievement points from it".  A credit carrying `apOnce` (a name
@@ -379,9 +384,17 @@ export const inboxMethods = {
          paid them under that name, and marks it -- here, in the same apply
          as the gold, so a mailed prize decides at the drain, and the mark is
          saved with the gold in the one write that follows (`ps.apOnce`,
-         persistence.js).  The gold is paid either way. */
+         persistence.js).  The gold is paid either way.
+         v2.3.3527: an ARENA credit still carrying points (v2.3.3481's, or
+         v2.3.3488's with `apOnce`, waiting in a mailbox) pays them through
+         the Gladiator achievement above all, which honours the same mark
+         and sets it when it pays (achievements.js AP_ONCE_OF): once a
+         character, by either road.  A record that cannot be read pays none
+         (both roads fail closed: the points are the cheaper loss). */
       const once = (typeof p.apOnce === 'string' && AP_ONCE.has(p.apOnce)) ? p.apOnce : null;
-      if (ap && once) {
+      if (ap && entry.source === 'arena' && this._achvFromMail) {
+        try { this._achvFromMail(playerId, ps, 'gladiator'); } catch (e) { /* the gold stands */ }
+      } else if (ap && once) {
         /* a character whose marks could not be read pays none and marks
            nothing (fail closed: the points are the cheaper loss) */
         if (!ps._apOnceFailed) {
@@ -394,6 +407,14 @@ export const inboxMethods = {
         }
       } else if (ap) ps.achievementPoints = (ps.achievementPoints || 0) + ap;
       return true;
+    }
+    /* ═══ v2.3.3527: AN ACHIEVEMENT BY THE MAIL (achievements.js) ═══
+       The arena's crown (gladiator.js).  FALSE -- the entry STAYS QUEUED --
+       while the player's achievements record is not loaded or is locked, the
+       pet's rule below: whether the points are owed is that record's to say.
+       The join loads it BEFORE it drains the mail (join.js). */
+    if (entry.kind === 'achv') {
+      return this._achvFromMail ? this._achvFromMail(playerId, ps, typeof p.id === 'string' ? p.id : '') : true;
     }
     if (entry.kind === 'item') {
       const k = typeof p.invKey === 'string' ? p.invKey : '';
