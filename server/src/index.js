@@ -232,6 +232,7 @@ import { floodMethods, roomNameFor, requestIp, FLOOD } from './flood.js'; /* v2.
 import { originAllowed, refuseOrigin } from './origin.js'; /* v2.3.3312: only the game's own sites open a socket */
 import { verifyMethods } from './verify.js'; /* v2.3.3275: the account check -- a new character proves a person is there */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
+import { staminaRegenMethods } from './staminaregen.js'; /* v2.3.3536: stamina regen worked out by the worker */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
 const HERB_REGEN_MULT = (DISHES.meal_herb_bread && Number(DISHES.meal_herb_bread.power) > 1) ? Number(DISHES.meal_herb_bread.power) : 2;
@@ -3524,7 +3525,8 @@ export class GameRoom {
   //     In-combat:  nothing — lifesteal and food are the only heals
   //   Stamina:
   //     Always:     ~7/tick (matches client's 10/sec at 60 fps),
-  //                 * (1 + amuletStaminaRegen/100)
+  //                 * the worker's amulet and Endurance mults
+  //                 (staminaregen.js, v2.3.3536)
   //     Override:   when ps.blocking, drain 5/tick instead of regenning
   //                 (mirrors client's 0.167/frame * 30 frames shield drain)
   //   Mana:
@@ -3656,9 +3658,12 @@ export class GameRoom {
         } else if (ps.stamina < ps.maxStamina && !this._sprintHoldsRegen(ps, now)) {
           /* v2.3.3006: ...and not while sprinting (sprint.js): a sprint that
              refilled as it drained would never end */
-          const stAmuletMult = 1 + (ps.amuletStaminaRegen || 0) / 100;
-          // Phase 2 of the T1/T2 spec: Endurance multiplies stamina regen.
-          const stEndMult = 1 + (ps.endurance || 0) * 0.002;
+          /* v2.3.3536: both multipliers are the worker's own now
+             (staminaregen.js): the amulet's from the amulet the worker holds,
+             never the phone's claim, and the frozen Endurance stat only for a
+             character not on prog3 (`amuletregen: false`: as they were).
+             Phase 2 of the T1/T2 spec had Endurance multiply stamina regen. */
+          const { amulet: stAmuletMult, endurance: stEndMult } = this._staminaRegenMults(ps);
           // v2.3.1154: × Endurance-grid Conditioning (+1%/pt, cap +50%)
           // — the successor to the retired restoration mult, deleted
           // v2.3.1155 (it was ×1.0 for every live player since v2.3.910).
@@ -6517,3 +6522,4 @@ Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's op
 Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula for every fight */
 Object.assign(GameRoom.prototype, pvpExtrasMethods); /* v2.3.3264: the monster-only extras on players */
 Object.assign(GameRoom.prototype, sparMethods); /* v2.3.3265: sparring clones (spar.js) */
+Object.assign(GameRoom.prototype, staminaRegenMethods); /* v2.3.3536: stamina regen from the worker's own amulet (staminaregen.js) */

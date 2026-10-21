@@ -1314,6 +1314,10 @@ export const joinMethods = {
          (also newly clamped) 1020, 3.367 lunges/s.  The clamp on this line was
          NOT what closed the lane -- see the measured table on LUNGE.cooldownMs
          in abilities.js for the two doors that actually did. */
+      /* v2.3.3536: the regen tick no longer reads these claims
+         (staminaregen.js works the amulet's bonus out from ps.amulet); they
+         are taken in only so `amuletregen: false` can bring the old tick
+         back mid-session.  Nothing reads amuletHpRegen at all. */
       this.playerState[msg.id].amuletHpRegen = (msg.data && typeof msg.data.rpgAmuletHpRegen === 'number') ? Math.max(0, Math.min(100, msg.data.rpgAmuletHpRegen)) : 0;
       this.playerState[msg.id].amuletStaminaRegen = (msg.data && typeof msg.data.rpgAmuletStaminaRegen === 'number') ? Math.max(0, Math.min(100, msg.data.rpgAmuletStaminaRegen)) : 0;
       this.playerState[msg.id].lastDamageAt = 0;
