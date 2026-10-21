@@ -252,3 +252,42 @@ half, and §11: the same number on a monster and a player),
 quick-eat choice), `mirror-audit` (the fish ladder and the one formula on
 both sides), `anticheat`, `duel`; phone tests `mp-quickeat`, `mp-fightfood`,
 `mp-linger`, `mp-pvpshield`, `mp-pvpnumbers`.
+
+## v2.3.3532: the simulator fights again
+
+From v2.3.3315, when the Wheel grew five times longer, until v2.3.3532, every
+fight `tools/pvp-sim/` ran ended unfought, and nothing said so: every table
+it printed read 0%.
+
+- **Its players never said which Wheel they draw.** Since v2.3.3315 a phone's
+  join carries `ws`, the Wheel sizes it can draw. The simulator's two joins
+  did not, so the worker held both players out of step with its Wheel
+  (`wheeltables.js _wheelInStep`), No man's land held no rule for them, and
+  `_nmlAllowed` refused every hit (TRAPS §196). They now join with `ws`, as a
+  phone does.
+- **Its fights stood in the wrong ring.** They were placed 9,000 px from the
+  Wheel's centre, which was No man's land 5 on the short Wheel. On the long
+  Wheel it is ring 1, and a kiting archer walks inward out of No man's land:
+  115 of 300 top-skill sword v bow fights left it, and the fight stalled
+  while they were out. A fight now stands in the middle of ring 5 of the
+  room's own Wheel, found with the worker's ring function, and `checkNml`
+  asks that same Wheel.
+
+`server/test/pvp-sim.test.mjs` fails the old simulator on every check and
+passes this one: both players in step, a fight starting in ring 5, and for
+the three pairings of different weapons every fight dealing damage, nearly
+every one won, none leaving No man's land.
+
+Re-measured with the shipped game (`node tools/pvp-sim/lunge.mjs 300 5,10,20
+both`), 300 fights a cell, copper set, low / moderate / top skill:
+
+| Weapon skill | Sword wins v bow | Sword wins v staff | Bow wins v staff (moderate) |
+|---|---|---|---|
+| 5 | 94 / 89 / 100% | 22 / 39 / 83% | 54% |
+| 10 | 30 / 41 / 96% | 13 / 23 / 68% | 64% |
+| 20 | 47 / 64 / 96% | 5 / 16 / 21% | 37% |
+
+The tables earlier in this spec and in `pvp-lunge.md` were measured on the
+short Wheel before v2.3.3315 and on an older game. The shape is the same,
+with the top-skill sword's lead over the bow wider than measured then (96%
+at skill 10, against 89%).

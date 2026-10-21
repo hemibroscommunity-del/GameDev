@@ -117,6 +117,9 @@ on every lunge, tips top-skill fights further toward the sword.
   longer lunge cooldown against players. 6 s brings it to about two thirds,
   but it also costs the top-skill sword against a staff (66% to about 36% at
   level 12). No single cooldown evens out both.
+  v2.3.3532: re-measured once the simulator fought again (`pvp-fights.md`,
+  "the simulator fights again"): 96% at skill 10; 6 s brings it to 64%, and
+  the sword against a staff from 68% to 33%.
 - **An average sword against a staff that stands its ground does slightly
   worse (24% to 21% at level 12).** The lunge goes off on the press whenever
   it is ready, and it carries the sword into the staff's point-blank big
