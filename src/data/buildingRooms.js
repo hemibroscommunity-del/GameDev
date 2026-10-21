@@ -32,7 +32,8 @@ export const ROOM_DIR = '/world/interiors/';
 export const ROOM_W = 1152;
 export const ROOM_H = 768;
 
-/* buildingPanel value -> plot id.  Sixteen windows, fifteen rooms: the Gem Works'
+/* buildingPanel value -> plot id.  Seventeen windows, sixteen rooms (v2.3.3539:
+   + the Hotel's): the Gem Works'
    two tabs ('gemcut' and 'enchant', v2.3.3259) are one room, and the Assay Office
    that had its own is gone.  (The Feed & Seed, the Land
    Office's trip to your farm, the Saloon and the rest open today's own
@@ -56,16 +57,16 @@ export const BUILDING_ROOMS = {
   sheriff: 'sheriff',
   guildhall: 'guildhall',
   townhall: 'townhall',       /* v2.3.3258: a hall of the Wheel's own, the leaderboard and the world map */
+  hotel: 'hotel',             /* v2.3.3539: the Hotel opens -- a rest the worker pays (server/src/rest.js) */
   auctionhouse: 'auction',
 };
 
-/* Pictures made and shipped for buildings that have no window yet: the Hotel
-   is shut (its rest is the farm bed's, on this device only --
-   WHEEL_SHUT_DOORS).  It costs nothing until a window asks for it;
-   test-world-core checks the file is there, so the day it opens it is one line
-   in BUILDING_ROOMS.  (The Town Hall's was held here until v2.3.3258 made it a
-   hall.) */
-export const SPARE_ROOMS = ['hotel'];
+/* Pictures made and shipped for buildings that have no window yet: none since
+   v2.3.3539, when the Hotel opened (its picture waited here while its rest was
+   the farm bed's, on the phone alone).  A picture listed here costs nothing
+   until a window asks for it; test-world-core checks its file is there.  (The
+   Town Hall's was held here until v2.3.3258 made it a hall.) */
+export const SPARE_ROOMS = [];
 
 /* Windows whose card sits LOW so something above stays in view: the forge's
    (BroTown.jsx: the smith is seen working above it, game/smithing.js).  A

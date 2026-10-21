@@ -157,6 +157,7 @@ import { emoteMethods } from './emotes.js'; /* v2.3.3391: an emote is one of the
 import { poseMethods } from './poses.js'; /* v2.3.3392: a held pose (sit, sleep, a dance) is part of the player */
 import { diceMethods } from './dice.js'; /* v2.3.3393: /roll and /flip, rolled by the worker */
 import { itemDropMethods } from './itemdrop.js'; /* v2.3.3473: a bag item dropped at your feet -- yours a minute, then anyone's */
+import { restMethods } from './rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed -- full bars and Well Rested, +10% of a fight's XP */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -232,6 +233,7 @@ import { floodMethods, roomNameFor, requestIp, FLOOD } from './flood.js'; /* v2.
 import { originAllowed, refuseOrigin } from './origin.js'; /* v2.3.3312: only the game's own sites open a socket */
 import { verifyMethods } from './verify.js'; /* v2.3.3275: the account check -- a new character proves a person is there */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
+import { staminaRegenMethods } from './staminaregen.js'; /* v2.3.3536: stamina regen worked out by the worker */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
 const HERB_REGEN_MULT = (DISHES.meal_herb_bread && Number(DISHES.meal_herb_bread.power) > 1) ? Number(DISHES.meal_herb_bread.power) : 2;
@@ -524,6 +526,10 @@ export const PRIVILEGED_EVENTS = new Set([
      touched, the result.  Forged into a relay, one would start or win a race
      on another player's screen that the worker never ran. */
   'race_state', 'race_cp', 'race_end',
+  /* v2.3.3539: a rest's answer (rest.js) -- forged into a relay, it would
+     tell another player they had rested and were Well Rested when the worker
+     rested nobody. */
+  'rest_result',
   /* v2.3.3127: the farm (farm.js) -- the beds, what grows in them and when it
      is ready, and what an action paid.  A forged one would paint ripe crops
      and harvests the worker never settled on another player's screen. */
@@ -3524,7 +3530,8 @@ export class GameRoom {
   //     In-combat:  nothing — lifesteal and food are the only heals
   //   Stamina:
   //     Always:     ~7/tick (matches client's 10/sec at 60 fps),
-  //                 * (1 + amuletStaminaRegen/100)
+  //                 * the worker's amulet and Endurance mults
+  //                 (staminaregen.js, v2.3.3536)
   //     Override:   when ps.blocking, drain 5/tick instead of regenning
   //                 (mirrors client's 0.167/frame * 30 frames shield drain)
   //   Mana:
@@ -3656,9 +3663,12 @@ export class GameRoom {
         } else if (ps.stamina < ps.maxStamina && !this._sprintHoldsRegen(ps, now)) {
           /* v2.3.3006: ...and not while sprinting (sprint.js): a sprint that
              refilled as it drained would never end */
-          const stAmuletMult = 1 + (ps.amuletStaminaRegen || 0) / 100;
-          // Phase 2 of the T1/T2 spec: Endurance multiplies stamina regen.
-          const stEndMult = 1 + (ps.endurance || 0) * 0.002;
+          /* v2.3.3536: both multipliers are the worker's own now
+             (staminaregen.js): the amulet's from the amulet the worker holds,
+             never the phone's claim, and the frozen Endurance stat only for a
+             character not on prog3 (`amuletregen: false`: as they were).
+             Phase 2 of the T1/T2 spec had Endurance multiply stamina regen. */
+          const { amulet: stAmuletMult, endurance: stEndMult } = this._staminaRegenMults(ps);
           // v2.3.1154: × Endurance-grid Conditioning (+1%/pt, cap +50%)
           // — the successor to the retired restoration mult, deleted
           // v2.3.1155 (it was ×1.0 for every live player since v2.3.910).
@@ -5126,6 +5136,9 @@ export class GameRoom {
              registry owns the clan tag -- a blind merge of a client-supplied
              cosmetic is a forgery hole, and this cosmetic is a contest prize. */
           this._capeStamp(session.id, clean);
+          /* v2.3.3538: and the worker owns the LEVEL others see (prog3.js
+             _levelStamp) -- a phone from before one level reports the sum. */
+          this._levelStamp(session.id, clean);
           /* v2.3.2690: and the stored character record is the whole look
              (join.js RECORD_LOOK_KEYS) -- a relay carrying another character's
              face tattoo or species, from a device that holds several, is
@@ -5387,6 +5400,12 @@ export class GameRoom {
            judges every flag on the moves it accepts and the finish against
            his time */
         if (session.id) this._handleRaceStart(session);
+        break;
+
+      case 'rest_request':
+        /* v2.3.3539: a rest at the Hotel or on your farm's bed (rest.js) --
+           full bars and Well Rested, paid by the worker */
+        if (session.id) this._handleRest(session, msg.payload || msg);
         break;
 
       case 'smelt_bar':
@@ -6472,6 +6491,7 @@ Object.assign(GameRoom.prototype, emoteMethods); /* v2.3.3391 */
 Object.assign(GameRoom.prototype, poseMethods); /* v2.3.3392 */
 Object.assign(GameRoom.prototype, diceMethods); /* v2.3.3393 */
 Object.assign(GameRoom.prototype, itemDropMethods); /* v2.3.3473 */
+Object.assign(GameRoom.prototype, restMethods); /* v2.3.3539 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
 Object.assign(GameRoom.prototype, allianceMethods); /* v2.3.3313 */
@@ -6517,3 +6537,4 @@ Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's op
 Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula for every fight */
 Object.assign(GameRoom.prototype, pvpExtrasMethods); /* v2.3.3264: the monster-only extras on players */
 Object.assign(GameRoom.prototype, sparMethods); /* v2.3.3265: sparring clones (spar.js) */
+Object.assign(GameRoom.prototype, staminaRegenMethods); /* v2.3.3536: stamina regen from the worker's own amulet (staminaregen.js) */

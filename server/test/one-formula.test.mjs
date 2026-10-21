@@ -73,10 +73,26 @@ room._liveFlags = {};
   const ws = fakeWs();
   await join(ws, 'bp_of_a');
   const A = room.playerState.bp_of_a;
-  check('a joined player\'s bar is the formula\'s (level 3: 250)', A.maxHp === 250 && A.level === 3, { maxHp: A.maxHp, level: A.level });
+  /* v2.3.3538: ONE LEVEL -- a new character is level 1 (the highest skill),
+     its bar read as level + MATCH_LEVEL: the same 250 */
+  check('a joined player\'s bar is the formula\'s (level 1: 250)', A.maxHp === 250 && A.level === 1, { maxHp: A.maxHp, level: A.level });
+  check('healthAt under one level reads level + MATCH_LEVEL: level 1 250, level 20 1200 (a one-weapon character\'s bar, unchanged)',
+    healthAt(1, 0, true, true) === 250 && healthAt(20, 0, true, true) === 1200 && healthAt(20, 0, true, true) === healthAt(22, 0)
+      && healthAt(1, 0, false, true) === 118, [healthAt(1, 0, true, true), healthAt(20, 0, true, true), healthAt(1, 0, false, true)]);
   A.prog3.sk.sword.level = 20; A.prog3.alloc = Object.assign(A.prog3.alloc || {}, { hp: 5 });
   room._prog3Recompute(A);
-  check('...and grows 50 a level and 40 a point (sword 20, 5 points: 100 + 50 x 22 + 200)', A.maxHp === 100 + 50 * 22 + 40 * 5, A.maxHp);
+  /* v2.3.3538: level 20 (the highest skill), read as 22 -- the very bar the
+     sum gave a sword-20 character */
+  check('...and grows 50 a level and 40 a point (sword 20, 5 points: 100 + 50 x 22 + 200)', A.level === 20 && A.maxHp === 100 + 50 * 22 + 40 * 5, { max: A.maxHp, level: A.level });
+  A.prog3.sk.bow.level = 20; A.prog3.sk.staff.level = 20;
+  room._prog3Recompute(A);
+  check('...and two more weapons at 20 add no HP (the level is still 20; the sum gave 100 + 50 x 60 + 200)', A.level === 20 && A.maxHp === 100 + 50 * 22 + 40 * 5, { max: A.maxHp, level: A.level });
+  room._liveFlags = { onelevel: false };
+  room._prog3Recompute(A);
+  check('onelevel:false: the three added up again (60) and its bar', A.level === 60 && A.maxHp === 100 + 50 * 60 + 40 * 5, { max: A.maxHp, level: A.level });
+  room._liveFlags = {};
+  A.prog3.sk.bow.level = 1; A.prog3.sk.staff.level = 1;
+  room._prog3Recompute(A);
   room._liveFlags = { oneformula: false };
   room._prog3Recompute(A);
   check('oneformula:false: the old bar (100 + 6 x 22 + 8 x 5)', A.maxHp === 100 + 6 * 22 + 8 * 5, A.maxHp);
@@ -232,7 +248,7 @@ room._liveFlags = {};
   /* through the admin route, as the operator throws it */
   const json = (o) => o;
   await room._liveopsRoutes({ method: 'POST', json: async () => ({ name: 'oneformula', value: false }) }, new URL('http://x/admin/flags'), '/flags', json);
-  check('oneformula:false through the admin route: the bar is the old one at once', K.maxHp === healthAt(K.level, 0, false), { max: K.maxHp, want: healthAt(K.level, 0, false) });
+  check('oneformula:false through the admin route: the bar is the old one at once', K.maxHp === healthAt(K.level, 0, false, true), { max: K.maxHp, want: healthAt(K.level, 0, false, true) });
   check('...and as full as it was (60%)', Math.abs(K.hp / K.maxHp - 0.6) < 0.02, { hp: K.hp, max: K.maxHp });
   check('...and the live monster hits as it did before the formula', Math.abs(m.dmg - dmgOn / monsterHitK(12)) <= 1 && m._hk === 1, { dmg: m.dmg, was: dmgOn });
   await room._liveopsRoutes({ method: 'DELETE', json: async () => ({}) }, new URL('http://x/admin/flags?name=oneformula'), '/flags', json);

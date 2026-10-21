@@ -169,7 +169,8 @@ const ps2 = room.playerState['bp_pt_a'];
 // v2.3.1659 (prog3): the reconnect runs migration v10, so this legacy
 // blob (no trained weapon skills, no defense levels) respecs to trained
 // levels 1/1/1 — level re-derives as Σ trained = 3, not points-placed.
-check('reconnect restores stored coins; level re-derives as Σ prog3 trained levels', ps2.coins === 1234 && ps2.level === 3, { coins: ps2.coins, level: ps2.level });
+/* v2.3.3538: the level is the highest trained skill now, so 1 (the sum was 3) */
+check('reconnect restores stored coins; level re-derives from the prog3 trained levels (the highest, 1)', ps2.coins === 1234 && ps2.level === 1, { coins: ps2.coins, level: ps2.level });
 check('reconnect stash passes the NON-strict clamp (server-minted quality kept)', ps2.weaponStash.length === 1 && ps2.weaponStash[0].quality === 'rare', ps2.weaponStash);
 check('reconnect restores the defense track', ps2.defenseSkill && ps2.defenseSkill.level === 2 && ps2.defenseSpec && ps2.defenseSpec.ironskin === 1);
 
@@ -215,7 +216,7 @@ check('reconnect restores the defense track', ps2.defenseSkill && ps2.defenseSki
   /* v2.3.3138: ...holding the new character's purse, as the client's own
      new character does (it was 0 here only because this join sent no
      rpgCoins, which a first join no longer reads). */
-  check('rejoin after reset is a fresh level-3 bootstrap', ps3 && ps3.level === 3 && ps3.coins === NEW_CHARACTER_COINS && Object.keys(ps3.inventory || {}).length === 0, ps3 && { level: ps3.level, coins: ps3.coins });
+  check('rejoin after reset is a fresh level-1 bootstrap (v2.3.3538: one level)', ps3 && ps3.level === 1 && ps3.coins === NEW_CHARACTER_COINS && Object.keys(ps3.inventory || {}).length === 0, ps3 && { level: ps3.level, coins: ps3.coins });
 
   /* 7d. v2.3.3375: the last bro in a room restarts: the leaving run stops the
      room's tick, as any last leaver's does (it ran on with nobody in it) */

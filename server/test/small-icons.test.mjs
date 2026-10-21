@@ -40,7 +40,8 @@ const src = (p) => readFileSync(new URL(p, root), 'utf8');
 {
   const dom = SI.smallIconDomUrls();
   const missing = dom.filter((u) => !existsSync(pub(u)));
-  check(`2a every DOM icon is a file in public/ (${dom.length}: the party's four, the chat's three, eight buffs)`, dom.length === 15 && missing.length === 0, missing);
+  /* v2.3.3539: nine buffs -- + Well Rested, the owner's bed made small (tools/ui/make-rested-badge.py) */
+  check(`2a every DOM icon is a file in public/ (${dom.length}: the party's four, the chat's three, nine buffs)`, dom.length === 16 && missing.length === 0, missing);
   const tex = Object.values(SI.SMALL_TEX).filter((u) => !existsSync(pub(u)));
   check('2b the canvas\'s three too, and the page never warms those two as <img>', Object.keys(SI.SMALL_TEX).length === 3 && tex.length === 0
     && dom.indexOf(SI.SMALL_ICON.threatSkull) < 0 && dom.indexOf(SI.SMALL_ICON.npcTalk) < 0, tex);
@@ -77,7 +78,7 @@ const src = (p) => readFileSync(new URL(p, root), 'utf8');
   const bt = src('src/ui/BroTown.jsx');
   const chips = bt.slice(bt.indexOf("if (S._cursedUntil && Date.now() < S._cursedUntil)"), bt.indexOf('if (effects.length === 0) return null;'));
   check('3d the buff badges: every one the owner\'s picture, no emoji left',
-    (chips.match(/icon: BUFF_ICON\.\w+/g) || []).length === 8 && !/icon: '/.test(chips) && /data-buff-chip/.test(bt));
+    (chips.match(/icon: BUFF_ICON\.\w+/g) || []).length === 9 && !/icon: '/.test(chips) && /data-buff-chip/.test(bt));   /* v2.3.3539: + Rested */
   const ph = src('src/ui/panels/PartyHUD.jsx');
   check('3e the party window: no 🎟️ 👑 💀 📍 left, its marks the owner\'s pictures',
     !/"🎟️ PARTY "|'👑 '|'💀 '|'📍 '/.test(ph) && /SMALL_ICON\.partyLeader/.test(ph) && /SMALL_ICON\.partyAway/.test(ph));

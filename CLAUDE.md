@@ -1847,6 +1847,19 @@ remnant to migrate server-side, not a mode to preserve.
         join (`_keepBarFullness`); Lv 12 copper set: sword 9.9 s, bow 12.2,
         staff 13.3 (12.4 since v2.3.3263); kill switch `oneformula: false`
         (re-sizes every bar and live monster at once, liveops.js);
+      - since v2.3.3538 ONE LEVEL -- the after-review plan ("I value SIMPLICITY
+        and INTELLIGIBILITY"): the character level is the HIGHEST weapon skill,
+        not the three added up (prog3.js `_prog3CharLevel`, the page's
+        `prog3CharLevel` on `caps.onelevel`); a new character is 1; max HP
+        200 + 50 a level (healthAt `oneLevel`: read as level + MATCH_LEVEL, so a
+        new character's and every one-weapon bar, and every monster hit, are
+        unchanged); shared points 3 a CHARACTER level (a weapon below your best
+        pays its lane points only), so the per-stat bound never strands one;
+        every character's points re-dealt once (`prog3Redeal`, migration v18,
+        `olr`); the worker stamps `rpgLv` (`_levelStamp`), so plates and No
+        man's land read its level; the Combat rank is the level; chain
+        milestones 2..100; kill switch `onelevel: false` (the sum again);
+        `one-level` suite: docs/specs/one-level.md;
       - since v2.3.3263 ONE VERSION -- the owner, after #916 merged: "the numbers for damage
         between PVP and PVE can be exactly the same for each combat skill type
         ... A fish heals the same fixed amount always ... Everything is 1
@@ -2783,6 +2796,32 @@ remnant to migrate server-side, not a mode to preserve.
       mouths, the four lands' music);
     - test-world-core "the buildings' doors", `mp-wheelhalls`, `mp-wheeldoors`:
       docs/specs/wheel-halls.md.
+    - since v2.3.3539 THE HOTEL OPENS, A REST THE WORKER PAYS -- the owner: "I
+      value SIMPLICITY and INTELLIGIBILITY" (the after-review list): the farm
+      bed's rest was the phone's alone (bars the next echo put back, a +10% XP
+      only the phone's retired popups read):
+      - `rest_request {where: 'hotel' | 'farm'}` -> `server/src/rest.js`: within
+        `REST.HOTEL_R` 260 of the Hotel's door (`REST.HOTEL`, an offset from
+        the Wheel's middle that test-world-core holds to the placed door), or
+        on your farm; refused in a fight (a blow either way in 10 s, or a fight
+        with a player), within `GAP_MS` a minute of the last rest, or dead;
+        fills HP, stamina and mana and starts WELL RESTED, `_buffs.wellRested`
+        (not the Herb Bread's `rest`) for 30 minutes: +10% of a fight's XP
+        (prog3.js `_prog3AwardXp`, ADDED to the Pumpkin Pie's, never a flat
+        award); one saved row; answered `rest_result` (PRIVILEGED); free;
+      - the Hotel is a fifth hall (`WHEEL_HALL_DOORS.hotel`), open only
+        against `caps.rest` (`WHEEL_HALL_CAPS`, wheelTownDoors.js
+        `setWheelHallCaps` from wsClient; `WHEEL_SHUT_DOORS` is empty), its
+        window one row, Rest, over its room (`BUILDING_ROOMS.hotel`,
+        `SPARE_ROOMS` empty); the farm bed's E key, stick and Sleep button ask
+        the worker too (BroTown `_desktopSleep`, game/rest.js), the phone's own
+        rest kept for an older worker; Well Rested is a "Rested" chip with the
+        timed effects (`BUFF_ICON.rested`, the owner's bed made 64 px by
+        tools/ui/make-rested-badge.py), the top-right badge over the minimap
+        gone; kill switch `rest: false`;
+      - `rest` suite (48, fifteen mutations caught), `mp-hotel` (13), and
+        mp-wheeldoors runs under `rest: false` (the Hotel shut, as an older
+        worker leaves it): docs/specs/hotel-rest.md.
   - Since v2.3.3067 THE REST OF TOWN'S CAST STANDS IN THE WHEEL'S BROTOWN --
     the owner: "keep going with pragmatic enhancements":
     - Ace west of the Gambling Den's steps, Blacksmith Bro east of the forge's,

@@ -20,7 +20,7 @@
    is the same direction the server uses (server/src/prog3.js imports
    abilities.js, never the reverse). */
 import { rpgBlockSize } from './abilities.js';
-import { healthPerPoint } from './oneFormula.js'; /* v2.3.3260: a Max HP point's worth */
+import { healthPerPoint, isOneLevelEnabled } from './oneFormula.js'; /* v2.3.3260: a Max HP point's worth; v2.3.3538: one level */
 
 export const PROG3 = {
   SKILLS: ['sword', 'bow', 'staff'], // storage keys; displayed Melee / Bow / Magic
@@ -644,10 +644,26 @@ export function prog3SkillLevel(rpg, cat) {
   return sk ? Math.max(1, Math.min(PROG3.LEVEL_CAP, sk.level || 1)) : 1;
 }
 
+/* v2.3.3538: ONE LEVEL -- against a worker that says so (caps.onelevel,
+   oneFormula.js isOneLevelEnabled) the character level is the HIGHEST of the
+   three skills, the worker's prog3.js _prog3CharLevel; against an older one
+   (or its switch thrown) the three added up, as before. */
 export function prog3CharLevel(rpg) {
+  if (isOneLevelEnabled()) {
+    var best = 1;
+    for (var j = 0; j < PROG3.SKILLS.length; j++) best = Math.max(best, prog3SkillLevel(rpg, PROG3.SKILLS[j]));
+    return best;
+  }
   var sum = 0;
   for (var i = 0; i < PROG3.SKILLS.length; i++) sum += prog3SkillLevel(rpg, PROG3.SKILLS[i]);
   return Math.min(PROG3.CHAR_LEVEL_CAP, sum);
+}
+
+/* v2.3.3538: a brand-new character's level -- 1 under one level, 3 (three
+   skills at 1, added up) before.  What QuestCoach and the welcome banner ask
+   to tell a new character from a returning one. */
+export function prog3FreshLevel() {
+  return isOneLevelEnabled() ? 1 : PROG3.SKILLS.length;
 }
 
 /* A GLOBAL body stat. */

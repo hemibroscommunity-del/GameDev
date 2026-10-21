@@ -9,6 +9,7 @@ import { combatBandTopPx } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2564: ho
    rather than reimplemented: it is four lines, but they encode the
    ranged/staff fallback to `weapon` and a copy here would drift. */
 import { getActiveWeapon } from '@/data/gameSystems.js';
+import { prog3FreshLevel } from '@/data/prog3.js'; /* v2.3.3538: a new character's level (1 under one level) */
 import { holdDisc, releaseDisc, discSideFor } from '@/game/controlVisibility.js'; /* v2.3.2246 */
 /* v2.3.2495: the two facts the dashboard lessons are about -- is the band
    folded, and is the dashboard the thing on screen.  Both are module-scope
@@ -343,7 +344,9 @@ function inTutorial(rpg) {
        are. */
 function preTutorial(rpg) {
   if (!rpg) return false;
-  if ((rpg.level || 1) > 3) return false;
+  /* v2.3.3538: "3 or under" was a new character under the sum (1+1+1); a
+     new character's level is prog3FreshLevel (1 under one level) */
+  if ((rpg.level || 1) > prog3FreshLevel()) return false;
   const q = rpg._quests || null;
   if (!q) return true;
   for (const id of ['tut_1', 'tut_2', 'tut_3', 'tut_4']) if (q[id]) return false;
