@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "335260e35091f08be6b4f0d8a7a3676f004ec823",
+  "tree": "4577a0b0b018a5d410f5ec7e1cab3602aa984f7e",
+  "committedAt": "2026-10-20T21:02:44-07:00",
+  "subject": "The forge's Amulet tab shows only once you hold gold for it (v2.3.3535) (#1052)",
+  "files": 6177,
+  "bytes": 713231799,
+  "listingSha256": "40261a0f2f55bf8f2df91fd9369bd5f28f914e687e59a290cc758865b544540b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
