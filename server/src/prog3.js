@@ -13,6 +13,24 @@
  *   - Character level = Σ trained levels, cap 300 (fresh character =
  *     3).  EVERY trained level-up is +1 character level + 1 allocation
  *     point, immediately.
+ *     ═══ v2.3.3538: ONE LEVEL -- the HIGHEST trained skill, 1..100 ═══
+ *     The after-review plan the owner agreed (2026-10-21: "I value
+ *     SIMPLICITY and INTELLIGIBILITY"): a level that means one thing.  The
+ *     sum made a new character level 3, rose with every weapon you tried,
+ *     and set your HP, your points and the levels No man's land, the
+ *     dungeons and the alliance count by -- while the monsters you should
+ *     fight follow the weapon in your hand.  Now your level is your best
+ *     weapon's (_prog3CharLevel): a new character is 1, and a level-10
+ *     player is the match for a level-10 monster.  Max HP reads it as the
+ *     sum read a one-weapon character (oneformula.js healthAt `oneLevel`), so
+ *     that bar, a new character's and every monster's hit are unchanged.
+ *     SHARED (body) points now come with the CHARACTER level, 3 a level
+ *     (_prog3AwardXp): under the sum that was every skill's level-up, so the
+ *     rule is the old one there; under max, training a second weapon earns
+ *     its own lane points and no body points, and the §6-C per-stat bound
+ *     (the character level) can never strand a shared point.  Every stored
+ *     character is dealt its points again once (prog3Redeal, migration v18).
+ *     `onelevel: false` in liveflags is the sum again (_oneLevelOn).
  *   - SEVEN allocated stats (def / hp / dodge / stam / crit / critDmg
  *     / aspd), linear per-point values with hard caps (§4-A), each
  *     stat additionally capped at min(100, character level) (§6-C —
@@ -528,7 +546,9 @@ export function prog3Edge(yourLevel, monsterLevel) {
 /* The level the edge measures a stat against (relative-points.md §2): a lane
    stat's OWN trained skill, a shared stat's HIGHEST trained skill.  Never the
    character level — that is a sum, and two cheap off-lane skills would lift
-   it 170x more cheaply than training the lane you fight with. */
+   it 170x more cheaply than training the lane you fight with.  (v2.3.3538:
+   under one level the character level IS the highest skill, this with no
+   lane -- _prog3CharLevel reads it from here.) */
 export function prog3Yardstick(ps, cat) {
   const sk = ps && ps.prog3 && ps.prog3.sk;
   if (!sk) return 1;
@@ -599,6 +619,10 @@ export function prog3StatDef(stat) {
   return null;
 }
 
+/* v2.3.3538: the one-level re-deal's stamp (`olr`, prog3Redeal below) -- a
+   new character is dealt by the one-level rule from the start. */
+export const ONE_LEVEL_REDEAL = 1;
+
 /* The respec (§8-B, approved): recompute from carried XP.  New trained
  * level = legacy level + 1 (identical curve, 0→1 base shift), leftover
  * xp carried; pool = Σ legacy weapon levels + legacy defense level
@@ -629,9 +653,11 @@ export function prog3FromLegacy(src) {
     pool += oldLevel * PROG3.POINTS_PER_LEVEL;
     poolBy[cat] = oldLevel * PROG3.POINTS_PER_LEVEL;
     /* v2.3.2592: and the shared pool alongside, at the current rate, stamped
-       (spl) for the same join-boundary reason as ppl above. */
-    shared += oldLevel * PROG3.SHARED_POINTS_PER_LEVEL;
+       (spl) for the same join-boundary reason as ppl above.
+       v2.3.3538: by the CHARACTER level now (one level: the highest skill),
+       added below the loop. */
   }
+  shared = PROG3.SHARED_POINTS_PER_LEVEL * (Math.max(...PROG3.SKILLS.map((c) => sk[c].level)) - 1);
   /* The defense-skill carry stays a one-time UNCHANNELLED bonus (§3's
      bonus-points pick, spendable anywhere) — it is not per-level minting
      and does not triple. */
@@ -640,7 +666,67 @@ export function prog3FromLegacy(src) {
      gone and nothing pays against this any more; it is still stamped 0 so a
      worker ROLLED BACK past v2.3.2662 finds the shape it expects. */
   return { sk, alloc: prog3FreshAlloc(), atk: prog3FreshAtk(), pool, poolBy, ms: 0, ppl: PROG3.POINTS_PER_LEVEL,
-    shared, spl: PROG3.SHARED_POINTS_PER_LEVEL /* v2.3.2592 */ };
+    shared, spl: PROG3.SHARED_POINTS_PER_LEVEL /* v2.3.2592 */,
+    olr: ONE_LEVEL_REDEAL /* v2.3.3538: dealt by the one-level rule already */ };
+}
+
+/* ═══ v2.3.3538: ONE LEVEL -- EVERY POINT DEALT AGAIN, ONCE ═══
+ * The level became the highest trained skill (header), and with it the rule
+ * for shared points: 3 a CHARACTER level, not 3 a skill level.  A character
+ * who trained two or three weapons holds the old rule's shared points, more
+ * than the new per-stat bound (the character level, now the highest skill)
+ * leaves room for -- 10/10/10 holds 81 with room for 70 -- and placements
+ * above the new bound.  So every stored character is dealt its points again,
+ * once: every placed point back, the lane pools what each skill's levels
+ * give (3 a level past 1, stamped to the skill), the shared pool what the
+ * character level gives (3 a level past 1).  Skills, XP, gear and everything
+ * else untouched.  The agreed plan was "everyone starts fresh" (no live
+ * players, the owner: "If everyone needed to start from scratch it's no
+ * problem"); this keeps every character and only re-deals the points, which
+ * is all the change needs.  Points the old rules gave once (the defense-
+ * skill carry, the v2.3.1733 milestone point) are not dealt again: a fresh
+ * character reaching the same levels holds exactly these.
+ * Stamped `olr` so it runs once; shared by migration v18 and the
+ * _sanitizeProg3 boundary heal (migrations fail open), the v14/v17 pattern.
+ * prog3RespecPoints is the deal itself, for the free points reset too.
+ * (ONE_LEVEL_REDEAL, the stamp, is declared above prog3FromLegacy, which
+ * stamps every new character with it.) */
+
+/** Every placed point back; the pools what the skill levels give.  `sumRule`:
+ *  the shared pool by the old rule (3 a skill level past 1, the three summed),
+ *  for a worker running with `onelevel: false`; else 3 a character level past
+ *  1 (the highest skill).  Mutates and returns the blob. */
+export function prog3RespecPoints(p3, sumRule) {
+  if (!p3 || typeof p3 !== 'object') return p3;
+  if (!p3.sk || typeof p3.sk !== 'object') p3.sk = {};
+  const lv = (cat) => Math.max(1, Math.min(PROG3.LEVEL_CAP, Math.floor(Number(p3.sk[cat] && p3.sk[cat].level) || 1)));
+  const poolBy = { sword: 0, bow: 0, staff: 0 };
+  let pool = 0, best = 1, sumPast = 0;
+  for (const cat of PROG3.SKILLS) {
+    const L = lv(cat);
+    poolBy[cat] = PROG3.POINTS_PER_LEVEL * (L - 1);
+    pool += poolBy[cat];
+    best = Math.max(best, L);
+    sumPast += L - 1;
+  }
+  p3.alloc = prog3FreshAlloc();
+  p3.atk = prog3FreshAtk();
+  p3.poolBy = poolBy;
+  p3.pool = Math.min(999, pool);
+  p3.shared = Math.min(999, PROG3.SHARED_POINTS_PER_LEVEL * (sumRule ? sumPast : best - 1));
+  p3.ppl = PROG3.POINTS_PER_LEVEL;
+  p3.spl = PROG3.SHARED_POINTS_PER_LEVEL;
+  return p3;
+}
+
+/** The one-time re-deal (migration v18, and the join boundary).  False when
+ *  the blob is not a prog3 block or was dealt already. */
+export function prog3Redeal(p3) {
+  if (!p3 || typeof p3 !== 'object' || !p3.sk || typeof p3.sk !== 'object') return false;
+  if (Number(p3.olr) >= ONE_LEVEL_REDEAL) return false;
+  prog3RespecPoints(p3, false);
+  p3.olr = ONE_LEVEL_REDEAL;
+  return true;
 }
 
 /* ═══ v2.3.2199: THE RETRO GRANT (migration v14) ═══
@@ -922,6 +1008,13 @@ export const prog3Methods = {
     const spl = Number(src.spl);
     out.spl = (Number.isFinite(spl) && spl >= 1) ? Math.min(PROG3.SHARED_POINTS_PER_LEVEL, Math.floor(spl)) : 0;
     prog3GrantSharedPoints(out);
+    /* v2.3.3538: the one-level re-deal's stamp, source-first like ppl/spl
+       (the fresh shape carries it, and adopting it before reading the source
+       would mark an old blob dealt without dealing it), then the re-deal as a
+       boundary heal for a blob that missed migration v18.  A dropped stamp is
+       how a one-time re-deal becomes one per join, so `olr` must survive. */
+    out.olr = Number(src.olr) >= ONE_LEVEL_REDEAL ? ONE_LEVEL_REDEAL : 0;
+    prog3Redeal(out);
     /* Re-run the parts-≤-whole clamp: the grant grows pool and poolBy by
        the same amounts, but its 999 pool ceiling can bind on a forged
        near-999 blob while the per-lane adds don't, and then the block
@@ -999,9 +1092,32 @@ export const prog3Methods = {
     return n <= 0 ? 0 : n * blockSize(ps, pool);
   },
 
+  /* v2.3.3538: ONE LEVEL (header) -- the highest trained skill, 1..100, the
+     very number prog3Yardstick(ps, null) and _prog3OpponentLevel already
+     were; `onelevel: false` is the sum again (a new character 3). */
+  _oneLevelOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'onelevel') && !f.onelevel);
+  },
+  _oneLevelOn() { return !this._oneLevelOff(); },
+
+  /* v2.3.3538: the level other players see -- every name plate, the "Attack
+     <name>?" window, the lists, the No man's land guess on their phones -- is
+     the worker's ps.level, stamped over the phone's own `rpgLv` in its look
+     (index.js `track`; join.js stamps the join's).  A phone from before one
+     level reports the sum, a modified one any number, and the rule that
+     decides a fight (nomansland.js _nmlAllowed) reads ps.level. */
+  _levelStamp(pid, clean) {
+    const ps = this.playerState && this.playerState[pid];
+    if (!ps || !ps.prog3 || !clean || typeof clean !== 'object') return;
+    if (Object.prototype.hasOwnProperty.call(clean, 'rpgLv')) clean.rpgLv = Number(ps.level) || 1;
+  },
+
   _prog3CharLevel(ps) {
     const p3 = ps && ps.prog3;
-    if (!p3 || !p3.sk) return 3;
+    const one = this._oneLevelOn();
+    if (!p3 || !p3.sk) return one ? 1 : 3;
+    if (one) return prog3Yardstick(ps, null);
     let sum = 0;
     for (const cat of PROG3.SKILLS) {
       sum += Math.max(1, Math.min(PROG3.LEVEL_CAP, (p3.sk[cat] && p3.sk[cat].level) || 1));
@@ -1029,8 +1145,10 @@ export const prog3Methods = {
        point, so a fight between two players lasts long enough without a
        PvP-only cut on their hits; `oneformula: false` is the old
        100 + level x HP_PER_LEVEL + points x BODY.hp.per below, frozen. */
+    /* v2.3.3538: the level is the highest skill under one level, read by the
+       bar as level + MATCH_LEVEL (200 + 50 a level), oneformula.js healthAt */
     ps.maxHp = (typeof this._oneFormulaOn === 'function')
-      ? healthAt(ps.level, this._prog3Pts(ps, 'hp'), this._oneFormulaOn())
+      ? healthAt(ps.level, this._prog3Pts(ps, 'hp'), this._oneFormulaOn(), this._oneLevelOn())
       : Math.floor(100 + ps.level * PROG3.HP_PER_LEVEL
         + this._prog3Pts(ps, 'hp') * PROG3.BODY.hp.per);
     /* v2.3.2662: no level multiplier.  v2.3.1733's char-10 "Second Wind"
@@ -1157,6 +1275,8 @@ export const prog3Methods = {
     if (!p3 || !p3.sk || !p3.sk[cat] || !(amount > 0)) return;
     const sk = p3.sk[cat];
     if (sk.level >= PROG3.LEVEL_CAP) return;
+    /* v2.3.3538: the character level before, for the shared points below */
+    const charBefore = this._prog3CharLevel(ps);
     /* v2.3.3131: the Pumpkin Pie (data.js DISHES) -- +10% of the XP a fight
        pays, while its meal runs.  Never the FLAT awards (a quest's XP): the
        pie is "combat XP", the plan's reading of it.  Bounded like every
@@ -1174,16 +1294,25 @@ export const prog3Methods = {
       /* v2.3.2176: and the points remember WHICH skill earned them. */
       if (!p3.poolBy || typeof p3.poolBy !== 'object') p3.poolBy = { sword: 0, bow: 0, staff: 0 };
       p3.poolBy[cat] = (Number(p3.poolBy[cat]) || 0) + PROG3.POINTS_PER_LEVEL;
-      /* v2.3.2592: and the SHARED points beside them, one per lane point
-         (owner: "you earn one 'shared' point too"). */
-      p3.shared = Math.min(999, Math.max(0, Math.floor(Number(p3.shared) || 0)) + PROG3.SHARED_POINTS_PER_LEVEL);
       gained++;
     }
     if (sk.level >= PROG3.LEVEL_CAP) sk.xp = 0;
+    /* v2.3.2592: and the SHARED points beside them, one per lane point
+       (owner: "you earn one 'shared' point too").
+       v2.3.3538: 3 a CHARACTER level -- under the sum every skill level-up
+       was one, so this is the old rule there; under one level a skill that is
+       not your best earns its own lane points and no shared ones (header). */
+    const charGained = Math.max(0, this._prog3CharLevel(ps) - charBefore);
+    if (charGained > 0) {
+      p3.shared = Math.min(999, Math.max(0, Math.floor(Number(p3.shared) || 0)) + charGained * PROG3.SHARED_POINTS_PER_LEVEL);
+    }
     if (gained > 0) {
       // A trained level-up IS the character level-up (level = Σ), so
       // the celebration moves server-side (§8): recompute + full
       // resource restore (the v2.3.1414 rule), persist, notify.
+      // v2.3.3538: under one level a skill below your best rises without
+      // the character level; it still refills the pools and says so (the
+      // burst names the skill), as every trained level-up always has.
       this._prog3Recompute(ps);
       /* v2.3.2662: the milestone payout that ran here (v2.3.1733) is gone
          with the ladder -- see the tombstone in abilities.js. */

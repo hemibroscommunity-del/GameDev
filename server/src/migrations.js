@@ -49,7 +49,7 @@
 
 import { t2ReplayFlat } from './data.js';
 import { prog3FromLegacy, prog3SplitAtk, prog3GrantRetroPoints, prog3MoveElemToAtk,
-  prog3FoldLuck, prog3GrantSharedPoints /* v2.3.2592 */ } from './prog3.js';
+  prog3FoldLuck, prog3GrantSharedPoints /* v2.3.2592 */, prog3Redeal /* v2.3.3538 */ } from './prog3.js';
 import { normalizeGearStashes } from './gearstash.js';
 
 /* v2.3.2523: 16, appended above the attributes restructure's v15
@@ -57,7 +57,9 @@ import { normalizeGearStashes } from './gearstash.js';
  * numbers are APPENDED and never renumbered (the recipe above), so a
  * blob stamped 15 runs v16 next and one stamped 16 has run both. */
 /* v2.3.2592: 17 — the four-column points redesign (luck fold + shared pool). */
-export const RPG_SCHEMA_VERSION = 17;
+/* v2.3.3538: 18 — one level (the highest skill): every character's points
+   dealt again once (prog3Redeal). */
+export const RPG_SCHEMA_VERSION = 18;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -667,6 +669,24 @@ export const MIGRATIONS = [
       const a = prog3FoldLuck(blob.prog3);
       const b = prog3GrantSharedPoints(blob.prog3);
       return a || b;
+    },
+  },
+  {
+    v: 18,
+    name: 'one-level-redeal',
+    /* v2.3.3538: ONE LEVEL (prog3.js header).  The character level is the
+       highest trained skill now, and shared points come 3 a CHARACTER level,
+       so a character who trained two or three weapons holds more shared
+       points than the new per-stat bound has room for, and may hold
+       placements above it.  prog3Redeal hands every placed point back and
+       sets each pool to what the skill levels give under the new rule --
+       skills, XP and everything else untouched.  Idempotent by its `olr`
+       stamp, and run again at the join boundary (_sanitizeProg3), because
+       migrations FAIL OPEN. */
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      if (!blob.prog3 || typeof blob.prog3 !== 'object') return false;
+      return prog3Redeal(blob.prog3);
     },
   },
 ];

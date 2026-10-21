@@ -426,9 +426,10 @@ export const devToolsMethods = {
       testMode: ps._testMode === true,
       testModeAllowed: this._testModeAllowed(),
       zones,
-      charLevel: (ps.prog3 && ps.prog3.sk)
-        ? ['sword', 'bow', 'staff'].reduce((s, k) => s + ((ps.prog3.sk[k] && ps.prog3.sk[k].level) || 0), 0)
-        : null,
+      /* v2.3.3538: the worker's own character level (prog3.js
+         _prog3CharLevel: the highest skill, or the sum with `onelevel:
+         false`) -- it was summed here inline, a copy of the old rule */
+      charLevel: (ps.prog3 && ps.prog3.sk) ? this._prog3CharLevel(ps) : null,
       /* v2.3.3265: your sparring clones, their skill and the score (spar.js) */
       spar: this._sparSummary ? this._sparSummary(playerId) : null,
       /* v2.3.3321: the monsters the worker holds in your zone -- how many,
@@ -532,8 +533,9 @@ export const devToolsMethods = {
 
   /* ═══ v2.3.3313: A COMBAT LEVEL TO TEST AGAINST ═══
      An alliance counts members at character level 5 or more (alliance.js
-     ACTIVE_LEVEL) -- two combat levels past a new character's 3, a while of
-     fighting each -- so its phone check (mp-alliance) sets them here, as
+     ACTIVE_LEVEL) -- since v2.3.3538 a weapon at level 5 (the level is the
+     highest skill, a new character 1), a while of fighting -- so its phone
+     check (mp-alliance) sets them here, as
      /dev/lifeskill sets a life skill.  The trained level alone, xp 0: no
      points are minted, which the real road pays a level, so a character
      raised here has fewer points to spend than one that fought there. */

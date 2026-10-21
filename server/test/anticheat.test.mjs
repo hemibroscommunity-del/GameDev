@@ -741,8 +741,10 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     psT.weapon === honestWeapon, psT.weapon);
   check('track: position not merged (move owns it behind the cap)',
     psT.x === honestX && psT.y === honestY, { x: psT.x, y: psT.y });
-  check('track: honest cosmetics still land', psT.name === 'Tracker' && psT.rpgLv === 500,
-    { name: psT.name, rpgLv: psT.rpgLv });
+  /* v2.3.3538: the honest cosmetics land -- and the LEVEL others see is the
+     worker's own (prog3.js _levelStamp), never the 500 the track claimed */
+  check('track: honest cosmetics still land, the level others see the worker\'s', psT.name === 'Tracker' && psT.rpgLv === psT.level && psT.rpgLv === 7,
+    { name: psT.name, rpgLv: psT.rpgLv, level: psT.level });
   /* v2.3.1949: EVERY drawing key must survive the track gate at its full 256
      characters.  This is the shape of the v2.3.1939 incident exactly: that
      version added a drawing key to the join gate and missed the track one, so
