@@ -1621,9 +1621,16 @@ remnant to migrate server-side, not a mode to preserve.
         (dungeon.js `_dungeonSpawnBoss`; v2.3.1346 left the level's flat out,
         and since v2.3.3055 the flat is most of a monster's health, so the boss
         had about a wave monster's: the Great Cave's 1,384 -> 4,636); `boss: 1`
-        on its three whole-monster mappings, the phone drawing it BOSS_SIZE_K
-        1.5 bigger, its plate "Boss <name>" on PLATE_BOSS_FILL's deep red
-        (the alarm's bright red still wins while it hits you);
+        on its three whole-monster mappings, its plate "Boss <name>" on
+        PLATE_BOSS_FILL's deep red (the alarm's bright red still wins while
+        it hits you); and HUGE -- the owner, of the first cut's 1.5x: "Make
+        boss slime huge" -- about twice your height whatever it is
+        (gameSystems.js `bossSizeK`: `BOSS_STAND_H` 211 world px, a slime
+        x4.6, a golem or mummy x2.2, held to 1.5-5), HIT WHERE IT IS DRAWN
+        (the swing, the lunge, arrows, bolts, the bow's line, a tap, the
+        reach rings and the lock's aim all measure it at that size;
+        `monsterBodyY`), see-through (0.45) while it covers you
+        (entityRenderer `BOSS_SEE_THROUGH`); its own blows reach as before;
       - 30 SECONDS FOR THE LOOT: game/dungeonClear.js (the clear's clock, out
         only from THAT dungeon) and ui/mobile/DungeonClearHud.jsx ("out in 27
         s", Leave now) -- it was three;
@@ -1639,7 +1646,8 @@ remnant to migrate server-side, not a mode to preserve.
       - `wheeldungeon` §4/§6/§11/§12, `dungeon` §4/§8/§11, `dungeon-clear` suite,
         `mp-dungeonfix`: docs/specs/dungeon-fixes.md. Still the owner's call:
         a reward worth the trip, travel to found dungeons, the farm's
-        Workshop, and something to look at inside.
+        Workshop, something to look at inside, and whether the huge boss
+        should reach as far as it looks.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack

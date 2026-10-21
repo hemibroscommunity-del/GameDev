@@ -283,7 +283,7 @@ const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
                               feet; 32 is ~43% and still reads at phone size. */
 const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHpFor /* v2.3.3035: a timer harvest's bar reads the node's HP; v2.3.3251: by its type */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHpFor /* v2.3.3035: a timer harvest's bar reads the node's HP; v2.3.3251: by its type */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, bossSizeK /* v2.3.3556: ...and a dungeon boss's, at its size */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
 import { farmWorkFrame, farmAnimOf, farmWorkBeats, parseFarmEx, FARM_BEAT_SOUND } from '@/game/farmWork.js';   /* v2.3.3439: the farmer's own moves, frame by frame; and another player's, off their `ex` */
 import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';   /* v2.3.3439: the owner's three farm animations, cut by tools/make_farm_anims.py */
 import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, treeChopOffset, behindTree, TREE_PX, TREE_FOOT_DY, TREE_FADE, TREE_SEE_ALPHA, TREE_SEE_MS } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree */
@@ -7653,7 +7653,7 @@ export class EffectsRenderer {
           const mx = (c.m && (c.m.renderX != null ? c.m.renderX : c.m.x));
           const my = (c.m && (c.m.renderY != null ? c.m.renderY : c.m.y));
           if (!Number.isFinite(mx) || !Number.isFinite(my)) continue;
-          const rx = (monsterMeleeHitRadius(c.m && (c.m.arch || c.m.archetype || c.m.type)) || 24) + 10;
+          const rx = (monsterMeleeHitRadius(c.m && (c.m.arch || c.m.archetype || c.m.type)) || 24) * bossSizeK(c.m) + 10;   /* v2.3.3556: x a boss's size */
           const ry = rx * 0.38;
           const t = 1 - 0.5 * Math.min(1, Math.sqrt(c.d2) / (TARGET_PERIMETER_PX || 220));
           const isCur = c.m === _lockNow;
@@ -7798,7 +7798,7 @@ export class EffectsRenderer {
           /* v2.3.2790: your reach x YOUR depth, the body x ITS depth -- the
              same two factors monsterCombat's hit test now applies, so the
              ring keeps meaning "what is drawn is what hits" on Wind Dunes. */
-          const _rrMk = depthK(S.currentZone, _rrFy);
+          const _rrMk = depthK(S.currentZone, _rrFy) * bossSizeK(_rrM);   /* v2.3.3556: x a boss's size, as the hit test */
           const _rrOuter = GS_OUTER_RADIUS * meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);
           const _rrR = _rrOuter + (monsterMeleeHitRadius(_rrArch) || 24) * _rrMk;
           const _rrY = _rrFy - (monsterBodyOffsetY(_rrArch) || 23) * _rrMk;
@@ -7909,7 +7909,7 @@ export class EffectsRenderer {
              32 clears the name pill on every archetype (the pill is a fixed
              height in world space; the per-archetype part is the body offset
              already in the term below) without leaving the monster behind. */
-          const _off = monsterBodyOffsetY(c.m && (c.m.arch || c.m.archetype || c.m.type)) || 23;
+          const _off = (monsterBodyOffsetY(c.m && (c.m.arch || c.m.archetype || c.m.type)) || 23) * bossSizeK(c.m);   /* v2.3.3556: over a boss's head */
           /* ═══ v2.3.2255: THE MARK IS SIZED IN SCREEN PIXELS, NOT WORLD ONES ═══
              Owner's screenshot of the Flame Fields, measured off the native
              1290x2796 capture: the TARGET's arrow -- the big one -- rendered
@@ -8071,7 +8071,7 @@ export class EffectsRenderer {
              above m.y the body is", so a reskin cannot land this mark on a
              monster's feet the way v2.3.1535 records. The extra 42 clears the
              name pill, and was chosen by rendering it. */
-          const _coff = monsterBodyOffsetY(_lockChip.arch || _lockChip.archetype || _lockChip.type) || 23;
+          const _coff = (monsterBodyOffsetY(_lockChip.arch || _lockChip.archetype || _lockChip.type) || 23) * bossSizeK(_lockChip);   /* v2.3.3556: over a boss's head */
           const _chot = !!(S.autoAttack || S.isSwinging
             || (S.swingTimer && now - S.swingTimer < 420));
           /* The bob is a SCREEN measurement like everything else here. The
@@ -12874,7 +12874,7 @@ export class EffectsRenderer {
       const h = hits[i];
       const m = h.m;
       caught.add(m.id);
-      const rx = (monsterMeleeHitRadius(m.arch || m.archetype || m.type) || 24) + 12;
+      const rx = (monsterMeleeHitRadius(m.arch || m.archetype || m.type) || 24) * bossSizeK(m) + 12;   /* v2.3.3556: x a boss's size */
       const ry = rx * 0.38;
       /* the keyline, then the bright ring, then a second one inside it */
       g.ellipse(h.mx, h.my, rx, ry);

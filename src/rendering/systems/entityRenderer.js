@@ -22,7 +22,7 @@ const STATUS_TO_ELEMENT = new Map();
 for (const el of Object.values(ELEMENTS || {})) {
   if (el && el.status) STATUS_TO_ELEMENT.set(el.status, el);
 }
-import { lookupCollision, PVP_THREAT_CONSENT_MS, toDisplayHp, DISPLAY_SCALE_K } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale; v2.3.2572: k, for the HP-read probe */
+import { lookupCollision, PVP_THREAT_CONSENT_MS, toDisplayHp, DISPLAY_SCALE_K, bossSizeK, monsterBodyOffsetY as _bodyOffY, monsterMeleeHitRadius as _bodyR } from '@/data/gameSystems.js'; /* v2.3.3556: + a dungeon boss's size, and its body, for seeing through it */ /* v2.3.2520: the display damage scale; v2.3.2572: k, for the HP-read probe */
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
@@ -316,14 +316,17 @@ SPAWN_WHITE_FILTER.matrix = [
 /* v2.3.2991: exported -- the stat scene's films are sized off the slime as
    the world really draws it (effectsRenderer captureFxFilm) */
 export const MONSTER_SIZE_MULT = 1.5;
-/* ═══ v2.3.3556: A DUNGEON'S BOSS IS DRAWN BIGGER ═══
+/* ═══ v2.3.3556: A DUNGEON'S BOSS IS DRAWN HUGE ═══
    The owner, of dungeons: "This will probably need work to get right."  The
    boss looked exactly like the wave monsters before it -- same picture, same
    size, same name (docs/specs/dungeons-today.md).  The worker now says which
    one it is (`boss: 1` on its snapshot, server/src/dungeon.js), and it is
-   drawn this much bigger, its HP bar with it; its plate stays the plates'
-   size on the screen and says "Boss" on a deep red (PLATE_BOSS_FILL). */
-export const BOSS_SIZE_K = 1.5;
+   drawn bossSizeK(m) bigger (data/gameSystems.js: about twice the bro's
+   height -- "Make boss slime huge"; the first cut's 1.5 was not), its HP bar
+   with it; its plate stays the plates' size on the screen and says "Boss" on
+   a deep red (PLATE_BOSS_FILL), and it goes see-through while it covers you
+   (BOSS_SEE_THROUGH). */
+const BOSS_SEE_THROUGH = 0.45;
 /* NPC art draw scale.  96 world px per frame is what this renderer treats as
    player scale (see the 96/128 baseScale at the harvest stand-in, commented
    exactly that).
@@ -8760,6 +8763,8 @@ export class EntityRenderer {
             trimmed: !!(_t && _t.trim),   /* v2.3.2870: drawn from a cropped strip (zoneTextures.loadTrackedStrip) */
             srcW: _src ? (_src.width || 0) : 0,
             texAlive: !!(_src && !_src.destroyed && _src.width > 0),
+            seeThrough: !!d._bossSeeThrough,   /* v2.3.3556: a huge boss covering you */
+            alpha: +Number(d.alpha).toFixed(2),
             /* The procedural fallback body.  Drawn INSTEAD of the sprite when
                there is no frame at all -- so "sprite dark and body dark" is
                the hole, while "sprite dark and body lit" is merely the wrong
@@ -9080,9 +9085,10 @@ export class EntityRenderer {
          (the dunes' north-south ramp, zones.js `depth`) -- a mummy on the
          horizon is drawn as far away as the rocks beside it.  1 on every zone
          without one, so this is the old constant everywhere else. */
-      /* v2.3.3556: ...and a dungeon's boss BOSS_SIZE_K bigger (the worker's
-         `boss`); every write of the scale below goes through `_mk` */
-      const _bossK = m.boss ? BOSS_SIZE_K : 1;
+      /* v2.3.3556: ...and a dungeon's boss bossSizeK(m) bigger (the worker's
+         `boss`: twice your height); every write of the scale below goes
+         through `_mk` */
+      const _bossK = m.boss ? bossSizeK(m) : 1;
       const _mk = MONSTER_SIZE_MULT * (this._zonePscale(S, rx, ry) || 1) * _bossK;
       if (display.scale.x !== _mk) display.scale.set(_mk);
       /* v2.3.1472: mirror the transform onto the above-head UI, which
@@ -9181,6 +9187,24 @@ export class EntityRenderer {
         display.scale.set(_mk * (1 + (0.05 + 0.09 * t) * beat));
       };
       try { _windupFx(); } catch (e) { /* an FX must never take the frame down */ }
+      /* ═══ v2.3.3556: A HUGE BOSS NEVER HIDES YOU ═══
+         Twice your height, a boss you walk behind (north of its feet, inside
+         its drawn body) would cover you whole -- so it goes see-through
+         while it does, as a tree does (game/tierTrees.js behindTree).  Its
+         body's size is the hit tests' own (twice its centre's lift, its hit
+         radius across), at the scale it is drawn; after its arrival, which
+         owns the alpha while it plays. */
+      if (m.boss && m.alive && !m._spawnFxAt && S.player) {
+        const _shp = m.archetype || m.type;
+        const _sk = _mk / MONSTER_SIZE_MULT;
+        const _off = _bodyOffY(_shp) || 0;
+        const _bh = (_off > 0 ? 2 * _off : 2 * (_bodyR(_shp) || 24)) * _sk;
+        const _bw = (_bodyR(_shp) || 24) * _sk;
+        const _pdx = S.player.x - rx, _pdy = ry - S.player.y;
+        const _ba = (_pdy > 0 && _pdy < _bh && Math.abs(_pdx) < _bw) ? BOSS_SEE_THROUGH : 1;
+        if (display.alpha !== _ba) display.alpha = _ba;
+        display._bossSeeThrough = _ba < 1;   /* for the QA probe */
+      }
       /* QA probe (mp-windup): a throb cannot be read off one screenshot, so
          the scenario reads the scale the FX actually wrote — and the resting
          multiplier beside it, so "it grew" has a control. */

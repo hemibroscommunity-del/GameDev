@@ -12,8 +12,10 @@
  *      in again at once -- a new run, no "You already have a dungeon running"
  *      (it said so for a minute);
  *   3. A REAL BOSS: after the waves the boss is said on the wire (`boss`),
- *      four wave monsters of health, drawn half again as big as a wave
- *      monster, its plate "Boss <name>" on its own deep red;
+ *      four wave monsters of health, drawn HUGE -- about twice your height,
+ *      the owner's "Make boss slime huge" (a slime 4.59x one of the waves) --
+ *      its plate "Boss <name>" on its own deep red, and see-through while you
+ *      stand behind it;
  *   4. TIME FOR THE LOOT: after the clear a card counts down from 30 ("out in
  *      27 s") and you are still inside a few seconds on (it was three); its
  *      Leave now takes you out at once, at the mouth;
@@ -25,7 +27,7 @@
  *   7. no page errors.
  * The walker is a god (server/src/devtools.js); the waves are ended by the QA
  * dev op `clearwave` (a real fight takes minutes on this box).
- * Pictures: tools/qa/mp/out/dungeonfix-{title,boss,clear,back,died}.png.
+ * Pictures: tools/qa/mp/out/dungeonfix-{title,boss,behind,clear,back,died}.png.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -55,6 +57,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const id = await H.readState(P, (S) => S.myId);
   await H.devOp(wsPort, 'quests', id);
   await H.devOp(wsPort, 'vitals', id, { god: true, godMinutes: 30 });
+  /* a sword in hand (step 3 swings one at the boss) */
+  await H.devOp(wsPort, 'kit', id, { what: 'weapons' }).catch(() => {});
+  await P.page.waitForTimeout(1500);
+  const armed = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee');
   const level = await H.readState(P, (S) => (S.rpg && S.rpg.level) || 1);
   const want = Math.max(1, Math.min(5, level));
   let stopAlive = false;
@@ -192,11 +198,73 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`3: then the boss, said on the wire (boss ${boss && boss.boss}), Lv ${boss && boss.level} with ${boss && boss.maxHp} HP (the Verdant Wilds' own)`,
     !!boss && boss.boss === 1 && boss.level === want && boss.home === 'verdant' && boss.maxHp > 0, { boss, seen });
   const ratio = bossScale / waveScale;
-  rec.ok(`3: ...drawn half again as big as a wave monster (scale ${bossScale.toFixed(3)} against ${waveScale.toFixed(3)}: x${ratio.toFixed(2)})`,
-    isFinite(ratio) && ratio > 1.4 && ratio < 1.6, { bossScale, waveScale });
+  rec.ok(`3: ...drawn huge, about twice your height (scale ${bossScale.toFixed(3)} against a wave slime's ${waveScale.toFixed(3)}: x${ratio.toFixed(2)})`,
+    isFinite(ratio) && ratio > 4.4 && ratio < 4.8, { bossScale, waveScale });
   rec.ok(`3: ...its plate "${plate && plate.name}" on its own deep red (${plate && plate.soft && plate.soft.fill != null ? '#' + Number(plate.soft.fill).toString(16) : '?'}), bold`,
     !!plate && /^Boss /.test(plate.name || '') && !!plate.soft && plate.soft.boss === true
       && (plate.soft.fill === 0x7A1D1D || plate.soft.fill === 0xE03131) && plate.soft.nameWeight === '700', plate);
+  /* behind it (north of its feet, inside its body) it goes see-through; in
+     front of it, solid -- step behind, then back */
+  const bpos = await P.page.evaluate((bid) => { const S = window._gameState.current; const b = (S.monsters || []).find((q) => q.id === bid); return b ? { x: b.renderX != null ? b.renderX : b.x, y: b.renderY != null ? b.renderY : b.y } : null; }, boss && boss.id);
+  let seeBehind = null, seeFront = null;
+  if (bpos) {
+    await H.hopTo(P, bpos.x + 10, bpos.y - 70, { step: 80, gap: 220, tries: 10 });
+    await P.page.waitForTimeout(400);
+    seeBehind = await P.page.evaluate((bid) => (window.__btMonsterSprite ? window.__btMonsterSprite(bid) : null), boss.id);
+    await shot('behind');
+    await H.hopTo(P, bpos.x, bpos.y + 160, { step: 80, gap: 220, tries: 10 });
+    await P.page.waitForTimeout(400);
+    seeFront = await P.page.evaluate((bid) => (window.__btMonsterSprite ? window.__btMonsterSprite(bid) : null), boss.id);
+  }
+  rec.ok(`3: ...and see-through while you stand behind it (alpha ${seeBehind && seeBehind.alpha}), solid with you in front (${seeFront && seeFront.alpha})`,
+    !!seeBehind && seeBehind.seeThrough === true && seeBehind.alpha < 0.6 && !!seeFront && seeFront.seeThrough === false && seeFront.alpha === 1,
+    { seeBehind, seeFront, bpos });
+  /* HIT WHERE IT IS DRAWN: a tap high on its body takes it as your target (an
+     ordinary slime's tap circle is 23 px up and 40 CSS px across), and a swing
+     from its side lands (an ordinary slime's hit circle would be 116 px off) */
+  const bossAt = (bid) => P.page.evaluate((id) => {
+    const S = window._gameState.current;
+    const b = (S.monsters || []).find((q) => q.id === id);
+    if (!b) return null;
+    const r = document.querySelector('canvas').getBoundingClientRect();
+    const kx = S._worldScaleX || 1, ky = S._worldScaleY || 1;
+    const bx = b.renderX != null ? b.renderX : b.x, by = b.renderY != null ? b.renderY : b.y;
+    return { bx, by, hp: b.curHp != null ? b.curHp : b.hp, tapX: r.left + (bx - S.camera.x) * kx, tapY: r.top + (by - 150 - S.camera.y) * ky };
+  }, bid);
+  let tapLock = null, swing = null;
+  if (boss) {
+    await H.hopTo(P, (bpos ? bpos.x : 0), (bpos ? bpos.y : 0) + 260, { step: 80, gap: 220, tries: 10 });
+    await P.page.evaluate(() => { const S = window._gameState.current; S.lockedTarget = null; });
+    await P.page.waitForTimeout(500);
+    const w0 = await bossAt(boss.id);
+    if (w0) await P.page.touchscreen.tap(Math.round(w0.tapX), Math.round(w0.tapY));
+    await P.page.waitForTimeout(600);
+    /* the TAP's lock (`src: 'tap'`), never the sword's automatic one */
+    tapLock = await P.page.evaluate((id) => { const S = window._gameState.current; const lt = S.lockedTarget; return { on: !!(lt && lt.ref && lt.ref.id === id && lt.src === 'tap'), what: lt ? ((lt.ref && lt.ref.id) || lt.type) + ' by ' + lt.src : null }; }, boss.id);
+    /* a swing with you held 140 px to its side, as it is drawn, through the
+       swing (it moves): a hit from there is the huge body's -- an ordinary
+       slime's circle is 116 px out of reach (measured: with the boss's size
+       left out of the swing's test, the same swings sent nothing) */
+    const hp0 = (await bossAt(boss.id) || {}).hp;
+    let hp1 = hp0;
+    for (let k = 0; k < 4 && !(hp1 < hp0); k++) {
+      await P.page.evaluate(({ bid }) => new Promise((res) => {
+        const S = window._gameState.current, F = window._gameFns || {};
+        const t0 = performance.now();
+        const pin = () => {
+          const b = (S.monsters || []).find((q) => q.id === bid);
+          if (b) { S.player.x = (b.renderX != null ? b.renderX : b.x) + 140; S.player.y = (b.renderY != null ? b.renderY : b.y) - 20; }
+          if (performance.now() - t0 < 1100) requestAnimationFrame(pin); else res();
+        };
+        pin();
+        try { F.swingAttack(); } catch (e) { /* the row says */ }
+      }), { bid: boss.id });
+      for (let t = 0; t < 6 && !(hp1 < hp0); t++) { await P.page.waitForTimeout(250); hp1 = (await bossAt(boss.id) || {}).hp; }
+    }
+    swing = { hp0, hp1, armed };
+  }
+  rec.ok(`3: ...hit where it is drawn: a tap 150 px up its body takes it as your target (${tapLock && tapLock.what}), and a swing from 140 px at its side lands (its HP ${swing && swing.hp0} -> ${swing && swing.hp1})`,
+    !!tapLock && tapLock.on && !!swing && swing.hp1 < swing.hp0, { tapLock, swing });
 
   /* ── 4. time for the loot ── */
   words.length = 0;

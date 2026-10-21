@@ -10159,7 +10159,9 @@ export var BroTown = function BroTown(_ref0) {
       var _mTapY = DATA.monsterBodyY(m);
       var msx = (m.x - cx) * sx;
       var msy = (_mTapY - cy) * sy;
-      var d = Math.sqrt(Math.pow(cssX - msx, 2) + Math.pow(cssY - msy, 2));
+      /* v2.3.3556: a dungeon's boss is drawn bossSizeK times its size, and is
+         as easy to tap: its distance counted in its own size (1 elsewhere) */
+      var d = Math.sqrt(Math.pow(cssX - msx, 2) + Math.pow(cssY - msy, 2)) / DATA.bossSizeK(m);
       if (d < closestDist) {
         closestDist = d;
         closest = m;
@@ -12238,7 +12240,7 @@ export var BroTown = function BroTown(_ref0) {
                    tall variants -- tapping a mummy torso tested its feet). */
                 var _mTapY = DATA.monsterBodyY(m);
                 var _msx = (m.x - _cx) * _tapSX, _msy = (_mTapY - _cy) * _tapSY;
-                var _d = Math.sqrt(Math.pow(_cssX - _msx, 2) + Math.pow(_cssY - _msy, 2));
+                var _d = Math.sqrt(Math.pow(_cssX - _msx, 2) + Math.pow(_cssY - _msy, 2)) / DATA.bossSizeK(m);   /* v2.3.3556: a huge boss is as easy to tap */
                 if (_d < _closestDist) { _closestDist = _d; _closest = m; }
               });
               if (_closest) {

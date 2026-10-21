@@ -72,8 +72,35 @@ Two causes:
 
 **Now (phone, `entityRenderer.js`):**
 
-- **Bigger.** The boss is drawn `BOSS_SIZE_K` (1.5) times bigger, and its HP bar
-  with it.
+- **Huge.** The first cut drew the boss half again as big. The owner: "Make
+  boss slime huge". Every boss is now drawn about twice your height, whatever
+  it is (`src/data/gameSystems.js` `bossSizeK`):
+  - you stand 105.7 world px from crown to boots, and a boss stands
+    `BOSS_STAND_H` 211;
+  - a boss's height is twice its body centre's lift (`monsterBodyOffsetY`,
+    half the drawn height), or the diameter of a shape drawn as a circle;
+  - so a slime is drawn 4.6 times its size (a wave slime's scale 1.5, the
+    boss's 6.9), a golem or a mummy 2.2 times; it is held between 1.5 and 5
+    (`BOSS_SIZE_MIN`, `BOSS_SIZE_MAX`: a snowman, 38 px tall, stops at 5);
+  - its HP bar grows with it. Its plate stays the plates' size on the screen.
+- **Hit where it is drawn.** Everything that measures a monster's body measures
+  the boss at its size:
+  - the swing and the lunge (`monsterCombat.js`);
+  - arrows, bolts and the bow's sight line (`projectiles.js`, and
+    `combatHelpers.js` `monsterDrawScale`);
+  - the lock's aim point, and a tap (`monsterBodyY`, the taps' radius in
+    `BroTown.jsx`);
+  - the reach rings and the carets (`effectsRenderer.js`).
+
+  Without this, a swing at the side of a slime four times its size missed: its
+  hit circle was still a wave slime's. The server's melee reach (400 px) already
+  covers it.
+- **See-through while it covers you.** With you behind it, inside its outline,
+  it is drawn at 0.45 (`BOSS_SEE_THROUGH`), so it never hides you. In front of
+  it, it is solid.
+- **Its own blows are as before.** How far it reaches and how hard it hits are
+  the server's, and they did not change. It still comes to its old reach of
+  you to hit you.
 - **Its plate.** "Boss <name>" in bold, on its own deep red (`PLATE_BOSS_FILL`
   #7A1D1D at 0.94). The name reads at 9.14:1 against it.
   - The deep red is not the alarm's bright red, which means "hitting you right
@@ -158,7 +185,12 @@ bag: no pile, nothing taken (`index.js` `_handlePlayerDeath`, asking
   - the clock: 30 s, out once, never out of a new run, Leave now;
   - the wiring;
   - the title;
-  - the boss's size and plate, and the name's contrast;
+  - the boss's size (about twice your height for every shape, held to 1.5-5,
+    1 for any other monster), its plate, and the name's contrast;
+  - every place that measures its body measures it at that size: the
+    drawing, the swing, the lunge, arrows and bolts, the bow's line, the draw
+    scale, the lock's aim and shot, both taps, the reach ring and the caret;
+  - the see-through while it covers you;
   - "Your bag is safe", only on the server's `keptBag`.
 - **Breaking each fix on purpose.** Eighteen mutations were applied one at a time:
   - the flat left out of the multiplier;
@@ -174,18 +206,27 @@ bag: no pile, nothing taken (`index.js` `_handlePlayerDeath`, asking
     skull ignored, the kill switch ignored, no `keptBag`, every zone keeping it,
     and no "Your bag is safe".
 
+  Then ten for the huge boss: its size put back to the first cut's 1.5; its
+  body centre, the drawing, the swing, the lunge, a shot's circle, the draw
+  scale (with and without a zone) and the tap each left at a wave monster's
+  size; and no see-through.
+
   Every suite above passes, and each mutation makes at least one of them fail.
-- **`mp-dungeonfix`, a phone in the world** at the Goo Grotto. 11 checks:
+- **`mp-dungeonfix`, a phone in the world** at the Goo Grotto. 13 checks:
   - the top bar's one level, and every monster at it;
   - out by the way out and straight back in;
-  - the boss on the wire, 1.5× a wave monster's scale, and "Boss Blue Slime" on
-    the deep red;
+  - the boss on the wire, about twice your height (its scale 6.88 against a
+    wave slime's 1.5: x4.59), and "Boss Blue Slime" on the deep red;
+  - see-through while you stand behind it (0.45), solid with you in front;
+  - hit where it is drawn: a real tap 150 px up its body takes it as your
+    target, and a swing from 140 px at its side lands (its HP 220 -> 196).
+    With the boss's size taken out of the swing, the same swing did nothing;
   - the card counting down, still inside 6 s on, and Leave now;
   - the time running out by itself;
   - killed by a slime with 5 copper bars in the bag: "Your bag is safe", and
     back in BroTown the 5 bars are still there.
 
-  Pictures: `tools/qa/mp/out/dungeonfix-{title,boss,clear,back,died}.png`.
+  Pictures: `tools/qa/mp/out/dungeonfix-{title,boss,behind,clear,back,died}.png`.
 - **Unchanged and still passing:** `mp-wheeldungeon`, `mp-googrotto` (its
   levels check is now exact) and `mp-monsterplate`.
 
@@ -199,3 +240,5 @@ These are from dungeons-today.md and are not done:
 - **Getting there.** Travel from the Town Hall's map to dungeons you have found.
 - **The farm's Dungeon Workshop.** Remove it, or rebuild it on the world's arena.
 - **Something to look at inside.** The arenas are bare floors.
+- **The boss's reach.** It is drawn huge but reaches you as a wave monster
+  does. Say if it should reach further, as big as it looks.

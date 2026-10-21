@@ -14,9 +14,11 @@
  *      gone), the card (DungeonClearHud.jsx) is mounted beside the race's and
  *      answers a touch;
  *   3. THE TOP BAR: a range that is one level is that level, "(Lv 28)";
- *   4. THE BOSS: the worker's `boss` drawn BOSS_SIZE_K bigger, its plate
- *      "Boss <name>" on a deep red that is not the alarm's, the plate kept the
- *      plates' size on the screen.
+ *   4. THE BOSS: the worker's `boss` drawn HUGE -- about twice the bro's
+ *      height whatever it is (the owner: "Make boss slime huge"; bossSizeK) --
+ *      and hit, aimed at, tapped and ringed at that size, see-through while it
+ *      covers you; its plate "Boss <name>" on a deep red that is not the
+ *      alarm's, kept the plates' size on the screen.
  * And (2) a death in a dungeon, which keeps the bag (the owner: "Keep your bag
  * in dungeons"; the worker's rule in wheeldungeon.test §12), says "Your bag is
  * safe" when the worker says it kept it.
@@ -25,6 +27,7 @@ import { readFileSync } from 'fs';
 import { DUNGEON_LOOT_MS, startDungeonClear, dungeonClearView, leaveClearedDungeon, dungeonClearBus } from '../../src/game/dungeonClear.js';
 import { zoneTitle } from '../../src/ui/mobile/zoneTitle.js';
 import { ZONES } from '../../src/data/zones.js';
+import { bossSizeK, BOSS_STAND_H, BOSS_SIZE_MIN, BOSS_SIZE_MAX, monsterBodyY, monsterBodyOffsetY } from '../../src/data/gameSystems.js';   /* v2.3.3556: the huge boss */
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -128,9 +131,40 @@ const src = (p) => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
 /* ── 4. the boss on the screen ── */
 {
   const er = src('src/rendering/systems/entityRenderer.js');
-  check('4: the worker\'s `boss` drawn BOSS_SIZE_K (1.5) bigger, through the one scale every write uses',
-    /export const BOSS_SIZE_K = 1\.5;/.test(er) && /const _bossK = m\.boss \? BOSS_SIZE_K : 1;/.test(er)
+  /* the size: twice the bro's height, held to [MIN, MAX] */
+  const k = (archetype, boss = 1) => bossSizeK({ archetype, boss });
+  const tall = (a) => Math.round(2 * monsterBodyOffsetY(a) * k(a));
+  check(`4: every boss stands about twice the bro's height (${BOSS_STAND_H} world px): a slime x${k('blueSlime').toFixed(2)} (${tall('blueSlime')} px), a golem x${k('rockmonster').toFixed(2)}, a mummy x${k('mummy').toFixed(2)}`,
+    BOSS_STAND_H === 211 && Math.abs(k('blueSlime') - 211 / 46) < 0.01 && Math.abs(k('mummy') - 211 / 96) < 0.01 && Math.abs(k('rockmonster') - 211 / 96) < 0.01
+      && tall('blueSlime') === 211 && tall('mummy') === 211,
+    { slime: k('blueSlime'), golem: k('rockmonster'), mummy: k('mummy') });
+  check(`4: ...held between x${BOSS_SIZE_MIN} and x${BOSS_SIZE_MAX} (a snowman would be x5.6), and 1 for anything not the boss`,
+    k('snowman') === BOSS_SIZE_MAX && k('skeleton') >= BOSS_SIZE_MIN && bossSizeK({ archetype: 'blueSlime' }) === 1 && bossSizeK({ archetype: 'mummy', boss: 0 }) === 1 && bossSizeK(null) === 1,
+    { snowman: k('snowman'), skeleton: k('skeleton') });
+  check('4: ...its body centre (taps, the lock\'s aim) lifted with it, an ordinary monster\'s as before',
+    monsterBodyY({ y: 500, archetype: 'blueSlime', boss: 1 }) === 500 - 211 / 2 && monsterBodyY({ y: 500, archetype: 'blueSlime' }) === 500 - 23);
+  check('4: the worker\'s `boss` drawn at that size, through the one scale every write uses',
+    /const _bossK = m\.boss \? bossSizeK\(m\) : 1;/.test(er)
       && /const _mk = MONSTER_SIZE_MULT \* \(this\._zonePscale\(S, rx, ry\) \|\| 1\) \* _bossK;/.test(er));
+  check('4: ...see-through while it covers you (behind its feet, inside its drawn body)',
+    /if \(m\.boss && m\.alive && !m\._spawnFxAt && S\.player\) \{/.test(er) && /\? BOSS_SEE_THROUGH : 1;/.test(er) && /const BOSS_SEE_THROUGH = 0\.45;/.test(er));
+  /* ...and every test of its body at that size, so a hit lands where it is drawn */
+  const mc = src('src/game/monsterCombat.js'), pj = src('src/game/projectiles.js'), ch = src('src/game/combatHelpers.js'), bt = src('src/ui/BroTown.jsx'), ef = src('src/rendering/systems/effectsRenderer.js');
+  const sites = {
+    swing: /var _hitMk = depthK\(S\.currentZone, _hitBaseY\) \* bossSizeK\(m\);/.test(mc),
+    lungeReach: /var _eMk = depthK\(S\.currentZone, _eFy\) \* bossSizeK\(_eLt\);/.test(mc),
+    shotRadius: /_hitR \*= bossSizeK\(m\);/.test(pj),
+    shotCentre: /\(monsterBodyOffsetY\(hitShapeOf\(m\.archetype \|\| m\.type\)\) \|\| 0\) \* bossSizeK\(m\);/.test(pj),
+    bowLine: /monsterBodyOffsetY\(mArch\) \* bossSizeK\(m\)\),/.test(pj),
+    drawScale: /var b = bossSizeK\(m\);\n  if \(!zoneId\) return b;/.test(ch) && /return \(\(typeof k === 'number' && isFinite\(k\) && k > 0\) \? k : 1\) \* b;/.test(ch),
+    lockAim: /\(monsterBodyOffsetY\(t\.archetype \|\| t\.type\) \|\| 0\) \* bossSizeK\(t\) \};/.test(ch),
+    lockShot: /var feetY = p\.y \+ \(monsterBodyOffsetY\(t\.archetype \|\| t\.type\) \|\| 0\) \* bossSizeK\(t\);/.test(ch),
+    taps: (bt.match(/\/ DATA\.bossSizeK\(m\)/g) || []).length === 2,
+    reachRing: /const _rrMk = depthK\(S\.currentZone, _rrFy\) \* bossSizeK\(_rrM\);/.test(ef),
+    caret: /\* bossSizeK\(c\.m\);/.test(ef) && /\* bossSizeK\(_lockChip\);/.test(ef),
+  };
+  check('4: ...and the swing, the lunge\'s reach, a shot\'s circle and centre, the bow\'s line, the lock\'s aim, a tap and the rings all measure it at that size',
+    Object.values(sites).every(Boolean), sites);
   check('4: ...its plate fitted back to the plates\' size on the screen', /_ui\._plateLift = _plateLiftAt\(S\.currentZone, ry\) \/ _bossK;/.test(er));
   check('4: the plate says "Boss <name>" and is drawn as a boss\'s (`boss`, in its key)',
     /\(m\.boss \? 'Boss ' : ''\) \+ wheelStageName\(/.test(er) && /_plateAlarm, _plateBand, false, !!m\.boss\);/.test(er)

@@ -38,7 +38,7 @@ import {
 } from '@/data/index.js';
 import { depthK } from '@/data/zones.js';   /* v2.3.2790: your reach shrinks with you on Wind Dunes */
 import { prog3Live, prog3CatFor, prog3CritPct, prog3CritMult, prog3CritFlat } from '@/data/prog3.js'; /* v2.3.2218 */
-import { BOW_RANGE_PX, toDisplayDamage, staffOrbLife, meleeRangeMult } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites; v2.3.2473: the sight gate's reach; v2.3.2520: the display damage scale; v2.3.2592: the RANGE stat scales the orb's life and the melee envelope */
+import { BOW_RANGE_PX, toDisplayDamage, staffOrbLife, meleeRangeMult, bossSizeK /* v2.3.3556: a dungeon boss's drawn size */ } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites; v2.3.2473: the sight gate's reach; v2.3.2520: the display damage scale; v2.3.2592: the RANGE stat scales the orb's life and the melee envelope */
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
@@ -1469,7 +1469,7 @@ export function updateMonsterCombat(S, deps) {
               /* v2.3.2790: the body's centre offset and radius shrink with the
                  monster on a depth zone -- its sprite is drawn at depthK. */
               var _eFy = (typeof _eLt.renderY === 'number') ? _eLt.renderY : _eLt.y;
-              var _eMk = depthK(S.currentZone, _eFy);
+              var _eMk = depthK(S.currentZone, _eFy) * bossSizeK(_eLt);   /* v2.3.3556: x a dungeon boss's size */
               var _eY = _eFy - monsterBodyOffsetY(_eArch) * _eMk;
               var _eD = Math.sqrt((_eX - P.x) * (_eX - P.x) + (_eY - P.y) * (_eY - P.y))
                 - monsterMeleeHitRadius(_eArch) * _eMk;
@@ -2074,7 +2074,9 @@ export function updateMonsterCombat(S, deps) {
               var _hitBaseY = (typeof m.renderY === 'number') ? m.renderY : m.y;
               /* v2.3.2790: x the monster's depth -- a mummy drawn at 0.42 on
                  Wind Dunes' north edge is hit where its smaller body is. */
-              var _hitMk = depthK(S.currentZone, _hitBaseY);
+              /* v2.3.3556: ...and x a dungeon boss's size (gameSystems.js
+                 bossSizeK): a huge boss is hit where its body is drawn */
+              var _hitMk = depthK(S.currentZone, _hitBaseY) * bossSizeK(m);
               var _mHitY = _hitBaseY - monsterBodyOffsetY(_archHit) * _hitMk;
               var _hitR = monsterMeleeHitRadius(_archHit) * _hitMk;
               var mDist = Math.sqrt(Math.pow(_hitX - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;

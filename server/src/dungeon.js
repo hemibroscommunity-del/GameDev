@@ -472,7 +472,8 @@ export const dungeonMethods = {
     /* v2.3.3556: ...but that it IS the boss does: each full monster mapping
        (_dungeonPushZoneState, spawnscale.js monsterSnapWire, join.js
        state_sync) says `boss: 1` on it alone, and the phone draws it bigger
-       with a "Boss" plate (entityRenderer.js BOSS_SIZE_K).  It looked like
+       with a "Boss" plate: huge, about twice your height (the owner: "Make
+       boss slime huge"; src/data/gameSystems.js bossSizeK).  It looked like
        every wave monster before it: same picture, size and name. */
     m._dungeonBoss = true;
     // v2.3.1215 (item I): archetype signature kit + the legacy level
