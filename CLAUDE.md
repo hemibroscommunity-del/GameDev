@@ -26,6 +26,26 @@ remnant to migrate server-side, not a mode to preserve.
   are CLOSED for now, though their code still runs the Wheel's monsters and
   `?trial=off` reopens them for a tab. Details in the WORLD-MAP-PIPELINE
   clause below ("The Wheel is the world").
+- **TESTS AND SCREENSHOTS PLAY THE WORLD, NEVER THE RETIRED OLD MAP (owner,
+  2026-10-21: "Hold on you're in the old map (this was retired). You keep
+  making that mistake so flag it in a way you won't accidentally do that
+  anymore").** The world's top bar says **"BroTown"**, with the Town Hall and
+  "Brotown · safe" under the minimap. **"Town"** on the top bar, with the old
+  fountain, is the RETIRED map: stop and move the test.
+  - Every phone test passes `world: 'wheel'` to `H.newPlayer` / `H.joinPair`.
+    A player opened with no `world` plays the old map (`trial=off&nospawn`).
+  - The harness REFUSES a new scenario that does that. Only the 419 old ones
+    frozen in `tools/qa/mp/oldMap.mjs` may, and that list only shrinks: move
+    one to the world when you touch it.
+  - A picture saved from the old map is stamped "OLD MAP · RETIRED".
+  - `precheck` (`old-map`), `server/test/old-map.test.mjs` and the session
+    brief hold it. TRAPS §244.
+- **Players never read "Wheel" (owner, 2026-10-21: "no player has a concept of
+  what 'wheel' means in reference to the shape of the map").** It is the
+  world: the zone is "BroTown" on screen, a map is the "World map", and words
+  a player reads say "the world" (v2.3.3552: the Codex's "Monsters of the
+  world", the gold's line, the Town Hall's map row). "Wheel" stays in code,
+  ids, comments and these docs.
 - **Heavy-systems architecture (v2.3.1116+):** persistent identity,
   offline mail/escrow, server-settled marketplace/trades/quests/duels.
   Before touching the server, read **`docs/ARCHITECTURE-HANDOFF.md`** —
@@ -489,7 +509,9 @@ remnant to migrate server-side, not a mode to preserve.
   - Not there yet, so not in the game: monsters past levels 1-5, dungeons.
     (Gathering came in v2.3.3012, a bullet below.)
   - The QA harness gives every scenario `trial=off&nospawn` unless it passes
-    `world: 'wheel'` (`nospawn` alone when its query names a trial).
+    `world: 'wheel'` (`nospawn` alone when its query names a trial). Since
+    v2.3.3552 a NEW scenario must pass it: the harness refuses one that does
+    not (tools/qa/mp/oldMap.mjs, the rule near the top of this file).
   - `mp-questline`, CI's "playable", plays in the Wheel. `mp-wheelhome`
     tests the way in on a phone.
   - See WORLD-MAP-PIPELINE "The Wheel is the world".
@@ -1043,6 +1065,18 @@ remnant to migrate server-side, not a mode to preserve.
     the top bar says "BroTown"; a land's banner docks into the plate
     (`window.__btWheelPlate`, zoneBannerOverlay.js titleRect); the probe's
     `plate`: WORLD-MAP-PIPELINE "The name plate under the minimap".
+  - Since v2.3.3553 YOUR ACHIEVEMENT POINTS RIDE THE TOP BAR -- the owner:
+    "Achievement points should be a prominent part of the experience in
+    brotown": the owner's medal and the WORKER's AP (game/achievements.js
+    `achvApTotal`) beside the log-out door, opposite the gold
+    (ZoneHeader.jsx, the bar's left column `auto` now), only against
+    `caps.achievements`; a rise -- any achievement, a quest's +5, a guild
+    rung -- pops a "+N" inside the bar beside the number and bumps it, as the
+    purse spins its coin (src/game/apChip.js; never before the worker's
+    achv_state has come, nor under calm motion: the QA harness calms every
+    page, so a test of it sets `__btAmbienceOff = false`); a tap opens the
+    Achievements page under More; `ap-chip` suite, `mp-apchip` (in the world):
+    docs/specs/ap-on-the-bar.md.
   - Since v2.3.3010 GREAVES ALONE HIDE THE PLAIN LEGS -- the owner: "the
     legs underneath near the shoes poke out during east jog. You can just
     remove the plain clothes legs beneath": maskedBake.js `_legsOnlyClamp`
@@ -1883,6 +1917,18 @@ remnant to migrate server-side, not a mode to preserve.
         `points_reset_result` (PRIVILEGED); `/dev/combat` takes `deal: true`;
         `caps.pointsreset`, kill switch `pointsreset: false`; `points-reset`
         suite, `mp-pointsreset`: docs/specs/points-reset.md;
+      - since v2.3.3551 YOUR FIRST POINTS, SHOWN -- the owner: "Leave tips for
+        first natural level up.  I don't want players choosing xp to train in
+        for weapons they haven't used yet.  Go with your guided level up": the
+        coach's `points` lesson (QuestCoach.jsx, its rules and words
+        src/game/pointsTips.js) rings OPEN, Character, the Points tab and the
+        grid's top row with the count waiting, while points wait and none was
+        ever placed, out of a fight; the coach's one `anytime` lesson (past the
+        Mayor's tutorial it is walked alone); a tap or a placed point puts it
+        away for good, unanswered it snoozes and gives up after three; the first
+        Spend names the free reset (`firstSpendHint`, InfoPopup `spentHint`);
+        nothing sent, no stat picked; `points-tips` suite, `mp-pointstips`:
+        docs/specs/levelup-tips.md;
       - since v2.3.3544 WHAT YOU WEAR ASKS YOUR LEVEL -- the owner: "I'm
         thinking of gating armor and weapons on combat level instead of
         primary combat skill level and defense level": armour, shields and
@@ -3598,7 +3644,9 @@ remnant to migrate server-side, not a mode to preserve.
       (docs/specs/demo-quest-line.md "v2.3.3533"); `next` only within a
       giver's own line (a `next`
       opens its step past any `after`); life_1/life_2 RETIRED (QUEST_RETIRED,
-      `retired`: never offered, one held still hands in); every line says why
+      `retired`: never offered, one held still hands in; since v2.3.3550
+      mayor_1 too, "Welcome Home" -- the owner: "Retire the old welcome home
+      quest" -- so mayor_2 follows tut_4); every line says why
       he wants it, in any order; the counted kinds `farm`/`craft`/`cook`/
       `race` (quests.js QUEST_COUNTED); a hand-in's trade asked on the claim
       window (QuestPanel TradeChooser);

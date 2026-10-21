@@ -169,16 +169,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (onFarm) {
       /* the bed in the hay: stand at its foot, where the Sleep button comes up */
       await standAt(FARM_SPOTS.sleep.x, FARM_SPOTS.sleep.y - 10);
-      /* a minute after the Hotel's rest (the worker's REST.GAP_MS) */
-      const waitMs = 61000 - (Date.now() - restedAt);
-      if (waitMs > 0) await A.page.waitForTimeout(waitMs);
-      /* the bed's prompt, as the HUD draws it (its proximity is synced a
-         beat after you stand there) */
+      /* the bed's prompt, as the HUD draws it: within a few seconds of
+         standing there, at full health with nothing else changing on screen.
+         v2.3.3548: it came up only when something else redrew the HUD (no
+         React state behind it), and once waited a minute and a quarter for
+         the dev lever's health change to redraw it; 5 s, not 1, for this
+         box's slow timers (TRAPS §200) */
       let sleepBtn = null;
-      for (let i = 0; i < 60 && !sleepBtn; i++) {
+      for (let i = 0; i < 20 && !sleepBtn; i++) {
         sleepBtn = await A.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Sleep/.test(q.textContent || '')); return b ? (b.textContent || '').trim() : null; });
         if (!sleepBtn) await A.page.waitForTimeout(250);
       }
+      /* a minute after the Hotel's rest (the worker's REST.GAP_MS) */
+      const waitMs = 61000 - (Date.now() - restedAt);
+      if (waitMs > 0) await A.page.waitForTimeout(waitMs);
       /* (the farm is a hub: its own top-off refills a bar in a few seconds,
          index.js -- the rest's own mark here is Well Rested started again) */
       await H.devOp(wsPort, 'vitals', id, { hp: 30, stamina: 5 });

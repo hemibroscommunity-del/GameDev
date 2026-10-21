@@ -229,8 +229,11 @@ export const SkillsPanel = () => {
             {pct > 0 && <span style={{ display: 'block', width: pct + '%', height: '100%', borderRadius: 999, background: COL.xp }} />}
           </span>
         </span>
+        {/* v2.3.3555: a name of eleven letters or more one px smaller --
+            sideways the column holds three tiles of ~75 px, and "Woodworking"
+            at 11 px came out "Woodworki…" (mp-landdash) */}
         <span style={{
-          display: 'block', maxWidth: '100%', fontSize: 11, fontWeight: 700, lineHeight: '13px',
+          display: 'block', maxWidth: '100%', fontSize: String(sd.name || '').length >= 11 ? 10 : 11, fontWeight: 700, lineHeight: '13px',
           color: COL.text, textAlign: 'center',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>{sd.name}</span>

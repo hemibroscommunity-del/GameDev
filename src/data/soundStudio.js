@@ -232,7 +232,7 @@ export const PROP_PLACES = {
   plant: 'a cactus or a giant flower',
   mushroom: 'a toadstool',
   straw: 'hay, a haystack or a scarecrow',
-  snow: 'something of snow (none in the Wheel yet)',
+  snow: 'something of snow (none in the world yet)',   /* v2.3.3552: "world", never "Wheel" */
   ice: 'an ice spire',
   crystal: 'a crystal or obsidian',
   coal: 'a lump of coal',
@@ -286,7 +286,7 @@ export const NOISE_PLACES = {
 /* BT_AUDIO.footstep: one step, by the ground drawn under your boots
    (data/footstepClips.js) -- the Wheel's grounds; dirt everywhere else. */
 export const STEP_PLACES = {
-  dirt: 'A step on dirt (the Wheel\'s dirt, the farm, the dungeons)',
+  dirt: 'A step on dirt (the world\'s dirt, the farm, the dungeons)',
   grass: 'A step on grass (and the forest floor)',
   gravel: 'A step on gravel',
   stone: 'A step on stone',

@@ -487,6 +487,14 @@ export const InfoPopup = () => {
             color: '#59BF91', letterSpacing: '.01em',
           }}>{cur.spentNote}</div>
         )}
+        {/* v2.3.3551: on a first spend, the free reset named (game/pointsTips.js) */}
+        {cur.spentNote && cur.spentHint && (
+          <div data-infopopup-spent-hint style={{
+            flex: 'none', marginTop: 4, fontSize: 12, fontWeight: 600,
+            /* the dashboard's text2 (dash/common.js): muted is under AA here */
+            color: '#B6C1BE', lineHeight: 1.35,
+          }}>{cur.spentHint}</div>
+        )}
         {stepMax > 0 ? (
           /* v2.3.2695: [-] n [+] [Spend n points].  "Got it" steps aside for
              the width -- the x, the scrim and Escape still close it, which

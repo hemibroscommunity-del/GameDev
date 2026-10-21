@@ -173,6 +173,8 @@ const SCENARIOS = {
   jump: () => import('./mp-jump.mjs'), /* v2.3.3017: jumping -- the JUMP button centred under the attack disc, clear of the disc, the dashboard and every control, upright and sideways; a press lifts the body by the jump's height holding the jog's leaping frame while the feet the depth pass and the shadow read stay on the ground; one step at take-off and one at touch-down, none in the air, dust where he lands; in the air a second press, a roll and an attack wait; another player sees it; walking into a fence stops you, jumping it carries you over and down clear of it; a tree's trunk stops a jump; no button and no jump in the water; X on a keyboard (?jumpms=1800: the slow test machine's frames) */
   sprint: () => import('./mp-sprint.mjs'), /* v2.3.3006: the sprint button just right of the movement stick, level with it, on no other control, the word inside its rim, upright and sideways; a tap is only a tap (no roll, no walk); 1.33x the walk over the same ground with the legs keeping up; with a thumb on the stick a second finger's tap sprints; the worker pays every sprinting move it gets at 11 stamina a second and accepts them all; standing still ends it; run dry it ends, fades, and refuses a tap with "Not enough energy!"; Shift held on a keyboard; an attack ends it */
   pointsreset: () => import('./mp-pointsreset.mjs'), /* v2.3.3541: the free points reset on a phone -- the Points tab's Reset button, one tap arming it, two giving every point back, "Points reset!", and a second within the minute refused in words */
+  pointstips: () => import('./mp-pointstips.mjs'), /* v2.3.3551: the first level-up's tips on a phone -- the coach rings OPEN, Character, the Points tab and the grid's top row with the points waiting, steps aside for a fight, the first Spend names the free reset, done for good once a point is placed or the card is tapped; past the Mayor's tutorial the card comes alone */
+  apchip: () => import('./mp-apchip.mjs'), /* v2.3.3553: your AP on the top bar, in the world -- the owner's medal and the worker's number left of the zone name, a first kill's "+10" flying into it, a tap opening the Achievements page, fitting at 320 px and sideways */
   wheeldungeon: () => import('./mp-wheeldungeon.mjs'), /* v2.3.3016: the Wheel's dungeons on a phone -- the three mouths known from the Wheel's map, the Great Cave's drawn and its Enter button at it only, a tap into the Stone Hollows' own monsters behind a loading screen, three waves and the boss (the dev op clearwave), the clear paying and bringing you back out at the mouth, and out again by its door */
   wheelseats: () => import('./mp-wheelseats.mjs'), /* v2.3.3013: every fishing spot of the Wheel's, walked to on a phone: the spot and its school in drawn water, the angler's seat dry, open ground -- the v2.3.3012 survey, run after any re-bake */
   sprintpeer: () => import('./mp-sprintpeer.mjs'), /* v2.3.3015: a sprint seen and heard -- the runner's push-off sound and dust at every footfall; the watcher told by the worker that they sprint, their legs 1.33x quicker and kicking up dust; walking again, their copy walks */
@@ -680,6 +682,7 @@ for (const name of names) {
   console.log(`── ${name} ──────────────────────────────────`);
   try {
     const mod = await SCENARIOS[name]();
+    H.setScenario(name);   /* v2.3.3552: so newPlayer can refuse the retired old map (oldMap.mjs) */
     await mod.run({ browser, wsPort: WS, webPort: WEB, rec });
   } catch (e) {
     /* A thrown scenario is a failure with a name, not a crashed run: record it
@@ -690,6 +693,7 @@ for (const name of names) {
      pixiRenderer rather than crashing, so nothing else in this harness would
      ever notice it -- see takeRenderThrows.  Charged to whichever scenario
      was running, because that is the one that can reproduce it. */
+  H.setScenario(null);
   const _rt = H.takeRenderThrows();
   if (_rt.length) rec.ok('the render loop did not throw', false, { threw: _rt.slice(0, 3) });
   /* v2.3.3249: EVERY PAGE A SCENARIO LEFT OPEN IS CLOSED HERE.  One browser

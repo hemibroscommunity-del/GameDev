@@ -6,6 +6,10 @@ import { calm as lifeCalm } from './dash/bagLife.js'; /* v2.3.2815: the purse's 
 import { dayPhase, lightingAt, zoneHasSky } from '../../game/timeOfDay.js'; /* v2.3.2892: the hour beside the zone name */
 import { ZONES } from '../../data/zones.js'; /* v2.3.3009: the Wheel's name, before its first words come */
 import { testModeOn } from '../../game/testMode.js'; /* v2.3.3430: the owner's test mode tag */
+import { achvLive, achvApTotal } from '../../game/achievements.js';   /* v2.3.3553: your AP on the bar */
+import { ACHV_MEDAL_SRC } from '../../data/achievements.js';         /* v2.3.3553: the owner's medal */
+import { apRise, apWords, apGainWords } from '../../game/apChip.js';  /* v2.3.3553 */
+import { dashboardPanelBus } from './dashboardPanelBus.js';            /* v2.3.3553: the AP opens its page */
 
 /* ═══ v2.3.2892: WHAT TIME IT IS, NEXT TO WHERE YOU ARE ═══
    Owner: "Add a time of day icon next to current map name."  The hour is
@@ -161,6 +165,10 @@ export const ZoneHeader = ({ onExit }) => {
   const [showDev, setShowDev] = useState(false);
   const goldSeen = useRef(null);   /* v2.3.2815: the purse's coin flip */
   const goldFlips = useRef(0);
+  /* v2.3.3553: the AP's rise, as the purse's (game/apChip.js) */
+  const apSeen = useRef(null);
+  const apRises = useRef(0);
+  const apGain = useRef(0);
   const mountedAt = useRef(Date.now());
   const [DevPanelC, setDevPanelC] = useState(null);
   const holdRef = useRef(null);
@@ -201,6 +209,33 @@ export const ZoneHeader = ({ onExit }) => {
   goldSeen.current = gold;
   const flip = goldFlips.current;
 
+  /* ═══ v2.3.3553: YOUR ACHIEVEMENT POINTS, ALWAYS IN SIGHT ═══
+     The owner: "Achievement points should be a prominent part of the
+     experience in brotown."  The medal and your AP ride the bar, left of the
+     zone name, opposite the gold -- the WORKER's number (achvApTotal), only
+     against a worker that grants achievements (caps.achievements).  A rise
+     flies a "+N" up into it and bumps the number (game/apChip.js), never in
+     the first moments (the record loading) or under calm motion.  A tap
+     opens the Achievements page under More, as every other way to it does
+     (SkillsPanel's AP, a card's title). */
+  const apOn = achvLive(S);
+  const ap = apOn ? achvApTotal(S) : 0;
+  /* a rise counts only once the worker's record has come (achv_state): the
+     number that arrives with it is where you stand, never "+1,240" at login */
+  if (apOn && S._achv && S._achv.known) {
+    const g = apRise(apSeen.current, ap, Date.now() - mountedAt.current);
+    if (g > 0 && !lifeCalm()) { apRises.current++; apGain.current = g; }
+    apSeen.current = ap;
+  }
+  const apBump = apRises.current;
+  const openAchievements = (e) => {
+    if (e) e.stopPropagation();
+    /* no focus ring left on it once the page is open (a key pressed next
+       would draw one) */
+    try { if (e && e.currentTarget && e.currentTarget.blur) e.currentTarget.blur(); } catch (_e) { /* fine */ }
+    try { dashboardPanelBus.open('more'); dashboardPanelBus.push('achievements'); } catch (_e) { /* no dashboard */ }
+  };
+
   const doExit = () => {
     /* v2.3.785/786 lineage (moved from the retired bt-exit-fab):
        full-screen dim + spinner appended OUTSIDE the React tree so
@@ -231,6 +266,7 @@ export const ZoneHeader = ({ onExit }) => {
   return (
     <>
       <header className="bt-zone-header" aria-label="Current zone">
+        <div className="bt-zone-header__left">
         <button
           type="button"
           className="bt-chisel bt-chisel--chip bt-zone-header__logout"
@@ -239,6 +275,24 @@ export const ZoneHeader = ({ onExit }) => {
         >
           <img src={`/icons/ui/logout-door-icon.svg${V}`} alt="" draggable={false} />
         </button>
+        {/* v2.3.3553: your AP, the owner's medal before it; a tap opens the
+            Achievements page.  A flat fill and text-shadow only: the rail is
+            over the WebGL canvas (TRAPS section 42). */}
+        {apOn && (
+          <button type="button" className="bt-zone-header__ap" data-ap-chip="1" data-ap={ap}
+            aria-label={`${apWords(ap)} achievement points. Open Achievements`}
+            onClick={openAchievements}>
+            <img key={'m' + apBump} className={apBump ? 'bt-purse-flip' : undefined}
+              src={ACHV_MEDAL_SRC} alt="" draggable={false} />
+            <span key={'a' + apBump} className={apBump ? 'bt-purse-bump' : undefined}>{apWords(ap)}</span>
+            {apBump && apGain.current > 0 ? (
+              <span key={'g' + apBump} className="bt-ap-gain" data-ap-gain={apGain.current} aria-hidden="true">
+                {apGainWords(apGain.current)}
+              </span>
+            ) : null}
+          </button>
+        )}
+        </div>
         <div className="bt-zone-header__mid">
         <TodIcon S={S} />
         <div

@@ -213,11 +213,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     return { id: r && r.quest && r.quest.id, status: r && r.status, wouldHaveBeen };
   });
-  rec.ok('control: mayor_1 IS the quest an unfiltered walk would offer next',
-    !!offered && offered.wouldHaveBeen === 'mayor_1', offered);
-  /* v2.3.3399: a door can pay it now, so the filter lets it through */
-  rec.ok('Mayor Bro offers the building quest, now that a door can pay it',
-    !!offered && offered.id === 'mayor_1', offered);
+  /* v2.3.3550: mayor_1 is RETIRED (the owner: "Retire the old welcome home
+     quest"), so the walk -- which passes over a retired quest, as
+     getNpcQuest does -- comes to mayor_2, and that is what he offers */
+  rec.ok('control: with mayor_1 retired, mayor_2 is the quest an unfiltered walk would offer next',
+    !!offered && offered.wouldHaveBeen === 'mayor_2', offered);
+  rec.ok('Mayor Bro offers mayor_2 ("Into the Wild"), never the retired building quest',
+    !!offered && offered.id === 'mayor_2', offered);
 
   /* ── 4. AND THE SAME QUESTION FOR THE ONE AFTER THAT ──
      mayor_3 is "Clear any dungeon", and there is no way into a dungeon: the
@@ -251,7 +253,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(500);
   const panel = await H.bodyText(P);
   /* v2.3.3399: and the log says the same as the giver */
-  rec.ok('the Quests panel advertises it too', /Welcome Home/.test(panel), panel.slice(0, 400));
+  /* v2.3.3550: mayor_2's title, mayor_1 being retired */
+  rec.ok('the Quests panel advertises it too', /Into the Wild/.test(panel) && !/Welcome Home/.test(panel), panel.slice(0, 400));
 
   await P.ctx.close().catch(() => {});
 }
