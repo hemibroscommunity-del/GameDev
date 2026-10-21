@@ -1322,8 +1322,12 @@ console.log('wheel map');
     m.stages.length === 32 && m.lands.every((l) => { const st = m.stages.filter((s) => s.region === l.id); return st.length === 4 && st.every((s, k) => s.k === k && s.levels[0] === k * 20 + 1 && s.levels[1] === (k + 1) * 20 && (k === 0 || Math.hypot(s.x - c, s.y - c) > Math.hypot(st[k - 1].x - c, st[k - 1].y - c))); }));
   const kinds = {};
   for (const p of m.places) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
-  ok(`...the camps (32, each at the end of its stage), the passes (16, at levels 20 and 60), the gates (8, each to its realm) and the landmarks`,
-    kinds.camp === 32 && kinds.pass === 16 && kinds.gate === 8 && kinds.landmark === 4 && m.places.every((p) => inside(p.x, p.y)) &&
+  /* v2.3.3540: five landmarks -- the Goo Grotto added -- the four with a
+     tier dungeons, each with its levels for the world map */
+  const dungeonMarks = m.places.filter((p) => p.kind === 'landmark' && Array.isArray(p.levels));
+  ok(`...the camps (32, each at the end of its stage), the passes (16, at levels 20 and 60), the gates (8, each to its realm) and the landmarks (5, four of them dungeons with their levels: ${dungeonMarks.map((p) => p.name + ' ' + p.levels.join('-')).join(', ')})`,
+    kinds.camp === 32 && kinds.pass === 16 && kinds.gate === 8 && kinds.landmark === 5 && dungeonMarks.length === 4
+      && dungeonMarks.some((p) => p.region === 'verdant' && p.name === 'the Goo Grotto' && p.levels.join() === '1,5') && m.places.every((p) => inside(p.x, p.y)) &&
     m.places.filter((p) => p.kind === 'camp').every((p) => [20, 40, 60, 80].includes(p.level)) && m.places.filter((p) => p.kind === 'pass').every((p) => p.level === 20 || p.level === 60) &&
     m.places.filter((p) => p.kind === 'gate').every((p) => /the (Dark Sanctum|Light Summit)/.test(p.to)), kinds);
   const before = bpM.routes.reduce((t, r) => t + r.pts.length, 0), after = m.routes.reduce((t, r) => t + r.pts.length / 2, 0);
@@ -4206,6 +4210,44 @@ console.log('the Wheel five times longer (v2.3.3315)');
   ok('...and the three dungeons\' mouths are on their lands at their own levels, further out',
     ['sky', 'hollows', 'thunder'].every((h) => live.WHEEL_DOORS[h] && short.WHEEL_DOORS[h] && live.WHEEL_DOORS[h].tier === short.WHEEL_DOORS[h].tier
       && live.WHEEL_DOORS[h].levels.join() === short.WHEEL_DOORS[h].levels.join() && tierAt(live.WHEEL_DOORS[h].at[0], live.WHEEL_DOORS[h].at[1])[0] === h), live.WHEEL_DOORS);
+  /* v2.3.3540: and the starter dungeon's, the Goo Grotto -- the Verdant
+     Wilds' landmark, on their first stretch (levels 1-5), on both Wheels --
+     and EVERY mouth in view: no object's picture, nor any resource's, reaches
+     into the box round it (placing.js MOUTH_CLEAR: the opening, its name over
+     it, the ground in front), as the game draws them -- each object at its
+     catalog size, each tree and rock by its tier's own picture */
+  ok('...and the starter dungeon\'s mouth, the Goo Grotto, the Verdant Wilds\' landmark, on their first stretch (levels 1-5), on both Wheels',
+    !!live.WHEEL_DOORS.verdant && !!short.WHEEL_DOORS.verdant && live.WHEEL_DOORS.verdant.name === 'the Goo Grotto'
+      && live.WHEEL_DOORS.verdant.levels.join() === '1,5' && short.WHEEL_DOORS.verdant.levels.join() === '1,5'
+      && tierAt(live.WHEEL_DOORS.verdant.at[0], live.WHEEL_DOORS.verdant.at[1]).join() === 'verdant,1'
+      && PLAN5.roads.some((r) => r.id === 'verdant-landmark-path'), { live: live.WHEEL_DOORS.verdant, short: short.WHEEL_DOORS.verdant });
+  {
+    const { MOUTH_CLEAR } = await import('../../public/tools/world/core/placing.js');
+    const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
+    const { treeGeom } = await import('../../src/game/tierTrees.js');
+    const { oreGeom } = await import('../../src/game/tierOre.js');
+    const byId = Object.fromEntries(objectCatalog().map((e) => [e.id, e]));
+    const hidden = [];
+    for (const [name, T, O] of [['long', live, ob], ['short', short, oa]]) {
+      for (const [id, d] of Object.entries(T.WHEEL_DOORS)) {
+        const x0 = d.at[0] + MOUTH_CLEAR.left, x1 = d.at[0] + MOUTH_CLEAR.right, y0 = d.at[1] + MOUTH_CLEAR.top, y1 = d.at[1] + MOUTH_CLEAR.bottom;
+        const over = (l, r, t, b) => l < x1 && r > x0 && t < y1 && b > y0;
+        for (let i = 0; i < O.n; i++) {
+          const e = byId[O.kinds[O.kind[i]]];
+          if (!e || Math.abs(O.x[i] - d.at[0]) > 900 || Math.abs(O.y[i] - d.at[1]) > 900) continue;
+          const h = e.fit === 'w' ? e.size / (e.ar || 1) : e.size, w = e.fit === 'w' ? e.size : e.size * (e.ar || 1);
+          if (over(O.x[i] - w / 2, O.x[i] + w / 2, O.y[i] - h, O.y[i])) hidden.push({ wheel: name, door: id, object: e.id, at: [O.x[i], O.y[i]] });
+        }
+        for (const list of Object.values(T.WHEEL_NODES)) for (const [k, x, y, lvl] of list) {
+          if (k === 'f' || Math.abs(x - d.at[0]) > 900 || Math.abs(y - d.at[1]) > 900) continue;
+          const g = k === 'o' ? oreGeom({ x, y, gatherLvl: lvl }) : treeGeom({ x, y, gatherLvl: lvl });
+          if (over(g.left, g.right, g.top, g.footY)) hidden.push({ wheel: name, door: id, node: k, at: [x, y] });
+        }
+      }
+    }
+    ok(`...and every dungeon's mouth in view on both Wheels (${Object.keys(live.WHEEL_DOORS).join(', ')}): no object's or resource's picture over its opening, its name or the ground in front (MOUTH_CLEAR)`,
+      Object.keys(live.WHEEL_DOORS).length === 4 && hidden.length === 0, hidden.slice(0, 6));
+  }
   /* 5b. v2.3.3401: every fishing seat of both tables out of the water as the
      game DRAWS it -- each piece composed as the ground worker lays it (its
      blocks' window, composeGround at its scale, no pictures: the pictures

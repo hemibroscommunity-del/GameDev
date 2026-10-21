@@ -47,7 +47,8 @@ export function updateDungeonWaves(S, deps) {
                 var cfg = S._customDungeonConfig;
                 if (cfg.hasBoss) {
                   var bossArch = cfg.bossArchetype || 'brute';
-                  var boss = createMonster('cboss-0', bossArch, cfg.monsterLevel + 5, Math.floor(_dW / 2) * TILE, Math.floor(_dH / 3) * TILE, cfg.element);
+                  /* v2.3.3540: at the dungeon's level, as the worker's (server data.js DUNGEON_BOSS_UP; it was + 5) */
+                  var boss = createMonster('cboss-0', bossArch, cfg.monsterLevel, Math.floor(_dW / 2) * TILE, Math.floor(_dH / 3) * TILE, cfg.element);
                   boss.hp *= cfg.bossMultiplier || 4;
                   boss.maxHp = boss.hp;
                   boss.curHp = boss.hp;

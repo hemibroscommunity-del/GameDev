@@ -1826,8 +1826,10 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
 // fewer a dungeon nobody can reach -- and offers it nearer than the worker's
 // own reach, so a tap at the button's edge is never refused for drift.
 {
-  check('wheel dungeons: the same lands on both sides (WHEEL_DUNGEON.LANDS = WHEEL_DUNGEON_HOMES)',
-    JSON.stringify(Object.keys(SRV_WHEEL_DUNGEON.LANDS).sort()) === JSON.stringify(CLIENT_WHEEL_DUNGEON_HOMES.slice().sort()),
+  /* v2.3.3540: IN THE SAME ORDER -- caps.dungeonLands is how many of them
+     the worker opens, and the phone offers the first that many */
+  check('wheel dungeons: the same lands on both sides, in the same order (WHEEL_DUNGEON.LANDS = WHEEL_DUNGEON_HOMES; caps.dungeonLands counts the first)',
+    JSON.stringify(Object.keys(SRV_WHEEL_DUNGEON.LANDS)) === JSON.stringify(CLIENT_WHEEL_DUNGEON_HOMES),
     { srv: Object.keys(SRV_WHEEL_DUNGEON.LANDS), cli: CLIENT_WHEEL_DUNGEON_HOMES });
   check('wheel dungeons: the button comes up nearer than the worker\'s reach (DOOR_R < WHEEL_DUNGEON.DOOR_R)',
     CLIENT_DOOR_R + 40 <= SRV_WHEEL_DUNGEON.DOOR_R, { cli: CLIENT_DOOR_R, srv: SRV_WHEEL_DUNGEON.DOOR_R });
@@ -2331,7 +2333,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     if (!d) { if (e.dungeon || e.dungeonLevels) dOff.push([kind, 'no dungeon in its land', e.dungeon]); continue; }
     if (e.dungeon !== d.name || JSON.stringify(e.dungeonLevels) !== JSON.stringify(d.levels)) dOff.push([kind, e.dungeon, e.dungeonLevels, d.name, d.levels]);
   }
-  check('codex: each page\'s dungeon and its levels are the ones the worker baked (the Great Cave, the Foundry Dome, the Buried City)', dOff.length === 0, dOff);
+  check('codex: each page\'s dungeon and its levels are the ones the worker baked (the Great Cave, the Foundry Dome, the Buried City, the Goo Grotto)', dOff.length === 0, dOff);
   /* ...and the road its Locations tab says leads there is the plan's */
   const rOff = [];
   for (const kind of CLIENT_CODEX_KINDS) {

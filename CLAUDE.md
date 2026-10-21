@@ -1533,7 +1533,8 @@ remnant to migrate server-side, not a mode to preserve.
     - a land's LANDMARK is its dungeon's mouth: the Great Cave (hollows,
       levels 26-30), the Foundry Dome (thunder, 26-30), the Buried City (sky,
       41-45) -- `WHEEL_DUNGEON.LANDS` in `server/src/wheeldungeon.js`; the
-      other five lands have no landmark on their spokes yet;
+      other five lands have no landmark on their spokes yet (four since
+      v2.3.3540's Goo Grotto, below);
     - where each stands and the way back out are BAKED with the monsters'
       places (`WHEEL_DOORS`, bake-wheel-spawns.mjs); the client finds the
       mouths in the worker's own map (`wheelMapInfo().places`), only WHICH
@@ -1544,7 +1545,8 @@ remnant to migrate server-side, not a mode to preserve.
       worker judging the rest within 260 px (`_wheelDungeonConfig`);
     - inside: dungeon.js's instance, its waves the land's own spawn list
       built by `_makeZoneMonster` with `home` (their looks, shards, quests),
-      the boss its last kind five levels up; the level the place's top but
+      the boss its last kind five levels up (at the dungeon's level since
+      v2.3.3540, below); the level the place's top but
       never above yours; its looks loaded behind the loading screen
       (`loadLandLooks`) and the arena's zone given the land as `homes`;
     - the ARENA is its own, not the Workshop's (`wheelArenaMap`): 36 x 52
@@ -1573,6 +1575,40 @@ remnant to migrate server-side, not a mode to preserve.
     - Found on the way: the Wheel's buildings have NO DOORS yet -- the
       forge, the bank, the shop and the farm (the Dungeon Workshop) are
       unreachable from the Wheel. (They have doors since v2.3.3032, below.)
+    - since v2.3.3540 THE GOO GROTTO, A STARTER DUNGEON -- the owner: "I
+      value SIMPLICITY and INTELLIGIBILITY", the after-review list's fourth
+      item, a dungeon near town with every boss at its dungeon's level:
+      - the Verdant Wilds' LANDMARK (plan.js, tier 1, side 0.6, r 200): the
+        middle of their first stretch, levels 1-5, ~36 s' walk from where
+        you arrive (23 on the short Wheel), where the Mayor's first quest
+        sends you; its footpath off the West Road from the trunk's commons
+        point (a path must leave from a trunk POINT: a road wobbles between
+        its points, layout.js, and test-world-core checks every fork);
+        `WHEEL_DUNGEON.LANDS.verdant`, its blue slimes inside, the mossy
+        floor `verdant-3`, its mouth slime green;
+      - EVERY BOSS AT ITS DUNGEON'S LEVEL (data.js `DUNGEON_BOSS_UP` 0, was
+        +5): the Wheel's, the Workshop's and the phone's own copy;
+      - NOTHING DRAWN OVER A MOUTH: no object's picture (placing.js
+        `MOUTH_CLEAR`, every layer, both placings) nor resource's
+        (bake-wheel-spawns.mjs, seeded into `nodeDrawn`) reaches into a box
+        round any dungeon's mouth, its name or the ground in front -- a
+        found clearing could not work in the Verdant Wilds' 400 px jungle;
+        re-baked: 3 monster places and 28 resources moved, the other three
+        mouths where they were;
+      - `caps.dungeonLands`, HOW MANY of the lands the worker opens, in order
+        (mirror-audit holds both lists' order): the phone draws, offers,
+        labels and leads to only the first that many (game/wheelDungeons.js
+        `wheelDungeonOpen`, TRAPS §9);
+      - the world map names every dungeon "dungeon · Lv a–b" (wheelmap.js
+        gives a tiered landmark its `levels`); the Blue Slime's codex page
+        names the Grotto;
+      - THE MAYOR'S "CLEAR ANY DUNGEON" (mayor_3) COULD NEVER BE FINISHED:
+        its check reads `lifeSkills.dungeonClears`, which only the old
+        phone-run dungeons wrote -- the worker now records every clear
+        (dungeon.js `_dungeonComplete`: `wheel_<land>` or `workshop`), and
+        its road leads to the Grotto (questWays.js `dungeon:<land>`);
+      - `wheeldungeon` §1/§6/§10, `dungeon`, `quest-route`, mirror-audit,
+        test-world-core, `mp-googrotto`: docs/specs/starter-dungeon.md.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack

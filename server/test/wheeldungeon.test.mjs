@@ -13,19 +13,27 @@
  *      that level), staying dead.
  *   5. THE WIRE: the instance's zone_state re-push carries home and variant,
  *      as the Wheel's own snapshot does.
- *   6. THE RUN: three waves, then the boss -- the land's last kind, five
- *      levels up, scaled as any dungeon boss, with its kit -- then the clear,
- *      paid by the dungeon formula; a kill counts for the land.
+ *   6. THE RUN: three waves, then the boss -- the land's last kind, at the
+ *      dungeon's level (v2.3.3540; five levels up until then), scaled as any
+ *      dungeon boss, with its kit -- then the clear, paid by the dungeon
+ *      formula; a kill counts for the land.
  *   7. THE PARTY: a member near the mouth comes in, one across the Wheel does
  *      not.
  *   8. THE WORKSHOP'S dungeons are as they were.
  *   9. THE DEV OP clearwave ends the wave you stand in (QA, admin-gated).
+ *  10. THE STARTER DUNGEON (v2.3.3540): the Goo Grotto, the Verdant Wilds'
+ *      landmark, baked on both Wheels on their first stretch (levels 1-5),
+ *      about half a minute's walk from town; a run there is the Verdant
+ *      Wilds' slimes at levels 1-5, never above yours, its boss at the
+ *      dungeon's level.
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { WHEEL_DUNGEON } from '../src/wheeldungeon.js';
-import { WHEEL_DOORS } from '../src/wheelspawns.js';
+import { WHEEL_DOORS, WHEEL_CENTRE, WHEEL_SPAWNS } from '../src/wheelspawns.js';
+import * as SHORT from '../src/wheelspawns1.js';   /* v2.3.3540: the starter dungeon on the short Wheel too */
 import { DUNGEONS } from '../src/dungeon.js';
 import { ZONES, monsterHpFlat } from '../src/data.js';
+import { QUEST_CHAINS } from '../../src/data/gameSystems.js';   /* v2.3.3540: the Mayor's "Clear any dungeon" reads the clear */
 
 function makeState() {
   const store = new Map();
@@ -74,6 +82,10 @@ psA.id = 'bp_wd_a';
 {
   const sync = msgsOfType(wsA, 'state_sync')[0];
   check('switch: state_sync advertises caps.wheeldungeons', !!sync && !!sync.caps && sync.caps.wheeldungeons === true, sync && sync.caps && sync.caps.wheeldungeons);
+  /* v2.3.3540: and how many of the mouths, in order -- the phone offers the
+     Goo Grotto only against a worker that counts it (TRAPS §9) */
+  check('switch: ...and caps.dungeonLands, how many of WHEEL_DUNGEON.LANDS it opens (4: the Grotto counted, last)',
+    !!sync && sync.caps.dungeonLands === 4 && Object.keys(WHEEL_DUNGEON.LANDS)[3] === 'verdant', sync && sync.caps.dungeonLands);
   room._liveFlags = { wheeldungeons: false };
   const wsK = fakeWs('k');
   await join(wsK, 'bp_wd_k');
@@ -93,11 +105,13 @@ psA.id = 'bp_wd_a';
 {
   const lands = Object.keys(WHEEL_DUNGEON.LANDS);
   check(`mouths: one baked for each land in LANDS (${lands.join(', ')})`, lands.every((id) => !!room._wheelDoor(id)), Object.keys(WHEEL_DOORS));
-  check('mouths: the Great Cave, the Foundry Dome and the Buried City, by name',
-    WHEEL_DOORS.hollows.name === 'the Great Cave' && WHEEL_DOORS.thunder.name === 'the Foundry Dome' && WHEEL_DOORS.sky.name === 'the Buried City',
+  check('mouths: the Great Cave, the Foundry Dome, the Buried City and (v2.3.3540) the Goo Grotto, by name',
+    WHEEL_DOORS.hollows.name === 'the Great Cave' && WHEEL_DOORS.thunder.name === 'the Foundry Dome' && WHEEL_DOORS.sky.name === 'the Buried City'
+      && WHEEL_DOORS.verdant.name === 'the Goo Grotto',
     Object.fromEntries(Object.entries(WHEEL_DOORS).map(([k, d]) => [k, d.name])));
-  check('mouths: each at its tier\'s levels (the Cave and the Dome 26-30, the City 41-45)',
-    String(WHEEL_DOORS.hollows.levels) === '26,30' && String(WHEEL_DOORS.thunder.levels) === '26,30' && String(WHEEL_DOORS.sky.levels) === '41,45',
+  check('mouths: each at its tier\'s levels (the Cave and the Dome 26-30, the City 41-45, the Grotto 1-5)',
+    String(WHEEL_DOORS.hollows.levels) === '26,30' && String(WHEEL_DOORS.thunder.levels) === '26,30' && String(WHEEL_DOORS.sky.levels) === '41,45'
+      && String(WHEEL_DOORS.verdant.levels) === '1,5',
     Object.fromEntries(Object.entries(WHEEL_DOORS).map(([k, d]) => [k, d.levels])));
   check('mouths: each way back out is a step from its mouth (100-260 px)',
     lands.every((id) => { const d = WHEEL_DOORS[id]; const r = Math.hypot(d.back[0] - d.at[0], d.back[1] - d.at[1]); return r >= 100 && r <= 260; }),
@@ -210,7 +224,7 @@ let run = null;
   const bossEv = msgsOfType(wsA, 'dungeon_boss')[0];
   const boss = room.monsters[run.zone].find((m) => m.alive && m._dungeonBoss);
   const zone = ZONES.hollows, last = zone.spawns[zone.spawns.length - 1];
-  check('run: then the boss -- the land\'s last kind, five levels up, its own look', !!bossEv && !!boss && boss.arch === last.arch && boss.level === run.inst.cfg.monsterLevel + 5 && boss.home === 'hollows', boss && { arch: boss.arch, lv: boss.level, home: boss.home });
+  check('run: then the boss -- the land\'s last kind, at the dungeon\'s level (v2.3.3540; it was five up), its own look', !!bossEv && !!boss && boss.arch === last.arch && boss.level === run.inst.cfg.monsterLevel && boss.home === 'hollows', boss && { arch: boss.arch, lv: boss.level, home: boss.home });
   const plain = room._makeZoneMonster('hollows', zone, last, 'ref', 0, 0, boss.level);
   const flat = monsterHpFlat(boss.level);
   check('run: ...scaled as any dungeon boss (HP x BOSS_MULT for one, damage x1.5) with its kit',
@@ -226,6 +240,12 @@ let run = null;
   check(`run: the clear pays the dungeon formula (${30 * WHEEL_DUNGEON.WAVES + lvl * 2} gold, ${80 * WHEEL_DUNGEON.WAVES + lvl * 5} XP)`,
     !!done && done.payload.gold === 30 * WHEEL_DUNGEON.WAVES + lvl * 2 && done.payload.xp === 80 * WHEEL_DUNGEON.WAVES + lvl * 5 && psA.coins === coins0 + done.payload.gold,
     done && done.payload);
+  /* v2.3.3540: ...and is recorded, so the Mayor's "Clear any dungeon" is
+     ready (the game's own check reads it) */
+  const clears = psA.lifeSkills && psA.lifeSkills.dungeonClears;
+  check('run: the clear is recorded (lifeSkills.dungeonClears.wheel_hollows), and the Mayor\'s "Clear any dungeon" reads it as done (v2.3.3540)',
+    !!clears && clears.wheel_hollows === true && QUEST_CHAINS.mayor_3.check({ lifeSkills: psA.lifeSkills }) === true
+      && QUEST_CHAINS.mayor_3.check({ lifeSkills: { dungeonClears: {} } }) === false, clears);
   endRun(psA);
 }
 
@@ -277,6 +297,68 @@ let run = null;
   const away = room._devClearWave('bp_wd_k');
   check('dev: ...and nothing for a player in no dungeon', away.ok === false, away);
   check('dev: the dungeon events stay server-only (PRIVILEGED_EVENTS)', ['dungeon_started', 'dungeon_wave', 'dungeon_boss', 'dungeon_complete', 'dungeon_error'].every((t) => PRIVILEGED_EVENTS.has ? PRIVILEGED_EVENTS.has(t) : PRIVILEGED_EVENTS.includes(t)));
+  endRun(psA);
+}
+
+// ── 10. THE STARTER DUNGEON (v2.3.3540) ────────────────────────────────────
+{
+  const g = WHEEL_DOORS.verdant, g1 = SHORT.WHEEL_DOORS.verdant;
+  check('starter: the Goo Grotto, the Verdant Wilds\' landmark, is baked on both Wheels at tier 1 (levels 1-5) and opened by the worker (LANDS)',
+    !!g && !!g1 && g.name === 'the Goo Grotto' && g1.name === g.name && g.tier === 1 && g1.tier === 1
+      && String(g.levels) === '1,5' && String(g1.levels) === '1,5' && WHEEL_DUNGEON.LANDS.verdant === 'toxic_swamp' && !!room._wheelDoor('verdant'), { g, g1 });
+  /* where: on the Verdant Wilds' first stretch, west of town, a short walk
+     (150 px a second) from where you arrive -- on both Wheels */
+  const where = (T, d) => {
+    const C = T.WHEEL_CENTRE, band = T.WHEEL_SPAWNS.verdant.band;
+    return { r: Math.hypot(d.at[0] - C[0], d.at[1] - C[1]), band, west: d.at[0] < C[0], walkS: Math.hypot(d.at[0] - C[0], d.at[1] - (C[1] + 288)) / 150 };
+  };
+  const L = where({ WHEEL_CENTRE, WHEEL_SPAWNS }, g), S1 = where(SHORT, g1);
+  check(`starter: ...on the Verdant Wilds' first stretch, west of town: ${Math.round(L.walkS)} s at a walk from where you arrive (the short Wheel ${Math.round(S1.walkS)} s)`,
+    [L, S1].every((w) => w.r > w.band[0] && w.r < w.band[1] && w.west) && L.walkS > 20 && L.walkS < 60 && S1.walkS > 10 && S1.walkS < 60, { L, S1 });
+  check('starter: ...its way back out a step from the mouth',
+    Math.hypot(g.back[0] - g.at[0], g.back[1] - g.at[1]) >= 100 && Math.hypot(g.back[0] - g.at[0], g.back[1] - g.at[1]) <= 260);
+  /* the landmark is its own clearing: no monster's place on it */
+  const near = WHEEL_SPAWNS.verdant.points.reduce((m, p) => Math.min(m, Math.hypot(p[0] - g.at[0], p[1] - g.at[1])), Infinity);
+  check(`starter: ...no monster stands at its mouth (the nearest place ${Math.round(near)} px off)`, near >= 200, near);
+
+  const startGoo = async (level, dx = 0) => {
+    put(psA, 'wheel', g.at[0] + dx, g.at[1]);
+    psA.level = level;
+    wsA.sent.length = 0;
+    await startAt(wsA, 'verdant');
+    const s = msgsOfType(wsA, 'dungeon_started')[0];
+    const e = msgsOfType(wsA, 'dungeon_error')[0];
+    return { s, e };
+  };
+  const { s } = await startGoo(3);
+  const p = s && s.payload;
+  check('starter: a level-3 player walks into a level-3 Goo Grotto: the Verdant Wilds\' monsters, the way back out at its mouth',
+    !!p && p.cfg.name === 'the Goo Grotto' && p.cfg.home === 'verdant' && p.cfg.terrain === 'toxic_swamp' && p.cfg.monsterLevel === 3
+      && String(p.cfg.levels) === '1,5' && !!p.back && p.back.x === g.back[0] && p.back.y === g.back[1], p);
+  const wave = p ? room.monsters[p.zone] || [] : [];
+  const want = ZONES.verdant.spawns.reduce((t, sp) => t + (sp.count || 0), 0);
+  check(`starter: ...wave 1 the Verdant Wilds' whole spawn list (${wave.length} of ${want}: its slimes), at levels 3-5`,
+    wave.length === want && wave.every((m) => m.home === 'verdant' && m.level >= 3 && m.level <= 5), wave.map((m) => [m.home, m.level]));
+  const inst = p ? [...room._dungeons.values()].find((i) => i.zone === p.zone) : null;
+  /* in it: a run moves on only with someone inside (as the phone steps in) */
+  if (p) await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 400, y: 600, z: p.zone }));
+  for (let w = 2; inst && w <= WHEEL_DUNGEON.WAVES + 1; w++) {
+    for (const m of room.monsters[p.zone]) { m.alive = false; m.hp = 0; }
+    room._tickDungeons(Date.now());
+  }
+  const boss = p ? room.monsters[p.zone].find((m) => m.alive && m._dungeonBoss) : null;
+  const last = ZONES.verdant.spawns[ZONES.verdant.spawns.length - 1];
+  check(`starter: ...and its boss the Verdant Wilds' last kind at the dungeon's level (Lv ${boss && boss.level})`,
+    !!boss && boss.arch === last.arch && boss.home === 'verdant' && boss.level === 3, boss && { arch: boss.arch, lv: boss.level });
+  endRun(psA);
+  const low = await startGoo(1);
+  check('starter: a level-1 player meets level 1', !!low.s && low.s.payload.cfg.monsterLevel === 1, low.s && low.s.payload.cfg);
+  endRun(psA);
+  const high = await startGoo(40);
+  check('starter: a level-40 player meets its top, level 5', !!high.s && high.s.payload.cfg.monsterLevel === 5, high.s && high.s.payload.cfg);
+  endRun(psA);
+  const far = await startGoo(3, WHEEL_DUNGEON.DOOR_R + 40);
+  check('starter: ...and from too far off it is refused', !far.s && !!far.e && far.e.payload.code === 'not-here', far.e && far.e.payload);
   endRun(psA);
 }
 
