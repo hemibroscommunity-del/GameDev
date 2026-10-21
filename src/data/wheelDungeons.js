@@ -7,8 +7,11 @@
  * wheeldungeon.js.
  */
 
-/* MIRROR: the keys of server/src/wheeldungeon.js WHEEL_DUNGEON.LANDS */
-export const WHEEL_DUNGEON_HOMES = ['hollows', 'thunder', 'sky'];
+/* MIRROR: the keys of server/src/wheeldungeon.js WHEEL_DUNGEON.LANDS.
+   v2.3.3540: + the Verdant Wilds' Goo Grotto, the starter dungeon (levels
+   1-5), the owner's "I value SIMPLICITY and INTELLIGIBILITY": the three
+   before it are levels 26-45 */
+export const WHEEL_DUNGEON_HOMES = ['hollows', 'thunder', 'sky', 'verdant'];
 
 /* How near a mouth (game px, from your middle) the Enter button comes up.
    Below the worker's own reach, WHEEL_DUNGEON.DOOR_R (260), so a tap at the
@@ -22,6 +25,7 @@ export const WHEEL_DOOR_LOOK = {
   hollows: { glow: 0x7fe3ff, rim: 0x2b6f86, label: '#9feaff' },
   thunder: { glow: 0x9aa8ff, rim: 0x3c4688, label: '#b8c2ff' },
   sky: { glow: 0xffb36b, rim: 0x8a4a22, label: '#ffcf9a' },
+  verdant: { glow: 0x8cf06a, rim: 0x2f6a2a, label: '#b9ff9c' },   /* v2.3.3540: the Goo Grotto, slime green */
 };
 
 /* ═══ Each dungeon's floor and walls ═══
@@ -35,6 +39,9 @@ export const WHEEL_DUNGEON_FLOOR = {
   hollows: { pic: 'hollows-4', wall: 0x14171b, edge: 0x3a4148 },
   thunder: { pic: 'thunder-2', wall: 0x141210, edge: 0x5a4a2c },
   sky: { pic: 'sky-3', wall: 0x2a140c, edge: 0x7a3c22 },
+  /* v2.3.3540: the Goo Grotto -- the Verdant Wilds' wet mossy stone and
+     fern-covered earth, the waterfall cliffs' ground */
+  verdant: { pic: 'verdant-3', wall: 0x111a10, edge: 0x3f5a2c },
 };
 
 /* The arena (tiles of 32 game px), as the worker builds it (server/src/

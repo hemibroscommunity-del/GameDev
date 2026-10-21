@@ -38,7 +38,7 @@ import { PLAN, PLAN5, WHEEL_LONG } from '../../public/tools/world/plan.js';
 import { buildBlueprint, C } from '../../public/tools/world/core/layout.js';
 import { wheelInfo, axisDist } from '../../public/tools/world/core/wheel.js';
 import { gridInfo } from '../../public/tools/world/core/grid.js';
-import { placeObjects, footprintOf } from '../../public/tools/world/core/placing.js';
+import { placeObjects, footprintOf, MOUTH_CLEAR } from '../../public/tools/world/core/placing.js';
 import { objectCatalog } from '../../public/tools/objects/catalog.js';
 import { materialMap, walkBits, composeGround } from '../../public/tools/world/core/ground.js';   /* v2.3.3012: the game's own walk grid; v2.3.3401: and its drawn shore */
 import { PIXEL } from '../../public/tools/style/bible.js';
@@ -358,7 +358,17 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES, nodeRules = NO
   const blocked = (i) => !!(walk[i >> 3] & (1 << (i & 7)));
   /* v2.3.3401: and the water as the game draws it, for the fishing seats */
   const drawnWater = drawnWaterOf(plan, bp, mm);
-  const nodes = bakeWheelNodes({ bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns: out, safeR, blocked, groundCells, drawnWater }, nodeRules);
+  /* v2.3.3540: the dungeons' mouths -- every landmark with a tier, at its
+     middle -- as the boxes no picture may reach into (placing.js
+     MOUTH_CLEAR): no resource's either (bakeWheelNodes) */
+  const mouths = [];
+  for (const p of bp.pois || []) {
+    const lm = p.kind === 'landmark' && plan.regions[p.region] && plan.regions[p.region].landmark;
+    if (!lm || !(lm.tier > 0)) continue;
+    const mx = (p.x - bp.x0) * WPA, my = (p.y - bp.y0) * WPA;
+    mouths.push({ x0: mx + MOUTH_CLEAR.left, x1: mx + MOUTH_CLEAR.right, y0: my + MOUTH_CLEAR.top, y1: my + MOUTH_CLEAR.bottom });
+  }
+  const nodes = bakeWheelNodes({ bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns: out, safeR, blocked, groundCells, drawnWater, mouths }, nodeRules);
   /* ═══ v2.3.3016: THE DUNGEONS' MOUTHS ═══
      Each land's landmark (layout.js pass 8: the Great Cave, the Foundry
      Dome, the Buried City) is the way into its dungeon (server/src/
@@ -686,6 +696,10 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
      and a new one may neither stand in front of a `keep` nor have a `pic` in
      front of its own.  Kinds are known as each is picked (the band loop). */
   const nodeDrawn = [];
+  /* v2.3.3540: a dungeon's mouth stays in view, under every picture
+     (placing.js MOUTH_CLEAR): kept as nothing drawn and a box no resource's
+     picture may cover, whatever its foot */
+  for (const m of ctx.mouths || []) nodeDrawn.push({ pic: null, keep: [{ x0: m.x0, x1: m.x1, y0: m.y0, y1: m.y1, foot: -Infinity }] });
   const nodeBoxes = (kind, x, y, lvl) => {
     const body = (bx, by) => ({ x0: bx - 22, x1: bx + 22, y0: by - 64, y1: by, foot: by });
     if (kind === 'f') return { pic: null, keep: [body(x + rules.fishSeat[0], y + rules.fishSeat[1])] };

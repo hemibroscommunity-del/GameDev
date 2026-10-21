@@ -40,7 +40,7 @@
  * Boss HP scales by cfg.bossMultiplier (server-clamped 2..8) and by
  * present player count 1.0/1.6/2.2/3.0 (GDD §55.7 party scaling). */
 
-import { ARCHETYPES, MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */ } from './data.js';
+import { ARCHETYPES, MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */, DUNGEON_BOSS_UP /* v2.3.3540 */ } from './data.js';
 import { WHEEL_DUNGEON } from './wheeldungeon.js';   /* v2.3.3016: the Wheel's dungeons */
 
 export const DUNGEONS = {
@@ -414,7 +414,8 @@ export const dungeonMethods = {
        (wheeldungeon.js), scaled and armed below as any */
     const m = inst.cfg.home
       ? this._wheelDungeonBossBody(inst)
-      : this._dungeonMonster(inst, inst.cfg.bossArchetype, inst.cfg.monsterLevel + 5, inst.cfg.element, 'boss');
+      /* v2.3.3540: at the dungeon's level (data.js DUNGEON_BOSS_UP; it was + 5) */
+      : this._dungeonMonster(inst, inst.cfg.bossArchetype, inst.cfg.monsterLevel + DUNGEON_BOSS_UP, inst.cfg.element, 'boss');
     if (!m) return;
     // v2.3.1346: the flat +100 HP bump applies AFTER the boss/party
     // multipliers -- "all monsters get +100", not +100 x8 amplified.
@@ -777,6 +778,18 @@ export const dungeonMethods = {
       // and payout because there is no roll.
       ps.coins = (ps.coins || 0) + gold;
       this._addCombatXp(ps, xp);
+      /* v2.3.3540: AND THE CLEAR IS RECORDED (lifeSkills.dungeonClears, its
+         key the worker's own: a Wheel dungeon's land, or the Workshop).  The
+         Mayor's "Clear any dungeon" (mayor_3) is ready when that holds a key
+         (gameSystems.js check), and only the old phone-run dungeons
+         (dungeonWaves.js) ever wrote one -- so since the worker ran every
+         dungeon, the quest could not be finished.  Saved by the save below
+         and echoed with lifeSkills. */
+      const ls = ps.lifeSkills && typeof ps.lifeSkills === 'object' ? ps.lifeSkills : null;
+      if (ls) {
+        if (!ls.dungeonClears || typeof ls.dungeonClears !== 'object' || Array.isArray(ls.dungeonClears)) ls.dungeonClears = {};
+        ls.dungeonClears[cfg.home ? 'wheel_' + cfg.home : 'workshop'] = true;
+      }
       this._saveRpg(pid, ps);
       this._queuePlayerStateFlush(pid);
       this._dungeonSend(pid, { type: 'dungeon_complete', payload: { zone: inst.zone, gold, xp, boss: cfg.hasBoss } });

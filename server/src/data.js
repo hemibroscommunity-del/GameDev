@@ -525,6 +525,16 @@ export const DISHES = {
  * it.  Fighting monsters is untouched, and the half-hour meals and brews are
  * not heals and are never limited.  Mirrored in src/data/dishes.js
  * (mirror-audit).  Kill switch `pvpheal: false`. */
+/* ═══ v2.3.3540: EVERY BOSS AT ITS DUNGEON'S LEVEL ═══
+   The owner, 2026-10-21: "I value SIMPLICITY and INTELLIGIBILITY" (the
+   after-review list).  A dungeon's boss was five levels above its waves
+   (dungeon.js _dungeonSpawnBoss, wheeldungeon.js _wheelDungeonBossBody), so a
+   level-5 player's level-5 dungeon ended on a level-10 boss: the dungeon said
+   one level and fought another.  It is what its waves are now -- a boss is
+   still the strongest thing there (BOSS_MULT times the health, half again the
+   damage, its ability kit), at the level the dungeon says. */
+export const DUNGEON_BOSS_UP = 0;
+
 export const PVP_HEAL = Object.freeze({
   WINDOW_MS: 10000,
   GAP_MS: 15000,
