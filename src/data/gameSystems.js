@@ -7385,6 +7385,12 @@ export const QUEST_CHAINS = {
     id: 'mayor_1',
     npc: 'Mayor Bro',
     title: 'Welcome Home',
+    /* v2.3.3550: RETIRED (server/src/data.js QUEST_RETIRED) -- the owner:
+       "Retire the old welcome home quest."  Offered after tut_4, long after
+       the tour has had you through every door, it asked for nothing new.
+       Never offered again (getNpcQuest skips it, so the Mayor offers
+       mayor_2 next); a save holding it active can still hand it in. */
+    retired: true,
     desc: 'Visit 3 buildings in town.',
     way: 'visit',   /* v2.3.3522: the nearest building not yet visited (beast_1's note) */
     /* v2.3.1972: this quest needs a DOOR, and town has had none since

@@ -1740,6 +1740,16 @@ export var BroTown = function BroTown(_ref0) {
   var _useStateWH = useState(null),
     nearHall = _useStateWH[0],
     setNearHall = _useStateWH[1];
+  /* v2.3.3548: the farm's three buttons -- the bed's Sleep, the Dungeon
+     Workshop and the Pet House -- as one number (1 | 2 | 4), synced with
+     nearBuilding.  They are drawn from S._nearHouse, S._nearWorkshop and
+     S._nearPetHouse, which the frame loop sets and nothing ever handed to
+     React: since v2.3.2330 this tree no longer redraws twice a second, so the
+     button came up only when something else redrew it.  Standing at the bed at
+     full health, nothing did: no Sleep button (E and the right stick's tap,
+     which read the flag themselves, still slept). */
+  var _useStateFN = useState(0),
+    setFarmNear = _useStateFN[1];
   /* v2.3.3258: the picture of the room behind the door you stand at is decoded
      while you stand there (game/buildingRooms.js), so the window opens with it
      and not a beat after; the first shop or hall door you reach (not the Town
@@ -8570,6 +8580,11 @@ export var BroTown = function BroTown(_ref0) {
       var nwd = S._nearWheelDoor && !S._serverDungeon ? S._nearWheelDoor.id : null;
       setNearWheelDoor(function (prev) {
         return prev === nwd ? prev : nwd;
+      });
+      /* v2.3.3548: and the farm's bed, workshop and pet house (see setFarmNear) */
+      var fnear = (S._nearHouse ? 1 : 0) | (S._nearWorkshop ? 2 : 0) | (S._nearPetHouse ? 4 : 0);
+      setFarmNear(function (prev) {
+        return prev === fnear ? prev : fnear;
       });
       /* Update player list */
       var list = Object.entries(S.others).map(function (_ref27) {

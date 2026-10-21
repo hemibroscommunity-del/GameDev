@@ -36,6 +36,15 @@ import { extname, join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { QUEST_REWARDS as _QR, QUEST_FIRST as _QF } from '../../../server/src/data.js';   /* v2.3.3525: FIRST_LAND */
+import { OLD_MAP_LEGACY, oldMapRefusal, OLD_MAP_STAMP_ID, stampOn, stampOff } from './oldMap.mjs';   /* v2.3.3552: the old map is retired */
+
+/* ═══ v2.3.3552: WHICH SCENARIO IS RUNNING ═══
+   run.mjs says, so newPlayer can refuse a scenario that would play the
+   retired old map by accident (oldMap.mjs).  null outside run.mjs (a probe
+   or shot script run by hand), where it only warns. */
+let _scenario = null;
+export function setScenario(name) { _scenario = name || null; }
+const _oldMapWarned = new Set();
 
 /* ═══ v2.3.3525: THE LAND THE FIRST QUEST OPENS ═══
  * In the old lands (`trial=off`, every scenario's default) a land opens when
@@ -369,6 +378,26 @@ export async function stopWorker(w) {
    flips the emulated pointer to coarse and turns on the meta viewport, which
    together are the closest this harness gets to the primary platform. */
 export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, query = '', world = null, host = 'localhost', device = null }) {
+  /* ═══ v2.3.3552: THE OLD MAP IS RETIRED -- NEVER PLAYED BY ACCIDENT ═══
+     The owner: "Hold on you're in the old map (this was retired).  You keep
+     making that mistake so flag it in a way you won't accidentally do that
+     anymore."  `world: 'wheel'` is the world; `world: 'old'` the retired map
+     on purpose; no `world` only for a scenario on oldMap.mjs's frozen list.
+     Checked BEFORE a browser context is made, so a refused scenario costs
+     nothing and says why at once. */
+  if (world != null && world !== 'wheel' && world !== 'old') {
+    throw new Error(`newPlayer: world must be 'wheel' (the world) or 'old' (the retired map), not ${JSON.stringify(world)}`);
+  }
+  const _trialNamed = /(?:^|&)trial=/.test(query);
+  if (world == null && !_trialNamed) {
+    if (_scenario && !OLD_MAP_LEGACY.has(_scenario)) throw new Error(oldMapRefusal(_scenario));
+    const key = _scenario || '(no scenario)';
+    if (!_oldMapWarned.has(key)) {
+      _oldMapWarned.add(key);
+      console.log(`   [old map] ${key} plays the RETIRED old map (no \`world\`): move it to world: 'wheel' when you touch it`);
+    }
+  }
+  const _oldMap = world === 'old' || (world == null && !_trialNamed) || /(?:^|&)trial=off(?:&|$)/.test(query);
   const ctx = await browser.newContext(Object.assign(
     { viewport: viewport || { width: 1000, height: 780 } },
     touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : null,
@@ -470,7 +499,7 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      in today's town (`trial=off&nospawn`); one that names a trial still walks
      down town's stairs itself (`nospawn`); and `world: 'wheel'` plays the
      game exactly as a player gets it. */
-  const _world = world === 'wheel' ? '' : /(?:^|&)trial=/.test(query) ? 'nospawn' : 'trial=off&nospawn';
+  const _world = world === 'wheel' ? '' : (world !== 'old' && /(?:^|&)trial=/.test(query)) ? 'nospawn' : 'trial=off&nospawn';
   /* v2.3.3447: BT_QA_QUERY -- params added to EVERY page, after the
      scenario's own (which win where the game reads the first), to run any
      scenario with a switch on: `BT_QA_QUERY=onebatch=1` draws with the one
@@ -481,8 +510,20 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
   /* v2.3.3312: `host` -- the page's own address, for a scenario that needs a
      page somewhere else (mp-originlock: a copy of the game on another site,
      its browser launched to find that name at 127.0.0.1) */
+  /* v2.3.3552: every picture saved from the old map is STAMPED "OLD MAP ·
+     RETIRED" (oldMap.mjs), so it can never be mistaken for the world.  Only a
+     screenshot with a `path` -- a picture someone will look at; one taken only
+     to measure pixels (a buffer, no path) is left as the game drew it. */
+  if (_oldMap) {
+    const _shot = page.screenshot.bind(page);
+    page.screenshot = async (opts) => {
+      if (!opts || !opts.path) return _shot(opts);
+      await page.evaluate(stampOn, OLD_MAP_STAMP_ID).catch(() => {});
+      try { return await _shot(opts); } finally { await page.evaluate(stampOff, OLD_MAP_STAMP_ID).catch(() => {}); }
+    };
+  }
   await page.goto(`http://${host}:${webPort}/${_q ? '?' + _q : ''}`, { waitUntil: 'domcontentloaded' });
-  return { ctx, page, logs, name, seeded: !!phrase };
+  return { ctx, page, logs, name, seeded: !!phrase, oldMap: _oldMap };
 }
 
 /** Drive character creation and wait until the world is live. */

@@ -120,6 +120,24 @@ item 5 of the after-review list agreed with the outside evaluation.
   - `mp-wheeldoors` (12) runs under `rest: false`, so it still sees the Hotel
     shut, as an older server leaves it.
 
+## v2.3.3548: the bed's Sleep button shows when you stand there
+
+- **Found** by the check of today's merged main: on your farm, standing at the
+  bed at full health, the **Sleep** button did not come up. The Dungeon
+  Workshop's and the Pet House's buttons had the same fault.
+- **Why:** the three buttons are drawn from flags the game loop sets
+  (`S._nearHouse`, `S._nearWorkshop`, `S._nearPetHouse`), and nothing handed
+  them to React. Since v2.3.2330 the screen no longer redraws twice a second,
+  so a button came up only when something else redrew it (a health change, a
+  window). The E key and a tap on the right stick (its moon) still slept;
+  only the button was missing.
+- **Now** they are one piece of React state, synced twice a second with the
+  town's doors (BroTown `setFarmNear`), so the button comes up as you arrive.
+- **The check:** `mp-hotel` wants the Sleep button within 5 seconds of
+  standing at the bed, before its minute's wait. On the build before, it
+  never came (the rest went through only after the test lever changed your
+  health); with the fix, all 13 checks pass. TRAPS §243.
+
 ## Not done
 
 - **The respawn.** The Hotel's plan words were "rest, respawn", and a death

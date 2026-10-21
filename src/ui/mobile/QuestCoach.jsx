@@ -10,6 +10,7 @@ import { combatBandTopPx } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2564: ho
    ranged/staff fallback to `weapon` and a copy here would drift. */
 import { getActiveWeapon } from '@/data/gameSystems.js';
 import { prog3FreshLevel } from '@/data/prog3.js'; /* v2.3.3538: a new character's level (1 under one level) */
+import { pointsTipWanted, pointsTipDone, pointsTipWords, POINTS_TIP_SNOOZE_AFTER_MS, POINTS_TIP_SNOOZE_MS, POINTS_TIP_MAX_SNOOZES } from '@/game/pointsTips.js'; /* v2.3.3551: the first points, shown */
 import { holdDisc, releaseDisc, discSideFor } from '@/game/controlVisibility.js'; /* v2.3.2246 */
 /* v2.3.2495: the two facts the dashboard lessons are about -- is the band
    folded, and is the dashboard the thing on screen.  Both are module-scope
@@ -240,7 +241,11 @@ function measure(anchors, L, S) {
     /* v2.3.2495: `continue`, not `return null` -- an absurd rect is this
        ANCHOR being wrong, so the next one still deserves its turn. */
     if (_markTooBig(L, r)) continue;
-    return { left: r.left, top: r.top, width: r.width, height: r.height, body: a.body };
+    /* v2.3.3551: a body may be worked out when shown (the points lesson says
+       how many points are waiting) */
+    let body = a.body;
+    if (typeof body === 'function') { try { body = body(S); } catch (_e) { body = ''; } }
+    return { left: r.left, top: r.top, width: r.width, height: r.height, body: body };
   }
   return null;
 }
@@ -772,6 +777,48 @@ const LESSONS = [
      urgent, which is exactly why they belong last rather than in the middle of
      a fight lesson. */
   {
+    /* ═══ v2.3.3551: YOUR FIRST POINTS ═══
+       The owner, 2026-10-21: "Leave tips for first natural level up ... Go
+       with your guided level up."  At the first level-up a player earns, the
+       way to the Points grid, one step at a time -- OPEN, then Character, then
+       its Points tab -- and on the grid what the two rows are (the words and
+       the rules: game/pointsTips.js).  Done for good when a point is placed.
+
+       ANYTIME: the only lesson that runs past the Mayor's tutorial (the gate
+       below), since a first level usually comes around his third quest and
+       can come after his fourth.  Out of the tutorial it is the only one
+       considered, so no other lesson comes back with it.
+
+       BEFORE chatTap and passkey, which are "important, and not urgent": the
+       level-up is the moment.  A tip left on one step for
+       POINTS_TIP_SNOOZE_AFTER_MS steps aside for POINTS_TIP_SNOOZE_MS (the
+       snooze below), so a player keeping their points for later never holds
+       the Login Key lesson back for good.
+
+       Most specific anchor first: the grid's top row (its head cell: the
+       whole row is wider than a ring may be), the Points tab, the Character
+       button, then the fold chips.  A tap on the card puts it away for good,
+       as every lesson's does. */
+    id: 'points',
+    shape: 'rect',
+    anytime: true,
+    anchors: [
+      { sel: '[data-prog3-band="lane"] [data-prog3-lane]', reach: '[data-prog3-band]',
+        body: function (S) { return pointsTipWords('grid', S && S.rpg); } },
+      { sel: '[data-section="Build"]', reach: '[data-section="Build"]',
+        body: function (S) { return pointsTipWords('tab', S && S.rpg); } },
+      { sel: '[data-nav="hero"]', reach: '[data-nav="hero"]',
+        body: function (S) { return pointsTipWords('nav', S && S.rpg); } },
+      { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
+        body: function (S) { return pointsTipWords('fold', S && S.rpg); } },
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
+        body: function (S) { return pointsTipWords('side', S && S.rpg); } },
+    ],
+    label: 'Level up!',
+    live: function (rpg, S) { return pointsTipWanted(rpg, S); },
+    done: function (rpg) { return pointsTipDone(rpg); },
+  },
+  {
     /* ═══ v2.3.2306: THE LESSON THAT NEVER DREW ═══
        Owner, twice: "During the tutorial mention that tapping on your
        character allows you to chat with others in the room this is a
@@ -877,6 +924,9 @@ export function QuestCoach(props) {
      band straight back up is never folded again. */
   const dashArmed = React.useRef({ open: 0, nav: 0, fold: false });
   const blockRef = React.useRef({ ms: 0, sectors: 0, last: 0 });
+  /* v2.3.3551: the points lesson's snooze -- which step it is on, since when,
+     and until when it steps aside (POINTS_TIP_SNOOZE_*, game/pointsTips.js) */
+  const pointsRef = React.useRef({ body: null, since: 0, until: 0, snoozes: 0 });
   /* v2.3.2130: how far the bro has actually walked, in world px.  A ref for
      the same reason as the others -- it ticks every frame and only its
      crossing of the finish line is worth a render. */
@@ -1090,7 +1140,22 @@ export function QuestCoach(props) {
       }
       /* v2.3.2890: skipping the tutorial retires the coach like finishing it
          does -- a card already up goes, and no new one is armed */
-      if (!rpg || tutorialSkipped() || (!inTutorial(rpg) && !preTutorial(rpg))) {
+      /* ═══ v2.3.3551: AND AN ANYTIME LESSON PAST THE TUTORIAL ═══
+         The coach retires after the Mayor's fourth quest -- except for a
+         lesson marked `anytime` (the first points) that is wanted now, and
+         then only that lesson is walked (`tut` below), so nothing else comes
+         back with it. */
+      const tut = !!rpg && (inTutorial(rpg) || preTutorial(rpg));
+      let anyTimeWanted = false;
+      if (rpg && !tut && !tutorialSkipped()) {
+        const S0 = stateRef && stateRef.current;
+        for (const L of LESSONS) {
+          if (!L.anytime || done[L.id]) continue;
+          if (L.done && L.done(rpg)) { done[L.id] = true; saveDone(done); continue; }
+          if (L.live(rpg, S0)) { anyTimeWanted = true; break; }
+        }
+      }
+      if (!rpg || tutorialSkipped() || (!tut && !anyTimeWanted)) {
         if (viewRef.current) { viewRef.current = null; setView(null); }
         /* v2.3.2246: the coach retired — let go of the discs. */
         if (discHoldRef.current.sides.length) {
@@ -1139,7 +1204,9 @@ export function QuestCoach(props) {
       for (const L of LESSONS) {
         if (done[L.id]) continue;
         if (L.done && L.done(rpg)) { done[L.id] = true; saveDone(done); continue; }
-        if (!L.live(rpg)) continue;
+        if (!tut && !L.anytime) continue;   /* v2.3.3551: past the tutorial, the anytime lessons alone */
+        if (!L.live(rpg, stateRef && stateRef.current)) continue;
+        if (L.id === 'points' && now < pointsRef.current.until) continue;   /* v2.3.3551: snoozed */
         /* Collected for EVERY live lesson the walk reaches, not just the
            first: the walk stops at the first one that MEASURES, and a lesson
            can be live and fail to measure for exactly the reason this hold
@@ -1191,6 +1258,22 @@ export function QuestCoach(props) {
       /* v2.3.2766: one card ending and the next beginning are two events with
          a breath between them, never a swap in place -- the swap is what made
          the lessons after the gear one land as a single rapid volley. */
+      /* v2.3.3551: the points lesson left on one step for
+         POINTS_TIP_SNOOZE_AFTER_MS steps aside for POINTS_TIP_SNOOZE_MS --
+         the player is keeping the points for later, and the Login Key lesson
+         behind it must still get its turn.  A new step (a new body: OPEN ->
+         Character -> the tab -> the grid, or a count that changed) starts the
+         clock again.  After POINTS_TIP_MAX_SNOOZES it is put away for good, as
+         a tap on the card would: a tip is a tip, never a nag. */
+      if (next && next.id === 'points') {
+        const pr = pointsRef.current;
+        if (pr.body !== next.body) { pr.body = next.body; pr.since = now; }
+        else if (now - pr.since > POINTS_TIP_SNOOZE_AFTER_MS) {
+          pr.until = now + POINTS_TIP_SNOOZE_MS; pr.body = null; next = null;
+          pr.snoozes = (pr.snoozes || 0) + 1;
+          if (pr.snoozes >= POINTS_TIP_MAX_SNOOZES) { done.points = true; saveDone(done); }
+        }
+      }
       if (cur && next && next.id !== cur.id) next = null;
       noteCoach(!!next, now);
       const same = (!next && !cur) || (next && cur && next.id === cur.id
@@ -1272,6 +1355,16 @@ export function QuestCoach(props) {
                    if (inTutorial(r)) return 'tutorial';
                    if (preTutorial(r)) return 'pre';
                    return 'closed';
+                 })(),
+                 /* v2.3.3551: the points lesson -- wanted now (points waiting,
+                    none placed, a quiet moment), its step, and its snooze */
+                 points: (function () {
+                   const S0 = stateRef && stateRef.current;
+                   const r = (S0 && S0.rpg) || null;
+                   const pr = pointsRef.current;
+                   return { wanted: !!r && pointsTipWanted(r, S0), done: !!r && pointsTipDone(r),
+                            body: pr.body, since: pr.since, snoozedUntil: pr.until, snoozes: pr.snoozes,
+                            put: !!(doneRef.current && doneRef.current.points) };
                  })() };
       };
     } catch (_e) {}
