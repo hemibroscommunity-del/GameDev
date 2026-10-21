@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8ee2d668f9f5cc05acc705eb563c4425b0dc5632",
+  "tree": "f4f1a1a2221d432a54f56f70a69696404433519b",
+  "committedAt": "2026-10-21T05:42:39-07:00",
+  "subject": "Stamina regen worked out by the server: the amulet it holds, not the phone's claim (v2.3.3536) (#1053)",
+  "files": 6180,
+  "bytes": 713250657,
+  "listingSha256": "acad31af20b1cce6f6c7e8cd9ab32aa66d76dcaaf4a4862653df0155d9350dda",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
