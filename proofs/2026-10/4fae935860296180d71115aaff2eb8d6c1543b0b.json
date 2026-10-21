@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4fae935860296180d71115aaff2eb8d6c1543b0b",
+  "tree": "67d1e1dc44703f746fce47052dab3bfed83c263f",
+  "committedAt": "2026-10-21T06:15:28-07:00",
+  "subject": "The world-core test green again, and the maps wear the Auction House's gavel (v2.3.3546) (#1063)",
+  "files": 6203,
+  "bytes": 713533257,
+  "listingSha256": "2b97ea2431aef7577d1551ece56e2623d2a33be8f8c0e8f03fd26f9aa9b1c387",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
