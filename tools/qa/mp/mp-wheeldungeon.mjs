@@ -13,7 +13,8 @@
  *      -- and the way back out remembered;
  *   4. three waves and the boss (each ended by the QA dev op `clearwave`: a
  *      real fight takes minutes on this box) -- and the clear pays and brings
- *      you back out at the cave's mouth, in the Wheel;
+ *      you back out at the cave's mouth, in the Wheel (v2.3.3543: its words
+ *      over you say the gold it pays, and no XP that goes into no skill);
  *   5. in again, and out by its door: back at the mouth again;
  *   6. no page errors.
  * The walker is a god (server/src/devtools.js): it crosses levels 6-20.
@@ -129,10 +130,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 4. the waves, the boss, the clear ── */
   const coins0 = await H.readState(P, (S) => (S.rpg && S.rpg.coins) || 0);
   const seen = [];
+  /* v2.3.3543: the words over you as each wave goes, kept as they come (a
+     line over your bro is gone in about a second) -- the clear's must say
+     what it pays */
+  const words = [];
+  const listen = async (ms) => {
+    for (let t = 0; t < ms; t += 100) {
+      const w = await P.page.evaluate(() => ((window._gameState.current || {}).dmgNumbers || []).map((d) => String(d.text || '')).filter(Boolean)).catch(() => []);
+      for (const x of w) if (!words.includes(x)) words.push(x);
+      await P.page.waitForTimeout(100);
+    }
+  };
   for (let k = 0; k < 6; k++) {
     const r = await H.devOp(wsPort, 'clearwave', id);
     seen.push(r && r.cleared);
-    await P.page.waitForTimeout(1500);
+    await listen(1500);
     const z = await H.readState(P, (S) => S.currentZone);
     if (!/^dungeon:/.test(z || '')) break;
     const done = await H.readState(P, (S) => !!S._dungeonComplete);
@@ -146,6 +158,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`three waves and the boss (${seen.join(', ')} monsters ended), the clear pays (${where.coins - coins0} gold), and you are back out at the cave's mouth (${Math.round(Math.hypot(where.x - W.back[0], where.y - W.back[1]))} px from its way out)`,
     cleared && back === 'wheel' && where.zone === 'wheel' && Math.hypot(where.x - W.back[0], where.y - W.back[1]) < 80 && where.coins > coins0,
     { seen, cleared, back, where, want: W.back });
+  /* v2.3.3543: and says only what it pays -- the gold.  The XP the worker
+     adds goes into no skill under prog3 (dungeon.js _addCombatXp, the old
+     single-level counter), so "+NXP" promised what nobody got */
+  const clearWords = words.filter((w) => /DUNGEON CLEARED|^\+\d+G/.test(w));
+  rec.ok(`the clear says what it pays: ${clearWords.map((w) => '"' + w + '"').join(' and ') || '(nothing seen)'}, with no XP that goes into no skill`,
+    clearWords.some((w) => /DUNGEON CLEARED!/.test(w)) && clearWords.some((w) => /^\+\d+G$/.test(w)) && !clearWords.some((w) => /XP/.test(w)),
+    { clearWords, words: words.slice(-12) });
 
   /* ── 5. in again, and out by its door ── */
   await H.hopTo(P, W.at[0], W.at[1] + 60, { step: 60, gap: 260, tries: 20 });
