@@ -1,4 +1,4 @@
-/* ═══ THE POINTS TAB'S TWO HEADS IN THE OWNER'S ART (v2.3.3553, docs/specs/points-heads.md) ═══
+/* ═══ THE POINTS TAB'S TWO HEADS IN THE OWNER'S ART (v2.3.3554, docs/specs/points-heads.md) ═══
  *
  * The owner, 2026-10-21, with a sheet of art and a mockup: "On the character
  * points screen swap out the old style icons with these.  It should look

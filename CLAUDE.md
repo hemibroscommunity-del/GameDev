@@ -1002,7 +1002,7 @@ remnant to migrate server-side, not a mode to preserve.
       back (`heldCatRef`), the window's tabs aim only the window;
     - the per-weapon and character point bubbles BREATHE while points wait
       (game.css `bt-pts-bubble`, transform and opacity only) -- since
-      v2.3.3553 the COUNTS do, slowly (`bt-pts-count`, a 3.2 s breath: the
+      v2.3.3554 the COUNTS do, slowly (`bt-pts-count`, a 3.2 s breath: the
       owner's "slowly grow then shrink"): the Points tab's two heads are
       the owner's art, a gold frame of three rows (sword, staff, bow, each its
       count) and one of the gold bust with the up arrow over its count, gold

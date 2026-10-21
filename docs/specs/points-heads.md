@@ -1,4 +1,4 @@
-# The Points tab's two heads, in the owner's art (v2.3.3553)
+# The Points tab's two heads, in the owner's art (v2.3.3554)
 
 The owner, 2026-10-21, sent a sheet of art for the Points tab and a mockup of
 how it goes together (kept as `assets/icons-source/sheet-points-heads.png` and
