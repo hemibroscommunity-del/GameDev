@@ -22,6 +22,8 @@ This document is being given to an AI model to find areas for improvement. To ma
 4. **Pixel art at 2 px per game px, commissioned from ChatGPT, processed by the game's own tools.** New art is possible but slow; recolours and code-drawn effects are cheap.
 5. **Free to play, no purchasables, no play caps.** A $2-per-30-days supporter pass paid in ETH on the Hemi chain is designed but not built. The owner's NFT collection (Hemi Bros) gives only a cosmetic badge.
 6. **A reviewer exposé is a week away** (as of 2026-10-19); reviewers will give the game 20–30 minutes. The first half hour is therefore the most valuable surface to improve.
+7. **It is still a demo with no live players.** The owner, 2026-10-21: "the game is still a DEMO with no other live players yet. If everyone needed to start from scratch it's no problem." A change that would need a save migration for live characters can instead start everyone fresh.
+8. **Simplicity and intelligibility come first.** The owner, 2026-10-21: "I value SIMPLICITY and INTELLIGIBILITY it's far more important for me that the player understands the game than to have precise finely tuned details." Prefer the change a player can understand in one sentence over the finely tuned one, and a rule that holds everywhere over a special case.
 
 **Decisions the owner has already made and reversed or rejected.** Part 11 lists them per screen and system (daily quests removed, no ground quest path, no monster-dropped random weapons, no food from shops, and so on). Suggestions that re-propose one of these should say why the earlier reason no longer holds.
 
