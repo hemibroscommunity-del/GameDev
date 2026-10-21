@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "887cf2645f9a1486c3cd0d0fc320ebf84efc844a",
+  "tree": "12e75557ef657811396d8c232f2cce7877ecd2b8",
+  "committedAt": "2026-10-21T16:44:47-07:00",
+  "subject": "The world, never the Wheel or the old map: players never read \"Wheel\", and a phone test can't land in the retired map by accident (v2.3.3552) (#1068)",
+  "files": 6247,
+  "bytes": 719017966,
+  "listingSha256": "419b5b6203bd0e50319be690509b917e303bebe6192f857b0f4e77f9dc2ce806",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
