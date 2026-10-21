@@ -1882,7 +1882,7 @@ button.bt-pin-drop{color:inherit;margin:0}
      the title's width from the poor one.  The title keeps
      minmax(0,1fr) + ellipsis, so what gives at seven figures on a
      390px phone is the tail of a long zone name, not the number. */
-  display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;
   /* v2.3.1333b (owner: "tiny sliver above the bar"): the 9-slice svg
      has a ~1.5px transparent margin + rounded top corners baked into
      its top slice — world art peeked through it.  Pull the rail 4px
@@ -1896,6 +1896,33 @@ button.bt-pin-drop{color:inherit;margin:0}
   pointer-events:none}
 .bt-zone-header__logout{width:34px;height:34px;display:grid;place-items:center;
   padding:0;pointer-events:auto}
+/* v2.3.3553: the bar's left column: the log-out door, then your AP (the
+   owner: "Achievement points should be a prominent part of the experience").
+   `auto` in the grid now (it was the door's fixed 38px), min-width keeping
+   the old 38 so a worker without achievements lays the bar out as before. */
+.bt-zone-header__left{min-width:38px;display:flex;align-items:center;gap:2px}
+.bt-zone-header__ap{position:relative;height:34px;min-width:44px;display:flex;
+  align-items:center;gap:4px;padding:0 6px;margin:0;border:none;background:transparent;
+  color:#EAC675;font:800 15px/1 'Source Sans 3',sans-serif;
+  font-variant-numeric:tabular-nums;white-space:nowrap;cursor:pointer;
+  touch-action:manipulation;pointer-events:auto;
+  text-shadow:0 1px 2px rgba(0,0,0,.78)}
+.bt-zone-header__ap img{width:20px;height:20px;display:block;object-fit:contain;
+  pointer-events:none}
+/* the "+N" pops up just right of the number and slides into it as it goes,
+   inside the bar's own box: it reads as the counter's, and never lies over
+   the world.  Transform and opacity only, a flat fill (TRAPS section 42). */
+.bt-ap-gain{position:absolute;left:100%;top:50%;pointer-events:none;
+  padding:2px 6px 1px;border-radius:6px;background:#1A2328;color:#F2D58C;
+  font:800 13px/1.1 'Source Sans 3',sans-serif;white-space:nowrap;
+  box-shadow:0 0 0 1px rgba(234,198,117,.65);opacity:0;
+  animation:bt-ap-gain 1400ms cubic-bezier(.2,.8,.2,1) 1 forwards}
+@keyframes bt-ap-gain{
+  0%{opacity:0;transform:translate(14px,-50%) scale(.9)}
+  14%{opacity:1;transform:translate(8px,-50%) scale(1.1)}
+  70%{opacity:1;transform:translate(2px,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-14px,-50%) scale(.9)}}
+html.bt-calm .bt-ap-gain{animation:none;opacity:0}
 .bt-zone-header__logout img{width:26px;height:26px;object-fit:contain;display:block;
   pointer-events:none} /* v2.3.1333c: 21 -> 26 + svg viewBox tightened (owner: icon read tiny) */
 /* ═══ v2.3.2413: THE TITLE HAS TO RECEIVE THE PRESS ═══

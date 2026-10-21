@@ -1031,6 +1031,18 @@ remnant to migrate server-side, not a mode to preserve.
     the top bar says "BroTown"; a land's banner docks into the plate
     (`window.__btWheelPlate`, zoneBannerOverlay.js titleRect); the probe's
     `plate`: WORLD-MAP-PIPELINE "The name plate under the minimap".
+  - Since v2.3.3553 YOUR ACHIEVEMENT POINTS RIDE THE TOP BAR -- the owner:
+    "Achievement points should be a prominent part of the experience in
+    brotown": the owner's medal and the WORKER's AP (game/achievements.js
+    `achvApTotal`) beside the log-out door, opposite the gold
+    (ZoneHeader.jsx, the bar's left column `auto` now), only against
+    `caps.achievements`; a rise -- any achievement, a quest's +5, a guild
+    rung -- pops a "+N" inside the bar beside the number and bumps it, as the
+    purse spins its coin (src/game/apChip.js; never before the worker's
+    achv_state has come, nor under calm motion: the QA harness calms every
+    page, so a test of it sets `__btAmbienceOff = false`); a tap opens the
+    Achievements page under More; `ap-chip` suite, `mp-apchip` (in the world):
+    docs/specs/ap-on-the-bar.md.
   - Since v2.3.3010 GREAVES ALONE HIDE THE PLAIN LEGS -- the owner: "the
     legs underneath near the shoes poke out during east jog. You can just
     remove the plain clothes legs beneath": maskedBake.js `_legsOnlyClamp`
