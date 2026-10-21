@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "09f1c23f32687f59c66d1b0f4fea8603fdbdf4e3",
+  "tree": "422b718bf85adf495b69c69e0cd2da550bc94d15",
+  "committedAt": "2026-10-21T05:54:51-07:00",
+  "subject": "The Hotel opens: a real rest, paid by the server (v2.3.3539) (#1056)",
+  "files": 6192,
+  "bytes": 713396647,
+  "listingSha256": "f5a28af72d0105d1aa9158cdfbbd326b0cd0ff705df6ffa1e5e7d8d12476b5b1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
