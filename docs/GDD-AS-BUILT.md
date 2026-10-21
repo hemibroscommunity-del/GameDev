@@ -1,6 +1,6 @@
 # BroTown (Hemi Bros ARPG) — Game Design Document, As Built
 
-**Version described:** v2.3.3530 (main, 2026-10-20) · **Platform:** browser game at brotown.net, iPhone Safari first · **Status:** live, free to play, pre-launch content ("players start fresh at launch")
+**Version described:** v2.3.3547 (main, 2026-10-21: v2.3.3530 plus the changes merged since, v2.3.3533–3541 and v2.3.3543–3546) · **Platform:** browser game at brotown.net, iPhone Safari first · **Status:** live, free to play, pre-launch content ("players start fresh at launch")
 
 > **What this document is.** A description of the game that exists in the code today, written from the server and client source and the implementation specs of shipped features. It replaces, for evaluation purposes, the original design document (README.md), which describes a much larger imagined game that was never built. Where this document gives a number, the number was read from the code. Where a system is planned, partly built, or switched off, it says so in the section's "Not built" list and in Part 12.
 >
@@ -87,7 +87,7 @@ BroTown is a real-time, server-based multiplayer action RPG played in a phone's 
 | Crops / recipes / fish | 16 / 10 / 5 |
 | Pets | 9 kinds (18 looks) |
 | Quests | 16 live tour quests + 3 legacy errands; 22 dormant |
-| Buildings | 16 standing, 15 open (11 doors + 4 halls), the Hotel shut |
+| Buildings | 16 standing, all 16 open (11 doors + 5 halls; the Hotel since v2.3.3539) |
 | Social | parties to 50, alliances at 20, friends, 5 chat lanes, 30 emoji, 13 moves |
 | Players | 120 a room, one room |
 | Specs / tests | ~250 feature specs; 165 server suites; 566 phone scenarios |
@@ -115,7 +115,7 @@ The whole game is one seamless map, **the Wheel** (zone id `wheel`, shown to pla
 | Electric Foundry | storm | SE | Slime → Storm Slime | the Foundry Dome (Lv 26–30) | the theme |
 | Water Caves | water | S | Fishman → Coral Fishman | — | the theme |
 | Poison Forest | venom | SW | Mire Wisp, Bog Lurker → Spectral, Shade | — | the theme |
-| Verdant Wilds | flora | W | Blue Slime → Jade Slime | — | forest.mp3 |
+| Verdant Wilds | flora | W | Blue Slime → Jade Slime | the Goo Grotto (Lv 1–5, v2.3.3540) | forest.mp3 |
 
 Each land has four named **stages** (one look per twenty levels: Frost Ridge's thaw line, snowbound taiga, glacier, frozen crown) with a named **camp** at the middle of levels 20, 40, 60 and 80 (Trapper's Rest, the Snowshoe Lodge …); camps are clearings in the ground plan with nothing standing or happening in them. Sixteen named passes (Geyser Gap, Cinder Crossing, Ore Cut …) join neighbours at 20 and 60; nothing in the server treats a pass specially. A river (the Sweetwater) runs from the glacier through the commons to a delta; a mine railway runs from the Rail Depot outside the east gate down the Stone Hollows to the Great Cave; ten oases ring the Wind Dunes' palms; Bro Pond lies south-west of town. The Dark gates are on the four compass points and the Light gates on the diagonals, by plan only: no gate object exists and no way into the `shadow` or `radiant` zones exists from the Wheel.
 
@@ -137,7 +137,7 @@ A courthouse-square town laid at 1.5× its plan's plots with the buildings drawn
 | | Woodworker | the bench (Bow, Staff, Traps, Harden) |
 | South, west side | Saloon | your party, Invite a player, the alliance part |
 | | Gambling Den | the free daily spin, the wager, the weekly jackpot; Ace stands beside it |
-| South, east side | Hotel | **shut** ("Shut for now") |
+| South, east side | Hotel | **Rest**: full health, stamina and mana and Well Rested (+10% combat XP for 30 minutes), free, paid by the server (v2.3.3539) |
 | | Sheriff's Office | Duel a player (the player list) and the arena sign-up |
 | West, north side | Cookhouse | recipes and your cooked food |
 | | Feed & Seed | Visit Your Farm, Seeds, Orders |
@@ -180,8 +180,8 @@ Eleven of these count as building visits for the Mayor's "Visit 3 buildings" err
 
 ### 2.6 Not built, put away, open in the world
 
-- Levels 41–80, the camps as places with anything in them, the Lv 60 passes as more than ground, the keystone gates and the Dark and Light realms; five lands' dungeons; mouth pictures.
-- The Hotel (shut until the server can pay for a rest); keepers for nine buildings; townsfolk who walk; walk-in interiors (rejected: keepers and room pictures were chosen instead).
+- Levels 41–80, the camps as places with anything in them, the Lv 60 passes as more than ground, the keystone gates and the Dark and Light realms; four lands' dungeons; mouth pictures.
+- Keepers for nine buildings; townsfolk who walk; walk-in interiors (rejected: keepers and room pictures were chosen instead).
 - Elevation (a plan with a knoll behind a switch, "nothing here is built yet"); weather (no rain; the Wheel is always day though a 40-minute day and night exist in code and run on the farm and the old zones); monster collision with walls and water.
 - Music for four lands (the owner declined reusing the old world track; ~25 MB more memory).
 - Put away behind switches: the ground quest path, the short Wheel, placing v2 (woods and glades), the big-town previews, ground edge pieces and blends, the town's boardwalks, the dedicated jump button.
@@ -211,13 +211,13 @@ Nine tabs in a 3×3 grid, opening on Skin: **Hair** (none + 8 styles, 14 colours
 | | Rule |
 |---|---|
 | Skills | **Melee**, **Bow**, **Magic**, each 1–100, trained only by use (0.2 XP per point of damage dealt with that weapon; a special trains the weapon that fired it). |
-| Character level | the three added together (3 to 300). A new character is level 3. |
+| Character level | **your best weapon's level** (1 to 100; v2.3.3538, it was the three added together, 3 to 300). A new character is level 1. Trying a second weapon no longer raises it. |
 | Quest XP | paid flat into a chosen skill (the first quest pays none). All quest XP was halved with the damage rate in v2.3.3054. |
 | XP fade | a monster 5+ levels below the trained skill pays a third, then 15% less per level; full XP down to 4 below. Its name plate turns grey. |
 | XP curve | to go from level L to L+1: ceil(280 × 1.16^(L−1)): 280 at 1, 1,065 at 10, 4,698 at 20, 20,723 at 30, 403,274 at 50, ~581 million at 99. Cumulative to 100 is ~4.2 billion; at 0.2 XP per damage point this is a lifetime curve by construction. |
-| At a level-up | HP, stamina and mana fully restored; 3 **lane points** stamped to the skill that earned them and 3 **shared points**. |
+| At a level-up | HP, stamina and mana fully restored; 3 **lane points** stamped to the skill that earned them, and 3 **shared points** when your character level rises (a weapon below your best pays its own lane points only; v2.3.3538). |
 | Lane points | buy only that weapon's six offense stats; shared points buy only the seven body stats. |
-| Spending | one point at a time, "are you sure" with a now → after preview; **no respec exists** (refunds have only happened by migration when a stat was retired); the whole-character restart is the only reset. Waiting points make the Character tab glow and the point bubbles breathe. |
+| Spending | one point at a time, "are you sure" with a now → after preview. A free **points reset** (v2.3.3541) gives every placed point back: two taps on the Points tab's "Reset points (free)", refused in a fight and within a minute of the last one; levels, XP and gear kept. Waiting points make the Character tab glow and the point bubbles breathe. |
 | Bound | a stat may hold no more points than your character level; Power, Luck, Special and Elemental may hold twice that. |
 
 **Per-weapon lane stats** (six per skill), all on the front-loaded curve `max × q / (q + k)`:
@@ -277,15 +277,15 @@ Ten life skills in a fixed order: Woodcutting, Fishing, Mining, Farming, Trappin
 
 - **The checkmark**: Info → "Verify my Hemi Bros" asks an injected wallet to sign a free message (no transaction); the server reads the collection's balance. One or more Bros gives a verified badge on the name plate, the profile ("3 Hemi Bros") and the player list, visible to everyone; re-read daily in the background, fails closed. The game can move nobody's Bros or money. Wearing a Bro's picture as your avatar once existed; no UI reaches it today (dormant).
 - **Achievement Points (AP)** are a score that **buys nothing**: +5 per quest hand-in; the skill guilds' ladder per life skill (10 / 25 / 40 / 75 / 150 / 250 / 400 / 750 AP with 30 to 2,000 gold at levels 5 / 15 / 30 / 50 / 70 / 90 / 100 / 150); the arena champion's 500, a character's first win only. Shown on the profile, the Skills header, the Gambling Den and the leaderboard.
-- **On-chain records**: at character levels 4, 10, 25, 50, 100, 150, 200, 250 and 300 the server writes the three combat skills, the ten life skills and the kill count to a contract on Hemi mainnet; the player sees a "recorded on Hemi" receipt in the Journey tab. Fire-and-forget; a chain problem is never a game problem. The Journey tab also keeps Kills, Deaths, Lifetime Gold and XP, Duels Won, Deepest Zone. Leaderboard categories: Combat (the three skills summed), Melee, Bow, Magic, Kills, and each life skill.
+- **On-chain records**: at character levels 2, 5, 10, 20, 30, 40, 50, 75 and 100 (v2.3.3538, for the one level; they were 4 to 300) the server writes the three combat skills, the ten life skills and the kill count to a contract on Hemi mainnet; the player sees a "recorded on Hemi" receipt in the Journey tab. Fire-and-forget; a chain problem is never a game problem. The Journey tab also keeps Kills, Deaths, Lifetime Gold and XP, Duels Won, Deepest Zone. Leaderboard categories: Combat (your level, the best of the three since v2.3.3538), Melee, Bow, Magic, Kills, and each life skill.
 
 ### 3.9 Amulets
 
-Forged at the Blacksmith from gold bars (5 nuggets a bar; a nugget drops 1 in 10,000 kills): Simple (Smithing 1, 1 bar, 50 gold, power 1.0), Ornate (15, 3, 200, 1.5), Regal (35, 6, 500, 2.2), Mythic (60, 10, 1,200, 3.0). One gem socket. Only the flame gem (+3% + 2.5% × power elemental damage) is applied by the server. Storm (attack speed) and wind (move speed) work because the server's limits leave room for them, and light's stamina regen reaches the server as a number the phone reports. Frost (max mana), water (HP regen: the phone reports it and the server never reads it), venom (max HP) and stone (elemental resist) do nothing on the server. No dark (crit damage) or light gem can be made: shards and the Rare Gem make only the eight lands' elements. Amulets gate on your character level (v2.3.3544; before, the Magic level), though no amulet carries a tier the server's gate reads, so none asks anything yet. Because nuggets are a 1-in-10,000 drop, an Ornate amulet is 15 nuggets: this is the game's scarcest ordinary material.
+Forged at the Blacksmith from gold bars (5 nuggets a bar; a nugget drops 1 in 10,000 kills): Simple (Smithing 1, 1 bar, 50 gold, power 1.0), Ornate (15, 3, 200, 1.5), Regal (35, 6, 500, 2.2), Mythic (60, 10, 1,200, 3.0). One gem socket. Only the flame gem (+3% + 2.5% × power elemental damage) is applied by the server. Storm (attack speed) and wind (move speed) work because the server's limits leave room for them, and the server works out light's stamina regen from the amulet it holds (v2.3.3536: it was a number the phone reported, which any phone could claim with no amulet). Frost (max mana), water (HP regen: the phone reports it and the server never reads it), venom (max HP) and stone (elemental resist) do nothing on the server. No dark (crit damage) or light gem can be made: shards and the Rare Gem make only the eight lands' elements. Amulets gate on your character level (v2.3.3544; before, the Magic level), though no amulet carries a tier the server's gate reads, so none asks anything yet. Because nuggets are a 1-in-10,000 drop, an Ornate amulet is 15 nuggets: this is the game's scarcest ordinary material.
 
 ### 3.10 Not built, put away, open
 
-- No respec. No milestone unlocks (removed). Species beyond Human and Monkey (an alien skin tone exists). The Build tab (removed). The worn-Bro avatar (dormant).
+- No milestone unlocks (removed). Species beyond Human and Monkey (an alien skin tone exists). The Build tab (removed). The worn-Bro avatar (dormant).
 - The supporter pass (planned); the Turnstile account check (built, off).
 - Legacy T1/T2 stats are inert and stored for rollback; the PvP-side legacy equipment-defense formula still stacks on the Defense stat.
 - Elemental Resist has four typed sources only.
@@ -382,7 +382,7 @@ Every number that matters in a fight is rolled on the server. The phone sends an
 | Staff | Magic | 13.44 | 0.50–1.65 | "the swingy weapon": the hardest single hit on average, the weakest on a bad roll; splashes |
 | Fists | Melee | 6.25 | melee band | an unarmed player cannot leave the safe commons until armed |
 
-Each skill trains to 100; the character level is the three added together (a new character is level 3). A special trains the weapon that fired it. Magic's cross-weapon job is the mana pool every special spends. The starter kit is Mayor Bro's: a Copper Great Sword and a Pine Shield on accepting the first quest, a Pine Bow and a Pine Staff at its hand-in, so a new player has all three archetypes within the first ten minutes.
+Each skill trains to 100; the character level is your best weapon's level (a new character is level 1; v2.3.3538). A special trains the weapon that fired it. Magic's cross-weapon job is the mana pool every special spends. The starter kit is Mayor Bro's: a Copper Great Sword and a Pine Shield on accepting the first quest, a Pine Bow and a Pine Staff at its hand-in, so a new player has all three archetypes within the first ten minutes.
 
 **Cadence.** 600 ms per swing for every weapon (the bow 495 ms; the staff 900 ms, a +300 ms cast penalty the owner has flagged as an open balance question), cut by the Speed stat down to a 200 ms floor, and floored on the server at one accepted hit per monster per 210 ms.
 
@@ -466,7 +466,7 @@ Worked example, a fresh character with the Copper Great Sword: a plain swing rol
 
 In order: zone-entry grace (500 ms) → block (0 damage) → **Dodge** (a roll at 90% × curve(Dodge); an elemental hit cannot be dodged; "Dodged" is printed, never "−0") → **Defense** (a cut of 90% × curve(Defense) on base damage; Dodge and Defense together never let less than 10% through) or, for elemental damage, **Elem Resist** alone (always lets 10% through) → **armour** (torso 30% + 7.5% per tier step, legs 20% + 5%, multiplied by grade, capped at 75% plus grade lifts: a copper set 44%, iron 53%, a godly iron set 92%) → the Root Stew's −5% → a floor of 1 ("an enemy that literally cannot hurt you is a bug, not a build").
 
-**Max HP = 100 + 50 × character level + 40 × Max HP point.** A new character has 250 (50 on screen), level 12 has 700, level 42 has 2,200. Stamina = 100 + 3 per Stamina point; Mana = 100 + 2.5 × Magic level + 2.5 per Max Mana point. Monsters' hits are multiplied at creation so a monster takes the same share of a matching player's bar as before the formula changed (2.1× at level 1, 6.3× at level 40).
+**Max HP = 200 + 50 × character level + 40 × Max HP point** (v2.3.3538: the level is the best weapon's, so a one-weapon character's bar is exactly what the old sum gave). A new character has 250 (50 on screen), level 10 has 700, level 40 has 2,200. Stamina = 100 + 3 per Stamina point; Mana = 100 + 2.5 × Magic level + 2.5 per Max Mana point. Monsters' hits are multiplied at creation so a monster takes the same share of a matching player's bar as before the formula changed (2.1× at level 1, 6.3× at level 40).
 
 **Regen**: in a fight, mana 0.7% of max per ~0.67 s tick (1.8% out of combat, 2 s after the last damage taken); stamina +7 a tick, never while holding the shield or sprinting, ×0.4 while soaked; HP 1% a tick after 6 s with no damage dealt or taken, doubled by Herb Bread; in town, on the farm and the old hub 10% a tick for all three.
 
@@ -685,18 +685,19 @@ A dashboard button of its own. One card per kind; a silhouette and "???" until *
 
 ### 6.8 Dungeons
 
-Three of the eight lands have a dungeon mouth at their landmark:
+Four of the eight lands have a dungeon mouth at their landmark:
 
 | Dungeon | Land | Levels | Boss |
 |---|---|---|---|
+| The Goo Grotto (v2.3.3540) | Verdant Wilds | 1–5 | Blue Slime |
 | The Great Cave | Stone Hollows | 26–30 | Amethyst Golem |
 | The Foundry Dome | Electric Foundry | 26–30 | Storm Slime |
 | The Buried City | Wind Dunes | 41–45 | Gilded Mummy |
 
-- **Entry**: walk within 200 px of the mouth, "⚔️ Enter the Great Cave" (or E). The run's level is the place's top **but never above your own character level**, the three skills added up: a player whose best weapon is at 8 (character level 10) meets a level-10 Cave, waves of 10–12 and a boss at 15. The code calls the dungeons open to anyone from the first hour; that was written when the Wheel was short and the Great Cave stood about 8,400 px from town. On today's long Wheel it stands about 31,000 px out, through every stretch from level 1 to level 30. Refused if dead, already in a run, or 8 runs are open room-wide.
+- **Entry**: walk within 200 px of the mouth, "⚔️ Enter the Great Cave" (or E). The run's level is the place's top **but never above your own character level** (your best weapon's): a player whose best weapon is at 8 meets a level-8 Cave, waves of 8–10 and a boss at 8. The code calls the dungeons open to anyone from the first hour; that was written when the Wheel was short and the Great Cave stood about 8,400 px from town. On today's long Wheel it stands about 31,000 px out, through every stretch from level 1 to level 30. The **Goo Grotto** (v2.3.3540) is the starter: the Verdant Wilds' landmark in their first stretch, about 36 seconds' walk from where you arrive, where the Mayor's first quest already sends you for slimes; nothing is drawn over any mouth (`MOUTH_CLEAR`). Refused if dead, already in a run, or 8 runs are open room-wide.
 - **Party**: the leader pulls the three eligible members nearest them within 600 px of the mouth; a dungeon is four even though a party is 50.
 - **Inside**: a private 36 × 52-tile arena floored with the land's own ground; **three waves** of the land's whole six-monster list at the run's level +0..2, each wave held until all are dead; kills pay exactly as in the world (XP, gold, pile, the land's shard, quest and codex credit); nothing respawns.
-- **The boss**: the land's last kind five levels up (35 at the Cave and Dome, 50 at the City), HP (its row minus the flat) × 4 × party scale (1.0 / 1.6 / 2.2 / 3.0 for 1–4 players) plus the flat, damage ×1.5, with a kit by archetype: slam (80 px, ×1.5), sweep (70 px, ×1.2), charge (600 ms lunge at 8× speed, ×1.5 on contact), summon (2–3 minions at −5 levels with 30% HP, at most 4 alive and 60 a run, only while the boss was hurt in the last 15 s), siphon (hexer, 100 px, ×1.3, heals 3%). First cast 3 s after spawn, then every 4 s with a 1 s telegraph; every hit ≤ 50% of max HP; after 2 minutes in combat it enrages (+10% damage every 30 s to +50%, cooldowns ×0.6; never a wipe). The level edge reads the boss's own level, so at five levels above the run every point a player spent in the seven edge stats counts as zero against it.
+- **The boss**: the land's last kind at the dungeon's own level (v2.3.3540; it was five levels up: 30 at the Cave and Dome, 45 at the City, 5 at the Grotto), HP (its row minus the flat) × 4 × party scale (1.0 / 1.6 / 2.2 / 3.0 for 1–4 players) plus the flat, damage ×1.5, with a kit by archetype: slam (80 px, ×1.5), sweep (70 px, ×1.2), charge (600 ms lunge at 8× speed, ×1.5 on contact), summon (2–3 minions at −5 levels with 30% HP, at most 4 alive and 60 a run, only while the boss was hurt in the last 15 s), siphon (hexer, 100 px, ×1.3, heals 3%). First cast 3 s after spawn, then every 4 s with a 1 s telegraph; every hit ≤ 50% of max HP; after 2 minutes in combat it enrages (+10% damage every 30 s to +50%, cooldowns ×0.6; never a wipe). The level edge reads the boss's own level, so at five levels above the run every point a player spent in the seven edge stats counts as zero against it.
 - **Reward**: on top of each kill, gold 90 + 2 × level (a level-30 run: 150 gold), paid at once. The worker also adds XP 240 + 5 × level to the old single-level counter, which no skill reads, so since v2.3.3543 the clear's words show only the gold ("DUNGEON CLEARED!", "+150G"); 3 s later you are outside the mouth again. Walk out the door: nothing. Die inside: BroTown. A run lives in memory only; a deploy ends it.
 
 **The Dungeon Workshop** (the farm's notice board) lets a player design a run the server clamps: 1–10 waves, monster level up to your own, up to 4 groups of 1–8 of any archetype, a boss at ×2–8, a cosmetic terrain. Its monsters have no land, so they drop no shards; the clear pays × min(1, monsters per wave / 4) and rare drops scale down by monster level over yours ("the Workshop is not a pen"). Its paid terrain and monster packs (200–1,000 gold) are client-local purchases with no server settlement: effectively dormant.
@@ -800,7 +801,7 @@ The Feed & Seed in BroTown is the shop and order board; the farm itself is a zon
 - **The steps**, in the server's order: **Dig** (grass → tilled; a harvested bed goes back to grass) → **Plant** (needs the crop's Farming level and a seed) → optional **Water** (once, while growing: the crop is ready 25% sooner) → optional **Fertilize** (one compost: harvest ×1.5, a fraction paid as a chance) → **Harvest** (when the server's clock passes the ready time).
 - **Nothing withers, nothing ticks**: crops grow while you are logged out and while the room is empty, and a ripe crop waits forever. XP is paid only at harvest. On joining, "🧺 3 beds are ready on your farm".
 - **The walk**: a 32 × 44-tile farm with the barn, a scarecrow, tools, trees, fences and a well, six beds in two rows. Each bed floats its next step as a picture and its timer; the nearest says it in words ("4m 12s · Needs Watering", "Ready to Harvest!"). Take a step by the button over the dashboard, a tap on the right stick (which wears the step's picture), E, or a tap on the bed. Your character works it for 1.1–1.5 s with the owner's own moves (the hoe swung twice, a kneel, a watering can poured), dressed as you are, and other players on the farm see you work; walking away sends nothing. Everyone's farm is the one zone: two farmers see each other among their own beds (a private farm per player is the plan's open question).
-- **On the farm**: the barn is the Pet House (the Pets page); the haystack is "Sleep in the hay" (3 s: full pools and "+10% XP for 30 min", **client-only**, the server never pays for it, which is why the Hotel in town stays shut); the notice board is the Dungeon Workshop (Part 6.8).
+- **On the farm**: the barn is the Pet House (the Pets page); the haystack is "Sleep in the hay" (3 s: the Hotel's rest, paid by the server since v2.3.3539: full pools and Well Rested, +10% combat XP for 30 min); the notice board is the Dungeon Workshop (Part 6.8).
 
 **The sixteen crops** (the owner: "the main focus is just getting a good variety of crops to grow, then the next step is deciding what each one does"):
 
@@ -823,7 +824,7 @@ The Feed & Seed in BroTown is the shop and order board; the farm itself is a zon
 | Gloomcap | 15 | 20 | 18 h / 13 h 30 m | 2 / 3 | 270 | 55 | nothing yet |
 | Heartroot | 20 | 28 | 24 h / 18 h | 2 / 3 | 340 | 70 | nothing yet |
 
-Compost is 4 coins. Diego values a seed at its shop price, so reselling a seed is always a loss, and pays about half a crop's base into an empty pile. **Diego sells no food or drink** (owner: food and drink come only from farming and recipes). Ten of the sixteen crops cook into nothing yet; the magic herbs pair with lands by design only (nothing reads a crop's land).
+Compost is 4 coins. Diego values a seed at its shop price, so reselling a seed is always a loss, and pays about half a crop's base into an empty pile. **Diego sells no food or drink** (owner: food and drink come only from farming and recipes). **Every crop is food** (v2.3.3537): eaten raw from the bag it heals half what a fish of its level does (+10 HP on screen at Farming 1, +15 at 5, +23 at 10, +33 at 15, +48 at 20), under the fish's one-bite-in-a-fight rule. Ten of the sixteen cook into nothing; the magic herbs pair with lands by design only (nothing reads a crop's land).
 
 **Farm orders**: three a UTC day per player, drawn from an 11-order pool by what your own Farming and Cooking levels can make (fewer if fewer fit: a brand-new farmer sees two), stored for the day, each deliverable once for gold and Farming XP: 12 carrots → 50 gold + 150 XP; 6 Firebloom → 55 + 200; 3 Herb Bread → 50 + 250; 3 Stamina Tonic → 40 + 200; 6 Rock Vine → 100 + 400; 9 potatoes → 70 + 350; 2 Garden Stew → 80 + 400; 4 Cloudpetal → 110 + 500; 3 pumpkins → 120 + 600; 2 Root Stew → 110 + 450; 3 Pumpkin Pie → 220 + 800. About 150 gold a day for a new farmer, 450 at most. The ten newer crops are in no order.
 
@@ -868,7 +869,7 @@ The owner's rules: arm a trap, then kill the monster; your Trapping level decide
 
 ### 8.4 Not built, put away, open
 
-- The Land Office's paid land (more beds); friends visiting and watering; a private farm per player; better compost, elemental seeds, crop quality, tool upgrades; what the ten uncooked crops do; the crop art sheet and the Farmhouse and Workshop pictures (the haystack and notice board stand in); a server-paid rest (so the Hotel can open).
+- The Land Office's paid land (more beds); friends visiting and watering; a private farm per player; better compost, elemental seeds, crop quality, tool upgrades; recipes for the ten crops nothing cooks; the crop art sheet and the Farmhouse and Workshop pictures (the haystack and notice board stand in).
 - Pet Phase 5 (a monthly featured monster, bounties, eggs, a helping bite, cosmetics on the supporter pass); no mercy rule by decision; pet art is a shrunk monster until the owner wants its own; Beastmaster Bro's picture is a stand-in.
 - The plan document every farm spec cites (docs/FARMING-PLAN.md) is not in the repository; its phases are known only from the specs.
 
@@ -951,12 +952,12 @@ The design document that sizes the free spin says "an hour of fighting earns ~1�
 | Race Day | Lil Bro | beat Lil Bro round the square | 50 g | — | tut_1 |
 | Box Traps | Beastmaster Bro | make 3 box traps | 40 g | 3 pine logs / 2 traps | tut_1 |
 | Set and Spring | Beastmaster Bro | spring 3 traps | 100 g | 5 traps | beast_1 |
-| Cold Reception | Mayor Bro | bring 4 Snowman Remains from Frost Ridge (the finale: four ordinary snowmen and their burrow; there is no snowman boss) | 200 g, 50 XP | — | the whole town's lines |
+| Cold Reception | Mayor Bro | bring 4 Snowman Remains from Frost Ridge (the finale: four ordinary snowmen and their burrow; there is no snowman boss) | 200 g, 50 XP | — | Heavy Metal and Something Fishy (v2.3.3533) |
 | Bad Wind | Mayor Bro | 5 Skeleton Remains from the Wind Dunes | 150 g, 53 XP | — | tut_2 |
 | Bro Ascendant | Mayor Bro | 6 Fire Goblin Remains from the Flame Fields | 400 g, 105 XP | Copper Greaves | tut_3 |
 | A Trapper's Eye | Beastmaster Bro | reach Trapping 6 | 250 g | 10 traps | tut_2 |
 | Your Own Beast | Beastmaster Bro | catch a pet | 500 g | 15 traps | beast_3 |
-| Welcome Home / Into the Wild / Dungeon Delver | Mayor Bro | visit 3 buildings / kill 5 monsters / clear a dungeon | 50 / 100 / 300 g | — | the Mayor's legacy line after tut_4 |
+| Welcome Home / Into the Wild / Dungeon Delver | Mayor Bro | visit 3 buildings / kill 5 monsters / clear a dungeon (the gold road leads to the Goo Grotto, v2.3.3540) | 50 / 100 / 300 g | — | the Mayor's legacy line after tut_4 |
 
 Twenty-two quests for seven givers who are not in the world (a trader, an enchantress, a scout, a second blacksmith, a healer, a second beastmaster, a veteran) are dormant in the table. Two old Mayor quests (the tools' old errands) are retired.
 
@@ -966,7 +967,7 @@ Twenty-two quests for seven givers who are not in the world (a trader, an enchan
 
 **Guild quests** are ladders, not errands: each of the ten skill guilds pays gold and AP at eight level rungs (above); ranks (Novice to Transcendent) are titles.
 
-**The leaderboard** (the Town Hall) ranks Combat (the three skills summed), each skill, kills and every life skill from server-counted series, reported at most every 5 minutes and dropping players unseen for 7 days.
+**The leaderboard** (the Town Hall) ranks Combat (your level, the best of the three since v2.3.3538), each skill, kills and every life skill from server-counted series, reported at most every 5 minutes and dropping players unseen for 7 days.
 
 ### 9.5 Not built, put away, open
 
@@ -1178,9 +1179,9 @@ A balance question gets a number before the owner decides: the **PvP fight simul
 
 **Crafting**: rungs 6–19 of the material ladders (names and multipliers only); bars and armour past black steel; woods past maple; two-gem weapons in practice; shield forging; amulet take-out; gem pictures; the Gem Works' two keeper NPCs and a gem quest.
 
-**Town**: the Hotel (its rest would be client-only); keepers for nine buildings; townsfolk who walk; music for four lands; ambience for five; voices for six monster kinds.
+**Town**: keepers for nine buildings; townsfolk who walk; music for four lands; ambience for five; voices for six monster kinds.
 
-**Farm and food**: paid land (more beds); a private farm per player; friends visiting; what ten of the sixteen crops do; element-resist and stamina meals; the Farmhouse and Workshop pictures.
+**Farm and food**: paid land (more beds); a private farm per player; friends visiting; recipes for the ten crops nothing cooks; element-resist and stamina meals; the Farmhouse and Workshop pictures.
 
 **Pets**: phase 5 (a featured monster, bounties, eggs, a helping bite, cosmetics).
 
@@ -1211,11 +1212,11 @@ These are not the evaluator's findings; they are the questions the owner, the sp
 7. **Hardening is the only large gold sink** (H5 ≈ 2 million gold, 326 attempts on average); the rest of the economy's sinks are small (forging 20–120, the pet house 45,000 in all), and gold moves between accounts with no fee, limit or record.
 8. **Diego's one shared pile** means the first seller of anything gets his best price and everyone after less; two of the farm orders a day can be filled from his own stock.
 9. **No man's land takes everything carried**, tools and quest items included, by the owner's rule; the spec notes this is the harshest death in the game and that tools are bought back at 100 gold.
-10. **The farm's ten uncooked crops** and the three magic herbs' land pairing: the owner's next decision is "what each one does" (the suggestion on record: everyday meals and one land's-status guard per magic crop).
+10. **The magic herbs' land pairing**: every crop is food since v2.3.3537 (eaten raw, half a fish of its level), but nothing reads a crop's land; the suggestion on record is one land's-status guard per magic crop.
 11. **Pets as a feature**: a pet follows, vacuums loot, copies poses and wards one element; the plan's phase 5 (a helping bite, eggs, featured days) waits on the owner; the catch rate is about 1% at best by design, with no mercy rule.
 12. **Cooked-or-burnt and gesture fingerprints are the phone's word**, by policy ("flag, never act"); whether to act on evidence, to make new accounts earn the right to move value, or to judge hours online per device are listed policy items.
 13. **The room cap of 120** and the free Cloudflare plan's ~20–55 player-hours a day are the live capacity; the owner has decided the free plan is enough for the review period, and the split past 1,000 is planned, not built.
-14. **The Hotel is shut** because its rest would be client-only; a server-paid rest (and what rest should do when pools already refill at 10% a tick in town) is undecided.
+14. **What a rest is worth**: the Hotel opened in v2.3.3539 with a server-paid rest (full pools and +10% combat XP for 30 minutes); pools already refill at 10% a tick in town, so the XP is most of its value.
 15. **The second stage's monsters are recolours**; the codex reserves Winged and Insectoid types; the owner has said new kinds are wanted over more recolours but has not chosen them.
 16. **Music and ambience for four and five lands**, voices for six monster kinds, keepers for nine buildings and the three dungeon mouths' pictures are the art and sound wishlist, in the owner's order.
 17. **The reviewers' half hour**: the tour was built for it (the Mayor first, six givers at once, three springs instead of five, witty dialogue); whether a reviewer reaches a land's monsters, a dungeon or No man's land in 20–30 minutes has not been timed on a real phone by someone who has never played.
