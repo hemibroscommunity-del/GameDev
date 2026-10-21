@@ -31,6 +31,16 @@ moves (`game.css` `bt-pts-count`; transform and opacity only, still with
 reduced motion). The heads still name their rows and are not buttons (v2.3.2684); the
 weapon is chosen on the spend window's tabs.
 
+## Pictures
+
+From `mp-pointheads` on the QA phone (390 x 844 at 3x, and sideways):
+
+- `docs/shots/points-heads-390.webp` -- before and after, every pool full;
+- `docs/shots/points-heads-states.webp` -- Bow 4 alone (grey 0s beside gold
+  9s), nothing to spend, three numerals;
+- `docs/shots/points-heads-sideways.webp` -- before and after, sideways;
+- `docs/shots/points-heads-window.webp` -- the spend window's lane tabs.
+
 ## Decided here, and why
 
 - **No shapes behind the icons**, as asked: the mockup's red square, blue
