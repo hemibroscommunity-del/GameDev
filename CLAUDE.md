@@ -1871,6 +1871,18 @@ remnant to migrate server-side, not a mode to preserve.
         `points_reset_result` (PRIVILEGED); `/dev/combat` takes `deal: true`;
         `caps.pointsreset`, kill switch `pointsreset: false`; `points-reset`
         suite, `mp-pointsreset`: docs/specs/points-reset.md;
+      - since v2.3.3551 YOUR FIRST POINTS, SHOWN -- the owner: "Leave tips for
+        first natural level up.  I don't want players choosing xp to train in
+        for weapons they haven't used yet.  Go with your guided level up": the
+        coach's `points` lesson (QuestCoach.jsx, its rules and words
+        src/game/pointsTips.js) rings OPEN, Character, the Points tab and the
+        grid's top row with the count waiting, while points wait and none was
+        ever placed, out of a fight; the coach's one `anytime` lesson (past the
+        Mayor's tutorial it is walked alone); a tap or a placed point puts it
+        away for good, unanswered it snoozes and gives up after three; the first
+        Spend names the free reset (`firstSpendHint`, InfoPopup `spentHint`);
+        nothing sent, no stat picked; `points-tips` suite, `mp-pointstips`:
+        docs/specs/levelup-tips.md;
       - since v2.3.3544 WHAT YOU WEAR ASKS YOUR LEVEL -- the owner: "I'm
         thinking of gating armor and weapons on combat level instead of
         primary combat skill level and defense level": armour, shields and

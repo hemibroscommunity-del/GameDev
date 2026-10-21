@@ -32,7 +32,8 @@ import { heroSectionBus } from './heroSectionBus.js';                           
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
 import { playIsLandscape, panelVw } from '../playViewport.js';                    /* v2.3.2171: the sideways pane stacks; panelVw v2.3.2382 */
 import { StatCaption, STAT_CAPTION_SHORT } from './StatCaption.jsx';            /* v2.3.3324: a stat's name whole or short, never cut */
-import { showPointsReset, requestPointsReset, POINTS_RESET_CONFIRM_MS } from '../../../game/pointsReset.js'; /* v2.3.3541: the free points reset */
+import { showPointsReset, requestPointsReset, POINTS_RESET_CONFIRM_MS, pointsResetOn } from '../../../game/pointsReset.js'; /* v2.3.3541: the free points reset */
+import { firstSpendHint } from '../../../game/pointsTips.js'; /* v2.3.3551: after a first spend, the free reset named */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -1682,6 +1683,10 @@ export const HeroExpanded = () => {
                   } : undefined,
                   /* v2.3.3522: what the last Spend bought ("✓ 2 points spent") */
                   spentNote: spentN > 0 ? `✓ ${spentN} point${spentN === 1 ? '' : 's'} spent` : null,
+                  /* v2.3.3551: and on a first spend -- everything placed is what
+                     this window just spent -- that the free reset gives them
+                     back (game/pointsTips.js), so trying a stat is safe */
+                  spentHint: spentN > 0 ? firstSpendHint(((getState() || {}).rpg || R).prog3, spentN, pointsResetOn(getState())) : null,
                   /* ═══ v2.3.2684: THE LANE IS CHOSEN HERE NOW ═══
                      Owner: "The button to change which of the 3 combat skills
                      it's applied to ... is a tab in the confirm window.  This
