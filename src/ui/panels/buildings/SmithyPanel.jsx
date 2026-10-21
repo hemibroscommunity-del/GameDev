@@ -17,6 +17,7 @@ import { hardenTierOf, hardenCost, hardenLevelFor } from '@/data/hardenCosts.js'
 import { forgeLevelFor, forgeOffered, forgeStatReq } from '@/data/forgeLadder.js'; /* v2.3.3524: the forge's ladder */
 import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3524: the Upgrade tab's hammer */
 import { BUFF_ICON } from '@/data/smallIcons.js'; /* v2.3.3524: the XP pill's "XP" star */
+import { amuletTabShown } from '@/game/forgeTabs.js'; /* v2.3.3535: the Amulet tab only with gold for it */
 
 /* ═══ v2.3.2826: THE BLACKSMITH, REBUILT ═══
  *
@@ -168,12 +169,18 @@ export function SmithyPanel({ rpgState, stateRef }) {
     /* v2.3.3524: the hammer (the owner: "Make the upgrade tab icon different
        for smithing.  Like a hammer"), not the currency strip's gold gem */
     (S._serverCaps && (S._serverCaps.harden || S._serverCaps.gemExtract)) && { id: 'upgrade', label: 'Upgrade', icon: OWNER_ICON.smithHammer.src },
-    (S._serverCaps && S._serverCaps.amuletForge) && { id: 'amulet', label: 'Amulet', icon: '/icons/items/amulet.webp' + ITEMS_V },
+    /* v2.3.3535: only to someone holding a nugget, a bar or an amulet
+       (game/forgeTabs.js): a nugget is 1 kill in 10,000, so for nearly
+       everyone it was a recipe they could never start */
+    (S._serverCaps && S._serverCaps.amuletForge) && amuletTabShown(R) && { id: 'amulet', label: 'Amulet', icon: '/icons/items/amulet.webp' + ITEMS_V },
     /* v2.3.3141: salvage for bars, and the grades' essences (server salvage.js) */
     (S._serverCaps && S._serverCaps.salvage) && { id: 'salvage', label: 'Salvage', icon: essenceIcon('essence_rare_iron') + ITEMS_V },
   ].filter(Boolean);
-  const [tab, setTabState] = React.useState(() => (S._smithyTab && tabs.some((t) => t.id === S._smithyTab)) ? S._smithyTab : tabs[0].id);
+  const [tabWant, setTabState] = React.useState(() => (S._smithyTab && tabs.some((t) => t.id === S._smithyTab)) ? S._smithyTab : tabs[0].id);
   const setTab = (id) => { S._smithyTab = id; setTabState(id); };
+  /* v2.3.3535: a tab that is no longer listed (the Amulet tab, its gold
+     gone) shows the first one, never a page with no tab lit */
+  const tab = tabs.some((t) => t.id === tabWant) ? tabWant : tabs[0].id;
 
   /* ── what the worker did ──
      A press records what it expects to change; when the player_state that
