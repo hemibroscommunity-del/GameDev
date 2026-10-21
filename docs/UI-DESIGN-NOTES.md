@@ -823,14 +823,14 @@ Screens: near-door
 - It opens when the finger LIFTS, not when it presses. Opening on the press let the same tap fall through and close the window it had just opened. The cost is a short delay on a phone, accepted because a door is not a combat control (v2.3.2617).
 - A tap on the right stick also enters: the stick shows a DOOR picture at a door. Owner: "...chat bubble for speaking [to NPCs], door for entering door" (v2.3.3105). Next to a character, the stick talks to the character first, because the door already has its own Enter button and Diego and Ace stand beside their doors. The E key keeps the door first.
 - On a computer the button shows a small E key, and E opens the door. The keyboard-keys strip lies in the black margin beside the game (v2.3.3526); where it is drawn in the corner instead, it steps aside while the button is up, because it used to lie over the button and take the click (v2.3.3407).
-- A building with nothing behind it shows a caption, not a button: its name and "Shut for now", so nobody takes the door for broken. It takes no touch (v2.3.3032). Today only the Hotel is shut. Its rest would only run on the phone, and it opens when the server can pay for a rest.
-- The halls use the same button with their own picture: the Guild Hall, Post Office and Sheriff's Office (v2.3.3066), and the Town Hall (v2.3.3258).
+- A building with nothing behind it shows a caption, not a button: its name and "Shut for now", so nobody takes the door for broken. It takes no touch (v2.3.3032). None is shut today: the Hotel, the last, opened in v2.3.3539, when the server could pay for its rest; against an older server it still says "Shut for now".
+- The halls use the same button with their own picture: the Guild Hall, Post Office and Sheriff's Office (v2.3.3066), the Town Hall (v2.3.3258) and the Hotel, the owner's bed (v2.3.3539).
 - KEEPERS: talking to a building's keeper opens his building the same way (a tap on him, E beside him, or a tap on the right stick), after any quest he has. Blacksmith Bro opens the forge. Mayor Bro opens the Town Hall once he has no quest for you. The owner picked this over walking inside: "Yes I like your idea of interacting with the building's NPC instead of having the building interiors" (v2.3.3258). Every door still opens too.
 - Diego (his shop) and Ace (his coin flip) keep their own windows and stand beside their buildings. Standing at the General Store's door does NOT open Diego's shop: he stands 135 px away, and his shop opens within 90 px of HIM (v2.3.3032).
 - At the Town Hall the button is not showing when you arrive. A new character starts 108 px south of the door, so the button comes up as you walk to Mayor Bro, whose dialogue is drawn above it (v2.3.3258).
 
 **Tried before, and changed:**
-- Until v2.3.3032 BroTown's buildings were pictures with nothing behind them. The four new buildings all said "Shut for now" until three halls opened (v2.3.3066), and the Town Hall became a fourth (v2.3.3258).
+- Until v2.3.3032 BroTown's buildings were pictures with nothing behind them. The four new buildings all said "Shut for now" until three halls opened (v2.3.3066); the Town Hall became a fourth (v2.3.3258), and the Hotel a fifth (v2.3.3539).
 - A one-line "Enter <NAME>" pill ran under the jump button (v2.3.3032).
 - Until v2.3.2617 the button stayed up after its tap, drawn on top of the window it had opened.
 - The Saloon's door opened the gladiator arena (from v2.3.881). Since v2.3.3258 it opens the Saloon's own window, and the arena is reached from the Sheriff's Office.
@@ -844,7 +844,6 @@ Screens: near-door
 - A blurred or frosted background behind the button. The game's UI rule is no blur, because of iOS Safari (a Lantern Slate hard lock).
 
 **Still open:**
-- The Hotel stays shut until the server can pay for a rest.
 - Only two keepers exist. The other eleven buildings wait for the owner's pictures of their keepers (two for the Gem Works: a cutter and a setter). Once a building has its keeper, its Enter button could go, if the owner wants it to.
 - The townsfolk stand still in BroTown (in the old town they walked).
 - The Enter button is meant to be small and to fit its stretch. The UI review lists many buttons under Apple's 44 px touch guide; they were left as they are for the owner, and none is unreachable.
@@ -890,7 +889,7 @@ Screens: building-*
 - Loading every room on the loading screen: the game's memory budget is why it is not.
 
 **Still open:**
-- Keepers for the other eleven buildings wait on the owner's pictures. The Hotel's room picture is shipped, waiting for a window.
+- Keepers for the other eleven buildings wait on the owner's pictures. (The Hotel's room picture waited for a window until v2.3.3539.)
 
 Sources: CLAUDE.md, docs/specs/building-rooms.md, docs/specs/wheel-halls.md, docs/specs/gem-works.md, docs/specs/reach-every-button.md, docs/specs/desktop-keys.md, docs/LANTERN-SLATE-SPEC.md, src/ui/panels/buildings/BuildingRoom.jsx, src/ui/panels/buildings/GemWorksPanel.jsx, src/ui/panels/buildings/WheelHallPanel.jsx, src/ui/BroTown.jsx, src/styles/game.css
 
@@ -1174,10 +1173,10 @@ Screens: building-bank, building-exchange, building-auctionhouse
 
 Sources: CLAUDE.md, docs/specs/auction-house.md, docs/specs/marketplace.md, docs/specs/store-offers.md, docs/specs/store-chat.md, docs/specs/building-rooms.md, docs/specs/wheel-doors.md, docs/TRAPS.md (§88), src/ui/panels/buildings/BankPanel.jsx, src/ui/panels/buildings/ExchangePanel.jsx, src/ui/panels/buildings/VendorPanel.jsx, src/ui/panels/buildings/StorePanel.jsx
 
-## The halls: Saloon, Post Office, Sheriff, Guild Hall, Town Hall, arena
-Screens: building-party, building-post, building-sheriff, building-guildhall, building-townhall, building-arena
+## The halls: Saloon, Post Office, Sheriff, Guild Hall, Town Hall, Hotel, arena
+Screens: building-party, building-post, building-sheriff, building-guildhall, building-townhall, building-hotel, building-arena
 
-**What it is for:** The halls are BroTown's buildings that open onto systems the game already had: teaming up (Saloon), mail and friends' messages (Post Office), duels and the arena (Sheriff's Office), skill guilds (Guild Hall), and the leaderboard and world map (Town Hall). The arena window is the gladiator tournament, opened from the Sheriff's Office.
+**What it is for:** The halls are BroTown's buildings that open onto systems the game already had: teaming up (Saloon), mail and friends' messages (Post Office), duels and the arena (Sheriff's Office), skill guilds (Guild Hall), the leaderboard and world map (Town Hall), and a night's rest (Hotel). The arena window is the gladiator tournament, opened from the Sheriff's Office.
 
 **Decisions, and why:**
 - **A hall is a hallway (v2.3.3066).** Each hall is a few big rows; each row opens the window that does the work and closes the hall. Asked to "keep going with pragmatic enhancements", each shut "(new: …)" building was checked for a system the game already had that could sit behind its door.
@@ -1191,6 +1190,7 @@ Screens: building-party, building-post, building-sheriff, building-guildhall, bu
 - **Sheriff's Office:** "Duel a player" (the player list; tap someone, then Duel on their card) and "The arena". There is no bounties row: bounties are funded only by threats, which are switched off.
 - **Town Hall (v2.3.3258):** given its picture and asked what it should do, the owner chose a Town Hall window over drawing the room behind Mayor Bro's dialogue or leaving it waiting. Its two rows are the two things the picture shows: the trophy case is the Leaderboard, the painted map on the wall the World map. Mayor Bro opens it too, once he has no quest for you. Its Enter button is out of reach where a new character arrives, so nobody starts with it showing.
 - **The arena window** (its own since v2.3.3258): the gladiator tournament, 100 gold to enter, up to 8 in a bracket gathered for 60 s, a prize of 250 a gladiator (8 → 2,000, since v2.3.3178), backing a fighter from a shared pool. No room picture behind it: none exists yet, and it is not the Sheriff's Office. Its title wears the owner's gladiator helmet (their icon pick 2a, v2.3.3481); it wore the Saloon's beer mug, left over from when the arena lived in the Saloon. The Saloon's own window keeps the mug. The champion also gets the Gladiator title and 500 achievement points: the window always promised the points and no server paid them until v2.3.3481, when the owner said "an arena winner should be included". They come with the gold (in the Post Office: "+2,000 gold and 500 AP"), and the window and the champion box name them only when the server pays them; an older server pays the gold alone.
+- **The Hotel opens with a real rest (v2.3.3539).** The owner: "I value SIMPLICITY and INTELLIGIBILITY" (the after-review list). It stood shut while its rest would have been the farm bed's, which only the phone believed: the phone filled its own bars, which the server's next update put back, and a "+10% XP" the server never paid. The server pays the rest now. The window says what a night does ("fills your health, stamina and mana, and makes you Well Rested: +10% combat XP for 30 minutes. Free."), or how long Well Rested has left, over one row, Rest. Rest closes the window, and the answer is said over your bro ("Fully Rested!", "+10% combat XP for 30 min", or why not: "Can't rest in a fight", "You just rested"). Free, because the town's Hotel and your own farm's bed should be worth the walk back, not a gold sink. "Combat XP" because that is all it adds to: a fight's XP, never a quest's or a life skill's. With the Pumpkin Pie the two add up (+20%). The farm's bed is the same rest. Well Rested is a "Rested" chip with the other timed effects at the top left; the old badge at the top right lay over the minimap.
 - **Halls are not building visits**: Mayor Bro's "visit 3 buildings" counts only the buildings proper.
 - **Behind every hall is the owner's room picture (v2.3.3258).** Sideways (under 460 px tall) the room steps aside and the panel is as it was.
 
@@ -1204,15 +1204,16 @@ Screens: building-party, building-post, building-sheriff, building-guildhall, bu
 **Please don't suggest:**
 - Bringing clans back as a separate system, or refunding the old clan founding fee.
 - Putting the arena back behind the Saloon, or a room picture behind the arena that is not an arena.
-- A bounties row (switched off), or opening the Hotel before the server can pay for a rest.
+- A bounties row (switched off).
+- A price for the Hotel's rest, or a rest that heals mid-fight.
 - One-tap leaving of a party.
 
 **Still open:**
-- The Hotel is still shut ("Shut for now"): its rest is the farm bed's, on the phone only. Its room picture is ready for the day it opens.
+- The Hotel's plan words were "rest, respawn": the rest is built (v2.3.3539); a respawn there is not (a death still brings you back in town, where you arrive).
 - No keeper stands outside the Saloon, Post Office, Sheriff's Office or Guild Hall yet; each needs the owner's picture of the person.
 - Not built for alliances: a chat of their own, shared storage, territory, war kills on the map, a war banner.
 
-Sources: CLAUDE.md, docs/specs/wheel-halls.md, docs/specs/building-rooms.md, docs/specs/party.md, docs/specs/alliance.md, docs/specs/arena.md, docs/specs/clans.md, docs/specs/wheel-doors.md, docs/specs/owner-icons.md, src/ui/panels/buildings/WheelHallPanel.jsx, src/ui/panels/buildings/AlliancePart.jsx, src/ui/panels/buildings/PartyPanel.jsx
+Sources: CLAUDE.md, docs/specs/wheel-halls.md, docs/specs/hotel-rest.md, docs/specs/building-rooms.md, docs/specs/party.md, docs/specs/alliance.md, docs/specs/arena.md, docs/specs/clans.md, docs/specs/wheel-doors.md, docs/specs/owner-icons.md, src/ui/panels/buildings/WheelHallPanel.jsx, src/ui/panels/buildings/AlliancePart.jsx, src/ui/panels/buildings/PartyPanel.jsx
 
 ## Diego's shop
 Screens: shop-diego

@@ -157,6 +157,7 @@ import { emoteMethods } from './emotes.js'; /* v2.3.3391: an emote is one of the
 import { poseMethods } from './poses.js'; /* v2.3.3392: a held pose (sit, sleep, a dance) is part of the player */
 import { diceMethods } from './dice.js'; /* v2.3.3393: /roll and /flip, rolled by the worker */
 import { itemDropMethods } from './itemdrop.js'; /* v2.3.3473: a bag item dropped at your feet -- yours a minute, then anyone's */
+import { restMethods } from './rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed -- full bars and Well Rested, +10% of a fight's XP */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -525,6 +526,10 @@ export const PRIVILEGED_EVENTS = new Set([
      touched, the result.  Forged into a relay, one would start or win a race
      on another player's screen that the worker never ran. */
   'race_state', 'race_cp', 'race_end',
+  /* v2.3.3539: a rest's answer (rest.js) -- forged into a relay, it would
+     tell another player they had rested and were Well Rested when the worker
+     rested nobody. */
+  'rest_result',
   /* v2.3.3127: the farm (farm.js) -- the beds, what grows in them and when it
      is ready, and what an action paid.  A forged one would paint ripe crops
      and harvests the worker never settled on another player's screen. */
@@ -5397,6 +5402,12 @@ export class GameRoom {
         if (session.id) this._handleRaceStart(session);
         break;
 
+      case 'rest_request':
+        /* v2.3.3539: a rest at the Hotel or on your farm's bed (rest.js) --
+           full bars and Well Rested, paid by the worker */
+        if (session.id) this._handleRest(session, msg.payload || msg);
+        break;
+
       case 'smelt_bar':
         /* v2.3.2822: smelt ore into bars at the blacksmith (smelting.js).  The
            worker takes the ore and pays the bars and the Smithing XP; the
@@ -6480,6 +6491,7 @@ Object.assign(GameRoom.prototype, emoteMethods); /* v2.3.3391 */
 Object.assign(GameRoom.prototype, poseMethods); /* v2.3.3392 */
 Object.assign(GameRoom.prototype, diceMethods); /* v2.3.3393 */
 Object.assign(GameRoom.prototype, itemDropMethods); /* v2.3.3473 */
+Object.assign(GameRoom.prototype, restMethods); /* v2.3.3539 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
 Object.assign(GameRoom.prototype, allianceMethods); /* v2.3.3313 */

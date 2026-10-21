@@ -16,8 +16,9 @@ owner's picture of the room is the window's background**: the sign and the
 middle of the room at the top, the room fading into the window's slate under
 the menu, the menu's title and first rows written on it. Sixteen windows show
 one (the Gem Works' two tabs, v2.3.3259, share the Gem Cutter's). The Hotel's
-picture has no window yet and is shipped, waiting; the Assay Office's went with
-that building (docs/specs/gem-works.md).
+picture had no window and was shipped, waiting, until v2.3.3539 opened the
+Hotel (seventeen windows since: docs/specs/hotel-rest.md); the Assay Office's
+went with that building (docs/specs/gem-works.md).
 
 **A keeper opens his building when you talk to him.** Blacksmith Bro, who
 stands at the forge's steps, opens the forge; Mayor Bro opens the Town Hall
@@ -46,7 +47,7 @@ keepers"). Every door still opens too.
 | Guild Hall | `guildhall` | `guildhall` | the door |
 | Town Hall | `townhall` (a hall, below) | `townhall` | **Mayor Bro** (his quests first), or the door |
 | Auction House | `auctionhouse` | `auction`, with its clerk | the door |
-| Hotel | none: it is shut | `hotel` (held) | |
+| Hotel | `hotel` (a hall since v2.3.3539) | `hotel` | the door |
 
 The rooms are `src/data/buildingRooms.js` (`BUILDING_ROOMS`), the keepers
 `src/data/wheelBuildingDoors.js` (`WHEEL_KEEPERS`). The Market itself (`store`,
@@ -239,7 +240,8 @@ loading screen**:
   dialog). The General Store's and Gambling Den's rooms are behind the windows
   their doors open.
 - **The Hotel has no window.** Its rest is the farm bed's, on this device only,
-  so it stays shut until the worker can pay for a rest.
+  so it stays shut until the worker can pay for a rest. (Since v2.3.3539 the
+  worker does, and the Hotel has its window: docs/specs/hotel-rest.md.)
 - **No picture on the Market.** It is a screen of its own, not a building.
 
 ## Tests
