@@ -316,6 +316,14 @@ SPAWN_WHITE_FILTER.matrix = [
 /* v2.3.2991: exported -- the stat scene's films are sized off the slime as
    the world really draws it (effectsRenderer captureFxFilm) */
 export const MONSTER_SIZE_MULT = 1.5;
+/* ═══ v2.3.3556: A DUNGEON'S BOSS IS DRAWN BIGGER ═══
+   The owner, of dungeons: "This will probably need work to get right."  The
+   boss looked exactly like the wave monsters before it -- same picture, same
+   size, same name (docs/specs/dungeons-today.md).  The worker now says which
+   one it is (`boss: 1` on its snapshot, server/src/dungeon.js), and it is
+   drawn this much bigger, its HP bar with it; its plate stays the plates'
+   size on the screen and says "Boss" on a deep red (PLATE_BOSS_FILL). */
+export const BOSS_SIZE_K = 1.5;
 /* NPC art draw scale.  96 world px per frame is what this renderer treats as
    player scale (see the 96/128 baseScale at the harvest stand-in, commented
    exactly that).
@@ -6084,6 +6092,17 @@ const PLATE_ALARM_FILL = 0xE03131;
 const PLATE_ALARM_FILL_ALPHA = 1;
 const PLATE_ALARM_NAME_FILL = '#FFFFFF';
 const PLATE_ALARM_NAME_WEIGHT = '700';
+/* ═══ v2.3.3556: A DUNGEON'S BOSS RESTS ON A DEEP RED ═══
+   Not the alarm's bright red, which says "hitting you right now" (D4), and not
+   the danger band, which is the BORDER and says "far above you": the fill a
+   step down from the alarm, at rest, so a boss's plate reads as its own thing
+   before a blow lands.  #7A1D1D at .94 is the colour the NPC plate's alarm
+   already measured: the name's #F4F0E7 at 9.14:1 on it (the two-line rect
+   note in _updateNamePill), bold; the level digits keep their band and their
+   navy stroke, which carries their legibility on any fill (PLATE_LEVEL_STROKE).
+   The bright alarm still wins over it while the boss hits you. */
+const PLATE_BOSS_FILL = 0x7A1D1D;
+const PLATE_BOSS_FILL_ALPHA = 0.94;
 /* v2.3.2571: and the LEVEL's ink follows the name into the alarm state, for
    the reason the name did.  The level is band-coloured digits, and on the
    alarm's red fill those hues collapse: low 2.71, near 3.27, high
@@ -6530,12 +6549,13 @@ function _fitPlateToZoom(display) {
    is: the rounded rect is rebuilt only when the key changes, so a colour
    written outside it would be written once and then never again -- and a band
    moves every time the PLAYER levels up, not only when the monster does. */
-function _updateNamePill(display, name, level, visible, broId, alarm, band, party) {
+function _updateNamePill(display, name, level, visible, broId, alarm, band, party, boss) {
   if (!display || !display._namePill) return;
   _fitPlateToZoom(display);
-  /* v2.3.3279: + `party`, the owner's party badge (a party member's plate) */
+  /* v2.3.3279: + `party`, the owner's party badge (a party member's plate);
+     v2.3.3556: + `boss`, a dungeon's boss (its deep red) */
   const key = name + '|' + level + '|' + (broId ? 'v' : '') + (alarm ? '|!' : '')
-    + (band ? '|' + band : '') + (party ? '|p' : '');
+    + (band ? '|' + band : '') + (party ? '|p' : '') + (boss ? '|b' : '');
   if (display._pillKey !== key) {
     display._pillKey = key;
     display._pillName.text = name;
@@ -6551,9 +6571,10 @@ function _updateNamePill(display, name, level, visible, broId, alarm, band, part
        a badge and pass it a word to put in the circle. */
     if (display._partyBadge && !(band && typeof level !== 'string')) display._partyBadge.visible = false;
     if (band && typeof level !== 'string') {
-      _drawPlateCapsule(display, level, broId, alarm, band, party);
+      _drawPlateCapsule(display, level, broId, alarm, band, party, boss);
       display._pillAlarm = !!alarm;
       display._pillBand = band;
+      display._pillBoss = !!boss;   /* v2.3.3556: for the QA probe */
       display._namePill.visible = !!visible;
       return;
     }
@@ -6632,7 +6653,7 @@ function _setPillType(display, fill, weight) {
    The origin is the pill's TOP CENTRE, the same convention the two-line rect
    used, so nothing that positions a plate (pill.y at every call site) has to
    move. */
-function _drawPlateCapsule(display, level, broId, alarm, band, party) {
+function _drawPlateCapsule(display, level, broId, alarm, band, party, boss) {
   const N = display._pillCss || 15;
   const h = Math.round(N * PLATE_H_RATIO);
   const padL = Math.round(N * PLATE_PAD_L_RATIO);
@@ -6651,7 +6672,7 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party) {
      is a plate whose padding changes when a monster starts hitting you. */
   _setPillType(display,
     alarm ? PLATE_ALARM_NAME_FILL : PLATE_NAME_FILL,
-    alarm ? PLATE_ALARM_NAME_WEIGHT : PLATE_NAME_WEIGHT);
+    (alarm || boss) ? PLATE_ALARM_NAME_WEIGHT : PLATE_NAME_WEIGHT);   /* v2.3.3556: a boss's name bold */
   nameT.anchor.set(0.5, 0.5);
   const broD = broId ? Math.max(11, Math.round(h * 0.62)) : 0;
   const broPad = broId ? broD + Math.round(gap * 0.6) : 0;
@@ -6745,8 +6766,11 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party) {
      pasted on it, and the name still measures 8.4:1 in the worst case a scene
      can hand it (see the knob block).  The alarm state keeps alpha 1 -- a
      warning does not get to be translucent. */
-  g.fill({ color: alarm ? PLATE_ALARM_FILL : PLATE_INK,
-    alpha: alarm ? PLATE_ALARM_FILL_ALPHA : PLATE_FILL_ALPHA });
+  /* v2.3.3556: a dungeon's boss rests on a deep red, the alarm's bright red
+     still meaning "hitting you right now" over it (D4's precedence) */
+  const _fill = alarm ? PLATE_ALARM_FILL : boss ? PLATE_BOSS_FILL : PLATE_INK;
+  const _fillA = alarm ? PLATE_ALARM_FILL_ALPHA : boss ? PLATE_BOSS_FILL_ALPHA : PLATE_FILL_ALPHA;
+  g.fill({ color: _fill, alpha: _fillA });
   g.stroke({ color: PLATE_BAND[band] || PLATE_BAND.near, alpha: PLATE_BORDER_ALPHA,
     width: PLATE_BORDER_PX, alignment: 0.5 });
   /* v2.3.2571: the white disc that used to sit here is gone -- see the level
@@ -6760,7 +6784,9 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party) {
      them.  Without this a future edit could put alpha back to 1 and every
      existing assertion would still pass. */
   display._pillSoft = {
-    fillAlpha: alarm ? PLATE_ALARM_FILL_ALPHA : PLATE_FILL_ALPHA,
+    fillAlpha: _fillA,
+    fill: _fill,   /* v2.3.3556: the colour too (a boss's deep red) */
+    boss: !!boss,
     borderAlpha: PLATE_BORDER_ALPHA,
     borderPx: PLATE_BORDER_PX,
     borderColor: PLATE_BAND[band] || PLATE_BAND.near,
@@ -6774,7 +6800,7 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party) {
     levelStroke: alarm ? null : PLATE_LEVEL_STROKE,
     levelStrokePx: alarm ? 0 : PLATE_LEVEL_STROKE_PX,
     nameFill: alarm ? PLATE_ALARM_NAME_FILL : PLATE_NAME_FILL,
-    nameWeight: alarm ? PLATE_ALARM_NAME_WEIGHT : PLATE_NAME_WEIGHT,
+    nameWeight: (alarm || boss) ? PLATE_ALARM_NAME_WEIGHT : PLATE_NAME_WEIGHT,
     /* every band the renderer can stroke, so the four-way separation is
        checkable from one plate instead of needing four monsters on screen */
     bands: PLATE_BAND,
@@ -9054,7 +9080,10 @@ export class EntityRenderer {
          (the dunes' north-south ramp, zones.js `depth`) -- a mummy on the
          horizon is drawn as far away as the rocks beside it.  1 on every zone
          without one, so this is the old constant everywhere else. */
-      const _mk = MONSTER_SIZE_MULT * (this._zonePscale(S, rx, ry) || 1);
+      /* v2.3.3556: ...and a dungeon's boss BOSS_SIZE_K bigger (the worker's
+         `boss`); every write of the scale below goes through `_mk` */
+      const _bossK = m.boss ? BOSS_SIZE_K : 1;
+      const _mk = MONSTER_SIZE_MULT * (this._zonePscale(S, rx, ry) || 1) * _bossK;
       if (display.scale.x !== _mk) display.scale.set(_mk);
       /* v2.3.1472: mirror the transform onto the above-head UI, which
          lives in a sibling layer (same world container, so the values
@@ -9066,7 +9095,9 @@ export class EntityRenderer {
         if (_ui.y !== ry) _ui.y = ry;
         if (_ui.visible !== m.alive) _ui.visible = m.alive;
         if (_ui.scale.x !== _mk) _ui.scale.set(_mk);
-        _ui._plateLift = _plateLiftAt(S.currentZone, ry);   /* v2.3.2745 */
+        /* v2.3.3556: a boss's plate is fitted back to the plates' size on the
+           screen (its bar grows with it) */
+        _ui._plateLift = _plateLiftAt(S.currentZone, ry) / _bossK;   /* v2.3.2745 */
       }
 
       /* ═══ v2.3.1765: A MONSTER ARRIVES AS A GROWING WHITE SILHOUETTE ═══
@@ -10159,8 +10190,10 @@ export class EntityRenderer {
         const _fadeYou = (xpDecayOn(S) && S.rpg && prog3Live(S.rpg))
           ? prog3SkillLevel(S.rpg, prog3ActiveCat(S.rpg)) : null;
         const _plateBand = plateBandFor(m.level, _plateYou, _fadeYou);
-        _updateNamePill(_plateUi, wheelStageName(m, monsterDisplayName(m.archetype || m.type)),   /* v2.3.3093: "Glacier Snowman" past level 20 */
-          m.level == null ? 1 : m.level, _plateShow, null, _plateAlarm, _plateBand);
+        /* v2.3.3556: a dungeon's boss says so: "Boss Amethyst Golem", on its
+           own deep red (_drawPlateCapsule's `boss`) */
+        _updateNamePill(_plateUi, (m.boss ? 'Boss ' : '') + wheelStageName(m, monsterDisplayName(m.archetype || m.type)),   /* v2.3.3093: "Glacier Snowman" past level 20 */
+          m.level == null ? 1 : m.level, _plateShow, null, _plateAlarm, _plateBand, false, !!m.boss);
         /* ═══ v2.3.2571: THE PLATE SITS WHERE THE BAR SITS ═══
            Centred on `_plateBandY`, the bar's own centre line, so the two
            states occupy one spot and the transition reads as the plate

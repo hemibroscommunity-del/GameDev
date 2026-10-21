@@ -29,6 +29,11 @@ export function zoneTitle(S) {
     const lr = (DEPTH_CONFIG[depth] && DEPTH_CONFIG[depth].lvlRange) || [1, 10];
     return `${name} — ${depth.toUpperCase()} (Lv${lr[0]}-${lr[1]})`;
   }
-  if (z && z.level && z.level[1] > 0) return `${name} (Lv${z.level[0]}-${z.level[1]})`;
+  /* v2.3.3556: a range that is one level is that level -- a dungeon is one
+     level (server/src/wheeldungeon.js), and its top bar read "the Great Cave
+     (Lv28-28)" */
+  if (z && z.level && z.level[1] > 0) {
+    return z.level[0] === z.level[1] ? `${name} (Lv ${z.level[0]})` : `${name} (Lv${z.level[0]}-${z.level[1]})`;
+  }
   return name;
 }

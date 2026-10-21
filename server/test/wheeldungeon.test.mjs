@@ -26,8 +26,14 @@
  *      about half a minute's walk from town; a run there is the Verdant
  *      Wilds' slimes at levels 1-5, never above yours, its boss at the
  *      dungeon's level.
+ *  11. v2.3.3556 (docs/specs/dungeon-fixes.md): ONE LEVEL, A REAL BOSS,
+ *      STRAIGHT BACK IN -- every wave monster at the dungeon's level (no
+ *      +0..2), the boss four wave monsters of health and said on the wire
+ *      (`boss: 1`), and a start with your last run empty ending it at once;
+ *      someone still inside keeps it running.
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
+import { readFileSync } from 'fs';   /* v2.3.3556: the join's monster list, read */
 import { WHEEL_DUNGEON } from '../src/wheeldungeon.js';
 import { WHEEL_DOORS, WHEEL_CENTRE, WHEEL_SPAWNS } from '../src/wheelspawns.js';
 import * as SHORT from '../src/wheelspawns1.js';   /* v2.3.3540: the starter dungeon on the short Wheel too */
@@ -180,18 +186,25 @@ let run = null;
   const zone = ZONES.hollows;
   const want = zone.spawns.reduce((t, sp) => t + (sp.count || 0), 0);
   check(`start: wave 1 is the land's whole spawn list (${wave.length} of ${want})`, wave.length === want && want > 0, wave.map((m) => m.arch));
-  check('start: ...each of the land, its own look, at the run\'s level (+0..2), staying dead once dead',
-    wave.every((m) => m.home === 'hollows' && m.noRespawn === true && m.respawnAt === 0 && m.alive && m.level >= 12 && m.level <= 14),
+  /* v2.3.3556: AT the run's level -- it rolled +0..2, so the dungeon said one
+     level and fought three */
+  check('start: ...each of the land, its own look, at the run\'s level exactly (v2.3.3556: no +0..2), staying dead once dead',
+    wave.every((m) => m.home === 'hollows' && m.noRespawn === true && m.respawnAt === 0 && m.alive && m.level === 12),
     wave.map((m) => ({ home: m.home, v: m.variant, lv: m.level })));
   const ref = room._makeZoneMonster('hollows', zone, zone.spawns[0], 'ref', 0, 0, wave[0].level);
   const w0 = wave.find((m) => m.arch === zone.spawns[0].arch && m.level === wave[0].level) || wave[0];
   check('start: ...built by the land\'s own math (the same variant, HP, damage and XP as the land builds at that level)',
     w0.variant === ref.variant && w0.maxHp === ref.maxHp && w0.dmg === ref.dmg && w0.xp === ref.xp, { got: [w0.variant, w0.maxHp, w0.dmg, w0.xp], want: [ref.variant, ref.maxHp, ref.dmg, ref.xp] });
   check('start: ...inside the arena\'s upper half, below the rows the top bar covers', wave.every((m) => m.x > 0 && m.x < WHEEL_DUNGEON.WIDTH * room.TILE && m.y >= WHEEL_DUNGEON.TOP_ROW * room.TILE && m.y < WHEEL_DUNGEON.HEIGHT / 2 * room.TILE));
+  /* one run each while someone is in it (v2.3.3556: an EMPTY run is ended by
+     a new start -- check 11); inside for this check only, the real way in is
+     check 5's move */
+  psA.z = p.zone;
   wsA.sent.length = 0;
   await startAt(wsA, 'hollows');
   const e = msgsOfType(wsA, 'dungeon_error')[0];
-  check('start: one run each, as any dungeon (already-running)', !!e && e.payload.code === 'already-running', e && e.payload);
+  check('start: one run each while you are in it, as any dungeon (already-running)', !!e && e.payload.code === 'already-running' && !msgsOfType(wsA, 'dungeon_started').length, e && e.payload);
+  put(psA, 'wheel', door.at[0], door.at[1]);
 }
 
 // ── 5. THE WIRE ────────────────────────────────────────────────────────────
@@ -226,11 +239,31 @@ let run = null;
   const zone = ZONES.hollows, last = zone.spawns[zone.spawns.length - 1];
   check('run: then the boss -- the land\'s last kind, at the dungeon\'s level (v2.3.3540; it was five up), its own look', !!bossEv && !!boss && boss.arch === last.arch && boss.level === run.inst.cfg.monsterLevel && boss.home === 'hollows', boss && { arch: boss.arch, lv: boss.level, home: boss.home });
   const plain = room._makeZoneMonster('hollows', zone, last, 'ref', 0, 0, boss.level);
-  const flat = monsterHpFlat(boss.level);
-  check('run: ...scaled as any dungeon boss (HP x BOSS_MULT for one, damage x1.5) with its kit',
-    boss.maxHp === Math.ceil((plain.maxHp - flat) * WHEEL_DUNGEON.BOSS_MULT * DUNGEONS.PARTY_HP_SCALE[0]) + flat
+  /* v2.3.3556: its WHOLE health x BOSS_MULT -- the level's flat (most of a
+     monster's health since v2.3.3055) was left out of the multiplying, so the
+     boss had about a wave monster's health, and less in two of the four */
+  check('run: ...scaled as any dungeon boss (its WHOLE HP x BOSS_MULT for one, damage x1.5) with its kit (v2.3.3556)',
+    boss.maxHp === Math.ceil(plain.maxHp * WHEEL_DUNGEON.BOSS_MULT * DUNGEONS.PARTY_HP_SCALE[0])
       && boss.dmg === Math.ceil(plain.dmg * 1.5) && Array.isArray(boss._abilities) && boss._abilities.length >= 2,
     { hp: boss.maxHp, plain: plain.maxHp, dmg: boss.dmg, kit: boss._abilities });
+  const waveTop = Math.max(...room.monsters[run.zone].filter((m) => !m._dungeonBoss).map((m) => m.maxHp));
+  check(`run: ...so the boss is ${WHEEL_DUNGEON.BOSS_MULT} wave monsters of health (${boss.maxHp} against the biggest wave monster's ${waveTop}) (v2.3.3556)`,
+    boss.maxHp >= WHEEL_DUNGEON.BOSS_MULT * waveTop, { boss: boss.maxHp, waveTop, flat: monsterHpFlat(boss.level) });
+  const zs = msgsOfType(wsA, 'zone_state').pop();
+  const bw = zs && zs.monsters.find((x) => x.id === boss.id);
+  check('run: ...and the wire says which one it is -- `boss: 1` on it alone, beside its home and look (v2.3.3556)',
+    !!bw && bw.boss === 1 && bw.home === 'hollows' && zs.monsters.filter((x) => x.boss).length === 1, zs && zs.monsters.map((x) => [x.id, x.boss]));
+  const snapB = room._zoneSnapshotWire(run.zone).monsters;
+  check('run: ...in the zone snapshot a joiner gets too (spawnscale.js monsterSnapWire)',
+    snapB.filter((x) => x.boss === 1).length === 1 && snapB.find((x) => x.boss === 1).id === boss.id, snapB.map((x) => [x.id, x.boss]));
+  {
+    /* ...and the join's own list (state_sync), the third mapping of a whole
+       monster: read, as a join inside a run is a reconnect's corner */
+    const js = readFileSync(new URL('../src/join.js', import.meta.url), 'utf8');
+    const at = js.indexOf('monsters: zoneMonsters.map(m => ({');
+    const block = at > 0 ? js.slice(at, js.indexOf('})),', at)) : '';
+    check('run: ...and in the join\'s state_sync list (join.js), on it alone', /\.\.\.\(m\._dungeonBoss \? \{ boss: 1 \} : \{\}\)/.test(block), block.length);
+  }
   check('run: a kill in it counts for its land (its shard, its quests)', room._rewardZone(run.zone, boss) === 'hollows');
   boss.alive = false; boss.hp = 0;
   wsA.sent.length = 0;
@@ -337,8 +370,8 @@ let run = null;
       && String(p.cfg.levels) === '1,5' && !!p.back && p.back.x === g.back[0] && p.back.y === g.back[1], p);
   const wave = p ? room.monsters[p.zone] || [] : [];
   const want = ZONES.verdant.spawns.reduce((t, sp) => t + (sp.count || 0), 0);
-  check(`starter: ...wave 1 the Verdant Wilds' whole spawn list (${wave.length} of ${want}: its slimes), at levels 3-5`,
-    wave.length === want && wave.every((m) => m.home === 'verdant' && m.level >= 3 && m.level <= 5), wave.map((m) => [m.home, m.level]));
+  check(`starter: ...wave 1 the Verdant Wilds' whole spawn list (${wave.length} of ${want}: its slimes), at level 3 (v2.3.3556: no +0..2)`,
+    wave.length === want && wave.every((m) => m.home === 'verdant' && m.level === 3), wave.map((m) => [m.home, m.level]));
   const inst = p ? [...room._dungeons.values()].find((i) => i.zone === p.zone) : null;
   /* in it: a run moves on only with someone inside (as the phone steps in) */
   if (p) await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 400, y: 600, z: p.zone }));
@@ -359,6 +392,52 @@ let run = null;
   endRun(psA);
   const far = await startGoo(3, WHEEL_DUNGEON.DOOR_R + 40);
   check('starter: ...and from too far off it is refused', !far.s && !!far.e && far.e.payload.code === 'not-here', far.e && far.e.payload);
+  endRun(psA);
+}
+
+// ── 11. STRAIGHT BACK IN (v2.3.3556) ───────────────────────────────────────
+{
+  const d = WHEEL_DOORS.thunder;
+  put(psA, 'wheel', d.at[0], d.at[1]);
+  psA.level = 28;
+  wsA.sent.length = 0;
+  await startAt(wsA, 'thunder');
+  const first = msgsOfType(wsA, 'dungeon_started')[0];
+  const z1 = first && first.payload.zone;
+  check('back in: a level-28 player opens a level-28 Foundry Dome, the top bar\'s one level (cfg.monsterLevel 28)',
+    !!first && first.payload.cfg.monsterLevel === 28, first && first.payload.cfg);
+  /* in, then out by its way out, and back to the mouth: the run is empty */
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 400, y: 600, z: z1 }));
+  check('back in: (inside it)', psA.z === z1, psA.z);
+  put(psA, 'wheel', d.at[0], d.at[1]);
+  wsA.sent.length = 0;
+  await startAt(wsA, 'thunder');
+  const second = msgsOfType(wsA, 'dungeon_started')[0];
+  const z2 = second && second.payload.zone;
+  const mine = () => [...room._dungeons.values()].filter((i) => i.ownerId === 'bp_wd_a');
+  check('back in: your last run EMPTY, the door ends it and opens another -- no "already running" (it said so for a minute)',
+    !!z2 && z2 !== z1 && room.monsters[z1] === undefined && mine().length === 1 && mine()[0].zone === z2 && !msgsOfType(wsA, 'dungeon_error').length,
+    { z1, z2, mine: mine().map((i) => i.zone), errs: msgsOfType(wsA, 'dungeon_error').map((e) => e.payload) });
+  /* someone still inside keeps it running */
+  const wsD = fakeWs('d');
+  const psD = await join(wsD, 'bp_wd_d');
+  put(psD, z2, 400, 600);
+  wsA.sent.length = 0;
+  await startAt(wsA, 'thunder');
+  const e = msgsOfType(wsA, 'dungeon_error')[0];
+  check('back in: ...but with someone still in it (your party) it keeps running: already-running',
+    !!e && e.payload.code === 'already-running' && !msgsOfType(wsA, 'dungeon_started').length && mine().length === 1 && mine()[0].zone === z2,
+    e && e.payload);
+  /* a run of someone else's with nobody in it is never yours to end */
+  put(psD, 'wheel', d.at[0] + 50, d.at[1]);
+  const otherInst = { id: 'zzother', zone: 'dungeon:zzother', ownerId: 'bp_wd_d', cfg: run.inst.cfg, wave: 1, state: 'active', bossSpawned: false, createdAt: Date.now(), emptySince: 0, doneAt: 0 };
+  room._dungeons.set('zzother', otherInst);
+  room.monsters['dungeon:zzother'] = [];
+  wsA.sent.length = 0;
+  await startAt(wsA, 'thunder');
+  check('back in: ...and another player\'s empty run is left alone',
+    room._dungeons.has('zzother') && msgsOfType(wsA, 'dungeon_started').length === 1, [...room._dungeons.keys()]);
+  room._dungeonCleanup(otherInst);
   endRun(psA);
 }
 

@@ -49,6 +49,7 @@ function peerShotGame() {
 }
 import { recordMail, itemWords } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail; v2.3.3516: + its words for an item */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
+import { startDungeonClear } from '@/game/dungeonClear.js'; /* v2.3.3556: 30 s to pick up the loot after a clear */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
 import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
@@ -1007,8 +1008,15 @@ export function processGameEvent(type, payload, S, deps) {
               pushDmgPopup(S, S.player.x, S.player.y - 45, '+' + (payload.gold || 0) + 'G' + _dcXp, '#f5c542');
               cue('dungeonClear');   /* v2.3.3343: the old quest fanfare -- levelUp() is beep()s only, silent */
               S.screenShake = 10;
-              setTimeout(function () {
-                if (!S._serverDungeon) return; /* already left via the exit tile */
+              /* ═══ v2.3.3556: 30 SECONDS TO PICK UP THE LOOT ═══
+                 It was three: "DUNGEON CLEARED!" and you were outside, the
+                 boss's drop left on the floor (docs/specs/dungeons-today.md).
+                 game/dungeonClear.js keeps the clock (a card counts it down,
+                 its Leave now goes at once) and leaves only while you are
+                 still in THIS dungeon -- the old `!S._serverDungeon` test let a
+                 clear's timer take you out of a new run you had gone straight
+                 back into. */
+              startDungeonClear(S, payload.zone, Date.now(), function () {
                 /* v2.3.3016: a Wheel dungeon's way home is the mouth you went in
                    by (game/wheelDungeons.js), not the farm */
                 if (leaveWheelDungeon(S)) return;
@@ -1043,7 +1051,7 @@ export function processGameEvent(type, payload, S, deps) {
                 if (S.channel) {
                   try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: 'farm_home', vx: 0, vy: 0 } }); } catch (e) {}
                 }
-              }, 3000);
+              });
               break;
             }
           case 'dungeon_error':
