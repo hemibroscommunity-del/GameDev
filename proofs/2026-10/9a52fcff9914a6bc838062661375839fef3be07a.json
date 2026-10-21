@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9a52fcff9914a6bc838062661375839fef3be07a",
+  "tree": "a66af1b24af1c57f4d01999133e10efcf141430a",
+  "committedAt": "2026-10-21T16:32:01-07:00",
+  "subject": "Retire the Mayor's \"Welcome Home\" quest (v2.3.3550) (#1066)",
+  "files": 6241,
+  "bytes": 718948434,
+  "listingSha256": "53bd95c9cd16970f1069e4af1036c2ab9e3998f84b47c718621d63582c8a47df",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d9cbb29cfffeebdb13fd5635243e2686297885f3",
+  "tree": "63ba78f19a5e5ded5aa33647e9f430bcbea2bb0b",
+  "committedAt": "2026-10-21T16:32:07-07:00",
+  "subject": "Your first level-up shows you where your points are, and never picks for you (v2.3.3551) (#1067)",
+  "files": 6245,
+  "bytes": 718992486,
+  "listingSha256": "6f546eee44321e02b4bc705e890908b7d57f7ebc5271dfa2e2eb4ca0d9ca8125",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
