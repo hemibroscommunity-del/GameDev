@@ -32,6 +32,7 @@ import { heroSectionBus } from './heroSectionBus.js';                           
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
 import { playIsLandscape, panelVw } from '../playViewport.js';                    /* v2.3.2171: the sideways pane stacks; panelVw v2.3.2382 */
 import { StatCaption, STAT_CAPTION_SHORT } from './StatCaption.jsx';            /* v2.3.3324: a stat's name whole or short, never cut */
+import { showPointsReset, requestPointsReset, POINTS_RESET_CONFIRM_MS } from '../../../game/pointsReset.js'; /* v2.3.3541: the free points reset */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -221,6 +222,8 @@ export const HeroExpanded = () => {
      one-category-at-a-time card cannot express it; see the render for why that
      loss is deliberate rather than overlooked. */
   const [selCat, setSelCat] = useState(null);
+  /* v2.3.3541: the free points reset's first tap, when it was (0: not armed) */
+  const [resetAsk, setResetAsk] = useState(0);
   /* v2.3.2326: the lane headers live inside the sheet's scroller, which eats
      any tap that drifts more than ~15px. See scrollTap.js. */
   const scrollTap = useScrollTap();
@@ -3184,6 +3187,40 @@ export const HeroExpanded = () => {
                     carry two risks.  It is dead on this screen and should come
                     out in its own commit. */}
                 {statGrid()}
+                {/* ═══ v2.3.3541: THE FREE POINTS RESET ═══
+                    The owner: "I value SIMPLICITY and INTELLIGIBILITY" -- one
+                    button gives every placed point back, so you can try a
+                    different build (game/pointsReset.js -> the worker's
+                    pointsreset.js).  Two taps: the first arms it and says
+                    what it does, the second, within 4 s, asks.  Shown only
+                    against a worker that resets and with a point placed. */}
+                {showPointsReset(S) && (() => {
+                  const armed = resetAsk > 0 && Date.now() - resetAsk < POINTS_RESET_CONFIRM_MS;
+                  return (
+                    <button type="button" data-points-reset={armed ? 'armed' : 'idle'}
+                      /* through scrollTap, as every control in this scroller
+                         (a thumb's drift is still a tap: scrollTap.js) */
+                      {...scrollTap(() => {
+                        if (!(resetAsk > 0 && Date.now() - resetAsk < POINTS_RESET_CONFIRM_MS)) {
+                          const t0 = Date.now();
+                          setResetAsk(t0);
+                          setTimeout(() => setResetAsk((t) => (t === t0 ? 0 : t)), POINTS_RESET_CONFIRM_MS + 50);
+                          return;
+                        }
+                        setResetAsk(0);
+                        requestPointsReset(getState());
+                      })}
+                      style={{
+                        margin: '8px 2px 2px', minHeight: 44, padding: '0 12px', borderRadius: 10,
+                        border: `1px solid ${armed ? COL.accent : COL.tileBor}`,
+                        background: armed ? 'rgba(245,197,66,0.12)' : 'transparent',
+                        color: armed ? COL.accent : COL.text2,
+                        fontSize: 13, fontWeight: 700, letterSpacing: 0.2, cursor: 'pointer',
+                      }}>
+                      {armed ? 'Tap again: every point comes back' : '↺ Reset points (free)'}
+                    </button>
+                  );
+                })()}
               </div>
               </>
             );

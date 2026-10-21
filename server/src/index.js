@@ -157,6 +157,7 @@ import { emoteMethods } from './emotes.js'; /* v2.3.3391: an emote is one of the
 import { poseMethods } from './poses.js'; /* v2.3.3392: a held pose (sit, sleep, a dance) is part of the player */
 import { diceMethods } from './dice.js'; /* v2.3.3393: /roll and /flip, rolled by the worker */
 import { itemDropMethods } from './itemdrop.js'; /* v2.3.3473: a bag item dropped at your feet -- yours a minute, then anyone's */
+import { pointsResetMethods } from './pointsreset.js'; /* v2.3.3541: the free points reset -- every placed point back */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -497,6 +498,9 @@ export const PRIVILEGED_EVENTS = new Set([
   /* v2.3.3473: the worker's answer to a drop (itemdrop.js).  Forged, one
      would tell a phone an item left its bag that never did. */
   'item_drop_result',
+  /* v2.3.3541: the worker's answer to a points reset (pointsreset.js).
+     Forged, one would tell a phone its points came back when they did not. */
+  'points_reset_result',
   /* v2.3.3058: No man's land (nomansland.js) -- your own skulls' time left,
      and what a death there took.  Forged, one would paint a red skull on an
      innocent player's own screen and the other would make a game clear its
@@ -5028,6 +5032,11 @@ export class GameRoom {
       case 'item_drop':
         this._handleItemDrop(session, msg);
         break;
+      /* v2.3.3541: the free points reset (pointsreset.js): every placed point
+         back, out of a fight, once a minute */
+      case 'points_reset':
+        this._handlePointsReset(session);
+        break;
       case 'move':
         // Hottest path -- anti-teleport cap, position/facing merge,
         // zone-change streaming.  Hoisted to movement.js
@@ -6475,6 +6484,7 @@ Object.assign(GameRoom.prototype, emoteMethods); /* v2.3.3391 */
 Object.assign(GameRoom.prototype, poseMethods); /* v2.3.3392 */
 Object.assign(GameRoom.prototype, diceMethods); /* v2.3.3393 */
 Object.assign(GameRoom.prototype, itemDropMethods); /* v2.3.3473 */
+Object.assign(GameRoom.prototype, pointsResetMethods); /* v2.3.3541 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
 Object.assign(GameRoom.prototype, allianceMethods); /* v2.3.3313 */

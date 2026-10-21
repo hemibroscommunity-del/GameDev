@@ -596,6 +596,7 @@ Screens: dash-hero, dash-hero-points
 - **The window stays after Spend** (v2.3.3522, owner: "After spending a stat allocation point keep it on the menu confirmation window instead of closing it to return to the points main screen."). Spend reads "Spending…" until the server answers, then the same window shows the new value and the next point's before-and-after, with "✓ 3 points spent" under the button and the stepper back at 1. With no points left the button says why, as above. If no answer comes in about 3 s, Spend comes back.
 - **The scene is a real simulated fight** with the meadow slime, using your own character, weapon and points (v2.3.2979, owner: "shows real simulation of the hits against a slime monster"). "Now" plays above and "+n" below, at the same time and on the same dice (v2.3.3002, owner: "live side by side simulations of the before and after effects"; asked how, the owner chose stacked). Your bro moves with the world's own animations (v2.3.2986–2991), and Max MP has a scene too (v2.3.3008).
 - **The numbers match the bars.** Max HP shows the pool's new total, as its bar will (v2.3.3050: the owner saw "48hp for 6 points" when spending made it "actually 37"). DPS has two decimals (v2.3.2525, owner: "Decimals are fine for tuning combat skills"). Shared stats show no DPS line (owner: "Remove the line about DPS on this window for all shared points").
+- **Reset points (free)** at the foot of the grid gives every placed point back, so you can try a different build (v2.3.3541, the after-review list: "Today, points you spend are spent for good. After the change one button gives them back"). Two taps: the first arms it and says what it does ("Tap again: every point comes back"), the second within 4 s resets; left alone it goes back. It shows only with a point placed, and the server refuses it in a fight or within a minute of the last one, saying so over your bro. No second window: the button's own words are the confirm.
 
 **Tried before, and changed:**
 - Stat boxes, then list rows (v2.3.1890, owner: "every stat is being treated as its own card ... switch to a character-sheet/list format"), then no icons (v2.3.1883b, owner: "Don't use any icons to represent the stats to save room"), then pills with icons (v2.3.3053): the newest ask, paid for by the scroll.
@@ -615,7 +616,7 @@ Screens: dash-hero, dash-hero-points
 **Still open:**
 - Sideways at rest the Character button is folded away behind the ▴ chip, so its glow cannot be seen. Lighting the chip is noted as "a one-line follow-up if wanted" (v2.3.3004).
 
-Sources: CLAUDE.md, docs/specs/hero-sheet-pills.md, docs/specs/one-level.md, docs/specs/progression-v3.md, docs/specs/relative-points.md, docs/LANTERN-SLATE-SPEC.md, src/ui/mobile/sheet/HeroExpanded.jsx, src/styles/game.css
+Sources: CLAUDE.md, docs/specs/hero-sheet-pills.md, docs/specs/one-level.md, docs/specs/points-reset.md, docs/specs/progression-v3.md, docs/specs/relative-points.md, docs/LANTERN-SLATE-SPEC.md, src/ui/mobile/sheet/HeroExpanded.jsx, src/styles/game.css
 
 ## The quest log
 Screens: dash-quests, dash-quest-detail

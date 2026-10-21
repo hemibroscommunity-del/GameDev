@@ -51,7 +51,7 @@ import { GEM_ELEMENTS, gemGive, gemCount } from './gems.js'; /* v2.3.3516: the k
 import { SHARD_CRACK } from './shardcrack.js'; /* v2.3.3516: the kit's shards */
 import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills a level can be set on */
 import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills whose harvests and cooks are hits */
-import { PROG3 } from './prog3.js'; /* v2.3.3313: the combat skills a level can be set on */
+import { PROG3, prog3RespecPoints } from './prog3.js'; /* v2.3.3313: the combat skills a level can be set on; v2.3.3541: + the deal (/dev/combat `deal`) */
 import { BOTFP } from './botfp.js'; /* v2.3.3323: the score a flag is raised at, for the Bot flags list */
 
 export const DEVKIT = {
@@ -551,9 +551,14 @@ export const devToolsMethods = {
     if (!ps.prog3 || !ps.prog3.sk || typeof ps.prog3.sk !== 'object') return { ok: false, error: 'no combat skills' };
     const level = Math.max(1, Math.min(PROG3.LEVEL_CAP, Math.floor(Number(b.level) || 1)));
     for (const k of names) ps.prog3.sk[k] = { level, xp: 0 };
+    /* v2.3.3541: `deal: true` -- and the points those levels give, every
+       placed one back (the free points reset's own deal, prog3RespecPoints):
+       a level set by this lever alone left the pools where they were, so the
+       Points tab had nothing to spend (mp-pointsreset) */
+    if (b.deal === true) prog3RespecPoints(ps.prog3, typeof this._oneLevelOn === 'function' ? !this._oneLevelOn() : false);
     this._prog3Recompute(ps);
     this._devPush(playerId, ps);
-    return { ok: true, skills: names, level, charLevel: ps.level };
+    return { ok: true, skills: names, level, charLevel: ps.level, ...(b.deal === true ? { pool: ps.prog3.pool, shared: ps.prog3.shared } : {}) };
   },
 
   /* ═══ v2.3.3120: PET TRAPPING'S TEST LEVERS (trapping.js) ═══
