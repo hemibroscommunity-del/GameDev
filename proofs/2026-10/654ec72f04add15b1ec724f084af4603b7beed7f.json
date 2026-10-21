@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "654ec72f04add15b1ec724f084af4603b7beed7f",
+  "tree": "ed459e900eb728d5844b206bc26803fa95bb25dd",
+  "committedAt": "2026-10-20T20:57:42-07:00",
+  "subject": "The fight simulator fights again: its players say which Wheel they draw, and fight in ring 5 (v2.3.3532) (#1049)",
+  "files": 6173,
+  "bytes": 713032754,
+  "listingSha256": "85c5fcda362a817d80adb1ea8eb1f233456ed2ad0d23c7c29c33ba6112a810dd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

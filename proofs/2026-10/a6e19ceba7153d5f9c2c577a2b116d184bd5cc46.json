@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a6e19ceba7153d5f9c2c577a2b116d184bd5cc46",
+  "tree": "300eab895cea925846ed4a16ea69f532ed63991e",
+  "committedAt": "2026-10-20T20:57:47-07:00",
+  "subject": "Hitting a townsperson no longer \"kills\" him or pays fake gold and XP (v2.3.3534) (#1051)",
+  "files": 6175,
+  "bytes": 713046680,
+  "listingSha256": "468b1c0367b6eed8b4ba903b0959b40f8ee5eca1360d8248a86fca19ccba0dc5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
