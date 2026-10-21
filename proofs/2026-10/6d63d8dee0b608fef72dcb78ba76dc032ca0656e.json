@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6d63d8dee0b608fef72dcb78ba76dc032ca0656e",
+  "tree": "d57e04842ec19703e54a85c3e40be26e438f0d02",
+  "committedAt": "2026-10-21T05:51:14-07:00",
+  "subject": "One level: your level is your best weapon's level, not the three added up (v2.3.3538) (#1055)",
+  "files": 6185,
+  "bytes": 713326164,
+  "listingSha256": "0f6129a708874e31cc6ded9267b7bebfbc9772418f7385635e2451095aa527dc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
