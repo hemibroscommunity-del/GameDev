@@ -529,7 +529,7 @@ Every basic monster attack has a wind-up you can react to (swarm 350 ms, brute 6
 
 **The wheel**: flame > frost > storm > stone > wind > venom > flora > water > flame; dark and light beat each other. A hit whose gem beats the monster's element lands ×1.25; a losing matchup carries no penalty (the "DN" was removed so that every gem pulls its weight).
 
-**A gem in a weapon** changes no damage; every hit carries the gem's element and status. One slot up to obsidian/ironbark, two from mythril on (the second needs Enchanting 20 and a different element). A "volatile" pair of elements makes a weapon hit ×1.30.
+**A gem in a weapon** changes no damage; every hit carries the gem's element and status. One slot up to obsidian/ironbark, two from mythril on (the second needs Enchanting 20 and a different element). A "volatile" pair of elements makes a weapon hit ×1.30, but a volatile pair can only be set in the top-rung worldbreaker sword or bow (`FUSION_BASES`), so no weapon in the game is volatile today.
 
 | Gem | Status on a monster | Length | Effect (P = the Element stat on the curve, 5 points = 40) |
 |---|---|---|---|
@@ -607,7 +607,7 @@ A player walks at ~150 px/s, so no monster can catch a walking player except by 
 
 HP = a small curve (12.5 × 1.052^(L−1) × the archetype's multiplier) plus a **flat** that is nearly all of a monster's health: 50 at levels 1–2, 100 at level 3, then +10% a level (195 at 10, 506 at 20, 1,311 at 30, 2,090 at 40). So every kind of one level has about the same HP and the archetype multipliers matter mostly for damage. The jump from level 2 to 3 is the biggest in the game. Damage = 12 × 1.065^(L−1) × the multiplier, then × the one-formula stamp so the hit keeps its share of a matching player's bar (×2.1 at level 1, ×6.3 at 40). A new character has 250 HP.
 
-| Level | Fodder (slime, goblin, mummy, wisp) HP · hit | Brute (rock, fish, lurker) HP · hit | Snowman HP · hit | XP shown | Gold |
+| Level | Fodder (slime, goblin, mummy, wisp) HP · hit | Brute (rock, fish, lurker) HP · hit | Snowman HP · hit | Legacy kill XP (saved, never shown) | Gold |
 |---|---|---|---|---|---|
 | 1 | 58 · 22 | 70 · 34 | 67 · 30 | 10 | 5 |
 | 3 | 109 · 33 | 121 · 52 | 119 · 44 | 11 | 6 |
@@ -618,7 +618,7 @@ HP = a small curve (12.5 × 1.052^(L−1) × the archetype's multiplier) plus a 
 | 40 | 2,137 · 488 | 2,207 · 794 | 2,192 · 669 | 47 | 18 |
 | 45 (Buried City) | 2,538 · 565 | 2,622 · 911 | 2,603 · 770 | 53 | 19 |
 
-The "XP shown" column is the "+N XP" on a kill; it fills a legacy bar and levels nothing. The real progression is 0.2 skill XP per point of damage dealt (a level-20 kill is about 105 XP into the weapon's skill before the fade). The owner's pacing decisions baked in: every monster +100 flat HP (levels 1–2 carry only 50), "a level 7 now loses to a level 17 slime".
+The legacy kill XP column is a number the server still adds to the old XP field on a kill; nothing reads it, no bar fills from it, and since v2.3.1727 no player on the trained-skill system (every player, from the first join) is shown it. The real progression is 0.2 skill XP per point of damage dealt (a level-20 kill is about 105 XP into the weapon's skill before the fade). The owner's pacing decisions baked in: every monster +100 flat HP (levels 1–2 carry only 50), "a level 7 now loses to a level 17 slime".
 
 ### 6.3 Where they stand and what level they are
 
