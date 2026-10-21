@@ -3036,7 +3036,23 @@ export function updateMonsterCombat(S, deps) {
                 if (Math.abs(naDiff) < SWING_ARC / 2) {
                   npc._hitThisSwing = true;
                   var npcDmg = pDmg;
-                  npc.hp -= npcDmg;
+                  /* ═══ v2.3.3534: A TOWNSPERSON IS NEVER KILLED ═══
+                     The review's check, a week before a reviewer swings a
+                     sword in town: a few swings "killed" Mayor Bro, Diego or
+                     any of them -- a skull, ten seconds gone (no quest, no
+                     shop, no talk), a 5-gold pile and "+5 XP" the worker never
+                     paid (nothing about a townsperson goes on the wire: the
+                     gold, the XP and an "npc" item in the bag sat on your
+                     screen until the worker next sent your gold, XP or bag;
+                     mp-npchit on the build before: 50 -> 70 gold).  The owner:
+                     "it's far more important for me that the player
+                     understands the game" -- and a death that undoes itself,
+                     gold and XP that vanish, teach the wrong thing.  A `noHp`
+                     townsperson -- every one in NPC_DATA -- loses nothing: the
+                     swing still lands (the sound, the red, the shove, which he
+                     walks back from: pathRadius 0), and the fake pile and XP
+                     are gone for anyone.  mp-npchit. */
+                  if (!npc.noHp) npc.hp -= npcDmg;
                   BT_AUDIO.swordHit({ vol: 0.55 }, 'flesh');  /* v2.3.2452 */
                   var nkbA2 = Math.atan2(npc.y - P.y, npc.x - P.x);
                   npc.x += Math.cos(nkbA2) * 4;   /* v2.3.1402: knockback -50% (8 -> 4) */
@@ -3102,17 +3118,8 @@ export function updateMonsterCombat(S, deps) {
                       emoji: '💀',
                       particles: ndParts
                     });
-                    S.groundLoot.push({
-                      x: npc.x,
-                      y: npc.y,
-                      coins: 5,
-                      xp: 0,
-                      skull: 'npc',
-                      skullEmoji: '🦴',
-                      ts: Date.now()
-                    });
-                    S.rpg.xp += 5;
-                    pushHudPopup(S, { target: 'xpBar', text: '+5 XP', color: '#60a5fa' });
+                    /* v2.3.3534: no 5-gold pile and no "+5 XP" -- the worker
+                       pays nothing for an NPC, so both were made up here */
                   }
                 }
               });
