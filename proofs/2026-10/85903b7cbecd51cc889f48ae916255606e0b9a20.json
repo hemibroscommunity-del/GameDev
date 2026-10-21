@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "85903b7cbecd51cc889f48ae916255606e0b9a20",
+  "tree": "5028314a75322178232c69e057e5e390d88b08a8",
+  "committedAt": "2026-10-20T20:57:58-07:00",
+  "subject": "The game as built: a design document written from the code, for an outside evaluation (v2.3.3531) (#1048)",
+  "files": 6176,
+  "bytes": 713224667,
+  "listingSha256": "170e890d838f0a143c8a560e050311ada727aa6d5d951c4a68ab0527fc3c130b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
