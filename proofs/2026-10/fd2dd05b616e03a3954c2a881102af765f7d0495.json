@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fd2dd05b616e03a3954c2a881102af765f7d0495",
+  "tree": "de6e8f219a54adaab51d745751e7c015118e51e9",
+  "committedAt": "2026-10-21T06:05:20-07:00",
+  "subject": "The free points reset: one button gives every placed point back (v2.3.3541) (#1058)",
+  "files": 6199,
+  "bytes": 713488491,
+  "listingSha256": "37e77a3b5a846156e3c26f4fccd8533688301df4a77800491cba5a7b6eb1223b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
