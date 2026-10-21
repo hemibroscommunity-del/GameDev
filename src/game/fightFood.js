@@ -30,8 +30,10 @@
  *      one, a restart, a long disconnect), and held every bite back against
  *      monsters until a reload.  A duel's lull is the worker's to call.
  *
- * No imports, so the worker's suites can run it (fightfood.test.mjs) and
- * mirror-audit can hold PVP_HEAL to the server's. */
+ * No imports but plain data (v2.3.3537: farmCrops.js, which crops are eaten),
+ * so the worker's suites can run it (fightfood.test.mjs) and mirror-audit can
+ * hold PVP_HEAL to the server's. */
+import { farmCropHeal } from '../data/farmCrops.js';
 
 /* Mirror of server/src/data.js PVP_HEAL (mirror-audit). */
 export const PVP_HEAL = Object.freeze({ WINDOW_MS: 10000, GAP_MS: 15000 });
@@ -75,11 +77,13 @@ export function notePvpHit(S, payload, now) {
 }
 
 /* A heal eaten at once: the dishes with slot 'now', a cooked fish, the old
-   minnow bottle.  `dish` is dishes.js's entry for the key, if any. */
+   minnow bottle -- v2.3.3537: and a crop, eaten raw (farmCrops.js CROP_HEAL;
+   the worker's one-bite rule holds it back as it does a fish).  `dish` is
+   dishes.js's entry for the key, if any. */
 export function isInstantHeal(key, dish) {
   if (typeof key !== 'string') return false;
   if (dish) return dish.slot === 'now';
-  return key.indexOf('cooked_fish_') === 0 || key === 'cookedMinnow';
+  return key.indexOf('cooked_fish_') === 0 || key === 'cookedMinnow' || farmCropHeal(key) > 0;
 }
 
 export function noteInstantHeal(S, now) {
