@@ -35,6 +35,7 @@ import { StatScreenPanel } from './panels/StatScreenPanel.jsx';
 import { QuestPanel } from './panels/QuestPanel.jsx';
 import RaceHud from './mobile/RaceHud.jsx'; /* v2.3.3525: Lil Bro's race on the screen */
 import { raceTick, raceHeld, raceDriveNpc } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js judges it) */
+import { restOn, requestRest, wellRestedLeft } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
 import { tourOffer } from '@/game/questRoute.js'; /* v2.3.3525: the tour's next step (where a step's door stands is game/questWays.js's since v2.3.3522) */
 import { TOUR_MEET } from '@/game/tour.js'; /* v2.3.3525 */
 import { QuestBannerLayer } from './panels/QuestBannerLayer.jsx'; /* v2.3.3030: the quest banners in the owner's art */
@@ -9025,6 +9026,13 @@ export var BroTown = function BroTown(_ref0) {
     var S2 = stateRef.current,
       R = S2.rpg;
     if (!R) return;
+    /* ═══ v2.3.3539: THE WORKER PAYS THE REST ═══
+       Against a worker that rests (caps.rest, server/src/rest.js) the bed
+       asks it: full bars and Well Rested come back in its answer and the
+       player_state beside it (game/rest.js).  Below is the rest as it was,
+       on this phone alone, for an older worker -- the E key, the right
+       stick's tap and the Sleep button all come here. */
+    if (restOn(S2)) { requestRest(S2, 'farm'); return; }
     R.hp = R.maxHp;
     R.stamina = R.maxStamina;
     R.mana = R.maxMana;
@@ -12829,6 +12837,8 @@ export var BroTown = function BroTown(_ref0) {
     onMessages: function onMessages() { setBuildingPanel(null); dashboardPanelBus.open('social'); },
     onPlayers: function onPlayers() { setBuildingPanel(null); setShowPlayerList(true); },
     onArena: function onArena() { setBuildingPanel('arena'); },   /* v2.3.3258: the arena's own window (it was the Saloon's) */
+    /* v2.3.3539: the Hotel's rest, asked of the worker (game/rest.js); its answer is said over your bro */
+    onRest: function onRest() { setBuildingPanel(null); requestRest(stateRef.current, 'hotel'); },
     /* v2.3.3258: the Town Hall's rows -- the dashboard's Ranks page (More -> Leaderboard, as its tile opens it), and the Wheel's world map */
     onLeaderboard: function onLeaderboard() { setBuildingPanel(null); dashboardPanelBus.open('more'); dashboardPanelBus.push('leaderboard'); },
     onMap: function onMap() { setBuildingPanel(null); openWorldMap(); }
@@ -12973,24 +12983,10 @@ export var BroTown = function BroTown(_ref0) {
       transition: 'width 0.1s',
       width: Math.min(100, (Date.now() - (((_stateRef$current$_sl2 = stateRef.current._sleeping) === null || _stateRef$current$_sl2 === void 0 ? void 0 : _stateRef$current$_sl2.started) || Date.now())) / HOUSE_SLEEP_MS * 100) + '%'
     }
-  }))), (rpgState === null || rpgState === void 0 ? void 0 : rpgState._wellRestedUntil) && Date.now() < rpgState._wellRestedUntil && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: ((_stateRef$current25 = stateRef.current) === null || _stateRef$current25 === void 0 ? void 0 : _stateRef$current25.currentZone) === 'farm_home' ? 32 : 8,
-      right: 8,
-      zIndex: 20,
-      padding: '3px 8px',
-      borderRadius: 6,
-      background: 'rgba(216,169,77,.15)',
-      border: '1px solid rgba(216,169,77,.25)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      fontWeight: 700,
-      color: '#D8A94D'
-    }
-  }, "\uD83C\uDF1F Well Rested +10% XP \xB7 ", Math.ceil((rpgState._wellRestedUntil - Date.now()) / 60000), "min")), showSocialPanel && /*#__PURE__*/React.createElement(SocialPanel, { blockedList: blockedList, friendsList: friendsList, mutedList: mutedList, setBlockedList: setBlockedList, setFriendsList: setFriendsList, setMutedList: setMutedList, setShowSocialPanel: setShowSocialPanel, stateRef: stateRef }), showClanPanel && rpgState && /*#__PURE__*/React.createElement(ClanPanel, { rpgState: rpgState, clanCreateMode: clanCreateMode, setClanCreateMode: setClanCreateMode, clanData: clanData, setClanData: setClanData, setRpgState: setRpgState, setShowClanPanel: setShowClanPanel, stateRef: stateRef }), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState, openPlot: openWheelPlot }), /* v2.3.3525: Lil Bro's race on the screen */ /*#__PURE__*/React.createElement(RaceHud, { stateRef: stateRef }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), /* v2.3.3066: a clan invite raises its own card (ClanInviteCard) */ clanInvite && !duelRequest && /*#__PURE__*/React.createElement(ClanInviteCard, { stateRef: stateRef, invite: clanInvite, onDone: function onDone() { setClanInvite(null); } }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }), party && /*#__PURE__*/React.createElement(PartyHUD, { party: party, setParty: setParty, stateRef: stateRef }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
+  }))), /* v2.3.3539: the top-right "Well Rested" badge is gone -- in the Wheel
+     it lay over the minimap; Well Rested is a chip with the other timed
+     effects now (the "Rested" chip, below), the worker's own since the rest
+     is the worker's (game/rest.js) */ showSocialPanel && /*#__PURE__*/React.createElement(SocialPanel, { blockedList: blockedList, friendsList: friendsList, mutedList: mutedList, setBlockedList: setBlockedList, setFriendsList: setFriendsList, setMutedList: setMutedList, setShowSocialPanel: setShowSocialPanel, stateRef: stateRef }), showClanPanel && rpgState && /*#__PURE__*/React.createElement(ClanPanel, { rpgState: rpgState, clanCreateMode: clanCreateMode, setClanCreateMode: setClanCreateMode, clanData: clanData, setClanData: setClanData, setRpgState: setRpgState, setShowClanPanel: setShowClanPanel, stateRef: stateRef }), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState, openPlot: openWheelPlot }), /* v2.3.3525: Lil Bro's race on the screen */ /*#__PURE__*/React.createElement(RaceHud, { stateRef: stateRef }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), /* v2.3.3066: a clan invite raises its own card (ClanInviteCard) */ clanInvite && !duelRequest && /*#__PURE__*/React.createElement(ClanInviteCard, { stateRef: stateRef, invite: clanInvite, onDone: function onDone() { setClanInvite(null); } }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }), party && /*#__PURE__*/React.createElement(PartyHUD, { party: party, setParty: setParty, stateRef: stateRef }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
    prototype era -- the step machine ran all along, only the display was
    gated, so veterans' bt_tutorial already reads 7/10 and never see it) */
   /* v2.3.1235: §6 — the banner yields to every blocking decision
@@ -13483,6 +13479,20 @@ export var BroTown = function BroTown(_ref0) {
         color: '#C99A3C',
         time: _btime(_remXp),
         desc: '+' + Math.round((_xm - 1) * 100) + '% XP'
+      });
+    }
+    /* v2.3.3539: Well Rested -- a rest at the Hotel or on your farm's bed, the
+       worker's (server/src/rest.js, mirrored onto S.rpg by wsClient against a
+       worker that rests; against an older one the bed's own timer). +10% of
+       the XP a fight pays, which the worker adds to the pie's. */
+    var _restLeft = wellRestedLeft(S);
+    if (_restLeft > 0) {
+      effects.push({
+        icon: BUFF_ICON.rested,   /* the owner's bed, the right stick's sleep picture made small (data/smallIcons.js) */
+        label: 'Rested',
+        color: '#D8A94D',
+        time: _btime(Math.ceil(_restLeft / 1000)),
+        desc: '+10% combat XP'
       });
     }
     if (S._spdBuff && Date.now() < S._spdBuff) {
@@ -14480,20 +14490,9 @@ export var BroTown = function BroTown(_ref0) {
        desktopControls); one click is the tap on both (v2.3.2617's rule) */
     onClick: function onClick(e) {
       e.preventDefault();
-      var S2 = stateRef.current,
-        R = S2.rpg;
-      if (!R) return;
-      R.hp = R.maxHp;
-      R.stamina = R.maxStamina;
-      R.mana = R.maxMana;
-      R._wellRestedUntil = Date.now() + 1800000; /* 30 min */
-      pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'Zzz... Stats restored!', '#59BF91');
-      pushDmgPopup(S2, S2.player.x, S2.player.y - 25, 'Well Rested +10% XP (30min)', '#D8A94D');
-      cue('rested');   /* v2.3.3434: as the E key's sleep above */
-      setRpgState(_objectSpread({}, R));
-      try {
-        localStorage.setItem('bt_rpg', JSON.stringify(R));
-      } catch (e2) {}
+      /* v2.3.3539: the E key's sleep, one road (it asks the worker when the
+         worker rests, game/rest.js) -- this was a copy of it */
+      _desktopSleep();
     },
     onMouseDown: function onMouseDown(e) {
       return e.preventDefault();

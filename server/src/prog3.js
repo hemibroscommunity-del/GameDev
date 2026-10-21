@@ -1164,7 +1164,11 @@ export const prog3Methods = {
        else none. */
     const _pm = Number(ps._buffs && ps._buffs.xpMul);
     const pie = (!(opts && opts.flat) && this._buffActive && this._buffActive(ps, 'xp') && _pm > 1 && _pm <= 2) ? _pm : 1;
-    sk.xp += (opts && opts.flat) ? amount : amount * PROG3.XP_PER_DMG * pie;
+    /* v2.3.3539: Well Rested (rest.js) -- +10% of the XP a fight pays for half
+       an hour after a rest at the Hotel or on your farm's bed.  It ADDS to the
+       pie's (both: +20%), and never touches the flat awards either. */
+    const rested = (!(opts && opts.flat) && typeof this._restXpBonus === 'function') ? this._restXpBonus(ps) : 0;
+    sk.xp += (opts && opts.flat) ? amount : amount * PROG3.XP_PER_DMG * (pie + rested);
     let gained = 0;
     while (sk.level < PROG3.LEVEL_CAP && sk.xp >= prog3XpRequired(sk.level)) {
       sk.xp -= prog3XpRequired(sk.level);

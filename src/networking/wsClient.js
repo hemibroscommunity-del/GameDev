@@ -30,6 +30,8 @@ import { monsterNoticed } from '@/game/monsterNoises.js'; /* v2.3.3340: a monste
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
+import { onRestResult, restMapsBuffs } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
+import { setWheelHallCaps } from '@/game/wheelTownDoors.js'; /* v2.3.3539: the Hotel opens against a worker that rests */
 import { cue, cueAt, cuePeer, peerOwn } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
 import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
@@ -1641,6 +1643,10 @@ export function setupWebSocket(ctx) {
                    only against a worker that says so: an older one (or its
                    switch thrown) settles the old numbers. */
                 setOneFormulaEnabled(!!(S._serverCaps && S._serverCaps.oneformula));
+                /* v2.3.3539: the Hotel is a hall only against a worker that
+                   pays its rest (caps.rest, server/src/rest.js); against an
+                   older one it stands shut, as it always did */
+                setWheelHallCaps(S._serverCaps);
                 /* v2.3.2662: the milestone ladder is gone on a worker that
                    says so.  Display only: against an older worker the client
                    keeps predicting its level-6 Burst gate and its x1.25
@@ -1960,6 +1966,21 @@ export function setupWebSocket(ctx) {
             { if (!msg.from) { try { onRaceCheckpoint(S, msg.payload); } catch (_re) { /* display only */ } } break; }
           case 'race_end':
             { if (!msg.from) { try { onRaceEnd(S, msg.payload); } catch (_re) { /* display only */ } } break; }
+          /* v2.3.3539: a rest's answer (server/src/rest.js) -- here, in the
+             direct switch, for the race's reason: a worker from before the
+             Hotel opened would relay a forged one to everyone */
+          case 'rest_result':
+            {
+              if (!msg.from) {
+                try {
+                  onRestResult(S, msg.payload, {
+                    say: function (text, color, dy) { if (S.player) pushDmgPopup(S, S.player.x, S.player.y - dy, text, color); },
+                    sound: cue,
+                  });
+                } catch (_rr) { /* display only */ }
+              }
+              break;
+            }
           case 'hardened_wood_result':
             {
               /* v2.3.3139: the Woodworker's receipt for hardened wood
@@ -2564,6 +2585,11 @@ export function setupWebSocket(ctx) {
                    worker pays the XP). */
                 S._xpBuff = typeof _sb.xp === 'number' ? _sb.xp : 0;
                 S._xpBuffMul = typeof _sb.xpMul === 'number' ? _sb.xpMul : 0;
+                /* v2.3.3539: Well Rested, the worker's (server/src/rest.js) --
+                   the same absent-means-off rule, but only against a worker
+                   that rests: against an older one the farm's bed still rests
+                   on this phone alone, and its own timer must stand */
+                if (restMapsBuffs(S)) S.rpg._wellRestedUntil = typeof _sb.wellRested === 'number' ? _sb.wellRested : 0;
               }
               /* Equipment slots -- worker is the canonical owner.  An
                  equip_request swap, marketplace buy, or future server-
@@ -5242,6 +5268,13 @@ export function setupWebSocket(ctx) {
         /* v2.3.3525: Lil Bro's race (game/race.js) -> race.js.  TRAPS #18:
            without this line Race! would send nothing at all. */
         if (msg.type === 'race_start') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3539: a rest at the Hotel or on your farm's bed (game/rest.js)
+           -> rest.js.  TRAPS #18: without this line Rest would send nothing
+           at all. */
+        if (msg.type === 'rest_request') {
           wsOut(msg);
           return;
         }

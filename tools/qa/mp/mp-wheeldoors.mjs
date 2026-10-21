@@ -15,7 +15,10 @@
  *      reach (inside 120 px, out at 175);
  *   4. a shut door (the hotel; until v2.3.3066 the sheriff's, the post
  *      office and the guild hall too) shows its name and "Shut for now" and
- *      is not a button;
+ *      is not a button.  Since v2.3.3539 the Hotel opens against a worker
+ *      that pays its rest (server/src/rest.js), so this scenario runs the
+ *      room with `rest: false` -- the Hotel as an older worker leaves it,
+ *      shut (mp-wheelhalls and mp-hotel walk it open);
  *   5. eleven buildings visited are eleven visits (mayor_1's "visit 3");
  *   6. Diego keeps the General Store: drawn, beside its steps, his window shut
  *      while you stand at the door and open when you walk up to him;
@@ -32,12 +35,21 @@ import { FARM_GATE } from '../../../src/data/farmLayout.js';   /* v2.3.3136: the
 
 const PHONE = { width: 390, height: 844 };
 
-export async function run({ browser, wsPort, webPort, rec }) {
+/* v2.3.3539: the room does not rest for this scenario, set before anyone
+   joins (the phone reads it in its caps) and cleared at the end -- the shut
+   door below is the Hotel as an older worker leaves it */
+export async function run(ctx) {
+  const set = await H.liveFlag(ctx.wsPort, 'rest', false);
+  ctx.rec.ok('the room does not rest for this scenario (rest: false, guard): the Hotel stays shut', !!(set && set.ok), set);
+  try { await runDoors(ctx); } finally { await H.liveFlag(ctx.wsPort, 'rest', null).catch(() => {}); }
+}
+
+async function runDoors({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `wheeldoors-${name}.png`) }).catch(() => {});
   const { TOWN_BUILDINGS } = await import(H.REPO + '/src/data/buildings.js');
-  const { WHEEL_BUILDING_DOORS, WHEEL_SHUT_DOORS, WHEEL_DOOR_REACH, WHEEL_TOWNSFOLK } = await import(H.REPO + '/src/data/wheelBuildingDoors.js');
+  const { WHEEL_BUILDING_DOORS, WHEEL_SHUT_DOORS, WHEEL_DOOR_REACH, WHEEL_TOWNSFOLK, WHEEL_HALL_CAPS } = await import(H.REPO + '/src/data/wheelBuildingDoors.js');
   const actionOf = Object.fromEntries(TOWN_BUILDINGS.map((b, i) => [i, b.action || b.id]));
 
   const P = await H.newPlayer(browser, { name: 'Doorman', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true });
@@ -152,7 +164,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`the client knows the town's doors from the worker's answer: ${open.length} that open a building, ${halls.length} halls of the Wheel's own, ${shut.length} shut, and ${plain.map((d) => d.name).join(', ')}`,
     z0 === 'wheel' && doors.length === 16 && open.length === 11 && halls.length === 4 && shut.length === 1 && plain.length === 0 && halls.some((d) => d.id === 'townhall')
       && Object.keys(WHEEL_BUILDING_DOORS).every((k) => byId[k] && byId[k].index >= 0 && actionOf[byId[k].index] === TOWN_BUILDINGS.find((b) => b.id === WHEEL_BUILDING_DOORS[k]).action)
-      && WHEEL_SHUT_DOORS.every((k) => byId[k] && byId[k].closed === true && byId[k].index < 0),
+      && WHEEL_SHUT_DOORS.every((k) => byId[k] && byId[k].closed === true && byId[k].index < 0)
+      /* v2.3.3539: the shut one is the hall waiting for its worker (rest: false) */
+      && Object.keys(WHEEL_HALL_CAPS).every((k) => byId[k] && byId[k].closed === true && !byId[k].hall) && shut[0].id === 'hotel',
     { z0, doors: doors.map((d) => [d.id, d.index]) });
 
   /* ── 2. each of the eleven ── */
