@@ -2908,8 +2908,10 @@ console.log('swimming (v2.3.3003)');
      the manifest's, so every player has them */
   const { readFileSync } = await import('node:fs');
   const gd = readFileSync(new URL('../../src/data/gameDisplay.js', import.meta.url), 'utf8');
-  const keys = ['fish-on-hook', 'lure-drop', 'catch-splash'];
-  ok('swimming\'s sounds are recordings already in the game (the fishing ones in SFX_MANIFEST)', keys.every((k) => new RegExp(`'${k}':\\s*'/sfx/`).test(gd)) && /BT_AUDIO\.SWIM_SAMPLES = \['fish-on-hook', 'lure-drop', 'catch-splash'\]/.test(gd));
+  /* v2.3.3546: the splash is the owner's own recording since v2.3.3462
+     ('swim-splash', docs/specs/owner-recordings.md), in the manifest too */
+  const keys = ['fish-on-hook', 'lure-drop', 'swim-splash'];
+  ok('swimming\'s sounds are recordings in the game (the fishing ones and the owner\'s swim splash, in SFX_MANIFEST)', keys.every((k) => new RegExp(`'${k}':\\s*'/sfx/`).test(gd)) && /BT_AUDIO\.SWIM_SAMPLES = \['fish-on-hook', 'lure-drop', 'swim-splash'\]/.test(gd));
 }
 
 /* ── v2.3.3017: jumping's rules (src/game/jump.js) ──
@@ -3128,7 +3130,7 @@ console.log('the tap that jumps (v2.3.3105)');
     const dc = fs.readFileSync(new URL('../../src/game/desktopControls.js', import.meta.url), 'utf8');
     ok('...from the E key\'s own chain, the character first for the stick (a door has its own Enter button), and the tap runs that chain',
       /if \(opts && opts\.npcFirst && S\._nearNpc\) return 'talk';/.test(dc) && /if \(opts && opts\.npcFirst && S\._nearNpc && runTalk\(\)\) return true;/.test(dc)
-        && /if \(runInteract\(\)\) return;/.test(dc)
+        && /if \(runInteract\(\)\) \{/.test(dc)   /* v2.3.3546: since v2.3.3407 it also holds a harvest's press on */
         && /interactKind\(S, \{ npcFirst: true \}\)/.test(fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8'))
         && /_tjS\._interactNow\(\{ npcFirst: true \}\)/.test(fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8')));
   }
@@ -3854,7 +3856,7 @@ console.log("the buildings' insides (v2.3.3258)");
       !!th && th.title === 'Town Hall' && WHEEL_HALL_DOORS.townhall === 'townhall' && fs.existsSync(new URL('../../public' + th.icon, import.meta.url))
         && /row\('leaderboard', '\/icons\/ui\/panel-leaderboard\.webp'/.test(hallSrc) && /row\('map', '\/icons\/ui\/nav-map\.webp'/.test(hallSrc)
         && fs.existsSync(new URL('../../public/icons/ui/panel-leaderboard.webp', import.meta.url)) && fs.existsSync(new URL('../../public/icons/ui/nav-map.webp', import.meta.url))
-        && /leaderboard:\s+\{ title: 'Leaderboard', Component: LeaderboardPanel \}/.test(read('../../src/ui/mobile/BottomDashboard.jsx'))
+        && /leaderboard:\s+\{ title: 'Ranks',\s+Component: LeaderboardPanel \}/.test(read('../../src/ui/mobile/BottomDashboard.jsx'))   /* v2.3.3546: headed 'Ranks' since v2.3.3481, the More tile's word; the Town Hall's row keeps "Leaderboard" (BottomDashboard's note) */
         && /export function openWorldMap\(\)/.test(read('../../src/ui/WorldMapOverlay.jsx'))
         && /onLeaderboard: function onLeaderboard\(\) \{ setBuildingPanel\(null\); dashboardPanelBus\.open\('more'\); dashboardPanelBus\.push\('leaderboard'\); \}/.test(bt)
         && /onMap: function onMap\(\) \{ setBuildingPanel\(null\); openWorldMap\(\); \}/.test(bt)

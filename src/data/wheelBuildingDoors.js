@@ -248,7 +248,11 @@ export const WHEEL_BUILDING_ICONS = {
   guildhall: '/icons/ui/panel-guild.webp',
   bank: '/icons/ui/bldg-bank.webp?v=2.3.1224',
   store: '/icons/ui/bldg-exchange.webp?v=2.3.1224',
-  auction: '/icons/ui/bldg-auctionhouse.webp?v=2.3.2624',
+  /* v2.3.3546: the owner's gavel, as its Enter button wears (buildings.js
+     auctionhouse, v2.3.3526: "Sheet's is clearer" -- the market stall
+     "could have been any shop"); the maps kept the stall, two pictures for
+     one building and two copies held.  test-world-core asks the two match. */
+  auction: '/icons/ui/bldg-auction-gavel.webp?v=2.3.3526',
 };
 /** The picture for a plot id, or null (a plot the table does not know). */
 export function wheelBuildingIcon(plot) {
