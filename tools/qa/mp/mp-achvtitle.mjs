@@ -6,7 +6,8 @@
  * worker counts rarest, both stamped on the card's blob by the WORKER
  * (server/src/achievements.js _achvStamp).
  *
- * Two phones in town (H.joinPair): Titled and Viewer.
+ * Two phones in the world's BroTown (H.joinPair, `world: 'wheel'`: the old map
+ * is retired): Titled and Viewer.
  *   1. guard: Viewer's card on Titled shows no title and "None yet" for the
  *      rarest -- never the old placeholders;
  *   2. Titled earns Storyteller (the owner's lever, /dev/achv) and picks it as
@@ -25,14 +26,15 @@ import * as H from './harness.mjs';
 const ID = 'story_done', NAME = 'Storyteller';
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const { A: V, B: T } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Viewer', nameB: 'Titled' });
+  const { A: V, B: T } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Viewer', nameB: 'Titled', world: 'wheel' });
   const errs = [];
   for (const P of [V, T]) P.page.on('pageerror', (e) => errs.push(String(e).slice(0, 200)));
   const stopV = H.keepAlive(V, 15000), stopT = H.keepAlive(T, 15000);
   try {
     const tId = await H.readState(T, (S) => S.myId);
     const caps = await H.readState(T, (S) => !!(S._serverCaps && S._serverCaps.achievements));
-    rec.ok('two phones in town, the worker grants achievements (guard)', !!tId && caps, { tId, caps });
+    const zone = await H.readState(T, (S) => S.currentZone);
+    rec.ok(`two phones in the world's BroTown (zone "${zone}"), the worker grants achievements (guard)`, !!tId && caps && zone === 'wheel', { tId, caps, zone });
 
     /* Viewer's copy of Titled's card blob */
     const peerRd = () => V.page.evaluate((id) => {

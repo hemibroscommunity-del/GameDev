@@ -689,10 +689,12 @@ export async function waitFor(P, fn, pred, { timeout = 20000, label = 'condition
  *  distinct identities and a connected socket, so the difference is in the join
  *  handshake, not in identity — but the working order is cheap and this harness
  *  does not need to characterise the losing one to be useful. */
-export async function joinPair(browser, { wsPort, webPort, nameA = 'Alpha', nameB = 'Bravo', init = null, chestOffer = false }) {
+export async function joinPair(browser, { wsPort, webPort, nameA = 'Alpha', nameB = 'Bravo', init = null, chestOffer = false, world = null }) {
   /* v2.3.2775: `init` rides through to both players (newPlayer's init script),
-     for a scenario that has to set a flag before the game's first line runs. */
-  const A = await newPlayer(browser, { name: nameA, wsPort, webPort, init, chestOffer });
+     for a scenario that has to set a flag before the game's first line runs.
+     v2.3.3549: and `world` -- 'wheel' plays the world players see; the old
+     map (no `world`) is retired. */
+  const A = await newPlayer(browser, { name: nameA, wsPort, webPort, init, chestOffer, world });
   await enterWorld(A);
   /* NOT ?guest=1.  The guest escape hatch exists because two TABS share one
      localStorage and therefore one passphrase; two browser CONTEXTS do not, so
@@ -700,7 +702,7 @@ export async function joinPair(browser, { wsPort, webPort, nameA = 'Alpha', name
      a guest id is re-minted at random on every page load (BroTown.jsx:561),
      which would quietly make any test of reconnecting, friendship or offline
      mail meaningless. */
-  const B = await newPlayer(browser, { name: nameB, wsPort, webPort, init, chestOffer });
+  const B = await newPlayer(browser, { name: nameB, wsPort, webPort, init, chestOffer, world });
   await enterWorld(B);
   await waitMutualSight(A, B);
   /* Focus each canvas so keyboard input reaches the game loop. */
