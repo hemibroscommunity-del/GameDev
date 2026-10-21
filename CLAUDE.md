@@ -1824,6 +1824,17 @@ remnant to migrate server-side, not a mode to preserve.
         man's land read its level; the Combat rank is the level; chain
         milestones 2..100; kill switch `onelevel: false` (the sum again);
         `one-level` suite: docs/specs/one-level.md;
+      - since v2.3.3544 WHAT YOU WEAR ASKS YOUR LEVEL -- the owner: "I'm
+        thinking of gating armor and weapons on combat level instead of
+        primary combat skill level and defense level": armour, shields and
+        amulets ask the CHARACTER level (gear.js `_gearOnLevel` ->
+        `_prog3GearOk(ps, 'level', req)`; the page's `wearHave` on
+        `caps.gearlevel`), at the numbers they asked before (a Black Steel
+        Torso "Level 5 to wear", where it was 5 Defense points); WEAPONS keep
+        their own skill (a weapon's XP is its damage: a top blade at Melee 1
+        would train by the tier); only with one level; kill switch
+        `gearlevel: false` (or `onelevel: false`); `gear-level` suite, drops
+        §8b/§8c, mirror-audit, `mp-gearlevel`: docs/specs/gear-level.md;
       - since v2.3.3263 ONE VERSION -- the owner, after #916 merged: "the numbers for damage
         between PVP and PVE can be exactly the same for each combat skill type
         ... A fish heals the same fixed amount always ... Everything is 1

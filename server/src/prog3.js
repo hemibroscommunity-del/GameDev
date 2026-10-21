@@ -1201,10 +1201,14 @@ export const prog3Methods = {
   // already-equipped gear is grandfathered (the respec zeroed
   // everyone's defense points; stripping worn armor for it would
   // read as theft).  Non-prog3 players pass (legacy gates apply).
+  // v2.3.3544: 'level' → the character level (_prog3CharLevel: under one
+  // level, the best weapon's) -- what armour, shields and amulets ask since
+  // gear-level (gear.js _gearOnLevel).
   _prog3GearOk(ps, kind, reqValue) {
     if (!(reqValue > 0)) return true;
     const p3 = ps && ps.prog3;
     if (!p3) return true;
+    if (kind === 'level') return this._prog3CharLevel(ps) >= reqValue;   /* v2.3.3544 */
     if (kind === 'defense') return this._prog3Pts(ps, 'def') >= reqValue;
     const cat = kind === 'magic' ? 'staff' : kind;
     const lvl = (p3.sk && p3.sk[cat] && p3.sk[cat].level) || 1;

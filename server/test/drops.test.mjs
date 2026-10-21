@@ -507,10 +507,14 @@ check('the defense gate still refuses a far higher tier (it was not just switche
  * Each boundary is asserted on BOTH sides of it -- a gate that is off by one
  * point passes a test that only checks one side. */
 {
+  /* v2.3.3544: Defense points are the `gearlevel: false` switch's rule now --
+     8c below is the level's, the default */
+  const _flagsWas = room._liveFlags;
+  room._liveFlags = { gearlevel: false };
   const withDef = (d) => ({ ...ironPs, prog3: { ...ironPs.prog3, alloc: { def: d } } });
   const piece = (tm, extra) => ({ name: 'Tier ' + tm, tierMult: tm, slot: 'armor', mat: 'steel', ...(extra || {}) });
   const need = (item) => { for (let d = 0; d <= 60; d++) if (room._prog3EquipOk(withDef(d), 'armor', item)) return d; return '>60'; };
-  check('the armour ladder asks copper 0, iron 0, then 5 / 10 / 15 / 20 / 25 / 30 Defense',
+  check('(gearlevel: false) the armour ladder asks copper 0, iron 0, then 5 / 10 / 15 / 20 / 25 / 30 Defense',
     JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8].map((tm) => need(piece(tm))))
       === JSON.stringify([0, 0, 5, 10, 15, 20, 25, 30]),
     [1, 2, 3, 4, 5, 6, 7, 8].map((tm) => need(piece(tm))));
@@ -532,6 +536,49 @@ check('the defense gate still refuses a far higher tier (it was not just switche
     need({ type: 'greatsword', tierMult: 4 }) === '>60');
   check('...and a legacy (non-prog3) character still passes, as before',
     room._prog3EquipOk({ level: 1 }, 'armor', piece(5)) === true);
+  room._liveFlags = _flagsWas;
+}
+
+/* ═══ 8c. ...AND BY DEFAULT IT ASKS YOUR LEVEL (v2.3.3544) ═══
+ * The owner: "I'm thinking of gating armor and weapons on combat level
+ * instead of primary combat skill level and defense level."  Armour, shields
+ * and amulets ask the CHARACTER level (one level: the best weapon's) at the
+ * very numbers above, with no Defense point needed; weapons keep their own
+ * skill (gear.js _gearOnLevel).  Each boundary on both sides again. */
+{
+  const _flagsWas = room._liveFlags;
+  room._liveFlags = {};
+  /* a character whose best weapon is at L (Melee, Bow or Magic), no points placed */
+  const atLevel = (L, cat = 'sword') => ({ ...ironPs, level: L, prog3: { ...ironPs.prog3,
+    sk: { ...ironPs.prog3.sk, [cat]: { level: L, xp: 0 } }, alloc: { def: 0 } } });
+  const piece = (tm, extra) => ({ name: 'Tier ' + tm, tierMult: tm, slot: 'armor', mat: 'steel', ...(extra || {}) });
+  const need = (item, cat) => { for (let L = 1; L <= 60; L++) if (room._prog3EquipOk(atLevel(L, cat), 'armor', item)) return L; return '>60'; };
+  check('the armour ladder asks your LEVEL: copper and iron at 1, then 5 / 10 / 15 / 20 / 25 / 30, with no Defense point',
+    JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8].map((tm) => need(piece(tm)))) === JSON.stringify([1, 1, 5, 10, 15, 20, 25, 30]),
+    [1, 2, 3, 4, 5, 6, 7, 8].map((tm) => need(piece(tm))));
+  check('...a Black Steel Torso (tier 3) refused at level 4 and worn at level 5',
+    room._prog3EquipOk(atLevel(4), 'armor', piece(3)) === false && room._prog3EquipOk(atLevel(5), 'armor', piece(3)) === true);
+  check('...the level is the BEST weapon\'s: a level-5 archer or mage wears it as a swordsman does',
+    need(piece(3), 'bow') === 5 && need(piece(3), 'staff') === 5);
+  check('...Defense points no longer count: 60 of them at level 1 wear nothing past iron',
+    room._prog3EquipOk({ ...atLevel(1), prog3: { ...atLevel(1).prog3, alloc: { def: 60 } } }, 'armor', piece(3)) === false);
+  check('...the legs ride the same gate, and the grade still does not move it',
+    room._prog3EquipOk(atLevel(9), 'armor', { ...piece(4), slot: 'legsArmor' }) === false
+      && room._prog3EquipOk(atLevel(10), 'armor', { ...piece(4), slot: 'legsArmor' }) === true
+      && need(piece(3, { quality: 'godly' })) === 5);
+  check('...a shield asks the level too (a black steel one: 10)',
+    room._prog3EquipOk(atLevel(9), 'shield', { gearBase: 'steel', tierMult: 1.5 }) === false
+      && room._prog3EquipOk(atLevel(10), 'shield', { gearBase: 'steel', tierMult: 1.5 }) === true);
+  check('...and an amulet the level, not the Magic level (a level-30 swordsman wears what Magic 30 wore)',
+    room._prog3EquipOk(atLevel(29), 'amulet', { tierMult: 2 }) === false && room._prog3EquipOk(atLevel(30), 'amulet', { tierMult: 2 }) === true);
+  check('...WEAPONS keep their own skill: a black steel sword asks Melee 10 of a level-10 archer, and refuses',
+    room._prog3EquipOk(atLevel(10, 'bow'), 'weapon', { gearBase: 'steel', type: 'greatsword', tierMult: 1.5 }) === false
+      && room._prog3EquipOk(atLevel(10, 'sword'), 'weapon', { gearBase: 'steel', type: 'greatsword', tierMult: 1.5 }) === true);
+  /* only with one level: a sum of three reads 3 for a new character */
+  room._liveFlags = { onelevel: false };
+  check('`onelevel: false` puts Defense points back (a sum-of-three level would mean little)',
+    room._gearOnLevel() === false && room._prog3EquipOk(atLevel(30), 'armor', piece(3)) === false);
+  room._liveFlags = _flagsWas;
 }
 
 /* ═══ v2.3.2613: TWO KILLS AT ONE SPAWN SLOT ARE TWO PILES ═══

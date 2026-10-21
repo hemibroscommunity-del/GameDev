@@ -254,7 +254,10 @@ function _armorBlocked(S, R, piece) {
   try {
     const req = getEquipReqLabel(piece, 'armor', R);
     const P = S.player;
-    if (P) pushDmgPopup(S, P.x, P.y - 40, 'NEEDS ' + ((req && req.req) || '') + ' DEFENSE', '#D8A94D');
+    /* v2.3.3544: "NEEDS LEVEL 5" where armour asks your level (gear.js
+       _gearOnLevel), "NEEDS 5 DEFENSE" against an older worker */
+    const n = (req && req.req) || '';
+    if (P) pushDmgPopup(S, P.x, P.y - 40, req && req.stat === 'level' ? 'NEEDS LEVEL ' + n : 'NEEDS ' + n + ' DEFENSE', '#D8A94D');
   } catch (e) { /* the refusal matters, the popup does not */ }
   return true;
 }
