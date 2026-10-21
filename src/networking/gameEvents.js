@@ -183,6 +183,7 @@ export function pvpDealtColor(payload) {
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { notePvpHit, noteDealt } from '@/game/fightFood.js'; /* v2.3.3133: a pvp_hit starts a fight with a player (the one-bite rule); v2.3.3260: so does a hit you land on a monster */
 import { notePvpBlow } from '@/game/sparTargets.js'; /* v2.3.3268: a blow between you and a player keeps the fight with them on (the shield; a chosen foe) */
+import { nmlJoinFight } from '@/game/nmlAsk.js'; /* v2.3.3530: one of a group whose blow lands on you joins the fight you chose, no window */
 import { allyMomentText } from '@/game/alliance.js'; /* v2.3.3313: the alliance's moments on party_state */
 import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3340: the mummy's bones rattle as it sheds */
 
@@ -991,7 +992,19 @@ export function processGameEvent(type, payload, S, deps) {
                 setRpgState(_objectSpread({}, _dcR));
               }
               pushDmgPopup(S, S.player.x, S.player.y - 60, 'DUNGEON CLEARED!', '#f5c542');
-              pushDmgPopup(S, S.player.x, S.player.y - 45, '+' + (payload.gold || 0) + 'G +' + (payload.xp || 0) + 'XP', '#f5c542');
+              /* ═══ v2.3.3543: SAY ONLY WHAT THE CLEAR PAYS ═══
+                 The worker pays a clear's XP through _addCombatXp
+                 (dungeon.js _dungeonComplete), and under prog3 that is the
+                 old single-level counter: it moves no skill, no bar and no
+                 level.  So "+40G +265XP" promised 265 XP that went nowhere --
+                 a player who looked for it on the Skills page found nothing.
+                 Under prog3 the line says the gold alone, as the kill's
+                 popup has since v2.3.1727; a pre-prog3 character, for whom
+                 the number is real, still sees it.  (Paying the clear's XP
+                 into a real skill -- the weapon in your hand -- is a balance
+                 call for the owner: docs/specs/dungeon-clear-words.md.) */
+              var _dcXp = payload.xp > 0 && !prog3Live(_dcR) ? ' +' + payload.xp + 'XP' : '';
+              pushDmgPopup(S, S.player.x, S.player.y - 45, '+' + (payload.gold || 0) + 'G' + _dcXp, '#f5c542');
               cue('dungeonClear');   /* v2.3.3343: the old quest fanfare -- levelUp() is beep()s only, silent */
               S.screenShake = 10;
               setTimeout(function () {
@@ -3885,6 +3898,14 @@ export function processGameEvent(type, payload, S, deps) {
                  notePvpBlow) -- the shield's button stays up for every
                  weapon, and a player you chose to attack stays chosen */
               notePvpBlow(S, payload);
+              /* v2.3.3530: a blow on you while you fight a player you chose:
+                 its striker joins that fight with no window of their own --
+                 the owner's "If the 2nd, 3rd, etc people already approved
+                 "attack" at you you can immediately hit back at each of them"
+                 (nmlAsk.js nmlJoinFight; nothing without a fight you chose) */
+              if (payload.target === S.myId && payload.attacker != null) {
+                try { nmlJoinFight(S, payload.attacker); } catch (_nj) { /* the next blow tries again */ }
+              }
               if (notePvpHit(S, payload) && typeof window !== 'undefined') {
                 /* QA probe (mp-fightfood): the last hits to or from me, with
                    the worker's resolved dmgBase -- the brew it put on. */
@@ -4945,8 +4966,18 @@ export function processGameEvent(type, payload, S, deps) {
                 var _hBars = payload.amount > 0 && typeof payload.material === 'string'
                   ? ', -' + hardenMaterialWord(payload.material, payload.amount)
                   : '';
-                pushDmgPopup(S, S.player.x, S.player.y - 45, 'Hardening failed! (-' + (payload.cost || 0) + 'G' + _hBars + ') → H' + payload.hardness, '#ff5e6c');
-                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Temper ' + (payload.temper || 0) + ' (pity softens future resets)', 'rgba(255,255,255,.5)');
+                /* v2.3.3529: against caps.hardenkeep a failure KEEPS the
+                   level (the owner: "the worst that can happen is you just
+                   stay at hardening 2 and lose resources"): the words say what
+                   was spent and that the level held, and no longer speak of
+                   temper or resets; an older worker still drops it back */
+                if (S._serverCaps && S._serverCaps.hardenkeep) {
+                  pushDmgPopup(S, S.player.x, S.player.y - 45, 'Hardening failed! (-' + (payload.cost || 0) + 'G' + _hBars + ')', '#ff5e6c');
+                  pushDmgPopup(S, S.player.x, S.player.y - 30, 'You keep H' + payload.hardness, 'rgba(255,255,255,.5)');
+                } else {
+                  pushDmgPopup(S, S.player.x, S.player.y - 45, 'Hardening failed! (-' + (payload.cost || 0) + 'G' + _hBars + ') → H' + payload.hardness, '#ff5e6c');
+                  pushDmgPopup(S, S.player.x, S.player.y - 30, 'Temper ' + (payload.temper || 0) + ' (pity softens future resets)', 'rgba(255,255,255,.5)');
+                }
                 cue('hardenFail');   /* v2.3.3343: a dull strike and the loss sting (a beep(), silent) */
               }
               if (S.rpg) setRpgState(_objectSpread({}, S.rpg));

@@ -43,7 +43,7 @@
  */
 import { GameRoom } from '../../server/src/index.js';
 import { WHEEL_ZONE } from '../../server/src/wheelzone.js';
-import { WHEEL_CENTRE } from '../../server/src/wheelspawns.js';
+import { WHEEL_SIZES } from '../../server/src/wheeltables.js';   /* v2.3.3532: the Wheel sizes a phone says it draws */
 import { nmlLevelAt } from '../../server/src/nomansland.js';
 import { PVP_LUNGE } from '../../server/src/pvplunge.js';   /* v2.3.3262 */
 import { HIT_KNOCKBACK } from '../../server/src/combat.js';   /* v2.3.3264: the what-if shove */
@@ -120,7 +120,12 @@ const IDS = ['bp_a', 'bp_b'];
 for (const id of IDS) {
   const ws = fakeWs();
   room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 0, lastPing: 0, lastRecv: Date.now() });
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, phrase: 'p-' + id, data: { x: 0, y: 0, z: 'town' } }));
+  /* v2.3.3532: `ws`, the Wheel sizes this phone draws, as every phone's join
+     has said since v2.3.3315.  Without it the worker holds the player out of
+     step with its Wheel (wheeltables.js _wheelInStep): No man's land holds no
+     rule for it, _nmlAllowed refuses every hit, and every fight this
+     simulator ran from v2.3.3315 on ended unfought (TRAPS §196). */
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, phrase: 'p-' + id, ws: [...WHEEL_SIZES], data: { x: 0, y: 0, z: 'town' } }));
 }
 clearInterval(room.tickInterval); room.tickInterval = null;
 /* persistence and the wire are not part of a hit's damage: kept quiet so a
@@ -128,8 +133,20 @@ clearInterval(room.tickInterval); room.tickInterval = null;
 room._saveRpg = () => {}; room._saveRpgVitals = () => {}; room._saveRpgPools = () => {};
 room._queuePlayerStateFlush = () => {};
 room.stateHistory = {};            /* no rewind: the target is where it stands (rtt 0) */
-const R0 = 9000;                   /* No man's land 5 -- the fight never drifts out of it */
-const cx = WHEEL_CENTRE[0], cy = WHEEL_CENTRE[1];
+/* v2.3.3532: the room's own Wheel, and the middle of its No man's land 5.
+   R0 was 9,000 px, the short Wheel's ring 5; on the long Wheel (v2.3.3315)
+   that is ring 1.  Found by asking the worker's own ring function, so it
+   follows whichever Wheel the room plays. */
+const WHEEL_LONG = room._wheelLongNow();
+const [cx, cy] = room._wheelT().WHEEL_CENTRE;
+const R0 = (() => {
+  let lo = 0, hi = 0;
+  for (let r = 0; r <= 200000; r += 50) {
+    if (nmlLevelAt(WHEEL_ZONE, cx + r, cy, WHEEL_LONG) === 5) { if (!lo) lo = r; hi = r; }
+  }
+  if (!lo) throw new Error('pvp-sim: no No man\'s land 5 on this Wheel');
+  return Math.round((lo + hi) / 2);   /* the fight never drifts out of it */
+})();
 
 const WEAPON = { melee: 'greatsword', bow: 'bow', staff: 'staff' };
 const SLOT = { melee: 'weapon', bow: 'rangedWeapon', staff: 'staffWeapon' };
@@ -898,7 +915,7 @@ export function fight(specA, skillA, specB, skillB, opts = {}) {
     }
     if (opts.onFrame) opts.onFrame(A, B, T - F.start);
     if (A.hp <= 0 || B.hp <= 0) break;
-    if (opts.checkNml && (nmlLevelAt(WHEEL_ZONE, A.x, A.y) < 1 || nmlLevelAt(WHEEL_ZONE, B.x, B.y) < 1)) throw new Error('left NML');
+    if (opts.checkNml && (nmlLevelAt(WHEEL_ZONE, A.x, A.y, WHEEL_LONG) < 1 || nmlLevelAt(WHEEL_ZONE, B.x, B.y, WHEEL_LONG) < 1)) throw new Error('left NML');   /* v2.3.3532: the room's Wheel */
   }
   for (const f of both) f.stats.specialsLanded = f.casts.filter((c) => c.landed).length;
   const t = T - F.start;

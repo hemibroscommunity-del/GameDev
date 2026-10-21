@@ -37,12 +37,22 @@
  * (either of you out of No man's land, levels apart, a party, gone), or when
  * nmlAskMs() (10 s) has passed untouched -- held while the explainer is open,
  * and 4 s more after it closes.
+ *
+ * ═══ v2.3.3528: "HIT BACK <NAME>?" ═══
+ * The one who attacked you is asked about too now (game/nmlAsk.js: the owner
+ * wants the window's Attack before any blow, from either player).  Hitting
+ * them back gives you no red skull (server nomansland.js _nmlOnHit), so for
+ * them the window says "Hit back <name>?" and wears the WHITE skull you carry
+ * (the badge's own white, WHITE_SKULL) -- the red one would warn of a skull
+ * you will not get.  The buttons are the same three, Attack still Attack.
+ * Read on its own clock as everything here (nmlHitBack): a window that came
+ * up about a passer-by who then attacks you turns into "Hit back".
  */
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Z_ABOVE_DASH_PROMPT } from '@/ui/zLayers.js';
 import { NML_RED, nmlHere, nmlCanAttack } from '@/game/noMansLand.js';
-import { nmlAskCurrent, nmlAskSubscribe, nmlAskAnswer, nmlAskClose, nmlAskMs } from '@/game/nmlAsk.js';
+import { nmlAskCurrent, nmlAskSubscribe, nmlAskAnswer, nmlAskClose, nmlAskMs, nmlHitBack } from '@/game/nmlAsk.js';
 import { NmlSkull, openNmlInfo } from './NmlBadge.jsx';
 import { infoPopupBus } from './infoPopupBus.js';
 
@@ -68,6 +78,8 @@ const ATTACK = { background: '#7C3431', color: '#FFF1EE', border: '1px solid #C7
 const SECONDARY = { background: 'linear-gradient(180deg,#34444B,#2B3940)', color: '#F7F2E7', border: '1px solid rgba(238,242,235,.14)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' };
 const QUIET = { background: 'transparent', color: '#B9C1BF', border: '1px solid rgba(238,242,235,.10)' };
 export const NML_ASK_W = 264;
+/* v2.3.3528: the white skull, the badge's own (NmlBadge.jsx) */
+const WHITE_SKULL = '#F2F2F2';
 /* its height, for the stacking test (the window measures 92) */
 const CARD_H = 96;
 /* the other small cards that sit at the top of the screen: the window goes
@@ -126,6 +138,10 @@ const samePlace = (a, b) => !!a && !!b && a.top === b.top && a.left === b.left &
 export default function NmlAskCard({ stateRef }) {
   const [ask, setAsk] = useState(() => nmlAskCurrent());
   const [place, setPlace] = useState(null);
+  /* v2.3.3528: hitting back (see the header) -- read live by the clock below,
+     for THIS window only (a new window starts from its own `back`, so one of
+     the other kind never shows for a frame) */
+  const [liveBack, setLiveBack] = useState(null);   /* { ask, v } */
   useEffect(() => nmlAskSubscribe(() => setAsk(nmlAskCurrent())), []);
   useEffect(() => {
     if (!ask) return undefined;
@@ -140,6 +156,10 @@ export default function NmlAskCard({ stateRef }) {
       try { ok = nmlCanAttack(S, ask.id); } catch (e) { ok = false; }
       /* v2.3.3316: with the game's state, so an unanswered window may ask again later */
       if (!ok || now >= until) { nmlAskClose(S); return; }
+      /* v2.3.3528: they attacked you while it was up, or your white skull ran out */
+      let b = false;
+      try { b = nmlHitBack(S, ask.id, now); } catch (e) { b = false; }
+      setLiveBack((cur) => (cur && cur.ask === ask && cur.v === b ? cur : { ask, v: b }));
       /* the minimap or the screen moved (a turn of the phone, the band) */
       const nx = cardPlace();
       if (!samePlace(nx, at)) { at = nx; setPlace(nx); }
@@ -165,8 +185,12 @@ export default function NmlAskCard({ stateRef }) {
     try { lvl = nmlHere(St); } catch (er) { lvl = 0; }
     openNmlInfo(St, lvl || 1);
   };
+  /* v2.3.3528: hitting back says so, with the white skull you carry */
+  const back = liveBack && liveBack.ask === ask ? liveBack.v : !!ask.back;
+  const title = back ? `Hit back ${ask.name}?` : `Attack ${ask.name}?`;
   return createPortal(
-    <div data-nml-ask={ask.why} data-nml-ask-id={ask.id} data-nml-ask-at={pl.at} data-nml-ask-stacked={pl.stacked ? '1' : undefined} role="dialog" aria-label={`Attack ${ask.name}?`}
+    <div data-nml-ask={ask.why} data-nml-ask-id={ask.id} data-nml-ask-at={pl.at} data-nml-ask-stacked={pl.stacked ? '1' : undefined}
+      data-nml-ask-back={back ? '1' : undefined} role="dialog" aria-label={title}
       onPointerDown={stop} onTouchStart={stop} onMouseDown={stop} onClick={stop}
       style={{
         position: 'fixed', left: pl.left, top: pl.top, zIndex: Z_ABOVE_DASH_PROMPT,
@@ -176,17 +200,19 @@ export default function NmlAskCard({ stateRef }) {
       }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, minHeight: 36 }}>
         <button type="button" data-nml-ask-info="" onClick={info}
-          aria-label="Attacking a player gives you a red skull. Tap for what No man's land means."
+          aria-label={back
+            ? "Hitting back the player who attacked you gives you no red skull. Tap for what No man's land means."
+            : "Attacking a player gives you a red skull. Tap for what No man's land means."}
           style={{
             position: 'relative', flex: 'none', width: 40, height: 36, padding: 0, margin: 0,
             background: 'transparent', border: 0, cursor: 'pointer', touchAction: 'manipulation',
             WebkitTapHighlightColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-          <NmlSkull size={22} color={NML_RED} />
+          <NmlSkull size={22} color={back ? WHITE_SKULL : NML_RED} />
           <span style={{ position: 'absolute', right: 3, top: 2 }}><InfoDot size={13} /></span>
         </button>
         <div data-nml-ask-name="" style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          Attack {ask.name}?
+          {title}
         </div>
         <div style={{ flex: 'none', marginLeft: 6, fontSize: 10, fontWeight: 600, color: '#B9C1BF', fontVariantNumeric: 'tabular-nums' }}>Lv {ask.lv}</div>
       </div>

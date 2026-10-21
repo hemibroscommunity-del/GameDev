@@ -32,6 +32,7 @@ const OLD_RECIPES = 3;
 const BREW_BUFF_KEYS = ['damage', 'damageMul', 'mana', 'manaFlat', 'spd', 'spdMul', 'hp'];
 import { PROG3 } from './prog3.js';        /* v2.3.2062: the special's mana cost */
 import { REGEN_TICKS } from './tick.js';   /* v2.3.2062: the regen cadence */
+import { cropHealFor } from './farm.js';  /* v2.3.3537: every crop is food */
 
 /* v2.3.3036: _cookRateOk's cooks a minute, 20 -> 45.  20 ("one per 3 s ...
    well above legit play") held while the pan's gesture alone took 4.8 s or
@@ -75,6 +76,13 @@ export const cookingMethods = {
    a meal, which is why nobody ate.  Base lifted so tier one lands on 100; the
    PER-TIER slope (+8) is untouched, so the ladder above it keeps its shape. */
     return Math.ceil(92 + tier.lvl * 8);
+  },
+
+  /* v2.3.3537: `cropeat: false` in liveflags -- no crop is eaten (farm.js
+     CROP_HEAL), and caps.cropeat reads false, so the bag offers no Eat. */
+  _cropEatOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'cropeat') && !f.cropeat);
   },
 
   /* v2.3.3260: the kill switch for the fish ladder, read the lower-case way
@@ -131,14 +139,21 @@ export const cookingMethods = {
        and the cooked fish's own refusals, silent until now (review). */
     const refuseEat = () => { const w = this._wsBySessionId(session.id); if (w) this._resendPlayerState(w, session.id, ['inventory', 'hp', '_buffs']); };
     if (/^(meal|brew)_/.test(invKey)) { if (this.playerState[session.id]) refuseEat(); return; }
+    /* ═══ v2.3.3537: EVERY CROP IS FOOD (farm.js CROP_HEAL) ═══
+       A crop from the farm is eaten raw by this same road, for half what a
+       fish heals at its level: the bag check, the arena, the one-bite rule
+       and the save below are the cooked fish's, and its heal is fixed, as a
+       fish's is.  `cropeat: false` refuses it (the bag is resent). */
+    const cropHeal = cropHealFor(invKey);
+    if (cropHeal > 0 && this._cropEatOff()) { if (this.playerState[session.id]) refuseEat(); return; }
     // Only cooked_fish_* keys are edible this slice; raw fish goes
-    // through cook_request first.
-    if (!invKey.startsWith('cooked_fish_')) return;
+    // through cook_request first.  v2.3.3537: and the crops.
+    if (!cropHeal && !invKey.startsWith('cooked_fish_')) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) { refuseEat(); return; }
     if (ps._arenaMatch) { refuseEat(); return; } // v2.3.1126: no healing during an arena match (GDD §43)
-    if (!ps.inventory) ps.inventory = {}; // proto-ok: invKey guarded by startsWith cooked_fish_ above
+    if (!ps.inventory) ps.inventory = {}; // proto-ok: invKey guarded by startsWith cooked_fish_ above (v2.3.3537: or an own key of farm.js CROP_BY_ITEM)
     if ((ps.inventory[invKey] || 0) <= 0) { refuseEat(); return; }
     if (this._pvpHealHeld(session.id, ps)) { refuseEat(); return; }   /* v2.3.3133: one bite at a time in a fight (v2.3.3260: any fight, _pvpHealWait) */
     // v2.3.1154: × HP-grid Recovery (+1%/pt on discrete heals, cap +50%).
@@ -148,7 +163,8 @@ export const cookingMethods = {
        always" -- the fish's own number (data.js FISH_HEAL) and nothing on top.
        The old HP grid's Recovery bonus (v2.3.1345, 0 for every prog3
        character) is added only with the ladder switched off, as it was. */
-    const heal = Math.ceil(this._fishHealAmount(invKey)) + (this._fishHealOff() ? this._recoveryFlat(ps) : 0); // v2.3.1345: flat recovery bonus
+    const heal = cropHeal > 0 ? cropHeal   /* v2.3.3537: a crop's fixed heal */
+      : Math.ceil(this._fishHealAmount(invKey)) + (this._fishHealOff() ? this._recoveryFlat(ps) : 0); // v2.3.1345: flat recovery bonus
     if (heal <= 0) { refuseEat(); return; }
     this._noteInstantHeal(session.id);   /* v2.3.3133: counted wherever it is eaten (_pvpHealWait) */
     // Decrement inventory + apply heal.  Heal is "wasted" if at max;
@@ -199,7 +215,7 @@ export const cookingMethods = {
     const ps = this.playerState[session.id];
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
-    if (!ps.inventory) ps.inventory = {};
+    if (!ps.inventory) ps.inventory = {}; // proto-ok: invKey guarded by startsWith wood_ above
     if ((ps.inventory[invKey] || 0) <= 0) return;
     ps.inventory[invKey] -= 1;
     if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];

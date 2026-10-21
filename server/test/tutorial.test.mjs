@@ -111,8 +111,9 @@ const sess = { id: 'bp_t' };
   const TOUR = QUEST_TOUR.concat(['tut_3', 'tut_4']);
   const walked = [];
   for (let q = 'tut_2'; q && walked.length < 40; q = QUEST_REWARDS[q] && QUEST_REWARDS[q].next) walked.push(q);
-  check('the Mayor\'s line links tut_2 → tut_3 → tut_4 → end, the tour before it (QUEST_TOUR, tut_1 first)',
-    walked.join() === 'tut_2,tut_3,tut_4' && QUEST_TOUR[0] === 'tut_1' && QUEST_TOUR[QUEST_TOUR.length - 1] === 'tut_2', walked);
+  /* v2.3.3533: tut_2 is the tour's fifth step now, no longer its last */
+  check('the Mayor\'s line links tut_2 → tut_3 → tut_4 → end, tut_2 a step of the tour (QUEST_TOUR, tut_1 first)',
+    walked.join() === 'tut_2,tut_3,tut_4' && QUEST_TOUR[0] === 'tut_1' && QUEST_TOUR.indexOf('tut_2') > 0, walked);
   check('every step of the tour is server-verified (has an objective)',
     TOUR.every((id) => !!QUEST_REWARDS[id].objective), TOUR.filter((id) => !QUEST_REWARDS[id].objective));
   check('every tutorial step is server-verified (has an objective)',

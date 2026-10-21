@@ -520,7 +520,8 @@ function _rockBetween(S, a, ox, oy, fx, fy) {
    the very test a real hit uses (the drawn capsule swept this frame, the same
    radius, not through a rock), so "it would have hit them" means what it says.
    The shot flies on and does them nothing.  nmlAsk keeps the rules: once per
-   player, never over an open window, never your attacker, never in a duel.
+   player, never over an open window, never in a duel (v2.3.3528: and no
+   longer "never your attacker" -- hitting back goes through the window too).
    Asked only while you stand in No man's land (nmlHere), and of players drawn
    on your screen; the geometry first, the rule only for a player the shot
    crossed. */
@@ -547,6 +548,60 @@ function _nmlStrayShot(S, a, ox, goy) {
     if (_rockBetween(S, a, ox, goy, x, gy)) continue;
     if (nmlAsk(S, id, 'shot')) return;
   }
+}
+/* ═══ v2.3.3528: THE BOW'S LINE ON A PLAYER YOU HAVE NOT CHOSEN ASKS ═══
+   The owner: "If a red skull player ... attacks, the other player can't attack
+   back unless they lock on target ... Apply that there too.  But keep the
+   behavior of needing to confirm the "attack" button that pops up in the
+   window first".  A swing at a player you have not chosen asks (nmlAsk.js
+   nmlSwingAsk), and so does a bolt through them (_nmlStrayShot, above) -- but
+   the BOW looses only when its line is on something (firstSightHit), and a
+   player you have not chosen is nothing to it: held at one with nothing else
+   on its line it simply waited, so no arrow ever crossed them and nothing
+   asked.  Now, while you hold the attack (or a special waits for its line),
+   an empty line asks about the first player along it that the arrow would
+   reach: the sight's own circle (their body, PVP_BODY_R + the arrow's half,
+   24 px over their feet), within `maxLen` (the sight's), not behind a rock
+   from your boots (`ground`: the sight's rock gate, boots to feet).  nmlAsk
+   keeps the rules (once per answer, never over an open window, never in a
+   duel; the one who attacked you included, as "Hit back").  The bow still
+   looses nothing at them: a blow lands only once you choose Attack, and then
+   they are on its line (a foe, sparTargets.js shotPlayerTargets).  True when
+   it raised the window. */
+export function nmlSightAsk(S, ox, oy, ang, maxLen, ground) {
+  if (!S || !S.others || S._inDuel || !nmlAskOn(S) || nmlAskCurrent() || !nmlHere(S)) return false;
+  if (typeof ox !== 'number' || typeof oy !== 'number' || !isFinite(ox) || !isFinite(oy) || !isFinite(ang) || !(maxLen > 0)) return false;
+  var lt = S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.id != null ? String(S.lockedTarget.id) : null;
+  var dx = Math.cos(ang), dy = Math.sin(ang);
+  var r = PVP_BODY_R + PROJ_BODY.arrow.half;
+  var skip = shotSkip(null);
+  var notDrawn = S._peersNotDrawn;
+  var cands = [];
+  for (var id in S.others) {
+    if (id === lt || (notDrawn && notDrawn.has(id))) continue;
+    /* a foe or a clone is on the line already (the sight's own list) */
+    if (isLiveFighter(S, id)) continue;
+    var o = S.others[id];
+    if (!o) continue;
+    var x = (typeof o.renderX === 'number' && isFinite(o.renderX)) ? o.renderX : o.x;
+    var y = (typeof o.renderY === 'number' && isFinite(o.renderY)) ? o.renderY : o.y;
+    if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) continue;
+    var vx = x - ox, vy = (y - 24) - oy;
+    var t = vx * dx + vy * dy;
+    if (t < -r) continue;
+    var perp2 = (vx * vx + vy * vy) - t * t;
+    if (perp2 > r * r) continue;
+    var enter = Math.max(0, t - Math.sqrt(Math.max(0, r * r - perp2)));
+    if (enter > maxLen) continue;
+    if (ground && S.currentZone && isFinite(ground.x) && isFinite(ground.y)
+        && attackBlocked(S.currentZone, ground.x, ground.y, x, y + playerGroundDy(S.currentZone, x, y), skip)) continue;
+    cands.push({ id: id, d: enter });
+  }
+  cands.sort(function (p, q) { return p.d - q.d; });
+  for (var i = 0; i < cands.length; i++) {
+    if (nmlAsk(S, cands[i].id, 'aim')) return true;
+  }
+  return false;
 }
 /* ═══ v2.3.3206: A SHOT FLIES OVER LOW THINGS ═══
    Owner, asked whether a bench, a fence or a bush right in front of you should

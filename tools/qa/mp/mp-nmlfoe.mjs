@@ -28,9 +28,22 @@
  *      the raider is on (a blow within the minute: sparTargets.js
  *      fightingNow) -- under the thumb; a real tap raises the guard facing the
  *      raider, and the raider's swings are BLOCKED by the worker;
- *   8. the wanderer hits back: a tap on the raider aims at once (no window),
- *      and with the lock let go its arrows still land on the raider (its
- *      choice lasts too), giving it no red skull;
+ *   8. (v2.3.3528) the wanderer hits back THROUGH THE WINDOW -- the owner:
+ *      "keep the behavior of needing to confirm the "attack" button that pops
+ *      up in the window first before any damage is registered to either
+ *      player": its BOW held at the raider, nothing chosen, looses nothing and
+ *      asks "Hit back Raider?" (the bow's line, why 'aim'); Ignore, and a tap
+ *      on the raider asks again; Attack chooses them, and with the lock let go
+ *      its arrows land on the raider (its choice lasts too), giving it no red
+ *      skull;
+ *      (v2.3.3530) A GROUP: before that Attack the bystander attacks the
+ *      wanderer too, through its own window -- not the wanderer's foe yet, the
+ *      first window stays -- and the wanderer's ONE window for the raider
+ *      joins the bystander to its fight with no window of its own (the owner:
+ *      "If the 2nd, 3rd, etc people already approved "attack" at you you can
+ *      immediately hit back at each of them after that"): its arrows land on
+ *      the bystander, nothing locked, nothing asked, and no red skull for
+ *      hitting back either of them, though the bystander hit it last;
  *   9. a quiet minute (the clocks aged, nothing else touched): the raider's
  *      choice lapses -- its bolts fly through the wanderer, nothing sent --
  *      and a tap asks again;
@@ -75,7 +88,8 @@ const readAsk = (P) => P.page.evaluate(() => {
   return {
     cur: h ? h.current() : null,
     dom: el ? { why: el.getAttribute('data-nml-ask'), id: el.getAttribute('data-nml-ask-id'),
-      name: ((el.querySelector('[data-nml-ask-name]') || {}).textContent || '').trim() } : null,
+      name: ((el.querySelector('[data-nml-ask-name]') || {}).textContent || '').trim(),
+      back: el.getAttribute('data-nml-ask-back') === '1' } : null,   /* v2.3.3528: hitting back */
     lock: lt ? { type: lt.type, id: lt.id, nml: !!lt.nml, src: lt.src || null } : null,
   };
 });
@@ -138,21 +152,43 @@ const holdAt = (P, pid, ms, keepLock) => P.page.evaluate(({ pid, ms, keepLock })
   if (!keepLock) S.lockedTarget = null;
   S.swingTimer = 0;
   let locks = 0, frames = 0;
+  /* what the bow's sight said on each frame (its own answer, monsterCombat's
+     S._bowSight) and what the game made of the target -- a failure's story */
+  const seen = [];
   const aim = () => {
     const o = S.others && S.others[pid];
     if (!o) return;
     const tx = o.renderX != null ? o.renderX : o.x, ty = (o.renderY != null ? o.renderY : o.y) - 24;
-    const a = Math.atan2(ty - S.player.y, tx - S.player.x);
+    /* v2.3.3530: a bow's line starts at its GRIP, the point its sight casts
+       from (S._bowSight.ox/oy, else the published grip offset: mp-hitreal's
+       rule), not the body's middle -- aimed from the middle, the line ran a
+       grip's width (~30 px) beside a player down and to one side, outside
+       their circle, and the bow, rightly, loosed at nothing (8c's bystander,
+       found by the probe below).  A thumb steers the line drawn from the grip. */
+    const R = S.rpg, bow = !!(R && R.activeSlot === 'ranged');
+    const bs = bow ? S._bowSight : null;
+    const fx = bs && typeof bs.ox === 'number' ? bs.ox : S.player.x + (bow && typeof S._bowGripDX === 'number' ? S._bowGripDX : 0);
+    const fy = bs && typeof bs.oy === 'number' ? bs.oy : S.player.y + (bow && typeof S._bowGripDY === 'number' ? S._bowGripDY : 0);
+    const a = Math.atan2(ty - fy, tx - fx);
     S._aimAngle = a; S._lastAimAngle = a; S._aiming = true; S.autoAttack = true;
   };
   const tick = () => {
     aim();
     frames++;
     if (S.lockedTarget) locks++;
+    if (seen.length < 6) {
+      const bs = S._bowSight, o = S.others && S.others[pid];
+      const ab = window.__btNmlAsk && window.__btNmlAsk.about ? window.__btNmlAsk.about(pid) : null;
+      seen.push({
+        sight: bs ? { id: bs.id, d: bs.d != null ? Math.round(bs.d) : null, reach: bs.reach != null ? Math.round(bs.reach) : null } : null,
+        about: ab, them: o ? { x: Math.round(o.renderX != null ? o.renderX : o.x), y: Math.round(o.renderY != null ? o.renderY : o.y), lv: o.rpgLv, away: !!o._away } : null,
+        me: { x: Math.round(S.player.x), y: Math.round(S.player.y), lv: S.rpg && S.rpg.level, shield: !!S._shieldUp },
+      });
+    }
     const t = performance.now() - t0;
     if (t >= ms) {
       S.autoAttack = false; S._aiming = false;
-      setTimeout(() => resolve({ ms: Math.round(t), frames, lockedFrames: locks }), 900);
+      setTimeout(() => resolve({ ms: Math.round(t), frames, lockedFrames: locks, seen }), 900);
       return;
     }
     requestAnimationFrame(tick);
@@ -225,7 +261,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      every number here is in CSS px, the same either way */
   const A = await H.newPlayer(browser, { name: 'Raider', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1 });
   const B = await H.newPlayer(browser, { name: 'Wanderer', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1, guest: true });
-  const C = await H.newPlayer(browser, { name: 'Bystander', wsPort, webPort, world: 'wheel', viewport: PHONE, dpr: 1, guest: true });
+  /* v2.3.3530: a touch phone too -- in step 8 the bystander joins the attack
+     on the wanderer, choosing them by a real tap on its own window */
+  const C = await H.newPlayer(browser, { name: 'Bystander', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1, guest: true });
   await H.enterWorld(A);
   await H.enterWorld(B);
   await H.enterWorld(C);
@@ -539,18 +577,102 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.evaluate(() => { const S = window._gameState.current; if (S._shieldUp) { S._shieldUp = false; } });
   await H.hopTo(A, spot.x, spot.y, { tries: 30, step: 60 });
 
-  /* ── 8. the wanderer hits back: one tap, and the choice lasts ── */
+  /* ── 8. v2.3.3528: the wanderer hits back, through the window, and the choice lasts ── */
   await heal(idA);
-  let b8 = null;
-  for (let i = 0; i < 4 && !(b8 && b8.lock && b8.lock.id === idA); i++) {
-    await tapPeer(B, idA);
-    b8 = await readAsk(B);
-  }
-  const foes8 = await foes(B);
-  rec.ok('8. the wanderer taps the raider who attacked them: no window, aimed at once, and chosen',
-    !!b8 && !b8.dom && !!b8.lock && b8.lock.id === idA && b8.lock.nml && foes8.includes(idA), { b8, foes8 });
   const eqB8 = await H.equipWeapon(B, 'bow', 'rangedWeapon', 'ranged');
   await B.page.waitForTimeout(1500);
+  /* the BOW held at the raider, nothing chosen: it looses nothing, and asks */
+  const hp8o = await hpOf(idA);
+  const t8o = Date.now();
+  let b8a = null;
+  for (let i = 0; i < 3 && !(b8a && b8a.dom); i++) {
+    await holdAt(B, idA, 2500);
+    b8a = await waitAsk(B, (v) => !!v.dom, 2000);
+  }
+  await settleShots(B);
+  const w8o = await wireSince(B, t8o);
+  const hp8o2 = await hpOf(idA);
+  rec.ok(`8. the wanderer's BOW held at the raider who attacked it, nothing chosen: no arrow (${w8o.shots}), nothing sent (${w8o.attacks}), the HP unchanged (${hp8o} -> ${hp8o2}) -- and the window asks: "${b8a && b8a.dom && b8a.dom.name}" (why: ${b8a && b8a.dom && b8a.dom.why})`,
+    eqB8.ok && !!b8a && !!b8a.dom && b8a.dom.id === idA && b8a.dom.why === 'aim' && b8a.dom.back && b8a.dom.name === 'Hit back Raider?'
+      && w8o.shots === 0 && w8o.attacks === 0 && typeof hp8o === 'number' && hp8o2 === hp8o,
+    { eqB8, b8a: b8a && b8a.dom, w8o, hp8o, hp8o2 });
+  await shot(B, '8-hitback');
+  await tapAsk(B, 'ignore');
+  await B.page.waitForTimeout(600);
+  /* v2.3.3530: A GROUP -- the bystander attacks the wanderer too, choosing
+     them through its OWN window (a real tap, Attack), its staff's bolts
+     landing on them.  The wanderer has chosen nobody yet (it ignored the
+     raider's window), so the bystander is NOT its foe: the first window
+     stays */
+  const eqC8 = await H.equipWeapon(C, 'staff', 'staffWeapon', 'staff');
+  await C.page.waitForTimeout(1200);
+  let c8 = null;
+  for (let i = 0; i < 4 && !(c8 && c8.dom); i++) {
+    await tapPeer(C, idB);
+    c8 = await waitAsk(C, (v) => !!v.dom, 2000);
+  }
+  const hp8w0 = await hpOf(idB);
+  await tapAsk(C, 'attack');
+  await C.page.waitForTimeout(800);
+  /* v2.3.3530: the bystander's Attack IS its attack -- the wanderer is white
+     by it at once, before any bolt (the owner: "Whenever someone attacks you
+     in no man's land you always get a white skull above your head") */
+  let wC8 = null;
+  for (let i = 0; i < 16; i++) {
+    wC8 = await H.readState(B, (S) => ({
+      mine: S._pvpSkullType || null, by: (S._nmlSelf && S._nmlSelf.by) || null,
+      bys: S._nmlSelf && S._nmlSelf.bys instanceof Map ? Array.from(S._nmlSelf.bys.keys()) : [],
+    }));
+    if (wC8.by === idC) break;
+    await B.page.waitForTimeout(250);
+  }
+  const sC8 = await H.readState(C, (S) => S._pvpSkullType || null);
+  const hp8w1 = await hpOf(idB);
+  rec.ok(`8. the bystander chooses Attack on the wanderer: the wanderer is WHITE by it at once (by ${wC8 && wC8.by === idC ? 'the bystander' : wC8 && wC8.by}), the bystander red (${sC8}), before any bolt (HP ${hp8w0} -> ${hp8w1})`,
+    !!wC8 && wC8.mine === 'white' && wC8.by === idC && wC8.bys.includes(idC) && sC8 === 'red' && typeof hp8w0 === 'number' && hp8w1 === hp8w0,
+    { wC8, sC8, hp8w0, hp8w1 });
+  await heal(idB);
+  const hp8g0 = await hpOf(idB);
+  let hp8g1 = hp8g0;
+  for (let i = 0; i < 3 && !(hp8g1 < hp8g0); i++) {
+    await holdAt(C, idB, 2500);
+    await settleShots(C);
+    hp8g1 = await hpWhen(wsPort, idB, (h) => h < hp8g0, 3000);
+  }
+  await B.page.waitForTimeout(800);
+  const g8 = await H.readState(B, (S) => ({
+    foes: S._nmlFoes instanceof Map ? Array.from(S._nmlFoes.keys()) : [],
+    bys: S._nmlSelf && S._nmlSelf.bys instanceof Map ? Array.from(S._nmlSelf.bys.keys()) : [],
+    by: (S._nmlSelf && S._nmlSelf.by) || null,
+    joins: window.__btNmlAsk && window.__btNmlAsk.joins ? window.__btNmlAsk.joins().map((j) => j.id) : null,
+  }));
+  rec.ok(`8. a group: the bystander attacks the wanderer too, through its own window ("${c8 && c8.dom && c8.dom.name}"), its bolts landing (HP ${hp8g0} -> ${hp8g1})`,
+    eqC8.ok && !!c8 && !!c8.dom && c8.dom.id === idB && typeof hp8g0 === 'number' && hp8g1 < hp8g0, { eqC8, c8: c8 && c8.dom, hp8g0, hp8g1 });
+  rec.ok(`8. ...the wanderer is told BOTH attackers (bys ${JSON.stringify(g8.bys.length)} ids, by the bystander, the last), and with no fight of its own chosen yet the bystander is no foe of its: the first window stays`,
+    g8.bys.includes(idA) && g8.bys.includes(idC) && g8.by === idC && !g8.foes.includes(idC) && !g8.foes.includes(idA) && Array.isArray(g8.joins) && !g8.joins.includes(idC),
+    g8);
+  /* a tap asks every time, the one who attacked you as anyone */
+  let b8 = null;
+  for (let i = 0; i < 4 && !(b8 && b8.dom); i++) {
+    await tapPeer(B, idA);
+    b8 = await waitAsk(B, (v) => !!v.dom, 2000);
+  }
+  const lock8pre = b8 && b8.lock;
+  await tapAsk(B, 'attack');
+  await B.page.waitForTimeout(800);
+  const b8b = await readAsk(B);
+  const foes8 = await foes(B);
+  rec.ok('8. ...a tap on the raider asks too ("Hit back", not aimed until answered), and its Attack aims and CHOOSES them',
+    !!b8 && !!b8.dom && b8.dom.why === 'tap' && b8.dom.back && b8.dom.id === idA && !(lock8pre && lock8pre.id === idA)
+      && !b8b.dom && !!b8b.lock && b8b.lock.id === idA && b8b.lock.nml && foes8.includes(idA),
+    { b8: b8 && b8.dom, lock8pre, b8b, foes8 });
+  /* v2.3.3530: that ONE window joined the whole group -- the owner: "If the
+     2nd, 3rd, etc people already approved "attack" at you you can
+     immediately hit back at each of them after that" */
+  const asked8 = await B.page.evaluate(() => (window.__btNmlAsk ? window.__btNmlAsk.asked() : []));
+  const joins8 = await B.page.evaluate(() => (window.__btNmlAsk && window.__btNmlAsk.joins ? window.__btNmlAsk.joins().map((j) => j.id) : []));
+  rec.ok('8. ...and that ONE window joins the whole group: the bystander, who attacked the wanderer too, is its foe now with no window of its own',
+    foes8.includes(idC) && joins8.includes(idC) && !asked8.includes(idC) && !b8b.dom, { foes8, joins8, asked8 });
   const hp8a = await hpOf(idA);
   const t8 = Date.now();
   const h8 = await holdAt(B, idA, 3500);
@@ -561,6 +683,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`8. ...the lock let go, its arrows still land on the raider (${w8.shots} fired, HP ${hp8a} -> ${hp8b}), naming them, and no red skull (${sk8.mine})`,
     eqB8.ok && h8.lockedFrames === 0 && w8.shots >= 1 && typeof hp8a === 'number' && hp8b < hp8a && (w8.by[idA] || 0) >= 1 && !sk8.red,
     { eqB8, h8, w8, hp8a, hp8b, sk8 });
+  /* v2.3.3530: ...and the bystander, the group's second, is hit back at once:
+     the wanderer's bow held at them, nothing locked, no window -- and the
+     raider's no red skull above held though the bystander, not the raider,
+     was the LAST to hit the wanderer (the worker kept both rights:
+     nomansland.js _nmlHitsBack; it gave a red one before) */
+  await heal(idC);
+  const hp8c0 = await hpOf(idC);
+  const t8c = Date.now();
+  const h8c = await holdAt(B, idC, 3500);
+  await settleShots(B);
+  const hp8c1 = await hpWhen(wsPort, idC, (h) => h < hp8c0);
+  const w8c = await wireSince(B, t8c);
+  const a8c = await readAsk(B);
+  const asked8c = await B.page.evaluate(() => (window.__btNmlAsk ? window.__btNmlAsk.asked() : []));
+  const sk8c = await H.readState(B, (S) => ({ mine: S._pvpSkullType || null, red: (S._nmlSelf && S._nmlSelf.red) || 0 }));
+  await shot(B, '8-group');
+  rec.ok(`8. ...the group's second hit back at once: the bow held at the bystander, nothing locked (${h8c.lockedFrames} frames), ${w8c.shots} arrows, HP ${hp8c0} -> ${hp8c1}, every claim naming them -- no window ever asked`,
+    h8c.lockedFrames === 0 && w8c.shots >= 1 && typeof hp8c0 === 'number' && hp8c1 < hp8c0 && (w8c.by[idC] || 0) >= 1 && !a8c.dom && !asked8c.includes(idC),
+    { h8c, w8c, hp8c0, hp8c1, a8c: a8c.dom, asked8c });
+  rec.ok(`8. ...and still no red skull for the wanderer (${sk8c.mine}): hitting back any of the group is hitting back`,
+    !sk8c.red && sk8c.mine !== 'red', sk8c);
 
   /* ── 9. a quiet minute: the choice lapses ── */
   await H.equipWeapon(A, 'staff', 'staffWeapon', 'staff');

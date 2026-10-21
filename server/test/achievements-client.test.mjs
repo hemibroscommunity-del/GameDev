@@ -155,7 +155,7 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
   A.onAchvState(P, { got: {}, dg: { hollows: 1, sky: 1 } });
   check('4l progress from what the worker said: your best combat level, the codex\'s kinds, the dungeons cleared',
     A.achvProgress(P, 'combat_50') === 'Your best: Lv 12' && A.achvProgress(P, 'codex_all') === '2 of 9 kinds'
-    && A.achvProgress(P, 'elder_all') === '1 of 9 kinds' && A.achvProgress(P, 'dungeons_all') === '2 of 3 cleared' && A.achvProgress(P, 'first_blood') === '',
+    && A.achvProgress(P, 'elder_all') === '1 of 9 kinds' && A.achvProgress(P, 'dungeons_all') === '2 of 4 cleared' && A.achvProgress(P, 'first_blood') === '',
     { c: A.achvProgress(P, 'combat_50'), k: A.achvProgress(P, 'codex_all'), e: A.achvProgress(P, 'elder_all'), d: A.achvProgress(P, 'dungeons_all') });
   check('4m no codex yet: no guess', A.achvProgress(freshS(), 'codex_all') === '' && A.achvProgress(freshS(), 'combat_10') === '');
 }
@@ -227,12 +227,12 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
     _codex: { k: { snowling: [3, 1], gobling: [1, 0], wisplet: [0, 0] } } });
   A.onAchvState(P, { got: {}, dg: { hollows: 1, sky: 1 } });
   const sh = (id) => A.achvProgressShort(P, id);
-  check('8b a row\'s short progress: "best Lv 12", "2/9", "1/9", "2/3", and nothing on a row of chance',
+  check('8b a row\'s short progress: "best Lv 12", "2/9", "1/9", "2/4", and nothing on a row of chance',
     sh('combat_10') === 'best Lv 12' && sh('combat_100') === 'best Lv 12' && sh('codex_all') === '2/9' && sh('elder_all') === '1/9'
-      && sh('dungeons_all') === '2/3' && sh('natural_one') === '' && sh('godly') === '',
+      && sh('dungeons_all') === '2/4' && sh('natural_one') === '' && sh('godly') === '',
     { c: sh('combat_10'), k: sh('codex_all'), e: sh('elder_all'), d: sh('dungeons_all') });
   check('8c ...and no guess before the worker said: no codex, no combat level',
-    A.achvProgressShort(freshS(), 'codex_all') === '' && A.achvProgressShort(freshS(), 'combat_10') === '' && A.achvProgressShort(freshS(), 'dungeons_all') === '0/3');
+    A.achvProgressShort(freshS(), 'codex_all') === '' && A.achvProgressShort(freshS(), 'combat_10') === '' && A.achvProgressShort(freshS(), 'dungeons_all') === '0/4');
   check('8d the total\'s two parts in one sentence (the page\'s last line and the total\'s tooltip)',
     A.achvSplitWords({ apTotal: 1850, achvPts: 1840, otherPts: 10 }) === 'Your 1,850 AP: 1,840 from achievements, 10 from quests, guilds and more.'
       && A.achvSplitWords({ apTotal: -3, achvPts: 0, otherPts: 0 }) === 'Your 0 AP: 0 from achievements, 0 from quests, guilds and more.');

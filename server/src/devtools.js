@@ -51,7 +51,7 @@ import { GEM_ELEMENTS, gemGive, gemCount } from './gems.js'; /* v2.3.3516: the k
 import { SHARD_CRACK } from './shardcrack.js'; /* v2.3.3516: the kit's shards */
 import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills a level can be set on */
 import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills whose harvests and cooks are hits */
-import { PROG3 } from './prog3.js'; /* v2.3.3313: the combat skills a level can be set on */
+import { PROG3, prog3RespecPoints } from './prog3.js'; /* v2.3.3313: the combat skills a level can be set on; v2.3.3541: + the deal (/dev/combat `deal`) */
 import { BOTFP } from './botfp.js'; /* v2.3.3323: the score a flag is raised at, for the Bot flags list */
 
 export const DEVKIT = {
@@ -426,9 +426,10 @@ export const devToolsMethods = {
       testMode: ps._testMode === true,
       testModeAllowed: this._testModeAllowed(),
       zones,
-      charLevel: (ps.prog3 && ps.prog3.sk)
-        ? ['sword', 'bow', 'staff'].reduce((s, k) => s + ((ps.prog3.sk[k] && ps.prog3.sk[k].level) || 0), 0)
-        : null,
+      /* v2.3.3538: the worker's own character level (prog3.js
+         _prog3CharLevel: the highest skill, or the sum with `onelevel:
+         false`) -- it was summed here inline, a copy of the old rule */
+      charLevel: (ps.prog3 && ps.prog3.sk) ? this._prog3CharLevel(ps) : null,
       /* v2.3.3265: your sparring clones, their skill and the score (spar.js) */
       spar: this._sparSummary ? this._sparSummary(playerId) : null,
       /* v2.3.3321: the monsters the worker holds in your zone -- how many,
@@ -532,8 +533,9 @@ export const devToolsMethods = {
 
   /* ═══ v2.3.3313: A COMBAT LEVEL TO TEST AGAINST ═══
      An alliance counts members at character level 5 or more (alliance.js
-     ACTIVE_LEVEL) -- two combat levels past a new character's 3, a while of
-     fighting each -- so its phone check (mp-alliance) sets them here, as
+     ACTIVE_LEVEL) -- since v2.3.3538 a weapon at level 5 (the level is the
+     highest skill, a new character 1), a while of fighting -- so its phone
+     check (mp-alliance) sets them here, as
      /dev/lifeskill sets a life skill.  The trained level alone, xp 0: no
      points are minted, which the real road pays a level, so a character
      raised here has fewer points to spend than one that fought there. */
@@ -549,9 +551,14 @@ export const devToolsMethods = {
     if (!ps.prog3 || !ps.prog3.sk || typeof ps.prog3.sk !== 'object') return { ok: false, error: 'no combat skills' };
     const level = Math.max(1, Math.min(PROG3.LEVEL_CAP, Math.floor(Number(b.level) || 1)));
     for (const k of names) ps.prog3.sk[k] = { level, xp: 0 };
+    /* v2.3.3541: `deal: true` -- and the points those levels give, every
+       placed one back (the free points reset's own deal, prog3RespecPoints):
+       a level set by this lever alone left the pools where they were, so the
+       Points tab had nothing to spend (mp-pointsreset) */
+    if (b.deal === true) prog3RespecPoints(ps.prog3, typeof this._oneLevelOn === 'function' ? !this._oneLevelOn() : false);
     this._prog3Recompute(ps);
     this._devPush(playerId, ps);
-    return { ok: true, skills: names, level, charLevel: ps.level };
+    return { ok: true, skills: names, level, charLevel: ps.level, ...(b.deal === true ? { pool: ps.prog3.pool, shared: ps.prog3.shared } : {}) };
   },
 
   /* ═══ v2.3.3120: PET TRAPPING'S TEST LEVERS (trapping.js) ═══

@@ -97,8 +97,10 @@ function check(name, cond, detail) {
     blob.prog3.atk);
   /* v2.3.2592: the respec mints the SHARED pool beside the lane pool, one
      per lane point, and stamps the rate (so v17 cannot double-grant). */
-  check('the respec mints shared points at SHARED_POINTS_PER_LEVEL, stamped',
-    blob.prog3.shared === (7 + 0 + 100) * PROG3.SHARED_POINTS_PER_LEVEL
+  /* v2.3.3538: ONE LEVEL -- shared points come 3 a CHARACTER level (the
+     highest skill, here staff 100), not 3 a skill level */
+  check('the respec mints shared points at SHARED_POINTS_PER_LEVEL a character level, stamped',
+    blob.prog3.shared === (100 - 1) * PROG3.SHARED_POINTS_PER_LEVEL
       && blob.prog3.spl === PROG3.SHARED_POINTS_PER_LEVEL,
     { shared: blob.prog3.shared, spl: blob.prog3.spl });
   check('legacy fields kept for rollback', blob.weaponSkills.sword.level === 7 && blob.t2Flat.defense.ironskin === 300);
@@ -125,14 +127,18 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'pa', name: 
 const psA = room.playerState.pa;
 {
   check('fresh join seeds prog3', !!psA.prog3 && psA.prog3.sk.sword.level === 1 && psA.prog3.pool === 0, psA.prog3);
-  check('char level = Σ trained = 3', psA.level === 3, psA.level);
+  /* v2.3.3538: ONE LEVEL -- the highest trained skill, 1 for a new character
+     (it was the three added up, 3) */
+  check('char level = the highest trained skill = 1', psA.level === 1, psA.level);
   /* v2.3.1727: derived from PROG3, not the literal 106 that was here — the
      retune moved HP_PER_LEVEL and a hand-typed expectation just re-asserts
      whatever the constant happened to be on the day. */
   /* v2.3.3260: the one formula (oneformula.js): 100 + 50 a level -- PROG3's
      HP_PER_LEVEL is the old worker's 6, kept for `oneformula: false` */
+  /* v2.3.3538: read as level + MATCH_LEVEL under one level, so a new
+     character's bar is the 250 it always was */
   check('maxHp = 100 + level×HP_PER_LEVEL (no armor, no hp pts)',
-    psA.maxHp === healthAt(3, 0) && psA.maxHp === ONE_FORMULA.HEALTH.BASE + 3 * ONE_FORMULA.HEALTH.PER_LEVEL,
+    psA.maxHp === healthAt(1, 0, true, true) && psA.maxHp === ONE_FORMULA.HEALTH.BASE + 3 * ONE_FORMULA.HEALTH.PER_LEVEL,
     { maxHp: psA.maxHp, per: ONE_FORMULA.HEALTH.PER_LEVEL });
   check('maxStamina = 100 flat', psA.maxStamina === 100, psA.maxStamina);
   /* v2.3.1734: derived from PROG3, same reasoning as the maxHp line above
@@ -163,8 +169,8 @@ const psA = room.playerState.pa;
   check('xp below threshold: no level', psA.prog3.sk.sword.level === 1 && psA.prog3.pool === 0, psA.prog3.sk.sword);
   room._prog3AwardXp('pa', psA, 'sword', 1, { flat: true });
   /* v2.3.2199: a level-up mints POINTS_PER_LEVEL (3), stamped to the lane. */
-  check('level-up: sword 2, pool 3, char level 4',
-    psA.prog3.sk.sword.level === 2 && psA.prog3.pool === PROG3.POINTS_PER_LEVEL && psA.level === 4,
+  check('level-up: sword 2, pool 3, char level 2 (v2.3.3538: the highest skill)',
+    psA.prog3.sk.sword.level === 2 && psA.prog3.pool === PROG3.POINTS_PER_LEVEL && psA.level === 2,
     { sk: psA.prog3.sk.sword, pool: psA.prog3.pool, level: psA.level });
   check('level-up: the minted points are channelled to the earning skill',
     psA.prog3.poolBy.sword === PROG3.POINTS_PER_LEVEL && psA.prog3.poolBy.bow === 0,
@@ -173,7 +179,7 @@ const psA = room.playerState.pa;
     { hp: psA.hp, maxHp: psA.maxHp });
   const lvlMsgs = msgsOfType(wsA, 'prog3_level');
   check('prog3_level notification sent', lvlMsgs.length === 1
-    && lvlMsgs[0].payload.skill === 'sword' && lvlMsgs[0].payload.level === 2 && lvlMsgs[0].payload.charLevel === 4,
+    && lvlMsgs[0].payload.skill === 'sword' && lvlMsgs[0].payload.level === 2 && lvlMsgs[0].payload.charLevel === 2,
     lvlMsgs.map((m) => m.payload));
 
   /* The conversion itself, both directions — the thing that made the
@@ -246,17 +252,20 @@ const psA = room.playerState.pa;
   room._handleProg3Allocate(sess, {});
   check('bad stat names reject (pools untouched)', p3.pool === 10 && p3.shared === 10 && p3.alloc.hp === 0, p3);
   // §6-C: per-stat cap = min(stat cap, character level).  Char level is
-  // 4 here, so the 5th hp point must bounce.
+  // 2 here (v2.3.3538: the highest skill, sword 2), so the 3rd hp point
+  // must bounce.
   for (let i = 0; i < 5; i++) room._handleProg3Allocate(sess, { stat: 'hp' });
-  check('per-stat cap = min(100, char level)', p3.alloc.hp === 4 && p3.shared === 6,
+  check('per-stat cap = min(100, char level)', psA.level === 2 && p3.alloc.hp === 2 && p3.shared === 8,
     { hp: p3.alloc.hp, shared: p3.shared, level: psA.level });
   check('...and a shared spend leaves the LANE pool alone (v2.3.2592)', p3.pool === 10, p3.pool);
+  /* v2.3.3538: 200 + 50 a level under one level (level + MATCH_LEVEL) */
   check('hp points land in maxHp (+40/pt under the one formula, v2.3.3260)',
-    psA.maxHp === healthAt(psA.level, 4) && psA.maxHp === 100 + psA.level * ONE_FORMULA.HEALTH.PER_LEVEL + 4 * ONE_FORMULA.HEALTH.PER_POINT, psA.maxHp);
+    psA.maxHp === healthAt(psA.level, 2, true, true)
+      && psA.maxHp === 100 + (psA.level + ONE_FORMULA.MATCH_LEVEL) * ONE_FORMULA.HEALTH.PER_LEVEL + 2 * ONE_FORMULA.HEALTH.PER_POINT, psA.maxHp);
   const acks = msgsOfType(wsA, 'prog3_allocated');
-  check('prog3_allocated acks each landed point, carrying both pools', acks.length === 4
-    && acks[3].payload.stat === 'hp' && acks[3].payload.pts === 4
-    && acks[3].payload.pool === 10 && acks[3].payload.shared === 6,
+  check('prog3_allocated acks each landed point, carrying both pools', acks.length === 2
+    && acks[1].payload.stat === 'hp' && acks[1].payload.pts === 2
+    && acks[1].payload.pool === 10 && acks[1].payload.shared === 8,
     acks.map((a) => a.payload));
 
   /* ═══ v2.3.2176: POINTS REMEMBER THE SKILL THAT EARNED THEM ═══
@@ -319,13 +328,17 @@ const psA = room.playerState.pa;
      1 × character level on Dodge (owner: "keep per level limit on those 3"). */
   psA.prog3.sk.sword.level = 100; psA.prog3.sk.bow.level = 100; psA.prog3.sk.staff.level = 100;
   room._prog3Recompute(psA);
-  check('char level caps at 300', psA.level === 300, psA.level);
+  check('char level caps at 100 (v2.3.3538: the highest skill; the sum capped at 300)', psA.level === 100, psA.level);
   p3.shared = 200; p3.alloc.dodge = 75;
   room._handleProg3Allocate(sess, { stat: 'dodge' });
   check('v2.3.2680: the old 75-point Dodge cap is gone', p3.alloc.dodge === 76 && p3.shared === 199, p3.alloc.dodge);
   p3.alloc.dodge = 300;
   room._handleProg3Allocate(sess, { stat: 'dodge' });
-  check('...and the per-level bound (300 at character 300) is what binds', p3.alloc.dodge === 300 && p3.shared === 199, p3.alloc.dodge);
+  check('...and the per-level bound (100 at character 100) is what binds', p3.alloc.dodge === 300 && p3.shared === 199, p3.alloc.dodge);
+  p3.alloc.dodge = 99;
+  room._handleProg3Allocate(sess, { stat: 'dodge' });
+  room._handleProg3Allocate(sess, { stat: 'dodge' });
+  check('...the 100th Dodge point lands and the 101st bounces', p3.alloc.dodge === 100 && p3.shared === 198, { dodge: p3.alloc.dodge, shared: p3.shared });
   p3.alloc.dodge = 0;
 }
 
@@ -520,7 +533,10 @@ const psA = room.playerState.pa;
 
 // ── 7. Sanitizer bounds corrupt stored shapes ──
 {
+  /* v2.3.3538: stamped dealt (`olr`), so the clamps are what is read; the
+     one-level re-deal of an unstamped blob is §19 */
   const dirty = room._sanitizeProg3({
+    olr: 1,
     sk: { sword: { level: 999, xp: -5 }, bow: 'nope' },
     alloc: { hp: 5000, dodge: 5000, bogus: 9 },
     atk: { sword: { luck: 5000, range: -3, bogus: 4 }, nosuchcat: { luck: 50 } },
@@ -614,18 +630,39 @@ const psA = room.playerState.pa;
   // v2.3.2664: armour is priced on its OWN ladder now (data.js armorDefReq;
   // owner: "I'll go with your defense requirements for next tiers") — a
   // tier-4 plate asks 10 Defense, where the weapon table's fallback asked 90.
+  /* v2.3.3544: Defense points are the `gearlevel: false` switch's rule now
+     (gear.js _gearOnLevel) -- the level's below */
+  const _flagsWas = room._liveFlags;
+  room._liveFlags = { gearlevel: false };
   psA.armor = null;
   p3.alloc.def = 9;
   room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } }); // tier 4 → req 10
-  check('armor ingest: over-tier swap rejected (defense points too low)', psA.armor === null, psA.armor);
+  check('(gearlevel: false) armor ingest: over-tier swap rejected (defense points too low)', psA.armor === null, psA.armor);
   p3.alloc.def = 10;
   room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } });
-  check('armor ingest: defense allocation unlocks the tier',
+  check('(gearlevel: false) armor ingest: defense allocation unlocks the tier',
     !!psA.armor && psA.armor.name === 'Test Plate', psA.armor);
   // Unequip always passes (grandfather rule: only SWAPS are gated).
   p3.alloc.def = 0;
   room._handleStatsUpdate(sess, { armor: null });
   check('armor ingest: unequip always passes', psA.armor === null, psA.armor);
+  /* v2.3.3544: by default the plate asks the CHARACTER level -- the best
+     weapon's -- and Defense points do not count */
+  room._liveFlags = {};
+  const _skWas = JSON.stringify(p3.sk);
+  for (const k of ['sword', 'bow', 'staff']) p3.sk[k] = { level: 1, xp: 0 };
+  p3.sk.bow = { level: 9, xp: 0 };
+  p3.alloc.def = 30;
+  room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } });
+  check('armor ingest: a tier-4 plate refused at level 9, whatever the Defense points (30)', psA.armor === null, psA.armor);
+  p3.sk.bow = { level: 10, xp: 0 };
+  p3.alloc.def = 0;
+  room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } });
+  check('armor ingest: ...and worn at level 10 with no Defense point (a Bow 10 character)',
+    !!psA.armor && psA.armor.name === 'Test Plate', psA.armor);
+  room._handleStatsUpdate(sess, { armor: null });
+  Object.assign(p3.sk, JSON.parse(_skWas));
+  room._liveFlags = _flagsWas;
 }
 
 // ── 8. _saveRpg carries prog3 + the v10 stamp ──
@@ -783,6 +820,7 @@ const psA = room.playerState.pa;
   const vet = {
     _v: 13,
     prog3: {
+      olr: 1,   /* v2.3.3538: so v18's re-deal leaves the back-pay to be read (§19 has the re-deal) */
       sk: { sword: { level: 7, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 100, xp: 0 } },
       alloc: { def: 3, hp: 2, dodge: 0, stam: 0 },
       atk: { sword: { luck: 1, aspd: 0 }, bow: { luck: 0, aspd: 0 }, staff: { luck: 0, aspd: 0 } },
@@ -819,11 +857,11 @@ const psA = room.playerState.pa;
   check('sanitize clamps the new stats',
     /* v2.3.2512: elem is an ATK stat now, so a BODY `elem` is REFUNDED
        rather than clamped — pinned in its own section below. */
-    room._sanitizeProg3({ sk: {}, alloc: {}, atk: { sword: { elem: 999 } }, pool: 0, ppl: 3 })
+    room._sanitizeProg3({ olr: 1, sk: {}, alloc: {}, atk: { sword: { elem: 999 } }, pool: 0, ppl: 3 })
       .atk.sword.elem === PROG3.ATK.elem.cap
-    && room._sanitizeProg3({ sk: {}, alloc: {}, atk: { sword: { dmg: 999 } }, pool: 0, ppl: 3 })
+    && room._sanitizeProg3({ olr: 1, sk: {}, alloc: {}, atk: { sword: { dmg: 999 } }, pool: 0, ppl: 3 })
       .atk.sword.dmg === PROG3.ATK.dmg.cap
-    && room._sanitizeProg3({ sk: {}, alloc: { eres: 999, mana: 999 }, atk: {}, pool: 0, ppl: 3 })
+    && room._sanitizeProg3({ olr: 1, sk: {}, alloc: { eres: 999, mana: 999 }, atk: {}, pool: 0, ppl: 3 })
       .alloc.eres === PROG3.BODY.eres.cap);
 
   /* elem feeds the DoT snapshot and the collision stat; legacy players
@@ -888,6 +926,7 @@ const psA = room.playerState.pa;
   const mv = {
     _v: 14,
     prog3: {
+      olr: 1,   /* v2.3.3538: v18's re-deal leaves the refund to be read */
       sk: { sword: { level: 5, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } },
       alloc: { def: 2, hp: 1, dodge: 0, stam: 0, elem: 30 },
       atk: { sword: { luck: 0, aspd: 0, dmg: 0 }, bow: {}, staff: {} },
@@ -908,6 +947,7 @@ const psA = room.playerState.pa;
 
   /* ── the boundary heal, because migrations fail open ── */
   const bh = room._sanitizeProg3({
+    olr: 1,   /* v2.3.3538: stamped dealt, so the fold is what is read */
     sk: {}, alloc: { def: 1, elem: 12 }, atk: { sword: {}, bow: {}, staff: {} },
     pool: 2, poolBy: { sword: 2 }, ppl: 3,
   });
@@ -1157,6 +1197,7 @@ const psA = room.playerState.pa;
   const b17 = {
     _v: 16,
     prog3: {
+      olr: 1,   /* v2.3.3538: v18's re-deal leaves v17's fold and grant to be read */
       sk: { sword: { level: 6, xp: 0 }, bow: { level: 3, xp: 0 }, staff: { level: 1, xp: 0 } },
       alloc: { def: 2, hp: 1, dodge: 0, stam: 0, eres: 0, mana: 0 },
       atk: { sword: { crit: 20, critDmg: 10, aspd: 5, dmg: 0, elem: 0 },
@@ -1189,12 +1230,14 @@ const psA = room.playerState.pa;
      the current rate AND stamps spl, so v17 must find nothing left to grant. */
   const era = { _v: 9, weaponSkills: { sword: { level: 6, xp: 0 } } };
   runRpgMigrations(era);
+  /* v2.3.3538: sword 7 is the character level, so 3 x 6 either way */
   check('a v10-era blob lands at the shared rate in one pass (no double grant)',
     era.prog3.shared === 6 * PROG3.SHARED_POINTS_PER_LEVEL && era.prog3.spl === PROG3.SHARED_POINTS_PER_LEVEL,
     { shared: era.prog3.shared, spl: era.prog3.spl });
 
   /* ── the boundary heal, because migrations fail open ── */
   const bh = room._sanitizeProg3({
+    olr: 1,   /* v2.3.3538: stamped dealt, so the fold is what is read */
     sk: { sword: { level: 10, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } },
     alloc: {}, atk: { sword: { crit: 999, critDmg: 5 }, bow: {}, staff: {} },
     pool: 1, poolBy: { sword: 1 }, ppl: 3,
@@ -1210,11 +1253,11 @@ const psA = room.playerState.pa;
   check('...and a healed blob sanitizes to itself (no re-grant, no re-refund)',
     bh2.shared === bh.shared && bh2.pool === bh.pool && bh2.spl === bh.spl, { shared: bh2.shared, pool: bh2.pool });
   check('sanitize bounds the shared pool and clamps the new stats',
-    room._sanitizeProg3({ sk: {}, alloc: { move: 999 }, atk: { sword: { range: 999, special: 999 } }, pool: 0, shared: 1e9, ppl: 3, spl: 3 })
+    room._sanitizeProg3({ olr: 1, sk: {}, alloc: { move: 999 }, atk: { sword: { range: 999, special: 999 } }, pool: 0, shared: 1e9, ppl: 3, spl: 3 })
       .shared === 999
-    && room._sanitizeProg3({ sk: {}, alloc: { move: 999 }, atk: {}, pool: 0, ppl: 3, spl: 3 }).alloc.move === PROG3.BODY.move.cap
-    && room._sanitizeProg3({ sk: {}, alloc: {}, atk: { sword: { range: 999, special: 999 } }, pool: 0, ppl: 3, spl: 3 }).atk.sword.range === PROG3.ATK.range.cap
-    && room._sanitizeProg3({ sk: {}, alloc: {}, atk: { sword: { range: 999, special: 999 } }, pool: 0, ppl: 3, spl: 3 }).atk.sword.special === PROG3.ATK.special.cap);
+    && room._sanitizeProg3({ olr: 1, sk: {}, alloc: { move: 999 }, atk: {}, pool: 0, ppl: 3, spl: 3 }).alloc.move === PROG3.BODY.move.cap
+    && room._sanitizeProg3({ olr: 1, sk: {}, alloc: {}, atk: { sword: { range: 999, special: 999 } }, pool: 0, ppl: 3, spl: 3 }).atk.sword.range === PROG3.ATK.range.cap
+    && room._sanitizeProg3({ olr: 1, sk: {}, alloc: {}, atk: { sword: { range: 999, special: 999 } }, pool: 0, ppl: 3, spl: 3 }).atk.sword.special === PROG3.ATK.special.cap);
 
   /* ── the mint: a level-up pays BOTH pools, and prog3_level says so ── */
   {

@@ -53,7 +53,9 @@
  *     with nothing named) hits only players you are already fighting: a duel
  *     or arena partner, or someone you traded a hit with in the last
  *     ENGAGE_MS.  So a whirlwind in No man's land never starts a fight with a
- *     bystander, and never misses the one you are in.
+ *     bystander, and never misses the one you are in.  v2.3.3528: a hit YOU
+ *     landed on them, not one they landed on you (_pvpEngaged, "which way"):
+ *     being attacked is not choosing to fight back.
  *   - A PLAYER CANNOT BE LOCKED DOWN.  The one thing that is the target's own,
  *     like armour: a freeze and every ability's stun hold a player as a stone
  *     monster's daze does (DAZE.MS, then DAZE.IMMUNE_MS before another), a
@@ -98,7 +100,9 @@ import { STAFF_BOLT, STAFF_SPLASH, LIFESTEAL_REFUND } from './combat.js';
 
 export const PVP_EXTRAS = Object.freeze({
   /* "already fighting": a hit between the two, either way, this recently --
-     the fight-food window (cooking.js PVP_HEAL.WINDOW_MS), the same length */
+     the fight-food window (cooking.js PVP_HEAL.WINDOW_MS), the same length.
+     v2.3.3528: a hit by the CASTER on them (_pvpEngaged; either way with
+     `areachoice: false`) */
   ENGAGE_MS: 10000,
   /* pairs kept before the stale ones are swept (a room holds 120) */
   ENGAGE_MAX: 2048,
@@ -122,6 +126,8 @@ export const PVP_STATUSES = Object.freeze(['slow', 'fracture', 'thorn']);
 
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 const SLOT_CAT = (slot) => (slot === 'ranged' ? 'bow' : slot === 'staff' ? 'staff' : 'sword');
+/* v2.3.3528: a pair's last blow either way ({ab, ba}: _notePvpEngage) */
+const lastBlowOf = (e) => (e && typeof e === 'object' ? Math.max(e.ab || 0, e.ba || 0) : 0);
 
 export const pvpExtrasMethods = {
   /* The kill switch, read the meals' way, and the two it rides on. */
@@ -133,19 +139,74 @@ export const pvpExtrasMethods = {
     return true;
   },
 
-  /* ═══ WHO IS FIGHTING WHOM ═══ */
+  /* ═══ WHO IS FIGHTING WHOM ═══
+     ═══ v2.3.3528: ...AND WHICH WAY ═══
+     The owner, 2026-10-20: "keep the behavior of needing to confirm the
+     "attack" button that pops up in the window first before any damage is
+     registered to either player in the wilderness".  A blow between two
+     players made them a pair EITHER way, so the one who was attacked was
+     "already fighting" the attacker the moment the first blow landed on them:
+     their whirlwind, burst, staff splash or blast struck the attacker before
+     they ever chose to fight back -- and the game now asks them first, as it
+     asks the attacker ("Hit back <name>?", src/game/nmlAsk.js).  So each pair
+     keeps both ways, `ab` the last blow by the pair key's first id on its
+     second and `ba` the other's, and an area move reaches only a player its
+     caster has STRUCK within ENGAGE_MS (or a duel, arena or spar partner, as
+     before).  A player's blow on another is only ever sent once they chose
+     them -- the window's Attack, a duel -- so this is that choice as the
+     worker can see it; the first blow it sends is the one area moves wait
+     for.  Kill switch `areachoice: false` in liveflags: a blow either way, as
+     before.  In memory only, as before (nothing is persisted here). */
   _notePvpEngage(a, b, now) {
     if (!a || !b || a === b) return;
     if (!this._pvpEngage) this._pvpEngage = new Map();
     if (this._pvpEngage.size >= PVP_EXTRAS.ENGAGE_MAX) {
-      for (const [k, t] of this._pvpEngage) if (now - t > PVP_EXTRAS.ENGAGE_MS) this._pvpEngage.delete(k);
+      for (const [k, e] of this._pvpEngage) if (now - lastBlowOf(e) > PVP_EXTRAS.ENGAGE_MS) this._pvpEngage.delete(k);
       if (this._pvpEngage.size >= PVP_EXTRAS.ENGAGE_MAX) this._pvpEngage.clear();
     }
-    this._pvpEngage.set(this._pvpPairKey(a, b), now);
+    const k = this._pvpPairKey(a, b);
+    let e = this._pvpEngage.get(k);
+    if (!e || typeof e !== 'object') { e = { ab: 0, ba: 0 }; this._pvpEngage.set(k, e); }
+    /* _pvpPairKey puts the lower id first */
+    if (a < b) e.ab = now; else e.ba = now;
+    /* v2.3.3530: and `a` is fighting in No man's land -- a blow under its
+       rule, not a duel's, an arena's or a sparring clone's -- for
+       _pvpEngaged's group rule below */
+    const consent = this._pvpConsent ? (this._pvpConsent.get(k) || 0) : 0;
+    if (!(consent > now) && this._nmlAllowed && this._nmlAllowed(a, b)) {
+      if (!this._pvpNmlStruck) this._pvpNmlStruck = new Map();
+      if (this._pvpNmlStruck.size >= PVP_EXTRAS.ENGAGE_MAX && !this._pvpNmlStruck.has(a)) {
+        for (const [p, t] of this._pvpNmlStruck) if (now - t > PVP_EXTRAS.ENGAGE_MS) this._pvpNmlStruck.delete(p);
+        if (this._pvpNmlStruck.size >= PVP_EXTRAS.ENGAGE_MAX) this._pvpNmlStruck.clear();
+      }
+      this._pvpNmlStruck.set(a, now);
+    }
   },
 
-  /* A duel or arena partner (a live consent pair), or a hit between the two
-     within ENGAGE_MS. */
+  /* v2.3.3528: is the area rule "a blow YOU landed" (the default), or a blow
+     either way (`areachoice: false`)? */
+  _areaChoiceOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'areachoice') && !f.areachoice);
+  },
+
+  /* A duel or arena partner (a live consent pair), or -- v2.3.3528 -- a hit
+     `a` landed on `b` within ENGAGE_MS (`a` is the caster).
+     ═══ v2.3.3530: ...OR ONE OF A GROUP WHO ATTACKED YOU, ONCE YOU FIGHT ═══
+     The owner: "If you get attacked simultaneously by a group of people you
+     don't need additional windows to approve.  If the 2nd, 3rd, etc people
+     already approved "attack" at you you can immediately hit back at each of
+     them after that."  The game makes them your foes once you chose a fight
+     (src/game/nmlAsk.js nmlJoinFight), so your swings and shots land on each;
+     an area move goes by the worker's rule, and that rule waited for a blow
+     of yours on each one -- a whirlwind into the group that attacked you hit
+     only the one you had already struck.  So it also reaches a player who
+     struck YOU within ENGAGE_MS while you have struck someone under No man's
+     land's rule within ENGAGE_MS (_notePvpEngage's `_pvpNmlStruck`: you chose
+     a fight -- the window's Attack comes before any blow of yours).  Before
+     that first blow it still reaches nobody who attacked you: being attacked
+     is not choosing to fight back.  Kill switch `nmlgroup: false` (a blow of
+     yours on each, as v2.3.3528). */
   _pvpEngaged(a, b, now) {
     /* v2.3.3265: a sparring clone and its owner are always fighting (spar.js) */
     if (this._sparById && this._sparById.size && this._sparPair(a, b)) return true;
@@ -154,8 +215,13 @@ export const pvpExtrasMethods = {
       const until = this._pvpConsent.get(k);
       if (until && until > now) return true;
     }
-    const t = this._pvpEngage && this._pvpEngage.get(k);
-    return typeof t === 'number' && now - t <= PVP_EXTRAS.ENGAGE_MS;
+    const e = this._pvpEngage && this._pvpEngage.get(k);
+    if (!e || typeof e !== 'object') return false;
+    const fresh = (t) => typeof t === 'number' && t > 0 && now - t <= PVP_EXTRAS.ENGAGE_MS;
+    if (!this._areaChoiceOn()) return fresh(lastBlowOf(e));
+    if (fresh(a < b ? e.ab : e.ba)) return true;
+    if (typeof this._nmlGroupOn !== 'function' || !this._nmlGroupOn()) return false;
+    return fresh(a < b ? e.ba : e.ab) && fresh(this._pvpNmlStruck ? this._pvpNmlStruck.get(a) : 0);
   },
 
   /* The players an AREA effect centred on (x, y) with radius r may hit: alive,

@@ -31,7 +31,7 @@ import { WHEEL_BUILDING_DOORS, WHEEL_HALL_DOORS, WHEEL_SHUT_DOORS } from '../../
 import { WHEEL_GEOM, setWheelGeom, wheelLandAt, ZONES } from '../../src/data/zones.js';
 import {
   routeOrder, parseWay, wayOf, visitedSet, landStart, landHere, amongMonsters, nearestLandStart, pointFor, wheelWay,
-  HERE, LAND_HERE_R, LAND_IN_PX, DOOR_HERE_R, GATHER_HERE_R,
+  HERE, LAND_HERE_R, LAND_IN_PX, DOOR_HERE_R, GATHER_HERE_R, DUNGEON_HERE_R,
 } from '../../src/game/questWays.js';
 
 let passed = 0, failed = 0;
@@ -140,9 +140,12 @@ const ANYWHERE = { life_1: [2, 3, 4], fish_1: [2, 3, 4] };
   check('3e none of the owner\'s seven named a land or a resource, so before v2.3.3522 none had a road until handed in', hadOne.length === 0, hadOne);
   const kinds = Object.fromEntries(owners.map((k) => [k, (wayOf(QUEST_CHAINS[k], QUEST_CHAINS[k].steps
     ? QUEST_CHAINS[k].steps.map((s, j) => ({ current: j === 0, node: s.node || null, way: s.way || null })) : null, false) || {}).kind + ((wayOf(QUEST_CHAINS[k], null, false) || {}).plot ? ':' + wayOf(QUEST_CHAINS[k], null, false).plot : '')]));
-  check('3f the Woodworker for the traps, the monsters for springing, catching and the Mayor\'s five kills, a building for his visits, the Land Office for his dungeon',
+  const m3w = wayOf(QUEST_CHAINS.mayor_3, null, false);
+  check('3f the Woodworker for the traps, the monsters for springing, catching and the Mayor\'s five kills, a building for his visits, the Goo Grotto for his dungeon (v2.3.3540; the Land Office until then)',
     kinds.beast_1 === 'door:woodworker' && kinds.beast_2 === 'door' && kinds.beast_3 === 'monsters' && kinds.beast_4 === 'monsters'
-      && kinds.mayor_1 === 'visit' && kinds.mayor_2 === 'monsters' && kinds.mayor_3 === 'door:landoffice', kinds);
+      && kinds.mayor_1 === 'visit' && kinds.mayor_2 === 'monsters' && kinds.mayor_3 === 'dungeon' && !!m3w && m3w.land === 'verdant', { kinds, m3w });
+  check('3g a dungeon way names its land, and nothing else is one', JSON.stringify(parseWay('dungeon:verdant')) === JSON.stringify({ kind: 'dungeon', land: 'verdant' })
+    && parseWay('dungeon:') === null && parseWay('dungeons') === null);
   /* v2.3.3525: the tour's steps (data/gameSystems.js, the header above
      farm_1): to its giver's building, the Cookhouse for the juice, Lil Bro
      for his race */
@@ -256,8 +259,16 @@ const geomFor = (size) => {
   const S3 = { stats: { visitedBuildings: new Set([1, 2, 3]) } };
   const v3 = wheelWay(ctxOf([E('mayor_1', false, R1, S3)], null, { R: R1, S: S3 }));
   check('6i three buildings visited: the road leads to Mayor Bro', !!v3 && v3.way === 'giver' && v3.npc === 'Mayor Bro' && v3.x === npcs['Mayor Bro'].x, v3);
-  const d3 = wheelWay(ctxOf([E('mayor_3')], null));
-  check('6j "Clear any dungeon": the Land Office\'s door (your farm\'s Dungeon Workshop is behind it)', !!d3 && d3.door === 'landoffice' && d3.qid === 'mayor_3', d3);
+  /* v2.3.3540: "Clear any dungeon" leads to the Goo Grotto's mouth, when the
+     worker opens it (ctx.dungeons: the game's wheelDungeonDoorsOpen) */
+  const grotto = { id: 'verdant', name: 'the Goo Grotto', x: c - 5300, y: c - 700 };
+  const d3 = wheelWay(ctxOf([E('mayor_3')], null, { dungeons: [{ id: 'hollows', name: 'the Great Cave', x: c + 30000, y: c }, grotto] }));
+  check('6j "Clear any dungeon": the Goo Grotto\'s mouth, the starter dungeon (v2.3.3540; the Land Office\'s door until then)',
+    !!d3 && d3.qid === 'mayor_3' && d3.way === 'dungeon' && d3.dungeon === 'verdant' && d3.x === grotto.x && d3.y === grotto.y, d3);
+  const d3at = wheelWay(ctxOf([E('mayor_3')], null, { dungeons: [grotto], P: { x: grotto.x + 60, y: grotto.y + 120 } }));
+  check(`6j2 ...standing at its mouth (within ${DUNGEON_HERE_R} px), no star`, d3at === null, d3at);
+  const d3old = wheelWay(ctxOf([E('mayor_3')], null, { dungeons: [] }));
+  check('6j3 ...and against a worker that does not open it, nowhere (no star to a door that would refuse you)', d3old === null, d3old);
   /* beast_2, step by step */
   const RB = (traps, kills) => ({ _quests: { beast_2: QUEST_STATUS.active }, inventory: { trap_box: traps }, _questKills: { beast_2: kills } });
   const SB = (R) => ({ rpg: R });
@@ -279,7 +290,7 @@ const geomFor = (size) => {
   const RO = { _quests: { life_2: QUEST_STATUS.active }, inventory: {} };
   const ore = wheelWay(ctxOf([E('life_2', false, RO)], null, { R: RO, nodeNear: (k) => (k === 'oreVein' ? { x: c + 900, y: c + 900, d: 1100 } : null) }));
   const oreHere = wheelWay(ctxOf([E('life_2', false, RO)], null, { R: RO, nodeNear: () => ({ x: c, y: c + 300, d: GATHER_HERE_R - 1 }) }));
-  const oreNone = wheelWay(ctxOf([E('life_2', false, RO), E('mayor_3')], null, { R: RO, nodeNear: () => null }));
+  const oreNone = wheelWay(ctxOf([E('life_2', false, RO), E('mayor_3')], null, { R: RO, nodeNear: () => null, dungeons: [grotto] }));   /* v2.3.3540: mayor_3's road the Grotto's */
   check('6m "Bring 5 Ore": the nearest vein; at it, no star; none to be found (no pickaxe, none alive), the next quest\'s road',
     !!ore && ore.node === 'oreVein' && ore.x === c + 900 && oreHere === null && !!oreNone && oreNone.qid === 'mayor_3', { ore, oreHere, oreNone });
   /* a hand-in whose giver is not here passes too; and outside the Wheel only a giver who stands there */

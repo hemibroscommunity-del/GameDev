@@ -223,6 +223,38 @@ export const FARM_SHOP_BASE = Object.freeze(Object.keys(FARM.CROPS).reduce((m, i
   return m;
 }, { [FARM.COMPOST]: FARM.COMPOST_PRICE }));
 
+/* ═══ v2.3.3537: EVERY CROP IS FOOD ═══
+   The owner, 2026-10-21: "I value SIMPLICITY and INTELLIGIBILITY".  Ten of
+   the sixteen crops (v2.3.3135) were grown for nothing: no recipe cooks them
+   and no order asks for them.  The rule agreed for all sixteen, one a player
+   can guess: ANY CROP CAN BE EATEN, raw, for a small heal -- half what a fish
+   heals at the same level.  A crop's level is the Farming level it asks; a
+   fish's is the Fishing level its spot asks (gathering.js GATHER_REQ_LVL
+   fishSpot: the minnow at 1, clownfish 5, trout 10, salmon 15, pike 20), and
+   the crops open at exactly those five levels.  So by data.js FISH_HEAL,
+   rounded up: 50, 75, 113, 163, 238 HP -- 10, 15, 23, 33, 48 on the game's
+   screen (HP shown divided by 5).  crop-food.test holds the relation to both
+   tables; src/data/farmCrops.js mirrors it (mirror-audit).
+   A crop is eaten as a cooked fish is (cooking.js _handleEatRequest): one
+   bite at a time in a fight, none in an arena match.  `cropeat: false` in the
+   live flags stops it (_cropEatOff) and un-advertises caps.cropeat, so the
+   bag offers no Eat on a crop. */
+export const CROP_HEAL = Object.freeze({ 1: 50, 5: 75, 10: 113, 15: 163, 20: 238 });
+
+/* The bag key a harvest pays -> its crop.  Null-prototype: a key from the
+   phone is looked up only as an own key (TRAPS §6). */
+const CROP_BY_ITEM = Object.freeze(Object.keys(FARM.CROPS).reduce((m, id) => {
+  m[FARM.CROPS[id].item] = FARM.CROPS[id]; return m;
+}, Object.create(null)));
+
+/* What eating one of this bag key heals: CROP_HEAL by the crop's level, or 0
+   for anything that is not a crop (a seed, compost, a fish, junk). */
+export function cropHealFor(itemKey) {
+  if (typeof itemKey !== 'string' || !Object.prototype.hasOwnProperty.call(CROP_BY_ITEM, itemKey)) return 0;
+  const lvl = CROP_BY_ITEM[itemKey].lvl;
+  return Object.prototype.hasOwnProperty.call(CROP_HEAL, lvl) ? CROP_HEAL[lvl] : 0;
+}
+
 const clampInt = (v, lo, hi) => {
   const n = Math.floor(Number(v));
   if (!Number.isFinite(n)) return lo;

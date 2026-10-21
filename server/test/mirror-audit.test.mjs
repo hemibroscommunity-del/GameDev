@@ -39,8 +39,8 @@ import { hardenLevelFor as clientHardenLevel } from '../../src/data/hardenCosts.
 import { HARDEN_COSTS as CLIENT_HARDEN, HARDEN_MATERIAL_NAMES as CLIENT_HARDEN_NAMES, hardenGoldFor as clientHardenGold, hardenAmountFor as clientHardenAmount, hardenMaterialFor as clientHardenMat, hardenIsWood as clientHardenIsWood, hardenTierOf as clientHardenTier } from '../../src/data/hardenCosts.js'; /* v2.3.3139 */
 import { HARDENED_WOOD_RECIPES as CLIENT_HARDENED_WOOD, HARDENED_WOOD_MAX_PER_REQUEST as CLIENT_HW_MAX, HARDEN_WOOD_BY_TIER as CLIENT_HARDEN_WOOD_BY_TIER } from '../../src/data/hardenedWood.js'; /* v2.3.3139 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
-import { FARM as SRV_FARM, farmGrowMs as srvFarmGrowMs, farmYield as srvFarmYield } from '../src/farm.js'; /* v2.3.3127 */
-import { FARM as CLIENT_FARM, FARM_CROP_ORDER as CLIENT_FARM_ORDER, farmGrowMs as clientFarmGrowMs, farmYieldShown as clientFarmYieldShown } from '../../src/data/farmCrops.js'; /* v2.3.3127 */
+import { FARM as SRV_FARM, farmGrowMs as srvFarmGrowMs, farmYield as srvFarmYield, CROP_HEAL as SRV_CROP_HEAL, cropHealFor as srvCropHeal } from '../src/farm.js'; /* v2.3.3127; v2.3.3537: what a crop heals */
+import { FARM as CLIENT_FARM, FARM_CROP_ORDER as CLIENT_FARM_ORDER, farmGrowMs as clientFarmGrowMs, farmYieldShown as clientFarmYieldShown, CROP_HEAL as CLIENT_CROP_HEAL, farmCropHeal as clientCropHeal } from '../../src/data/farmCrops.js'; /* v2.3.3127; v2.3.3537 */
 import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3092 */
 import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3092 */
 import * as SRV_SALVAGE from '../src/salvage.js'; /* v2.3.3141 */
@@ -59,7 +59,7 @@ import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wh
 import { PVP_HEAL as CLIENT_PVP_HEAL } from '../../src/game/fightFood.js'; /* v2.3.3133 */
 import * as SRV_ONE from '../src/oneformula.js'; /* v2.3.3260: one formula for every fight */
 import * as CLIENT_ONE from '../../src/data/oneFormula.js';
-import { setOneFormulaEnabled as clientSetOneFormula } from '../../src/data/oneFormula.js';
+import { setOneFormulaEnabled as clientSetOneFormula, setOneLevelEnabled as clientSetOneLevel, setGearOnLevel as clientSetGearOnLevel } from '../../src/data/oneFormula.js'; /* v2.3.3538: + one level; v2.3.3544: + gear on level */
 import { recalcDerived as clientRecalcDerived } from '../../src/data/gameSystems.js';
 import { WHEEL_SPAWNS as SRV_WHEEL_SPAWNS } from '../src/wheelspawns.js'; /* v2.3.3089 */
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
@@ -131,6 +131,7 @@ import {
      DIFFERENT roads — the worker by tier index, the client by statReq/2 — so
      they can drift without either looking wrong on its own. */
   canEquipItem as clientCanEquip,
+  getEquipReqLabel as clientEquipReqLabel, /* v2.3.3544: the card's words for a piece you wear */
   /* v2.3.2664: the armour ladder's Defense requirement, both halves. */
   armorDefReq as clientArmorDefReq, isArmourLadderPiece as clientIsArmourLadderPiece,
   ARMOR_FREE_TIERS as CLIENT_ARMOR_FREE_TIERS, ARMOR_DEF_REQ_PER_TIER as CLIENT_ARMOR_DEF_REQ_PER_TIER,
@@ -152,7 +153,8 @@ import {
   propFootprint as clientPropFootprint, attackBlocked as clientAttackBlocked,
 } from '../../src/data/worldProps.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
-import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES, GEM_EXTRACT_BASE_COST } from '../../src/data/items.js';
+import { AMULET_TIERS, AMULET_GEM_STATS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES, GEM_EXTRACT_BASE_COST } from '../../src/data/items.js';
+import { AMULET_STAMINA_REGEN as SRV_AMULET_STAMINA_REGEN } from '../src/staminaregen.js'; /* v2.3.3536 */
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -298,7 +300,10 @@ const room = Object.create(GameRoom.prototype);
   let bad = [];
   for (const on of [true, false]) {
     for (let lvl = 0; lvl <= 300; lvl += 7) for (const pts of [0, 1, 6, 37, 100]) {
-      if (CLIENT_ONE.healthAt(lvl, pts, on) !== SRV_ONE.healthAt(lvl, pts, on)) bad.push(['health', on, lvl, pts]);
+      /* v2.3.3538: with one level and without (healthAt's `oneLevel`) */
+      for (const one of [true, false]) {
+        if (CLIENT_ONE.healthAt(lvl, pts, on, one) !== SRV_ONE.healthAt(lvl, pts, on, one)) bad.push(['health', on, one, lvl, pts]);
+      }
     }
     for (let lvl = 1; lvl <= 100; lvl++) {
       if (CLIENT_ONE.monsterHitK(lvl, on) !== SRV_ONE.monsterHitK(lvl, on)) bad.push(['hitK', on, lvl]);
@@ -313,21 +318,25 @@ const room = Object.create(GameRoom.prototype);
   const room1 = Object.create(GameRoom.prototype);
   bad = [];
   setProg3Enabled(true);
-  for (const on of [true, false]) {
-    room1._liveFlags = on ? {} : { oneformula: false };
+  /* v2.3.3538: and with ONE LEVEL on and off (the worker's `onelevel` flag,
+     the page's caps.onelevel switch): the level AND the bar agree */
+  for (const on of [true, false]) for (const one of [true, false]) {
+    room1._liveFlags = Object.assign({}, on ? {} : { oneformula: false }, one ? {} : { onelevel: false });
     clientSetOneFormula(on);
+    clientSetOneLevel(one);
     for (const [sw, bw, st, hp] of [[1, 1, 1, 0], [5, 1, 1, 3], [10, 1, 1, 0], [20, 7, 3, 12], [40, 40, 40, 100]]) {
       const prog3 = { sk: { sword: { level: sw, xp: 0 }, bow: { level: bw, xp: 0 }, staff: { level: st, xp: 0 } }, atk: {}, alloc: { hp }, pool: 0 };
       const ps = { prog3: JSON.parse(JSON.stringify(prog3)) };
       room1._prog3Recompute(ps);
       const rpg = { prog3: JSON.parse(JSON.stringify(prog3)), hp: 1, maxHp: 1 };
       clientRecalcDerived(rpg);
-      if (ps.maxHp !== rpg.maxHp) bad.push({ on, sw, bw, st, hp, worker: ps.maxHp, page: rpg.maxHp });
+      if (ps.maxHp !== rpg.maxHp || ps.level !== rpg.level) bad.push({ on, one, sw, bw, st, hp, worker: [ps.level, ps.maxHp], page: [rpg.level, rpg.maxHp] });
     }
   }
   clientSetOneFormula(false);
+  clientSetOneLevel(false);
   setProg3Enabled(false);
-  check('ONE_FORMULA mirror: the page\'s bar is the worker\'s, the formula on and off', bad.length === 0, bad.slice(0, 4));
+  check('ONE_FORMULA mirror: the page\'s level and bar are the worker\'s, the formula and one level on and off', bad.length === 0, bad.slice(0, 4));
 }
 
 // ── 5. QUEST_REWARDS vs QUEST_CHAINS: payouts + chain links, BOTH
@@ -376,8 +385,8 @@ const room = Object.create(GameRoom.prototype);
   const early = (SRV.QUEST_TOUR || []).filter((q, i) => listOf((SRV.QUEST_REWARDS[q] || {}).after).some((a) => {
     const j = SRV.QUEST_TOUR.indexOf(a); return j < 0 || j >= i;
   }));
-  check('QUEST_TOUR is the same twelve steps on both sides, a tour step each, in an order a player may follow (v2.3.3525)',
-    tourS === tourC && tourS === 'tut_1,farm_1,smith_1,smith_2,wood_1,wood_2,fish_1,farm_2,race_1,beast_1,beast_2,tut_2'
+  check('QUEST_TOUR is the same twelve steps on both sides, a tour step each, in an order a player may follow (v2.3.3525; v2.3.3533: the snowmen fifth)',
+    tourS === tourC && tourS === 'tut_1,smith_1,smith_2,fish_1,tut_2,farm_1,wood_1,wood_2,farm_2,race_1,beast_1,beast_2'
       && SRV.QUEST_TOUR.slice(1).every((q) => QUEST_CHAINS[q] && QUEST_CHAINS[q].tour === true) && early.length === 0,
     { server: tourS, client: tourC, early });
 }
@@ -498,6 +507,15 @@ tierMirror('WOODWORKING', SRV.WOODWORKING_TIERS, WOODWORKING_TIERS);
 {
   const bad = Object.entries(SRV.AMULET_TIER_POWER).filter(([k, v]) => !AMULET_TIERS[k] || AMULET_TIERS[k].basePower !== v).map(([k]) => k);
   check('AMULET_TIER_POWER <-> AMULET_TIERS basePower (drives the flame-gem elemDmg roll)', bad.length === 0, bad);
+}
+{
+  /* v2.3.3536: the regen tick works a light amulet's stamina regen out
+     itself (staminaregen.js), never the phone's claim -- so the worker's row
+     is the one the amulet's card prints */
+  const G = AMULET_GEM_STATS[SRV_AMULET_STAMINA_REGEN.gem];
+  check('AMULET_STAMINA_REGEN <-> AMULET_GEM_STATS.light (the stamina regen the tick pays)',
+    !!G && G.stat === 'staminaRegen' && G.base === SRV_AMULET_STAMINA_REGEN.base && G.perPower === SRV_AMULET_STAMINA_REGEN.perPower,
+    { client: G, server: SRV_AMULET_STAMINA_REGEN });
 }
 {
   const bad = Object.entries(SRV.RARITY_TIERS).filter(([k, v]) => !RARITY_TIERS[k] || RARITY_TIERS[k].mult !== v.mult).map(([k]) => k);
@@ -903,6 +921,11 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const reqBad = [...armourItems, weaponShape].filter((it) => SRV.armorDefReq(it) !== clientArmorDefReq(it)
     || SRV.isArmourLadderPiece(it) !== clientIsArmourLadderPiece(it));
   check('armorDefReq / isArmourLadderPiece agree server<->client on every shape', reqBad.length === 0, reqBad.slice(0, 6));
+  /* v2.3.3544: Defense points are the `gearlevel: false` switch's rule now
+     (the page's own switch off, as against an older worker) -- the level's
+     sweep is below */
+  room._liveFlags = { gearlevel: false };
+  clientSetGearOnLevel(false);
   const armBad = [];
   let armRefused = 0;
   for (let def = 0; def <= 35; def += 1) {
@@ -915,9 +938,52 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       if (srvOk !== cliOk) armBad.push({ def, item, server: srvOk, client: cliOk });
     }
   }
-  check('armour equip gate agrees server<->client across tiers 0-9 and Defense 0-35',
+  check('(gearlevel: false) armour equip gate agrees server<->client across tiers 0-9 and Defense 0-35',
     armBad.length === 0, armBad.slice(0, 6));
   check('...and it does refuse something (guard: an always-yes gate agrees trivially)', armRefused > 0, armRefused);
+
+  /* ═══ v2.3.3544: ...AND BY DEFAULT EVERYTHING YOU WEAR ASKS YOUR LEVEL ═══
+     Armour, shields and amulets against the CHARACTER level (one level: the
+     best weapon's) -- the worker's _gearOnLevel / _prog3GearOk('level'), the
+     page's wearHave against caps.gearlevel.  Swept across every tier, every
+     best weapon and level 1-35, with Defense points that must no longer
+     count, and shields and amulets off both tables. */
+  room._liveFlags = {};
+  clientSetOneLevel(true);
+  clientSetGearOnLevel(true);
+  const wearItems = [
+    ...armourItems.map((it) => ({ slot: 'armor', item: it })),
+    ...Object.keys(SRV.BLACKSMITH_TIERS).map((k) => ({ slot: 'shield', item: { gearBase: k, tierMult: 1, name: 'x' } })),
+    ...Object.keys(SRV.WOODWORKING_TIERS).map((k) => ({ slot: 'shield', item: { gearBase: 'ww_' + k, tierMult: 1, name: 'x' } })),
+  ];
+  const lvlBad = [];
+  let lvlRefused = 0, lvlWorn = 0;
+  for (let L = 1; L <= 35; L += 1) {
+    for (const cat of ['sword', 'bow', 'staff']) {
+      const sk = { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } };
+      sk[cat] = { level: L };
+      const ps = { prog3: { sk, alloc: { def: (L * 7) % 36 }, atk: {}, pool: {}, ms: {} } };
+      for (const { slot, item } of wearItems) {
+        const srvOk = room._prog3EquipOk(ps, slot, item);
+        const cliOk = clientCanEquip({ prog3: ps.prog3 }, item, slot);
+        if (srvOk) lvlWorn++; else lvlRefused++;
+        if (srvOk !== cliOk) lvlBad.push({ L, cat, slot, item, server: srvOk, client: cliOk });
+      }
+    }
+  }
+  check('everything you wear agrees server<->client on the LEVEL: armour and shields across every tier, best weapon and level 1-35 (Defense points no longer count)',
+    lvlBad.length === 0, lvlBad.slice(0, 6));
+  check('...and the level gate both refuses and allows (guard)', lvlRefused > 0 && lvlWorn > 0, { lvlRefused, lvlWorn });
+  /* the label says the gate's own number and words */
+  const bst = { name: 'Black Steel Torso', tierMult: 3, mat: 'blacksteel' };
+  const at4 = { prog3: { sk: { sword: { level: 4 }, bow: { level: 1 }, staff: { level: 1 } }, alloc: { def: 30 }, atk: {}, pool: {}, ms: {} } };
+  const lab = clientEquipReqLabel(bst, 'armor', at4);
+  check('...and the card reads the gate: a Black Steel Torso "Level 5", you 4, not met',
+    !!lab && lab.stat === 'level' && lab.label === 'Level' && lab.req === 5 && lab.have === 4 && lab.met === false
+      && room._prog3EquipOk(at4, 'armor', bst) === false, lab);
+  clientSetGearOnLevel(false);
+  clientSetOneLevel(false);
+  room._liveFlags = {};
 }
 
 /* ═══ 13. v2.3.1812: TELEGRAPH KINDS vs THE CLIENT'S RENDER WHITELIST ═══
@@ -1619,6 +1685,13 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       && String(clientFarmYieldShown(b, true)) === (lo === hi ? String(lo) : lo + '\u2013' + hi),
       { plain: [srvFarmYield(a, false), clientFarmYieldShown(b, false)], fed: [lo, hi, clientFarmYieldShown(b, true)] });
   }
+  /* v2.3.3537: every crop is food -- the heal the bag's card promises is the
+     one the worker's eat gives (farm.js CROP_HEAL) */
+  check('farm: CROP_HEAL matches (what a crop eaten raw heals, by its level)',
+    JSON.stringify(SRV_CROP_HEAL) === JSON.stringify(CLIENT_CROP_HEAL), { srv: SRV_CROP_HEAL, cli: CLIENT_CROP_HEAL });
+  const healOff = Object.keys(SRV_FARM.CROPS).filter((id) => srvCropHeal(SRV_FARM.CROPS[id].item) !== clientCropHeal(SRV_FARM.CROPS[id].item)
+    || !(srvCropHeal(SRV_FARM.CROPS[id].item) > 0));
+  check('farm: every crop heals, and the same on both sides', healOff.length === 0, healOff);
 }
 
 // ── v2.3.3092: THE ARMOR FORGE -- the Armor tab's rows are the worker's ──
@@ -1802,8 +1875,10 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
 // fewer a dungeon nobody can reach -- and offers it nearer than the worker's
 // own reach, so a tap at the button's edge is never refused for drift.
 {
-  check('wheel dungeons: the same lands on both sides (WHEEL_DUNGEON.LANDS = WHEEL_DUNGEON_HOMES)',
-    JSON.stringify(Object.keys(SRV_WHEEL_DUNGEON.LANDS).sort()) === JSON.stringify(CLIENT_WHEEL_DUNGEON_HOMES.slice().sort()),
+  /* v2.3.3540: IN THE SAME ORDER -- caps.dungeonLands is how many of them
+     the worker opens, and the phone offers the first that many */
+  check('wheel dungeons: the same lands on both sides, in the same order (WHEEL_DUNGEON.LANDS = WHEEL_DUNGEON_HOMES; caps.dungeonLands counts the first)',
+    JSON.stringify(Object.keys(SRV_WHEEL_DUNGEON.LANDS)) === JSON.stringify(CLIENT_WHEEL_DUNGEON_HOMES),
     { srv: Object.keys(SRV_WHEEL_DUNGEON.LANDS), cli: CLIENT_WHEEL_DUNGEON_HOMES });
   check('wheel dungeons: the button comes up nearer than the worker\'s reach (DOOR_R < WHEEL_DUNGEON.DOOR_R)',
     CLIENT_DOOR_R + 40 <= SRV_WHEEL_DUNGEON.DOOR_R, { cli: CLIENT_DOOR_R, srv: SRV_WHEEL_DUNGEON.DOOR_R });
@@ -2307,7 +2382,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     if (!d) { if (e.dungeon || e.dungeonLevels) dOff.push([kind, 'no dungeon in its land', e.dungeon]); continue; }
     if (e.dungeon !== d.name || JSON.stringify(e.dungeonLevels) !== JSON.stringify(d.levels)) dOff.push([kind, e.dungeon, e.dungeonLevels, d.name, d.levels]);
   }
-  check('codex: each page\'s dungeon and its levels are the ones the worker baked (the Great Cave, the Foundry Dome, the Buried City)', dOff.length === 0, dOff);
+  check('codex: each page\'s dungeon and its levels are the ones the worker baked (the Great Cave, the Foundry Dome, the Buried City, the Goo Grotto)', dOff.length === 0, dOff);
   /* ...and the road its Locations tab says leads there is the plan's */
   const rOff = [];
   for (const kind of CLIENT_CODEX_KINDS) {

@@ -274,7 +274,18 @@ its stun is the lunge's daze. A player is named the way it named one: as
   names. A move that hits an area (the whirlwind, the burst, a splash or a
   blast) hits only players you are already fighting: a duel or arena partner,
   or someone you traded a hit with in the last 10 s. Your whirlwind in No
-  man's land never starts a fight with a bystander.
+  man's land never starts a fight with a bystander. Since v2.3.3528 the hit
+  must be one YOU landed on them, not one they landed on you: being attacked
+  is not choosing to fight back, and the game asks the one attacked first
+  ("Hit back <name>?", no-mans-land.md "Hitting back goes through the window
+  too"). Kill switch `areachoice: false`: either way, as before. Since
+  v2.3.3530, once you have struck someone under No man's land's rule in the
+  last 10 s, it also reaches the players who struck YOU in the last 10 s: a
+  group that attacks you is caught by your whirlwind once you fight back
+  (no-mans-land.md "A group attacks you: one window"). Kill switch `nmlgroup:
+  false`: a blow of yours on each, as v2.3.3528. And the window's Attack counts as your blow
+  (no-mans-land.md "You are white the moment they choose"), so the whirlwind
+  reaches the one you chose at once.
 - **A player cannot be locked down.** A frozen monster stays frozen 3 s, and
   a fast frost sword keeps it there. On a player, a freeze or an ability's
   stun holds the way a rock monster's daze holds a player: 0.5 s, then 2.5 s

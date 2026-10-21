@@ -32,8 +32,9 @@
  * THE RECORD `achv:<pid>` (handoff rule 1: never a new field on the rpg
  * blob) is `{ v, got: {<id>: at}, n: {<id>: times}, dg: {<land>: 1} }` --
  * which you have and when, how many times for the rows that count, and the
- * Wheel's dungeons you have cleared (Delver needs all three).  Ids come only
- * from LIST below and are APPEND-ONLY, never reused: the record names them.
+ * Wheel's dungeons you have cleared (Delver needs all four since the Goo
+ * Grotto, v2.3.3540).  Ids come only from LIST below and are APPEND-ONLY,
+ * never reused: the record names them.
  *   - one GET at join, BEFORE the mail drains (join.js), so a champion's
  *     achievement waiting in the mail finds its record;
  *   - every change is written at once, in the same synchronous run as the

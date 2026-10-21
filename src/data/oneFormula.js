@@ -4,6 +4,8 @@
  * Mirror of server/src/oneformula.js (mirror-audit holds the two together;
  * the worker's header has the reasoning, docs/specs/one-formula.md the study):
  *   - max HP is 100 + 50 a level + 40 a Max HP point (was 100 + 6 + 8);
+ *     since v2.3.3538 the level is the highest weapon skill (caps.onelevel),
+ *     read as level + 2: 200 + 50 a level;
  *   - every monster hits harder by its matching player's new health over
  *     their old (monsterHitK), so a monster takes the share of your bar it
  *     always took;
@@ -32,14 +34,35 @@ var _on = false;
 export function setOneFormulaEnabled(on) { _on = !!on; }
 export function isOneFormulaEnabled() { return _on; }
 
+/* v2.3.3538: ONE LEVEL -- the worker counts a character's level as the
+   HIGHEST of its three weapon skills (server prog3.js _prog3CharLevel), not
+   the three added up, when it advertises caps.onelevel (wsClient sets this
+   from it).  Kept here, beside the formula it changes, so prog3.js and
+   recalcDerived read one switch. */
+var _oneLevel = false;
+export function setOneLevelEnabled(on) { _oneLevel = !!on; }
+export function isOneLevelEnabled() { return _oneLevel; }
+
+/* v2.3.3544: ARMOUR, SHIELDS AND AMULETS ASK YOUR LEVEL -- the character
+   level (one level's best weapon), not Defense points or Magic, when the
+   worker advertises caps.gearlevel (wsClient sets this from it; server
+   gear.js _gearOnLevel).  Read by gameSystems.js canEquipItem,
+   getEquipReqLabel and prog3GearReq, and the forge's "Level 5 to wear". */
+var _gearOnLevel = false;
+export function setGearOnLevel(on) { _gearOnLevel = !!on; }
+export function isGearOnLevel() { return _gearOnLevel; }
+
 /* `on` omitted: the formula the worker advertised */
 function onNow(on) { return on === undefined ? _on : on !== false; }
 
 /** Max HP at a character level with `pts` Max HP points (floored, as the
- *  worker does). */
-export function healthAt(charLevel, pts, on) {
+ *  worker does).  v2.3.3538: `oneLevel` omitted is the worker's word; under
+ *  one level the bar reads the level + MATCH_LEVEL (200 + 50 a level), so a
+ *  new character and every one-weapon character keep the bar they had. */
+export function healthAt(charLevel, pts, on, oneLevel) {
   var H = onNow(on) ? ONE_FORMULA.HEALTH : ONE_FORMULA.OLD_HEALTH;
-  var L = Math.max(0, Number(charLevel) || 0);
+  var one = oneLevel === undefined ? _oneLevel : !!oneLevel;
+  var L = Math.max(0, Number(charLevel) || 0) + (one ? ONE_FORMULA.MATCH_LEVEL : 0);
   var P = Math.max(0, Number(pts) || 0);
   return Math.floor(H.BASE + L * H.PER_LEVEL + P * H.PER_POINT);
 }

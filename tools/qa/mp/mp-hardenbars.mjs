@@ -22,6 +22,11 @@
  *      the ladder's price for its level (H+1 bars, 500 x 2^H gold), and the
  *      worker takes exactly that -- its answer says the same bars; a failure's
  *      words over the smith name the bars too;
+ *      v2.3.3529: against caps.hardenkeep a failure KEEPS the level (the
+ *      owner: "the worst that can happen is you just stay at hardening 2 and
+ *      lose resources"): every failed attempt leaves the blade where it was,
+ *      every row above H0 says "Fail keeps H<n>", the failure's words "You keep
+ *      H<n>";
  *   5. bars short: the chip reads "have/need" in red and Harden is off; the
  *      worker's bag agrees with the game's;
  *   6. the Woodworker (caps.hardenedwood): a pine bow in hand takes HARDENED
@@ -105,7 +110,8 @@ async function body({ P, wsPort, rec, errors }) {
   const me = await H.readState(P, (S) => S.myId);
 
   /* ── 1. caps ── */
-  const caps = await H.readState(P, (S) => ({ harden: !!(S._serverCaps && S._serverCaps.harden), bars: !!(S._serverCaps && S._serverCaps.hardenmats) }));
+  const caps = await H.readState(P, (S) => ({ harden: !!(S._serverCaps && S._serverCaps.harden), bars: !!(S._serverCaps && S._serverCaps.hardenmats),
+    keep: !!(S._serverCaps && S._serverCaps.hardenkeep) }));   /* v2.3.3529: a failure keeps the level */
   rec.ok('the worker advertises caps.hardenmats (and caps.harden)', caps.harden && caps.bars, caps);
   if (!(caps.harden && caps.bars)) return;
   /* every quest handed in, so no one stops us in the street */
@@ -198,6 +204,7 @@ async function body({ P, wsPort, rec, errors }) {
   /* ── 4. harden until the bars run short ── */
   const attempts = [];
   let failWords = null;
+  let keepWords = null;   /* v2.3.3529 */
   for (let i = 0; i < 16; i++) {
     const r = await readRow();
     const before = await bag();
@@ -215,8 +222,10 @@ async function body({ P, wsPort, rec, errors }) {
     }
     if (reply && reply.success === false && !reply.error && !failWords) {
       failWords = await P.page.evaluate(() => ((window._gameState.current.dmgNumbers) || []).map((d) => d && d.text).filter((t) => /Hardening failed/.test(t || '')).pop() || null);
+      /* v2.3.3529: and the line under it, "You keep H1" against caps.hardenkeep */
+      keepWords = await P.page.evaluate(() => ((window._gameState.current.dmgNumbers) || []).map((d) => d && d.text).filter((t) => /You keep H\d/.test(t || '')).pop() || null);
     }
-    attempts.push({ h: before.w.h, shownBars: r.barsNeed, shownGold: r.goldNeed, reply, tookBars: before.bars - after.bars, tookGold: before.coins - after.coins, to: after.w && after.w.h });
+    attempts.push({ h: before.w.h, shownBars: r.barsNeed, shownGold: r.goldNeed, reply, tookBars: before.bars - after.bars, tookGold: before.coins - after.coins, to: after.w && after.w.h, rowText: r.text });
     /* the row comes back when the smith's busy state clears on the change */
     const nb = await bag();
     if (nb.bars < ladderBars(nb.w.h)) break;
@@ -233,6 +242,26 @@ async function body({ P, wsPort, rec, errors }) {
   rec.ok(`...at ${levels.length} levels (H${levels.join(', H')}): the bars go up one a level and the gold doubles`, levels.length >= 1, levels);
   if (failWords) rec.ok(`a failure's words name the bars: "${failWords}"`, /-\d+ Copper Bars?\)/.test(failWords), failWords);
   else rec.ok('(no attempt failed this run, so there were no failure words to read)', true);
+  /* v2.3.3529: A FAILURE KEEPS THE LEVEL -- the owner: "if you complete
+     hardening 2 the worst that can happen is you just stay at hardening 2 and
+     lose resources".  Against caps.hardenkeep: every failed attempt left the
+     blade at the level it was tried from (the worker's player_state, not the
+     reply alone), every row above H0 said "Fail keeps H<n>", and a failure's
+     words said "You keep H<n>" and never "→ H". */
+  if (caps.keep) {
+    const fails = attempts.filter((a) => a.reply && a.reply.success === false && !a.reply.error);
+    rec.ok(`v2.3.3529: ${fails.length} failed attempt(s), each left the blade where it was (${fails.map((a) => 'H' + a.h + '→H' + a.to).join(' ') || 'none failed'})`,
+      fails.every((a) => a.to === a.h && a.reply.hardness === a.h), fails.map((a) => ({ h: a.h, to: a.to, reply: a.reply })));
+    const above = attempts.filter((a) => a.h > 0);
+    if (above.length) {
+      rec.ok(`v2.3.3529: every row above H0 says "Fail keeps H<n>" (${above.map((a) => 'H' + a.h).join(', ')})`,
+        above.every((a) => (a.rowText || '').includes('Fail keeps H' + a.h) && !/Fail → H0/.test(a.rowText || '')), above.map((a) => a.rowText));
+    } else rec.ok('(no attempt was made above H0 this run, so no "Fail keeps" row to read)', true);
+    if (failWords) {
+      rec.ok(`v2.3.3529: the failure's words keep the level: "${failWords}" / "${keepWords}"`,
+        !/→ H/.test(failWords) && !!keepWords && /You keep H\d/.test(keepWords), { failWords, keepWords });
+    }
+  } else rec.ok('(an older worker: no caps.hardenkeep, so a failure still drops the blade back)', true);
 
   /* ── 5. short of bars ── */
   await P.page.waitForTimeout(600);

@@ -45,6 +45,8 @@ forge all work from anywhere — the server never asked which zone you were in).
   - **Since v2.3.3066** three of them open halls of their own: the Guild Hall,
     the Post Office and the Sheriff's Office (docs/specs/wheel-halls.md).
   - Only the Hotel is still shut.
+  - **Since v2.3.3539** the Hotel opens too, against a worker that pays its
+    rest (docs/specs/hotel-rest.md): no door is shut.
 - **Diego keeps the General Store.** The shopkeeper who buys your loot stands
   west of its steps, facing the street. Walk up to him (within 90 px) or tap
   him and his window opens, as in the old town. Standing at the store's door
@@ -122,7 +124,7 @@ forge all work from anywhere — the server never asked which zone you were in).
 ## Not yet
 
 - The Hotel has nothing behind it (a bed and a rest): its rest needs the
-  worker to pay for it. The Guild Hall, Post Office and Sheriff's Office open
+  worker to pay for it. (Done in v2.3.3539: docs/specs/hotel-rest.md.) The Guild Hall, Post Office and Sheriff's Office open
   since v2.3.3066 (docs/specs/wheel-halls.md).
 - The townsfolk stand still. In the old town Diego, Ace and Lil Bro walk;
   the Wheel loads one strip of each (v2.3.3067 brought the last three here).

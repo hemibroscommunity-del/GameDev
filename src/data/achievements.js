@@ -56,7 +56,7 @@ export const ACHV_MEDAL_SRC = achvBadgeSrc('achievements');
 export const ACHIEVEMENTS = Object.freeze([
   { id: 'first_blood', tier: 'common', name: 'First Blood', clue: 'Defeat your first monster', how: 'Defeat your first monster.', icon: achvBadgeSrc('first_blood'), glyph: '🗡️' },
   { id: 'combat_10', tier: 'common', name: 'Blooded', clue: 'Melee, Bow or Magic to Lv 10', how: 'Raise Melee, Bow or Magic to level 10.', icon: achvBadgeSrc('combat_10'), glyph: '⚔️' },
-  { id: 'first_dungeon', tier: 'common', name: 'Into the Dark', clue: 'Clear a Wheel dungeon', how: 'Clear a dungeon in the Wheel.', icon: achvBadgeSrc('first_dungeon'), glyph: '🕳️', count: true },
+  { id: 'first_dungeon', tier: 'common', name: 'Into the Dark', clue: 'Clear a dungeon', how: 'Clear any of the four dungeons: the Goo Grotto is the nearest.', icon: achvBadgeSrc('first_dungeon'), glyph: '🕳️', count: true },
   { id: 'first_pet', tier: 'common', name: 'Gotcha', clue: 'Catch a pet in a trap', how: 'Catch your first pet in a trap.', icon: achvBadgeSrc('first_pet'), glyph: '🐾' },
   { id: 'first_order', tier: 'common', name: 'Farmhand', clue: 'Deliver a Feed & Seed order', how: 'Deliver an order at the Feed & Seed.', icon: achvBadgeSrc('first_order'), glyph: '🌾', count: true },
   { id: 'first_duel', tier: 'common', name: 'Duelist', clue: 'Win a duel', how: 'Win a duel.', icon: achvBadgeSrc('first_duel'), glyph: '🤺', count: true },
@@ -64,7 +64,7 @@ export const ACHIEVEMENTS = Object.freeze([
   { id: 'story_done', tier: 'rare', name: 'Storyteller', clue: 'Finish every story quest', how: 'Finish every story quest.', icon: achvBadgeSrc('story_done'), glyph: '📜' },
   { id: 'codex_all', tier: 'rare', name: 'Know Thy Enemy', clue: 'Defeat all 9 kinds of monster', how: 'Defeat all nine kinds of monster.', icon: achvBadgeSrc('codex_all'), glyph: '📚' },
   { id: 'elder_all', tier: 'rare', name: 'Elder Hunter', clue: 'All 9 kinds past Lv 20', how: 'Defeat all nine kinds past level 20.', icon: achvBadgeSrc('elder_all'), glyph: '🐉' },
-  { id: 'dungeons_all', tier: 'rare', name: 'Delver', clue: 'Clear all 3 Wheel dungeons', how: 'Clear the Great Cave, the Foundry Dome and the Buried City.', icon: achvBadgeSrc('dungeons_all'), glyph: '🗝️' },
+  { id: 'dungeons_all', tier: 'rare', name: 'Delver', clue: 'Clear all 4 dungeons', how: 'Clear the Goo Grotto, the Great Cave, the Foundry Dome and the Buried City.', icon: achvBadgeSrc('dungeons_all'), glyph: '🗝️' },
   { id: 'combat_50', tier: 'rare', name: 'Veteran', clue: 'Melee, Bow or Magic to Lv 50', how: 'Raise Melee, Bow or Magic to level 50.', icon: achvBadgeSrc('combat_50'), glyph: '⚔️' },
   { id: 'natural_one', tier: 'rare', name: 'Natural One', clue: 'A kill roll of exactly 1', how: 'Land a killing blow whose kill roll is 1 (1 in 10,000).', icon: achvBadgeSrc('natural_one'), glyph: '🎲', count: true },
   { id: 'iron_blade', tier: 'rare', name: 'Iron Great Sword', clue: 'An Iron Great Sword off a kill', how: 'Find an Iron Great Sword on a kill (1 in 500).', icon: achvBadgeSrc('iron_blade'), glyph: '🗡️', count: true },

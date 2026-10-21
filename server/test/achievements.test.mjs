@@ -136,7 +136,8 @@ const aMonster = () => wheel.find((m) => m.home === 'frost' && !m.tier) || wheel
   check('0e2 ...never a quest nobody is offered (retired or dormant), so Storyteller can always be earned',
     QUEST_RETIRED.length > 0 && ACHV.STORY_ENDS.every((q) => !gone.has(q)) && !ACHV.STORY_ENDS.includes('life_2')
       && ['tut_4', 'beast_4', 'mayor_3'].every((q) => ACHV.STORY_ENDS.includes(q)), ACHV.STORY_ENDS);
-  check('0f Delver needs the Wheel\'s three dungeons', ACHV.DUNGEONS.length === 3 && ['hollows', 'thunder', 'sky'].every((d) => ACHV.DUNGEONS.includes(d)), ACHV.DUNGEONS);
+  /* v2.3.3549: four since the Goo Grotto (v2.3.3540, the Verdant Wilds' starter dungeon) */
+  check('0f Delver needs all four dungeons', ACHV.DUNGEONS.length === 4 && ['hollows', 'thunder', 'sky', 'verdant'].every((d) => ACHV.DUNGEONS.includes(d)), ACHV.DUNGEONS);
 }
 
 /* ── 1. CAPS AND THE FIRST LOOK ────────────────────────────────────────────── */
@@ -223,9 +224,11 @@ const gotC = (id) => !!(rec('bp_av_c') && rec('bp_av_c').got && rec('bp_av_c').g
   check('3e the Great Cave cleared: Into the Dark, counted 1, the cave remembered', gotC('first_dungeon') && rec('bp_av_c').n.first_dungeon === 1 && rec('bp_av_c').dg.hollows === 1 && !gotC('dungeons_all'), rec('bp_av_c'));
   room._dungeonComplete(inst('thunder'), ['bp_av_c'], Date.now());
   room._dungeonComplete(inst('hollows'), ['bp_av_c'], Date.now());
-  check('3f two of three: no Delver yet (the cave twice counts once)', !gotC('dungeons_all') && rec('bp_av_c').n.first_dungeon === 3, rec('bp_av_c'));
+  check('3f two of four: no Delver yet (the cave twice counts once)', !gotC('dungeons_all') && rec('bp_av_c').n.first_dungeon === 3, rec('bp_av_c'));
   room._dungeonComplete(inst('sky'), ['bp_av_c'], Date.now());
-  check('3g all three: Delver', gotC('dungeons_all'), rec('bp_av_c'));
+  check('3g three of four: still no Delver (the Goo Grotto counts too)', !gotC('dungeons_all'), rec('bp_av_c'));
+  room._dungeonComplete(inst('verdant'), ['bp_av_c'], Date.now());
+  check('3g2 all four: Delver', gotC('dungeons_all'), rec('bp_av_c'));
 
   /* a catch */
   room._achvOnCatch('bp_av_c', C, { gold: false, size: 1 });

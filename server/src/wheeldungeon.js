@@ -28,27 +28,38 @@
  *     v2.3.1127, GDD §36) -- a level-8 player meets a level-8 Great Cave, a
  *     level-40 one its level 30.
  *
+ * v2.3.3540: AND A STARTER DUNGEON.  The owner: "I value SIMPLICITY and
+ * INTELLIGIBILITY" -- the after-review list's fourth item: the three above are
+ * levels 26-45, out of a new player's reach in a first visit, so the Verdant
+ * Wilds have a landmark too, the Goo Grotto, in the middle of their first
+ * stretch (levels 1-5), about half a minute's walk from town -- where the
+ * Mayor's first quest sends a new player for slimes (public/tools/world/
+ * plan.js).  And EVERY BOSS IS AT ITS DUNGEON'S LEVEL (data.js
+ * DUNGEON_BOSS_UP): it was five levels up, so a level-5 player's level-5
+ * dungeon ended on a level-10 boss -- a wall where a fight was meant.
+ *
  * ITS MONSTERS are built by the one copy of the stat math, _makeZoneMonster,
  * exactly as the land builds them, with `home`: a kill pays that land's shard
  * and counts for its quests (wheelzone.js _rewardZone), and the client draws
  * the land's own monsters from their own looks.  They stay dead once killed
  * (`noRespawn`, dungeon.js).  The boss is the land's last spawn kind -- its
- * strongest -- five levels up, scaled as any dungeon boss (dungeon.js
- * _dungeonSpawnBoss: BOSS_MULT x the party's share, dmg x 1.5, its
- * archetype's ability kit).
+ * strongest -- at the dungeon's level (v2.3.3540; five levels up until then),
+ * scaled as any dungeon boss (dungeon.js _dungeonSpawnBoss: BOSS_MULT x the
+ * party's share, dmg x 1.5, its archetype's ability kit).
  *
  * dungeon_started carries `back`, the way back out ({ z: 'wheel', x, y }),
  * and the config `home`; both new, both ignored by a client that never asks.
  * The clear pays as any dungeon's (dungeon.js _dungeonComplete).
  */
-import { ZONES, ARCHETYPES } from './data.js';
+import { ZONES, ARCHETYPES, DUNGEON_BOSS_UP } from './data.js';   /* v2.3.3540: + every boss at its dungeon's level */
 /* v2.3.3315: the doors of the Wheel this room plays (this._wheelT()) */
 
 export const WHEEL_DUNGEON = {
   /* the lands whose landmark is a dungeon today, and each arena's look (a
      Workshop terrain pack, src/data/gameSystems.js DUNGEON_TERRAIN_PACKS).
      MIRROR: src/game/wheelDungeons.js WHEEL_DUNGEON_HOMES (mirror-audit) */
-  LANDS: { hollows: 'crystal_mine', thunder: 'thunder_spire', sky: 'sky_temple' },
+  LANDS: { hollows: 'crystal_mine', thunder: 'thunder_spire', sky: 'sky_temple',
+    verdant: 'toxic_swamp' },   /* v2.3.3540: the Goo Grotto, the starter dungeon (levels 1-5) */
   ZONE: 'wheel',
   /* how near the mouth (game px) a start is taken: the client offers it
      within 200, so a tap at the edge of that is never refused for drift */
@@ -71,6 +82,11 @@ export const WHEEL_DUNGEON = {
      leader's zone" alone would pull a member from across the map */
   PARTY_R: 600,
 };
+
+/* v2.3.3540: the mouths' lands IN ORDER -- caps.dungeonLands is how many of
+   them this worker opens (join.js), and the phone offers the first that many
+   (src/game/wheelDungeons.js) */
+export const WHEEL_DUNGEON_LAND_IDS = Object.freeze(Object.keys(WHEEL_DUNGEON.LANDS));
 
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -158,11 +174,12 @@ export const wheelDungeonMethods = {
     }
   },
 
-  /* The boss's body: the land's last spawn kind, five levels up (dungeon.js
-     scales it and gives it its kit). */
+  /* The boss's body: the land's last spawn kind, at the dungeon's level
+     (v2.3.3540: five levels up until then; dungeon.js scales it and gives it
+     its kit). */
   _wheelDungeonBossBody(inst) {
     const zone = own(ZONES, inst.cfg.home) ? ZONES[inst.cfg.home] : null;
     if (!zone || !zone.spawns.length) return null;
-    return this._wheelDungeonMonster(inst, zone.spawns[zone.spawns.length - 1], inst.cfg.monsterLevel + 5, 'boss');
+    return this._wheelDungeonMonster(inst, zone.spawns[zone.spawns.length - 1], inst.cfg.monsterLevel + DUNGEON_BOSS_UP, 'boss');
   },
 };

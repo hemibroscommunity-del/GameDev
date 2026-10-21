@@ -22,6 +22,8 @@
  *      and a copper greatsword asks Smithing 1 to harden ("the same smithing
  *      level as it takes to smithing that item tier"), so no lock.
  *   5. Amulet: the rows are there, and costs are chips, not sentences.
+ *      v2.3.3535: the tab only once you hold gold for it -- a new character
+ *      sees five tabs; with a nugget on the phone the sixth comes back.
  *   6. v2.3.3524: the smith works on the owner's painted anvil
  *      (window.__btSmithAnvil), as wide as the rock it hides.
  */
@@ -92,7 +94,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 1. Layout ── */
   const tabs = await P.page.$$eval('[data-smithy-tab]', (b) => b.map((x) => x.getAttribute('data-smithy-tab')));
   /* v2.3.3092: + Armor, bars into armor (armorforge.js); v2.3.3141: + Salvage (salvage.js) */
-  rec.ok('six tabs: Smelt, Forge, Armor, Upgrade, Amulet, Salvage', tabs.join(',') === 'smelt,forge,armor,upgrade,amulet,salvage', tabs);
+  /* v2.3.3535: the Amulet tab only to someone holding a nugget, a bar or an
+     amulet (game/forgeTabs.js) -- this new character holds none (step 5) */
+  rec.ok('five tabs for a new character: Smelt, Forge, Armor, Upgrade, Salvage (no Amulet: no gold for it)', tabs.join(',') === 'smelt,forge,armor,upgrade,salvage', tabs);
   /* v2.3.3524: the owner: "Make the upgrade tab icon different for smithing.
      Like a hammer" -- the hammer, drawn, not the gold gem */
   const upIcon = await P.page.$eval('[data-smithy-tab="upgrade"] img', (im) => ({ src: im.getAttribute('src'), ok: im.complete && im.naturalWidth > 0 })).catch(() => null);
@@ -200,9 +204,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { c0, now: await H.readState(P, (S) => S.rpg.coins), replies });
 
   /* ── 5. Amulet ── */
+  /* v2.3.3535: the tab comes with gold for it.  A nugget is 1 kill in 10,000
+     and today's town has no monsters, so the phone's own copy holds one (the
+     worker's deltas never name goldNuggets while its count stands still), and
+     a gold grant's player_state draws the panel again with it */
+  await P.page.evaluate(() => { const R = window._gameState.current.rpg; R.goldNuggets = 1; });
+  await H.grant(wsPort, me, 'gold', { amount: 1 });
+  const amuletTab = await P.page.waitForSelector('[data-smithy-tab="amulet"]', { timeout: 6000 }).then(() => true).catch(() => false);
+  const tabs5 = await P.page.$$eval('[data-smithy-tab]', (b) => b.map((x) => x.getAttribute('data-smithy-tab')));
+  rec.ok('holding a gold nugget, the Amulet tab is there, in its place', amuletTab && tabs5.join(',') === 'smelt,forge,armor,upgrade,amulet,salvage', tabs5);
   await tab(P, 'amulet');
   const aRows = await P.page.$$eval('[data-amulet-row]', (r) => r.length);
   rec.ok('the Amulet tab lists the amulet tiers', aRows >= 2, { aRows });
+  /* v2.3.3535: step 1's word budget, which no longer meets this tab */
+  const aWords = (await panelText(P)).replace(/[\d/×()+→·%◆.,:-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  rec.ok(`the amulet tab reads in a glance (${aWords.length} characters of words, budget ${TEXT_BUDGET})`, aWords.length <= TEXT_BUDGET, aWords);
   await shot(P, 'amulet');
 
   /* A clean look at the smith working: panel shut, celebration gone, the

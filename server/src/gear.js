@@ -360,6 +360,29 @@ export const gearMethods = {
   _isFreeTierGear(item) {
     return this._isIronGear(item) || (!!item && typeof item === 'object' && item.gearBase === 'ww_softwood');
   },
+  /* ═══ v2.3.3544: ARMOUR, SHIELDS AND AMULETS ASK YOUR LEVEL ═══
+     The owner, of one level (v2.3.3538): "I'm thinking of gating armor and
+     weapons on combat level instead of primary combat skill level and defense
+     level."  Taken for what a player WEARS: armour and shields asked
+     allocated Defense POINTS -- spend your shared points on Defense or never
+     wear heavier armour -- and amulets the Magic (staff) level, so a sword
+     player could never wear a better amulet.  Now all three ask the
+     CHARACTER level (_prog3CharLevel: under one level, the best weapon's
+     level), at the very numbers they asked before (armorDefReq's 5 a tier
+     past iron, the table's tier x 5): a Black Steel Torso is "Level 5 to
+     wear", where it was "Defense 5".  WEAPONS KEEP THEIR OWN SKILL: a
+     weapon's XP comes from the damage it deals, so a top blade at Melee 1
+     would train Melee by the tier, and three weapons are three ladders.
+     Only with one level (a sum-of-three level reads 3 for a new character,
+     so "level 5" would mean little); `gearlevel: false` in the live flags --
+     or `onelevel: false` -- is Defense points and Magic again.
+     MIRROR: src/data/gameSystems.js canEquipItem / getEquipReqLabel /
+     prog3GearReq, against caps.gearlevel (this, at the join). */
+  _gearOnLevel() {
+    const f = this._liveFlags;
+    if (f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'gearlevel') && !f.gearlevel) return false;
+    return typeof this._oneLevelOn === 'function' ? this._oneLevelOn() : false;
+  },
   _prog3EquipOk(ps, slot, item) {
     if (!ps || !ps.prog3 || !item || typeof item !== 'object') return true;
     /* ═══ v2.3.2125: EVERY SLOT, NOT JUST THE DEFENCE ONES ═══
@@ -385,8 +408,11 @@ export const gearMethods = {
        tierMult 8 used to walk past every gate on its label, and is now
        priced as the tier-8 piece it claims to be.  Weapons and forged
        pieces are not armour-ladder pieces and keep the gate below. */
+    /* v2.3.3544: what armour, shields and amulets are measured against --
+       the character level (_gearOnLevel), else Defense points and Magic */
+    const wearOnLevel = this._gearOnLevel();
     if (slot === 'armor' && isArmourLadderPiece(item)) {
-      return this._prog3GearOk(ps, 'defense', armorDefReq(item));
+      return this._prog3GearOk(ps, wearOnLevel ? 'level' : 'defense', armorDefReq(item));
     }
     if (this._isFreeTierGear(item)) return true;   /* v2.3.3525: iron, and softwood */
     let tierIdx = -1;
@@ -413,8 +439,8 @@ export const gearMethods = {
        measure a starting rung in, and guessing one would be harsher or looser
        than the table path at random. */
     const req = Math.max(0, tierIdx - baseIdx) * 5;
-    if (slot === 'armor' || slot === 'shield') return this._prog3GearOk(ps, 'defense', req);
-    if (slot === 'amulet') return this._prog3GearOk(ps, 'magic', req);
+    if (slot === 'armor' || slot === 'shield') return this._prog3GearOk(ps, wearOnLevel ? 'level' : 'defense', req);
+    if (slot === 'amulet') return this._prog3GearOk(ps, wearOnLevel ? 'level' : 'magic', req);
     const cat = item.type === 'bow' ? 'bow' : item.type === 'staff' ? 'staff' : 'sword';
     return this._prog3GearOk(ps, cat, req);
   },

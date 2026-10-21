@@ -13,10 +13,12 @@ import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
 import { startSmithing, SMITH_STRIKE_MS } from '@/game/smithing.js';
 import { SALVAGE, GRADE_LABEL, armourMetal, weaponMetal, weaponSig, parseEssenceKey, essenceKey, essenceName, essenceIcon, gradeRank } from '@/data/salvage.js'; /* v2.3.3141 */
 import { salvageBus, salvageReasonText } from '@/game/salvage.js'; /* v2.3.3141 */
+import { isGearOnLevel } from '@/data/oneFormula.js'; /* v2.3.3544: armour asks your level */
 import { hardenTierOf, hardenCost, hardenLevelFor } from '@/data/hardenCosts.js'; /* v2.3.3139: bars and a doubling gold ladder; v2.3.3524: the level that makes the tier */
 import { forgeLevelFor, forgeOffered, forgeStatReq } from '@/data/forgeLadder.js'; /* v2.3.3524: the forge's ladder */
 import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3524: the Upgrade tab's hammer */
 import { BUFF_ICON } from '@/data/smallIcons.js'; /* v2.3.3524: the XP pill's "XP" star */
+import { amuletTabShown } from '@/game/forgeTabs.js'; /* v2.3.3535: the Amulet tab only with gold for it */
 
 /* ═══ v2.3.2826: THE BLACKSMITH, REBUILT ═══
  *
@@ -168,12 +170,18 @@ export function SmithyPanel({ rpgState, stateRef }) {
     /* v2.3.3524: the hammer (the owner: "Make the upgrade tab icon different
        for smithing.  Like a hammer"), not the currency strip's gold gem */
     (S._serverCaps && (S._serverCaps.harden || S._serverCaps.gemExtract)) && { id: 'upgrade', label: 'Upgrade', icon: OWNER_ICON.smithHammer.src },
-    (S._serverCaps && S._serverCaps.amuletForge) && { id: 'amulet', label: 'Amulet', icon: '/icons/items/amulet.webp' + ITEMS_V },
+    /* v2.3.3535: only to someone holding a nugget, a bar or an amulet
+       (game/forgeTabs.js): a nugget is 1 kill in 10,000, so for nearly
+       everyone it was a recipe they could never start */
+    (S._serverCaps && S._serverCaps.amuletForge) && amuletTabShown(R) && { id: 'amulet', label: 'Amulet', icon: '/icons/items/amulet.webp' + ITEMS_V },
     /* v2.3.3141: salvage for bars, and the grades' essences (server salvage.js) */
     (S._serverCaps && S._serverCaps.salvage) && { id: 'salvage', label: 'Salvage', icon: essenceIcon('essence_rare_iron') + ITEMS_V },
   ].filter(Boolean);
-  const [tab, setTabState] = React.useState(() => (S._smithyTab && tabs.some((t) => t.id === S._smithyTab)) ? S._smithyTab : tabs[0].id);
+  const [tabWant, setTabState] = React.useState(() => (S._smithyTab && tabs.some((t) => t.id === S._smithyTab)) ? S._smithyTab : tabs[0].id);
   const setTab = (id) => { S._smithyTab = id; setTabState(id); };
+  /* v2.3.3535: a tab that is no longer listed (the Amulet tab, its gold
+     gone) shows the first one, never a page with no tab lit */
+  const tab = tabs.some((t) => t.id === tabWant) ? tabWant : tabs[0].id;
 
   /* ── what the worker did ──
      A press records what it expects to change; when the player_state that
@@ -405,7 +413,9 @@ function ArmorTab({ S, inv, lvl, ask, busy }) {
             <Cost icon={BAR_THUMBS[r.bar]} have={have} need={r.bars} />
             <Chip icon="/icons/ui/stat-defense.webp" color="#CFE3D8">-{dr}%</Chip>
             <Chip icon={XP} color="#9FD3F0">+{r.xp}</Chip>
-            {def > 0 && <Chip>Defense {def} to wear</Chip>}
+            {/* v2.3.3544: what wearing it asks -- your level (gear.js
+                _gearOnLevel), or Defense points against an older worker */}
+            {def > 0 && <Chip>{isGearOnLevel() ? 'Level' : 'Defense'} {def} to wear</Chip>}
           </Row>
         );
       })}
@@ -456,7 +466,11 @@ function UpgradeTab({ S, R, coins, lvl, caps, ask, busy }) {
         {!maxed && hc.material && <span data-harden-mat={hc.material} style={{ display: 'contents' }}><Cost icon={thumbFor(hc.material)} have={haveMats} need={hc.amount} /></span>}
         {!maxed && <Cost icon={COIN} have={coins} need={cost} />}
         {!maxed && <Chip color={H_ODDS[h] >= 20 ? C.good : '#E5B36A'}>{H_ODDS[h]}%</Chip>}
-        {!maxed && h > 0 && <Chip color={C.mute}>Fail → H0</Chip>}
+        {/* v2.3.3529: against caps.hardenkeep a failure keeps the level, the
+            gold and bars still spent (the owner: "the worst that can happen is
+            you just stay at hardening 2 and lose resources"); an older worker
+            still drops it back, to H0 for its first 19 failures in a row */}
+        {!maxed && h > 0 && <Chip color={C.mute}>{(S._serverCaps && S._serverCaps.hardenkeep) ? 'Fail keeps H' + h : 'Fail → H0'}</Chip>}
       </Row>,
     );
   }

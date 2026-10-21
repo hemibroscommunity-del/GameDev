@@ -4,6 +4,7 @@ import { SMELT_RECIPES } from '@/data/items.js';   /* v2.3.2822 */
 import { essenceInfo } from '@/data/salvage.js';   /* v2.3.3141: what an essence does */
 import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_BY_LOG } from '@/data/hardenedWood.js';   /* v2.3.3139 */
 import { dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
+import { farmCropHeal } from '@/data/farmCrops.js';   /* v2.3.3537: every crop is food */
 import { parseGemKey, gemElementName } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
 import { SHARD_GEM_ELEMENT, RAW_PER_GEM, shardCrackChance } from '@/data/shards.js';   /* v2.3.3516: a shard may hold its land's raw gem */
 import { isWeaponGem, weaponGemEffect, weaponGemEdge } from '@/data/weaponGems.js';   /* v2.3.3516: what a gem does on a weapon; v2.3.3518: + what it beats */
@@ -94,6 +95,9 @@ for (const _b of Object.keys(SMELT_RECIPES)) SMELT_ORE_TO_BAR[SMELT_RECIPES[_b].
 function armorReqText(ar, S) {
   const req = getEquipReqLabel(ar, 'armor', S && S.rpg);
   if (!req) return '';
+  /* v2.3.3544: "Needs level 5" where armour asks your level (gear.js
+     _gearOnLevel); Defense points against an older worker */
+  if (req.stat === 'level') return ' · Needs level ' + req.req + (req.met ? '' : ' (you are ' + req.have + ')');
   return ' · Needs ' + req.req + ' Defense' + (req.met ? '' : ' (you have ' + req.have + ')');
 }
 
@@ -232,6 +236,10 @@ function resolveTarget(target) {
     const dishesKnown = !!(SR && SR._serverCaps && typeof SR._serverCaps.meals !== 'undefined') && dishRow >= 0 && dishRow < cookRows;
     const isCape = isCapeItemKey(key);
     const isChest = isChestKey(key);              /* v2.3.2820 */
+    /* v2.3.3537: EVERY CROP IS FOOD -- eaten raw for half what a fish heals at
+       its level (farmCrops.js CROP_HEAL), only against a worker that eats it
+       (caps.cropeat, read directly: caps-audit) */
+    const cropHeal = (SR && SR._serverCaps && SR._serverCaps.cropeat) ? farmCropHeal(key) : 0;
     if (isTicket) info = 'Open it to claim your cape';
     else if (isChest) info = 'Open it for a prize — usually coins, sometimes fish, a rare gem or armour';
     /* v2.3.2109: it IS a control now (owner: "I wanted ability to equip and
@@ -248,6 +256,7 @@ function resolveTarget(target) {
        cooked fish's way. */
     else if (dish && dish.buff === 'heal') info = healLine(calcDisplayHeal(SR && SR.rpg, key));
     else if (dish) info = dish.desc + (dish.slot === 'meal' ? ' · replaces your meal' : ' · replaces your brew');
+    else if (cropHeal > 0) info = healLine(cropHeal);   /* v2.3.3537 */
     else if (isRawFish) info = 'Cook over a campfire';
     else if (isBurnt) info = 'Inedible';
     /* v2.3.3139: a log the Woodworker hardens says so, as ore says where it
@@ -296,7 +305,8 @@ function resolveTarget(target) {
          through an alias so the caps-audit can see the gate. */
       actions: {
         light: isLog && count > 0,
-        eat: (isCookedFish && count > 0) || (!!dish && (dish.slot === 'meal' || dish.slot === 'now') && count > 0 && dishesKnown),
+        eat: (isCookedFish && count > 0) || (!!dish && (dish.slot === 'meal' || dish.slot === 'now') && count > 0 && dishesKnown)
+          || (cropHeal > 0 && count > 0),   /* v2.3.3537: a crop, raw */
         open: isTicket && count > 0
           && !!(SR && SR._serverCaps && SR._serverCaps.eventCapes),
         /* v2.3.2109: gated on the same cap as the redeem -- against an old

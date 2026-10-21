@@ -40,7 +40,10 @@ remnant to migrate server-side, not a mode to preserve.
   thinking only, describing many systems that were never built and
   missing many that were. NEVER use them as a blueprint to change,
   "fix", or "restore" game behavior. Code is the source of truth.
-  Current, trustworthy docs: `docs/ARCHITECTURE-HANDOFF.md`,
+  Current, trustworthy docs: `docs/GDD-AS-BUILT.md` (the game AS BUILT,
+  written from the code and the specs for an outside evaluation, v2.3.3531:
+  every number read from server/src; the README's GDD stays history),
+  `docs/ARCHITECTURE-HANDOFF.md`,
   `docs/UI-BIBLE.md` (UI design law + icon-generation prompts, v2.3.1222),
   `docs/LANTERN-SLATE-SPEC.md` (the UI visual system — colors, depth,
   components; supersedes UI-BIBLE Part 2, v2.3.1227),
@@ -1530,7 +1533,8 @@ remnant to migrate server-side, not a mode to preserve.
     - a land's LANDMARK is its dungeon's mouth: the Great Cave (hollows,
       levels 26-30), the Foundry Dome (thunder, 26-30), the Buried City (sky,
       41-45) -- `WHEEL_DUNGEON.LANDS` in `server/src/wheeldungeon.js`; the
-      other five lands have no landmark on their spokes yet;
+      other five lands have no landmark on their spokes yet (four since
+      v2.3.3540's Goo Grotto, below);
     - where each stands and the way back out are BAKED with the monsters'
       places (`WHEEL_DOORS`, bake-wheel-spawns.mjs); the client finds the
       mouths in the worker's own map (`wheelMapInfo().places`), only WHICH
@@ -1541,7 +1545,8 @@ remnant to migrate server-side, not a mode to preserve.
       worker judging the rest within 260 px (`_wheelDungeonConfig`);
     - inside: dungeon.js's instance, its waves the land's own spawn list
       built by `_makeZoneMonster` with `home` (their looks, shards, quests),
-      the boss its last kind five levels up; the level the place's top but
+      the boss its last kind five levels up (at the dungeon's level since
+      v2.3.3540, below); the level the place's top but
       never above yours; its looks loaded behind the loading screen
       (`loadLandLooks`) and the arena's zone given the land as `homes`;
     - the ARENA is its own, not the Workshop's (`wheelArenaMap`): 36 x 52
@@ -1570,6 +1575,40 @@ remnant to migrate server-side, not a mode to preserve.
     - Found on the way: the Wheel's buildings have NO DOORS yet -- the
       forge, the bank, the shop and the farm (the Dungeon Workshop) are
       unreachable from the Wheel. (They have doors since v2.3.3032, below.)
+    - since v2.3.3540 THE GOO GROTTO, A STARTER DUNGEON -- the owner: "I
+      value SIMPLICITY and INTELLIGIBILITY", the after-review list's fourth
+      item, a dungeon near town with every boss at its dungeon's level:
+      - the Verdant Wilds' LANDMARK (plan.js, tier 1, side 0.6, r 200): the
+        middle of their first stretch, levels 1-5, ~36 s' walk from where
+        you arrive (23 on the short Wheel), where the Mayor's first quest
+        sends you; its footpath off the West Road from the trunk's commons
+        point (a path must leave from a trunk POINT: a road wobbles between
+        its points, layout.js, and test-world-core checks every fork);
+        `WHEEL_DUNGEON.LANDS.verdant`, its blue slimes inside, the mossy
+        floor `verdant-3`, its mouth slime green;
+      - EVERY BOSS AT ITS DUNGEON'S LEVEL (data.js `DUNGEON_BOSS_UP` 0, was
+        +5): the Wheel's, the Workshop's and the phone's own copy;
+      - NOTHING DRAWN OVER A MOUTH: no object's picture (placing.js
+        `MOUTH_CLEAR`, every layer, both placings) nor resource's
+        (bake-wheel-spawns.mjs, seeded into `nodeDrawn`) reaches into a box
+        round any dungeon's mouth, its name or the ground in front -- a
+        found clearing could not work in the Verdant Wilds' 400 px jungle;
+        re-baked: 3 monster places and 28 resources moved, the other three
+        mouths where they were;
+      - `caps.dungeonLands`, HOW MANY of the lands the worker opens, in order
+        (mirror-audit holds both lists' order): the phone draws, offers,
+        labels and leads to only the first that many (game/wheelDungeons.js
+        `wheelDungeonOpen`, TRAPS §9);
+      - the world map names every dungeon "dungeon · Lv a–b" (wheelmap.js
+        gives a tiered landmark its `levels`); the Blue Slime's codex page
+        names the Grotto;
+      - THE MAYOR'S "CLEAR ANY DUNGEON" (mayor_3) COULD NEVER BE FINISHED:
+        its check reads `lifeSkills.dungeonClears`, which only the old
+        phone-run dungeons wrote -- the worker now records every clear
+        (dungeon.js `_dungeonComplete`: `wheel_<land>` or `workshop`), and
+        its road leads to the Grotto (questWays.js `dungeon:<land>`);
+      - `wheeldungeon` §1/§6/§10, `dungeon`, `quest-route`, mirror-audit,
+        test-world-core, `mp-googrotto`: docs/specs/starter-dungeon.md.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack
@@ -1632,7 +1671,7 @@ remnant to migrate server-side, not a mode to preserve.
         real hit test's capsule; the shot does them nothing);
       - HITTING BACK stays one tap: the worker's `nml_skull` now carries `by`
         (whiteBy), and a tap on the one who attacked you, with no red skull of
-        your own, aims at once;
+        your own, aims at once (GONE since v2.3.3528, below);
       - AT THE TOP, out of the thumbs' way: under the minimap (beside it when
         there is room), under a party invite card (`data-party-invite`),
         portalled to the body -- over the badge, its Attack sat where a left
@@ -1712,6 +1751,65 @@ remnant to migrate server-side, not a mode to preserve.
       - `nomansland` §5-6 and §11 (100 checks), `shop` suite "a lost tool",
         `mp-nmlask` step 0, `mp-nomansland` 4b, `mp-toolshelf`:
         no-mans-land.md "Everything but what you wear".
+    - since v2.3.3528 HITTING BACK GOES THROUGH THE WINDOW TOO -- the owner:
+      "the other player can't attack back unless they lock on target ... Apply
+      that there too.  But keep the behavior of needing to confirm the
+      "attack" button that pops up in the window first before any damage is
+      registered to either player in the wilderness":
+      - the one who attacked you was the window's exception: a swing or bolt
+        at them asked nothing and did nothing, a bow held at them never
+        loosed, and a tap aimed at once with NO window; now a swing, a shot, a
+        tap and THE BOW'S LINE (projectiles.js `nmlSightAsk`, why 'aim': the
+        bow looses only at something, so it never shot through anyone to ask)
+        all ask, the window saying "Hit back <name>?" with the WHITE skull
+        (`back`; no red skull for hitting back), its Attack making them a foe
+        whose every blow lands, locked or not (nmlAsk.js);
+      - their attack re-opens an earlier answer, once a BOUT (a blow either
+        way after a quiet FIGHT_QUIET_MS: sparTargets.js `pvpBoutAt`, nmlAsk.js
+        `nmlAttackedSince`), so an Ignore given to a passer-by never stops you
+        answering their attack;
+      - the worker: an AREA move (whirlwind, burst, splash, blast) reaches only
+        a player its caster STRUCK in the last 10 s, not one who struck them
+        (pvpextras.js `_pvpEngaged`, each pair keeping both ways), so being
+        attacked never turns your whirlwind on the attacker before you choose;
+        kill switch `areachoice: false` (either way, as before);
+      - `pvp-extras` §1b, `spar` §16q, `mp-nmlask` step 7, `mp-nmlfoe` step 8:
+        no-mans-land.md "Hitting back goes through the window too".
+    - since v2.3.3530 A GROUP ATTACKS YOU: ONE WINDOW -- the owner: "If you
+      get attacked simultaneously by a group of people you don't need
+      additional windows to approve.  If the 2nd, 3rd, etc people already
+      approved "attack" at you you can immediately hit back at each of them
+      after that":
+      - the first window stays; once you chose a fight (a live foe), everyone
+        attacking you joins it with no window of their own -- on your Attack,
+        all who struck you in the last minute (sparTargets.js `attackersNow`),
+        and while you fight, each whose blow lands on you (gameEvents.js
+        pvp_hit -> nmlAsk.js `nmlJoinFight`); an earlier Ignore does not hold
+        one of them out;
+      - THE WORKER'S BUG: the white skull kept ONE giver (`whiteBy`, the last
+        to hit you), so hitting back the first of two attackers gave you a red
+        skull; now each attacker's right is kept (`nml_state`'s `from`, 20
+        minutes each, `bys` on nml_skull, nomansland.js `_nmlHitsBack`);
+      - an area move reaches who struck you too once you have struck someone
+        under the rule in the last 10 s (pvpextras.js `_pvpEngaged`,
+        `_pvpNmlStruck`; a duel's blow not counted);
+      - `caps.nmlgroup`, kill switch `nmlgroup: false`; `nomansland` §12,
+        `pvp-extras` §1c, `spar` §16r, `mp-nmlfoe` step 8: no-mans-land.md "A
+        group attacks you: one window";
+      - and THE WINDOW'S ATTACK IS THE ATTACK -- the owner: "Whenever someone
+        attacks you in no man's land you always get a white skull above your
+        head.  You only keep what you have equipped.  Doesn't matter if you
+        attack back or not": an attacker's opening shots could all miss or be
+        rolled through, and then the one attacked, hitting back, took the RED
+        skull; now the window's Attack sends `nml_attack {target}`
+        (nmlAsk.js `nmlAim`) and the worker starts both skulls at once, before
+        any blow (nomansland.js `_handleNmlAttack` -> `_nmlSkulls`): no kill
+        is stamped by it (`_nmlLastHitBy` stays the blows'), it counts as the
+        chooser's engagement (their whirlwind reaches the one chosen at
+        once), and one who chose you joins a fight you chose (`bys`,
+        `nmlJoinFromBys`); `caps.nmlchoice`, kill switch `nmlchoice: false`;
+        `nomansland` §13, `mp-nmlask` step 6, `mp-nmlfoe` step 8:
+        no-mans-land.md "You are white the moment they choose".
     - since v2.3.3260 FIGHTS BETWEEN PLAYERS LAST, FISH MATTER IN THEM, AND
       LEAVING IS NO ESCAPE -- the owner, after the time-to-kill study: "I want
       you to plan and implement fixes for all of these including how much HP
@@ -1749,6 +1847,41 @@ remnant to migrate server-side, not a mode to preserve.
         join (`_keepBarFullness`); Lv 12 copper set: sword 9.9 s, bow 12.2,
         staff 13.3 (12.4 since v2.3.3263); kill switch `oneformula: false`
         (re-sizes every bar and live monster at once, liveops.js);
+      - since v2.3.3538 ONE LEVEL -- the after-review plan ("I value SIMPLICITY
+        and INTELLIGIBILITY"): the character level is the HIGHEST weapon skill,
+        not the three added up (prog3.js `_prog3CharLevel`, the page's
+        `prog3CharLevel` on `caps.onelevel`); a new character is 1; max HP
+        200 + 50 a level (healthAt `oneLevel`: read as level + MATCH_LEVEL, so a
+        new character's and every one-weapon bar, and every monster hit, are
+        unchanged); shared points 3 a CHARACTER level (a weapon below your best
+        pays its lane points only), so the per-stat bound never strands one;
+        every character's points re-dealt once (`prog3Redeal`, migration v18,
+        `olr`); the worker stamps `rpgLv` (`_levelStamp`), so plates and No
+        man's land read its level; the Combat rank is the level; chain
+        milestones 2..100; kill switch `onelevel: false` (the sum again);
+        `one-level` suite: docs/specs/one-level.md;
+      - since v2.3.3541 THE FREE POINTS RESET -- the after-review plan: "one
+        button gives them back, so you can try a different build": the Points
+        tab's "↺ Reset points (free)" (two taps, its own words the confirm;
+        shown only with a point placed, src/game/pointsReset.js) sends
+        `points_reset`, and the worker (server/src/pointsreset.js) gives every
+        placed point back by one level's own deal (`prog3RespecPoints`):
+        levels, XP and gear kept, worn gear stays worn; refused in a fight
+        (cooking.js `_anyFightAt`) or within a minute (one row each), answered
+        `points_reset_result` (PRIVILEGED); `/dev/combat` takes `deal: true`;
+        `caps.pointsreset`, kill switch `pointsreset: false`; `points-reset`
+        suite, `mp-pointsreset`: docs/specs/points-reset.md;
+      - since v2.3.3544 WHAT YOU WEAR ASKS YOUR LEVEL -- the owner: "I'm
+        thinking of gating armor and weapons on combat level instead of
+        primary combat skill level and defense level": armour, shields and
+        amulets ask the CHARACTER level (gear.js `_gearOnLevel` ->
+        `_prog3GearOk(ps, 'level', req)`; the page's `wearHave` on
+        `caps.gearlevel`), at the numbers they asked before (a Black Steel
+        Torso "Level 5 to wear", where it was 5 Defense points); WEAPONS keep
+        their own skill (a weapon's XP is its damage: a top blade at Melee 1
+        would train by the tier); only with one level; kill switch
+        `gearlevel: false` (or `onelevel: false`); `gear-level` suite, drops
+        §8b/§8c, mirror-audit, `mp-gearlevel`: docs/specs/gear-level.md;
       - since v2.3.3263 ONE VERSION -- the owner, after #916 merged: "the numbers for damage
         between PVP and PVE can be exactly the same for each combat skill type
         ... A fish heals the same fixed amount always ... Everything is 1
@@ -1833,7 +1966,9 @@ remnant to migrate server-side, not a mode to preserve.
           points on average (one-formula.md "Not on players yet");
         - an AREA move (whirlwind, burst, splash, blast) hits only players
           you are already fighting (a duel/arena pair, or a hit either way
-          in the last 10 s: `_pvpEngaged`); a NAMED move (bash, lunge, a
+          in the last 10 s: `_pvpEngaged`; since v2.3.3528 a hit YOU landed,
+          `areachoice: false` either way; since v2.3.3530 also one who struck
+          you once you fight, `nmlgroup: false` not); a NAMED move (bash, lunge, a
           locked swing; a player named as `pid`, the dash's way below) only
           needs the fight to be allowed;
         - a player CANNOT BE LOCKED DOWN: a freeze or an ability's stun holds
@@ -2683,6 +2818,32 @@ remnant to migrate server-side, not a mode to preserve.
       mouths, the four lands' music);
     - test-world-core "the buildings' doors", `mp-wheelhalls`, `mp-wheeldoors`:
       docs/specs/wheel-halls.md.
+    - since v2.3.3539 THE HOTEL OPENS, A REST THE WORKER PAYS -- the owner: "I
+      value SIMPLICITY and INTELLIGIBILITY" (the after-review list): the farm
+      bed's rest was the phone's alone (bars the next echo put back, a +10% XP
+      only the phone's retired popups read):
+      - `rest_request {where: 'hotel' | 'farm'}` -> `server/src/rest.js`: within
+        `REST.HOTEL_R` 260 of the Hotel's door (`REST.HOTEL`, an offset from
+        the Wheel's middle that test-world-core holds to the placed door), or
+        on your farm; refused in a fight (a blow either way in 10 s, or a fight
+        with a player), within `GAP_MS` a minute of the last rest, or dead;
+        fills HP, stamina and mana and starts WELL RESTED, `_buffs.wellRested`
+        (not the Herb Bread's `rest`) for 30 minutes: +10% of a fight's XP
+        (prog3.js `_prog3AwardXp`, ADDED to the Pumpkin Pie's, never a flat
+        award); one saved row; answered `rest_result` (PRIVILEGED); free;
+      - the Hotel is a fifth hall (`WHEEL_HALL_DOORS.hotel`), open only
+        against `caps.rest` (`WHEEL_HALL_CAPS`, wheelTownDoors.js
+        `setWheelHallCaps` from wsClient; `WHEEL_SHUT_DOORS` is empty), its
+        window one row, Rest, over its room (`BUILDING_ROOMS.hotel`,
+        `SPARE_ROOMS` empty); the farm bed's E key, stick and Sleep button ask
+        the worker too (BroTown `_desktopSleep`, game/rest.js), the phone's own
+        rest kept for an older worker; Well Rested is a "Rested" chip with the
+        timed effects (`BUFF_ICON.rested`, the owner's bed made 64 px by
+        tools/ui/make-rested-badge.py), the top-right badge over the minimap
+        gone; kill switch `rest: false`;
+      - `rest` suite (48, fifteen mutations caught), `mp-hotel` (13), and
+        mp-wheeldoors runs under `rest: false` (the Hotel shut, as an older
+        worker leaves it): docs/specs/hotel-rest.md.
   - Since v2.3.3067 THE REST OF TOWN'S CAST STANDS IN THE WHEEL'S BROTOWN --
     the owner: "keep going with pragmatic enhancements":
     - Ace west of the Gambling Den's steps, Blacksmith Bro east of the forge's,
@@ -3034,6 +3195,16 @@ remnant to migrate server-side, not a mode to preserve.
       material) and `caps.hardenedwood` (`hardenedwood: false`: no making, and
       bows and staffs back on gold alone); `hardening` §8b/§8c, `hardenedwood`
       suite, `mp-hardenbars`: docs/specs/hardening.md, hardened-wood.md.
+    - since v2.3.3529 A FAILED HARDENING KEEPS ITS LEVEL -- the owner: "if you
+      complete hardening 2 the worst that can happen is you just stay at
+      hardening 2 and lose resources": the gold and the bars or hardened wood
+      are still taken, the weapon stays as it was (hardening.js
+      `_handleHardenWeapon`); the temper pity band (to H0 for the first 19
+      failures in a row) only with the kill switch `hardenkeep: false`; the
+      Upgrade tab, the Woodworker's line and the failure's words say "keep"
+      against `caps.hardenkeep`; on average H5 now takes 326 attempts, ~2
+      million gold and ~1,471 bars (was ~4.3 million attempts); `hardening`
+      §6: docs/specs/hardening.md "v2.3.3529: a failure keeps the level".
   - Since v2.3.3140 DAILY REWARDS, NOTHING AT LOGIN -- the owner's layered
     brief ("a small reward just for logging in, daily quests ... feeding a
     longer progression track"), then: "I find the login page with the chest
@@ -3404,10 +3575,16 @@ remnant to migrate server-side, not a mode to preserve.
       own piece (smith_2), a bow or staff and a pine one SWAPPED for softwood
       at the hand-in (wood_2, `trade`), 3 springs (beast_2), Zoom Juice
       (farm_2, after farm_1 AND fish_1: you can cook, the carrots have
-      grown); the Mayor's burrowing snowmen, the finale (tut_2), once the
-      whole town is in (`after` a LIST, every one handed in: the worker's
-      _questBarred, the phone's getNpcQuest STOP via `questAfterMet`), then
-      his lands (tut_3/4); `next` only within a giver's own line (a `next`
+      grown); the Mayor's burrowing snowmen (tut_2), once the whole town was
+      in -- SINCE v2.3.3533 once Blacksmith Bro's ore and Diego's fish are
+      (`after: ['smith_1', 'fish_1']`, a LIST, every one handed in: the
+      worker's _questBarred, the phone's getNpcQuest STOP via
+      `questAfterMet`; the owner, a week before the review: "SIMPLICITY and
+      INTELLIGIBILITY" -- the snowmen were step 12 of 12), then his lands
+      (tut_3/4), the rest of the town open throughout; the road's order
+      `QUEST_TOUR` tut_1, smith_1, smith_2, fish_1, tut_2, then the town
+      (docs/specs/demo-quest-line.md "v2.3.3533"); `next` only within a
+      giver's own line (a `next`
       opens its step past any `after`); life_1/life_2 RETIRED (QUEST_RETIRED,
       `retired`: never offered, one held still hands in); every line says why
       he wants it, in any order; the counted kinds `farm`/`craft`/`cook`/

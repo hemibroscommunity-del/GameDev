@@ -18,7 +18,9 @@
  *     become player_attack; the worker decides every one of them.  Since
  *     v2.3.3253 the tap ASKS first, in a small window, and so does a stray
  *     shot through them, once (game/nmlAsk.js): Attack aims, Party invites,
- *     Ignore lets it go; the one who attacked you is still aimed at by a tap.
+ *     Ignore lets it go.  Since v2.3.3528 the one who attacked you is asked
+ *     about too ("Hit back <name>?"): the window's Attack comes before any
+ *     blow, from either player.
  *   - THE SKULLS: others' from the tick (`sk`), yours from `nml_skull`, both
  *     into the anchors the threat skull already draws from (entityRenderer).
  *   - A DEATH THERE: `nml_loss` -- clear from your own bag what the worker
@@ -154,10 +156,25 @@ export function applyNmlSkull(S, payload) {
   const now = Date.now();
   const wasRed = S._pvpSkullType === 'red';
   const wasWhite = S._pvpSkullType === 'white';
-  /* v2.3.3253: `by`, who gave you the white skull -- a tap on them is hitting
-     back, and aims at once (nmlAsk.js nmlHitBack) */
+  /* v2.3.3253: `by`, who gave you the white skull -- a hit on them is hitting
+     back (nmlAsk.js nmlHitBack), which the window says ("Hit back <name>?",
+     v2.3.3528; it aimed at once with no window before) */
   const by = white > 0 && typeof payload.by === 'string' && payload.by.length <= 64 ? payload.by : null;
-  S._nmlSelf = { red, white, by, at: now };
+  /* v2.3.3530: `bys`, EVERY player whose blow gave it with the ms left of
+     their right to be hit back ([[id, ms], ...]: server nomansland.js
+     _nmlBys) -- a group's each member is "Hit back" (nmlAsk.js nmlHitBack).
+     A Map (ids off the wire); an older worker sends none, and `by` alone
+     holds. */
+  let bys = null;
+  if (white > 0 && Array.isArray(payload.bys)) {
+    bys = new Map();
+    for (const e of payload.bys.slice(0, 16)) {
+      if (!Array.isArray(e) || typeof e[0] !== 'string' || !e[0] || e[0].length > 64) continue;
+      const ms = Math.max(0, Math.min(white, Number(e[1]) || 0));
+      if (ms > 0) bys.set(e[0], ms);
+    }
+  }
+  S._nmlSelf = { red, white, by, bys, at: now };
   if (red > 0) { S._pvpSkullType = 'red'; S._pvpSkullUntil = now + red; }
   else if (white > 0) { S._pvpSkullType = 'white'; S._pvpSkullUntil = now + white; }
   else { S._pvpSkullType = null; S._pvpSkullUntil = 0; }

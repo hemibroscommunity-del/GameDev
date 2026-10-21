@@ -423,6 +423,12 @@ export function WoodworkPanel(props) {
            should only require the same smithing level as it takes to smithing
            that item tier", on v2.3.3481's skill; else 5 x its tier, as before */
         var hSkillLvl = hByWood ? ((_Sh._serverCaps && _Sh._serverCaps.forgeladder) ? hardenLevelFor(hw, hSlot) : hardenTierOf(hw) * 5) : 0;
+        /* v2.3.3529: against caps.hardenkeep a failure keeps the level, the
+           gold and hardened wood still spent (the owner: "the worst that can
+           happen is you just stay at hardening 2 and lose resources"), so the
+           line says that and no longer speaks of temper; an older worker still
+           drops it back, and the line keeps its old words there */
+        var hKeep = !!(_Sh._serverCaps && _Sh._serverCaps.hardenkeep);
         return /*#__PURE__*/React.createElement("div", {
           style: { marginTop: 12, padding: 10, borderRadius: 10, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
         }, /*#__PURE__*/React.createElement("div", {
@@ -430,7 +436,7 @@ export function WoodworkPanel(props) {
         }, "Hardening: ", hw.name, " — H", hLvl, "/5") /* v2.3.1235: batch-3 rollout — ⚒️ dropped, no emoji in chrome */, /*#__PURE__*/React.createElement("div", {
           "data-harden-gate": hByWood ? 'woodworking:' + hSkillLvl : 'blacksmithing', /* v2.3.3481: mp-hardenbars reads which skill this line names */
           style: { fontSize: 11, color: LS.txt3, marginBottom: 8, lineHeight: 1.5 }
-        }, hMaxed ? 'Maximum hardness reached!' : "+1.04 base dmg per level \xB7 Success " + hOdds + "% \xB7 Fail resets hardness (Temper " + hTemper + " softens it) \xB7 " + (hByWood ? "Needs Woodworking Lv" + hSkillLvl : "Gated on Blacksmithing")), !hMaxed && /*#__PURE__*/React.createElement("button", {
+        }, hMaxed ? 'Maximum hardness reached!' : "+1.04 base dmg per level \xB7 Success " + hOdds + "% \xB7 " + (hKeep ? "Fail keeps H" + hLvl : "Fail resets hardness (Temper " + hTemper + " softens it)") + " \xB7 " + (hByWood ? "Needs Woodworking Lv" + hSkillLvl : "Gated on Blacksmithing")), !hMaxed && /*#__PURE__*/React.createElement("button", {
           /* v2.3.1235: batch-3 rollout — the surface's single gold
              primary adopts the shared .button-primary recipe (game.css)
              instead of a flat brass fill; 44px hitbox floor (was 40),

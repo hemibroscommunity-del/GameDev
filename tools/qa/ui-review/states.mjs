@@ -635,6 +635,7 @@ export const STATES = [
   building('sheriff', "Sheriff's Office", "The Sheriff's Office: the player list (duels start from a player's card) and the arena sign-up."),
   building('guildhall', 'Guild Hall', 'The Guild Hall: a row saying clans are parties now (made in the Saloon), and the skill guilds.'),
   building('townhall', 'Town Hall', 'The Town Hall: the leaderboard and the world map.'),
+  building('hotel', 'Hotel', 'The Hotel (v2.3.3539): a free rest -- full health, stamina and mana, and Well Rested, +10% combat XP for 30 minutes -- paid by the server.'),
   building('arena', 'Gladiator Arena', 'The arena window (from the Sheriff\'s Office).'),
   {
     id: 'shop-diego', group: 'Buildings (BroTown)', title: "Diego's shop",
