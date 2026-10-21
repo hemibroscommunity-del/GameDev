@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "060a11b54fb854b787e6d53130e76d28006438b5",
+  "tree": "430a6a3dffe14bf5775b90d1965e0a475140caea",
+  "committedAt": "2026-10-21T10:09:55-07:00",
+  "subject": "Achievements: 23 to earn, your painted badges, and the arena's 500 AP as the Gladiator achievement (v2.3.3527) (#1045)",
+  "files": 6241,
+  "bytes": 718942923,
+  "listingSha256": "5c65f2b71d55dba9568e256ca1ad1596c5c542f0163afcc0d473dcc2f8d2c087",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
