@@ -680,6 +680,7 @@ for (const name of names) {
   console.log(`── ${name} ──────────────────────────────────`);
   try {
     const mod = await SCENARIOS[name]();
+    H.setScenario(name);   /* v2.3.3552: so newPlayer can refuse the retired old map (oldMap.mjs) */
     await mod.run({ browser, wsPort: WS, webPort: WEB, rec });
   } catch (e) {
     /* A thrown scenario is a failure with a name, not a crashed run: record it
@@ -690,6 +691,7 @@ for (const name of names) {
      pixiRenderer rather than crashing, so nothing else in this harness would
      ever notice it -- see takeRenderThrows.  Charged to whichever scenario
      was running, because that is the one that can reproduce it. */
+  H.setScenario(null);
   const _rt = H.takeRenderThrows();
   if (_rt.length) rec.ok('the render loop did not throw', false, { threw: _rt.slice(0, 3) });
   /* v2.3.3249: EVERY PAGE A SCENARIO LEFT OPEN IS CLOSED HERE.  One browser

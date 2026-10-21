@@ -1193,6 +1193,39 @@ if (changedServer.length || changedClient.length) {
   }
 }
 
+/* ═══ v2.3.3552: A PHONE TEST PLAYS THE WORLD, NEVER THE RETIRED OLD MAP ═══
+   The owner: "Hold on you're in the old map (this was retired).  You keep
+   making that mistake so flag it in a way you won't accidentally do that
+   anymore."  A scenario not on tools/qa/mp/oldMap.mjs's frozen list must name
+   its world on every newPlayer / joinPair call (`world: 'wheel'`, or `'old'`
+   only to test the retired map itself).  The harness refuses such a scenario
+   at run time too; this says so before a push. */
+{
+  try {
+    const om = await import(new URL('file://' + join(root, 'tools/qa/mp/oldMap.mjs')).href);
+    const runSrc = read('tools/qa/mp/run.mjs');
+    const pairs = [...runSrc.matchAll(/^\s+([A-Za-z0-9_]+): \(\) => import\('\.\/([^']+)'\)/gm)].map((m) => [m[1], m[2]]);
+    const bad = [];
+    let checked = 0;
+    for (const [name, file] of pairs) {
+      if (om.OLD_MAP_LEGACY.has(name)) continue;
+      let src = '';
+      try { src = read('tools/qa/mp/' + file); } catch { continue; }
+      checked++;
+      const n = om.callsWithoutWorld(src).length;
+      if (n) bad.push(`${name} (tools/qa/mp/${file}: ${n} call${n === 1 ? '' : 's'} with no world)`);
+    }
+    if (bad.length) {
+      add('FAIL', 'old-map', 'these phone tests would play the RETIRED old map -- pass world: \'wheel\' (the world '
+        + 'players see) to every newPlayer / joinPair call:\n    ' + bad.join('\n    '));
+    } else {
+      add('PASS', 'old-map', `all ${checked} phone test(s) off the frozen old-map list name their world (${om.OLD_MAP_LEGACY.size} old ones listed)`);
+    }
+  } catch (e) {
+    add('WARN', 'old-map', 'could not read tools/qa/mp/oldMap.mjs or run.mjs -- old-map check skipped: ' + String(e && e.message || e).slice(0, 160));
+  }
+}
+
 /* ---- report -------------------------------------------------------- */
 console.log(`precheck vs ${baseRef} (merge-base ${mergeBase.slice(0, 8)}) — ${changed.length} changed file(s)\n`);
 for (const r of results) console.log(`${r.level.padEnd(4)} [${r.check}] ${r.msg}`);

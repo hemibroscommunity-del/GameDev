@@ -732,7 +732,7 @@ export function MonsterCodex({ open = null, setOpen = () => {} } = {}) {
   return (
     <div ref={grid} data-cx-grid={met} data-cx-narrow={narrow ? 1 : 0}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '1px 2px 4px' }}>
-        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.muted }}>Monsters of the Wheel</div>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.muted }}>Monsters of the world</div>{/* v2.3.3552: never "Wheel" to a player */}
         <div style={{ fontSize: 11, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{met} of {CODEX_KINDS.length} met</div>
       </div>
       {!(c && c.known) && !codexLive(S) ? (

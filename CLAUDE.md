@@ -26,6 +26,26 @@ remnant to migrate server-side, not a mode to preserve.
   are CLOSED for now, though their code still runs the Wheel's monsters and
   `?trial=off` reopens them for a tab. Details in the WORLD-MAP-PIPELINE
   clause below ("The Wheel is the world").
+- **TESTS AND SCREENSHOTS PLAY THE WORLD, NEVER THE RETIRED OLD MAP (owner,
+  2026-10-21: "Hold on you're in the old map (this was retired). You keep
+  making that mistake so flag it in a way you won't accidentally do that
+  anymore").** The world's top bar says **"BroTown"**, with the Town Hall and
+  "Brotown · safe" under the minimap. **"Town"** on the top bar, with the old
+  fountain, is the RETIRED map: stop and move the test.
+  - Every phone test passes `world: 'wheel'` to `H.newPlayer` / `H.joinPair`.
+    A player opened with no `world` plays the old map (`trial=off&nospawn`).
+  - The harness REFUSES a new scenario that does that. Only the 419 old ones
+    frozen in `tools/qa/mp/oldMap.mjs` may, and that list only shrinks: move
+    one to the world when you touch it.
+  - A picture saved from the old map is stamped "OLD MAP · RETIRED".
+  - `precheck` (`old-map`), `server/test/old-map.test.mjs` and the session
+    brief hold it. TRAPS §244.
+- **Players never read "Wheel" (owner, 2026-10-21: "no player has a concept of
+  what 'wheel' means in reference to the shape of the map").** It is the
+  world: the zone is "BroTown" on screen, a map is the "World map", and words
+  a player reads say "the world" (v2.3.3552: the Codex's "Monsters of the
+  world", the gold's line, the Town Hall's map row). "Wheel" stays in code,
+  ids, comments and these docs.
 - **Heavy-systems architecture (v2.3.1116+):** persistent identity,
   offline mail/escrow, server-settled marketplace/trades/quests/duels.
   Before touching the server, read **`docs/ARCHITECTURE-HANDOFF.md`** —
@@ -489,7 +509,9 @@ remnant to migrate server-side, not a mode to preserve.
   - Not there yet, so not in the game: monsters past levels 1-5, dungeons.
     (Gathering came in v2.3.3012, a bullet below.)
   - The QA harness gives every scenario `trial=off&nospawn` unless it passes
-    `world: 'wheel'` (`nospawn` alone when its query names a trial).
+    `world: 'wheel'` (`nospawn` alone when its query names a trial). Since
+    v2.3.3552 a NEW scenario must pass it: the harness refuses one that does
+    not (tools/qa/mp/oldMap.mjs, the rule near the top of this file).
   - `mp-questline`, CI's "playable", plays in the Wheel. `mp-wheelhome`
     tests the way in on a phone.
   - See WORLD-MAP-PIPELINE "The Wheel is the world".
