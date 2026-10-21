@@ -957,9 +957,9 @@ The design document that sizes the free spin says "an hour of fighting earns ~1�
 | Bro Ascendant | Mayor Bro | 6 Fire Goblin Remains from the Flame Fields | 400 g, 105 XP | Copper Greaves | tut_3 |
 | A Trapper's Eye | Beastmaster Bro | reach Trapping 6 | 250 g | 10 traps | tut_2 |
 | Your Own Beast | Beastmaster Bro | catch a pet | 500 g | 15 traps | beast_3 |
-| Welcome Home / Into the Wild / Dungeon Delver | Mayor Bro | visit 3 buildings / kill 5 monsters / clear a dungeon (the gold road leads to the Goo Grotto, v2.3.3540) | 50 / 100 / 300 g | — | the Mayor's legacy line after tut_4 |
+| Into the Wild / Dungeon Delver | Mayor Bro | kill 5 monsters / clear a dungeon (the gold road leads to the Goo Grotto, v2.3.3540) | 100 / 300 g | — | the Mayor's legacy line after tut_4 (its first step, Welcome Home, "visit 3 buildings", was retired in v2.3.3550) |
 
-Twenty-two quests for seven givers who are not in the world (a trader, an enchantress, a scout, a second blacksmith, a healer, a second beastmaster, a veteran) are dormant in the table. Two old Mayor quests (the tools' old errands) are retired.
+Twenty-two quests for seven givers who are not in the world (a trader, an enchantress, a scout, a second blacksmith, a healer, a second beastmaster, a veteran) are dormant in the table. Three old Mayor quests are retired: the tools' two old errands, and Welcome Home (v2.3.3550).
 
 **Guidance**: a gold "!" over a giver with a quest, a grey "?" while his quest waits, a green check when it is ready, the same pins on both maps; **the gold road** on the minimap to the giver, to the quest's land's level-1 monsters, to the nearest needed resource, to the right building's door, to Lil Bro for the race; the pinned card ("Next: … (2/4)", or with nothing in hand "Next: <quest> / Talk to <him> <where>" and "+N more: look for a gold ! on your map"); gear tiles that flash until worn; the quest windows in the owner's painted art (a NEW QUEST offer with the items pictured, a claim window only when XP must be placed, otherwise "Claim reward" and coins flying to the purse). A giver's "how's it going" line carries a button that opens his building.
 

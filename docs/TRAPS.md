@@ -8062,3 +8062,27 @@ trades.
 **Receipt:** `server/test/weapon-gem.test.mjs` §9b (one gem passed between two
 players: 400, then 0, then 0; a gem the second player made, 400), and
 `shard-crack` §6 (a combined gem is owed its XP).
+
+## 243. "The button reads the game state, so it shows when the state says" (v2.3.3548)
+
+**The plausible move.** A HUD button is drawn when a flag the game loop sets is
+true: `stateRef.current._nearHouse && <button>Sleep</button>`.  The flag is
+right every frame, so the button looks as if it follows it.
+
+**Why it is wrong.** BroTown is drawn by React, and React draws only when its
+own state changes.  The game loop's flags are not React state.  Until v2.3.2330
+the tree redrew twice a second anyway (a fresh player list every tick), which
+hid the fault; since then, a button drawn from a loop flag alone comes up only
+when something ELSE redraws the tree.  The farm's Sleep, Workshop and Pet House
+buttons did not come up for a player standing at the bed at full health, the
+one moment nothing else changes, until a health change happened to redraw it.
+
+**The rule.** A HUD element that depends on a loop flag gets that flag into
+React state, set in the twice-a-second sync loop with `prev === v ? prev : v`
+(BroTown's `setNearBuilding`, `setNearWheelDoor`, `setFarmNear`), so a change
+redraws and no change costs nothing.  Reading the live flag in the render is
+fine once a state change brings the render.
+
+**Receipt:** `mp-hotel`'s farm step wants the Sleep button within 5 s of
+standing at the bed (it never came on the build before).
+
