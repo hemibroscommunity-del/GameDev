@@ -212,7 +212,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Shade Lurker', text: 'The lurkers of the deep bog have gone violet and shadowy, hard to see even when you know where to look. Look anyway.' }),
   }),
   dewdrop: Object.freeze({
-    name: 'Blue Slime', home: 'verdant', look: 'blueSlime', element: 'flora', type: 'Ooze',
+    name: 'Blue Slime', home: 'verdant', look: 'blueSlime', element: 'flora', type: 'Ooze', dungeon: 'the Goo Grotto', dungeonLevels: Object.freeze([1, 5]),   /* v2.3.3540: the starter dungeon */
     what: 'Fast and fragile: it goes down quickly, spitting globs as it comes. But kill it and it does not simply die.',
     special: Object.freeze({
       name: 'Death Burst',
@@ -222,6 +222,7 @@ export const CODEX_ENTRIES = Object.freeze({
     story: [
       'Every morning the Verdant Wilds are covered in dew, and every morning a little of it does not dry. It gathers in the hollows of the leaves, rolls together, and by midday it is big enough to have opinions.',
       'Its opinion of you is low. A blue slime has nothing inside it but water and grudges, and when it pops it makes very sure you are close enough to share both.',
+      'The dew that never dries at all rolls downhill into the Goo Grotto, a cave off the West Road, and has been pooling there longer than anyone has had a reason to go in. You have one now.',
     ],
     elder: Object.freeze({ name: 'Jade Slime', text: 'Past the first pass the slimes are a deep jade green and the dew they are made of is older. The burst is the same. Walk away anyway.' }),
   }),

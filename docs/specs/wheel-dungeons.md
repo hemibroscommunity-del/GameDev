@@ -15,6 +15,12 @@ building door the Wheel's town does not have yet.
 This is the first step: **three dungeons, behind three of the Wheel's
 landmarks.**
 
+> **v2.3.3540: four, and every boss at its dungeon's level.** The Verdant
+> Wilds have a landmark too, **the Goo Grotto**, levels 1–5, on their first
+> stretch about half a minute's walk from town; every boss is now built at its
+> dungeon's level, not five above it; and nothing drawn stands over any
+> mouth. See [starter-dungeon.md](starter-dungeon.md).
+
 ## What the player sees
 
 - **Three mouths.** Each land with a landmark placed on its spoke has a
@@ -25,6 +31,7 @@ landmarks.**
   | **the Great Cave** | the Stone Hollows | 26–30 |
   | **the Foundry Dome** | the Electric Foundry | 26–30 |
   | **the Buried City** | the Wind Dunes | 41–45 |
+  | **the Goo Grotto** (v2.3.3540) | the Verdant Wilds | 1–5 |
 
   The world map and the minimap already named these places. Now each is drawn
   on the ground: a dark opening with its rim lit in its land's light (crystal
@@ -44,8 +51,9 @@ landmarks.**
     the Buried City; each with its own picture, its element's hit (a rock
     monster's daze, a storm slime's arc) and its land's shard when it dies;
   - **three waves** of the land's whole spawn list, then **a boss**: the land's
-    strongest kind, five levels up, four times the health (more with friends
-    inside), half again the damage, with its kind's boss moves;
+    strongest kind, at the dungeon's level (five levels up until v2.3.3540),
+    four times the health (more with friends inside), half again the damage,
+    with its kind's boss moves;
   - **the level**: the place's top (30 for the Cave and the Dome, 45 for the
     City), **but never above your own**. A level-8 player meets a level-8
     Great Cave; a level-40 player meets its level 30. This is the rule every
@@ -105,7 +113,8 @@ land. So:
   (`wheelzone.js _rewardZone`);
 - they stay dead once killed (`noRespawn`).
 
-The boss is the land's last spawn kind, built the same way five levels up, then
+The boss is the land's last spawn kind, built the same way at the dungeon's
+level (five levels up until v2.3.3540: `data.js` `DUNGEON_BOSS_UP`), then
 scaled and armed by `_dungeonSpawnBoss` as any dungeon boss is. Both of the
 dungeon's monster lists on the wire (the zone change's snapshot and the wave
 re-push) now carry `home` and `variant` for these, as the Wheel's own snapshot
@@ -216,7 +225,8 @@ picture (above); its walls are drawn in code.
     whole spawn list, each built by the land's own math, its own look, staying
     dead; one run each;
   - the wire: the re-push and the zone snapshot carry `home` and `variant`;
-  - the run: waves 2 and 3, the boss (the land's last kind, five levels up,
+  - the run: waves 2 and 3, the boss (the land's last kind, at the dungeon's
+    level since v2.3.3540,
     scaled and armed), a kill counting for the land, and the clear's pay;
   - the party: a member beside the mouth comes in with the same way out, one
     3,000 px away does not;
@@ -250,8 +260,10 @@ picture (above); its walls are drawn in code.
 - **The volcano's sealed gate and the sea caves.** The Bible names them too,
   but they are their spokes' keystone gates, the way to the Dark and Light
   realms (levels 80–100). They wait on those realms.
-- **The other five lands** have no landmark on their spokes yet. A dungeon for
-  each is a landmark added to the plan, then one word in `WHEEL_DUNGEON.LANDS`.
+- **The other four lands** have no landmark on their spokes yet. A dungeon for
+  each is a landmark added to the plan, then one word in `WHEEL_DUNGEON.LANDS`
+  (and in `WHEEL_DUNGEON_HOMES`, in the same order: `caps.dungeonLands` counts
+  them). The Verdant Wilds got theirs, the Goo Grotto, in v2.3.3540.
 - **Pictures** of each mouth, and things standing in the arena (rocks,
   crystals, pillars). The worker's monsters know nothing of the floor, so
   anything that blocks a player would have to block them too.

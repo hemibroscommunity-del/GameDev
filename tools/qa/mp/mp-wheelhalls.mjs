@@ -7,7 +7,8 @@
  *
  * Two real players against a real worker, in the Wheel's Brotown, on phones:
  *   1. the client knows the halls -- the Guild Hall, the Post Office, the
- *      Sheriff's Office, the Town Hall -- and only the Hotel is still shut;
+ *      Sheriff's Office, the Town Hall and (v2.3.3539) the Hotel -- and none
+ *      is shut;
  *   2. the Guild Hall: "Enter GUILD HALL" at its steps; inside, Clans and
  *      Skill guilds; each opens its panel (the clan and guild panels nothing
  *      in play opened before); a clan FOUNDED there (500 gold), the worker
@@ -21,7 +22,10 @@
  *      them in the clan;
  *   4. the Sheriff's Office: "Duel a player" opens the player list (the other
  *      player in it), "The arena" the arena's sign-up;
- *   5. the Hotel still says "Shut for now";
+ *   5. the Hotel (v2.3.3539: a rest the worker pays, server/src/rest.js):
+ *      "Enter HOTEL" at its steps, and inside, its one row, Rest (mp-hotel
+ *      rests there; mp-wheeldoors sees it shut against a worker that does
+ *      not rest);
  *   6. the Post Office: your mail -- the gold granted this visit, as the
  *      worker's mail delivered it -- and "Messages from friends" opens the
  *      Social panel;
@@ -55,7 +59,7 @@ async function runHalls({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `wheelhalls-${name}.png`) }).catch(() => {});
-  const { WHEEL_HALL_DOORS, WHEEL_SHUT_DOORS } = await import(H.REPO + '/src/data/wheelBuildingDoors.js');
+  const { WHEEL_HALL_DOORS, WHEEL_SHUT_DOORS, WHEEL_HALL_CAPS } = await import(H.REPO + '/src/data/wheelBuildingDoors.js');
 
   const A = await H.newPlayer(browser, { name: 'Hallbro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true });
   const B = await H.newPlayer(browser, { name: 'Joinbro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true });
@@ -135,9 +139,10 @@ async function runHalls({ browser, wsPort, webPort, rec }) {
     }
     const byId = Object.fromEntries(doors.map((d) => [d.id, d]));
     const halls = doors.filter((d) => d.hall), shut = doors.filter((d) => d.closed);
-    rec.ok(`the client knows the halls -- ${halls.map((d) => d.name).join(', ')} -- and only ${shut.map((d) => d.name).join(', ')} is still shut`,
-      halls.length === 4 && Object.keys(WHEEL_HALL_DOORS).every((k) => byId[k] && byId[k].hall === WHEEL_HALL_DOORS[k] && byId[k].index < 0 && !byId[k].closed)
-        && shut.length === 1 && WHEEL_SHUT_DOORS.every((k) => byId[k] && byId[k].closed), doors.map((d) => [d.id, d.index, d.hall, d.closed]));
+    /* v2.3.3539: the Hotel is the fifth, against this worker, which rests */
+    rec.ok(`the client knows the halls -- ${halls.map((d) => d.name).join(', ')} -- and none is shut${shut.length ? ' (shut: ' + shut.map((d) => d.name).join(', ') + ')' : ''}`,
+      halls.length === 5 && Object.keys(WHEEL_HALL_DOORS).every((k) => byId[k] && byId[k].hall === WHEEL_HALL_DOORS[k] && byId[k].index < 0 && !byId[k].closed)
+        && shut.length === 0 && WHEEL_SHUT_DOORS.length === 0 && Object.keys(WHEEL_HALL_CAPS).join() === 'hotel', doors.map((d) => [d.id, d.index, d.hall, d.closed]));
 
     /* ── 2. the Guild Hall ── */
     const gh = byId.guildhall;
@@ -252,9 +257,13 @@ async function runHalls({ browser, wsPort, webPort, rec }) {
     rec.ok('...and The arena opens the arena\'s sign-up, a window of its own (v2.3.3258: it was the Saloon\'s)', arenaKey === 'arena', { arenaKey });
     await closeCard(A);
 
-    /* ── 5. the Hotel ── */
-    const ho = await atDoor(A, byId.hotel);
-    rec.ok(`the Hotel still says so: "${ho && ho.shut}", and no Enter`, !!ho && /Hotel/.test(ho.shut || '') && /Shut for now/.test(ho.shut || '') && !ho.btn, ho);
+    /* ── 5. the Hotel (v2.3.3539: open, a rest the worker pays) ── */
+    const h1 = await enterHall(A, byId.hotel);
+    const hRows = await A.page.evaluate(() => Array.from(document.querySelectorAll('[data-wheel-hall="hotel"] [data-hall-row]')).map((b) => b.getAttribute('data-hall-row')));
+    await shot(A, 'hotel');
+    rec.ok(`the Hotel: "${h1.r && h1.r.btn}" at its steps (no "Shut for now"), and inside, ${hRows.join(' and ')}`,
+      !!h1.r && /Enter\s*HOTEL/.test(h1.r.btn || '') && h1.r.hall === 'hotel' && !h1.r.shut && h1.open && hRows.join() === 'rest', { h1, hRows });
+    await closeCard(A);
 
     /* ── 6. the Post Office ── */
     const po = byId.post;

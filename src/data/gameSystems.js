@@ -1211,6 +1211,7 @@ export const COOKING_RECIPES = [{
    recipes that make them are, and where mirror-audit looks. */
 export { DISHES, dishFor } from './dishes.js';
 import { dishFor as _dishFor } from './dishes.js';   /* v2.3.3131: calcDisplayHeal */
+import { farmCropHeal as _farmCropHeal } from './farmCrops.js';   /* v2.3.3537: calcDisplayHeal */
 
 /* §18 Fish Healing — fish must be COOKED via minigame to become edible */
 /* Raw fish → cooking minigame → cooked fish (heals) or burnt fish (wasted) */
@@ -5880,6 +5881,10 @@ export function calcDisplayHeal(rpg, invKey) {
      always": against a worker that heals by the new ladder (caps.fishheal) a
      fish or the stew heals its own number and nothing on top (cooking.js);
      an older worker still adds the old HP grid's Recovery. */
+  /* v2.3.3537: a crop, eaten raw, heals its own fixed number (the worker's
+     farm.js CROP_HEAL: half a fish of its level), nothing on top */
+  var _crop = _farmCropHeal(invKey);
+  if (_crop > 0) return _crop;
   var _rec = _fishHealLadder ? 0 : getRecoveryFlat(rpg);
   /* v2.3.3131: a dish eaten at once (the Garden Stew) heals its own amount,
      the worker's cooking.js _applyDish -- plus the same Recovery. */
@@ -7439,10 +7444,16 @@ export const QUEST_CHAINS = {
     id: 'mayor_3',
     npc: 'Mayor Bro',
     title: 'Dungeon Delver',
-    desc: 'Clear any dungeon.',
+    /* v2.3.3540: the Goo Grotto, the starter dungeon, named -- the owner: "I
+       value SIMPLICITY and INTELLIGIBILITY" */
+    desc: 'Clear any dungeon. The nearest is the Goo Grotto, off the West Road.',
     /* v2.3.3522: the Land Office's door -- your farm, and its Dungeon Workshop,
-       are behind it (beast_1's note) */
-    way: 'door:landoffice',
+       are behind it (beast_1's note).  v2.3.3540: the Goo Grotto's mouth, the
+       starter dungeon (game/questWays.js 'dungeon:<land>'), half a minute's
+       walk from town -- and a clear there COUNTS: the worker records every
+       clear in lifeSkills.dungeonClears (dungeon.js _dungeonComplete), which
+       this quest's check reads and only the old phone-run dungeons wrote */
+    way: 'dungeon:verdant',
     /* v2.3.1972: there is no way into a dungeon.  The depth-tier entrance has
        been hard off since v2.3.54 (`if (false && tile === 10)` in
        zoneTransitions.js — "the depth-tier dungeons aren't ready for play
@@ -7469,8 +7480,8 @@ export const QUEST_CHAINS = {
     next: null,
     unlocks: 'skill_cap_50',
     dialogue: {
-      start: 'Clear a dungeon to prove your worth.',
-      progress: 'Find a dungeon portal in any zone.',
+      start: 'Clear a dungeon to prove your worth. The Goo Grotto is off the West Road. Bring a towel.',
+      progress: 'The Goo Grotto, off the West Road. Three waves of slime and one big one. You got this.',
       complete: 'Life skills uncapped past Lv50! Deeper zones beckon.'
     }
   },
