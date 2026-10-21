@@ -1138,7 +1138,15 @@ export const QUEST_TOUR = Object.freeze(['tut_1', 'smith_1', 'smith_2', 'fish_1'
  * (quests.js _questBarred 'retired').  The game skips them in the same way
  * (gameSystems.js getNpcQuest, `retired`); mirror-audit holds the two lists
  * together. */
-export const QUEST_RETIRED = Object.freeze(['life_1', 'life_2']);
+/* v2.3.3550: and the Mayor's "Welcome Home" (mayor_1, "Visit 3 buildings in
+ * town") -- the owner, 2026-10-21: "Retire the old welcome home quest."  It
+ * came after his last story quest (tut_4), long after the tour has walked a
+ * player through every building's door, so it asked for nothing new.  His
+ * "Into the Wild" (mayor_2) and "Dungeon Delver" (mayor_3) follow tut_4 as
+ * before: mayor_1 has no objective, so it was never mayor_2's prerequisite
+ * here (_questBarred 'order' skips an unchecked step), and the game skips a
+ * retired quest and offers the next (gameSystems.js getNpcQuest). */
+export const QUEST_RETIRED = Object.freeze(['life_1', 'life_2', 'mayor_1']);
 
 export const BLACKSMITH_TIERS = {
       /* ═══ v2.3.2123: THE FIRST MELEE TIER IS MADE OF WOOD, AND NOW SAYS SO ═══
