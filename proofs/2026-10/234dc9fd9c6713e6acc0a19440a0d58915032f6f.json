@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "234dc9fd9c6713e6acc0a19440a0d58915032f6f",
+  "tree": "a9ca9252cd5065ef72a1057430ad921712d5bbc1",
+  "committedAt": "2026-10-21T06:23:23-07:00",
+  "subject": "GDD as built: what merged today, v2.3.3533-3546 (v2.3.3547) (#1064)",
+  "files": 6203,
+  "bytes": 713534580,
+  "listingSha256": "3e02592efb1561bf4df5b02cef73d83265bad4dd9955681a10d23cad4e69c889",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
