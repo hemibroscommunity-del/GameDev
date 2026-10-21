@@ -31,6 +31,11 @@
  *      +0..2), the boss four wave monsters of health and said on the wire
  *      (`boss: 1`), and a start with your last run empty ending it at once;
  *      someone still inside keeps it running.
+ *  12. v2.3.3556: A DEATH IN A DUNGEON KEEPS THE BAG (the owner: "Keep your
+ *      bag in dungeons") -- no pile, the bag whole at the death and after the
+ *      respawn, `keptBag` on player_died; a death in the world as before; the
+ *      kill switch `dungeonbag: false`; a red skull's loss still No man's
+ *      land's.
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { readFileSync } from 'fs';   /* v2.3.3556: the join's monster list, read */
@@ -438,6 +443,70 @@ let run = null;
   check('back in: ...and another player\'s empty run is left alone',
     room._dungeons.has('zzother') && msgsOfType(wsA, 'dungeon_started').length === 1, [...room._dungeons.keys()]);
   room._dungeonCleanup(otherInst);
+  endRun(psA);
+}
+
+// ── 12. A DEATH IN A DUNGEON KEEPS THE BAG (v2.3.3556) ─────────────────────
+{
+  const d = WHEEL_DOORS.verdant;
+  const BAG = () => ({ bar_copper: 5, crop_carrot: 3, ore_copper_ore: 2 });
+  const piles = (z) => (room.loot[z] || []).filter((l) => /^dd-bp_wd_a-/.test(l.lootId || ''));
+  const died = () => msgsOfType(wsA, 'player_died').pop();
+  const respawn = () => { psA.respawnAt = Date.now() - 1; room._tickPlayerRespawn(); };
+  const dieIn = async (inDungeon) => {
+    let z = 'wheel';
+    put(psA, 'wheel', d.at[0], d.at[1]);
+    psA.level = 3;
+    if (inDungeon) {
+      wsA.sent.length = 0;
+      await startAt(wsA, 'verdant');
+      z = msgsOfType(wsA, 'dungeon_started')[0].payload.zone;
+      await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 400, y: 600, z }));
+    } else {
+      put(psA, 'wheel', d.at[0] + 600, d.at[1]);
+    }
+    psA.inventory = BAG();
+    psA.hp = 0;
+    wsA.sent.length = 0;
+    room._handlePlayerDeath(psA, 'bp_wd_a', 'monster:dm-test');
+    return z;
+  };
+  /* in the Goo Grotto */
+  const zIn = await dieIn(true);
+  const inv0 = Object.assign({}, psA.inventory), msg0 = died();
+  check('bag: a death in a dungeon drops no pile and empties nothing (copper bars 5, carrots 3, ore 2)',
+    /^dungeon:/.test(zIn) && piles(zIn).length === 0 && inv0.bar_copper === 5 && inv0.crop_carrot === 3 && inv0.ore_copper_ore === 2, { zIn, inv0, piles: piles(zIn).length });
+  check('bag: ...and the worker says so (player_died keptBag 1)', !!msg0 && msg0.payload.keptBag === 1, msg0 && msg0.payload);
+  respawn();
+  check('bag: ...and the respawn five seconds on keeps it too (it wiped a second time, as it did a duel loser\'s)',
+    psA.z === 'town' && psA.inventory.bar_copper === 5 && psA.inventory.crop_carrot === 3 && psA.inventory.ore_copper_ore === 2 && psA._deathKeepsBag === undefined,
+    { z: psA.z, inv: psA.inventory });
+  endRun(psA);
+  /* in the world: as before */
+  const zOut = await dieIn(false);
+  const inv1 = Object.assign({}, psA.inventory), msg1 = died(), p1 = piles(zOut)[0];
+  check('bag: a death in the world drops the bag as before (the pile holds the bars and carrots; the ore, a quest\'s, is kept), no keptBag',
+    !!p1 && !inv1.bar_copper && !inv1.crop_carrot && inv1.ore_copper_ore === 2 && !!msg1 && !msg1.payload.keptBag,
+    { inv1, pile: p1 && p1.items, msg: msg1 && msg1.payload });
+  respawn();
+  room.loot.wheel = (room.loot.wheel || []).filter((l) => !/^dd-bp_wd_a-/.test(l.lootId || ''));
+  /* the kill switch */
+  room._liveFlags = { dungeonbag: false };
+  const zOff = await dieIn(true);
+  const inv2 = Object.assign({}, psA.inventory);
+  check('bag: `dungeonbag: false` in the live flags puts it back -- a pile in the run, the bag emptied',
+    piles(zOff).length === 1 && !inv2.bar_copper && !inv2.crop_carrot, { inv2, piles: piles(zOff).length });
+  respawn();
+  room._liveFlags = {};
+  endRun(psA);
+  /* a red skull: No man's land's own rule for an outlaw killed "by a monster" */
+  psA._nml = { red: Date.now() + 600000, white: 0, redMs: 600000 };
+  const zRed = await dieIn(true);
+  const inv3 = Object.assign({}, psA.inventory), msg3 = died();
+  check('bag: a red skull\'s loss is still No man\'s land\'s, in a dungeon too (the bars and carrots gone, no keptBag)',
+    !inv3.bar_copper && !inv3.crop_carrot && !!msg3 && !msg3.payload.keptBag, { inv3, msg: msg3 && msg3.payload, red: psA._nml });
+  respawn();
+  psA._nml = null;
   endRun(psA);
 }
 

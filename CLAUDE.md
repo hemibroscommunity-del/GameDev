@@ -1629,10 +1629,17 @@ remnant to migrate server-side, not a mode to preserve.
         s", Leave now) -- it was three;
       - STRAIGHT BACK IN: a start with your last run empty ends it
         (`_handleDungeonStart`); someone inside keeps it;
-      - `wheeldungeon` §4/§6/§11, `dungeon` §4/§8/§11, `dungeon-clear` suite,
+      - A DEATH INSIDE KEEPS THE BAG -- offered "your pile waits at the mouth,
+        or you keep your bag in a dungeon", the owner: "Keep your bag in
+        dungeons": the duel kill's exemption for any `dungeon:` zone (index.js
+        `_handlePlayerDeath`, dungeon.js `_dungeonKeepsBag`: no pile, neither
+        wipe, `ps._deathKeepsBag` -- was `_duelDeathKeepsBag`), `keptBag` on
+        player_died and "Your bag is safe" on the phone; a red skull's loss
+        still No man's land's; kill switch `dungeonbag: false`;
+      - `wheeldungeon` §4/§6/§11/§12, `dungeon` §4/§8/§11, `dungeon-clear` suite,
         `mp-dungeonfix`: docs/specs/dungeon-fixes.md. Still the owner's call:
-        death inside, a reward worth the trip, travel to found dungeons, the
-        farm's Workshop, and something to look at inside.
+        a reward worth the trip, travel to found dungeons, the farm's
+        Workshop, and something to look at inside.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack

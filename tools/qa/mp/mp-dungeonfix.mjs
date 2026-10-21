@@ -18,10 +18,14 @@
  *      27 s") and you are still inside a few seconds on (it was three); its
  *      Leave now takes you out at once, at the mouth;
  *   5. ...and left alone, the time running out takes you out by itself;
- *   6. no page errors.
+ *   6. A DEATH INSIDE KEEPS THE BAG (the owner: "Keep your bag in dungeons"):
+ *      killed by a slime with copper bars in the bag, "Your bag is safe", and
+ *      back in the world the bars are still there (they were left in the run
+ *      and lost with it);
+ *   7. no page errors.
  * The walker is a god (server/src/devtools.js); the waves are ended by the QA
  * dev op `clearwave` (a real fight takes minutes on this box).
- * Pictures: tools/qa/mp/out/dungeonfix-{title,boss,clear,back}.png.
+ * Pictures: tools/qa/mp/out/dungeonfix-{title,boss,clear,back,died}.png.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -251,8 +255,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`5: left alone after the clear (${z3}), the time running out takes you out by itself (${tAuto.toFixed(1)} s on)`,
     /^dungeon:/.test(z3 || '') && done && out3 === 'wheel' && tAuto >= 25 && tAuto <= 60, { z3, done, out3, tAuto });
 
+  /* ── 6. a death inside keeps the bag ── */
+  await P.page.waitForTimeout(2000);
+  await H.grant(wsPort, id, 'item', { invKey: 'bar_copper', count: 5 });
+  let bag0 = 0;
+  for (let i = 0; i < 20 && bag0 < 5; i++) {
+    bag0 = await H.readState(P, (S) => ((S.rpg && S.rpg.inventory) || {}).bar_copper || 0);
+    if (bag0 < 5) await P.page.waitForTimeout(300);
+  }
+  await enter();
+  const z4 = await waitZone((z) => /^dungeon:/.test(z) && z !== z3, 30000);
+  await P.page.waitForTimeout(1500);
+  await H.devOp(wsPort, 'vitals', id, { god: false, hp: 1 });
+  words.length = 0;
+  /* into the slimes: one blow at 1 HP (they wander the arena's upper half,
+     out of reach of the way in) */
+  let died = false;
+  for (let k = 0; k < 40 && !died; k++) {
+    const m = await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      const ms = (S.monsters || []).filter((q) => q.alive !== false);
+      if (!ms.length) return null;
+      const near = ms.reduce((a, b) => (Math.hypot(b.x - S.player.x, b.y - S.player.y) < Math.hypot(a.x - S.player.x, a.y - S.player.y) ? b : a));
+      return { x: near.x, y: near.y };
+    });
+    if (m) await H.hopTo(P, m.x, m.y + 24, { step: 80, gap: 200, tries: 4 });
+    await listen(600);
+    died = await H.readState(P, (S) => !!S._dying);
+  }
+  await listen(2500);
+  const safe = words.filter((w) => /Your bag is safe/.test(w));
+  const zBack = await waitZone((z) => z === 'wheel', 90000);
+  await P.page.waitForTimeout(3000);
+  const bag1 = await H.readState(P, (S) => ((S.rpg && S.rpg.inventory) || {}).bar_copper || 0);
+  await shot('died');
+  rec.ok(`6: a death inside (${z4}, ${died ? 'killed by a slime at 1 HP' : 'not killed'}) says "${safe[0] || '?'}", and back in the world the bag still holds its ${bag1} copper bars (it held ${bag0}; they were left in the run, lost with it)`,
+    /^dungeon:/.test(z4 || '') && died && safe.length > 0 && zBack === 'wheel' && bag0 === 5 && bag1 === 5,
+    { z4, died, safe, zBack, bag0, bag1, words: words.slice(-8) });
+  await H.devOp(wsPort, 'vitals', id, { god: true, godMinutes: 30 }).catch(() => {});
+
   stopAlive = true;
   const errs = P.logs.filter((l) => /pageerror/.test(l));
-  rec.ok(`6: no page errors (${errs.length})`, errs.length === 0, errs.slice(0, 5));
+  rec.ok(`7: no page errors (${errs.length})`, errs.length === 0, errs.slice(0, 5));
   await P.ctx.close().catch(() => {});
 }

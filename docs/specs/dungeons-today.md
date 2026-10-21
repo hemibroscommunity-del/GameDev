@@ -11,8 +11,9 @@ wheeldungeon.js).
 
 **Since v2.3.3556 the four fixes that needed no decision are in**
 ([dungeon-fixes.md](dungeon-fixes.md)): a real boss, 30 seconds to pick up the
-loot, straight back in, and "(Lv 28)" on the top bar. They are marked FIXED
-below. The rest is still the owner's call.
+loot, straight back in, and "(Lv 28)" on the top bar. So is the owner's answer
+on a death inside: "Keep your bag in dungeons". They are marked FIXED below.
+The rest is still the owner's call.
 
 ## The four
 
@@ -66,7 +67,7 @@ drops). The clear adds the gold above. There is no chest and nothing special.
    is left on the floor.
 4. FIXED (v2.3.3556). **You can't go straight back in.** After you leave by "Way Out", the run
    lingers for a minute and the door says "You already have a dungeon running".
-5. **A death inside loses your whole bag.** Your pile is left inside the run.
+5. FIXED (v2.3.3556, the owner: "Keep your bag in dungeons"). **A death inside loses your whole bag.** Your pile is left inside the run.
    You wake in BroTown, can't get back in for a minute, and the run is then
    deleted with the pile in it.
 6. **The clear's XP goes nowhere.** It's paid into an old counter no skill

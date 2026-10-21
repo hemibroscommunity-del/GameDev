@@ -187,6 +187,18 @@ export const dungeonMethods = {
     this._dungeonSend(playerId, { type: 'dungeon_error', payload: { code, message } });
   },
 
+  /* ═══ v2.3.3556: DOES A DEATH HERE KEEP THE BAG? ═══
+     The owner: "Keep your bag in dungeons" -- any dungeon, the world's and
+     the Workshop's (a `dungeon:` zone).  Read by index.js _handlePlayerDeath,
+     which skips the pile and both wipes for it, as for a duel kill.  KILL
+     SWITCH (lower case, TRAPS §117): `dungeonbag: false` in the live flags --
+     a dungeon death drops its pile and empties the bag as before. */
+  _dungeonKeepsBag(ps) {
+    const f = this._liveFlags;
+    if (f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'dungeonbag') && !f.dungeonbag) return false;
+    return !!(ps && typeof ps.z === 'string' && ps.z.startsWith('dungeon:'));
+  },
+
   // Alive, connected players standing in the instance zone.  Zone
   // presence is the membership model: whoever walks in fights, whoever
   // is inside at the final kill gets paid.

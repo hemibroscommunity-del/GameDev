@@ -7,8 +7,11 @@ get right."
 A phone walked into all four dungeons in the world first, at the level each is
 for. What a player met is written up in [dungeons-today.md](dungeons-today.md).
 It listed four fixes that needed no decision. The owner was told they would be
-made unless they said otherwise. These are those four. The rest of that list is
-still the owner's call (see "Still the owner's call" at the end).
+made unless they said otherwise. These are those four, and a fifth the owner
+then decided: offered "your pile waits outside at the mouth, or you keep your
+bag in a dungeon", they answered "Keep your bag in dungeons" (section 5). The
+rest of that list is still the owner's call (see "Still the owner's call" at
+the end).
 
 ## 1. A real boss
 
@@ -115,6 +118,28 @@ When a zone's level range is a single level, its title shows that one level
 (`ui/mobile/zoneTitle.js`). A dungeon is one level, so its top bar says "the
 Great Cave (Lv 28)".
 
+## 5. A death in a dungeon keeps your bag
+
+**Before.** A death in a dungeon left your bag's pile inside the run. You woke
+in BroTown and couldn't get back into that run. The run was then deleted with
+the pile in it, so the bag was simply lost.
+
+**Now.** A death in any dungeon (a world dungeon or the Workshop's) keeps your
+bag: no pile, nothing taken (`index.js` `_handlePlayerDeath`, asking
+`dungeon.js` `_dungeonKeepsBag`).
+
+- It is the duel kill's exemption. The server empties a dead player's bag
+  twice, at the death and again at the respawn five seconds later, and a dungeon
+  death now skips both (`ps._deathKeepsBag`, renamed from `_duelDeathKeepsBag`).
+- The server says so on `player_died` (`keptBag: 1`). The phone then shows "Your
+  bag is safe" under "YOU DIED". An older server never sends it, so the phone
+  promises nothing it can't keep.
+- **A red skull is the one exception.** The owner set No man's land's rule for
+  an outlaw "killed by a monster": they keep what they wear and lose the rest.
+  That rule still applies in a dungeon (`_nml`).
+- Kill switch: `dungeonbag: false` in the live flags puts back the old pile and
+  wipe.
+
 ## Tests
 
 - **`wheeldungeon` suite.**
@@ -123,6 +148,9 @@ Great Cave (Lv 28)".
     re-push, the snapshot and the join.
   - Straight back in. With someone inside the run is refused, and another
     player's empty run is left alone.
+  - A death inside keeps the bag (5 copper bars, 3 carrots and 2 ore), no pile,
+    `keptBag`, still whole after the respawn. A death in the world still drops
+    it. The kill switch puts the old way back, and a red skull still loses it.
 - **`dungeon` suite.** The Workshop's boss is its whole HP × mult × 1.6 with two
   players, and its wire carries the boss flag. The second start is refused
   while you are inside, and an empty run is replaced.
@@ -130,8 +158,9 @@ Great Cave (Lv 28)".
   - the clock: 30 s, out once, never out of a new run, Leave now;
   - the wiring;
   - the title;
-  - the boss's size and plate, and the name's contrast.
-- **Breaking each fix on purpose.** Eleven mutations were applied one at a time:
+  - the boss's size and plate, and the name's contrast;
+  - "Your bag is safe", only on the server's `keptBag`.
+- **Breaking each fix on purpose.** Eighteen mutations were applied one at a time:
   - the flat left out of the multiplier;
   - the +0–2 roll put back;
   - no straight back in;
@@ -140,18 +169,23 @@ Great Cave (Lv 28)".
   - the clear's timer taking you out of any run;
   - the old 3 s timer;
   - the title;
-  - ending another player's empty run.
+  - ending another player's empty run;
+  - for the bag: no keeping, kept at the death but wiped at the respawn, the red
+    skull ignored, the kill switch ignored, no `keptBag`, every zone keeping it,
+    and no "Your bag is safe".
 
   Every suite above passes, and each mutation makes at least one of them fail.
-- **`mp-dungeonfix`, a phone in the world** at the Goo Grotto. 10 checks:
+- **`mp-dungeonfix`, a phone in the world** at the Goo Grotto. 11 checks:
   - the top bar's one level, and every monster at it;
   - out by the way out and straight back in;
   - the boss on the wire, 1.5× a wave monster's scale, and "Boss Blue Slime" on
     the deep red;
   - the card counting down, still inside 6 s on, and Leave now;
-  - the time running out by itself.
+  - the time running out by itself;
+  - killed by a slime with 5 copper bars in the bag: "Your bag is safe", and
+    back in BroTown the 5 bars are still there.
 
-  Pictures: `tools/qa/mp/out/dungeonfix-{title,boss,clear,back}.png`.
+  Pictures: `tools/qa/mp/out/dungeonfix-{title,boss,clear,back,died}.png`.
 - **Unchanged and still passing:** `mp-wheeldungeon`, `mp-googrotto` (its
   levels check is now exact) and `mp-monsterplate`.
 
@@ -159,8 +193,6 @@ Great Cave (Lv 28)".
 
 These are from dungeons-today.md and are not done:
 
-- **Death inside.** Today your pile is left inside and lost with the run. It
-  could wait at the mouth instead, or you could keep your bag in a dungeon.
 - **A reward worth the trip.** For example, a chest from the boss, and the
   clear's XP going into the weapon you used. The XP still goes to the old
   counter that no skill reads (v2.3.3543 only took it out of the words).

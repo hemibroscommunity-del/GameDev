@@ -17,6 +17,9 @@
  *   4. THE BOSS: the worker's `boss` drawn BOSS_SIZE_K bigger, its plate
  *      "Boss <name>" on a deep red that is not the alarm's, the plate kept the
  *      plates' size on the screen.
+ * And (2) a death in a dungeon, which keeps the bag (the owner: "Keep your bag
+ * in dungeons"; the worker's rule in wheeldungeon.test §12), says "Your bag is
+ * safe" when the worker says it kept it.
  */
 import { readFileSync } from 'fs';
 import { DUNGEON_LOOT_MS, startDungeonClear, dungeonClearView, leaveClearedDungeon, dungeonClearBus } from '../../src/game/dungeonClear.js';
@@ -100,6 +103,14 @@ const src = (p) => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
     /Pick up your loot · out in \{v\.secs\} s/.test(hud) && /data-dungeon-leave=""/.test(hud) && /leaveClearedDungeon\(stateRef\.current\)/.test(hud)
       && /onPointerDown=\{stop\} onTouchStart=\{stop\}/.test(hud) && /type="button"/.test(hud));
   check('2: ...and Esc is not "leave the dungeon" (no data-esc on it)', !/data-esc/.test(hud));
+  /* v2.3.3556: a death in a dungeon keeps the bag, and the phone says so --
+     only when the worker says it kept it (an older worker's death promises
+     nothing) */
+  const wc = src('src/networking/wsClient.js');
+  const dAt = wc.indexOf("case 'player_died':");
+  const dBlock = wc.slice(dAt, wc.indexOf("case 'player_respawned':", dAt));
+  check('2: "Your bag is safe" under "YOU DIED", only on the worker\'s `keptBag`',
+    dAt > 0 && /if \(msg\.payload && msg\.payload\.keptBag\) pushDmgPopup\(S, [^;]*'Your bag is safe'/.test(dBlock), dBlock.length);
 }
 
 /* ── 3. the top bar ── */
