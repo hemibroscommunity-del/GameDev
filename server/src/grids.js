@@ -1045,6 +1045,9 @@ export const gridMethods = {
     }
     // Amulet regen mults are percentages.  Real amulets cap around 30%
     // per tier; 100% is double, well above any realistic stack.
+    // v2.3.3536: the phone's claims, read by the regen tick only under
+    // `amuletregen: false` (staminaregen.js works the bonus out from the
+    // amulet the worker holds).
     if (typeof payload.amuletHpRegen === 'number') {
       ps.amuletHpRegen = Math.max(0, Math.min(100, payload.amuletHpRegen));
     }

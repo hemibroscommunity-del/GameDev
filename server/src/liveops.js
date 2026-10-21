@@ -338,7 +338,7 @@ export const liveopsMethods = {
       await this._adminLog({ op: 'flag_set', name, value });
       /* v2.3.3260: the one formula's switch re-sizes every bar and every live
          monster's hit at once (oneformula.js _oneFormulaFlagChanged) */
-      if (name === 'oneformula' && typeof this._oneFormulaFlagChanged === 'function') this._oneFormulaFlagChanged();
+      if ((name === 'oneformula' || name === 'onelevel' /* v2.3.3538: the level, so the bar, changes */) && typeof this._oneFormulaFlagChanged === 'function') this._oneFormulaFlagChanged();
       return json({ ok: true, flags });
     }
     if (request.method === 'DELETE' && path === '/flags') {
@@ -348,7 +348,7 @@ export const liveopsMethods = {
         delete flags[name];
         await this.state.storage.put('liveflags', flags);
         await this._adminLog({ op: 'flag_clear', name });
-        if (name === 'oneformula' && typeof this._oneFormulaFlagChanged === 'function') this._oneFormulaFlagChanged();   /* v2.3.3260 */
+        if ((name === 'oneformula' || name === 'onelevel') && typeof this._oneFormulaFlagChanged === 'function') this._oneFormulaFlagChanged();   /* v2.3.3260; v2.3.3538: + onelevel */
       }
       return json({ ok: true, flags });
     }

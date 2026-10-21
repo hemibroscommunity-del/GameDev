@@ -4,12 +4,14 @@ import { mailList, mailAge } from '@/game/postOffice.js';
 import { ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3481: the mail names items as the bag does */
 import { AlliancePart } from './AlliancePart.jsx';   /* v2.3.3313: the alliance, at the top of the Saloon */
 import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3321: clans are parties now */
+import { wellRestedLeft, restLeftWords, REST_MS, REST_XP_PCT } from '@/game/rest.js';   /* v2.3.3539: the Hotel's rest, paid by the worker */
 
 /* ═══ v2.3.3066: THE WHEEL'S HALLS — the Guild Hall, the Post Office, the Sheriff's Office ═══
  *
  * Three of the plan's "(new: ...)" buildings, opened onto systems the game
  * already has (data/wheelBuildingDoors.js WHEEL_HALL_DOORS says why each;
- * v2.3.3258 added a fourth, the Town Hall, below):
+ * v2.3.3258 added a fourth, the Town Hall, and v2.3.3539 a fifth, the Hotel,
+ * both below):
  *
  *   guildhall  your clan (ClanPanel: make one, run it, take up an invite)
  *              and the skill guilds (GuildPanel: ranks and their quests) --
@@ -141,6 +143,28 @@ function townHall(props) {
   ];
 }
 
+/* ═══ v2.3.3539: THE HOTEL -- A BED FOR THE NIGHT ═══
+   The worker pays the rest (server/src/rest.js): full health, stamina and
+   mana, and Well Rested, +10% of the XP a fight pays for half an hour.  One
+   row, as every hall's: Rest closes the window and the answer is said over
+   your bro (game/rest.js).  Above it, how long Well Rested has left, so a
+   player can see a second rest only starts the half hour again. */
+function hotel(props) {
+  var S = props.stateRef.current || {};
+  var left = wellRestedLeft(S);
+  var mins = Math.round(REST_MS / 60000);
+  return [
+    <div key="now" data-hotel-rested={left > 0 ? 1 : 0}
+      style={{ background: LS.well, border: '1px solid ' + LS.border, borderRadius: 10, padding: '10px 12px', fontSize: 12.5, lineHeight: 1.45, color: left > 0 ? LS.positive : LS.txt2 }}>
+      {left > 0
+        ? 'You are Well Rested: +' + REST_XP_PCT + '% combat XP for ' + restLeftWords(left) + ' more.'
+        : 'A night here fills your health, stamina and mana, and makes you Well Rested: +' + REST_XP_PCT + '% combat XP for ' + mins + ' minutes. Free.'}
+    </div>,
+    row('rest', '/ui/controls/sleep.webp?v=2.3.3526', '🛏', 'Rest',
+      left > 0 ? 'Rest again to start the ' + mins + ' minutes over' : 'Full health, stamina and mana, then Well Rested', props.onRest),
+  ];
+}
+
 function sheriff(props) {
   return [
     row('duel', '/icons/ui/soc-duel.webp', '⚔️', 'Duel a player', 'Pick a player, then tap Duel on their card', props.onPlayers),
@@ -151,7 +175,8 @@ function sheriff(props) {
 export function WheelHallPanel(props) {
   var hall = props.hall;
   if (!WHEEL_HALLS[hall]) return null;
-  var body = hall === 'guildhall' ? guildHall(props) : hall === 'post' ? postOffice(props) : hall === 'townhall' ? townHall(props) : sheriff(props);
+  var body = hall === 'guildhall' ? guildHall(props) : hall === 'post' ? postOffice(props) : hall === 'townhall' ? townHall(props)
+    : hall === 'hotel' ? hotel(props) : sheriff(props);   /* v2.3.3539: + the Hotel */
   return (
     <div style={LS_WRAP} data-wheel-hall={hall}>
       {header(hall)}

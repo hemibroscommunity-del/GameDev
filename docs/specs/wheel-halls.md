@@ -12,7 +12,7 @@ those systems could not be reached at all:
 | **Guild Hall** | clans and guilds | **Clans**: the clan panel, to make a clan, run it or take up an invite. **Skill guilds**: the guild panel, with ranks and quests. |
 | **Post Office & Telegraph** | mail and offline inbox | **Your mail**: every delivery of this visit. **Messages from friends**: the Social panel. |
 | **Sheriff's Office** | duels, arena sign-up, bounties | **Duel a player**: the player list (tap someone, then Duel on their card). **The arena**: the gladiator arena's sign-up. |
-| **Hotel** | rest, respawn | still shut |
+| **Hotel** | rest, respawn | still shut; since v2.3.3539 **Rest**: a rest the worker pays (docs/specs/hotel-rest.md) |
 
 Standing at a hall's door brings up the same **Enter** button as the other
 twelve: the hall's picture, and the name on its sign. A tap or **E** opens the
@@ -82,6 +82,8 @@ closes the hall.
 - **The Hotel stays shut.** Its rest is the farm bed's, and that runs only on
   your own device: no message, nothing the worker settles. The HP it restores
   is the worker's to give. It opens when the worker can pay for a rest.
+  - **Since v2.3.3539 it does** (docs/specs/hotel-rest.md): the Hotel is a
+    fifth hall, its one row Rest, open against a worker that says `caps.rest`.
 
 ## How it works
 

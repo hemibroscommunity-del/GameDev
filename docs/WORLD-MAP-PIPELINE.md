@@ -2667,6 +2667,39 @@ The kill switch is `wheelnodes: false`.
 The whole story is in docs/specs/wheel-resources.md. Tests:
 `wheelzone` §8, `mp-wheelnodes`.
 
+## The Goo Grotto: a landmark near town, every mouth in view (v2.3.3540)
+
+The owner: *"I value SIMPLICITY and INTELLIGIBILITY"*. A dungeon near town
+was the after-review list's fourth item.
+
+- **A fifth landmark.** The Verdant Wilds have one now, **the Goo Grotto**
+  (`plan.js`, the `verdant` region: tier 1, side 0.6, r 200).
+  - It sits in the middle of their first stretch, levels 1–5, north of the
+    West Road. The game's dungeon behind it is in
+    docs/specs/starter-dungeon.md.
+  - Its footpath leaves the West Road at the trunk's commons point. A
+    tier-1 landmark has no trunk point of its own, and a path must leave from
+    a trunk POINT, because a road wobbles between its points (layout.js) and
+    a fork from the middle of a stretch can miss the road as drawn.
+    test-world-core checks every road's start.
+- **Every dungeon's mouth in view** (`placing.js` `MOUTH_CLEAR`).
+  - A landmark with a tier is a dungeon's way in, and its mouth is drawn on
+    the ground at the landmark's middle, under everything that stands.
+  - Nothing wild stands ON a landmark, but a tall thing south of one reached
+    over it, and the Verdant Wilds' jungle trees are 400 game px tall.
+  - So no picture may reach into a box round any mouth: 200 px either side,
+    260 above (its name), 170 below (the ground in front). This applies to
+    every layer of both placings, and to every resource as its tier draws
+    it (`bake-wheel-spawns.mjs`).
+  - test-world-core checks all four mouths on both Wheels.
+- **The re-bake.** Both Wheels' objects, map pictures and tables were baked
+  again.
+  - 18 objects fewer on the long Wheel, 14 on the short.
+  - 3 monster places and 28 resources moved.
+  - The other three mouths stayed where they were.
+- **The map facts** (`wheelmap.js`) give a tiered landmark its `levels`, so
+  the world map says "dungeon · Lv 1–5" under its name.
+
 ## The monsters on the Wheel (v2.3.2978)
 
 Owner, 2026-10-02: "can you place the monsters where they belong in their

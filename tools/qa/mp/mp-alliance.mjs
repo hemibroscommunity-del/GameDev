@@ -133,7 +133,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   holdAlive = { stop: () => stopA(), start: () => { stopA = H.keepAlive(A); } };
   await A.page.waitForTimeout(1500);
   const me = await H.readState(A, (S) => ({ x: S.player.x, y: S.player.y, id: S.myId }));
-  const lv = await H.devOp(wsPort, 'combat', me.id, { skill: 'sword', level: 3 });
+  /* v2.3.3538: ONE LEVEL -- the level is the best weapon, so the sword at 5 */
+  const lv = await H.devOp(wsPort, 'combat', me.id, { skill: 'sword', level: 5 });
   rec.ok('the phone raised to level 5 by the test lever (guard)', lv && lv.ok && lv.charLevel === 5, lv);
   const until = async (fn, ms, gap = 250) => {
     const t0 = Date.now();
@@ -153,7 +154,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const w = F[i];
     await w.open();
     await w.place(me.x + 60 + (i % 5) * 40, me.y + 40 + Math.floor(i / 5) * 40);
-    await H.devOp(wsPort, 'combat', w.id, { skill: 'sword', level: 3 });
+    await H.devOp(wsPort, 'combat', w.id, { skill: 'sword', level: 5 });   /* v2.3.3538: level 5 is the sword at 5 */
     await A.page.evaluate((id) => { const S = window._gameState.current; S.channel.send({ type: 'broadcast', event: 'party_invite', payload: { target: id } }); }, w.id);
     await until(async () => w.got.some((m) => m.type === 'party_invited'), 6000);
     w.send({ type: 'party_accept', target: me.id });
@@ -209,7 +210,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await shot(A, '3-board');
 
   /* ── 4. a war ── */
-  for (const w of G) { await w.open(); await w.place(me.x - 400, me.y + 200); await H.devOp(wsPort, 'combat', w.id, { skill: 'bow', level: 3 }); }
+  for (const w of G) { await w.open(); await w.place(me.x - 400, me.y + 200); await H.devOp(wsPort, 'combat', w.id, { skill: 'bow', level: 5 }); }   /* v2.3.3538 */
   for (let i = 1; i < G.length; i++) {
     G[0].send({ type: 'party_invite', payload: { target: G[i].id } });
     await until(async () => G[i].got.some((m) => m.type === 'party_invited'), 6000);

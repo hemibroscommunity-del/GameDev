@@ -49,6 +49,10 @@ export const BUFF_ICON = Object.freeze({
   resist: ui('buff-resist'),
   xp: ui('buff-xp'),
   speed: ui('buff-speed'),
+  /* v2.3.3539: Well Rested (a rest at the Hotel or your farm's bed,
+     server/src/rest.js) -- no buff sheet picture, so the owner's bed, the
+     right stick's sleep picture, made 64 x 64 by tools/ui/make-rested-badge.py */
+  rested: ui('buff-rested'),
 });
 
 /* The canvas's three (the plate's party badge, the threat skull, the talk

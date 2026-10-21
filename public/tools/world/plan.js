@@ -750,6 +750,18 @@ const BASE_PLAN = {
       waterPaint: 'a clear jade stream with mossy stones and small waterfalls',
       cliffPaint: 'a mossy rock ledge overgrown with vines and flowers',
       riverPaint: 'a clear, fast river over mossy stones, edged with ferns and giant flowers',
+      /* v2.3.3540: the STARTER DUNGEON -- the owner, 2026-10-21: "I value
+         SIMPLICITY and INTELLIGIBILITY", and the after-review list's fourth
+         item, a dungeon near town: the three landmark dungeons are levels
+         26-45, out of a new player's reach, so the Goo Grotto stands in the
+         middle of the Verdant Wilds' first stretch (levels 1-5), where the
+         Mayor's first quest sends a new player for slimes, about half a
+         minute's walk from town.  A landmark as the others are: its own
+         clearing, a footpath off the West Road, its name on the maps, and
+         its mouth (server/src/wheeldungeon.js WHEEL_DUNGEON.LANDS.verdant)
+         kept clear of every picture (placing.js MOUTH_CLEAR) */
+      landmark: { name: 'the Goo Grotto', tier: 1, side: 0.6, color: '#7ad04a', colorName: 'slime green', r: 200,
+                  paint: 'the mouth of a low mossy cave in a fern-covered rock outcrop, bright green goo oozing over its lip, giant flowers round it' },
       gate: { name: 'the Vine Arch', color: '#e070b0', colorName: 'pink', r: 250,
               paint: 'a great archway of living vines hung with giant flowers, framing a round stone gate carved with an eight-spoked wheel wrapped in roots' },
       features: [
@@ -984,7 +996,14 @@ function layWheel(P) {
   for (const s of W.spokes) {
     const L = P.regions[s.id].landmark;
     if (!L || !L.tier) continue;
-    const from = onTier[s.id][2 * Math.round(L.tier / 2)], to = spokePoint(s, R(L.tier), L.side);
+    const to = spokePoint(s, R(L.tier), L.side);
+    /* v2.3.3540: a tier-1 landmark's from where the trunk leaves the commons
+       (its `W.hub` point) -- tier 1 has no point of its own on the trunk, and
+       its first, tier 2's, is further out, so the Goo Grotto's path would
+       have led back from beyond it.  Always a POINT of the trunk: a road
+       wobbles between its points and meets them exactly (layout.js), so a
+       path from the middle of a stretch can miss the road as drawn. */
+    const from = L.tier >= 2 ? onTier[s.id][2 * Math.round(L.tier / 2)] : spokePoint(s, W.hub);
     P.roads.push({ id: `${s.id}-landmark-path`, name: `the path to ${L.name}`, half: 22, pts: [from, midpoint(from, to), to] });
   }
 

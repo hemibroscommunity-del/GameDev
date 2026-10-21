@@ -29,6 +29,7 @@ import { ZONES, isWorldViewZone, zoneHomes, wheelLandAt /* v2.3.3320 */ } from '
 import { trackedQuestId } from './trackedQuest.js';   /* v2.3.3522: the quest you track leads */
 import { routeOrder, wheelWay } from './questWays.js';   /* v2.3.3522: where each quest leads in the Wheel */
 import { wheelTownDoors } from './wheelTownDoors.js';   /* v2.3.3522: the buildings' doors, for the quests that need one */
+import { wheelDungeonDoorsOpen } from './wheelDungeons.js';   /* v2.3.3540: the dungeons' mouths, for "Clear any dungeon" */
 
 /* v2.3.1906: where the quest givers stand.  Every live NPC is spawned by
    BroTown's _spawnTownNpcs, which is town-only, so a finished objective always
@@ -498,6 +499,7 @@ function _wheelPoint(currentZone, rpg, S) {
     P: (S && S.player) || null,
     npcAt: (name) => _npcHere(S, name),
     doors: wheel ? wheelTownDoors() : [],
+    dungeons: wheel ? wheelDungeonDoorsOpen(S) : [],
     visited: (S && S.stats && S.stats.visitedBuildings) || null,
     nodeNear: homes ? (kind) => _nodeNear(kind, rpg, S) : null,
     geom: wheel ? { c: (z.w * TILE) / 2, lands: z.lands, firstR: z.firstR || null, homes, safeR: z.safeR,

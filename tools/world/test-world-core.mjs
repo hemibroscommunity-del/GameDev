@@ -1322,8 +1322,12 @@ console.log('wheel map');
     m.stages.length === 32 && m.lands.every((l) => { const st = m.stages.filter((s) => s.region === l.id); return st.length === 4 && st.every((s, k) => s.k === k && s.levels[0] === k * 20 + 1 && s.levels[1] === (k + 1) * 20 && (k === 0 || Math.hypot(s.x - c, s.y - c) > Math.hypot(st[k - 1].x - c, st[k - 1].y - c))); }));
   const kinds = {};
   for (const p of m.places) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
-  ok(`...the camps (32, each at the end of its stage), the passes (16, at levels 20 and 60), the gates (8, each to its realm) and the landmarks`,
-    kinds.camp === 32 && kinds.pass === 16 && kinds.gate === 8 && kinds.landmark === 4 && m.places.every((p) => inside(p.x, p.y)) &&
+  /* v2.3.3540: five landmarks -- the Goo Grotto added -- the four with a
+     tier dungeons, each with its levels for the world map */
+  const dungeonMarks = m.places.filter((p) => p.kind === 'landmark' && Array.isArray(p.levels));
+  ok(`...the camps (32, each at the end of its stage), the passes (16, at levels 20 and 60), the gates (8, each to its realm) and the landmarks (5, four of them dungeons with their levels: ${dungeonMarks.map((p) => p.name + ' ' + p.levels.join('-')).join(', ')})`,
+    kinds.camp === 32 && kinds.pass === 16 && kinds.gate === 8 && kinds.landmark === 5 && dungeonMarks.length === 4
+      && dungeonMarks.some((p) => p.region === 'verdant' && p.name === 'the Goo Grotto' && p.levels.join() === '1,5') && m.places.every((p) => inside(p.x, p.y)) &&
     m.places.filter((p) => p.kind === 'camp').every((p) => [20, 40, 60, 80].includes(p.level)) && m.places.filter((p) => p.kind === 'pass').every((p) => p.level === 20 || p.level === 60) &&
     m.places.filter((p) => p.kind === 'gate').every((p) => /the (Dark Sanctum|Light Summit)/.test(p.to)), kinds);
   const before = bpM.routes.reduce((t, r) => t + r.pts.length, 0), after = m.routes.reduce((t, r) => t + r.pts.length / 2, 0);
@@ -3483,18 +3487,37 @@ console.log("the buildings' doors (v2.3.3032)");
   /* v2.3.3258: the Town Hall (the plan's `mayor (NPC)`, Mayor Bro on its steps) is a fourth hall,
      so every plot of the town opens something or says it is shut */
   /* v2.3.3259: the twelfth of today's buildings, the Enchanter, has no door of its own: it is the Gem Works' second tab */
-  ok('...eleven of today\'s buildings have a door (none twice; the twelfth, the Enchanter, is the Gem Works\' second tab), and the other five plots are accounted for, none left over: four halls of the Wheel\'s own (three of the plan\'s "(new: ...)" buildings, and the Town Hall, Mayor Bro\'s) and one shut that says so',
+  /* v2.3.3539: the Hotel is a fifth hall (its rest the worker's, rest.js),
+     shut only against a worker that does not rest (WHEEL_HALL_CAPS) */
+  ok('...eleven of today\'s buildings have a door (none twice; the twelfth, the Enchanter, is the Gem Works\' second tab), and the other five plots are accounted for, none left over: five halls of the Wheel\'s own (the plan\'s four "(new: ...)" buildings, and the Town Hall, Mayor Bro\'s), none shut',
     new Set(Object.values(WHEEL_BUILDING_DOORS)).size === 11 && tbIds.filter((id) => id !== 'enchanting').every((id) => Object.values(WHEEL_BUILDING_DOORS).includes(id))
     && tbIds.includes('enchanting') && !Object.values(WHEEL_BUILDING_DOORS).includes('enchanting') && WHEEL_BUILDING_DOORS.gemcutter === 'gemcutter'
-    && hallIds.length === 4 && closedIds.length === 1
+    && hallIds.length === 5 && closedIds.length === 0
     && hallIds.concat(closedIds).every((k) => lotIds.has(k) && !openIds.includes(k))
     && hallIds.concat(closedIds).filter((k) => k !== 'townhall').every((k) => /^\(new:/.test(todayOf[k])) && todayOf.townhall === 'mayor (NPC)'
     && !hallIds.some((k) => closedIds.includes(k))
     && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).length === 0,
     { halls: hallIds, closed: closedIds, rest: lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id) });
+  /* (v2.3.3539: a hall's picture is any .webp in public/, the Hotel's the
+     owner's bed from the right stick, public/ui/controls/) */
   ok('...each hall has its window\'s name and picture, and opens a panel of its own, never one of today\'s buildings\' (no `buildingPanel` value twice)',
-    hallIds.every((k) => { const h = WHEEL_HALLS[WHEEL_HALL_DOORS[k]]; return h && h.title && h.sub && /^\/icons\/ui\/.+\.webp$/.test(h.icon); })
-    && new Set(Object.values(WHEEL_HALL_DOORS)).size === 4 && Object.values(WHEEL_HALL_DOORS).every((v) => !actions.includes(v)), { halls: WHEEL_HALL_DOORS, actions });
+    hallIds.every((k) => { const h = WHEEL_HALLS[WHEEL_HALL_DOORS[k]]; return h && h.title && h.sub && /^\/(icons|ui)\/.+\.webp(\?v=[0-9.]+)?$/.test(h.icon) && fs.existsSync(new URL('../../public' + h.icon.split('?')[0], import.meta.url)); })
+    && new Set(Object.values(WHEEL_HALL_DOORS)).size === 5 && Object.values(WHEEL_HALL_DOORS).every((v) => !actions.includes(v)), { halls: WHEEL_HALL_DOORS, actions });
+  /* v2.3.3539: a hall that waits for its worker's cap is shut until then, and
+     the worker's REST.HOTEL is the Hotel's door as the ground worker places it */
+  {
+    const { WHEEL_HALL_CAPS } = await import('../../src/data/wheelBuildingDoors.js');
+    const { REST } = await import('../../server/src/rest.js');
+    const { WHEEL_CENTRE } = await import('../../server/src/wheelspawns1.js');
+    const h = byDoor.hotel;
+    const rel = h ? [h.x - WHEEL_CENTRE[0], h.y - WHEEL_CENTRE[1]] : null;
+    ok(`the Hotel opens against a worker that rests (caps.rest) and the worker's Hotel door is the placed one: (${rel && rel.join(', ')}) from the Wheel's middle, REST.HOTEL (${REST.HOTEL})`,
+      Object.keys(WHEEL_HALL_CAPS).join() === 'hotel' && WHEEL_HALL_CAPS.hotel === 'rest' && WHEEL_HALL_DOORS.hotel === 'hotel'
+        && !!rel && Math.abs(rel[0] - REST.HOTEL[0]) < 1 && Math.abs(rel[1] - REST.HOTEL[1]) < 1
+        /* its reach takes in standing at the door (the boots 140 px from its foot, the middle ~52 above them) and no other door */
+        && REST.HOTEL_R >= WHEEL_DOOR_REACH + 60 && doors.every((d) => d.id === 'hotel' || Math.hypot(d.x - h.x, d.y - h.y) > REST.HOTEL_R + WHEEL_DOOR_REACH),
+      { rel, hotel: REST.HOTEL, r: REST.HOTEL_R });
+  }
   {
     const PO = await import('../../src/game/postOffice.js');
     const S = {};
@@ -3776,14 +3799,14 @@ console.log("the buildings' insides (v2.3.3258)");
   const wrong = [];
   for (const [plot, bid] of Object.entries(WHEEL_BUILDING_DOORS)) if (R.BUILDING_ROOMS[panelOf(bid)] !== plot) wrong.push([plot, panelOf(bid), R.BUILDING_ROOMS[panelOf(bid)]]);
   for (const [plot, panel] of Object.entries(WHEEL_HALL_DOORS)) if (R.BUILDING_ROOMS[panel] !== plot) wrong.push([plot, panel, R.BUILDING_ROOMS[panel]]);
-  ok('every door that opens a window opens the window of its own room: the eleven buildings (through their `action`) and the four halls, each picture named for the plot it shows; the Enchanter\'s tab (v2.3.3259) is the Gem Works\' own room',
-    Object.keys(WHEEL_BUILDING_DOORS).length === 11 && Object.keys(WHEEL_HALL_DOORS).length === 4 && wrong.length === 0 && R.BUILDING_ROOMS.enchant === 'gemcutter' && R.BUILDING_ROOMS.gemcut === 'gemcutter', wrong);
+  ok('every door that opens a window opens the window of its own room: the eleven buildings (through their `action`) and the five halls (v2.3.3539: + the Hotel), each picture named for the plot it shows; the Enchanter\'s tab (v2.3.3259) is the Gem Works\' own room',
+    Object.keys(WHEEL_BUILDING_DOORS).length === 11 && Object.keys(WHEEL_HALL_DOORS).length === 5 && wrong.length === 0 && R.BUILDING_ROOMS.enchant === 'gemcutter' && R.BUILDING_ROOMS.gemcut === 'gemcutter', wrong);
   const windows = Object.values(R.BUILDING_ROOMS);
   const rooms = [...new Set(windows)];   /* v2.3.3259: the Gem Works' two tabs are one room */
-  ok('...sixteen windows, fifteen rooms (the Gem Works\' Cut and Set tabs share one, nothing else is shown twice), every one a plot of the town; the Hotel (shut) is the one with a picture and no window, so all sixteen plots are accounted for',
-    windows.length === 16 && rooms.length === 15 && windows.filter((r) => r === 'gemcutter').length === 2 && rooms.every((r) => lotIds.includes(r))
-      && R.SPARE_ROOMS.length === 1 && R.SPARE_ROOMS.every((r) => lotIds.includes(r) && !rooms.includes(r))
-      && WHEEL_SHUT_DOORS.every((r) => R.SPARE_ROOMS.includes(r)) && R.SPARE_ROOMS.join() === 'hotel'
+  /* v2.3.3539: the Hotel's picture has its window, so no picture waits */
+  ok('...seventeen windows, sixteen rooms (the Gem Works\' Cut and Set tabs share one, nothing else is shown twice), every one a plot of the town, all sixteen plots accounted for and no picture waiting (the Hotel\'s has its window)',
+    windows.length === 17 && rooms.length === 16 && windows.filter((r) => r === 'gemcutter').length === 2 && rooms.every((r) => lotIds.includes(r))
+      && R.SPARE_ROOMS.length === 0 && WHEEL_SHUT_DOORS.every((r) => R.SPARE_ROOMS.includes(r)) && R.BUILDING_ROOMS.hotel === 'hotel'
       && rooms.concat(R.SPARE_ROOMS).slice().sort().join() === lotIds.slice().sort().join(),
     { rooms, windows, spare: R.SPARE_ROOMS, lots: lotIds });
   ok('a panel that is no building has no room (the Market is a screen of its own), and a client-supplied name can never reach a prototype key',
@@ -4189,6 +4212,44 @@ console.log('the Wheel five times longer (v2.3.3315)');
   ok('...and the three dungeons\' mouths are on their lands at their own levels, further out',
     ['sky', 'hollows', 'thunder'].every((h) => live.WHEEL_DOORS[h] && short.WHEEL_DOORS[h] && live.WHEEL_DOORS[h].tier === short.WHEEL_DOORS[h].tier
       && live.WHEEL_DOORS[h].levels.join() === short.WHEEL_DOORS[h].levels.join() && tierAt(live.WHEEL_DOORS[h].at[0], live.WHEEL_DOORS[h].at[1])[0] === h), live.WHEEL_DOORS);
+  /* v2.3.3540: and the starter dungeon's, the Goo Grotto -- the Verdant
+     Wilds' landmark, on their first stretch (levels 1-5), on both Wheels --
+     and EVERY mouth in view: no object's picture, nor any resource's, reaches
+     into the box round it (placing.js MOUTH_CLEAR: the opening, its name over
+     it, the ground in front), as the game draws them -- each object at its
+     catalog size, each tree and rock by its tier's own picture */
+  ok('...and the starter dungeon\'s mouth, the Goo Grotto, the Verdant Wilds\' landmark, on their first stretch (levels 1-5), on both Wheels',
+    !!live.WHEEL_DOORS.verdant && !!short.WHEEL_DOORS.verdant && live.WHEEL_DOORS.verdant.name === 'the Goo Grotto'
+      && live.WHEEL_DOORS.verdant.levels.join() === '1,5' && short.WHEEL_DOORS.verdant.levels.join() === '1,5'
+      && tierAt(live.WHEEL_DOORS.verdant.at[0], live.WHEEL_DOORS.verdant.at[1]).join() === 'verdant,1'
+      && PLAN5.roads.some((r) => r.id === 'verdant-landmark-path'), { live: live.WHEEL_DOORS.verdant, short: short.WHEEL_DOORS.verdant });
+  {
+    const { MOUTH_CLEAR } = await import('../../public/tools/world/core/placing.js');
+    const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
+    const { treeGeom } = await import('../../src/game/tierTrees.js');
+    const { oreGeom } = await import('../../src/game/tierOre.js');
+    const byId = Object.fromEntries(objectCatalog().map((e) => [e.id, e]));
+    const hidden = [];
+    for (const [name, T, O] of [['long', live, ob], ['short', short, oa]]) {
+      for (const [id, d] of Object.entries(T.WHEEL_DOORS)) {
+        const x0 = d.at[0] + MOUTH_CLEAR.left, x1 = d.at[0] + MOUTH_CLEAR.right, y0 = d.at[1] + MOUTH_CLEAR.top, y1 = d.at[1] + MOUTH_CLEAR.bottom;
+        const over = (l, r, t, b) => l < x1 && r > x0 && t < y1 && b > y0;
+        for (let i = 0; i < O.n; i++) {
+          const e = byId[O.kinds[O.kind[i]]];
+          if (!e || Math.abs(O.x[i] - d.at[0]) > 900 || Math.abs(O.y[i] - d.at[1]) > 900) continue;
+          const h = e.fit === 'w' ? e.size / (e.ar || 1) : e.size, w = e.fit === 'w' ? e.size : e.size * (e.ar || 1);
+          if (over(O.x[i] - w / 2, O.x[i] + w / 2, O.y[i] - h, O.y[i])) hidden.push({ wheel: name, door: id, object: e.id, at: [O.x[i], O.y[i]] });
+        }
+        for (const list of Object.values(T.WHEEL_NODES)) for (const [k, x, y, lvl] of list) {
+          if (k === 'f' || Math.abs(x - d.at[0]) > 900 || Math.abs(y - d.at[1]) > 900) continue;
+          const g = k === 'o' ? oreGeom({ x, y, gatherLvl: lvl }) : treeGeom({ x, y, gatherLvl: lvl });
+          if (over(g.left, g.right, g.top, g.footY)) hidden.push({ wheel: name, door: id, node: k, at: [x, y] });
+        }
+      }
+    }
+    ok(`...and every dungeon's mouth in view on both Wheels (${Object.keys(live.WHEEL_DOORS).join(', ')}): no object's or resource's picture over its opening, its name or the ground in front (MOUTH_CLEAR)`,
+      Object.keys(live.WHEEL_DOORS).length === 4 && hidden.length === 0, hidden.slice(0, 6));
+  }
   /* 5b. v2.3.3401: every fishing seat of both tables out of the water as the
      game DRAWS it -- each piece composed as the ground worker lays it (its
      blocks' window, composeGround at its scale, no pictures: the pictures

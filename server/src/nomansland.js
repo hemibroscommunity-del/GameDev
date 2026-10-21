@@ -28,6 +28,9 @@
  *   - both players in No man's land, both alive, not in one party;
  *   - their CHARACTER levels (ps.level, the worker's own) at most N apart,
  *     where N is the LOWER of the two No man's land levels they stand in.
+ *     (v2.3.3538: the character level is the highest weapon skill, prog3.js;
+ *     it was the three added up, so two players with the same best weapon
+ *     could be "levels" apart for the weapons they had tried.)
  *     "Any other player 1 level above or below you can attack you" read
  *     from both sides at once, so a player standing deep cannot reach over
  *     the line into a shallow player's tighter range.

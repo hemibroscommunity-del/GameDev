@@ -107,7 +107,7 @@
       </div>
       <div>
         <label for="minlv">Minimum level to enter</label>
-        <input id="minlv" type="number" min="0" max="300" value="5">
+        <input id="minlv" type="number" min="0" max="100" value="5">
       </div>
     </div>
     <p class="note" id="window" style="color:var(--ink)"></p>
@@ -170,6 +170,11 @@
    * at roughly 37-41 starter slimes (~38 HP each, XP = damage x 0.4, 560-605
    * XP required).  That is real minutes per throwaway account, which is the
    * entire point.
+   * v2.3.3538: ONE LEVEL -- the character level is the HIGHEST trained skill
+   * now (1..100, a fresh character 1), so level 5 is a weapon at 5: four
+   * level-ups of one weapon, 1,420 XP, about two and a half times the old
+   * cost.  3 would be the old effort (two level-ups, 605 XP); the default
+   * stays 5 for the owner to weigh, and the box tops out at 100.
    *
    * The cost is real and is the owner's to weigh: someone who joins in the
    * last twenty minutes may not clear it.  So the threshold is an INPUT, not

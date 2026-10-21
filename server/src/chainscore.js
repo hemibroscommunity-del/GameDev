@@ -77,7 +77,12 @@ export const CHAIN_SCORE = {
      also exactly what a contest judge needs to see.  Cost: nothing — the
      count of lifetime checkpoints is unchanged, one write just happens
      earlier. */
-  MILESTONES: [4, 10, 25, 50, 100, 150, 200, 250, 300],
+  /* v2.3.3538: ONE LEVEL (prog3.js header) -- the character level is the
+     highest trained skill, 1..100, and a new character is 1, so the first
+     level-up is 2: nine checkpoints over 1..100.  The sum's ladder above is
+     SUM_MILESTONES, read with `onelevel: false`. */
+  MILESTONES: [2, 5, 10, 20, 30, 40, 50, 75, 100],
+  SUM_MILESTONES: [4, 10, 25, 50, 100, 150, 200, 250, 300],
   KEY: (pid) => 'chain_score:' + pid,
 };
 
@@ -165,7 +170,9 @@ export const chainScoreMethods = {
   /** The highest milestone this level has reached, or 0 for none. */
   _chainScoreMilestone(level) {
     let hit = 0;
-    for (const m of CHAIN_SCORE.MILESTONES) if ((level || 0) >= m) hit = m;
+    /* v2.3.3538: the ladder for the level in force */
+    const ladder = (typeof this._oneLevelOn === 'function' && !this._oneLevelOn()) ? CHAIN_SCORE.SUM_MILESTONES : CHAIN_SCORE.MILESTONES;
+    for (const m of ladder) if ((level || 0) >= m) hit = m;
     return hit;
   },
 

@@ -24,7 +24,9 @@
  *     (prog3.js prog3Yardstick), and the level the name plate's colour reads.
  *     Never the character level: that is the SUM of the three, so a player
  *     with all three at 10 is "Lv 30" and every monster below 26 would have
- *     paid them a third.
+ *     paid them a third.  (v2.3.3538: the character level is the HIGHEST of
+ *     the three now, but a lane still fades by its own skill: Bow 3 beside
+ *     Melee 20 earns full Bow XP off a level-3 monster.)
  *
  * WHY THESE TWO NUMBERS.  The hit ladder makes a resource much quicker in the
  * five levels after it opens, and the next tier opens five levels later, so

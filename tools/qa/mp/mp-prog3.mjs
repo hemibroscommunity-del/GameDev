@@ -52,13 +52,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
   }, (v) => v.caps && v.p3, { timeout: 20000, label: 'prog3 adoption' }).catch(() => null);
   rec.ok('worker advertises caps.prog3 and the client adopts rpg.prog3', !!adopted, adopted);
-  rec.ok('fresh character is level 3 (Σ of three level-1 trained skills)', adopted && adopted.level === 3, adopted);
+  /* v2.3.3538: ONE LEVEL -- the highest trained skill, 1 for a new character */
+  rec.ok('fresh character is level 1 (the highest of three level-1 trained skills)', adopted && adopted.level === 1, adopted);
   /* v2.3.1727: derived from the CLIENT mirror rather than the literal 106
      that was here.  The point of this assertion is that the client's
      recalcDerived agrees with the worker's _prog3Recompute — a hand-typed
      total silently stops testing that the moment either side is retuned,
      and re-typing the new number would just re-arm the same trap. */
-  const expectHp = healthAt(3, 0, true);
+  const expectHp = healthAt(1, 0, true, true);   /* v2.3.3538: level 1, read as 1 + 2: the 250 it always was */
   rec.ok(`maxHp re-derives to the one formula (100 + level×${ONE_FORMULA.HEALTH.PER_LEVEL})`,
     adopted && adopted.maxHp === expectHp, { ...adopted, expectHp });
   rec.ok('the allocation pool starts empty', adopted && adopted.pool === 0 && adopted.sword === 1, adopted);
