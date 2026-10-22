@@ -106,7 +106,7 @@ const peer = (S, id, x, y, extra) => { S.others[id] = Object.assign({ id, name: 
   check('3a a sitter by his door: no word', !dg.chatBubble);
   S._pose = { id: 'sprinkler', at: T0 + 100 };
   updateTownsfolkReactions(S, T0 + 100);
-  check('3b a dancer: "No dancing in my store!"', !!dg.chatBubble && dg.chatBubble.text === 'No dancing in my store!', dg.chatBubble);
+  check('3b a dancer: his first line', !!dg.chatBubble && dg.chatBubble.text === REACT_LINES.diego[0], dg.chatBubble);
   updateTownsfolkReactions(S, T0 + 5000);
   check('3c ...not again inside the gap', dg.chatBubble.ts === T0 + 100);
   updateTownsfolkReactions(S, T0 + 100 + REACT.LINE_GAP_MS);
@@ -119,7 +119,7 @@ const peer = (S, id, x, y, extra) => { S.others[id] = Object.assign({ id, name: 
   const dg = npc(S, 'diego');
   S._pose = { id: 'zombie', at: T0 };
   updateTownsfolkReactions(S, T0);
-  check('3e a Zombie Shuffle by his door: "No zombies in my store!"', !!dg.chatBubble && dg.chatBubble.text === 'No zombies in my store!', dg.chatBubble);
+  check('3e a Zombie Shuffle by his door: his zombie line', !!dg.chatBubble && dg.chatBubble.text === REACT_LINES.diegoZombie[0], dg.chatBubble);
 }
 
 /* ── 4. Ace ────────────────────────────────────────────────────────────── */
@@ -131,7 +131,7 @@ const peer = (S, id, x, y, extra) => { S.others[id] = Object.assign({ id, name: 
   check('4a one dancer: no dance-off', !ace.chatBubble);
   peer(S, 'Rival', 40, -150, { _po: 'robot', _poAt: T0 });
   updateTownsfolkReactions(S, T0 + 100);
-  check('4b two dancers: he calls the odds on one of them', !!ace.chatBubble && /^Dance-off! (Mover|Rival) at (3 to 1|2 to 1|5 to 2|even money)\.$/.test(ace.chatBubble.text), ace.chatBubble);
+  check('4b two dancers: he calls the odds on one of them', !!ace.chatBubble && /^Unofficial dance-off! Taking action on (Mover|Rival) at (3 to 1|2 to 1|5 to 2|even money)!$/.test(ace.chatBubble.text), ace.chatBubble);
   const t = ace.chatBubble.ts;
   updateTownsfolkReactions(S, T0 + 2000);
   check('4c ...once in the gap', ace.chatBubble.ts === t);
