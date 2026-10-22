@@ -112,6 +112,11 @@ Options (keeping the joke):
 - **A smaller blast at levels 1–5**, for example a quarter of your bar.
 - **Leave it as it is.** A first death is a lesson, and the joke lands harder.
 
+**Decided (v2.3.3568): left as it is.** The owner: "No warning for the
+bursting I think it's more fun to discover that." Nothing in the game
+changed: an ordinary blue slime swells with no words over it ("BURSTING!"
+stays the dungeon's giant slime's alone), and its blast is the same size.
+
 ### 2. BroTown heals you slowly
 
 BroTown in the new world is not a "hub" to the healing rule. It heals as the
@@ -126,6 +131,8 @@ Options:
 - **The safe ground heals as the old town did** (10% a tick).
 - **The Mayor points at the Hotel.**
 - **Leave it as it is.**
+
+Still the owner's call.
 
 ## Not counted
 

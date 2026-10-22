@@ -652,7 +652,7 @@ A "!" pops and the kind's noise plays when a monster starts chasing you; the nam
 | Fodder (slime, goblin, mummy, wisp, blue slime) | **Lunge** | 1,200 ms wind-up ("the beginner's tell, tuned to teach blocking"), 9 s cooldown, ×1.0 in 80 px |
 | Snowman | **Snow-pile burrow** | the first time it drops to half HP: digs 600 ms (vulnerable), becomes an intangible pile for 1.2–3 s that creeps toward you at 95 px/s (under your 150) and hurts on touch once a second, then emerges 600 ms (the punish window); 20 s between burrows; a raised shield facing the pile bonks it up early, dazed 1 s |
 | Mummy | **Unwraps** | any damage turns it into a skeleton: speed 18 → 79 px/s, drawn taller, its own death; respawns as a mummy |
-| Blue Slime | **Death burst** | at 0 HP it swells 1.6 s to 3.5× its size, untouchable, then bursts for a flat 60 (stamped) to everyone within 110 px and holds them; walking away is the counter; the kill then resolves with the same killer and loot |
+| Blue Slime | **Death burst** | at 0 HP it swells 1.6 s to 3.5× its size, untouchable, then bursts for a flat 60 (stamped) to everyone within 110 px and holds them; walking away is the counter; the kill then resolves with the same killer and loot; no words over it, by the owner's choice (v2.3.3568: "more fun to discover") |
 | Fire Goblin | **Fire trail** | while chasing it drops a burning patch every 48 px: 300 ms to arm, 6 damage (stamped) every 500 ms to anyone within 26 px, out after 4 s, at most 8 patches a goblin; unblockable, movement is the counter |
 | Hexer mummy | **Curse** | its landed hit cuts your outgoing damage 30% for 4 s |
 | Stalker mummy | — | hits harder (×1.2), faster, less HP; its pounce was removed (it read as teleporting) |
