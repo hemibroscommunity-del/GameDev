@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a94e10313515d18f6a136b28733464c31134b3fb",
+  "tree": "8963f1804ab2f6a46723afa5e730086b3b0c72a1",
+  "committedAt": "2026-10-21T21:27:00-07:00",
+  "subject": "The Points tab wears your new art: gold frames, your thicker weapon icons, gold and grey counts, the bust with the up arrow (v2.3.3559) (#1070)",
+  "files": 6306,
+  "bytes": 725623466,
+  "listingSha256": "716d782037fc03d890bbbd0d065ef6dc54ca321378667a599dc5f8a126861367",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
