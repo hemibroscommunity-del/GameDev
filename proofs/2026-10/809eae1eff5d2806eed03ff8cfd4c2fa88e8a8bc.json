@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "809eae1eff5d2806eed03ff8cfd4c2fa88e8a8bc",
+  "tree": "b2618f58e6ae9635392ed66c220559aeae19e327",
+  "committedAt": "2026-10-22T10:05:39-07:00",
+  "subject": "The boss's chest, and the clear's XP into the weapons you used (v2.3.3565) (#1077)",
+  "files": 6318,
+  "bytes": 725768394,
+  "listingSha256": "23db5da4a21f09c9c7b0c31829b5169f80fec0003601b974f509a1c7d49704bb",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
