@@ -177,11 +177,31 @@ A three-numeral count is drawn smaller to fit its column (at 390 a weapon's
   breath, seeked through it 1x to 1.16x at exactly 1.6 s and back, the 0 beside
   it with no animation); nothing to spend (all grey,
   still); three numerals ("147", whole,
-  inside its head, no stat name cut); sideways icons 12 px or more.
+  inside its head, no stat name cut); sideways icons 12 px or more; and in
+  every view that the Points tab opened, and that nothing covered the grid in
+  any of its pictures (below).
+  - It closes the spend window by the game's own handle
+    (`window.__btInfoPopup.close()`), not a finger on its ✕, and asks what is
+    on the glass over the grid before each picture. The PR's first states
+    picture went in as three world maps with every check green: see "Found on
+    the way".
 - `mp-statcols`, `mp-prog3`, `mp-landscape-dash`, `mp-statpeek`, `mp-charfit`,
   `mp-pointsreset`, `mp-nozoom`, `mp-pointsglow`, `mp-freshpoints`: the Points
   tab's other scenarios, run on the change.
 - `server/test/points-heads.test.mjs` (every PR's server suite): every picture
   a file at the size the data says, the frames' slices, the Points tab
-  reading them, nothing of the old heads, the carved seam with no diamond on
-  it, and the slow breath.
+  reading them, nothing of the old heads, the weapons cut from the owner's
+  thicker sheet, the carved seam with no diamond on it, and the slow breath.
+
+## Found on the way, not fixed here
+
+A finger on a stat window's ✕ can open the world map. The window (InfoPopup)
+closes on the finger's lift, so the opening tap's own click can never close it
+again. But the browser then sends the closing tap as a click to whatever is
+under it once the window has gone. At 390 x 844 a SHARED stat's window (Max HP:
+its ✕ at 333, 117) puts its ✕ over the minimap's invisible "Open the world
+map" button (258-390 x 46-178), and the map opens as the window closes. A
+weapon stat's taller window (Range: its ✕ at 333, 196) does not. It is the
+same on main, and it breaks docs/TRAPS.md §88's rule (a control that removes
+itself must end its tap on the click). Not this change's to fix: the owner is
+told, and its fix is a change of its own.

@@ -47,17 +47,28 @@ const COACH_DONE = "try { if (!localStorage.getItem('bt_coach_v1')) localStorage
     blockRanged: true, attack: true, special: true, points: true, chatTap: true, passkey: true })
   + ")); } catch (e) {}";
 
+/* The Character page's Points tab, open.  Each step waits for what it
+   opens to show, and the whole tries again: with this box loaded by another
+   job, the sideways page opened by the bus once never came up within the
+   fixed 0.9 s this used to wait, and every check after it read nothing
+   (TRAPS §200: this box draws a few frames a second). */
 async function openPoints(P, land) {
-  if (land) {
-    await P.page.evaluate(() => window.__broDashPanelBus && window.__broDashPanelBus.open('hero'));
-    await P.page.waitForTimeout(900);
-  } else {
-    await H.openDest(P, 'Character');
-    await P.page.waitForTimeout(600);
+  const grid = P.page.locator('[data-prog3-grid]').first();
+  const tab = P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first();
+  for (let i = 0; i < 3; i++) {
+    if (await grid.isVisible().catch(() => false)) return true;
+    if (!(await tab.isVisible().catch(() => false))) {
+      if (land) await P.page.evaluate(() => window.__broDashPanelBus && window.__broDashPanelBus.open('hero'));
+      else await H.openDest(P, 'Character').catch(() => {});
+      await tab.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+    }
+    await tab.click({ timeout: 8000 }).catch(() => {});
+    if (await grid.waitFor({ state: 'visible', timeout: 10000 }).then(() => true).catch(() => false)) {
+      await P.page.waitForTimeout(600);
+      return true;
+    }
   }
-  await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
-    .first().click({ timeout: 8000 }).catch(() => {});
-  await P.page.waitForTimeout(900);
+  return false;
 }
 
 /* The heads as drawn: each count's numerals read back off their files
@@ -109,19 +120,30 @@ const shoot = async (P, path, clip) => {
   await still(P, false);
 };
 
+/* Is anything drawn over the grid?  Asked of the glass at the first head's
+   middle and the grid's own middle. */
+const gridCovered = (P) => P.page.evaluate(() => {
+  const g = document.querySelector('[data-prog3-grid]');
+  const head = g && g.querySelector('[data-prog3-lane]');
+  if (!g || !head) return true;
+  return [head, g].some((el) => {
+    const r = el.getBoundingClientRect();
+    const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return !(at && g.contains(at)) && at !== g;
+  });
+});
+
 /* Wait for what the test lever changed to reach the heads, and for anything
-   drawn over the grid (a level-up's celebration) to go, then picture it. */
+   drawn over the grid (a level-up's celebration) to go, then picture it.
+   v2.3.3557: whether the grid was still covered when it was pictured comes
+   back as h.covered, and every picture is checked for it (pictured(), below)
+   -- the first states picture went into the PR as three world maps, with
+   every check green, because this only waited. */
 async function settle(P, want, shotName) {
   let h = null;
   for (let i = 0; i < 40; i++) {
     h = await readHeads(P);
-    const covered = await P.page.evaluate(() => {
-      const g = document.querySelector('[data-prog3-grid] [data-prog3-lane]');
-      if (!g) return true;
-      const r = g.getBoundingClientRect();
-      const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      return !(at && g.contains(at)) && at !== g;
-    });
+    const covered = await gridCovered(P);
     /* ...and the numerals it now draws decoded (a new count's files load
        after the render that names them) */
     if (!covered && want(h) && Object.values(h.out).every((v) => v.decoded)) break;
@@ -134,19 +156,22 @@ async function settle(P, want, shotName) {
     const r = g.getBoundingClientRect();
     return { x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 };
   });
+  h.covered = await gridCovered(P);
+  h.shot = shotName;
   if (box) await shoot(P, join(OUT, `pointheads-${shotName}.png`), box);
   return h;
 }
+const pictured = (rec, view, h) => rec.ok(`${view}: nothing covers the grid in its "${h.shot}" picture`, !h.covered, { shot: h.shot });
 
-/* The window's ✕ closes on a finger's lift, so a real finger closes it */
+/* v2.3.3557: the window is closed by its own bus (window.__btInfoPopup), not
+   a finger on its ✕.  The ✕ closes on the finger's lift, and the browser
+   then sends that same tap as a click to whatever is under it once the window
+   has gone: at 390 x 844 a shared stat's ✕ lies over the minimap's invisible
+   "Open the world map" button, so the tap closed the window and opened the
+   map, which covered every picture after it (on main too: the game's to fix,
+   not this test's -- docs/TRAPS.md §88's rule). */
 async function closeWindow(P) {
-  const at = await P.page.evaluate(() => {
-    const x = document.querySelector('[data-infopopup-x]');
-    if (!x) return null;
-    const r = x.getBoundingClientRect();
-    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
-  });
-  if (at) await P.page.touchscreen.tap(at.x, at.y);
+  await P.page.evaluate(() => window.__btInfoPopup && window.__btInfoPopup.close());
   for (let i = 0; i < 20; i++) {
     if (!(await P.page.evaluate(() => !!document.querySelector('[data-infopopup]')))) break;
     await P.page.waitForTimeout(150);
@@ -177,8 +202,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (view === '390') {
       /* ── 1. every pool full ── */
       await H.devOp(wsPort, 'kit', id, { what: 'levels' });
-      await openPoints(P, land);
+      rec.ok(`${view}: the Points tab opens`, await openPoints(P, land));
       const full = await settle(P, (h) => ['sword', 'staff', 'bow', 'shared'].every((k) => h.out[k] && Number(h.out[k].text) === h.want[k] && h.want[k] > 0), `${view}-full`);
+      pictured(rec, view, full);
       rec.ok(`${view}: every pool's count is the worker's, GOLD and breathing (${JSON.stringify(counts(full))})`,
         ['sword', 'staff', 'bow', 'shared'].every((k) => full.out[k] && Number(full.out[k].text) === full.want[k] && full.want[k] > 0
           && full.out[k].tone === 'gold' && full.out[k].breathes && full.out[k].decoded),
@@ -229,6 +255,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.devOp(wsPort, 'combat', id, { skill: 'all', level: 1, deal: true });
       await H.devOp(wsPort, 'combat', id, { skill: 'bow', level: 4, deal: true });
       const mixed = await settle(P, (h) => h.want.bow > 0 && h.want.sword === 0 && h.out.bow && Number(h.out.bow.text) === h.want.bow, `${view}-mixed`);
+      pictured(rec, view, mixed);
       const o = mixed.out;
       rec.ok(`${view}: with Bow 4 alone, the sword's and staff's counts are GREY 0s and still, the bow's and the character's GOLD and breathing (${JSON.stringify(counts(mixed))})`,
         !!o.sword && o.sword.text === '0' && o.sword.tone === 'grey' && !o.sword.breathes
@@ -284,16 +311,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* ── 4. nothing to spend ── */
       await H.devOp(wsPort, 'combat', id, { skill: 'all', level: 1, deal: true });
       const zero = await settle(P, (h) => ['sword', 'staff', 'bow', 'shared'].every((k) => h.want[k] === 0 && h.out[k] && h.out[k].text === '0'), `${view}-zero`);
+      pictured(rec, view, zero);
       rec.ok(`${view}: with nothing to spend, every count is a grey 0 and none breathes`,
         ['sword', 'staff', 'bow', 'shared'].every((k) => zero.out[k] && zero.out[k].text === '0' && zero.out[k].tone === 'grey' && !zero.out[k].breathes && zero.out[k].decoded),
         counts(zero));
     } else {
-      await openPoints(P, land);
+      rec.ok(`${view}: the Points tab opens`, await openPoints(P, land));
     }
 
     /* ── 5. three numerals ── */
     await H.devOp(wsPort, 'combat', id, { skill: 'all', level: 50, deal: true });
     const big = await settle(P, (h) => h.want.sword >= 100 && h.out.sword && Number(h.out.sword.text) === h.want.sword, `${view}-big`);
+    pictured(rec, view, big);
     rec.ok(`${view}: three numerals drawn whole, the worker's count and never "99+" (${JSON.stringify(counts(big))})`,
       ['sword', 'staff', 'bow', 'shared'].every((k) => big.out[k] && big.want[k] >= 100 && Number(big.out[k].text) === big.want[k]
         && big.out[k].tone === 'gold' && big.out[k].decoded), { counts: counts(big), want: big.want });

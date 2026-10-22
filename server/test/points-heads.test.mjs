@@ -122,6 +122,7 @@ const DIGITS = ['gold', 'grey'].flatMap((t) => [...Array(10).keys()].map((d) => 
       && /\/>\s*$/.test(rule[1]) && (rule[1].match(/<span/g) || []).length === 1 && !/rotate\(45deg\)/.test(code),
     rule && rule[1]);
   check('4h ...and the seam picture the owner chose from is kept with the spec', existsSync(new URL('docs/shots/points-heads-dividers.webp', root)));
+  check('4i ...and the picture of the first cut\'s weapons beside the owner\'s thicker ones', existsSync(new URL('docs/shots/points-heads-weapons.webp', root)));
 }
 
 /* ── 5. the breathing ── */
