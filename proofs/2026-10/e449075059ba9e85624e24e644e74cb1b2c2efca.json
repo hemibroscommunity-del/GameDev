@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e449075059ba9e85624e24e644e74cb1b2c2efca",
+  "tree": "2a3dec30fdeed04fee28325b685abb9f11dcfac4",
+  "committedAt": "2026-10-22T16:56:47-07:00",
+  "subject": "NPC dialogue: the owner's satire pass replaces v2.3.3570's script (v2.3.3575) (#1088)",
+  "files": 6344,
+  "bytes": 736286170,
+  "listingSha256": "15e87847d60e6788c6d250ed37bcf31110d2e6adaf765adceae42167212ee242",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
