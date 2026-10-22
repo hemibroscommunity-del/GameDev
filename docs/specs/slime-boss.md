@@ -1,4 +1,4 @@
-# The Goo Grotto's giant slime splits (v2.3.3558)
+# The Goo Grotto's giant slime splits (v2.3.3558), and the Foundry Dome's (v2.3.3562)
 
 The owner, 2026-10-22:
 
@@ -37,11 +37,11 @@ the mark, however big, and at the mark nothing hurts it until it has split.
 
 | | Value | Why |
 |---|---|---|
-| Which dungeons | `LANDS: { verdant: 1 }`: the Goo Grotto | its boss is the giant slime; a land here is one line |
+| Which dungeons | `LANDS: { verdant: 1, thunder: 1 }`: the Goo Grotto and, since v2.3.3562, the Foundry Dome | their bosses are giant slimes; a land here is one line |
 | Splits | 3, at 75%, 50%, 25% of its health (`splitShare(i, n) = (n - i) / (n + 1)`) | "3 rounds"; every quarter, so the last quarter is one wave slime |
 | Slimes out | 10, 9, 8 (27 in all) | "like 8-10"; fewer as it shrinks |
 | Swell | 1,600 ms (`SLIME_BURST.SWELL_MS`), drawn 1.3x | the blue slime's own warning; it is already huge |
-| Blast | a blue slime's: `SLIME_BURST.DMG` 60 x the hit scale, the hit door's `burst` row (cap: half your bar) | "explodes", as every blue slime does |
+| Blast | a blue slime's: `SLIME_BURST.DMG` 60 x the hit scale, the hit door's `burst` row (cap: half your bar) | "explodes", as every blue slime does; every splitting boss's since v2.3.3562, whatever its kind |
 | Blast reach | 180, 115, 110 px | its swollen body: 24 px x its size x 1.3, x 1.3 (never under a slime's own 110) |
 | Where they land | a ring 125-230 px round it, inside the arena | out past its body (24 x 4.59 = 110) |
 | Landing | still for 600 ms, no swing for 1,100 ms | so they land before they fight |
@@ -56,7 +56,7 @@ and drops.
 
 - **The Goo Grotto only.** The owner's giant slime is its boss (the "Boss Blue
   Slime" of "Make boss slime huge"). The Foundry Dome's boss is a slime too;
-  adding a land to `LANDS` gives it the same fight.
+  adding a land to `LANDS` gives it the same fight. (Done in v2.3.3562, below.)
 - **One health bar, split at every quarter.** The boss keeps v2.3.3556's
   health, and the last quarter is a wave slime's health, so "it finally just
   becomes a normal slime" is true of its health as well as its size. One bar
@@ -188,6 +188,41 @@ pixel's see-through amount), so swapping colours could not help.
   (`tools/make_pet_sheet.py`), so it was made again: only the two slime pets'
   rows changed, and the game asks for it at a new address (`?v=2.3.3558`).
 - Before and after on a phone: `docs/shots/slime-shine.webp`.
+
+## The Foundry Dome too (v2.3.3562)
+
+The owner's "Yes" to the recommendation that the Foundry Dome gets the
+splitting slime boss (the dungeons' status of 2026-10-22).
+
+- **Its boss splits the same.** `SLIME_BOSS.LANDS: { verdant: 1, thunder: 1 }`.
+  The Foundry Dome (the Electric Foundry's dungeon, levels 26-30) has slime
+  waves too: the Electric Foundry's plain slime, drawn as a "Storm Slime" past
+  level 20 (`src/data/wheelStageLooks.js`). Its boss is now a giant Storm Slime
+  with the Grotto's whole fight: the three marks, the swell, the blast's reach,
+  10, 9 then 8 of its own slimes at the dungeon's level, a step smaller each
+  time.
+- **Every split goes off.** v2.3.3558 dealt the blast only for a kind that
+  bursts on death (`_burstsOnDeath`, the blue slime alone). A storm slime does
+  not, so the Foundry's giant would have swelled, drawn its shockwave and hurt
+  nobody. The blast is now part of every split (`_slimeBossSplit`). Through the
+  hit door's `burst` row it carries its land's status: a storm slime's shock
+  arcs to the other players near the one it hits.
+- **Its last form just dies.** A storm slime never bursts, so killing its last
+  form ends it at once. The slimes still standing pop and the run clears, as in
+  the Grotto.
+- **Nothing changed on the phone.** The swell, the marks, the shrink and the
+  flights read only the wire's `bs` and `bn` and the `split` events, whatever
+  the slime. The Sound studio's swell and burst labels name both bosses.
+- **Tested:** `slime-boss` §10 (22 checks) covers:
+  - the boss arms with three splits, though its kind does not burst on death;
+  - each split's blast hits a player inside it and not one outside;
+  - 10, 9 then 8 of the Foundry's own slimes come out at the dungeon's level;
+  - its last form dies at once, the 27 pop and the run clears;
+  - the Buried City's boss does not split.
+
+  Taking out either change fails it: the first check without the land, the
+  first blast without the unconditional split. `mp-foundryboss` runs
+  mp-slimeboss's whole phone check at the Foundry Dome, the walker at level 28.
 
 ## Tested
 

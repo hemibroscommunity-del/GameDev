@@ -27,6 +27,11 @@
  * The walker is a god (server/src/devtools.js); the waves are ended by the QA
  * dev op `clearwave`.
  * Pictures: tools/qa/mp/out/slimeboss-{giant,swell,burst,split1,split2,split3,cleared}.png.
+ *
+ * v2.3.3562: the same run plays the Foundry Dome (mp-foundryboss.mjs,
+ * `runAt(ctx, 'thunder')`): the walker raised to its level, 28, its boss a
+ * giant Storm Slime -- a kind that never bursts on death, so its splits go off
+ * on their own and its last form simply dies.  Pictures foundryboss-*.png.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -34,14 +39,24 @@ import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
 
-export async function run({ browser, wsPort, webPort, rec }) {
+/* v2.3.3562: the dungeons whose boss splits, as this run plays them: the
+   walker's level (0: as made) and the pictures' prefix */
+const DUNGEONS = {
+  verdant: { name: 'the Goo Grotto', level: 0, walker: 'Slimebane', pics: 'slimeboss' },
+  thunder: { name: 'the Foundry Dome', level: 28, walker: 'Stormbane', pics: 'foundryboss' },
+};
+
+export async function run(ctx) { return runAt(ctx, 'verdant'); }
+
+export async function runAt({ browser, wsPort, webPort, rec }, land) {
+  const D = DUNGEONS[land];
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const { WHEEL_DOORS } = await import(H.REPO + '/server/src/wheelspawns.js');
   const { SLIME_BOSS } = await import(H.REPO + '/server/src/slimeboss.js');
-  const G = WHEEL_DOORS.verdant;
-  const P = await H.newPlayer(browser, { name: 'Slimebane', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 2 });
-  const shot = (name) => P.page.screenshot({ path: join(OUT, `slimeboss-${name}.png`) }).catch(() => {});
+  const G = WHEEL_DOORS[land];
+  const P = await H.newPlayer(browser, { name: D.walker, wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 2 });
+  const shot = (name) => P.page.screenshot({ path: join(OUT, `${D.pics}-${name}.png`) }).catch(() => {});
   await H.enterWorld(P);
   const zoneNow = () => H.readState(P, (S) => (S._zoneLoading ? null : S.currentZone));
   const waitZone = async (pred, ms = 60000) => {
@@ -57,6 +72,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const id = await H.readState(P, (S) => S.myId);
   await H.devOp(wsPort, 'quests', id);
   await H.devOp(wsPort, 'vitals', id, { god: true, godMinutes: 30 });
+  /* a dungeon's monsters are at its level but never above yours */
+  if (D.level) await H.devOp(wsPort, 'combat', id, { skill: 'all', level: D.level, deal: true });
   let stopAlive = false;
   (async () => {
     while (!stopAlive) {
@@ -135,8 +152,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(900);
   const k0 = boss ? (await restScale(boss.id)) / waveScale : NaN;
   await shot('giant');
-  rec.ok(`1: in the Goo Grotto (${z1}) its boss comes, said on the wire as a splitting one (bs ${boss && boss.bs} of bn ${boss && boss.bn}), drawn x${k0.toFixed(2)} a wave slime`,
-    /^dungeon:/.test(z1 || '') && !!boss && boss.bs === 0 && boss.bn === 3 && boss.home === 'verdant' && k0 > 4.4 && k0 < 4.8, { boss, k0, waveScale });
+  rec.ok(`1: in ${D.name} (${z1}) its boss comes, said on the wire as a splitting one (bs ${boss && boss.bs} of bn ${boss && boss.bn}), drawn x${k0.toFixed(2)} a wave slime`,
+    /^dungeon:/.test(z1 || '') && !!boss && boss.bs === 0 && boss.bn === 3 && boss.home === land && k0 > 4.4 && k0 < 4.8, { boss, k0, waveScale });
   if (!boss) { stopAlive = true; return; }
 
   /* ── 2-5. its three splits ── */
