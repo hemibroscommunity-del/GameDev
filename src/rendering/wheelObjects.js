@@ -48,6 +48,7 @@ import { Sprite, Assets, Container, Texture, Rectangle, CanvasSource, Spriteshee
 import { wheelInfo, wheelObjectStats, wheelOnStop, wheelLifeOn } from '../game/wheelTrial.js';
 import { BuildingLife, hasLife, wheelLifeWarm, wheelLifeFree, wheelLifeReady } from './wheelLife.js';
 import { setZoneBlockerHook } from '../data/worldProps.js';
+import { wheelMouthBlockers, wheelMouthBlockVer } from './wheelDoors.js';   /* v2.3.3565: a dungeon mouth's mound */
 import { freeWheelNpcArt } from './npcSprites.js';
 import { tickWheelBreak, drainWheelEvents, isWheelBroken, resetWheelBreak, onWheelBreak, wheelObjectKind, isBuilding } from '../game/wheelBreak.js';
 import { WheelShatter, framePx } from './wheelShatter.js';
@@ -584,9 +585,13 @@ export class WheelObjects {
     const P = S && S.player;
     let ready = 0;
     for (const rec of _pages.values()) if (rec.state === 'ready') ready++;
-    if (P && (!this._blockAt || ready !== this._pagesSeen || Math.abs(P.x - this._blockAt.x) + Math.abs(P.y - this._blockAt.y) > BLOCK_MOVE)) {
+    /* v2.3.3565: + a dungeon mouth's picture, standing (wheelDoors.js): its
+       mound stops your boots as a building's walls do */
+    const mouthVer = wheelMouthBlockVer();
+    if (P && (!this._blockAt || ready !== this._pagesSeen || mouthVer !== this._mouthSeen || Math.abs(P.x - this._blockAt.x) + Math.abs(P.y - this._blockAt.y) > BLOCK_MOVE)) {
       this._blockAt = { x: P.x, y: P.y };
       this._pagesSeen = ready;
+      this._mouthSeen = mouthVer;
       const out = [], o = ix.o;
       each(ix, P.x - BLOCK_R - ix.maxHalfW, P.y - BLOCK_R, P.x + BLOCK_R + ix.maxHalfW, P.y + BLOCK_R + ix.maxH, (i) => {
         const rec = _pages.get(ix.page[ix.pk[i]]);
@@ -601,6 +606,7 @@ export class WheelObjects {
           out.push({ x0: o.boxes[b * 4], y0: o.boxes[b * 4 + 1], x1: o.boxes[b * 4 + 2], y1: o.boxes[b * 4 + 3], id: o.kinds[o.kind[i]], oi: i, h: ix.h[ix.pk[i]] });
         }
       });
+      for (const m of wheelMouthBlockers()) out.push(m);
       this._blockers = out;
     }
 

@@ -241,6 +241,9 @@ These are from dungeons-today.md and are not done:
   into the weapons used ([boss-chest.md](boss-chest.md)).
 - **Getting there.** Travel from the Town Hall's map to dungeons you have found.
 - **The farm's Dungeon Workshop.** Remove it, or rebuild it on the world's arena.
-- **Something to look at inside.** The arenas are bare floors.
+- **Something to look at inside.** The arenas are bare floors. Since v2.3.3565
+  the Goo Grotto's has the owner's walls and 17 things round its edges, and its
+  mouth is the owner's picture ([dungeon-art.md](dungeon-art.md)); the other
+  three wait for their pictures.
 - **The boss's reach.** It is drawn huge but reaches you as a wave monster
   does. Say if it should reach further, as big as it looks.

@@ -554,6 +554,32 @@ export function seamlessPixels(data, w, h, overlap = 0) {
   return { data: b.data, w: b.w, h: b.h, overlap: ov };
 }
 
+/* v2.3.3565: ONE AXIS ONLY -- a strip that repeats along x and nothing else:
+   a dungeon's wall (tools/world/add-dungeon-art.mjs), whose top and bottom are
+   its own edges, never to be joined to each other.  The same overlap cut,
+   along x alone, the overlap whichever of 8-16% of its width joins best. */
+export function seamlessAlongX(data, w, h, overlap = 0) {
+  let ov = overlap;
+  if (!ov) {
+    let best = Infinity;
+    for (let o = Math.max(4, Math.round(w * 0.08)); o <= Math.max(5, Math.round(w * 0.16)); o += 3) {
+      const P = w - o, m = Math.floor((o - 2) / 2);
+      let C = new Float64Array(m), N = new Float64Array(m);
+      for (let v = 0; v < h; v += 2) {
+        for (let k = 0; k < m; k++) {
+          const c = unlike(data, (v * w + 1 + 2 * k) * 4, (v * w + 1 + 2 * k + P) * 4);
+          N[k] = v === 0 ? c : c + Math.min(C[k], k > 0 ? C[k - 1] : Infinity, k < m - 1 ? C[k + 1] : Infinity);
+        }
+        [C, N] = [N, C];
+      }
+      const cost = Math.min(...C);
+      if (cost < best) { best = cost; ov = o; }
+    }
+  }
+  const r = overlapCut(data, w, h, true, ov);
+  return { data: r.data, w: r.w, h: r.h, overlap: ov };
+}
+
 /* how unlike two pixels are (brightness counting most) */
 const unlike = (d, i, j) => {
   const r = d[i] - d[j], g = d[i + 1] - d[j + 1], b = d[i + 2] - d[j + 2];

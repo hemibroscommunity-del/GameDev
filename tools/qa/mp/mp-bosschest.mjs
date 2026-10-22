@@ -98,18 +98,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (!el || !row) return null;
       const f = row.querySelector('[data-chest-frame]');
       return {
-        text: el.textContent, chest: row.getAttribute('data-boss-chest'), frame: f ? Number(f.getAttribute('data-chest-frame')) : null,
+        text: el.textContent, chest: row.getAttribute('data-boss-chest'), frame: f ? f.getAttribute('data-chest-frame') : null,
         lines: [...row.querySelectorAll('[data-chest-line]')].map((s) => ({ what: s.getAttribute('data-chest-line'), text: s.textContent.trim(), img: !!s.querySelector('img') })),
         reward: (window._gameState.current._dungeonClear || {}).reward || null,
       };
     }), 15000);
+    /* v2.3.3565: the owner's chest, shut and then open (it was the daily
+       chest's strip, opened at its frame 8) */
     const opened = await poll(() => P.page.evaluate(() => {
       const f = document.querySelector('[data-boss-chest] [data-chest-frame]');
-      return f && Number(f.getAttribute('data-chest-frame')) === 8 ? 8 : null;
+      return f && f.getAttribute('data-chest-frame') === 'open' ? 'open' : null;
     }), 6000, 100);
     await P.page.screenshot({ path: join(OUT, 'bosschest-card.png') }).catch(() => {});
-    rec.ok(`1: in the Goo Grotto (${z1}) the boss killed (${r && r.dealt} dealt), the clear's card shows the boss's chest, and it opens on its own strip (frame ${opened})`,
-      /^dungeon:/.test(z1 || '') && !!r && r.ok && !!card && card.chest === 'open' && opened === 8, { card, r });
+    rec.ok(`1: in the Goo Grotto (${z1}) the boss killed (${r && r.dealt} dealt), the clear's card shows the boss's chest, shut (${card && card.frame}) and then ${opened}`,
+      /^dungeon:/.test(z1 || '') && !!r && r.ok && !!card && card.chest === 'open' && opened === 'open', { card, r });
 
     const rw = card && card.reward;
     const chest = rw && rw.chest;

@@ -17,6 +17,7 @@ import { WheelGround } from '../wheelGround.js';            /* v2.3.2943: ...and
 import { isWorldTrialZone, worldTrialMode } from '@/game/worldTrial.js';
 import { townSkippedOnTheWay, wheelTripVeiled } from '@/game/wheelHome.js'; /* v2.3.3037: no map for today's town on the way to the Wheel */
 import { PORTAL_BEAM } from '../fxStrips.js'; /* v2.3.2070: the light shaft over a zone exit */
+import { drawArenaWalls } from '../arenaWalls.js'; /* v2.3.3565: a dungeon walled with the owner's pictures */
 
 const ZONE_LABEL_STYLE = new TextStyle({
   fontFamily: 'Source Sans 3, sans-serif',
@@ -417,6 +418,10 @@ export class TileRenderer {
     /* v2.3.3016: and a Wheel dungeon's floor (its land's ground picture, freed
        a beat after you leave -- game/wheelDungeons.js dropDungeonZone) */
     if (this._floorSprite) { try { this._floorSprite.destroy(); } catch (e) { /* ignore */ } this._floorSprite = null; }
+    /* v2.3.3565: ...and its walls of the owner's pictures (arenaWalls.js),
+       every piece destroyed, never the pictures themselves (game/
+       dungeonArt.js lets those go with the arena) */
+    if (this._arenaWalls) { try { this._arenaWalls.destroy({ children: true, texture: false, textureSource: false }); } catch (e) { /* ignore */ } this._arenaWalls = null; }
     /* v2.3.2932: and the world trial's streamed ground, which frees every
        piece it holds -- the same "drop the reference on the way out" rule. */
     if (this._chunkGround) { try { this._chunkGround.destroy(); } catch (e) { /* ignore */ } this._chunkGround = null; }
@@ -1077,6 +1082,15 @@ export class TileRenderer {
       this.tileContainer.addChild(flat);
     }
     const wall = zone.wallColor != null ? zone.wallColor : 0x111316;
+    /* v2.3.3565: a dungeon with the owner's pictures (zone.arenaArt, game/
+       dungeonArt.js) is walled with them (rendering/arenaWalls.js); one
+       without -- or whose pictures did not load -- keeps the walls in code */
+    if (zone.arenaArt && (this._arenaWalls = drawArenaWalls(this.tileContainer, zone.arenaArt, W, H, wall))) {
+      if (typeof window !== 'undefined' && window.__btProbe) {
+        window.__btArenaFloor = { pic: zone.floorPic, drawn: !!this._floorSprite, w: W, h: H, walls: 'art' };
+      }
+      return;
+    }
     const edge = zone.edgeColor != null ? zone.edgeColor : 0x3a3f46;
     const isWall = (r, c) => r < 0 || c < 0 || r >= rows || c >= cols || map[r]?.[c] === 7;
     const gfx = new Graphics();
@@ -1107,7 +1121,7 @@ export class TileRenderer {
     this.tileContainer.addChild(gfx);
     /* QA (mp-wheeldungeon), armed by the harness only */
     if (typeof window !== 'undefined' && window.__btProbe) {
-      window.__btArenaFloor = { pic: zone.floorPic, drawn: !!this._floorSprite, w: W, h: H };
+      window.__btArenaFloor = { pic: zone.floorPic, drawn: !!this._floorSprite, w: W, h: H, walls: 'code' };
     }
   }
 
