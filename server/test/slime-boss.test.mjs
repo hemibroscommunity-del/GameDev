@@ -27,6 +27,12 @@
  *      boss that split since lets its swell go.
  *   9. THE SHINE: no pixel inside a living slime's picture is see-through
  *      (tools/mend_slime_shine.py) -- the floor showed through the giant's.
+ *  10. THE FOUNDRY DOME (v2.3.3562): its boss, a storm slime -- a kind that
+ *      does not burst on death -- splits as the Grotto's does: three marks,
+ *      the swell, a blast at each split that hits a player inside it, 10, 9
+ *      then 8 of the Foundry's own storm slimes; its last form dies at once
+ *      (no swell), the rest pop, and the run clears.  The Buried City's
+ *      boss, like the Great Cave's, does not split.
  */
 import { GameRoom } from '../src/index.js';
 import { readFileSync } from 'fs';
@@ -374,6 +380,76 @@ const t0 = Date.now();
     check(`shine: ${name}'s ${frames} frames have no see-through pixel inside the slime`,
       img.h === FRAME && frames > 0 && holes.length === 0, { frames, holes: holes.length, first: holes.slice(0, 4) });
   }
+}
+
+// ── 10. THE FOUNDRY DOME (v2.3.3562) ──────────────────────────────────────
+{
+  /* the owner's "Yes" to "the Foundry Dome gets the splitting slime boss":
+     its waves are the Electric Foundry's slimes, drawn Storm Slimes past
+     level 20 (src/data/wheelStageLooks.js) -- the plain slime, which does NOT
+     burst on death, so its splits must not hang on _burstsOnDeath */
+  const F = await runToBoss('thunder');
+  const { zone, inst, boss } = F;
+  const land = ZONES.thunder.spawns[ZONES.thunder.spawns.length - 1];
+  check('foundry: the Foundry Dome\'s boss is the Electric Foundry\'s slime, a kind that does not burst on death, with three splits to go and its first mark at 75%',
+    !!boss && boss.home === 'thunder' && boss.arch === land.arch && !boss.variant && !land.variant && !room._burstsOnDeath(boss)
+      && !!boss._split && boss._split.n === 0 && boss._split.of === 3 && boss._splitFloor === Math.floor(boss.maxHp * 0.75),
+    boss && { home: boss.home, arch: boss.arch, variant: boss.variant, split: boss._split, floor: boss._splitFloor, max: boss.maxHp });
+  check('foundry: ...and no summon: its slimes are its adds', !!boss && !boss._abilities.includes('summon'), boss && boss._abilities);
+  wsA.sent.length = 0;
+  room._dungeonPushZoneState(zone);
+  const zs0 = msgsOfType(wsA, 'zone_state').pop();
+  const bw = zs0 && zs0.monsters.find((x) => x.id === boss.id);
+  check('foundry: ...said on the wire as a splitting boss (`boss: 1, bs: 0, bn: 3`)', !!bw && bw.boss === 1 && bw.bs === 0 && bw.bn === 3, bw);
+  let t = Date.now() + 1000;
+  for (let i = 0; i < 3; i++) {
+    room._applyMonsterDot(zone, boss, boss.maxHp * 10, psA.id, 'burn');
+    const mark = Math.floor(boss.maxHp * splitShare(i, 3));
+    check(`foundry split ${i + 1}: a hit of ten times its health stops at its mark (${boss.hp} = ${mark})`, boss.alive && boss.hp === mark, { hp: boss.hp, mark });
+    wsA.sent.length = 0;
+    room._tickDungeons(t);
+    const tel = msgsOfType(wsA, 'dungeon_boss_ability').find((e) => e.payload.ability === 'split' && e.payload.phase === 'telegraph');
+    check(`foundry split ${i + 1}: ...it swells (split / telegraph), unhittable`, !!tel && tel.payload.stage === i && !room._monsterDamageable(boss, t + 100), tel && tel.payload);
+    /* the first blast with the player inside it, the others outside */
+    const inside = i === 0;
+    const r = SLIME_BOSS.BLAST_R[i];
+    put(psA, zone, boss.x + (inside ? r - 20 : r + 60), boss.y);
+    psA.hp = psA.maxHp;
+    psA._zoneEntryGraceUntil = 0;
+    const hp0 = psA.hp;
+    const before = room.monsters[zone].length;
+    wsA.sent.length = 0;
+    t += SLIME_BOSS.SWELL_MS + 10;
+    room._tickDungeons(t);
+    const ex = msgsOfType(wsA, 'dungeon_boss_ability').find((e) => e.payload.ability === 'split' && e.payload.phase === 'execute');
+    const fresh = room.monsters[zone].slice(before);
+    const want = SLIME_BOSS.SPAWN[i];
+    check(`foundry split ${i + 1}: ...it goes off though its kind never bursts -- ${inside ? 'a player inside the blast is hit' : 'a player outside it is not'} (${hp0} -> ${psA.hp}), the event says so`,
+      !!ex && ex.payload.radius === r && ex.payload.hit === inside && (inside ? psA.hp < hp0 : psA.hp === hp0), { ex: ex && ex.payload, hp0, hp: psA.hp });
+    check(`foundry split ${i + 1}: ...${want} of the Foundry's own slimes out of it, at the dungeon's level, named in the event`,
+      fresh.length === want && fresh.every((m) => m.alive && m._splitSpawn && m.home === 'thunder' && m.arch === land.arch && !m.variant && m.level === inst.cfg.monsterLevel && ex.payload.ids.includes(m.id)),
+      fresh.map((m) => ({ home: m.home, arch: m.arch, lv: m.level })));
+    check(`foundry split ${i + 1}: ...a step smaller (bs ${i + 1}), hittable again`, boss._split.n === i + 1 && room._monsterDamageable(boss, t + 1), boss._split);
+    t += 100;
+  }
+  const spawns = room.monsters[zone].filter((m) => m._splitSpawn);
+  check('foundry: 27 slimes in all', spawns.length === 27, spawns.length);
+  put(psA, zone, boss.x + 400, boss.y);
+  psA.hp = psA.maxHp;
+  room._applyMonsterDot(zone, boss, boss.hp + 100, psA.id, 'burn');
+  check('foundry end: its last form dies at once, as a storm slime does (no swell)', !boss.alive && boss.hp === 0 && !boss._burstUntil, { alive: boss.alive, hp: boss.hp, burst: boss._burstUntil });
+  wsA.sent.length = 0;
+  room._tickDungeons(t + 2000);
+  room._tickDungeons(t + 2100);
+  const pop = msgsOfType(wsA, 'dungeon_boss_ability').find((e) => e.payload.ability === 'split' && e.payload.phase === 'pop');
+  const done = msgsOfType(wsA, 'dungeon_complete')[0];
+  check('foundry end: ...every slime it threw out pops (split / pop names them all) and the run clears',
+    spawns.every((m) => !m.alive) && !!pop && pop.payload.count === 27 && inst.state === 'done' && !!done && done.payload.boss === true,
+    { alive: spawns.filter((m) => m.alive).length, pop: pop && pop.payload.count, state: inst.state });
+  const city = await runToBoss('sky');
+  check('foundry: ...and the Buried City\'s boss, a mummy, does not split (one big boss), as the Great Cave\'s',
+    !!city.boss && !city.boss._split && !room._monsterHpFloor(city.boss) && !Object.prototype.hasOwnProperty.call(SLIME_BOSS.LANDS, 'sky') && !Object.prototype.hasOwnProperty.call(SLIME_BOSS.LANDS, 'hollows'));
+  endRuns();
 }
 
 if (failures) { console.log(`\n${failures} FAILED`); process.exit(1); }

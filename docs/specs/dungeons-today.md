@@ -15,6 +15,10 @@ loot, straight back in, and "(Lv 28)" on the top bar. So is the owner's answer
 on a death inside: "Keep your bag in dungeons". They are marked FIXED below.
 The rest is still the owner's call.
 
+Since v2.3.3558 the Goo Grotto's boss is a giant slime that splits into slimes
+three times, and since v2.3.3562 the Foundry Dome's giant Storm Slime does too
+([slime-boss.md](slime-boss.md)).
+
 ## The four
 
 | Dungeon | Land | For levels | Walk from BroTown | Its monsters |

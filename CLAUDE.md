@@ -1714,8 +1714,11 @@ remnant to migrate server-side, not a mode to preserve.
       - NO HIT SKIPS A SPLIT: its next mark is a FLOOR (combat.js
         `_monsterHpFloor`, read by all five places a monster loses health) and
         `_monsterDamageable` refuses it at its mark until it has split;
-      - server/src/slimeboss.js (`SLIME_BOSS.LANDS`: the Grotto alone, the
-        Foundry Dome one line away), `dungeon_boss_ability` `split`
+      - server/src/slimeboss.js (`SLIME_BOSS.LANDS`: the Grotto and, since
+        v2.3.3562, THE FOUNDRY DOME -- the owner's "Yes": its giant Storm
+        Slime splits the same, every split going off though a storm slime
+        never bursts on death, its last form simply dying; slime-boss §10,
+        `mp-foundryboss`), `dungeon_boss_ability` `split`
         (telegraph / execute / pop); kill switch `slimeboss: false`; QA op
         `/dev/hurt`;
       - A RE-PUSH IS NOT A NEW ARRIVAL, found building it: a dungeon re-sends
