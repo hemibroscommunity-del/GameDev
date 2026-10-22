@@ -267,7 +267,8 @@ let run = null;
     const js = readFileSync(new URL('../src/join.js', import.meta.url), 'utf8');
     const at = js.indexOf('monsters: zoneMonsters.map(m => ({');
     const block = at > 0 ? js.slice(at, js.indexOf('})),', at)) : '';
-    check('run: ...and in the join\'s state_sync list (join.js), on it alone', /\.\.\.\(m\._dungeonBoss \? \{ boss: 1 \} : \{\}\)/.test(block), block.length);
+    /* v2.3.3558: ...with a splitting boss's splits beside it (slimeboss.js) */
+    check('run: ...and in the join\'s state_sync list (join.js), on it alone', /\.\.\.\(m\._dungeonBoss \? \{ boss: 1(, \.\.\.bossSplitWire\(m\))? \} : \{\}\)/.test(block), block.length);
   }
   check('run: a kill in it counts for its land (its shard, its quests)', room._rewardZone(run.zone, boss) === 'hollows');
   boss.alive = false; boss.hp = 0;

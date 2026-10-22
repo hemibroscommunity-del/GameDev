@@ -456,6 +456,29 @@ export const devToolsMethods = {
     return { n: list.length, alive, nextMs: next };
   },
 
+  /* ═══ v2.3.3558: HURT A MONSTER, THE REAL WAY ═══
+     For the QA scenario of the Goo Grotto's giant slime (mp-slimeboss): a
+     fight to each of its marks takes minutes on a box drawing a few frames a
+     second.  `dmg` of damage to a live monster of the player's zone -- its
+     `id`, or the dungeon's boss with `boss: true` -- through _applyMonsterDot,
+     the path a damage-over-time tick takes: a splitting boss's floor and the
+     damageable gate hold (slimeboss.js), the credit is the player's, a kill
+     resolves as any.  ADMIN_KEY-gated like every dev op. */
+  _devHurt(playerId, body) {
+    const ps = this.playerState[playerId];
+    const z = ps && ps.z;
+    const list = z ? this.monsters[z] : null;
+    if (!Array.isArray(list)) return { ok: false, error: 'no monsters here' };
+    const b = body || {};
+    const m = b.boss === true
+      ? list.find((x) => x && x.alive && x._dungeonBoss)
+      : list.find((x) => x && x.alive && typeof b.id === 'string' && x.id === b.id);
+    if (!m) return { ok: false, error: 'no such live monster in your zone' };
+    const dmg = Math.max(1, Math.min(10000000, Math.floor(Number(b.dmg) || 1)));
+    const dealt = this._applyMonsterDot(z, m, dmg, playerId, 'dev');
+    return { ok: true, id: m.id, dealt, hp: m.hp, maxHp: m.maxHp, floor: this._monsterHpFloor(m) };
+  },
+
   /* ═══ v2.3.3016: END THE WAVE YOU STAND IN ═══
      For the QA scenario of the Wheel's dungeons (mp-wheeldungeon): three
      waves and a boss of a land's monsters take a real fight minutes a run on
@@ -680,6 +703,7 @@ export const devToolsMethods = {
     else if (path === '/dev/tour') result = this._devTour(playerId, body);   /* v2.3.3525: {at} -- the tour jumped to that step (the Test panel's "Tour: jump to") */
     else if (path === '/dev/questcount') result = this._devQuestCount(playerId, body);   /* v2.3.3525: {quest, n} -- a counted objective's count (the tour's farm, craft, cook, race) */
     else if (path === '/dev/clearwave') result = this._devClearWave(playerId);   /* v2.3.3016 */
+    else if (path === '/dev/hurt') result = this._devHurt(playerId, body);   /* v2.3.3558: {boss | id, dmg} -- a monster hurt the real way (the giant slime's marks hold) */
     else if (path === '/dev/daily') result = await this._drDev(playerId, body);   /* v2.3.3140: stars, bonus spins, a quest's count; v2.3.3400: a season tier from before the drop (seasonTier) */
     else if (path === '/dev/farmripe') result = await this._devFarmRipe(playerId);   /* v2.3.3127 */
     else if (path === '/dev/trapping') result = this._devTrapping(playerId, body);   /* v2.3.3120 */

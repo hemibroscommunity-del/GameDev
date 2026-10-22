@@ -373,6 +373,23 @@ export function updateMonsterCombat(S, deps) {
                  ~44 ms bump cadence + a small lag.  Snap on huge
                  jumps (zone change / respawn) stays. */
               if (m.renderX === undefined) { m.renderX = m.x; m.renderY = m.y; }
+              /* ═══ v2.3.3558: A SLIME THE GIANT SLIME THREW OUT FLIES OUT OF IT ═══
+                 (gameEvents.js 'split': the worker put it on a ring round the
+                 boss; `_popFrom` is the boss's middle).  Drawn from there to
+                 where it is, in an arc, over its own ms -- the snap below
+                 would put it there at once, 80 px being less than the ring. */
+              if (m._popFrom) {
+                var _pf = m._popFrom;
+                var _pfT = (Date.now() - _pf.at) / Math.max(1, _pf.ms);
+                if (_pfT >= 0 && _pfT < 1) {
+                  var _pfE = 1 - Math.pow(1 - _pfT, 3);
+                  m.renderX = _pf.x + (m.x - _pf.x) * _pfE;
+                  m.renderY = _pf.y + (m.y - _pf.y) * _pfE - Math.sin(_pfT * Math.PI) * (_pf.hop || 0);
+                  return; /* skip all local AI below */
+                }
+                m._popFrom = null;
+                m.renderX = m.x; m.renderY = m.y;
+              }
               var mInterpDx = m.x - m.renderX;
               var mInterpDy = m.y - m.renderY;
               var mInterpDist = Math.sqrt(mInterpDx * mInterpDx + mInterpDy * mInterpDy);

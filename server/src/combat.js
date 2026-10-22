@@ -183,7 +183,21 @@ export const combatMethods = {
    * abilities.js, and pet target acquisition in pets.js. */
   _monsterDamageable(m, now) {
     if (!m || !m.alive || m.hp <= 0) return false;
+    /* v2.3.3558: a splitting boss at its next mark is not hurt again until it
+       has split (slimeboss.js: its tick starts the swell within a tick) */
+    if (m._splitFloor > 0 && m.hp <= m._splitFloor) return false;
     return !(m._invulnUntil && (now || Date.now()) < m._invulnUntil);
+  },
+
+  /* ═══ v2.3.3558: THE LOWEST ONE HIT MAY TAKE A MONSTER ═══
+     A splitting boss's next mark while it has a split left (slimeboss.js:
+     the Goo Grotto's giant slime splits at 75%, 50% and 25%), else 0.  Every
+     place a monster loses health clamps to it -- _handleMonsterDamage and its
+     collision here, _abilityStrikeMonster (abilities.js), _applyMonsterDot
+     (index.js), the thorns reflect (hits.js) -- so no hit, however big, skips
+     a split or kills it early. */
+  _monsterHpFloor(m) {
+    return m && m._splitFloor > 0 ? m._splitFloor : 0;
   },
 
   /* v2.3.1734: Stone's Fracture, activated.  Thin prototype wrapper so
@@ -1436,7 +1450,9 @@ export const combatMethods = {
        modified phone could claim the winning element on every hit. */
     const _up = this._elemUpMult(m, _gemEl ? _gemEl.element : null);
     const rawDmg = Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m) * _up));
-    const actualDmg = Math.min(rawDmg, Math.max(0, m.hp));
+    /* v2.3.3558: ...and never past a splitting boss's next mark: it splits
+       there (_monsterHpFloor, above; 0 for every other monster) */
+    const actualDmg = Math.min(rawDmg, Math.max(0, m.hp - this._monsterHpFloor(m)));
     // Subtract actualDmg (capped at remaining hp) so m.hp doesn't go
     // negative on overkill -- otherwise the broadcast hpPct goes < 0
     // and any subsequent code reading m.hp sees a nonsensical value.
@@ -1509,7 +1525,7 @@ export const combatMethods = {
                : attackerPs.weapon;
       const col = resolveElementCollision(m, _hitElement, attackerPs, !!(_w && _w.isVolatile), _now, _elCat); /* v2.3.2512; v2.3.3513: the worker's gem */
       if (col) {
-        const colDmg = Math.min(col.dmg, Math.max(0, m.hp));
+        const colDmg = Math.min(col.dmg, Math.max(0, m.hp - this._monsterHpFloor(m)));   /* v2.3.3558 */
         m.hp -= colDmg;
         m.dmgByPlayer[session.id] += colDmg;
         this.eventBuffer.push({

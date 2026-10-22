@@ -8122,3 +8122,39 @@ places:
 its world; the list never grows; the harness refuses before a browser is
 opened), and `mp-pointsreset`, `mp-gearlevel`, `mp-achvtitle`, `mp-pointstips`
 moved to the world.
+
+## 245. "The server sent the list again, so build the list again" (v2.3.3558)
+
+**The plausible move.** A message carries a zone's whole monster list, so the
+phone throws away what it held and builds every monster afresh from it
+(`S.monsters = msg.monsters.map(_monsterFromWire)`).  The server is the truth,
+the new list is complete, and nothing stale survives.
+
+**Why it is wrong.** The renderer keeps the MOMENTS on the monster objects
+themselves: a monster it has never seen (`_fxWasAlive === undefined`) has just
+ARRIVED (the growing white silhouette), and a dead one it never saw die has
+just DIED (the splat and its sound).  A fresh object is a monster never seen.
+A dungeon re-sends its whole list, dead monsters included, whenever it adds
+some: each wave, each boss summon, each of the giant slime's three splits.  So
+every monster standing played its arrival again, and every monster already
+dead played its death again: a dozen splats and their sounds at once by the
+third wave.  Everything else the phone keeps about a monster went too: where
+it is drawn (a jump to its server place), that you are fighting it (its bar
+hid), the arrows stuck in it, a swell or a flight under way.
+
+**The rule.** When a list replaces one the phone holds, a monster with the same
+id in the same life (alive in both) or the same death (dead in both) keeps
+what the phone keeps of it (src/game/monsterCarry.js `carryMonsterState`, used
+by wsClient.js for the zone's list and the join's).  One that died or came back
+since is met afresh, as it should be.  A NEW phone-only field on a monster that
+marks a moment (an arrival, a death, a flight, a wind-up) goes on that file's
+lists in the same change, or the next re-push plays it again.  And a moment
+that must END while its monster lives must be able to end without the event
+that ends it: a boss's swell is let go when its `bs` has moved, so a phone that
+missed the split never holds it swollen and untouchable.
+
+**Receipt:** `slime-boss.test` §8 (same life, same death, came back, died, the
+swell kept or let go), and `mp-slimeboss`, which watches every frame of each
+split: the boss and the slimes already standing never arrive again while the
+new ones each do, and two slimes killed before a split do not die again in its
+re-push.

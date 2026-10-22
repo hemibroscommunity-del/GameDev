@@ -22,7 +22,7 @@ const STATUS_TO_ELEMENT = new Map();
 for (const el of Object.values(ELEMENTS || {})) {
   if (el && el.status) STATUS_TO_ELEMENT.set(el.status, el);
 }
-import { lookupCollision, PVP_THREAT_CONSENT_MS, toDisplayHp, DISPLAY_SCALE_K, bossSizeK, monsterBodyOffsetY as _bodyOffY, monsterMeleeHitRadius as _bodyR } from '@/data/gameSystems.js'; /* v2.3.3556: + a dungeon boss's size, and its body, for seeing through it */ /* v2.3.2520: the display damage scale; v2.3.2572: k, for the HP-read probe */
+import { lookupCollision, PVP_THREAT_CONSENT_MS, toDisplayHp, DISPLAY_SCALE_K, bossSizeK, bossSplitShare /* v2.3.3558: the marks on a splitting boss's bar */, monsterBodyOffsetY as _bodyOffY, monsterMeleeHitRadius as _bodyR } from '@/data/gameSystems.js'; /* v2.3.3556: + a dungeon boss's size, and its body, for seeing through it */ /* v2.3.2520: the display damage scale; v2.3.2572: k, for the HP-read probe */
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
@@ -8700,7 +8700,9 @@ export class EntityRenderer {
          slime-splat SFX only fires for raw fodder. */
       if (!m.alive && (isFodder || variantKey) && m._slimeDeathStart == null) {
         m._slimeDeathStart = now;
-        if (isFodder) {
+        /* v2.3.3558: not a giant slime's leftover slime popping with it
+           (gameEvents.js split / pop plays one splat for them all) */
+        if (isFodder && !m._quietDeath) {
           /* v2.3.3248: by how near it died, or in full when you helped kill
              it (hitSounds.deathVol, the kill event's `_killMine`): every
              slime with its look loaded -- ~2,600 px round you, most of that
@@ -10022,6 +10024,47 @@ export class EntityRenderer {
             fx.fill({ color: 0xffffff, alpha: 0.85 * (fl / HPBAR_FLASH_MS) });
           }
         }
+        /* ═══ v2.3.3558: WHERE A SPLITTING BOSS WILL BURST ═══
+           The Goo Grotto's giant slime splits at each quarter of its health
+           (server/src/slimeboss.js; the worker says `bs` done of `bn`), so
+           its bar wears a dark mark at each split still to come -- the
+           worker's own shares (gameSystems.js bossSplitShare).  A shape of
+           its own, redrawn only when what it shows changes: the bar's fx is
+           cleared every frame, and a structural change a frame rebuilds the
+           layer's draw list (TRAPS §218). */
+        const _bn = m.boss ? Math.floor(Number(m.bn) || 0) : 0;
+        /* QA probe (mp-slimeboss): read on demand, nothing written per frame */
+        if (typeof window !== 'undefined' && !window.__btBossMarks) {
+          const _bmDisplays = this.monsterDisplays;
+          window.__btBossMarks = (mid) => {
+            const d = _bmDisplays && _bmDisplays.get(mid);
+            const g = d && d._bossMarks;
+            return g && !g.destroyed ? { key: g._key || '', visible: !!g.visible } : null;
+          };
+        }
+        if (_bn > 0 || display._bossMarks) {
+          let bm = display._bossMarks;
+          if (!bm) {
+            const _bmUi = display._hpUi || display;
+            bm = new Graphics();
+            _bmUi.addChildAt(bm, _bmUi.getChildIndex(display._hpText));
+            display._bossMarks = bm;
+          }
+          const _bs = Math.max(0, Math.min(_bn, Math.floor(Number(m.bs) || 0)));
+          const _bmKey = _bn + ':' + _bs + ':' + Math.round(barY * 10);
+          if (bm._key !== _bmKey) {
+            bm._key = _bmKey;
+            bm.clear();
+            const inL = -MONSTER_HPBAR_W / 2 + MONSTER_HPBAR_W * HPBAR_IN_X;
+            const inW = MONSTER_HPBAR_W * HPBAR_IN_W;
+            const inT = barY - MONSTER_HPBAR_H / 2 + MONSTER_HPBAR_H * HPBAR_IN_Y;
+            const inH = MONSTER_HPBAR_H * HPBAR_IN_H;
+            for (let i = _bs; i < _bn; i++) {
+              bm.rect(inL + inW * bossSplitShare(i, _bn) - 0.75, inT, 1.5, inH);
+              bm.fill({ color: 0x0b0b10, alpha: 0.85 });
+            }
+          }
+        }
         display._hpText.x = 0;
         display._hpText.y = barY;
         /* v2.3.2571: the band's anchor line, published for the plate.  The
@@ -10128,6 +10171,7 @@ export class EntityRenderer {
         if (display._hpText.visible) display._hpText.visible = false;
         if (display._hpBarFill && display._hpBarFill.visible) display._hpBarFill.visible = false;
         if (display._hpBarFx && display._hpBarFx.visible) display._hpBarFx.visible = false;
+        if (display._bossMarks && display._bossMarks.visible) display._bossMarks.visible = false;   /* v2.3.3558 */
       } else {
         display._hpHeart.alpha = 1;
         display._hpText.alpha = 1;
@@ -10137,6 +10181,7 @@ export class EntityRenderer {
         if (!display._hpText.visible) display._hpText.visible = true;
         if (display._hpBarFill && !display._hpBarFill.visible) display._hpBarFill.visible = true;
         if (display._hpBarFx && !display._hpBarFx.visible) display._hpBarFx.visible = true;
+        if (display._bossMarks && !display._bossMarks.visible) display._bossMarks.visible = true;   /* v2.3.3558 */
         /* v2.3.2520: the display scale (§5.8 D1).  CALL SITE ONLY -- the
            plate's layout, geometry and colours below are untouched and
            belong to the nameplate work landing in parallel.  toDisplayHp is

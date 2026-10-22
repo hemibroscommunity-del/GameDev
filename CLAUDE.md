@@ -1682,6 +1682,34 @@ remnant to migrate server-side, not a mode to preserve.
         a reward worth the trip, travel to found dungeons, the farm's
         Workshop, something to look at inside, and whether the huge boss
         should reach as far as it looks.
+    - since v2.3.3558 THE GOO GROTTO'S GIANT SLIME SPLITS -- the owner: "a
+      giant slime that explodes and spawns small (normal size slimes) like
+      8-10 maybe but shrinks in size afterwards ... 3 rounds of that before it
+      finally just becomes a normal slime then after you kill that you defeat
+      the dungeon":
+      - at 75%, 50% and 25% of its health (three dark marks on its bar) it
+        swells 1.6 s ("BURSTING!", unhittable, still), goes off as a blue
+        slime does (its blast the size of its swollen body, 180 / 115 / 110
+        px, the hit door's `burst` row) and throws out 10, then 9, then 8 of
+        the Grotto's own slimes on a ring round it, a step smaller each time
+        (x4.59, 2.76, 1.66, 1: gameSystems.js `bossSizeK` from `bs`/`bn` on
+        its wire); its last quarter is one wave slime's health, and killing
+        that is the win: the slimes still standing pop with it, unpaid;
+      - NO HIT SKIPS A SPLIT: its next mark is a FLOOR (combat.js
+        `_monsterHpFloor`, read by all five places a monster loses health) and
+        `_monsterDamageable` refuses it at its mark until it has split;
+      - server/src/slimeboss.js (`SLIME_BOSS.LANDS`: the Grotto alone, the
+        Foundry Dome one line away), `dungeon_boss_ability` `split`
+        (telegraph / execute / pop); kill switch `slimeboss: false`; QA op
+        `/dev/hurt`;
+      - A RE-PUSH IS NOT A NEW ARRIVAL, found building it: a dungeon re-sends
+        its whole monster list at every wave, summon and split, and the phone
+        built every monster afresh, so the ones standing played their arrival
+        again and the dead their death, splat and sound (a dozen at once by
+        the third wave); game/monsterCarry.js `carryMonsterState` keeps what the
+        phone holds of a monster in the same life or the same death (TRAPS
+        §245);
+      - `slime-boss` suite, `mp-slimeboss`: docs/specs/slime-boss.md.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack

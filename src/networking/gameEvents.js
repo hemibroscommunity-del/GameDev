@@ -1606,12 +1606,78 @@ export function processGameEvent(type, payload, S, deps) {
                  sole exception is the cosmetic color tint on enrage --
                  display state only, never hp/alive/dmg). */
               if (!payload || payload.zone !== S._serverDungeon) break;
-              var _dbaLabels = { slam: 'SLAM!', charge: 'CHARGE!', summon: 'Summon!', sweep: 'SWEEP!', enrage: 'ENRAGED!', siphon: 'DRAIN!' };
-              var _dbaColors = { slam: '#f5c542', charge: '#ea580c', summon: '#9333ea', sweep: '#a855f7', enrage: '#ff2020', siphon: '#22c55e' };
+              var _dbaLabels = { slam: 'SLAM!', charge: 'CHARGE!', summon: 'Summon!', sweep: 'SWEEP!', enrage: 'ENRAGED!', siphon: 'DRAIN!', split: 'BURSTING!' };
+              var _dbaColors = { slam: '#f5c542', charge: '#ea580c', summon: '#9333ea', sweep: '#a855f7', enrage: '#ff2020', siphon: '#22c55e', split: '#fbbf24' };
               var _dbaLabel = _dbaLabels[payload.ability];
               if (!_dbaLabel) break; /* whitelist -- never render arbitrary wire strings */
               var _dbaX = typeof payload.x === 'number' ? payload.x : S.player.x;
               var _dbaY = typeof payload.y === 'number' ? payload.y : S.player.y;
+              /* ═══ v2.3.3558: THE GIANT SLIME SPLITS (server/src/slimeboss.js) ═══
+                 The owner: "a giant slime that explodes and spawns small
+                 (normal size slimes) ... but shrinks in size afterwards".  At
+                 each quarter of its health the Goo Grotto's boss swells, goes
+                 off and throws out its own slimes.  Drawn as a blue slime's
+                 own burst is (the case above): the TELEGRAPH swells it by the
+                 worker's `scale` over its `ms` -- the same `_burstUntil` the
+                 renderer swells a dying slime by, which also makes it
+                 intangible here (monsterVariants.js isIntangible), as the
+                 worker refuses every hit while it swells -- with its warning
+                 and the swell's sound.  The EXECUTE comes just after the
+                 zone_state re-push that brought its new, smaller size and the
+                 new slimes: the shockwave at the worker's radius, a big shake
+                 inside it and a small one out of it, the blast's sound, and
+                 each slime it named flown out of its middle (monsterCombat.js
+                 `_popFrom`).  All display: its blast's damage comes on the
+                 authoritative monster_attack, as every boss move's does. */
+              if (payload.ability === 'split') {
+                var _spM = (S.monsters || []).find(function (mm) { return mm && mm.id === payload.monsterId; });
+                if (payload.phase === 'telegraph') {
+                  var _spMs = Math.max(120, Math.min(4000, Number(payload.ms) || 1600));
+                  if (_spM) {
+                    _spM._burstFrom = Date.now();
+                    _spM._burstUntil = Date.now() + _spMs;
+                    _spM._burstScale = Math.max(1, Math.min(2, Number(payload.scale) || 1.3));
+                  }
+                  pushDmgPopup(S, _dbaX, _dbaY - 40, _dbaLabel, _dbaColors.split);
+                  cueAt(S, 'blueSwell', _dbaX, _dbaY);
+                  break;
+                }
+                if (payload.phase === 'pop') {
+                  /* its last form is dead, and the slimes it threw out that
+                     still stand pop with it (the run is won): each splats as
+                     any slime dies, but QUIETLY -- twenty splats at once on a
+                     bus with no limiter is a roar -- and one plays for all */
+                  var _ppIds = Array.isArray(payload.ids) ? payload.ids : [];
+                  for (var _ppI = 0; _ppI < _ppIds.length && _ppI < 40; _ppI++) {
+                    var _ppId = _ppIds[_ppI];
+                    var _ppM = (S.monsters || []).find(function (mm) { return mm && mm.id === _ppId; });
+                    if (_ppM) _ppM._quietDeath = true;
+                  }
+                  if (_ppIds.length) {
+                    try { BT_AUDIO.play('slime-death', { vol: 0.425 }); } catch (_pe) { /* never block the clear on a sound */ }
+                  }
+                  break;
+                }
+                if (payload.phase !== 'execute') break;
+                if (_spM) { _spM._burstUntil = 0; _spM._burstFrom = 0; }
+                var _spR = Math.max(10, Math.min(600, Number(payload.radius) || 110));
+                if (!S.slimeShockwaves) S.slimeShockwaves = [];
+                if (S.slimeShockwaves.length < 8) S.slimeShockwaves.push({ x: _dbaX, y: _dbaY, r: _spR, at: Date.now() });
+                var _spPl = S.player;
+                if (_spPl && !S._dying) {
+                  var _spDx = _spPl.x - _dbaX, _spDy = _spPl.y - _dbaY;
+                  S.screenShake = Math.max(S.screenShake || 0, _spDx * _spDx + _spDy * _spDy <= _spR * _spR ? 10 : 4);
+                }
+                cueAt(S, 'blueBurst', _dbaX, _dbaY);
+                var _spIds = Array.isArray(payload.ids) ? payload.ids : [];
+                var _spAt = Date.now();
+                for (var _spI = 0; _spI < _spIds.length && _spI < 24; _spI++) {
+                  var _spId = _spIds[_spI];
+                  var _spS = (S.monsters || []).find(function (mm) { return mm && mm.id === _spId; });
+                  if (_spS) _spS._popFrom = { x: _dbaX, y: _dbaY, at: _spAt, ms: 420, hop: 46 };
+                }
+                break;
+              }
               if (payload.phase === 'telegraph') {
                 /* Legacy telegraph read: amber "<ABILITY>!" over the boss. */
                 pushDmgPopup(S, _dbaX, _dbaY - 40, _dbaLabel, '#fbbf24');
