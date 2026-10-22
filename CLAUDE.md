@@ -1693,8 +1693,11 @@ remnant to migrate server-side, not a mode to preserve.
       - `wheeldungeon` §4/§6/§11/§12, `dungeon` §4/§8/§11, `dungeon-clear` suite,
         `mp-dungeonfix`: docs/specs/dungeon-fixes.md. Still the owner's call:
         a reward worth the trip, travel to found dungeons, the farm's
-        Workshop, something to look at inside, and whether the huge boss
-        should reach as far as it looks.
+        Workshop, something to look at inside (since v2.3.3561 the owner's
+        ChatGPT pictures: each dungeon's entrance, walls and things inside,
+        and the boss's chest, prompts in docs/art/DUNGEON-ART-PROMPTS.md,
+        made by tools/world/dungeon-art-prompts.mjs), and whether the huge
+        boss should reach as far as it looks.
     - since v2.3.3558 THE GOO GROTTO'S GIANT SLIME SPLITS -- the owner: "a
       giant slime that explodes and spawns small (normal size slimes) like
       8-10 maybe but shrinks in size afterwards ... 3 rounds of that before it
