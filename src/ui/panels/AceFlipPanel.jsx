@@ -225,7 +225,7 @@ export function AceFlipPanel() {
     var id = setTimeout(function () {
       if (!aceFlipBus.pending) return;
       aceFlipBus.setPending(false);
-      aceFlipBus.setNote('Ace waves you off. "Your pockets are too light to cover a loss that size, bro."');
+      aceFlipBus.setNote('Ace waves you off. "You don\'t have enough gold to lose that much, bro. And you would lose."');
     }, 6000);
     return function () { clearTimeout(id); };
   }, [spinning]);
@@ -270,7 +270,7 @@ export function AceFlipPanel() {
       /* Deploy-order safety (rule 19): a worker that has not advertised the
          flag has no case for ace_flip_request and would REBROADCAST the stake
          to the room while settling nothing. Say so rather than send. */
-      aceFlipBus.setNote('Ace pockets the coin. "Heat\'s around the corner. Not taking action today, bro."');
+      aceFlipBus.setNote('Ace pockets the coin. "Not today, bro. Somebody\'s asking questions. Come back when nobody is."');
       return;
     }
     aceFlipBus.setNote('');
@@ -300,7 +300,7 @@ export function AceFlipPanel() {
   var sendItems = function () {
     if (!canWager) return;
     if (!itemsOk) {
-      aceFlipBus.setNote('Ace shakes his head. "Cold hard gold only today, bro. Leave the junk in your bag."');
+      aceFlipBus.setNote('Ace shakes his head. "Gold only today, bro. Keep your junk in the bag. I\'ve got enough junk."');
       return;
     }
     var out = {};
@@ -379,7 +379,7 @@ export function AceFlipPanel() {
       React.createElement('div', { style: { fontSize: 12.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: isWin ? LS.win : LS.lose, marginBottom: 7 } }, title),
       rows.length
         ? rows.map(function (r, i) { return boardRow(r, i, isWin); })
-        : React.createElement('div', { style: { fontSize: 14, color: LS.txt3, padding: '8px 2px' } }, 'Ledger\'s clean. Come make history \u2014 or a cautionary tale.'));
+        : React.createElement('div', { style: { fontSize: 14, color: LS.txt3, padding: '8px 2px' } }, 'Nothing in the book yet. Be the first name in it. I\'m not saying which column.'));
   };
 
   var chip = function (label, value, active) {
@@ -451,7 +451,7 @@ export function AceFlipPanel() {
       style: { padding: '13px 14px 15px', maxHeight: '58vh', flex: '1 1 auto', minHeight: 0, overflowY: 'auto' },
     },
       React.createElement('div', { style: { fontSize: 15, color: LS.txt2, lineHeight: 1.5, marginBottom: 13 } },
-        'The ledger of legends and crying bros. Biggest single gold win and biggest single bath taken on my coin \u2014 one line per bro.'),
+        'The Book. Biggest win and biggest loss on my coin, one line per bro. The losses are longer. Funny how that works.'),
       boardList(aceFlipBus.board.wins || [], true, 'Biggest wins'),
       boardList(aceFlipBus.board.losses || [], false, 'Biggest losses'))
 
@@ -461,14 +461,14 @@ export function AceFlipPanel() {
       React.createElement('div', { style: { fontSize: 15, color: LS.txt2, lineHeight: 1.5, marginBottom: 12 } },
         aceFlipBus.note
           ? aceFlipBus.note
-          : 'Toss whatever item you want out of that bag. Double or nothing \u2014 same shiny coin, same house tilt: ' + acePct + '% me, ' + youPct + '% you.'),
+          : 'Put up any item from your bag, double or nothing. It\'s the same coin as always, rigged the same as always: ' + acePct + '% me, ' + youPct + '% you. I tell you up front so you can\'t say I didn\'t.'),
       aceFlipBus.itemResult && !aceFlipBus.pending
         ? verdict(aceFlipBus.itemResult.won, itemTally(aceFlipBus.itemResult))
         : null,
       React.createElement('div', { style: { maxHeight: '38vh', overflowY: 'auto', marginBottom: 10 } },
         bagKeys.length
           ? bagKeys.map(itemRow)
-          : React.createElement('div', { style: { fontSize: 14, color: LS.txt3, padding: '12px 2px', textAlign: 'center' } }, 'Your bag\'s full of lint, bro. Bring me actual merchandise to stake.')),
+          : React.createElement('div', { style: { fontSize: 14, color: LS.txt3, padding: '12px 2px', textAlign: 'center' } }, 'Your bag\'s empty, bro. Unless you\'re betting your shoes, go find some loot first.')),
       stagedTotal > 0 ? React.createElement('div', {
         style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, fontSize: 14, color: LS.txt2 },
       },
@@ -487,7 +487,7 @@ export function AceFlipPanel() {
       React.createElement('div', { style: { fontSize: 15, color: LS.txt2, lineHeight: 1.5, marginBottom: 12 } },
         aceFlipBus.note
           ? aceFlipBus.note
-          : 'One flip, pure adrenaline. Call it right and I pay you triple your stake \u2014 miss and I scrape triple right out of your pouch. House edge is ' + acePct + '% me, ' + youPct + '% you. Feeling lucky, bro?'),
+          : 'One flip. Win, and I pay you triple your bet. Lose, and I take triple out of your pouch. The coin is rigged ' + acePct + '% me, ' + youPct + '% you. Yes, I\'m telling you it\'s rigged. You\'re still gonna tap it. Bet?'),
 
       /* ── the coin ── */
       React.createElement('div', {

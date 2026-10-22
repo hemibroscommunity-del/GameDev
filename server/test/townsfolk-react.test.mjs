@@ -131,7 +131,7 @@ const peer = (S, id, x, y, extra) => { S.others[id] = Object.assign({ id, name: 
   check('4a one dancer: no dance-off', !ace.chatBubble);
   peer(S, 'Rival', 40, -150, { _po: 'robot', _poAt: T0 });
   updateTownsfolkReactions(S, T0 + 100);
-  check('4b two dancers: he calls the odds on one of them', !!ace.chatBubble && /^Unofficial dance-off! Taking action on (Mover|Rival) at (3 to 1|2 to 1|5 to 2|even money)!$/.test(ace.chatBubble.text), ace.chatBubble);
+  check('4b two dancers: he calls the odds on one of them', !!ace.chatBubble && /^Dance-off! I've got (Mover|Rival) at (3 to 1|2 to 1|5 to 2|even money)! Who wants in\?$/.test(ace.chatBubble.text), ace.chatBubble);
   const t = ace.chatBubble.ts;
   updateTownsfolkReactions(S, T0 + 2000);
   check('4c ...once in the gap', ace.chatBubble.ts === t);
