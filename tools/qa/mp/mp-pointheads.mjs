@@ -1,4 +1,4 @@
-/* ═══ THE POINTS TAB'S TWO HEADS IN THE OWNER'S ART (v2.3.3557, docs/specs/points-heads.md) ═══
+/* ═══ THE POINTS TAB'S TWO HEADS IN THE OWNER'S ART (v2.3.3559, docs/specs/points-heads.md) ═══
  *
  * The owner, 2026-10-21, with a sheet of art and a mockup: "On the character
  * points screen swap out the old style icons with these.  It should look
@@ -28,7 +28,7 @@
  *   7. no page errors.
  * Pictures: tools/qa/mp/out/pointheads-<view>-<state>.png.
  *
- * IN THE WORLD (v2.3.3557): every player plays the Wheel, `world: 'wheel'` --
+ * IN THE WORLD (v2.3.3559): every player plays the Wheel, `world: 'wheel'` --
  * main's rule since v2.3.3552 (tools/qa/mp/oldMap.mjs: a new scenario never
  * plays the retired old map), checked as each view joins.  And every coach
  * lesson is seeded done, so the first-points card (v2.3.3551, which rings
@@ -135,7 +135,7 @@ const gridCovered = (P) => P.page.evaluate(() => {
 
 /* Wait for what the test lever changed to reach the heads, and for anything
    drawn over the grid (a level-up's celebration) to go, then picture it.
-   v2.3.3557: whether the grid was still covered when it was pictured comes
+   v2.3.3559: whether the grid was still covered when it was pictured comes
    back as h.covered, and every picture is checked for it (pictured(), below)
    -- the first states picture went into the PR as three world maps, with
    every check green, because this only waited. */
@@ -163,7 +163,7 @@ async function settle(P, want, shotName) {
 }
 const pictured = (rec, view, h) => rec.ok(`${view}: nothing covers the grid in its "${h.shot}" picture`, !h.covered, { shot: h.shot });
 
-/* v2.3.3557: the window is closed by its own bus (window.__btInfoPopup), not
+/* v2.3.3559: the window is closed by its own bus (window.__btInfoPopup), not
    a finger on its ✕.  The ✕ closes on the finger's lift, and the browser
    then sends that same tap as a click to whatever is under it once the window
    has gone: at 390 x 844 a shared stat's ✕ lies over the minimap's invisible
@@ -266,7 +266,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* ...and the breath, read off the animation ITSELF: it runs, and seeked
          through one breath (paused, its own clock set every 200 ms, the scale
          the page then computes) it is 1x, swelling to its peak at exactly half
-         way, 1.6 s, and back to 1x at 3.2 s.  v2.3.3557: never by sampling
+         way, 1.6 s, and back to 1x at 3.2 s.  v2.3.3559: never by sampling
          the wall clock -- in the world this box draws a few frames a second,
          the animation's time moves only when a frame is drawn and the page's
          timers starve (six samples in 3.6 s, "2.3 s from small to big": TRAPS

@@ -29,7 +29,7 @@ import { StatDemo, STAT_DEMO_KEYS } from './StatDemo.jsx';                      
 import { useScrollTap } from './scrollTap.js';                                  /* v2.3.2326: a tap the scroller confiscated is still a tap */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
-import { POINTS_ART_DIR, POINTS_ART_V, POINTS_DIGIT_H, POINTS_DIGIT_W, POINTS_FRAMES } from '../../../data/pointsHeadArt.js'; /* v2.3.3557: the owner's Points-tab art (GENERATED) */
+import { POINTS_ART_DIR, POINTS_ART_V, POINTS_DIGIT_H, POINTS_DIGIT_W, POINTS_FRAMES } from '../../../data/pointsHeadArt.js'; /* v2.3.3559: the owner's Points-tab art (GENERATED) */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
 import { playIsLandscape, panelVw } from '../playViewport.js';                    /* v2.3.2171: the sideways pane stacks; panelVw v2.3.2382 */
 import { StatCaption, STAT_CAPTION_SHORT } from './StatCaption.jsx';            /* v2.3.3324: a stat's name whole or short, never cut */
@@ -128,7 +128,7 @@ const POINT_LANES = ['sword', 'staff', 'bow']
 /* v2.3.2615: one definition, in portraitStore.js — the level-up medallion reads
    the same chain for a character level-up and a second copy would drift. */
 const SHARED_ICON_FALLBACK = PORTRAIT_FALLBACK_SRC;
-/* v2.3.3557: the owner's Points-tab pictures (tools/ui/cut-points-heads.py):
+/* v2.3.3559: the owner's Points-tab pictures (tools/ui/cut-points-heads.py):
    the weapons as the Points tab draws them, and the character -- the gold
    bust with the up arrow -- where the Shared column wore your portrait.  The
    grid's two heads and the spend window's lane tabs both read this. */
@@ -1718,7 +1718,7 @@ export const HeroExpanded = () => {
                   lanes: {
                     active: st.atk ? laneCat : 'shared',
                     options: st.atk
-                      /* v2.3.3557: each tab wears the Points tab's own
+                      /* v2.3.3559: each tab wears the Points tab's own
                          picture of its pool (the owner's art), so the window
                          and the grid behind it show one sword, one staff,
                          one bow and one character */
@@ -2231,7 +2231,7 @@ export const HeroExpanded = () => {
                tipped SPECIAL and DODGE into an ellipsis at 390.  Caught in a
                capture, not by arithmetic: the number is measured against the
                real screen either way, so the tray belongs IN it. */
-            /* v2.3.3557: the head's share of the lane row, 1.15 of a cell
+            /* v2.3.3559: the head's share of the lane row, 1.15 of a cell
                upright as ever, 1.45 sideways: there the owner's Points art
                lays each weapon's icon BESIDE its count in a head ~27 px wide,
                where the icons came out 9 px (the diagonal's were 18); at
@@ -2254,7 +2254,7 @@ export const HeroExpanded = () => {
                as a stat cell and carries no caption and no number, so it has
                room the stat cells do not, and it should use its own. */
             const HEAD_W = CELL_W * HEAD_FR;
-            /* v2.3.3557: the shared row's head is as wide as the lane row's
+            /* v2.3.3559: the shared row's head is as wide as the lane row's
                (the two frames stand one over the other, THE TWO HEADS below):
                of eight columns, with one more 4 px gap, that is this share */
             const SHARED_FR = +Math.min(3, Math.max(1, 7 * HEAD_W / Math.max(1, panelVw() - 70 - HEAD_W))).toFixed(3);
@@ -2267,13 +2267,13 @@ export const HeroExpanded = () => {
                guessed: 75 -> 65 at 390 puts the grid's foot back on 842 of
                844, and 60 -> 52 at 320 on 562 of 568. */
             const CELL_H = landPane ? 52 : Math.round(Math.max(52, Math.min(68, CELL_W * 1.40)));
-            /* v2.3.3557: the heads' own sizes (the diagonal's LANE_ICON and
+            /* v2.3.3559: the heads' own sizes (the diagonal's LANE_ICON and
                the portrait's HEAD_ICON) went with them -- see THE TWO HEADS
                IN THE OWNER'S POINTS ART below. */
             const CAP_FS = Math.max(7.5, Math.min(10.5, CELL_W / 4.7));
             const NUM_FS = Math.max(12.5, Math.min(18, CELL_W * 0.38));
             /* v2.3.2692: the owner's numeral art for the stat cells' counts
-               (the heads' counts were drawn in it too until v2.3.3557, which
+               (the heads' counts were drawn in it too until v2.3.3559, which
                gave them the Points sheet's own gold and grey numerals). */
             const BADGE = '/icons/ui/badge/';
             const BADGE_V = '?v=2.3.2670';
@@ -2388,7 +2388,7 @@ export const HeroExpanded = () => {
                So the head is not tappable and names the row, and the lane
                CHOICE lives in the confirm window, next to the points it would
                spend, at the moment you are deciding to spend one. */
-            /* ═══ v2.3.3557: THE TWO HEADS IN THE OWNER'S POINTS ART ═══
+            /* ═══ v2.3.3559: THE TWO HEADS IN THE OWNER'S POINTS ART ═══
                Owner, with a sheet of art and a mockup (assets/icons-source/
                sheet-points-heads.png, mock-points-heads.png): "On the
                character points screen swap out the old style icons with
@@ -2581,7 +2581,7 @@ export const HeroExpanded = () => {
                The header connects to its row by being INSIDE the same
                surface as it: one bordered, filled band per row, with the
                cells as chips on it and the head as a label at its left, cut
-               off by a hairline (v2.3.3557: by the head's own gold frame now).
+               off by a hairline (v2.3.3559: by the head's own gold frame now).
                COL.well is Lantern Slate's tray role and
                COL.wellSoft its cell role (docs/LANTERN-SLATE-SPEC.md), so
                the depth reads correctly without inventing a colour -- the
@@ -2606,7 +2606,7 @@ export const HeroExpanded = () => {
                   {headCell('lane')}
                   {prog3AtkMeta().map((st) => statCell({ ...st, atk: true }, buildCat))}
                 </div>
-                {/* v2.3.3557: SHARED_FR of eight is the lane row's HEAD_FR of seven,
+                {/* v2.3.3559: SHARED_FR of eight is the lane row's HEAD_FR of seven,
                     so the two heads' frames are one width (THE TWO HEADS above) */}
                 <div data-prog3-band="shared" style={{ ...bandStyle(false), gridTemplateColumns: `${SHARED_FR}fr repeat(7, 1fr)` }}>
                   {headCell('shared')}

@@ -100,7 +100,7 @@ moved it. Now:
   name, still shows that lane until you swap.
 
 The held lane wears a small brass plate (`data-prog3-held`). Tested by
-`mp-catgrid`. (Since v2.3.3557 its ROW is lit in the weapons' gold frame
+`mp-catgrid`. (Since v2.3.3559 its ROW is lit in the weapons' gold frame
 instead: docs/specs/points-heads.md.)
 
 ## The point bubbles breathe (v2.3.3052)
@@ -120,7 +120,7 @@ their count is above zero:
 Tested by `mp-catgrid` (which pauses the animation to measure) and
 `mp-pointsglow`.
 
-Since v2.3.3557 the bubbles are gone: each pool's count sits in the owner's
+Since v2.3.3559 the bubbles are gone: each pool's count sits in the owner's
 gold frames in gold numerals, and it is the COUNT that breathes, slowly
 (`bt-pts-count`, from its middle, a warm haze behind it, a 3.2 s breath):
 docs/specs/points-heads.md.
