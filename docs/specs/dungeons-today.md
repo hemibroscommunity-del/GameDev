@@ -70,9 +70,9 @@ drops). The clear adds the gold above. There is no chest and nothing special.
 5. FIXED (v2.3.3556, the owner: "Keep your bag in dungeons"). **A death inside loses your whole bag.** Your pile is left inside the run.
    You wake in BroTown, can't get back in for a minute, and the run is then
    deleted with the pile in it.
-6. **The clear's XP goes nowhere.** It's paid into an old counter no skill
+6. FIXED (v2.3.3563, [boss-chest.md](boss-chest.md)). **The clear's XP goes nowhere.** It's paid into an old counter no skill
    reads. Since v2.3.3543 the words only say the gold.
-7. **Nothing is worth the trip.** It's the same monsters as outside plus about
+7. FIXED (v2.3.3563: the boss's chest, [boss-chest.md](boss-chest.md)). **Nothing is worth the trip.** It's the same monsters as outside plus about
    100–180 gold, and the far ones take 3–5 minutes to walk to.
 8. **The farm's Dungeon Workshop** (build your own dungeon) is half broken. It
    uses the old small arena, its way out can't be reached, and some of its
@@ -96,7 +96,7 @@ Your call:
 
 - **Death inside:** your pile waits outside at the mouth (as a death
   outdoors leaves it where you fell), or you keep your bag in a dungeon.
-- **A reward worth the trip:** the boss drops a chest with sure rewards, for
+- DONE (v2.3.3563, the owner's "Yes"). **A reward worth the trip:** the boss drops a chest with sure rewards, for
   example extra gold, the land's shards and a chance at its gem. The clear's
   XP would go into the weapon you used.
 - **Getting there:** once you've found a dungeon, the Town Hall's map can take

@@ -32,6 +32,11 @@ XP"). That makes a clear worth more (at level 3 the Goo Grotto's ~255 XP is
 most of a level). It is a balance change, not a fix, so it was not made here.
 It is a few lines in `_dungeonComplete` if wanted.
 
+**Done in v2.3.3563** ([boss-chest.md](boss-chest.md)), the owner's "Yes":
+a world dungeon's clear pays its XP into the weapons you fought with in that
+run, by their shares (the weapon in your hand if you earned none there), and
+the clear's card says "+255 Sword XP" under the boss's chest.
+
 ## Deploy order
 
 The page alone. Any worker sends the same `dungeon_complete {gold, xp}`.

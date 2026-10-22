@@ -1692,9 +1692,9 @@ remnant to migrate server-side, not a mode to preserve.
         still No man's land's; kill switch `dungeonbag: false`;
       - `wheeldungeon` §4/§6/§11/§12, `dungeon` §4/§8/§11, `dungeon-clear` suite,
         `mp-dungeonfix`: docs/specs/dungeon-fixes.md. Still the owner's call:
-        a reward worth the trip, travel to found dungeons, the farm's
-        Workshop, something to look at inside, and whether the huge boss
-        should reach as far as it looks.
+        travel to found dungeons, the farm's Workshop, something to look at
+        inside, and whether the huge boss should reach as far as it looks (a
+        reward worth the trip: v2.3.3563's chest, below).
     - since v2.3.3558 THE GOO GROTTO'S GIANT SLIME SPLITS -- the owner: "a
       giant slime that explodes and spawns small (normal size slimes) like
       8-10 maybe but shrinks in size afterwards ... 3 rounds of that before it
@@ -1730,6 +1730,28 @@ remnant to migrate server-side, not a mode to preserve.
         see-through pixel the frame's edge cannot reach in idle, shoot and hit,
         the pet sheet made again (`?v=2.3.3558`); slime-boss §9, TRAPS §246;
       - `slime-boss` suite, `mp-slimeboss`: docs/specs/slime-boss.md.
+    - since v2.3.3563 THE BOSS'S CHEST, AND THE CLEAR'S XP INTO THE WEAPONS YOU
+      USED -- the owner's "Yes" to "the boss drops a chest with sure rewards
+      ... The clear's XP would go into the weapon you used"
+      (server/src/dungeonreward.js, from dungeon.js `_dungeonComplete` before
+      its save):
+      - a WORLD dungeon's clear (never the Workshop: its monsters are the
+        player's choice) pays each player in it the chest: 20 gold a level of
+        the run, 3 of the land's shards, and a RARE GEM one time in 10 -- NEVER a
+        raw gem, which the owner's gem plan keeps for cracking shards
+        (GEM-PLAN decision 1); `BOSS_CHEST`, one roll (`_bossChestRoll`);
+      - the clear's XP (80 a wave + 5 a level) is paid FLAT into the weapons
+        you fought with IN THAT RUN, by their shares: prog3.js `_prog3AwardXp`
+        notes fight XP while you stand in a dungeon (`_dungeonNoteXp`,
+        `ps._dgXp`, memory only); none earned there, the weapon in your hand;
+        faded as fight XP is (xpdecay.js), none into a capped skill; the old
+        counter still gets it;
+      - `dungeon_complete` carries `chest {gold, items}` and `skillXp`; the
+        clear's card opens the daily chest's own strip (loaded on the loading
+        screen) beside its lines (game/bossChest.js `chestLines`,
+        DungeonClearHud.jsx), and the codex's New monster card steps under it;
+      - kill switches `bosschest: false`, `clearxp: false`; `dungeon-reward`
+        suite, `mp-bosschest`: docs/specs/boss-chest.md.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack

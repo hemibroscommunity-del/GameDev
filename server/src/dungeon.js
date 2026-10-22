@@ -826,9 +826,16 @@ export const dungeonMethods = {
       // Single-mutation settle on live ps inside the tick (the gamble
       // pattern): recipients are online by definition (zone presence),
       // no escrow, no opId -- there is no crash window between roll
-      // and payout because there is no roll.
+      // and payout because there is no roll.  (v2.3.3563: the boss's chest
+      // has one, made and paid in this same run before the save below --
+      // dungeonreward.js -- so there is still no window.)
       ps.coins = (ps.coins || 0) + gold;
       this._addCombatXp(ps, xp);
+      /* v2.3.3563: THE BOSS'S CHEST, AND THE CLEAR'S XP INTO THE WEAPONS USED
+         (dungeonreward.js) -- a world dungeon's, riding this save and said on
+         the event below.  Inside a try: a reward must never break a clear. */
+      let reward = null;
+      try { reward = this._dungeonReward(pid, ps, inst, xp); } catch (e) { reward = null; }
       /* v2.3.3527: Into the Dark and Delver (achievements.js: a Wheel dungeon,
          `cfg.home`; never the Workshop), riding this save */
       try { this._achvOnDungeon(pid, ps, cfg); } catch (e) { /* never break a clear */ }
@@ -846,7 +853,11 @@ export const dungeonMethods = {
       }
       this._saveRpg(pid, ps);
       this._queuePlayerStateFlush(pid);
-      this._dungeonSend(pid, { type: 'dungeon_complete', payload: { zone: inst.zone, gold, xp, boss: cfg.hasBoss } });
+      this._dungeonSend(pid, { type: 'dungeon_complete', payload: {
+        zone: inst.zone, gold, xp, boss: cfg.hasBoss,
+        ...(reward && reward.chest ? { chest: reward.chest } : {}),
+        ...(reward && reward.skillXp ? { skillXp: reward.skillXp } : {}),
+      } });
     }
   },
 

@@ -49,7 +49,7 @@ function peerShotGame() {
 }
 import { recordMail, itemWords } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail; v2.3.3516: + its words for an item */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
-import { startDungeonClear } from '@/game/dungeonClear.js'; /* v2.3.3556: 30 s to pick up the loot after a clear */
+import { startDungeonClear, setDungeonClearReward } from '@/game/dungeonClear.js'; /* v2.3.3556: 30 s to pick up the loot after a clear; v2.3.3563: and what the boss's chest held */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
 import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
@@ -989,7 +989,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (_dcR) {
                 if (!_dcR._compStats) _dcR._compStats = createDefaultCompStats();
                 if (payload.boss) _dcR._compStats.dungeonsCleared++;
-                _dcR._compStats.totalGoldEarned += payload.gold || 0;
+                _dcR._compStats.totalGoldEarned += (payload.gold || 0) + ((payload.chest && payload.chest.gold) || 0);   /* v2.3.3563: and the boss's chest */
                 setRpgState(_objectSpread({}, _dcR));
               }
               pushDmgPopup(S, S.player.x, S.player.y - 60, 'DUNGEON CLEARED!', '#f5c542');
@@ -1001,9 +1001,11 @@ export function processGameEvent(type, payload, S, deps) {
                  a player who looked for it on the Skills page found nothing.
                  Under prog3 the line says the gold alone, as the kill's
                  popup has since v2.3.1727; a pre-prog3 character, for whom
-                 the number is real, still sees it.  (Paying the clear's XP
-                 into a real skill -- the weapon in your hand -- is a balance
-                 call for the owner: docs/specs/dungeon-clear-words.md.) */
+                 the number is real, still sees it.  (v2.3.3563: a world
+                 dungeon's clear now PAYS its XP into the weapons you fought
+                 with there, and the clear's card says so under the boss's
+                 chest -- below, setDungeonClearReward; docs/specs/
+                 boss-chest.md.  This popup stays the clear's gold.) */
               var _dcXp = payload.xp > 0 && !prog3Live(_dcR) ? ' +' + payload.xp + 'XP' : '';
               pushDmgPopup(S, S.player.x, S.player.y - 45, '+' + (payload.gold || 0) + 'G' + _dcXp, '#f5c542');
               cue('dungeonClear');   /* v2.3.3343: the old quest fanfare -- levelUp() is beep()s only, silent */
@@ -1052,6 +1054,14 @@ export function processGameEvent(type, payload, S, deps) {
                   try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: 'farm_home', vx: 0, vy: 0 } }); } catch (e) {}
                 }
               });
+              /* ═══ v2.3.3563: THE BOSS'S CHEST, AND THE CLEAR'S XP ═══
+                 A world dungeon's clear also pays the boss's chest and puts
+                 its XP into the weapons you fought with there
+                 (server/src/dungeonreward.js); the event says what, and the
+                 clear's card shows it (game/bossChest.js,
+                 ui/mobile/DungeonClearHud.jsx).  Display only: the coins and
+                 the bag arrive on the worker's echo. */
+              setDungeonClearReward(S, payload.zone, payload.chest, payload.skillXp, Date.now());
               break;
             }
           case 'dungeon_error':

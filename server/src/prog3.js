@@ -1277,6 +1277,9 @@ export const prog3Methods = {
   _prog3AwardXp(playerId, ps, cat, amount, opts) {
     const p3 = ps && ps.prog3;
     if (!p3 || !p3.sk || !p3.sk[cat] || !(amount > 0)) return;
+    /* v2.3.3563: fight XP earned in a dungeon is noted by weapon, so the
+       clear's XP goes into the weapons used there (dungeonreward.js) */
+    if (!(opts && opts.flat) && typeof ps.z === 'string' && ps.z.startsWith('dungeon:') && typeof this._dungeonNoteXp === 'function') this._dungeonNoteXp(ps, cat, amount);
     const sk = p3.sk[cat];
     if (sk.level >= PROG3.LEVEL_CAP) return;
     /* v2.3.3538: the character level before, for the shared points below */

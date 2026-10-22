@@ -237,6 +237,8 @@ These are from dungeons-today.md and are not done:
 - **A reward worth the trip.** For example, a chest from the boss, and the
   clear's XP going into the weapon you used. The XP still goes to the old
   counter that no skill reads (v2.3.3543 only took it out of the words).
+  Done in v2.3.3563, the owner's "Yes": the boss's chest and the clear's XP
+  into the weapons used ([boss-chest.md](boss-chest.md)).
 - **Getting there.** Travel from the Town Hall's map to dungeons you have found.
 - **The farm's Dungeon Workshop.** Remove it, or rebuild it on the world's arena.
 - **Something to look at inside.** The arenas are bare floors.

@@ -32,12 +32,25 @@ const POLL_MS = 200;
 export function NewMonsterCard({ stateRef }) {
   const [, setTick] = React.useState(0);
   const seenRef = React.useRef(null);
+  /* v2.3.3563: the bottom of the dungeon's clear card while it is up (0 when
+     it is not).  That card grew a row for the boss's chest, and this card,
+     placed just under the minimap, sat over it; it steps down under it */
+  const clearRef = React.useRef(0);
   React.useEffect(() => {
     const id = setInterval(() => {
       const S = stateRef && stateRef.current;
       const a = S ? codexAnnouncement(S) : null;
       const k = a ? a.at : null;
       if (k !== seenRef.current) { seenRef.current = k; setTick((x) => (x + 1) % 1000000); }
+      let below = 0;
+      if (a) {
+        try {
+          const c = document.querySelector('[data-dungeon-clear]');
+          const q = c && c.getBoundingClientRect();
+          if (q && q.height > 0) below = Math.round(q.bottom + 8);
+        } catch (err) { below = 0; }
+      }
+      if (below !== clearRef.current) { clearRef.current = below; setTick((x) => (x + 1) % 1000000); }
     }, POLL_MS);
     return () => clearInterval(id);
   }, [stateRef]);
@@ -62,7 +75,10 @@ export function NewMonsterCard({ stateRef }) {
       onPointerDown={stop} onTouchStart={stop} onClick={(ev) => { ev.stopPropagation(); open(); }}
       onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } }}
       style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', zIndex: 59,
-        top: sideways ? 'calc(env(safe-area-inset-top, 0px) + 52px)' : 'max(22%, calc(env(safe-area-inset-top, 0px) + 192px))',
+        top: (() => {
+          const base = sideways ? 'calc(env(safe-area-inset-top, 0px) + 52px)' : 'max(22%, calc(env(safe-area-inset-top, 0px) + 192px))';
+          return clearRef.current ? 'max(' + base + ', ' + clearRef.current + 'px)' : base;
+        })(),
         width: 'min(300px, calc(100vw - 32px))', boxSizing: 'border-box', minHeight: 64,
         display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px 8px 8px', borderRadius: 14,
         background: '#1E2E34', border: '1px solid #EAC675', boxShadow: '0 10px 28px rgba(0,0,0,.5)',

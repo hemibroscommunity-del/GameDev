@@ -276,8 +276,11 @@ let run = null;
   room._tickDungeons(Date.now());
   const done = msgsOfType(wsA, 'dungeon_complete')[0];
   const lvl = run.inst.cfg.monsterLevel;
-  check(`run: the clear pays the dungeon formula (${30 * WHEEL_DUNGEON.WAVES + lvl * 2} gold, ${80 * WHEEL_DUNGEON.WAVES + lvl * 5} XP)`,
-    !!done && done.payload.gold === 30 * WHEEL_DUNGEON.WAVES + lvl * 2 && done.payload.xp === 80 * WHEEL_DUNGEON.WAVES + lvl * 5 && psA.coins === coins0 + done.payload.gold,
+  /* v2.3.3563: and the boss's chest beside it, its gold its own (the
+     dungeon-reward suite checks what it holds) */
+  check(`run: the clear pays the dungeon formula (${30 * WHEEL_DUNGEON.WAVES + lvl * 2} gold, ${80 * WHEEL_DUNGEON.WAVES + lvl * 5} XP), and the boss's chest its own gold`,
+    !!done && done.payload.gold === 30 * WHEEL_DUNGEON.WAVES + lvl * 2 && done.payload.xp === 80 * WHEEL_DUNGEON.WAVES + lvl * 5
+      && !!done.payload.chest && psA.coins === coins0 + done.payload.gold + done.payload.chest.gold,
     done && done.payload);
   /* v2.3.3540: ...and is recorded, so the Mayor's "Clear any dungeon" is
      ready (the game's own check reads it) */
