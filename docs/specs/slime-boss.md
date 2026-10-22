@@ -153,9 +153,45 @@ with an older worker gets no `bn`, so the boss is drawn whole as before.
   untouchable, as a swelling monster is to the phone (`isIntangible`).
 - `src/data/soundStudio.js`: the swell's and the burst's labels name the boss.
 
+## Its shine, whole (the owner's second look)
+
+> There's actually a transparent hole on the slime i don't think that came with
+> the original art. You can change it to the green slime if the green doesn't
+> have the hole on the top left side
+
+They were right, and the green slime had it too: the blue one is the green
+one's picture recoloured (`src/rendering/monsterRecolor.js` keeps every
+pixel's see-through amount), so swapping colours could not help.
+
+- **Where it came from.** The slime was cut off the near-white background of
+  its videos (`assets/monster animations/slime-*.mp4`) by colour. Its shine, a
+  solid pale mint oval on its top-left (about (221, 235, 202) in the video), was
+  near enough to white to go with the background: its core became the palette's
+  background entry (index 0, (254, 254, 254), see-through) and its rim partly
+  see-through. In every frame of idle, shoot and hit: 374, 100 and 119 pixels.
+  A few pixels at a slime's own size, unseen; at x4.6 you saw the floor
+  through it. TRAPS §246.
+- **The mend** (`tools/mend_slime_shine.py`, run once; `--check` asks the
+  question without writing). In each 128 px frame of the three living sheets,
+  a pixel that is not fully opaque and that the frame's edge cannot reach
+  through others like it (8-connected) is inside the slime; every one of those
+  is in the shine (the outline's soft edge and the gaps round the drips all
+  reach the edge). One with some opacity keeps its own colour, made solid; one
+  with none takes its brightest solid neighbour's colour, from the rim inward.
+  The sheets stay palette PNGs (the few solid colours needed are added), and
+  nothing outside the slime changed: its outline, its anchor rows and its hit
+  box are where they were. A second run changes nothing. The death burst is
+  left as it is: it is cut by a strict key, and its gaps are a splash's.
+- **What else changed with it.** The blue retint's reference brightness on the
+  idle sheet moves from 132.55 to 133.06 (the shine's pixels count now), so the
+  blue is 0.4% darker, too little to see. The pet sheet is made from the idle sheet
+  (`tools/make_pet_sheet.py`), so it was made again: only the two slime pets'
+  rows changed, and the game asks for it at a new address (`?v=2.3.3558`).
+- Before and after on a phone: `docs/shots/slime-shine.webp`.
+
 ## Tested
 
-- `server/test/slime-boss.test.mjs` (57 checks): armed in the Grotto only, the
+- `server/test/slime-boss.test.mjs` (60 checks): armed in the Grotto only, the
   marks, no summon, the owner's numbers; the wire on the re-push, the snapshot
   and the join, nothing on any other monster, the phone's marks rule and sizes;
   a hit of ten times its health stops at 75%, at the mark it can't be hurt,
@@ -168,7 +204,9 @@ with an older worker gets no `bn`, so the boss is drawn whole as before.
   Cave's boss unchanged; the kill switch; and the phone's carry
   (`monsterCarry.js`): same life and same death kept, a monster that came back
   or died met afresh, a boss's swell kept through a re-push of its stage and
-  let go once it has split, a blue slime's kept.
+  let go once it has split, a blue slime's kept; and the shine (§9): no
+  see-through pixel inside a living slime in any frame of idle, shoot or hit
+  (on the sheets before the mend it fails with 374, 100 and 119).
 - Twenty mutations, each failing the suite: the floor left out of a damage
   over time, the gate open at the mark, no floor, always 10 slimes, a slime
   mid-burst popped, not armed, no `bs`/`bn` on the re-push, nor on the

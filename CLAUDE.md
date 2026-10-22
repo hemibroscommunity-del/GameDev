@@ -1709,6 +1709,13 @@ remnant to migrate server-side, not a mode to preserve.
         the third wave); game/monsterCarry.js `carryMonsterState` keeps what the
         phone holds of a monster in the same life or the same death (TRAPS
         §245);
+      - ITS SHINE IS WHOLE -- the owner: "There's actually a transparent hole
+        on the slime i don't think that came with the original art": the
+        slime was cut off its videos' near-white background by colour, and
+        its pale shine went with it (every slime: the blue one is the green
+        one recoloured, alpha kept); tools/mend_slime_shine.py fills every
+        see-through pixel the frame's edge cannot reach in idle, shoot and hit,
+        the pet sheet made again (`?v=2.3.3558`); slime-boss §9, TRAPS §246;
       - `slime-boss` suite, `mp-slimeboss`: docs/specs/slime-boss.md.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start

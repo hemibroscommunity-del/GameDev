@@ -25,6 +25,8 @@
  *   8. THE PHONE: a re-push is not a new arrival (src/game/monsterCarry.js,
  *      TRAPS §245): same life or same death keeps the phone's own state; a
  *      boss that split since lets its swell go.
+ *   9. THE SHINE: no pixel inside a living slime's picture is see-through
+ *      (tools/mend_slime_shine.py) -- the floor showed through the giant's.
  */
 import { GameRoom } from '../src/index.js';
 import { readFileSync } from 'fs';
@@ -35,6 +37,7 @@ import { SLIME_BURST } from '../src/telegraph.js';
 import { ZONES } from '../src/data.js';
 import { bossSplitShare, bossSizeK } from '../../src/data/gameSystems.js';
 import { carryMonsterState, CARRY_ALIVE, CARRY_DEAD } from '../../src/game/monsterCarry.js';
+import { decodePNG } from '../../tools/world/png.mjs';
 
 function makeState() {
   const store = new Map();
@@ -328,6 +331,49 @@ const t0 = Date.now();
   check('phone: ...and a blue slime mid-burst (no bs) keeps its swell, as it must', slime._burstUntil === 6 && slime._burstScale === 3.5, slime);
   check('phone: the two lists name only the phone\'s own fields (never one the wire sends)',
     [...CARRY_ALIVE, ...CARRY_DEAD].every((k) => typeof k === 'string' && (k[0] === '_' || k === 'renderX' || k === 'renderY')));
+}
+
+{
+  /* 9. THE SHINE (tools/mend_slime_shine.py).  The owner, of the giant: "There's
+     actually a transparent hole on the slime i don't think that came with the
+     original art."  The slime was cut off its videos' near-white background by
+     colour, and the pale shine on its top-left went with it -- a few pixels at
+     a slime's own size, the floor showing through at x4.6.  So no pixel inside
+     a living slime may be see-through: every pixel that is not fully opaque
+     must reach its frame's edge through others like it (8-connected), as the
+     outline's soft edge and the gaps round the drips do.  The blue slime is
+     these pictures recoloured, alpha kept, so this covers it too. */
+  const FRAME = 128;
+  for (const name of ['slime-idle-v5', 'slime-shoot-v2', 'slime-hit-v1']) {
+    const img = decodePNG(readFileSync(new URL(`../../public/sprites/monsters/${name}.png`, import.meta.url)));
+    const frames = Math.floor(img.w / FRAME);
+    const holes = [];
+    for (let f = 0; f < frames; f++) {
+      const a = (x, y) => img.data[(y * img.w + f * FRAME + x) * 4 + 3];
+      const out = new Uint8Array(FRAME * FRAME);
+      const q = [];
+      for (let i = 0; i < FRAME; i++) {
+        for (const [x, y] of [[i, 0], [i, FRAME - 1], [0, i], [FRAME - 1, i]]) {
+          if (a(x, y) < 255 && !out[y * FRAME + x]) { out[y * FRAME + x] = 1; q.push(x, y); }
+        }
+      }
+      while (q.length) {
+        const y = q.pop(), x = q.pop();
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= FRAME || ny >= FRAME || out[ny * FRAME + nx] || a(nx, ny) === 255) continue;
+            out[ny * FRAME + nx] = 1; q.push(nx, ny);
+          }
+        }
+      }
+      for (let y = 0; y < FRAME; y++) {
+        for (let x = 0; x < FRAME; x++) if (a(x, y) < 255 && !out[y * FRAME + x]) holes.push({ f, x, y, alpha: a(x, y) });
+      }
+    }
+    check(`shine: ${name}'s ${frames} frames have no see-through pixel inside the slime`,
+      img.h === FRAME && frames > 0 && holes.length === 0, { frames, holes: holes.length, first: holes.slice(0, 4) });
+  }
 }
 
 if (failures) { console.log(`\n${failures} FAILED`); process.exit(1); }
