@@ -1023,7 +1023,20 @@ remnant to migrate server-side, not a mode to preserve.
     - the points grid FOLLOWS THE HELD WEAPON: a change of weapon brings it
       back (`heldCatRef`), the window's tabs aim only the window;
     - the per-weapon and character point bubbles BREATHE while points wait
-      (game.css `bt-pts-bubble`, transform and opacity only);
+      (game.css `bt-pts-bubble`, transform and opacity only) -- since
+      v2.3.3559 the COUNTS do, slowly (`bt-pts-count`, a 3.2 s breath: the
+      owner's "slowly grow then shrink"): the Points tab's two heads are
+      the owner's art, a gold frame of three rows (sword, staff, bow -- the
+      owner's THICKER icons from a second sheet, "these will look better at
+      that tiny scale" -- each its count, parted by CARVED SEAMS, a dark line over a faint warm one -- the
+      owner's pick of seven: "Carved seam is the best"; the first cut's
+      diamond "just muddles", NO ornament on them, the third diamond the
+      owner has taken out of the UI) and one of the gold bust with the up
+      arrow over its count, gold
+      numerals with points and grey at 0, no shapes behind the icons, both
+      frames one width (`SHARED_FR`; sideways the head is 1.45 of a cell);
+      `tools/ui/cut-points-heads.py`, GENERATED `src/data/pointsHeadArt.js`,
+      `mp-catgrid`, `mp-pointheads`: docs/specs/points-heads.md;
     - the Equipment tab's stats are PILLS, the owner's mockup: picture, name,
       value; OFFENSE gold with DPS beside its heading, PLAYER blue, the
       vitals as filled pills -- fourteen stats where there were seven, each
