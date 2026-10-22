@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { storeToastBus, STORE_TOAST_MS } from './storeToastBus.js';
+import { swallowTapClick } from '../swallowTapClick.js';   /* v2.3.3560 */
 
 /* ═══ v2.3.2476: THE SALE NOTICE ═══
  *
@@ -44,7 +45,9 @@ export const StoreToast = () => {
       zIndex: 22, pointerEvents: 'auto',
     }}>
       {items.map((i) => (
-        <div key={i.id} onPointerUp={() => storeToastBus.dismiss(i.id)}
+        /* v2.3.3560: the tap that sends it away taps nothing under it
+           (swallowTapClick.js): it used to land on the world */
+        <div key={i.id} onPointerUp={(e) => { swallowTapClick(e); storeToastBus.dismiss(i.id); }}
           className="bt-noselect"
           style={{
             display: 'flex', alignItems: 'center', gap: 8,

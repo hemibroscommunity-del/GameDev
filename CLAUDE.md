@@ -5462,6 +5462,22 @@ Two protocol versions coexist; both must keep working:
     speaker thins and a computer's plays whole ("I can't hear footsteps on
     pc"); a phone is unchanged; `?stepvol=k`.
   - `mp-deskclick`, `mp-deskplace`, `mp-deskkeys` 1b.
+- **A TAP THAT CLOSES A WINDOW TAPS NOTHING UNDER IT (v2.3.3560,
+  docs/specs/tap-through.md, TRAPS §247).** Found on the Points tab: on a
+  390 px phone the ✕ of a shared stat's window closed it AND opened the world
+  map. The owner: "Yes begin the fix".
+  - A tap's click comes a moment AFTER the finger lifts, to whatever is under
+    it then. A window that closes on the lift (InfoPopup, so its opening tap's
+    click cannot close it) is gone by then, and the click hit what it covered:
+    the minimap's invisible map button.
+  - A control that takes its window (or itself) off the page on `pointerup`
+    calls `swallowTapClick(e)` (src/ui/swallowTapClick.js): that tap's
+    mousedown, mouseup and click, near where it lifted, before the next
+    press, are eaten on the document. A window that closes on a click needs
+    nothing. `?tapthrough` is the game as it was; `window.__btTapClicks`.
+  - On a computer #root's `contain: paint` put the game under that button
+    too: a window over the minimap goes in game.css's pointer-events list.
+  - `mp-tapthrough` (22 checks; 10 fail on main).
 - **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3407,
   docs/specs/desktop-keys.md, TRAPS §213).** The owner: "For computer usage
   if there's a key that makes sense to use for a certain action just put the

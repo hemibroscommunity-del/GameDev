@@ -1448,6 +1448,15 @@ body:has([data-shop-panel]) [data-world-map-open]::after,
 body:has(.bt-npcdlg-scrim) [data-world-map-open]::after,
 body:has([data-ace-flip]) [data-world-map-open]::after,
 body:has([data-infopopup]) [data-world-map-open]::after{display:none}
+/* v2.3.3560: ...and under the stat window (InfoPopup, z 9400 -- but inside
+   the game's #root, which a computer's `contain: paint` makes one layer, so
+   the body-level button lay over it).  At 1366 x 768 the Points tab's stat
+   windows are tall and their ✕ lay in the minimap's box: a click on the ✕
+   opened the world map and the window stayed (mp-tapthrough).  Its key cap
+   was already hidden here; the button itself now lets the click through.
+   (On a phone the window is above the button; there the trouble was the
+   ✕'s own click after the window closed: src/ui/swallowTapClick.js.) */
+body:has([data-infopopup]) [data-world-map-open]{pointer-events:none}
 /* ═══ v2.3.3481: THE 2026-10-19 UI REVIEW -- ACE'S COIN ON A SHORT SCREEN ═══
    Held sideways his 138 px coin well pushed the stake chips and the Flip
    button below the first view.  The well is the coin's TOSS (its frame climbs
