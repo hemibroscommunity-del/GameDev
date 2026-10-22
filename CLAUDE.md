@@ -2563,6 +2563,33 @@ remnant to migrate server-side, not a mode to preserve.
         the hat's hair-clip shapes (entityRenderer `preloadTraits`);
       - `mp-joinflicker` (real armour from the kit; `window.__btLocalMisses()`
         names each plain frame): docs/specs/visuals-2026-10-19.md §3.
+    - since v2.3.3574 A PICTURE SAFARI THREW AWAY IS NOTICED -- the owner: "I
+      returned to the game after I went into a different tab on my phone and my
+      character was missing features at certain angles" (the hair, armour,
+      shield and staff drawn; no skin, face or boots):
+      - the game makes ~690 pictures on canvases (~70 MB on a phone in BroTown
+        in armour), and ~580 had never been DRAWN, so never sent to the
+        graphics chip (19 of 173 masked body frames); iPhone Safari can empty a
+        canvas while the tab is parked, with no event for a 2D canvas, and a
+        picture drawn or baked from one afterwards is blank and stays blank;
+        pictures from files are read again (TRAPS §250);
+      - every picture `packTrimmed` packs is WITNESSED as it is made, one solid
+        pixel (`src/rendering/canvasWitness.js`, weak references, a canvas
+        freed with `width = 0` skipped);
+      - coming back, wsClient's `_resumeRecover` reads 48 of them FIRST (the 24
+        biggest and a spread; 1-3 ms), one empty reading them all; two or more
+        empty is a `canvas-purge` in the crash log and BroTown's recovery
+        reload (the watchdog's door and cap, behind the bro's veil), only from
+        the world (`worldInMs`), on the SAME SPOT of the Wheel
+        (`_recoveryReload(why, { spot: true })`, `bt_resume_spot`, worldTrial
+        `setWheelArrival`, the worker judging it from lastplace.js);
+      - not a repair in place: uploading every picture as made is ~45 MB more
+        on the chip, and a remake path in each of a dozen systems is a dozen
+        ways to miss one;
+      - `?canvascheck=0` is the game as it was, `window.__btCanvasWitness()`;
+        `canvas-witness` suite, `mp-tabwipe` (the canvases emptied as Safari
+        does: 0 px from the parked spot, the body whole in all eight facings;
+        blank in all eight with the switch off): docs/specs/parked-tab.md.
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:

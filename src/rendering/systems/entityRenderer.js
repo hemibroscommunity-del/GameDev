@@ -3147,6 +3147,9 @@ if (typeof window !== 'undefined') {
     for (const k of _maskedBodyCache.keys()) { const u = String(k).split('|')[0]; uids[u] = (uids[u] || 0) + 1; }
     return { misses: _localMisses.slice(), cachedUids: uids };
   };
+  /* v2.3.3574: QA (mp-tabwipe) -- the masked frames' sources, to tell a frame
+     already on the graphics chip from one still only on its canvas */
+  window.__btMaskedSources = () => Array.from(_maskedBodyCache.values(), (t) => t && t.source).filter(Boolean);
 }
 
 /* ═══ v2.3.2904: YOUR OWN ARMOUR, NEVER BAKED INSIDE YOUR FRAME ═══
