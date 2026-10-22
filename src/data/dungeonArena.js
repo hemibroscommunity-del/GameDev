@@ -31,7 +31,9 @@
  * boots on (none: you walk through it -- mushrooms, ferns), and `id` the kind
  * a hit on it is (its chips and sound, worldProps.propMaterial; a low one,
  * 'stone' or 'scrap', is one a jump clears and an arrow flies over:
- * game/jump.js JUMP_OVER). */
+ * game/jump.js JUMP_OVER); v2.3.3567: `sway` leans in the wind about its
+ * foot (the two ferns -- the sheet's third "fern" is the roots, which do not:
+ * rendering/grottoFx.js). */
 
 export const ARENA_W = 36 * 32;
 export const ARENA_H = 52 * 32;
@@ -53,14 +55,14 @@ export const DUNGEON_ARENA = {
     { art: 'mushroom-1', x: 92, y: 420 },
     { art: 'boulder-1', x: 112, y: 724, block: [52, 18], id: 'stone', h: 60 },
     { art: 'puddle-3', x: 190, y: 968, flat: true },
-    { art: 'fern-1', x: 96, y: 1150 },
+    { art: 'fern-1', x: 96, y: 1150, sway: true },
     { art: 'boulder-3', x: 140, y: 1396, block: [64, 18], id: 'stone', h: 58 },
     /* the east side, north to south */
     { art: 'fern-3', x: 1004, y: 214 },
     { art: 'pillar-2', x: 1036, y: 336, block: [44, 18], id: 'pillar', h: 64 },
     { art: 'mushroom-2', x: 1064, y: 604 },
     { art: 'boulder-2', x: 1030, y: 884, block: [64, 16], id: 'stone', h: 47 },
-    { art: 'fern-2', x: 1064, y: 1112 },
+    { art: 'fern-2', x: 1064, y: 1112, sway: true },
     { art: 'heap-1', x: 992, y: 1432, block: [52, 16], id: 'scrap', h: 42 },
     { art: 'mushroom-3', x: 878, y: 1504 },
     /* the way out, a torch post either side of it */

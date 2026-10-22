@@ -10,7 +10,12 @@
  *
  * The record a load resolves to is the arena zone's `arenaArt`:
  *   { home, urls, front, top, things: { 'pillar-1': Texture, ... },
- *     chest: { 'shut-1': Texture, 'open-1': Texture } | null }
+ *     chest: { 'shut-1': Texture, 'open-1': Texture } | null,
+ *     fx, wallFx }
+ * v2.3.3567: `fx` and `wallFx` are the drops', bubbles' and lights' little
+ * pictures in the slime colours of the things and of the wall
+ * (rendering/grottoFx.js mintGrottoFx), made here behind the loading screen
+ * and freed with the rest.
  * The wall textures are whole files; every thing and chest is a frame of its
  * picture (destroyed on the way out, never its source, which Assets.unload
  * lets go).
@@ -19,6 +24,7 @@
  */
 import { Assets, Texture, Rectangle } from 'pixi.js';
 import { DUNGEON_ART, DUNGEON_ART_V, BOSS_CHEST_ART } from '@/data/dungeonArt.js';
+import { mintGrottoFx, freeGrottoFx } from '@/rendering/grottoFx.js';   /* v2.3.3567: what moves in it */
 
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -65,6 +71,10 @@ export async function loadDungeonArt(home) {
   if (inside) rec.things = frames(inside, A.inside.frames);
   if (chest) rec.chest = frames(chest, BOSS_CHEST_ART.frames);
   if (!front || !top) { freeDungeonArt(rec); return null; }
+  try {
+    rec.fx = A.inside.slime ? mintGrottoFx(A.inside.slime) : null;
+    rec.wallFx = A.walls.front.slime ? mintGrottoFx(A.walls.front.slime) : null;
+  } catch (e) { /* the arena stands still, then */ }
   return rec;
 }
 
@@ -78,6 +88,8 @@ export function freeDungeonArt(rec) {
     if (!set) continue;
     for (const k of Object.keys(set)) { try { set[k].destroy(false); } catch (e) { /* gone */ } }
   }
+  freeGrottoFx(rec.fx); freeGrottoFx(rec.wallFx);   /* v2.3.3567 */
+  rec.fx = rec.wallFx = null;
   for (const url of rec.urls) {
     if ([..._live].some((r) => r.urls.includes(url))) continue;
     Promise.resolve().then(() => Assets.unload(url)).catch(() => { /* a leak, not a crash */ });

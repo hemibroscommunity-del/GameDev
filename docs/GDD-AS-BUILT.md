@@ -689,7 +689,7 @@ Four of the eight lands have a dungeon mouth at their landmark:
 
 | Dungeon | Land | Levels | Boss |
 |---|---|---|---|
-| The Goo Grotto (v2.3.3540) | Verdant Wilds | 1–5 | a giant Blue Slime that splits three times (v2.3.3558); its mouth, walls and 17 things inside the owner's pictures (v2.3.3566) |
+| The Goo Grotto (v2.3.3540) | Verdant Wilds | 1–5 | a giant Blue Slime that splits three times (v2.3.3558); its mouth, walls and 17 things inside the owner's pictures (v2.3.3566), moving since v2.3.3567: slime drips and bubbles, the torches burn, spores rise, the ferns sway |
 | The Great Cave | Stone Hollows | 26–30 | Amethyst Golem |
 | The Foundry Dome | Electric Foundry | 26–30 | a giant Storm Slime that splits three times (v2.3.3562) |
 | The Buried City | Wind Dunes | 41–45 | Gilded Mummy |

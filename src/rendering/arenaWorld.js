@@ -18,6 +18,23 @@
  *           lid's sounds the card's), coins glinting up out of it.  It stands
  *           until you leave; you walk past it, it stops nobody.
  *
+ * ═══ v2.3.3567: AND IT MOVES ═══
+ * The owner: "You can use code to make those a bit more animated for the
+ * water effects and such. Maybe a little Breeze for the ferns?"  From where
+ * the art tool read each moves (src/data/dungeonArt.js), drawn by grottoFx.js:
+ *   the torch posts burn -- the campfire's flames in each iron basket, behind
+ *     its front bars (a holder one px north of the post, so it sorts first),
+ *     sparks climbing, a warm light on the floor;
+ *   the puddles bubble and glint, the junk heap's slime too and its coins
+ *     glint gold, the mushrooms' caps let spores float up;
+ *   drops run down the north wall's slime and splash at its foot;
+ *   the two ferns sway in the wind (worldLife.js, `sway` in dungeonArena.js).
+ * The flat ones on a container of their own over the puddles; the torch's on
+ * its holder; the heap's and the mushrooms' riding their sprite (depthSort
+ * `_ridesOn`), moved with it when the depth pass moves it.  Their little
+ * pictures are the art record's (`fx`, `wallFx`: game/dungeonArt.js mints
+ * them behind the loading screen), the flames the campfire's own.
+ *
  * Nothing here decides anything: the chest's contents are the worker's, and a
  * clear that paid none (an older worker, the Workshop) leaves none.  The
  * pictures are game/dungeonArt.js's, loaded behind the dungeon's loading
@@ -28,6 +45,10 @@ import { Sprite, Container, Graphics } from 'pixi.js';
 import { arenaThings, arenaBlockers, ARENA_W, ARENA_WALLS } from '../data/dungeonArena.js';
 import { setZoneBlockerHook } from '../data/worldProps.js';
 import { SHADE } from './formShade.js';
+import { DUNGEON_ART } from '../data/dungeonArt.js';   /* v2.3.3567: where each picture moves */
+import { campfireAtlas } from './campfireFx.js';      /* v2.3.3567: the torches' flames */
+import { arenaFrontPieceXs } from './arenaWalls.js';
+import { Drips, Bubbles, TorchFire, Spores, addGrottoSwayer, removeGrottoSwayer } from './grottoFx.js';
 
 const ART = 0.5;   /* game px a picture px */
 /* the card's own moment (DungeonClearHud.jsx CHEST_WAIT_MS + a frame): the
@@ -54,7 +75,14 @@ export class ArenaWorld {
     this._bossAt = null;
     this._blockers = arenaBlockers(art.home);
     this._offHook = setZoneBlockerHook((z) => (z === this.zone ? this._blockers : null));
+    this.fx = [];        /* v2.3.3567: what moves -- each with step(dt, now) and destroy() */
+    this.riders = [];    /* [container, the sprite it rides on] */
+    this.torches = [];   /* [its fire's holder, the torch post] */
+    this.swayers = [];
+    this.fxFlat = null;
+    this._lastNow = 0;
     this._build();
+    try { this._buildLife(); } catch (e) { console.error('[arenaWorld] its life threw', e && e.message); }
   }
 
   _build() {
@@ -74,8 +102,88 @@ export class ArenaWorld {
     }
   }
 
+  /* v2.3.3567: what moves, from where the art tool read each picture moves */
+  _buildLife() {
+    const A = own(DUNGEON_ART, this.art.home) ? DUNGEON_ART[this.art.home] : null;
+    const fx = this.art.fx, wallFx = this.art.wallFx;
+    if (!A) return;
+    const frames = Object.create(null);
+    for (const f of A.inside.frames) frames[f.id] = f;
+    /* over the puddles, under everyone: a container of its own */
+    const flat = new Container();
+    flat.label = 'arenaLifeFlat';
+    this.layers.groundDetails.addChild(flat);
+    this.fxFlat = flat;
+    let cf = null;
+    try { cf = campfireAtlas(); } catch (e) { cf = null; }
+    for (const sp of this.things) {
+      const t = sp._arenaThing, f = frames[t.art];
+      if (!f) continue;
+      const dir = t.flip ? -1 : 1;
+      /* a point of the frame, in the world and from the thing's foot */
+      const off = (p) => [dir * (p[0] - f.foot[0]) * ART, (p[1] - f.foot[1]) * ART];
+      const world = (p) => { const o = off(p); return [t.x + o[0], t.y + o[1]]; };
+      if (t.sway) { addGrottoSwayer(sp, t.x, t.y); this.swayers.push(sp); }
+      if (f.fire && cf) {
+        /* the torch's fire: a holder one px north of the post, so the
+           basket's front bars draw over its flame */
+        const holder = new Container();
+        holder.label = 'arenaTorchFire';
+        holder.x = t.x; holder.y = t.y - 1;
+        this.layers.entities.addChild(holder);
+        const o = off(f.fire);
+        this.fx.push(new TorchFire(holder, [o[0], o[1] + 1, f.fire[2] * ART], cf, flat, t.x, t.y));
+        this.riders.push([holder, null]);
+        this.torches.push([holder, sp]);
+        continue;
+      }
+      if (!fx) continue;
+      if (f.wet && t.flat) {
+        this.fx.push(new Bubbles(flat, f.wet.map(world), fx, { bubbles: f.wet.length > 5 ? 2 : 1, glints: 2 }));
+        continue;
+      }
+      if (f.wet || f.caps) {
+        /* the heap's slime and coins, a mushroom's spores: riding its sprite */
+        const rider = new Container();
+        rider.label = 'arenaThingLife';
+        rider.x = sp.x; rider.y = sp.y;
+        rider._ridesOn = sp;
+        sp.parent.addChild(rider);
+        this.riders.push([rider, sp]);
+        if (f.wet) this.fx.push(new Bubbles(rider, f.wet.map(off), fx, { bubbles: 1, glints: 1, gold: (f.gold || []).map(off) }));
+        if (f.caps) this.fx.push(new Spores(rider, f.caps.map(off), fx, 3));
+      }
+    }
+    /* the drops running down the north wall's slime, on each piece of its
+       front as arenaWalls.js lays them, landing at its foot */
+    const front = A.walls && A.walls.front;
+    if (wallFx && front && front.drips && front.drips.length) {
+      const { SIDE, FACE_FOOT } = ARENA_WALLS;
+      const fW = front.w * ART, top = FACE_FOOT - front.h * ART;
+      const tips = [];
+      for (const x0 of arenaFrontPieceXs(ARENA_W, fW)) {
+        for (const [dx, dy] of front.drips) {
+          const x = x0 + dx * ART;
+          if (x < SIDE + 4 || x > ARENA_W - SIDE - 4) continue;
+          tips.push({ x, y: top + dy * ART, land: FACE_FOOT + 3 });
+        }
+      }
+      /* each streak drips every 3.5-10 s: along the whole wall, two or three
+         drops a second, never a downpour */
+      if (tips.length) this.fx.push(new Drips(flat, tips, wallFx, { every: [3.5, 10] }));
+    }
+  }
+
   update(S, now) {
     if (!S || S.currentZone !== this.zone) return;
+    /* v2.3.3567: what moves -- a rider kept in the layer its sprite is in
+       (the depth pass moves a thing between layers as you walk round it) */
+    const dt = this._lastNow ? Math.min(0.1, Math.max(0, (now - this._lastNow) / 1000)) : 0;
+    this._lastNow = now;
+    for (const [r, host] of this.riders) {
+      if (host && !host.destroyed && host.parent && r.parent !== host.parent) host.parent.addChild(r);
+    }
+    for (const f of this.fx) f.step(dt, now);
     /* where the boss stands, while it does */
     const ms = S.monsters;
     if (ms && ms.length) {
@@ -169,11 +277,32 @@ export class ArenaWorld {
       blockers: this._blockers.length,
       chest: this.chest ? { x: this.chest.box.x, y: this.chest.box.y, opened: this.chest.opened, frame: this.chest.opened ? 'open-1' : 'shut-1' } : null,
       bossAt: this._bossAt,
+      /* v2.3.3567: what moves */
+      life: {
+        fx: this.fx.map((f) => f.kind),
+        torches: this.torches.map(([h, t]) => {
+          const f = this.fx.find((q) => q instanceof TorchFire && q.holder === h);
+          const P = h.parent;
+          return { frame: f ? f.frame : null, dy: +(t.y - h.y).toFixed(2), sameLayer: !!P && P === t.parent, before: !!P && P === t.parent && P.children.indexOf(h) < P.children.indexOf(t) };
+        }),
+        riders: this.riders.filter(([r, h]) => h).map(([r, h]) => ({ rides: r._ridesOn === h, sameLayer: r.parent === h.parent })),
+        swayers: this.swayers.map((s) => ({ art: s._arenaThing.art, skew: +s.skew.x.toFixed(4) })),
+        wallDrips: (this.fx.find((f) => f instanceof Drips) || { d: [] }).d.length,
+      },
     };
   }
 
   destroy() {
     if (this._offHook) { this._offHook(); this._offHook = null; }
+    /* v2.3.3567: what moved goes first, then what it rode on */
+    for (const s of this.swayers) removeGrottoSwayer(s);
+    this.swayers = [];
+    for (const f of this.fx) { try { f.destroy(); } catch (e) { /* gone */ } }
+    this.fx = [];
+    for (const [r] of this.riders) { try { r.destroy({ children: true, texture: false, textureSource: false }); } catch (e) { /* gone */ } }
+    this.riders = [];
+    this.torches = [];
+    if (this.fxFlat) { try { this.fxFlat.destroy({ children: true, texture: false, textureSource: false }); } catch (e) { /* gone */ } this.fxFlat = null; }
     for (const s of this.things) { try { s.destroy({ texture: false, textureSource: false }); } catch (e) { /* gone */ } }
     this.things = [];
     if (this.chest) {
