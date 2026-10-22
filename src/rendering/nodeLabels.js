@@ -68,7 +68,10 @@ const ICON_V = '?v=2.3.1774';   /* InventoryPanel ITEMS_V: the same files, the s
    and read as a sliver until cropped to it. */
 const SRC = {
   tree:     { url: '/icons/items/woodcutting-axe.webp', box: [40, 0, 111, 192] },
-  oreVein:  { url: '/icons/items/mining-pickaxe.webp',  box: [13, 0, 166, 192] },
+  /* v2.3.3571: the owner's painted pickaxe (tools/ui/cut-owner-items.py, which
+     records this box in tools/ui/owner-items.json; owner-icons §8 holds them
+     together) */
+  oreVein:  { url: '/icons/items/mining-pickaxe.webp',  box: [9, 1, 174, 190] },
   fishSpot: { url: '/icons/items/fishing-pole.webp',    box: [42, 31, 172, 194] },
 };
 const SIZE = 64;

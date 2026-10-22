@@ -71,7 +71,11 @@ export const wpnIconSrc = (R, wpn) => {
   /* v2.3.1760: a melee weapon's icon takes its METAL (metalIconPath); a bow or
      a staff never does — owner: "only for metals though not staff or bow". */
   const metal = weaponMaterial(wpn.type, wpn.gearBase);
-  return wpn.type === 'bow' ? `/icons/items/bow.webp${ITEMS_V}`
+  /* v2.3.3571: a bow here (the Equipment slot, the weapon button and the
+     player card) wears the owner's card 11 bow, T3.3, its own file now: the
+     owner, "I only wanted it to replace the menu art for the bow" -- v2.3.3526
+     had written it over the bag's bow.webp, which is the pine bow again. */
+  return wpn.type === 'bow' ? '/icons/ui/equip-bow.webp?v=2.3.3571'
     : wpn.type === 'staff' ? `/icons/items/staff.webp${ITEMS_V}`
     : wpn.type === 'greatsword' ? `${metalIconPath('/icons/items/great-sword.webp', metal)}${ITEMS_V}`
       : `${metalIconPath('/icons/items/sword.webp', metal)}${ITEMS_V}`;

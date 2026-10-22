@@ -10,10 +10,13 @@
  "dropped": {
   "T69.1": "the owner ticked both luck stars, T69.1 and T69.2, nearly the same picture; T69.2 is used, from the same sheet as the other stat picks"
  },
+ "replaced": {
+  "T36.1": "v2.3.3571: the owner's own painted pickaxe took its place (\"Ok change the art style of the copper ore and the pickaxe to this\", 2026-10-22); tools/ui/cut-owner-items.py writes icons/items/mining-pickaxe.webp now"
+ },
  "picks": [
   {
    "code": "T3.3",
-   "what": "Bow (bag, Equipment slot)",
+   "what": "Bow (the Equipment slot, the weapon button under the stick and the player card; v2.3.3571: NOT the bag, which keeps the pine bow -- the owner: \"I only wanted it to replace the menu art for the bow\")",
    "src": "fantasy-rpg-game-ui-asset-sheet-1.png",
    "note": "a bow with an arrow",
    "cut": {
@@ -26,7 +29,7 @@
     "mode": "alpha",
     "grow": 4
    },
-   "name": "icons/items/bow",
+   "name": "icons/ui/equip-bow",
    "ext": "webp",
    "out": {
     "frame": [
@@ -396,31 +399,6 @@
      256
     ],
     "fill": 0.777
-   }
-  },
-  {
-   "code": "T36.1",
-   "what": "Pickaxe (bag)",
-   "src": "fantasy-rpg-game-ui-asset-sheet-1.png",
-   "note": "a pickaxe",
-   "cut": {
-    "box": [
-     1028,
-     392,
-     1122,
-     512
-    ],
-    "mode": "alpha",
-    "grow": 4
-   },
-   "name": "icons/items/mining-pickaxe",
-   "ext": "webp",
-   "out": {
-    "frame": [
-     192,
-     192
-    ],
-    "fill": 1.0
    }
   },
   {
