@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c72c187da48225bc8f4c4d6025c1f9a4220d1348",
+  "tree": "19bde34261bcf55c3b4bd7a3dacdecaa51eeed96",
+  "committedAt": "2026-10-22T11:31:17-07:00",
+  "subject": "A blue slime's burst stays a surprise: the owner's call, written down (v2.3.3568) (#1081)",
+  "files": 6339,
+  "bytes": 736239916,
+  "listingSha256": "494c5c3ea41c868f3808154749cdb1352d58f2128d82392c9f0bd24f2a4066ab",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
