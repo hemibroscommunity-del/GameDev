@@ -35,7 +35,7 @@ import { setWheelArrival } from './worldTrial.js';
 import { wantWheelSpawn } from './wheelHome.js';
 import { releaseLeftZoneArt, clearZoneLocalFx, veilWheelTrip } from './zoneTransitions.js';
 import { WHEEL_DUNGEON_HOMES, DOOR_R, WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR, WHEEL_ARENA } from '@/data/wheelDungeons.js';
-import { freeDungeonArt } from './dungeonArt.js';   /* v2.3.3565 */
+import { freeDungeonArt } from './dungeonArt.js';   /* v2.3.3566 */
 
 /* the table -- which lands, the button's reach, each mouth's light, each
    arena's floor -- is src/data/wheelDungeons.js (no imports: the server's
@@ -184,7 +184,7 @@ export function dropDungeonZone(zone) {
     /* ...and its floor picture: the tile renderer dropped its sprite when it
        rebuilt for where you went (tileRenderer.js _floorSprite) */
     const pic = ZONES[zone].floorPic;
-    /* v2.3.3565: ...and the owner's pictures of it, its walls and things and
+    /* v2.3.3566: ...and the owner's pictures of it, its walls and things and
        the boss's chest: their pieces were destroyed with the arena
        (tileRenderer.js _arenaWalls, rendering/arenaWorld.js) */
     const art = ZONES[zone].arenaArt;

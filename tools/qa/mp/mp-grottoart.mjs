@@ -1,4 +1,4 @@
-/* ═══ THE GOO GROTTO IN THE OWNER'S PICTURES, ON A PHONE (v2.3.3565, docs/specs/dungeon-art.md) ═══
+/* ═══ THE GOO GROTTO IN THE OWNER'S PICTURES, ON A PHONE (v2.3.3566, docs/specs/dungeon-art.md) ═══
  *
  * The owner sent the first four of the dungeons' ChatGPT pictures ("Here's the
  * first 4"): the Goo Grotto's entrance, its walls, the things inside its

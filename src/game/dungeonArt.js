@@ -1,4 +1,4 @@
-/* ═══ v2.3.3565: A DUNGEON'S PICTURES, LOADED AND LET GO ═══
+/* ═══ v2.3.3566: A DUNGEON'S PICTURES, LOADED AND LET GO ═══
  *
  * The owner's ChatGPT pictures of each dungeon (src/data/dungeonArt.js, cut
  * by tools/world/add-dungeon-art.mjs): its arena's walls, the things that

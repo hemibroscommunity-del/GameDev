@@ -16,7 +16,7 @@ When a world dungeon clears, the clear's card at the top of the screen grows a
 row:
 
 1. The boss's chest opens, its lid knocking and its coins chiming, just after
-   the clear's fanfare. Since v2.3.3565 it is the owner's chest, shut then open,
+   the clear's fanfare. Since v2.3.3566 it is the owner's chest, shut then open,
    the same one that lands in the arena where the boss fell
    ([dungeon-art.md](dungeon-art.md)); it was the old daily chest's picture.
 2. Beside it, what it held, each with its picture:
@@ -105,7 +105,7 @@ anyway (handoff rule 20).
   the reward into the card's lines, "+60 gold", "Stone Shard ×3", "Rare Gem",
   "+192 Sword XP".
 - **`src/ui/mobile/DungeonClearHud.jsx`**: the chest row.
-  - The chest is the owner's (v2.3.3565, `BOSS_CHEST_ART`): shut, then open
+  - The chest is the owner's (v2.3.3566, `BOSS_CHEST_ART`): shut, then open
     0.975 s after the clear, the moment the arena's chest opens
     (`rendering/arenaWorld.js` `CHEST_OPEN_MS`). Its picture is warmed with the
     row's others. (It was the daily chest's strip, frames 3–8.)
@@ -161,7 +161,7 @@ anyway (handoff rule 20).
 
 ## Not done (the owner's call)
 
-- **The chest in the world.** Done in v2.3.3565 with the owner's picture: it
+- **The chest in the world.** Done in v2.3.3566 with the owner's picture: it
   lands where the boss fell and opens with the card's
   ([dungeon-art.md](dungeon-art.md)).
 - **The numbers.** Each is one line in `BOSS_CHEST`.

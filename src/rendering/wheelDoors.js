@@ -12,7 +12,7 @@
  * the Wheel's fish (wheelNodes.js), so whoever stands in it is drawn over it.
  * Only the mouths near the view hold a display.
  *
- * ═══ v2.3.3565: ...AND, WHERE THE OWNER HAS DRAWN ONE, ITS PICTURE ═══
+ * ═══ v2.3.3566: ...AND, WHERE THE OWNER HAS DRAWN ONE, ITS PICTURE ═══
  * The owner's ChatGPT entrances (src/data/dungeonArt.js `mouth`, cut by
  * tools/world/add-dungeon-art.mjs) -- the Goo Grotto's first: a mossy mound,
  * roots over it, blue slime dripping out of its dark mouth.  It STANDS: the
@@ -47,7 +47,7 @@ const SPARKS = 9;
 const LABEL_STYLE = { fontFamily: 'monospace', fontSize: 26, fontWeight: 'bold', stroke: { color: 0x0b1014, width: 6 } };
 const LABEL_Y = -RY - 150;
 
-/* v2.3.3565: the picture -- game px a picture px; loaded within the drawing
+/* v2.3.3566: the picture -- game px a picture px; loaded within the drawing
    reach plus LOAD_PAD, let go once farther than the reach plus FREE_PAD for
    FREE_MS; its name LABEL_OVER above the mound's top */
 const ART = 0.5;
@@ -124,7 +124,7 @@ export class WheelDoors {
     return { c, glow, mouth, sparks, label, look, seed: (d.x * 7 + d.y * 13) % 1000 };
   }
 
-  /* v2.3.3565: the owner's picture: the mound standing at its foot, its name
+  /* v2.3.3566: the owner's picture: the mound standing at its foot, its name
      over it, the slime before it lying flat */
   _makePicture(d, p) {
     const look = WHEEL_DOOR_LOOK[d.id] || WHEEL_DOOR_LOOK.hollows;
@@ -161,7 +161,7 @@ export class WheelDoors {
     const keep = new Set();
     for (const d of doors) {
       const dist = Math.hypot(d.x - cx, d.y - cy);
-      /* v2.3.3565: its picture, asked for on the way in (below), kept while
+      /* v2.3.3566: its picture, asked for on the way in (below), kept while
          within FREE_PAD of the view */
       if (own(DUNGEON_ART, d.id)) {
         if (dist <= reach + LOAD_PAD) wantPicture(d.id);
@@ -181,7 +181,7 @@ export class WheelDoors {
       this._drop(e);
       this.doors.delete(id);
     }
-    /* v2.3.3565: and a picture no mouth near the view has wanted for FREE_MS
+    /* v2.3.3566: and a picture no mouth near the view has wanted for FREE_MS
        goes -- out of the Wheel (`doors` empty) too: inside its dungeon, or on
        the farm, nothing draws it */
     for (const [home, p] of _pics) {
@@ -236,7 +236,7 @@ export class WheelDoors {
   }
 }
 
-/** v2.3.3565: the mounds drawn now, as footprints for the walk test (game px
+/** v2.3.3566: the mounds drawn now, as footprints for the walk test (game px
     boxes { x0, y0, x1, y1, id, h }), and a number that changes when the set
     does (wheelObjects.js takes them with its own). */
 export function wheelMouthBlockers() {
@@ -259,7 +259,7 @@ export function wheelMouthBlockVer() {
   return _picVer * 1000 + (_liveDoors ? [..._liveDoors.doors.values()].filter((e) => e.pic).length : 0);
 }
 
-/** v2.3.3565: the mounds' shadows, the Wheel's sun's (lightfx/casters.js),
+/** v2.3.3566: the mounds' shadows, the Wheel's sun's (lightfx/casters.js),
     column by column from their foot line, as a building's. */
 export function wheelDoorCasters(out) {
   if (!_liveDoors) return;

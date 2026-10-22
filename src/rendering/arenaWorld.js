@@ -1,4 +1,4 @@
-/* ═══ v2.3.3565: A DUNGEON'S ARENA, FURNISHED WITH THE OWNER'S PICTURES ═══
+/* ═══ v2.3.3566: A DUNGEON'S ARENA, FURNISHED WITH THE OWNER'S PICTURES ═══
  *
  * The things that stand in a world dungeon's arena (src/data/dungeonArena.js,
  * the owner's ChatGPT sheet cut by tools/world/add-dungeon-art.mjs) and the

@@ -103,7 +103,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         reward: (window._gameState.current._dungeonClear || {}).reward || null,
       };
     }), 15000);
-    /* v2.3.3565: the owner's chest, shut and then open (it was the daily
+    /* v2.3.3566: the owner's chest, shut and then open (it was the daily
        chest's strip, opened at its frame 8) */
     const opened = await poll(() => P.page.evaluate(() => {
       const f = document.querySelector('[data-boss-chest] [data-chest-frame]');

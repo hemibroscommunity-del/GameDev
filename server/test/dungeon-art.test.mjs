@@ -1,4 +1,4 @@
-/* The dungeons in the owner's pictures (v2.3.3565, docs/specs/dungeon-art.md):
+/* The dungeons in the owner's pictures (v2.3.3566, docs/specs/dungeon-art.md):
  * the Goo Grotto's entrance, walls and things inside, and the boss's chest,
  * cut from the owner's ChatGPT pictures by tools/world/add-dungeon-art.mjs
  * into src/data/dungeonArt.js, and stood in its arena by

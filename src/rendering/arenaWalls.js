@@ -1,4 +1,4 @@
-/* ═══ v2.3.3565: AN ARENA WALLED WITH THE OWNER'S PICTURES ═══
+/* ═══ v2.3.3566: AN ARENA WALLED WITH THE OWNER'S PICTURES ═══
  *
  * The owner, of the dungeons' bare arenas: "instead of code drawn walls give
  * prompt for me to give chatGPT to draw dungeon walls" -- and the Goo Grotto's

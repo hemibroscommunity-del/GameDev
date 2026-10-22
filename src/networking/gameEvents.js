@@ -49,7 +49,7 @@ function peerShotGame() {
 }
 import { recordMail, itemWords } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail; v2.3.3516: + its words for an item */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
-import { loadDungeonArt, freeDungeonArt } from '@/game/dungeonArt.js'; /* v2.3.3565: and the owner's pictures of it -- its walls, its things, the boss's chest */
+import { loadDungeonArt, freeDungeonArt } from '@/game/dungeonArt.js'; /* v2.3.3566: and the owner's pictures of it -- its walls, its things, the boss's chest */
 import { startDungeonClear, setDungeonClearReward } from '@/game/dungeonClear.js'; /* v2.3.3556: 30 s to pick up the loot after a clear; v2.3.3563: and what the boss's chest held */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
@@ -891,7 +891,7 @@ export function processGameEvent(type, payload, S, deps) {
                   var _hz = ZONES[_dHome], _fl = WHEEL_DUNGEON_FLOOR[_dHome] || {};
                   if (_hz && _hz.palette) ZONES[payload.zone].palette = _hz.palette;
                   if (_dFloor) ZONES[payload.zone].floorPic = _dFloor;
-                  /* v2.3.3565: and its pictures, when the land has them --
+                  /* v2.3.3566: and its pictures, when the land has them --
                      walls of the owner's art (tileRenderer.js) and the things
                      standing in it (rendering/arenaWorld.js) */
                   if (_dArt) ZONES[payload.zone].arenaArt = _dArt;
@@ -942,7 +942,7 @@ export function processGameEvent(type, payload, S, deps) {
                   if (_dFloorLate) { freeDungeonFloor(u); return; }
                   _dFloor = u;
                 }).catch(function () { return null; });
-                /* v2.3.3565: ...and its pictures, if the land has them (game/
+                /* v2.3.3566: ...and its pictures, if the land has them (game/
                    dungeonArt.js), behind the same screen; late ones let go */
                 var _artP = loadDungeonArt(_dHome).then(function (rec) {
                   if (_dFloorLate) { freeDungeonArt(rec); return; }

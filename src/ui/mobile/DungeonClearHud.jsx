@@ -16,7 +16,7 @@
  * clear's fanfare -- beside what it held: its gold, each item with its count
  * and each weapon's XP (game/bossChest.js).
  *
- * v2.3.3565: the chest is the OWNER'S, the one that lands where the boss fell
+ * v2.3.3566: the chest is the OWNER'S, the one that lands where the boss fell
  * (rendering/arenaWorld.js), shut and then open at the same moment
  * (CHEST_OPEN_MS there) -- it was the old daily chest's strip.  Its picture
  * (src/data/dungeonArt.js BOSS_CHEST_ART) is warmed with the row's others.
@@ -59,7 +59,7 @@ const _held = [];
 try {
   if (typeof Image !== 'undefined') {
     const urls = [GOLD_ICON, ...Object.values(SKILL_ICON), thumbFor('rare_gem'), ...Object.values(ZONE_SHARDS).map((z) => thumbFor(z.key))];
-    if (BOSS_CHEST_ART) urls.push(dungeonArtUrl(BOSS_CHEST_ART.url));   /* v2.3.3565 */
+    if (BOSS_CHEST_ART) urls.push(dungeonArtUrl(BOSS_CHEST_ART.url));   /* v2.3.3566 */
     for (const u of urls) { if (!u) continue; const img = new Image(); img.decoding = 'async'; img.src = u; _held.push(img); }
   }
 } catch (e) { /* a warm-up never breaks the card */ }
@@ -68,7 +68,7 @@ try {
    arenaWorld.js CHEST_OPEN_MS = these two) */
 const CHEST_WAIT_MS = 900;
 const CHEST_FRAME_MS = 75;
-/* v2.3.3565: the owner's chest in the card's 44 px box: both pictures at one
+/* v2.3.3566: the owner's chest in the card's 44 px box: both pictures at one
    scale (the open one, lid up, fills the height), standing on the same front
    corner (each frame's `foot`), the shut one centred */
 const CHEST_BOX = 44;

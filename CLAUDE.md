@@ -1749,10 +1749,10 @@ remnant to migrate server-side, not a mode to preserve.
       - `dungeon_complete` carries `chest {gold, items}` and `skillXp`; the
         clear's card opens the chest beside its lines (game/bossChest.js
         `chestLines`, DungeonClearHud.jsx; the owner's chest since
-        v2.3.3565, below), and the codex's New monster card steps under it;
+        v2.3.3566, below), and the codex's New monster card steps under it;
       - kill switches `bosschest: false`, `clearxp: false`; `dungeon-reward`
         suite, `mp-bosschest`: docs/specs/boss-chest.md.
-    - since v2.3.3565 THE GOO GROTTO IN THE OWNER'S PICTURES -- the owner sent
+    - since v2.3.3566 THE GOO GROTTO IN THE OWNER'S PICTURES -- the owner sent
       the first four of the dungeons' ChatGPT pictures (docs/art/
       DUNGEON-ART-PROMPTS.md): "Here's the first 4":
       - `tools/world/add-dungeon-art.mjs` cuts them by the Object Studio's own

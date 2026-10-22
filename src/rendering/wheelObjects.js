@@ -48,7 +48,7 @@ import { Sprite, Assets, Container, Texture, Rectangle, CanvasSource, Spriteshee
 import { wheelInfo, wheelObjectStats, wheelOnStop, wheelLifeOn } from '../game/wheelTrial.js';
 import { BuildingLife, hasLife, wheelLifeWarm, wheelLifeFree, wheelLifeReady } from './wheelLife.js';
 import { setZoneBlockerHook } from '../data/worldProps.js';
-import { wheelMouthBlockers, wheelMouthBlockVer } from './wheelDoors.js';   /* v2.3.3565: a dungeon mouth's mound */
+import { wheelMouthBlockers, wheelMouthBlockVer } from './wheelDoors.js';   /* v2.3.3566: a dungeon mouth's mound */
 import { freeWheelNpcArt } from './npcSprites.js';
 import { tickWheelBreak, drainWheelEvents, isWheelBroken, resetWheelBreak, onWheelBreak, wheelObjectKind, isBuilding } from '../game/wheelBreak.js';
 import { WheelShatter, framePx } from './wheelShatter.js';
@@ -585,7 +585,7 @@ export class WheelObjects {
     const P = S && S.player;
     let ready = 0;
     for (const rec of _pages.values()) if (rec.state === 'ready') ready++;
-    /* v2.3.3565: + a dungeon mouth's picture, standing (wheelDoors.js): its
+    /* v2.3.3566: + a dungeon mouth's picture, standing (wheelDoors.js): its
        mound stops your boots as a building's walls do */
     const mouthVer = wheelMouthBlockVer();
     if (P && (!this._blockAt || ready !== this._pagesSeen || mouthVer !== this._mouthSeen || Math.abs(P.x - this._blockAt.x) + Math.abs(P.y - this._blockAt.y) > BLOCK_MOVE)) {

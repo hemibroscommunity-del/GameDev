@@ -1,4 +1,4 @@
-/* ═══ v2.3.3565: WHERE EACH DUNGEON'S THINGS STAND, AND ITS WALLS ═══
+/* ═══ v2.3.3566: WHERE EACH DUNGEON'S THINGS STAND, AND ITS WALLS ═══
  *
  * The owner's ChatGPT pictures of the Goo Grotto (src/data/dungeonArt.js,
  * cut by tools/world/add-dungeon-art.mjs) stood in its arena, as its prompt

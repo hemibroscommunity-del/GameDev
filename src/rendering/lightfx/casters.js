@@ -29,7 +29,7 @@ import { Sprite } from 'pixi.js';
 import { figureFeetY, figureFeetX } from '../systems/entityRenderer.js';   /* v2.3.3392: + the x an emoting figure stands at */
 import { wheelObjectCasters } from '../wheelObjects.js';   /* v2.3.3000: the Wheel's objects cast */
 import { farmCasters } from '../farmWorld.js';   /* v2.3.3136 */
-import { wheelDoorCasters } from '../wheelDoors.js';   /* v2.3.3565: a dungeon mouth's mound */
+import { wheelDoorCasters } from '../wheelDoors.js';   /* v2.3.3566: a dungeon mouth's mound */
 
 /* The local player's stand-in sprites on the effects renderer.  NOT every
    sprite it owns: `slashSprite` is the sword's arc effect, light rather than
@@ -219,7 +219,7 @@ export function collectCasters(S, er, fx, zone) {
      billboards and the column-by-column buildings, as the props above
      (wheelObjects.js wheelObjectCasters); nothing outside the Wheel */
   wheelObjectCasters(out);
-  /* v2.3.3565: and a dungeon mouth's mound, where the owner has drawn one
+  /* v2.3.3566: and a dungeon mouth's mound, where the owner has drawn one
      (wheelDoors.js) -- column by column from its foot, as a building */
   wheelDoorCasters(out);
   /* v2.3.3136: your farm's barn, props, trees and crops (farmWorld.js) */
