@@ -1,4 +1,4 @@
-# The Points tab's two heads, in the owner's art (v2.3.3554)
+# The Points tab's two heads, in the owner's art (v2.3.3557)
 
 The owner, 2026-10-21, sent a sheet of art for the Points tab and a mockup of
 how it goes together (kept as `assets/icons-source/sheet-points-heads.png` and
@@ -33,7 +33,8 @@ weapon is chosen on the spend window's tabs.
 
 ## Pictures
 
-From `mp-pointheads` on the QA phone (390 x 844 at 3x, and sideways):
+From `mp-pointheads` on the QA phone in the world's BroTown (390 x 844 at 3x,
+and sideways; the "before" crops are the grid alone, from main):
 
 - `docs/shots/points-heads-390.webp` -- before and after, every pool full;
 - `docs/shots/points-heads-states.webp` -- Bow 4 alone (grey 0s beside gold
@@ -145,11 +146,14 @@ A three-numeral count is drawn smaller to fit its column (at 390 a weapon's
   sheet's; nothing of the old heads left; the two frames one width, one over
   the other; between the weapons two carved seams, a dark line over a warm
   one, with nothing on them, across the rows; the held weapon's row lit.
-- `mp-pointheads` (390, 320, sideways; pictures of each state in
+- `mp-pointheads` (390, 320, sideways, each in the world -- `world: 'wheel'`,
+  main's rule for a new scenario since v2.3.3552 -- with the coach's lessons
+  seeded done so its first-points card stays out of the pictures; pictures of each state in
   `tools/qa/mp/out/pointheads-*.png`): every pool full (all gold, breathing);
   the spend window's tabs; Bow 4 alone (grey 0s beside gold, only the gold
-  breathing, and the breath watched on the page: 1.16x and back, 1.6 s from
-  small to big, the 0 beside it never moving); nothing to spend (all grey,
+  breathing, and the breath read off its own animation: running, 3.2 s a
+  breath, seeked through it 1x to 1.16x at exactly 1.6 s and back, the 0 beside
+  it with no animation); nothing to spend (all grey,
   still); three numerals ("147", whole,
   inside its head, no stat name cut); sideways icons 12 px or more.
 - `mp-statcols`, `mp-prog3`, `mp-landscape-dash`, `mp-statpeek`, `mp-charfit`,

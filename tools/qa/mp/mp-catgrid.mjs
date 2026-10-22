@@ -278,7 +278,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        the client helper that draws them -- a badge that agreed with its own
        formula and not with the server would pass a test of the formula. */
     /* v2.3.3052: a live count breathes (game.css bt-pts-count since
-       v2.3.3554, a transform); its box is measured at rest, so where it SITS
+       v2.3.3557, a transform); its box is measured at rest, so where it SITS
        is what is asserted */
     await P.page.addStyleTag({ content: '.bt-pts-count,.bt-pts-count::before{animation:none !important}' }).catch(() => {});
     const badges = () => P.page.evaluate(() => {
@@ -294,7 +294,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
            screen, which is a stronger check than text was: a wrong or
            missing file shows up as a wrong number.  naturalWidth guards
            against a path that 404s into an empty box.
-           v2.3.3554: the owner's Points sheet's numerals, gold-6.png
+           v2.3.3557: the owner's Points sheet's numerals, gold-6.png
            gold-4.png -> "64", grey-0.png -> "0" -- upright AND sideways (the
            plain brass pill sideways is gone), and the exact count however
            big (no "99+"). */
@@ -325,7 +325,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { out, spend, poolBy: JSON.parse(JSON.stringify(pb)), shared: p.shared, free };
     });
     const b0 = await badges();
-    const badgeText = (n) => String(n || 0);   /* v2.3.3554: exact, never "99+" */
+    const badgeText = (n) => String(n || 0);   /* v2.3.3557: exact, never "99+" */
     /* ═══ v2.3.2692: EVERY CELL'S DRAWN NUMBER IS ITS REAL COUNT ═══
        The thirteen counts are the owner's white-outline numeral SPRITES now,
        so the number on screen is a row of image files.  Read it back off
@@ -350,7 +350,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       { badges: Object.fromEntries(Object.entries(b0.out).map(([k, v]) => [k, v.text])), spend: b0.spend, poolBy: b0.poolBy, free: b0.free });
     rec.ok(`${label}: ...and the character's badge is what the shared pool can spend`,
       !!b0.out.shared && b0.out.shared.text === badgeText(b0.spend.shared), { badge: b0.out.shared && b0.out.shared.text, spend: b0.spend.shared });
-    rec.ok(`${label}: ...in the owner's Points numerals, GOLD with points to spend and GREY at 0 (v2.3.3554, the sheet's colour rule; upright and sideways)`,
+    rec.ok(`${label}: ...in the owner's Points numerals, GOLD with points to spend and GREY at 0 (v2.3.3557, the sheet's colour rule; upright and sideways)`,
       Object.values(b0.out).every((v) => v.sprite && v.tone === (Number(v.text) > 0 ? 'gold' : 'grey')),
       Object.fromEntries(Object.entries(b0.out).map(([k, v]) => [k, { text: v.text, tone: v.tone }])));
     rec.ok(`${label}: ...and every numeral sprite actually decoded (a wrong path is an invisible box)`,
@@ -358,7 +358,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: ...and every badge sits inside its header, not clipped off its edge`,
       Object.values(b0.out).every((v) => v.inHead), b0.out);
 
-    /* ═══ v2.3.3554: THE TWO HEADS IN THE OWNER'S POINTS ART ═══
+    /* ═══ v2.3.3557: THE TWO HEADS IN THE OWNER'S POINTS ART ═══
        Owner: "On the character points screen swap out the old style icons
        with these.  It should look similar to the second screenshot mockup but
        it won't have the shaped backgrounds behind the icons.  Also the
@@ -405,7 +405,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }) : [],
       };
     });
-    rec.ok(`${label}: both heads are the owner's gold frames (v2.3.3554), and each frame's picture decodes`,
+    rec.ok(`${label}: both heads are the owner's gold frames (v2.3.3557), and each frame's picture decodes`,
       heads.frames && heads.frameSrc[0] === 'frame-weapons.png' && heads.frameSrc[1] === 'frame-character.png'
         && heads.frameDecoded.every(Boolean), heads);
     rec.ok(`${label}: ...the weapons' frame holds three rows in the owner's order, sword, staff, bow`,

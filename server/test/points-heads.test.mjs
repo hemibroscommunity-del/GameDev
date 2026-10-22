@@ -1,4 +1,4 @@
-/* ═══ v2.3.3554: THE POINTS TAB'S TWO HEADS, IN THE OWNER'S ART ═══
+/* ═══ v2.3.3557: THE POINTS TAB'S TWO HEADS, IN THE OWNER'S ART ═══
  * (docs/specs/points-heads.md; tools/ui/cut-points-heads.py writes the
  * pictures and the GENERATED src/data/pointsHeadArt.js)
  *

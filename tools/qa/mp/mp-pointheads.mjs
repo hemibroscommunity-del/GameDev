@@ -1,4 +1,4 @@
-/* ═══ THE POINTS TAB'S TWO HEADS IN THE OWNER'S ART (v2.3.3554, docs/specs/points-heads.md) ═══
+/* ═══ THE POINTS TAB'S TWO HEADS IN THE OWNER'S ART (v2.3.3557, docs/specs/points-heads.md) ═══
  *
  * The owner, 2026-10-21, with a sheet of art and a mockup: "On the character
  * points screen swap out the old style icons with these.  It should look
@@ -17,9 +17,9 @@
  *      counts GREY 0 and still, the bow's and the character's GOLD 9 and
  *      breathing -- the sheet's colour rule, per pool; and the breath is SLOW
  *      (the owner: "If there are unallocated numbers waiting to be spent make
- *      them slowly grow then shrink"): watched for 3.6 s on the page, the bow's
- *      9 swells to 1.12x or more and back, 1.6 s from small to big, while the
- *      sword's 0 never moves;
+ *      them slowly grow then shrink"): read off the bow's 9's own animation --
+ *      running, 3.2 s a breath, and seeked through it 1x swelling to 1.12x or
+ *      more at exactly 1.6 s and back -- while the sword's 0 has none;
  *   4. every weapon level 1: every count a grey 0, nothing breathing;
  *   5. every weapon level 50: three numerals, "147", drawn whole (never
  *      "99+") and inside its head, upright at 390 and 320 and sideways;
@@ -27,12 +27,25 @@
  *      the head is 1.45 of a cell there) and no stat name is cut;
  *   7. no page errors.
  * Pictures: tools/qa/mp/out/pointheads-<view>-<state>.png.
+ *
+ * IN THE WORLD (v2.3.3557): every player plays the Wheel, `world: 'wheel'` --
+ * main's rule since v2.3.3552 (tools/qa/mp/oldMap.mjs: a new scenario never
+ * plays the retired old map), checked as each view joins.  And every coach
+ * lesson is seeded done, so the first-points card (v2.3.3551, which rings
+ * this very grid while points wait and none is placed) stays out of the
+ * pictures; mp-pointstips tests that card.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const OUT = join(H.REPO, 'tools/qa/mp/out');
+/* every coach lesson already done in this browser (QuestCoach.jsx LESSONS),
+   `points` included: the grid is pictured as a player who knows it sees it */
+const COACH_DONE = "try { if (!localStorage.getItem('bt_coach_v1')) localStorage.setItem('bt_coach_v1', JSON.stringify("
+  + JSON.stringify({ openDash: true, move: true, equip: true, dashAfterTurnIn: true, equipAll: true, cycle: true,
+    blockRanged: true, attack: true, special: true, points: true, chatTap: true, passkey: true })
+  + ")); } catch (e) {}";
 
 async function openPoints(P, land) {
   if (land) {
@@ -153,11 +166,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* every player joins upright, the sideways one rotates after (the
        creator cannot be finished sideways: mp-catgrid) */
     const P = await H.newPlayer(browser, { name: who, wsPort, webPort,
-      viewport: land ? { width: 390, height: 844 } : vp, touch: true, dpr: 3 });
+      viewport: land ? { width: 390, height: 844 } : vp, touch: true, dpr: 3, world: 'wheel', init: COACH_DONE });
     await H.enterWorld(P);
     await P.page.waitForTimeout(1500);
     if (land) { await P.page.setViewportSize(vp); await P.page.waitForTimeout(1100); }
     const id = await H.readState(P, (S) => S.myId);
+    const zone = await H.readState(P, (S) => S.currentZone);
+    rec.ok(`${view}: in the world (zone "${zone}"), not the retired old map`, zone === 'wheel', { zone });
 
     if (view === '390') {
       /* ── 1. every pool full ── */
@@ -221,8 +236,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
           && !!o.bow && Number(o.bow.text) === mixed.want.bow && mixed.want.bow > 0 && o.bow.tone === 'gold' && o.bow.breathes
           && !!o.shared && Number(o.shared.text) === mixed.want.shared && mixed.want.shared > 0 && o.shared.tone === 'gold' && o.shared.breathes,
         { counts: counts(mixed), want: mixed.want });
-      /* ...and the breath, watched: the scale the page draws, every 100 ms */
-      const breath = await P.page.evaluate(async () => {
+      /* ...and the breath, read off the animation ITSELF: it runs, and seeked
+         through one breath (paused, its own clock set every 200 ms, the scale
+         the page then computes) it is 1x, swelling to its peak at exactly half
+         way, 1.6 s, and back to 1x at 3.2 s.  v2.3.3557: never by sampling
+         the wall clock -- in the world this box draws a few frames a second,
+         the animation's time moves only when a frame is drawn and the page's
+         timers starve (six samples in 3.6 s, "2.3 s from small to big": TRAPS
+         §200); seeked, the page's frame rate never enters. */
+      const breath = await P.page.evaluate(() => {
         const el = (k) => document.querySelector(`[data-prog3-grid] [data-prog3-head-badge="${k}"]`);
         const scaleOf = (e) => {
           const t = e ? getComputedStyle(e).transform : 'none';
@@ -230,27 +252,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const m = /matrix\(([^,]+)/.exec(t);
           return m ? +(+m[1]).toFixed(3) : 1;
         };
-        const t0 = performance.now();
-        const gold = [];
-        const grey = [];
-        while (performance.now() - t0 < 3600) {
-          gold.push([Math.round(performance.now() - t0), scaleOf(el('bow'))]);
-          grey.push(scaleOf(el('sword')));
-          await new Promise((r) => setTimeout(r, 100));
-        }
-        const cs = el('bow') ? getComputedStyle(el('bow')) : null;
-        return { gold, grey, name: cs && cs.animationName, dur: cs && cs.animationDuration,
-          greyName: el('sword') ? getComputedStyle(el('sword')).animationName : null };
+        const gold = el('bow');
+        const grey = el('sword');
+        const a = gold ? gold.getAnimations().find((x) => x.animationName === 'bt-pts-count') : null;
+        const out = { name: a ? a.animationName : null, greyAnims: grey ? grey.getAnimations().length : -1, greyScale: grey ? scaleOf(grey) : null };
+        if (!a) return out;
+        out.running = a.playState === 'running';
+        const tm = a.effect.getComputedTiming();
+        out.dur = tm.duration;
+        out.iters = tm.iterations;
+        const was = a.currentTime;
+        a.pause();
+        out.at = [];
+        for (let ms = 0; ms <= 3200; ms += 200) { a.currentTime = ms; out.at.push([ms, scaleOf(gold)]); }
+        a.currentTime = was;
+        a.play();
+        return out;
       });
-      const gs = breath.gold.map((g) => g[1]);
-      const top = breath.gold[gs.indexOf(Math.max(...gs))];
-      const low = breath.gold[gs.indexOf(Math.min(...gs))];
-      const half = top && low ? Math.abs(top[0] - low[0]) / 1000 : null;
-      rec.ok(`${view}: ...the waiting 9 SLOWLY grows then shrinks -- a ${breath.dur} breath, ${Math.min(...gs)}x to ${Math.max(...gs)}x, ${half}s from small to big -- and the 0 beside it never moves`,
-        breath.name === 'bt-pts-count' && breath.dur === '3.2s' && Math.max(...gs) >= 1.12 && Math.min(...gs) <= 1.04
-          && half !== null && Math.abs(half - 1.6) <= 0.45
-          && breath.greyName === 'none' && breath.grey.every((v) => v === 1),
-        { name: breath.name, dur: breath.dur, greyName: breath.greyName, half, gold: breath.gold.filter((_, i) => i % 3 === 0) });
+      const at = breath.at || [];
+      const sc = at.map((p) => p[1]);
+      const peak = at.length ? at[sc.indexOf(Math.max(...sc))] : null;
+      const rises = at.filter((p) => p[0] <= 1600).every((p, i, arr) => i === 0 || p[1] >= arr[i - 1][1]);
+      const falls = at.filter((p) => p[0] >= 1600).every((p, i, arr) => i === 0 || p[1] <= arr[i - 1][1]);
+      rec.ok(`${view}: ...the waiting 9 SLOWLY grows then shrinks -- running, ${breath.dur} ms a breath, ${sc[0]}x swelling to ${peak && peak[1]}x at ${peak && peak[0]} ms and back to ${sc[sc.length - 1]}x -- and the 0 beside it never moves`,
+        breath.name === 'bt-pts-count' && breath.running === true && breath.dur === 3200 && breath.iters === Infinity
+          && at.length === 17 && Math.abs(sc[0] - 1) <= 0.005 && Math.abs(sc[sc.length - 1] - 1) <= 0.005
+          && !!peak && peak[0] === 1600 && peak[1] >= 1.12 && peak[1] <= 1.25 && rises && falls
+          && breath.greyAnims === 0 && breath.greyScale === 1,
+        { name: breath.name, running: breath.running, dur: breath.dur, iters: breath.iters, at, greyAnims: breath.greyAnims, greyScale: breath.greyScale });
 
       /* ── 4. nothing to spend ── */
       await H.devOp(wsPort, 'combat', id, { skill: 'all', level: 1, deal: true });
