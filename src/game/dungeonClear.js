@@ -46,7 +46,7 @@ export function startDungeonClear(S, zone, now, leave, setTimer) {
   return clear;
 }
 
-/** v2.3.3563: what the boss's chest held and the clear's XP paid into each
+/** v2.3.3565: what the boss's chest held and the clear's XP paid into each
     weapon (server/src/dungeonreward.js), kept on the clear of THAT dungeon
     for its card (game/bossChest.js reads it).  Nothing for another zone's
     clear, nor when the worker said nothing. */

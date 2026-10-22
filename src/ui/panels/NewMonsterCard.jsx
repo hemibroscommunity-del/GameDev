@@ -32,7 +32,7 @@ const POLL_MS = 200;
 export function NewMonsterCard({ stateRef }) {
   const [, setTick] = React.useState(0);
   const seenRef = React.useRef(null);
-  /* v2.3.3563: the bottom of the dungeon's clear card while it is up (0 when
+  /* v2.3.3565: the bottom of the dungeon's clear card while it is up (0 when
      it is not).  That card grew a row for the boss's chest, and this card,
      placed just under the minimap, sat over it; it steps down under it */
   const clearRef = React.useRef(0);

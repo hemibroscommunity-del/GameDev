@@ -1697,7 +1697,7 @@ remnant to migrate server-side, not a mode to preserve.
         entrance, walls and things inside, and the boss's chest, prompts in
         docs/art/DUNGEON-ART-PROMPTS.md, made by
         tools/world/dungeon-art-prompts.mjs), and whether the huge boss should
-        reach as far as it looks (a reward worth the trip: v2.3.3563's chest,
+        reach as far as it looks (a reward worth the trip: v2.3.3565's chest,
         below).
     - since v2.3.3558 THE GOO GROTTO'S GIANT SLIME SPLITS -- the owner: "a
       giant slime that explodes and spawns small (normal size slimes) like
@@ -1737,7 +1737,7 @@ remnant to migrate server-side, not a mode to preserve.
         see-through pixel the frame's edge cannot reach in idle, shoot and hit,
         the pet sheet made again (`?v=2.3.3558`); slime-boss §9, TRAPS §246;
       - `slime-boss` suite, `mp-slimeboss`: docs/specs/slime-boss.md.
-    - since v2.3.3563 THE BOSS'S CHEST, AND THE CLEAR'S XP INTO THE WEAPONS YOU
+    - since v2.3.3565 THE BOSS'S CHEST, AND THE CLEAR'S XP INTO THE WEAPONS YOU
       USED -- the owner's "Yes" to "the boss drops a chest with sure rewards
       ... The clear's XP would go into the weapon you used"
       (server/src/dungeonreward.js, from dungeon.js `_dungeonComplete` before

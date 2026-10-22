@@ -1,4 +1,4 @@
-/* ═══ v2.3.3563: THE BOSS'S CHEST, ON THE CLEAR'S CARD ═══
+/* ═══ v2.3.3565: THE BOSS'S CHEST, ON THE CLEAR'S CARD ═══
  *
  * The worker pays a world dungeon's clear with the boss's chest (gold, three
  * of the land's shards, one time in ten a Rare Gem) and puts the clear's XP

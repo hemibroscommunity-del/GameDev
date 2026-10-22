@@ -76,7 +76,7 @@ import { monsterStatusMethods } from './monsterstatus.js'; /* v2.3.2996: a monst
 import { sprintMethods } from './sprint.js'; /* v2.3.3006: sprint -- stamina for 1.33x the walk */
 import { wheelDungeonMethods } from './wheeldungeon.js'; /* v2.3.3016: the Wheel's dungeons, behind its landmarks */
 import { slimeBossMethods } from './slimeboss.js'; /* v2.3.3558: the Goo Grotto's giant slime splits */
-import { dungeonRewardMethods } from './dungeonreward.js'; /* v2.3.3563: the boss's chest, and the clear's XP into the weapons used */
+import { dungeonRewardMethods } from './dungeonreward.js'; /* v2.3.3565: the boss's chest, and the clear's XP into the weapons used */
 import { devToolsMethods } from './devtools.js'; /* v2.3.2240 */
 import { abilityMethods } from './abilities.js'; /* v2.3.1733 */
 // v2.3.1128 (PR11): guild-quest verification -- server-checked
@@ -6479,7 +6479,7 @@ Object.assign(GameRoom.prototype, monsterStatusMethods); /* v2.3.2996 */
 Object.assign(GameRoom.prototype, sprintMethods); /* v2.3.3006 */
 Object.assign(GameRoom.prototype, wheelDungeonMethods); /* v2.3.3016 */
 Object.assign(GameRoom.prototype, slimeBossMethods); /* v2.3.3558 */
-Object.assign(GameRoom.prototype, dungeonRewardMethods); /* v2.3.3563 */
+Object.assign(GameRoom.prototype, dungeonRewardMethods); /* v2.3.3565 */
 Object.assign(GameRoom.prototype, devToolsMethods); /* v2.3.2240 */
 // v2.3.1733: stamina abilities + the milestone ladder -- see abilities.js.
 Object.assign(GameRoom.prototype, abilityMethods);

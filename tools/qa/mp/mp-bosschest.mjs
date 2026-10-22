@@ -1,4 +1,4 @@
-/* ═══ THE BOSS'S CHEST, ON A PHONE, IN THE WORLD (v2.3.3563, docs/specs/boss-chest.md) ═══
+/* ═══ THE BOSS'S CHEST, ON A PHONE, IN THE WORLD (v2.3.3565, docs/specs/boss-chest.md) ═══
  *
  * The owner's "Yes" to "a reward worth the trip": "the boss drops a chest with
  * sure rewards, for example extra gold, the land's shards and a chance at its
