@@ -39,8 +39,9 @@ and "Enter the Goo Grotto" comes up there.
 
 - **It stops you:** the mound stops your boots at the lip, as a building's walls do.
 - **Its shadow:** the world's sun casts one from it.
-- **Loading:** its picture (1.5 MB in memory) loads as you come near and is
-  let go once you're far away, inside the dungeon included. That's the
+- **Loading:** its picture (1.5 MB in memory; 2.1 MB since v2.3.3567, with
+  its four ferns packed under it) loads as you come near and is let go once
+  you're far away, inside the dungeon included. That's the
   world's way with its buildings, not the loading screen's.
 - **Fallback:** until the picture is in, the old code-drawn opening shows.
 
@@ -105,6 +106,15 @@ The card's chest is the owner's picture too (it was the old daily chest).
 
   Pictures: `tools/qa/mp/out/grotto-*.png`.
 - `mp-bosschest` reads the owner's chest on the card (shut, then open).
+
+## Since v2.3.3567: it moves
+
+The owner: "You can use code to make those a bit more animated for the water
+effects and such. Maybe a little Breeze for the ferns?" The slime drips and
+bubbles, the torches burn, the mushrooms let spores float up and the ferns
+sway. The tool now also reads where each picture moves, and cuts the
+entrance's four ferns out so they can sway (they are packed under the picture
+in its file, which is 880 × 603 now). See docs/specs/grotto-life.md.
 
 ## Next
 

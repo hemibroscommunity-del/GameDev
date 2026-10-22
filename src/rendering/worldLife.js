@@ -67,6 +67,7 @@ import { SHADE, formShadeOn } from './formShade.js';
 import { readArtBottoms } from './propGround.js';
 import { npcArtUrl } from './npcSprites.js';
 import { forEachWheelSwayer, forEachWheelFlag } from './wheelObjects.js';   /* v2.3.3000: the Wheel's trees and bushes sway; v2.3.3382: and the Town Hall's flag waves */
+import { forEachGrottoSwayer } from './grottoFx.js';   /* v2.3.3567: and the Goo Grotto's ferns */
 
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
@@ -248,6 +249,11 @@ const SWAY = {
   pine:   { f0: 0.36, zeta: 0.14, lean: 0.45, turb: 0.34, gust: 1.2, max: 2.8 },
   shrub:  { f0: 0.9,  zeta: 0.2,  lean: 0.9,  turb: 0.9,  gust: 2.2, max: 4.5 },
   canopy: { f0: 0.3,  zeta: 0.28, lean: 0.2,  turb: 0.28, gust: 0.55, max: 1.2 },
+  /* v2.3.3567: a fern -- the owner's "a little Breeze for the ferns": quick
+     and light like a shrub, but a breeze, not a gale: its fronds' tips move a
+     couple of px, so the shade under them cut out of the picture
+     (tools/world/add-dungeon-art.mjs) shows only as their own shadow */
+  fern:   { f0: 0.75, zeta: 0.22, lean: 0.35, turb: 0.8,  gust: 1.2, max: 2.6 },
 };
 
 /* ═══ v2.3.3001: WHAT A GUST SHAKES LOOSE OF A WHEEL TREE ═══
@@ -439,6 +445,7 @@ export class WorldLife {
     try { this._updateTrees(S, t, dt, wind, fx, calm, now, probe); } catch (e) { this._err('trees', e); }
     try { this._updateWheelSway(t, dt, wind, calm, probe); } catch (e) { this._err('wheelsway', e); }
     try { this._updateWheelFlags(t, dt, wind, calm, probe); } catch (e) { this._err('wheelflags', e); }
+    try { this._updateGrottoSway(t, dt, wind, calm, probe); } catch (e) { this._err('grottosway', e); }
     try { this._updatePropSway(S, t, dt, wind, er, calm, probe); } catch (e) { this._err('props', e); }
     try { this._updateCanopies(S, t, dt, wind, er, calm, probe); } catch (e) { this._err('canopy', e); }
     try { this._updateBuildings(S, t, dt, wind, er, calm, lamp, probe); } catch (e) { this._err('buildings', e); }
@@ -549,6 +556,23 @@ export class WorldLife {
     });
     probe.wheelSway = n;
     probe.wheelBits = this._wheelBits;
+  }
+
+  /* ═══ v2.3.3567: THE GOO GROTTO'S FERNS SWAY ═══
+     The owner: "Maybe a little Breeze for the ferns?"  The entrance's four
+     (cut out of its picture, rendering/wheelDoors.js) and the arena's two
+     (rendering/arenaWorld.js), each anchored at its base, leaned by the same
+     spring and wind as the Wheel's bushes above -- the ground point never
+     moves -- and upright under the calm switch. */
+  _updateGrottoSway(t, dt, wind, calm, probe) {
+    let n = 0;
+    forEachGrottoSwayer((spr, x, y) => {
+      if (calm) { if (spr.skew.x !== 0) spr.skew.x = 0; return; }
+      const st = this._spring(spr, x, y);
+      spr.skew.x = -this._swayStep('fern', st, x, y, t, dt, wind);
+      n++;
+    });
+    probe.grottoSway = n;
   }
 
   /* ═══ v2.3.3382: THE WHEEL'S FLAGS WAVE ═══

@@ -8226,3 +8226,39 @@ window over the minimap goes in game.css's pointer-events list too.
 the dim there, "Got it", a weapon stat's ✕, the gear picker's ✕, a new tap a
 moment later still opening the map, `?tapthrough` as the game was, and the ✕
 on a computer); on main 10 of them fail.
+
+## 248. "Split the picture at its foot line; each half shades itself" (v2.3.3567)
+
+**The plausible move.** A big picture that both stands and lies on the ground
+(the Goo Grotto's mouth: a mound, and the slime spilling out in front) is cut
+in two at its foot line. The top half is a Sprite in `entities`, sorted with
+everyone and given the world's form shading like any prop (`_vShade =
+SHADE.prop`). The bottom half is a Sprite lying flat on the ground-loot
+layer, as painted. Each half is right on its own.
+
+**Why it is wrong.** Form shading (formShade.js) is a gradient over each
+sprite's OWN quad: as painted at its top, about two thirds as bright and cooler
+at its bottom. So the standing half ends at its darkest on the foot line,
+and the flat half starts there as painted. The picture steps from dark to
+light along one straight row, right across its rocks and its ferns (v2.3.3566;
+seen in mp-grottolife's still picture). The fix that comes to mind is the
+characters' one: put `_vShadeRef` and `_vShadeKids` on the container, so one
+gradient spans every piece in it. But `_vShadeKids` is also how
+sharpPixels.js recognises a character (`wantsSharp`). Every sprite in that
+container would go to the characters' sharp batcher, which samples painted
+art as blocky squares.
+
+**The rule.** Shade each piece with its own `_vShade`, worked out from the
+whole picture's gradient at the piece's height. The gradient is linear, so a
+band of it is exact.
+- A cut-out that stood in the top half takes its band.
+- One standing in front runs down to the base shade at its foot, as any
+  prop's base does.
+- The flat half starts at the base shade and fades back to as painted at its
+  far edge, where it meets the unshaded ground.
+- Never `_vShadeKids` on anything that is not a character.
+
+See wheelDoors.js, "ONE SHADE OVER THE MOUND AND WHAT IS CUT FROM IT".
+
+**Receipt:** `tools/qa/mp/out/grotto-life-mouth-still.png` (mp-grottolife's
+picture under the calm switch): no step at the foot line.

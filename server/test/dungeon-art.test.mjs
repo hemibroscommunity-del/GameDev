@@ -19,6 +19,16 @@
  *      footprint is its own, a low one ('stone', 'scrap') one a jump clears.
  *   5. THE SOURCES are kept (assets/prop-source/dungeons/), so the tool can
  *      be run again.
+ *   6. v2.3.3567, WHERE EACH PICTURE MOVES (rendering/grottoFx.js, the owner's
+ *      "a bit more animated for the water effects and such ... a little
+ *      Breeze for the ferns"): each picture's slime colours, darkest first;
+ *      the mouth's drips inside it, hanging above its floor with room to
+ *      fall, its wet spots on its floor and its spill; its four ferns cut out
+ *      into its file under the picture, each standing where it was cut from
+ *      on its own base; the wall's drips inside the strip with room to fall;
+ *      a torch's basket at its top, a puddle's, the heap's and a mushroom's
+ *      points inside their frames; and what sways in the arena a fern that
+ *      stops nobody.
  */
 import fs from 'fs';
 import path from 'path';
@@ -54,7 +64,9 @@ for (const [home, A] of Object.entries(DUNGEON_ART)) {
   for (const [what, p] of pics) {
     const f = pub(p.url);
     const info = fs.existsSync(f) ? pngInfo(f) : null;
-    check(`${home}: its ${what} is on disk, ${p.w} x ${p.h}, a palette PNG`, !!info && info.w === p.w && info.h === p.h && info.colourType === 3, { url: p.url, info });
+    /* v2.3.3567: the mouth's file is its picture with its ferns under it */
+    const [fw, fh] = p.file || [p.w, p.h];
+    check(`${home}: its ${what} is on disk, ${fw} x ${fh}, a palette PNG`, !!info && info.w === fw && info.h === fh && info.colourType === 3, { url: p.url, info });
   }
   check(`${home}: the mouth's foot is inside it, below its middle (the cave's floor, not its roof)`,
     A.mouth.foot[0] > 0 && A.mouth.foot[0] < A.mouth.w && A.mouth.foot[1] > A.mouth.h / 2 && A.mouth.foot[1] < A.mouth.h, A.mouth);
@@ -150,6 +162,49 @@ for (const home of Object.keys(DUNGEON_ART)) {
   check(`${home}: its three pictures are kept to cut again`, want.every((f) => fs.existsSync(f)), want);
 }
 check('the chest\'s picture is kept to cut again', fs.existsSync(path.join(REPO, 'assets/prop-source/dungeons/chest.png')));
+
+/* ── 6. v2.3.3567: where each picture moves ── */
+const lumOf = (c) => 0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255);
+const isBlue = (c) => (c & 255) > ((c >> 16) & 255) + 40 && (c & 255) > ((c >> 8) & 255);
+const slimeOk = (sl) => Array.isArray(sl) && sl.length === 4 && sl.every(isBlue) && sl.every((c, i) => i === 0 || lumOf(c) >= lumOf(sl[i - 1]));
+const ptIn = (p, w, h) => p[0] >= 0 && p[0] < w && p[1] >= 0 && p[1] < h;
+for (const [home, A] of Object.entries(DUNGEON_ART)) {
+  const M = A.mouth, fy = M.foot[1];
+  check(`${home}: the mouth's, the wall's and the things' slime colours, four blues from darkest to lightest`,
+    slimeOk(M.slime) && slimeOk(A.walls.front.slime) && slimeOk(A.inside.slime), { m: M.slime, w: A.walls.front.slime, i: A.inside.slime });
+  check(`${home}: the mouth's drips hang inside it, above its floor, each with room to fall to a row no lower than its foot`,
+    M.drips.length >= 3 && M.drips.every(([x, y, land]) => ptIn([x, y], M.w, M.h) && y < fy - 20 && land >= y + 8 && land <= fy), M.drips);
+  check(`${home}: its wet spots lie on its floor and the slime spilling out (below the foot's row less 40)`,
+    M.wet.length >= 6 && M.wet.every((p) => ptIn(p, M.w, M.h) && p[1] >= fy - 40), M.wet);
+  const F = M.ferns || [];
+  const fernIds = F.map((f) => f.id);
+  check(`${home}: its four ferns are cut into its file, under the picture, each its own frame`,
+    F.length === 4 && new Set(fernIds).size === 4 && !!M.file && M.file[0] >= M.w && M.file[1] > M.h
+      && F.every((f) => f.x >= 0 && f.y >= M.h && f.x + f.w <= M.file[0] && f.y + f.h <= M.file[1]), { F, file: M.file });
+  check(`${home}: ...each standing where it was cut from, inside the picture, on its own base (its bottom row's middle)`,
+    F.every((f) => f.at[0] >= 0 && f.at[1] >= 0 && f.at[0] + f.w <= M.w && f.at[1] + f.h <= M.h
+      && f.base[0] >= f.at[0] && f.base[0] <= f.at[0] + f.w && f.base[1] === f.at[1] + f.h), F);
+  const big = F.filter((f) => f.base[1] > fy), high = F.filter((f) => f.base[1] < fy);
+  check(`${home}: ...two big ones in front of the mound's corners, two up on its shoulders`,
+    big.length === 2 && high.length === 2 && big.some((f) => f.base[0] < M.w / 3) && big.some((f) => f.base[0] > (2 * M.w) / 3), F);
+  const W = A.walls.front;
+  check(`${home}: the wall's drips run down its front, inside the strip, each with 10 px to fall at least`,
+    W.drips.length >= 3 && W.drips.every((p) => ptIn(p, W.w, W.h) && p[1] <= W.h - 10 && p[1] >= W.h * 0.25), W.drips);
+  const fr = (re) => A.inside.frames.filter((f) => re.test(f.id));
+  const torches = fr(/^torch-/);
+  check(`${home}: each torch post's basket is in its top fifth, its flame as wide as a basket can be`,
+    torches.length === 2 && torches.every((f) => f.fire && f.fire[1] > 0 && f.fire[1] <= f.h * 0.2 && f.fire[0] > 0 && f.fire[0] < f.w && f.fire[2] >= 8 && f.fire[2] <= f.w), torches);
+  const inF = (f, pts) => Array.isArray(pts) && pts.every((p) => ptIn(p, f.w, f.h));
+  check(`${home}: each puddle bubbles at 3 spots or more inside its frame`, fr(/^puddle-/).every((f) => f.wet && f.wet.length >= 3 && inF(f, f.wet)), fr(/^puddle-/));
+  check(`${home}: the heap's slime and its coins inside its frame`, fr(/^heap-/).every((f) => f.wet && f.wet.length >= 2 && inF(f, f.wet) && f.gold && f.gold.length >= 1 && inF(f, f.gold)), fr(/^heap-/));
+  check(`${home}: each mushroom cluster's caps inside its frame`, fr(/^mushroom-/).every((f) => f.caps && f.caps.length >= 2 && inF(f, f.caps)), fr(/^mushroom-/));
+  check(`${home}: nothing else says it moves`, A.inside.frames.filter((f) => !/^(torch|puddle|heap|mushroom)-/.test(f.id)).every((f) => !f.fire && !f.wet && !f.caps && !f.gold));
+}
+for (const home of Object.keys(DUNGEON_ARENA)) {
+  const sways = arenaThings(home).filter((t) => t.sway);
+  check(`${home}: what sways in the arena is a fern, standing, that stops nobody`,
+    sways.length >= 1 && sways.every((t) => /^fern-/.test(t.art) && !t.flat && !t.block), sways);
+}
 
 if (failures) { console.log(`\n${failures} FAILED`); process.exit(1); }
 console.log('\ndungeon-art: all passed');

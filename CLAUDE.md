@@ -1795,6 +1795,40 @@ remnant to migrate server-side, not a mode to preserve.
         docs/specs/dungeon-art.md.  The Great Cave's, the Foundry Dome's and the
         Buried City's pictures are still to come; each is a run of the tool
         and a table of where its things stand.
+    - since v2.3.3567 THE GOO GROTTO MOVES -- the owner: "You can use code to
+      make those a bit more animated for the water effects and such. Maybe a
+      little Breeze for the ferns?":
+      - the art tool reads where each picture moves into dungeonArt.js: each
+        picture's `slime` colours, the mouth's `drips` (given by eye as shares,
+        snapped to each drop's lowest pixel, with the row it lands on) and
+        `wet`, the wall's `drips` (found), a torch's `fire` (its basket's
+        lowest open row), a puddle's and the heap's `wet`, the heap's `gold`,
+        a mushroom's `caps`; the mouth's four FERNS cut out of its picture by
+        a flood fill of their leaves' greens (`ferns`: seed and boxes as
+        shares), packed under it in its file (`file`), the hole each leaves
+        its darkest green, or see-through where its leaves hung over the grass;
+      - `src/rendering/grottoFx.js` draws it, every piece made once and only
+        moved, scaled and faded (TRAPS §218): DRIPS that swell, fall and
+        splash; BUBBLES that swell and pop, and glints (gold on the heap's
+        coins); a TORCH's fire, the campfire's own flames behind its basket's
+        front bars (a holder 1 px north of the post), sparks and a warm light
+        on the floor; SPORES rising off the mushrooms; the little pictures
+        minted per slime's colours with their art (`mintGrottoFx`: the mouth's
+        as it loads, the arena's in game/dungeonArt.js behind the loading
+        screen, the campfire atlas warmed there by gameEvents) and freed with
+        it;
+      - the FERNS sway by worldLife.js's springs and wind (`SWAY.fern`,
+        `_updateGrottoSway`, grottoFx.js `addGrottoSwayer`): the mouth's four
+        and the arena's two (dungeonArena.js `sway`); all of it still under
+        the calm switch;
+      - and the entrance's SEAM at its foot line is gone (v2.3.3566's mound was
+        form-shaded to its darkest there and its flat slime began as painted):
+        every piece takes the mound's gradient at its height, the flat slime
+        fading from its foot shade back to as painted (wheelDoors.js "ONE
+        SHADE"; never `_vShadeKids`, which routes painted art to the
+        characters' sharp batcher: TRAPS §248);
+      - `window.__btGrottoFx()`, the probes' `ferns`/`life`; `dungeon-art` §6,
+        `mp-grottolife`: docs/specs/grotto-life.md.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack

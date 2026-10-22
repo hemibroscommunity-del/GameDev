@@ -8,36 +8,59 @@
      inside  the things that stand in its arena, one picture; each frame's
              `id` its kind and number (pillar-1 ...), `foot` where it meets
              the ground (the middle of its lowest rows)
+   v2.3.3567, where each moves (rendering/grottoFx.js): `slime` a picture's
+   goo colours, darkest first; `drips` [x, y] the tips a drop falls from (the
+   mouth's [x, y, the row it lands on]); `wet` points on its slime, where it
+   bubbles; a torch's `fire` [x, y, width] its basket; a mushroom's `caps`;
+   the heap's `gold`; the mouth's `ferns`, each a frame of the file (`file`
+   its whole size) cut out to sway, `at` its corner in the picture and
+   `base` the point it sways about.
    BOSS_CHEST_ART: the boss's chest, `shut-1` and `open-1`, for every
    dungeon.  Where each thing stands: src/data/dungeonArena.js. */
-export const DUNGEON_ART_V = "2026-10-22T16:11:51.544Z";
+export const DUNGEON_ART_V = "2026-10-22T17:23:30.199Z";
 export const DUNGEON_ART = {
   verdant: {
-    mouth: { url: '/world/dungeons/verdant-mouth.png', w: 880, h: 441, foot: [440, 344] },
+    mouth: {
+      url: '/world/dungeons/verdant-mouth.png', w: 880, h: 441, foot: [440, 344], file: [880, 603],
+      slime: [0x224097, 0x3054b5, 0x4084d7, 0x66b2e6],
+      drips: [[314, 256, 302], [340, 272, 295], [367, 206, 286], [444, 196, 342], [488, 244, 319], [524, 250, 330], [575, 277, 315]],
+      wet: [[313, 304], [579, 314], [511, 317], [394, 346], [342, 353], [468, 364], [537, 374], [578, 383], [418, 402], [356, 411], [521, 415], [588, 421]],
+      ferns: [
+        { id: "left", x: 2, y: 443, w: 180, h: 158, at: [78, 272], base: [175, 430] },
+        { id: "right", x: 184, y: 443, w: 148, h: 134, at: [646, 298], base: [714, 432] },
+        { id: "left-high", x: 334, y: 443, w: 107, h: 55, at: [35, 228], base: [66, 283] },
+        { id: "right-high", x: 443, y: 443, w: 79, h: 81, at: [745, 201], base: [795, 282] },
+      ],
+    },
     walls: {
-      front: { url: '/world/dungeons/verdant-wall-front.png', w: 780, h: 240 },
+      front: {
+        url: '/world/dungeons/verdant-wall-front.png', w: 780, h: 240,
+        slime: [0x2d6285, 0x3a7b9a, 0x4692b7, 0x7db8ca],
+        drips: [[17, 188], [36, 175], [54, 201], [199, 200], [233, 178], [421, 220], [550, 156], [612, 190]],
+      },
       top: { url: '/world/dungeons/verdant-wall-top.png', w: 739, h: 137 },
     },
     inside: {
       url: '/world/dungeons/verdant-inside.png', w: 964, h: 311,
+      slime: [0x0e44c5, 0x165cdf, 0x2472e2, 0x558fe6],
       frames: [
         { id: "pillar-1", x: 144, y: 2, w: 125, h: 200, foot: [62, 200] },
         { id: "pillar-2", x: 271, y: 2, w: 107, h: 129, foot: [53, 129] },
-        { id: "torch-1", x: 2, y: 2, w: 69, h: 220, foot: [35, 220] },
-        { id: "torch-2", x: 73, y: 2, w: 69, h: 219, foot: [26, 219] },
+        { id: "torch-1", x: 2, y: 2, w: 69, h: 220, foot: [35, 220], fire: [35, 29, 34] },
+        { id: "torch-2", x: 73, y: 2, w: 69, h: 219, foot: [26, 219], fire: [43, 33, 35] },
         { id: "boulder-1", x: 380, y: 2, w: 125, h: 120, foot: [63, 120] },
         { id: "boulder-2", x: 659, y: 2, w: 146, h: 94, foot: [69, 94] },
         { id: "boulder-3", x: 507, y: 2, w: 150, h: 116, foot: [82, 116] },
-        { id: "mushroom-1", x: 674, y: 224, w: 61, h: 76, foot: [32, 76] },
-        { id: "mushroom-2", x: 807, y: 224, w: 77, h: 51, foot: [41, 51] },
-        { id: "mushroom-3", x: 886, y: 224, w: 64, h: 46, foot: [32, 46] },
+        { id: "mushroom-1", x: 674, y: 224, w: 61, h: 76, foot: [32, 76], caps: [[33, 19], [2, 35], [57, 40], [21, 66]] },
+        { id: "mushroom-2", x: 807, y: 224, w: 77, h: 51, foot: [41, 51], caps: [[13, 13], [36, 17], [71, 24], [2, 34]] },
+        { id: "mushroom-3", x: 886, y: 224, w: 64, h: 46, foot: [32, 46], caps: [[39, 2], [61, 18], [2, 25], [26, 32]] },
         { id: "fern-1", x: 565, y: 224, w: 107, h: 77, foot: [47, 77] },
         { id: "fern-2", x: 737, y: 224, w: 68, h: 60, foot: [34, 60] },
         { id: "fern-3", x: 459, y: 224, w: 104, h: 80, foot: [64, 80] },
-        { id: "puddle-1", x: 326, y: 224, w: 131, h: 82, foot: [55, 82] },
-        { id: "puddle-2", x: 2, y: 224, w: 180, h: 85, foot: [93, 85] },
-        { id: "puddle-3", x: 807, y: 2, w: 155, h: 93, foot: [85, 93] },
-        { id: "heap-1", x: 184, y: 224, w: 140, h: 85, foot: [70, 85] },
+        { id: "puddle-1", x: 326, y: 224, w: 131, h: 82, foot: [55, 82], wet: [[101, 4], [21, 16], [66, 40], [126, 40], [10, 75], [50, 75], [96, 78]] },
+        { id: "puddle-2", x: 2, y: 224, w: 180, h: 85, foot: [93, 85], wet: [[129, 5], [47, 25], [176, 29], [91, 43], [3, 55], [137, 59], [50, 72]] },
+        { id: "puddle-3", x: 807, y: 2, w: 155, h: 93, foot: [85, 93], wet: [[116, 6], [54, 28], [115, 47], [3, 60], [151, 68], [81, 75], [36, 87]] },
+        { id: "heap-1", x: 184, y: 224, w: 140, h: 85, foot: [70, 85], wet: [[99, 33], [136, 59], [3, 61], [60, 67]], gold: [[59, 48], [79, 61], [122, 72]] },
       ],
     },
   },

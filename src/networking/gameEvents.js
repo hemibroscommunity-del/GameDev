@@ -52,6 +52,7 @@ import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, fr
 import { loadDungeonArt, freeDungeonArt } from '@/game/dungeonArt.js'; /* v2.3.3566: and the owner's pictures of it -- its walls, its things, the boss's chest */
 import { startDungeonClear, setDungeonClearReward } from '@/game/dungeonClear.js'; /* v2.3.3556: 30 s to pick up the loot after a clear; v2.3.3565: and what the boss's chest held */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
+import { campfireAtlas } from '@/rendering/campfireFx.js'; /* v2.3.3567: its torches burn with the campfire's flames, made before you step in */
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
 import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { hardenMaterialWord } from '@/data/hardenCosts.js';   /* v2.3.3139: "-2 Hardened Pine Wood" on a failed attempt */
@@ -943,7 +944,10 @@ export function processGameEvent(type, payload, S, deps) {
                   _dFloor = u;
                 }).catch(function () { return null; });
                 /* v2.3.3566: ...and its pictures, if the land has them (game/
-                   dungeonArt.js), behind the same screen; late ones let go */
+                   dungeonArt.js), behind the same screen; late ones let go.
+                   v2.3.3567: and the campfire's flames its torches burn with
+                   (rendering/arenaWorld.js), made here if no fire has been */
+                try { campfireAtlas(); } catch (e) { /* made on the first frame, then */ }
                 var _artP = loadDungeonArt(_dHome).then(function (rec) {
                   if (_dFloorLate) { freeDungeonArt(rec); return; }
                   _dArt = rec;

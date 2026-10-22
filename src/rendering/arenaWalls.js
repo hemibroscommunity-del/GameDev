@@ -28,6 +28,18 @@ import { ARENA_WALLS, ARENA_EXIT } from '@/data/dungeonArena.js';
 
 const ART = 0.5;   /* game px a picture px */
 
+/** v2.3.3567: where the north wall's front pieces stand (game px): the left
+    edge of each, from the west wall to past the east, for a piece `fW` wide
+    in an arena `W` wide.  The drips that run down it (grottoFx.js, from
+    rendering/arenaWorld.js) stand on the same pieces. */
+export function arenaFrontPieceXs(W, fW) {
+  const { SIDE } = ARENA_WALLS;
+  const out = [];
+  const n = Math.ceil((W - 2 * SIDE) / fW) + 1;
+  for (let k = 0; k < n; k++) out.push(SIDE * 0.5 + k * fW);
+  return out;
+}
+
 /* a row of the strip's pieces from `x0` to `x1` along its length, each piece's
    transform made by `place(sprite, k)` for the k-th */
 function row(parent, tex, n, place) {
@@ -74,7 +86,8 @@ export function drawArenaWalls(parent, art, W, H, wallColor) {
   /* the north wall's top, along the map's top edge */
   row(c, top, Math.ceil(W / tW) + 1, (s, k) => { s.x = k * tW; s.y = Math.max(0, FACE_FOOT - fH - tH * 0.6); });
   /* ...and its front, standing on FACE_FOOT, from the west wall to the east */
-  row(c, front, Math.ceil((W - 2 * SIDE) / fW) + 1, (s, k) => { s.x = SIDE * 0.5 + k * fW; s.y = FACE_FOOT - fH; });
+  const frontXs = arenaFrontPieceXs(W, fW);
+  row(c, front, frontXs.length, (s, k) => { s.x = frontXs[k]; s.y = FACE_FOOT - fH; });
 
   const shade = new Graphics();
   /* the front's shadow on the floor before it */
