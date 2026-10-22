@@ -2509,8 +2509,10 @@ export const HeroExpanded = () => {
                (v2.3.2207, v2.3.2388).  Two px tall: PH_ICON above still
                counts a px a rule, so at 390 a row is 16.3 px for its 17 px
                icon, as in the picture the owner chose; the box reaches a
-               third of a px into a seam, where the art is 1-2 of its 96 px
-               (0.2-0.35 px) clear of its edge (the bow 10). */
+               third of a px into a seam.  The owner's thicker weapons
+               (sheet-points-weapons.png) fill their box top to bottom (the
+               bow 1 of 96 px clear), so a blade's tip or an orb's top may lie
+               a device px on a seam: their dark outline on its dark line. */
             const headRule = (k) => (
               <span key={'rule-' + k} aria-hidden="true" data-points-rule style={{
                 flex: 'none', height: 0, margin: `0 ${PH_PAD}px`,

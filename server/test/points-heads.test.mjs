@@ -4,8 +4,11 @@
  *
  *   1. every picture the heads draw is a file in public/icons/ui/points/ --
  *      the sword, staff, bow and the bust with the up arrow, the two frames,
- *      the gold and grey numerals 0-9 -- and the owner's sheet and mockup the
- *      cutter reads are kept;
+ *      the gold and grey numerals 0-9 -- and the owner's two sheets and mockup
+ *      the cutter reads are kept, the weapons cut from the second sheet (the
+ *      owner: "Actually swap out just the icons for these slightly thicker
+ *      ones I think these will look better at that tiny scale for sword,
+ *      staff, and bow");
  *   2. each file is the size the generated data says (a count is laid out from
  *      those widths before its pictures load, so a re-cut that left them stale
  *      would draw numerals squashed or apart);
@@ -47,9 +50,19 @@ const DIGITS = ['gold', 'grey'].flatMap((t) => [...Array(10).keys()].map((d) => 
     all.length === 26 && missing.length === 0, missing);
   check('1b the frames the data names are those two files',
     A.POINTS_FRAMES.weapons.file === 'frame-weapons.png' && A.POINTS_FRAMES.character.file === 'frame-character.png', A.POINTS_FRAMES);
-  check('1c the owner\'s sheet and mockup are kept beside the cutter, so a redraw is cut again in one command',
-    ['assets/icons-source/sheet-points-heads.png', 'assets/icons-source/mock-points-heads.png', 'tools/ui/cut-points-heads.py']
+  check('1c the owner\'s two sheets and mockup are kept beside the cutter, so a redraw is cut again in one command',
+    ['assets/icons-source/sheet-points-heads.png', 'assets/icons-source/sheet-points-weapons.png', 'assets/icons-source/mock-points-heads.png', 'tools/ui/cut-points-heads.py']
       .every((p) => existsSync(new URL(p, root))));
+  /* the sword, staff and bow are the second sheet's thicker ones; the bust,
+     frames and numerals the first sheet's */
+  const cutter = src('tools/ui/cut-points-heads.py');
+  const weapons = /\nWEAPONS = \{([\s\S]*?)\n\}/.exec(cutter);
+  const icons = /\nICONS = \{([\s\S]*?)\n\}/.exec(cutter);
+  check('1e the sword, staff and bow are cut from the owner\'s thicker weapons (sheet-points-weapons.png), the bust from the first sheet',
+    cutter.includes("WEAPONS_SRC = os.path.join(REPO, 'assets/icons-source/sheet-points-weapons.png')")
+      && !!weapons && ['sword', 'staff', 'bow'].every((n) => new RegExp(`'${n}':`).test(weapons[1]))
+      && !!icons && /'character':/.test(icons[1]) && !/'(sword|staff|bow)':/.test(icons[1]),
+    { weapons: weapons && weapons[1], icons: icons && icons[1] });
   check('1d the art\'s version is the cutter\'s', src('tools/ui/cut-points-heads.py').includes(`VERSION = '${A.POINTS_ART_V}'`), A.POINTS_ART_V);
 }
 

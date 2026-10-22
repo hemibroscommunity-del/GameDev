@@ -9,11 +9,18 @@ how it goes together (kept as `assets/icons-source/sheet-points-heads.png` and
 > shaped backgrounds behind the icons. Also the character icon should have the
 > up arrow instead of the 4 point star.
 
+Then, having seen the first cut on the phone, a second picture of the three
+weapons alone, thick-outlined (kept as
+`assets/icons-source/sheet-points-weapons.png`):
+
+> Actually swap out just the icons for these slightly thicker ones I think
+> these will look better at that tiny scale for sword, staff, and bow
+
 ## What changed
 
 | Where | Was | Now |
 |---|---|---|
-| The weapons' head (the top row's first cell) | the sword, bow and staff fanned down a diagonal, each with a blue badge of the points it can spend | a gold frame holding three rows -- sword, staff, bow -- each with its count on its right, and a carved seam between two rows: a dark line over a faint warm one, nothing on it |
+| The weapons' head (the top row's first cell) | the sword, bow and staff fanned down a diagonal, each with a blue badge of the points it can spend | a gold frame holding three rows -- the owner's thick-outlined sword, staff, bow -- each with its count on its right, and a carved seam between two rows: a dark line over a faint warm one, nothing on it |
 | The character's head (the bottom row's first cell) | your portrait with a blue badge | a gold frame holding the gold bust with the up arrow, its count under it |
 | The counts | the badge numerals on blue circles and pills; "99+" past 99; sideways a plain 7 px brass pill | the sheet's numerals: **gold** while that pool has a point to spend, **grey** at 0 (the sheet's "NUMBER COLOR RULES"); the exact count, a long one drawn smaller to fit ("147"); the same upright and sideways |
 | The weapon in your hand | on a small brass plate | its row lit in the frame |
@@ -42,10 +49,22 @@ and sideways; the "before" crops are the grid alone, from main):
 - `docs/shots/points-heads-sideways.webp` -- before and after, sideways;
 - `docs/shots/points-heads-window.webp` -- the spend window's lane tabs;
 - `docs/shots/points-heads-dividers.webp` -- the seven dividers the owner chose
-  the seam from (below), every pool full above and Bow 4 alone below.
+  the seam from (below), every pool full above and Bow 4 alone below (drawn
+  with the first cut's thinner weapons, before the owner's thicker ones);
+- `docs/shots/points-heads-weapons.webp` -- the first cut's weapons beside the
+  owner's thicker ones in the frame, every pool full and Bow 4 alone, upright
+  and sideways.
 
 ## Decided here, and why
 
+- **The weapons are the owner's thicker icons** (the second sheet): a sword,
+  a staff with a big blue orb (no sparkles) and a bow with its arrow, each
+  in a thick dark outline. They are cut the same way and drawn at the same
+  sizes (12-17 CSS px); they fill more of their square than the first cut's
+  (the sword and staff top to bottom, the bow 94 of 96 px tall where it was
+  76), so the bow is about a quarter bigger. Nothing else changed: the bust,
+  the frames, the numerals and every size the tab works out are the first
+  sheet's, byte for byte.
 - **The weapons are parted by a carved seam** -- the owner's pick. The first
   cut had a gold hairline fading at its ends with a small diamond in its
   middle, and the owner, seeing it on the phone: "The new method is MUCH
@@ -64,8 +83,9 @@ and sideways; the "before" crops are the grid alone, from main):
   docs/UI-DESIGN-NOTES.md now says not to suggest one. The seam is 2 px where
   the rule was 1, and the icons kept their size: at 390 a row is 16.3 px for
   its 17 px icon, as in the picture the owner chose; the icon's box reaches a
-  third of a px into a seam, where the sword's and staff's art is 1-2 of its
-  96 px (0.2-0.35 CSS px) clear of the edge.
+  third of a px into a seam. The thicker weapons fill their box top to bottom
+  (the bow 1 of 96 px clear), so a blade's tip or the orb's top may lie a
+  device px on a seam: their dark outline on its dark line.
   - The one-device-pixel gold line was the thinnest, but drawn as a box that
     thin it vanished sideways (0.34 px rounds to nothing at some heights): a
     line under a CSS pixel must be a border, which a browser never draws under
@@ -111,13 +131,15 @@ A three-numeral count is drawn smaller to fit its column (at 390 a weapon's
 
 ## How
 
-- **Cut by a tool.** `tools/ui/cut-points-heads.py` reads the sheet and cuts
-  each piece by its own outline (the parts that make it, never a box: the
-  sheet's word labels sit 0-4 px under the icons), drops the faint glow under
-  alpha 40, lifts the background remover's ~250 to solid, and resizes with the
-  colour weighted by alpha. It writes `public/icons/ui/points/`:
-  - `sword`, `staff` (with its two sparkles), `bow`, `character` -- 96 px on
-    their longer side (drawn 12-35 CSS px, 3x on an iPhone);
+- **Cut by a tool.** `tools/ui/cut-points-heads.py` reads the two sheets --
+  the weapons from `sheet-points-weapons.png`, one piece in each third of it,
+  everything else from `sheet-points-heads.png` -- and cuts each piece by its
+  own outline (the parts that make it, never a box: the first sheet's word
+  labels sit 0-4 px under its icons), drops the faint glow under alpha 40,
+  lifts the background remover's solid (~250, ~253 on the weapons' sheet) to
+  solid, and resizes with the colour weighted by alpha. It writes `public/icons/ui/points/`:
+  - `sword`, `staff`, `bow` (the thick-outlined ones), `character` -- 96 px
+    on their longer side (drawn 12-35 CSS px, 3x on an iPhone);
   - `frame-weapons`, `frame-character` -- the two brackets at 0.4 of the sheet;
   - `gold-0` .. `gold-9` and `grey-0` .. `grey-9` -- 64 px tall, each row's
     numerals cut to that row's own top and foot so a "63" stands on one line;
