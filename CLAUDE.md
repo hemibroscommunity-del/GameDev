@@ -1563,6 +1563,19 @@ remnant to migrate server-side, not a mode to preserve.
     bystanders who never hurt it take nothing; kill switch `wheelpursue:
     false`; server only: docs/specs/wheel-monsters.md "Provoked from the safe
     ground", `wheelzone` §5d.
+  - Since v2.3.3569 THE SAFE GROUND HEALS AS THE OLD TOWN DID -- the owner:
+    "Yes standing on the safe ground should heal you quickly":
+    - BroTown and the commons (`_wheelSafeAt`) are a hub to the regen tick
+      (index.js `_tickPlayerRegen`, `inHub || safeHeal`): 10% of HP, stamina
+      and mana a tick, about 7 s empty to full where the wilds' trickle took
+      about 67;
+    - only out of a fight: 6 s with nothing taken or dealt
+      (`SPOKE_REGEN_OOC_MS`), because a monster you provoked can follow you
+      onto the safe ground;
+    - none of the three in a duel or an arena match, and no stamina top-off
+      in Lil Bro's race (`ps._race`, its sprint tuned on the trickle);
+    - server/src/safeheal.js; kill switch `safeheal: false`; no wire change;
+    - `safe-heal` suite, `mp-safeheal`: docs/specs/safe-ground-heal.md.
   - Since v2.3.3299 A MONSTER NOBODY IS NEAR RESTS -- for the owner's "Maybe 5x
     larger map is needed" ("Rebuild for 5x"): five times the land is five times
     the monsters. A live Wheel monster outside the squares of `WHEEL.REST_CELL`
