@@ -8,12 +8,25 @@
  * 27 s", and Leave now, which goes at once.  Only while you stand in the
  * cleared dungeon; read off the game's state four times a second while it is
  * up, woken by the clock's bus.
+ *
+ * v2.3.3565: AND THE BOSS'S CHEST.  A world dungeon's clear pays the boss's
+ * chest and puts its XP into the weapons you fought with there
+ * (server/src/dungeonreward.js).  Under the card's first row the chest opens
+ * -- the old daily chest's own strip (rendering/chestPreload.js, loaded on
+ * the loading screen), its lid's sounds on its frames as the daily chest
+ * played them, after the clear's fanfare -- beside what it held: its gold,
+ * each item with its count and each weapon's XP (game/bossChest.js).
  */
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Z_ABOVE_DASH_PROMPT } from '@/ui/zLayers.js';
 import { dungeonClearBus, dungeonClearView, leaveClearedDungeon } from '@/game/dungeonClear.js';
 import { cardPlace } from './NmlAskCard.jsx';
+import { DAILY_CHEST_STRIP, DAILY_CHEST_FRAMES } from '@/rendering/chestPreload.js';
+import { thumbFor } from './dash/InventoryPanel.jsx';
+import { ZONE_SHARDS, shardByKey } from '@/data/shards.js';
+import { chestLines } from '@/game/bossChest.js';
+import { BT_AUDIO } from '@/data/index.js';
 
 const CARD = {
   position: 'fixed', boxSizing: 'border-box', borderRadius: 12,
@@ -27,6 +40,71 @@ const BTN = {
   WebkitTapHighlightColor: 'transparent', whiteSpace: 'nowrap',
   background: 'linear-gradient(180deg,#E2B866,#C9973F)', color: '#1A1408', border: '1px solid #F0CF86',
 };
+
+/* v2.3.3565: the chest's lines' pictures -- its gold, an item's bag picture,
+   a weapon's skill */
+const GOLD_ICON = '/icons/ui/cur-gold.webp';
+const SKILL_ICON = { sword: '/icons/ui/combat-melee.webp', bow: '/icons/ui/combat-bow.webp', staff: '/icons/ui/combat-magic.webp' };
+const nameOf = (k) => (k === 'rare_gem' ? 'Rare Gem' : ((shardByKey(k) || {}).label || null));
+const iconOf = (l) => (l.skill ? SKILL_ICON[l.skill] : (l.key === 'gold' ? GOLD_ICON : thumbFor(l.key)));
+/* Warm (and hold) the few small pictures the chest's row may show, so the row
+   never waits on one: the gold, the three weapons, the Rare Gem and the
+   lands' shards.  The chest's own strip is on the loading screen already. */
+const _held = [];
+try {
+  if (typeof Image !== 'undefined') {
+    const urls = [GOLD_ICON, ...Object.values(SKILL_ICON), thumbFor('rare_gem'), ...Object.values(ZONE_SHARDS).map((z) => thumbFor(z.key))];
+    for (const u of urls) { if (!u) continue; const img = new Image(); img.decoding = 'async'; img.src = u; _held.push(img); }
+  }
+} catch (e) { /* a warm-up never breaks the card */ }
+/* the lid lifts after the clear's fanfare (cue 'dungeonClear') has had its moment */
+const CHEST_WAIT_MS = 900;
+const CHEST_FRAME_MS = 75;
+
+function ChestRow({ reward }) {
+  const lines = chestLines(reward && reward.chest, reward && reward.skillXp, nameOf);
+  const hasChest = !!(reward && reward.chest);
+  const [frame, setFrame] = useState(hasChest ? 0 : DAILY_CHEST_FRAMES - 1);
+  useEffect(() => {
+    if (!hasChest) return undefined;
+    const ts = [];
+    const later = (fn, ms) => ts.push(setTimeout(fn, ms));
+    for (let f = 3; f < DAILY_CHEST_FRAMES; f++) later(() => setFrame(f), CHEST_WAIT_MS + (f - 3) * CHEST_FRAME_MS);
+    /* the daily chest's sounds on its frames (ChestReveal.jsx, v2.3.3045):
+       a wooden knock and a shimmer as the lid lifts, the coins as they rise */
+    later(() => {
+      try { BT_AUDIO.play('wood-chop', { vol: 0.32, rate: 1.18 }); BT_AUDIO.play('magic-cast', { vol: 0.22, rate: 1.12 }); } catch (e) { /* a sound never breaks the card */ }
+    }, CHEST_WAIT_MS + CHEST_FRAME_MS);
+    later(() => {
+      try { BT_AUDIO.play('coin-pickup', { vol: 0.5 }); } catch (e) { /* a sound never breaks the card */ }
+    }, CHEST_WAIT_MS + (DAILY_CHEST_FRAMES - 3) * CHEST_FRAME_MS + 60);
+    return () => ts.forEach(clearTimeout);
+  }, [reward && reward.at]);
+  if (!lines.length) return null;
+  return (
+    <div data-boss-chest={hasChest ? 'open' : 'xp'} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+      {hasChest ? (
+        <div aria-hidden="true" data-chest-frame={frame} style={{
+          width: 44, height: 44, flex: '0 0 44px',
+          backgroundImage: `url(${DAILY_CHEST_STRIP})`, backgroundRepeat: 'no-repeat',
+          backgroundSize: `${DAILY_CHEST_FRAMES * 100}% 100%`,
+          backgroundPosition: `${(frame / (DAILY_CHEST_FRAMES - 1)) * 100}% 0`,
+        }} />
+      ) : null}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', minWidth: 0 }}>
+        {lines.map((l, i) => {
+          const src = iconOf(l);
+          return (
+            <span key={i} data-chest-line={l.skill || l.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, color: '#F7F2E7', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+              {src ? <img src={src} alt="" width={16} height={16} style={{ width: 16, height: 16, objectFit: 'contain', flex: '0 0 16px' }} /> : null}
+              {l.text}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function DungeonClearHud({ stateRef }) {
   const [, setTick] = useState(0);
@@ -46,14 +124,17 @@ export default function DungeonClearHud({ stateRef }) {
   return createPortal(
     <div data-dungeon-clear={v.secs} role="status" aria-live="polite"
       onPointerDown={stop} onTouchStart={stop} onMouseDown={stop} onClick={stop}
-      style={Object.assign({}, CARD, { left: pl.left, top: pl.top, width: pl.w, zIndex: Z_ABOVE_DASH_PROMPT })}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 900, color: '#F6D38B' }}>Dungeon cleared!</div>
-        <div style={{ fontSize: 12, color: '#D9DEDB', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-          Pick up your loot · out in {v.secs} s
+      style={Object.assign({}, CARD, { left: pl.left, top: pl.top, width: pl.w, zIndex: Z_ABOVE_DASH_PROMPT, flexDirection: 'column', alignItems: 'stretch', gap: 6 })}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 900, color: '#F6D38B' }}>Dungeon cleared!</div>
+          <div style={{ fontSize: 12, color: '#D9DEDB', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+            Pick up your loot · out in {v.secs} s
+          </div>
         </div>
+        <button type="button" data-dungeon-leave="" onClick={leave} style={BTN}>Leave now</button>
       </div>
-      <button type="button" data-dungeon-leave="" onClick={leave} style={BTN}>Leave now</button>
+      {v.reward ? <ChestRow reward={v.reward} /> : null}
     </div>,
     document.body
   );

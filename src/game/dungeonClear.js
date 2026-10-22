@@ -46,12 +46,29 @@ export function startDungeonClear(S, zone, now, leave, setTimer) {
   return clear;
 }
 
-/** What the card shows: null, or { zone, secs } -- the whole seconds left,
-    never below 0 -- while you stand in the cleared dungeon. */
+/** v2.3.3565: what the boss's chest held and the clear's XP paid into each
+    weapon (server/src/dungeonreward.js), kept on the clear of THAT dungeon
+    for its card (game/bossChest.js reads it).  Nothing for another zone's
+    clear, nor when the worker said nothing. */
+export function setDungeonClearReward(S, zone, chest, skillXp, now) {
+  const c = S && S._dungeonClear;
+  if (!c || c.zone !== zone || (!chest && !skillXp)) return null;
+  c.reward = {
+    chest: chest && typeof chest === 'object' ? chest : null,
+    skillXp: skillXp && typeof skillXp === 'object' ? skillXp : null,
+    at: now,
+  };
+  dungeonClearBus.emit();
+  return c.reward;
+}
+
+/** What the card shows: null, or { zone, secs, reward } -- the whole seconds
+    left, never below 0, and what the clear paid (or null) -- while you stand
+    in the cleared dungeon. */
 export function dungeonClearView(S, now) {
   const c = S && S._dungeonClear;
   if (!c || c.gone || S._serverDungeon !== c.zone) return null;
-  return { zone: c.zone, secs: Math.max(0, Math.ceil((c.until - now) / 1000)) };
+  return { zone: c.zone, secs: Math.max(0, Math.ceil((c.until - now) / 1000)), reward: c.reward || null };
 }
 
 /** The card's Leave now. */
