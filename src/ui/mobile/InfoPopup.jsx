@@ -1,5 +1,6 @@
 import React from 'react';
 import { infoPopupBus } from './infoPopupBus.js';
+import { swallowTapClick } from '../swallowTapClick.js';   /* v2.3.3560 */
 
 /* ═══ THE "WHAT IS THIS?" POPUP (v2.3.2131) ═══
  *
@@ -120,7 +121,12 @@ export const InfoPopup = () => {
   }, [cur]);
 
   if (!cur) return null;
-  const close = () => infoPopupBus.close();
+  /* v2.3.3560: every way out by a finger closes on its LIFT (the opening
+     tap's own click lands on this window, so a click here could not be the
+     way out), and the tap's click, sent after the window is gone, is eaten:
+     it used to land on what lay under the finger -- over the minimap, the
+     world map's "open" button (swallowTapClick.js, TRAPS §247) */
+  const close = (e) => { swallowTapClick(e); infoPopupBus.close(); };
   const stepMax = (cur.action && !cur.action.blocked && cur.action.stepMax > 0) ? cur.action.stepMax : 0;
   const stepN = stepMax ? Math.min(stepMax, Math.max(1, stepState.of === cur ? stepState.n : 1)) : 1;
   const stepBy = (d) => setStepState((prev) => {
@@ -233,7 +239,7 @@ export const InfoPopup = () => {
   )}
   </>);
   const spending = spendingOf === cur;   /* v2.3.3522 */
-  const spend = () => {
+  const spend = (e) => {
     if (!cur.action || cur.action.blocked) return;
     const run = cur.action.run;
     /* v2.3.3522: a spend that STAYS (the Points window): the window keeps
@@ -244,6 +250,7 @@ export const InfoPopup = () => {
       try { if (run) run(stepN); } catch (_e) {}
       return;
     }
+    swallowTapClick(e);   /* v2.3.3560: it closes the window, as the ✕ does */
     infoPopupBus.close();
     try { if (run) run(stepN); } catch (_e) {}
   };
@@ -512,7 +519,7 @@ export const InfoPopup = () => {
               data-infopopup-action
               data-infopopup-spending={spending ? '1' : undefined}
               aria-disabled={spending || undefined}
-              onPointerUp={(e) => { e.stopPropagation(); spend(); }}
+              onPointerUp={(e) => { e.stopPropagation(); spend(e); }}
               style={{
                 flex: '1 1 auto', minWidth: 0, height: 40, padding: '0 10px',
                 background: COL.goldBg, color: COL.goldText,
@@ -538,7 +545,7 @@ export const InfoPopup = () => {
                  look right and be unreachable, which is the failure mode
                  TRAPS §67 is about. */
               aria-disabled={!!cur.action.blocked}
-              onPointerUp={(e) => { e.stopPropagation(); spend(); }}
+              onPointerUp={(e) => { e.stopPropagation(); spend(e); }}
               style={{
                 flex: '1 1 auto', padding: '9px 10px',
                 background: cur.action.blocked ? 'transparent' : COL.goldBg,

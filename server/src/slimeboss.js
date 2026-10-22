@@ -8,8 +8,11 @@
  *
  * WHICH BOSS.  The Goo Grotto's (LANDS: the Verdant Wilds' dungeon, the
  * starter, its boss a Blue Slime drawn twice your height since v2.3.3556's
- * "Make boss slime huge").  The other three dungeons keep their boss; a land
- * here is one line.
+ * "Make boss slime huge"), and since v2.3.3562 the Foundry Dome's (the
+ * Electric Foundry's dungeon, levels 26-30, its boss a giant Storm Slime --
+ * the owner's "Yes" to "the Foundry Dome gets the splitting slime boss": its
+ * waves are slimes too).  The Great Cave's golem and the Buried City's mummy
+ * keep their one big boss; a land here is one line.
  *
  * ONE HEALTH BAR.  The boss keeps the health v2.3.3556 gave it (four wave
  * monsters' worth, x the party's share).  Each time it has lost another
@@ -21,10 +24,15 @@
  *     (combat.js _monsterDamageable);
  *   - it goes off as a blue slime does, the blast of SLIME_BURST.DMG through
  *     the one door's `burst` row (hits.js; telegraph.js _telegraphHitPlayer),
- *     at every player within BLAST_R of it, sized to its swollen body;
- *   - SPAWN[i] of the Grotto's own blue slimes fly out of it (the wave
- *     monster's maker, wheeldungeon.js: their health, hits, shards, quests,
- *     and their own burst when they die), held still LAND_MS while they land;
+ *     at every player within BLAST_R of it, sized to its swollen body.  Every
+ *     splitting boss goes off, whether or not its kind bursts on death
+ *     (v2.3.3562: a storm slime does not, and the Foundry Dome's giant
+ *     would have swelled and gone off with no blast, the phone drawing a
+ *     shockwave that hurt nobody); the row gives the blast its land's status
+ *     -- a storm slime's arcs to whoever stands near the one it hit;
+ *   - SPAWN[i] of the dungeon's own slimes fly out of it (the wave monster's
+ *     maker, wheeldungeon.js: their health, hits, shards, quests, and a blue
+ *     slime's own burst when it dies), held still LAND_MS while they land;
  *   - and it shrinks a step: the phone draws it k0^((bn - bs) / bn) times a
  *     slime (gameSystems.js bossSizeK), k0 its whole size, so after the third
  *     split it is a normal slime's size.
@@ -38,11 +46,11 @@
  * and at the mark it cannot be hurt until it has split (the damageable gate).
  * A crit that would have taken it from full to nothing stops at 75%.
  *
- * THE END.  Its last form dies as any blue slime does -- it swells and goes
- * off (telegraph.js _startSlimeBurst) -- and then every slime it threw out
- * that is still alive pops (no reward: nobody killed it), so the kill IS the
- * win: the run clears on the next tick (dungeon.js _tickDungeons, which
- * waits for every monster).
+ * THE END.  Its last form dies as any of its kind does -- a blue slime swells
+ * and goes off first (telegraph.js _startSlimeBurst), a storm slime just dies
+ * -- and then every slime it threw out that is still alive pops (no reward:
+ * nobody killed it), so the kill IS the win: the run clears on the next tick
+ * (dungeon.js _tickDungeons, which waits for every monster).
  *
  * THE WIRE.  The boss's full mapping (dungeon.js _dungeonPushZoneState,
  * spawnscale.js monsterSnapWire, join.js state_sync) carries `bs` (splits
@@ -63,8 +71,9 @@ import { WHEEL_DUNGEON } from './wheeldungeon.js';
 import { ZONES } from './data.js';
 
 export const SLIME_BOSS = {
-  /* the dungeons (by land) whose boss splits */
-  LANDS: { verdant: 1 },
+  /* the dungeons (by land) whose boss splits: the Goo Grotto and, since
+     v2.3.3562, the Foundry Dome (both lands' dungeon monsters are slimes) */
+  LANDS: { verdant: 1, thunder: 1 },
   SPLITS: 3,
   /* slimes out at each split (the owner: "like 8-10"): fewer as it shrinks */
   SPAWN: [10, 9, 8],
@@ -107,7 +116,7 @@ export const slimeBossMethods = {
   },
 
   /* Called by dungeon.js _dungeonSpawnBoss once the boss's health is set:
-     a Goo Grotto boss gets its splits. */
+     a Goo Grotto or Foundry Dome boss gets its splits. */
   _slimeBossArm(inst, m) {
     if (!inst || !m || !inst.cfg || !own(SLIME_BOSS.LANDS, inst.cfg.home)) return false;
     if (this._slimeBossOff()) return false;
@@ -162,19 +171,20 @@ export const slimeBossMethods = {
     const s = m._split;
     const i = s.n;
     s.until = 0;
-    /* the blast, as a blue slime's (only a kind that bursts on death) */
+    /* the blast, as a blue slime's -- every splitting boss's, whether or not
+       its kind bursts on death (v2.3.3562: the Foundry Dome's storm slime
+       does not; v2.3.3558 asked _burstsOnDeath, and its giant would have
+       swelled, drawn its shockwave and hurt nobody) */
     const radius = SLIME_BOSS.BLAST_R[Math.min(i, SLIME_BOSS.BLAST_R.length - 1)];
     let hit = false;
-    if (this._burstsOnDeath(m)) {
-      const kit = { kind: 'burst', radius, dmgMult: 1, flat: SLIME_BURST.DMG };
-      const r2 = radius * radius;
-      for (const pid of players) {
-        const ps = this.playerState[pid];
-        if (!ps || ps.dead || ps.dying || ps.z !== inst.zone) continue;
-        const dx = (ps.x || 0) - m.x, dy = (ps.y || 0) - m.y;
-        if (dx * dx + dy * dy > r2) continue;
-        if (this._telegraphHitPlayer(inst.zone, m, pid, kit) > 0) hit = true;
-      }
+    const kit = { kind: 'burst', radius, dmgMult: 1, flat: SLIME_BURST.DMG };
+    const r2 = radius * radius;
+    for (const pid of players) {
+      const ps = this.playerState[pid];
+      if (!ps || ps.dead || ps.dying || ps.z !== inst.zone) continue;
+      const dx = (ps.x || 0) - m.x, dy = (ps.y || 0) - m.y;
+      if (dx * dx + dy * dy > r2) continue;
+      if (this._telegraphHitPlayer(inst.zone, m, pid, kit) > 0) hit = true;
     }
     /* the slimes */
     const ids = this._slimeBossSpawn(inst, m, SLIME_BOSS.SPAWN[Math.min(i, SLIME_BOSS.SPAWN.length - 1)], now);

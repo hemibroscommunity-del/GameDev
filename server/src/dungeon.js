@@ -485,11 +485,12 @@ export const dungeonMethods = {
     m._pendingAbility = null;
     m._phaseUntil = 0;
     m._nextAbilityAt = Date.now() + BOSS_ABILITIES.FIRST_CAST_MS;
-    /* v2.3.3558: THE GOO GROTTO'S GIANT SLIME SPLITS -- at 75%, 50% and 25%
-       of this health it swells, goes off and throws out its own slimes, a
-       step smaller each time (slimeboss.js; the owner: "a giant slime that
-       explodes and spawns small (normal size slimes)").  It summons nothing
-       else: its slimes are its adds. */
+    /* v2.3.3558: THE GOO GROTTO'S GIANT SLIME SPLITS (and since v2.3.3562
+       the Foundry Dome's) -- at 75%, 50% and 25% of this health it swells,
+       goes off and throws out its own slimes, a step smaller each time
+       (slimeboss.js; the owner: "a giant slime that explodes and spawns small
+       (normal size slimes)").  It summons nothing else: its slimes are its
+       adds. */
     if (this._slimeBossArm(inst, m)) m._abilities = m._abilities.filter((a) => a !== 'summon');
     list.push(m);
     inst.bossSpawned = true;

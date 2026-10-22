@@ -4,8 +4,9 @@ What the game could use from the owner next, each with a prompt ready to paste.
 
 - Attach what each item lists, and never the bro (docs/WORLD-BIBLE.md §6).
 - Send the result in chat, and a session fits it in: the "In the game" line says where each one goes.
-- Generated from `public/tools/style/bible.js` and the Object Studio's `promptFor` (`public/tools/objects/prompts.js`). The dungeon-entrance prompts are the studio's own.
+- Generated from `public/tools/style/bible.js` and the Object Studio's `promptFor` (`public/tools/objects/prompts.js`).
 - **The farm's art** (seed, crop and dish icons, crops growing, beds and farm things, the Barn) has its own page: `docs/art/FARM-ART-PROMPTS.md`, with `docs/art/bag-icon-style-key.png` to attach to the icon sheets (v2.3.3132).
+- **The dungeons' art** (each dungeon's entrance, its arena's walls and the things inside it, and the boss's treasure chest) has its own page too: `docs/art/DUNGEON-ART-PROMPTS.md`, with `docs/art/dungeon-floors-key.png` to attach to the wall chats (v2.3.3561).
 
 ## What's left, in the order I'd make it (v2.3.3282)
 
@@ -14,7 +15,7 @@ Each of these is drawn in code, borrowed from somewhere else, or missing today. 
 1. **The keepers** (3 chats): two sheets of six townsfolk, then Beastmaster Bro. Every building gets a person at its door.
 2. **The monsters** (5 chats): the Foundry Slime and the Mire Wisp, the Bog Lurker, and real walks for the rock monster and the fishman. Then, if you like them, a slam, hurt and death sheet for each walking one (up to 3 more).
 3. **The four land banners** (4 chats): Stone Hollows, Electric Foundry, Water Caves, Poison Forest.
-4. **The three dungeons** (6 chats): each mouth, then each arena's walls.
+4. **The four dungeons** (13 chats): each mouth, its arena's walls and the things inside it, and the boss's chest. Their prompts are in `docs/art/DUNGEON-ART-PROMPTS.md`; the Goo Grotto and the chest first (4 chats), as a new player reaches the Grotto in the first half hour.
 5. **The Farmhouse and the Dungeon Workshop** (2 chats): their prompts are in `docs/art/FARM-ART-PROMPTS.md`.
 6. **Small icons, sheet 5, and the spin wheel** (2 chats).
 7. ~~**The ore veins, one a tier**~~: done in v2.3.3345 from your picture, with the trees (below, "Trees and ore, one a tier").
@@ -603,126 +604,12 @@ Theme them on venom: twisted dark trees and roots, purple-and-green toxic mushro
 No plaque, no bar, no frame, no writing and no numbers: only the two ornaments in each stage.
 ```
 
-## Dungeon entrances
+## The dungeons
 
-The three dungeons' ways in are drawn in code until they have pictures. These are the Object Studio's own prompts, so the pictures go through the studio like every other object.
+Every dungeon's art has its own page now: `docs/art/DUNGEON-ART-PROMPTS.md` (v2.3.3561, made by `tools/world/dungeon-art-prompts.mjs`). It covers all four dungeons, the Goo Grotto's included: each one's entrance, its arena's walls and a sheet of things to stand inside it, plus the boss's treasure chest.
 
-### The Great Cave: dungeon entrance
-
-- **In the game:** Where the Stone Hollows' dungeon starts. Today it is a dark oval drawn in code.
-- **Attach:** your style key
-- **How:** Ask for a wide 3:2 picture, as the Object Studio does.
-
-```text
-A wide picture (3:2, landscape) of ONE object for BroTown, a top-down 2D action RPG: the entrance to a dungeon: the mouth of a huge cave in a grey rock outcrop, framed by glowing blue and violet crystals, with mine-cart rails running out of the dark opening, which is wide enough for three people to walk in side by side. It is drawn whole in the middle of the picture, with plenty of background all round and nothing cut off. It stands on nothing: no ground, grass, path or shadow under or around it, and the place where it meets the ground is plain to see.
-
-No text, letters or numbers anywhere. The background is ONE flat bright green colour (#00FF00) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is bright green. No border.
-
-Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting effects: the game adds those. The ground has no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black, lighter on the sunlit side. Moderate saturation, with the ground calm and mid-toned so characters stand out. Seen from a steep three-quarter top-down angle, with no perspective.
-
-Attached is the game's style key. Match its pixel size, colours, shading and the way it draws each material exactly, but do not copy its tiles. Scale: a person standing here would be about one fifth as tall as this picture. It is about five and a half times as wide as a person is tall, so it fills about three quarters of the picture's width.
-```
-
-### The Foundry Dome: dungeon entrance
-
-- **In the game:** Where the Electric Foundry' dungeon starts. Today it is a dark oval drawn in code.
-- **Attach:** your style key
-- **How:** Ask for a wide 3:2 picture, as the Object Studio does.
-
-```text
-A wide picture (3:2, landscape) of ONE object for BroTown, a top-down 2D action RPG: the entrance to a dungeon: a great riveted iron dome with glowing blue windows and a big round doorway at the front, wide enough for three people to walk in side by side, ringed by small iron pylons with blue sparks at their tips. It is drawn whole in the middle of the picture, with plenty of background all round and nothing cut off. It stands on nothing: no ground, grass, path or shadow under or around it, and the place where it meets the ground is plain to see.
-
-No text, letters or numbers anywhere. The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is magenta or bright pink. No border.
-
-Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting effects: the game adds those. The ground has no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black, lighter on the sunlit side. Moderate saturation, with the ground calm and mid-toned so characters stand out. Seen from a steep three-quarter top-down angle, with no perspective.
-
-Attached is the game's style key. Match its pixel size, colours, shading and the way it draws each material exactly, but do not copy its tiles. Scale: a person standing here would be about one fifth as tall as this picture. It is about five and a half times as wide as a person is tall, so it fills about three quarters of the picture's width.
-```
-
-### The Buried City: dungeon entrance
-
-- **In the game:** Where the Wind Dunes' dungeon starts. Today it is a dark oval drawn in code.
-- **Attach:** your style key
-- **How:** Ask for a wide 3:2 picture, as the Object Studio does.
-
-```text
-A wide picture (3:2, landscape) of ONE object for BroTown, a top-down 2D action RPG: the entrance to a dungeon: half-buried terracotta sandstone ruins, broken columns and a giant carved stone face half sunk in sand, its open mouth a dark doorway wide enough for three people to walk in side by side. It is drawn whole in the middle of the picture, with plenty of background all round and nothing cut off. It stands on nothing: no ground, grass, path or shadow under or around it, and the place where it meets the ground is plain to see.
-
-No text, letters or numbers anywhere. The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is magenta or bright pink. No border.
-
-Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting effects: the game adds those. The ground has no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black, lighter on the sunlit side. Moderate saturation, with the ground calm and mid-toned so characters stand out. Seen from a steep three-quarter top-down angle, with no perspective.
-
-Attached is the game's style key. Match its pixel size, colours, shading and the way it draws each material exactly, but do not copy its tiles. Scale: a person standing here would be about one fifth as tall as this picture. It is about five and a half times as wide as a person is tall, so it fills about four fifths of the picture's width.
-```
-
-## Dungeon walls
-
-The three dungeons' arenas are floored with their land's own ground picture (v2.3.3016), but their walls are one flat dark colour drawn in code. These give each arena real walls: the wall's front, seen along the top of the arena, and the top of the wall all round it (v2.3.3282).
-
-- **How:** One wide picture per dungeon. Send it in chat: a session makes each strip repeat seamlessly (the Ground Studio's cut) and draws the arena's walls from it. Drawing walls from a picture is new code, done when the first picture comes.
-
-### The Great Cave: dungeon walls
-
-- **In the game:** the walls of the Great Cave's arena. Today they are one flat colour.
-- **Attach:** your style key, and `docs/art/dungeon-floors-key.png` (the three dungeons' floors, left to right: the Great Cave, the Foundry Dome, the Buried City).
-- **Green, not magenta:** the crystals are violet, which a magenta background would eat into.
-
-```text
-A wide picture (3:2, landscape) for BroTown, a top-down 2D action RPG: two strips of dungeon wall for the Great Cave, the dungeon under the Stone Hollows, one above the other with a band of background between them, each running the full width of the picture.
-
-1. The top strip is the wall's FRONT, seen from a steep three-quarter top-down angle: rough grey cave rock in big faceted blocks with cracks and chips, a few small blue and violet crystals poking out, and an old wooden mine timber propping it here and there. It is a little taller than a person, its top edge level and its bottom edge where it meets the floor.
-2. The bottom strip is the TOP of the same wall, seen from above: the same grey rock, rubbly and uneven, with no front and no edges.
-
-Both strips repeat side by side: their left and right ends must join with no visible seam. No doors, gaps, torches, creatures or people.
-
-No text, letters or numbers anywhere. The background is ONE flat bright green colour (#00FF00) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is bright green. No border.
-
-Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting effects: the game adds those. The ground has no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black, lighter on the sunlit side. Moderate saturation, with the ground calm and mid-toned so characters stand out. Seen from a steep three-quarter top-down angle, with no perspective.
-
-Attached are the game's style key and the three dungeons' floors (left to right: the Great Cave, the Foundry Dome, the Buried City). Match the style key's pixel size, colours, shading and the way it draws each material, and make the wall belong on the first floor, the Great Cave's grey rock, but do not copy their tiles. Scale: a person standing beside the wall would be a little shorter than its front.
-```
-
-### The Foundry Dome: dungeon walls
-
-- **In the game:** the walls of the Foundry Dome's arena. Today they are one flat colour.
-- **Attach:** your style key, and `docs/art/dungeon-floors-key.png` (the three dungeons' floors, left to right: the Great Cave, the Foundry Dome, the Buried City).
-- **Background:** magenta, as the Object Studio's pictures.
-
-```text
-A wide picture (3:2, landscape) for BroTown, a top-down 2D action RPG: two strips of dungeon wall for the Foundry Dome, the dungeon of the Electric Foundry, one above the other with a band of background between them, each running the full width of the picture.
-
-1. The top strip is the wall's FRONT, seen from a steep three-quarter top-down angle: dark riveted iron wall plates joined by brass seams, a thick iron pipe running along it, and a small round porthole of blue glass here and there. It is a little taller than a person, its top edge level and its bottom edge where it meets the floor.
-2. The bottom strip is the TOP of the same wall, seen from above: the same dark iron, riveted plates joined by brass seams, with no front and no edges.
-
-Both strips repeat side by side: their left and right ends must join with no visible seam. No doors, gaps, torches, creatures or people.
-
-No text, letters or numbers anywhere. The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is magenta or bright pink. No border.
-
-Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting effects: the game adds those. The ground has no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black, lighter on the sunlit side. Moderate saturation, with the ground calm and mid-toned so characters stand out. Seen from a steep three-quarter top-down angle, with no perspective.
-
-Attached are the game's style key and the three dungeons' floors (left to right: the Great Cave, the Foundry Dome, the Buried City). Match the style key's pixel size, colours, shading and the way it draws each material, and make the wall belong on the second floor, the Foundry Dome's dark iron plates and brass seams, but do not copy their tiles. Scale: a person standing beside the wall would be a little shorter than its front.
-```
-
-### The Buried City: dungeon walls
-
-- **In the game:** the walls of the Buried City's arena. Today they are one flat colour.
-- **Attach:** your style key, and `docs/art/dungeon-floors-key.png` (the three dungeons' floors, left to right: the Great Cave, the Foundry Dome, the Buried City).
-- **Background:** magenta, as the Object Studio's pictures.
-
-```text
-A wide picture (3:2, landscape) for BroTown, a top-down 2D action RPG: two strips of dungeon wall for the Buried City, the dungeon under the Wind Dunes, one above the other with a band of background between them, each running the full width of the picture.
-
-1. The top strip is the wall's FRONT, seen from a steep three-quarter top-down angle: big blocks of red-orange sandstone, worn smooth and chipped, a carved band of simple worn patterns (no letters), and sand drifted against its foot. It is a little taller than a person, its top edge level and its bottom edge where it meets the floor.
-2. The bottom strip is the TOP of the same wall, seen from above: the same red sandstone, its blocks' tops worn and dusted with sand, with no front and no edges.
-
-Both strips repeat side by side: their left and right ends must join with no visible seam. No doors, gaps, torches, creatures or people.
-
-No text, letters or numbers anywhere. The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is magenta or bright pink. No border.
-
-Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting effects: the game adds those. The ground has no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black, lighter on the sunlit side. Moderate saturation, with the ground calm and mid-toned so characters stand out. Seen from a steep three-quarter top-down angle, with no perspective.
-
-Attached are the game's style key and the three dungeons' floors (left to right: the Great Cave, the Foundry Dome, the Buried City). Match the style key's pixel size, colours, shading and the way it draws each material, and make the wall belong on the third floor, the Buried City's red sandstone, but do not copy their tiles. Scale: a person standing beside the wall would be a little shorter than its front.
-```
+- The Great Cave's, the Foundry Dome's and the Buried City's entrance and wall prompts that were here are on it word for word, except that the walls now name four floors.
+- `docs/art/dungeon-floors-key.png` keeps its three floors where they were and adds the Goo Grotto's on the right, so a wall prompt copied from an older copy of this page still matches.
 
 ## Monsters
 

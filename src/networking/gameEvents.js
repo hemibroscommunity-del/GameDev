@@ -1625,8 +1625,9 @@ export function processGameEvent(type, payload, S, deps) {
               /* ═══ v2.3.3558: THE GIANT SLIME SPLITS (server/src/slimeboss.js) ═══
                  The owner: "a giant slime that explodes and spawns small
                  (normal size slimes) ... but shrinks in size afterwards".  At
-                 each quarter of its health the Goo Grotto's boss swells, goes
-                 off and throws out its own slimes.  Drawn as a blue slime's
+                 each quarter of its health the Goo Grotto's boss (and since
+                 v2.3.3562 the Foundry Dome's) swells, goes off and throws out
+                 its own slimes.  Drawn as a blue slime's
                  own burst is (the case above): the TELEGRAPH swells it by the
                  worker's `scale` over its `ms` -- the same `_burstUntil` the
                  renderer swells a dying slime by, which also makes it

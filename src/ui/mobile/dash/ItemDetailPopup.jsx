@@ -17,6 +17,7 @@ import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { COL, getState } from './common.js';
 import { itemDetailBus } from './itemDetailBus.js';
+import { swallowTapClick } from '../../swallowTapClick.js';   /* v2.3.3560 */
 import { weaponTierLabel } from '../sheet/equipModel.js'; /* v2.3.1845: one tier lookup */
 import {
   lock as lockItem,
@@ -1191,7 +1192,9 @@ export const ItemDetailPopup = () => {
           {/* v2.3.1232: 11/600 uppercase section header + raised hairline close chip */}
           <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 5 }}>
             <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#96A2A0' }}>{title}</span>
-            <button type="button" aria-label="Close" onPointerUp={(e) => { e.stopPropagation(); itemDetailBus.close(); }}
+            <button type="button" aria-label="Close" onPointerUp={(e) => { e.stopPropagation(); swallowTapClick(e); itemDetailBus.close(); }}
+              /* v2.3.3560: ...and the tap's click, sent once the card is gone,
+                 is eaten: it landed on the world under the ✕ (swallowTapClick.js) */
               /* v2.3.3407: Esc presses it -- by pointerup, its own gesture
                  ("up", game/deskKeys.js pressControl) */
               data-esc="up" data-key="Esc" data-key-at="hang"

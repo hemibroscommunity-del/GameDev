@@ -241,6 +241,11 @@ These are from dungeons-today.md and are not done:
   into the weapons used ([boss-chest.md](boss-chest.md)).
 - **Getting there.** Travel from the Town Hall's map to dungeons you have found.
 - **The farm's Dungeon Workshop.** Remove it, or rebuild it on the world's arena.
-- **Something to look at inside.** The arenas are bare floors.
+- **Something to look at inside.** The arenas are bare floors. The owner chose
+  pictures over code ("instead of code drawn walls give prompt for me to give
+  chatGPT to draw dungeon walls and any other assets you think would be
+  good"): each dungeon's entrance, walls and things to stand inside, and the
+  boss's chest, are prompts in `docs/art/DUNGEON-ART-PROMPTS.md` (v2.3.3561),
+  to fit in as the pictures come back.
 - **The boss's reach.** It is drawn huge but reaches you as a wave monster
   does. Say if it should reach further, as big as it looks.
