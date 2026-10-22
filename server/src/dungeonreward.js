@@ -1,4 +1,4 @@
-/* ═══ v2.3.3563: THE BOSS'S CHEST, AND THE CLEAR'S XP INTO THE WEAPONS YOU USED ═══
+/* ═══ v2.3.3565: THE BOSS'S CHEST, AND THE CLEAR'S XP INTO THE WEAPONS YOU USED ═══
  *
  * The owner's "Yes" to the dungeons' recommendation "A reward worth the trip"
  * (docs/specs/dungeons-today.md): "the boss drops a chest with sure rewards,

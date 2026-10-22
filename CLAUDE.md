@@ -1693,8 +1693,12 @@ remnant to migrate server-side, not a mode to preserve.
       - `wheeldungeon` §4/§6/§11/§12, `dungeon` §4/§8/§11, `dungeon-clear` suite,
         `mp-dungeonfix`: docs/specs/dungeon-fixes.md. Still the owner's call:
         travel to found dungeons, the farm's Workshop, something to look at
-        inside, and whether the huge boss should reach as far as it looks (a
-        reward worth the trip: v2.3.3563's chest, below).
+        inside (since v2.3.3561 the owner's ChatGPT pictures: each dungeon's
+        entrance, walls and things inside, and the boss's chest, prompts in
+        docs/art/DUNGEON-ART-PROMPTS.md, made by
+        tools/world/dungeon-art-prompts.mjs), and whether the huge boss should
+        reach as far as it looks (a reward worth the trip: v2.3.3565's chest,
+        below).
     - since v2.3.3558 THE GOO GROTTO'S GIANT SLIME SPLITS -- the owner: "a
       giant slime that explodes and spawns small (normal size slimes) like
       8-10 maybe but shrinks in size afterwards ... 3 rounds of that before it
@@ -1711,8 +1715,11 @@ remnant to migrate server-side, not a mode to preserve.
       - NO HIT SKIPS A SPLIT: its next mark is a FLOOR (combat.js
         `_monsterHpFloor`, read by all five places a monster loses health) and
         `_monsterDamageable` refuses it at its mark until it has split;
-      - server/src/slimeboss.js (`SLIME_BOSS.LANDS`: the Grotto alone, the
-        Foundry Dome one line away), `dungeon_boss_ability` `split`
+      - server/src/slimeboss.js (`SLIME_BOSS.LANDS`: the Grotto and, since
+        v2.3.3562, THE FOUNDRY DOME -- the owner's "Yes": its giant Storm
+        Slime splits the same, every split going off though a storm slime
+        never bursts on death, its last form simply dying; slime-boss §10,
+        `mp-foundryboss`), `dungeon_boss_ability` `split`
         (telegraph / execute / pop); kill switch `slimeboss: false`; QA op
         `/dev/hurt`;
       - A RE-PUSH IS NOT A NEW ARRIVAL, found building it: a dungeon re-sends
@@ -1730,7 +1737,7 @@ remnant to migrate server-side, not a mode to preserve.
         see-through pixel the frame's edge cannot reach in idle, shoot and hit,
         the pet sheet made again (`?v=2.3.3558`); slime-boss §9, TRAPS §246;
       - `slime-boss` suite, `mp-slimeboss`: docs/specs/slime-boss.md.
-    - since v2.3.3563 THE BOSS'S CHEST, AND THE CLEAR'S XP INTO THE WEAPONS YOU
+    - since v2.3.3565 THE BOSS'S CHEST, AND THE CLEAR'S XP INTO THE WEAPONS YOU
       USED -- the owner's "Yes" to "the boss drops a chest with sure rewards
       ... The clear's XP would go into the weapon you used"
       (server/src/dungeonreward.js, from dungeon.js `_dungeonComplete` before
@@ -5520,6 +5527,22 @@ Two protocol versions coexist; both must keep working:
     speaker thins and a computer's plays whole ("I can't hear footsteps on
     pc"); a phone is unchanged; `?stepvol=k`.
   - `mp-deskclick`, `mp-deskplace`, `mp-deskkeys` 1b.
+- **A TAP THAT CLOSES A WINDOW TAPS NOTHING UNDER IT (v2.3.3560,
+  docs/specs/tap-through.md, TRAPS §247).** Found on the Points tab: on a
+  390 px phone the ✕ of a shared stat's window closed it AND opened the world
+  map. The owner: "Yes begin the fix".
+  - A tap's click comes a moment AFTER the finger lifts, to whatever is under
+    it then. A window that closes on the lift (InfoPopup, so its opening tap's
+    click cannot close it) is gone by then, and the click hit what it covered:
+    the minimap's invisible map button.
+  - A control that takes its window (or itself) off the page on `pointerup`
+    calls `swallowTapClick(e)` (src/ui/swallowTapClick.js): that tap's
+    mousedown, mouseup and click, near where it lifted, before the next
+    press, are eaten on the document. A window that closes on a click needs
+    nothing. `?tapthrough` is the game as it was; `window.__btTapClicks`.
+  - On a computer #root's `contain: paint` put the game under that button
+    too: a window over the minimap goes in game.css's pointer-events list.
+  - `mp-tapthrough` (22 checks; 10 fail on main).
 - **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3407,
   docs/specs/desktop-keys.md, TRAPS §213).** The owner: "For computer usage
   if there's a key that makes sense to use for a certain action just put the

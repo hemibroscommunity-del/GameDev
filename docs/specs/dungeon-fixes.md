@@ -237,13 +237,18 @@ These are from dungeons-today.md and are not done:
 - **A reward worth the trip.** For example, a chest from the boss, and the
   clear's XP going into the weapon you used. The XP still goes to the old
   counter that no skill reads (v2.3.3543 only took it out of the words).
-  Done in v2.3.3563, the owner's "Yes": the boss's chest and the clear's XP
+  Done in v2.3.3565, the owner's "Yes": the boss's chest and the clear's XP
   into the weapons used ([boss-chest.md](boss-chest.md)).
 - **Getting there.** Travel from the Town Hall's map to dungeons you have found.
 - **The farm's Dungeon Workshop.** Remove it, or rebuild it on the world's arena.
-- **Something to look at inside.** The arenas are bare floors. Since v2.3.3566
-  the Goo Grotto's has the owner's walls and 17 things round its edges, and its
-  mouth is the owner's picture ([dungeon-art.md](dungeon-art.md)); the other
-  three wait for their pictures.
+- **Something to look at inside.** The arenas are bare floors. The owner chose
+  pictures over code ("instead of code drawn walls give prompt for me to give
+  chatGPT to draw dungeon walls and any other assets you think would be
+  good"): each dungeon's entrance, walls and things to stand inside, and the
+  boss's chest, are prompts in `docs/art/DUNGEON-ART-PROMPTS.md` (v2.3.3561),
+  to fit in as the pictures come back. Since v2.3.3566
+  the Goo Grotto's are in: its walls and 17 things round its edges, and its
+  mouth ([dungeon-art.md](dungeon-art.md)); the other three wait for their
+  pictures.
 - **The boss's reach.** It is drawn huge but reaches you as a wave monster
   does. Say if it should reach further, as big as it looks.

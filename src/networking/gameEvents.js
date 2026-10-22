@@ -50,7 +50,7 @@ function peerShotGame() {
 import { recordMail, itemWords } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail; v2.3.3516: + its words for an item */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
 import { loadDungeonArt, freeDungeonArt } from '@/game/dungeonArt.js'; /* v2.3.3566: and the owner's pictures of it -- its walls, its things, the boss's chest */
-import { startDungeonClear, setDungeonClearReward } from '@/game/dungeonClear.js'; /* v2.3.3556: 30 s to pick up the loot after a clear; v2.3.3563: and what the boss's chest held */
+import { startDungeonClear, setDungeonClearReward } from '@/game/dungeonClear.js'; /* v2.3.3556: 30 s to pick up the loot after a clear; v2.3.3565: and what the boss's chest held */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
 import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
@@ -1000,7 +1000,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (_dcR) {
                 if (!_dcR._compStats) _dcR._compStats = createDefaultCompStats();
                 if (payload.boss) _dcR._compStats.dungeonsCleared++;
-                _dcR._compStats.totalGoldEarned += (payload.gold || 0) + ((payload.chest && payload.chest.gold) || 0);   /* v2.3.3563: and the boss's chest */
+                _dcR._compStats.totalGoldEarned += (payload.gold || 0) + ((payload.chest && payload.chest.gold) || 0);   /* v2.3.3565: and the boss's chest */
                 setRpgState(_objectSpread({}, _dcR));
               }
               pushDmgPopup(S, S.player.x, S.player.y - 60, 'DUNGEON CLEARED!', '#f5c542');
@@ -1012,7 +1012,7 @@ export function processGameEvent(type, payload, S, deps) {
                  a player who looked for it on the Skills page found nothing.
                  Under prog3 the line says the gold alone, as the kill's
                  popup has since v2.3.1727; a pre-prog3 character, for whom
-                 the number is real, still sees it.  (v2.3.3563: a world
+                 the number is real, still sees it.  (v2.3.3565: a world
                  dungeon's clear now PAYS its XP into the weapons you fought
                  with there, and the clear's card says so under the boss's
                  chest -- below, setDungeonClearReward; docs/specs/
@@ -1065,7 +1065,7 @@ export function processGameEvent(type, payload, S, deps) {
                   try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: 'farm_home', vx: 0, vy: 0 } }); } catch (e) {}
                 }
               });
-              /* ═══ v2.3.3563: THE BOSS'S CHEST, AND THE CLEAR'S XP ═══
+              /* ═══ v2.3.3565: THE BOSS'S CHEST, AND THE CLEAR'S XP ═══
                  A world dungeon's clear also pays the boss's chest and puts
                  its XP into the weapons you fought with there
                  (server/src/dungeonreward.js); the event says what, and the
@@ -1636,8 +1636,9 @@ export function processGameEvent(type, payload, S, deps) {
               /* ═══ v2.3.3558: THE GIANT SLIME SPLITS (server/src/slimeboss.js) ═══
                  The owner: "a giant slime that explodes and spawns small
                  (normal size slimes) ... but shrinks in size afterwards".  At
-                 each quarter of its health the Goo Grotto's boss swells, goes
-                 off and throws out its own slimes.  Drawn as a blue slime's
+                 each quarter of its health the Goo Grotto's boss (and since
+                 v2.3.3562 the Foundry Dome's) swells, goes off and throws out
+                 its own slimes.  Drawn as a blue slime's
                  own burst is (the case above): the TELEGRAPH swells it by the
                  worker's `scale` over its `ms` -- the same `_burstUntil` the
                  renderer swells a dying slime by, which also makes it

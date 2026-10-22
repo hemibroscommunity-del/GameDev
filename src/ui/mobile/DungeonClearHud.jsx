@@ -9,7 +9,7 @@
  * cleared dungeon; read off the game's state four times a second while it is
  * up, woken by the clock's bus.
  *
- * v2.3.3563: AND THE BOSS'S CHEST.  A world dungeon's clear pays the boss's
+ * v2.3.3565: AND THE BOSS'S CHEST.  A world dungeon's clear pays the boss's
  * chest and puts its XP into the weapons you fought with there
  * (server/src/dungeonreward.js).  Under the card's first row the chest opens
  * -- its lid's sounds on its frames as the daily chest played them, after the
@@ -46,7 +46,7 @@ const BTN = {
   background: 'linear-gradient(180deg,#E2B866,#C9973F)', color: '#1A1408', border: '1px solid #F0CF86',
 };
 
-/* v2.3.3563: the chest's lines' pictures -- its gold, an item's bag picture,
+/* v2.3.3565: the chest's lines' pictures -- its gold, an item's bag picture,
    a weapon's skill */
 const GOLD_ICON = '/icons/ui/cur-gold.webp';
 const SKILL_ICON = { sword: '/icons/ui/combat-melee.webp', bow: '/icons/ui/combat-bow.webp', staff: '/icons/ui/combat-magic.webp' };

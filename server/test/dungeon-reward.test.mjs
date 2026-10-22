@@ -1,4 +1,4 @@
-/* The boss's chest, and the clear's XP into the weapons you used (v2.3.3563,
+/* The boss's chest, and the clear's XP into the weapons you used (v2.3.3565,
  * server/src/dungeonreward.js, docs/specs/boss-chest.md).  The owner's "Yes"
  * to "a reward worth the trip": "the boss drops a chest with sure rewards, for
  * example extra gold, the land's shards and a chance at its gem.  The clear's

@@ -1,4 +1,4 @@
-/* ═══ THE BOSS'S CHEST, ON A PHONE, IN THE WORLD (v2.3.3563, docs/specs/boss-chest.md) ═══
+/* ═══ THE BOSS'S CHEST, ON A PHONE, IN THE WORLD (v2.3.3565, docs/specs/boss-chest.md) ═══
  *
  * The owner's "Yes" to "a reward worth the trip": "the boss drops a chest with
  * sure rewards, for example extra gold, the land's shards and a chance at its
@@ -6,7 +6,8 @@
  * against a real worker, on a phone (390 x 844, touch), at the Goo Grotto with
  * one big boss (`slimeboss: false`, so the test is about the chest):
  *   1. the clear's card shows the boss's chest under its first row, and the
- *      chest OPENS on its own strip (frame 8 reached);
+ *      chest OPENS (since v2.3.3566 the owner's chest, shut and then open; it
+ *      was the daily chest's strip, frame 8);
  *   2. the card lists what it held, as the worker said: its gold (20 a level
  *      of the run), 3 Flora Shards, a Rare Gem when the roll gives one, and the
  *      clear's XP in the weapon in hand (the walker earned no fight XP here:

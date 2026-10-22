@@ -1,4 +1,4 @@
-# The boss's chest, and the clear's XP into the weapons you used (v2.3.3563)
+# The boss's chest, and the clear's XP into the weapons you used (v2.3.3565)
 
 The owner said "Yes" to the dungeons' recommendation "A reward worth the trip"
 ([dungeons-today.md](dungeons-today.md)):
