@@ -4,6 +4,13 @@ The owner, 2026-10-21: *"I value SIMPLICITY and INTELLIGIBILITY"*. This is the
 fourth item of the after-review list agreed with the outside evaluation: a
 dungeon near town, with every boss at its dungeon's level.
 
+> **Since v2.3.3570 the Goo Grotto is no longer a starter: it is a dungeon
+> built for a party** (the owner: "very difficult without a party of 2-3
+> people"). It is level 16 whoever comes in, and its boss is sized for three.
+> The world map says "Lv 16 · 2–3 players". Where it stands, its mouth, its
+> road and everything else below are unchanged:
+> [grotto-party.md](grotto-party.md).
+
 ## What it was
 
 - **Three dungeons**, all far out: the Great Cave and the Foundry Dome at

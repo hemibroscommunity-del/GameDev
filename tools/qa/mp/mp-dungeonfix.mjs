@@ -62,7 +62,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1500);
   const armed = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee');
   const level = await H.readState(P, (S) => (S.rpg && S.rpg.level) || 1);
-  const want = Math.max(1, Math.min(5, level));
+  /* v2.3.3570: the Goo Grotto is a party dungeon, its own level whatever
+     yours (server/src/wheeldungeon.js WHEEL_DUNGEON.PARTY; it was yours,
+     never past 5) */
+  const { WHEEL_DUNGEON } = await import(H.REPO + '/server/src/wheeldungeon.js');
+  const want = WHEEL_DUNGEON.PARTY.verdant.level;
   let stopAlive = false;
   (async () => {
     while (!stopAlive) {

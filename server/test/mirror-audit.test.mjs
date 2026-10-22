@@ -54,7 +54,7 @@ import { PVP_EXTRAS as SRV_PVP_EXTRAS, PVP_STATUSES as SRV_PVP_STATUSES } from '
 import { elementMoveMult as SRV_ELEMENT_MOVE_MULT } from '../src/elemental.js'; /* v2.3.3264 */
 import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
 import { WHEEL_DUNGEON as SRV_WHEEL_DUNGEON } from '../src/wheeldungeon.js'; /* v2.3.3016 */
-import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA } from '../../src/data/wheelDungeons.js'; /* v2.3.3016 */
+import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA, WHEEL_DUNGEON_PARTY as CLIENT_WHEEL_DUNGEON_PARTY } from '../../src/data/wheelDungeons.js'; /* v2.3.3016; v2.3.3570: + the party dungeons */
 import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wheelSignposts.js'; /* v2.3.3089 */
 import { PVP_HEAL as CLIENT_PVP_HEAL } from '../../src/game/fightFood.js'; /* v2.3.3133 */
 import * as SRV_ONE from '../src/oneformula.js'; /* v2.3.3260: one formula for every fight */
@@ -1894,6 +1894,13 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('wheel dungeons: the arena\'s size (WHEEL_ARENA = WHEEL_DUNGEON.WIDTH x HEIGHT)',
     CLIENT_WHEEL_ARENA.W === SRV_WHEEL_DUNGEON.WIDTH && CLIENT_WHEEL_ARENA.H === SRV_WHEEL_DUNGEON.HEIGHT,
     { cli: CLIENT_WHEEL_ARENA, srv: { W: SRV_WHEEL_DUNGEON.WIDTH, H: SRV_WHEEL_DUNGEON.HEIGHT } });
+  /* v2.3.3570: the party dungeons (the Goo Grotto, level 16, built for
+     three): the phone says on the world map and at the mouth what the worker
+     plays -- the same lands, levels and sizes */
+  check('wheel dungeons: the party dungeons, their level and size (WHEEL_DUNGEON_PARTY = WHEEL_DUNGEON.PARTY)',
+    JSON.stringify(CLIENT_WHEEL_DUNGEON_PARTY) === JSON.stringify(SRV_WHEEL_DUNGEON.PARTY)
+      && Object.keys(CLIENT_WHEEL_DUNGEON_PARTY).every((h) => CLIENT_WHEEL_DUNGEON_HOMES.includes(h)),
+    { cli: CLIENT_WHEEL_DUNGEON_PARTY, srv: SRV_WHEEL_DUNGEON.PARTY });
 }
 
 // ── v2.3.3138: A NEW CHARACTER IS THE CLIENT'S OWN ──

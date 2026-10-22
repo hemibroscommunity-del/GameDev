@@ -8262,3 +8262,30 @@ See wheelDoors.js, "ONE SHADE OVER THE MOUND AND WHAT IS CUT FROM IT".
 
 **Receipt:** `tools/qa/mp/out/grotto-life-mouth-still.png` (mp-grottolife's
 picture under the calm switch): no step at the foot line.
+
+## 249. "Clamp it to the zone, as every other shove does" (v2.3.3570)
+
+**The plausible move.** Something moves a monster -- a hit's knockback, a
+bash, the whirlwind's pull, a snowman's burrow -- and the code that moves it
+keeps it in its zone the way the code beside it does:
+`const zoneCfg = this._getZoneConfig(zoneId); if (zoneCfg) { ...clamp to
+zoneCfg.w x zoneCfg.h tiles... }`.
+
+**Why it is wrong.** `_getZoneConfig` is the ZONES table, and a dungeon's
+arena (`dungeon:<id>`) is not in it, nor the Wheel. In a dungeon the `if`
+was false and nothing kept a shoved monster in. Found by the dungeon simulator
+(tools/dungeon-sim): in the first simulated party run a sword's hits knocked a
+slime through the Goo Grotto's west wall. No melee player could reach it, and
+its wave, which waits for every monster, never ended. The clamp that IS right
+for an arena was elsewhere: the boss's charge had its own, a tile off the
+edge, inside the walls the phone draws.
+
+**The rule.** A monster that something moves is kept in
+`this._keepMonsterIn(zoneId, m)` (dungeon.js `_monsterBox`): an ordinary
+zone's map less a tile, a world dungeon's arena floor (two tiles in at the
+sides, from `TOP_ROW`, four tiles from the bottom), the Workshop's map less
+two tiles, and nothing on the Wheel. A new way to move a monster calls it; a
+new kind of zone gets its box there. Never `_getZoneConfig` alone.
+
+**Receipt:** `grotto-party.test.mjs` §5: a sword hit at the west wall and the
+north edge, every shove's call, and a split by the bottom wall.

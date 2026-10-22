@@ -27,6 +27,10 @@ They will **not** reach a dungeon on the tour in 30 minutes. The Goo Grotto's
 mouth is about 2,200 px past the first slimes, off the tour's path, and the
 Mayor's "Clear any dungeon" comes after his last story quest.
 
+Since v2.3.3570 the Grotto is a party dungeon: level 16, built for 2–3
+players (docs/specs/grotto-party.md). A reviewer at level 3–5, alone, in copper,
+cannot clear it. The world map and its mouth say "Lv 16 · 2–3 players".
+
 ## The numbers it rests on
 
 | | Value | From |

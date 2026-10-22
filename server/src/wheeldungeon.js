@@ -81,6 +81,39 @@ export const WHEEL_DUNGEON = {
      (dungeon.js _dungeonPullPartyMembers): the Wheel is one zone, so "in the
      leader's zone" alone would pull a member from across the map */
   PARTY_R: 600,
+  /* ═══ v2.3.3570: A DUNGEON BUILT FOR A PARTY -- THE GOO GROTTO ═══
+     The owner: "I want the goo grotto dungeon to be very difficult without a
+     party of 2-3 people.  I'm assuming most people will be around lvl 10 and
+     have iron equipment ... with all stat points allocated before they
+     attempt it."  A land here is a dungeon of `level`, WHOEVER comes in (the
+     dungeon rule's "never above yours" does not hold for it), whose boss is
+     sized for `size` players however few come in (dungeon.js
+     _dungeonSpawnBoss: the party's share is at least that size's).
+       - WHY THE LEVEL.  At the players' own level a level-10 player in iron
+         with every point spent shrugs off ~88% of a monster's blow (the
+         armour, Defense and Dodge multiply), kills a slime in two swings, and
+         a sword's kills give back 90% of what each slime dealt: in the
+         simulator (tools/dungeon-sim) a level-10 Grotto sized for three,
+         twice the slimes, twice their health and hits, was still cleared
+         alone ~60% of the time.  A monster above you is what this game
+         makes dangerous: your points lose a fifth of their worth a level
+         above you and all of it at five (prog3.js prog3Edge) -- so the
+         Grotto's slimes are SIX above its players, past the point where a
+         level or two gained in the run brings any back.
+       - WHAT IT MEASURED (32 runs each, a level-10 build in iron, every
+         point spent, five fish, an average player): alone 0-25% cleared
+         (sword 0%, bow 25%, staff 19%), two 75-91%, three 100%; a careful
+         player alone 0-28%; at level 12 a sword clears it alone 96% -- a
+         level-10 party's dungeon, and a level-12 sword's to solo.  The
+         study's tables: docs/specs/grotto-party.md.
+     MIRROR: src/data/wheelDungeons.js WHEEL_DUNGEON_PARTY (mirror-audit),
+     which the phone shows on the world map and at the mouth against
+     caps.partydungeon.  KILL SWITCH (lower case, TRAPS §117):
+     `partydungeon: false` in the live flags -- the Grotto of v2.3.3540
+     again, its level the place's top and never above yours, its boss sized
+     by who is inside -- and un-advertises the cap (the phone shows the
+     place's levels again). */
+  PARTY: { verdant: { level: 16, size: 3 } },
 };
 
 /* v2.3.3540: the mouths' lands IN ORDER -- caps.dungeonLands is how many of
@@ -95,6 +128,15 @@ export const wheelDungeonMethods = {
   _wheelDungeonsOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && own(f, 'wheeldungeons') && !f.wheeldungeons);
+  },
+
+  /* v2.3.3570: the party dungeon row of land `id` ({ level, size }), or null
+     -- none at all under `partydungeon: false` */
+  _wheelDungeonParty(id) {
+    if (!own(WHEEL_DUNGEON.PARTY, id)) return null;
+    const f = this._liveFlags;
+    if (f && typeof f === 'object' && own(f, 'partydungeon') && !f.partydungeon) return null;
+    return WHEEL_DUNGEON.PARTY[id];
   },
 
   /* The mouth of land `id`, baked, or null. */
@@ -116,8 +158,11 @@ export const wheelDungeonMethods = {
       || Math.hypot(ps.x - door.at[0], ps.y - door.at[1]) > WHEEL_DUNGEON.DOOR_R) {
       return { error: ['not-here', 'Walk up to its mouth first'] };
     }
-    const top = Math.max(1, Math.round(Number(door.levels[1]) || 1));
-    const lvl = Math.max(1, Math.min(top, Math.round(ps.level || 1)));
+    /* v2.3.3570: a party dungeon (the Goo Grotto) is its own level whoever
+       comes in; any other, the place's top and never above yours */
+    const party = this._wheelDungeonParty(id);
+    const top = party ? party.level : Math.max(1, Math.round(Number(door.levels[1]) || 1));
+    const lvl = party ? party.level : Math.max(1, Math.min(top, Math.round(ps.level || 1)));
     const last = zone.spawns[zone.spawns.length - 1];
     const bossArch = last && own(ARCHETYPES, last.arch) ? last.arch : 'brute';
     return {
@@ -134,7 +179,10 @@ export const wheelDungeonMethods = {
         bossArchetype: bossArch,
         bossMultiplier: WHEEL_DUNGEON.BOSS_MULT,
         home: id,
-        levels: [Number(door.levels[0]) || 1, top],
+        levels: party ? [party.level, party.level] : [Number(door.levels[0]) || 1, top],
+        /* v2.3.3570: the boss is sized for at least this many (dungeon.js
+           _dungeonSpawnBoss); 0 for a dungeon sized by who is inside */
+        partySize: party ? party.size : 0,
       },
       back: { z: WHEEL_DUNGEON.ZONE, x: door.back[0], y: door.back[1] },
     };
