@@ -1437,6 +1437,11 @@ Screens: spar-fight
   - it is HUGE, about twice your height, its HP bar with it (owner: "Make boss slime huge"; the first cut was half again as big); you hit it where it is drawn, and it turns see-through while you stand behind it;
   - its plate says "Boss Blue Slime" in bold on a deep red, kept the plates' size on the screen;
   - the deep red is darker than the alarm's bright red, which still takes over while the boss hits you, so the two never mean the same thing.
+- **The Goo Grotto's giant slime splits** (v2.3.3558). Owner: "a giant slime that explodes and spawns small (normal size slimes) like 8-10 maybe but shrinks in size afterwards ... 3 rounds of that before it finally just becomes a normal slime then after you kill that you defeat the dungeon". On screen:
+  - its HP bar wears a thin dark mark at each split still to come (75%, 50%, 25%), so you can see where it will burst;
+  - at a mark it swells for 1.6 s with "BURSTING!" over it, a blue slime's own warning, and can't be hit; then it goes off with the blue slime's shockwave and sound, and 10, then 9, then 8 slimes fly out of it in an arc;
+  - it shrinks a step each time (x4.59, x2.76, x1.66 a slime), so its last form is a normal slime's size that still wears its "Boss" plate;
+  - killing that last form is the win: every slime it threw out that still stands pops with it, with one splat sound for them all, and the clear card comes up.
 - **After a dungeon's clear, a card counts down** (v2.3.3556): "Dungeon cleared! Pick up your loot · out in 27 s", with Leave now. It sits where the race clock goes, under the minimap, out of the thumbs' way. A clear used to take you out after 3 seconds, the boss's drop left on the floor. The way out at the bottom of the arena still works, and Esc does not leave (it is not a window to close). The top bar says the dungeon's one level, "the Great Cave (Lv 28)", where it read "(Lv28-28)".
 - **A death in a dungeon keeps your bag** (v2.3.3556). Offered "your pile waits outside at the mouth, or you keep your bag in a dungeon", the owner: "Keep your bag in dungeons". "Your bag is safe" shows under "YOU DIED", only when the server says it kept the bag. A red skull from No man's land still loses what that rule takes.
 - **Another player's HP bar is the size of yours** (76 x 22, with an 18 px number). After the first spar the owner said: "the enemy Hp bar was too small (the numbers were tiny in their hp bar) should be the same size as mine though" (v2.3.3267). It shows over their plate in a fight and stays a few seconds after the last hit.
@@ -1468,6 +1473,7 @@ Screens: spar-fight
 - Greying Whirlwind out of combat instead of hiding it, or moving Special and Whirlwind to the left stick.
 - Muting the red "attacking you" plate, putting plates back under the feet, or bringing back the amber pointer.
 - Painting a boss's resting plate the bright alarm red: that red means "hitting you right now".
+- A separate health bar for each of the giant slime's forms: its one bar and its marks show the whole fight (v2.3.3558).
 - Shrinking other players' HP bars, or making the staff's special steadier.
 
 **Still open:**

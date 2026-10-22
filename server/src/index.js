@@ -75,6 +75,7 @@ import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { monsterStatusMethods } from './monsterstatus.js'; /* v2.3.2996: a monster's hit carries its element */
 import { sprintMethods } from './sprint.js'; /* v2.3.3006: sprint -- stamina for 1.33x the walk */
 import { wheelDungeonMethods } from './wheeldungeon.js'; /* v2.3.3016: the Wheel's dungeons, behind its landmarks */
+import { slimeBossMethods } from './slimeboss.js'; /* v2.3.3558: the Goo Grotto's giant slime splits */
 import { devToolsMethods } from './devtools.js'; /* v2.3.2240 */
 import { abilityMethods } from './abilities.js'; /* v2.3.1733 */
 // v2.3.1128 (PR11): guild-quest verification -- server-checked
@@ -3271,7 +3272,8 @@ export class GameRoom {
        that was actually rolled rather than the sliver of HP left to take
        (see the monster_hit payload below). */
     const _rawRounded = Math.max(0, Math.round(rawDmg || 0));
-    const dmg = Math.min(_rawRounded, Math.max(0, m.hp));
+    /* v2.3.3558: never past a splitting boss's next mark (slimeboss.js) */
+    const dmg = Math.min(_rawRounded, Math.max(0, m.hp - this._monsterHpFloor(m)));
     if (dmg <= 0) return 0;
     m.hp -= dmg;
     if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
@@ -6475,6 +6477,7 @@ Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, monsterStatusMethods); /* v2.3.2996 */
 Object.assign(GameRoom.prototype, sprintMethods); /* v2.3.3006 */
 Object.assign(GameRoom.prototype, wheelDungeonMethods); /* v2.3.3016 */
+Object.assign(GameRoom.prototype, slimeBossMethods); /* v2.3.3558 */
 Object.assign(GameRoom.prototype, devToolsMethods); /* v2.3.2240 */
 // v2.3.1733: stamina abilities + the milestone ladder -- see abilities.js.
 Object.assign(GameRoom.prototype, abilityMethods);

@@ -42,6 +42,7 @@
 
 import { ARCHETYPES, MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */, DUNGEON_BOSS_UP /* v2.3.3540 */ } from './data.js';
 import { WHEEL_DUNGEON } from './wheeldungeon.js';   /* v2.3.3016: the Wheel's dungeons */
+import { bossSplitWire } from './slimeboss.js';   /* v2.3.3558: the giant slime's splits on its wire */
 
 export const DUNGEONS = {
   MAX_WAVES: 10,        // client caps at 10 by level; hard server ceiling
@@ -484,6 +485,12 @@ export const dungeonMethods = {
     m._pendingAbility = null;
     m._phaseUntil = 0;
     m._nextAbilityAt = Date.now() + BOSS_ABILITIES.FIRST_CAST_MS;
+    /* v2.3.3558: THE GOO GROTTO'S GIANT SLIME SPLITS -- at 75%, 50% and 25%
+       of this health it swells, goes off and throws out its own slimes, a
+       step smaller each time (slimeboss.js; the owner: "a giant slime that
+       explodes and spawns small (normal size slimes)").  It summons nothing
+       else: its slimes are its adds. */
+    if (this._slimeBossArm(inst, m)) m._abilities = m._abilities.filter((a) => a !== 'summon');
     list.push(m);
     inst.bossSpawned = true;
     this._markMonsterDirty(inst.zone, m.id);
@@ -784,8 +791,9 @@ export const dungeonMethods = {
          _zoneSnapshotWire) -- only on those, so a Workshop run's wire is
          byte for byte what it was */
       ...(m.home ? { home: m.home, variant: m.variant || null } : {}),
-      /* v2.3.3556: the boss says so (on it alone) */
-      ...(m._dungeonBoss ? { boss: 1 } : {}),
+      /* v2.3.3556: the boss says so (on it alone); v2.3.3558: a splitting one
+         its splits done and in all (slimeboss.js bossSplitWire) */
+      ...(m._dungeonBoss ? { boss: 1, ...bossSplitWire(m) } : {}),
     }));
     for (const [ws, s] of this.sessions) {
       const ps = s.id && this.playerState[s.id];
@@ -911,7 +919,13 @@ export const dungeonMethods = {
       if (!list || list.length === 0) continue;
       // v2.3.1194: boss ability script (telegraph/execute/charge/summon)
       // runs while the boss lives; wave logic below is untouched.
-      if (inst.bossSpawned) this._dungeonTickBossAbilities(inst, players, now);
+      /* v2.3.3558: the giant slime's splits first -- it casts nothing while
+         it swells -- and once its last form is dead, the slimes it threw out
+         pop, so killing it clears the run (slimeboss.js) */
+      if (inst.bossSpawned) {
+        if (!this._slimeBossTick(inst, players, now)) this._dungeonTickBossAbilities(inst, players, now);
+        this._slimeBossCleanup(inst);
+      }
       if (!list.every((m) => !m.alive)) continue;
       // Wave cleared.
       if (inst.wave < inst.cfg.waves) {

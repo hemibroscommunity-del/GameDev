@@ -27,6 +27,7 @@ import { applySparState } from '@/game/spar.js'; /* v2.3.3265: the test panel's 
 import { applyTestMode } from '@/game/testMode.js'; /* v2.3.3430: the owner's test mode, shown as a tag */
 import { allyBus } from '@/game/alliance.js'; /* v2.3.3313: the alliance's answers (server alliance.js) */
 import { monsterNoticed } from '@/game/monsterNoises.js'; /* v2.3.3340: a monster calls as it notices you */
+import { carryMonsterState } from '@/game/monsterCarry.js'; /* v2.3.3558: a re-push is not a new arrival (TRAPS §245) */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527: the achievements the worker granted (server/src/achievements.js) */
@@ -1723,7 +1724,10 @@ export function setupWebSocket(ctx) {
                  worker's monsters, never "make your own" */
               if (msg.monsters && (msg.monsters.length > 0 || msg.monstersNear === 1)) {
                 S._serverMonsters = true;
-                S.monsters = msg.monsters.map(function(m) { return _monsterFromWire(m, S); });
+                /* v2.3.3558: a rejoin keeps what it held of each (game/monsterCarry.js) */
+                var _sjPrev = Object.create(null);
+                (S.monsters || []).forEach(function (pm) { if (pm && pm.id != null) _sjPrev[String(pm.id)] = pm; });
+                S.monsters = msg.monsters.map(function(m) { return carryMonsterState(_monsterFromWire(m, S), _sjPrev[String(m.id)]); });
               } else {
                 S._serverMonsters = false;
               }
@@ -4129,7 +4133,15 @@ export function setupWebSocket(ctx) {
            monsters still, never a zone it does not model */
         if (msg.monsters.length > 0 || msg.mnear === 1) {
           S._serverMonsters = true;
-          S.monsters = msg.monsters.map(function(m) { return _monsterFromWire(m, S); });
+          /* v2.3.3558: a monster this phone already holds keeps its own state
+             through the replace (game/monsterCarry.js) -- see there */
+          var _prevById = Object.create(null);
+          var _prevList = S.monsters || [];
+          for (var _pi = 0; _pi < _prevList.length; _pi++) {
+            var _pm = _prevList[_pi];
+            if (_pm && _pm.id != null) _prevById[String(_pm.id)] = _pm;
+          }
+          S.monsters = msg.monsters.map(function(m) { return carryMonsterState(_monsterFromWire(m, S), _prevById[String(m.id)]); });
         } else {
           var _prevSrvFlag = S._serverMonsters;
           S._serverMonsters = false;

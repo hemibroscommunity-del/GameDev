@@ -8496,10 +8496,31 @@ export function monsterBodyY(m) {
 export const BOSS_STAND_H = 211;
 export const BOSS_SIZE_MIN = 1.5;
 export const BOSS_SIZE_MAX = 5;
+/* ═══ v2.3.3558: THE GIANT SLIME SHRINKS A STEP AT EACH SPLIT ═══
+   The owner: "a giant slime that explodes and spawns small (normal size
+   slimes) ... but shrinks in size afterwards ... 3 rounds of that before it
+   finally just becomes a normal slime".  The worker (server/src/slimeboss.js)
+   says on a splitting boss its splits done (`bs`) and in all (`bn`); it is
+   drawn k0^((bn - bs) / bn) times its size, k0 the whole boss's -- for the Goo
+   Grotto's slime x4.59, x2.76, x1.66, then x1, a normal slime.  Every place
+   that measures a boss's body measures it through here, so the swing, the
+   shots, the taps and the rings shrink with it.  A boss with no `bn` (every
+   other dungeon's, or an older worker's) is its whole size, as before. */
 export function bossSizeK(m) {
   if (!m || !m.boss) return 1;
   const shape = m.archetype || m.type || m.arch;
   const off = monsterBodyOffsetY(shape) || 0;
   const h = off > 0 ? 2 * off : 2 * (monsterMeleeHitRadius(shape) || 24);
-  return Math.max(BOSS_SIZE_MIN, Math.min(BOSS_SIZE_MAX, BOSS_STAND_H / h));
+  const k0 = Math.max(BOSS_SIZE_MIN, Math.min(BOSS_SIZE_MAX, BOSS_STAND_H / h));
+  const bn = Math.floor(Number(m.bn) || 0);
+  if (!(bn > 0)) return k0;
+  const bs = Math.max(0, Math.min(bn, Math.floor(Number(m.bs) || 0)));
+  return Math.pow(k0, (bn - bs) / bn);
+}
+/* v2.3.3558: the health share (of its max) at which a splitting boss's split
+   i of n comes -- every quarter for three.  The WORKER's rule
+   (slimeboss.js splitShare; slime-boss.test holds the two together): the
+   boss's bar marks where it will burst. */
+export function bossSplitShare(i, n) {
+  return (n - i) / (n + 1);
 }
