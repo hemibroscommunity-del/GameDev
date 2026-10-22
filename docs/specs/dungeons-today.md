@@ -104,4 +104,5 @@ Your call:
 - **The farm's Dungeon Workshop:** remove it, or rebuild it on the world's
   arena.
 - **Something to look at inside:** rocks and walls in each arena, drawn in
-  code at first.
+  code at first. The owner chose ChatGPT's pictures instead: the prompts are in
+  `docs/art/DUNGEON-ART-PROMPTS.md` (v2.3.3561).
