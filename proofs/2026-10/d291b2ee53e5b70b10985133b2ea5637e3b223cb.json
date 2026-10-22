@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d291b2ee53e5b70b10985133b2ea5637e3b223cb",
+  "tree": "d64946cf8fe1f383fcea6177520711e2ecce2eab",
+  "committedAt": "2026-10-22T11:04:46-07:00",
+  "subject": "The Goo Grotto moves: dripping slime, bubbling puddles, burning torches, rising spores and ferns in a breeze (v2.3.3567) (#1080)",
+  "files": 6339,
+  "bytes": 736238861,
+  "listingSha256": "dcc857520d4eb0ba4eae99d878d3cd57a15fa3a2a8a2ddc630e7bb543b8ceafc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
