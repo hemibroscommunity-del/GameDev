@@ -670,7 +670,7 @@ import { dropAlpha, dropFlashing } from '@/game/itemDrop.js';   /* v2.3.3473: ..
 import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
 import { wheelNodeView, WheelFish, wheelFishTop /* v2.3.3035: the harvest's bar over a spot's school */ } from '../wheelNodes.js';   /* v2.3.3012: the Wheel's resources -- drawn near the view, its fishing spots as fish */
 import { updateNodeLabel, killNodeLabel, nodeLabelWorldH, NODE_LABEL_GAP, nodeNameNode } from '../nodeLabels.js';   /* v2.3.3040: the tool, the name and the level over a resource; v2.3.3059: words for the nearest only */
-import { WheelDoors } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn */
+import { WheelDoors, wheelDoorPicturesHeld } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn; v2.3.3566: + their pictures */
 import { WheelSignposts, findGateSignposts } from '../wheelSignposts.js';   /* v2.3.3062: Brotown's signposts, named */
 import { RaceFlags } from '../raceFlags.js';   /* v2.3.3525: Lil Bro's race course (game/race.js) */
 import { TrapFx } from '../trapFx.js';   /* v2.3.3120: the trap's mark, shakes, snap and break */
@@ -11367,8 +11367,8 @@ export class EffectsRenderer {
     /* v2.3.3016: the Wheel's dungeon mouths at its landmarks (wheelDoors.js)
        -- and, anywhere else or against a worker that opens none, none */
     const _doors = (S.currentZone === 'wheel' && wheelDungeonsSupported(S)) ? wheelDungeonDoorsOpen(S) : null;   /* v2.3.3540: the mouths this worker opens */
-    if (_doors || (this._wheelDoors && this._wheelDoors.size)) {
-      if (!this._wheelDoors) this._wheelDoors = new WheelDoors(this.lootLayer);
+    if (_doors || (this._wheelDoors && (this._wheelDoors.size || wheelDoorPicturesHeld()))) {   /* v2.3.3566: + a picture to let go */
+      if (!this._wheelDoors) this._wheelDoors = new WheelDoors(this.lootLayer, this.entityLayer);   /* v2.3.3566: + where a mouth's picture stands */
       this._wheelDoors.update(_doors || [], S, now);
     }
     /* v2.3.3062: Brotown's four signposts say the lands their roads lead to

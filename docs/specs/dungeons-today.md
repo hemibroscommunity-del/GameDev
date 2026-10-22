@@ -35,10 +35,12 @@ you to the Grotto.
 
 1. **The mouth.** It's a dark oval on the ground with the dungeon's name
    floating over it. Within a few steps an "Enter the Goo Grotto" button comes
-   up (or E on a computer).
+   up (or E on a computer). Since v2.3.3566 the Goo Grotto's is the owner's
+   picture, a mossy mound dripping slime ([dungeon-art.md](dungeon-art.md)).
 2. **Inside.** It's a bare arena floored with the land's ground. There are no
    walls, rocks or decorations, just "Way Out" at the bottom. The top bar says
-   "the Great Cave (Lv28-28)".
+   "the Great Cave (Lv28-28)". Since v2.3.3566 the Goo Grotto's has the
+   owner's mossy walls and 17 things round its edges.
 3. **Three waves of six** of the land's monsters, at your level to two above.
    "Wave 2/3" shows over you when one ends.
 4. **"BOSS FIGHT!"**, and one more monster comes. **It looks exactly like the
@@ -109,4 +111,5 @@ Your call:
   arena.
 - **Something to look at inside:** rocks and walls in each arena, drawn in
   code at first. The owner chose ChatGPT's pictures instead: the prompts are in
-  `docs/art/DUNGEON-ART-PROMPTS.md` (v2.3.3561).
+  `docs/art/DUNGEON-ART-PROMPTS.md` (v2.3.3561), and the Goo Grotto's are in
+  the game since v2.3.3566 ([dungeon-art.md](dungeon-art.md)).

@@ -8,6 +8,8 @@ import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass
 import { TileRenderer } from './systems/tileRenderer.js';
 import { WheelObjects } from './wheelObjects.js'; /* v2.3.2975: the Wheel's buildings, trees, rocks and props */
 import { FarmWorld } from './farmWorld.js';   /* v2.3.3136: your farm -- its barn, props, beds and crops */
+import { ArenaWorld } from './arenaWorld.js';   /* v2.3.3566: a dungeon's arena, its things and the boss's chest */
+import { ZONES } from '../data/zones.js';   /* v2.3.3566: a zone's arena pictures (arenaArt) */
 import { isWheelTrialZone } from '../game/worldTrial.js';
 import { townSkippedOnTheWay } from '../game/wheelHome.js';   /* v2.3.3037: today's town is a stop on the way to the Wheel */
 import { wheelObjectsOn } from '../game/wheelTrial.js';
@@ -396,6 +398,11 @@ export async function initPixiRenderer(canvas) {
   let farmWorld = null;
   /* QA (mp-farmwalk): what the farm draws, read-only */
   if (typeof window !== 'undefined') window.__btFarmWorld = () => (farmWorld ? farmWorld.probe() : null);
+  /* v2.3.3566: a world dungeon's arena with the owner's pictures, while you
+     are in it (arenaWorld.js) -- one zone-blocker hook at a time, as the
+     farm's: made after the Wheel's has gone */
+  let arenaWorld = null;
+  if (typeof window !== 'undefined') window.__btArenaWorld = () => (arenaWorld ? arenaWorld.probe() : null);
 
   function onZoneChange(map, zoneId, S) {
     if (zoneId === currentZone && map === currentMap) return;
@@ -410,6 +417,11 @@ export async function initPixiRenderer(canvas) {
        (one zone-blocker hook at a time: worldProps.setZoneBlockerHook) */
     if (farmWorld && zoneId !== 'farm_home') { try { farmWorld.destroy(); } catch (e) { /* ignore */ } farmWorld = null; }
     if (!farmWorld && zoneId === 'farm_home') farmWorld = new FarmWorld(layers);
+    if (arenaWorld && arenaWorld.zone !== zoneId) { try { arenaWorld.destroy(); } catch (e) { /* ignore */ } arenaWorld = null; }
+    {
+      const _az = zoneId && Object.prototype.hasOwnProperty.call(ZONES, zoneId) ? ZONES[zoneId] : null;
+      if (!arenaWorld && _az && _az._instance && _az.arenaArt) arenaWorld = new ArenaWorld(layers, zoneId, _az.arenaArt);
+    }
     entityRenderer.clear();
     effectsRenderer.clear();
     lightFx.clear();   /* v2.3.2710: last zone's shadows and glints go with its figures */
@@ -614,6 +626,12 @@ export async function initPixiRenderer(canvas) {
       try { farmWorld.update(S, now); }
       catch (e) { if (!update._farmErr) { update._farmErr = true; console.error('[pixi-render] farmWorld threw', e && e.message, e && e.stack); } }
     }
+    /* v2.3.3566: a dungeon's arena -- its things and the boss's chest -- before
+       the depth pass too */
+    if (arenaWorld) {
+      try { arenaWorld.update(S, now); }
+      catch (e) { if (!update._arenaErr) { update._arenaErr = true; console.error('[pixi-render] arenaWorld threw', e && e.message, e && e.stack); } }
+    }
     const _t1 = performance.now();
     update._lastStages.tileMs = _t1 - _t0;
     try { entityRenderer.update(S, now); }
@@ -788,6 +806,7 @@ export async function initPixiRenderer(canvas) {
   function destroy() {
     if (wheelObjects) { try { wheelObjects.destroy(); } catch (e) { /* ignore */ } wheelObjects = null; }
     if (farmWorld) { try { farmWorld.destroy(); } catch (e) { /* ignore */ } farmWorld = null; }   /* v2.3.3136 */
+    if (arenaWorld) { try { arenaWorld.destroy(); } catch (e) { /* ignore */ } arenaWorld = null; }   /* v2.3.3566 */
     tileRenderer.destroy();
     entityRenderer.clear();
     /* v2.3.3074: destroy, not clear -- clear() is a zone change's; a renderer

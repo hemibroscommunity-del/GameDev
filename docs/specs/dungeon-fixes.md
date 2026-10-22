@@ -246,6 +246,9 @@ These are from dungeons-today.md and are not done:
   chatGPT to draw dungeon walls and any other assets you think would be
   good"): each dungeon's entrance, walls and things to stand inside, and the
   boss's chest, are prompts in `docs/art/DUNGEON-ART-PROMPTS.md` (v2.3.3561),
-  to fit in as the pictures come back.
+  to fit in as the pictures come back. Since v2.3.3566
+  the Goo Grotto's are in: its walls and 17 things round its edges, and its
+  mouth ([dungeon-art.md](dungeon-art.md)); the other three wait for their
+  pictures.
 - **The boss's reach.** It is drawn huge but reaches you as a wave monster
   does. Say if it should reach further, as big as it looks.

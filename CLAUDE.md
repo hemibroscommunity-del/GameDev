@@ -1754,11 +1754,47 @@ remnant to migrate server-side, not a mode to preserve.
         faded as fight XP is (xpdecay.js), none into a capped skill; the old
         counter still gets it;
       - `dungeon_complete` carries `chest {gold, items}` and `skillXp`; the
-        clear's card opens the daily chest's own strip (loaded on the loading
-        screen) beside its lines (game/bossChest.js `chestLines`,
-        DungeonClearHud.jsx), and the codex's New monster card steps under it;
+        clear's card opens the chest beside its lines (game/bossChest.js
+        `chestLines`, DungeonClearHud.jsx; the owner's chest since
+        v2.3.3566, below), and the codex's New monster card steps under it;
       - kill switches `bosschest: false`, `clearxp: false`; `dungeon-reward`
         suite, `mp-bosschest`: docs/specs/boss-chest.md.
+    - since v2.3.3566 THE GOO GROTTO IN THE OWNER'S PICTURES -- the owner sent
+      the first four of the dungeons' ChatGPT pictures (docs/art/
+      DUNGEON-ART-PROMPTS.md): "Here's the first 4":
+      - `tools/world/add-dungeon-art.mjs` cuts them by the Object Studio's own
+        steps (sources in `assets/prop-source/dungeons/`: keyOut, objects by
+        count read like a page, 2 picture px a game px, 64 colours each,
+        palette PNGs; each wall strip made to repeat by process.js's new
+        `seamlessAlongX`) into `public/world/dungeons/` and the GENERATED
+        `src/data/dungeonArt.js`, asked for at `?v=DUNGEON_ART_V` (kept a year,
+        public/_headers); a land without its three pictures keeps the code;
+      - THE MOUTH (rendering/wheelDoors.js): the mound STANDS in `entities` at
+        its foot line (`foot`, the cave floor's front edge), what lies below
+        it (the slime spilling out) flat on the ground-loot layer, so you
+        stand on the slime at the cave's lip; the mound stops your boots there
+        (`wheelMouthBlockers`, joined to the Wheel's objects' footprints) and
+        casts the Wheel's sun's shadow (`wheelDoorCasters`); loaded as you come
+        near and let go once well away (LOAD_PAD / FREE_PAD / FREE_MS, also
+        outside the Wheel), the code mouth until it is in;
+      - THE ARENA: loaded behind the dungeon's screen with its floor (game/
+        dungeonArt.js, freed by dropDungeonZone; a live list so a quick
+        re-entry never loses a file another arena holds); its walls of the two
+        strips (rendering/arenaWalls.js, from tileRenderer's floor rebuild:
+        the front along the top, its foot at `FACE_FOOT` in rows nobody's
+        middle reaches, the top turned along the sides and the bottom, a gap
+        at the way out), its 17 things where `src/data/dungeonArena.js` puts
+        them (rendering/arenaWorld.js: round the edges, the torch posts either
+        side of the way out, the puddles flat), the walls' and the tall
+        things' footprints stopping your boots (and arrows; boulders and the
+        heap are low, `stone`/`scrap`, a jump clears them);
+      - THE CHEST lands where the boss stood (`m.boss`'s last place), shut,
+        and opens with the card's (arenaWorld `CHEST_OPEN_MS`), gold glinting
+        on `particles`; the card shows the same chest (BOSS_CHEST_ART);
+      - `dungeon-art` suite, `mp-grottoart` (and mp-bosschest's chest):
+        docs/specs/dungeon-art.md.  The Great Cave's, the Foundry Dome's and the
+        Buried City's pictures are still to come; each is a run of the tool
+        and a table of where its things stand.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack

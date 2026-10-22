@@ -49,6 +49,7 @@ function peerShotGame() {
 }
 import { recordMail, itemWords } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail; v2.3.3516: + its words for an item */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
+import { loadDungeonArt, freeDungeonArt } from '@/game/dungeonArt.js'; /* v2.3.3566: and the owner's pictures of it -- its walls, its things, the boss's chest */
 import { startDungeonClear, setDungeonClearReward } from '@/game/dungeonClear.js'; /* v2.3.3556: 30 s to pick up the loot after a clear; v2.3.3565: and what the boss's chest held */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
@@ -890,6 +891,10 @@ export function processGameEvent(type, payload, S, deps) {
                   var _hz = ZONES[_dHome], _fl = WHEEL_DUNGEON_FLOOR[_dHome] || {};
                   if (_hz && _hz.palette) ZONES[payload.zone].palette = _hz.palette;
                   if (_dFloor) ZONES[payload.zone].floorPic = _dFloor;
+                  /* v2.3.3566: and its pictures, when the land has them --
+                     walls of the owner's art (tileRenderer.js) and the things
+                     standing in it (rendering/arenaWorld.js) */
+                  if (_dArt) ZONES[payload.zone].arenaArt = _dArt;
                   if (_fl.wall != null) ZONES[payload.zone].wallColor = _fl.wall;
                   if (_fl.edge != null) ZONES[payload.zone].edgeColor = _fl.edge;
                 }
@@ -925,7 +930,7 @@ export function processGameEvent(type, payload, S, deps) {
                 pushDmgPopup(S, S.player.x, S.player.y - 35, 'Wave 1/' + (_dCfg.waves || 3), 'rgba(255,255,255,.5)');
                 cue('dungeonIn');   /* v2.3.3343: in, with a rush and a low thud (a beep(), silent; SOUND-GAPS) */
               };
-              var _dFloor = null, _dFloorLate = false;
+              var _dFloor = null, _dFloorLate = false, _dArt = null;
               if (_dHome && payload.back) {
                 keepDungeonBack(S, payload.back);
                 S._wheelDungeonOpening = payload.zone;
@@ -937,17 +942,23 @@ export function processGameEvent(type, payload, S, deps) {
                   if (_dFloorLate) { freeDungeonFloor(u); return; }
                   _dFloor = u;
                 }).catch(function () { return null; });
+                /* v2.3.3566: ...and its pictures, if the land has them (game/
+                   dungeonArt.js), behind the same screen; late ones let go */
+                var _artP = loadDungeonArt(_dHome).then(function (rec) {
+                  if (_dFloorLate) { freeDungeonArt(rec); return; }
+                  _dArt = rec;
+                }).catch(function () { return null; });
                 Promise.race([
-                  Promise.all([loadLandLooks(_dHome).catch(function () { return null; }), _floorP]),
+                  Promise.all([loadLandLooks(_dHome).catch(function () { return null; }), _floorP, _artP]),
                   new Promise(function (r) { setTimeout(r, 8000); }),
                 ]).then(function () {
                   _dFloorLate = true;
                   hideZoneLoadingOverlay();
-                  if (S._wheelDungeonOpening !== payload.zone) { freeDungeonFloor(_dFloor); return; }
+                  if (S._wheelDungeonOpening !== payload.zone) { freeDungeonFloor(_dFloor); freeDungeonArt(_dArt); return; }
                   S._wheelDungeonOpening = null;
                   /* died, or somewhere else, while it loaded: the worker
                      sweeps the instance nobody entered */
-                  if (S.currentZone !== _dFrom || S._dying || !S.player) { S._dungeonBack = null; freeDungeonFloor(_dFloor); return; }
+                  if (S.currentZone !== _dFrom || S._dying || !S.player) { S._dungeonBack = null; freeDungeonFloor(_dFloor); freeDungeonArt(_dArt); return; }
                   _enterArena();
                   try { releaseLeftZoneArt(_dFrom, payload.zone); } catch (e) { /* a leak, not a crash */ }
                 });

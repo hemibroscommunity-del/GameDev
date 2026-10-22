@@ -12,17 +12,22 @@
  * v2.3.3565: AND THE BOSS'S CHEST.  A world dungeon's clear pays the boss's
  * chest and puts its XP into the weapons you fought with there
  * (server/src/dungeonreward.js).  Under the card's first row the chest opens
- * -- the old daily chest's own strip (rendering/chestPreload.js, loaded on
- * the loading screen), its lid's sounds on its frames as the daily chest
- * played them, after the clear's fanfare -- beside what it held: its gold,
- * each item with its count and each weapon's XP (game/bossChest.js).
+ * -- its lid's sounds on its frames as the daily chest played them, after the
+ * clear's fanfare -- beside what it held: its gold, each item with its count
+ * and each weapon's XP (game/bossChest.js).
+ *
+ * v2.3.3566: the chest is the OWNER'S, the one that lands where the boss fell
+ * (rendering/arenaWorld.js), shut and then open at the same moment
+ * (CHEST_OPEN_MS there) -- it was the old daily chest's strip.  Its picture
+ * (src/data/dungeonArt.js BOSS_CHEST_ART) is warmed with the row's others.
  */
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Z_ABOVE_DASH_PROMPT } from '@/ui/zLayers.js';
 import { dungeonClearBus, dungeonClearView, leaveClearedDungeon } from '@/game/dungeonClear.js';
 import { cardPlace } from './NmlAskCard.jsx';
-import { DAILY_CHEST_STRIP, DAILY_CHEST_FRAMES } from '@/rendering/chestPreload.js';
+import { BOSS_CHEST_ART } from '@/data/dungeonArt.js';
+import { dungeonArtUrl } from '@/game/dungeonArt.js';
 import { thumbFor } from './dash/InventoryPanel.jsx';
 import { ZONE_SHARDS, shardByKey } from '@/data/shards.js';
 import { chestLines } from '@/game/bossChest.js';
@@ -54,22 +59,42 @@ const _held = [];
 try {
   if (typeof Image !== 'undefined') {
     const urls = [GOLD_ICON, ...Object.values(SKILL_ICON), thumbFor('rare_gem'), ...Object.values(ZONE_SHARDS).map((z) => thumbFor(z.key))];
+    if (BOSS_CHEST_ART) urls.push(dungeonArtUrl(BOSS_CHEST_ART.url));   /* v2.3.3566 */
     for (const u of urls) { if (!u) continue; const img = new Image(); img.decoding = 'async'; img.src = u; _held.push(img); }
   }
 } catch (e) { /* a warm-up never breaks the card */ }
-/* the lid lifts after the clear's fanfare (cue 'dungeonClear') has had its moment */
+/* the lid lifts after the clear's fanfare (cue 'dungeonClear') has had its
+   moment -- the same moment the chest in the arena opens (rendering/
+   arenaWorld.js CHEST_OPEN_MS = these two) */
 const CHEST_WAIT_MS = 900;
 const CHEST_FRAME_MS = 75;
+/* v2.3.3566: the owner's chest in the card's 44 px box: both pictures at one
+   scale (the open one, lid up, fills the height), standing on the same front
+   corner (each frame's `foot`), the shut one centred */
+const CHEST_BOX = 44;
+function chestFrameStyle(name) {
+  const A = BOSS_CHEST_ART;
+  const fr = A && A.frames.find((f) => f.id === name);
+  const sh = A && A.frames.find((f) => f.id === 'shut-1');
+  if (!fr || !sh) return null;
+  const k = CHEST_BOX / Math.max(...A.frames.map((f) => f.h));
+  const footX = CHEST_BOX / 2 - (sh.w / 2) * k + sh.foot[0] * k;
+  return {
+    position: 'absolute', bottom: 0, left: footX - fr.foot[0] * k, width: fr.w * k, height: fr.h * k,
+    backgroundImage: `url(${dungeonArtUrl(A.url)})`, backgroundRepeat: 'no-repeat',
+    backgroundSize: `${A.w * k}px ${A.h * k}px`, backgroundPosition: `${-fr.x * k}px ${-fr.y * k}px`,
+  };
+}
 
 function ChestRow({ reward }) {
   const lines = chestLines(reward && reward.chest, reward && reward.skillXp, nameOf);
   const hasChest = !!(reward && reward.chest);
-  const [frame, setFrame] = useState(hasChest ? 0 : DAILY_CHEST_FRAMES - 1);
+  const [opened, setOpened] = useState(!hasChest);
   useEffect(() => {
     if (!hasChest) return undefined;
     const ts = [];
     const later = (fn, ms) => ts.push(setTimeout(fn, ms));
-    for (let f = 3; f < DAILY_CHEST_FRAMES; f++) later(() => setFrame(f), CHEST_WAIT_MS + (f - 3) * CHEST_FRAME_MS);
+    later(() => setOpened(true), CHEST_WAIT_MS + CHEST_FRAME_MS);
     /* the daily chest's sounds on its frames (ChestReveal.jsx, v2.3.3045):
        a wooden knock and a shimmer as the lid lifts, the coins as they rise */
     later(() => {
@@ -77,19 +102,17 @@ function ChestRow({ reward }) {
     }, CHEST_WAIT_MS + CHEST_FRAME_MS);
     later(() => {
       try { BT_AUDIO.play('coin-pickup', { vol: 0.5 }); } catch (e) { /* a sound never breaks the card */ }
-    }, CHEST_WAIT_MS + (DAILY_CHEST_FRAMES - 3) * CHEST_FRAME_MS + 60);
+    }, CHEST_WAIT_MS + 5 * CHEST_FRAME_MS + 60);
     return () => ts.forEach(clearTimeout);
   }, [reward && reward.at]);
   if (!lines.length) return null;
+  const pic = hasChest ? chestFrameStyle(opened ? 'open-1' : 'shut-1') : null;
   return (
     <div data-boss-chest={hasChest ? 'open' : 'xp'} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-      {hasChest ? (
-        <div aria-hidden="true" data-chest-frame={frame} style={{
-          width: 44, height: 44, flex: '0 0 44px',
-          backgroundImage: `url(${DAILY_CHEST_STRIP})`, backgroundRepeat: 'no-repeat',
-          backgroundSize: `${DAILY_CHEST_FRAMES * 100}% 100%`,
-          backgroundPosition: `${(frame / (DAILY_CHEST_FRAMES - 1)) * 100}% 0`,
-        }} />
+      {pic ? (
+        <div aria-hidden="true" data-chest-frame={opened ? 'open' : 'shut'} style={{ position: 'relative', width: CHEST_BOX, height: CHEST_BOX, flex: `0 0 ${CHEST_BOX}px` }}>
+          <div style={pic} />
+        </div>
       ) : null}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', minWidth: 0 }}>
         {lines.map((l, i) => {
