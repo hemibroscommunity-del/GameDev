@@ -44,3 +44,14 @@ Unchanged:
 - `townsfolk-react` reads the lines from `REACT_LINES` rather than repeating
   them, and holds the new dance-off call's format.
 - `mp-joinin` waits for Diego's new first line.
+
+## Two lines reworded at the owner's ask
+
+The script had Mayor Bro's last two hand-ins say "your Life Skills are
+officially uncapped past Lv10!" and "past Lv50!". No code caps a life skill
+at those levels, so the lines promised an unlock that never happens. The
+owner: "Yes reword those two lines." They now read:
+
+- mayor_2: "...filed it under "Public Safety Miracles.""
+- mayor_3: "I hereby declare you BroTown's Dungeon Delver of the Year. There's
+  no trophy. Budget."

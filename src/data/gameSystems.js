@@ -7464,7 +7464,8 @@ export const QUEST_CHAINS = {
       start: "Before I can legally uncap your town permits, the City Council—which is just me wearing a fake mustache—needs to see some general dominance out there.\n\n"
         + "Head back out into the world and drop 5 monsters. Any zone, any ugly face. Just thin the herd so I can tell the voters crime is down fifty percent.",
       progress: "Drop 5 monsters in any zone! Go flex on the local wildlife so I can falsify my quarterly safety report.",
-      complete: "Violence verified! I just rubber-stamped your paperwork: your Life Skills are officially uncapped past Lv10! Go chop, mine, and cook like a tax-exempt maniac."
+      /* v2.3.3570: the owner asked to reword this: the script said "Life Skills are officially uncapped past Lv10!", which no code does */
+      complete: "Violence verified! I just rubber-stamped your paperwork and filed it under \"Public Safety Miracles.\" Go chop, mine, and cook like a tax-exempt maniac."
     }
   },
   mayor_3: {
@@ -7511,7 +7512,8 @@ export const QUEST_CHAINS = {
       start: "Alright, final boss of bureaucracy. You want the training wheels all the way off? You gotta clear a dungeon so I can write it off as \"urban renewal.\"\n\n"
         + "The Goo Grotto is right off the West Road in the Verdant Wilds. It's three waves of angry slimes, plus one massive mama slime at the end that splits three times when you smack her. Bring a mop.",
       progress: "Go clear a dungeon, bro! The Goo Grotto off the West Road in the Verdant Wilds is calling your name. Mostly it's making wet squelching noises, but you get the idea.",
-      complete: "Look at you, dripping in victory and questionable fluids! I've officially uncapped your Life Skills past Lv50!\n\n"
+      /* v2.3.3570: reworded at the owner's ask, as mayor_2's: no life-skill cap exists to lift at Lv50 */
+      complete: "Look at you, dripping in victory and questionable fluids! I hereby declare you BroTown's Dungeon Delver of the Year. There's no trophy. Budget.\n\n"
         + "That's the end of my clipboard, bro. The deeper zones of the world are wide open to you now. Go get rich—and remember who your favorite Mayor is come election season."
     }
   },
