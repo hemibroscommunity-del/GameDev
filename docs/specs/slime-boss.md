@@ -15,9 +15,11 @@ drawn twice your height, with four wave slimes' worth of health.
 
 1. Its HP bar wears three thin dark marks, at 75%, 50% and 25%: where it will
    burst.
-2. When its health reaches a mark it **swells** for 1.6 s with "BURSTING!" over
-   it, the same warning a blue slime gives before it bursts. It can't be hurt
-   and doesn't move or attack while it swells.
+2. When its health reaches a mark it **swells** for 1.6 s, the same warning a
+   blue slime gives before it bursts, with "BURSTING!" over it. The words are
+   the giant's alone: an ordinary blue slime swells with none, as the owner
+   wants it found out (v2.3.3568, docs/specs/first-30-minutes.md). It can't be
+   hurt and doesn't move or attack while it swells.
 3. Then it **goes off** as a blue slime does: the shockwave, the blast's sound,
    and the blast itself, which hurts anyone inside it (a blue slime's 60, scaled
    to your level, never more than half your bar).
