@@ -933,6 +933,14 @@ remnant to migrate server-side, not a mode to preserve.
         `ui/panels/SoundStudio.jsx` (its own chunk, loaded on opening);
         A NEW SOUND GETS ITS LABEL THERE in the same change -- `sound-cues`
         §12 fails for a cue or table key without one; `mp-soundstudio`.
+    - since v2.3.3572 A HARVEST REACHING 0 IS QUIET -- the owner: "there's a
+      splat sound when the ore is ready for the gesture cue (reaches 0hp) ...
+      it needs to be removed": the cue `gatherReady` (sword-hit2 at 1.6x,
+      v2.3.3343) played the frame a rock, tree or cook's window opened, the
+      only sound then (the game's sound log on a phone); it is gone from
+      BroTown, the cue table, the studio and mp-cuelevels, fishing keeping its
+      bite -- most likely §3's tree "fleshy sound" of the 2026-10-19 notes
+      too; `mp-gatherquiet`: docs/specs/sounds-2026-10-19.md §9.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":

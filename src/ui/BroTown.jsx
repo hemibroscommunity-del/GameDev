@@ -6560,9 +6560,12 @@ export var BroTown = function BroTown(_ref0) {
                 /* v2.3.2761 (owner: sounds for the specific actions): for fishing
                    the window opening IS the bite -- a fish on the hook, now reel. */
                 if (_ex.skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('fish-on-hook', { vol: 0.65 }); } catch (e) {} }
-                /* v2.3.3343: ...and for the rest a small bright tick that says
-                   "now" -- this was a beep(), silent (SOUND-GAPS) */
-                else cue('gatherReady');
+                /* v2.3.3572: and for the rest NOTHING -- v2.3.3343's "small
+                   bright tick" (cue gatherReady, sword-hit2 at 1.6x) was the
+                   owner's "splat sound when the ore is ready for the gesture
+                   cue (reaches 0hp) ... it needs to be removed".  The rock,
+                   tree or pan at 0 and the cue on screen say it; the swings'
+                   own strikes lead up to it (mp-gatherquiet). */
               }
             }
             /* v2.3.1416 (owner: "all resources NOT have a time out window

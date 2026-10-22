@@ -111,7 +111,6 @@ export const CUE_PLACES = {
   landCross: ['world', 'Crossing into a land (under its banner)'],
   fireStrike: ['gather', 'Lighting a campfire: the flint strikes'],
   campfire: ['gather', 'Lighting a campfire: the fire catching'],
-  gatherReady: ['gather', 'A harvest\'s moment to swipe: the gesture\'s window opening'],
   fireCatch: ['world', 'A building you keep hitting catching fire'],
   mended: ['world', 'A broken object mending itself'],
   signpost: ['world', "A town signpost's boards popping up"],
