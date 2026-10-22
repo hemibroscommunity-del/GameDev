@@ -22,7 +22,7 @@ const STATUS_TO_ELEMENT = new Map();
 for (const el of Object.values(ELEMENTS || {})) {
   if (el && el.status) STATUS_TO_ELEMENT.set(el.status, el);
 }
-import { lookupCollision, PVP_THREAT_CONSENT_MS, toDisplayHp, DISPLAY_SCALE_K } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale; v2.3.2572: k, for the HP-read probe */
+import { lookupCollision, PVP_THREAT_CONSENT_MS, toDisplayHp, DISPLAY_SCALE_K, bossSizeK, bossSplitShare /* v2.3.3558: the marks on a splitting boss's bar */, monsterBodyOffsetY as _bodyOffY, monsterMeleeHitRadius as _bodyR } from '@/data/gameSystems.js'; /* v2.3.3556: + a dungeon boss's size, and its body, for seeing through it */ /* v2.3.2520: the display damage scale; v2.3.2572: k, for the HP-read probe */
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
@@ -316,6 +316,17 @@ SPAWN_WHITE_FILTER.matrix = [
 /* v2.3.2991: exported -- the stat scene's films are sized off the slime as
    the world really draws it (effectsRenderer captureFxFilm) */
 export const MONSTER_SIZE_MULT = 1.5;
+/* ═══ v2.3.3556: A DUNGEON'S BOSS IS DRAWN HUGE ═══
+   The owner, of dungeons: "This will probably need work to get right."  The
+   boss looked exactly like the wave monsters before it -- same picture, same
+   size, same name (docs/specs/dungeons-today.md).  The worker now says which
+   one it is (`boss: 1` on its snapshot, server/src/dungeon.js), and it is
+   drawn bossSizeK(m) bigger (data/gameSystems.js: about twice the bro's
+   height -- "Make boss slime huge"; the first cut's 1.5 was not), its HP bar
+   with it; its plate stays the plates' size on the screen and says "Boss" on
+   a deep red (PLATE_BOSS_FILL), and it goes see-through while it covers you
+   (BOSS_SEE_THROUGH). */
+const BOSS_SEE_THROUGH = 0.45;
 /* NPC art draw scale.  96 world px per frame is what this renderer treats as
    player scale (see the 96/128 baseScale at the harvest stand-in, commented
    exactly that).
@@ -6084,6 +6095,17 @@ const PLATE_ALARM_FILL = 0xE03131;
 const PLATE_ALARM_FILL_ALPHA = 1;
 const PLATE_ALARM_NAME_FILL = '#FFFFFF';
 const PLATE_ALARM_NAME_WEIGHT = '700';
+/* ═══ v2.3.3556: A DUNGEON'S BOSS RESTS ON A DEEP RED ═══
+   Not the alarm's bright red, which says "hitting you right now" (D4), and not
+   the danger band, which is the BORDER and says "far above you": the fill a
+   step down from the alarm, at rest, so a boss's plate reads as its own thing
+   before a blow lands.  #7A1D1D at .94 is the colour the NPC plate's alarm
+   already measured: the name's #F4F0E7 at 9.14:1 on it (the two-line rect
+   note in _updateNamePill), bold; the level digits keep their band and their
+   navy stroke, which carries their legibility on any fill (PLATE_LEVEL_STROKE).
+   The bright alarm still wins over it while the boss hits you. */
+const PLATE_BOSS_FILL = 0x7A1D1D;
+const PLATE_BOSS_FILL_ALPHA = 0.94;
 /* v2.3.2571: and the LEVEL's ink follows the name into the alarm state, for
    the reason the name did.  The level is band-coloured digits, and on the
    alarm's red fill those hues collapse: low 2.71, near 3.27, high
@@ -6530,12 +6552,13 @@ function _fitPlateToZoom(display) {
    is: the rounded rect is rebuilt only when the key changes, so a colour
    written outside it would be written once and then never again -- and a band
    moves every time the PLAYER levels up, not only when the monster does. */
-function _updateNamePill(display, name, level, visible, broId, alarm, band, party) {
+function _updateNamePill(display, name, level, visible, broId, alarm, band, party, boss) {
   if (!display || !display._namePill) return;
   _fitPlateToZoom(display);
-  /* v2.3.3279: + `party`, the owner's party badge (a party member's plate) */
+  /* v2.3.3279: + `party`, the owner's party badge (a party member's plate);
+     v2.3.3556: + `boss`, a dungeon's boss (its deep red) */
   const key = name + '|' + level + '|' + (broId ? 'v' : '') + (alarm ? '|!' : '')
-    + (band ? '|' + band : '') + (party ? '|p' : '');
+    + (band ? '|' + band : '') + (party ? '|p' : '') + (boss ? '|b' : '');
   if (display._pillKey !== key) {
     display._pillKey = key;
     display._pillName.text = name;
@@ -6551,9 +6574,10 @@ function _updateNamePill(display, name, level, visible, broId, alarm, band, part
        a badge and pass it a word to put in the circle. */
     if (display._partyBadge && !(band && typeof level !== 'string')) display._partyBadge.visible = false;
     if (band && typeof level !== 'string') {
-      _drawPlateCapsule(display, level, broId, alarm, band, party);
+      _drawPlateCapsule(display, level, broId, alarm, band, party, boss);
       display._pillAlarm = !!alarm;
       display._pillBand = band;
+      display._pillBoss = !!boss;   /* v2.3.3556: for the QA probe */
       display._namePill.visible = !!visible;
       return;
     }
@@ -6632,7 +6656,7 @@ function _setPillType(display, fill, weight) {
    The origin is the pill's TOP CENTRE, the same convention the two-line rect
    used, so nothing that positions a plate (pill.y at every call site) has to
    move. */
-function _drawPlateCapsule(display, level, broId, alarm, band, party) {
+function _drawPlateCapsule(display, level, broId, alarm, band, party, boss) {
   const N = display._pillCss || 15;
   const h = Math.round(N * PLATE_H_RATIO);
   const padL = Math.round(N * PLATE_PAD_L_RATIO);
@@ -6651,7 +6675,7 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party) {
      is a plate whose padding changes when a monster starts hitting you. */
   _setPillType(display,
     alarm ? PLATE_ALARM_NAME_FILL : PLATE_NAME_FILL,
-    alarm ? PLATE_ALARM_NAME_WEIGHT : PLATE_NAME_WEIGHT);
+    (alarm || boss) ? PLATE_ALARM_NAME_WEIGHT : PLATE_NAME_WEIGHT);   /* v2.3.3556: a boss's name bold */
   nameT.anchor.set(0.5, 0.5);
   const broD = broId ? Math.max(11, Math.round(h * 0.62)) : 0;
   const broPad = broId ? broD + Math.round(gap * 0.6) : 0;
@@ -6745,8 +6769,11 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party) {
      pasted on it, and the name still measures 8.4:1 in the worst case a scene
      can hand it (see the knob block).  The alarm state keeps alpha 1 -- a
      warning does not get to be translucent. */
-  g.fill({ color: alarm ? PLATE_ALARM_FILL : PLATE_INK,
-    alpha: alarm ? PLATE_ALARM_FILL_ALPHA : PLATE_FILL_ALPHA });
+  /* v2.3.3556: a dungeon's boss rests on a deep red, the alarm's bright red
+     still meaning "hitting you right now" over it (D4's precedence) */
+  const _fill = alarm ? PLATE_ALARM_FILL : boss ? PLATE_BOSS_FILL : PLATE_INK;
+  const _fillA = alarm ? PLATE_ALARM_FILL_ALPHA : boss ? PLATE_BOSS_FILL_ALPHA : PLATE_FILL_ALPHA;
+  g.fill({ color: _fill, alpha: _fillA });
   g.stroke({ color: PLATE_BAND[band] || PLATE_BAND.near, alpha: PLATE_BORDER_ALPHA,
     width: PLATE_BORDER_PX, alignment: 0.5 });
   /* v2.3.2571: the white disc that used to sit here is gone -- see the level
@@ -6760,7 +6787,9 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party) {
      them.  Without this a future edit could put alpha back to 1 and every
      existing assertion would still pass. */
   display._pillSoft = {
-    fillAlpha: alarm ? PLATE_ALARM_FILL_ALPHA : PLATE_FILL_ALPHA,
+    fillAlpha: _fillA,
+    fill: _fill,   /* v2.3.3556: the colour too (a boss's deep red) */
+    boss: !!boss,
     borderAlpha: PLATE_BORDER_ALPHA,
     borderPx: PLATE_BORDER_PX,
     borderColor: PLATE_BAND[band] || PLATE_BAND.near,
@@ -6774,7 +6803,7 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party) {
     levelStroke: alarm ? null : PLATE_LEVEL_STROKE,
     levelStrokePx: alarm ? 0 : PLATE_LEVEL_STROKE_PX,
     nameFill: alarm ? PLATE_ALARM_NAME_FILL : PLATE_NAME_FILL,
-    nameWeight: alarm ? PLATE_ALARM_NAME_WEIGHT : PLATE_NAME_WEIGHT,
+    nameWeight: (alarm || boss) ? PLATE_ALARM_NAME_WEIGHT : PLATE_NAME_WEIGHT,
     /* every band the renderer can stroke, so the four-way separation is
        checkable from one plate instead of needing four monsters on screen */
     bands: PLATE_BAND,
@@ -8671,7 +8700,9 @@ export class EntityRenderer {
          slime-splat SFX only fires for raw fodder. */
       if (!m.alive && (isFodder || variantKey) && m._slimeDeathStart == null) {
         m._slimeDeathStart = now;
-        if (isFodder) {
+        /* v2.3.3558: not a giant slime's leftover slime popping with it
+           (gameEvents.js split / pop plays one splat for them all) */
+        if (isFodder && !m._quietDeath) {
           /* v2.3.3248: by how near it died, or in full when you helped kill
              it (hitSounds.deathVol, the kill event's `_killMine`): every
              slime with its look loaded -- ~2,600 px round you, most of that
@@ -8734,6 +8765,8 @@ export class EntityRenderer {
             trimmed: !!(_t && _t.trim),   /* v2.3.2870: drawn from a cropped strip (zoneTextures.loadTrackedStrip) */
             srcW: _src ? (_src.width || 0) : 0,
             texAlive: !!(_src && !_src.destroyed && _src.width > 0),
+            seeThrough: !!d._bossSeeThrough,   /* v2.3.3556: a huge boss covering you */
+            alpha: +Number(d.alpha).toFixed(2),
             /* The procedural fallback body.  Drawn INSTEAD of the sprite when
                there is no frame at all -- so "sprite dark and body dark" is
                the hole, while "sprite dark and body lit" is merely the wrong
@@ -9054,7 +9087,11 @@ export class EntityRenderer {
          (the dunes' north-south ramp, zones.js `depth`) -- a mummy on the
          horizon is drawn as far away as the rocks beside it.  1 on every zone
          without one, so this is the old constant everywhere else. */
-      const _mk = MONSTER_SIZE_MULT * (this._zonePscale(S, rx, ry) || 1);
+      /* v2.3.3556: ...and a dungeon's boss bossSizeK(m) bigger (the worker's
+         `boss`: twice your height); every write of the scale below goes
+         through `_mk` */
+      const _bossK = m.boss ? bossSizeK(m) : 1;
+      const _mk = MONSTER_SIZE_MULT * (this._zonePscale(S, rx, ry) || 1) * _bossK;
       if (display.scale.x !== _mk) display.scale.set(_mk);
       /* v2.3.1472: mirror the transform onto the above-head UI, which
          lives in a sibling layer (same world container, so the values
@@ -9066,7 +9103,9 @@ export class EntityRenderer {
         if (_ui.y !== ry) _ui.y = ry;
         if (_ui.visible !== m.alive) _ui.visible = m.alive;
         if (_ui.scale.x !== _mk) _ui.scale.set(_mk);
-        _ui._plateLift = _plateLiftAt(S.currentZone, ry);   /* v2.3.2745 */
+        /* v2.3.3556: a boss's plate is fitted back to the plates' size on the
+           screen (its bar grows with it) */
+        _ui._plateLift = _plateLiftAt(S.currentZone, ry) / _bossK;   /* v2.3.2745 */
       }
 
       /* ═══ v2.3.1765: A MONSTER ARRIVES AS A GROWING WHITE SILHOUETTE ═══
@@ -9150,6 +9189,24 @@ export class EntityRenderer {
         display.scale.set(_mk * (1 + (0.05 + 0.09 * t) * beat));
       };
       try { _windupFx(); } catch (e) { /* an FX must never take the frame down */ }
+      /* ═══ v2.3.3556: A HUGE BOSS NEVER HIDES YOU ═══
+         Twice your height, a boss you walk behind (north of its feet, inside
+         its drawn body) would cover you whole -- so it goes see-through
+         while it does, as a tree does (game/tierTrees.js behindTree).  Its
+         body's size is the hit tests' own (twice its centre's lift, its hit
+         radius across), at the scale it is drawn; after its arrival, which
+         owns the alpha while it plays. */
+      if (m.boss && m.alive && !m._spawnFxAt && S.player) {
+        const _shp = m.archetype || m.type;
+        const _sk = _mk / MONSTER_SIZE_MULT;
+        const _off = _bodyOffY(_shp) || 0;
+        const _bh = (_off > 0 ? 2 * _off : 2 * (_bodyR(_shp) || 24)) * _sk;
+        const _bw = (_bodyR(_shp) || 24) * _sk;
+        const _pdx = S.player.x - rx, _pdy = ry - S.player.y;
+        const _ba = (_pdy > 0 && _pdy < _bh && Math.abs(_pdx) < _bw) ? BOSS_SEE_THROUGH : 1;
+        if (display.alpha !== _ba) display.alpha = _ba;
+        display._bossSeeThrough = _ba < 1;   /* for the QA probe */
+      }
       /* QA probe (mp-windup): a throb cannot be read off one screenshot, so
          the scenario reads the scale the FX actually wrote — and the resting
          multiplier beside it, so "it grew" has a control. */
@@ -9967,6 +10024,47 @@ export class EntityRenderer {
             fx.fill({ color: 0xffffff, alpha: 0.85 * (fl / HPBAR_FLASH_MS) });
           }
         }
+        /* ═══ v2.3.3558: WHERE A SPLITTING BOSS WILL BURST ═══
+           The Goo Grotto's giant slime splits at each quarter of its health
+           (server/src/slimeboss.js; the worker says `bs` done of `bn`), so
+           its bar wears a dark mark at each split still to come -- the
+           worker's own shares (gameSystems.js bossSplitShare).  A shape of
+           its own, redrawn only when what it shows changes: the bar's fx is
+           cleared every frame, and a structural change a frame rebuilds the
+           layer's draw list (TRAPS §218). */
+        const _bn = m.boss ? Math.floor(Number(m.bn) || 0) : 0;
+        /* QA probe (mp-slimeboss): read on demand, nothing written per frame */
+        if (typeof window !== 'undefined' && !window.__btBossMarks) {
+          const _bmDisplays = this.monsterDisplays;
+          window.__btBossMarks = (mid) => {
+            const d = _bmDisplays && _bmDisplays.get(mid);
+            const g = d && d._bossMarks;
+            return g && !g.destroyed ? { key: g._key || '', visible: !!g.visible } : null;
+          };
+        }
+        if (_bn > 0 || display._bossMarks) {
+          let bm = display._bossMarks;
+          if (!bm) {
+            const _bmUi = display._hpUi || display;
+            bm = new Graphics();
+            _bmUi.addChildAt(bm, _bmUi.getChildIndex(display._hpText));
+            display._bossMarks = bm;
+          }
+          const _bs = Math.max(0, Math.min(_bn, Math.floor(Number(m.bs) || 0)));
+          const _bmKey = _bn + ':' + _bs + ':' + Math.round(barY * 10);
+          if (bm._key !== _bmKey) {
+            bm._key = _bmKey;
+            bm.clear();
+            const inL = -MONSTER_HPBAR_W / 2 + MONSTER_HPBAR_W * HPBAR_IN_X;
+            const inW = MONSTER_HPBAR_W * HPBAR_IN_W;
+            const inT = barY - MONSTER_HPBAR_H / 2 + MONSTER_HPBAR_H * HPBAR_IN_Y;
+            const inH = MONSTER_HPBAR_H * HPBAR_IN_H;
+            for (let i = _bs; i < _bn; i++) {
+              bm.rect(inL + inW * bossSplitShare(i, _bn) - 0.75, inT, 1.5, inH);
+              bm.fill({ color: 0x0b0b10, alpha: 0.85 });
+            }
+          }
+        }
         display._hpText.x = 0;
         display._hpText.y = barY;
         /* v2.3.2571: the band's anchor line, published for the plate.  The
@@ -10073,6 +10171,7 @@ export class EntityRenderer {
         if (display._hpText.visible) display._hpText.visible = false;
         if (display._hpBarFill && display._hpBarFill.visible) display._hpBarFill.visible = false;
         if (display._hpBarFx && display._hpBarFx.visible) display._hpBarFx.visible = false;
+        if (display._bossMarks && display._bossMarks.visible) display._bossMarks.visible = false;   /* v2.3.3558 */
       } else {
         display._hpHeart.alpha = 1;
         display._hpText.alpha = 1;
@@ -10082,6 +10181,7 @@ export class EntityRenderer {
         if (!display._hpText.visible) display._hpText.visible = true;
         if (display._hpBarFill && !display._hpBarFill.visible) display._hpBarFill.visible = true;
         if (display._hpBarFx && !display._hpBarFx.visible) display._hpBarFx.visible = true;
+        if (display._bossMarks && !display._bossMarks.visible) display._bossMarks.visible = true;   /* v2.3.3558 */
         /* v2.3.2520: the display scale (§5.8 D1).  CALL SITE ONLY -- the
            plate's layout, geometry and colours below are untouched and
            belong to the nameplate work landing in parallel.  toDisplayHp is
@@ -10159,8 +10259,10 @@ export class EntityRenderer {
         const _fadeYou = (xpDecayOn(S) && S.rpg && prog3Live(S.rpg))
           ? prog3SkillLevel(S.rpg, prog3ActiveCat(S.rpg)) : null;
         const _plateBand = plateBandFor(m.level, _plateYou, _fadeYou);
-        _updateNamePill(_plateUi, wheelStageName(m, monsterDisplayName(m.archetype || m.type)),   /* v2.3.3093: "Glacier Snowman" past level 20 */
-          m.level == null ? 1 : m.level, _plateShow, null, _plateAlarm, _plateBand);
+        /* v2.3.3556: a dungeon's boss says so: "Boss Amethyst Golem", on its
+           own deep red (_drawPlateCapsule's `boss`) */
+        _updateNamePill(_plateUi, (m.boss ? 'Boss ' : '') + wheelStageName(m, monsterDisplayName(m.archetype || m.type)),   /* v2.3.3093: "Glacier Snowman" past level 20 */
+          m.level == null ? 1 : m.level, _plateShow, null, _plateAlarm, _plateBand, false, !!m.boss);
         /* ═══ v2.3.2571: THE PLATE SITS WHERE THE BAR SITS ═══
            Centred on `_plateBandY`, the bar's own centre line, so the two
            states occupy one spot and the transition reads as the plate

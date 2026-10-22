@@ -8122,3 +8122,70 @@ places:
 its world; the list never grows; the harness refuses before a browser is
 opened), and `mp-pointsreset`, `mp-gearlevel`, `mp-achvtitle`, `mp-pointstips`
 moved to the world.
+
+## 245. "The server sent the list again, so build the list again" (v2.3.3558)
+
+**The plausible move.** A message carries a zone's whole monster list, so the
+phone throws away what it held and builds every monster afresh from it
+(`S.monsters = msg.monsters.map(_monsterFromWire)`).  The server is the truth,
+the new list is complete, and nothing stale survives.
+
+**Why it is wrong.** The renderer keeps the MOMENTS on the monster objects
+themselves: a monster it has never seen (`_fxWasAlive === undefined`) has just
+ARRIVED (the growing white silhouette), and a dead one it never saw die has
+just DIED (the splat and its sound).  A fresh object is a monster never seen.
+A dungeon re-sends its whole list, dead monsters included, whenever it adds
+some: each wave, each boss summon, each of the giant slime's three splits.  So
+every monster standing played its arrival again, and every monster already
+dead played its death again: a dozen splats and their sounds at once by the
+third wave.  Everything else the phone keeps about a monster went too: where
+it is drawn (a jump to its server place), that you are fighting it (its bar
+hid), the arrows stuck in it, a swell or a flight under way.
+
+**The rule.** When a list replaces one the phone holds, a monster with the same
+id in the same life (alive in both) or the same death (dead in both) keeps
+what the phone keeps of it (src/game/monsterCarry.js `carryMonsterState`, used
+by wsClient.js for the zone's list and the join's).  One that died or came back
+since is met afresh, as it should be.  A NEW phone-only field on a monster that
+marks a moment (an arrival, a death, a flight, a wind-up) goes on that file's
+lists in the same change, or the next re-push plays it again.  And a moment
+that must END while its monster lives must be able to end without the event
+that ends it: a boss's swell is let go when its `bs` has moved, so a phone that
+missed the split never holds it swollen and untouchable.
+
+**Receipt:** `slime-boss.test` §8 (same life, same death, came back, died, the
+swell kept or let go), and `mp-slimeboss`, which watches every frame of each
+split: the boss and the slimes already standing never arrive again while the
+new ones each do, and two slimes killed before a split do not die again in its
+re-push.
+
+## 246. "The background is white, so key out the white" (v2.3.3558)
+
+**The plausible move.** A monster's art comes as a video or picture on a plain
+near-white background, so the background is cut away by its colour: every pixel
+near enough to white goes see-through (a hard key, or a soft one whose alpha
+falls as a pixel nears white).  The edge comes out clean and the sheet looks
+right in any viewer.
+
+**Why it is wrong.** The art's own whites go with it.  The slime's shine, a
+pale mint oval on its top-left (about (221, 235, 202) in its video), was near
+enough to white that its core became the palette's background entry and its
+rim went part see-through, inside a body that is otherwise solid.  At a
+slime's own size that is three or four pixels and nobody saw it; drawn x4.6 as
+the Goo Grotto's boss, the owner saw the floor through it: "There's actually a
+transparent hole on the slime i don't think that came with the original art."
+It was in every slime: the blue one is the green one's picture recoloured,
+alpha kept, so swapping colours could not help.
+
+**The rule.** A background is what you can reach from the picture's edge.
+Find it by flooding from the edge through background-coloured pixels, never by
+colour alone.  To check a cut, a pixel that is not fully opaque and that the
+frame's edge cannot reach through others like it is a hole in the art.  To mend
+one, give it its own colour, solid; one with no colour of its own (the
+background's entry) takes its brightest solid neighbour's colour
+(tools/mend_slime_shine.py).  Anything derived from the picture (the pet sheet,
+tools/make_pet_sheet.py) is made again from the mended one.
+
+**Receipt:** `slime-boss.test` §9 (no see-through pixel inside a living slime,
+in each frame of idle, shoot and hit; it fails on the sheets before the mend
+with 374, 100 and 119), and `mp-slimeboss` pictures the giant's shine whole.

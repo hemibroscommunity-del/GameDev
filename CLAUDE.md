@@ -1656,6 +1656,80 @@ remnant to migrate server-side, not a mode to preserve.
         its road leads to the Grotto (questWays.js `dungeon:<land>`);
       - `wheeldungeon` §1/§6/§10, `dungeon`, `quest-route`, mirror-audit,
         test-world-core, `mp-googrotto`: docs/specs/starter-dungeon.md.
+    - since v2.3.3556 THE DUNGEON FIXES -- the owner: "I have no clue what the
+      state of dungeons are right now in the game. I have never played dungeons
+      yet. This will probably need work to get right." A phone walked all four
+      first (`mp-dungeontour`, docs/specs/dungeons-today.md: what a player
+      meets), then the four fixes that needed no decision:
+      - ONE LEVEL: every monster in a world dungeon is at the dungeon's level
+        (wheeldungeon.js: no +0..2), and the top bar says "(Lv 28)"
+        (zoneTitle.js: a one-level range is one level);
+      - A REAL BOSS: its WHOLE health x BOSS_MULT x the party's share
+        (dungeon.js `_dungeonSpawnBoss`; v2.3.1346 left the level's flat out,
+        and since v2.3.3055 the flat is most of a monster's health, so the boss
+        had about a wave monster's: the Great Cave's 1,384 -> 4,636); `boss: 1`
+        on its three whole-monster mappings, its plate "Boss <name>" on
+        PLATE_BOSS_FILL's deep red (the alarm's bright red still wins while
+        it hits you); and HUGE -- the owner, of the first cut's 1.5x: "Make
+        boss slime huge" -- about twice your height whatever it is
+        (gameSystems.js `bossSizeK`: `BOSS_STAND_H` 211 world px, a slime
+        x4.6, a golem or mummy x2.2, held to 1.5-5), HIT WHERE IT IS DRAWN
+        (the swing, the lunge, arrows, bolts, the bow's line, a tap, the
+        reach rings and the lock's aim all measure it at that size;
+        `monsterBodyY`), see-through (0.45) while it covers you
+        (entityRenderer `BOSS_SEE_THROUGH`); its own blows reach as before;
+      - 30 SECONDS FOR THE LOOT: game/dungeonClear.js (the clear's clock, out
+        only from THAT dungeon) and ui/mobile/DungeonClearHud.jsx ("out in 27
+        s", Leave now) -- it was three;
+      - STRAIGHT BACK IN: a start with your last run empty ends it
+        (`_handleDungeonStart`); someone inside keeps it;
+      - A DEATH INSIDE KEEPS THE BAG -- offered "your pile waits at the mouth,
+        or you keep your bag in a dungeon", the owner: "Keep your bag in
+        dungeons": the duel kill's exemption for any `dungeon:` zone (index.js
+        `_handlePlayerDeath`, dungeon.js `_dungeonKeepsBag`: no pile, neither
+        wipe, `ps._deathKeepsBag` -- was `_duelDeathKeepsBag`), `keptBag` on
+        player_died and "Your bag is safe" on the phone; a red skull's loss
+        still No man's land's; kill switch `dungeonbag: false`;
+      - `wheeldungeon` §4/§6/§11/§12, `dungeon` §4/§8/§11, `dungeon-clear` suite,
+        `mp-dungeonfix`: docs/specs/dungeon-fixes.md. Still the owner's call:
+        a reward worth the trip, travel to found dungeons, the farm's
+        Workshop, something to look at inside, and whether the huge boss
+        should reach as far as it looks.
+    - since v2.3.3558 THE GOO GROTTO'S GIANT SLIME SPLITS -- the owner: "a
+      giant slime that explodes and spawns small (normal size slimes) like
+      8-10 maybe but shrinks in size afterwards ... 3 rounds of that before it
+      finally just becomes a normal slime then after you kill that you defeat
+      the dungeon":
+      - at 75%, 50% and 25% of its health (three dark marks on its bar) it
+        swells 1.6 s ("BURSTING!", unhittable, still), goes off as a blue
+        slime does (its blast the size of its swollen body, 180 / 115 / 110
+        px, the hit door's `burst` row) and throws out 10, then 9, then 8 of
+        the Grotto's own slimes on a ring round it, a step smaller each time
+        (x4.59, 2.76, 1.66, 1: gameSystems.js `bossSizeK` from `bs`/`bn` on
+        its wire); its last quarter is one wave slime's health, and killing
+        that is the win: the slimes still standing pop with it, unpaid;
+      - NO HIT SKIPS A SPLIT: its next mark is a FLOOR (combat.js
+        `_monsterHpFloor`, read by all five places a monster loses health) and
+        `_monsterDamageable` refuses it at its mark until it has split;
+      - server/src/slimeboss.js (`SLIME_BOSS.LANDS`: the Grotto alone, the
+        Foundry Dome one line away), `dungeon_boss_ability` `split`
+        (telegraph / execute / pop); kill switch `slimeboss: false`; QA op
+        `/dev/hurt`;
+      - A RE-PUSH IS NOT A NEW ARRIVAL, found building it: a dungeon re-sends
+        its whole monster list at every wave, summon and split, and the phone
+        built every monster afresh, so the ones standing played their arrival
+        again and the dead their death, splat and sound (a dozen at once by
+        the third wave); game/monsterCarry.js `carryMonsterState` keeps what the
+        phone holds of a monster in the same life or the same death (TRAPS
+        §245);
+      - ITS SHINE IS WHOLE -- the owner: "There's actually a transparent hole
+        on the slime i don't think that came with the original art": the
+        slime was cut off its videos' near-white background by colour, and
+        its pale shine went with it (every slime: the blue one is the green
+        one recoloured, alpha kept); tools/mend_slime_shine.py fills every
+        see-through pixel the frame's edge cannot reach in idle, shoot and hit,
+        the pet sheet made again (`?v=2.3.3558`); slime-boss §9, TRAPS §246;
+      - `slime-boss` suite, `mp-slimeboss`: docs/specs/slime-boss.md.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack

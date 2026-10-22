@@ -220,6 +220,9 @@ export function monsterProjRadius(m, S, opts) {
     var _procR = monsterProceduralRadius(_archProj);
     if (_procR > 0) _hitR = Math.max(_hitR, _procR);
   }
+  /* v2.3.3556: a dungeon's boss is drawn bossSizeK(m) times its size
+     (gameSystems.js: twice your height), and is hit where it is drawn */
+  _hitR *= bossSizeK(m);
   /* v2.3.1136: Detonation channel widens staff bolt blasts
      (+0.7%/pt, cap +69.3%) before the special multiplier. */
   if (opts && opts.isStaff && S && S.rpg) _hitR *= staffAoeMult(S.rpg);
@@ -317,7 +320,7 @@ function _landCore(m, S) {
   /* sprite-less dungeon shapes and the other sprite variants: a share of the
      body circle across, and of the centre height up */
   var r = monsterProjRadius(m, S, null);
-  var bo = monsterBodyOffsetY(m.archetype || m.type) || 0;
+  var bo = (monsterBodyOffsetY(m.archetype || m.type) || 0) * bossSizeK(m);   /* v2.3.3556: x a boss's size */
   return [Math.max(5, Math.min(14, r * 0.3)), Math.max(5, Math.min(18, (bo > 0 ? bo : r) * 0.3))];
 }
 /* Where a shot whose tip (a bolt: its centre) is at (tipX, tipY) lands in
@@ -362,7 +365,7 @@ function _pickLanding(S, a, m, tipX, tipY) {
    lock (updateArrows); the sight gate passes the same thing as opts.aimAt. */
 function _projCentreLift(S, a, m) {
   if (a && a._aimAt != null && a._aimAt === m.id) return torsoLift(m, S && S.currentZone);
-  return monsterBodyOffsetY(hitShapeOf(m.archetype || m.type)) || 0;
+  return (monsterBodyOffsetY(hitShapeOf(m.archetype || m.type)) || 0) * bossSizeK(m);   /* v2.3.3556: x a boss's size */
 }
 /* A hit, on screen, at the point (tx, ty) where the shot landed: the monster's
    recoil and flash (v2.3.2200), its material (v2.3.2843), the sound of what was
@@ -826,7 +829,7 @@ function _sightLine(S, ox, oy, ang, maxLen, opts) {
       var my = (typeof m.renderY === 'number' && isFinite(m.renderY)) ? m.renderY : m.y;
       var mArch = hitShapeOf(m.archetype || m.type);
       /* v2.3.2845: the monster the shot is aimed at, round its torso -- as the hit test will */
-      var onLine = consider(mx, my - ((opts && opts.aimAt != null && opts.aimAt === m.id) ? torsoLift(m, S.currentZone) : monsterBodyOffsetY(mArch)),
+      var onLine = consider(mx, my - ((opts && opts.aimAt != null && opts.aimAt === m.id) ? torsoLift(m, S.currentZone) : monsterBodyOffsetY(mArch) * bossSizeK(m)),   /* v2.3.3556: x a boss's size */
         monsterProjRadius(m, S, opts) + half, m.id, m, rockGate ? rockGate(mx, my) : null, mx, my, true);   /* v2.3.3485: + the rock gate, at its feet; v2.3.3501: + the feet; v2.3.3515: a monster */
       /* v2.3.3206: on the line with its feet in the prop's box: the arrow is let in */
       if (onLine && prop) {
@@ -1000,6 +1003,7 @@ import {
   toDisplayDamage, /* v2.3.2520: the display damage scale */
   STAFF_BIG_BOLT_SCALE, /* v2.3.2842: the one-bolt special's drawn + hit size */
   STAFF_BIG_BOLT_BLAST_PX, /* v2.3.2849: how far its explosion reaches */
+  bossSizeK, /* v2.3.3556: a dungeon boss's drawn size */
 } from '@/data/index.js';
 import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, hitSoundOf /* v2.3.3001: ...in its material's voice */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { monsterHitSfx, shotEndSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits and monster balls sound like their material */
@@ -1319,7 +1323,7 @@ export function updateArrows(S, deps) {
                     var _lm = S.monsters[_lmi];
                     if (!_lm || !_lm.alive) continue;
                     var _lmx = (typeof _lm.renderX === 'number') ? _lm.renderX : _lm.x;
-                    var _lmy = ((typeof _lm.renderY === 'number') ? _lm.renderY : _lm.y) - monsterBodyOffsetY(_lm.archetype || _lm.type);
+                    var _lmy = ((typeof _lm.renderY === 'number') ? _lm.renderY : _lm.y) - monsterBodyOffsetY(_lm.archetype || _lm.type) * bossSizeK(_lm);   /* v2.3.3556: x a boss's size */
                     var _ldx = _lmx - _lcx, _ldy = _lmy - _lcy;
                     if (_ldx * _ldx + _ldy * _ldy > 100 * 100) continue;   /* outside the 100px vicinity */
                     if (S._serverMonsters && S.channel) {

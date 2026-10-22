@@ -878,7 +878,8 @@ export const abilityMethods = {
        is a backstop, not a limiter (see the header note). */
     const cap = this._maxDmgForAttacker(ps, false);
     const raw = Math.max(1, Math.min(cap, Math.round(rolled.dmg * cfg.dmgMult)));
-    const dmg = Math.min(raw, Math.max(0, m.hp));
+    /* v2.3.3558: never past a splitting boss's next mark (slimeboss.js) */
+    const dmg = Math.min(raw, Math.max(0, m.hp - this._monsterHpFloor(m)));
     m.hp -= dmg;
     if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null);
     m.dmgByPlayer[pid] = (m.dmgByPlayer[pid] || 0) + dmg;

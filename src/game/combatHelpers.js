@@ -8,7 +8,7 @@
    globalThis assignments run. The defensive typeof guards in the code are kept
    verbatim. window._gameState / window._setLevelUpMsg stay as runtime lookups
    by design (they are wired up inside the BroTown component each render). */
-import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY, monsterTorsoY, zonePlayerScale, TILE } from '@/data/index.js';   /* v2.3.2845: + the torso a shot is aimed at, and the size it is drawn */
+import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY, monsterTorsoY, zonePlayerScale, TILE, bossSizeK /* v2.3.3556 */ } from '@/data/index.js';   /* v2.3.2845: + the torso a shot is aimed at, and the size it is drawn */
 import { hitMaterialOf, hitFxTintOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard; v2.3.2844: goo in the drawn colour */
 import { propMaterial, propSwingContact } from '@/data/worldProps.js';   /* v2.3.2730: what a prop is made of, and where a swing meets one */
 import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: the Wheel's objects take hits, break, and are mended */
@@ -207,7 +207,8 @@ export function lockAimPoint(t) {
   if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) return null;
   /* Same body-centre offset the projectile hit-test applies (0 for NPCs and
      anything without an archetype, i.e. aim at the feet as before). */
-  return { x: x, y: y - (monsterBodyOffsetY(t.archetype || t.type) || 0) };
+  /* v2.3.3556: x a dungeon boss's size (1 for anything else) */
+  return { x: x, y: y - (monsterBodyOffsetY(t.archetype || t.type) || 0) * bossSizeK(t) };
 }
 
 /* ═══ v2.3.2845: A RANGED SHOT IS AIMED AT THE TORSO ═══
@@ -235,11 +236,15 @@ export function lockAimPoint(t) {
  * View, and v2.3.2745's Wind Dunes depth preview, where a skeleton on the
  * horizon is drawn at 0.42 and its chest is 42 px up, not 100). */
 export function monsterDrawScale(m, zoneId) {
-  if (!m || !zoneId) return 1;
+  if (!m) return 1;
+  /* v2.3.3556: ...times a dungeon boss's own size (data/gameSystems.js
+     bossSizeK, 1 for any other monster) -- the scale it is drawn at */
+  var b = bossSizeK(m);
+  if (!zoneId) return b;
   var x = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
   var y = (typeof m.renderY === 'number' && isFinite(m.renderY)) ? m.renderY : m.y;
   var k = zonePlayerScale(zoneId, x, y, TILE);
-  return (typeof k === 'number' && isFinite(k) && k > 0) ? k : 1;
+  return ((typeof k === 'number' && isFinite(k) && k > 0) ? k : 1) * b;
 }
 export function torsoLift(m, zoneId) {
   if (!m) return 0;
@@ -249,7 +254,7 @@ export function torsoLift(m, zoneId) {
 export function lockShotPoint(t, zoneId) {
   var p = lockAimPoint(t);   /* the same checks: a usable, rendered position */
   if (!p) return null;
-  var feetY = p.y + (monsterBodyOffsetY(t.archetype || t.type) || 0);
+  var feetY = p.y + (monsterBodyOffsetY(t.archetype || t.type) || 0) * bossSizeK(t);   /* v2.3.3556: lockAimPoint's own lift, back to the feet */
   return { x: p.x, y: feetY - torsoLift(t, zoneId) };
 }
 
@@ -889,7 +894,7 @@ export function spawnHitDebris(S, m, angle, opts) {
   if (!S._debrisBursts) S._debrisBursts = [];
   if (S._debrisBursts.length >= 24) return;
   var gy = (typeof m.renderY === 'number') ? m.renderY : m.y;
-  var h = monsterBodyOffsetY(arch);
+  var h = monsterBodyOffsetY(arch) * bossSizeK(m);   /* v2.3.3556: a boss's debris from its drawn body */
   S._debrisBursts.push({
     /* v2.3.2844: the tint is the colour the monster is DRAWN in -- a blue
        slime's goo is its recolour's blue (hitFxTintOf, monsterVariants.js). */

@@ -8474,5 +8474,53 @@ export function monsterProceduralRadius(archOrType) {
   return PROCEDURAL_BODY_RADIUS;
 }
 export function monsterBodyY(m) {
-  return m.y - monsterBodyOffsetY(m.archetype || m.type);
+  /* v2.3.3556: a dungeon's boss is drawn bossSizeK(m) times its size, its
+     body centre with it (1 for every other monster) */
+  return m.y - monsterBodyOffsetY(m.archetype || m.type) * bossSizeK(m);
+}
+
+/* ═══ v2.3.3556: A DUNGEON'S BOSS STANDS TWICE YOUR HEIGHT ═══
+   The owner, of the first cut's boss, half again a slime's size: "Make boss
+   slime huge".  Every boss is drawn so it stands about twice the bro's height
+   (BOSS_STAND_H; he is 105.7 world px crown to boots), whatever it is: a slime
+   about 4.6 times its size, a golem or a mummy about 2.2 -- held between
+   BOSS_SIZE_MIN and BOSS_SIZE_MAX.  Its height is twice its body centre's
+   lift (monsterBodyOffsetY: half the drawn height by that table's own rule),
+   or for a shape drawn as a circle, its diameter.  Everything that measures
+   its body measures it at that size -- the drawing (entityRenderer), the
+   swing and the lunge (monsterCombat), arrows, bolts and the bow's line
+   (projectiles, combatHelpers monsterDrawScale), a tap (monsterBodyY, the
+   taps' radius) and the reach rings -- so a hit lands where it is drawn.
+   `m.boss` is the worker's (server dungeon.js _dungeonSpawnBoss); for every
+   other monster this is 1, and nothing about it moves. */
+export const BOSS_STAND_H = 211;
+export const BOSS_SIZE_MIN = 1.5;
+export const BOSS_SIZE_MAX = 5;
+/* ═══ v2.3.3558: THE GIANT SLIME SHRINKS A STEP AT EACH SPLIT ═══
+   The owner: "a giant slime that explodes and spawns small (normal size
+   slimes) ... but shrinks in size afterwards ... 3 rounds of that before it
+   finally just becomes a normal slime".  The worker (server/src/slimeboss.js)
+   says on a splitting boss its splits done (`bs`) and in all (`bn`); it is
+   drawn k0^((bn - bs) / bn) times its size, k0 the whole boss's -- for the Goo
+   Grotto's slime x4.59, x2.76, x1.66, then x1, a normal slime.  Every place
+   that measures a boss's body measures it through here, so the swing, the
+   shots, the taps and the rings shrink with it.  A boss with no `bn` (every
+   other dungeon's, or an older worker's) is its whole size, as before. */
+export function bossSizeK(m) {
+  if (!m || !m.boss) return 1;
+  const shape = m.archetype || m.type || m.arch;
+  const off = monsterBodyOffsetY(shape) || 0;
+  const h = off > 0 ? 2 * off : 2 * (monsterMeleeHitRadius(shape) || 24);
+  const k0 = Math.max(BOSS_SIZE_MIN, Math.min(BOSS_SIZE_MAX, BOSS_STAND_H / h));
+  const bn = Math.floor(Number(m.bn) || 0);
+  if (!(bn > 0)) return k0;
+  const bs = Math.max(0, Math.min(bn, Math.floor(Number(m.bs) || 0)));
+  return Math.pow(k0, (bn - bs) / bn);
+}
+/* v2.3.3558: the health share (of its max) at which a splitting boss's split
+   i of n comes -- every quarter for three.  The WORKER's rule
+   (slimeboss.js splitShare; slime-boss.test holds the two together): the
+   boss's bar marks where it will burst. */
+export function bossSplitShare(i, n) {
+  return (n - i) / (n + 1);
 }

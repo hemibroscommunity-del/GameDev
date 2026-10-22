@@ -18,6 +18,7 @@ import { trapBootstrapGuard } from './trapping.js'; /* v2.3.3120: no pets or Tra
 import { t2ReplayFlat, COOKING_RECIPES } from './data.js';   /* v2.3.3130: caps.cookRows */
 import { FARM_CROP_IDS } from './farm.js';   /* v2.3.3131: caps.farmCrops */
 import { WHEEL_DUNGEON_LAND_IDS } from './wheeldungeon.js';   /* v2.3.3540: caps.dungeonLands */
+import { bossSplitWire } from './slimeboss.js';   /* v2.3.3558: the giant slime's splits on the join's wire */
 import { prog3FromLegacy } from './prog3.js';
 import { LINGER } from './linger.js'; /* v2.3.3260: the refusal's close code */
 import { cleanWheelSizes } from './wheeltables.js'; /* v2.3.3315: the Wheel sizes a phone draws */
@@ -1807,6 +1808,9 @@ export const joinMethods = {
         /* v2.3.2978: a Wheel monster's home zone (wheelzone.js) -- the client
            skins it by that zone, as in its own.  Absent everywhere else. */
         ...(m.home ? { home: m.home } : {}),
+        /* v2.3.3556: a dungeon's boss says so (dungeon.js _dungeonSpawnBoss);
+           v2.3.3558: a splitting one its splits done and in all (slimeboss.js) */
+        ...(m._dungeonBoss ? { boss: 1, ...bossSplitWire(m) } : {}),
       })),
       /* v2.3.3318: only the monsters around this phone (wheelnear.js) -- so an
          empty list still means the worker runs this zone's monsters */

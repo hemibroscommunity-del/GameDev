@@ -103,6 +103,7 @@
  * TRUST: entirely server-side.  The only client input anywhere near it is
  * the player's own zone, which `move` already validates against
  * VALID_ZONE_IDS — a client cannot ask for monsters. */
+import { bossSplitWire } from './slimeboss.js';   /* v2.3.3558: the giant slime's splits in the snapshot */
 
 export const SPAWN_SCALE = {
   SCALE_MS: 2000,            // recompute cadence (~1 tick in 90)
@@ -149,6 +150,10 @@ export function monsterSnapWire(m) {
        the zone's own name (wheelzone.js).  Both fields only on those, so
        every other zone's snapshot is byte-identical. */
     ...(m.home ? { home: m.home, variant: m.variant || null } : {}),
+    /* v2.3.3556: a dungeon's boss says so (dungeon.js _dungeonSpawnBoss) --
+       on it alone, so every other snapshot is byte-identical; v2.3.3558: a
+       splitting one its splits done and in all (slimeboss.js) */
+    ...(m._dungeonBoss ? { boss: 1, ...bossSplitWire(m) } : {}),
   };
 }
 

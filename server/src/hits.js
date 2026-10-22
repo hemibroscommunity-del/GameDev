@@ -324,7 +324,8 @@ export const hitMethods = {
   _legacyThornsReflect(zoneId, m, pid, ps) {
     const pts = (ps && !ps.prog3 && ps.defenseSpec && ps.defenseSpec.thorns) || 0;
     if (!(pts > 0) || !this._monsterDamageable(m)) return;
-    const reflect = Math.min(Math.max(0, m.hp), Math.max(1, this._t2Flat(ps, 'defense', 'thorns')));
+    const reflect = Math.min(Math.max(0, m.hp - this._monsterHpFloor(m)), Math.max(1, this._t2Flat(ps, 'defense', 'thorns')));   /* v2.3.3558: a splitting boss's mark */
+    if (!(reflect > 0)) return;
     m.hp -= reflect;
     if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null);
     m.dmgByPlayer[pid] = (m.dmgByPlayer[pid] || 0) + reflect;

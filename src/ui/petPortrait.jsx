@@ -9,7 +9,7 @@ import { PET_ART, petTint, petKindOfOld } from '@/data/trapping.js';
  * The sheet is the picture the loading screen already fetched, so this reads
  * it from the browser's cache; each portrait is one small canvas, gone with
  * the row that holds it. */
-const URL = PET_SHEET.url + '?v=2.3.3120';
+const URL = PET_SHEET.url + '?v=2.3.3558';   /* v2.3.3558: the slime pets' shine mended (tools/mend_slime_shine.py); the two must match */
 let _img = null;
 let _imgReady = null;
 function sheet() {

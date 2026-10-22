@@ -75,6 +75,7 @@ import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { monsterStatusMethods } from './monsterstatus.js'; /* v2.3.2996: a monster's hit carries its element */
 import { sprintMethods } from './sprint.js'; /* v2.3.3006: sprint -- stamina for 1.33x the walk */
 import { wheelDungeonMethods } from './wheeldungeon.js'; /* v2.3.3016: the Wheel's dungeons, behind its landmarks */
+import { slimeBossMethods } from './slimeboss.js'; /* v2.3.3558: the Goo Grotto's giant slime splits */
 import { devToolsMethods } from './devtools.js'; /* v2.3.2240 */
 import { abilityMethods } from './abilities.js'; /* v2.3.1733 */
 // v2.3.1128 (PR11): guild-quest verification -- server-checked
@@ -3271,7 +3272,8 @@ export class GameRoom {
        that was actually rolled rather than the sliver of HP left to take
        (see the monster_hit payload below). */
     const _rawRounded = Math.max(0, Math.round(rawDmg || 0));
-    const dmg = Math.min(_rawRounded, Math.max(0, m.hp));
+    /* v2.3.3558: never past a splitting boss's next mark (slimeboss.js) */
+    const dmg = Math.min(_rawRounded, Math.max(0, m.hp - this._monsterHpFloor(m)));
     if (dmg <= 0) return 0;
     m.hp -= dmg;
     if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
@@ -3382,7 +3384,17 @@ export class GameRoom {
        to the killer for its owner window (or, for a red skull with no killer,
        to anyone at once). */
     const _nml = _duelKill ? null : _hook('nml', () => this._nmlOnDeath(ps, playerId, cause));
-    if (!_duelKill) {
+    /* ═══ v2.3.3556: A DEATH IN A DUNGEON KEEPS THE BAG ═══
+       The owner, offered "your pile waits outside at the mouth, or you keep
+       your bag in a dungeon": "Keep your bag in dungeons".  The pile was left
+       inside the run, which nobody could get back into, and went with it
+       (docs/specs/dungeons-today.md).  So a dungeon death is a duel kill's
+       exemption: no pile, no wipe now and none at the respawn.  A red skull's
+       loss is still No man's land's (`_nml`, the owner's own rule for an
+       outlaw killed "by a monster", which says nowhere but the Wheel).  Kill
+       switch `dungeonbag: false` (dungeon.js _dungeonKeepsBag). */
+    const _dungeonKeep = !_duelKill && !_nml && !!_hook('dungeonBag', () => this._dungeonKeepsBag(ps));
+    if (!_duelKill && !_dungeonKeep) {
       // Spawn a pickable death pile at the death location carrying the
       // player's entire general inventory (mummy remains, fish, wood,
       // etc.).  Equipped loadout (weapon / rangedWeapon / staffWeapon /
@@ -3410,7 +3422,9 @@ export class GameRoom {
        death and respawn — _saveRpg's fixed field list ignores it, which is
        what we want (rule 11: losing it costs a bag on a mid-death reconnect,
        where the duel forfeits regardless). */
-    ps._duelDeathKeepsBag = !!_duelKill;
+    /* v2.3.3556: renamed from _duelDeathKeepsBag -- a dungeon death keeps the
+       bag through the respawn too */
+    ps._deathKeepsBag = !!_duelKill || _dungeonKeep;
     this._saveRpg(playerId, ps);
     this._queuePlayerStateFlush(playerId);
     const ws = this._wsBySessionId(playerId);
@@ -3418,7 +3432,10 @@ export class GameRoom {
       try {
         ws.send(JSON.stringify({
           type: 'player_died',
-          payload: { cause: cause || 'unknown', respawnInMs: 5000 },
+          /* v2.3.3556: `keptBag` -- the worker kept the bag (a dungeon, a
+             duel), so the phone can say so; absent, as from an older worker,
+             the phone promises nothing */
+          payload: { cause: cause || 'unknown', respawnInMs: 5000, ...(ps._deathKeepsBag ? { keptBag: 1 } : {}) },
         }));
       } catch (e) {}
     }
@@ -3475,7 +3492,9 @@ export class GameRoom {
          asserted the inventory right after _handlePlayerDeath, which is
          precisely the window where it was still intact, so the suite was
          green throughout. */
-      if (ps._duelDeathKeepsBag) delete ps._duelDeathKeepsBag;
+      /* v2.3.3556: ...and a dungeon death's (_deathKeepsBag, was
+         _duelDeathKeepsBag) */
+      if (ps._deathKeepsBag) delete ps._deathKeepsBag;
       /* v2.3.1688: the respawn wipe keeps the tools too — it is the second,
          unconditional wipe, so sparing them at death alone would not have
          saved them. */
@@ -6458,6 +6477,7 @@ Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, monsterStatusMethods); /* v2.3.2996 */
 Object.assign(GameRoom.prototype, sprintMethods); /* v2.3.3006 */
 Object.assign(GameRoom.prototype, wheelDungeonMethods); /* v2.3.3016 */
+Object.assign(GameRoom.prototype, slimeBossMethods); /* v2.3.3558 */
 Object.assign(GameRoom.prototype, devToolsMethods); /* v2.3.2240 */
 // v2.3.1733: stamina abilities + the milestone ladder -- see abilities.js.
 Object.assign(GameRoom.prototype, abilityMethods);

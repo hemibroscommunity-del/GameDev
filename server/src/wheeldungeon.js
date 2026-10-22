@@ -154,8 +154,15 @@ export const wheelDungeonMethods = {
     return m;
   },
 
-  /* A wave: the land's whole spawn list, +0..2 levels each (the dungeon's own
-     jitter, dungeon.js), across the arena's upper half. */
+  /* A wave: the land's whole spawn list, across the arena's upper half, every
+     monster AT THE DUNGEON'S LEVEL.
+     v2.3.3556: it rolled +0..2 levels each (the Workshop's jitter, dungeon.js),
+     so the dungeon said one level -- its top bar "(Lv28-28)" -- and fought
+     three, and its boss, at the dungeon's level since v2.3.3540, was weaker
+     than the waves before it.  The owner values "SIMPLICITY and
+     INTELLIGIBILITY": the dungeon is one level, everything in it is that
+     level, and the boss is the big one (dungeon.js: four times a wave
+     monster's whole health).  The Workshop keeps its jitter. */
   _wheelDungeonWave(inst) {
     const list = this.monsters[inst.zone];
     const zone = own(ZONES, inst.cfg.home) ? ZONES[inst.cfg.home] : null;
@@ -163,7 +170,7 @@ export const wheelDungeonMethods = {
     let n = 0;
     for (const spawn of zone.spawns) {
       for (let c = 0; c < (spawn.count || 0); c++) {
-        const lvl = inst.cfg.monsterLevel + Math.floor(Math.random() * 3);
+        const lvl = inst.cfg.monsterLevel;
         const m = this._wheelDungeonMonster(inst, spawn, lvl, inst.wave + '-' + (n++));
         if (!m) continue;
         m.x = m.spawnX = (3 + Math.random() * (inst.cfg.width - 6)) * this.TILE;
