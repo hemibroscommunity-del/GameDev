@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { COL } from './common.js';
 import { spendConfirmBus } from './spendConfirmBus.js';
+import { swallowTapClick } from '../../swallowTapClick.js';   /* v2.3.3560 */
 import { recalcDerived, WEAPON_CHANNEL_CAP, DEFENSE_CHANNEL_CAP, GRID_CHANNEL_CAP, combatBuildTotal, COMBAT_BUILD_CEILING, isT2SimpleEnabled, isT2BenchEnabled, t2FlatOf, t2BenchRoleOf, t2PointValue, t2BenchLevel, t2SpendLevel } from '../../../data/gameSystems.js';
 import { celebrateLevelUps } from '../../../game/levelCelebration.js';
 
@@ -147,10 +148,12 @@ export const SpendPointConfirm = () => {
   /* v2.3.1232: Lantern Slate structure pass — modal scrim, world-card
      dialog (strong border, radius 12), recessed comparison well with
      semantic-green "After" line, brass confirm / raised cancel at 44pt. */
+  /* v2.3.3560: all three ways out close on the lift; the tap's click, sent
+     once the window is gone, is eaten (swallowTapClick.js) */
   return (
     <div
       className="bt-noselect"
-      onPointerUp={(e) => { e.stopPropagation(); spendConfirmBus.close(); }}
+      onPointerUp={(e) => { e.stopPropagation(); swallowTapClick(e); spendConfirmBus.close(); }}
       style={{
         position: 'fixed', inset: 0, zIndex: 60,
         background: 'rgba(8,16,20,.56)',
@@ -191,7 +194,7 @@ export const SpendPointConfirm = () => {
         ) : null}
         <div style={{ display: 'flex', gap: 8 }}>
           <button
-            onPointerUp={(e) => { e.stopPropagation(); onConfirm(); }}
+            onPointerUp={(e) => { e.stopPropagation(); swallowTapClick(e); onConfirm(); }}
             style={{
               flex: 1, minHeight: 44, padding: '10px 0', background: COL.accent, color: COL.onAccent,
               border: 'none', borderRadius: 11, fontWeight: 700, fontSize: 13,
@@ -200,7 +203,7 @@ export const SpendPointConfirm = () => {
             }}
           >Confirm</button>
           <button
-            onPointerUp={(e) => { e.stopPropagation(); spendConfirmBus.close(); }}
+            onPointerUp={(e) => { e.stopPropagation(); swallowTapClick(e); spendConfirmBus.close(); }}
             style={{
               flex: 1, minHeight: 44, padding: '10px 0',
               background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)', color: COL.text,

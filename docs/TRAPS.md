@@ -8189,3 +8189,40 @@ tools/make_pet_sheet.py) is made again from the mended one.
 **Receipt:** `slime-boss.test` §9 (no see-through pixel inside a living slime,
 in each frame of idle, shoot and hit; it fails on the sheets before the mend
 with 374, 100 and 119), and `mp-slimeboss` pictures the giant's shine whole.
+
+## 247. "The window closes on the lift, so the tap is over" (v2.3.3560)
+
+**The plausible move.** A window's ✕ (or its dim backdrop, or "Got it") closes
+it on `pointerup`, the finger's lift.  That is the end of the tap: the press
+and the lift both landed on the ✕, the window is gone, and there is nothing
+left for the tap to do.  It is even the RIGHT event to close on when the window
+was itself opened by a lift (InfoPopup, since v2.3.2131): that opening tap's
+own click lands on the new window, so a window that closed on a click would
+close the moment it opened.
+
+**Why it is wrong.** The tap is not over.  A browser sends a tap's click (and,
+on a touch screen, a mousedown and a mouseup before it) a moment AFTER the
+lift, to whatever is under the finger THEN.  React has taken the window off the
+page by then, so the click lands on what the window covered.  On a 390 px
+phone the Points tab's shared-stat window has its ✕ over the minimap, whose
+invisible "open the world map" button (a body-level portal that opens on a
+click) took it: closing the window opened the map.  Every other way out did
+the same to whatever lay under it: "Got it", a weapon stat's ✕ and the gear
+picker's ✕ all clicked the joystick's zone.  game.css's
+`body:has(.bt-inspect) [data-world-map-open]{pointer-events:none}` cannot help:
+it stops holding the moment the window goes, before the click comes.
+
+**The rule.** A control that takes its window (or itself) off the page on a
+lift calls `swallowTapClick(e)` first (src/ui/swallowTapClick.js): the one
+mousedown, mouseup and click that this same tap is still to send, near where
+it lifted, before the next press, are eaten on the document in the capture
+phase.  A window that closes on a CLICK needs nothing (the click is the tap's
+last event: tapDismiss.js); a lift that leaves its control where it was needs
+nothing (the click lands on the control again).  And on a computer, where
+#root's `contain: paint` puts the whole game under that body-level button, a
+window over the minimap goes in game.css's pointer-events list too.
+
+**Receipt:** `mp-tapthrough` (22 checks: the shared stat's ✕ over the minimap,
+the dim there, "Got it", a weapon stat's ✕, the gear picker's ✕, a new tap a
+moment later still opening the map, `?tapthrough` as the game was, and the ✕
+on a computer); on main 10 of them fail.
