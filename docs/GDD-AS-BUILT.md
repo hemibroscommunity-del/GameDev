@@ -259,7 +259,7 @@ Dodge and Defense together never let less than 10% of a base hit through. Elemen
 
 Blocks: a bar holds 5 blocks, plus one at every 20 invested (Magic level + Max Mana points for mana; Stamina points for stamina), to 10; a block is a fifth to a tenth of the bar, and every special, burst, roll, lunge, retreat shot, bash and whirlwind costs exactly one. Investing therefore buys more casts, not only a bigger bar. Sprint costs 11 stamina a second while moving (5 to start, 1.33× speed). Holding the shield costs 5 a tick; a blocked hit 10; at 0 the guard breaks for 3 s.
 
-Regen per ~0.67 s tick: HP 10% of max in today's town, the farm and the old hub; 1% in the Wheel (BroTown included) only after 6 s with no damage dealt or taken (doubled by Herb Bread); nothing in a fight, where food and melee lifesteal are the only heals. Stamina about 7 a tick everywhere (×0.4 while soaked, not while blocking or within a second of a sprint step). Mana 1.8% a tick out of combat, 0.7% in. Duels and the arena gate HP regen off.
+Regen per ~0.67 s tick: HP 10% of max in today's town, the farm and the old hub, and since v2.3.3569 on BroTown's safe ground (the town and the commons) once 6 s pass with no damage dealt or taken, so empty to full in about 7 s; 1% in the rest of the Wheel only after those 6 s (doubled by Herb Bread); nothing in a fight, where food and melee lifesteal are the only heals. Stamina about 7 a tick everywhere (×0.4 while soaked, not while blocking or within a second of a sprint step). Mana 1.8% a tick out of combat, 0.7% in. Duels and the arena gate HP regen off.
 
 ### 3.5 A fresh start
 
@@ -468,7 +468,7 @@ In order: zone-entry grace (500 ms) → block (0 damage) → **Dodge** (a roll a
 
 **Max HP = 200 + 50 × character level + 40 × Max HP point** (v2.3.3538: the level is the best weapon's, so a one-weapon character's bar is exactly what the old sum gave). A new character has 250 (50 on screen), level 10 has 700, level 40 has 2,200. Stamina = 100 + 3 per Stamina point; Mana = 100 + 2.5 × Magic level + 2.5 per Max Mana point. Monsters' hits are multiplied at creation so a monster takes the same share of a matching player's bar as before the formula changed (2.1× at level 1, 6.3× at level 40).
 
-**Regen**: in a fight, mana 0.7% of max per ~0.67 s tick (1.8% out of combat, 2 s after the last damage taken); stamina +7 a tick, never while holding the shield or sprinting, ×0.4 while soaked; HP 1% a tick after 6 s with no damage dealt or taken, doubled by Herb Bread; in town, on the farm and the old hub 10% a tick for all three.
+**Regen**: in a fight, mana 0.7% of max per ~0.67 s tick (1.8% out of combat, 2 s after the last damage taken); stamina +7 a tick, never while holding the shield or sprinting, ×0.4 while soaked; HP 1% a tick after 6 s with no damage dealt or taken, doubled by Herb Bread; in town, on the farm and the old hub 10% a tick for all three, and on BroTown's safe ground too after those 6 s (v2.3.3569, the owner: "standing on the safe ground should heal you quickly"; none of the three in a duel, and stamina not during Lil Bro's race).
 
 ### 5.5 Specials and abilities
 
@@ -1177,7 +1177,7 @@ A balance question gets a number before the owner decides: the **PvP fight simul
 
 **The world past level 40.** Stretches 9–16 (levels 41–80), the camps at 60 and 80 as places, the Lv 60 passes, the keystone gates and the Dark and Light realms (80–100) exist as drawn ground only. No monsters, resources or rules past 40; the dark and light elements are in the tables with no gem and no effect. Levels 21–40 are nine recolours; the owner's word is wanted on new kinds rather than more recolours.
 
-**Dungeons** for five of eight lands; mouth pictures; dungeon-specific rewards (a chest); coming out at the mouth directly.
+**Dungeons** for four of eight lands (the Goo Grotto, v2.3.3540, was the fourth); mouth pictures for three of them (the Goo Grotto's are in since v2.3.3566, and the boss's chest since v2.3.3565); coming out at the mouth directly.
 
 **Crafting**: rungs 6–19 of the material ladders (names and multipliers only); bars and armour past black steel; woods past maple; two-gem weapons in practice; shield forging; amulet take-out; gem pictures; the Gem Works' two keeper NPCs and a gem quest.
 
@@ -1218,7 +1218,7 @@ These are not the evaluator's findings; they are the questions the owner, the sp
 11. **Pets as a feature**: a pet follows, vacuums loot, copies poses and wards one element; the plan's phase 5 (a helping bite, eggs, featured days) waits on the owner; the catch rate is about 1% at best by design, with no mercy rule.
 12. **Cooked-or-burnt and gesture fingerprints are the phone's word**, by policy ("flag, never act"); whether to act on evidence, to make new accounts earn the right to move value, or to judge hours online per device are listed policy items.
 13. **The room cap of 120** and the free Cloudflare plan's ~20–55 player-hours a day are the live capacity; the owner has decided the free plan is enough for the review period, and the split past 1,000 is planned, not built.
-14. **What a rest is worth**: the Hotel opened in v2.3.3539 with a server-paid rest (full pools and +10% combat XP for 30 minutes); pools already refill at 10% a tick in town, so the XP is most of its value.
+14. **What a rest is worth**: the Hotel opened in v2.3.3539 with a server-paid rest (full pools and +10% combat XP for 30 minutes); pools already refill at 10% a tick in town (on BroTown's safe ground too since v2.3.3569), so the XP is most of its value.
 15. **The second stage's monsters are recolours**; the codex reserves Winged and Insectoid types; the owner has said new kinds are wanted over more recolours but has not chosen them.
 16. **Music and ambience for four and five lands**, voices for six monster kinds, keepers for nine buildings and the three dungeon mouths' pictures are the art and sound wishlist, in the owner's order.
 17. **The reviewers' half hour**: the tour was built for it (the Mayor first, six givers at once, three springs instead of five, witty dialogue); whether a reviewer reaches a land's monsters, a dungeon or No man's land in 20–30 minutes has not been timed on a real phone by someone who has never played.

@@ -162,6 +162,7 @@ import { diceMethods } from './dice.js'; /* v2.3.3393: /roll and /flip, rolled b
 import { itemDropMethods } from './itemdrop.js'; /* v2.3.3473: a bag item dropped at your feet -- yours a minute, then anyone's */
 import { pointsResetMethods } from './pointsreset.js'; /* v2.3.3541: the free points reset -- every placed point back */
 import { restMethods } from './rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed -- full bars and Well Rested, +10% of a fight's XP */
+import { safeHealMethods } from './safeheal.js'; /* v2.3.3569: BroTown's safe ground heals as the old town did, out of a fight */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -3551,7 +3552,9 @@ export class GameRoom {
   // (~670 ms at TICK_RATE=22) for all three pools:
   //
   //   HP:
-  //     Hub:        ceil(maxHp * 0.10)   (town / worldview / farm_home)
+  //     Hub:        ceil(maxHp * 0.10)   (town / worldview / farm_home;
+  //                 and the Wheel's safe ground after SPOKE_REGEN_OOC_MS
+  //                 out of a fight, v2.3.3569 safeheal.js)
   //     Spoke OOC:  round(maxHp * SPOKE_REGEN_PCT), only after
   //                 SPOKE_REGEN_OOC_MS with no damage taken OR dealt
   //                 (v2.3.1701)
@@ -3610,7 +3613,13 @@ export class GameRoom {
          player per 670 ms tick.  Only HP is gated, matching the arena: stamina
          and mana keep regenerating below, so blocking still works. */
       const inDuel = this._duelFor ? !!this._duelFor(id) : false;
-      if (!ps._arenaMatch && !inDuel && inHub && ps.hp < ps.maxHp) {
+      /* v2.3.3569 (owner: "Yes standing on the safe ground should heal you
+         quickly"): the WHEEL'S SAFE GROUND -- BroTown and the commons -- is a
+         hub to this tick and the top-off below, but only out of a fight, as
+         the old town had no monsters and the safe ground can (safeheal.js).
+         It goes no further: everything else here still reads inHub. */
+      const safeHeal = !inHub && this._safeHealHere(ps, now, inDuel);
+      if (!ps._arenaMatch && !inDuel && (inHub || safeHeal) && ps.hp < ps.maxHp) {
         const heal = Math.max(1, Math.ceil(ps.maxHp * 0.10));
         const beforeHp = ps.hp;
         ps.hp = Math.min(ps.maxHp, ps.hp + heal);
@@ -3756,12 +3765,15 @@ export class GameRoom {
          it mattered: the drain ran 100 -> 0 and the bar was back at 10
          before the next tick.  Caught by test/blockcost.test.mjs, which
          watched the whole sequence rather than the end state. */
-      if (inHub && !ps._arenaMatch && !ps.blocking
+      if ((inHub || safeHeal) && !ps._arenaMatch && !ps.blocking
           && !(ps._guardBrokenUntil && Date.now() < ps._guardBrokenUntil)) {
         /* v2.3.3006: not the stamina while sprinting -- the drain must win
-           here too, as it does over a held shield */
+           here too, as it does over a held shield.
+           v2.3.3569: nor, on the Wheel's safe ground, while Lil Bro's race is
+           on: its sprint was tuned against the wilds' refill (race.js) */
         if (typeof ps.maxStamina === 'number' && typeof ps.stamina === 'number' && ps.stamina < ps.maxStamina
-            && !this._sprintHoldsRegen(ps, now)) {
+            && !this._sprintHoldsRegen(ps, now)
+            && !(safeHeal && this._safeHealRacing(ps, now))) {
           const beforeSt2 = ps.stamina;
           ps.stamina = Math.min(ps.maxStamina, ps.stamina + Math.max(1, Math.ceil(ps.maxStamina * 0.10)));
           if (ps.stamina !== beforeSt2) changed = true;
@@ -6546,6 +6558,7 @@ Object.assign(GameRoom.prototype, diceMethods); /* v2.3.3393 */
 Object.assign(GameRoom.prototype, itemDropMethods); /* v2.3.3473 */
 Object.assign(GameRoom.prototype, pointsResetMethods); /* v2.3.3541 */
 Object.assign(GameRoom.prototype, restMethods); /* v2.3.3539 */
+Object.assign(GameRoom.prototype, safeHealMethods); /* v2.3.3569 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
 Object.assign(GameRoom.prototype, allianceMethods); /* v2.3.3313 */

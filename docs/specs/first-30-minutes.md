@@ -132,7 +132,11 @@ Options:
 - **The Mayor points at the Hotel.**
 - **Leave it as it is.**
 
-Still the owner's call.
+**Decided and built (v2.3.3569): the safe ground heals as the old town did.**
+The owner: "Yes standing on the safe ground should heal you quickly." BroTown
+and the commons now heal 10% of each bar a tick once 6 s pass out of a fight:
+empty to full in about 7 s, measured on a phone at 5.8–6.9 s
+(docs/specs/safe-ground-heal.md).
 
 ## Not counted
 
