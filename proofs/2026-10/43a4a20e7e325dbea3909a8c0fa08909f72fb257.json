@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "43a4a20e7e325dbea3909a8c0fa08909f72fb257",
+  "tree": "d988a33eb0145da3ca3cb79365ab4f18f7a2009a",
+  "committedAt": "2026-10-22T13:07:45-07:00",
+  "subject": "BroTown's safe ground heals you quickly, as the old town did (v2.3.3569) (#1082)",
+  "files": 6343,
+  "bytes": 736264753,
+  "listingSha256": "073e9de9bed5b534c818718601da8dfbbbb88a40a0b53e102fafbfd4e0f32e53",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
