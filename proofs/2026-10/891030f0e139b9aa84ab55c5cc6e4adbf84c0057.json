@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "891030f0e139b9aa84ab55c5cc6e4adbf84c0057",
+  "tree": "3b48f8fbee2ec7567ce34fa5d1b9bcb5c60f95a0",
+  "committedAt": "2026-10-21T17:06:53-07:00",
+  "subject": "Dungeons: a huge real boss, 30 s for the loot, straight back in, one level, and you keep your bag (v2.3.3556) (#1072)",
+  "files": 6258,
+  "bytes": 719142257,
+  "listingSha256": "78f48fbe9ba340c691df94aba077fadcafb458455117e37f8516c9fd179db6d9",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
