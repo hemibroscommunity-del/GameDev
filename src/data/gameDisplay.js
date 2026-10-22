@@ -5492,10 +5492,12 @@ export const NPC_DATA = [{
   targetX: 1177, targetY: 1021,   /* v2.3.1813: likewise — the initial wander target, before the first steer overwrites it */
   chatTimer: 8000,
   chatBubble: null,
+  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
   phrases: [
-    'Another one washes ashore.',
-    "There's work, if you want it.",
-    'Mind the Hollows.',
+    "Another one washes ashore.",
+    "Plenty of civic work around here, if you aren't picky.",
+    "Don't ask about the town budget.",
+    "Vote Mayor Bro! Not that there's a ballot.",
   ],
   canFollow: false,
   followZones: [],
@@ -5616,12 +5618,13 @@ export const NPC_DATA = [{
   chatTimer: 11000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
+  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
   phrases: [
-    'Betcha can’t catch me!',
-    'Bet you can’t beat me round the square!',   /* v2.3.3525: the race (race_1) */
-    'My bro says the meadow’s got slimes.',
-    'One day I’m gonna be a real adventurer.',
-    'Did you see the fountain? It’s got FISH. Probably.',
+    "Betcha can't catch me!",
+    "Bet you can't beat me round the square!",
+    "My bro says the Verdant Wilds are full of exploding slimes!",
+    "One day I'm gonna have a sword bigger than my whole body!",
+    "Did you see Bro Pond? It's got monster fish. Probably!",
   ],
   canFollow: false,
   followZones: [],
@@ -5733,11 +5736,12 @@ export const NPC_DATA = [{
   chatTimer: 9000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
+  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
   phrases: [
-    'Pick a card. Any card. No, not that one.',
-    'The house always wins, bro. I am the house.',
-    'Lost my hat in a bet once. Won it back twice.',
-    'Luck is a skill. Mostly.',
+    "Pick a card. Any card. No, not that one, I need that one.",
+    "The house always wins, bro. And I'm the house.",
+    "Lost my hat in a bet once. Won it back, plus his pants.",
+    "Luck is a skill. Mostly mine.",
   ],
   canFollow: false,
   followZones: [],
@@ -5816,10 +5820,11 @@ export const NPC_DATA = [{
   chatTimer: 9000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
+  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
   phrases: [
-    'Bones, hides, anything. I pay coin.',
-    'Everything on me is for sale.',
-    "The more I've got of a thing, the less I'll give you for it.",
+    "Bones, hides, questionable meats—I pay cash.",
+    "Everything's for sale if your pouch is heavy.",
+    "Flood my market and I drop my prices, amigo. Simple economics.",
   ],
   canFollow: false,
   followZones: [],
@@ -5908,10 +5913,12 @@ export const NPC_DATA = [{
   targetX: 392, targetY: 1178,
   chatTimer: 11000,
   chatBubble: null,
+  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
   phrases: [
-    'Bring me ore and we will talk.',
-    'Copper first. Iron when you have earned it.',
-    'That blade needs an edge.',
+    "Bring me ore and we'll talk gains.",
+    "Copper first. Iron when your lats can handle it.",
+    "That blade's looking skinny, bro.",
+    "Never skip anvil day.",
   ],
   canFollow: false,
   followZones: [],
@@ -5971,10 +5978,11 @@ export const NPC_DATA = [{
   chatTimer: 13000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
+  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
   phrases: [
-    'One log, one trap. One trap, one chance.',
-    'Every land has its own little beasts.',
-    'Most traps break. That is trapping.',
+    "One log, one trap. One trap, one prayer.",
+    "Every land's got an apex predator. Even the cute ones.",
+    "Most traps break. That's trapping, bro.",
   ],
   canFollow: false,
   followZones: [],
@@ -6028,10 +6036,11 @@ export const NPC_DATA = [{
   chatTimer: 12000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
+  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
   phrases: [
-    'Measure twice. Cut once. Cry never.',
-    'Hardened wood. It has seen things.',
-    'Nobody ever brings me logs.',
+    "Measure twice. Cut once. Cry internally.",
+    "Hardened wood. It understands pain.",
+    "Nobody ever brings me ethically sourced pine.",
   ],
   canFollow: false,
   followZones: [],
@@ -6061,10 +6070,11 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
+  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
   phrases: [
-    'Slimes ate my carrots. Then they exploded.',
-    'Water your crops. Water yourself.',
-    'Every bro gets a farm. It is in the fine print.',
+    "Slimes ate my carrots. Then they exploded!",
+    "Water your crops. Hydrate your soul, man.",
+    "Every bro gets a farm. Read the fine print!",
   ],
   canFollow: false,
   followZones: [],
