@@ -6719,6 +6719,7 @@ export const QUEST_CHAINS = {
       { when: 'complete', icon: '/icons/items/staff.webp',  label: "Pine Staff" },
     ],
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
       /* ═══ v2.3.1831: HE HANDS YOU THE KIT, HE DOES NOT READ YOU THE MANUAL ═══
          Owner: "You can also remove the quest dialog from mayor bro about the
@@ -6756,10 +6757,11 @@ export const QUEST_CHAINS = {
          on by name.  The slimes' warning that comes too late (v2.3.2237, the
          owner's own idea, below) moved here with the slimes -- he must NOT
          mention the bursting in `start`, or the joke has nothing to land on. */
-      start: "Another one washes ashore! Welcome to BroTown, baby. I'm Mayor Bro—unopposed four years running, mostly because my last opponent mysteriously wandered into the woods.\n\n"
-        + "Here, take this sword and shield. They're funded by the taxpayers, so don't ask who I confiscated them from. Nobody leaves my town square armed with just good vibes.\n\n"
-        + "First order of civic business: the blue slimes out in the Verdant Wilds are bad for property values. Go drop a few and bring me 4 Slime Remains. My insurance adjuster needs physical proof before he processes my disaster claim, and the coward refuses to leave his desk.",
-      progress: "I need 4 Slime Remains from the blue slimes in the Verdant Wilds. My insurance guy is very patient, bro. My bookie is not.",
+      start: "Another one washes ashore! Welcome to BroTown. I'm Mayor Bro — four elections in a row, and I'd like to thank the voters. Both of them.\n\n"
+        + "Take this sword and shield. They came out of the town budget, which is why the town no longer has a school. Priorities, bro.\n\n"
+        + "First job: the blue slimes out in the Verdant Wilds. I already gave a very strong speech about them, and somehow they're still there, so now I'm sending you. Go drop a few and bring me 4 Slime Remains.\n\n"
+        + "The insurance company wants proof the slimes are real before they'll pay for the damage. I sent them a drawing I did of a slime. Apparently that's \"not legal proof.\"",
+      progress: "I need 4 Slime Remains from the blue slimes in the Verdant Wilds. The insurance company's started using my full name, bro. That's never good.",
       /* v2.3.2237 (owner: "add something clever from mayor bro after
          finishing the quest ... watch out they explode ... then him
          acknowledging his advice was too late").  The chunks split on a
@@ -6768,12 +6770,12 @@ export const QUEST_CHAINS = {
          you just finished (v2.3.2224's bursting blue ones): since v2.3.3525
          that is this one. */
       /* v2.3.3533: the snowmen wait on two of them now (tut_2 `after`) */
-      complete: "You're back! And with at least eighty percent of your original eyebrows!\n\n"
-        + "Oh, one quick safety memo before you head out: the blue slimes swell up right before they die. When they do that, run away, because they explode. Violently.\n\n"
-        + "...Wait. You're holding four Slime Remains. Which means you definitely already found that out the hard way.\n\n"
-        + "Moving on! Sign nothing! Here, take a bow and a staff, courtesy of the town hush-money fund.\n\n"
-        + "Word's out that you actually have a pulse, so the whole town wants to hire you. Anyone with a gold ! over his head has paying work, and I've marked 'em all on your map.\n\n"
-        + "Go sweet-talk Blacksmith Bro and Diego first, then report back to me. I've got a massive snowman cover-up brewing, and I need a guy who doesn't ask questions.",
+      complete: "You're back! And standing up, mostly.\n\n"
+        + "Quick safety announcement I'm required to read before you go out: blue slimes swell up right before they die. When that happens, back off, because they explode.\n\n"
+        + "...And you're holding 4 Slime Remains, so you already know that. Officially, you were warned first, because that's what the paperwork is going to say.\n\n"
+        + "Here, take a bow and a staff. I bought them with the town's emergency fund. You're the emergency.\n\n"
+        + "Word's getting around that you can actually do a job, so now the whole town wants you. Anyone with a gold ! over his head has paying work, and I've marked them all on your map. I'll be taking credit for the map.\n\n"
+        + "Go see Blacksmith Bro and Diego first, then come back to me. There's a snowman situation up north, and I'd like it handled before anyone writes an article.",
     },
   },
   tut_2: {
@@ -6798,15 +6800,17 @@ export const QUEST_CHAINS = {
     tour: true,
     next: 'tut_3',
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3533: said after two townsfolk, not the whole town */
-      start: "Blacksmith Bro got his ore and Diego got his \"research.\" Word travels fast in a small tax shelter. Which brings me to our next crisis: the snowmen up on Frost Ridge learned how to burrow.\n\n"
-        + "They dive under the snow, pop up right between your boots, and pelt you with iceballs. It's an absolute nightmare for winter tourism.\n\n"
-        + "Bring me 4 Snowman Remains before they tunnel into my wine cellar. Watch for moving snow, dodge the throws, and choke down one of Diego's cooked clownfish if you start bleeding.",
-      progress: "Bring me 4 Snowman Remains from Frost Ridge, bro. If the snow starts wiggling beneath your feet, don't just stand there admiring it—move!",
+      start: "Word travels fast in a town this small, so Blacksmith Bro and Diego have either hired you already or they're about to. Either way, that's two business owners with help, which I'll be calling \"a booming economy\" at every meeting from now on.\n\n"
+        + "Now, the snowmen up on Frost Ridge have learned to burrow. They dive under the snow, pop up right under your feet, and pelt you with iceballs. The tourism board is furious about it, and the tourism board is me.\n\n"
+        + "Bring me 4 Snowman Remains. Watch for snow that's moving, step away before it pops, dodge the throws, and if you start bleeding, eat one of Diego's cooked clownfish. Not in front of me.",
+      progress: "Bring me 4 Snowman Remains from Frost Ridge, bro. If the snow under your feet starts wiggling, that's not a fun fact, that's your cue to move.",
       /* v2.3.3533: the rest of the town comes after him now */
-      complete: "Boom! Crisis averted! The snowmen are back to being harmless seasonal lawn ornaments. BroTown owes you a parade, which we obviously can't afford.\n\n"
-        + "Officially, you're a local hero. Unofficially, you're my only competent contractor. Check in with the other gold ! around town, and when you're ready to sweat, come back and we'll talk about the Wind Dunes.",
+      complete: "The snowmen are handled, and I've already put out a statement saying Frost Ridge is \"safe for families.\" It became true about four minutes ago, so nice timing on your part.\n\n"
+        + "BroTown owes you a parade. BroTown also owes the bank, the builders, and a guy named Steve, so get in line.\n\n"
+        + "Go check in with the other gold ! around town. When you're ready to sweat, come back and we'll talk about the Wind Dunes.",
     },
   },
   tut_3: {
@@ -6819,12 +6823,14 @@ export const QUEST_CHAINS = {
     reward: { gold: 150, xp: 53 },
     next: 'tut_4',
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3525: "remains", and a reason, as the tour's lines have */
-      start: "Next stop: the Wind Dunes. The place is crawling with mummies, and here's the catch—hit a mummy hard enough and its bandages fly right off. What's left underneath is a skeleton that's naked, angry, and twice as fast.\n\n"
-        + "Put 'em down and bring me 5 Skeleton Remains. A private collector at the historical museum is paying top coin for 'em. Don't ask why he wants fresh bones; I never ask questions before a check clears.",
-      progress: "I need 5 Skeleton Remains out of the Wind Dunes. Knock the toilet paper off those mummies and collect the bones underneath.",
-      complete: "Loose, unverified bones dumped right on my mahogany desk. Gorgeous. The museum curator will be thrilled, and only mildly implicated in a felony.",
+      start: "Next up is the Wind Dunes, and they're full of mummies. Here's the trick: hit a mummy hard enough and the wrappings come off, and what's left is a skeleton that's faster and angrier than it was with its clothes on.\n\n"
+        + "Bring me 5 Skeleton Remains. The museum pays good money for \"ancient artifacts,\" and I'm not going to be the one who tells them these are three hours old.",
+      progress: "I need 5 Skeleton Remains from the Wind Dunes. Hit the mummies until the wrappings come off, then deal with what's underneath.",
+      complete: "Fresh bones, right on my desk, no questions asked — mostly because I'm the one who'd have to answer them.\n\n"
+        + "The museum will love these. If anyone asks, they came from \"an ancient dig.\" You dug them out of a guy who was walking around ten minutes ago. Same thing.",
     },
   },
   tut_4: {
@@ -6843,6 +6849,7 @@ export const QUEST_CHAINS = {
     next: null,
     gives: [{ when: 'complete', icon: '/icons/items/greaves-copper.webp', label: "Copper Greaves" }],
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3336 (owner, playtesting: "he says 'last one from me' I don't
          think that's accurate"): it was not -- after this he still has the
@@ -6851,11 +6858,11 @@ export const QUEST_CHAINS = {
       /* v2.3.3525: "remains", and a reason; "the tour" is the town's walk
          round its townsfolk now (tut_1 .. tut_2), so he no longer calls the
          lands that */
-      start: "Last stop on my official tour: the Flame Fields. It's a volcanic crawl-space packed with fire goblins, and those little pyros do not sit still.\n\n"
-        + "Bring me 6 Fire Goblin Remains. The town bakery's oven died, and goblin bits burn at four hundred degrees for a week. Just do yourself a favor and blow on your muffins for the next month.",
-      progress: "Bring me 6 Fire Goblin Remains from the Flame Fields, bro. Keep moving out there and try not to come back medium-rare.",
-      complete: "Spicy work, bro! Take these Copper Greaves—I liberated them from the town lost-and-found.\n\n"
-        + "You've survived all four major zones on my map, which means only two pieces of bureaucratic red tape stand between you and total freedom. Talk to me when you're ready to get your hands dirty.",
+      start: "Last stop on the official tour: the Flame Fields. It's a hot, cramped hole full of fire goblins, and they never stand still, so don't you either.\n\n"
+        + "Bring me 6 Fire Goblin Remains. The bakery's oven died, and a pile of goblin bits burns hot for a whole week. The bakery's going to call the bread \"fire-roasted\" and charge double, and I'm getting a cut.",
+      progress: "Bring me 6 Fire Goblin Remains from the Flame Fields, bro. Keep moving in there, because the goblins sure do.",
+      complete: "Good work. Take these Copper Greaves. They sat in the lost-and-found for twenty minutes, so legally they're mine, and now they're yours. I make the laws.\n\n"
+        + "You've survived all four zones on my map, which leaves two more jobs before I take the training wheels off. They're both paperwork, and they both involve you hitting things. Come talk to me when you're ready.",
     },
   },
 
@@ -7056,14 +7063,15 @@ export const QUEST_CHAINS = {
       { when: 'accept', icon: '/icons/items/compost.webp', label: '3 Compost' },
     ],
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Did the Mayor send you?! Good! A blue slime wobbled into my carrot patch this morning and detonated! Blew my prize-winning babies straight into the stratosphere! It's a war zone out there, man!\n\n"
-        + "Silver lining: you own a private farm! Every bro in BroTown gets one—it's buried in the town charter right next to the explosion waiver. Take these 3 carrot seeds and 3 compost.\n\n"
-        + "Head through my shop door to reach your farm. Dig a bed, drop a seed in, and water it. Do all 3 of 'em! Watered carrots grow way faster—just like real children, except you can legally eat 'em!",
-      progress: "Plant 3 carrots on your farm and make sure you water all 3, bro! Walk through my shop door to get to your land. Hydrate the babies!",
+      start: "Did the Mayor send you? Of course he did, he never comes himself. A blue slime wobbled into my carrot patch this morning and blew up, man. I sang those carrots to sleep every night, and now they're raining down on the bakery.\n\n"
+        + "Good news: you own a farm. Every bro in BroTown gets one, it's in the town rules, right under the part where you agree not to sue anybody. Nobody reads that part, but I read that part. Take these 3 carrot seeds and 3 compost.\n\n"
+        + "Go through my shop door to reach your farm. Dig a bed, drop in a seed, and water it, and do that 3 times. Watered carrots grow in about six minutes, while unwatered carrots just sit in the dirt holding a grudge.",
+      progress: "Plant 3 carrots on your farm and water all 3, bro. Go through my shop door to get to your land. They're thirsty, and I can hear them, even if you can't.",
       /* v2.3.3533: true whether or not Diego's fish_1 is in yet */
-      complete: "Three carrots, tucked into the dirt and fully hydrated! Nature is healing, man. With water on 'em, they'll be full-grown in about six minutes flat.\n\n"
-        + "Let 'em vibe in the soil. Once they pop up, hurry back—I've got a classified energy drink recipe that requires a real cook. Go hit up Diego first if you haven't learned how to work a campfire yet.",
+      complete: "Three carrots in the dirt, all watered. That's how it's supposed to be, man. No machines, no chemicals, no Mayor.\n\n"
+        + "Watered carrots take about six minutes, so let them grow. When they're up, come back, because I've got an energy drink recipe the government doesn't know about, and it needs a real cook. If you haven't learned how to work a campfire yet, go see Diego first.",
     },
   },
   smith_1: {
@@ -7088,13 +7096,15 @@ export const QUEST_CHAINS = {
       { when: 'complete', icon: '/icons/items/bar-copper.webp', label: '5 Copper Bars' },
     ],
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "So you're the new hero. Huh. Thought your delts would be bigger.\n\n"
-        + "Listen, bro, I need copper bad, and I'm on injured reserve. Pulled my lower back reaching for a shaker cup on the bottom shelf. Do NOT spread that around town. Take my spare pickaxe—those orange copper rocks are sitting all over the grass right outside the gates.\n\n"
-        + "Mine me 5 Copper Ore and I'll smelt you 5 full Copper Bars. Normally 5 bars takes 25 ore, so consider this a generous newbie spot from the headspotter.",
-      progress: "Mine 5 Copper Ore from the orange rocks right outside town, bro! Put your back into it—treat every swing like arm day!",
-      complete: "Five ore in, five bars out. Pure natty gains. If the Smithing Guild audits my books, tell 'em you mined all twenty-five, got it?\n\n"
-        + "Now quit mirin' my biceps. You've got fresh bars and I've got a hot anvil. Let's hit a personal record.",
+      start: "So you're the new hero. Huh. I was told you'd be bigger.\n\n"
+        + "Here's the deal, bro. I need copper, and I'm not allowed to lift right now, doctor's orders. I hurt my back picking up a protein shake, and that stays between us.\n\n"
+        + "Take my spare pickaxe. The orange copper rocks are right outside the gates, in the grass. Mine me 5 Copper Ore and I'll hand you back 5 Copper Bars.\n\n"
+        + "Normally 5 bars takes 25 ore, but you're getting the skinny-guy discount. Don't tell the other bros, because they'd want one too, and they do not qualify.",
+      progress: "Mine 5 Copper Ore from the orange rocks right outside town, bro! Every swing counts as a rep, and I'm counting them from right here, sitting down, on doctor's orders.",
+      complete: "Five ore in, five bars out, nice and clean. If the Smithing Guild asks, you mined all twenty-five and I didn't do you any favors, because I don't do favors. Favors don't build muscle.\n\n"
+        + "Now you've got bars and I've got a hot anvil. Let's go hit a personal best.",
     },
   },
   smith_2: {
@@ -7106,12 +7116,13 @@ export const QUEST_CHAINS = {
     reward: { gold: 60, xp: 0 },
     next: null,
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Your bars, your workout: use my forge to hammer out a greatsword, a chest plate, or greaves. Each piece takes 5 Copper Bars, which is the exact amount I just meal-prepped for you.\n\n"
-        + "Real bros don't brawl monsters in a cotton T-shirt, bro. I mean, you just did, and frankly it was embarrassing for both of us.",
-      progress: "Hammer out one piece of gear at my forge, bro—a greatsword, a chest plate, or greaves. Let me unlock the anvil so you can get a pump on.",
-      complete: "Look at that piece. Chunky, slightly crooked, and heavy as sin. Brings a manly tear to my eye.\n\n"
-        + "Now rack your weights and get out of my gym—I'm due for my post-forge protein nap. Check your map for another gold ! to spot.",
+      start: "Your bars, your workout. Use my forge and hammer out a greatsword, a chest plate, or greaves. Each one takes 5 Copper Bars, which is exactly what I handed you. I plan my sets.\n\n"
+        + "You've been fighting monsters in a T-shirt, bro. I'm not saying it was embarrassing. I'm saying I watched, and I had to look away.",
+      progress: "Hammer out one piece of gear at my forge, bro — a greatsword, a chest plate, or greaves. Let me unlock the anvil, and warm up first, because I'm serious about that.",
+      complete: "Look at that thing. It's heavy, it's thick, it's a little crooked, and it's beautiful. Reminds me of me.\n\n"
+        + "Now rack your weights and get out of my gym. I've got a protein nap scheduled, and I don't skip. Check your map for another gold !.",
     },
   },
   wood_1: {
@@ -7136,13 +7147,14 @@ export const QUEST_CHAINS = {
       { when: 'complete', icon: '/icons/items/hardened-pine.webp', label: '5 Hardened Pine' },
     ],
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Shh. Stop breathing so loud. Listen to the grain. ...Hear that? It's the deafening silence of nobody bringing me raw materials.\n\n"
-        + "Take my backup axe, and try not to swing it like a barbarian. Chop 5 Pine Logs from the trees outside town and bring them here so I can harden them for you.\n\n"
-        + "Hardened Pine is timber that's been put through intense emotional trauma until it comes out denser. Like me after my twenties. Don't ask.",
-      progress: "Bring me 5 Pine Logs from the trees outside town. Chop chop. And for the record, that was irony, not enthusiasm.",
-      complete: "Five raw logs in, five Hardened Pine out. How did I cure them that fast? Artisanal woodworking is ninety percent brooding, ten percent varnish.\n\n"
-        + "Stay right there. Let's see if you can shape a weapon without completely ruining the grain's aesthetic.",
+      start: "Ah, a volunteer. Welcome to the most advanced woodworking lab in BroTown, which is also the only one, which is also my garage. I've been studying pine for eleven years and I'm close to a breakthrough, but I've run out of pine.\n\n"
+        + "Take my spare axe and chop 5 Pine Logs from the trees outside town, then bring them to me. Technically you should hit the trunk at a 40-degree angle so the log splits clean, but the axe doesn't care, the tree doesn't care, and I'll fix whatever you do to it later.\n\n"
+        + "Then I'll harden them for you. Hardened Pine is normal pine with every grain lined up in perfect rows, so the whole log pulls in one direction instead of arguing with itself. It took me four years to figure that out, and most of that was the arguing.",
+      progress: "Chop 5 Pine Logs from the trees outside town and bring them here, quickly if you can, because the pine on my bench is losing moisture at a rate I'd rather not think about, and I'm already thinking about it.",
+      complete: "Five logs in, five Hardened Pine out. I weighed each one, measured it twice, and worked out which way it was facing when you chopped it, which you didn't tell me, so I had to read it off the bark. How did I do it so fast? It wasn't fast. I've been practicing that exact move since I was six.\n\n"
+        + "Stay right there. Now we find out whether you can shape a weapon, or whether I need to add another chapter to my notes on what beginners get wrong. It's already a long chapter.",
     },
   },
   wood_2: {
@@ -7161,13 +7173,14 @@ export const QUEST_CHAINS = {
       { when: 'complete', icon: '/icons/items/staff.webp', label: 'or Softwood Staff' },
     ],
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Use my workbench to craft yourself a Pine Bow or a Pine Staff. Each one takes 5 Hardened Pine, which is the exact amount I just gave you. I respect symmetry. People, less so.\n\n"
-        + "Once you craft it, hand that Pine weapon over to me, and I'll trade you a bespoke Softwood version. Softwood gear normally requires Woodworking level 5 to make, so try to appreciate the craftsmanship before you go bludgeoning a slime with it.\n\n"
-        + "Why do I want your amateur pine piece? I'm curating an art installation of beginner mediocrity on my bedroom wall. It grounds me. Don't make it weird.",
-      progress: "Craft a Pine Bow or a Pine Staff at my bench using that Hardened Pine, then hand it to me to trade up for Softwood. Here, I'll unlock the bench—try not to bleed on the cedar.",
-      complete: "One raw, derivative pine piece for my gallery wall; one supple Softwood weapon for you. A tragic triumph of commerce over art.\n\n"
-        + "We're done here. Go bother someone louder—I have a knot of mahogany I need to stare at in silence.",
+      start: "Use my workbench to craft a Pine Bow or a Pine Staff. Each one takes 5 Hardened Pine, which is exactly what I gave you, because I ran the numbers before you walked in, and then ran them again just to enjoy them.\n\n"
+        + "When it's finished, hand your pine weapon to me and I'll trade you a Softwood one. Softwood gear normally takes Woodworking level 5 to craft. The reason takes about forty minutes to explain, so I've written it down for you, and it's the thick binder on the bench. Don't skip the charts.\n\n"
+        + "Why do I want your pine weapon? Research. Every beginner makes one of the same seven mistakes, and I've collected six of them on my wall, so I'm hoping you're number seven. Don't try too hard.",
+      progress: "Craft a Pine Bow or a Pine Staff at my bench with that Hardened Pine, then hand it to me and I'll trade you the Softwood version. I'll unlock the bench now, but please don't adjust anything on it, because every knob is set to a number I calculated, and some of those numbers took weeks.",
+      complete: "One beginner pine weapon for the research wall, and one Softwood weapon for you. I tested the Softwood one by doing the math on it 300 times instead of swinging it, because math doesn't leave dents. Your pine one is mistake number four, which I already had, but a second copy still counts as data.\n\n"
+        + "We're done here, so go find someone with a simpler brain to talk to. I've got a knot in this plank that's been breaking my formulas for three days, and today's the day I win.",
     },
   },
   fish_1: {
@@ -7205,14 +7218,16 @@ export const QUEST_CHAINS = {
       { when: 'complete', icon: '/icons/items/cooked-clownfish.webp', label: '10 Cooked Clownfish' },
     ],
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Ey, amigo! Step into the office. I'm diversifying my brand—writing a luxury lifestyle cookbook. Chapter One: Artisanal Fish. Tiny hiccup: I've never turned on a stove in my life.\n\n"
-        + "Cook 2 fish yourself and bring 'em to me for \"ghostwriting research.\" In exchange, I'll offload these 10 Cooked Clownfish onto you. They tell terrible dad jokes until you grill 'em, so please get them out of my inventory.\n\n"
-        + "Take this fishing rod and two pine logs. Catch two raw fish at the pond near town, tap a log in your Bag to spark a campfire, and tap the flames to cook 'em up.",
-      progress: "Bring me 2 cooked fish, amigo. Raw sushi doesn't count—my publisher demands grill marks. Catch 'em, light a log from your Bag, and tap the fire to cook!",
+      start: "Ey, amigo, step into the office. I'm launching a luxury food brand — a cookbook, a cooking show, a VIP sauce. There's one small problem, which is that I don't know how to turn on a stove. But that's not a problem, that's a job opening.\n\n"
+        + "Cook 2 fish and bring them to me. I'll take a photo, call it \"research,\" and put my name on the cover. In return, you get 10 Cooked Clownfish from my stock. Eat one whenever you're hurt.\n\n"
+        + "Take this fishing rod and two pine logs. Catch two raw fish at the pond near town. Then tap a log in your Bag to start a campfire, and tap the flames to cook the fish.",
+      progress: "Bring me 2 cooked fish, amigo — cooked, not raw, because the cover photo needs grill marks. Catch them at the pond, tap a log in your Bag to light a fire, and tap the fire to cook.",
       /* v2.3.3533: the road leads to the Mayor's snowmen next */
-      complete: "Magnificent. Chapter One: \"Put Wet Fish On Hot Fire.\" I'm gonna make millions. Here are your 10 Cooked Clownfish—eat one whenever you take a beating out there. Tastes like bad comedy, heals like magic.\n\n"
-        + "Look at you, a certified chef! Hey, the Mayor's been pacing around town asking for you. Something about homicidal snowmen up on Frost Ridge. Keep those clownfish handy.",
+      complete: "Beautiful. Chapter One: \"Fish, But Hot.\" I'm charging 50 gold a book and you get 0%, which is called passive income, amigo.\n\n"
+        + "Here are your 10 Cooked Clownfish. Eat one whenever you take damage. They taste like hot pennies, but they work.\n\n"
+        + "And hey, keep those clownfish handy. The Mayor's always got a \"crisis\" for somebody to handle, and it always ends with that somebody bleeding. Eat one when it's you.",
     },
   },
   farm_2: {
@@ -7234,13 +7249,15 @@ export const QUEST_CHAINS = {
     reward: { gold: 60, xp: 0 },
     next: null,
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Diego says you know your way around an open flame now. Righteous. Your carrots should be ripe—watered crops only take six minutes—so go harvest all 3 from your farm.\n\n"
-        + "Carry 'em over to the Cookhouse and boil 'em into a batch of my signature Zoom Juice. It makes you run 25% faster for 5 minutes. Is it FDA approved? Bro, we don't even have a hospital.\n\n"
-        + "Why do you need speed? Because Lil Bro has been talking mad trash in the town square! That kid raced my scarecrow yesterday and bragged for an hour. The scarecrow is nailed to a pole, man! Avenge my boy!",
-      progress: "Harvest 3 ripe carrots from your farm and boil 'em into Zoom Juice at the Cookhouse. Pure liquid velocity, bro!",
-      complete: "Oh yeah, look at that radioactive orange glow. You can smell the heart palpitations from here. Chug it from your Bag right before you race Lil Bro, or chug it now if you wanna taste colors.\n\n"
-        + "That kid's always in the town square doing warm-up lunges. He's nine years old, man, his knees are still 100% cartilage! Go humble him.",
+      start: "Diego says you can work a fire now. Good. Your carrots should be ready — watered crops only take six minutes — so go harvest all 3 from your farm.\n\n"
+        + "Bring them to the Cookhouse and boil them into my Zoom Juice, and you'll run 25% faster for 5 minutes. It's all natural, just one ingredient. Is it safe? It's carrots, man. Mostly carrots, and the rest is a feeling.\n\n"
+        + "You'll need the speed, because Lil Bro's been talking trash in the town square all week. He raced my scarecrow and won, and the scarecrow is nailed to a pole, man. Then he did a little dance about it. Go put that kid in his place.",
+      progress: "Harvest 3 ripe carrots from your farm and boil them into Zoom Juice at the Cookhouse. It's one ingredient, man, and nature did the rest.",
+      complete: "Look at that color. That's not food coloring, that's just what a carrot looks like when you push it too far.\n\n"
+        + "Drink it from your Bag right before you race Lil Bro. Or drink it now, I'm not your doctor. We don't have a doctor.\n\n"
+        + "The kid's always in the town square doing warm-up stretches, and he's nine, man. Go show him what losing feels like. It builds character, or that's what my dad said, and look how I turned out.",
     },
   },
   race_1: {
@@ -7257,13 +7274,14 @@ export const QUEST_CHAINS = {
     reward: { gold: 50, xp: 0 },
     next: null,
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Wait, YOU'RE the new hero?! Bro, you look like you walk in slow motion! Betcha 50 gold you can't beat me in a lap around the town square!\n\n"
-        + "You gotta touch all 4 corner flags in the square and get back here before me! Sprinting helps. Farmer Bro's Zoom Juice helps way more. Crying to the Mayor does NOT help—I already tried!",
-      progress: "Scared?! Tap Race! and we go on three! Touch all 4 corner flags and beat me back here, or you're a certified grandpa!",
-      complete: "WHAT?! You... WON?! The sun was in my eyes! My shoelace was untied! My controller disconnected! I wasn't even trying!\n\n"
-        + "Fine, take the 50 gold! So you're fast, whatever. Bet you still can't catch a wild monster by chasing it on foot!\n\n"
-        + "Trick question, dummy—nobody can! That's why Beastmaster Bro traps 'em in wooden boxes over by the Woodworker's shop!",
+      start: "Wait, YOU'RE the new hero?! Bro, you have zero aura! You walk like you're on one percent battery! Bet you 50 gold you can't beat me around the town square!\n\n"
+        + "You gotta touch all 4 corner flags in the square and get back here before me! Sprinting helps, and Farmer Bro's Zoom Juice helps way more. Telling the Mayor doesn't help at all, because he doesn't do anything, and I've tried, like, nine times.",
+      progress: "Scared?! Tap Race! and we go on three! Touch all 4 corner flags and beat me back here, or it's a skill issue!",
+      complete: "WHAT?! You WON?! Hacker! That was lag! My controller disconnected! My little cousin was on my account! I'm telling my dad, and he works at BroTown!\n\n"
+        + "Ugh, fine, take the 50 gold. You're fast, whatever. Bet you still can't catch a wild monster by chasing it on foot!\n\n"
+        + "Trick question, dummy! Nobody can! That's why Beastmaster Bro traps them in wooden boxes over by the Woodworker's shop!",
     },
   },
 
@@ -7314,11 +7332,14 @@ export const QUEST_CHAINS = {
       { when: 'complete', icon: '/icons/items/trap-box.webp', label: '2 Box Traps' },
     ],
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Keep your voice down. The wind carries your scent. Amateurs think you catch a wild beast with foot speed. Wrong. Out in the bush, superior carpentry wins the war. We use wooden boxes.\n\n"
-        + "Take these 3 Pine Logs over to Woodworker Bro's bench. Open the Traps tab and shape them into 3 tactical Box Traps. Craft me three, and keep your head on a swivel.",
-      progress: "Craft 3 Box Traps using the Traps tab at the Woodworker's bench. Stay frosty—I'll unlock the bench for you right now.",
-      complete: "Solid joinery. Smells like fresh pine and inevitable capture. Take two extra traps from my personal bunker stash. Now... we hunt.",
+      start: "Keep your voice down, because we're deep in the danger zone. ...Okay, we're behind the bakery, and that guy's throwing out old muffins, but stay frosty anyway.\n\n"
+        + "People think you catch a wild animal with speed, but you don't. Out here, you win with wood, which is why we use boxes.\n\n"
+        + "Take these 3 Pine Logs to Woodworker Bro's bench, open the Traps tab, and make 3 Box Traps. Three, not two. A guy went out there with two once, and now he's the Mayor's assistant.",
+      progress: "Make 3 Box Traps at the Woodworker's bench, using the Traps tab. I'll unlock the bench for you, so move quick and move quiet.",
+      complete: "Good boxes, solid ones. They smell like pine and bad news for something small.\n\n"
+        + "Take two more from my own supply, which I keep under my bed, and don't tell anyone where I keep it. Now... we hunt.",
     },
   },
   beast_2: {
@@ -7350,12 +7371,14 @@ export const QUEST_CHAINS = {
     next: null,
     gives: [{ when: 'complete', icon: '/icons/items/trap-box.webp', label: '5 Box Traps' }],
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Listen close, because the wild doesn't give second chances. A box trap only springs when the prey falls. Out in the wild, target a monster, tap the TRAP button to toss a box under it, and kill the beast within 15 seconds.\n\n"
-        + "Go spring 3 traps on monsters. Fair warning: most of your boxes will shatter into toothpicks. That's trapping, bro—nature is a cruel mistress, though she still pays out Trapping XP on every broken crate.",
-      progress: "Spring 3 Box Traps in the field. Target a monster, tap TRAP, and finish the kill within 15 seconds before it kicks the box apart.",
-      complete: "Three traps sprung. You've got sawdust in your veins now. You're still a rookie, mind you, but you're in the food chain. Here are five more traps.\n\n"
-        + "Keep checking in with the Mayor between hunts. The deeper into his assignments you go, the meaner the wildlife gets.",
+      start: "Out here, a real hunter only needs one shot. ...And then about ninety-nine more, because these boxes are cheap pine.\n\n"
+        + "A box trap only springs when the monster goes down, so target a monster, tap the TRAP button to toss a box under it, and then kill it within 15 seconds. Do that 3 times.\n\n"
+        + "Most of your boxes are going to break, and that's normal, that's trapping. You still get Trapping XP for every broken box, so even a broken box counts, just barely.",
+      progress: "Spring 3 Box Traps out in the field. Target a monster, tap TRAP, and finish the kill within 15 seconds, before it kicks the box apart.",
+      complete: "Three traps sprung, so you've got sawdust in your veins now. You're still a rookie, but you're a rookie with a box, and here are five more.\n\n"
+        + "Keep checking in with the Mayor between hunts. The farther you get down his list, the meaner the wildlife gets.",
     },
   },
   beast_3: {
@@ -7374,11 +7397,12 @@ export const QUEST_CHAINS = {
     next: 'beast_4',
     gives: [{ when: 'complete', icon: '/icons/items/trap-box.webp', label: '10 Box Traps' }],
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Out in the bush, beasts only respect hierarchy. Your Trapping level dictates what you're allowed to catch—if a monster's level is higher than your Trapping level, it'll shrug your box right off.\n\n"
-        + "Every trap you spring builds your killer instinct and pays out XP, even when the wood breaks. Grind your Trapping up to level 6 and report back alive.",
-      progress: "Reach Trapping level 6, bro. Keep springing boxes on monsters until the wild respects your rank.",
-      complete: "Level 6. Look at those eyes—cold, patient, slightly sleep-deprived. Monsters past level 5 will actually respect your traps now. Here's ten more boxes for the pack.",
+      start: "Out here, the wild only respects rank, and your Trapping level decides what you can catch. If a monster's level is higher than your Trapping level, it'll shake the box right off and keep walking, and it won't even be mad about it. That's the part that gets you.\n\n"
+        + "Every trap you spring gives XP, even when the wood breaks, so get your Trapping up to level 6 and come back, preferably alive.",
+      progress: "Reach Trapping level 6, bro. Keep springing boxes on monsters until the wild starts taking you seriously.",
+      complete: "Level 6. Look at those eyes, tired and focused, with sawdust in one of them. Monsters past level 5 will respect your traps now, so here's ten more boxes.",
     },
   },
   beast_4: {
@@ -7391,11 +7415,13 @@ export const QUEST_CHAINS = {
     next: null,
     gives: [{ when: 'complete', icon: '/icons/items/trap-box.webp', label: '15 Box Traps' }],
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Now for the ultimate test of survivalist patience. Most traps break. Even on a clean spring, only about one in a hundred crates actually holds the beast—same brutal odds for every bro in the world.\n\n"
-        + "The TRAP button shows your live capture odds on whatever monster you're targeting. Go out there, beat the odds, and bag yourself a real pet.",
-      progress: "Keep throwing boxes until you catch a pet, bro. Every broken crate is more XP, and eventually, the lid stays shut.",
-      complete: "By the gods of the bush... you actually bagged one. Look at that creature. Deadlier than it looks, and it'll grow stronger right alongside your Trapping level. Take fifteen traps, and my deepest tactical respect.",
+      start: "Now for the real test, which is patience. Most traps break, and even when one holds, only about one in a hundred actually keeps the monster inside. It's the same odds for every bro in the world, and nobody gets a deal. I've asked.\n\n"
+        + "The TRAP button shows your live capture odds on whatever you're targeting. Go out there, throw boxes, and bring back a pet.",
+      progress: "Keep throwing boxes until you catch a pet, bro. Every broken box is XP, and one day the lid stays shut.",
+      complete: "You... actually got one. Look at it, looking right back at you. It's stronger than it looks, and it'll keep getting stronger as your Trapping level goes up.\n\n"
+        + "Take 500 gold, 15 Box Traps, and my respect. You can't spend my respect, so I threw in the gold.",
     },
   },
 
@@ -7460,12 +7486,14 @@ export const QUEST_CHAINS = {
     next: 'mayor_3',
     unlocks: 'skill_cap_10',
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Before I can legally uncap your town permits, the City Council—which is just me wearing a fake mustache—needs to see some general dominance out there.\n\n"
-        + "Head back out into the world and drop 5 monsters. Any zone, any ugly face. Just thin the herd so I can tell the voters crime is down fifty percent.",
-      progress: "Drop 5 monsters in any zone! Go flex on the local wildlife so I can falsify my quarterly safety report.",
+      start: "Before I sign off on you, the City Council needs to see results. The City Council is me, in a different hat.\n\n"
+        + "Go drop 5 monsters, any zone, any kind. I need a chart with a line going up so I can point at it during my speech, because voters love a line that goes up and nobody ever asks what the line is.",
+      progress: "Drop 5 monsters in any zone! I've already written the speech — I just need it to be true.",
       /* v2.3.3570: the owner asked to reword this: the script said "Life Skills are officially uncapped past Lv10!", which no code does */
-      complete: "Violence verified! I just rubber-stamped your paperwork and filed it under \"Public Safety Miracles.\" Go chop, mine, and cook like a tax-exempt maniac."
+      complete: "Five down and the speech is delivered, to big applause from all three people who showed up.\n\n"
+        + "Your paperwork is officially stamped. Go chop, mine, and cook as much as you want. I'm telling the paper it's a jobs plan."
     }
   },
   mayor_3: {
@@ -7508,13 +7536,14 @@ export const QUEST_CHAINS = {
     next: null,
     unlocks: 'skill_cap_50',
     dialogue: {
+      /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Alright, final boss of bureaucracy. You want the training wheels all the way off? You gotta clear a dungeon so I can write it off as \"urban renewal.\"\n\n"
-        + "The Goo Grotto is right off the West Road in the Verdant Wilds. It's three waves of angry slimes, plus one massive mama slime at the end that splits three times when you smack her. Bring a mop.",
-      progress: "Go clear a dungeon, bro! The Goo Grotto off the West Road in the Verdant Wilds is calling your name. Mostly it's making wet squelching noises, but you get the idea.",
+      start: "Alright, last bit of paperwork. You want the training wheels all the way off? Clear a dungeon. It's in the budget as \"road repair,\" so if anyone asks, you're fixing a road.\n\n"
+        + "The Goo Grotto is right off the West Road in the Verdant Wilds. It's three waves of slimes, then one huge mama slime at the end who splits three times when you hit her, so plan for that.",
+      progress: "Go clear a dungeon, bro. The Goo Grotto is off the West Road in the Verdant Wilds, and remember, if anyone asks, it's road repair.",
       /* v2.3.3570: reworded at the owner's ask, as mayor_2's: no life-skill cap exists to lift at Lv50 */
-      complete: "Look at you, dripping in victory and questionable fluids! I hereby declare you BroTown's Dungeon Delver of the Year. There's no trophy. Budget.\n\n"
-        + "That's the end of my clipboard, bro. The deeper zones of the world are wide open to you now. Go get rich—and remember who your favorite Mayor is come election season."
+      complete: "Dungeon cleared, and you're covered in it, which I'll accept as proof. I hereby declare you BroTown's Dungeon Delver of the Year. There's no trophy. Budget.\n\n"
+        + "That's the end of my list, and the deeper zones are open to you now. Go get rich, and when you do, remember that your mayor was right there with you in spirit, from the office, with the door locked."
     }
   },
   /* ═══ TRADER TIX — Economy Gates ═══ */

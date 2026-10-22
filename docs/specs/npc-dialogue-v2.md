@@ -55,3 +55,31 @@ owner: "Yes reword those two lines." They now read:
 - mayor_2: "...filed it under "Public Safety Miracles.""
 - mayor_3: "I hereby declare you BroTown's Dungeon Delver of the Year. There's
   no trophy. Budget."
+
+## v2.3.3575: the satire pass replaces it
+
+The owner sent a second script, "BroTown NPC Script — Satire Pass" ("Actually
+use this script instead"), and it replaces v2.3.3570's lines in the same
+places:
+
+- all 18 quests;
+- the idle chatter;
+- the emote and dance reactions;
+- Ace's dance-off call, now "Dance-off! I've got [player] at 3 to 1! Who
+  wants in?";
+- Lil Bro's race barks;
+- Ace's coin-flip window.
+
+The cast changes a little:
+
+- Woodworker Bro is now an overthinking genius rather than a sad boy.
+- Every townsperson has more idle lines (four to six each).
+
+It is word for word, with one exception. The satire pass brought back the
+Life Skills claims the owner had just had reworded, and added a third
+("raise the limit on your Life Skills"). Those three sentences keep the
+earlier fix, because no code caps a life skill:
+
+- mayor_2's offer says "Before I sign off on you".
+- mayor_2's hand-in says "Your paperwork is officially stamped".
+- mayor_3's hand-in names you Dungeon Delver of the Year.
