@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9fdab4c6c8f014a1967482eb49ba71e0b67f3ad0",
+  "tree": "1def85bee7730c73e922f80b41a3e98686f0d8fc",
+  "committedAt": "2026-10-22T09:46:33-07:00",
+  "subject": "The dungeons' art as ChatGPT prompts: four entrances, walls, things inside each arena and the boss's chest (v2.3.3561) (#1075)",
+  "files": 6312,
+  "bytes": 725699009,
+  "listingSha256": "aa9ec7a9bec5962b3975e88bca21280e4755541d42491accb2d770f9aa22cb13",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
