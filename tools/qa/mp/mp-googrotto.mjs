@@ -1,5 +1,5 @@
 /* ═══ THE GOO GROTTO, ON A PHONE (v2.3.3540, docs/specs/starter-dungeon.md;
- *     v2.3.3570, docs/specs/grotto-party.md: a dungeon built for a party) ═══
+ *     v2.3.3573, docs/specs/grotto-party.md: a dungeon built for a party) ═══
  *
  * The owner: "I value SIMPLICITY and INTELLIGIBILITY" -- the after-review
  * list's fourth item: a dungeon near town, the Verdant Wilds' landmark; then
@@ -33,7 +33,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const shot = (name) => P.page.screenshot({ path: join(OUT, `googrotto-${name}.png`) }).catch(() => {});
   const { WHEEL_DOORS, WHEEL_CENTRE } = await import(H.REPO + '/server/src/wheelspawns.js');
-  /* v2.3.3570: the Grotto's level and party, the worker's own */
+  /* v2.3.3573: the Grotto's level and party, the worker's own */
   const { WHEEL_DUNGEON } = await import(H.REPO + '/server/src/wheeldungeon.js');
   const PARTY = WHEEL_DUNGEON.PARTY.verdant;
   const G = WHEEL_DOORS.verdant;
@@ -54,7 +54,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.devOp(wsPort, 'quests', id);
   await H.devOp(wsPort, 'vitals', id, { god: true, godMinutes: 30 });
   const level = await H.readState(P, (S) => (S.rpg && S.rpg.level) || 1);
-  /* v2.3.3570: a party dungeon is its own level, whatever yours (it was
+  /* v2.3.3573: a party dungeon is its own level, whatever yours (it was
      yours, never past 5) */
   const want = PARTY.level;
   const mapLine = `Lv ${PARTY.level} · ${PARTY.size - 1}–${PARTY.size} players`;
@@ -109,7 +109,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(300);
   }
   await shot('mouth');
-  rec.ok(`at the Grotto its mouth is drawn and "${near && near.btn}" comes up (v2.3.3570: the level and the players it is built for under its name)`,
+  rec.ok(`at the Grotto its mouth is drawn and "${near && near.btn}" comes up (v2.3.3573: the level and the players it is built for under its name)`,
     !!near && near.door === 'verdant' && /Enter the Goo Grotto/.test(near.btn || '') && (near.btn || '').includes(doorLine) && near.drawn.includes('verdant'), { near, doorLine });
 
   /* ── 3. in ── */

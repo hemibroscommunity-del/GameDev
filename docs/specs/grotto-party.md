@@ -1,4 +1,4 @@
-# The Goo Grotto, a dungeon built for a party (v2.3.3570)
+# The Goo Grotto, a dungeon built for a party (v2.3.3573)
 
 The owner, 2026-10-22: "I want the goo grotto dungeon to be very difficult
 without a party of 2-3 people. I'm assuming most people will be around lvl 10

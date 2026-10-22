@@ -203,7 +203,7 @@ export const dungeonMethods = {
   // Alive, connected players standing in the instance zone.  Zone
   // presence is the membership model: whoever walks in fights, whoever
   // is inside at the final kill gets paid.
-  /* ═══ v2.3.3570: A SHOVE NEVER PUTS A MONSTER IN THE WALL ═══
+  /* ═══ v2.3.3573: A SHOVE NEVER PUTS A MONSTER IN THE WALL ═══
      The box a monster in `zoneId` is kept inside when something moves it --
      a hit's knockback (combat.js), a bash's shove and the whirlwind's pull
      (abilities.js), a snowman's burrow (telegraph.js), the giant slime's
@@ -230,7 +230,7 @@ export const dungeonMethods = {
       : { x0: 2 * T, x1: W - 2 * T, y0: 2 * T, y1: H - 2 * T };
   },
 
-  /* v2.3.3570: `m` moved back inside _monsterBox, if it has one */
+  /* v2.3.3573: `m` moved back inside _monsterBox, if it has one */
   _keepMonsterIn(zoneId, m) {
     const b = this._monsterBox(zoneId);
     if (!b || !m) return;
@@ -465,7 +465,7 @@ export const dungeonMethods = {
   _dungeonSpawnBoss(inst) {
     const list = this.monsters[inst.zone];
     if (!list) return;
-    /* v2.3.3570: a party dungeon's boss (the Goo Grotto: wheeldungeon.js
+    /* v2.3.3573: a party dungeon's boss (the Goo Grotto: wheeldungeon.js
        WHEEL_DUNGEON.PARTY) is sized for its party however few come in --
        one or two face the three-player boss; four, the four-player one */
     const present = Math.max(this._dungeonZonePlayers(inst.zone).length, Math.floor(Number(inst.cfg.partySize) || 0));
@@ -679,7 +679,7 @@ export const dungeonMethods = {
         m._attackingUntil = Math.max(m._attackingUntil || 0, now + 100);
         m.x += Math.cos(m._chargeAngle) * m._chargeSpeed;
         m.y += Math.sin(m._chargeAngle) * m._chargeSpeed;
-        // Never lunge out of the arena.  v2.3.3570: its floor, the box a
+        // Never lunge out of the arena.  v2.3.3573: its floor, the box a
         // shove keeps every monster in (_monsterBox) -- it was a tile off the
         // edge, into the walls the phone draws round it.
         this._keepMonsterIn(inst.zone, m);

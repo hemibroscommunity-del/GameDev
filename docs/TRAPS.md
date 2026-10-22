@@ -8263,7 +8263,7 @@ See wheelDoors.js, "ONE SHADE OVER THE MOUND AND WHAT IS CUT FROM IT".
 **Receipt:** `tools/qa/mp/out/grotto-life-mouth-still.png` (mp-grottolife's
 picture under the calm switch): no step at the foot line.
 
-## 249. "Clamp it to the zone, as every other shove does" (v2.3.3570)
+## 249. "Clamp it to the zone, as every other shove does" (v2.3.3573)
 
 **The plausible move.** Something moves a monster -- a hit's knockback, a
 bash, the whirlwind's pull, a snowman's burrow -- and the code that moves it

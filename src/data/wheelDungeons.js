@@ -57,7 +57,7 @@ export const WHEEL_DUNGEON_FLOOR = {
    rows above the door. */
 export const WHEEL_ARENA = { W: 36, H: 52, WALL: 1, BOTTOM_WALL: 3, SPAWN_UP: 7 };
 
-/* ═══ v2.3.3570: A DUNGEON BUILT FOR A PARTY -- THE GOO GROTTO ═══
+/* ═══ v2.3.3573: A DUNGEON BUILT FOR A PARTY -- THE GOO GROTTO ═══
    The owner: "I want the goo grotto dungeon to be very difficult without a
    party of 2-3 people."  A land here is a dungeon of `level` whoever comes in,
    its boss sized for `size` players: the phone says so where the place's

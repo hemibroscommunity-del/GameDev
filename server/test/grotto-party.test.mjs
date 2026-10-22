@@ -1,4 +1,4 @@
-/* The Goo Grotto, a dungeon built for a party (v2.3.3570, server/src/
+/* The Goo Grotto, a dungeon built for a party (v2.3.3573, server/src/
  * wheeldungeon.js WHEEL_DUNGEON.PARTY, docs/specs/grotto-party.md).  The
  * owner: "I want the goo grotto dungeon to be very difficult without a party
  * of 2-3 people.  I'm assuming most people will be around lvl 10 and have iron

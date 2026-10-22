@@ -791,7 +791,7 @@ export const telegraphMethods = {
           m.y += (dy / d) * step;
           /* v2.3.2236's clamp, kept: a target hugging the edge would draw
              him onto it -- the same box the knockback clamp uses
-             (v2.3.3570: dungeon.js _monsterBox, a dungeon's arena too). */
+             (v2.3.3573: dungeon.js _monsterBox, a dungeon's arena too). */
           this._keepMonsterIn(zoneId, m);
           this._markMonsterDirty(zoneId, m.id);
         }

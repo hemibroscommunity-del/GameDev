@@ -920,7 +920,7 @@ export const abilityMethods = {
       const ang = Math.atan2((m.y || 0) - (ps.y || 0), (m.x || 0) - (ps.x || 0));
       m.x = (ps.x || 0) + Math.cos(ang) * cfg.pullTo * _strK;
       m.y = (ps.y || 0) + Math.sin(ang) * cfg.pullTo * _strK;
-      /* v2.3.3570: inside its zone's box, a dungeon's arena too (dungeon.js
+      /* v2.3.3573: inside its zone's box, a dungeon's arena too (dungeon.js
          _monsterBox) */
       this._keepMonsterIn(zoneId, m);
     } else if (cfg.knockback > 0 && m.hp > 0) {
@@ -928,7 +928,7 @@ export const abilityMethods = {
       m.x += Math.cos(ang) * cfg.knockback * _strK;
       m.y += Math.sin(ang) * cfg.knockback * _strK;
       m._kbDebt = Math.min((m._kbDebt || 0) + cfg.knockback * _strK, 60 * _strK);
-      this._keepMonsterIn(zoneId, m);   /* v2.3.3570 */
+      this._keepMonsterIn(zoneId, m);   /* v2.3.3573 */
     }
 
     /* ═══ THE STUN — AFTER the shove, deliberately (v2.3.1736) ═══

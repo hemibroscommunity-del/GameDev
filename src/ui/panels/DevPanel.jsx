@@ -227,7 +227,7 @@ const CAP_GATES = [
   'wheeldungeons' /* v2.3.3016: lower case, a kill switch */,
   'pointsreset' /* v2.3.3541: the free points reset -- lower case, a kill switch */,
   'dungeonLands' /* v2.3.3540: how many of the Wheel's dungeons the worker opens -- a number, never a switch */,
-  'partydungeon' /* v2.3.3570: the Goo Grotto is level 16 whoever comes in, its boss sized for three (server wheeldungeon.js WHEEL_DUNGEON.PARTY) -- lower case, a kill switch */,
+  'partydungeon' /* v2.3.3573: the Goo Grotto is level 16 whoever comes in, its boss sized for three (server wheeldungeon.js WHEEL_DUNGEON.PARTY) -- lower case, a kill switch */,
   'nomansland' /* v2.3.3058: No man's land -- lower case, a kill switch */,
   'nmlgroup' /* v2.3.3530: a group attacks you, one window -- every attacker yours to hit back, joining a fight you chose (nmlAsk.js nmlJoinFight) -- lower case, a kill switch */,
   'nmlchoice' /* v2.3.3530: the window's Attack is the attack -- `nml_attack` starts both skulls at once, the one attacked white before any blow (nomansland.js _handleNmlAttack) -- lower case, a kill switch */,

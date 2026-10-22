@@ -1,4 +1,4 @@
-/* ═══ v2.3.3570: THE GOO GROTTO'S STUDY, RE-RUN ═══
+/* ═══ v2.3.3573: THE GOO GROTTO'S STUDY, RE-RUN ═══
  * (docs/specs/grotto-party.md: the tables, what they mean and the decision)
  *
  * Runs the Goo Grotto (the room's own: server/src/wheeldungeon.js
@@ -11,7 +11,7 @@
  *   node tools/dungeon-sim/grotto.mjs --runs=8        quicker
  *   node tools/dungeon-sim/grotto.mjs --skill=careful,average,careless
  *   node tools/dungeon-sim/grotto.mjs --points=defense --gear=copper --fish=10 --level=12
- *   node tools/dungeon-sim/grotto.mjs --flags=partydungeon:false   the Grotto before v2.3.3570
+ *   node tools/dungeon-sim/grotto.mjs --flags=partydungeon:false   the Grotto before v2.3.3573
  *   node tools/dungeon-sim/grotto.mjs --parties="sword;sword+bow"
  *
  * Deterministic: run k of a party is seed 1000 + 7919 k, the same on every

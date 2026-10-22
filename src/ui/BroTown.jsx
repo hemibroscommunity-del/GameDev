@@ -517,7 +517,7 @@ import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h jo
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
 import { isWheelTrialZone, footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown */
-import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks; v2.3.3570: + a party dungeon's line */
+import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks; v2.3.3573: + a party dungeon's line */
 import { wheelObjectsInfo } from '@/game/wheelTrial.js';
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
 import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
@@ -14550,7 +14550,7 @@ export var BroTown = function BroTown(_ref0) {
       marginRight: 4
     }
   }, "E"), "\u2694\uFE0F Enter " + ((stateRef.current._nearWheelDoor && stateRef.current._nearWheelDoor.name) || 'the dungeon'),
-  /* v2.3.3570: a party dungeon (the Goo Grotto: level 16, built for three)
+  /* v2.3.3573: a party dungeon (the Goo Grotto: level 16, built for three)
      says so under its name, so nobody walks in alone unwarned */
   wheelDungeonDoorLine(stateRef.current, nearWheelDoor) && /*#__PURE__*/React.createElement("span", {
     "data-door-line": "1",

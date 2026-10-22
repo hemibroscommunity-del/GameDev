@@ -81,7 +81,7 @@ export const WHEEL_DUNGEON = {
      (dungeon.js _dungeonPullPartyMembers): the Wheel is one zone, so "in the
      leader's zone" alone would pull a member from across the map */
   PARTY_R: 600,
-  /* ═══ v2.3.3570: A DUNGEON BUILT FOR A PARTY -- THE GOO GROTTO ═══
+  /* ═══ v2.3.3573: A DUNGEON BUILT FOR A PARTY -- THE GOO GROTTO ═══
      The owner: "I want the goo grotto dungeon to be very difficult without a
      party of 2-3 people.  I'm assuming most people will be around lvl 10 and
      have iron equipment ... with all stat points allocated before they
@@ -130,7 +130,7 @@ export const wheelDungeonMethods = {
     return !!(f && typeof f === 'object' && own(f, 'wheeldungeons') && !f.wheeldungeons);
   },
 
-  /* v2.3.3570: the party dungeon row of land `id` ({ level, size }), or null
+  /* v2.3.3573: the party dungeon row of land `id` ({ level, size }), or null
      -- none at all under `partydungeon: false` */
   _wheelDungeonParty(id) {
     if (!own(WHEEL_DUNGEON.PARTY, id)) return null;
@@ -158,7 +158,7 @@ export const wheelDungeonMethods = {
       || Math.hypot(ps.x - door.at[0], ps.y - door.at[1]) > WHEEL_DUNGEON.DOOR_R) {
       return { error: ['not-here', 'Walk up to its mouth first'] };
     }
-    /* v2.3.3570: a party dungeon (the Goo Grotto) is its own level whoever
+    /* v2.3.3573: a party dungeon (the Goo Grotto) is its own level whoever
        comes in; any other, the place's top and never above yours */
     const party = this._wheelDungeonParty(id);
     const top = party ? party.level : Math.max(1, Math.round(Number(door.levels[1]) || 1));
@@ -180,7 +180,7 @@ export const wheelDungeonMethods = {
         bossMultiplier: WHEEL_DUNGEON.BOSS_MULT,
         home: id,
         levels: party ? [party.level, party.level] : [Number(door.levels[0]) || 1, top],
-        /* v2.3.3570: the boss is sized for at least this many (dungeon.js
+        /* v2.3.3573: the boss is sized for at least this many (dungeon.js
            _dungeonSpawnBoss); 0 for a dungeon sized by who is inside */
         partySize: party ? party.size : 0,
       },

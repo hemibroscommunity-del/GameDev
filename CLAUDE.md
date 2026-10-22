@@ -1842,7 +1842,7 @@ remnant to migrate server-side, not a mode to preserve.
         characters' sharp batcher: TRAPS §248);
       - `window.__btGrottoFx()`, the probes' `ferns`/`life`; `dungeon-art` §6,
         `mp-grottolife`: docs/specs/grotto-life.md.
-    - since v2.3.3570 THE GOO GROTTO IS BUILT FOR A PARTY -- the owner: "I
+    - since v2.3.3573 THE GOO GROTTO IS BUILT FOR A PARTY -- the owner: "I
       want the goo grotto dungeon to be very difficult without a party of 2-3
       people.  I'm assuming most people will be around lvl 10 and have iron
       equipment ... with all stat points allocated before they attempt it":

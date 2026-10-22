@@ -208,7 +208,7 @@ export const slimeBossMethods = {
     const zone = own(ZONES, inst.cfg.home) ? ZONES[inst.cfg.home] : null;
     if (!list || !zone || !Array.isArray(zone.spawns) || !zone.spawns.length) return [];
     const spawn = zone.spawns[zone.spawns.length - 1];
-    /* v2.3.3570: the arena's floor, the box every shove keeps a monster in
+    /* v2.3.3573: the arena's floor, the box every shove keeps a monster in
        (dungeon.js _monsterBox) -- it was (height - 2) tiles down, inside the
        three-row bottom wall */
     const T = this.TILE;

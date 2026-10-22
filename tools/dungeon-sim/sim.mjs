@@ -1,4 +1,4 @@
-/* ═══ v2.3.3570: THE DUNGEON SIMULATOR -- A PARTY IN A WORLD DUNGEON ═══
+/* ═══ v2.3.3573: THE DUNGEON SIMULATOR -- A PARTY IN A WORLD DUNGEON ═══
  * (docs/specs/grotto-party.md has the study, the tables and the decisions)
  *
  * The owner, of the Goo Grotto: "I want the goo grotto dungeon to be very

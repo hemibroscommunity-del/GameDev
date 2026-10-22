@@ -372,7 +372,7 @@ let run = null;
     const e = msgsOfType(wsA, 'dungeon_error')[0];
     return { s, e };
   };
-  /* v2.3.3570: the Goo Grotto is a party dungeon now -- level 16 whoever
+  /* v2.3.3573: the Goo Grotto is a party dungeon now -- level 16 whoever
      comes in, its boss sized for three (wheeldungeon.js WHEEL_DUNGEON.PARTY;
      grotto-party.test.mjs).  These checks are the dungeon rule it had, and
      that every other world dungeon keeps, under the kill switch that brings

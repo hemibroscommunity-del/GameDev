@@ -34,7 +34,7 @@ import { wheelMapInfo } from './wheelTrial.js';
 import { setWheelArrival } from './worldTrial.js';
 import { wantWheelSpawn } from './wheelHome.js';
 import { releaseLeftZoneArt, clearZoneLocalFx, veilWheelTrip } from './zoneTransitions.js';
-import { WHEEL_DUNGEON_HOMES, DOOR_R, WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR, WHEEL_ARENA, WHEEL_DUNGEON_PARTY, dungeonLevelsLine, dungeonDoorLine } from '@/data/wheelDungeons.js';   /* v2.3.3570: + the party dungeons and their words */
+import { WHEEL_DUNGEON_HOMES, DOOR_R, WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR, WHEEL_ARENA, WHEEL_DUNGEON_PARTY, dungeonLevelsLine, dungeonDoorLine } from '@/data/wheelDungeons.js';   /* v2.3.3573: + the party dungeons and their words */
 import { freeDungeonArt } from './dungeonArt.js';   /* v2.3.3566 */
 
 /* the table -- which lands, the button's reach, each mouth's light, each
@@ -143,7 +143,7 @@ export function wheelDungeonDoorsOpen(S) {
   return _open;
 }
 
-/* ═══ v2.3.3570: A DUNGEON BUILT FOR A PARTY ═══
+/* ═══ v2.3.3573: A DUNGEON BUILT FOR A PARTY ═══
    The Goo Grotto is level 16 whoever comes in and its boss is sized for
    three (server/src/wheeldungeon.js WHEEL_DUNGEON.PARTY): the world map and
    the button at its mouth say so -- against a worker that plays it so
