@@ -1643,6 +1643,45 @@ remnant to migrate server-side, not a mode to preserve.
         its road leads to the Grotto (questWays.js `dungeon:<land>`);
       - `wheeldungeon` §1/§6/§10, `dungeon`, `quest-route`, mirror-audit,
         test-world-core, `mp-googrotto`: docs/specs/starter-dungeon.md.
+    - since v2.3.3556 THE DUNGEON FIXES -- the owner: "I have no clue what the
+      state of dungeons are right now in the game. I have never played dungeons
+      yet. This will probably need work to get right." A phone walked all four
+      first (`mp-dungeontour`, docs/specs/dungeons-today.md: what a player
+      meets), then the four fixes that needed no decision:
+      - ONE LEVEL: every monster in a world dungeon is at the dungeon's level
+        (wheeldungeon.js: no +0..2), and the top bar says "(Lv 28)"
+        (zoneTitle.js: a one-level range is one level);
+      - A REAL BOSS: its WHOLE health x BOSS_MULT x the party's share
+        (dungeon.js `_dungeonSpawnBoss`; v2.3.1346 left the level's flat out,
+        and since v2.3.3055 the flat is most of a monster's health, so the boss
+        had about a wave monster's: the Great Cave's 1,384 -> 4,636); `boss: 1`
+        on its three whole-monster mappings, its plate "Boss <name>" on
+        PLATE_BOSS_FILL's deep red (the alarm's bright red still wins while
+        it hits you); and HUGE -- the owner, of the first cut's 1.5x: "Make
+        boss slime huge" -- about twice your height whatever it is
+        (gameSystems.js `bossSizeK`: `BOSS_STAND_H` 211 world px, a slime
+        x4.6, a golem or mummy x2.2, held to 1.5-5), HIT WHERE IT IS DRAWN
+        (the swing, the lunge, arrows, bolts, the bow's line, a tap, the
+        reach rings and the lock's aim all measure it at that size;
+        `monsterBodyY`), see-through (0.45) while it covers you
+        (entityRenderer `BOSS_SEE_THROUGH`); its own blows reach as before;
+      - 30 SECONDS FOR THE LOOT: game/dungeonClear.js (the clear's clock, out
+        only from THAT dungeon) and ui/mobile/DungeonClearHud.jsx ("out in 27
+        s", Leave now) -- it was three;
+      - STRAIGHT BACK IN: a start with your last run empty ends it
+        (`_handleDungeonStart`); someone inside keeps it;
+      - A DEATH INSIDE KEEPS THE BAG -- offered "your pile waits at the mouth,
+        or you keep your bag in a dungeon", the owner: "Keep your bag in
+        dungeons": the duel kill's exemption for any `dungeon:` zone (index.js
+        `_handlePlayerDeath`, dungeon.js `_dungeonKeepsBag`: no pile, neither
+        wipe, `ps._deathKeepsBag` -- was `_duelDeathKeepsBag`), `keptBag` on
+        player_died and "Your bag is safe" on the phone; a red skull's loss
+        still No man's land's; kill switch `dungeonbag: false`;
+      - `wheeldungeon` §4/§6/§11/§12, `dungeon` §4/§8/§11, `dungeon-clear` suite,
+        `mp-dungeonfix`: docs/specs/dungeon-fixes.md. Still the owner's call:
+        a reward worth the trip, travel to found dungeons, the farm's
+        Workshop, something to look at inside, and whether the huge boss
+        should reach as far as it looks.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack

@@ -3037,6 +3037,10 @@ export function setupWebSocket(ctx) {
                 }
               } catch (e) { /* a camera kick never breaks the death */ }
               pushDmgPopup(S, S.player.x, S.player.y - 40, 'YOU DIED', '#ff5e6c');
+              /* v2.3.3556: the worker kept your bag (a dungeon: the owner's
+                 "Keep your bag in dungeons"; a duel) and says so -- only then,
+                 so an older worker's death promises nothing */
+              if (msg.payload && msg.payload.keptBag) pushDmgPopup(S, S.player.x, S.player.y - 18, 'Your bag is safe', '#8FD39A');
               BT_AUDIO.playerDeath();
               if (typeof window !== 'undefined' && window.__btProbe) {
                 window.__btLastDeath = { at: Date.now(), shake: S.screenShake, flash: S._deathFlash, punch: S._camPunch ? { dx: +S._camPunch.dx.toFixed(1), dy: +S._camPunch.dy.toFixed(1) } : null, cause: (msg.payload && msg.payload.cause) || null };

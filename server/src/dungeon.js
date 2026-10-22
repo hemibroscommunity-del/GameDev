@@ -187,6 +187,18 @@ export const dungeonMethods = {
     this._dungeonSend(playerId, { type: 'dungeon_error', payload: { code, message } });
   },
 
+  /* ═══ v2.3.3556: DOES A DEATH HERE KEEP THE BAG? ═══
+     The owner: "Keep your bag in dungeons" -- any dungeon, the world's and
+     the Workshop's (a `dungeon:` zone).  Read by index.js _handlePlayerDeath,
+     which skips the pile and both wipes for it, as for a duel kill.  KILL
+     SWITCH (lower case, TRAPS §117): `dungeonbag: false` in the live flags --
+     a dungeon death drops its pile and empties the bag as before. */
+  _dungeonKeepsBag(ps) {
+    const f = this._liveFlags;
+    if (f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'dungeonbag') && !f.dungeonbag) return false;
+    return !!(ps && typeof ps.z === 'string' && ps.z.startsWith('dungeon:'));
+  },
+
   // Alive, connected players standing in the instance zone.  Zone
   // presence is the membership model: whoever walks in fights, whoever
   // is inside at the final kill gets paid.
@@ -248,8 +260,17 @@ export const dungeonMethods = {
       return this._dungeonError(session.id, 'not-now', 'Cannot start a dungeon right now');
     }
     if (!this._dungeons) this._dungeons = new Map();
-    for (const inst of this._dungeons.values()) {
+    for (const inst of [...this._dungeons.values()]) {
       if (inst.ownerId === session.id && inst.state === 'active') {
+        /* ═══ v2.3.3556: STRAIGHT BACK IN ═══
+           A run of yours with nobody in it ends here and a new one starts:
+           you walked out by its way out, or died in it, and the door said
+           "You already have a dungeon running" until the empty sweep took it a
+           minute later (EMPTY_SWEEP_MS) -- the tour, docs/specs/
+           dungeons-today.md.  Nothing in an empty run can be got back (no way
+           in leads to an old run), so ending it now loses nothing the sweep
+           would not.  Someone still inside (your party) keeps it running. */
+        if (this._dungeonZonePlayers(inst.zone).length === 0) { this._dungeonCleanup(inst); continue; }
         return this._dungeonError(session.id, 'already-running', 'You already have a dungeon running');
       }
     }
@@ -417,10 +438,24 @@ export const dungeonMethods = {
       /* v2.3.3540: at the dungeon's level (data.js DUNGEON_BOSS_UP; it was + 5) */
       : this._dungeonMonster(inst, inst.cfg.bossArchetype, inst.cfg.monsterLevel + DUNGEON_BOSS_UP, inst.cfg.element, 'boss');
     if (!m) return;
-    // v2.3.1346: the flat +100 HP bump applies AFTER the boss/party
-    // multipliers -- "all monsters get +100", not +100 x8 amplified.
-    const hpFlat = monsterHpFlat(m.level); /* v2.3.1364: level-aware — must match the flat added at spawn */
-    m.hp = Math.ceil((m.hp - hpFlat) * inst.cfg.bossMultiplier * scale) + hpFlat;
+    /* ═══ v2.3.3556: THE BOSS IS ITS WHOLE HEALTH x THE MULTIPLIER ═══
+       The owner, 2026-10-21, of dungeons: "This will probably need work to
+       get right."  The tour (docs/specs/dungeons-today.md) found the boss
+       had about a wave monster's health, and LESS in two of the four: the
+       Foundry Dome's 1,204 against its waves' 1,344, the Goo Grotto's 120
+       against 128.  v2.3.1346 multiplied only the part of a monster's health
+       that was not its flat -- "all monsters get +100", not +100 x8 -- and
+       that was a small part then; since v2.3.3055 the flat GROWS with the
+       level (monsterHpFlat: 100 at Lv 3, 1,311 at Lv 30), so it is most of a
+       monster's health and the multiplier hardly touched a boss.  Now the
+       whole health is multiplied, as the Workshop's own "HP x4" says and as
+       the phone's old boss did (dungeonWaves.js): a world dungeon's boss is
+       four wave monsters of health (the Great Cave at Lv 28: 1,384 -> 4,636),
+       more with a party (PARTY_HP_SCALE, as before).  The kill's XP is its
+       damage (prog3 XP_PER_DMG), so it pays for the longer fight at the same
+       rate a second; a run's whole health is about what it was (the waves no
+       longer roll up to two levels above: wheeldungeon.js). */
+    m.hp = Math.ceil(m.hp * inst.cfg.bossMultiplier * scale);
     m.maxHp = m.hp;
     m.dmg = Math.ceil(m.dmg * 1.5);
     m.emoji = BOSS_ABILITIES.BOSS_EMOJI[inst.cfg.bossArchetype] || '🐉';
@@ -434,6 +469,12 @@ export const dungeonMethods = {
     // underscore fields -- every wire mapping (zone snapshot, tick
     // delta, _dungeonPushZoneState) copies explicit fields, so none of
     // this leaks to clients.
+    /* v2.3.3556: ...but that it IS the boss does: each full monster mapping
+       (_dungeonPushZoneState, spawnscale.js monsterSnapWire, join.js
+       state_sync) says `boss: 1` on it alone, and the phone draws it bigger
+       with a "Boss" plate: huge, about twice your height (the owner: "Make
+       boss slime huge"; src/data/gameSystems.js bossSizeK).  It looked like
+       every wave monster before it: same picture, size and name. */
     m._dungeonBoss = true;
     // v2.3.1215 (item I): archetype signature kit + the legacy level
     // gates layered on (see BOSS_ABILITIES.KITS).
@@ -743,6 +784,8 @@ export const dungeonMethods = {
          _zoneSnapshotWire) -- only on those, so a Workshop run's wire is
          byte for byte what it was */
       ...(m.home ? { home: m.home, variant: m.variant || null } : {}),
+      /* v2.3.3556: the boss says so (on it alone) */
+      ...(m._dungeonBoss ? { boss: 1 } : {}),
     }));
     for (const [ws, s] of this.sessions) {
       const ps = s.id && this.playerState[s.id];

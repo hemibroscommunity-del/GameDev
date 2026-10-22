@@ -113,7 +113,7 @@ check('clean duel kill spawns no pile and keeps inventory', Object.keys(psB.inve
 psB.respawnAt = Date.now() - 1;
 room._tickPlayerRespawn();
 check('a duel loser still has their bag AFTER respawning', psB.inventory.fish === 2, psB.inventory);
-check('respawn cleared the one-shot exemption flag', psB._duelDeathKeepsBag === undefined, psB._duelDeathKeepsBag);
+check('respawn cleared the one-shot exemption flag', psB._deathKeepsBag === undefined && psB._duelDeathKeepsBag === undefined, psB._deathKeepsBag);
 // An ORDINARY death still wipes on respawn -- the exemption is duel-only.
 psB.inventory = { fish: 2 };
 psB.hp = 0; psB.dying = false; psB.dead = false;

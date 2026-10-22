@@ -3382,7 +3382,17 @@ export class GameRoom {
        to the killer for its owner window (or, for a red skull with no killer,
        to anyone at once). */
     const _nml = _duelKill ? null : _hook('nml', () => this._nmlOnDeath(ps, playerId, cause));
-    if (!_duelKill) {
+    /* ═══ v2.3.3556: A DEATH IN A DUNGEON KEEPS THE BAG ═══
+       The owner, offered "your pile waits outside at the mouth, or you keep
+       your bag in a dungeon": "Keep your bag in dungeons".  The pile was left
+       inside the run, which nobody could get back into, and went with it
+       (docs/specs/dungeons-today.md).  So a dungeon death is a duel kill's
+       exemption: no pile, no wipe now and none at the respawn.  A red skull's
+       loss is still No man's land's (`_nml`, the owner's own rule for an
+       outlaw killed "by a monster", which says nowhere but the Wheel).  Kill
+       switch `dungeonbag: false` (dungeon.js _dungeonKeepsBag). */
+    const _dungeonKeep = !_duelKill && !_nml && !!_hook('dungeonBag', () => this._dungeonKeepsBag(ps));
+    if (!_duelKill && !_dungeonKeep) {
       // Spawn a pickable death pile at the death location carrying the
       // player's entire general inventory (mummy remains, fish, wood,
       // etc.).  Equipped loadout (weapon / rangedWeapon / staffWeapon /
@@ -3410,7 +3420,9 @@ export class GameRoom {
        death and respawn — _saveRpg's fixed field list ignores it, which is
        what we want (rule 11: losing it costs a bag on a mid-death reconnect,
        where the duel forfeits regardless). */
-    ps._duelDeathKeepsBag = !!_duelKill;
+    /* v2.3.3556: renamed from _duelDeathKeepsBag -- a dungeon death keeps the
+       bag through the respawn too */
+    ps._deathKeepsBag = !!_duelKill || _dungeonKeep;
     this._saveRpg(playerId, ps);
     this._queuePlayerStateFlush(playerId);
     const ws = this._wsBySessionId(playerId);
@@ -3418,7 +3430,10 @@ export class GameRoom {
       try {
         ws.send(JSON.stringify({
           type: 'player_died',
-          payload: { cause: cause || 'unknown', respawnInMs: 5000 },
+          /* v2.3.3556: `keptBag` -- the worker kept the bag (a dungeon, a
+             duel), so the phone can say so; absent, as from an older worker,
+             the phone promises nothing */
+          payload: { cause: cause || 'unknown', respawnInMs: 5000, ...(ps._deathKeepsBag ? { keptBag: 1 } : {}) },
         }));
       } catch (e) {}
     }
@@ -3475,7 +3490,9 @@ export class GameRoom {
          asserted the inventory right after _handlePlayerDeath, which is
          precisely the window where it was still intact, so the suite was
          green throughout. */
-      if (ps._duelDeathKeepsBag) delete ps._duelDeathKeepsBag;
+      /* v2.3.3556: ...and a dungeon death's (_deathKeepsBag, was
+         _duelDeathKeepsBag) */
+      if (ps._deathKeepsBag) delete ps._deathKeepsBag;
       /* v2.3.1688: the respawn wipe keeps the tools too — it is the second,
          unconditional wipe, so sparing them at death alone would not have
          saved them. */

@@ -9,19 +9,22 @@
  *       OWNER's level (GDD §36).
  *   3.  dungeon_started is private, zone is 'dungeon:'-prefixed, wave 1
  *       pre-populated with noRespawn monsters.
- *   4.  One active instance per owner.
+ *   4.  One active instance per owner -- while someone is in it (v2.3.3556:
+ *       an EMPTY run of yours is ended by a new start, check 11).
  *   5.  Zone-changing into the instance delivers the wave via the
  *       normal zone_state path.
  *   6.  noRespawn guard: killed dungeon monsters stay dead (respawnAt
  *       0) while world monsters still schedule a respawn.
  *   7.  All-dead advances the wave (spawn + zone_state re-push +
  *       dungeon_wave event); _tickMonsters tolerates the instance zone.
- *   8.  Boss spawn: hp x bossMultiplier x party scale (1.6 with two
- *       players inside), dmg x1.5, dungeon_boss event.
+ *   8.  Boss spawn: its WHOLE hp x bossMultiplier x party scale (1.6 with
+ *       two players inside; v2.3.3556 -- the level's flat was left out of
+ *       the multiplying), dmg x1.5, dungeon_boss event, `boss: 1` on the wire.
  *   9.  Completion pays gold/XP to players INSIDE the instance only
  *       (boss formula 30w+2L / 80w+5L), private dungeon_complete.
  *   10. Done instances are swept; no-boss completion uses 20w/50w.
- *   11. Empty instances are swept after EMPTY_SWEEP_MS.
+ *   11. Empty instances are swept after EMPTY_SWEEP_MS; v2.3.3556: and a
+ *       new start ends your empty run at once (straight back in).
  *   12. Room-wide instance cap; dead players can't start; forged
  *       dungeon_started is not rebroadcast (deny-list).
  * v2.3.1194 boss abilities (handoff item F follow-up):
@@ -151,11 +154,16 @@ check('wave 1 pre-populated (4 groups x 8)', Array.isArray(wave1) && wave1.lengt
 check('dungeon monsters flagged noRespawn, respawnAt 0, alive', wave1.every((m) => m.noRespawn === true && m.respawnAt === 0 && m.alive === true && m.id.startsWith('dm-')));
 check('monster level jitter stays in [lvl, lvl+2]', wave1.every((m) => m.level >= 5 && m.level <= 7), wave1.map((m) => m.level).slice(0, 5));
 
-// ── 4. one active instance per owner ──
+// ── 4. one active instance per owner -- while someone is in it ──
+/* v2.3.3556: a run with nobody in it is ended by a new start (straight back
+   in, check 11); one with someone inside is still refused.  Inside for this
+   check only -- the real way in is the move in check 5. */
+psA.z = zone;
 wsA.sent.length = 0;
 await start(wsA, { waves: 1 });
 let errs = msgsOfType(wsA, 'dungeon_error');
-check('second start rejected (already-running)', errs.length === 1 && errs[0].payload.code === 'already-running', errs.map((e) => e.payload));
+check('second start rejected while someone is in your run (already-running)', errs.length === 1 && errs[0].payload.code === 'already-running' && !msgsOfType(wsA, 'dungeon_started').length, errs.map((e) => e.payload));
+psA.z = 'town';
 
 // ── 5. zone change delivers the wave via zone_state ──
 wsA.sent.length = 0;
@@ -214,9 +222,20 @@ const bossLv = cfg.monsterLevel + DUNGEON_BOSS_UP;
 check('the boss is at the dungeon\'s level (DUNGEON_BOSS_UP 0, v2.3.3540)', DUNGEON_BOSS_UP === 0 && !!boss && boss.level === cfg.monsterLevel, boss && { lv: boss.level, cfg: cfg.monsterLevel });
 const baseHp = Math.ceil(room._monsterStat(MONSTER_HP_CURVE.base, bossLv, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame) * 0.6);
 const baseDmg = Math.ceil(room._monsterStat(MONSTER_DMG_CURVE.base, bossLv, MONSTER_DMG_CURVE.ramp, MONSTER_DMG_CURVE.plateau, MONSTER_DMG_CURVE.endgame) * 0.8);
-// v2.3.1346: the flat is added AFTER boss/party multipliers (exact, like all monsters); v2.3.3055: the level's own flat.
+// v2.3.1346: the flat was added AFTER boss/party multipliers; v2.3.3055: the level's own flat.
+// v2.3.3556: the WHOLE health is multiplied -- since v2.3.3055 the flat grows
+// with the level and is most of a monster's health, so leaving it out left a
+// boss with about a wave monster's health (dungeon.js _dungeonSpawnBoss).
 const bossFlat = monsterHpFlat(bossLv);
-check('boss hp = base x mult x party scale 1.6 + flat', boss.hp === Math.ceil(baseHp * 8 * 1.6) + bossFlat, { hp: boss.hp, expected: Math.ceil(baseHp * 8 * 1.6) + bossFlat });
+check('boss hp = its whole hp (base + flat) x mult x party scale 1.6 (v2.3.3556)', boss.hp === Math.ceil((baseHp + bossFlat) * 8 * 1.6) && boss.maxHp === boss.hp, { hp: boss.hp, expected: Math.ceil((baseHp + bossFlat) * 8 * 1.6) });
+{
+  /* v2.3.3556: ...and the wire says which one is the boss: on it alone */
+  const zs = msgsOfType(wsA, 'zone_state').pop();
+  const bw = zs && zs.monsters.find((x) => x.id === boss.id);
+  check('the re-push says `boss: 1` on the boss and on nothing else (v2.3.3556)', !!bw && bw.boss === 1 && zs.monsters.filter((x) => x.boss).length === 1, zs && zs.monsters.map((x) => [x.id, x.boss]));
+  const snap = room._zoneSnapshotWire(zone).monsters;
+  check('...and so does the zone snapshot a joiner gets (spawnscale.js monsterSnapWire)', snap.filter((x) => x.boss === 1).length === 1 && snap.find((x) => x.boss === 1).id === boss.id, snap.map((x) => [x.id, x.boss]));
+}
 /* v2.3.3260: x the one formula's hit multiplier at its level first, as every
    monster is built (oneformula.js _monsterHitStamp) */
 const _bossBase = Math.ceil(baseDmg * room._monsterHitK(bossLv));
@@ -289,7 +308,18 @@ await move(wsA, 'town');
 wsB.sent.length = 0;
 await move(wsB, 'town');
 await start(wsB, { waves: 1, monsters: [{ archetype: 'fodder', count: 1 }] });
-const zone3 = msgsOfType(wsB, 'dungeon_started')[0].payload.zone;
+const zone3first = msgsOfType(wsB, 'dungeon_started')[0].payload.zone;
+/* v2.3.3556: STRAIGHT BACK IN -- your last run with nobody in it is ended by
+   a new start, where the door said "You already have a dungeon running" until
+   the sweep below took it a minute later */
+wsB.sent.length = 0;
+await start(wsB, { waves: 1, monsters: [{ archetype: 'fodder', count: 1 }] });
+const again = msgsOfType(wsB, 'dungeon_started')[0];
+const zone3 = again && again.payload.zone;
+check('v2.3.3556: a new start with your last run EMPTY ends it (its monsters gone) and starts another -- no "already running"',
+  !!zone3 && zone3 !== zone3first && room.monsters[zone3first] === undefined && !room._dungeons.has(zone3first.slice('dungeon:'.length))
+    && room._dungeons.size === 1 && !msgsOfType(wsB, 'dungeon_error').length,
+  { zone3first, zone3, n: room._dungeons.size, errs: msgsOfType(wsB, 'dungeon_error').map((e) => e.payload) });
 const now0 = Date.now();
 room._tickDungeons(now0); // starts the empty clock (owner never entered)
 check('empty instance survives inside the grace window', room._dungeons.size === 1);

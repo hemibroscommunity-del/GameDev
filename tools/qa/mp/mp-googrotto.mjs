@@ -126,9 +126,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(500);
   }
   await shot('arena');
-  rec.ok(`a tap opens it (${inZ}): the Verdant Wilds' own monsters at levels ${arena && Math.min(...arena.levels)}-${arena && Math.max(...arena.levels)} (yours is ${level}: the dungeon's ${want}, +0..2, never past 5 + 2), drawn in their own looks (${arena && arena.drawn} of ${arena && arena.n}), on the land's mossy stone, the way back out remembered`,
+  /* v2.3.3556: every one AT the dungeon's level (they rolled +0..2) */
+  rec.ok(`a tap opens it (${inZ}): the Verdant Wilds' own monsters, all at Lv ${arena && Math.min(...arena.levels)} (yours is ${level}: the dungeon's ${want}, never past 5; v2.3.3556: no +0..2), drawn in their own looks (${arena && arena.drawn} of ${arena && arena.n}), on the land's mossy stone, the way back out remembered`,
     /^dungeon:/.test(inZ || '') && !!arena && arena.n > 0 && arena.homes.length === 1 && arena.homes[0] === 'verdant'
-      && arena.levels.every((l) => l >= want && l <= want + 2) && arena.drawn === arena.n
+      && arena.levels.every((l) => l === want) && arena.drawn === arena.n
       && !!arena.floor && arena.floor.drawn === true && /verdant-3-A\.png/.test(arena.floor.pic || '')
       && !!arena.back && Math.abs(arena.back.x - G.back[0]) < 1 && Math.abs(arena.back.y - G.back[1]) < 1,
     arena);

@@ -1807,6 +1807,8 @@ export const joinMethods = {
         /* v2.3.2978: a Wheel monster's home zone (wheelzone.js) -- the client
            skins it by that zone, as in its own.  Absent everywhere else. */
         ...(m.home ? { home: m.home } : {}),
+        /* v2.3.3556: a dungeon's boss says so (dungeon.js _dungeonSpawnBoss) */
+        ...(m._dungeonBoss ? { boss: 1 } : {}),
       })),
       /* v2.3.3318: only the monsters around this phone (wheelnear.js) -- so an
          empty list still means the worker runs this zone's monsters */

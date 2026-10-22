@@ -149,6 +149,9 @@ export function monsterSnapWire(m) {
        the zone's own name (wheelzone.js).  Both fields only on those, so
        every other zone's snapshot is byte-identical. */
     ...(m.home ? { home: m.home, variant: m.variant || null } : {}),
+    /* v2.3.3556: a dungeon's boss says so (dungeon.js _dungeonSpawnBoss) --
+       on it alone, so every other snapshot is byte-identical */
+    ...(m._dungeonBoss ? { boss: 1 } : {}),
   };
 }
 
