@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a1bbf53e7ab5dd3c2746a2748269194fc78ab285",
+  "tree": "ad2eb1d7c4aab2dd18452aaaf3da3e6c7fbd51f5",
+  "committedAt": "2026-10-22T09:46:02-07:00",
+  "subject": "Closing a window no longer taps what's under it: the stat window's ✕ stops opening the world map (v2.3.3560) (#1074)",
+  "files": 6309,
+  "bytes": 725657029,
+  "listingSha256": "0dadd8032bf2a52c9a68105acb2bac2e22a5b2ebf5dc278127cc05d88423850e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
