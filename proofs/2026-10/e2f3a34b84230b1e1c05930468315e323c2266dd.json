@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e2f3a34b84230b1e1c05930468315e323c2266dd",
+  "tree": "e1dde7b20d4da1881b80ee915a3efe8d99ed82f1",
+  "committedAt": "2026-10-22T20:46:17-07:00",
+  "subject": "Your bro is whole after the phone parks the tab: emptied pictures are noticed and brought back on the same spot (v2.3.3574) (#1087)",
+  "files": 6360,
+  "bytes": 738000461,
+  "listingSha256": "5d82876e6ca6629fee21a0151dea42cc1869a397addd241f93bc6b618cebcd28",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
