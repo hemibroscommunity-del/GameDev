@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "97817a0c19de23ae22e48ea38114a8462e425ed9",
+  "tree": "55fdbd6f8f827a8b3ddf5ee9d00fe82014471ede",
+  "committedAt": "2026-10-22T21:31:46-07:00",
+  "subject": "Mayor Bro names the Goo Grotto as a party's job at the slimes' hand-in (v2.3.3579) (#1092)",
+  "files": 6372,
+  "bytes": 738145618,
+  "listingSha256": "cc868c331773305e340fb4500d1635e874a179a539b8d5ec5324eb7a8b2e12f0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
