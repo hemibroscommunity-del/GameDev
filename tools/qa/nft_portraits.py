@@ -12,11 +12,12 @@ stacked from (Bro Type, Clothes, Eyes, Eyewear, Headwear, Mouth Items).
 Each townsperson's dialogue head is such a bust, built from the collection's
 OWN trait art: the traits nearest his look in the game (tools/qa/
 npc-looks.mjs), his skin tone, and the few colours that make him him (the
-Mayor's grey beard).  Where the game has more than the collection -- a hat
-over hair, a skin tone -- the collection's pieces are combined or recoloured,
-never redrawn.  They replace the creator figure's headshot, which the owner
-found "fuzzy" with "some stray pixels": each is its 32 x 32 pixels, every one
-a flat colour, made 6 x 6 file px, lossless.
+Mayor's grey beard).  Where the game has more than the collection -- a skin
+tone, hair under a hat -- the collection's pieces are recoloured, or its own
+way wins (a bro in a hat is bald under it), never redrawn.  They replace the
+creator figure's headshot, which the owner found "fuzzy" with "some stray
+pixels": each is its 32 x 32 pixels, every one a flat colour, made 6 x 6 file
+px, lossless.
 
     python3 tools/qa/nft_portraits.py extract <catalogue>   # once: the layers
     python3 tools/qa/nft_portraits.py                       # the portraits
@@ -527,30 +528,33 @@ GREY = ((96, 96, 104), (206, 206, 212))
 DARK = ((42, 38, 44), (92, 86, 90))
 HAT_BLACK = ((34, 32, 38), (84, 82, 92))
 OUTLINE = (31, 13, 27)      # the collection's one outline colour, in every layer
-# The hats a head of hair goes under.  The collection wears hair OR a hat (one
-# Headwear each), so under a hat the hair is cut to what hangs below the brim;
-# a band (the bandana, the headphones) sits on the hair and cuts nothing.
+# The hats.  The collection wears hair OR a hat (one Headwear each): a bro in
+# a hat is bald under it, his ear showing below the brim.  So is a
+# townsperson's portrait, though the game gives him hair under it -- hair cut
+# to what hung below the brim left a lone pixel, a sliver of brown or a grey
+# band where the ear goes, the owner's "stray pixels".  A band (the bandana,
+# the headphones) sits on the hair, as in the game.
 HATS = {'tophat', 'buckethat', 'cowboyhat', 'derbyhat', 'brownhat', 'flatcap', 'foldedbrim', 'fez', 'bluecap',
         'backwardshat', 'redbeanie', 'sheriffhat', 'mexicanhat', 'russianhat', 'oldbuckethat', 'goldenbucket'}
 
 # Each townsperson: the collection's traits nearest his look in the game
 # (tools/qa/npc-looks.mjs NPC_LOOKS, the satire pass's stereotypes), his game
 # skin, a background of the collection's own, and the colours his look
-# insists on.  `hair` under `headwear`: the game wears both, the collection
-# one at a time.
+# insists on.  `hair` with a band; never under a hat (HATS).
 PORTRAITS = {
-    # top hat, gold monocle, grey slick-back hair and beard; a politician's suit
+    # top hat, gold monocle, a grey beard; a politician's suit
     'mayor-bro-head': dict(skin='fair', bg='Purple Navy', clothes='suit', eyes='normaleyes', eyewear='goldenmonocle',
-                           hair='slickbackhair', headwear='tophat', mouth='beard', recolour={'hair': GREY, 'mouth': GREY}),
+                           headwear='tophat', mouth='beard', recolour={'mouth': GREY}),
     # the gym bro: shirtless, red sweatband over a flat-top, black beard
     'blacksmith-bro-head': dict(skin='tan', bg='Rose Taupe', eyes='normaleyes', hair='flattophairstyle',
                                 headwear='redbandana', mouth='beard', recolour={'mouth': DARK}),
     # the hustler: slicked hair, gold glasses, a loud purple bomber
     'shopkeeper-bro-head': dict(skin='brown', bg='Dark Lavender', clothes='purplebomber', eyes='normaleyes',
                                 eyewear='goldenglasses', hair='slickbackhair'),
-    # the dirt hippie: green bucket hat, wide eyes, a scraggly beard, yellow
+    # the dirt hippie: green bucket hat, wide eyes, his full brown beard (the
+    # game's; the Low Beard's 20 scattered pixels read as specks), yellow
     'farmer-bro-head': dict(skin='sand', bg='Russian Green', clothes='yellowshirt', eyes='wtfeyes',
-                            hair='lightbrownhair', headwear='buckethat', mouth='lowbeard'),
+                            headwear='buckethat', mouth='beard'),
     # the overthinker: workshop goggles, wild grey hair, a lined white tee
     'woodworker-bro-head': dict(skin='pale', bg='Teal Blue', clothes='whitestripedshirt', eyes='normaleyes',
                                 eyewear='goggles', hair='afro', recolour={'hair': GREY}),
@@ -560,9 +564,9 @@ PORTRAITS = {
     # the iPad kid: the red "b" headphones on blonde hair, a bright orange top
     'lil-bro-head': dict(skin='honey', bg='Teal Blue', clothes='yellowrunning', eyes='happyeyes',
                          hair='blondehair', headwear='headphones'),
-    # the bookie: a black derby over slicked hair, shifty eyes, green felt
+    # the bookie: a black derby, shifty eyes, green felt
     'cardsharp-bro-head': dict(skin='rosy', bg='Middle Green', clothes='woolenshirt', eyes='suseyes',
-                               hair='slickbackhair', headwear='derbyhat', recolour={'headwear': HAT_BLACK}),
+                               headwear='derbyhat', recolour={'headwear': HAT_BLACK}),
 }
 STACK = ['clothes', 'eyes', 'eyewear', 'hair', 'headwear', 'mouth']
 
@@ -602,25 +606,13 @@ def _ramp(lay, lo, hi):
     return out
 
 
-def _under_hat(hair, hat):
-    """hair under a hat: only what hangs below the brim shows -- in each
-    column below the hat's lowest pixel there, and beside the hat below its
-    lowest pixel anywhere.  Laid under a hat as it was, a head of hair poked
-    its tips through the crown."""
-    out = hair.copy()
-    lowest = [int(np.nonzero(hat[:, x, 3])[0].max()) if hat[:, x, 3].any() else -1 for x in range(GRID)]
-    floor = max(lowest)
-    for y, x in zip(*np.nonzero(hair[..., 3])):
-        if y <= (lowest[x] if lowest[x] >= 0 else floor):
-            out[y, x, 3] = 0
-    return out
-
-
 def bake():
     bgs = json.load(open(os.path.join(SRC, 'backgrounds.json')))
     load = lambda f: np.asarray(Image.open(os.path.join(SRC, f + '.png')).convert('RGBA')).copy()
     made = []
     for head, rec in PORTRAITS.items():
+        if rec.get('hair') and rec.get('headwear') in HATS:
+            sys.exit(f'{head}: hair under a hat -- the collection is bald under its hats (HATS)')
         img = np.zeros((GRID, GRID, 4), np.uint8)
         img[..., :3] = bgs[rec['bg']]
         img[..., 3] = 255
@@ -632,8 +624,6 @@ def bake():
             lay = load(f)
             if slot == 'eyes':
                 lay = _reskin(lay, SKIN[rec['skin']])
-            if slot == 'hair' and rec.get('headwear') in HATS:
-                lay = _under_hat(lay, load(rec['headwear']))
             rc = rec.get('recolour', {}).get(slot)
             if rc:
                 lay = _ramp(lay, *rc)

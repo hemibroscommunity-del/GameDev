@@ -75,24 +75,26 @@ from the collection's own trait art:
 
 | Who | His traits | Skin (the game's) |
 | --- | --- | --- |
-| Mayor Bro | Top Hat over Slick Back Hair (grey), Golden Monocle, Beard (grey), Suit; Purple Navy | fair |
+| Mayor Bro | Top Hat, Golden Monocle, Beard (grey), Suit; Purple Navy | fair |
 | Blacksmith Bro | Bandana over the Flat Top, Beard (black), no shirt; Rose Taupe | tan |
 | Diego | Slick Back Hair, Golden Glasses, Purple Bomber; Dark Lavender | brown |
-| Farmer Bro | Bucket Hat over Blond Hair, Wtf Eyes, Low Beard, Yellow Shirt; Russian Green | sand |
+| Farmer Bro | Bucket Hat, Wtf Eyes, Beard, Yellow Shirt; Russian Green | sand |
 | Woodworker Bro | Flattened (the goggles), Afro (grey), White Striped Shirt; Teal Blue | pale |
 | Beastmaster Bro | Cowboy Hat, Sleepy Eyes, Beard, Normal Soldier Outfit; Camouflage Green | olive |
 | Lil Bro | Headphone on Blonde Hair, Happy Eyes, Yellow Running Jacket; Teal Blue | honey |
-| Ace | Derby Hat (black) over Slick Back Hair, Sus Eyes, Woolen Shirt; Middle Green | rosy |
+| Ace | Derby Hat (black), Sus Eyes, Woolen Shirt; Middle Green | rosy |
 
 What the game has beyond the collection is the collection's pieces combined
 or recoloured, never redrawn:
 
 - the skin is each townsperson's game skin, recoloured from the bro's orange
   by brightness, as the game's own recolour does;
-- a hat over hair: the collection wears one or the other, so under a hat the
-  hair is cut to what hangs below its brim (`_under_hat`); a band (the
-  bandana, the headphones) sits on the hair and cuts nothing;
-- a recoloured trait (the Mayor's grey hair and beard, Ace's black derby)
+- a hat: the collection wears hair OR a hat, and a bro in a hat is bald
+  under it, his ear showing below the brim; so is a townsperson's portrait,
+  though the game gives him hair under it (the bake refuses hair with a hat
+  in `HATS`). A band (the bandana, the headphones) sits on the hair, as in
+  the game;
+- a recoloured trait (the Mayor's grey beard, Ace's black derby)
   keeps the collection's outline colour and puts every other colour on a ramp
   in its own order of brightness.
 
@@ -129,10 +131,35 @@ portraits never need the catalogue again:
 
 The portrait is its 32 x 32 pixels, each a flat colour, made 6 x 6 file px:
 192 x 192 lossless, under 1 KB a file. The creator headshot it replaces was
-the dialogue's "fuzzy" picture with "stray pixels"; the first cut of these
-(the prototype) still had hair poking through the bucket hat and a crooked
-pair of goggles, which the mending and the hat's cut took out. Diego's
-26 px head in his shop is a rounded chip now, as Ace's is.
+the dialogue's "fuzzy" picture with "stray pixels". Then the owner asked again
+for a cleanup pass, and every portrait was gone over a pixel at a time beside
+real NFTs wearing the same traits. What was taken out:
+
+- the hair under the three hats (the Mayor, the Farmer, Ace). The first cut
+  of these had the Farmer's hair poking through his bucket hat; the next cut
+  hair to what hung below the brim, which left a lone grey pixel and a grey
+  sliver on Ace, a 1-pixel brown strip on the Farmer and a grey band on the
+  Mayor, where a hatted Hemi Bro has his ear;
+- the Farmer's Low Beard: the collection's own art (rebuilt, the real NFTs
+  match it cell for cell), but its 20 scattered pixels read as specks on his
+  lighter skin. His beard in the game is full, so his portrait wears the
+  collection's full Beard;
+- the goggles placed by hand one pixel off on both axes, before the extract
+  placed them by the NFTs that wear them.
+
+What stays is the collection's own detail, checked on real NFTs: the
+headphones' pink highlight, the bandana's white pattern and its knot, the
+gold glasses' tint past the edge of the face, the goggles' gap at the nose.
+No orange bro-skin pixel is left in any portrait; every one became that
+townsperson's own skin.
+
+Every place shows them crisp: the dialogue (`image-rendering: pixelated`, as
+before), Ace's coin flip (64 px, two CSS px a portrait pixel, pixelated:
+smoothed, it blurred every edge on all but a 3x phone), Diego's shop (a
+rounded chip, 32 px with -3 px margins so the header keeps its height:
+one CSS px a portrait pixel, where 26 px was smoothed and a computer's screen
+dropped pixels outright), and the quest page (44 px, pixelated, now at
+`npcArtUrl`'s version like the dialogue, so the two share one file).
 
 ## How they are drawn
 
@@ -179,8 +206,9 @@ What else moved:
   Bro's figure is painted 0.875 of Diego's height. Each look's own colour is
   counted beside him. The Mayor's dialogue shows his Hemi Bros portrait: 192
   px, its corner the collection's Purple Navy, and every one of its 32 x 32
-  pixels a flat 6 x 6 block, read from the picture in the page. There are no
-  page errors.
+  pixels a flat 6 x 6 block, read from the picture in the page. Diego's shop
+  and Ace's coin flip show it crisp: 32 and 64 px, drawn pixelated. There are
+  no page errors.
 - `mp-wheelfolk`: the cast and its pictures are read off WHEEL_TOWNSFOLK
   and NPC_DATA. The old list missed the tour's Woodworker Bro and Farmer
   Bro, so this check was red on main. The cast holds 2.93 MB, under its
@@ -190,6 +218,17 @@ What else moved:
   `approachNpc` steps away 420 px east first, which in the world's BroTown
   is beside Mayor Bro, whose line opened and held the screen; this was red
   on main.
+- `mp-shopkeeper`: moved off the retired old map to the world. Its check that
+  Diego is drawn bigger than Mayor Bro came from v2.3.2052 (the owner: "make
+  shopkeeper larger his sprite is bit small"), when his hand-painted picture
+  was the smallest man in town; now he is a grown bro's height, as tall as
+  anyone but the Mayor, whose extra 10% is the owner's v2.3.1822. In the
+  world its players are kept in by a real keystroke (`H.keepAlive`): the
+  world loads slower, the watcher sat idle past two minutes and was logged
+  out, and the tap that brought it back sent its price request while the new
+  socket was joining. (A real player who ends an idle logout with a tap on
+  the open shop loses that tap's price the same way, and taps again; not
+  changed here.)
 - `mp-mayorart`: moved off the retired old map to the world. It counts the
   navy of the Mayor's tee on his body alone, since the Town Hall's blue
   trophy cabinet stands behind him.

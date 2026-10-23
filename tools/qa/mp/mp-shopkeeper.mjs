@@ -26,6 +26,13 @@
  * where things sit), so it is asserted rather than eyeballed: the drawer's
  * bottom edge has to BE the band's top edge, and the bag must not move when
  * the drawer opens.
+ *
+ * v2.3.3578: played in the world's BroTown (world: 'wheel'), off the retired
+ * old map, where Diego stands west of the General Store's steps.  Its players
+ * are kept in by a real keystroke (H.keepAlive): the world loads slower than
+ * the old town, and the watcher, idle over two minutes by the time it buys,
+ * was logged out -- the tap that brought it back sent the price request
+ * while its new socket was still joining, and the request was lost.
  */
 import * as H from './harness.mjs';
 
@@ -121,12 +128,13 @@ const qNum  = (s) => { const m = /(\d+)g/.exec(s || ''); return m ? +m[1] : null
 const qArrow = (s) => (/↓/.test(s || '') ? 'down' : /↑/.test(s || '') ? 'up' : null);
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const A = await H.newPlayer(browser, { name: 'Seller', wsPort, webPort,
+  const A = await H.newPlayer(browser, { name: 'Seller', wsPort, webPort, world: 'wheel',
     viewport: { width: 390, height: 844 }, touch: true });
-  const B = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort, guest: true,
+  const B = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort, guest: true, world: 'wheel',
     viewport: { width: 390, height: 844 }, touch: true });
   await H.enterWorld(A);
   await H.enterWorld(B);
+  const stopAlive = [H.keepAlive(A), H.keepAlive(B)];
   await A.page.waitForTimeout(2500);
 
   const aId = await H.readState(A, (S) => S.myId);
@@ -383,9 +391,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const sizes = await A.page.evaluate(() =>
     ((window.__btNpcSprites && window.__btNpcSprites()) || [])
       .reduce((o, n) => { o[n.id] = Math.round(n.height); return o; }, {}));
-  rec.ok(`the shopkeeper is drawn larger than he was (${sizes.shopkeeper_bro}px, `
-       + `against Mayor Bro's ${sizes.mayor_bro})`,
-    sizes.shopkeeper_bro > 140 && sizes.shopkeeper_bro > sizes.mayor_bro, sizes);
+  /* v2.3.2052 (owner: "make shopkeeper larger his sprite is bit small"): his
+     hand-painted figure drew 120 px against Mayor Bro's 132, the smallest man
+     in the square.  v2.3.3578: every grown townsperson is a bro from the
+     character creator drawn a player's own height (the owner: "NPCs should
+     look like normal bro characters"), and the Mayor 10% over that (the
+     owner's v2.3.1822) -- so Diego stands as tall as any grown man in town,
+     the Mayor aside, and is no longer the small one.  (Lil Bro's cell is a
+     bro's: he is photographed small inside it.) */
+  const others = Object.entries(sizes).filter(([id]) => id !== 'shopkeeper_bro' && id !== 'mayor_bro');
+  rec.ok(`the shopkeeper is drawn a grown bro's height (${sizes.shopkeeper_bro}px; `
+       + `${others.map(([id, h]) => id + ' ' + h).join(', ')}; Mayor Bro ${sizes.mayor_bro})`,
+    sizes.shopkeeper_bro > 140 && others.length > 0 && others.every(([, h]) => h <= sizes.shopkeeper_bro), sizes);
 
   await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/shopkeeper-panel.png' }).catch(() => {});
 
@@ -396,9 +413,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      chip that opens the column, and opening the column put the shop away.
      Now the shop opens the column with it and sits beside it, and his shelf
      fits its drawer.  Every press here is a real finger. */
-  const C = await H.newPlayer(browser, { name: 'Sideways', wsPort, webPort,
+  const C = await H.newPlayer(browser, { name: 'Sideways', wsPort, webPort, world: 'wheel',
     viewport: { width: 844, height: 390 }, touch: true });
   await H.enterWorld(C);
+  stopAlive.push(H.keepAlive(C));
   await C.page.waitForTimeout(2500);
   const cId = await H.readState(C, (S) => S.myId);
   await H.grant(wsPort, cId, 'item', { invKey: KEY, count: 4 });
@@ -460,6 +478,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));
     rec.ok(`no page errors on ${P.name}'s client`, errs.length === 0, errs.slice(0, 3));
   }
+  stopAlive.forEach((stop) => stop());
   await A.ctx.close();
   await B.ctx.close();
 }

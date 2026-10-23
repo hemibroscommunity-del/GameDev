@@ -20,6 +20,9 @@
  *      nft_portraits.py): 192 px, on the collection's Purple Navy, and every
  *      one of its 32 x 32 pixels a flat 6 x 6 block -- the owner found the
  *      headshot before it "fuzzy";
+ *  4b. and crisp wherever else it is shown: Diego's in his shop (32 px) and
+ *      Ace's in his coin flip (64 px), each a whole number of CSS px a
+ *      portrait pixel, drawn pixelated (smoothed, they blurred);
  *   5. no page errors.
  * Pictures: tools/qa/mp/out/npclooks-*.png.
  */
@@ -208,6 +211,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`4. Mayor Bro's dialogue shows his Hemi Bros portrait (${head ? head.src + ' ' + head.w + ' x ' + head.h + ', corner ' + head.corner + ', ' + head.mixed + ' blocks not flat' : 'none'})`,
       !!opened && !!head && /mayor-bro-head\.webp\?v=2\.3\.3578$/.test(head.src) && head.w === 192 && head.h === 192
         && navy && head.mixed === 0, { opened, head });
+
+    /* ── 4b. crisp wherever else he is shown ── */
+    const crisp = await P.page.evaluate(async () => {
+      window.__broShopBus.setOpen(true);
+      window.__btAceFlipBus.setOpen(true);
+      const read = (sel) => {
+        const img = document.querySelector(sel);
+        if (!img) return null;
+        const r = img.getBoundingClientRect();
+        return { w: Math.round(r.width), h: Math.round(r.height), render: getComputedStyle(img).imageRendering,
+          nat: img.naturalWidth, src: img.getAttribute('src') };
+      };
+      let out = null;
+      for (let i = 0; i < 40; i++) {
+        out = { shop: read('[data-shop-panel] img[src*="shopkeeper-bro-head"]'), ace: read('img[src*="cardsharp-bro-head"]') };
+        if (out.shop && out.ace && out.shop.nat && out.ace.nat) break;
+        await new Promise((r) => setTimeout(r, 150));
+      }
+      window.__broShopBus.setOpen(false);
+      window.__btAceFlipBus.setOpen(false);
+      return out;
+    });
+    const sharp = (q, w) => !!q && q.render === 'pixelated' && q.w === w && q.h === w && q.nat === 192 && w % 32 === 0;
+    rec.ok(`4b. his portrait is crisp wherever else it is shown: Diego's shop ${crisp.shop ? crisp.shop.w + ' px ' + crisp.shop.render : 'none'}, `
+         + `Ace's coin flip ${crisp.ace ? crisp.ace.w + ' px ' + crisp.ace.render : 'none'}`,
+      sharp(crisp.shop, 32) && sharp(crisp.ace, 64), crisp);
 
     rec.ok('5. no page errors', errors.length === 0, errors);
   } finally {

@@ -4,13 +4,16 @@ import { QUEST_CHAINS, questSteps, questCountText } from '../../../data/gameSyst
 import { deriveQuestLog, trackedQuestId, setTrackedQuest } from '../sheet/questModel.js';
 import { questDetailBus } from '../sheet/questDetailBus.js';
 import { NPC_DATA } from '../../../data/gameDisplay.js';
+import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3578: the townsfolk's pictures at their version */
 
 /* v2.3.1673: the quest giver's portrait, looked up by the NAME the quest
    chain stores — the same key getNpcQuest already matches on, so there is no
    second id to keep in sync.  Returns null for a giver with no art. */
 const npcPortrait = (name) => {
   const npc = (NPC_DATA || []).find((n) => n && n.name === name);
-  return (npc && npc.portrait) || null;
+  /* v2.3.3578: at NPC_ART_VERSION, as the dialogue fetches it -- one file
+     for both, and a new portrait is a new address */
+  return (npc && npc.portrait) ? npcArtUrl(npc.portrait) : null;
 };
 
 /* ═══ v2.3.1710: THE REWARD, PICTURED, ON THIS PAGE TOO ═══

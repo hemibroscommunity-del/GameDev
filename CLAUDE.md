@@ -3218,7 +3218,9 @@ remnant to migrate server-side, not a mode to preserve.
         extracts the traits once into assets/portrait-source/hemi-bros/
         (read, placed and MENDED against the NFTs: some files are not the
         NFTs' art, the goggles' lenses a tint found on both skins), then
-        bakes PORTRAITS; hair under a hat is cut below its brim;
+        bakes PORTRAITS; a hatted townsperson is bald under it, as the
+        collection's bros are (hair cut below the brim left stray pixels);
+        every display draws them pixelated, Diego's shop chip 32 px;
       - `mp-npclooks`: docs/specs/npc-creator-looks.md.
   - Since v2.3.3127 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
     similar to the old FarmVille game ... Need to dig, plant seeds, fertilize,
