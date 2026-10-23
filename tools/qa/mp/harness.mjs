@@ -2080,11 +2080,35 @@ export async function leaveNpc(P, id = 'mayor_bro') {
   return !(await npcDialogueOpen(P));
 }
 
+/* v2.3.3583: ...and TALK to him.  A townsperson opens on a tap only now (the
+   owner: "tap only instead of proximity based"; BroTown NPC_PROX_OPENS), so
+   standing beside him opens nothing and the approach ends the way a player's
+   does: the right stick's tap, the E key's own chain with the character first
+   (desktopControls runInteract via S._interactNow).  It waits for the game to
+   call him the one you stand with (S._nearNpc), as the stick's picture does. */
 export async function approachNpc(P, id = 'mayor_bro') {
   await leaveNpc(P, id);
   await _placeByNpc(P, id, 0, 34);
-  await P.page.waitForTimeout(1100);
+  await talkToNpc(P, id);
+  await P.page.waitForTimeout(800);
   return npcDialogueOpen(P);
+}
+
+/** The right stick's tap beside a townsperson: true when it talked.  Waits
+ *  (up to `waitMs`) for him to be the one you stand with first. */
+export async function talkToNpc(P, id = 'mayor_bro', { waitMs = 4000 } = {}) {
+  const end = Date.now() + waitMs;
+  for (;;) {
+    const r = await P.page.evaluate((who) => {
+      const S = window._gameState && window._gameState.current;
+      if (!S || typeof S._interactNow !== 'function') return 'no-interact';
+      if (!S._nearNpc || S._nearNpc.id !== who) return 'not-near';
+      return S._interactNow({ npcFirst: true }) ? 'talked' : 'nothing';
+    }, id);
+    if (r === 'talked') return true;
+    if (r !== 'not-near' || Date.now() > end) return false;
+    await P.page.waitForTimeout(150);
+  }
 }
 
 export async function npcDialogueOpen(P) {

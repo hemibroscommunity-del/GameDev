@@ -861,6 +861,23 @@ function _spawnTownNpcs() {
     .map(function (npc) { return _objectSpread({}, npc); });
 }
 var NPC_PROX_OPEN = 90, NPC_PROX_CLEAR = 125;
+/* ═══ v2.3.3583: A TOWNSPERSON TALKS WHEN YOU TAP HIM, NEVER BY WALKING UP ═══
+   The owner, 2026-10-23: "I think I want to change the npc dialog behavior to
+   be tap only instead of proximity based. I keep opening dialog by accident.
+   Like racing lil bro past the mayor the mayor window talking to me opened
+   up."  This puts away v2.3.1701's opener (the frame loop's "QUEST GIVERS
+   OPEN ON PROXIMITY"), at the owner's word, as they once asked for it: "it's
+   finicky right now needing to tap him".  What made the tap finicky then is
+   gone -- the right stick's tap talks to whoever stands beside you, its
+   picture a speech bubble (v2.3.3105), E does on a keyboard, and a tap on
+   him reaches NPC_PROX_OPEN (v2.3.2305) -- and in the Wheel's BroTown the
+   townsfolk stand where everyone walks: the race's square, the shops' steps.
+   Diego's shop with them: walking past him opened his drawer the same way
+   (v2.3.2050).  Ace was tap-only already (v2.3.2620).  `?npcprox` brings the
+   walk-up opener back for a tab, to compare. */
+var NPC_PROX_OPENS = (function () {
+  try { return new URLSearchParams(window.location.search).has('npcprox'); } catch (e) { return false; }
+})();
 
 /* ═══ v2.3.2975: MAYOR BRO IN THE WHEEL'S BROTOWN ═══
    Owner, with the objects for the new map: "Put mayor bro in town too."
@@ -6617,6 +6634,10 @@ export var BroTown = function BroTown(_ref0) {
         }
 
         /* ═══ v2.3.1701: QUEST GIVERS OPEN ON PROXIMITY ═══
+           PUT AWAY since v2.3.3583, the owner's "tap only instead of proximity
+           based": it runs only with `?npcprox` (NPC_PROX_OPENS, with the
+           owner's words, at module scope).  Kept whole, latch and all, for
+           that switch.
            Owner: "make the quest dialog with mayor bro pop up when you get in
            close proximity to him instead of needing to tap him it's finicky
            right now needing to tap him."  Landing a thumb on a 30px NPC while
@@ -6735,7 +6756,8 @@ export var BroTown = function BroTown(_ref0) {
             if (!S.npcs || !_npcZone(S.currentZone) || _ld > NPC_PROX_CLEAR
               || (_pn === _latched.npc && _pqReady && !_latched.ready)) S._npcProxLatch = null;
           }
-          if (_pn && !S._npcProxLatch && _npcZone(S.currentZone)) {
+          /* v2.3.3583: only with ?npcprox -- a townsperson talks on a tap */
+          if (NPC_PROX_OPENS && _pn && !S._npcProxLatch && _npcZone(S.currentZone)) {
             var _pd = Math.sqrt(Math.pow(_pn.x - _px, 2) + Math.pow(_pn.y - _py, 2));
             /* Every gate that means "not now": something else is on screen,
                mid-extraction, behind the per-zone loading overlay, or dead. */
