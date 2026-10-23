@@ -6770,12 +6770,18 @@ export const QUEST_CHAINS = {
          you just finished (v2.3.2224's bursting blue ones): since v2.3.3525
          that is this one. */
       /* v2.3.3533: the snowmen wait on two of them now (tut_2 `after`) */
-      complete: "You're back! And standing up, mostly.\n\n"
+      /* v2.3.3579: a getter, for the Goo Grotto's aside (grottoPartyAside,
+         below): the owner's "Yes add mayors line pointing to grotto as a party
+         challenge but keep the wittiness of the new dialog" -- said between
+         the warning that came too late and the bow and staff, only while the
+         worker plays the Grotto for a party */
+      get complete() { return "You're back! And standing up, mostly.\n\n"
         + "Quick safety announcement I'm required to read before you go out: blue slimes swell up right before they die. When that happens, back off, because they explode.\n\n"
         + "...And you're holding 4 Slime Remains, so you already know that. Officially, you were warned first, because that's what the paperwork is going to say.\n\n"
+        + grottoPartyAside()
         + "Here, take a bow and a staff. I bought them with the town's emergency fund. You're the emergency.\n\n"
         + "Word's getting around that you can actually do a job, so now the whole town wants you. Anyone with a gold ! over his head has paying work, and I've marked them all on your map. I'll be taking credit for the map.\n\n"
-        + "Go see Blacksmith Bro and Diego first, then come back to me. There's a snowman situation up north, and I'd like it handled before anyone writes an article.",
+        + "Go see Blacksmith Bro and Diego first, then come back to me. There's a snowman situation up north, and I'd like it handled before anyone writes an article."; },
     },
   },
   tut_2: {
@@ -8196,6 +8202,30 @@ var _closedDoorZones = null;
 export function setClosedDoorZones(zones) {
   _closedDoorZones = zones && zones.length ? zones.slice() : null;
   _doorCache = null;
+}
+/* ═══ v2.3.3579: THE MAYOR POINTS AT THE GOO GROTTO, A PARTY'S JOB ═══
+ * The owner: "Yes add mayors line pointing to grotto as a party challenge but
+ * keep the wittiness of the new dialog."  Since v2.3.3573 the Grotto is level
+ * 16 whoever comes in and its boss is sized for three (server wheeldungeon.js
+ * WHEEL_DUNGEON.PARTY): a new player alone cannot clear it, and the slimes'
+ * hand-in (tut_1 above) is where he first stands near it.  So the Mayor names
+ * it there, in his satire-pass voice (docs/specs/npc-dialogue-v2.md), as the
+ * one to come back to with friends -- one tap of its own, its level and party
+ * read from the worker's own row, and only while the worker plays it so:
+ * wsClient sets the row against caps.partydungeon (data/wheelDungeons.js
+ * WHEEL_DUNGEON_PARTY.verdant); against an older worker, or with
+ * `partydungeon: false`, the hand-in is as it was. */
+var _grottoParty = null;
+export function setGrottoParty(row) {
+  _grottoParty = (row && row.level > 0 && row.size > 1) ? { level: row.level, size: row.size } : null;
+}
+export function grottoPartyAside() {
+  if (!_grottoParty) return '';
+  /* one tap, no longer than the game's longest (wood_2's 297 characters) */
+  return "Oh, and that cave with goo pouring out? The Goo Grotto. Everything in it is level " + _grottoParty.level
+    + ", and the giant slime at the bottom splits when you hit it, like the town council. Don't go in alone. That's not bravery, it's a funeral I'd have to speak at, and I'm out of material. Bring a party of "
+    /* "2 or 3" held together (no-break spaces): it wrapped as "2 or / 3." */
+    + (_grottoParty.size - 1) + "\u00a0or\u00a0" + _grottoParty.size + ".\n\n";
 }
 /* ═══ v2.3.3032: THE WHEEL'S BUILDINGS HAVE DOORS ═══
  * Owner, 2026-10-04: "Push to main. Then after that add doors."  The Wheel's

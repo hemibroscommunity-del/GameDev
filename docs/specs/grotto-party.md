@@ -178,6 +178,8 @@ Against `caps.partydungeon` (game/wheelDungeons.js `wheelDungeonParty`):
 - **Pointing reviewers at it.** At level 3–5, alone, in copper, a reviewer
   cannot clear a level-16 dungeon. A line from the Mayor at the slimes'
   hand-in could name it as the challenge to come back to with friends.
+  **Built in v2.3.3579** (the owner: "Yes add mayors line pointing to grotto as
+  a party challenge but keep the wittiness of the new dialog"), below.
 - **The Mayor's "Clear any dungeon" (mayor_3)** leads to the Grotto, the only
   dungeon a player can reach early, so it is a party quest now.
 
@@ -204,3 +206,35 @@ Against `caps.partydungeon` (game/wheelDungeons.js `wheelDungeonParty`):
   - the clear, and back out at the mouth.
 
   `mp-dungeonfix` reads the Grotto's level from the worker's table.
+
+## v2.3.3579: the Mayor names it as a party's job
+
+The slimes' hand-in (tut_1) is where a new player first stands near the
+Grotto, so Mayor Bro names it there, in his satire-pass voice
+(docs/specs/npc-dialogue-v2.md). It is one tap more, the fourth of seven,
+between the warning that came too late and the bow and staff:
+
+> Oh, and that cave with goo pouring out? The Goo Grotto. Everything in it is
+> level 16, and the giant slime at the bottom splits when you hit it, like the
+> town council. Don't go in alone. That's not bravery, it's a funeral I'd have
+> to speak at, and I'm out of material. Bring a party of 2 or 3.
+
+- The level and the party size come from the worker's own row
+  (`WHEEL_DUNGEON_PARTY.verdant`), set by wsClient (`setGrottoParty`) only
+  against `caps.partydungeon`. Against an older worker, or with
+  `partydungeon: false`, the hand-in is the six taps it was.
+- `tut_1`'s `complete` is a getter that asks `grottoPartyAside()`
+  (src/data/gameSystems.js); every reader of the line (his window, the
+  quest's page, his bubble) gets the same words.
+- It is 292 characters, no longer than the game's longest tap (wood_2's
+  hand-in, 297), and "2 or 3" is held together with no-break spaces so "3."
+  never wraps onto a line of its own.
+- The offer and the progress line are unchanged; mayor_3 ("Clear any dungeon")
+  still names the Grotto and its splitting boss.
+
+Tests: `server/test/mayor-grotto.test.mjs` (the six taps without the row, the
+seventh in its place with it, the worker's level and party, the voice, the
+length, a bad row saying nothing, the wiring); `mp-mayorgrotto` (a phone in the
+world: tut_1 taken, 4 Slime Remains granted, the hand-in walked tap by tap,
+the fourth tap the Grotto, "Claim reward" still paying it, and under
+`partydungeon: false` the six taps as they were).

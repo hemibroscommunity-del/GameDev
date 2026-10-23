@@ -1888,6 +1888,19 @@ remnant to migrate server-side, not a mode to preserve.
       - kill switch `partydungeon: false` (the Grotto of v2.3.3540);
         `grotto-party` suite, `wheeldungeon`'s starter checks under the
         switch, `mp-googrotto`: docs/specs/grotto-party.md.
+      - since v2.3.3579 THE MAYOR NAMES IT AS A PARTY'S JOB -- the owner: "Yes
+        add mayors line pointing to grotto as a party challenge but keep the
+        wittiness of the new dialog": the slimes' hand-in (tut_1, a getter
+        now) gains one tap, the fourth, between the warning that came too late
+        and the bow and staff: "Oh, and that cave with goo pouring out? The
+        Goo Grotto. Everything in it is level 16, and the giant slime at the
+        bottom splits when you hit it, like the town council. Don't go in
+        alone. That's not bravery, it's a funeral I'd have to speak at, and
+        I'm out of material. Bring a party of 2 or 3." -- its level and party
+        the worker's row (gameSystems.js `grottoPartyAside`, set by wsClient
+        `setGrottoParty` against caps.partydungeon; `partydungeon: false`, the
+        six taps as they were), no longer than the game's longest tap;
+        `mayor-grotto` suite, `mp-mayorgrotto`: docs/specs/grotto-party.md.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack
@@ -2167,9 +2180,21 @@ remnant to migrate server-side, not a mode to preserve.
         using the plus button": it started at 1, so with one point left [+]
         was greyed; now [+] adds every point and Spend ("Add points with +"
         at 0) spends what was added, the window still showing what one point
-        buys (InfoPopup `shown`); the per-stat bound (your level, the damage
-        stats twice it) is unchanged, the owner's call:
-        docs/specs/notes-2026-10-22.md;
+        buys (InfoPopup `shown`): docs/specs/notes-2026-10-22.md;
+      - since v2.3.3578 NO CAP ON A STAT -- asked about the per-stat bound
+        (your level, the damage stats twice it), the owner: "Remove stat
+        cap.": a stat takes every point you have for it, up to the 999 storage
+        bound (server/src/statcap.js `_prog3StatBound`, called by
+        `_handleProg3Allocate`), Max HP, Stamina and Max Mana's old 100 lifted
+        too; the curve and the 10% floor under Dodge and Defense are what keep
+        one stat from running away; the Points labels say "4 points", not "4
+        of 999" (HeroExpanded `ptsOf`), only against `caps.nostatcap`
+        (data/prog3.js `setStatCapFree`, prog3StatCap); a point placed is
+        never taken back; kill switch `nostatcap: false` (the bound again, and
+        the pools' 100, STAT_CAP.WAS); and the Max HP row says what a point is
+        worth on the connected worker (+40 under the one formula; it said +8,
+        _resolveMetaRows); `stat-cap` suite, `mp-statnocap`:
+        docs/specs/no-stat-cap.md;
       - since v2.3.3544 WHAT YOU WEAR ASKS YOUR LEVEL -- the owner: "I'm
         thinking of gating armor and weapons on combat level instead of
         primary combat skill level and defense level": armour, shields and
