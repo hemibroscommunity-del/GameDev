@@ -3110,6 +3110,19 @@ remnant to migrate server-side, not a mode to preserve.
       row names its standing frame (NPC_DATA `walk.stand`: Ace 3, Lil Bro 1,
       Diego 2), entityRenderer `npcStandFrame`; `mp-wheelfolk` 4b:
       docs/specs/visuals-2026-10-19.md.
+    - since v2.3.3576 THE TOWNSFOLK ARE BROS FROM THE CHARACTER CREATOR -- the
+      owner: "NPCs should look like normal bro characters":
+      - each look is written in tools/qa/npc-looks.mjs `NPC_LOOKS` (the
+        creator's ids), photographed by the game itself
+        (`window.__btCaptureLook`) and laid into the 256 px cells by
+        tools/qa/npc_looks_bake.py. A change of look is a re-bake, never a
+        hand edit;
+      - a walker's strip is nine cells: his jog in eight, then his stand (8);
+      - everyone is drawn at PLAYER_SIZE_MULT, the mayor 1.10. Lil Bro is
+        PHOTOGRAPHED 0.8 (NPC_DATA `figureSize`);
+      - in the world the cast holds 2.93 MB: one-picture townsfolk cropped,
+        Diego and Ace their stand cell only (loadCroppedStrip `only`);
+      - `mp-npclooks`: docs/specs/npc-creator-looks.md.
   - Since v2.3.3127 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
     similar to the old FarmVille game ... Need to dig, plant seeds, fertilize,
     water", then, on the research (docs/FARMING-PLAN.md, its Phase 1): "Good.

@@ -12,7 +12,7 @@ What the game could use from the owner next, each with a prompt ready to paste.
 
 Each of these is drawn in code, borrowed from somewhere else, or missing today. Each is one chat; the reference pictures to attach are in `docs/art/` (and the banners' in `docs/triage-2026-09-17/assets/`). The same prompts are on a page with a Copy button each, built from this file: https://claude.ai/artifact/9wqSAqMoa4DXfWRvYcVk1L (the owner's).
 
-1. **The keepers** (3 chats): two sheets of six townsfolk, then Beastmaster Bro. Every building gets a person at its door.
+1. ~~**The keepers**~~: not needed from ChatGPT any more. Since v2.3.3576 every townsperson is a bro from the character creator, your "NPCs should look like normal bro characters" (docs/specs/npc-creator-looks.md). A new keeper is a look written in `tools/qa/npc-looks.mjs` and photographed by the game; no picture to make.
 2. **The monsters** (5 chats): the Foundry Slime and the Mire Wisp, the Bog Lurker, and real walks for the rock monster and the fishman. Then, if you like them, a slam, hurt and death sheet for each walking one (up to 3 more).
 3. **The four land banners** (4 chats): Stone Hollows, Electric Foundry, Water Caves, Poison Forest.
 4. **The four dungeons** (13 chats): each mouth, its arena's walls and the things inside it, and the boss's chest. Their prompts are in `docs/art/DUNGEON-ART-PROMPTS.md`; the Goo Grotto and the chest first (4 chats), as a new player reaches the Grotto in the first half hour.
@@ -406,6 +406,8 @@ Attached are the game's style key and the outside of this building. Match the st
 ```
 
 ## The keepers
+
+**Since v2.3.3576 the townsfolk are made in the character creator** (docs/specs/npc-creator-looks.md): a new keeper is a look in `tools/qa/npc-looks.mjs`, so these prompts are kept only in case you ever want painted ones instead.
 
 Since v2.3.3258 you talk to a building's keeper, who stands outside it, and its window opens with your picture of the room behind the menu. Blacksmith Bro opens the forge and Mayor Bro the Town Hall; Diego and Ace keep their own windows. The other eleven buildings have nobody outside yet, so they open from their door. The Gem Works gets two keepers, the owner's "two different NPCs in the same building" (v2.3.3259): the cutter opens its Cut gems tab and the setter its Set gems tab.
 
