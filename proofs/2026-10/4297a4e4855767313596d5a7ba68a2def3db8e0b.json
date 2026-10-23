@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4297a4e4855767313596d5a7ba68a2def3db8e0b",
+  "tree": "49a0c02f4693bbb80c088cda9ba6f120c2eb2396",
+  "committedAt": "2026-10-23T16:11:40-07:00",
+  "subject": "The townsfolk's portraits wear their world looks, and the world wears the collection's gold glasses, monocle and Afro (v2.3.3585, v2.3.3587) (#1097)",
+  "files": 6478,
+  "bytes": 738728233,
+  "listingSha256": "3f85610b625c0744992f5b0dd93f46fe96df2066bf69c19221929149b23bca92",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
