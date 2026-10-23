@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7d8c8ecd1880881ed2ec6ded8b0685326335669e",
+  "tree": "869aef906080729e283a1e7742c54aa14f478dde",
+  "committedAt": "2026-10-23T16:17:42-07:00",
+  "subject": "The way-home test follows the first quest to the Verdant Wilds (v2.3.3584) (#1096)",
+  "files": 6478,
+  "bytes": 738729101,
+  "listingSha256": "23783335d72f3b1d00f0fbedc79e93687d7b3b248e7aecaece955d147d9fad35",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

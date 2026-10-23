@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "01a98816b7887aa355c2b9c7e252f7badd9e46b6",
+  "tree": "a9c928b86fc7a9d7b7dda39fade37380a2491d3c",
+  "committedAt": "2026-10-23T16:17:52-07:00",
+  "subject": "Townsfolk talk when you tap them, and Lil Bro owns up to a lost race (v2.3.3583) (#1095)",
+  "files": 6480,
+  "bytes": 738753916,
+  "listingSha256": "f2807bc49d534d5443f617eaae1b04ddde8d77df6a6032265304cf801ee5af3b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
