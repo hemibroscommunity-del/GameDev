@@ -91,8 +91,9 @@ export const InfoPopup = () => {
   React.useEffect(() => infoPopupBus.subscribe(() => bump((v) => v + 1)), []);
   const cur = infoPopupBus.current();
   /* v2.3.2695: the stepper's count belongs to the window it was set in -- a
-     new window (another stat, or a lane tab, which reopens) starts at 1. */
-  const [stepState, setStepState] = React.useState({ of: null, n: 1 });
+     new window (another stat, or a lane tab, which reopens) starts at 1.
+     v2.3.3577: ...at 0 -- see THE COUNT STARTS AT 0 below. */
+  const [stepState, setStepState] = React.useState({ of: null, n: 0 });
   /* v2.3.2696: which "tap to read more" chip is open, per window */
   const [chipState, setChipState] = React.useState({ of: null, key: null });
   /* ═══ v2.3.3522: A SPEND ON ITS WAY ═══
@@ -128,21 +129,33 @@ export const InfoPopup = () => {
      world map's "open" button (swallowTapClick.js, TRAPS §247) */
   const close = (e) => { swallowTapClick(e); infoPopupBus.close(); };
   const stepMax = (cur.action && !cur.action.blocked && cur.action.stepMax > 0) ? cur.action.stepMax : 0;
-  const stepN = stepMax ? Math.min(stepMax, Math.max(1, stepState.of === cur ? stepState.n : 1)) : 1;
+  /* ═══ v2.3.3577: THE COUNT STARTS AT 0, AND [+] ADDS EVERY POINT ═══
+     The owner: "when there's only 1 point left to add in your stat point
+     allocation screen, still enable adding the last point using the plus
+     button.  Right now it looks disabled."  The count started at 1, so with
+     one point to give it was already at its most and [+] was greyed: the
+     last point could only be spent with Spend, past a [+] that looked
+     switched off.  Now the window opens at 0, [+] adds each point -- the
+     last one too -- and Spend, greyed at 0, spends what was added: the
+     owner's own "+/- buttons then confirm spend button" (v2.3.2695).  The
+     window still explains one point at 0 (its rows, meter and scene read
+     `shown`), so opening it says what a point buys before any is added. */
+  const stepN = stepMax ? Math.min(stepMax, Math.max(0, stepState.of === cur ? stepState.n : 0)) : 1;
+  const shown = stepMax ? Math.max(1, stepN) : 1;
   const stepBy = (d) => setStepState((prev) => {
-    const base = prev.of === cur ? prev.n : 1;
-    return { of: cur, n: Math.min(stepMax, Math.max(1, base + d)) };
+    const base = prev.of === cur ? prev.n : 0;
+    return { of: cur, n: Math.min(stepMax, Math.max(0, base + d)) };
   });
   /* v2.3.2696: a window that carries a `hook` is a STAT window and takes
      the short layout; every other caller keeps the one it had. */
   const compact = !!cur.hook;
   const openChip = chipState.of === cur ? chipState.key : null;
-  const meter = cur.meterFor ? (() => { try { return cur.meterFor(stepMax ? stepN : 1); } catch (_e) { return null; } })() : null;
+  const meter = cur.meterFor ? (() => { try { return cur.meterFor(shown); } catch (_e) { return null; } })() : null;
   /* the scene's "+1" becomes "+n" as the stepper moves */
-  const demoNode = React.isValidElement(cur.demo) ? React.cloneElement(cur.demo, { n: stepMax ? stepN : 1 }) : cur.demo;
+  const demoNode = React.isValidElement(cur.demo) ? React.cloneElement(cur.demo, { n: shown }) : cur.demo;
   /* the rows show what the WHOLE batch buys (rowsFor, HeroExpanded) */
   let rows = cur.rows;
-  if (stepN > 1 && cur.rowsFor) { try { rows = cur.rowsFor(stepN) || rows; } catch (_e) {} }
+  if (shown > 1 && cur.rowsFor) { try { rows = cur.rowsFor(shown) || rows; } catch (_e) {} }
   const rowsEl = (<>
   {rows && rows.length > 0 && (
     <div data-infopopup-rows style={{
@@ -241,6 +254,7 @@ export const InfoPopup = () => {
   const spending = spendingOf === cur;   /* v2.3.3522 */
   const spend = (e) => {
     if (!cur.action || cur.action.blocked) return;
+    if (stepMax && stepN < 1) return;   /* v2.3.3577: nothing added yet */
     const run = cur.action.run;
     /* v2.3.3522: a spend that STAYS (the Points window): the window keeps
        its place, "Spending…", and its opener answers with the new numbers */
@@ -487,7 +501,8 @@ export const InfoPopup = () => {
             The window stays after Spend (the owner: "keep it on the menu
             confirmation window"), so it says what just happened: the opener
             puts it up again with the new numbers and this line, in the
-            success green, over the stepper (which starts again at 1). */}
+            success green, over the stepper (which starts again at 0 since
+            v2.3.3577). */}
         {cur.spentNote && (
           <div data-infopopup-spent aria-live="polite" style={{
             flex: 'none', marginTop: 10, fontSize: 12.5, fontWeight: 800,
@@ -507,7 +522,7 @@ export const InfoPopup = () => {
              the width -- the x, the scrim and Escape still close it, which
              keeps three of v2.3.2131's four ways out on a spend window. */
           <div data-infopopup-stepper style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6, marginTop: cur.spentNote ? 8 : 12 }}>
-            <StepBtn label="One fewer point" glyph="−" disabled={stepN <= 1 || spending} onStep={() => stepBy(-1)} />
+            <StepBtn label="One fewer point" glyph="−" disabled={stepN <= 0 || spending} onStep={() => stepBy(-1)} />
             <span data-infopopup-count={stepN} aria-live="polite"
               style={{
                 flex: 'none', minWidth: 30, textAlign: 'center',
@@ -518,17 +533,20 @@ export const InfoPopup = () => {
             <button type="button"
               data-infopopup-action
               data-infopopup-spending={spending ? '1' : undefined}
-              aria-disabled={spending || undefined}
+              aria-disabled={(spending || stepN < 1) || undefined}
               onPointerUp={(e) => { e.stopPropagation(); spend(e); }}
               style={{
                 flex: '1 1 auto', minWidth: 0, height: 40, padding: '0 10px',
-                background: COL.goldBg, color: COL.goldText,
-                border: 0, borderRadius: 9,
+                /* v2.3.3577: nothing added yet -- the outline a blocked
+                   action wears (below), until [+] adds a point */
+                background: stepN < 1 ? 'transparent' : COL.goldBg,
+                color: stepN < 1 ? COL.muted : COL.goldText,
+                border: stepN < 1 ? `1px solid ${COL.border}` : 0, borderRadius: 9,
                 fontSize: 12.5, fontWeight: 900, whiteSpace: 'nowrap',
-                cursor: spending ? 'default' : 'pointer', touchAction: 'manipulation',
+                cursor: (spending || stepN < 1) ? 'default' : 'pointer', touchAction: 'manipulation',
                 /* v2.3.3522: waiting on the worker -- the same gold, quieter */
                 opacity: spending ? 0.6 : 1,
-              }}>{spending ? 'Spending…' : `Spend ${stepN} point${stepN === 1 ? '' : 's'}`}</button>
+              }}>{spending ? 'Spending…' : stepN < 1 ? 'Add points with +' : `Spend ${stepN} point${stepN === 1 ? '' : 's'}`}</button>
           </div>
         ) : (
         <div style={{ flex: 'none', display: 'flex', gap: 8, marginTop: 12 }}>

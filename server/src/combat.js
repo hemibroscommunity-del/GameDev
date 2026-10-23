@@ -1613,14 +1613,10 @@ export const combatMethods = {
          monster then sprints off — one swing's worth of catch-up is the
          most it can ever be owed. */
       m._kbDebt = Math.min((m._kbDebt || 0) + kbForce, 60 * _kbK);
-      const zoneCfg = this._getZoneConfig(zone);
-      if (zoneCfg) {
-        const W = zoneCfg.w * this.TILE;
-        const H = zoneCfg.h * this.TILE;
-        const edgePad = this.TILE;
-        m.x = Math.max(edgePad, Math.min(W - edgePad, m.x));
-        m.y = Math.max(edgePad, Math.min(H - edgePad, m.y));
-      }
+      /* v2.3.3573: inside its zone's box -- a dungeon's arena too (dungeon.js
+         _monsterBox: a shove put a slime in the Goo Grotto's wall, out of a
+         sword's reach, and its wave never ended) */
+      this._keepMonsterIn(zone, m);
     }
 
     this._markMonsterDirty(zone, m.id);

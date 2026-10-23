@@ -177,7 +177,7 @@ import { MayorGreeting } from './MayorGreeting.jsx';
    NOT the greeting video above — see welcomeBanner.js for why those are
    different asks. */
 import { maybeShowWelcome } from '@/game/welcomeBanner.js';
-import { markWorldIn, skipTutorial } from '@/ui/onboardingPace.js'; /* v2.3.2766: one onboarding voice at a time; v2.3.2890 + the welcome plate's Skip tutorial */
+import { markWorldIn, skipTutorial, worldInMs } from '@/ui/onboardingPace.js'; /* v2.3.2766: one onboarding voice at a time; v2.3.2890 + the welcome plate's Skip tutorial */
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
 
@@ -516,8 +516,8 @@ import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band =
 import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
-import { isWheelTrialZone, footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown */
-import { wheelDoorAt, enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks */
+import { isWheelTrialZone, footstepSurface, setWheelArrival } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown; v2.3.3574: + the spot a recovery reload puts you back on */
+import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks; v2.3.3573: + a party dungeon's line */
 import { wheelObjectsInfo } from '@/game/wheelTrial.js';
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
 import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
@@ -6560,9 +6560,12 @@ export var BroTown = function BroTown(_ref0) {
                 /* v2.3.2761 (owner: sounds for the specific actions): for fishing
                    the window opening IS the bite -- a fish on the hook, now reel. */
                 if (_ex.skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('fish-on-hook', { vol: 0.65 }); } catch (e) {} }
-                /* v2.3.3343: ...and for the rest a small bright tick that says
-                   "now" -- this was a beep(), silent (SOUND-GAPS) */
-                else cue('gatherReady');
+                /* v2.3.3572: and for the rest NOTHING -- v2.3.3343's "small
+                   bright tick" (cue gatherReady, sword-hit2 at 1.6x) was the
+                   owner's "splat sound when the ore is ready for the gesture
+                   cue (reaches 0hp) ... it needs to be removed".  The rock,
+                   tree or pan at 0 and the cue on screen say it; the swings'
+                   own strikes lead up to it (mp-gatherquiet). */
               }
             }
             /* v2.3.1416 (owner: "all resources NOT have a time out window
@@ -8360,7 +8363,7 @@ export var BroTown = function BroTown(_ref0) {
        seconds rather than after three more five-second strikes, and both
        callers must share ONE implementation, because the 2-per-5-minutes cap
        is the only thing standing between a black screen and a reload loop. */
-    function _recoveryReload(why) {
+    function _recoveryReload(why, opts) {
       var S2 = stateRef.current;
       if (!S2 || S2.__wdReloading) return false;
       try {
@@ -8370,6 +8373,16 @@ export var BroTown = function BroTown(_ref0) {
         _rls.push(Date.now());
         sessionStorage.setItem('bt-reloads', JSON.stringify(_rls));
         sessionStorage.setItem('bt_resume_now', '1');
+        /* v2.3.3574: `spot` -- back on the same spot of the Wheel (the
+           pictures-emptied reload: the bro was fine, his pictures were not).
+           The straight-in road below hands it to the trip down town's stairs
+           (worldTrial setWheelArrival, the dungeon mouth's own way back), and
+           the worker judges that way in from where it last had you
+           (server/src/lastplace.js).  Elsewhere -- a dungeon, the farm -- the
+           road's own arrival, as before. */
+        if (opts && opts.spot && S2.currentZone === 'wheel' && S2.player && isFinite(S2.player.x) && isFinite(S2.player.y)) {
+          sessionStorage.setItem('bt_resume_spot', JSON.stringify({ x: Math.round(S2.player.x), y: Math.round(S2.player.y), t: Date.now() }));
+        }
         S2.__wdReloading = true;
         import('../debug/crashTrap.js').then(function (ct) {
           ct.recordCrash('auto-reload', why);
@@ -8398,6 +8411,15 @@ export var BroTown = function BroTown(_ref0) {
         return true;
       } catch (e) { return false; }
     }
+    /* v2.3.3574: the return's picture check (wsClient _resumeRecover,
+       rendering/canvasWitness.js) reloads through the same door -- the same
+       cap -- and only from the world: on the door or in the creator there is
+       nobody to put back */
+    var _rrOpen = function (why, opts) {
+      if (worldInMs() < 0) return false;
+      return _recoveryReload(why, opts);
+    };
+    window.__btRecoveryReload = _rrOpen;
     var interval = setInterval(function () {
       var S = stateRef.current;
       /* v2.3.777: black-screen watchdog + resume-snapshot heartbeat.
@@ -8794,6 +8816,7 @@ export var BroTown = function BroTown(_ref0) {
       }
     }, 500);
     return function () {
+      if (window.__btRecoveryReload === _rrOpen) window.__btRecoveryReload = null;   /* v2.3.3574 */
       return clearInterval(interval);
     };
   }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
@@ -11720,10 +11743,16 @@ export var BroTown = function BroTown(_ref0) {
   useEffect(function () {
     var snap = null;
     var wanted = false;
+    var _spot = null;   /* v2.3.3574 */
     try {
       if (/[?&]noresume=1\b/.test(window.location.search)) return;
       wanted = sessionStorage.getItem('bt_resume_now') === '1';
       sessionStorage.removeItem('bt_resume_now');
+      /* v2.3.3574: where a pictures-emptied reload left the bro (_recoveryReload
+         `spot`), taken once, whatever this page does with it */
+      var _rawSpot = sessionStorage.getItem('bt_resume_spot');
+      sessionStorage.removeItem('bt_resume_spot');
+      if (_rawSpot) _spot = JSON.parse(_rawSpot);
       var _rawSnap = sessionStorage.getItem('bt_resume') || localStorage.getItem('bt_resume');
       if (_rawSnap) snap = JSON.parse(_rawSnap);
     } catch (e) {}
@@ -11739,6 +11768,12 @@ export var BroTown = function BroTown(_ref0) {
        player in: a recovery reload (wanted) or a row/key they just chose. */
     if (!wanted && !(fresh && _straightInRef.current)) return;
     var S = stateRef.current;
+    /* v2.3.3574: back on the spot the pictures-emptied reload left, when it
+       is a few minutes old at most; the trip down town's stairs lands there */
+    if (wanted && _spot && isFinite(_spot.x) && isFinite(_spot.y) && Date.now() - (_spot.t || 0) < 5 * 60 * 1000) {
+      setWheelArrival({ x: _spot.x, y: _spot.y });
+      S._resumeSpot = { x: _spot.x, y: _spot.y };   /* QA (mp-tabwipe) */
+    }
     S.myName = snap.name;
     if (snap.avatar) S.myAvatar = snap.avatar;
     if (snap.bro) S.myBroData = snap.bro;
@@ -14549,7 +14584,13 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 11,
       marginRight: 4
     }
-  }, "E"), "\u2694\uFE0F Enter " + ((stateRef.current._nearWheelDoor && stateRef.current._nearWheelDoor.name) || 'the dungeon')),
+  }, "E"), "\u2694\uFE0F Enter " + ((stateRef.current._nearWheelDoor && stateRef.current._nearWheelDoor.name) || 'the dungeon'),
+  /* v2.3.3573: a party dungeon (the Goo Grotto: level 16, built for three)
+     says so under its name, so nobody walks in alone unwarned */
+  wheelDungeonDoorLine(stateRef.current, nearWheelDoor) && /*#__PURE__*/React.createElement("span", {
+    "data-door-line": "1",
+    style: { display: 'block', fontSize: 10.5, fontWeight: 600, opacity: 0.9, marginTop: 1 }
+  }, wheelDungeonDoorLine(stateRef.current, nearWheelDoor))),
   /* v2.3.3136: the bed you stand at on your farm, its next step as a button
      (and the seed it plants) -- ui/mobile/FarmBedPrompt.jsx */
   /*#__PURE__*/React.createElement(FarmBedPrompt, { stateRef: stateRef, hidden: buildingPanel !== null || !!showPetHouse }),

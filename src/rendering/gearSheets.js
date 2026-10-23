@@ -21,6 +21,7 @@ import { upscaleToFrameHeight, antialiasUpscaledCanvas, downscaleByFactor, DISPL
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 import { gearArt, gearArtSafe } from './gearVariants.js'; /* v2.3.1757: recoloured sets share their donor's sheets */
 import { releaseCanvasSource } from './releaseCanvasTexture.js';   /* v2.3.3074 */
+import { witnessCanvas } from './canvasWitness.js';   /* v2.3.3574: a picture Safari threw away is noticed */
 
 const FRAME_W = 256;
 const FRAME_H = 256;
@@ -176,15 +177,20 @@ export function packTrimmed(img, fw, fh, n) {
   }
   const snapDn = (v) => Math.max(0, Math.floor(v / TRIM_ALIGN) * TRIM_ALIGN);
   const cells = [];
+  /* v2.3.3574: the first solid pixel the scan meets (alpha 128 and up), the
+     picture's witness once packed (canvasWitness.js) */
+  let wi = -1, wx = 0, wy = 0;
   for (let i = 0; i < n; i++) {
     const ox = i * fw;
     let x0 = fw, y0 = fh, x1 = -1, y1 = -1;
     for (let y = 0; y < fh; y++) {
       const row = y * W;
       for (let x = 0; x < fw; x++) {
-        if (data[(row + ox + x) * 4 + 3] !== 0) {
+        const a = data[(row + ox + x) * 4 + 3];
+        if (a !== 0) {
           if (x < x0) x0 = x; if (x > x1) x1 = x;
           if (y < y0) y0 = y; if (y > y1) y1 = y;
+          if (wi < 0 && a >= 128) { wi = i; wx = x; wy = y; }
         }
       }
     }
@@ -250,6 +256,9 @@ export function packTrimmed(img, fw, fh, n) {
   /* Safari holds canvas backing stores against a hard total until GC gets to
      them; zeroing hands the full-size scratch copy back now. */
   rd.width = 0; rd.height = 0;
+  /* v2.3.3574: if Safari empties this canvas while the tab is parked, the
+     return's check reads this pixel back empty (canvasWitness.js) */
+  if (wi >= 0) { const c = cells[wi]; witnessCanvas(cv, c.ax + wx - c.tx, c.ay + wy - c.ty); }
   return { canvas: cv, cells };
 }
 
@@ -453,7 +462,43 @@ export function subTexture(tex, x, y, w, h) {
     trim: new Rectangle(ix0 - x, iy0 - y, ix1 - ix0, iy1 - iy0),
   });
 }
+/* v2.3.3577: the first build of each sheet, while it is on its way, so a
+   caller can wait for a sheet another caller started (gearSheetLoad).  Gone
+   once it lands. */
+const _sheetLoads = Object.create(null);
 function buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
+  const p = _buildSheet(key, slot, item, pose, dir, attempt, stampArt);
+  if (attempt === 0) {
+    _sheetLoads[key] = p;
+    p.then(() => { if (_sheetLoads[key] === p) delete _sheetLoads[key]; });
+  }
+  return p;
+}
+/** v2.3.3577: a gear sheet loaded -- started now when nobody has asked for it,
+ *  else the load already on its way -- resolving when it is in (or given up). */
+export function gearSheetLoad(slot, item, pose, dir) {
+  item = gearArtSafe(slot, item);
+  if (!item) return Promise.resolve();
+  const key = slot + '/' + item + '/' + pose + '/' + dir;
+  if (_sheets[key] === undefined) return buildSheet(key, slot, item, pose, dir);
+  if (_sheets[key] === 'loading' && _sheetLoads[key]) return _sheetLoads[key];
+  return Promise.resolve();
+}
+/* ═══ v2.3.3577: THE CHAIN BELT BEFORE A FULL SET IS BAKED ═══
+   A full set's jog frames are baked with the chain belt (maskedBake.js), which
+   is not a GEAR_SLOT, so preloadGear never loads it: the first getGearFrame
+   for it starts its load and answers null, and a frame baked then goes out
+   without its belt (`beltPending`) and is NOT KEPT.  The loading screen's
+   prewarm met that on the first jog frames of a direction (mp-armourflash:
+   two of the northeast run), so they drew the plain body under the armour
+   the first time they came up, every login.  entityRenderer waits for these
+   before it bakes a full set.  Not for everyone: restored to 256 px frames,
+   the five are ~32 MB of canvases a player who never wears both pieces does
+   not need. */
+export function preloadBeltSheets() {
+  return Promise.all(['east', 'north', 'northeast', 'south', 'southwest'].map((dir) => gearSheetLoad('belt', 'chainbelt', 'jog', dir)));
+}
+function _buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
   _sheets[key] = 'loading';
   /* Returns a promise that ALWAYS resolves (missing sheet -> []), so callers
      that want to await a full preload don't hang on a 404. */

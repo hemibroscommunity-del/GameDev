@@ -291,7 +291,7 @@ const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 /* The three base dirs the renderer also shows FLIPPED (east->west,
    northeast->northwest, southwest->southeast).  Only matters to drawings, which
    have a handedness the shipped art does not. */
-const MIRRORED_SOURCE_DIRS = ['east', 'northeast', 'southwest'];
+export const MIRRORED_SOURCE_DIRS = ['east', 'northeast', 'southwest'];   /* v2.3.3577: exported -- entityRenderer's masked prewarm bakes the flipped body of these too */
 const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack'];
 
 /* v2.3.407: recolor LAZILY, one sheet at a time, keyed

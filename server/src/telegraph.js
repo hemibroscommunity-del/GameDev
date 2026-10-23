@@ -790,13 +790,9 @@ export const telegraphMethods = {
           m.x += (dx / d) * step;
           m.y += (dy / d) * step;
           /* v2.3.2236's clamp, kept: a target hugging the edge would draw
-             him onto it -- same pad the knockback clamp uses. */
-          const _z = this._getZoneConfig(zoneId);
-          if (_z) {
-            const _pad = this.TILE;
-            m.x = Math.max(_pad, Math.min(_z.w * this.TILE - _pad, m.x));
-            m.y = Math.max(_pad, Math.min(_z.h * this.TILE - _pad, m.y));
-          }
+             him onto it -- the same box the knockback clamp uses
+             (v2.3.3573: dungeon.js _monsterBox, a dungeon's arena too). */
+          this._keepMonsterIn(zoneId, m);
           this._markMonsterDirty(zoneId, m.id);
         }
       }

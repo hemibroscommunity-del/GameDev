@@ -33,6 +33,8 @@ import { sweepTexturePool } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's te
 import { healAfterRenderThrow } from './renderHeal.js'; /* v2.3.3152: a frame that throws does not leave the screen black */
 import { setSheen, prewarmGlintPipe } from './lightfx/glint.js'; /* v2.3.2864: the permanent soft metal shine, behind ?sheen=1; v2.3.2887: on for everyone, ?sheen=0 turns it off; v2.3.2904: its shader built behind the loading screen */
 import { warmSheenBatch } from './lightfx/sheenBatch.js'; /* v2.3.3453: the ordinary metal shine drawn in the frame, not in a pass a piece */
+import { warmFillBatch } from './fillBatch.js'; /* v2.3.3577: the whirlwind's catch, drawn in one colour */
+import { WHIRL_TINT, WHIRL_TINT_HI, WHIRL_GLOW_ALPHA } from '../game/whirlCatch.js'; /* v2.3.3577: QA's whirlGlowLooks */
 import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2762 */
 import { setWorldCasts } from './lightfx/casters.js'; /* v2.3.2749: QA before/after of the world's shadows */
 import { FpsOverlay } from './systems/fpsOverlay.js';
@@ -46,7 +48,7 @@ import { loadShieldSprites } from './shieldSprites.js';
 import { preloadStartZoneMap } from './tiledMaps.js';
 import { noteZoneEntered } from '../ui/zoneBannerOverlay.js'; /* v2.3.2596: the one place that sees EVERY zone change */
 import { preloadGear, drawGearFrame } from './gearSheets.js';
-import { Sprite } from 'pixi.js';   /* v2.3.3088: QA's drawnPixels (mp-gpuonly) */
+import { Sprite, Container } from 'pixi.js';   /* v2.3.3088: QA's drawnPixels (mp-gpuonly); v2.3.3577: + Container (whirlGlowLooks) */
 import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
 import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
@@ -153,6 +155,9 @@ export function preloadPlayerAssets() {
          (lightfx/sheenBatch.js), so the first armoured player on screen does
          not compile it either */
       .then(() => { try { if (lightFxOn()) warmSheenBatch(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ } })
+      /* v2.3.3577: and the silhouette batcher (fillBatch.js), so the first
+         whirlwind of the session does not compile it */
+      .then(() => { try { warmFillBatch(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ } })
       /* v2.3.3520: QA (mp-joinflicker) -- when the bro's pictures were all
          made, to set beside when the world was shown */
       .then(() => { _preStep('done'); try { window.__btAvatarReadyAt = Date.now(); } catch (e) { /* no window */ } return results; })
@@ -921,6 +926,112 @@ export async function initPixiRenderer(canvas) {
         });
       }
       return out;
+    },
+    /* v2.3.3577: QA (mp-whirltint) -- each drawn monster's body tint, the
+       tint it would wear without a hit flash (`_btBaseTint`), and the
+       whirlwind's amber over it (entityRenderer `_whirlGlow`: shown, its
+       alpha and colour, whether it is the body's frame, and its batcher) */
+    monsterTintProbe: () => {
+      const out = [];
+      for (const [id, d] of entityRenderer.monsterDisplays) {
+        const sb = d && d._spriteBody;
+        if (!sb || !sb.visible) continue;
+        const g = d._whirlGlow;
+        out.push({
+          id: String(id), tint: sb.tint, base: sb._btBaseTint != null ? sb._btBaseTint : null,
+          glow: g ? { on: !!g.visible, a: g.alpha, tint: g.tint, same: g.texture === sb.texture, fill: !!g._btFill } : null,
+        });
+      }
+      return out;
+    },
+    /* v2.3.3577: QA (mp-whirltint) -- each KIND of monster wearing the
+       whirlwind's amber now, drawn on its own by this renderer (the same
+       batchers as the screen) from its body's current frame, three times
+       its size: without it, in the flash's trough and at its peak.  Reports,
+       of the body's solid pixels, how many it changes, how many read amber
+       (hue 15-50 degrees, saturation 0.3 and up) each way, how much of the
+       body's light and shade is kept (the spread of its brightness), and how
+       much brighter the peak is; and a picture of the three side by side
+       (`close`).  Copies only: the monster's own sprites are never moved. */
+    whirlGlowLooks: () => {
+      const r = app && app.renderer;
+      if (!r || !r.extract) return { err: 'no renderer' };
+      const S = (typeof window !== 'undefined' && window._gameState) ? window._gameState.current : null;
+      const mons = (S && S.monsters) || [];
+      const kinds = [];
+      const seen = new Set();
+      const canvases = [];
+      const luma = (p, i) => (0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]) / 255;
+      const amber = (p, i) => {
+        const R = p[i] / 255, G = p[i + 1] / 255, B = p[i + 2] / 255;
+        const mx = Math.max(R, G, B), mn = Math.min(R, G, B), d = mx - mn;
+        if (mx <= 0 || d / mx < 0.3) return false;
+        let h = mx === R ? ((G - B) / d) % 6 : (mx === G ? (B - R) / d + 2 : (R - G) / d + 4);
+        h *= 60; if (h < 0) h += 360;
+        return h >= 15 && h <= 50;
+      };
+      const spread = (xs) => { const m = xs.reduce((a, b) => a + b, 0) / (xs.length || 1); return Math.sqrt(xs.reduce((a, b) => a + (b - m) * (b - m), 0) / (xs.length || 1)); };
+      for (const [id, d] of entityRenderer.monsterDisplays) {
+        const g = d && d._whirlGlow, sb = d && d._spriteBody;
+        if (!g || !g.visible || !sb || !sb.visible || !sb.texture) continue;
+        const m = mons.find((x) => x && String(x.id) === String(id));
+        const kind = m ? String(m.type || m.archetype || '?') + (m.home ? '@' + m.home : '') : '?';
+        if (seen.has(kind)) continue;
+        seen.add(kind);
+        const tmp = new Container();
+        const b2 = new Sprite(sb.texture);
+        const g2 = new Sprite(sb.texture);
+        for (const sp of [b2, g2]) { sp.anchor.set(sb.anchor.x, sb.anchor.y); sp.scale.set(Math.abs(sb.scale.x) * 3, Math.abs(sb.scale.y) * 3); }
+        b2.tint = sb.tint === 0xff8080 ? (sb._btBaseTint != null ? sb._btBaseTint : 0xffffff) : sb.tint;
+        g2._btFill = true; g2._noSharp = true; g2.alpha = WHIRL_GLOW_ALPHA;
+        tmp.addChild(b2); tmp.addChild(g2);
+        const looks = [[false, 0], [true, WHIRL_TINT], [true, WHIRL_TINT_HI]];
+        const px = [];
+        try {
+          for (const [on, tint] of looks) {
+            g2.visible = on; if (on) g2.tint = tint;
+            px.push(r.extract.pixels({ target: tmp }).pixels);
+            canvases.push(r.extract.canvas({ target: tmp }));
+          }
+        } catch (e) { tmp.destroy({ children: true }); return { err: String(e && e.message || e) }; }
+        tmp.destroy({ children: true });
+        const [p0, p1, p2] = px;
+        const n = Math.min(p0.length, p1.length, p2.length);
+        let body = 0, changed = 0, a0 = 0, a1 = 0, a2 = 0, l1s = 0, l2s = 0;
+        const l0 = [], l1 = [];
+        for (let i = 0; i < n; i += 4) {
+          if (p0[i + 3] < 250) continue;
+          body++;
+          if (Math.max(Math.abs(p1[i] - p0[i]), Math.abs(p1[i + 1] - p0[i + 1]), Math.abs(p1[i + 2] - p0[i + 2])) >= 6) changed++;
+          if (amber(p0, i)) a0++;
+          if (amber(p1, i)) a1++;
+          if (amber(p2, i)) a2++;
+          l0.push(luma(p0, i)); l1.push(luma(p1, i));
+          l1s += luma(p1, i); l2s += luma(p2, i);
+        }
+        kinds.push({
+          kind, body,
+          cover: body ? changed / body : 0,
+          amberOwn: body ? a0 / body : 0, amberTrough: body ? a1 / body : 0, amberPeak: body ? a2 / body : 0,
+          shadeKept: spread(l0) > 0 ? spread(l1) / spread(l0) : 0,
+          flash: body ? (l2s - l1s) / body : 0,
+        });
+        if (kinds.length >= 3) break;
+      }
+      let close = null;
+      try {
+        if (canvases.length && typeof document !== 'undefined') {
+          const W = canvases.reduce((w, c) => w + c.width + 12, 12), Hh = canvases.reduce((h, c) => Math.max(h, c.height), 0) + 24;
+          const cv = document.createElement('canvas');
+          cv.width = W; cv.height = Hh;
+          const cx = cv.getContext('2d');
+          cx.fillStyle = '#4a5a3a'; cx.fillRect(0, 0, W, Hh);
+          let x = 12;
+          for (const c of canvases) { cx.drawImage(c, x, 12); x += c.width + 12; }
+          close = cv.toDataURL('image/png');
+        }
+      } catch (e) { /* no picture */ }
+      return { kinds, close };
     },
     spawnFxProbe: () => {
       const out = [];

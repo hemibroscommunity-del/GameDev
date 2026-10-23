@@ -82,7 +82,7 @@ const has = (P, sel) => P.page.evaluate((s) => !!document.querySelector(s), sel)
 /* v2.3.2695: HOLD a finger on a selector for `ms` -- the stepper's "add
    points more quickly" is a held +, and touchscreen.tap can only tap.  Raw
    CDP touch events, so it is the same pointer stream a thumb makes. */
-async function hold(P, sel, ms) {
+async function hold(P, sel, ms, until = null) {
   const box = await P.page.evaluate((s) => {
     const el = document.querySelector(s);
     if (!el) return null;
@@ -92,7 +92,12 @@ async function hold(P, sel, ms) {
   if (!box) return false;
   const cdp = await P.page.context().newCDPSession(P.page);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [box] });
+  /* v2.3.3577: held at least `ms`, and on until `until()` says so (at most
+     6 s): in the world this box runs the page's timers a few times a second,
+     and a hold sized for a phone's 70 ms repeat counted twice (TRAPS §200) */
+  const t0 = Date.now();
   await P.page.waitForTimeout(ms);
+  if (until) while (Date.now() - t0 < 6000 && !(await until())) await P.page.waitForTimeout(150);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await cdp.detach().catch(() => {});
   await P.page.waitForTimeout(120);
@@ -132,7 +137,8 @@ async function answerConfirm(P, which, settle) {
      confirmation window instead of closing it to return to the points main
      screen."  So a confirm leaves the window up and, once the worker has
      spent the points, puts it up again with "✓ n points spent" and the
-     stepper back at 1.  Read that here (the callers assert it), then close
+     stepper back at 1 (at 0 since v2.3.3577).  Read that here (the callers
+     assert it), then close
      the window with its ✕, so the next step taps the grid behind it. */
   if (which === 'confirm') {
     let stay = null;
@@ -188,7 +194,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        The four viewports are the pre-existing set too: the rewrite had cut
        them to two, which quietly dropped the 360-wide coverage. */
     const P = await H.newPlayer(browser, { name: who, wsPort, webPort,
-      viewport: land ? { width: 390, height: 844 } : vp, touch: true });
+      viewport: land ? { width: 390, height: 844 } : vp, touch: true, world: 'wheel' });   /* v2.3.3577: in the world (written for the retired map) */
     await H.enterWorld(P);
     await P.page.waitForTimeout(2400);
     if (land) { await P.page.setViewportSize(vp); await P.page.waitForTimeout(1100); }
@@ -549,8 +555,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
        stepper's points add to it */
     rec.ok(`${label}: a curve stat draws its bar, and one point moves it`,
       !!win0 && !!win0.meter && win0.meter.after > win0.meter.now, win0 && win0.meter);
-    rec.ok(`${label}: the spend is a [-] n [+] stepper with the confirm to its right`,
-      !!win0 && win0.stepper && /^Spend 1 point$/.test(win0.btn || ''), win0 && { stepper: win0.stepper, btn: win0.btn });
+    /* v2.3.3577: the count opens at 0 and [+] adds every point (the owner:
+       "still enable adding the last point using the plus button") */
+    const c0 = await stepCount(P);
+    rec.ok(`${label}: the spend is a [-] n [+] stepper with the confirm to its right, opening at 0 ("Add points with +")`,
+      !!win0 && win0.stepper && c0 === 0 && /^Add points with \+$/.test(win0.btn || ''), win0 && { stepper: win0.stepper, btn: win0.btn, count: c0 });
 
     /* Aim it somewhere else: the whole reason the tabs exist. */
     const want = (win0 && win0.keys.find((k) => k !== lane0)) || null;
@@ -566,14 +575,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: the window NAMES THE WEAPON — the owner's stated reason the confirm exists`,
       !!win1 && new RegExp(laneLabel, 'i').test(win1.activeText || ''), { want: laneLabel, got: win1 && win1.activeText });
 
-    /* ── THE STEPPER (v2.3.2695) ── two taps on + make three, one on -
-       makes two, and the numbers above follow the count. */
+    /* ── THE STEPPER (v2.3.2695) ── three taps on + make three (from 0
+       since v2.3.3577), one on - makes two, and the numbers above follow the
+       count; at 0 the rows show what one point buys. */
     const rows1 = win1 && win1.rows;
+    await finger(P, '[data-infopopup-step="up"]');
     await finger(P, '[data-infopopup-step="up"]');
     await finger(P, '[data-infopopup-step="up"]');
     const c3 = await stepCount(P);
     const win3 = await readWin();
-    rec.ok(`${label}: two taps on + make it three, and the button says so`,
+    rec.ok(`${label}: three taps on + make it three, and the button says so`,
       c3 === 3 && /^Spend 3 points$/.test((win3 && win3.btn) || ''), { count: c3, btn: win3 && win3.btn });
     rec.ok(`${label}: ...and the preview rows now show what THREE points buy`,
       !!win3 && !!rows1 && win3.rows !== rows1, { one: rows1 && rows1.slice(0, 90), three: win3 && win3.rows.slice(0, 90) });
@@ -595,11 +606,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* HELD, it keeps counting -- the "more quickly" -- and stops when the
        finger lifts rather than running on by itself. */
     await finger(P, '[data-infopopup-step="down"]');
-    await hold(P, '[data-infopopup-step="up"]', 900);
+    const lanePts = (before.poolBy || {})[laneNow];
+    await hold(P, '[data-infopopup-step="up"]', 900, async () => ((await stepCount(P)) || 0) >= Math.min(4, lanePts));
     const cHeld = await stepCount(P);
     await P.page.waitForTimeout(400);
     const cAfter = await stepCount(P);
-    const lanePts = (before.poolBy || {})[laneNow];
     rec.ok(`${label}: holding + keeps adding (well past the one a tap gives)`,
       typeof cHeld === 'number' && cHeld >= Math.min(4, lanePts), { held: cHeld, lanePts });
     rec.ok(`${label}: ...and stops the moment the finger lifts`, cHeld === cAfter, { held: cHeld, after: cAfter });
@@ -610,9 +621,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const spent = await answerConfirm(P, 'confirm', (n) => (n.poolBy || {})[laneNow] === (before.poolBy || {})[laneNow] - K);
     rec.ok(`${label}: answering the window actually buys the points`, !!spent.ok && K === 2, spent.now && { pool: spent.now.pool, K });
     /* v2.3.3522: the owner's "keep it on the menu confirmation window" */
-    rec.ok(`${label}: ...and the window STAYS, saying "✓ ${K} points spent", its stepper back at 1 and its Spend button live again`,
+    rec.ok(`${label}: ...and the window STAYS, saying "✓ ${K} points spent", its stepper back at 0 (v2.3.3577) and [+] ready for the next`,
       !!spent.stay && spent.stay.open && spent.stay.spent === `✓ ${K} points spent` && !spent.stay.spending
-        && (spent.stay.blocked || (spent.stay.count === 1 && /^Spend 1 point$/.test(spent.stay.action || ''))), spent.stay);
+        && (spent.stay.blocked || (spent.stay.count === 0 && /^Add points with \+$/.test(spent.stay.action || ''))), spent.stay);
     if (spent.ok) {
       const n = spent.now || {};
       rec.ok(`${label}: ...and the WORKER charged the lane THE TAB named ${K} points, not the shared pool`,
@@ -648,6 +659,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── A BODY STAT SPENDS THE SHARED POOL ── */
     const b2 = await pools(P);
     await finger(P, '[data-prog3-row^="shared:"]');
+    /* v2.3.3577: the count opens at 0 -- one [+] first */
+    await finger(P, '[data-infopopup-step="up"]');
     const sSpent = await answerConfirm(P, 'confirm', (n) => n.shared !== b2.shared);
     rec.ok(`${label}: a SHARED stat spends the SHARED pool`,
       !!sSpent.ok && (sSpent.now || {}).shared === b2.shared - 1,
