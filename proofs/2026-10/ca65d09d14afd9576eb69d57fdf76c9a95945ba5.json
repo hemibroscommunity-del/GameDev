@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ca65d09d14afd9576eb69d57fdf76c9a95945ba5",
+  "tree": "17350c0b9cff2fc433d7b760727d82b30cac336d",
+  "committedAt": "2026-10-22T20:59:15-07:00",
+  "subject": "Your notes of 22 October: no armour flash after logging in, the cook's pace, the whirlwind's amber, the last point with +, the Equipment figure southeast (v2.3.3577) (#1090)",
+  "files": 6366,
+  "bytes": 738088294,
+  "listingSha256": "03ffb0ab7d51d342497aac57a82a230a0eb3418f799fb78c9a2f748f1aab27e6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
