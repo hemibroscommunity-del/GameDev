@@ -1850,6 +1850,41 @@ remnant to migrate server-side, not a mode to preserve.
         characters' sharp batcher: TRAPS §248);
       - `window.__btGrottoFx()`, the probes' `ferns`/`life`; `dungeon-art` §6,
         `mp-grottolife`: docs/specs/grotto-life.md.
+    - since v2.3.3573 THE GOO GROTTO IS BUILT FOR A PARTY -- the owner: "I
+      want the goo grotto dungeon to be very difficult without a party of 2-3
+      people.  I'm assuming most people will be around lvl 10 and have iron
+      equipment ... with all stat points allocated before they attempt it":
+      - LEVEL 16 WHOEVER COMES IN, ITS BOSS SIZED FOR THREE however few come
+        in (wheeldungeon.js `WHEEL_DUNGEON.PARTY`, `_wheelDungeonParty`; cfg
+        `partySize`, read by dungeon.js `_dungeonSpawnBoss`); the other three
+        dungeons keep "the place's top, never above yours";
+      - WHY 16: at their own level a level-10 player in iron with every point
+        spent loses ~12% of a monster's blow (armour, Defense and Dodge
+        multiply) and a sword's kill gives back 90% of what that slime dealt,
+        so no size or toughness at level 10 made it hard alone (60-100%); a
+        monster five above you takes your points' worth (prog3.js
+        `prog3Edge`), and six keeps a level gained in the run from bringing any
+        back; measured with level-10 players in iron, every point spent, five
+        fish, an average player, 32 runs a party: alone 0-25%, two 75-91%,
+        three 100% (at level 12 a sword clears it alone 96%);
+      - THE DUNGEON SIMULATOR, `tools/dungeon-sim/` (sim.mjs: the real worker
+        in-process, its clock and its 22 ms tick, players that join, party up
+        and fight by a phone's own messages; grotto.mjs re-runs the study);
+      - the phone, against `caps.partydungeon`: the world map's "Lv 16 · 2–3
+        players" ("dungeon · Lv 16 · 2–3 players" lost to the stage's name: a
+        label is drawn only where it clears the ones before it) and "Lv 16 ·
+        for 2–3 players" under the Enter button (src/data/wheelDungeons.js
+        `WHEEL_DUNGEON_PARTY`, mirror-audit);
+      - FOUND ON THE WAY: A SHOVE PUT A SLIME IN THE WALL -- every clamp on a
+        moved monster asked `_getZoneConfig`, which knows no dungeon zone, so
+        a knockback put a slime through the Grotto's wall, out of every
+        sword's reach, and its wave never ended; one box now
+        (dungeon.js `_monsterBox` / `_keepMonsterIn`: the knockback, the bash,
+        the pull, the burrow, the boss's charge, the splits' landing), TRAPS
+        §249;
+      - kill switch `partydungeon: false` (the Grotto of v2.3.3540);
+        `grotto-party` suite, `wheeldungeon`'s starter checks under the
+        switch, `mp-googrotto`: docs/specs/grotto-party.md.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack

@@ -1,20 +1,23 @@
-/* ═══ THE STARTER DUNGEON, ON A PHONE (v2.3.3540, docs/specs/starter-dungeon.md) ═══
+/* ═══ THE GOO GROTTO, ON A PHONE (v2.3.3540, docs/specs/starter-dungeon.md;
+ *     v2.3.3573, docs/specs/grotto-party.md: a dungeon built for a party) ═══
  *
  * The owner: "I value SIMPLICITY and INTELLIGIBILITY" -- the after-review
- * list's fourth item: a dungeon near town, the Verdant Wilds' landmark.
+ * list's fourth item: a dungeon near town, the Verdant Wilds' landmark; then
+ * "I want the goo grotto dungeon to be very difficult without a party of 2-3
+ * people": level 16 whoever comes in, its boss sized for three.
  * One real player against a real worker, on a phone (390 x 844, touch):
  *   1. the client knows the Goo Grotto from the Wheel's own map, where the
  *      worker baked it, on the Verdant Wilds' first stretch, about half a
  *      minute's walk from where you arrive;
- *   2. on the way, the world map, centred on you, names it "dungeon · Lv
- *      1–5"; walked there, its mouth is drawn, nothing standing over it, and
- *      "Enter the Goo Grotto" comes up;
- *   3. a tap opens it: the Verdant Wilds' own monsters at the dungeon's level
- *      (yours, never above 5), drawn in their own looks, on the land's mossy
- *      stone, the way back out remembered;
- *   4. the waves (each ended by the QA dev op `clearwave`), then the boss AT
- *      THE DUNGEON'S LEVEL (it was five above), then the clear: back out at
- *      the Grotto's mouth;
+ *   2. on the way, the world map, centred on you, names it "Lv 16 · 2–3
+ *      players"; walked there, its mouth is drawn, nothing standing over
+ *      it, and "Enter the Goo Grotto" comes up with "Lv 16 · for 2–3
+ *      players" under it;
+ *   3. a tap opens it: the Verdant Wilds' own monsters at level 16 (whatever
+ *      yours), drawn in their own looks, on the land's mossy stone, the way
+ *      back out remembered;
+ *   4. the waves (each ended by the QA dev op `clearwave`), then the boss at
+ *      the dungeon's level, then the clear: back out at the Grotto's mouth;
  *   5. no page errors.
  * The walker is a god (server/src/devtools.js).
  * Pictures: tools/qa/mp/out/googrotto-{mouth,map,arena,boss,back}.png.
@@ -30,6 +33,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const shot = (name) => P.page.screenshot({ path: join(OUT, `googrotto-${name}.png`) }).catch(() => {});
   const { WHEEL_DOORS, WHEEL_CENTRE } = await import(H.REPO + '/server/src/wheelspawns.js');
+  /* v2.3.3573: the Grotto's level and party, the worker's own */
+  const { WHEEL_DUNGEON } = await import(H.REPO + '/server/src/wheeldungeon.js');
+  const PARTY = WHEEL_DUNGEON.PARTY.verdant;
   const G = WHEEL_DOORS.verdant;
   const P = await H.newPlayer(browser, { name: 'Gooer', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true });
   await H.enterWorld(P);
@@ -48,7 +54,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.devOp(wsPort, 'quests', id);
   await H.devOp(wsPort, 'vitals', id, { god: true, godMinutes: 30 });
   const level = await H.readState(P, (S) => (S.rpg && S.rpg.level) || 1);
-  const want = Math.max(1, Math.min(5, level));
+  /* v2.3.3573: a party dungeon is its own level, whatever yours (it was
+     yours, never past 5) */
+  const want = PARTY.level;
+  const mapLine = `Lv ${PARTY.level} · ${PARTY.size - 1}–${PARTY.size} players`;
+  const doorLine = `Lv ${PARTY.level} · for ${PARTY.size - 1}–${PARTY.size} players`;
   let stopAlive = false;
   (async () => {
     while (!stopAlive) {
@@ -80,12 +90,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let wm = null;
   for (let i = 0; i < 16; i++) {
     await P.page.waitForTimeout(300);
-    wm = await P.page.evaluate(() => (window.__btWorldMap ? { open: window.__btWorldMap.open, rel: window.__btWorldMap.rel, dungeons: window.__btWorldMap.more && window.__btWorldMap.more.dungeons } : null));
+    wm = await P.page.evaluate(() => (window.__btWorldMap ? { open: window.__btWorldMap.open, rel: window.__btWorldMap.rel, dungeons: window.__btWorldMap.more && window.__btWorldMap.more.dungeons, lines: window.__btWorldMap.more && window.__btWorldMap.more.dungeonLines } : null));
     if (wm && wm.dungeons > 0) break;
   }
   await shot('map');
-  rec.ok(`on the way, the world map, centred on you, names it ("the Goo Grotto", "dungeon · Lv 1–5"): ${wm && wm.dungeons} dungeon label at zoom ${wm && wm.rel && wm.rel.toFixed(1)}`,
-    !!wm && wm.open === true && wm.dungeons >= 1, wm);
+  rec.ok(`on the way, the world map, centred on you, names it ("the Goo Grotto", "${wm && wm.lines && wm.lines[0]}"): ${wm && wm.dungeons} dungeon label at zoom ${wm && wm.rel && wm.rel.toFixed(1)}`,
+    !!wm && wm.open === true && wm.dungeons >= 1 && Array.isArray(wm.lines) && wm.lines.includes(mapLine), { wm, mapLine });
   await P.page.evaluate(() => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(false); });
   await P.page.waitForTimeout(800);
   await H.hopTo(P, G.at[0], G.at[1] + 60, { step: 100, gap: 260 });
@@ -99,8 +109,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(300);
   }
   await shot('mouth');
-  rec.ok(`at the Grotto its mouth is drawn and "${near && near.btn}" comes up`,
-    !!near && near.door === 'verdant' && /Enter the Goo Grotto/.test(near.btn || '') && near.drawn.includes('verdant'), near);
+  rec.ok(`at the Grotto its mouth is drawn and "${near && near.btn}" comes up (v2.3.3573: the level and the players it is built for under its name)`,
+    !!near && near.door === 'verdant' && /Enter the Goo Grotto/.test(near.btn || '') && (near.btn || '').includes(doorLine) && near.drawn.includes('verdant'), { near, doorLine });
 
   /* ── 3. in ── */
   for (let i = 0; i < 15; i++) {
@@ -127,7 +137,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   await shot('arena');
   /* v2.3.3556: every one AT the dungeon's level (they rolled +0..2) */
-  rec.ok(`a tap opens it (${inZ}): the Verdant Wilds' own monsters, all at Lv ${arena && Math.min(...arena.levels)} (yours is ${level}: the dungeon's ${want}, never past 5; v2.3.3556: no +0..2), drawn in their own looks (${arena && arena.drawn} of ${arena && arena.n}), on the land's mossy stone, the way back out remembered`,
+  rec.ok(`a tap opens it (${inZ}): the Verdant Wilds' own monsters, all at Lv ${arena && Math.min(...arena.levels)} (yours is ${level}: a party dungeon is its own ${want}; v2.3.3556: no +0..2), drawn in their own looks (${arena && arena.drawn} of ${arena && arena.n}), on the land's mossy stone, the way back out remembered`,
     /^dungeon:/.test(inZ || '') && !!arena && arena.n > 0 && arena.homes.length === 1 && arena.homes[0] === 'verdant'
       && arena.levels.every((l) => l === want) && arena.drawn === arena.n
       && !!arena.floor && arena.floor.drawn === true && /verdant-3-A\.png/.test(arena.floor.pic || '')
@@ -153,7 +163,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!/^dungeon:/.test(z || '')) break;
     if (await H.readState(P, (S) => !!S._dungeonComplete)) break;
   }
-  rec.ok(`the waves, then the boss at the dungeon's level: Lv ${boss && boss.level} (the dungeon's ${want}; five above until now), the Verdant Wilds' own`,
+  rec.ok(`the waves, then the boss at the dungeon's level: Lv ${boss && boss.level} (the dungeon's ${want}), the Verdant Wilds' own`,
     !!boss && boss.level === want && boss.home === 'verdant', { boss, want, seen });
   const back = await waitZone((z) => z === 'wheel', 60000);
   await P.page.waitForTimeout(1500);

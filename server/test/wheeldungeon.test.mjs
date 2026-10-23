@@ -372,9 +372,15 @@ let run = null;
     const e = msgsOfType(wsA, 'dungeon_error')[0];
     return { s, e };
   };
+  /* v2.3.3573: the Goo Grotto is a party dungeon now -- level 16 whoever
+     comes in, its boss sized for three (wheeldungeon.js WHEEL_DUNGEON.PARTY;
+     grotto-party.test.mjs).  These checks are the dungeon rule it had, and
+     that every other world dungeon keeps, under the kill switch that brings
+     it back (`partydungeon: false`). */
+  room._liveFlags = { partydungeon: false };
   const { s } = await startGoo(3);
   const p = s && s.payload;
-  check('starter: a level-3 player walks into a level-3 Goo Grotto: the Verdant Wilds\' monsters, the way back out at its mouth',
+  check('starter (partydungeon: false): a level-3 player walks into a level-3 Goo Grotto: the Verdant Wilds\' monsters, the way back out at its mouth',
     !!p && p.cfg.name === 'the Goo Grotto' && p.cfg.home === 'verdant' && p.cfg.terrain === 'toxic_swamp' && p.cfg.monsterLevel === 3
       && String(p.cfg.levels) === '1,5' && !!p.back && p.back.x === g.back[0] && p.back.y === g.back[1], p);
   const wave = p ? room.monsters[p.zone] || [] : [];
@@ -394,14 +400,15 @@ let run = null;
     !!boss && boss.arch === last.arch && boss.home === 'verdant' && boss.level === 3, boss && { arch: boss.arch, lv: boss.level });
   endRun(psA);
   const low = await startGoo(1);
-  check('starter: a level-1 player meets level 1', !!low.s && low.s.payload.cfg.monsterLevel === 1, low.s && low.s.payload.cfg);
+  check('starter (partydungeon: false): a level-1 player meets level 1', !!low.s && low.s.payload.cfg.monsterLevel === 1, low.s && low.s.payload.cfg);
   endRun(psA);
   const high = await startGoo(40);
-  check('starter: a level-40 player meets its top, level 5', !!high.s && high.s.payload.cfg.monsterLevel === 5, high.s && high.s.payload.cfg);
+  check('starter (partydungeon: false): a level-40 player meets its top, level 5', !!high.s && high.s.payload.cfg.monsterLevel === 5, high.s && high.s.payload.cfg);
   endRun(psA);
   const far = await startGoo(3, WHEEL_DUNGEON.DOOR_R + 40);
   check('starter: ...and from too far off it is refused', !far.s && !!far.e && far.e.payload.code === 'not-here', far.e && far.e.payload);
   endRun(psA);
+  room._liveFlags = {};
 }
 
 // ── 11. STRAIGHT BACK IN (v2.3.3556) ───────────────────────────────────────

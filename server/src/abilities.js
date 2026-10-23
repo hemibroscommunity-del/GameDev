@@ -920,27 +920,15 @@ export const abilityMethods = {
       const ang = Math.atan2((m.y || 0) - (ps.y || 0), (m.x || 0) - (ps.x || 0));
       m.x = (ps.x || 0) + Math.cos(ang) * cfg.pullTo * _strK;
       m.y = (ps.y || 0) + Math.sin(ang) * cfg.pullTo * _strK;
-      const zoneCfg = this._getZoneConfig(zoneId);
-      if (zoneCfg) {
-        const W = zoneCfg.w * this.TILE;
-        const H = zoneCfg.h * this.TILE;
-        const pad = this.TILE;
-        m.x = Math.max(pad, Math.min(W - pad, m.x));
-        m.y = Math.max(pad, Math.min(H - pad, m.y));
-      }
+      /* v2.3.3573: inside its zone's box, a dungeon's arena too (dungeon.js
+         _monsterBox) */
+      this._keepMonsterIn(zoneId, m);
     } else if (cfg.knockback > 0 && m.hp > 0) {
       const ang = Math.atan2((m.y || 0) - (ps.y || 0), (m.x || 0) - (ps.x || 0));
       m.x += Math.cos(ang) * cfg.knockback * _strK;
       m.y += Math.sin(ang) * cfg.knockback * _strK;
       m._kbDebt = Math.min((m._kbDebt || 0) + cfg.knockback * _strK, 60 * _strK);
-      const zoneCfg = this._getZoneConfig(zoneId);
-      if (zoneCfg) {
-        const W = zoneCfg.w * this.TILE;
-        const H = zoneCfg.h * this.TILE;
-        const pad = this.TILE;
-        m.x = Math.max(pad, Math.min(W - pad, m.x));
-        m.y = Math.max(pad, Math.min(H - pad, m.y));
-      }
+      this._keepMonsterIn(zoneId, m);   /* v2.3.3573 */
     }
 
     /* ═══ THE STUN — AFTER the shove, deliberately (v2.3.1736) ═══
