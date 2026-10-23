@@ -58,7 +58,7 @@ import { mapDetailFor, freeMapDetail } from './worldMapDetail.js';   /* v2.3.331
 import { questPinsOf, MAP_PIN } from '../game/questPins.js';       /* v2.3.3525: the townsfolk's quest pins */
 import { QUEST_PIN } from '../data/ownerIcons.js';                 /* v2.3.3525: ...in the owner's own pictures */
 import { wheelBuildingIconCanvas } from '../rendering/wheelBuildingIcons.js';   /* v2.3.3522: each building's picture at its door */
-import { wheelDungeonOpen } from '../game/wheelDungeons.js';                  /* v2.3.3540: which landmarks are dungeons this worker opens */
+import { wheelDungeonOpen, wheelDungeonLevelsLine } from '../game/wheelDungeons.js';                  /* v2.3.3540: which landmarks are dungeons this worker opens; v2.3.3573: + a party dungeon's level and players */
 
 /* ═══ v2.3.3525: THE QUEST PINS' PICTURES ═══
    The owner's pins from over the townsfolk's heads (data/ownerIcons.js
@@ -585,6 +585,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   const more = { ticks: 0, nodes: 0, others: 0, monsters: 0, quest: null, buildings: 0, buildingIcons: 0, buildingsAt: 0, bridges: 0, ponds: 0, tierLabels: 0, party: 0, partyNames: 0,
     questPins: 0, questPinNames: 0, pins: [],   /* v2.3.3525: the townsfolk's quest pins */
     dungeons: 0,   /* v2.3.3540: the dungeons' mouths named with their levels */
+    dungeonLines: [],   /* v2.3.3573: ...and what each says (the probe's; a party dungeon says its players) */
     detail: detailN };   /* v2.3.3319: the lands' tiles drawn up close (null: none to draw) */
   const onScreen = (x, y, pad = 30) => x > -pad && y > -pad && x < w + pad && y < h + pad;
   /* each land's level bands: a tick across the spoke every five levels */
@@ -919,8 +920,10 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
          camp and a pass do -- "the Goo Grotto / dungeon · Lv 1–5" (the
          owner: "I value SIMPLICITY and INTELLIGIBILITY") */
       const dungeon = p.kind === 'landmark' && Array.isArray(p.levels) && wheelDungeonOpen(S, p.region);
-      const lines = dungeon ? [p.name, `dungeon · Lv ${p.levels[0]}–${p.levels[1]}`] : [p.name];
-      if (label(x, y + 7, lines, { size: 11, below: true, weight: 600, color: '#CFF2DE' })) { counts.sites++; if (dungeon) more.dungeons++; }
+      /* v2.3.3573: a party dungeon (the Goo Grotto) says its own level and
+         the players it is built for, not the place's levels */
+      const lines = dungeon ? [p.name, wheelDungeonLevelsLine(S, p.region, p.levels)] : [p.name];
+      if (label(x, y + 7, lines, { size: 11, below: true, weight: 600, color: '#CFF2DE' })) { counts.sites++; if (dungeon) { more.dungeons++; more.dungeonLines.push(lines[1]); } }
     }
   }
   /* v2.3.3057: the bridges and the ponds, named */

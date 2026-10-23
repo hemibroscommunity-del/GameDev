@@ -77,8 +77,10 @@ moves added since, and the menus a tap on the world opens). What is left needs
   dungeons (in, each wave, cleared, out), crossing into a land, No man's land
   (crossing in, a skull, what a death took, what your kill took), signposts
   popping up, an object mended, a building catching fire, loot landing.
-- Lighting a fire (two flint strikes) and the campfire catching; a harvest's
-  gesture opening; a crop ripening; your pet's ward.
+- Lighting a fire (two flint strikes) and the campfire catching; a crop
+  ripening; your pet's ward.  (A harvest's gesture opening had one too, until
+  the owner asked for it gone in v2.3.3572: docs/specs/sounds-2026-10-19.md
+  §9.)
 
 **Crafting, loot, quests, menus**
 - Smelting, forging (and a forge that refuses), armour, hardening (success and

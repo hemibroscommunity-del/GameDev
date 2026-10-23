@@ -933,6 +933,14 @@ remnant to migrate server-side, not a mode to preserve.
         `ui/panels/SoundStudio.jsx` (its own chunk, loaded on opening);
         A NEW SOUND GETS ITS LABEL THERE in the same change -- `sound-cues`
         §12 fails for a cue or table key without one; `mp-soundstudio`.
+    - since v2.3.3572 A HARVEST REACHING 0 IS QUIET -- the owner: "there's a
+      splat sound when the ore is ready for the gesture cue (reaches 0hp) ...
+      it needs to be removed": the cue `gatherReady` (sword-hit2 at 1.6x,
+      v2.3.3343) played the frame a rock, tree or cook's window opened, the
+      only sound then (the game's sound log on a phone); it is gone from
+      BroTown, the cue table, the studio and mp-cuelevels, fishing keeping its
+      bite -- most likely §3's tree "fleshy sound" of the 2026-10-19 notes
+      too; `mp-gatherquiet`: docs/specs/sounds-2026-10-19.md §9.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
@@ -1845,6 +1853,41 @@ remnant to migrate server-side, not a mode to preserve.
         characters' sharp batcher: TRAPS §248);
       - `window.__btGrottoFx()`, the probes' `ferns`/`life`; `dungeon-art` §6,
         `mp-grottolife`: docs/specs/grotto-life.md.
+    - since v2.3.3573 THE GOO GROTTO IS BUILT FOR A PARTY -- the owner: "I
+      want the goo grotto dungeon to be very difficult without a party of 2-3
+      people.  I'm assuming most people will be around lvl 10 and have iron
+      equipment ... with all stat points allocated before they attempt it":
+      - LEVEL 16 WHOEVER COMES IN, ITS BOSS SIZED FOR THREE however few come
+        in (wheeldungeon.js `WHEEL_DUNGEON.PARTY`, `_wheelDungeonParty`; cfg
+        `partySize`, read by dungeon.js `_dungeonSpawnBoss`); the other three
+        dungeons keep "the place's top, never above yours";
+      - WHY 16: at their own level a level-10 player in iron with every point
+        spent loses ~12% of a monster's blow (armour, Defense and Dodge
+        multiply) and a sword's kill gives back 90% of what that slime dealt,
+        so no size or toughness at level 10 made it hard alone (60-100%); a
+        monster five above you takes your points' worth (prog3.js
+        `prog3Edge`), and six keeps a level gained in the run from bringing any
+        back; measured with level-10 players in iron, every point spent, five
+        fish, an average player, 32 runs a party: alone 0-25%, two 75-91%,
+        three 100% (at level 12 a sword clears it alone 96%);
+      - THE DUNGEON SIMULATOR, `tools/dungeon-sim/` (sim.mjs: the real worker
+        in-process, its clock and its 22 ms tick, players that join, party up
+        and fight by a phone's own messages; grotto.mjs re-runs the study);
+      - the phone, against `caps.partydungeon`: the world map's "Lv 16 · 2–3
+        players" ("dungeon · Lv 16 · 2–3 players" lost to the stage's name: a
+        label is drawn only where it clears the ones before it) and "Lv 16 ·
+        for 2–3 players" under the Enter button (src/data/wheelDungeons.js
+        `WHEEL_DUNGEON_PARTY`, mirror-audit);
+      - FOUND ON THE WAY: A SHOVE PUT A SLIME IN THE WALL -- every clamp on a
+        moved monster asked `_getZoneConfig`, which knows no dungeon zone, so
+        a knockback put a slime through the Grotto's wall, out of every
+        sword's reach, and its wave never ended; one box now
+        (dungeon.js `_monsterBox` / `_keepMonsterIn`: the knockback, the bash,
+        the pull, the burrow, the boss's charge, the splits' landing), TRAPS
+        §249;
+      - kill switch `partydungeon: false` (the Grotto of v2.3.3540);
+        `grotto-party` suite, `wheeldungeon`'s starter checks under the
+        switch, `mp-googrotto`: docs/specs/grotto-party.md.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack
@@ -2580,6 +2623,33 @@ remnant to migrate server-side, not a mode to preserve.
         the hat's hair-clip shapes (entityRenderer `preloadTraits`);
       - `mp-joinflicker` (real armour from the kit; `window.__btLocalMisses()`
         names each plain frame): docs/specs/visuals-2026-10-19.md §3.
+    - since v2.3.3574 A PICTURE SAFARI THREW AWAY IS NOTICED -- the owner: "I
+      returned to the game after I went into a different tab on my phone and my
+      character was missing features at certain angles" (the hair, armour,
+      shield and staff drawn; no skin, face or boots):
+      - the game makes ~690 pictures on canvases (~70 MB on a phone in BroTown
+        in armour), and ~580 had never been DRAWN, so never sent to the
+        graphics chip (19 of 173 masked body frames); iPhone Safari can empty a
+        canvas while the tab is parked, with no event for a 2D canvas, and a
+        picture drawn or baked from one afterwards is blank and stays blank;
+        pictures from files are read again (TRAPS §250);
+      - every picture `packTrimmed` packs is WITNESSED as it is made, one solid
+        pixel (`src/rendering/canvasWitness.js`, weak references, a canvas
+        freed with `width = 0` skipped);
+      - coming back, wsClient's `_resumeRecover` reads 48 of them FIRST (the 24
+        biggest and a spread; 1-3 ms), one empty reading them all; two or more
+        empty is a `canvas-purge` in the crash log and BroTown's recovery
+        reload (the watchdog's door and cap, behind the bro's veil), only from
+        the world (`worldInMs`), on the SAME SPOT of the Wheel
+        (`_recoveryReload(why, { spot: true })`, `bt_resume_spot`, worldTrial
+        `setWheelArrival`, the worker judging it from lastplace.js);
+      - not a repair in place: uploading every picture as made is ~45 MB more
+        on the chip, and a remake path in each of a dozen systems is a dozen
+        ways to miss one;
+      - `?canvascheck=0` is the game as it was, `window.__btCanvasWitness()`;
+        `canvas-witness` suite, `mp-tabwipe` (the canvases emptied as Safari
+        does: 0 px from the parked spot, the body whole in all eight facings;
+        blank in all eight with the switch off): docs/specs/parked-tab.md.
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:
@@ -3776,6 +3846,29 @@ remnant to migrate server-side, not a mode to preserve.
       Seeds tab sells packets and the sack; the Cookhouse's rows lead with what
       they make; the quick-eat Garden Stew is warmed on the loading screen;
     - `bag-icons` suite, `mp-bagicons`, `mp-farm`: docs/specs/bag-icons.md.
+  - Since v2.3.3571 THE OWNER'S COPPER ORE AND PICKAXE, AND THE BAG'S BOW
+    PINE AGAIN -- the owner: "Ok change the art style of the copper ore and the
+    pickaxe to this.  Also revert the inventory art of the bow back to the
+    original one (pine) ... I only wanted it to replace the menu art for the
+    bow":
+    - `tools/ui/cut-owner-items.py` cuts their picture (assets/icons-source/
+      owner-2026-10-22/) into `icons/items/ore-copper.webp` (256, 200 px) and
+      `mining-pickaxe.webp` (192, 190 px) on today's canvases, each file's
+      SHA-256, size and opaque box in `tools/ui/owner-items.json`;
+    - the rock's label crops the pickaxe at that box (nodeLabels.js), and a
+      broken copper rock pops the bag's copper, as every other tier pops its
+      own;
+    - the world's copper rock (pixel art) and the iron, black steel and
+      obsidian icons are unchanged: make_tier_art.py recolours them from the
+      OLD lump, kept at assets/icons-source/ore-copper-lump.webp;
+    - the bag's `icons/items/bow.webp` is the pine bow again (byte for byte
+      before v2.3.3526);
+    - card 11's T3.3 is the menu's own file, `icons/ui/equip-bow.webp`, drawn
+      by `wpnIconSrc`: the Equipment slot, the weapon button and the player
+      card;
+    - T36.1 is `replaced`;
+    - owner-icons §8 (and §7a/§7b), `mp-copperpick`: docs/specs/owner-icons.md
+      "v2.3.3571".
   - Since v2.3.3473 YOU CAN DROP A BAG ITEM -- the owner: "add an option to
     "drop" items in game. After about a minute they become visible to other
     players. After 2 minutes it begins flashing and disappears":
