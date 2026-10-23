@@ -139,8 +139,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const f of WHEEL_TOWNSFOLK) {
       await standNear(f.name, 40, 70);
       drawn[f.name] = await drawnOf(f.name);
-      /* Diego's drawer opens as you walk up to him and stays while you shop
-         (as in today's town): shut it, or it sits over the next pictures */
+      /* Diego's drawer opened as you walked up to him and stayed while you
+         shopped: shut it, or it sits over the next pictures.  (v2.3.3583: a
+         townsperson talks on a tap only now, so nothing opens; the close
+         stays for a page with ?npcprox.) */
       await P.page.evaluate(() => { const b = document.querySelector('[data-shop-close]'); if (b) b.click(); });
       await P.page.waitForTimeout(300);
       await shot(f.name.toLowerCase().replace(/\s+/g, '-'));

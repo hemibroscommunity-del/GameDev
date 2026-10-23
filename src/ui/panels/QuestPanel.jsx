@@ -13,6 +13,7 @@ import { QuestOfferPanel } from './QuestOfferPanel.jsx';
 import { QuestSkillChip, QuestTradeChip } from './questArt.jsx'; /* v2.3.3030: the owner's skill chips; v2.3.3525: and a trade's */
 import { questAction, tradeChoices } from '@/game/tour.js'; /* v2.3.3525: the tour's buttons */
 import { requestRace } from '@/game/race.js'; /* v2.3.3525: Lil Bro's Race! */
+import { shopBus } from '../mobile/shopBus.js'; /* v2.3.3583: a giver who keeps a shop, his shop (game/tour.js questAction) */
 
 /* v2.3.3030: how long the claim's confirmation ("Rewards claimed!") stays
    before he offers his next quest -- long enough for the coins and the items
@@ -316,7 +317,7 @@ export function QuestPanel(props) {
   var _tradeType = tradePick || (_trades.length === 1 ? _trades[0].type : null);
   /* ...and the button on his "how's it going" line: the building he stands at,
      or Lil Bro's Race! (game/tour.js) -- the panel closes first */
-  var _act = (!_isOffer && !_canTurnIn) ? questAction(questPanel.quest, questPanel.status, stateRef.current) : null;
+  var _act = (!_isOffer && !_canTurnIn) ? questAction(questPanel.quest, questPanel.status, stateRef.current, questPanel.npcRef) : null;
   var _action = _act ? {
     label: _act.label,
     qa: _act.kind === 'race' ? 'race-go' : 'quest-open',
@@ -324,6 +325,7 @@ export function QuestPanel(props) {
       var St = stateRef.current;
       setQuestPanel(null);
       if (_act.kind === 'race') requestRace(St);
+      else if (_act.kind === 'shop') { try { shopBus.setOpen(true); } catch (e) { /* display only */ } }
       else if (props.openPlot) props.openPlot(_act.plot);
     },
   } : null;

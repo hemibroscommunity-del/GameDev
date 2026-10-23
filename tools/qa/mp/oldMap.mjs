@@ -77,7 +77,7 @@ export const OLD_MAP_LEGACY = Object.freeze(new Set([
   'presence', 'previewweapon', 'prog3', 'proj', 'projlook', 'propdepth',
   'propfx', 'propshots', 'pvpextras', 'pvplunge', 'pvpnumbers', 'pvpshield',
   'questbanner', 'questchain', 'questclaim', 'questcoach', 'questkill',
-  'questlegs', 'questloop', 'questmsg', 'questprox', 'questroad',
+  'questlegs', 'questloop', 'questmsg', 'questroad',
   'queststar', 'questui', 'questwall', 'questwin', 'questxp', 'rbutton',
   'rehearsal', 'remnant', 'remoteanim', 'reports', 'resbars', 'road2',
   'rollbake', 'rollweapon', 'roomfull', 'roster', 'rosterink', 'salvage',

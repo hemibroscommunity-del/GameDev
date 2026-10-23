@@ -18,6 +18,16 @@
  *      card, the worker's count for race_1, and his claim when you walk up.
  *   5. A false start: walked off the line in the countdown (past the hold), the
  *      worker calls it, and the card says so with "Race again".
+ *   6. v2.3.3583: a LOST race -- the lap run behind him -- and his line after
+ *      it, the owner's "acknowledge the race has been lost and to try again
+ *      ... (but said in his personality)": "GG EZ!", still ending on Race!.
+ *      Before it, a false start is not a loss: his line is the dare as written.
+ *
+ * v2.3.3583: a townsperson talks on a TAP only now (the owner: "tap only
+ * instead of proximity based ... racing lil bro past the mayor the mayor
+ * window talking to me opened up"), so every walk-up ends with the right
+ * stick's tap (H.talkToNpc), and the lap in 4 checks the owner's own case: no
+ * townsperson's window opens while you run it.
  *
  * The lap is run by moving the bro along the flags in steps the worker's move
  * budget takes (H.hopTo, ~385 px a second, past Lil Bro's 165): this checks
@@ -61,10 +71,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const walkUpToLil = async () => {
     await leaveLil();
     await stepBy(0, 34);
+    /* v2.3.3583: and tap him -- a townsperson talks on a tap only (BroTown
+       NPC_PROX_OPENS): the right stick's tap, as the harness's approach */
+    await H.talkToNpc(P, 'lil_bro');
     await P.page.waitForTimeout(1100);
     return H.npcDialogueOpen(P);
   };
+  /* what his window says now (its first tap's text) */
+  const lineText = () => P.page.evaluate(() => {
+    const t = document.querySelector('.bt-npcdlg-text');
+    return t ? (t.textContent || '').trim() : null;
+  });
+  /* on to his last line, where Race! is */
+  const toRaceGo = async () => {
+    for (let i = 0; i < 8; i++) {
+      if (await P.page.evaluate(() => !!document.querySelector('[data-qa="race-go"]'))) return true;
+      await P.page.evaluate(() => { const b = document.querySelector('.bt-npcdlg-next'); if (b) b.click(); });
+      await P.page.waitForTimeout(250);
+    }
+    return P.page.evaluate(() => !!document.querySelector('[data-qa="race-go"]'));
+  };
   await H.enterWorld(P);
+  const stopAlive = H.keepAlive(P);   /* v2.3.3583: the lost lap waits on his time; a real key keeps the page in */
   const there = await H.waitFor(P, (S) => ({ z: S.currentZone, loading: !!S._zoneLoading, lil: !!(S.npcs || []).find((n) => n && n.name === 'Lil Bro') }),
     (v) => v.z === 'wheel' && !v.loading && v.lil, { timeout: 120000, label: 'the Wheel, Lil Bro on the square' }).catch(() => null);
   rec.ok('in the Wheel\'s BroTown, Lil Bro on the square', !!there, there);
@@ -77,7 +105,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const jumped = await H.devOp(wsPort, 'tour', myId, { at: 'race_1' });
   rec.ok('the tour jumped to Lil Bro\'s race (race_1 on offer)', !!jumped && jumped.ok === true, jumped);
   await P.page.waitForTimeout(1500);
-  rec.ok('walking up to Lil Bro opens his offer', await walkUpToLil());
+  rec.ok('walking up to Lil Bro and tapping him opens his offer', await walkUpToLil());
   const landed = await H.advanceNpcDialogue(P);
   const offerText = await P.page.evaluate(() => { const c = document.querySelector('.bt-qoffer'); return c ? c.innerText : ''; });
   rec.ok('...his lines lead to the offer: Race Day', landed === 'offer' && /Race Day/.test(offerText), { landed, offerText: offerText.slice(0, 120) });
@@ -85,7 +113,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1500);
 
   /* ── 2. his "how's it going" line carries Race! ── */
-  rec.ok('walking back up opens his line again', await walkUpToLil());
+  rec.ok('walking back up and tapping him opens his line again', await walkUpToLil());
   for (let i = 0; i < 8; i++) {
     const lastLine = await P.page.evaluate(() => !!document.querySelector('[data-qa="race-go"]'));
     if (lastLine) break;
@@ -129,9 +157,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
      while he runs */
   await P.page.evaluate(() => {
     window.__lilCells = [];
+    /* v2.3.3583: and through the lap, did any townsperson's window open, and
+       how close did you pass the Mayor (the owner's case) */
+    window.__lapWins = 0; window.__lapMayor = Infinity;
     window.__lilCellTimer = setInterval(() => {
       const d = (window.__btNpcSprites ? window.__btNpcSprites() : []).find((n) => n.name === 'Lil Bro');
       if (d && typeof d.frame === 'number') window.__lilCells.push(d.frame);
+      if (document.querySelector('.bt-npcdlg, .bt-qoffer')) window.__lapWins += 1;
+      const S = window._gameState && window._gameState.current;
+      const m = S && (S.npcs || []).find((n) => n && n.id === 'mayor_bro');
+      if (m && S.player) window.__lapMayor = Math.min(window.__lapMayor, Math.hypot(m.x - S.player.x, m.y - S.player.y));
     }, 50);
   });
   let roadOk = 0, greens = 0;
@@ -148,6 +183,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const lilRan = await H.readState(P, (S) => { const n = (S.npcs || []).find((o) => o && o.name === 'Lil Bro'); return n ? { x: n.x, y: n.y } : null; });
   rec.ok('Lil Bro ran the course from the gun (he left his spot)', !!lil0 && !!lilRan && Math.hypot(lilRan.x - lil0.x, lilRan.y - lil0.y) > 200, { lil0, lilRan });
   const lilCells = await P.page.evaluate(() => { clearInterval(window.__lilCellTimer); return window.__lilCells || []; });
+  const lap = await P.page.evaluate(() => ({ wins: window.__lapWins, mayorPx: Math.round(window.__lapMayor) }));
+  rec.ok(`no townsperson's window opened during the lap (closest to Mayor Bro ${lap.mayorPx} px)`, lap.wins === 0, lap);
   const runCells = [...new Set(lilCells.filter((c) => c < 8))].sort((a, b) => a - b);
   rec.ok(`...on his jog's own cells as he ran (${runCells.join(', ') || 'none'} of 0-7; ${lilCells.length} samples)`,
     runCells.length >= 4 && lilCells.every((c) => c >= 0 && c <= 8), { runCells, samples: lilCells.length });
@@ -164,7 +201,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* his claim, when you walk up (he has finished his lap and is home) */
   await P.page.waitForTimeout(16000);
-  rec.ok('walking up to Lil Bro now opens the claim', await walkUpToLil());
+  rec.ok('walking up to Lil Bro and tapping him now opens the claim', await walkUpToLil());
   const claimed = await H.claimOnLastLine(P);
   rec.ok('...and his last line\'s "Claim reward" pays it', claimed);
   await P.page.waitForTimeout(2200);
@@ -208,5 +245,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('walked off the line before the gun: the worker calls a false start, and the card offers Race again',
     !!early && early.err === 'early' && early.again && /False start/.test(early.text), early);
 
+  /* ── 6. v2.3.3583: a lost race, and Lil Bro owning up to it ── */
+  await H.clickSel(P, '[data-race-ok]').catch(() => {});
+  await P.page.waitForTimeout(800);
+  await walkUpToLil();
+  const before6 = await lineText();
+  rec.ok('6: after a false start his line is still the dare as written (a false start is not a loss)',
+    /^Scared\?!/.test(before6 || ''), before6);
+  const go6 = await toRaceGo();
+  await H.clickSel(P, '[data-qa="race-go"]').catch(() => {});
+  const gun6 = await H.waitFor(P, (S) => S._race && S._race.phase, (ph) => ph === 'run', { timeout: 9000, label: 'the gun' }).catch(() => null);
+  rec.ok('6: Race! again, and the gun', go6 && gun6 === 'run', { go6, gun6 });
+  /* he finishes first: his time and a beat, standing on the line, then the lap */
+  const lilMs = await H.readState(P, (S) => (S._race && S._race.lilMs) || 0);
+  await P.page.waitForTimeout(lilMs + 1500);
+  const flags6 = await H.readState(P, (S) => (S._race && S._race.flags ? S._race.flags.map((f) => [f[0], f[1]]) : []));
+  for (const f of flags6) {
+    await H.hopTo(P, f[0], f[1], { step: 95, gap: 250 });
+    await P.page.waitForTimeout(300);
+  }
+  const lost6 = await H.waitFor(P, () => {
+    const c = document.querySelector('[data-race="done"]');
+    return c ? { won: c.getAttribute('data-race-won'), err: c.getAttribute('data-race-err'), text: (c.innerText || '').replace(/\s+/g, ' ').trim() } : null;
+  }, (v) => !!v, { timeout: 12000, label: 'the lost race\'s card' }).catch(() => null);
+  rec.ok(`6: the lap run behind him (his ${(lilMs / 1000).toFixed(1)} s): the card says Lil Bro wins`,
+    !!lost6 && lost6.won === '0' && !lost6.err && /Lil Bro wins/.test(lost6.text), lost6);
+  await H.clickSel(P, '[data-race-ok]').catch(() => {});
+  await P.page.waitForTimeout(800);
+  await walkUpToLil();
+  const after6 = await lineText();
+  rec.ok('6: ...and his line owns up to it, in his voice ("GG EZ! I wasn\'t even trying!")',
+    /^GG EZ! I wasn't even trying!/.test(after6 || ''), after6);
+  rec.ok('6: ...and still ends on Race! for the rematch', await toRaceGo());
+
+  stopAlive();
   await P.ctx.close().catch(() => {});
 }

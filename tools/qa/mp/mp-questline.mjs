@@ -243,6 +243,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const who = await dlgName();
       if (who === null || who === name) return open;   /* his, or the offer panel (no name) */
       await H.closeNpcDialogue(P);
+      /* v2.3.3583: and tap him -- his window no longer opens as you stand
+         there (a townsperson talks on a tap only: BroTown NPC_PROX_OPENS) */
+      await H.talkToNpc(P, id);
       await P.page.waitForTimeout(1100);
       open = await H.npcDialogueOpen(P);
     }

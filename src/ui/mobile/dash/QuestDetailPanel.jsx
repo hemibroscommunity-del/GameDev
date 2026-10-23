@@ -132,7 +132,9 @@ export const QuestDetailPanel = () => {
           calmly and in full.
           Proximity is what makes this reasonable: since v2.3.1701 his dialogue
           opens on its own when you walk up to him, so "go and see him" costs a
-          walk and no tapping. */}
+          walk and no tapping.
+          v2.3.3583: no longer -- a townsperson talks when you tap him (the
+          owner: "tap only instead of proximity based"), so the line says so. */}
       {status === 'Ready' && (
         <div style={{
           margin: '6px 0 8px',
@@ -145,8 +147,8 @@ export const QuestDetailPanel = () => {
             Ready to hand in — go and see {quest.npc}.
           </div>
           <div style={{ fontSize: 12, lineHeight: 1.45, color: COL.text2, marginTop: 3 }}>
-            Walk up to {quest.npc} in town and he&rsquo;ll open the conversation
-            himself. He pays the reward there.
+            Find {quest.npc} in town and tap him to talk. He pays the reward
+            there.
           </div>
         </div>
       )}
