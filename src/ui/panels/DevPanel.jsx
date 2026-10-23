@@ -289,6 +289,7 @@ const CAP_GATES = [
   'pvpextras' /* v2.3.3264: what a hit does to a monster it does to a player -- a gem's status, a collision, the splash, the burst, the bash, whirlwind and lunge, a kill's heal, a parry's stagger (server/src/pvpextras.js) -- lower case, a kill switch */,
   'spar' /* v2.3.3265: the Sparring section below -- clones of you that fight you through the real PvP code (server/src/spar.js) -- lower case, a kill switch */,
   'achievements' /* v2.3.3527: the worker grants achievements and pays their AP (server/src/achievements.js): the Achievements page in More, a big one's banner, the arena's 500 AP on the first win, the AP board -- lower case, a kill switch */,
+  'nostatcap' /* v2.3.3578: no cap on how many points a stat holds (server/src/statcap.js): the Points window's [+] stops greying at your level -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported

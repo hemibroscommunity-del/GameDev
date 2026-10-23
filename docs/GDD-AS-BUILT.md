@@ -218,7 +218,7 @@ Nine tabs in a 3×3 grid, opening on Skin: **Hair** (none + 8 styles, 14 colours
 | At a level-up | HP, stamina and mana fully restored; 3 **lane points** stamped to the skill that earned them, and 3 **shared points** when your character level rises (a weapon below your best pays its own lane points only; v2.3.3538). |
 | Lane points | buy only that weapon's six offense stats; shared points buy only the seven body stats. |
 | Spending | a stat's window: a [−] n [+] count with a now → after preview, then Spend. The count starts at 0 and [+] adds every point, the last one too (v2.3.3577); the window stays after a spend. A free **points reset** (v2.3.3541) gives every placed point back: two taps on the Points tab's "Reset points (free)", refused in a fight and within a minute of the last one; levels, XP and gear kept. Waiting points make the Character tab glow and the counts in the Points tab's gold weapon and character frames breathe (v2.3.3559, the owner's art: gold with points, grey at 0). |
-| Bound | a stat may hold no more points than your character level; Power, Luck, Special and Elemental may hold twice that. |
+| Bound | none (v2.3.3578, owner: "Remove stat cap."): a stat takes every point you have for it, up to the 999 storage bound; what keeps one stat from running away is the curve below and the 10% floor under Dodge and Defense. Until then a stat held at most your character level, Power, Luck, Special and Elemental twice that, and Max HP, Stamina and Max Mana 100. `nostatcap: false` in the live flags brings that back. |
 
 **Per-weapon lane stats** (six per skill), all on the front-loaded curve `max × q / (q + k)`:
 
@@ -235,12 +235,12 @@ Nine tabs in a 3×3 grid, opening on Skin: **Hair** (none + 8 styles, 14 colours
 
 | Stat | Rule | 5 pts | 20 pts | Uses the edge | What it does |
 |---|---|---|---|---|---|
-| Max HP | +40 per point, cap 100 | +200 | +800 | no | the bar |
+| Max HP | +40 per point, no cap (100 until v2.3.3578) | +200 | +800 | no | the bar |
 | Defense | 90% max, k 7 | 38% | 67% | yes | cut on a base hit |
 | Dodge | 90% max, k 7 | 38% | 67% | yes | a base hit misses outright |
 | Resist | 90% max, k 7 | 38% | 67% | yes | cut on an elemental hit (the only stat an elemental hit meets) |
-| Stamina | +3 per point, cap 100 | +15 | +60 | no | the bar and the block ladder |
-| Max Mana | +2.5 per point, cap 100 | +12.5 | +50 | no | the bar and the block ladder |
+| Stamina | +3 per point, no cap (100 until v2.3.3578) | +15 | +60 | no | the bar and the block ladder |
+| Max Mana | +2.5 per point, no cap (100 until v2.3.3578) | +12.5 | +50 | no | the bar and the block ladder |
 | Move Speed | +35% max, k 10 | +12% | +23% | no | walk speed |
 
 Dodge and Defense together never let less than 10% of a base hit through. Elemental damage today is a short list: the fire goblin's ground fire, the blue slime's burst, storm arcs and burn/poison ticks; every ordinary swing is base damage. The lifetime supply is 297 lane points per lane against 525 lane sinks (lane pools stay scarce), and 891 shared points against 625 shared sinks (every shared stat can be maxed by about character level 220).

@@ -135,8 +135,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
        this wants without switching anything.
        Kept as an aria-label match rather than a `[data-prog3-row="sword:luck"]`
        lookup on purpose: what this scenario is about is that the handle a
-       PLAYER can find opens a window, and the label is what names it. */
-    const pills = [...document.querySelectorAll('[data-prog3-grid] [role="button"][aria-label*=" of "]')]
+       PLAYER can find opens a window, and the label is what names it.
+       v2.3.3578: the label no longer says " of <cap>" once a stat has no cap
+       (caps.nostatcap: "Luck for sword, 4 points."), so the button is found
+       by its [+] handle and still matched by the label it reads. */
+    const pills = [...document.querySelectorAll('[data-prog3-grid] [role="button"][data-prog3-plus]')]
       .filter((d) => /^luck/i.test(d.getAttribute('aria-label') || ''));
     const el = pills[0];
     /* v2.3.2597: and it moved again, onto the [+], because the owner then made

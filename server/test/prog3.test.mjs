@@ -237,6 +237,10 @@ const psA = room.playerState.pa;
 {
   const sess = { id: 'pa' };
   const p3 = psA.prog3;
+  /* v2.3.3578: the per-level bound these pin is kept only by the
+     `nostatcap: false` switch now -- the owner's "Remove stat cap."
+     (statcap.js); stat-cap.test.mjs pins no cap and the switch both ways. */
+  room._liveFlags = { nostatcap: false };
   /* v2.3.2592: hp is a SHARED stat now, so the pool that gates it is the
      shared one — an empty shared pool (and no unchannelled remainder)
      refuses, whatever the lane pools hold.  The level-up in §3 minted 3
@@ -340,6 +344,7 @@ const psA = room.playerState.pa;
   room._handleProg3Allocate(sess, { stat: 'dodge' });
   check('...the 100th Dodge point lands and the 101st bounces', p3.alloc.dodge === 100 && p3.shared === 198, { dodge: p3.alloc.dodge, shared: p3.shared });
   p3.alloc.dodge = 0;
+  room._liveFlags = null;   /* v2.3.3578: no cap again for the rest */
 }
 
 // ── 5. Combat math: defense, dodge, dropped channels ──
@@ -546,9 +551,11 @@ const psA = room.playerState.pa;
   check('sanitize floors xp at 0', dirty.sk.sword.xp === 0, dirty.sk.sword);
   /* v2.3.2680: a curve stat's `cap` is the 999 STORAGE bound (the curve has
      no design cap; the per-level bound binds at spend time), and a pool
-     keeps its real cap — so HP clamps to 100 and Dodge / Luck to 999. */
+     keeps its real cap — so HP clamps to 100 and Dodge / Luck to 999.
+     v2.3.3578: the pools' 100 is lifted with the per-stat cap (statcap.js):
+     every row's bound is the 999 storage bound, HP's too. */
   check('sanitize clamps body alloc to caps, drops unknown keys',
-    dirty.alloc.hp === 100 && dirty.alloc.dodge === 999 && !('bogus' in dirty.alloc), dirty.alloc);
+    dirty.alloc.hp === 999 && dirty.alloc.dodge === 999 && !('bogus' in dirty.alloc), dirty.alloc);
   check('sanitize clamps per-type offense and drops unknown cats/keys',
     dirty.atk.sword.luck === 999 && dirty.atk.sword.range === 0
       && !('bogus' in dirty.atk.sword) && !('nosuchcat' in dirty.atk), dirty.atk);
@@ -1346,7 +1353,9 @@ const psA = room.playerState.pa;
 
   /* The per-level bound, per stat (owner: "keep per level limit on those
      3"): 1 × character level on Defense/Dodge/Resist, 2 × on the four damage
-     stats.  Character 10 here. */
+     stats.  Character 10 here.
+     v2.3.3578: kept only by the `nostatcap: false` switch now (statcap.js). */
+  room._liveFlags = { nostatcap: false };
   const sess = { id: 'rb' };
   room.playerState.rb = { prog3: { sk: { sword: { level: 8 }, bow: { level: 1 }, staff: { level: 1 } },
     alloc: { dodge: 10 }, atk: prog3FreshAtk(), pool: 50, poolBy: { sword: 50, bow: 0, staff: 0 }, shared: 50, ppl: 3, spl: 3 } };
@@ -1361,6 +1370,7 @@ const psA = room.playerState.pa;
   room._handleProg3Allocate(sess, { stat: 'dmg', cat: 'sword' });
   check('...up to 20, and no further', rb.prog3.atk.sword.dmg === 20, rb.prog3.atk.sword.dmg);
   delete room.playerState.rb;
+  room._liveFlags = null;   /* v2.3.3578 */
 
   /* The edge on YOUR hits: Power's multiplier fades against a target above
      the lane's own trained level, and is whole at or below it. */
