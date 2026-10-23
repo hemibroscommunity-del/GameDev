@@ -208,9 +208,12 @@ export const slimeBossMethods = {
     const zone = own(ZONES, inst.cfg.home) ? ZONES[inst.cfg.home] : null;
     if (!list || !zone || !Array.isArray(zone.spawns) || !zone.spawns.length) return [];
     const spawn = zone.spawns[zone.spawns.length - 1];
+    /* v2.3.3573: the arena's floor, the box every shove keeps a monster in
+       (dungeon.js _monsterBox) -- it was (height - 2) tiles down, inside the
+       three-row bottom wall */
     const T = this.TILE;
-    const minX = 2 * T, maxX = (inst.cfg.width - 2) * T;
-    const minY = WHEEL_DUNGEON.TOP_ROW * T, maxY = (inst.cfg.height - 2) * T;
+    const box = this._monsterBox(inst.zone) || { x0: 2 * T, x1: (inst.cfg.width - 2) * T, y0: WHEEL_DUNGEON.TOP_ROW * T, y1: (inst.cfg.height - 4) * T };
+    const minX = box.x0, maxX = box.x1, minY = box.y0, maxY = box.y1;
     const seq = inst._splitSeq = (inst._splitSeq || 0);
     const ids = [];
     const turn = Math.random() * Math.PI * 2;

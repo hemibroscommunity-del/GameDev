@@ -517,7 +517,7 @@ import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h jo
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
 import { isWheelTrialZone, footstepSurface, setWheelArrival } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown; v2.3.3574: + the spot a recovery reload puts you back on */
-import { wheelDoorAt, enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks */
+import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks; v2.3.3573: + a party dungeon's line */
 import { wheelObjectsInfo } from '@/game/wheelTrial.js';
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
 import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
@@ -6560,9 +6560,12 @@ export var BroTown = function BroTown(_ref0) {
                 /* v2.3.2761 (owner: sounds for the specific actions): for fishing
                    the window opening IS the bite -- a fish on the hook, now reel. */
                 if (_ex.skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('fish-on-hook', { vol: 0.65 }); } catch (e) {} }
-                /* v2.3.3343: ...and for the rest a small bright tick that says
-                   "now" -- this was a beep(), silent (SOUND-GAPS) */
-                else cue('gatherReady');
+                /* v2.3.3572: and for the rest NOTHING -- v2.3.3343's "small
+                   bright tick" (cue gatherReady, sword-hit2 at 1.6x) was the
+                   owner's "splat sound when the ore is ready for the gesture
+                   cue (reaches 0hp) ... it needs to be removed".  The rock,
+                   tree or pan at 0 and the cue on screen say it; the swings'
+                   own strikes lead up to it (mp-gatherquiet). */
               }
             }
             /* v2.3.1416 (owner: "all resources NOT have a time out window
@@ -14581,7 +14584,13 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 11,
       marginRight: 4
     }
-  }, "E"), "\u2694\uFE0F Enter " + ((stateRef.current._nearWheelDoor && stateRef.current._nearWheelDoor.name) || 'the dungeon')),
+  }, "E"), "\u2694\uFE0F Enter " + ((stateRef.current._nearWheelDoor && stateRef.current._nearWheelDoor.name) || 'the dungeon'),
+  /* v2.3.3573: a party dungeon (the Goo Grotto: level 16, built for three)
+     says so under its name, so nobody walks in alone unwarned */
+  wheelDungeonDoorLine(stateRef.current, nearWheelDoor) && /*#__PURE__*/React.createElement("span", {
+    "data-door-line": "1",
+    style: { display: 'block', fontSize: 10.5, fontWeight: 600, opacity: 0.9, marginTop: 1 }
+  }, wheelDungeonDoorLine(stateRef.current, nearWheelDoor))),
   /* v2.3.3136: the bed you stand at on your farm, its next step as a button
      (and the seed it plants) -- ui/mobile/FarmBedPrompt.jsx */
   /*#__PURE__*/React.createElement(FarmBedPrompt, { stateRef: stateRef, hidden: buildingPanel !== null || !!showPetHouse }),

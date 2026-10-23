@@ -40,6 +40,11 @@ from PIL import Image
 
 SPRITES = 'public/sprites/world/'
 ICONS = 'public/icons/items/'
+# v2.3.3571: the bag's copper ore is the owner's painted lump now
+# (tools/ui/cut-owner-items.py); the iron, black steel, titanium and obsidian
+# icons were recoloured from the OLD one, kept here as it was, so a run of this
+# tool makes them as they are and never recolours the owner's copper.
+ORE_LUMP = 'assets/icons-source/ore-copper-lump.webp'
 
 # Ramp stops: (brightness 0..1, (r, g, b)), 0 the outline, 1 the glint.
 RUST = [(0.00, (40, 16, 10)), (0.35, (120, 48, 28)), (0.60, (178, 92, 58)), (0.85, (226, 160, 120)), (1.00, (250, 215, 190))]
@@ -146,7 +151,7 @@ def past20():
         path = SPRITES + 'ore-vein-' + name + '-418.webp'
         out.save(path, 'WEBP', quality=90, method=6)
         print('wrote', path)
-    ore = Image.open(ICONS + 'ore-copper.webp').convert('RGBA')
+    ore = Image.open(ORE_LUMP).convert('RGBA')   # v2.3.3571: the OLD copper lump, not today's bag icon
     for name, pick in (('titanium', icon_ore(TITANIUM, IRONSTONE)), ('obsidian', icon_ore(OBSIDIAN, DARKROCK))):
         path = ICONS + 'ore-' + name + '.webp'
         remap(ore, pick).save(path, 'WEBP', quality=90, method=6)
@@ -175,7 +180,7 @@ def main():
         path = SPRITES + 'ore-vein-' + name + '-418.webp'
         out.save(path, 'WEBP', quality=90, method=6)
         print('wrote', path)
-    ore = Image.open(ICONS + 'ore-copper.webp').convert('RGBA')
+    ore = Image.open(ORE_LUMP).convert('RGBA')   # v2.3.3571: the OLD copper lump, not today's bag icon
     for name, pick in (('iron', icon_ore(RUST, IRONSTONE)), ('black-steel', icon_ore(GUNMETAL, SLATE))):
         path = ICONS + 'ore-' + name + '.webp'
         remap(ore, pick).save(path, 'WEBP', quality=90, method=6)

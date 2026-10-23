@@ -56,3 +56,29 @@ export const WHEEL_DUNGEON_FLOOR = {
    wall, where the Workshop puts it, is never stepped on.  You arrive SPAWN_UP
    rows above the door. */
 export const WHEEL_ARENA = { W: 36, H: 52, WALL: 1, BOTTOM_WALL: 3, SPAWN_UP: 7 };
+
+/* ═══ v2.3.3573: A DUNGEON BUILT FOR A PARTY -- THE GOO GROTTO ═══
+   The owner: "I want the goo grotto dungeon to be very difficult without a
+   party of 2-3 people."  A land here is a dungeon of `level` whoever comes in,
+   its boss sized for `size` players: the phone says so where the place's
+   levels were (the world map's "Lv 16 · 2–3 players", the line at
+   its mouth), against caps.partydungeon -- an older worker still plays the
+   place's levels, and the phone says those (game/wheelDungeons.js
+   wheelDungeonParty).  MIRROR: server/src/wheeldungeon.js WHEEL_DUNGEON.PARTY
+   (mirror-audit). */
+export const WHEEL_DUNGEON_PARTY = { verdant: { level: 16, size: 3 } };
+
+/* The words (game/wheelDungeons.js says when): the world map's line under a
+   dungeon's name, and the line under the Enter button at its mouth.  `party`
+   a row of WHEEL_DUNGEON_PARTY, or null for a dungeon sized by who comes in.
+   The map's party line leaves "dungeon ·" out: a label is drawn only where it
+   clears the ones before it, and "dungeon · Lv 16 · 2–3 players", twice the
+   old line's width, lost to the stage's name at the zoom you reach it at
+   (mp-googrotto); "Lv 16 · 2–3 players" is about the old one's. */
+export function dungeonLevelsLine(party, levels) {
+  if (party) return `Lv ${party.level} · ${party.size - 1}–${party.size} players`;
+  return Array.isArray(levels) ? `dungeon · Lv ${levels[0]}–${levels[1]}` : 'dungeon';
+}
+export function dungeonDoorLine(party) {
+  return party ? `Lv ${party.level} · for ${party.size - 1}–${party.size} players` : null;
+}

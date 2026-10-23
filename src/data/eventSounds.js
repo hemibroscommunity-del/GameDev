@@ -238,9 +238,10 @@ export const EVENT_SOUNDS = {
      quick); the fire catching: the pan's crackle swelling and fading. */
   fireStrike: [['mine-strike', 0.55, 0.15, 0.25, 1.6], ['mine-strike', 0.55, 0.12, 0.2, 1.75, 0.22]],
   campfire: [['pan-sizzle', 0.3, 1.2, 1.6, 0.9, 0, 0.5]],
-  /* A harvest's gesture cue opening (fishing's is the fish's bite): a small
-     bright tick, ~0.45. */
-  gatherReady: [['sword-hit2', 0, 0.2, 0.25, 1.6, 0, 0.05]],
+  /* v2.3.3572: `gatherReady`, a harvest's gesture cue opening, is gone -- the
+     owner: "there's a splat sound when the ore is ready for the gesture cue
+     (reaches 0hp) ... it needs to be removed" (sword-hit2 at 1.6x, v2.3.3343).
+     The window opens quietly; fishing's keeps the fish's bite (BroTown). */
   /* A building catching fire: a whoomp of air and a hiss, by distance. */
   fireCatch: [['whirlwind', 0.3, 0.5, 0.3, 1.4, 0, 0.12], ['pan-sizzle', 0.3, 1, 1.6, 1, 0.05, 0.35]],
   /* A broken object mended, a signpost popping up: small knocks of wood. */

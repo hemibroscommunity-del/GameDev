@@ -266,17 +266,87 @@ picks: 1b, 2a, T3.3, T20.2, ... T128.1"* -- 72 codes (1b and 2a were #1020's).
 
 | Where | Codes |
 |---|---|
-| The bag | T3.3 bow, T6.1 garden stew, T7.2 pine log, T29.1 maple, T30.1 hardwood, T31.1 cedar, T32.1 softwood, T8.3 copper bar, T19.2 iron bar, T20.2 black steel bar, T9.4 minnow, T33.1 cooked fish, T11.1 titanium ore, T24.1 wheat seeds, T26.1 strawberry seeds, T36.1 pickaxe, T37.1 axe, T38.2 the Potions tab |
+| The bag | T3.3 bow (since v2.3.3571 the menu's alone, below: the bag keeps the pine bow), T6.1 garden stew, T7.2 pine log, T29.1 maple, T30.1 hardwood, T31.1 cedar, T32.1 softwood, T8.3 copper bar, T19.2 iron bar, T20.2 black steel bar, T9.4 minnow, T33.1 cooked fish, T11.1 titanium ore, T24.1 wheat seeds, T26.1 strawberry seeds, T36.1 pickaxe (replaced by the owner's own in v2.3.3571, below), T37.1 axe, T38.2 the Potions tab |
 | More and the dashboard | T54.4 Ranks (the gold trophy), T52.2 Character (the magnifier), T55.2 Dashboard, T59.1 Journey, T60.1 Codex, T62.1 Friends, T63.2 Login Key, T64.1 Settings, T65.2 Feedback |
 | The Points window and the Equipment pills | T69.2 luck, T70.2 special, T71.2 element, T72.2 Max HP, T74.2 Max Mana, T75.2 stamina, T76.2 dodge, T77.1 move speed, T78.1 elemental resist |
 | Buffs, elements, the HUD | T84.3 cursed, T85.3 bleed, T90.3 XP, T91.3 speed, T92.1 flame, T97.4 Jump, T98.3 Element Burst, T107.2 the sword's special, T108.2 the bow's, T109.1 the generic special |
 | The right stick | T99.2 talk, T100.3 door, T101.3 sleep, T102.1 dig, T103.2 plant, T104.3 water, T105.1 fertilize, T106.1 harvest |
 | Marks and windows | T50.2 the duel card, T51.1 the player card's close, T111.1 the party badge, T113.1 the threat skull (still tinted red), T115.3 the gold coin, T116.1 Journey's coin pile, T118.1 the chat's smiley, T121.1 the Forge tab, T123.1 the Bank, T125.1 the Market, T127.1 the mail, T128.1 the Saloon |
 
+## v2.3.3571: the owner's copper ore and pickaxe, and the bag's bow pine again
+
+The owner, 2026-10-22, with one picture of a copper ore lump and a pickaxe:
+"Ok change the art style of the copper ore and the pickaxe to this.  Also
+revert the inventory art of the bow back to the original one (pine) because I
+think you mistook the bow icon to replace inventory art when I only wanted it
+to replace the menu art for the bow."
+
+![before and after](../shots/copper-pickaxe-bow.webp)
+
+**The copper ore and the pickaxe.** `tools/ui/cut-owner-items.py` cuts both out
+of the owner's picture (kept as supplied in
+`assets/icons-source/owner-2026-10-22/`). The two are found by their columns
+(it refuses to write unless it finds exactly two), each cut as card 11's
+`alpha` mode cuts (the haze of alpha 1-4 round them dropped, the remover's
+~252 lifted to solid), and written over today's files on today's canvases at
+the share today's pictures fill:
+- `icons/items/ore-copper.webp`, 256 x 256, its larger side 200 px;
+- `icons/items/mining-pickaxe.webp`, 192 x 192, its larger side 190 px.
+
+So everything that drew them draws the new ones at the same size:
+- the bag;
+- the Smelting rows and the quest cards;
+- the ore flying to the bag;
+- the mining gesture's cue;
+- the label over every rock. Its crop box in nodeLabels.js is the pickaxe's
+  measured opaque box, `[9, 1, 174, 190]`; it had been left at an older
+  pickaxe's.
+
+**A broken copper rock pops the bag's copper now.** Every other tier already
+popped its bag picture. Copper popped an older pixel nugget of its own
+(`icons/ore/ore-copper.webp`), though its comment said it was the bag's.
+
+**What is NOT this picture:**
+- the copper rock in the world. It is pixel art at the world's own scale
+  (`public/sprites/ore/`, tools/world/add-ore-art.mjs).
+- the iron, black steel and obsidian ore icons. They were recoloured from the
+  OLD copper lump by `tools/make_tier_art.py`. That lump is kept at
+  `assets/icons-source/ore-copper-lump.webp`, and the tool reads it now, so a
+  run never recolours the owner's copper.
+- titanium. It is card 11's T11.1.
+
+All four of those still look as they did.
+
+**The bow.** Card 11 described T3.3 as "Bow (bag, Equipment slot)". v2.3.3526
+wrote it over the bag's `icons/items/bow.webp`, the one file both used. Now:
+- `icons/items/bow.webp` is the pine bow again, byte for byte the file before
+  v2.3.3526. It is drawn in the bag (a spare bow's tile), the item card, a
+  drop's reveal, loot on the ground, the quest reward lines and the
+  Blacksmith's hardening row.
+- T3.3 is cut to its own file, `icons/ui/equip-bow.webp` (the same bytes as
+  before). `wpnIconSrc` draws it for the menu: the Character window's
+  Equipment slot, the weapon button under the stick (which v2.3.3005 keeps the
+  same as that slot) and the player card.
+
+**The record.** `tools/ui/owner-items.json` keeps each new file's SHA-256, size
+and opaque box. Card 11's JSON lists T36.1 as `replaced`, and its cutter no
+longer writes the pickaxe. Its `.sha256` keeps 70 files: the bow's line now
+names `equip-bow`.
+
 ## Tests
 
+- `server/test/owner-icons.test.mjs` §8 (v2.3.3571): the copper ore and the
+  pickaxe byte for byte the new cut, on today's canvases; the rock's label
+  cropped at the pickaxe's box; a copper rock popping the bag's copper; the
+  other ores from the old lump; the bag's bow the pine bow by its SHA-256 and
+  the menu's its own file; every place drawing the right one. Three mistakes
+  made on purpose (the old bow back in the bag, the old box, the menu on the
+  bag's file) each fail it. `mp-copperpick` shows it on a phone: the bag's
+  ore, pickaxe and spare bow as served, and the Equipment slot and the weapon
+  button wearing the new bow.
 - `server/test/owner-icons.test.mjs` §6 (v2.3.3526, card 11): every one of the
-  owner's 72 codes cut, already in the game or set aside with its reason; the 71
+  owner's 72 codes cut, already in the game, set aside with its reason, or
+  (T36.1, v2.3.3571) replaced by the owner's own later picture; the 70
   files the cutter wrote still byte for byte its own; each at its rule's size;
   the anvil and the smiley pointed at; Jump and the generic Special drawn as
   faces at a new address with their greys; the crown the owner's T112.2.

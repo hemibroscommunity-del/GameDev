@@ -203,6 +203,41 @@ export const dungeonMethods = {
   // Alive, connected players standing in the instance zone.  Zone
   // presence is the membership model: whoever walks in fights, whoever
   // is inside at the final kill gets paid.
+  /* ═══ v2.3.3573: A SHOVE NEVER PUTS A MONSTER IN THE WALL ═══
+     The box a monster in `zoneId` is kept inside when something moves it --
+     a hit's knockback (combat.js), a bash's shove and the whirlwind's pull
+     (abilities.js), a snowman's burrow (telegraph.js), the giant slime's
+     splits landing (slimeboss.js) -- as {x0, x1, y0, y1}, or null.  An
+     ordinary zone: its map less a tile, as each of those clamps always was.
+     A DUNGEON: its arena's floor.  Every clamp asked _getZoneConfig, which
+     knows no `dungeon:` zone, so nothing kept a shoved monster in: found by
+     the dungeon simulator (tools/dungeon-sim), a slime knocked into the Goo
+     Grotto's west wall stood where no sword reaches, and its wave -- which
+     waits for every monster -- never ended.  A world dungeon's floor is the
+     arena's less its walls (the phone's wheelArenaMap: one tile round it,
+     three at the bottom), from TOP_ROW, where a wave stands from, down; a
+     Workshop run's, its map less two tiles. */
+  _monsterBox(zoneId) {
+    const T = this.TILE;
+    const z = this._getZoneConfig(zoneId);
+    if (z) return { x0: T, x1: z.w * T - T, y0: T, y1: z.h * T - T };
+    if (typeof zoneId !== 'string' || !zoneId.startsWith('dungeon:') || !this._dungeons) return null;
+    const inst = this._dungeons.get(zoneId.slice('dungeon:'.length));
+    if (!inst || !inst.cfg) return null;
+    const W = inst.cfg.width * T, H = inst.cfg.height * T;
+    return inst.cfg.home
+      ? { x0: 2 * T, x1: W - 2 * T, y0: WHEEL_DUNGEON.TOP_ROW * T, y1: H - 4 * T }
+      : { x0: 2 * T, x1: W - 2 * T, y0: 2 * T, y1: H - 2 * T };
+  },
+
+  /* v2.3.3573: `m` moved back inside _monsterBox, if it has one */
+  _keepMonsterIn(zoneId, m) {
+    const b = this._monsterBox(zoneId);
+    if (!b || !m) return;
+    m.x = Math.max(b.x0, Math.min(b.x1, m.x));
+    m.y = Math.max(b.y0, Math.min(b.y1, m.y));
+  },
+
   _dungeonZonePlayers(zone) {
     const out = [];
     for (const [pid, ps] of Object.entries(this.playerState)) {
@@ -430,7 +465,10 @@ export const dungeonMethods = {
   _dungeonSpawnBoss(inst) {
     const list = this.monsters[inst.zone];
     if (!list) return;
-    const present = this._dungeonZonePlayers(inst.zone).length;
+    /* v2.3.3573: a party dungeon's boss (the Goo Grotto: wheeldungeon.js
+       WHEEL_DUNGEON.PARTY) is sized for its party however few come in --
+       one or two face the three-player boss; four, the four-player one */
+    const present = Math.max(this._dungeonZonePlayers(inst.zone).length, Math.floor(Number(inst.cfg.partySize) || 0));
     const scale = DUNGEONS.PARTY_HP_SCALE[Math.max(0, Math.min(present - 1, DUNGEONS.PARTY_HP_SCALE.length - 1))];
     /* v2.3.3016: a Wheel dungeon's boss is its land's strongest kind
        (wheeldungeon.js), scaled and armed below as any */
@@ -641,9 +679,10 @@ export const dungeonMethods = {
         m._attackingUntil = Math.max(m._attackingUntil || 0, now + 100);
         m.x += Math.cos(m._chargeAngle) * m._chargeSpeed;
         m.y += Math.sin(m._chargeAngle) * m._chargeSpeed;
-        // Never lunge out of the arena.
-        m.x = Math.max(this.TILE, Math.min(m.x, (inst.cfg.width - 1) * this.TILE));
-        m.y = Math.max(this.TILE, Math.min(m.y, (inst.cfg.height - 1) * this.TILE));
+        // Never lunge out of the arena.  v2.3.3573: its floor, the box a
+        // shove keeps every monster in (_monsterBox) -- it was a tile off the
+        // edge, into the walls the phone draws round it.
+        this._keepMonsterIn(inst.zone, m);
         this._markMonsterDirty(inst.zone, m.id);
         for (const pid of players) {
           const ps = this.playerState[pid];

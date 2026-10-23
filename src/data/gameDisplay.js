@@ -5492,12 +5492,13 @@ export const NPC_DATA = [{
   targetX: 1177, targetY: 1021,   /* v2.3.1813: likewise — the initial wander target, before the first steer overwrites it */
   chatTimer: 8000,
   chatBubble: null,
-  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
+  /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
   phrases: [
     "Another one washes ashore.",
-    "Plenty of civic work around here, if you aren't picky.",
-    "Don't ask about the town budget.",
-    "Vote Mayor Bro! Not that there's a ballot.",
+    "Plenty of work around here. \"Paid\" is a strong word.",
+    "Crime is down. Don't look it up.",
+    "I'd fix the roads, but potholes build character.",
+    "Vote Mayor Bro! There's no ballot, but it's the thought that counts.",
   ],
   canFollow: false,
   followZones: [],
@@ -5618,13 +5619,13 @@ export const NPC_DATA = [{
   chatTimer: 11000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
-  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
+  /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
   phrases: [
     "Betcha can't catch me!",
     "Bet you can't beat me round the square!",
-    "My bro says the Verdant Wilds are full of exploding slimes!",
-    "One day I'm gonna have a sword bigger than my whole body!",
-    "Did you see Bro Pond? It's got monster fish. Probably!",
+    "My bro says the Verdant Wilds are full of exploding slimes! He also said my face would freeze like this, so.",
+    "One day I'm gonna have a sword bigger than my whole body! Then nobody can make me go to bed!",
+    "Did you see Bro Pond? It's got monster fish. Probably! I've never actually been.",
   ],
   canFollow: false,
   followZones: [],
@@ -5736,12 +5737,12 @@ export const NPC_DATA = [{
   chatTimer: 9000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
-  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
+  /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
   phrases: [
-    "Pick a card. Any card. No, not that one, I need that one.",
-    "The house always wins, bro. And I'm the house.",
-    "Lost my hat in a bet once. Won it back, plus his pants.",
-    "Luck is a skill. Mostly mine.",
+    "Pick a card. Any card. Not that one. That one's mine.",
+    "The house always wins, bro. I'm the house. I'm also the door, the chair, and the guy counting.",
+    "Lost my hat in a bet once. Won it back, plus his.",
+    "I don't lose, bro. Some days I just win less.",
   ],
   canFollow: false,
   followZones: [],
@@ -5820,11 +5821,13 @@ export const NPC_DATA = [{
   chatTimer: 9000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
-  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
+  /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
   phrases: [
-    "Bones, hides, questionable meats—I pay cash.",
-    "Everything's for sale if your pouch is heavy.",
-    "Flood my market and I drop my prices, amigo. Simple economics.",
+    "Bones, hides, mystery meat — I buy it all, no questions.",
+    "Everything's for sale, amigo. Even the sign.",
+    "No refunds, amigo. If it broke, you held it wrong.",
+    "I don't sell junk. I sell \"vintage pre-owned loot.\"",
+    "Sell me too much of one thing and the price drops. That's not greed, that's math.",
   ],
   canFollow: false,
   followZones: [],
@@ -5913,11 +5916,13 @@ export const NPC_DATA = [{
   targetX: 392, targetY: 1178,
   chatTimer: 11000,
   chatBubble: null,
-  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
+  /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
   phrases: [
     "Bring me ore and we'll talk gains.",
-    "Copper first. Iron when your lats can handle it.",
-    "That blade's looking skinny, bro.",
+    "Copper first. Iron when your back can take it.",
+    "That blade's looking skinny, bro. Is it eating?",
+    "Cardio? Is that a type of sword?",
+    "My doctor says I have \"too much muscle.\" Okay, he said \"high blood pressure.\" Same thing.",
     "Never skip anvil day.",
   ],
   canFollow: false,
@@ -5978,10 +5983,11 @@ export const NPC_DATA = [{
   chatTimer: 13000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
-  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
+  /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
   phrases: [
-    "One log, one trap. One trap, one prayer.",
-    "Every land's got an apex predator. Even the cute ones.",
+    "One log, one trap. One trap, one chance. Usually zero.",
+    "Every zone's got a top predator. Even the cute ones. Especially the cute ones.",
+    "Day 42 outside the bakery. Food is running low. I might have to buy a croissant.",
     "Most traps break. That's trapping, bro.",
   ],
   canFollow: false,
@@ -6036,11 +6042,13 @@ export const NPC_DATA = [{
   chatTimer: 12000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
-  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
+  /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
   phrases: [
-    "Measure twice. Cut once. Cry internally.",
-    "Hardened wood. It understands pain.",
-    "Nobody ever brings me ethically sourced pine.",
+    "Measure twice, cut once, then measure again, because the first two were practice.",
+    "I can tell a tree's age by knocking on it. Nobody's ever asked me to, but I can.",
+    "I've written three books about pine, and the second one was mostly corrections to the first.",
+    "Don't touch the bench. Every knob is set to a number I calculated, and some of those took weeks.",
+    "Trees grow their rings in circles, which is the one thing I'd change about trees.",
   ],
   canFollow: false,
   followZones: [],
@@ -6070,11 +6078,13 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
-  /* v2.3.3570: the owner's rewrite (docs/specs/npc-dialogue-v2.md) */
+  /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
   phrases: [
-    "Slimes ate my carrots. Then they exploded!",
-    "Water your crops. Hydrate your soul, man.",
-    "Every bro gets a farm. Read the fine print!",
+    "Slimes ate my carrots. Then they exploded. Nobody's talking about it.",
+    "Water your crops, man. Drink some too. You look dry.",
+    "Do NOT let the Mayor near my compost. He knows what he did.",
+    "If a carrot talks to you, be polite. You're on its land.",
+    "Every bro gets a farm. It's in the town rules. I've read the town rules. Twice.",
   ],
   canFollow: false,
   followZones: [],
