@@ -38,6 +38,7 @@ import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3407: M */
 export function interactKind(S, opts) {
   if (!S) return null;
   if (opts && opts.npcFirst && S._nearNpc) return 'talk';   /* the right stick's order (runInteract) */
+  if (questWaits(S)) return 'talk';   /* v2.3.3583: E's order too (runInteract) */
   if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) return 'door';
   if (S._nearHouse) return 'sleep';
   if (S._nearWorkshop || S._nearWheelDoor || S._nearPetHouse) return 'door';
@@ -48,6 +49,22 @@ export function interactKind(S, opts) {
   if (gn && gn.alive) return 'gather';
   if (S._nearNpc) return 'talk';
   return null;
+}
+
+/* ═══ v2.3.3583: A QUEST BESIDE YOU COMES BEFORE A DOOR ═══
+   The owner: "change the npc dialog behavior to be tap only instead of
+   proximity based" -- so walking up to a townsperson opens nothing now
+   (BroTown NPC_PROX_OPENS).  On a phone the right stick's tap asks for the
+   character first (npcFirst, below).  E asked for a DOOR first, and the
+   givers stand by doors -- Mayor Bro at the Town Hall's steps -- so with the
+   walk-up gone, E beside the Mayor opened the Town Hall and a keyboard could
+   reach his quest only with the mouse.  A townsperson with a quest for you
+   (offered, under way or ready: what walking up used to open) now comes
+   before a door for E too; one with none leaves the door first, as before. */
+function questWaits(S) {
+  var npc = S && S._nearNpc;
+  if (!npc) return false;
+  try { return !!getNpcQuest(S.rpg, npc.name); } catch (e) { return false; }
 }
 
 export function setupDesktopControls(S, deps) {
@@ -128,6 +145,8 @@ export function setupDesktopControls(S, deps) {
          has its own Enter button, and Ace and Diego stand by theirs, so door
          first would never let the stick's tap reach them */
       if (opts && opts.npcFirst && S._nearNpc && runTalk()) return true;
+      /* v2.3.3583: and E for a townsperson with a quest for you (questWaits) */
+      if (questWaits(S) && runTalk()) return true;
       /* 1. Building (v2.3.3066: or a Wheel hall's door) */
       if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) {
         _desktopEnterBuilding();

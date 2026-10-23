@@ -22,10 +22,12 @@
  * In memory only (`S._race`, `S._raceLil`), like the worker's: a race lost to
  * a reconnect is run again.
  *
- * No imports but the sound cue, so the race's rules can be read by a node
- * test without the game.
+ * No imports but the sound cue (and v2.3.3583's tally, data/raceTally.js,
+ * which has none), so the race's rules can be read by a node test without
+ * the game.
  */
 import { cue } from '@/game/eventSounds.js';
+import { noteRaceLost } from '@/data/raceTally.js';   /* v2.3.3583: his next line knows he beat you (no imports of its own) */
 
 const LIL = 'Lil Bro';
 /* how long the phone waits for the worker to answer race_start before it
@@ -141,6 +143,11 @@ export function onRaceEnd(S, p) {
   /* a race that ends early (a false start, leaving the Wheel) stops the kid
      where he is: he walks home by himself (his wander, pathRadius 0) */
   if (res.err === 'early' || res.err === 'left') S._raceLil = null;
+  /* v2.3.3583: a race lost -- you finished behind him, or ran out of time --
+     is counted, and his next "how's it going" line owns up to it
+     (data/raceTally.js, gameSystems.js lilBroRaceLine).  A false start or a
+     race left early is not a loss. */
+  if (!res.won && (!res.err || res.err === 'late')) noteRaceLost();
   try {
     if (res.won) { cue('duelWin'); lilSays(S, 'Lag! That was LAG! REPORT!'); }
     else if (res.err === 'early') { cue('denied'); lilSays(S, "False start! That's a ban!"); }

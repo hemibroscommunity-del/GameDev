@@ -3247,6 +3247,18 @@ remnant to migrate server-side, not a mode to preserve.
         collection's bros are (hair cut below the brim left stray pixels);
         every display draws them pixelated, Diego's shop chip 32 px;
       - `mp-npclooks`: docs/specs/npc-creator-looks.md.
+  - Since v2.3.3583 A TOWNSPERSON TALKS ON A TAP ONLY -- the owner: "tap only
+    instead of proximity based. I keep opening dialog by accident":
+    - walking up opens nothing, Diego's shop included (BroTown
+      `NPC_PROX_OPENS`; v2.3.1701's opener kept behind `?npcprox`). Do not
+      add a walk-up opener back;
+    - a tap, the right stick's tap and E open one. E asks a townsperson
+      with a quest for you before a door (desktopControls `questWaits`);
+    - a test reaches one with `H.approachNpc`, which ends in
+      `H.talkToNpc` (the stick's tap);
+    - Lil Bro's line after he beats you owns up to it
+      (src/data/raceTally.js, gameSystems.js `lilBroRaceLine`);
+    - `mp-questprox`, `mp-race`: docs/specs/tap-to-talk.md.
   - Since v2.3.3127 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
     similar to the old FarmVille game ... Need to dig, plant seeds, fertilize,
     water", then, on the research (docs/FARMING-PLAN.md, its Phase 1): "Good.

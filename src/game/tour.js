@@ -43,14 +43,23 @@ export function tourOn(S) {
 }
 
 /** The button on a giver's line for `quest` at `status`, or null:
- *  { kind: 'race' | 'open', label, plot? } */
-export function questAction(quest, status, S) {
+ *  { kind: 'race' | 'open' | 'shop', label, plot? } -- `npc` the townsperson
+ *  whose line it is (the quest panel's npcRef) */
+export function questAction(quest, status, S, npc) {
   if (!quest || status !== 'active' || !S) return null;
   if (questObjectiveDone(quest, S)) return null;
   if (S.currentZone !== 'wheel') return null;
   if (quest.race) return (raceOn(S) && !raceLive(S)) ? { kind: 'race', label: 'Race!' } : null;
   const plot = quest.opens;
   if (plot && OPENS_LABEL[plot]) return { kind: 'open', plot, label: OPENS_LABEL[plot] };
+  /* ═══ v2.3.3583: A GIVER WHO KEEPS A SHOP, HIS SHOP ═══
+     Diego keeps his shop and gives fish_1.  While it ran, walking up to him
+     opened his shop and a tap gave his "how's it going" (BroTown's opener
+     skipped a quiet giver's progress); a townsperson talks on a tap only now
+     (the owner: "tap only instead of proximity based"), and a tap on him is
+     his quest's line until it is handed in -- so the line carries the way to
+     his shop, as the forge's and the bench's carry theirs. */
+  if (npc && npc.shop) return { kind: 'shop', label: 'Open the shop' };
   return null;
 }
 

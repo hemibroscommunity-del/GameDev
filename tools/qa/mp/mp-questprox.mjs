@@ -1,160 +1,259 @@
-/* The quest dialogue opens when you WALK UP to the giver (v2.3.1701).
+/* A TOWNSPERSON TALKS WHEN YOU TAP HIM, NEVER BY WALKING UP (v2.3.3583).
  *
- * Owner: "make the quest dialog with mayor bro pop up when you get in close
- * proximity to him instead of needing to tap him it's finicky right now
- * needing to tap him."  Landing a thumb on a 30px NPC while the camera drifts
- * is the finicky part; walking up to him is not.
+ * The owner, 2026-10-23: "I think I want to change the npc dialog behavior to
+ * be tap only instead of proximity based. I keep opening dialog by accident.
+ * Like racing lil bro past the mayor the mayor window talking to me opened
+ * up."  Until then this file proved the opposite -- v2.3.1701's walk-up opener
+ * (the owner then: "make the quest dialog with mayor bro pop up when you get
+ * in close proximity to him instead of needing to tap him") and its latch --
+ * which is put away now behind `?npcprox` (BroTown NPC_PROX_OPENS).
  *
- * What actually needs proving is not "it opens" — that is one line — but the
- * three ways a naive proximity opener is WORSE than the tap it replaces:
- *   1. it re-opens on the very next frame after you dismiss it, so you can
- *      never walk away from the quest giver;
- *   2. it re-opens forever while you stand still, for the same reason;
- *   3. it steals focus from a panel you deliberately opened.
- * The latch (open once per approach, released only after leaving a LARGER
- * radius) is what closes 1 and 2; S._uiBusy closes 3.  So this scenario
- * dismisses and stands still, then walks away and back, then taps.
+ * In the world's BroTown, on a phone:
+ *   1. standing right beside Mayor Bro, his quest waiting, opens nothing;
+ *   2. walking through him and on past opens nothing;
+ *   3. a tap on him, where a thumb lands, opens his window;
+ *   4. closed while standing there, it stays closed;
+ *   5. the right stick's tap opens it;
+ *   6. E on a keyboard opens it, his quest coming before the Town Hall's door
+ *      (desktopControls questWaits);
+ *   7. beside Diego no shop opens, and a tap on him opens it;
+ *   8. a READY quest: beside him nothing opens, and a tap opens the turn-in;
+ *   9. with `?npcprox` walking up opens him again (the switch works);
+ *  10. with Diego's quest under way (fish_1), his line carries "Open the
+ *      shop": walking up opened his shop then, and a tap is his quest's line.
  *
- * The tap path must survive as well — proximity is an addition, not a
- * replacement (mp-questui and mp-townlock both drive the tap).  The last
- * section proves the tap still opens the dialogue while the latch is armed,
- * which is also the only state where the two doors can be told apart.
- *
- * Position is set directly rather than driven through the joystick, the same
- * way mp-questui places the player: the loop reads S.player.x/y every frame,
- * so a teleport and a walk are indistinguishable to the code under test, and
- * a joystick drag would be testing the joystick.
+ * Moved to the world (it was on the old map's frozen list) as it was touched.
  */
 import * as H from './harness.mjs';
 
-export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Walker', wsPort, webPort });
-  await H.enterWorld(P);
-  await P.page.waitForTimeout(1500);
+const PHONE = { width: 390, height: 844 };
 
-  /* Place the player at an offset from Mayor Bro; returns the distance so a
-     failure says how far away he was rather than just "closed". */
-  const place = (dx, dy) => P.page.evaluate(({ ox, oy }) => {
+/* Put the player at an offset from a townsperson; returns where, so a failure
+   says how far away he was. */
+const place = (P, id, dx, dy) => P.page.evaluate(({ who, ox, oy }) => {
+  const S = window._gameState && window._gameState.current;
+  const npc = ((S && S.npcs) || []).find((n) => n && n.id === who);
+  if (!S || !npc || !S.player) return null;
+  S.player.x = npc.x + ox; S.player.y = npc.y + oy;
+  return { dist: Math.round(Math.hypot(ox, oy)), npc: { x: npc.x, y: npc.y } };
+}, { who: id, ox: dx, oy: dy });
+
+/* His torso in CSS px, where a thumb lands (the tap scan raises to y - 26). */
+const torsoCss = (P, id) => P.page.evaluate((who) => {
+  const S = window._gameState && window._gameState.current;
+  const c = document.querySelector('canvas');
+  const npc = ((S && S.npcs) || []).find((n) => n && n.id === who);
+  if (!S || !c || !npc || !S.camera) return null;
+  const r = c.getBoundingClientRect();
+  return {
+    x: Math.round(r.left + (npc.x - S.camera.x) * (S._worldScaleX || 1)),
+    y: Math.round(r.top + (npc.y - S.camera.y) * (S._worldScaleY || 1) - 26),
+  };
+}, id);
+
+/* The camera slides after the player (it was teleported beside him): wait
+   until it stands still, or the place measured is not where he is drawn by
+   the time the finger lands (the first run's tap at x 95 found nobody). */
+const settle = async (P, ms = 6000) => {
+  const end = Date.now() + ms;
+  let last = null;
+  while (Date.now() < end) {
+    const c = await P.page.evaluate(() => {
+      const S = window._gameState && window._gameState.current;
+      return S && S.camera ? { x: S.camera.x, y: S.camera.y } : null;
+    });
+    if (c && last && Math.hypot(c.x - last.x, c.y - last.y) < 0.5) return true;
+    last = c;
+    await P.page.waitForTimeout(250);
+  }
+  return false;
+};
+/* A thumb on his torso, once the camera has stopped; returns what the tap
+   scan decided (window.__btNpcTap). */
+const tapOn = async (P, id) => {
+  await settle(P);
+  const at = await torsoCss(P, id);
+  /* who else stands near that point, as the tap scan sees them (a failure
+     names them) */
+  const around = at ? await P.page.evaluate(({ x, y }) => {
     const S = window._gameState && window._gameState.current;
-    const npc = (S && S.npcs || []).find((n) => n && n.id === 'mayor_bro');
-    if (!S || !npc || !S.player) return null;
-    S.player.x = npc.x + ox; S.player.y = npc.y + oy;
-    return { dist: Math.hypot(ox, oy), npcX: npc.x, npcY: npc.y };
-  }, { ox: dx, oy: dy });
-  /* v2.3.1827: the quest card became two surfaces (his window, then the
-     offer) at v2.3.1820 — see the note in harness.advanceNpcDialogue.  What
-     this file tests is the LATCH, so "is either half up" is the right
-     question here and the walking is only needed where the turn-in is read. */
+    const c = document.querySelector('canvas');
+    if (!S || !c || !S.camera) return null;
+    const r = c.getBoundingClientRect();
+    return (S.npcs || []).map((n) => ({
+      id: n.id, alive: !!n.alive,
+      cx: Math.round(r.left + (n.x - S.camera.x) * (S._worldScaleX || 1)),
+      cy: Math.round(r.top + (n.y - S.camera.y) * (S._worldScaleY || 1) - 26),
+    })).filter((n) => Math.hypot(n.cx - x, n.cy - y) < 160);
+  }, at) : null;
+  if (at) await P.page.touchscreen.tap(at.x, at.y);
+  await P.page.waitForTimeout(900);
+  return { at, around, tap: await P.page.evaluate(() => window.__btNpcTap || null) };
+};
+
+const shopOpen = (P) => P.page.evaluate(() => !!(window.__broShopBus && window.__broShopBus.open));
+const near = (P) => P.page.evaluate(() => {
+  const S = window._gameState && window._gameState.current;
+  return {
+    npc: S && S._nearNpc ? S._nearNpc.id : null,
+    hall: !!(S && S._nearWheelBuilding && S._nearWheelBuilding.hall),
+    door: !!(S && (S.nearBuilding != null || S._nearWheelBuilding)),
+  };
+});
+
+/* A sample every 150 ms for `ms`: was any townsperson's window ever up? */
+const everOpen = async (P, ms) => {
+  const end = Date.now() + ms;
+  let seen = false;
+  while (Date.now() < end) {
+    if (await H.npcDialogueOpen(P) || await shopOpen(P)) seen = true;
+    await P.page.waitForTimeout(150);
+  }
+  return seen;
+};
+
+export async function run({ browser, wsPort, webPort, rec }) {
+  const P = await H.newPlayer(browser, { name: 'Tapper', wsPort, webPort, world: 'wheel',
+    viewport: PHONE, touch: true });
+  await H.enterWorld(P);
+  const stopAlive = [H.keepAlive(P)];
+  await P.page.waitForTimeout(1500);
   const open = () => H.npcDialogueOpen(P);
   const close = () => H.closeNpcDialogue(P);
 
-  /* ── start out of range, with nothing on screen ── */
-  const far = await place(420, 0);
-  rec.ok('Mayor Bro could be located in the world', !!far, far);
+  /* ── start out of reach, with nothing on screen ── */
+  const far = await place(P, 'mayor_bro', 420, 0);
+  rec.ok('Mayor Bro stands in the world\'s BroTown', !!far, far);
   await close();
   await P.page.waitForTimeout(600);
-  rec.ok('standing well away from him, no dialogue is open', !(await open()));
+  rec.ok('standing well away from him, no window is open', !(await open()));
 
-  /* ── 1. walking up opens it, with no tap ── */
-  await place(0, 34);
-  await P.page.waitForTimeout(900);
-  rec.ok('walking into range opens his dialogue with NO tap', await open());
+  /* ── 1. standing right beside him, his first quest waiting, opens nothing ── */
+  await place(P, 'mayor_bro', 0, 34);
+  const opened1 = await everOpen(P, 3000);
+  const n1 = await near(P);   /* after the wait: the game's own "who you stand with" */
+  rec.ok('1: standing right beside him, his quest waiting, opens NOTHING (3 s)',
+    !opened1 && n1.npc === 'mayor_bro', { opened: opened1, near: n1 });
 
-  /* ── 2. dismissing it while still standing there must STICK ── */
+  /* ── 2. walking through him and on past ── */
+  let opened2 = false;
+  for (let dx = -300; dx <= 300; dx += 30) {
+    await place(P, 'mayor_bro', dx, 20);
+    await P.page.waitForTimeout(150);
+    if (await open()) opened2 = true;
+  }
+  rec.ok('2: walking through him and on past opens nothing', !opened2);
+
+  /* ── 3. a tap on him, where a thumb lands ── */
+  await place(P, 'mayor_bro', 0, 34);
+  const t3 = await tapOn(P, 'mayor_bro');
+  rec.ok('3: a tap on him opens his window', await open() && !!t3.tap && t3.tap.result === 'quest', t3);
+
+  /* ── 4. closed while standing there, it stays closed ── */
   await close();
-  await P.page.waitForTimeout(1500);   // many frames of standing in range
-  rec.ok('dismissing it and standing still does NOT re-open it', !(await open()));
+  const opened4 = await everOpen(P, 2500);
+  rec.ok('4: closed while standing beside him, it stays closed', !opened4);
 
-  /* ── 3. leaving and coming back opens it again ── */
-  await place(420, 0);
-  await P.page.waitForTimeout(700);    // past the release radius
-  await place(0, 34);
-  await P.page.waitForTimeout(900);
-  rec.ok('walking away and back opens it again', await open());
-
-  /* ── 4. the TAP still works, with the latch armed ── */
+  /* ── 5. the right stick's tap ── */
+  const talked5 = await H.talkToNpc(P, 'mayor_bro');
+  await P.page.waitForTimeout(800);
+  rec.ok('5: the right stick\'s tap opens his window', talked5 && await open(), { talked5 });
   await close();
-  await P.page.waitForTimeout(700);
-  rec.ok('...and it stayed closed after that dismissal too', !(await open()));
-  const tapped = await P.page.evaluate(() => {
-    const S = window._gameState && window._gameState.current;
-    const npc = (S && S.npcs || []).find((n) => n && n.id === 'mayor_bro');
-    const cv = document.querySelector('canvas');
-    if (!S || !npc || !cv || !S.camera) return false;
-    const rect = cv.getBoundingClientRect();
-    const cx = rect.left + (npc.x - S.camera.x) * (S._worldScaleX || 1);
-    const cy = rect.top + (npc.y - S.camera.y) * (S._worldScaleY || 1);
-    for (const type of ['pointerdown', 'pointerup', 'click']) {
-      cv.dispatchEvent(new PointerEvent(type, {
-        clientX: cx, clientY: cy, bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch',
-      }));
-    }
-    return true;
+  await P.page.waitForTimeout(400);
+
+  /* ── 6. E on a keyboard, his quest before the Town Hall's door ── */
+  const n6 = await near(P);
+  await P.page.keyboard.press('e');
+  await P.page.waitForTimeout(900);
+  const t6 = await P.page.evaluate(() => {
+    const n = document.querySelector('.bt-npcdlg-name');
+    return n ? (n.innerText || '').trim() : null;
   });
-  rec.ok('a tap could be dispatched at his feet', tapped);
-  await P.page.waitForTimeout(700);
-  rec.ok('the TAP path still opens the dialogue (proximity is an addition)', await open());
-
-  /* ── 5. it does not steal focus from an open panel ── */
+  rec.ok('6: E opens his window (his quest before the Town Hall\'s door)',
+    await open() && (t6 === null || /mayor/i.test(t6)), { near: n6, dialogue: t6 });
   await close();
-  await place(420, 0);
-  await P.page.waitForTimeout(700);
-  await H.openDest(P, 'Quests');       // a sheet the player deliberately opened
-  await P.page.waitForTimeout(700);
-  await place(0, 34);
-  await P.page.waitForTimeout(1200);
-  rec.ok('standing next to him with a menu open does not steal focus', !(await open()));
+  await P.page.waitForTimeout(400);
 
-  /* ═══ v2.3.1704: PROXIMITY IS NOW THE ONLY DOOR TO A TURN-IN ═══
-     Owner: "Disable turning in quest rewards (completion) through the quest
-     pane.  It's getting messed up."
-     Until this version there were two ways to hand a quest in, and the quest
-     pane's button was the one that did not require finding anybody.  With it
-     removed, the walk-up dialogue this scenario exists to test stops being a
-     convenience and becomes the sole route to every quest reward in the game
-     — so "it opens on approach while a quest is READY, carrying the turn-in"
-     is a property this file now owns.  Without it, a regression in the latch
-     would strand every reward with nothing else to catch it. */
-  await close();
-  await H.openDest(P, 'Dashboard').catch(() => {});
-  await P.page.waitForTimeout(700);
+  /* ── 7. Diego: beside him no shop; a tap opens it ── */
+  const dFar = await place(P, 'shopkeeper_bro', 420, 0);
+  await P.page.waitForTimeout(500);
+  await place(P, 'shopkeeper_bro', 0, 34);
+  const opened7 = await everOpen(P, 2500);
+  rec.ok('7: standing beside Diego opens no shop', !!dFar && !opened7, { dFar, opened: opened7 });
+  const t7 = await tapOn(P, 'shopkeeper_bro');
+  rec.ok('7: ...and a tap on him opens his shop', await shopOpen(P) && !!t7.tap && t7.tap.result === 'shop', t7);
+  await P.page.evaluate(() => window.__broShopBus.setOpen(false));
+  const opened7b = await everOpen(P, 2000);
+  rec.ok('7: ...closed beside him, it stays closed', !opened7b);
+
+  /* ── 8. a READY quest: beside him nothing; a tap opens the turn-in ── */
+  await place(P, 'mayor_bro', 420, 0);
+  await P.page.waitForTimeout(500);
   const myId = await H.readState(P, (S) => S.myId);
   await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
     if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } });
   });
-  await P.page.waitForTimeout(1200);
-  await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: 4 });
+  await P.page.waitForTimeout(1500);
+  await H.grant(wsPort, myId, 'item', { invKey: 'slime-remnants', count: 4 });
   await P.page.waitForTimeout(2200);
-
-  /* v2.3.1706: CLOSE anything already open before walking back in.  Standing
-     next to the giver while the Quests sheet was dismissed opens his dialogue
-     immediately — i.e. BEFORE the accept echo lands — and the proximity scan
-     deliberately will not re-fire while a dialogue is already up (`!S._uiBusy`
-     in the gate), so that first, stale card just stays there reading "New
-     Quest!".  The game is right in both halves: getNpcQuest returns 'active'
-     the whole time.  Walk away, close the card, and let it open fresh. */
-  await place(420, 0);                  // clear the latch first
-  await P.page.waitForTimeout(600);
   await close();
-  await P.page.waitForTimeout(200);
-  rec.ok('the giver dialogue is closed before the approach that must re-open it',
-    !(await open()));
-  await place(0, 34);                   // …then walk back in
-  await P.page.waitForTimeout(1200);
-  rec.ok('with a READY quest, walking up opens his dialogue', await open());
-  /* He speaks before he pays now, so walk the chunks through to the turn-in.
-     v2.3.3335: the first quest pays no XP, so its turn-in is his last line's
-     own "Claim reward" (the auto reward -- there is no claim panel); walked
-     up to and left UNPRESSED, as the property is that it is there. */
-  const reached = await H.claimOnLastLine(P, { press: false });
-  const readyDlg = await P.page.evaluate(() => {
+  await place(P, 'mayor_bro', 0, 34);
+  const opened8 = await everOpen(P, 2500);
+  rec.ok('8: with his quest READY, standing beside him still opens nothing', !opened8);
+  const talked8 = await H.talkToNpc(P, 'mayor_bro');
+  await P.page.waitForTimeout(800);
+  const reached = talked8 && await H.claimOnLastLine(P, { press: false });
+  const text8 = await P.page.evaluate(() => {
     const c = document.querySelector('.bt-qoffer') || document.querySelector('.bt-npcdlg');
     return c ? (c.innerText || '') : '';
   });
-  rec.ok('...and that dialogue carries the turn-in — the only one left',
-    reached && /Claim reward/i.test(readyDlg),
-    { reached, text: readyDlg.slice(0, 400) });
+  rec.ok('8: ...and a tap opens the turn-in (his last line\'s Claim reward)',
+    !!reached && /Claim reward/i.test(text8), { talked8, reached, text: text8.slice(0, 300) });
 
+  /* ── 10. Diego's quest under way: his line carries his shop ── */
+  /* (walking up opened his shop while fish_1 ran, and a tap gave his quest;
+     a tap is all there is now, so the line holds the way: game/tour.js) */
+  await close();
+  const jumped = await H.devOp(wsPort, 'tour', myId, { at: 'fish_1' });
+  await P.page.waitForTimeout(1500);
+  await place(P, 'shopkeeper_bro', 420, 0);
+  await P.page.waitForTimeout(400);
+  await place(P, 'shopkeeper_bro', 0, 34);
+  const offer10 = await H.talkToNpc(P, 'shopkeeper_bro') ? await H.advanceNpcDialogue(P) : null;
+  const took10 = offer10 === 'offer' && await H.confirmQuestOffer(P);
+  await P.page.waitForTimeout(1200);
+  await close();
+  await P.page.waitForTimeout(400);
+  const talked10 = await H.talkToNpc(P, 'shopkeeper_bro');
+  await P.page.waitForTimeout(800);
+  for (let i = 0; i < 6; i++) {
+    if (await P.page.evaluate(() => !!document.querySelector('[data-qa="quest-open"]'))) break;
+    await P.page.evaluate(() => { const b = document.querySelector('.bt-npcdlg-next'); if (b) b.click(); });
+    await P.page.waitForTimeout(250);
+  }
+  const btn10 = await P.page.evaluate(() => { const b = document.querySelector('[data-qa="quest-open"]'); return b ? b.innerText.trim() : null; });
+  rec.ok('10: with Diego\'s quest under way, his line carries "Open the shop"',
+    !!jumped && took10 && talked10 && btn10 === 'Open the shop', { jumped, offer10, took10, talked10, btn10 });
+  if (btn10) await H.clickSel(P, '[data-qa="quest-open"]').catch(() => {});
+  await P.page.waitForTimeout(900);
+  rec.ok('10: ...and it opens his shop', await shopOpen(P) && !(await open()));
+  await P.page.evaluate(() => window.__broShopBus.setOpen(false));
+
+  /* ── 9. ?npcprox brings the walk-up opener back ── */
+  const Q = await H.newPlayer(browser, { name: 'Walker', wsPort, webPort, world: 'wheel',
+    viewport: PHONE, touch: true, query: 'npcprox' });
+  await H.enterWorld(Q);
+  stopAlive.push(H.keepAlive(Q));
+  await Q.page.waitForTimeout(1500);
+  await place(Q, 'mayor_bro', 420, 0);
+  await Q.page.waitForTimeout(600);
+  await H.closeNpcDialogue(Q);
+  await place(Q, 'mayor_bro', 0, 34);
+  await Q.page.waitForTimeout(1500);
+  rec.ok('9: with ?npcprox, walking up to him opens his window again', await H.npcDialogueOpen(Q));
+
+  stopAlive.forEach((stop) => stop());
+  await Q.ctx.close().catch(() => {});
   await P.ctx.close().catch(() => {});
 }

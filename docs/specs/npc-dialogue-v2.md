@@ -98,3 +98,56 @@ dungeon (v2.3.3573):
 
 The other six taps are word for word as the satire pass wrote them. Where and
 why: docs/specs/grotto-party.md "v2.3.3579".
+
+## v2.3.3583: Lil Bro, once he has beaten you
+
+The owner: "lil bro should also have dialog change to acknowledge the race has
+been lost and to try again if you've lost already (but said in his
+personality)". His "how's it going" line (race_1's progress line, the one his
+Race! button sits on) now depends on how many races he has won off you this
+visit. With none it is the satire pass's line, word for word:
+
+> Scared?! Tap Race! and we go on three! Touch all 4 corner flags and beat me
+> back here, or it's a skill issue!
+
+After one lost race (two taps):
+
+> GG EZ! I wasn't even trying! I was watching a video the whole time!
+>
+> Fine, you get a rematch, because I'm nice. Tap Race! and touch all 4 corner
+> flags before I get back. Try sprinting this time, grandpa.
+
+After two:
+
+> You lost AGAIN?! Bro, I'm nine! I eat cereal for dinner! How are you this
+> slow?
+>
+> Tap Race! and run it back. All 4 corner flags, then back here. Farmer Bro's
+> Zoom Juice makes you way faster, but you'd probably spill it.
+
+After three or more, counting them:
+
+> That's 3 wins for me and zero for you. I'm making a montage. It's called
+> "Hero Gets Destroyed by a Literal Child, Part 3."
+>
+> Tap Race! when you're ready to lose again. Sprint the whole way and drink
+> Zoom Juice first, or just admit I'm faster.
+
+Every one still says what to do (tap Race!, the 4 corner flags, back to him)
+and names what helps (sprinting, Zoom Juice). His race start line already
+names both.
+
+How it works:
+
+- A race counts as lost when the server says you finished behind him or ran
+  out of time (`game/race.js` `onRaceEnd`, counted in
+  `src/data/raceTally.js`). A false start, or leaving mid-race, is not a loss.
+- The count lives in memory, like the race itself, so it starts again on the
+  next visit.
+- The line is a getter, `lilBroRaceLine` in `src/data/gameSystems.js`, read
+  each time his window opens, as the Mayor's slime hand-in is.
+- His bubble at a race's end ("Easy! Skill issue, bro!") is unchanged.
+- No server change.
+
+Tested by `mp-race`: a race lost by standing still, then his window opens on
+the "GG EZ!" line and still offers Race!.

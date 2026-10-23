@@ -45,6 +45,7 @@ import {
 /* v2.3.2662: staminaMilestoneMult left this import with the milestone
    ladder; the old-worker prediction is legacyStaminaMult (imported above). */
 import { blocksAt } from './abilities.js';
+import { raceLosses } from './raceTally.js';   /* v2.3.3583: Lil Bro's line after he beats you (lilBroRaceLine) */
 /* v2.3.3260: one formula for every fight -- the bar, a monster's hit, the specials */
 import { healthAt, monsterHitK, specialMultFor, isOneFormulaEnabled, isGearOnLevel } from './oneFormula.js';   /* v2.3.3544: + gear on level */
 
@@ -7284,7 +7285,9 @@ export const QUEST_CHAINS = {
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
       start: "Wait, YOU'RE the new hero?! Bro, you have zero aura! You walk like you're on one percent battery! Bet you 50 gold you can't beat me around the town square!\n\n"
         + "You gotta touch all 4 corner flags in the square and get back here before me! Sprinting helps, and Farmer Bro's Zoom Juice helps way more. Telling the Mayor doesn't help at all, because he doesn't do anything, and I've tried, like, nine times.",
-      progress: "Scared?! Tap Race! and we go on three! Touch all 4 corner flags and beat me back here, or it's a skill issue!",
+      /* v2.3.3583: a getter -- once he has beaten you he says so and dares
+         you again (lilBroRaceLine, below; the races lost: data/raceTally.js) */
+      get progress() { return lilBroRaceLine(raceLosses()); },
       complete: "WHAT?! You WON?! Hacker! That was lag! My controller disconnected! My little cousin was on my account! I'm telling my dad, and he works at BroTown!\n\n"
         + "Ugh, fine, take the 50 gold. You're fast, whatever. Bet you still can't catch a wild monster by chasing it on foot!\n\n"
         + "Trick question, dummy! Nobody can! That's why Beastmaster Bro traps them in wooden boxes over by the Woodworker's shop!",
@@ -8218,6 +8221,26 @@ export function setClosedDoorZones(zones) {
 var _grottoParty = null;
 export function setGrottoParty(row) {
   _grottoParty = (row && row.level > 0 && row.size > 1) ? { level: row.level, size: row.size } : null;
+}
+/* ═══ v2.3.3583: LIL BRO, ONCE HE HAS BEATEN YOU ═══
+ * The owner, 2026-10-23: "lil bro should also have dialog change to
+ * acknowledge the race has been lost and to try again if you've lost already
+ * (but said in his personality)".  His "how's it going" line (race_1's
+ * `progress`, the one his Race! button sits on) by how many races he has won
+ * off you this visit (data/raceTally.js, counted at the worker's race_end):
+ * none is the owner's satire-pass line as it was; then a taunt and the dare
+ * again, each still saying what to do (tap Race!, the 4 corner flags, back
+ * to him) and what helps (sprinting, Farmer Bro's Zoom Juice: race_1's own
+ * start line names both).  His voice is the script's (docs/specs/
+ * npc-dialogue-v2.md): the iPad kid with "zero aura" and "skill issue". */
+export function lilBroRaceLine(lost) {
+  if (!(lost > 0)) return "Scared?! Tap Race! and we go on three! Touch all 4 corner flags and beat me back here, or it's a skill issue!";
+  if (lost === 1) return "GG EZ! I wasn't even trying! I was watching a video the whole time!\n\n"
+    + "Fine, you get a rematch, because I'm nice. Tap Race! and touch all 4 corner flags before I get back. Try sprinting this time, grandpa.";
+  if (lost === 2) return "You lost AGAIN?! Bro, I'm nine! I eat cereal for dinner! How are you this slow?\n\n"
+    + "Tap Race! and run it back. All 4 corner flags, then back here. Farmer Bro's Zoom Juice makes you way faster, but you'd probably spill it.";
+  return "That's " + lost + " wins for me and zero for you. I'm making a montage. It's called \"Hero Gets Destroyed by a Literal Child, Part " + lost + ".\"\n\n"
+    + "Tap Race! when you're ready to lose again. Sprint the whole way and drink Zoom Juice first, or just admit I'm faster.";
 }
 export function grottoPartyAside() {
   if (!_grottoParty) return '';
