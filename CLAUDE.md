@@ -1888,6 +1888,19 @@ remnant to migrate server-side, not a mode to preserve.
       - kill switch `partydungeon: false` (the Grotto of v2.3.3540);
         `grotto-party` suite, `wheeldungeon`'s starter checks under the
         switch, `mp-googrotto`: docs/specs/grotto-party.md.
+      - since v2.3.3579 THE MAYOR NAMES IT AS A PARTY'S JOB -- the owner: "Yes
+        add mayors line pointing to grotto as a party challenge but keep the
+        wittiness of the new dialog": the slimes' hand-in (tut_1, a getter
+        now) gains one tap, the fourth, between the warning that came too late
+        and the bow and staff: "Oh, and that cave with goo pouring out? The
+        Goo Grotto. Everything in it is level 16, and the giant slime at the
+        bottom splits when you hit it, like the town council. Don't go in
+        alone. That's not bravery, it's a funeral I'd have to speak at, and
+        I'm out of material. Bring a party of 2 or 3." -- its level and party
+        the worker's row (gameSystems.js `grottoPartyAside`, set by wsClient
+        `setGrottoParty` against caps.partydungeon; `partydungeon: false`, the
+        six taps as they were), no longer than the game's longest tap;
+        `mayor-grotto` suite, `mp-mayorgrotto`: docs/specs/grotto-party.md.
   - Since v2.3.3058 NO MAN'S LAND -- the owner: "Add a new 'No man's land'
     notification when you cross into zones with lvl 6+ monsters. It'll start
     at 1. This means any other player 1 level above or below you can attack

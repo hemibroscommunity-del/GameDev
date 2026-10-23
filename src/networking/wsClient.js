@@ -57,6 +57,8 @@ import { nearJoinOn, parkFar, applyPeerLooks } from '@/game/nearJoin.js'; /* v2.
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
+import { setGrottoParty } from '@/data/gameSystems.js'; /* v2.3.3579: the Mayor's Goo Grotto aside */
+import { WHEEL_DUNGEON_PARTY } from '@/data/wheelDungeons.js'; /* v2.3.3579 */
 import { setOneFormulaEnabled, setOneLevelEnabled, setGearOnLevel } from '@/data/oneFormula.js'; /* v2.3.3260: one formula for every fight; v2.3.3538: one level; v2.3.3544: gear on level */
 import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled /* v2.3.2592 */, setProg3RelEnabled /* v2.3.2680 */, setStatCapFree /* v2.3.3578 */, setGearQEnabled /* v2.3.2664 */, setFishHealEnabled /* v2.3.3260 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, setMilestonesRetired /* v2.3.2662 */, PROG3_SKILL_META, setZoneDepthLive /* v2.3.2790 */ } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
@@ -1651,6 +1653,10 @@ export function setupWebSocket(ctx) {
                    pays its rest (caps.rest, server/src/rest.js); against an
                    older one it stands shut, as it always did */
                 setWheelHallCaps(S._serverCaps);
+                /* v2.3.3579: the Mayor names the Goo Grotto as a party's job at
+                   the slimes' hand-in (gameSystems.js grottoPartyAside) only
+                   while this worker plays it so (caps.partydungeon, v2.3.3573) */
+                setGrottoParty(S._serverCaps && S._serverCaps.partydungeon === true ? WHEEL_DUNGEON_PARTY.verdant : null);
                 /* v2.3.3538: ONE LEVEL -- the character level is the highest
                    weapon skill (data/prog3.js prog3CharLevel), and the bar
                    reads it so (oneFormula.js healthAt), only against a worker
