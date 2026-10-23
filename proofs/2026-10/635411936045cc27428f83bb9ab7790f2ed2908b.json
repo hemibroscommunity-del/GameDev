@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "635411936045cc27428f83bb9ab7790f2ed2908b",
+  "tree": "f8350accbabd3762c3425ab4b18018a8cf1f1651",
+  "committedAt": "2026-10-22T20:36:09-07:00",
+  "subject": "No more splat when a rock, tree or cook reaches 0: the swipe moment is quiet (v2.3.3572) (#1086)",
+  "files": 6352,
+  "bytes": 737879150,
+  "listingSha256": "f917b8d093c57c4bddaeb4fd82d6d7037274803f82d654f41ff8d35c23dc9e9f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
