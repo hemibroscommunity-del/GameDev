@@ -52,15 +52,15 @@ export const PROG3 = {
      caps.prog3rel the readers below fall back to PROG3_LINEAR. */
   BODY: {
     def:     { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2680: damage-taken cut on the curve
-    hp:      { cap: 100, per: 8 },      // +8 max HP/pt
+    hp:      { cap: 999, per: 8 },      // +8 max HP/pt; v2.3.3578: 999, the storage bound (server statcap.js)
     dodge:   { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2680: 5 pts 37.5 %
-    stam:    { cap: 100, per: 3 },      // +3 max stamina/pt
+    stam:    { cap: 999, per: 3 },      // +3 max stamina/pt; v2.3.3578: 999 (server statcap.js)
     /* v2.3.2512: elem LEFT for ATK (per weapon); eres + mana arrive.  The
        reasoning for all three lives on the SERVER copy (server/src/prog3.js),
        which is the source of truth; these are its mirror and mirror-audit §12
        pins both the values AND the key sets. */
     eres:    { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2680: elemental-damage cut on the curve
-    mana:    { cap: 100, per: 2.5 },    // +2.5 max mana/pt, ON TOP of the Magic-level pool
+    mana:    { cap: 999, per: 2.5 },    // +2.5 max mana/pt, ON TOP of the Magic-level pool; v2.3.3578: 999 (server statcap.js)
     move:    { cap: 999, max: 0.35, k: 10 },  // v2.3.2680: move speed on the curve, client-consumed (BroTown.jsx)
   },
   ATK: {
@@ -437,6 +437,20 @@ var _prog3rel = false;
 export function setProg3RelEnabled(on) { _prog3rel = !!on; }
 export function isProg3RelEnabled() { return _prog3rel; }
 
+/* ═══ v2.3.3578: caps.nostatcap — NO CAP ON HOW MANY POINTS A STAT HOLDS ═══
+   The owner: "Remove stat cap."  A worker advertising this takes every point
+   you have for a stat, up to the 999 storage bound (server/src/statcap.js); one
+   without it (an older worker, or `nostatcap: false`) still refuses past your
+   character level -- twice it on the four damage stats -- and the pools' old
+   100 (STAT_CAP_WAS).  prog3StatCap greys [+] where the connected worker
+   refuses.  Nothing new is ever sent on it. */
+var _statFree = false;
+export function setStatCapFree(on) { _statFree = !!on; }
+export function isStatCapFree() { return _statFree && _prog3rel; }
+/* the pools' storage bound before v2.3.3578, back with the cap.  MIRROR:
+   server/src/statcap.js STAT_CAP.WAS (mirror-audit) */
+export const STAT_CAP_WAS = { hp: 100, stam: 100, mana: 100 };
+
 /* The server's prog3Curve / prog3Edge / prog3Yardstick / prog3StatValue,
    mirrored line for line (server/src/prog3.js).  The client has no monster in
    hand for a readout, so its readers pass no level — edge 1, "against a
@@ -762,12 +776,20 @@ export function prog3SharedSpendCat(rpg) {
 
 export function prog3StatCap(rpg, stat) {
   var d = PROG3.BODY[stat] || PROG3.ATK[stat] || PROG3_LEGACY_ATK[stat]; /* v2.3.2592: the retired pair still caps against an old worker */
+  /* v2.3.3578: the storage bound, and with the cap the pools' old 100 */
+  var store = d ? d.cap : 0;
+  if (Object.prototype.hasOwnProperty.call(STAT_CAP_WAS, stat) && !isStatCapFree()) store = Math.min(store, STAT_CAP_WAS[stat]);
   /* v2.3.2680: on a relative worker the curve stats have no design cap (999
      is storage) and the per-level bound doubles on the four damage stats —
-     the server's _handleProg3Allocate, mirrored so [+] greys where it refuses. */
-  if (_prog3rel) return Math.min(d ? d.cap : 0, prog3CharLevel(rpg) * ((d && d.lvlBound) || 1));
+     the server's _handleProg3Allocate, mirrored so [+] greys where it refuses.
+     v2.3.3578: and on a worker with caps.nostatcap there is no per-level
+     bound at all (server statcap.js _prog3StatBound): only the storage. */
+  if (_prog3rel) {
+    if (_statFree) return store;
+    return Math.min(store, prog3CharLevel(rpg) * ((d && d.lvlBound) || 1));
+  }
   var L = PROG3_LINEAR[stat];
-  return Math.min(L ? L.cap : (d ? d.cap : 0), prog3CharLevel(rpg));
+  return Math.min(L ? L.cap : store, prog3CharLevel(rpg));
 }
 export function prog3IsAtkStat(stat) {
   return !!(PROG3.ATK[stat] || PROG3_LEGACY_ATK[stat]);

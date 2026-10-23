@@ -20,7 +20,15 @@ import {
   PROG3, prog3ElemPower /* v2.3.2512: elem per weapon, elem resist, max mana */,
   prog3CharLevel, prog3PoolShared, prog3SharedSpendCat, isProg3SharedEnabled /* v2.3.2592: the shared pool */,
   prog3PowerMult, prog3RangeMult, prog3SpecialMult, prog3MoveMult, prog3EresPct, isProg3RelEnabled, PROG3_LINEAR,
-  PROG3_FADE_NOTE /* v2.3.2680: the curve readers + the fade line */, prog3StatFrac /* v2.3.2696: the confirm window's bar */ } from '../../../data/prog3.js';
+  PROG3_FADE_NOTE /* v2.3.2680: the curve readers + the fade line */, prog3StatFrac /* v2.3.2696: the confirm window's bar */,
+  isStatCapFree /* v2.3.3578: no per-stat cap */ } from '../../../data/prog3.js';
+/* v2.3.3578: what a stat holds, for its labels -- "4 of 10" (with `unit`, "4 of
+   10 points") while a stat has a cap, "4 points" once it has none
+   (caps.nostatcap: the 999 storage bound is no number to show anyone). */
+function ptsOf(pts, cap, unit) {
+  if (isStatCapFree()) return `${pts} point${pts === 1 ? '' : 's'}`;
+  return unit ? `${pts} of ${cap} points` : `${pts} of ${cap}`;
+}
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { heroStatPills, HERO_PILL_TONE } from './heroStatPills.js';      /* v2.3.3053: the stat pills */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
@@ -2300,9 +2308,9 @@ export const HeroExpanded = () => {
                      from a CURVE stat -- its points count most first, so a fixed
                      per-point rate is wrong -- on the card's [+].  The grid cell
                      arrived in the same merge and follows it. */
-                  aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${pts} of ${cap}. ${st.perText}${st.curve ? '' : ' per point'}.`}
+                  aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${ptsOf(pts, cap, false)}. ${st.perText}${st.curve ? '' : ' per point'}.`}
                   aria-disabled={!canSpend}
-                  title={`${st.label} — ${pts} of ${cap} points — now ${statValueText(st, cat)} — ${st.perText}${st.curve ? '' : ' per point'}`}
+                  title={`${st.label} — ${ptsOf(pts, cap, true)} — now ${statValueText(st, cat)} — ${st.perText}${st.curve ? '' : ' per point'}`}
                   {...scrollTap(() => openStatInfo(st, cat, spendFor(st, cat)))}
                   style={{
                     height: CELL_H, minWidth: 0, boxSizing: 'border-box',
@@ -2785,7 +2793,7 @@ export const HeroExpanded = () => {
                       something to spend" while this number is the opposite
                       reading: what is already committed. */}
                   <span data-prog3-applied={lk}
-                    aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}: ${pts} of ${cap} points applied`}
+                    aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}: ${ptsOf(pts, cap, true)} applied`}
                     style={{
                       /* Two digits reserved, right-aligned, so the numbers
                          line up down the card and a 9 -> 10 does not shuffle
@@ -2840,7 +2848,7 @@ export const HeroExpanded = () => {
                     role="button"
                     data-prog3-plus={lk}
                     data-stat-info={st.key}
-                    aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${pts} of ${cap}. ${st.perText}${st.curve ? '' : ' per point'}.`}
+                    aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${ptsOf(pts, cap, false)}. ${st.perText}${st.curve ? '' : ' per point'}.`}
                     aria-disabled={!canSpend}
                     /* v2.3.2620: ...and the long-press says what the stat READS
                        right now, which is the other half of what v2.3.2597 took
@@ -2849,7 +2857,7 @@ export const HeroExpanded = () => {
                        row's own line prints the POINTS and this prints what they
                        bought ("31.0%", "1-2"), so the pair is back without
                        either of them costing the cell a pixel. */
-                    title={`${st.label} — ${pts} of ${cap} points — now ${statValueText(st, cat)} — ${st.perText}${st.curve ? '' : ' per point'}`}
+                    title={`${st.label} — ${ptsOf(pts, cap, true)} — now ${statValueText(st, cat)} — ${st.perText}${st.curve ? '' : ' per point'}`}
                     {...scrollTap(() => openStatInfo(st, cat, spendFor(st, cat)), { inner: true })}
                     onClick={(e) => e.stopPropagation()}
                     style={{

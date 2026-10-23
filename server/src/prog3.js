@@ -230,6 +230,10 @@ export const PROG3 = {
    * The real limit is the §6-C per-level bound, and `lvlBound` loosens it
    * to 2 × character level on the four damage stats (owner, 2026-09-22:
    * "keep per level limit on those 3" — Defense, Dodge, Resist).
+   * v2.3.3578: the per-level bound is gone (owner: "Remove stat cap.") and the
+   * pools' 100 with it: every `cap` is the 999 storage bound, and the curve is
+   * what keeps one stat from running away (statcap.js).  `lvlBound` stays for
+   * the `nostatcap: false` switch, which brings the bound back.
    *
    * NO MIGRATION: a point is still a point.  Every existing holding reads
    * higher on the curve than it did on the line (100 Defense: 40 % → 84 %),
@@ -242,9 +246,9 @@ export const PROG3 = {
    * mirror-audit §12 pins the rows' values AND key sets. */
   BODY: {
     def:     { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2680: damage-taken cut, 5 pts 37.5 % → 20 pts 67 %
-    hp:      { cap: 100, per: 8 },      // +8 max HP/pt → +800
+    hp:      { cap: 999, per: 8 },      // +8 max HP/pt (+40 under the one formula, oneformula.js); v2.3.3578: 999, the storage bound, as the per-stat cap went (statcap.js)
     dodge:   { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2680: 5 pts 37.5 % → 20 pts 67 % (owner's "first 5 points into dodge")
-    stam:    { cap: 100, per: 3 },      // +3 max stamina/pt → +300
+    stam:    { cap: 999, per: 3 },      // +3 max stamina/pt; v2.3.3578: 999 (statcap.js)
     /* ═══ v2.3.2512: ELEMENTAL RESISTANCE (owner ask, backlog D12) ═══
        The defensive half of the elemental system, which until now had none:
        the ONLY thing in the game that reduced elemental damage was the 5%
@@ -283,7 +287,7 @@ export const PROG3 = {
        construction") re-entered through a different door.  Mana counts
        `magicLvl + points` on the same ladder stamina already counts its own
        allocated points on. */
-    mana:    { cap: 100, per: 2.5 },    // +2.5 max mana/pt → +250
+    mana:    { cap: 999, per: 2.5 },    // +2.5 max mana/pt; v2.3.3578: 999 (statcap.js)
     /* ═══ v2.3.2592: MOVE SPEED (owner ask, the four-column redesign) ═══
        The seventh shared stat.  Movement is CLIENT-OWNED (BroTown.jsx reads
        calcMoveSpeed and multiplies by prog3MoveMult), so the server's job is
@@ -1383,6 +1387,8 @@ export const prog3Methods = {
   // the BODY or ATK whitelist (own-property check — '__proto__' etc.
   // fail), pool ≥ 1, and the §6-C double cap: the stat's own hard cap AND
   // min(100, character level) — replaces _statCap for prog3 players.
+  // v2.3.3578: the level half is gone (statcap.js, the owner's "Remove stat
+  // cap"); the storage bound stays, and `nostatcap: false` brings it back.
   //
   // v2.3.1668: an ATK stat additionally requires `cat` (sword|bow|staff),
   // because offense is allocated PER COMBAT TYPE.  A missing or unknown
@@ -1419,11 +1425,13 @@ export const prog3Methods = {
     const anyPts = Math.max(0, poolN - PROG3.SKILLS.reduce((n, c) => n + chan(c), 0));
     const sharedN = Math.max(0, Math.floor(Number(p3.shared) || 0));
 
-    const levelCap = ps.level || this._prog3CharLevel(ps);
     /* v2.3.2680: the §6-C bound is per stat now — 2 × character level on the
        four damage stats (`lvlBound`), 1 × on Defense, Dodge, Resist and the
-       rest (owner, 2026-09-22: "keep per level limit on those 3"). */
-    const cap = Math.min(sd.def.cap, levelCap * (sd.def.lvlBound || 1));
+       rest (owner, 2026-09-22: "keep per level limit on those 3").
+       v2.3.3578: and gone -- the owner: "Remove stat cap."  A stat takes every
+       point you have for it, up to its storage bound (statcap.js; the
+       `nostatcap: false` switch brings the bound back). */
+    const cap = this._prog3StatBound(ps, stat, sd.def);
 
     let cur, apply, takePoint;
     if (sd.scope === 'atk') {

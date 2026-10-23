@@ -163,6 +163,7 @@ import { itemDropMethods } from './itemdrop.js'; /* v2.3.3473: a bag item droppe
 import { pointsResetMethods } from './pointsreset.js'; /* v2.3.3541: the free points reset -- every placed point back */
 import { restMethods } from './rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed -- full bars and Well Rested, +10% of a fight's XP */
 import { safeHealMethods } from './safeheal.js'; /* v2.3.3569: BroTown's safe ground heals as the old town did, out of a fight */
+import { statCapMethods } from './statcap.js'; /* v2.3.3578: no cap on how many points a stat holds (the owner's "Remove stat cap") */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -6559,6 +6560,7 @@ Object.assign(GameRoom.prototype, itemDropMethods); /* v2.3.3473 */
 Object.assign(GameRoom.prototype, pointsResetMethods); /* v2.3.3541 */
 Object.assign(GameRoom.prototype, restMethods); /* v2.3.3539 */
 Object.assign(GameRoom.prototype, safeHealMethods); /* v2.3.3569 */
+Object.assign(GameRoom.prototype, statCapMethods); /* v2.3.3578 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
 Object.assign(GameRoom.prototype, allianceMethods); /* v2.3.3313 */
