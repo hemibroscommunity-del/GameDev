@@ -23,12 +23,17 @@
  *   7. no page errors;
  *   8. the quest's way works there (src/game/questRoute.js): the minimap's
  *      star and, since v2.3.2992, its gold road lead a new character to the
- *      Wheel's own Mayor Bro, then, with his first quest, to Frost Ridge's
- *      monsters, stopping among them (v2.3.3320: on the long Wheel, where
- *      they begin, its level 1s) -- and nothing is drawn on the ground
+ *      Wheel's own Mayor Bro, then, with his first quest, to the monsters of
+ *      the land it names, stopping among them (v2.3.3320: on the long Wheel,
+ *      where they begin, its level 1s) -- and nothing is drawn on the ground
  *      (the owner: "just rely on the gold road on the minimap"); and a death
  *      there no longer leaves today's town with the Wheel's npc list
  *      (src/game/respawn.js).
+ *      v2.3.3584: the land is read off the worker's own quest table
+ *      (H.FIRST_LAND, tut_1's objective).  Since v2.3.3525 (the tour) the
+ *      Mayor's first quest is the Verdant Wilds' slimes; this test still
+ *      walked to Frost Ridge, the snowmen's land, and failed its four road
+ *      checks on main while the road led, rightly, west.
  *   9. v2.3.3025, the owner: "players are starting in the old town and
  *      getting routed to the wheel on the loading screen" -- the way in is ONE
  *      loading screen: the ocean clip lifts with them already in the Wheel,
@@ -39,6 +44,9 @@ import * as H from './harness.mjs';
 
 const PHONE = { width: 390, height: 844 };
 const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
+/* v2.3.3584: the land the Mayor's first quest sends you to (its name, for the
+   checks' words, is the world plan's: run(), below) */
+const LAND = H.FIRST_LAND;
 
 /* where the player is, and how far from the Wheel's middle */
 const at = (P) => P.page.evaluate(() => {
@@ -75,6 +83,9 @@ const near = (a, b, d = 2) => !!a && !!b && Math.abs(a.x - b.x) <= d && Math.abs
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const { WHEEL_SPAWNS, WHEEL_CENTRE, WHEEL_SAFE_R } = await import(H.REPO + '/server/src/wheelspawns.js');
+  const { PLAN } = await import(H.REPO + '/public/tools/world/plan.js');
+  const landName = (PLAN.regions[LAND] && PLAN.regions[LAND].name) || LAND;   /* "Verdant Wilds" */
+  const poss = /s$/.test(landName) ? `the ${landName}'` : `${landName}'s`;   /* "the Verdant Wilds'", "Frost Ridge's" */
   const [cx, cy] = WHEEL_CENTRE;
   const r = (p) => Math.round(Math.hypot(p.x - cx, p.y - cy));
   const P = await H.newPlayer(browser, { name: 'Settler', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });
@@ -123,8 +134,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok("...the Wheel's minimap stars him", !!w0.star && w0.star.npc === 'Mayor Bro' && near(w0.star, w0.mayor) && !w0.star.edge, w0.star);
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/wheelhome-road-mayor.png` }).catch(() => {});   /* v2.3.2992: to look at */
 
-  /* ── 2. the commons hold an unarmed player ── */
-  const [fx, fy] = WHEEL_SPAWNS.frost.anchor;
+  /* ── 2. the commons hold an unarmed player ── (v2.3.3584: toward the first
+        quest's land, the way they will walk once armed) */
+  const [fx, fy] = WHEEL_SPAWNS[LAND].anchor;
   const ux = (fx - cx) / Math.hypot(fx - cx, fy - cy), uy = (fy - cy) / Math.hypot(fx - cx, fy - cy);
   const far = { x: cx + ux * (WHEEL_SAFE_R + 500), y: cy + uy * (WHEEL_SAFE_R + 500) };
   await H.hopTo(P, far.x, far.y, { tries: 60 });
@@ -150,27 +162,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.leaveNpc(P, 'mayor_bro');
   const armed = await at(P);
   rec.ok("the Wheel's own Mayor Bro gives the first quest (his sword and shield)", !!talked && accepted && armed.tut1, { talked, landed, accepted, armed });
-  /* ── 8b. the way to Frost Ridge's monsters ── */
-  const frostAt = { x: WHEEL_SPAWNS.frost.anchor[0], y: WHEEL_SPAWNS.frost.anchor[1] };
-  /* v2.3.3320: on the long Wheel the way leads to where Frost Ridge's
-     monsters begin -- 300 px (questRoute.js LAND_IN_PX) past its first
-     stretch's inner edge, among the level 1s, the stretch climbing 1 to 5 --
-     not its middle, level 3 */
+  /* ── 8b. the way to the first quest's land's monsters ── */
+  const landAt = { x: WHEEL_SPAWNS[LAND].anchor[0], y: WHEEL_SPAWNS[LAND].anchor[1] };
+  /* v2.3.3320: on the long Wheel the way leads to where the land's monsters
+     begin -- 300 px (questRoute.js LAND_IN_PX) past its first stretch's
+     inner edge, among the level 1s, the stretch climbing 1 to 5 -- not its
+     middle, level 3 */
   const LONG = (await H.wheelGeom()).long > 1;
-  const r0 = WHEEL_SPAWNS.frost.band[0];
-  const frostIn = LONG ? { x: Math.round(cx + ux * (r0 + 300)), y: Math.round(cy + uy * (r0 + 300)) } : frostAt;
+  const r0 = WHEEL_SPAWNS[LAND].band[0];
+  const landIn = LONG ? { x: Math.round(cx + ux * (r0 + 300)), y: Math.round(cy + uy * (r0 + 300)) } : landAt;
   await P.page.waitForTimeout(600);
   const w1 = await way(P);
-  rec.ok(`with his quest the way leads to ${LONG ? 'where Frost Ridge\'s monsters begin, its level 1s' : 'the middle of Frost Ridge\'s monsters'}, and the minimap's star waits at its edge that way`,
-    !!w1.road && !!w1.road.to && w1.road.to.zoneId === 'frost' && near(w1.road.to, frostIn)
-    && !!w1.star && w1.star.zoneId === 'frost' && w1.star.edge === true, { w1, frostIn });
-  rec.ok('...its gold road running from you toward them', !!w1.star && !!w1.star.road && w1.star.road.len > 30 && roadToward(w1, frostIn), { star: w1.star, me: w1.me, frostIn });
-  await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/wheelhome-road-frost.png` }).catch(() => {});
+  rec.ok(`with his quest the way leads to ${LONG ? `where ${poss} monsters begin, its level 1s` : `the middle of ${poss} monsters`}, and the minimap's star waits at its edge that way`,
+    !!w1.road && !!w1.road.to && w1.road.to.zoneId === LAND && near(w1.road.to, landIn)
+    && !!w1.star && w1.star.zoneId === LAND && w1.star.edge === true, { w1, landIn });
+  rec.ok('...its gold road running from you toward them', !!w1.star && !!w1.star.road && w1.star.road.len > 30 && roadToward(w1, landIn), { star: w1.star, me: w1.me, landIn });
+  await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/wheelhome-road-land.png` }).catch(() => {});
   const out = { x: cx + ux * (WHEEL_SAFE_R + 150), y: cy + uy * (WHEEL_SAFE_R + 150) };
   await H.hopTo(P, out.x, out.y, { tries: 80 });
   await P.page.waitForTimeout(800);
   const free = await at(P);
-  rec.ok(`...and with it they walk out onto Frost Ridge's land (${r(free)} px from the middle)`, r(free) > WHEEL_SAFE_R && free.zone === 'wheel', free);
+  rec.ok(`...and with it they walk out onto ${poss} land (${r(free)} px from the middle)`, r(free) > WHEEL_SAFE_R && free.zone === 'wheel', free);
   if (LONG) {
     /* v2.3.3320: it runs on until their edge, and stops there */
     const shy = { x: cx + ux * (r0 - 100), y: cy + uy * (r0 - 100) };
@@ -181,12 +193,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.hopTo(P, edge.x, edge.y, { tries: 40 });
     await P.page.waitForTimeout(600);
     const wEdge = await way(P);
-    rec.ok(`...it runs on until Frost Ridge's monsters begin (${r0} px out: at ${r(wShy.me)} it still leads there, at ${r(wEdge.me)} it stops, the star with it)`,
-      !!wShy.road && !!wShy.road.to && wShy.road.to.zoneId === 'frost' && r(wShy.me) < r0
+    rec.ok(`...it runs on until ${poss} monsters begin (${r0} px out: at ${r(wShy.me)} it still leads there, at ${r(wEdge.me)} it stops, the star with it)`,
+      !!wShy.road && !!wShy.road.to && wShy.road.to.zoneId === LAND && r(wShy.me) < r0
       && !!wEdge.road && wEdge.road.to === null && wEdge.star === null && r(wEdge.me) >= r0, { wShy, wEdge, r0 });
   }
   /* ...walk on among them: there the road stops -- you hunt, you don't travel */
-  await H.hopTo(P, frostAt.x + 120, frostAt.y + 120, { tries: 80 });
+  await H.hopTo(P, landAt.x + 120, landAt.y + 120, { tries: 80 });
   await P.page.waitForTimeout(600);
   const w2 = await way(P);
   rec.ok('...and among them the road stops (you hunt there, you don\'t travel), the star with it', !!w2.road && w2.road.to === null && w2.star === null, w2);
