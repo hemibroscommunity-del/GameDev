@@ -349,6 +349,13 @@ caught it.
 
 ### Step 7b: the three hand corrections, which a re-import undoes
 
+> **v2.3.3587: the Golden Monocle's and the Golden Glasses' entries below are
+> history.** Both pieces are the Hemi Bros collection's now (section 11), drawn
+> whole by `tools/ui/make_collection_eyewear.py`: never re-import them from a
+> sheet, never flip the monocle (`flip_eyewear_piece.py` refuses it, as the
+> collection's ring would leave its eye), and never put back the old northeast.
+> Thug Life's correction still stands.
+
 Three pairs carry a change that is NOT in their sheet, so the sheet and the
 shipped frames disagree by exactly these operations. **A re-import silently
 reverts all three** — the same shape as the thumbnail hazard above, and the
@@ -954,3 +961,55 @@ the piece to the face from either side; what *chooses* −8 inside that band is
 the eye-centre measurement above, and −10 is the conservative neighbour if the
 far eye ever reads tight on a head this pass did not render. An earlier draft's
 claim that −8 was the only value satisfying both was false.
+
+---
+
+## 11. The gold pair and the monocle are the collection's (v2.3.3587)
+
+The owner, once the townsfolk's dialogue portraits were Hemi Bros busts: "The
+gold glasses look different ... Also the monocle mayor bro wears". The
+portraits wore the collection's Golden Glasses and Golden Monocle; Diego and
+the Mayor wore this game's, drawn from the owner's ChatGPT sheets (sections 2-10).
+Asked which side should change, the owner chose **"Game matches collection"**:
+the two pieces of those names are the collection's now, for every player who
+picks them.
+
+**Drawn, not imported.** `tools/ui/make_collection_eyewear.py` lays each piece
+out cell by cell from the collection's own art
+(`assets/portrait-source/hemi-bros/goldenglasses.png`, `goldenmonocle.png`,
+lifted off the NFTs by `tools/qa/nft_portraits.py`) onto the eyes the game
+paints (`eye_boxes()`, section 3), a bust cell two px of the 128 frame, in the
+collection's colours read from those files. No sheet, no importer, no seating
+pass: the tool knows where it put every pixel, so the placement is worked out
+from the same numbers.
+
+| | the collection's piece | south | southwest | east | northeast |
+|---|---|---|---|---|---|
+| Golden Glasses | a gold bar on the brow, lit in spots, darker where it turns to the ear; see-through pale gold lenses (alpha 144); a gold bridge; the near side in brown shadow; no rim under the lenses | the bust's layout made symmetric | the bust's own layout (it is turned the same way) | its profile: the lens, the frame's corner past the face, the bar back to the ear | the arm alone, where the old piece drew it |
+| Golden Monocle | a small gold ring, its glass clear with a glint (alpha 137), a short chain | round the bro's LEFT eye, the viewer's right | the same eye, the near one | round the eye the profile shows | none (the face is turned away; no png, no anchor) |
+
+**What changed with it, on purpose:**
+
+- **The monocle moved eyes.** The old piece sat on the bro's right eye and, at
+  the owner's word for that art, hung off the far side of the face in
+  southwest (section 9) and stopped short of the far eye in south (section 10).
+  The collection wears it on the left eye, the viewer's right, in the middle of
+  the face: on its bust, which is turned the way southwest is, and on the
+  Mayor's portrait. Sections 9-10's numbers were for the old art; `mp-ccfit`
+  now pins the collection's eye instead.
+- **Scale 1 everywhere.** The art is drawn at the face's size, so the south
+  glasses' 0.912 (section 9) is gone. The pose fits (`scaleByPose`,
+  `poseNudge`: how each pose draws the head) are kept from the old meta.json.
+- **The colour row.** The collection's pair is one gold, lenses included
+  (`segmentMaterials`: hue45 100%), so the swatch paints the whole pair and the
+  row says **Glasses** (`MAIN_MATERIAL` 'all'); the monocle's ring is 80% of it
+  and its clear glass the 20% that keeps its colour, still **Frame** (pin 45).
+- **The picker icons** are the collection's pieces front-on with the dark
+  keyline the owner's other icons have, the lenses drawn solid so they do not
+  read as holes; `slice_eyewear_thumbs.py` no longer writes these two.
+- **The cache key.** `TRAIT_VER` moved to 2.3.3587 (all eight copies): the art
+  and the meta changed under paths already on main.
+
+Re-run `python3 tools/ui/make_collection_eyewear.py` (`--check` to verify, `--out
+DIR` to try it elsewhere) whenever the bodies, the eye mask or the crowns move;
+never edit the files by hand.

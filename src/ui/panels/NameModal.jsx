@@ -1853,8 +1853,9 @@ export function NameModal(props) {
        Eyewear and, since v2.3.2645, eye styles set colorLabel, and both for
        the same reason: they are the categories where the answer VARIES between
        items.  The recolour paints one measured material, which is the FRAME on
-       the golden pair, the monocle and the Thug Lifes and the LENS on the
-       goggles, the lasers and the white glass (eyewearColorCatalog.js) -- and
+       the monocle and the Thug Lifes, the LENS on the goggles, the lasers and
+       the white glass, and since v2.3.3587 the whole GLASSES on the golden
+       pair, the collection's, which is one gold (eyewearColorCatalog.js) -- and
        the PUPIL on One Eye and WTF, the LIDS on Sleepy, the FLAMES on Demon
        (eyeStyleColorCatalog.js).  Without this the same swatch does two
        different things on two tabs of the same picker and never says so.

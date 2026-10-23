@@ -126,7 +126,14 @@ export const EYEWEAR_CATALOG = [
      the art.  v2.3.2380: the owner asked for the claw to face the other way,
      so south and southwest are MIRRORED inside their own alpha bbox by
      tools/ui/flip_eyewear_piece.py -- a re-import reverts that, see
-     docs/specs/eyewear.md step 7b. */
+     docs/specs/eyewear.md step 7b.
+     v2.3.3587: ALL OF THE ABOVE IS HISTORY -- the piece is the Hemi Bros
+     collection's Golden Monocle now (owner: "Game matches collection", so the
+     Mayor wears in the world what his portrait wears): a small gold ring round
+     the eye the collection wears it on, the bro's LEFT (the viewer's right in
+     south and southwest), its glass clear, a short chain; no northeast.  Drawn
+     cell by cell by tools/ui/make_collection_eyewear.py, placed by its own
+     numbers (meta.json); the sweeps and nudges above were for the old art. */
   { id: 'golden-monocle', name: 'Golden Monocle' },
   /* v2.3.2368: gold frames with tan lenses, imported AS DRAWN.  --flatten-lens
      was tried and rejected on the render: the eye-box region spans lens and
@@ -143,7 +150,12 @@ export const EYEWEAR_CATALOG = [
      glasses, all of which draw only the temple arm at the ear there; from
      behind it reads as a gold slab floating beside the head.  That one cell
      and its bbox/crownNudge are the pre-redraw art, restored deliberately.  A
-     re-import brings the slab back. */
+     re-import brings the slab back.
+     v2.3.3587: AND THIS IS HISTORY TOO -- the collection's Golden Glasses now
+     (owner: "Game matches collection", so Diego wears in the world what his
+     portrait wears): a gold bar along the brow, see-through pale gold lenses,
+     a gold bridge, the near side in shadow, drawn at the face's own size (scale
+     1 everywhere, the 0.912 gone) by tools/ui/make_collection_eyewear.py. */
   { id: 'golden-glasses', name: 'Golden Glasses' },
   /* v2.3.2369: the first piece that ships ALL FIVE facings -- the strap goes
      round the head, so it is visible from behind where every pair of glasses
