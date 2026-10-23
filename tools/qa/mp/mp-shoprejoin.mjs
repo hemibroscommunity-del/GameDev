@@ -31,7 +31,11 @@
  */
 import * as H from './harness.mjs';
 
-const KEY = 'slime-remnants';
+/* What it sells him: a key NO other shop scenario trades.  One run shares one
+   worker, and Diego's pile is per key and kept -- with slime remains, this
+   scenario run before mp-shopkeeper left his pile at 1, and that one's
+   "he holds none of it yet" checks failed for a sale made here. */
+const KEY = 'ore_obsidian_ore';
 
 /* Everything the shop and the connection are saying, in one read. */
 const view = (P) => P.page.evaluate((k) => {

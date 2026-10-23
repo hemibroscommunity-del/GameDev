@@ -103,6 +103,12 @@ const view = (P) => P.page.evaluate((k) => {
     busStock: (window.__broShopBus && window.__broShopBus.stock || [])
       .map((i) => i.key + ':' + i.qty + '/' + i.buy + (i.quote ? 'q' : '')),
     invKeys: Object.keys(((window._gameState.current.rpg || {}).inventory) || {}),
+    /* v2.3.3582: the connection, so a sale that never settles says whether
+       the socket was rejoined under it (shopBus.joins counts a rejoin with
+       the shop open) */
+    net: window._gameState.current._realtimeStatus || null,
+    joins: window.__broShopBus ? window.__broShopBus.joins : null,
+    busy: window.__broShopBus ? !!window.__broShopBus.busy : null,
   };
 }, KEY);
 
@@ -219,10 +225,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     +v.dealTotal > 0, v);
 
   const coins0 = await purse(A);
+  const atClick = await view(A);
   await A.page.click('[data-shop-act]');
   await A.page.waitForTimeout(1600);
   const coins1 = await purse(A), bag1 = await bag(A);
-  rec.ok('selling one pays the player', coins1 > coins0, { coins0, coins1 });
+  const afterClick = await view(A);
+  rec.ok('selling one pays the player', coins1 > coins0, { coins0, coins1,
+    atClick: { net: atClick.net, joins: atClick.joins, busy: atClick.busy, total: atClick.dealTotal },
+    after: { net: afterClick.net, joins: afterClick.joins, busy: afterClick.busy, total: afterClick.dealTotal, note: afterClick.note } });
   rec.ok('...and takes the item out of the bag', bag1 === carried - 1, { carried, bag1 });
   v = await until(A, (x) => !!x.note, 'A: receipt');
   rec.ok('...and says what happened, in his words',
