@@ -3246,6 +3246,33 @@ remnant to migrate server-side, not a mode to preserve.
         bakes PORTRAITS; a hatted townsperson is bald under it, as the
         collection's bros are (hair cut below the brim left stray pixels);
         every display draws them pixelated, Diego's shop chip 32 px;
+      - since v2.3.3588 THEY WEAR WHAT THEIR PORTRAITS WEAR -- the owner:
+        "Or maybe make the characters in game just look more like the
+        portraits. Can you do it both ways so I can compare?" (the other way,
+        the portraits dressed as the world, is pull request #1097):
+        - each NPC_LOOKS is the nearest the creator has to his bust: the
+          Mayor's black suit and red tie, Diego's purple bomber, a striped
+          tee, a zipped camo jacket, an orange running jacket, an open teal
+          wool shirt -- a tee's colour, a pattern and the creator's own chest
+          drawing (`drawing()`, set through `window.__btSetArt` on every
+          canvas, blank where the look has none);
+        - the SHORT BEARD, new in the creator for everyone: the long beard
+          trimmed at the chin by tools/ui/make_short_beard.py (its own art,
+          frame and placement; the rows under the mouth squeezed to 0.3), on
+          the Mayor, Blacksmith Bro, Farmer Bro and Beastmaster Bro;
+        - and v2.3.3587's collection eyewear (the game's GOLDEN GLASSES and
+          GOLDEN MONOCLE drawn as the collection's by
+          tools/ui/make_collection_eyewear.py, TRAIT_VER 2.3.3587; the sheet
+          importer and flip_eyewear_piece.py refuse the two) and the
+          Woodworker's grey Afro: docs/specs/eyewear.md section 11;
+        - the portraits stay v2.3.3580's; not matched, as the creator has
+          none: Lil Bro's happy and Ace's shifty eyes, Diego's grey streak,
+          the hat logo and the headphones' "b";
+        - all eight re-baked, NPC_ART_VERSION 2.3.3588; `mp-npclooks` 3 (a
+          tell for each of the eight) and 4d, `mp-mayorart` (his red tie and
+          black suit), `mp-shortbeard`, `mp-ccfit`, `mp-ewcolour`:
+          docs/specs/npc-creator-looks.md "They wear what their portraits
+          wear";
       - `mp-npclooks`: docs/specs/npc-creator-looks.md.
   - Since v2.3.3127 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
     similar to the old FarmVille game ... Need to dig, plant seeds, fertilize,

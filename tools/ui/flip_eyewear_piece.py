@@ -75,6 +75,14 @@ def main():
     ap.add_argument('--check', action='store_true', help='report only, write nothing')
     args = ap.parse_args()
 
+    # v2.3.3587: the two gold pieces are the Hemi Bros collection's, drawn
+    # whole by tools/ui/make_collection_eyewear.py round the very eye the
+    # collection wears them on.  Mirroring the monocle in its box would take
+    # the ring off that eye, and nothing of the old claw is left to flip.
+    if args.id in ('golden-monocle', 'golden-glasses'):
+        sys.exit('%s is the collection\'s piece now: re-run '
+                 'tools/ui/make_collection_eyewear.py instead '
+                 '(docs/specs/eyewear.md section 11)' % args.id)
     item = os.path.join(ROOT, args.id)
     if not os.path.isdir(item):
         sys.exit('no such eyewear item: %s' % item)

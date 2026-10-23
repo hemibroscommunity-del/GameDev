@@ -40,73 +40,177 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { NPC_DATA } from '../../src/data/gameDisplay.js';
 
+/* v2.3.3588: A CHEST DRAWING, WRITTEN AS PICTURES.  The creator's own
+   16 x 16 shirt drawing (traits/playerArt.js: one hex digit a cell, ART_PALETTE),
+   which a player paints with a finger, is how the townsfolk wear what the
+   collection's busts wear and a plain tee cannot: the Mayor's shirt front
+   and red tie, a zip, a collar.  Each is drawn here a row a line, one letter
+   a cell; a short list is the top rows, the rest left blank. */
+const INK = {
+  '.': 0, k: 1, w: 2, r: 3, o: 4, y: 5, g: 6, t: 7, b: 8, n: 9, p: 10, i: 11, u: 12, l: 13, s: 14, a: 15,
+};
+export function drawing(rows) {
+  if (rows.length > 16 || rows.some((r) => r.length !== 16 || [...r].some((c) => !(c in INK)))) {
+    throw new Error('a drawing is up to 16 rows of 16 cells from INK: ' + JSON.stringify(rows));
+  }
+  const all = rows.concat(Array(16 - rows.length).fill('.'.repeat(16)));
+  return all.map((r) => [...r].map((c) => INK[c].toString(16)).join('')).join('');
+}
+export const EMPTY_ART = '0'.repeat(256);
+/* the creator's drawing canvases (playerArt.js CANVASES): every one is set for
+   every look, so one townsperson's drawing never stays on the next */
+export const ART_CANVASES = ['shirtFront', 'shirtBack', 'pants', 'pantsBack', 'tattoo', 'tattooBack',
+  'tattooFace', 'tattooArm', 'tattooHeadBack'];
+
 /* The looks.  Ids are the creator's catalogs (src/rendering/traits/*,
    playerSkins.js).  `why` is the joke each look tells, from the satire
    pass's stereotype line.  `still` / `walk` name the files NPC_DATA already
-   points at (a standing townsperson's one picture, a walker's strip base). */
+   points at (a standing townsperson's one picture, a walker's strip base).
+   `art` is a chest drawing (above), by canvas.
+
+   v2.3.3588: EACH WEARS WHAT HIS PORTRAIT WEARS -- the owner: "Or maybe make
+   the characters in game just look more like the portraits. Can you do it
+   both ways so I can compare?"  The portraits are the Hemi Bros busts
+   tools/qa/nft_portraits.py made in v2.3.3580 (PORTRAITS there names each
+   one's traits), and here each townsperson is dressed in the nearest the
+   creator has to them: the collection's outfit as a tee's colour, a pattern
+   and a chest drawing, the short jaw beard (facialhair/short-beard), and the
+   collection's gold glasses, monocle and Afro (v2.3.3587).  What the
+   creator has not got, said so the comparison is honest: Lil Bro's happy eyes
+   and Ace's shifty ones (no such eye style), the grey streak in Diego's hair
+   (no streaked colour), the logo on Farmer Bro's hat and the "b" on Lil
+   Bro's headphones (a hat takes no drawing).  The busts show no trousers or
+   shoes, so those stay as they were. */
 export const NPC_LOOKS = {
   mayor: {
-    name: 'Mayor Bro', why: 'small-town politician: top hat, monocle, the grey beard he always had',
-    skin: 'fair', hair: 'slick-back-hair', hairColor: 'gray', beard: 'beard', beardColor: 'gray',
+    /* the bust's black suit: a black tee, its shirt front and red tie drawn
+       on the chest, the lapels' edge in slate either side of the V */
+    name: 'Mayor Bro', why: 'small-town politician: top hat, monocle, a black suit and red tie, a short grey beard',
+    skin: 'fair', hair: 'slick-back-hair', hairColor: 'gray', beard: 'short-beard', beardColor: 'gray',
     hat: 'top-hat', hatColor: 'black', eyewear: 'golden-monocle', eyes: 'none',
-    shirt: 'tshirt', shirtColor: 'navy', pants: 'black', shoes: 'black',
-    patterns: { shirt: 'stripe-v:2' },
+    shirt: 'tshirt', shirtColor: 'black', pants: 'black', shoes: 'black',
+    art: {
+      shirtFront: drawing([
+        '..sllllrrlllls..',
+        '...slllrrllls...',
+        '....sllrrlls....',
+        '.....slrrls.....',
+        '......srrs......',
+        '.......rr.......',
+        '......rrrr......',
+        '......rrrr......',
+        '.......rr.......',
+      ]),
+    },
     still: 'mayor-bro',
   },
   blacksmith: {
-    name: 'Blacksmith Bro', why: 'gym bro: shirtless, sweatband, flat-top, grey sweatpants',
-    skin: 'tan', hair: 'flat-top', hairColor: 'black', beard: 'beard', beardColor: 'black',
+    name: 'Blacksmith Bro', why: 'gym bro: shirtless, sweatband, flat-top, a short black beard, grey sweatpants',
+    skin: 'tan', hair: 'flat-top', hairColor: 'black', beard: 'short-beard', beardColor: 'black',
     hat: 'bandana-2', hatColor: 'default', eyewear: 'none', eyes: 'none',
     shirt: 'none', shirtColor: 'default', pants: 'gray', shoes: 'white',
     patterns: { pants: 'stripe-v:2' },
     still: 'blacksmith-bro',
   },
   diego: {
-    name: 'Diego', why: 'hustle guy: slicked hair, gold glasses, loud purple tee, white kicks',
+    /* the bust's purple bomber: dark navy, its bright purple collar, zip and
+       ribbed hem drawn on */
+    name: 'Diego', why: 'hustle guy: slicked hair, gold glasses, a loud purple bomber, white kicks',
     skin: 'brown', hair: 'slick-back-hair', hairColor: 'black', beard: 'none', beardColor: 'default',
     hat: 'none', hatColor: 'default', eyewear: 'golden-glasses', eyes: 'none',
-    shirt: 'tshirt', shirtColor: 'purple', pants: 'white', shoes: 'white',
-    patterns: { shirt: 'diag:5' },
+    shirt: 'tshirt', shirtColor: 'navy', pants: 'white', shoes: 'white',
+    art: {
+      shirtFront: drawing([
+        '....pppppppp....',
+        '.....pp..pp.....',
+        '.......pp.......',
+        '.......pp.......',
+        '.......pp.......',
+        '.......pp.......',
+        '.......pp.......',
+        '.......pp.......',
+        '.......pp.......',
+        '.......pp.......',
+        '.......pp.......',
+        '.......pp.......',
+        '.......pp.......',
+        '.......pp.......',
+        'pppppppppppppppp',
+        'pppppppppppppppp',
+      ]),
+    },
     walk: 'shopkeeper-bro-walk-',
   },
   farmer: {
-    name: 'Farmer Bro', why: 'paranoid dirt hippie: bucket hat, scraggly beard, wide eyes, earth tones',
-    skin: 'sand', hair: 'dirty-blonde', hairColor: 'default', beard: 'beard', beardColor: 'brown',
+    /* the bust's plain orange shirt */
+    name: 'Farmer Bro', why: 'paranoid dirt hippie: bucket hat, a short beard, wide eyes, a plain orange shirt',
+    skin: 'sand', hair: 'dirty-blonde', hairColor: 'default', beard: 'short-beard', beardColor: 'brown',
     hat: 'bucket-hat', hatColor: 'green', eyewear: 'none', eyes: 'wtf',
-    shirt: 'tshirt', shirtColor: 'yellow', pants: 'brown', shoes: 'brown',
-    patterns: { shirt: 'chevron:11' },
+    shirt: 'tshirt', shirtColor: 'orange', pants: 'brown', shoes: 'brown',
     still: 'farmer-bro',
   },
   woodworker: {
-    name: 'Woodworker Bro', why: 'overthinking genius: workshop goggles, wild grey hair, graph-paper tee',
-    skin: 'pale', hair: 'wavy', hairColor: 'gray', beard: 'none', beardColor: 'default',
+    /* v2.3.3587: the game's own Afro, grey (was 'wavy', which the owner calls
+       the shaggy hair): the Hemi Bros collection's Afro is his portrait's, and
+       the owner chose "Game matches collection".  v2.3.3588: the bust's
+       black-and-white striped tee */
+    name: 'Woodworker Bro', why: 'overthinking genius: workshop goggles, a wild grey afro, a striped tee',
+    skin: 'pale', hair: 'afro', hairColor: 'gray', beard: 'none', beardColor: 'default',
     hat: 'none', hatColor: 'default', eyewear: 'goggles', eyes: 'none',
     shirt: 'tshirt', shirtColor: 'white', pants: 'navy', shoes: 'brown',
-    patterns: { shirt: 'grid:9' },
+    patterns: { shirt: 'stripe-h:1' },
     still: 'woodworker-bro',
   },
   beastmaster: {
-    name: 'Beastmaster Bro', why: 'survival-show host: brown hat, beard, camo, sleepless eyes',
-    skin: 'olive', hair: 'none', hairColor: 'default', beard: 'beard', beardColor: 'brown',
+    /* the bust's camo jacket: camo, its zip drawn down the middle */
+    name: 'Beastmaster Bro', why: 'survival-show host: brown hat, a short beard, a camo jacket, sleepless eyes',
+    skin: 'olive', hair: 'none', hairColor: 'default', beard: 'short-beard', beardColor: 'brown',
     hat: 'cowboy-hat', hatColor: 'default', eyewear: 'none', eyes: 'sleepy',
     shirt: 'tshirt', shirtColor: 'green', pants: 'brown', shoes: 'black',
-    patterns: { shirt: 'camo:12' },
+    patterns: { shirt: 'camo:14' },
+    art: {
+      shirtFront: drawing(Array(16).fill('.......ll.......')),
+    },
     still: 'beastmaster-bro',
   },
   lilbro: {
-    name: 'Lil Bro', why: 'iPad kid: gamer headphones, bright tee, red sneakers (a child: NPC_DATA figureSize 0.8)',
+    /* the bust's orange running jacket: its zip and two white flashes */
+    name: 'Lil Bro', why: 'iPad kid: gamer headphones, an orange running jacket, red sneakers (a child: NPC_DATA figureSize 0.8)',
     skin: 'honey', hair: 'blonde-hair', hairColor: 'default', beard: 'none', beardColor: 'default',
     hat: 'headphones', hatColor: 'default', eyewear: 'none', eyes: 'none',
     shirt: 'tshirt', shirtColor: 'orange', pants: 'blue', shoes: 'red',
-    patterns: { shirt: 'stripe-h:2' },
+    art: {
+      shirtFront: drawing([
+        '.......ll.......',
+        '.......ll.......',
+        '.......ll.......',
+        '.......ll.......',
+        '...w...ll...w...',
+        '..www..ll..www..',
+        '.......ll.......',
+        '.......ll.......',
+        '.......ll.......',
+        '.......ll.......',
+        '.......ll.......',
+        '.......ll.......',
+        '.......ll.......',
+        '.......ll.......',
+        '.......ll.......',
+        '.......ll.......',
+      ]),
+    },
     walk: 'lil-bro-walk-',
   },
   ace: {
-    name: 'Ace', why: 'back-alley bookie: derby, slicked hair, green felt-table tee, black',
+    /* the bust's teal wool shirt worn open over a black tee: teal, the black
+       between its edges drawn down the middle */
+    name: 'Ace', why: 'back-alley bookie: derby, slicked hair, a teal wool shirt over black',
     skin: 'rosy', hair: 'slick-back-hair', hairColor: 'black', beard: 'none', beardColor: 'default',
     hat: 'fedora', hatColor: 'black', eyewear: 'none', eyes: 'none',
-    shirt: 'tshirt', shirtColor: 'green', pants: 'black', shoes: 'black',
-    patterns: { shirt: 'diamond:5' },
+    shirt: 'tshirt', shirtColor: 'teal', pants: 'black', shoes: 'black',
+    art: {
+      shirtFront: drawing(Array(16).fill('.....tkkkkt.....')),
+    },
     walk: 'cardsharp-bro-walk-',
   },
 };
@@ -141,6 +245,8 @@ async function dress(page, L) {
        headshot once needed; harmless) */
     for (const slot of ['shirt', 'pants', 'shoes']) r['pattern-' + slot] = call((v) => w.__btSetPattern(slot, v), (L.patterns || {})[slot] || '');
     r.shirtColor = call(w.__btSetShirtColor, L.shirtColor);
+    /* v2.3.3588: every drawing canvas, the look's or blank */
+    for (const c of L.canvases) r['art-' + c] = call((v) => w.__btSetArt(c, v), (L.art || {})[c] || L.emptyArt);
     /* the shirt is TWO stores: the creator's pick and the gear slot that
        draws it (gearCatalog follows the pick, but only on a change).  A
        join's restore can set the slot back alone -- then the pick reads
@@ -149,7 +255,7 @@ async function dress(page, L) {
     r.gearShirt = call((v) => w.__btGearSet('shirt', v), L.shirt === 'none' ? 'none' : 'tshirt');
     for (const slot of ['chest', 'legs', 'shoulders']) r['gear-' + slot] = call((v) => w.__btGearSet(slot, v), 'none');
     return r;
-  }, L);
+  }, Object.assign({}, L, { canvases: ART_CANVASES, emptyArt: EMPTY_ART }));
 }
 
 /* the player's figure, standing, the name plate and bars hidden, read off
@@ -217,7 +323,9 @@ async function lookIsOn(page, L) {
     const wd = window.__btWardrobe ? window.__btWardrobe() : {};
     return g('bt-hair') === L.hair && g('bt-headwear') === L.hat && g('bt-facialhair') === L.beard
       && wd.gearShirt === (L.shirt === 'none' ? 'none' : 'tshirt')
-      && wd.gearChest === 'none' && wd.gearLegs === 'none' && wd.gearShoulders === 'none';
+      && wd.gearChest === 'none' && wd.gearLegs === 'none' && wd.gearShoulders === 'none'
+      /* v2.3.3588: his chest drawing (setArt writes it; blank is 256 zeros) */
+      && (localStorage.getItem('bt-shirtart') || '0'.repeat(256)) === ((L.art && L.art.shirtFront) || '0'.repeat(256));
   }, L);
 }
 

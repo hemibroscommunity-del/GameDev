@@ -1,0 +1,53 @@
+{
+  "category": "facialhair",
+  "fullFrame": true,
+  "note": "v2.3.3588: the long beard (facialhair/beard) trimmed at the chin by tools/ui/make_short_beard.py -- the same frame, anchors and crownNudge, so it sits exactly where the long one does; only the rows under the mouth are squeezed. No north and no northeast: the face is turned away.",
+  "bboxes": {
+    "south": [
+      103,
+      64,
+      45,
+      25
+    ],
+    "southwest": [
+      98,
+      59,
+      47,
+      25
+    ],
+    "east": [
+      122,
+      53,
+      36,
+      29
+    ]
+  },
+  "anchors": {
+    "south": [
+      126,
+      67
+    ],
+    "southwest": [
+      121,
+      61
+    ],
+    "east": [
+      137,
+      62
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      0,
+      38
+    ],
+    "southwest": [
+      0,
+      40
+    ],
+    "east": [
+      6,
+      33
+    ]
+  }
+}

@@ -117,7 +117,7 @@ const pickSwatch = (P, id) => P.page.evaluate((want) => {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Shades', wsPort, webPort,
-    viewport: PHONE, touch: true });
+    viewport: PHONE, touch: true, world: 'wheel' });   /* v2.3.3587: off the retired map, touched */
   await openCreator(P);
 
   /* ══ 1. the per-pair decisions, read from the SHIPPED bundle ══ */
@@ -137,8 +137,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (!decided) { await P.ctx.close().catch(() => {}); return; }
   console.log('    what each pair paints: ' + JSON.stringify(decided));
 
-  rec.ok('the four FRAME-ish pairs are offered, and say which part',
-    decided['golden-glasses'] === 'Frame' && decided['golden-monocle'] === 'Frame'
+  /* v2.3.3587: the golden glasses are the Hemi Bros collection's now, one
+     gold, lenses included -- so their swatch paints the whole pair and says
+     'Glasses' (eyewearColorCatalog.js). */
+  rec.ok('the FRAME-ish pairs are offered, and say which part (the collection\'s gold pair, one gold, says Glasses)',
+    decided['golden-glasses'] === 'Glasses' && decided['golden-monocle'] === 'Frame'
     && decided['thug-life'] === 'Frame' && decided['eye-patch'] === 'Patch', decided);
   rec.ok('the three LENS pairs are offered, and say THAT instead',
     decided['goggles'] === 'Lens' && decided['laser-glasses'] === 'Lens'

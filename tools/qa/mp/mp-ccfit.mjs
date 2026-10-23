@@ -22,6 +22,15 @@
  * The difference is the piece, exactly, with no colour threshold to tune; and
  * the BARE capture still has the face edge the piece is now covering, which is
  * the number the question actually turns on.  Same trick as mp-ccshades.
+ *
+ * ── v2.3.3587: THE COLLECTION'S PIECES ──
+ * The owner chose "Game matches collection": both pieces are the Hemi Bros
+ * collection's now (tools/ui/make_collection_eyewear.py), so the two monocle
+ * placements pinned here for the OLD piece -- hanging off the far side of the
+ * face in southwest, short of the far eye in south -- are history: the
+ * collection's ring sits round the bro's LEFT eye, the viewer's right in both
+ * facings, where the Mayor's portrait wears it.  The glasses' properties
+ * (inside the face both sides, spanning most of it) still hold, unchanged.
  */
 import * as H from './harness.mjs';
 
@@ -78,7 +87,7 @@ const measure = (bare, worn) => {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Fit', wsPort, webPort,
-    viewport: PHONE, touch: true, dpr: 2 });
+    viewport: PHONE, touch: true, dpr: 2, world: 'wheel' });   /* v2.3.3587: off the retired map, touched */
   await P.page.waitForSelector('[data-tut="login-create"]', { timeout: 30000 });
   await P.page.click('[data-tut="login-create"]');
   await P.page.waitForSelector('.bt-cc-stage canvas', { timeout: 30000 });
@@ -98,21 +107,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    monocle SW: ' + JSON.stringify(m));
 
   rec.ok(`putting the monocle on changed the picture (guard: ${m.piece.n}px)`, m.piece.n > 150, m);
-  /* THE OWNER'S SENTENCE, as a number: it must HANG OFF, not sit inboard. */
-  rec.ok(`the monocle hangs off the side of the head (piece left ${m.piece.l}, face left ${m.head.l})`,
-    m.piece.l < m.head.l, m);
-  const off = m.head.l - m.piece.l;
-  /* 25%, and the number is load-bearing.  The placement the owner rejected as
-     "too far in the middle of the face" ALREADY hung off by 14%, so a floor of
-     12% -- which is what this assertion shipped with for one run -- passed the
-     very state the fix exists to leave behind.  My own mutation check caught
-     it: reverting the nudge turned the glasses assertions red and left this
-     one green.  The fix measures 40%, so 25% sits clear of both. */
-  rec.ok(`...by enough to read as hanging off (${off}px, ${Math.round(100 * off / m.piece.w)}% of the piece; the rejected placement managed 14%)`,
-    off >= m.piece.w * 0.25, { off, piece: m.piece.w });
-  /* ...and not so far that it has left the face behind. */
-  rec.ok(`...while still resting ON him (${Math.round(100 * off / m.piece.w)}% off is under two thirds)`,
-    off <= m.piece.w * 0.66, { off, piece: m.piece.w });
+  /* v2.3.3587: the collection's ring, round the near eye -- the viewer's right
+     in this three-quarter view, as on the collection's bust (which is turned
+     the same way) and on the Mayor's portrait.  The old piece hung off the
+     far side of the face here, at the owner's word for THAT art. */
+  const swMid = (m.piece.l + m.piece.r) / 2, swHead = (m.head.l + m.head.r) / 2;
+  rec.ok(`the monocle is round the near eye, the viewer's right, as on the collection's bust (piece middle ${swMid}, face middle ${swHead})`,
+    swMid > swHead, m);
+  rec.ok(`...and rests on the face, inside its edges (piece ${m.piece.l}-${m.piece.r}, face ${m.head.l}-${m.head.r})`,
+    m.piece.l >= m.head.l && m.piece.r <= m.head.r, m);
 
   /* ════ 2. THE GOLDEN GLASSES, TURNED TO SOUTH ════ */
   rec.ok('eyewear could be cleared (guard)', (await pickTile(P, 'None')).ok === true, null);
@@ -199,15 +202,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    monocle S: ' + JSON.stringify({ ...ms, msInFrac: +msInFrac.toFixed(3), msRightFrac: +msRightFrac.toFixed(3) }));
 
   rec.ok(`putting the monocle on changed the picture (guard: ${ms.piece.n}px)`, ms.piece.n > 150, ms);
-  /* SIDE ONE: it is ON the face, not hanging off the temple.  At the rejected
-     -12 the lens edge sat 2px OUTSIDE the silhouette, so this flips sign. */
+  /* SIDE ONE: it is ON the face, not hanging off the temple. */
   rec.ok(`the south monocle sits inboard of the head edge (piece ${ms.piece.l} vs face ${ms.head.l}, ${Math.round(msInFrac * 100)}% in)`,
     msInFrac > 0.02, { msInFrac, piece: ms.piece.l, head: ms.head.l });
-  /* SIDE TWO: it has not crossed to the OTHER eye.  Measured: the far eye
-     begins ~61% across the head at the eye row; -8 puts the rim at 59% and the
-     rejected -6 at 63%, where it visibly clips the far eye's white. */
-  rec.ok(`...and its rim stops short of the far eye (${Math.round(msRightFrac * 100)}% across, must stay under 61%)`,
-    msRightFrac < 0.61, { msRightFrac, piece: ms.piece.r, head: ms.head });
+  /* SIDE TWO (v2.3.3587): it is round the eye the collection wears it on,
+     the bro's left, the viewer's right -- its middle past the face's -- and
+     the rim stays inside the face's right edge. */
+  const msMid = ((ms.piece.l + ms.piece.r) / 2 - ms.head.l) / ms.head.w;
+  rec.ok(`...round the viewer's right eye, as on the Mayor's portrait (its middle ${Math.round(msMid * 100)}% across, past half; reaches ${Math.round(msRightFrac * 100)}%)`,
+    msMid > 0.5 && ms.piece.r <= ms.head.r, { msMid, msRightFrac, piece: ms.piece, head: ms.head });
 
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/ccfit.png` }).catch(() => {});
   await P.ctx.close().catch(() => {});

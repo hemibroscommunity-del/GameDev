@@ -174,20 +174,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/mayorcrop.png', clip }).catch(() => {});
   const shot = await H.screenshotPixels(A, clip);
   /* v2.3.3580: he is a bro from the character creator now (tools/qa/
-     npc-looks.mjs) in black trousers, so the colour counted is his NAVY
-     pinstriped tee -- about as tall a band as the purple shorts were.  The
-     names below (isShorts, purple) are the old ones, kept so the history in
-     these notes still reads. */
-  const isShorts = (r, g, b) => b > 80 && b - r > 35 && b - g > 25 && r < 100;
+     npc-looks.mjs) in black trousers, so the colour counted was his NAVY
+     pinstriped tee -- about as tall a band as the purple shorts were.
+     v2.3.3588: he wears what his Hemi Bros portrait wears, a black suit and a
+     red tie (the owner: "make the characters in game just look more like the
+     portraits"), so there is no navy left on him.  His signature is the tie:
+     its red below his chin (the top hat's band is red too, above it), and his
+     scale is read off the suit: the run of black rows down his middle, from
+     his chest to his boots, about two thirds of him. */
+  const isTie = (r, g, b) => r > g + 70 && r > b + 70 && g < 110;
+  const isSuit = (r, g, b) => r < 75 && g < 75 && b < 80 && Math.max(r, g, b) - Math.min(r, g, b) < 30;
   /* ...counted on HIM: in the world's BroTown he stands at the Town Hall's
      steps, and its blue trophy cabinet and roof fill the crop's top -- the
      middle 40% of the crop, below its middle (his figure is the bottom
      ~half: the crop is 1.6x his cell) */
   const onHim = (x, y) => Math.abs(x - shot.width / 2) < shot.width * 0.2 && y > shot.height * 0.55;
-  const purple = shot.count((r, g, b, x, y) => onHim(x, y) && isShorts(r, g, b));
-  /* (on his body alone, 53 px on this page's 1x world: an emoji stand-in
-     or a missing picture is ~0) */
-  rec.ok('his art is actually painted on the canvas', purple > 30, { navyPx: purple, clip });
+  /* (the tie, under his beard: 8 px on this page's 1x world, the hat's band
+     above 0.66 of the crop left out; an emoji stand-in or a missing picture
+     has none) */
+  const tie = shot.count((r, g, b, x, y) => onHim(x, y) && y > shot.height * 0.66 && isTie(r, g, b));
+  rec.ok('his art is actually painted on the canvas', tie > 4, { tiePx: tie, clip });
 
   /* Scale.  This has moved twice on request — v2.3.1672 pinned player height,
      v2.3.1673 doubled it, v2.3.1675 halved it back — so the band tracks the
@@ -195,15 +201,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
      never changes: catch a draw scale derived from the wrong constant, in
      either direction (the first attempt at this drew him two thirds too
      small, and only a screenshot caught it).
-     Figure = 200/256 of a 96px frame = 75 world px; the purple band is a
-     quarter of the figure, so ~19 world px of shorts before camera zoom. */
-  const rows = new Set();
-  shot.count((r, g, b, x, y) => {
-    if (onHim(x, y) && isShorts(r, g, b)) rows.add(y);
-    return false;
-  });
+     v2.3.3588: the longest run of black rows within 2 px of his middle --
+     his suit and trousers, 30 rows on this page (his hat, above his face, is
+     a run of its own); two thirds of his size would be ~20, half again ~45. */
+  let run = 0, best = 0;
+  for (let y = Math.ceil(shot.height * 0.55); y < shot.height; y++) {
+    let dark = false;
+    for (let x = Math.floor(shot.width / 2) - 2; x <= Math.ceil(shot.width / 2) + 2 && !dark; x++) {
+      const [r, g, b] = shot.at(x, y);
+      dark = isSuit(r, g, b);
+    }
+    run = dark ? run + 1 : 0;
+    if (run > best) best = run;
+  }
   rec.ok('he is drawn at roughly player scale, not doll or giant scale',
-    rows.size >= 12 && rows.size <= 38, { shirtRows: rows.size, clip });
+    best >= 24 && best <= 44, { suitRows: best, clip });
 
   await A.ctx.close().catch(() => {});
 }

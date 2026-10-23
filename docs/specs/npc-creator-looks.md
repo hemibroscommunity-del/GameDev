@@ -161,6 +161,57 @@ one CSS px a portrait pixel, where 26 px was smoothed and a computer's screen
 dropped pixels outright), and the quest page (44 px, pixelated, now at
 `npcArtUrl`'s version like the dialogue, so the two share one file).
 
+## They wear what their portraits wear (v2.3.3587, v2.3.3588)
+
+> *"Or maybe make the characters in game just look more like the portraits.
+> Can you do it both ways so I can compare?"* -- the owner, 2026-10-23,
+> weighing two ways to make a townsperson's world picture and his Hemi Bros
+> portrait agree: dress the PORTRAITS in the world's clothes (pull request
+> #1097, v2.3.3585), or dress the WORLD in the portraits' (this one).
+
+Here the portraits stay as v2.3.3580 made them, the collection's busts with
+the traits named in `tools/qa/nft_portraits.py` `PORTRAITS`, and each
+townsperson's creator look in `tools/qa/npc-looks.mjs` is the nearest the
+creator has to his bust:
+
+| Who | His portrait (the collection) | The world before | The world now |
+| --- | --- | --- | --- |
+| Mayor Bro | black suit, red tie, short grey beard | navy pinstriped tee, long grey beard | **black tee with a shirt front, lapels and red tie drawn on, short grey beard** |
+| Blacksmith Bro | short black beard | long black beard | **short black beard** |
+| Diego | purple bomber | purple-and-gold diagonal tee | **navy tee with a purple collar, zip and hem drawn on** |
+| Farmer Bro | plain orange shirt, short beard | yellow chevron tee, long beard | **plain orange tee, short brown beard** |
+| Woodworker Bro | black-and-white striped tee, grey Afro | graph-paper tee, wavy grey hair | **white tee with black stripes, the game's grey Afro** |
+| Beastmaster Bro | zipped camo jacket, short beard | brown-camo tee, long beard | **green tee in slate camo with a zip drawn on, short brown beard** |
+| Lil Bro | orange running jacket | orange-and-white banded tee | **orange tee with a zip and two white flashes drawn on** |
+| Ace | teal wool shirt open over black | green diamond tee | **teal tee with the black between its edges drawn on** |
+
+How:
+
+- **The outfits** are a tee's colour, a pattern and the creator's own chest
+  drawing (`src/rendering/traits/playerArt.js`, the 16 x 16 a player paints
+  with a finger), written in `NPC_LOOKS` as pictures, a row a line
+  (`drawing()`), and set by the tool through `window.__btSetArt` on every
+  canvas, blank where the look has none, so no townsperson's drawing stays
+  on the next.
+- **The short beard** is new in the creator for everyone: the long beard
+  trimmed at the chin by `tools/ui/make_short_beard.py`. It is the long
+  beard's own art, frame and placement, every row down to just under the
+  mouth kept as drawn and the hanging part squeezed into 0.3 of its height,
+  so its taper and ragged tips end at the chin.
+- **The gold glasses, the monocle and the Afro** are the collection's
+  (v2.3.3587, `tools/ui/make_collection_eyewear.py`: docs/specs/eyewear.md
+  section 11).
+- All eight were photographed again (`node tools/qa/npc-looks.mjs --bake`),
+  so `NPC_ART_VERSION` is 2.3.3588.
+
+What the creator has not got, so the world still differs from the
+portraits there: Lil Bro's happy eyes and Ace's shifty ones (no such eye
+style), the grey streak in Diego's slicked hair (no streaked colour), the
+logo on Farmer Bro's bucket hat and the "b" on Lil Bro's headphones (a hat
+takes no drawing), and the bomber's white sleeve (a drawing covers the
+chest only). The busts show no trousers or shoes, so those stay as they
+were.
+
 ## How they are drawn
 
 - Every townsperson is drawn at the player's own `PLAYER_SIZE_MULT`
@@ -201,7 +252,8 @@ What else moved:
 
 ## Tests
 
-- `mp-npclooks` (new): every townsperson picture comes in at 2.3.3580.
+- `mp-npclooks` (new): every townsperson picture comes in at 2.3.3580
+  (2.3.3588 since the looks of the portraits).
   Each is a bro's size with his feet on his spot, a walker on cell 8. Lil
   Bro's figure is painted 0.875 of Diego's height. Each look's own colour is
   counted beside him. The Mayor's dialogue shows his Hemi Bros portrait: 192
@@ -209,6 +261,13 @@ What else moved:
   pixels a flat 6 x 6 block, read from the picture in the page. Diego's shop
   and Ace's coin flip show it crisp: 32 and 64 px, drawn pixelated. There are
   no page errors.
+  v2.3.3588: each tell is a colour of the outfit his portrait wears, counted
+  where it is worn (the crop's torso band, its middle half for a zip or a
+  stripe): the Mayor's red tie, Blacksmith Bro's chest bare under his short
+  beard, Diego's navy, Farmer Bro's orange, Woodworker Bro's black stripes,
+  the zips of Beastmaster Bro's and Lil Bro's jackets, Ace's teal; all eight
+  townsfolk now have one. 4d (v2.3.3587): the Mayor's monocle in the world is
+  round his right-hand eye, as on his portrait.
 - `mp-wheelfolk`: the cast and its pictures are read off WHEEL_TOWNSFOLK
   and NPC_DATA. The old list missed the tour's Woodworker Bro and Farmer
   Bro, so this check was red on main. The cast holds 2.93 MB, under its
@@ -231,5 +290,14 @@ What else moved:
   changed here.)
 - `mp-mayorart`: moved off the retired old map to the world. It counts the
   navy of the Mayor's tee on his body alone, since the Town Hall's blue
-  trophy cabinet stands behind him.
+  trophy cabinet stands behind him. v2.3.3588: he wears a black suit and red
+  tie, so it counts the tie below his chin (the top hat's band is red too),
+  and reads his scale off the suit: the run of black rows down his middle,
+  his suit and trousers, 30 rows on its page.
+- `mp-shortbeard` (v2.3.3588): the short beard's files are served; the
+  creator offers it beside the long one on the Beard tab, and worn it is the
+  long beard's top -- the same top, left and right edges, ending well above
+  the long one's bottom -- in the stage's three-quarter view and, in the
+  world, in all three facings it has (south, southwest, east), read off the
+  player's own figure; the beard colour row makes it grey; no page errors.
 - `mp-joinin` is unchanged and passes.

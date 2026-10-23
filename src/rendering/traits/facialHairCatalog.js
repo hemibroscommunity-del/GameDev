@@ -20,6 +20,11 @@
 export const FACIALHAIR_CATALOG = [
   { id: 'none', name: 'None' },
   { id: 'beard', name: 'Beard' },
+  /* v2.3.3588: the long beard trimmed at the chin (tools/ui/make_short_beard.py,
+     the same frame and placement) -- the jaw beard four of the townsfolk wear
+     in their Hemi Bros portraits, for the owner's "make the characters in game
+     just look more like the portraits". */
+  { id: 'short-beard', name: 'Short Beard' },
 ];
 
 const STORAGE_KEY = 'bt-facialhair';

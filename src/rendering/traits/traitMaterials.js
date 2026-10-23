@@ -203,8 +203,12 @@ MAIN_MATERIAL['bucket-hat'] = 'all';     /* re-rendered on hue44 too: its dark h
  *
  * Note these split by PART, which hats never do: four pin the frame and three
  * the lens, because that is where the art puts the mass. */
-MAIN_MATERIAL['golden-glasses'] = 49;      /* gold frame, 80% -- the biggest anyway; pinned so it stays the frame */
-MAIN_MATERIAL['golden-monocle'] = 45;      /* gold rim, 46% against a 37% dark keyline: too close to leave to "biggest" */
+MAIN_MATERIAL['golden-glasses'] = 'all';   /* v2.3.3587: the collection's pair is one gold, lenses
+                                              included (hue45 100%): every pixel is the pair (was 49,
+                                              the old frame's 80%) */
+MAIN_MATERIAL['golden-monocle'] = 45;      /* gold rim; v2.3.3587, the collection's ring: 80%, its clear
+                                              glass the 20% "light" that keeps its own colour (was 46%
+                                              against a 37% dark keyline) */
 MAIN_MATERIAL['thug-life'] = 'dark';       /* black frame, 84% */
 MAIN_MATERIAL['eye-patch'] = 'all';        /* one material at 100%: every pixel is the patch */
 MAIN_MATERIAL['goggles'] = 202;            /* the LENS, 80% -- a coloured lens is the look here, not a coloured strap */

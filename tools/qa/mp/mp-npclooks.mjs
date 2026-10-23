@@ -25,32 +25,51 @@
  *      portrait pixel, drawn pixelated (smoothed, they blurred);
  *   5. no page errors.
  * Pictures: tools/qa/mp/out/npclooks-*.png.
+ *
+ * v2.3.3588: EACH WEARS WHAT HIS PORTRAIT WEARS (tools/qa/npc-looks.mjs's
+ * header: the owner's "make the characters in game just look more like the
+ * portraits").  The art version is 2.3.3588, and 3's tells are the new
+ * looks': a colour each new outfit has and his v2.3.3580 picture did not,
+ * counted where it is worn (`band`: a share of the crop's height from its
+ * top, `mid`: the middle of its width) -- the Mayor's red tie, Blacksmith Bro's
+ * chest bare under his short beard, Diego's navy bomber, Farmer Bro's orange
+ * shirt, Woodworker Bro's black stripes, the zips of Beastmaster Bro's and Lil
+ * Bro's jackets, Ace's teal wool shirt.  And 4d (v2.3.3587, the collection's
+ * eyewear): the Mayor wears the collection's monocle round his right-hand
+ * eye, as his portrait does.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
-const ART_V = '2.3.3580';
+const ART_V = '2.3.3588';
 /* world px of a townsperson's 256 px cell: NPC_SPRITE_SCALE (120/256) x his
    size (entityRenderer NPC_SCALE_MULT) -- Lil Bro's cell too: he is
    photographed small, not drawn small */
 const BRO = 256 * (120 / 256) * 1.25;
 const SIZE = { 'Mayor Bro': BRO * 1.10 };
-/* his tell: a colour of his creator look his old picture never had (the
-   old ones: a purple-shorted mayor, an aproned smith, long coats on Diego,
-   the farmer and the beastmaster, a white-teed Lil Bro, a green-suited
-   Ace).  Ratios, not levels: the town's light and the form shading move the
-   levels.  null: no colour of his is safe from the grass behind him. */
+/* his tell: a colour of his creator look his old picture never had.
+   Ratios, not levels: the town's light and the form shading move the
+   levels.  `band` [top, bottom] as shares of the crop's height from its top
+   (the crop runs from his feet up 0.8 of his cell, so his torso is about
+   0.36-0.62 of it), `mid` the middle half of its width: where the outfit is,
+   and where the grass, the street and his own outline are not.
+   v2.3.3588: the looks of his portrait (see the header); the old pictures are
+   v2.3.3580's -- a navy-striped mayor, a long-bearded smith, Diego's purple
+   and gold tee, the farmer's yellow and pink, a windowpane tee, brown camo, an
+   orange-and-white banded Lil Bro, Ace's green and yellow. */
+const dark = (r, g, b) => r < 70 && g < 70 && b < 70;
+const zipGrey = (r, g, b) => r > 115 && r < 195 && Math.abs(r - g) < 18 && Math.abs(g - b) < 18;
 const TELL = {
-  'Mayor Bro': ['navy pinstriped tee', (r, g, b) => b > r + 35 && b > g + 20 && r < 110],
-  'Blacksmith Bro': ['red sweatband', (r, g, b) => r > g + 80 && r > b + 80],
-  'Diego': ['purple and gold tee', (r, g, b) => b > g + 40 && r > g + 30],
-  'Farmer Bro': ['pink zig-zag', (r, g, b) => r > g + 50 && b > g + 20 && r > 150],
-  'Woodworker Bro': ['graph-paper tee', (r, g, b) => b > r + 35 && b > g + 20 && r < 110],
-  'Lil Bro': ['orange stripes', (r, g, b) => r > g + 50 && g > b + 30 && r > 160],
-  'Ace': null,
-  'Beastmaster Bro': null,
+  'Mayor Bro': ['red tie', (r, g, b) => r > g + 70 && r > b + 70 && g < 110, { band: [0.36, 0.62], mid: true }],
+  'Blacksmith Bro': ['bare chest under a short beard', (r, g, b) => r > 120 && r > g + 25 && g > b + 15, { band: [0.36, 0.5], mid: true }],
+  'Diego': ['navy bomber', (r, g, b) => b > r + 40 && b > g + 30 && r < 80 && g < 90, { band: [0.36, 0.62] }],
+  'Farmer Bro': ['orange shirt', (r, g, b) => r > 170 && g > 85 && g < 150 && b < 70, { band: [0.36, 0.62] }],
+  'Woodworker Bro': ['black stripes', dark, { band: [0.36, 0.62], mid: true }],
+  'Beastmaster Bro': ['jacket zip', zipGrey, { band: [0.36, 0.62], mid: true }],
+  'Lil Bro': ['jacket zip', zipGrey, { band: [0.36, 0.62], mid: true }],
+  'Ace': ['teal wool shirt', (r, g, b) => g > r + 70 && b > r + 60 && b > 115, { band: [0.36, 0.62] }],
 };
 
 /* the welcome and the coach's tips seen (mp-mayorart's, the game's own
@@ -157,7 +176,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const t = TELL[n.name];
         if (t) {
           const px = await H.screenshotPixels(P, clip);
-          const count = px.count(t[1]);
+          const where = t[2] || {};
+          const [b0, b1] = where.band || [0, 1];
+          const inside = (x, y) => y >= b0 * px.height && y < b1 * px.height
+            && (!where.mid || (x >= px.width * 0.25 && x < px.width * 0.75));
+          const count = px.count((r, g, b, x, y) => inside(x, y) && t[1](r, g, b));
           tells.push({ name: n.name, what: t[0], count, ok: count > 25 });
         }
       } else tells.push({ name: n.name, what: 'not drawn', count: 0, ok: false });
@@ -171,7 +194,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`2b. Lil Bro is a child: figure size ${lil && lil.size}, painted ${lil && lil.paintTop} world px over his feet to Diego's ${dg && dg.paintTop} (${kid})`,
       !!lil && lil.size === 0.8 && kid != null && kid > 0.8 && kid < 0.92, { lil, dg });
     rec.ok(`3. each one's creator look is what is painted: ${tells.map((t) => `${t.name}'s ${t.what} ${t.count} px`).join(', ')}`,
-      tells.length >= 6 && tells.every((t) => t.ok), tells);
+      tells.length >= 8 && tells.every((t) => t.ok), tells);
 
     /* ── 4. the Mayor's head in his dialogue ── */
     const opened = await H.approachNpc(P, 'mayor_bro');
@@ -209,7 +232,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.screenshot({ path: join(OUT, 'npclooks-mayor-dialogue.png') }).catch(() => {});
     const navy = head && head.corner && Math.abs(head.corner[0] - 86) + Math.abs(head.corner[1] - 85) + Math.abs(head.corner[2] - 142) <= 6;
     rec.ok(`4. Mayor Bro's dialogue shows his Hemi Bros portrait (${head ? head.src + ' ' + head.w + ' x ' + head.h + ', corner ' + head.corner + ', ' + head.mixed + ' blocks not flat' : 'none'})`,
-      !!opened && !!head && /mayor-bro-head\.webp\?v=2\.3\.3580$/.test(head.src) && head.w === 192 && head.h === 192
+      !!opened && !!head && head.src.endsWith('mayor-bro-head.webp?v=' + ART_V) && head.w === 192 && head.h === 192
         && navy && head.mixed === 0, { opened, head });
 
     /* ── 4b. crisp wherever else he is shown ── */
@@ -237,6 +260,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`4b. his portrait is crisp wherever else it is shown: Diego's shop ${crisp.shop ? crisp.shop.w + ' px ' + crisp.shop.render : 'none'}, `
          + `Ace's coin flip ${crisp.ace ? crisp.ace.w + ' px ' + crisp.ace.render : 'none'}`,
       sharp(crisp.shop, 32) && sharp(crisp.ace, 64), crisp);
+
+    /* ── 4d. the world wears the collection's monocle (v2.3.3587) ──
+       Its gold, above his shoulders, sits on the viewer's right of his
+       figure's middle, round the eye his portrait wears it on; the old piece's
+       sat left of it. */
+    const mono = await P.page.evaluate(async ({ v }) => {
+      const r = await fetch(`/sprites/npc/mayor-bro.webp?v=${v}`);
+      const bmp = await createImageBitmap(await r.blob());
+      const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+      const g = c.getContext('2d'); g.drawImage(bmp, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let l = c.width, rr = -1, sx = 0, n = 0;
+      for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+        const i = (y * c.width + x) * 4;
+        if (d[i + 3] < 100) continue;
+        if (x < l) l = x; if (x > rr) rr = x;
+        if (y < 100 && d[i] > 200 && d[i + 1] > 140 && d[i + 2] < 90) { sx += x; n++; }
+      }
+      return { gold: n, goldX: n ? Math.round(sx / n) : null, mid: (l + rr) / 2 };
+    }, { v: ART_V });
+    rec.ok(`4d. the Mayor wears the collection's monocle in the world, round his right-hand eye as his portrait does (its gold at x ${mono.goldX}, his middle ${mono.mid}, ${mono.gold} px)`,
+      mono.gold > 40 && mono.goldX > mono.mid, mono);
 
     rec.ok('5. no page errors', errors.length === 0, errors);
   } finally {
