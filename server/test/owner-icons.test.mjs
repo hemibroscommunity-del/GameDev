@@ -35,6 +35,13 @@
  *      fails here), at the size its rule says; the Forge tab's anvil and the
  *      chat box's smiley are pointed at; Jump and the generic Special drawn
  *      as faces; the party's crown the owner's T112.2.
+ *   8. v2.3.3571: the owner's painted copper ore and pickaxe ("Ok change the
+ *      art style of the copper ore and the pickaxe to this"), as
+ *      tools/ui/cut-owner-items.py cut them, on today's canvases, the rock's
+ *      label cropped at the pickaxe's measured box, a broken copper rock
+ *      popping the bag's copper, the other ores still from the old lump; and
+ *      the bag's bow the pine one again, the owner's card 11 bow the menu's
+ *      own file ("I only wanted it to replace the menu art for the bow").
  */
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -245,10 +252,14 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     + 'T113.1, T115.3, T118.1, T121.1, T123.1, T125.1, T127.1, T128.1').split(', ');
   const spec = JSON.parse(src('tools/ui/owner-picks-card11.json'));
   const inList = new Set(spec.picks.map((e) => e.code));
-  const accounted = OWNER.filter((c) => inList.has(c) || (spec.done && c in spec.done) || (spec.dropped && c in spec.dropped));
+  const accounted = OWNER.filter((c) => inList.has(c) || (spec.done && c in spec.done) || (spec.dropped && c in spec.dropped)
+    || (spec.replaced && c in spec.replaced));
   const extra = [...inList].filter((c) => OWNER.indexOf(c) < 0);
-  check('7a every one of the owner\'s 72 codes is cut, already in the game (5 from the first cut), or set aside with its reason (T69.1, the same star as T69.2)',
-    OWNER.length === 72 && accounted.length === 72 && extra.length === 0 && Object.keys(spec.done).length === 5 && Object.keys(spec.dropped).join() === 'T69.1',
+  /* v2.3.3571: T36.1, the pickaxe, REPLACED by the owner's own painted one
+     (§8, tools/ui/cut-owner-items.py), so the cutter no longer writes it */
+  check('7a every one of the owner\'s 72 codes is cut, already in the game (5 from the first cut), set aside with its reason (T69.1, the same star as T69.2), or replaced by the owner\'s own later picture (T36.1, v2.3.3571)',
+    OWNER.length === 72 && accounted.length === 72 && extra.length === 0 && Object.keys(spec.done).length === 5 && Object.keys(spec.dropped).join() === 'T69.1'
+    && Object.keys(spec.replaced || {}).join() === 'T36.1' && !inList.has('T36.1'),
     { missing: OWNER.filter((c) => accounted.indexOf(c) < 0), extra });
 
   const sums = Object.create(null);
@@ -261,8 +272,10 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   for (const e of spec.picks) { want.push([e, fileOf(e)]); if (e.grey) want.push([e, fileOf(e, true)]); }
   const changed = want.filter(([, f]) => !sums[f] || !existsSync(new URL(f, root))
     || createHash('sha256').update(readFileSync(new URL(f, root))).digest('hex') !== sums[f]).map(([e, f]) => e.code + ' ' + f);
+  /* v2.3.3571: 70 -- the pickaxe is §8's now, and T3.3 is written to the menu
+     bow's own file (icons/ui/equip-bow), not over the bag's */
   check(`7b all ${want.length} files the cutter wrote are still the owner's picks, byte for byte (another tool writing over one fails here: run tools/ui/cut-owner-icons.py --force --only <code>)`,
-    want.length === 71 && changed.length === 0, changed);
+    want.length === 70 && changed.length === 0, changed);
 
   /* each is the size its rule says (a PNG's from its IHDR) */
   const size = (f) => {
@@ -297,6 +310,55 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     /name='icons\/ui\/party-crown', src='brotown-rpg-ui-icon-sheet-2\.png', mode='alpha',\s*box=\(1160, 540, 1256, 620\)/.test(cut));
   const rd = ['talk', 'door', 'sleep', 'farm-dig', 'farm-plant', 'farm-water', 'farm-feed', 'farm-harvest'];
   check('7g the right stick\'s eight pictures are asked for at a new address', rd.every((n) => cs.indexOf("'/ui/controls/" + n + ".webp?v=2.3.3526'") >= 0));
+}
+
+/* ── 8. v2.3.3571: the owner's copper ore and pickaxe, and the bag's bow pine again ── */
+{
+  /* "Ok change the art style of the copper ore and the pickaxe to this." */
+  const items = JSON.parse(src('tools/ui/owner-items.json'));
+  const files = Object.keys(items);
+  const sha = (f) => createHash('sha256').update(readFileSync(new URL(f, root))).digest('hex');
+  const notCut = files.filter((f) => !existsSync(new URL(f, root)) || sha(f) !== items[f].sha256);
+  check('8a the copper ore and the pickaxe are the owner\'s picture as tools/ui/cut-owner-items.py cut it, byte for byte (another tool writing over one fails here: run it again)',
+    files.join() === 'public/icons/items/ore-copper.webp,public/icons/items/mining-pickaxe.webp' && notCut.length === 0
+    && files.every((f) => existsSync(new URL(items[f].src, root))), notCut);
+  check('8b each on today\'s canvas: the ore 256 x 256 as every bag item, the pickaxe 192 x 192 as the tools',
+    dims('/icons/items/ore-copper.webp').join('x') === '256x256' && dims('/icons/items/mining-pickaxe.webp').join('x') === '192x192'
+    && items['public/icons/items/ore-copper.webp'].size.join('x') === '256x256'
+    && items['public/icons/items/mining-pickaxe.webp'].size.join('x') === '192x192');
+  /* the label over a rock crops the pickaxe at its own opaque box */
+  const nl = src('src/rendering/nodeLabels.js');
+  const m = nl.match(/oreVein:\s*\{ url: '\/icons\/items\/mining-pickaxe\.webp',\s*box: \[(\d+), (\d+), (\d+), (\d+)\]/);
+  check('8c the label over every rock crops the pickaxe at the box the cutter measured',
+    !!m && m.slice(1).map(Number).join() === items['public/icons/items/mining-pickaxe.webp'].box.join(), m && m.slice(1));
+  /* a broken copper rock pops the bag's copper, as the other tiers pop theirs */
+  const fx = src('src/rendering/systems/effectsRenderer.js');
+  check('8d a broken copper rock pops the bag\'s copper ore (the owner\'s), not the old pixel nugget',
+    /_fxLoad\('\/icons\/items\/ore-copper\.webp'\)\.then\(\(tex\) => \{\s*if \(tex\) \{ tex\.source\.scaleMode = 'linear'; ORE_ICON_TEX = tex;/.test(fx)
+    && fx.indexOf("'/icons/ore/ore-copper.webp'") < 0);
+  /* the other ores stay recoloured from the OLD lump */
+  const tier = src('tools/make_tier_art.py');
+  check('8e make_tier_art.py recolours the iron, black steel, titanium and obsidian ores from the OLD copper lump, kept in assets/, never the owner\'s',
+    /ORE_LUMP = 'assets\/icons-source\/ore-copper-lump\.webp'/.test(tier) && (tier.match(/Image\.open\(ORE_LUMP\)/g) || []).length === 2
+    && tier.indexOf("ICONS + 'ore-copper.webp'") < 0 && existsSync(new URL('assets/icons-source/ore-copper-lump.webp', root)));
+
+  /* "revert the inventory art of the bow back to the original one (pine) ...
+     I only wanted it to replace the menu art for the bow" */
+  /* the pine bow as it was before v2.3.3526 (git show 923bd63f1^:public/icons/items/bow.webp) */
+  const PINE_BOW_SHA = '8c47885d06397402d31c91d01f6fd5375d817918bdfd8f61b36fbea71c5c388c';
+  const bowSha = sha('public/icons/items/bow.webp');
+  check('8f the bag\'s bow is the pine bow again (the file v2.3.3526 wrote over, back byte for byte), and the owner\'s card 11 bow is the menu\'s own file',
+    bowSha === PINE_BOW_SHA && sha('public/icons/ui/equip-bow.webp') === '91ff0bd0d1746b4075e58e9d59421ef47f0153892792bd5480cf8defa057d877'
+    && dims('/icons/ui/equip-bow.webp').join('x') === '256x256', bowSha);
+  const eq = src('src/ui/mobile/sheet/equipModel.js');
+  const bag = src('src/ui/mobile/dash/InventoryPanel.jsx'), card = src('src/ui/mobile/dash/ItemDetailPopup.jsx');
+  const reveal = src('src/ui/reveal/RevealOverlay.jsx'), loot = src('src/rendering/lootIcons.js');
+  check('8g the menu (the Equipment slot, the weapon button and the player card, all wpnIconSrc) wears the new bow; the bag, its card, a drop\'s reveal and loot on the ground the pine one',
+    /return wpn\.type === 'bow' \? '\/icons\/ui\/equip-bow\.webp\?v=2\.3\.3571'/.test(eq)
+    && /obj\.type === 'bow'\s*\? `\/icons\/items\/bow\.webp\$\{ITEMS_V\}`/.test(bag)
+    && /if \(wpn\.type === 'bow'\)\s*return `\/icons\/items\/bow\.webp\$\{ITEMS_V\}`/.test(card)
+    && /r\.itemType === 'bow' \? '\/icons\/items\/bow\.webp'/.test(reveal) && /bow: '\/icons\/items\/bow\.webp'/.test(loot)
+    && src('src/ui/panels/WeaponSwapButton.jsx').indexOf('wpnIconSrc(R, wpn)') >= 0);
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
