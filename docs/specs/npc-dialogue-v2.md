@@ -83,3 +83,18 @@ earlier fix, because no code caps a life skill:
 - mayor_2's offer says "Before I sign off on you".
 - mayor_2's hand-in says "Your paperwork is officially stamped".
 - mayor_3's hand-in names you Dungeon Delver of the Year.
+
+## v2.3.3579: the Mayor's Goo Grotto aside
+
+The owner: "Yes add mayors line pointing to grotto as a party challenge but
+keep the wittiness of the new dialog." Mayor Bro's slime hand-in (tut_1) gains
+one tap, the fourth, while the worker runs the Goo Grotto as a level-16 party
+dungeon (v2.3.3573):
+
+> Oh, and that cave with goo pouring out? The Goo Grotto. Everything in it is
+> level 16, and the giant slime at the bottom splits when you hit it, like the
+> town council. Don't go in alone. That's not bravery, it's a funeral I'd have
+> to speak at, and I'm out of material. Bring a party of 2 or 3.
+
+The other six taps are word for word as the satire pass wrote them. Where and
+why: docs/specs/grotto-party.md "v2.3.3579".
