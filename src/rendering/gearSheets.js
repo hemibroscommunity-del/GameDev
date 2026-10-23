@@ -21,6 +21,7 @@ import { upscaleToFrameHeight, antialiasUpscaledCanvas, downscaleByFactor, DISPL
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 import { gearArt, gearArtSafe } from './gearVariants.js'; /* v2.3.1757: recoloured sets share their donor's sheets */
 import { releaseCanvasSource } from './releaseCanvasTexture.js';   /* v2.3.3074 */
+import { witnessCanvas } from './canvasWitness.js';   /* v2.3.3574: a picture Safari threw away is noticed */
 
 const FRAME_W = 256;
 const FRAME_H = 256;
@@ -176,15 +177,20 @@ export function packTrimmed(img, fw, fh, n) {
   }
   const snapDn = (v) => Math.max(0, Math.floor(v / TRIM_ALIGN) * TRIM_ALIGN);
   const cells = [];
+  /* v2.3.3574: the first solid pixel the scan meets (alpha 128 and up), the
+     picture's witness once packed (canvasWitness.js) */
+  let wi = -1, wx = 0, wy = 0;
   for (let i = 0; i < n; i++) {
     const ox = i * fw;
     let x0 = fw, y0 = fh, x1 = -1, y1 = -1;
     for (let y = 0; y < fh; y++) {
       const row = y * W;
       for (let x = 0; x < fw; x++) {
-        if (data[(row + ox + x) * 4 + 3] !== 0) {
+        const a = data[(row + ox + x) * 4 + 3];
+        if (a !== 0) {
           if (x < x0) x0 = x; if (x > x1) x1 = x;
           if (y < y0) y0 = y; if (y > y1) y1 = y;
+          if (wi < 0 && a >= 128) { wi = i; wx = x; wy = y; }
         }
       }
     }
@@ -250,6 +256,9 @@ export function packTrimmed(img, fw, fh, n) {
   /* Safari holds canvas backing stores against a hard total until GC gets to
      them; zeroing hands the full-size scratch copy back now. */
   rd.width = 0; rd.height = 0;
+  /* v2.3.3574: if Safari empties this canvas while the tab is parked, the
+     return's check reads this pixel back empty (canvasWitness.js) */
+  if (wi >= 0) { const c = cells[wi]; witnessCanvas(cv, c.ax + wx - c.tx, c.ay + wy - c.ty); }
   return { canvas: cv, cells };
 }
 

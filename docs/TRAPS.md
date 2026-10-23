@@ -8289,3 +8289,48 @@ new kind of zone gets its box there. Never `_getZoneConfig` alone.
 
 **Receipt:** `grotto-party.test.mjs` §5: a sword hit at the west wall and the
 north edge, every shove's call, and a split by the bottom wall.
+
+## 250. "The picture is on its canvas, so it is there when it is needed" (v2.3.3574)
+
+**The plausible move.** The game makes most of its pictures itself on 2D
+canvases (every body and armour sheet cut to its frames, the body baked under
+the armour a frame at a time, the gathering figures, the effects' strips) and
+hands each to Pixi as a texture.  Pixi sends a canvas to the graphics chip the
+first time it is DRAWN, and a canvas keeps its pixels until the page lets go
+of it.  So it is enough to make the picture once; it will be there whenever a
+facing, a pose or a new bake first needs it, and a page that comes back from a
+parked tab has every picture it had.
+
+**Why it is wrong.** iPhone Safari can empty a canvas while the tab is
+parked: it comes back blank, and a 2D canvas there gets no event for it
+(WebKit bug 195325; MDN lists no `contextlost` for Safari).  The owner's
+screenshot is the evidence; the mechanism (the memory behind an accelerated
+canvas given back to the system) is the likeliest reading, not one measured
+on a phone.  What was already on the graphics chip is
+untouched, so the page looks fine at first; what is drawn for the FIRST time
+afterwards is uploaded from the emptied canvas, blank, and stays blank; and
+anything baked afterwards FROM one is blank too.  On a phone in BroTown
+wearing armour, ~690 canvases (~70 MB) back the textures and ~580 of them have
+never been drawn: 19 of 173 masked body frames were on the chip
+(mp-tabwipe's census).  The owner came back to the tab with their bro's head,
+skin and boots gone at some facings; the hair, armour art, shield and staff,
+loaded from files, were read again from their files.  Uploading everything
+when it is made would put ~45 MB more on the chip; remaking pictures in place
+would need a remake path in each of the dozen systems that make one.
+
+**The rule.** Never trust a canvas across a parked tab.  Every picture packed
+by `gearSheets.packTrimmed` is witnessed as it is made (one solid pixel,
+`rendering/canvasWitness.js`); coming back to the tab, wsClient's
+`_resumeRecover` reads a sample of the witnesses again (48, in a few ms) and,
+when two or more read empty, BroTown's recovery reload brings every picture
+back from its files, on the same spot of the Wheel (`_recoveryReload(why,
+{ spot: true })`, `bt_resume_spot`, worldTrial `setWheelArrival`).  A new
+system that makes a picture on a canvas and keeps it either goes through
+packTrimmed or witnesses its canvas itself; one it empties on purpose it frees
+with `width = 0` (never `clearRect`), which the check skips.  `?canvascheck=0`
+is the game as it was.
+
+**Receipt:** `mp-tabwipe` (armour worn, a walk east, the page hidden, every
+canvas behind a texture emptied as Safari empties them, shown again): the game
+reloads straight back in, 0 px from where it was parked, and the body is whole
+in all eight facings; with `?canvascheck=0` it comes back blank in all eight.

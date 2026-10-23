@@ -25,6 +25,7 @@ import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the wo
 import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
 import { applySparState } from '@/game/spar.js'; /* v2.3.3265: the test panel's sparring clones */
 import { applyTestMode } from '@/game/testMode.js'; /* v2.3.3430: the owner's test mode, shown as a tag */
+import { checkWitnesses, noteCheckActed, EMPTIED_NEED, CANVAS_CHECK_OFF } from '@/rendering/canvasWitness.js'; /* v2.3.3574: a picture Safari threw away is noticed */
 import { allyBus } from '@/game/alliance.js'; /* v2.3.3313: the alliance's answers (server alliance.js) */
 import { monsterNoticed } from '@/game/monsterNoises.js'; /* v2.3.3340: a monster calls as it notices you */
 import { carryMonsterState } from '@/game/monsterCarry.js'; /* v2.3.3558: a re-push is not a new arrival (TRAPS §245) */
@@ -4804,6 +4805,27 @@ export function setupWebSocket(ctx) {
           ct.recordCrash('resume', tag + ' wsState=' + (ws ? ws.readyState : 'none'));
         }).catch(function () {});
       } catch (e) {}
+      /* ═══ v2.3.3574: THE PICTURES SAFARI THREW AWAY, BROUGHT BACK ═══
+         The owner came back to the tab with their bro's head and legs gone at
+         some facings: iPhone Safari had emptied the canvases the game draws
+         its pictures on while the tab was parked, and every picture not on
+         the graphics chip yet came back blank (rendering/canvasWitness.js,
+         mp-tabwipe).  Checked first, before the socket: when they were
+         thrown away, BroTown's recovery reload brings every one back from
+         its files, on the same spot of the Wheel, and nothing below is
+         worth doing on a page about to be replaced. */
+      if (!CANVAS_CHECK_OFF) {
+        try {
+          var _cw = checkWitnesses();
+          if (_cw.emptied >= EMPTIED_NEED) {
+            var _cwWhy = tag + ': ' + _cw.emptied + ' of ' + _cw.checked + ' pictures read back empty (' + _cw.ms + ' ms)';
+            import('../debug/crashTrap.js').then(function (ct) { ct.recordCrash('canvas-purge', _cwWhy); }).catch(function () {});
+            var _cwGo = typeof window.__btRecoveryReload === 'function' && window.__btRecoveryReload('pictures emptied while away -- ' + _cwWhy, { spot: true });
+            noteCheckActed(_cwGo ? 'reload' : 'no-reload');
+            if (_cwGo) return;
+          }
+        } catch (eCw) { /* a check must never stop the rest of the return */ }
+      }
       /* v2.3.1913: 'idle' joins 'superseded' here.  Both are deliberate
          hang-ups with a banner offering the way back, and silently
          reconnecting behind that banner would leave it lying on screen
