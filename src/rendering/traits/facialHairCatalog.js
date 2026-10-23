@@ -49,5 +49,5 @@ export function onFacialHairChange(fn) {
   return () => _listeners.delete(fn);
 }
 
-/* v2.3.3576: for tools/qa/npc-looks.mjs, which dresses a bro in each townsperson's creator look (as __btSetHair) */
+/* v2.3.3578: for tools/qa/npc-looks.mjs, which dresses a bro in each townsperson's creator look (as __btSetHair) */
 if (typeof window !== 'undefined') window.__btSetFacialHair = setFacialHair;

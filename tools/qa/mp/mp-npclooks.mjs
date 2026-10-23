@@ -1,4 +1,4 @@
-/* v2.3.3576: THE TOWNSFOLK ARE BROS FROM THE CHARACTER CREATOR -- on a phone.
+/* v2.3.3578: THE TOWNSFOLK ARE BROS FROM THE CHARACTER CREATOR -- on a phone.
  *
  * The owner: "generate the art for the characters described in the document
  * using the Brotown character creator ... NPCs should look like normal bro
@@ -7,7 +7,7 @@
  * In the Wheel's BroTown:
  *
  *   1. every townsperson's picture comes in at the new art's version
- *      (NPC_ART_VERSION 2.3.3576), none at an old one;
+ *      (NPC_ART_VERSION 2.3.3578), none at an old one;
  *   2. each is drawn a bro's size -- the player's own PLAYER_SIZE_MULT, the
  *      mayor 10% over it (the owner's v2.3.1822) -- his feet on his spot, a
  *      walker on his standing cell (8); and Lil Bro a child: his cell drawn
@@ -28,7 +28,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
-const ART_V = '2.3.3576';
+const ART_V = '2.3.3578';
 /* world px of a townsperson's 256 px cell: NPC_SPRITE_SCALE (120/256) x his
    size (entityRenderer NPC_SCALE_MULT) -- Lil Bro's cell too: he is
    photographed small, not drawn small */
@@ -206,7 +206,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.screenshot({ path: join(OUT, 'npclooks-mayor-dialogue.png') }).catch(() => {});
     const navy = head && head.corner && Math.abs(head.corner[0] - 86) + Math.abs(head.corner[1] - 85) + Math.abs(head.corner[2] - 142) <= 6;
     rec.ok(`4. Mayor Bro's dialogue shows his Hemi Bros portrait (${head ? head.src + ' ' + head.w + ' x ' + head.h + ', corner ' + head.corner + ', ' + head.mixed + ' blocks not flat' : 'none'})`,
-      !!opened && !!head && /mayor-bro-head\.webp\?v=2\.3\.3576$/.test(head.src) && head.w === 192 && head.h === 192
+      !!opened && !!head && /mayor-bro-head\.webp\?v=2\.3\.3578$/.test(head.src) && head.w === 192 && head.h === 192
         && navy && head.mixed === 0, { opened, head });
 
     rec.ok('5. no page errors', errors.length === 0, errors);

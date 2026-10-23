@@ -51,9 +51,9 @@ let _done = null;
  * Versioned on the FETCH only; `_tex` stays keyed by the raw path so
  * getNpcTexture's callers (entityRenderer, which looks up by `npc.sprite`)
  * need no change and cannot drift out of step with the loader. */
-/* v2.3.3576: every townsperson repainted as a bro from the character creator
+/* v2.3.3578: every townsperson repainted as a bro from the character creator
    (tools/qa/npc-looks.mjs), at the same paths -- so the version moves */
-export const NPC_ART_VERSION = '2.3.3576';
+export const NPC_ART_VERSION = '2.3.3578';
 export const npcArtUrl = (src) => (src ? src + '?v=' + NPC_ART_VERSION : src);
 
 /** Every distinct sprite named by NPC_DATA.  Driven off the data table so a
@@ -377,7 +377,7 @@ export function freeTownScenery() {
    Gambling Den, Blacksmith Bro at the forge, Lil Bro on the square -- each
    walker's south strip, the blacksmith's one picture.  Read off that table,
    so a name added there is loaded here with nothing else to change.
-   v2.3.3576: the townsfolk are creator bros now (tools/qa/npc-looks.mjs), a
+   v2.3.3578: the townsfolk are creator bros now (tools/qa/npc-looks.mjs), a
    walker's strip nine cells of a real jog where it was four, which took the
    cast here from 3.6 MB to 6.5 MB.  So, as the walkers' strips always were,
    the ONE-PICTURE townsfolk load cropped to their figure (loadCroppedStrip
@@ -402,7 +402,7 @@ export function wheelNpcSources() {
 /** The walkers the Wheel shows, and the one strip of each it loads:
     [{ id, dir, src, frames, only }].  v2.3.3525: or the strips its row names
     in `wheelDirs` -- Lil Bro races round the square (game/race.js) and needs
-    his four straight ones.  v2.3.3576: `only` -- a walker with no `wheelDirs`
+    his four straight ones.  v2.3.3578: `only` -- a walker with no `wheelDirs`
     stands still facing the street here, so of his strip only the cell he
     stands on (NPC_DATA `walk.stand`, the cell entityRenderer draws him on);
     getNpcWalkFrame's lookup wraps, so that one cell answers every frame. */
@@ -420,7 +420,7 @@ export function loadWheelNpcArt() {
   if (_wheelArt) return _wheelArt.p;
   const run = { p: null, crops: [], stills: [] };
   run.p = Promise.allSettled([
-    /* v2.3.3576: a one-picture townsperson cropped to his figure, as a strip
+    /* v2.3.3578: a one-picture townsperson cropped to his figure, as a strip
        of one cell (`orig` the whole 256 cell, so he stands where he did) */
     ...wheelNpcSources().map((src) => loadCroppedStrip(npcArtUrl(src), 1).then((frames) => {
       const tex = frames && frames[0];

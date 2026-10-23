@@ -389,7 +389,7 @@ const NPC_SPRITE_SCALE = 120 / 256;
    nobody draws would be a rule nothing obeys.)
 
    Keyed by client-visible strings, so Object.create(null) (CLAUDE.md rule 4). */
-/* ═══ v2.3.3576: THE TOWNSFOLK ARE BROS, SO THEY ARE A BRO'S SIZE ═══
+/* ═══ v2.3.3578: THE TOWNSFOLK ARE BROS, SO THEY ARE A BRO'S SIZE ═══
    The owner: "generate the art for the characters ... using the Brotown
    character creator ... NPCs should look like normal bro characters."  Every
    townsperson's picture is now the player's own figure in a creator look,
@@ -417,7 +417,7 @@ const NPC_SCALE_MULT = Object.assign(Object.create(null), {
   '/sprites/npc/lil-bro-walk-south.webp': NPC_BRO_MULT,
 });
 const npcSpriteScale = (src) => NPC_SPRITE_SCALE * (NPC_SCALE_MULT[src] || 1);
-/* v2.3.3576: how big his figure is painted in his cell, a grown bro's 1
+/* v2.3.3578: how big his figure is painted in his cell, a grown bro's 1
    (NPC_DATA `figureSize`: Lil Bro 0.8) */
 const npcFigureSize = (npc) => (npc && npc.figureSize > 0 ? npc.figureSize : 1);
 
@@ -578,7 +578,7 @@ const NPC_FRAME_TOP_Y = 23;
 const NPC_PLATE_DROP_FRAC = 38 / 121.9;
 
 /** Height of the drawn figure above the NPC's feet, in world px.
- *  v2.3.3576: times his figure's size in its cell (npcFigureSize). */
+ *  v2.3.3578: times his figure's size in its cell (npcFigureSize). */
 const npcFigureHeight = (src, npc) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y) * npcFigureSize(npc);
 
 /* ═══ v2.3.2046: WHICH WAY A WALKING NPC IS FACING ═══
@@ -626,7 +626,7 @@ function npcStandFrame(npc) {
   const n = npc && npc.walk && npc.walk.stand;
   return Number.isInteger(n) && n >= 0 ? n : 0;
 }
-/* ═══ v2.3.3576: A BRO'S STRIDE ═══
+/* ═══ v2.3.3578: A BRO'S STRIDE ═══
    A townsperson's walk strip is the player's own jog now (tools/qa/
    npc-looks.mjs): `cycle` cells evenly over the jog's cycle for that facing,
    then his stand.  So he steps as a player does: one cycle every
@@ -5734,7 +5734,7 @@ function createMonsterDisplay(monster) {
  * display.y has already been read by the zone-scale lookup. */
 const BODY_CELL_MID = 128;
 const LOCAL_BODY_SCALE = 0.421875;   /* the local player's LOCAL_SCALE, v2.3.741 */
-/* v2.3.3576: capturePoseFrames' eight facings (screen space, +y down) and the
+/* v2.3.3578: capturePoseFrames' eight facings (screen space, +y down) and the
    sheet each is drawn from -- west, northwest and southeast are east,
    northeast and southwest mirrored, by the world */
 const CAPTURE_FACING = Object.freeze({
@@ -15707,7 +15707,7 @@ export class EntityRenderer {
     const pose = kind === 'dodge' ? 'dodge' : kind === 'jog' ? 'jog' : kind === 'stand' ? 'stand' : null;
     if (!pose || !hasPose(pose)) return null;
     const o = opts || {};
-    /* v2.3.3576: ANY OF THE EIGHT FACINGS, AND THE STAND.  The townsfolk are
+    /* v2.3.3578: ANY OF THE EIGHT FACINGS, AND THE STAND.  The townsfolk are
        bros from the character creator now (the owner: "NPCs should look like
        normal bro characters"), and tools/qa/npc-looks.mjs photographs each
        one here, standing and jogging every way, for his picture and his walk
@@ -15749,11 +15749,11 @@ export class EntityRenderer {
     const sScale = bodyDirScale('stand', dir) * LOCAL_BODY_SCALE;
     const standH = (sRows.feet - sRows.crown + 1) * sScale;
     const footY = (sRows.feet - BODY_CELL_MID) * sScale;
-    /* v2.3.3576: `unitPx` gives the caller px per unit outright (the
+    /* v2.3.3578: `unitPx` gives the caller px per unit outright (the
        townsfolk's frames are drawn at one scale whatever the facing) */
     const u = +o.unitPx > 0 ? +o.unitPx : bodyH / standH;   /* caller px per unit */
     const rr = u * res;                                      /* device px per unit */
-    /* v2.3.3576: `clock` pins the moment photographed, so the same pose comes
+    /* v2.3.3578: `clock` pins the moment photographed, so the same pose comes
        out the same picture every time (tools/qa/npc-looks.mjs photographs a
        townsperson until it does: his look's bakes are in) */
     const clock = +o.clock > 0 ? +o.clock : Date.now();
@@ -15843,7 +15843,7 @@ export class EntityRenderer {
       frames, res, times, dur,
       w: fw * u, h: fh * u,
       feet: [-box.x * u, (footY - box.y) * u],
-      /* v2.3.3576: where the figure's own origin (its body cell's middle) is
+      /* v2.3.3578: where the figure's own origin (its body cell's middle) is
          in each frame, for tools/qa/npc-looks.mjs; and the facing drawn */
       origin: [-box.x * u, -box.y * u], dir: face,
     };
@@ -16654,7 +16654,7 @@ export class EntityRenderer {
             walkDir: display._walkDir || null,
             /* v2.3.3520: the walk frame bound (a still walker: his stand frame) */
             frame: typeof display._walkIdx === 'number' ? display._walkIdx : null,
-            /* v2.3.3576: his figure's size in its cell, and how far above
+            /* v2.3.3578: his figure's size in its cell, and how far above
                his feet the bound picture's paint begins (its crop's top: to
                within the crop's 4-11 px pad, world px) -- Lil Bro's picture
                is photographed small, not drawn small */

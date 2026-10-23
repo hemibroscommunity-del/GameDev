@@ -4,7 +4,7 @@ import { ACE_FLIP_MIN_STAKE, ACE_FLIP_RISK_MULT, ACE_FLIP_WIN_CHANCE, aceFlipMax
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '@/rendering/characterPortrait.js';
 import { thumbFor, ITEM_NAMES, TICKET_KEY_PREFIX } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
-import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3576: his head is the creator bro's now, at the townsfolk's cache-bust */
+import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3578: his head is the creator bro's now, at the townsfolk's cache-bust */
 
 /* ═══ v2.3.2618: ACE'S COIN FLIP ═══
  *

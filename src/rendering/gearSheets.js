@@ -312,7 +312,7 @@ if (typeof window !== 'undefined') {
   window.__btFxTrim = () => _fxTrimStats.slice();
   window.__btFxTrimFrames = (url) => _fxTrimFrames.get(url) || null;
 }
-/* v2.3.3576: `opts.only` -- the cells to keep, by number, in the order given
+/* v2.3.3578: `opts.only` -- the cells to keep, by number, in the order given
    (the frames come back in that order, as many as it names).  The Wheel's
    townsfolk who never walk there (Diego, Ace: loadWheelNpcArt) keep only the
    cell they stand on, not the eight of their jog: the rest are never cut,

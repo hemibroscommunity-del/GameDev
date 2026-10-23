@@ -1,4 +1,4 @@
-# The townsfolk are bros from the character creator (v2.3.3576)
+# The townsfolk are bros from the character creator (v2.3.3578)
 
 The owner: "generate the art for the characters described in the document
 using the Brotown character creator. You can modify the bro art if you want.
@@ -58,7 +58,7 @@ node tools/qa/npc-looks.mjs --bake --only=lilbro
 - A walker gets eight strips (one a facing) of nine cells: the player's jog
   in eight cells spread evenly over its cycle, then his stand (NPC_DATA
   `walk`: `frames` 9, `cycle` 8, `stand` 8).
-- The files keep their old names; `NPC_ART_VERSION` moved to 2.3.3576, so
+- The files keep their old names; `NPC_ART_VERSION` moved to 2.3.3578, so
   every phone fetches the new ones.
 
 A change of look is a re-bake: edit `NPC_LOOKS`, build, run `--bake`, commit
@@ -174,7 +174,7 @@ What else moved:
 
 ## Tests
 
-- `mp-npclooks` (new): every townsperson picture comes in at 2.3.3576.
+- `mp-npclooks` (new): every townsperson picture comes in at 2.3.3578.
   Each is a bro's size with his feet on his spot, a walker on cell 8. Lil
   Bro's figure is painted 0.875 of Diego's height. Each look's own colour is
   counted beside him. The Mayor's dialogue shows his Hemi Bros portrait: 192

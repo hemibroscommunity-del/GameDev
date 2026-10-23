@@ -3,7 +3,7 @@ import { shopBus } from '../mobile/shopBus.js';
 import { useModalGuard } from '../mobile/modalGuardBus.js'; /* v2.3.2276 */
 import { thumbFor, iconFor, ITEM_NAMES } from '../mobile/dash/InventoryPanel.jsx';
 import { playIsLandscape } from '../mobile/playViewport.js';         /* v2.3.3407: sideways */
-import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3576: his head is the creator bro's now, at the townsfolk's cache-bust */
+import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3578: his head is the creator bro's now, at the townsfolk's cache-bust */
 import { dashboardPanelBus } from '../mobile/dashboardPanelBus.js';   /* v2.3.3407: the bag's column */
 
 /* ═══ v2.3.2059: THE MERCHANT DRAWER ═══
@@ -348,7 +348,7 @@ export function ShopkeeperPanel() {
         padding: '6px 8px', flex: 'none', borderBottom: rule,
         background: '#27393F',
       }}>
-        {/* v2.3.3576: his head is a Hemi Bros portrait now, its own square
+        {/* v2.3.3578: his head is a Hemi Bros portrait now, its own square
             background and all (tools/qa/nft_portraits.py): a rounded chip, as
             Ace's is in his window */}
         <img src={npcArtUrl('/sprites/npc/shopkeeper-bro-head.webp')} alt="" draggable={false}

@@ -85,7 +85,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
     const npc = (name) => ((cast && cast.npcs) || []).find((n) => n.name === name);
     const names = ((cast && cast.npcs) || []).map((n) => n.name).sort().join(', ');
-    /* v2.3.3576: the cast read off the table (the tour's Woodworker Bro and
+    /* v2.3.3578: the cast read off the table (the tour's Woodworker Bro and
        Farmer Bro, v2.3.3525, were missing from the old list) */
     const wantNames = ['Mayor Bro', ...WHEEL_TOWNSFOLK.map((f) => f.name)].sort().join(', ');
     const placedRight = WHEEL_TOWNSFOLK.every((f) => { const n = npc(f.name), w = where(f.name); return n && w && Math.abs(n.x - w.x) < 1 && Math.abs(n.y - w.y) < 1 && n.r === 0; });
@@ -97,7 +97,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(1500);
     const late = npcReqs.filter((q) => q.t > arrivedAt);
     const art = await P.page.evaluate(() => (window.__btWheelNpcArt ? window.__btWheelNpcArt() : null));
-    /* v2.3.3576: the walkers and the one-picture townsfolk read off the
+    /* v2.3.3578: the walkers and the one-picture townsfolk read off the
        tables (Woodworker Bro's and Farmer Bro's pictures, v2.3.3525, made
        five where this said three), and what they hold: the creator bros,
        standing pictures cropped to their figures, Diego and Ace their one
@@ -154,7 +154,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3520: the owner: "Ace is stuck in one walking frame" -- a still
        walker stands on his own stand frame (NPC_DATA walk.stand: planted,
        centred), never frame 0 (Ace's is a leap, both feet off the ground).
-       v2.3.3576: the walkers are creator bros, their strips the player's jog
+       v2.3.3578: the walkers are creator bros, their strips the player's jog
        in eight cells and then his stand -- cell 8 */
     const standOf = (n) => { const row = NPC_DATA.find((r) => r.name === n); return row && row.walk ? row.walk.stand : null; };
     rec.ok(`4b. the walkers stand on their standing frames: ${['Ace', 'Lil Bro', 'Diego'].map((n) => n + ' ' + (drawn[n] ? drawn[n].frame : '?') + ' (his ' + standOf(n) + ')').join(', ')}`,

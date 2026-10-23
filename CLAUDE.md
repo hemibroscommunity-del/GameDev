@@ -3197,7 +3197,7 @@ remnant to migrate server-side, not a mode to preserve.
       row names its standing frame (NPC_DATA `walk.stand`: Ace 3, Lil Bro 1,
       Diego 2), entityRenderer `npcStandFrame`; `mp-wheelfolk` 4b:
       docs/specs/visuals-2026-10-19.md.
-    - since v2.3.3576 THE TOWNSFOLK ARE BROS FROM THE CHARACTER CREATOR -- the
+    - since v2.3.3578 THE TOWNSFOLK ARE BROS FROM THE CHARACTER CREATOR -- the
       owner: "NPCs should look like normal bro characters":
       - each look is written in tools/qa/npc-looks.mjs `NPC_LOOKS` (the
         creator's ids), photographed by the game itself

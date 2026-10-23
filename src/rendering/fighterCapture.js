@@ -111,7 +111,7 @@ export function capturePose(kind, opts) {
   try { return cropToPaint(cap); } catch (e) { return null; }
 }
 
-/* ═══ v2.3.3576: THE TOWNSFOLK'S PICTURES ARE PHOTOGRAPHED HERE ═══
+/* ═══ v2.3.3578: THE TOWNSFOLK'S PICTURES ARE PHOTOGRAPHED HERE ═══
    The owner: "generate the art for the characters ... using the Brotown
    character creator ... NPCs should look like normal bro characters."
    tools/qa/npc-looks.mjs dresses the player in each townsperson's creator

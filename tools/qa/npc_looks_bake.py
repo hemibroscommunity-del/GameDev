@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3576: lay the townsfolk's photographs into their 256 px cells.
+"""v2.3.3578: lay the townsfolk's photographs into their 256 px cells.
 
 tools/qa/npc-looks.mjs --bake photographs each townsperson (a bro in his
 character-creator look, drawn by the game) and calls this with

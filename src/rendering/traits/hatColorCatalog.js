@@ -257,5 +257,5 @@ export function getColoredHatTextures(hatId, colorId) {
   return e;
 }
 
-/* v2.3.3576: for tools/qa/npc-looks.mjs, which dresses a bro in each townsperson's creator look (as __btSetHair) */
+/* v2.3.3578: for tools/qa/npc-looks.mjs, which dresses a bro in each townsperson's creator look (as __btSetHair) */
 if (typeof window !== 'undefined') window.__btSetHatColor = setHatColor;

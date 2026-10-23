@@ -25,7 +25,7 @@ const SEEN = `try {
 } catch (e) {}`;
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  /* v2.3.3576: in the world's BroTown, where he stands beside the Town
+  /* v2.3.3578: in the world's BroTown, where he stands beside the Town
      Hall's steps (moved off the retired old map when his picture became a
      creator bro: tools/qa/mp/oldMap.mjs) */
   const A = await H.newPlayer(browser, { name: 'Looker', wsPort, webPort, init: SEEN, world: 'wheel' });
@@ -173,7 +173,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const clip = view.clip;
   await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/mayorcrop.png', clip }).catch(() => {});
   const shot = await H.screenshotPixels(A, clip);
-  /* v2.3.3576: he is a bro from the character creator now (tools/qa/
+  /* v2.3.3578: he is a bro from the character creator now (tools/qa/
      npc-looks.mjs) in black trousers, so the colour counted is his NAVY
      pinstriped tee -- about as tall a band as the purple shorts were.  The
      names below (isShorts, purple) are the old ones, kept so the history in
