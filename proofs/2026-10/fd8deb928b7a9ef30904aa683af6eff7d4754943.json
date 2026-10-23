@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fd8deb928b7a9ef30904aa683af6eff7d4754943",
+  "tree": "66e8ded29e2f1a80784945cacc0218610541e9d9",
+  "committedAt": "2026-10-22T21:23:11-07:00",
+  "subject": "No cap on how many points a stat holds, and a Max HP point says +40 (v2.3.3578) (#1091)",
+  "files": 6370,
+  "bytes": 738126741,
+  "listingSha256": "4f020194ce01c21f253a4d3e0b899993f4926f85515ceae96c8f2ccfeb21e690",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
