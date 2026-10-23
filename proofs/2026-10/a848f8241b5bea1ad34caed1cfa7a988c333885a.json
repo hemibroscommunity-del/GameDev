@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a848f8241b5bea1ad34caed1cfa7a988c333885a",
+  "tree": "f1b19e689ae6a14b8bd7366c0229ab1bb0c30f58",
+  "committedAt": "2026-10-23T16:51:00-07:00",
+  "subject": "The Alien is a playable species, and Species is its own creator button (v2.3.3589) (#1098)",
+  "files": 6532,
+  "bytes": 738942460,
+  "listingSha256": "f1908a6998d4681c187bfc300feb072e770f0dded58045990dc6857fcee24aac",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
