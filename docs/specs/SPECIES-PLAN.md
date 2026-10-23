@@ -380,6 +380,79 @@ its own reviewed job.
 3. **A new appearance key is NOT permanent for an existing character.** See
    below — load-bearing, and not a species problem.
 
+## Stage 4 — the Alien, and a Species button (v2.3.3589)
+
+The owner: "I also wanted to add the alien as another species you could play
+as in character creator. It also exists in collection art. I think species
+should be its own button on character creator screen", then "Yes make species
+it's own button. And add alien."
+
+**What an alien is**, measured off the owner's two references and the Hemi
+Bros collection's Alien Bro: the same bro, in **Alien Cyan** (in
+`SKIN_CATALOG` since v2.3.2665, waiting for this), with **pointed ears** and
+**black almond eyes**. Three pieces, each riding machinery already wired,
+preloaded and tested, all made by `tools/species_alien.py` from art already in
+the repo -- nothing drawn by hand:
+
+| piece | where | made from |
+|---|---|---|
+| the ears, a species piece | `public/sprites/traits/species/alien/` | the monkey's piece: each ear kept where it sits and how it overlaps the head (which is what hides the bro's own ear), re-shaped into a point -- lobe kept, narrowed to 0.75, the top drawn up and out -- its inside SKIN (fur, shipped bare and recoloured with the player's skin on all five facings), its outline 2 px; the muzzle dropped (`meta.muzzle: false`) |
+| the per-frame fixes | `tools/species-fixes/alien.json` -> `frames/*.png` | the monkey's 196, less every op about the muzzle and its teeth covers; plus `eye` covers where `eyeBlankMask.json` does not paint the bro's own eye out (pickup, fish, mine, hit) |
+| the eyes, an EYE STYLE | `public/sprites/traits/eyestyle/alien/` (+ `hi/`) | the WTF style's meta (anchors, crown nudge, every pose fit) and new pixels: a black almond in each eye's place, outer corner raised, a glint |
+
+**Why the eyes are an eye style and not part of the piece:** under a style the
+body bake already paints the bro's own eyes out (`playerSkins._blankEyes`),
+the Eyes tab's colour row already paints a style (`EYE_STYLE_PAINTS.alien`:
+the almond, sparing the glint, the WTF rule), a player can wear any other
+style on an alien, and a human can wear these.
+
+**`species_frames.py`** learned four things, none of which moves the monkey
+(re-baked byte for byte): `TONES.alien`; `parts(..., muzzle)` reads
+`meta.muzzle` (with no muzzle the lowest blob is an ear); `fur_mask`'s red cap
+follows a bright tone; and a cover of kind `eye` paints only a box's dark and
+non-skin pixels, leaving the face's shading.
+
+**The creator.** Species is its own button, wide across the top of the trait
+grid (`.bt-cc-tab--wide`), the 3x3 under it as it was; sideways it is the first
+of the two narrow columns. The creator opens on it. Picking a species
+(`NameModal.jsx`, the `species` def):
+
+- moves the skin to its preset (`speciesCatalog.js` `skin`) from a human tone
+  or from ANOTHER species' preset -- Monkey Brown to Alien Cyan -- and keeps a
+  colour the player picked (a purple monkey is a purple alien);
+- puts on its eyes (`eyes`, `speciesDefaultEyes`) over the bro's own, and
+  takes them off again on leaving it, but never touches a style the player
+  picked;
+- has no colour row of its own: the Skin tab beside it is the tones (26, at the
+  colour row's swatch size, `.bt-cc-strip--compact`) and the tattoo card.
+
+The dice never roll Alien Eyes onto anyone (`EYE_STYLE_ROLL_CATALOG`, the
+`SKIN_ROLL_CATALOG` rule), an alien keeps its own on a roll, and a monkey or an
+alien rolls its skin from the species' tones instead of a human's.
+
+**Redo it:**
+
+```
+python3 tools/species_alien.py                    # the pieces, the meta, the fixes
+python3 tools/species_frames.py bake --id alien   # the per-frame overlays and fur
+python3 tools/ui/make_species_thumbs.py --ids alien
+python3 tools/ui/make_eyestyle_thumbs.py --ids alien
+python3 tools/ui/make_species_tab_icon.py         # the Species button's icon
+```
+
+**Cost:** 36 pictures, 196 KB to download, loaded on the loading screen for
+every player like the monkey's 27 (the preloading law). They are plain browser
+images (`speciesArt.js` `_loadImg`), not textures, until an alien is drawn, so
+the memory check, which counts the game's textures and canvases, reads exactly
+as main on arrival in BroTown (`mp-membudget`: art 123.1 MB, the chip 70.7).
+Decoded they come to 5.3 MB (the monkey's 4.5): the ears ship a fur twin on
+all five facings, where the monkey's fur is on two. The eye style is 6 more,
+loaded with every other style.
+
+**Checked by** `mp-species` (in the world): the tab, every branch of the
+presets, the monkey's tan on purple, the alien's build and `es:alien` body
+sheets in the world, and a second phone seeing the alien.
+
 ## The permanence hole (pre-existing, affects Stage 2)
 
 `_loadOrCreateCharacter` (`server/src/join.js`) opens with:

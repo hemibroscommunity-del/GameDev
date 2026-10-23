@@ -165,6 +165,9 @@ const CAT_FOCUS = {
   beard: FOCUS_FULL,
   /* Skin is the whole body, so it gets the whole body. */
   skin: FOCUS_FULL,
+  /* v2.3.3589: so is the species (its ears, its skin, its eyes), and it is the
+     tab the creator opens on: stated, like build's, not left to the fallback. */
+  species: FOCUS_FULL,
   shirt: FOCUS_FULL,
   pants: FOCUS_FULL,
   shoes: FOCUS_FULL,

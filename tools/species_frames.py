@@ -18,10 +18,13 @@ A fix is expressed against the normal placement, per frame (or frame range
         parts are the piece's separate blobs: "muzzle" (the lowest blob, on
         facings that have one), then the ears left-to-right, "earL" / "earR"
         (or "ear" when there is only one).
-    "cover": [[x0, x1, y0, y1, "fur" | "muzzle"], ...]
+    "cover": [[x0, x1, y0, y1, "fur" | "muzzle" | "eye"], ...]
         paint the body's non-flat-tone INTERIOR pixels inside the box -- the
         old human ear, the gritted teeth -- plus a 1px ring, in the head's fur
-        tone (the retinted skin around it) or the muzzle's tan.
+        tone (the retinted skin around it) or the muzzle's tan.  v2.3.3589:
+        "eye" paints only the box's dark and non-skin pixels (the bro's own
+        eye, its white and its edge), in the fur tone, leaving the face's
+        shading: tools/species_alien.py's covers under the alien's eyes.
     "crown": [x, y]
         use this as the frame's head top instead of body-tops.json.  body-tops
         is the TOPMOST opaque pixel, which on a few hit frames (north 3-4,
@@ -85,7 +88,8 @@ TOPS_PATH = 'public/sprites/player/body-tops.json'
 TRAIT = 'public/sprites/traits/species/{id}'
 FIXES = 'tools/species-fixes/{id}.json'
 SKIN_REF = 149
-TONES = {'monkey': (85, 56, 23)}
+TONES = {'monkey': (85, 56, 23),
+         'alien': (191, 231, 231)}   # v2.3.3589: SKIN_CATALOG aliencyan's target (tools/species_alien.py)
 FRAME = 256
 MUZZLE_DIRS = ('south', 'southwest', 'east')
 
@@ -132,8 +136,10 @@ def pose_mul(meta, pose, d):
             * (1 if fit else legacy) * (1 if fit else tune))
 
 
-def parts(tex, d):
-    """split the piece into its separate blobs, named"""
+def parts(tex, d, muzzle=True):
+    """split the piece into its separate blobs, named.  v2.3.3589: `muzzle`
+    False for a piece with none (the alien's meta.muzzle) -- its lowest blob
+    is then an ear, not a muzzle"""
     lab, n = ndimage.label(tex[:, :, 3] > 16, structure=np.ones((3, 3)))
     blobs = []
     for i in range(1, n + 1):
@@ -142,7 +148,7 @@ def parts(tex, d):
             continue
         blobs.append((i, xs.min(), ys.max()))
     named = {}
-    if d in MUZZLE_DIRS and blobs:
+    if muzzle and d in MUZZLE_DIRS and blobs:
         mz = max(blobs, key=lambda b: b[2])
         named['muzzle'] = mz[0]
         blobs = [b for b in blobs if b is not mz]
@@ -177,7 +183,7 @@ def place(pose, d, f, meta, tops, tex, ops=None):
     top = ops.get('crown') or tops.get(f'{pose}-{d}-{f}') or tops[f'stand-{d}-0']
     layer = np.zeros((FRAME, FRAME, 4), int)
     part_ops = any(k in ops for k in ('muzzle', 'earL', 'earR', 'ear'))
-    pieces = parts(tex, d) if part_ops else {'all': tex}   # no part ops: one piece, same offset
+    pieces = parts(tex, d, meta.get('muzzle', True)) if part_ops else {'all': tex}   # no part ops: one piece, same offset
     for nm, pt in pieces.items():
         op = ops.get(nm) or {}
         if op.get('hide'):
@@ -242,8 +248,8 @@ def transform(crop, ratio, rot):
     return out.astype(int)
 
 
-def muzzle_tan(tex, d):
-    p = parts(tex, d).get('muzzle')
+def muzzle_tan(tex, d, muzzle=True):
+    p = parts(tex, d, muzzle).get('muzzle')
     if p is None:
         return (145, 118, 94)
     px = p[p[:, :, 3] > 16][:, :3]
@@ -266,8 +272,15 @@ def apply_cover(layer, body_raw, boxes, tone, tan):
         ring = np.zeros_like(op)
         ring[max(0, y0 - 4):y1 + 5, max(0, x0 - 4):x1 + 5] = True
         base = np.median(L[ring & skin]) if (ring & skin).any() else SKIN_REF
-        target = (box & inter & (layer[:, :, 3] == 0)
-                  & (~skin | (np.abs(L - base) > 4)))
+        if kind == 'eye':
+            # v2.3.3589: the bro's own eye under an eye style (the alien's
+            # almonds), where eyeBlankMask.json does not paint it out: every
+            # dark or non-skin pixel in the box -- the eye, its white, its
+            # edge -- and nothing else, so the face's own shading stays
+            target = box & inter & (layer[:, :, 3] == 0) & (~skin | (L < 110))
+        else:
+            target = (box & inter & (layer[:, :, 3] == 0)
+                      & (~skin | (np.abs(L - base) > 4)))
         grow = ndimage.binary_dilation(target, np.ones((3, 3))) & inter & (layer[:, :, 3] == 0)
         col = tan if kind == 'muzzle' else tuple(min(255, round(c * base / SKIN_REF)) for c in tone)
         for i in range(3):
@@ -312,7 +325,11 @@ def fur_mask(a, tone):
     The tan muzzle/ears, outline and eye white never match (checked: 0 hits
     on the S/E/N art, which has no patches)."""
     r, g, b, al = [a[..., i].astype(int) for i in range(4)]
-    return ((al > 16) & (r >= 40) & (r <= 140)
+    # v2.3.3589: a bright tone's fur (the alien's cyan) runs past the monkey's
+    # 140; the ratios below are what make a pixel fur, the cap only rules out
+    # a white
+    top = max(140, round(tone[0] * 1.15))
+    return ((al > 16) & (r >= 40) & (r <= top)
             & (np.abs(g - r * tone[1] / tone[0]) <= 3) & (np.abs(b - r * tone[2] / tone[0]) <= 3))
 
 
@@ -373,7 +390,7 @@ def fixed_layer(pose, d, f, meta, tops, tex, fix, tone):
     raw = body_frame(pose, d, f)
     layer = place(pose, d, f, meta, tops, tex, fix)
     if fix.get('cover'):
-        layer = apply_cover(layer, raw, fix['cover'], tone, muzzle_tan(tex, d))
+        layer = apply_cover(layer, raw, fix['cover'], tone, muzzle_tan(tex, d, meta.get('muzzle', True)))
     if fix.get('eyes'):
         layer = apply_eyes(layer, raw, fix['eyes'])
     if fix.get('front'):

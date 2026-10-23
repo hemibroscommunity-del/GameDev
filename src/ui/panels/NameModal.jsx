@@ -33,7 +33,7 @@ import { eyewearColorsFor, eyewearPaints, setEyewearColor } from '@/rendering/tr
 import { eyeStylePaints } from '@/rendering/traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { EYE_COLOR_CATALOG, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { EYE_STYLE_CATALOG, setEyeStyle, eyeStyleHasOptions } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2643 */
-import { SPECIES_CATALOG, setSpecies, speciesHasOptions, speciesDefaultSkin } from '@/rendering/traits/speciesCatalog.js';   /* v2.3.2682 */
+import { SPECIES_CATALOG, setSpecies, speciesHasOptions, speciesDefaultSkin, speciesDefaultEyes } from '@/rendering/traits/speciesCatalog.js';   /* v2.3.2682; speciesDefaultEyes v2.3.3589 */
 import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -298,34 +298,60 @@ export function NameModal(props) {
       colorSel: eyeColorSel, setColor: function (id) { setEyeColor(id); setEyeColorSel(id); } },
     /* v2.3.1308 (round-7): 'Skin' → 'Skin Tone' — it recolors the whole
        body, and the plain label read as head-only inside the Head group. */
-    skin: { label: 'Skin Tone', kind: 'swatch', spriteCat: null, catalog: SKIN_CATALOG, sel: skinSel,
+    /* v2.3.3589: `compact` -- the Skin tab is its swatches again (the species
+       has a tab of its own), 26 of them with the default since the fur colours
+       (v2.3.2681).  At the option strip's tile size that is three a row and nine
+       rows; at the colour row's swatch size, four a row, as the skin tones have
+       been drawn under the species since v2.3.2682 -- the look the owner has
+       been using, so they are drawn that size here (.bt-cc-strip--compact,
+       game.css). */
+    skin: { label: 'Skin Tone', kind: 'swatch', spriteCat: null, catalog: SKIN_CATALOG, sel: skinSel, compact: true,
       set: function (id) { setSkin(id); setSkinSel(id); }, colors: null },
     /* ═══ v2.3.2682: THE SKIN TAB PICKS A SPECIES **AND** A COLOUR ═══
        Owner: "Make sure it's available in trait picker."  The Eyes tab's
        two-step shape (v2.3.2643), for the same reason: the SPECIES in the
        option strip (Human, Monkey), the skin colour in the row below it --
        which is the monkey's fur colour, fur colours included (v2.3.2681).
-       `colorsWhenNone` because 'none' is the human, and the human's skin tone
-       is the pick this row has always been for.  The def replaces the
-       swatch-only one just above (defined first so the switch-off path below
-       still has it) only while there is a species to pick.
        Picking a species moves a HUMAN skin tone to that species' preset
        (Monkey Brown), and picking the human back moves a species/fur tone to
        the default tan -- both only when the current skin belongs to the other
        side, so a player who chose a purple monkey and then a human keeps
        nothing surprising, and a player who picked a fur colour first keeps it
-       when they choose the monkey. */
-    species: { label: 'Species & Skin', kind: 'thumb', spriteCat: 'species', catalog: SPECIES_CATALOG, sel: speciesSel,
+       when they choose the monkey.
+
+       ═══ v2.3.3589: SPECIES IS ITS OWN TAB ═══
+       Owner: "I think species should be its own button on character creator
+       screen", then "Yes make species it's own button.  And add alien."  Two
+       steps folded into the Skin tab hid the species: the strip read as a row
+       of skins.  So the species has a tab of its own and the Skin tab is the
+       skin tones and the tattoo again, the swatch-only def above, as before
+       v2.3.2682.  No colour row here: the skin is one tap along, on the tab
+       beside it, and the same swatches on two tabs would be two controls for
+       one colour (the reason the Eyes tab never got a second row, v2.3.2645).
+
+       With a third species, the moves are:
+         - the SKIN goes to the new species' preset from a human tone or from
+           ANOTHER species' preset (Monkey Brown -> Alien Cyan: a brown alien
+           is the monkey's colour, not a choice), and stays on a colour the
+           player picked (a purple monkey is a purple alien);
+         - the EYES go to the species' own (the Alien's almonds) when the bro
+           has his own eyes, and back to his own when he leaves a species whose
+           eyes he still wears; a style the player picked stays. */
+    species: { label: 'Species', kind: 'thumb', spriteCat: 'species', catalog: SPECIES_CATALOG, sel: speciesSel,
       set: function (id) {
+        var was = speciesSel;
         setSpecies(id); setSpeciesSel(id);
         var cur = SKIN_CATALOG.find(function (c) { return c.id === skinSel; });
         var isFur = !!(cur && cur.species);
         var preset = speciesDefaultSkin(id);
-        if (id !== 'none' && preset && !isFur) { setSkin(preset); setSkinSel(preset); }
+        var onPreset = SPECIES_CATALOG.some(function (e) { return !!e.skin && e.skin === skinSel; });
+        if (id !== 'none' && preset && (!isFur || onPreset)) { setSkin(preset); setSkinSel(preset); }
         else if (id === 'none' && isFur) { setSkin('default'); setSkinSel('default'); }
+        var eyes = speciesDefaultEyes(id), wasEyes = speciesDefaultEyes(was);
+        if (eyes && eyeStyleSel === 'none') { setEyeStyle(eyes); setEyeStyleSel(eyes); }
+        else if (!eyes && wasEyes && eyeStyleSel === wasEyes) { setEyeStyle('none'); setEyeStyleSel('none'); }
       },
-      colors: recolorEnabled('skin') ? SKIN_CATALOG : null, colorsWhenNone: true,
-      colorSel: skinSel, setColor: function (id) { setSkin(id); setSkinSel(id); } },
+      colors: null },
     beard: { label: 'Beard', kind: 'thumb', spriteCat: 'facialhair', catalog: FACIALHAIR_CATALOG, sel: facialHairSel,
       set: function (id) { setFacialHair(id); setFacialHairSel(id); },
       colors: recolorEnabled('beard') ? FACIALHAIR_COLOR_CATALOG : null, colorSel: beardColorSel, setColor: function (id) { setFacialHairColor(id); setBeardColorSel(id); } },
@@ -384,9 +410,10 @@ export function NameModal(props) {
   });
   /* v2.3.2682: while there is a species to pick, the Skin tab IS the species
      tab (its colour row carries the skin tones, or nothing if skin recolour is
-     off -- the species strip alone is still a real pick). */
-  if (speciesHasOptions()) { _typeDefs.skin = _typeDefs.species; }
-  delete _typeDefs.species;
+     off -- the species strip alone is still a real pick).
+     v2.3.3589: not any more -- the species is its own tab (the def above), so
+     it goes only when there is nothing to pick but the human. */
+  if (!speciesHasOptions()) delete _typeDefs.species;
   /* ...and then there really is nothing left to pick: no styles AND no colour.
      Same gate as the Eyewear one below, for the same v2.3.2268 reason. */
   if (!eyeStyleHasOptions() && !recolorEnabled('eyes')) delete _typeDefs.eyes;
@@ -462,6 +489,13 @@ export function NameModal(props) {
   };
   var _TAB_ICON = function (n) { return '/ui/welcome/cc/cc-tab-' + n + '.png?v=' + BUILD_INFO.version; };
   var _TABS = [
+    /* v2.3.3589: Species, its own tab (owner: "Yes make species it's own
+       button"), FIRST and `wide`: one button across the top of the grid, so
+       the nine below it stand exactly where they did (game.css
+       .bt-cc-tab--wide).  Its icon is the Skin tab's bald head made an alien
+       (cc-tab-species.png, tools/ui/make_species_tab_icon.py: the same 17 x 18
+       grid at 8 px a pixel). */
+    { t: 'species', label: 'Species', img: _TAB_ICON('species'), wide: true },
     { t: 'hair', label: 'Hair', img: _TAB_ICON('hair') },
     { t: 'hat', label: 'Hats', img: _TAB_ICON('hat') },
     { t: 'skin', label: 'Skin', img: _TAB_ICON('skin') },
@@ -1708,7 +1742,7 @@ export function NameModal(props) {
     var on = x.t === _activeType;
     return /*#__PURE__*/React.createElement("button", {
       key: x.t, type: 'button', role: 'tab', "aria-selected": on ? 'true' : 'false',
-      className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : ''),
+      className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : '') + (x.wide ? ' bt-cc-tab--wide' : ''),   /* v2.3.3589 */
       onClick: function () { setActiveCat(x.t); }
     }, x.glyph === 'build' ? /*#__PURE__*/React.createElement("svg", {
       /* v2.3.1953: two figures, one short and one tall, which is the whole
@@ -1741,7 +1775,7 @@ export function NameModal(props) {
        scroll horizontally (sizing in .bt-cc-strip, game.css).  The whole
        catalog is always rendered: the v2.3.835 collapse-on-select
        machinery is retired with the pager. */
-    className: "bt-cc-strip", ref: _stripRef, onScroll: _measureMore, role: 'listbox', "aria-label": _def.label + ' options'
+    className: "bt-cc-strip" + (_def.compact ? " bt-cc-strip--compact" : ""), ref: _stripRef, onScroll: _measureMore, role: 'listbox', "aria-label": _def.label + ' options'
   }, _items), /*#__PURE__*/React.createElement("span", {
     /* v2.3.1254: fade + chevron while more tiles wait off-screen.
        v2.3.2205: the arrow points DOWN now, at the direction the grid

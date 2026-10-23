@@ -303,8 +303,8 @@ import { SKIN_CATALOG, SKIN_ROLL_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin,
 import { HAIR_COLOR_CATALOG, getHairColor, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, getHatColor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { eyewearColorsFor, getEyewearColor, setEyewearColor } from '@/rendering/traits/eyewearColorCatalog.js';   /* v2.3.2424 */
-import { EYE_STYLE_CATALOG, getEyeStyle, setEyeStyle } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2643 */
-import { SPECIES_CATALOG, getSpecies, setSpecies, speciesDefaultSkin } from '@/rendering/traits/speciesCatalog.js';   /* v2.3.2682 */
+import { EYE_STYLE_CATALOG, EYE_STYLE_ROLL_CATALOG, getEyeStyle, setEyeStyle } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2643; the roll v2.3.3589 */
+import { SPECIES_CATALOG, getSpecies, setSpecies, speciesDefaultSkin, speciesDefaultEyes } from '@/rendering/traits/speciesCatalog.js';   /* v2.3.2682; speciesDefaultEyes v2.3.3589 */
 import { EYE_COLOR_CATALOG, getEyeColor, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { HEIGHT_CATALOG, DEFAULT_HEIGHT, getBuildHeight, setBuildHeight, getBuildFrame, wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js'; /* v2.3.1953; v2.3.1996: frame locked to medium — no FRAME_CATALOG/setBuildFrame here */
 import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'; /* v2.3.1939; v2.3.1940 + pants/tattoo */
@@ -2376,7 +2376,11 @@ export var BroTown = function BroTown(_ref0) {
      camera still opens on the whole figure (previewZoom below), and a game
      with no species and no skin recolour falls back to 'hair' (NameModal
      `_activeType`). */
-  var _catState = useState('skin'),
+  /* v2.3.3589: and on SPECIES now, the tab that holds the species picker
+     since it left the Skin tab (owner: "Yes make species it's own button"):
+     of the two halves v2.3.3526 opened on, the species is the one the rest is
+     built on, and the Skin tab, with its tattoo card, is the next tab along. */
+  var _catState = useState('species'),
     activeCat = _catState[0],
     setActiveCat = _catState[1];
   /* v2.3.1251: the v2.3.834/835 collapse-on-select state (objPicked/
@@ -2748,7 +2752,12 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.2665: SKIN_ROLL_CATALOG, not SKIN_CATALOG -- the species base tones
        are out of the random pool (see the note on that export).  The picker
        below still lists all of SKIN_CATALOG. */
-    if (recolorEnabled('skin')) { var sk = rpick(SKIN_ROLL_CATALOG); setSkin(sk); setSkinSel(sk); }
+    /* v2.3.3589: ...unless the bro is not a human.  The dice leave the species
+       alone, so a monkey or an alien rolled a human tone (a tan alien): it
+       rolls from the species' own colours instead -- Alien Cyan, Monkey Brown
+       and the fur colours, the tones the human pool leaves out. */
+    var _skinPool = getSpecies() !== 'none' ? SKIN_CATALOG.filter(function (c) { return c.species; }) : SKIN_ROLL_CATALOG;
+    if (recolorEnabled('skin')) { var sk = rpick(_skinPool); setSkin(sk); setSkinSel(sk); }
     if (recolorEnabled('pants')) { var pt = rpick(PANTS_CATALOG); setPants(pt); setPantsSel(pt); }
     if (recolorEnabled('shoes')) { var sh = rpick(SHOES_CATALOG); setShoes(sh); setShoesSel(sh); }
     /* v2.3.1953: roll the build too.  Randomize is how most people first see
@@ -2780,7 +2789,10 @@ export var BroTown = function BroTown(_ref0) {
        recolorEnabled('eyes') -- that switch is the eye COLOUR's, and a style is
        a sprite, not a recolour; gating it there would have made a randomize
        stop producing eye styles the day somebody turned eye colour off. */
-    var es = rpick(EYE_STYLE_CATALOG); setEyeStyle(es); setEyeStyleSel(es);
+    /* v2.3.3589: EYE_STYLE_ROLL_CATALOG -- a species' own eyes are never
+       rolled onto anyone, and the species that has them keeps them (an alien
+       keeps its almonds; the other styles roll as before). */
+    var es = speciesDefaultEyes(getSpecies()) || rpick(EYE_STYLE_ROLL_CATALOG); setEyeStyle(es); setEyeStyleSel(es);
     /* v2.3.2424: and its colour, from what THIS pair offers -- eyewearColorsFor
        returns null for a pair with no row (3d-glasses, or 'none'), and rolling
        a colour the picker does not show is the v2.3.1927 broken-button problem
