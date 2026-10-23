@@ -36,7 +36,7 @@ const box = (P, sel) => P.page.evaluate((s) => {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Sizer', wsPort, webPort,
-    viewport: { width: 390, height: 844 }, touch: true });
+    viewport: { width: 390, height: 844 }, touch: true, world: 'wheel' });
 
   await P.page.waitForSelector('[data-tut="login-create"]', { timeout: 30000 });
   await P.page.click('[data-tut="login-create"]');
@@ -183,15 +183,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return out;
   });
   const painted = tabArt.filter((t) => t.kind === 'img');
-  rec.ok(`all nine creator tabs have an icon of some kind (${tabArt.length} found)`,
-    tabArt.length === 9 && tabArt.every((t) => t.kind !== 'none'), tabArt);
+  /* v2.3.3586: ten -- Species is a tab of its own, its icon an alien's head */
+  rec.ok(`all ten creator tabs have an icon of some kind (${tabArt.length} found)`,
+    tabArt.length === 10 && tabArt.every((t) => t.kind !== 'none'), tabArt);
   /* NINE painted, not eight.  _TABS still carries a tenth entry with an inline
      `build` glyph, but v2.3.2268 deleted Build from _typeDefs and the list ends
      in `.filter(!!_typeDefs[x.t])`, so that tab has not rendered since -- the
      branch is kept deliberately as the restoration path.  The first cut of this
      assertion expected 8 + 1 glyph from reading _TABS, and the browser said
      otherwise; the browser is right. */
-  rec.ok(`...and every one of them is painted art, no glyphs left on screen -- ${painted.length}/9`,
+  rec.ok(`...and every one of them is painted art, no glyphs left on screen -- ${painted.length}/${tabArt.length}`,
     painted.length === tabArt.length, tabArt.map((t) => t.label + ':' + t.kind));
   rec.ok('...and every one actually decoded its bytes (naturalWidth > 0)',
     painted.length > 0 && painted.every((t) => t.nat > 0),
@@ -508,16 +509,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { bare: bare.ticks, bare2: bare2.ticks });
 
   /* And the colour picks go back to Default with it -- the button added
-     earlier in this same version is the thing that shows it. */
+     earlier in this same version is the thing that shows it.
+     v2.3.3586: read on the EYES tab, whose colour row is live with the bro's
+     own eyes.  It was read on Skin, whose colour row was the skin tones under
+     the species from v2.3.2682; Skin is its swatches again now (the species
+     has a tab of its own), with no colour row whose Default could light, so
+     the skin itself is read from its store instead. */
   await P.page.evaluate(() => {
     const b = [...document.querySelectorAll('.bt-cc-tab')]
-      .find((x) => (x.textContent || '').trim() === 'Skin');
+      .find((x) => (x.textContent || '').trim() === 'Eyes');
     if (b) b.click();
   });
   await P.page.waitForTimeout(700);
-  const skinDefault = await P.page.evaluate(() =>
-    !!document.querySelector('.bt-cc-defcolor--on'));
-  rec.ok('...and colour picks are back to Default too', skinDefault, { skinDefault });
+  const colourDefault = await P.page.evaluate(() => {
+    const row = document.querySelector('.bt-cc-colors');
+    return { live: !!row && row.className.indexOf('bt-cc-ghost') < 0, on: !!document.querySelector('.bt-cc-defcolor--on'),
+      skin: localStorage.getItem('bt-skin') };
+  });
+  rec.ok('...and colour picks are back to Default too (the eye colour on its live row, and the skin)',
+    colourDefault.live && colourDefault.on && (colourDefault.skin === 'default' || colourDefault.skin === null), colourDefault);
 
   /* ═══ v2.3.2205: THE "THERE IS MORE BELOW" CUE ═══
      Owner, on the Hats tab: "additional hat options don't surface the

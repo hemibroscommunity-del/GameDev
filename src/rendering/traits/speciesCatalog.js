@@ -29,17 +29,46 @@
  * colour in the row below it (live on 'none', which is the human).  Picking the
  * monkey moves a human skin tone to Monkey Brown; the player can then choose
  * any colour, fur colours included.
+ *   v2.3.3586: ITS OWN TAB, "Species" (owner: "Yes make species it's own
+ * button").  The Skin tab is the skin tones and the tattoo again, as it was
+ * before v2.3.2682; picking a species still moves the skin to its preset
+ * (NameModal.jsx, the `species` def).
  */
 export const SPECIES_CATALOG = [
   /* 'none' is the plain bro.  Named for what it is in this picker. */
   { id: 'none', name: 'Human' },
   { id: 'monkey', name: 'Monkey', skin: 'monkeybrown' },
+  /* ═══ v2.3.3586: THE ALIEN ═══
+     Owner: "I also wanted to add the alien as another species you could play
+     as in character creator.  It also exists in collection art", then "Yes
+     make species it's own button.  And add alien."
+     Three things make it, all made by tools/species_alien.py from art already
+     in the repo, nothing new drawn by hand:
+       - its EARS, the species piece (public/sprites/traits/species/alien/):
+         the monkey's ears re-shaped into points where they sit, so the 196
+         frames the monkey was fitted to fit it too, their inside skin that
+         takes the player's skin, and no muzzle (`muzzle: false` in its
+         meta.json, which species_frames.py reads);
+       - its SKIN, Alien Cyan (playerSkins.js, measured off the owner's alien
+         in v2.3.2665 and waiting for this ever since), the preset below;
+       - its EYES, the eye style 'alien' (eyeStyleCatalog.js): two black
+         almonds, preset by `eyes` below.  An eye style rather than a part of
+         this piece, so the Eyes tab's colour row paints them like any style's
+         and the body bake's erase of the real eyes is the one already built. */
+  { id: 'alien', name: 'Alien', skin: 'aliencyan', eyes: 'alien' },
 ];
 
 /** The skin a species starts on when picked from a human skin tone. */
 export function speciesDefaultSkin(id) {
   const e = SPECIES_CATALOG.find((s) => s.id === id);
   return (e && e.skin) || null;
+}
+
+/** v2.3.3586: the eye style a species starts on when picked with the bro's own
+ *  eyes ('none'), or null when it keeps them (the human, the monkey). */
+export function speciesDefaultEyes(id) {
+  const e = SPECIES_CATALOG.find((s) => s.id === id);
+  return (e && e.eyes) || null;
 }
 
 /** TRUE once there is something to pick besides the human. */

@@ -143,7 +143,22 @@ export const EYE_STYLE_CATALOG = [
      1.136x vs horizontal 1.100x); placed by the head, so that is a note in the
      import log rather than a problem. */
   { id: 'wtf', name: 'WTF Eyes' },
+  /* ═══ v2.3.3586: THE ALIEN'S EYES ═══
+     Two black almonds, each outer corner raised, a glint in each: the Alien
+     species' eyes (speciesCatalog.js `eyes`, put on when the Alien is picked
+     with the bro's own eyes).  Made by tools/species_alien.py as the WTF
+     style's twin: every placement number in its meta.json (anchors, crown
+     nudge, scaleByPose, poseNudge) is WTF's, which were tuned and seated
+     (above), and only the pixels are new.  Any bro can wear them; the
+     creator's dice never roll them (`species`, the SKIN_ROLL_CATALOG rule:
+     a species' look is picked, never handed out), and the Eyes tab's colour
+     row paints the almond and spares the glint (eyeStyleColorCatalog.js). */
+  { id: 'alien', name: 'Alien Eyes', species: true },
 ];
+
+/** v2.3.3586: the styles the creator's dice roll -- all but a species' own
+ *  eyes, as SKIN_ROLL_CATALOG leaves out the species' tones. */
+export const EYE_STYLE_ROLL_CATALOG = EYE_STYLE_CATALOG.filter((e) => !e.species);
 
 /** TRUE once there is something to pick.  Same gate as eyewearHasOptions: the
  *  picker row is dropped rather than shown with one already-selected option

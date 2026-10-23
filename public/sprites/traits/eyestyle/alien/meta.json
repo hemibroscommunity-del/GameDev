@@ -1,0 +1,128 @@
+{
+  "category": "eyestyle",
+  "fullFrame": true,
+  "note": "v2.3.3586: made by tools/species_alien.py -- a black almond in each of the WTF style's eyes' places, its outer corner raised; every placement number (anchors, crownNudge, scaleByPose, poseNudge) is the WTF style's, which were tuned and seated.",
+  "bboxes": {
+    "south": [
+      113,
+      7,
+      29,
+      9
+    ],
+    "southwest": [
+      112,
+      7,
+      32,
+      9
+    ],
+    "east": [
+      122,
+      7,
+      12,
+      8
+    ]
+  },
+  "anchors": {
+    "south": [
+      128,
+      6
+    ],
+    "southwest": [
+      128,
+      6
+    ],
+    "east": [
+      129,
+      6
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      1,
+      17
+    ],
+    "southwest": [
+      -5,
+      20
+    ],
+    "east": [
+      13,
+      18
+    ]
+  },
+  "scale": {
+    "south": 1,
+    "southwest": 1,
+    "east": 1
+  },
+  "poseFit": true,
+  "scaleByPose": {
+    "jog": {
+      "south": 1.07,
+      "southwest": 0.923,
+      "east": 0.889
+    },
+    "mine": {
+      "south": 1.116
+    },
+    "fish": {
+      "south": 1.07
+    },
+    "hit": {
+      "south": 1.233,
+      "southwest": 0.942,
+      "east": 1.022
+    },
+    "pickup": {
+      "south": 1.07
+    }
+  },
+  "poseNudge": {
+    "jog": {
+      "south": [
+        0,
+        1
+      ],
+      "southwest": [
+        0,
+        -2
+      ],
+      "east": [
+        0,
+        -2
+      ]
+    },
+    "mine": {
+      "south": [
+        0,
+        2
+      ]
+    },
+    "fish": {
+      "south": [
+        0,
+        1
+      ]
+    },
+    "hit": {
+      "south": [
+        0,
+        4
+      ],
+      "southwest": [
+        0,
+        -1
+      ],
+      "east": [
+        0,
+        0
+      ]
+    },
+    "pickup": {
+      "south": [
+        0,
+        1
+      ]
+    }
+  }
+}

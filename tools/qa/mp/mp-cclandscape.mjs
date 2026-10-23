@@ -17,7 +17,7 @@
  *      centre lands on it (elementFromPoint, nothing drawn over it); the name
  *      plate is whole; "Tap to name", "Randomize Bro" and "ENTER BRO TOWN"
  *      are whole; the character is not covered;
- *   2. on all nine trait tabs, at least one whole row of options, nothing in
+ *   2. on all ten trait tabs (nine until v2.3.3586's Species), at least one whole row of options, nothing in
  *      the picker past its edge, every tab's label whole, and the drawing
  *      card's tools inside the card;
  *   3. with a keyboard up (stubbed: Playwright has none) the name field
@@ -135,7 +135,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const table = [];
   for (const S of SIDEWAYS) {
     const P = await H.newPlayer(browser, { name: 'Sideways', wsPort, webPort,
-      viewport: { width: S.w, height: S.h }, touch: true, dpr: 2 });
+      viewport: { width: S.w, height: S.h }, touch: true, dpr: 2, world: 'wheel' });
     await openCreator(P);
     const C = await controls(P);
     table.push({ size: S.tag, enter: C.enter, plate: C.plate });
@@ -151,8 +151,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const labels = await P.page.evaluate(() => [...document.querySelectorAll('.bt-cc-tab')].map((b) => (b.textContent || '').trim()));
     const labelsCut = await P.page.evaluate(() => [...document.querySelectorAll('.bt-cc-tab-label')]
       .filter((l) => l.scrollWidth > l.clientWidth + 1).map((l) => l.textContent));
-    rec.ok(`${S.tag}: all nine tabs' names whole${labelsCut.length ? ' -- cut: ' + labelsCut.join(', ') : ''}`,
-      labels.length === 9 && labelsCut.length === 0, { labels, labelsCut });
+    rec.ok(`${S.tag}: all ten tabs' names whole${labelsCut.length ? ' -- cut: ' + labelsCut.join(', ') : ''}`,
+      labels.length === 10 && labelsCut.length === 0, { labels, labelsCut });
     const tabsBad = [];
     for (const lab of labels) {
       await P.page.evaluate((l) => { [...document.querySelectorAll('.bt-cc-tab')].find((x) => (x.textContent || '').trim() === l).click(); }, lab);
@@ -187,7 +187,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         document.addEventListener('focusout', () => setTimeout(kick, 16), true);
       })();`;
     const P = await H.newPlayer(browser, { name: 'SideKb', wsPort, webPort,
-      viewport: { width: 844, height: 390 }, touch: true, dpr: 2, init: stub });
+      viewport: { width: 844, height: 390 }, touch: true, dpr: 2, init: stub, world: 'wheel' });
     await openCreator(P);
     await P.page.tap('input.bt-cc-name');
     await P.page.waitForTimeout(700);
@@ -206,7 +206,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 4: a new player, sideways, really gets in ── */
   for (const S of [SIDEWAYS[0], SIDEWAYS[1]]) {
     const P = await H.newPlayer(browser, { name: 'SideIn' + S.w, wsPort, webPort,
-      viewport: { width: S.w, height: S.h }, touch: true, dpr: 2 });
+      viewport: { width: S.w, height: S.h }, touch: true, dpr: 2, world: 'wheel' });
     await openCreator(P);
     await P.page.fill('input.bt-cc-name', 'Sideways' + S.w);
     await P.page.evaluate(() => { try { document.activeElement && document.activeElement.blur(); } catch (e) {} });
@@ -230,7 +230,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const U of [{ w: 390, h: 844, touch: true, tag: 'upright 390x844' }, { w: 768, h: 1024, touch: true, tag: 'iPad upright 768x1024' },
     { w: 1000, h: 780, touch: false, tag: 'desktop 1000x780' }]) {
     const P = await H.newPlayer(browser, { name: 'Upright', wsPort, webPort,
-      viewport: { width: U.w, height: U.h }, touch: U.touch, dpr: U.touch ? 2 : null });
+      viewport: { width: U.w, height: U.h }, touch: U.touch, dpr: U.touch ? 2 : null, world: 'wheel' });
     await openCreator(P);
     const u = await P.page.evaluate(() => {
       const col = document.querySelector('.bt-cc-col-left');

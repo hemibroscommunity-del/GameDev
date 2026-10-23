@@ -295,7 +295,7 @@ export const STATES = [
   },
   {
     id: 'creator', group: 'Before the game', pre: true, title: 'Character creator',
-    about: 'Making a new character: the bro on the left, the Trait Picker on the right (tabs for hair, hats, skin, eyes, eyewear, beard, clothes), the name field and ENTER BRO TOWN.',
+    about: 'Making a new character: the bro on the left, the Trait Picker on the right (a wide Species button over tabs for hair, hats, skin, eyes, eyewear, beard, clothes), the name field and ENTER BRO TOWN.',
     run: async ({ P }) => {
       if (await has(P, '[data-tut="login-create"]')) {
         await H.uncoverDoor(P.page);
@@ -306,14 +306,16 @@ export const STATES = [
     },
   },
   /* v2.3.3526: 'hair' joins the list -- the creator opens on Skin now (the
-     owner's "Go recommended"), so the opening shot no longer shows Hair */
-  ...['hair', 'hat', 'skin', 'eyes', 'eyewear', 'beard', 'shirt', 'pants', 'shoes'].map((t) => ({
+     owner's "Go recommended"), so the opening shot no longer shows Hair.
+     v2.3.3586: and 'species', a tab of its own (the owner: "Yes make species
+     it's own button"); the creator opens on it, and Skin is the skin tones. */
+  ...['species', 'hair', 'hat', 'skin', 'eyes', 'eyewear', 'beard', 'shirt', 'pants', 'shoes'].map((t) => ({
     id: 'creator-tab-' + t, group: 'Before the game', pre: true, keep: true, title: 'Creator: ' + t + ' tab',
     about: 'The character creator with the "' + t + '" tab of the Trait Picker open.',
     run: async ({ P }) => {
       const r = await evalIn(P, (tt) => {
         const tabs = Array.from(document.querySelectorAll('button.bt-cc-tab'));
-        const want = { hair: /^hair/i, hat: /hat/i, skin: /skin|species/i, eyes: /^eyes/i, eyewear: /eyewear/i, beard: /beard/i, shirt: /shirt/i, pants: /pants/i, shoes: /shoes/i }[tt];
+        const want = { species: /^species/i, hair: /^hair/i, hat: /hat/i, skin: /^skin/i, eyes: /^eyes/i, eyewear: /eyewear/i, beard: /beard/i, shirt: /shirt/i, pants: /pants/i, shoes: /shoes/i }[tt];
         const b = tabs.find((x) => want.test((x.innerText || x.getAttribute('aria-label') || '').trim()));
         if (!b) return 'no tab ' + tt + ' (have: ' + tabs.map((x) => (x.innerText || '').trim()).join(', ') + ')';
         b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -329,7 +331,7 @@ export const STATES = [
     about: 'The editor the creator opens to draw on the character -- here a tattoo, from the Skin tab (the Shirt and Pants tabs open it for a worn shirt or trousers): canvas, brushes, colours, Done.',
     run: async ({ P }) => {
       await evalIn(P, () => {
-        const b = Array.from(document.querySelectorAll('button.bt-cc-tab')).find((x) => /skin|species/i.test(x.innerText || ''));
+        const b = Array.from(document.querySelectorAll('button.bt-cc-tab')).find((x) => /^skin/i.test((x.innerText || '').trim()));
         if (b) b.click();
       });
       await wait(P, 700);

@@ -165,7 +165,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const S of SIZES) {
     const tag = `${S.w}x${S.h}`;
     const P = await H.newPlayer(browser, { name: 'Inky', wsPort, webPort,
-      viewport: { width: S.w, height: S.h }, touch: true });
+      viewport: { width: S.w, height: S.h }, touch: true, world: 'wheel' });
     await openCreator(P);
 
     /* ════ 1. THE DOOR ════ */
@@ -284,8 +284,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return out;
     });
     const heights = Object.values(stages);
-    rec.ok(`${tag}: all nine tabs were visited (guard: ${heights.length})`,
-      heights.length === 9 && heights.every((h) => h > 0), stages);
+    /* v2.3.3586: ten -- Species is a tab of its own */
+    rec.ok(`${tag}: all ten tabs were visited (guard: ${heights.length})`,
+      heights.length === 10 && heights.every((h) => h > 0), stages);
     rec.ok(`${tag}: the character is EXACTLY the same size on every tab, with `
       + `the ghost row that used to reserve it retired (${heights[0]}px throughout)`,
       new Set(heights).size === 1, stages);
@@ -308,10 +309,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${tag}: the whole skin catalogue is rendered (guard: ${skinTiles} tiles`
       + `${L2.colorsLive ? `, in the colour row under ${L2.tiles} species` : ''})`,
       skinTiles >= 12, L2);
-    rec.ok(`${tag}: ...and none of it is hidden behind a scroll -- the card took `
-      + `the dead band's room, not the catalogue's (${L2.strip && L2.strip.hidden}px hidden; `
-      + `it was 16px at 390x664 before the card)`,
-      !!L2.strip && L2.strip.hidden <= 2, L2);
+    /* v2.3.3586: the Skin tab is its tones again, in the strip (the species has
+       a tab of its own), and there are 26 of them since the fur colours, where
+       there were 14 when this was written -- and the Species button's row sits
+       over them.  On the tall phone they all show; on the short one the strip
+       shows six of their seven rows (the colour row under the species showed
+       four), and what this asks there is that the rest is a flick away and SAID
+       to be: the strip scrolls and its ▾ is lit.  The card is checked for the
+       room it takes above (gap, dead height), so it still cannot be what
+       pushes them out. */
+    const moreOn = await P.page.evaluate(() => {
+      const m = document.querySelector('.bt-cc-scroll .bt-cc-more');
+      return !!m && m.classList.contains('bt-cc-more--on');
+    });
+    const tall = S.h >= 800;
+    rec.ok(`${tag}: ...and none of it is out of reach -- ${tall ? 'all of it on screen' : 'the rest a flick away, the ▾ lit'} `
+      + `(${L2.strip && L2.strip.hidden}px past the strip's edge${moreOn ? ', the ▾ lit' : ''})`,
+      !!L2.strip && (tall ? L2.strip.hidden <= 2 : (L2.strip.hidden <= 2 || moreOn)), { hidden: L2.strip && L2.strip.hidden, moreOn });
 
     /* Hats is the longest catalogue in the game and the one that was starved:
        retiring the ghosted button on a tab with no drawing hands it back 62px. */
@@ -473,7 +487,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      One viewport is enough for this: it is about wiring, not geometry.  390x844
      so the card is at its full 260px and a 16x16 stroke is several card pixels. */
   const P = await H.newPlayer(browser, { name: 'Inky2', wsPort, webPort,
-    viewport: { width: 390, height: 844 }, touch: true });
+    viewport: { width: 390, height: 844 }, touch: true, world: 'wheel' });
   await openCreator(P);
   rec.ok('liveness: the Skin tab opened (guard)', await pickTab(P, 'Skin'), null);
   await P.page.waitForTimeout(1600);
@@ -592,7 +606,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      that differ most: the tattoo one (a body surface) and the pants one (which
      only just became a body surface). */
   const P3 = await H.newPlayer(browser, { name: 'Ed', wsPort, webPort,
-    viewport: { width: 390, height: 844 }, touch: true });
+    viewport: { width: 390, height: 844 }, touch: true, world: 'wheel' });
   await openCreator(P3);
   /* v2.3.2430: the SHIRT joins the loop, and it is the interesting one -- it
      was the last editor working on a bare 16x16 grid, on the stated reasoning
@@ -900,7 +914,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      everything else is taps") requires of every scroller inside it. */
   await P.ctx.close().catch(() => {});
   const Q = await H.newPlayer(browser, { name: 'Panner', wsPort, webPort,
-    viewport: { width: 390, height: 664 }, touch: true });
+    viewport: { width: 390, height: 664 }, touch: true, world: 'wheel' });
   await openCreator(Q);
   rec.ok('paint panel: the Skin tab opened (guard)', await pickTab(Q, 'Skin'), null);
   await Q.page.waitForTimeout(1200);
@@ -1083,7 +1097,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      "nothing is below the fold" rather than as a pixel count, because that is
      the property a player feels. */
   const R = await H.newPlayer(browser, { name: 'Sideways', wsPort, webPort,
-    viewport: { width: 844, height: 390 }, touch: true });
+    viewport: { width: 844, height: 390 }, touch: true, world: 'wheel' });
   await openCreator(R);
   rec.ok('landscape: the Skin tab opened (guard)', await pickTab(R, 'Skin'), null);
   await R.page.waitForTimeout(1200);

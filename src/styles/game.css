@@ -4232,6 +4232,11 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
 .bt-cc-strip{flex:0 1 auto;min-height:0;display:grid;grid-template-columns:repeat(auto-fill,var(--cc-tile));grid-auto-rows:var(--cc-tile);gap:6px;justify-content:center;align-content:start;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
 .bt-cc-strip::-webkit-scrollbar{display:none}
 .bt-cc-strip>*{flex:none!important;width:var(--cc-tile)!important;height:var(--cc-tile)!important}
+/* v2.3.3586: the Skin tab's tones at the colour row's swatch size, four a row
+   (NameModal.jsx `compact`): 26 of them, drawn as they were under the species
+   from v2.3.2682 until the species got a tab of its own. */
+.bt-cc-strip--compact{grid-template-columns:repeat(auto-fill,var(--cc-swatch));grid-auto-rows:var(--cc-swatch);gap:5px}
+.bt-cc-strip--compact>*{width:var(--cc-swatch)!important;height:var(--cc-swatch)!important}
 /* Colors: fixed-size swatches so a long catalog scrolls with six-ish
    visible at phone width; the first/last auto margins center a short
    row WITHOUT the clipped-left-edge bug of justify-content:center on an
@@ -4898,6 +4903,21 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
   .bt-cc-panel>.bt-cc-tabs{gap:3px}
   .bt-cc-panel>.bt-cc-tabs>.bt-cc-tab{min-height:38px;gap:1px;padding-block:2px}
   .bt-cc-panel>.bt-cc-tabs .bt-cc-tab-icon{width:20px;height:20px}
+}
+/* ═══ v2.3.3586: SPECIES, A WIDE BUTTON OVER THE OTHER NINE ═══
+   Owner: "Yes make species it's own button."  A tenth tab in the 3-wide grid
+   is 3+3+3+1, the lonely tab v2.3.1953 turned the grid down for, and the two
+   ways round it cost the options their room: two columns are five rows (115px
+   more than the 3x3 at 390x844), and four or five columns cut "Species",
+   "Eyewear" and "Shoes" off (39 and 31px tabs, measured).  So the species --
+   the choice the rest is built on, and the tab the creator opens on -- is one
+   wide button across the top, its icon beside its name, and under it the 3x3
+   is exactly as it was: one 44px row more, and nothing the player knows moved.
+   Not sideways: there the tabs are two narrow columns down the picker's side
+   (v2.3.3216), and the species is the first of them, with its icon over its
+   name like the rest. */
+@media not all and (orientation:landscape) and (pointer:coarse) and (max-height:1000px){
+  .bt-cc-tab--wide{grid-column:1/-1;flex-direction:row;gap:8px;min-height:44px}
 }
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}

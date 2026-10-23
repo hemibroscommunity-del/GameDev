@@ -151,6 +151,17 @@ remnant to migrate server-side, not a mode to preserve.
   pumpkin-coloured speech bubbles drawn in code, Diego's "No zombies in my
   store!"; `season` suite, `mp-halloween`: docs/specs/halloween.md; each
   change pictured beside a normal day: docs/shots/halloween.md),
+  `docs/specs/SPECIES-PLAN.md` (the playable species: not a new body but a
+  skin tone and a piece drawn over the head, src/rendering/traits/speciesArt.js;
+  the monkey since v2.3.2682 and since v2.3.3586 the ALIEN -- the owner: "Yes
+  make species it's own button.  And add alien." -- its pointed ears made from
+  the monkey's piece by tools/species_alien.py, so the 196 frames the monkey
+  was fitted to fit them too, Alien Cyan, and the eye style 'alien' (black
+  almonds) that picking it puts on (speciesCatalog.js `skin`/`eyes`, never over
+  a colour or eyes the player chose); the creator's SPECIES BUTTON is wide
+  across the top of the trait grid, the 3x3 under it as it was, the creator
+  opens on it, and the Skin tab is the tones and the tattoo card again;
+  `mp-species`, in the world),
   `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
   size, in what order — the decoded-RGBA budget and the free-standing
   vs edge-cropped test live here, v2.3.2650),
