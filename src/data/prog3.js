@@ -365,6 +365,12 @@ function _resolveMetaRows(rows) {
       var _row = PROG3.ATK[m.key] || PROG3.BODY[m.key];
       out.push({ ...m, perText: m.perTextRel, unit: m.unitRel || m.unit,
         pct: m.pctRel != null ? m.pctRel : m.pct, curve: true, fades: !!(_row && _row.rel) });
+    } else if (m.key === 'hp') {
+      /* v2.3.3578: what a Max HP point is worth on the connected worker -- 40
+         under the one formula (oneFormula.js healthPerPoint), the old 8 on an
+         older one.  The row said "+8 max HP" since v2.3.3260 while the bar and
+         the window's own before/after grew 40 a point (mp-statnocap). */
+      out.push({ ...m, perText: '+' + healthPerPoint() + ' max HP' });
     } else out.push(m);
   }
   return out;

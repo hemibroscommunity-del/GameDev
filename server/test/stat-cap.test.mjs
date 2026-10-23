@@ -13,7 +13,8 @@
  *   3. `nostatcap: false`: the bound exactly as before (one level and the sum)
  *   4. a point already placed stays when the switch is thrown
  *   5. caps.nostatcap at the join, and off with the switch
- *   6. the phone's prog3StatCap greys [+] exactly where the worker refuses
+ *   6. the phone's prog3StatCap greys [+] exactly where the worker refuses;
+ *      the Max HP row says what a point is worth on the connected worker
  *   7. the wiring
  */
 import { readFileSync } from 'node:fs';
@@ -23,9 +24,9 @@ import { STAT_CAP } from '../src/statcap.js';
 import { healthAt } from '../src/oneformula.js';
 import {
   PROG3 as CLIENT_PROG3, STAT_CAP_WAS, setProg3Enabled, setProg3RelEnabled, setStatCapFree,
-  isStatCapFree, prog3StatCap,
+  isStatCapFree, prog3StatCap, prog3BodyMeta,
 } from '../../src/data/prog3.js';
-import { setOneLevelEnabled } from '../../src/data/oneFormula.js';
+import { setOneLevelEnabled, setOneFormulaEnabled } from '../../src/data/oneFormula.js';
 
 const mockState = {
   storage: {
@@ -232,6 +233,19 @@ const spend = (room, id, stat, cat, n = 1) => {
   setProg3RelEnabled(false); setStatCapFree(true);
   check('6d. caps.nostatcap means nothing to the phone against a linear (pre-curve) worker', isStatCapFree() === false);
   setProg3RelEnabled(true); setStatCapFree(false);
+}
+
+// ── 6e. What a Max HP point is worth, said as the worker pays it ──
+{
+  /* the row said "+8 max HP" since v2.3.3260 while each point gave 40 under
+     the one formula (the bar and the window's before/after both grew 40) */
+  setOneFormulaEnabled(true);
+  const on = prog3BodyMeta().find((r) => r.key === 'hp');
+  setOneFormulaEnabled(false);
+  const off = prog3BodyMeta().find((r) => r.key === 'hp');
+  setOneFormulaEnabled(true);
+  check('6e. the Max HP row says "+40 max HP" a point under the one formula, "+8" against an older worker',
+    on && on.perText === '+40 max HP' && off && off.perText === '+8 max HP', { on: on && on.perText, off: off && off.perText });
 }
 
 // ── 7. The wiring ──

@@ -2178,7 +2178,9 @@ remnant to migrate server-side, not a mode to preserve.
         of 999" (HeroExpanded `ptsOf`), only against `caps.nostatcap`
         (data/prog3.js `setStatCapFree`, prog3StatCap); a point placed is
         never taken back; kill switch `nostatcap: false` (the bound again, and
-        the pools' 100, STAT_CAP.WAS); `stat-cap` suite:
+        the pools' 100, STAT_CAP.WAS); and the Max HP row says what a point is
+        worth on the connected worker (+40 under the one formula; it said +8,
+        _resolveMetaRows); `stat-cap` suite, `mp-statnocap`:
         docs/specs/no-stat-cap.md;
       - since v2.3.3544 WHAT YOU WEAR ASKS YOUR LEVEL -- the owner: "I'm
         thinking of gating armor and weapons on combat level instead of

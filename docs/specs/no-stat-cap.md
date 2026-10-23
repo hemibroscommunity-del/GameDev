@@ -65,6 +65,15 @@ them all back if a build goes wrong.
 - The Points labels (HeroExpanded.jsx `ptsOf`): "Dodge, 4 points." with no
   cap, "Dodge, 4 of 10." with one.
 
+## Also fixed: what a Max HP point says it is worth
+
+The Max HP row (its label and the stat window's "Each point" line) said "+8
+max HP" a point. Under the one formula (v2.3.3260) a point is worth 40: the bar
+and the window's own before and after both grew by 40. The row now says what
+the connected worker pays (`healthPerPoint()`: 40, or 8 on an older worker).
+With the cap gone, Max HP is the stat most likely to take a pile of points,
+so the number had to be right.
+
 ## The switch
 
 `nostatcap: false` in the live flags brings back the bound exactly as it
@@ -84,3 +93,8 @@ A rollback to a worker before v2.3.3578 reads a pool placed past 100 as 100
 - `prog3` keeps its old bound checks, run under `nostatcap: false`.
 - `mp-statpeek` finds the Luck button by its [+] handle, as the label no
   longer says " of ".
+- `mp-statnocap` (a phone in the world, 13 checks): a level-22 character puts
+  25 points in Max HP, the worker places all 25 and the bar grows 40 a point,
+  the cell reads "Max HP, 25 points. +40 max HP per point.", the window offers
+  the next point; then `nostatcap: false` at a rejoin: "25 of 22", [+] adds
+  nothing past the bound, and the 25 points stay.

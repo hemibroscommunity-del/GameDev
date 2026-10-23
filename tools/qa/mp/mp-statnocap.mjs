@@ -9,7 +9,8 @@
  *   2. Max HP's window: [+] adds past your level, and Spend places every one
  *   3. the worker took them all: rpg.prog3.alloc.hp is past the old bound, and
  *      the bar grew
- *   4. the cell reads "Max HP, n points." -- never "n of 999"
+ *   4. the cell reads "Max HP, n points." -- never "n of 999" -- and a point's
+ *      worth as the bar grew (+40 under the one formula; it said +8)
  *   5. the window still offers the next point
  *   6. `nostatcap: false` (a rejoin to read it): [+] stops where the old bound
  *      is, the label says "n of L" again, and the points placed stay
@@ -117,7 +118,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (let i = 0; i < 40 && s1.hp < want; i++) { await P.page.waitForTimeout(150); s1 = await state(P); }
   rec.ok(`3. the worker placed every one: Max HP ${s1.hp} points (past level ${s0.level}), ${s1.shared} shared left`,
     s1.hp === want && s1.shared === s0.shared - want, { s0, s1 });
-  rec.ok(`3b. ...and the bar grew with them (${s0.maxHp} -> ${s1.maxHp})`, s1.maxHp > s0.maxHp, { before: s0.maxHp, after: s1.maxHp });
+  const per = (s1.maxHp - s0.maxHp) / want;
+  rec.ok(`3b. ...and the bar grew with them (${s0.maxHp} -> ${s1.maxHp}: ${per} a point)`, s1.maxHp > s0.maxHp && per === Math.round(per), { before: s0.maxHp, after: s1.maxHp });
 
   /* 5: the window stays after a spend (v2.3.3522), its count back at 0 */
   let more = null;
@@ -135,6 +137,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const l1 = await label(P);
   rec.ok(`4. the cell reads its points with no cap: "${l1}"`,
     !!l1 && new RegExp(`, ${want} points\\.`).test(l1) && !/ of \d/.test(l1), l1);
+  /* v2.3.3578: and what a point is worth, as the bar just grew (the row said
+     "+8 max HP" while each point gave 40 under the one formula) */
+  rec.ok(`4b. ...and a point's worth as the bar grew: "+${per} max HP"`, !!l1 && l1.indexOf(`+${per} max HP per point`) >= 0, l1);
 
   /* 6: the switch, read at a rejoin */
   await H.liveFlag(wsPort, 'nostatcap', false);
