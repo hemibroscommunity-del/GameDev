@@ -119,3 +119,63 @@ black-hole the connection under an open socket):
 
 Also `mp-afk` (an abandoned tab stays out; the button brings it back) and
 `mp-chopyield`.
+
+## v2.3.3582: Diego's shop asks again after a rejoin
+
+> *"Yes fix the bug in separate pr"* -- the owner, 2026-10-23, of the gap
+> found moving `mp-shopkeeper` to the world (v2.3.3580).
+
+### What was happening
+
+The idle logout's banner says any touch brings you back (`_armComeBack`), so
+with Diego's shop open, the tap that ends the logout is usually a tap ON the
+shop. That one tap does two things at once: it reconnects, and it chooses an
+item or presses SELL / BUY. The shop's message goes out while the new socket is
+still opening or joining, and is lost twice over:
+
+- the phone drops a send on a socket that is not open (`channelShim.send`);
+- the worker takes nothing but `join` from a socket that has not joined
+  (`index.js`, `!session.id`).
+
+Every number in the shop is an answer to an ask (it holds no price table, by
+design), and nothing asked again:
+
+| The tap that ended the logout | Main's build |
+|---|---|
+| on an item | its price stayed "…" until another tap |
+| on SELL or BUY | the button stayed **dead** until the shop was closed: `shopBus.busy` waited for an answer to a trade that was never sent |
+
+### What changed
+
+When a join lands (`state_sync`, which only a join sends), wsClient calls
+`shopBus.rejoined()`. With the shop open, it:
+
+- asks again for the list (the per-slot prices on your bag) and for the price of
+  the item you chose. The drawer's two asks depend on `shopBus.joins`, as they
+  already did on `settled`;
+- lets go of the price it held, as the pile may have moved while you were out;
+- lets go of the trade's wait.
+
+**A trade is never sent again by itself.** A tap on SELL that only brought you
+back sells nothing, and the next tap sells. A trade the worker settled before the
+socket died is already in the bag the join echoes. This follows
+`_holdForRejoin`'s rule: strikes only, never a spend.
+
+The worker is unchanged. No new message.
+
+### Checked by
+
+`mp-shoprejoin` (a phone in the world's BroTown; the page's own `idleLogout()`,
+the path two idle minutes take):
+
+1. a real tap on SELL ends the logout: nothing sold, SELL live again with a
+   fresh price, the next tap sells for exactly that price;
+2. an item chosen while logged out (the bag tile's own pointerup, which is no
+   "I'm back"), then a key brings you back: its price arrives;
+3. a real tap on the item ends the logout: its price arrives.
+
+16 of 16 with the fix. Against main's build 12 of 16: step 1's live SELL and its
+next sale, step 2's price and step 3's price all fail. On this box the join
+always took longer than the price's 140 ms wait, so even the plain tap lost its
+price. On a fast connection step 3 can pass on main by luck; steps 1 and 2
+cannot.

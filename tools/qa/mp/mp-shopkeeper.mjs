@@ -32,7 +32,10 @@
  * are kept in by a real keystroke (H.keepAlive): the world loads slower than
  * the old town, and the watcher, idle over two minutes by the time it buys,
  * was logged out -- the tap that brought it back sent the price request
- * while its new socket was still joining, and the request was lost.
+ * while its new socket was still joining, and the request was lost.  Since
+ * v2.3.3582 the shop asks again after a rejoin (shopBus.rejoined,
+ * mp-shoprejoin); the players are still kept in, as a logout mid-trade is
+ * not what this scenario is about.
  */
 import * as H from './harness.mjs';
 
@@ -423,6 +426,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await C.page.waitForTimeout(1200);
   await openShop(C);
   const side = await (async () => {
+    let last = null;
     for (let i = 0; i < 40; i++) {
       const s = await C.page.evaluate((k) => {
         const R = (e) => { if (!e) return null; const r = e.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top), r: Math.round(r.right), b: Math.round(r.bottom) }; };
@@ -435,12 +439,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return { panel: R(document.querySelector('[data-shop-panel]')), sheet: R(document.querySelector('.bt-land-sheet')),
           col: bus ? bus.state.mode + ':' + bus.current() : null, tile: R(tile),
           closeOnTop: !!(xTop && xTop.closest && xTop.closest('[data-shop-close]')),
+          /* v2.3.3582: and what IS there when it is not the ✕, so a failure
+             names what covers it */
+          onTop: xTop ? [xTop.tagName.toLowerCase(), xTop.id ? '#' + xTop.id : '',
+            typeof xTop.className === 'string' && xTop.className ? '.' + xTop.className.trim().split(/\s+/).join('.') : '',
+            Array.from(xTop.attributes || []).filter((a) => a.name.startsWith('data-')).map((a) => '[' + a.name + ']').join('')].join('') : null,
+          xAt: xr ? { x: Math.round(xr.left + xr.width / 2), y: Math.round(xr.top + xr.height / 2) } : null,
           who: R(document.querySelector('[data-shop-coins]') && document.querySelector('[data-shop-coins]').parentElement), label: R(lbl) };
       }, KEY);
-      if (s.panel && s.sheet && s.tile) return s;
+      /* v2.3.3582: ...and until its ✕ answers, as for the drawer and the
+         column: it failed once in three runs and passed at once on two, a
+         moment's cover; the minimap's map button this guards against never
+         moves off it, and a ✕ never answering still fails, naming what lies
+         over it (onTop) */
+      if (s.panel && s.sheet && s.tile) last = s;
+      if (last === s && s.closeOnTop) return s;
       await C.page.waitForTimeout(150);
     }
-    return null;
+    return last;
   })();
   rec.ok('sideways, opening his shop opens your bag column beside it', !!side && side.col === 'expanded:dashboard' && !!side.tile, side);
   rec.ok('...and the drawer sits beside the column, never over your bag',

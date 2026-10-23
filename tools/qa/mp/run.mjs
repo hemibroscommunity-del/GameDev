@@ -397,6 +397,7 @@ const SCENARIOS = {
   questxp: () => import('./mp-questxp.mjs'), /* v2.3.2154: the XP chooser's type, and your own plate */
   notifbell: () => import('./mp-notifbell.mjs'), /* v2.3.2155: the corner rests as a bell */
   shopkeeper: () => import('./mp-shopkeeper.mjs'), /* v2.3.2050: trading with Shopkeeper Bro, and the pile being public */
+  shoprejoin: () => import('./mp-shoprejoin.mjs'), /* v2.3.3582: Diego's shop after an idle logout -- the tap that brings you back is also the shop's tap, sent to a socket still joining: a tap on SELL sells nothing by itself and SELL is live again with a fresh price (it stayed dead), an item chosen while logged out gets its price once you are back (it never came), and a real tap on an item ends with its price */
   toolshelf: () => import('./mp-toolshelf.mjs'), /* v2.3.3316: a lost tool bought back from Diego -- his shelf shows the axe, rod and pickaxe at their price; the player the quest gave them buys one each, never a second ("You have one"); a player no quest gave one is told so and refused; pictures */
   facingside: () => import('./mp-facingside.mjs'), /* v2.3.2042: a face tattoo does not revolve to the back of a head */
   cosmpose: () => import('./mp-cosmpose.mjs'), /* v2.3.2041: do tattoos + clothing patterns survive every activity, on both screens? */
