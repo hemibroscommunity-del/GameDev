@@ -167,6 +167,13 @@ export function ShopkeeperPanel() {
        correctly skip, so this is the one case that has to force the ask. */
     askedRef.current = null;
   }, [settleCount]);
+  /* v2.3.3582: ...and after a rejoin, since the list asked of the old
+     connection may never have been answered (shopBus.rejoined says why). */
+  const joins = shopBus.joins;
+  useEffect(() => {
+    if (!shopBus.open || !joins) return;
+    askedRef.current = null;
+  }, [joins]);
 
   const sel = shopBus.sel;
   const selKey = sel && sel.key;
@@ -219,7 +226,9 @@ export function ShopkeeperPanel() {
   /* A new selection always starts at one. */
   useEffect(() => { setQty(1); }, [selSeq]);
 
-  /* Debounced: holding '+' must not send a message per frame. */
+  /* Debounced: holding '+' must not send a message per frame.
+     v2.3.3582: asked again after a rejoin (`joins`): the ask the old
+     connection carried, or dropped, is never answered. */
   useEffect(() => {
     if (!selKey) return undefined;
     if (quoteTimer.current) clearTimeout(quoteTimer.current);
@@ -227,7 +236,7 @@ export function ShopkeeperPanel() {
       send('shop_quote', { key: selKey, qty, mode: selSide === 'bro' ? 'buy' : 'sell' });
     }, 140);
     return () => { if (quoteTimer.current) clearTimeout(quoteTimer.current); };
-  }, [selKey, selSide, selSeq, qty]);
+  }, [selKey, selSide, selSeq, qty, joins]);
 
   /* ═══ v2.3.3407: SIDEWAYS, THE BAG IS THE SIDE COLUMN ═══
      The owner: "Make sure all actions/buttons can be completed in landscape

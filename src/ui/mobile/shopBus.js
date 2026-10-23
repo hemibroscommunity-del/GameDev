@@ -98,6 +98,34 @@ export const shopBus = {
     emit();
   },
   setBusy(v) { this.busy = !!v; emit(); },
+  /* ═══ v2.3.3582: A NEW CONNECTION HEARS NOTHING THE OLD ONE ASKED ═══
+   * Every number here is an answer to an ask, and an ask sent while the
+   * socket is down or still joining is gone: the phone drops a send on a
+   * socket that is not open, and the worker drops anything but `join` from
+   * one that has not joined (index.js `!session.id`).  Found moving
+   * mp-shopkeeper to the world: a player logged out for idling with the
+   * shop open came back by tapping it -- that one tap is "I'm back" AND the
+   * selection -- so its price was asked of a socket still joining, and
+   * nothing asked again.  The Buy button waited on a "…" until another tap.
+   * A SELL or BUY tapped that way was worse: dropped too, it left `busy` on
+   * with no answer ever coming, and the button dead until the shop closed.
+   *
+   * So wsClient calls this when a join lands (state_sync), and an open shop
+   * asks again for the list and the price (`joins`, which the drawer's two
+   * asks depend on, as they do on `settled`), its old price let go -- the
+   * pile may have moved while you were out -- and its wait let go.  A
+   * trade is NEVER sent again by itself: one the worker settled before the
+   * socket died is in the bag the join echoes, and one it never heard of is
+   * a tap away (the button's own `busy`, wsClient `_holdForRejoin`: strikes
+   * only, never a spend). */
+  joins: 0,
+  rejoined() {
+    if (!this.open) return;
+    this.joins = (this.joins + 1) % 1000000;
+    this.busy = false;
+    this.quote = null;
+    emit();
+  },
   /* v2.3.2057: the last stack quote he gave. Held here rather than in the
      panel's state because it arrives on a WebSocket handler, which has no
      route into the component tree — same reason the stock does. */

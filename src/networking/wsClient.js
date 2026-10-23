@@ -22,6 +22,7 @@ import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.28
 import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
 import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3139: hardened wood's names */
 import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the worker's */
+import { shopBus } from '@/ui/mobile/shopBus.js'; /* v2.3.3582: an open shop asks again after a rejoin */
 import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
 import { applySparState } from '@/game/spar.js'; /* v2.3.3265: the test panel's sparring clones */
 import { applyTestMode } from '@/game/testMode.js'; /* v2.3.3430: the owner's test mode, shown as a tag */
@@ -1533,6 +1534,12 @@ export function setupWebSocket(ctx) {
                 _disarmComeBack();
                 try { var _rb = document.getElementById('bt-resume-banner'); if (_rb) _rb.remove(); } catch (e) {}
                 _flushHeldForRejoin();
+                /* v2.3.3582: and an open shop asks again for its list and
+                   price, and stops waiting on a trade the old socket never
+                   carried (shopBus.rejoined): the tap that ends an idle
+                   logout is also the shop's tap, sent to a socket still
+                   joining */
+                try { shopBus.rejoined(); } catch (e) { /* the next tap asks */ }
               }
               /* ═══ v2.3.1814: WEAR YOUR OWN FACE ═══
                  The character's name and look are stored against the identity
