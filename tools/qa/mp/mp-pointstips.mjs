@@ -176,6 +176,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const cHidden = await waitCoach(A, (c) => !c || c.id !== 'points', 3000);
   rec.ok('4: a stat\'s [+] opens its window, and the coach steps aside for it',
     opened && !!win && (!cHidden || cHidden.id !== 'points'), { opened, win, cHidden });
+  /* v2.3.3577: the window's count opens at 0 -- [+] adds the point, Spend
+     spends it */
+  await finger(A, '[data-infopopup-step="up"]');
   await finger(A, '[data-infopopup-action]');
   let s1 = null;
   for (let i = 0; i < 40; i++) {
@@ -193,6 +196,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!placed1 && placed1.placed === 1 && !!s1 && /1 point spent/.test(s1.spent || '')
       && s1.hint === 'Not sure? Reset points (free), under the grid, gives them all back.', { placed1, s1 });
   /* a second Spend, from the same window: placed now holds more than it spent */
+  await finger(A, '[data-infopopup-step="up"]');   /* v2.3.3577: from 0 again */
   await finger(A, '[data-infopopup-action]');
   let placed2 = null, s2 = null;
   for (let i = 0; i < 40; i++) {

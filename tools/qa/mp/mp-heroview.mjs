@@ -46,7 +46,8 @@ const sig = (P) => P.page.evaluate(() => {
 });
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Viewer', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true });
+  /* v2.3.3577: in the world (it was written for the retired map) */
+  const P = await H.newPlayer(browser, { name: 'Viewer', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, world: 'wheel' });
   await H.enterWorld(P);
   await P.page.waitForTimeout(3000);
   await openHero(P);
@@ -109,7 +110,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const bare = await sig(P);
   rec.ok('it actually painted a figure (guard)', !!(bare && bare.n > 500), { bare });
 
-  /* ── 2. southwest, and proven rather than assumed ──
+  /* ── 2. southEAST (v2.3.3577), and proven rather than assumed ──
+     v2.3.3577, the owner: "In the preview of the character on the equipment
+     tab (dashboard button) actually make the character face southeast
+     instead of southwest."  Southeast is the southwest art flipped
+     (characterPortrait.js _DMAP), so the stamp is the base art, southwest,
+     AND the mirror.  The note below is v2.3.1815's, about the stamp:
      The portrait stamps the facing it actually composited onto the canvas.
      Asserting the STAMP rather than the pixels is what makes this meaningful:
      southwest and south are both front-ish three-quarter art and are not
@@ -119,8 +125,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const cv = document.querySelector('canvas[aria-label="Your character"]');
     return cv ? { dir: cv.__btDir || null, mirror: !!cv.__btMirror } : null;
   });
-  rec.ok('the figure is composited SOUTHWEST, as asked',
-    !!(drew && drew.dir === 'southwest'), { drew });
+  rec.ok('the figure is composited SOUTHEAST, as asked (the southwest art, mirrored)',
+    !!(drew && drew.dir === 'southwest' && drew.mirror === true), { drew });
   /* And it is PINNED there: turning the player in the world must not turn the
      panel, or "southwest idle" becomes "whatever you happen to be facing". */
   await P.page.evaluate(() => {
@@ -131,10 +137,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(700);
   const stillSw = await P.page.evaluate(() => {
     const cv = document.querySelector('canvas[aria-label="Your character"]');
-    return cv ? cv.__btDir : null;
+    return cv ? (cv.__btDir + (cv.__btMirror ? ' mirrored' : '')) : null;
   });
-  rec.ok('...and stays southwest when the world player turns',
-    stillSw === 'southwest', { stillSw });
+  rec.ok('...and stays southeast when the world player turns',
+    stillSw === 'southwest mirrored', { stillSw });
 
   /* ── 3. it wears what you wear ── */
   await P.page.evaluate(() => {
@@ -208,6 +214,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    figure bbox', JSON.stringify(bbox));
   rec.ok('the figure is measurably narrower than its square canvas',
     !!(bbox && bbox.wPct < 80), bbox);
+  /* v2.3.3577: the crop's window is slid by the facing (CharacterView
+     figureCx): turned southeast the figure's centre is on the other side of
+     the frame's middle, so the window must follow it -- the whole figure,
+     sword and shield, inside the window the player sees */
+  const fit = await P.page.evaluate(() => {
+    const cv = document.querySelector('canvas[aria-label="Your character"]');
+    const win = cv && cv.parentElement;
+    if (!cv || !win) return null;
+    const c = document.createElement('canvas');
+    c.width = cv.width; c.height = cv.height;
+    const x = c.getContext('2d');
+    x.drawImage(cv, 0, 0);
+    const d = x.getImageData(0, 0, c.width, c.height).data;
+    let l = 1e9, r = -1;
+    for (let y = 0; y < c.height; y++) {
+      for (let X = 0; X < c.width; X++) {
+        if (d[(y * c.width + X) * 4 + 3] < 24) continue;
+        if (X < l) l = X; if (X > r) r = X;
+      }
+    }
+    const cr = cv.getBoundingClientRect(), wr = win.getBoundingClientRect();
+    const k = cr.width / c.width;
+    return { figL: Math.round(cr.left + l * k), figR: Math.round(cr.left + (r + 1) * k), winL: Math.round(wr.left), winR: Math.round(wr.right) };
+  });
+  rec.ok('turned southeast, the whole figure is inside the crop\'s window',
+    !!(fit && fit.figL >= fit.winL - 1 && fit.figR <= fit.winR + 1), fit);
 
   /* ═══ v2.3.1842: TAPPING A SLOT STILL SHOWS ITS MENU ═══
      Owner: "make sure there's enough room so that when you click on an item to

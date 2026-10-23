@@ -172,7 +172,8 @@ export const HeroExpanded = () => {
      check (stayCheckRef, set where the window is built, with this render's
      numbers) puts the window up again once the worker has spent them all --
      or after STAY_WAIT_MS, whatever it did spend -- with the stat's new
-     value, the next point's preview, the stepper back at 1 and
+     value, the next point's preview, the stepper back at 1 (0 since
+     v2.3.3577: InfoPopup's [+] adds every point) and
      "✓ n points spent".  Closing the window meanwhile drops it. */
   const stayRef = useRef(null);
   const stayCheckRef = useRef(null);
@@ -1024,10 +1025,16 @@ export const HeroExpanded = () => {
                   getActiveWeapon is what the world figure draws and what
                   playerActions fires, so the preview now shows the thing you are
                   actually holding rather than a fourth opinion about it. */}
+              {/* v2.3.3577: SOUTHEAST -- the owner: "In the preview of the
+                  character on the equipment tab (dashboard button) actually
+                  make the character face southeast instead of southwest."
+                  The same three-quarter figure, turned the other way (the
+                  southwest art flipped, as the world draws southeast). */}
               <CharacterView
                 size={3 * EQ_W + 2 * DASH_GAP}
                 weapon={getActiveWeapon(R)}
                 shield={R.shield}
+                dir="southeast"
                 crop
               />
             </div>

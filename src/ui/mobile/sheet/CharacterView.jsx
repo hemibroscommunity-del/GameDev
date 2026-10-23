@@ -62,11 +62,20 @@ import { getEquip, onEquipChange } from '@/rendering/gearCatalog.js';
  */
 export const FIGURE_W_FRAC = 0.52;   /* window width, as a fraction of `size` */
 const FIGURE_CX_FRAC = 0.483;        /* measured centre of the painted figure */
+/* ═══ v2.3.3577: A MIRRORED FACING CENTRES ON THE OTHER SIDE ═══
+   The owner: "In the preview of the character on the equipment tab actually
+   make the character face southeast instead of southwest."  Southeast is the
+   southwest art flipped about the frame's middle (characterPortrait.js
+   _DMAP), so the measured centre flips with it: 48.3% from the left becomes
+   48.3% from the right, the sword hanging on the other side.  West and
+   northwest are mirrored the same way. */
+const MIRRORED_DIRS = { southeast: 1, west: 1, northwest: 1 };
+function figureCx(dir) { return MIRRORED_DIRS[dir] ? 1 - FIGURE_CX_FRAC : FIGURE_CX_FRAC; }
 /* v2.3.2986: the crop's two numbers, for a caller that lays its own layers
    over the figure (StatDemo's fighter) -- computed here, once, from the same
    constants the crop below uses. */
 export function cropWidth(size) { return Math.round(size * FIGURE_W_FRAC); }
-export function cropShift(size) { return Math.round(size * FIGURE_CX_FRAC - cropWidth(size) / 2); }
+export function cropShift(size, dir) { return Math.round(size * figureCx(dir) - cropWidth(size) / 2); }
 
 /* v2.3.2986: the wardrobe subscription and the option list, lifted out of
    the component unchanged so StatDemo's fighter can draw the SAME figure
@@ -177,7 +186,7 @@ export const CharacterView = ({ size, weapon, shield, crop, dir, weaponOut, onDr
   /* Slide the canvas so the figure's measured centre lands in the window's
      centre.  Without this the window would show the frame's middle, which is
      not where the figure is. */
-  const shift = crop ? cropShift(size) : 0;
+  const shift = crop ? cropShift(size, dir) : 0;   /* v2.3.3577: by the facing drawn */
   const canvasEl = (
     <canvas
       ref={ref}

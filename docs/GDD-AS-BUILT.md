@@ -217,7 +217,7 @@ Nine tabs in a 3×3 grid, opening on Skin: **Hair** (none + 8 styles, 14 colours
 | XP curve | to go from level L to L+1: ceil(280 × 1.16^(L−1)): 280 at 1, 1,065 at 10, 4,698 at 20, 20,723 at 30, 403,274 at 50, ~581 million at 99. Cumulative to 100 is ~4.2 billion; at 0.2 XP per damage point this is a lifetime curve by construction. |
 | At a level-up | HP, stamina and mana fully restored; 3 **lane points** stamped to the skill that earned them, and 3 **shared points** when your character level rises (a weapon below your best pays its own lane points only; v2.3.3538). |
 | Lane points | buy only that weapon's six offense stats; shared points buy only the seven body stats. |
-| Spending | one point at a time, "are you sure" with a now → after preview. A free **points reset** (v2.3.3541) gives every placed point back: two taps on the Points tab's "Reset points (free)", refused in a fight and within a minute of the last one; levels, XP and gear kept. Waiting points make the Character tab glow and the counts in the Points tab's gold weapon and character frames breathe (v2.3.3559, the owner's art: gold with points, grey at 0). |
+| Spending | a stat's window: a [−] n [+] count with a now → after preview, then Spend. The count starts at 0 and [+] adds every point, the last one too (v2.3.3577); the window stays after a spend. A free **points reset** (v2.3.3541) gives every placed point back: two taps on the Points tab's "Reset points (free)", refused in a fight and within a minute of the last one; levels, XP and gear kept. Waiting points make the Character tab glow and the counts in the Points tab's gold weapon and character frames breathe (v2.3.3559, the owner's art: gold with points, grey at 0). |
 | Bound | a stat may hold no more points than your character level; Power, Luck, Special and Elemental may hold twice that. |
 
 **Per-weapon lane stats** (six per skill), all on the front-loaded curve `max × q / (q + k)`:
@@ -490,7 +490,7 @@ A bow special pressed on an empty line is queued 2.5 s and charged only when it 
 |---|---|---|---|---|---|---|
 | Sword dash (the opening lunge) | a melee weapon; fires as the first attack of an engagement at a lock | free | 2.5 s | 1.0× | closes up to 900 px, lands you 46 px from the target | stun 1.6 s, 40 px knockback |
 | Shield Bash | a raised shield | 1 block | 4 s | 0.75× | 70 px, or a declared target within 240 px (dashes to it) | stun 1.6 s, 90 px shove, cancels a wind-up |
-| Whirlwind | a melee weapon and a locked monster | 1 block | 6 s | 1.0× each | 240 px radius, up to 16 targets, 1 s wind-up you can walk during | pulls every target to a 34 px ring round you, stuns 1 s |
+| Whirlwind | a melee weapon and a locked monster | 1 block | 6 s | 1.0× each | 240 px radius, up to 16 targets, 1 s wind-up you can walk during (each monster it will catch ringed at its feet and drawn in flashing amber, v2.3.3577) | pulls every target to a 34 px ring round you, stuns 1 s |
 | Dodge lunge (swipe toward a lock with a sword) | a lock within 220 px | 1 block | 1 s | 0.6× | 220 px | a dodge with i-frames |
 | Retreat shot (swipe away from a lock with a bow or staff) | a lock | 1 block | — | 0.5× (one arrow, or three bolts in a 25° cone) | the weapon's range | a roll with no i-frames against monsters ("the shot is the tradeoff for safety") |
 | Element Burst | a gem in the weapon | 1 mana block | 3 s | 1.5× | 70 px nova | puts the gem's status on everything hit |

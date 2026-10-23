@@ -1044,7 +1044,10 @@ remnant to migrate server-side, not a mode to preserve.
       left column is the figure, the gear and PLAYER, the right the vitals and
       OFFENSE; the tab SCROLLS again with the bottom fade on (fourteen
       readable pills cannot fit the ~150 px window); the eighth LANTERN-SLATE
-      exception; `mp-charfit` (three phone sizes), `mp-prog3`.
+      exception; `mp-charfit` (three phone sizes), `mp-prog3`; since
+      v2.3.3577 its figure faces SOUTHEAST (the owner's ask; the southwest
+      art mirrored, the crop's window following it: CharacterView.jsx
+      `figureCx`), `mp-heroview`: docs/specs/notes-2026-10-22.md.
   - Since v2.3.3009 the Wheel's TOP BAR says where you are -- the owner:
     "Put the 'brotown safe' and other location indicators in place of the
     'the wheel lvl 1-2' on the top bar" -- the land over its stage and
@@ -2116,6 +2119,14 @@ remnant to migrate server-side, not a mode to preserve.
         Spend names the free reset (`firstSpendHint`, InfoPopup `spentHint`);
         nothing sent, no stat picked; `points-tips` suite, `mp-pointstips`:
         docs/specs/levelup-tips.md;
+      - since v2.3.3577 THE POINTS WINDOW'S COUNT STARTS AT 0 -- the owner:
+        "when there's only 1 point left ... still enable adding the last point
+        using the plus button": it started at 1, so with one point left [+]
+        was greyed; now [+] adds every point and Spend ("Add points with +"
+        at 0) spends what was added, the window still showing what one point
+        buys (InfoPopup `shown`); the per-stat bound (your level, the damage
+        stats twice it) is unchanged, the owner's call:
+        docs/specs/notes-2026-10-22.md;
       - since v2.3.3544 WHAT YOU WEAR ASKS YOUR LEVEL -- the owner: "I'm
         thinking of gating armor and weapons on combat level instead of
         primary combat skill level and defense level": armour, shields and
@@ -2453,7 +2464,13 @@ remnant to migrate server-side, not a mode to preserve.
       `lockTooFar`, 'far'), TRAP answers a touch while you jog, the owner's
       trap picture in the world, "Missed!", the trap's sounds, death pieces
       in their own colour, jaggier, no frozen death (`topple`), dropped items
-      1.5x: docs/specs/combat-feel-2026-10-19.md.
+      1.5x: docs/specs/combat-feel-2026-10-19.md. Since v2.3.3577 a caught
+      monster's WHOLE BODY is the whirlwind's amber too, flashing (the
+      owner: "change the whole color of the enemy ... make it flash a bit"):
+      its own frame drawn over it in one colour, its light kept, at 0.9
+      (src/rendering/fillBatch.js, a sprite program of its own; entityRenderer
+      `_whirlGlow`, game/whirlCatch.js), never a tint, which only darkens
+      (TRAPS §252); `?fill=0` leaves it out; `mp-whirltint` (`QA_WT_LAND=ember`).
     - and THE JUMP MOVES IN THE AIR -- the owner: "is there any 'jump effect'
       you can add just using code that would make it look more realistic than
       just the static frame?": four frames of the jog's stride by the jump's
@@ -5205,6 +5222,12 @@ Two protocol versions coexist; both must keep working:
   BUGS unless the asset genuinely cannot be known at load time (e.g.
   a remote player's arbitrary recolor). The owner has flagged this
   multiple times — treat any first-use texture load as a regression.
+  A BAKE behind the loading screen is made with the very inputs the renderer
+  will ask with, and waits for every sheet it reads (v2.3.3577, TRAPS §251:
+  the armour's masked body was baked for the unflipped body only, and before
+  the chain belt's sheet had come, so a drawn player's west, northwest and
+  southeast flashed the plain body every session; `__btMaskedCoverage()`,
+  `mp-armourflash`).
   - **ZONE-ASSET EXCEPTION (owner directive 2026-07-20, "per zone
     loading instead of one long pregame loading screen", v2.3.1405).**
     The game was "wonky with RAM" on iPhone because the gate above force-
