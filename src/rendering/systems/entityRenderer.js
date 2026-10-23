@@ -387,42 +387,37 @@ const NPC_SPRITE_SCALE = 120 / 256;
    nobody draws would be a rule nothing obeys.)
 
    Keyed by client-visible strings, so Object.create(null) (CLAUDE.md rule 4). */
+/* ═══ v2.3.3576: THE TOWNSFOLK ARE BROS, SO THEY ARE A BRO'S SIZE ═══
+   The owner: "generate the art for the characters ... using the Brotown
+   character creator ... NPCs should look like normal bro characters."  Every
+   townsperson's picture is now the player's own figure in a creator look,
+   photographed by tools/qa/npc-looks.mjs at 256/120 picture px a figure unit
+   -- so drawn at the player's own PLAYER_SIZE_MULT he is exactly a player's
+   height, hat for hat.  The per-figure numbers above (and the old table here:
+   the blacksmith 1.14, Diego 1.30, Ace 1.15, Woodworker 1.14, Farmer 1.10)
+   evened out hand-painted pictures normalised hat-to-feet into 200 px; one
+   body needs none of them.  Two of the owner's own asks stay: the mayor 10%
+   larger than everyone else (v2.3.1822, "Make mayor bro 10% larger";
+   mp-blacksmith reads 1/1.10) and Lil Bro a child (v2.3.2064), 0.8 of a bro
+   -- PHOTOGRAPHED at that size (NPC_DATA `figureSize`), so his cell is drawn
+   at a bro's scale here like everyone's (npcFigureSize below places his
+   labels and paces his stride).
+   Keyed by client-visible strings, so Object.create(null) (CLAUDE.md rule 4). */
+const NPC_BRO_MULT = PLAYER_SIZE_MULT;
 const NPC_SCALE_MULT = Object.assign(Object.create(null), {
-  /* 1.10 -> 1.254: still the blacksmith x 1.10 exactly (0.909 the other way,
-     which is what mp-blacksmith asserts), lifted with him. */
-  '/sprites/npc/mayor-bro.webp': 1.254,
-  /* 1.00 -> 1.14.  He was the shortest adult in town and is drawn as the
-     biggest-built one; his shoulder went 64 -> 73. */
-  '/sprites/npc/blacksmith-bro.webp': 1.14,
-  /* v2.3.2052 (owner: "make shopkeeper larger his sprite is bit small").
-     Measured rather than nudged: at 1.0 he drew 120px against Mayor Bro's 132,
-     so he read as the smallest figure in the town square despite being a
-     broad man in a heavy coat. 1.30 puts him at ~156 -- the biggest of the
-     three, which is what a man in that coat should look like standing next to
-     a mayor. Keyed on the south strip because that is his NPC_DATA `sprite`,
-     which is what npcSpriteScale is handed. */
-  '/sprites/npc/shopkeeper-bro-walk-south.webp': 1.30,
-  /* ═══ v2.3.2064: LIL BRO IS A CHILD, SO HE IS DRAWN AS ONE ═══
-     The import convention normalises EVERY figure to 200px between hat and
-     feet (import_npc_walk.py), which is what makes an NPC need no per-sprite
-     anchor -- and it also means a kid ships exactly as tall as the mayor. The
-     art is a child; the scale is where that gets said. 0.78 puts his head at
-     about an adult's shoulder, which is what the reference art looks like
-     beside the grown-ups in the same street. */
-  '/sprites/npc/lil-bro-walk-south.webp': 0.78,
-  /* v2.3.2617: Ace. Same normalisation as the rest -- the importer fits every
-     figure to 200px between hat and feet -- so 1.0 would draw him at the ~120px
-     the comment above measures, a shade under Mayor Bro's 132. He is a grown
-     man in a tall hat and reads as the showiest thing on the street, so 1.15
-     puts him at ~138: a little over the mayor, well under Diego's coat. */
-  '/sprites/npc/cardsharp-bro-walk-south.webp': 1.15,
-  /* v2.3.3525: the tour's two new townsfolk -- Woodworker Bro a craftsman's
-     size, the blacksmith's; Farmer Bro (Diego's figure, the Beastmaster's
-     too) a shade over the Beastmaster, under Diego's coat */
-  '/sprites/npc/woodworker-bro.webp': 1.14,
-  '/sprites/npc/farmer-bro.webp': 1.10,
+  '/sprites/npc/mayor-bro.webp': NPC_BRO_MULT * 1.10,
+  '/sprites/npc/blacksmith-bro.webp': NPC_BRO_MULT,
+  '/sprites/npc/shopkeeper-bro-walk-south.webp': NPC_BRO_MULT,
+  '/sprites/npc/cardsharp-bro-walk-south.webp': NPC_BRO_MULT,
+  '/sprites/npc/woodworker-bro.webp': NPC_BRO_MULT,
+  '/sprites/npc/farmer-bro.webp': NPC_BRO_MULT,
+  '/sprites/npc/beastmaster-bro.webp': NPC_BRO_MULT,
+  '/sprites/npc/lil-bro-walk-south.webp': NPC_BRO_MULT,
 });
 const npcSpriteScale = (src) => NPC_SPRITE_SCALE * (NPC_SCALE_MULT[src] || 1);
+/* v2.3.3576: how big his figure is painted in his cell, a grown bro's 1
+   (NPC_DATA `figureSize`: Lil Bro 0.8) */
+const npcFigureSize = (npc) => (npc && npc.figureSize > 0 ? npc.figureSize : 1);
 
 /* v2.3.1773: QA probe store — id-keyed from data, so Object.create(null)
    (CLAUDE.md: a plain {} silently no-ops on '__proto__'). */
@@ -580,8 +575,9 @@ const NPC_FRAME_TOP_Y = 23;
    plate is spaced like his. See the note at the namePlate branch. */
 const NPC_PLATE_DROP_FRAC = 38 / 121.9;
 
-/** Height of the drawn figure above the NPC's feet, in world px. */
-const npcFigureHeight = (src) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y);
+/** Height of the drawn figure above the NPC's feet, in world px.
+ *  v2.3.3576: times his figure's size in its cell (npcFigureSize). */
+const npcFigureHeight = (src, npc) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y) * npcFigureSize(npc);
 
 /* ═══ v2.3.2046: WHICH WAY A WALKING NPC IS FACING ═══
  * Straight from his movement, in the eight names the strips are filed under.
@@ -627,6 +623,23 @@ function _hideArmClones(display) {
 function npcStandFrame(npc) {
   const n = npc && npc.walk && npc.walk.stand;
   return Number.isInteger(n) && n >= 0 ? n : 0;
+}
+/* ═══ v2.3.3576: A BRO'S STRIDE ═══
+   A townsperson's walk strip is the player's own jog now (tools/qa/
+   npc-looks.mjs): `cycle` cells evenly over the jog's cycle for that facing,
+   then his stand.  So he steps as a player does: one cycle every
+   cycleMs('jog', facing) at a walk's NPC_WALK_SPEED -- the player's stride --
+   times his size (Lil Bro's legs are shorter: npcFigureSize).  Old art with no `cycle` keeps
+   the fixed NPC_WALK_PX_PER_FRAME. */
+const NPC_WALK_SPEED = 150;   /* a walk, world px a second (server/src/race.js) */
+function npcWalkCell(npc, dir, phase) {
+  const w = npc && npc.walk;
+  const cycle = w && Number.isInteger(w.cycle) && w.cycle > 0 ? w.cycle : 0;
+  if (!cycle) return Math.floor(phase / NPC_WALK_PX_PER_FRAME);
+  const sheet = CAPTURE_SHEET[dir] || dir;
+  const k = (NPC_SCALE_MULT[npc.sprite] || NPC_BRO_MULT) / PLAYER_SIZE_MULT * npcFigureSize(npc);
+  const stride = NPC_WALK_SPEED * ((cycleMs('jog', sheet) || 1000) / 1000) * k;
+  return Math.floor(phase / Math.max(1, stride / cycle)) % cycle;
 }
 
 /* v2.3.1681: the quest badge behind the '!' (owner: "thick white outline or
@@ -5586,6 +5599,14 @@ function createMonsterDisplay(monster) {
  * display.y has already been read by the zone-scale lookup. */
 const BODY_CELL_MID = 128;
 const LOCAL_BODY_SCALE = 0.421875;   /* the local player's LOCAL_SCALE, v2.3.741 */
+/* v2.3.3576: capturePoseFrames' eight facings (screen space, +y down) and the
+   sheet each is drawn from -- west, northwest and southeast are east,
+   northeast and southwest mirrored, by the world */
+const CAPTURE_FACING = Object.freeze({
+  east: 0, southeast: Math.PI / 4, south: Math.PI / 2, southwest: 3 * Math.PI / 4,
+  west: Math.PI, northwest: -3 * Math.PI / 4, north: -Math.PI / 2, northeast: -Math.PI / 4,
+});
+const CAPTURE_SHEET = Object.freeze({ west: 'east', northwest: 'northeast', southeast: 'southwest' });
 function _feetOffsetUnits(display) {
   const pose = (display && display._animPose) === 'jog' ? 'jog' : 'stand';
   const dir = (display && display._animDir) || 'south';
@@ -15543,20 +15564,29 @@ export class EntityRenderer {
     if (!R || !R.extract || typeof window === 'undefined') return null;
     const real = (window._gameState && window._gameState.current) || null;
     if (!real || !real.player || selfCorpseUp(real)) return null;
-    const pose = kind === 'dodge' ? 'dodge' : kind === 'jog' ? 'jog' : null;
+    const pose = kind === 'dodge' ? 'dodge' : kind === 'jog' ? 'jog' : kind === 'stand' ? 'stand' : null;
     if (!pose || !hasPose(pose)) return null;
-    const dir = 'east';   /* the sheet: west is east mirrored, by the world */
+    const o = opts || {};
+    /* v2.3.3576: ANY OF THE EIGHT FACINGS, AND THE STAND.  The townsfolk are
+       bros from the character creator now (the owner: "NPCs should look like
+       normal bro characters"), and tools/qa/npc-looks.mjs photographs each
+       one here, standing and jogging every way, for his picture and his walk
+       strips.  `dir` names the facing; the stat scene still asks for east or
+       west (`west`) and gets exactly what it got. */
+    const face = (pose !== 'dodge' && o.dir && Object.prototype.hasOwnProperty.call(CAPTURE_FACING, o.dir))
+      ? o.dir : (o.west ? 'west' : 'east');
+    const west = face === 'west';
+    const faceAng = CAPTURE_FACING[face];
+    const dir = pose === 'dodge' ? 'east' : (CAPTURE_SHEET[face] || face);   /* the sheet: west is east mirrored, by the world */
     const n = playerFrameCount(pose, dir);
     if (!(n > 0)) return null;
-    const o = opts || {};
-    const west = !!o.west;
     const bodyH = Math.max(8, +o.bodyH || 84);
     const res = Math.max(1, Math.min(3, +o.res || 1));
     /* the world's clocks: the jog's cadence is armour-aware (cycleMs), the
        roll's frames are spread evenly over its window */
     const dur = pose === 'jog'
       ? cycleMs('jog', dir, getEquip('chest') !== 'none' && getEquip('legs') !== 'none')
-      : cycleMs('dodge', dir);
+      : pose === 'stand' ? 1000 : cycleMs('dodge', dir);
     const times = [], mids = [];
     for (let i = 0; i < n; i++) { times.push(i * dur / n); mids.push((i + 0.5) * dur / n); }
     /* what is in hand: the item's type picks the slot, as activeSlot does */
@@ -15579,9 +15609,14 @@ export class EntityRenderer {
     const sScale = bodyDirScale('stand', dir) * LOCAL_BODY_SCALE;
     const standH = (sRows.feet - sRows.crown + 1) * sScale;
     const footY = (sRows.feet - BODY_CELL_MID) * sScale;
-    const rr = (bodyH * res) / standH;   /* device px per unit */
-    const u = bodyH / standH;            /* caller px per unit */
-    const clock = Date.now();
+    /* v2.3.3576: `unitPx` gives the caller px per unit outright (the
+       townsfolk's frames are drawn at one scale whatever the facing) */
+    const u = +o.unitPx > 0 ? +o.unitPx : bodyH / standH;   /* caller px per unit */
+    const rr = u * res;                                      /* device px per unit */
+    /* v2.3.3576: `clock` pins the moment photographed, so the same pose comes
+       out the same picture every time (tools/qa/npc-looks.mjs photographs a
+       townsperson until it does: his look's bakes are in) */
+    const clock = +o.clock > 0 ? +o.clock : Date.now();
     const base = Math.floor(clock / dur) * dur;
     /* everything the swap touches, to put back */
     const saved = { display: this.playerDisplay, layer: this.playerLayer, bake: _localBakeDir, probes: {} };
@@ -15596,7 +15631,7 @@ export class EntityRenderer {
     const poseFrame = (i) => {
       const now = pose === 'jog' ? base + mids[i] : clock;
       const F = Object.assign({}, real, {
-        player: Object.assign({}, real.player, { vx: pose === 'jog' ? (west ? -1 : 1) : 0, vy: 0, _resonanceStreak: 0 }),
+        player: Object.assign({}, real.player, { vx: pose === 'jog' ? Math.cos(faceAng) : 0, vy: pose === 'jog' ? Math.sin(faceAng) : 0, _resonanceStreak: 0 }),
         rpg, monsters: [],
         _extraction: null, _firemaking: null, _smithing: null, _lootFreezeUntil: 0,
         _deathStart: null, _dying: false, _respawnInvuln: 0, _playerStunUntil: 0, _stunUntil: 0,
@@ -15608,13 +15643,13 @@ export class EntityRenderer {
         isSwinging: false, swingTimer: 0, _specialAttack: false, _bowShotAt: 0, _bowShotAng: null,
         _staffCastAt: 0, _staffCastBig: 0, _staffCastAng: null,
         _hitFlash: 0, lastDamageTaken: 0, _pvpSkullType: null, _pvpSkullUntil: 0,
-        _facingAngle: west ? Math.PI : 0, _targetFacingAngle: west ? Math.PI : 0,
+        _facingAngle: faceAng, _targetFacingAngle: faceAng,
       });
       /* the carried weapon eases toward the hand frame to frame; each
          photograph is its own moment, so it starts where the hand is */
       cap._wpnSmX = null; cap._wpnSmY = null; cap._wpnSmKey = null;
       this._updatePlayer(F, now);
-      if (cap.parent !== root || !cap.visible || F._renderFacing !== (west ? 'west' : 'east')) return false;
+      if (cap.parent !== root || !cap.visible || F._renderFacing !== face) return false;
       const bx = Math.abs(cap.scale.x / (cap.scale.y || 1)) || 1;
       cap.position.set(0, 0);
       cap.scale.set(bx, 1);
@@ -15668,6 +15703,9 @@ export class EntityRenderer {
       frames, res, times, dur,
       w: fw * u, h: fh * u,
       feet: [-box.x * u, (footY - box.y) * u],
+      /* v2.3.3576: where the figure's own origin (its body cell's middle) is
+         in each frame, for tools/qa/npc-looks.mjs; and the facing drawn */
+      origin: [-box.x * u, -box.y * u], dir: face,
     };
   }
   /** v2.3.2987: the renderer the capture above photographs with (pixiRenderer). */
@@ -16260,7 +16298,7 @@ export class EntityRenderer {
              from each other, so a flat 38 would have put their plates at
              visibly different gaps below three different-sized people. */
           if (display._namePill) {
-            const _figH = npcFigureHeight(npc.sprite);
+            const _figH = npcFigureHeight(npc.sprite, npc);
             display._namePill.y = Math.max(14, Math.round(_figH * NPC_PLATE_DROP_FRAC));
           }
         }
@@ -16382,7 +16420,7 @@ export class EntityRenderer {
         const dir = display._walkDir || 'south';
         /* v2.3.3520: standing, his own stand frame (npcStandFrame), not frame
            0 -- the owner: "Ace is stuck in one walking frame" */
-        const idx = moving ? Math.floor(display._walkPhase / NPC_WALK_PX_PER_FRAME) : npcStandFrame(npc);
+        const idx = moving ? npcWalkCell(npc, dir, display._walkPhase) : npcStandFrame(npc);
         const tex = getNpcWalkFrame(npc.id, dir, idx);
         if (tex && display._fig.texture !== tex) display._fig.texture = tex;
         display._walkIdx = idx;   /* v2.3.3520: for the probe below (mp-wheelfolk) */
@@ -16398,7 +16436,7 @@ export class EntityRenderer {
          and only once the texture is bound so we know he is actually drawn. */
       if (display._fig && !display._lifted && display._fig.texture !== Texture.EMPTY) {
         display._lifted = true;
-        const top = npcFigureHeight(npc.sprite); // world px above the feet
+        const top = npcFigureHeight(npc.sprite, npc); // world px above the feet
         /* The marker is anchored at its CENTRE, so clearing the hat needs half
            its own glyph height on top of the gap — the first attempt used the
            gap alone and the ❗ sat down inside the hat brim. */
@@ -16476,6 +16514,12 @@ export class EntityRenderer {
             walkDir: display._walkDir || null,
             /* v2.3.3520: the walk frame bound (a still walker: his stand frame) */
             frame: typeof display._walkIdx === 'number' ? display._walkIdx : null,
+            /* v2.3.3576: his figure's size in its cell, and how far above
+               his feet the bound picture's paint begins (its crop's top: to
+               within the crop's 4-11 px pad, world px) -- Lil Bro's picture
+               is photographed small, not drawn small */
+            size: npcFigureSize(npc),
+            paintTop: fig.texture.trim ? (NPC_FRAME_FEET_Y - fig.texture.trim.y) * fig.scale.y : null,
             /* v2.3.2071: the PLATE as painted -- the two strings on it, how
                far below the feet it hangs, and whether the old above-head
                label is really gone. Owner: "Make every persons name or title

@@ -6,8 +6,9 @@
  * on a tap on Ace -- so it could not be played at all.  Now they stand in the
  * Wheel's Brotown (src/data/wheelBuildingDoors.js WHEEL_TOWNSFOLK).
  *
- *   1. the cast is all there: Mayor Bro, Diego, Ace, Blacksmith Bro, Lil Bro
- *      and (v2.3.3121) Beastmaster Bro, each where WHEEL_TOWNSFOLK puts him,
+ *   1. the cast is all there: Mayor Bro and everyone in WHEEL_TOWNSFOLK
+ *      (Diego, Ace, Blacksmith Bro, Lil Bro, (v2.3.3121) Beastmaster Bro,
+ *      (v2.3.3525) Woodworker Bro and Farmer Bro), each where it puts him,
  *      standing still;
  *   2. their pictures came in behind the loading screen: none of the six
  *      fetched after you arrive (the preload law), and what they hold;
@@ -84,18 +85,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
     const npc = (name) => ((cast && cast.npcs) || []).find((n) => n.name === name);
     const names = ((cast && cast.npcs) || []).map((n) => n.name).sort().join(', ');
+    /* v2.3.3576: the cast read off the table (the tour's Woodworker Bro and
+       Farmer Bro, v2.3.3525, were missing from the old list) */
+    const wantNames = ['Mayor Bro', ...WHEEL_TOWNSFOLK.map((f) => f.name)].sort().join(', ');
     const placedRight = WHEEL_TOWNSFOLK.every((f) => { const n = npc(f.name), w = where(f.name); return n && w && Math.abs(n.x - w.x) < 1 && Math.abs(n.y - w.y) < 1 && n.r === 0; });
     rec.ok(`the Wheel's Brotown has its whole cast (${names}), each where WHEEL_TOWNSFOLK puts him, standing still`,
-      names === 'Ace, Beastmaster Bro, Blacksmith Bro, Diego, Lil Bro, Mayor Bro' && placedRight && !!npc('Ace').flip,   /* v2.3.3121: + Beastmaster Bro */
+      names === wantNames && placedRight && !!npc('Ace').flip,
       { names, placed: WHEEL_TOWNSFOLK.map((f) => [f.name, npc(f.name), where(f.name)]) });
 
     /* ── 2. their pictures, behind the loading screen ── */
     await P.page.waitForTimeout(1500);
     const late = npcReqs.filter((q) => q.t > arrivedAt);
     const art = await P.page.evaluate(() => (window.__btWheelNpcArt ? window.__btWheelNpcArt() : null));
-    rec.ok(`their pictures came in behind the loading screen -- none fetched after arriving -- and the six hold ${art ? art.mb : '?'} MB (walkers' south strips ${art ? art.cropMb : '?'} MB cropped, pictures ${art ? art.picMb : '?'} MB)`,
-      late.length === 0 && !!art && art.loaded && art.walkers.sort().join() === ['card_sharp', 'lil_bro', 'shopkeeper_bro'].sort().join()
-        && art.pictures.length === 3 && art.mb < 3,   /* v2.3.3121: Beastmaster Bro's is the third picture */
+    /* v2.3.3576: the walkers and the one-picture townsfolk read off the
+       tables (Woodworker Bro's and Farmer Bro's pictures, v2.3.3525, made
+       five where this said three), and what they hold: the creator bros,
+       standing pictures cropped to their figures, Diego and Ace their one
+       standing cell, Lil Bro his race's four ways at his own size -- 2.93 MB
+       (main's cast, five pictures whole: 3.58) */
+    const castRows = NPC_DATA.filter((r) => wantNames.split(', ').indexOf(r.name) >= 0);
+    const wantWalkers = castRows.filter((r) => r.walk).map((r) => r.id).sort().join();
+    const wantPictures = castRows.filter((r) => r.sprite && !r.walk).length;
+    rec.ok(`their pictures came in behind the loading screen -- none fetched after arriving -- and the cast holds ${art ? art.mb : '?'} MB (walkers' strips ${art ? art.cropMb : '?'} MB cropped, pictures ${art ? art.picMb : '?'} MB cropped)`,
+      late.length === 0 && !!art && art.loaded && art.walkers.sort().join() === wantWalkers
+        && art.pictures.length === wantPictures && art.mb < 3.2,
       { late, art, asked: npcReqs.map((q) => [q.f, q.t - arrivedAt]) });
 
     /* ── 3. Lil Bro on screen where you arrive ── */
@@ -140,10 +153,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* v2.3.3520: the owner: "Ace is stuck in one walking frame" -- a still
        walker stands on his own stand frame (NPC_DATA walk.stand: planted,
-       centred), never frame 0 (Ace's is a leap, both feet off the ground) */
+       centred), never frame 0 (Ace's is a leap, both feet off the ground).
+       v2.3.3576: the walkers are creator bros, their strips the player's jog
+       in eight cells and then his stand -- cell 8 */
     const standOf = (n) => { const row = NPC_DATA.find((r) => r.name === n); return row && row.walk ? row.walk.stand : null; };
     rec.ok(`4b. the walkers stand on their standing frames: ${['Ace', 'Lil Bro', 'Diego'].map((n) => n + ' ' + (drawn[n] ? drawn[n].frame : '?') + ' (his ' + standOf(n) + ')').join(', ')}`,
-      ['Ace', 'Lil Bro', 'Diego'].every((n) => drawn[n] && Number.isInteger(standOf(n)) && drawn[n].frame === standOf(n)) && standOf('Ace') === 3,
+      ['Ace', 'Lil Bro', 'Diego'].every((n) => drawn[n] && Number.isInteger(standOf(n)) && drawn[n].frame === standOf(n)) && standOf('Ace') === 8,
       ['Ace', 'Lil Bro', 'Diego'].map((n) => drawn[n]));
 
     /* ── 5. a tap on Ace opens his coin flip, and a flip is settled ── */

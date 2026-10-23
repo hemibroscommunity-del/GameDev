@@ -4,6 +4,7 @@ import { ACE_FLIP_MIN_STAKE, ACE_FLIP_RISK_MULT, ACE_FLIP_WIN_CHANCE, aceFlipMax
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '@/rendering/characterPortrait.js';
 import { thumbFor, ITEM_NAMES, TICKET_KEY_PREFIX } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
+import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3576: his head is the creator bro's now, at the townsfolk's cache-bust */
 
 /* ═══ v2.3.2618: ACE'S COIN FLIP ═══
  *
@@ -417,7 +418,7 @@ export function AceFlipPanel() {
       style: { flex: 'none', display: 'flex', alignItems: 'center', gap: 11, padding: '11px 14px', background: LS.strip, borderBottom: '1px solid ' + LS.border },
     },
       React.createElement('img', {
-        src: '/sprites/npc/cardsharp-bro-head.webp', alt: '', draggable: false,
+        src: npcArtUrl('/sprites/npc/cardsharp-bro-head.webp'), alt: '', draggable: false,
         /* v2.3.2621 (owner: "map the joker profile picture bigger"): 42 -> 64.
            The file is 192px of real portrait art, so this shows more of what
            is already there rather than upscaling it. */

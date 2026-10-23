@@ -67,7 +67,7 @@ export const OLD_MAP_LEGACY = Object.freeze(new Set([
   'lilbro', 'listingdm', 'listingoffer', 'listweek', 'liveness', 'lockaim',
   'lockchip', 'lockrings', 'loginkey', 'logout', 'lookrestore', 'lootbob',
   'lootcue', 'lootland', 'lootmagnet', 'lootsize', 'lootzone', 'market',
-  'marketonly', 'material', 'mayorart', 'minimap', 'minishot', 'moncue',
+  'marketonly', 'material', 'minimap', 'minishot', 'moncue',
   'monsterplate', 'monstershots', 'monstertrim', 'monwatch', 'movespeed',
   'newkey', 'notifbell', 'nozoom', 'npctap', 'offgrid', 'orbline',
   'orbrange', 'originlock', 'partpool', 'party', 'partymap', 'pathstyle',

@@ -28,6 +28,42 @@ import { RACE } from '../../../server/src/race.js';
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Speedy', wsPort, webPort, world: 'wheel' });
+  /* v2.3.3576: walking up to Lil Bro from a side with nobody else on it.
+     The harness's approachNpc steps away 420 px EAST of him first; in the
+     world's BroTown that is the square's middle, beside Mayor Bro, and with
+     the tour jumped to the race the Mayor has a line for you -- his window
+     opened there and held the screen, so from the second walk-up on Lil
+     Bro's never came (red on main: "Race!" never shown).  The game was
+     right: accepting leaves his line up, Race! on it. */
+  const stepBy = (dx, dy) => P.page.evaluate(({ dx, dy }) => {
+    const S = window._gameState && window._gameState.current;
+    const n = ((S && S.npcs) || []).find((q) => q && q.id === 'lil_bro');
+    if (!S || !n || !S.player) return false;
+    S.player.x = n.x + dx; S.player.y = n.y + dy;
+    return true;
+  }, { dx, dy });
+  const awaySide = () => P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const all = (S && S.npcs) || [];
+    const n = all.find((q) => q && q.id === 'lil_bro');
+    if (!n) return [420, 0];
+    const sides = [[-420, 0], [0, -420], [420, 0], [0, 420]];
+    const clear = sides.find(([dx, dy]) => all.every((o) => !o || o === n || Math.hypot(o.x - (n.x + dx), o.y - (n.y + dy)) > 260));
+    return clear || [-420, 0];
+  });
+  const leaveLil = async () => {
+    const [dx, dy] = await awaySide();
+    await stepBy(dx, dy);
+    await P.page.waitForTimeout(500);
+    await H.closeNpcDialogue(P);
+    await P.page.waitForTimeout(300);
+  };
+  const walkUpToLil = async () => {
+    await leaveLil();
+    await stepBy(0, 34);
+    await P.page.waitForTimeout(1100);
+    return H.npcDialogueOpen(P);
+  };
   await H.enterWorld(P);
   const there = await H.waitFor(P, (S) => ({ z: S.currentZone, loading: !!S._zoneLoading, lil: !!(S.npcs || []).find((n) => n && n.name === 'Lil Bro') }),
     (v) => v.z === 'wheel' && !v.loading && v.lil, { timeout: 120000, label: 'the Wheel, Lil Bro on the square' }).catch(() => null);
@@ -41,7 +77,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const jumped = await H.devOp(wsPort, 'tour', myId, { at: 'race_1' });
   rec.ok('the tour jumped to Lil Bro\'s race (race_1 on offer)', !!jumped && jumped.ok === true, jumped);
   await P.page.waitForTimeout(1500);
-  rec.ok('walking up to Lil Bro opens his offer', await H.approachNpc(P, 'lil_bro'));
+  rec.ok('walking up to Lil Bro opens his offer', await walkUpToLil());
   const landed = await H.advanceNpcDialogue(P);
   const offerText = await P.page.evaluate(() => { const c = document.querySelector('.bt-qoffer'); return c ? c.innerText : ''; });
   rec.ok('...his lines lead to the offer: Race Day', landed === 'offer' && /Race Day/.test(offerText), { landed, offerText: offerText.slice(0, 120) });
@@ -49,7 +85,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1500);
 
   /* ── 2. his "how's it going" line carries Race! ── */
-  rec.ok('walking back up opens his line again', await H.approachNpc(P, 'lil_bro'));
+  rec.ok('walking back up opens his line again', await walkUpToLil());
   for (let i = 0; i < 8; i++) {
     const lastLine = await P.page.evaluate(() => !!document.querySelector('[data-qa="race-go"]'));
     if (lastLine) break;
@@ -88,6 +124,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const gun = await H.waitFor(P, (S) => S._race && S._race.phase, (ph) => ph === 'run', { timeout: 6000, label: 'the gun' }).catch(() => null);
   rec.ok('the gun goes (the race is running)', gun === 'run', gun);
   const flags = await H.readState(P, (S) => S._race.flags.map((f) => [f[0], f[1]]));
+  /* v2.3.3576: Lil Bro runs on his jog -- a creator bro's strip is the
+     player's own jog in eight cells and then his stand (cell 8): sampled
+     while he runs */
+  await P.page.evaluate(() => {
+    window.__lilCells = [];
+    window.__lilCellTimer = setInterval(() => {
+      const d = (window.__btNpcSprites ? window.__btNpcSprites() : []).find((n) => n.name === 'Lil Bro');
+      if (d && typeof d.frame === 'number') window.__lilCells.push(d.frame);
+    }, 50);
+  });
   let roadOk = 0, greens = 0;
   for (let i = 0; i < flags.length; i++) {
     const road = await H.readState(P, () => (window.__btMinimap && window.__btMinimap.quest) || null);
@@ -101,6 +147,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   const lilRan = await H.readState(P, (S) => { const n = (S.npcs || []).find((o) => o && o.name === 'Lil Bro'); return n ? { x: n.x, y: n.y } : null; });
   rec.ok('Lil Bro ran the course from the gun (he left his spot)', !!lil0 && !!lilRan && Math.hypot(lilRan.x - lil0.x, lilRan.y - lil0.y) > 200, { lil0, lilRan });
+  const lilCells = await P.page.evaluate(() => { clearInterval(window.__lilCellTimer); return window.__lilCells || []; });
+  const runCells = [...new Set(lilCells.filter((c) => c < 8))].sort((a, b) => a - b);
+  rec.ok(`...on his jog's own cells as he ran (${runCells.join(', ') || 'none'} of 0-7; ${lilCells.length} samples)`,
+    runCells.length >= 4 && lilCells.every((c) => c >= 0 && c <= 8), { runCells, samples: lilCells.length });
   rec.ok(`the gold road led to each flag in turn (${roadOk} of ${flags.length})`, roadOk >= flags.length - 1, roadOk);
   rec.ok(`each corner flag turned green as the worker counted it (${greens} of ${flags.length - 1})`, greens === flags.length - 1, greens);
   const result = await H.waitFor(P, () => {
@@ -114,7 +164,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* his claim, when you walk up (he has finished his lap and is home) */
   await P.page.waitForTimeout(16000);
-  rec.ok('walking up to Lil Bro now opens the claim', await H.approachNpc(P, 'lil_bro'));
+  rec.ok('walking up to Lil Bro now opens the claim', await walkUpToLil());
   const claimed = await H.claimOnLastLine(P);
   rec.ok('...and his last line\'s "Claim reward" pays it', claimed);
   await P.page.waitForTimeout(2200);
@@ -124,7 +174,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3525: the town opens all at once after the Mayor's first quest, so
      nothing is handed on by `next`; the road and the pinned card suggest the
      tour's next step (QUEST_TOUR: the Beastmaster's traps) */
-  await H.leaveNpc(P, 'lil_bro').catch(() => {});
+  await leaveLil().catch(() => {});
   const nextCard = await H.waitFor(P, () => {
     const c = document.querySelector('[data-quest-hud-next]');
     return c ? c.getAttribute('data-quest-hud-next') : null;
@@ -134,11 +184,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 5. a false start ── */
   await H.devOp(wsPort, 'tour', myId, { at: 'race_1' });
   await P.page.waitForTimeout(1200);
-  await H.approachNpc(P, 'lil_bro');
+  await walkUpToLil();
   await H.advanceNpcDialogue(P);
   await H.confirmQuestOffer(P);
   await P.page.waitForTimeout(1200);
-  await H.approachNpc(P, 'lil_bro');
+  await walkUpToLil();
   for (let i = 0; i < 8; i++) {
     if (await P.page.evaluate(() => !!document.querySelector('[data-qa="race-go"]'))) break;
     await P.page.evaluate(() => { const b = document.querySelector('.bt-npcdlg-next'); if (b) b.click(); });

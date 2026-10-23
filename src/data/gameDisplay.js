@@ -5565,11 +5565,22 @@ export const NPC_DATA = [{
      preloader lists; the renderer binds a sliced FRAME, never this strip. */
   sprite: '/sprites/npc/lil-bro-walk-south.webp',
   portrait: '/sprites/npc/lil-bro-head.webp',
+  /* v2.3.3576: a child, 0.8 of a bro (v2.3.2064) -- PHOTOGRAPHED at that size
+     (tools/qa/npc-looks.mjs reads this), so his cell is drawn at a bro's scale
+     like everyone's and his picture holds 0.64 of a grown bro's pixels, none
+     it does not show.  The renderer places his quest pin and name and paces
+     his stride by it (entityRenderer npcFigureSize). */
+  figureSize: 0.8,
   walk: {
     base: '/sprites/npc/lil-bro-walk-',
-    frames: 4,
-    /* v2.3.3520: the frame he STANDS on (entityRenderer _updateNPCs) -- planted and centred (frame 0 leans 11 px right of his spot) */
-    stand: 1,
+    /* v2.3.3576: a bro from the character creator now (tools/qa/npc-looks.mjs,
+       the owner's "NPCs should look like normal bro characters"): nine cells
+       a strip, the player's own jog photographed in eight evenly over its
+       cycle (`cycle`), then his standing frame, the one he STANDS on (`stand`,
+       entityRenderer _updateNPCs; v2.3.3520's rule) */
+    frames: 9,
+    cycle: 8,
+    stand: 8,
     dirs: ['south', 'southwest', 'west', 'northwest',
       'north', 'northeast', 'east', 'southeast'],
   },
@@ -5707,9 +5718,14 @@ export const NPC_DATA = [{
   portrait: '/sprites/npc/cardsharp-bro-head.webp',
   walk: {
     base: '/sprites/npc/cardsharp-bro-walk-',
-    frames: 4,
-    /* v2.3.3520: the frame he STANDS on (entityRenderer _updateNPCs) -- the owner: "Ace is stuck in one walking frame" (and a shadow apart from him): a still walker was drawn on frame 0, which for Ace is mid-leap, both feet 8 px off the ground (his shadow is cast from the ground line, so it lay apart from him); frame 3 is planted, feet together, centred */
-    stand: 3,
+    /* v2.3.3576: a bro from the character creator now (tools/qa/npc-looks.mjs,
+       the owner's "NPCs should look like normal bro characters"): nine cells
+       a strip, the player's own jog photographed in eight evenly over its
+       cycle (`cycle`), then his standing frame, the one he STANDS on (`stand`,
+       entityRenderer _updateNPCs; v2.3.3520's rule) */
+    frames: 9,
+    cycle: 8,
+    stand: 8,
     dirs: ['south', 'southwest', 'west', 'northwest',
       'north', 'northeast', 'east', 'southeast'],
   },
@@ -5766,9 +5782,14 @@ export const NPC_DATA = [{
   portrait: '/sprites/npc/shopkeeper-bro-head.webp',
   walk: {
     base: '/sprites/npc/shopkeeper-bro-walk-',
-    frames: 4,
-    /* v2.3.3520: the frame he STANDS on (entityRenderer _updateNPCs) -- planted and nearest his spot (frame 0 stands 21 px right of it) */
-    stand: 2,
+    /* v2.3.3576: a bro from the character creator now (tools/qa/npc-looks.mjs,
+       the owner's "NPCs should look like normal bro characters"): nine cells
+       a strip, the player's own jog photographed in eight evenly over its
+       cycle (`cycle`), then his standing frame, the one he STANDS on (`stand`,
+       entityRenderer _updateNPCs; v2.3.3520's rule) */
+    frames: 9,
+    cycle: 8,
+    stand: 8,
     dirs: ['south', 'southwest', 'west', 'northwest',
       'north', 'northeast', 'east', 'southeast'],
   },
