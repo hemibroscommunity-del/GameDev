@@ -8334,3 +8334,57 @@ is the game as it was.
 canvas behind a texture emptied as Safari empties them, shown again): the game
 reloads straight back in, 0 px from where it was parked, and the body is whole
 in all eight facings; with `?canvascheck=0` it comes back blank in all eight.
+
+## 251. "The loading screen baked every frame the bro is drawn in" (v2.3.3577)
+
+**The plausible move.** A frame of the body under armour has to be baked
+(masked) before it is drawn, or the plain body shows under the plate for a
+frame: the owner's "flashing on certain body parts". So the loading screen
+walks every pose, facing and frame and bakes each one
+(`prewarmMaskedBodyFrames`, `prewarmAltWornSets`), and the flash is gone.
+
+**Why it is wrong.** It was still there after a fresh login, for two reasons.
+- A bake is kept under the BODY PICTURE it was cut from (`_maskedBodyCache`,
+  keyed by the texture's uid). A player with any drawing or pattern is drawn
+  west, northwest and southeast from a flipped body picture of its own
+  (`localBodyArt(true)`, v2.3.1940). The prewarm baked only the unflipped one,
+  so 54 of the 177 frames of a drawn, armoured player were never baked.
+- A full set's running frames are baked with the chain belt. Its sheet is not
+  one of the gear slots, so it loads the first time something asks for it. A
+  frame baked before it arrives goes out without its belt and is not kept
+  (`beltPending`), and the prewarm never came back for it.
+
+**The rule.** A prewarm bakes with the very inputs the renderer will ask
+with: the same function picks the picture (`_prewarmArts` asks `localBodyArt`
+as the draw does), and every sheet a bake reads is awaited first
+(`preloadBeltSheets`). Count the result against what the renderer wants
+(`window.__btMaskedCoverage()`), not against what the prewarm walked.
+
+**Receipt:** `mp-armourflash` (the owner's copper set, a pattern on the
+trousers, logged out and back in): 123 of 177 frames baked before, 177 of 177
+after, and no plain frame on two walks every way.
+
+## 252. "Tint it the colour you want it to be" (v2.3.3577)
+
+**The plausible move.** To show which monsters the whirlwind will catch, the
+owner asked to "change the whole color of the enemy to be in a certain tint".
+A sprite has a tint, so set it to the whirlwind's amber, flashing.
+
+**Why it is wrong.** A tint MULTIPLIES the picture. It can only take colour
+away: an amber tint turned a blue slime a dark olive, and left a red fire
+goblin red. The next idea, the sprite's shape drawn over it in flat amber at
+part strength, fails too. Blue mixed toward orange passes through grey, so at
+0.3 a blue slime read grey, and at full strength it was a flat blob with
+nothing inside.
+
+**The rule.** To paint a picture in one colour, throw its colour away and keep
+its light: `src/rendering/fillBatch.js` draws the sprite's own frame with each
+pixel's brightness in place of its colour, then the tint paints that. Drawn
+over the monster at 0.9, it reads as the colour whatever the monster's own,
+and it still looks like the monster. Look at the picture, for more than one
+kind of monster: a check that the tint was SET passed for every monster, and
+only the pictures showed it did nothing to a red goblin.
+
+**Receipt:** `mp-whirltint` and `QA_WT_LAND=ember` (pictures
+`whirltint-close[-ember].png`: each monster as itself, at the flash's darkest
+and lightest): 100% of the body's pixels amber for both kinds.

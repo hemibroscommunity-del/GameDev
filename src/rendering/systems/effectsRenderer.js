@@ -290,7 +290,7 @@ import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, treeChopOffset, b
 import { oreArtSources, oreArtLevelFor, oreGeom, ORE_PX } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock */
 import { WheelShatter } from '../wheelShatter.js';
 import { LandAuras, AURAS_ON, AURA_MAX } from '../landAuras.js';   /* v2.3.3402: each land's resources wear its element */   /* v2.3.3345: a rock mined out breaks into pieces of its own picture */
-import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
+import { gesturePose01, extractionMeter01, gestureLoopFrame, COOK_FLICKS_PER_LOOP } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
@@ -12802,6 +12802,7 @@ export class EffectsRenderer {
     const w = S._whirlWindup;
     this._whirlCaught = null;
     this._whirlCatchProbe = null;
+    if (!w || now >= w.until + 50) S._whirlCatch = null;   /* v2.3.3577: no wind-up, nobody painted (game/whirlCatch.js) */
     /* v2.3.3499: QA probe, house style -- who the wind-up has caught, this frame */
     if (typeof window !== 'undefined' && !window.__btWhirlCatch) {
       const self = this;
@@ -12842,6 +12843,13 @@ export class EffectsRenderer {
      in and it lights -- the tactical half of the owner's v2.3.2824 ask.
      Rings, not a tint: the tint is the hit flash's (and the death's), and an
      outline filter is a pass in the middle of the frame (TRAPS §221).
+     v2.3.3577: AND its whole body painted in the ring's amber, flashing,
+     the owner's ask ("The indicator ... needs to be more obvious.  Maybe
+     change the whole color of the enemy to be in a certain tint of color and
+     make it flash a bit"): not a tint (a tint only darkens -- a red goblin
+     stayed red) but its own picture drawn again over it as a silhouette in
+     the frame's own pass (rendering/fillBatch.js; entityRenderer
+     `_whirlGlow`, from S._whirlCatch set below).
      Measured where each monster is DRAWN, as the ring is drawn round where
      you are drawn: a mark has to agree with what the eye sees inside the
      ring.  The worker's copy can be a tick apart, so a monster right ON the
@@ -12851,7 +12859,7 @@ export class EffectsRenderer {
   _markWhirlCatch(S, w, now, rk) {
     const g = this.windupGfx;
     const ms = S.monsters;
-    if (!g || !ms || !ms.length || !S.player) return;
+    if (!g || !ms || !ms.length || !S.player) { S._whirlCatch = null; return; }
     const R = (w.r || 240) * depthK(S.currentZone, S.player.y);
     const R2 = R * R;
     const px = S.player.x, py = S.player.y;
@@ -12866,7 +12874,7 @@ export class EffectsRenderer {
       const dx = mx - px, dy = my - py, d2 = dx * dx + dy * dy;
       if (d2 <= R2) hits.push({ m, mx, my, d2 });
     }
-    if (!hits.length) { this._whirlCaught = new Set(); this._whirlCatchProbe = { n: 0, inside: 0, r: R, ids: [] }; return; }
+    if (!hits.length) { this._whirlCaught = new Set(); this._whirlCatchProbe = { n: 0, inside: 0, r: R, ids: [] }; S._whirlCatch = null; return; }
     hits.sort((a, b) => a.d2 - b.d2);
     const cap = Math.max(1, (w.max | 0) || WHIRL_CATCH_MAX);
     const n = Math.min(hits.length, cap);
@@ -12907,6 +12915,11 @@ export class EffectsRenderer {
     }
     this._whirlCaught = caught;
     this._whirlCatchProbe = { n, inside: hits.length, r: R, ids: Array.from(caught) };
+    /* v2.3.3577: and their whole bodies are painted in the whirlwind's amber,
+       flashing (the owner: "change the whole color of the enemy to be in a
+       certain tint of color and make it flash a bit"): entityRenderer reads
+       this the next frame (game/whirlCatch.js) */
+    S._whirlCatch = { ids: caught, t0: w.t0, until: w.until, at: now };
   }
 
   /* ── Catch flight (v2.3.845) ──
@@ -17317,7 +17330,10 @@ export class EffectsRenderer {
          up-flick on the button is one flip, capped at one per 1600ms -- the
          pan marker's own v2.3.1442 rate); the wind-up keeps the clock loop. */
       const _gpK = gesturePose01(ex, now);   /* v2.3.2760: hand-paced; holds until the first flick */
-      const cookFi = (_gpK != null) ? Math.max(0, Math.min(this._cookFrames.length - 1, Math.floor(_gpK * this._cookFrames.length)))
+      /* v2.3.3577: a flick plays a third of the loop, not all of it (the
+         owner: "the frames are speeding too fast"; gesturePose.js
+         gestureLoopFrame) */
+      const cookFi = (_gpK != null) ? gestureLoopFrame(ex, _gpK, this._cookFrames.length, COOK_FLICKS_PER_LOOP)
         : Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length;
       /* v2.3.2287: the vista curve, as on the fire and chop figures.
          v2.3.2915: sampled, and the spot placed, by cookStandInSpot -- the

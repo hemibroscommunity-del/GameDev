@@ -52,6 +52,8 @@ function slimeTintFor(variant, state) {
    of its look's own tint (src/data/wheelStageLooks.js) -- a sprite tint, so no
    memory; every body tint below goes through this, the hit flash aside. */
 import { wheelStageTint, wheelStageName } from '../../data/wheelStageLooks.js';
+import { whirlCatchFlash, whirlTintAt, WHIRL_GLOW_ALPHA } from '../../game/whirlCatch.js';   /* v2.3.3577: a monster the whirlwind will catch, in its amber */
+import { fillBatchOn } from '../fillBatch.js';   /* v2.3.3577: ...drawn in one colour */
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount,
   getAttackFrame as getSnowmanAttackFrame, attackFrameCount as snowmanAttackFrameCount, /* v2.3.2215 */
   attackReleaseFrame as snowmanAttackReleaseFrame, /* v2.3.2216 */
@@ -77,7 +79,7 @@ import { getSpecies } from '../traits/speciesCatalog.js';   /* v2.3.2682: the sp
 import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   /* v2.3.2682 */
 import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
-import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame */
+import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
 import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation; v2.3.2325: bakeDisplayCanvas, because the masked bake needs the EXACT-TEXEL 2x inverse, not the smooth one */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
@@ -88,7 +90,7 @@ import { getHatColor, getColoredHatTextures, coloredHatReady } from '../traits/h
 import { getFacialHairColor, getColoredFacialHairTextures, coloredFacialHairReady } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture, frameBounds, packTrimmed } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
+import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture, frameBounds, packTrimmed, preloadBeltSheets } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
@@ -2983,7 +2985,7 @@ function _sendRod(wk) {
   try { wk.postMessage({ type: 'rod', rod: r }); } catch (e) { /* the bake falls back to the colour key, as inline does without a mask */ }
 }
 const _bakeJobs = new Map();
-const _bakeWorkerStats = { worker: 0, inline: 0, failed: 0, raw: 0, skipped: 0 };
+const _bakeWorkerStats = { worker: 0, inline: 0, failed: 0, raw: 0, skipped: 0, beltPending: 0, rawKeys: [] };   /* v2.3.3577: + why a bake was not kept (QA) */
 function _getBakeWorker() {
   if (_bakeWorker || _bakeWorkerDead) return _bakeWorker;
   try {
@@ -3127,17 +3129,22 @@ async function _runBake(job) {
     } catch (e) { _bakeJobs.delete(id); _close(); resolve({ err: String(e) }); }
   });
   if (reply.err) { _bakeWorkerStats.failed++; _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); return; }
-  if (reply.raw || !reply.bitmap) { _bakeWorkerStats.raw++; return; }
+  if (reply.raw || !reply.bitmap) {
+    _bakeWorkerStats.raw++;
+    if (_bakeWorkerStats.rawKeys.length < 12) _bakeWorkerStats.rawKeys.push(poseInfo.pose + '/' + poseInfo.dir + ' #' + poseInfo.frameIdx);
+    return;
+  }
   if (_maskedBodyCache.has(key)) { try { reply.bitmap.close(); } catch (e) { /* gone */ } return; }   /* baked inline meanwhile */
   const dc = _mkBakeCanvas(reply.bitmap.width, reply.bitmap.height);
   dc.getContext('2d').drawImage(reply.bitmap, 0, 0);
   try { reply.bitmap.close(); } catch (e) { /* gone */ }
   _storeBake(key, dc, reply.beltPending, _bt0, _bs, reply.cell || null);   /* v2.3.2904: cropped in the worker */
+  if (reply.beltPending) _bakeWorkerStats.beltPending++;
   _bakeWorkerStats.worker++;
   if (job.rank > 0) _localBakeStats.delivered++;
 }
 if (typeof window !== 'undefined') {
-  window.__btBakeWorker = () => ({ ..._bakeWorkerStats, alive: !!_bakeWorker, dead: _bakeWorkerDead, pending: _bakeJobs.size,
+  window.__btBakeWorker = () => ({ ..._bakeWorkerStats, rawKeys: _bakeWorkerStats.rawKeys.slice(), alive: !!_bakeWorker, dead: _bakeWorkerDead, pending: _bakeJobs.size,
     queued: _bakeQueue.length, busy: _bakeBusy,
     peer: { ..._peerBakeStats, queued: _peerQueue.length }, local: { ..._localBakeStats } });
   /* v2.3.3520: QA -- the last local frames drawn plain, and the body pictures
@@ -3146,6 +3153,39 @@ if (typeof window !== 'undefined') {
     const uids = Object.create(null);
     for (const k of _maskedBodyCache.keys()) { const u = String(k).split('|')[0]; uids[u] = (uids[u] || 0) + 1; }
     return { misses: _localMisses.slice(), cachedUids: uids };
+  };
+  /* v2.3.3577: QA (mp-armourflash) -- of every frame your bro can be drawn
+     in under what you wear (each prewarmed pose, all EIGHT facings, the three
+     flipped ones from their own body picture as _updatePlayer asks for them:
+     localBodyArt(mirror)), how many the masked cache holds.  A frame it does
+     not hold is drawn plain under the armour the first time it comes up. */
+  window.__btMaskedCoverage = () => {
+    const out = { want: 0, have: 0, missing: [] };
+    for (const pose of PREWARM_POSES) {
+      if (!_prewarmMasks(pose)) continue;
+      for (const dir of prewarmDirs(pose, _BASE_DIRS)) {
+        const flips = (pose !== 'fish' && MIRRORED_SOURCE_DIRS.indexOf(dir) >= 0) ? [false, true] : [false];
+        const fc = playerFrameCount(pose, dir) || 1;
+        for (const mirror of flips) {
+          for (let f = 0; f < fc; f++) {
+            const art = localBodyArt(mirror);
+            const tex = (pose === 'fish') ? getFishFrame(art, f, getSkin(), getPants(), getShoes())
+              : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, null, 'none', getEyeColor(), art, getEyeStyle());
+            if (!tex) continue;
+            const worn = [];
+            for (const sl of ['chest', 'legs']) {
+              const it = getEquip(sl);
+              if (it && it !== 'none') { const gt = getGearFrame(sl, it, pose, dir, f); if (gt) worn.push({ k: sl + ':' + it, tex: gt }); }
+            }
+            if (!worn.length || _fullsetCoversBake(worn, pose, dir)) continue;
+            out.want++;
+            if (_maskedBodyCache.has(_maskedKey(tex, worn, 6))) out.have++;
+            else if (out.missing.length < 24) out.missing.push(pose + '/' + dir + (mirror ? ' flipped' : '') + ' #' + f);
+          }
+        }
+      }
+    }
+    return out;
   };
   /* v2.3.3574: QA (mp-tabwipe) -- the masked frames' sources, to tell a frame
      already on the graphics chip from one still only on its canvas */
@@ -3432,6 +3472,33 @@ function _dirsFacingFirst() {
   return (_BASE_DIRS.indexOf(d) > 0) ? [d, ..._BASE_DIRS.filter((x) => x !== d)] : _BASE_DIRS;
 }
 
+/* ═══ v2.3.3577: A DRAWN PLAYER'S FLIPPED FACINGS ARE BAKED TOO ═══
+ * The owner: "flashing is still happening on certain body parts even after
+ * logging out and back in".  West, northwest and southeast are drawn by
+ * flipping east, northeast and southwest -- and for a player with a drawing
+ * or a pattern (a tattoo, the trousers' print, a pattern on the trousers or
+ * shoes), from a body picture of their own: the drawing is put on flipped
+ * before the flip (localBodyArt(true), v2.3.1940), so it reads the right way
+ * round.  playerSkins bakes those body pictures behind the loading screen
+ * (preloadBodyAll, preloadBodyVariant), but the armour's masked frames are
+ * keyed on the body picture (_maskedKey), and every prewarm here baked only
+ * the unflipped one.  So every frame of a drawn, armoured player turned
+ * west, northwest or southeast was baked the first time it was drawn, and
+ * that frame drew the plain body under the armour (_localMaskedFrame): the
+ * skin at the plate's edges and the trousers under the greaves flashing as
+ * each new frame came up, every session.
+ * The body pictures each (pose, dir) is drawn from: the unflipped one, and
+ * for a drawn player in one of the three source facings the flipped one.
+ * Fishing is south only and never flipped (getFishFrame).  `?flipbake=0` is
+ * the game as it was (mp-armourflash shows both). */
+const _FLIPBAKE_OFF = typeof location !== 'undefined' && /[?&]flipbake=0\b/.test(location.search || '');   /* the game as it was */
+function _prewarmArts(pose, dir) {
+  const a = localBodyArt(false);
+  if (_FLIPBAKE_OFF || pose === 'fish' || MIRRORED_SOURCE_DIRS.indexOf(dir) < 0) return [a];
+  const m = localBodyArt(true);
+  return m ? [a, m] : [a];
+}
+
 /* ═══ v2.3.2500: WARM THE FRAME THE RENDERER WILL ACTUALLY ASK FOR ═══
  *
  * Two poses do not take the plain recoloured body, and a prewarm that ignores
@@ -3466,7 +3533,7 @@ export function planPrewarmProgress() {
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
   let per = 0;
   for (const pose of PREWARM_POSES) {
-    for (const dir of prewarmDirs(pose, DIRS)) per += playerFrameCount(pose, dir) || 1;
+    for (const dir of prewarmDirs(pose, DIRS)) per += (playerFrameCount(pose, dir) || 1) * _prewarmArts(pose, dir).length;   /* v2.3.3577: + a drawn player's flipped facings */
   }
   const anyWorn = ['chest', 'legs'].some((sl) => { const it = getEquip(sl); return it && it !== 'none'; });
   /* v2.3.1118: the alt-worn pass bakes speculative families no longer.
@@ -3658,6 +3725,12 @@ export async function prewarmMaskedBodyFrames(opts) {
   const budgetMs = (opts && opts.frameBudgetMs) || 0;
   const slots = ['chest', 'legs'];
   if (!slots.some((sl) => { const it = getEquip(sl); return it && it !== 'none'; })) return;
+  /* v2.3.3577: a full set's jog frames are baked with the chain belt, and a
+     frame baked before its sheet is in is not kept (gearSheets.js
+     preloadBeltSheets) -- so it is waited for first */
+  if (slots.every((sl) => { const it = getEquip(sl); return it && it !== 'none'; })) {
+    try { await preloadBeltSheets(); } catch (e) { /* best-effort: a missing sheet bakes without */ }
+  }
   /* v2.3.756: baked shirt retired -- the body always bakes shirtless (the
      layered shirt is a separate sprite, no masked-body involvement). */
   const shirtT = null;
@@ -3673,14 +3746,15 @@ export async function prewarmMaskedBodyFrames(opts) {
   for (const pose of PREWARM_POSES) {
     for (const dir of prewarmDirs(pose, DIRS)) {
       const fc = playerFrameCount(pose, dir) || 1;
+      for (const art of _prewarmArts(pose, dir)) {   /* v2.3.3577: + a drawn player's flipped facings */
       for (let f = 0; f < fc; f++) {
         prewarmProgress.done++;
         /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
            v2.3.2854: ...with the drawings on it (getFishFrame), the frame the
            renderer now asks for; baked by preloadBodyAll, which this runs after.
            v2.3.3146: ...and your skin, trousers and boots. */
-        const tex = (pose === 'fish') ? getFishFrame(localBodyArt(false), f, getSkin(), getPants(), getShoes())
-          : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
+        const tex = (pose === 'fish') ? getFishFrame(art, f, getSkin(), getPants(), getShoes())
+          : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), art, getEyeStyle());   /* v2.3.2643 */
         if (!tex) continue;
         const worn = [];
         for (const sl of slots) {
@@ -3720,6 +3794,7 @@ export async function prewarmMaskedBodyFrames(opts) {
           sinceYield = 0;
           await new Promise((r) => setTimeout(r, 0));
         }
+      }
       }
     }
   }
@@ -3793,6 +3868,12 @@ export async function prewarmAltWornSets(opts) {
   if (seq !== _altPrewarmSeq) return;            // superseded by a newer kick
   const SETS = _catalogWornSets().map((worn) => ({ worn }));
   if (!SETS.length) return;
+  /* v2.3.3577: a set with both pieces bakes its jog with the chain belt --
+     waited for first, as in prewarmMaskedBodyFrames */
+  if (SETS.some((set) => set.worn.length >= 2)) {
+    try { await preloadBeltSheets(); } catch (e) { /* best-effort */ }
+    if (seq !== _altPrewarmSeq) return;
+  }
   const DIRS = _dirsFacingFirst();   /* v2.3.2904: the way you face first */
   let sinceYield = 0;
   const pending = [];   /* v2.3.2904: `fast` keeps the worker fed, as prewarmMaskedBodyFrames does */
@@ -3801,14 +3882,15 @@ export async function prewarmAltWornSets(opts) {
     for (const pose of PREWARM_POSES) {
       for (const dir of prewarmDirs(pose, DIRS)) {
         const fc = playerFrameCount(pose, dir) || 1;
+        for (const art of _prewarmArts(pose, dir)) {   /* v2.3.3577: + a drawn player's flipped facings */
         for (let f = 0; f < fc; f++) {
           if (seq !== _altPrewarmSeq) return;
           if (fast) prewarmProgress.done++;
           /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
              v2.3.2854: with the drawings on it, as the pass above.
              v2.3.3146: and your skin, trousers and boots. */
-          const tex = (pose === 'fish') ? getFishFrame(localBodyArt(false), f, getSkin(), getPants(), getShoes())
-            : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
+          const tex = (pose === 'fish') ? getFishFrame(art, f, getSkin(), getPants(), getShoes())
+            : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), art, getEyeStyle());   /* v2.3.2643 */
           if (!tex) continue;
           const worn = [];
           for (const [sl, id] of set.worn) {
@@ -3849,6 +3931,7 @@ export async function prewarmAltWornSets(opts) {
             else await _idleYield();
             if (seq !== _altPrewarmSeq) return;   /* v2.3.2873: superseded by a newer kick */
           }
+        }
         }
       }
     }
@@ -5328,6 +5411,55 @@ function getMonsterColor(archetype) {
 function cssColorToHex(css) {
   if (typeof css !== 'string') return 0x000000;
   return parseInt(css.replace('#', ''), 16) || 0x000000;
+}
+
+/* ═══ v2.3.3577: THE WHIRLWIND'S CATCH, THE MONSTER DRAWN IN ITS AMBER ═══
+   The owner: "change the whole color of the enemy to be in a certain tint of
+   color and make it flash a bit".  A sprite right over the monster's body,
+   drawn from the body's own texture by the one-colour batcher (fillBatch.js:
+   its light and shade, in its tint), copying the body's pose every frame it
+   is up: WHIRL_GLOW_ALPHA of it, its tint the flash's amber (game/
+   whirlCatch.js), a hit flash showing through (a third as much amber while
+   the body wears its red).  Made the first time a monster is caught and kept
+   with its display (destroyed with it; it never owns the texture); hidden
+   otherwise -- shown and hidden once a wind-up, the only structural changes
+   (TRAPS §218).  With no one-colour batcher (`?fill=0`) nothing is drawn:
+   the rings still mark the catch. */
+const _HIT_FLASH = 0xff8080;
+function _whirlGlow(display, f) {
+  const sb = display._spriteBody;
+  let g = display._whirlGlow;
+  if (!(f >= 0) || !sb || !sb.visible || !sb.texture || sb.parent !== display || !fillBatchOn()) {
+    if (g && g.visible) g.visible = false;
+    return;
+  }
+  if (!g) {
+    g = new Sprite(sb.texture);
+    g._btFill = true;
+    g._noSharp = true;
+    g.label = 'whirlGlow';
+    g.visible = false;
+    display.addChildAt(g, display.getChildIndex(sb) + 1);
+    display._whirlGlow = g;
+  }
+  /* right over the body, as it is shown: a branch that swaps the body for a
+     new sprite puts it last, over this one */
+  if (!g.visible) {
+    const bi = display.getChildIndex(sb);
+    if (display.children[bi + 1] !== g) display.setChildIndex(g, Math.min(display.children.length - 1, display.getChildIndex(g) < bi ? bi : bi + 1));
+  }
+  if (g.texture !== sb.texture) g.texture = sb.texture;
+  if (g.anchor.x !== sb.anchor.x || g.anchor.y !== sb.anchor.y) g.anchor.set(sb.anchor.x, sb.anchor.y);
+  if (g.x !== sb.x || g.y !== sb.y) g.position.set(sb.x, sb.y);
+  if (g.scale.x !== sb.scale.x || g.scale.y !== sb.scale.y) g.scale.set(sb.scale.x, sb.scale.y);
+  if (g.rotation !== sb.rotation) g.rotation = sb.rotation;
+  if (g.skew.x !== sb.skew.x || g.skew.y !== sb.skew.y) g.skew.set(sb.skew.x, sb.skew.y);
+  if (g.pivot.x !== sb.pivot.x || g.pivot.y !== sb.pivot.y) g.pivot.set(sb.pivot.x, sb.pivot.y);
+  const tint = whirlTintAt(f);
+  if (g.tint !== tint) g.tint = tint;
+  const al = WHIRL_GLOW_ALPHA * sb.alpha * (sb.tint === _HIT_FLASH ? 0.35 : 1);
+  if (g.alpha !== al) g.alpha = al;
+  if (!g.visible) g.visible = true;
 }
 
 function createMonsterDisplay(monster) {
@@ -9830,6 +9962,11 @@ export class EntityRenderer {
         display._spriteBody.scale.x *= _bsK;
         display._spriteBody.scale.y *= _bsK;
       }
+      /* v2.3.3577: the whirlwind's catch -- the monster's own picture drawn
+         again over it in the ring's amber, flashing, after every branch and
+         the swell above have posed the body (game/whirlCatch.js,
+         rendering/fillBatch.js) */
+      _whirlGlow(display, whirlCatchFlash(S, m, now));
       if (!display._emoji) {
         const emojiText = new Text({
           text: m.emoji || '🟢',

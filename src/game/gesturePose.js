@@ -244,6 +244,33 @@ export function gesturePose01(ex, now, fullCycleMs) {
   return cur;
 }
 
+/* ═══ v2.3.3577: A FLIP OF THE THUMB PLAYS A THIRD OF THE COOK'S LOOP ═══
+ * The owner: "During the cooking gesture animation the frames are speeding
+ * too fast."  Each gesture cycle (a flick up and the settle back) played the
+ * cook's WHOLE 24-frame loop, and that loop holds about five tosses of the pan
+ * (its height measured frame by frame: tops near frames 0, 5, 9, 13 and 19).
+ * At the quick pace the gesture is built round (GESTURE_QUICK_CYCLE_MS 500)
+ * that was 21 ms a frame, three times the 60 ms the strip plays at in the
+ * wind-up before it -- and a quicker hand, faster still.
+ * Now a cycle plays COOK_FLICKS_PER_LOOP'th of the loop, the cycles walking on
+ * through it: 24 frames x 60 ms / 500 ms = 2.9, so three flicks make the loop,
+ * and at the quick pace the cook moves at the strip's own speed (62 ms a
+ * frame); a slower hand is slower, a quicker one quicker, as the owner asked
+ * in v2.3.2760 ("animate at the speed you perform the gesture").
+ * `k` is gesturePose01's phase for this frame; the count of whole cycles is
+ * kept on the extraction record (`_loopK`, `_loopN`), so it dies with the
+ * attempt.  gesturePose01 moves forward at most 100 ms / 260 ms (0.38) a
+ * frame, so a wrap of the phase is always a drop of more than half. */
+export const COOK_FLICKS_PER_LOOP = 3;
+export function gestureLoopFrame(ex, k, frames, cyclesPerLoop) {
+  const per = Math.max(1, cyclesPerLoop | 0);
+  if (!ex || k == null || !(frames > 0)) return 0;
+  if (ex._loopK != null && k < ex._loopK - 0.5) ex._loopN = ((ex._loopN || 0) + 1) % per;
+  ex._loopK = k;
+  const n = ex._loopN || 0;
+  return Math.max(0, Math.min(frames - 1, Math.floor((n + k) / per * frames)));
+}
+
 /* v2.3.2245: the owner's painted gesture strips.  A MIRROR of GESTURE_TOOLS in
    effectsRenderer.js (which slices the same files into Pixi textures); the URLs
    are the only thing shared, and mirror-audit pins the two lists equal.
