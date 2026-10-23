@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e97326bf856af918c0df5172aa497b5e16d4203a",
+  "tree": "0902cd8dee5a53e358239d9465ab8b80db3f535e",
+  "committedAt": "2026-10-22T20:36:23-07:00",
+  "subject": "The Goo Grotto is built for a party: level 16 whoever comes in, its boss sized for three (v2.3.3573) (#1084)",
+  "files": 6356,
+  "bytes": 737951074,
+  "listingSha256": "9f1f8013ea521f2bd4f4c643a461784a3851bec5ebfa2dc4cfe7e6c7bd4506c5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
