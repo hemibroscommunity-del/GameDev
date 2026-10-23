@@ -25,8 +25,13 @@ const SEEN = `try {
 } catch (e) {}`;
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const A = await H.newPlayer(browser, { name: 'Looker', wsPort, webPort, init: SEEN });
+  /* v2.3.3580: in the world's BroTown, where he stands beside the Town
+     Hall's steps (moved off the retired old map when his picture became a
+     creator bro: tools/qa/mp/oldMap.mjs) */
+  const A = await H.newPlayer(browser, { name: 'Looker', wsPort, webPort, init: SEEN, world: 'wheel' });
   await H.enterWorld(A);
+  await H.waitFor(A, (S) => ({ z: S.currentZone, loading: !!S._zoneLoading, mayor: !!(S.npcs || []).find((n) => n && n.id === 'mayor_bro') }),
+    (v) => v.z === 'wheel' && !v.loading && v.mayor, { timeout: 120000, label: 'the world, the Mayor in BroTown' }).catch(() => null);
   await A.page.waitForTimeout(1500);
 
   const warm = await A.page.evaluate(() => {
@@ -34,7 +39,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const npc = (S && S.npcs || []).find((n) => n && n.id === 'mayor_bro');
     return { spawned: !!npc, src: npc && npc.sprite || null, zone: S && S.currentZone };
   });
-  rec.ok('Mayor Bro is spawned in town', warm.spawned && warm.zone === 'town', warm);
+  rec.ok('Mayor Bro is spawned in BroTown', warm.spawned && warm.zone === 'wheel', warm);
   rec.ok('his NPC record names a sprite', warm.src === '/sprites/npc/mayor-bro.webp', warm.src);
 
   /* The asset must be SERVED — a typo'd path is a 404 that the cache-only
@@ -168,9 +173,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const clip = view.clip;
   await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/mayorcrop.png', clip }).catch(() => {});
   const shot = await H.screenshotPixels(A, clip);
-  const isShorts = (r, g, b) => b > 70 && r > 40 && b - g > 40 && r - g > 15;
-  const purple = shot.count(isShorts);
-  rec.ok('his art is actually painted on the canvas', purple > 60, { purplePx: purple, clip });
+  /* v2.3.3580: he is a bro from the character creator now (tools/qa/
+     npc-looks.mjs) in black trousers, so the colour counted is his NAVY
+     pinstriped tee -- about as tall a band as the purple shorts were.  The
+     names below (isShorts, purple) are the old ones, kept so the history in
+     these notes still reads. */
+  const isShorts = (r, g, b) => b > 80 && b - r > 35 && b - g > 25 && r < 100;
+  /* ...counted on HIM: in the world's BroTown he stands at the Town Hall's
+     steps, and its blue trophy cabinet and roof fill the crop's top -- the
+     middle 40% of the crop, below its middle (his figure is the bottom
+     ~half: the crop is 1.6x his cell) */
+  const onHim = (x, y) => Math.abs(x - shot.width / 2) < shot.width * 0.2 && y > shot.height * 0.55;
+  const purple = shot.count((r, g, b, x, y) => onHim(x, y) && isShorts(r, g, b));
+  /* (on his body alone, 53 px on this page's 1x world: an emoji stand-in
+     or a missing picture is ~0) */
+  rec.ok('his art is actually painted on the canvas', purple > 30, { navyPx: purple, clip });
 
   /* Scale.  This has moved twice on request — v2.3.1672 pinned player height,
      v2.3.1673 doubled it, v2.3.1675 halved it back — so the band tracks the
@@ -182,11 +199,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
      quarter of the figure, so ~19 world px of shorts before camera zoom. */
   const rows = new Set();
   shot.count((r, g, b, x, y) => {
-    if (isShorts(r, g, b)) rows.add(y);
+    if (onHim(x, y) && isShorts(r, g, b)) rows.add(y);
     return false;
   });
   rec.ok('he is drawn at roughly player scale, not doll or giant scale',
-    rows.size >= 12 && rows.size <= 38, { shortsRows: rows.size, clip });
+    rows.size >= 12 && rows.size <= 38, { shirtRows: rows.size, clip });
 
   await A.ctx.close().catch(() => {});
 }

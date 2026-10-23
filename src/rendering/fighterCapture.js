@@ -111,6 +111,27 @@ export function capturePose(kind, opts) {
   try { return cropToPaint(cap); } catch (e) { return null; }
 }
 
+/* ═══ v2.3.3580: THE TOWNSFOLK'S PICTURES ARE PHOTOGRAPHED HERE ═══
+   The owner: "generate the art for the characters ... using the Brotown
+   character creator ... NPCs should look like normal bro characters."
+   tools/qa/npc-looks.mjs dresses the player in each townsperson's creator
+   look and asks for his figure, standing or jogging, any of the eight ways:
+   kind 'stand' | 'jog', opts { dir, unitPx } (capturePoseFrames).  Uncropped,
+   as PNG data URLs, with `origin` -- where the figure's own origin (its body
+   cell's middle) lies in each frame -- so the tool can put every frame in
+   the townsfolk's 256 px cell exactly as the player's sheets are laid out.
+   A tool's handle only: nothing in the game calls it. */
+if (typeof window !== 'undefined') {
+  window.__btCaptureLook = (kind, opts) => {
+    if (!_entities || typeof _entities.capturePoseFrames !== 'function') return null;
+    let cap = null;
+    try { cap = _entities.capturePoseFrames(kind, opts); } catch (e) { return { err: String(e && e.message) }; }
+    if (!cap || !cap.frames || !cap.frames.length) return null;
+    return { frames: cap.frames.map((c) => c.toDataURL('image/png')), origin: cap.origin, dir: cap.dir,
+      times: cap.times, dur: cap.dur, res: cap.res };
+  };
+}
+
 /* ═══ v2.3.2991: FILMS -- THE WORLD'S EFFECTS ROUND A HIT ═══
  * Owner: "Also special attacks need to animate ... make it so the slime shows
  * the hit effect (green gunk coming out after getting hit) ... make sure

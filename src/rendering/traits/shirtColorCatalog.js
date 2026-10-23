@@ -167,3 +167,6 @@ export function getColoredShirtTextures(shirtId, colorId) {
   delete _cache[key]; _cache[key] = e;
   return e;
 }
+
+/* v2.3.3580: for tools/qa/npc-looks.mjs, which dresses a bro in each townsperson's creator look (as __btSetHair) */
+if (typeof window !== 'undefined') window.__btSetShirtColor = setShirtColor;

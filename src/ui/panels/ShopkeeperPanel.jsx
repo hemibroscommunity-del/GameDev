@@ -3,6 +3,7 @@ import { shopBus } from '../mobile/shopBus.js';
 import { useModalGuard } from '../mobile/modalGuardBus.js'; /* v2.3.2276 */
 import { thumbFor, iconFor, ITEM_NAMES } from '../mobile/dash/InventoryPanel.jsx';
 import { playIsLandscape } from '../mobile/playViewport.js';         /* v2.3.3407: sideways */
+import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3580: his head, a Hemi Bros portrait now, at the townsfolk's cache-bust */
 import { dashboardPanelBus } from '../mobile/dashboardPanelBus.js';   /* v2.3.3407: the bag's column */
 
 /* ═══ v2.3.2059: THE MERCHANT DRAWER ═══
@@ -347,8 +348,15 @@ export function ShopkeeperPanel() {
         padding: '6px 8px', flex: 'none', borderBottom: rule,
         background: '#27393F',
       }}>
-        <img src="/sprites/npc/shopkeeper-bro-head.webp" alt="" draggable={false}
-          style={{ width: 26, height: 26, objectFit: 'contain', flex: 'none' }} />
+        {/* v2.3.3580: his head is a Hemi Bros portrait now, its own square
+            background and all (tools/qa/nft_portraits.py): a rounded chip, as
+            Ace's is in his window.  32 px, one CSS px a portrait pixel and
+            drawn pixelated, so it is crisp on any screen (at 26 px it was
+            smoothed, and a computer's screen lost pixels outright); the -3 px
+            margins keep the header the height it was at 26. */}
+        <img src={npcArtUrl('/sprites/npc/shopkeeper-bro-head.webp')} alt="" draggable={false}
+          style={{ width: 32, height: 32, margin: '-3px 0', objectFit: 'cover', imageRendering: 'pixelated',
+            borderRadius: 6, flex: 'none' }} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.15 }}>Diego</div>
           <div style={{

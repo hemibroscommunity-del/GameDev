@@ -51,7 +51,9 @@ let _done = null;
  * Versioned on the FETCH only; `_tex` stays keyed by the raw path so
  * getNpcTexture's callers (entityRenderer, which looks up by `npc.sprite`)
  * need no change and cannot drift out of step with the loader. */
-export const NPC_ART_VERSION = '2.3.1829';
+/* v2.3.3580: every townsperson repainted as a bro from the character creator
+   (tools/qa/npc-looks.mjs), at the same paths -- so the version moves */
+export const NPC_ART_VERSION = '2.3.3580';
 export const npcArtUrl = (src) => (src ? src + '?v=' + NPC_ART_VERSION : src);
 
 /** Every distinct sprite named by NPC_DATA.  Driven off the data table so a
@@ -374,8 +376,15 @@ export function freeTownScenery() {
    v2.3.3067: and the rest of town's cast (WHEEL_TOWNSFOLK): Ace at the
    Gambling Den, Blacksmith Bro at the forge, Lil Bro on the square -- each
    walker's south strip, the blacksmith's one picture.  Read off that table,
-   so a name added there is loaded here with nothing else to change. */
-const WHEEL_NPC_BUNDLE = 'wheel-npcs';
+   so a name added there is loaded here with nothing else to change.
+   v2.3.3580: the townsfolk are creator bros now (tools/qa/npc-looks.mjs), a
+   walker's strip nine cells of a real jog where it was four, which took the
+   cast here from 3.6 MB to 6.5 MB.  So, as the walkers' strips always were,
+   the ONE-PICTURE townsfolk load cropped to their figure (loadCroppedStrip
+   with one cell; the bundle and loadTracked are gone from here), and a walker
+   who only ever stands here (Diego, Ace: no `wheelDirs`) keeps only the cell
+   he stands on (`only`).  Lil Bro, who runs the race, keeps all nine of his
+   four straight ways, photographed at his own size.  About 2.8 MB. */
 const _wheelTex = Object.create(null);
 let _wheelArt = null;
 /* Mayor Bro and the townsfolk, as NPC_DATA rows */
@@ -391,27 +400,37 @@ export function wheelNpcSources() {
   return _wheelCast().filter((n) => n.sprite && !_walksSouth(n)).map((n) => n.sprite);
 }
 /** The walkers the Wheel shows, and the one strip of each it loads:
-    [{ id, dir, src, frames }].  v2.3.3525: or the strips its row names in
-    `wheelDirs` -- Lil Bro races round the square (game/race.js) and needs his
-    four straight ones. */
+    [{ id, dir, src, frames, only }].  v2.3.3525: or the strips its row names
+    in `wheelDirs` -- Lil Bro races round the square (game/race.js) and needs
+    his four straight ones.  v2.3.3580: `only` -- a walker with no `wheelDirs`
+    stands still facing the street here, so of his strip only the cell he
+    stands on (NPC_DATA `walk.stand`, the cell entityRenderer draws him on);
+    getNpcWalkFrame's lookup wraps, so that one cell answers every frame. */
 export function wheelWalkSources() {
   return _wheelCast().filter(_walksSouth)
-    .flatMap((n) => (Array.isArray(n.wheelDirs) && n.wheelDirs.length ? n.wheelDirs : ['south'])
-      .filter((d) => n.walk.dirs.indexOf(d) >= 0)
-      .map((d) => ({ id: n.id, dir: d, src: n.walk.base + d + '.webp', frames: n.walk.frames || 4 })));
+    .flatMap((n) => {
+      const ways = Array.isArray(n.wheelDirs) && n.wheelDirs.length ? n.wheelDirs : null;
+      const stand = Number.isInteger(n.walk.stand) && n.walk.stand >= 0 ? n.walk.stand : 0;
+      return (ways || ['south'])
+        .filter((d) => n.walk.dirs.indexOf(d) >= 0)
+        .map((d) => ({ id: n.id, dir: d, src: n.walk.base + d + '.webp', frames: n.walk.frames || 4, only: ways ? null : [stand] }));
+    });
 }
 export function loadWheelNpcArt() {
   if (_wheelArt) return _wheelArt.p;
-  const run = { p: null, crops: [] };
+  const run = { p: null, crops: [], stills: [] };
   run.p = Promise.allSettled([
-    ...wheelNpcSources().map((src) => Promise.resolve(
-      loadTracked(WHEEL_NPC_BUNDLE, npcArtUrl(src) + (npcArtUrl(src).indexOf('?') >= 0 ? '&' : '?') + 'wheel=1'),
-    ).then((tex) => {
-      if (!tex || _wheelArt !== run) return;
-      if (tex.source) { try { tex.source.scaleMode = 'nearest'; } catch (e) { /* older pixi */ } }
+    /* v2.3.3580: a one-picture townsperson cropped to his figure, as a strip
+       of one cell (`orig` the whole 256 cell, so he stands where he did) */
+    ...wheelNpcSources().map((src) => loadCroppedStrip(npcArtUrl(src), 1).then((frames) => {
+      const tex = frames && frames[0];
+      if (!tex || !tex.source) return;
+      if (_wheelArt !== run) { _releaseCrops([{ src: tex.source, frames }]); return; }   /* freed while loading */
+      try { tex.source.scaleMode = 'nearest'; } catch (e) { /* older pixi */ }
+      run.stills.push({ src: tex.source, frames });
       _wheelTex[src] = tex;
     })),
-    ...wheelWalkSources().map((w) => loadCroppedStrip(npcArtUrl(w.src), w.frames).then((frames) => {
+    ...wheelWalkSources().map((w) => loadCroppedStrip(npcArtUrl(w.src), w.frames, w.only ? { only: w.only } : null).then((frames) => {
       const src = frames && frames[0] && frames[0].source;
       if (!src) return;
       if (_wheelArt !== run) { _releaseCrops([{ src, frames }]); return; }   /* freed while loading */
@@ -431,7 +450,7 @@ export function freeWheelNpcArt() {
   for (const k of Object.keys(_wheelTex)) delete _wheelTex[k];
   for (const k of Object.keys(_wheelWalk)) delete _wheelWalk[k];
   _releaseCrops(run.crops.splice(0));
-  unloadBundle(WHEEL_NPC_BUNDLE).catch(() => 0);
+  _releaseCrops(run.stills.splice(0));
 }
 
 /* QA probe, house style: is town's art resident, and how much of it. */

@@ -269,3 +269,6 @@ export function randomPattern(slot) {
   const idx = 1 + Math.floor(Math.random() * (ART_PALETTE.length - 1));
   return formatPattern(tile.id, idx);
 }
+
+/* v2.3.3580: for tools/qa/npc-looks.mjs (as __btSetHair) */
+if (typeof window !== 'undefined') window.__btSetPattern = setPattern;

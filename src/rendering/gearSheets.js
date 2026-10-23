@@ -312,18 +312,39 @@ if (typeof window !== 'undefined') {
   window.__btFxTrim = () => _fxTrimStats.slice();
   window.__btFxTrimFrames = (url) => _fxTrimFrames.get(url) || null;
 }
-export function loadCroppedStrip(url, n) {
+/* v2.3.3580: `opts.only` -- the cells to keep, by number, in the order given
+   (the frames come back in that order, as many as it names).  The Wheel's
+   townsfolk who never walk there (Diego, Ace: loadWheelNpcArt) keep only the
+   cell they stand on, not the eight of their jog: the rest are never cut,
+   packed or uploaded.  Without it, every cell, as before. */
+export function loadCroppedStrip(url, n, opts) {
   return new Promise((res, rej) => {
     const im = new Image();
     im.onload = () => res(im); im.onerror = rej; im.src = url;
   }).then((img) => {
     const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
     const fw = Math.floor(W / n);
-    const packed = fw > 0 ? packTrimmed(img, fw, H, n) : null;
-    const src = Texture.from(packed ? packed.canvas : img).source;
+    const only = opts && Array.isArray(opts.only)
+      ? opts.only.filter((i) => Number.isInteger(i) && i >= 0 && i < n) : null;
+    let from = img, k = n, cut = null;
+    if (only && only.length && fw > 0) {
+      /* the kept cells side by side, the strip's own layout, then packed as
+         any strip is; this copy goes the moment the pack has read it */
+      cut = document.createElement('canvas');
+      cut.width = fw * only.length; cut.height = H;
+      const cx = cut.getContext('2d');
+      cx.imageSmoothingEnabled = false;
+      only.forEach((i, j) => cx.drawImage(img, i * fw, 0, fw, H, j * fw, 0, fw, H));
+      from = cut; k = only.length;
+    }
+    const packed = fw > 0 ? packTrimmed(from, fw, H, k) : null;
+    /* a pack declined keeps the plain cells of what it was given (the kept
+       cells' copy then IS the source, and stays) */
+    if (packed && cut) { cut.width = 0; cut.height = 0; }
+    const src = Texture.from(packed ? packed.canvas : from).source;
     src.scaleMode = 'linear';
     const frames = [];
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < k; i++) {
       if (packed) {
         const c = packed.cells[i];
         frames.push(new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
@@ -332,7 +353,9 @@ export function loadCroppedStrip(url, n) {
         frames.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, H) }));
       }
     }
-    if (packed) {
+    /* (a strip cut to `only` is not listed: mp-geartrim checks frame i of
+       each listed URL against cell i of its file) */
+    if (packed && !cut) {
       _fxTrimStats.push({ url, fullBytes: W * H * 4, packedBytes: packed.canvas.width * packed.canvas.height * 4 });
       _fxTrimFrames.set(url, { frames, fw, fh: H });
     }

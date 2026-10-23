@@ -4,6 +4,7 @@ import { ACE_FLIP_MIN_STAKE, ACE_FLIP_RISK_MULT, ACE_FLIP_WIN_CHANCE, aceFlipMax
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '@/rendering/characterPortrait.js';
 import { thumbFor, ITEM_NAMES, TICKET_KEY_PREFIX } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
+import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3580: his head, a Hemi Bros portrait now, at the townsfolk's cache-bust */
 
 /* ═══ v2.3.2618: ACE'S COIN FLIP ═══
  *
@@ -417,11 +418,15 @@ export function AceFlipPanel() {
       style: { flex: 'none', display: 'flex', alignItems: 'center', gap: 11, padding: '11px 14px', background: LS.strip, borderBottom: '1px solid ' + LS.border },
     },
       React.createElement('img', {
-        src: '/sprites/npc/cardsharp-bro-head.webp', alt: '', draggable: false,
+        src: npcArtUrl('/sprites/npc/cardsharp-bro-head.webp'), alt: '', draggable: false,
         /* v2.3.2621 (owner: "map the joker profile picture bigger"): 42 -> 64.
            The file is 192px of real portrait art, so this shows more of what
            is already there rather than upscaling it. */
-        style: { width: 64, height: 64, borderRadius: 10, objectFit: 'cover', background: LS.well, flexShrink: 0 },
+        /* v2.3.3580: a Hemi Bros portrait (tools/qa/nft_portraits.py), 32 x 32
+           pixels: at 64 px two CSS px each, drawn pixelated -- crisp on any
+           screen, where the browser's smoothing blurred every edge on all but
+           a 3x phone */
+        style: { width: 64, height: 64, borderRadius: 10, objectFit: 'cover', imageRendering: 'pixelated', background: LS.well, flexShrink: 0 },
         onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('🃏')); },
       }),
       React.createElement('div', { style: { minWidth: 0, flex: 1 } },
