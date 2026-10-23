@@ -113,7 +113,7 @@ export function onRaceState(S, p) {
   S._race = { phase: 'count', t0, lilMs, speed, flagR: Number(p.flagR) || 80,
     flags: p.flags, path: p.path, next: 0, said: 0, count: -1 };
   S._raceLil = { path: p.path, t0, speed, len: pathLen(p.path), lilMs };
-  lilSays(S, 'On your marks!');
+  lilSays(S, 'On your marks! Try not to lag!');
   raceBus.emit();
 }
 
@@ -142,9 +142,9 @@ export function onRaceEnd(S, p) {
      where he is: he walks home by himself (his wander, pathRadius 0) */
   if (res.err === 'early' || res.err === 'left') S._raceLil = null;
   try {
-    if (res.won) { cue('duelWin'); lilSays(S, 'No fair! NO FAIR!'); }
-    else if (res.err === 'early') { cue('denied'); lilSays(S, 'False start! Cheater!'); }
-    else if (!res.err || res.err === 'late') { cue('duelLose'); lilSays(S, 'Too slow, slowpoke!'); }
+    if (res.won) { cue('duelWin'); lilSays(S, 'Lag! That was LAG! REPORT!'); }
+    else if (res.err === 'early') { cue('denied'); lilSays(S, "False start! That's a ban!"); }
+    else if (!res.err || res.err === 'late') { cue('duelLose'); lilSays(S, 'Easy! Skill issue, bro!'); }
     else cue('denied');
   } catch (e) { /* a sound */ }
   raceBus.emit();
@@ -174,7 +174,7 @@ export function raceTick(S, now) {
     }
     if (t >= r.t0) {
       r.phase = 'run';
-      lilSays(S, 'See ya, slowpoke!');
+      lilSays(S, 'Later, slowpoke!');
       raceBus.emit();
     }
     return;

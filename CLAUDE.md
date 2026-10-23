@@ -3767,6 +3767,29 @@ remnant to migrate server-side, not a mode to preserve.
       Seeds tab sells packets and the sack; the Cookhouse's rows lead with what
       they make; the quick-eat Garden Stew is warmed on the loading screen;
     - `bag-icons` suite, `mp-bagicons`, `mp-farm`: docs/specs/bag-icons.md.
+  - Since v2.3.3571 THE OWNER'S COPPER ORE AND PICKAXE, AND THE BAG'S BOW
+    PINE AGAIN -- the owner: "Ok change the art style of the copper ore and the
+    pickaxe to this.  Also revert the inventory art of the bow back to the
+    original one (pine) ... I only wanted it to replace the menu art for the
+    bow":
+    - `tools/ui/cut-owner-items.py` cuts their picture (assets/icons-source/
+      owner-2026-10-22/) into `icons/items/ore-copper.webp` (256, 200 px) and
+      `mining-pickaxe.webp` (192, 190 px) on today's canvases, each file's
+      SHA-256, size and opaque box in `tools/ui/owner-items.json`;
+    - the rock's label crops the pickaxe at that box (nodeLabels.js), and a
+      broken copper rock pops the bag's copper, as every other tier pops its
+      own;
+    - the world's copper rock (pixel art) and the iron, black steel and
+      obsidian icons are unchanged: make_tier_art.py recolours them from the
+      OLD lump, kept at assets/icons-source/ore-copper-lump.webp;
+    - the bag's `icons/items/bow.webp` is the pine bow again (byte for byte
+      before v2.3.3526);
+    - card 11's T3.3 is the menu's own file, `icons/ui/equip-bow.webp`, drawn
+      by `wpnIconSrc`: the Equipment slot, the weapon button and the player
+      card;
+    - T36.1 is `replaced`;
+    - owner-icons §8 (and §7a/§7b), `mp-copperpick`: docs/specs/owner-icons.md
+      "v2.3.3571".
   - Since v2.3.3473 YOU CAN DROP A BAG ITEM -- the owner: "add an option to
     "drop" items in game. After about a minute they become visible to other
     players. After 2 minutes it begins flashing and disappears":

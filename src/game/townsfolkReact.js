@@ -36,14 +36,15 @@ export const REACT = Object.freeze({
   LINE_GAP_MS: 20000,
 });
 
+/* v2.3.3575: the owner's satire pass (docs/specs/npc-dialogue-v2.md) */
 export const REACT_LINES = Object.freeze({
-  lil: Object.freeze(['Look, I can do it too!', 'Teach me, bro!', 'Like this?']),
-  smith: Object.freeze(['Not bad. Not bad at all.', 'Ha! Now lift an anvil.', 'Forge-made, these arms.']),
-  diego: Object.freeze(['No dancing in my store!', 'Take it outside, bro!', 'This is a place of business!']),
+  lil: Object.freeze(["Look, I'm doing it too!", 'Clip that! Somebody clip that!', 'Wait, like this?!']),
+  smith: Object.freeze(['Nice. Keep eating.', 'Ha! Now go curl an anvil!', "All natural, bro. Ask anyone. Don't ask my doctor."]),
+  diego: Object.freeze(['Hey! This is a business!', 'Dance outside, amigo. Outside is free.', "Unless you're buying, stop blocking my door!"]),
   /* v2.3.3395: Halloween week's Zombie Shuffle by his door */
-  diegoZombie: Object.freeze(['No zombies in my store!', 'Out! And take your brains with you!']),
+  diegoZombie: Object.freeze(['No zombies in the shop!', "Out! Unless you're selling. Then come in."]),
   ace: Object.freeze(['3 to 1', '2 to 1', '5 to 2', 'even money']),
-  mayor: Object.freeze(["Now THAT's a town!", 'Party in the square!', 'This is what BroTown is about!']),
+  mayor: Object.freeze(["Now THAT's a crowd! Somebody get a photo of me in front of it!", "Street party! Nobody told me, but I'll allow it!", 'Look at this town. Happy. Dancing. I take full credit.']),
 });
 
 const isDance = (id) => !!(id && Object.prototype.hasOwnProperty.call(EMOTE_MOVES, id) && EMOTE_MOVES[id].dance);
@@ -145,7 +146,7 @@ function ace(npc, ms, now) {
   npc._reactN = i + 1;
   const who = ds[i % ds.length];
   const odds = REACT_LINES.ace[i % REACT_LINES.ace.length];
-  say(npc, 'Dance-off! ' + who.name + ' at ' + odds + '.', now);
+  say(npc, "Dance-off! I've got " + who.name + ' at ' + odds + '! Who wants in?', now);
 }
 
 function mayor(npc, ms, now) {

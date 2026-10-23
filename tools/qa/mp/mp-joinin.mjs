@@ -106,8 +106,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.hopTo(A, dg.x + 120, dg.y + 20, { tries: 80 });
     await A.page.waitForTimeout(1100);
     await move(A, 'robot');
-    const said = await waitBubble(A, 'Diego', /No dancing in my store!/);
-    rec.ok('by Diego, a dance: "No dancing in my store!"', !!said && /No dancing/.test(said.said || ''), said);
+    const said = await waitBubble(A, 'Diego', /This is a business!/);
+    rec.ok('by Diego, a dance: "Hey! This is a business!"', !!said && /This is a business/.test(said.said || ''), said);
     await A.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/joinin-diego.png` }).catch(() => {});
     await H.nudge(A, 'd', 300);
   }
