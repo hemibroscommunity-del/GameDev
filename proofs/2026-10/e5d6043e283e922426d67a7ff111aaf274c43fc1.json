@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e5d6043e283e922426d67a7ff111aaf274c43fc1",
+  "tree": "adb9a4f5c40803353a56f30aba0403b255a47535",
+  "committedAt": "2026-10-22T23:15:10-07:00",
+  "subject": "The townsfolk are character-creator bros, their dialogue faces Hemi Bros (v2.3.3580) (#1089)",
+  "files": 6478,
+  "bytes": 738782375,
+  "listingSha256": "1ddb29b0c0d12a7ba7a64cb78c22b011e81213214a2fb6a90bb86b00f254914c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
