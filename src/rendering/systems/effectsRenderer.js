@@ -2371,10 +2371,14 @@ const ORE_BREAK_LIE_MS = (() => {
    frame is (_advanceOreBreaks); not minutes later, from a tab coming back */
 const ORE_POP_LATE_MS = 3000;
 
-/* Copper ore icon (same asset the inventory uses) — floats out of the broken
-   node as a "collected" pop. All ores currently share the copper thumb. */
+/* Copper ore icon — floats out of the broken node as a "collected" pop; the
+   tiers past copper pop their own (ORE_ICON_TIER_TEX).
+   v2.3.3571: the BAG's copper ore, as every other tier's pop is its bag
+   picture -- the owner's painted lump ("Ok change the art style of the copper
+   ore and the pickaxe to this").  It was a pixel nugget of its own,
+   icons/ore/ore-copper.webp, though this comment said it was the bag's. */
 let ORE_ICON_TEX = null;
-_fxLoad('/icons/ore/ore-copper.webp').then((tex) => {
+_fxLoad('/icons/items/ore-copper.webp').then((tex) => {
   if (tex) { tex.source.scaleMode = 'linear'; ORE_ICON_TEX = tex; }
 }).catch((err) => console.warn('[ore-icon] load failed', err));
 

@@ -1,0 +1,32 @@
+{
+ "public/icons/items/ore-copper.webp": {
+  "what": "copper ore",
+  "sha256": "0453650214188d22324520331217a42ca1d320ff59779a006337a3de7c40457b",
+  "size": [
+   256,
+   256
+  ],
+  "box": [
+   30,
+   28,
+   196,
+   200
+  ],
+  "src": "assets/icons-source/owner-2026-10-22/copper-ore-and-pickaxe.png"
+ },
+ "public/icons/items/mining-pickaxe.webp": {
+  "what": "pickaxe",
+  "sha256": "36713079414d84a52633cb203c5b762cff031c7d5100a2dde93c11f13aa6c528",
+  "size": [
+   192,
+   192
+  ],
+  "box": [
+   9,
+   1,
+   174,
+   190
+  ],
+  "src": "assets/icons-source/owner-2026-10-22/copper-ore-and-pickaxe.png"
+ }
+}
