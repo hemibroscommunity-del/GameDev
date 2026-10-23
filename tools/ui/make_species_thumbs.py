@@ -16,7 +16,7 @@ stand off the sides of the head.
 Writes thumb-sw.png (what the picker asks for first) and thumb.png (its
 fallback), both 128x128.
 
-v2.3.3586: A SPECIES WITH EYES OF ITS OWN WEARS THEM ON ITS TILE.  The Alien
+v2.3.3589: A SPECIES WITH EYES OF ITS OWN WEARS THEM ON ITS TILE.  The Alien
 puts on the eye style 'alien' when it is picked (speciesCatalog.js `eyes`), so
 its tile shows the almonds, composited the way make_eyestyle_thumbs.py does it:
 the bro's own eyes painted out (blank_eyes, playerSkins._blankEyes's copy),
@@ -64,7 +64,7 @@ def _module(name, path):
 
 
 def species_eyes(sid):
-    """v2.3.3586: the eye style the species puts on (speciesCatalog.js `eyes`), or None"""
+    """v2.3.3589: the eye style the species puts on (speciesCatalog.js `eyes`), or None"""
     src = open(os.path.join(REPO, 'src/rendering/traits/speciesCatalog.js')).read()
     m = re.search(r"\{\s*id:\s*'" + re.escape(sid) + r"'[^}]*?eyes:\s*'([^']+)'", src)
     return m.group(1) if m else None
@@ -78,7 +78,7 @@ def tile_for(sid, d, skin):
     full = Image.fromarray(img.astype(np.uint8), 'RGBA')
     eid = species_eyes(sid)
     if eid:
-        # v2.3.3586: the species' own eyes, as make_eyestyle_thumbs.py composites a style
+        # v2.3.3589: the species' own eyes, as make_eyestyle_thumbs.py composites a style
         pv = _module('preview_headwear', 'tools/preview_headwear.py')
         et = _module('make_eyestyle_thumbs', 'tools/ui/make_eyestyle_thumbs.py')
         edir = os.path.join(REPO, 'public/sprites/traits/eyestyle', eid)

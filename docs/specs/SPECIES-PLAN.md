@@ -380,7 +380,7 @@ its own reviewed job.
 3. **A new appearance key is NOT permanent for an existing character.** See
    below — load-bearing, and not a species problem.
 
-## Stage 4 — the Alien, and a Species button (v2.3.3586)
+## Stage 4 — the Alien, and a Species button (v2.3.3589)
 
 The owner: "I also wanted to add the alien as another species you could play
 as in character creator. It also exists in collection art. I think species

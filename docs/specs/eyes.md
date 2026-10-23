@@ -1,7 +1,7 @@
 # Eye styles (v2.3.2646)
 
 **Shipped:** Sleepy Eyes, One Eye, Demon Eyes, WTF Eyes — south, southwest and
-east, plus their runtime mirrors.  **Since v2.3.3586** also Alien Eyes, the
+east, plus their runtime mirrors.  **Since v2.3.3589** also Alien Eyes, the
 Alien species' own (docs/specs/SPECIES-PLAN.md "Stage 4"): made by
 `tools/species_alien.py` on WTF's placement, put on by picking the Alien, and
 never rolled by the creator's dice (`EYE_STYLE_ROLL_CATALOG`; any bro can still
@@ -28,7 +28,7 @@ the style in the option strip, the eye colour in the row below it. No tenth tab.
 | One Eye | 57/57 · 43/29 · 80 | **centred** cyclops eye — see below |
 | Demon Eyes | 100/100 · 94/86 · 94 | flames; the erase probe (§3) |
 | WTF Eyes | 100/100 · 100/100 · 99 | wide white eyes, pupils in the inner corners |
-| Alien Eyes | — (not imported: WTF's meta, new pixels) | v2.3.3586: a black almond on each eye, outer corner raised, a glint |
+| Alien Eyes | — (not imported: WTF's meta, new pixels) | v2.3.3589: a black almond on each eye, outer corner raised, a glint |
 
 Those are the importer's own numbers against the `stand` bodies, the same
 measurement `docs/specs/eyewear.md` tabulates and with the same qualifier: it is
@@ -501,7 +501,7 @@ shipped facings, pooled:
 | WTF Eyes | light 72% · dark 28% | spare `light` | **replace** | Pupils |
 | Alien Eyes | dark 95% · light 5% | spare `light` | **replace** | Eyes |
 
-**Alien Eyes** (v2.3.3586) are WTF's pupils grown to the whole eye: near-black
+**Alien Eyes** (v2.3.3589) are WTF's pupils grown to the whole eye: near-black
 too, so they take WTF's rule, the glint spared and the rest replaced
 (`EYE_STYLE_PAINTS.alien`). Measured off the game's own probe
 (`window.__btEyeStyleColor.ref('alien')`), with a texture baked for all three

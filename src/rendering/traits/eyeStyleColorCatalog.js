@@ -103,7 +103,7 @@ EYE_STYLE_PAINTS['demon'] = { part: 'Flames' };
    the two reasons in the header. */
 EYE_STYLE_PAINTS['one-eye'] = { part: 'Pupil', spare: 'light', flat: true };
 EYE_STYLE_PAINTS['wtf'] = { part: 'Pupils', spare: 'light', flat: true };
-/* v2.3.3586: the Alien's almonds are WTF's pupils grown to the whole eye --
+/* v2.3.3589: the Alien's almonds are WTF's pupils grown to the whole eye --
    near-black, too dark for a ratio -- so the same rule: spare the glint and
    replace the rest. */
 EYE_STYLE_PAINTS['alien'] = { part: 'Eyes', spare: 'light', flat: true };

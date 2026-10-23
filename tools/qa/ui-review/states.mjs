@@ -307,7 +307,7 @@ export const STATES = [
   },
   /* v2.3.3526: 'hair' joins the list -- the creator opens on Skin now (the
      owner's "Go recommended"), so the opening shot no longer shows Hair.
-     v2.3.3586: and 'species', a tab of its own (the owner: "Yes make species
+     v2.3.3589: and 'species', a tab of its own (the owner: "Yes make species
      it's own button"); the creator opens on it, and Skin is the skin tones. */
   ...['species', 'hair', 'hat', 'skin', 'eyes', 'eyewear', 'beard', 'shirt', 'pants', 'shoes'].map((t) => ({
     id: 'creator-tab-' + t, group: 'Before the game', pre: true, keep: true, title: 'Creator: ' + t + ' tab',

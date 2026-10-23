@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3586: THE ALIEN -- its pointed ears and its black almond eyes, drawn
+"""v2.3.3589: THE ALIEN -- its pointed ears and its black almond eyes, drawn
 from what the game already knows about the bro's head.
 
 The owner: "I also wanted to add the alien as another species you could play
@@ -187,7 +187,7 @@ def species_piece():
     for k in ('frameOverlays', 'fur'):
         meta.pop(k, None)
     meta['muzzle'] = False
-    meta['note'] = ('v2.3.3586: made by tools/species_alien.py from the monkey piece -- its ears re-shaped '
+    meta['note'] = ('v2.3.3589: made by tools/species_alien.py from the monkey piece -- its ears re-shaped '
                     'to points where they sit, their inside skin (fur), its muzzle dropped; anchors, '
                     'nudges and pose fits are the monkey\'s.  frameOverlays and fur: species_frames.py bake.')
     json.dump(meta, open(ALIEN + '/meta.json', 'w'), indent=2)
@@ -372,7 +372,7 @@ def eye_style():
         bboxes[d] = [int(xs.min()), int(ys.min()), int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1)]
         print(f'eyestyle/alien/{d}.png  {len(eyes)} eye(s)')
     meta['bboxes'] = bboxes
-    meta['note'] = ('v2.3.3586: made by tools/species_alien.py -- a black almond in each of the WTF '
+    meta['note'] = ('v2.3.3589: made by tools/species_alien.py -- a black almond in each of the WTF '
                     'style\'s eyes\' places, its outer corner raised; every placement number (anchors, '
                     'crownNudge, scaleByPose, poseNudge) is the WTF style\'s, which were tuned and seated.')
     json.dump(meta, open(EYES + '/meta.json', 'w'), indent=2)

@@ -4232,7 +4232,7 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
 .bt-cc-strip{flex:0 1 auto;min-height:0;display:grid;grid-template-columns:repeat(auto-fill,var(--cc-tile));grid-auto-rows:var(--cc-tile);gap:6px;justify-content:center;align-content:start;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
 .bt-cc-strip::-webkit-scrollbar{display:none}
 .bt-cc-strip>*{flex:none!important;width:var(--cc-tile)!important;height:var(--cc-tile)!important}
-/* v2.3.3586: the Skin tab's tones at the colour row's swatch size, four a row
+/* v2.3.3589: the Skin tab's tones at the colour row's swatch size, four a row
    (NameModal.jsx `compact`): 26 of them, drawn as they were under the species
    from v2.3.2682 until the species got a tab of its own. */
 .bt-cc-strip--compact{grid-template-columns:repeat(auto-fill,var(--cc-swatch));grid-auto-rows:var(--cc-swatch);gap:5px}
@@ -4904,7 +4904,7 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
   .bt-cc-panel>.bt-cc-tabs>.bt-cc-tab{min-height:38px;gap:1px;padding-block:2px}
   .bt-cc-panel>.bt-cc-tabs .bt-cc-tab-icon{width:20px;height:20px}
 }
-/* ═══ v2.3.3586: SPECIES, A WIDE BUTTON OVER THE OTHER NINE ═══
+/* ═══ v2.3.3589: SPECIES, A WIDE BUTTON OVER THE OTHER NINE ═══
    Owner: "Yes make species it's own button."  A tenth tab in the 3-wide grid
    is 3+3+3+1, the lonely tab v2.3.1953 turned the grid down for, and the two
    ways round it cost the options their room: two columns are five rows (115px

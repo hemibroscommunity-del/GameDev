@@ -29,7 +29,7 @@
  * colour in the row below it (live on 'none', which is the human).  Picking the
  * monkey moves a human skin tone to Monkey Brown; the player can then choose
  * any colour, fur colours included.
- *   v2.3.3586: ITS OWN TAB, "Species" (owner: "Yes make species it's own
+ *   v2.3.3589: ITS OWN TAB, "Species" (owner: "Yes make species it's own
  * button").  The Skin tab is the skin tones and the tattoo again, as it was
  * before v2.3.2682; picking a species still moves the skin to its preset
  * (NameModal.jsx, the `species` def).
@@ -38,7 +38,7 @@ export const SPECIES_CATALOG = [
   /* 'none' is the plain bro.  Named for what it is in this picker. */
   { id: 'none', name: 'Human' },
   { id: 'monkey', name: 'Monkey', skin: 'monkeybrown' },
-  /* ═══ v2.3.3586: THE ALIEN ═══
+  /* ═══ v2.3.3589: THE ALIEN ═══
      Owner: "I also wanted to add the alien as another species you could play
      as in character creator.  It also exists in collection art", then "Yes
      make species it's own button.  And add alien."
@@ -64,7 +64,7 @@ export function speciesDefaultSkin(id) {
   return (e && e.skin) || null;
 }
 
-/** v2.3.3586: the eye style a species starts on when picked with the bro's own
+/** v2.3.3589: the eye style a species starts on when picked with the bro's own
  *  eyes ('none'), or null when it keeps them (the human, the monkey). */
 export function speciesDefaultEyes(id) {
   const e = SPECIES_CATALOG.find((s) => s.id === id);

@@ -1,7 +1,7 @@
 {
   "category": "eyestyle",
   "fullFrame": true,
-  "note": "v2.3.3586: made by tools/species_alien.py -- a black almond in each of the WTF style's eyes' places, its outer corner raised; every placement number (anchors, crownNudge, scaleByPose, poseNudge) is the WTF style's, which were tuned and seated.",
+  "note": "v2.3.3589: made by tools/species_alien.py -- a black almond in each of the WTF style's eyes' places, its outer corner raised; every placement number (anchors, crownNudge, scaleByPose, poseNudge) is the WTF style's, which were tuned and seated.",
   "bboxes": {
     "south": [
       113,

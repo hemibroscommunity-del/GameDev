@@ -17,7 +17,7 @@
  *      centre lands on it (elementFromPoint, nothing drawn over it); the name
  *      plate is whole; "Tap to name", "Randomize Bro" and "ENTER BRO TOWN"
  *      are whole; the character is not covered;
- *   2. on all ten trait tabs (nine until v2.3.3586's Species), at least one whole row of options, nothing in
+ *   2. on all ten trait tabs (nine until v2.3.3589's Species), at least one whole row of options, nothing in
  *      the picker past its edge, every tab's label whole, and the drawing
  *      card's tools inside the card;
  *   3. with a keyboard up (stubbed: Playwright has none) the name field

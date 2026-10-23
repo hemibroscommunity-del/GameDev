@@ -284,7 +284,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return out;
     });
     const heights = Object.values(stages);
-    /* v2.3.3586: ten -- Species is a tab of its own */
+    /* v2.3.3589: ten -- Species is a tab of its own */
     rec.ok(`${tag}: all ten tabs were visited (guard: ${heights.length})`,
       heights.length === 10 && heights.every((h) => h > 0), stages);
     rec.ok(`${tag}: the character is EXACTLY the same size on every tab, with `
@@ -309,7 +309,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${tag}: the whole skin catalogue is rendered (guard: ${skinTiles} tiles`
       + `${L2.colorsLive ? `, in the colour row under ${L2.tiles} species` : ''})`,
       skinTiles >= 12, L2);
-    /* v2.3.3586: the Skin tab is its tones again, in the strip (the species has
+    /* v2.3.3589: the Skin tab is its tones again, in the strip (the species has
        a tab of its own), and there are 26 of them since the fur colours, where
        there were 14 when this was written -- and the Species button's row sits
        over them.  On the tall phone they all show; on the short one the strip

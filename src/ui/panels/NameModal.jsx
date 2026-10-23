@@ -33,7 +33,7 @@ import { eyewearColorsFor, eyewearPaints, setEyewearColor } from '@/rendering/tr
 import { eyeStylePaints } from '@/rendering/traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { EYE_COLOR_CATALOG, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { EYE_STYLE_CATALOG, setEyeStyle, eyeStyleHasOptions } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2643 */
-import { SPECIES_CATALOG, setSpecies, speciesHasOptions, speciesDefaultSkin, speciesDefaultEyes } from '@/rendering/traits/speciesCatalog.js';   /* v2.3.2682; speciesDefaultEyes v2.3.3586 */
+import { SPECIES_CATALOG, setSpecies, speciesHasOptions, speciesDefaultSkin, speciesDefaultEyes } from '@/rendering/traits/speciesCatalog.js';   /* v2.3.2682; speciesDefaultEyes v2.3.3589 */
 import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -298,7 +298,7 @@ export function NameModal(props) {
       colorSel: eyeColorSel, setColor: function (id) { setEyeColor(id); setEyeColorSel(id); } },
     /* v2.3.1308 (round-7): 'Skin' → 'Skin Tone' — it recolors the whole
        body, and the plain label read as head-only inside the Head group. */
-    /* v2.3.3586: `compact` -- the Skin tab is its swatches again (the species
+    /* v2.3.3589: `compact` -- the Skin tab is its swatches again (the species
        has a tab of its own), 26 of them with the default since the fur colours
        (v2.3.2681).  At the option strip's tile size that is three a row and nine
        rows; at the colour row's swatch size, four a row, as the skin tones have
@@ -319,7 +319,7 @@ export function NameModal(props) {
        nothing surprising, and a player who picked a fur colour first keeps it
        when they choose the monkey.
 
-       ═══ v2.3.3586: SPECIES IS ITS OWN TAB ═══
+       ═══ v2.3.3589: SPECIES IS ITS OWN TAB ═══
        Owner: "I think species should be its own button on character creator
        screen", then "Yes make species it's own button.  And add alien."  Two
        steps folded into the Skin tab hid the species: the strip read as a row
@@ -411,7 +411,7 @@ export function NameModal(props) {
   /* v2.3.2682: while there is a species to pick, the Skin tab IS the species
      tab (its colour row carries the skin tones, or nothing if skin recolour is
      off -- the species strip alone is still a real pick).
-     v2.3.3586: not any more -- the species is its own tab (the def above), so
+     v2.3.3589: not any more -- the species is its own tab (the def above), so
      it goes only when there is nothing to pick but the human. */
   if (!speciesHasOptions()) delete _typeDefs.species;
   /* ...and then there really is nothing left to pick: no styles AND no colour.
@@ -489,7 +489,7 @@ export function NameModal(props) {
   };
   var _TAB_ICON = function (n) { return '/ui/welcome/cc/cc-tab-' + n + '.png?v=' + BUILD_INFO.version; };
   var _TABS = [
-    /* v2.3.3586: Species, its own tab (owner: "Yes make species it's own
+    /* v2.3.3589: Species, its own tab (owner: "Yes make species it's own
        button"), FIRST and `wide`: one button across the top of the grid, so
        the nine below it stand exactly where they did (game.css
        .bt-cc-tab--wide).  Its icon is the Skin tab's bald head made an alien
@@ -1742,7 +1742,7 @@ export function NameModal(props) {
     var on = x.t === _activeType;
     return /*#__PURE__*/React.createElement("button", {
       key: x.t, type: 'button', role: 'tab', "aria-selected": on ? 'true' : 'false',
-      className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : '') + (x.wide ? ' bt-cc-tab--wide' : ''),   /* v2.3.3586 */
+      className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : '') + (x.wide ? ' bt-cc-tab--wide' : ''),   /* v2.3.3589 */
       onClick: function () { setActiveCat(x.t); }
     }, x.glyph === 'build' ? /*#__PURE__*/React.createElement("svg", {
       /* v2.3.1953: two figures, one short and one tall, which is the whole

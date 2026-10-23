@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3586: draw the creator's SPECIES tab icon, an alien's head.
+"""v2.3.3589: draw the creator's SPECIES tab icon, an alien's head.
 
 The owner: "Yes make species it's own button.  And add alien."  The new tab
 needs an icon beside the painted ones (cc-tab-hair, -skin, -eyes ...).  Those

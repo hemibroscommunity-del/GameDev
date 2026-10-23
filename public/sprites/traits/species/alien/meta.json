@@ -1,7 +1,7 @@
 {
   "category": "species",
   "fullFrame": true,
-  "note": "v2.3.3586: made by tools/species_alien.py from the monkey piece -- its ears re-shaped to points where they sit, their inside skin (fur), its muzzle dropped; anchors, nudges and pose fits are the monkey's.  frameOverlays and fur: species_frames.py bake.",
+  "note": "v2.3.3589: made by tools/species_alien.py from the monkey piece -- its ears re-shaped to points where they sit, their inside skin (fur), its muzzle dropped; anchors, nudges and pose fits are the monkey's.  frameOverlays and fur: species_frames.py bake.",
   "bboxes": {
     "south": [
       95,

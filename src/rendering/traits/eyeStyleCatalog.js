@@ -143,7 +143,7 @@ export const EYE_STYLE_CATALOG = [
      1.136x vs horizontal 1.100x); placed by the head, so that is a note in the
      import log rather than a problem. */
   { id: 'wtf', name: 'WTF Eyes' },
-  /* ═══ v2.3.3586: THE ALIEN'S EYES ═══
+  /* ═══ v2.3.3589: THE ALIEN'S EYES ═══
      Two black almonds, each outer corner raised, a glint in each: the Alien
      species' eyes (speciesCatalog.js `eyes`, put on when the Alien is picked
      with the bro's own eyes).  Made by tools/species_alien.py as the WTF
@@ -156,7 +156,7 @@ export const EYE_STYLE_CATALOG = [
   { id: 'alien', name: 'Alien Eyes', species: true },
 ];
 
-/** v2.3.3586: the styles the creator's dice roll -- all but a species' own
+/** v2.3.3589: the styles the creator's dice roll -- all but a species' own
  *  eyes, as SKIN_ROLL_CATALOG leaves out the species' tones. */
 export const EYE_STYLE_ROLL_CATALOG = EYE_STYLE_CATALOG.filter((e) => !e.species);
 

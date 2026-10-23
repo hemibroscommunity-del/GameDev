@@ -153,7 +153,7 @@ remnant to migrate server-side, not a mode to preserve.
   change pictured beside a normal day: docs/shots/halloween.md),
   `docs/specs/SPECIES-PLAN.md` (the playable species: not a new body but a
   skin tone and a piece drawn over the head, src/rendering/traits/speciesArt.js;
-  the monkey since v2.3.2682 and since v2.3.3586 the ALIEN -- the owner: "Yes
+  the monkey since v2.3.2682 and since v2.3.3589 the ALIEN -- the owner: "Yes
   make species it's own button.  And add alien." -- its pointed ears made from
   the monkey's piece by tools/species_alien.py, so the 196 frames the monkey
   was fitted to fit them too, Alien Cyan, and the eye style 'alien' (black

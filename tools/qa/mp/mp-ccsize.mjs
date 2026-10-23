@@ -183,7 +183,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return out;
   });
   const painted = tabArt.filter((t) => t.kind === 'img');
-  /* v2.3.3586: ten -- Species is a tab of its own, its icon an alien's head */
+  /* v2.3.3589: ten -- Species is a tab of its own, its icon an alien's head */
   rec.ok(`all ten creator tabs have an icon of some kind (${tabArt.length} found)`,
     tabArt.length === 10 && tabArt.every((t) => t.kind !== 'none'), tabArt);
   /* NINE painted, not eight.  _TABS still carries a tenth entry with an inline
@@ -510,7 +510,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* And the colour picks go back to Default with it -- the button added
      earlier in this same version is the thing that shows it.
-     v2.3.3586: read on the EYES tab, whose colour row is live with the bro's
+     v2.3.3589: read on the EYES tab, whose colour row is live with the bro's
      own eyes.  It was read on Skin, whose colour row was the skin tones under
      the species from v2.3.2682; Skin is its swatches again now (the species
      has a tab of its own), with no colour row whose Default could light, so

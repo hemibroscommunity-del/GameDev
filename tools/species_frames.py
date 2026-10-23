@@ -21,7 +21,7 @@ A fix is expressed against the normal placement, per frame (or frame range
     "cover": [[x0, x1, y0, y1, "fur" | "muzzle" | "eye"], ...]
         paint the body's non-flat-tone INTERIOR pixels inside the box -- the
         old human ear, the gritted teeth -- plus a 1px ring, in the head's fur
-        tone (the retinted skin around it) or the muzzle's tan.  v2.3.3586:
+        tone (the retinted skin around it) or the muzzle's tan.  v2.3.3589:
         "eye" paints only the box's dark and non-skin pixels (the bro's own
         eye, its white and its edge), in the fur tone, leaving the face's
         shading: tools/species_alien.py's covers under the alien's eyes.
@@ -89,7 +89,7 @@ TRAIT = 'public/sprites/traits/species/{id}'
 FIXES = 'tools/species-fixes/{id}.json'
 SKIN_REF = 149
 TONES = {'monkey': (85, 56, 23),
-         'alien': (191, 231, 231)}   # v2.3.3586: SKIN_CATALOG aliencyan's target (tools/species_alien.py)
+         'alien': (191, 231, 231)}   # v2.3.3589: SKIN_CATALOG aliencyan's target (tools/species_alien.py)
 FRAME = 256
 MUZZLE_DIRS = ('south', 'southwest', 'east')
 
@@ -137,7 +137,7 @@ def pose_mul(meta, pose, d):
 
 
 def parts(tex, d, muzzle=True):
-    """split the piece into its separate blobs, named.  v2.3.3586: `muzzle`
+    """split the piece into its separate blobs, named.  v2.3.3589: `muzzle`
     False for a piece with none (the alien's meta.muzzle) -- its lowest blob
     is then an ear, not a muzzle"""
     lab, n = ndimage.label(tex[:, :, 3] > 16, structure=np.ones((3, 3)))
@@ -273,7 +273,7 @@ def apply_cover(layer, body_raw, boxes, tone, tan):
         ring[max(0, y0 - 4):y1 + 5, max(0, x0 - 4):x1 + 5] = True
         base = np.median(L[ring & skin]) if (ring & skin).any() else SKIN_REF
         if kind == 'eye':
-            # v2.3.3586: the bro's own eye under an eye style (the alien's
+            # v2.3.3589: the bro's own eye under an eye style (the alien's
             # almonds), where eyeBlankMask.json does not paint it out: every
             # dark or non-skin pixel in the box -- the eye, its white, its
             # edge -- and nothing else, so the face's own shading stays
@@ -325,7 +325,7 @@ def fur_mask(a, tone):
     The tan muzzle/ears, outline and eye white never match (checked: 0 hits
     on the S/E/N art, which has no patches)."""
     r, g, b, al = [a[..., i].astype(int) for i in range(4)]
-    # v2.3.3586: a bright tone's fur (the alien's cyan) runs past the monkey's
+    # v2.3.3589: a bright tone's fur (the alien's cyan) runs past the monkey's
     # 140; the ratios below are what make a pixel fur, the cap only rules out
     # a white
     top = max(140, round(tone[0] * 1.15))
