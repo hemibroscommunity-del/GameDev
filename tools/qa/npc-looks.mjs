@@ -78,8 +78,11 @@ export const NPC_LOOKS = {
     still: 'farmer-bro',
   },
   woodworker: {
-    name: 'Woodworker Bro', why: 'overthinking genius: workshop goggles, wild grey hair, graph-paper tee',
-    skin: 'pale', hair: 'wavy', hairColor: 'gray', beard: 'none', beardColor: 'default',
+    /* v2.3.3587: the game's own Afro, grey (was 'wavy', which the owner calls
+       the shaggy hair): the Hemi Bros collection's Afro is his portrait's, and
+       the owner chose "Game matches collection". */
+    name: 'Woodworker Bro', why: 'overthinking genius: workshop goggles, a wild grey afro, graph-paper tee',
+    skin: 'pale', hair: 'afro', hairColor: 'gray', beard: 'none', beardColor: 'default',
     hat: 'none', hatColor: 'default', eyewear: 'goggles', eyes: 'none',
     shirt: 'tshirt', shirtColor: 'white', pants: 'navy', shoes: 'brown',
     patterns: { shirt: 'grid:9' },

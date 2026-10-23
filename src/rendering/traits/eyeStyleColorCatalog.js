@@ -130,7 +130,7 @@ export function eyeStyleColorTarget(colorId, styleId) {
 /* Three facings, like the art: north and northeast ship no frame, so loading
    them would 404 twice per style per colour (the eyewear note, v2.3.2361). */
 const DIRS = ['east', 'south', 'southwest'];
-const TRAIT_VER = '2.3.2411';   /* the EIGHTH copy of this key; all move together (grep TRAIT_VER).
+const TRAIT_VER = '2.3.3587';   /* the EIGHTH copy of this key; all move together (grep TRAIT_VER).
                                    Not bumped by this change: it adds no art and edits no meta.json. */
 
 const _cache = {};

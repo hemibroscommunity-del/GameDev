@@ -49,10 +49,35 @@ plus backgrounds.json -- so the portraits never need the catalogue again:
 
 The default writes public/sprites/npc/<head>.webp: the bust at 6 file px a
 pixel, 192 x 192, lossless, and a contact sheet in tools/qa/out/npc-looks/.
+
+v2.3.3585: DRESSED AS THE GAME DRESSES THEM.  The owner, of the first busts:
+"I'd rather you try to modify the existing portraits to look like how you
+designed them in the game (mayor bro suspenders, larger beard, etc)".  So
+past the collection's own pieces, each bust now wears what the townsperson
+wears in the world, read off the game's own tables (GAME, below) and his
+look in tools/qa/npc-looks.mjs:
+- his T-SHIRT, its colour and its pattern (the Mayor's navy and white
+  stripes, his "suspenders"; Diego's purple diagonals ...) laid on the
+  collection's plain tee, its outline and its light kept (`tee`);
+- his LONG BEARD, as long as the world's, run from the collection's jaw
+  beard down over the neck and chest, in his beard's colour (`long_beard`);
+- his eyes (`eyes: 'none'` in the game is the collection's Normal Eyes), and
+  no logo the game's piece does not have (the bucket hat's, the headphones'
+  "b").
+
+v2.3.3587: AND THE GAME DRESSES THEM AS THE COLLECTION DOES.  The owner, of
+the gold glasses, the Woodworker's hair and the Mayor's monocle, which the
+portraits wore as the collection draws them and the world did not: "Game
+matches collection".  So the game's Golden Glasses and Golden Monocle are
+the collection's now (tools/ui/make_collection_eyewear.py) and the
+Woodworker wears the game's Afro (tools/qa/npc-looks.mjs); here the
+monocle's glass is the collection's clear again -- v2.3.3585 painted it the
+world's blue, and the world's is clear now too.
 """
 import csv
 import json
 import os
+import re
 import sys
 
 import numpy as np
@@ -527,6 +552,7 @@ SKIN_FAMILY = [(233, 153, 73), (224, 147, 70), (189, 124, 59), (148, 97, 46)]
 GREY = ((96, 96, 104), (206, 206, 212))
 DARK = ((42, 38, 44), (92, 86, 90))
 HAT_BLACK = ((34, 32, 38), (84, 82, 92))
+HAIR_BLACK = ((14, 15, 17), (52, 52, 58))   # v2.3.3585: Diego's, the slick-back's grey shine taken out
 OUTLINE = (31, 13, 27)      # the collection's one outline colour, in every layer
 # The hats.  The collection wears hair OR a hat (one Headwear each): a bro in
 # a hat is bald under it, his ear showing below the brim.  So is a
@@ -541,33 +567,43 @@ HATS = {'tophat', 'buckethat', 'cowboyhat', 'derbyhat', 'brownhat', 'flatcap', '
 # (tools/qa/npc-looks.mjs NPC_LOOKS, the satire pass's stereotypes), his game
 # skin, a background of the collection's own, and the colours his look
 # insists on.  `hair` with a band; never under a hat (HATS).
+# v2.3.3585: `look` names his NPC_LOOKS entry, whose shirt, beard and eyes the
+# bust now wears as the world does (bake); `tee` places his shirt's pattern on
+# the bust's few rows of chest, by eye against the world's picture; `lens` is
+# a monocle's glass painted over (none since v2.3.3587: the world's monocle is
+# the collection's, clear); `relogo` paints out a logo the game's piece has not
+# got; `trim` cuts a hair layer at a row (Diego's hair is short in the world).
 PORTRAITS = {
-    # top hat, gold monocle, a grey beard; a politician's suit
-    'mayor-bro-head': dict(skin='fair', bg='Purple Navy', clothes='suit', eyes='normaleyes', eyewear='goldenmonocle',
-                           headwear='tophat', mouth='beard', recolour={'mouth': GREY}),
-    # the gym bro: shirtless, red sweatband over a flat-top, black beard
-    'blacksmith-bro-head': dict(skin='tan', bg='Rose Taupe', eyes='normaleyes', hair='flattophairstyle',
-                                headwear='redbandana', mouth='beard', recolour={'mouth': DARK}),
-    # the hustler: slicked hair, gold glasses, a loud purple bomber
-    'shopkeeper-bro-head': dict(skin='brown', bg='Dark Lavender', clothes='purplebomber', eyes='normaleyes',
-                                eyewear='goldenglasses', hair='slickbackhair'),
-    # the dirt hippie: green bucket hat, wide eyes, his full brown beard (the
-    # game's; the Low Beard's 20 scattered pixels read as specks), yellow
-    'farmer-bro-head': dict(skin='sand', bg='Russian Green', clothes='yellowshirt', eyes='wtfeyes',
-                            headwear='buckethat', mouth='beard'),
-    # the overthinker: workshop goggles, wild grey hair, a lined white tee
-    'woodworker-bro-head': dict(skin='pale', bg='Teal Blue', clothes='whitestripedshirt', eyes='normaleyes',
-                                eyewear='goggles', hair='afro', recolour={'hair': GREY}),
-    # the survival host: brown hat, beard, sleepless eyes, camo
-    'beastmaster-bro-head': dict(skin='olive', bg='Camouflage Green', clothes='normalsoldier', eyes='sleepyeyes',
-                                 headwear='cowboyhat', mouth='beard'),
-    # the iPad kid: the red "b" headphones on blonde hair, a bright orange top
-    'lil-bro-head': dict(skin='honey', bg='Teal Blue', clothes='yellowrunning', eyes='happyeyes',
-                         hair='blondehair', headwear='headphones'),
-    # the bookie: a black derby, shifty eyes, green felt
-    'cardsharp-bro-head': dict(skin='rosy', bg='Middle Green', clothes='woolenshirt', eyes='suseyes',
-                               headwear='derbyhat', recolour={'headwear': HAT_BLACK}),
+    # top hat, the collection's monocle (v2.3.3587: its glass clear again, as
+    # the world's is now), his long grey beard; the navy and white stripes the
+    # owner calls his suspenders, one either side of it
+    'mayor-bro-head': dict(look='mayor', skin='fair', bg='Purple Navy', eyewear='goldenmonocle',
+                           headwear='tophat', tee=dict(cell=2, ox=1)),
+    # the gym bro: shirtless, red sweatband over a flat-top, his long black beard
+    'blacksmith-bro-head': dict(look='blacksmith', skin='tan', bg='Rose Taupe', hair='flattophairstyle',
+                                headwear='redbandana'),
+    # the hustler: short slicked hair, gold glasses, the loud purple tee
+    'shopkeeper-bro-head': dict(look='diego', skin='brown', bg='Dark Lavender', eyewear='goldenglasses',
+                                hair='slickbackhair', trim={'hair': 14}, recolour={'hair': HAIR_BLACK}, tee=dict(cell=1)),
+    # the dirt hippie: the plain green bucket hat, wide eyes, his long beard,
+    # pink chevrons on yellow
+    'farmer-bro-head': dict(look='farmer', skin='sand', bg='Russian Green', headwear='buckethat',
+                            relogo={'headwear': [((238, 230, 234), (94, 161, 72))]}, tee=dict(cell=1)),
+    # the overthinker: workshop goggles, wild grey hair, his graph-paper tee
+    'woodworker-bro-head': dict(look='woodworker', skin='pale', bg='Teal Blue', eyewear='goggles',
+                                hair='afro', recolour={'hair': GREY}, tee=dict(cell=2, ox=16, oy=27)),
+    # the survival host: brown hat, his long beard, sleepless eyes, camo
+    'beastmaster-bro-head': dict(look='beastmaster', skin='olive', bg='Camouflage Green', headwear='cowboyhat',
+                                 tee=dict(cell=1)),
+    # the iPad kid: plain red headphones on blonde hair, the banded tee
+    'lil-bro-head': dict(look='lilbro', skin='honey', bg='Teal Blue', hair='blondehair', headwear='headphones',
+                         relogo={'headwear': [((255, 255, 255), (152, 10, 4))]}, tee=dict(cell=1, oy=27)),
+    # the bookie: a black derby, yellow diamonds on green felt
+    'cardsharp-bro-head': dict(look='ace', skin='rosy', bg='Middle Green', headwear='derbyhat',
+                               recolour={'headwear': HAT_BLACK}, tee=dict(cell=1, ox=7, oy=27)),
 }
+# the game's eye styles as the collection's eyes
+EYES = {'none': 'normaleyes', 'wtf': 'wtfeyes', 'sleepy': 'sleepyeyes', 'happy': 'happyeyes', 'sus': 'suseyes'}
 STACK = ['clothes', 'eyes', 'eyewear', 'hair', 'headwear', 'mouth']
 
 
@@ -606,24 +642,184 @@ def _ramp(lay, lo, hi):
     return out
 
 
+# ── v2.3.3585: the game's own tables ───────────────────────────────────────
+# Read from the game's source, never copied, so a colour or a pattern changed
+# there is changed here at the next bake.
+
+def _read(rel):
+    return open(os.path.join(REPO, rel)).read()
+
+
+def _rgb_targets(rel):
+    """a colour catalog's {id: [r, g, b]} (its `target`s)"""
+    out = {}
+    for m in re.finditer(r"\{\s*id:\s*'([\w-]+)'[^}]*?target:\s*\[(\d+),\s*(\d+),\s*(\d+)\]", _read(rel)):
+        out[m.group(1)] = tuple(int(m.group(i)) for i in (2, 3, 4))
+    if not out:
+        sys.exit(f'{rel}: no colours read')
+    return out
+
+
+def _game():
+    """the shirt and beard colours, the drawing palette, the pattern tiles, and
+    every townsperson's look (tools/qa/npc-looks.mjs NPC_LOOKS)"""
+    pal_src = _read('src/rendering/traits/playerArt.js')
+    pal_src = pal_src[pal_src.index('export const ART_PALETTE = ['):]
+    pal_src = re.sub(r'/\*.*?\*/', '', pal_src[:pal_src.index('];')], flags=re.S)
+    palette = [None] + [tuple(int(h[i:i + 2], 16) for i in (1, 3, 5)) for h in re.findall(r"'(#[0-9a-fA-F]{6})'", pal_src)]
+    tiles = {}
+    pat = _read('src/rendering/traits/patternCatalog.js')
+    for m in re.finditer(r"id:\s*'([\w-]+)',\s*name:\s*'[^']*',\s*w:\s*(\d+),\s*h:\s*(\d+),\s*cell:\s*(\d+)[^}]*?cells:\s*((?:'[01]+'\s*\+?\s*)+)", pat, re.S):
+        cells = ''.join(re.findall(r"'([01]+)'", m.group(5)))
+        tiles[m.group(1)] = dict(w=int(m.group(2)), h=int(m.group(3)), cell=int(m.group(4)), cells=cells)
+    looks = {}
+    src = _read('tools/qa/npc-looks.mjs')
+    body = src[src.index('export const NPC_LOOKS = {'):]
+    body = body[:body.index('\n};')]
+    for m in re.finditer(r"\n  (\w+): \{(.*?)\n  \},", body, re.S):
+        b = m.group(2)
+        pm = re.search(r"patterns:\s*\{([^}]*)\}", b)
+        d = dict(re.findall(r"(\w+): '([^']*)'", re.sub(r"patterns:\s*\{[^}]*\}", '', b)))
+        d['patterns'] = dict(re.findall(r"(\w+): '([^']*)'", pm.group(1))) if pm else {}
+        looks[m.group(1)] = d
+    for k, t in tiles.items():
+        if len(t['cells']) != t['w'] * t['h']:
+            sys.exit(f'pattern {k}: {len(t["cells"])} cells read, not {t["w"]} x {t["h"]}')
+    if len(palette) < 16 or len(tiles) < 9 or len(looks) < 8:
+        sys.exit(f'the game\'s tables were not read: {len(palette)} colours, {len(tiles)} patterns, {len(looks)} looks')
+    return dict(shirt=_rgb_targets('src/rendering/traits/shirtColorCatalog.js'),
+                beard=_rgb_targets('src/rendering/traits/facialHairColorCatalog.js'),
+                palette=palette, tiles=tiles, looks=looks)
+
+
+# The collection's plain tee, whose outline and light every shirt keeps: its
+# fill's own main colour is the light a cell is measured against.
+TEE = 'yellowshirt'
+TEE_MAIN = (247, 159, 50)
+
+
+def tee(G, look, ox=0, oy=0, cell=1):
+    """the townsperson's T-shirt as the game dresses him: the collection's tee
+    with its outline, every other cell his shirt colour or, where his pattern
+    inks it, the pattern's colour -- each lit as the collection lit that cell.
+    The pattern is the game's own tile (patternCatalog.js), `cell` bust px a
+    tile cell from (`ox`, `oy`): the bust's chest is a few px tall, so where a
+    stripe falls is placed by eye against the world's picture (PORTRAITS)."""
+    L = G['looks'][look]
+    base = np.asarray(Image.open(os.path.join(SRC, TEE + '.png')).convert('RGBA'))
+    shirt = G['shirt'].get(L.get('shirtColor')) or G['shirt']['blue']
+    p = L['patterns'].get('shirt')
+    tile = ink = None
+    if p:
+        tid, idx = p.split(':')
+        tile, ink = G['tiles'][tid], G['palette'][int(idx)]
+    out = np.zeros_like(base)
+    lm = _lum(TEE_MAIN)
+    for y, x in zip(*np.nonzero(base[..., 3])):
+        c = tuple(int(v) for v in base[y, x, :3])
+        out[y, x, 3] = 255
+        if sum(abs(c[i] - OUTLINE[i]) for i in range(3)) <= 12:
+            out[y, x, :3] = OUTLINE
+            continue
+        col = shirt
+        if tile:
+            tx = ((x - ox) // cell) % tile['w']
+            ty = ((y - oy) // cell) % tile['h']
+            if tile['cells'][ty * tile['w'] + tx] == '1':
+                col = ink
+        k = _lum(c) / lm
+        out[y, x, :3] = np.clip(np.array(col) * k, 0, 255)
+    return out
+
+
+# The long beard's outline, row by row from the jaw down: (first, last) x of
+# each row, the outline on both ends.  It hangs from the collection's jaw
+# beard (its rows to BEARD_JAW, moustache and all) over the neck and the
+# chest, a little narrower as it goes, and runs off the bust's foot -- as long
+# as the world's, which reaches the middle of the chest.
+BEARD_JAW = 22
+LONG_BEARD = {23: (8, 19), 24: (8, 19), 25: (8, 19), 26: (8, 19), 27: (8, 19), 28: (9, 19), 29: (9, 18), 30: (10, 18), 31: (10, 17)}
+
+
+def long_beard():
+    """the collection's beard grown long, in its own colours (a ramp gives it
+    the townsperson's): lit from the front-left as the collection lights, its
+    hair falling in strands"""
+    lay = np.asarray(Image.open(os.path.join(SRC, 'beard.png')).convert('RGBA')).copy()
+    lay[BEARD_JAW + 1:] = 0
+    hi, mid, lo, dark, deep = (114, 74, 56), (91, 59, 47), (83, 53, 43), (66, 42, 36), (50, 31, 27)
+    # the jaw beard's outermost cells on rows 21-22 sit outside the long one's
+    # outline: the jaw's outline carries straight on down
+    for y, (x0, x1) in LONG_BEARD.items():
+        for x in range(x0, x1 + 1):
+            if x in (x0, x1):
+                c = OUTLINE
+            else:
+                i, n = x - x0 - 1, x1 - x0 - 1
+                t = i / max(1, n - 1)                   # 0 lit side .. 1 far side
+                c = hi if t < 0.25 else mid if t < 0.55 else lo if t < 0.8 else dark
+                # every third column a strand, a shade darker all the way down:
+                # hair falling (a speckle read as dots, a broken strand as dashes)
+                if i % 3 == 2:
+                    c = {hi: mid, mid: lo, lo: dark}.get(c, deep)
+            lay[y, x, :3] = c
+            lay[y, x, 3] = 255
+    return lay
+
+
+def _relogo(lay, ink, fill):
+    """a logo the game's piece does not wear painted over in the piece's own colour"""
+    out = lay.copy()
+    m = (np.abs(out[..., :3].astype(int) - np.array(ink)).sum(axis=2) <= 12) & (out[..., 3] > 0)
+    out[m, :3] = fill
+    return out
+
+
 def bake():
+    G = _game()
     bgs = json.load(open(os.path.join(SRC, 'backgrounds.json')))
     load = lambda f: np.asarray(Image.open(os.path.join(SRC, f + '.png')).convert('RGBA')).copy()
     made = []
     for head, rec in PORTRAITS.items():
         if rec.get('hair') and rec.get('headwear') in HATS:
             sys.exit(f'{head}: hair under a hat -- the collection is bald under its hats (HATS)')
+        L = G['looks'][rec['look']]
         img = np.zeros((GRID, GRID, 4), np.uint8)
         img[..., :3] = bgs[rec['bg']]
         img[..., 3] = 255
         _over(img, _reskin(load('bro'), SKIN[rec['skin']]))
         for slot in STACK:
+            if slot == 'clothes':
+                # his T-shirt as the game dresses him; shirtless is the bro's own chest
+                if L.get('shirt', 'none') != 'none':
+                    _over(img, tee(G, rec['look'], **rec.get('tee', {})))
+                continue
+            if slot == 'eyes':
+                # the game's `eyes: 'none'` is the collection's Normal Eyes
+                lay = load(EYES.get(L.get('eyes', 'none'), 'normaleyes'))
+                _over(img, _reskin(lay, SKIN[rec['skin']]))
+                continue
+            if slot == 'mouth':
+                # his beard, as long as the world's, in its colour
+                if L.get('beard', 'none') != 'none':
+                    t = G['beard'][L['beardColor']]
+                    _over(img, _ramp(long_beard(), tuple(int(v * 0.55) for v in t), tuple(min(255, int(v * 1.3)) for v in t)))
+                continue
             f = rec.get(slot)
             if not f:
                 continue
             lay = load(f)
-            if slot == 'eyes':
-                lay = _reskin(lay, SKIN[rec['skin']])
+            for ink, fill in rec.get('relogo', {}).get(slot, []):
+                lay = _relogo(lay, ink, fill)
+            if slot == 'eyewear' and rec.get('lens'):
+                # the monocle's glass as the world shows it (see-through cells)
+                glass, glint = rec['lens']
+                cells = list(zip(*np.nonzero((lay[..., 3] > 0) & (lay[..., 3] < 255))))
+                for i, (y, x) in enumerate(sorted(cells)):
+                    lay[y, x, :3] = glint if i == 0 else glass
+                    lay[y, x, 3] = 255
+            if rec.get('trim', {}).get(slot) is not None:
+                lay[rec['trim'][slot]:] = 0
             rc = rec.get('recolour', {}).get(slot)
             if rc:
                 lay = _ramp(lay, *rc)
