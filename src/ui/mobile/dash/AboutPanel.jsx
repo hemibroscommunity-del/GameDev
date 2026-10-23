@@ -19,7 +19,12 @@ import { dashboardPanelBus } from '../dashboardPanelBus.js';
  *
  * It is a plain-language starting draft written from the code, not legal
  * advice; the owner signs off on the wording (and the age line) before it
- * is relied on. */
+ * is relied on.
+ *
+ * v2.3.3581: the Credits name the Hemi Bros collection as the source of the
+ * townsfolk's portraits (v2.3.3580's tools/qa/nft_portraits.py), as
+ * CREDITS.md does -- the owner: "Yes you can credit Hemi bros as source of
+ * portrait art. No terms." */
 
 const Section = ({ title, children }) => (
   <div style={{ marginBottom: 14 }}>
@@ -76,7 +81,9 @@ export const AboutPanel = () => (
 
     <Section title="Credits">
       A Hemi Bros game. Most art and all music were made for this
-      game with AI tools (OpenAI image generation, Suno). Sound effects come from
+      game with AI tools (OpenAI image generation, Suno). The townsfolk's
+      portraits are built from the art of the Hemi Bros collection, made by an
+      artist or team based in Mongolia. Sound effects come from
       Pixabay and Freesound creators, including floraphonic,
       freesound_community, matthewvakaliuk73627 and litupsubway. Footsteps
       (cut into single steps and levelled) from Freesound.org: "Walking Through
