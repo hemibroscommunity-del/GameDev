@@ -11,7 +11,6 @@
  *   node tools/qa/npc-looks.mjs            # previews -> tools/qa/out/npc-looks/
  *   node tools/qa/npc-looks.mjs --bake     # the game's pictures -> public/sprites/npc/
  *   node tools/qa/npc-looks.mjs --bake --only=mayor,ace
- *   node tools/qa/npc-looks.mjs --bake --faces    # the dialogue faces alone
  *
  * --bake photographs each townsperson as the world draws a player
  * (window.__btCaptureLook, rendering/fighterCapture.js): standing facing
@@ -22,10 +21,10 @@
  *   a standing townsperson   <file>.webp            one 256 x 256 picture
  *   a walker                 <file><dir>.webp       eight strips of nine cells:
  *                                                  his jog in eight, then his stand
- *   every one                <head>.webp            his face up close, 192 px: the
- *                                                  dialogue window's picture
  * A change of look here is a re-bake; the townsfolk's code reads only the
- * files (and NPC_DATA's `walk`, whose shape this keeps).
+ * files (and NPC_DATA's `walk`, whose shape this keeps).  Their dialogue
+ * heads are not photographs: they are Hemi Bros portraits, made by
+ * tools/qa/nft_portraits.py.
  *
  * The frames are taken at UNIT_PX caller px per figure unit, 256/120: the
  * townsfolk's pictures are drawn at NPC_SPRITE_SCALE (120/256 world px a
@@ -44,8 +43,7 @@ import { NPC_DATA } from '../../src/data/gameDisplay.js';
 /* The looks.  Ids are the creator's catalogs (src/rendering/traits/*,
    playerSkins.js).  `why` is the joke each look tells, from the satire
    pass's stereotype line.  `still` / `walk` name the files NPC_DATA already
-   points at (a standing townsperson's one picture, a walker's strip base),
-   `head` his dialogue portrait. */
+   points at (a standing townsperson's one picture, a walker's strip base). */
 export const NPC_LOOKS = {
   mayor: {
     name: 'Mayor Bro', why: 'small-town politician: top hat, monocle, the grey beard he always had',
@@ -53,7 +51,7 @@ export const NPC_LOOKS = {
     hat: 'top-hat', hatColor: 'black', eyewear: 'golden-monocle', eyes: 'none',
     shirt: 'tshirt', shirtColor: 'navy', pants: 'black', shoes: 'black',
     patterns: { shirt: 'stripe-v:2' },
-    still: 'mayor-bro', head: 'mayor-bro-head',
+    still: 'mayor-bro',
   },
   blacksmith: {
     name: 'Blacksmith Bro', why: 'gym bro: shirtless, sweatband, flat-top, grey sweatpants',
@@ -61,7 +59,7 @@ export const NPC_LOOKS = {
     hat: 'bandana-2', hatColor: 'default', eyewear: 'none', eyes: 'none',
     shirt: 'none', shirtColor: 'default', pants: 'gray', shoes: 'white',
     patterns: { pants: 'stripe-v:2' },
-    still: 'blacksmith-bro', head: 'blacksmith-bro-head',
+    still: 'blacksmith-bro',
   },
   diego: {
     name: 'Diego', why: 'hustle guy: slicked hair, gold glasses, loud purple tee, white kicks',
@@ -69,7 +67,7 @@ export const NPC_LOOKS = {
     hat: 'none', hatColor: 'default', eyewear: 'golden-glasses', eyes: 'none',
     shirt: 'tshirt', shirtColor: 'purple', pants: 'white', shoes: 'white',
     patterns: { shirt: 'diag:5' },
-    walk: 'shopkeeper-bro-walk-', head: 'shopkeeper-bro-head',
+    walk: 'shopkeeper-bro-walk-',
   },
   farmer: {
     name: 'Farmer Bro', why: 'paranoid dirt hippie: bucket hat, scraggly beard, wide eyes, earth tones',
@@ -77,7 +75,7 @@ export const NPC_LOOKS = {
     hat: 'bucket-hat', hatColor: 'green', eyewear: 'none', eyes: 'wtf',
     shirt: 'tshirt', shirtColor: 'yellow', pants: 'brown', shoes: 'brown',
     patterns: { shirt: 'chevron:11' },
-    still: 'farmer-bro', head: 'farmer-bro-head',
+    still: 'farmer-bro',
   },
   woodworker: {
     name: 'Woodworker Bro', why: 'overthinking genius: workshop goggles, wild grey hair, graph-paper tee',
@@ -85,7 +83,7 @@ export const NPC_LOOKS = {
     hat: 'none', hatColor: 'default', eyewear: 'goggles', eyes: 'none',
     shirt: 'tshirt', shirtColor: 'white', pants: 'navy', shoes: 'brown',
     patterns: { shirt: 'grid:9' },
-    still: 'woodworker-bro', head: 'woodworker-bro-head',
+    still: 'woodworker-bro',
   },
   beastmaster: {
     name: 'Beastmaster Bro', why: 'survival-show host: brown hat, beard, camo, sleepless eyes',
@@ -93,7 +91,7 @@ export const NPC_LOOKS = {
     hat: 'cowboy-hat', hatColor: 'default', eyewear: 'none', eyes: 'sleepy',
     shirt: 'tshirt', shirtColor: 'green', pants: 'brown', shoes: 'black',
     patterns: { shirt: 'camo:12' },
-    still: 'beastmaster-bro', head: 'beastmaster-bro-head',
+    still: 'beastmaster-bro',
   },
   lilbro: {
     name: 'Lil Bro', why: 'iPad kid: gamer headphones, bright tee, red sneakers (a child: NPC_DATA figureSize 0.8)',
@@ -101,7 +99,7 @@ export const NPC_LOOKS = {
     hat: 'headphones', hatColor: 'default', eyewear: 'none', eyes: 'none',
     shirt: 'tshirt', shirtColor: 'orange', pants: 'blue', shoes: 'red',
     patterns: { shirt: 'stripe-h:2' },
-    walk: 'lil-bro-walk-', head: 'lil-bro-head',
+    walk: 'lil-bro-walk-',
   },
   ace: {
     name: 'Ace', why: 'back-alley bookie: derby, slicked hair, green felt-table tee, black',
@@ -109,7 +107,7 @@ export const NPC_LOOKS = {
     hat: 'fedora', hatColor: 'black', eyewear: 'none', eyes: 'none',
     shirt: 'tshirt', shirtColor: 'green', pants: 'black', shoes: 'black',
     patterns: { shirt: 'diamond:5' },
-    walk: 'cardsharp-bro-walk-', head: 'cardsharp-bro-head',
+    walk: 'cardsharp-bro-walk-',
   },
 };
 
@@ -122,19 +120,9 @@ const unitFor = (L) => {
   return UNIT_PX * (row && row.figureSize > 0 ? row.figureSize : 1);
 };
 const DIRS8 = ['south', 'southwest', 'west', 'northwest', 'north', 'northeast', 'east', 'southeast'];
-/* The dialogue's face -- the owner: "an up close of their face of their
-   Southwest portrait for dialog": his stand turned southwest (the creator's
-   own 3/4 view, characterPortrait's default), photographed at FACE_K
-   picture px to each of the bro's own (body sheet) px, so the close-up is
-   his pixels made bigger, never smoothed.  The same for Lil Bro: a face
-   close-up is a face.  npc_looks_bake.py crops it square about the face. */
-const LOCAL_BODY_SCALE = 0.421875;   /* entityRenderer: world px per body-sheet px */
-const FACE_K = 3;
-const FACE_UNIT = FACE_K / LOCAL_BODY_SCALE;
 
 const OUT = join(H.REPO, 'tools', 'qa', 'out', 'npc-looks');
 const BAKE = process.argv.includes('--bake');
-const FACES = process.argv.includes('--faces');   /* with --bake: the faces alone */
 const only = (process.argv.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
 
 async function dress(page, L) {
@@ -149,9 +137,8 @@ async function dress(page, L) {
       eyewear: call(w.__btSetEyewear || f.setEyewear, L.eyewear), eyes: call(w.__btSetEyeStyle || f.setEyeStyle, L.eyes),
       shirt: call(w.__btSetShirt, L.shirt),
     };
-    /* the pattern before the shirt's colour: the dashboard's headshot, the
-       faces' first source, repainted on a colour change and read the pattern
-       as it painted (the faces are photographed now; the order is harmless) */
+    /* the pattern before the shirt's colour (the order the dashboard's
+       headshot once needed; harmless) */
     for (const slot of ['shirt', 'pants', 'shoes']) r['pattern-' + slot] = call((v) => w.__btSetPattern(slot, v), (L.patterns || {})[slot] || '');
     r.shirtColor = call(w.__btSetShirtColor, L.shirtColor);
     /* the shirt is TWO stores: the creator's pick and the gear slot that
@@ -275,8 +262,8 @@ try {
       console.log('wrote', id);
       continue;
     }
-    const m = { name: L.name, still: L.still || null, walk: L.walk || null, head: L.head, dirs: {} };
-    const dirs = FACES ? [] : L.walk ? DIRS8 : ['south'];
+    const m = { name: L.name, still: L.still || null, walk: L.walk || null, dirs: {} };
+    const dirs = L.walk ? DIRS8 : ['south'];
     for (const dir of dirs) {
       if (!(await lookIsOn(P.page, L))) {   /* put back since: dress him again, and let the bakes land */
         console.log(id, dir, 'look was off: dressed again');
@@ -298,17 +285,6 @@ try {
       }
       m.dirs[dir] = d;
     }
-    /* his face: the stand turned southwest, up close (FACE_UNIT) */
-    if (!(await lookIsOn(P.page, L))) {
-      console.log(id, 'face: look was off: dressed again');
-      await dress(P.page, L);
-      await P.page.waitForTimeout(6000);
-    }
-    const face = await stableCapture(P.page, 'stand', 'southwest', FACE_UNIT);
-    if (face && face.frames && face.frames.length && !face.unstable && face.dir === 'southwest') {
-      writeFileSync(join(RAW, id + '-face.png'), png(face.frames[0]));
-      m.face = { file: id + '-face.png', origin: face.origin, k: FACE_K };
-    } else { console.log(id, 'NO FACE', JSON.stringify(face && { dir: face.dir, unstable: face.unstable })); failed = true; }
     const stillOn = await lookIsOn(P.page, L);
     if (reloads !== reloadsAtStart || !stillOn) {
       console.log(id, reloads !== reloadsAtStart ? 'the page reloaded while he was photographed: again' : 'his look was put back while he was photographed: again');

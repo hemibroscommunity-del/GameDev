@@ -348,8 +348,11 @@ export function ShopkeeperPanel() {
         padding: '6px 8px', flex: 'none', borderBottom: rule,
         background: '#27393F',
       }}>
+        {/* v2.3.3576: his head is a Hemi Bros portrait now, its own square
+            background and all (tools/qa/nft_portraits.py): a rounded chip, as
+            Ace's is in his window */}
         <img src={npcArtUrl('/sprites/npc/shopkeeper-bro-head.webp')} alt="" draggable={false}
-          style={{ width: 26, height: 26, objectFit: 'contain', flex: 'none' }} />
+          style={{ width: 26, height: 26, objectFit: 'cover', borderRadius: 6, flex: 'none' }} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.15 }}>Diego</div>
           <div style={{

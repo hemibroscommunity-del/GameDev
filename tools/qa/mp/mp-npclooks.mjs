@@ -16,7 +16,10 @@
  *      Diego's;
  *   3. each one's look is what is painted: a colour his creator look has and
  *      his old picture did not, counted on the screen beside him;
- *   4. Mayor Bro's dialogue shows his new head, 192 px;
+ *   4. Mayor Bro's dialogue shows his Hemi Bros portrait (tools/qa/
+ *      nft_portraits.py): 192 px, on the collection's Purple Navy, and every
+ *      one of its 32 x 32 pixels a flat 6 x 6 block -- the owner found the
+ *      headshot before it "fuzzy";
  *   5. no page errors.
  * Pictures: tools/qa/mp/out/npclooks-*.png.
  */
@@ -173,11 +176,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const img = document.querySelector('.bt-npcdlg-img');
       if (!img) return null;
       if (!img.complete) await new Promise((r) => { img.onload = r; img.onerror = r; setTimeout(r, 4000); });
-      return { src: img.getAttribute('src'), w: img.naturalWidth, h: img.naturalHeight };
+      const out = { src: img.getAttribute('src'), w: img.naturalWidth, h: img.naturalHeight };
+      if (!out.w) return out;
+      /* its own pixels: the corner is the bust's background, and a 6 x 6
+         block that is not one colour is a pixel smoothed */
+      const c = document.createElement('canvas');
+      c.width = out.w; c.height = out.h;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0);
+      const d = g.getImageData(0, 0, out.w, out.h).data;
+      let mixed = 0;
+      for (let by = 0; by + 6 <= out.h; by += 6) {
+        for (let bx = 0; bx + 6 <= out.w; bx += 6) {
+          const i0 = (by * out.w + bx) * 4;
+          let flat = true;
+          for (let y = by; y < by + 6 && flat; y++) {
+            for (let x = bx; x < bx + 6; x++) {
+              const i = (y * out.w + x) * 4;
+              if (d[i] !== d[i0] || d[i + 1] !== d[i0 + 1] || d[i + 2] !== d[i0 + 2]) { flat = false; break; }
+            }
+          }
+          if (!flat) mixed++;
+        }
+      }
+      out.corner = [d[0], d[1], d[2]];
+      out.mixed = mixed;
+      return out;
     });
     await P.page.screenshot({ path: join(OUT, 'npclooks-mayor-dialogue.png') }).catch(() => {});
-    rec.ok(`4. Mayor Bro's dialogue shows his new head (${head ? head.src + ' ' + head.w + ' x ' + head.h : 'none'})`,
-      !!opened && !!head && /mayor-bro-head\.webp\?v=2\.3\.3576$/.test(head.src) && head.w === 192 && head.h === 192, { opened, head });
+    const navy = head && head.corner && Math.abs(head.corner[0] - 86) + Math.abs(head.corner[1] - 85) + Math.abs(head.corner[2] - 142) <= 6;
+    rec.ok(`4. Mayor Bro's dialogue shows his Hemi Bros portrait (${head ? head.src + ' ' + head.w + ' x ' + head.h + ', corner ' + head.corner + ', ' + head.mixed + ' blocks not flat' : 'none'})`,
+      !!opened && !!head && /mayor-bro-head\.webp\?v=2\.3\.3576$/.test(head.src) && head.w === 192 && head.h === 192
+        && navy && head.mixed === 0, { opened, head });
 
     rec.ok('5. no page errors', errors.length === 0, errors);
   } finally {
