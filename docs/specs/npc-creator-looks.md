@@ -3,7 +3,8 @@
 The owner: "generate the art for the characters described in the document
 using the Brotown character creator. You can modify the bro art if you want.
 I think NPCs should look like normal bro characters." Then, on the preview:
-"Approve and push to main".
+"Approve and push to main". And of the dialogue faces: "Are you able to use
+an up close of their face of their Southwest portrait for dialog?"
 
 Every townsperson's picture is now the player's own figure in a creator
 look: the same body, hair, hat, beard, shirt, pattern and colours a player
@@ -31,6 +32,7 @@ npm run build
 node tools/qa/npc-looks.mjs                 # previews: tools/qa/out/npc-looks/
 node tools/qa/npc-looks.mjs --bake          # the game's pictures: public/sprites/npc/
 node tools/qa/npc-looks.mjs --bake --only=lilbro
+node tools/qa/npc-looks.mjs --bake --faces  # the dialogue faces alone
 ```
 
 - The tool opens a real player in the world, dresses him in each look
@@ -52,9 +54,14 @@ node tools/qa/npc-looks.mjs --bake --only=lilbro
 - A walker gets eight strips (one a facing) of nine cells: the player's jog
   in eight cells spread evenly over its cycle, then his stand (NPC_DATA
   `walk`: `frames` 9, `cycle` 8, `stand` 8).
-- Every head (the dialogue window's, Diego's shop and Ace's flip) is the
-  dashboard's own 96 px headshot of the look, doubled pixel for pixel to
-  192 px so Ace's 64 CSS px window stays sharp.
+- Every head (the dialogue window's, Diego's shop and Ace's flip) is his
+  FACE UP CLOSE, turned southwest: the creator's own 3/4 view. His stand is
+  photographed facing southwest at 3 picture px to each of the bro's own
+  body-sheet px (`FACE_UNIT`), so the close-up is his own pixels made bigger,
+  never smoothed. `npc_looks_bake.py` then cuts a square about his face
+  (`FACE_CENTRE`, `FACE_SIDE`, measured off the photographs and the same for
+  every bro, since they share one body) into a 192 px file. Lil Bro's face is
+  photographed the same size as the others': a close-up is a face.
 - The files keep their old names; `NPC_ART_VERSION` moved to 2.3.3576, so
   every phone fetches the new ones.
 

@@ -11,6 +11,7 @@
  *   node tools/qa/npc-looks.mjs            # previews -> tools/qa/out/npc-looks/
  *   node tools/qa/npc-looks.mjs --bake     # the game's pictures -> public/sprites/npc/
  *   node tools/qa/npc-looks.mjs --bake --only=mayor,ace
+ *   node tools/qa/npc-looks.mjs --bake --faces    # the dialogue faces alone
  *
  * --bake photographs each townsperson as the world draws a player
  * (window.__btCaptureLook, rendering/fighterCapture.js): standing facing
@@ -21,8 +22,8 @@
  *   a standing townsperson   <file>.webp            one 256 x 256 picture
  *   a walker                 <file><dir>.webp       eight strips of nine cells:
  *                                                  his jog in eight, then his stand
- *   every one                <head>.webp            the game's own headshot of his
- *                                                  look (the dashboard's), 192 px
+ *   every one                <head>.webp            his face up close, 192 px: the
+ *                                                  dialogue window's picture
  * A change of look here is a re-bake; the townsfolk's code reads only the
  * files (and NPC_DATA's `walk`, whose shape this keeps).
  *
@@ -121,9 +122,19 @@ const unitFor = (L) => {
   return UNIT_PX * (row && row.figureSize > 0 ? row.figureSize : 1);
 };
 const DIRS8 = ['south', 'southwest', 'west', 'northwest', 'north', 'northeast', 'east', 'southeast'];
+/* The dialogue's face -- the owner: "an up close of their face of their
+   Southwest portrait for dialog": his stand turned southwest (the creator's
+   own 3/4 view, characterPortrait's default), photographed at FACE_K
+   picture px to each of the bro's own (body sheet) px, so the close-up is
+   his pixels made bigger, never smoothed.  The same for Lil Bro: a face
+   close-up is a face.  npc_looks_bake.py crops it square about the face. */
+const LOCAL_BODY_SCALE = 0.421875;   /* entityRenderer: world px per body-sheet px */
+const FACE_K = 3;
+const FACE_UNIT = FACE_K / LOCAL_BODY_SCALE;
 
 const OUT = join(H.REPO, 'tools', 'qa', 'out', 'npc-looks');
 const BAKE = process.argv.includes('--bake');
+const FACES = process.argv.includes('--faces');   /* with --bake: the faces alone */
 const only = (process.argv.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
 
 async function dress(page, L) {
@@ -138,8 +149,9 @@ async function dress(page, L) {
       eyewear: call(w.__btSetEyewear || f.setEyewear, L.eyewear), eyes: call(w.__btSetEyeStyle || f.setEyeStyle, L.eyes),
       shirt: call(w.__btSetShirt, L.shirt),
     };
-    /* the pattern before the shirt's colour: the dashboard's headshot
-       repaints on a colour change, and reads the pattern as it paints */
+    /* the pattern before the shirt's colour: the dashboard's headshot, the
+       faces' first source, repainted on a colour change and read the pattern
+       as it painted (the faces are photographed now; the order is harmless) */
     for (const slot of ['shirt', 'pants', 'shoes']) r['pattern-' + slot] = call((v) => w.__btSetPattern(slot, v), (L.patterns || {})[slot] || '');
     r.shirtColor = call(w.__btSetShirtColor, L.shirtColor);
     /* the shirt is TWO stores: the creator's pick and the gear slot that
@@ -222,21 +234,6 @@ async function lookIsOn(page, L) {
   }, L);
 }
 
-/* the dashboard's own headshot of the look now worn (BottomDashboard's
-   portraitDataUrl): read once it stops changing */
-async function headshot(page) {
-  let last = null, same = 0;
-  for (let i = 0; i < 40; i++) {
-    const src = await page.evaluate(() => {
-      const img = document.querySelector('.bt-navrail [data-nav="hero"] img');
-      return img ? img.getAttribute('src') : null;
-    });
-    if (src && src.startsWith('data:') && src === last) { if (++same >= 3) return src; } else same = 0;
-    last = src;
-    await page.waitForTimeout(250);
-  }
-  return last && last.startsWith('data:') ? last : null;
-}
 
 const webPort = await H.freePort();
 const srv = await H.serveDist(webPort);
@@ -279,7 +276,7 @@ try {
       continue;
     }
     const m = { name: L.name, still: L.still || null, walk: L.walk || null, head: L.head, dirs: {} };
-    const dirs = L.walk ? DIRS8 : ['south'];
+    const dirs = FACES ? [] : L.walk ? DIRS8 : ['south'];
     for (const dir of dirs) {
       if (!(await lookIsOn(P.page, L))) {   /* put back since: dress him again, and let the bakes land */
         console.log(id, dir, 'look was off: dressed again');
@@ -301,9 +298,17 @@ try {
       }
       m.dirs[dir] = d;
     }
-    const head = await headshot(P.page);
-    if (head) { writeFileSync(join(RAW, id + '-head.png'), png(head)); m.headFile = id + '-head.png'; }
-    else { console.log(id, 'NO HEADSHOT'); failed = true; }
+    /* his face: the stand turned southwest, up close (FACE_UNIT) */
+    if (!(await lookIsOn(P.page, L))) {
+      console.log(id, 'face: look was off: dressed again');
+      await dress(P.page, L);
+      await P.page.waitForTimeout(6000);
+    }
+    const face = await stableCapture(P.page, 'stand', 'southwest', FACE_UNIT);
+    if (face && face.frames && face.frames.length && !face.unstable && face.dir === 'southwest') {
+      writeFileSync(join(RAW, id + '-face.png'), png(face.frames[0]));
+      m.face = { file: id + '-face.png', origin: face.origin, k: FACE_K };
+    } else { console.log(id, 'NO FACE', JSON.stringify(face && { dir: face.dir, unstable: face.unstable })); failed = true; }
     const stillOn = await lookIsOn(P.page, L);
     if (reloads !== reloadsAtStart || !stillOn) {
       console.log(id, reloads !== reloadsAtStart ? 'the page reloaded while he was photographed: again' : 'his look was put back while he was photographed: again');

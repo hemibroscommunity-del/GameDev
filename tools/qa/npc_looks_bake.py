@@ -18,8 +18,10 @@ A standing townsperson: <still>.webp, his stand facing south.
 A walker: <walk><dir>.webp for the eight ways, nine cells each -- his jog's
 cycle in eight cells evenly over its time, then his stand (NPC_DATA `walk`:
 frames 9, cycle 8, stand 8).
-Every one: <head>.webp, 192 x 192, the game's own 96 px headshot of his look
-doubled pixel for pixel.
+Every one: <head>.webp, 192 x 192, his face up close for the dialogue window
+(the owner: "an up close of their face of their Southwest portrait"): his
+stand turned southwest, photographed at FACE_K picture px a body px, cut
+square about his face (FACE_CENTRE, FACE_SIDE).  --faces bakes these alone.
 
 Lossless WebP: these are pixel art, and a lossy pass smears the outline.
 Fails (writes nothing) if any frame's paint would leave its cell.
@@ -35,6 +37,13 @@ FEET_ROW = 222          # the soles' bottom row; the paint ends at y = 223
 MID_X = 128
 CYCLE = 8               # jog cells in a walker's strip; his stand is cell 8
 ALPHA = 8
+# The face: where it sits in the southwest stand, in body-sheet px from the
+# figure's own origin (its body cell's middle), and how much of him the
+# square takes in -- measured off the photographs, the same for every bro
+# (one body); the picture is FACE_SIDE x FACE_K px.
+FACE_CENTRE = (-2, -72)
+FACE_SIDE = 64
+HEAD_PX = 192
 
 
 def lowest_row(im):
@@ -111,16 +120,29 @@ def main(raw, out, preview):
                 strip.alpha_composite(c, (k * CELL, 0))
             written.append((os.path.join(out, m['walk'] + d + '.webp'), strip))
             row.extend(cells if d == 'south' else [cells[0], cells[CYCLE // 2], stand_cell])
-        hf = m.get('headFile')
-        if hf:
-            # the game's 96 px headshot, doubled pixel for pixel: Ace's window
-            # shows his at 64 CSS px, 192 device px on a 3x phone, and a 96 px
-            # file there is smoothed up, soft
-            head = Image.open(os.path.join(raw, hf)).convert('RGBA')
-            head = head.resize((192, 192), Image.NEAREST)
+        fc = m.get('face')
+        if fc:
+            k = fc.get('k', 3)
+            fim = Image.open(os.path.join(raw, fc['file'])).convert('RGBA')
+            side = FACE_SIDE * k
+            cx = fc['origin'][0] + FACE_CENTRE[0] * k
+            cy = fc['origin'][1] + FACE_CENTRE[1] * k
+            head = Image.new('RGBA', (side, side), (0, 0, 0, 0))
+            # the square's corner in the photograph; whatever of it lies off
+            # the photograph (over a bare head) stays see-through
+            x0, y0 = int(round(cx - side / 2)), int(round(cy - side / 2))
+            sx, sy = max(0, x0), max(0, y0)
+            ex, ey = min(fim.width, x0 + side), min(fim.height, y0 + side)
+            if ex > sx and ey > sy:
+                head.alpha_composite(fim, (sx - x0, sy - y0), (sx, sy, ex, ey))
+            if lowest_row(head) is None:
+                problems.append(f'{nid}: the face crop is empty')
+            if head.width != HEAD_PX:
+                head = head.resize((HEAD_PX, HEAD_PX), Image.NEAREST)
             written.append((os.path.join(out, m['head'] + '.webp'), head))
+            row.append(head.resize((CELL, CELL), Image.NEAREST))
         else:
-            problems.append(f'{nid}: no headshot')
+            problems.append(f'{nid}: no face')
         sheet_rows.append(row)
     if problems:
         print('NOT WRITTEN:\n  ' + '\n  '.join(problems))
