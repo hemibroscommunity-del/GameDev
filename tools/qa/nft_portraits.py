@@ -61,9 +61,18 @@ look in tools/qa/npc-looks.mjs:
   collection's plain tee, its outline and its light kept (`tee`);
 - his LONG BEARD, as long as the world's, run from the collection's jaw
   beard down over the neck and chest, in his beard's colour (`long_beard`);
-- his eyes (`eyes: 'none'` in the game is the collection's Normal Eyes), the
-  Mayor's monocle glass blue as in the world, and no logo the game's piece
-  does not have (the bucket hat's, the headphones' "b").
+- his eyes (`eyes: 'none'` in the game is the collection's Normal Eyes), and
+  no logo the game's piece does not have (the bucket hat's, the headphones'
+  "b").
+
+v2.3.3587: AND THE GAME DRESSES THEM AS THE COLLECTION DOES.  The owner, of
+the gold glasses, the Woodworker's hair and the Mayor's monocle, which the
+portraits wore as the collection draws them and the world did not: "Game
+matches collection".  So the game's Golden Glasses and Golden Monocle are
+the collection's now (tools/ui/make_collection_eyewear.py) and the
+Woodworker wears the game's Afro (tools/qa/npc-looks.mjs); here the
+monocle's glass is the collection's clear again -- v2.3.3585 painted it the
+world's blue, and the world's is clear now too.
 """
 import csv
 import json
@@ -561,14 +570,15 @@ HATS = {'tophat', 'buckethat', 'cowboyhat', 'derbyhat', 'brownhat', 'flatcap', '
 # v2.3.3585: `look` names his NPC_LOOKS entry, whose shirt, beard and eyes the
 # bust now wears as the world does (bake); `tee` places his shirt's pattern on
 # the bust's few rows of chest, by eye against the world's picture; `lens` is
-# the monocle's glass as the world shows it (its colour and a glint, sampled
-# off mayor-bro.webp); `relogo` paints out a logo the game's piece has not
+# a monocle's glass painted over (none since v2.3.3587: the world's monocle is
+# the collection's, clear); `relogo` paints out a logo the game's piece has not
 # got; `trim` cuts a hair layer at a row (Diego's hair is short in the world).
 PORTRAITS = {
-    # top hat, the monocle's blue glass, his long grey beard; the navy and
-    # white stripes the owner calls his suspenders, one either side of it
+    # top hat, the collection's monocle (v2.3.3587: its glass clear again, as
+    # the world's is now), his long grey beard; the navy and white stripes the
+    # owner calls his suspenders, one either side of it
     'mayor-bro-head': dict(look='mayor', skin='fair', bg='Purple Navy', eyewear='goldenmonocle',
-                           lens=((70, 174, 250), (206, 236, 255)), headwear='tophat', tee=dict(cell=2, ox=1)),
+                           headwear='tophat', tee=dict(cell=2, ox=1)),
     # the gym bro: shirtless, red sweatband over a flat-top, his long black beard
     'blacksmith-bro-head': dict(look='blacksmith', skin='tan', bg='Rose Taupe', hair='flattophairstyle',
                                 headwear='redbandana'),

@@ -7,7 +7,7 @@
  * In the Wheel's BroTown:
  *
  *   1. every townsperson's picture comes in at the new art's version
- *      (NPC_ART_VERSION, 2.3.3585 since the portraits were dressed), none at
+ *      (NPC_ART_VERSION, 2.3.3587 since the collection's pieces), none at
  *      an old one;
  *   2. each is drawn a bro's size -- the player's own PLAYER_SIZE_MULT, the
  *      mayor 10% over it (the owner's v2.3.1822) -- his feet on his spot, a
@@ -29,7 +29,10 @@
  *      etc)" -- every portrait wears his world look: the shirt colour of his
  *      creator look on his chest (the Blacksmith his bare skin), a bearded
  *      one's beard running down to the bust's foot, and the Mayor's monocle
- *      glass blue;
+ *      glass blue -- v2.3.3587: clear, the collection's, as the world's is now;
+ *  4d. v2.3.3587, the owner: "Game matches collection" -- the Mayor wears the
+ *      collection's monocle in the world, round the eye his portrait wears it
+ *      on (the viewer's right), where the old piece sat on the other eye;
  *   5. no page errors.
  * Pictures: tools/qa/mp/out/npclooks-*.png.
  */
@@ -38,7 +41,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
-const ART_V = '2.3.3585';
+const ART_V = '2.3.3587';   /* NPC_ART_VERSION (npcSprites.js): v2.3.3587 the collection's pieces */
 /* world px of a townsperson's 256 px cell: NPC_SPRITE_SCALE (120/256) x his
    size (entityRenderer NPC_SCALE_MULT) -- Lil Bro's cell too: he is
    photographed small, not drawn small */
@@ -288,9 +291,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { h, what, shirt, beard, ok: shirt >= 4 && beard !== false };
     });
     const lens = dressed['mayor-bro'] && dressed['mayor-bro'].lens;
-    const blue = !!lens && lens[2] > 200 && lens[0] < 130;
-    rec.ok(`4c. every portrait wears his world look: ${dressedRows.map((t) => `${t.h.replace('-bro', '')} ${t.what} ${t.shirt} px${t.beard === null ? '' : t.beard ? ', beard to his chest' : ', NO long beard'}`).join('; ')}; the Mayor's monocle glass ${lens}`,
-      dressedRows.length === 8 && dressedRows.every((t) => t.ok) && blue, { dressedRows, lens });
+    /* v2.3.3587: the collection's clear glass (its glint over the eye), no
+       longer v2.3.3585's blue: the world's monocle is the collection's now */
+    const clear = !!lens && Math.min(...lens) > 200 && Math.max(...lens) - Math.min(...lens) < 30;
+    rec.ok(`4c. every portrait wears his world look: ${dressedRows.map((t) => `${t.h.replace('-bro', '')} ${t.what} ${t.shirt} px${t.beard === null ? '' : t.beard ? ', beard to his chest' : ', NO long beard'}`).join('; ')}; the Mayor's monocle glass ${lens}, clear`,
+      dressedRows.length === 8 && dressedRows.every((t) => t.ok) && clear, { dressedRows, lens });
+
+    /* ── 4d. the world wears the collection's monocle (v2.3.3587) ──
+       Its gold, above his shoulders, sits on the viewer's right of his
+       figure's middle, round the eye his portrait wears it on; the old piece's
+       sat left of it. */
+    const mono = await P.page.evaluate(async ({ v }) => {
+      const r = await fetch(`/sprites/npc/mayor-bro.webp?v=${v}`);
+      const bmp = await createImageBitmap(await r.blob());
+      const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+      const g = c.getContext('2d'); g.drawImage(bmp, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let l = c.width, rr = -1, sx = 0, n = 0;
+      for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+        const i = (y * c.width + x) * 4;
+        if (d[i + 3] < 100) continue;
+        if (x < l) l = x; if (x > rr) rr = x;
+        if (y < 100 && d[i] > 200 && d[i + 1] > 140 && d[i + 2] < 90) { sx += x; n++; }
+      }
+      return { gold: n, goldX: n ? Math.round(sx / n) : null, mid: (l + rr) / 2 };
+    }, { v: ART_V });
+    rec.ok(`4d. the Mayor wears the collection's monocle in the world, round his right-hand eye as his portrait does (its gold at x ${mono.goldX}, his middle ${mono.mid}, ${mono.gold} px)`,
+      mono.gold > 40 && mono.goldX > mono.mid, mono);
 
     rec.ok('5. no page errors', errors.length === 0, errors);
   } finally {

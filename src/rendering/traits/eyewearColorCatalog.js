@@ -18,6 +18,12 @@
  *     thug-life       dark 84%    hue243 16%
  *     white-glass     light 60%   dark 40%
  *
+ *   v2.3.3587, the two gold pieces drawn again in the Hemi Bros collection's
+ *   design (tools/ui/make_collection_eyewear.py, the owner's "Game matches
+ *   collection"), measured again the same way:
+ *     golden-glasses  hue45 100%  (bar, side and see-through lens: one gold)
+ *     golden-monocle  hue45 80%   light 20%  (the ring, then its clear glass)
+ *
  * FOUR pieces (eye-patch, golden-glasses, golden-monocle, thug-life) have the
  * FRAME as their biggest material, which is what you would expect a swatch to
  * paint.  The other four have the LENS.  That is not a defect -- a coloured
@@ -60,7 +66,10 @@ export const EYEWEAR_COLOR_CATALOG = HAT_COLOR_CATALOG;
    decomposition and decided what a swatch should paint, which is the decision
    this file exists to record. */
 export const EYEWEAR_PAINTS = Object.create(null);   /* rule 4: id-keyed map */
-EYEWEAR_PAINTS['golden-glasses'] = 'Frame';
+/* v2.3.3587: the collection's pair is ONE material (its lenses are pale gold,
+   the frame's own hue), so the swatch paints the whole pair -- frame and
+   lenses together, as coloured glasses -- and says so. */
+EYEWEAR_PAINTS['golden-glasses'] = 'Glasses';
 EYEWEAR_PAINTS['golden-monocle'] = 'Frame';
 EYEWEAR_PAINTS['thug-life'] = 'Frame';
 EYEWEAR_PAINTS['eye-patch'] = 'Patch';      /* one material; the whole thing recolours */
@@ -127,9 +136,16 @@ export function onEyewearColorChange(fn) {
    is not visible from behind, so the renderer hides it (the beard precedent,
    v2.3.1530).  Loading it would 404 four times per pair per colour. */
 const DIRS = ['east', 'northeast', 'south', 'southwest'];
-const TRAIT_VER = '2.3.2411';   /* the SIXTH copy of this key; all move together (grep TRAIT_VER).
-                                   Not bumped here: this change adds no art and edits no meta.json, so
-                                   nothing a returning player already holds has gone stale. */
+/* v2.3.3587: facings a piece is not drawn from (no png, no anchor), so its
+   colour bake does not ask for them: the collection's monocle is on the far
+   side of the face from northeast.  A missing file only 404s, but once per
+   colour. */
+const OMITS = Object.create(null);   /* rule 4: id-keyed map */
+OMITS['golden-monocle'] = ['northeast'];
+const dirsFor = (id) => (OMITS[id] ? DIRS.filter((d) => OMITS[id].indexOf(d) < 0) : DIRS);
+const TRAIT_VER = '2.3.3587';   /* the SIXTH copy of this key; all move together (grep TRAIT_VER).
+                                   v2.3.3587: moved with them, for the two gold pieces redrawn in the
+                                   collection's design (entityRenderer.js has the note). */
 
 const _cache = {};
 
@@ -171,7 +187,7 @@ const _refCache = Object.create(null);   /* rule 4: keyed by a trait id off a sa
 export function getEyewearRef(id) {
   if (!id || id === 'none') return Promise.resolve(0);
   if (_refCache[id]) return Promise.resolve(_refCache[id]);
-  return Promise.all(DIRS.map((dir) =>
+  return Promise.all(dirsFor(id).map((dir) =>
     loadImg(`/sprites/traits/eyewear/${id}/${dir}.png?v=${TRAIT_VER}`).then((img) => img).catch(() => null)
   )).then((imgs) => (_refCache[id] = _pooledProfile(imgs, id)));
 }
@@ -200,7 +216,7 @@ function build(id, colorId) {
   const key = id + '/' + colorId;
   _cache[key] = 'loading';
   const tex = {};
-  Promise.all(DIRS.map((dir) =>
+  Promise.all(dirsFor(id).map((dir) =>
     loadImg(`/sprites/traits/eyewear/${id}/${dir}.png?v=${TRAIT_VER}`).then((img) => ({ dir, img })).catch(() => ({ dir, img: null }))
   )).then((loaded) => {
     const prof = _refCache[id] || (_refCache[id] = _pooledProfile(loaded.map((l) => l.img), id));

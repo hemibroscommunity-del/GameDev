@@ -913,7 +913,7 @@ const TRAIT_NFT_ID = 'test-1';
    v2.3.1561: bumped — halo gains floatsAboveHair in meta.json.  A meta-only
    change still needs the bust, or a returning browser serves the cached
    meta and the halo goes on placing itself flat on the hair. */
-const TRAIT_VER = '2.3.2411';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101.
+const TRAIT_VER = '2.3.3587';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101.
                                    v2.3.2386: BUMPED FOR THE EYEWEAR REDRAW, and this is the first time it has HAD to move.
                                    Every earlier eyewear commit ADDED art -- new URLs, nothing cached to go stale.  v2.3.2379 is the
                                    first that CHANGED art already on main: seven pairs redrawn under their existing paths, plus
@@ -929,7 +929,10 @@ const TRAIT_VER = '2.3.2411';   /* v2.3.2174: de-fringe sweep across the trait s
                                    v2.3.2395: and again, for meta.json ALONE this time -- no art byte changed.  The monocle's southwest
                                    nudge and the golden glasses' south scale are both placement numbers, and placement rides this same
                                    key: a returning player holding the old meta.json would wear the new art at the old anchors, which is
-                                   the failure mode the v2.3.2386 note above already calls out. */
+                                   the failure mode the v2.3.2386 note above already calls out.
+                                   v2.3.3587: moved for the GOLDEN GLASSES and GOLDEN MONOCLE, drawn again in the Hemi Bros
+                                   collection's design under their own paths (tools/ui/make_collection_eyewear.py; owner: "Game
+                                   matches collection"), art and meta.json both -- and the monocle's northeast files are gone. */
 
 /* v2.3.377 hid the on-back (sheathed) shield behind SHOW_BACK_SHIELD=false:
    "purely cosmetic and a persistent source of per-facing z-order issues vs

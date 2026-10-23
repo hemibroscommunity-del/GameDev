@@ -206,6 +206,35 @@ patterns' tiles and colours (`patternCatalog.js`, `playerArt.js`
 The portraits are fetched at the townsfolk's art version, so
 `NPC_ART_VERSION` moved to 2.3.3585 and every phone gets the new files.
 
+## The world dresses them as the collection does (v2.3.3587)
+
+> *"I think I want you to do another pass on having the portrait art more
+> closely match what's in the collection. The gold glasses look different.
+> Also the hair (I think of the Afro versus the shaggy hair. Also the monocle
+> mayor bro wears."* -- the owner, 2026-10-23; then, asked which side should
+> change, **"Game matches collection"**.
+
+Three things still differed between a portrait and the world, and in each the
+portrait was the collection's own piece:
+
+| | the portrait (the collection) | the world before | the world now |
+|---|---|---|---|
+| Diego's gold glasses | a gold bar, see-through pale gold lenses | the game's chunky yellow pair | **the game's Golden Glasses, redrawn as the collection's** |
+| the Woodworker's hair | the Afro, grey | the game's Wavy ("the shaggy hair"), grey | **the game's own Afro, grey** (`NPC_LOOKS`) |
+| the Mayor's monocle | a small ring, clear glass, a short chain, on the viewer's right eye | the game's big monocle with a handle, on the other eye | **the game's Golden Monocle, redrawn as the collection's** |
+
+- **The two pieces are every player's, not only the townsfolk's**: a player
+  who picks Golden Glasses or the Golden Monocle in the creator wears the
+  collection's now (`tools/ui/make_collection_eyewear.py`;
+  docs/specs/eyewear.md section 11).
+- **The Mayor's portrait's monocle glass is clear again**: v2.3.3585 painted
+  it the world's blue, and the world's is the collection's clear now.
+- Diego (all eight of his walking strips), the Mayor and the Woodworker were
+  photographed again (`node tools/qa/npc-looks.mjs --bake
+  --only=mayor,diego,woodworker`), so `NPC_ART_VERSION` moved to 2.3.3587.
+- What the collection has not got stays the game's: the shirts and their
+  patterns, the long beards (above).
+
 ## How they are drawn
 
 - Every townsperson is drawn at the player's own `PLAYER_SIZE_MULT`
@@ -258,6 +287,12 @@ What else moved:
   look, read from its file in the page: his shirt colour on his chest (the
   Blacksmith's bare skin), a bearded townsperson's beard down to the bust's
   foot, and the Mayor's blue monocle glass. Main's portraits fail it.
+  v2.3.3587: the glass is the collection's clear now (4c), and 4d checks the
+  Mayor wears the collection's monocle in the world, round the eye his
+  portrait wears it on.
+- `mp-ccfit` (v2.3.3587, moved to the world): the creator's monocle is round
+  the collection's eye in south and southwest; the glasses sit inside the
+  face. `mp-ewcolour` (moved to the world): the gold pair's row says Glasses.
 - `mp-wheelfolk`: the cast and its pictures are read off WHEEL_TOWNSFOLK
   and NPC_DATA. The old list missed the tour's Woodworker Bro and Farmer
   Bro, so this check was red on main. The cast holds 2.93 MB, under its

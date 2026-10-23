@@ -149,6 +149,7 @@ import argparse
 import importlib.util
 import json
 import os
+import sys
 import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
@@ -755,6 +756,12 @@ def main():
                          'e.g. north for glasses (v2.3.2361): no png, no anchor')
     ap.add_argument('--debug', default=None)
     args = ap.parse_args()
+    # v2.3.3587: the two gold eyewear pieces are the Hemi Bros collection's,
+    # drawn whole by tools/ui/make_collection_eyewear.py; an import from a sheet
+    # would put this game's old art back over them (docs/specs/eyewear.md 11).
+    if args.category == 'eyewear' and args.id in ('golden-glasses', 'golden-monocle'):
+        sys.exit(f'{args.id} is the collection\'s piece now: re-run '
+                 f'tools/ui/make_collection_eyewear.py instead')
 
     rgb = np.array(Image.open(args.art).convert('RGB')).astype(int)
     _pkey = None

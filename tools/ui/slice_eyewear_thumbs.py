@@ -75,11 +75,15 @@ MIN_SPAN = 20      # a content run thinner than this is speckle, not an icon
 
 # Row-major, matching the sheet as the owner drew it.  None = don't write this
 # cell (the shared "no selection" art already covers it).
+# v2.3.3587: the two gold pieces are the Hemi Bros collection's now, and so are
+# their icons (tools/ui/make_collection_eyewear.py): their cells stay in the
+# grid, which the gutters must still split into nine, but are not written.
 GRID = [
     [None,             '3d-glasses',     'goggles'],
     ['laser-glasses',  'thug-life',      'white-glass'],
     ['golden-monocle', 'golden-glasses', 'eye-patch'],
 ]
+MADE_ELSEWHERE = {'golden-monocle', 'golden-glasses'}
 
 
 def runs(counts):
@@ -139,6 +143,9 @@ def main():
             if name is None:
                 print('  r%dc%d  %3dx%-3d  (none -- shared cc-no-hair.webp, not written)'
                       % (ri, ci, x1 - x0 + 1, y1 - y0 + 1))
+                continue
+            if name in MADE_ELSEWHERE:
+                print('  r%dc%d  %-15s (the collection\'s -- make_collection_eyewear.py, not written)' % (ri, ci, name))
                 continue
             img = thumb(sheet, boxes[(ri, ci)])
             buf = io.BytesIO()

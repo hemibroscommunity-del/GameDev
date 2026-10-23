@@ -54,8 +54,10 @@ let _done = null;
 /* v2.3.3580: every townsperson repainted as a bro from the character creator
    (tools/qa/npc-looks.mjs), at the same paths -- so the version moves;
    v2.3.3585: and the dialogue portraits dressed as the world dresses them
-   (tools/qa/nft_portraits.py) */
-export const NPC_ART_VERSION = '2.3.3585';
+   (tools/qa/nft_portraits.py); v2.3.3587: and Diego, the Mayor and the
+   Woodworker baked again in the collection's gold glasses, monocle and Afro,
+   the Mayor's portrait's monocle glass clear again */
+export const NPC_ART_VERSION = '2.3.3587';
 export const npcArtUrl = (src) => (src ? src + '?v=' + NPC_ART_VERSION : src);
 
 /** Every distinct sprite named by NPC_DATA.  Driven off the data table so a

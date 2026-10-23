@@ -3255,6 +3255,23 @@ remnant to migrate server-side, not a mode to preserve.
         foot, in the game's beard colour), Normal Eyes where the game has
         none, the Mayor's monocle glass blue, and no logo the game's piece
         lacks; NPC_ART_VERSION 2.3.3585; `mp-npclooks` 4c;
+      - since v2.3.3587 THE WORLD DRESSES THEM AS THE COLLECTION DOES -- the
+        owner, of the gold glasses, "the Afro versus the shaggy hair" and the
+        Mayor's monocle, which the portraits wore as the collection draws them
+        and the world did not, chose "Game matches collection":
+        - the game's GOLDEN GLASSES and GOLDEN MONOCLE are the collection's,
+          for every player who picks them: drawn cell by cell from its art onto
+          the eyes the game paints by tools/ui/make_collection_eyewear.py
+          (placement from the same numbers, scale 1, their own picker icons,
+          TRAIT_VER 2.3.3587); the monocle on the collection's eye, the bro's
+          left, no longer the old piece's hang off the far side; the gold
+          pair's colour row paints the whole pair, "Glasses"; the sheet
+          importer and flip_eyewear_piece.py refuse the two;
+        - the Woodworker wears the game's own Afro, grey (NPC_LOOKS), and the
+          Mayor's portrait glass is the collection's clear again;
+        - Diego, the Mayor and the Woodworker re-baked, NPC_ART_VERSION
+          2.3.3587; `mp-ccfit`, `mp-ewcolour` (both moved to the world),
+          `mp-npclooks` 4c/4d: docs/specs/eyewear.md section 11;
       - `mp-npclooks`: docs/specs/npc-creator-looks.md.
   - Since v2.3.3127 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
     similar to the old FarmVille game ... Need to dig, plant seeds, fertilize,
