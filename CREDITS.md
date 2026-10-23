@@ -39,6 +39,7 @@ where something came from costs nothing and guessing later costs a lot.
 |---|---|---|---|
 | Character / monster / weapon / NPC art and animation frames | `assets/character animations/`, `assets/monster animations/`, `assets/weapons/`, `assets/armor boards/`, `assets/skill-anim-src/`, `public/sprites/` (incl. `public/sprites/npc/`) | Generated with **OpenAI ChatGPT** image generation | Output is owned by the generating user under the OpenAI Terms of Use; commercial use permitted |
 | UI icons | `public/icons/`, `public/ui/`, `assets/icons-source/` | Generated with **OpenAI ChatGPT** image generation | As above |
+| The townsfolk's dialogue portraits (v2.3.3576) | `public/sprites/npc/*-head.webp`; the trait layers in `assets/portrait-source/hemi-bros/` | Built by `tools/qa/nft_portraits.py` from the trait art of **Hemi Bros**, the NFT collection the game is named for (github.com/hemibroscommunity-del/Hemi-Bros-catalogue, the same GitHub organisation as this repository), at the repository owner's direction (2026-10-23: "model the portraits as close as you can to something found here") | Used at the owner's direction. **CONFIRM** whether the collection's art carries terms of its own (an NFT licence); if it does, they apply and this row should name them. |
 | Music | `public/audio/music/` (`village`, `forest`, `frost`, `desert`, `fire`, `world`, `login-theme`) | Generated with **Suno** on a paid plan | Paid-plan output carries full commercial rights, held by the account owner |
 
 ### Third-party assets

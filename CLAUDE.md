@@ -3122,6 +3122,16 @@ remnant to migrate server-side, not a mode to preserve.
         PHOTOGRAPHED 0.8 (NPC_DATA `figureSize`);
       - in the world the cast holds 2.93 MB: one-picture townsfolk cropped,
         Diego and Ace their stand cell only (loadCroppedStrip `only`);
+      - THEIR DIALOGUE HEADS ARE HEMI BROS -- the owner: "Hemi bros is based
+        off the NFT characters ... model the portraits as close as you can"
+        (github.com/hemibroscommunity-del/Hemi-Bros-catalogue): 32 x 32
+        busts from the collection's own trait art, the traits nearest each
+        look, his game skin, at 6 px a pixel (192 px, lossless; the creator
+        headshot was "fuzzy" with "stray pixels"). tools/qa/nft_portraits.py
+        extracts the traits once into assets/portrait-source/hemi-bros/
+        (read, placed and MENDED against the NFTs: some files are not the
+        NFTs' art, the goggles' lenses a tint found on both skins), then
+        bakes PORTRAITS; hair under a hat is cut below its brim;
       - `mp-npclooks`: docs/specs/npc-creator-looks.md.
   - Since v2.3.3127 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
     similar to the old FarmVille game ... Need to dig, plant seeds, fertilize,

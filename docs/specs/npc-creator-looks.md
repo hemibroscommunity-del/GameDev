@@ -4,7 +4,12 @@ The owner: "generate the art for the characters described in the document
 using the Brotown character creator. You can modify the bro art if you want.
 I think NPCs should look like normal bro characters." Then, on the preview:
 "Approve and push to main". And of the dialogue faces: "Are you able to use
-an up close of their face of their Southwest portrait for dialog?"
+an up close of their face of their Southwest portrait for dialog?", then "I
+think you should do a pass on specifically cleaning up the portrait because
+it looks fuzzy and some stray pixels are visible" and "So Hemi bros is based
+off the NFT characters shown here. Can you try to model the portraits as
+close as you can to something found here? I added more to the game than
+exists in the actual collection" (the dialogue portraits, below).
 
 Every townsperson's picture is now the player's own figure in a creator
 look: the same body, hair, hat, beard, shirt, pattern and colours a player
@@ -32,7 +37,6 @@ npm run build
 node tools/qa/npc-looks.mjs                 # previews: tools/qa/out/npc-looks/
 node tools/qa/npc-looks.mjs --bake          # the game's pictures: public/sprites/npc/
 node tools/qa/npc-looks.mjs --bake --only=lilbro
-node tools/qa/npc-looks.mjs --bake --faces  # the dialogue faces alone
 ```
 
 - The tool opens a real player in the world, dresses him in each look
@@ -54,19 +58,81 @@ node tools/qa/npc-looks.mjs --bake --faces  # the dialogue faces alone
 - A walker gets eight strips (one a facing) of nine cells: the player's jog
   in eight cells spread evenly over its cycle, then his stand (NPC_DATA
   `walk`: `frames` 9, `cycle` 8, `stand` 8).
-- Every head (the dialogue window's, Diego's shop and Ace's flip) is his
-  FACE UP CLOSE, turned southwest: the creator's own 3/4 view. His stand is
-  photographed facing southwest at 3 picture px to each of the bro's own
-  body-sheet px (`FACE_UNIT`), so the close-up is his own pixels made bigger,
-  never smoothed. `npc_looks_bake.py` then cuts a square about his face
-  (`FACE_CENTRE`, `FACE_SIDE`, measured off the photographs and the same for
-  every bro, since they share one body) into a 192 px file. Lil Bro's face is
-  photographed the same size as the others': a close-up is a face.
 - The files keep their old names; `NPC_ART_VERSION` moved to 2.3.3576, so
   every phone fetches the new ones.
 
 A change of look is a re-bake: edit `NPC_LOOKS`, build, run `--bake`, commit
 the pictures.
+
+## The dialogue portraits are Hemi Bros
+
+Every head (the dialogue window's, Diego's shop and Ace's flip) is a Hemi
+Bros portrait. Hemi Bros, the NFT collection the game is named for, is 3,333
+busts of 32 x 32 pixels turned to the viewer's left on a flat background
+(github.com/hemibroscommunity-del/Hemi-Bros-catalogue, with the trait layers
+they are stacked from). Each townsperson's portrait is such a bust, built
+from the collection's own trait art:
+
+| Who | His traits | Skin (the game's) |
+| --- | --- | --- |
+| Mayor Bro | Top Hat over Slick Back Hair (grey), Golden Monocle, Beard (grey), Suit; Purple Navy | fair |
+| Blacksmith Bro | Bandana over the Flat Top, Beard (black), no shirt; Rose Taupe | tan |
+| Diego | Slick Back Hair, Golden Glasses, Purple Bomber; Dark Lavender | brown |
+| Farmer Bro | Bucket Hat over Blond Hair, Wtf Eyes, Low Beard, Yellow Shirt; Russian Green | sand |
+| Woodworker Bro | Flattened (the goggles), Afro (grey), White Striped Shirt; Teal Blue | pale |
+| Beastmaster Bro | Cowboy Hat, Sleepy Eyes, Beard, Normal Soldier Outfit; Camouflage Green | olive |
+| Lil Bro | Headphone on Blonde Hair, Happy Eyes, Yellow Running Jacket; Teal Blue | honey |
+| Ace | Derby Hat (black) over Slick Back Hair, Sus Eyes, Woolen Shirt; Middle Green | rosy |
+
+What the game has beyond the collection is the collection's pieces combined
+or recoloured, never redrawn:
+
+- the skin is each townsperson's game skin, recoloured from the bro's orange
+  by brightness, as the game's own recolour does;
+- a hat over hair: the collection wears one or the other, so under a hat the
+  hair is cut to what hangs below its brim (`_under_hat`); a band (the
+  bandana, the headphones) sits on the hair and cuts nothing;
+- a recoloured trait (the Mayor's grey hair and beard, Ace's black derby)
+  keeps the collection's outline colour and puts every other colour on a ramp
+  in its own order of brightness.
+
+```
+python3 tools/qa/nft_portraits.py extract <catalogue>   # once: the layers
+python3 tools/qa/nft_portraits.py                       # the eight portraits
+```
+
+The extract writes every trait it can place as a 32 x 32 picture,
+`assets/portrait-source/hemi-bros/<trait>.png` (98, 27 KB in all), so the
+portraits never need the catalogue again:
+
+- The layer files are each cropped and scaled differently and were enlarged
+  smoothly, so each layer's own pixel grid is found from its edges and every
+  cell is judged by its whole inside. A cell the file's edge cuts through
+  counts: the brims' tips and the beard's front edge lie in such cells, and
+  reading a cell's middle alone lost them.
+- Each layer is placed where it matches the real NFTs that wear it. The
+  traits too small to show a grid (the eyes, the monocle, the gold glasses,
+  the low beard, the camo) are lifted out of the NFTs.
+- Every layer is then MENDED against the NFTs that wear it, cell by cell,
+  where they agree. Some files are not quite the art the NFTs were made
+  with: the slick-back hair's file stops at the jaw where every NFT carries
+  it down the nape, the light-brown hair misses a lock by the ear, and the
+  goggles' file (the sheet's "Flattened") has no strap and clear lenses.
+- An eyewear's GLASS is found on the collection's two skins, the orange Bro
+  and the brown Different Bro: the cells that let what is under them show
+  are one see-through tint. The goggles are a blue-grey at 56% with painted
+  pupils, the monocle clear glass, the golden glasses gold, so a pale
+  Woodworker's skin shows pale through his goggles.
+- The check: the real NFTs of both skins, rebuilt whole from the layers, come
+  out within 12 of their 1,024 pixels, 0.3-0.4 on average (the WebP's own
+  smear). Past 12 nothing is written.
+
+The portrait is its 32 x 32 pixels, each a flat colour, made 6 x 6 file px:
+192 x 192 lossless, under 1 KB a file. The creator headshot it replaces was
+the dialogue's "fuzzy" picture with "stray pixels"; the first cut of these
+(the prototype) still had hair poking through the bucket hat and a crooked
+pair of goggles, which the mending and the hat's cut took out. Diego's
+26 px head in his shop is a rounded chip now, as Ace's is.
 
 ## How they are drawn
 
@@ -111,8 +177,10 @@ What else moved:
 - `mp-npclooks` (new): every townsperson picture comes in at 2.3.3576.
   Each is a bro's size with his feet on his spot, a walker on cell 8. Lil
   Bro's figure is painted 0.875 of Diego's height. Each look's own colour is
-  counted beside him, the Mayor's dialogue shows his 192 px head, and there
-  are no page errors.
+  counted beside him. The Mayor's dialogue shows his Hemi Bros portrait: 192
+  px, its corner the collection's Purple Navy, and every one of its 32 x 32
+  pixels a flat 6 x 6 block, read from the picture in the page. There are no
+  page errors.
 - `mp-wheelfolk`: the cast and its pictures are read off WHEEL_TOWNSFOLK
   and NPC_DATA. The old list missed the tour's Woodworker Bro and Farmer
   Bro, so this check was red on main. The cast holds 2.93 MB, under its
