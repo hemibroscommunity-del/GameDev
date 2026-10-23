@@ -7,7 +7,8 @@
  * In the Wheel's BroTown:
  *
  *   1. every townsperson's picture comes in at the new art's version
- *      (NPC_ART_VERSION 2.3.3580), none at an old one;
+ *      (NPC_ART_VERSION, 2.3.3585 since the portraits were dressed), none at
+ *      an old one;
  *   2. each is drawn a bro's size -- the player's own PLAYER_SIZE_MULT, the
  *      mayor 10% over it (the owner's v2.3.1822) -- his feet on his spot, a
  *      walker on his standing cell (8); and Lil Bro a child: his cell drawn
@@ -23,6 +24,12 @@
  *  4b. and crisp wherever else it is shown: Diego's in his shop (32 px) and
  *      Ace's in his coin flip (64 px), each a whole number of CSS px a
  *      portrait pixel, drawn pixelated (smoothed, they blurred);
+ *  4c. v2.3.3585, the owner: "modify the existing portraits to look like how
+ *      you designed them in the game (mayor bro suspenders, larger beard,
+ *      etc)" -- every portrait wears his world look: the shirt colour of his
+ *      creator look on his chest (the Blacksmith his bare skin), a bearded
+ *      one's beard running down to the bust's foot, and the Mayor's monocle
+ *      glass blue;
  *   5. no page errors.
  * Pictures: tools/qa/mp/out/npclooks-*.png.
  */
@@ -31,7 +38,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
-const ART_V = '2.3.3580';
+const ART_V = '2.3.3585';
 /* world px of a townsperson's 256 px cell: NPC_SPRITE_SCALE (120/256) x his
    size (entityRenderer NPC_SCALE_MULT) -- Lil Bro's cell too: he is
    photographed small, not drawn small */
@@ -209,7 +216,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.screenshot({ path: join(OUT, 'npclooks-mayor-dialogue.png') }).catch(() => {});
     const navy = head && head.corner && Math.abs(head.corner[0] - 86) + Math.abs(head.corner[1] - 85) + Math.abs(head.corner[2] - 142) <= 6;
     rec.ok(`4. Mayor Bro's dialogue shows his Hemi Bros portrait (${head ? head.src + ' ' + head.w + ' x ' + head.h + ', corner ' + head.corner + ', ' + head.mixed + ' blocks not flat' : 'none'})`,
-      !!opened && !!head && /mayor-bro-head\.webp\?v=2\.3\.3580$/.test(head.src) && head.w === 192 && head.h === 192
+      !!opened && !!head && head.src.endsWith('mayor-bro-head.webp?v=' + ART_V) && head.w === 192 && head.h === 192
         && navy && head.mixed === 0, { opened, head });
 
     /* ── 4b. crisp wherever else he is shown ── */
@@ -237,6 +244,53 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`4b. his portrait is crisp wherever else it is shown: Diego's shop ${crisp.shop ? crisp.shop.w + ' px ' + crisp.shop.render : 'none'}, `
          + `Ace's coin flip ${crisp.ace ? crisp.ace.w + ' px ' + crisp.ace.render : 'none'}`,
       sharp(crisp.shop, 32) && sharp(crisp.ace, 64), crisp);
+
+    /* ── 4c. every portrait wears his world look (v2.3.3585) ── */
+    const dressed = await P.page.evaluate(async ({ v }) => {
+      /* a bust pixel's colour: the middle of its 6 x 6 block */
+      const px = (d, x, y) => { const i = ((y * 6 + 3) * 192 + (x * 6 + 3)) * 4; return [d[i], d[i + 1], d[i + 2]]; };
+      const out = {};
+      for (const h of ['mayor-bro', 'blacksmith-bro', 'shopkeeper-bro', 'farmer-bro', 'woodworker-bro', 'beastmaster-bro', 'lil-bro', 'cardsharp-bro']) {
+        const r = await fetch(`/sprites/npc/${h}-head.webp?v=${v}`);
+        const bmp = await createImageBitmap(await r.blob());
+        const c = document.createElement('canvas'); c.width = 192; c.height = 192;
+        const g = c.getContext('2d'); g.drawImage(bmp, 0, 0);
+        const d = g.getImageData(0, 0, 192, 192).data;
+        /* the chest: the bust's last three rows, from x 6 to 27; the beard's
+           foot: the last row's middle */
+        const chest = [];
+        for (let y = 29; y < 32; y++) for (let x = 6; x < 28; x++) chest.push(px(d, x, y));
+        out[h] = { chest, foot: [px(d, 12, 31), px(d, 14, 31)], lens: px(d, 14, 15) };
+      }
+      return out;
+    }, { v: ART_V });
+    const has = (cs, f) => cs.filter(([r, g, b]) => f(r, g, b)).length;
+    const SHIRT = {
+      'mayor-bro': ['navy and white', (r, g, b) => b > r + 35 && b > g + 20 && r < 110],
+      'blacksmith-bro': ['bare skin', (r, g, b) => r > g + 40 && g > b + 30 && r > 150],
+      'shopkeeper-bro': ['purple', (r, g, b) => b > g + 40 && r > g + 30],
+      'farmer-bro': ['yellow', (r, g, b) => r > 150 && g > 120 && b < 100],
+      'woodworker-bro': ['navy and white', (r, g, b) => b > r + 35 && b > g + 20 && r < 110],
+      'beastmaster-bro': ['green camo', (r, g, b) => g > r + 25 && g > b + 15],
+      'lil-bro': ['orange bands', (r, g, b) => r > g + 50 && g > b + 30 && r > 160],
+      'cardsharp-bro': ['green felt', (r, g, b) => g > r + 25 && g > b + 15],
+    };
+    const BEARD = {
+      'mayor-bro': ['grey', (r, g, b) => Math.abs(r - g) < 14 && Math.abs(g - b) < 16 && r > 80],
+      'blacksmith-bro': ['black', (r, g, b) => Math.max(r, g, b) < 75],
+      'farmer-bro': ['brown', (r, g, b) => r > b + 25 && r < 200 && g < 150],
+      'beastmaster-bro': ['brown', (r, g, b) => r > b + 25 && r < 200 && g < 150],
+    };
+    const dressedRows = Object.entries(dressed).map(([h, q]) => {
+      const [what, f] = SHIRT[h];
+      const shirt = has(q.chest, f);
+      const beard = BEARD[h] ? q.foot.every(([r, g, b]) => BEARD[h][1](r, g, b)) : null;
+      return { h, what, shirt, beard, ok: shirt >= 4 && beard !== false };
+    });
+    const lens = dressed['mayor-bro'] && dressed['mayor-bro'].lens;
+    const blue = !!lens && lens[2] > 200 && lens[0] < 130;
+    rec.ok(`4c. every portrait wears his world look: ${dressedRows.map((t) => `${t.h.replace('-bro', '')} ${t.what} ${t.shirt} px${t.beard === null ? '' : t.beard ? ', beard to his chest' : ', NO long beard'}`).join('; ')}; the Mayor's monocle glass ${lens}`,
+      dressedRows.length === 8 && dressedRows.every((t) => t.ok) && blue, { dressedRows, lens });
 
     rec.ok('5. no page errors', errors.length === 0, errors);
   } finally {

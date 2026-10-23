@@ -3246,6 +3246,15 @@ remnant to migrate server-side, not a mode to preserve.
         bakes PORTRAITS; a hatted townsperson is bald under it, as the
         collection's bros are (hair cut below the brim left stray pixels);
         every display draws them pixelated, Diego's shop chip 32 px;
+      - since v2.3.3585 THE PORTRAITS ARE DRESSED AS THE WORLD DRESSES THEM --
+        the owner: "modify the existing portraits to look like how you
+        designed them in the game (mayor bro suspenders, larger beard, etc)":
+        each bust wears his in-game T-shirt (colour and pattern read from the
+        game's own tables and NPC_LOOKS, laid on the collection's tee), the
+        bearded four their long beard (the jaw beard grown off the bust's
+        foot, in the game's beard colour), Normal Eyes where the game has
+        none, the Mayor's monocle glass blue, and no logo the game's piece
+        lacks; NPC_ART_VERSION 2.3.3585; `mp-npclooks` 4c;
       - `mp-npclooks`: docs/specs/npc-creator-looks.md.
   - Since v2.3.3127 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
     similar to the old FarmVille game ... Need to dig, plant seeds, fertilize,

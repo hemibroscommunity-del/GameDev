@@ -161,6 +161,51 @@ one CSS px a portrait pixel, where 26 px was smoothed and a computer's screen
 dropped pixels outright), and the quest page (44 px, pixelated, now at
 `npcArtUrl`'s version like the dialogue, so the two share one file).
 
+## Dressed as the world dresses them (v2.3.3585)
+
+> *"I'd rather you try to modify the existing portraits to look like how you
+> designed them in the game (mayor bro suspenders, larger beard, etc)"* -- the
+> owner, 2026-10-23, shown the portraits beside the townsfolk.
+
+The busts kept the collection's own clothes and its short beards, so the
+portraits and the world disagreed: the Mayor in a black suit and red tie, with
+a short beard; Diego in a purple bomber; Ace in a teal wool shirt; Lil Bro and
+Ace with eyes the creator has not got. Now each bust wears what the world
+draws on him. The tool reads it all from the game, never a copy: the shirt and
+beard colours (`shirtColorCatalog.js`, `facialHairColorCatalog.js`), the
+patterns' tiles and colours (`patternCatalog.js`, `playerArt.js`
+`ART_PALETTE`), and each townsperson's look (`tools/qa/npc-looks.mjs`
+`NPC_LOOKS`).
+
+- **His T-shirt.** The collection's plain tee keeps its outline and its light,
+  and every other pixel takes his shirt colour, or his pattern's colour where
+  the game's own tile inks it. The Mayor wears navy and white stripes, the
+  "suspenders" either side of his beard. Diego wears purple diagonals on
+  yellow, the Farmer pink chevrons on yellow, the Woodworker navy windowpanes
+  on white, the Beastmaster brown camo on green, Lil Bro orange and white
+  bands, and Ace yellow diamonds on green. The Blacksmith stays shirtless.
+  The bust's chest is five pixels tall, so where a stripe falls is set by eye
+  against the world's picture (`tee` in `PORTRAITS`).
+- **His long beard.** The world's beards reach the middle of the chest, so
+  the four bearded townsfolk (the Mayor, the Blacksmith, the Farmer and the
+  Beastmaster) wear the collection's jaw beard grown long. It runs over the
+  neck and chest and off the foot of the bust, a little narrower as it goes,
+  lit from the front-left like the collection. Every third column is a
+  strand a shade darker. (Speckles read as dots and broken strands as dashes;
+  four textures were tried.) It takes his beard colour from the game.
+- **His eyes.** No eye style in the game (`eyes: 'none'`) is the collection's
+  Normal Eyes. Lil Bro and Ace lose the happy and shifty eyes the first cut
+  gave them, which the creator does not have. The Farmer keeps his wide eyes
+  and the Beastmaster his sleepy ones, as in the world.
+- **The small things.** The Mayor's monocle glass is the world's blue, with
+  its glint, sampled off his picture. The Farmer's bucket hat and Lil Bro's
+  headphones lose the collection's logos (a white mark, a white "b"), which
+  the game's pieces do not have. Diego's hair is cut short and black, as in
+  the world: the slick-back's tail and its grey shine are gone.
+
+The portraits are fetched at the townsfolk's art version, so
+`NPC_ART_VERSION` moved to 2.3.3585 and every phone gets the new files.
+
 ## How they are drawn
 
 - Every townsperson is drawn at the player's own `PLAYER_SIZE_MULT`
@@ -201,14 +246,18 @@ What else moved:
 
 ## Tests
 
-- `mp-npclooks` (new): every townsperson picture comes in at 2.3.3580.
+- `mp-npclooks` (new): every townsperson picture comes in at the art's
+  version (2.3.3585 since the portraits were dressed; 2.3.3580 before).
   Each is a bro's size with his feet on his spot, a walker on cell 8. Lil
   Bro's figure is painted 0.875 of Diego's height. Each look's own colour is
   counted beside him. The Mayor's dialogue shows his Hemi Bros portrait: 192
   px, its corner the collection's Purple Navy, and every one of its 32 x 32
   pixels a flat 6 x 6 block, read from the picture in the page. Diego's shop
   and Ace's coin flip show it crisp: 32 and 64 px, drawn pixelated. There are
-  no page errors.
+  no page errors. Since v2.3.3585 (step 4c), every portrait wears his world
+  look, read from its file in the page: his shirt colour on his chest (the
+  Blacksmith's bare skin), a bearded townsperson's beard down to the bust's
+  foot, and the Mayor's blue monocle glass. Main's portraits fail it.
 - `mp-wheelfolk`: the cast and its pictures are read off WHEEL_TOWNSFOLK
   and NPC_DATA. The old list missed the tour's Woodworker Bro and Farmer
   Bro, so this check was red on main. The cast holds 2.93 MB, under its
