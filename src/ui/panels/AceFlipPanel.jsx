@@ -4,7 +4,7 @@ import { ACE_FLIP_MIN_STAKE, ACE_FLIP_RISK_MULT, ACE_FLIP_WIN_CHANCE, aceFlipMax
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '@/rendering/characterPortrait.js';
 import { thumbFor, ITEM_NAMES, TICKET_KEY_PREFIX } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
-import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3578: his head, a Hemi Bros portrait now, at the townsfolk's cache-bust */
+import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3580: his head, a Hemi Bros portrait now, at the townsfolk's cache-bust */
 
 /* ═══ v2.3.2618: ACE'S COIN FLIP ═══
  *
@@ -422,7 +422,7 @@ export function AceFlipPanel() {
         /* v2.3.2621 (owner: "map the joker profile picture bigger"): 42 -> 64.
            The file is 192px of real portrait art, so this shows more of what
            is already there rather than upscaling it. */
-        /* v2.3.3578: a Hemi Bros portrait (tools/qa/nft_portraits.py), 32 x 32
+        /* v2.3.3580: a Hemi Bros portrait (tools/qa/nft_portraits.py), 32 x 32
            pixels: at 64 px two CSS px each, drawn pixelated -- crisp on any
            screen, where the browser's smoothing blurred every edge on all but
            a 3x phone */

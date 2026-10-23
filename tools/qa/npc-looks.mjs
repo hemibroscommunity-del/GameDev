@@ -1,4 +1,4 @@
-/* ═══ v2.3.3578: EVERY TOWNSPERSON IS A BRO FROM THE CHARACTER CREATOR ═══
+/* ═══ v2.3.3580: EVERY TOWNSPERSON IS A BRO FROM THE CHARACTER CREATOR ═══
  *
  * The owner: "generate the art for the characters described in the document
  * using the Brotown character creator ... NPCs should look like normal bro

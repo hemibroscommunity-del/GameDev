@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3578: THE TOWNSFOLK'S DIALOGUE PORTRAITS, AS HEMI BROS.
+"""v2.3.3580: THE TOWNSFOLK'S DIALOGUE PORTRAITS, AS HEMI BROS.
 
 The owner: "So Hemi bros is based off the NFT characters shown here. Can you
 try to model the portraits as close as you can to something found here? I

@@ -27,7 +27,7 @@
  * bottom edge has to BE the band's top edge, and the bag must not move when
  * the drawer opens.
  *
- * v2.3.3578: played in the world's BroTown (world: 'wheel'), off the retired
+ * v2.3.3580: played in the world's BroTown (world: 'wheel'), off the retired
  * old map, where Diego stands west of the General Store's steps.  Its players
  * are kept in by a real keystroke (H.keepAlive): the world loads slower than
  * the old town, and the watcher, idle over two minutes by the time it buys,
@@ -393,7 +393,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .reduce((o, n) => { o[n.id] = Math.round(n.height); return o; }, {}));
   /* v2.3.2052 (owner: "make shopkeeper larger his sprite is bit small"): his
      hand-painted figure drew 120 px against Mayor Bro's 132, the smallest man
-     in the square.  v2.3.3578: every grown townsperson is a bro from the
+     in the square.  v2.3.3580: every grown townsperson is a bro from the
      character creator drawn a player's own height (the owner: "NPCs should
      look like normal bro characters"), and the Mayor 10% over that (the
      owner's v2.3.1822) -- so Diego stands as tall as any grown man in town,

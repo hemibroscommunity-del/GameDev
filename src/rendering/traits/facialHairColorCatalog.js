@@ -144,5 +144,5 @@ export function getColoredFacialHairTextures(fhId, colorId) {
   return e;
 }
 
-/* v2.3.3578: for tools/qa/npc-looks.mjs, which dresses a bro in each townsperson's creator look (as __btSetHair) */
+/* v2.3.3580: for tools/qa/npc-looks.mjs, which dresses a bro in each townsperson's creator look (as __btSetHair) */
 if (typeof window !== 'undefined') window.__btSetFacialHairColor = setFacialHairColor;

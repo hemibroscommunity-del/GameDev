@@ -28,7 +28,7 @@ import { RACE } from '../../../server/src/race.js';
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Speedy', wsPort, webPort, world: 'wheel' });
-  /* v2.3.3578: walking up to Lil Bro from a side with nobody else on it.
+  /* v2.3.3580: walking up to Lil Bro from a side with nobody else on it.
      The harness's approachNpc steps away 420 px EAST of him first; in the
      world's BroTown that is the square's middle, beside Mayor Bro, and with
      the tour jumped to the race the Mayor has a line for you -- his window
@@ -124,7 +124,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const gun = await H.waitFor(P, (S) => S._race && S._race.phase, (ph) => ph === 'run', { timeout: 6000, label: 'the gun' }).catch(() => null);
   rec.ok('the gun goes (the race is running)', gun === 'run', gun);
   const flags = await H.readState(P, (S) => S._race.flags.map((f) => [f[0], f[1]]));
-  /* v2.3.3578: Lil Bro runs on his jog -- a creator bro's strip is the
+  /* v2.3.3580: Lil Bro runs on his jog -- a creator bro's strip is the
      player's own jog in eight cells and then his stand (cell 8): sampled
      while he runs */
   await P.page.evaluate(() => {
