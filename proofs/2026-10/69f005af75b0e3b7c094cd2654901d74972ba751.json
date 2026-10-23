@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "69f005af75b0e3b7c094cd2654901d74972ba751",
+  "tree": "5b52a31db564b013cb7dfe5787d6a68aeb1438d4",
+  "committedAt": "2026-10-22T20:24:33-07:00",
+  "subject": "Your painted copper ore and pickaxe, and the bag's bow is the pine one again (v2.3.3571) (#1085)",
+  "files": 6351,
+  "bytes": 737865255,
+  "listingSha256": "0a810b3de4605eaa6685bc4eabe83d3f710ca614cfe53292da6e29b3f115d81b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
