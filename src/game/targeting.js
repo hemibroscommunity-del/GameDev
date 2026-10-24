@@ -148,7 +148,7 @@ export function targetCandidates(S, radiusPx) {
   const out = [];
   if (!S || !S.player || !S.monsters) return out;
   const P = S.player;
-  const R = radiusPx || TARGET_PERIMETER_PX;
+  const R = radiusPx || perimeterPx(S);   /* v2.3.3595: the sword's is twice as wide */
   const R2 = R * R;
   for (let i = 0; i < S.monsters.length; i++) {
     const m = S.monsters[i];
@@ -208,7 +208,7 @@ function autoLockHolds(S, lt) {
   if (!lt || !autoHoldable(S, lt) || !S.player) return false;
   const p = lt.type === 'monster' ? monPos(lt.ref) : clonePos(lt.ref);
   if (!p) return false;
-  const R = TARGET_PERIMETER_PX * TARGET_HYST;
+  const R = perimeterPx(S) * TARGET_HYST;   /* v2.3.3595 */
   const dx = p.x - S.player.x, dy = p.y - S.player.y;
   return dx * dx + dy * dy <= R * R;
 }
@@ -224,7 +224,7 @@ function lockHolds(S) {
   if (!monHoldable(lt.ref)) return false;
   const p = monPos(lt.ref);
   if (!p || !S.player) return false;
-  const R = TARGET_PERIMETER_PX * TARGET_HYST;
+  const R = perimeterPx(S) * TARGET_HYST;   /* v2.3.3595 */
   const dx = p.x - S.player.x, dy = p.y - S.player.y;
   return dx * dx + dy * dy <= R * R;
 }
@@ -334,10 +334,10 @@ function tapReleased(S) {
   if (!p || !S.player) return false;
   const dx = p.x - S.player.x, dy = p.y - S.player.y;
   const d2 = dx * dx + dy * dy;
-  const IN = TARGET_PERIMETER_PX;
+  const IN = perimeterPx(S);   /* v2.3.3595: the sword's ring, twice TARGET_PERIMETER_PX */
   if (d2 <= IN * IN) { lt.near = true; return false; }   /* the latch */
   if (!lt.near) return false;                            /* still on the way in */
-  const OUT = TARGET_PERIMETER_PX * TARGET_HYST;
+  const OUT = IN * TARGET_HYST;
   return d2 > OUT * OUT;
 }
 
@@ -401,6 +401,21 @@ function lockTooFar(S, now) {
 export function autoAcquires(S) {
   const slot = S && S.rpg && S.rpg.activeSlot;
   return !(slot === 'ranged' || slot === 'staff');
+}
+
+/* ═══ v2.3.3595: THE SWORD'S RING IS TWICE AS WIDE ═══
+ * The owner: "I want the proximity for the melee ring where you can charge or
+ * auto attack the monster to be twice as large (making it easier)."  With a
+ * sword (the weapon that acquires by itself, autoAcquires) a monster is a
+ * candidate -- its ground ring drawn, the attack button hot, the press's
+ * lock, and so the dash that charges it -- from MELEE_PERIMETER_K x
+ * TARGET_PERIMETER_PX, 440 world px, held out to that x TARGET_HYST (550).
+ * The bow and the staff, whose tap is their targeting, keep the 220; so do
+ * the shield's and the Special's "a fight is near" (they pass their radius),
+ * and the worker's arrow blast, mirror-pinned to the 220. */
+export const MELEE_PERIMETER_K = 2;
+export function perimeterPx(S) {
+  return autoAcquires(S) ? TARGET_PERIMETER_PX * MELEE_PERIMETER_K : TARGET_PERIMETER_PX;
 }
 
 /* ═══ v2.3.2285: ENGAGEMENT IS A MODE, NOT A MONSTER ═══
@@ -487,7 +502,8 @@ export function updateTargeting(S) {
      perimeter, the same {m, x, y, d2} shape, `spar: true`).  v2.3.3268: and
      the players you chose to attack (chosenNear: `foe: true`) */
   const monCands = targetCandidates(S);
-  const sparCands = autoAcquires(S) ? chosenNear(S, TARGET_PERIMETER_PX) : [];
+  const sparCands = autoAcquires(S) ? chosenNear(S, perimeterPx(S)) : [];
+  S._perimeterPx = perimeterPx(S);   /* v2.3.3595: the ring the candidates were found in (effectsRenderer's fade) */
   const cands = sparCands.length ? monCands.concat(sparCands).sort((a, b) => a.d2 - b.d2) : monCands;
   /* THE PERIMETER MARKS GO WITH THE RULE THEY ADVERTISE.  _targetCands is what
      draws the carets and ground rings and what lights the attack button hot

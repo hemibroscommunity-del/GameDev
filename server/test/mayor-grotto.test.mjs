@@ -8,9 +8,9 @@
  * plays it so.
  *
  *   1. no party row (an older worker, `partydungeon: false`): the hand-in is
- *      exactly the satire pass's six taps
- *   2. the row: one tap more, the fourth, between the warning that came too
- *      late and the bow and staff, its level and party the worker's own
+ *      one tap (v2.3.3591; the satire pass's six until then)
+ *   2. the row: a sentence more at the end of that tap, its level and party
+ *      the worker's own (v2.3.3591; a tap of its own until then)
  *   3. the row is the worker's (WHEEL_DUNGEON.PARTY), and a bad row says nothing
  *   4. the wiring: wsClient sets it from caps.partydungeon
  */
@@ -30,39 +30,30 @@ const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 
 const tut1 = QUEST_CHAINS.tut_1;
 
-// ── 1. No party row: as it was ──
+// ── 1. No party row ──
+/* v2.3.3591: the owner's "just one message": the hand-in is ONE tap now (it was
+   the satire pass's six), the warning that came too late a sentence in it */
 setGrottoParty(null);
 const plain = chunks(tut1.dialogue.complete);
-check('1a. with no party Grotto the hand-in is the satire pass\'s six taps', plain.length === 6, plain.length);
-check('1b. ...none of them names the Grotto', !plain.some((c) => /Grotto/.test(c)));
-check('1c. ...the warning that came too late, then the bow and staff, in order',
-  /swell up right before they die/.test(plain[1]) && /^\.\.\.And you're holding 4 Slime Remains/.test(plain[2])
-    && /^Here, take a bow and a staff/.test(plain[3]), plain.slice(1, 4));
+check('1a. with no party Grotto the hand-in is one tap', plain.length === 1, plain.length);
+check('1b. ...it does not name the Grotto', !plain.some((c) => /Grotto/.test(c)));
+check('1c. ...the warning that came too late, the bow and staff, and who to see first',
+  /explode/.test(plain[0]) && /bow and a staff/.test(plain[0]) && /Blacksmith Bro and Diego/.test(plain[0]), plain[0]);
 
 // ── 2. The party Grotto ──
 setGrottoParty(WHEEL_DUNGEON_PARTY.verdant);
 const said = chunks(tut1.dialogue.complete);
-const aside = said[3] || '';
-check('2a. with the party Grotto the hand-in has one tap more', said.length === 7, said.length);
-check('2b. ...the fourth: after the warning that came too late, before the bow and staff',
-  /^\.\.\.And you're holding/.test(said[2]) && /^Oh, and that cave/.test(aside) && /^Here, take a bow and a staff/.test(said[4]), said.slice(2, 5));
+const aside = grottoPartyAside();
+check('2a. with the party Grotto the hand-in is still one tap', said.length === 1, said.length);
+check('2b. ...the Grotto\'s sentence ends it, after who to see first', said[0] === plain[0] + aside && /Diego\. The Goo Grotto/.test(said[0]), said[0]);
 check('2c. ...it names the Goo Grotto and its level, the worker\'s 16',
   /The Goo Grotto/.test(aside) && new RegExp(`level ${WHEEL_DUNGEON.PARTY.verdant.level}\\b`).test(aside), aside);
-check('2d. ...and the party it is for, 2 or 3 (the boss is sized for three)',
-  new RegExp(`a party of ${WHEEL_DUNGEON.PARTY.verdant.size - 1}\u00a0or\u00a0${WHEEL_DUNGEON.PARTY.verdant.size}\\.$`).test(aside), aside);
-check('2d2. ..."2 or 3" held together by no-break spaces, so "3." never wraps alone', /2\u00a0or\u00a03\./.test(aside), aside);
-check('2e. ...says "Don\'t go in alone", and the splitting slime at the bottom',
-  /Don't go in alone/.test(aside) && /giant slime at the bottom splits/.test(aside), aside);
-check('2f. ...in the Mayor\'s voice: the town council, the funeral he would have to speak at',
-  /like the town council/.test(aside) && /funeral I'd have to speak at/.test(aside), aside);
-/* the game's longest tap is wood_2's hand-in, 297 characters: no longer */
-const longest = Math.max(...Object.entries(QUEST_CHAINS).filter(([id]) => id !== 'tut_1')
-  .flatMap(([, q]) => (q && q.dialogue ? ['start', 'progress', 'complete'].flatMap((k) => chunks(q.dialogue[k])) : []))
-  .map((c) => c.length));
-check(`2g. ...one tap: no blank line inside it, and no longer than the game's longest tap (${aside.length} of ${longest} characters)`,
-  chunks(grottoPartyAside()).length === 1 && aside.length <= longest, { len: aside.length, longest });
-check('2h. ...the other six taps are word for word as before',
-  JSON.stringify(said.filter((c, i) => i !== 3)) === JSON.stringify(plain));
+check('2d. ...and the party it is for, 2 or 3 friends (the boss is sized for three)',
+  new RegExp(`take ${WHEEL_DUNGEON.PARTY.verdant.size - 1}\u00a0or\u00a0${WHEEL_DUNGEON.PARTY.verdant.size} friends\\.`).test(aside), aside);
+check('2d2. ..."2 or 3" held together by no-break spaces, so "3" never wraps alone', /2\u00a0or\u00a03 friends/.test(aside), aside);
+check(`2e. ...and the whole tap stays short (${said[0].length} of 300 characters; the old longest tap was 297)`, said[0].length <= 300, said[0].length);
+check('2f. ...in the Mayor\'s dry voice: he is out of eulogies', /I'm out of eulogies\.$/.test(aside), aside);
+check('2g. ...a sentence, never a tap of its own (no blank line in it)', !/\n/.test(aside), aside);
 check('2i. the offer and the progress line never mention it (only the hand-in, where you stand near it)',
   !/Grotto/.test(tut1.dialogue.start) && !/Grotto/.test(tut1.dialogue.progress));
 check('2j. "Remains", never "remnants", and no "Wheel" (CLAUDE.md)', !/remnant|Wheel/i.test(aside), aside);
@@ -75,14 +66,14 @@ check('3b. a row with no level says nothing', grottoPartyAside() === '');
 setGrottoParty({ level: 16, size: 1 });
 check('3c. ...nor one sized for one player', grottoPartyAside() === '');
 setGrottoParty(undefined);
-check('3d. ...nor none at all', grottoPartyAside() === '' && chunks(tut1.dialogue.complete).length === 6);
+check('3d. ...nor none at all', grottoPartyAside() === '' && chunks(tut1.dialogue.complete).length === 1);
 
 // ── 4. The wiring ──
 const ws = read('../../src/networking/wsClient.js');
 check('4a. wsClient sets it from caps.partydungeon (true only), the Grotto\'s row',
   /setGrottoParty\(S\._serverCaps && S\._serverCaps\.partydungeon === true \? WHEEL_DUNGEON_PARTY\.verdant : null\)/.test(ws));
 const gs = read('../../src/data/gameSystems.js');
-check('4b. tut_1\'s hand-in is a getter that asks grottoPartyAside()', /get complete\(\) \{ return "You're back!/.test(gs) && /\+ grottoPartyAside\(\)\n/.test(gs));
+check('4b. tut_1\'s hand-in is a getter that asks grottoPartyAside()', /get complete\(\) \{ return "Four Slime Remains/.test(gs) && /\+ grottoPartyAside\(\); \}/.test(gs));
 
 if (failures) { console.log(`\n${failures} FAILURE(S)`); process.exit(1); }
 console.log('\nmayor-grotto: all checks passed');
