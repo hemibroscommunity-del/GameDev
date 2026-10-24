@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e099710a8ca8cdce1bc53a13a37d4474068ad9e3",
+  "tree": "679427058d2a8675043f8e65b7a5ed54093c5e7e",
+  "committedAt": "2026-10-24T12:15:23-07:00",
+  "subject": "The new-monster card half as long; Woodworker and Beastmaster further apart (v2.3.3599) (#1107)",
+  "files": 6539,
+  "bytes": 738968724,
+  "listingSha256": "3063bcbf7a78f1a4654eb5da3c4ddc8f906a267d0c639d43b37523382f7af78a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
