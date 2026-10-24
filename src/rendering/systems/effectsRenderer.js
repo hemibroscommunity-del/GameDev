@@ -8976,8 +8976,15 @@ export class EffectsRenderer {
        bubble move.  The outline is drawn again only when that slide changes
        (whole bubble px), so a bubble away from the sides is drawn once a
        line, as before. */
+    /* ═══ v2.3.3597: ONLY WHILE THE SPEAKER IS ON THE SCREEN ═══
+       The owner: "The npc messages in the games follow you off screen.  That
+       needs to stop."  Past the edge "the whole bubble moves" above kept an
+       off-screen townsperson's line pinned to the side of the screen, sliding
+       along with you as you walked away from him.  A speaker beyond the view's
+       sides now keeps his bubble over his own head, off the screen with him;
+       one on the screen is kept inside it as before. */
     let _dx = 0, _cx = sx;
-    if (view && worldScale > 0.01 && entry._boxW > 0) {
+    if (view && worldScale > 0.01 && entry._boxW > 0 && sx >= view.l && sx <= view.r) {
       const kx = Math.abs(entry.container.scale.x) || 1;
       const half = entry._boxW / 2 * kx + 8 / worldScale;
       const lo = view.l + half, hi = view.r - half;
