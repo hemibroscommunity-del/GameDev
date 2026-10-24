@@ -42,8 +42,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     plates.length === people.length && plates.every((p) => p.plate), plates);
   rec.ok('...and each one carries that person\'s name',
     plates.length > 0 && plates.every((p) => p.plate && p.plate.name === p.name), plates);
-  rec.ok('...and a title under it, in the slot a player\'s level sits in',
-    plates.length > 0 && plates.every((p) => p.plate && p.plate.role && p.plate.role.length > 0),
+  rec.ok('...and nothing under it: one line (v2.3.3600)',
+    plates.length > 0 && plates.every((p) => p.plate && !p.plate.role) /* v2.3.3600: one line, no role */,
     plates.map((p) => `${p.name}: ${p.plate && p.plate.role}`));
   /* Consistency is the ask, so the OLD above-head label must be gone on all of
      them — one NPC still wearing it is exactly the inconsistency reported. */

@@ -6743,7 +6743,9 @@ function _updateNamePill(display, name, level, visible, broId, alarm, band, part
       display._namePill.visible = !!visible;
       return;
     }
-    display._pillLevel.visible = true;
+    /* v2.3.3600: an empty second line is a ONE-LINE plate (the townsfolk's). */
+    const oneLine = level === '';
+    display._pillLevel.visible = !oneLine;
     if (display._pillLvlNum) display._pillLvlNum.visible = false;
     /* The capsule re-anchors the name to its own centre; a display only ever
        takes one of these two paths, but restoring the factory's anchor here
@@ -6765,7 +6767,8 @@ function _updateNamePill(display, name, level, visible, broId, alarm, band, part
     const bSize = Math.max(11, display._pillH - 9);
     const bPad = broId ? bSize + 4 : 0;
     const w = Math.max(display._pillName.width, display._pillLevel.width) + 14 + bPad;
-    const h = display._pillH;
+    const h = oneLine ? Math.ceil(display._pillName.height + 6) : display._pillH;
+    display._pillBoxH = h;   /* v2.3.3600: the offer's line sits under it */
     if (badge) {
       badge.visible = !!broId;
       if (broId) {
@@ -16538,7 +16541,10 @@ export class EntityRenderer {
          rebuilds the rounded rect only when the string changes (_pillKey),
          so this is a string comparison per frame and nothing more. */
       if (display._namePill) {
-        _updateNamePill(display, npc.name, npc.plateRole || '', true, null);
+        /* v2.3.3600: ONE LINE -- the owner: "the nameplate on NPCs should be 1 line
+           long ... I don't need lil bro 'kid' with the kid as the second line".
+           plateRole stays in NPC_DATA, no longer drawn. */
+        _updateNamePill(display, npc.name, '', true, null);
       }
 
       /* ═══ v2.3.2046: ANIMATE HIM IF HE HAS A WALK CYCLE ═══
@@ -16729,7 +16735,42 @@ export class EntityRenderer {
          vertically when visible, except while waiting. */
       const qm = display._questMarker;
       const qmStr = npc._questMarker || '';
-      if (qmStr) {
+      /* ═══ v2.3.3600: AN OFFER IS A LINE UNDER THE NAME, NOT A PIN OVER THE HEAD ═══
+         The owner: "Too many quest exclamation marks above everyone's head it
+         looks obnoxious and anxiety inducing like there's too much to do all
+         at once. I'd rather it be like a little '1 quest available' with a
+         little coin symbol below the nameplate."  An offer ('❗') draws the
+         pin no more: a small gold coin and "1 quest available" sit under his
+         plate (`_qmOffer`, made on first need).  Waiting ('❔') and ready
+         ('❓') keep their pins -- those are about a quest you took.  The
+         maps' pins (questPins.js) are unchanged. */
+      const offerOn = qmStr === '❗' && !!display._namePill;
+      if (offerOn && !display._qmOffer) {
+        const tag = new Container();
+        const coin = new Graphics();
+        coin.circle(0, 0, 7).fill({ color: 0xF2C14E }).stroke({ color: 0x7A5512, width: 1.5 });
+        coin.circle(0, 0, 3.4).stroke({ color: 0xB8862B, width: 1 });
+        tag.addChild(coin);
+        const txt = new Text({ text: '1 quest available', style: {
+          fontFamily: 'Source Sans 3, sans-serif', fontSize: 15, fontWeight: '800',
+          fill: '#FFE6A3', stroke: { color: '#1A1206', width: 3 } } });
+        txt.anchor.set(0, 0.5);
+        tag.addChild(txt);
+        const w = 14 + 4 + txt.width;
+        coin.x = -w / 2 + 7; txt.x = coin.x + 11;
+        tag.visible = false;
+        display.addChild(tag);
+        display._qmOffer = tag;
+      }
+      if (display._qmOffer) {
+        if (offerOn) {
+          const ty = display._namePill.y + (display._pillBoxH || display._pillH || 24) + 9;
+          if (display._qmOffer.y !== ty) display._qmOffer.y = ty;
+        }
+        if (display._qmOffer.visible !== offerOn) display._qmOffer.visible = offerOn;
+      }
+      display._qmOfferOn = offerOn;   /* the probe's */
+      if (qmStr && !offerOn) {
         /* Redrawn ONLY when the state flips, not per frame — same reasoning as
            the name pill's _pillKey: a three-ring rebuild at 60fps for a value
            that changes when you accept a quest is pure waste. */
@@ -16798,7 +16839,7 @@ export class EntityRenderer {
          badge -- one mark over a head, never two */
       const tm = display._talkMark;
       if (tm) {
-        const showTalk = !qm.visible;
+        const showTalk = !qm.visible && !display._qmOfferOn;   /* v2.3.3600: nor with the offer's line */
         if (showTalk) {
           _bindSmallTex(tm, 'npcTalk');
           /* v2.3.3481: at the old disc's centre, not the taller pin's */
