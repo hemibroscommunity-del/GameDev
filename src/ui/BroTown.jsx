@@ -861,6 +861,17 @@ function _spawnTownNpcs() {
     .map(function (npc) { return _objectSpread({}, npc); });
 }
 var NPC_PROX_OPEN = 90, NPC_PROX_CLEAR = 125;
+/* ═══ v2.3.3594: A TAP ON A TOWNSPERSON REACHES FURTHER ═══
+   The owner: "The tap to talk to npc characters requires you to be too close
+   to them."  Since v2.3.3583 a tap is the only way a townsperson talks, but a
+   tap on him still answered "Too far away!" past NPC_PROX_OPEN, 90 world px --
+   a step and a half, sized for the walk-up opener that is put away.  A tap
+   ON him (your finger on his figure, npcAtCss) now talks from up to
+   NPC_TAP_REACH, about half a phone's view across (~640 world px wide at the
+   standard zoom).  E and the right stick's tap, which take the nearest
+   townsperson without your finger on him, keep _nearNpc's 90: in town the
+   stick's tap still jumps rather than talk to someone across the square. */
+var NPC_TAP_REACH = 300;
 /* ═══ v2.3.3583: A TOWNSPERSON TALKS WHEN YOU TAP HIM, NEVER BY WALKING UP ═══
    The owner, 2026-10-23: "I think I want to change the npc dialog behavior to
    be tap only instead of proximity based. I keep opening dialog by accident.
@@ -10150,7 +10161,7 @@ export var BroTown = function BroTown(_ref0) {
     var _d = Math.sqrt(Math.pow(npc.x - P.x, 2) + Math.pow(npc.y - P.y, 2));
     /* Out of reach is answered, not ignored. A tap that does nothing at all
        reads as a broken character -- the same reason the E key says this. */
-    if (_d > NPC_PROX_OPEN) {
+    if (_d > NPC_TAP_REACH) {   /* v2.3.3594: NPC_PROX_OPEN (90) until then */
       pushDmgPopup(S, npc.x, npc.y - 30, 'Too far away!', '#D8A94D');
       return _mark('far');
     }
