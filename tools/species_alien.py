@@ -39,6 +39,7 @@ the alien in the creator puts them on (speciesCatalog.js `eyes`).
 
     python3 tools/species_alien.py                     # the pieces, the meta, the fixes
     python3 tools/species_frames.py bake --id alien    # the per-frame overlays and fur
+    python3 tools/thin_alien_east.py                   # v2.3.3603: the east ear's outline one pixel
     python3 tools/ui/make_species_thumbs.py --ids alien
     python3 tools/ui/make_eyestyle_thumbs.py --ids alien
     python3 tools/ui/make_species_tab_icon.py          # the Species button: the same eyes
