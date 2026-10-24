@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6abd7ceff8a4f3a41fa7c6cdad9116fee3d1024d",
+  "tree": "7aefcaa0d96da191432cb4e5405d078d0e173c12",
+  "committedAt": "2026-10-24T12:33:39-07:00",
+  "subject": "One-line townsfolk plates, \"1 quest available\", bigger No man's land badge, slime blast forfeits the heal (v2.3.3600) (#1108)",
+  "files": 6540,
+  "bytes": 738976069,
+  "listingSha256": "bcbbcedd1e9748df860021a119b650368ba354a38f4c3eba863790454587cfb3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
