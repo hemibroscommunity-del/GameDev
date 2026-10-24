@@ -16764,7 +16764,7 @@ export class EntityRenderer {
       }
       if (display._qmOffer) {
         if (offerOn) {
-          const ty = display._namePill.y + (display._pillBoxH || display._pillH || 24) + 9;
+          const ty = display._namePill.y + (display._pillBoxH || display._pillH || 24) + 17;   /* v2.3.3601: 8 px more air under the name (the owner) */
           if (display._qmOffer.y !== ty) display._qmOffer.y = ty;
         }
         if (display._qmOffer.visible !== offerOn) display._qmOffer.visible = offerOn;
