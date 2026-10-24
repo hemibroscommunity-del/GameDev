@@ -16748,23 +16748,26 @@ export class EntityRenderer {
       if (offerOn && !display._qmOffer) {
         const tag = new Container();
         const coin = new Graphics();
-        coin.circle(0, 0, 7).fill({ color: 0xF2C14E }).stroke({ color: 0x7A5512, width: 1.5 });
-        coin.circle(0, 0, 3.4).stroke({ color: 0xB8862B, width: 1 });
+        coin.circle(0, 0, 6).fill({ color: 0xF2C14E }).stroke({ color: 0x7A5512, width: 1.5 });
+        coin.circle(0, 0, 2.9).stroke({ color: 0xB8862B, width: 1 });
         tag.addChild(coin);
         const txt = new Text({ text: '1 quest available', style: {
-          fontFamily: 'Source Sans 3, sans-serif', fontSize: 15, fontWeight: '800',
+          fontFamily: 'Source Sans 3, sans-serif', fontSize: 13, fontWeight: '800',
           fill: '#FFE6A3', stroke: { color: '#1A1206', width: 3 } } });
         txt.anchor.set(0, 0.5);
         tag.addChild(txt);
-        const w = 14 + 4 + txt.width;
-        coin.x = -w / 2 + 7; txt.x = coin.x + 11;
+        const w = 12 + 4 + txt.width;
+        coin.x = -w / 2 + 6; txt.x = coin.x + 10;
         tag.visible = false;
-        display.addChild(tag);
+        /* v2.3.3602: a child of the PLATE, so it is drawn at the plate's own
+           screen size (the plate is held one size on screen; in the world the
+           line came out tiny and over the plate on a phone) */
+        display._namePill.addChild(tag);
         display._qmOffer = tag;
       }
       if (display._qmOffer) {
         if (offerOn) {
-          const ty = display._namePill.y + (display._pillBoxH || display._pillH || 24) + 17;   /* v2.3.3601: 8 px more air under the name (the owner) */
+          const ty = (display._pillBoxH || display._pillH || 24) + 13;   /* v2.3.3602: in the plate's own units, under it with air */
           if (display._qmOffer.y !== ty) display._qmOffer.y = ty;
         }
         if (display._qmOffer.visible !== offerOn) display._qmOffer.visible = offerOn;
