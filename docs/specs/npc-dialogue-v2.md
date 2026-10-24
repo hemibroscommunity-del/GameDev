@@ -151,3 +151,35 @@ How it works:
 
 Tested by `mp-race`: a race lost by standing still, then his window opens on
 the "GG EZ!" line and still offers Race!.
+
+## v2.3.3591: one message, a dry line and the job
+
+The owner: "I want just one message of dialog before the next quest triggers.
+npc messages are too long. I also still think the dialog is pretty corny so
+just a dry wisecrack while telling the character to do a quest task is
+better."
+
+- Every live quest's offer, progress line and hand-in is now ONE tap (no blank
+  line inside it, which is where `dialogueChunks` splits). Each is one deadpan
+  line and the job. The counts, places and hand-overs are unchanged: the sword
+  and shield, the bow and staff, the pickaxe, axe, rod, logs, seeds and
+  compost, the Copper Greaves, the clownfish and the box traps.
+- The tour's offers went from 2-4 taps to 1, and the Mayor's first hand-in
+  went from 6 (7 with the Grotto) to 1.
+- The Mayor's slime warning that comes too late (v2.3.2237, the owner's idea)
+  is now a sentence: "I was meant to warn you they explode, so consider
+  yourself warned."
+- The Goo Grotto's aside (v2.3.3579) is the hand-in's last sentence: "The Goo
+  Grotto is level 16 inside, so take 2 or 3 friends. I'm out of eulogies."
+  With it, the hand-in is 287 characters. The old longest tap was 297.
+- Lil Bro's line after a lost race (v2.3.3583) is one tap for any number of
+  losses ("I wasn't even trying. ..."). Before any loss it is still "Scared?
+  Tap Race! ...".
+- No line sends you to a "gold !" any more. The town's work is "on your map".
+- The idle chatter, the reactions and the race barks are unchanged.
+
+Tests: `server/test/quest-lines.test.mjs` (every live quest's three lines are
+one tap of at most 300 characters, Lil Bro's after any loss, the Grotto's
+hand-in, the words), `mayor-grotto` and `mp-mayorgrotto` (the one tap and its
+last sentence), `mp-race` §6 (the new loss line), `mp-questline` (the whole
+tour, paged through as written).
