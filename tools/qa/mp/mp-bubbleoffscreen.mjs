@@ -1,4 +1,4 @@
-/* ═══ A TOWNSPERSON'S LINE STAYS OVER HIS HEAD, OFF THE SCREEN WITH HIM (v2.3.3593) ═══
+/* ═══ A TOWNSPERSON'S LINE STAYS OVER HIS HEAD, OFF THE SCREEN WITH HIM (v2.3.3597) ═══
  *
  * The owner: "The npc messages in the games follow you off screen.  That needs
  * to stop."  Since v2.3.3481 a bubble is kept inside the view, and for a

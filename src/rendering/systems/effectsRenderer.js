@@ -8976,7 +8976,7 @@ export class EffectsRenderer {
        bubble move.  The outline is drawn again only when that slide changes
        (whole bubble px), so a bubble away from the sides is drawn once a
        line, as before. */
-    /* ═══ v2.3.3593: ONLY WHILE THE SPEAKER IS ON THE SCREEN ═══
+    /* ═══ v2.3.3597: ONLY WHILE THE SPEAKER IS ON THE SCREEN ═══
        The owner: "The npc messages in the games follow you off screen.  That
        needs to stop."  Past the edge "the whole bubble moves" above kept an
        off-screen townsperson's line pinned to the side of the screen, sliding
