@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2cf7bf82a5ee655adc142ebb2f2af284faa5131c",
+  "tree": "ca05f6b1df67d9efd2f7d2d83393c772949d9c93",
+  "committedAt": "2026-10-24T10:34:39-07:00",
+  "subject": "Townsfolk say one dry line before a quest (v2.3.3591) (#1101)",
+  "files": 6533,
+  "bytes": 738949603,
+  "listingSha256": "0dde624587c5a4287e0bcc51099fc80da40ff53adaeb0ab8a359f565b8e3cc9f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

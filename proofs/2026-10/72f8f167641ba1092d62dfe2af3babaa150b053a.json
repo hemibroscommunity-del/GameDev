@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "72f8f167641ba1092d62dfe2af3babaa150b053a",
+  "tree": "77690ef10964d09ff57713dc89ffecf4e767f8f7",
+  "committedAt": "2026-10-24T10:35:05-07:00",
+  "subject": "The sword's targeting ring is twice as wide (v2.3.3595) (#1105)",
+  "files": 6537,
+  "bytes": 738960007,
+  "listingSha256": "af348f43d4a695c3cf6d36c72dcb270abd59dde07bf86150e3ce80358490ca6b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
