@@ -334,7 +334,7 @@ export function NameModal(props) {
            ANOTHER species' preset (Monkey Brown -> Alien Cyan: a brown alien
            is the monkey's colour, not a choice), and stays on a colour the
            player picked (a purple monkey is a purple alien);
-         - the EYES go to the species' own (the Alien's almonds) when the bro
+         - the EYES go to the species' own (the Alien Eyes) when the bro
            has his own eyes, and back to his own when he leaves a species whose
            eyes he still wears; a style the player picked stays. */
     species: { label: 'Species', kind: 'thumb', spriteCat: 'species', catalog: SPECIES_CATALOG, sel: speciesSel,

@@ -51,8 +51,9 @@ export const SPECIES_CATALOG = [
          meta.json, which species_frames.py reads);
        - its SKIN, Alien Cyan (playerSkins.js, measured off the owner's alien
          in v2.3.2665 and waiting for this ever since), the preset below;
-       - its EYES, the eye style 'alien' (eyeStyleCatalog.js): two black
-         almonds, preset by `eyes` below.  An eye style rather than a part of
+       - its EYES, the eye style 'alien' (eyeStyleCatalog.js): the Hemi Bros
+         collection's Alien Bro's since v2.3.3590 (black almonds before),
+         preset by `eyes` below.  An eye style rather than a part of
          this piece, so the Eyes tab's colour row paints them like any style's
          and the body bake's erase of the real eyes is the one already built. */
   { id: 'alien', name: 'Alien', skin: 'aliencyan', eyes: 'alien' },

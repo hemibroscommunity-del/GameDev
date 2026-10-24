@@ -18,7 +18,7 @@ fallback), both 128x128.
 
 v2.3.3589: A SPECIES WITH EYES OF ITS OWN WEARS THEM ON ITS TILE.  The Alien
 puts on the eye style 'alien' when it is picked (speciesCatalog.js `eyes`), so
-its tile shows the almonds, composited the way make_eyestyle_thumbs.py does it:
+its tile shows them (the collection's since v2.3.3590), composited the way make_eyestyle_thumbs.py does it:
 the bro's own eyes painted out (blank_eyes, playerSkins._blankEyes's copy),
 then the style placed by preview_headwear.place(), _placeTrait's mirror.  The
 species' `eyes` is read from speciesCatalog.js itself, so there is one list.

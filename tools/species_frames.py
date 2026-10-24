@@ -274,7 +274,7 @@ def apply_cover(layer, body_raw, boxes, tone, tan):
         base = np.median(L[ring & skin]) if (ring & skin).any() else SKIN_REF
         if kind == 'eye':
             # v2.3.3589: the bro's own eye under an eye style (the alien's
-            # almonds), where eyeBlankMask.json does not paint it out: every
+            # eyes), where eyeBlankMask.json does not paint it out: every
             # dark or non-skin pixel in the box -- the eye, its white, its
             # edge -- and nothing else, so the face's own shading stays
             target = box & inter & (layer[:, :, 3] == 0) & (~skin | (L < 110))
@@ -389,12 +389,23 @@ def expand(spec):
 def fixed_layer(pose, d, f, meta, tops, tex, fix, tone):
     raw = body_frame(pose, d, f)
     layer = place(pose, d, f, meta, tops, tex, fix)
-    if fix.get('cover'):
-        layer = apply_cover(layer, raw, fix['cover'], tone, muzzle_tan(tex, d, meta.get('muzzle', True)))
+    # v2.3.3590: the bro's own eye (a cover of kind 'eye') goes on AFTER
+    # `front`.  Its grey highlight is the tool's colour to apply_front, which
+    # cut the cover back out round the eye wherever a front box reached it --
+    # the last mining frames, the pickaxe rising past the head -- and left his
+    # eye showing beside the alien's.  Every other cover is cut as before (the
+    # tool in front of the skin over his ear), so the monkey bakes the same.
+    covers = fix.get('cover') or []
+    rest = [c for c in covers if c[4] != 'eye']
+    eyes = [c for c in covers if c[4] == 'eye']
+    if rest:
+        layer = apply_cover(layer, raw, rest, tone, muzzle_tan(tex, d, meta.get('muzzle', True)))
     if fix.get('eyes'):
         layer = apply_eyes(layer, raw, fix['eyes'])
     if fix.get('front'):
         layer = apply_front(layer, raw, fix['front'])
+    if eyes:
+        layer = apply_cover(layer, raw, eyes, tone, muzzle_tan(tex, d, meta.get('muzzle', True)))
     return layer
 
 

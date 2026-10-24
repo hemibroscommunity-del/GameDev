@@ -103,10 +103,15 @@ EYE_STYLE_PAINTS['demon'] = { part: 'Flames' };
    the two reasons in the header. */
 EYE_STYLE_PAINTS['one-eye'] = { part: 'Pupil', spare: 'light', flat: true };
 EYE_STYLE_PAINTS['wtf'] = { part: 'Pupils', spare: 'light', flat: true };
-/* v2.3.3589: the Alien's almonds are WTF's pupils grown to the whole eye --
-   near-black, too dark for a ratio -- so the same rule: spare the glint and
-   replace the rest. */
-EYE_STYLE_PAINTS['alien'] = { part: 'Eyes', spare: 'light', flat: true };
+/* v2.3.3589: the Alien's almonds were WTF's pupils grown to the whole eye --
+   near-black, too dark for a ratio -- so the same rule.
+   v2.3.3590: the Alien Eyes are the Hemi Bros collection's now (tools/
+   species_alien.py): each a checker of the near-black and the SKIN'S OWN
+   SHADOW, the same near-black drawn see-through (alpha 38) over whatever skin
+   the player picked.  To the material segmentation both are one dark
+   material, so `solid`: paint only the pixels drawn whole, and the shadow
+   stays the skin's.  No glint and no white to spare. */
+EYE_STYLE_PAINTS['alien'] = { part: 'Eyes', flat: true, solid: true };
 
 /** The rule for a style, or null if it offers no colour. */
 function paintRule(id) {
@@ -134,8 +139,8 @@ export function eyeStyleColorTarget(colorId, styleId) {
 /* Three facings, like the art: north and northeast ship no frame, so loading
    them would 404 twice per style per colour (the eyewear note, v2.3.2361). */
 const DIRS = ['east', 'south', 'southwest'];
-const TRAIT_VER = '2.3.3587';   /* the EIGHTH copy of this key; all move together (grep TRAIT_VER).
-                                   Not bumped by this change: it adds no art and edits no meta.json. */
+const TRAIT_VER = '2.3.3590';   /* the EIGHTH copy of this key; all move together (grep TRAIT_VER).
+                                   v2.3.3590: moved for the Alien Eyes redrawn (entityRenderer.js has the note). */
 
 const _cache = {};
 
@@ -198,6 +203,7 @@ function _pooledProfile(imgs, id) {
     main,
     spare,
     flat: !!rule.flat,
+    solid: !!rule.solid,   /* v2.3.3590: paint only the pixels drawn whole (the Alien Eyes' shadow) */
   };
 }
 
@@ -276,10 +282,27 @@ if (typeof window !== 'undefined') {
   window.__btEyeStyleColor = {
     paints: eyeStylePaints,
     target: eyeStyleColorTarget,
-    ref: (id) => getEyeStyleRef(id).then((p) => (p ? { matRef: p.matRef, ref: p.ref, main: p.main, spare: p.spare, flat: p.flat, mats: p.mats.map((m) => ({ kind: m.kind, hue: m.hue, share: m.share })) } : null)),
+    ref: (id) => getEyeStyleRef(id).then((p) => (p ? { matRef: p.matRef, ref: p.ref, main: p.main, spare: p.spare, flat: p.flat, solid: p.solid, mats: p.mats.map((m) => ({ kind: m.kind, hue: m.hue, share: m.share })) } : null)),
     textures: (id, colorId) => {
       const t = getColoredEyeStyleTextures(id, colorId);
       return t ? Object.keys(t).sort() : null;
+    },
+    /* v2.3.3590: what the bake did, per facing: every pixel with any alpha as
+       [r, g, b, a] -- for the Alien Eyes, the solid squares painted and the
+       see-through shadow left as drawn (mp-species §5) */
+    pixels: (id, colorId) => {
+      const t = getColoredEyeStyleTextures(id, colorId);
+      if (!t) return null;
+      const out = {};
+      for (const dir of Object.keys(t)) {
+        const cv = t[dir] && t[dir].source && t[dir].source.resource;
+        if (!cv || !cv.getContext) continue;
+        const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+        const px = [];
+        for (let i = 0; i < d.length; i += 4) if (d[i + 3]) px.push([d[i], d[i + 1], d[i + 2], d[i + 3]]);
+        out[dir] = px;
+      }
+      return out;
     },
   };
 }

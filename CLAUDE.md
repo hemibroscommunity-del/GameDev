@@ -156,12 +156,23 @@ remnant to migrate server-side, not a mode to preserve.
   the monkey since v2.3.2682 and since v2.3.3589 the ALIEN -- the owner: "Yes
   make species it's own button.  And add alien." -- its pointed ears made from
   the monkey's piece by tools/species_alien.py, so the 196 frames the monkey
-  was fitted to fit them too, Alien Cyan, and the eye style 'alien' (black
-  almonds) that picking it puts on (speciesCatalog.js `skin`/`eyes`, never over
-  a colour or eyes the player chose); the creator's SPECIES BUTTON is wide
-  across the top of the trait grid, the 3x3 under it as it was, the creator
-  opens on it, and the Skin tab is the tones and the tattoo card again;
-  `mp-species`, in the world),
+  was fitted to fit them too, Alien Cyan, and the eye style 'alien' that
+  picking it puts on (speciesCatalog.js `skin`/`eyes`, never over a colour or
+  eyes the player chose); the creator's SPECIES BUTTON is wide across the top
+  of the trait grid, the 3x3 under it as it was, the creator opens on it, and
+  the Skin tab is the tones and the tattoo card again; `mp-species`, in the
+  world; and since v2.3.3590 the ALIEN EYES ARE THE COLLECTION'S -- the owner:
+  "Biggest difference for alien is the alien eyes.  Those weren't made the
+  same" (they were black almonds): the Hemi Bros Alien Bro's checker, two cells
+  by two an eye, the dark on one diagonal and on the other the same dark at
+  alpha 38, the skin's own shadow over any skin, laid cell by cell on the eyes
+  the game paints (make_collection_eyewear.py's helpers), and the Eyes tab's
+  colour paints only what is drawn whole (eyeStyleColorCatalog.js `solid`);
+  the covers that paint the bro's own eyes out on the action frames now reach
+  his whole eye, white and all, from each eye's middle (mining no longer loses
+  its mouth or nose; species_frames.py lays an `eye` cover after `front`); the
+  Species button wears the collection's face; TRAIT_VER and SPECIES_ART_VER
+  2.3.3590; `mp-species` §5),
   `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
   size, in what order — the decoded-RGBA budget and the free-standing
   vs edge-cropped test live here, v2.3.2650),

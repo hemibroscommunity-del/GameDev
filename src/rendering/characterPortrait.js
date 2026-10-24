@@ -92,7 +92,7 @@ const WORLD_WEAPON_PX = { greatsword: 48, sword: 26, 'sword:wood': 45, bow: 52, 
    shadow below uses, and the same rows entityRenderer's BODY_ROWS carries. */
 const FOOT_ROW = { south: 221, north: 219, east: 223, northeast: 227, southwest: 234 };
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
-const TRAIT_VER = '2.3.3587';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101.
+const TRAIT_VER = '2.3.3590';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101.
                                    v2.3.2386: BUMPED FOR THE EYEWEAR REDRAW, and this is the first time it has HAD to move.
                                    Every earlier eyewear commit ADDED art -- new URLs, nothing cached to go stale.  v2.3.2379 is the
                                    first that CHANGED art already on main: seven pairs redrawn under their existing paths, plus
@@ -283,8 +283,15 @@ export function recolorHairToCanvas(img, hairColor, refOverride) {
      WHITE.  One control reading as "a jagged coloured edge round a black
      pupil", which is exactly what the owner reported. */
   const flat = !!(prof && prof.flat);
+  /* v2.3.3590: `solid` paints only the pixels drawn whole.  The Alien Eyes are
+     the collection's checker of near-black and the skin's own shadow, and the
+     shadow is that same near-black drawn see-through over the player's skin:
+     painted with the eye colour it would be a tinted veil, not a shadow.  Only
+     eyeStyleColorCatalog sets it. */
+  const solid = !!(prof && prof.solid);
   for (let i = 0; i < d.length; i += 4) {
     if (d[i + 3] > 30) {
+      if (solid && d[i + 3] < 255) continue;
       if (mats) {
         const mi = materialIndex(d[i], d[i + 1], d[i + 2], mats);
         if (main >= 0 ? mi !== main : mi === spare) continue;

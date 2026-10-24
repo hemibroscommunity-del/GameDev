@@ -28,8 +28,11 @@ import { skinTarget, retintSkinPixels, poseSkinTarget } from '../playerSkins.js'
 import { SPECIES_CATALOG } from './speciesCatalog.js';
 
 /* This folder's own cache-buster -- bump it when the species art changes.
-   Not the shared TRAIT_VER: that one moves for sweeps of the other trait art. */
-const SPECIES_ART_VER = '2.3.2682';
+   Not the shared TRAIT_VER: that one moves for sweeps of the other trait art.
+   v2.3.3590: bumped for the alien's frames, re-baked with the covers that
+   paint the bro's own eyes out under the collection's Alien Eyes (tools/
+   species_alien.py), and its meta.json and thumbs with them. */
+const SPECIES_ART_VER = '2.3.3590';
 const DIRS = ['south', 'southwest', 'east', 'northeast', 'north'];
 
 const _art = Object.create(null);      /* id -> Promise<art|null>; rule 4: keyed by an id off a saved look */

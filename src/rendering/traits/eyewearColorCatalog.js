@@ -143,7 +143,7 @@ const DIRS = ['east', 'northeast', 'south', 'southwest'];
 const OMITS = Object.create(null);   /* rule 4: id-keyed map */
 OMITS['golden-monocle'] = ['northeast'];
 const dirsFor = (id) => (OMITS[id] ? DIRS.filter((d) => OMITS[id].indexOf(d) < 0) : DIRS);
-const TRAIT_VER = '2.3.3587';   /* the SIXTH copy of this key; all move together (grep TRAIT_VER).
+const TRAIT_VER = '2.3.3590';   /* the SIXTH copy of this key; all move together (grep TRAIT_VER).
                                    v2.3.3587: moved with them, for the two gold pieces redrawn in the
                                    collection's design (entityRenderer.js has the note). */
 
