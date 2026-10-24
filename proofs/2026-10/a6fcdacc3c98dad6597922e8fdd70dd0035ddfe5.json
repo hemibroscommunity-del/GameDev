@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a6fcdacc3c98dad6597922e8fdd70dd0035ddfe5",
+  "tree": "a78472e4be2f3e7767f8294c2b89f917b22f52e6",
+  "committedAt": "2026-10-24T15:07:09-07:00",
+  "subject": "The alien's east ear: a one-pixel outline (v2.3.3603) (#1111)",
+  "files": 6541,
+  "bytes": 738980072,
+  "listingSha256": "dfc0d9ff6325c329d60eb53d10e27e2245fb50dbf88be1dd883c1acf68071574",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
