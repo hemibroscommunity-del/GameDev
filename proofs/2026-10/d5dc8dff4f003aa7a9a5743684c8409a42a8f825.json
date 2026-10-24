@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d5dc8dff4f003aa7a9a5743684c8409a42a8f825",
+  "tree": "2a0807f490a33869c0ad6344e210c3f9e69eaf77",
+  "committedAt": "2026-10-24T12:46:43-07:00",
+  "subject": "More space between a townsperson's name and \"1 quest available\" (v2.3.3601) (#1109)",
+  "files": 6540,
+  "bytes": 738976130,
+  "listingSha256": "e60875c6ed352e86b2fec6e11e1b987e4058c0ca5e0a067eea9f57f7ec472f29",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
