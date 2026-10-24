@@ -238,8 +238,13 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   check('6f the Auction House\'s door and window wear the gavel', /iconSrc: '\/icons\/ui\/bldg-auction-gavel\.webp/.test(bl)
     && /lsHeader\('auction-gavel'/.test(vp) && !/lsHeader\('auctionhouse'/.test(vp));
   const bt = src('src/ui/BroTown.jsx');
-  check('6g the creator\'s None tile is the plain no-entry sign, and the species\' Human and the eyes\' Normal keep the bald head',
-    /\(cat === 'species' \|\| cat === 'eyestyle'\) \? '\/ui\/welcome\/cc\/cc-no-hair\.webp\?v=' : '\/ui\/welcome\/cc\/cc-none\.webp\?v='/.test(bt));
+  /* v2.3.3592: the owner: "the 'None' option should show a thumbnail of what
+     that means - for example human should just show a hemi bro head (maybe the
+     one without the eyes to focus on just the shape)" -- the collection's plain
+     bro (tools/ui/make_none_tiles.py) takes v2.3.3526's no-entry sign's place */
+  check('6g the creator\'s None tile is the collection\'s plain bro: with its Normal Eyes on the Eyes and eyewear strips, without them elsewhere',
+    /\(cat === 'eyestyle' \|\| cat === 'eyewear'\) \? '\/ui\/welcome\/cc\/cc-none-eyes\.png\?v=' : '\/ui\/welcome\/cc\/cc-none-bro\.png\?v='/.test(bt)
+      && existsSync(pub('/ui/welcome/cc/cc-none-eyes.png')) && existsSync(pub('/ui/welcome/cc/cc-none-bro.png')));
 }
 
 /* ── 7. v2.3.3526: card 11, the owner's own picks ── */

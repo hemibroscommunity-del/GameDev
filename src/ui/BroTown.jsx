@@ -2718,7 +2718,16 @@ export var BroTown = function BroTown(_ref0) {
          which is as wide as "Human" and goes above the icon for the same
          reason. */
       ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: (cat === 'species' || cat === 'eyestyle') ? 'column-reverse' : 'column', alignItems: 'center', justifyContent: 'center' } },
-          /*#__PURE__*/React.createElement("img", { src: ((cat === 'species' || cat === 'eyestyle') ? '/ui/welcome/cc/cc-no-hair.webp?v=' : '/ui/welcome/cc/cc-none.webp?v=') + BUILD_INFO.version /* v2.3.3526: the owner's sheet's plain no-entry sign (card 11) where None means nothing -- the bald head said "no hair" on the glasses' and shirts' rows too; the species' "Human" and the eyes' "Normal" keep the plain bald head, a human with nothing added, not "no human" */, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
+          /* v2.3.3592: the owner: "the 'None' option should show a thumbnail
+             of what that means - for example human should just show a hemi
+             bro head (maybe the one without the eyes to focus on just the
+             shape)".  The collection's own plain bro (tools/ui/
+             make_none_tiles.py): with no eyes for the Human and wherever None
+             takes something OFF the bro (hair, hats, beards, shirts, capes),
+             with the collection's Normal Eyes where None is the bro's own eyes
+             (the Eyes strip's Normal, and no eyewear).  v2.3.3526's no-entry
+             sign and the painted bald head step aside. */
+          /*#__PURE__*/React.createElement("img", { src: ((cat === 'eyestyle' || cat === 'eyewear') ? '/ui/welcome/cc/cc-none-eyes.png?v=' : '/ui/welcome/cc/cc-none-bro.png?v=') + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain', imageRendering: 'pixelated' } }),
           /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, (cat === 'species' || cat === 'eyestyle') ? opt.name : "None"))   /* v2.3.2682: on the species strip 'none' is the Human; v2.3.3481: on the Eyes strip, Normal */
       /* v2.3.3481: the 2026-10-19 UI review -- the eye styles' tiles are
          whole heads and shoulders (make_eyestyle_thumbs.py), so the eyes, the
