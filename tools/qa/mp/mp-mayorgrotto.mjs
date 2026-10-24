@@ -7,12 +7,12 @@
  * mp-questline seeds them) and hands them in, tap by tap on his window:
  *
  *   1. the worker plays the Grotto for a party (caps.partydungeon)
- *   2. the hand-in has seven taps, and the fourth names the Goo Grotto:
- *      level 16, a party of 2 or 3, after the warning that came too late and
- *      before the bow and staff
+ *   2. the hand-in is one tap (v2.3.3591, the owner's "just one message";
+ *      seven until then), and its last sentence names the Goo Grotto:
+ *      level 16, 2 or 3 friends, after who to see first
  *   3. "Claim reward" still pays it: the worker hands tut_1 in
- *   4. `partydungeon: false`: a second character's hand-in is the six taps it
- *      was, no Grotto
+ *   4. `partydungeon: false`: a second character's hand-in is one tap, no
+ *      Grotto
  *   5. no page errors
  */
 import * as H from './harness.mjs';
@@ -74,13 +74,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const walk = await walkHandIn(P, true);
   const at = walk.lines.findIndex((l) => /Goo Grotto/.test(l));
   const aside = at >= 0 ? walk.lines[at] : '';
-  rec.ok(`2a. the hand-in has seven taps (${walk.lines.length})`, walk.lines.length === 7, walk.lines);
-  rec.ok('2b. ...the fourth names the Goo Grotto', at === 3, { at, aside });
-  rec.ok('2c. ...its level and party: level 16, a party of 2 or 3', /level 16\b/.test(aside) && /a party of 2 or 3\.$/.test(aside), aside);
-  rec.ok('2d. ...after the warning that came too late, and before the bow and staff',
-    at > 0 && /4 Slime Remains/.test(walk.lines[at - 1]) && /^Here, take a bow and a staff/.test(walk.lines[at + 1] || ''), walk.lines.slice(Math.max(0, at - 1), at + 2));
-  rec.ok('2e. ...in his voice ("like the town council", "a funeral I\'d have to speak at")',
-    /like the town council/.test(aside) && /funeral I'd have to speak at/.test(aside), aside);
+  rec.ok(`2a. the hand-in is one tap (${walk.lines.length})`, walk.lines.length === 1, walk.lines);
+  rec.ok('2b. ...it names the Goo Grotto', at === 0, { at, aside });
+  rec.ok('2c. ...its level and party: level 16, 2 or 3 friends', /level 16\b/.test(aside) && /take 2 or 3 friends\./.test(aside), aside);
+  rec.ok('2d. ...last, after the bow and staff and who to see first',
+    /bow and a staff/.test(aside) && /Diego\. The Goo Grotto/.test(aside), aside);
+  rec.ok('2e. ...in his voice ("I\'m out of eulogies")', /I'm out of eulogies\.$/.test(aside), aside);
 
   rec.ok('3. "Claim reward" is reached on his last line', walk.claim, walk.lines.slice(-1));
   if (walk.claim) {
@@ -107,8 +106,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('4. `partydungeon: false`: the worker no longer says so', caps2 !== true, caps2);
   await slimesToHandIn(Q, wsPort, rec, '4');
   const walk2 = await walkHandIn(Q, false);
-  rec.ok(`4b. ...and the hand-in is the six taps it was, no Grotto (${walk2.lines.length})`,
-    walk2.lines.length === 6 && !walk2.lines.some((l) => /Grotto/.test(l)), walk2.lines);
+  rec.ok(`4b. ...and the hand-in is one tap, no Grotto (${walk2.lines.length})`,
+    walk2.lines.length === 1 && !walk2.lines.some((l) => /Grotto/.test(l)), walk2.lines);
   await H.liveFlag(wsPort, 'partydungeon', null);
   await Q.ctx.close().catch(() => {});
 
