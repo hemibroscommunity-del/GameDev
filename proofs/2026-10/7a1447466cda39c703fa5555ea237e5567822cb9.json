@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7a1447466cda39c703fa5555ea237e5567822cb9",
+  "tree": "b9726be6c74611f7c416d84ff50558e7ca10f8c0",
+  "committedAt": "2026-10-24T10:42:06-07:00",
+  "subject": "A townsperson's line stays over his head, off the screen with him (v2.3.3597) (#1103)",
+  "files": 6538,
+  "bytes": 738964339,
+  "listingSha256": "c85b503f24e3b1c9a093e905672fea3c31658a2192b1326980eeccdef35cb56d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
