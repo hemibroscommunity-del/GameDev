@@ -172,7 +172,10 @@ export const WHEEL_TOWNSFOLK = [
      at the door 119 px, past the 90 px his quest opens at by itself.  Only
      against a worker that knows his quests (caps.beastmaster; BroTown.jsx
      _spawnWheelNpcs). */
-  { name: 'Beastmaster Bro', door: 'woodworker', dx: 105, dy: 34, cap: 'beastmaster' },
+  /* v2.3.3599: 130 px either side of the steps and 46 further south, 260 apart (were 105
+     and 210, the crate and barrel blocking wider;
+     the owner: "more distance between them"). */
+  { name: 'Beastmaster Bro', door: 'woodworker', dx: 130, dy: 80, cap: 'beastmaster' },
   /* ═══ v2.3.3525: THE TOUR'S TWO NEW GIVERS ═══
      Woodworker Bro WEST of his own steps (the Beastmaster has the east, his
      Snowling beside him; the bench's crate is 193 px west, so -105 is clear
@@ -182,7 +185,7 @@ export const WHEEL_TOWNSFOLK = [
      (a tap finds one within 44 CSS px, ~73 world px at the Wheel's zoom), and
      a player at the door is ~119 px from each, past the 90 a quest opens at
      by itself.  test-world-core checks each spot's ground. */
-  { name: 'Woodworker Bro', door: 'woodworker', dx: -105, dy: 34, cap: 'tour' },
+  { name: 'Woodworker Bro', door: 'woodworker', dx: -130, dy: 80, cap: 'tour' },
   { name: 'Farmer Bro', door: 'feedseed', dx: -105, dy: 34, cap: 'tour' },
 ];
 
