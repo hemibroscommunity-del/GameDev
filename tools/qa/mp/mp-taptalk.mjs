@@ -1,4 +1,4 @@
-/* ═══ A TAP ON A TOWNSPERSON REACHES FURTHER (v2.3.3594) ═══
+/* ═══ A TAP ON A TOWNSPERSON REACHES FURTHER (v2.3.3598) ═══
  *
  * The owner: "The tap to talk to npc characters requires you to be too close
  * to them."  A tap on him answered "Too far away!" past 90 world px (a step

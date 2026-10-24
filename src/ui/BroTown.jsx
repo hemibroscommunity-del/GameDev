@@ -861,7 +861,7 @@ function _spawnTownNpcs() {
     .map(function (npc) { return _objectSpread({}, npc); });
 }
 var NPC_PROX_OPEN = 90, NPC_PROX_CLEAR = 125;
-/* ═══ v2.3.3594: A TAP ON A TOWNSPERSON REACHES FURTHER ═══
+/* ═══ v2.3.3598: A TAP ON A TOWNSPERSON REACHES FURTHER ═══
    The owner: "The tap to talk to npc characters requires you to be too close
    to them."  Since v2.3.3583 a tap is the only way a townsperson talks, but a
    tap on him still answered "Too far away!" past NPC_PROX_OPEN, 90 world px --
@@ -10170,7 +10170,7 @@ export var BroTown = function BroTown(_ref0) {
     var _d = Math.sqrt(Math.pow(npc.x - P.x, 2) + Math.pow(npc.y - P.y, 2));
     /* Out of reach is answered, not ignored. A tap that does nothing at all
        reads as a broken character -- the same reason the E key says this. */
-    if (_d > NPC_TAP_REACH) {   /* v2.3.3594: NPC_PROX_OPEN (90) until then */
+    if (_d > NPC_TAP_REACH) {   /* v2.3.3598: NPC_PROX_OPEN (90) until then */
       pushDmgPopup(S, npc.x, npc.y - 30, 'Too far away!', '#D8A94D');
       return _mark('far');
     }
