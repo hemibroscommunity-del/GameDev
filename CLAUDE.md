@@ -1074,7 +1074,11 @@ remnant to migrate server-side, not a mode to preserve.
       left column is the figure, the gear and PLAYER, the right the vitals and
       OFFENSE; the tab SCROLLS again with the bottom fade on (fourteen
       readable pills cannot fit the ~150 px window); the eighth LANTERN-SLATE
-      exception; `mp-charfit` (three phone sizes), `mp-prog3`; since
+      exception; `mp-prog3`; since v2.3.3605 IN FAMILIES, an accordion -- Damage and
+      Defense pills, the HP bar the Health family (its parts: base, level, points,
+      gear) and EN/MP the Energy family, an open one covering the figure row
+      (heroStatPills.js `heroStatFamilies`; `mp-statfamilies`, mp-charfit retired);
+      since
       v2.3.3577 its figure faces SOUTHEAST (the owner's ask; the southwest
       art mirrored, the crop's window following it: CharacterView.jsx
       `figureCx`), `mp-heroview`: docs/specs/notes-2026-10-22.md.

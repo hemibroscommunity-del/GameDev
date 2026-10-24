@@ -94,6 +94,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(700);
   /* v2.3.3053: the stats are PILLS now (owner mockup) -- an icon, the name,
      the value -- found by their data-pill key; the seven became fourteen. */
+  /* v2.3.3605: the stats are in FAMILIES now (heroStatFamilies): Armor is a
+     member of Defense, shown when that family is opened */
+  await P.page.evaluate(() => { const h = document.querySelector('[data-family-head="defense"]'); if (h) h.click(); });
+  await P.page.waitForTimeout(500);
   const armourCell = await P.page.evaluate(() => {
     const row = document.querySelector('[data-pill="armor"]');
     if (!row) return { err: 'no ARMOR pill on the character sheet',
@@ -103,7 +107,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .flatMap((d) => [...d.querySelectorAll('span')])
       .filter((t) => !t.children.length && t.scrollWidth > t.clientWidth + 1)
       .map((t) => t.textContent.trim());
-    const groups = [...document.querySelectorAll('[data-pillgroup="offense"], [data-pillgroup="player"]')];
+    const groups = [...document.querySelectorAll('[data-family-rows]')];
     return {
       value: (row.lastElementChild && row.lastElementChild.textContent || '').trim(),
       cells: pills.length,
@@ -113,8 +117,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok('the character sheet shows an ARMOR pill with a real percentage',
     !armourCell.err && /^\d+(\.\d)?%$/.test(String(armourCell.value || '')), armourCell);
-  rec.ok('...and all fourteen stat pills (DPS + 7 + 6) fit their column, uncropped',
-    !armourCell.err && armourCell.cells === 14
+  rec.ok('...and the Defense family\'s four pills (v2.3.3605) fit, uncropped',
+    !armourCell.err && armourCell.cells === 4
     && armourCell.gridOverflowX <= 1 && armourCell.clipped.length === 0, armourCell);
 
   /* ── the Build tab renders the allocation screen ──

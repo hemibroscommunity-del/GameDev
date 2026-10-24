@@ -30,7 +30,7 @@ function ptsOf(pts, cap, unit) {
   return unit ? `${pts} of ${cap} points` : `${pts} of ${cap}`;
 }
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
-import { heroStatPills, HERO_PILL_TONE } from './heroStatPills.js';      /* v2.3.3053: the stat pills */
+import { heroStatPills, heroStatFamilies, HERO_PILL_TONE } from './heroStatPills.js';      /* v2.3.3053: the stat pills */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
 import { StatDemo, STAT_DEMO_KEYS } from './StatDemo.jsx';                      /* v2.3.2222: the ℹ️ window's scene; v2.3.2592: only stats that HAVE one */
@@ -113,6 +113,7 @@ const SECTION_LABEL = {
    Overview when Hero is closed all the way to the toolbar — a NEXT
    open is a fresh visit (owner spec); a dip to compact keeps it. */
 let _lastSection = 'Overview';
+let _lastFam = null;   /* v2.3.3605: the stat family open (HeroExpanded famOpen) */
 dashboardPanelBus.subscribe(() => {
   if (dashboardPanelBus.state.mode === 'bar') _lastSection = 'Overview';
 });
@@ -245,6 +246,10 @@ export const HeroExpanded = () => {
   const [selCat, setSelCat] = useState(null);
   /* v2.3.3541: the free points reset's first tap, when it was (0: not armed) */
   const [resetAsk, setResetAsk] = useState(0);
+  /* v2.3.3605: the stat family open in the Equipment tab (null: all shut) --
+     one at a time, so every family fits without a scroll; kept for the visit */
+  const [famOpen, setFamOpenState] = useState(_lastFam);
+  const setFamOpen = (k) => { _lastFam = k; setFamOpenState(k); };
   /* v2.3.2326: the lane headers live inside the sheet's scroller, which eats
      any tap that drifts more than ~15px. See scrollTap.js. */
   const scrollTap = useScrollTap();
@@ -495,24 +500,72 @@ export const HeroExpanded = () => {
       {side}
     </div>
   );
-  const pills = heroStatPills(R, d);
+  /* ═══ v2.3.3605: THE STATS IN FAMILIES, AN ACCORDION ═══
+     The owner: "each major combat resource grouped under families ... even HP
+     to show what's contributing ... Accordion style family pills so it can all
+     display without scrolling down".  Four family pills (heroStatFamilies:
+     Damage, Defense, Health, Energy), each its headline number and a chevron;
+     a tap opens it on its members, indented under it -- the stat pills above,
+     a tap on one still its explainer -- and shuts any other.  OFFENSE's column
+     holds Damage and Defense, PLAYER's Health and Energy. */
+  const families = heroStatFamilies(R, d);
+  const famPill = (f, wide) => {
+    const tone = HERO_PILL_TONE[f.tone];
+    const open = famOpen === f.key;
+    return (
+      <div key={f.key} data-family={f.key} data-open={open ? '1' : '0'}
+        style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+        <button type="button" data-family-head={f.key}
+          aria-expanded={open}
+          onClick={(e) => { e.stopPropagation(); setFamOpen(open ? null : f.key); }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, height: PILL_H, boxSizing: 'border-box',
+            minWidth: 0, flex: 'none', padding: '0 8px 0 5px', borderRadius: 999,
+            border: `1.5px solid ${tone.edge}`, background: open ? 'rgba(255,255,255,.07)' : COL.well,
+            color: COL.text, cursor: 'pointer', touchAction: 'manipulation', font: 'inherit', textAlign: 'left',
+          }}>
+          <img src={f.icon} alt="" draggable={false}
+            style={{ width: 16, height: 16, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+          <span style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 800, letterSpacing: '.1em',
+            textTransform: 'uppercase', color: tone.head, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.label}</span>
+          <span style={{ flex: 'none', fontSize: 12.5, fontWeight: 800, color: COL.text, lineHeight: 1,
+            fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{f.head}</span>
+          <span aria-hidden="true" style={{ flex: 'none', fontSize: 10, color: tone.head, width: 10, textAlign: 'center',
+            transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>▶</span>
+        </button>
+        {open && (
+          <div data-family-rows={f.key} style={wide
+            ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 4 }
+            : { display: 'flex', flexDirection: 'column', gap: 3, paddingLeft: 8 }}>
+            {f.rows.map((p) => statPill(p, tone))}
+          </div>
+        )}
+      </div>
+    );
+  };
+  /* The four live in one place: under the bars in the right column upright,
+     where the sheet's ~191 px has room for the bars and four shut families,
+     and there an open family takes the column alone (the bars and the others
+     step aside) so its rows fit; sideways under the figure row, all in view. */
   const offenseBlock = () => (
     <div data-pillgroup="offense" style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-      {pillHead('Offense', HERO_PILL_TONE.offense, statPill(pills.dps, HERO_PILL_TONE.offense))}
-      {pills.offense.map((p) => statPill(p, HERO_PILL_TONE.offense))}
+      {!famOpen && families.filter((f) => f.key === 'damage' || f.key === 'defense').map((f) => famPill(f, false))}
     </div>
   );
-  const playerBlock = () => (
-    <div data-pillgroup="player" style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-      {pillHead('Player', HERO_PILL_TONE.player)}
-      {pills.player.map((p) => statPill(p, HERO_PILL_TONE.player))}
-    </div>
-  );
+  const playerBlock = () => null;
   /* The three vitals as pills: the bar IS the pill (VitalBar's trough at the
      pills' height), its picture, letters and numbers inside it, white on a
      halo so they read over the fill and the empty trough alike. */
+  /* v2.3.3605: the bars ARE the Health and Energy families' pills: a tap on HP
+     opens what your health is made of, on EN or MP the stamina and mana --
+     two fewer pills, so the shut tab fits its ~191 px */
+  const vitalFam = (kind) => (kind === 'hp' ? 'health' : 'energy');
   const vitalPill = (kind, cur, max) => (
-    <div key={kind} data-vital={kind} title={VITAL_LABEL[kind]} style={{ display: 'flex', flex: 'none' }}>
+    <div key={kind} data-vital={kind} title={VITAL_LABEL[kind]}
+      data-family-head={kind === 'mana' ? undefined : vitalFam(kind)}
+      role="button" tabIndex={0} aria-label={`${VITAL_LABEL[kind]} ${Math.ceil(cur)} of ${Math.ceil(max)}: what it is made of`}
+      onClick={(e) => { e.stopPropagation(); setFamOpen(vitalFam(kind)); }}
+      style={{ display: 'flex', flex: 'none', cursor: 'pointer', touchAction: 'manipulation' }}>
       <VitalBar
         kind={kind} cur={cur} max={max} thick={PILL_H}
         inset={(
@@ -537,7 +590,7 @@ export const HeroExpanded = () => {
     </div>
   );
   const vitalPills = () => (
-    <div data-pillgroup="vitals" style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 'none' }}>
+    <div data-pillgroup="vitals" style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 'none' }}>
       {/* v2.3.2520: HP is scaled (§5.8 D2); EN and MP are NOT. */}
       {vitalPill('hp', toDisplayHp(R.hp || 0), toDisplayHp(R.maxHp || 100))}
       {vitalPill('stamina', R.stamina || 0, R.maxStamina || 100)}
@@ -998,7 +1051,12 @@ export const HeroExpanded = () => {
               line (they just fit the ~204px column at a 6px gap), and the
               vitals/item-card column breaks below them at full width
               instead of squeezing beside them. */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: landPane ? 6 : 8, flexWrap: landPane ? 'wrap' : undefined, rowGap: landPane ? 8 : undefined }}>
+          {/* v2.3.3605: an open stat family covers the figure row whole, upright
+              and sideways (upright the tab is ~191 px: seven rows would not fit
+              in one column), its rows two to a line; its header shuts it and
+              the row comes back */}
+          {famOpen && families.filter((f) => f.key === famOpen).map((f) => famPill(f, true))}
+          <div style={{ display: famOpen ? 'none' : 'flex', alignItems: 'flex-start', gap: landPane ? 6 : 8, flexWrap: landPane ? 'wrap' : undefined, rowGap: landPane ? 8 : undefined }}>
             {/* ═══ v2.3.3053: TWO COLUMNS THAT RUN ON DOWN ═══
                 Upright, the character and the gear head a LEFT column with
                 PLAYER's pills under them, and the vitals head a RIGHT column
@@ -1091,7 +1149,7 @@ export const HeroExpanded = () => {
                  spends the same pixels on the thing being read instead of on
                  the space around a 1px line.  Column height is unchanged; the
                  item-card branch still gets 0. */
-              justifyContent: 'flex-start', gap: 10, /* v2.3.3053: vitals or card, then OFFENSE */
+              justifyContent: 'flex-start', gap: 4, /* v2.3.3053: vitals or card, then OFFENSE; v2.3.3605: 10 -> 4, so the shut tab fits */
             }}>
               {selSlot ? (
                 <div data-cardwrap="1" style={{
@@ -1320,6 +1378,8 @@ export const HeroExpanded = () => {
                 /* v2.3.3053: the three vitals as pills; the stats that shared
                    this column since v2.3.1878 run on below it (OFFENSE) and
                    under the figure (PLAYER). */
+                /* v2.3.3605: and while a stat family is open upright, its rows take
+                   the bars' place (famOpen; the header shuts it again) */
                 vitalPills()
               )}
               {!landPane && offenseBlock()}
