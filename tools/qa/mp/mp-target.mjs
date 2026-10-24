@@ -18,7 +18,7 @@
 import * as H from './harness.mjs';
 
 const PHONE = { width: 390, height: 844 };
-const PERIM = 220;   /* mirrors TARGET_PERIMETER_PX */
+const PERIM = 440;   /* the sword's ring: TARGET_PERIMETER_PX 220 x MELEE_PERIMETER_K 2 (targeting.js perimeterPx, v2.3.3595) */
 
 const seed = (P, list) => P.page.evaluate((list) => {
   const S = window._gameState.current;
@@ -123,7 +123,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await seed(P, [{ id: 'far', dx: 620 }]);
   await P.page.waitForTimeout(350);
   s = await st(P);
-  rec.ok('guard: a monster 620px away is not a candidate (way outside the 220px perimeter)',
+  rec.ok('guard: a monster 620px away is not a candidate (outside the sword\'s 440px ring and its 550px hold)',
     s.cands.length === 0 && s.lock === null, s);
   /* Lock it the way a player does: tap it on the canvas.  Driven through the
      state the tap writes, because a synthetic canvas click at 620px would
