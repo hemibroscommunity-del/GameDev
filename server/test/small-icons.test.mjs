@@ -74,7 +74,7 @@ const src = (p) => readFileSync(new URL(p, root), 'utf8');
   check('3b the threat skull is the owner\'s picture (both skulls), not the 💀 Text',
     !/new Text\(\{ text: '\\u\{1F480\}'/.test(er) && (er.match(/new Sprite\(_smallTex\('threatSkull'\)\)/g) || []).length === 2);
   check('3c the townsfolk wear the talk bubble where the quest badge goes, never both, not the ★',
-    !/text: '★'/.test(er) && /const showTalk = !qm\.visible;/.test(er));
+    !/text: '★'/.test(er) && /const showTalk = !qm\.visible && !display\._qmOffer(On)?;/.test(er));   /* v2.3.3600: nor with the offer's line under the plate */
   const bt = src('src/ui/BroTown.jsx');
   const chips = bt.slice(bt.indexOf("if (S._cursedUntil && Date.now() < S._cursedUntil)"), bt.indexOf('if (effects.length === 0) return null;'));
   check('3d the buff badges: every one the owner\'s picture, no emoji left',

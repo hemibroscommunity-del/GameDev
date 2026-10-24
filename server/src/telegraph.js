@@ -634,6 +634,7 @@ export const telegraphMethods = {
       if (dx * dx + dy * dy > r2) continue;
       this._telegraphHitPlayer(zoneId, m, pid, kit);
       anyHit = true;
+      if (pid === m._burstKiller) m._burstHitKiller = true;   /* v2.3.3600: see combat.js */
     }
     this.eventBuffer.push({
       type: 'monster_ability',
@@ -651,6 +652,7 @@ export const telegraphMethods = {
     m._burstDone = true;                     /* so the kill is not deferred twice */
     this._resolveMonsterKill(zoneId, m, killerId, killerId ? this.playerState[killerId] : null, slot);
     m._burstDone = false;
+    m._burstHitKiller = false;
     return true;
   },
 

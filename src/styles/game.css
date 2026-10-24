@@ -1170,8 +1170,13 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
 .bt-pts-count::before{content:'';position:absolute;inset:-3px -4px;border-radius:999px;pointer-events:none;z-index:-1;
   background:radial-gradient(closest-side,rgba(255,206,102,.62),rgba(255,206,102,.24) 62%,rgba(255,206,102,0));
   animation:bt-pts-count-glow 3.2s ease-in-out infinite}
+/* v2.3.3600: No man's land's red line along the band's top, blinking slowly
+   (NmlBadge.jsx; the owner: "some kind of slightly blinking red line") */
+@keyframes bt-nml-line{0%,100%{opacity:.35}50%{opacity:.95}}
+.bt-nml-line{animation:bt-nml-line 1.8s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){
   .bt-pts-count{animation:none}
+  .bt-nml-line{animation:none;opacity:.7}
   .bt-pts-count::before{animation:none;opacity:.8}
 }
 /* v2.3.2599: THE POINT-LANDED ORB IS RETIRED.  Owner: "Remove the small circle

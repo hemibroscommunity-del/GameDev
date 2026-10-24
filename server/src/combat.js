@@ -1984,7 +1984,19 @@ export const combatMethods = {
       // update still gets the heal on a real melee swing.
       // (v2.3.1154: the 90% refund is deliberately NOT Recovery-boosted
       // -- see _recoveryMult's comment; >100% refunds mint sustain.)
-      const { refund, reason } = this._applyMeleeLifesteal(killerPs, m.id, slot);
+      /* v2.3.3600: A SLIME'S BLAST ON ITS KILLER FORFEITS THE HEAL -- the owner:
+         "If the slime death damage happens forfeit your heal on melee. I keep
+         healing simultaneously as the damage and it just shows a heal
+         message".  The blast lands just before this kill runs (telegraph.js
+         _resolveSlimeBurst marks `_burstHitKiller`), so the refund came in
+         the same moment and hid it.  What the slime dealt is forgotten. */
+      let refund = 0, reason;
+      if (m._burstHitKiller && killerPs) {
+        if (killerPs.dmgFromMonster) delete killerPs.dmgFromMonster[m.id];
+        reason = 'burst';
+      } else {
+        ({ refund, reason } = this._applyMeleeLifesteal(killerPs, m.id, slot));
+      }
       // Server-authoritative combat XP.  For every contribution-weighted
       // recipient (xpRecipients above), apply their share of m.xp to
       // playerState[id].xp + run the level-up loop.  Emit a private

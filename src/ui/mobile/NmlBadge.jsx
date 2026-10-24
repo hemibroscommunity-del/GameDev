@@ -44,14 +44,14 @@ import { blockAnchor } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.3268: where 
 
 /* how far the bottom-band prompts step up while the badge is shown: its 44 px
    tap row, and a little air */
-export const NML_LIFT_PX = 48;
+export const NML_LIFT_PX = 62;   /* v2.3.3600: the badge twice the size */
 
 /* v2.3.3268: the badge's width (the button round its pill: skull, number),
    for placing it between the bell and the shield (mp-nmlfoe reads the real
    one); how far it keeps from the shield, 2 px at the least; and where the
    notification bell ends, in the frame's own numbers (WorldChatFeed.jsx: its
    shell's `left`, and the shut bell 36 px wide) */
-const BADGE_W = 50;
+const BADGE_W = 92;   /* v2.3.3600: twice the size (was 50) */
 const SHIELD_AIR = 8;
 const BELL_END = 'var(--world-x, 0px) + var(--land-fold-w, 0px) + var(--bt-wpn-slot, 0px) + 44px';
 
@@ -187,6 +187,7 @@ export default function NmlBadge({ stateRef, isLandscape }) {
     openNmlInfo(stateRef && stateRef.current, lvl);
   };
   return (
+    <>
     <button type="button" data-nml-badge={lvl}
       aria-label={`No man's land ${lvl}: players can attack you here. Tap for what it means.`}
       onClick={open}
@@ -201,16 +202,16 @@ export default function NmlBadge({ stateRef, isLandscape }) {
       }}>
       <span style={{
         /* v2.3.3268: a little tighter (it was 4px 10px 4px 7px, gap 5) */
-        position: 'relative', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px 4px 5px',
+        position: 'relative', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px 5px 7px',   /* v2.3.3600: twice the size */
         borderRadius: 999, background: 'rgba(22,10,10,.86)',
-        border: `1.5px solid ${NML_RED}`, boxShadow: '0 0 0 1px rgba(0,0,0,.5)',
+        border: `2px solid ${NML_RED}`, boxShadow: '0 0 0 1px rgba(0,0,0,.5)',
         color: '#FFE3DF', fontSize: 12, fontWeight: 800, letterSpacing: '.02em', whiteSpace: 'nowrap',
       }}>
         {/* the skull and the number only (the owner's "skull level"): the
             words would run under the bell and the jump button beside it on a
             390 px phone; a tap says them */}
-        <NmlSkull size={19} />
-        <span data-nml-num="" style={{ fontSize: 16, color: NML_RED, fontWeight: 900, lineHeight: 1 }}>{lvl}</span>
+        <NmlSkull size={38} />
+        <span data-nml-num="" style={{ fontSize: 32, color: NML_RED, fontWeight: 900, lineHeight: 1 }}>{lvl}</span>
         {/* v2.3.3268: your own skull on the pill's top corner, as a count sits
             on a bell, so the badge is no wider for it (see the header) */}
         {skull && (
@@ -224,5 +225,14 @@ export default function NmlBadge({ stateRef, isLandscape }) {
         )}
       </span>
     </button>
+    {/* v2.3.3600: A SLOWLY BLINKING RED LINE along the top of the band while
+        you are in No man's land -- the owner: "some kind of slightly blinking
+        red line" (game.css bt-nml-line; still under calm motion) */}
+    <div data-nml-line="" aria-hidden="true" className="bt-nml-line" style={{
+      position: 'fixed', left: 0, right: 0, height: 3, pointerEvents: 'none', zIndex: 33,
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) - 1px)', background: NML_RED,
+      boxShadow: `0 0 8px ${NML_RED}`,
+    }} />
+    </>
   );
 }
