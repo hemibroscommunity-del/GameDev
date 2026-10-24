@@ -7,16 +7,18 @@ are pixel art on a 17 x 18 grid at 8 px a pixel (136 x 144), outlined in the
 same near-black, and this one is drawn on that grid so it sits among them: the
 Skin tab's bald head made the alien the creator now offers -- an egg-shaped
 head in Alien Cyan (playerSkins.js `aliencyan`), pointed ears with a shaded
-inside, and the Alien Eyes' black almonds, outer corners raised, a glint in
-each (the eye style 'alien').  Drawn in code so it can be drawn again: every
-shape below is a few numbers, each picked by eye at the tab's real size
-(30 CSS px) against the other icons.
+inside, and the Alien Eyes (the eye style 'alien'; since v2.3.3590 the Hemi
+Bros collection's: two cells by two each, the dark on one diagonal and the
+skin's own shadow on the other, as tools/species_alien.py draws them on the
+bro), with the collection's nose and mouth under them.  Drawn in code so it
+can be drawn again: every shape below is a few
+numbers, each picked by eye at the tab's real size (30 CSS px) against the
+other icons.
 
     python3 tools/ui/make_species_tab_icon.py
 
 Writes public/ui/welcome/cc/cc-tab-species.png.
 """
-import math
 import os
 
 import numpy as np
@@ -30,8 +32,6 @@ PX = 8
 SS = 16                          # supersampling, per grid pixel, for the shapes
 OUTLINE = (4, 11, 17)            # the tab icons' outline
 SKIN = np.array([191, 231, 231], float)   # Alien Cyan
-EYE = (10, 10, 16)               # the Alien Eyes' black (tools/species_alien.py EYE_BLACK)
-GLINT = (236, 246, 250)          # ...and their glint (EYE_GLINT)
 
 # The head, an egg: from TOP to BOTTOM (grid px), half-width HW_TOP over the
 # cranium, its widest at BELLY of the way down, narrowing to HW_CHIN.
@@ -42,11 +42,22 @@ CHIN_POW = 1.6
 EAR = [(0.0, 1.5), (4.5, 4.2), (4.0, 11.5), (1.4, 9.0)]
 EAR_K = 0.93
 EAR_MARK = [(6, 2)]              # (row, col): the ear's inner shadow, as the game's ears have
-# The left eye: centre x, centre y, half-width, half-height, tilt (degrees;
-# negative raises the outer corner).  The right is its mirror.
-EYE_AT = (5.6, 9.8, 2.0, 2.0, -32)
-EYE_POW = 1.5                    # the almond's taper: 2 is pointed, 1 a diamond
-GLINTS = [(9, 6)]                # (row, col) on the left eye, mirrored
+# v2.3.3590: the eyes, the collection's -- each the same checker of two cells
+# by two, the dark the icons' own outline colour (the collection's dark is its
+# outline colour too) and the shade the skin in the collection's own shadow
+# (its shade over its lit skin, tools/species_alien.py ALIEN_SHADE / ALIEN_LIT).
+# The left eye's top-left cell (col, row); the right eye stands where the left's
+# mirror does, the same way round, as the bro's eyes face south in the game.
+EYE_CELLS = (('shade', 'dark'),
+             ('dark', 'shade'))
+EYE_AT = (5, 8)
+SHADE_K = (155 / 200, 224 / 251, 224 / 251)
+# ...and its nose and mouth, so a face reads at the tab's 30 CSS px (the eyes
+# alone, two cells each, were two specks there): the collection's nose is the
+# shade, the mouth five cells of the dark, each three rows under the last --
+# the nose one cell here, as two cannot sit on the middle of a front view.
+NOSE_AT = (8, 11)                # (col, row)
+MOUTH_AT = (6, 14, 5)            # (col, row, cells)
 
 
 def _cells(mask, cut):
@@ -102,18 +113,15 @@ def draw():
     for r, c in EAR_MARK:
         for cc in (c, C - 1 - c):
             out[r, cc, :3] = np.clip(np.round(SKIN * 0.6), 0, 255)
-    ex, ey, ehw, ehh, tilt = EYE_AT
-    for sx, sg in ((ex, 1), (C - ex, -1)):
-        tt = math.radians(tilt * sg)
-        x = X - sx
-        y = Y - ey
-        xr = x * math.cos(tt) + y * math.sin(tt)
-        yr = -x * math.sin(tt) + y * math.cos(tt)
-        almond = (np.abs(xr) <= ehw) & (np.abs(yr) <= ehh * (1 - (np.abs(xr) / ehw) ** EYE_POW))
-        out[_cells(almond, 0.4)] = (*EYE, 255)
-    for r, c in GLINTS:
-        out[r, c] = (*GLINT, 255)
-        out[r, C - 1 - c] = (*GLINT, 255)
+    ec, er = EYE_AT
+    shade = tuple(int(round(min(255, v * k))) for v, k in zip(SKIN, SHADE_K))
+    for c0 in (ec, C - 2 - ec):
+        for r, row in enumerate(EYE_CELLS):
+            for c, k in enumerate(row):
+                out[er + r, c0 + c] = (*(OUTLINE if k == 'dark' else shade), 255)
+    out[NOSE_AT[1], NOSE_AT[0]] = (*shade, 255)
+    mc, mr, mn = MOUTH_AT
+    out[mr, mc:mc + mn] = (*OUTLINE, 255)
     return np.repeat(np.repeat(out, PX, 0), PX, 1).astype(np.uint8)
 
 

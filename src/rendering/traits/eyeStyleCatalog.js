@@ -144,15 +144,17 @@ export const EYE_STYLE_CATALOG = [
      import log rather than a problem. */
   { id: 'wtf', name: 'WTF Eyes' },
   /* ═══ v2.3.3589: THE ALIEN'S EYES ═══
-     Two black almonds, each outer corner raised, a glint in each: the Alien
-     species' eyes (speciesCatalog.js `eyes`, put on when the Alien is picked
-     with the bro's own eyes).  Made by tools/species_alien.py as the WTF
-     style's twin: every placement number in its meta.json (anchors, crown
-     nudge, scaleByPose, poseNudge) is WTF's, which were tuned and seated
-     (above), and only the pixels are new.  Any bro can wear them; the
-     creator's dice never roll them (`species`, the SKIN_ROLL_CATALOG rule:
+     The Alien species' eyes (speciesCatalog.js `eyes`, put on when the Alien
+     is picked with the bro's own eyes), made by tools/species_alien.py.
+     v2.3.3589 drew black almonds; since v2.3.3590 they are the Hemi Bros
+     collection's Alien Bro's own (owner: "Biggest difference for alien is the
+     alien eyes.  Those weren't made the same"): each a checker of two cells by
+     two, the dark on one diagonal and the skin's own shadow on the other, laid
+     on the eyes the game paints, the pose fits WTF's.  Any bro can wear them;
+     the creator's dice never roll them (`species`, the SKIN_ROLL_CATALOG rule:
      a species' look is picked, never handed out), and the Eyes tab's colour
-     row paints the almond and spares the glint (eyeStyleColorCatalog.js). */
+     row paints the dark and leaves the shadow (eyeStyleColorCatalog.js
+     `solid`). */
   { id: 'alien', name: 'Alien Eyes', species: true },
 ];
 

@@ -2791,7 +2791,7 @@ export var BroTown = function BroTown(_ref0) {
        stop producing eye styles the day somebody turned eye colour off. */
     /* v2.3.3589: EYE_STYLE_ROLL_CATALOG -- a species' own eyes are never
        rolled onto anyone, and the species that has them keeps them (an alien
-       keeps its almonds; the other styles roll as before). */
+       keeps its eyes; the other styles roll as before). */
     var es = speciesDefaultEyes(getSpecies()) || rpick(EYE_STYLE_ROLL_CATALOG); setEyeStyle(es); setEyeStyleSel(es);
     /* v2.3.2424: and its colour, from what THIS pair offers -- eyewearColorsFor
        returns null for a pair with no row (3d-glasses, or 'none'), and rolling

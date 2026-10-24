@@ -6,9 +6,10 @@
  *
  * Owner: "Yes make species it's own button.  And add alien."  The species left
  * the Skin tab for a Species tab, and the Alien joined the monkey: its pointed
- * ears (the species piece), Alien Cyan (the skin it presets) and its black
- * almond eyes (the eye style 'alien', which it presets).  Moved to the world
- * (`world: 'wheel'`) when it was touched, the oldMap.mjs rule.
+ * ears (the species piece), Alien Cyan (the skin it presets) and its eyes (the
+ * eye style 'alien', which it presets; since v2.3.3590 the Hemi Bros
+ * collection's, §5).  Moved to the world (`world: 'wheel'`) when it was
+ * touched, the oldMap.mjs rule.
  *
  * What this asserts, against a real worker and a real Chromium:
  *
@@ -38,6 +39,12 @@
  *    one's species and eye style on its S.others entry and a build of its own
  *    for that peer's skin -- which is what the 'sc' and 'es' keys on both
  *    server gates buy.
+ * 5. THE EYES ARE THE COLLECTION'S (v2.3.3590; owner: "Biggest difference for
+ *    alien is the alien eyes.  Those weren't made the same").  The shipped
+ *    pictures are the Alien Bro's checker on every face facing, and the Eyes
+ *    tab's colour paints only its dark squares: a green swatch's bake (the
+ *    probe's `pixels`) turns every whole pixel green and leaves the
+ *    see-through shadow as drawn.  (Run before 4, on the creator.)
  * Screenshots of the creator and both world views are written to
  * /tmp/qa-species-*.png for a human to look at.
  */
@@ -184,6 +191,85 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const again = await pickSpecies('Alien');
   rec.ok(`Human -> Alien again, for the world (${JSON.stringify(again.st)})`,
     again.st.species === 'alien' && again.st.skin === 'aliencyan' && again.st.eyes === 'alien', again.st);
+
+  /* ── 5 ── v2.3.3590: the eyes are the collection's ──
+     The shipped pictures, read in the page: on every facing that shows a face,
+     one 4 x 4 block per eye (two, or one in profile) of four 2 x 2 cells, the
+     dark (31,13,27) drawn whole on the "/" diagonal and see-through (alpha 38)
+     on the other -- the Alien Bro's checker, cell for cell. */
+  const art = await A.page.evaluate(async () => {
+    const out = {};
+    for (const dir of ['south', 'southwest', 'east']) {
+      const im = new Image();
+      im.src = `/sprites/traits/eyestyle/alien/${dir}.png?qa=${Date.now()}`;
+      try { await im.decode(); } catch (e) { out[dir] = { err: String(e) }; continue; }
+      const cv = document.createElement('canvas');
+      cv.width = im.width; cv.height = im.height;
+      const ctx = cv.getContext('2d');
+      ctx.drawImage(im, 0, 0);
+      const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+      const at = (x, y) => { const i = (y * cv.width + x) * 4; return [d[i], d[i + 1], d[i + 2], d[i + 3]]; };
+      const cols = [];
+      let y0 = 1e9, y1 = -1;
+      for (let x = 0; x < cv.width; x++) {
+        for (let y = 0; y < cv.height; y++) {
+          if (at(x, y)[3]) { if (!cols.includes(x)) cols.push(x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+        }
+      }
+      const eyes = [];
+      for (const x of cols) {
+        const last = eyes[eyes.length - 1];
+        if (last && x === last[1] + 1) last[1] = x; else eyes.push([x, x]);
+      }
+      const checker = eyes.map(([x0, x1]) => {
+        if (x1 - x0 !== 3 || y1 - y0 !== 3) return { x0, x1, y0, y1, ok: false, why: 'not 4 x 4' };
+        let ok = true;
+        for (let dy = 0; dy < 4; dy++) {
+          for (let dx = 0; dx < 4; dx++) {
+            const [r, g, b, a] = at(x0 + dx, y0 + dy);
+            const dark = (dx >= 2) !== (dy >= 2);           /* the "/" diagonal: top right, bottom left */
+            if (a !== (dark ? 255 : 38)) ok = false;
+            if (Math.abs(r - 31) > 4 || Math.abs(g - 13) > 4 || Math.abs(b - 27) > 4) ok = false;
+          }
+        }
+        return { x0, y0, ok };
+      });
+      out[dir] = { eyes: checker };
+    }
+    return out;
+  });
+  const want = { south: 2, southwest: 2, east: 1 };
+  rec.ok(`the Alien Eyes are the collection's: on each face facing, an eye per 4 x 4 block of 2 x 2 cells, `
+       + `the dark whole on one diagonal and see-through on the other (${JSON.stringify(art)})`,
+    Object.keys(want).every((dir) => art[dir] && art[dir].eyes && art[dir].eyes.length === want[dir]
+      && art[dir].eyes.every((e) => e.ok)), art);
+  /* ...and the Eyes tab's colour paints only the dark: the see-through shadow
+     is the skin's, so a swatch that tinted it would veil the skin, not shade it */
+  const prof = await A.page.evaluate(() => (window.__btEyeStyleColor ? window.__btEyeStyleColor.ref('alien') : null));
+  rec.ok(`the colour row's rule for them: replace outright, and only what is drawn whole (${JSON.stringify(prof && { flat: prof.flat, solid: prof.solid })})`,
+    !!prof && prof.flat === true && prof.solid === true, prof);
+  const baked = await A.page.evaluate(async () => {
+    const P = window.__btEyeStyleColor;
+    if (!P) return null;
+    P.textures('alien', 'green');                   /* kicks the bake */
+    for (let i = 0; i < 40 && !P.textures('alien', 'green'); i++) await new Promise((r) => setTimeout(r, 150));
+    const px = P.pixels('alien', 'green');
+    if (!px) return null;
+    const out = {};
+    for (const dir of Object.keys(px)) {
+      const whole = px[dir].filter((p) => p[3] === 255);
+      const see = px[dir].filter((p) => p[3] < 255);
+      out[dir] = {
+        whole: whole.length, green: whole.filter((p) => p[0] === 70 && p[1] === 150 && p[2] === 90).length,
+        see: see.length, stillDark: see.filter((p) => p[0] + p[1] + p[2] < 120 && p[1] < 40).length,
+      };
+    }
+    return out;
+  });
+  rec.ok(`a green swatch paints every whole pixel green and leaves every see-through one the dark it was, `
+       + `on all three facings (${JSON.stringify(baked)})`,
+    !!baked && ['south', 'southwest', 'east'].every((dir) => baked[dir] && baked[dir].whole > 0
+      && baked[dir].green === baked[dir].whole && baked[dir].see > 0 && baked[dir].stillDark === baked[dir].see), baked);
 
   /* ── 4 ── the world */
   await H.enterWorld(A);

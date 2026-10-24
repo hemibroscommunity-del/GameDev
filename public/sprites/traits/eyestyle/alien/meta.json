@@ -1,24 +1,24 @@
 {
   "category": "eyestyle",
   "fullFrame": true,
-  "note": "v2.3.3589: made by tools/species_alien.py -- a black almond in each of the WTF style's eyes' places, its outer corner raised; every placement number (anchors, crownNudge, scaleByPose, poseNudge) is the WTF style's, which were tuned and seated.",
+  "note": "v2.3.3590: THE COLLECTION'S ALIEN EYES (owner: \"Biggest difference for alien is the alien eyes.  Those weren't made the same\"), drawn by tools/species_alien.py cell by cell from the Hemi Bros Alien Bro onto the eyes the game paints, a bust cell two px of the 128 frame: each eye a checker of two cells by two, the dark (31,13,27) on one diagonal and on the other the same dark at alpha 38, the skin's own shadow over any skin.  The art's top-centre is the anchor (128, 6) and crownNudge carries it to the crown (body-tops stand-<dir>-0), so it lands where it was drawn (make_collection_eyewear.py place); scale 1.  The pose fits are the WTF style's, the head's own motion.  Re-run the tool, never edit by hand.",
   "bboxes": {
     "south": [
-      113,
-      7,
-      29,
-      9
+      116,
+      6,
+      24,
+      8
     ],
     "southwest": [
-      112,
-      7,
-      32,
-      9
+      116,
+      6,
+      26,
+      8
     ],
     "east": [
-      122,
-      7,
-      12,
+      124,
+      6,
+      8,
       8
     ]
   },
@@ -32,22 +32,22 @@
       6
     ],
     "east": [
-      129,
+      128,
       6
     ]
   },
   "crownNudge": {
     "south": [
       1,
-      17
+      19
     ],
     "southwest": [
-      -5,
-      20
+      -6,
+      23
     ],
     "east": [
       13,
-      18
+      21
     ]
   },
   "scale": {

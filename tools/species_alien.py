@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""v2.3.3589: THE ALIEN -- its pointed ears and its black almond eyes, drawn
-from what the game already knows about the bro's head.
+"""v2.3.3589: THE ALIEN -- its pointed ears and its eyes, drawn from what the
+game already knows about the bro's head (the eyes, since v2.3.3590, the Hemi
+Bros collection's own).
 
 The owner: "I also wanted to add the alien as another species you could play
 as in character creator.  It also exists in collection art.  I think species
@@ -9,7 +10,7 @@ it's own button.  And add alien."
 
 What an alien is (docs/specs/SPECIES-PLAN.md, measured off the owner's two
 references and the Hemi Bros collection's Alien Bro): the same bro, in Alien
-Cyan (a skin since v2.3.2665), with POINTED EARS and BLACK ALMOND EYES.  Two
+Cyan (a skin since v2.3.2665), with POINTED EARS and ITS OWN EYES.  Two
 pieces, each riding machinery that is already wired, preloaded and tested:
 
 THE EARS are a SPECIES PIECE, the monkey's twin (speciesArt.js).  The monkey's
@@ -25,20 +26,25 @@ black.  The monkey's patches that paint out the bro's own ear on the 3/4
 facings are kept (they are skin too).  The muzzle is dropped.  The per-frame
 fixes are the monkey's, less every op about the muzzle and its eye whites.
 
-THE EYES are an EYE STYLE ('alien'), the WTF style's twin: the same meta --
-anchors, crown nudge, every pose fit the WTF eyes were tuned and seated with --
-and new pixels, a black almond in each eye's place, its outer corner raised,
-with a glint.  An eye style is the right home, not the species piece: under a
-style the body bake paints the bro's own eyes out (playerSkins._blankEyes), a
-player can still wear any other style on an alien, and a human can wear these.
-Picking the alien in the creator puts them on (speciesCatalog.js `eyes`).
+THE EYES are an EYE STYLE ('alien'): since v2.3.3590 the collection's Alien
+Bro's own eyes (the owner, of the first cut's black almonds: "Biggest
+difference for alien is the alien eyes.  Those weren't made the same") -- two
+bust cells by two each, dark on one diagonal and the skin's shadow on the
+other, laid cell by cell on the eyes the game paints (eye_style below).  Every
+pose fit is the WTF style's, the head's own motion, as the first cut's was.
+An eye style is the right home, not the species piece: under a style the body
+bake paints the bro's own eyes out (playerSkins._blankEyes), a player can
+still wear any other style on an alien, and a human can wear these.  Picking
+the alien in the creator puts them on (speciesCatalog.js `eyes`).
 
     python3 tools/species_alien.py                     # the pieces, the meta, the fixes
     python3 tools/species_frames.py bake --id alien    # the per-frame overlays and fur
     python3 tools/ui/make_species_thumbs.py --ids alien
     python3 tools/ui/make_eyestyle_thumbs.py --ids alien
+    python3 tools/ui/make_species_tab_icon.py          # the Species button: the same eyes
     python3 tools/species_contact_sheet.py --id alien --out <dir>    # every frame, to look at
 """
+import importlib.util
 import json
 import os
 import sys
@@ -199,17 +205,30 @@ def species_piece():
 # only on the frames eyeBlankMask.json covers: stand, jog south/southwest, 12
 # of jog east's 28, 17 of pickup's 29.  On the rest (the hit flinch, mining,
 # fishing, the back of a pickup) his eyes stay under the style, and an
-# alien's almonds sat over a second pair.  So the piece paints them out there
+# alien's eyes sat over a second pair.  So the piece paints them out there
 # itself: a skin cover (species_frames.py `cover`, fur that follows the
-# player's skin) over the dark pixels round each placed almond.
+# player's skin) over the dark pixels round each placed eye.
 
 EYE_POSES = {'jog': ('south', 'southwest', 'east'), 'hit': ('south', 'southwest', 'east'),
              'pickup': ('south',), 'mine': ('south',), 'fish': ('south',)}
-EYE_NEAR = (3, 4, 6)          # a dark shape is an eye when its middle lies this near a
-                              # placed almond (either side, above, below)...
-EYE_NEAR_LOW = {'pickup': 10}  # ...lower on a pickup, whose eyes sit up to ~10 px below the style's
+EYE_REACH = (6, 11, 5)        # a dark shape is an eye when its middle lies this near a placed
+                              # eye's middle, in hi px (either side, above, below)...
+EYE_REACH_LOW = {'pickup': 15,  # ...lower on a pickup, whose eyes sit up to ~10 px below the style's,
+                 'hit': 10}     # and on the flinch, his eyes squeezed shut up to 9 below (the mouth 13)
+EYE_REACH_SIDE = {'hit': 7, 'jog': 7}   # ...and a pixel wider where an eye's edge lies 6.5-7 out
+                                        # (the south flinch's first frame, a line beside the east
+                                        # run's eye); not mining, whose nose lies 6.5 out
+# v2.3.3590: measured from the eye's MIDDLE, not from round the art -- the bro's
+# own eyes are where they are whatever is drawn over them.  v2.3.3589 reached
+# (3, 4, 6) round its 12 x 9 almonds, and that edge fell ON the mouth when
+# mining (10-11 px under the eyes' middle: it was painted out on 4 of the 14
+# frames) and just short of the top of the bro's eye (9 above, left showing on
+# 4); round the collection's 8 x 8 eyes it took the mouth on 11.  Measured on
+# every face frame: his eyes lie within 5 px either side and 10 above, the nose
+# 7-9 to the side, the mouth 10 below, his ears 8 or more to the side.
 EYE_MAX_PX = 120              # ...and is eye-sized (a tool's outline is not)
 EYE_MAX_BOX = (16, 16)        # ...in a box no bigger than this (a grimace is)
+EYE_WHOLE_BOX = (18, 18)      # the eye with its white, no bigger than this (or it ran into a tool)
 EYE_PAD = 2                   # the cover reaches this far past the dark shape: its edge
 
 
@@ -237,15 +256,23 @@ def eye_cover_boxes():
                     for dx in (-1, 0, 1):
                         interior &= np.roll(np.roll(op, dy, 0), dx, 1)
                 dark = interior & (SF.lum(raw) < 90) & ~SF.is_skin(raw)
+                # v2.3.3590: the whole eye is its dark AND the grey or white
+                # beside it, which can reach a pixel or two past the dark: a
+                # cover sized to the dark alone left a grey stroke beside the
+                # collection's eyes on the last mining frames (the almonds had
+                # hidden it)
+                whole, _ = ndimage.label(interior & ~SF.is_skin(raw), np.ones((3, 3)))
                 lab, k = ndimage.label(placed[..., 3] > 0)
                 near = []
                 for i in range(1, k + 1):
                     ys, xs = np.nonzero(lab == i)
-                    near.append((xs.min() - EYE_NEAR[0], xs.max() + EYE_NEAR[0],
-                                 ys.min() - EYE_NEAR[1], ys.max() + EYE_NEAR_LOW.get(pose, EYE_NEAR[2])))
-                # each dark shape of the face whose middle is by an almond is his
-                # eye; the nose and the mouth (their middles between and below the
-                # eyes) stay, as they do where the game paints the eyes out
+                    mx, my = (xs.min() + xs.max()) / 2, (ys.min() + ys.max()) / 2
+                    side = EYE_REACH_SIDE.get(pose, EYE_REACH[0])
+                    near.append((mx - side, mx + side,
+                                 my - EYE_REACH[1], my + EYE_REACH_LOW.get(pose, EYE_REACH[2])))
+                # each dark shape of the face whose middle is by a placed eye is
+                # his eye; the nose and the mouth (their middles between and below
+                # the eyes) stay, as they do where the game paints the eyes out
                 dl, dn = ndimage.label(dark, np.ones((3, 3)))
                 boxes = []
                 for j in range(1, dn + 1):
@@ -256,8 +283,15 @@ def eye_cover_boxes():
                         continue
                     cx, cy = xs.mean(), ys.mean()
                     if any(x0 <= cx <= x1 and y0 <= cy <= y1 for x0, x1, y0, y1 in near):
-                        boxes.append([int(xs.min()) - EYE_PAD, int(xs.max()) + EYE_PAD,
-                                      int(ys.min()) - EYE_PAD, int(ys.max()) + EYE_PAD, 'eye'])
+                        ids = np.unique(whole[dl == j])
+                        wy, wx = np.nonzero(np.isin(whole, ids[ids > 0]))
+                        if (wx.max() - wx.min() + 1 <= EYE_WHOLE_BOX[0]
+                                and wy.max() - wy.min() + 1 <= EYE_WHOLE_BOX[1]):
+                            xs, ys = wx, wy               # else it runs into something bigger: the dark alone
+                        box = [int(xs.min()) - EYE_PAD, int(xs.max()) + EYE_PAD,
+                               int(ys.min()) - EYE_PAD, int(ys.max()) + EYE_PAD, 'eye']
+                        if box not in boxes:              # two darks of one eye find the same whole eye
+                            boxes.append(box)
                 if boxes:
                     out.setdefault(f'{pose}-{d}', {})[str(f)] = boxes
     return out
@@ -303,78 +337,100 @@ def fixes():
 
 
 # ── the eyes ───────────────────────────────────────────────────────────────
+# v2.3.3590: THE COLLECTION'S ALIEN EYES.  The owner, of v2.3.3589's black
+# almonds (a glint, the outer corner raised, the first full-body reference's):
+# "Biggest difference for alien is the alien eyes.  Those weren't made the
+# same."  The Hemi Bros collection's Alien Bro has eyes of its own, part of its
+# bro type (the catalogue's Bro Type/alienbro.png; its NFTs, #1 to #15, wear no
+# Eyes trait): small and square, two bust cells by two each, on the rows where
+# the other bros' eyes have their white and pupil (15-16: Normal Eyes adds a
+# dark row 14 over them, the alien has none), each the same checker --
+#
+#       shade  dark          dark: the collection's one outline colour
+#       dark   shade         shade: the alien's skin in its own shadow
+#
+# The game's own eyes are the collection's Normal Eyes made the same way (a
+# dark top edge, then the white beside the pupil, WWW+###, both eyes the same
+# way round), so these are too: laid CELL BY CELL on the eyes the game paints,
+# a bust cell two px of the 128 frame -- make_collection_eyewear.py's own
+# helpers, which drew the gold glasses and the monocle so (v2.3.3587).  Each
+# eye is centred on the game's eye and sits on its bottom (the white-and-pupil
+# rows), the same way round on both eyes and in every facing, as the bust and
+# the game's own eyes have it; the mirrored facings (southeast, west,
+# northwest) turn it over, as they turn the game's own.
+#
+# THE SHADE IS A SHADOW, NOT A COLOUR: the dark at SHADE_A over whatever skin
+# the player picked, so a purple alien's eyes are shaded purple.  SHADE_A is
+# what the collection's shadow takes off its lit skin, by luminance (0.86 of
+# it: alpha 38); being see-through is also what keeps it skin when the Eyes
+# tab's colour row paints the dark (eyeStyleColorCatalog.js `solid`).
 
-EYE_BLACK = (10, 10, 16)
-EYE_GLINT = (236, 246, 250)
-EYE_HALF_W = 6.8              # hi (256) px: each almond's half length...
-EYE_HALF_H = 4.0              # ...and half height
-EYE_TILT = 20                 # degrees the outer corner is raised
+# the collection's Alien Bro, read off alienbro.png (A, C and D in its cells)
+ALIEN_LIT = (200, 251, 251)
+ALIEN_SHADE = (155, 224, 224)
+EYE_DARK = (31, 13, 27)
+EYE_CELLS = (('shade', 'dark'),       # the bust's cells (9-10, 15-16) and (14-15, 15-16)
+             ('dark', 'shade'))
+EYE_DIRS = ('south', 'southwest', 'east')   # north and northeast show no face: no png, no anchor
 
 
-def _blobs(a):
-    """the separate eyes of a piece: (cx, cy, x0, x1) per blob, left to right"""
-    from scipy import ndimage
-    lab, n = ndimage.label(a[..., 3] > 16)
-    out = []
-    for i in range(1, n + 1):
-        ys, xs = np.nonzero(lab == i)
-        if len(xs) < 6:
-            continue
-        out.append((xs.mean(), ys.mean(), xs.min(), xs.max()))
-    return sorted(out)
+SHADE_A = int(round(255 * float(_lum(ALIEN_LIT) - _lum(ALIEN_SHADE)) / float(_lum(ALIEN_LIT) - _lum(EYE_DARK))))
 
 
-def almond(canvas, cx, cy, outer_left):
-    """a black almond centred on (cx, cy), its outer corner raised EYE_TILT"""
-    th = np.deg2rad(EYE_TILT if outer_left else -EYE_TILT)
-    H, W = canvas.shape[:2]
-    m = np.zeros((H, W), bool)
-    for y in range(int(cy - 10), int(cy + 11)):
-        for x in range(int(cx - 11), int(cx + 12)):
-            dx, dy = x + 0.5 - cx, y + 0.5 - cy
-            # rotate into the almond's frame (screen y down: raise the outer corner)
-            u = dx * np.cos(th) - dy * np.sin(th)
-            v = dx * np.sin(th) + dy * np.cos(th)
-            # an almond: an ellipse pinched toward both corners
-            w = EYE_HALF_H * (1 - (u / EYE_HALF_W) ** 2) ** 0.7 if abs(u) < EYE_HALF_W else -1
-            if w > 0 and abs(v) <= w:
-                m[y, x] = True
-    for y, x in zip(*np.nonzero(m)):
-        canvas[y, x] = (*EYE_BLACK, 255)
-    # the glint: 2 x 2 px of light, up and toward the nose, as the bro's own
-    # eyes carry their white on the inner side
-    ys, xs = np.nonzero(m)
-    if len(ys):
-        gy = ys.min() + 2
-        row = xs[ys == gy]
-        if len(row):
-            gx = row.max() - 3 if outer_left else row.min() + 2
-            canvas[gy:gy + 2, gx:gx + 2] = (*EYE_GLINT, 255)
+def _eyewear_tool():
+    """tools/ui/make_collection_eyewear.py: Art, place, _eyes and the game's eye boxes"""
+    spec = importlib.util.spec_from_file_location(
+        'make_collection_eyewear', os.path.join(REPO, 'tools', 'ui', 'make_collection_eyewear.py'))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def alien_eye(art, eye):
+    """one eye, 2 x 2 cells of 2 px, on one of the game's eyes ((x0, x1, y0, y1)
+    in the 128 frame): centred on its width, its bottom on the eye's"""
+    x0, x1, y0, y1 = eye
+    ex = int(np.floor((x0 + x1) / 2 + 0.5)) - 2
+    ey = int(np.floor(y1 + 0.5)) - 4
+    for r, row in enumerate(EYE_CELLS):
+        for c, k in enumerate(row):
+            art.cell(ex + 2 * c, ey + 2 * r, EYE_DARK + ((255,) if k == 'dark' else (SHADE_A,)))
 
 
 def eye_style():
+    mce = _eyewear_tool()
+    boxes = mce._importer()
+    tops = json.load(open(mce.TOPS))
+    fits = json.load(open(EYES_FROM + '/meta.json'))     # the WTF style's: the head's pose fits
+    meta = {
+        'category': 'eyestyle', 'fullFrame': True,
+        'note': ('v2.3.3590: THE COLLECTION\'S ALIEN EYES (owner: "Biggest difference for alien is the alien '
+                 'eyes.  Those weren\'t made the same"), drawn by tools/species_alien.py cell by cell from the Hemi '
+                 'Bros Alien Bro onto the eyes the game paints, a bust cell two px of the 128 frame: each eye a '
+                 'checker of two cells by two, the dark (31,13,27) on one diagonal and on the other the same dark at '
+                 f'alpha {SHADE_A}, the skin\'s own shadow over any skin.  The art\'s top-centre is the anchor (128, 6) '
+                 'and crownNudge carries it to the crown (body-tops stand-<dir>-0), so it lands where it was drawn '
+                 '(make_collection_eyewear.py place); scale 1.  The pose fits are the WTF style\'s, the head\'s own '
+                 'motion.  Re-run the tool, never edit by hand.'),
+        'bboxes': {}, 'anchors': {}, 'crownNudge': {}, 'scale': {},
+    }
     os.makedirs(EYES + '/hi', exist_ok=True)
-    meta = json.load(open(EYES_FROM + '/meta.json'))
-    bboxes = {}
-    for d in meta['anchors']:
-        src = np.array(Image.open(f'{EYES_FROM}/hi/{d}.png').convert('RGBA'))
-        out = np.zeros_like(src)
-        eyes = _blobs(src)
-        for i, (cx, cy, x0, x1) in enumerate(eyes):
-            if d == 'east':
-                outer_left = True                  # in profile the outer corner is at the back
-            else:
-                outer_left = (i == 0)              # the left eye's outer corner is on the left
-            almond(out, cx, cy, outer_left)
-        Image.fromarray(out, 'RGBA').save(f'{EYES}/hi/{d}.png', optimize=True)
-        Image.fromarray(out, 'RGBA').resize((128, 128), Image.BOX).save(f'{EYES}/{d}.png', optimize=True)
-        ys, xs = np.nonzero(out[..., 3] > 0)
-        bboxes[d] = [int(xs.min()), int(ys.min()), int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1)]
+    for d in EYE_DIRS:
+        art = mce.Art()
+        eyes = mce._eyes(boxes, d)
+        for eye in eyes:
+            alien_eye(art, eye)
+        lo, hi, m = mce.place(art, tops, d)
+        Image.fromarray(lo, 'RGBA').save(f'{EYES}/{d}.png', optimize=True)
+        Image.fromarray(hi, 'RGBA').save(f'{EYES}/hi/{d}.png', optimize=True)
+        meta['bboxes'][d] = m['bbox']
+        meta['anchors'][d] = [128, 6]
+        meta['crownNudge'][d] = m['nudge']
+        meta['scale'][d] = 1
         print(f'eyestyle/alien/{d}.png  {len(eyes)} eye(s)')
-    meta['bboxes'] = bboxes
-    meta['note'] = ('v2.3.3589: made by tools/species_alien.py -- a black almond in each of the WTF '
-                    'style\'s eyes\' places, its outer corner raised; every placement number (anchors, '
-                    'crownNudge, scaleByPose, poseNudge) is the WTF style\'s, which were tuned and seated.')
+    for k in ('poseFit', 'scaleByPose', 'poseNudge'):
+        if k in fits:
+            meta[k] = fits[k]
     json.dump(meta, open(EYES + '/meta.json', 'w'), indent=2)
     open(EYES + '/meta.json', 'a').write('\n')
 

@@ -390,7 +390,8 @@ it's own button. And add alien."
 **What an alien is**, measured off the owner's two references and the Hemi
 Bros collection's Alien Bro: the same bro, in **Alien Cyan** (in
 `SKIN_CATALOG` since v2.3.2665, waiting for this), with **pointed ears** and
-**black almond eyes**. Three pieces, each riding machinery already wired,
+**its own eyes** (black almonds in v2.3.3589; the collection's Alien Bro's since
+v2.3.3590, below). Three pieces, each riding machinery already wired,
 preloaded and tested, all made by `tools/species_alien.py` from art already in
 the repo -- nothing drawn by hand:
 
@@ -398,13 +399,13 @@ the repo -- nothing drawn by hand:
 |---|---|---|
 | the ears, a species piece | `public/sprites/traits/species/alien/` | the monkey's piece: each ear kept where it sits and how it overlaps the head (which is what hides the bro's own ear), re-shaped into a point -- lobe kept, narrowed to 0.75, the top drawn up and out -- its inside SKIN (fur, shipped bare and recoloured with the player's skin on all five facings), its outline 2 px; the muzzle dropped (`meta.muzzle: false`) |
 | the per-frame fixes | `tools/species-fixes/alien.json` -> `frames/*.png` | the monkey's 196, less every op about the muzzle and its teeth covers; plus `eye` covers where `eyeBlankMask.json` does not paint the bro's own eye out (pickup, fish, mine, hit) |
-| the eyes, an EYE STYLE | `public/sprites/traits/eyestyle/alien/` (+ `hi/`) | the WTF style's meta (anchors, crown nudge, every pose fit) and new pixels: a black almond in each eye's place, outer corner raised, a glint |
+| the eyes, an EYE STYLE | `public/sprites/traits/eyestyle/alien/` (+ `hi/`) | v2.3.3589: the WTF style's meta and a black almond in each eye's place; since v2.3.3590 the collection's checker, laid cell by cell on the eyes the game paints, the pose fits WTF's ("The collection's eyes", below) |
 
 **Why the eyes are an eye style and not part of the piece:** under a style the
 body bake already paints the bro's own eyes out (`playerSkins._blankEyes`),
 the Eyes tab's colour row already paints a style (`EYE_STYLE_PAINTS.alien`:
-the almond, sparing the glint, the WTF rule), a player can wear any other
-style on an alien, and a human can wear these.
+since v2.3.3590 only the pixels drawn whole, `solid`), a player can wear any
+other style on an alien, and a human can wear these.
 
 **`species_frames.py`** learned four things, none of which moves the monkey
 (re-baked byte for byte): `TONES.alien`; `parts(..., muzzle)` reads
@@ -452,6 +453,24 @@ loaded with every other style.
 **Checked by** `mp-species` (in the world): the tab, every branch of the
 presets, the monkey's tan on purple, the alien's build and `es:alien` body
 sheets in the world, and a second phone seeing the alien.
+
+### The collection's eyes (v2.3.3590)
+
+The owner, of the black almonds: "Biggest difference for alien is the alien
+eyes. Those weren't made the same." The collection's Alien Bro has small square
+eyes of its own (its bro type's: its NFTs wear no Eyes trait), two bust cells by
+two each, the dark on one diagonal and the skin's shadow on the other. They are
+drawn the way the game's own eyes were made from the collection's Normal Eyes:
+cell by cell on the eyes the game paints, the shadow the dark at alpha 38 over
+any skin, and the Eyes tab's colour paints only the dark (`solid`). The covers
+that paint the bro's own eyes out on the action frames were rebuilt with them
+(the almonds had hidden what they missed): they reach from each eye's middle,
+take his whole eye, white and all, and are laid after `front`, so mining keeps
+its mouth and nose and no part of his eye shows beside the alien's on the
+mining, fishing, flinch and run frames. The Species button wears the same
+face. Same download (85 KB of species art, 16 KB of eyes, a little under
+v2.3.3589's); `TRAIT_VER` and `SPECIES_ART_VER` 2.3.3590. The whole account is
+docs/specs/eyes.md §7; `mp-species` §5 checks the pictures and the colour.
 
 ## The permanence hole (pre-existing, affects Stage 2)
 

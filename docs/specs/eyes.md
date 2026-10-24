@@ -3,9 +3,11 @@
 **Shipped:** Sleepy Eyes, One Eye, Demon Eyes, WTF Eyes — south, southwest and
 east, plus their runtime mirrors.  **Since v2.3.3589** also Alien Eyes, the
 Alien species' own (docs/specs/SPECIES-PLAN.md "Stage 4"): made by
-`tools/species_alien.py` on WTF's placement, put on by picking the Alien, and
-never rolled by the creator's dice (`EYE_STYLE_ROLL_CATALOG`; any bro can still
-pick them on the Eyes tab).
+`tools/species_alien.py`, put on by picking the Alien, and never rolled by the
+creator's dice (`EYE_STYLE_ROLL_CATALOG`; any bro can still pick them on the Eyes
+tab).  **Since v2.3.3590** they are the Hemi Bros collection's Alien Bro's own
+eyes, not v2.3.3589's black almonds -- the owner: *"Biggest difference for alien
+is the alien eyes.  Those weren't made the same"* (§7).
 
 Owner, with four mannequin sheets: *"I want these as 'eyes' choices — Sleepy
 eyes, one eye, demon eyes, wtf eyes."*
@@ -28,7 +30,7 @@ the style in the option strip, the eye colour in the row below it. No tenth tab.
 | One Eye | 57/57 · 43/29 · 80 | **centred** cyclops eye — see below |
 | Demon Eyes | 100/100 · 94/86 · 94 | flames; the erase probe (§3) |
 | WTF Eyes | 100/100 · 100/100 · 99 | wide white eyes, pupils in the inner corners |
-| Alien Eyes | — (not imported: WTF's meta, new pixels) | v2.3.3589: a black almond on each eye, outer corner raised, a glint |
+| Alien Eyes | — (not imported: drawn on the eyes the game paints) | v2.3.3590: the collection's checker, two cells by two an eye (§7); v2.3.3589's black almonds before |
 
 Those are the importer's own numbers against the `stand` bodies, the same
 measurement `docs/specs/eyewear.md` tabulates and with the same qualifier: it is
@@ -499,13 +501,17 @@ shipped facings, pooled:
 | Demon Eyes | hue38 86% · hue15 12% · light 2% | pin `all` | retint | Flames |
 | One Eye | light 86% · dark 10% · hue13 5% | spare `light` | **replace** | Pupil |
 | WTF Eyes | light 72% · dark 28% | spare `light` | **replace** | Pupils |
-| Alien Eyes | dark 95% · light 5% | spare `light` | **replace** | Eyes |
+| Alien Eyes | dark 100% | the solid pixels (`solid`) | **replace** | Eyes |
 
-**Alien Eyes** (v2.3.3589) are WTF's pupils grown to the whole eye: near-black
-too, so they take WTF's rule, the glint spared and the rest replaced
-(`EYE_STYLE_PAINTS.alien`). Measured off the game's own probe
-(`window.__btEyeStyleColor.ref('alien')`), with a texture baked for all three
-facings; the same probe reads WTF's 72/28 above.
+**Alien Eyes** (v2.3.3590) are the collection's checker: the near-black drawn
+whole on one diagonal and the same near-black at alpha 38 on the other, the
+skin's own shadow.  To `segmentMaterials` that is one dark material, so the rule
+is `solid` (`EYE_STYLE_PAINTS.alien`, `recolorHairToCanvas`): replace only the
+pixels drawn whole, and the shadow stays the skin's -- painted, it would be a
+tinted veil over the face.  v2.3.3589's almonds (dark 95% · light 5%) took WTF's
+rule, the glint spared.  `mp-species` §5 reads a green swatch's bake off the
+probe (`window.__btEyeStyleColor.pixels`): every whole pixel green, every
+see-through one the dark it was, on all three facings.
 
 **Sleepy** pins its navy: the lid **is** the style's colour, while the 32% dark
 is the outline and the 11% pink inner-corner highlight is the only bright thing
@@ -598,3 +604,81 @@ Demon paint the pinned one with `matRef` at or below `ref`, that One Eye and WTF
 spare the `light` material with **no** positive pin and carry `flat`, that each
 style bakes a texture for all three facings, that `none` bakes none, and that an
 unlisted style offers no colour at all.
+
+---
+
+## 7. The Alien Eyes, the collection's (v2.3.3590)
+
+The owner, of v2.3.3589's black almonds: *"Biggest difference for alien is the
+alien eyes.  Those weren't made the same."*  The Hemi Bros collection's Alien
+Bro carries its eyes in its bro type (the catalogue's `Bro Type/alienbro.png`;
+its NFTs, #1 to #15, wear no Eyes trait), and they are nothing like an almond:
+small and square, two bust cells by two each, on the rows where the other bros'
+eyes have their white and pupil, each the same checker --
+
+```
+shade  dark        dark: the collection's one outline colour (31, 13, 27)
+dark   shade       shade: the alien's skin in its own shadow
+```
+
+**Made the way the game's own eyes are.**  The game's eyes are the collection's
+Normal Eyes made at the game's size (a dark top edge, then the white beside the
+pupil, `WWW+###`, both eyes the same way round), so these are laid the same way:
+cell by cell on the eyes the game paints (`eye_boxes`), a bust cell two px of
+the 128 frame, by `make_collection_eyewear.py`'s own helpers (`Art`, `place`) --
+the gold glasses' and the monocle's (docs/specs/eyewear.md §11).  Each eye is centred on
+the game's eye and sits on its bottom (the white-and-pupil rows: the alien's
+have no dark top edge); both eyes the same way round in every facing, as the
+bust and the game's eyes have it, so the mirrored facings turn it over as they
+turn the game's.  `place` makes the art's top-centre the anchor (128, 6) and
+works out the crown nudge, so the stand frame lands exactly where it was drawn;
+the pose fits are WTF's, the head's own motion.
+
+**The shade is a shadow, not a colour**: the dark at alpha 38 over whatever skin
+the player picked, so a purple alien's eyes shade purple.  38 is what the
+collection's shadow takes off its lit skin, by luminance (`SHADE_A` in
+`tools/species_alien.py`, worked out from the colours, never typed).  It is also
+why the colour row's rule is `solid` (§6): to the material segmentation the two
+diagonals are one dark material.
+
+**The action frames.**  Where `eyeBlankMask.json` does not paint the bro's own
+eyes out (the flinch, mining, fishing, the back of a pickup, two east runs), the
+species piece covers them (`tools/species_alien.py` `eye_cover_boxes`), and the
+almonds had hidden what the covers missed.  So:
+
+- the search for his eyes runs from each placed eye's MIDDLE (`EYE_REACH`: 6 px
+  either side, 11 above, 5 below; 10 below on the flinch, whose squeezed eyes
+  sit up to 9 under the style's; 7 either side on the flinch and the run), not
+  from round the art: v2.3.3589's reach round its almonds ended ON the mouth
+  when mining (painted out on 4 of 14 frames) and on the nose (all of them);
+  measured on every frame, his eyes lie within those reaches, the nose 6.5-9 to
+  the side and 3-5 below, the mouth 10 or more below;
+- a cover takes his WHOLE eye, its grey or white with its dark (`whole`), where
+  it reached a pixel or two past the dark;
+- and an eye cover is laid AFTER `front` (`species_frames.py fixed_layer`):
+  the eye's grey highlight is the tool's colour to `apply_front`, which cut the
+  cover back out round the eye whenever the pickaxe's box reached the face.
+  The monkey has no eye covers and bakes the same, byte for byte.
+
+**The Species button** (`tools/ui/make_species_tab_icon.py`) wears the same
+eyes on its grid, with the collection's nose (one cell of the shade, centred)
+and mouth (five of the dark): the eyes alone were two specks at the tab's 30
+CSS px.
+
+**Cache.**  The pictures changed under their own paths, so `TRAIT_VER` (all
+eight copies) and `SPECIES_ART_VER` are 2.3.3590.
+
+**Redo it** (the chain in SPECIES-PLAN.md "Stage 4", which now ends with the
+button):
+
+```
+python3 tools/species_alien.py
+python3 tools/species_frames.py bake --id alien
+python3 tools/ui/make_species_thumbs.py --ids alien
+python3 tools/ui/make_eyestyle_thumbs.py --ids alien
+python3 tools/ui/make_species_tab_icon.py
+```
+
+**Checked by** `mp-species` §5: the shipped pictures are the checker on every
+face facing, the colour row's rule is `flat` and `solid`, and a green swatch's
+bake turns every whole pixel green and leaves the shadow as drawn.
