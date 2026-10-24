@@ -34,6 +34,15 @@
  * one off it or a black screen's rebuild, and what the game's own reads of a
  * picture use.  The old way kept the same sheets as their colours, four
  * bytes a pixel, in `artCache`, so the 8 MB replaces ~31.
+ *
+ * v2.3.3595, the sword's targeting ring twice as wide (the owner: "the
+ * melee ring ... twice as large"): `heap` 32 -> 33 -- RAISED.  At the check's
+ * Flame Fields fight the bro now locks on and swings from twice as far, so
+ * the fight is longer (7 swings on that run, where main's runs swing 0-4),
+ * and a longer fight holds more of the page's JavaScript objects at its peak:
+ * 32.5 MB against main's 31.9 that day (#1106's run, Playwright 1.64.1), its
+ * line already 0.1 MB away.  Nothing is kept after it: the third trip ends
+ * where the second did.
  */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 156, measured: 147.8,
@@ -44,7 +53,7 @@ export const MEMORY_BUDGET = {
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 30, measured: 26.0,
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
-  heap: { name: 'the page\'s JavaScript objects', mb: 32, measured: 27.5,
+  heap: { name: 'the page\'s JavaScript objects', mb: 33, measured: 27.5,   /* v2.3.3595: 32 -> 33, see the header */
     what: 'the page\'s JavaScript objects' },
   buffers: { name: 'the page\'s raw data buffers', mb: 24, measured: 20.0,
     what: 'the page\'s raw data buffers (ArrayBuffers)' },

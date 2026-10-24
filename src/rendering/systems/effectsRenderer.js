@@ -7659,7 +7659,7 @@ export class EffectsRenderer {
           if (!Number.isFinite(mx) || !Number.isFinite(my)) continue;
           const rx = (monsterMeleeHitRadius(c.m && (c.m.arch || c.m.archetype || c.m.type)) || 24) * bossSizeK(c.m) + 10;   /* v2.3.3556: x a boss's size */
           const ry = rx * 0.38;
-          const t = 1 - 0.5 * Math.min(1, Math.sqrt(c.d2) / (TARGET_PERIMETER_PX || 220));
+          const t = 1 - 0.5 * Math.min(1, Math.sqrt(c.d2) / (S._perimeterPx || TARGET_PERIMETER_PX || 220));   /* v2.3.3595: over the ring they were found in (the sword's is 440) */
           const isCur = c.m === _lockNow;
           /* ═══ v2.3.2262: ONE TARGET, ONE MARK -- AS THIS BLOCK ALREADY CLAIMED ═══
              Owner: "Monsters still have two lock on circles on them."
