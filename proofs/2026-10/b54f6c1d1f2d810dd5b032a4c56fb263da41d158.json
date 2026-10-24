@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b54f6c1d1f2d810dd5b032a4c56fb263da41d158",
+  "tree": "cfa65f0eaa50d8dcc0c82b1234c3ed0c0737214b",
+  "committedAt": "2026-10-24T16:13:36-07:00",
+  "subject": "The townsfolk do things by themselves (v2.3.3604) (#1112)",
+  "files": 6541,
+  "bytes": 738983568,
+  "listingSha256": "9a56281308b4bd13bb71c18229bf0a94aaab5e48afe749ca989a501334ece3ad",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
