@@ -28,7 +28,8 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a new page heard */
 
 /* v2.3.3336: how long the NEW MONSTER card stays up -- long enough to read
    and reach in a fight, short enough not to sit over it */
-export const ANNOUNCE_MS = 6000;
+/* v2.3.3599: 3 s, half the 6 (the owner: "make it 50% less time on screen"). */
+export const ANNOUNCE_MS = 3000;
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
