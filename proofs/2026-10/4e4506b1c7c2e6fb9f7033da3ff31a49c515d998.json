@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4e4506b1c7c2e6fb9f7033da3ff31a49c515d998",
+  "tree": "c6013be6028703b7e97a0c05290adb7840a75e6b",
+  "committedAt": "2026-10-24T16:31:59-07:00",
+  "subject": "The character's stats in families, an accordion (v2.3.3605) (#1113)",
+  "files": 6541,
+  "bytes": 738990024,
+  "listingSha256": "393900bc3d946249b1dd386560644884d3175096f98b39d2a33310972230084e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
