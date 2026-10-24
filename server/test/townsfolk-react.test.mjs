@@ -15,7 +15,7 @@
  *   6. only players in your zone, alive and drawn count; a townsperson with
  *      no rule, or no place, is left alone.
  */
-import { updateTownsfolkReactions, emoteMovers, REACT, REACT_LINES } from '../../src/game/townsfolkReact.js';
+import { updateTownsfolkReactions, emoteMovers, REACT, REACT_LINES, IDLE, IDLE_MOVES } from '../../src/game/townsfolkReact.js';
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -27,6 +27,7 @@ const T0 = 1700000000000;
 function world() {
   return {
     myId: 'me', myName: 'Mover', currentZone: 'wheel', player: { x: 0, y: 0 }, others: {},
+    __btNoIdleMoves: true,   /* v2.3.3604: the reactions alone (§7 the idle moves) */
     npcs: [
       { id: 'lil', name: 'Lil Bro', alive: true, x: 100, y: 0 },
       { id: 'smith', name: 'Blacksmith Bro', alive: true, x: 0, y: 150 },
@@ -175,6 +176,29 @@ const peer = (S, id, x, y, extra) => { S.others[id] = Object.assign({ id, name: 
   try { updateTownsfolkReactions(S2, T0); } catch (e) { threw = e.message; }
   check('6d a townsperson with no rule, no place or not alive is left alone', !threw && !S2.npcs[5]._po && !S2.npcs[6]._po && !S2.npcs[7]._po, threw);
   check('6e no townsfolk, no trouble', (() => { try { updateTownsfolkReactions({ npcs: [] }, T0); updateTownsfolkReactions(null, T0); return true; } catch (e) { return false; } })());
+}
+
+/* ── 7. v2.3.3604: the townsfolk do things by themselves ── */
+{
+  const S = world(); delete S.__btNoIdleMoves;
+  let r = 0.5; const rnd = () => r;
+  updateTownsfolkReactions(S, T0, rnd);
+  check('7a nobody moves at once: each is given a first moment within IDLE.FIRST_MS',
+    S.npcs.every((n) => !n._emoteMove && n._idleNext >= T0 && n._idleNext <= T0 + IDLE.FIRST_MS));
+  updateTownsfolkReactions(S, T0 + IDLE.FIRST_MS + 1, rnd);
+  const moved = S.npcs.filter((n) => n._emoteMove);
+  check('7b ...then each does one of his own moves, a moment long',
+    moved.length === S.npcs.length && moved.every((n) => (IDLE_MOVES[n.name] || ['wave', 'shrug']).includes(n._emoteMove.id)),
+    moved.map((n) => n.name + ':' + (n._emoteMove && n._emoteMove.id)));
+  check('7c ...and the next is IDLE.MIN_MS to MAX_MS away',
+    S.npcs.every((n) => n._idleNext - (T0 + IDLE.FIRST_MS + 1) >= IDLE.MIN_MS && n._idleNext - (T0 + IDLE.FIRST_MS + 1) <= IDLE.MAX_MS));
+  const lil = S.npcs.find((n) => n.name === 'Lil Bro');
+  lil._emoteMove = null; lil._po = 'sit'; lil._idleNext = 1;
+  updateTownsfolkReactions(S, T0 + 999999, rnd);
+  check('7d never over a move he is making (a held pose)', !lil._emoteMove || lil._po === null);
+  const T = world();
+  updateTownsfolkReactions(T, T0 + 999999, rnd);
+  check('7e off with __btNoIdleMoves', T.npcs.every((n) => !n._idleNext));
 }
 
 console.log(`\ntownsfolk-react: ${passed} passed, ${failed} failed`);
