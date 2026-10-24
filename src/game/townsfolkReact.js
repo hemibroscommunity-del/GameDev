@@ -162,14 +162,49 @@ const RULES = Object.freeze({
   'Mayor Bro': mayor,
 });
 
-/* once a frame: every townsperson answers the moves near him */
-export function updateTownsfolkReactions(S, now) {
+/* ═══ v2.3.3604: THE TOWNSFOLK DO THINGS BY THEMSELVES ═══
+   The owner: "it would be cool if the NPCs could just walk around and do
+   stuff by themselves (animations should already work) but stay pretty close
+   to their starting positions".  Walking was tried first and left out: in the
+   world each walker's picture is his standing cell alone (the memory work,
+   npcSprites.js), and his only walk cycle faces south, so a walk north or
+   sideways would moonwalk.  So each townsperson does the emote moves the
+   players do (emoteFx.js draws them on his figure about his feet) on his own
+   now and then, in character -- IDLE_MOVES -- every IDLE_MIN_MS to
+   IDLE_MAX_MS, never over a move he is already making (a reaction wins). */
+export const IDLE = Object.freeze({ MIN_MS: 9000, MAX_MS: 22000, FIRST_MS: 6000 });
+export const IDLE_MOVES = Object.freeze({
+  'Mayor Bro': Object.freeze(['wave', 'cheer']),
+  'Blacksmith Bro': Object.freeze(['flex', 'flex', 'shrug']),
+  Diego: Object.freeze(['wave', 'shrug']),
+  Ace: Object.freeze(['laugh', 'shrug']),
+  'Lil Bro': Object.freeze(['wave', 'cheer', 'laugh']),
+  'Beastmaster Bro': Object.freeze(['shrug', 'wave']),
+  'Woodworker Bro': Object.freeze(['facepalm', 'shrug']),
+  'Farmer Bro': Object.freeze(['wave', 'shrug']),
+});
+const IDLE_DEFAULT = Object.freeze(['wave', 'shrug']);
+
+function idleMove(npc, now, rnd) {
+  if (npc._emoteMove || npc._po) return;
+  if (!npc._idleNext) { npc._idleNext = now + rnd() * IDLE.FIRST_MS; return; }
+  if (now < npc._idleNext) return;
+  const list = Object.prototype.hasOwnProperty.call(IDLE_MOVES, npc.name) ? IDLE_MOVES[npc.name] : IDLE_DEFAULT;
+  const id = list[Math.floor(rnd() * list.length) % list.length];
+  if (moveKind(id) === 'once') npc._emoteMove = { id, at: now };
+  npc._idleNext = now + IDLE.MIN_MS + rnd() * (IDLE.MAX_MS - IDLE.MIN_MS);
+}
+
+/* once a frame: every townsperson answers the moves near him, and the rest
+   of the time does a little something of his own (v2.3.3604) */
+export function updateTownsfolkReactions(S, now, rnd = Math.random) {
   const npcs = S && S.npcs;
   if (!Array.isArray(npcs) || !npcs.length) return;
   const ms = emoteMovers(S);
   for (const npc of npcs) {
-    if (!npc || npc.alive === false || !Object.prototype.hasOwnProperty.call(RULES, npc.name)) continue;
+    if (!npc || npc.alive === false) continue;
     if (!Number.isFinite(npc.x) || !Number.isFinite(npc.y)) continue;
-    RULES[npc.name](npc, ms, now);
+    if (Object.prototype.hasOwnProperty.call(RULES, npc.name)) RULES[npc.name](npc, ms, now);
+    if (!(S && S.__btNoIdleMoves)) idleMove(npc, now, rnd);
   }
 }
