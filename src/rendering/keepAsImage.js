@@ -34,18 +34,21 @@
  * was.  QA: window.__btKeptImages() (mp-headkeep).
  *
  * Only for pictures made once and kept as they are: a canvas the game draws
- * into again later must never be swapped out from under it. */
-import { Cache } from 'pixi.js';
+ * into again later must never be swapped out from under it.
+ *
+ * No imports (the server's suites run it in node, where there is no Pixi):
+ * the caller hands in Pixi's Cache, which Texture.from(canvas) keyed by the
+ * canvas, so the entry is taken out with the canvas (TRAPS §139). */
 
 let _on = true;
 try { if (typeof location !== 'undefined' && /[?&]keepimage=0\b/.test(location.search || '')) _on = false; } catch (e) { /* on */ }
 
 const _stats = { asked: 0, kept: 0, failed: 0, pending: 0 };
 
-/** Keep `source`'s canvas as an image of itself (the header).  Returns a
- *  promise of true once the source draws from the image, false when it keeps
- *  its canvas. */
-export function keepAsImage(source) {
+/** Keep `source`'s canvas as an image of itself (the header).  `cache` is
+ *  Pixi's Cache (the caller's import), or nothing.  Returns a promise of true
+ *  once the source draws from the image, false when it keeps its canvas. */
+export function keepAsImage(source, cache) {
   const cv = source && source.resource;
   if (!_on || !cv || source.destroyed || typeof cv.toBlob !== 'function' || !(cv.width > 0) || !(cv.height > 0)) {
     return Promise.resolve(false);
@@ -79,7 +82,7 @@ export function keepAsImage(source) {
           try { source.update(); } catch (e) { /* drawn from the image next time */ }
           /* the bytes behind the image live as long as the picture does */
           try { source.once('destroy', () => { try { URL.revokeObjectURL(url); } catch (e) { /* gone */ } }); } catch (e) { /* kept */ }
-          try { if (Cache.has(cv)) Cache.remove(cv); } catch (e) { /* older pixi */ }
+          try { if (cache && cache.has(cv)) cache.remove(cv); } catch (e) { /* older pixi */ }
           try { cv.width = 0; cv.height = 0; } catch (e) { /* not ours to zero */ }
           end(true);
         };

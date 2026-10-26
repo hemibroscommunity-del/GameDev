@@ -8,7 +8,8 @@
  * blobs and images, and the files that use it are read for what they promise:
  *   1. a canvas is copied AT THE CALL (before anything can empty it), its
  *      texture's source swapped to the image once loaded, sent again, the
- *      canvas let go of (width 0, out of Pixi's Cache);
+ *      canvas let go of (width 0, out of the Cache the caller hands in --
+ *      keepAsImage.js imports nothing, so it runs here with no Pixi);
  *   2. a source let go of while its image loads keeps nothing, and the bytes
  *      are given back;
  *   3. an image of another size, a failed encode, a failed load: the canvas
@@ -21,7 +22,6 @@
  *      catalogs and the species builds every piece they recolour, and a piece
  *      given up on is tried again later while worn. */
 import { readFileSync } from 'fs';
-import { Cache } from 'pixi.js';
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -64,6 +64,11 @@ globalThis.Image = class {
   }
   get src() { return this._src; }
 };
+/* Pixi's Cache, as far as keepAsImage uses it (the caller hands it in) */
+const Cache = {
+  m: new Map(),
+  set(k, v) { this.m.set(k, v); }, has(k) { return this.m.has(k); }, remove(k) { this.m.delete(k); },
+};
 function fakeSource(cv) {
   const s = {
     resource: cv, destroyed: false, updates: 0, _l: {},
@@ -81,13 +86,13 @@ const K = await import('../../src/rendering/keepAsImage.js?on');
   const cv = fakeCanvas(32, 24, 'hair-southwest');
   Cache.set(cv, { qa: 1 });
   const src = fakeSource(cv);
-  const p = K.keepAsImage(src);
+  const p = K.keepAsImage(src, Cache);
   cv.pixels = '';   /* Safari empties it right after the call */
   const ok = await p;
   check('1a: kept as an image', ok === true && src.resource && src.resource.tagName === 'IMG', { ok, res: src.resource && src.resource.tagName });
   check('1b: the copy was taken AT THE CALL, before the canvas was emptied', src.resource && src.resource.pixels === 'hair-southwest', src.resource && src.resource.pixels);
   check('1c: sent again from the image (update)', src.updates === 1, src.updates);
-  check('1d: the canvas let go of: width 0, out of Pixi\'s Cache', cv.width === 0 && cv.height === 0 && !Cache.has(cv), { w: cv.width, cached: Cache.has(cv) });
+  check('1d: the canvas let go of: width 0, out of the Cache handed in', cv.width === 0 && cv.height === 0 && !Cache.has(cv), { w: cv.width, cached: Cache.has(cv) });
   check('1e: the image is the canvas\'s size', src.resource.naturalWidth === 32 && src.resource.naturalHeight === 24, { w: src.resource.naturalWidth, h: src.resource.naturalHeight });
   /* ── 5 ── */
   const url = src.resource.src;
@@ -99,7 +104,7 @@ const K = await import('../../src/rendering/keepAsImage.js?on');
 {
   const cv = fakeCanvas(16, 16, 'hat');
   const src = fakeSource(cv);
-  const p = K.keepAsImage(src);
+  const p = K.keepAsImage(src, Cache);
   await tick();                    /* encoded; the image is loading */
   src.destroyed = true;            /* let go of meanwhile */
   const before = revoked.length;
@@ -113,17 +118,25 @@ const K = await import('../../src/rendering/keepAsImage.js?on');
   const cv = fakeCanvas(16, 16, 'eyes');
   const src = fakeSource(cv);
   globalThis.__imgW = 17;
-  const ok1 = await K.keepAsImage(src);
+  const ok1 = await K.keepAsImage(src, Cache);
   globalThis.__imgW = 0;
   check('3a: an image of another size: the canvas is kept', ok1 === false && src.resource === cv && cv.width === 16, { ok1 });
   cv.failEncode = true;
-  const ok2 = await K.keepAsImage(src);
+  const ok2 = await K.keepAsImage(src, Cache);
   cv.failEncode = false;
   check('3b: a failed encode: the canvas is kept', ok2 === false && src.resource === cv, { ok2 });
   globalThis.__failImage = true;
-  const ok3 = await K.keepAsImage(src);
+  const ok3 = await K.keepAsImage(src, Cache);
   globalThis.__failImage = false;
   check('3c: a failed load: the canvas is kept', ok3 === false && src.resource === cv, { ok3 });
+}
+
+/* ── 1f: no Cache handed in: kept all the same ── */
+{
+  const cv = fakeCanvas(8, 8, 'beard');
+  const src = fakeSource(cv);
+  const ok = await K.keepAsImage(src);
+  check('1f: with no Cache handed in it is kept all the same', ok === true && src.resource && src.resource.tagName === 'IMG' && cv.width === 0, { ok });
 }
 
 /* ── 4 ── */
@@ -137,7 +150,7 @@ const K = await import('../../src/rendering/keepAsImage.js?on');
 }
 {
   const st = K.keptImageStats();
-  check('the counts: 5 asked, 1 kept, 4 kept their canvas, nothing waiting', !!st && st.asked === 5 && st.kept === 1 && st.failed === 4 && st.pending === 0 && st.off === false, st);
+  check('the counts: 6 asked, 2 kept, 4 kept their canvas, nothing waiting', !!st && st.asked === 6 && st.kept === 2 && st.failed === 4 && st.pending === 0 && st.off === false, st);
 }
 
 /* ── 6 ── */
@@ -147,7 +160,7 @@ const K = await import('../../src/rendering/keepAsImage.js?on');
   delete globalThis.location;
   const cv = fakeCanvas(8, 8, 'x');
   const n0 = encodes;
-  const ok = await Off.keepAsImage(fakeSource(cv));
+  const ok = await Off.keepAsImage(fakeSource(cv), Cache);
   check('6: ?keepimage=0 keeps nothing', ok === false && encodes === n0 && Off.keepAsImageOn() === false, { ok });
 }
 
@@ -156,7 +169,7 @@ const src = (p) => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
 const ER = src('src/rendering/systems/entityRenderer.js');
 {
   const load = ER.slice(ER.indexOf('function _loadTraitDir('), ER.indexOf('function _ensureHeadwearLoaded('));
-  check('7a: the trait loader keeps every piece it cuts as an image', /keepAsImage\(t\.source\)/.test(load) && /^import \{ keepAsImage \} from '\.\.\/keepAsImage\.js'/m.test(ER), null);
+  check('7a: the trait loader keeps every piece it cuts as an image, handing in Pixi\'s Cache', /keepAsImage\(t\.source, Cache\)/.test(load) && /^import \{ keepAsImage \} from '\.\.\/keepAsImage\.js'/m.test(ER) && /^import \{[^}]*\bCache\b[^}]*\} from 'pixi\.js'/m.test(ER), null);
   check('7b: a facing given up on is marked and tried again later', /\(e\.gaveUp \|\| \(e\.gaveUp = Object\.create\(null\)\)\)\[dir\] = true/.test(load) && /_traitGaveUp\(e\)/.test(load), null);
   const ens = ER.slice(ER.indexOf('function _ensureTraitLoaded('), ER.indexOf('function _fetchTraitMeta('));
   check('7c: _ensureTraitLoaded starts the later round when its time comes, meta and facings', /e\.retryAt && Date\.now\(\) >= e\.retryAt/.test(ens) && /_fetchTraitMeta\(e, category, id, 0, e\.retries\)/.test(ens) && /_loadTraitDir\(e, category, id, dir, 0, e\.retries\)/.test(ens), null);
@@ -168,12 +181,17 @@ const ER = src('src/rendering/systems/entityRenderer.js');
 for (const f of ['hairColorCatalog', 'hatColorCatalog', 'facialHairColorCatalog', 'eyewearColorCatalog', 'eyeStyleColorCatalog', 'shirtColorCatalog']) {
   const s = src(`src/rendering/traits/${f}.js`);
   const at = s.indexOf('const t = Texture.from(cv);');
-  check(`7f: ${f} keeps every piece it recolours as an image`, at > 0 && /keepAsImage\(t\.source\)/.test(s.slice(at, at + 260)) && /^import \{ keepAsImage \} from '\.\.\/keepAsImage\.js'/m.test(s), null);
+  check(`7f: ${f} keeps every piece it recolours as an image`, at > 0 && /keepAsImage\(t\.source, Cache\)/.test(s.slice(at, at + 260)) && /^import \{ keepAsImage \} from '\.\.\/keepAsImage\.js'/m.test(s) && /^import \{[^}]*\bCache\b[^}]*\} from 'pixi\.js'/m.test(s), null);
 }
 {
   const s = src('src/rendering/traits/speciesArt.js');
   const at = s.indexOf('function _texFrom(cv)');
-  check('7g: the species builds keep their pieces as images', at > 0 && /keepAsImage\(t\.source\)/.test(s.slice(at, at + 400)), null);
+  check('7g: the species builds keep their pieces as images', at > 0 && /keepAsImage\(t\.source, Cache\)/.test(s.slice(at, at + 400)), null);
+}
+{
+  /* the module the server's suites load imports nothing (no Pixi here) */
+  const K2 = src('src/rendering/keepAsImage.js');
+  check('7h: keepAsImage.js imports nothing', !/^\s*import\s/m.test(K2), null);
 }
 
 if (failures) { console.log(`\n${failures} failure(s)`); process.exit(1); }

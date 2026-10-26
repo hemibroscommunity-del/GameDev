@@ -8411,7 +8411,7 @@ nothing; after a rebuild, all 46.  And a facing whose file failed to load three
 times was given up for the session (v2.3.1305), bald until a reload.
 
 **The rule.** A picture the game makes once and keeps is kept as an IMAGE of
-itself: `keepAsImage(source)` (src/rendering/keepAsImage.js) copies the canvas
+itself: `keepAsImage(source, Cache)` (src/rendering/keepAsImage.js, which imports nothing: the caller hands in Pixi's Cache) copies the canvas
 into a PNG the moment it is made (toBlob copies at the call, before anything
 can empty it), loads it as an `<img>` and swaps the texture's source to it,
 the same size, every frame and crop untouched, the canvas let go of.  Every

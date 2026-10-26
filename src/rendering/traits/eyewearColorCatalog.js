@@ -48,7 +48,7 @@
  * gold rim stays the gold rim even if the dark keyline grows past it.
  */
 
-import { Texture } from 'pixi.js';
+import { Cache, Texture } from 'pixi.js';
 import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3074 */
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606 */
 import { recolorHairToCanvas } from '../characterPortrait.js';
@@ -225,7 +225,7 @@ function build(id, colorId) {
       if (!img) continue;   /* dir missing -> the renderer falls back to native art */
       const cv = recolorHairToCanvas(img, target, prof);
       const t = Texture.from(cv);
-      if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; keepAsImage(t.source); }   /* v2.3.3606: kept as an image of itself (keepAsImage.js) */
+      if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; keepAsImage(t.source, Cache); }   /* v2.3.3606: kept as an image of itself (keepAsImage.js) */
       tex[dir] = t;
     }
     _cache[key] = tex;
