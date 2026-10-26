@@ -27,7 +27,10 @@
  * of the body, from its sheet) is blank too.  Pictures loaded from files
  * (hair, the armour's own art, the shield, the staff) are read again from
  * their files.  That is the owner's screenshot: whatever the body needed that
- * had not been drawn before.
+ * had not been drawn before.  (v2.3.3606: the hair was NOT from a file -- every
+ * head piece has been cut onto a canvas since v2.3.2776 -- and went bald the
+ * same way; the head pieces are kept as images of themselves now,
+ * keepAsImage.js, TRAPS §253.)
  *
  * So each packed picture is WITNESSED as it is made: one of its solid pixels
  * is noted (packTrimmed knows them from its own scan, at no cost).  Coming

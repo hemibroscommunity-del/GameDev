@@ -8,8 +8,9 @@
  * `target` is the LIT shirt color; null = the sprite's native color.
  */
 
-import { Texture } from 'pixi.js';
+import { Cache, Texture } from 'pixi.js';
 import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3074 */
+import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606 */
 import { recolorHairToCanvas } from '../characterPortrait.js';
 
 export const SHIRT_COLOR_CATALOG = [
@@ -147,7 +148,7 @@ function build(shirtId, colorId) {
       const img = await loadImg(`/sprites/traits/shirt/${shirtId}/${dir}.png?v=${TRAIT_VER}`);
       const cv = recolorHairToCanvas(img, target);
       const t = Texture.from(cv);
-      if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; }
+      if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; keepAsImage(t.source, Cache); }   /* v2.3.3606: kept as an image of itself (keepAsImage.js) */
       tex[dir] = t;
     } catch (e) { /* dir missing -> renderer falls back */ }
   })).then(() => { _cache[key] = tex; _capCache(); });

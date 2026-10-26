@@ -8,8 +8,9 @@
  * `target` is the LIT hat color; null = the sprite's native color.
  */
 
-import { Texture } from 'pixi.js';
+import { Cache, Texture } from 'pixi.js';
 import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3074 */
+import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606 */
 import { recolorHairToCanvas } from '../characterPortrait.js';
 import { headwearIsSolid } from './headwearCatalog.js';
 import { recolorEnabled, SOLID_ONLY_HAT_COLOR } from './recolorOptions.js';
@@ -214,7 +215,7 @@ function build(hatId, colorId) {
       if (!img) continue; /* dir missing -> renderer falls back */
       const cv = recolorHairToCanvas(img, target, prof);
       const t = Texture.from(cv);
-      if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; }
+      if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; keepAsImage(t.source, Cache); }   /* v2.3.3606: kept as an image of itself (keepAsImage.js) */
       tex[dir] = t;
     }
     _cache[key] = tex;

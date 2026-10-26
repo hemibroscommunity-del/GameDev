@@ -22,8 +22,9 @@
  * every species during the loading screen; building a skin's copy afterwards is
  * a canvas pass over images already in memory, not a network load.
  */
-import { Texture, Rectangle } from 'pixi.js';
+import { Cache, Texture, Rectangle } from 'pixi.js';
 import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3074 */
+import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606 */
 import { skinTarget, retintSkinPixels, poseSkinTarget } from '../playerSkins.js';   /* v2.3.2861: + poseSkinTarget */
 import { SPECIES_CATALOG } from './speciesCatalog.js';
 
@@ -146,7 +147,7 @@ function _capBuilds() {
 
 function _texFrom(cv) {
   const t = Texture.from(cv);
-  if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; }   /* match the other traits (_loadTraitDir) */
+  if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; keepAsImage(t.source, Cache); }   /* match the other traits (_loadTraitDir); v2.3.3606: kept as an image of itself (keepAsImage.js) */
   return t;
 }
 

@@ -8388,3 +8388,42 @@ only the pictures showed it did nothing to a red goblin.
 **Receipt:** `mp-whirltint` and `QA_WT_LAND=ember` (pictures
 `whirltint-close[-ember].png`: each monster as itself, at the flash's darkest
 and lightest): 100% of the body's pixels amber for both kinds.
+
+## 253. "It is cut out of its file, so it is as safe as its file" (v2.3.3606)
+
+**The plausible move.** A head piece (hair, hat, beard, glasses, eye style,
+species) is loaded from its own PNG.  v2.3.2776 cut each one to its painted
+box on a canvas to save memory, and the colour picks recolour it onto one.
+The pixels came from a file, so the v2.3.778 rule ("pictures from files are
+`<img>`-backed and survive any purge") seems to cover them.
+
+**Why it is wrong.** What Pixi holds is the CANVAS, not the file.  A canvas is
+sent to the graphics chip the first time it is drawn, and read again whenever
+the graphics are made again (the black-screen rebuild, a restored context).
+iPhone Safari can empty a canvas and say nothing (§250), and its memory purge
+leaves anything that is not an `<img>` invisible after a rebuild (the v2.3.778
+note in pixiRenderer.js).  The owner's new bro went bald jogging southwest,
+glasses on, a minute after standing south with his hair: every facing he had
+not turned to before the canvases were emptied came up blank, and after a
+rebuild every facing would.  mp-headkeep makes it happen: with the canvases
+emptied while the bro had faced south only, 40 of the 46 pieces it reads drew
+nothing; after a rebuild, all 46.  And a facing whose file failed to load three
+times was given up for the session (v2.3.1305), bald until a reload.
+
+**The rule.** A picture the game makes once and keeps is kept as an IMAGE of
+itself: `keepAsImage(source, Cache)` (src/rendering/keepAsImage.js, which imports nothing: the caller hands in Pixi's Cache) copies the canvas
+into a PNG the moment it is made (toBlob copies at the call, before anything
+can empty it), loads it as an `<img>` and swaps the texture's source to it,
+the same size, every frame and crop untouched, the canvas let go of.  Every
+head piece goes through it: `_loadTraitDir`, the six colour catalogs and the
+species builds.  A NEW system that makes a picture on a canvas and keeps it
+calls it too, or says why not -- never for a canvas the game draws into again.
+And a load given up on is tried again later while something wears it
+(`_ensureTraitLoaded`'s `retryAt`), never given up for the session.
+`?keepimage=0` and `?traitretry=0` are the game as it was.
+
+**Receipt:** `mp-headkeep` (the owner's look; the canvases emptied while the
+bro had faced south only, then every facing jogging and standing; a rebuild,
+then every facing again; a hat whose southwest file failed every try, back once
+it can be had) -- and with `QA_HK_EXPECT=blank` the build before: blank after
+the wipe, blank after the rebuild, the hat never back.
