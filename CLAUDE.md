@@ -2701,6 +2701,25 @@ remnant to migrate server-side, not a mode to preserve.
         `canvas-witness` suite, `mp-tabwipe` (the canvases emptied as Safari
         does: 0 px from the parked spot, the body whole in all eight facings;
         blank in all eight with the switch off): docs/specs/parked-tab.md.
+    - since v2.3.3606 THE HEAD PIECES ARE KEPT AS IMAGES -- the owner: "Some
+      traits will disappear ... Screenshots of hair missing" (a new bro bald
+      jogging southwest, his glasses on, a minute after standing south with his
+      hair and bandana; nothing in the game's code did it on the test machine):
+      - every head piece the game cuts or recolours onto a canvas (hair, hats,
+        beards, glasses, eye styles, species; the six colour catalogs) is
+        copied into a PNG the moment it is made and drawn from that `<img>`
+        (src/rendering/keepAsImage.js), so an emptied canvas or a graphics
+        rebuild can no longer blank it (v2.3.778's rule for files); the canvas
+        is let go of, 284 fewer on a phone in BroTown;
+      - a piece or a meta.json given up after its three tries is tried again
+        LATER while something on screen wears it (5 s, 10, 20, 40, then every
+        minute; `_ensureTraitLoaded`'s `retryAt`), never for the session;
+      - a new system that keeps a picture it made on a canvas calls
+        `keepAsImage` too (never for one it draws into again);
+      - `?keepimage=0`, `?traitretry=0`, `window.__btKeptImages()`;
+        `mp-headkeep` (the canvases emptied after facing south only, a
+        rebuild, a refused hat file: blank, blank and never back on the build
+        before), TRAPS §253: docs/specs/head-pieces-stay.md.
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:

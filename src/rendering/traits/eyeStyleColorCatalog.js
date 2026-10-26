@@ -76,6 +76,7 @@
 
 import { Texture } from 'pixi.js';
 import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3074 */
+import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606 */
 import { recolorHairToCanvas } from '../characterPortrait.js';
 import { EYE_COLOR_CATALOG, eyeColorTarget } from './eyeColorCatalog.js';
 import { recolorEnabled } from './recolorOptions.js';
@@ -248,7 +249,7 @@ function build(id, colorId) {
       if (!img) continue;   /* dir missing -> the renderer falls back to native art */
       const cv = recolorHairToCanvas(img, target, prof);
       const t = Texture.from(cv);
-      if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; }
+      if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; keepAsImage(t.source); }   /* v2.3.3606: kept as an image of itself (keepAsImage.js) */
       tex[dir] = t;
     }
     _cache[key] = tex;
@@ -295,9 +296,17 @@ if (typeof window !== 'undefined') {
       if (!t) return null;
       const out = {};
       for (const dir of Object.keys(t)) {
-        const cv = t[dir] && t[dir].source && t[dir].source.resource;
-        if (!cv || !cv.getContext) continue;
-        const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+        const res = t[dir] && t[dir].source && t[dir].source.resource;
+        /* v2.3.3606: the bake is kept as an image of itself (keepAsImage.js),
+           so it is drawn out onto a canvas of its own to be read */
+        const w = res && (res.naturalWidth || res.width), h = res && (res.naturalHeight || res.height);
+        if (!res || !(w > 0) || !(h > 0)) continue;
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        const g = cv.getContext('2d');
+        g.drawImage(res, 0, 0);
+        const d = g.getImageData(0, 0, w, h).data;
+        cv.width = 0; cv.height = 0;
         const px = [];
         for (let i = 0; i < d.length; i += 4) if (d[i + 3]) px.push([d[i], d[i + 1], d[i + 2], d[i + 3]]);
         out[dir] = px;

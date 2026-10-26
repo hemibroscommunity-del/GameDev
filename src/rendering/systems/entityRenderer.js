@@ -105,6 +105,7 @@ import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.
 import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
 import { jumpActive, jumpFrame, jumpPhase } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog; v2.3.3499: four, by its phase */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
+import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606: a head piece kept as an image of itself */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { activePet } from '../../game/petBook.js'; /* v2.3.3120: the pet out with you is the record's */
 import { petFrames, petSideFaces, petArtHeight } from '../petSprites.js'; /* v2.3.3120: the pet sheet */
@@ -963,6 +964,26 @@ const TRAIT_VER = '2.3.3590';   /* v2.3.2174: de-fringe sweep across the trait s
    and any future category share one loader.  Each entry owns its own
    per-direction texture set + meta. */
 const _traitCache = {};  // `${category}/${id}` -> { tex:{east,...}, meta, loadStarted }
+/* ═══ v2.3.3606: A PIECE THAT COULD NOT BE LOADED IS TRIED AGAIN WHILE WORN ═══
+   The owner: "Some traits will disappear" -- a bro bald on one facing.  The
+   bounded retry below (v2.3.1305 / v2.3.1382: two more tries, 2 s and 6 s
+   on) was the end of it: a facing or a meta.json that failed three times was
+   given up for the whole session, so a few bad seconds of a phone's
+   connection during the loading screen (which asks for every piece in the
+   catalog at once) left that facing bald until a reload.  Now a piece given
+   up on is tried again, a round of three tries each time, LATER and only
+   while something still asks for it (_ensureTraitLoaded runs every frame for
+   every piece worn on screen): 5 s after the round that gave up, then 10,
+   20, 40, and every minute after.  A piece nobody wears asks for nothing.
+   `?traitretry=0` is the game as it was. */
+const TRAIT_RETRY_LATER_MS = [5000, 10000, 20000, 40000, 60000];
+let _traitRetryOn = true;
+try { if (typeof location !== 'undefined' && /[?&]traitretry=0\b/.test(location.search || '')) _traitRetryOn = false; } catch (e) { /* on */ }
+function _traitGaveUp(e) {
+  if (!_traitRetryOn) return;
+  const n = e.retries || 0;
+  e.retryAt = Date.now() + TRAIT_RETRY_LATER_MS[Math.min(n, TRAIT_RETRY_LATER_MS.length - 1)];
+}
 function _ensureTraitLoaded(category, id) {
   if (!id || id === 'none') return null;
   const key = category + '/' + id;
@@ -976,24 +997,37 @@ function _ensureTraitLoaded(category, id) {
   }
   if (!e.loadStarted) {
     e.loadStarted = true;
-    /* v2.3.1382: meta.json gets the same bounded retry the trait textures
-       got in v2.3.1305 — a flaked meta left the trait unplaceable all
-       session (owner: "hair and headwear missing on east jog"). */
-    const _fetchMeta = (attempt) => {
-      const bust = attempt > 0 ? `&r=${attempt}` : '';
-      fetch(`/sprites/traits/${category}/${id}/meta.json?v=${TRAIT_VER}${bust}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(j => {
-          if (j) { e.meta = j; return; }
-          if (attempt < 2) setTimeout(() => _fetchMeta(attempt + 1), [2000, 6000][attempt]);
-        })
-        .catch(() => { if (attempt < 2) setTimeout(() => _fetchMeta(attempt + 1), [2000, 6000][attempt]); });
-    };
-    _fetchMeta(0);
+    _fetchTraitMeta(e, category, id, 0, 0);
     /* v2.3.2776: the per-dir loads are kept, so preloadTraits can await them */
     e.ready = Promise.allSettled(Object.keys(e.tex).map((dir) => _loadTraitDir(e, category, id, dir, 0)));
   }
+  /* v2.3.3606: given up on, and its time come round: another round */
+  if (e.retryAt && Date.now() >= e.retryAt) {
+    e.retryAt = 0;
+    e.retries = (e.retries || 0) + 1;
+    if (e.metaGaveUp) { e.metaGaveUp = false; _fetchTraitMeta(e, category, id, 0, e.retries); }
+    /* (a facing the meta says the piece does not have is not one to want) */
+    const dirs = e.gaveUp ? Object.keys(e.gaveUp).filter((d) => !(e.meta && e.meta.anchors && !e.meta.anchors[d])) : [];
+    e.gaveUp = null;
+    for (const dir of dirs) _loadTraitDir(e, category, id, dir, 0, e.retries);
+  }
   return e;
+}
+/* v2.3.1382: meta.json gets the same bounded retry the trait textures got in
+   v2.3.1305 — a flaked meta left the trait unplaceable all session (owner:
+   "hair and headwear missing on east jog").  v2.3.3606: out of
+   _ensureTraitLoaded so a later round can call it, and `round` (that round's
+   number) in the bust, so a later round is never answered from a cache. */
+function _fetchTraitMeta(e, category, id, attempt, round) {
+  const bust = (attempt > 0 ? `&r=${attempt}` : '') + (round > 0 ? `&g=${round}` : '');
+  const again = () => {
+    if (attempt < 2) setTimeout(() => _fetchTraitMeta(e, category, id, attempt + 1, round), [2000, 6000][attempt]);
+    else { e.metaGaveUp = true; _traitGaveUp(e); }   /* v2.3.3606 */
+  };
+  fetch(`/sprites/traits/${category}/${id}/meta.json?v=${TRAIT_VER}${bust}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { if (j) { e.meta = j; return; } again(); })
+    .catch(again);
 }
 /* v2.3.1305: per-direction trait load with bounded retry.  Owner
    two-player report: "lots of layers are missing depending on the
@@ -1013,8 +1047,10 @@ function _ensureTraitLoaded(category, id) {
    the old catch comment said "expected for directions that don't
    exist yet"). */
 const _TRAIT_RETRY_MS = [2000, 6000];
-function _loadTraitDir(e, category, id, dir, attempt) {
-  const bust = attempt > 0 ? `&r=${attempt}` : '';
+function _loadTraitDir(e, category, id, dir, attempt, round = 0) {
+  /* v2.3.3606: `round`, a later round's number (_ensureTraitLoaded), in the
+     bust too */
+  const bust = (attempt > 0 ? `&r=${attempt}` : '') + (round > 0 ? `&g=${round}` : '');
   /* ═══ v2.3.2776: CROPPED ═══
      Owner: "Do all of it" (the memory list).  A trait frame is the whole
      128/256 body frame with a hat, a beard or a pair of glasses in one corner:
@@ -1038,6 +1074,9 @@ function _loadTraitDir(e, category, id, dir, attempt) {
            downscale artifacts blend out the same way. */
         t.source.scaleMode = 'linear';
         t.source.autoGenerateMipmaps = true;
+        /* v2.3.3606: kept as an image of itself, so an emptied canvas can
+           never leave this facing bald (keepAsImage.js) */
+        keepAsImage(t.source);
       }
     })
     .catch(() => {
@@ -1056,13 +1095,18 @@ function _loadTraitDir(e, category, id, dir, attempt) {
       if (designedMissing) return;
       if (attempt < _TRAIT_RETRY_MS.length) {
         return new Promise((res) => setTimeout(res, _TRAIT_RETRY_MS[attempt]))
-          .then(() => _loadTraitDir(e, category, id, dir, attempt + 1));
+          .then(() => _loadTraitDir(e, category, id, dir, attempt + 1, round));
       }
       try {
         if (window.__spriteLog) console.warn('[sprite] trait dir failed', category, id, dir);
         const shouldExist = e.meta && e.meta.anchors && e.meta.anchors[dir];
-        if (shouldExist) recordCrash('sheet', `trait ${category}/${id}/${dir} failed x${attempt + 1}`);
+        /* (the first round only: the later rounds of a long outage would fill
+           the 16-slot crash ring with one line) */
+        if (shouldExist && !round) recordCrash('sheet', `trait ${category}/${id}/${dir} failed x${attempt + 1}`);
       } catch (err) { /* telemetry must never break rendering */ }
+      /* v2.3.3606: not the end of it -- tried again later while worn */
+      (e.gaveUp || (e.gaveUp = Object.create(null)))[dir] = true;
+      _traitGaveUp(e);
     });
 }
 function _ensureHeadwearLoaded(id) { return _ensureTraitLoaded('headwear', id); }

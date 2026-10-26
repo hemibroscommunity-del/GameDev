@@ -402,6 +402,7 @@ const SCENARIOS = {
   facingside: () => import('./mp-facingside.mjs'), /* v2.3.2042: a face tattoo does not revolve to the back of a head */
   nonetiles: () => import('./mp-nonetiles.mjs'), /* v2.3.3592: the creator's None tiles show the collection's plain bro */
   bubbleoffscreen: () => import('./mp-bubbleoffscreen.mjs'), /* v2.3.3597: a townsperson's line stays over his head, off the screen with him */
+  headkeep: () => import('./mp-headkeep.mjs'), /* v2.3.3606: your hair and hat stay on -- the owner's look chosen in the creator; every canvas behind a texture emptied as Safari empties them while the bro has faced south only, then hair, hat and glasses drawn in all eight facings jogging and standing; the graphics rebuilt and still whole; a hat whose southwest picture failed every try comes back once it can be had (QA_HK_EXPECT=blank: the build before, blank and never back) */
   statfamilies: () => import('./mp-statfamilies.mjs'), /* v2.3.3605: the stats in four families, an accordion: each opens alone, Health's parts add up, nothing needs a scroll, upright and sideways */
   taptalk: () => import('./mp-taptalk.mjs'), /* v2.3.3598: a tap on a townsperson talks from up to 300 px */
   cosmpose: () => import('./mp-cosmpose.mjs'), /* v2.3.2041: do tattoos + clothing patterns survive every activity, on both screens? */
