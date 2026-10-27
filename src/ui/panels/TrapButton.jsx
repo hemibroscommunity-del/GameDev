@@ -15,9 +15,11 @@ import { Skin } from '@/ui/panels/controlSkin.jsx';
  * the door's prompt slot -- the free stretch between the bell and the jump
  * button (the Wheel's doors are in town, on the safe ground, where no trap
  * can be set; a dungeon mouth's prompt sits beside it and this one rises over
- * it).  Grey, it says what stops it -- "Requires Trapping 18", "No box traps"
+ * it).  Grey, it says what stops it -- "Requires Trapping 18", "Get closer"
  * -- and a tap only repeats that, sending nothing (as a resource above your
- * level does, v2.3.3059).
+ * level does, v2.3.3059).  With no box trap in the bag it is not there at all
+ * (v2.3.3626, the owner: "don't show the trap message for monsters unless you
+ * have a trap in your inventory to use"; trapButtonView).
  *
  * ON THE CLICK, the last event of a tap (v2.3.2617, the door's reasoning): a
  * touchstart handler would let the tap's compatibility mouse events fall

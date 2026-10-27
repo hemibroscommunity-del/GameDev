@@ -3674,7 +3674,10 @@ remnant to migrate server-side, not a mode to preserve.
       middle lay under the Block button, up whenever a monster is targeted --
       the owner: "The trap monster message appears over other UI elements"),
       its words in a tag beside it taking no touch; sideways and on a computer
-      the pop-up as before (TrapButton.jsx, mp-trapping);
+      the pop-up as before (TrapButton.jsx, mp-trapping); since v2.3.3626 NOT
+      THERE AT ALL with no box trap in the bag (the owner: "don't show the
+      trap message for monsters unless you have a trap in your inventory to
+      use"; `trapButtonView` null, so T too; a set mark still counts down);
     - `trap_arm` marks it 15 s; at the kill (`_trapRollOnKill`, combat.js, before
       dmgByPlayer is cleared; a slime judged at the blow) each armer with 5% of
       the damage rolls four checks at the fourth root (0-3 shakes drawn in code,
@@ -3954,6 +3957,24 @@ remnant to migrate server-side, not a mode to preserve.
         `mp-peercolours` (fails on the old
         code: every recoloured pixel of a peer's cook and fire-lighter the
         watcher's): docs/specs/peer-gather-colours.md.
+    - since v2.3.3623 AN ARMOURED ANGLER'S HANDS ARE GAUNTLETS -- the owner:
+      "The fishing animation gets messed up around the hands when the
+      character is wearing torso armor": the fish pose's top overlay
+      (entityRenderer `_fishTopFrame`) lifts the GRIP -- every body pixel
+      within GRIP_R of the rod -- over the gear, so the hand rides over a tee
+      (v2.3.1914) or greaves (v2.3.2278); over a torso plate it laid the bare
+      arm and hand across the plate's own steel gauntlet and forearm guard, a
+      strip of skin cut square (77-182 px a frame). With a plate worn
+      (`_chestFrameOf`: its frame and metal) nothing of the grip but the rod is
+      drawn over the plate, and what the plate leaves bare -- a finger past its
+      gauntlet, the reel hand, the forearm down to it -- is drawn as a gauntlet
+      in its metal: the skin found on the RAW frame, flooded from the grip
+      (never into the rod, which is pine; under greaves only at the rod), each
+      pixel the plate's own steel at the skin's shade (`FISH_SKIN_*`,
+      `FISH_STEEL_*`), times the metal's tint; the body under it untouched; a
+      tee or greaves alone as before; `?fishgrip=1` is the old grip;
+      `mp-fisharmour` (the skin laid over the plate below the head, 0-3 px a
+      frame; the tee's and greaves' grip still there): docs/specs/fish-armour-hands.md.
   - Since v2.3.3146 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:
     "Also all the buildings in town should show on the minimap": each
     standing building's footprint where it stands (wheelMinimap.js
@@ -4356,15 +4377,20 @@ remnant to migrate server-side, not a mode to preserve.
       number, `shared: false`), mirror-audit holding it to `killRollLayout`
       for every kind; `caps.killroll`, kill switch `killroll: false`, dev
       lever `/dev/killroll {next, kill}`; `killroll` suite, `mp-killroll`;
-      since v2.3.3616 NOT DRAWN: EACH DROP A COLUMN over the monster instead --
-      the owner: "show each drop in columns of the floating icon rising with
-      the quantity beneath it and the rarity beneath that" -- its picture, its
-      amount (gold: your share) and its rarity (gear its grade, "Mystery" or
-      "Normal"; else by the codex's chance: Normal, Uncommon, Rare, Very rare),
-      from the pile (`loot_drop`) and the killing blow's nugget (`rh`),
-      src/game/dropColumns.js + src/rendering/dropColumns.js, pictures
-      preloaded; `?dropcols=0` the roll again (mp-killroll runs so);
-      `drop-columns` suite, `mp-dropcols`: docs/specs/drop-columns.md;
+      since v2.3.3616 NOT DRAWN: the kill's DROPS over the monster instead
+      (v2.3.3616 a column each, its picture, amount and rarity's word:
+      docs/specs/drop-columns.md); since v2.3.3627 A LINE OF WORDS EACH --
+      the owner: "the name of the item to float upwards with quantity in
+      parenthesis and the color of the font indicating rarity. So normal
+      would just be white" -- "Coins (5)" over "Slime Remains (1)", the gold
+      your share, its colour the rarity (white; the shard green, the rare gem
+      blue, the nugget orange; gear its grade, purple for a mystery), at a
+      message's size (MSG_FONT_PX), from the pile (`loot_drop`) and the
+      killing blow's nugget (`rh`), each line under the one before and a
+      little after it, rising off the monster's body, no pictures loaded;
+      src/game/dropLines.js + src/rendering/dropLines.js; `?droplines=0` the
+      roll again (mp-killroll runs so); `drop-lines` suite, `mp-droplines`:
+      docs/specs/drop-lines.md;
     - NO RANDOM WEAPON OFF A KILL (the owner: "Remove 'a random weapon'
       drop", then "Remove it from the game"): `_rollWeaponDropForKill` and
       its level curve are gone, a kill's one weapon the Iron Great Sword's 1

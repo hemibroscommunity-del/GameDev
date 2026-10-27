@@ -681,7 +681,7 @@ import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo +
 import { DEFENSE_POPUP_KEY, DEFENSE_POPUP_SRC } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's shield on "Defense Lv N" */
 import { halloweenOn } from '@/game/season.js';   /* v2.3.3395: Halloween week's speech bubbles */
 import { BUBBLE_SKINS, bubbleSkinFor } from '@/game/bubbleSkins.js';   /* v2.3.3522: a townsperson's bubble white, a player's dark */
-import { DropColumnsFx } from '../dropColumns.js';   /* v2.3.3616: each drop a column over the monster */
+import { DropLinesFx } from '../dropLines.js';   /* v2.3.3627: each drop a line of words rising over the monster (v2.3.3616's columns before) */
 import { ElemWindupFx } from '../elemWindup.js';   /* v2.3.3619: a monster's element, seen as it winds up */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
@@ -3009,7 +3009,9 @@ export class EffectsRenderer {
     }
     this.particleLayer = layers.particles;
     this.dmgLayer = layers.damageNumbers;
-    this._dropCols = new DropColumnsFx(this.dmgLayer);   /* v2.3.3616: a kill's drops, in columns (game/dropColumns.js) */
+    /* v2.3.3627: a kill's drops, a line of words each (game/dropLines.js), at a
+       message's size and outline (MSG_FONT_PX, the owner's v2.3.3192 rule) */
+    this._dropLines = new DropLinesFx(this.dmgLayer, { fontPx: MSG_FONT_PX, strokePx: DMG_STROKE_PX * DMG_SCALE });
     this.atmosphereLayer = layers.atmosphere;
     this.screenFXLayer = layers.screenFX;
     this.lootLayer = layers.groundLoot;
@@ -5335,7 +5337,7 @@ export class EffectsRenderer {
     this._updateParticles(S, now);
     this._hideSpareDots();   /* v2.3.2331: park the pool's unused sprites */
     this._updateDamageNumbers(S, now);
-    try { this._dropCols.update(S, now, popupZoomK(S)); } catch (e) { /* v2.3.3616: display only */ }
+    try { this._dropLines.update(S, now, popupZoomK(S)); } catch (e) { /* v2.3.3627: display only */ }
     this._updateCatchFlights(S, viewW, viewH, now);
     this._updateFxBursts(S, now);   /* v2.3.1443 */
     this._updateCookSmoke(now);     /* v2.3.2760 */
@@ -17569,7 +17571,7 @@ export class EffectsRenderer {
     this.atmosphereGfx.clear();
     for (const t of this.dmgTexts) t.destroy();
     this.dmgTexts = [];
-    if (this._dropCols) this._dropCols.clear();   /* v2.3.3616 */
+    if (this._dropLines) this._dropLines.clear();   /* v2.3.3627 */
     if (this._elemWindup) this._elemWindup.clear();   /* v2.3.3619 */
     /* Icons live on dmg entries (dmg._pixiIcon) which are owned by
        game state, not this list. Walking the dmgLayer is the most

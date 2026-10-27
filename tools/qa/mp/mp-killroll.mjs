@@ -70,9 +70,10 @@ const waitRoll = async (P, monsterId, roll) => {
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  /* v2.3.3616: the dice roll over the monster is drawn only with the drop
-     columns off (game/dropColumns.js; mp-dropcols is the columns) */
-  const P = await H.newPlayer(browser, { name: 'Rollbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'dropcols=0' });
+  /* v2.3.3616: the dice roll over the monster is drawn only with the drops
+     off (since v2.3.3627 a line of words each, game/dropLines.js;
+     mp-droplines is the lines) */
+  const P = await H.newPlayer(browser, { name: 'Rollbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'droplines=0' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String(e && e.message || e).slice(0, 200)));
   try {

@@ -38,7 +38,7 @@ import { onRestResult, restMapsBuffs } from '@/game/rest.js'; /* v2.3.3539: a re
 import { setWheelHallCaps } from '@/game/wheelTownDoors.js'; /* v2.3.3539: the Hotel opens against a worker that rests */
 import { cue, cueAt, cuePeer, peerOwn } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
-import { noteKillCredit } from '@/game/dropColumns.js'; /* v2.3.3616: a kill's drops in columns over the monster */
+import { noteKillCredit } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
 import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
@@ -3184,9 +3184,9 @@ export function setupWebSocket(ctx) {
               if (cc.cx) { try { onCodexKill(S, cc.cx); } catch (_ce) { /* display only */ } }
               /* v2.3.3209: ...and its one roll, 1 to 10,000, with the drop it landed on (killroll.js) */
               if (cc.roll) { try { onKillRoll(S, cc); } catch (_kr) { /* display only */ } }
-              /* v2.3.3616: ...and what it dropped, a column each, with its pile
-                 (game/dropColumns.js: the nugget is on no pile) */
-              try { noteKillCredit(S, cc); } catch (_dc) { /* display only */ }
+              /* v2.3.3627: ...and what it dropped, a line each, with its pile
+                 (game/dropLines.js: the nugget is on no pile) */
+              try { noteKillCredit(S, cc); } catch (_dl) { /* display only */ }
               if (cc.leveled) {
                 /* v2.3.2615: 'char', not 'combat'.  This is the legacy
                    build-point path and the level it raises is the CHARACTER
