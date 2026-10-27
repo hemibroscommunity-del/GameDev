@@ -4019,6 +4019,16 @@ remnant to migrate server-side, not a mode to preserve.
         `mp-peercolours` (fails on the old
         code: every recoloured pixel of a peer's cook and fire-lighter the
         watcher's): docs/specs/peer-gather-colours.md.
+    - since v2.3.3660 THE FIRE-LIGHTER'S LOG IS WOOD -- the owner: "check all
+      the animations for ghost remnants" (mp-ghostaudit: every light was on a
+      hot pink log, for everyone): firemaking-strip.webp holds the magenta tool
+      key for its log, and v2.3.2761 coloured the axe and the rod but left the
+      log for a firemaking rebuild that only drew the campfire after the light.
+      `_fireLogToBark` (effectsRenderer) gives it TOOL_SPECS.log's bark after the
+      skin and clothes, only where the FILE has the key (pink trousers sit in
+      its hue window), on your fire-lighter and a peer's (`_peerFigFrames`); the
+      skin probe reads the figure first; `?firelog=0`, `window.__btFireLog()`;
+      `mp-firelog`: docs/specs/fire-log.md.
     - since v2.3.3623 AN ARMOURED ANGLER'S HANDS ARE GAUNTLETS -- the owner:
       "The fishing animation gets messed up around the hands when the
       character is wearing torso armor": the fish pose's top overlay
