@@ -90,11 +90,19 @@ const PAGE_TOOLS = () => {
   if (!world) return false;
   const G = window.__qaGhost = {
     renders: 0, on: false,
-    keep: new Set(['entities', 'player', 'gestureFront', 'gatherNodesFront']),
+    /* every layer a figure of the bro is drawn in: the walking body
+       (player, entities), the swing and other stand-ins (gatherNodes: the
+       first trial's swing photos were empty with it hidden), the gathering
+       figures (gatherNodesBack/Front), the gesture's arm (gestureFront) */
+    keep: new Set(['entities', 'player', 'gatherNodesBack', 'gatherNodes', 'gatherNodesFront', 'gestureFront']),
     foreign: new Set(), hidLayers: new Set(), hidObjs: new Set(),
     realNow: Date.now, held: null, anchor: null,
   };
-  G.hold = (t) => { G.held = t; Date.now = () => G.held; };
+  /* the held clock creeps half a microsecond a read: code that works "until
+     N ms have passed" (a time-sliced job) still finishes -- frozen outright,
+     the first trial's page spun at 400% CPU and never drew again -- while a
+     frame's few thousand reads move the pose a millisecond or two at most */
+  G.hold = (t) => { G.held = t; Date.now = () => (G.held += 0.0005); };
   G.free = () => { Date.now = G.realNow; G.held = null; };
   const rend = app.renderer;
   const orig = rend.render.bind(rend);
@@ -143,15 +151,20 @@ const PAGE_TOOLS = () => {
   /* what of the animation is still showing: kept-layer pieces visible now
      that were not standing there before it began */
   G.leftovers = () => {
+    const S = window._gameState.current;
     const me = R.playerDisplayRaw();
+    const px = (S.player.x - S.camera.x) * (S._worldScaleX || 1), py = (S.player.y - S.camera.y) * (S._worldScaleY || 1);
     const out = [];
     for (const layer of world.children) {
       if (!G.keep.has(layer.label)) continue;
       for (const c of layer.children) {
         if (c === me || !c.visible || G.foreign.has(c)) continue;
+        const label = c.label || c.constructor.name;
+        if (/^(monster_|npc_|wheelObject|peer_|player_)/.test(label)) continue;
         let b = null;
         try { b = c.getBounds(); } catch (e) { /* none */ }
-        out.push({ layer: layer.label, label: c.label || c.constructor.name, w: b ? Math.round(b.width) : null, h: b ? Math.round(b.height) : null });
+        if (!b || b.width < 2 || b.x > px + 120 || b.x + b.width < px - 120 || b.y > py + 90 || b.y + b.height < py - 170) continue;
+        out.push({ layer: layer.label, label, w: Math.round(b.width), h: Math.round(b.height) });
       }
     }
     return { bodyVisible: !!(me && me.visible), pieces: out };
@@ -278,12 +291,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const summary = {};
   const page = P.page;
   /* the next two drawn frames */
+  /* a page that reloaded under the audit (its tools gone) stops it loudly:
+     every photograph after would be the plain page */
+  const renders = async () => {
+    const r = await page.evaluate(() => (window.__qaGhost ? window.__qaGhost.renders : -1));
+    if (r < 0) throw new Error('the page reloaded under the audit (its tools are gone)');
+    return r;
+  };
   const drawn = async (n = 2) => {
-    const r0 = await page.evaluate(() => window.__qaGhost.renders);
+    const r0 = await renders();
     for (let i = 0; i < 200; i++) {
       await page.waitForTimeout(40);
-      const r = await page.evaluate(() => window.__qaGhost.renders);
-      if (r >= r0 + n) return true;
+      if (await renders() >= r0 + n) return true;
     }
     return false;
   };
@@ -384,25 +403,74 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const tools = await page.evaluate(PAGE_TOOLS);
     rec.ok('the page\'s clock can be held and the figure photographed alone (guard)', !!tools);
     if (!tools) return;
+    /* the black-screen watchdog (BroTown.jsx) judges a screen that is nearly
+       all the canvas's own colour as a lost GPU: two strikes rebuild the
+       renderer, four reload the page -- and a figure photographed alone IS
+       that screen (the first trials: the page reloaded mid-sweep, plain and
+       unisolated).  It does not judge behind a loading veil, so one is laid,
+       hidden, for the whole audit */
+    await page.evaluate(() => {
+      const v = document.createElement('div');
+      v.className = 'bt-zone-loading';
+      v.setAttribute('data-qa-ghost-veil', '');
+      v.style.setProperty('display', 'none', 'important');
+      document.body.appendChild(v);
+    });
 
     /* a clear spot on the commons, south of the town's middle: nothing standing
        within the photograph but the bro */
+    /* the least crowded of a few spots on the commons: whatever stands
+       there is hidden for the photographs anyway (markForeign), so a spot
+       with nothing in reach is only the safest, not a need -- the commons
+       have none (the first run tried ten) */
     const G = await H.wheelGeom();
-    let spot = null, crowd = null;
-    for (const [dx, dy] of [[0, 1900], [1900, 0], [-1900, 0], [0, -1900], [1350, 1350], [-1350, 1350], [1350, -1350], [-1350, -1350], [0, 2400], [2400, 0]]) {
+    let spot = null, crowd = null, best = Infinity;
+    for (const [dx, dy] of [[1350, -1350], [0, 1900], [1900, 0], [-1900, 0], [0, -1900], [1350, 1350]]) {
       const at = { x: Math.round(G.cx + dx), y: Math.round(G.cy + dy) };
       await H.hopTo(P, at.x, at.y, { tries: 80 });
       await page.waitForTimeout(1200);
-      crowd = await page.evaluate(() => window.__qaGhost.crowd());
-      console.log(`    spot ${at.x},${at.y}: ${crowd.length ? crowd.join(', ') : 'clear'}`);
-      if (!crowd.length) { spot = at; break; }
+      const c = await page.evaluate(() => window.__qaGhost.crowd());
+      console.log(`    spot ${at.x},${at.y}: ${c.length ? c.join(', ') : 'clear'}`);
+      if (c.length < best) { best = c.length; spot = at; crowd = c; }
+      if (c.length <= 1) break;
     }
-    rec.ok(`a clear spot on the commons for the photographs (${spot ? spot.x + ',' + spot.y : 'none'}) (guard)`, !!spot, crowd);
+    if (spot) { await H.hopTo(P, spot.x, spot.y, { tries: 80 }); await page.waitForTimeout(1200); }
+    rec.ok(`a quiet spot on the commons for the photographs (${spot ? spot.x + ',' + spot.y + ', ' + best + ' things in reach, hidden' : 'none'}) (guard)`, !!spot, crowd);
     if (!spot) return;
+
+    /* the kit's armour, worn the way a player wears it (mp-armourflash):
+       the rendered layer follows the piece the worker says is worn
+       (gearCatalog.js syncArmorLayers), so a layer set on the page alone
+       was undone after the first photograph */
+    await H.devOp(wsPort, 'kit', myId, { what: 'armor' }).catch(() => {});
+    await H.waitFor(P, () => {
+      const R = window._gameState.current.rpg || {};
+      return !!((R.armorStash || []).concat(R.armor ? [R.armor] : []).some((x) => x && x.mat === 'iron' && x.gid)
+        && (R.legsStash || []).concat(R.legsArmor ? [R.legsArmor] : []).some((x) => x && x.mat === 'iron' && x.gid));
+    }, (v) => v, { timeout: 15000, label: 'the iron pieces' }).catch(() => null);
+    const wear = (o) => page.evaluate((o) => {
+      const S = window._gameState.current, R = S.rpg;
+      const put = (stash, slot, want) => {
+        if (R[slot]) { (R[stash] = R[stash] || []).push(R[slot]); R[slot] = null; }
+        if (!want) return null;
+        const i = (R[stash] || []).findIndex((x) => x && x.mat === 'iron' && x.gid);
+        if (i < 0) return null;
+        R[slot] = R[stash][i]; R[stash].splice(i, 1);
+        return R[slot].gid;
+      };
+      const t = put('armorStash', 'armor', o.chest !== 'none');
+      const l = put('legsStash', 'legsArmor', o.legs !== 'none');
+      if (window.__btSyncArmorLayers) window.__btSyncArmorLayers(R);
+      S.channel.send({ type: 'stats_update', payload: { armorRef: t, legsArmorRef: l } });
+      return { t, l };
+    }, o);
 
     for (const outfit of outfits) {
       const o = OUTFITS[outfit];
-      await page.evaluate((o) => { window.__btGearSet('chest', o.chest); window.__btGearSet('legs', o.legs); window.__btGearSet('shirt', 'tshirt'); }, o);
+      await wear(o);
+      const worn = await H.waitFor(P, () => ({ chest: window.__btGetGear('chest'), legs: window.__btGetGear('legs') }),
+        (v) => v.chest === o.chest && v.legs === o.legs, { timeout: 15000, label: outfit + ' worn' }).catch(() => null);
+      rec.ok(`${outfit}: the armour worn the real way (chest ${o.chest}, legs ${o.legs}) (guard)`, !!worn, worn);
       await page.waitForTimeout(2500);
       const here = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
 

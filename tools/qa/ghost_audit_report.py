@@ -45,8 +45,8 @@ def kind(r, g, b):
         return 'skin'                  # green (70,150,70)
     if r > 110 and b > 70 and r > b and g < r * 0.72 and b > g * 1.15:
         return 'trousers'              # pink (214,112,168)
-    if b > 70 and b > r * 1.6 and b > g * 1.25:
-        return 'boots'                 # blue (72,98,192)
+    if b > 110 and b > r * 2.0 and b > g * 1.5:
+        return 'boots'                 # blue (72,98,192); never steel shaded cool toward the feet (~70,80,115)
     if r > 110 and g > r * 0.78 and b < g * 0.55:
         return 'tee'                   # yellow (216,190,72)
     return None
