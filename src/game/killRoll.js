@@ -21,7 +21,7 @@ import { pushDmgPopup, monsterPopupY, heroPopupY } from '@/game/combatHelpers.js
 import { codexDropsFor, CODEX_ROLL_SIDES } from '@/data/codexDrops.js';
 import { petKindOfMonster } from '@/data/trapping.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a winning roll heard */
-import { dropColumnsLive } from '@/game/dropColumns.js'; /* v2.3.3616: the drops in columns, in its place */
+import { dropLinesLive } from '@/game/dropLines.js'; /* v2.3.3627: the drops, a line of words each, in its place */
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -82,9 +82,11 @@ export function onKillRoll(S, cc) {
      first frame): a hunter reads every roll, and a drop's a while longer.
      v2.3.3616: the owner -- "Instead of showing the dice roll for each drop I
      think it would be better to show each drop in columns" -- so with the
-     columns up (game/dropColumns.js) the roll is not drawn; `?dropcols=0`
-     draws it.  The roll stays on the codex's page, and its sound below. */
-  const shown = !dropColumnsLive();
+     drops up the roll is not drawn; since v2.3.3627 a line of words each
+     (game/dropLines.js: "the name of the item to float upwards with quantity
+     in parenthesis"), and `?droplines=0` draws the roll.  The roll stays on
+     the codex's page, and its sound below. */
+  const shown = !dropLinesLive();
   if (shown) pushDmgPopup(S, x, y, text, name ? KILL_ROLL_HIT : KILL_ROLL_MISS,
     name ? { roll: true, iconKey: 'dice', iconLead: true, ttl: 3.2, hold: 1.8, rise: 26 } : { roll: true, iconKey: 'dice', iconLead: true, ttl: 2.4, hold: 1.0, rise: 30 });
   /* v2.3.3343: a roll that lands on one of your drops is heard -- a glint and

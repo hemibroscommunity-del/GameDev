@@ -4359,15 +4359,20 @@ remnant to migrate server-side, not a mode to preserve.
       number, `shared: false`), mirror-audit holding it to `killRollLayout`
       for every kind; `caps.killroll`, kill switch `killroll: false`, dev
       lever `/dev/killroll {next, kill}`; `killroll` suite, `mp-killroll`;
-      since v2.3.3616 NOT DRAWN: EACH DROP A COLUMN over the monster instead --
-      the owner: "show each drop in columns of the floating icon rising with
-      the quantity beneath it and the rarity beneath that" -- its picture, its
-      amount (gold: your share) and its rarity (gear its grade, "Mystery" or
-      "Normal"; else by the codex's chance: Normal, Uncommon, Rare, Very rare),
-      from the pile (`loot_drop`) and the killing blow's nugget (`rh`),
-      src/game/dropColumns.js + src/rendering/dropColumns.js, pictures
-      preloaded; `?dropcols=0` the roll again (mp-killroll runs so);
-      `drop-columns` suite, `mp-dropcols`: docs/specs/drop-columns.md;
+      since v2.3.3616 NOT DRAWN: the kill's DROPS over the monster instead
+      (v2.3.3616 a column each, its picture, amount and rarity's word:
+      docs/specs/drop-columns.md); since v2.3.3627 A LINE OF WORDS EACH --
+      the owner: "the name of the item to float upwards with quantity in
+      parenthesis and the color of the font indicating rarity. So normal
+      would just be white" -- "Coins (5)" over "Slime Remains (1)", the gold
+      your share, its colour the rarity (white; the shard green, the rare gem
+      blue, the nugget orange; gear its grade, purple for a mystery), at a
+      message's size (MSG_FONT_PX), from the pile (`loot_drop`) and the
+      killing blow's nugget (`rh`), each line under the one before and a
+      little after it, rising off the monster's body, no pictures loaded;
+      src/game/dropLines.js + src/rendering/dropLines.js; `?droplines=0` the
+      roll again (mp-killroll runs so); `drop-lines` suite, `mp-droplines`:
+      docs/specs/drop-lines.md;
     - NO RANDOM WEAPON OFF A KILL (the owner: "Remove 'a random weapon'
       drop", then "Remove it from the game"): `_rollWeaponDropForKill` and
       its level curve are gone, a kill's one weapon the Iron Great Sword's 1
