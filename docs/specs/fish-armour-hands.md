@@ -83,7 +83,7 @@ on purpose, v2.3.1123):
 it, and with the skin it lays in red. `mp-fishhand` (the older test of the grip
 over the shirt and greaves) still passes.
 
-## v2.3.3642: the grip lifts the hand, not the trousers
+## v2.3.3646: the grip lifts the hand, not the trousers
 
 The owner, 2026-10-27: "check all the animations for ghost remnants of either a
 body beneath or areas for cleanup". `mp-ghostaudit` photographed an angler in

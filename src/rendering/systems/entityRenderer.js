@@ -4158,7 +4158,7 @@ function _chestFrameOf(worn) {
   }
   /* ...and the greaves' frame: the gauntlet keeps off them but at the rod */
   if (plate) plate.legs = legs;
-  /* v2.3.3642: greaves alone too -- the grip keeps the trousers off them
+  /* v2.3.3646: greaves alone too -- the grip keeps the trousers off them
      (see THE GRIP LIFTS THE HAND, NOT THE TROUSERS) */
   else if (legs) plate = { tex: null, tint: 0xffffff, legs };
   return plate;
@@ -4171,7 +4171,7 @@ const FISH_SKIN_DARK = 70, FISH_SKIN_LIGHT = 165, FISH_STEEL_LO = 0.15, FISH_STE
 const FISH_RIM_MIN = 55;   /* the rim's red channel at least this: the outline's is lower */
 const FISH_PINE_RG = 60;   /* red over green past this is skin, not the pine rod (toolRecolor's pine: 46 at most) */
 const _FISH_GRIP_OVER_PLATE = (() => { try { return new URLSearchParams(location.search).get('fishgrip') === '1'; } catch (e) { return false; } })();
-/* v2.3.3642: `?fishgriptrousers=1` -- the grip lifts the trousers over the
+/* v2.3.3646: `?fishgriptrousers=1` -- the grip lifts the trousers over the
    greaves again, as before (THE GRIP LIFTS THE HAND, NOT THE TROUSERS);
    `window.__btFishGripTrousers(on)` flips it on a running page (mp-fisharmour
    compares one frame both ways): the overlays made so far are forgotten, not
@@ -4205,7 +4205,7 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
   /* v2.3.3623: the plate under the overlay, {tex, tint} (see THE PLATE DRAWS
      ITS OWN HANDS) */
   const _plate = (!_FISH_GRIP_OVER_PLATE && plate && plate.tex && plate.tex.source && plate.tex.source.resource) ? plate : null;
-  /* v2.3.3642: the greaves whether or not a plate is worn (a plate only:
+  /* v2.3.3646: the greaves whether or not a plate is worn (a plate only:
      v2.3.3623) -- THE GRIP LIFTS THE HAND, NOT THE TROUSERS */
   const _legs = (!_FISH_GRIP_OVER_PLATE && !_FISH_GRIP_TROUSERS && plate && plate.legs && plate.legs.source && plate.legs.source.resource) ? plate.legs : null;
   const key = (bodyTex.uid != null ? bodyTex.uid : '') + (_rod ? '/' + _rod.uid : '') + (_plate ? '/p' + _plate.tex.uid + ':' + _plate.tint : '') + (_legs ? '/l' + _legs.uid : '') + '|fishtop';
@@ -4306,7 +4306,7 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
     let covered = null, gauntlet = null, ramp = null, nG = 0;
     /* the greaves' own pixels: the arm under them stays under them -- only
        the hand at the rod (the grip) rides over them, as it always has
-       (v2.3.3642: read here, for the trousers below too) */
+       (v2.3.3646: read here, for the trousers below too) */
     let legsOp = null;
     if (_legs) {
       const lc = document.createElement('canvas'); lc.width = W; lc.height = H;
@@ -4384,7 +4384,7 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
       }
     }
     let _plateHeld = 0, _legsHeld = 0;
-    /* ═══ v2.3.3642: THE GRIP LIFTS THE HAND, NOT THE TROUSERS ═══
+    /* ═══ v2.3.3646: THE GRIP LIFTS THE HAND, NOT THE TROUSERS ═══
        The owner, 2026-10-27: "check all the animations for ghost remnants".
        mp-ghostaudit's angler in pink trousers under iron greaves: a pink patch
        on the thigh beside the reel hand, up to 54 px.  The grip is every body
