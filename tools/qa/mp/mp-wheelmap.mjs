@@ -236,6 +236,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
          it was `>= 1`, and since the Hotel opened (v2.3.3539) none is shut */
       !!bi && bi.n === bl.length && bi.px === 14 && !!held && held.loaded >= bl.length
         && held.grey >= bl.filter((b) => b.closed).length && held.textures >= bl.length, { bi, held, shut: bl.filter((b) => b.closed).length });
+    /* v2.3.3614: the owner -- "a plain circle background maybe dark gray and
+       the symbol drawing representing the building in white": every picture
+       is a dark grey disc with a white symbol on it, no colour left in it */
+    const look = await P.page.evaluate(() => (window.__btBuildingIcons && window.__btBuildingIcons().look ? window.__btBuildingIcons().look() : null));
+    const lookBad = (look || []).filter((q) => !(q.n > 0 && q.disc / q.n >= 0.2 && q.white / q.n >= 0.1 && q.colour / q.n <= 0.01));
+    rec.ok(`...each a white symbol on a dark grey disc (${look ? look.length : 0} pictures: dark disc ${look ? Math.min(...look.map((q) => Math.round(100 * q.disc / q.n))) : '?'}%+, white ${look ? Math.min(...look.map((q) => Math.round(100 * q.white / q.n))) : '?'}%+, no colour)`,
+      !!look && look.length >= bl.length && lookBad.length === 0, { lookBad, look });
     const r = await P.page.evaluate(() => window.__btWheelMini);
     if (r) await P.page.screenshot({ path: join(OUT, 'wheelmap-01b-minimap-icons.png'), clip: { x: r.left, y: r.top, width: r.w, height: r.h } }).catch(() => {});
   }
