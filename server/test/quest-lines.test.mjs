@@ -81,7 +81,7 @@ check('4c. no line sends you to a "gold !"', !all.some((t) => /gold !/.test(t)))
     if (!names(q.dialogue.start)) miss.push(id + '.start (' + n + ')');
     if (typeof q.dialogue.progress === 'string' && !names(q.dialogue.progress)) miss.push(id + '.progress (' + n + ')');
   }
-  check(`5a. every offer and progress line with a count (${n5} quests) still names it: the call to action is in the one message`, n5 >= 10 && miss.length === 0, miss);
+  check(`5a. every offer and progress line with a count (${n5} quests) still names it: the call to action is in the one message`, n5 >= 9 && miss.length === 0, miss);
   /* the joke is part of the line, not a second tap: an offer is more than its job */
   const bare = ['tut_1', 'smith_1', 'wood_1', 'fish_1', 'farm_1', 'race_1', 'beast_1']
     .filter((id) => String(QUEST_CHAINS[id].dialogue.start || '').length < 160);

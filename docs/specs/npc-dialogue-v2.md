@@ -183,3 +183,43 @@ one tap of at most 300 characters, Lil Bro's after any loss, the Grotto's
 hand-in, the words), `mayor-grotto` and `mp-mayorgrotto` (the one tap and its
 last sentence), `mp-race` §6 (the new loss line), `mp-questline` (the whole
 tour, paged through as written).
+
+## v2.3.3611: the zingers back, still one message
+
+The owner, 2026-10-26: "add back the clever zingers in the Npc dialog but
+still keep it to just one message before the next call to action. You should
+understand the npc's specific personality from just one message."
+
+v2.3.3591 made every line one tap but cut the jokes down to a dry aside. Now
+each of the tour's lines is still one tap, with the joke that tells you who is
+talking, then the job:
+
+- **Mayor Bro**, the politician: four elections, "thank the voters. Both of
+  them", the sword and shield from the school budget, the tourism board that is
+  him, the City Council "in a different hat", a parade "right after the bank
+  and a guy named Steve".
+- **Blacksmith Bro**, the gym bro: he hurt his back picking up a protein shake,
+  "every swing's a rep", the "skinny-guy discount", a protein nap he doesn't
+  skip.
+- **Woodworker Bro**, the scientist: "BroTown's most advanced woodworking lab,
+  which is also the only one, which is also my garage", eleven years of pine,
+  his wall of beginners' mistakes.
+- **Diego**, the hustler: a cookbook he can't cook for ("Chapter One: Fish, But
+  Hot"), "that's called passive income, amigo".
+- **Farmer Bro**, the hippie: he sang his carrots to sleep, "the rest is a
+  feeling", Lil Bro beat his scarecrow in a race.
+- **Lil Bro**, the gamer kid: "you have zero aura", "one percent battery",
+  "Hacker! That was lag!", and after a lost race "GG EZ! I wasn't even trying."
+  and a montage, "Part 7".
+- **Beastmaster Bro**, the survivalist: "we're deep in the danger zone. ...Okay,
+  it's behind the bakery", boxes under his bed.
+
+What did not change: one tap each (no blank line), 300 characters at most (the
+Mayor's slimes hand-in with the Goo Grotto's sentence is the longest at 291),
+and every count, place and hand-over the job had: the 4 Slime Remains, the 5
+Copper Ore at the orange rocks, the 5 Pine Logs, the 2 cooked fish and the
+logs, the 3 carrots, the 4 corner flags, the 3 Box Traps, and the rest.
+
+Tests: `quest-lines` §5 (every offer and progress line with a count still says
+it; the tour's first offers carry their joke), `mayor-grotto`, `mp-race` §6 and
+`mp-mayorgrotto` 2d read the new lines.

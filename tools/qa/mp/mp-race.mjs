@@ -276,7 +276,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await walkUpToLil();
   const after6 = await lineText();
   rec.ok('6: ...and his line owns up to it, in his voice ("I wasn\'t even trying.")',
-    /^I wasn't even trying\./.test(after6 || ''), after6);
+    /\bI wasn't even trying\./.test(after6 || ''), after6);   /* v2.3.3611: "GG EZ! I wasn't even trying." */
   rec.ok('6: ...and still ends on Race! for the rematch', await toRaceGo());
 
   stopAlive();

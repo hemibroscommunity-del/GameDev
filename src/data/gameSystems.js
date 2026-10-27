@@ -6766,6 +6766,18 @@ export const QUEST_CHAINS = {
          and hand-in is now ONE tap (no blank line inside: dialogueChunks
          splits on one), one deadpan line and the job, its counts, places and
          hand-overs unchanged; server/test/quest-lines.test.mjs holds it. */
+      /* ═══ v2.3.3611: THE ZINGERS BACK, STILL ONE MESSAGE ═══
+         The owner, 2026-10-26: "add back the clever zingers in the Npc dialog
+         but still keep it to just one message before the next call to action.
+         You should understand the npc's specific personality from just one
+         message."  Every line of the tour (the Mayor, the Blacksmith, the
+         Woodworker, Diego, Farmer Bro, Lil Bro, the Beastmaster) is one tap
+         again with the joke that shows who he is -- the Mayor's elections and
+         budgets, the Blacksmith's back and his protein, the Woodworker's
+         research wall, Diego's cookbook, Farmer Bro's carrots, Lil Bro's
+         trash talk, the Beastmaster's danger zone behind the bakery -- and the
+         job in the same tap, its counts, places and hand-overs as before
+         (quest-lines §5 checks every count is still said). */
       start: "Welcome to BroTown! I'm Mayor Bro, four elections in a row, and I'd like to thank the voters. Both of them. This sword and shield came out of the school budget. Go clear the blue slimes out of the Verdant Wilds and bring me 4 Slime Remains.",
       progress: "4 Slime Remains from the blue slimes in the Verdant Wilds, bro. The insurance company wants proof the slimes are real, and apparently my drawing of one is \"not legal proof.\"",
       /* v2.3.2237 (owner: "add something clever from mayor bro after
