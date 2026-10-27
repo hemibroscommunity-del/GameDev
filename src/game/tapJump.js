@@ -142,13 +142,18 @@ export function tapActIcon(kind) {
 /**
  * `?jumpbtn` brings back v2.3.3017's button under the attack disc (for a tab,
  * and the QA scenarios that measure it).  A tap still jumps with it on.
+ *
+ * v2.3.3681: THE BUTTON IS BACK FOR EVERYONE -- the owner, 2026-10-27: "Also
+ * while I'm thinking of it: I want a dedicated button for jumping".  It is
+ * drawn unless the address says `?jumpbtn=0` (the game of v2.3.3105-3680, a
+ * tap on the stick the only jump); a tap on the stick still jumps beside it.
  */
 export function jumpButtonWanted(search) {
   try {
     var q = search != null ? search
       : ((typeof window !== 'undefined' && window.location && window.location.search) || '');
-    return /(?:^|[?&])jumpbtn(?:=|&|$)/.test(q);
+    return !/(?:^|[?&])jumpbtn=0(?:&|$)/.test(q);
   } catch (e) {
-    return false;
+    return true;
   }
 }

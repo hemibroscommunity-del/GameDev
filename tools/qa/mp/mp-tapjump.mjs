@@ -6,7 +6,9 @@
  *
  * On a phone (390 x 844, 2x) in the Wheel's Brotown, the thumb on the right
  * stick's zone ([data-joyzone="R"]):
- *   1. the old button under the attack disc is not drawn ([data-jump]);
+ *   1. the button under the attack disc is drawn beside it ([data-jump]):
+ *      v2.3.3681 brought it back for everyone (mp-jumpbtn), and the tap below
+ *      still jumps;
  *   2. a tap on empty ground jumps (the forwarded tap reached "empty space"),
  *      the body in the air;
  *   3. a tap with a LOCK held lets go of it and does not jump;
@@ -77,9 +79,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* nothing locked or in reach to start with: the town is safe ground */
     await P.page.evaluate(() => { const S = window._gameState.current; S.lockedTarget = null; });
 
-    /* ── 1. no button ── */
+    /* ── 1. the button, back beside the tap (v2.3.3681: the owner's "I want a
+       dedicated button for jumping"; it was put away in v2.3.3105) ── */
     const btn = await P.page.evaluate(() => ({ el: !!document.querySelector('[data-jump]'), probe: window.__btJumpBtn() }));
-    rec.ok('the old jump button under the attack disc is not drawn', !btn.el && btn.probe.button === false && btn.probe.shown === false, btn);
+    rec.ok('the jump button under the attack disc is drawn again (v2.3.3681), and the tap below still jumps beside it', btn.el && btn.probe.button === true && btn.probe.shown === true, btn);
 
     /* ── 2. an empty tap jumps ── */
     let spot = null, a = null;

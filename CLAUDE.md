@@ -2720,6 +2720,12 @@ remnant to migrate server-side, not a mode to preserve.
       (desktopControls `runInteract` via `S._interactNow`, `interactKind`,
       the character first for the stick: `npcFirst`), SVGs in
       `public/ui/controls/`; `mp-tapact`.
+    - since v2.3.3681 THE JUMP BUTTON IS BACK FOR EVERYONE (the owner: "I want
+      a dedicated button for jumping"): v2.3.3017's, centred under the attack
+      disc (`jumpAnchor`), drawn unless the address says `?jumpbtn=0`
+      (tapJump.js `jumpButtonWanted`); a tap on the stick still jumps beside
+      it; `mp-jumpbtn` (upright, small, sideways: clear of every control),
+      `mp-tapjump` 1: docs/specs/jumping.md "v2.3.3681".
     - since v2.3.3145 a TAP THAT JUMPS SHOWS NOTHING OF THE ATTACK (the owner:
       "When you tap jump with bow equipped it shows you and your line of sight
       facing southward for a brief instant"): with no job on the right side a
