@@ -1,4 +1,4 @@
-# Your list of 2026-10-26: what's there, what I'll do, in what order (v2.3.3618)
+# Your list of 2026-10-26: what's there, what I'll do, in what order (v2.3.3625)
 
 You sent 38 things at once: changes, bugs, new features and questions. Each
 one is below, checked against the game's code, with what is there today and
@@ -327,7 +327,9 @@ things):
 
 ## 6. Status, Oct 27
 
-Done and on main, each its own PR (the item numbers are section 3's):
+Everything on the "before the judges" list is on main except the two items
+that wait on your answers (section 5). Each is its own PR (the item numbers are
+section 3's):
 
 | What | PR |
 |------|----|
@@ -338,22 +340,33 @@ Done and on main, each its own PR (the item numbers are section 3's):
 | The townsfolk's zingers back, one message each with the job (13) | #1120 (v2.3.3611) |
 | Add a pet in the Test panel (32) | #1119 (v2.3.3613) |
 | The minimap's buildings: a white symbol on a dark grey circle (8) | #1122 (v2.3.3614) |
-
-In review, merged when their checks pass:
-
-| What | PR |
-|------|----|
 | The desktop play-through (section 2): on a computer every "tap" says "click"; every computer test passes; a laptop-size review of all 73 screens found nothing blocking | #1121 (v2.3.3615) |
 | Drops you can see: each drop a column over the monster, its picture, amount and rarity, instead of the dice | #1123 (v2.3.3616) |
 | The TRAP button (9): upright, a round button beside the attack disc, clear of the shield button | #1124 (v2.3.3617) |
+| Monsters' elements you can see coming (17): each monster's element drawn round it while it winds up (snow swirling in before a snowball, sparks before a goblin's blow...) | #1125 (v2.3.3619) |
+| Your stronger element hits (17): a snowman's hit freezes you for a moment, then slows you 2 s; the slime's goo holds you 2 s and stings while it holds; a rock monster's daze leaves you wobbling a second; the burn's flames drawn taller | #1126 (v2.3.3620) |
+| The mummy's roar (17): a 1 s wound-up roar that blows everyone in its ring 130 px back | #1127 (v2.3.3621) |
+| The shirt while mining (11): the tee's hem reaches the trousers on every frame of the swing | #1128 (v2.3.3622) |
+| Fishing hands in torso armour (10): the hands and arm drawn as gauntlets in the plate's own metal, not bare skin pasted over it | #1129 (v2.3.3623) |
+| The iron's colour while farming (12): the farmer shaded as your walking figure is, his steel matched to the standing art | #1130 (v2.3.3636) |
 
-Not started yet:
+Waiting on your answers (section 5): the land names (5), one ore = one bar
+(30), the Mayor's seed quest (15), No man's land from the first step (16),
+night (21), the arena's picture (29), the vehicle (26), gems (20).
 
-- Monsters' elements you can see coming, and the stronger element hits (17);
-  then measuring the early monsters' difficulty (18).
-- The look bugs: fishing hands in torso armour (10), the shirt while mining
-  (11), the iron armour's colour while farming (12).
-- Waiting on your answers in section 5: the land names (5), one ore = one bar
-  (30), the Mayor's seed quest (15), No man's land from the first step (16),
-  night (21), the arena's picture (29), the vehicle (26), gems (20).
-- Everything in "After the judges".
+Next, after the judges: measuring the early monsters' difficulty with the
+fight simulator (18), then the "After the judges" list.
+
+## 7. Your notes of Oct 27
+
+| What | PR |
+|------|----|
+| TRAP shows only when you carry a box trap | #1131 (v2.3.3626) |
+| Each drop a line of words rising off the monster, "Coins (5)" over "Slime Remains (1)", coloured by rarity | #1132 (v2.3.3627) |
+| The No man's land skull and level just left of the minimap, level with its name plate | #1134 (v2.3.3629) |
+| The minimap's businesses in their own colours, bigger than the building | #1135 (v2.3.3630) |
+| SOAK_ROW |
+| GHOST_ROW |
+| The double check: a review of the day's merged code found four server bugs in the new roar and freeze (a mummy killed mid-roar roared at its spawn; the roar's ring was drawn round its target) | #1136 (v2.3.3634) |
+| ...and four small client ones ("Wobbly" during the daze, TRAP's words over Element Burst, a CSS filter over the canvas, the wind-up picture not kept as an image) | #1137 (v2.3.3635) |
+| A memory leak found by the long sessions: every destroyed text label (monster names, loot labels) stayed in memory | #1133 (v2.3.3633) |
