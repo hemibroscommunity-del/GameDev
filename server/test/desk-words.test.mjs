@@ -7,7 +7,8 @@
  *   1. On a phone every string is as written.
  *   2. On a computer: tap, taps, tapped, tapping (and Tap...) as click, clicks,
  *      clicked, clicking; "double-tap" as "double-click".
- *   3. What stays: "TAP" in capitals (a button's own name), words that only
+ *   3. What stays: "TAP" in capitals (shouted, as a label would), the TRAP
+ *      button's name (another word), words that only
  *      start with the letters ("tapestry"), words that only end with them
  *      ("mistap" is not a word we use, but "stap" is not a tap), and anything
  *      not a string.
@@ -45,7 +46,7 @@ function check(name, cond, detail) {
 /* ── 3. what stays ── */
 {
   const c = (s) => deskWords(s, true);
-  check('3: TAP in capitals (the button\'s name) stays', c('tap TRAP on a monster') === 'click TRAP on a monster' && c('TAP') === 'TAP', c('tap TRAP on a monster'));
+  check('3: TAP in capitals stays, and TRAP is another word', c('tap TRAP on a monster') === 'click TRAP on a monster' && c('TAP') === 'TAP', c('tap TRAP on a monster'));
   check('3: a word that only starts with the letters stays', c('a tapestry, a tapir, taproot') === 'a tapestry, a tapir, taproot', c('a tapestry, a tapir, taproot'));
   check('3: a word that only ends with them stays', c('a stap, a strap') === 'a stap, a strap', c('a stap, a strap'));
   check('3: anything not a string passes through', deskWords(null, true) === null && deskWords(5, true) === 5 && deskWords(undefined, true) === undefined);
@@ -84,9 +85,14 @@ function check(name, cond, detail) {
     ['src/ui/mobile/QuestCoach.jsx', /deskWords\(view\.body\)/],
     ['src/ui/panels/NewMonsterCard.jsx', /deskWords\('Tap to see it in the Codex/],
     ['src/ui/panels/ChatPanel.jsx', /deskWords\("Tap to type/],
+    /* found by mp-deskwords, which reads every page and window on a computer */
+    ['src/ui/mobile/dash/QuestDetailPanel.jsx', /deskWords\(`Find \$\{quest\.npc\} in town and tap him/],
+    ['src/ui/mobile/dash/SocialPanel.jsx', /deskWords\('Tap another player/],
+    ['src/ui/mobile/dash/ClanPanel.jsx', /deskWords\('Make a party: pick a player and tap/],
+    ['src/ui/mobile/dash/PetsPanel.jsx', /deskWords\('No pets yet\./],
   ];
   const missing = calls.filter(([p, re]) => !re.test(R(p))).map(([p]) => p);
-  check('5: the quest plate, the townsfolk\'s window, the quest windows, the coach, the codex card and the chat box call it', missing.length === 0, missing);
+  check('5: the quest plate, the townsfolk\'s window, the quest windows, the coach, the codex card, the chat box and the Friends, party and Pets pages call it', missing.length === 0, missing);
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');

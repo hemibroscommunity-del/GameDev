@@ -8,8 +8,9 @@
  *   1. the WELCOME plate says "then click him.";
  *   2. the coach's first card, past the welcome, says no "tap";
  *   3. Mayor Bro's lines, each one through Next, and his quest offer: no "tap";
- *   4. the dashboard's six pages (I P J L K O) and the quest's own page: no
- *      "tap" in anything shown, a tooltip or a box's placeholder;
+ *   4. the dashboard's six pages (I P J L K O), the quest's own page, every
+ *      page under More and every building's window: no "tap" in anything
+ *      shown, a tooltip or a box's placeholder;
  *   5. on a phone the WELCOME plate still says "then tap him." -- a phone's
  *      words are as written;
  *   6. no page errors.
@@ -131,9 +132,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       await key(P, k, 700);   /* the same key shuts it */
     }
+    /* and every page under More, one tile at a time (Esc is back a step) */
+    await key(P, 'o', 900);
+    const tiles = await P.page.$$eval('[data-more-tile]', (els) => els.map((el) => el.getAttribute('data-more-tile')));
+    for (const id of tiles) {
+      await P.page.evaluate((t) => {
+        const b = document.querySelector('[data-more-tile="' + t + '"]');
+        if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+      }, id);
+      await P.page.waitForTimeout(900);
+      pages['More: ' + id] = await tapsShown(P);
+      await key(P, 'Escape', 600);
+      if (!(await P.page.$('[data-more-tile]'))) await key(P, 'o', 800);
+    }
+    await key(P, 'Escape', 500);
+    await key(P, 'Escape', 500);
+    /* and every building's window (the forge, the shops, the Gem Works, the
+       halls), opened by the game's own setter, its tabs as they open */
+    const WINDOWS = ['forge', 'exchange', 'bank', 'party', 'woodwork', 'gemcut', 'cook', 'enchant', 'gamble', 'farm',
+      'farmhome', 'post', 'sheriff', 'guildhall', 'townhall', 'hotel', 'auctionhouse'];
+    const opened = [];
+    for (const w of WINDOWS) {
+      await P.page.evaluate((p) => window.__btBuildingWindow && window.__btBuildingWindow.open(p), w);
+      await P.page.waitForTimeout(900);
+      /* the window is really up: its card names it (mp-buildingrooms' way) */
+      if (await P.page.evaluate((p) => { const c = document.querySelector('.bt-inspect-card'); return !!c && c.getAttribute('data-building-panel') === p; }, w)) opened.push(w);
+      pages['window: ' + w] = await tapsShown(P);
+      await P.page.evaluate(() => window.__btBuildingWindow && window.__btBuildingWindow.open(null));
+      await P.page.waitForTimeout(300);
+    }
     const bad = Object.entries(pages).filter(([, v]) => v.length);
-    rec.ok(`4. the six pages and the quest's page (${Object.keys(pages).join(', ')}): no "tap"`,
-      Object.keys(pages).length >= 7 && bad.length === 0, bad.length ? Object.fromEntries(bad) : Object.keys(pages));
+    rec.ok(`4. the six pages, the quest's page, More's ${tiles.length} pages and ${opened.length} of ${WINDOWS.length} building windows (${Object.keys(pages).length} in all): no "tap"`,
+      Object.keys(pages).length >= 7 + 8 + WINDOWS.length && opened.length === WINDOWS.length && bad.length === 0, bad.length ? Object.fromEntries(bad) : { pages: Object.keys(pages), shut: WINDOWS.filter((w) => !opened.includes(w)) });
     rec.ok('6. no page errors (the computer)', errors.length === 0, errors.slice(0, 3));
   } finally {
     await P.ctx.close().catch(() => {});

@@ -27,9 +27,9 @@ shown**, only under a mouse -- `(pointer:fine)`, the house test for a computer
 | tapping | clicking |
 | double-tap | double-click |
 
-Whole words only: "TAP" in capitals (the trap button's own name, which a
-computer can also press with T) and words that merely contain the letters
-("tapestry", "strap") stay. A phone reads every line exactly as written.
+Whole words only: "TAP" in capitals (shouted, as a label would) and words
+that merely contain the letters ("tapestry", "strap", the TRAP button's own
+name) stay. A phone reads every line exactly as written.
 
 **Never in the data.** The townsfolk's lines stay as written: the server's
 quest-lines suite counts their characters (300 at most, one tap each), and
@@ -53,7 +53,9 @@ they are the phone's words too.
   tracker's toggle, the settings' notifications row, the creator's preview
   tooltip;
 - a townsperson's bubble over his head ("I have a task for you! Click me."),
-  and No man's land's explainer (the badge's tap).
+  and No man's land's explainer (the badge's tap);
+- the Friends page's and the party (Clan) page's hints, and the Pets page
+  with no pets yet.
 
 A new line a computer player reads that says "tap" is shown through it.
 
@@ -65,6 +67,8 @@ through it, and each place above calling it.
 
 `mp-deskwords` on a real page with a mouse (1440 x 900): the WELCOME plate
 says "then click him.", and past it the coach's card, Mayor Bro's lines and
-his offer, the dashboard's six pages and the quest's own page show no "tap"
+his offer, the dashboard's six pages, the quest's own page, every page under
+More and all seventeen building windows (each checked open) show no "tap"
 anywhere -- in the text, a tooltip or a box's placeholder; a phone's WELCOME
-still says "then tap him.".
+still says "then tap him.". Its first runs found the quest page's hand-in
+hint, the Friends, party and Pets pages.

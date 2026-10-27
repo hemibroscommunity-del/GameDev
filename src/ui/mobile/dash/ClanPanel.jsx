@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState, openGameWindow } from './common.js';
 import { clanPartyOn, allyTagShown } from '@/game/alliance.js';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — spec
    empty state, identity strip with the clan icon, module header +
@@ -58,7 +59,7 @@ function PartyNowPage({ S }) {
         </div>
       )}
       <div style={{ fontSize: 12, color: COL.muted, lineHeight: 1.45, padding: '6px 12px 0' }}>
-        {p ? 'Your party stays together when you log out. ' : 'Make a party: pick a player and tap Invite to Party on their card. '}
+        {p ? 'Your party stays together when you log out. ' : deskWords('Make a party: pick a player and tap Invite to Party on their card. ')}
         A party of {(a && a.at) || 20} members who played in the last 7 days and are level 5 or more becomes an alliance, with a name and a tag on every member. Your alliance and the alliance board are in the Saloon in BroTown.
       </div>
       {/* v2.3.3481: the 2026-10-19 UI review -- "Find a party" -> "Invite a

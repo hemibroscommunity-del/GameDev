@@ -9,6 +9,7 @@ import { trapLevel, petlevelsOn, petwardsOn } from '@/game/trapping.js';
 import { ZONES } from '@/data/zones.js';
 import { landLook } from '@/data/wheelLands.js';
 import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3481: the Pet House row's picture */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
 
 /* ═══ v2.3.3120: THE PETS PAGE ═══
  * Plan: docs/PET-TRAPPING-PLAN.md -- "Name, set active and release from a
@@ -149,7 +150,7 @@ export const PetsPanel = () => {
         <div style={{ fontSize: 13, color: COL.text2, padding: 12, background: COL.well, borderRadius: 10 }}>Your pets are not ready yet. Try again after you rejoin.</div>
       ) : list.length === 0 ? (
         <div data-pets-empty="1" style={{ fontSize: 13, color: COL.text2, padding: 12, background: COL.well, borderRadius: 10, lineHeight: 1.45, marginBottom: 8 }}>
-          No pets yet. Make box traps at the Woodworker, target a monster out in the lands, tap <b style={{ color: COL.accent }}>TRAP</b>, then kill it.
+          {deskWords('No pets yet. Make box traps at the Woodworker, target a monster out in the lands, tap')} <b style={{ color: COL.accent }}>TRAP</b>, then kill it.
           About one try in a hundred at best, and every try pays Trapping XP.
         </div>
       ) : null}

@@ -10,8 +10,8 @@
    swaps the word as they are drawn, only under a mouse -- `(pointer:fine)`,
    the house test for a computer (game.css's keys, QuestCoach, NameModal).
    Whole words only: "tap", "taps", "tapped", "tapping", capitalised as found.
-   "TAP" in capitals (a button's own name) and any word that merely starts
-   with the letters ("tapestry") stay.
+   "TAP" in capitals (shouted, as a label would) and any word that merely
+   holds the letters ("tapestry", "strap", the TRAP button's own name) stay.
 
    No imports: the dialogue window, the quest pages and the coach read it. */
 
