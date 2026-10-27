@@ -163,6 +163,13 @@ export const OWNER_SOUNDS = {
     "dur": 0.36,
     "low": true
   },
+  "roll-tumble": {
+    "url": "/sfx/player/roll-tumble.mp3",
+    "vol": 0.21,
+    "level": 0.55,
+    "dur": 0.8,
+    "low": true
+  },
   "npc-voices": {
     "url": "/sfx/npc/voices.mp3",
     "level": 0.5,

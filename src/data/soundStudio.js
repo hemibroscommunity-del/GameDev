@@ -51,7 +51,8 @@ export const CUE_PLACES = {
   shieldUp: ['fight', 'Raising your shield'],
   shieldDown: ['fight', 'Lowering your shield'],
   dodged: ['fight', "A monster's blow that misses you: you dodged it"],
-  dodgeRoll: ['fight', 'Your dodge roll'],
+  dodgeRoll: ['fight', "The sword's dash and lunge (a rush of air)"],
+  rollTumble: ['fight', 'Your dodge roll, and a retreat shot\'s roll (yours and other players\')'],   /* v2.3.3680 */
   crit: ['fight', 'A critical hit (over the hit\'s own sound)'],
   parry: ['fight', 'Parrying a blow with your shield'],
   bowLoose: ['fight', 'Your bow shot: each arrow as it leaves the bow (another player\'s, quieter)'],
@@ -404,6 +405,7 @@ export const SAMPLE_SOURCES = {
   'farm-water': '"Grab & Can Watering" (wyronroberth, Freesound 516257)',
   'farm-hoe': '"hoe work" (16hpanskadvorakova_aneta, Freesound 497987)',
   'farm-mould': '"molding" (manuelaurreaf, Freesound 490099)',
+  'roll-tumble': '"goblin fall" (kneeling, Freesound 502553)',   /* v2.3.3680 */
 };
 
 /* ═══ v2.3.3610: THE MUSIC, AND WHERE EACH TRACK PLAYS ═══
