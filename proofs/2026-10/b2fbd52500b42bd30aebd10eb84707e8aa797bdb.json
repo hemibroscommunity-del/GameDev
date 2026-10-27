@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b2fbd52500b42bd30aebd10eb84707e8aa797bdb",
+  "tree": "9f575f293a06a2e16a313af10633e91f1546dbd2",
+  "committedAt": "2026-10-27T12:25:31-07:00",
+  "subject": "The angler's grip lifts the hand, not the trousers, over the greaves (v2.3.3657) (#1141)",
+  "files": 6612,
+  "bytes": 769187399,
+  "listingSha256": "d07081e5d763cb78acc282e40ef99774af11e7c310802a93d29cdce1c6c6a440",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
