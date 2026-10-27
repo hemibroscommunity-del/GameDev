@@ -6886,6 +6886,16 @@ door into the World View (the phone and the worker both said so, once the
 check asked them).  Still open: about one bow arrow a run, at 190-240 px,
 flies its full length past a target that barely moved, before and after.
 
+**And the server's suites (v2.3.3639).** Eight places in six suites started
+the room's real tick loop, waited `TICK_RATE x N` ms and read the socket:
+`tick` (three), `armorgrade`, `chatmod`, `petsmatter`, `sprint`, `wheelzone`.
+On a busy machine 66 ms can pass with no tick run at all. The precheck, run
+beside a five-player phone soak, failed `tick` ("all 501 events delivered":
+500, one tick) and on the next try `petsmatter` (no tick to read). Both pass
+alone. Each now calls `ticksRun(room, n, ms)`: the same window, then on until
+the loop's own `tickSeq` has moved `n` ticks, at most 5 s more. On a quiet box
+nothing changes.
+
 ## 201. "Accept tut_1 to tut_4 and every land is open" (v2.3.3321)
 
 **Wrong since v2.3.3179.** Each tutorial step opens one of the old lands

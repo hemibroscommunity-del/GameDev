@@ -32,6 +32,17 @@ import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { SPRINT } from '../src/sprint.js';
 import * as C from '../../src/game/sprint.js';
 
+/* v2.3.3639: a window of real time is not a tick.  Waiting TICK_RATE x N ms
+   and reading the socket failed whenever the machine was busy (the precheck
+   run beside a phone soak): 66 ms passed with no tick run, and the check read
+   an empty socket.  ticksRun waits that window as before, then on until the
+   tick loop has really run `n` ticks (its own tickSeq), at most 5 s more. */
+const ticksRun = async (room, n, ms) => {
+  const from = room.tickSeq || 0, t0 = Date.now();
+  await new Promise((r) => setTimeout(r, ms));
+  while ((room.tickSeq || 0) - from < n && Date.now() - t0 < ms + 5000) await new Promise((r) => setTimeout(r, 5));
+};
+
 const mockState = {
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
   getWebSockets: () => [], acceptWebSocket: () => {},
@@ -364,7 +375,7 @@ async function run(n, step, gapMs, extra) {
   const tickOnce = async () => {
     wsW.sent.length = 0;
     room.startTickLoop();
-    await new Promise((r) => setTimeout(r, room.TICK_RATE * 3));
+    await ticksRun(room, 2, room.TICK_RATE * 3);
     clearInterval(room.tickInterval); room.tickInterval = null;
     const ticks = wsW.sent.filter((m) => m.type === 'tick' && m.players && m.players.p1);
     return ticks.length ? ticks[ticks.length - 1].players.p1 : null;

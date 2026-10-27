@@ -72,6 +72,17 @@ import { WHEEL_STAGE_LOOKS, wheelStageLook, wheelStageOf } from '../../src/data/
 import { ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';   /* v2.3.3093: the look the game gives a monster */
 import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
 
+/* v2.3.3639: a window of real time is not a tick.  Waiting TICK_RATE x N ms
+   and reading the socket failed whenever the machine was busy (the precheck
+   run beside a phone soak): 66 ms passed with no tick run, and the check read
+   an empty socket.  ticksRun waits that window as before, then on until the
+   tick loop has really run `n` ticks (its own tickSeq), at most 5 s more. */
+const ticksRun = async (room, n, ms) => {
+  const from = room.tickSeq || 0, t0 = Date.now();
+  await new Promise((r) => setTimeout(r, ms));
+  while ((room.tickSeq || 0) - from < n && Date.now() - t0 < ms + 5000) await new Promise((r) => setTimeout(r, 5));
+};
+
 const mockState = {
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
   getWebSockets: () => [],
@@ -512,7 +523,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   };
   const run = async (ticks) => {
     room.startTickLoop();
-    await new Promise((r) => setTimeout(r, room.TICK_RATE * ticks));
+    await ticksRun(room, Math.max(1, ticks - 1), room.TICK_RATE * ticks);
     clearInterval(room.tickInterval); room.tickInterval = null;
   };
   for (const q of wheel) { q.x = q.spawnX; q.y = q.spawnY; q.targetId = null; q._wanderPausedUntil = Date.now() + 600000; }

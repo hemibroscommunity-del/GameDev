@@ -29,6 +29,17 @@
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { CHATMOD, REPORT_REASONS } from '../src/chatmod.js';
 
+/* v2.3.3639: a window of real time is not a tick.  Waiting TICK_RATE x N ms
+   and reading the socket failed whenever the machine was busy (the precheck
+   run beside a phone soak): 66 ms passed with no tick run, and the check read
+   an empty socket.  ticksRun waits that window as before, then on until the
+   tick loop has really run `n` ticks (its own tickSeq), at most 5 s more. */
+const ticksRun = async (room, n, ms) => {
+  const from = room.tickSeq || 0, t0 = Date.now();
+  await new Promise((r) => setTimeout(r, ms));
+  while ((room.tickSeq || 0) - from < n && Date.now() - t0 < ms + 5000) await new Promise((r) => setTimeout(r, 5));
+};
+
 function makeState() {
   const store = new Map();
   return {
@@ -172,7 +183,7 @@ for (const n of ['a', 'b', 'c']) {
     relayed.length === 3 && relayed[0].payload.id === P('fb'), relayed.map((e) => e.type));
   wa.sent.length = 0; wc.sent.length = 0;
   rm.startTickLoop();
-  await new Promise((r) => setTimeout(r, rm.TICK_RATE * 6));
+  await ticksRun(rm, 5, rm.TICK_RATE * 6);
   clearInterval(rm.tickInterval); rm.tickInterval = null;
   const evOf = (ws) => ws.sent.filter((m) => m.type === 'tick' && Array.isArray(m.events))
     .flatMap((m) => m.events).filter((e) => e.from === P('fb'));
