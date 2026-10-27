@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7b87891a57a9442587d0c682d689782c6e337ff2",
+  "tree": "5daa45c38e455dd9c829cd7c84846f51b84dc03f",
+  "committedAt": "2026-10-27T13:04:17-07:00",
+  "subject": "The Points page switches between the three weapons (v2.3.3665) (#1149)",
+  "files": 6637,
+  "bytes": 769539106,
+  "listingSha256": "95d759173e8f9d079a4f4b449735dad92320c9e00aff564ed1db8e5c2aa5a42d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
