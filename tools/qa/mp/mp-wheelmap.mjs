@@ -44,16 +44,16 @@
  * frost scene over its plaque (wheelmap-04c-landbanner.png).
  *
  * v2.3.3511, the owner after a playtest: "new land emblems look bad enlarged
- * (revert or show below minimap)" -- 4 now checks the banner is the PLAIN
- * plaque (the frost icon and the name, no picture over it, no ornaments), and
- * that as it docks the frost scene comes up UNDER THE MINIMAP: one picture px
- * a device px (never blown up), centred under the box, clear of every control
- * on the screen, and gone after its few seconds (wheelmap-04c-emblem.png);
- * that none of the eight pictures keeps the plate's gold scroll ends at its
- * foot; and, the phone turned to 320, 375, 390 and 430 wide and on its side
- * (844 x 390, 667 x 375), that it never lands on a control: under the box
- * upright, beside it sideways where under is the attack disc's
- * (wheelmap-04d-emblem-<w>x<h>.png).
+ * (revert or show below minimap)" -- 4 checked the banner was the PLAIN
+ * plaque and the frost scene came up small UNDER THE MINIMAP.
+ *
+ * v2.3.3609, the owner: "I also don't like the intro graphics to each zone.
+ * The older ones were better." -- 4 now checks the Wheel holds the four
+ * animated strips again (frost, fire, desert, forest) and no scenes, that
+ * Frost Ridge's banner, played again, is the owner's animated frost art (its
+ * ornaments drawn, the frost icon and the name on the plaque, no picture over
+ * it), and that nothing comes up under the minimap
+ * (wheelmap-04c-landbanner.png).
  * v2.3.3522, the owner: "Have icons representing each building on each
  * building in the minimap/compass" -- 2 checks every footprint on the box
  * wears its picture, loaded behind the loading screen, and 5 that leaving
@@ -417,19 +417,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const zb = window.__btZoneBanner;
     return { land: pl ? pl.land : null, icon: pl ? pl.icon : false, color: pl ? pl.color : null, plateRect: window.__btWheelPlate || null,
       bannerAt: zb ? zb.shownAt('frost') : 0, banner: zb && zb.onScreen ? zb.onScreen() : null, watch: zb && zb.land ? zb.land() : null,
-      /* v2.3.3481: the eight lands' scenes held, the closed lands' strips not */
-      scenes: zb && zb.scenes ? zb.scenes() : null, strips: zb && zb.resident ? zb.resident() : null };
+      /* v2.3.3609: the four strips held again (v2.3.3481-v2.3.3608 held the
+         eight lands' scenes in their place) */
+      strips: zb && zb.resident ? zb.resident() : null };
   });
   rec.ok(`...and the name plate marks the land: the frost icon before "Frost Ridge", the name in the land's own colour (${look.color})`,
     look.land === 'frost' && look.icon === true && !!look.color && look.color !== '#f7f2e7', look);
   rec.ok(`...and crossing into Frost Ridge played its banner, docking into the plate (${look.banner ? `"${look.banner.text}"${look.banner.scene ? ', the owner\'s frost scene over it' : (look.banner.plain ? ', plain' : ', the owner\'s frost art')}` : 'shown ' + (look.bannerAt ? 'and docked' : 'never')})`,
     look.bannerAt > 0 && look.watch && look.watch.shown === 'frost', look);
-  /* v2.3.3481, the owner's icon picks ("1b": all eight lands' scenes from their
-     sheet): the Wheel holds the eight scenes for its banners, loaded behind
-     its loading screen, and none of the four animated strips it used to */
-  rec.ok(`...and the Wheel holds every land's scene for its banner (${(look.scenes || []).length}: ${(look.scenes || []).join(', ')}) and none of the closed lands' animated strips (${JSON.stringify(look.strips)})`,
-    Array.isArray(look.scenes) && look.scenes.length === 8 && ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'].every((l) => look.scenes.includes(l))
-      && Array.isArray(look.strips) && look.strips.length === 0, { scenes: look.scenes, strips: look.strips });
+  /* v2.3.3609, the owner: "The older ones were better": the Wheel holds the
+     four lands' animated strips again, loaded behind its loading screen */
+  rec.ok(`...and the Wheel holds the owner's four animated banners for its lands (${JSON.stringify(look.strips)})`,
+    Array.isArray(look.strips) && look.strips.length === 4 && ['frost', 'fire', 'desert', 'forest'].every((t) => look.strips.includes(t)), { strips: look.strips });
   {
     /* the minimap's land here is the land's one flat colour: ice blue round
        you, read off the screen (wheelLands.js frost #7fbfe0 under the box's
@@ -479,138 +478,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   rec.ok(`...and out there, town off the box, its HOME BADGE rides the box's edge toward it: town ${hm.deg} degrees from you (south-east), ${hm.dist} game px away, the badge at (${hm.x}, ${hm.y}) in the box, drawn (${badge ? `${badge.white} white, ${badge.brass} brass, ${badge.dark} dark px` : 'not shown'})`,
     hm.edge === true && hm.shown === true && hm.deg >= 30 && hm.deg <= 60 && hm.x > 66 && hm.y > 66 && !!badge && badge.white >= 8 && badge.brass >= 6 && badge.dark >= 20, { home: hm, badge, quest: now4.quest || null });
-  /* v2.3.3511: the banner played again (its history forgotten, the land watch
-     asks once more 600 ms on): the PLAIN plaque -- and as it docks, the frost
-     scene small under the minimap (src/ui/landEmblem.js) */
+  /* v2.3.3609: the banner played again (its history forgotten, the land watch
+     asks once more 600 ms on): the owner's ANIMATED frost banner, its
+     ornaments drawn round the plaque, the frost icon and the name -- and
+     nothing under the minimap any more (v2.3.3511's emblem is gone) */
   const sb = await P.page.evaluate(async () => {
-    const zb = window.__btZoneBanner, le = window.__btLandEmblem;
-    if (!zb || !zb.reset || !zb.onScreen || !le) return null;
-    le.hide();
+    const zb = window.__btZoneBanner;
+    if (!zb || !zb.reset || !zb.onScreen) return null;
     zb.reset();
-    let banner = null, em = null;
-    for (let i = 0; i < 160 && !(banner && em); i++) {
+    let banner = null, beats = 0;
+    for (let i = 0; i < 160 && !(banner && banner.named); i++) {
       const o = zb.onScreen();
-      if (o && o.text && !banner) banner = o;
-      const e = le.onScreen();
-      if (e && e.drawn && e.opacity > 0.9) em = e;
+      if (o && o.text) banner = { ...o, named: !!document.querySelector('.bt-zone-banner.is-named') };
       await new Promise((res) => setTimeout(res, 50));
     }
-    return { banner, em, mini: window.__btWheelMini, plate: window.__btWheelPlate, dpr: devicePixelRatio, vw: innerWidth, vh: innerHeight, log: le.log() };
+    beats = zb.beatLog ? zb.beatLog().length : 0;
+    return { banner, beats, emblem: !!window.__btLandEmblem || !!document.querySelector('.bt-land-emblem') };
   });
-  rec.ok(`...and the land's banner is the PLAIN plaque: "${sb && sb.banner && sb.banner.text}", the frost icon before it, no picture over it and no ornaments`,
-    !!sb && !!sb.banner && sb.banner.text === 'Frost Ridge' && sb.banner.plain === true && !!sb.banner.icon && sb.banner.scene === null && sb.banner.orn === false, sb && sb.banner);
-  const em = sb && sb.em;
-  await shot(P, '04c-emblem');
-  /* the controls on the screen right now, read here and not from the
-     emblem's own list: whatever takes a tap, the sticks, the cards */
-  const CONTROLS = () => Array.from(document.querySelectorAll('button, [role="button"], a[href], input, [data-disc], [data-sprint], [data-quest-hud], [data-nml-ask], [data-party-invite], [data-coach-card], [data-world-map-open], .bt-interact-prompt'))
-    .map((n) => ({ n, r: n.getBoundingClientRect() }))
-    .filter(({ n, r }) => r.width > 0 && r.height > 0 && r.width * r.height < 0.4 * innerWidth * innerHeight
-      && (typeof n.checkVisibility !== 'function' || n.checkVisibility({ opacityProperty: true, visibilityProperty: true })))
-    .map(({ n, r }) => ({ what: (n.getAttribute('data-disc') != null ? 'disc ' : '') + (n.tagName || '').toLowerCase() + (n.getAttribute('aria-label') ? ' ' + n.getAttribute('aria-label').slice(0, 24) : (n.textContent || '').trim().slice(0, 16) ? ' "' + (n.textContent || '').trim().slice(0, 16) + '"' : ''),
-      l: r.left, t: r.top, r: r.right, b: r.bottom }));
-  const onAny = (box, ctl) => ctl.filter((q) => box.l < q.r && box.l + box.w > q.l && box.t < q.b && box.t + box.h > q.t);
-  const ctl0 = await P.page.evaluate(`(${CONTROLS.toString()})()`);
-  const hit0 = em ? onAny(em.box, ctl0) : [];
-  rec.ok(em ? `...and as it docks the frost scene comes up UNDER THE MINIMAP, ${em.box.w.toFixed(1)} x ${em.box.h.toFixed(1)} CSS px from its ${em.nw} x ${em.nh}: ${(em.devW / em.nw).toFixed(2)} device px a picture px at ${sb.dpr}x (never blown up), centred under the box, ${Math.round(em.box.t - (sb.mini.top + sb.mini.h))} px below it`
-    : `...and as it docks the frost scene comes up under the minimap (${JSON.stringify(sb && sb.log && sb.log.slice(-2))})`,
-    !!em && em.land === 'frost' && em.at === 'below' && /\/ui\/banners\/land-frost\.webp\?v=2\.3\.3511/.test(em.src || '')
-      && em.devW <= em.nw + 0.5 && Math.abs(em.devW - em.nw) <= 0.5
-      && em.box.t >= sb.mini.top + sb.mini.h && em.box.t <= sb.mini.top + sb.mini.h + 12
-      && Math.abs(em.box.l + em.box.w / 2 - (sb.mini.left + sb.mini.w / 2)) <= 1
-      && em.box.l >= 0 && em.box.l + em.box.w <= sb.vw, { em, mini: sb && sb.mini });
-  rec.ok(`...and lies on no control (${ctl0.length} on the screen${hit0.length ? ': on ' + hit0.map((q) => q.what).join(', ') : ''})`, !!em && hit0.length === 0, { hit0, em: em && em.box });
-  /* gone after its few seconds */
-  const gone = await P.page.evaluate(async () => {
-    const le = window.__btLandEmblem;
-    const t0 = Date.now();
-    for (let i = 0; i < 200; i++) {
-      if (!le.onScreen()) return { ms: Date.now() - t0, since: Date.now() };
-      await new Promise((res) => setTimeout(res, 100));
-    }
-    return null;
-  });
-  const shownMs = gone && em ? gone.since - em.since : null;
-  rec.ok(`...and goes after its few seconds (on screen ${shownMs != null ? (shownMs / 1000).toFixed(1) + ' s' : 'still'}), leaving the area round the minimap clear`,
-    !!gone && shownMs != null && shownMs >= 3000 && shownMs <= 7000, { gone, shownMs });
-  /* none of the eight pictures keeps the plate's gold scroll ends at its foot
-     (tools/ui/cut-owner-icons.py rim_cut's own test: in the outer quarter each
-     side of the last FIVE rows -- where they lay, under the scene's dark
-     outline -- a gold or brown px with a dark px right above it; v2.3.3481's
-     pictures had 59 to 93 such px each, and a row higher up the same test
-     finds the scene's own lava, sand and lamps over its outline) */
-  const rims = await P.page.evaluate(async () => {
-    const out = [];
-    for (const land of ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant']) {
-      const img = new Image();
-      img.src = `/ui/banners/land-${land}.webp?v=2.3.3511`;
-      try { await img.decode(); } catch (e) { out.push({ land, err: 'no picture' }); continue; }
-      const c = document.createElement('canvas');
-      c.width = img.naturalWidth; c.height = img.naturalHeight;
-      const g = c.getContext('2d');
-      g.drawImage(img, 0, 0);
-      const d = g.getImageData(0, 0, c.width, c.height).data;
-      const px = (x, y) => { const o = (y * c.width + x) * 4; return [d[o], d[o + 1], d[o + 2], d[o + 3]]; };
-      const curl = ([r, gg, b, a]) => a > 128 && r > 120 && gg > 80 && b < 140 && r - b > 30 && r >= gg;
-      const dark = ([r, gg, b, a]) => a > 128 && Math.max(r, gg, b) < 70;
-      let n = 0;
-      for (let y = Math.max(1, c.height - 5); y < c.height; y++) {
-        for (let x = 0; x < c.width; x++) {
-          if (x >= c.width * 0.25 && x < c.width * 0.75) continue;
-          if (curl(px(x, y)) && [1, 2, 3].some((k) => y - k >= 0 && dark(px(x, y - k)))) n++;
-        }
-      }
-      out.push({ land, w: c.width, h: c.height, rim: n });
-    }
-    return out;
-  });
-  rec.ok(`...and none of the eight pictures keeps the plate's gold scroll ends at its foot (${rims.map((r) => `${r.land} ${r.rim != null ? r.rim : r.err}`).join(', ')})`,
-    rims.length === 8 && rims.every((r) => r.rim === 0), rims);
-
-  /* the phone turned: at each size it never lands on a control -- under the
-     box upright, beside it (or not at all) where under is taken */
-  const SIZES = [{ width: 320, height: 568 }, { width: 375, height: 667 }, { width: 390, height: 844 }, { width: 430, height: 932 }, { width: 844, height: 390 }, { width: 667, height: 375 }];
-  const sweep = [];
-  for (const vp of SIZES) {
-    await P.page.setViewportSize(vp);
-    /* the minimap re-placed for this size (its box flush with the play area's right edge, published in a frame) */
-    let mini = null;
-    for (let i = 0; i < 40; i++) {
-      await P.page.waitForTimeout(300);
-      mini = await P.page.evaluate(() => {
-        const m = window.__btWheelMini, w = document.querySelector('.brotown-wrap');
-        const r = w ? w.getBoundingClientRect() : null;
-        return m && r ? { ...m, right: r.right, vw: innerWidth, orient: document.documentElement.getAttribute('data-orient') } : null;
-      });
-      if (mini && mini.vw === vp.width && Math.abs(mini.left + mini.w - mini.right) <= 2) break;
-    }
-    await P.page.waitForTimeout(800);
-    const r = await P.page.evaluate(async () => {
-      const le = window.__btLandEmblem;
-      le.hide();
-      le.show('frost', 0);
-      let em = null;
-      for (let i = 0; i < 40; i++) {
-        await new Promise((res) => setTimeout(res, 50));
-        const e = le.onScreen();
-        if (e && e.drawn && e.opacity > 0.9) { em = e; break; }
-      }
-      return { em, log: le.log().slice(-1)[0], mini: window.__btWheelMini, dpr: devicePixelRatio, vw: innerWidth, vh: innerHeight };
-    });
-    const ctl = await P.page.evaluate(`(${CONTROLS.toString()})()`);
-    const hit = r.em ? onAny(r.em.box, ctl) : [];
-    const tag = `${vp.width}x${vp.height}`;
-    await shot(P, `04d-emblem-${tag}`);
-    sweep.push({ tag, upright: vp.height > vp.width, at: r.em ? r.em.at : null, why: r.em ? null : (r.log && r.log.why), hit: hit.map((q) => q.what),
-      inside: r.em ? r.em.box.l >= 0 && r.em.box.t >= 0 && r.em.box.l + r.em.box.w <= r.vw && r.em.box.t + r.em.box.h <= r.vh : true,
-      under: r.em && r.mini ? r.em.box.t >= r.mini.top + r.mini.h : null, devPerArt: r.em ? +(r.em.devW / r.em.nw).toFixed(3) : null, controls: ctl.length });
-    await P.page.evaluate(() => window.__btLandEmblem.hide());
-  }
-  await P.page.setViewportSize(PHONE);
-  await P.page.waitForTimeout(1500);
-  rec.ok(`...and turned to every size it lands on no control: ${sweep.map((x) => `${x.tag} ${x.at || 'not shown (' + x.why + ')'}${x.hit.length ? ' ON ' + x.hit.join('/') : ''}`).join('; ')}`,
-    sweep.length === SIZES.length && sweep.every((x) => x.hit.length === 0 && x.inside && (x.devPerArt == null || x.devPerArt <= 1.001))
-      && sweep.filter((x) => x.upright).every((x) => x.at === 'below' && x.under === true), sweep);
+  await shot(P, '04c-landbanner');
+  rec.ok(`...and the land's banner is the owner's animated one again: "${sb && sb.banner && sb.banner.text}", its ornaments drawn (${sb && sb.banner && sb.banner.orn}), the frost icon before the name, no picture over the plaque, ${sb && sb.beats} beats run`,
+    !!sb && !!sb.banner && sb.banner.text === 'Frost Ridge' && sb.banner.plain === false && sb.banner.orn === true && !!sb.banner.icon
+      && /elem-frost/.test(sb.banner.icon) && sb.banner.scene === null && sb.beats >= 1, sb && sb.banner);
+  rec.ok('...and nothing comes up under the minimap (the land\'s small picture of v2.3.3511 is gone)', !!sb && sb.emblem === false, sb && { emblem: sb.emblem });
   for (let i = 0; i < 24; i++) {
     const pl = await P.page.evaluate(() => (window.__btZoneBanner && window.__btZoneBanner.playing ? window.__btZoneBanner.playing() : null));
     if (!pl) break;

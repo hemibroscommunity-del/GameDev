@@ -1463,7 +1463,17 @@ remnant to migrate server-side, not a mode to preserve.
           EMBLEM under the minimap (src/ui/landEmblem.js) as the plaque docks:
           one picture px a device px, never upscaled, clear of every control
           (beside the box sideways), gone after 3.6 s; the plate's gold scroll
-          ends cut off the pictures (cut-owner-icons.py `rim_cut`);
+          ends cut off the pictures (cut-owner-icons.py `rim_cut`); since
+          v2.3.3609 THE OLDER BANNERS ARE BACK -- the owner: "I also don't like
+          the intro graphics to each zone.  The older ones were better." -- the
+          owner's animated ornaments for Frost, Flame, Wind and Verdant (the
+          Wheel holds the four strips again, ~15.7 MB decoded,
+          preloadAnimations.js `wheelBannerLands`), the plaque alone for the
+          other four, no scene and no emblem (landEmblem.js gone); and the
+          wind, storm and stone ELEMENT ICONS are the element itself (gusts, a
+          lightning bolt, a boulder: tools/ui/draw-element-icons.py; "Some
+          zones (like wind) have a strange rune ... It should just be a pure
+          icon of the element"), owner-icons §4/§5/§9, mp-wheelmap 4;
         - `land-auras` suite, `owner-icons` §5, `mp-landauras`, `mp-wheelmap`:
           docs/specs/land-auras.md, docs/specs/owner-icons.md.
     - since v2.3.3407 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
