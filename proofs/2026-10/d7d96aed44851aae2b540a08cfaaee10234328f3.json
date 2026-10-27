@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d7d96aed44851aae2b540a08cfaaee10234328f3",
+  "tree": "1db8a8809f873529960d7704b5a2e5d3e3b557da",
+  "committedAt": "2026-10-26T19:11:50-07:00",
+  "subject": "Your ten tracks, each where it was made for, and the Sound Studio's Music tab (v2.3.3610) (#1118)",
+  "files": 6560,
+  "bytes": 762374094,
+  "listingSha256": "4ef0737f2b2ca0dec41060e9ab667bc094aa783b5158c7e460c4514e6623d9d7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
