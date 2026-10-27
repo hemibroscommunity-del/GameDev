@@ -211,16 +211,26 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   /* the bag's steel legs and chest are the sheet's, framed as today's were
      (the art's larger side 0.89 / 0.78 of a square), and every metal made from
      them (make-metal-icons.mjs: the same size, the renderer's multiply) */
-  const legs = dims('/icons/items/greaves.webp'), chest = dims('/icons/items/chest-plate.webp');
+  const chest = dims('/icons/items/chest-plate.webp');
   const metals = ['copper', 'iron', 'blacksteel'];
-  const sameSize = metals.every((m) => dims('/icons/items/greaves-' + m + '.webp').join('x') === legs.join('x')
-    && dims('/icons/items/chest-plate-' + m + '.webp').join('x') === chest.join('x'));
-  check('6a the legs and chest are the sheet\'s (square, ~110-125 px, not the old 256), each metal made from them at their size',
-    legs[0] === legs[1] && chest[0] === chest[1] && legs[0] >= 100 && legs[0] <= 130 && chest[0] >= 100 && chest[0] <= 130 && sameSize,
-    { legs, chest, sameSize });
+  const sameSize = metals.every((m) => dims('/icons/items/chest-plate-' + m + '.webp').join('x') === chest.join('x'));
+  check('6a the chest is the sheet\'s (square, ~110-125 px, not the old 256), each metal made from it at its size',
+    chest[0] === chest[1] && chest[0] >= 100 && chest[0] <= 130 && sameSize, { chest, sameSize });
+  /* v2.3.3608: the LEGS are the former pictures again -- the owner,
+     2026-10-26: "I liked the former leg armor better than the new icon.
+     Replace it." -- the four from before v2.3.3526, byte for byte */
+  const sha = (u) => createHash('sha256').update(readFileSync(pub(u))).digest('hex');
+  const LEGS = {
+    '/icons/items/greaves.webp': '54be7ee1cec2da46dad69eebeeb07becf3842c53c763c31c0b1c2c63c05c1dcc',
+    '/icons/items/greaves-copper.webp': 'eaef2f53506c1be6df31696acd6b6c8e0cfa0c22984040bdc0f25535713497b9',
+    '/icons/items/greaves-iron.webp': '894bc24e31e3b44b4b03eea702ccff962684823e9445f4156d835c5d05145240',
+    '/icons/items/greaves-blacksteel.webp': 'b8617888532023934fdde6101367989619dfa94bebb2e8ea82724309f4cf5090',
+  };
+  const legsOff = Object.keys(LEGS).filter((u) => !existsSync(pub(u)) || sha(u) !== LEGS[u]);
+  check('6a2 the legs are the former four pictures again (v2.3.3608), byte for byte', legsOff.length === 0, legsOff);
   const cut = src('tools/ui/cut-owner-icons.py');
-  check('6b the cutter writes them (and says to run the metals after)', /name='icons\/items\/greaves'/.test(cut) && /name='icons\/items\/chest-plate'/.test(cut)
-    && /make-metal-icons\.mjs --only greaves,chest-plate/.test(cut));
+  check('6b the cutter writes the chest (and says to run its metals after), and never the legs', !/name='icons\/items\/greaves'/.test(cut) && /name='icons\/items\/chest-plate'/.test(cut)
+    && /make-metal-icons\.mjs --only chest-plate/.test(cut));
   /* each under a NEW name the code points at, so a re-run of the tool that
      made today's can never put the old one back */
   const NEW = { paw: '/icons/ui/pets-paw.webp', crown: '/icons/ui/party-crown.webp', pin: '/icons/ui/party-pin.webp',

@@ -69,9 +69,13 @@ export const LEVELUP_FRAMES = [
   { sx: 1908, sy: 180, sw: 264, sh: 334, ox: 130.0, oy: 163.7, r: 40.0, ms: 0 },
 ];
 
-/* Frame 7 holds this long after the run-in, then the overlay fades out. */
-export const LEVELUP_HOLD_MS = 1500;
-export const LEVELUP_FADE_MS = 500;
+/* Frame 7 holds this long after the run-in, then the overlay fades out.
+   v2.3.3608: HALF AS LONG ON SCREEN -- the owner, 2026-10-26: "reduce the time
+   the level up message stays on screen by 50%."  2,590 ms -> 1,295 ms: the
+   burst plays as it did (590 ms), the hold 1,500 -> 455 and the fade 500 ->
+   250, so the skill and level still read at rest for most of a second. */
+export const LEVELUP_HOLD_MS = 455;
+export const LEVELUP_FADE_MS = 250;
 export const LEVELUP_RUN_MS = LEVELUP_FRAMES.reduce((t, f) => t + f.ms, 0); /* 590 */
 export const LEVELUP_TOTAL_MS = LEVELUP_RUN_MS + LEVELUP_HOLD_MS + LEVELUP_FADE_MS;
 

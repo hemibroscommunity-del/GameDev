@@ -68,6 +68,15 @@ export const WHEEL_ARENA = { W: 36, H: 52, WALL: 1, BOTTOM_WALL: 3, SPAWN_UP: 7 
    (mirror-audit). */
 export const WHEEL_DUNGEON_PARTY = { verdant: { level: 16, size: 3 } };
 
+/* ═══ v2.3.3608: THE LEVEL A PARTY SHOULD BE, SAID ═══
+   The owner, 2026-10-26: "Change the recommended level for the slime grotto
+   dungeon to lvl 10 (don't change any difficulty settings)".  The words say
+   the level the Grotto is FOR -- the owner's v2.3.3573 brief: "most people
+   will be around lvl 10 and have iron equipment", in a party of 2 or 3 -- as
+   "Lv 10+"; its monsters and boss stay WHEEL_DUNGEON_PARTY's level 16 (the
+   worker's, mirror-audited).  The phone's own words, so no mirror. */
+export const WHEEL_DUNGEON_REC = Object.freeze({ verdant: 10 });
+
 /* The words (game/wheelDungeons.js says when): the world map's line under a
    dungeon's name, and the line under the Enter button at its mouth.  `party`
    a row of WHEEL_DUNGEON_PARTY, or null for a dungeon sized by who comes in.
@@ -75,10 +84,13 @@ export const WHEEL_DUNGEON_PARTY = { verdant: { level: 16, size: 3 } };
    clears the ones before it, and "dungeon · Lv 16 · 2–3 players", twice the
    old line's width, lost to the stage's name at the zoom you reach it at
    (mp-googrotto); "Lv 16 · 2–3 players" is about the old one's. */
-export function dungeonLevelsLine(party, levels) {
-  if (party) return `Lv ${party.level} · ${party.size - 1}–${party.size} players`;
+/* v2.3.3608: `rec`, the level it is for (WHEEL_DUNGEON_REC), said as "Lv 10+"
+   in place of its monsters' level */
+const _lvWord = (party, rec) => (rec > 0 ? rec + '+' : party.level);
+export function dungeonLevelsLine(party, levels, rec) {
+  if (party) return `Lv ${_lvWord(party, rec)} · ${party.size - 1}–${party.size} players`;
   return Array.isArray(levels) ? `dungeon · Lv ${levels[0]}–${levels[1]}` : 'dungeon';
 }
-export function dungeonDoorLine(party) {
-  return party ? `Lv ${party.level} · for ${party.size - 1}–${party.size} players` : null;
+export function dungeonDoorLine(party, rec) {
+  return party ? `Lv ${_lvWord(party, rec)} · for ${party.size - 1}–${party.size} players` : null;
 }
