@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "167f892f1966559d4619686bd204f876a240bdd5",
+  "tree": "c89fa891b147e9202b2647f2414a2028d7ca6784",
+  "committedAt": "2026-10-26T23:15:32-07:00",
+  "subject": "TRAP shows only when you carry a box trap (v2.3.3626) (#1131)",
+  "files": 6586,
+  "bytes": 762684460,
+  "listingSha256": "c6a21ed5f1fcffd13199e8c14fb3783110a564f8462814f05775bdd846ba5ba3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
