@@ -119,3 +119,16 @@ Its run, 17 checks of 17:
 
 The hand on the rod still rides over the greaves alone (185 px of skin over 8
 frames), and every plate's gauntlet is drawn as before.
+
+### Found in review
+
+An independent review found one case the first push missed. Until the raw
+fish frame's picture has loaded, the rod and the trousers are looked for on
+the recoloured frame instead. There coloured trousers fail the olive test, so
+they would ride over the greaves for that overlay, and it was cached under the
+same key as the right one. The key now records whether the raw frame was read,
+so the first call after it loads makes the right overlay.
+
+The review also noted that `window.__btFishGripTrousers` forgets the overlays
+made so far without destroying them. That is on purpose: one may be on screen
+in that frame. The switch exists for this test's page alone.
