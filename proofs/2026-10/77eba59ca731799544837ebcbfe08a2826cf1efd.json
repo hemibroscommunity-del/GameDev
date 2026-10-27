@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "77eba59ca731799544837ebcbfe08a2826cf1efd",
+  "tree": "55204355b20dc60c6621480f00bbc6358f2943c0",
+  "committedAt": "2026-10-26T23:15:09-07:00",
+  "subject": "An armoured angler's hands are gauntlets in the plate's metal, not bare skin over the plate (v2.3.3623) (#1129)",
+  "files": 6586,
+  "bytes": 762681653,
+  "listingSha256": "7caad5fba2a53d1d06c1f6a098c36b0e9226b7ea904049a405f6159361219af3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
