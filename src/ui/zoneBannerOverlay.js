@@ -63,8 +63,7 @@ import {
   ZONE_BANNER_IN_MS, ZONE_BANNER_NAME_AT, ZONE_BANNER_NAME_MS,
   ZONE_BANNER_DOCK_MS, ZONE_BANNER_REPEAT_MS,
 } from '../data/zoneBanner.js';
-import { zoneBannerReady, zoneBannerResident, landScenesResident } from '../rendering/zoneBannerPreload.js'; /* v2.3.3481: + the Wheel's lands' scenes (v2.3.3511: drawn by landEmblem.js now) */
-import { showLandEmblem, hideLandEmblem } from './landEmblem.js';   /* v2.3.3511: a land's scene, small, under the minimap */
+import { zoneBannerReady, zoneBannerResident } from '../rendering/zoneBannerPreload.js';
 import { zoneTitle } from './mobile/zoneTitle.js';
 import { prefersReducedMotion } from './mobile/sheet/motion.js';
 import { landLook } from '../data/wheelLands.js';   /* v2.3.3024: the Wheel's lands */
@@ -172,15 +171,15 @@ export function playZoneBanner(zoneId, S, opts = {}) {
      the name, `color` the name's colour, and `plain` -- a land with no art of
      the owner's plays the PLAQUE alone, its name and icon, no ornaments
      (nothing borrowed: the rule above stands), and one whose art is not warm
-     does too (v2.3.3511: and since the Wheel holds no strips, every land:
-     `plain` is the plaque alone) */
-  /* v2.3.3481 stood a Wheel land's SCENE over the plaque here (`scene`).
-     v2.3.3511 took it away -- the owner: "new land emblems look bad enlarged
-     (revert or show below minimap)": a land's banner is the plain plaque, and
-     its scene a small emblem under the minimap (landEmblem.js, from
-     noteWheelLand below).  `plain` still never plays the ornament strip of
-     the closed zone with the same id. */
-  const art = opts.plain ? null : bannerStripFor(zoneId);
+     does too */
+  /* v2.3.3481 stood a Wheel land's SCENE over the plaque here, and v2.3.3511
+     made every land's banner the plain plaque with the scene small under the
+     minimap.  v2.3.3609 put the older banners back -- the owner, 2026-10-26: "I
+     also don't like the intro graphics to each zone.  The older ones were
+     better." -- so a land with the owner's ornaments plays them again (the
+     Wheel holds the four strips, preloadAnimations.js), and `plain` is only
+     the fallback for a land with none. */
+  const art = bannerStripFor(zoneId);
   const strip = art && zoneBannerReady(zoneId) ? art : null;
   const plain = !strip && !!opts.plain;
   if (!strip && !plain) { hide(); return false; }
@@ -362,8 +361,9 @@ export function noteZoneEntered(zoneId, S) {
  * go when you leave it -- never on first sight (the preloading LAW).  The
  * plain plaque holds LAND_HOLD_MS longer before it docks, having no beats.
  *
- * v2.3.3481: EVERY LAND'S SCENE.  Of the owner's thirteen icon sheets, the
- * first held a scene for each of the eight lands standing on a painted name
+ * v2.3.3481: EVERY LAND'S SCENE (gone since v2.3.3609, below).  Of the
+ * owner's thirteen icon sheets, the first held a scene for each of the eight
+ * lands standing on a painted name
  * plate, and of the review's two choices -- the four lands with no art, or
  * "all eight from the sheet" -- the owner picked the second ("Icon picks: 1b,
  * ..."), so all eight match: crossing into any land shows its scene over the
@@ -383,16 +383,23 @@ export function noteZoneEntered(zoneId, S) {
  * stay out of the Wheel for its memory), and as the plaque docks into the
  * minimap's plate the land's scene comes up SMALL under the minimap, at its
  * own pixels, for a few seconds (landEmblem.js; the scroll ends cut off the
- * pictures, tools/ui/cut-owner-icons.py). */
+ * pictures, tools/ui/cut-owner-icons.py).
+ *
+ * v2.3.3609: THE OLDER BANNERS ARE BACK.  The owner, 2026-10-26: "I also don't
+ * like the intro graphics to each zone.  The older ones were better."  So it is
+ * v2.3.3024's banner again: the owner's animated ornaments for the four lands
+ * they drew (Frost Ridge, the Flame Fields, the Wind Dunes, the Verdant
+ * Wilds), held behind the Wheel's loading screen and let go on leaving it
+ * (preloadAnimations.js), and the plaque alone, its icon and name, for the
+ * other four.  No scene over the plaque and none under the minimap: the
+ * emblem (landEmblem.js) is gone.  The four strips are ~15.7 MB decoded while
+ * you are in the world, as they were from v2.3.3024 to v2.3.3480. */
 export const LAND_DWELL_MS = 600;
 export const LAND_HOLD_MS = 350;
 const _wl = { cur: null, since: 0, shown: null };
 export function noteWheelLand(region, title, S) {
   if (!S || S.currentZone !== 'wheel' || !region) {
-    if (!S || S.currentZone !== 'wheel') {
-      if (_wl.cur !== null || _wl.shown !== null) hideLandEmblem();   /* v2.3.3511: out of the Wheel, none */
-      _wl.cur = null; _wl.shown = null;
-    }
+    if (!S || S.currentZone !== 'wheel') { _wl.cur = null; _wl.shown = null; }
     return false;
   }
   const now = Date.now();
@@ -401,15 +408,12 @@ export function noteWheelLand(region, title, S) {
   _wl.shown = region;
   const look = landLook(region);
   if (!look || !look.element || !title) return false;
-  /* v2.3.3511: the plain plaque (no `scene`: the owner's "look bad enlarged") */
+  /* the owner's ornaments where the land has them, else the plaque alone
+     (`plain`); either way its icon and its name in its colour (v2.3.3609) */
   const shown = playZoneBanner(region, S, { title, plain: true, icon: look.icon, color: landNameColor(look.color) });
   /* v2.3.3343: a breath of wind under a land's banner as you cross in (it came
      in silence; SOUND-GAPS) -- the land's banner only, not every zone's */
   if (shown) cue('landCross');
-  /* v2.3.3511: ...and the land's scene, small, under the minimap, as the
-     plaque docks into its plate (landEmblem.js) -- or, with reduced motion,
-     as the still plaque goes */
-  if (shown) showLandEmblem(region, { delay: prefersReducedMotion() ? 900 : ZONE_BANNER_PLAY_MS + LAND_HOLD_MS });
   return shown;
 }
 /* the land's colour lifted toward white, to read on the dark plaque (as the
@@ -444,10 +448,9 @@ try {
       reset: resetZoneBannerHistory,
       /* v2.3.3024: the Wheel's land watch, and what the banner on screen says */
       land: () => ({ cur: _wl.cur, shown: _wl.shown }),
-      /* v2.3.3481: + the land's scene over the plaque (its picture, and whether
-         it is decoded and drawn), and which lands' scenes the Wheel holds --
-         v2.3.3511: the scene is under the minimap now (window.__btLandEmblem),
-         so `scene` here is any picture on the banner itself, null for a land */
+      /* v2.3.3481: + any picture over the plaque (`scene`: null since
+         v2.3.3511), and `orn` whether the owner's ornaments are drawn (a
+         land's banner with art since v2.3.3609) */
       onScreen: () => {
         if (!_el) return null;
         const n = _el.querySelector('.bt-zone-banner__name'), ic = _el.querySelector('.bt-zone-banner__icon');
@@ -457,7 +460,6 @@ try {
           scene: sc ? sc.getAttribute('src') : null, orn: Array.from(_el.querySelectorAll('.bt-zone-banner__orn')).some((o) => !!o.style.backgroundImage),
           plaqueTop: Math.round(pr.top), plaqueW: Math.round(pr.width), plaqueH: Math.round(pr.height) };
       },
-      scenes: landScenesResident,
     };
   }
 } catch (e) { /* a debug handle must never be the thing that breaks the page */ }
