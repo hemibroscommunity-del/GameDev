@@ -1034,6 +1034,9 @@ remnant to migrate server-side, not a mode to preserve.
         talk opens, a quest is taken or a keeper opens his building, never as
         a line pops up over them (npcChatter gone: in town one came every few
         seconds);
+      - since v2.3.3680 the roll is their "goblin fall" (`rollTumble`: your
+        roll, a retreat shot's, another player's; the dash and lunge keep the
+        rush), `sound-cues` §15;
       - cut and levelled by tools/audio/cut_owner_sounds.py, whose re-run
         gives every older file byte for byte; 0.94 MB decoded, the memory
         check's sound line 30 -> 32 (main's own reading had reached 30.0);

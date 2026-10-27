@@ -3322,6 +3322,9 @@ BT_AUDIO.SFX_MANIFEST = {
   'farm-water': '/sfx/farm/farm-water.mp3',
   'farm-hoe': '/sfx/farm/farm-hoe.mp3',
   'farm-mould': '/sfx/farm/farm-mould.mp3',
+  /* v2.3.3680: the dodge roll, the owner's "kneeling goblin" (goblin fall),
+     0.8 s at 24 kHz, ~77 KB decoded */
+  'roll-tumble': '/sfx/player/roll-tumble.mp3',
 };
 
 /* ═══ v2.3.3462: SOME SOUNDS ARE DECODED AT 24 kHz ═══

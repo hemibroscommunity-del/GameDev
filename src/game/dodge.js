@@ -134,7 +134,7 @@ export var doStandardDodge = function (S, R, ang) {
     addBuildUse(R, 'endurance', dodgeCost);
     addBuildUse(R, 'agility', dodgeCost);
     S._dodgeRoll = { angle: ang, startTime: Date.now() };
-    cue('dodgeRoll');   /* v2.3.3343: the roll's rush of air (it was silent; SOUND-GAPS) */
+    cue('rollTumble');   /* v2.3.3343: the roll's rush of air (it was silent; SOUND-GAPS); v2.3.3680: the owner's own roll, "kneeling goblin" */
     /* v2.3.1011: broadcast so peers see the dodge (trail + movement). */
     /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
        nobody standing in the hub ever saw anybody else dodge. */
@@ -297,6 +297,9 @@ export var doRetreatShot = function (S, R, ang) {
        the tradeoff for safety). We mark this on _dodgeRoll so the damage
        interceptor can skip i-frames when checked. */
     S._dodgeRoll = { angle: ang, startTime: Date.now(), kind: 'retreat_shot', noIFrames: true };
+    /* v2.3.3680: a retreat shot is a roll too, and sounds like one (it was
+       silent here, and the others heard the rush) */
+    cue('rollTumble');
     /* v2.3.1011: broadcast the retreat shot so peers see it. */
     /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
        nobody standing in the hub ever saw anybody else dodge. */

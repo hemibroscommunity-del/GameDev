@@ -123,3 +123,39 @@ attributed. **A CC BY-NC one must come out** (no NC, v2.3.2970).
 - `mp-cuelevels` renders every cue through Web Audio and holds the new levels
   (its PROMISED table).
 - `mp-ownersounds` 9b: a townsperson's line pops up with no hum.
+
+## v2.3.3680: the roll is their "goblin fall"
+
+The owner, 2026-10-27: "I'll just uploaded a sound effect to use for that
+included in the label is 'kneeling goblin'" (for the roll). The file is
+`assets/sfx-source/2026-10-27/502553__kneeling__goblin-fall.mp3`, kept as
+supplied.
+
+- **Cut** by `tools/audio/cut_owner_sounds.py` like the others: the
+  `roll-tumble` row, 0.86 s, with half its weight of its own overtones laid
+  over the thump (`harm: 0.5`, the heartbeat's way), so a phone's small
+  speaker hears it. That gives `public/sfx/player/roll-tumble.mp3` (7 KB) and
+  its row in the GENERATED `src/data/ownerSoundClips.js`, levelled to 0.55 of
+  a hit. It decodes on the loading screen with the other short sounds
+  (SFX_MANIFEST, at 24 kHz).
+- **Where it plays** (the cue `rollTumble`, `src/data/eventSounds.js`):
+  - your dodge roll;
+  - a retreat shot's roll, which was silent for you (`src/game/dodge.js`);
+  - another player's roll or retreat shot, at their share
+    (`src/networking/gameEvents.js`).
+- **What keeps the rush of air** (`dodgeRoll`): the sword's dash and the lunge
+  (a dash is not a fall). A blow you dodged keeps `dodged`.
+- **Measured** by `mp-cuelevels`, as the game plays it: 0.55 plain, 0.48 by
+  ear (promised 0.55); its peak clear. Check 5's "rush of air" list is
+  unchanged: the roll is a body now, not air.
+- The Sound Studio lists it with the fight's sounds, with its recording's
+  chip (`src/data/soundStudio.js`). CREDITS.md has its row, its license still to
+  **CONFIRM** like the rest of this batch.
+- `sound-cues` §15 (four checks) pins the clip, the cue, the three places it
+  plays and the dash's rush.
+
+**Not done: headwear on the roll.** The roll is a somersault of 9 frames a
+facing. Hair, hats and glasses are hidden through it (the dodge pose,
+`entityRenderer._placeTrait`). Showing them means measuring where the head is,
+and how far it is turned, on each of the 18 frames. Each piece would then be
+drawn turned to match: a day or so, not a quick change. It is the owner's call.

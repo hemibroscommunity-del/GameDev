@@ -816,5 +816,31 @@ for (const p of files) {
   check('14l each recording credited in the studio and in CREDITS.md (its Freesound number), its license marked to confirm', uncredited.length === 0 && /CONFIRM/.test(src('CREDITS.md')), uncredited);
 }
 
+/* ── 15. v2.3.3680: the roll is the owner's "kneeling goblin" ──
+   "If it's easy try to put Headwear items on the rolling (dodging character).
+   I'll just uploaded a sound effect to use for that included in the label is
+   'kneeling goblin'" (502553__kneeling__goblin-fall). */
+{
+  const { OWNER_SOUNDS } = await import('../../src/data/ownerSoundClips.js');
+  const SS = await import('../../src/data/soundStudio.js');
+  const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');
+  const L0 = (n) => (EVENT_SOUNDS[n] || []).map((L) => L[0]);
+  const DG = strip(src('src/game/dodge.js'));
+  check('15a the roll is cut by the owner\'s cutter from the recording as supplied, at 24 kHz with its overtones (its thump is under 100 Hz)',
+    has(OWNER_SOUNDS, 'roll-tumble') && OWNER_SOUNDS['roll-tumble'].low === true && OWNER_SOUNDS['roll-tumble'].url === '/sfx/player/roll-tumble.mp3'
+      && existsSync(new URL('assets/sfx-source/2026-10-27/502553__kneeling__goblin-fall.mp3', root))
+      && /'roll-tumble', NEW_SRC \+ '502553__kneeling__goblin-fall\.mp3'/.test(src('tools/audio/cut_owner_sounds.py'))
+      && /'roll-tumble': \{'harm'/.test(src('tools/audio/cut_owner_sounds.py')));
+  check('15b your roll and a retreat shot\'s roll play it; the sword\'s dash and lunge keep the rush',
+    L0('rollTumble').join() === 'roll-tumble' && L0('dodgeRoll').join() === 'arrow-fly'
+      && (DG.match(/cue\('rollTumble'\)/g) || []).length === 2 && /cue\('dodgeRoll', 0\.9, 1\.2\)/.test(DG)
+      && /cue\('dodgeRoll', 0\.9, 1\.25\)/.test(src('src/game/abilities.js')));
+  check('15c another player\'s roll plays it too, at their share; their dash the rush',
+    /payload\.kind === 'dodge' \|\| payload\.kind === 'retreat_shot'\) cue\('rollTumble', _dgk\);\s*else cue\('dodgeRoll', _dgk, 1\.2\);/.test(strip(src('src/networking/gameEvents.js'))));
+  check('15d labelled in the studio, its recording credited (and in CREDITS.md, its license to confirm)',
+    /rollTumble: \['fight'/.test(src('src/data/soundStudio.js'))
+      && has(SS.SAMPLE_SOURCES, 'roll-tumble') && /502553/.test(src('CREDITS.md')));
+}
+
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
