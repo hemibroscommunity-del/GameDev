@@ -99,3 +99,10 @@ only the daze. A changed client could swing at a player, or have its roll count
 as a dodge, for the freeze's 600 ms. `_pvpDazed` now reads the freeze too
 (`pvp-lunge` §3b: a frozen player's swing lands nothing, and lands again once
 the freeze is over).
+
+## v2.3.3635: "Wobbly" waits for the wobble
+
+Found by the review of v2.3.3620: the daze's hit sets both the wobble's start
+and its end, so the HUD's "Wobbly 2s" chip stood beside "Dazed 1s" for the
+whole daze while nothing wobbled yet. The chip now waits for `_wobbleFrom`
+(ElemStatusChips.jsx `from`).

@@ -3644,6 +3644,24 @@ remnant to migrate server-side, not a mode to preserve.
           `mp-farmanim` §5 reads the shine's sprites and the strips' greys,
           each outfit (plate and greaves, greaves alone, plate alone) on each
           move (the hoe, the kneel, the can);
+        - since v2.3.3636 LIT AS HIS WALKING FIGURE IS -- the owner: "The
+          armor while performing farming gestures is noticeably different
+          color (iron). Try to make it match more exactly": the walking figure
+          is FORM-SHADED (formShade.js: as painted at the head, a cool shade
+          at the boots) and the farmer's sprites, in the gesture layer, were
+          not shaded at all; each now takes, across its own quad, the walking
+          figure's gradient at those heights (entityRenderer
+          `standShadeSpan`, formShade `spanSpec`; a spec of its own, never
+          SHADE.figure, which sharpPixels would take for a pixel-art figure),
+          yours and other players' farmers alike; and the strips' steel is
+          graded to the STANDING sheets (`STEEL_REF` stand-south: the bro
+          stands beside the bed in it, and its greaves are drawn brighter than
+          the jog's), `GEARLAYER_VER` 1038; full iron, farmer over walker:
+          boots 1.15/1.13/1.00 -> 1.00/1.00/0.99, the chest 1.09/1.06/0.97 ->
+          0.96/0.95/0.93 (the head and shoulders ~0.9: his steel forearms
+          cross his chest there, the art's own top third 11% darker);
+          `mp-farmiron` (the figure alone on the canvas's colour, band by
+          band), mp-farmanim §5 against stand-south: docs/specs/farm-iron.md;
       - the Feed & Seed's window lost its Beds tab: Visit Your Farm on top,
         "Your farm: 3 ready to harvest · 3 beds to plant" under it, then Seeds
         and Orders;
