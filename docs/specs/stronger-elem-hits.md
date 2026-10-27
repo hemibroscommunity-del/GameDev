@@ -89,3 +89,10 @@ In the live flags, each puts its element back as it was:
   east sways; a sting is a tick with the leaf; and for real: a snowman freezes
   you 600 ms and chills you 2 s, a blue slime holds you 2 s and stings while it
   holds, a rock monster's daze carries the wobble.
+
+## v2.3.3635: "Wobbly" waits for the wobble
+
+Found by the review of v2.3.3620: the daze's hit sets both the wobble's start
+and its end, so the HUD's "Wobbly 2s" chip stood beside "Dazed 1s" for the
+whole daze while nothing wobbled yet. The chip now waits for `_wobbleFrom`
+(ElemStatusChips.jsx `from`).
