@@ -14,9 +14,11 @@
  *
  *   chop-strip (+legless)   axe HEAD -> copper, HAFT -> pine
  *   fish-south              rod -> pine
- * (firemaking-strip's log is keyed too, but firemaking is being rebuilt as
- * code-drawn fire in another session -- owner, v2.3.2761 -- so it is left
- * alone here; TOOL_SPECS.log is ready if that work wants it.)
+ * (firemaking-strip's log is keyed too, and was left alone here while
+ * firemaking was rebuilt as code-drawn fire in another session -- owner,
+ * v2.3.2761.  That rebuild drew the campfire that burns after the light and
+ * kept the strip's log, magenta, until v2.3.3649: TOOL_SPECS.log's bark now,
+ * effectsRenderer _fireLogToBark.)
  *
  * WHY AT LOAD AND NOT IN THE FILES.  Code downstream still reads the key: the
  * fishing rod is FOUND by its magenta when an armoured angler's body is baked
