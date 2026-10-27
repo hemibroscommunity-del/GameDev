@@ -106,3 +106,23 @@ Found by the review of v2.3.3620: the daze's hit sets both the wobble's start
 and its end, so the HUD's "Wobbly 2s" chip stood beside "Dazed 1s" for the
 whole daze while nothing wobbled yet. The chip now waits for `_wobbleFrom`
 (ElemStatusChips.jsx `from`).
+
+## v2.3.3675: the goo is the slime's blue
+
+The owner: *"make the slime effect that keeps you stuck in position blue since
+the slimes are blue (green slimes blend in too much with the green scenery)"*.
+
+- The hold's look (effectsRenderer `_updateElemStatusFx`, the `stuck` branch)
+  was drawn in the green slime's greens. It is the blue slime's body colour now,
+  `#3a7ad0` (monsterVariants.js `recolor`), with a lighter and a pale shade of
+  it: the ring on the ground, the goo over the boots, their shine and the drips
+  (`GOO_HOLD`).
+- The HUD's "Stuck" chip (ElemStatusChips.jsx) and the "Stuck!" popup when you
+  try to roll (dodge.js) say it in the goo's light blue. The chip keeps its
+  leaf icon, the owner's choice for the flora element (v2.3.3044).
+- A venom gem's root on a player draws the same look, as it was built "as a
+  slime's hold", so it is blue too.
+
+Test: `mp-goohold`, in the world. Held through the game's own handler, the
+picture round the boots goes from 0 to about 1,340 blue device px and no green
+goo; the chip's words are `rgb(140, 196, 255)`.

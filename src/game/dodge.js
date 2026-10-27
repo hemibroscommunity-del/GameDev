@@ -70,7 +70,7 @@ export var triggerContextualDodge = function (S, R, ang) {
     if (isStuck(S, Date.now())) {
       if (!S._stuckNoteAt || Date.now() - S._stuckNoteAt > 600) {
         S._stuckNoteAt = Date.now();
-        if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 44, 'Stuck!', '#8be36a', { ts: Date.now() + 1 });
+        if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 44, 'Stuck!', '#8cc4ff', { ts: Date.now() + 1 });   /* v2.3.3675: the goo's blue */
       }
       return;
     }

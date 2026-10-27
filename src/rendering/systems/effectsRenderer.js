@@ -3076,6 +3076,14 @@ function clearIfDrawn(g) {
    worker's STAM_ABILITIES.whirl.maxTargets, mirrored in data/abilities.js). */
 const WHIRL_CATCH_MAX = 16;
 
+
+/* v2.3.3675: the colours of the goo that holds you (a slime's `stuck`, a
+   venom gem's root), the blue slime's body #3a7ad0 and its lighter shades --
+   green goo vanished into the Verdant Wilds' grass (the owner) */
+export const GOO_HOLD = Object.freeze({
+  body: 0x3a7ad0, light: 0x8cc4ff, shine: 0xe6f4ff, boot: 0x4a8ee6, bootShine: 0xd6ecff, drip: '#5c9ef0',
+});
+
 export class EffectsRenderer {
   constructor(layers) {
     /* ═══ v2.3.3074: WHAT THIS RENDERER BAKES, AND WHAT IT LISTENS TO ═══
@@ -12619,23 +12627,30 @@ export class EffectsRenderer {
         }
       }
       if (stuck) {
+        /* v2.3.3675: THE GOO IS THE SLIME'S BLUE -- the owner: "make the
+           slime effect that keeps you stuck in position blue since the
+           slimes are blue (green slimes blend in too much with the green
+           scenery)".  The blue slime's own body (monsterVariants.js recolor
+           #3a7ad0) with a lighter and a pale shade of it, where the hold
+           was the green slime's greens; a venom gem's root on a player
+           wears it too, as it was built "as a slime's hold" */
         const a = Math.min(1, stuck / 180);
         const wob = Math.sin(now / 110) * 0.06;
-        g.ellipse(x, fy, 28 * k * (1 + wob), 9.5 * k * (1 - wob)); g.fill({ color: 0x4fae3a, alpha: 0.85 * a });
+        g.ellipse(x, fy, 28 * k * (1 + wob), 9.5 * k * (1 - wob)); g.fill({ color: GOO_HOLD.body, alpha: 0.85 * a });
         for (let i = 0; i < 7; i++) {
           const ang = i / 7 * Math.PI * 2 + 0.4;
           const r = (3.4 + (i % 3)) * k * (1 + 0.15 * Math.sin(now / 90 + i));
-          g.circle(x + Math.cos(ang) * 26 * k, fy + Math.sin(ang) * 8.8 * k, r); g.fill({ color: 0x4fae3a, alpha: 0.85 * a });
+          g.circle(x + Math.cos(ang) * 26 * k, fy + Math.sin(ang) * 8.8 * k, r); g.fill({ color: GOO_HOLD.body, alpha: 0.85 * a });
         }
-        g.ellipse(x - 4 * k, fy - 1.5 * k, 17 * k, 5 * k); g.fill({ color: 0x8be36a, alpha: 0.8 * a });
-        g.ellipse(x + 8 * k, fy - 2.8 * k, 4.5 * k, 1.8 * k); g.fill({ color: 0xe8ffd8, alpha: 0.65 * a });
+        g.ellipse(x - 4 * k, fy - 1.5 * k, 17 * k, 5 * k); g.fill({ color: GOO_HOLD.light, alpha: 0.8 * a });
+        g.ellipse(x + 8 * k, fy - 2.8 * k, 4.5 * k, 1.8 * k); g.fill({ color: GOO_HOLD.shine, alpha: 0.65 * a });
         /* over the boots: the goo that is holding them */
         for (const s2 of [-1, 1]) {
-          f.ellipse(x + s2 * 6.5 * k, fy - 3.5 * k, 8.5 * k, 6 * k * (1 + wob)); f.fill({ color: 0x5cc044, alpha: 0.88 * a });
-          f.ellipse(x + s2 * 6.5 * k - 2 * k, fy - 6.5 * k, 3 * k, 1.4 * k); f.fill({ color: 0xd9ffc9, alpha: 0.65 * a });
+          f.ellipse(x + s2 * 6.5 * k, fy - 3.5 * k, 8.5 * k, 6 * k * (1 + wob)); f.fill({ color: GOO_HOLD.boot, alpha: 0.88 * a });
+          f.ellipse(x + s2 * 6.5 * k - 2 * k, fy - 6.5 * k, 3 * k, 1.4 * k); f.fill({ color: GOO_HOLD.bootShine, alpha: 0.65 * a });
         }
         if (parts && Math.random() < 0.15 * dts) {
-          parts.push({ x: x + (Math.random() - 0.5) * 18 * k, y: fy - 12 * k, vx: 0, vy: 0.3, life: 0.45, color: '#6fcf4a', size: 1.9 });
+          parts.push({ x: x + (Math.random() - 0.5) * 18 * k, y: fy - 12 * k, vx: 0, vy: 0.3, life: 0.45, color: GOO_HOLD.drip, size: 1.9 });
         }
       }
       if (gustAge >= 0 && gustAge < GUST_FX_MS) {
