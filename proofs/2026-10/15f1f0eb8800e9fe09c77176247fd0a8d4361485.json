@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "15f1f0eb8800e9fe09c77176247fd0a8d4361485",
+  "tree": "47cf7d0991cf2034286d5da1d96a742a8f9d0cd3",
+  "committedAt": "2026-10-27T13:58:35-07:00",
+  "subject": "The greaves cover the trousers while you light a fire (v2.3.3669) (#1152)",
+  "files": 6653,
+  "bytes": 773060066,
+  "listingSha256": "18571d3ca3bd57a38220f253955bc7f0120a09491e7af5f3e1bea1922cc22659",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
