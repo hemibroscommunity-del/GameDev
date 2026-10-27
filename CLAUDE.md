@@ -712,7 +712,12 @@ remnant to migrate server-side, not a mode to preserve.
       hit through the kit's row of the hit door and blown 130 px over 420 ms
       (`m._gustPx`/`_gustMs` for that blow; the room granted), 8 s cooldown;
       kill switch `mummyroar: false`; `mummy-roar` suite, `mp-elemhits`:
-      docs/specs/mummy-roar.md.
+      docs/specs/mummy-roar.md. Since v2.3.3634 (the review's finds) an `aoe`
+      kit's ring is ROUND THE CASTER (`ax`/`ay` its own place, the roar
+      measured from that ring), a respawn clears a kit's wind-up (a mummy
+      killed mid-roar roared at its spawn), a fully blocked roar is no
+      "MISS", and a snowman's freeze counts as a daze against players
+      (pvplunge.js `_pvpDazed`).
   - Since v2.3.2997 the TOWN IS 1.15x AND THE VIEW 25% FURTHER OUT -- the
     owner: "Change buildings from 1.5x to 1.15x and let me see what making the
     default scale looks like about 25% more zoomed out for everything by
@@ -2000,8 +2005,16 @@ remnant to migrate server-side, not a mode to preserve.
       owner: "above the center of the dashboard ... instead of the top bar")
       a red skull and the number centred just over the band, riding
       `--sheet-h`, whose tap opens the rules in InfoPopup with your own
-      skull's minutes (`src/ui/mobile/NmlBadge.jsx`; `--nml-lift` steps the
-      interact prompts over it); the top bar names the stage again;
+      skull's minutes (`src/ui/mobile/NmlBadge.jsx`); since v2.3.3629 JUST
+      LEFT OF THE MINIMAP, level with its name plate (the owner: "just beside
+      the minimap where it lists the zone and level range"; `nmlBadgeSpot`
+      from `window.__btWheelPlate`, as tall as the plate; SIDEWAYS level
+      with the box's top, or on a short screen in the top bar's row, the
+      sprint button and Special standing left of the plate there and the
+      attack disc under the box; `--nml-lift` and
+      the stepping aside for the shield gone; the blinking line along the
+      band stays; mp-nomansland, mp-nmlfoe at every width); the top bar names
+      the stage again;
     - two players may fight when both stand in it, their `ps.level`s at most
       the LOWER of their two numbers apart, not one party -- `_nmlAllowed`,
       asked by `_pvpAllowed` before `OPEN_PVP`, which stays off elsewhere;
@@ -3964,6 +3977,12 @@ remnant to migrate server-side, not a mode to preserve.
     ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
     town's white square only without them; `__btMinimap.buildings`,
     `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
+    Each wears its Enter button's picture (v2.3.3522); since v2.3.3630 in its
+    own colours, ringed in a thin dark outline and drawn 20 px, BIGGER THAN
+    THE FOOTPRINT (the owner: "just do the colored icons but oversized so they
+    aren't competing with the buildings color and size"; v2.3.3614's white
+    symbols on dark discs before): wheelBuildingIcons.js `drawIcon`,
+    wheelMinimap.js `BLD_ICON_PX`; docs/specs/menus-2026-10-19.md.
   - Since v2.3.3277 YOUR PARTY IS ON THE MAPS -- the owner's "Yes do
     suggested", the party's map-markers follow-up (ARCHITECTURE-HANDOFF D):
     each member in the party's blue (the UI's Info blue `#5D93D2`, ringed
@@ -5689,6 +5708,18 @@ Two protocol versions coexist; both must keep working:
     `window.__btGpuTex()`'s `uidNow`): a body strip loaded behind the loading
     screen reaches the graphics chip the first time it is drawn, and which
     trip first draws it is luck.
+  - A DESTROYED TEXT LETS GO OF ITS STYLE (v2.3.3633, found by the owner's
+    "check for memory leaks in long form play sessions"): Pixi 8.17's
+    `destroy()` never takes a Text's listener off its TextStyle, and
+    `{ ...NAME_STYLE, fontSize: 9 }` SHARES the base style's listener registry,
+    so every monster's name and loot label ever made was kept (42 -> 154
+    destroyed Texts after two trips to a fight); src/rendering/textRelease.js
+    takes the listener off and gives a spread its own registry (5, flat over
+    five trips; `?textkeep` as Pixi ships, `mp-textrelease`). A spread ALSO
+    drops its overrides (the base's size, weight and colour win): derive a
+    style with `BASE.clone()` and set the field (TRAPS §254); the labels
+    written the old way are drawn as the owner has seen them:
+    docs/specs/text-release.md.
   - A PICTURE ON 256 COLOURS OR FEWER IS KEPT AS COLOUR NUMBERS (v2.3.3190 --
     the owner asked whether the art could be "recreated byte for byte using
     pure code"; not that, a drawn picture costs the GPU what a loaded one does,

@@ -36,47 +36,87 @@
  * corner instead of a third thing in the row (it was 81 px wide with one, and
  * at 360 and 375 the moved badge lay over the bell).  mp-nmlfoe measures it at
  * 320-430 px and sideways.
+ *
+ * ═══ v2.3.3629: BESIDE THE MINIMAP'S NAME PLATE ═══
+ * The owner, 2026-10-27: "I think I'd rather have the no man's land skull and
+ * level just beside the minimap where it lists the zone and level range".
+ * So the badge left the bottom of the screen: it stands just left of the
+ * minimap's box, level with its name plate (the land's name over its level
+ * band, wheelMinimap.js, whose box it publishes as window.__btWheelPlate) and
+ * as tall as the plate, so the place, its levels and the skull read together.
+ * Up there it is clear of every thumb control, so v2.3.3268/v2.3.3608's
+ * stepping aside for the shield button is gone (nmlBadgePlace), and so is
+ * `--nml-lift`, which lifted the prompts over the band while the badge held
+ * its middle.  The blinking red line along the band stays.  Placed in its
+ * containing block's numbers (the probe below: on a computer #root's paint
+ * box, TRAPS §232); with no plate drawn there is no badge.  SIDEWAYS the
+ * sprint button and Special stand left of the plate (sprintAnchor,
+ * SPRINT_MAP_CLEAR) and the attack disc reaches up under the box, so there it
+ * stands just left of the box level with its TOP edge; on a screen too short
+ * for that (under ~340 px tall the sprint button reaches up beside the box's
+ * top) in the top bar's row above the box, its right edge in line.
+ * mp-nmlfoe's sideways rows found it behind the sprint button, then on the
+ * disc.  In the top bar's row it is PORTALLED TO THE BODY, as the "Attack
+ * <name>?" window is: the top bar (GameApp's ZoneHeader, z 20) is outside the
+ * game's wrapper, so a badge inside the wrapper was drawn UNDER it whatever
+ * its own z-index (mp-nmlfoe's 667 x 320 row found it in place but unseen).
+ * Its other places keep it in the wrapper, layered as before.
  */
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { nmlHere, NML_RED } from '@/game/noMansLand.js';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { infoPopupBus } from './infoPopupBus.js';
-import { blockAnchor } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.3268: where the shield button stands; v2.3.3608: where it WILL stand, before it shows */
 
-/* how far the bottom-band prompts step up while the badge is shown: its 44 px
-   tap row, and a little air */
-export const NML_LIFT_PX = 62;   /* v2.3.3600: the badge twice the size */
+/* v2.3.3629: beside the minimap's box (wheelMinimap.js WHEEL_BOX), level with
+   its name plate: BOX_PAD the plate's inset in the box (PLATE_PAD), BOX_GAP the
+   air left between the badge and the box */
+const BOX_PAD = 4;
+const BOX_GAP = 6;
 
-/* v2.3.3268 placed the badge left of the middle, between the bell and the
-   shield button, always (BADGE_W, SHIELD_AIR, BELL_END in CSS).  Since
-   v2.3.3608 it is CENTRED, and steps beside the shield only while the shield
-   button lies under that spot (nmlBadgePlace): SHIELD_AIR clear of the shield
-   and of the bell, drawn as small as it must be there and never under
-   BADGE_MIN_K of its size. */
-const SHIELD_AIR = 6;
-const BADGE_MIN_K = 0.6;
+/* the badge's tap row and its widest (a two-digit ring, your own skull on its
+   corner), for the places beside the box's top and in the top bar (sideways) */
+const BADGE_ROW = 44;
+const BADGE_W = 76;
+/* the minimap's box (wheelMinimap.js WHEEL_BOX), when its own box is not
+   published: the plate's foot, BOX_PAD inside it, is the box's */
+const MINI_BOX = 132;
 
-/** v2.3.3608: where the badge stands.  Every box in the viewport's numbers:
- *  `cb` the badge's containing block ({left, width}: the play area -- on a
- *  computer the phone-shaped frame, #root's contain:paint), `w` the badge's
- *  own width, `shield` and `bell` the shield button's and the notification
- *  bell's boxes ({left, right}) or null.  Centred on the play area, unless the
- *  shield button lies under that spot (portrait in a fight: its left edge is
- *  the middle) -- then its right edge SHIELD_AIR left of the shield, scaled to
- *  the room left of it down to BADGE_MIN_K, over the bell's end only where
- *  even that does not fit (a 320 px phone).  Returns {left, k}: `left` from
- *  the containing block's left edge, `k` the scale, `beside` whether it
- *  stepped aside. */
-export function nmlBadgePlace(cb, w, shield, bell) {
-  const mid = cb.left + cb.width / 2;
-  const l = mid - w / 2, r = mid + w / 2;
-  if (!shield || r <= shield.left - SHIELD_AIR || l >= shield.right) {
-    return { left: Math.round(l - cb.left), k: 1, beside: false };
-  }
-  const right = shield.left - SHIELD_AIR;
-  const from = bell ? bell.right + SHIELD_AIR : cb.left + 4;
-  const k = Math.max(BADGE_MIN_K, Math.min(1, (right - from) / w));
-  return { left: Math.round(right - w * k - cb.left), k: Math.round(k * 100) / 100, beside: true };
+/** v2.3.3629: where the badge stands, from the name plate's box and the
+ *  badge's containing block (both in the viewport's numbers, {left, top,
+ *  width, height}).  `right` is px from the containing block's right edge,
+ *  `top` px from its top to the badge's middle (it is drawn centred on it),
+ *  `at` which place it took.  Upright ('plate'): its right edge BOX_GAP left
+ *  of the minimap's box, its middle level with the plate.  SIDEWAYS (`side`)
+ *  the sprint button and Special stand left of the plate and the attack disc
+ *  reaches up under the box, so it takes the same right edge level with the
+ *  box's TOP ('top'), unless that covers one of `avoid` (rects in the
+ *  viewport's numbers: the sprint button reaches up there on a short screen),
+ *  then the top bar's row above the box ('bar').  `mini` is the minimap's box
+ *  ({left, top}, wheelMinimap.js __btWheelMini) when it is published. */
+export function nmlBadgeSpot(plate, cb, side, mini, avoid) {
+  if (!plate || !(plate.width > 8) || !cb) return null;
+  const boxLeft = plate.left - BOX_PAD;
+  const right = Math.round(cb.left + cb.width - (boxLeft - BOX_GAP));
+  if (!side) return { right, top: Math.round(plate.top - cb.top + plate.height / 2), at: 'plate' };
+  const boxTop = mini && typeof mini.top === 'number' ? mini.top : plate.top + plate.height + BOX_PAD - MINI_BOX;
+  const me = { left: boxLeft - BOX_GAP - BADGE_W, right: boxLeft - BOX_GAP, top: boxTop, bottom: boxTop + BADGE_ROW };
+  const hits = (a, b) => !!b && !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+  if (!(avoid || []).some((r) => hits(me, r))) return { right, top: Math.round(boxTop - cb.top + BADGE_ROW / 2), at: 'top' };
+  return { right, top: Math.round(Math.max(BADGE_ROW / 2, (boxTop - cb.top) / 2)), at: 'bar' };
+}
+
+/* the controls a sideways badge may not cover, in the viewport's numbers */
+const AVOID_SEL = '[data-sprint], [data-special], .bt-ability-btn, .bt-burst-btn';
+function avoidRects() {
+  const out = [];
+  try {
+    for (const el of document.querySelectorAll(AVOID_SEL)) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) out.push({ left: r.left, top: r.top, right: r.right, bottom: r.bottom });
+    }
+  } catch (e) { /* none */ }
+  return out;
 }
 
 /* a skull, drawn rather than the emoji (every phone draws 💀 its own way) */
@@ -153,44 +193,26 @@ export function openNmlInfo(S, lvl) {
   });
 }
 
-function setLift(on) {
-  try {
-    const st = document.documentElement.style;
-    if (on) st.setProperty('--nml-lift', NML_LIFT_PX + 'px');
-    else st.removeProperty('--nml-lift');
-  } catch (e) { /* the prompts keep their slot */ }
-}
-
 export default function NmlBadge({ stateRef, isLandscape }) {
   const [lvl, setLvl] = useState(0);
   const [skull, setSkull] = useState(null);
-  /* v2.3.3608: its two places (nmlBadgePlace), worked out ahead from the
-     screen: a sentinel spanning the containing block, the pill's own width,
-     the bell's box as drawn, and the shield button's box -- as drawn, or, while
-     it is not up, where it WILL stand (blockAnchor, the button's own anchor).
-     game.css picks between them the moment the button is in the page
-     (`:has([data-shield])`), so the badge never waits on a poll to step aside:
-     a poll's lag left it over the shield for a moment, where a tap meant for
-     the shield opened the rules (mp-nmlfoe step 1) */
-  const [place, setPlace] = useState(null);
-  const probeRef = useRef(null), pillRef = useRef(null);
+  /* v2.3.3629: where it stands (nmlBadgeSpot), read on its own clock from the
+     plate's box as the minimap last drew it and the containing block's (a
+     sentinel spanning it) */
+  const [spot, setSpot] = useState(null);
+  const probeRef = useRef(null);
+  const isLandscapeRef = useRef(!!isLandscape);
+  isLandscapeRef.current = !!isLandscape;
   const placeNow = useRef(() => {});
   placeNow.current = () => {
     try {
-      const pr = probeRef.current, pill = pillRef.current;
-      if (!pr || !pill) return;
-      const cb = pr.getBoundingClientRect();
-      const box = (sel) => { const n = document.querySelector(sel); const q = n && n.getBoundingClientRect(); return q && q.width > 0 && q.height > 0 ? q : null; };
-      let shield = box('[data-shield]');
-      if (!shield) {
-        const sh = blockAnchor(!!isLandscape);
-        const r = cb.left + cb.width - sh.right;
-        shield = { left: r - sh.size, right: r };
-      }
-      const w = pill.offsetWidth + 2;
-      const p = nmlBadgePlace({ left: cb.left, width: cb.width }, w, shield, box('[data-world-chat-toggle]'));
-      p.centre = Math.round(cb.width / 2 - w / 2);
-      setPlace((o) => (o && o.left === p.left && o.k === p.k && o.beside === p.beside && o.centre === p.centre ? o : p));
+      const pr = probeRef.current;
+      const plate = typeof window !== 'undefined' ? window.__btWheelPlate : null;
+      const cb = pr ? pr.getBoundingClientRect() : null;
+      const side = !!isLandscapeRef.current;
+      const mini = typeof window !== 'undefined' ? window.__btWheelMini : null;
+      const p = cb ? nmlBadgeSpot(plate, { left: cb.left, top: cb.top, width: cb.width }, side, mini, side ? avoidRects() : null) : null;
+      setSpot((o) => (o === p || (o && p && o.right === p.right && o.top === p.top && o.at === p.at) ? o : p));
     } catch (e) { /* the badge keeps its place */ }
   };
   useEffect(() => {
@@ -201,24 +223,20 @@ export default function NmlBadge({ stateRef, isLandscape }) {
       try { l = nmlHere(S); } catch (e) { l = 0; }
       const sk = l ? nmlSkullLeft(S, Date.now()) : null;
       const sig = l + '|' + (sk ? sk.type : '');
-      if (sig !== last) { last = sig; setLvl(l); setSkull(sk); setLift(l > 0); }
+      if (sig !== last) { last = sig; setLvl(l); setSkull(sk); }
       if (l) placeNow.current();
     }, 250);
-    return () => { clearInterval(id); setLift(false); };
+    return () => clearInterval(id);
   }, [stateRef]);
-  /* QA handle, the house style (__btInfoPopup, __btCtlTut); `beside` true
-     while it stands beside the shield button right now */
+  /* QA handle, the house style (__btInfoPopup, __btCtlTut) */
   useEffect(() => {
     try {
-      window.__btNmlBadge = () => ({ lvl, skull: skull && skull.type, place,
-        beside: !!(place && place.beside && document.querySelector('[data-shield]')) });
+      window.__btNmlBadge = () => ({ lvl, skull: skull && skull.type, spot });
     } catch (e) { /* no window */ }
-  }, [lvl, skull, place]);
-  /* v2.3.3268: placed again when the screen's width changes (where the shield
-     button stands moves with it, ShieldButton.jsx ctlColumn) -- only while
-     the badge is up; v2.3.3608: and as it first comes up */
+  }, [lvl, skull, spot]);
+  /* placed again at once when it comes up and when the window changes size */
   useEffect(() => {
-    if (!lvl) { setPlace(null); return undefined; }
+    if (!lvl) { setSpot(null); return undefined; }
     const f = () => placeNow.current();
     const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame(f) : 0;
     try { window.addEventListener('resize', f); } catch (e) { /* no window */ }
@@ -227,66 +245,43 @@ export default function NmlBadge({ stateRef, isLandscape }) {
     };
   }, [lvl, isLandscape]);
   if (!lvl) return null;
-  /* v2.3.3268 put the badge's right edge left of the middle and of the
-     shield button, in the FRAME's numbers: on a computer the game is a
-     phone-shaped frame (#root, contain:paint) narrower than the window, and
-     the first cut worked in the window's numbers and put the badge 300 px
-     left of the frame's middle there (mp-nomansland).
-     ═══ v2.3.3608: CENTRED, BESIDE THE SHIELD ONLY WHILE IT IS IN THE WAY ═══
-     The owner, 2026-10-26: "center the red skull on the UI so it's not
-     awkwardly aligned to the left."  It stood left of the middle all the time
-     so it could never cover the shield button (whose left edge is the middle,
-     upright), and since v2.3.3600 made it twice the size it lay on the bell
-     below a 390 px phone.  Now it is centred on the play area, and only while
-     the shield button is drawn under that spot (a fight) does it step just
-     left of the shield, smaller if the bell leaves less room (nmlBadgePlace).
-     Lifting it over the shield instead was measured and does not fit: Bash
-     and the attack disc stand right above the shield, in the middle.  Placed
-     from the boxes as drawn, so every number is the frame's own; the switch
-     between the two places is game.css's (.bt-nml-badge), and the badge sits
-     UNDER the shield button (z 30 to its 31, over the sticks' 6): whatever
-     the moment, a tap on the shield is the shield's. */
-  const vars = place ? {
-    '--nml-c-left': place.centre + 'px', '--nml-c-tf': 'none',
-    '--nml-b-left': place.left + 'px',
-    '--nml-b-k': String(place.k),
-  } : null;
   const open = (e) => {
     e.preventDefault();
     e.stopPropagation();
     openNmlInfo(stateRef && stateRef.current, lvl);
   };
-  return (
-    <>
+  const badge = (<>
     {/* v2.3.3608: spans the badge's containing block, so its box says where
-        the play area is in the viewport's numbers (nmlBadgePlace) */}
+        that block is in the viewport's numbers (v2.3.3629: nmlBadgeSpot; in
+        the body's portal that block is the viewport) */}
     <div ref={probeRef} aria-hidden="true" style={{ position: 'fixed', left: 0, right: 0, top: 0, height: 0, visibility: 'hidden', pointerEvents: 'none' }} />
-    <button type="button" data-nml-badge={lvl} data-nml-beside={place && place.beside ? '' : undefined}
-      className="bt-nml-badge"
+    {spot && (
+    <button type="button" data-nml-badge={lvl} data-nml-at={spot.at}
       aria-label={`No man's land ${lvl}: players can attack you here. Tap for what it means.`}
       onClick={open}
       style={{
-        /* v2.3.3608: centred, beside the shield only while it is in the way
-           -- `left` and `transform` are game.css's (.bt-nml-badge), from these
-           variables (see above) */
-        position: 'fixed', ...vars,
-        bottom: 'calc(var(--sheet-h, var(--dash-h)) + 2px)', zIndex: 30,
+        /* v2.3.3629: just left of the minimap's box, level with its name
+           plate (sideways level with the box's top, or in the top bar's row:
+           nmlBadgeSpot), a 44 px target round a pill the plate's height */
+        position: 'fixed', right: spot.right, top: spot.top, transform: 'translateY(-50%)', zIndex: 30,
         minHeight: 44, padding: '0 1px', background: 'transparent', border: 0,
         display: 'flex', alignItems: 'center', cursor: 'pointer',
         touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
       }}>
-      <span ref={pillRef} style={{
-        /* v2.3.3268: a little tighter (it was 4px 10px 4px 7px, gap 5) */
-        position: 'relative', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px 5px 7px',   /* v2.3.3600: twice the size */
+      <span style={{
+        /* v2.3.3629: as tall as the minimap's name plate beside it (the
+           plate 33 px, the pill 37: v2.3.3600's skull 38 and number 32 were
+           sized for the bottom of the screen) */
+        position: 'relative', display: 'flex', alignItems: 'center', gap: 5, padding: '3px 10px 3px 5px',
         borderRadius: 999, background: 'rgba(22,10,10,.86)',
         border: `2px solid ${NML_RED}`, boxShadow: '0 0 0 1px rgba(0,0,0,.5)',
         color: '#FFE3DF', fontSize: 12, fontWeight: 800, letterSpacing: '.02em', whiteSpace: 'nowrap',
       }}>
         {/* the skull and the number only (the owner's "skull level"): the
-            words would run under the bell and the jump button beside it on a
-            390 px phone; a tap says them */}
-        <NmlSkull size={38} />
-        <span data-nml-num="" style={{ fontSize: 32, color: NML_RED, fontWeight: 900, lineHeight: 1 }}>{lvl}</span>
+            land's name and its levels are on the plate beside it, and a tap
+            says the rules */}
+        <NmlSkull size={27} />
+        <span data-nml-num="" style={{ fontSize: 23, color: NML_RED, fontWeight: 900, lineHeight: 1 }}>{lvl}</span>
         {/* v2.3.3268: your own skull on the pill's top corner, as a count sits
             on a bell, so the badge is no wider for it (see the header) */}
         {skull && (
@@ -300,6 +295,14 @@ export default function NmlBadge({ stateRef, isLandscape }) {
         )}
       </span>
     </button>
+    )}
+    </>);
+  return (
+    <>
+    {/* v2.3.3629: in the top bar's row the badge goes to the body (see the
+        header); everywhere else it stays in the game's wrapper, layered as it
+        always was (under a level-up's celebration, the dashboard's windows) */}
+    {spot && spot.at === 'bar' ? createPortal(badge, document.body) : badge}
     {/* v2.3.3600: A SLOWLY BLINKING RED LINE along the top of the band while
         you are in No man's land -- the owner: "some kind of slightly blinking
         red line" (game.css bt-nml-line; still under calm motion) */}

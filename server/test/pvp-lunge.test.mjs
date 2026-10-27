@@ -212,6 +212,22 @@ const dist = () => Math.hypot(B.x - A.x, B.y - A.y);
   check('...and when the daze is over, B\'s swing lands again', !!later && later.dmgTaken > 0, later);
 }
 
+// ── 3b. v2.3.3634: a snowman's FREEZE counts as a daze against players ──
+{
+  setup({ bx: 300 });
+  consent();
+  A.x = B.x - 40; A.y = B.y;
+  B._freezeUntil = T + 400;   /* monsterstatus.js FREEZE: no walk, swing, roll or shield */
+  check('(guard) B is frozen, not dazed', B._freezeUntil > T && !(B._dazeUntil > T) && room._pvpDazed(B, T) === true);
+  const back = swing(sessB, 'bp_lu_a', 151);
+  check('a FROZEN player\'s swing lands nothing on a player, as a dazed one\'s (the review of v2.3.3620)', back === null, back);
+  T += 401;
+  const again = swing(sessB, 'bp_lu_a', 152);
+  check('...and the freeze over, not dazed: the same swing lands', room._pvpDazed(B, T) === false && !!again && again.dmgTaken > 0, again);
+  B._freezeUntil = 0;
+  noConsent();
+}
+
 // ── 4. refusals: a whiff that moves nobody ──
 {
   const whiffs = [];
