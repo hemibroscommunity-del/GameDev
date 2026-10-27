@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7a901c49dbe66931b2655590dfed0a79ac32ca96",
+  "tree": "de029c0f0c3db3dcb8aec688b03c8a43dc8e50ee",
+  "committedAt": "2026-10-27T03:17:26-07:00",
+  "subject": "Server suites wait for the ticks they read, not a fixed 66–132 ms (v2.3.3639) (#1138)",
+  "files": 6593,
+  "bytes": 762798522,
+  "listingSha256": "be8590498744cc5344e6bf463d482639aa4645dfaa95288e29a157f5688aaede",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
