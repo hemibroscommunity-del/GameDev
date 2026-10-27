@@ -1,4 +1,5 @@
 import React from 'react';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
 import { WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';
 import { mailList, mailAge } from '@/game/postOffice.js';
 import { ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3481: the mail names items as the bag does */
@@ -168,7 +169,7 @@ function hotel(props) {
 
 function sheriff(props) {
   return [
-    row('duel', '/icons/ui/soc-duel.webp', '⚔️', 'Duel a player', 'Pick a player, then tap Duel on their card', props.onPlayers),
+    row('duel', '/icons/ui/soc-duel.webp', '⚔️', 'Duel a player', deskWords('Pick a player, then tap Duel on their card'), props.onPlayers),
     row('arena', '/icons/ui/evt-duel.webp', '🏟', 'The arena', 'Sign up for the gladiator arena', props.onArena),
   ];
 }
@@ -216,7 +217,7 @@ export function SaloonPanel(props) {
      inviting you.  It says what it does now.  And with no party it comes
      FIRST, above the words on how a party works: held sideways it started
      below the screen's edge under them. */
-  var inviteRow = row('party', '/icons/ui/soc-party.webp', '🍺', 'Invite a player', 'Pick a player, then tap Invite to Party on their card', props.onPlayers);
+  var inviteRow = row('party', '/icons/ui/soc-party.webp', '🍺', 'Invite a player', deskWords('Pick a player, then tap Invite to Party on their card'), props.onPlayers);
   return (
     <div style={LS_WRAP} data-saloon="">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }}>

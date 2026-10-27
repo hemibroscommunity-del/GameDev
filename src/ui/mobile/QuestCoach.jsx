@@ -21,6 +21,7 @@ import { dashMinBus } from './dashMinBus.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { playIsLandscape } from './playViewport.js';
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
+import { deskWords } from '@/game/deskWords.js'; /* v2.3.3612: "tap" reads "click" on a computer */
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
@@ -1789,7 +1790,7 @@ export function QuestCoach(props) {
       }, view.label),
       React.createElement('div', {
         style: { fontSize: 12.5, fontWeight: 600, lineHeight: 1.3, color: '#F4F0E7' },
-      }, view.body),
+      }, deskWords(view.body)),
       /* Only the block lesson has something to fill: the other two are a
          single action, and a progress bar that jumps 0 -> 100 tells the
          player nothing they did not already see happen. */

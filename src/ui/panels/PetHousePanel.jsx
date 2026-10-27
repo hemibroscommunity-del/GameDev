@@ -1,4 +1,5 @@
 import React from 'react';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
 import { BT_AUDIO, ELEMENTS, MAX_PET_SLOTS, PET_EVOLUTION_TIERS } from '@/data/index.js'; /* v2.3.3120: enchantPet, evolvePet retired */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
@@ -159,7 +160,7 @@ export function PetHousePanel(props) {
       textAlign: 'center',
       lineHeight: 1.4
     })
-  }, "No pets yet. Target a monster out in the lands and tap TRAP, then kill it."), /*#__PURE__*/React.createElement("div", {
+  }, deskWords("No pets yet. Target a monster out in the lands and tap TRAP, then kill it.")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(2,1fr)',
@@ -260,5 +261,5 @@ export function PetHousePanel(props) {
       marginTop: 8,
       lineHeight: 1.4
     }
-  }, "Tap to set active. Active pet follows and auto-loots."))));
+  }, deskWords("Tap to set active. Active pet follows and auto-loots.")))));
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
 import { PlayerPaint, WornPreview, PatternSwatch } from './PlayerPaint.jsx';   /* v2.3.1938; v2.3.1940 pants + tattoos; v2.3.2414 WornPreview + PatternSwatch for the inline tools */
 /* v2.3.2414: the ink card reads the drawing stores directly.  It shows what
    you ALREADY wear, so it has to repaint when the editor closes having changed
@@ -1124,7 +1125,7 @@ export function NameModal(props) {
   }),
   /*#__PURE__*/React.createElement("canvas", {
     ref: previewCanvasRef,
-    title: 'Live preview — tap to zoom',
+    title: deskWords('Live preview — tap to zoom'),   /* v2.3.3612: a computer shows it on hover */
     /* v2.3.711: drag-to-rotate.  Pointer capture keeps the gesture alive
        when the finger drifts off the canvas mid-swipe.  v2.3.1307: a
        pointer journey with no rotation is a TAP — toggles the zoom. */

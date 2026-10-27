@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
 import { COL, panelStyle, getState, QUALITY_PRISM, qualityInk } from './common.js';
 import { panelVw } from '../playViewport.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
@@ -285,7 +286,7 @@ function Summary({ S, head, end }) {
           style={{ fontSize: 11.5, color: COL.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
           {titleDef
             ? <>Title: <b style={{ color: COL.accent }}>{titleDef.name}</b></>
-            : 'No title yet: tap one you have'}
+            : deskWords('No title yet: tap one you have')}
         </div>
       ) : null}
     </div>

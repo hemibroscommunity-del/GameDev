@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
 import { shopBus } from '../mobile/shopBus.js';
 import { useModalGuard } from '../mobile/modalGuardBus.js'; /* v2.3.2276 */
 import { thumbFor, iconFor, ITEM_NAMES } from '../mobile/dash/InventoryPanel.jsx';
@@ -463,8 +464,8 @@ export function ShopkeeperPanel() {
             flex: 1, textAlign: 'center', fontSize: 12,
             color: 'var(--ui-text-secondary, #B6C1BE)',
           }}>{sideways
-            ? 'Tap his shelf to buy · tap your bag to sell'   /* v2.3.3407: it is beside, not below */
-            : 'Tap his shelf to buy · tap your bag below to sell'}</div>
+            ? deskWords('Tap his shelf to buy · tap your bag to sell')   /* v2.3.3407: it is beside, not below */
+            : deskWords('Tap his shelf to buy · tap your bag below to sell')}</div>
         ) : (
           <>
             {thumbFor(selKey)

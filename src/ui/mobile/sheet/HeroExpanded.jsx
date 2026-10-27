@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
 /* v2.3.2131: the stat rows below became tappable explainers -- see the
    note on sheetRow.  The words live in infoGlossary so the hero sheet and
    anywhere else that ever shows these rows read from one copy. */
@@ -3243,7 +3244,7 @@ export const HeroExpanded = () => {
                         color: armed ? COL.accent : COL.text2,
                         fontSize: 13, fontWeight: 700, letterSpacing: 0.2, cursor: 'pointer',
                       }}>
-                      {armed ? 'Tap again: every point comes back' : '↺ Reset points (free)'}
+                      {armed ? deskWords('Tap again: every point comes back') : '↺ Reset points (free)'}
                     </button>
                   );
                 })()}

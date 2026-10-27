@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
 import { COL, getState, QUALITY_COLOR, QUALITY_LABEL, QUALITY_PRISM, qualityInk } from './common.js';
 import { PetPortrait } from '@/ui/petPortrait.jsx';
 import { CODEX_KINDS, CODEX_ENTRIES, CODEX_ELEMENTS, CODEX_OPEN_AT, CODEX_ROADS, codexFactsAt } from '@/data/monsterCodex.js';
@@ -403,7 +404,7 @@ function DropsTab({ rows, sel, onPick, shared }) {
             ? <span>Each kill rolls once, 1–{n0(CODEX_ROLL_SIDES)}. The item whose numbers it lands on drops{free ? <>; <span data-cx-free={free} style={{ whiteSpace: 'nowrap' }}>{n0(free)}–{n0(CODEX_ROLL_SIDES)}</span> drops nothing more</> : null}.</span>
             : <span>Each kill rolls 1–{n0(CODEX_ROLL_SIDES)} for every item. A roll in its range drops it.</span>}
         </div>
-        <div style={{ marginTop: 2 }}>Tap an item to see what it is and the grades it can roll.</div>
+        <div style={{ marginTop: 2 }}>{deskWords('Tap an item to see what it is and the grades it can roll.')}</div>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { COL, panelStyle, getState } from './common.js';
 import { deriveQuestLog, trackedQuestId, rewardText } from '../sheet/questModel.js';
 import { questSteps, questCountText } from '../../../data/gameSystems.js';   /* v2.3.2820; v2.3.3481 questCountText */
 import { questDetailBus } from '../sheet/questDetailBus.js';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { panelVw } from '../playViewport.js'; /* v2.3.2172: the sheet's width, not the shell's */
 import { TRAIL_STYLES, isTrailOff, getShownTrailStyle, setTrailShown, GROUND_PATH } from '@/game/questTrailStyle.js'; /* v2.3.2896; v2.3.2992 GROUND_PATH */
@@ -224,13 +225,13 @@ export const QuestsPanel = () => {
                       the whole objective again -- this row is what a stuck
                       player glances at. */}
                   <span style={{ display: 'block', fontSize: 12, color: COL.text2, marginTop: 1 }}>{(() => {
-                    if (ready) return quest.desc;
+                    if (ready) return deskWords(quest.desc);
                     const st = questSteps(quest, getState() && getState().rpg, getState());
                     const cur = st && st.find((x) => x.current);
                     /* v2.3.3481: the 2026-10-19 UI review -- and how many you
                        hold, " (2/4)", for a quest that collects (gameSystems
                        questCountText); a ready row keeps its objective alone */
-                    return cur ? ('Next: ' + cur.label) : quest.desc + questCountText(quest, getState() && getState().rpg);
+                    return deskWords(cur ? ('Next: ' + cur.label) : quest.desc + questCountText(quest, getState() && getState().rpg));
                   })()}</span>
                   {/* v2.3.1704 (owner: "The quest UI is a little confusing
                       what's rewards for the next quests vs what's rewarded for

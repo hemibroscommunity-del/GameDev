@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { NPC_DATA } from '@/data/gameDisplay.js';
 import { npcArtUrl } from '@/rendering/npcSprites.js'; /* v2.3.1829: same cache-bust as the world figures */
+import { deskWords } from '@/game/deskWords.js'; /* v2.3.3612: "tap" reads "click" on a computer */
 
 /* ═══ v2.3.1820: HE TALKS TO YOU, ONE THING AT A TIME ═══
  *
@@ -193,7 +194,7 @@ export const NpcDialogue = (props) => {
           {/* `key` on the chunk restarts the fade for each line, so advancing
               reads as him saying the next thing rather than as text swapping
               underneath a static frame. */}
-          <div className="bt-npcdlg-text" key={i}>{chunks[i]}</div>
+          <div className="bt-npcdlg-text" key={i}>{deskWords(chunks[i])}</div>
 
           <div className="bt-npcdlg-foot">
             {/* Dots only when there IS a sequence — a single-chunk line should
