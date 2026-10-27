@@ -707,6 +707,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`8. ...and one whose player walks out of No man's land (now ${lvlB}) goes at once`, !!a8c && !!a8c.dom && !!a8d && !a8d.dom && lvlB === 0, { a8c: a8c && a8c.dom, a8d, lvlB });
 
   /* ── 9. sideways ── */
+  /* v2.3.3629: the raider at the spot, healed and untouchable, first: from
+     step 6 both are mortal for the fight, and the bog lurkers round the ring
+     can kill him while step 8 waits out its windows -- a death sends him home
+     to BroTown, where nothing asks (a run of 2026-10-27 found him there) */
+  await H.devOp(wsPort, 'vitals', idA, { heal: true, god: true, godMinutes: 8 }).catch(() => {});
+  const a9at = await H.readState(A, (S) => ({ x: S.player.x, y: S.player.y }));
+  if (Math.hypot(a9at.x - spot.x, a9at.y - spot.y) > 300) await H.hopTo(A, spot.x, spot.y, { tries: 300, step: 150 });
   await H.hopTo(B, spot.x + 70, spot.y, { tries: 40, step: 150 });
   await A.page.setViewportSize({ width: 844, height: 390 });
   await A.page.waitForTimeout(3000);

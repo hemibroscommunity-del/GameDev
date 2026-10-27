@@ -2000,8 +2000,16 @@ remnant to migrate server-side, not a mode to preserve.
       owner: "above the center of the dashboard ... instead of the top bar")
       a red skull and the number centred just over the band, riding
       `--sheet-h`, whose tap opens the rules in InfoPopup with your own
-      skull's minutes (`src/ui/mobile/NmlBadge.jsx`; `--nml-lift` steps the
-      interact prompts over it); the top bar names the stage again;
+      skull's minutes (`src/ui/mobile/NmlBadge.jsx`); since v2.3.3629 JUST
+      LEFT OF THE MINIMAP, level with its name plate (the owner: "just beside
+      the minimap where it lists the zone and level range"; `nmlBadgeSpot`
+      from `window.__btWheelPlate`, as tall as the plate; SIDEWAYS level
+      with the box's top, or on a short screen in the top bar's row, the
+      sprint button and Special standing left of the plate there and the
+      attack disc under the box; `--nml-lift` and
+      the stepping aside for the shield gone; the blinking line along the
+      band stays; mp-nomansland, mp-nmlfoe at every width); the top bar names
+      the stage again;
     - two players may fight when both stand in it, their `ps.level`s at most
       the LOWER of their two numbers apart, not one party -- `_nmlAllowed`,
       asked by `_pvpAllowed` before `OPEN_PVP`, which stays off elsewhere;

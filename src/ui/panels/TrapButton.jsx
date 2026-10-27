@@ -183,7 +183,7 @@ export function TrapButton({ stateRef, isLandscape }) {
       {...handlers}
       style={{
         left: 'calc(50% - 10px)',
-        bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + (raised ? 76 : 24) + 'px + var(--nml-lift, 0px))',
+        bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + (raised ? 76 : 24) + 'px)',
         display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px 5px 6px',
         lineHeight: 1.1, textAlign: 'left', minHeight: 44,
         background: bg, color: fg, border: '1px solid ' + rim,
