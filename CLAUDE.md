@@ -5115,6 +5115,19 @@ Two protocol versions coexist; both must keep working:
   never a window sized for 60 fps (mp-hitreal, mp-staffcast, mp-solospecial,
   mp-ccink were the test); `BT_QA_CPU_THROTTLE=<rate>` runs every page that
   much slower, to try a check as a slow phone sees it.
+- THE GHOST AUDIT (v2.3.3668, docs/specs/ghost-audit.md): the owner's "check
+  all the animations for ghost remnants of either a body beneath or areas for
+  cleanup". `mp-ghostaudit` photographs every frame of every animation (stand,
+  jog, hit, roll, pickup, the sword, bow and staff, the jump, mining, chopping,
+  fishing, lighting a fire, cooking) of a bro painted in colours nothing else
+  wears -- green skin, a yellow tee, pink trousers, blue boots -- under iron,
+  alone on the canvas, the game's clock held and stepped; then
+  `tools/qa/ghost_audit_report.py` counts the covered colours frame by frame
+  and draws contact sheets. Its first run found six faults, each fixed in its
+  own PR (the stand-ins' legs, the specks round the head, the angler's grip,
+  the pickaxe, the north-east waist, the fire's magenta log); a new animation,
+  stand-in or armour piece is run through it. `BT_GHOST_OUTFITS=full` (about
+  38 minutes on this box), `BT_GHOST_ONLY=stand,jog`.
 - UI REVIEW SCREENSHOTS (v2.3.3407, docs/specs/ui-review.md): the owner's
   "screenshots labelled and bundled for all UI elements in each view ... so I
   can have chatGPT analyze them".  `node tools/qa/ui-review/capture.mjs`
