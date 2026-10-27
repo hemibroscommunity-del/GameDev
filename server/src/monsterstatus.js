@@ -307,11 +307,14 @@ export const monsterStatusMethods = {
     } else if (st === 'gust') {
       const kb = this._gustShove(zoneId, m, ps, 1 - w);
       if (kb) {
-        /* what is left of an earlier gust still counts, up to ALLOW_MAX */
+        /* what is left of an earlier gust still counts, up to ALLOW_MAX --
+           v2.3.3621: or the shove itself and a quarter, a roar's being
+           longer than two swings' (telegraph.js ELEM_KITS.wind) */
+        const len = Math.hypot(kb[0], kb[1]);
         const live = (t < (ps._gustUntil || 0) && ps._gustLeft > 0) ? ps._gustLeft : 0;
-        ps._gustLeft = Math.min(GUST.ALLOW_MAX, live + Math.hypot(kb[0], kb[1]));
+        ps._gustLeft = Math.min(Math.max(GUST.ALLOW_MAX, Math.ceil(len * 1.25)), live + len);
         ps._gustUntil = t + GUST.ALLOW_MS;
-        out.st = st; out.stMs = GUST.MS; out.kb = kb;
+        out.st = st; out.stMs = (m && m._gustMs > 0) ? m._gustMs : GUST.MS; out.kb = kb;
       }
     } else if (st === 'stuck') {
       if (!(t < (ps._stuckImmuneUntil || 0))) {
@@ -425,7 +428,9 @@ export const monsterStatusMethods = {
     const k = this._depthK ? this._depthK(zoneId, ps.y) : 1;
     /* v2.3.3123: `mult`, the ward's share left (1 - w); 1 when absent */
     const wk = typeof mult === 'number' && mult > 0 && mult < 1 ? mult : 1;
-    const len = GUST.PX * (k > 0 ? k : 1) * wk;
+    /* v2.3.3621: a roar's shove (`m._gustPx`, set by telegraph.js for its
+       blow) is longer than a swing's */
+    const len = ((m && m._gustPx > 0) ? m._gustPx : GUST.PX) * (k > 0 ? k : 1) * wk;
     return [Math.round(dx / d * len), Math.round(dy / d * len)];
   },
 
