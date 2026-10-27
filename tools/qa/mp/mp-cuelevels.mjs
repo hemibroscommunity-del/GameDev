@@ -42,13 +42,13 @@ import { EVENT_SOUNDS } from '../../../src/data/eventSounds.js';
 const PROMISED = {
   shieldBlock: 1.4, shieldBall: 0.6, shieldUp: 0.55, shieldDown: 0.35, dodged: 0.5, dodgeRoll: 0.6,
   crit: 0.65, bowLoose: 0.4 /* v2.3.3523: was bowDraw 0.5, the squeak */, discovery: 0.8, jumpUp: 0.4, jumpLand: 0.4, statusEnd: 0.2,
-  throwSnow: 0.5, door: 0.65, lootDrop: 0.25, dungeonClear: 2.5,
+  throwSnow: 0.5, lootDrop: 0.25, dungeonClear: 2.5,
   /* v2.3.3434: the second round ("Look for more too") */
-  farmHarvest: 0.6, betIn: 0.6, betWon: 1.5, betLost: 1.0, jackpotWin: 1.7, guildQuest: 2.4,
+  betIn: 0.6, betWon: 1.5, betLost: 1.0, jackpotWin: 1.7, guildQuest: 2.4,
   warWon: 1.85, warLost: 1.7, arenaJoin: 0.75, petOut: 0.5, petAway: 0.35, petFree: 0.45,
-  rested: 0.45, duelAsk: 0.85, tradeAsk: 0.5, anvil: 0.5,
+  rested: 0.45, duelAsk: 0.85, tradeAsk: 0.5,
   /* v2.3.3434: the third look ("Good look for more") */
-  emotePop: 0.3, slap: 0.3, sitDown: 0.35, flop: 0.6, flexShine: 0.35, cheerPop: 0.45, bagIn: 0.25,
+  emotePop: 0.3, slap: 0.3, sitDown: 0.35, flop: 0.6, flexShine: 0.35, cheerPop: 0.45,
   /* v2.3.3462: the owner's recordings, levelled by tools/audio/cut_owner_sounds.py,
      and the cues moved onto them */
   hurtA: 0.7, hurtB: 0.7, heartbeat: 1.2, munch: 0.5, gulp: 0.5, chatPop: 0.3, chatSent: 0.2,
@@ -65,6 +65,12 @@ const PROMISED = {
   swapSword: 0.4, swapBow: 0.4, swapStaff: 0.4, treeFelled: 1.4,
   /* v2.3.3499: the trap's own sounds */
   trapSet: 0.7, trapShake: 0.4, trapSnap: 1.6, trapMiss: 1.0,
+  /* v2.3.3653: the owner's recordings of 2026-10-27, levelled by the same
+     cutter -- the door, a cave's knock, a fire lit, the farm's harvest, the
+     forge's hammer, the Woodworker's knife, the bag, the coins, Lil Bro (the
+     door was 0.65, the harvest 0.6, the anvil 0.5 and the bag 0.25 before) */
+  door: 0.7, caveMouth: 0.65, campfire: 0.8, farmHarvest: 0.7, anvil: 0.6, bagIn: 0.4, coinsPickup: 0.75, lilBroHmm: 0.5,
+  forge: 0.6, armourForge: 0.6, smelt: 0.6, woodwork: 0.5, hardWood: 0.5, trapsMade: 0.8,
 };
 
 /* v2.3.3434: cues kept quieter than 0.08 of a hit on purpose, and why -- each

@@ -19,6 +19,14 @@
  * Labels say WHEN, in the player's words ("Your bow shot", "A snowman
  * throwing a snowball"), never the code's. */
 
+/* v2.3.3653: the owner's files of parts (ownerSoundClips.js, plain data):
+   part i's slice and volume, as game/farmWork.js farmBeatPlay plays it */
+import { OWNER_SOUNDS } from './ownerSoundClips.js';
+function beat(key, i) {
+  const p = OWNER_SOUNDS[key].parts[i];
+  return { offset: p[0], duration: p[1], vol: p[2] };
+}
+
 /* The studio's sections, in its order: [id, title, what is in it]. */
 export const STUDIO_SECTIONS = [
   ['fight', 'Fighting', 'Your weapons, your shield and your dodges'],
@@ -108,10 +116,11 @@ export const CUE_PLACES = {
   dungeonWave: ['world', 'A dungeon wave coming in (the war horn)'],
   dungeonClear: ['world', '"Dungeon cleared!"'],
   dungeonOut: ['world', 'Leaving a dungeon'],
-  door: ['world', 'Going in through a building\'s door'],
+  door: ['world', 'Going in through a building\'s door: a town building, the farm\'s sheds (the owner\'s door opening)'],
+  caveMouth: ['world', 'Going into a dungeon\'s mouth (a cave: a knock of wood)'],
   landCross: ['world', 'Crossing into a land (under its banner)'],
   fireStrike: ['gather', 'Lighting a campfire: the flint strikes'],
-  campfire: ['gather', 'Lighting a campfire: the fire catching'],
+  campfire: ['gather', 'Lighting a campfire: the fire catching (the owner\'s fire lit)'],
   fireCatch: ['world', 'A building you keep hitting catching fire'],
   mended: ['world', 'A broken object mending itself'],
   signpost: ['world', "A town signpost's boards popping up"],
@@ -186,7 +195,9 @@ export const CUE_PLACES = {
   flop: ['social', 'The Flop move'],
   flexShine: ['social', 'The Flex move'],
   cheerPop: ['social', 'The Cheer move'],
-  bagIn: ['gather', 'A harvest\'s prize landing in your bag'],
+  bagIn: ['gather', 'Anything landing in your bag: a harvest, a crop, a pickup that is more than gold (the owner\'s bag drawn shut)'],
+  coinsPickup: ['loot', 'Picking up coins: gold off a drop, yours or your pet\'s (the owner\'s coins)'],
+  lilBroHmm: ['social', 'Lil Bro\'s own voice: opening a talk with him, taking his quest, his line popping up'],
 
   hurtA: ['hurt', 'Your hurt grunt when a blow lands on you (one of two)'],
   hurtB: ['hurt', 'Your hurt grunt when a blow lands on you (the other)'],
@@ -199,7 +210,7 @@ export const CUE_PLACES = {
   denied: ['you', 'A "no": not enough mana, gold or level, locked, and the like'],
   laugh: ['social', 'The Laugh move'],
   snore: ['social', 'The Sleep move (and again while asleep)'],
-  npcVoice0: ['social', 'A townsperson\'s voice: opening a talk, or their line popping up (hum 1)'],
+  npcVoice0: ['social', 'A townsperson\'s voice: opening a talk, taking his quest, or his line popping up (hum 1)'],
   npcVoice1: ['social', 'A townsperson\'s voice (hum 2)'],
   npcVoice2: ['social', 'A townsperson\'s voice (hum 3)'],
   npcVoice3: ['social', 'A townsperson\'s voice (hum 4)'],
@@ -332,7 +343,14 @@ export const OTHER_PLAYS = [
   ['bite', 'gather', 'A fish biting', { sample: 'fish-on-hook', opts: { vol: 0.65 } }],
   ['catch', 'gather', 'Landing a fish', { sample: 'catch-splash', opts: { vol: 0.65 } }],
   ['cooked', 'gather', 'A fish cooked at a campfire', { sample: 'cook-success', opts: { vol: 0.6 } }],
-  ['coins', 'loot', 'Gold coming in: a sale, a credit, a prize', { sample: 'coin-pickup', opts: { vol: 0.45 } }],
+  /* v2.3.3653: the farm's work as it lands (game/farmWork.js farmBeatPlay):
+     the owner's hoe, can and clay, each strike or squeeze its part in turn */
+  ['farmHoe', 'gather', 'Digging a bed on your farm: the hoe striking the dirt', { sample: 'farm-hoe', opts: beat('farm-hoe', 0) }],
+  ['farmHoe2', 'gather', '...its next strike (three in turn)', { sample: 'farm-hoe', opts: beat('farm-hoe', 1) }],
+  ['farmWater', 'gather', 'Watering a bed: the can\'s pour, as the water reaches the soil', { sample: 'farm-water', opts: { vol: OWNER_SOUNDS['farm-water'].vol } }],
+  ['farmFeed', 'gather', 'Fertilizing a bed: the clay squeezed in', { sample: 'farm-mould', opts: beat('farm-mould', 0) }],
+  ['farmFeed2', 'gather', '...and its next squeeze (two in turn)', { sample: 'farm-mould', opts: beat('farm-mould', 1) }],
+  ['coins', 'loot', 'Gold coming in: a sale, a prize (a pickup is the owner\'s coins, above)', { sample: 'coin-pickup', opts: { vol: 0.45 } }],
   ['questDone', 'loot', 'Turning in a quest', { sample: 'quest-complete-v2', opts: { vol: 0.9 } }],
   ['levelUp', 'you', 'Levelling up', { sample: 'level-up', opts: { vol: 0.55, pitchVar: 0 } }],
   ['flipWin', 'loot', "Ace's coin flip: a win", { sample: 'flip-win', opts: { vol: 0.5, duration: 1.6 } }],
@@ -374,6 +392,18 @@ export const SAMPLE_SOURCES = {
   'flip-lose': '"Classic Game Action Negative 4" (floraphonic 224418)',
   'ui-click': '"Mouse Click" (matthewvakaliuk73627 290204)',
   'ui-equip': '"Item Equip" (freesound_community 6904)',
+  /* v2.3.3653: the owner's recordings of 2026-10-27 (assets/sfx-source/2026-10-27/) */
+  coins: '"coins-05" (anthousai, Freesound 336571)',
+  'bag-close': '"closebag" (triqystudio, Freesound 467605)',
+  'lil-bro-hmm': '"hmm" (roses1401, Freesound 482422)',
+  'fire-light': '"light fire sound" (wdomino, Freesound 507724)',
+  'door-open': '"Waves Audio Door Open SFX" (mavom22, Freesound 740271)',
+  'wood-carve': '"wood carve 5" (frostnox, Freesound 796658)',
+  'forge-strike': '"Hitting Flat hoe with Hammer" (theboulder3400, Freesound 636098)',
+  'farm-harvest': '"Harvest - Cozy Game SFX" (heyheytheree, Freesound 872487)',
+  'farm-water': '"Grab & Can Watering" (wyronroberth, Freesound 516257)',
+  'farm-hoe': '"hoe work" (16hpanskadvorakova_aneta, Freesound 497987)',
+  'farm-mould': '"molding" (manuelaurreaf, Freesound 490099)',
 };
 
 /* ═══ v2.3.3610: THE MUSIC, AND WHERE EACH TRACK PLAYS ═══

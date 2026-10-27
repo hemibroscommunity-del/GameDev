@@ -43,6 +43,14 @@
  * 32.5 MB against main's 31.9 that day (#1106's run, Playwright 1.64.1), its
  * line already 0.1 MB away.  Nothing is kept after it: the third trip ends
  * where the second did.
+ *
+ * v2.3.3653, the owner's recordings of 2026-10-27 (the farm's hoe, can, clay
+ * and harvest, the forge's hammer, the Woodworker's knife, a door, a fire
+ * lit, coins, the bag, Lil Bro's voice): `sound` 30 -> 31 -- RAISED, by what
+ * they decode to, about 1.0 MB (the coins and the hoe at 48 kHz, the rest at
+ * 24).  Like every sound in SFX_MANIFEST they are decoded on the loading
+ * screen, so they are held wherever you are; the check read 26.5-29.1 MB of
+ * sound before them.
  */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 156, measured: 147.8,
@@ -51,7 +59,7 @@ export const MEMORY_BUDGET = {
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
   canvases: { name: 'pictures the game draws itself', mb: 96, measured: 89.9,
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
-  sound: { name: 'decoded sound', mb: 30, measured: 26.0,
+  sound: { name: 'decoded sound', mb: 31, measured: 26.0,   /* v2.3.3653: 30 -> 31, see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
   heap: { name: 'the page\'s JavaScript objects', mb: 33, measured: 27.5,   /* v2.3.3595: 32 -> 33, see the header */
     what: 'the page\'s JavaScript objects' },

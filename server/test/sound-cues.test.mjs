@@ -327,7 +327,7 @@ for (const p of files) {
 
 /* ── 8. the door ── */
 {
-  const a = GD.indexOf('enterBuilding: function enterBuilding()');
+  const a = GD.indexOf('enterBuilding: function enterBuilding(');   /* v2.3.3653: (kind) -- a dungeon's mouth keeps the knock */
   const body = GD.slice(a, GD.indexOf('chatSend: function chatSend()', a));
   check('8a a door is heard: enterBuilding plays the table\'s knock, not beep() (silent since v2.3.1103)',
     a > 0 && /EVENT_SOUNDS\.door/.test(body) && !/this\.beep\(/.test(body));
@@ -569,11 +569,20 @@ for (const p of files) {
   check('11z ...and one asleep snores on (you, a player near you, a townsperson copying you)',
     /SNORE_EVERY_MS = \d+/.test(src('src/game/moveSounds.js')) && /cue\('snore'\)/.test(MS) && /cuePeer\(S, 'snore'/.test(MS) && /cueAt\(S, 'snore'/.test(MS));
   const NV = src('src/game/npcVoices.js');
-  check('11za each townsperson answers in his own hum: a talk opened (the quest panel, a tap, E, walking up to Diego), and softer as his line pops up -- npcChat()\'s silent beep() gone',
+  /* v2.3.3653: a talk opened and a quest taken -- the quest panel's subject is
+     the quest and its status, so taking it is a new subject -- and a keeper
+     opening his building; NOT a line popping up over him (the owner: "should
+     play when you begin talking to someone or taking a quest") */
+  check('11za each townsperson answers in his own hum: a talk opened (the quest panel, a tap, E, a keeper\'s building), a quest taken; never as his line pops up -- npcChat()\'s silent beep() gone',
     /npcSpeaks\(stateRef\.current, questPanel\.npc\)/.test(src('src/ui/panels/QuestPanel.jsx'))
-    && (strip(src('src/game/desktopControls.js')).match(/npcSpeaks\(S, npc\)/g) || []).length === 4
-    && /npcSpeaks\(S, _pn\)/.test(BTc) && (BTc.match(/npcChatter\(S, npc\)/g) || []).length === 2 && !/BT_AUDIO\.npcChat\(/.test(BTc)
-    && /CHATTER_GAP_MS = \d{4}/.test(NV));
+    && /var _subject = questPanel\.quest\.id \+ ':' \+ questPanel\.status;/.test(src('src/ui/panels/QuestPanel.jsx'))
+    && (strip(src('src/game/desktopControls.js')).match(/npcSpeaks\(S, npc\)/g) || []).length === 5
+    && /npcSpeaks\(S, _pn\)/.test(BTc) && /r === 'opens'/.test(BTc) && !/npcChatter/.test(BTc) && !/BT_AUDIO\.npcChat\(/.test(BTc)
+    && !/npcChatter|CHATTER_/.test(strip(NV)));
+  /* v2.3.3653: Lil Bro's own "hmm", the owner's recording -- not a hum */
+  check('11za2 Lil Bro speaks in his own "hmm" (the cue lilBroHmm), not a townsperson\'s hum pitched up',
+    /export const LIL_BRO = 'Lil Bro';/.test(NV) && /if \(name === LIL_BRO\) return cue\('lilBroHmm', k\);/.test(NV)
+      && !/^\s*'Lil Bro':/m.test(NV) && has(EVENT_SOUNDS, 'lilBroHmm') && EVENT_SOUNDS.lilBroHmm[0][0] === 'lil-bro-hmm');
 
   /* the dance */
   const dance = GD.slice(GD.indexOf('BT_AUDIO.setDanceMusic = function'), GD.indexOf('BT_AUDIO._deckEnsure = function') > GD.indexOf('BT_AUDIO.setDanceMusic = function') ? GD.indexOf('BT_AUDIO._deckEnsure = function') : GD.indexOf('BT_AUDIO.setDanceMusic = function') + 900);
@@ -733,6 +742,63 @@ for (const p of files) {
   check('13i the studio\'s Music tab plays a track from its file with the game\'s music bus turned down, and puts it back',
     /data-studio-tab="music"/.test(SS) && /new Audio\(url\)/.test(SS) && /A\._musicBus\.gain\.setTargetAtTime\(on \|\| A\.muted \? 0 : A\.musicLevel/.test(SS)
       && /A\._musicPreview = on \? true : null;/.test(SS) && /if \(A\._musicPreview\) return null;/.test(src('src/game/wheelMusic.js')));
+}
+
+/* ── 14. v2.3.3653: the owner's recordings of 2026-10-27 ──
+   "You can add more sound effects for farming ... "flat-hoe" for
+   blacksmithing ... the other hoe sound is for when you till the dirt ...
+   a clay sound for molding the ground (apply fertilizer) ... wood carving
+   (making bows, staffs, etc) and doors opening ("entering" town buildings)
+   ... Light fire (when lighting a fire), coins (during pickup), and the last
+   sound is when any object gets picked up and placed in your bag" -- and Lil
+   Bro's "hmm". */
+{
+  const { OWNER_SOUNDS } = await import('../../src/data/ownerSoundClips.js');
+  const FW = await import('../../src/game/farmWork.js');
+  const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');
+  const NEW = {
+    coins: '336571__anthousai__coins-05.wav', 'bag-close': '467605__triqystudio__closebag.wav',
+    'lil-bro-hmm': '482422__roses1401__hmm.mp3', 'fire-light': '507724__wdomino__light-fire-sound.wav',
+    'door-open': '740271__mavom22__wavesaudiodooropensfx.wav', 'wood-carve': '796658__frostnox__wood-carve-5.ogg',
+    'farm-harvest': '872487__heyheytheree__harvest-cozy-game-sfx-free.wav', 'farm-water': '516257__wyronroberth__grab-_-can-watering.mp3',
+    'farm-hoe': '497987__16hpanskadvorakova_aneta__hoe-work.wav', 'farm-mould': '490099__manuelaurreaf__molding.wav',
+    'forge-strike': '636098__theboulder3400__flat-hoe.mp3',
+  };
+  const CUT = src('tools/audio/cut_owner_sounds.py');
+  const gone = Object.entries(NEW).filter(([k, f]) => !has(OWNER_SOUNDS, k) || !existsSync(new URL('assets/sfx-source/2026-10-27/' + f, root)) || !CUT.includes(f));
+  check('14a the eleven recordings are cut by the owner\'s cutter from their sources as supplied (assets/sfx-source/2026-10-27/), each in its table',
+    gone.length === 0, gone);
+  const parts = ['farm-hoe', 'farm-mould', 'forge-strike'].filter((k) => !(has(OWNER_SOUNDS, k) && Array.isArray(OWNER_SOUNDS[k].parts) && OWNER_SOUNDS[k].parts.length >= 2
+    && OWNER_SOUNDS[k].parts.every((p) => p.length === 3 && p[2] > 0 && p[2] <= 0.66)));
+  check('14b the hoe\'s strikes, the clay\'s squeezes and the hammer\'s blows are files of parts, each part at a volume of its own', parts.length === 0, parts);
+  check('14c the coins and the hoe keep their sparkle (48 kHz: most of the coins is above 6 kHz), the rest are decoded at 24 kHz',
+    OWNER_SOUNDS.coins.low === false && OWNER_SOUNDS['farm-hoe'].low === false
+      && Object.keys(NEW).filter((k) => k !== 'coins' && k !== 'farm-hoe').every((k) => OWNER_SOUNDS[k].low === true));
+  const L0 = (n) => (EVENT_SOUNDS[n] || []).map((L) => L[0]);
+  check('14d a town building\'s door is the owner\'s door opening; a dungeon\'s mouth (a cave) keeps the knock',
+    L0('door').join() === 'door-open' && L0('caveMouth').join() === 'wood-chop'
+      && /BT_AUDIO\.enterBuilding\('mouth'\)/.test(src('src/game/wheelDungeons.js'))
+      && /kind === 'mouth' \? EVENT_SOUNDS\.caveMouth : EVENT_SOUNDS\.door/.test(GD));
+  check('14e a campfire catching is the owner\'s fire lit (the flint strikes still start it)', L0('campfire').join() === 'fire-light' && L0('fireStrike').every((k) => k === 'mine-strike'));
+  check('14f blacksmithing is the owner\'s hammer on the flat hoe: a bar smelted, a blade or armour forged, the forge at work in town',
+    ['smelt', 'forge', 'armourForge', 'anvil'].every((n) => L0(n).includes('forge-strike')) && !L0('anvil').includes('mine-strike') && !L0('smelt').includes('mine-strike'));
+  check('14g woodworking is the owner\'s knife carving: a bow or staff made, hardened wood, traps (more than one stroke each)',
+    ['woodwork', 'hardWood', 'trapsMade'].every((n) => L0(n).filter((k) => k === 'wood-carve').length >= 2) && !L0('woodwork').includes('axe-chop'));
+  check('14h a crop harvested is the owner\'s harvest (with the soil giving)', L0('farmHarvest').includes('farm-harvest') && !L0('farmHarvest').includes('lure-drop'));
+  const beat = (st, i) => FW.farmBeatPlay(st, i) || {};
+  check('14i the farm\'s work lands to the owner\'s hoe (a dig, its strikes in turn), can (a watering) and clay (fertilizing, its squeezes in turn)',
+    beat('dig', 0).key === 'farm-hoe' && beat('dig', 0).offset !== beat('dig', 1).offset && beat('dig', 3).offset === beat('dig', 0).offset
+      && beat('water', 0).key === 'farm-water' && beat('feed', 0).key === 'farm-mould' && beat('feed', 0).offset !== beat('feed', 1).offset
+      && FW.farmBeatPlay('nothing', 0) === null && FW.farmBeatPlay('__proto__', 0) === null
+      && /farmBeatPlay\(step, i\)/.test(src('src/game/farmWalk.js')) && /farmBeatPlay\(fx\.step, ent\._farmBeat - 1, share\)/.test(src('src/rendering/systems/effectsRenderer.js')));
+  const WS = strip(src('src/networking/wsClient.js'));
+  check('14j coins picked up are the owner\'s coins (the worker\'s credit, never a refused pickup); the spilled coins still sound a sale',
+    L0('coinsPickup').join() === 'coins' && /if \(!payload\.quiet\) cue\('coinsPickup'\);/.test(WS) && /BT_AUDIO\.play\('coin-pickup', \{ vol: 0\.45 \}\)/.test(WS));
+  check('14k anything more than gold into the bag closes it (the owner\'s bag), a beat after its own note; a harvest\'s flight lands to it too',
+    L0('bagIn').join() === 'bag-close' && /cueLater\('bagIn', 0\.14\)/.test(WS) && /cue\('bagIn'\)/.test(src('src/game/lifeSkillRewards.js')));
+  const SS = await import('../../src/data/soundStudio.js');
+  const uncredited = Object.keys(NEW).filter((k) => !has(SS.SAMPLE_SOURCES, k) || !src('CREDITS.md').includes(NEW[k].split('__')[0]));
+  check('14l each recording credited in the studio and in CREDITS.md (its Freesound number), its license marked to confirm', uncredited.length === 0 && /CONFIRM/.test(src('CREDITS.md')), uncredited);
 }
 
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);

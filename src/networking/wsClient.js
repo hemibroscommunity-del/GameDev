@@ -36,7 +36,7 @@ import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
 import { onRestResult, restMapsBuffs } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
 import { setWheelHallCaps } from '@/game/wheelTownDoors.js'; /* v2.3.3539: the Hotel opens against a worker that rests */
-import { cue, cueAt, cuePeer, peerOwn } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
+import { cue, cueAt, cuePeer, peerOwn, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
 import { noteKillCredit } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
 import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
@@ -3889,7 +3889,9 @@ export function setupWebSocket(ctx) {
              too -- the coins landed either way. */
           /* v2.3.3045: unless the caller plays it in time with its own
              picture (the daily chest: ChestReveal, on the coins' rise) */
-          if (!payload.quiet) { try { BT_AUDIO.play('coin-pickup', { vol: 0.45 }); } catch (_ce) {} }
+          /* v2.3.3653: the owner's coins, "coins (during pickup)" -- the
+             spilled coins it replaces still sound a sale and a prize */
+          if (!payload.quiet) cue('coinsPickup');
           /* v2.3.2545: dev probe, house style (cf. window.__btLootSprites) and
              gated on the harness's __btProbe flag so a real player never pays
              for it.  tools/qa/mp/mp-lootcue.mjs counts this, which is what
@@ -4078,6 +4080,14 @@ export function setupWebSocket(ctx) {
           var _pickCue = payload.gem ? 'pickGem' : _gearIn ? 'pickGear' : payload.shard ? 'pickShard'
             : (payload.skull && !(payload.coins > 0)) ? 'pickGear' : null;
           if (_pickCue) cue(_pickCue, (_pickCue === 'pickGear' && !_gearIn) ? 0.6 : 1);
+          /* ═══ v2.3.3653: ...AND THE BAG DRAWN SHUT ═══
+             The owner: "the last sound is when any object gets picked up and
+             placed in your bag" -- anything more than gold (a shard, a gem,
+             armour, a weapon into the stash, a remnant, your own things
+             recovered) closes the bag, a beat after its own note so the two
+             are heard one after the other.  A pile of gold alone is the
+             coins'. */
+          if (_pickCue || payload.weapon || (Array.isArray(payload.items) && payload.items.length > 0)) cueLater('bagIn', 0.14);
         }
         /* Despawn the picker's local copy of the pile -- they're done
            with it.  v2.3.189: delay the actual despawn by 0.75 s so

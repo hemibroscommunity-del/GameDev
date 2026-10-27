@@ -100,6 +100,34 @@ uploader's sounds as Attribution NonCommercial (CC BY-NC 3.0), which the
 supporter pass rules out (above). Its cut is kept, commented out, in
 `cut_footsteps.py`, should the license ever allow it.
 
+#### The owner's recordings of 2026-10-27 (v2.3.3653)
+
+Eleven Freesound downloads the repository owner uploaded on 2026-10-27, kept
+as supplied in `assets/sfx-source/2026-10-27/` (its README names each, by the
+`<id>__<user>__<title>` Freesound gives a download). Every one is **changed**:
+cut to the moment the game wants and levelled by
+`tools/audio/cut_owner_sounds.py` (some high-passed, the fire's with its own
+overtones laid over it), mono, re-encoded. Freesound itself could not be
+reached from the build machine (as for the footsteps), and no search result
+named these licenses, so every row is **CONFIRM**: a look at each sound's page
+(`freesound.org/s/<id>/`). CC0 and CC BY allow the use (CC BY wants the credit
+the About panel already gives, by uploader); **CC BY-NC forbids commercial use,
+which the supporter pass is, so a row that turns out to be NC must come out.**
+
+| What it plays | File | Source | License |
+|---|---|---|---|
+| Coins picked up | `public/sfx/loot/coins.mp3` | "coins-05" by **anthousai**, Freesound 336571 | **CONFIRM** |
+| Anything going into the bag | `public/sfx/ui/bag-close.mp3` | "closebag" by **triqystudio**, Freesound 467605 | **CONFIRM** |
+| Lil Bro's voice | `public/sfx/npc/lil-bro-hmm.mp3` | "hmm" by **roses1401**, Freesound 482422 | **CONFIRM** |
+| Fertilizing a bed (the clay) | `public/sfx/farm/farm-mould.mp3` | "molding" by **manuelaurreaf**, Freesound 490099 | **CONFIRM** |
+| Digging a bed (the hoe) | `public/sfx/farm/farm-hoe.mp3` | "hoe work" by **16hpanskadvorakova_aneta**, Freesound 497987 | **CONFIRM** |
+| A campfire lit | `public/sfx/world/fire-light.mp3` | "light fire sound" by **wdomino**, Freesound 507724 | **CONFIRM** |
+| Watering a bed (the can) | `public/sfx/farm/farm-water.mp3` | "Grab & Can Watering" by **wyronroberth**, Freesound 516257 | **CONFIRM** |
+| The forge's hammer (smelting, forging, the anvil in town) | `public/sfx/craft/forge-strike.mp3` | "Hitting Flat hoe with Hammer" by **theboulder3400**, Freesound 636098 | **CONFIRM** |
+| A town building's door | `public/sfx/world/door-open.mp3` | "Waves Audio Door Open SFX" by **mavom22**, Freesound 740271 | **CONFIRM** |
+| The Woodworker's knife (bows, staffs, hardened wood, traps) | `public/sfx/craft/wood-carve.mp3` | "wood carve 5" by **frostnox**, Freesound 796658 | **CONFIRM** |
+| A crop harvested | `public/sfx/farm/farm-harvest.mp3` | "Harvest - Cozy Game SFX" by **heyheytheree**, Freesound 872487 | **CONFIRM** -- its title says "free" |
+
 > **Note on the Pixabay license.** It permits commercial use and modification
 > without attribution, but it does *not* permit redistributing the audio "as a
 > standalone file" for others to download. Bundling the clips inside a game is

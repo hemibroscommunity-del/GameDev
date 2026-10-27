@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """v2.3.3462: CUT THE OWNER'S RECORDINGS FOR THE SOUNDS STILL NEEDED.
 
+(v2.3.3653: and the eleven of 2026-10-27 -- the farm's hoe, clay, watering
+can and harvest, the forge's hammer, the knife carving wood, a door, Lil
+Bro's "hmm", a fire lit, coins and the bag -- their table below the
+splash's, "THE OWNER'S RECORDINGS OF 2026-10-27".)
+
 The owner, 2026-10-18, after the list of sounds that still needed new
 recordings (docs/SOUND-GAPS.md): "I have the rest of the sounds" -- 21
 recordings, uploaded as they came from Pixabay (CREDITS.md says where).  The
@@ -170,6 +175,79 @@ SPLASH = [   # part, start, length, fade in, fade out, level
     ('out', 0.24, 0.86, 0.015, 0.35, 0.25),
 ]
 SPLASH_GAP = 0.06
+
+# ═══ v2.3.3653: THE OWNER'S RECORDINGS OF 2026-10-27 ═══
+# Eleven Freesound downloads, kept as supplied in assets/sfx-source/2026-10-27/
+# (its README names each), the owner: "You can add more sound effects for
+# farming ... One additional sound I'd like to use for blacksmithing label
+# includes "flat-hoe" the other hoe sound is for when you till the dirt.
+# There's a clay sound for molding the ground (apply fertilizer) ... a sound
+# for wood carving (making bows, staffs, etc) and doors opening ("entering"
+# town buildings) ... the sound for lil bro "hmm" ... Light fire (when lighting
+# a fire), coins (during pickup), and the last sound is when any object gets
+# picked up and placed in your bag".  Their windows MEASURED as the ones above
+# (a 10-20 ms loudness envelope; each recording's bands below, % of its energy):
+#
+#   coins        coins-05            0.02 s + 0.40   the whole jingle, 98% of it ABOVE
+#                                                    6.4 kHz (47% above 12.8): kept at
+#                                                    48 kHz, 24 would lose half of it
+#   bag-close    closebag            0.00 s + 0.42   the bag drawn shut; 46% of it under
+#                                                    100 Hz is handling rumble a phone
+#                                                    cannot play: high-passed at 150 Hz
+#   lil-bro-hmm  hmm                 0.66 s + 0.84   the one "hmm" (95% at 200-400 Hz)
+#   fire-light   light-fire-sound    0.20 s + 1.10   the flare and its tail: 85% under
+#                                                    100 Hz, so kept whole with its own
+#                                                    overtones laid over it, as the
+#                                                    heartbeat's are (a phone hears those)
+#   door-open    door open sfx       0.00 s + 0.88   the creak and the latch (200-400 Hz)
+#   wood-carve   wood-carve-5        0.00 s + 0.24   one stroke of the knife
+#   farm-harvest harvest cozy sfx    0.00 s + 1.06   a bright pop and its ring (92% at
+#                                                    0.8-1.6 kHz)
+#   farm-water   grab & can watering 0.12 s + 0.36   the pour alone, after the can's
+#                                                    clunk (0.08 s), high-passed at 150
+#
+# and three files of parts, as the townsfolk's voices are, played in turn:
+#
+#   farm-hoe     hoe-work            three strikes of the hoe in the dirt (the loudest
+#                                    of the fourteen, 0.78 s apart: 3.73, 6.81, 10.71 s),
+#                                    a bright chink (centroid ~7 kHz, 12% above 12.8 kHz:
+#                                    48 kHz)
+#   farm-mould   molding             two squeezes of the clay; 94% of the file is the
+#                                    microphone's rumble under 100 Hz, so high-passed at
+#                                    300 Hz, the squish is what is left
+#   forge-strike flat-hoe            three blows of the hammer on the flat hoe, its ring
+#                                    (onsets 0.08, 1.35, 3.05 s; 1.6-6.4 kHz)
+#
+# LEVELS, against a melee hit (1.0), from what played there before (measured the
+# same way): the coin pickup was 0.87, the bag's tick 0.31, the door's knock 0.68,
+# the fire catching 0.48, the farm's beats 0.07-0.21 (the watering 0.07, all but
+# silent), the anvil's strike 0.61, the Woodworker's plane 0.91.
+NEW_SRC = '2026-10-27/'
+ONE_SHOTS += [
+    ('coins', NEW_SRC + '336571__anthousai__coins-05.wav', 0.02, 0.40, 0.002, 0.08, 'full', 0.75, 'loot'),
+    ('bag-close', NEW_SRC + '467605__triqystudio__closebag.wav', 0.00, 0.42, 0.003, 0.08, 'low', 0.4, 'ui'),
+    ('lil-bro-hmm', NEW_SRC + '482422__roses1401__hmm.mp3', 0.66, 0.84, 0.010, 0.20, 'low', 0.5, 'npc'),
+    ('fire-light', NEW_SRC + '507724__wdomino__light-fire-sound.wav', 0.20, 1.10, 0.004, 0.40, 'low', 0.8, 'world'),
+    ('door-open', NEW_SRC + '740271__mavom22__wavesaudiodooropensfx.wav', 0.00, 0.88, 0.003, 0.15, 'low', 0.7, 'world'),
+    ('wood-carve', NEW_SRC + '796658__frostnox__wood-carve-5.ogg', 0.00, 0.24, 0.002, 0.05, 'low', 0.5, 'craft'),
+    ('farm-harvest', NEW_SRC + '872487__heyheytheree__harvest-cozy-game-sfx-free.wav', 0.00, 1.06, 0.002, 0.30, 'low', 0.7, 'farm'),
+    ('farm-water', NEW_SRC + '516257__wyronroberth__grab-_-can-watering.mp3', 0.12, 0.36, 0.020, 0.08, 'low', 0.3, 'farm'),
+]
+PROCESS.update({
+    'bag-close': {'hp': 150},
+    'fire-light': {'harm': 0.6},
+    'farm-water': {'hp': 150},
+})
+# name, source, [(start, length)], fade in, fade out, rate, level, group, process
+PART_SETS = [
+    ('farm-hoe', NEW_SRC + '497987__16hpanskadvorakova_aneta__hoe-work.wav',
+     [(3.71, 0.30), (6.79, 0.30), (10.69, 0.28)], 0.003, 0.10, 'full', 0.4, 'farm', {}),
+    ('farm-mould', NEW_SRC + '490099__manuelaurreaf__molding.wav',
+     [(0.30, 0.36), (0.86, 0.36)], 0.020, 0.12, 'low', 0.3, 'farm', {'hp': 300}),
+    ('forge-strike', NEW_SRC + '636098__theboulder3400__flat-hoe.mp3',
+     [(0.06, 0.55), (1.33, 0.55), (3.03, 0.50)], 0.002, 0.20, 'low', 0.6, 'craft', {}),
+]
+PART_GAP = 0.06
 
 # name, source, start, length, crossfade, target ('wind' | 'river'), kbps
 LOOPS = [
@@ -381,6 +459,37 @@ def main():
                             'parts': [[o, l, v] for (o, l), v in zip(soffs, svol)]}
     print(f'  swim-splash  {len(SPLASH)} parts -> {os.path.getsize(spath) / 1024 if os.path.exists(spath) else 0:5.1f} KB, '
           f'parts {soffs}, vols {svol}')
+    # v2.3.3653: the files of parts (the hoe's strikes, the clay's squeezes,
+    # the hammer's blows): each part faded, peak-normalised and at its own
+    # volume at the set's level, as the voices' are
+    for name, src, windows, fi, fo, rate, level, group, pr in PART_SETS:
+        sr = LOW if rate == 'low' else SR
+        parts, at, offs = [], 0.0, []
+        for start, length in windows:
+            w = window(src, start, length, sr)
+            if pr.get('hp'):
+                w = highpass(w, pr['hp'], sr)
+            w = fade(w, fi, fo, sr)
+            w *= PEAK_FILE / max(1e-9, np.abs(w).max())
+            parts.append(w)
+            parts.append(np.zeros(int(PART_GAP * sr)))
+            offs.append([round(at, 3), round(length, 3)])
+            at += length + PART_GAP
+        pw = np.concatenate(parts)
+        ppath = os.path.join(ROOT, 'public', 'sfx', group, f'{name}.mp3')
+        if not scan:
+            encode(pw, sr, ppath, 64 if rate == 'low' else 128)
+        pback = load(ppath) if not scan else load_resampled(pw, sr)
+        pvol = []
+        for off, length in offs:
+            seg = pback[int(off * SR):int((off + length) * SR)]
+            v = level * ref / max(1e-9, loudest50(seg))
+            pvol.append(round(min(v, PEAK_PLAY / max(1e-9, np.abs(seg).max())), 3))
+        table[name] = {'url': f'/sfx/{group}/{name}.mp3', 'level': level, 'low': rate == 'low',
+                       'dur': round(len(pback) / SR, 3),
+                       'parts': [[o, l, v] for (o, l), v in zip(offs, pvol)]}
+        print(f'  {name:12s} {len(windows)} parts -> {os.path.getsize(ppath) / 1024 if os.path.exists(ppath) else 0:5.1f} KB'
+              f' @{sr // 1000} kHz, parts {offs}, vols {pvol}')
     # the loops
     wind_db, river_db = side_rms_db(WIND), side_rms_db(RIVER)
     for name, src, start, length, xf, target, kbps in LOOPS:
@@ -422,12 +531,14 @@ def main():
         return 0
     with open(DATA, 'w') as fh:
         fh.write('/* GENERATED by tools/audio/cut_owner_sounds.py (v2.3.3462) -- do not edit by hand.\n'
-                 '   The owner\'s recordings of 2026-10-18 (docs/SOUND-GAPS.md): each one-shot\'s\n'
+                 '   The owner\'s recordings of 2026-10-18 (docs/SOUND-GAPS.md) and of 2026-10-27\n'
+                 '   (v2.3.3653: assets/sfx-source/2026-10-27/): each one-shot\'s\n'
                  '   address, the volume at which it plays at its LEVEL (times sword-hit3 at the\n'
                  '   melee hit\'s 0.55 x HIT_GAIN, the loudest 50 ms, plain RMS -- the cue table\'s\n'
                  '   "1.0"), its length in seconds, and whether it is decoded at 24 kHz (LOW_RATE_SFX).\n'
                  '   The townsfolk\'s voices and the swim\'s splash are one file each: each part\n'
-                 '   [offset, length, vol] (the splash\'s by `names`: in, out).\n'
+                 '   [offset, length, vol] (the splash\'s by `names`: in, out); so are the hoe\'s\n'
+                 '   strikes, the clay\'s squeezes and the hammer\'s blows (v2.3.3653).\n'
                  '   The loops: address, whole-file RMS in dBFS, length; never in SFX_MANIFEST. */\n')
         fh.write('export const OWNER_SOUNDS = ' + json.dumps(table, indent=2) + ';\n\n')
         fh.write('export const OWNER_LOOPS = ' + json.dumps(loops, indent=2) + ';\n\n')

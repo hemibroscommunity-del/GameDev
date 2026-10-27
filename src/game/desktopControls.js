@@ -110,7 +110,7 @@ export function setupDesktopControls(S, deps) {
       }
       /* v2.3.3258: a keeper opens his building, as a tap does (BroTown.jsx
          openKeeper; data/wheelBuildingDoors.js WHEEL_KEEPERS) */
-      if (npc.keeperOf && deps._desktopOpenKeeper && deps._desktopOpenKeeper(npc)) return true;
+      if (npc.keeperOf && deps._desktopOpenKeeper && deps._desktopOpenKeeper(npc)) { npcSpeaks(S, npc); return true; }   /* v2.3.3653: he answers as he opens it */
       /* v2.3.3067: the same answers a TAP gives (BroTown.jsx tapNpcAtCss):
          Ace's coin flip and Diego's shop.  E said "has nothing for you"
          to both, and Ace's flip has no other door -- he stands in the
