@@ -4032,6 +4032,14 @@ remnant to migrate server-side, not a mode to preserve.
       (`cueLater`); a fire-lighter packs 4.81 MB, not ~6.3, so three fit the
       peers' 16 MB (`PEER_FIG_EST.fire` 4.9); `window.__btCampfireHide`;
       `fire-strip` suite, `mp-firestart`: docs/specs/fire-start.md.
+    - since v2.3.3669 THE GREAVES COVER THE TROUSERS WHILE YOU LIGHT A FIRE --
+      the owner: "Aligning the greaves so the waistband doesn't show would be
+      better": FIRE_GEAR_REG's legs row for frames 3-7 placed again by what the
+      plate and greaves leave of the trousers (their x0.90 kept, position
+      only), for you and a peer alike; frame 7's waistband 590 trouser px of
+      the art -> 16, frames 3-6's thigh 693/852/884/792 -> 84/71/167/438;
+      frame 2's thigh stays (its greaves are painted in another kneel);
+      `mp-firegear` (in the world now) counts it: docs/specs/fire-greaves.md.
     - since v2.3.3623 AN ARMOURED ANGLER'S HANDS ARE GAUNTLETS -- the owner:
       "The fishing animation gets messed up around the hands when the
       character is wearing torso armor": the fish pose's top overlay
