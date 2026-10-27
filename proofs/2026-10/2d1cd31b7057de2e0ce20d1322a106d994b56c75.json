@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2d1cd31b7057de2e0ce20d1322a106d994b56c75",
+  "tree": "dece971425b52c93d259bcadeb859905834ac7b5",
+  "committedAt": "2026-10-26T21:39:59-07:00",
+  "subject": "Stronger element hits: the snowman freezes, the goo holds and stings, the rock leaves you wobbling (v2.3.3620) (#1126)",
+  "files": 6578,
+  "bytes": 762579935,
+  "listingSha256": "bf67a9de3d2bea63f391ac4750939ef232a269f24288284dd5aa02e6c9d9f063",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
