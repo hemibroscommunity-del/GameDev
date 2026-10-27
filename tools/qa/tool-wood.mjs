@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* v2.3.3648: what toolWood.js (src/rendering) takes for the pickaxe, on the
+/* v2.3.3671: what toolWood.js (src/rendering) takes for the pickaxe, on the
  * mining sheets' real pixels at the size the game bakes them (256 px frames),
  * and -- to show why it is the mining sheets only -- what it would take on
  * every other player sheet, whose own skin is pale enough to pass the wood's

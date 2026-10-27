@@ -1,4 +1,4 @@
-# The pickaxe keeps its wood, and the miner's tee has no pinholes (v2.3.3648)
+# The pickaxe keeps its wood, and the miner's tee has no pinholes (v2.3.3671)
 
 The owner, 2026-10-27: "check all the animations for ghost remnants of either a
 body beneath or areas for cleanup".
@@ -64,7 +64,7 @@ recolour's own skin test) with the tee's own colour: the per-channel median of
 its opaque neighbours, from the hole's edge inward. A hole over anything else
 (the pickaxe's steel, an outline) is left: the tee may mean to show it. Its
 invariants abort the run if anything but a hole over skin would change, and
-its dry run finds nothing left to do (`mine-hem` §5). `GEAR_VERSION` 2.3.3648,
+its dry run finds nothing left to do (`mine-hem` §5). `GEAR_VERSION` 2.3.3671,
 so every phone fetches the mended sheet. The PNG only is committed; CI mints
 its WebP twin.
 

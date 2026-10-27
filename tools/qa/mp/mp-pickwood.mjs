@@ -1,4 +1,4 @@
-/* ═══ THE PICKAXE KEEPS ITS WOOD (v2.3.3648) ═══
+/* ═══ THE PICKAXE KEEPS ITS WOOD (v2.3.3671) ═══
  *
  * The owner, 2026-10-27: "check all the animations for ghost remnants of
  * either a body beneath or areas for cleanup".  mp-ghostaudit's miner, a green

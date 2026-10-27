@@ -11,7 +11,7 @@
  *   3. no belly shows: in no frame does a stretch of three columns or more
  *      show skin between the hem and the trousers;
  *   4. phones fetch the new sheet: GEAR_VERSION is 2.3.3622 or later;
- *   5. v2.3.3648: no pinholes -- no see-through pixel the tee encloses lies
+ *   5. v2.3.3671: no pinholes -- no see-through pixel the tee encloses lies
  *      over the skin (tools/gear/fill-mine-tee-holes.mjs's dry run).
  */
 import { readFileSync } from 'node:fs';
@@ -72,7 +72,7 @@ check('2a the tee is the body\'s size, fourteen 128 px frames', T.width === B.wi
   check('4a GEAR_VERSION is 2.3.3622 or later, so every phone fetches the lowered hem', !!m && +m[1] >= 3622, m && m[0]);
 }
 
-/* ── 5. v2.3.3648: no pinholes (tools/gear/fill-mine-tee-holes.mjs) ──
+/* ── 5. v2.3.3671: no pinholes (tools/gear/fill-mine-tee-holes.mjs) ──
    A see-through pixel the tee encloses, over the body's skin, showed the skin
    through the shirt as a dot (154 px over the fourteen frames). */
 {
@@ -80,7 +80,7 @@ check('2a the tee is the body\'s size, fourteen 128 px frames', T.width === B.wi
   check('5a the pinhole tool runs (a dry run, nothing written)', r.status === 0, (r.stderr || '').slice(0, 300));
   check('5b ...and finds no hole over the skin left: "0 px would be written"', /^0 px would be written/m.test(r.stdout || ''), (r.stdout || '').slice(0, 300));
   const m = /const GEAR_VERSION = '2\.3\.(\d+)'/.exec(readFileSync(new URL('src/rendering/gearSheets.js', root), 'utf8'));
-  check('5c GEAR_VERSION is 2.3.3648 or later, so every phone fetches the mended tee', !!m && +m[1] >= 3648, m && m[0]);
+  check('5c GEAR_VERSION is 2.3.3671 or later, so every phone fetches the mended tee', !!m && +m[1] >= 3648, m && m[0]);
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3648: NO PINHOLES IN THE MINER'S TEE ═══
+/* ═══ v2.3.3671: NO PINHOLES IN THE MINER'S TEE ═══
  *
  * The owner, 2026-10-27: "check all the animations for ghost remnants of
  * either a body beneath or areas for cleanup".  mp-pickwood's green miner in a
