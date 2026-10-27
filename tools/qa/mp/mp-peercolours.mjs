@@ -445,10 +445,12 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
 
   /* ── 7. ONE ALLOWANCE FOR THEM ALL, 16 MB ──
      Filled straight (peerFigTry: a made-up skin a figure), as a crowd at the
-     campfires would fill it.  Two fire-lighters (6.3 MB each) fit; a third
-     does not while both were drawn this second, and takes the place of one
-     once neither was; a cook is held to the same allowance, and takes a
-     fire-lighter's place the same way.  Never past 16 MB. */
+     campfires would fill it: fire-lighters until one more does not fit while
+     all were drawn this second -- it waits, and takes the place of one once
+     none was; a cook is held to the same allowance, and takes a fire-lighter's
+     place the same way.  Never past 16 MB.
+     v2.3.3655: HOW MANY is found by filling, not written here: two at 6.3 MB
+     each until the strip lost its painted fire, three at 4.8 since. */
   const hasTry = await A.page.evaluate(() => typeof window._pixiRenderer.peerFigTry === 'function');
   rec.ok('the allowance can be driven (guard)', hasTry);
   if (hasTry) {
@@ -457,26 +459,33 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
     const figs = () => A.page.evaluate(() => ({ ...window._pixiRenderer.peerFigBakes(), baking: window._pixiRenderer.peerFigBaking() }));
     const settle = (label) => H.waitFor(A, () => window._pixiRenderer.peerFigBaking(), (v) => v === false, { timeout: 30000, label });
     const mb = (f) => (f.bytes / 1e6).toFixed(1);
-    await tryFig('fire', 11, null); await settle('fire-lighter 1');
-    await tryFig('fire', 12, 2000); await settle('fire-lighter 2');
-    const two = await figs();
-    rec.ok(`two fire-lighters fit (${two.fire}, ${mb(two)} MB)`, two.fire === 2 && two.bytes <= BUDGET, two);
-    const third = await tryFig('fire', 13, 0);
-    const wait3 = await figs();
-    rec.ok(`a third, with both drawn this second, waits: nothing baked, nothing let go (${wait3.fire}, ${mb(wait3)} MB)`,
-      third === false && !wait3.baking && wait3.fire === 2, wait3);
-    await tryFig('fire', 13, 5000); await settle('fire-lighter 3');
+    /* one more in, or it waited: told by the count held, never by `baking`
+       alone -- a strip already loaded bakes inside the call */
+    let n = 0, next = null, wait = null;
+    for (let i = 0; i < 8; i++) {
+      const had = (await figs()).fire;
+      const got = await tryFig('fire', 11 + i, 0);
+      let f = await figs();
+      if (f.baking) { await settle(`fire-lighter ${i + 1}`); f = await figs(); }
+      if (f.fire > had) { n++; continue; }
+      next = got; wait = f; break;
+    }
+    const full = await figs();
+    rec.ok(`${n} fire-lighters fit (${full.fire}, ${mb(full)} MB)`, n >= 2 && full.fire === n && full.bytes <= BUDGET, full);
+    rec.ok(`one more, with all drawn this second, waits: nothing baked, nothing let go (${wait && wait.fire}, ${wait && mb(wait)} MB)`,
+      !!wait && next === false && !wait.baking && wait.fire === n, wait);
+    await tryFig('fire', 11 + n, 5000); await settle(`fire-lighter ${n + 1}`);
     const swap = await figs();
-    rec.ok(`...and once neither was drawn for a second, it takes the place of one (${swap.fire}, ${mb(swap)} MB)`,
-      swap.fire === 2 && swap.bytes <= BUDGET, swap);
-    const cook = await tryFig('cook', 14, 0);
+    rec.ok(`...and once none was drawn for a second, it takes the place of one (${swap.fire}, ${mb(swap)} MB)`,
+      swap.fire === n && swap.bytes <= BUDGET, swap);
+    const cook = await tryFig('cook', 30, 0);
     const waitC = await figs();
-    rec.ok(`a cook is held to the same allowance: with both fire-lighters drawn this second it waits (${waitC.cook} cook, ${mb(waitC)} MB)`,
-      cook === false && !waitC.baking && waitC.cook === 0 && waitC.fire === 2, waitC);
-    await tryFig('cook', 14, 5000); await settle('cook');
+    rec.ok(`a cook is held to the same allowance: with every fire-lighter drawn this second it waits (${waitC.cook} cook, ${mb(waitC)} MB)`,
+      cook === false && !waitC.baking && waitC.cook === 0 && waitC.fire === n, waitC);
+    await tryFig('cook', 30, 5000); await settle('cook');
     const mixed = await figs();
     rec.ok(`...and takes a fire-lighter's place once they were not (${mixed.cook} cook, ${mixed.fire} fire-lighter, ${mb(mixed)} MB)`,
-      mixed.cook === 1 && mixed.fire === 1 && mixed.bytes <= BUDGET, mixed);
+      mixed.cook === 1 && mixed.fire === n - 1 && mixed.bytes <= BUDGET, mixed);
     await tryFig(null, 0, 20000);
     const gone = await H.waitFor(A, () => window._pixiRenderer.peerFigBakes(), (v) => v.cook === 0 && v.fire === 0,
       { timeout: 5000, label: 'the allowance let go of' }).catch((e) => ({ err: String(e) }));

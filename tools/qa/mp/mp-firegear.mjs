@@ -83,7 +83,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the speed-up in a way that looked like a registration bug. */
   const readFrame = async () => {
     const p = await P.page.evaluate(() => window._pixiRenderer.fireGearProbe());
-    const f = (p && p.body && p.body.tex) ? Math.round(p.body.tex.x / p.body.tex.w) : -1;
+    /* v2.3.3655: the probe's own index (`fi`).  texture.x / width was the
+       frame only while the trimmed crops packed in order (pixiRenderer
+       fireGearProbe); an older build without `fi` still reads it that way. */
+    const f = (p && Number.isInteger(p.fi) && p.fi >= 0) ? p.fi
+      : (p && p.body && p.body.tex) ? Math.round(p.body.tex.x / p.body.tex.w) : -1;
     return { p, f };
   };
   const holdFrame = async (f) => {

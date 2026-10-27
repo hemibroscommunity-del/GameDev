@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2213: the crit preview hook uses the real crit colour */
-import { standFootDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2846: the campfire is lit at your boots */
+import { DMG_CRIT_COLOR, FIRE_FRAME_MS } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2213: the crit preview hook uses the real crit colour; v2.3.3655: + the fire-lighter's cadence */
+import { fireLightSpot } from '@/rendering/campfireFx.js';   /* v2.3.3655: where a light's fire burns, and its campfire */
+import { FIRE_STRIKE_FRAME } from '@/data/fireStrip.js';     /* v2.3.3655: the strip's strike */
 import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
@@ -413,7 +414,7 @@ import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordD
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits } from '@/game/lifeSkillRewards.js'; /* tickGatherHits v2.3.2956 */
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
-import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
+import { cue, cueLater } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
 import '@/game/soundStudio.js';   /* v2.3.3523: the sound studio's "heard just now" and its way in (the Test panel, ?sounds) */
 import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
 import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3434: the forge heard at work */
@@ -6485,9 +6486,14 @@ export var BroTown = function BroTown(_ref0) {
              is lit where the fire-lighting strip leaves its burning log: on the
              ground at your boots, a stride to your left, so you end the strike
              standing beside your fire rather than in it or in front of it. */
-          var _cfZs = zonePlayerScale(S.currentZone, _fm.x, _fm.y - 6, TILE) || 1;
-          var _cfX = _fm.x - 34 * _cfZs;
-          var _cfY = (_fm.y - 6) + standFootDy(_cfZs) + 2 * _cfZs;
+          /* v2.3.3655: where the light's own fire has burned since the strike
+             (fm.fx/fy, worked out by fireLightSpot when you struck: the same
+             spot as before), so the campfire takes that fire over in place --
+             campfireFx adopts it.  A record written without them (a test) is
+             placed the same way here. */
+          var _cfSpot = (isFinite(_fm.fx) && isFinite(_fm.fy)) ? { x: _fm.fx, y: _fm.fy } : fireLightSpot(S.currentZone, _fm.x, _fm.y - 6);
+          var _cfX = _cfSpot.x;
+          var _cfY = _cfSpot.y;
           S._campfire = {
             x: _cfX, y: _cfY, nodeType: 'campfire', alive: true,
             /* ═══ v2.3.1748: THE FIRE REMEMBERS WHERE IT WAS LIT ═══
@@ -6506,7 +6512,9 @@ export var BroTown = function BroTown(_ref0) {
             litAt: Date.now(), expiresAt: Date.now() + 45000,
             name: 'Campfire', spotName: 'Campfire', gatherLvl: 1, skill: 'cooking', emoji: '🔥',
           };
-          cue('campfire');   /* v2.3.3343: the fire catching -- the pan's crackle swelling and fading (a beep(), silent; SOUND-GAPS) */
+          /* v2.3.3343: the fire catching ('campfire') -- since v2.3.3655 played as
+             the flame catches at the strike (the light's start, below), not here
+             half a second later over a fire already burning */
           /* ═══ v2.3.1753: AND TELL THE OTHER PLAYERS ═══
              Owner: "yes make both peers see a campfire."
              Until now a campfire existed only on the client that lit it, so a
@@ -9399,9 +9407,14 @@ export var BroTown = function BroTown(_ref0) {
          frame for a second before the real campfire appeared, which reads as a
          freeze rather than a faster animation.  The ~160ms tail is a beat on
          the finished pose, not a stall. */
-      S._firemaking = { startedAt: now, doneAt: now + 700, x: S.player.x, y: S.player.y + 6 };
+      /* v2.3.3655: + where its fire burns (fireLightSpot: the campfire's spot,
+         worked out once, here) -- campfireFx draws the fire catching there from
+         the strip's strike, and the campfire takes it over at the end */
+      var _lightAt = fireLightSpot(S.currentZone, S.player.x, S.player.y);
+      S._firemaking = { startedAt: now, doneAt: now + 700, x: S.player.x, y: S.player.y + 6, fx: _lightAt.x, fy: _lightAt.y, zone: S.currentZone };
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lighting fire…', '#ff8a3c', { ts: now });
       cue('fireStrike');   /* v2.3.3343: two strikes of the flint (a beep(), silent) */
+      cueLater('campfire', FIRE_STRIKE_FRAME * FIRE_FRAME_MS / 1000);   /* v2.3.3655: the fire catching, as it catches (the strip's strike) */
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
     });

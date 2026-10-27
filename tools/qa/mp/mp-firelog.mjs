@@ -20,7 +20,8 @@
  */
 import * as H from './harness.mjs';
 
-const FIRE_URL = '/sprites/skills/firemaking-strip.webp?v=2.3.1715';   /* the URL the game loads */
+import { FIRE_STRIP_V } from '../../../src/data/fireStrip.js';
+const FIRE_URL = `/sprites/skills/firemaking-strip.webp?v=${FIRE_STRIP_V}`;   /* the URL the game loads (v2.3.3655: the strip's own version) */
 const FW = 384, FH = 512, FRAMES = 8;
 
 const LOOK = `try {
