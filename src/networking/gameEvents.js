@@ -2396,7 +2396,12 @@ export function processGameEvent(type, payload, S, deps) {
                 try {
                   var _dgO = S.others[payload.id];
                   var _dgk = peerShare(S, typeof _dgO.renderX === 'number' ? _dgO.renderX : _dgO.x, typeof _dgO.renderY === 'number' ? _dgO.renderY : _dgO.y);
-                  if (_dgk > 0) cue('dodgeRoll', _dgk, payload.kind === 'dodge' || payload.kind === 'retreat_shot' ? 1 : 1.2);
+                  /* v2.3.3680: a roll (a dodge or a retreat shot) is the owner's own
+                     roll; a dash or lunge keeps the rush, quicker */
+                  if (_dgk > 0) {
+                    if (payload.kind === 'dodge' || payload.kind === 'retreat_shot') cue('rollTumble', _dgk);
+                    else cue('dodgeRoll', _dgk, 1.2);
+                  }
                 } catch (e) { /* sound only */ }
               }
               break;

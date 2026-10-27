@@ -84,6 +84,12 @@ export const EVENT_SOUNDS = {
      reads quieter on the plain measure than the swipe's thump did: both
      these keep the swipe's loudness BY EAR, its A-weighted level.) */
   dodgeRoll: [['arrow-fly', 0.03, 0.26, 4.15, 0.82, 0, 0.07]],
+  /* v2.3.3680: THE ROLL ITSELF -- the owner's recording ("kneeling goblin",
+     502553__kneeling__goblin-fall: a body going down and over), ~0.55, its own
+     overtones laid over its thump so a phone hears it.  The dodge roll and a
+     retreat shot's roll (yours and another player's); the sword's dash and
+     lunge keep the rush above, dodgeRoll. */
+  rollTumble: [['roll-tumble', 0, 0, own('roll-tumble'), 1]],
 
   /* ── your blows ────────────────────────────────────────────────────── */
   /* A critical hit: the grand slam's own sample (sword-hit, kept for it)

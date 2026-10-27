@@ -71,6 +71,9 @@ const PROMISED = {
      door was 0.65, the harvest 0.6, the anvil 0.5 and the bag 0.25 before) */
   door: 0.7, caveMouth: 0.65, campfire: 0.8, farmHarvest: 0.7, anvil: 0.6, bagIn: 0.4, coinsPickup: 0.75, lilBroHmm: 0.5,
   forge: 0.6, armourForge: 0.6, smelt: 0.6, woodwork: 0.5, hardWood: 0.5, trapsMade: 0.8,
+  /* v2.3.3680: the roll is the owner's "goblin fall" (Freesound 502553), a
+     tumble under the swish */
+  rollTumble: 0.55,
 };
 
 /* v2.3.3434: cues kept quieter than 0.08 of a hit on purpose, and why -- each

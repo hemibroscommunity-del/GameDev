@@ -232,11 +232,18 @@ ONE_SHOTS += [
     ('wood-carve', NEW_SRC + '796658__frostnox__wood-carve-5.ogg', 0.00, 0.24, 0.002, 0.05, 'low', 0.5, 'craft'),
     ('farm-harvest', NEW_SRC + '872487__heyheytheree__harvest-cozy-game-sfx-free.wav', 0.00, 1.06, 0.002, 0.30, 'low', 0.7, 'farm'),
     ('farm-water', NEW_SRC + '516257__wyronroberth__grab-_-can-watering.mp3', 0.12, 0.36, 0.020, 0.08, 'low', 0.3, 'farm'),
+    # v2.3.3680: the roll -- the owner, of the dodge roll: "I'll just uploaded a
+    # sound effect to use for that included in the label is 'kneeling goblin'"
+    # (502553__kneeling__goblin-fall): a body going down and over, -22 dB at
+    # 0.12 s, its loudest 0.2-0.5 s, down 30 dB by 0.9 s; 65% of it under 100 Hz,
+    # so its own overtones laid over it, as the fire's are (a phone hears those)
+    ('roll-tumble', NEW_SRC + '502553__kneeling__goblin-fall.mp3', 0.10, 0.80, 0.004, 0.25, 'low', 0.55, 'player'),
 ]
 PROCESS.update({
     'bag-close': {'hp': 150},
     'fire-light': {'harm': 0.6},
     'farm-water': {'hp': 150},
+    'roll-tumble': {'harm': 0.5},
 })
 # name, source, [(start, length)], fade in, fade out, rate, level, group, process
 PART_SETS = [
