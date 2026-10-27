@@ -1,14 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { COL } from '../mobile/dash/common.js';
 import { BT_AUDIO } from '@/data/index.js';
 import { EVENT_SOUNDS } from '@/data/eventSounds.js';
 import { MONSTER_NOISE_CLIPS } from '@/data/monsterNoiseClips.js';
 import { FOOTSTEP_CLIPS } from '@/data/footstepClips.js';
+import { OWNER_LOOPS } from '@/data/ownerSoundClips.js';   /* v2.3.3610: the dance beat's file */
 import { cue } from '@/game/eventSounds.js';
 import { heardSounds, clearHeard } from '@/game/soundStudio.js';
 import {
   STUDIO_SECTIONS, CUE_PLACES, HIT_VOICE_PLACES, PROP_PLACES, PROP_KINDS, SHOT_PLACES,
-  ELEM_PLACES, NOISE_PLACES, STEP_PLACES, OTHER_PLAYS, SAMPLE_SOURCES,
+  ELEM_PLACES, NOISE_PLACES, STEP_PLACES, OTHER_PLAYS, SAMPLE_SOURCES, MUSIC_PLACES,
 } from '@/data/soundStudio.js';
 
 /* ═══ v2.3.3523: THE SOUND STUDIO ═══
@@ -32,7 +33,15 @@ import {
  *
  * Opened from the Test panel ("Sound studio") or ?sounds in the address;
  * loaded only then, and gone when closed.  No game state is read or written:
- * it only plays sounds. */
+ * it only plays sounds.
+ *
+ * v2.3.3610: and THE MUSIC, a tab of its own -- the owner: "A huge part of
+ * the game is emotional resonance from music.  I don't know what music plays
+ * for the town vs the other zones (etc)".  Every track under where it plays,
+ * by the owner's own name for it (data/soundStudio.js MUSIC_PLACES), which one
+ * is playing where you stand, and ▶ to hear one: played from its file on an
+ * <audio> of its own while the game's music bus is turned down, both put back
+ * on ■, on the track's end and on closing. */
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 const keysOf = (layers) => [...new Set((layers || []).filter((L) => Array.isArray(L) && L[0]).map((L) => L[0]))];
@@ -56,6 +65,22 @@ function fnSamples(how, A) {
     case 'uiTick': return [a[0]];
     default: return [];
   }
+}
+
+/* v2.3.3610: a music key's file -- a ZONE_MUSIC key, or the session's theme,
+   or the dances' beat */
+export function musicUrl(A, key) {
+  if (key === 'theme') return (A && A.GLOBAL_MUSIC) || null;
+  if (key === 'dance') return (OWNER_LOOPS.dance && OWNER_LOOPS.dance.url) || null;
+  return (A && A.ZONE_MUSIC && has(A.ZONE_MUSIC, key) && A.ZONE_MUSIC[key]) || null;
+}
+const fileOf = (url) => String(url || '').split('?')[0].split('/').pop();
+
+/* v2.3.3610: which MUSIC_PLACES row the game is playing here now */
+export function musicNow(A) {
+  const z = A && A._currentZoneAmbient;
+  if (z && musicUrl(A, z) && MUSIC_PLACES.some((m) => m[0] === z)) return z;
+  return A && A.GLOBAL_MUSIC ? 'theme' : null;
 }
 
 /** Every row of the studio: {id, section, label, what, samples, play}.  The
@@ -163,17 +188,48 @@ export function SoundStudio({ onClose, tab: tab0 }) {
   const A = BT_AUDIO;
   const rows = useMemo(() => studioRows(A), [A]);
   const byId = useMemo(() => Object.fromEntries(rows.map((r) => [r.id, r])), [rows]);
-  const [tab, setTab] = useState(tab0 === 'heard' ? 'heard' : 'all');
+  const [tab, setTab] = useState(tab0 === 'heard' || tab0 === 'music' ? tab0 : 'all');
   const [q, setQ] = useState('');
   const [section, setSection] = useState('');
   const [sample, setSample] = useState(null);
   const [menuToo, setMenuToo] = useState(false);
   const [, setTick] = useState(0);
   const [lastPlayed, setLastPlayed] = useState(null);
+  /* v2.3.3610: the music tab's preview: the <audio> playing and its row */
+  const [musicOn, setMusicOn] = useState(null);
+  const deck = useRef(null);
+  const duck = (on) => {
+    try {
+      if (A._musicBus && A.ctx) A._musicBus.gain.setTargetAtTime(on || A.muted ? 0 : A.musicLevel, A.ctx.currentTime, 0.08);
+      A._musicPreview = on ? true : null;
+    } catch (e) { /* the game's music plays on */ }
+  };
+  const stopMusic = () => {
+    const a = deck.current;
+    deck.current = null;
+    if (a) { try { a.pause(); a.removeAttribute('src'); a.load(); } catch (e) { /* gone */ } }
+    duck(false);
+    setMusicOn(null);
+  };
+  const playMusic = (key) => {
+    if (musicOn === key) { stopMusic(); return; }
+    stopMusic();
+    const url = musicUrl(A, key);
+    if (!url || typeof Audio === 'undefined') return;
+    const a = new Audio(url);
+    a.volume = Math.max(0, Math.min(1, A.muted ? 0 : (A.musicLevel == null ? 1 : A.musicLevel)));
+    a.onended = () => { if (deck.current === a) stopMusic(); };
+    deck.current = a;
+    duck(true);
+    setMusicOn(key);
+    try { const p = a.play(); if (p && p.catch) p.catch(() => { if (deck.current === a) stopMusic(); }); } catch (e) { stopMusic(); }
+  };
+  /* closing the studio puts the game's music back */
+  useEffect(() => () => { const a = deck.current; deck.current = null; if (a) { try { a.pause(); } catch (e) { /* gone */ } } duck(false); }, []);
 
   /* the heard list moves while it is shown */
   useEffect(() => {
-    if (tab !== 'heard') return undefined;
+    if (tab !== 'heard' && tab !== 'music') return undefined;
     const t = setInterval(() => setTick((n) => n + 1), 500);
     return () => clearInterval(t);
   }, [tab]);
@@ -219,7 +275,40 @@ export function SoundStudio({ onClose, tab: tab0 }) {
   );
 
   let body;
-  if (tab === 'heard') {
+  if (tab === 'music') {
+    const now = musicNow(A);
+    const nowRow = MUSIC_PLACES.find((m) => m[0] === now);
+    body = (
+      <div data-studio-music="">
+        <div style={{ padding: '10px 12px', color: COL.text2, fontSize: 12.5, lineHeight: 1.45 }}>
+          Every track in the game and where it plays. ▶ plays one here; the game's music goes quiet while it does.
+          {nowRow && (
+            <div data-studio-music-now={now} style={{ marginTop: 6, color: COL.text }}>
+              Playing where you stand: <b>{nowRow[2]}</b> ({nowRow[1]})
+            </div>
+          )}
+        </div>
+        {MUSIC_PLACES.map(([key, where, title]) => {
+          const url = musicUrl(A, key), on = musicOn === key;
+          return (
+            <div key={key} data-studio-row={'music:' + key}
+              style={{ display: 'flex', gap: 10, padding: '8px 12px', borderBottom: '1px solid ' + COL.divider, alignItems: 'center' }}>
+              <button type="button" aria-label={(on ? 'Stop: ' : 'Play: ') + title} data-studio-play={'music:' + key} data-uisfx="off"
+                disabled={!url} onClick={() => playMusic(key)}
+                style={{ flex: '0 0 44px', width: 44, height: 44, borderRadius: 10, cursor: url ? 'pointer' : 'default', fontSize: 17,
+                  border: '1px solid ' + (on ? COL.accent : COL.border), background: on ? COL.accentFill : COL.raised,
+                  color: url ? COL.accent : COL.muted }}>{on ? '■' : '▶'}</button>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 14, lineHeight: 1.35 }}><b>{title}</b>{key === now ? ' · playing here now' : ''}</div>
+                <div style={{ fontSize: 12.5, color: COL.text2, marginTop: 1 }}>{where}</div>
+                <div style={{ fontSize: 11.5, color: COL.muted, marginTop: 2 }}>{url ? fileOf(url) : 'no file'}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  } else if (tab === 'heard') {
     const moments = heardMoments(menuToo);
     const now = Date.now();
     body = (
@@ -276,7 +365,7 @@ export function SoundStudio({ onClose, tab: tab0 }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px 6px 14px', borderBottom: '1px solid ' + COL.divider, background: COL.bgStrong }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 17, fontWeight: 700 }}>Sound studio</div>
-          <div style={{ fontSize: 11.5, color: COL.muted }}>Every sound in the game, and where it plays. ▶ plays it as the game does here.</div>
+          <div style={{ fontSize: 11.5, color: COL.muted }}>Every sound and track in the game, and where it plays. ▶ plays it as the game does here.</div>
         </div>
         <button type="button" aria-label="Close" data-esc="" data-studio-close="" onClick={() => onClose && onClose()}
           style={{ width: 44, height: 44, borderRadius: 22, border: '1px solid ' + COL.borderStrong, background: COL.well, color: COL.text, fontSize: 18, cursor: 'pointer' }}>✕</button>
@@ -284,6 +373,8 @@ export function SoundStudio({ onClose, tab: tab0 }) {
       <div style={{ display: 'flex', gap: 8, padding: '8px 12px 0' }}>
         <button type="button" style={chipBtn(tab === 'all')} data-studio-tab="all" onClick={() => setTab('all')}>All sounds · {rows.length}</button>
         <button type="button" style={chipBtn(tab === 'heard')} data-studio-tab="heard" onClick={() => setTab('heard')}>Heard just now</button>
+        {/* v2.3.3610: the music, where each track plays */}
+        <button type="button" style={chipBtn(tab === 'music')} data-studio-tab="music" onClick={() => setTab('music')}>Music · {MUSIC_PLACES.length}</button>
       </div>
       {tab === 'all' && (
         <>

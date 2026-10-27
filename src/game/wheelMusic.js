@@ -19,6 +19,12 @@
  *     Caves, the Poison Forest: hollows, thunder, tidal, mist) have no track yet and
  *     play the game's theme.  A track under the land's id in ZONE_MUSIC makes
  *     it theirs, nothing else to change.
+ *   - v2.3.3610: the owner's own score for every place (gameDisplay.js
+ *     ZONE_MUSIC's note): the Stone Hollows, the Water Caves and the Poison
+ *     Forest have tracks of their own now, the Electric Foundry still the
+ *     theme; and while Lil Bro's race runs (from the countdown to the finish)
+ *     the land watch asks for RACE_MUSIC, the owner's "Minigame", at once,
+ *     and after it the place's own music again MUSIC_INTO_LAND_MS on.
  *
  * The land is the banner's (wheelHere(...).region, asked every frame by the
  * minimap, rendering/systems/wheelMinimap.js), with a lean toward the land:
@@ -48,6 +54,15 @@ export const MUSIC_INTO_LAND_MS = 1200;
 export const MUSIC_HOME_MS = 8000;
 /** Brotown's and the commons' music. */
 export const HOME_MUSIC = 'town';
+/** v2.3.3610: Lil Bro's race's music (ZONE_MUSIC.minigame). */
+export const RACE_MUSIC = 'minigame';
+
+/** v2.3.3610: is Lil Bro's race on -- counting down or running?  (game/race.js
+ *  keeps it in S._race; read here, not imported, so node can test this file.) */
+export function raceMusicOn(S) {
+  const r = S && S._race;
+  return !!(r && (r.phase === 'count' || r.phase === 'run'));
+}
 
 /** The music key for region `id` -- the town's for the safe ground, the
  *  land's own id for a land -- or null where the music should not change
@@ -57,11 +72,12 @@ export function wheelMusicKey(id) {
   return id === 'commons' ? HOME_MUSIC : id;
 }
 
-const _m = { want: null, since: 0, settled: false, log: [], A: null };
+const _m = { want: null, was: null, since: 0, settled: false, log: [], A: null };
 
 /** Forget the visit: the next arrival decides at once. */
 export function resetWheelMusic() {
   _m.want = null;
+  _m.was = null;
   _m.since = 0;
   _m.settled = false;
 }
@@ -72,13 +88,18 @@ export function resetWheelMusic() {
 export function noteWheelMusic(here, S, A, now = Date.now()) {
   if (A) _m.A = A;   /* the one the minimap hands in, for the probe below */
   if (!S || S.currentZone !== 'wheel' || !A || !A.wheelLandMusic) { resetWheelMusic(); return null; }
-  const want = wheelMusicKey(here && here.region);
+  /* v2.3.3610: the Sound Studio's music preview holds the land watch off */
+  if (A._musicPreview) return null;
+  /* v2.3.3610: Lil Bro's race has its own music, at once */
+  const racing = raceMusicOn(S);
+  const want = racing ? RACE_MUSIC : wheelMusicKey(here && here.region);
   if (!want) return null;
   /* the first word of a visit only from where you stand */
-  if (!_m.settled && !here.fresh) return null;
-  if (want !== _m.want) { _m.want = want; _m.since = now; }
+  if (!_m.settled && !racing && !(here && here.fresh)) return null;
+  if (want !== _m.want) { _m.was = _m.want; _m.want = want; _m.since = now; }
   if (A._currentZoneAmbient === want) { _m.settled = true; return null; }
-  const wait = !_m.settled ? 0 : want === HOME_MUSIC ? MUSIC_HOME_MS : MUSIC_INTO_LAND_MS;
+  const wait = !_m.settled || racing ? 0 : _m.was === RACE_MUSIC ? MUSIC_INTO_LAND_MS
+    : want === HOME_MUSIC ? MUSIC_HOME_MS : MUSIC_INTO_LAND_MS;
   if (now - _m.since < wait) return null;
   _m.settled = true;
   A.startZoneAmbient(want);

@@ -685,5 +685,55 @@ for (const p of files) {
       && !/from '@\/ui\/panels\/SoundStudio\.jsx'/.test(src('src/ui/BroTown.jsx')));
 }
 
+/* ── 13. v2.3.3610: the music, and where each track plays ──
+   The owner: "A huge part of the game is emotional resonance from music.  I
+   don't know what music plays for the town vs the other zones (etc)" -- then
+   their own ten tracks (assets/music-source/2026-10-26/). */
+{
+  const ST = await import('../../src/data/soundStudio.js');
+  /* ZONE_MUSIC's entries, read off gameDisplay.js's text */
+  const zm = GD.slice(GD.indexOf('  ZONE_MUSIC: {'), GD.indexOf('\n  },', GD.indexOf('  ZONE_MUSIC: {')));
+  const ZM = Object.create(null);
+  for (const m of zm.matchAll(/^ {4}([a-z]+): '([^']+)'/gm)) ZM[m[1]] = m[2];
+  const keys = ST.MUSIC_PLACES.map((m) => m[0]);
+  const want = Object.keys(ZM).filter((k) => !ST.MUSIC_CLOSED.includes(k));
+  check(`13a every track a player can hear has its line in the studio's music list (${want.join(', ')}), and the theme and the dances' beat`,
+    want.every((k) => keys.includes(k)) && keys.includes('theme') && keys.includes('dance') && new Set(keys).size === keys.length,
+    { want, keys });
+  const bad = ST.MUSIC_PLACES.filter(([k, where, title]) => !(typeof where === 'string' && where.length >= 8 && typeof title === 'string' && title.length >= 4)
+    || !(k === 'theme' || k === 'dance' || has(ZM, k)));
+  check('13b ...each with where it plays and the track\'s own name, and each a ZONE_MUSIC key, the theme or the dance', bad.length === 0, bad);
+  const files = Object.entries(ZM).map(([k, u]) => [k, u.split('?')[0]]);
+  const missing = files.filter(([, f]) => !existsSync(new URL('public' + f, root)));
+  check(`13c every ZONE_MUSIC file is in public/audio/music/ (${files.length})`, missing.length === 0, missing);
+  /* the owner's score, place by place */
+  const PLACE = { town: 'village', frost: 'frost', ember: 'fire', sky: 'desert', verdant: 'forest', hollows: 'rock', tidal: 'water', mist: 'murky', dungeon: 'skirmish', minigame: 'minigame' };
+  const off = Object.entries(PLACE).filter(([k, f]) => ZM[k] !== '/audio/music/' + f + '.mp3?v=2.3.3610');
+  check('13d the owner\'s ten tracks play where they were made for, each at a new address (?v=2.3.3610)', off.length === 0, off);
+  check('13e the Electric Foundry has no track of its own yet (the theme plays there)', !has(ZM, 'thunder'));
+  const masters = ['Town Square Loop', 'Frozen Cave Loop', 'Fire level', 'Wind level', 'Forest Loop', 'Rock level', 'Water lvl', 'Murky Loop', 'Swift Skirmish Clash', 'Minigame']
+    .filter((n) => !existsSync(new URL('assets/music-source/2026-10-26/' + n + '.mp3', root)));
+  const top = readdirSync(root).filter((f) => /\.mp3$/i.test(f));
+  check('13f the owner\'s ten masters are kept in assets/music-source/2026-10-26/, none left at the top of the repo', masters.length === 0 && top.length === 0, { masters, top });
+  const sa = GD.slice(GD.indexOf('"startZoneAmbient", function startZoneAmbient(zoneId)'));
+  check('13g every dungeon is filed under `dungeon` where every zone\'s music is asked for',
+    /if \(typeof zoneId === 'string' && zoneId\.indexOf\('dungeon:'\) === 0\) zoneId = 'dungeon';/.test(sa.slice(0, 3000)));
+  /* the arena's map is set straight in, so the zone change's own music call
+     never runs: entering one asks for it itself (mp-googrotto found the land's
+     music playing on inside) */
+  const GE = src('src/networking/gameEvents.js');
+  const ds = GE.slice(GE.indexOf("case 'dungeon_started':"), GE.indexOf("case 'dungeon_started':") + 9000);
+  check('13g2 ...and entering a dungeon asks for it (gameEvents.js dungeon_started), after the zone is the dungeon\'s',
+    /S\.currentZone = payload\.zone;[\s\S]{0,800}BT_AUDIO\.startZoneAmbient\(payload\.zone\)/.test(ds));
+  const WM = await import('../../src/game/wheelMusic.js');
+  check('13h Lil Bro\'s race asks for the race music while it counts down and runs, and no longer once it is done',
+    WM.RACE_MUSIC === 'minigame' && WM.raceMusicOn({ _race: { phase: 'count' } }) && WM.raceMusicOn({ _race: { phase: 'run' } })
+      && !WM.raceMusicOn({ _race: { phase: 'asked' } }) && !WM.raceMusicOn({ _race: { phase: 'done' } }) && !WM.raceMusicOn({}) && !WM.raceMusicOn(null));
+  const SS = src('src/ui/panels/SoundStudio.jsx');
+  check('13i the studio\'s Music tab plays a track from its file with the game\'s music bus turned down, and puts it back',
+    /data-studio-tab="music"/.test(SS) && /new Audio\(url\)/.test(SS) && /A\._musicBus\.gain\.setTargetAtTime\(on \|\| A\.muted \? 0 : A\.musicLevel/.test(SS)
+      && /A\._musicPreview = on \? true : null;/.test(SS) && /if \(A\._musicPreview\) return null;/.test(src('src/game/wheelMusic.js')));
+}
+
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
