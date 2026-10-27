@@ -180,6 +180,28 @@ cooldown -- never a CSS filter on a control (TRAPS §42).  Shield Bash keeps its
 own picture (the shield striking, a free-standing piece), so the two are never
 one picture.
 
+v2.3.3677: THE SHIELD ON A CALM DISC.  The owner, 2026-10-27: "I want a
+different icon for the shield block (the light explosion makes it look like an
+attach)".  Every shield button on the owner's thirteen sheets stands on a burst
+(this one, the combat sheet's blue one, the sheet-1 row's), so the owner's own
+shield is LIFTED off its burst and set on a calm steel-blue disc (`calm`): the
+gold and the starburst are what the attack buttons wear (the sword's special,
+the volley, Shield Bash's impact), and a still blue reads as guarding.
+  the shield  what a flood from the disc's rim cannot reach: the flood runs
+              through everything but the shield's own dark outline (max
+              channel under `dark`, the dark components clear of the rim --
+              the rim's own dark edge and the burst's dark corners are not a
+              wall), so the outline, the steel rim and the face are kept whole
+              and the burst, however bright against the outline, is not;
+  the disc    a radial gradient (`stops`, t the distance over the radius), a
+              soft pale-blue halo behind the shield (`halo`: colour, radius,
+              alpha, blurred to 0.45 of its radius), the shield's own shadow
+              (its alpha x 0.55, blurred 3 px, 4 px down), then the shield,
+              `scale` x its sheet size and CENTRED (the burst had pushed it
+              right of the middle), all at the button's 160 px.
+The -grey copy as before.  A change of look is a change here and a re-run
+(--only abil-block --force), never a hand edit of the picture.
+
 Writes a CONTACT SHEET (--contact out.png), each piece on the game's slate and
 on a light ground, to check by eye.  Refuses to overwrite an existing file
 without --force; --dry cuts and reports, writes nothing; --only a,b cuts those.
@@ -259,8 +281,130 @@ PIECES = [
     # v2.3.3522: the Block button's face (the header's note) -- a round button
     # of its own, so the disc inside its ring, 160 px like every control picture
     dict(name='ui/controls/abil-block', src='brotown-rpg-ui-asset-sheet-1.png', mode='disc',
-         box=(293, 856, 416, 983), grow=4, px=160, control_grey=True),
+         box=(293, 856, 416, 983), grow=4, px=160, control_grey=True,
+         # v2.3.3677: off its burst, onto a calm steel-blue disc (the header)
+         calm=dict(dark=110, scale=1.13,
+                   stops=[(0, (64, 112, 168)), (0.55, (32, 62, 106)), (1, (12, 24, 46))],
+                   halo=((190, 228, 255), 54, 140))),
 ]
+
+def shield_mask(disc, dark=110):
+    """v2.3.3677: the shield on a round button, as an L mask: what a flood from
+    the disc's rim cannot reach.  The wall is the dark px (max channel under
+    `dark`) of every dark component clear of the rim (8-connected; a component
+    within 7 px of the rim is the disc's own dark edge or the burst's dark
+    corners, not the shield's outline).  The flood is 4-connected, so a wall
+    one px thick on a diagonal still holds."""
+    from collections import deque
+    w, h = disc.size
+    px = disc.load()
+    cx, cy = (w - 1) / 2, (h - 1) / 2
+    R = min(w, h) / 2
+    is_dark = [[False] * w for _ in range(h)]
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            is_dark[y][x] = a > 128 and max(r, g, b) < dark
+    comp = [[-1] * w for _ in range(h)]
+    rim_comps, n = set(), 0
+    for y in range(h):
+        for x in range(w):
+            if not is_dark[y][x] or comp[y][x] >= 0:
+                continue
+            q, touches = deque([(x, y)]), False
+            comp[y][x] = n
+            while q:
+                a, b = q.popleft()
+                if math.hypot(a - cx, b - cy) > R - 7:
+                    touches = True
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        u, v = a + dx, b + dy
+                        if 0 <= u < w and 0 <= v < h and is_dark[v][u] and comp[v][u] < 0:
+                            comp[v][u] = n
+                            q.append((u, v))
+            if touches:
+                rim_comps.add(n)
+            n += 1
+    wall = [[is_dark[y][x] and comp[y][x] not in rim_comps for x in range(w)] for y in range(h)]
+    out = [[False] * w for _ in range(h)]
+    q = deque()
+    for y in range(h):
+        for x in range(w):
+            if math.hypot(x - cx, y - cy) > R - 3 and not wall[y][x]:
+                out[y][x] = True
+                q.append((x, y))
+    while q:
+        a, b = q.popleft()
+        for u, v in ((a + 1, b), (a - 1, b), (a, b + 1), (a, b - 1)):
+            if 0 <= u < w and 0 <= v < h and not out[v][u] and not wall[v][u]:
+                out[v][u] = True
+                q.append((u, v))
+    m = Image.new('L', (w, h), 0)
+    mp = m.load()
+    for y in range(h):
+        for x in range(w):
+            if not out[y][x] and math.hypot(x - cx, y - cy) < R - 1:
+                mp[x, y] = 255
+    return m, n, len(rim_comps)
+
+
+def calm_disc(disc, size, calm):
+    """v2.3.3677: the shield lifted off its burst onto a calm disc (the header's
+    "THE SHIELD ON A CALM DISC"), `size` px edge to edge."""
+    from PIL import ImageChops
+    m, n, rim = shield_mask(disc, calm['dark'])
+    bb = m.getbbox()
+    if not bb:
+        raise SystemExit('ABORT calm_disc: no shield found inside the disc')
+    bw, bh = bb[2] - bb[0], bb[3] - bb[1]
+    if not (0.35 < bw / disc.width < 0.75 and 0.5 < bh / disc.height < 0.9):
+        raise SystemExit(f'ABORT calm_disc: the shield is {bw}x{bh} of a {disc.width} px disc -- the flood leaked or the outline broke')
+    # the gradient
+    bg = Image.new('RGB', (size, size))
+    bp = bg.load()
+    c = (size - 1) / 2
+    stops = calm['stops']
+    for y in range(size):
+        for x in range(size):
+            t = min(1.0, math.hypot(x - c, y - c) / (size / 2))
+            for i in range(len(stops) - 1):
+                t0, c0 = stops[i]
+                t1, c1 = stops[i + 1]
+                if t0 <= t <= t1:
+                    k = (t - t0) / (t1 - t0) if t1 > t0 else 0
+                    bp[x, y] = tuple(round(c0[j] + (c1[j] - c0[j]) * k) for j in range(3))
+                    break
+    im = bg.convert('RGBA')
+    # the halo
+    col, rad, alpha = calm['halo']
+    g = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    ImageDraw.Draw(g).ellipse((size / 2 - rad, size / 2 - rad, size / 2 + rad, size / 2 + rad), fill=tuple(col) + (alpha,))
+    im.alpha_composite(g.filter(ImageFilter.GaussianBlur(rad * 0.45)))
+    # the shield alone, scaled and centred
+    sh = disc.copy()
+    sh.putalpha(ImageChops.multiply(disc.getchannel('A'), m))
+    sh = sh.crop(bb)
+    k = size / disc.width * calm['scale']
+    sh = sh.resize((round(sh.width * k), round(sh.height * k)), Image.LANCZOS)
+    lay = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    lay.alpha_composite(sh, ((size - sh.width) // 2, (size - sh.height) // 2 + 1))
+    # its shadow
+    sd = Image.new('RGBA', (size, size), (4, 8, 16, 0))
+    sd.putalpha(lay.getchannel('A').point(lambda v: round(v * 0.55)))
+    shadow = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    shadow.alpha_composite(sd.filter(ImageFilter.GaussianBlur(3)), (0, 4))
+    im.alpha_composite(shadow)
+    im.alpha_composite(lay)
+    # round, its edge supersampled as inner_disc cuts
+    SS = 4
+    ring = Image.new('L', (size * SS, size * SS), 0)
+    ImageDraw.Draw(ring).ellipse((0, 0, size * SS - 1, size * SS - 1), fill=255)
+    im.putalpha(ring.resize((size, size), Image.LANCZOS))
+    print(f'      calm disc: shield {bw}x{bh} of the {disc.width} px disc ({n} dark pieces, {rim} at the rim),'
+          f' x{calm["scale"]} and centred on the steel-blue disc')
+    return im
+
 
 _csi = None
 
@@ -838,7 +982,11 @@ def main():
         elif p['mode'] == 'disc':
             # v2.3.3522: a round button's face -- the disc inside its own ring
             csi = small_icons_tool()
-            out = csi.fit_disc(csi.inner_disc(im), p['px'])
+            if p.get('calm'):
+                # v2.3.3677: the shield off its burst, onto a calm disc
+                out = calm_disc(csi.inner_disc(im), p['px'], p['calm'])
+            else:
+                out = csi.fit_disc(csi.inner_disc(im), p['px'])
             print(f'  {short:16s} cut {raw[0]}x{raw[1]} -> the disc inside its ring, {out.width}x{out.height}')
         elif p.get('pin'):
             out = to_pin(im)

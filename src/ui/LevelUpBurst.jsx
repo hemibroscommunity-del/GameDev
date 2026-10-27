@@ -388,7 +388,7 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
              claiming 86% of the viewport would overlap in the middle, which is
              the "overlapping unreadably" the owner ruled out. */
           maxWidth: nCols === 1 ? '86%' : Math.max(120, colW - 14),
-          padding: '7px 14px 8px',
+          padding: '5px 16px 8px',   /* v2.3.3676: a little less on top, the number's own line height carries it */
           borderRadius: 10,
           background: 'rgba(32,44,50,.88)',
           border: '1px solid rgba(238,242,235,.14)',
@@ -406,16 +406,35 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
               the only place left that can hold it.  The lighter TREATMENT is
               untouched — celebrateLifeSkillLevel still fires no screen shake
               and half the particles. */}
+          {/* ═══ v2.3.3676: THE NUMBER, BIG, RIGHT UNDER THE BANNER ═══
+              The owner: "put the number of the level more prominently just
+              below the icon label of the level up".  The level was the end of
+              one 18 px line ("Melee · Level 12"); it is its own line now, in
+              the game's chunky Baloo 2 at about twice the height of the words,
+              gold like the banner's letters with a dark edge so it reads on
+              the plate and in a glance, and the words under it say whose
+              level it is.  `data-levelup-num` for the rig. */}
+          <div data-levelup-num="" style={{
+            fontFamily: "'Baloo 2',Source Sans 3,sans-serif",
+            fontSize: nCols === 1 ? 42 : 32, fontWeight: 700, lineHeight: 1,
+            color: '#FFD24A', letterSpacing: '.01em', fontVariantNumeric: 'tabular-nums',
+            textShadow: '0 2px 0 #5a3a08, 0 0 2px #5a3a08, 0 0 12px rgba(255,196,64,.4)',
+            marginTop: 2,
+          }}>
+            {msg.kind === 'char' ? msg.level : lvl}
+          </div>
           <div style={{
             /* v2.3.2615: a two-column caption gets the smaller step of the
                type scale.  18px "Woodcutting · Skill Level 7" in a 166px column
                wraps to three lines and pushes the plate into the tray; 15px
-               holds it to two.  One column keeps 18. */
-            fontSize: nCols === 1 ? 18 : 15,
-            fontWeight: 800, color: '#F7F2E7', letterSpacing: '.02em', lineHeight: 1.15,
+               holds it to two.  One column keeps 18.
+               v2.3.3676: the words under the number, a step smaller (15 / 13):
+               the number is the headline now */
+            fontSize: nCols === 1 ? 15 : 13,
+            fontWeight: 800, color: '#F7F2E7', letterSpacing: '.04em', lineHeight: 1.15, marginTop: 3,
           }}>
             {msg.kind === 'life'
-              ? `${label || 'Skill'} · Skill Level ${lvl}${(msg.gained || 1) > 1 ? `  (+${msg.gained})` : ''}`
+              ? `${label || 'Skill'} · Skill Level${(msg.gained || 1) > 1 ? `  (+${msg.gained})` : ''}`
               /* ═══ v2.3.2615: SAY "CHARACTER", BECAUSE THAT IS THE CONFUSION ═══
                  The owner's report was that they had gained a combat level
                  without levelling a combat skill.  Character level IS the sum
@@ -424,8 +443,8 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
                  notification never said which one it meant.  It does now, and
                  the portrait in the medallion says it a second time. */
               : msg.kind === 'char'
-                ? `Character · Level ${msg.level}`
-                : (label ? `${label} · Level ${lvl}` : `Level ${lvl}`)}
+                ? 'Character Level'
+                : (label ? `${label} Level` : 'Level')}
           </div>
           {/* ═══ v2.3.2660: THE GAINS LINE IS GONE ═══
               Owner: "Don't include the specific stat increases, just the name

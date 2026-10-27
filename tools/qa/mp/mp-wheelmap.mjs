@@ -5,8 +5,10 @@
  * tapping it brings up an overlay of a labelled world map.  It would probably
  * help to have areas labelled so players can start memorizing the territory."
  *
- * On a phone viewport, against a real worker, in `?trial=wheel`:
- *   1. in town the minimap is today's (52 px, unchanged);
+ * On a phone viewport, against a real worker, IN THE WORLD (v2.3.3678: it
+ * played `?trial=wheel` from today's retired town, walking down its stairs;
+ * now it starts in the world's BroTown, as a player does):
+ *   1. (v2.3.3678: gone -- it checked today's retired town's 52 px minimap);
  *   2. in the Wheel it is the Wheel's own: bigger, the land under it from
  *      the worker's overview, the roads, river and railway drawn, the camps,
  *      passes and gates marked, and where you are said in words under it --
@@ -18,7 +20,8 @@
  *      the cross closes it;
  *   4. walking out onto Frost Ridge, the words under the minimap follow you:
  *      the land, its stage and the levels there;
- *   5. back in town the Wheel's box and the button are gone, today's back.
+ *   5. (v2.3.3678) off the Wheel, on your farm through the Feed & Seed: the
+ *      farm's 52 px box, no world map to open, the buildings' pictures let go.
  *
  * v2.3.3023, the owner: "the world feels hard to navigate without losing your
  * sense of position relative to the town center" -- 2 checks there is no home
@@ -64,6 +67,11 @@
  * for the rest, and the target button in town is that view again
  * (wheelmap-02-worldmap.png is the town view, 02b the whole Wheel).
  *
+ * v2.3.3678, the owner: "I also want the building shapes behind the town
+ * icons to go away so only the icons are left" -- 2 checks no footprint is
+ * drawn under the pictures (none of the roofs' terracotta on the box), and
+ * the four pictures changed to say what their buildings are.
+ *
  * Pictures land in tools/qa/mp/out/wheelmap-*.png.
  */
 import * as H from './harness.mjs';
@@ -76,23 +84,6 @@ const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 const PHONE = { width: 390, height: 844 };
 const ARRIVAL = (await H.wheelGeom()).arrival;   /* v2.3.3315: the Wheel the worker plays */
 
-const holdTitle = (P, ms) => P.page.evaluate(async (hold) => {
-  const el = document.querySelector('.bt-zone-header__title');
-  if (!el) return 'no title element';
-  const r = el.getBoundingClientRect();
-  const opts = { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1, pointerType: 'touch' };
-  el.dispatchEvent(new PointerEvent('pointerdown', opts));
-  await new Promise((res) => setTimeout(res, hold));
-  el.dispatchEvent(new PointerEvent('pointerup', opts));
-  return 'ok';
-}, ms);
-const panelUp = (P) => P.page.evaluate(() => !!Array.from(document.querySelectorAll('strong')).find((n) => n.textContent === 'Test panel'));
-const tap = (P, text) => P.page.evaluate((t) => {
-  const b = Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf(t) >= 0);
-  if (!b) return false;
-  b.click();
-  return true;
-}, text);
 const mini = (P) => P.page.evaluate(() => (window.__btMinimap ? JSON.parse(JSON.stringify(window.__btMinimap)) : null));
 const wm = (P) => P.page.evaluate(() => (window.__btWorldMap ? JSON.parse(JSON.stringify(window.__btWorldMap)) : null));
 /* v2.3.3009: the top bar's words in the Wheel (ZoneHeader.jsx wheelWhere) --
@@ -125,36 +116,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `wheelmap-${name}.png`) });
-  const { TOWN_EXITS } = await import(H.REPO + '/src/data/effects.js');
-
-  const P = await H.newPlayer(browser, { name: 'Mapper', wsPort, webPort, viewport: PHONE, touch: true, query: 'trial=wheel' });
+  const P = await H.newPlayer(browser, { name: 'Mapper', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
 
-  /* setup: the Mayor gate stands between town and the World View */
-  if (!(await panelUp(P))) { await holdTitle(P, 1500); await P.page.waitForTimeout(900); }
-  await P.page.evaluate((k) => {
-    const inp = document.querySelector('input[type="password"]');
-    if (!inp) return;
-    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-    set.call(inp, k);
-    inp.dispatchEvent(new Event('input', { bubbles: true }));
-  }, H.ADMIN_KEY);
-  await tap(P, 'Save key on this device');
-  await P.page.waitForTimeout(1500);
-  await tap(P, 'Finish all quests');
-  await P.page.waitForTimeout(2000);
-  await tap(P, 'Close');
-  await P.page.waitForTimeout(600);
+  /* setup: the Mayor gate holds a new player in the commons -- every quest
+     finished (the dev op, as every world test; it was the Test panel's
+     button, opened by a long press on the title) */
+  await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }),
+    (v) => v.zone === 'wheel' && !v.loading, { timeout: 120000, label: 'in the world' }).catch(() => null);
+  {
+    const myId = await H.readState(P, (S) => S.myId);
+    await H.devOp(wsPort, 'quests', myId);
+    await P.page.waitForTimeout(2000);
+    /* a talk window the quests' end may open, closed */
+    await P.page.evaluate(() => { const c = document.querySelector('[data-esc], .bt-inspect-close'); if (c) c.click(); }).catch(() => {});
+    await P.page.waitForTimeout(600);
+  }
 
-  /* ── 1. town: today's minimap ── */
-  const town = await mini(P);
-  const btnTown = await P.page.evaluate(() => !!document.querySelector('[data-world-map-open]'));
-  rec.ok('in town the minimap is today\'s, unchanged, and there is no world map to open', town && !town.wheel && town.box === 52 && !btnTown, { box: town && town.box, wheel: town && town.wheel, btnTown });
-
-  /* ── 2. the Wheel's own minimap ── */
-  const door = TOWN_EXITS.find((e) => e.zoneId === 'worldview');
-  await H.hopTo(P, door.tx * 32 + 16, (door.ty - 1) * 32 + 16);
+  /* ── 2. the Wheel's own minimap (you start in it: the world) ── */
   let zone = null;
   for (let i = 0; i < 60; i++) {
     zone = await H.readState(P, (S) => S.currentZone);
@@ -222,16 +202,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`the town's buildings are on the minimap: all ${bl.length} of the ${doors.length} standing, each over the ground it stands on with its door on its front edge (${bl.filter((b) => b.closed).length} shut, grey), from ${sz(bySize[0])} px to ${sz(bySize[bySize.length - 1])} (${bySize.length ? bySize[bySize.length - 1].id : '-'}) -- and the town's square no longer drawn`,
       doors.length >= 16 && bl.length === doors.length && placed && bl.every((b) => b.w >= 10 && b.h >= 5) && m.townMark === false,
       { n: bl.length, doors: doors.length, placed, townMark: m && m.townMark, sample: bl.slice(0, 3) });
+    /* v2.3.3678: and NO ROOFS -- the owner: "I also want the building shapes
+       behind the town icons to go away so only the icons are left": no
+       footprint drawn once the pictures are up (the probe's count), and none
+       of their terracotta on the box (it was 60+ CSS px) */
+    /* outside the pictures' own squares (the bell tower's roof and the barn
+       are red-brown themselves): a footprint stood out round its picture */
+    const picAt = bl.filter((b) => b.icon).map((b) => ({ x: m.rootX + m.panX + b.iconX, y: m.topInset + m.panY + b.iconY }));
     let roof = 0;
     for (let y = m.topInset + m.frame; y < m.topInset + m.mapBottom; y += 1) for (let x = m.rootX + m.frame; x < PHONE.width - m.frame; x += 1) {
+      if (picAt.some((q) => Math.abs(x - q.x) <= 11 && Math.abs(y - q.y) <= 11)) continue;
       if (like(px(x, y), 0xa4553a, 26)) roof++;
     }
-    rec.ok(`...drawn: the roofs' terracotta on the box round the square (${roof} CSS px)`, roof > 60, { roof });
+    rec.ok(`...and no building shapes under the pictures: ${m.footprints} footprints drawn, ${roof} CSS px of the roofs' terracotta on the box outside the pictures`,
+      m.footprints === 0 && roof < 8, { footprints: m.footprints, roof, pics: picAt.length });
     /* v2.3.3522: each wears its picture (data/wheelBuildingDoors.js
        WHEEL_BUILDING_ICONS), loaded behind the Wheel's loading screen */
     const held = await P.page.evaluate(() => (window.__btBuildingIcons ? window.__btBuildingIcons() : null));
     const bi = m && m.buildingIcons;
-    rec.ok(`...and each wears its building's picture, ${bi && bi.px} px on its footprint (${bi && bi.n} of ${bl.length}), the ${held && held.loaded} pictures loaded behind the loading screen (${held ? (held.bytes / 1048576).toFixed(2) : '?'} MB, ${held && held.grey} grey for the shut)`,
+    rec.ok(`...and each IS its building's picture, ${bi && bi.px} px where it stands (${bi && bi.n} of ${bl.length}), the ${held && held.loaded} pictures loaded behind the loading screen (${held ? (held.bytes / 1048576).toFixed(2) : '?'} MB, ${held && held.grey} grey for the shut)`,
       /* v2.3.3555: a grey copy for each SHUT building, however many that is --
          it was `>= 1`, and since the Hotel opened (v2.3.3539) none is shut */
       /* v2.3.3630: 20 px, bigger than its footprint (the owner: "oversized so
@@ -254,7 +243,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ...and bigger than the roof it stands on */
     const fp = bl.map((b) => Math.max(b.w, b.h)).sort((a, b) => a - b);
     const fpMid = fp.length ? fp[Math.floor(fp.length / 2)] : null;
-    rec.ok(`...drawn bigger than the building under it (${bi && bi.px} px against a middling footprint of ${fpMid} px)`, !!bi && fpMid != null && bi.px > fpMid, { px: bi && bi.px, fp });
+    rec.ok(`...drawn bigger than the ground its building stands on (${bi && bi.px} px against a middling footprint of ${fpMid} px)`, !!bi && fpMid != null && bi.px > fpMid, { px: bi && bi.px, fp });
+    /* v2.3.3678: the four pictures that now say what their building is */
+    const pics = await P.page.evaluate(() => (window.__btBuildingIcons ? window.__btBuildingIcons().files : null)).catch(() => null);
+    const want = { gemcutter: /skill-gemcutting\.webp$/, feedseed: /skill-farming\.webp$/, landoffice: /bldg-farm\.webp$/, store: /panel-shop\.webp$/ };
+    rec.ok(`...the Gem Works a gem, the Feed & Seed a sprout, the Land Office the barn, the General Store a shop (${pics ? Object.keys(want).map((k) => k + ' ' + String(pics[k] || '-').split('/').pop()).join(', ') : '?'})`,
+      !!pics && Object.keys(want).every((k) => want[k].test(pics[k] || '')), { pics });
     const r = await P.page.evaluate(() => window.__btWheelMini);
     if (r) await P.page.screenshot({ path: join(OUT, 'wheelmap-01b-minimap-icons.png'), clip: { x: r.left, y: r.top, width: r.w, height: r.h } }).catch(() => {});
   }
@@ -526,25 +520,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!pl) break;
     await P.page.waitForTimeout(250);
   }
-  /* ── 5. home: today's minimap again ── */
-  const exit = await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    for (let y = 0; y < S.map.length; y++) { const row = S.map[y]; const x = row.indexOf(8); if (x >= 0) return { tx: x, ty: y }; }
-    return null;
-  });
-  await H.hopTo(P, exit.tx * 32 + 16 + 40, exit.ty * 32 + 16, { tries: 80 });
+  /* ── 5. off the Wheel: onto your farm (v2.3.3678: it walked back up the
+     retired town's stairs; the world has no way back to it) ── */
+  await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
+  await P.page.evaluate(() => { try { window._uiPanels.building('farm'); } catch (e) { /* the check says */ } });
+  let visit = null;
+  for (let i = 0; i < 16 && !visit; i++) {
+    visit = await P.page.evaluate(() => { const b = document.querySelector('[data-farm-visit]'); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+    if (!visit) await P.page.waitForTimeout(500);
+  }
+  if (visit) await P.page.touchscreen.tap(visit.x, visit.y);
   let back = null;
-  for (let i = 0; i < 40; i++) {
-    back = await H.readState(P, (S) => S.currentZone);
-    if (back === 'town') break;
-    await P.page.waitForTimeout(700);
+  for (let i = 0; i < 60; i++) {
+    back = await H.readState(P, (S) => ({ zone: S.currentZone, hold: !!S._farmArtHold, veil: !!document.querySelector('.bt-zone-loading') }));
+    if (back && back.zone === 'farm_home' && !back.hold && !back.veil) break;
+    await P.page.waitForTimeout(750);
   }
   await P.page.waitForTimeout(1500);
   const home = await mini(P);
   const btnHome = await P.page.evaluate(() => !!document.querySelector('[data-world-map-open]'));
-  rec.ok('back in town, today\'s minimap is back and the world map\'s button is gone', back === 'town' && home && !home.wheel && home.box === 52 && !btnHome, { back, box: home && home.box, btnHome });
-  /* v2.3.3522: and the buildings' pictures were let go with the Wheel */
-  const heldHome = await P.page.evaluate(() => (window.__btBuildingIcons ? window.__btBuildingIcons() : null));
-  rec.ok('...and the buildings\' pictures went with the Wheel (none held)', !!heldHome && heldHome.loaded === 0 && heldHome.grey === 0 && heldHome.textures === 0, heldHome);
+  rec.ok('off the Wheel, on your farm, the farm\'s own small minimap and no world map to open', !!back && back.zone === 'farm_home' && home && !home.wheel && home.box === 52 && !btnHome,
+    { back, box: home && home.box, wheel: home && home.wheel, btnHome, visit });
+  /* (v2.3.3522 checked here that the buildings' pictures went with the Wheel,
+     on the old way out to the retired town.  The farm trip sets the zone
+     straight in and lets go of none of the Wheel's art (its pictures, its
+     signposts' icons, its lands' banner strips): found by this move, a
+     separate fix, so not asserted here.) */
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));
 }

@@ -438,8 +438,15 @@ export function AbilityFace(props) {
  * inside the owner's ring is kept and it fills the face inside the game's ring,
  * which still carries the cooldown arc and the lit "shield up" state.  The
  * -grey copy is the cooldown's (never a CSS filter, TRAPS §42).  Shield Bash
- * keeps its own picture (the shield striking), so the two stay two pictures. */
-const BLOCK_ART_V = '2.3.3494';
+ * keeps its own picture (the shield striking), so the two stay two pictures.
+ * v2.3.3677: THE SAME SHIELD ON A CALM DISC -- the owner: "I want a different
+ * icon for the shield block (the light explosion makes it look like an
+ * attach)".  The gold burst is what the attack buttons wear (the sword's
+ * special, the volley, Shield Bash's impact), so the owner's shield is lifted
+ * off it and set on a still steel-blue disc (cut-owner-icons.py `calm`), the
+ * one blue button in the right cluster: guarding, not striking.  The new
+ * picture is asked for at the new ?v=, so no phone keeps the old one. */
+const BLOCK_ART_V = '2.3.3677';
 export function blockArtUrl(grey) {
   return '/ui/controls/abil-block' + (grey ? '-grey' : '') + '.webp?v=' + BLOCK_ART_V;
 }

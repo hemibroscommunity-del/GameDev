@@ -3551,8 +3551,18 @@ console.log("the buildings' doors (v2.3.3032)");
     const enterPic = (k) => has(WHEEL_BUILDING_DOORS, k) ? ((TOWN_BUILDINGS.find((b) => b.id === WHEEL_BUILDING_DOORS[k]) || {}).iconSrc || null)
       : has(WHEEL_HALL_DOORS, k) ? WHEEL_HALLS[WHEEL_HALL_DOORS[k]].icon : null;
     const differ = ids.filter((k) => enterPic(k) && enterPic(k) !== WHEEL_BUILDING_ICONS[k]);
-    ok('...each the very picture its Enter button wore, at the same address (one copy held), but the Land Office\'s: its own map, where it borrowed the Feed & Seed\'s barn',
-      differ.join() === 'landoffice' && WHEEL_BUILDING_ICONS.landoffice === '/icons/ui/map.webp', differ);
+    /* v2.3.3678: four changed to a picture that says what the building is
+       (wheelBuildingDoors.js, the table's header): the Gem Works the gem and
+       chisel, the Feed & Seed its window's sprout, the General Store a shop --
+       each at the address the game already uses it at, so one copy held --
+       and the Land Office the barn again (its window's), which the Feed & Seed
+       no longer wears */
+    ok('...each the very picture the building\'s window or the old town\'s door wore, at the same address (one copy held), but the three changed to say what the building is (v2.3.3678)',
+      differ.join() === 'gemcutter,feedseed,store'
+        && WHEEL_BUILDING_ICONS.gemcutter === '/icons/ui/skill-gemcutting.webp?v=2.3.1224'
+        && WHEEL_BUILDING_ICONS.feedseed === '/icons/ui/skill-farming.webp?v=2.3.1224'
+        && WHEEL_BUILDING_ICONS.store === '/icons/ui/panel-shop.webp'
+        && WHEEL_BUILDING_ICONS.landoffice === '/icons/ui/bldg-farm.webp?v=2.3.1224', differ);
     const src = (q) => fs.readFileSync(new URL('../../src/' + q, import.meta.url), 'utf8');
     const mm = src('rendering/systems/wheelMinimap.js'), wm = src('ui/WorldMapOverlay.jsx'), pa = src('rendering/preloadAnimations.js'), bt = src('ui/BroTown.jsx');
     ok('...drawn on the minimap\'s footprints once (a sprite each, a shut one grey) and at the world map\'s doors up close, loaded behind the Wheel\'s loading screen and let go on leaving it, and worn by its Enter button',
@@ -3927,7 +3937,11 @@ console.log("the keepers (v2.3.3258)");
   const dc = fs.readFileSync(new URL('../../src/game/desktopControls.js', import.meta.url), 'utf8');
   const it = fs.readFileSync(new URL('../../src/game/interactions.js', import.meta.url), 'utf8');
   const tapAt = bt.indexOf("if (npc.keeperOf && openKeeper(npc)) return _mark('opens');"), questAt = bt.indexOf("return _mark('quest');"), flipAt = bt.indexOf("if (npc.flip) {\n      /* v2.3.2620: Ace's ONLY door");
-  const eAt = dc.indexOf('if (npc.keeperOf && deps._desktopOpenKeeper && deps._desktopOpenKeeper(npc)) return true;'), eQuest = dc.indexOf('_desktopNpcQuest(npc, npcQ);');
+  /* v2.3.3678: the keeper's line may say something as he opens it (v2.3.3664's
+     hum: `{ npcSpeaks(S, npc); return true; }`) -- read as a pattern, as the
+     exact text failed this check on main from #1151 on */
+  const eM = /if \(npc\.keeperOf && deps\._desktopOpenKeeper && deps\._desktopOpenKeeper\(npc\)\) (?:\{ npcSpeaks\(S, npc\); )?return true;/.exec(dc);
+  const eAt = eM ? eM.index : -1, eQuest = dc.indexOf('_desktopNpcQuest(npc, npcQ);');
   ok('...a tap, E and the right stick\'s tap all open it, each AFTER his quest (the Mayor\'s chain untouched) and before anything else he answers; it is the door\'s own path (enterWheelDoor: the same window, the same visit counted), and `keeperOf` is set only in the Wheel, only where that building stands with something to open',
     tapAt > questAt && questAt > 0 && (flipAt < 0 || tapAt < flipAt) && eAt > eQuest && eQuest > 0
       && /_desktopOpenKeeper: openKeeper,/.test(bt)
