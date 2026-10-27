@@ -21,6 +21,7 @@ import { pushDmgPopup, monsterPopupY, heroPopupY } from '@/game/combatHelpers.js
 import { codexDropsFor, CODEX_ROLL_SIDES } from '@/data/codexDrops.js';
 import { petKindOfMonster } from '@/data/trapping.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a winning roll heard */
+import { dropColumnsLive } from '@/game/dropColumns.js'; /* v2.3.3616: the drops in columns, in its place */
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -78,8 +79,13 @@ export function onKillRoll(S, cc) {
   const x = m ? (m.x != null ? m.x : (m.renderX || 0)) : P.x;
   const y = m ? monsterPopupY(m, -40) : heroPopupY(S);
   /* held to be read, as a damage number is not (1.5 s, fading from its
-     first frame): a hunter reads every roll, and a drop's a while longer */
-  pushDmgPopup(S, x, y, text, name ? KILL_ROLL_HIT : KILL_ROLL_MISS,
+     first frame): a hunter reads every roll, and a drop's a while longer.
+     v2.3.3616: the owner -- "Instead of showing the dice roll for each drop I
+     think it would be better to show each drop in columns" -- so with the
+     columns up (game/dropColumns.js) the roll is not drawn; `?dropcols=0`
+     draws it.  The roll stays on the codex's page, and its sound below. */
+  const shown = !dropColumnsLive();
+  if (shown) pushDmgPopup(S, x, y, text, name ? KILL_ROLL_HIT : KILL_ROLL_MISS,
     name ? { roll: true, iconKey: 'dice', iconLead: true, ttl: 3.2, hold: 1.8, rise: 26 } : { roll: true, iconKey: 'dice', iconLead: true, ttl: 2.4, hold: 1.0, rise: 30 });
   /* v2.3.3343: a roll that lands on one of your drops is heard -- a glint and
      the win's first note.  The grey ones every kill makes stay quiet. */
@@ -88,7 +94,7 @@ export function onKillRoll(S, cc) {
   if (typeof window !== 'undefined' && window.__btProbe) {
     try {
       const log = window.__btKillRolls || (window.__btKillRolls = []);
-      log.push({ roll, rh: cc.rh || null, name, text, monsterId: cc.monsterId, over: m ? 'monster' : 'you', at: Date.now() });
+      log.push({ roll, rh: cc.rh || null, name, text, monsterId: cc.monsterId, over: m ? 'monster' : 'you', shown, at: Date.now() });
       if (log.length > 40) log.splice(0, log.length - 40);
     } catch (e) { /* a probe never breaks the game */ }
   }

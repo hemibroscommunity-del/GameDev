@@ -4287,6 +4287,15 @@ remnant to migrate server-side, not a mode to preserve.
       number, `shared: false`), mirror-audit holding it to `killRollLayout`
       for every kind; `caps.killroll`, kill switch `killroll: false`, dev
       lever `/dev/killroll {next, kill}`; `killroll` suite, `mp-killroll`;
+      since v2.3.3616 NOT DRAWN: EACH DROP A COLUMN over the monster instead --
+      the owner: "show each drop in columns of the floating icon rising with
+      the quantity beneath it and the rarity beneath that" -- its picture, its
+      amount (gold: your share) and its rarity (gear its grade, "Mystery" or
+      "Normal"; else by the codex's chance: Normal, Uncommon, Rare, Very rare),
+      from the pile (`loot_drop`) and the killing blow's nugget (`rh`),
+      src/game/dropColumns.js + src/rendering/dropColumns.js, pictures
+      preloaded; `?dropcols=0` the roll again (mp-killroll runs so);
+      `drop-columns` suite, `mp-dropcols`: docs/specs/drop-columns.md;
     - NO RANDOM WEAPON OFF A KILL (the owner: "Remove 'a random weapon'
       drop", then "Remove it from the game"): `_rollWeaponDropForKill` and
       its level curve are gone, a kill's one weapon the Iron Great Sword's 1

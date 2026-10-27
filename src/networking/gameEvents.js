@@ -189,6 +189,7 @@ import { notePvpBlow } from '@/game/sparTargets.js'; /* v2.3.3268: a blow betwee
 import { nmlJoinFight } from '@/game/nmlAsk.js'; /* v2.3.3530: one of a group whose blow lands on you joins the fight you chose, no window */
 import { allyMomentText } from '@/game/alliance.js'; /* v2.3.3313: the alliance's moments on party_state */
 import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3340: the mummy's bones rattle as it sheds */
+import { noteLootDrop } from '@/game/dropColumns.js'; /* v2.3.3616: a kill's drops in columns over the monster */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -310,6 +311,9 @@ export function processGameEvent(type, payload, S, deps) {
               }
               var _newPile = _buildServerPile(payload.pile, S.myId);
               S.groundLoot.push(_newPile);
+              /* v2.3.3616: what it dropped, a column each over the monster
+                 (game/dropColumns.js), when the pile is yours to pick up */
+              try { noteLootDrop(S, _newPile, S.myId); } catch (_dc) { /* display only */ }
               /* v2.3.3343: a pile landing is heard, a little coin rattle by
                  distance (it was silent; SOUND-GAPS) */
               if (_newPile) cueAt(S, 'lootDrop', _newPile.x, _newPile.y);
