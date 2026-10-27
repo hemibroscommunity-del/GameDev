@@ -4022,7 +4022,7 @@ remnant to migrate server-side, not a mode to preserve.
       tee or greaves alone as before; `?fishgrip=1` is the old grip;
       `mp-fisharmour` (the skin laid over the plate below the head, 0-3 px a
       frame; the tee's and greaves' grip still there): docs/specs/fish-armour-hands.md.
-    - since v2.3.3646 THE GRIP LIFTS THE HAND, NOT THE TROUSERS -- the owner:
+    - since v2.3.3657 THE GRIP LIFTS THE HAND, NOT THE TROUSERS -- the owner:
       "check all the animations for ghost remnants" (mp-ghostaudit: a patch
       of the trousers' colour on the greaves by the reel hand, up to 54 px):
       at the reel the rod runs down past the hip, so the grip lifted the

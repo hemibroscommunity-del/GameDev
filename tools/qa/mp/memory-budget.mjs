@@ -44,7 +44,7 @@
  * line already 0.1 MB away.  Nothing is kept after it: the third trip ends
  * where the second did.
  *
- * v2.3.3646, main's own code at the line: `heap` 33 -> 34 -- RAISED.  Two runs
+ * v2.3.3657, main's own code at the line: `heap` 33 -> 34 -- RAISED.  Two runs
  * of the check on 2026-10-27, both main with a change that never runs on its
  * trip (#1142's walking waist, #1141's fishing grip), read 32.8 and 33.3 MB at
  * the third trip's fight: the same code on either side of the line, so every
@@ -68,7 +68,7 @@ export const MEMORY_BUDGET = {
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 30, measured: 26.0,
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
-  heap: { name: 'the page\'s JavaScript objects', mb: 34, measured: 33.3,   /* v2.3.3595: 32 -> 33; v2.3.3646: 33 -> 34, see the header */
+  heap: { name: 'the page\'s JavaScript objects', mb: 34, measured: 33.3,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34, see the header */
     what: 'the page\'s JavaScript objects' },
   buffers: { name: 'the page\'s raw data buffers', mb: 24, measured: 20.0,
     what: 'the page\'s raw data buffers (ArrayBuffers)' },
