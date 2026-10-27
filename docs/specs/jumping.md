@@ -484,3 +484,37 @@ slides away from the body as it rises.
   - a standing take-off puffs two puffs;
   - 2b, a running jump east leans forward and west the other way, as the rules
     give for the speed he really went, and kicks three puffs back.
+
+## v2.3.3681: the jump button is back for everyone
+
+The owner, 2026-10-27: "Also while I'm thinking of it: I want a dedicated
+button for jumping".
+
+- **Where:** v2.3.3017's button, in v2.3.3017's place. It is centred under
+  the attack disc, one gap below it (`jumpAnchor`, ShieldButton.jsx), so the
+  thumb slides straight down off ATTACK. `combatBandTopPx` has counted that
+  slot all along, so nothing else had to move. It shows the owner's round
+  jump picture (card 11), lit while you are in the air. It jumps on the
+  press, and its touches never swing.
+- **When:** always on a phone, except while you swim or are dead (as
+  before). A computer jumps with X.
+- **The switch:** `?jumpbtn=0` puts it away, which is the game of
+  v2.3.3105-3680 (tapJump.js `jumpButtonWanted`). A plain `?jumpbtn` still
+  works and changes nothing.
+- **The tap stays.** A tap on the right stick still jumps when it has no
+  other job, and the stick still shows the JUMP arrow when it would. Taking
+  the tap jump away now that the button is back is the owner's call.
+
+**Checked** by `mp-jumpbtn`, in the world, 20 of 20. On an upright phone
+(390 x 844), a small one (360 x 640) and a sideways one (844 x 390), with a
+sword, a Pine Shield and a fight on:
+
+- the button is drawn with nothing in the address;
+- it sits under the attack disc and centred on it, clear of the dashboard;
+- it covers no other control, with the guard down and with it up (Shield
+  Bash drawn);
+- a real tap jumps and swings nothing;
+- `?jumpbtn=0` hides it.
+
+`mp-tapjump`'s first check now expects the button; its tap still jumps, 8 of
+8.

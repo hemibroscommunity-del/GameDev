@@ -38,6 +38,13 @@ import { Skin, AbilityFace, pressOn, pressOff } from './controlSkin.jsx'; /* v2.
  * (game/tapJump.js, BroTown's rE).  The button is drawn only with `?jumpbtn`
  * in the address; its probe (__btJumpBtn) stays, and says `button`. */
 
+/* ═══ v2.3.3681: BACK, FOR EVERYONE ═══
+ * The owner, 2026-10-27: "Also while I'm thinking of it: I want a dedicated
+ * button for jumping".  Drawn where v2.3.3017 put it, centred under the attack
+ * disc (jumpAnchor; combatBandTopPx has counted its slot all along), unless
+ * the address says `?jumpbtn=0`.  A tap on the stick still jumps as well, when
+ * it has no other job. */
+
 /* How often the view is read (re-rendered only when it changes). */
 const POLL_MS = 80;
 /* A touch's mouse echo arrives within this of its touchend; not a press. */
@@ -87,7 +94,7 @@ export function JumpButton(props) {
   }
   var S = stateRef && stateRef.current;
   var view = jumpButtonView(S);
-  if (!view || !jumpButtonWanted()) return null;   /* v2.3.3105: ?jumpbtn only */
+  if (!view || !jumpButtonWanted()) return null;   /* v2.3.3105: ?jumpbtn only; v2.3.3681: unless ?jumpbtn=0 */
 
   var anchor = jumpAnchor(isLandscape);
   var size = anchor.size;
