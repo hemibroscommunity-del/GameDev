@@ -42,9 +42,11 @@
  * the settled figure, which does not depend on when the collector last ran.
  * A failure names the line, what was read, the budget and what to do.
  *
- * The player is untouchable (the worker's dev god mode, 8 min) so no death
- * trip lands in the middle of a reading, and a Control press every 20 s keeps
- * the idle logout away (as mp-wheeldeep).
+ * The player is untouchable (the worker's dev god mode, 8 min, armed again
+ * every 2 s since v2.3.3656: a rejoin makes the worker's player state afresh)
+ * so no death trip lands in the middle of a reading, and a Control press every
+ * 20 s keeps the idle logout away (as mp-wheeldeep).  Each stop's label names
+ * any rejoin, death or reload since the stop before (the game's crash log).
  *
  * Results: tools/qa/mp/out/membudget.json (every stop, the biggest canvases by
  * size, the workers).  QA_MB_QUERY adds a URL switch, to see the check catch a
@@ -192,6 +194,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'membudget', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', init: MEM_INIT, query: QUERY });
   const out = { query: QUERY, budget: MEMORY_BUDGET, stops: [] };
   let stopAlive = false;
+  /* v2.3.3656: WHAT HAPPENED BETWEEN TWO STOPS.  The game's own crash log
+     (crashTrap recordCrash prints every entry as "[bt-crash] <kind> <why>")
+     and any page load after the first: a rejoin ('resume-resync', a thaw past
+     5 s; 'dead-pipe'), a death ('died'), a recovery reload ('auto-reload',
+     'watchdog-dark', 'canvas-purge').  #1148's first runs read the fight in
+     today's town on two trips of three, with nothing to say why. */
+  const trail = [];
+  let loaded = false;
+  P.page.on('console', (m) => {
+    const t = m.text();
+    if (/^\[bt-crash\]/.test(t)) trail.push({ at: Date.now(), t: t.replace(/^\[bt-crash\]\s*/, '').slice(0, 160) });
+  });
+  P.page.on('load', () => { if (loaded) trail.push({ at: Date.now(), t: 'page load (a reload)' }); loaded = true; });
+  const KINDS = [['rejoin', /^(resume-resync|dead-pipe|connect-stall)\b/], ['death', /^died\b/],
+    ['reload', /^(auto-reload|watchdog-dark|canvas-purge)\b|^page load/]];
+  let trailFrom = Date.now();
+  const trailSince = () => {
+    const seen = trail.filter((e) => e.at >= trailFrom);
+    trailFrom = Date.now();
+    const n = KINDS.map(([k, re]) => [k, seen.filter((e) => re.test(e.t)).length]);
+    return { seen: seen.map((e) => e.t), words: n.filter(([, c]) => c).map(([k, c]) => `${c} ${k}${c === 1 ? '' : 's'}`).join(', ') };
+  };
   try {
     await H.enterWorld(P);
     const ok = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading,
@@ -237,10 +261,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
         for (let i = 0; i < 40 && !stopAlive; i++) await P.page.waitForTimeout(500).catch(() => {});
       }
     })();
+    /* ═══ v2.3.3656: AND KEPT UNTOUCHABLE THROUGH A REJOIN ═══
+       God mode lives on the worker's player state, in memory (devtools.js),
+       and a rejoin makes that state afresh.  A runner drawing a 3x phone in
+       software freezes the page past 5 s now and then, the game takes that as
+       a return and rejoins (wsClient _resumeRecover 'thaw'), and the level-1
+       bro, untouchable no more at the Flame Fields, can die there: on #1148's
+       first runs the fight's reading was taken in today's town (a respawn's
+       way back) on two trips of three, and a 4x slowed run here rejoined once
+       on the way in.  So it is armed again every 2 s, and healed; the trail
+       above says in each stop's label when a rejoin, death or reload came. */
+    (async () => {
+      while (!stopAlive) {
+        await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 8 }).catch(() => null);
+        for (let i = 0; i < 4 && !stopAlive; i++) await P.page.waitForTimeout(500).catch(() => {});
+      }
+    })();
     await P.page.waitForTimeout(8000);
     const { sample, workers } = await memSampler(P, browser);
-    const take = async (label) => {
+    const take = async (label0) => {
+      const tr = trailSince();
+      const label = label0 + (tr.words ? ` [${tr.words} since the last stop]` : '');
       const s = await sample(label);
+      s.trail = tr.seen;
       s.workers = await workers();
       const sg = await settledGpu(P);
       s.gpuSettled = sg ? sg.mb : null;
@@ -289,7 +332,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`the trip reached the fight and came home, three times (${trips.map((t) => t.swings).join(', ')} swings; `
       + `${trips.map((t) => t.atFight.reach).join(', ')} px short of the fight's spot, at most ${REACH_PX})`,
       trips.length === 3 && trips.every((t) => t.atFight.zone === 'wheel' && t.back.zone === 'wheel' && t.atFight.reach <= REACH_PX),
-      trips.map((t) => [t.atFight.zone, t.back.zone, t.atFight.reach]));
+      { zones: trips.map((t) => [t.atFight.zone, t.back.zone, t.atFight.reach]),
+        trail: trips.map((t) => [t.atFight.trail, t.back.trail]) });
 
     /* ── within budget ── */
     const peaks = {};
