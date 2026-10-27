@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b656e9032a1deaa87afe3d4d66bfb74d4b71b79c",
+  "tree": "8bc974a922dc84e12120ef5341dbecf21ee796d7",
+  "committedAt": "2026-10-27T14:34:20-07:00",
+  "subject": "The goo that holds you is the blue slime's blue, not green (v2.3.3675) (#1160)",
+  "files": 6664,
+  "bytes": 774955029,
+  "listingSha256": "96d5e89e7b92bfd4a14ed3808a6e732100ed4ec2046bcb43de1979ae622e9ff2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
