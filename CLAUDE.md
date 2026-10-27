@@ -3936,6 +3936,24 @@ remnant to migrate server-side, not a mode to preserve.
         `mp-peercolours` (fails on the old
         code: every recoloured pixel of a peer's cook and fire-lighter the
         watcher's): docs/specs/peer-gather-colours.md.
+    - since v2.3.3623 AN ARMOURED ANGLER'S HANDS ARE GAUNTLETS -- the owner:
+      "The fishing animation gets messed up around the hands when the
+      character is wearing torso armor": the fish pose's top overlay
+      (entityRenderer `_fishTopFrame`) lifts the GRIP -- every body pixel
+      within GRIP_R of the rod -- over the gear, so the hand rides over a tee
+      (v2.3.1914) or greaves (v2.3.2278); over a torso plate it laid the bare
+      arm and hand across the plate's own steel gauntlet and forearm guard, a
+      strip of skin cut square (77-182 px a frame). With a plate worn
+      (`_chestFrameOf`: its frame and metal) nothing of the grip but the rod is
+      drawn over the plate, and what the plate leaves bare -- a finger past its
+      gauntlet, the reel hand, the forearm down to it -- is drawn as a gauntlet
+      in its metal: the skin found on the RAW frame, flooded from the grip
+      (never into the rod, which is pine; under greaves only at the rod), each
+      pixel the plate's own steel at the skin's shade (`FISH_SKIN_*`,
+      `FISH_STEEL_*`), times the metal's tint; the body under it untouched; a
+      tee or greaves alone as before; `?fishgrip=1` is the old grip;
+      `mp-fisharmour` (the skin laid over the plate below the head, 0-3 px a
+      frame; the tee's and greaves' grip still there): docs/specs/fish-armour-hands.md.
   - Since v2.3.3146 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:
     "Also all the buildings in town should show on the minimap": each
     standing building's footprint where it stands (wheelMinimap.js
