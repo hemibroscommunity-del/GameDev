@@ -1166,6 +1166,23 @@ remnant to migrate server-side, not a mode to preserve.
     darker than a third of the skin -- TRAPS §129); enclosed windows turn
     under-armour shadow; the full set is untouched; `mp-greaveslegs`
     (`window.__btLegsPeek`), src/belt-harness.html `?wear=legs&pose=&tint=&clamp=off`.
+    - since v2.3.3640 THE SWORD'S AND BOW'S STAND-INS TOO, AND NO GREY FILL --
+      the owner: "check all the animations for ghost remnants" (mp-ghostaudit:
+      every swing frame in iron showed the body's trousers and boots): a
+      stand-in is a recoloured bare body with the greaves' own strip drawn
+      over it, the two legs drawn in different places (TRAPS §73's fourth
+      time). Under greaves the sword and bow bodies are baked with only the
+      legs the greaves cover (playerSkins.js `_clampLegsUnder`: from their top
+      down, a leg pixel outside them goes, or turns under-armour shadow where
+      they close it in), the shape read once off each greaves strip as it
+      loads (effectsRenderer `_noteGreavesShape`, a bit a pixel), rebaked as
+      greaves go on or off, a peer's too (`|L`); and the grey the sword sheets
+      had in the gaps the original art leaves empty (between the legs, round
+      the blade) -- painted the player's BOOT colour by the recolour -- is out
+      of the PNGs (tools/art/clean-sword-fill.py, SWORD_ART_VERSION 1103, the
+      .webp twins CI's to mint, TRAPS §255);
+      `?standinlegs=0`, `window.__btStandInLegs()` (`.set(on)`); `mp-standinlegs`:
+      docs/specs/standin-legs.md.
   - Since v2.3.3520 THE ARMOUR RIDES THE ARM CAPSULE -- the owner: the east
     jog's shoulder on a copper torso, "fix it for all future tiers". The
     capsule (v2.3.200) clones the body over the arm on every east jog with a
@@ -1177,6 +1194,23 @@ remnant to migrate server-side, not a mode to preserve.
     and grade; `_hideArmClones` hides them all together); `mp-armcapsule`
     (skin over the plate 49-233 px a frame -> the hand's 0-15):
     docs/specs/visuals-2026-10-19.md.
+  - Since v2.3.3645 NO TROUSERS AT THE WAIST OF A FULL IRON SET -- the owner:
+    "check all the animations for ghost remnants of either a body beneath"
+    (mp-ghostaudit: in pink trousers and full iron, a pink strip between the
+    plate and the greaves jogging north-east or north-west, 21-23 px on
+    frames 1-2, 7-15 on 11-13; in the default olive a dark line). North-east
+    has no knight figure, so it is the masked bake, and two faults kept the
+    trousers there:
+    - the fishing rod's restore (maskedBake.js, v2.3.1123) found the rod by
+      colour on EVERY pose, and pink trousers (or a pink skin) pass its test:
+      it runs on the fishing pose only now, the one sheet with a rod;
+    - the chain belt sheet (belt/chainbelt/jog-northeast) stopped one or two
+      rows short of the greaves on frames 8, 11-14, 21 and 23: bridged by
+      tools/gear/bridge-ne-belt.mjs (relay_jog_belt.py's rule, 47 px; the
+      mannequin's beltmask-northeast.png left, 23 frames to the sheet's 24);
+      GEAR_VERSION 2.3.3645, the PNG only (CI mints the .webp);
+    - `mp-ironwaist` (at most 6 px of pink a frame both ways; 56/51/24/42/47
+      on the old build), `iron-waist` suite: docs/specs/iron-waist.md.
   - Since v2.3.3011 the view is ANOTHER 25% further out -- the owner: "If it
     is already zoom it out another 25%" -- `VIEW_OUT` 0.64 (0.8 x 0.8) in
     worldViewport.js, the bro ~54 CSS px on the QA phone with the dashboard

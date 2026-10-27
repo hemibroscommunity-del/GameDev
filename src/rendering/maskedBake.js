@@ -271,8 +271,15 @@ export function bakeMaskedCanvas(inp) {
        low G, B > G) appear ONLY on the fish rod, so this is a no-op for every
        other pose/body.  The rod is drawn back into the body texture; the small
        segment directly behind the plate is still occluded by the gear on top
-       (natural), but the halo-cut section beyond the plate reappears. */
-    if (origBody) {
+       (natural), but the halo-cut section beyond the plate reappears.
+       v2.3.3645: the FISHING pose only.  "A no-op for every other pose" was
+       true only of the default colours: pink trousers (214, 112, 168) pass the
+       magenta fallback below, and so does a pink skin, so on every other pose
+       the erase's cut pixels of them came back -- under full iron, a pink strip
+       at the waist of the north-east and north-west jog (the owner's "check
+       all the animations for ghost remnants", mp-ghostaudit; mp-ironwaist).
+       Only the fishing sheet has a rod. */
+    if (origBody && poseInfo && poseInfo.pose === 'fish') {
       try {
         /* v2.3.2761: the rod is PINE now (toolRecolor.js -- the owner asked
            for the magenta key to become a real material), so it can no longer
