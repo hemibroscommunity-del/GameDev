@@ -340,9 +340,10 @@ export class WheelMinimap {
   /* v2.3.3108: the name plate's two lines, redrawn only when they change.
      `w` the worker's words for the spot under you ({title, sub}), kept while
      you are over open water (no land, no words) so the plate never blinks;
-     `region` its land.  No man's land is its own badge over the dashboard's
-     middle (v2.3.3107, ui/mobile/NmlBadge.jsx), so the plate keeps the
-     level band there too. */
+     `region` its land.  No man's land is its own badge (v2.3.3107,
+     ui/mobile/NmlBadge.jsx; since v2.3.3629 just left of this box, level
+     with this plate, so the place, its levels and the skull read together),
+     so the plate keeps the level band there too. */
   _plate(w, region) {
     if (w && w.title) this._lastWords = { title: w.title, sub: w.sub || '', region: region || null };
     const at = this._lastWords;
