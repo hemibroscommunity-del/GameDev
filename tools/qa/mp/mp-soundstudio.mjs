@@ -205,6 +205,49 @@ export async function run({ browser, wsPort, webPort, rec }) {
       jumped > 0 && iJump >= 0 && iJump <= 4 && !heard.ids.includes('other:uiClick'), { jumped, heard });
     await P.page.evaluate(() => window.__btSoundStudio.close());
 
+    /* ── 10. v2.3.3610: the Music tab -- every track under where it plays, the
+       one playing where you stand named, and ▶ playing it from its file with
+       the game's music turned down, ■ putting the game's back ── */
+    await P.page.evaluate(() => window.__btSoundStudio.open({ tab: 'music' }));
+    await waitStudio(P, true);
+    await P.page.waitForTimeout(600);
+    const mus = await P.page.evaluate(() => {
+      const rows = Array.from(document.querySelectorAll('[data-studio-music] [data-studio-row]'));
+      const now = document.querySelector('[data-studio-music-now]');
+      return { ids: rows.map((n) => n.getAttribute('data-studio-row')), text: rows.map((n) => n.textContent.replace(/\s+/g, ' ').slice(1, 90)),
+        now: now ? now.getAttribute('data-studio-music-now') : null, nowText: now ? now.textContent : '' };
+    });
+    await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/soundstudio-music.png` }).catch(() => {});
+    const MUSIC_IDS = ['town', 'frost', 'ember', 'sky', 'hollows', 'tidal', 'mist', 'verdant', 'dungeon', 'minigame', 'theme', 'dance'].map((k) => 'music:' + k);
+    rec.ok(`10. the Music tab lists every track under where it plays (${mus.ids.length}: ${mus.text.slice(0, 3).join(' | ')} ...), and the one playing here ("${mus.nowText}")`,
+      MUSIC_IDS.every((i) => mus.ids.includes(i)) && /Town Square Loop/.test(mus.text[mus.ids.indexOf('music:town')] || '') && mus.now === 'town', mus);
+    await tap(P, '[data-studio-play="music:hollows"]');
+    let pv = null;
+    for (const t0 = Date.now(); Date.now() - t0 < 4000;) {
+      pv = await P.page.evaluate(() => {
+        const A = window.BT_AUDIO;
+        const b = document.querySelector('[data-studio-play="music:hollows"]');
+        return { stop: b ? b.textContent : null, preview: !!(A && A._musicPreview), bus: A && A._musicBus ? +A._musicBus.gain.value.toFixed(3) : null,
+          media: Array.from(document.querySelectorAll('audio')).length };
+      });
+      if (pv.stop === '■' && pv.preview) break;
+      await P.page.waitForTimeout(200);
+    }
+    await P.page.waitForTimeout(700);
+    const bus1 = await P.page.evaluate(() => (window.BT_AUDIO && window.BT_AUDIO._musicBus ? +window.BT_AUDIO._musicBus.gain.value.toFixed(3) : null));
+    rec.ok(`10. ...▶ on the Stone Hollows' Rock level plays it (its button ■), the land watch held off and the game's music turned down (music bus ${bus1})`,
+      !!pv && pv.stop === '■' && pv.preview === true && bus1 !== null && bus1 < 0.05, { pv, bus1 });
+    await tap(P, '[data-studio-play="music:hollows"]');
+    await P.page.waitForTimeout(900);
+    const back = await P.page.evaluate(() => {
+      const A = window.BT_AUDIO;
+      return { preview: !!(A && A._musicPreview), bus: A && A._musicBus ? +A._musicBus.gain.value.toFixed(3) : null, level: A ? A.musicLevel : null,
+        btn: (document.querySelector('[data-studio-play="music:hollows"]') || {}).textContent };
+    });
+    rec.ok(`10. ...■ stops it and puts the game's music back (music bus ${back.bus} of ${back.level})`,
+      back.preview === false && back.btn === '▶' && back.bus !== null && Math.abs(back.bus - back.level) < 0.05, back);
+    await P.page.evaluate(() => window.__btSoundStudio.close());
+
     rec.ok('9. no page errors', errs.length === 0, errs.slice(0, 3));
   } finally {
     await P.ctx.close().catch(() => {});

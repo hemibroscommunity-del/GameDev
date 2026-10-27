@@ -117,6 +117,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!near && near.door === 'verdant' && /Enter the Goo Grotto/.test(near.btn || '') && (near.btn || '').includes(doorLine) && near.drawn.includes('verdant'), { near, doorLine });
 
   /* ── 3. in ── */
+  /* v2.3.3610: the sound on, so the dungeon's music can be read */
+  await P.page.evaluate(async () => {
+    const A = window.BT_AUDIO;
+    if (A && !A.ctx) { try { A.unlock(); } catch (e) { /* checked below */ } }
+    if (A && A.ctx && A.ctx.state !== 'running') { try { await A.ctx.resume(); } catch (e) { /* checked below */ } }
+  });
   for (let i = 0; i < 15; i++) {
     if (await P.page.evaluate(() => !!document.querySelector('[data-wheel-door]'))) break;
     await P.page.waitForTimeout(300);
@@ -147,6 +153,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       && !!arena.floor && arena.floor.drawn === true && /verdant-3-A\.png/.test(arena.floor.pic || '')
       && !!arena.back && Math.abs(arena.back.x - G.back[0]) < 1 && Math.abs(arena.back.y - G.back[1]) < 1,
     arena);
+  /* v2.3.3610: a dungeon plays the owner's "Swift Skirmish Clash" (every
+     `dungeon:` zone filed under ZONE_MUSIC.dungeon) */
+  let dm = null;
+  for (let i = 0; i < 20; i++) {
+    dm = await P.page.evaluate(() => { const A = window.BT_AUDIO; return A ? { playing: A._currentZoneAmbient || null, url: A._zoneMusicUrl || null } : null; });
+    if (dm && dm.playing === 'dungeon') break;
+    await P.page.waitForTimeout(300);
+  }
+  rec.ok(`...and inside, the dungeon's music: skirmish.mp3, the owner's Swift Skirmish Clash (${dm && dm.url})`,
+    !!dm && dm.playing === 'dungeon' && /skirmish\.mp3/.test(dm.url || ''), dm);
 
   /* ── 4. the waves, the boss at the dungeon's level, the clear ── */
   const coins0 = await H.readState(P, (S) => (S.rpg && S.rpg.coins) || 0);

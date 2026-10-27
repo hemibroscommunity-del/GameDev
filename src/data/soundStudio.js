@@ -374,3 +374,38 @@ export const SAMPLE_SOURCES = {
   'ui-click': '"Mouse Click" (matthewvakaliuk73627 290204)',
   'ui-equip': '"Item Equip" (freesound_community 6904)',
 };
+
+/* ═══ v2.3.3610: THE MUSIC, AND WHERE EACH TRACK PLAYS ═══
+ *
+ * The owner, 2026-10-26: "Is there a sound studio?  A huge part of the game is
+ * emotional resonance from music.  I don't know what music plays for the town
+ * vs the other zones (etc)" -- and then their own score, ten tracks made with
+ * Suno (assets/music-source/2026-10-26/, gameDisplay.js ZONE_MUSIC's note).
+ * The studio's Music section lists every track under where it plays, by the
+ * owner's own name for it, with a play button.
+ *
+ * [key, where it plays, the track's name].  `key` is a key of
+ * BT_AUDIO.ZONE_MUSIC, or 'theme' (BT_AUDIO.GLOBAL_MUSIC, the session's own
+ * track, which plays wherever a place has none) or 'dance' (the dances' beat,
+ * ownerSoundClips.js).  server/test/sound-cues.test.mjs §13 holds it to
+ * ZONE_MUSIC: every track a player can hear has its line, and every line's
+ * file is in public/audio/music/. */
+export const MUSIC_PLACES = [
+  ['town', 'BroTown and the safe ground round it', 'Town Square Loop'],
+  ['frost', 'Frost Ridge', 'Frozen Cave Loop'],
+  ['ember', 'The Flame Fields', 'Fire level'],
+  ['sky', 'The Wind Dunes (with the wind blowing over it)', 'Wind level'],
+  ['hollows', 'The Stone Hollows', 'Rock level'],
+  ['tidal', 'The Water Caves', 'Water lvl'],
+  ['mist', 'The Poison Forest', 'Murky Loop'],
+  ['verdant', 'The Verdant Wilds', 'Forest Loop'],
+  ['dungeon', 'Inside a dungeon: the Goo Grotto and the others', 'Swift Skirmish Clash'],
+  ['minigame', "Lil Bro's race, from the countdown to the finish", 'Minigame'],
+  ['theme', 'The login screen, and wherever there is no track of its own: the Electric Foundry, your farm', 'Select Your Hero'],
+  ['dance', 'Your dance\'s beat, while you dance one of the three dances', 'the dance beat'],
+];
+
+/* ZONE_MUSIC keys a player cannot reach today (the closed old map's World View
+   and meadow), left off the studio's list on purpose */
+export const MUSIC_CLOSED = ['worldview', 'meadow'];
+

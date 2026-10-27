@@ -150,8 +150,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const lil0 = await H.readState(P, (S) => { const n = (S.npcs || []).find((o) => o && o.name === 'Lil Bro'); return n ? { x: n.x, y: n.y } : null; });
 
   /* ── 4. the gun, and the lap ── */
+  /* v2.3.3610: the sound on, so the race's music can be read */
+  await P.page.evaluate(async () => {
+    const A = window.BT_AUDIO;
+    if (A && !A.ctx) { try { A.unlock(); } catch (e) { /* checked below */ } }
+    if (A && A.ctx && A.ctx.state !== 'running') { try { await A.ctx.resume(); } catch (e) { /* checked below */ } }
+  });
   const gun = await H.waitFor(P, (S) => S._race && S._race.phase, (ph) => ph === 'run', { timeout: 6000, label: 'the gun' }).catch(() => null);
   rec.ok('the gun goes (the race is running)', gun === 'run', gun);
+  /* v2.3.3610: the race plays the owner's "Minigame" (wheelMusic.js
+     RACE_MUSIC), from the countdown on */
+  let rm = null;
+  for (let i = 0; i < 15; i++) {
+    rm = await P.page.evaluate(() => (window.__btLandMusic ? window.__btLandMusic() : null));
+    if (rm && rm.playing === 'minigame') break;
+    await P.page.waitForTimeout(200);
+  }
+  rec.ok(`...to the race's own music: minigame.mp3, the owner's Minigame (${rm && rm.url})`,
+    !!rm && rm.playing === 'minigame' && /minigame\.mp3/.test(rm.url || ''), rm && { playing: rm.playing, url: rm.url, log: rm.log });
   const flags = await H.readState(P, (S) => S._race.flags.map((f) => [f[0], f[1]]));
   /* v2.3.3580: Lil Bro runs on his jog -- a creator bro's strip is the
      player's own jog in eight cells and then his stand (cell 8): sampled
