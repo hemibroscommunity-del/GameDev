@@ -46,6 +46,14 @@ remnant to migrate server-side, not a mode to preserve.
   a player reads say "the world" (v2.3.3552: the Codex's "Monsters of the
   world", the gold's line, the Town Hall's map row). "Wheel" stays in code,
   ids, comments and these docs.
+- **THE OWNER'S LIST OF 2026-10-26 (v2.3.3674): `docs/OWNER-LIST-2026-10-26.md`.**
+  38 asks at once (reverts, look bugs, No man's land from the first step,
+  monsters' elements, diving, the arena, gems, specials...), each checked
+  against the code, in the order agreed for the judges' desktop play (2 days
+  out) and after, with the decisions still waiting on the owner. Work it top
+  to bottom, a PR an item, and mark each one done there (its section 6, the
+  status; section 7 the notes of Oct 27 and their PRs, section 8 the
+  questions they left for the owner).
 - **Heavy-systems architecture (v2.3.1116+):** persistent identity,
   offline mail/escrow, server-settled marketplace/trades/quests/duels.
   Before touching the server, read **`docs/ARCHITECTURE-HANDOFF.md`** —
@@ -703,7 +711,11 @@ remnant to migrate server-side, not a mode to preserve.
       (monsterstatus.js FREEZE, GOO, STING, WOBBLE; STUCK, a player's root,
       unchanged); kill switches `freezehit`, `goohold`, `wobble`;
       `monsterstatus` §3b/§6b/§10b, `mp-elemhits`:
-      docs/specs/stronger-elem-hits.md.
+      docs/specs/stronger-elem-hits.md; since v2.3.3675 THE GOO IS THE
+      SLIME'S BLUE (the owner: "green slimes blend in too much with the green
+      scenery"): the hold's look, the "Stuck" chip and popup in the blue
+      slime's #3a7ad0 and its shades (effectsRenderer `GOO_HOLD`), a venom
+      gem's root too; `mp-goohold`.
     - since v2.3.3621 THE MUMMY'S ROAR -- the same list: "a roar, wound up so
       you can see it coming, that blows you back from a few steps away": a
       kit by ELEMENT (telegraph.js `TELEGRAPH.ELEM_KITS.wind`, `_kitFor`: an
