@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d1ddfd625233d122c72d157596b05942fcb3e5ae",
+  "tree": "18cc2f88e2c4d4b147cca0267768da4e09221943",
+  "committedAt": "2026-10-26T19:37:52-07:00",
+  "subject": "The townsfolk's zingers back, in one message with the job (v2.3.3611) (#1120)",
+  "files": 6561,
+  "bytes": 762396616,
+  "listingSha256": "1f7caecf95ffd64d881e99019d9ec0b22481c2d628b7bc57e7549d260f1677dc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

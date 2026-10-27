@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c885ba671293e183b9970fd48c6608184d64f3e0",
+  "tree": "7e3ae75b1eca804c79427d820a4103daf53866b1",
+  "committedAt": "2026-10-26T19:37:46-07:00",
+  "subject": "Add a pet from the Test panel: any land, golden, big, level 1 or 21 (v2.3.3613) (#1119)",
+  "files": 6561,
+  "bytes": 762387777,
+  "listingSha256": "a941ad3b0d48d14120d7f60966e111eaae7a2be33615a02185a20e6438eebce3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
