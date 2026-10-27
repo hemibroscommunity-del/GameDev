@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "392f3ffcaaa4734c79240d76245f9fa920764ffe",
+  "tree": "b789879df6de34946f50ca305d31bf309564405a",
+  "committedAt": "2026-10-26T20:11:27-07:00",
+  "subject": "Each drop a column over the monster: its picture, its amount, its rarity (v2.3.3616) (#1123)",
+  "files": 6570,
+  "bytes": 762473577,
+  "listingSha256": "6c859bfce3a79e4d1a32491938d1a1fd65e884ee7ad8f99091acef9eedf840ee",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
