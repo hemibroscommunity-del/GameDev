@@ -393,7 +393,7 @@ import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2
 import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
-import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land over the band's middle */
+import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
 import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
 import { nmlAsk, nmlAskOn, nmlAim } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first; v2.3.3528: about the one who attacked you too */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
@@ -14427,7 +14427,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote, onClose: function () { setShowEmotes(false); } /* v2.3.3391 */, sendMove: sendMove, movesOn: movesLive(stateRef.current) /* v2.3.3392 */ }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
-  React.createElement(NmlBadge, { stateRef: stateRef, isLandscape: isLandscape }),   /* v2.3.3268: + the orientation, to keep clear of the shield button */
+  React.createElement(NmlBadge, { stateRef: stateRef, isLandscape: isLandscape }),   /* v2.3.3629: beside the minimap's name plate (sideways level with the box's top, or in the top bar's row on a short screen, portalled to the body there) */
   /* v2.3.3253: the small window a tap or a stray shot raises about a player
      you could fight there (game/nmlAsk.js), portalled to the top of the
      screen, under the minimap */
@@ -14628,7 +14628,7 @@ export var BroTown = function BroTown(_ref0) {
          the sprint button beside the left disc (v2.3.3006) -- riding the
          sheet as the controls do (ShieldButton.jsx ctlBottom), and nudged
          right of the bell beside the left disc */
-      bottom: 'calc(var(--sheet-h, var(--dash-h)) + 24px + var(--nml-lift, 0px))',   /* v2.3.3107: over No man's land's badge */
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + 24px)',   /* v2.3.3629: no man's land's badge is up by the minimap now (it lifted this over the band's middle, v2.3.3107) */
       left: 'calc(50% + 24px)',
       background: 'rgba(28,92,120,.9)',
       border: '1px solid rgba(160,230,255,.55)'

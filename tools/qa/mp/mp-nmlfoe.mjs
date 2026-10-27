@@ -50,7 +50,13 @@
  *      choice lapses -- its bolts fly through the wanderer, nothing sent --
  *      and a tap asks again;
  *  10. the badge clear of the shield button, the bell, the weapon button and
- *      the attack disc at 320, 360, 375, 390 and 430 px, and sideways;
+ *      the attack disc at 320, 360, 375, 390 and 430 px, and sideways --
+ *      since v2.3.3629 up beside the minimap's name plate (the owner: "just
+ *      beside the minimap where it lists the zone and level range"): just
+ *      left of the minimap's box, level with the plate (sideways level with
+ *      the box's top, or on a short screen in the top bar's row: the sprint
+ *      button is beside the plate there and the disc under the box), on the
+ *      screen;
  *  11. the wanderer walks out of No man's land: the raider's choice and its
  *      shield button go;
  *  12. no page errors.
@@ -249,7 +255,24 @@ const layout = (P) => P.page.evaluate(() => {
   return {
     vw: innerWidth, vh: innerHeight, orient: document.documentElement.getAttribute('data-orient'),
     badge: box('[data-nml-badge]'), shield, top,
-    others: ['[data-world-chat-toggle]', '[data-weapon-chip]', '[data-ricon]', '[data-sprint]', '[data-quickeat]'].map(box).filter(Boolean),
+    /* v2.3.3629: which place it took (NmlBadge.jsx nmlBadgeSpot), and
+       whether it is the thing on top at its own middle (in the top bar's row
+       it was first drawn under the bar) */
+    at: (document.querySelector('[data-nml-badge]') || { getAttribute: () => null }).getAttribute('data-nml-at'),
+    seen: (() => {
+      const b = document.querySelector('[data-nml-badge]');
+      if (!b) return false;
+      const q = b.getBoundingClientRect();
+      const el = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
+      return !!el && (el === b || b.contains(el));
+    })(),
+    /* v2.3.3629: the minimap's box and its name plate */
+    mini: window.__btWheelMini ? { l: window.__btWheelMini.left, t: window.__btWheelMini.top,
+      r: window.__btWheelMini.left + window.__btWheelMini.w, b: window.__btWheelMini.top + window.__btWheelMini.h } : null,
+    plate: window.__btWheelPlate ? { t: window.__btWheelPlate.top, b: window.__btWheelPlate.top + window.__btWheelPlate.height } : null,
+    others: ['[data-world-chat-toggle]', '[data-weapon-chip]', '[data-ricon]', '[data-sprint]', '[data-quickeat]',
+      /* v2.3.3629: the fight's buttons too, which stand beside the minimap sideways */
+      '.bt-special-btn', '.bt-ability-btn', '.bt-burst-btn'].map(box).filter(Boolean),
   };
 });
 const overlaps = (a, b) => !!a && !!b && !(a.r <= b.l || a.l >= b.r || a.b <= b.t || a.t >= b.b);
@@ -757,7 +780,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(600);
 
   /* ── 10. the badge clear of the shield and its neighbours, at every width ── */
-  const widths = [[320, 640], [360, 780], [375, 812], [390, 844], [430, 932], [844, 390]];
+  /* v2.3.3629: + a short sideways screen, where the sprint button reaches up
+     beside the minimap's top and the badge goes up into the top bar's row */
+  const widths = [[320, 640], [360, 780], [375, 812], [390, 844], [430, 932], [844, 390], [667, 320]];
   const rows = [];
   for (const [w, h] of widths) {
     await A.page.setViewportSize({ width: w, height: h });
@@ -767,22 +792,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const L = await layout(A);
     const hitShield = overlaps(L.badge, L.shield);
     const hitOthers = L.others.filter((q) => overlaps(L.badge, q)).map((q) => q.sel);
-    rows.push({ w, h, orient: L.orient, badge: L.badge, shield: L.shield, top: L.top, hitShield, hitOthers });
-    if (w === 360 || w === 844) await shot(A, `10-${w}`);
+    rows.push({ w, h, orient: L.orient, badge: L.badge, shield: L.shield, top: L.top, hitShield, hitOthers, mini: L.mini, plate: L.plate, vw: L.vw, at: L.at, seen: L.seen });
+    if (w === 360 || w === 844 || w === 667) await shot(A, `10-${w}`);
   }
   await A.page.setViewportSize(PHONE);
   await A.page.waitForTimeout(2000);
   console.log('    layout: ' + JSON.stringify(rows.map((r) => ({ w: r.w, b: r.badge && [r.badge.l, r.badge.r], s: r.shield && [r.shield.l, r.shield.r], top: r.top, o: r.hitOthers }))));
   for (const r of rows) {
-    /* at 320 px there is no room between the bell (66-110) and the shield
-       (from 126): the badge keeps clear of the shield and lies over the bell's
-       right half -- an iPhone SE of 2016, the one width this is so
-       (v2.3.3608: the badge, centred out of a fight, steps beside the shield
-       while it is up, drawn smaller where the bell leaves less room) */
-    const allowBell = r.w <= 320;
-    const over = r.hitOthers.filter((sel) => !(allowBell && sel === '[data-world-chat-toggle]'));
-    rec.ok(`10. ${r.w} x ${r.h}${r.orient === 'landscape' ? ' (sideways)' : ''}: the badge (${r.badge ? r.badge.l + '-' + r.badge.r : 'none'}) clear of the shield (${r.shield ? r.shield.l + '-' + r.shield.r : 'none'}), a tap on the shield's middle reaching it (${r.top})${r.hitOthers.length ? ', over ' + r.hitOthers.join(', ') + (over.length ? '' : ' (no room at this width)') : ', and of the bell, the weapon button and the disc'}`,
-      !!r.badge && !!r.shield && !r.hitShield && r.top === 'shield' && !over.length, r);
+    /* v2.3.3629: up beside the minimap's name plate, nothing of the bottom's
+       under it at any width (the bell, the weapon button, the disc, the
+       shield), its middle level with the plate, its right edge just left of
+       the minimap's box, all of it on the screen -- SIDEWAYS the same right
+       edge level with the box's TOP, or on a short screen in the top bar's
+       row above it (the sprint button and Special stand left of the plate
+       there and the attack disc reaches up under the box: these rows found
+       the badge behind the sprint button, then on the disc) */
+    const mid = r.badge ? (r.badge.t + r.badge.b) / 2 : null;
+    const side = r.orient === 'landscape';
+    const beside = !!r.badge && r.seen && !!r.mini && !!r.plate && r.badge.l >= 0 && r.badge.r <= r.vw && r.badge.t >= 0
+      && r.badge.r <= r.mini.l - 2 && r.mini.l - r.badge.r <= 10 && (side
+        ? (r.at === 'top' ? Math.abs(r.badge.t - r.mini.t) <= 4 : (r.at === 'bar' && r.badge.b <= r.mini.t + 2))
+        : (r.at === 'plate' && mid >= r.plate.t && mid <= r.plate.b));
+    rec.ok(`10. ${r.w} x ${r.h}${side ? ' (sideways)' : ''}: the badge (${r.badge ? r.badge.l + '-' + r.badge.r + ', ' + r.badge.t + '-' + r.badge.b : 'none'}) ${side ? (r.at === 'bar' ? 'in the top bar\'s row' : 'level with the minimap\'s top') + ' (its box ' + (r.mini ? r.mini.l + '-' + r.mini.r + ', ' + r.mini.t + '-' + r.mini.b : 'none') + ')' : 'beside the minimap\'s name plate (' + (r.plate ? r.plate.t + '-' + r.plate.b : 'none') + ')'}${r.seen ? '' : ' UNDER SOMETHING'}, clear of the shield (${r.shield ? r.shield.l + '-' + r.shield.r : 'none'}), a tap on the shield's middle reaching it (${r.top})${r.hitOthers.length ? ', over ' + r.hitOthers.join(', ') : ', and of the bell, the weapon button and the disc'}`,
+      beside && !!r.shield && !r.hitShield && r.top === 'shield' && !r.hitOthers.length, r);
   }
 
   /* ── 11. out of No man's land, the choice and the button go ── */
