@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { inventoryBus } from './inventoryBus.js';
 import { INV, FONT, RARITY_BORDER } from './inventoryStyles.js';
 import { ItemArt } from './ItemArt.jsx';
@@ -259,7 +260,7 @@ export const EquippedTab = ({ onItemTap }) => {
         }}>SHORTCUTS</div>
         <div style={{
           fontSize: 11, color: 'rgba(238, 242, 235, 0.45)', fontFamily: FONT.sans,
-        }}>Tap a slot to set</div>
+        }}>{deskWords('Tap a slot to set')}</div>
       </div>
       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-start' }}>
         {[0, 1].map(i => (

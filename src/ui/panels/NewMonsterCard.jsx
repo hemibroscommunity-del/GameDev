@@ -4,6 +4,7 @@ import { codexEntry } from '@/data/monsterCodex.js';
 import { codexAnnouncement, codexAnnounceDone, codexOpenPage, ANNOUNCE_MS } from '@/game/monsterCodex.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
 import { PetPortrait } from '@/ui/petPortrait.jsx';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 
 /* ═══ v2.3.3336: NEW MONSTER -- AN ANNOUNCEMENT YOU CAN TAP ═══
  * Owner, playtesting: "Make the new codex entry for monsters as a 'new
@@ -91,7 +92,7 @@ export function NewMonsterCard({ stateRef }) {
       <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
         <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: '#EAC675' }}>New monster</div>
         <div data-new-monster-name="1" style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.15 }}>{name}</div>
-        <div style={{ fontSize: 12, color: '#B8C4C0', lineHeight: 1.25, marginTop: 1 }}>Tap to see it in the Codex ›</div>
+        <div style={{ fontSize: 12, color: '#B8C4C0', lineHeight: 1.25, marginTop: 1 }}>{deskWords('Tap to see it in the Codex ›')}</div>
       </div>
     </div>,
     document.body,
