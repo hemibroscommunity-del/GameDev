@@ -298,9 +298,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
        ctlColumn) and a tap on the shield's middle opened the badge; it stops
        2 px short of the middle, or of the shield where a narrow phone puts the
        shield over the middle (mp-nmlfoe measures every width) */
-    rec.ok(`1. ...the badge at the play area's bottom edge, just left of the middle (its right edge ${t && t.badge && t.badge.short} px short of it, ${t && t.badge && t.badge.gap} px above the dashboard), a 44 px target, clear of the shield`,
-      !!t && !!t.badge && t.badge.short >= 2 && t.badge.short <= 16 && t.badge.gap >= 0 && t.badge.gap <= 6 && t.badge.h >= 44
-        && (!t.badge.shield || t.badge.r <= t.badge.shield.l || t.badge.bt <= t.badge.shield.t), t && t.badge);
+    /* v2.3.3608: CENTRED (the owner: "center the red skull on the UI so it's
+       not awkwardly aligned to the left"), and just left of the shield button
+       only while the shield is drawn under the middle (NmlBadge.jsx
+       nmlBadgePlace; mp-nmlfoe measures every width) */
+    const tb = t && t.badge;
+    rec.ok(`1. ...the badge at the play area's bottom edge, ${tb && tb.shield ? 'just left of the shield (its right edge ' + (tb.shield.l - tb.r) + ' px from it)' : 'centred (' + (tb && tb.mid) + ' px off the middle), ' + (tb && tb.gap) + ' px above the dashboard, a 44 px target'}, clear of the shield`,
+      !!tb && (tb.shield ? (tb.r <= tb.shield.l - 2 && tb.l >= 0)
+        : (Math.abs(tb.mid) <= 2 && tb.gap >= 0 && tb.gap <= 6 && tb.h >= 44)), tb);
     rec.ok(`1. ...and the minimap's name plate shows the level band, the badge saying No man's land ("${t && t.bar}")`, !!t && t.bar === 'Lv 6–10', t && t.bar);
   }
   await shot(A, '1-told');

@@ -133,6 +133,34 @@ the second:
   smaller by 4-12 rows (186 x 96 to 205 x 103) at a new address
   (`SCENE_V` `?v=2.3.3511`).
 
+### v2.3.3609: the older banners back, the emblem gone
+
+The owner, 2026-10-26: *"I also don't like the intro graphics to each zone. The
+older ones were better."* So a land's banner is v2.3.3024's again:
+
+- the owner's ANIMATED ornaments for the four lands they drew (Frost Ridge, the
+  Flame Fields, the Wind Dunes, the Verdant Wilds): `playZoneBanner` reads
+  `bannerStripFor(zoneId)` whatever `plain` says, and `plain` is only the
+  fallback, the plate alone, for the four lands with no ornaments (and for a
+  strip that is not held);
+- the four strips load behind the Wheel's loading screen again and go on leaving
+  it (preloadAnimations.js `wheelBannerLands`), ~15.7 MB decoded while you are
+  in the world, as from v2.3.3024 to v2.3.3480;
+- no scene over the plate and none under the minimap: src/ui/landEmblem.js, its
+  CSS and the scenes' loading (`preloadLandScenes`, `landSceneHeld`,
+  `freeLandScenes`) are gone. The eight scene pictures and `LAND_SCENE` are kept,
+  cut and tested (§1, §2, §5b), for whatever use the owner picks later.
+
+And the three element icons that were not the element itself -- the owner: *"Some
+zones (like wind) have a strange rune representing the element. It should just
+be a pure icon of the element (like wind lines or something)."* -- are drawn in
+code by `tools/ui/draw-element-icons.py` in the sheet's own manner (a thick
+near-black outline, flat colour lit from the top left, a gloss): wind three
+gusts curling at their ends, storm a lightning bolt, stone a boulder lit on its
+top face. 256 x 256 like the other seven, deterministic (each file's SHA-256 in
+owner-icons §9), and `process_icon_sheets.py` never cuts sheet F's rune, star or
+tile over them again (`DRAWN_IN_CODE`).
+
 ### The quest pins
 
 - The pin is a Sprite in the marker's container (entityRenderer.js `qmPin`),
@@ -149,16 +177,17 @@ the second:
 
 | What | Loaded | Let go | Files | Decoded |
 |---|---|---|---|---|
-| The eight land scenes | behind the Wheel's loading screen (`preloadZoneAssets('wheel')` -> `preloadLandScenes`, zoneBannerPreload.js), held | on leaving the Wheel (`freeLandScenes`) | 64 KB | 0.56 MB (v2.3.3511: cut above the scroll ends) |
-| The four animated strips | **no longer in the Wheel**: only with the closed lands' own zones | as before | -- | **-15.7 MB in the Wheel** |
+| The eight land scenes | v2.3.3481-v2.3.3608: behind the Wheel's loading screen; **not loaded since v2.3.3609** | -- | 64 KB | -- |
+| The four animated strips | v2.3.3481-v2.3.3608 only with the closed lands' own zones; **in the Wheel again since v2.3.3609**, behind its loading screen (`wheelBannerLands`) | on leaving the Wheel | ~1 MB | 15.7 MB while in the world |
 | The three quest pins | on the loading screen (`preloadWorldAnimations` `questPins`), global | -- | 9 KB | 0.07 MB |
 | The handshake | warmed with the controls (`controlsPreload.js`): the card pops up mid-play | -- | 2.5 KB | 0.02 MB |
 | The helmet, sack, pet house, prize wheel, treasure map (v2.3.3524: and the Upgrade tab's hammer, 2.4 KB, 0.02 MB) | with their window, as every window's pictures | with the window | 49 KB | 0.41 MB at most |
 
 The Wheel held the four strips decoded (2,205 x 410 to 2,268 x 474 each, 15.7 MB)
-while you walked it; it now holds eight scenes of about 190 x 100 (0.61 MB). They
-are DOM images, not Pixi textures, so no line of the memory budget
-(`tools/qa/mp/memory-budget.mjs`) measured them and none moves.
+while you walked it; from v2.3.3481 it held eight scenes of about 190 x 100 (0.61
+MB) instead, and since v2.3.3609 the four strips again. They are DOM images, not
+Pixi textures, so no line of the memory budget (`tools/qa/mp/memory-budget.mjs`)
+measures them and none moves.
 
 ## v2.3.3526: the legs and chest, and five more ("Go recommended on everything")
 

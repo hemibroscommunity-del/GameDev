@@ -60,7 +60,9 @@ import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-
 import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the harvest cue's mini tools */
 import { preloadControls } from './controlsPreload.js'; /* v2.3.3018: the touch controls' pictures (the owner's mockup) */
 import { preloadQuestArt } from './questArtPreload.js'; /* v2.3.3030: the quest windows' painted art (the owner's sheets) */
-import { preloadZoneBanner, freeZoneBanner, preloadLandScenes, freeLandScenes } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE; v2.3.3481: + the Wheel's lands' scenes */
+import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
+import { bannerStripFor } from '../data/zoneBanner.js';   /* v2.3.3024: which of the Wheel's lands have banner art (again since v2.3.3609) */
+import { WHEEL_LANDS } from '../data/wheelLands.js';      /* v2.3.3024 */
 import { loadSignpostIcons, freeSignpostIcons } from './wheelSignposts.js';   /* v2.3.3062: Brotown's signposts' icons */
 import { loadWheelBuildingIcons, freeWheelBuildingIcons } from './wheelBuildingIcons.js';   /* v2.3.3522: each building's picture on the maps */
 import { preloadFarmArt, freeFarmArt } from './farmWorld.js';   /* v2.3.3136: your farm's barn, props, beds and crops */
@@ -81,8 +83,11 @@ import { preloadWorldLife } from './worldLife.js';        /* v2.3.2811: the buil
    everywhere], fx, traits, fullset).  CLAUDE.md's preloading LAW is
    amended: these load during the per-zone loading SCREEN (awaited, no
    in-play first-use hitch) — compliant in spirit. */
-/* v2.3.3024's wheelBannerLands() (the four lands with ornament strips) went in
-   v2.3.3481: the Wheel's lands play their scenes now, all eight (below). */
+/* v2.3.3024: the Wheel's lands with banner art of the owner's (zoneBanner.js
+   ZONE_BANNER_THEME, keyed by the same ids as the plan's lands).  v2.3.3481
+   took it out for the lands' scenes; v2.3.3609 put it back -- the owner: "The
+   older ones were better." */
+function wheelBannerLands() { return WHEEL_LANDS.filter((l) => !!bannerStripFor(l)); }
 
 export async function preloadZoneAssets(zoneId) {
   const tasks = [];
@@ -138,11 +143,11 @@ export async function preloadZoneAssets(zoneId) {
      into a land plays its banner (zoneBannerOverlay.js noteWheelLand) and is
      not a zone change, so their strips load HERE, behind the Wheel's own
      loading screen, and go when you leave it (freeZoneAssets, below) */
-  /* v2.3.3481: ...and since the owner's icon picks ("1b": "all eight from the
-     sheet") every land's banner is its SCENE from their sheet, so the Wheel
-     loads those eight (~0.6 MB decoded) and NOT the four strips (15.7 MB
-     decoded), which stay the closed lands' own (zoneBannerPreload.js) */
-  if (zoneId === 'wheel') tasks.push(Promise.resolve(preloadLandScenes()).catch(() => {}));
+  /* (v2.3.3481 loaded the eight lands' scenes here in their place, ~0.6 MB
+     decoded where the four strips are ~15.7 MB; v2.3.3609, the owner: "I also
+     don't like the intro graphics to each zone.  The older ones were better."
+     -- the strips again, the scenes no longer loaded) */
+  if (zoneId === 'wheel') for (const land of wheelBannerLands()) tasks.push(Promise.resolve(preloadZoneBanner(land)).catch(() => {}));
   /* v2.3.3062: and the lands' icons for Brotown's signposts (wheelSignposts.js),
      drawn down to 64 px as they land; let go on leaving (below) */
   if (zoneId === 'wheel') tasks.push(Promise.resolve(loadSignpostIcons()).catch(() => {}));
@@ -284,9 +289,11 @@ export async function freeZoneAssets(fromZoneId, toZoneId) {
   let bannersFreed = [];
   try { bannersFreed = freeZoneBanner(fromZoneId, toZoneId); } catch (e) { /* a strip that will not release is a leak, not a crash */ }
   /* v2.3.3024: leaving the Wheel lets its lands' banner strips go too
-     (v2.3.3481: its lands' scenes, which are what it loads now) */
+     (v2.3.3481-v2.3.3608: its lands' scenes in their place) */
   if (fromZoneId === 'wheel' && toZoneId !== 'wheel') {
-    try { bannersFreed = bannersFreed.concat(freeLandScenes().map((land) => 'scene:' + land)); } catch (e) { /* a leak, not a crash */ }
+    for (const land of wheelBannerLands()) {
+      try { bannersFreed = bannersFreed.concat(freeZoneBanner(land, toZoneId)); } catch (e) { /* a leak, not a crash */ }
+    }
     /* v2.3.3062: and the signposts' icons (their plates taken down first) */
     try { freeSignpostIcons(); } catch (e) { /* a leak, not a crash */ }
     /* v2.3.3522: and the buildings' pictures (the minimap's taken off first) */

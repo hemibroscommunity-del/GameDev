@@ -1095,13 +1095,16 @@ export const HeroExpanded = () => {
               {/* v2.3.3577: SOUTHEAST -- the owner: "In the preview of the
                   character on the equipment tab (dashboard button) actually
                   make the character face southeast instead of southwest."
-                  The same three-quarter figure, turned the other way (the
-                  southwest art flipped, as the world draws southeast). */}
+                  v2.3.3608: SOUTHWEST again -- the owner, 2026-10-26: "I also
+                  like the Southwest view of the character in the dashboard
+                  preview better (inventory tab). Change it back to that."
+                  (CharacterView's crop still follows whichever facing is
+                  drawn: figureCx.) */}
               <CharacterView
                 size={3 * EQ_W + 2 * DASH_GAP}
                 weapon={getActiveWeapon(R)}
                 shield={R.shield}
-                dir="southeast"
+                dir="southwest"
                 crop
               />
             </div>

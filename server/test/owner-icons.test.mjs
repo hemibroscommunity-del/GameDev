@@ -13,16 +13,16 @@
  *      House row's house, the free spin's wheel (the bonus spins keep the drawn
  *      one), the empty Journey page's map, the quest pins over the townsfolk
  *      (the drawn disc kept as the fallback);
- *   4. the loading: the pins on the loading screen, the land scenes behind the
- *      Wheel's and let go on leaving it, the four animated strips no longer the
- *      Wheel's, the handshake warmed with the controls; a land's banner never
- *      uses a closed zone's strip;
- *   5. (v2.3.3511, the owner after a playtest: "new land emblems look bad
- *      enlarged (revert or show below minimap)") the land's banner is the plain
- *      plaque again and its scene a small EMBLEM under the minimap
- *      (src/ui/landEmblem.js): drawn at one picture px a device px at the most,
- *      never blown up, on every screen; the held picture, never a load; kept
- *      clear of the controls; the plate's scroll ends cut off the pictures.
+ *   4. the loading: the pins on the loading screen, the handshake warmed with
+ *      the controls; and since v2.3.3609 (the owner: "I also don't like the
+ *      intro graphics to each zone.  The older ones were better.") the Wheel
+ *      holds the four animated strips again, behind its loading screen, and
+ *      lets them go on leaving it; the lands' scenes are not loaded;
+ *   5. (v2.3.3511's emblem under the minimap, gone in v2.3.3609) a land's
+ *      banner plays the owner's ornaments where it has them, the plaque alone
+ *      where not; nothing draws a scene, over the plaque or under the minimap;
+ *      landEmblem.js and its CSS are gone; the plate's scroll ends still cut
+ *      off the kept pictures.
  *   6. v2.3.3526 ("Go recommended on everything"): the bag's legs and chest
  *      the sheet's, every metal made from them; card 11's clearer five -- the
  *      orange paw, the party's crown and pin, the auction gavel, the creator's
@@ -35,6 +35,11 @@
  *      fails here), at the size its rule says; the Forge tab's anvil and the
  *      chat box's smiley are pointed at; Jump and the generic Special drawn
  *      as faces; the party's crown the owner's T112.2.
+ *   9. v2.3.3609: the element icons as the element itself (the owner: "Some
+ *      zones (like wind) have a strange rune representing the element.  It
+ *      should just be a pure icon of the element"): wind, storm and stone
+ *      drawn by tools/ui/draw-element-icons.py, pinned here by SHA-256, and
+ *      never cut from sheet F again (process_icon_sheets.py DRAWN_IN_CODE).
  *   8. v2.3.3571: the owner's painted copper ore and pickaxe ("Ok change the
  *      art style of the copper ore and the pickaxe to this"), as
  *      tools/ui/cut-owner-items.py cut them, on today's canvases, the rock's
@@ -151,56 +156,51 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
 {
   const pa = src('src/rendering/preloadAnimations.js');
   check('4a the quest pins load on the loading screen (never on first sight)', /questPins: preloadQuestPinTextures\(\)/.test(pa));
-  check('4b the Wheel loads its lands\' scenes behind its loading screen and lets them go on leaving, not the four strips',
-    /if \(zoneId === 'wheel'\) tasks\.push\(Promise\.resolve\(preloadLandScenes\(\)\)/.test(pa) && /freeLandScenes\(\)/.test(pa)
-    && !/wheelBannerLands\(\)\)/.test(pa) && !/function wheelBannerLands/.test(pa));
+  /* v2.3.3609: the four strips again (v2.3.3024's wheelBannerLands), loaded
+     behind the Wheel's loading screen and let go on leaving it; no scenes */
+  check('4b the Wheel loads the four lands\' animated strips behind its loading screen and lets them go on leaving, and no scenes',
+    /function wheelBannerLands\(\) \{ return WHEEL_LANDS\.filter\(\(l\) => !!bannerStripFor\(l\)\); \}/.test(pa)
+    && /if \(zoneId === 'wheel'\) for \(const land of wheelBannerLands\(\)\) tasks\.push\(Promise\.resolve\(preloadZoneBanner\(land\)\)/.test(pa)
+    && /for \(const land of wheelBannerLands\(\)\) \{\s*try \{ bannersFreed = bannersFreed\.concat\(freeZoneBanner\(land, toZoneId\)\); \}/.test(pa)
+    && !/LandScenes/.test(pa));
+  const zb = await import('../../src/data/zoneBanner.js');
+  const wl = await import('../../src/data/wheelLands.js');
+  const withArt = wl.WHEEL_LANDS.filter((l) => !!zb.bannerStripFor(l));
+  check('4b2 ...those four are Frost Ridge, the Flame Fields, the Wind Dunes and the Verdant Wilds, the owner\'s own art',
+    withArt.join(',') === 'frost,ember,sky,verdant', withArt);
   const zp = src('src/rendering/zoneBannerPreload.js');
-  check('4c the scenes are held decoded, cache-only to the banner, and released with their src emptied',
-    /export function preloadLandScenes\(\)/.test(zp) && /export function landSceneHeld\(land\)/.test(zp) && /export function freeLandScenes\(\)/.test(zp)
-    && /img\.src = '';/.test(zp.slice(zp.indexOf('export function freeLandScenes'))));
+  check('4c the banner preloader holds no scenes any more (the strips only, released with their src emptied)',
+    !/LAND_SCENE|landSceneUrl|_scenes|preloadLandScenes|landSceneHeld|freeLandScenes|landScenesResident/.test(zp)
+    && /img\.src = '';/.test(zp.slice(zp.indexOf('export function freeZoneBanner'))));
   const zo = src('src/ui/zoneBannerOverlay.js');
-  /* v2.3.3511: the plain plaque (no scene over it), never a closed zone's
-     strip of the same id; the scene goes under the minimap as the plaque docks */
-  check('4d a land\'s banner is the plain plaque -- no scene over it, never a closed zone\'s strip -- and its scene goes under the minimap as it docks',
+  /* v2.3.3609: a land's strip plays when the Wheel holds it (`plain` only the
+     plaque's fallback), and nothing shows a scene */
+  check('4d a land\'s banner plays its own strip when held, the plaque alone otherwise -- no scene, no emblem',
     /playZoneBanner\(region, S, \{ title, plain: true, icon: look\.icon,/.test(zo) && !/scene: region/.test(zo)
-    && /const art = opts\.plain \? null : bannerStripFor\(zoneId\);/.test(zo) && !/landSceneHeld/.test(zo)
-    && /if \(shown\) showLandEmblem\(region, \{ delay: prefersReducedMotion\(\) \? 900 : ZONE_BANNER_PLAY_MS \+ LAND_HOLD_MS \}\);/.test(zo));
+    && /const art = bannerStripFor\(zoneId\);/.test(zo) && /const strip = art && zoneBannerReady\(zoneId\) \? art : null;/.test(zo)
+    && /const plain = !strip && !!opts\.plain;/.test(zo)
+    && !/landSceneHeld|LandEmblem|landEmblem\.js'|landScenesResident/.test(zo));
   const cp = src('src/rendering/controlsPreload.js');
   check('4e the trade request\'s handshake is warmed with the controls (the card pops up mid-play)', /urls\.push\(OWNER_ICON\.tradeHandshake\.src\);/.test(cp));
   const css = src('src/styles/game.css');
-  /* v2.3.3511: the enlarged scene's rules gone; the emblem's: fixed, no
-     touch, transform and opacity only (TRAPS §42) */
-  const em = (css.match(/\.bt-land-emblem[^{]*\{[^}]*\}/g) || []).join('\n');
-  check('4f the banner draws no scene any more; the emblem under the minimap takes no touch and uses no filter',
-    !/\.bt-zone-banner\.is-scene\{/.test(css) && !/\.bt-zone-banner__scene\{/.test(css)
-    && /\.bt-land-emblem\{[^}]*position:fixed;z-index:21;pointer-events:none;/.test(css) && em.length > 0 && !/filter/.test(em), em.slice(0, 300));
+  /* v2.3.3511 took the enlarged scene's rules out; v2.3.3609 the emblem's */
+  check('4f the banner draws no scene, and the emblem under the minimap is gone from the CSS',
+    !/\.bt-zone-banner\.is-scene\{/.test(css) && !/\.bt-zone-banner__scene\{/.test(css) && !/\.bt-land-emblem[^{]*\{/.test(css));
 }
 
-/* ── 5. the emblem under the minimap (v2.3.3511) ── */
+/* ── 5. the emblem under the minimap (v2.3.3511), gone in v2.3.3609 ── */
 {
-  const LE = await import('../../src/ui/landEmblem.js');
-  const sd = LANDS.map((l) => dims(OI.LAND_SCENE[l]));
-  const at = (dpr) => sd.map(([w, h]) => LE.emblemSize(w, h, dpr));
-  const all = [1, 1.5, 2, 2.625, 3, 3.5, 4].map((dpr) => ({ dpr, s: at(dpr) }));
-  check('5a never blown up: on every screen (1x to 4x) at most one picture px a device px, never wider than EMBLEM_MAX_W',
-    all.every(({ s }) => s.every((x) => x.devPerArt <= 1 + 1e-9 && x.w <= LE.EMBLEM_MAX_W + 1e-9)), all.map(({ dpr, s }) => `${dpr}x: ${s.map((x) => x.w.toFixed(1)).join(' ')}`));
-  const three = at(3);
-  check('5b on a 3x phone exactly its own pixels, about 62-69 CSS px wide, its own shape',
-    three.every((x, i) => Math.abs(x.devPerArt - 1) < 1e-9 && x.w >= 60 && x.w <= 70 && Math.abs(x.w / x.h - sd[i][0] / sd[i][1]) < 1e-6), three.map((x) => [x.w.toFixed(1), x.h.toFixed(1)]));
-  check('5c on a computer at 1x held to the cap (112 CSS px), a little under its pixels',
-    at(1).every((x) => x.w === LE.EMBLEM_MAX_W && x.devPerArt < 1), at(1).map((x) => x.devPerArt.toFixed(2)));
-  const le = src('src/ui/landEmblem.js');
-  check('5d the held, decoded scene and its address -- never a load of its own',
-    /const scene = landSceneHeld\(land\);/.test(le) && /img\.src = scene\.src;/.test(le) && !/new Image\(/.test(le) && !/fetch\(/.test(le));
-  check('5e kept clear of every control: buttons, the sticks, the sprint button, the quest card, the No man\'s land and party cards, the coach, the map\'s button, a prompt',
-    ['button', '[data-disc]', '[data-sprint]', '[data-quest-hud]', '[data-nml-ask]', '[data-party-invite]', '[data-coach-card]', '[data-world-map-open]', '.bt-interact-prompt']
-      .every((k) => le.indexOf(k) >= 0) && /const on = ctl\.find\(\(q\) => hits\(r, q, EMBLEM_CLEAR\)\);/.test(le));
-  check('5f under the minimap, or beside it at its top, on whole device px; shown for its few seconds, then fading',
-    /\{ at: 'below', left: mini\.left \+ \(mini\.w - w\) \/ 2, top: mini\.top \+ mini\.h \+ EMBLEM_GAP \}/.test(le)
-    && /\{ at: 'beside', left: mini\.left - EMBLEM_GAP - w, top: mini\.top \+ 8 \}/.test(le) && /const snap = \(v\) => Math\.round\(v \* d\) \/ d;/.test(le)
-    && LE.EMBLEM_HOLD_MS >= 2500 && LE.EMBLEM_HOLD_MS <= 6000 && /hideLandEmblem\(EMBLEM_OUT_MS\)/.test(le));
+  const files = [];
+  const walk = (d) => { for (const f of readdirSync(new URL(d, root), { withFileTypes: true })) {
+    if (f.isDirectory()) walk(d + f.name + '/'); else if (/\.(js|jsx)$/.test(f.name)) files.push(d + f.name);
+  } };
+  walk('src/');
+  /* code, not the comments that tell its history */
+  const users = files.filter((f) => /from ['"][^'"]*landEmblem\.js['"]|\b(show|hide)LandEmblem\(|\b(preload|free)LandScenes\(|\blandSceneHeld\(|window\.__btLandEmblem/.test(src(f)));
+  check('5a src/ui/landEmblem.js is gone, and nothing in the game names it, its emblem or the scenes\' loading',
+    !existsSync(new URL('src/ui/landEmblem.js', root)) && users.length === 0, users);
   const cut = src('tools/ui/cut-owner-icons.py');
-  check('5g the plate\'s scroll ends are cut off the scenes (rim_cut) and a dark ground line drawn in their place',
+  check('5b the kept scenes still have the plate\'s scroll ends cut off (rim_cut) and a dark ground line in their place',
     /def rim_cut\(im\):/.test(cut) && /def ground_line\(im\):/.test(cut) && /im = ground_line\(im\.crop\(\(0, 0, im\.width, rim\)\)\)/.test(cut)
     && /SCENE_V = '\?v=2\.3\.3511'/.test(src('src/data/ownerIcons.js')));
 }
@@ -211,16 +211,26 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   /* the bag's steel legs and chest are the sheet's, framed as today's were
      (the art's larger side 0.89 / 0.78 of a square), and every metal made from
      them (make-metal-icons.mjs: the same size, the renderer's multiply) */
-  const legs = dims('/icons/items/greaves.webp'), chest = dims('/icons/items/chest-plate.webp');
+  const chest = dims('/icons/items/chest-plate.webp');
   const metals = ['copper', 'iron', 'blacksteel'];
-  const sameSize = metals.every((m) => dims('/icons/items/greaves-' + m + '.webp').join('x') === legs.join('x')
-    && dims('/icons/items/chest-plate-' + m + '.webp').join('x') === chest.join('x'));
-  check('6a the legs and chest are the sheet\'s (square, ~110-125 px, not the old 256), each metal made from them at their size',
-    legs[0] === legs[1] && chest[0] === chest[1] && legs[0] >= 100 && legs[0] <= 130 && chest[0] >= 100 && chest[0] <= 130 && sameSize,
-    { legs, chest, sameSize });
+  const sameSize = metals.every((m) => dims('/icons/items/chest-plate-' + m + '.webp').join('x') === chest.join('x'));
+  check('6a the chest is the sheet\'s (square, ~110-125 px, not the old 256), each metal made from it at its size',
+    chest[0] === chest[1] && chest[0] >= 100 && chest[0] <= 130 && sameSize, { chest, sameSize });
+  /* v2.3.3608: the LEGS are the former pictures again -- the owner,
+     2026-10-26: "I liked the former leg armor better than the new icon.
+     Replace it." -- the four from before v2.3.3526, byte for byte */
+  const sha = (u) => createHash('sha256').update(readFileSync(pub(u))).digest('hex');
+  const LEGS = {
+    '/icons/items/greaves.webp': '54be7ee1cec2da46dad69eebeeb07becf3842c53c763c31c0b1c2c63c05c1dcc',
+    '/icons/items/greaves-copper.webp': 'eaef2f53506c1be6df31696acd6b6c8e0cfa0c22984040bdc0f25535713497b9',
+    '/icons/items/greaves-iron.webp': '894bc24e31e3b44b4b03eea702ccff962684823e9445f4156d835c5d05145240',
+    '/icons/items/greaves-blacksteel.webp': 'b8617888532023934fdde6101367989619dfa94bebb2e8ea82724309f4cf5090',
+  };
+  const legsOff = Object.keys(LEGS).filter((u) => !existsSync(pub(u)) || sha(u) !== LEGS[u]);
+  check('6a2 the legs are the former four pictures again (v2.3.3608), byte for byte', legsOff.length === 0, legsOff);
   const cut = src('tools/ui/cut-owner-icons.py');
-  check('6b the cutter writes them (and says to run the metals after)', /name='icons\/items\/greaves'/.test(cut) && /name='icons\/items\/chest-plate'/.test(cut)
-    && /make-metal-icons\.mjs --only greaves,chest-plate/.test(cut));
+  check('6b the cutter writes the chest (and says to run its metals after), and never the legs', !/name='icons\/items\/greaves'/.test(cut) && /name='icons\/items\/chest-plate'/.test(cut)
+    && /make-metal-icons\.mjs --only chest-plate/.test(cut));
   /* each under a NEW name the code points at, so a re-run of the tool that
      made today's can never put the old one back */
   const NEW = { paw: '/icons/ui/pets-paw.webp', crown: '/icons/ui/party-crown.webp', pin: '/icons/ui/party-pin.webp',
@@ -364,6 +374,36 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     && /if \(wpn\.type === 'bow'\)\s*return `\/icons\/items\/bow\.webp\$\{ITEMS_V\}`/.test(card)
     && /r\.itemType === 'bow' \? '\/icons\/items\/bow\.webp'/.test(reveal) && /bow: '\/icons\/items\/bow\.webp'/.test(loot)
     && src('src/ui/panels/WeaponSwapButton.jsx').indexOf('wpnIconSrc(R, wpn)') >= 0);
+}
+
+/* ── 9. v2.3.3609: the element icons as the element itself ── */
+{
+  /* the owner, 2026-10-26: "Some zones (like wind) have a strange rune
+     representing the element.  It should just be a pure icon of the element
+     (like wind lines or something)." -- wind, storm and stone drawn by
+     tools/ui/draw-element-icons.py (a gust's three lines, a lightning bolt, a
+     boulder), each file as the drawing tool writes it: a re-run of
+     process_icon_sheets.py, or any other tool, fails here */
+  const sha9 = (p) => createHash('sha256').update(readFileSync(new URL(p, root))).digest('hex');
+  const DRAWN = {
+    wind: '23487bc21ac56f2d2da9d1a4e6a324f08d6939dc00a9a943d9eb2dc850529a17',
+    storm: '55e565a2fbcd890fe9ac0d142fad2f89ed27b2fa4af7381e58e9c763ae736786',
+    stone: '49672c88e4fe94e60d3e6b4bfe45dbb4145a50fca1bbf694caaedb76083439a8',
+  };
+  const got = Object.keys(DRAWN).map((k) => ({ k, sha: sha9('public/icons/ui/elem-' + k + '.webp'), size: dims('/icons/ui/elem-' + k + '.webp').join('x') }));
+  check('9a wind, storm and stone are the drawn icons (wind lines, a lightning bolt, a boulder), 256 x 256 like the other seven',
+    got.every((g) => g.sha === DRAWN[g.k] && g.size === '256x256'), got);
+  const dr = src('tools/ui/draw-element-icons.py');
+  check('9b ...drawn by tools/ui/draw-element-icons.py, which writes exactly those three',
+    /\('elem-wind', draw_wind\), \('elem-storm', draw_storm\), \('elem-stone', draw_stone\)/.test(dr) && /def draw_wind\(\)/.test(dr)
+    && /def draw_storm\(\)/.test(dr) && /def draw_stone\(\)/.test(dr));
+  const ps = src('tools/process_icon_sheets.py');
+  check('9c ...and the sheet slicer never cuts sheet F\'s rune, star or tile over them again',
+    /DRAWN_IN_CODE = \{'elem-wind', 'elem-storm', 'elem-stone'\}/.test(ps) && /if name in DRAWN_IN_CODE:\s*\n\s*print\(/.test(ps));
+  const lands = await import('../../src/data/wheelLands.js');
+  check('9d the Wind Dunes, the Stone Hollows and the Electric Foundry wear them (the top bar, the minimap\'s plate, the banner, the signposts)',
+    lands.landLook('sky').icon === '/icons/ui/elem-wind.webp' && lands.landLook('hollows').icon === '/icons/ui/elem-stone.webp'
+    && lands.landLook('thunder').icon === '/icons/ui/elem-storm.webp');
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
