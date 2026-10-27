@@ -214,8 +214,9 @@ talking, then the job:
 - **Beastmaster Bro**, the survivalist: "we're deep in the danger zone. ...Okay,
   it's behind the bakery", boxes under his bed.
 
-What did not change: one tap each (no blank line), 300 characters at most (the
-Mayor's slimes hand-in with the Goo Grotto's sentence is the longest at 291),
+What did not change: one tap each (no blank line), 300 characters at most
+(Diego's offer is the longest at 292, the Mayor's slimes hand-in with the Goo
+Grotto's sentence 291),
 and every count, place and hand-over the job had: the 4 Slime Remains, the 5
 Copper Ore at the orange rocks, the 5 Pine Logs, the 2 cooked fish and the
 logs, the 3 carrots, the 4 corner flags, the 3 Box Traps, and the rest.
