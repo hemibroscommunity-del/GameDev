@@ -1,4 +1,4 @@
-/* ═══ v2.3.3651: THE GHOST AUDIT -- EVERY ANIMATION, NOTHING OF THE BODY UNDER IT ═══
+/* ═══ v2.3.3668: THE GHOST AUDIT -- EVERY ANIMATION, NOTHING OF THE BODY UNDER IT ═══
  *
  * The owner, 2026-10-27: "check all the animations for ghost remnants of
  * either a body beneath or areas for cleanup".
@@ -623,8 +623,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const lit = await H.waitFor(P, (S) => !!S._firemaking && S._standInBody === true, (v) => v, { timeout: 8000, label: 'lighting' }).catch(() => null);
           summary[`${outfit}/fire`] = { frames: 0, started: !!lit };
           if (lit) {
-            /* v2.3.3651: the light's own fire, drawn in code on the log from
-               the strike since v2.3.3655 (campfireFx), is not the figure:
+            /* v2.3.3668: the light's own fire, drawn in code on the log from
+               the strike since v2.3.3666 (campfireFx), is not the figure:
                hidden while the light is photographed, on a build with the
                switch, so its yellows are never read as the tee */
             await page.evaluate(() => (window.__btCampfireHide ? window.__btCampfireHide(true) : null)).catch(() => {});

@@ -5024,7 +5024,7 @@ Two protocol versions coexist; both must keep working:
   never a window sized for 60 fps (mp-hitreal, mp-staffcast, mp-solospecial,
   mp-ccink were the test); `BT_QA_CPU_THROTTLE=<rate>` runs every page that
   much slower, to try a check as a slow phone sees it.
-- THE GHOST AUDIT (v2.3.3651, docs/specs/ghost-audit.md): the owner's "check
+- THE GHOST AUDIT (v2.3.3668, docs/specs/ghost-audit.md): the owner's "check
   all the animations for ghost remnants of either a body beneath or areas for
   cleanup". `mp-ghostaudit` photographs every frame of every animation (stand,
   jog, hit, roll, pickup, the sword, bow and staff, the jump, mining, chopping,
