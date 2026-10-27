@@ -3049,6 +3049,15 @@ players who have actually drawn something and to directions the facing map
 actually mirrors, or it is memory nobody can see on the platform this game is
 built for.
 
+**A fourth time, and not an argument (v2.3.3640).** v2.3.3010 taught the
+walking figure that greaves alone hide the plain legs (maskedBake.js
+`_legsOnlyClamp`). The sword and bow stand-ins draw the greaves' OWN strip over
+a bare body baked here, and their two legs are not drawn in the same place, so
+every swing and shot in greaves showed the body's trousers and boots beside the
+steel (mp-ghostaudit). Same rule, wider: whatever the walking figure is taught
+about what shows under its gear, the stand-ins are a second figure that has to
+be taught it too (`_clampLegsUnder`, mp-standinlegs).
+
 ## 74. Reading a live server monster's health as the whole answer (v2.3.2435)
 
 **Tempting:** in a server zone the client never touches monster health — every
@@ -6886,6 +6895,16 @@ door into the World View (the phone and the worker both said so, once the
 check asked them).  Still open: about one bow arrow a run, at 190-240 px,
 flies its full length past a target that barely moved, before and after.
 
+**And the server's suites (v2.3.3639).** Eight places in six suites started
+the room's real tick loop, waited `TICK_RATE x N` ms and read the socket:
+`tick` (three), `armorgrade`, `chatmod`, `petsmatter`, `sprint`, `wheelzone`.
+On a busy machine 66 ms can pass with no tick run at all. The precheck, run
+beside a five-player phone soak, failed `tick` ("all 501 events delivered":
+500, one tick) and on the next try `petsmatter` (no tick to read). Both pass
+alone. Each now calls `ticksRun(room, n, ms)`: the same window, then on until
+the loop's own `tickSeq` has moved `n` ticks, at most 5 s more. On a quiet box
+nothing changes.
+
 ## 201. "Accept tut_1 to tut_4 and every land is open" (v2.3.3321)
 
 **Wrong since v2.3.3179.** Each tutorial step opens one of the old lands
@@ -8458,3 +8477,27 @@ changing them is a change to how they look.
 
 **Receipt:** `mp-textrelease` (a family built both ways, and two real trips
 to a fight with and without `?textkeep`).
+
+## 255. "Fill the gap with something neutral" (v2.3.3640)
+
+**The move.** A body sheet made from an original has a gap the original leaves
+empty (between the legs, round the erased weapon) filled with a flat, neutral
+mid-grey, so nothing reads as a hole.
+
+**Why it is wrong.** The body is recoloured by COLOUR (playerSkins.js
+`recolorBodyToCanvas`): green is trousers, a flat grey 45-139 is a boot. A
+filler of any of those colours is a garment to the recolour, and is painted the
+player's choice. The sword swing's body sheets had 900 to 2,700 such pixels a
+sheet, and every swing showed a shape between the legs and behind the arms in
+the player's boot colour (white, red, blue), a dark one in the default boots.
+
+**The rule.** Anything a body sheet must not have stays EMPTY (alpha 0): never
+filled with a colour the recolour reads, and checked against the original (a
+pixel the original leaves empty, outside the figure, is not the body's --
+tools/art/clean-sword-fill.py). The client prefers the `.webp` twin: commit
+the PNG only (precheck refuses a twin), and merge only once CI's
+optimize-assets has minted the new twin onto the branch -- before that the
+stale twin is what every phone is served.
+
+**Receipt:** `mp-standinlegs` (no greaves: the trousers and boots stay;
+mp-ghostaudit's swing frames), docs/specs/standin-legs.md.

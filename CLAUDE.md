@@ -1166,6 +1166,23 @@ remnant to migrate server-side, not a mode to preserve.
     darker than a third of the skin -- TRAPS §129); enclosed windows turn
     under-armour shadow; the full set is untouched; `mp-greaveslegs`
     (`window.__btLegsPeek`), src/belt-harness.html `?wear=legs&pose=&tint=&clamp=off`.
+    - since v2.3.3640 THE SWORD'S AND BOW'S STAND-INS TOO, AND NO GREY FILL --
+      the owner: "check all the animations for ghost remnants" (mp-ghostaudit:
+      every swing frame in iron showed the body's trousers and boots): a
+      stand-in is a recoloured bare body with the greaves' own strip drawn
+      over it, the two legs drawn in different places (TRAPS §73's fourth
+      time). Under greaves the sword and bow bodies are baked with only the
+      legs the greaves cover (playerSkins.js `_clampLegsUnder`: from their top
+      down, a leg pixel outside them goes, or turns under-armour shadow where
+      they close it in), the shape read once off each greaves strip as it
+      loads (effectsRenderer `_noteGreavesShape`, a bit a pixel), rebaked as
+      greaves go on or off, a peer's too (`|L`); and the grey the sword sheets
+      had in the gaps the original art leaves empty (between the legs, round
+      the blade) -- painted the player's BOOT colour by the recolour -- is out
+      of the PNGs (tools/art/clean-sword-fill.py, SWORD_ART_VERSION 1103, the
+      .webp twins CI's to mint, TRAPS §255);
+      `?standinlegs=0`, `window.__btStandInLegs()` (`.set(on)`); `mp-standinlegs`:
+      docs/specs/standin-legs.md.
   - Since v2.3.3520 THE ARMOUR RIDES THE ARM CAPSULE -- the owner: the east
     jog's shoulder on a copper torso, "fix it for all future tiers". The
     capsule (v2.3.200) clones the body over the arm on every east jog with a
@@ -3644,6 +3661,24 @@ remnant to migrate server-side, not a mode to preserve.
           `mp-farmanim` §5 reads the shine's sprites and the strips' greys,
           each outfit (plate and greaves, greaves alone, plate alone) on each
           move (the hoe, the kneel, the can);
+        - since v2.3.3636 LIT AS HIS WALKING FIGURE IS -- the owner: "The
+          armor while performing farming gestures is noticeably different
+          color (iron). Try to make it match more exactly": the walking figure
+          is FORM-SHADED (formShade.js: as painted at the head, a cool shade
+          at the boots) and the farmer's sprites, in the gesture layer, were
+          not shaded at all; each now takes, across its own quad, the walking
+          figure's gradient at those heights (entityRenderer
+          `standShadeSpan`, formShade `spanSpec`; a spec of its own, never
+          SHADE.figure, which sharpPixels would take for a pixel-art figure),
+          yours and other players' farmers alike; and the strips' steel is
+          graded to the STANDING sheets (`STEEL_REF` stand-south: the bro
+          stands beside the bed in it, and its greaves are drawn brighter than
+          the jog's), `GEARLAYER_VER` 1038; full iron, farmer over walker:
+          boots 1.15/1.13/1.00 -> 1.00/1.00/0.99, the chest 1.09/1.06/0.97 ->
+          0.96/0.95/0.93 (the head and shoulders ~0.9: his steel forearms
+          cross his chest there, the art's own top third 11% darker);
+          `mp-farmiron` (the figure alone on the canvas's colour, band by
+          band), mp-farmanim §5 against stand-south: docs/specs/farm-iron.md;
       - the Feed & Seed's window lost its Beds tab: Visit Your Farm on top,
         "Your farm: 3 ready to harvest · 3 beds to plant" under it, then Seeds
         and Orders;

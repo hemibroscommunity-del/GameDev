@@ -31,7 +31,10 @@ const ROWS = [
   { key: '_dazeUntil', img: ELEM_ICON_SRC['elem-stone'], label: 'Dazed', color: '#e9d27a' },
   /* v2.3.3620: the snowman's freeze, the rock monster's wobble after its daze */
   { key: '_frozenUntil', img: ELEM_ICON_SRC['elem-frost'], label: 'Frozen', color: '#d8f2ff' },
-  { key: '_wobbleUntil', img: ELEM_ICON_SRC['elem-stone'], label: 'Wobbly', color: '#e9d27a' },
+  /* v2.3.3635: from its own start (`from`): the daze's hit sets both, the
+     wobble beginning as the daze ends, and "Wobbly 2s" sat beside "Dazed 1s"
+     for the whole daze while nothing wobbled yet */
+  { key: '_wobbleUntil', from: '_wobbleFrom', img: ELEM_ICON_SRC['elem-stone'], label: 'Wobbly', color: '#e9d27a' },
   { key: '_soakUntil', img: ELEM_ICON_SRC['elem-water'], label: 'Soaked', color: '#5fb8ff' },
   { key: '_poisonUntil', img: ELEM_ICON_SRC['elem-venom'], label: 'Poisoned', color: '#a6e24a' },
   /* v2.3.3264: what a PLAYER'S gem puts on you that no monster's hit does
@@ -47,6 +50,7 @@ function readChips(S, now) {
   if (!S) return out;
   for (const r of ROWS) {
     const u = S[r.key];
+    if (r.from && now < (S[r.from] || 0)) continue;
     if (u && now < u) out.push({ r, s: Math.ceil((u - now) / 1000), n: r.stacks ? Math.max(0, Math.floor(S[r.stacks]) || 0) : 0 });
   }
   return out;

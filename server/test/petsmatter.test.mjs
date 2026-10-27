@@ -30,6 +30,17 @@ import { CHILL, GUST, STUCK, DAZE, SHOCK, SOAK, BURN, POISON, FREEZE, GOO } from
 const CHILL_NOW = FREEZE.CHILL_MS, HOLD_NOW = GOO;
 import { PETBOOK, petWardOf, petHousePrice, petWireOf } from '../src/petbook.js';
 
+/* v2.3.3639: a window of real time is not a tick.  Waiting TICK_RATE x N ms
+   and reading the socket failed whenever the machine was busy (the precheck
+   run beside a phone soak): 66 ms passed with no tick run, and the check read
+   an empty socket.  ticksRun waits that window as before, then on until the
+   tick loop has really run `n` ticks (its own tickSeq), at most 5 s more. */
+const ticksRun = async (room, n, ms) => {
+  const from = room.tickSeq || 0, t0 = Date.now();
+  await new Promise((r) => setTimeout(r, ms));
+  while ((room.tickSeq || 0) - from < n && Date.now() - t0 < ms + 5000) await new Promise((r) => setTimeout(r, 5));
+};
+
 function makeState() {
   const store = new Map();
   return {
@@ -257,7 +268,7 @@ function both(home, lv, m, read) {
     sockets.pw.sent.length = 0;
     room.dirtyPlayers.add('p1');
     room.startTickLoop();
-    await new Promise((r) => setTimeout(r, room.TICK_RATE * 3));
+    await ticksRun(room, 2, room.TICK_RATE * 3);
     clearInterval(room.tickInterval); room.tickInterval = null;
     const ticks = sockets.pw.sent.filter((m) => m.type === 'tick' && m.players && m.players.p1);
     return ticks.length ? ticks[ticks.length - 1].players.p1 : null;

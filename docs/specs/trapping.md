@@ -455,3 +455,18 @@ Nothing changes on the worker. It still refuses a `trap_arm` with no trap
 Tests: mp-trapping step 3. A targeted monster with the bag emptied by the
 worker shows no button, `__btTrap().view` is null, and T sends nothing.
 
+
+## v2.3.3635: the round button's words and its grey
+
+Found by the review of v2.3.3617:
+- **Its words covered Element Burst.** The tag beside the round button was one
+  line, and "Requires Trapping 12" reached across Element Burst's face over the
+  movement disc (a phone of 360 to 390 px). The tag now wraps at its spaces
+  within the room between the button and Burst's place (`leftCluster`'s slot),
+  never in smaller type, and at least 72 px wide (one word a line).
+- **Its grey was a CSS filter** over the game's canvas, the iOS grain hazard
+  the controls beside it avoid (TRAPS §42). The icon is greyed by opacity alone,
+  on the round button and the pop-up both.
+
+`mp-trapping`: the grey icon has no filter and its words are clear of Burst's
+place.
