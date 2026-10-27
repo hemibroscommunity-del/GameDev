@@ -34,6 +34,7 @@
 
 import { preloadLootIcons } from './lootIcons.js'; /* v2.3.2771 */
 import { preloadDropColumnIcons } from './dropColumns.js'; /* v2.3.3616: a kill's drops, in columns */
+import { warmElemWindup } from './elemWindup.js'; /* v2.3.3619: the element wind-ups' picture */
 import { preloadNodeLabelIcons } from './nodeLabels.js'; /* v2.3.3040 */
 import { loadPetSheet } from './petSprites.js'; /* v2.3.3120: every pet's frames, one small sheet */
 import { preloadDailyChest } from './chestPreload.js'; /* v2.3.2820: the daily chest's claim window */
@@ -481,6 +482,9 @@ export async function preloadWorldAnimations() {
     /* v2.3.3616: every picture a kill's drop column can show (dropColumns.js)
        -- the first kill is minutes after the intro lifts */
     dropColumns: preloadDropColumnIcons(),
+    /* v2.3.3619: the one picture every monster's element wind-up is cut from
+       (elemWindup.js), drawn in code -- made here, never at the first blow */
+    elemWindup: Promise.resolve(warmElemWindup()),
     /* v2.3.3040: the tool pictures in the label over every resource
        (nodeLabels.js) -- the bag's hatchet, pickaxe and rod, shrunk to 64 px:
        a resource is on screen the moment the intro lifts */

@@ -678,6 +678,20 @@ remnant to migrate server-side, not a mode to preserve.
     - a gust counts as moving for the move broadcast, so the worker hears where
       you landed at once;
     - `monsterstatus` suite, `mp-elemhits`: docs/specs/monster-statuses.md.
+    - since v2.3.3619 ITS WIND-UP SHOWS ITS ELEMENT -- the owner: "telegraph
+      the attacks of each monster (briefly) using code to represent their
+      elements. Maybe a brief snow swirl effect before a snowman throws a
+      snowball": for exactly the worker's wind-up (`_tgFrom`/`_tgUntil`, the
+      body's throb), the monster's `element` drawn round it -- snow swirling
+      in, sparks and flames, a gust circling, pebbles and dust, crackling
+      bolts, droplets, poison fumes, goo bubbles (src/data/elemWindup.js the
+      looks, src/game/elemWindup.js the motion from the time alone,
+      src/rendering/elemWindup.js a pool of 128 sprites on the projectiles
+      layer cut from ONE picture drawn in code, elemWindupShapes.js, made on
+      the loading screen); only a monster the entity renderer drew this frame
+      (`_tgSeen`), the nearest 8; nothing new on the wire; `?nowindupfx`,
+      `window.__btElemWindup()`; `elem-windup` suite, `mp-elemwindup`:
+      docs/specs/elem-windup.md.
     - since v2.3.3620 THE OWNER'S STRONGER HITS -- the list of 2026-10-26:
       a snowman's hit FREEZES you 600 ms (no walk, swing, roll or shield,
       "Frozen!", ice on you; `fz` on the chill's event, not again for 3 s)
