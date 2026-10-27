@@ -3227,6 +3227,19 @@ remnant to migrate server-side, not a mode to preserve.
         and made again (it held the bro still, `_netHold`), a thaw past 5 s is
         a return (`_resumeRecover('thaw', gap)`), "I'm back" hears touchend
         and click; `mp-comeback`: docs/specs/return-to-game.md.
+    - since v2.3.3670 A SLEEPING TAB, AT FOUR LENGTHS -- the owner: "check
+      rebuilding the game at different intervals when returning to the game
+      from putting the tab to sleep (iPhone)": `mp-tabsleep` sleeps an upright
+      phone in BroTown 10 s and a minute (the socket alive), 3 minutes (closed
+      while asleep) and 8 minutes (the radio asleep: a dead pipe), the page's
+      thread held by a loop (this Chromium's "frozen" state runs its timers)
+      and the socket cut by a relay of the test's own (Chrome's "offline"
+      leaves an open socket working); all four back with no reload, lit, the
+      bro where he slept and the sound running -- 0.4 s at 10 s and a minute;
+      past the 2-minute idle logout (3 and 8 minutes) the "I'm back" banner,
+      then 1.3-1.5 s after its touch; the crash log's "resume ... wsState" is
+      the socket as the page woke (`_wsAtWake`: 1, 3 or none; it was read after
+      the rejoin began, always 0): docs/specs/tab-sleep.md.
   - Since v2.3.3035 THE HARVEST'S BAR IS GREEN, OVER THE RESOURCE, AND READS
     "7/10" -- the owner: "I want resource harvesting bar to be green and to
     appear above the resource, not the player head. It should also list the

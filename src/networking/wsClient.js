@@ -4832,9 +4832,15 @@ export function setupWebSocket(ctx) {
       try { connect(); } catch (e) {}
     }
     function _resumeRecover(tag, awayMs) {
+      /* v2.3.3670: the socket's state AS THE PAGE CAME BACK, read now.  Read
+         when the import below resolved, it was already the rejoin's new
+         socket (CONNECTING, 0) after every sleep past RESYNC_AWAY_MS, so
+         every crash log said "wsState=0" whatever the sleeping socket had
+         met (mp-tabsleep). */
+      var _wsAtWake = ws ? ws.readyState : 'none';
       try {
         import('../debug/crashTrap.js').then(function (ct) {
-          ct.recordCrash('resume', tag + ' wsState=' + (ws ? ws.readyState : 'none'));
+          ct.recordCrash('resume', tag + ' wsState=' + _wsAtWake);
         }).catch(function () {});
       } catch (e) {}
       /* ═══ v2.3.3574: THE PICTURES SAFARI THREW AWAY, BROUGHT BACK ═══
