@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "cb0a55c9b46cc26355b799768bb93a4af1318bd3",
+  "tree": "0332fedb9d7964bc8add8c7ae2c7587d5c672083",
+  "committedAt": "2026-10-26T21:02:10-07:00",
+  "subject": "A monster's element seen as it winds up: snow swirling in before a snowball (v2.3.3619) (#1125)",
+  "files": 6577,
+  "bytes": 762546021,
+  "listingSha256": "8ac192c87be6ec8001c52473b22002073281966e83afa6340856bae573a3fb70",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
