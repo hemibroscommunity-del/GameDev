@@ -61,6 +61,9 @@ import { MEMORY_BUDGET } from './memory-budget.mjs';
 const PHONE = { width: 390, height: 844 };
 const QUERY = process.env.QA_MB_QUERY || '';
 const FIGHT_MS = 10000;
+/* v2.3.3644: a trip that ends further than this from the fight's spot never
+   reached the fight (the fight looks for a monster within 900 px) */
+const REACH_PX = 400;
 const HOME_MS = 14000;
 
 /* how much the third trip may end above the second, per line, in MB: a
@@ -180,7 +183,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!ok) return;
     const myId = await H.readState(P, (S) => S.myId);
     /* past the Mayor's gate, as the tour does, and untouchable at the fight */
-    await P.page.evaluate(() => { const S = window._gameState.current; const R = S.rpg; R._quests = R._quests || {}; R._quests.tut_1 = true; });
+    /* ═══ v2.3.3644: AND THE GATE STAYS OPEN ═══
+       The gate (wheelHome.js wheelCommonsGate) reads the page's own
+       `rpg._quests.tut_1`, and the worker's first whole player_state replaces
+       `_quests` (wsClient) whenever it lands.  On a quick runner that was
+       before the flag was set here; on a slow one it came after, the gate held
+       the bro on the commons' edge every trip, the hop's 220 tries ran out (4.5
+       minutes a trip), no monster was ever near ("0 swings") and the job ran
+       past its 20 minutes (#1130's run 816, #1139's 827; #1136's 820 passed
+       that way in 18, measuring the commons and not the fight).  So the flag
+       goes back whenever an echo takes it away. */
+    await P.page.evaluate(() => {
+      const keep = () => {
+        const S = window._gameState && window._gameState.current, R = S && S.rpg;
+        if (!R) return;
+        if (!R._quests || typeof R._quests !== 'object') R._quests = {};
+        if (!R._quests.tut_1) { R._quests.tut_1 = true; window.__mbGatePutBack = (window.__mbGatePutBack || 0) + 1; }
+      };
+      keep();
+      window.__mbGatePutBack = 0;
+      window.__mbGateOpen = setInterval(keep, 100);
+    });
     await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 8 }).catch(() => null);
     (async () => {
       while (!stopAlive) {
@@ -210,16 +233,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const home = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
     const trips = [];
     for (let k = 1; k <= 3; k++) {
+      const t0 = Date.now();
       await H.hopTo(P, at[0], at[1] + 40, { tries: 220, step: 140, gap: 200 });
+      /* v2.3.3644: how close the hop came, and the gate's turnings-back */
+      const there = await P.page.evaluate((a) => {
+        const S = window._gameState.current;
+        return { d: Math.round(Math.hypot(S.player.x - a[0], S.player.y - a[1])), gate: S._wheelGateHits || 0, putBack: window.__mbGatePutBack || 0 };
+      }, [at[0], at[1] + 40]);
+      const hopS = Math.round((Date.now() - t0) / 1000);
       const swings = await fight(P, FIGHT_MS);
-      const atFight = await take(`trip ${k}: a fight at the Flame Fields (${swings} swings)`);
+      const atFight = await take(`trip ${k}: a fight at the Flame Fields (${swings} swings; ${there.d} px short after ${hopS} s, the gate ${there.gate}, its flag put back ${there.putBack})`);
+      atFight.reach = there.d;
       await H.hopTo(P, home.x, home.y, { tries: 220, step: 140, gap: 200 });
       await P.page.waitForTimeout(HOME_MS);
       const back = await take(`trip ${k}: home again`);
       trips.push({ swings, atFight, back });
     }
-    rec.ok(`the trip reached the fight and came home, three times (${trips.map((t) => t.swings).join(', ')} swings)`,
-      trips.length === 3 && trips.every((t) => t.atFight.zone === 'wheel' && t.back.zone === 'wheel'), trips.map((t) => [t.atFight.zone, t.back.zone]));
+    /* v2.3.3644: REACHED it -- a trip held on the commons (above) read the
+       commons three times and passed, every line measured but the fight's */
+    rec.ok(`the trip reached the fight and came home, three times (${trips.map((t) => t.swings).join(', ')} swings; `
+      + `${trips.map((t) => t.atFight.reach).join(', ')} px short of the fight's spot, at most ${REACH_PX})`,
+      trips.length === 3 && trips.every((t) => t.atFight.zone === 'wheel' && t.back.zone === 'wheel' && t.atFight.reach <= REACH_PX),
+      trips.map((t) => [t.atFight.zone, t.back.zone, t.atFight.reach]));
 
     /* ── within budget ── */
     const peaks = {};
