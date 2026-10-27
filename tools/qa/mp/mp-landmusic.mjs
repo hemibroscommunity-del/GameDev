@@ -18,7 +18,11 @@
  *      dunes' wind under it;
  *   5. the Stone Hollows, with no track of its own: no zone track, the game's
  *      theme up; the dunes' wind stopped and its decoded loop let go;
- *   6. the Verdant Wilds: forest.mp3 (the old meadow's Floral);
+ *      (v2.3.3610: the owner's own score -- the Stone Hollows rock.mp3, the
+ *      dunes' wind stopped and let go; the Electric Foundry, still with no
+ *      track of its own: no zone track, the game's theme up; the Water Caves
+ *      water.mp3 and the Poison Forest murky.mp3)
+ *   6. the Verdant Wilds: forest.mp3 (the owner's Forest Loop since v2.3.3610);
  *   7. a death out there: back in Brotown through today's town, the town's
  *      track playing, and the theme not brought up over it on the way;
  *   8. no page errors.
@@ -226,28 +230,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`the Wind Dunes: desert.mp3 (${s.v && s.v.url}) and the dunes' wind under it (${s.v && s.v.ambience}) (on the way: ${sLog.map((x) => x.key).join(' -> ')})`,
       s.ms !== null && /desert\.mp3/.test((s.v && s.v.url) || '') && s.v.ambience === 'zoneamb-sky', { music: s.v, changes: sLog });
 
-    /* ── 5. the Stone Hollows: no track of its own ── */
+    /* ── 5. v2.3.3610: the Stone Hollows, the owner's Rock level ── */
     await travel(P, wsPort, myId, spot('sky', COMMONS).x, spot('sky', COMMONS).y);
     await travel(P, wsPort, myId, spot('hollows', COMMONS).x, spot('hollows', COMMONS).y);
     const ho = spot('hollows', IN_LAND);
     await travel(P, wsPort, myId, ho.x, ho.y);
-    const hw = await waitMusic(P, (v) => v.playing === 'hollows', 15000);
+    const hw = await waitMusic(P, (v) => v.playing === 'hollows' && v.source, 15000);
     await P.page.waitForTimeout(1200);
     const hv = await lm(P);
-    rec.ok(`the Stone Hollows, with no track of its own: no zone track, the game's theme up (playing "${hv && hv.playing}")`,
-      hw.ms !== null && !!hv && hv.playing === 'hollows' && !hv.source && hv.themeDucked === false, hv);
+    rec.ok(`the Stone Hollows: rock.mp3, the owner's Rock level (${hv && hv.url}), the theme ducked under it`,
+      hw.ms !== null && !!hv && hv.playing === 'hollows' && /rock\.mp3/.test(hv.url || '') && hv.themeDucked === true, hv);
     rec.ok('...the dunes\' wind stopped, and its decoded loop let go', !!hv && !hv.ambience && !hv.windKept, hv && { ambience: hv.ambience, windKept: hv.windKept });
-
-    /* ── 6. the Verdant Wilds ── */
+    /* the Electric Foundry: still no track of its own */
     await travel(P, wsPort, myId, spot('hollows', COMMONS).x, spot('hollows', COMMONS).y);
     await travel(P, wsPort, myId, spot('thunder', COMMONS).x, spot('thunder', COMMONS).y);
-    await travel(P, wsPort, myId, spot('tidal', COMMONS).x, spot('tidal', COMMONS).y);
+    const th = spot('thunder', IN_LAND);
+    await travel(P, wsPort, myId, th.x, th.y);
+    const tw = await waitMusic(P, (v) => v.playing === 'thunder', 15000);
+    await P.page.waitForTimeout(1200);
+    const tv = await lm(P);
+    rec.ok(`the Electric Foundry, with no track of its own yet: no zone track, the game's theme up (playing "${tv && tv.playing}")`,
+      tw.ms !== null && !!tv && tv.playing === 'thunder' && !tv.source && tv.themeDucked === false, tv);
+    /* the Water Caves and the Poison Forest, the owner's Water lvl and Murky Loop */
+    for (const [land, file, name] of [['tidal', 'water', 'Water lvl'], ['mist', 'murky', 'Murky Loop']]) {
+      await travel(P, wsPort, myId, spot(land, COMMONS).x, spot(land, COMMONS).y);
+      const at2 = spot(land, IN_LAND);
+      await travel(P, wsPort, myId, at2.x, at2.y);
+      const w2 = await waitMusic(P, (v) => v.playing === land && v.source, 15000);
+      rec.ok(`the ${land === 'tidal' ? 'Water Caves' : 'Poison Forest'}: ${file}.mp3, the owner's ${name} (${w2.v && w2.v.url})`,
+        w2.ms !== null && new RegExp(file + '\\.mp3').test((w2.v && w2.v.url) || ''), w2.v);
+    }
+
+    /* ── 6. the Verdant Wilds ── */
     await travel(P, wsPort, myId, spot('mist', COMMONS).x, spot('mist', COMMONS).y);
     await travel(P, wsPort, myId, spot('verdant', COMMONS).x, spot('verdant', COMMONS).y);
     const ve = spot('verdant', IN_LAND);
     await travel(P, wsPort, myId, ve.x, ve.y);
     const v = await waitMusic(P, (x) => x.playing === 'verdant' && x.source, 15000);
-    rec.ok(`the Verdant Wilds: forest.mp3, the old meadow's Floral (${v.v && v.v.url})`, v.ms !== null && /forest\.mp3/.test((v.v && v.v.url) || ''), v.v);
+    rec.ok(`the Verdant Wilds: forest.mp3, the owner's Forest Loop (${v.v && v.v.url})`, v.ms !== null && /forest\.mp3\?v=2\.3\.3610/.test((v.v && v.v.url) || ''), v.v);
 
     /* ── 7. a death out there: the Flame Fields' goblins, as mp-wheelhome ── */
     await travel(P, wsPort, myId, spot('verdant', COMMONS).x, spot('verdant', COMMONS).y);

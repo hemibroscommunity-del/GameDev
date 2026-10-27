@@ -3180,6 +3180,20 @@ remnant to migrate server-side, not a mode to preserve.
       the data index -- despite the effectsRenderer comment saying it never is;
     - test-world-core "the lands' music", `mp-landmusic`:
       docs/specs/wheel-land-music.md.
+    - since v2.3.3610 THE OWNER'S OWN SCORE -- "A huge part of the game is
+      emotional resonance from music.  I don't know what music plays for the
+      town vs the other zones", then ten Suno tracks of theirs (masters in
+      `assets/music-source/2026-10-26/`, the game's copies 128 kbps / 44.1 kHz
+      by tools/audio/encode_music.mjs): BroTown, Frost Ridge, the Flame Fields,
+      the Wind Dunes and the Verdant Wilds replaced in place (`?v=2.3.3610`),
+      the Stone Hollows, the Water Caves and the Poison Forest their own at
+      last, every `dungeon:` zone the `dungeon` key (startZoneAmbient), Lil
+      Bro's race the `minigame` key while it counts down and runs
+      (wheelMusic.js `RACE_MUSIC`); the Electric Foundry still the theme; the
+      Sound Studio's MUSIC tab lists every track under where it plays, ▶ from
+      its file with the game's music bus down and the land watch held off
+      (`BT_AUDIO._musicPreview`); `sound-cues` §13, `mp-soundstudio` §10:
+      docs/specs/wheel-land-music.md "v2.3.3610".
   - Since v2.3.3065 NORTH IS MARKED ON BOTH MAPS -- the owner, on the
     recommendations for finding your way round: "Continue building
     recommended": neither map ever turns, and nothing said up is north;
