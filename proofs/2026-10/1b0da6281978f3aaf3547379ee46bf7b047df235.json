@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1b0da6281978f3aaf3547379ee46bf7b047df235",
+  "tree": "bd691767382028cebcd44d276abb86cf6b6e3e8b",
+  "committedAt": "2026-10-27T02:57:39-07:00",
+  "subject": "The review's client polish: \"Wobbly\" waits for the wobble, TRAP's words clear of Burst and grey by opacity, the wind-up picture kept as an image (v2.3.3635) (#1137)",
+  "files": 6590,
+  "bytes": 762742013,
+  "listingSha256": "be18705391467c7251bf1b1f3d5324b56f6619593e440322cf444d0327e3bbfa",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
