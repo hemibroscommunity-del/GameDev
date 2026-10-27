@@ -5892,7 +5892,8 @@ Two protocol versions coexist; both must keep working:
     in the data (quest-lines counts the townsfolk's characters). The quest
     plate, the townsfolk's window, the quest windows, the coach's cards and
     the windows a first half hour opens call it; a new line a computer player
-    reads that says "tap" is shown through it. `desk-words` suite.
+    reads that says "tap" is shown through it. `desk-words` suite,
+    `mp-deskwords` (no "tap" on a computer's screens, the phone's as written).
 - **A STRUCTURAL CHANGE REBUILDS ITS LAYER'S DRAW LIST (v2.3.3449, TRAPS
   §218, docs/specs/draw-lists.md).** Pixi rebuilds a render group's whole
   draw list for any `visible` / `renderable` / `zIndex` / `blendMode` change,

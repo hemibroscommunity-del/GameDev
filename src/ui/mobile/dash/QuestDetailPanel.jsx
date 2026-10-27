@@ -148,8 +148,8 @@ export const QuestDetailPanel = () => {
             Ready to hand in — go and see {quest.npc}.
           </div>
           <div style={{ fontSize: 12, lineHeight: 1.45, color: COL.text2, marginTop: 3 }}>
-            Find {quest.npc} in town and tap him to talk. He pays the reward
-            there.
+            {/* v2.3.3612: "click him" on a computer */}
+            {deskWords(`Find ${quest.npc} in town and tap him to talk. He pays the reward there.`)}
           </div>
         </div>
       )}

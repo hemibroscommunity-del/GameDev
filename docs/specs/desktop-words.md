@@ -41,7 +41,8 @@ they are the phone's words too.
   completed);
 - the townsfolk's window (NpcDialogue.jsx, each line);
 - the quest windows: the offer (QuestOfferPanel), the journal row and its
-  detail page, the detail page's quoted line;
+  detail page, the detail page's quoted line and its "Find him in town and
+  tap him to talk" when a quest is ready to hand in;
 - the coach's cards (QuestCoach.jsx), the first level-up tips among them
   (pointsTips.js's words);
 - the "New monster" card, the chat box's placeholder;
@@ -61,3 +62,9 @@ A new line a computer player reads that says "tap" is shown through it.
 `server/test/desk-words.test.mjs`: the swap on a computer and none on a
 phone, the words that stay, every townsperson's line that says "tap" read
 through it, and each place above calling it.
+
+`mp-deskwords` on a real page with a mouse (1440 x 900): the WELCOME plate
+says "then click him.", and past it the coach's card, Mayor Bro's lines and
+his offer, the dashboard's six pages and the quest's own page show no "tap"
+anywhere -- in the text, a tooltip or a box's placeholder; a phone's WELCOME
+still says "then tap him.".
