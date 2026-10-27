@@ -983,11 +983,32 @@ function _figBytes(arr) {
  * exposes trouser on the right, so this correction is frame-7-only by
  * measurement, not by preference.
  *
+ * THE GREAVES ALIGNED, v2.3.3669.  The owner, on the trousers that showed
+ * between the plate and the greaves while lighting a fire: "Aligning the
+ * greaves so the waistband doesn't show would be better".  The fit above
+ * placed each garment by how much of it lands on the body part it covers; it
+ * never asked how much of the TROUSERS the greaves leave showing, and on the
+ * standing end frame (7) a band of them showed at the waist, on the kneeling
+ * frames (3-6) a wedge of thigh beside the log.  Frames 3-7 are placed again
+ * by that (the owner's x0.90 kept; only position moves): every candidate
+ * offset scored on the art -- the trouser and boot pixels left bare by both
+ * the greaves and the plate, against steel laid over the hands or the log --
+ * and the pick checked by eye (scratch renders, docs/specs/fire-greaves.md).
+ * As mp-firegear counts it on the art, frame 7's band goes (590 trouser px
+ * of the 384x512 cell left bare -> 16), the kneeling wedges with it
+ * (693/852/884/792 -> 84/71/167/438); a kneeling frame's boot behind shows a
+ * little more where the steel moved off it (by the fit's count, boots
+ * 71/164/116 -> 174/501/401), the dark of a foot in shadow rather than a band
+ * of cloth.  Frames 0-2 keep their fit: 0 and 1 show nothing, and frame 2's
+ * greaves are painted in another kneel than the body (the thigh runs where
+ * the art has no leg), which no offset covers -- about a thousand px of thigh
+ * for 67 ms before the strike.
+ *
  * Units are SOURCE ART PIXELS in the 384x512 cell; _updateFiremaking scales
  * them by the sprite's own scale, so they follow FH if the drawn height ever
- * moves.  Only _updateFiremaking draws gear on this pose — a peer's remote
- * stand-in has never drawn gear at all (_updateRemoteExtraction) — so this is
- * the single place it has to be applied. */
+ * moves.  Two places read this table: _updateFiremaking (yours) and
+ * _updateRemoteExtraction's _placeGear (another player's, since v2.3.2146
+ * drew a peer's fire-lighter dressed), so one row places both. */
 /* v2.3.1764: what each stand-in pose's gear sprites were last tinted with —
    see _tintGearSprite.  Module-level so the probe exists before any pose has
    played; an empty record is itself the answer to "did anything tint?". */
@@ -1181,9 +1202,11 @@ const FIRE_GEAR_REG = {
     scale: 0.90,
     off: [[39, -79], [18, 27], [42, 13], [35, 23], [84, 11], [75, 10], [59, 9], [42, -69]],
   },
+  /* v2.3.3669: frames 3-7 re-aligned (frames 0-2 as fitted): see "THE GREAVES
+     ALIGNED" in the header above */
   legs: {
     scale: 0.90,
-    off: [[28, -7], [23, 8], [89, 48], [57, 7], [73, 15], [72, 15], [64, 17], [41, 15]],
+    off: [[28, -7], [23, 8], [89, 48], [43, 4], [54, 15], [51, 13], [55, 12], [43, 6]],
   },
 };
 

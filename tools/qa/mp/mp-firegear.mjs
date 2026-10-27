@@ -35,8 +35,12 @@ import * as H from './harness.mjs';
 const REG = {
   shirt: { scale: 0.85, off: [[48, -89], [8, -50], [20, -47], [55, -64], [67, -50], [56, -52], [57, -56], [46, -103]] },
   chest: { scale: 0.90, off: [[39, -79], [18, 27], [42, 13], [35, 23], [84, 11], [75, 10], [59, 9], [42, -69]] },
-  legs: { scale: 0.90, off: [[28, -7], [23, 8], [89, 48], [57, 7], [73, 15], [72, 15], [64, 17], [41, 15]] },
+  /* v2.3.3669: frames 3-7 re-aligned so the trousers do not show (the
+     FIRE_GEAR_REG header, "THE GREAVES ALIGNED"); OLD_LEGS is the table
+     before, for the bare-trouser check below */
+  legs: { scale: 0.90, off: [[28, -7], [23, 8], [89, 48], [43, 4], [54, 15], [51, 13], [55, 12], [43, 6]] },
 };
+const OLD_LEGS = [[28, -7], [23, 8], [89, 48], [57, 7], [73, 15], [72, 15], [64, 17], [41, 15]];
 /* v2.3.1749: read from the page, never copied.  This was a hard-coded 200 and
    the 3x firemaking speed-up (owner request) silently moved every sampled
    frame by two — the assertions then compared frame N's gear offsets against
@@ -45,7 +49,7 @@ const REG = {
 let FRAME_MS = 200;
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Sparky', wsPort, webPort });
+  const P = await H.newPlayer(browser, { name: 'Sparky', wsPort, webPort, world: 'wheel' });   /* v2.3.3669: in the world */
   await H.enterWorld(P);
   await P.page.waitForTimeout(1200);
   /* v2.3.3077: the fire-lighter is made the first time he can be wanted
@@ -182,7 +186,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      number, it is that the table MOVES THE GARMENT ONTO THE BODY.  That is what
      stays honest if corrected art ever lands: the same score then falls when the
      table is applied, and this fails. */
-  const cover = await P.page.evaluate(async (REG) => {
+  const cover = await P.page.evaluate(async ({ OLD_LEGS, ...REG }) => {
     const FW = 384, FH = 512, N = 8;
     const load = (src) => new Promise((r, j) => { const i = new Image(); i.onload = () => r(i); i.onerror = () => j(new Error(src)); i.src = src; });
     const cells = async (src) => {
@@ -215,6 +219,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const skin = body.map((d) => mask(d, isSkin));
     const leg = body.map((d) => mask(d, isLeg));
     const out = {};
+    /* v2.3.3669: the TROUSERS left bare -- the art's olive trousers that
+       neither the greaves nor the plate cover, frame by frame, with the table
+       and with the one before it (OLD_LEGS).  The coverage score below asks
+       how much of each garment lands on the body; this asks what the owner
+       saw: "Aligning the greaves so the waistband doesn't show". */
+    const isTrouser = (r, g, b, a) => a > 180 && Math.abs(r - g) <= 30 && g >= 80 && b <= g - 45;
+    const put = (gm, k, dx, dy) => {
+      const m = new Uint8Array(FW * FH);
+      for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+        if (!gm[y * FW + x]) continue;
+        const tx = (FW / 2 + (x - FW / 2) * k + dx) | 0;
+        const ty = (FH + (y - FH) * k + dy) | 0;
+        if (tx >= 0 && tx < FW && ty >= 0 && ty < FH) m[ty * FW + tx] = 1;
+      }
+      return m;
+    };
+    const legsArt = (await cells('/sprites/gear/legs/steelgreaves/fire-south.png')).map((d) => mask(d, solid));
+    const chestArt = (await cells('/sprites/gear/chest/steelplate/fire-south.png')).map((d) => mask(d, solid));
+    const bare = (offs) => body.map((d, f) => {
+      const tr = mask(d, isTrouser);
+      const lc = put(legsArt[f], REG.legs.scale, offs[f][0], offs[f][1]);
+      const cc = put(chestArt[f], REG.chest.scale, REG.chest.off[f][0], REG.chest.off[f][1]);
+      let n = 0;
+      for (let p = 0; p < FW * FH; p++) if (tr[p] && !lc[p] && !cc[p]) n++;
+      return n;
+    });
+    out.bare = { now: bare(REG.legs.off), before: bare(OLD_LEGS) };
     for (const [slot, src, tgt] of [
       ['shirt', '/sprites/gear/shirt/tshirt/fire-south.png', skin],
       ['chest', '/sprites/gear/chest/steelplate/fire-south.png', skin],
@@ -229,7 +260,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       out[slot] = { raw: raw / N, reg: reg / N };
     }
     return out;
-  }, REG);
+  }, { ...REG, OLD_LEGS });
 
   /* Measured on the shipped art at the chosen scales: shirt 0.42 -> 0.79,
      chest 0.43 -> 0.79, legs 0.20 -> 0.44.  The floors sit just under each
@@ -237,13 +268,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the smallest real gain while still failing loudly on a no-op table.
      NOTE the ratio cannot be used to CHOOSE the scale — it rewards shrinking
      without limit (see FIRE_GEAR_REG).  It is a floor, not an optimiser. */
-  const FLOOR = { shirt: 0.70, chest: 0.72, legs: 0.38 };
+  /* v2.3.3669: legs 0.38 -> 0.35.  The re-aligned greaves (frames 3-7) tuck
+     their top under the plate and reach over the log's end, which this score
+     counts as off the legs: 0.394 -> 0.367 on the shipped art, by design --
+     what the move is FOR is the bare-trouser check below. */
+  const FLOOR = { shirt: 0.70, chest: 0.72, legs: 0.35 };
   for (const slot of ['shirt', 'chest', 'legs']) {
     const c = cover[slot];
     rec.ok(`the registered ${slot} covers the body far better than the raw sheet does`,
       c.reg >= c.raw * 1.35, `${c.raw.toFixed(3)} -> ${c.reg.toFixed(3)} (x${(c.reg / c.raw).toFixed(2)})`);
     rec.ok(`the registered ${slot} sits on the body`, c.reg >= FLOOR[slot], c.reg.toFixed(3));
   }
+
+  /* v2.3.3669: what the owner saw.  Measured on the shipped art: frame 7's
+     waistband 590 px of the 384x512 art -> 16, all eight frames 4,901 ->
+     1,866 (frames 0-2 keep their 1,090, nearly all frame 2's thigh: a kneel
+     the greaves are not painted in). */
+  const bn = cover.bare.now, bb = cover.bare.before;
+  const sum = (a) => a.reduce((x, y) => x + y, 0);
+  rec.ok(`the greaves leave the waistband covered on the standing end frame (frame 7: ${bb[7]} -> ${bn[7]} trouser px of the art)`,
+    bn[7] <= 40 && bb[7] > 200, { now: bn, before: bb });
+  rec.ok(`...and far less of the trousers bare over the light (${sum(bb)} -> ${sum(bn)} px; frames 3-6 ${bb.slice(3, 7).join('/')} -> ${bn.slice(3, 7).join('/')})`,
+    sum(bn) <= 0.45 * sum(bb) && bn.slice(3, 7).every((v, i) => v < bb[3 + i]), { now: bn, before: bb });
 
   await P.ctx.close().catch(() => {});
 }

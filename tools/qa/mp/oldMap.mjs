@@ -53,7 +53,7 @@ export const OLD_MAP_LEGACY = Object.freeze(new Set([
   'duel', 'duelblock', 'duelfeel', 'dunedepth', 'dunes', 'emotemoves',
   'emotes', 'engage', 'entitydt', 'equipstale', 'exitmark',
   'eyestyle', 'facebow', 'facetat', 'facingside', 'fakenum', 'farm', 'feel',
-  'fightfood', 'fightsoak', 'figscale', 'figureseam', 'firegear', 'fireink',
+  'fightfood', 'fightsoak', 'figscale', 'figureseam', 'fireink',
   'firepeer', 'firetrail', 'fishhand', 'formshade', 'fps', 'freshbuild',
   'freshpoints', 'freshquest', 'friends', 'gatherhits', 'gatherspot', 'gcue',
   'gearown', 'gearstash', 'geartrim', 'goldrail', 'greaveslegs',
