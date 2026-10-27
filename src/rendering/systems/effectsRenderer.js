@@ -665,7 +665,7 @@ import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
-import { recolorToolKeyCanvas, recolorToolKey, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask; v2.3.3649: + recolorToolKey, the fire-lighter's log band */
+import { recolorToolKeyCanvas, recolorToolKey, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask; v2.3.3660: + recolorToolKey, the fire-lighter's log band */
 import { setStandInMaker, ensureStandIn, standInStarted, standInReady, standInMaking, setPeerStandInCheck, forgetStandIn, farmFigureReady } from '../standIns.js';   /* v2.3.3077: the gathering poses, made when first wanted; v2.3.3314: + a peer's, in their colours */
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
@@ -759,7 +759,7 @@ const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
    table).  One strip, no legless twin.  FIRE_KEEP_BOXES puts the fist's
    islands back into the figure for everybody, drawings or not. */
 const FIRE_URL = '/sprites/skills/firemaking-strip.webp?v=2.3.1715';
-/* ═══ v2.3.3649: THE FIRE-LIGHTER'S LOG IS WOOD ═══
+/* ═══ v2.3.3660: THE FIRE-LIGHTER'S LOG IS WOOD ═══
    The owner, 2026-10-27: "check all the animations for ghost remnants ... or
    areas for cleanup".  mp-ghostaudit's fire-lighter lit his fire on a hot pink
    log.  firemaking-strip.webp holds the pipeline's magenta KEY for the log, as
@@ -812,7 +812,7 @@ function _bakeFireSplit(img, skinT, art, clothes, opts) {
   const out = recolorStandInSkinSplit(img, skinT, FIRE_FH, { ...FIRE_SKIN_OPTS, frameW: FIRE_FW,
     keepBoxes: FIRE_KEEP_BOXES, art, regions: FIRE_INK_REGIONS, ...(clothes ? { ...clothes, pantsWide: true } : {}) });
   if (opts && opts.beforeWood) opts.beforeWood(out.cv);
-  if (!FIRE_LOG_OFF && !(opts && opts.noWood)) _fireLogToBark(img, out.cv);   /* v2.3.3649 */
+  if (!FIRE_LOG_OFF && !(opts && opts.noWood)) _fireLogToBark(img, out.cv);   /* v2.3.3660 */
   return out;
 }
 /* The drawn-peer layers, per figure (_peerStandInInk): the strip a variant
@@ -4993,7 +4993,7 @@ export class EffectsRenderer {
     const skinT = skinTarget(o.skin) || DEFAULT_SKIN_TARGET;
     _loadStandInImg(spec.url(variant)).then((img) => {
       if (this._destroyed) return;   /* v2.3.3074 */
-      const { cv, ink } = spec.bake(img, skinT, { ...art, mirror: false }, undefined, { noWood: true });   /* v2.3.3649: the figure is thrown away, so its log is left */
+      const { cv, ink } = spec.bake(img, skinT, { ...art, mirror: false }, undefined, { noWood: true });   /* v2.3.3660: the figure is thrown away, so its log is left */
       const n = Math.max(1, Math.round(cv.width / spec.fw));
       cv.width = 0; cv.height = 0;   /* the figure is the shared one; only the layer is kept */
       cache.set(key, { arr: ink ? this._gpuOnly(this._own(_sliceStandIn(ink, spec.fw, spec.fh, n, null, false))) : [], used: now });   /* v2.3.3074: owned; v2.3.3150: _gpuOnly */
@@ -5294,7 +5294,7 @@ export class EffectsRenderer {
       const _art = _base ? artForFacing(_base, 'south') : null;
       /* v2.3.3146: and your trousers and boots (the cook's, above) */
       const _pantsT = pantsTarget(getPants()), _shoesT = shoesTarget(getShoes());
-      /* v2.3.3649: the skin probe reads the figure before its log is wood (the
+      /* v2.3.3660: the skin probe reads the figure before its log is wood (the
          bark's middle tones pass the skin window); a drawings-only rebake
          throws the figure away and leaves its log */
       const { cv, ink } = _bakeFireSplit(img, skinT, _art ? { ..._art, mirror: false } : null,
@@ -5310,7 +5310,7 @@ export class EffectsRenderer {
            from it (_peerFigure), as the cook's _cookLook */
         this._fireLook = _standInColourKey(skinT, _pantsT, _shoesT);
         /* v2.3.2500: the skin probe, measured through the bake's own window
-           (_probeStandInSkin) -- since v2.3.3649 run inside the bake, before
+           (_probeStandInSkin) -- since v2.3.3660 run inside the bake, before
            the log turns to wood */
         if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
         this._gpuOnly(arr);   /* v2.3.3150: read by nothing from here (_gpuOnly) */

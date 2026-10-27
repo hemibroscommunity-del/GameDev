@@ -1,4 +1,4 @@
-/* ═══ v2.3.3649: THE FIRE-LIGHTER'S LOG IS WOOD ═══
+/* ═══ v2.3.3660: THE FIRE-LIGHTER'S LOG IS WOOD ═══
  *
  * The owner, 2026-10-27: "check all the animations for ghost remnants of
  * either a body beneath or areas for cleanup".  mp-ghostaudit's fire-lighter

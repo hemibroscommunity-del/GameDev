@@ -4004,7 +4004,7 @@ remnant to migrate server-side, not a mode to preserve.
         `mp-peercolours` (fails on the old
         code: every recoloured pixel of a peer's cook and fire-lighter the
         watcher's): docs/specs/peer-gather-colours.md.
-    - since v2.3.3649 THE FIRE-LIGHTER'S LOG IS WOOD -- the owner: "check all
+    - since v2.3.3660 THE FIRE-LIGHTER'S LOG IS WOOD -- the owner: "check all
       the animations for ghost remnants" (mp-ghostaudit: every light was on a
       hot pink log, for everyone): firemaking-strip.webp holds the magenta tool
       key for its log, and v2.3.2761 coloured the axe and the rod but left the
