@@ -4208,7 +4208,13 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
   /* v2.3.3646: the greaves whether or not a plate is worn (a plate only:
      v2.3.3623) -- THE GRIP LIFTS THE HAND, NOT THE TROUSERS */
   const _legs = (!_FISH_GRIP_OVER_PLATE && !_FISH_GRIP_TROUSERS && plate && plate.legs && plate.legs.source && plate.legs.source.resource) ? plate.legs : null;
-  const key = (bodyTex.uid != null ? bodyTex.uid : '') + (_rod ? '/' + _rod.uid : '') + (_plate ? '/p' + _plate.tex.uid + ':' + _plate.tint : '') + (_legs ? '/l' + _legs.uid : '') + '|fishtop';
+  /* v2.3.3646: whether the raw frame could be READ: until its picture is in,
+     the rod and the trousers are looked for on the recoloured frame, where
+     coloured trousers fail the olive test and would ride over the greaves --
+     an overlay made so is kept under a key of its own ('~'), and the first
+     call with the raw frame in makes the right one (found in review) */
+  const _rawIn = !!(_rod && _rod.source && _rod.source.resource);
+  const key = (bodyTex.uid != null ? bodyTex.uid : '') + (_rod ? '/' + _rod.uid + (_rawIn ? '' : '~') : '') + (_plate ? '/p' + _plate.tex.uid + ':' + _plate.tint : '') + (_legs ? '/l' + _legs.uid : '') + '|fishtop';
   const hit = _fishTopCache.get(key);
   if (hit) { _fishTopCache.delete(key); _fishTopCache.set(key, hit); return hit; }
   try {
