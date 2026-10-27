@@ -144,4 +144,37 @@ Six rounds, 32 minutes, on a build of main that includes the text-label fix
   so it could only climb. The soak and `mp-heapdiff` now count a node until the
   browser collects it.
 
-AUDIO_RESULTS
+## The audio count, and what the heap holds (`mp-heapdiff`, 2026-10-27)
+
+One phone fought at the Flame Fields six times, home to BroTown between
+fights, counting audio nodes until the browser collects them. It used a build
+of main from 14:55 that day (this branch changes no game code).
+
+| Trip | Swings | Heap at the fight (MB) | Heap home (MB) | Audio nodes alive / made |
+|---|---|---|---|---|
+| 1 | 28 | 30.39 | 30.46 | 9 / 117 |
+| 2 | 25 | 32.21 | 31.86 | 9 / 219 |
+| 3 | 21 | 32.96 | 31.90 | 9 / 325 |
+| 4 | 22 | 33.50 | 32.51 | 15 / 441 |
+| 5 | 27 | 33.69 | 33.20 | 9 / 553 |
+| 6 | 28 | 34.32 | 33.62 | 9 / 647 |
+
+- **No audio leak.** 647 nodes were made over six fights, and 9 to 15 are alive
+  at any time: every finished sound is collected. The climb the first run
+  showed was the old count's mistake.
+- **The heap home again grows about 0.4 MB a fight** (1.76 MB from trip 2 to
+  6). Between the snapshots after trips 2 and 5, 1.75 MB more:
+  - **0.69 MB is compiled code** (`(code)`, 1,704 more). That is the engine
+    compiling more of the game as more of it runs. It levels off.
+  - **0.65 MB is the storage of arrays** (`(object elements)`, 837 more), with
+    small numbers and plain objects beside it (8,857 numbers, 2,001 objects).
+    Something keeps adding to a list. What, the snapshot does not say by type
+    alone (the build's names are minified). Finding it means a snapshot of a
+    build with names, followed from the arrays to what holds them: next on
+    the list, not done here.
+  - The browser's own performance entries (script, event and long-frame
+    timings) are a few tens of KB of it.
+- This is the same creep as the soak's 7 to 14 MB an hour, at the rate one
+  fight a minute or so gives. It is why the memory check's heap line, set at 33
+  MB, is now read on either side of it by main's own code (#1141 raises it to
+  34, and says why).
