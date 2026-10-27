@@ -27,7 +27,7 @@ import { WHEEL_DOORS } from '../src/wheelspawns.js';
 import { DUNGEONS } from '../src/dungeon.js';
 import { ZONES } from '../src/data.js';
 import { SLIME_BOSS } from '../src/slimeboss.js';
-import { WHEEL_DUNGEON_PARTY, dungeonLevelsLine, dungeonDoorLine } from '../../src/data/wheelDungeons.js';
+import { WHEEL_DUNGEON_PARTY, WHEEL_DUNGEON_REC, dungeonLevelsLine, dungeonDoorLine } from '../../src/data/wheelDungeons.js';
 
 function makeState() {
   const store = new Map();
@@ -247,6 +247,18 @@ const bodyHp = (land, lvl) => room._makeZoneMonster(land, ZONES[land], lastKind(
     dungeonDoorLine(p) === 'Lv 16 · for 2–3 players' && dungeonDoorLine(null) === null, dungeonDoorLine(p));
   const gw = readFileSync(new URL('../../src/game/wheelDungeons.js', import.meta.url), 'utf8');
   check('words: ...only against a worker that plays it so (caps.partydungeon)', /S\._serverCaps\.partydungeon !== true\) return null/.test(gw));
+  /* v2.3.3608: the words say the level it is FOR -- the owner: "Change the
+     recommended level for the slime grotto dungeon to lvl 10 (don't change
+     any difficulty settings)" -- its monsters stay the worker's 16 */
+  const r = WHEEL_DUNGEON_REC.verdant;
+  check('words: v2.3.3608 the Grotto is for level 10: "Lv 10+ · 2–3 players" on the map, "Lv 10+ · for 2–3 players" at its door, the monsters still level 16',
+    r === 10 && dungeonLevelsLine(p, [1, 5], r) === 'Lv 10+ · 2–3 players' && dungeonDoorLine(p, r) === 'Lv 10+ · for 2–3 players'
+      && p.level === 16 && WHEEL_DUNGEON.PARTY.verdant.level === 16, [dungeonLevelsLine(p, [1, 5], r), dungeonDoorLine(p, r)]);
+  check('words: ...the phone asks with it, both lines', /dungeonLevelsLine\(wheelDungeonParty\(S, id\), levels, recOf\(id\)\)/.test(gw)
+    && /dungeonDoorLine\(wheelDungeonParty\(S, id\), recOf\(id\)\)/.test(gw));
+  const gs = readFileSync(new URL('../../src/data/gameSystems.js', import.meta.url), 'utf8');
+  check('words: ...and the Mayor\'s line says the same level as the map (GROTTO_REC_LEVEL = WHEEL_DUNGEON_REC.verdant)',
+    new RegExp(`var GROTTO_REC_LEVEL = ${r};`).test(gs));
 }
 
 if (failures) { console.log(`\n${failures} TEST(S) FAILED`); process.exit(1); }

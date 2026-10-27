@@ -239,8 +239,10 @@ PIECES = [
     dict(name='icons/ui/smith-hammer', src='fantasy-rpg-crafting-ui-asset-sheet-1.png', mode='card',
          box=(84, 309, 176, 387), css=(22, 22)),
     # v2.3.3526: 10a/10b and card 11's clearer five (the header)
-    dict(name='icons/items/greaves', src='brotown-rpg-ui-asset-sheet-1.png', mode='key',
-         box=(318, 462, 422, 566), frame=dict(fill=0.89), metal=True),
+    # (v2.3.3608: the LEGS are not cut any more -- the owner, 2026-10-26: "I
+    # liked the former leg armor better than the new icon. Replace it."  The
+    # four greaves pictures are the ones from before v2.3.3526 again, put back
+    # byte for byte, and a re-run of this tool must never write over them.)
     dict(name='icons/items/chest-plate', src='brotown-rpg-ui-asset-sheet-1.png', mode='key',
          box=(576, 462, 682, 566), frame=dict(fill=0.78), metal=True),
     dict(name='icons/ui/pets-paw', src='colorful-rpg-game-ui-asset-sheet.png', mode='key',
@@ -845,7 +847,7 @@ def main():
             out = to_frame(im, **p['frame'])
             print(f'  {short:16s} cut {raw[0]}x{raw[1]} -> {out.width}x{out.height} frame'
                   f' (art {im.width}x{im.height}, fill {p["frame"]["fill"]})'
-                  + ('  -- now run: node tools/gear/make-metal-icons.mjs --only greaves,chest-plate' if p.get('metal') else ''))
+                  + ('  -- now run: node tools/gear/make-metal-icons.mjs --only chest-plate' if p.get('metal') else ''))
         else:
             out = to_css(im, p['css'])
             print(f'  {short:16s} cut {raw[0]}x{raw[1]} -> {out.width}x{out.height}'

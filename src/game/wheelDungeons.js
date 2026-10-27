@@ -34,7 +34,7 @@ import { wheelMapInfo } from './wheelTrial.js';
 import { setWheelArrival } from './worldTrial.js';
 import { wantWheelSpawn } from './wheelHome.js';
 import { releaseLeftZoneArt, clearZoneLocalFx, veilWheelTrip } from './zoneTransitions.js';
-import { WHEEL_DUNGEON_HOMES, DOOR_R, WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR, WHEEL_ARENA, WHEEL_DUNGEON_PARTY, dungeonLevelsLine, dungeonDoorLine } from '@/data/wheelDungeons.js';   /* v2.3.3573: + the party dungeons and their words */
+import { WHEEL_DUNGEON_HOMES, DOOR_R, WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR, WHEEL_ARENA, WHEEL_DUNGEON_PARTY, WHEEL_DUNGEON_REC, dungeonLevelsLine, dungeonDoorLine } from '@/data/wheelDungeons.js';   /* v2.3.3573: + the party dungeons and their words; v2.3.3608: + the level each is for */
 import { freeDungeonArt } from './dungeonArt.js';   /* v2.3.3566 */
 
 /* the table -- which lands, the button's reach, each mouth's light, each
@@ -156,13 +156,15 @@ export function wheelDungeonParty(S, id) {
 }
 /** What a dungeon's levels read as on the world map: "Lv 16 · 2–3 players"
     for a party dungeon, else "dungeon · Lv a–b" (the place's). */
+/* v2.3.3608: the level it is for ("Lv 10+"), the Goo Grotto's 10 */
+const recOf = (id) => (own(WHEEL_DUNGEON_REC, id) ? WHEEL_DUNGEON_REC[id] : 0);
 export function wheelDungeonLevelsLine(S, id, levels) {
-  return dungeonLevelsLine(wheelDungeonParty(S, id), levels);
+  return dungeonLevelsLine(wheelDungeonParty(S, id), levels, recOf(id));
 }
 /** The line under the Enter button at mouth `id`: "Lv 16 · for 2–3
     players" for a party dungeon, else null (the button as it was). */
 export function wheelDungeonDoorLine(S, id) {
-  return dungeonDoorLine(wheelDungeonParty(S, id));
+  return dungeonDoorLine(wheelDungeonParty(S, id), recOf(id));
 }
 
 /** The mouth you stand at in the Wheel (within DOOR_R), or null. */
