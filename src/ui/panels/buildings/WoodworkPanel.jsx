@@ -12,7 +12,7 @@ import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';
 import { OWNER_ICON } from '@/data/ownerIcons.js';
 import { C, ITEMS_V, COIN, XP, Icon, Cost, Chip, Lock, Btn, Row } from './BenchParts.jsx';
 
-/* ═══ v2.3.3657: THE WOODWORKER, REBUILT AFTER THE BLACKSMITH ═══
+/* ═══ v2.3.3667: THE WOODWORKER, REBUILT AFTER THE BLACKSMITH ═══
  *
  * The owner: "I also want the woodworking menu rehauled and modeled after the
  * blacksmith menu."  The Blacksmith's window was rebuilt in v2.3.2826 ("Nobody

@@ -29,7 +29,7 @@
  *      H<n>";
  *   5. bars short: the chip reads "have/need" in red and Harden is off; the
  *      worker's bag agrees with the game's;
- *   6. the Woodworker (caps.hardenedwood):  v2.3.3657: the Blacksmith's window
+ *   6. the Woodworker (caps.hardenedwood):  v2.3.3667: the Blacksmith's window
  *      now -- its five picture tabs in one row (Bow, Staff, Hardened, Upgrade,
  *      Traps); a pine bow in hand takes HARDENED PINE WOOD, not bars: the
  *      Upgrade tab's bow row reads "0/1" in red with Harden off; the row asks
@@ -279,7 +279,7 @@ async function body({ P, wsPort, rec, errors }) {
   await H.equipWeapon(P, 'bow', 'rangedWeapon', 'ranged');
   await P.page.waitForFunction(() => { const b = window._gameState.current.rpg.rangedWeapon; return b && b.gearBase === 'ww_pine'; }, null, { timeout: 8000 }).catch(() => {});
   const ww = door('woodworker');
-  /* v2.3.3657: the Woodworker is the Blacksmith's window now (the owner's
+  /* v2.3.3667: the Woodworker is the Blacksmith's window now (the owner's
      "modeled after the blacksmith menu"): a row of tabs, the bow's and the
      staff's hardening on the Upgrade tab, each a row of chips (the
      Blacksmith's Harden row, read here as it is above) */

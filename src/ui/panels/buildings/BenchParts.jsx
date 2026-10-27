@@ -1,7 +1,7 @@
 import React from 'react';
 import { BUFF_ICON } from '@/data/smallIcons.js'; /* v2.3.3524: the XP pill's "XP" star */
 
-/* ═══ v2.3.3657: THE BENCHES' PARTS, SHARED ═══
+/* ═══ v2.3.3667: THE BENCHES' PARTS, SHARED ═══
  * The owner: "I also want the woodworking menu rehauled and modeled after the
  * blacksmith menu."  These are the Blacksmith's own pieces (SmithyPanel.jsx,
  * the v2.3.2826 rebuild: "Pictures and numbers, not sentences"), moved here

@@ -3835,7 +3835,7 @@ remnant to migrate server-side, not a mode to preserve.
       against `caps.hardenkeep`; on average H5 now takes 326 attempts, ~2
       million gold and ~1,471 bars (was ~4.3 million attempts); `hardening`
       §6: docs/specs/hardening.md "v2.3.3529: a failure keeps the level".
-    - since v2.3.3657 THE WOODWORKER IS BUILT LIKE THE BLACKSMITH -- the
+    - since v2.3.3667 THE WOODWORKER IS BUILT LIKE THE BLACKSMITH -- the
       owner: "I also want the woodworking menu rehauled and modeled after the
       blacksmith menu": one row of tabs (Bow, Staff, Hardened, Upgrade, Traps),
       costs as HAVE/NEED chips, one lock chip, the XP star, the next wood

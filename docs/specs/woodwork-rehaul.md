@@ -1,4 +1,4 @@
-# The Woodworker, rebuilt after the Blacksmith (v2.3.3657)
+# The Woodworker, rebuilt after the Blacksmith (v2.3.3667)
 
 Owner, 2026-10-27: "I also want the woodworking menu rehauled and modeled
 after the blacksmith menu."

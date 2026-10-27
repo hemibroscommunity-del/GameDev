@@ -18,7 +18,7 @@ import { hardenTierOf, hardenCost, hardenLevelFor } from '@/data/hardenCosts.js'
 import { forgeLevelFor, forgeOffered, forgeStatReq } from '@/data/forgeLadder.js'; /* v2.3.3524: the forge's ladder */
 import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3524: the Upgrade tab's hammer */
 import { amuletTabShown } from '@/game/forgeTabs.js'; /* v2.3.3535: the Amulet tab only with gold for it */
-import { C, ITEMS_V, COIN, XP, Icon, Cost, Chip, Lock, Btn, Row } from './BenchParts.jsx'; /* v2.3.3657 */
+import { C, ITEMS_V, COIN, XP, Icon, Cost, Chip, Lock, Btn, Row } from './BenchParts.jsx'; /* v2.3.3667 */
 
 /* ═══ v2.3.2826: THE BLACKSMITH, REBUILT ═══
  *
@@ -64,7 +64,7 @@ import { C, ITEMS_V, COIN, XP, Icon, Cost, Chip, Lock, Btn, Row } from './BenchP
  * data-salvage-row / data-salvage-go / data-essence-row / data-essence-go /
  * data-salvage-said (v2.3.3141). */
 
-/* v2.3.3657: the bench's parts (C, Icon, Cost, Chip, Lock, Btn, Row, and the
+/* v2.3.3667: the bench's parts (C, Icon, Cost, Chip, Lock, Btn, Row, and the
    coin, XP star and item-picture version) are in BenchParts.jsx, shared with
    the Woodworker's window */
 const GOLDBAR = '/icons/ui/cur-goldbar.webp';

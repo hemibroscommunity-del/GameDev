@@ -1,4 +1,4 @@
-/* ═══ v2.3.3657: THE WOODWORKER, REBUILT AFTER THE BLACKSMITH ═══
+/* ═══ v2.3.3667: THE WOODWORKER, REBUILT AFTER THE BLACKSMITH ═══
  *
  * The owner: "I also want the woodworking menu rehauled and modeled after the
  * blacksmith menu."  WoodworkPanel.jsx is now drawn from the Blacksmith's own
