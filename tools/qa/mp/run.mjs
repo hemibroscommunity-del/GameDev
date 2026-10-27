@@ -457,6 +457,7 @@ const SCENARIOS = {
   afk: () => import('./mp-afk.mjs'), /* v2.3.1913: idle characters log out after 2 min */
   tutgrant: () => import('./mp-tutgrant.mjs'), /* v2.3.1901: the first quest's sword + shield */
   skillup: () => import('./mp-skillup.mjs'), /* v2.3.1915: life-skill level celebration; re-aimed v2.3.2591 at the owner art burst + the skill icon in the medallion */
+  fisharmour: () => import('./mp-fisharmour.mjs'), /* v2.3.3623: an armoured angler -- the top overlay lays no bare hand over a torso plate's gauntlet and forearm, and the grip still rides over a tee or greaves */
   fishhand: () => import('./mp-fishhand.mjs'), /* v2.3.1914: the reeling hand over the shirt */
   previewweapon: () => import('./mp-previewweapon.mjs'), /* v2.3.1914: the preview follows the active weapon */
   questchain: () => import('./mp-questchain.mjs'), /* v2.3.1914: proximity turn-in across the whole chain */
