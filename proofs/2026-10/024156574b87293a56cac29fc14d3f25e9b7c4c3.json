@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "024156574b87293a56cac29fc14d3f25e9b7c4c3",
+  "tree": "93b03975ea25d7f5e494106b50086a11f27ec86d",
+  "committedAt": "2026-10-26T19:56:06-07:00",
+  "subject": "The minimap's buildings: a white symbol on a dark grey circle (v2.3.3614) (#1122)",
+  "files": 6561,
+  "bytes": 762403345,
+  "listingSha256": "ae2cf15bec1863263293f29dbe512dc3f97de7491cf5ef2b5c3fb584e65297ad",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
