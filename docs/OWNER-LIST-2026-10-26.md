@@ -365,8 +365,69 @@ fight simulator (18), then the "After the judges" list.
 | Each drop a line of words rising off the monster, "Coins (5)" over "Slime Remains (1)", coloured by rarity | #1132 (v2.3.3627) |
 | The No man's land skull and level just left of the minimap, level with its name plate | #1134 (v2.3.3629) |
 | The minimap's businesses in their own colours, bigger than the building | #1135 (v2.3.3630) |
-| SOAK_ROW |
-| GHOST_ROW |
+| Five players in a long session (two runs, 40 and 32 minutes: the quest line, gathering, fights, a party and the Goo Grotto, trading, No man's land, the shop, the farm, walks across the lands): no page error; no leak in textures, pictures, sound, page elements or listeners; the JS heap grows 7-14 MB an hour of play (by design in part: a phone keeps the monsters it has come near) | #1146 (v2.3.3661) |
+| Every animation checked for the body showing under the armour, or pieces left behind: the ghost audit, and the six faults it found, each fixed below | #1155 (v2.3.3668) |
+| ...the sword and bow bodies under greaves showed the trousers and boots | #1139 (v2.3.3640) |
+| ...a strip of trousers at the waist of full iron, jogging north-east or north-west | #1142 (v2.3.3645) |
+| ...the angler's grip lifted the trousers over the greaves | #1141 (v2.3.3657) |
+| ...specks of the trousers' and boots' colours on the head's outline | #1144 (v2.3.3658) |
+| ...the pickaxe painted in the player's skin colour, and pinholes in the miner's tee | #1154 (v2.3.3671) |
+| ...the fire-lighter's log was the art's magenta key | #1145 (v2.3.3660) |
+| ...and the waistband under a plate and greaves while you light a fire ("Aligning the greaves so the waistband doesn't show would be better") | #1152 (v2.3.3669) |
+| The memory check that runs on every PR stalled on slow runners (the Mayor's gate kept turning the bot back); its fix rode in #1139 | #1140 (closed: in #1139) |
+| ...and it ran out of time on slow runners and lost its player's god mode on a rejoin: it travels by the clock now, and says what happened between its stops | #1148 (v2.3.3656) |
+| Your new sound files at the top of the project broke the server tests for every PR: moved, untouched, to `assets/sfx-source/2026-10-27/` | #1143 |
+| ...and the two you added later (a goblin's fall, a jump's flip), moved the same way; not in the game yet (question 7 below) | #1153 |
+| ...and "Homestead Morning", moved to `assets/music-source/2026-10-27/` | #1156 |
+| Server tests that waited a fixed time for the game's tick failed on a busy machine; they wait for the tick now | #1138 (v2.3.3639) |
 | The double check: a review of the day's merged code found four server bugs in the new roar and freeze (a mummy killed mid-roar roared at its spawn; the roar's ring was drawn round its target) | #1136 (v2.3.3634) |
 | ...and four small client ones ("Wobbly" during the daze, TRAP's words over Element Burst, a CSS filter over the canvas, the wind-up picture not kept as an image) | #1137 (v2.3.3635) |
 | A memory leak found by the long sessions: every destroyed text label (monster names, loot labels) stayed in memory | #1133 (v2.3.3633) |
+| Your new recordings, each where you said: the hoe (digging), the clay (fertilizing), the can, the harvest, the flat hoe (the forge's hammer), wood carving (the Woodworker), a door, lighting a fire, coins, the bag, Lil Bro's own "hmm"; the townsfolk hum only when you start talking or take a quest | #1151 (v2.3.3664) |
+| The Points page switches between melee, bow and staff | #1149 (v2.3.3665) |
+| The fire catches in code: the painted flame, sparks and smoke out of the fire-lighting animation, the campfire's own fire caught on the log (kept) | #1147 (v2.3.3666) |
+| The Woodworker's menu rebuilt after the Blacksmith's | #1150 (v2.3.3667) |
+| Coming back to a sleeping tab after 10 s, a minute, 3 minutes and 8 minutes (the socket alive, closed, or dead): back every time with no reload, at once up to two minutes, past two minutes after the "I'm back" banner and one touch | #1157 (v2.3.3670) |
+| "Homestead Morning" plays on your farm; on the way, the farm turned out never to ask for music at all, so it had kept BroTown's track (the Sound Studio said the theme) | #1158 (v2.3.3672) |
+
+## 8. New questions from Oct 27
+
+1. **The licences of your eleven Freesound recordings.** Freesound can't be
+   reached from where I work, so each is marked CONFIRM in `CREDITS.md`. Open
+   `freesound.org/s/` followed by 336571, 467605, 482422, 490099, 497987,
+   507724, 516257, 636098, 740271, 796658 and 872487: CC0 or CC BY are fine;
+   tell me any that say NonCommercial and I'll swap it.
+2. **The Goo Grotto with the goo hold.** Since the slime's 2-second hold (your
+   stronger element hits, #1126), a pair with swords clears it 56-69% of the
+   time instead of 94%. Keep it that hard, or soften the hold inside dungeons?
+3. **Labels that never got their look.** The text-label fix (#1133) found
+   labels whose intended size and colour were never applied: the pet's name,
+   the stun timer, loot labels. Show them as designed (they'll look different),
+   or keep them as they look now?
+4. **The checks' time limits on GitHub.** The memory check has 20 minutes and
+   the play-through ("playable") 15. On a slow runner the browser's install
+   alone has taken 9-12 minutes, and today both were cut off while their tests
+   were passing. 30 minutes each is a one-line change per file in
+   `.github/workflows/`, which only you may approve.
+5. **The JS heap in a long session** grows 7 to 14 MB an hour of play, slowing
+   as the session goes on. It's partly by design (the monsters you've come near
+   are kept). Hunt it down further now, or later?
+6. **Small leftovers** the audit left: the fire-lighter's frame 2 (67 ms, before
+   the strike: its greaves are painted in another kneel, so a thigh shows), a
+   patch of trousers the old painted glow lit orange on frame 6, a few outline
+   pixels in the trousers' colour beside the arms at waist height, and the
+   pickaxe found by its colour rather than drawn in the magenta key like the
+   axe. Polish them later, or leave them?
+7. **Your two later recordings.** Where do the goblin's fall
+   (`502553__kneeling__goblin-fall.mp3`) and the jump's flip
+   (`563530__catthulu__sfx-jump-flip.wav`) go? My guesses: the fire goblin's
+   death, and your jump. Both are kept in `assets/sfx-source/2026-10-27/`, and
+   both need their Freesound licence checked like question 1.
+8. **Coming back after more than two minutes away.** The game has logged your
+   character out by then (the 2-minute idle logout), so it shows "You were
+   away, so your character logged out. I'm back" and waits for one touch. Keep
+   that, or have it come back on its own? The logout frees your place in the
+   room while you're away.
+9. **"Homestead Morning" on the farm.** I took it to be the farm's track you
+   mentioned and put it there (#1158). Tell me if you meant it for somewhere
+   else.
