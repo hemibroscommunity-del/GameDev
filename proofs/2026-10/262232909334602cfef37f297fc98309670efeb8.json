@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "262232909334602cfef37f297fc98309670efeb8",
+  "tree": "2512627bb5f9f83b5a45d7c18e7863c6d49c904c",
+  "committedAt": "2026-10-27T08:14:07-07:00",
+  "subject": "Your new recordings kept in assets/sfx-source/2026-10-27/, as supplied (main's server suite green again) (#1143)",
+  "files": 6608,
+  "bytes": 769151030,
+  "listingSha256": "3465d8b07c5239856126667e7b4388120841b2a1c00135cb737607e61fc5ccb6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
