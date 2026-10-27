@@ -8,7 +8,8 @@
  * Three real players against a real worker on a land's Lv 6-10 ring (No man's
  * land 1): the raider and the wanderer on 390 px TOUCH phones (every tap a
  * real touch), a bystander who is never chosen:
- *   1. the raider taps the wanderer, the window asks, Attack: the wanderer is
+ *   1. the raider, a bow in hand (v2.3.3608), taps the wanderer, the window
+ *      asks, Attack: the wanderer is
  *      CHOSEN (src/game/sparTargets.js chooseFoe), and the raider's shield
  *      button is up before any blow -- with a real tap on its middle reaching
  *      it: No man's land's badge sat on it before;
@@ -23,7 +24,8 @@
  *      HP unchanged, the window asks about them ("Attack Bystander?") -- and
  *      still land on the wanderer behind;
  *   6. a tap on the wanderer (chosen) aims at once: no second window;
- *   7. the wanderer, who chose nothing and holds no lock, with no monster near
+ *   7. the wanderer, who chose nothing and holds no lock (a bow in hand, which
+ *      locks nothing by itself: v2.3.3608), with no monster near
  *      and no blow in the last 5 s: its shield button is UP -- the fight with
  *      the raider is on (a blow within the minute: sparTargets.js
  *      fightingNow) -- under the thumb; a real tap raises the guard facing the
@@ -399,7 +401,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const foes = (P) => H.readState(P, (S) => (S._nmlFoes instanceof Map ? Array.from(S._nmlFoes.keys()) : []));
 
   /* ── 1. the window's Attack: chosen, and the shield is up before any blow ── */
-  const eqG = await H.equipWeapon(A, 'greatsword', 'weapon', 'melee');
+  /* v2.3.3608: the BOW in hand for the "before".  A sword locks by itself onto
+     a monster inside its ring, 440 px since v2.3.3595 (the spot is quiet to
+     340), and a lock lights the shield button: on a run of 2026-10-27 a Mire
+     Wisp wandering ~300 px off did it, before any window.  A bow acquires
+     nothing by itself, so "no lock, no blow, nothing near" is the test's own.
+     The greatsword is drawn for step 2. */
+  const eqW1 = await H.equipWeapon(A, 'bow', 'rangedWeapon', 'ranged');
   await A.page.waitForTimeout(1500);
   const pre1 = await layout(A);
   let a1 = null;
@@ -414,14 +422,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const lay1 = await layout(A);
   await shot(A, '1-chosen');
   rec.ok('1. a tap on the wanderer asks, and Attack aims at them (No man\'s land\'s lock) -- and CHOOSES them',
-    eqG.ok && !!a1 && !!a1.dom && a1.dom.id === idB && !a1b.dom && !!a1b.lock && a1b.lock.id === idB && a1b.lock.nml && foes1.includes(idB),
-    { eqG, a1: a1 && a1.dom, a1b, foes1 });
+    eqW1.ok && !!a1 && !!a1.dom && a1.dom.id === idB && !a1b.dom && !!a1b.lock && a1b.lock.id === idB && a1b.lock.nml && foes1.includes(idB),
+    { eqW1, a1: a1 && a1.dom, a1b, foes1 });
   rec.ok('1. ...no shield button before the window (no lock, no blow, nothing near), and the moment they are chosen it is up, before any blow',
     !pre1.shield && !!lay1.shield, { pre: pre1.shield, after: lay1.shield });
   rec.ok(`1. ...a tap on its middle reaches it (${lay1.top}), the No man's land badge beside it, not over it`,
     lay1.top === 'shield' && !!lay1.badge && !overlaps(lay1.badge, lay1.shield), { badge: lay1.badge, shield: lay1.shield, top: lay1.top });
 
   /* ── 2. the lock let go: the sword takes them back by itself, and lands ── */
+  const eqG = await H.equipWeapon(A, 'greatsword', 'weapon', 'melee');
+  await A.page.waitForTimeout(1500);
   await heal(idB);
   const hp2a = await hpOf(idB);
   /* at a sword's reach: 30 px west of the wanderer (the first run swung from
@@ -441,7 +451,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.hopTo(A, spot.x, spot.y, { tries: 30, step: 60 });
   await A.page.waitForTimeout(800);
   rec.ok(`2. the lock let go, the sword's automatic target takes the wanderer back (${lock2 && lock2.type}:${lock2 && lock2.src}, nml ${lock2 && lock2.nml})`,
-    !!lock2 && lock2.type === 'player' && lock2.id === idB && lock2.nml && lock2.src === 'auto', lock2);
+    eqG.ok && !!lock2 && lock2.type === 'player' && lock2.id === idB && lock2.nml && lock2.src === 'auto', { eqG, lock2 });
   rec.ok(`2. ...and the swings land: the wanderer's HP ${hp2a} -> ${hp2b}, ${w2.attacks} claims, every one naming them`,
     typeof hp2a === 'number' && hp2b < hp2a && w2.attacks >= 1 && (w2.by[idB] || 0) === w2.attacks, { hp2a, hp2b, w2 });
 
@@ -522,7 +532,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.evaluate(() => { window._gameState.current.lockedTarget = null; });
 
   /* ── 7. the wanderer's shield: up with nothing locked, and it blocks ── */
+  /* v2.3.3608: the wanderer's BOW in hand (step 8 draws it anyway).  Its
+     sword locked by itself onto a Mire Wisp ~300 px north on two runs of
+     2026-10-27, inside the sword's 440 px ring (v2.3.3595): a lock, the guard
+     raised at the wisp, the raider's swings unblocked.  A bow acquires nothing
+     by itself, and an unlocked guard faces the nearest fighter
+     (shieldAimAngle: the raider, 30 px off) */
   await heal(idB);
+  const eqB7 = await H.equipWeapon(B, 'bow', 'rangedWeapon', 'ranged');
+  await B.page.waitForTimeout(1500);
   await B.page.evaluate(() => { const S = window._gameState.current; S.lockedTarget = null; S._shieldThreat = null; });
   /* past the 5 s rule a blow keeps the button up by (shieldButtonLive), with
      nothing locked and no monster near: only the fight with the raider */
@@ -534,8 +552,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }));
   const lay7 = await layout(B);
   rec.ok(`7. the wanderer chose nothing and holds no lock, no monster near, its last blow ${st7.hitAgo} ms ago -- and its shield button is UP (the fight with the raider)`,
-    !st7.lock && st7.near === 0 && (st7.hitAgo == null || st7.hitAgo > 5000) && st7.blows.includes(idA) && !st7.chose.includes(idA) && !!lay7.shield,
-    { st7, shield: lay7.shield });
+    eqB7.ok && !st7.lock && st7.near === 0 && (st7.hitAgo == null || st7.hitAgo > 5000) && st7.blows.includes(idA) && !st7.chose.includes(idA) && !!lay7.shield,
+    { eqB7, st7, shield: lay7.shield });
   rec.ok(`7. ...under the thumb (${lay7.top}), the badge clear of it`, lay7.top === 'shield' && !overlaps(lay7.badge, lay7.shield), { badge: lay7.badge, shield: lay7.shield, top: lay7.top });
   /* the raider walks up with the sword (its automatic target is the wanderer) */
   await H.equipWeapon(A, 'greatsword', 'weapon', 'melee');
@@ -758,7 +776,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const r of rows) {
     /* at 320 px there is no room between the bell (66-110) and the shield
        (from 126): the badge keeps clear of the shield and lies over the bell's
-       right half -- an iPhone SE of 2016, the one width this is so */
+       right half -- an iPhone SE of 2016, the one width this is so
+       (v2.3.3608: the badge, centred out of a fight, steps beside the shield
+       while it is up, drawn smaller where the bell leaves less room) */
     const allowBell = r.w <= 320;
     const over = r.hitOthers.filter((sel) => !(allowBell && sel === '[data-world-chat-toggle]'));
     rec.ok(`10. ${r.w} x ${r.h}${r.orient === 'landscape' ? ' (sideways)' : ''}: the badge (${r.badge ? r.badge.l + '-' + r.badge.r : 'none'}) clear of the shield (${r.shield ? r.shield.l + '-' + r.shield.r : 'none'}), a tap on the shield's middle reaching it (${r.top})${r.hitOthers.length ? ', over ' + r.hitOthers.join(', ') + (over.length ? '' : ' (no room at this width)') : ', and of the bell, the weapon button and the disc'}`,
