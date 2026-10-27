@@ -65,6 +65,9 @@ const FIGHT_MS = 10000;
    reached the fight (the fight looks for a monster within 900 px) */
 const REACH_PX = 400;
 const HOME_MS = 14000;
+/* v2.3.3656: how long a stop waits for the Wheel's monster looks to load at
+   the fight and to be let go at home (wheelMonsterArt.js, __btWheelArt) */
+const LOOKS_MS = 45000;
 
 /* how much the third trip may end above the second, per line, in MB: a
    reading's own noise run to run on one build, well under any leak worth a
@@ -129,6 +132,20 @@ const near = (P) => P.page.evaluate(() => {
   }
   return { px: S.player.x, py: S.player.y, m };
 });
+
+/* v2.3.3656: wait until the Wheel's monster looks (__btWheelArt: how many
+   ready, how many loading) pass `ok`, at most `ms`; the last reading, or null
+   on a build without the probe */
+async function waitLooks(P, ok, ms) {
+  const t0 = Date.now();
+  let a = null;
+  while (Date.now() - t0 < ms) {
+    a = await P.page.evaluate(() => (window.__btWheelArt ? window.__btWheelArt() : null)).catch(() => null);
+    if (!a || ok(a)) return a;
+    await P.page.waitForTimeout(500);
+  }
+  return a;
+}
 
 /* a finger on an element: touchstart, then touchend (mp-firefight) */
 const tapSel = (P, sel, id, fx = 0.5, fy = 0.5) => P.page.evaluate(({ sel, id, fx, fy }) => {
@@ -243,7 +260,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const trips = [];
     for (let k = 1; k <= 3; k++) {
       const t0 = Date.now();
-      await H.hopTo(P, at[0], at[1] + 40, { tries: 220, step: 140, gap: 200 });
+      /* v2.3.3656: by the clock (H.glideTo), ~13 s; hopTo's 42 round trips to
+         a busy page took 124-134 s on a runner and the job ran out of time.
+         Then the stop waits for the monsters' looks to be in, the reading the
+         header asks for, however long a runner takes to decode them. */
+      await H.glideTo(P, at[0], at[1] + 40);
+      const looks = await waitLooks(P, (a) => a.ready > 0 && a.loading === 0, LOOKS_MS);
       /* v2.3.3644: how close the hop came, and the gate's turnings-back */
       const there = await P.page.evaluate((a) => {
         const S = window._gameState.current;
@@ -251,10 +273,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }, [at[0], at[1] + 40]);
       const hopS = Math.round((Date.now() - t0) / 1000);
       const swings = await fight(P, FIGHT_MS);
-      const atFight = await take(`trip ${k}: a fight at the Flame Fields (${swings} swings; ${there.d} px short after ${hopS} s, the gate ${there.gate}, its flag put back ${there.putBack})`);
+      const atFight = await take(`trip ${k}: a fight at the Flame Fields (${swings} swings; ${there.d} px short after ${hopS} s, `
+        + `${looks ? looks.ready : '?'} looks in, the gate ${there.gate}, its flag put back ${there.putBack})`);
       atFight.reach = there.d;
-      await H.hopTo(P, home.x, home.y, { tries: 220, step: 140, gap: 200 });
+      await H.glideTo(P, home.x, home.y);
       await P.page.waitForTimeout(HOME_MS);
+      /* v2.3.3656: and home again is once they are let go (the header's stop
+         3), not a fixed wait after a trip that now takes a sixth as long */
+      await waitLooks(P, (a) => a.ready === 0 && a.loading === 0, LOOKS_MS);
       const back = await take(`trip ${k}: home again`);
       trips.push({ swings, atFight, back });
     }
