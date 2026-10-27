@@ -1,4 +1,4 @@
-# Your list of 2026-10-26: what's there, what I'll do, in what order (v2.3.3673)
+# Your list of 2026-10-26: what's there, what I'll do, in what order (v2.3.3674)
 
 You sent 38 things at once: changes, bugs, new features and questions. Each
 one is below, checked against the game's code, with what is there today and
@@ -380,6 +380,7 @@ fight simulator (18), then the "After the judges" list.
 | ...and the two you added later (a goblin's fall, a jump's flip), moved the same way; not in the game yet (question 7 below) | #1153 |
 | ...and "Homestead Morning", moved to `assets/music-source/2026-10-27/` | #1156 |
 | Server tests that waited a fixed time for the game's tick failed on a busy machine; they wait for the tick now | #1138 (v2.3.3639) |
+| ...and the achievements tests rolled a kill's dice for real, so about one run in a few thousand failed (this PR's first run did); they hold their own dice now | #1159 (v2.3.3673) |
 | The double check: a review of the day's merged code found four server bugs in the new roar and freeze (a mummy killed mid-roar roared at its spawn; the roar's ring was drawn round its target) | #1136 (v2.3.3634) |
 | ...and four small client ones ("Wobbly" during the daze, TRAP's words over Element Burst, a CSS filter over the canvas, the wind-up picture not kept as an image) | #1137 (v2.3.3635) |
 | A memory leak found by the long sessions: every destroyed text label (monster names, loot labels) stayed in memory | #1133 (v2.3.3633) |
