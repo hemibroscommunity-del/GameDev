@@ -1,5 +1,12 @@
 # Each drop a column over the monster (v2.3.3616)
 
+**Replaced in v2.3.3627** by a line of words a drop, "Coins (5)" over "Slime
+Remains (1)", coloured by rarity: docs/specs/drop-lines.md (the owner: "I
+just want the name of the item to float upwards with quantity in parenthesis
+and the color of the font indicating rarity"). The files below were renamed
+(`dropColumns.js` to `dropLines.js`, `mp-dropcols` to `mp-droplines`,
+`?dropcols=0` to `?droplines=0`); this page is the history.
+
 The owner, 2026-10-26 (docs/OWNER-LIST-2026-10-26.md, item 3 of "Before the
 judges"):
 
