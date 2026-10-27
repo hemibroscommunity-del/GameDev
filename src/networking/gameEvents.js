@@ -3230,7 +3230,8 @@ export function processGameEvent(type, payload, S, deps) {
                 try {
                   var _eLog = window.__btElemLog || (window.__btElemLog = []);
                   _eLog.push({ elem: payload.elem || null, st: _elSt, stMs: payload.stMs, kb: payload.kb || null, ability: payload.ability || null, dmgTaken: payload.dmgTaken, monsterId: payload.monsterId, at: Date.now(),
-                    wd: payload.wd || null });   /* v2.3.3123: the land ward's percent (mp-petsmatter) */
+                    wd: payload.wd || null,   /* v2.3.3123: the land ward's percent (mp-petsmatter) */
+                    fz: payload.fz || null, wb: payload.wb || null });   /* v2.3.3620: the freeze and the wobble (mp-elemhits) */
                   if (_eLog.length > 60) _eLog.splice(0, _eLog.length - 60);
                 } catch (e) { /* a probe never breaks the game */ }
               }

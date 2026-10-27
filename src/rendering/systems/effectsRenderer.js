@@ -12386,8 +12386,11 @@ export class EffectsRenderer {
       const slow = R._slowUntil > now ? R._slowUntil - now : 0;
       const fracture = R._fractureUntil > now ? R._fractureUntil - now : 0;
       const thorn = R._thornUntil > now ? R._thornUntil - now : 0;
+      /* v2.3.3620: the snowman's freeze, the rock monster's wobble after its daze */
+      const frozen = R._frozenUntil > now ? R._frozenUntil - now : 0;
+      const wobble = (R._wobbleUntil > now && now >= (R._wobbleFrom || 0)) ? R._wobbleUntil - now : 0;
       if (!chill && !stuck && !burn && !(gustAge >= 0 && gustAge < GUST_FX_MS) && !daze && !shock && !soak && !poison
-        && !slow && !fracture && !thorn) return;
+        && !slow && !fracture && !thorn && !frozen && !wobble) return;
       const k = zonePlayerScale(zone, x, y, TILE) || 1;
       const fy = y + playerGroundDy(zone, x, y);
       /* QA (mp-elemhits), armed by the harness only: frames each look was drawn */
@@ -12405,16 +12408,23 @@ export class EffectsRenderer {
         if (slow) d.slow = (d.slow || 0) + 1;   /* v2.3.3264 (mp-pvpextras) */
         if (fracture) d.fracture = (d.fracture || 0) + 1;
         if (thorn) d.thorn = (d.thorn || 0) + 1;
+        if (frozen) d.frozen = (d.frozen || 0) + 1;   /* v2.3.3620 (mp-strongerhits) */
+        if (wobble) d.wobble = (d.wobble || 0) + 1;
       }
       if (burn) {
         const a = Math.min(1, burn / 250);
         const fl = 0.8 + 0.2 * Math.sin(now / 70);
         g.ellipse(x, fy, 24 * k, 8 * k); g.fill({ color: 0xff8a2a, alpha: 0.3 * a * fl });
+        /* v2.3.3620: "you burn for 3 s with flames you can see" -- the owner
+           read the first cut's flames as three small ticks: they are half
+           again as tall now, the glow runs up the body, and flames lick up
+           your front (below) */
+        g.ellipse(x, fy - 44 * k, 22 * k, 50 * k); g.fill({ color: 0xff7a1e, alpha: 0.16 * a * fl });
         /* a row of flames at the feet, the middle ones tallest... */
         for (let i = 0; i < 5; i++) {
-          const tx = x + (i - 2) * 7 * k + Math.sin(now / 95 + i * 2.1) * 1.5 * k;
-          const h = (22 + (i === 2 ? 14 : (i === 1 || i === 3) ? 8 : 0)) * k * (0.78 + 0.22 * Math.sin(now / 60 + i * 1.7));
-          const wv = (i === 2 ? 6 : 5) * k;
+          const tx = x + (i - 2) * 7.5 * k + Math.sin(now / 95 + i * 2.1) * 1.5 * k;
+          const h = 1.5 * (22 + (i === 2 ? 14 : (i === 1 || i === 3) ? 8 : 0)) * k * (0.78 + 0.22 * Math.sin(now / 60 + i * 1.7));
+          const wv = (i === 2 ? 7 : 6) * k;
           f.moveTo(tx - wv, fy); f.quadraticCurveTo(tx + Math.sin(now / 80 + i) * 4 * k, fy - h, tx + wv, fy);
           f.fill({ color: (i & 1) ? 0xffc23a : 0xff5e14, alpha: 0.88 * a });
           f.moveTo(tx - wv * 0.45, fy); f.quadraticCurveTo(tx, fy - h * 0.55, tx + wv * 0.45, fy);
@@ -12423,9 +12433,19 @@ export class EffectsRenderer {
         /* ...and licking up both sides of the body */
         for (const sx of [-1, 1]) {
           const bx = x + sx * 12 * k, by = fy - (30 + 8 * Math.sin(now / 110 + sx)) * k;
-          const h = (16 + 5 * Math.sin(now / 55 + sx * 2)) * k;
-          f.moveTo(bx - 4 * k, by); f.quadraticCurveTo(bx + sx * 3 * k, by - h, bx + 4 * k, by);
-          f.fill({ color: 0xff7a1e, alpha: 0.8 * a });
+          const h = (24 + 7 * Math.sin(now / 55 + sx * 2)) * k;
+          f.moveTo(bx - 5 * k, by); f.quadraticCurveTo(bx + sx * 3 * k, by - h, bx + 5 * k, by);
+          f.fill({ color: 0xff7a1e, alpha: 0.85 * a });
+          f.moveTo(bx - 2.4 * k, by); f.quadraticCurveTo(bx + sx * 1.5 * k, by - h * 0.55, bx + 2.4 * k, by);
+          f.fill({ color: 0xffd060, alpha: 0.85 * a });
+        }
+        /* v2.3.3620: ...and up your front, chest and shoulders */
+        for (let i = 0; i < 3; i++) {
+          const bx = x + (i - 1) * 8 * k + Math.sin(now / 80 + i * 2.3) * 2 * k;
+          const by = fy - (46 + (i === 1 ? 16 : 6) + 5 * Math.sin(now / 120 + i)) * k;
+          const h = (18 + 6 * Math.sin(now / 50 + i * 1.9)) * k;
+          f.moveTo(bx - 4.5 * k, by); f.quadraticCurveTo(bx, by - h, bx + 4.5 * k, by);
+          f.fill({ color: (i & 1) ? 0xff5e14 : 0xff9a2a, alpha: 0.78 * a });
         }
         if (parts && Math.random() < 0.85 * dts) {
           parts.push({ x: x + (Math.random() - 0.5) * 26 * k, y: fy - (6 + Math.random() * 60) * k,
@@ -12512,6 +12532,64 @@ export class EffectsRenderer {
             parts.push({ x: x + (Math.random() - 0.5) * 14 * k, y: fy - 2 * k, vx: Math.cos(da) * sp, vy: Math.sin(da) * sp * 0.5 - 0.9,
               life: 0.6, color: i % 2 ? '#d9cbb0' : '#efe6d4', size: 2.1 });
           }
+        }
+      }
+      /* ═══ v2.3.3620: FROZEN SOLID, AND WOBBLING ═══
+         The owner: "a snowball freezes you solid for a moment ... with ice on
+         you", and "a bash that leaves you wobbling for a second". */
+      if (frozen) {
+        /* ICE: a block of ice round the whole figure, pale and see-through
+           with a white rim and shine, shards at its foot, and chips flying
+           off as it closes (once a freeze) */
+        const a = Math.min(1, frozen / 120);
+        const top = fy - 106 * k, w = 27 * k;
+        f.roundRect(x - w, top, w * 2, fy + 4 * k - top, 9 * k);
+        f.fill({ color: 0xbfe7ff, alpha: 0.42 * a });
+        f.roundRect(x - w, top, w * 2, fy + 4 * k - top, 9 * k);
+        f.stroke({ color: 0xf4fcff, width: 2.4 * k, alpha: 0.95 * a });
+        f.roundRect(x - w, top, w * 2, fy + 4 * k - top, 9 * k);
+        f.stroke({ color: 0x3e86c8, width: 1.2 * k, alpha: 0.7 * a });
+        /* the shine: two long strokes down its face */
+        f.moveTo(x - w * 0.55, top + 10 * k); f.lineTo(x - w * 0.15, fy - 30 * k);
+        f.stroke({ color: 0xffffff, width: 3 * k, alpha: 0.6 * a, cap: 'round' });
+        f.moveTo(x + w * 0.2, top + 16 * k); f.lineTo(x + w * 0.45, top + 46 * k);
+        f.stroke({ color: 0xffffff, width: 2 * k, alpha: 0.5 * a, cap: 'round' });
+        /* shards at the foot */
+        for (let i = 0; i < 6; i++) {
+          const bx = x + (i - 2.5) * 10 * k, h = (10 + (i % 3) * 6) * k;
+          f.moveTo(bx - 4 * k, fy + 3 * k); f.lineTo(bx + (i % 2 ? 2 : -2) * k, fy + 3 * k - h); f.lineTo(bx + 4 * k, fy + 3 * k); f.closePath();
+          f.fill({ color: i % 2 ? 0xe8f7ff : 0xa8dcff, alpha: 0.95 * a });
+          f.stroke({ color: 0x3e86c8, width: 1 * k, alpha: 0.75 * a });
+        }
+        if (parts && R._frozenChipAt !== R._frozenAt) {
+          R._frozenChipAt = R._frozenAt;
+          for (let i = 0; i < 12; i++) {
+            const da = Math.random() * Math.PI * 2;
+            parts.push({ x: x + Math.cos(da) * 20 * k, y: fy - (20 + Math.random() * 70) * k,
+              vx: Math.cos(da) * (1.2 + Math.random() * 1.8), vy: -1 - Math.random() * 1.6, life: 0.6,
+              color: i % 2 ? '#ffffff' : '#a8dcff', size: 2.2 + Math.random() * 1.2 });
+          }
+        }
+      }
+      if (wobble) {
+        /* DIZZY: a swirl turning over your head, the daze's stars gone soft
+           and slow, fading as your steering steadies */
+        const a = Math.min(1, wobble / 250);
+        const hx = x, hy = fy - 102 * k;
+        for (let j = 0; j < 2; j++) {
+          const a0 = now / 260 + j * Math.PI;
+          f.moveTo(hx + Math.cos(a0) * 15 * k, hy + Math.sin(a0) * 5 * k);
+          for (let q = 1; q <= 14; q++) {
+            const aa = a0 + q * 0.32, rr = (15 - q * 0.7) * k;
+            f.lineTo(hx + Math.cos(aa) * rr, hy + Math.sin(aa) * rr * 0.36);
+          }
+          f.stroke({ color: 0x5a4410, width: 3.6 * k, alpha: 0.55 * a, cap: 'round', join: 'round' });
+          f.moveTo(hx + Math.cos(a0) * 15 * k, hy + Math.sin(a0) * 5 * k);
+          for (let q = 1; q <= 14; q++) {
+            const aa = a0 + q * 0.32, rr = (15 - q * 0.7) * k;
+            f.lineTo(hx + Math.cos(aa) * rr, hy + Math.sin(aa) * rr * 0.36);
+          }
+          f.stroke({ color: 0xfff2a8, width: 2 * k, alpha: 0.95 * a, cap: 'round', join: 'round' });
         }
       }
       /* ═══ v2.3.3014: THE OTHER FOUR LOOKS ═══

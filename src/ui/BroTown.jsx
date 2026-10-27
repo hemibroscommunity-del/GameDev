@@ -383,7 +383,7 @@ import { renderFrame } from '@/game/renderFrame.js';
 import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 /* v2.3.817: §5.8 contextual dodge/lunge/retreat cluster extracted behavior-frozen. */
 import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2.3.2916: + the roll window, shared with the broadcast */
-import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
+import { elemMoveMult, gustStep, wobbleTurn } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
@@ -5350,6 +5350,16 @@ export var BroTown = function BroTown(_ref0) {
            at CHILL_MULT, a blue slime's goo holds you where you stand
            (game/elemHits.js; the worker said so on the hit). */
         finalSpd *= elemMoveMult(S, Date.now());
+        /* v2.3.3620: a rock monster's bash leaves your steering swaying a
+           second after the daze -- the stick's way turned to and fro
+           (game/elemHits.js wobbleTurn; the worker said so on the hit) */
+        var _wbA = wobbleTurn(S, Date.now());
+        if (_wbA) {
+          var _wbC = Math.cos(_wbA), _wbS = Math.sin(_wbA);
+          var _wbX = dx * _wbC - dy * _wbS;
+          dy = dx * _wbS + dy * _wbC;
+          dx = _wbX;
+        }
 
         /* Auto-attack movement: 50% speed across the board while
            S.autoAttack is on. Backpedal flag still tracks "moving

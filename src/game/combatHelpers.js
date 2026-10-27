@@ -17,7 +17,7 @@ import { prog3Live } from '@/data/prog3.js';          /* v2.3.2615: is the T1 tr
 import { isWheelSwimming, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: no fighting while you swim */
 import { jumpAirborne } from '@/game/jump.js';   /* v2.3.3017: nor in the air */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';   /* v2.3.3105: a swing meets a prop at the swinger's boots */
-import { isDazed, isStaggered } from '@/game/elemHits.js';   /* v2.3.3014: nor while a rock monster has you dazed; v2.3.3264: nor while a parry has you staggered */
+import { isDazed, isStaggered, isFrozen } from '@/game/elemHits.js';   /* v2.3.3014: nor while a rock monster has you dazed; v2.3.3264: nor while a parry has you staggered */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3462: a refusal is heard (the owner's "denied" tick) */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
@@ -793,12 +793,16 @@ export function airRefused(S) {
    your head, not more often than every 600 ms.  Beside swimRefused, on
    every one of its paths. */
 export var DAZE_NOTE = 'Dazed!';
+/* v2.3.3620: frozen solid by a snowman refuses the same things (isDazed
+   answers for both), and says so in ice */
+export var FROZEN_NOTE = 'Frozen!';
 export function dazeRefused(S) {
   var now = Date.now();
   if (!isDazed(S, now)) return false;
   if (S.player && (!S._dazeNoteAt || now - S._dazeNoteAt > 600)) {
     S._dazeNoteAt = now;
-    pushDmgPopup(S, S.player.x, S.player.y - 44, DAZE_NOTE, '#e9d27a', { ts: now + 1 });
+    var _fz = isFrozen(S, now);
+    pushDmgPopup(S, S.player.x, S.player.y - 44, _fz ? FROZEN_NOTE : DAZE_NOTE, _fz ? '#bfe7ff' : '#e9d27a', { ts: now + 1 });
     cue('denied');   /* v2.3.3462 */
   }
   return true;
