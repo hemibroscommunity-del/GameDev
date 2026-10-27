@@ -1183,6 +1183,21 @@ remnant to migrate server-side, not a mode to preserve.
       .webp twins CI's to mint, TRAPS §255);
       `?standinlegs=0`, `window.__btStandInLegs()` (`.set(on)`); `mp-standinlegs`:
       docs/specs/standin-legs.md.
+  - Since v2.3.3658 THE TROUSERS AND BOOTS ARE PAINTED WHERE THEY ARE -- the
+    owner: "check all the animations for ghost remnants" (mp-ghostaudit: pink
+    and blue specks round the head in nearly every pose). The recolour finds
+    the garments by colour, and the outline's anti-aliased greys and olives
+    were painted with them all over the figure (TRAPS §256):
+    - a trouser or boot pixel outside the patterns' band (the bottom 68% or
+      35% of the figure) is painted only when it belongs to a trouser piece of
+      30+ px, or to a solid boot piece hanging off one (or a raised sole's
+      thin rim: no skin beside it, the black sole within 3 px)
+      (src/rendering/garmentConfine.js, playerSkins `recolorBodyToCanvas`);
+    - the head sheets take no garment colours, and a torso strip only the
+      sliver at its waist;
+    - `?garmentspecks=0`, `window.__btGarmentSpecks()`,
+      tools/qa/garment-confine.mjs (every sheet); `mp-garmentspecks`:
+      docs/specs/garment-specks.md.
   - Since v2.3.3520 THE ARMOUR RIDES THE ARM CAPSULE -- the owner: the east
     jog's shoulder on a copper torso, "fix it for all future tiers". The
     capsule (v2.3.200) clones the body over the arm on every east jog with a
@@ -4050,6 +4065,15 @@ remnant to migrate server-side, not a mode to preserve.
       tee or greaves alone as before; `?fishgrip=1` is the old grip;
       `mp-fisharmour` (the skin laid over the plate below the head, 0-3 px a
       frame; the tee's and greaves' grip still there): docs/specs/fish-armour-hands.md.
+    - since v2.3.3657 THE GRIP LIFTS THE HAND, NOT THE TROUSERS -- the owner:
+      "check all the animations for ghost remnants" (mp-ghostaudit: a patch
+      of the trousers' colour on the greaves by the reel hand, up to 54 px):
+      at the reel the rod runs down past the hip, so the grip lifted the
+      trousers over the greaves with the hand. A grip pixel on the greaves that
+      is a trouser on the raw frame is left to them, with a plate or greaves
+      alone (`_chestFrameOf` carries the greaves either way); `?fishgriptrousers=1`,
+      `window.__btFishGripTrousers(on)`; `mp-fisharmour` (pink trousers: none
+      laid over the greaves in b, c, e): docs/specs/fish-armour-hands.md.
   - Since v2.3.3146 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:
     "Also all the buildings in town should show on the minimap": each
     standing building's footprint where it stands (wheelMinimap.js

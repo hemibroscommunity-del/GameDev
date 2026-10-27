@@ -3999,7 +3999,8 @@ export class EffectsRenderer {
            bow facings, and the trouser print landed on every other jog-leg
            frame.  See the note on recolorBodyToCanvas. */
         const cv2 = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh, null, null, a, _fw,
-          undefined, undefined, undefined, _legsUnder);   /* v2.3.3640: under greaves, their legs (_legsUnderFor) */
+          undefined, undefined, undefined, _legsUnder,   /* v2.3.3640: under greaves, their legs (_legsUnderFor) */
+          rec.url === rec.cfg.torsoUrl);   /* v2.3.3658: a torso strip's garments are the waist's sliver (playerSkins TORSO_WAIST_UP) */
         if (_legsUnder && cv2.__btLegsClamp && this._legsClampSeen) this._legsClampSeen[rec.url + (mirror ? '|m' : '')] = cv2.__btLegsClamp;   /* QA */
         const cnt = Math.max(1, Math.round(cv2.width / _fw));
         /* v2.3.2775: cropped (_sliceStandIn).  The plain bake keeps its canvas
@@ -14473,7 +14474,7 @@ export class EffectsRenderer {
      _remoteBodyFramesFor but generic over url/fw/fh.  The source image must have
      been loaded into _bodyImgCache by the local bake (it is: bow torso strips +
      jog-<dir>-legs sheets are loaded at construction). */
-  _remoteSheetFramesFor(o, url, fw, fh, dir, mirror) {
+  _remoteSheetFramesFor(o, url, fw, fh, dir, mirror, torso) {
     if (!this._remoteSheetCache) this._remoteSheetCache = new Map();
     const _pa = this._peerStandInArt(o, dir, mirror);   /* v2.3.2863: see _peerStandInArt */
     const key = url + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg;
@@ -14490,7 +14491,7 @@ export class EffectsRenderer {
       const _sq = (fw == null || fh == null) ? (img.naturalHeight || img.height || 0) : 0;
       const _fw = _sq || fw, _fh = _sq || fh;
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
-        null, _fh, null, null, _pa.art, _fw);   /* v2.3.2863 */
+        null, _fh, null, null, _pa.art, _fw, undefined, undefined, undefined, undefined, !!torso);   /* v2.3.2863; v2.3.3658: + a torso strip's waist (TORSO_WAIST_UP) */
       const n = Math.max(1, Math.round(cv.width / _fw));
       arr = this._own(_sliceStandIn(cv, _fw, _fh, n, null));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned */
       this._remoteSheetCache.set(key, arr);
@@ -14776,7 +14777,7 @@ export class EffectsRenderer {
       const _moving = !_stale && _vmag > 0.03;
       const _rd = resolveDirection(dir4);
       const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
-      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh, cfgKey, mirror) : null;   /* v2.3.2863 */
+      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh, cfgKey, mirror, true) : null;   /* v2.3.2863; v2.3.3658: a torso strip */
       const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null, _jdir, _rd.mirror);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256; v2.3.2863: + direction and flip, for the drawings */
       const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
@@ -15056,7 +15057,7 @@ export class EffectsRenderer {
       const _moving = !_stale && _vmag > 0.03;
       const _rd = resolveDirection(dir8);
       const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
-      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh, cfgKey, mirror) : null;   /* v2.3.2863 */
+      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh, cfgKey, mirror, true) : null;   /* v2.3.2863; v2.3.3658: a torso strip */
       const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null, _jdir, _rd.mirror);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256; v2.3.2863: + direction and flip, for the drawings */
       const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
