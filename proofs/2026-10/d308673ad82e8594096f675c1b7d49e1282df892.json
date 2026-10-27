@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d308673ad82e8594096f675c1b7d49e1282df892",
+  "tree": "4e7175e4f1a47c2c7d2b28ce9968b79933b6a624",
+  "committedAt": "2026-10-27T01:38:12-07:00",
+  "subject": "The minimap's buildings wear their pictures in colour, bigger than the building (v2.3.3630) (#1135)",
+  "files": 6587,
+  "bytes": 762704262,
+  "listingSha256": "b17261af7ac47ef8d512057828212fbdef7ffb0b2ba93101d1ac88b4ad423530",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
