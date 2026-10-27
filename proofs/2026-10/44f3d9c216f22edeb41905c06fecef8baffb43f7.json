@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "44f3d9c216f22edeb41905c06fecef8baffb43f7",
+  "tree": "ca998af22c1792862b4822dfb16fbc6028b71bf3",
+  "committedAt": "2026-10-27T12:48:42-07:00",
+  "subject": "The trousers and boots are painted where they are: no pink or blue specks round the head (v2.3.3658) (#1144)",
+  "files": 6616,
+  "bytes": 769251219,
+  "listingSha256": "c1cc846025d38bc2bb6ab2c0e9bf47338be066870ba059c17a3675e9156b5051",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
