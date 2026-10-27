@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f5d866fc15b91a5f4566998e06fb0d6b716d8bee",
+  "tree": "103ec0b887aecc771cbd88c451612817829a1596",
+  "committedAt": "2026-10-27T12:49:09-07:00",
+  "subject": "The fire-lighter's log is wood, not the magenta key (v2.3.3660) (#1145)",
+  "files": 6618,
+  "bytes": 769274249,
+  "listingSha256": "edb593d29d034a1f03a3d04d4d972d973464aaffb69018b4c07aed7e034c289b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
