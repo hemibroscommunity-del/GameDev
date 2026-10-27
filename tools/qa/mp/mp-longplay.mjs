@@ -1,4 +1,4 @@
-/* ═══ FIVE PLAYERS, A LONG SESSION: DOES ANYTHING GROW? (v2.3.3650) ═══
+/* ═══ FIVE PLAYERS, A LONG SESSION: DOES ANYTHING GROW? (v2.3.3661) ═══
  *
  * The owner, 2026-10-27: "simulate about 5 players doing the main quest lines,
  * mining, fishing, combat, trading, partying, no mans land combat,
@@ -81,7 +81,7 @@ const LEAK_INIT = `(() => {
     id = _st.call(window, wrapped, ms, ...r); live.to.add(id); return id;
   };
   window.clearTimeout = function (id) { live.to.delete(id); return _ct.call(window, id); };
-  /* v2.3.3650: the audio nodes LIVE: counted from their making until the
+  /* v2.3.3661: the audio nodes LIVE: counted from their making until the
      browser collects them.  Made minus disconnected (the first two runs) only
      ever climbed, as a finished sound that is never disconnected is collected
      all the same -- the listeners' lesson below */

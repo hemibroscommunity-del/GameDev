@@ -1,4 +1,4 @@
-# Five players, a long session (v2.3.3650)
+# Five players, a long session (v2.3.3661)
 
 The owner, 2026-10-27: "simulate about 5 players doing the main quest lines,
 mining, fishing, combat, trading, partying, no mans land combat,

@@ -1,4 +1,4 @@
-/* ═══ WHAT THE HEAP GAINS ON EACH TRIP (v2.3.3650) ═══
+/* ═══ WHAT THE HEAP GAINS ON EACH TRIP (v2.3.3661) ═══
  *
  * mp-membudget's heap line read 30.3 -> 31.7 -> 33.4 MB at the Flame Fields'
  * fight on three trips running (2026-10-27, #1130's run), 30.3 -> 31.0 -> 32.6
@@ -24,7 +24,7 @@ import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, createWriteStream, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MEM_INIT } from './memprobe.mjs';
-/* v2.3.3650: the Web Audio nodes the game makes per sound, counted from their
+/* v2.3.3661: the Web Audio nodes the game makes per sound, counted from their
    making until the browser COLLECTS them (a FinalizationRegistry) -- the soak
    counted made minus disconnected, and a finished sound that is never
    disconnected is collected all the same, so that count only ever climbed */

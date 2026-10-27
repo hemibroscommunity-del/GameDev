@@ -5849,7 +5849,7 @@ Two protocol versions coexist; both must keep working:
   - THE TOUR: `mp-memledger` (all eight lands twice, ~6 min) runs from a button
     -- GitHub, Actions, "Memory", Run workflow -- after any big feature, or
     locally with `node tools/qa/mp/run.mjs memledger`.
-  - THE LONG SESSION (v2.3.3650, docs/specs/long-play-soak.md): `mp-longplay`
+  - THE LONG SESSION (v2.3.3661, docs/specs/long-play-soak.md): `mp-longplay`
     plays five pages against one worker for `BT_LONGPLAY_MS` (40 minutes by
     default) -- the quest line, gathering and selling, fights, a party and the
     Goo Grotto, a trade and No man's land, the farm and walks across the lands
