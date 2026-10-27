@@ -39,6 +39,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { nmlHere, NML_RED } from '@/game/noMansLand.js';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { infoPopupBus } from './infoPopupBus.js';
 import { blockAnchor } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.3268: where the shield button stands; v2.3.3608: where it WILL stand, before it shows */
 
@@ -130,7 +131,7 @@ export function openNmlInfo(S, lvl) {
           <Line><b>Who:</b> players within {lv(n)} of yours, while they stand in No man's land too. The lower of your two numbers counts, and it grows the further you go from town. Your party never.</Line>
           {/* v2.3.3253: attacking is a choice (game/nmlAsk.js) */}
           {/* v2.3.3316: a swing at them asks too, as a shot through them does */}
-          <Line><b>How:</b> tap a player, or swing or shoot at them, and choose <b>Attack</b>. Until you do, your blows never hurt them.</Line>
+          <Line><b>How:</b> {deskWords('tap a player, or swing or shoot at them, and choose ')}<b>Attack</b>. Until you do, your blows never hurt them.</Line>
           {/* v2.3.3316: the owner -- everything carried, the gold and the tools
               too; a red skull a monster kills keeps what it wears */}
           <Line><b>Killed by a player:</b> they get <b>everything you carry</b>: your bag, tools and ores too, your gold, and your spare weapons and armour. You keep what you wear. Diego sells a lost tool back.</Line>
@@ -139,7 +140,7 @@ export function openNmlInfo(S, lvl) {
           {/* v2.3.3528: hitting back goes through the window too (game/nmlAsk.js);
               v2.3.3530: white the moment they choose, whether you fight back or
               not, and one Attack answers a whole group */}
-          <Line><b>Get attacked:</b> a <b>white skull</b> the moment they choose to attack you, whether you fight back or not. To hit back, swing, shoot or tap them and choose <b>Attack</b> once: hitting back anyone who attacked you gives you no red skull, and everyone attacking you is then yours to hit.</Line>
+          <Line><b>Get attacked:</b> a <b>white skull</b> the moment they choose to attack you, whether you fight back or not. {deskWords('To hit back, swing, shoot or tap them and choose ')}<b>Attack</b> once: hitting back anyone who attacked you gives you no red skull, and everyone attacking you is then yours to hit.</Line>
         </ul>
         <div>Walk back toward BroTown to leave.</div>
       </div>

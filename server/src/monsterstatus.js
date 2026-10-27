@@ -179,6 +179,53 @@ export const POISON = Object.freeze({
   MAX_HP_PCT: 0.08,
 });
 
+/* ═══ v2.3.3620: THE OWNER'S STRONGER HITS ═══
+   The owner's list of 2026-10-26 (docs/OWNER-LIST-2026-10-26.md item 17),
+   each its own kill switch in the live flags (lower case, TRAPS §117) that
+   puts its element back as it was:
+
+   `freezehit`  "a snowball freezes you solid for a moment, then slows you for
+                2 s, with ice on you": FREEZE.MS frozen (no walk, swing, roll
+                or shield -- the phone's, as the daze is), not again for
+                IMMUNE_MS after (snowmen come in sixes), and the chill
+                CHILL_MS from the hit.  It rides the chill's own event as `fz`
+                (the freeze's ms), so an older phone still chills.
+   `goohold`    "plant goo that holds you about 2 s and stings while it
+                holds": GOO.MS held (STUCK's rule, IMMUNE_MS after), and the
+                STING's ticks while it holds -- the poison's machinery and its
+                row of the hit door (hits.js), flora's leaf on the number.
+                STUCK itself is unchanged: a player's root is a slime's hold
+                at its old length (pvpextras.js, "cannot be locked down").
+   `wobble`     "a bash that leaves you wobbling for a second (your steering
+                sways)": after the daze, WOBBLE.MS of the phone turning your
+                stick to and fro (game/elemHits.js wobbleTurn); `wb` on the
+                daze's event.  Nothing for the worker to hold: it never saw
+                which way you meant to walk.
+
+   The fire goblin's burn is the same three seconds and the same ticks; its
+   flames are drawn bigger on the phone.  The mummy's roar is its own change. */
+export const FREEZE = Object.freeze({
+  MS: 600,
+  IMMUNE_MS: 3000,
+  CHILL_MS: 2000,
+});
+export const GOO = Object.freeze({
+  MS: 2000,
+  IMMUNE_MS: 2500,
+});
+/* four ticks while the goo holds, 8% of the slime's hit each: a third of a
+   hit again over the hold, a level-1 slime's ticks of 1.  The rail is the
+   poison row's (POISON.MAX_HP_PCT a tick), which so small a tick never
+   meets. */
+export const STING = Object.freeze({
+  TICKS: 4,
+  EVERY_MS: 500,
+  PCT: 0.08,
+});
+export const WOBBLE = Object.freeze({
+  MS: 1000,
+});
+
 /* The two damage-over-time statuses, each in its own Map keyed by player id
    (client-supplied at join: a Map, never a plain {} -- the '__proto__' rule).
    `ability` is what its ticks say on the wire (the v2.3.2235 bypass), `elem`
@@ -186,6 +233,10 @@ export const POISON = Object.freeze({
 const DOTS = Object.freeze({
   burn: Object.freeze({ map: '_burns', cfg: BURN, ability: 'burn', elem: 'flame' }),
   poison: Object.freeze({ map: '_poisons', cfg: POISON, ability: 'poison', elem: 'venom' }),
+  /* v2.3.3620: the goo's sting -- through the poison's row of the hit door
+     (a tick: the harvest shield and the safe ground the tick's own, the
+     rail, the dice as elemental), its own Map, ability and icon */
+  sting: Object.freeze({ map: '_stings', cfg: STING, ability: 'sting', elem: 'flora', row: 'poison' }),
 });
 
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
@@ -203,6 +254,13 @@ export const monsterStatusMethods = {
   _elemHitsOn() {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && own(f, 'elemhits') && !f.elemhits);
+  },
+
+  /* v2.3.3620: one of the stronger hits' kill switches -- on unless the live
+     flags say `<name>: false` (freezehit, goohold, wobble) */
+  _elemStrongOn(name) {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, name) && !f[name]);
   },
 
   /* A monster's hit on player `pid` has been priced (`res`, _applyDamage's
@@ -232,27 +290,42 @@ export const monsterStatusMethods = {
     const w = this._petWard ? this._petWard(pid, ps, elem) : 0;
     const soft = (ms) => (w > 0 ? Math.max(1, Math.round(ms * (1 - w))) : ms);
     if (st === 'chill') {
-      const ms = soft(CHILL.MS);
+      /* v2.3.3620: frozen a moment, then the longer chill (`freezehit`) */
+      const strong = this._elemStrongOn('freezehit');
+      const ms = soft(strong ? FREEZE.CHILL_MS : CHILL.MS);
       ps._chillUntil = t + ms;
       out.st = st; out.stMs = ms;
+      if (strong && !(t < (ps._freezeImmuneUntil || 0))) {
+        const fz = soft(FREEZE.MS);
+        ps._freezeUntil = t + fz;
+        ps._freezeImmuneUntil = t + fz + FREEZE.IMMUNE_MS;
+        out.fz = fz;
+      }
     } else if (st === 'burn') {
       this._igniteDot('burn', zoneId, m, pid, t, w);
       out.st = st; out.stMs = BURN.TICKS * BURN.EVERY_MS;
     } else if (st === 'gust') {
       const kb = this._gustShove(zoneId, m, ps, 1 - w);
       if (kb) {
-        /* what is left of an earlier gust still counts, up to ALLOW_MAX */
+        /* what is left of an earlier gust still counts, up to ALLOW_MAX --
+           v2.3.3621: or the shove itself and a quarter, a roar's being
+           longer than two swings' (telegraph.js ELEM_KITS.wind) */
+        const len = Math.hypot(kb[0], kb[1]);
         const live = (t < (ps._gustUntil || 0) && ps._gustLeft > 0) ? ps._gustLeft : 0;
-        ps._gustLeft = Math.min(GUST.ALLOW_MAX, live + Math.hypot(kb[0], kb[1]));
+        ps._gustLeft = Math.min(Math.max(GUST.ALLOW_MAX, Math.ceil(len * 1.25)), live + len);
         ps._gustUntil = t + GUST.ALLOW_MS;
-        out.st = st; out.stMs = GUST.MS; out.kb = kb;
+        out.st = st; out.stMs = (m && m._gustMs > 0) ? m._gustMs : GUST.MS; out.kb = kb;
       }
     } else if (st === 'stuck') {
       if (!(t < (ps._stuckImmuneUntil || 0))) {
-        const ms = soft(STUCK.MS);
+        /* v2.3.3620: the goo's longer hold, and its sting (`goohold`) */
+        const goo = this._elemStrongOn('goohold');
+        const C = goo ? GOO : STUCK;
+        const ms = soft(C.MS);
         ps._stuckUntil = t + ms;
-        ps._stuckImmuneUntil = t + ms + STUCK.IMMUNE_MS;
+        ps._stuckImmuneUntil = t + ms + C.IMMUNE_MS;
         out.st = st; out.stMs = ms;
+        if (goo) this._igniteDot('sting', zoneId, m, pid, t, w);
       }
     } else if (st === 'daze') {
       /* v2.3.3014: the stun, with its window after (STUCK's rule) */
@@ -261,6 +334,8 @@ export const monsterStatusMethods = {
         ps._dazeUntil = t + ms;
         ps._dazeImmuneUntil = t + ms + DAZE.IMMUNE_MS;
         out.st = st; out.stMs = ms;
+        /* v2.3.3620: then a second of wobbling (`wobble`) */
+        if (this._elemStrongOn('wobble')) out.wb = soft(WOBBLE.MS);
       }
     } else if (st === 'shock') {
       /* v2.3.3014: the crackle on you, and the arcs to whoever stands near */
@@ -353,7 +428,9 @@ export const monsterStatusMethods = {
     const k = this._depthK ? this._depthK(zoneId, ps.y) : 1;
     /* v2.3.3123: `mult`, the ward's share left (1 - w); 1 when absent */
     const wk = typeof mult === 'number' && mult > 0 && mult < 1 ? mult : 1;
-    const len = GUST.PX * (k > 0 ? k : 1) * wk;
+    /* v2.3.3621: a roar's shove (`m._gustPx`, set by telegraph.js for its
+       blow) is longer than a swing's */
+    const len = ((m && m._gustPx > 0) ? m._gustPx : GUST.PX) * (k > 0 ? k : 1) * wk;
     return [Math.round(dx / d * len), Math.round(dy / d * len)];
   },
 
@@ -406,6 +483,7 @@ export const monsterStatusMethods = {
   _tickMonsterBurns(now) {
     this._tickDots('burn', now);
     this._tickDots('poison', now);
+    this._tickDots('sting', now);   /* v2.3.3620: the goo's */
   },
 
   _tickDots(kind, now) {
@@ -443,7 +521,7 @@ export const monsterStatusMethods = {
   _dotTick(kind, pid, ps, b) {
     const D = DOTS[kind];
     return this._monsterHit({
-      src: kind, zoneId: b.zone, pid, m: null, mid: b.mid, lvl: b.lvl, raw: b.dmg,
+      src: D.row || kind, zoneId: b.zone, pid, m: null, mid: b.mid, lvl: b.lvl, raw: b.dmg,   /* v2.3.3620: a sting's is the poison's row */
       /* the fire is on you, not on the goblin: the phone points its feedback
          at attackerX/Y */
       at: { x: ps.x, y: ps.y },

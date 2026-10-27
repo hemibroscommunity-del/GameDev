@@ -1,4 +1,5 @@
 import React from 'react';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, toDisplayDamage, dishFor } from '@/data/index.js'; /* v2.3.2520: the display damage scale; v2.3.3130: dishFor; v2.3.3481: createDefaultCompStats, getCookingSweetSpot and getFishTierLevel went with the fish game */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
@@ -149,7 +150,7 @@ export function CookPanel(props) {
       color: '#8D9B98',
       marginBottom: 10
     }
-  }, "Raw fish are cooked at a campfire, not here: tap a log in your bag, choose Light fire, then tap the fire."), function () {
+  }, deskWords("Raw fish are cooked at a campfire, not here: tap a log in your bag, choose Light fire, then tap the fire.")), function () {
     var inv = rpgState.inventory || {};
     var cookedFish = Object.entries(inv).filter(function (_ref101) {
       var _ref102 = _slicedToArray(_ref101, 2),

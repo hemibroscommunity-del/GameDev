@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { PROG3_SKILL_META } from '@/data/prog3.js';
 import { QuestFrame, QuestCloseX, QuestPay, QuestCaption, QuestSlot, QuestClaimButton, QuestClaimed, QUEST_COIN } from './questArt.jsx';
 import { flyQuestRewards } from '@/game/questFly.js';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 
 /* ═══ v2.3.1820: THE DECISION, ON ITS OWN SCREEN ═══
  *
@@ -206,7 +207,7 @@ export const QuestOfferPanel = (props) => {
               you have just done it, and repeating it there reads as a task you
               still owe. */}
           {offering && quest && quest.desc && (
-            <div className="bt-qoffer-desc bt-qw-desc">{quest.desc}</div>
+            <div className="bt-qoffer-desc bt-qw-desc">{deskWords(quest.desc)}</div>
           )}
 
           {/* Gold and XP are numbers rather than art, so they sit apart from the

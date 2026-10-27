@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { notificationsMuted, setNotificationsMuted } from '../modalGuardBus.js'; /* v2.3.2147 */
 import { COL, panelStyle } from './common.js';
 import { BT_AUDIO } from '@/data/index.js';   /* v2.3.2820: see toggleAudio */
@@ -334,7 +335,7 @@ export const SettingsPanel = () => {
           with the other session settings, one tap from More, where it cannot
           take a gesture from anything. */}
       <LinkRow label={notificationsMuted()
-        ? 'Notifications — SILENCED, tap to turn them back on'
+        ? deskWords('Notifications — SILENCED, tap to turn them back on')
         : 'Notifications — silence all of them'}
         onTap={() => { setNotificationsMuted(!notificationsMuted()); force((n) => n + 1); }} />
       <LinkRow label="Login Key — save it, or continue a character"

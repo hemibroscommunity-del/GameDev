@@ -160,6 +160,24 @@ async function steps({ P, wsPort, rec, errors, me }) {
   rec.ok(`TRAP pops up over a targeted monster with the true odds (${want} at Trapping ${T} on a level ${m.level}) and your traps ("${view && view.text}")`,
     !!view && view.kind === 'ready' && view.text.indexOf(want) >= 0 && /×12/.test(view.text) && view.box.l >= 4 && view.box.r <= view.vw - 4, view);
   await shot(P, 'trap-button');
+  /* v2.3.3617: upright, TRAP is a round button in the column left of the
+     attack disc, over Shield Bash's slot -- never under the Block button, which
+     is up while a monster is targeted (the owner: "The trap monster message
+     appears over other UI elements sometimes") */
+  const lay = await P.page.evaluate(() => {
+    const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return r.width > 0 ? { l: r.left, r: r.right, t: r.top, b: r.bottom } : null; };
+    const trap = document.querySelector('[data-trap-button]');
+    const shield = document.querySelector('[data-shield]');
+    const disc = document.querySelector('[data-joyzone="R"] .bt-skin') || null;
+    const tag = trap ? trap.querySelector('[data-trap-tag]') : null;
+    const tb = box(trap), sb = box(shield), tg = box(tag);
+    const hit = (a, b) => !!(a && b) && a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+    return { round: !!(trap && trap.getAttribute('data-trap-round') === '1'), trap: tb, shield: sb, tag: tg,
+      overlap: hit(tb, sb) || hit(tg, sb), tagTouch: tag ? getComputedStyle(tag).pointerEvents : null, disc: box(disc), vw: innerWidth };
+  });
+  rec.ok(`upright, TRAP is a round button beside the attack disc, clear of the Block button (shield up: ${!!lay.shield}), its words beside it taking no touch`,
+    lay.round && !!lay.trap && Math.abs((lay.trap.r - lay.trap.l) - (lay.trap.b - lay.trap.t)) < 1 && !lay.overlap && lay.tagTouch === 'none'
+      && !!lay.tag && lay.tag.l >= 0, lay);
 
   /* grey: no traps, then a level above */
   await H.devOp(wsPort, 'trapping', me, { traps: 0 });

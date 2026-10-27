@@ -23,6 +23,7 @@
  * the celebration and the card where they were.
  */
 import * as H from './harness.mjs';
+import { LEVELUP_RUN_MS, LEVELUP_HOLD_MS } from '../../../src/data/levelUpBurst.js';
 
 const DESK = { width: 1280, height: 800 };
 const PHONE = { width: 390, height: 844 };
@@ -58,7 +59,10 @@ async function waitCoach(P, want, ms = 30000) {
 
 /* a level-up, held at its settled frame: where its medallion and caption are */
 async function burstAt(P) {
-  await P.page.evaluate(() => { window.__btLevelUpFreeze = 1500; });
+  /* v2.3.3615: the middle of the hold, read from the burst's own numbers -- a
+     fixed 1500 was past the whole of it once v2.3.3608 halved the hold (1.3 s
+     in all), and a burst past its end draws nothing */
+  await P.page.evaluate((ms) => { window.__btLevelUpFreeze = ms; }, Math.round(LEVELUP_RUN_MS + LEVELUP_HOLD_MS / 2));
   await P.page.evaluate(() => window._setLevelUpMsg && window._setLevelUpMsg({
     kind: 'combat', level: 14, skill: 'bow', skillLabel: 'Bow', skillLevel: 9, gains: '+1.5 damage', ts: Date.now() }));
   const t0 = Date.now();

@@ -29,6 +29,9 @@ const ROWS = [
      poison (the storm's crackle is over before a chip could say so, as the
      gust's shove is: its icon rides the number) */
   { key: '_dazeUntil', img: ELEM_ICON_SRC['elem-stone'], label: 'Dazed', color: '#e9d27a' },
+  /* v2.3.3620: the snowman's freeze, the rock monster's wobble after its daze */
+  { key: '_frozenUntil', img: ELEM_ICON_SRC['elem-frost'], label: 'Frozen', color: '#d8f2ff' },
+  { key: '_wobbleUntil', img: ELEM_ICON_SRC['elem-stone'], label: 'Wobbly', color: '#e9d27a' },
   { key: '_soakUntil', img: ELEM_ICON_SRC['elem-water'], label: 'Soaked', color: '#5fb8ff' },
   { key: '_poisonUntil', img: ELEM_ICON_SRC['elem-venom'], label: 'Poisoned', color: '#a6e24a' },
   /* v2.3.3264: what a PLAYER'S gem puts on you that no monster's hit does

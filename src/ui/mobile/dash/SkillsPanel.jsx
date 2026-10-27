@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { COL, panelStyle, getState } from './common.js';
 import { skillXpRequired } from '../../../data/items.js';
 import { gatherHitOddsText } from '../../../data/lifeSkills.js'; /* v2.3.3229: the hit ladder's odds */
@@ -140,7 +141,7 @@ export const SkillsPanel = () => {
         {sd.timerPassive && !hitsOn && row('Benefit', sd.timerPassive(lvl))}
         {sd.where && row('Found at', sd.where)}
         <div style={{ fontSize: 11.5, color: COL.text2, lineHeight: 1.4, paddingTop: 6 }}>
-          {sd.earnHint}
+          {deskWords(sd.earnHint)}
         </div>
         {!un && (
           <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.4, paddingTop: 4 }}>

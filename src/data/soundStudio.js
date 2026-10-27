@@ -81,6 +81,7 @@ export const CUE_PLACES = {
   throwFire: ['monsters', 'A fire goblin throwing a fireball'],
   throwGoo: ['monsters', 'A slime throwing a goo glob'],
   windSlam: ['monsters', 'A monster winding up a slam'],
+  mummyRoar: ['monsters', 'A mummy winding up its roar (it blows you back)'],
   windLunge: ['monsters', 'A monster winding up a lunge'],
   slamHit: ['monsters', "A monster's slam hitting the ground"],
   lungeMiss: ['monsters', "A monster's lunge that hits nobody"],

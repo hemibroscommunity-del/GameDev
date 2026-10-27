@@ -3,6 +3,7 @@ import React from 'react';
    picker on only one of the two surfaces is one a player learns and then
    loses. */
 import { ChatChannelChips, lanePlaceholder } from '@/ui/mobile/ChatChannelChips.jsx';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615 */
 
 /* === ChatPanel — the open-chat input overlay === */
 /* v2.3.892: extracted verbatim from the chatOpen JSX subtree in
@@ -97,7 +98,7 @@ export function ChatPanel(props) {
        broken here on the next layout change.  One selector, both surfaces
        (TRAPS §29). */
     "data-chat-input": "",
-    placeholder: lanePlaceholder("Tap to type…"),
+    placeholder: lanePlaceholder(deskWords("Tap to type…")),   /* v2.3.3615: "Click to type…" on a computer */
     value: chatInput,
     onChange: function onChange(e) {
       setChatInput(e.target.value);

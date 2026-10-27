@@ -383,7 +383,7 @@ import { renderFrame } from '@/game/renderFrame.js';
 import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 /* v2.3.817: §5.8 contextual dodge/lunge/retreat cluster extracted behavior-frozen. */
 import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2.3.2916: + the roll window, shared with the broadcast */
-import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
+import { elemMoveMult, gustStep, wobbleTurn } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
@@ -528,6 +528,7 @@ import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
 import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers; v2.3.3522: + each one's picture */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
  * The server holds the surge as a flat amount PER REGEN TICK (660 ms); this
@@ -5349,6 +5350,16 @@ export var BroTown = function BroTown(_ref0) {
            at CHILL_MULT, a blue slime's goo holds you where you stand
            (game/elemHits.js; the worker said so on the hit). */
         finalSpd *= elemMoveMult(S, Date.now());
+        /* v2.3.3620: a rock monster's bash leaves your steering swaying a
+           second after the daze -- the stick's way turned to and fro
+           (game/elemHits.js wobbleTurn; the worker said so on the hit) */
+        var _wbA = wobbleTurn(S, Date.now());
+        if (_wbA) {
+          var _wbC = Math.cos(_wbA), _wbS = Math.sin(_wbA);
+          var _wbX = dx * _wbC - dy * _wbS;
+          dy = dx * _wbS + dy * _wbC;
+          dx = _wbX;
+        }
 
         /* Auto-attack movement: 50% speed across the board while
            S.autoAttack is on. Backpedal flag still tracks "moving
@@ -7137,7 +7148,7 @@ export var BroTown = function BroTown(_ref0) {
                 /* If NPC has available quest, hint at it */
                 if (npcQuest && npcQuest.status === 'available' && distToPlayer < 100) {
                   npc.chatBubble = {
-                    text: 'I have a task for you! Tap me.',
+                    text: deskWords('I have a task for you! Tap me.'),   /* v2.3.3615: "Click me." on a computer */
                     ts: Date.now(),
                     isQuest: true
                   };
@@ -13409,7 +13420,7 @@ export var BroTown = function BroTown(_ref0) {
       overflow: 'hidden',
       textOverflow: 'ellipsis'
     }
-  }, questMsg.title),
+  }, deskWords(questMsg.title)),   /* v2.3.3615: "tap" reads "click" on a computer */
   questMsg.sub && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
@@ -13418,7 +13429,7 @@ export var BroTown = function BroTown(_ref0) {
       textShadow: '0 2px 8px rgba(0,0,0,.75)',
       marginTop: 3
     }
-  }, questMsg.sub),
+  }, deskWords(questMsg.sub)),
   /* ═══ v2.3.2890: SKIP TUTORIAL ═══
      Owner: "add just a 'skip tutorial' button on the very first dialog box
      when you join the game.  No pop ups should be scheduled after that."
@@ -13463,7 +13474,7 @@ export var BroTown = function BroTown(_ref0) {
   }, React.createElement(ElemStatusChips, { stateRef: stateRef }) /* v2.3.2996: the snowflake, the flame, the slime */,
   /* v2.3.3120: pet trapping -- the TRAP pop-up over a targeted monster and the
      card for a new pet (each on its own clock; game/trapping.js) */
-  React.createElement(TrapButton, { stateRef: stateRef }), React.createElement(TrapCatchCard, { stateRef: stateRef }), React.createElement(NewMonsterCard, { stateRef: stateRef }), function () {
+  React.createElement(TrapButton, { stateRef: stateRef, isLandscape: isLandscape }), React.createElement(TrapCatchCard, { stateRef: stateRef }), React.createElement(NewMonsterCard, { stateRef: stateRef }), function () {
     var S = stateRef.current;
     if (!S) return null;
     var effects = [];

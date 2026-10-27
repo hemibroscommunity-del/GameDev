@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { CATEGORIES } from '@/ui/mobile/dash/bagFilterBus.js';
 import { thumbFor, iconFor, ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* ITEM_NAMES v2.3.3141 */
 import { armorIconFor, gearIdIcon } from '@/rendering/gearVariants.js'; /* v2.3.2531: gear listing art */
@@ -475,7 +476,7 @@ export function StorePanel(props) {
             {shelf.length === 0
               ? emptyState(
                   cat === 'all' ? 'Nothing is for sale right now.' : 'Nothing in this category right now.',
-                  cat === 'all' ? 'Be the first — open your bag, tap something and choose Sell.'
+                  cat === 'all' ? deskWords('Be the first — open your bag, tap something and choose Sell.')
                                 : 'Try another category, or put one up yourself.',
                   goList)
               : shelf.map((l) => row(l, false))}
@@ -492,7 +493,7 @@ export function StorePanel(props) {
               mine.length === 0
                 ? emptyState(
                     "You're not selling anything yet.",
-                    'Open your bag, tap something and choose Sell.',
+                    deskWords('Open your bag, tap something and choose Sell.'),
                     goList)
                 : <>
                     <div style={MOD}>{mine.length + ' of ' + MAX_PER_PLAYER + ' slots used'}</div>

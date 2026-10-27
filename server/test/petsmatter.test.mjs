@@ -25,7 +25,9 @@
 import { GameRoom } from '../src/index.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
 import { WHEEL_CENTRE, WHEEL_SAFE_R } from '../src/wheelspawns.js';
-import { CHILL, GUST, STUCK, DAZE, SHOCK, SOAK, BURN, POISON } from '../src/monsterstatus.js';
+import { CHILL, GUST, STUCK, DAZE, SHOCK, SOAK, BURN, POISON, FREEZE, GOO } from '../src/monsterstatus.js';
+/* v2.3.3620: the snowman's chill is FREEZE.CHILL_MS now, the slime's hold GOO.MS (the owner's stronger hits) */
+const CHILL_NOW = FREEZE.CHILL_MS, HOLD_NOW = GOO;
 import { PETBOOK, petWardOf, petHousePrice, petWireOf } from '../src/petbook.js';
 
 function makeState() {
@@ -167,16 +169,16 @@ function both(home, lv, m, read) {
   const short = (ms) => Math.max(1, Math.round(ms * (1 - w)));
 
   const chill = both('frost', 12, of('frost'));
-  check(`ward: CHILL -- a Snowling out, the snowman's chill is ${short(CHILL.MS)} ms, not ${CHILL.MS}, and the hit says wd ${pct}`,
-    chill.plain && chill.plain.st === 'chill' && chill.plain.stMs === CHILL.MS && !('wd' in chill.plain)
-      && chill.warded && chill.warded.st === 'chill' && chill.warded.stMs === short(CHILL.MS) && chill.warded.wd === pct, chill);
-  check('ward: ...the worker\'s own clock is the shorter one', ps._chillUntil > 0 && ps._chillUntil - Date.now() <= short(CHILL.MS));
+  check(`ward: CHILL -- a Snowling out, the snowman's chill is ${short(CHILL_NOW)} ms, not ${CHILL_NOW}, and the hit says wd ${pct}`,
+    chill.plain && chill.plain.st === 'chill' && chill.plain.stMs === CHILL_NOW && !('wd' in chill.plain)
+      && chill.warded && chill.warded.st === 'chill' && chill.warded.stMs === short(CHILL_NOW) && chill.warded.wd === pct, chill);
+  check('ward: ...the worker\'s own clock is the shorter one', ps._chillUntil > 0 && ps._chillUntil - Date.now() <= short(CHILL_NOW));
   check('ward: ...and the hit itself is exactly as hard (it never makes anyone hit harder, nor softer)', chill.plain.dmgTaken === chill.warded.dmgTaken && chill.warded.dmgTaken > 0, chill);
 
   const stuck = both('verdant', 12, of('verdant'));
-  check(`ward: HOLD -- a Dewdrop out, the blue slime holds you ${short(STUCK.MS)} ms, its window after unchanged`,
-    stuck.plain.stMs === STUCK.MS && stuck.warded.stMs === short(STUCK.MS) && stuck.warded.wd === pct
-      && Math.abs((ps._stuckImmuneUntil - ps._stuckUntil) - STUCK.IMMUNE_MS) <= 1, stuck);
+  check(`ward: HOLD -- a Dewdrop out, the blue slime holds you ${short(HOLD_NOW.MS)} ms, its window after unchanged`,
+    stuck.plain.stMs === HOLD_NOW.MS && stuck.warded.stMs === short(HOLD_NOW.MS) && stuck.warded.wd === pct
+      && Math.abs((ps._stuckImmuneUntil - ps._stuckUntil) - HOLD_NOW.IMMUNE_MS) <= 1, stuck);
 
   const dz = of('hollows');
   const daze = both('hollows', 12, dz);
@@ -235,14 +237,14 @@ function both(home, lv, m, read) {
   giveOut('p1', 'ember', 12);
   stage(of('frost'));
   const wrong = strike(of('frost'));
-  check('ward: a Gobling out does nothing to the snowman\'s chill', wrong.stMs === CHILL.MS && !('wd' in wrong), wrong);
+  check('ward: a Gobling out does nothing to the snowman\'s chill', wrong.stMs === CHILL_NOW && !('wd' in wrong), wrong);
   putAway('p1');
   giveOut('p1', 'frost', 12);
   room._liveFlags = { petwards: false };
   stage(of('frost'));
   const off = strike(of('frost'));
   room._liveFlags = {};
-  check('ward: `petwards: false` -- the full chill, no wd', off.stMs === CHILL.MS && !('wd' in off), off);
+  check('ward: `petwards: false` -- the full chill, no wd', off.stMs === CHILL_NOW && !('wd' in off), off);
   /* a dodge or a blocked hit carries nothing, ward or not (the status suite's rule) */
   const none = room._elemOnHit(WHEEL_ZONE, of('frost'), 'p1', ps, { dodged: true, dmgTaken: 0 }, Date.now());
   check('ward: a dodged hit carries no status and no wd', none && !('st' in none) && !('wd' in none), none);

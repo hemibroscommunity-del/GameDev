@@ -685,6 +685,41 @@ remnant to migrate server-side, not a mode to preserve.
     - a gust counts as moving for the move broadcast, so the worker hears where
       you landed at once;
     - `monsterstatus` suite, `mp-elemhits`: docs/specs/monster-statuses.md.
+    - since v2.3.3619 ITS WIND-UP SHOWS ITS ELEMENT -- the owner: "telegraph
+      the attacks of each monster (briefly) using code to represent their
+      elements. Maybe a brief snow swirl effect before a snowman throws a
+      snowball": for exactly the worker's wind-up (`_tgFrom`/`_tgUntil`, the
+      body's throb), the monster's `element` drawn round it -- snow swirling
+      in, sparks and flames, a gust circling, pebbles and dust, crackling
+      bolts, droplets, poison fumes, goo bubbles (src/data/elemWindup.js the
+      looks, src/game/elemWindup.js the motion from the time alone,
+      src/rendering/elemWindup.js a pool of 128 sprites on the projectiles
+      layer cut from ONE picture drawn in code, elemWindupShapes.js, made on
+      the loading screen); only a monster the entity renderer drew this frame
+      (`_tgSeen`), the nearest 8; nothing new on the wire; `?nowindupfx`,
+      `window.__btElemWindup()`; `elem-windup` suite, `mp-elemwindup`:
+      docs/specs/elem-windup.md.
+    - since v2.3.3620 THE OWNER'S STRONGER HITS -- the list of 2026-10-26:
+      a snowman's hit FREEZES you 600 ms (no walk, swing, roll or shield,
+      "Frozen!", ice on you; `fz` on the chill's event, not again for 3 s)
+      then chills you 2 s; a blue slime HOLDS you 2 s and its goo STINGS four
+      times while it holds (`ability: 'sting'`, the poison's row of the hit
+      door, its own Map `_stings`); a rock monster's daze is followed by a
+      second of WOBBLE (`wb`: the phone turns your stick to and fro,
+      elemHits.js `wobbleTurn`); the burn's flames drawn half again as tall
+      (monsterstatus.js FREEZE, GOO, STING, WOBBLE; STUCK, a player's root,
+      unchanged); kill switches `freezehit`, `goohold`, `wobble`;
+      `monsterstatus` §3b/§6b/§10b, `mp-elemhits`:
+      docs/specs/stronger-elem-hits.md.
+    - since v2.3.3621 THE MUMMY'S ROAR -- the same list: "a roar, wound up so
+      you can see it coming, that blows you back from a few steps away": a
+      kit by ELEMENT (telegraph.js `TELEGRAPH.ELEM_KITS.wind`, `_kitFor`: an
+      archetype's kit first), 1 s wound up ("ROAR!", a ring of 150 px, the
+      owner's roar higher, cue `mummyRoar`), then everyone in the ring half a
+      hit through the kit's row of the hit door and blown 130 px over 420 ms
+      (`m._gustPx`/`_gustMs` for that blow; the room granted), 8 s cooldown;
+      kill switch `mummyroar: false`; `mummy-roar` suite, `mp-elemhits`:
+      docs/specs/mummy-roar.md.
   - Since v2.3.2997 the TOWN IS 1.15x AND THE VIEW 25% FURTHER OUT -- the
     owner: "Change buildings from 1.5x to 1.15x and let me see what making the
     default scale looks like about 25% more zoomed out for everything by
@@ -1433,6 +1468,16 @@ remnant to migrate server-side, not a mode to preserve.
         and doors not; 1.2 MB decoded (0.6); `mp-tierore` counts the band
         against the old vein's picture: docs/specs/tier-ore.md "As tall as the
         old vein again".
+      - since v2.3.3622 THE TEE'S HEM REACHES THE TROUSERS -- the owner's
+        list of 2026-10-26: "The shirt shifts while mining": the band itself
+        is gone; tools/gear/lower-mine-hem.mjs moved the hem AS DRAWN (its
+        keyline and the shade row above it) down to the trousers wherever
+        three or more columns side by side showed a short band of belly (8
+        of the 14 frames, 255 px), and closed frame 9's one-pixel slit down
+        the tee's middle (9 px); a lone column is left (lowered alone it hung
+        like a drip); GEAR_VERSION 2.3.3622; what mp-tierore's band counts now
+        is the arms and hands under the hem; `mine-hem` suite:
+        docs/specs/mine-hem.md.
     - since v2.3.3402 EACH LAND'S TREES AND ROCKS WEAR ITS ELEMENT -- the
       owner: "add effects to a pine tree to make it look like it belongs in
       that elemental zone but the wood logs stay the same", "keep in mind
@@ -3612,7 +3657,13 @@ remnant to migrate server-side, not a mode to preserve.
       TRUE odds (`src/data/trapping.js`, held to `server/src/trapping.js` by
       mirror-audit): 1% x 0.8 a stretch, half on reaching the monster's level,
       the best 20 above; grey above your Trapping level ("Requires Trapping N"),
-      sending nothing; nothing else moves the odds, no bad-luck rule;
+      sending nothing; nothing else moves the odds, no bad-luck rule; since
+      v2.3.3617 on an upright phone a ROUND button in the column left of the
+      attack disc, over Shield Bash (`CTL_SLOT.trap`; the pop-up at the bottom
+      middle lay under the Block button, up whenever a monster is targeted --
+      the owner: "The trap monster message appears over other UI elements"),
+      its words in a tag beside it taking no touch; sideways and on a computer
+      the pop-up as before (TrapButton.jsx, mp-trapping);
     - `trap_arm` marks it 15 s; at the kill (`_trapRollOnKill`, combat.js, before
       dmgByPlayer is cleared; a slime judged at the blow) each armer with 5% of
       the damage rolls four checks at the fourth root (0-3 shakes drawn in code,
@@ -4294,6 +4345,15 @@ remnant to migrate server-side, not a mode to preserve.
       number, `shared: false`), mirror-audit holding it to `killRollLayout`
       for every kind; `caps.killroll`, kill switch `killroll: false`, dev
       lever `/dev/killroll {next, kill}`; `killroll` suite, `mp-killroll`;
+      since v2.3.3616 NOT DRAWN: EACH DROP A COLUMN over the monster instead --
+      the owner: "show each drop in columns of the floating icon rising with
+      the quantity beneath it and the rarity beneath that" -- its picture, its
+      amount (gold: your share) and its rarity (gear its grade, "Mystery" or
+      "Normal"; else by the codex's chance: Normal, Uncommon, Rare, Very rare),
+      from the pile (`loot_drop`) and the killing blow's nugget (`rh`),
+      src/game/dropColumns.js + src/rendering/dropColumns.js, pictures
+      preloaded; `?dropcols=0` the roll again (mp-killroll runs so);
+      `drop-columns` suite, `mp-dropcols`: docs/specs/drop-columns.md;
     - NO RANDOM WEAPON OFF A KILL (the owner: "Remove 'a random weapon'
       drop", then "Remove it from the game"): `_rollWeaponDropForKill` and
       its level curve are gone, a kill's one weapon the Iron Great Sword's 1
@@ -5913,6 +5973,14 @@ Two protocol versions coexist; both must keep working:
   - A new key goes in the table and on its button in the same PR; a new
     window's ✕ takes `data-esc` (`"up"` if it acts on pointerup).
   - The keys strip lists 1-3 and sits right of the bell. `mp-deskkeys`.
+  - Since v2.3.3615 "TAP" READS "CLICK" ON A COMPUTER (the judges play the
+    desktop version): `deskWords(s)` (src/game/deskWords.js) swaps tap, taps,
+    tapped, tapping as the words are SHOWN, under `(pointer:fine)` only, never
+    in the data (quest-lines counts the townsfolk's characters). The quest
+    plate, the townsfolk's window, the quest windows, the coach's cards and
+    the windows a first half hour opens call it; a new line a computer player
+    reads that says "tap" is shown through it. `desk-words` suite,
+    `mp-deskwords` (no "tap" on a computer's screens, the phone's as written).
 - **A STRUCTURAL CHANGE REBUILDS ITS LAYER'S DRAW LIST (v2.3.3449, TRAPS
   §218, docs/specs/draw-lists.md).** Pixi rebuilds a render group's whole
   draw list for any `visible` / `renderable` / `zIndex` / `blendMode` change,

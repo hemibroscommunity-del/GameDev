@@ -189,6 +189,7 @@ import { notePvpBlow } from '@/game/sparTargets.js'; /* v2.3.3268: a blow betwee
 import { nmlJoinFight } from '@/game/nmlAsk.js'; /* v2.3.3530: one of a group whose blow lands on you joins the fight you chose, no window */
 import { allyMomentText } from '@/game/alliance.js'; /* v2.3.3313: the alliance's moments on party_state */
 import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3340: the mummy's bones rattle as it sheds */
+import { noteLootDrop } from '@/game/dropColumns.js'; /* v2.3.3616: a kill's drops in columns over the monster */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -310,6 +311,9 @@ export function processGameEvent(type, payload, S, deps) {
               }
               var _newPile = _buildServerPile(payload.pile, S.myId);
               S.groundLoot.push(_newPile);
+              /* v2.3.3616: what it dropped, a column each over the monster
+                 (game/dropColumns.js), when the pile is yours to pick up */
+              try { noteLootDrop(S, _newPile, S.myId); } catch (_dc) { /* display only */ }
               /* v2.3.3343: a pile landing is heard, a little coin rattle by
                  distance (it was silent; SOUND-GAPS) */
               if (_newPile) cueAt(S, 'lootDrop', _newPile.x, _newPile.y);
@@ -1312,9 +1316,9 @@ export function processGameEvent(type, payload, S, deps) {
                  Softer orange than the brute's amber and a smaller shake
                  below: the tell should read as "here it comes", not as
                  "you are in trouble". */
-              var _maLabels = { slam: 'SLAM!', pounce: 'POUNCE!', lunge: 'LUNGE!' };
-              var _maColors = { slam: '#f5c542', pounce: '#2C3E50', lunge: '#E8955A' };
-              var _maShake = { slam: 8, pounce: 5, lunge: 3 };
+              var _maLabels = { slam: 'SLAM!', pounce: 'POUNCE!', lunge: 'LUNGE!', roar: 'ROAR!' };   /* v2.3.3621: the mummy's roar */
+              var _maColors = { slam: '#f5c542', pounce: '#2C3E50', lunge: '#E8955A', roar: '#E6D3A8' };
+              var _maShake = { slam: 8, pounce: 5, lunge: 3, roar: 6 };
               /* ═══ v2.3.2215: THE UNIVERSAL BASIC-ATTACK TELL ═══
                  Every monster now winds up before an ordinary swing or throw
                  (server/src/telegraph.js BASIC_WINDUP).  Handled ABOVE the
@@ -1580,7 +1584,9 @@ export function processGameEvent(type, payload, S, deps) {
                 /* v2.3.3343: ...a beep(), which plays nothing.  The wind-up is
                    heard now: a slow swell before a slam, a low rush before a
                    lunge (SOUND-GAPS). */
-                if (_tgK > 0) cue(payload.ability === 'slam' ? 'windSlam' : 'windLunge', _tgK);
+                /* v2.3.3621: a mummy's roar is its roar (the owner's dragon,
+                   higher and shorter: data/eventSounds.js mummyRoar) */
+                if (_tgK > 0) cue(payload.ability === 'slam' ? 'windSlam' : payload.ability === 'roar' ? 'mummyRoar' : 'windLunge', _tgK);
                 break;
               }
               /* execute — a landed hit shakes, a whiff deliberately does
@@ -3226,7 +3232,8 @@ export function processGameEvent(type, payload, S, deps) {
                 try {
                   var _eLog = window.__btElemLog || (window.__btElemLog = []);
                   _eLog.push({ elem: payload.elem || null, st: _elSt, stMs: payload.stMs, kb: payload.kb || null, ability: payload.ability || null, dmgTaken: payload.dmgTaken, monsterId: payload.monsterId, at: Date.now(),
-                    wd: payload.wd || null });   /* v2.3.3123: the land ward's percent (mp-petsmatter) */
+                    wd: payload.wd || null,   /* v2.3.3123: the land ward's percent (mp-petsmatter) */
+                    fz: payload.fz || null, wb: payload.wb || null });   /* v2.3.3620: the freeze and the wobble (mp-elemhits) */
                   if (_eLog.length > 60) _eLog.splice(0, _eLog.length - 60);
                 } catch (e) { /* a probe never breaks the game */ }
               }
