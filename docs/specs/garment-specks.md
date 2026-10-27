@@ -97,24 +97,37 @@ For each frame it counts, in the figure's top 30% (the head), the pixels in the
 trousers' pink or the boots' blue, and below it the trousers and boots left in
 their colours. The test passes when the new page shows at most 2 such pixels in
 any head, the old page shows the specks (at least 30 in all, and five times the
-new), and the trousers and the boots each keep 85% of the pixels the old page
-painted, the roll's overhead included.
+new), and the trousers keep 85% and the boots 80% of the pixels the old page
+painted, the roll's overhead included (why the boots' bar is lower: below).
 
-Its last run, 73 checks of 73:
+Its last run, 73 checks of 73 (on the build with the review's fixes):
 
 | frames | head specks, new | as it was | trousers, new / as it was | boots |
 |---|---|---|---|---|
-| standing, 8 facings | 0 | 4 (two facings) | 6,930 / 6,944 | 3,705 / 3,730 |
-| jogging, 8 moments | 0 | 70 | 9,550 / 9,549 | 2,763 / 2,823 |
+| standing, 8 facings | 0 | 4 (two facings) | 6,946 / 6,944 | 3,697 / 3,730 |
+| jogging, 8 moments | 0 | 35 | 9,761 / 9,768 | 2,792 / 2,876 |
 | the hit's flinch | 0 | 22 | 1,496 / 1,496 | 629 / 633 |
-| the sword, 3 moments | 0 | 63 | 4,984 / 4,986 | 3,335 / 3,434 |
+| the sword, 3 moments | 0 | 63 | 4,820 / 4,814 | 2,860 / 3,010 |
 | the roll | 0 | 0 | 662 / 662 | 227 / 231 |
 
-None of the 20 frames compared kept a speck in its head, against 159 as it
-was. The trousers and boots kept at least 93% of their colour in every frame,
-98% in all. The lowest were the north jog's raised boot (an outline grey beside
-the sole is left as drawn) and the sword's last moment. The
-first runs found the test's own faults, not the rule's: a sword whose
+None of the 20 frames compared kept a speck in its head, against 124 as it
+was. The trousers kept their colour everywhere, and the boots at least 92% of
+it in every frame of that run.
+
+The north jog's raised boot is the smallest boot the test reads, about 100 px,
+and up to 17 of them are the outline grey beside the sole's rim, which the rule
+leaves as drawn. Which stride frame the test lands on varies a little from run
+to run, and so did that boot: 84, 92 and 84 px of blue against 101 or 103 as
+it was, over three runs. The boots' bar is therefore 80% (`BOOTS_KEEP`), the
+trousers' still 85%.
+
+Two runs also lost the sword: the press that starts the swing landed 170 px
+east of the bro, where Mayor Bro stands and now wanders, and a tap on a
+townsperson talks to him instead of swinging (v2.3.3583). The press is 110 px
+out now, and tries again a little south of east (still the east facing) after
+closing whatever opened.
+
+The first runs found the test's own faults too, not the rule's: a sword whose
 stand-in the isolation hid, and a roll the 250 ms poll missed. The page now
 catches the roll as the game sets it.
 

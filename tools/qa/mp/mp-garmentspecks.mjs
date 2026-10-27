@@ -20,7 +20,8 @@
  *      boots' colour in the top of the figure (the head), where the old page
  *      shows SEEN_MIN or more over the same frames;
  *   2. the legs keep their colours: below the head the new page shows at
- *      least LEGS_KEEP of the old page's trousers and boots, frame by frame;
+ *      least LEGS_KEEP of the old page's trousers and BOOTS_KEEP of its boots,
+ *      frame by frame;
  *   3. the roll, where the legs go overhead: the boots and trousers keep
  *      their colour there too;
  *   4. the bake says what it did (__btGarmentSpecks): on, and every walking
@@ -49,6 +50,12 @@ const SEEN_MIN = 30;
    page keeps, frame by frame (what it no longer paints there is the outline
    along the arms and the back) */
 const LEGS_KEEP = 0.85;
+/* ...and of the boots, which are small: the north jog's raised boot is about
+   100 px, and up to 17 of them are the sole's outline grey beside the rim,
+   which the rule leaves as drawn and the old bake painted blue.  Two runs of
+   the same build read 84 and 92 px there (101 and 103 as it was): 0.85 failed
+   one of them on a few px of antialiasing. */
+const BOOTS_KEEP = 0.8;
 const HEAD_SHARE = 0.3;   /* the head: the top 30% of the figure as drawn */
 
 const FACINGS = [
@@ -300,10 +307,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const b = d.getBounds();
         return { x: r.left + b.x + b.width / 2, y: r.top + b.y + b.height / 2 };
       });
-      await P.page.mouse.move(c.x + 170, c.y);
-      await P.page.waitForTimeout(300);
-      await P.page.mouse.down();
-      return H.waitFor(P, (S) => (S._swordSwinging && S.swingTimer ? S.swingTimer : null), (v) => !!v, { timeout: 5000, label: 'a swing' }).catch(() => null);
+      /* The press aims east, 110 CSS px out: Mayor Bro stands about 260 world
+         px east of the arrival (~160 CSS px at this zoom) and wanders near his
+         spot, so the old 170 px press now and then landed on HIM -- a tap on a
+         townsperson talks to him (v2.3.3583) and swings nothing, on one page
+         or the other.  Still outside your own bro's chat circle.  If a press
+         starts nothing, whatever it opened is closed (Esc) and it presses
+         again a little south of east (still the east facing). */
+      for (let tries = 0; tries < 3; tries++) {
+        if (tries) {
+          await P.page.mouse.up();
+          await P.page.keyboard.press('Escape').catch(() => {});
+          await P.page.waitForTimeout(400);
+        }
+        const a = tries ? 0.3 * tries : 0;
+        await P.page.mouse.move(c.x + Math.cos(a) * 110, c.y + Math.sin(a) * 110);
+        await P.page.waitForTimeout(300);
+        await P.page.mouse.down();
+        const t0 = await H.waitFor(P, (S) => (S._swordSwinging && S.swingTimer ? S.swingTimer : null), (v) => !!v, { timeout: 5000, label: 'a swing' }).catch(() => null);
+        if (t0) return t0;
+        const tap = await P.page.evaluate(() => window.__btNpcTap || null).catch(() => null);
+        console.log(`    a press started no swing (try ${tries + 1}); the last tap on a character: ${JSON.stringify(tap)}`);
+      }
+      return null;
     };
     /* what stands there is marked BEFORE the swing: the stand-in that draws
        the swing comes up after, and is the photograph */
@@ -336,7 +362,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`the old page shows the specks the test looks for (${seenOld} px in the heads, against ${seenNew})`, seenOld >= SEEN_MIN && seenOld >= 5 * seenNew, { seenOld, seenNew });
     for (const r of heads) {
       if (r.o.pink >= 60) rec.ok(`${r.name}: the trousers keep their colour (${r.n.pink} px of pink, ${r.o.pink} as it was)`, r.n.pink >= LEGS_KEEP * r.o.pink, { n: r.n.pink, o: r.o.pink });
-      if (r.o.blue >= 40) rec.ok(`${r.name}: the boots keep their colour (${r.n.blue} px of blue, ${r.o.blue} as it was)`, r.n.blue >= LEGS_KEEP * r.o.blue, { n: r.n.blue, o: r.o.blue });
+      if (r.o.blue >= 40) rec.ok(`${r.name}: the boots keep their colour (${r.n.blue} px of blue, ${r.o.blue} as it was)`, r.n.blue >= BOOTS_KEEP * r.o.blue, { n: r.n.blue, o: r.o.blue });
     }
 
     /* ── 3. the roll, east: the legs go overhead ── */
@@ -387,7 +413,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       console.log(`    roll-east: new ${n.pinkAll}/${n.blueAll} (${n.pose.pose}/${n.pose.frame}) | old ${o.pinkAll}/${o.blueAll} (${o.pose.pose}/${o.pose.frame})`);
       const sameRoll = n.pose.pose === o.pose.pose && n.pose.frame === o.pose.frame;
       rec.ok(`the roll, east (frame ${n.pose.frame}): the trousers and boots keep their colour overhead (${n.pinkAll} pink and ${n.blueAll} blue, ${o.pinkAll} and ${o.blueAll} as it was)`,
-        sameRoll && n.pose.pose === 'dodge' && n.pinkAll >= LEGS_KEEP * o.pinkAll && n.blueAll >= LEGS_KEEP * o.blueAll && o.blueAll >= 40, { n, o });
+        sameRoll && n.pose.pose === 'dodge' && n.pinkAll >= LEGS_KEEP * o.pinkAll && n.blueAll >= BOOTS_KEEP * o.blueAll && o.blueAll >= 40, { n, o });
     }
     await Promise.all([letGo(NEW), letGo(OLD)]);
 
