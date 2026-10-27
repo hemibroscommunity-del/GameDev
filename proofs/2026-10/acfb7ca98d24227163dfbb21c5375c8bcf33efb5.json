@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "acfb7ca98d24227163dfbb21c5375c8bcf33efb5",
+  "tree": "b09b28686a28212f3a39b907993fbb206e48e530",
+  "committedAt": "2026-10-27T02:58:00-07:00",
+  "subject": "The farmer's iron is the walking iron: lit as the walking figure is, graded to the standing sheets (v2.3.3636) (#1130)",
+  "files": 6593,
+  "bytes": 762794108,
+  "listingSha256": "e738627ea053cc542edd78f53dc1da3149d2e48acf7027c839aae3ce80f5a89b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
