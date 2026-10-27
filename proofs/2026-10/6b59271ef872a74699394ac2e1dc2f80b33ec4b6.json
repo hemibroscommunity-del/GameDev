@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6b59271ef872a74699394ac2e1dc2f80b33ec4b6",
+  "tree": "616dfabdee60c94615a0ebcbddaa7648c5799d01",
+  "committedAt": "2026-10-27T14:14:22-07:00",
+  "subject": "Your farm plays \"Homestead Morning\", and every way onto the farm asks for its music (v2.3.3672) (#1158)",
+  "files": 6662,
+  "bytes": 774918411,
+  "listingSha256": "54985790ee0c8d2af3fcfa81aa984f7d7819bcf7061263b68aabd239acdd8cd4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
