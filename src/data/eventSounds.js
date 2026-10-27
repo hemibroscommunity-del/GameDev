@@ -180,6 +180,9 @@ export const EVENT_SOUNDS = {
   throwGoo: [['lure-drop', 0, 0, 2.6, 0.78], ['sword-swing', 0.05, 0.25, 0.2, 0.7]],
   /* The wind-up before a slam (a slow swell) or a lunge (a low rush)... */
   windSlam: [['whirlwind', 0.1, 0.6, 0.28, 0.7, 0, 0.12]],
+  /* v2.3.3621: a mummy winding up its roar (telegraph.js ELEM_KITS.wind):
+     the owner's dragon roar a fifth higher and cut short, over a gust */
+  mummyRoar: [['boss-roar', 0.05, 0.95, own('boss-roar', 0.7), 1.22, 0, 0.3], ['whirlwind', 0.1, 0.6, 0.22, 0.85, 0.1, 0.15]],
   windLunge: [['special-swipe', 0.02, 0.3, 1.6, 0.7, 0, 0.08]],
   /* ...the slam hitting the ground (the felled tree's thud and the shield
      bash's impact, slowed), and a lunge that finds nobody. */
@@ -518,6 +521,7 @@ export const CUE_GAP_MS = {
   throwFire: 60,
   throwGoo: 60,
   windSlam: 100,
+  mummyRoar: 300,   /* v2.3.3621: a pack of mummies roaring together is one roar */
   windLunge: 100,
   slamHit: 100,
   lungeMiss: 100,
