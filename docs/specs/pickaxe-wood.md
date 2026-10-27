@@ -95,3 +95,22 @@ count. The bake kept 10,652 px of the mining sheet's pickaxe (9,620 wood and
 
 The test ran before the tee was mended, so its photographs still show the
 pinholes on both pages. The sheet-level check (`mine-hem` §5) guards the tee.
+
+## Found in review
+
+An independent review of the change ran `toolWoodMask` on every player sheet
+and found no regression: the tee's pinhole fill covered none of the pickaxe's
+wood. It raised two design points, left for later:
+
+- **A colour rule is a guess.** The pickaxe is found by how pale and how
+  orange it is next to the miner's skin. A redrawn mining sheet with a paler
+  skin or a darker handle could move pixels between the two. The axe and the
+  rod avoid that: they are drawn in the magenta key and coloured at load
+  (`toolRecolor.js`). Keying the pickaxe the same way would mean painting its
+  pixels magenta in `mine-south` once (this rule could find them for that), and
+  a `TOOL_SPECS.pickaxe` of a wooden haft and a steel head. The price is the
+  art's own pickaxe colours, replaced by the ramps.
+- **The skin, trouser and boot tests are copied** into `toolWood.js`,
+  `garmentConfine.js`, `tools/qa/garment-confine.mjs` and
+  `tools/gear/fill-mine-tee-holes.mjs`, beside the originals in
+  `playerSkins.js`. One small module all five import would keep them in step.
