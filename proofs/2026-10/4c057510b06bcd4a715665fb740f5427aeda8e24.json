@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4c057510b06bcd4a715665fb740f5427aeda8e24",
+  "tree": "fbdbfbafee956fac8b26742c3b89ec329913ceae",
+  "committedAt": "2026-10-27T14:21:00-07:00",
+  "subject": "Your list of Oct 26: every item checked, the order, what's done, and your notes of Oct 27 (v2.3.3674) (#1115)",
+  "files": 6663,
+  "bytes": 774947436,
+  "listingSha256": "f26cbf6f405c296b5949f97be3af734b7f945c4e97bc48c8d1dc4abcd90c7b7a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
