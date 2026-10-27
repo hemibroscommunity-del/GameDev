@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b716bee6e3d1af89068814bb67678ecbd481edfe",
+  "tree": "fdb796ba4219d18b8f3a6a23a294bbabf0bb5d95",
+  "committedAt": "2026-10-26T22:14:04-07:00",
+  "subject": "The mummy's roar: a wound-up shout that blows you back 130 px (v2.3.3621) (#1127)",
+  "files": 6580,
+  "bytes": 762599815,
+  "listingSha256": "af06f2a444690936353bf844c117750d2d0a722dd7fce6fdb07815570e7a455c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
