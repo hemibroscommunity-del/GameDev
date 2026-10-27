@@ -7138,7 +7138,7 @@ export var BroTown = function BroTown(_ref0) {
                 /* If NPC has available quest, hint at it */
                 if (npcQuest && npcQuest.status === 'available' && distToPlayer < 100) {
                   npc.chatBubble = {
-                    text: 'I have a task for you! Tap me.',
+                    text: deskWords('I have a task for you! Tap me.'),   /* v2.3.3612: "Click me." on a computer */
                     ts: Date.now(),
                     isQuest: true
                   };
