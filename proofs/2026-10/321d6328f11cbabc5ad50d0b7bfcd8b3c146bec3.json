@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "321d6328f11cbabc5ad50d0b7bfcd8b3c146bec3",
+  "tree": "722ec7ae8e9ae8ef4ed8e5c425ae4d9ee38efc04",
+  "committedAt": "2026-10-26T18:39:46-07:00",
+  "subject": "The older land banners back, and plain element icons (v2.3.3609) (#1117)",
+  "files": 6555,
+  "bytes": 757754671,
+  "listingSha256": "3971d6336e1ae317afc7cc4cb2ed02f810f1058322650248a33f508a35734197",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
