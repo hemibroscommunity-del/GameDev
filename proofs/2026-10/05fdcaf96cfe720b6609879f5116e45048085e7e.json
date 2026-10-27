@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "05fdcaf96cfe720b6609879f5116e45048085e7e",
+  "tree": "59fb721c88abfe2e355fafca98f520cbfb305bab",
+  "committedAt": "2026-10-27T08:05:52-07:00",
+  "subject": "The sword and bow bodies under greaves show no trousers or boots, and the sword sheets lose their grey fill (v2.3.3640) (#1139)",
+  "files": 6604,
+  "bytes": 768226167,
+  "listingSha256": "79db810c6b5b92d51d340377cb2fb0d47dc599e2d55959c6cea97d2ade40c0b8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
