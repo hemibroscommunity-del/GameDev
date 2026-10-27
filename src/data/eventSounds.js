@@ -50,7 +50,7 @@ function voice(i, k, rate) {
   const p = OWNER_SOUNDS['npc-voices'].parts[i];
   return ['npc-voices', p[0], p[1], Math.round(p[2] * (k == null ? 1 : k) * 1000) / 1000, rate || 1];
 }
-/* v2.3.3653: part i of one of the owner's files of parts (the hammer's blows,
+/* v2.3.3664: part i of one of the owner's files of parts (the hammer's blows,
    the knife's strokes: ownerSoundClips.js) as a layer -- its slice, its
    volume at its level times k, at `rate`, `delay` s after the cue starts. */
 function part(key, i, k, rate, delay) {
@@ -242,20 +242,20 @@ export const EVENT_SOUNDS = {
   /* "Dungeon cleared!": the old quest fanfare, ~2.5 (a turn-in is ~2.4). */
   dungeonClear: [['quest-complete', 0, 0, 0.6, 1]],
   dungeonOut: [['whirlwind', 1.6, 0.9, 0.25, 1.1, 0, 0.3]],
-  /* A door: v2.3.3653, the owner's door opening, its creak and latch (~0.7,
+  /* A door: v2.3.3664, the owner's door opening, its creak and latch (~0.7,
      the knock it replaces 0.68) -- "doors opening ("entering" town
      buildings)": every town building's door, the farm's sheds' and the
      Workshop's (BT_AUDIO.enterBuilding). */
   door: [['door-open', 0, 0, own('door-open'), 1]],
   /* A dungeon's mouth is a cave, not a door: the knock of wood the door was
-     until v2.3.3653, ~0.65 (enterBuilding('mouth'), game/wheelDungeons.js). */
+     until v2.3.3664, ~0.65 (enterBuilding('mouth'), game/wheelDungeons.js). */
   caveMouth: [['wood-chop', 0.05, 0.3, 0.14, 0.7, 0, 0.1]],
   /* Crossing into a land: a breath of wind under its banner. */
   landCross: [['whirlwind', 0.2, 0.6, 0.18, 1.2, 0, 0.15]],
   /* Lighting a fire: two strikes of a flint (the pickaxe's ring, high and
      quick); the fire catching: the pan's crackle swelling and fading. */
   fireStrike: [['mine-strike', 0.55, 0.15, 0.25, 1.6], ['mine-strike', 0.55, 0.12, 0.2, 1.75, 0.22]],
-  /* v2.3.3653: the fire catching is the owner's "Light fire (when lighting
+  /* v2.3.3664: the fire catching is the owner's "Light fire (when lighting
      a fire)" -- a flare and its tail, ~0.8, its boom's own overtones laid
      over it for a phone (cut_owner_sounds.py); the pan's crackle (0.48) it
      replaces swelled and faded with nothing of a fire's catch in it. */
@@ -277,7 +277,7 @@ export const EVENT_SOUNDS = {
   petWard: [['shield-block', 0, 0, 0.3, 1.4]],
 
   /* ── crafting results ──────────────────────────────────────────────── */
-  /* ═══ v2.3.3653: THE FORGE'S HAMMER IS THE OWNER'S ═══
+  /* ═══ v2.3.3664: THE FORGE'S HAMMER IS THE OWNER'S ═══
      "One additional sound I'd like to use for blacksmithing label includes
      "flat-hoe"": a hammer on a flat hoe, three blows (forge-strike's parts,
      ~0.6 each).  A bar smelted: a blow and the bar's hiss in the water; a
@@ -290,7 +290,7 @@ export const EVENT_SOUNDS = {
   armourForge: [part('forge-strike', 1, 1, 0.94), ['ui-equip', 0.095, 0.3, 2.4, 1, 0.3]],
   hardenOk: [['sword-hit2', 0, 0, 0.5, 1.25], ['quest-complete-v2', 0.05, 0.7, 0.5, 1, 0.08, 0.2]],
   hardenFail: [['mine-strike', 0.06, 0.35, 0.45, 0.6], ['flip-lose', 0, 0.7, 0.45, 1, 0.08]],
-  /* ═══ v2.3.3653: THE WOODWORKER'S KNIFE IS THE OWNER'S ═══
+  /* ═══ v2.3.3664: THE WOODWORKER'S KNIFE IS THE OWNER'S ═══
      "a sound for wood carving (making bows, staffs, etc)": three strokes of
      the knife (wood-carve, ~0.5 each, a little apart in pitch) where the
      plane and a knock of wood (0.91) were.  Hardened wood is two strokes and
@@ -385,7 +385,7 @@ export const EVENT_SOUNDS = {
      of these still called collect() or beep(), both silent since v2.3.1103,
      or nothing at all.  Same recordings, same rules as above. */
   /* A crop pulled from its bed: the soil giving (the farm's own dirt step,
-     the dig's sample) and -- v2.3.3653 -- the owner's harvest, a bright pop
+     the dig's sample) and -- v2.3.3664 -- the owner's harvest, a bright pop
      and its ring (~0.7, where the lure's plop was), the farm's payoff. */
   farmHarvest: [['footstep-v3', 0.08, 0.3, 1.1, 1.15, 0, 0.08], ['farm-harvest', 0, 0, own('farm-harvest'), 1, 0.06]],
   /* A wager: coins put down (the Gambling Den's weekly pot, a stake on a
@@ -424,7 +424,7 @@ export const EVENT_SOUNDS = {
   /* The forge at work: three strikes on the anvil (the pickaxe's ring,
      bright), ~0.5 at the forge -- played by game/townAmbience.js now and
      then while you are near the Blacksmith's, its sparks' sound. */
-  anvil: [part('forge-strike', 0, 1, 1), part('forge-strike', 1, 0.9, 1.02, 0.42), part('forge-strike', 2, 1, 0.98, 0.84)],   /* v2.3.3653: the owner's hammer (forge-strike), where the pickaxe's ring was */
+  anvil: [part('forge-strike', 0, 1, 1), part('forge-strike', 1, 0.9, 1.02, 0.42), part('forge-strike', 2, 1, 0.98, 0.84)],   /* v2.3.3664: the owner's hammer (forge-strike), where the pickaxe's ring was */
   /* ── v2.3.3434, the third look (the owner: "Good look for more") ──
      The emotes and moves (v2.3.3391-3395) shipped silent -- their plan's
      table says "Extras (reused sounds)" (docs/FUN-SOCIAL-PLAN.md) and Phase 1
@@ -449,16 +449,16 @@ export const EVENT_SOUNDS = {
   cheerPop: [['lure-drop', 0, 0, 1.8, 1.5], ['lure-drop', 0, 0, 1.6, 1.75, 0.12], ['arrow-fly', 0.03, 0.2, 1.4, 1.2, 0.05, 0.05]],
   /* Anything landing in the bag: a harvest's prize after its flight
      (lifeSkillRewards _flyResourceToInventory, the farm's crops too) and,
-     since v2.3.3653, every pickup the worker credits that is not only gold
+     since v2.3.3664, every pickup the worker credits that is not only gold
      (wsClient _applyLootCredit) -- the owner's bag drawn shut, ~0.4: "when
      any object gets picked up and placed in your bag".  (It was the bag's
      leather, the equip tick, ~0.3.) */
   bagIn: [['bag-close', 0, 0, own('bag-close'), 1]],
-  /* v2.3.3653: coins picked up, the owner's "coins (during pickup)" -- a
+  /* v2.3.3664: coins picked up, the owner's "coins (during pickup)" -- a
      bright jingle, ~0.75 (the spilled coins it replaces at a pickup were
      0.87, and still sound a sale, the market and the den's wins). */
   coinsPickup: [['coins', 0, 0, own('coins'), 1]],
-  /* v2.3.3653: Lil Bro's own "hmm" -- a boy's, where the townsfolk's man's
+  /* v2.3.3664: Lil Bro's own "hmm" -- a boy's, where the townsfolk's man's
      hum was pitched up for him (game/npcVoices.js). */
   lilBroHmm: [['lil-bro-hmm', 0, 0, own('lil-bro-hmm'), 1]],
 

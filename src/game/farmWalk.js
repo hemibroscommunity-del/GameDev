@@ -90,7 +90,7 @@ function sayOverBed(S, i, text, color) {
 function play(key, opts) { try { BT_AUDIO.play(key, opts); } catch (e) { /* sound only */ } }
 
 /* the sound of each lean (farmWork.js FARM_BEAT_SOUND: v2.3.3439, the table
-   moved there so another player's are heard from the same one).  v2.3.3653:
+   moved there so another player's are heard from the same one).  v2.3.3664:
    beat `i` of the step, for the owner's files of parts played in turn (the
    hoe's three strikes, the clay's two squeezes: farmBeatPlay) */
 function beatSound(step, i) {

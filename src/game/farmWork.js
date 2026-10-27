@@ -20,7 +20,7 @@
  * a step this says is next is always one the worker takes.
  * docs/specs/farm-walk.md.
  */
-/* v2.3.3653: the owner's recordings' slices and levels (generated data, no
+/* v2.3.3664: the owner's recordings' slices and levels (generated data, no
    imports of its own, so node still runs this) */
 import { OWNER_SOUNDS } from '../data/ownerSoundClips.js';
 
@@ -62,7 +62,7 @@ const LAST_BEAT_MS = 80;
 /* the sound of each step as its work lands, from recordings already in the
    game (SFX_MANIFEST): yours at this level (farmWalk.js), another player's at
    their share by distance (effectsRenderer _drawPeerFarmer).
-   ═══ v2.3.3653: THE HOE, THE CAN AND THE CLAY ARE THE OWNER'S ═══
+   ═══ v2.3.3664: THE HOE, THE CAN AND THE CLAY ARE THE OWNER'S ═══
    "the other hoe sound is for when you till the dirt.  There's a clay sound
    for molding the ground (apply fertilizer)", and a watering can: a dig is
    the hoe striking the dirt (farm-hoe, its three strikes in turn), a

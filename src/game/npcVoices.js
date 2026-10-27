@@ -14,7 +14,7 @@
  *                       becoming the quest taken is a new subject): his hum,
  *                       in full.
  *
- * ═══ v2.3.3653: A TALK AND A QUEST TAKEN, NOTHING ELSE; LIL BRO HIS OWN ═══
+ * ═══ v2.3.3664: A TALK AND A QUEST TAKEN, NOTHING ELSE; LIL BRO HIS OWN ═══
  * The owner: "the "hmmm" sounds you have for NPCs should play when you begin
  * talking to someone or taking a quest (other than the lil bro). I'll get a
  * sound effect for him", and then his "hmm".  Until now a townsperson also
@@ -38,12 +38,12 @@ export const VOICE_OF = Object.freeze({
   'Diego': [3, 0.98],
   'Ace': [0, 1.06],
   /* 'Lil Bro' was [4, 1.32], the high hum pitched up: his own since
-     v2.3.3653 (LIL_BRO) */
+     v2.3.3664 (LIL_BRO) */
   'Beastmaster Bro': [2, 0.94],
   'Woodworker Bro': [1, 0.92],   /* v2.3.3525: the tour's two new townsfolk */
   'Farmer Bro': [3, 0.88],
 });
-/* v2.3.3653: whose voice is his own recording, not one of the hums */
+/* v2.3.3664: whose voice is his own recording, not one of the hums */
 export const LIL_BRO = 'Lil Bro';
 /* the same bro is not heard twice in this long however you reach him */
 const SPEAK_GAP_MS = 600;
@@ -61,7 +61,7 @@ export function voiceOf(name) {
 }
 
 function say(name, k) {
-  if (name === LIL_BRO) return cue('lilBroHmm', k);   /* v2.3.3653: his own "hmm" */
+  if (name === LIL_BRO) return cue('lilBroHmm', k);   /* v2.3.3664: his own "hmm" */
   const v = voiceOf(name);
   return cue(VOICE_CUES[v[0]], k, v[1]);
 }

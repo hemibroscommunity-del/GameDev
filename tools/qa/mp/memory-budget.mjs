@@ -44,7 +44,7 @@
  * line already 0.1 MB away.  Nothing is kept after it: the third trip ends
  * where the second did.
  *
- * v2.3.3653, the owner's recordings of 2026-10-27 (the farm's hoe, can, clay
+ * v2.3.3664, the owner's recordings of 2026-10-27 (the farm's hoe, can, clay
  * and harvest, the forge's hammer, the Woodworker's knife, a door, a fire
  * lit, coins, the bag, Lil Bro's voice): `sound` 30 -> 32 -- RAISED.  They
  * decode to 0.94 MB, measured file by file in a page (the coins and the hoe at
@@ -61,7 +61,7 @@ export const MEMORY_BUDGET = {
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
   canvases: { name: 'pictures the game draws itself', mb: 96, measured: 89.9,
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
-  sound: { name: 'decoded sound', mb: 32, measured: 26.0,   /* v2.3.3653: 30 -> 32, see the header */
+  sound: { name: 'decoded sound', mb: 32, measured: 26.0,   /* v2.3.3664: 30 -> 32, see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
   heap: { name: 'the page\'s JavaScript objects', mb: 33, measured: 27.5,   /* v2.3.3595: 32 -> 33, see the header */
     what: 'the page\'s JavaScript objects' },

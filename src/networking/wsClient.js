@@ -3889,7 +3889,7 @@ export function setupWebSocket(ctx) {
              too -- the coins landed either way. */
           /* v2.3.3045: unless the caller plays it in time with its own
              picture (the daily chest: ChestReveal, on the coins' rise) */
-          /* v2.3.3653: the owner's coins, "coins (during pickup)" -- the
+          /* v2.3.3664: the owner's coins, "coins (during pickup)" -- the
              spilled coins it replaces still sound a sale and a prize */
           if (!payload.quiet) cue('coinsPickup');
           /* v2.3.2545: dev probe, house style (cf. window.__btLootSprites) and
@@ -4080,7 +4080,7 @@ export function setupWebSocket(ctx) {
           var _pickCue = payload.gem ? 'pickGem' : _gearIn ? 'pickGear' : payload.shard ? 'pickShard'
             : (payload.skull && !(payload.coins > 0)) ? 'pickGear' : null;
           if (_pickCue) cue(_pickCue, (_pickCue === 'pickGear' && !_gearIn) ? 0.6 : 1);
-          /* ═══ v2.3.3653: ...AND THE BAG DRAWN SHUT ═══
+          /* ═══ v2.3.3664: ...AND THE BAG DRAWN SHUT ═══
              The owner: "the last sound is when any object gets picked up and
              placed in your bag" -- anything more than gold (a shard, a gem,
              armour, a weapon into the stash, a remnant, your own things

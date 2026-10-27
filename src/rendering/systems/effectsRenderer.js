@@ -16508,7 +16508,7 @@ export class EffectsRenderer {
     while (ent._farmBeat < beats.length && t >= beats[ent._farmBeat]) {
       ent._farmBeat++;
       const share = peerShare(S, ox, oy);
-      /* v2.3.3653: the beat's own part of the owner's hoe or clay, in turn */
+      /* v2.3.3664: the beat's own part of the owner's hoe or clay, in turn */
       const snd = share > 0 ? farmBeatPlay(fx.step, ent._farmBeat - 1, share) : null;
       if (snd && typeof window !== 'undefined' && window.BT_AUDIO) {
         const o = snd.offset != null ? { offset: snd.offset, duration: snd.duration, vol: snd.vol, rate: snd.rate } : { vol: snd.vol, rate: snd.rate };

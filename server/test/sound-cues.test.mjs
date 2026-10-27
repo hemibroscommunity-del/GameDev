@@ -327,7 +327,7 @@ for (const p of files) {
 
 /* ── 8. the door ── */
 {
-  const a = GD.indexOf('enterBuilding: function enterBuilding(');   /* v2.3.3653: (kind) -- a dungeon's mouth keeps the knock */
+  const a = GD.indexOf('enterBuilding: function enterBuilding(');   /* v2.3.3664: (kind) -- a dungeon's mouth keeps the knock */
   const body = GD.slice(a, GD.indexOf('chatSend: function chatSend()', a));
   check('8a a door is heard: enterBuilding plays the table\'s knock, not beep() (silent since v2.3.1103)',
     a > 0 && /EVENT_SOUNDS\.door/.test(body) && !/this\.beep\(/.test(body));
@@ -569,7 +569,7 @@ for (const p of files) {
   check('11z ...and one asleep snores on (you, a player near you, a townsperson copying you)',
     /SNORE_EVERY_MS = \d+/.test(src('src/game/moveSounds.js')) && /cue\('snore'\)/.test(MS) && /cuePeer\(S, 'snore'/.test(MS) && /cueAt\(S, 'snore'/.test(MS));
   const NV = src('src/game/npcVoices.js');
-  /* v2.3.3653: a talk opened and a quest taken -- the quest panel's subject is
+  /* v2.3.3664: a talk opened and a quest taken -- the quest panel's subject is
      the quest and its status, so taking it is a new subject -- and a keeper
      opening his building; NOT a line popping up over him (the owner: "should
      play when you begin talking to someone or taking a quest") */
@@ -579,7 +579,7 @@ for (const p of files) {
     && (strip(src('src/game/desktopControls.js')).match(/npcSpeaks\(S, npc\)/g) || []).length === 5
     && /npcSpeaks\(S, _pn\)/.test(BTc) && /r === 'opens'/.test(BTc) && !/npcChatter/.test(BTc) && !/BT_AUDIO\.npcChat\(/.test(BTc)
     && !/npcChatter|CHATTER_/.test(strip(NV)));
-  /* v2.3.3653: Lil Bro's own "hmm", the owner's recording -- not a hum */
+  /* v2.3.3664: Lil Bro's own "hmm", the owner's recording -- not a hum */
   check('11za2 Lil Bro speaks in his own "hmm" (the cue lilBroHmm), not a townsperson\'s hum pitched up',
     /export const LIL_BRO = 'Lil Bro';/.test(NV) && /if \(name === LIL_BRO\) return cue\('lilBroHmm', k\);/.test(NV)
       && !/^\s*'Lil Bro':/m.test(NV) && has(EVENT_SOUNDS, 'lilBroHmm') && EVENT_SOUNDS.lilBroHmm[0][0] === 'lil-bro-hmm');
@@ -744,7 +744,7 @@ for (const p of files) {
       && /A\._musicPreview = on \? true : null;/.test(SS) && /if \(A\._musicPreview\) return null;/.test(src('src/game/wheelMusic.js')));
 }
 
-/* ── 14. v2.3.3653: the owner's recordings of 2026-10-27 ──
+/* ── 14. v2.3.3664: the owner's recordings of 2026-10-27 ──
    "You can add more sound effects for farming ... "flat-hoe" for
    blacksmithing ... the other hoe sound is for when you till the dirt ...
    a clay sound for molding the ground (apply fertilizer) ... wood carving

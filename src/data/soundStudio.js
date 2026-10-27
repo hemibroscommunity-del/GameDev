@@ -19,7 +19,7 @@
  * Labels say WHEN, in the player's words ("Your bow shot", "A snowman
  * throwing a snowball"), never the code's. */
 
-/* v2.3.3653: the owner's files of parts (ownerSoundClips.js, plain data):
+/* v2.3.3664: the owner's files of parts (ownerSoundClips.js, plain data):
    part i's slice and volume, as game/farmWork.js farmBeatPlay plays it */
 import { OWNER_SOUNDS } from './ownerSoundClips.js';
 function beat(key, i) {
@@ -343,7 +343,7 @@ export const OTHER_PLAYS = [
   ['bite', 'gather', 'A fish biting', { sample: 'fish-on-hook', opts: { vol: 0.65 } }],
   ['catch', 'gather', 'Landing a fish', { sample: 'catch-splash', opts: { vol: 0.65 } }],
   ['cooked', 'gather', 'A fish cooked at a campfire', { sample: 'cook-success', opts: { vol: 0.6 } }],
-  /* v2.3.3653: the farm's work as it lands (game/farmWork.js farmBeatPlay):
+  /* v2.3.3664: the farm's work as it lands (game/farmWork.js farmBeatPlay):
      the owner's hoe, can and clay, each strike or squeeze its part in turn */
   ['farmHoe', 'gather', 'Digging a bed on your farm: the hoe striking the dirt', { sample: 'farm-hoe', opts: beat('farm-hoe', 0) }],
   ['farmHoe2', 'gather', '...its next strike (three in turn)', { sample: 'farm-hoe', opts: beat('farm-hoe', 1) }],
@@ -392,7 +392,7 @@ export const SAMPLE_SOURCES = {
   'flip-lose': '"Classic Game Action Negative 4" (floraphonic 224418)',
   'ui-click': '"Mouse Click" (matthewvakaliuk73627 290204)',
   'ui-equip': '"Item Equip" (freesound_community 6904)',
-  /* v2.3.3653: the owner's recordings of 2026-10-27 (assets/sfx-source/2026-10-27/) */
+  /* v2.3.3664: the owner's recordings of 2026-10-27 (assets/sfx-source/2026-10-27/) */
   coins: '"coins-05" (anthousai, Freesound 336571)',
   'bag-close': '"closebag" (triqystudio, Freesound 467605)',
   'lil-bro-hmm': '"hmm" (roses1401, Freesound 482422)',

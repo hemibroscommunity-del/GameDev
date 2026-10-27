@@ -2425,7 +2425,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        the farm's sheds) -- twelve call sites, one sound.  Stamped as the
        gesture's own sound, so the Enter button's menu click yields to it
        (uiClick: a specific sound wins the tap).
-       v2.3.3653: the door is the owner's recording of one opening ("doors
+       v2.3.3664: the door is the owner's recording of one opening ("doors
        opening ("entering" town buildings)"); a dungeon's mouth, a cave,
        keeps the knock (`kind` 'mouth': EVENT_SOUNDS.caveMouth). */
     if (!this.ctx || this.muted) return;
@@ -3290,7 +3290,7 @@ BT_AUDIO.SFX_MANIFEST = {
      Breath Male", 1.72 s, cut by the same tool; its level in sprintBreath.js.
      ~0.33 MB decoded. */
   'sprint-breath': '/sfx/voice/sprint-breath.mp3',
-  /* ═══ v2.3.3653: THE OWNER'S RECORDINGS OF 2026-10-27 ═══
+  /* ═══ v2.3.3664: THE OWNER'S RECORDINGS OF 2026-10-27 ═══
      Eleven Freesound downloads (assets/sfx-source/2026-10-27/, CREDITS.md),
      cut and levelled by tools/audio/cut_owner_sounds.py (ownerSoundClips.js):
      the coins of a pickup (48 kHz: nearly all of it is above 6 kHz), the bag

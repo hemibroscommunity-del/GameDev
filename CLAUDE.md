@@ -1003,7 +1003,7 @@ remnant to migrate server-side, not a mode to preserve.
       BroTown, the cue table, the studio and mp-cuelevels, fishing keeping its
       bite -- most likely §3's tree "fleshy sound" of the 2026-10-19 notes
       too; `mp-gatherquiet`: docs/specs/sounds-2026-10-19.md §9.
-    - since v2.3.3653 THE OWNER'S RECORDINGS OF 2026-10-27 -- eleven Freesound
+    - since v2.3.3664 THE OWNER'S RECORDINGS OF 2026-10-27 -- eleven Freesound
       downloads (assets/sfx-source/2026-10-27/), each where the owner said:
       - the farm's work lands to their hoe (a dig, three strikes in turn), can
         (a watering) and clay (fertilizing, two squeezes in turn) --

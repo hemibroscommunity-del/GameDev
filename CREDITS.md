@@ -100,7 +100,7 @@ uploader's sounds as Attribution NonCommercial (CC BY-NC 3.0), which the
 supporter pass rules out (above). Its cut is kept, commented out, in
 `cut_footsteps.py`, should the license ever allow it.
 
-#### The owner's recordings of 2026-10-27 (v2.3.3653)
+#### The owner's recordings of 2026-10-27 (v2.3.3664)
 
 Eleven Freesound downloads the repository owner uploaded on 2026-10-27, kept
 as supplied in `assets/sfx-source/2026-10-27/` (its README names each, by the

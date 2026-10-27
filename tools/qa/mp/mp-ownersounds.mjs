@@ -322,7 +322,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`9a. a tap on Ace (${tapped ? tapped.result : 'no tap'}): his own hum (${aceVoice.map((c) => c.name).join('+') || 'nothing'}; his is npcVoice${aceOf[0]})`,
     !!tapped && tapped.result === 'flip' && aceVoice.length === 1 && aceVoice[0].played && aceVoice[0].name === 'npcVoice' + aceOf[0], { tapped, aceVoice, aceOf });
   await P.page.waitForTimeout(800);   /* past a talk's own gap */
-  /* v2.3.3653: a line popping up over a townsperson is QUIET now -- the owner:
+  /* v2.3.3664: a line popping up over a townsperson is QUIET now -- the owner:
      the hums "should play when you begin talking to someone or taking a
      quest" (game/npcVoices.js); in town one came every few seconds */
   const chatter = await P.page.evaluate(async () => {

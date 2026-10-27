@@ -65,7 +65,7 @@ const PROMISED = {
   swapSword: 0.4, swapBow: 0.4, swapStaff: 0.4, treeFelled: 1.4,
   /* v2.3.3499: the trap's own sounds */
   trapSet: 0.7, trapShake: 0.4, trapSnap: 1.6, trapMiss: 1.0,
-  /* v2.3.3653: the owner's recordings of 2026-10-27, levelled by the same
+  /* v2.3.3664: the owner's recordings of 2026-10-27, levelled by the same
      cutter -- the door, a cave's knock, a fire lit, the farm's harvest, the
      forge's hammer, the Woodworker's knife, the bag, the coins, Lil Bro (the
      door was 0.65, the harvest 0.6, the anvil 0.5 and the bag 0.25 before) */
