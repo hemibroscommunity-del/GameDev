@@ -268,7 +268,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await walkUpToLil();
   const before6 = await lineText();
   rec.ok('6: after a false start his line is still the dare as written (a false start is not a loss)',
-    /^Scared\? Tap Race!/.test(before6 || ''), before6);
+    /^Scared\?!? Tap Race!/.test(before6 || ''), before6);   /* v2.3.3611: "Scared?! Tap Race! ... or it's a skill issue!" */
   const go6 = await toRaceGo();
   await H.clickSel(P, '[data-qa="race-go"]').catch(() => {});
   const gun6 = await H.waitFor(P, (S) => S._race && S._race.phase, (ph) => ph === 'run', { timeout: 9000, label: 'the gun' }).catch(() => null);
@@ -292,7 +292,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await walkUpToLil();
   const after6 = await lineText();
   rec.ok('6: ...and his line owns up to it, in his voice ("I wasn\'t even trying.")',
-    /^I wasn't even trying\./.test(after6 || ''), after6);
+    /\bI wasn't even trying\./.test(after6 || ''), after6);   /* v2.3.3611: "GG EZ! I wasn't even trying." */
   rec.ok('6: ...and still ends on Race! for the rematch', await toRaceGo());
 
   stopAlive();
