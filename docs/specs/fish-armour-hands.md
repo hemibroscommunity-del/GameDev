@@ -82,3 +82,40 @@ on purpose, v2.3.1123):
 `BT_FISHARM_DUMP=1` writes each outfit's worst frame with the overlay, without
 it, and with the skin it lays in red. `mp-fishhand` (the older test of the grip
 over the shirt and greaves) still passes.
+
+## v2.3.3642: the grip lifts the hand, not the trousers
+
+The owner, 2026-10-27: "check all the animations for ghost remnants of either a
+body beneath or areas for cleanup". `mp-ghostaudit` photographed an angler in
+pink trousers under iron armour, and every reel frame had a patch of pink on the
+greaves beside the reel hand, up to 54 px.
+
+At the reel the rod runs down past the hip, and the grip is every body pixel
+within GRIP_R of the rod. So the trousers there rode over the greaves with the
+hand (v2.3.2278 lifted the grip over the greaves for the hand alone).
+
+Now a grip pixel that lies on the greaves' own pixels and is a trouser on the
+raw frame (the recolour's own trouser test, on the art before any colour) is
+left out of the overlay, and the greaves show. The hand still rides over the
+greaves. This holds with a plate and with greaves alone: `_chestFrameOf`
+carries the greaves' frame either way now.
+
+`?fishgriptrousers=1` is the grip as before. `window.__btFishGripTrousers(on)`
+flips it on a running page, and `window.__btFishTop.legsHeld` counts the
+trouser pixels the last overlay left to the greaves.
+
+**Test.** `mp-fisharmour` dresses the bro in pink trousers too. In each outfit
+with greaves (b, c, e) the overlay lays at most a blend's worth of pink over the
+gear, and the same frames with the grip as before lay the patch the test guards
+against.
+
+Its run, 17 checks of 17:
+
+| outfit | trousers laid over the gear, most in a frame | with the grip as before |
+|---|---|---|
+| b. an iron plate and iron greaves | 0 | 17 |
+| c. a black steel plate and copper greaves | 1 | 6 |
+| e. greaves alone | 1 | 41 |
+
+The hand on the rod still rides over the greaves alone (185 px of skin over 8
+frames), and every plate's gauntlet is drawn as before.

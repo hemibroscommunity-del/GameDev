@@ -4158,6 +4158,9 @@ function _chestFrameOf(worn) {
   }
   /* ...and the greaves' frame: the gauntlet keeps off them but at the rod */
   if (plate) plate.legs = legs;
+  /* v2.3.3642: greaves alone too -- the grip keeps the trousers off them
+     (see THE GRIP LIFTS THE HAND, NOT THE TROUSERS) */
+  else if (legs) plate = { tex: null, tint: 0xffffff, legs };
   return plate;
 }
 /* the gauntlet's shading: the raw skin's shade (luminance) from its shadow to
@@ -4168,6 +4171,19 @@ const FISH_SKIN_DARK = 70, FISH_SKIN_LIGHT = 165, FISH_STEEL_LO = 0.15, FISH_STE
 const FISH_RIM_MIN = 55;   /* the rim's red channel at least this: the outline's is lower */
 const FISH_PINE_RG = 60;   /* red over green past this is skin, not the pine rod (toolRecolor's pine: 46 at most) */
 const _FISH_GRIP_OVER_PLATE = (() => { try { return new URLSearchParams(location.search).get('fishgrip') === '1'; } catch (e) { return false; } })();
+/* v2.3.3642: `?fishgriptrousers=1` -- the grip lifts the trousers over the
+   greaves again, as before (THE GRIP LIFTS THE HAND, NOT THE TROUSERS);
+   `window.__btFishGripTrousers(on)` flips it on a running page (mp-fisharmour
+   compares one frame both ways): the overlays made so far are forgotten, not
+   destroyed, as one may be on screen this frame (QA only, a test page) */
+let _FISH_GRIP_TROUSERS = (() => { try { return new URLSearchParams(location.search).get('fishgriptrousers') === '1'; } catch (e) { return false; } })();
+if (typeof window !== 'undefined') {
+  window.__btFishGripTrousers = (on) => {
+    _FISH_GRIP_TROUSERS = !!on;
+    _fishTopCache.clear();
+    return _FISH_GRIP_TROUSERS;
+  };
+}
 /* ═══ v2.3.2854: THE ROD IS LOOKED FOR ON THE RAW FRAME ═══
    `rodTex` is the undrawn fish frame at the same index.  Since fishing keeps the
    drawings (getFishFrame), `bodyTex` can carry a player's tattoo.  v2.3.2761
@@ -4189,7 +4205,9 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
   /* v2.3.3623: the plate under the overlay, {tex, tint} (see THE PLATE DRAWS
      ITS OWN HANDS) */
   const _plate = (!_FISH_GRIP_OVER_PLATE && plate && plate.tex && plate.tex.source && plate.tex.source.resource) ? plate : null;
-  const _legs = (_plate && _plate.legs && _plate.legs.source && _plate.legs.source.resource) ? _plate.legs : null;
+  /* v2.3.3642: the greaves whether or not a plate is worn (a plate only:
+     v2.3.3623) -- THE GRIP LIFTS THE HAND, NOT THE TROUSERS */
+  const _legs = (!_FISH_GRIP_OVER_PLATE && !_FISH_GRIP_TROUSERS && plate && plate.legs && plate.legs.source && plate.legs.source.resource) ? plate.legs : null;
   const key = (bodyTex.uid != null ? bodyTex.uid : '') + (_rod ? '/' + _rod.uid : '') + (_plate ? '/p' + _plate.tex.uid + ':' + _plate.tint : '') + (_legs ? '/l' + _legs.uid : '') + '|fishtop';
   const hit = _fishTopCache.get(key);
   if (hit) { _fishTopCache.delete(key); _fishTopCache.set(key, hit); return hit; }
@@ -4286,6 +4304,19 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
        The body under the overlay is not touched (the masked bake), so no gap
        opens round the hand.  `?fishgrip=1` is the grip as before. */
     let covered = null, gauntlet = null, ramp = null, nG = 0;
+    /* the greaves' own pixels: the arm under them stays under them -- only
+       the hand at the rod (the grip) rides over them, as it always has
+       (v2.3.3642: read here, for the trousers below too) */
+    let legsOp = null;
+    if (_legs) {
+      const lc = document.createElement('canvas'); lc.width = W; lc.height = H;
+      const lctx = lc.getContext('2d');
+      lctx.imageSmoothingEnabled = false;
+      drawGearFrame(lctx, _legs, 0, 0, W, H);
+      const ld = lctx.getImageData(0, 0, W, H).data;
+      legsOp = new Uint8Array(W * H);
+      for (let i = 0; i < W * H; i++) if (ld[i * 4 + 3] > 60) legsOp[i] = 1;
+    }
     if (_plate) {
       const pc = document.createElement('canvas'); pc.width = W; pc.height = H;
       const pctx = pc.getContext('2d');
@@ -4312,18 +4343,6 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
           const L = Math.round(pd[o] * 0.299 + pd[o + 1] * 0.587 + pd[o + 2] * 0.114);
           if (L >= FISH_STEEL_INK) all.push(L * 16777216 + ((pd[o] << 16) | (pd[o + 1] << 8) | pd[o + 2]));
         }
-      }
-      /* the greaves' own pixels: the arm under them stays under them -- only
-         the hand at the rod (the grip) rides over them, as it always has */
-      let legsOp = null;
-      if (_legs) {
-        const lc = document.createElement('canvas'); lc.width = W; lc.height = H;
-        const lctx = lc.getContext('2d');
-        lctx.imageSmoothingEnabled = false;
-        drawGearFrame(lctx, _legs, 0, 0, W, H);
-        const ld = lctx.getImageData(0, 0, W, H).data;
-        legsOp = new Uint8Array(W * H);
-        for (let i = 0; i < W * H; i++) if (ld[i * 4 + 3] > 60) legsOp[i] = 1;
       }
       if (all.length && rd !== d) {
         ramp = Float64Array.from(all).sort();
@@ -4364,7 +4383,18 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
         }
       }
     }
-    let _plateHeld = 0;
+    let _plateHeld = 0, _legsHeld = 0;
+    /* ═══ v2.3.3642: THE GRIP LIFTS THE HAND, NOT THE TROUSERS ═══
+       The owner, 2026-10-27: "check all the animations for ghost remnants".
+       mp-ghostaudit's angler in pink trousers under iron greaves: a pink patch
+       on the thigh beside the reel hand, up to 54 px.  The grip is every body
+       pixel within GRIP_R of the rod, and at the reel the rod runs down past
+       the hip, so the TROUSERS there rode over the greaves with the hand
+       (v2.3.2278 lifted the grip over them for the hand alone).  A grip pixel
+       on the greaves that is a trouser on the raw frame (the recolour's own
+       test) is left to the greaves.  `?fishgriptrousers=1` is the grip as
+       before. */
+    const trouserAt = (o) => rd[o + 3] > 180 && rd[o + 1] >= rd[o] - 10 && rd[o + 1] > rd[o + 2] + 8 && rd[o] < 150;
     const tr = _plate ? ((_plate.tint >> 16) & 255) : 255, tg = _plate ? ((_plate.tint >> 8) & 255) : 255, tb = _plate ? (_plate.tint & 255) : 255;
     for (let y = headBot + 1; y < H; y++) {
       for (let x = 0; x < W; x++) {
@@ -4381,7 +4411,8 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
           continue;
         }
         if (!keep[idx] || d[o + 3] <= 60) { d[o + 3] = 0; continue; }
-        if (covered && covered[idx] && !isRodAt(o)) { d[o + 3] = 0; _plateHeld++; }
+        if (covered && covered[idx] && !isRodAt(o)) { d[o + 3] = 0; _plateHeld++; continue; }
+        if (legsOp && legsOp[idx] && trouserAt(o) && !isRodAt(o)) { d[o + 3] = 0; _legsHeld++; }
       }
     }
     /* v2.3.1914 QA probe: how much of this overlay is rod and how much is the
@@ -4399,7 +4430,7 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
           if (isRodAt(o)) rod++; else grip++;
         }
       }
-      window.__btFishTop = { rod, grip, gripR: GRIP_R, w: W, h: H, plate: !!_plate, plateHeld: _plateHeld, gauntlet: nG };
+      window.__btFishTop = { rod, grip, gripR: GRIP_R, w: W, h: H, plate: !!_plate, plateHeld: _plateHeld, gauntlet: nG, legsHeld: _legsHeld };
     }
     ctx.putImageData(img, 0, 0);
     const tex = new Texture({ source: Texture.from(cv).source });

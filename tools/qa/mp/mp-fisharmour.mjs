@@ -28,6 +28,15 @@
  *   e. greaves alone: the reel hand still rides over the greaves (v2.3.2278),
  *   and in every outfit the rod is still lifted over the gear.
  *
+ * v2.3.3642, THE GRIP LIFTS THE HAND, NOT THE TROUSERS: the owner's "check all
+ * the animations for ghost remnants" -- mp-ghostaudit's angler in pink
+ * trousers under iron greaves had a pink patch on the thigh by the reel hand,
+ * up to 54 px: the grip lifted the trousers over the greaves with the hand.
+ * The bro wears pink trousers here, and in every outfit with greaves (b, c, e)
+ * the overlay lays none of their colour over the gear -- where the same frame
+ * with the grip as before (`__btFishGripTrousers(true)`) lays it, so the test
+ * sees the patch it guards against.
+ *
  *   BT_FISHARM_DUMP=1  writes each outfit's worst frame with the overlay,
  *   without it, and with the skin it lays in red (out/fisharmour-<key>.png, 4x).
  *
@@ -72,6 +81,8 @@ const measure = (P, dump) => P.page.evaluate((dump) => {
     /* the bro's skin is purple (120, 72, 180) for this test: nothing else he
        wears or holds is (copper, steel, pine, olive, the boots' grey) */
     const skin = (p, i) => p[i + 3] > 100 && p[i + 2] > p[i] + 15 && p[i] > p[i + 1] + 15 && p[i + 2] > 50;
+    /* v2.3.3642: the trousers are pink (214, 112, 168): redder than blue, unlike the skin */
+    const pink = (p, i) => p[i + 3] > 100 && p[i] > 110 && p[i + 2] > 70 && p[i] > p[i + 2] && p[i + 1] < p[i] * 0.72 && p[i + 2] > p[i + 1] * 1.15;
     const A = on.pixels, B = off.pixels;
     /* which of the overlay's rows each picture row is: the head band (its top
        35%, v2.3.1123: the head lifted over the plate's collar) is not the
@@ -83,13 +94,14 @@ const measure = (P, dump) => P.page.evaluate((dump) => {
       const l = hd.toLocal(g);
       return l.y + TH * hd.anchor.y;
     };
-    let laid = 0, lifted = 0, laidHead = 0;
+    let laid = 0, lifted = 0, laidHead = 0, pinkLaid = 0;
     const laidAt = new Uint8Array(A.length / 4), rows = [];
     for (let i = 0; i < A.length; i += 4) {
       if (A[i + 3] < 20) continue;
       const same = Math.abs(A[i] - B[i]) <= 24 && Math.abs(A[i + 1] - B[i + 1]) <= 24 && Math.abs(A[i + 2] - B[i + 2]) <= 24 && Math.abs(A[i + 3] - B[i + 3]) <= 24;
       if (same) continue;
       lifted++;   /* the overlay changed this pixel: the rod, or the grip */
+      if (pink(A, i) && !pink(B, i)) pinkLaid++;   /* v2.3.3642: the trousers laid over the gear */
       if (skin(A, i) && !skin(B, i)) {   /* bare skin laid over the gear */
         const q = i >> 2, ix = q % on.width, iy = (q - ix) / on.width;
         if (rowOf(ix, iy) <= headBot + 1.5) { laidHead++; continue; }   /* a row's give: the head band's last row lands on either side */
@@ -114,7 +126,7 @@ const measure = (P, dump) => P.page.evaluate((dump) => {
       png = cv.toDataURL('image/png');
     }
     const top = window.__btFishTop || null;
-    return { frame: d._animFrame, laid, laidHead, lifted, top, w: on.width, h: on.height, rows: rows.length ? [Math.min(...rows), Math.max(...rows)] : null, png };
+    return { frame: d._animFrame, laid, laidHead, lifted, pinkLaid, top, w: on.width, h: on.height, rows: rows.length ? [Math.min(...rows), Math.max(...rows)] : null, png };
   } catch (e) {
     return { why: 'extract: ' + String(e).slice(0, 120) };
   } finally {
@@ -132,9 +144,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   P.page.on('pageerror', (e) => errs.push(String(e).slice(0, 200)));
   const ready = await P.page.evaluate(() => {
     if (window.__btSetSkin) window.__btSetSkin('purple');
-    return { gear: !!window.__btGearSet, skin: !!window.__btSetSkin };
+    if (window.__btSetPants) window.__btSetPants('pink');   /* v2.3.3642 */
+    return { gear: !!window.__btGearSet, skin: !!window.__btSetSkin, pants: !!window.__btSetPants, flip: !!window.__btFishGripTrousers };
   });
-  rec.ok('setup: the gear store and the skin setter are there; the bro\'s skin is purple (guard)', ready.gear && ready.skin, ready);
+  rec.ok('setup: the gear store and the skin and trouser setters are there; the bro\'s skin is purple, his trousers pink (guard)', ready.gear && ready.skin && ready.pants && ready.flip, ready);
 
   /* Hold the pose rather than walk to water: what is under test is the
      layering of the frames, not the route to them (mp-fishhand's fixture). */
@@ -178,6 +191,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
       try { fs.mkdirSync(path.dirname(out), { recursive: true }); fs.writeFileSync(out, Buffer.from(worst.png.split(',')[1], 'base64')); console.log(`    wrote ${out} (frame ${worst.frame}, ${worst.laid} px laid)`); } catch (e) { console.log('    dump failed: ' + e); }
     }
     const laid = got.map((g) => g.laid), lifted = got.map((g) => g.lifted);
+    /* v2.3.3642: the trousers under greaves, and the same frames with the grip as before */
+    if (o.legs !== 'none') {
+      const pinks = got.map((g) => g.pinkLaid);
+      await P.page.evaluate(() => window.__btFishGripTrousers(true));
+      const before = [];
+      for (let i = 0; i < 60 && before.length < got.length; i++) {
+        const m = await measure(P, false);
+        if (m && m.pinkLaid != null && got.some((g) => g.frame === m.frame) && !before.some((b) => b.frame === m.frame)) before.push(m);
+        await P.page.waitForTimeout(150);
+      }
+      await P.page.evaluate(() => window.__btFishGripTrousers(false));
+      const was = before.map((b) => b.pinkLaid);
+      console.log(`    ${o.label}: trousers laid over the gear ${JSON.stringify(pinks)}, with the grip as before ${JSON.stringify(was)} (frames ${JSON.stringify(before.map((b) => b.frame))})`);
+      rec.ok(`${o.key}. ${o.label}: the grip lays none of the trousers over the greaves (${Math.max(0, ...pinks)} px at most over ${got.length} frames; with the grip as before ${Math.max(0, ...was)})`,
+        got.length >= 3 && Math.max(0, ...pinks) <= EDGE_BLEND, { pinks, was });
+      results[o.key + 'was'] = was;
+    }
     const top = got.length ? got[got.length - 1].top : null;
     console.log(`    ${o.label}: frames ${JSON.stringify(got.map((g) => g.frame))}, skin laid over the gear ${JSON.stringify(laid)} (in the head band ${JSON.stringify(got.map((g) => g.laidHead))}), `
       + `pixels the overlay changes ${JSON.stringify(lifted)}, overlay ${JSON.stringify(top)}${got.length ? '' : ', last: ' + JSON.stringify(why)}`);
@@ -197,6 +227,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         got.length >= 3 && !!top && top.rod > 0 && top.grip > 0 && total > 0, { laid, top });
     }
   }
+  /* the test sees the patch it guards against: the grip as before lays the
+     trousers over the greaves on some frame (the audit's 54 px) */
+  const wasAll = ['b', 'c', 'e'].flatMap((k) => results[k + 'was'] || []);
+  rec.ok(`with the grip as before, the trousers lie over the greaves on some frame (${Math.max(0, ...wasAll)} px at most)`, Math.max(0, ...wasAll) >= 10, wasAll);
   rec.ok('no page errors', errs.length === 0, errs.slice(0, 3));
   await P.ctx.close();
 }
