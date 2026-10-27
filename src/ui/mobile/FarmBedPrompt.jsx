@@ -60,7 +60,7 @@ export function FarmBedPrompt({ stateRef, hidden }) {
   return (
     <div data-farm-bed-prompt={v.step} data-farm-bed={v.i}
       style={{ position: 'fixed', zIndex: 35, left: 'calc(50% + 24px)', transform: 'translateX(-50%)',
-        bottom: 'calc(var(--sheet-h, var(--dash-h)) + 24px + var(--nml-lift, 0px))',
+        bottom: 'calc(var(--sheet-h, var(--dash-h)) + 24px)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, pointerEvents: 'none' }}>
       {v.seeds.length > 1 && (
         <div data-farm-seed-picker="1" style={{ display: 'flex', gap: 4, pointerEvents: 'auto' }}>

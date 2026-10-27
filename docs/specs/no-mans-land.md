@@ -910,6 +910,59 @@ switch: the live flag `fightlock: false`. Tests: `nomansland` suite §10.
 - `mp-wheelmap`: on Frost Ridge's Lv 6–10 ring the top bar's second line is the
   No man's land line.
 
+## Beside the minimap's name plate (v2.3.3629)
+
+The owner, 2026-10-27: "I think I'd rather have the no man's land skull and
+level just beside the minimap where it lists the zone and level range".
+
+- **Where it was.** The badge (a red skull and the ring number, your own skull
+  a mark on its corner) stood at the bottom of the screen, just over the band.
+  It had to step aside for the shield button in a fight (v2.3.3268,
+  v2.3.3608), and it pushed the interact prompts up while it held the band's
+  middle (`--nml-lift`).
+- **Where it is now.** Just left of the minimap's box, 6 px from it, its middle
+  level with the minimap's name plate. The plate shows the land's name over its
+  level band, so the place, its levels and the skull now read together.
+  - It is as tall as the plate: the pill is 37 px, with a 27 px skull and a
+    23 px number, inside the same 44 px tap target.
+  - The size and place come from the box the minimap publishes for its plate
+    (`window.__btWheelPlate`, wheelMinimap.js), turned into the badge's own
+    containing block's numbers (`nmlBadgeSpot`), so it is right on a phone, a
+    sideways phone and a computer.
+  - **Sideways** the sprint button and Special stand left of the name plate
+    (ShieldButton.jsx `sprintAnchor`) and the attack disc reaches up under the
+    minimap's box. So the badge keeps the same right edge but sits level with
+    the box's TOP. On a screen too short for that (under about 340 px tall the
+    sprint button reaches up beside the box's top), it goes up into the top
+    bar's row above the box. `nmlBadgeSpot` decides from the sprint's and the
+    fight buttons' boxes. mp-nmlfoe's sideways rows caught the first cut behind
+    the sprint button and the second (just under the box) on the attack disc.
+  - In the top bar's row it is mounted on the page's body, as the "Attack
+    <name>?" window is. The top bar is outside the game's wrapper, so there a
+    badge inside the wrapper was drawn under the bar, in place but unseen.
+    Its other places keep it in the wrapper, layered as before (under a
+    level-up's celebration, for one). mp-nmlfoe now also checks the badge is
+    the thing on top at its middle.
+- **What went with the move.**
+  - The stepping aside for the shield button (`nmlBadgePlace` and its game.css
+    rules): nothing of the bottom's lies near it now.
+  - `--nml-lift`.
+- **What stays.**
+  - A tap still opens the rules.
+  - The slowly blinking red line along the band's top (v2.3.3600).
+- **The "Attack <name>?" window.** On a wide screen it sits beside the minimap,
+  so it now counts the badge among the cards it must not cover, and moves down
+  under the badge where it would.
+
+Tests:
+- `mp-nomansland` step 1: the badge's right edge is just left of the minimap's
+  box, its middle within the plate, a 44 px target.
+- `mp-nmlfoe` step 10: the same at 320, 360, 375, 390 and 430 px; sideways at
+  844 x 390 level with the box's top, and at 667 x 320 in the top bar's row.
+  At every width it is clear of the shield,
+  the bell, the weapon button, the disc, the sprint button and the fight's
+  buttons. The one exception before this, the 320 px phone's bell, is gone.
+
 ## Decisions for the owner
 
 - **v2.3.3316, decided:** the tools drop and Diego sells them back; a player

@@ -109,7 +109,12 @@ export const pvpLungeMethods = {
      switch off (the game as it was). */
   _pvpDazed(ps, now) {
     if (!ps || this._pvpLungeOff()) return false;
-    return (typeof now === 'number' ? now : Date.now()) < (ps._dazeUntil || 0);
+    const t = typeof now === 'number' ? now : Date.now();
+    /* v2.3.3634: a snowman's FREEZE stops the same things a daze does
+       (monsterstatus.js FREEZE: no walk, swing, roll or shield) -- an honest
+       phone refused them already, the worker now too (found by the review
+       of v2.3.3620) */
+    return t < (ps._dazeUntil || 0) || t < (ps._freezeUntil || 0);
   },
 
   /* The strike half of a sworddash that named player `pid`.  Called from
