@@ -17,7 +17,9 @@
  *   4. the Points window's count starts at 0 (InfoPopup), [+] adds every
  *      point, Spend refuses at 0;
  *   5. the Equipment tab's figure faces southeast, its crop centred on the
- *      mirrored figure. */
+ *      mirrored figure -- since v2.3.3608 southwest again (the owner, 2026-10-26:
+ *      "I also like the Southwest view of the character in the dashboard
+ *      preview better"); the crop still follows a mirrored facing. */
 import { readFileSync } from 'fs';
 
 let failures = 0;
@@ -107,11 +109,12 @@ check('4: the count starts at 0 and [+] can reach every point; [-] stops at 0',
 check('4: Spend sends nothing at 0, and says how to add one',
   /if \(stepMax && stepN < 1\) return;/.test(pop) && /'Add points with \+'/.test(pop));
 
-/* ── 5. the Equipment tab faces southeast ── */
+/* ── 5. the Equipment tab's facing (v2.3.3608: southwest again), its crop
+   still following a mirrored facing ── */
 const hero = read('src/ui/mobile/sheet/HeroExpanded.jsx');
 const cv = read('src/ui/mobile/sheet/CharacterView.jsx');
-check('5: the Equipment tab\'s figure faces southeast, its crop centred on the mirrored figure',
-  /dir="southeast"\s*\n\s*crop/.test(hero) && /cropShift\(size, dir\)/.test(cv) && /southeast: 1, west: 1, northwest: 1/.test(cv));
+check('5: the Equipment tab\'s figure faces southwest (v2.3.3608), the crop still centring a mirrored figure',
+  /dir="southwest"\s*\n\s*crop/.test(hero) && /cropShift\(size, dir\)/.test(cv) && /southeast: 1, west: 1, northwest: 1/.test(cv));
 
 if (failures) { console.log(`\n${failures} FAILED`); process.exit(1); }
 console.log('\nall owner-notes-2026-10-22 checks passed');
