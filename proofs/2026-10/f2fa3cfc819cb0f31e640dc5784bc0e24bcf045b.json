@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f2fa3cfc819cb0f31e640dc5784bc0e24bcf045b",
+  "tree": "6c03d9ed9d250451b1d05547d846e6120348f06d",
+  "committedAt": "2026-10-27T13:03:49-07:00",
+  "subject": "Your new recordings, each where you said: the farm's hoe, can, clay and harvest, the forge's hammer, the Woodworker's knife, a door, a fire lit, coins, the bag, Lil Bro (v2.3.3664) (#1151)",
+  "files": 6635,
+  "bytes": 769524469,
+  "listingSha256": "a026c71ed409c6f2e399fe3824c76bdf8bbcd7659e14c9eb496eed51a417781a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
