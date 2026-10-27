@@ -53,6 +53,7 @@ import { CODEX } from '../src/codex.js';
 import { HARDEN } from '../src/hardening.js';
 import { PETBOOK } from '../src/petbook.js';
 import { QUEST_REWARDS, QUEST_DORMANT, QUEST_RETIRED } from '../src/data.js';
+import { KILL_ROLL } from '../src/killroll.js';
 
 function makeState() {
   const store = new Map();
@@ -104,10 +105,18 @@ function revive(m) {
   m._burstDone = true; m._burstUntil = 0; m._burstKiller = null; m._armedBy = null; m._trapJudgeAt = 0;
   m.dmgByPlayer = Object.create(null);
 }
+/* v2.3.3673: every kill rolls the kill's 1 to 10,000 (killroll.js), so a kill
+   no step forced could land a 1 -- Natural One, 1 in 10,000 -- or the iron
+   blade's numbers (Iron Great Sword, 1 in 500), and a later step's count was
+   off: #1115's CI met it at 2c (Natural One on the second kill).  A kill no
+   step forces a roll for rolls the last face, past every drop's numbers, so
+   the suite says the same every run; 2d-2f still force their 1s. */
 function kill(m, contribs, killerId) {
   revive(m);
   for (const [pid, d] of Object.entries(contribs)) m.dmgByPlayer[pid] = d;
   m.hp = 0;
+  if (!(room._killRollForced instanceof Map)) room._killRollForced = new Map();
+  if (killerId && !room._killRollForced.has(killerId)) room._killRollForced.set(killerId, KILL_ROLL.SIDES);
   room._resolveMonsterKill(WHEEL_ZONE, m, killerId, room.playerState[killerId], 'melee');
 }
 const aMonster = () => wheel.find((m) => m.home === 'frost' && !m.tier) || wheel[0];
