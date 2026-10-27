@@ -690,6 +690,15 @@ remnant to migrate server-side, not a mode to preserve.
       unchanged); kill switches `freezehit`, `goohold`, `wobble`;
       `monsterstatus` §3b/§6b/§10b, `mp-elemhits`:
       docs/specs/stronger-elem-hits.md.
+    - since v2.3.3621 THE MUMMY'S ROAR -- the same list: "a roar, wound up so
+      you can see it coming, that blows you back from a few steps away": a
+      kit by ELEMENT (telegraph.js `TELEGRAPH.ELEM_KITS.wind`, `_kitFor`: an
+      archetype's kit first), 1 s wound up ("ROAR!", a ring of 150 px, the
+      owner's roar higher, cue `mummyRoar`), then everyone in the ring half a
+      hit through the kit's row of the hit door and blown 130 px over 420 ms
+      (`m._gustPx`/`_gustMs` for that blow; the room granted), 8 s cooldown;
+      kill switch `mummyroar: false`; `mummy-roar` suite, `mp-elemhits`:
+      docs/specs/mummy-roar.md.
   - Since v2.3.2997 the TOWN IS 1.15x AND THE VIEW 25% FURTHER OUT -- the
     owner: "Change buildings from 1.5x to 1.15x and let me see what making the
     default scale looks like about 25% more zoomed out for everything by
