@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "801fb666df08b52b297990b7a7607e35fdb19b70",
+  "tree": "eb641f9ba374246ad34d08de0219b4488d958d5b",
+  "committedAt": "2026-10-26T20:34:02-07:00",
+  "subject": "Upright, TRAP is a round button beside the attack disc, clear of the shield button (v2.3.3617) (#1124)",
+  "files": 6570,
+  "bytes": 762480411,
+  "listingSha256": "46ca00bc3f3098b87c60d35a06df97836f75eaae453e1c21da1557ea01addba8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
