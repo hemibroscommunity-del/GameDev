@@ -37,6 +37,7 @@ import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegi
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine; v2.3.2854: + the file's key mask */
 import { garmentBands, inGarmentBand, judgeGarments, GC_PANTS, GC_BOOT, GC_SKIN, GC_DARK } from './garmentConfine.js';   /* v2.3.3658: trousers and boots painted where they are */
+import { toolWoodMask } from './toolWood.js';   /* v2.3.3648: the pickaxe keeps its wood */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 /* v2.3.1513: seven more tones at the light end (owner: "more white tan and
@@ -926,6 +927,15 @@ const _garmentLeft = Object.create(null);
 if (typeof window !== 'undefined') {
   window.__btGarmentSpecks = () => ({ on: !GARMENT_SPECKS_OFF, left: { ..._garmentLeft } });
 }
+/* v2.3.3648: `?pickwood=0` is the game as it was: the mining sheets' pickaxe
+   painted with the skin (its wood) and the boots (its steel) like everything
+   else (recolorBodyToCanvas `toolWood`, toolWood.js).  And, for QA, how many
+   of the pickaxe's pixels each mining bake kept, by sheet. */
+const PICK_WOOD_OFF = (() => { try { return /[?&]pickwood=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const _pickWoodKept = Object.create(null);
+if (typeof window !== 'undefined') {
+  window.__btPickWood = () => ({ on: !PICK_WOOD_OFF, kept: { ..._pickWoodKept } });
+}
 /* v2.3.1991: which sheet the bake below is for.  recolorBodyToCanvas takes an
    IMAGE, not a pose and a direction, so the probe inside it cannot name what it
    just measured -- and keying the probe by frame COUNT picked the 14-frame
@@ -961,7 +971,9 @@ let _bakeTag = '';
    a sword swing throws the torso around far more than a jog bob, so its frames
    are all honest outliers of each other and correcting them against a median
    costs ink rather than steadying it -- measured, on sword-south-torso. */
-export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art, frameW, steadyArt, eyeBlankRects, bootsUnderLegs, legsUnder, torsoStrip) {
+/* v2.3.3648: `toolWood` -- a mining sheet: its pickaxe keeps its own colours
+   (toolWood.js says which pixels it is, read off the ORIGINAL art below). */
+export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art, frameW, steadyArt, eyeBlankRects, bootsUnderLegs, legsUnder, torsoStrip, toolWood) {
   const FW = (typeof frameW === 'number' && frameW > 0) ? Math.round(frameW) : FRAME_W;
   const _sheetName = (img && typeof img.src === 'string') ? img.src.replace(/[?#].*$/, '').replace(/^.*\//, '') : '';   /* v2.3.3658: QA */
   /* v2.3.1108: when the caller knows this sheet's logical frame height, restore
@@ -978,6 +990,21 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   const d = imgData.data;
   const w = cv.width, h = cv.height;
   const frames = Math.max(1, Math.floor(w / FW));
+  /* ═══ v2.3.3648: THE PICKAXE KEEPS ITS WOOD ═══
+     The mining sheets draw the pickaxe in its own wood and steel, not in the
+     magenta key the axe and the rod are coloured from (toolRecolor.js), and its
+     wood is the skin's hue family: the skin test below took the handle and the
+     head's rim, and a green bro mined with a green pickaxe (mp-ghostaudit).
+     Its pixels are found on the original art and passed over by every test
+     below -- skin, shirt, trousers, boots, the drawings' masks -- so they keep
+     the colours they are painted.  The mining sheets only: the walking sheets'
+     own skin is pale enough to pass the wood's test (toolWood.js). */
+  const tool = (toolWood && !PICK_WOOD_OFF) ? toolWoodMask(d, w, h, FW) : null;
+  if (tool) {
+    let n = 0;
+    for (let p = 0; p < tool.length; p++) if (tool[p]) n++;
+    _pickWoodKept[_sheetName || ('w' + w + 'h' + h)] = n;
+  }
   const shirtPx = shirtT ? _torsoBands(d, w, h, FW, frames) : null;
   /* v2.3.1940: the two drawn regions.  Both masks are collected DURING the
      classification pass below, on the ORIGINAL pixels — after the retint a pale
@@ -1077,6 +1104,7 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
     sf2 = Math.min(255, Math.round(shirtT[2] * SHIRT_FILL_K));
   }
   for (let i = 0; i < d.length; i += 4) {
+    if (tool && tool[i >> 2]) continue;   /* v2.3.3648: the pickaxe, as painted */
     const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
     if (gCls && a > 180 && r < 45 && g < 45 && b < 45) gCls[i >> 2] = GC_DARK;   /* v2.3.3658 */
     if (shirtPx && shirtPx[i >> 2]) {
@@ -1734,7 +1762,9 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
          being baked. */
       eyeT, EYE_MASK[`${pose}-${dir}`], art, undefined, pose === 'jog',
       eyeBlank || null,   /* v2.3.2643 */
-      pose === 'fish');   /* v2.3.3146: the line is boot-grey (recolorBodyToCanvas) */
+      pose === 'fish',   /* v2.3.3146: the line is boot-grey (recolorBodyToCanvas) */
+      null, false,
+      pose === 'mine');   /* v2.3.3648: the pickaxe keeps its wood */
     /* v2.3.2761: the fishing rod's pine, AFTER the skin pass -- pine is the
        skin's hue family, so recolouring before it would hand the rod to the
        skin retint.  See toolRecolor.js.
@@ -2193,7 +2223,8 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, 
        and the bands are no help: in a frame that is all head, the bottom of
        the figure is the chin. */
     const full = recolorBodyToCanvas(img, skinT, GARMENT_SPECKS_OFF ? pantsT : null, GARMENT_SPECKS_OFF ? shoesT : null, null, FRAME_H,
-      undefined, undefined, undefined, undefined, undefined, eyeBlank || null);
+      undefined, undefined, undefined, undefined, undefined, eyeBlank || null,
+      undefined, undefined, undefined, pose === 'mine');   /* v2.3.3648: the pickaxe keeps its wood */
     if (art && artHasInk(art.tattooFace)) _stampHeadInk(full, img, art);   /* v2.3.2862 */
     const cv = document.createElement('canvas');
     cv.width = Math.max(1, Math.round(full.width / HEAD_DS));

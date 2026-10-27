@@ -1227,6 +1227,22 @@ remnant to migrate server-side, not a mode to preserve.
     - `?garmentspecks=0`, `window.__btGarmentSpecks()`,
       tools/qa/garment-confine.mjs (every sheet); `mp-garmentspecks`:
       docs/specs/garment-specks.md.
+  - Since v2.3.3648 THE PICKAXE KEEPS ITS WOOD -- the same audit's green bro
+    mined with a green pickaxe: the mining sheets draw the pickaxe in its own
+    wood (the skin's hue family) and steel (the boots' grey), not in the tool
+    key the axe and the rod are coloured from, and the recolour's skin test took
+    the handle:
+    - src/rendering/toolWood.js finds it on the original art, a pale piece of
+      40+ px the skin test passes and the grey within 6 px of it, and
+      `recolorBodyToCanvas` (`toolWood`) passes those pixels over; the mining
+      sheets only (`pose === 'mine'`): the walking sheets' own skin is pale
+      enough to pass the wood's test;
+    - `?pickwood=0`, `window.__btPickWood()`, tools/qa/tool-wood.mjs;
+      `mp-pickwood`: docs/specs/pickaxe-wood.md;
+    - and the tee's mining sheet had pinholes over the skin (154 px over the
+      fourteen frames, green dots on a green miner's white tee), filled with
+      the tee's own colour by tools/gear/fill-mine-tee-holes.mjs, GEAR_VERSION
+      2.3.3648, `mine-hem` §5.
   - Since v2.3.3520 THE ARMOUR RIDES THE ARM CAPSULE -- the owner: the east
     jog's shoulder on a copper torso, "fix it for all future tiers". The
     capsule (v2.3.200) clones the body over the arm on every east jog with a
