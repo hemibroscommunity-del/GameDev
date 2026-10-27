@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "201a39eb3ceb1941dc9c872891dc8b101e767a5f",
+  "tree": "b18ab3d3d000d87ec3aa6363fbf0961c4c707783",
+  "committedAt": "2026-10-27T01:42:41-07:00",
+  "subject": "A destroyed text label lets go of its style: the long-session memory creep (v2.3.3633) (#1133)",
+  "files": 6590,
+  "bytes": 762726608,
+  "listingSha256": "35174343f890ce1dd9a3be4690344262756f9a4186f621afe07bd4ed867bfdf6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
