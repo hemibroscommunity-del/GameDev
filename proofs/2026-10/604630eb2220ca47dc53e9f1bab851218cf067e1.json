@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "604630eb2220ca47dc53e9f1bab851218cf067e1",
+  "tree": "2e51ecb2618bf29d61dbc5dea5b2ee4694cd6f25",
+  "committedAt": "2026-10-27T15:35:07-07:00",
+  "subject": "The Block button's shield stands on a calm steel-blue disc, off the gold burst that made it read as an attack (v2.3.3677) (#1162)",
+  "files": 6668,
+  "bytes": 774980006,
+  "listingSha256": "70b0cf2bc0833988141aab005b20c411d0d3a39eeab0e5fd849b5dbc2db7cb96",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
