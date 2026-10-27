@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1209a7497d3f501b04c4d9cbe1eacd9d4aae43e5",
+  "tree": "517f7620aaaa6a861e9e2e5e381082ed0a499365",
+  "committedAt": "2026-10-26T18:34:07-07:00",
+  "subject": "Your quick changes: the former leg icon, the figure facing southwest, a shorter level-up, the skull centred, the Goo Grotto for Lv 10 (v2.3.3608) (#1116)",
+  "files": 6555,
+  "bytes": 757757205,
+  "listingSha256": "99780ce03928ec6944089e2432e4bfff2be671d7e933cbde307560e9e5cf82bd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
