@@ -300,13 +300,13 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandScale, HPBAR_BIG_H /* v2.3.3035: that bar at your HP bar's size, over the resource */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, standShadeSpan /* v2.3.3636 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandScale, HPBAR_BIG_H /* v2.3.3035: that bar at your HP bar's size, over the resource */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { clipBoxOrSelf } from '../hairClip.js';   /* v2.3.3459: a stand-in's hair silhouette travels in its stencil box */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
 import { CampfireFx } from '../campfireFx.js'; /* v2.3.2846: the lit-log campfire, in pixel art */
-import { getEquip } from '../gearCatalog.js';
+import { getEquip, onEquipChange } from '../gearCatalog.js';   /* v2.3.3640: + the greaves' change (_rebakeLegBodies) */
 import { getShirt, onShirtChange } from '../traits/shirtCatalog.js';   /* v2.3.3146: + the change, for the dressed stand-in shirts */
 import { getShirtColor, shirtFill, onShirtColorChange } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, recolorStandInSkinSplit, DEFAULT_SKIN_TARGET, bodyArtSeg, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings; v2.3.2856: + the split bake (the cook's drawings on a layer) */
@@ -589,6 +589,11 @@ const PEER_SEAT_MATCH_PX = 32;
  * TRAPS §51 failure is exactly a transform that mixes a resized sheet with an
  * unresized one.  Every consumer of these frames now derives its scale from
  * `texture.height`, so the ONE literal left in the system is this table. */
+/* v2.3.3640: `?standinlegs=0` -- the sword and bow bodies keep their legs
+   under greaves, as before (_noteGreavesShape); `__btStandInLegs.set(on)`
+   flips it on a running page, for a test to compare one frame both ways */
+const STANDIN_LEGS_OFF = (() => { try { return /[?&]standinlegs=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+let _standInLegsUse = !STANDIN_LEGS_OFF;
 const GEAR_STRIP_TWIN = { chop: { suffix: '-220', frames: 12 } };
 
 /* The chop layers' frame width, 2880 / 12.  It is the argument _gearStripFrame
@@ -667,7 +672,7 @@ import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../loo
 import { ICON_PX as DROP_ICON_PX, acquireDropIcon, releaseDropIcon, dropIconTexture, dropIconStats } from '../dropIcons.js';   /* v2.3.3473: a dropped item, drawn as itself */
 import { dropThumb } from '@/game/dropLook.js';   /* v2.3.3473: ...from its bag picture */
 import { dropAlpha, dropFlashing } from '@/game/itemDrop.js';   /* v2.3.3473: ...flashing at its end */
-import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
+import { propShade, SHADE, spanSpec } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow; v2.3.3636: + the farmer lit as his walking figure */
 import { wheelNodeView, WheelFish, wheelFishTop /* v2.3.3035: the harvest's bar over a spot's school */ } from '../wheelNodes.js';   /* v2.3.3012: the Wheel's resources -- drawn near the view, its fishing spots as fish */
 import { updateNodeLabel, killNodeLabel, nodeLabelWorldH, NODE_LABEL_GAP, nodeNameNode } from '../nodeLabels.js';   /* v2.3.3040: the tool, the name and the level over a resource; v2.3.3059: words for the nearest only */
 import { WheelDoors, wheelDoorPicturesHeld } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn; v2.3.3566: + their pictures */
@@ -681,7 +686,7 @@ import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo +
 import { DEFENSE_POPUP_KEY, DEFENSE_POPUP_SRC } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's shield on "Defense Lv N" */
 import { halloweenOn } from '@/game/season.js';   /* v2.3.3395: Halloween week's speech bubbles */
 import { BUBBLE_SKINS, bubbleSkinFor } from '@/game/bubbleSkins.js';   /* v2.3.3522: a townsperson's bubble white, a player's dark */
-import { DropColumnsFx } from '../dropColumns.js';   /* v2.3.3616: each drop a column over the monster */
+import { DropLinesFx } from '../dropLines.js';   /* v2.3.3627: each drop a line of words rising over the monster (v2.3.3616's columns before) */
 import { ElemWindupFx } from '../elemWindup.js';   /* v2.3.3619: a monster's element, seen as it winds up */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
@@ -3009,7 +3014,9 @@ export class EffectsRenderer {
     }
     this.particleLayer = layers.particles;
     this.dmgLayer = layers.damageNumbers;
-    this._dropCols = new DropColumnsFx(this.dmgLayer);   /* v2.3.3616: a kill's drops, in columns (game/dropColumns.js) */
+    /* v2.3.3627: a kill's drops, a line of words each (game/dropLines.js), at a
+       message's size and outline (MSG_FONT_PX, the owner's v2.3.3192 rule) */
+    this._dropLines = new DropLinesFx(this.dmgLayer, { fontPx: MSG_FONT_PX, strokePx: DMG_STROKE_PX * DMG_SCALE });
     this.atmosphereLayer = layers.atmosphere;
     this.screenFXLayer = layers.screenFX;
     this.lootLayer = layers.groundLoot;
@@ -3712,7 +3719,7 @@ export class EffectsRenderer {
        host) keeps serving a stale sheet after the art changes -- that's what
        made a fixed sword outline still look white on-device.  Bump this whenever
        a sword sheet is re-cut, exactly like the player-sprite VERSION. */
-    const SWORD_ART_VERSION = 1102;   /* v2.3.2988: the erased sword's ghost scrubbed out of the body/torso sheets (tools/art/clean-sword-ghosts.py). */ // 1101 (v2.3.2174): de-fringe sweep, see playerSprites VERSION 101. 1100: south frame 0's camera-left EYE was 15px of alpha 0 -- a hole straight through his face, the other eye drawn normally -- grafted from frame 1, whose head is the closest match of the thirteen candidates (mean diff 20.3 vs 47+) and sits at the same pixel offset, so no resampling (tools/graft-sword-south-eye.mjs). This is the SAME defect BOW_ART_VERSION 961 already fixed on the bow's south f0; the sword was never checked. Plus the v2.3.2144 pinhole fill on the sword sheets. 1099: sword-south/-east stand-in strips stored half-res on disk (upscaled in-loader) to shrink the download; 1098: waist re-cut at the true torso->pants boundary (pants-confirmed) so the shirtless east torso isn't chopped at a body line; 1088: leg-erased torso strips (sword jog-legs composite); 1054: fill mid-swing pants holes by copying ONLY body-colored (skin/olive) pixels from the pixel-aligned full sheets into the #132 body holes -- placement untouched (layers stay anchored, no bounce/contamination, no sword imported); residual sword-occluded strip gets a tiny olive neighbor fill; 1053: revert to clean #132 originals; 1041: metal sword north weapon strip; 951: removed baked white blade artifact
+    const SWORD_ART_VERSION = 1103;   /* v2.3.3640: the grey fill the original leaves empty -- between the legs, round the blade -- taken out of the body/torso sheets (tools/art/clean-sword-fill.py): the recolour painted it the player's boot colour.  1102 (v2.3.2988): the erased sword's ghost scrubbed out of the body/torso sheets (tools/art/clean-sword-ghosts.py). */ // 1101 (v2.3.2174): de-fringe sweep, see playerSprites VERSION 101. 1100: south frame 0's camera-left EYE was 15px of alpha 0 -- a hole straight through his face, the other eye drawn normally -- grafted from frame 1, whose head is the closest match of the thirteen candidates (mean diff 20.3 vs 47+) and sits at the same pixel offset, so no resampling (tools/graft-sword-south-eye.mjs). This is the SAME defect BOW_ART_VERSION 961 already fixed on the bow's south f0; the sword was never checked. Plus the v2.3.2144 pinhole fill on the sword sheets. 1099: sword-south/-east stand-in strips stored half-res on disk (upscaled in-loader) to shrink the download; 1098: waist re-cut at the true torso->pants boundary (pants-confirmed) so the shirtless east torso isn't chopped at a body line; 1088: leg-erased torso strips (sword jog-legs composite); 1054: fill mid-swing pants holes by copying ONLY body-colored (skin/olive) pixels from the pixel-aligned full sheets into the #132 body holes -- placement untouched (layers stay anchored, no bounce/contamination, no sword imported); residual sword-occluded strip gets a tiny olive neighbor fill; 1053: revert to clean #132 originals; 1041: metal sword north weapon strip; 951: removed baked white blade artifact
     /* v2.3.1784: the slung shield's LOW clone for this stand-in — added before
        every other layer of the figure, so it can never draw over the body,
        the armour or the weapon.  Its HIGH twin goes in after them.  Same
@@ -3904,6 +3911,7 @@ export class EffectsRenderer {
          overwhelming majority -- and recolorBodyToCanvas takes the same early
          exits it always did. */
       const _art = localBodyArt(false);
+      const _legsUnder = this._legsUnderFor(rec);   /* v2.3.3640 */
       const _bake = (mirror) => {
         /* artForFacing per SHEET direction, exactly as getBodyFrame does: the
            north and northwest stand-ins are back views, so they must take the
@@ -3916,7 +3924,9 @@ export class EffectsRenderer {
            the block pose (frame 1) carried no ink at all on three of the five
            bow facings, and the trouser print landed on every other jog-leg
            frame.  See the note on recolorBodyToCanvas. */
-        const cv2 = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh, null, null, a, _fw);
+        const cv2 = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh, null, null, a, _fw,
+          undefined, undefined, undefined, _legsUnder);   /* v2.3.3640: under greaves, their legs (_legsUnderFor) */
+        if (_legsUnder && cv2.__btLegsClamp && this._legsClampSeen) this._legsClampSeen[rec.url + (mirror ? '|m' : '')] = cv2.__btLegsClamp;   /* QA */
         const cnt = Math.max(1, Math.round(cv2.width / _fw));
         /* v2.3.2775: cropped (_sliceStandIn).  The plain bake keeps its canvas
            until the skin / ink probes below have measured it; the twin has no
@@ -4063,6 +4073,26 @@ export class EffectsRenderer {
        rest of the session, so without this a tattoo drawn mid-session appears
        on the walking body immediately and never on a swing or a block. */
     this._offs.push(onArtChange(this._rebakeBodies), onPatternChange(this._rebakeBodies));   /* v2.3.3074: kept, so destroy() can unsubscribe */
+    /* v2.3.3640: and when greaves go on or come off -- the sword and bow
+       bodies are baked with the legs the greaves leave or without them
+       (_legsUnderFor).  The store notifies on a change only, so the worker's
+       echo of the same greaves does not rebake. */
+    this._legsClampSeen = Object.create(null);
+    this._offs.push(onEquipChange('legs', () => this._rebakeLegBodies()));
+    /* QA: the shapes in, and what each bake under greaves took off */
+    if (typeof window !== 'undefined') {
+      const probe = () => ({ on: _standInLegsUse, legs: getEquip('legs'),
+        shapes: Object.keys(this._greavesShape || {}), clamped: Object.assign({}, this._legsClampSeen) });
+      probe.set = (on) => { _standInLegsUse = !!on && !STANDIN_LEGS_OFF; this._legsClampSeen = Object.create(null); this._rebakeLegBodies(); return probe(); };
+      /* the sword or bow stand-in drawn now -- yours, or a peer's by id: its
+         body and greaves sprites (for a page-side check) */
+      probe.pieces = (id) => {
+        const shown = (set) => (set && set.body && set.body.visible ? set : null);
+        if (id) return shown(this._remoteSwordSprites && this._remoteSwordSprites.get(id)) || shown(this._remoteBowSprites && this._remoteBowSprites.get(id));
+        return shown({ body: this.swordSprite, legs: this.swordLegsSprite }) || shown({ body: this.bowSprite, legs: this.bowLegsSprite });
+      };
+      window.__btStandInLegs = probe;
+    }
     for (const dir of Object.keys(this._swordCfg)) {
       const cfg = this._swordCfg[dir];
       /* ═══ v2.3.2353: THE FALLBACKS ARE NOT LOADED WHEN NOTHING CAN REACH THEM ═══
@@ -5335,7 +5365,7 @@ export class EffectsRenderer {
     this._updateParticles(S, now);
     this._hideSpareDots();   /* v2.3.2331: park the pool's unused sprites */
     this._updateDamageNumbers(S, now);
-    try { this._dropCols.update(S, now, popupZoomK(S)); } catch (e) { /* v2.3.3616: display only */ }
+    try { this._dropLines.update(S, now, popupZoomK(S)); } catch (e) { /* v2.3.3627: display only */ }
     this._updateCatchFlights(S, viewW, viewH, now);
     this._updateFxBursts(S, now);   /* v2.3.1443 */
     this._updateCookSmoke(now);     /* v2.3.2760 */
@@ -13949,6 +13979,10 @@ export class EffectsRenderer {
         if (this._destroyed) return;   /* v2.3.3074: a rebuild let this renderer go while it loaded */
         if (this._gearStrips[key] !== 'loading') return;   /* v2.3.3439: let go of while it loaded (_dropGearStrip) */
         const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+        /* v2.3.3640: the greaves' shape, for the sword and bow bodies under
+           them (_noteGreavesShape) -- read here, while the picture is still
+           in hand: the strip is kept on the graphics chip only below */
+        if (slot === 'legs' && !_twin && (pose === 'swing' || pose === 'bowshot')) this._noteGreavesShape(pose, dir, img, W, H);
         const n = _twin ? _twin.frames : Math.max(1, Math.round(W / fw));
         const w = _twin ? Math.round(W / n) : fw;
         const packed = packTrimmed(img, w, H, n);
@@ -14228,6 +14262,62 @@ export class EffectsRenderer {
     return { art: a, seg: bodyArtSeg(a) };
   }
 
+  /* ═══ v2.3.3640: THE STAND-INS' LEGS UNDER GREAVES ═══
+     (the why: playerSkins.js _clampLegsUnder.)  The greaves' swing and bow
+     strips are warmed behind the loading screen (the v2.3.2500 loop above)
+     and kept on the graphics chip only, so their shape is read once, as each
+     loads, and kept a bit a pixel: ~0.47 MB for all eight, against ~3.8 MB
+     as bytes.  Every metal's greaves are the one steel art
+     (gearArtSafe), so the shape is keyed by pose and facing alone.
+     `?standinlegs=0` is the game as it was. */
+  _noteGreavesShape(pose, dir, img, W, H) {
+    if (STANDIN_LEGS_OFF) return;
+    try {
+      const cv = document.createElement('canvas');
+      cv.width = W; cv.height = H;
+      const cx = cv.getContext('2d', { willReadFrequently: true });
+      cx.drawImage(img, 0, 0);
+      const d = cx.getImageData(0, 0, W, H).data;
+      cv.width = 0; cv.height = 0;
+      const bits = new Uint8Array((W * H + 7) >> 3);
+      for (let p = 0, i = 3; p < W * H; p++, i += 4) if (d[i] > 30) bits[p >> 3] |= 1 << (p & 7);
+      (this._greavesShape || (this._greavesShape = Object.create(null)))[pose + '/' + dir] = { w: W, h: H, bits };
+      /* the bodies baked before it came: once more, now they can be clamped */
+      if (getEquip('legs') !== 'none') this._rebakeLegBodies(pose, dir);
+    } catch (e) { /* a picture that cannot be read: the legs as before */ }
+  }
+  /* the shape for this pose and facing, a byte a pixel (what the clamp
+     reads), or null -- made for a bake and let go of after it */
+  _greavesUnder(pose, dir) {
+    if (!_standInLegsUse || !this._greavesShape) return null;
+    const g = this._greavesShape[pose + '/' + dir];
+    if (!g) return null;
+    const n = g.w * g.h, m = new Uint8Array(n);
+    for (let p = 0; p < n; p++) if (g.bits[p >> 3] & (1 << (p & 7))) m[p] = 1;
+    return m;
+  }
+  /* your own sword or bow body, under greaves: the shape it is clamped to.
+     Only the whole-body strips: the torso strips (the jog composite) are cut
+     at the waist already, and the jog legs are drawn with their own greaves. */
+  _legsUnderFor(rec) {
+    if (!rec || getEquip('legs') === 'none') return null;
+    const sword = rec.target === this._swordBodyFrames;
+    if (!sword && rec.target !== this._bowBodyFrames) return null;
+    return this._greavesUnder(rec.cfg.gearPose || (sword ? 'swing' : 'bowshot'), rec.dir);
+  }
+  /* again, the bodies a change of greaves (or a shape just in) touches */
+  _rebakeLegBodies(pose, dir) {
+    if (this._destroyed || !this._bodyStrips) return;
+    const was = [];
+    for (const rec of this._bodyStrips) {
+      if (rec.target !== this._swordBodyFrames && rec.target !== this._bowBodyFrames) continue;
+      if (pose && ((rec.cfg.gearPose || (rec.target === this._swordBodyFrames ? 'swing' : 'bowshot')) !== pose || rec.dir !== dir)) continue;
+      const w = this._bakeBodyStrip(rec);
+      if (w) was.push(...w);
+    }
+    this._letGo(was);
+  }
+
   /* v2.3.1011: recolor the sword swing BODY sheet to an arbitrary player's
      skin/pants/shoes (parallel to _bakeBodyStrip, which only does the LOCAL
      player) and cache it.  Returns the per-frame Texture[] or null while the
@@ -14235,7 +14325,11 @@ export class EffectsRenderer {
   _remoteBodyFramesFor(o, cfgKey, cfg, mirror) {
     if (!this._remoteBodyCache) this._remoteBodyCache = new Map();
     const _pa = this._peerStandInArt(o, cfgKey, mirror);   /* v2.3.2863 */
-    const key = cfg.bodyUrl + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg;   /* v2.3.2863: the SHEET, not the facing */
+    /* v2.3.3640: a peer in greaves is clamped as you are, once their shape
+       is in (the key's |L: before it, the plain bake) */
+    const _peq = o.equip || {};
+    const _lu = (_peq.legs && _peq.legs !== 'none') ? this._greavesUnder(cfg.gearPose || 'swing', cfgKey) : null;
+    const key = cfg.bodyUrl + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg + (_lu ? '|L' : '');   /* v2.3.2863: the SHEET, not the facing */
     let arr = this._remoteBodyCache.get(key);
     /* Re-insert on hit so the LRU order is "least recently SEEN", not
        "least recently baked" (entityRenderer.js:2043's idiom). */
@@ -14244,7 +14338,7 @@ export class EffectsRenderer {
     if (!img) return null;
     try {
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
-        null, cfg.fh, null, null, _pa.art, cfg.fw);   /* v2.3.2863: see _peerStandInArt */
+        null, cfg.fh, null, null, _pa.art, cfg.fw, undefined, undefined, undefined, _lu);   /* v2.3.2863: see _peerStandInArt; v2.3.3640: + under greaves */
       const n = Math.max(1, Math.round(cv.width / cfg.fw));
       arr = this._own(_sliceStandIn(cv, cfg.fw, cfg.fh, n, null));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned */
       this._remoteBodyCache.set(key, arr);
@@ -16395,6 +16489,10 @@ export class EffectsRenderer {
     F.chest.tint = gearTint(eq.chest);
     const pf = this._farmProps && this._farmProps[fx.anim];
     place(F.prop, pf ? pf[Math.min(fi, pf.length - 1)] : null);
+    /* v2.3.3636: lit as THEIR walking figure is (see _updateFarmWork's LIT AS
+       HIS WALKING FIGURE IS) -- the span at their boots, at their build */
+    const fsp = F.shade = spanSpec(SHADE.figure, standShadeSpan(feetY, pscale, bl.sy), body.y - A.fh * body.scale.y, body.y, F.shade);
+    for (const sp of [body, F.legs, F.shirt, F.chest, F.prop]) if (sp) sp._vShade = fsp;
     const looks = {
       hair: o.hair, hairColor: o.hairColor,
       facialhair: o.facialhair, facialHairColor: o.facialHairColor,
@@ -16512,6 +16610,22 @@ export class EffectsRenderer {
     /* the hoe or the can, as drawn, over everything */
     const pf = this._farmProps && this._farmProps[anim];
     place(prop, pf ? pf[Math.min(fi, pf.length - 1)] : null);
+    /* ═══ v2.3.3636: LIT AS HIS WALKING FIGURE IS ═══
+       The owner: "The armor while performing farming gestures is noticeably
+       different color (iron). Try to make it match more exactly."  v2.3.3472
+       gave the farmer the walking armour's greys, tint and shine; the light
+       was left: the walking figure is FORM-SHADED (formShade.js) -- as
+       painted at the head, a cool shade at the boots -- and these sprites,
+       in the gesture layer and no figure's, were not shaded at all, so his
+       iron was 15% redder and 13% greener at the boots than the same iron a
+       moment before (mp-farmiron).  Each of his sprites takes, across its own
+       quad (they share one), the walking figure's gradient at those heights:
+       the standing figure's span where you stand (standShadeSpan), laid on
+       the quad (spanSpec).  A spec of its own, not SHADE.figure itself, which
+       sharpPixels takes for a pixel-art figure and would resample him. */
+    const fsp = this._farmShadeSpec = spanSpec(SHADE.figure, standShadeSpan(feetY, pscale, bl.sy),
+      body.y - A.fh * body.scale.y, body.y, this._farmShadeSpec);
+    for (const sp of [body, legs, shirt, chest, prop]) if (sp) sp._vShade = fsp;
     this._placeSkillTraitsOn(A.pose, body, fi, 'south', false);
     /* where the work lands -- the blade striking, the water reaching the soil,
        the hands in it: what you dig, pour or plant flies from there
@@ -16538,6 +16652,20 @@ export class EffectsRenderer {
           work: { x: S._farmHands.x, y: S._farmHands.y },
           shirt: { visible: !!(shirt && shirt.visible), tint: shirt ? shirt.tint : null },
           prop: { visible: !!(prop && prop.visible), want: !!A.prop },
+          /* v2.3.3636: his shade read at his boots and his crown, and the
+             walking figure's at the same heights (mp-farmiron) */
+          shade: (() => {
+            const sp = chest && chest._vShade;
+            if (!sp || !sp.top) return null;
+            const qT = body.y - A.fh * body.scale.y, qB = body.y;
+            const lerp = (a, b, t) => [0, 1, 2].map((j) => +(a[j] + (b[j] - a[j]) * t).toFixed(4));
+            const mine = (y) => lerp(sp.top, sp.bot, (y - qT) / (qB - qT));
+            const span = standShadeSpan(feetY, pscale, bl.sy);
+            const walk = (y) => lerp(SHADE.figure.top, SHADE.figure.bot, (y - span[0]) / (span[1] - span[0]));
+            const footY = body.y + (A.foot[1] - A.fh) * body.scale.y, crownY = body.y + (cr[1] - A.fh) * body.scale.y;
+            return { boots: mine(footY), crown: mine(crownY), walkBoots: walk(footY), walkCrown: walk(crownY),
+              all: [body, legs, shirt, chest, prop].every((q) => !q || q._vShade === sp) };
+          })(),
           /* v2.3.3439: the armour, each with the frame of its strip it is on
              (-1: not one of that strip's), and which body is under it */
           legs: { visible: !!(legs && legs.visible), tint: legs ? legs.tint : null, frame: gearAt('legs', legs) },
@@ -17535,7 +17663,7 @@ export class EffectsRenderer {
     this.atmosphereGfx.clear();
     for (const t of this.dmgTexts) t.destroy();
     this.dmgTexts = [];
-    if (this._dropCols) this._dropCols.clear();   /* v2.3.3616 */
+    if (this._dropLines) this._dropLines.clear();   /* v2.3.3627 */
     if (this._elemWindup) this._elemWindup.clear();   /* v2.3.3619 */
     /* Icons live on dmg entries (dmg._pixiIcon) which are owned by
        game state, not this list. Walking the dmgLayer is the most

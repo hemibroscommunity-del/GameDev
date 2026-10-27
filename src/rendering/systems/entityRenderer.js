@@ -4143,6 +4143,31 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
    rod's magenta pixels are kept -- the bare torso/arms stay erased so the plate shows
    through.  Cached per body frame (uid). */
 const _fishTopCache = new Map();
+/* v2.3.3623: the worn chest from a worn list ({k: 'chest:<id>', tex}) as
+   {tex, tint} -- its frame and its metal -- or null: the overlay keeps the grip
+   off the plate and draws what it leaves bare as a gauntlet in its metal (THE
+   PLATE DRAWS ITS OWN HANDS) */
+function _chestFrameOf(worn) {
+  if (!worn) return null;
+  let plate = null, legs = null;
+  for (let i = 0; i < worn.length; i++) {
+    const w = worn[i];
+    if (!w.k || !w.tex) continue;
+    if (w.k.indexOf('chest:') === 0) plate = { tex: w.tex, tint: gearTint(w.k.slice(6)) };
+    else if (w.k.indexOf('legs:') === 0) legs = w.tex;
+  }
+  /* ...and the greaves' frame: the gauntlet keeps off them but at the rod */
+  if (plate) plate.legs = legs;
+  return plate;
+}
+/* the gauntlet's shading: the raw skin's shade (luminance) from its shadow to
+   its lit flat (the fish sheet's skin: 5% at 83, half at 153, 95% at 160) onto
+   the plate's own steel from its 15th to its 85th percentile, the ink below
+   45 left out */
+const FISH_SKIN_DARK = 70, FISH_SKIN_LIGHT = 165, FISH_STEEL_LO = 0.15, FISH_STEEL_HI = 0.85, FISH_STEEL_INK = 45;
+const FISH_RIM_MIN = 55;   /* the rim's red channel at least this: the outline's is lower */
+const FISH_PINE_RG = 60;   /* red over green past this is skin, not the pine rod (toolRecolor's pine: 46 at most) */
+const _FISH_GRIP_OVER_PLATE = (() => { try { return new URLSearchParams(location.search).get('fishgrip') === '1'; } catch (e) { return false; } })();
 /* ═══ v2.3.2854: THE ROD IS LOOKED FOR ON THE RAW FRAME ═══
    `rodTex` is the undrawn fish frame at the same index.  Since fishing keeps the
    drawings (getFishFrame), `bodyTex` can carry a player's tattoo.  v2.3.2761
@@ -4156,12 +4181,16 @@ const _fishTopCache = new Map();
    from the inked one, which is also what puts the face tattoo in the head band.
    Same geometry -- one sheet, one frame index -- and without a rodTex (or with
    the raw frame itself) this is the old single-frame path. */
-function _fishTopFrame(bodyTex, rodTex) {
+function _fishTopFrame(bodyTex, rodTex, plate) {
   if (!bodyTex) return null;
   let bres; try { bres = bodyTex.source && bodyTex.source.resource; } catch (e) { return null; }
   if (!bres) return null;
   const _rod = (rodTex && rodTex !== bodyTex) ? rodTex : null;
-  const key = (bodyTex.uid != null ? bodyTex.uid : '') + (_rod ? '/' + _rod.uid : '') + '|fishtop';
+  /* v2.3.3623: the plate under the overlay, {tex, tint} (see THE PLATE DRAWS
+     ITS OWN HANDS) */
+  const _plate = (!_FISH_GRIP_OVER_PLATE && plate && plate.tex && plate.tex.source && plate.tex.source.resource) ? plate : null;
+  const _legs = (_plate && _plate.legs && _plate.legs.source && _plate.legs.source.resource) ? _plate.legs : null;
+  const key = (bodyTex.uid != null ? bodyTex.uid : '') + (_rod ? '/' + _rod.uid : '') + (_plate ? '/p' + _plate.tex.uid + ':' + _plate.tint : '') + (_legs ? '/l' + _legs.uid : '') + '|fishtop';
   const hit = _fishTopCache.get(key);
   if (hit) { _fishTopCache.delete(key); _fishTopCache.set(key, hit); return hit; }
   try {
@@ -4235,10 +4264,124 @@ function _fishTopFrame(bodyTex, rodTex) {
         for (let x = x0; x <= x1; x++) keep[row + x] = 1;
       }
     }
+    /* ═══ v2.3.3623: THE PLATE DRAWS ITS OWN HANDS ═══
+       The owner: "The fishing animation gets messed up around the hands when
+       the character is wearing torso armor".  The grip above is the BODY's
+       arm and hand, lifted over the gear so the hand on the rod rides over a
+       tee (v2.3.1914) or greaves (v2.3.2278).  A torso plate draws its own
+       arm and a steel gauntlet on the rod, and the grip laid the bare arm and
+       hand back over them: a strip of skin a hand wide along the rod, cut
+       square where it ended.  So with a plate worn:
+         - nothing of the grip but the rod is drawn over the plate (its pixels
+           and one more round them, which closes a pinhole in the art and its
+           soft edge);
+         - what the plate leaves bare -- a finger past the gauntlet, the reel
+           hand, the forearm reaching down to it, the skin right at the plate's
+           edge -- is drawn as a GAUNTLET: the skin the grip touches and all
+           the bare skin joined to it (below the head band; under greaves only
+           at the rod, where the grip always rode over them), each pixel the
+           plate's own steel at the hand's own shade, in the plate's metal.
+           The skin is found on the RAW frame (one skin colour for every
+           player), its outline kept as drawn.
+       The body under the overlay is not touched (the masked bake), so no gap
+       opens round the hand.  `?fishgrip=1` is the grip as before. */
+    let covered = null, gauntlet = null, ramp = null, nG = 0;
+    if (_plate) {
+      const pc = document.createElement('canvas'); pc.width = W; pc.height = H;
+      const pctx = pc.getContext('2d');
+      pctx.imageSmoothingEnabled = false;
+      drawGearFrame(pctx, _plate.tex, 0, 0, W, H);
+      const pd = pctx.getImageData(0, 0, W, H).data;
+      covered = new Uint8Array(W * H);
+      const plateOp = new Uint8Array(W * H);   /* the plate's own pixels, exactly */
+      const all = [];
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const o = (y * W + x) * 4;
+          if (pd[o + 3] <= 60) continue;
+          plateOp[y * W + x] = 1;
+          for (let dy = -1; dy <= 1; dy++) {
+            const yy = y + dy;
+            if (yy < 0 || yy >= H) continue;
+            for (let dx = -1; dx <= 1; dx++) {
+              const xx = x + dx;
+              if (xx >= 0 && xx < W) covered[yy * W + xx] = 1;
+            }
+          }
+          /* the plate's own steel, its ink left out, darkest to lightest */
+          const L = Math.round(pd[o] * 0.299 + pd[o + 1] * 0.587 + pd[o + 2] * 0.114);
+          if (L >= FISH_STEEL_INK) all.push(L * 16777216 + ((pd[o] << 16) | (pd[o + 1] << 8) | pd[o + 2]));
+        }
+      }
+      /* the greaves' own pixels: the arm under them stays under them -- only
+         the hand at the rod (the grip) rides over them, as it always has */
+      let legsOp = null;
+      if (_legs) {
+        const lc = document.createElement('canvas'); lc.width = W; lc.height = H;
+        const lctx = lc.getContext('2d');
+        lctx.imageSmoothingEnabled = false;
+        drawGearFrame(lctx, _legs, 0, 0, W, H);
+        const ld = lctx.getImageData(0, 0, W, H).data;
+        legsOp = new Uint8Array(W * H);
+        for (let i = 0; i < W * H; i++) if (ld[i * 4 + 3] > 60) legsOp[i] = 1;
+      }
+      if (all.length && rd !== d) {
+        ramp = Float64Array.from(all).sort();
+        /* skin on the raw frame, with the hand's darker rim, where its skin
+           shades into its outline (the outline itself is darker still, and
+           stays): nothing else on the frame is that orange but the rod, which
+           is asked about first */
+        const rimAt = (o) => rd[o + 3] > 40 && rd[o] > rd[o + 1] && rd[o + 1] >= rd[o + 2]
+          && (rd[o] - rd[o + 2]) > 20 && rd[o] > FISH_RIM_MIN;
+        /* the rod as the hand meets it: the recorded shape is the key's, read
+           at this frame's size, and claims a pixel or two of the fingers at
+           the seam -- skin there is redder than any pine (red over green: pine
+           46 at most, the skin 68 and up) */
+        const rodHere = (o) => isRodAt(o) && !(rimAt(o) && rd[o] - rd[o + 1] > FISH_PINE_RG);
+        gauntlet = new Uint8Array(W * H);
+        const stack = [];
+        for (let y = headBot + 1; y < H; y++) {
+          for (let x = 0; x < W; x++) {
+            const idx = y * W + x, o = idx * 4;
+            if (!keep[idx] || plateOp[idx] || d[o + 3] <= 60 || rodHere(o) || !rimAt(o)) continue;
+            gauntlet[idx] = 1; stack.push(idx);
+          }
+        }
+        while (stack.length) {
+          const idx = stack.pop(), x = idx % W, y = (idx - x) / W;
+          for (let dy = -1; dy <= 1; dy++) {
+            const yy = y + dy;
+            if (yy <= headBot || yy >= H) continue;
+            for (let dx = -1; dx <= 1; dx++) {
+              const xx = x + dx;
+              if (xx < 0 || xx >= W) continue;
+              const j = yy * W + xx, o = j * 4;
+              /* never the rod: it is pine, which a skin test passes */
+              if (gauntlet[j] || plateOp[j] || (legsOp && legsOp[j] && !keep[j]) || d[o + 3] <= 60 || rodHere(o) || !rimAt(o)) continue;
+              gauntlet[j] = 1; stack.push(j);
+            }
+          }
+        }
+      }
+    }
+    let _plateHeld = 0;
+    const tr = _plate ? ((_plate.tint >> 16) & 255) : 255, tg = _plate ? ((_plate.tint >> 8) & 255) : 255, tb = _plate ? (_plate.tint & 255) : 255;
     for (let y = headBot + 1; y < H; y++) {
       for (let x = 0; x < W; x++) {
         const idx = y * W + x, o = idx * 4;
-        if (!keep[idx] || d[o + 3] <= 60) d[o + 3] = 0;
+        if (gauntlet && gauntlet[idx]) {
+          /* the hand's shade on the raw frame, onto the plate's steel */
+          const L = rd[o] * 0.299 + rd[o + 1] * 0.587 + rd[o + 2] * 0.114;
+          const t = Math.max(0, Math.min(1, (L - FISH_SKIN_DARK) / (FISH_SKIN_LIGHT - FISH_SKIN_DARK)));
+          const c = ramp[Math.round((FISH_STEEL_LO + (FISH_STEEL_HI - FISH_STEEL_LO) * t) * (ramp.length - 1))] % 16777216;
+          d[o] = Math.round(((c >> 16) & 255) * tr / 255);
+          d[o + 1] = Math.round(((c >> 8) & 255) * tg / 255);
+          d[o + 2] = Math.round((c & 255) * tb / 255);
+          nG++;
+          continue;
+        }
+        if (!keep[idx] || d[o + 3] <= 60) { d[o + 3] = 0; continue; }
+        if (covered && covered[idx] && !isRodAt(o)) { d[o + 3] = 0; _plateHeld++; }
       }
     }
     /* v2.3.1914 QA probe: how much of this overlay is rod and how much is the
@@ -4256,7 +4399,7 @@ function _fishTopFrame(bodyTex, rodTex) {
           if (isRodAt(o)) rod++; else grip++;
         }
       }
-      window.__btFishTop = { rod, grip, gripR: GRIP_R, w: W, h: H };
+      window.__btFishTop = { rod, grip, gripR: GRIP_R, w: W, h: H, plate: !!_plate, plateHeld: _plateHeld, gauntlet: nG };
     }
     ctx.putImageData(img, 0, 0);
     const tex = new Texture({ source: Texture.from(cv).source });
@@ -4268,10 +4411,10 @@ function _fishTopFrame(bodyTex, rodTex) {
 /* Place the head+rod overlay on the (reused) _bodyHead sprite at the body's exact
    transform (full-frame, anchor 0.5/0.5 -- same as _placePickupHead).  Lifted above
    the gear by _orderTraitsAndWeapon.  Only called when a chest plate is worn. */
-function _placeFishHead(display, sb, bodyTex, rodTex) {
+function _placeFishHead(display, sb, bodyTex, rodTex, plate) {
   const hd = display._bodyHead;
   if (!hd || !sb || !bodyTex) return;
-  const t = _fishTopFrame(bodyTex, rodTex);   /* v2.3.2854: rod found on the raw frame */
+  const t = _fishTopFrame(bodyTex, rodTex, plate);   /* v2.3.2854: rod found on the raw frame; v2.3.3623: + the plate's frame and metal */
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
@@ -5822,6 +5965,17 @@ export function standFootDy(zoneScale) {
    body's crown-to-feet height for a facing, and how far below the figure's
    origin (S.player.y) its boots are, on a zone with no perspective, at the
    default build.  The same rows and scales the body is drawn with. */
+/* ═══ v2.3.3636: THE STANDING FIGURE'S FORM-SHADE SPAN, IN WORLD Y ═══
+   formShade.js shades a figure from the top of its body's frame to the bottom
+   (`_vShadeRef`, the 256-unit frame: as painted at the top, a cool shade at
+   the bottom).  This is that frame's top and bottom for the standing figure
+   whose boots are at `feetY` -- the rows and scales the body is drawn with --
+   so a stand-in drawn where you stand (the farmer) can be lit as you are.  */
+export function standShadeSpan(feetY, zoneScale, sy) {
+  const rows = bodyRows('stand', 'south');
+  const s = bodyDirScale('stand', 'south') * LOCAL_BODY_SCALE * PLAYER_SIZE_MULT * (zoneScale || 1) * (sy || 1);
+  return [feetY - rows.feet * s, feetY + (BODY_CELL_MID * 2 - rows.feet) * s];
+}
 export function nominalStandFigure(dir) {
   const d = dir || 'south';
   const rows = bodyRows('stand', d);
@@ -12005,7 +12159,7 @@ export class EntityRenderer {
                while the LOCAL path, which tests chest OR shirt OR legs, kept
                it.  Matching the local test. */
             const _fishWorn = _rworn.length > 0 || (_oShirtEquip && _oShirtEquip !== 'none');
-            if (pose === 'fish' && _fishWorn) _placeFishHead(display, spriteBody, tex, getFrame('fish', 'south', frameIdx));   /* v2.3.2854: + the raw frame, for the rod */
+            if (pose === 'fish' && _fishWorn) _placeFishHead(display, spriteBody, tex, getFrame('fish', 'south', frameIdx), _chestFrameOf(_rworn));   /* v2.3.2854: + the raw frame, for the rod; v2.3.3623: + THEIR plate's frame */
           } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
           /* v2.3.2304: the shirt is drawn by _placeGear as an equip layer, not
              baked into the body -- this sprite is the RETIRED baked-shirt node
@@ -13825,7 +13979,7 @@ export class EntityRenderer {
              greaves drew over the reeling fist and there was nothing to lift.
              Still gated on the three rather than made unconditional: a bare
              player needs no canvas bake to look right. */
-          if (pose === 'fish' && (_chestW || _shirtW || _legsW)) _placeFishHead(display, spriteBody, tex, getFrame('fish', 'south', frameIdx));   /* v2.3.2854: + the raw frame, for the rod */
+          if (pose === 'fish' && (_chestW || _shirtW || _legsW)) _placeFishHead(display, spriteBody, tex, getFrame('fish', 'south', frameIdx), _chestFrameOf(_worn));   /* v2.3.2854: + the raw frame, for the rod; v2.3.3623: + the plate's frame */
         } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
         /* ═══ v2.3.1872: THE SOUTH BLOCK'S JOGGING LEGS ═══
            Placed HERE, after the masked/fullset body has been resolved, because

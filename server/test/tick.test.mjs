@@ -36,6 +36,17 @@ import { ZONES as SERVER_ZONES } from '../src/data.js';
 // server's copy.
 import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
 
+/* v2.3.3639: a window of real time is not a tick.  Waiting TICK_RATE x N ms
+   and reading the socket failed whenever the machine was busy (the precheck
+   run beside a phone soak): 66 ms passed with no tick run, and the check read
+   an empty socket.  ticksRun waits that window as before, then on until the
+   tick loop has really run `n` ticks (its own tickSeq), at most 5 s more. */
+const ticksRun = async (room, n, ms) => {
+  const from = room.tickSeq || 0, t0 = Date.now();
+  await new Promise((r) => setTimeout(r, ms));
+  while ((room.tickSeq || 0) - from < n && Date.now() - t0 < ms + 5000) await new Promise((r) => setTimeout(r, 5));
+};
+
 function makeState() {
   const store = new Map();
   return {
@@ -402,7 +413,7 @@ check('forged monster_transform dropped by deny-list',
   const N = room2.EVENTS_PER_TICK_CAP + 1; // 501
   for (let i = 0; i < N; i++) room2.eventBuffer.push({ type: 'qa_overflow', payload: { i } });
   room2.startTickLoop();
-  await new Promise((r) => setTimeout(r, room2.TICK_RATE * 6));
+  await ticksRun(room2, 5, room2.TICK_RATE * 6);
   clearInterval(room2.tickInterval);
   // World-sim noise (monster events) can ride the same ticks; count
   // only the qa_overflow markers per tick message.
@@ -483,7 +494,7 @@ check('forged monster_transform dropped by deny-list',
   wsM.sent.length = 0; wsF.sent.length = 0; wsL.sent.length = 0;
   room3.tickSeq = 1; // not a presence tick -> pure zone-scoped frame
   room3.startTickLoop();
-  await new Promise((r) => setTimeout(r, room3.TICK_RATE * 3));
+  await ticksRun(room3, 2, room3.TICK_RATE * 3);
   clearInterval(room3.tickInterval); room3.tickInterval = null;
 
   const zonesSeenBy = (w) => {
@@ -534,7 +545,7 @@ check('forged monster_transform dropped by deny-list',
   wsM.sent.length = 0;
   room3.tickSeq = 0;
   room3.startTickLoop();
-  await new Promise((r) => setTimeout(r, room3.TICK_RATE * 2));
+  await ticksRun(room3, 1, room3.TICK_RATE * 2);
   clearInterval(room3.tickInterval); room3.tickInterval = null;
   const rosterMsg = wsM.sent.find((m) => m.type === 'tick' && m.players && m.players.bp_zf);
   check('presence roster: out-of-zone peer reaches the meadow session',

@@ -719,7 +719,12 @@ remnant to migrate server-side, not a mode to preserve.
       hit through the kit's row of the hit door and blown 130 px over 420 ms
       (`m._gustPx`/`_gustMs` for that blow; the room granted), 8 s cooldown;
       kill switch `mummyroar: false`; `mummy-roar` suite, `mp-elemhits`:
-      docs/specs/mummy-roar.md.
+      docs/specs/mummy-roar.md. Since v2.3.3634 (the review's finds) an `aoe`
+      kit's ring is ROUND THE CASTER (`ax`/`ay` its own place, the roar
+      measured from that ring), a respawn clears a kit's wind-up (a mummy
+      killed mid-roar roared at its spawn), a fully blocked roar is no
+      "MISS", and a snowman's freeze counts as a daze against players
+      (pvplunge.js `_pvpDazed`).
   - Since v2.3.2997 the TOWN IS 1.15x AND THE VIEW 25% FURTHER OUT -- the
     owner: "Change buildings from 1.5x to 1.15x and let me see what making the
     default scale looks like about 25% more zoomed out for everything by
@@ -1168,6 +1173,23 @@ remnant to migrate server-side, not a mode to preserve.
     darker than a third of the skin -- TRAPS §129); enclosed windows turn
     under-armour shadow; the full set is untouched; `mp-greaveslegs`
     (`window.__btLegsPeek`), src/belt-harness.html `?wear=legs&pose=&tint=&clamp=off`.
+    - since v2.3.3640 THE SWORD'S AND BOW'S STAND-INS TOO, AND NO GREY FILL --
+      the owner: "check all the animations for ghost remnants" (mp-ghostaudit:
+      every swing frame in iron showed the body's trousers and boots): a
+      stand-in is a recoloured bare body with the greaves' own strip drawn
+      over it, the two legs drawn in different places (TRAPS §73's fourth
+      time). Under greaves the sword and bow bodies are baked with only the
+      legs the greaves cover (playerSkins.js `_clampLegsUnder`: from their top
+      down, a leg pixel outside them goes, or turns under-armour shadow where
+      they close it in), the shape read once off each greaves strip as it
+      loads (effectsRenderer `_noteGreavesShape`, a bit a pixel), rebaked as
+      greaves go on or off, a peer's too (`|L`); and the grey the sword sheets
+      had in the gaps the original art leaves empty (between the legs, round
+      the blade) -- painted the player's BOOT colour by the recolour -- is out
+      of the PNGs (tools/art/clean-sword-fill.py, SWORD_ART_VERSION 1103, the
+      .webp twins CI's to mint, TRAPS §255);
+      `?standinlegs=0`, `window.__btStandInLegs()` (`.set(on)`); `mp-standinlegs`:
+      docs/specs/standin-legs.md.
   - Since v2.3.3520 THE ARMOUR RIDES THE ARM CAPSULE -- the owner: the east
     jog's shoulder on a copper torso, "fix it for all future tiers". The
     capsule (v2.3.200) clones the body over the arm on every east jog with a
@@ -1179,6 +1201,23 @@ remnant to migrate server-side, not a mode to preserve.
     and grade; `_hideArmClones` hides them all together); `mp-armcapsule`
     (skin over the plate 49-233 px a frame -> the hand's 0-15):
     docs/specs/visuals-2026-10-19.md.
+  - Since v2.3.3645 NO TROUSERS AT THE WAIST OF A FULL IRON SET -- the owner:
+    "check all the animations for ghost remnants of either a body beneath"
+    (mp-ghostaudit: in pink trousers and full iron, a pink strip between the
+    plate and the greaves jogging north-east or north-west, 21-23 px on
+    frames 1-2, 7-15 on 11-13; in the default olive a dark line). North-east
+    has no knight figure, so it is the masked bake, and two faults kept the
+    trousers there:
+    - the fishing rod's restore (maskedBake.js, v2.3.1123) found the rod by
+      colour on EVERY pose, and pink trousers (or a pink skin) pass its test:
+      it runs on the fishing pose only now, the one sheet with a rod;
+    - the chain belt sheet (belt/chainbelt/jog-northeast) stopped one or two
+      rows short of the greaves on frames 8, 11-14, 21 and 23: bridged by
+      tools/gear/bridge-ne-belt.mjs (relay_jog_belt.py's rule, 47 px; the
+      mannequin's beltmask-northeast.png left, 23 frames to the sheet's 24);
+      GEAR_VERSION 2.3.3645, the PNG only (CI mints the .webp);
+    - `mp-ironwaist` (at most 6 px of pink a frame both ways; 56/51/24/42/47
+      on the old build), `iron-waist` suite: docs/specs/iron-waist.md.
   - Since v2.3.3011 the view is ANOTHER 25% further out -- the owner: "If it
     is already zoom it out another 25%" -- `VIEW_OUT` 0.64 (0.8 x 0.8) in
     worldViewport.js, the bro ~54 CSS px on the QA phone with the dashboard
@@ -2007,8 +2046,16 @@ remnant to migrate server-side, not a mode to preserve.
       owner: "above the center of the dashboard ... instead of the top bar")
       a red skull and the number centred just over the band, riding
       `--sheet-h`, whose tap opens the rules in InfoPopup with your own
-      skull's minutes (`src/ui/mobile/NmlBadge.jsx`; `--nml-lift` steps the
-      interact prompts over it); the top bar names the stage again;
+      skull's minutes (`src/ui/mobile/NmlBadge.jsx`); since v2.3.3629 JUST
+      LEFT OF THE MINIMAP, level with its name plate (the owner: "just beside
+      the minimap where it lists the zone and level range"; `nmlBadgeSpot`
+      from `window.__btWheelPlate`, as tall as the plate; SIDEWAYS level
+      with the box's top, or on a short screen in the top bar's row, the
+      sprint button and Special standing left of the plate there and the
+      attack disc under the box; `--nml-lift` and
+      the stepping aside for the shield gone; the blinking line along the
+      band stays; mp-nomansland, mp-nmlfoe at every width); the top bar names
+      the stage again;
     - two players may fight when both stand in it, their `ps.level`s at most
       the LOWER of their two numbers apart, not one party -- `_nmlAllowed`,
       asked by `_pvpAllowed` before `OPEN_PVP`, which stays off elsewhere;
@@ -3638,6 +3685,24 @@ remnant to migrate server-side, not a mode to preserve.
           `mp-farmanim` §5 reads the shine's sprites and the strips' greys,
           each outfit (plate and greaves, greaves alone, plate alone) on each
           move (the hoe, the kneel, the can);
+        - since v2.3.3636 LIT AS HIS WALKING FIGURE IS -- the owner: "The
+          armor while performing farming gestures is noticeably different
+          color (iron). Try to make it match more exactly": the walking figure
+          is FORM-SHADED (formShade.js: as painted at the head, a cool shade
+          at the boots) and the farmer's sprites, in the gesture layer, were
+          not shaded at all; each now takes, across its own quad, the walking
+          figure's gradient at those heights (entityRenderer
+          `standShadeSpan`, formShade `spanSpec`; a spec of its own, never
+          SHADE.figure, which sharpPixels would take for a pixel-art figure),
+          yours and other players' farmers alike; and the strips' steel is
+          graded to the STANDING sheets (`STEEL_REF` stand-south: the bro
+          stands beside the bed in it, and its greaves are drawn brighter than
+          the jog's), `GEARLAYER_VER` 1038; full iron, farmer over walker:
+          boots 1.15/1.13/1.00 -> 1.00/1.00/0.99, the chest 1.09/1.06/0.97 ->
+          0.96/0.95/0.93 (the head and shoulders ~0.9: his steel forearms
+          cross his chest there, the art's own top third 11% darker);
+          `mp-farmiron` (the figure alone on the canvas's colour, band by
+          band), mp-farmanim §5 against stand-south: docs/specs/farm-iron.md;
       - the Feed & Seed's window lost its Beds tab: Visit Your Farm on top,
         "Your farm: 3 ready to harvest · 3 beds to plant" under it, then Seeds
         and Orders;
@@ -3663,7 +3728,10 @@ remnant to migrate server-side, not a mode to preserve.
       middle lay under the Block button, up whenever a monster is targeted --
       the owner: "The trap monster message appears over other UI elements"),
       its words in a tag beside it taking no touch; sideways and on a computer
-      the pop-up as before (TrapButton.jsx, mp-trapping);
+      the pop-up as before (TrapButton.jsx, mp-trapping); since v2.3.3626 NOT
+      THERE AT ALL with no box trap in the bag (the owner: "don't show the
+      trap message for monsters unless you have a trap in your inventory to
+      use"; `trapButtonView` null, so T too; a set mark still counts down);
     - `trap_arm` marks it 15 s; at the kill (`_trapRollOnKill`, combat.js, before
       dmgByPlayer is cleared; a slime judged at the blow) each armer with 5% of
       the damage rolls four checks at the fourth root (0-3 shakes drawn in code,
@@ -3943,6 +4011,24 @@ remnant to migrate server-side, not a mode to preserve.
         `mp-peercolours` (fails on the old
         code: every recoloured pixel of a peer's cook and fire-lighter the
         watcher's): docs/specs/peer-gather-colours.md.
+    - since v2.3.3623 AN ARMOURED ANGLER'S HANDS ARE GAUNTLETS -- the owner:
+      "The fishing animation gets messed up around the hands when the
+      character is wearing torso armor": the fish pose's top overlay
+      (entityRenderer `_fishTopFrame`) lifts the GRIP -- every body pixel
+      within GRIP_R of the rod -- over the gear, so the hand rides over a tee
+      (v2.3.1914) or greaves (v2.3.2278); over a torso plate it laid the bare
+      arm and hand across the plate's own steel gauntlet and forearm guard, a
+      strip of skin cut square (77-182 px a frame). With a plate worn
+      (`_chestFrameOf`: its frame and metal) nothing of the grip but the rod is
+      drawn over the plate, and what the plate leaves bare -- a finger past its
+      gauntlet, the reel hand, the forearm down to it -- is drawn as a gauntlet
+      in its metal: the skin found on the RAW frame, flooded from the grip
+      (never into the rod, which is pine; under greaves only at the rod), each
+      pixel the plate's own steel at the skin's shade (`FISH_SKIN_*`,
+      `FISH_STEEL_*`), times the metal's tint; the body under it untouched; a
+      tee or greaves alone as before; `?fishgrip=1` is the old grip;
+      `mp-fisharmour` (the skin laid over the plate below the head, 0-3 px a
+      frame; the tee's and greaves' grip still there): docs/specs/fish-armour-hands.md.
   - Since v2.3.3146 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:
     "Also all the buildings in town should show on the minimap": each
     standing building's footprint where it stands (wheelMinimap.js
@@ -3950,6 +4036,12 @@ remnant to migrate server-side, not a mode to preserve.
     ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
     town's white square only without them; `__btMinimap.buildings`,
     `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
+    Each wears its Enter button's picture (v2.3.3522); since v2.3.3630 in its
+    own colours, ringed in a thin dark outline and drawn 20 px, BIGGER THAN
+    THE FOOTPRINT (the owner: "just do the colored icons but oversized so they
+    aren't competing with the buildings color and size"; v2.3.3614's white
+    symbols on dark discs before): wheelBuildingIcons.js `drawIcon`,
+    wheelMinimap.js `BLD_ICON_PX`; docs/specs/menus-2026-10-19.md.
   - Since v2.3.3277 YOUR PARTY IS ON THE MAPS -- the owner's "Yes do
     suggested", the party's map-markers follow-up (ARCHITECTURE-HANDOFF D):
     each member in the party's blue (the UI's Info blue `#5D93D2`, ringed
@@ -4345,15 +4437,20 @@ remnant to migrate server-side, not a mode to preserve.
       number, `shared: false`), mirror-audit holding it to `killRollLayout`
       for every kind; `caps.killroll`, kill switch `killroll: false`, dev
       lever `/dev/killroll {next, kill}`; `killroll` suite, `mp-killroll`;
-      since v2.3.3616 NOT DRAWN: EACH DROP A COLUMN over the monster instead --
-      the owner: "show each drop in columns of the floating icon rising with
-      the quantity beneath it and the rarity beneath that" -- its picture, its
-      amount (gold: your share) and its rarity (gear its grade, "Mystery" or
-      "Normal"; else by the codex's chance: Normal, Uncommon, Rare, Very rare),
-      from the pile (`loot_drop`) and the killing blow's nugget (`rh`),
-      src/game/dropColumns.js + src/rendering/dropColumns.js, pictures
-      preloaded; `?dropcols=0` the roll again (mp-killroll runs so);
-      `drop-columns` suite, `mp-dropcols`: docs/specs/drop-columns.md;
+      since v2.3.3616 NOT DRAWN: the kill's DROPS over the monster instead
+      (v2.3.3616 a column each, its picture, amount and rarity's word:
+      docs/specs/drop-columns.md); since v2.3.3627 A LINE OF WORDS EACH --
+      the owner: "the name of the item to float upwards with quantity in
+      parenthesis and the color of the font indicating rarity. So normal
+      would just be white" -- "Coins (5)" over "Slime Remains (1)", the gold
+      your share, its colour the rarity (white; the shard green, the rare gem
+      blue, the nugget orange; gear its grade, purple for a mystery), at a
+      message's size (MSG_FONT_PX), from the pile (`loot_drop`) and the
+      killing blow's nugget (`rh`), each line under the one before and a
+      little after it, rising off the monster's body, no pictures loaded;
+      src/game/dropLines.js + src/rendering/dropLines.js; `?droplines=0` the
+      roll again (mp-killroll runs so); `drop-lines` suite, `mp-droplines`:
+      docs/specs/drop-lines.md;
     - NO RANDOM WEAPON OFF A KILL (the owner: "Remove 'a random weapon'
       drop", then "Remove it from the game"): `_rollWeaponDropForKill` and
       its level curve are gone, a kill's one weapon the Iron Great Sword's 1
@@ -5670,6 +5767,18 @@ Two protocol versions coexist; both must keep working:
     `window.__btGpuTex()`'s `uidNow`): a body strip loaded behind the loading
     screen reaches the graphics chip the first time it is drawn, and which
     trip first draws it is luck.
+  - A DESTROYED TEXT LETS GO OF ITS STYLE (v2.3.3633, found by the owner's
+    "check for memory leaks in long form play sessions"): Pixi 8.17's
+    `destroy()` never takes a Text's listener off its TextStyle, and
+    `{ ...NAME_STYLE, fontSize: 9 }` SHARES the base style's listener registry,
+    so every monster's name and loot label ever made was kept (42 -> 154
+    destroyed Texts after two trips to a fight); src/rendering/textRelease.js
+    takes the listener off and gives a spread its own registry (5, flat over
+    five trips; `?textkeep` as Pixi ships, `mp-textrelease`). A spread ALSO
+    drops its overrides (the base's size, weight and colour win): derive a
+    style with `BASE.clone()` and set the field (TRAPS §254); the labels
+    written the old way are drawn as the owner has seen them:
+    docs/specs/text-release.md.
   - A PICTURE ON 256 COLOURS OR FEWER IS KEPT AS COLOUR NUMBERS (v2.3.3190 --
     the owner asked whether the art could be "recreated byte for byte using
     pure code"; not that, a drawn picture costs the GPU what a loaded one does,

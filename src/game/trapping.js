@@ -7,7 +7,8 @@
  *
  *   trapButtonView(S)   the TRAP pop-up for the monster you have targeted --
  *                       your true odds and your traps, or grey with what
- *                       stops it ("Requires Trapping 18") -- from the same
+ *                       stops it ("Requires Trapping 18"); none at all with
+ *                       no box trap in the bag (v2.3.3626) -- from the same
  *                       table the worker rolls (src/data/trapping.js, held
  *                       to the worker's by mirror-audit).  A grey button
  *                       sends nothing, as a resource above your level does
@@ -125,6 +126,13 @@ export function trapButtonView(S, now) {
   if (st.pending && st.pending.monsterId === m.id && t - st.pending.at < PENDING_MS) {
     return { ...base, kind: 'pending', text: 'TRAP', sub: 'Setting…', key: 'pending:' + m.id };
   }
+  /* v2.3.3626: NO TRAP IN THE BAG, NO POP-UP.  The owner, 2026-10-27: "just
+     don't show the trap message for monsters unless you have a trap in your
+     inventory to use."  It was a grey "No box traps" over every monster you
+     targeted, for everyone who had never made one -- most players.  With a
+     trap it shows as before, the grey "Requires Trapping N" and the rest
+     included; a mark already set (above) still counts down. */
+  if (traps < 1) return null;
   if (M > T) return { ...base, kind: 'grey', why: 'level', text: 'TRAP', sub: 'Requires Trapping ' + M, key: 'lvl:' + m.id + ':' + M + ':' + T };
   if (onSafeGround(S.player.x, S.player.y) || onSafeGround(m.x, m.y)) return { ...base, kind: 'grey', why: 'safe-ground', text: 'TRAP', sub: 'Not on safe ground', key: 'safe:' + m.id };
   if (traps < 1) return { ...base, kind: 'grey', why: 'no-trap', text: 'TRAP', sub: 'No box traps', key: 'none:' + m.id };

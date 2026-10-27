@@ -12,9 +12,11 @@
  *      Staff; a pine log row; Make takes one log for one box trap, All the
  *      rest, Woodworking XP paid; the bag names it "Box Trap";
  *   3. THE TRAP POP-UP over a targeted monster of the lands: your TRUE odds
- *      (the table's, the worker's) and your traps; grey "No box traps" with
- *      none, "Requires Trapping N" above your level -- and a grey tap sends
- *      nothing;
+ *      (the table's, the worker's) and your traps; NONE AT ALL with no box
+ *      trap in the bag (v2.3.3626: the owner's "don't show the trap message
+ *      for monsters unless you have a trap in your inventory to use"), and T
+ *      then sends nothing; "Requires Trapping N" above your level -- and a
+ *      grey tap sends nothing;
  *   4. a tap ARMS: the worker's mark, drawn over the monster;
  *   5. the kill (the test kit's forced catch, through the real kill path):
  *      the trap springs -- the shakes drawn, one trap used, the card for the
@@ -179,15 +181,24 @@ async function steps({ P, wsPort, rec, errors, me }) {
     lay.round && !!lay.trap && Math.abs((lay.trap.r - lay.trap.l) - (lay.trap.b - lay.trap.t)) < 1 && !lay.overlap && lay.tagTouch === 'none'
       && !!lay.tag && lay.tag.l >= 0, lay);
 
-  /* grey: no traps, then a level above */
+  /* v2.3.3626: no traps, no pop-up -- the monster still targeted, the bag
+     emptied by the worker; T (a computer's key for it) then sends nothing */
   await H.devOp(wsPort, 'trapping', me, { traps: 0 });
-  await P.page.waitForSelector('[data-trap-button="grey"]', { timeout: 4000 }).catch(() => {});
-  const greyNone = await P.page.evaluate(() => { const b = document.querySelector('[data-trap-button]'); return b ? b.innerText.replace(/\s+/g, ' ') : null; });
+  await P.page.waitForFunction(() => ((window._gameState.current.rpg.inventory || {}).trap_box || 0) === 0, null, { timeout: 6000 }).catch(() => {});
+  await P.page.waitForFunction(() => !document.querySelector('[data-trap-button]'), null, { timeout: 4000 }).catch(() => {});
+  const noneShown = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const b = document.querySelector('[data-trap-button]');
+    return { button: b ? b.innerText.replace(/\s+/g, ' ') : null, view: window.__btTrap && window.__btTrap() ? window.__btTrap().view : 'no-probe',
+      traps: (S.rpg.inventory || {}).trap_box || 0, locked: !!(S.lockedTarget && S.lockedTarget.type === 'monster') };
+  });
   const wired0 = await H.readState(P, (S) => S._trapArms || 0);
-  await P.page.evaluate(() => { const b = document.querySelector('[data-trap-button]'); if (b) b.click(); });
+  await P.page.keyboard.press('KeyT').catch(() => {});
   await P.page.waitForTimeout(400);
   const wired1 = await H.readState(P, (S) => S._trapArms || 0);
-  rec.ok(`with no traps the button is grey, "No box traps", and a tap sends nothing ("${greyNone}")`, /No box traps/.test(greyNone || '') && wired1 === wired0, { greyNone, wired0, wired1 });
+  rec.ok(`with no traps in the bag there is no TRAP pop-up over the targeted monster, and T sends nothing`,
+    noneShown.locked && noneShown.traps === 0 && noneShown.button === null && noneShown.view === null && wired1 === wired0, { ...noneShown, wired0, wired1 });
+  await shot(P, 'trap-none');
   /* above your level: a level-2 monster of the land, at Trapping 1 */
   const m2 = await P.page.evaluate((home) => {
     const S = window._gameState.current;
@@ -203,6 +214,21 @@ async function steps({ P, wsPort, rec, errors, me }) {
     await P.page.waitForFunction(() => /Requires Trapping/.test((document.querySelector('[data-trap-button]') || {}).innerText || ''), null, { timeout: 4000 }).catch(() => {});
     const greyLvl = await P.page.evaluate(() => { const b = document.querySelector('[data-trap-button]'); return b ? b.innerText.replace(/\s+/g, ' ') : null; });
     rec.ok(`above your Trapping level it says what it takes ("${greyLvl}")`, new RegExp('Requires Trapping ' + m2.level).test(greyLvl || ''), greyLvl);
+    /* v2.3.3635 (the review of v2.3.3617): grey by opacity, no CSS filter
+       over the canvas (TRAPS §42), and its words clear of Element Burst's
+       place over the movement disc (left 18, 48 px: ShieldButton.jsx
+       leftCluster) -- one line reached across it on a 360-375 px phone */
+    const greyLook = await P.page.evaluate(() => {
+      const b = document.querySelector('[data-trap-button="grey"]');
+      const img = b && b.querySelector('img');
+      const tag = b && b.querySelector('[data-trap-tag]');
+      const r = tag ? tag.getBoundingClientRect() : null;
+      return img ? { filter: getComputedStyle(img).filter, opacity: +getComputedStyle(img).opacity, round: b.getAttribute('data-trap-round') === '1',
+        tagL: r ? Math.round(r.left) : null, vw: innerWidth } : null;
+    });
+    const burstR = 18 + 48 + 6;
+    rec.ok(`...its icon grey by opacity alone (filter ${greyLook && greyLook.filter}, opacity ${greyLook && greyLook.opacity}), its words clear of Element Burst's place (left ${greyLook && greyLook.tagL} >= ${burstR})`,
+      !!greyLook && greyLook.filter === 'none' && greyLook.opacity < 0.75 && (!greyLook.round || greyLook.tagL >= burstR), greyLook);
     await shot(P, 'trap-grey');
   }
   m = await target();   /* back to the nearest, for the arm */

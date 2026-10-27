@@ -88,3 +88,12 @@ uploads it again) and 128 sprites.
   pieces move; the look ends with the wind-up and a monster not winding up has
   none; a real snowman at Frost Ridge winding up for real draws the snow swirl
   (its picture); `?nowindupfx` draws none while the body still throbs.
+
+## v2.3.3635: the picture kept as an image
+
+Found by the review of v2.3.3619: the one picture every piece is cut from is
+drawn once on a canvas on the loading screen and kept for the visit, and
+nothing checked it. iPhone Safari can empty a canvas while the tab is parked
+(TRAPS §250), and after a graphics rebuild every wind-up would then have drawn
+blank for the rest of the visit. It now goes through `keepAsImage` (TRAPS
+§253), as every head piece does: the same pixels, kept as an `<img>`.
