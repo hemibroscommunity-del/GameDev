@@ -9390,6 +9390,10 @@ export class EntityRenderer {
           if (display.scale.x !== _mk) display.scale.set(_mk);
           return;
         }
+        /* v2.3.3619: drawn this frame, so its element's wind-up may be too
+           (rendering/elemWindup.js draws only a monster stamped this frame:
+           never one far off screen, or whose look is not loaded) */
+        m._tgSeen = now;
         const from = m._tgFrom || (until - 800);
         const t = Math.max(0, Math.min(1, (now - from) / Math.max(1, until - from)));
         /* Throb faster and wider as it winds up — the last beat before the
