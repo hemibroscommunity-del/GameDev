@@ -703,7 +703,11 @@ remnant to migrate server-side, not a mode to preserve.
       (monsterstatus.js FREEZE, GOO, STING, WOBBLE; STUCK, a player's root,
       unchanged); kill switches `freezehit`, `goohold`, `wobble`;
       `monsterstatus` §3b/§6b/§10b, `mp-elemhits`:
-      docs/specs/stronger-elem-hits.md.
+      docs/specs/stronger-elem-hits.md; since v2.3.3675 THE GOO IS THE
+      SLIME'S BLUE (the owner: "green slimes blend in too much with the green
+      scenery"): the hold's look, the "Stuck" chip and popup in the blue
+      slime's #3a7ad0 and its shades (effectsRenderer `GOO_HOLD`), a venom
+      gem's root too; `mp-goohold`.
     - since v2.3.3621 THE MUMMY'S ROAR -- the same list: "a roar, wound up so
       you can see it coming, that blows you back from a few steps away": a
       kit by ELEMENT (telegraph.js `TELEGRAPH.ELEM_KITS.wind`, `_kitFor`: an
