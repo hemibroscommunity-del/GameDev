@@ -92,9 +92,43 @@ const LEAK_INIT = `(() => {
     const _dis = AudioNode.prototype.disconnect;
     AudioNode.prototype.disconnect = function (...a) { if (!this.__counted) { this.__counted = 1; live.an--; } return _dis.apply(this, a); };
   }
+  /* the listeners HELD: an add counts until its remove, its once, its
+     signal's abort, or until the thing it was added to is collected (a
+     FinalizationRegistry).  Adds minus removes alone called every image
+     loaded and every sound played a listener for good: the farmer's page read
+     +100 a farm visit that a forced GC let go (mp-listeners: 608 -> 609
+     over three visits) */
   const _ael = EventTarget.prototype.addEventListener, _rel = EventTarget.prototype.removeEventListener;
-  EventTarget.prototype.addEventListener = function (t, ...r) { live.ls++; live.lsByType[t] = (live.lsByType[t] || 0) + 1; return _ael.call(this, t, ...r); };
-  EventTarget.prototype.removeEventListener = function (t, ...r) { live.ls--; live.lsByType[t] = (live.lsByType[t] || 0) - 1; return _rel.call(this, t, ...r); };
+  const per = new WeakMap(), fnIds = new WeakMap();
+  let fnN = 0;
+  const fnId = (f) => { if (!f || (typeof f !== 'function' && typeof f !== 'object')) return 0; let i = fnIds.get(f); if (!i) { i = ++fnN; fnIds.set(f, i); } return i; };
+  const gone = new FinalizationRegistry((box) => { for (const t of box.types) { live.ls--; live.lsByType[t] = (live.lsByType[t] || 0) - 1; } });
+  const capOf = (o) => (typeof o === 'boolean' ? o : !!(o && o.capture));
+  EventTarget.prototype.addEventListener = function (t, fn, o) {
+    try {
+      if (fn) {
+        let rec = per.get(this);
+        if (!rec) { rec = { sigs: new Set(), box: { types: [] } }; per.set(this, rec); gone.register(this, rec.box); }
+        const sig = t + '|' + capOf(o) + '|' + fnId(fn);
+        if (!rec.sigs.has(sig)) {
+          rec.sigs.add(sig); rec.box.types.push(t);
+          live.ls++; live.lsByType[t] = (live.lsByType[t] || 0) + 1;
+          const drop = () => { if (!rec.sigs.delete(sig)) return; const i = rec.box.types.indexOf(t); if (i >= 0) rec.box.types.splice(i, 1); live.ls--; live.lsByType[t] = (live.lsByType[t] || 0) - 1; };
+          if (o && o.once) _ael.call(this, t, drop, { once: true });
+          if (o && o.signal) _ael.call(o.signal, 'abort', drop, { once: true });
+        }
+      }
+    } catch (e) { /* counting only */ }
+    return _ael.call(this, t, fn, o);
+  };
+  EventTarget.prototype.removeEventListener = function (t, fn, o) {
+    try {
+      const rec = per.get(this);
+      const sig = t + '|' + capOf(o) + '|' + fnId(fn);
+      if (rec && rec.sigs.delete(sig)) { const i = rec.box.types.indexOf(t); if (i >= 0) rec.box.types.splice(i, 1); live.ls--; live.lsByType[t] = (live.lsByType[t] || 0) - 1; }
+    } catch (e) { /* counting only */ }
+    return _rel.call(this, t, fn, o);
+  };
 })();`;
 const INIT = '(' + MEM_INIT.toString() + ')();\n' + LEAK_INIT;
 
@@ -239,6 +273,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
 /* ═══ MEASURING ═══ */
 async function measure(c, round, t0) {
   const m = await c.mem.sample('round ' + round);
+  /* the collections' finalizers run a moment after them: the listeners on
+     what was collected are counted off then */
+  await c.P.page.waitForTimeout(300);
   const page = await c.P.page.evaluate((probeSrc) => {
     const probe = new Function('return (' + probeSrc + ')')();
     const L = window.__leak;
@@ -672,6 +709,13 @@ async function tradeRound(a, b, ctx) {
    Farmy, the window's Attack, a few swings; both healed after */
 async function nmlFight(a, b, ctx) {
   for (const c of [a, b]) await H.devOp(ctx.wsPort, 'vitals', c.id, { heal: true, god: true, godMinutes: 8 });
+  /* the same level: two players may fight in No man's land N only N levels
+     apart or closer, and Tradey has been through the Goo Grotto with Fighty
+     by now (its XP into his weapon) while Farmy has only farmed -- in the
+     first ring the window rightly never opened (the first 40-minute run:
+     0 of 3, "no Attack? window") */
+  for (const c of [a, b]) await H.devOp(ctx.wsPort, 'combat', c.id, { skill: 'all', level: 6 }).catch(() => null);
+  await a.P.page.waitForTimeout(2500);
   const { NML } = await import(H.REPO + '/src/data/noMansLandRings.js');
   const LONG = (await H.wheelGeom()).long;
   const T = NML.TIER * LONG;
@@ -700,7 +744,13 @@ async function nmlFight(a, b, ctx) {
     await a.P.page.waitForTimeout(600);
     asked = await a.P.page.evaluate(() => { const el = document.querySelector('[data-nml-ask-attack]'); if (!el) return null; const q = el.getBoundingClientRect(); return { x: q.left + q.width / 2, y: q.top + q.height / 2 }; });
   }
-  if (!asked) return { ok: false, why: 'no "Attack?" window' };
+  if (!asked) {
+    const why = await a.P.page.evaluate((pid) => {
+      const S = window._gameState.current, o = S.others && S.others[pid];
+      return { me: S.rpg && (S.rpg.rpgLv || S.rpg.level), them: o ? o.rpgLv : null, ring: S._nmlLevel || 0, seen: !!o };
+    }, b.id).catch(() => null);
+    return { ok: false, why: 'no "Attack?" window ' + JSON.stringify(why) };
+  }
   await a.P.page.mouse.click(asked.x, asked.y);
   /* Farmy mortal and healed, THEN read: a blow is a drop from the full bar */
   await H.devOp(ctx.wsPort, 'vitals', b.id, { heal: true, god: false });

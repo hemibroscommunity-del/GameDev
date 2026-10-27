@@ -171,7 +171,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('in the world (guard)', !!ok, ok);
     if (!ok) return;
     const myId = await H.readState(P, (S) => S.myId);
-    await P.page.evaluate(() => { const S = window._gameState.current; const R = S.rpg; R._quests = R._quests || {}; R._quests.tut_1 = true; });
+    /* past the Mayor's gate, kept open: the worker's player_state replaces the
+       page's quest list whenever one lands, so the worker hands the quests in
+       (no rewards), and the page's flag is put back if anything takes it
+       (mp-membudget, v2.3.3644) */
+    await H.devOp(wsPort, 'quests', myId).catch(() => null);
+    await P.page.evaluate(() => {
+      const keep = () => {
+        const S = window._gameState && window._gameState.current, R = S && S.rpg;
+        if (!R) return;
+        if (!R._quests || typeof R._quests !== 'object') R._quests = {};
+        if (!R._quests.tut_1) R._quests.tut_1 = true;
+      };
+      keep();
+      window.__qaGateOpen = setInterval(keep, 100);
+    });
     await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 30 }).catch(() => null);
     (async () => {
       while (!stopAlive) {
