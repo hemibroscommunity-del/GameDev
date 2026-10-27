@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "316796d314b9ad24d7db738f339705a9f2043d41",
+  "tree": "c33b753403176e346bbb0865dfa734c5442c23a3",
+  "committedAt": "2026-10-27T15:16:54-07:00",
+  "subject": "The level-up's number stands big under the banner, and the message stays half again as long (v2.3.3676) (#1161)",
+  "files": 6666,
+  "bytes": 774968391,
+  "listingSha256": "02035662ca2807cd84ce25508ab67731b931cac5b068da75974e3f7c4ae5174f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
