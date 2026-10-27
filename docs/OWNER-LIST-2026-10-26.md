@@ -1,4 +1,4 @@
-# Your list of 2026-10-26: what's there, what I'll do, in what order (v2.3.3625)
+# Your list of 2026-10-26: what's there, what I'll do, in what order (v2.3.3673)
 
 You sent 38 things at once: changes, bugs, new features and questions. Each
 one is below, checked against the game's code, with what is there today and
