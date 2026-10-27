@@ -16,7 +16,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { QUEST_CHAINS, setGrottoParty, grottoPartyAside } from '../../src/data/gameSystems.js';
-import { WHEEL_DUNGEON_PARTY } from '../../src/data/wheelDungeons.js';
+import { WHEEL_DUNGEON_PARTY, WHEEL_DUNGEON_REC } from '../../src/data/wheelDungeons.js';
 import { WHEEL_DUNGEON } from '../src/wheeldungeon.js';
 
 let failures = 0;
@@ -45,9 +45,14 @@ setGrottoParty(WHEEL_DUNGEON_PARTY.verdant);
 const said = chunks(tut1.dialogue.complete);
 const aside = grottoPartyAside();
 check('2a. with the party Grotto the hand-in is still one tap', said.length === 1, said.length);
-check('2b. ...the Grotto\'s sentence ends it, after who to see first', said[0] === plain[0] + aside && /Diego\. The Goo Grotto/.test(said[0]), said[0]);
-check('2c. ...it names the Goo Grotto and its level, the worker\'s 16',
-  /The Goo Grotto/.test(aside) && new RegExp(`level ${WHEEL_DUNGEON.PARTY.verdant.level}\\b`).test(aside), aside);
+/* v2.3.3611: the zingers back -- who to see first is "Blacksmith Bro and
+   Diego have work for you." now */
+check('2b. ...the Grotto\'s sentence ends it, after who to see first', said[0] === plain[0] + aside && /Diego[^.]*\. The Goo Grotto/.test(said[0]), said[0]);
+/* v2.3.3608: the level it is FOR (WHEEL_DUNGEON_REC, the owner's "recommended
+   level ... lvl 10"), "level 10 and up" -- its monsters stay the worker's 16 */
+check('2c. ...it names the Goo Grotto and the level it is for, 10 and up (its monsters stay the worker\'s 16)',
+  /The Goo Grotto/.test(aside) && new RegExp(`for level ${WHEEL_DUNGEON_REC.verdant} and up\\b`).test(aside)
+    && !/level 16/.test(aside) && WHEEL_DUNGEON.PARTY.verdant.level === 16, aside);
 check('2d. ...and the party it is for, 2 or 3 friends (the boss is sized for three)',
   new RegExp(`take ${WHEEL_DUNGEON.PARTY.verdant.size - 1}\u00a0or\u00a0${WHEEL_DUNGEON.PARTY.verdant.size} friends\\.`).test(aside), aside);
 check('2d2. ..."2 or 3" held together by no-break spaces, so "3" never wraps alone', /2\u00a0or\u00a03 friends/.test(aside), aside);
@@ -73,7 +78,8 @@ const ws = read('../../src/networking/wsClient.js');
 check('4a. wsClient sets it from caps.partydungeon (true only), the Grotto\'s row',
   /setGrottoParty\(S\._serverCaps && S\._serverCaps\.partydungeon === true \? WHEEL_DUNGEON_PARTY\.verdant : null\)/.test(ws));
 const gs = read('../../src/data/gameSystems.js');
-check('4b. tut_1\'s hand-in is a getter that asks grottoPartyAside()', /get complete\(\) \{ return "Four Slime Remains/.test(gs) && /\+ grottoPartyAside\(\); \}/.test(gs));
+/* v2.3.3611: its line is whatever the Mayor says now; the shape is the check */
+check('4b. tut_1\'s hand-in is a getter that asks grottoPartyAside()', /get complete\(\) \{ return "[^"\n]+"\s*\+ grottoPartyAside\(\); \}/.test(gs));
 
 if (failures) { console.log(`\n${failures} FAILURE(S)`); process.exit(1); }
 console.log('\nmayor-grotto: all checks passed');

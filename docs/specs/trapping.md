@@ -387,3 +387,23 @@ They are the admin key's, like every dev op: no socket message.
 
 Phase 5 of the plan is the owner's call and is not built: a featured monster
 day (it would bend the same-odds rule), and anything else listed there.
+
+## v2.3.3613: Add a pet from the Test panel
+
+The owner, 2026-10-26: "Admin 'add pet'". A catch is 1% at best, about a
+hundred kills, so the Test panel has a row for it: a chip for each of the
+eight lands (Frost, Flame, Dunes, Hollows, Foundry, Water, Poison, Verdant),
+and three choices for the pet it makes -- **Golden**, **Big** (the top of a
+catch's sizes, 1.25) and **Lv 1** or **Lv 21** (21 and up is the land's
+second stage, its recoloured look).
+
+Each chip is one call to the worker's trapping lever,
+`POST /api/admin/dev/trapping {playerId, look, pet: {home, level}}` (the admin
+key, devtools.js `_devTrapping`): `look` is read first, so the pet comes out
+golden or big as chosen, then the pet is made as a catch makes one
+(petbook.js `_petbookAddCatch`; the Poison Forest's is the Wisplet). It lands
+in More, Pets; a player's first pet is the active one and comes out at once.
+Nothing new on the worker.
+
+`mp-devpet` (the real panel on a phone): the row, a golden, big, level-21
+Wisplet, then a plain level-1 Snowling, and both on the Pets page.

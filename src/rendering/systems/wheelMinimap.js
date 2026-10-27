@@ -172,7 +172,10 @@ const DOOR_W = 3.5, DOOR_H = 2;
    centred on its footprint a touch high (BLD_ICON_UP) so the door's notch
    under it still shows, a shut one's in grey.  Made ONCE, with the town (a
    Sprite each in townIcons, over the footprints, under every mark that
-   moves) -- never redrawn a frame. */
+   moves) -- never redrawn a frame.
+   v2.3.3614: each picture is a white symbol on a dark grey disc (the owner:
+   "It blends in with the building visually"; wheelBuildingIcons.js
+   drawDisc), so it reads on the roof's terracotta. */
 const BLD_ICON_PX = 14, BLD_ICON_UP = 1.5;
 
 /* v2.3.3108: the land's colour lifted toward white to read on the dark plate,

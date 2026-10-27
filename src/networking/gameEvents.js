@@ -903,6 +903,12 @@ export function processGameEvent(type, payload, S, deps) {
                 S.currentZone = payload.zone;
                 S._serverDungeon = payload.zone;
                 S._dungeonEnteredAt = Date.now();   /* v2.3.3016: its door is deaf a moment (zoneTransitions.js) */
+                /* v2.3.3610: the dungeon's music, the owner's Swift Skirmish
+                   Clash -- startZoneAmbient reads every `dungeon:*` as
+                   'dungeon'.  The arena's map is set straight in above, so the
+                   zone change's own call (BroTown's `if (!S.map)`) never runs,
+                   and the land's music played on inside (mp-googrotto) */
+                try { BT_AUDIO.startZoneAmbient(payload.zone); } catch (e) { /* sound only */ }
                 S._inDungeon = true;
                 S._inCustomDungeon = true;
                 S._customDungeonConfig = _dCfg;

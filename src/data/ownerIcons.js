@@ -13,7 +13,12 @@
  *       after a playtest: "new land emblems look bad enlarged (revert or show
  *       below minimap)" -- the banner is the plain plaque again and the scene
  *       a small EMBLEM under the minimap for a few seconds, never drawn past
- *       its own pixels (ui/landEmblem.js);
+ *       its own pixels (ui/landEmblem.js).  v2.3.3609, the owner: "I also
+ *       don't like the intro graphics to each zone.  The older ones were
+ *       better." -- the scenes are SHOWN NOWHERE and not loaded: a land's
+ *       banner is its animated ornaments again (four lands), or the plaque
+ *       alone; the pictures and this table are kept, cut and tested, for a
+ *       later use the owner chooses;
  *   2a  the Gladiator Arena window's helmet (was the Saloon's beer mug);
  *   3   the trade request card's handshake (warmed with the controls: the card
  *       pops up in the middle of play);

@@ -3769,11 +3769,29 @@ console.log('the lands\' music (v2.3.3064)');
   M.resetWheelMusic();
   const gd = fs.readFileSync(new URL('../../src/data/gameDisplay.js', import.meta.url), 'utf8');
   const music = (k) => (new RegExp(`\\n    ${k}: '/audio/music/([a-z-]+\\.mp3)`).exec(gd) || [])[1] || null;
-  ok(`the four lands the owner made music for play it -- frost ${music('frost')}, ember ${music('ember')}, sky ${music('sky')}, verdant ${music('verdant')} (the meadow's ${music('meadow')}) -- and Brotown ${music('town')}`,
+  /* v2.3.3610: the owner's own score -- seven lands and Brotown */
+  ok(`the lands the owner made music for play it -- frost ${music('frost')}, ember ${music('ember')}, sky ${music('sky')}, hollows ${music('hollows')}, tidal ${music('tidal')}, mist ${music('mist')}, verdant ${music('verdant')} (the meadow's ${music('meadow')}) -- and Brotown ${music('town')}`,
     music('frost') === 'frost.mp3' && music('ember') === 'fire.mp3' && music('sky') === 'desert.mp3' && music('verdant') === 'forest.mp3'
+      && music('hollows') === 'rock.mp3' && music('tidal') === 'water.mp3' && music('mist') === 'murky.mp3'
       && music('verdant') === music('meadow') && music('town') === 'village.mp3');
-  ok('...the other four have no track of their own yet, so the game\'s theme plays there',
-    ['hollows', 'thunder', 'tidal', 'mist'].every((k) => music(k) === null));
+  ok('...the Electric Foundry has no track of its own yet, so the game\'s theme plays there', music('thunder') === null);
+  /* v2.3.3610: Lil Bro's race asks for its own music at once, and the
+     place's comes back a moment after it */
+  M.resetWheelMusic();
+  const R = fakeAudio('town');
+  const SR = { currentZone: 'wheel', _race: null };
+  const stepR = (region, t) => M.noteWheelMusic(at(region), SR, R, t);
+  stepR('commons', 1);
+  SR._race = { phase: 'count' };
+  ok('Lil Bro\'s race: the race music the moment the countdown starts', stepR('commons', 100) === M.RACE_MUSIC && R._currentZoneAmbient === 'minigame');
+  SR._race = { phase: 'done' };
+  ok('...and once it is done the town\'s again after MUSIC_INTO_LAND_MS, not MUSIC_HOME_MS',
+    stepR('commons', 200) === null && stepR('commons', 200 + M.MUSIC_INTO_LAND_MS) === 'town');
+  M.resetWheelMusic();
+  const P2 = fakeAudio('frost');
+  P2._musicPreview = true;
+  ok('the Sound Studio\'s music preview holds the land watch off', M.noteWheelMusic(at('ember'), S, P2, 1) === null && P2.calls.length === 0);
+  M.resetWheelMusic();
   ok('the Wheel itself asks for nothing while the lands choose, the address can turn it off, and a zone\'s ambience is let go when you leave it',
     /if \(zoneId === 'wheel' && this\.wheelLandMusic\) return;/.test(gd) && /wheelLandMusic: !\(typeof location/.test(gd) && /nolandmusic/.test(gd)
       && /delete this\._samples\[_prevAmb\]/.test(gd));

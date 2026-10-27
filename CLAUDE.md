@@ -1085,9 +1085,11 @@ remnant to migrate server-side, not a mode to preserve.
       gear) and EN/MP the Energy family, an open one covering the figure row
       (heroStatPills.js `heroStatFamilies`; `mp-statfamilies`, mp-charfit retired);
       since
-      v2.3.3577 its figure faces SOUTHEAST (the owner's ask; the southwest
+      v2.3.3577 its figure faced SOUTHEAST (the owner's ask; the southwest
       art mirrored, the crop's window following it: CharacterView.jsx
-      `figureCx`), `mp-heroview`: docs/specs/notes-2026-10-22.md.
+      `figureCx`), and since v2.3.3608 SOUTHWEST again (the owner: "I also
+      like the Southwest view of the character in the dashboard preview
+      better"), `mp-heroview`: docs/specs/notes-2026-10-22.md.
   - Since v2.3.3009 the Wheel's TOP BAR says where you are -- the owner:
     "Put the 'brotown safe' and other location indicators in place of the
     'the wheel lvl 1-2' on the top bar" -- the land over its stage and
@@ -1469,7 +1471,17 @@ remnant to migrate server-side, not a mode to preserve.
           EMBLEM under the minimap (src/ui/landEmblem.js) as the plaque docks:
           one picture px a device px, never upscaled, clear of every control
           (beside the box sideways), gone after 3.6 s; the plate's gold scroll
-          ends cut off the pictures (cut-owner-icons.py `rim_cut`);
+          ends cut off the pictures (cut-owner-icons.py `rim_cut`); since
+          v2.3.3609 THE OLDER BANNERS ARE BACK -- the owner: "I also don't like
+          the intro graphics to each zone.  The older ones were better." -- the
+          owner's animated ornaments for Frost, Flame, Wind and Verdant (the
+          Wheel holds the four strips again, ~15.7 MB decoded,
+          preloadAnimations.js `wheelBannerLands`), the plaque alone for the
+          other four, no scene and no emblem (landEmblem.js gone); and the
+          wind, storm and stone ELEMENT ICONS are the element itself (gusts, a
+          lightning bolt, a boulder: tools/ui/draw-element-icons.py; "Some
+          zones (like wind) have a strange rune ... It should just be a pure
+          icon of the element"), owner-icons §4/§5/§9, mp-wheelmap 4;
         - `land-auras` suite, `owner-icons` §5, `mp-landauras`, `mp-wheelmap`:
           docs/specs/land-auras.md, docs/specs/owner-icons.md.
     - since v2.3.3407 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
@@ -1909,7 +1921,13 @@ remnant to migrate server-side, not a mode to preserve.
         players" ("dungeon · Lv 16 · 2–3 players" lost to the stage's name: a
         label is drawn only where it clears the ones before it) and "Lv 16 ·
         for 2–3 players" under the Enter button (src/data/wheelDungeons.js
-        `WHEEL_DUNGEON_PARTY`, mirror-audit);
+        `WHEEL_DUNGEON_PARTY`, mirror-audit); since v2.3.3608 "Lv 10+" in
+        both, the owner: "Change the recommended level for the slime grotto
+        dungeon to lvl 10 (don't change any difficulty settings)" -- the
+        words alone (`WHEEL_DUNGEON_REC`, the page's own table, never the
+        worker's PARTY row the mirror-audit holds), the monsters still 16,
+        and the Mayor's line "for level 10 and up" (gameSystems.js
+        `GROTTO_REC_LEVEL`);
       - FOUND ON THE WAY: A SHOVE PUT A SLIME IN THE WALL -- every clamp on a
         moved monster asked `_getZoneConfig`, which knows no dungeon zone, so
         a knockback put a slime through the Grotto's wall, out of every
@@ -2038,7 +2056,15 @@ remnant to migrate server-side, not a mode to preserve.
         your own skull a mark on its corner,
         not a third thing in the row -- so it fits between the bell (66-110 px)
         and the shield at 360 px and up; at 320 it lies over the bell's right
-        half, never the shield;
+        half, never the shield; since v2.3.3608 it is CENTRED (the owner:
+        "center the red skull on the UI so it's not awkwardly aligned to the
+        left"), and steps just left of the shield, scaled to the room the bell
+        leaves, only while the shield button is in the page and under the
+        middle (NmlBadge.jsx `nmlBadgePlace` works both places out ahead;
+        game.css `.bt-nml-badge` switches on `html:has([data-shield])`, in the
+        frame the button appears; the badge z 30 under the shield's 31, so a
+        tap on the shield is the shield's -- a poll's lag left it over the
+        shield, mp-nmlfoe step 1);
       - spar §16 (24 checks), `mp-nmlfoe` (three phones): no-mans-land.md "The
         choice lasts, and the shield is there".
     - since v2.3.3316 A SWING ASKS, AND A DEATH TAKES EVERYTHING CARRIED -- the
@@ -3186,6 +3212,20 @@ remnant to migrate server-side, not a mode to preserve.
       the data index -- despite the effectsRenderer comment saying it never is;
     - test-world-core "the lands' music", `mp-landmusic`:
       docs/specs/wheel-land-music.md.
+    - since v2.3.3610 THE OWNER'S OWN SCORE -- "A huge part of the game is
+      emotional resonance from music.  I don't know what music plays for the
+      town vs the other zones", then ten Suno tracks of theirs (masters in
+      `assets/music-source/2026-10-26/`, the game's copies 128 kbps / 44.1 kHz
+      by tools/audio/encode_music.mjs): BroTown, Frost Ridge, the Flame Fields,
+      the Wind Dunes and the Verdant Wilds replaced in place (`?v=2.3.3610`),
+      the Stone Hollows, the Water Caves and the Poison Forest their own at
+      last, every `dungeon:` zone the `dungeon` key (startZoneAmbient), Lil
+      Bro's race the `minigame` key while it counts down and runs
+      (wheelMusic.js `RACE_MUSIC`); the Electric Foundry still the theme; the
+      Sound Studio's MUSIC tab lists every track under where it plays, ▶ from
+      its file with the game's music bus down and the land watch held off
+      (`BT_AUDIO._musicPreview`); `sound-cues` §13, `mp-soundstudio` §10:
+      docs/specs/wheel-land-music.md "v2.3.3610".
   - Since v2.3.3065 NORTH IS MARKED ON BOTH MAPS -- the owner, on the
     recommendations for finding your way round: "Continue building
     recommended": neither map ever turns, and nothing said up is north;
@@ -3634,6 +3674,12 @@ remnant to migrate server-side, not a mode to preserve.
       120 Hz; each step is now x `S._dtScale`, as the walk's is (120 px a
       second), the others' pets already eased by time; `mp-petdraw` measures
       each step against its frame's time: docs/specs/trapping.md.
+    - since v2.3.3613 THE TEST PANEL ADDS A PET -- the owner: "Admin 'add
+      pet'": a row of the eight lands (DevPanel.jsx DEV_PET_LANDS) with
+      Golden, Big and Lv 1 / Lv 21, each a call to the worker's trapping lever
+      (`/dev/trapping {pet: {home, level}, look}`, `look` first so the pet
+      comes out as chosen); it lands in More, Pets as a catch would, a first
+      pet out with you at once; `mp-devpet`: docs/specs/trapping.md.
   - Since v2.3.3139 HARDENING TAKES BARS OR HARDENED WOOD AND ITS GOLD
     DOUBLES -- the owner: "hardening should cost 1 bar per level (hardening
     lvl 1 cost 1 bar, hardening lvl 2 costs 2 bars, and a doubling gold cost

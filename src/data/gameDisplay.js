@@ -1337,10 +1337,33 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      Both sides still move together, which is the property the v2.3.1589 note
      below depends on: the map value is the cache key AND the only thing
      trackUrl is compared to (_zoneMusicUrl). */
+  /* ═══ v2.3.3610: THE OWNER'S NEW SCORE, A TRACK FOR EVERY PLACE ═══
+     The owner, 2026-10-26: "A huge part of the game is emotional resonance
+     from music.  I don't know what music plays for the town vs the other
+     zones" -- then uploaded ten tracks of their own (made with Suno), named
+     for where they go.  Five replace their files in place, as v2.3.2614 did,
+     and so take a new ?v= (the cache-buster the notes above explain); five
+     are new:
+       Town Square Loop  -> village.mp3  (town: BroTown and the safe ground)
+       Frozen Cave Loop  -> frost.mp3    (Frost Ridge)
+       Fire level        -> fire.mp3     (the Flame Fields)
+       Wind level        -> desert.mp3   (the Wind Dunes, the wind on top)
+       Forest Loop       -> forest.mp3   (the Verdant Wilds)
+       Rock level        -> rock.mp3     (the Stone Hollows, new)
+       Water lvl         -> water.mp3    (the Water Caves, new)
+       Murky Loop        -> murky.mp3    (the Poison Forest, new)
+       Swift Skirmish Clash -> skirmish.mp3 (inside any dungeon, new:
+                            startZoneAmbient files every `dungeon:` zone
+                            under `dungeon`)
+       Minigame          -> minigame.mp3 (Lil Bro's race, new: the land watch
+                            asks for it while the race runs, wheelMusic.js)
+     The Electric Foundry (thunder) has no track of its own yet and plays the
+     game's theme, as the farm does.  The Sound Studio's Music section lists
+     every one with where it plays (data/soundStudio.js MUSIC_PLACES). */
   ZONE_MUSIC: {
-    town: '/audio/music/village.mp3?v=2.3.2614',
+    town: '/audio/music/village.mp3?v=2.3.3610',
     worldview: '/audio/music/world.mp3?v=2.3.2614',
-    frost: '/audio/music/frost.mp3?v=2.3.2614',
+    frost: '/audio/music/frost.mp3?v=2.3.3610',
     /* "fire zone" = Flame Fields, and the "lava zone" too — gameDisplay.js:916
        describes it as lava rivers cutting through scorched earth.
        v2.3.1591: ?v= added because this file's CONTENT was replaced (owner
@@ -1349,8 +1372,8 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        filename.  Without it a returning player keeps the old track out of their
        HTTP cache forever, since public/ is copied verbatim by vite rather than
        content-hashed. */
-    ember: '/audio/music/fire.mp3?v=2.3.2614',
-    meadow: '/audio/music/forest.mp3?v=2.3.2614', /* owner: "forest meadow area where the
+    ember: '/audio/music/fire.mp3?v=2.3.3610',
+    meadow: '/audio/music/forest.mp3?v=2.3.3610', /* owner: "forest meadow area where the
                                           slimes are" — Starting Meadow, the
                                           green zone that spawns 10 plain
                                           slimes.  NOT mist, which is literally
@@ -1371,14 +1394,21 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        file is replaced.  Safe against the LRU: the map value is the cache key
        AND the only thing `trackUrl` is ever compared to (_zoneMusicUrl), so
        both sides move together. */
-    sky: '/audio/music/desert.mp3?v=2.3.2614',
+    sky: '/audio/music/desert.mp3?v=2.3.3610',
     /* v2.3.3064: the Wheel's Verdant Wilds, the flora land, play the old
        meadow's Floral -- its banner is the owner's verdant one and its land
        the green one the meadow became.  The SAME url as meadow's, so the two
        share one decoded buffer (the cache is keyed by url).  The Wheel's
        other lands are keyed by their own ids here as they get music: frost,
        ember and sky already were (game/wheelMusic.js). */
-    verdant: '/audio/music/forest.mp3?v=2.3.2614',
+    verdant: '/audio/music/forest.mp3?v=2.3.3610',
+    /* v2.3.3610: the owner's score for the other lands, the dungeons and Lil
+       Bro's race (see the table's note above); thunder plays the theme */
+    hollows: '/audio/music/rock.mp3?v=2.3.3610',
+    tidal: '/audio/music/water.mp3?v=2.3.3610',
+    mist: '/audio/music/murky.mp3?v=2.3.3610',
+    dungeon: '/audio/music/skirmish.mp3?v=2.3.3610',
+    minigame: '/audio/music/minigame.mp3?v=2.3.3610',
   },
   /* ═══ v2.3.1738: PER-ZONE AMBIENCE (owner art) ═══
      Owner: "use this to play as the 'wind' ambient sound effect to play in a
@@ -2588,6 +2618,11 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     if (_asks.length > 16) _asks.shift();
   } catch (e) {}
   if (!this.ctx || this.muted) return;
+  /* v2.3.3610: every dungeon is one music key -- the owner's "Swift Skirmish
+     Clash" (ZONE_MUSIC.dungeon) -- so `dungeon:<id>` is filed under it here,
+     the one place every zone's music is asked for; the rest of the music code
+     only ever sees the key */
+  if (typeof zoneId === 'string' && zoneId.indexOf('dungeon:') === 0) zoneId = 'dungeon';
   /* v2.3.3064: THE WHEEL ASKS FOR NOTHING -- its music is its lands'
      (game/wheelMusic.js), started by the land watch once it knows where you
      stand.  Arriving keeps what plays: the way in, a death's, a dungeon's and

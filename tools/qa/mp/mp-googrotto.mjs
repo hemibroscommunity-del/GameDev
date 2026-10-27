@@ -9,10 +9,10 @@
  *   1. the client knows the Goo Grotto from the Wheel's own map, where the
  *      worker baked it, on the Verdant Wilds' first stretch, about half a
  *      minute's walk from where you arrive;
- *   2. on the way, the world map, centred on you, names it "Lv 16 · 2–3
- *      players"; walked there, its mouth is drawn, nothing standing over
- *      it, and "Enter the Goo Grotto" comes up with "Lv 16 · for 2–3
- *      players" under it;
+ *   2. on the way, the world map, centred on you, names it "Lv 10+ · 2–3
+ *      players" (v2.3.3608: the level it is for; "Lv 16" before); walked
+ *      there, its mouth is drawn, nothing standing over it, and "Enter the
+ *      Goo Grotto" comes up with "Lv 10+ · for 2–3 players" under it;
  *   3. a tap opens it: the Verdant Wilds' own monsters at level 16 (whatever
  *      yours), drawn in their own looks, on the land's mossy stone, the way
  *      back out remembered;
@@ -36,6 +36,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3573: the Grotto's level and party, the worker's own */
   const { WHEEL_DUNGEON } = await import(H.REPO + '/server/src/wheeldungeon.js');
   const PARTY = WHEEL_DUNGEON.PARTY.verdant;
+  const { WHEEL_DUNGEON_REC } = await import(H.REPO + '/src/data/wheelDungeons.js');   /* v2.3.3608 */
   const G = WHEEL_DOORS.verdant;
   const P = await H.newPlayer(browser, { name: 'Gooer', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true });
   await H.enterWorld(P);
@@ -57,8 +58,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3573: a party dungeon is its own level, whatever yours (it was
      yours, never past 5) */
   const want = PARTY.level;
-  const mapLine = `Lv ${PARTY.level} · ${PARTY.size - 1}–${PARTY.size} players`;
-  const doorLine = `Lv ${PARTY.level} · for ${PARTY.size - 1}–${PARTY.size} players`;
+  /* v2.3.3608: the words say the level it is FOR (WHEEL_DUNGEON_REC, the
+     owner's "recommended level ... lvl 10"); its monsters stay PARTY.level */
+  const REC = WHEEL_DUNGEON_REC.verdant;
+  const mapLine = `Lv ${REC}+ · ${PARTY.size - 1}–${PARTY.size} players`;
+  const doorLine = `Lv ${REC}+ · for ${PARTY.size - 1}–${PARTY.size} players`;
   let stopAlive = false;
   (async () => {
     while (!stopAlive) {
@@ -113,6 +117,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!near && near.door === 'verdant' && /Enter the Goo Grotto/.test(near.btn || '') && (near.btn || '').includes(doorLine) && near.drawn.includes('verdant'), { near, doorLine });
 
   /* ── 3. in ── */
+  /* v2.3.3610: the sound on, so the dungeon's music can be read */
+  await P.page.evaluate(async () => {
+    const A = window.BT_AUDIO;
+    if (A && !A.ctx) { try { A.unlock(); } catch (e) { /* checked below */ } }
+    if (A && A.ctx && A.ctx.state !== 'running') { try { await A.ctx.resume(); } catch (e) { /* checked below */ } }
+  });
   for (let i = 0; i < 15; i++) {
     if (await P.page.evaluate(() => !!document.querySelector('[data-wheel-door]'))) break;
     await P.page.waitForTimeout(300);
@@ -143,6 +153,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       && !!arena.floor && arena.floor.drawn === true && /verdant-3-A\.png/.test(arena.floor.pic || '')
       && !!arena.back && Math.abs(arena.back.x - G.back[0]) < 1 && Math.abs(arena.back.y - G.back[1]) < 1,
     arena);
+  /* v2.3.3610: a dungeon plays the owner's "Swift Skirmish Clash" (every
+     `dungeon:` zone filed under ZONE_MUSIC.dungeon) */
+  let dm = null;
+  for (let i = 0; i < 20; i++) {
+    dm = await P.page.evaluate(() => { const A = window.BT_AUDIO; return A ? { playing: A._currentZoneAmbient || null, url: A._zoneMusicUrl || null } : null; });
+    if (dm && dm.playing === 'dungeon') break;
+    await P.page.waitForTimeout(300);
+  }
+  rec.ok(`...and inside, the dungeon's music: skirmish.mp3, the owner's Swift Skirmish Clash (${dm && dm.url})`,
+    !!dm && dm.playing === 'dungeon' && /skirmish\.mp3/.test(dm.url || ''), dm);
 
   /* ── 4. the waves, the boss at the dungeon's level, the clear ── */
   const coins0 = await H.readState(P, (S) => (S.rpg && S.rpg.coins) || 0);

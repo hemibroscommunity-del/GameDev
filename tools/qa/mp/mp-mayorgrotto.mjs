@@ -76,9 +76,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const aside = at >= 0 ? walk.lines[at] : '';
   rec.ok(`2a. the hand-in is one tap (${walk.lines.length})`, walk.lines.length === 1, walk.lines);
   rec.ok('2b. ...it names the Goo Grotto', at === 0, { at, aside });
-  rec.ok('2c. ...its level and party: level 16, 2 or 3 friends', /level 16\b/.test(aside) && /take 2 or 3 friends\./.test(aside), aside);
+  rec.ok('2c. ...the level it is for and its party: level 10 and up (v2.3.3608), 2 or 3 friends', /for level 10 and up\b/.test(aside) && /take 2 or 3 friends\./.test(aside), aside);
   rec.ok('2d. ...last, after the bow and staff and who to see first',
-    /bow and a staff/.test(aside) && /Diego\. The Goo Grotto/.test(aside), aside);
+    /bow and a staff/.test(aside) && /Diego[^.]*\. The Goo Grotto/.test(aside), aside);   /* v2.3.3611: "...Diego have work for you." */
   rec.ok('2e. ...in his voice ("I\'m out of eulogies")', /I'm out of eulogies\.$/.test(aside), aside);
 
   rec.ok('3. "Claim reward" is reached on his last line', walk.claim, walk.lines.slice(-1));

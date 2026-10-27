@@ -53,6 +53,13 @@ INTERIOR_KNOCKOUT = {
     'skill-trapping': 0.005,
 }
 
+# v2.3.3609: drawn in code since (tools/ui/draw-element-icons.py) -- the
+# owner, 2026-10-26: "Some zones (like wind) have a strange rune representing
+# the element.  It should just be a pure icon of the element (like wind lines
+# or something)."  Sheet F's three (a spiral rune on a grey triangle, a purple
+# star, a cracked tile) are never cut again, whatever is deleted.
+DRAWN_IN_CODE = {'elem-wind', 'elem-storm', 'elem-stone'}
+
 # Sheet manifest: rows, cols, row-major icon names (docs/UI-BIBLE.md Part 4).
 SHEETS = {
     'sheet-a.png': (2, 3, [
@@ -242,6 +249,9 @@ def process_sheet(fname, rows, cols, names):
         cx1 = min(im.size[0], x1 + 1 + pad)
         cy1 = min(im.size[1], y1 + 1 + pad)
         out_path = os.path.join(OUT_DIR, name + '.webp')
+        if name in DRAWN_IN_CODE:
+            print(f'  {name}.webp  SKIP (drawn in code: draw-element-icons.py)')
+            continue
         if os.path.exists(out_path):
             # v2.3.1225: skip-not-abort, so deleting specific icons and
             # re-running regenerates only those (never overwrites).
