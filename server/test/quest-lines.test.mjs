@@ -14,6 +14,11 @@
  *      tap, and still short
  *   4. the words a player reads: "Remains", never "remnants"; no "Wheel"; and
  *      no line sends you to a "gold !" (the quest markers are the map's)
+ *   5. (v2.3.3611) the zingers came back -- the owner: "add back the clever
+ *      zingers in the Npc dialog but still keep it to just one message before
+ *      the next call to action.  You should understand the npc's specific
+ *      personality from just one message" -- and the call to action is still
+ *      in that one message: every offer and progress line names its count
  */
 import { QUEST_CHAINS, lilBroRaceLine, setGrottoParty } from '../../src/data/gameSystems.js';
 import { WHEEL_DUNGEON_PARTY } from '../../src/data/wheelDungeons.js';
@@ -47,7 +52,8 @@ check('1d. ...and none is empty', empty.length === 0, empty);
 const lil = [0, 1, 2, 3, 7].map((n) => lilBroRaceLine(n));
 check('2a. his line is one tap for 0, 1, 2, 3 and 7 losses', lil.every((t) => chunks(t).length === 1), lil);
 check('2b. ...each still sends you to Race!', lil.every((t) => /Tap Race!/.test(t)), lil);
-check('2c. ...and owns up after a loss', /^I wasn't even trying\./.test(lil[1]) && /That's 7 wins for me/.test(lil[4]), [lil[1], lil[4]]);
+/* v2.3.3611: "GG EZ! I wasn't even trying." -- the brag first, then the excuse */
+check('2c. ...and owns up after a loss', /\bI wasn't even trying\./.test(lil[1]) && /That's 7 wins for me/.test(lil[4]), [lil[1], lil[4]]);
 
 // ── 3. The Mayor's first hand-in with the Grotto's sentence ──
 setGrottoParty(WHEEL_DUNGEON_PARTY.verdant);
@@ -61,6 +67,26 @@ const all = [...lines.map((l) => String(l.t || '')), ...lil, withGrotto];
 check('4a. "Remains", never "remnants"', !all.some((t) => /remnant/i.test(t)));
 check('4b. no "Wheel" (players never read it: CLAUDE.md)', !all.some((t) => /\bWheel\b/.test(t)));
 check('4c. no line sends you to a "gold !"', !all.some((t) => /gold !/.test(t)));
+
+// ── 5. v2.3.3611: the zingers, and the job still in the one message ──
+{
+  const miss = [];
+  let n5 = 0;
+  for (const [id, q] of Object.entries(QUEST_CHAINS)) {
+    if (!q || !q.dialogue || q.retired) continue;
+    const n = q.need && q.need.n;
+    if (typeof n !== 'number') continue;
+    n5++;
+    const names = (t) => typeof t === 'string' && new RegExp('\\b' + n + '\\b').test(t);
+    if (!names(q.dialogue.start)) miss.push(id + '.start (' + n + ')');
+    if (typeof q.dialogue.progress === 'string' && !names(q.dialogue.progress)) miss.push(id + '.progress (' + n + ')');
+  }
+  check(`5a. every offer and progress line with a count (${n5} quests) still names it: the call to action is in the one message`, n5 >= 9 && miss.length === 0, miss);
+  /* the joke is part of the line, not a second tap: an offer is more than its job */
+  const bare = ['tut_1', 'smith_1', 'wood_1', 'fish_1', 'farm_1', 'race_1', 'beast_1']
+    .filter((id) => String(QUEST_CHAINS[id].dialogue.start || '').length < 160);
+  check('5b. the tour\'s first offers carry a zinger before the job (160+ characters, one tap)', bare.length === 0, bare);
+}
 
 if (failures) { console.log(`\n${failures} FAILURE(S)`); process.exit(1); }
 console.log('\nquest-lines: all checks passed');
