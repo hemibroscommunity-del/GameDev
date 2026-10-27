@@ -284,7 +284,7 @@ const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
 const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHpFor /* v2.3.3035: a timer harvest's bar reads the node's HP; v2.3.3251: by its type */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, bossSizeK /* v2.3.3556: ...and a dungeon boss's, at its size */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
-import { farmWorkFrame, farmAnimOf, farmWorkBeats, parseFarmEx, FARM_BEAT_SOUND } from '@/game/farmWork.js';   /* v2.3.3439: the farmer's own moves, frame by frame; and another player's, off their `ex` */
+import { farmWorkFrame, farmAnimOf, farmWorkBeats, parseFarmEx, farmBeatPlay } from '@/game/farmWork.js';   /* v2.3.3439: the farmer's own moves, frame by frame; and another player's, off their `ex` */
 import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';   /* v2.3.3439: the owner's three farm animations, cut by tools/make_farm_anims.py */
 import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, treeChopOffset, behindTree, TREE_PX, TREE_FOOT_DY, TREE_FADE, TREE_SEE_ALPHA, TREE_SEE_MS } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree */
 import { oreArtSources, oreArtLevelFor, oreGeom, ORE_PX } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock */
@@ -4022,7 +4022,8 @@ export class EffectsRenderer {
            bow facings, and the trouser print landed on every other jog-leg
            frame.  See the note on recolorBodyToCanvas. */
         const cv2 = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh, null, null, a, _fw,
-          undefined, undefined, undefined, _legsUnder);   /* v2.3.3640: under greaves, their legs (_legsUnderFor) */
+          undefined, undefined, undefined, _legsUnder,   /* v2.3.3640: under greaves, their legs (_legsUnderFor) */
+          rec.url === rec.cfg.torsoUrl);   /* v2.3.3658: a torso strip's garments are the waist's sliver (playerSkins TORSO_WAIST_UP) */
         if (_legsUnder && cv2.__btLegsClamp && this._legsClampSeen) this._legsClampSeen[rec.url + (mirror ? '|m' : '')] = cv2.__btLegsClamp;   /* QA */
         const cnt = Math.max(1, Math.round(cv2.width / _fw));
         /* v2.3.2775: cropped (_sliceStandIn).  The plain bake keeps its canvas
@@ -14496,7 +14497,7 @@ export class EffectsRenderer {
      _remoteBodyFramesFor but generic over url/fw/fh.  The source image must have
      been loaded into _bodyImgCache by the local bake (it is: bow torso strips +
      jog-<dir>-legs sheets are loaded at construction). */
-  _remoteSheetFramesFor(o, url, fw, fh, dir, mirror) {
+  _remoteSheetFramesFor(o, url, fw, fh, dir, mirror, torso) {
     if (!this._remoteSheetCache) this._remoteSheetCache = new Map();
     const _pa = this._peerStandInArt(o, dir, mirror);   /* v2.3.2863: see _peerStandInArt */
     const key = url + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg;
@@ -14513,7 +14514,7 @@ export class EffectsRenderer {
       const _sq = (fw == null || fh == null) ? (img.naturalHeight || img.height || 0) : 0;
       const _fw = _sq || fw, _fh = _sq || fh;
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
-        null, _fh, null, null, _pa.art, _fw);   /* v2.3.2863 */
+        null, _fh, null, null, _pa.art, _fw, undefined, undefined, undefined, undefined, !!torso);   /* v2.3.2863; v2.3.3658: + a torso strip's waist (TORSO_WAIST_UP) */
       const n = Math.max(1, Math.round(cv.width / _fw));
       arr = this._own(_sliceStandIn(cv, _fw, _fh, n, null));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned */
       this._remoteSheetCache.set(key, arr);
@@ -14799,7 +14800,7 @@ export class EffectsRenderer {
       const _moving = !_stale && _vmag > 0.03;
       const _rd = resolveDirection(dir4);
       const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
-      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh, cfgKey, mirror) : null;   /* v2.3.2863 */
+      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh, cfgKey, mirror, true) : null;   /* v2.3.2863; v2.3.3658: a torso strip */
       const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null, _jdir, _rd.mirror);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256; v2.3.2863: + direction and flip, for the drawings */
       const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
@@ -15079,7 +15080,7 @@ export class EffectsRenderer {
       const _moving = !_stale && _vmag > 0.03;
       const _rd = resolveDirection(dir8);
       const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
-      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh, cfgKey, mirror) : null;   /* v2.3.2863 */
+      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh, cfgKey, mirror, true) : null;   /* v2.3.2863; v2.3.3658: a torso strip */
       const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null, _jdir, _rd.mirror);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256; v2.3.2863: + direction and flip, for the drawings */
       const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
@@ -16651,10 +16652,12 @@ export class EffectsRenderer {
     const beats = ent._farmBeats;
     while (ent._farmBeat < beats.length && t >= beats[ent._farmBeat]) {
       ent._farmBeat++;
-      const snd = FARM_BEAT_SOUND[fx.step];
       const share = peerShare(S, ox, oy);
-      if (snd && share > 0 && typeof window !== 'undefined' && window.BT_AUDIO) {
-        try { window.BT_AUDIO.play(snd.key, { vol: snd.vol * share, rate: snd.rate }); } catch (e) { /* sound only */ }
+      /* v2.3.3664: the beat's own part of the owner's hoe or clay, in turn */
+      const snd = share > 0 ? farmBeatPlay(fx.step, ent._farmBeat - 1, share) : null;
+      if (snd && typeof window !== 'undefined' && window.BT_AUDIO) {
+        const o = snd.offset != null ? { offset: snd.offset, duration: snd.duration, vol: snd.vol, rate: snd.rate } : { vol: snd.vol, rate: snd.rate };
+        try { window.BT_AUDIO.play(snd.key, o); } catch (e) { /* sound only */ }
       }
     }
     /* for the QA probe (__btPeerFarmers) */

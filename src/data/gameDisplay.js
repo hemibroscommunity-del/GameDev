@@ -2417,16 +2417,19 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       this.play(_fsKey, { offset: off, duration: dur, vol: (0.13 + Math.random() * 0.025) * kv, rate: 1.06 + (Math.random() - 0.5) * 0.10 });
     }
   },
-  enterBuilding: function enterBuilding() {
+  enterBuilding: function enterBuilding(kind) {
     /* v2.3.3343: a door is heard -- a knock of wood (data/eventSounds.js
        `door`).  This was two beep()s, which have played nothing since
        v2.3.1103, and it is the one call every way through a door makes (the
        E key, the stick's tap, a keeper, the Enter button, a dungeon's mouth,
        the farm's sheds) -- twelve call sites, one sound.  Stamped as the
        gesture's own sound, so the Enter button's menu click yields to it
-       (uiClick: a specific sound wins the tap). */
+       (uiClick: a specific sound wins the tap).
+       v2.3.3664: the door is the owner's recording of one opening ("doors
+       opening ("entering" town buildings)"); a dungeon's mouth, a cave,
+       keeps the knock (`kind` 'mouth': EVENT_SOUNDS.caveMouth). */
     if (!this.ctx || this.muted) return;
-    var L = EVENT_SOUNDS.door, r = 1 + (Math.random() - 0.5) * 0.06;
+    var L = kind === 'mouth' ? EVENT_SOUNDS.caveMouth : EVENT_SOUNDS.door, r = 1 + (Math.random() - 0.5) * 0.06;
     for (var i = 0; i < L.length; i++) this._playLayer(L[i], 1, r, 1);
     this._uiSpecificAt = this._now();
     this._lastDoor = Date.now();   /* for the tests */
@@ -3287,6 +3290,27 @@ BT_AUDIO.SFX_MANIFEST = {
      Breath Male", 1.72 s, cut by the same tool; its level in sprintBreath.js.
      ~0.33 MB decoded. */
   'sprint-breath': '/sfx/voice/sprint-breath.mp3',
+  /* ═══ v2.3.3664: THE OWNER'S RECORDINGS OF 2026-10-27 ═══
+     Eleven Freesound downloads (assets/sfx-source/2026-10-27/, CREDITS.md),
+     cut and levelled by tools/audio/cut_owner_sounds.py (ownerSoundClips.js):
+     the coins of a pickup (48 kHz: nearly all of it is above 6 kHz), the bag
+     drawn shut as anything goes into it, Lil Bro's own "hmm", a fire lit, a
+     town building's door, a knife carving wood, the farm's harvest, its can's
+     pour, its hoe's strikes and its clay's squeezes, and the hammer on the
+     forge's flat hoe -- the last three files of parts, played in turn.
+     ~1.0 MB decoded in all; data/eventSounds.js and game/farmWork.js say
+     when each plays. */
+  'coins': '/sfx/loot/coins.mp3',
+  'bag-close': '/sfx/ui/bag-close.mp3',
+  'lil-bro-hmm': '/sfx/npc/lil-bro-hmm.mp3',
+  'fire-light': '/sfx/world/fire-light.mp3',
+  'door-open': '/sfx/world/door-open.mp3',
+  'wood-carve': '/sfx/craft/wood-carve.mp3',
+  'forge-strike': '/sfx/craft/forge-strike.mp3',
+  'farm-harvest': '/sfx/farm/farm-harvest.mp3',
+  'farm-water': '/sfx/farm/farm-water.mp3',
+  'farm-hoe': '/sfx/farm/farm-hoe.mp3',
+  'farm-mould': '/sfx/farm/farm-mould.mp3',
 };
 
 /* ═══ v2.3.3462: SOME SOUNDS ARE DECODED AT 24 kHz ═══

@@ -1003,6 +1003,31 @@ remnant to migrate server-side, not a mode to preserve.
       BroTown, the cue table, the studio and mp-cuelevels, fishing keeping its
       bite -- most likely §3's tree "fleshy sound" of the 2026-10-19 notes
       too; `mp-gatherquiet`: docs/specs/sounds-2026-10-19.md §9.
+    - since v2.3.3664 THE OWNER'S RECORDINGS OF 2026-10-27 -- eleven Freesound
+      downloads (assets/sfx-source/2026-10-27/), each where the owner said:
+      - the farm's work lands to their hoe (a dig, three strikes in turn), can
+        (a watering) and clay (fertilizing, two squeezes in turn) --
+        game/farmWork.js `farmBeatPlay`, yours and another player's -- and a
+        crop harvested is their harvest (`farmHarvest`);
+      - their flat hoe is the forge's hammer (`smelt`, `forge`, `armourForge`,
+        the town's `anvil`); their knife the Woodworker's (`woodwork`,
+        `hardWood`, `trapsMade`);
+      - their door is every building's (`door`; a dungeon's mouth, a cave,
+        keeps the knock: `caveMouth`, `enterBuilding('mouth')`), their fire lit
+        the campfire catching (`campfire`);
+      - their coins a pickup's (`coinsPickup`; a sale keeps the spilled
+        coins), their bag closing anything more than gold into it (`bagIn`,
+        a beat after the item's own note, wsClient `cueLater`);
+      - Lil Bro's own "hmm" (`lilBroHmm`), and the townsfolk hum only as a
+        talk opens, a quest is taken or a keeper opens his building, never as
+        a line pops up over them (npcChatter gone: in town one came every few
+        seconds);
+      - cut and levelled by tools/audio/cut_owner_sounds.py, whose re-run
+        gives every older file byte for byte; 0.94 MB decoded, the memory
+        check's sound line 30 -> 32 (main's own reading had reached 30.0);
+        every license **CONFIRM** in CREDITS.md
+        (Freesound unreachable from here; NC is out); `sound-cues` §14,
+        `mp-cuelevels`, `mp-ownersounds` 9b: docs/specs/owner-sounds-1027.md.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
@@ -1091,7 +1116,11 @@ remnant to migrate server-side, not a mode to preserve.
       points" when the bar became 37): `statPreview.js` `POOL_STAT`,
       `pooled`, `poolShown`, shared with the scene; `statsim` §9;
     - the points grid FOLLOWS THE HELD WEAPON: a change of weapon brings it
-      back (`heldCatRef`), the window's tabs aim only the window;
+      back (`heldCatRef`), the window's tabs aim only the window; since
+      v2.3.3665 a TAP ON A WEAPON'S ROW in the gold frame shows that weapon's
+      six (the owner: "a way to toggle between the 3"; `data-points-shown`,
+      `data-prog3-held` still the one in hand), `mp-pointsswitch`:
+      docs/specs/points-weapon-switch.md;
     - the per-weapon and character point bubbles BREATHE while points wait
       (game.css `bt-pts-bubble`, transform and opacity only) -- since
       v2.3.3559 the COUNTS do, slowly (`bt-pts-count`, a 3.2 s breath: the
@@ -1183,6 +1212,21 @@ remnant to migrate server-side, not a mode to preserve.
       .webp twins CI's to mint, TRAPS §255);
       `?standinlegs=0`, `window.__btStandInLegs()` (`.set(on)`); `mp-standinlegs`:
       docs/specs/standin-legs.md.
+  - Since v2.3.3658 THE TROUSERS AND BOOTS ARE PAINTED WHERE THEY ARE -- the
+    owner: "check all the animations for ghost remnants" (mp-ghostaudit: pink
+    and blue specks round the head in nearly every pose). The recolour finds
+    the garments by colour, and the outline's anti-aliased greys and olives
+    were painted with them all over the figure (TRAPS §256):
+    - a trouser or boot pixel outside the patterns' band (the bottom 68% or
+      35% of the figure) is painted only when it belongs to a trouser piece of
+      30+ px, or to a solid boot piece hanging off one (or a raised sole's
+      thin rim: no skin beside it, the black sole within 3 px)
+      (src/rendering/garmentConfine.js, playerSkins `recolorBodyToCanvas`);
+    - the head sheets take no garment colours, and a torso strip only the
+      sliver at its waist;
+    - `?garmentspecks=0`, `window.__btGarmentSpecks()`,
+      tools/qa/garment-confine.mjs (every sheet); `mp-garmentspecks`:
+      docs/specs/garment-specks.md.
   - Since v2.3.3520 THE ARMOUR RIDES THE ARM CAPSULE -- the owner: the east
     jog's shoulder on a copper torso, "fix it for all future tiers". The
     capsule (v2.3.200) clones the body over the arm on every east jog with a
@@ -3835,6 +3879,16 @@ remnant to migrate server-side, not a mode to preserve.
       against `caps.hardenkeep`; on average H5 now takes 326 attempts, ~2
       million gold and ~1,471 bars (was ~4.3 million attempts); `hardening`
       §6: docs/specs/hardening.md "v2.3.3529: a failure keeps the level".
+    - since v2.3.3667 THE WOODWORKER IS BUILT LIKE THE BLACKSMITH -- the
+      owner: "I also want the woodworking menu rehauled and modeled after the
+      blacksmith menu": one row of tabs (Bow, Staff, Hardened, Upgrade, Traps),
+      costs as HAVE/NEED chips, one lock chip, the XP star, the next wood
+      locked as the goal; Upgrade hardens the held bow and staff (a short
+      Woodworking level a lock now); Make only ASKS (`forge_weapon`) and
+      waits for the worker's answer -- the old one took the wood and gold and
+      paid the XP in the browser first; both windows draw from
+      `src/ui/panels/buildings/BenchParts.jsx`; no worker change;
+      `mp-woodwork`, `mp-hardenbars` §6: docs/specs/woodwork-rehaul.md.
   - Since v2.3.3140 DAILY REWARDS, NOTHING AT LOGIN -- the owner's layered
     brief ("a small reward just for logging in, daily quests ... feeding a
     longer progression track"), then: "I find the login page with the chest
@@ -4058,6 +4112,15 @@ remnant to migrate server-side, not a mode to preserve.
       tee or greaves alone as before; `?fishgrip=1` is the old grip;
       `mp-fisharmour` (the skin laid over the plate below the head, 0-3 px a
       frame; the tee's and greaves' grip still there): docs/specs/fish-armour-hands.md.
+    - since v2.3.3657 THE GRIP LIFTS THE HAND, NOT THE TROUSERS -- the owner:
+      "check all the animations for ghost remnants" (mp-ghostaudit: a patch
+      of the trousers' colour on the greaves by the reel hand, up to 54 px):
+      at the reel the rod runs down past the hip, so the grip lifted the
+      trousers over the greaves with the hand. A grip pixel on the greaves that
+      is a trouser on the raw frame is left to them, with a plate or greaves
+      alone (`_chestFrameOf` carries the greaves either way); `?fishgriptrousers=1`,
+      `window.__btFishGripTrousers(on)`; `mp-fisharmour` (pink trousers: none
+      laid over the greaves in b, c, e): docs/specs/fish-armour-hands.md.
   - Since v2.3.3146 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:
     "Also all the buildings in town should show on the minimap": each
     standing building's footprint where it stands (wheelMinimap.js
@@ -5885,6 +5948,20 @@ Two protocol versions coexist; both must keep working:
   - THE TOUR: `mp-memledger` (all eight lands twice, ~6 min) runs from a button
     -- GitHub, Actions, "Memory", Run workflow -- after any big feature, or
     locally with `node tools/qa/mp/run.mjs memledger`.
+  - THE LONG SESSION (v2.3.3661, docs/specs/long-play-soak.md): `mp-longplay`
+    plays five pages against one worker for `BT_LONGPLAY_MS` (40 minutes by
+    default) -- the quest line, gathering and selling, fights, a party and the
+    Goo Grotto, a trade and No man's land, the farm and walks across the lands
+    -- and measures every page each round: the memory lines, timers, listeners
+    (each held until its remove or its target's collection), audio nodes
+    (alive until collected), DOM nodes and the game state's lists.
+    `mp-heapdiff` diffs two heap snapshots between fight trips (or idle
+    minutes), and `mp-listeners` names the listeners a farm visit leaves. Two
+    runs on 2026-10-27: no page error, nothing climbing but the JS heap, 7-14
+    MB an hour of play; no audio leak (9-15 nodes alive of 647 made over six
+    fights). Of the heap's growth between fights, about 40% is compiled code
+    (it levels off) and about 40% the storage of arrays something keeps
+    adding to, not yet found (it wants a snapshot of a build with names).
   - The preloading law above still stands. Moving a load off the loading
     screen to save memory is the owner's call, as #822's gathering poses were,
     never a quiet "fix".

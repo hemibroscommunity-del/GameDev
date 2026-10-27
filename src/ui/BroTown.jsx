@@ -420,7 +420,7 @@ import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the
 import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3434: the forge heard at work */
 import { tickMoveSounds, tickDanceMusic } from '@/game/moveSounds.js';   /* v2.3.3434: the emotes and moves heard; v2.3.3462: your dance's beat */
 import { tickHeartbeat } from '@/game/ownSounds.js';   /* v2.3.3462: the owner's heartbeat under a quarter of your health */
-import { npcSpeaks, npcChatter } from '@/game/npcVoices.js';   /* v2.3.3462: the townsfolk's voices */
+import { npcSpeaks } from '@/game/npcVoices.js';   /* v2.3.3462: the townsfolk's voices (v2.3.3664: a talk and a quest taken only) */
 import { tickAmbientBeds } from '@/game/ambientBeds.js';   /* v2.3.3462: the sea, BroTown's crowd and a fire's crackle */
 import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor, sendMove as sendMoveImpl, updateOwnEmote, updatePeerEmotes, movesLive } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building; v2.3.3392: + your bro moves */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
@@ -7120,7 +7120,9 @@ export var BroTown = function BroTown(_ref0) {
                   ts: Date.now(),
                   isQuest: true
                 };
-                npcChatter(S, npc);   /* v2.3.3462: his hum, by distance (game/npcVoices.js; npcChat() was a beep(), silent) */
+                /* v2.3.3664: no hum as his line pops up -- the owner: the hums
+                   "should play when you begin talking to someone or taking a
+                   quest"; in town one came every few seconds (game/npcVoices.js) */
                 npc.chatTimer = 12000 + Math.random() * 8000;
               }
             } else {
@@ -7166,7 +7168,9 @@ export var BroTown = function BroTown(_ref0) {
                     ts: Date.now()
                   };
                 }
-                npcChatter(S, npc);   /* v2.3.3462: his hum, by distance (game/npcVoices.js; npcChat() was a beep(), silent) */
+                /* v2.3.3664: no hum as his line pops up -- the owner: the hums
+                   "should play when you begin talking to someone or taking a
+                   quest"; in town one came every few seconds (game/npcVoices.js) */
                 npc.chatTimer = 8000 + Math.random() * 15000;
               }
             }
@@ -10186,7 +10190,7 @@ export var BroTown = function BroTown(_ref0) {
       if (r === 'quest' || r === 'flip' || r === 'shop' || r === 'pets') { try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ } }
       /* v2.3.3462: and he answers in his own voice (game/npcVoices.js) -- a
          quest's is the QuestPanel's, as it opens however you reached him */
-      if (npc && (r === 'flip' || r === 'shop' || r === 'pets' || r === 'nothing')) npcSpeaks(S, npc);
+      if (npc && (r === 'flip' || r === 'shop' || r === 'pets' || r === 'opens' || r === 'nothing')) npcSpeaks(S, npc);   /* v2.3.3664: a keeper opening his building too */
       return r !== 'miss';
     };
     if (!npc) return _mark('miss');
