@@ -16,7 +16,16 @@
  *   4. A SHIELD facing it blocks it (no shove); a player walked out of the
  *      ring before it goes is missed.
  *   5. AFTER: its cooldown; the mummy's own swing still shoves 48 px; the
- *      switch thrown mid-roar ends the cast quietly. */
+ *      switch thrown mid-roar ends the cast quietly.
+ *   6. v2.3.3634, found by the review of v2.3.3621:
+ *      - THE RING IS ROUND THE MUMMY: the wind-up's ax/ay (where every phone
+ *        draws the ring) is the mummy's own place, not its target's, and the
+ *        roar reaches exactly that ring -- a player 100 px behind it is in,
+ *        one 200 px past its target is out, and a mummy nudged mid-cast still
+ *        roars from the ring it drew;
+ *      - a roar every shield in range BLOCKED is reached, not a "MISS";
+ *      - A MUMMY KILLED MID-ROAR comes back with no roar in hand: after its
+ *        respawn nothing lands without a wind-up of its own first. */
 import { GameRoom } from '../src/index.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
 import { WHEEL_CENTRE, WHEEL_SAFE_R } from '../src/wheelspawns.js';
@@ -158,6 +167,76 @@ const withFlags = (flags, fn) => { const keep = room._liveFlags; room._liveFlags
     check('5: the switch thrown mid-roar: the cast ends quietly (no blow, the mummy free to swing)',
       owned === false && mummy._tgPhase === null && hitsOn('p1').length === 0 && hitsOn('p2').length === 0);
   });
+}
+
+/* ── 6. v2.3.3634: the ring, a blocked roar, a roar after death ── */
+{
+  stage();
+  /* p1 the target 60 px east; p2 100 px WEST (behind the mummy, 160 from
+     the target); p3 200 px EAST (past the target: 140 from it, 200 from the
+     mummy) -- round the target p3 would be in and p2 out */
+  Object.assign(P('p2'), { x: mummy.x - 100, y: mummy.y });
+  Object.assign(P('p3'), { x: mummy.x + 200, y: mummy.y });
+  room._maybeStartTelegraph(WHEEL_ZONE, mummy, { id: 'p1', extracting: false }, 60, Date.now());
+  const tele = abilities().find((e) => e.payload.phase === 'telegraph');
+  check('6: the ring the phones draw is round the MUMMY (ax/ay its place, not its target\'s)',
+    !!tele && tele.payload.ax === Math.round(mummy.x) && tele.payload.ay === Math.round(mummy.y), tele && tele.payload);
+  room.eventBuffer.length = 0;
+  mummy._tgUntil = Date.now() - 1;
+  room._resolveMonsterTelegraph(WHEEL_ZONE, mummy, Date.now());
+  check('6: ...and it reaches that ring: 100 px behind it hit, 200 px past its target not',
+    hitsOn('p2').length === 1 && hitsOn('p3').length === 0 && hitsOn('p1').length === 1, { p2: hitsOn('p2').length, p3: hitsOn('p3').length });
+
+  /* nudged mid-cast: the roar goes off from the ring it drew */
+  stage();
+  const x0 = mummy.x;
+  Object.assign(P('p2'), { x: x0 - 140, y: mummy.y });   /* 140 from the ring's centre */
+  Object.assign(P('p3'), { x: x0 + 500, y: mummy.y });
+  room._maybeStartTelegraph(WHEEL_ZONE, mummy, { id: 'p1', extracting: false }, 60, Date.now());
+  mummy.x = x0 + 40;                                       /* a blow nudged it: p2 now 180 from it */
+  room.eventBuffer.length = 0;
+  mummy._tgUntil = Date.now() - 1;
+  room._resolveMonsterTelegraph(WHEEL_ZONE, mummy, Date.now());
+  check('6: a mummy nudged mid-cast roars from the ring it drew (140 px from it: hit, though 180 from where it stands)',
+    hitsOn('p2').length === 1, { p2: hitsOn('p2') });
+
+  /* every shield in range blocks it: reached, not a MISS */
+  stage();
+  Object.assign(P('p2'), { x: mummy.x, y: mummy.y - 600 });
+  Object.assign(P('p3'), { x: mummy.x, y: mummy.y + 600 });
+  room._maybeStartTelegraph(WHEEL_ZONE, mummy, { id: 'p1', extracting: false }, 60, Date.now());
+  Object.assign(P('p1'), { blocking: true, ba: Math.PI });
+  room.eventBuffer.length = 0;
+  mummy._tgUntil = Date.now() - 1;
+  room._resolveMonsterTelegraph(WHEEL_ZONE, mummy, Date.now());
+  const blk = hitsOn('p1')[0];
+  const ex = abilities().find((e) => e.payload.phase === 'execute');
+  check('6: a roar every shield in range blocked says it landed (the phones float "Blocked!", not "MISS")',
+    !!blk && blk.blocked === true && !!ex && ex.payload.hit === true, { blk, ex: ex && ex.payload });
+
+  /* killed mid-roar, respawned: no roar without a wind-up of its own */
+  stage();
+  const at = { x: mummy.x, y: mummy.y };
+  room._maybeStartTelegraph(WHEEL_ZONE, mummy, { id: 'p1', extracting: false }, 60, Date.now());
+  check('6: (guard) the mummy is mid-wind-up', mummy._tgPhase === 'telegraph');
+  mummy.hp = 0;
+  room._resolveMonsterKill(WHEEL_ZONE, mummy, 'p1', P('p1'), 'melee');
+  mummy.respawnAt = Date.now() - 1;
+  mummy._tgUntil = Date.now() - 17000;                     /* the old wind-up long over */
+  /* a bystander by its spawn, the others far */
+  Object.assign(P('p2'), { x: mummy.spawnX + 60, y: mummy.spawnY });
+  Object.assign(P('p1'), { x: at.x + 3000, y: at.y });
+  Object.assign(P('p3'), { x: at.x - 3000, y: at.y });
+  room.eventBuffer.length = 0;
+  room._tickMonsters();
+  room._tickMonsters();
+  const evs = abilities();
+  const firstExec = evs.findIndex((e) => e.payload.phase === 'execute');
+  const firstTele = evs.findIndex((e) => e.payload.phase === 'telegraph');
+  const roared = room.eventBuffer.some((e) => e.type === 'monster_attack' && e.payload.monsterId === mummy.id && e.payload.ability === 'roar');
+  check('6: a mummy killed mid-roar comes back with no roar in hand: nothing goes off before a wind-up of its own',
+    mummy.alive === true && !roared && (firstExec < 0 || (firstTele >= 0 && firstTele < firstExec)) && P('p2').hp === 5000,
+    { alive: mummy.alive, roared, phases: evs.map((e) => e.payload.phase), hp: P('p2').hp });
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');

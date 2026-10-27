@@ -383,6 +383,7 @@ export const telegraphMethods = {
       }
       const targetId = m._tgTarget;
       const _tgR = m._tgRadius || kit.radius;   /* v2.3.2790: the ring it drew */
+      const _tgAt = m._tgAim;                   /* v2.3.3634: and where it drew it */
       m._tgRadius = 0;
       m._tgPhase = null;
       m._tgUntil = 0;
@@ -404,14 +405,22 @@ export const telegraphMethods = {
       if (kit.aoe) {
         let n = 0;
         const r2 = _tgR * _tgR;
+        /* v2.3.3634: from the ring's own centre (where the caster stood as it
+           wound up: the start above), so what the ring shows is what it
+           reaches even if a blow nudged the caster mid-cast */
+        const cx = _tgAt ? _tgAt.x : m.x, cy = _tgAt ? _tgAt.y : m.y;
         for (const pid of Object.keys(this.playerState)) {
           const p = this.playerState[pid];
           if (!p || p.dead || p.dying || p.disconnected || p.z !== zoneId || p._spar) continue;
-          const ddx = p.x - m.x, ddy = p.y - m.y;
+          const ddx = p.x - cx, ddy = p.y - cy;
           if (ddx * ddx + ddy * ddy > r2) continue;
           if (this._hitMissed('kit', zoneId, p, m, now)) continue;
+          /* v2.3.3634: REACHED counts, as a single-target cast's `hit` does:
+             a roar every shield in range blocked is no "MISS" (the blocker
+             reads "Blocked!" under it) */
+          n++;
           m._gustPx = kit.shove; m._gustMs = kit.shoveMs;
-          try { if (this._telegraphHitPlayer(zoneId, m, pid, kit) > 0) n++; }
+          try { this._telegraphHitPlayer(zoneId, m, pid, kit); }
           finally { m._gustPx = 0; m._gustMs = 0; }
         }
         this._monsterAbilityEvent(zoneId, m, kit.kind, 'execute', { radius: _tgR, hit: n > 0 });
@@ -457,14 +466,21 @@ export const telegraphMethods = {
     const ps = this.playerState[nearest.id];
     if (!ps || ps.dead || ps.dying) return false;
 
+    /* v2.3.3634: AN AREA CAST'S RING IS ROUND THE CASTER.  The phone draws
+       every kit's warning ring at (ax, ay), and the roar's was sent at its
+       TARGET's feet while it reached everyone round the MUMMY: a bystander
+       outside the drawn ring took it, and one inside it stood clear (found by
+       the review of v2.3.3621).  So an `aoe` kit aims where it stands, and
+       its execute measures from that very point (below). */
+    const aim = kit.aoe ? { x: m.x, y: m.y } : { x: ps.x, y: ps.y };   /* proto-ok: fixed-field point */
     m._tgPhase = 'telegraph';
     m._tgUntil = now + kit.windupMs;
-    m._tgAim = { x: ps.x, y: ps.y };              /* proto-ok: fixed-field point */
+    m._tgAim = aim;
     m._tgTarget = nearest.id;                     /* the cast owns its target */
     m._tgRadius = kit.radius * _dk;               /* v2.3.2790 */
     m._attackingUntil = Math.max(m._attackingUntil || 0, now + 100);
     this._monsterAbilityEvent(zoneId, m, kit.kind, 'telegraph', {
-      radius: m._tgRadius, ms: kit.windupMs, ax: Math.round(ps.x), ay: Math.round(ps.y),
+      radius: m._tgRadius, ms: kit.windupMs, ax: Math.round(aim.x), ay: Math.round(aim.y),
     });
     return true;
   },

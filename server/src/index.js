@@ -2000,6 +2000,15 @@ export class GameRoom {
                _burstUntil would explode on arrival, at full health. */
             m._burstUntil = 0; m._burstKiller = null; m._burstSlot = null;
             m._burstDone = false;
+            /* v2.3.3634: and a kit's wind-up (telegraph.js), for the
+               _bwUntil reason above -- a monster killed mid-cast came back
+               with its phase still 'telegraph' and a _tgUntil long past, so
+               the next tick fired the cast at its spawn with no warning: a
+               mummy killed during its roar's wind-up (they plant for it, next
+               to the players hitting them) roared at whoever stood by its
+               spawn 6-19 s later, half a hit and a 130 px shove.  Found by the
+               review of v2.3.3621.  The cooldown stays, as the burrow's. */
+            m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null; m._tgRadius = 0;
             /* v2.3.3120: and its trap marks (trapping.js): a mark is on THIS
                life of the monster, and the kill path clears it -- this is the
                belt and braces dmgByPlayer has above. */
