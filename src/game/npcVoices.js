@@ -5,23 +5,29 @@
  * voice blips: speech bubbles, opening a conversation".  Five of its hums are
  * cut into one file (tools/audio/cut_owner_sounds.py, data/eventSounds.js
  * npcVoice0-4); each townsperson keeps one of them at a pitch of his own
- * (VOICE_OF), so Mayor Bro always sounds like Mayor Bro and Lil Bro like a
- * little bro:
+ * (VOICE_OF), so Mayor Bro always sounds like Mayor Bro:
  *
  *   npcSpeaks(S, npc)   you talk to him -- his quest opens (QuestPanel), or
- *                       his window (Ace's flip, Diego's shop, the Pets page),
- *                       or he has nothing for you: his hum, in full;
- *   npcChatter(S, npc)  a line of his pops up over him (BroTown's townsfolk
- *                       loop, where BT_AUDIO.npcChat() was a beep(), silent
- *                       since v2.3.1103): his hum at CHATTER_K by distance
- *                       (hitSounds.earVol), none past CHATTER_R, and no two
- *                       townsfolk within CHATTER_GAP_MS -- the square is
- *                       alive, never a choir.
+ *                       his window (Ace's flip, Diego's shop, the Pets page,
+ *                       a keeper's building), or he has nothing for you --
+ *                       and you take his quest (QuestPanel again: the offer
+ *                       becoming the quest taken is a new subject): his hum,
+ *                       in full.
+ *
+ * ═══ v2.3.3664: A TALK AND A QUEST TAKEN, NOTHING ELSE; LIL BRO HIS OWN ═══
+ * The owner: "the "hmmm" sounds you have for NPCs should play when you begin
+ * talking to someone or taking a quest (other than the lil bro). I'll get a
+ * sound effect for him", and then his "hmm".  Until now a townsperson also
+ * hummed whenever a line of his popped up over him as you walked past
+ * (npcChatter, at 0.4 by distance): in town, with eight of them, one every few
+ * seconds -- the hums the owner was hearing at no moment of theirs.  That is
+ * gone; the lines still pop up, quietly.  Lil Bro speaks in the owner's
+ * boy's "hmm" (LIL_BRO, the cue lilBroHmm), where he had the man's highest
+ * hum pitched up 1.32x; a keeper opening his building now answers too.
  *
  * Sound only: nothing here may throw into its caller.  window.__btNpcVoices is
  * the tests' probe. */
 import { cue } from '@/game/eventSounds.js';
-import { earVol } from '@/game/hitSounds.js';
 
 export const VOICE_CUES = ['npcVoice0', 'npcVoice1', 'npcVoice2', 'npcVoice3', 'npcVoice4'];
 /* name -> [hum, pitch]: the hums by their own pitch (the cutter's notes:
@@ -31,18 +37,18 @@ export const VOICE_OF = Object.freeze({
   'Blacksmith Bro': [1, 0.8],
   'Diego': [3, 0.98],
   'Ace': [0, 1.06],
-  'Lil Bro': [4, 1.32],
+  /* 'Lil Bro' was [4, 1.32], the high hum pitched up: his own since
+     v2.3.3664 (LIL_BRO) */
   'Beastmaster Bro': [2, 0.94],
   'Woodworker Bro': [1, 0.92],   /* v2.3.3525: the tour's two new townsfolk */
   'Farmer Bro': [3, 0.88],
 });
-export const CHATTER_K = 0.4;
-export const CHATTER_R = 900;
-export const CHATTER_GAP_MS = 2500;
+/* v2.3.3664: whose voice is his own recording, not one of the hums */
+export const LIL_BRO = 'Lil Bro';
 /* the same bro is not heard twice in this long however you reach him */
 const SPEAK_GAP_MS = 600;
 
-const st = { speaks: 0, chatters: 0, chatterAt: 0, speakAt: Object.create(null), last: null };
+const st = { speaks: 0, speakAt: Object.create(null), last: null };
 
 /** His hum and pitch: the table's, else one picked from his name. */
 export function voiceOf(name) {
@@ -55,11 +61,12 @@ export function voiceOf(name) {
 }
 
 function say(name, k) {
+  if (name === LIL_BRO) return cue('lilBroHmm', k);   /* v2.3.3664: his own "hmm" */
   const v = voiceOf(name);
   return cue(VOICE_CUES[v[0]], k, v[1]);
 }
 
-/** You talk to `npc` (an npc or his name). */
+/** You talk to `npc` (an npc or his name), or take his quest. */
 export function npcSpeaks(S, npc) {
   try {
     const name = npc && typeof npc === 'object' ? npc.name : npc;
@@ -73,29 +80,12 @@ export function npcSpeaks(S, npc) {
   } catch (e) { return false; /* sound only */ }
 }
 
-/** A line of his popped up over him. */
-export function npcChatter(S, npc) {
-  try {
-    if (!S || !S.player || !npc || !Number.isFinite(npc.x) || !Number.isFinite(npc.y)) return false;
-    const now = Date.now();
-    if (now - st.chatterAt < CHATTER_GAP_MS) return false;
-    const dx = npc.x - S.player.x, dy = npc.y - S.player.y;
-    if (dx * dx + dy * dy > CHATTER_R * CHATTER_R) return false;
-    const ev = earVol(S, npc.x, npc.y);
-    if (!(ev > 0.05)) return false;
-    st.chatterAt = now;
-    st.chatters++;
-    st.last = { kind: 'chatter', name: npc.name, k: CHATTER_K * ev, at: now };
-    return say(npc.name, CHATTER_K * ev);
-  } catch (e) { return false; /* sound only */ }
-}
-
 /* QA probe, house style */
 if (typeof window !== 'undefined') {
   window.__btNpcVoices = {
     st,
     voiceOf,
-    consts: { VOICE_CUES, CHATTER_K, CHATTER_R, CHATTER_GAP_MS },
-    reset: () => { st.speaks = 0; st.chatters = 0; st.chatterAt = 0; st.speakAt = Object.create(null); st.last = null; },
+    consts: { VOICE_CUES, LIL_BRO, SPEAK_GAP_MS },
+    reset: () => { st.speaks = 0; st.speakAt = Object.create(null); st.last = null; },
   };
 }
