@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "000768a6384e5086e9bdf1691a08b9a6c9707b20",
+  "tree": "4d0e8f8ab0411ed9f74d1b2e093592ac07bc84d4",
+  "committedAt": "2026-10-27T13:56:47-07:00",
+  "subject": "The ghost audit: every animation photographed, nothing of the body under the armour (v2.3.3668) (#1155)",
+  "files": 6652,
+  "bytes": 773051404,
+  "listingSha256": "b4be2c3ebfb1e929ff57a0565316e9713db3634f5d854dac74299c194f4b899a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
