@@ -191,8 +191,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
        the bro on the commons' edge every trip, the hop's 220 tries ran out (4.5
        minutes a trip), no monster was ever near ("0 swings") and the job ran
        past its 20 minutes (#1130's run 816, #1139's 827; #1136's 820 passed
-       that way in 18, measuring the commons and not the fight).  So the flag
-       goes back whenever an echo takes it away. */
+       that way in 18, measuring the commons and not the fight).  And not only
+       the first: on #1140's first run the flag was taken 4 times on the first
+       trip and 23 on the second, and the gate turned the bro back 2 and 11
+       times before it was put back.  So the WORKER is told the quests are done
+       (/dev/quests: every quest handed in, no reward paid -- mp-ghostaudit's
+       way), and every echo carries tut_1; the flag is still put back whenever
+       one takes it away, for a worker that refused. */
+    const finished = await H.devOp(wsPort, 'quests', myId).catch((e) => ({ ok: false, error: String(e && e.message || e) }));
+    const handedIn = await H.waitFor(P, (S) => !!(S.rpg && S.rpg._quests && S.rpg._quests.tut_1 === 'turnedIn'), (v) => v,
+      { timeout: 10000, label: 'the worker\'s quests, handed in' }).catch(() => false);
+    console.log(`    the worker's quests handed in: ${finished && finished.ok ? finished.finished : JSON.stringify(finished)}; the page heard: ${!!handedIn}`);
     await P.page.evaluate(() => {
       const keep = () => {
         const S = window._gameState && window._gameState.current, R = S && S.rpg;
