@@ -1166,6 +1166,23 @@ remnant to migrate server-side, not a mode to preserve.
     darker than a third of the skin -- TRAPS §129); enclosed windows turn
     under-armour shadow; the full set is untouched; `mp-greaveslegs`
     (`window.__btLegsPeek`), src/belt-harness.html `?wear=legs&pose=&tint=&clamp=off`.
+    - since v2.3.3640 THE SWORD'S AND BOW'S STAND-INS TOO, AND NO GREY FILL --
+      the owner: "check all the animations for ghost remnants" (mp-ghostaudit:
+      every swing frame in iron showed the body's trousers and boots): a
+      stand-in is a recoloured bare body with the greaves' own strip drawn
+      over it, the two legs drawn in different places (TRAPS §73's fourth
+      time). Under greaves the sword and bow bodies are baked with only the
+      legs the greaves cover (playerSkins.js `_clampLegsUnder`: from their top
+      down, a leg pixel outside them goes, or turns under-armour shadow where
+      they close it in), the shape read once off each greaves strip as it
+      loads (effectsRenderer `_noteGreavesShape`, a bit a pixel), rebaked as
+      greaves go on or off, a peer's too (`|L`); and the grey the sword sheets
+      had in the gaps the original art leaves empty (between the legs, round
+      the blade) -- painted the player's BOOT colour by the recolour -- is out
+      of the PNGs (tools/art/clean-sword-fill.py, SWORD_ART_VERSION 1103, the
+      .webp twins CI's to mint, TRAPS §255);
+      `?standinlegs=0`, `window.__btStandInLegs()` (`.set(on)`); `mp-standinlegs`:
+      docs/specs/standin-legs.md.
   - Since v2.3.3520 THE ARMOUR RIDES THE ARM CAPSULE -- the owner: the east
     jog's shoulder on a copper torso, "fix it for all future tiers". The
     capsule (v2.3.200) clones the body over the arm on every east jog with a

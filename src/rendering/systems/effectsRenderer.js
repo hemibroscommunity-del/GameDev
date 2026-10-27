@@ -306,7 +306,7 @@ import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape,
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
 import { CampfireFx } from '../campfireFx.js'; /* v2.3.2846: the lit-log campfire, in pixel art */
-import { getEquip } from '../gearCatalog.js';
+import { getEquip, onEquipChange } from '../gearCatalog.js';   /* v2.3.3640: + the greaves' change (_rebakeLegBodies) */
 import { getShirt, onShirtChange } from '../traits/shirtCatalog.js';   /* v2.3.3146: + the change, for the dressed stand-in shirts */
 import { getShirtColor, shirtFill, onShirtColorChange } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, recolorStandInSkinSplit, DEFAULT_SKIN_TARGET, bodyArtSeg, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings; v2.3.2856: + the split bake (the cook's drawings on a layer) */
@@ -589,6 +589,11 @@ const PEER_SEAT_MATCH_PX = 32;
  * TRAPS §51 failure is exactly a transform that mixes a resized sheet with an
  * unresized one.  Every consumer of these frames now derives its scale from
  * `texture.height`, so the ONE literal left in the system is this table. */
+/* v2.3.3640: `?standinlegs=0` -- the sword and bow bodies keep their legs
+   under greaves, as before (_noteGreavesShape); `__btStandInLegs.set(on)`
+   flips it on a running page, for a test to compare one frame both ways */
+const STANDIN_LEGS_OFF = (() => { try { return /[?&]standinlegs=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+let _standInLegsUse = !STANDIN_LEGS_OFF;
 const GEAR_STRIP_TWIN = { chop: { suffix: '-220', frames: 12 } };
 
 /* The chop layers' frame width, 2880 / 12.  It is the argument _gearStripFrame
@@ -3714,7 +3719,7 @@ export class EffectsRenderer {
        host) keeps serving a stale sheet after the art changes -- that's what
        made a fixed sword outline still look white on-device.  Bump this whenever
        a sword sheet is re-cut, exactly like the player-sprite VERSION. */
-    const SWORD_ART_VERSION = 1102;   /* v2.3.2988: the erased sword's ghost scrubbed out of the body/torso sheets (tools/art/clean-sword-ghosts.py). */ // 1101 (v2.3.2174): de-fringe sweep, see playerSprites VERSION 101. 1100: south frame 0's camera-left EYE was 15px of alpha 0 -- a hole straight through his face, the other eye drawn normally -- grafted from frame 1, whose head is the closest match of the thirteen candidates (mean diff 20.3 vs 47+) and sits at the same pixel offset, so no resampling (tools/graft-sword-south-eye.mjs). This is the SAME defect BOW_ART_VERSION 961 already fixed on the bow's south f0; the sword was never checked. Plus the v2.3.2144 pinhole fill on the sword sheets. 1099: sword-south/-east stand-in strips stored half-res on disk (upscaled in-loader) to shrink the download; 1098: waist re-cut at the true torso->pants boundary (pants-confirmed) so the shirtless east torso isn't chopped at a body line; 1088: leg-erased torso strips (sword jog-legs composite); 1054: fill mid-swing pants holes by copying ONLY body-colored (skin/olive) pixels from the pixel-aligned full sheets into the #132 body holes -- placement untouched (layers stay anchored, no bounce/contamination, no sword imported); residual sword-occluded strip gets a tiny olive neighbor fill; 1053: revert to clean #132 originals; 1041: metal sword north weapon strip; 951: removed baked white blade artifact
+    const SWORD_ART_VERSION = 1103;   /* v2.3.3640: the grey fill the original leaves empty -- between the legs, round the blade -- taken out of the body/torso sheets (tools/art/clean-sword-fill.py): the recolour painted it the player's boot colour.  1102 (v2.3.2988): the erased sword's ghost scrubbed out of the body/torso sheets (tools/art/clean-sword-ghosts.py). */ // 1101 (v2.3.2174): de-fringe sweep, see playerSprites VERSION 101. 1100: south frame 0's camera-left EYE was 15px of alpha 0 -- a hole straight through his face, the other eye drawn normally -- grafted from frame 1, whose head is the closest match of the thirteen candidates (mean diff 20.3 vs 47+) and sits at the same pixel offset, so no resampling (tools/graft-sword-south-eye.mjs). This is the SAME defect BOW_ART_VERSION 961 already fixed on the bow's south f0; the sword was never checked. Plus the v2.3.2144 pinhole fill on the sword sheets. 1099: sword-south/-east stand-in strips stored half-res on disk (upscaled in-loader) to shrink the download; 1098: waist re-cut at the true torso->pants boundary (pants-confirmed) so the shirtless east torso isn't chopped at a body line; 1088: leg-erased torso strips (sword jog-legs composite); 1054: fill mid-swing pants holes by copying ONLY body-colored (skin/olive) pixels from the pixel-aligned full sheets into the #132 body holes -- placement untouched (layers stay anchored, no bounce/contamination, no sword imported); residual sword-occluded strip gets a tiny olive neighbor fill; 1053: revert to clean #132 originals; 1041: metal sword north weapon strip; 951: removed baked white blade artifact
     /* v2.3.1784: the slung shield's LOW clone for this stand-in — added before
        every other layer of the figure, so it can never draw over the body,
        the armour or the weapon.  Its HIGH twin goes in after them.  Same
@@ -3906,6 +3911,7 @@ export class EffectsRenderer {
          overwhelming majority -- and recolorBodyToCanvas takes the same early
          exits it always did. */
       const _art = localBodyArt(false);
+      const _legsUnder = this._legsUnderFor(rec);   /* v2.3.3640 */
       const _bake = (mirror) => {
         /* artForFacing per SHEET direction, exactly as getBodyFrame does: the
            north and northwest stand-ins are back views, so they must take the
@@ -3918,7 +3924,9 @@ export class EffectsRenderer {
            the block pose (frame 1) carried no ink at all on three of the five
            bow facings, and the trouser print landed on every other jog-leg
            frame.  See the note on recolorBodyToCanvas. */
-        const cv2 = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh, null, null, a, _fw);
+        const cv2 = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh, null, null, a, _fw,
+          undefined, undefined, undefined, _legsUnder);   /* v2.3.3640: under greaves, their legs (_legsUnderFor) */
+        if (_legsUnder && cv2.__btLegsClamp && this._legsClampSeen) this._legsClampSeen[rec.url + (mirror ? '|m' : '')] = cv2.__btLegsClamp;   /* QA */
         const cnt = Math.max(1, Math.round(cv2.width / _fw));
         /* v2.3.2775: cropped (_sliceStandIn).  The plain bake keeps its canvas
            until the skin / ink probes below have measured it; the twin has no
@@ -4065,6 +4073,26 @@ export class EffectsRenderer {
        rest of the session, so without this a tattoo drawn mid-session appears
        on the walking body immediately and never on a swing or a block. */
     this._offs.push(onArtChange(this._rebakeBodies), onPatternChange(this._rebakeBodies));   /* v2.3.3074: kept, so destroy() can unsubscribe */
+    /* v2.3.3640: and when greaves go on or come off -- the sword and bow
+       bodies are baked with the legs the greaves leave or without them
+       (_legsUnderFor).  The store notifies on a change only, so the worker's
+       echo of the same greaves does not rebake. */
+    this._legsClampSeen = Object.create(null);
+    this._offs.push(onEquipChange('legs', () => this._rebakeLegBodies()));
+    /* QA: the shapes in, and what each bake under greaves took off */
+    if (typeof window !== 'undefined') {
+      const probe = () => ({ on: _standInLegsUse, legs: getEquip('legs'),
+        shapes: Object.keys(this._greavesShape || {}), clamped: Object.assign({}, this._legsClampSeen) });
+      probe.set = (on) => { _standInLegsUse = !!on && !STANDIN_LEGS_OFF; this._legsClampSeen = Object.create(null); this._rebakeLegBodies(); return probe(); };
+      /* the sword or bow stand-in drawn now -- yours, or a peer's by id: its
+         body and greaves sprites (for a page-side check) */
+      probe.pieces = (id) => {
+        const shown = (set) => (set && set.body && set.body.visible ? set : null);
+        if (id) return shown(this._remoteSwordSprites && this._remoteSwordSprites.get(id)) || shown(this._remoteBowSprites && this._remoteBowSprites.get(id));
+        return shown({ body: this.swordSprite, legs: this.swordLegsSprite }) || shown({ body: this.bowSprite, legs: this.bowLegsSprite });
+      };
+      window.__btStandInLegs = probe;
+    }
     for (const dir of Object.keys(this._swordCfg)) {
       const cfg = this._swordCfg[dir];
       /* ═══ v2.3.2353: THE FALLBACKS ARE NOT LOADED WHEN NOTHING CAN REACH THEM ═══
@@ -13951,6 +13979,10 @@ export class EffectsRenderer {
         if (this._destroyed) return;   /* v2.3.3074: a rebuild let this renderer go while it loaded */
         if (this._gearStrips[key] !== 'loading') return;   /* v2.3.3439: let go of while it loaded (_dropGearStrip) */
         const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+        /* v2.3.3640: the greaves' shape, for the sword and bow bodies under
+           them (_noteGreavesShape) -- read here, while the picture is still
+           in hand: the strip is kept on the graphics chip only below */
+        if (slot === 'legs' && !_twin && (pose === 'swing' || pose === 'bowshot')) this._noteGreavesShape(pose, dir, img, W, H);
         const n = _twin ? _twin.frames : Math.max(1, Math.round(W / fw));
         const w = _twin ? Math.round(W / n) : fw;
         const packed = packTrimmed(img, w, H, n);
@@ -14230,6 +14262,62 @@ export class EffectsRenderer {
     return { art: a, seg: bodyArtSeg(a) };
   }
 
+  /* ═══ v2.3.3640: THE STAND-INS' LEGS UNDER GREAVES ═══
+     (the why: playerSkins.js _clampLegsUnder.)  The greaves' swing and bow
+     strips are warmed behind the loading screen (the v2.3.2500 loop above)
+     and kept on the graphics chip only, so their shape is read once, as each
+     loads, and kept a bit a pixel: ~0.47 MB for all eight, against ~3.8 MB
+     as bytes.  Every metal's greaves are the one steel art
+     (gearArtSafe), so the shape is keyed by pose and facing alone.
+     `?standinlegs=0` is the game as it was. */
+  _noteGreavesShape(pose, dir, img, W, H) {
+    if (STANDIN_LEGS_OFF) return;
+    try {
+      const cv = document.createElement('canvas');
+      cv.width = W; cv.height = H;
+      const cx = cv.getContext('2d', { willReadFrequently: true });
+      cx.drawImage(img, 0, 0);
+      const d = cx.getImageData(0, 0, W, H).data;
+      cv.width = 0; cv.height = 0;
+      const bits = new Uint8Array((W * H + 7) >> 3);
+      for (let p = 0, i = 3; p < W * H; p++, i += 4) if (d[i] > 30) bits[p >> 3] |= 1 << (p & 7);
+      (this._greavesShape || (this._greavesShape = Object.create(null)))[pose + '/' + dir] = { w: W, h: H, bits };
+      /* the bodies baked before it came: once more, now they can be clamped */
+      if (getEquip('legs') !== 'none') this._rebakeLegBodies(pose, dir);
+    } catch (e) { /* a picture that cannot be read: the legs as before */ }
+  }
+  /* the shape for this pose and facing, a byte a pixel (what the clamp
+     reads), or null -- made for a bake and let go of after it */
+  _greavesUnder(pose, dir) {
+    if (!_standInLegsUse || !this._greavesShape) return null;
+    const g = this._greavesShape[pose + '/' + dir];
+    if (!g) return null;
+    const n = g.w * g.h, m = new Uint8Array(n);
+    for (let p = 0; p < n; p++) if (g.bits[p >> 3] & (1 << (p & 7))) m[p] = 1;
+    return m;
+  }
+  /* your own sword or bow body, under greaves: the shape it is clamped to.
+     Only the whole-body strips: the torso strips (the jog composite) are cut
+     at the waist already, and the jog legs are drawn with their own greaves. */
+  _legsUnderFor(rec) {
+    if (!rec || getEquip('legs') === 'none') return null;
+    const sword = rec.target === this._swordBodyFrames;
+    if (!sword && rec.target !== this._bowBodyFrames) return null;
+    return this._greavesUnder(rec.cfg.gearPose || (sword ? 'swing' : 'bowshot'), rec.dir);
+  }
+  /* again, the bodies a change of greaves (or a shape just in) touches */
+  _rebakeLegBodies(pose, dir) {
+    if (this._destroyed || !this._bodyStrips) return;
+    const was = [];
+    for (const rec of this._bodyStrips) {
+      if (rec.target !== this._swordBodyFrames && rec.target !== this._bowBodyFrames) continue;
+      if (pose && ((rec.cfg.gearPose || (rec.target === this._swordBodyFrames ? 'swing' : 'bowshot')) !== pose || rec.dir !== dir)) continue;
+      const w = this._bakeBodyStrip(rec);
+      if (w) was.push(...w);
+    }
+    this._letGo(was);
+  }
+
   /* v2.3.1011: recolor the sword swing BODY sheet to an arbitrary player's
      skin/pants/shoes (parallel to _bakeBodyStrip, which only does the LOCAL
      player) and cache it.  Returns the per-frame Texture[] or null while the
@@ -14237,7 +14325,11 @@ export class EffectsRenderer {
   _remoteBodyFramesFor(o, cfgKey, cfg, mirror) {
     if (!this._remoteBodyCache) this._remoteBodyCache = new Map();
     const _pa = this._peerStandInArt(o, cfgKey, mirror);   /* v2.3.2863 */
-    const key = cfg.bodyUrl + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg;   /* v2.3.2863: the SHEET, not the facing */
+    /* v2.3.3640: a peer in greaves is clamped as you are, once their shape
+       is in (the key's |L: before it, the plain bake) */
+    const _peq = o.equip || {};
+    const _lu = (_peq.legs && _peq.legs !== 'none') ? this._greavesUnder(cfg.gearPose || 'swing', cfgKey) : null;
+    const key = cfg.bodyUrl + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg + (_lu ? '|L' : '');   /* v2.3.2863: the SHEET, not the facing */
     let arr = this._remoteBodyCache.get(key);
     /* Re-insert on hit so the LRU order is "least recently SEEN", not
        "least recently baked" (entityRenderer.js:2043's idiom). */
@@ -14246,7 +14338,7 @@ export class EffectsRenderer {
     if (!img) return null;
     try {
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
-        null, cfg.fh, null, null, _pa.art, cfg.fw);   /* v2.3.2863: see _peerStandInArt */
+        null, cfg.fh, null, null, _pa.art, cfg.fw, undefined, undefined, undefined, _lu);   /* v2.3.2863: see _peerStandInArt; v2.3.3640: + under greaves */
       const n = Math.max(1, Math.round(cv.width / cfg.fw));
       arr = this._own(_sliceStandIn(cv, cfg.fw, cfg.fh, n, null));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned */
       this._remoteBodyCache.set(key, arr);
