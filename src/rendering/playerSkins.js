@@ -814,6 +814,92 @@ function _torsoBands(d, w, h, frameW, frames) {
   return shirtPx;
 }
 
+/* ═══ v2.3.3640: UNDER GREAVES, THE STAND-INS' LEGS ARE THE GREAVES ═══
+   The owner, 2026-10-27: "check all the animations for ghost remnants of
+   either a body beneath or areas for cleanup".  mp-ghostaudit photographed
+   every frame of a bro in colours nothing else wears under iron armour, and
+   every frame of the sword's swing showed the body's trousers and boots
+   beside the greaves: the swing (and the bow's shot) is a stand-in made of
+   separate pictures -- a bare body recoloured here, then the greaves' own
+   swing strip drawn over it -- and the two pictures' legs are not drawn in
+   the same place (a back boot behind the greaves' heel, the trousers between
+   the thighs).  The walking figure solved this in v2.3.3010 (maskedBake.js
+   _legsOnlyClamp: "greaves alone hide the plain legs"); the stand-ins never
+   had it.
+   `greaves` is the greaves strip's opaque pixels (alpha > 30) laid out as
+   this sheet is -- the caller passes it only when its size is this canvas's.
+   Per frame, from the greaves' top (the row above which 3% of their pixels
+   lie, so a speck does not move it) down, a trouser or boot pixel of the
+   ORIGINAL art that the greaves do not cover:
+     - goes (see-through), when the space it is in opens to the frame's edge
+       without crossing the greaves -- the back boot, a calf past the plate;
+     - turns the full set's under-armour shadow (44,47,54, as the walking
+       clamp and v2.3.1349) when the greaves close it in -- a gap between the
+       plates, never a see-through hole in the figure;
+   and then the dark outline those legs leave, two passes of it: an outline
+   pixel beside a leg pixel that went, not beside bare skin (a hand passing
+   the thigh keeps its own outline).  Skin is never touched: the arms.
+   Returns { gone, dark }. */
+const LEGS_UNDER_TOP_SHARE = 0.03;
+const LEGS_UNDER_SHADE = [44, 47, 54];
+function _clampLegsUnder(d, w, h, FW, greaves, legAll, skinAll) {
+  const frames = Math.max(1, Math.floor(w / FW));
+  let gone = 0, dark = 0;
+  const went = new Uint8Array(w * h);
+  const out = new Uint8Array(w * h);   /* open to the frame's edge, off the greaves */
+  const stack = new Int32Array(w * h);
+  for (let f = 0; f < frames; f++) {
+    const x0 = f * FW, x1 = Math.min(w, x0 + FW);
+    let total = 0;
+    for (let y = 0; y < h; y++) for (let x = x0; x < x1; x++) if (greaves[y * w + x]) total++;
+    if (!total) continue;   /* no greaves drawn in this frame: nothing to clamp to */
+    let top = 0;
+    for (let y = 0, cum = 0; y < h; y++) {
+      for (let x = x0; x < x1; x++) if (greaves[y * w + x]) cum++;
+      if (cum >= LEGS_UNDER_TOP_SHARE * total) { top = y; break; }
+    }
+    /* the open space: a fill from every edge pixel of the frame that is not
+       greaves, through pixels that are not greaves */
+    let sp = 0;
+    const seed = (x, y) => { const p = y * w + x; if (!greaves[p] && !out[p]) { out[p] = 1; stack[sp++] = p; } };
+    for (let x = x0; x < x1; x++) { seed(x, 0); seed(x, h - 1); }
+    for (let y = 0; y < h; y++) { seed(x0, y); seed(x1 - 1, y); }
+    while (sp > 0) {
+      const p = stack[--sp], x = p % w, y = (p - x) / w;
+      if (x > x0) { const q = p - 1; if (!greaves[q] && !out[q]) { out[q] = 1; stack[sp++] = q; } }
+      if (x < x1 - 1) { const q = p + 1; if (!greaves[q] && !out[q]) { out[q] = 1; stack[sp++] = q; } }
+      if (y > 0) { const q = p - w; if (!greaves[q] && !out[q]) { out[q] = 1; stack[sp++] = q; } }
+      if (y < h - 1) { const q = p + w; if (!greaves[q] && !out[q]) { out[q] = 1; stack[sp++] = q; } }
+    }
+    for (let y = top; y < h; y++) {
+      for (let x = x0; x < x1; x++) {
+        const p = y * w + x, o = p * 4;
+        if (!legAll[p] || greaves[p] || d[o + 3] === 0) continue;
+        if (out[p]) { d[o + 3] = 0; went[p] = 1; gone++; }
+        else { d[o] = LEGS_UNDER_SHADE[0]; d[o + 1] = LEGS_UNDER_SHADE[1]; d[o + 2] = LEGS_UNDER_SHADE[2]; d[o + 3] = 255; dark++; }
+      }
+    }
+    /* the outline the legs leave: two passes, each taking an outline pixel
+       (not skin, not a leg, not greaves) beside one that went and beside no
+       skin */
+    for (let pass = 0; pass < 2; pass++) {
+      const now = [];
+      for (let y = Math.max(top, 1); y < h - 1; y++) {
+        for (let x = x0 + 1; x < x1 - 1; x++) {
+          const p = y * w + x;
+          if (went[p] || greaves[p] || legAll[p] || skinAll[p] || d[p * 4 + 3] === 0) continue;
+          if (!(went[p - 1] || went[p + 1] || went[p - w] || went[p + w])) continue;
+          let nearSkin = false;
+          for (let dy = -1; dy <= 1 && !nearSkin; dy++) for (let dx = -1; dx <= 1; dx++) if (skinAll[p + dy * w + dx]) { nearSkin = true; break; }
+          if (!nearSkin) now.push(p);
+        }
+      }
+      for (const p of now) { d[p * 4 + 3] = 0; went[p] = 1; gone++; }
+    }
+  }
+  return { gone, dark };
+}
+
 /* `art` (v2.3.1940) is `{ pants, tattoo, mirror }` — the player's own drawings,
    or null/absent for everyone who has not drawn anything, which is the entire
    default path and costs nothing.  `mirror` pre-flips the drawing because three
@@ -855,7 +941,7 @@ let _bakeTag = '';
    a sword swing throws the torso around far more than a jog bob, so its frames
    are all honest outliers of each other and correcting them against a median
    costs ink rather than steadying it -- measured, on sword-south-torso. */
-export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art, frameW, steadyArt, eyeBlankRects, bootsUnderLegs) {
+export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art, frameW, steadyArt, eyeBlankRects, bootsUnderLegs, legsUnder) {
   const FW = (typeof frameW === 'number' && frameW > 0) ? Math.round(frameW) : FRAME_W;
   /* v2.3.1108: when the caller knows this sheet's logical frame height, restore
      a downscaled-on-disk sheet to it (nearest-neighbour, exact palette) so the
@@ -923,6 +1009,12 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      once the trousers are known. */
   const bootCand = bootsUnderLegs ? new Uint8Array(w * h) : null;
   const legPx = bootsUnderLegs ? new Uint8Array(w * h) : null;
+  /* v2.3.3640: under greaves (`legsUnder`, see _clampLegsUnder below): the
+     trousers and boots of the ORIGINAL art, and its bare skin, kept so the
+     legs the greaves do not cover can go and the hands they pass stay */
+  const greaves = (legsUnder && legsUnder.length === w * h) ? legsUnder : null;
+  const legAll = greaves ? new Uint8Array(w * h) : null;
+  const skinAll = greaves ? new Uint8Array(w * h) : null;
   /* A tattoo goes on the CHEST, so it is bare skin intersected with the torso
      band — the same tracker the baked shirt used, reused rather than re-guessed.
      (It also means the tattoo hides under a shirt or a breastplate, which is
@@ -951,14 +1043,17 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
     } else if (_isSkin(r, g, b, a) && !_isEyeCream(r, g)) {   /* v2.3.2860: not the white of the eye */
       if (tattooPx && torsoPx[i >> 2]) tattooPx[i >> 2] = 1;
       if (skinPx) skinPx[i >> 2] = 1;              /* v2.3.1949 */
+      if (skinAll) skinAll[i >> 2] = 1;            /* v2.3.3640 */
       if (skinT) _retint(d, i, skinT, SKIN_REF);
     } else if (a > 180 && g >= r - 10 && g > b + 8 && r < 150) {
       /* pants (green) */ if (pantsPx) pantsPx[i >> 2] = 1;
       if (legPx) legPx[i >> 2] = 1;   /* v2.3.3146 */
+      if (legAll) legAll[i >> 2] = 1;   /* v2.3.3640 */
       if (pantsT) _retint(d, i, pantsT, PANTS_REF);
     } else if (a > 180) {
       const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
       if ((mx - mn) < 28 && mx >= 45 && mx < 140) {
+        if (legAll) legAll[i >> 2] = 1;   /* v2.3.3640: a boot */
         /* boots (flat gray) -- v2.3.3146: or, under `bootsUnderLegs`, a
            candidate for one, painted below once the legs are known */
         if (bootCand) bootCand[i >> 2] = 1;
@@ -1134,6 +1229,11 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      So the exclusion here says only that the body sheet stops carrying the
      colour -- not that the player stopped choosing one. */
   if (eyeBlankRects) _blankEyes(d, cv.width, cv.height, eyeBlankRects, FW);
+  /* v2.3.3640: last, so a trouser print on a hidden leg goes with the leg */
+  if (greaves) {
+    const n = _clampLegsUnder(d, w, h, FW, greaves, legAll, skinAll);
+    try { cv.__btLegsClamp = n; } catch (e) { /* a frozen canvas: no probe, no harm */ }
+  }
   ctx.putImageData(imgData, 0, 0);
   /* v2.3.1962: hand the grids back on the canvas rather than through a second
      return value — `canvas.__btDir` (v2.3.1815) set the precedent, and every
