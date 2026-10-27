@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7949cb0f0fdd00ca5b5e3419770d507564d84eff",
+  "tree": "82c198c6662caadb106cda1f5abb1c1776fc616a",
+  "committedAt": "2026-10-26T20:06:25-07:00",
+  "subject": "On a computer, \"tap\" says \"click\", everywhere a judge reads it (v2.3.3615) (#1121)",
+  "files": 6565,
+  "bytes": 762428261,
+  "listingSha256": "c90730b0da22267e05e50b970725d3398e610eaae8bab6712d392348303f0c8f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
