@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "153285cc7e669ef287218d8a83f6fe76b52c45c8",
+  "tree": "38a70d077750826385b5a04af7b9e19720f1cee7",
+  "committedAt": "2026-10-26T23:41:14-07:00",
+  "subject": "Each drop a line of words rising off the monster: \"Coins (5)\" over \"Slime Remains (1)\", coloured by rarity (v2.3.3627) (#1132)",
+  "files": 6587,
+  "bytes": 762693257,
+  "listingSha256": "1306457f366d4717ba28d1a46dbbe79c8350754c0c3e0eb65305aaab3ad51411",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
