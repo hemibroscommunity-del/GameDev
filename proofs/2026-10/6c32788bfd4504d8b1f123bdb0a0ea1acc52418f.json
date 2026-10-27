@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6c32788bfd4504d8b1f123bdb0a0ea1acc52418f",
+  "tree": "11a832dc800cfeb225fc533f851e14754fdc3dfe",
+  "committedAt": "2026-10-27T01:26:13-07:00",
+  "subject": "No man's land's skull and level beside the minimap's name plate (v2.3.3629) (#1134)",
+  "files": 6587,
+  "bytes": 762700863,
+  "listingSha256": "b553870de83a75255c9ca722c552e4fdae5c2dedb40872c3b72a571c153fbd83",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
