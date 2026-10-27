@@ -46,12 +46,13 @@ remnant to migrate server-side, not a mode to preserve.
   a player reads say "the world" (v2.3.3552: the Codex's "Monsters of the
   world", the gold's line, the Town Hall's map row). "Wheel" stays in code,
   ids, comments and these docs.
-- **THE OWNER'S LIST OF 2026-10-26 (v2.3.3607): `docs/OWNER-LIST-2026-10-26.md`.**
+- **THE OWNER'S LIST OF 2026-10-26 (v2.3.3618): `docs/OWNER-LIST-2026-10-26.md`.**
   38 asks at once (reverts, look bugs, No man's land from the first step,
   monsters' elements, diving, the arena, gems, specials...), each checked
   against the code, in the order agreed for the judges' desktop play (2 days
   out) and after, with the decisions still waiting on the owner. Work it top
-  to bottom, a PR an item, and mark each one done there.
+  to bottom, a PR an item, and mark each one done there (its section 6, the
+  status).
 - **Heavy-systems architecture (v2.3.1116+):** persistent identity,
   offline mail/escrow, server-settled marketplace/trades/quests/duels.
   Before touching the server, read **`docs/ARCHITECTURE-HANDOFF.md`** —

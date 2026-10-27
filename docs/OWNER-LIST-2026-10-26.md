@@ -1,4 +1,4 @@
-# Your list of 2026-10-26: what's there, what I'll do, in what order (v2.3.3607)
+# Your list of 2026-10-26: what's there, what I'll do, in what order (v2.3.3618)
 
 You sent 38 things at once: changes, bugs, new features and questions. Each
 one is below, checked against the game's code, with what is there today and
@@ -235,8 +235,11 @@ judges do.
 
 **Is there a sound studio?** Yes. Hold the "BroTown" title on the top bar for
 a second to open the Test panel, then "Sound studio": every sound under the
-moment it plays, with a play button, and "Heard just now". It has no music in
-it yet (item 31). What plays where today:
+moment it plays, with a play button, and "Heard just now". Since v2.3.3610
+(#1118) it has a **Music** tab, and your ten tracks of Oct 26 play in their
+places: every land has its own now except the Electric Foundry, dungeons play
+Swift Skirmish Clash and Lil Bro's race Minigame. The table below is how it was
+on Oct 26:
 
 | Where | Track |
 |-------|-------|
@@ -319,3 +322,38 @@ things):
 9. **Gems**: one raw gem cuts into one gem (no three-into-one)? And how much
    damage should a gem add: I'd say 10% of the weapon's damage, up to 15%
    against the element it beats.
+
+---
+
+## 6. Status, Oct 27
+
+Done and on main, each its own PR (the item numbers are section 3's):
+
+| What | PR |
+|------|----|
+| Your hair and hat stay on | #1114 (v2.3.3606) |
+| The former leg icon (1), the figure facing southwest (2), the level-up half as long (6), the red skull centred (7), the Goo Grotto "Lv 10+" (14) | #1116 (v2.3.3608) |
+| The older animated land banners back, the small picture under the minimap gone (3); wind, storm and stone drawn as plain symbols (4) | #1117 (v2.3.3609) |
+| Your ten tracks where they belong, and the Sound Studio's Music tab (31) | #1118 (v2.3.3610) |
+| The townsfolk's zingers back, one message each with the job (13) | #1120 (v2.3.3611) |
+| Add a pet in the Test panel (32) | #1119 (v2.3.3613) |
+| The minimap's buildings: a white symbol on a dark grey circle (8) | #1122 (v2.3.3614) |
+
+In review, merged when their checks pass:
+
+| What | PR |
+|------|----|
+| The desktop play-through (section 2): on a computer every "tap" says "click"; every computer test passes; a laptop-size review of all 73 screens found nothing blocking | #1121 (v2.3.3615) |
+| Drops you can see: each drop a column over the monster, its picture, amount and rarity, instead of the dice | #1123 (v2.3.3616) |
+| The TRAP button (9): upright, a round button beside the attack disc, clear of the shield button | #1124 (v2.3.3617) |
+
+Not started yet:
+
+- Monsters' elements you can see coming, and the stronger element hits (17);
+  then measuring the early monsters' difficulty (18).
+- The look bugs: fishing hands in torso armour (10), the shirt while mining
+  (11), the iron armour's colour while farming (12).
+- Waiting on your answers in section 5: the land names (5), one ore = one bar
+  (30), the Mayor's seed quest (15), No man's land from the first step (16),
+  night (21), the arena's picture (29), the vehicle (26), gems (20).
+- Everything in "After the judges".
