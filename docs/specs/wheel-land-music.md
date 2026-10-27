@@ -119,3 +119,59 @@ The crossfade is the zones' own 600 ms.
   for 8.4 s after the line. The death trip went the Wheel, then today's town,
   then the Wheel. It came back to the town's track without the theme once
   coming up over the Wheel.
+
+## v2.3.3610: the owner's own score, and the Sound Studio's Music tab
+
+The owner, 2026-10-26: *"Is there a sound studio? A huge part of the game is
+emotional resonance from music. I don't know what music plays for the town vs
+the other zones (etc)"*, then ten tracks of their own made with Suno, uploaded
+to the top of the repository and named for where they go.
+
+| The owner's track | File | Plays |
+|---|---|---|
+| Town Square Loop | `village.mp3` (replaced) | BroTown and the safe ground round it |
+| Frozen Cave Loop | `frost.mp3` (replaced) | Frost Ridge |
+| Fire level | `fire.mp3` (replaced) | the Flame Fields |
+| Wind level | `desert.mp3` (replaced) | the Wind Dunes, the wind loop on top |
+| Forest Loop | `forest.mp3` (replaced) | the Verdant Wilds |
+| Rock level | `rock.mp3` (new) | the Stone Hollows |
+| Water lvl | `water.mp3` (new) | the Water Caves |
+| Murky Loop | `murky.mp3` (new) | the Poison Forest |
+| Swift Skirmish Clash | `skirmish.mp3` (new) | inside any dungeon |
+| Minigame | `minigame.mp3` (new) | Lil Bro's race, from the countdown to the finish |
+
+- The Electric Foundry has no track of its own yet and plays the game's theme
+  (`login-theme.mp3`, "Select Your Hero"), as the farm does.
+- The masters are kept as the owner sent them in
+  `assets/music-source/2026-10-26/`. The game's copies are the house setting,
+  128 kbps at 44.1 kHz, made by `tools/audio/encode_music.mjs` from those masters
+  (as the owner's last score was, v2.3.2614: "Yes make the files smaller
+  size"). Never encode from `public/audio/music/`.
+- Every replaced file is asked for at a new address (`?v=2.3.3610`), so a phone
+  holding the old track in its cache fetches the new one.
+- **Dungeons.** `startZoneAmbient` files every `dungeon:<id>` zone under the one
+  key `dungeon` (`ZONE_MUSIC.dungeon`), where every zone's music is asked for, so
+  the rest of the music code only ever sees the key. Entering one asks for it
+  itself (gameEvents.js `dungeon_started`): the arena's map is set straight in,
+  so the zone change's own music call (BroTown's `if (!S.map)`) never runs, and
+  the first phone run found the Verdant Wilds' track playing on inside the Goo
+  Grotto. Out of a world dungeon, BroTown's music, then the land watch.
+- **The race.** While Lil Bro's race counts down or runs (`S._race.phase`
+  `count` or `run`), the land watch asks for `RACE_MUSIC` (`minigame`) at once;
+  once it is done the place's own music comes back `MUSIC_INTO_LAND_MS` later,
+  not the 8 s a walk home waits (`wheelMusic.js` `raceMusicOn`, `_m.was`).
+- **The Sound Studio's Music tab** (the Test panel's "Sound studio", or `?sounds`):
+  every track under where it plays, by the owner's own name for it
+  (`data/soundStudio.js` `MUSIC_PLACES`), the one playing where you stand named
+  at the top, and ▶ to hear one. A track plays from its file on an `<audio>` of
+  its own while the game's music bus is turned down and the land watch held off
+  (`BT_AUDIO._musicPreview`); ■, the track's end and closing the studio put both
+  back.
+
+Tests: `sound-cues` §13 (every track a player can hear has its line, every file
+is there, the ten tracks where they were made for, the masters kept and none
+left at the top of the repository, the dungeon key, the race music, the studio's
+preview), `test-world-core` "the lands' music" (the race and the preview),
+`mp-landmusic` (the Stone Hollows, the Electric Foundry, the Water Caves, the
+Poison Forest), `mp-googrotto` (a dungeon's music), `mp-race` (the race's) and
+`mp-soundstudio` §10 (the Music tab).
