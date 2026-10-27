@@ -3631,7 +3631,7 @@ remnant to migrate server-side, not a mode to preserve.
           `mp-farmanim` §5 reads the shine's sprites and the strips' greys,
           each outfit (plate and greaves, greaves alone, plate alone) on each
           move (the hoe, the kneel, the can);
-        - since v2.3.3624 LIT AS HIS WALKING FIGURE IS -- the owner: "The
+        - since v2.3.3628 LIT AS HIS WALKING FIGURE IS -- the owner: "The
           armor while performing farming gestures is noticeably different
           color (iron). Try to make it match more exactly": the walking figure
           is FORM-SHADED (formShade.js: as painted at the head, a cool shade

@@ -357,7 +357,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3472: the six strips in the walking steel's greys -- the middle
        grey of their opaque pixels within 0.03 of jog-south's (ChatGPT's steel
        was 0.53-0.61; tools/make_farm_anims.py steel_like_the_game).
-       v2.3.3624: of STAND-south's: the bro stands beside the bed in it, and
+       v2.3.3628: of STAND-south's: the bro stands beside the bed in it, and
        its greaves are drawn brighter than the jog's (mp-farmiron) */
     {
       const midGrey = (file) => {

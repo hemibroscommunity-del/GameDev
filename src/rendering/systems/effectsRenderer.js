@@ -300,7 +300,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, standShadeSpan /* v2.3.3624 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandScale, HPBAR_BIG_H /* v2.3.3035: that bar at your HP bar's size, over the resource */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, standShadeSpan /* v2.3.3628 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandScale, HPBAR_BIG_H /* v2.3.3035: that bar at your HP bar's size, over the resource */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { clipBoxOrSelf } from '../hairClip.js';   /* v2.3.3459: a stand-in's hair silhouette travels in its stencil box */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
@@ -667,7 +667,7 @@ import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../loo
 import { ICON_PX as DROP_ICON_PX, acquireDropIcon, releaseDropIcon, dropIconTexture, dropIconStats } from '../dropIcons.js';   /* v2.3.3473: a dropped item, drawn as itself */
 import { dropThumb } from '@/game/dropLook.js';   /* v2.3.3473: ...from its bag picture */
 import { dropAlpha, dropFlashing } from '@/game/itemDrop.js';   /* v2.3.3473: ...flashing at its end */
-import { propShade, SHADE, spanSpec } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow; v2.3.3624: + the farmer lit as his walking figure */
+import { propShade, SHADE, spanSpec } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow; v2.3.3628: + the farmer lit as his walking figure */
 import { wheelNodeView, WheelFish, wheelFishTop /* v2.3.3035: the harvest's bar over a spot's school */ } from '../wheelNodes.js';   /* v2.3.3012: the Wheel's resources -- drawn near the view, its fishing spots as fish */
 import { updateNodeLabel, killNodeLabel, nodeLabelWorldH, NODE_LABEL_GAP, nodeNameNode } from '../nodeLabels.js';   /* v2.3.3040: the tool, the name and the level over a resource; v2.3.3059: words for the nearest only */
 import { WheelDoors, wheelDoorPicturesHeld } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn; v2.3.3566: + their pictures */
@@ -16397,7 +16397,7 @@ export class EffectsRenderer {
     F.chest.tint = gearTint(eq.chest);
     const pf = this._farmProps && this._farmProps[fx.anim];
     place(F.prop, pf ? pf[Math.min(fi, pf.length - 1)] : null);
-    /* v2.3.3624: lit as THEIR walking figure is (see _updateFarmWork's LIT AS
+    /* v2.3.3628: lit as THEIR walking figure is (see _updateFarmWork's LIT AS
        HIS WALKING FIGURE IS) -- the span at their boots, at their build */
     const fsp = F.shade = spanSpec(SHADE.figure, standShadeSpan(feetY, pscale, bl.sy), body.y - A.fh * body.scale.y, body.y, F.shade);
     for (const sp of [body, F.legs, F.shirt, F.chest, F.prop]) if (sp) sp._vShade = fsp;
@@ -16518,7 +16518,7 @@ export class EffectsRenderer {
     /* the hoe or the can, as drawn, over everything */
     const pf = this._farmProps && this._farmProps[anim];
     place(prop, pf ? pf[Math.min(fi, pf.length - 1)] : null);
-    /* ═══ v2.3.3624: LIT AS HIS WALKING FIGURE IS ═══
+    /* ═══ v2.3.3628: LIT AS HIS WALKING FIGURE IS ═══
        The owner: "The armor while performing farming gestures is noticeably
        different color (iron). Try to make it match more exactly."  v2.3.3472
        gave the farmer the walking armour's greys, tint and shine; the light
@@ -16560,7 +16560,7 @@ export class EffectsRenderer {
           work: { x: S._farmHands.x, y: S._farmHands.y },
           shirt: { visible: !!(shirt && shirt.visible), tint: shirt ? shirt.tint : null },
           prop: { visible: !!(prop && prop.visible), want: !!A.prop },
-          /* v2.3.3624: his shade read at his boots and his crown, and the
+          /* v2.3.3628: his shade read at his boots and his crown, and the
              walking figure's at the same heights (mp-farmiron) */
           shade: (() => {
             const sp = chest && chest._vShade;

@@ -5965,7 +5965,7 @@ export function standFootDy(zoneScale) {
    body's crown-to-feet height for a facing, and how far below the figure's
    origin (S.player.y) its boots are, on a zone with no perspective, at the
    default build.  The same rows and scales the body is drawn with. */
-/* ═══ v2.3.3624: THE STANDING FIGURE'S FORM-SHADE SPAN, IN WORLD Y ═══
+/* ═══ v2.3.3628: THE STANDING FIGURE'S FORM-SHADE SPAN, IN WORLD Y ═══
    formShade.js shades a figure from the top of its body's frame to the bottom
    (`_vShadeRef`, the 256-unit frame: as painted at the top, a cool shade at
    the bottom).  This is that frame's top and bottom for the standing figure
