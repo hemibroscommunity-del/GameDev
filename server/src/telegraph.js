@@ -119,6 +119,27 @@ export const TELEGRAPH = {
       kind: 'lunge', windupMs: 1200, cooldownMs: 9000, dmgMult: 1.0, radius: 80, /* v2.3.2482: was 50 */
     },
   },
+  /* ═══ v2.3.3621: THE MUMMY'S ROAR ═══
+     The owner's list of 2026-10-26: "Mummies: today a 48 px shove when they
+     hit.  Then: a roar, wound up so you can see it coming, that blows you
+     back from a few steps away."
+     A kit by ELEMENT, not by archetype: the Wind Dunes' mummies are three
+     archetypes (stalker, hexer, volatile, re-skinned), and a hexer in the
+     Workshop's dungeon is no mummy.  Read through _kitFor, an archetype's own
+     kit first.  The roar is the mummies' wind made a move:
+       - wound up `windupMs` (a ring on the ground at `radius`, ROAR!, the
+         gust swirling round it -- the element wind-up -- and its roar);
+       - then EVERY player within `radius` of it, not only the one it chose,
+         takes `dmgMult` of a hit through the kit's row of the hit door (a
+         shield facing it blocks it, a roll or a rock is a miss, the safe
+         ground and the harvest shield as ever);
+       - and each one it lands on is blown `shove` px straight away from it
+         over `shoveMs` (the gust's own machinery, monsterstatus.js: the
+         worker grants the room for it), where its swing's gust is 48.
+     Kill switch `mummyroar: false`: the mummies swing as before. */
+  ELEM_KITS: {
+    wind: { kind: 'roar', windupMs: 1000, cooldownMs: 8000, dmgMult: 0.5, radius: 150, shove: 130, shoveMs: 420, aoe: true },
+  },
 };
 
 /* ═══ v2.3.2215: EVERY BASIC ATTACK HAS A WIND-UP ═══
@@ -329,8 +350,28 @@ export const telegraphMethods = {
      caught it.  A cast therefore remembers its own target (`_tgTarget`)
      rather than borrowing whatever the AI is looking at now.
      Returns TRUE when it owns the monster this tick. */
+  /* v2.3.3621: a monster's kit -- its archetype's, else its element's (the
+     mummies' roar), else none */
+  _kitFor(m) {
+    if (!m) return null;
+    if (Object.prototype.hasOwnProperty.call(TELEGRAPH.KITS, m.arch)) return TELEGRAPH.KITS[m.arch];
+    const e = m.element;
+    if (typeof e === 'string' && Object.prototype.hasOwnProperty.call(TELEGRAPH.ELEM_KITS, e) && this._roarOn()) return TELEGRAPH.ELEM_KITS[e];
+    return null;
+  },
+  _roarOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'mummyroar') && !f.mummyroar);
+  },
+
   _resolveMonsterTelegraph(zoneId, m, now) {
-    const kit = TELEGRAPH.KITS[m.arch];
+    const kit = this._kitFor(m);
+    /* v2.3.3621: a cast whose kit went away under it (the roar's switch
+       thrown mid-roar) ends quietly, never leaving the monster planted */
+    if (!kit && m._tgPhase === 'telegraph') {
+      m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null; m._tgRadius = 0;
+      return false;
+    }
     if (!kit || m._tgPhase !== 'telegraph') return false;
     {
       if (now < (m._tgUntil || 0)) {
@@ -358,6 +399,25 @@ export const telegraphMethods = {
          dash (borrowing that would have meant owning its arena clamping
          too).  Restore both halves together if a leap kit ever returns. */
 
+      /* v2.3.3621: THE ROAR reaches everyone in its ring, measured where
+         each one is NOW, and blows back each one it lands on */
+      if (kit.aoe) {
+        let n = 0;
+        const r2 = _tgR * _tgR;
+        for (const pid of Object.keys(this.playerState)) {
+          const p = this.playerState[pid];
+          if (!p || p.dead || p.dying || p.disconnected || p.z !== zoneId || p._spar) continue;
+          const ddx = p.x - m.x, ddy = p.y - m.y;
+          if (ddx * ddx + ddy * ddy > r2) continue;
+          if (this._hitMissed('kit', zoneId, p, m, now)) continue;
+          m._gustPx = kit.shove; m._gustMs = kit.shoveMs;
+          try { if (this._telegraphHitPlayer(zoneId, m, pid, kit) > 0) n++; }
+          finally { m._gustPx = 0; m._gustMs = 0; }
+        }
+        this._monsterAbilityEvent(zoneId, m, kit.kind, 'execute', { radius: _tgR, hit: n > 0 });
+        return true;
+      }
+
       /* THE WHIFF.  Re-measured at execute against where the player is NOW,
          not where they were when the wind-up started — this single check is
          what makes dodging and walking away work. */
@@ -381,7 +441,7 @@ export const telegraphMethods = {
   /* Start a cast.  Called from inside the aggro branch, where a target and
      its distance are already in hand. */
   _maybeStartTelegraph(zoneId, m, nearest, attackDist, now) {
-    const kit = TELEGRAPH.KITS[m.arch];
+    const kit = this._kitFor(m);   /* v2.3.3621: an archetype's kit, else an element's */
     if (!kit || m._tgPhase) return false;
     if (now < (m._tgNextAt || 0)) return false;
     if (now <= m.atkCd) return false;              /* respect the basic-swing cadence */

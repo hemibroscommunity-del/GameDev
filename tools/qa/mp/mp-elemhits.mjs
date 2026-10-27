@@ -588,8 +588,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
         off = sv && typeof sv.x === 'number' ? Math.hypot(sv.x - cl.x, sv.y - cl.y) : null;
         if (!cl.mid && off != null && off < 24) break;
       }
-      rec.ok(`real: ${L.name} blows you back ${JSON.stringify(got.kb)} -- and the worker agrees where you landed (${off == null ? '?' : Math.round(off)} px apart)`,
-        Array.isArray(got.kb) && Math.abs(Math.hypot(got.kb[0], got.kb[1]) - 48) <= 2 && off != null && off < 24, { got, cl, sv: sv && { x: sv.x, y: sv.y, z: sv.zone } });
+      /* v2.3.3621: its swing shoves 48 px, its ROAR 130 -- and in reach and
+         off its cooldown, it roars first (the kit before the swing) */
+      const kbLen = Array.isArray(got.kb) ? Math.hypot(got.kb[0], got.kb[1]) : 0;
+      rec.ok(`real: ${L.name} blows you back ${JSON.stringify(got.kb)}${got.ability === 'roar' ? ' with its roar' : ''} -- and the worker agrees where you landed (${off == null ? '?' : Math.round(off)} px apart)`,
+        (Math.abs(kbLen - 48) <= 2 || (got.ability === 'roar' && Math.abs(kbLen - 130) <= 3)) && off != null && off < 24, { got, cl, sv: sv && { x: sv.x, y: sv.y, z: sv.zone } });
+      /* v2.3.3621: and it roars -- wound up, then everyone near it blown back */
+      let roar = since(await elemLog(P)).find((e) => e.ability === 'roar' && e.st === 'gust') || null;
+      for (let i = 0; i < 60 && !roar; i++) {
+        const mm = await P.page.evaluate((id) => {
+          const S = window._gameState.current;
+          const x = (S.monsters || []).find((q) => q.id === id);
+          return x ? { x: x.x, y: x.y, alive: x.alive !== false && x.hp > 0 } : null;
+        }, target.id);
+        if (mm && mm.alive && i % 4 === 3) await H.hopTo(P, mm.x, mm.y + 60, { step: 60, gap: 200, tries: 4 });
+        await P.page.waitForTimeout(250);
+        roar = since(await elemLog(P)).find((e) => e.ability === 'roar' && e.st === 'gust') || null;
+      }
+      const roarLen = roar && Array.isArray(roar.kb) ? Math.hypot(roar.kb[0], roar.kb[1]) : 0;
+      rec.ok(`real: ${L.name} roars and blows you back ${Math.round(roarLen)} px over ${roar && roar.stMs} ms (its swing's 48)`,
+        !!roar && Math.abs(roarLen - 130) <= 3 && roar.stMs === 420, { roar });
     } else if (got && L.st === 'burn') {
       await shot(P, 'b-' + L.st);
       let ticks = [];
