@@ -209,10 +209,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     window.__btDispatch({ type: 'monster_attack', payload: { monsterId: 'qa-elem', targetId: S.myId, dmg: 4, dmgTaken: 4, zone: S.currentZone,
       attackerX: S.player.x + 24, attackerY: S.player.y, ability: 'qa', elem: 'frost', st: 'chill', stMs: 6000, fz: 1800 } });
   });
-  await P.page.waitForTimeout(200);
-  await shot(P, 'a1b-frozen');
+  await P.page.waitForTimeout(300);
+  /* read before the picture: a screenshot here can take a second, and the
+     freeze is over by then */
   const fLook = await P.page.evaluate(() => ({ drawn: (window.__btElemFxDrawn || {}).frozen || 0,
     chip: !!document.querySelector('[data-elem-chips] [data-chip="Frozen"]') }));
+  await shot(P, 'a1b-frozen');
   await H.waitFor(P, (S) => (S._frozenUntil || 0) - Date.now(), (v) => v < 0, { timeout: 8000, label: 'the freeze to end' });
   const fThaw = await pace(-1);
   rec.ok(`freeze: frozen solid first (${Math.round(fHeld.d)} px in half a second), no swing ("Frozen!"), ice drawn on you and the Frozen chip`,
