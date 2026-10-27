@@ -218,7 +218,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         now: now ? now.getAttribute('data-studio-music-now') : null, nowText: now ? now.textContent : '' };
     });
     await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/soundstudio-music.png` }).catch(() => {});
-    const MUSIC_IDS = ['town', 'frost', 'ember', 'sky', 'hollows', 'tidal', 'mist', 'verdant', 'dungeon', 'minigame', 'theme', 'dance'].map((k) => 'music:' + k);
+    const MUSIC_IDS = ['town', 'frost', 'ember', 'sky', 'hollows', 'tidal', 'mist', 'verdant', 'dungeon', 'minigame', 'farm_home', 'theme', 'dance'].map((k) => 'music:' + k);   /* v2.3.3672: the farm's */
     rec.ok(`10. the Music tab lists every track under where it plays (${mus.ids.length}: ${mus.text.slice(0, 3).join(' | ')} ...), and the one playing here ("${mus.nowText}")`,
       MUSIC_IDS.every((i) => mus.ids.includes(i)) && /Town Square Loop/.test(mus.text[mus.ids.indexOf('music:town')] || '') && mus.now === 'town', mus);
     await tap(P, '[data-studio-play="music:hollows"]');

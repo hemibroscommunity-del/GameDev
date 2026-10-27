@@ -1359,7 +1359,16 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
                             asks for it while the race runs, wheelMusic.js)
      The Electric Foundry (thunder) has no track of its own yet and plays the
      game's theme, as the farm does.  The Sound Studio's Music section lists
-     every one with where it plays (data/soundStudio.js MUSIC_PLACES). */
+     every one with where it plays (data/soundStudio.js MUSIC_PLACES).
+     v2.3.3672: and the farm has its own since.  The owner had noted "farming
+     sound effects and music track for that later", then made "Homestead
+     Morning" with Suno and uploaded it (its master in
+     assets/music-source/2026-10-27/):
+       Homestead Morning -> farm.mp3     (your farm, `farm_home`)
+     Asked for by game/farmTrip.js holdFarmUntilReady: every way onto the farm
+     sets its map straight in, so the zone change's music call never ran there
+     and the farm kept BroTown's track.  Only the Electric Foundry still plays
+     the theme. */
   ZONE_MUSIC: {
     town: '/audio/music/village.mp3?v=2.3.3610',
     worldview: '/audio/music/world.mp3?v=2.3.2614',
@@ -1409,6 +1418,8 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     mist: '/audio/music/murky.mp3?v=2.3.3610',
     dungeon: '/audio/music/skirmish.mp3?v=2.3.3610',
     minigame: '/audio/music/minigame.mp3?v=2.3.3610',
+    /* v2.3.3672: the owner's "Homestead Morning" on the farm (the note above) */
+    farm_home: '/audio/music/farm.mp3?v=2.3.3672',
   },
   /* ═══ v2.3.1738: PER-ZONE AMBIENCE (owner art) ═══
      Owner: "use this to play as the 'wind' ambient sound effect to play in a

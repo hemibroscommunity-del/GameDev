@@ -141,7 +141,8 @@ to the top of the repository and named for where they go.
 | Minigame | `minigame.mp3` (new) | Lil Bro's race, from the countdown to the finish |
 
 - The Electric Foundry has no track of its own yet and plays the game's theme
-  (`login-theme.mp3`, "Select Your Hero"), as the farm does.
+  (`login-theme.mp3`, "Select Your Hero"). The studio said the farm did too; it
+  went on playing BroTown's track (v2.3.3672, below).
 - The masters are kept as the owner sent them in
   `assets/music-source/2026-10-26/`. The game's copies are the house setting,
   128 kbps at 44.1 kHz, made by `tools/audio/encode_music.mjs` from those masters
@@ -175,3 +176,40 @@ preview), `test-world-core` "the lands' music" (the race and the preview),
 `mp-landmusic` (the Stone Hollows, the Electric Foundry, the Water Caves, the
 Poison Forest), `mp-googrotto` (a dungeon's music), `mp-race` (the race's) and
 `mp-soundstudio` §10 (the Music tab).
+
+## v2.3.3672: your farm's own track
+
+The owner, 2026-10-27: *"Now just a mental note to add farming sound effects and
+music track for that later"*. The farm's sounds came first (#1151). Then the
+owner made **"Homestead Morning"** with Suno and uploaded it the same afternoon
+(1:51; its master moved into `assets/music-source/2026-10-27/` by #1156).
+
+| The owner's track | File | Plays |
+|---|---|---|
+| Homestead Morning | `farm.mp3` (new) | your farm (`farm_home`) |
+
+- `ZONE_MUSIC.farm_home`, the zone's own id.
+- **Every way onto the farm asks for it** (`game/farmTrip.js`
+  `holdFarmUntilReady`, the one call they all make). Each sets the farm's map
+  straight in, so the zone change's own music call (BroTown's `if (!S.map)`)
+  never ran there. The farm went on playing whatever played before it: BroTown's
+  track, the trip passing through today's town. The Sound Studio said the theme.
+  `mp-farmmusic` found it, as `mp-googrotto` found a dungeon's in v2.3.3610.
+- The game's copy is the house setting (128 kbps at 44.1 kHz, 1.70 MB), made by
+  `tools/audio/encode_music.mjs` from the master and verified against it
+  (duration, rate, channels, loudness, brightness). It plays about 1.5 dB louder
+  on average than the town's track. It is left as the owner made it, as the
+  other ten were.
+- It is streamed by the music deck, as every track is since v2.3.3073, so nothing
+  of it is decoded into memory.
+- The Sound Studio's Music tab has a "Your farm" row, and the theme's row no
+  longer says the farm. Only the Electric Foundry plays the theme now.
+- Out through the farm's gate, the way back passes today's town and the Wheel's
+  land watch, so BroTown's track comes back.
+
+Tests: `sound-cues` 13f2 (the entry, its address, the master kept, the studio's
+row, and the farm trip asking for it), `mp-farmmusic` (in BroTown the town's
+track; onto the farm through "Visit Your Farm", farm.mp3 streamed and playing,
+1:51, the theme ducked, the studio naming it; out through the gate, the town's
+track again; on the build before the fix, step 2 read village.mp3),
+`mp-soundstudio` §10 (the row).

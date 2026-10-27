@@ -432,7 +432,9 @@ export const MUSIC_PLACES = [
   ['verdant', 'The Verdant Wilds', 'Forest Loop'],
   ['dungeon', 'Inside a dungeon: the Goo Grotto and the others', 'Swift Skirmish Clash'],
   ['minigame', "Lil Bro's race, from the countdown to the finish", 'Minigame'],
-  ['theme', 'The login screen, and wherever there is no track of its own: the Electric Foundry, your farm', 'Select Your Hero'],
+  /* v2.3.3672: the owner's farm track (assets/music-source/2026-10-27/) */
+  ['farm_home', 'Your farm', 'Homestead Morning'],
+  ['theme', 'The login screen, and wherever there is no track of its own: the Electric Foundry', 'Select Your Hero'],
   ['dance', 'Your dance\'s beat, while you dance one of the three dances', 'the dance beat'],
 ];
 

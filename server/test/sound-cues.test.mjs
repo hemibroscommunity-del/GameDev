@@ -703,7 +703,8 @@ for (const p of files) {
   /* ZONE_MUSIC's entries, read off gameDisplay.js's text */
   const zm = GD.slice(GD.indexOf('  ZONE_MUSIC: {'), GD.indexOf('\n  },', GD.indexOf('  ZONE_MUSIC: {')));
   const ZM = Object.create(null);
-  for (const m of zm.matchAll(/^ {4}([a-z]+): '([^']+)'/gm)) ZM[m[1]] = m[2];
+  /* v2.3.3672: `_` too -- the farm's key is the zone's id, `farm_home` */
+  for (const m of zm.matchAll(/^ {4}([a-z_]+): '([^']+)'/gm)) ZM[m[1]] = m[2];
   const keys = ST.MUSIC_PLACES.map((m) => m[0]);
   const want = Object.keys(ZM).filter((k) => !ST.MUSIC_CLOSED.includes(k));
   check(`13a every track a player can hear has its line in the studio's music list (${want.join(', ')}), and the theme and the dances' beat`,
@@ -724,6 +725,20 @@ for (const p of files) {
     .filter((n) => !existsSync(new URL('assets/music-source/2026-10-26/' + n + '.mp3', root)));
   const top = readdirSync(root).filter((f) => /\.mp3$/i.test(f));
   check('13f the owner\'s ten masters are kept in assets/music-source/2026-10-26/, none left at the top of the repo', masters.length === 0 && top.length === 0, { masters, top });
+  /* v2.3.3672: the owner's farm track, "for that later" (the farm's sounds came
+     first, #1151) -- made with Suno and uploaded the same day */
+  check('13f2 the farm plays the owner\'s "Homestead Morning" (farm.mp3 at ?v=2.3.3672, the zone\'s own id), its master kept in assets/music-source/2026-10-27/ and its line in the studio',
+    ZM.farm_home === '/audio/music/farm.mp3?v=2.3.3672' && existsSync(new URL('assets/music-source/2026-10-27/Homestead Morning.mp3', root))
+      && ST.MUSIC_PLACES.some(([k, , t]) => k === 'farm_home' && t === 'Homestead Morning')
+      && !/your farm/i.test((ST.MUSIC_PLACES.find(([k]) => k === 'theme') || [])[1] || ''), { farm: ZM.farm_home });
+  /* ...and asked for: every way onto the farm sets its map straight in, so the
+     zone change's music call never runs there (the farm kept BroTown's track);
+     holdFarmUntilReady is the one call they all make */
+  const FT = src('src/game/farmTrip.js');
+  const hold = FT.slice(FT.indexOf('export function holdFarmUntilReady(S)'), FT.indexOf('const seq = ++_seq;', FT.indexOf('export function holdFarmUntilReady(S)')));
+  check('13f3 ...asked for by every way onto the farm (farmTrip.js holdFarmUntilReady, before its loading screen holds you)',
+    /if \(S\.currentZone === 'farm_home'\) \{\s*try \{ BT_AUDIO\.startZoneAmbient\('farm_home'\); \}/.test(hold)
+      && /import \{ BT_AUDIO \} from '@\/data\/index\.js';/.test(FT));
   const sa = GD.slice(GD.indexOf('"startZoneAmbient", function startZoneAmbient(zoneId)'));
   check('13g every dungeon is filed under `dungeon` where every zone\'s music is asked for',
     /if \(typeof zoneId === 'string' && zoneId\.indexOf\('dungeon:'\) === 0\) zoneId = 'dungeon';/.test(sa.slice(0, 3000)));

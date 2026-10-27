@@ -3384,7 +3384,14 @@ remnant to migrate server-side, not a mode to preserve.
       Sound Studio's MUSIC tab lists every track under where it plays, ▶ from
       its file with the game's music bus down and the land watch held off
       (`BT_AUDIO._musicPreview`); `sound-cues` §13, `mp-soundstudio` §10:
-      docs/specs/wheel-land-music.md "v2.3.3610".
+      docs/specs/wheel-land-music.md "v2.3.3610"; and since v2.3.3672 YOUR
+      FARM ITS OWN -- the owner's "farming sound effects and music track for
+      that later", then "Homestead Morning" (Suno, master in
+      `assets/music-source/2026-10-27/`): `ZONE_MUSIC.farm_home`, farm.mp3,
+      asked for by every way onto the farm (farmTrip.js `holdFarmUntilReady`:
+      each sets the map straight in, so the farm had kept BroTown's track,
+      the studio saying the theme), the studio's "Your farm" row;
+      `sound-cues` 13f2, `mp-farmmusic`: wheel-land-music.md "v2.3.3672".
   - Since v2.3.3065 NORTH IS MARKED ON BOTH MAPS -- the owner, on the
     recommendations for finding your way round: "Continue building
     recommended": neither map ever turns, and nothing said up is north;
