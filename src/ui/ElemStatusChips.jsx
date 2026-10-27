@@ -24,7 +24,7 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a status heard wearin
 const ROWS = [
   { key: '_chillUntil', img: ELEM_ICON_SRC['elem-frost'], label: 'Chilled', color: '#9fd8ff' },
   { key: '_burnUntil', img: ELEM_ICON_SRC['elem-flame'], label: 'Burning', color: '#ff9a3c' },
-  { key: '_stuckUntil', img: ELEM_ICON_SRC['elem-flora'], label: 'Stuck', color: '#8be36a' },   /* v2.3.3044: the leaf, not the slime's splat */
+  { key: '_stuckUntil', img: ELEM_ICON_SRC['elem-flora'], label: 'Stuck', color: '#8cc4ff' },   /* v2.3.3044: the leaf, not the slime's splat; v2.3.3675: its words the goo's blue (effectsRenderer GOO_HOLD) */
   /* v2.3.3014: the rock monster's daze, the fishman's soak, the Mire's
      poison (the storm's crackle is over before a chip could say so, as the
      gust's shove is: its icon rides the number) */
