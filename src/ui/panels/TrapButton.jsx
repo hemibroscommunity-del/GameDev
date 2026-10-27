@@ -1,7 +1,7 @@
 import React from 'react';
 import { trapButtonView, armTrap, trapProbe } from '@/game/trapping.js';
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* warmed on the loading screen */
-import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx';   /* v2.3.3617: upright, a round button in the column */
+import { ctlColumn, ctlBottom, CTL_SLOT, leftCluster, LCTL_SLOT } from '@/ui/panels/ShieldButton.jsx';   /* v2.3.3617: upright, a round button in the column */
 import { Skin } from '@/ui/panels/controlSkin.jsx';
 
 /* ═══ v2.3.3120: THE TRAP POP-UP ═══
@@ -133,6 +133,15 @@ export function TrapButton({ stateRef, isLandscape }) {
   if (!fine && !isLandscape) {
     const col = ctlColumn(false);
     const size = col.size;
+    /* v2.3.3635: the tag's room, from the button's left edge to Element
+       Burst's right (over the movement disc, level with this button): on a
+       360-375 px phone the one-line "Requires Trapping 12" reached across
+       Burst's face (found by the review of v2.3.3617).  The tag wraps at its
+       spaces within that room, never smaller type; 72 px at the least
+       (one word a line). */
+    const vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
+    const lc = leftCluster(false);
+    const tagRoom = Math.max(72, Math.round((vw - col.right - size - 6) - (lc.leftPx(LCTL_SLOT.burst) + lc.size + 6)));
     return (
       <div
         className="bt-desktop-hide"
@@ -149,13 +158,16 @@ export function TrapButton({ stateRef, isLandscape }) {
           touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none',
         }}>
         <Skin size={size} tone="slate" state={grey ? 'disabled' : armed ? 'on' : pending ? 'cooldown' : 'normal'}>
+          {/* v2.3.3635: grey by OPACITY, never a CSS filter over the game's
+              canvas (TRAPS §42, the iOS grain; the controls beside it do the
+              same) */}
           <img src={TRAP_ICON_URL} alt="" draggable={false}
-            style={{ width: Math.round(size * 0.64), height: Math.round(size * 0.64), objectFit: 'contain', filter: grey ? 'grayscale(1) opacity(.6)' : 'none' }} />
+            style={{ width: Math.round(size * 0.64), height: Math.round(size * 0.64), objectFit: 'contain', opacity: grey ? 0.5 : 1 }} />
         </Skin>
         {/* what it says, beside it toward the middle: takes no touch */}
         <span data-trap-tag="1" style={{
           position: 'absolute', right: 'calc(100% + 6px)', top: '50%', transform: 'translateY(-50%)',
-          pointerEvents: 'none', whiteSpace: 'nowrap', textAlign: 'right',
+          pointerEvents: 'none', whiteSpace: 'normal', overflowWrap: 'normal', maxWidth: tagRoom, width: 'max-content', textAlign: 'right',
           padding: '3px 8px 4px', borderRadius: 8, lineHeight: 1.15,
           background: 'rgba(12,16,20,.82)', border: '1px solid ' + rim, color: grey ? '#B6C1BE' : armed ? '#CFF5DC' : '#F4E7C8',
           font: '800 11px/1.15 "Source Sans 3", sans-serif',
@@ -193,7 +205,7 @@ export function TrapButton({ stateRef, isLandscape }) {
       <span style={{ width: 30, height: 30, borderRadius: 8, background: grey ? 'rgba(255,255,255,.06)' : 'rgba(17,30,35,.35)',
         display: 'grid', placeItems: 'center', flex: 'none' }}>
         <img src={TRAP_ICON_URL} alt="" draggable={false}
-          style={{ width: 24, height: 24, objectFit: 'contain', filter: grey ? 'grayscale(1) opacity(.6)' : 'none' }} />
+          style={{ width: 24, height: 24, objectFit: 'contain', opacity: grey ? 0.5 : 1 }} />
       </span>
       <span style={{ display: 'block' }}>
         <span style={{ display: 'block', fontSize: 12, fontWeight: 900, letterSpacing: '.08em' }}>

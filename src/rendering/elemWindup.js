@@ -40,7 +40,8 @@
  *
  * `?nowindupfx` leaves it out (the throb alone, as before);
  * `window.__btElemWindup()` is the QA probe. */
-import { Container, Sprite, Texture, Rectangle } from 'pixi.js';
+import { Container, Sprite, Texture, Rectangle, Cache } from 'pixi.js';
+import { keepAsImage } from './keepAsImage.js';   /* v2.3.3635: the picture kept as an image of itself */
 import { ELEM_WINDUP, WINDUP_SHAPES, WINDUP_FX } from '@/data/elemWindup.js';
 import { windupPieces, seedOfId, windupSizeK, windupStrength } from '@/game/elemWindup.js';
 import { SHAPE_DRAW } from './elemWindupShapes.js';
@@ -68,6 +69,12 @@ export function warmElemWindup() {
       g.restore();
     });
     const base = Texture.from(cv);
+    /* v2.3.3635: made once and never drawn into again, so kept as an image
+       of itself (keepAsImage.js, TRAPS §253): iPhone Safari can empty a
+       canvas while the tab is parked, and after a graphics rebuild every
+       wind-up would have drawn blank for the rest of the visit (found by the
+       review of v2.3.3619) */
+    if (base && base.source) keepAsImage(base.source, Cache);
     const cells = Object.create(null);
     WINDUP_SHAPES.forEach((name, i) => {
       cells[name] = new Texture({ source: base.source, frame: new Rectangle((i % COLS) * C, Math.floor(i / COLS) * C, C, C) });
