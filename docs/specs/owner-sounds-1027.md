@@ -98,8 +98,11 @@ say why each was cut that way. Nobody listened: the windows were MEASURED.
 - **Re-running the cutter** gives every older file byte for byte. It was run
   before the new rows were added, to check: no file changed.
 
-About 1.0 MB of sound decoded in all, decoded on the loading screen like every
-SFX_MANIFEST sound (the memory budget's sound line is 30 MB, measured at 26).
+0.94 MB of sound decoded in all (measured file by file in a page), decoded on
+the loading screen like every SFX_MANIFEST sound.  The memory check's sound
+line goes 30 -> 32 MB: the 0.94 MB, and room the line did not have, since
+main's own code read 28.9 and 30.0 MB of sound on two runs of the check the
+same day (tools/qa/mp/memory-budget.mjs says so in its header).
 
 ## Licenses
 

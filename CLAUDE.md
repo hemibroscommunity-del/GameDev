@@ -1023,8 +1023,9 @@ remnant to migrate server-side, not a mode to preserve.
         a line pops up over them (npcChatter gone: in town one came every few
         seconds);
       - cut and levelled by tools/audio/cut_owner_sounds.py, whose re-run
-        gives every older file byte for byte; ~1.0 MB decoded, the memory
-        check's sound line 30 -> 31; every license **CONFIRM** in CREDITS.md
+        gives every older file byte for byte; 0.94 MB decoded, the memory
+        check's sound line 30 -> 32 (main's own reading had reached 30.0);
+        every license **CONFIRM** in CREDITS.md
         (Freesound unreachable from here; NC is out); `sound-cues` §14,
         `mp-cuelevels`, `mp-ownersounds` 9b: docs/specs/owner-sounds-1027.md.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
