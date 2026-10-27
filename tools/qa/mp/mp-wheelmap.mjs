@@ -493,7 +493,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await new Promise((res) => setTimeout(res, 50));
     }
     beats = zb.beatLog ? zb.beatLog().length : 0;
-    return { banner, beats, emblem: !!window.__btLandEmblem || !!document.querySelector('.bt-land-emblem') };
+    /* v2.3.3609: the emblem's element, as v2.3.3511's landEmblem.js put it in
+       the page (a class and data-land-emblem) -- its window handle went with it */
+    return { banner, beats, emblem: !!document.querySelector('.bt-land-emblem, [data-land-emblem]') };
   });
   await shot(P, '04c-landbanner');
   rec.ok(`...and the land's banner is the owner's animated one again: "${sb && sb.banner && sb.banner.text}", its ornaments drawn (${sb && sb.banner && sb.banner.orn}), the frost icon before the name, no picture over the plaque, ${sb && sb.beats} beats run`,
