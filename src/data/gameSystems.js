@@ -8177,6 +8177,10 @@ var _grottoParty = null;
 export function setGrottoParty(row) {
   _grottoParty = (row && row.level > 0 && row.size > 1) ? { level: row.level, size: row.size } : null;
 }
+/* v2.3.3608: the level the Grotto is FOR, the owner's "recommended level ...
+   lvl 10" (data/wheelDungeons.js WHEEL_DUNGEON_REC; its monsters stay the
+   worker's 16) */
+var GROTTO_REC_LEVEL = 10;
 /* ═══ v2.3.3583: LIL BRO, ONCE HE HAS BEATEN YOU ═══
  * The owner, 2026-10-23: "lil bro should also have dialog change to
  * acknowledge the race has been lost and to try again if you've lost already
@@ -8199,7 +8203,9 @@ export function grottoPartyAside() {
   if (!_grottoParty) return '';
   /* v2.3.3591: a sentence at the end of the hand-in's one tap (it was a tap
      of its own between the warning and the bow and staff) */
-  return " The Goo Grotto is level " + _grottoParty.level + " inside, so take "
+  /* v2.3.3608: the level it is FOR, "level 10 and up" (it said its
+     monsters' "level 16 inside") */
+  return " The Goo Grotto is for level " + GROTTO_REC_LEVEL + " and up, so take "
     /* "2 or 3" held together (no-break spaces): it wrapped as "2 or / 3." */
     + (_grottoParty.size - 1) + "\u00a0or\u00a0" + _grottoParty.size + " friends. I'm out of eulogies.";
 }

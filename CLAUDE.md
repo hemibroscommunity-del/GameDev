@@ -1079,9 +1079,11 @@ remnant to migrate server-side, not a mode to preserve.
       gear) and EN/MP the Energy family, an open one covering the figure row
       (heroStatPills.js `heroStatFamilies`; `mp-statfamilies`, mp-charfit retired);
       since
-      v2.3.3577 its figure faces SOUTHEAST (the owner's ask; the southwest
+      v2.3.3577 its figure faced SOUTHEAST (the owner's ask; the southwest
       art mirrored, the crop's window following it: CharacterView.jsx
-      `figureCx`), `mp-heroview`: docs/specs/notes-2026-10-22.md.
+      `figureCx`), and since v2.3.3608 SOUTHWEST again (the owner: "I also
+      like the Southwest view of the character in the dashboard preview
+      better"), `mp-heroview`: docs/specs/notes-2026-10-22.md.
   - Since v2.3.3009 the Wheel's TOP BAR says where you are -- the owner:
     "Put the 'brotown safe' and other location indicators in place of the
     'the wheel lvl 1-2' on the top bar" -- the land over its stage and
@@ -1903,7 +1905,13 @@ remnant to migrate server-side, not a mode to preserve.
         players" ("dungeon · Lv 16 · 2–3 players" lost to the stage's name: a
         label is drawn only where it clears the ones before it) and "Lv 16 ·
         for 2–3 players" under the Enter button (src/data/wheelDungeons.js
-        `WHEEL_DUNGEON_PARTY`, mirror-audit);
+        `WHEEL_DUNGEON_PARTY`, mirror-audit); since v2.3.3608 "Lv 10+" in
+        both, the owner: "Change the recommended level for the slime grotto
+        dungeon to lvl 10 (don't change any difficulty settings)" -- the
+        words alone (`WHEEL_DUNGEON_REC`, the page's own table, never the
+        worker's PARTY row the mirror-audit holds), the monsters still 16,
+        and the Mayor's line "for level 10 and up" (gameSystems.js
+        `GROTTO_REC_LEVEL`);
       - FOUND ON THE WAY: A SHOVE PUT A SLIME IN THE WALL -- every clamp on a
         moved monster asked `_getZoneConfig`, which knows no dungeon zone, so
         a knockback put a slime through the Grotto's wall, out of every
@@ -2032,7 +2040,15 @@ remnant to migrate server-side, not a mode to preserve.
         your own skull a mark on its corner,
         not a third thing in the row -- so it fits between the bell (66-110 px)
         and the shield at 360 px and up; at 320 it lies over the bell's right
-        half, never the shield;
+        half, never the shield; since v2.3.3608 it is CENTRED (the owner:
+        "center the red skull on the UI so it's not awkwardly aligned to the
+        left"), and steps just left of the shield, scaled to the room the bell
+        leaves, only while the shield button is in the page and under the
+        middle (NmlBadge.jsx `nmlBadgePlace` works both places out ahead;
+        game.css `.bt-nml-badge` switches on `html:has([data-shield])`, in the
+        frame the button appears; the badge z 30 under the shield's 31, so a
+        tap on the shield is the shield's -- a poll's lag left it over the
+        shield, mp-nmlfoe step 1);
       - spar §16 (24 checks), `mp-nmlfoe` (three phones): no-mans-land.md "The
         choice lasts, and the shield is there".
     - since v2.3.3316 A SWING ASKS, AND A DEATH TAKES EVERYTHING CARRIED -- the
