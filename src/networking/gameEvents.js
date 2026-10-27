@@ -1316,9 +1316,9 @@ export function processGameEvent(type, payload, S, deps) {
                  Softer orange than the brute's amber and a smaller shake
                  below: the tell should read as "here it comes", not as
                  "you are in trouble". */
-              var _maLabels = { slam: 'SLAM!', pounce: 'POUNCE!', lunge: 'LUNGE!' };
-              var _maColors = { slam: '#f5c542', pounce: '#2C3E50', lunge: '#E8955A' };
-              var _maShake = { slam: 8, pounce: 5, lunge: 3 };
+              var _maLabels = { slam: 'SLAM!', pounce: 'POUNCE!', lunge: 'LUNGE!', roar: 'ROAR!' };   /* v2.3.3621: the mummy's roar */
+              var _maColors = { slam: '#f5c542', pounce: '#2C3E50', lunge: '#E8955A', roar: '#E6D3A8' };
+              var _maShake = { slam: 8, pounce: 5, lunge: 3, roar: 6 };
               /* ═══ v2.3.2215: THE UNIVERSAL BASIC-ATTACK TELL ═══
                  Every monster now winds up before an ordinary swing or throw
                  (server/src/telegraph.js BASIC_WINDUP).  Handled ABOVE the
@@ -1584,7 +1584,9 @@ export function processGameEvent(type, payload, S, deps) {
                 /* v2.3.3343: ...a beep(), which plays nothing.  The wind-up is
                    heard now: a slow swell before a slam, a low rush before a
                    lunge (SOUND-GAPS). */
-                if (_tgK > 0) cue(payload.ability === 'slam' ? 'windSlam' : 'windLunge', _tgK);
+                /* v2.3.3621: a mummy's roar is its roar (the owner's dragon,
+                   higher and shorter: data/eventSounds.js mummyRoar) */
+                if (_tgK > 0) cue(payload.ability === 'slam' ? 'windSlam' : payload.ability === 'roar' ? 'mummyRoar' : 'windLunge', _tgK);
                 break;
               }
               /* execute — a landed hit shakes, a whiff deliberately does

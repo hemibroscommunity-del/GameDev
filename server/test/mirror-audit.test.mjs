@@ -1009,7 +1009,8 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const clientKinds = m ? (m[1].match(/(\w+)\s*:/g) || []).map((k) => k.replace(/\s*:$/, '')) : [];
   check('telegraph mirror: ...and the parse found something (guard: an empty list matches nothing)',
     clientKinds.length >= 2, clientKinds);
-  const serverKinds = Object.values(SRV_TELEGRAPH.KITS).map((k) => k.kind);
+  /* v2.3.3621: and the kits by element (the mummies' roar) */
+  const serverKinds = [...Object.values(SRV_TELEGRAPH.KITS), ...Object.values(SRV_TELEGRAPH.ELEM_KITS || {})].map((k) => k.kind);
   const missing = serverKinds.filter((k) => !clientKinds.includes(k));
   check('telegraph mirror: every server kit has a client label (or it renders NOTHING)',
     missing.length === 0, { missing, serverKinds, clientKinds });
