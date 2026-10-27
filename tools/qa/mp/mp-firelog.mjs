@@ -1,4 +1,4 @@
-/* ═══ v2.3.3649: THE FIRE-LIGHTER'S LOG IS WOOD ═══
+/* ═══ v2.3.3660: THE FIRE-LIGHTER'S LOG IS WOOD ═══
  *
  * The owner, 2026-10-27: "check all the animations for ghost remnants of
  * either a body beneath or areas for cleanup".  mp-ghostaudit's fire-lighter
@@ -21,7 +21,7 @@
 import * as H from './harness.mjs';
 
 import { FIRE_STRIP_V } from '../../../src/data/fireStrip.js';
-const FIRE_URL = `/sprites/skills/firemaking-strip.webp?v=${FIRE_STRIP_V}`;   /* the URL the game loads (v2.3.3655: the strip's own version) */
+const FIRE_URL = `/sprites/skills/firemaking-strip.webp?v=${FIRE_STRIP_V}`;   /* the URL the game loads (v2.3.3666: the strip's own version) */
 const FW = 384, FH = 512, FRAMES = 8;
 
 const LOOK = `try {

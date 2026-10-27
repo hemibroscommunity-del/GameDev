@@ -1,4 +1,4 @@
-# The fire catches in code (v2.3.3655)
+# The fire catches in code (v2.3.3666)
 
 The owner, 2026-10-27:
 
@@ -70,7 +70,7 @@ there too.
 
 **The fire catching is heard as it catches.** The `campfire` cue plays at the
 strike (`cueLater`, 201 ms in), not when the campfire appears half a second
-later over a fire already burning. Since v2.3.3653 that cue is the owner's
+later over a fire already burning. Since v2.3.3664 that cue is the owner's
 "Light fire" recording.
 
 **Other players see the same.** A peer's light is drawn where it began, its
@@ -81,7 +81,7 @@ arrives, takes that fire over.
 ## The log: kept
 
 The owner left it open ("Keeping the log is optional, I don't know which is
-better"). It stays, and it is wood: since v2.3.3649 the bake gives its magenta
+better"). It stays, and it is wood: since v2.3.3660 the bake gives its magenta
 key the bark's colours.
 
 - **The figure is drawn against it.** He kneels at the log with his hands on it

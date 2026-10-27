@@ -4004,7 +4004,7 @@ remnant to migrate server-side, not a mode to preserve.
         `mp-peercolours` (fails on the old
         code: every recoloured pixel of a peer's cook and fire-lighter the
         watcher's): docs/specs/peer-gather-colours.md.
-    - since v2.3.3649 THE FIRE-LIGHTER'S LOG IS WOOD -- the owner: "check all
+    - since v2.3.3660 THE FIRE-LIGHTER'S LOG IS WOOD -- the owner: "check all
       the animations for ghost remnants" (mp-ghostaudit: every light was on a
       hot pink log, for everyone): firemaking-strip.webp holds the magenta tool
       key for its log, and v2.3.2761 coloured the axe and the rod but left the
@@ -4014,7 +4014,7 @@ remnant to migrate server-side, not a mode to preserve.
       its hue window), on your fire-lighter and a peer's (`_peerFigFrames`); the
       skin probe reads the figure first; `?firelog=0`, `window.__btFireLog()`;
       `mp-firelog`: docs/specs/fire-log.md.
-    - since v2.3.3655 THE FIRE CATCHES IN CODE -- the owner: "replace the log
+    - since v2.3.3666 THE FIRE CATCHES IN CODE -- the owner: "replace the log
       and flame in the animation with ... code drawn smoke and flames", then
       "Keeping the log is optional": the strip's painted flame, sparks, smoke
       and glow are taken out of frames 3-7 by tools/build_fire_clean.py (the

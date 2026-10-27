@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3655: the fire-lighter's strip with its painted fire taken out.
+"""v2.3.3666: the fire-lighter's strip with its painted fire taken out.
 
 The owner, 2026-10-27: "work on the fire starting animation to replace the log
 and flame in the animation with actual log art and code drawn smoke and flames
@@ -16,7 +16,7 @@ campfire's own flame, sparks and smoke catching on the log instead.
 
 THE LOG STAYS.  The figure kneels at it with his hands on it and his knees
 behind it: the art has no legs drawn behind the log, so taking the log away
-leaves him cut off at the knee.  It is wood since v2.3.3649 (the bake gives its
+leaves him cut off at the knee.  It is wood since v2.3.3660 (the bake gives its
 magenta key the bark's colours).
 
 HOW THE FIRE IS FOUND.  Not by colour alone: the figure's skin is the flame's
@@ -83,7 +83,7 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 SRC = os.path.join(REPO, 'assets/skill-anim-src/firemaking-strip-painted.webp')
 OUT = os.path.join(REPO, 'public/sprites/skills/firemaking-strip.webp')
 DATA = os.path.join(REPO, 'src/data/fireStrip.js')
-VERSION = '2.3.3655'
+VERSION = '2.3.3666'
 FW, FH, N = 384, 512, 8
 STRIKE = 3                        # the first frame with fire painted in it
 CLONE_W = 96                      # how far along the log a mended pixel is cloned from

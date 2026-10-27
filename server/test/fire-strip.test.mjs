@@ -1,4 +1,4 @@
-/* ═══ v2.3.3655: THE FIRE-LIGHTER'S STRIP WITHOUT ITS PAINTED FIRE ═══
+/* ═══ v2.3.3666: THE FIRE-LIGHTER'S STRIP WITHOUT ITS PAINTED FIRE ═══
  *
  * The owner, 2026-10-27: the fire-start animation's flame, smoke and glow out
  * of the art, the fire drawn in code ("actual lit fire is code drawn").

@@ -449,7 +449,7 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
      all were drawn this second -- it waits, and takes the place of one once
      none was; a cook is held to the same allowance, and takes a fire-lighter's
      place the same way.  Never past 16 MB.
-     v2.3.3655: HOW MANY is found by filling, not written here: two at 6.3 MB
+     v2.3.3666: HOW MANY is found by filling, not written here: two at 6.3 MB
      each until the strip lost its painted fire, three at 4.8 since. */
   const hasTry = await A.page.evaluate(() => typeof window._pixiRenderer.peerFigTry === 'function');
   rec.ok('the allowance can be driven (guard)', hasTry);

@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { DMG_CRIT_COLOR, FIRE_FRAME_MS } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2213: the crit preview hook uses the real crit colour; v2.3.3655: + the fire-lighter's cadence */
-import { fireLightSpot } from '@/rendering/campfireFx.js';   /* v2.3.3655: where a light's fire burns, and its campfire */
-import { FIRE_STRIKE_FRAME } from '@/data/fireStrip.js';     /* v2.3.3655: the strip's strike */
+import { DMG_CRIT_COLOR, FIRE_FRAME_MS } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2213: the crit preview hook uses the real crit colour; v2.3.3666: + the fire-lighter's cadence */
+import { fireLightSpot } from '@/rendering/campfireFx.js';   /* v2.3.3666: where a light's fire burns, and its campfire */
+import { FIRE_STRIKE_FRAME } from '@/data/fireStrip.js';     /* v2.3.3666: the strip's strike */
 import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
@@ -6486,7 +6486,7 @@ export var BroTown = function BroTown(_ref0) {
              is lit where the fire-lighting strip leaves its burning log: on the
              ground at your boots, a stride to your left, so you end the strike
              standing beside your fire rather than in it or in front of it. */
-          /* v2.3.3655: where the light's own fire has burned since the strike
+          /* v2.3.3666: where the light's own fire has burned since the strike
              (fm.fx/fy, worked out by fireLightSpot when you struck: the same
              spot as before), so the campfire takes that fire over in place --
              campfireFx adopts it.  A record written without them (a test) is
@@ -6512,7 +6512,7 @@ export var BroTown = function BroTown(_ref0) {
             litAt: Date.now(), expiresAt: Date.now() + 45000,
             name: 'Campfire', spotName: 'Campfire', gatherLvl: 1, skill: 'cooking', emoji: '🔥',
           };
-          /* v2.3.3343: the fire catching ('campfire') -- since v2.3.3655 played as
+          /* v2.3.3343: the fire catching ('campfire') -- since v2.3.3666 played as
              the flame catches at the strike (the light's start, below), not here
              half a second later over a fire already burning */
           /* ═══ v2.3.1753: AND TELL THE OTHER PLAYERS ═══
@@ -9407,14 +9407,14 @@ export var BroTown = function BroTown(_ref0) {
          frame for a second before the real campfire appeared, which reads as a
          freeze rather than a faster animation.  The ~160ms tail is a beat on
          the finished pose, not a stall. */
-      /* v2.3.3655: + where its fire burns (fireLightSpot: the campfire's spot,
+      /* v2.3.3666: + where its fire burns (fireLightSpot: the campfire's spot,
          worked out once, here) -- campfireFx draws the fire catching there from
          the strip's strike, and the campfire takes it over at the end */
       var _lightAt = fireLightSpot(S.currentZone, S.player.x, S.player.y);
       S._firemaking = { startedAt: now, doneAt: now + 700, x: S.player.x, y: S.player.y + 6, fx: _lightAt.x, fy: _lightAt.y, zone: S.currentZone };
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lighting fire…', '#ff8a3c', { ts: now });
       cue('fireStrike');   /* v2.3.3343: two strikes of the flint (a beep(), silent) */
-      cueLater('campfire', FIRE_STRIKE_FRAME * FIRE_FRAME_MS / 1000);   /* v2.3.3655: the fire catching, as it catches (the strip's strike) */
+      cueLater('campfire', FIRE_STRIKE_FRAME * FIRE_FRAME_MS / 1000);   /* v2.3.3666: the fire catching, as it catches (the strip's strike) */
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
     });

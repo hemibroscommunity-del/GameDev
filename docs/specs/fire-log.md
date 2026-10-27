@@ -1,4 +1,4 @@
-# The fire-lighter's log is wood (v2.3.3649)
+# The fire-lighter's log is wood (v2.3.3660)
 
 The owner, 2026-10-27: "check all the animations for ghost remnants of either a
 body beneath or areas for cleanup".

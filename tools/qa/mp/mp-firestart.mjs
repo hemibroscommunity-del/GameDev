@@ -1,4 +1,4 @@
-/* ═══ v2.3.3655: THE FIRE CATCHES IN CODE, AND THE BRO STAYS PUT ═══
+/* ═══ v2.3.3666: THE FIRE CATCHES IN CODE, AND THE BRO STAYS PUT ═══
  *
  * The owner, 2026-10-27: "work on the fire starting animation to replace the
  * log and flame in the animation with actual log art and code drawn smoke and

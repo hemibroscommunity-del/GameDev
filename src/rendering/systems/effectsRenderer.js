@@ -305,8 +305,8 @@ import { clipBoxOrSelf } from '../hairClip.js';   /* v2.3.3459: a stand-in's hai
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
-import { CampfireFx, fireLightSpot } from '../campfireFx.js'; /* v2.3.2846: the lit-log campfire, in pixel art; v2.3.3655: + where a peer's light catches */
-import { FIRE_STRIP_V, FIRE_FRAME_OFF, FIRE_FIGURE_X, FIRE_STRIKE_FRAME } from '../../data/fireStrip.js'; /* v2.3.3655: the fire-lighter's strip, measured (tools/build_fire_clean.py) */
+import { CampfireFx, fireLightSpot } from '../campfireFx.js'; /* v2.3.2846: the lit-log campfire, in pixel art; v2.3.3666: + where a peer's light catches */
+import { FIRE_STRIP_V, FIRE_FRAME_OFF, FIRE_FIGURE_X, FIRE_STRIKE_FRAME } from '../../data/fireStrip.js'; /* v2.3.3666: the fire-lighter's strip, measured (tools/build_fire_clean.py) */
 import { getEquip, onEquipChange } from '../gearCatalog.js';   /* v2.3.3640: + the greaves' change (_rebakeLegBodies) */
 import { getShirt, onShirtChange } from '../traits/shirtCatalog.js';   /* v2.3.3146: + the change, for the dressed stand-in shirts */
 import { getShirtColor, shirtFill, onShirtColorChange } from '../traits/shirtColorCatalog.js';
@@ -666,7 +666,7 @@ import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
-import { recolorToolKeyCanvas, recolorToolKey, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask; v2.3.3649: + recolorToolKey, the fire-lighter's log band */
+import { recolorToolKeyCanvas, recolorToolKey, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask; v2.3.3660: + recolorToolKey, the fire-lighter's log band */
 import { setStandInMaker, ensureStandIn, standInStarted, standInReady, standInMaking, setPeerStandInCheck, forgetStandIn, farmFigureReady } from '../standIns.js';   /* v2.3.3077: the gathering poses, made when first wanted; v2.3.3314: + a peer's, in their colours */
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
@@ -759,8 +759,8 @@ const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
    shared with every other player's fire-lighter on your screen (the SPEC
    table).  One strip, no legless twin.  FIRE_KEEP_BOXES puts the fist's
    islands back into the figure for everybody, drawings or not. */
-const FIRE_URL = `/sprites/skills/firemaking-strip.webp?v=${FIRE_STRIP_V}`;   /* v2.3.3655: the strip without its painted fire */
-/* ═══ v2.3.3655: WHERE EACH FRAME OF THE FIRE-LIGHTER IS DRAWN ═══
+const FIRE_URL = `/sprites/skills/firemaking-strip.webp?v=${FIRE_STRIP_V}`;   /* v2.3.3666: the strip without its painted fire */
+/* ═══ v2.3.3666: WHERE EACH FRAME OF THE FIRE-LIGHTER IS DRAWN ═══
    The owner: "work on the fire starting animation to replace the log and flame
    in the animation with actual log art and code drawn smoke and flames".  The
    strip's painted fire is out (tools/build_fire_clean.py); the light's fire is
@@ -779,7 +779,7 @@ function _fireFrameShift(fi, sx, sy) {
   const o = FIRE_FRAME_OFF[fi] || FIRE_FRAME_OFF[0];
   return [(FIRE_FW / 2 - FIRE_FIGURE_X + o[0]) * sx, o[1] * sy];
 }
-/* ═══ v2.3.3649: THE FIRE-LIGHTER'S LOG IS WOOD ═══
+/* ═══ v2.3.3660: THE FIRE-LIGHTER'S LOG IS WOOD ═══
    The owner, 2026-10-27: "check all the animations for ghost remnants ... or
    areas for cleanup".  mp-ghostaudit's fire-lighter lit his fire on a hot pink
    log.  firemaking-strip.webp holds the pipeline's magenta KEY for the log, as
@@ -832,7 +832,7 @@ function _bakeFireSplit(img, skinT, art, clothes, opts) {
   const out = recolorStandInSkinSplit(img, skinT, FIRE_FH, { ...FIRE_SKIN_OPTS, frameW: FIRE_FW,
     keepBoxes: FIRE_KEEP_BOXES, art, regions: FIRE_INK_REGIONS, ...(clothes ? { ...clothes, pantsWide: true } : {}) });
   if (opts && opts.beforeWood) opts.beforeWood(out.cv);
-  if (!FIRE_LOG_OFF && !(opts && opts.noWood)) _fireLogToBark(img, out.cv);   /* v2.3.3649 */
+  if (!FIRE_LOG_OFF && !(opts && opts.noWood)) _fireLogToBark(img, out.cv);   /* v2.3.3660 */
   return out;
 }
 /* The drawn-peer layers, per figure (_peerStandInInk): the strip a variant
@@ -890,7 +890,7 @@ const STANDIN_INK = Object.freeze({
 const PEER_FIG_BUDGET = 16e6;   /* bytes, every peer figure together */
 /* a figure's size before it is made (the bake's own, rounded up), for the
    allowance; what it really holds is counted once it is in */
-/* v2.3.3655: a fire-lighter 6.3 -> 4.9: the strip without its painted fire
+/* v2.3.3666: a fire-lighter 6.3 -> 4.9: the strip without its painted fire
    packs trimmed to 4.81 MB (mp-peercolours, mp-fireink), so three fit */
 const PEER_FIG_EST = Object.freeze({ cook: 4.6e6, fire: 4.9e6, chop: 2.1e6,
   /* v2.3.3439: the farmer's, uncropped (their frames' whole strips) */
@@ -3128,7 +3128,7 @@ export class EffectsRenderer {
     if (typeof window !== 'undefined') {
       const _cfx = this._campfireFx;
       window.__btCampfire = () => (_cfx ? _cfx.probe() : null);
-      /* v2.3.3655: QA (mp-firestart) -- the fires hidden while the figure is
+      /* v2.3.3666: QA (mp-firestart) -- the fires hidden while the figure is
          photographed alone */
       window.__btCampfireHide = (on) => { if (_cfx) _cfx.qaHide = !!on; };
     }
@@ -5018,7 +5018,7 @@ export class EffectsRenderer {
     const skinT = skinTarget(o.skin) || DEFAULT_SKIN_TARGET;
     _loadStandInImg(spec.url(variant)).then((img) => {
       if (this._destroyed) return;   /* v2.3.3074 */
-      const { cv, ink } = spec.bake(img, skinT, { ...art, mirror: false }, undefined, { noWood: true });   /* v2.3.3649: the figure is thrown away, so its log is left */
+      const { cv, ink } = spec.bake(img, skinT, { ...art, mirror: false }, undefined, { noWood: true });   /* v2.3.3660: the figure is thrown away, so its log is left */
       const n = Math.max(1, Math.round(cv.width / spec.fw));
       cv.width = 0; cv.height = 0;   /* the figure is the shared one; only the layer is kept */
       cache.set(key, { arr: ink ? this._gpuOnly(this._own(_sliceStandIn(ink, spec.fw, spec.fh, n, null, false))) : [], used: now });   /* v2.3.3074: owned; v2.3.3150: _gpuOnly */
@@ -5319,7 +5319,7 @@ export class EffectsRenderer {
       const _art = _base ? artForFacing(_base, 'south') : null;
       /* v2.3.3146: and your trousers and boots (the cook's, above) */
       const _pantsT = pantsTarget(getPants()), _shoesT = shoesTarget(getShoes());
-      /* v2.3.3649: the skin probe reads the figure before its log is wood (the
+      /* v2.3.3660: the skin probe reads the figure before its log is wood (the
          bark's middle tones pass the skin window); a drawings-only rebake
          throws the figure away and leaves its log */
       const { cv, ink } = _bakeFireSplit(img, skinT, _art ? { ..._art, mirror: false } : null,
@@ -5335,7 +5335,7 @@ export class EffectsRenderer {
            from it (_peerFigure), as the cook's _cookLook */
         this._fireLook = _standInColourKey(skinT, _pantsT, _shoesT);
         /* v2.3.2500: the skin probe, measured through the bake's own window
-           (_probeStandInSkin) -- since v2.3.3649 run inside the bake, before
+           (_probeStandInSkin) -- since v2.3.3660 run inside the bake, before
            the log turns to wood */
         if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
         this._gpuOnly(arr);   /* v2.3.3150: read by nothing from here (_gpuOnly) */
@@ -13264,7 +13264,7 @@ export class EffectsRenderer {
    * the depth sort so you can walk behind it.  Pruning of expired peer fires
    * moved with it (CampfireFx._records). */
   _updateCampfire(S, now) {
-    /* v2.3.3655: + the peers' lights (_updateRemoteExtraction) and when the
+    /* v2.3.3666: + the peers' lights (_updateRemoteExtraction) and when the
        strip strikes, for the light's own fire */
     if (this._campfireFx) this._campfireFx.update(S, now, this._peerLights, FIRE_STRIKE_FRAME * FIRE_FRAME_MS);
   }
@@ -13309,7 +13309,7 @@ export class EffectsRenderer {
        zone's perspective curve" -- and left your own copy alone, because on a
        normal zone the curve is 1 and nothing looks wrong. Same sentence, same
        fix, your figure this time. See the peer twin at _updateRemoteExtraction. */
-    /* v2.3.3655: where the light began, not where you are now: its fire (the
+    /* v2.3.3666: where the light began, not where you are now: its fire (the
        campfire's, campfireFx) catches at that spot and stays there, so the
        figure and its log do too if you walk off mid-light.  (fm.y is your y +6,
        BroTown's record.) */
@@ -13322,7 +13322,7 @@ export class EffectsRenderer {
        figure upward and needs no lift, unlike the frame-centred body. */
     const _b = _localBuild();
     sp.scale.set(s * _b.sx, s * _b.sy);
-    /* v2.3.3655: the figure's middle on you, the frame's log on frame 0's
+    /* v2.3.3666: the figure's middle on you, the frame's log on frame 0's
        (_fireFrameShift) */
     const [_fdx, _fdy] = _fireFrameShift(fi, sp.scale.x, sp.scale.y);
     sp.x = _ax + _fdx;
@@ -13337,10 +13337,10 @@ export class EffectsRenderer {
         visible: !!sp.visible, scaleY: sp.scale.y,
         drawnH: +(Math.abs(sp.scale.y) * FIRE_FH).toFixed(2),
         x: sp.x, y: sp.y, gearScaleY: _fc ? _fc.scale.y : null,
-        /* v2.3.2846: where the figure's boots land (FIRE_FEET_ROW); v2.3.3655:
+        /* v2.3.2846: where the figure's boots land (FIRE_FEET_ROW); v2.3.3666:
            the ground line, whatever the frame's shift */
         bootsY: +(sp.y - _fdy - (FIRE_FH - FIRE_FEET_ROW) * sp.scale.y).toFixed(2),
-        /* v2.3.3655: the frame drawn, and the figure's middle (FIRE_FIGURE_X)
+        /* v2.3.3666: the frame drawn, and the figure's middle (FIRE_FIGURE_X)
            and the log's place on it (frame 0's), in world px */
         fi, figX: +(sp.x - _fdx).toFixed(2), shift: [+_fdx.toFixed(2), +_fdy.toFixed(2)],
       });
@@ -13462,7 +13462,7 @@ export class EffectsRenderer {
     const pool = this._remoteSkillSprites;
     const others = (S && S.others) || {};
     const zone = (S && S.currentZone) || 'town';
-    /* v2.3.3655: the peers lighting a fire this frame (their light's fire,
+    /* v2.3.3666: the peers lighting a fire this frame (their light's fire,
        for campfireFx); a light not drawn this frame is let go below */
     if (!this._peerLights) this._peerLights = new Map();
     const _litNow = new Set();
@@ -13661,7 +13661,7 @@ export class EffectsRenderer {
          over (mp-fireink relights and watches for it). */
       if (ent._exCode !== code || !ent._wasOn) {
         ent._exCode = code; ent._exStart = now;
-        /* v2.3.3655: a light stays where it began, as yours does (its fire is
+        /* v2.3.3666: a light stays where it began, as yours does (its fire is
            fixed there: campfireFx's light, published below) */
         ent._fireAt = code === 'fire' ? { x: ox, y: oy } : null;
       }
@@ -13734,7 +13734,7 @@ export class EffectsRenderer {
          and this figure stayed full size — a giant cook standing over a dot.
          Same curve, same position, so the two now shrink together.
          v2.3.2915: at the figure's own spot when it has one, as yours is. */
-      /* v2.3.3655: a light where it began (ent._fireAt) */
+      /* v2.3.3666: a light where it began (ent._fireAt) */
       const _fa = code === 'fire' && ent._fireAt ? ent._fireAt : null;
       const _ox = _fa ? _fa.x : ox, _oy = _fa ? _fa.y : oy;
       const pscale = _spot ? _spot.pscale : zonePlayerScale(zone, _ox, _oy, TILE);
@@ -13753,7 +13753,7 @@ export class EffectsRenderer {
       }
       const _sxR = s * _bR.sx, _syR = s * _bR.sy;   /* v2.3.2500 */
       sp.scale.set(_sign < 0 ? -_sxR : _sxR, _syR);
-      /* v2.3.3655: the fire-lighter's frame placed as yours is (_fireFrameShift) */
+      /* v2.3.3666: the fire-lighter's frame placed as yours is (_fireFrameShift) */
       const _fsh = code === 'fire' ? _fireFrameShift(_fiClamped, sp.scale.x, _syR) : null;
       sp.x = _spot ? _spot.x : _fsh ? _ox + _fsh[0] : ox;   /* v2.3.2915 */
       /* v2.3.2846: the fire-lighter plants its boots on the peer's boots (see
@@ -13764,7 +13764,7 @@ export class EffectsRenderer {
         : code === 'fire'
           ? _oy + standFootDy(pscale) + (FIRE_FH - FIRE_FEET_ROW) * _syR + _fsh[1]
           : oy + 6 * pscale;                    /* foot offset shrinks with the figure */
-      /* v2.3.3655: and their light's fire, catching on their log from the
+      /* v2.3.3666: and their light's fire, catching on their log from the
          strike: campfireFx draws it (CampfireFx.update's `lights`), and their
          campfire_lit takes it over where it burns */
       if (code === 'fire') {
@@ -13992,7 +13992,7 @@ export class EffectsRenderer {
         for (const [k, e] of cache) if (now - e.used > PEER_INK_IDLE_MS) this._dropPeerStandInInk(kind, k);
       }
     }
-    /* v2.3.3655: a light no longer drawn has ended (or they left): its fire
+    /* v2.3.3666: a light no longer drawn has ended (or they left): its fire
        burns down, or is taken over by their campfire (campfireFx) */
     for (const k of this._peerLights.keys()) if (!_litNow.has(k)) this._peerLights.delete(k);
   }

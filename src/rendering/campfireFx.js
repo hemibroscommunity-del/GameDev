@@ -81,7 +81,7 @@ function sizeIndexFor(age, remain) {
   return s;
 }
 
-/* ═══ v2.3.3655: THE LIGHT'S FIRE IS THIS FIRE ═══
+/* ═══ v2.3.3666: THE LIGHT'S FIRE IS THIS FIRE ═══
    The owner: "work on the fire starting animation to replace the log and flame
    in the animation with actual log art and code drawn smoke and flames (actual
    lit fire is code drawn)".  The fire-lighting strip painted its own cartoon
@@ -186,7 +186,7 @@ class Fire {
     this.smoke = [];
     this.nextPop = now + 1400 + rnd() * 2500;
     this.emberAcc = 0; this.smokeAcc = 0;
-    /* v2.3.3655: a light's fire (LIGHT, above): nothing until the strike, no
+    /* v2.3.3666: a light's fire (LIGHT, above): nothing until the strike, no
        logs of its own until a campfire adopts it */
     this.lighting = !!rec.lighting;
     this.strikeAt = this.lighting ? (rec.strikeAt || this.litAt) : 0;
@@ -255,7 +255,7 @@ class Fire {
     if (dying && dyingK >= 1 && ((!this.embers.length && !this.smoke.length) || now - this.dyingAt > DYING_MS + 2000)) return false;
 
     const age = now - this.litAt;
-    /* v2.3.3655: a light's fire goes by its strike, and spits its sparks then */
+    /* v2.3.3666: a light's fire goes by its strike, and spits its sparks then */
     const lit = this.lighting;
     const sinceStrike = lit ? now - this.strikeAt : 0;
     if (lit && !dying && sinceStrike >= 0 && !this.struck) {
@@ -288,7 +288,7 @@ class Fire {
       /* smoke: a new fire smokes as it catches, a dying one smokes more and greyer */
       const late = !flameOn || (remainMs != null && remainMs < 7000);
       const smokeRate = dying ? (dyingK < 0.5 ? 2.6 * (1 - 2 * dyingK) : 0)
-        : lit ? (flameOn ? LIGHT_SMOKE : 0)   /* v2.3.3655: a fire catching smokes */
+        : lit ? (flameOn ? LIGHT_SMOKE : 0)   /* v2.3.3666: a fire catching smokes */
         : age < 1200 ? 3.4 : late ? 3.2 : 1.7;
       this.smokeAcc += smokeRate * dt;
       const topY = flameOn ? -(ART.FLAME_SIZES[si] * 16 + 2) : -3;
@@ -337,7 +337,7 @@ class Fire {
     const pulse = 0.5 + 0.5 * Math.sin(now / 270 + this.seed);
     const crackA = (0.45 + 0.35 * pulse) * (flameOn ? 0.65 + 0.35 * (1 - heat) : 1) * (dying ? 1 - dyingK : 1);
     this.crackBack.alpha = this.crackFront.alpha = crackA;
-    /* v2.3.3655: a light's fire burns on the strip's log: no logs of its own
+    /* v2.3.3666: a light's fire burns on the strip's log: no logs of its own
        until a campfire adopts it */
     this.logBack.visible = this.logFront.visible = this.crackBack.visible = this.crackFront.visible = !lit;
     this.flame.visible = flameOn;
@@ -348,7 +348,7 @@ class Fire {
       this.flame.scale.set(u);
     }
     const flick = 0.78 + 0.12 * Math.sin(now / 97 + this.seed) + 0.1 * Math.sin(now / 41 + 1.3);
-    /* v2.3.3655: a light before its strike throws no light */
+    /* v2.3.3666: a light before its strike throws no light */
     const light = (flameOn ? 0.45 + 0.55 * heat : lit && !dying ? 0 : 0.3 * (dying ? 1 - dyingK : 1)) * flick;
     this.halo.x = crossX; this.halo.y = crossY - 8 * u * (flameOn ? heat : 0.4);
     this.halo.scale.set(u);
@@ -402,14 +402,14 @@ export class CampfireFx {
     atlas();   /* minted with the renderer, never on the first fire (the preloading LAW) */
   }
 
-  /* `lights` (v2.3.3655): the peers lighting a fire, id -> { x, y, zone,
+  /* `lights` (v2.3.3666): the peers lighting a fire, id -> { x, y, zone,
      litAt, strikeAt } (effectsRenderer._updateRemoteExtraction); `strikeMs`:
      when the strip strikes, after the light begins (its frame 3) */
   _records(S, now, lights, strikeMs) {
     const out = [];
     const own = S && S._campfire;
     if (own && !(own.expiresAt && now > own.expiresAt)) out.push(['self', own]);
-    /* v2.3.3655: your light's fire, at the spot BroTown worked out when you
+    /* v2.3.3666: your light's fire, at the spot BroTown worked out when you
        struck (fm.fx, fm.fy; a record written without them is placed the same
        way), until the campfire takes it over */
     const fm = S && S._firemaking;
@@ -456,7 +456,7 @@ export class CampfireFx {
         this.fires.set(key + '#' + f.litAt, f);
         f = null;
       }
-      /* ═══ v2.3.3655: THE CAMPFIRE TAKES OVER THE LIGHT'S FIRE ═══
+      /* ═══ v2.3.3666: THE CAMPFIRE TAKES OVER THE LIGHT'S FIRE ═══
          The campfire that appears where a light's fire burns is that fire: the
          same flame, sparks and smoke carry on, its logs appear under it, and
          IGNITE settles it to full height from its own litAt. */
@@ -478,7 +478,7 @@ export class CampfireFx {
       seen.add(key);
       const scale = zonePlayerScale(zone, cf.x, cf.y, TILE) || 1;
       f.step(cf, now, scale, cf.expiresAt ? cf.expiresAt - now : null);
-      if (f.root.visible === !!this.qaHide) f.root.visible = !this.qaHide;   /* v2.3.3655: QA */
+      if (f.root.visible === !!this.qaHide) f.root.visible = !this.qaHide;   /* v2.3.3666: QA */
     }
     for (const [key, f] of this.fires) {
       if (seen.has(key)) continue;
@@ -508,7 +508,7 @@ export class CampfireFx {
         parentIsBody: f.root.parent === this.body,
         flameH: f.flame.visible ? +(f.flame.height).toFixed(1) : 0,
         glowAlpha: +f.glow.alpha.toFixed(3),
-        /* v2.3.3655: which fire this is (a light's fire keeps its serial when
+        /* v2.3.3666: which fire this is (a light's fire keeps its serial when
            its campfire adopts it), and where its flame stands */
         serial: f.serial,
         flameX: f.flame.visible ? +(f.root.x + f.flame.x).toFixed(2) : null,

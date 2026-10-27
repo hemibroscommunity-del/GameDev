@@ -1483,7 +1483,7 @@ export async function initPixiRenderer(canvas) {
            the cadence — it had a hard-coded 200 that the 3x speed-up broke. */
         frameMs: FIRE_FRAME_MS,
         frames: e._fireFrames ? e._fireFrames.length : 0,
-        /* v2.3.3655: the frame drawn, by its index.  The frames are packed
+        /* v2.3.3666: the frame drawn, by its index.  The frames are packed
            trimmed (packTrimmed), so where one sits in the texture says nothing
            about which it is: mp-firegear read texture.x / width, which held
            only while the crops happened to pack in order, and the strip
