@@ -9,6 +9,7 @@ import { installHairClip } from './hairClip.js'; /* v2.3.3459 */
 import { renderDpr } from '../game/renderRes.js'; /* v2.3.3339: ?res= and the speed test */
 import { installBindGroupFix } from './bindGroupFix.js'; /* v2.3.3152: a freed picture no longer breaks Pixi's pooled mask */
 import { installTexturePoolTrim } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's texture pool gives back what it does not use */
+import { installTextRelease } from './textRelease.js'; /* v2.3.3633: a destroyed Text lets go of its style (the long-session heap creep) */
 import { installQuietClear } from './quietClear.js'; /* v2.3.3449: wiping an empty shape is not a change (no draw-list rebuild) */
 import { setDrawListRoot } from './drawLists.js'; /* v2.3.3449: a live switch's flip rebuilds every draw list */
 import { installLayerUniforms } from './layerUniforms.js'; /* v2.3.3449: a layer draws with the world's own camera numbers */
@@ -678,6 +679,7 @@ export async function createPixiApp(canvas) {
      made before this (module-level filters) are covered too; once a page */
   try { installBindGroupFix(); } catch (e) { /* Pixi as it ships */ }
   try { installTexturePoolTrim(); } catch (e) { /* the pool as Pixi ships it */ }
+  try { installTextRelease(); } catch (e) { /* Pixi's Text as it ships */ }
   try { installQuietClear(); } catch (e) { /* Pixi's clear as it ships */ }
   try { installLayerUniforms(); } catch (e) { /* every render group pushed as Pixi does */ }
   try {

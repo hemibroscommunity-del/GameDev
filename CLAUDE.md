@@ -5703,6 +5703,18 @@ Two protocol versions coexist; both must keep working:
     `window.__btGpuTex()`'s `uidNow`): a body strip loaded behind the loading
     screen reaches the graphics chip the first time it is drawn, and which
     trip first draws it is luck.
+  - A DESTROYED TEXT LETS GO OF ITS STYLE (v2.3.3633, found by the owner's
+    "check for memory leaks in long form play sessions"): Pixi 8.17's
+    `destroy()` never takes a Text's listener off its TextStyle, and
+    `{ ...NAME_STYLE, fontSize: 9 }` SHARES the base style's listener registry,
+    so every monster's name and loot label ever made was kept (42 -> 154
+    destroyed Texts after two trips to a fight); src/rendering/textRelease.js
+    takes the listener off and gives a spread its own registry (5, flat over
+    five trips; `?textkeep` as Pixi ships, `mp-textrelease`). A spread ALSO
+    drops its overrides (the base's size, weight and colour win): derive a
+    style with `BASE.clone()` and set the field (TRAPS §254); the labels
+    written the old way are drawn as the owner has seen them:
+    docs/specs/text-release.md.
   - A PICTURE ON 256 COLOURS OR FEWER IS KEPT AS COLOUR NUMBERS (v2.3.3190 --
     the owner asked whether the art could be "recreated byte for byte using
     pure code"; not that, a drawn picture costs the GPU what a loaded one does,
