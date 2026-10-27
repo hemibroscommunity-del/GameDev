@@ -1172,6 +1172,25 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
   animation:bt-pts-count-glow 3.2s ease-in-out infinite}
 /* v2.3.3600: No man's land's red line along the band's top, blinking slowly
    (NmlBadge.jsx; the owner: "some kind of slightly blinking red line") */
+/* ═══ v2.3.3608: THE NO MAN'S LAND BADGE, CENTRED -- BESIDE THE SHIELD ONLY
+   WHILE IT IS UP ═══
+   The owner: "center the red skull on the UI so it's not awkwardly aligned to
+   the left."  NmlBadge.jsx works out both places ahead (nmlBadgePlace): the
+   middle of the play area (--nml-c-left and --nml-c-tf none; before they are
+   worked out, `left:50%` and a half-width step back), and, where the shield
+   button would cover the middle
+   (upright), just left of it, scaled to the room the bell leaves
+   (--nml-b-left, --nml-b-k, and [data-nml-beside]).  The switch is HERE, on
+   the shield button being in the page at all, so it happens in the very frame
+   the button appears -- a poll's lag left the badge over the shield for a
+   moment (mp-nmlfoe).  Transform and `left` only (TRAPS §42).  The step
+   aside is INSTANT (`transition:none` on the beside rule: a transition is the
+   new state's), the way back to the middle a 160 ms slide -- a slide aside
+   left the badge over the shield for its 160 ms, and mp-nmlfoe's step 1
+   measured it there. */
+.bt-nml-badge{left:var(--nml-c-left,50%);transform:var(--nml-c-tf,translateX(-50%));transform-origin:left center;
+  transition:left 160ms ease-out,transform 160ms ease-out}
+html:has([data-shield]) .bt-nml-badge[data-nml-beside]{left:var(--nml-b-left);transform:scale(var(--nml-b-k));transition:none}
 @keyframes bt-nml-line{0%,100%{opacity:.35}50%{opacity:.95}}
 .bt-nml-line{animation:bt-nml-line 1.8s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){
@@ -6691,8 +6710,8 @@ html[data-orient="landscape"] .bt-dashboard{
 /* v2.3.3481 stood a Wheel land's SCENE over the plaque here (.is-scene, half
    the banner wide).  v2.3.3511 took it off -- the owner: "new land emblems
    look bad enlarged (revert or show below minimap)": ~192 picture px drawn
-   ~191 CSS px wide is three times their pixels on a 3x phone.  The scene is
-   a small emblem under the minimap now (.bt-land-emblem, below). */
+   ~191 CSS px wide is three times their pixels on a 3x phone.  (v2.3.3609:
+   and the four lands with the owner's ornaments play them again.) */
 .bt-zone-banner__orn--l{left:0}
 .bt-zone-banner__orn--r{right:0}
 .bt-zone-banner.is-in .bt-zone-banner__plaque{opacity:1;transform:translateY(0) scale(1)}
@@ -6757,31 +6776,10 @@ html[data-orient="landscape"] .bt-zone-banner{
 }
 html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14px}
 
-/* ═══ v2.3.3511: A LAND'S EMBLEM, SMALL, UNDER THE MINIMAP ═══
-   The owner: "new land emblems look bad enlarged (revert or show below
-   minimap)".  As a land's plaque docks into the minimap's plate, its scene
-   comes up under the minimap at its OWN pixels (src/ui/landEmblem.js sizes it
-   to one picture px a device px and places it clear of every control) for a
-   few seconds, then fades.  A soft dark halo behind it, painted (no filter
-   over the WebGL canvas: TRAPS §42), so its thin outline reads on bright
-   ground.  Takes no touch.  Under the cards and prompts of the top (z 34+)
-   and the dashboard (30): the banners' and toasts' rung. */
-.bt-land-emblem{
-  position:fixed;z-index:21;pointer-events:none;
-  -webkit-user-select:none;user-select:none;
-  opacity:0;transform:translateY(-3px);
-  transition:opacity 240ms ease-out, transform 240ms ease-out;
-}
-.bt-land-emblem::before{
-  content:'';position:absolute;inset:-6px -9px;border-radius:50%;
-  background:radial-gradient(closest-side, rgba(8,13,16,.55), rgba(8,13,16,.28) 60%, rgba(8,13,16,0));
-}
-.bt-land-emblem img{position:relative;display:block}
-.bt-land-emblem.is-in{opacity:1;transform:none}
-.bt-land-emblem.is-out{opacity:0;transition:opacity 600ms ease-in}
-@media (prefers-reduced-motion: reduce){
-  .bt-land-emblem{transform:none}
-}
+/* (v2.3.3511-v2.3.3608: a land's scene, small, under the minimap, its
+   rules `bt-land-emblem` -- gone with src/ui/landEmblem.js in v2.3.3609,
+   the owner: "The older ones were better": a land's banner is its animated
+   ornaments again, or the plaque alone) */
 
 /* ═══ v2.3.3006: THE SPRINT BUTTON'S "NO" ═══
    A tap with too little stamina to start a sprint shakes the button's face
