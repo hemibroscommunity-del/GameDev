@@ -16,6 +16,7 @@
  * nothing.  docs/specs/farm-walk.md.
  */
 import { ZONES } from '@/data/zones.js';
+import { BT_AUDIO } from '@/data/index.js';
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay } from '@/game/zoneTransitions.js';
 import { farmArtReady } from '@/rendering/farmWorld.js';
 import { isZoneMapResident } from '@/rendering/tiledMaps.js';
@@ -33,6 +34,17 @@ export function farmReady() {
 /** Called right after a warp onto the farm. */
 export function holdFarmUntilReady(S) {
   if (!S) return;
+  /* v2.3.3672: THE FARM'S OWN MUSIC.  Every way onto the farm sets its map
+     straight in, so the zone change's own music call (BroTown's `if (!S.map)`)
+     never ran there, and the farm went on playing whatever played before it
+     -- BroTown's track, the trip passing through today's town -- though the
+     Sound Studio said the theme (mp-farmmusic found it, as mp-googrotto found
+     a dungeon's in v2.3.3610).  This is the one call every way onto the farm
+     makes, so it asks here: ZONE_MUSIC.farm_home, the owner's "Homestead
+     Morning"; a no-op when it already plays. */
+  if (S.currentZone === 'farm_home') {
+    try { BT_AUDIO.startZoneAmbient('farm_home'); } catch (e) { /* sound only */ }
+  }
   const seq = ++_seq;
   const load = import('@/rendering/preloadAnimations.js').then((m) => m.preloadZoneAssets('farm_home'));
   if (farmReady()) { load.catch(() => {}); return; }
