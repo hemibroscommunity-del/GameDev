@@ -1116,7 +1116,11 @@ remnant to migrate server-side, not a mode to preserve.
       points" when the bar became 37): `statPreview.js` `POOL_STAT`,
       `pooled`, `poolShown`, shared with the scene; `statsim` §9;
     - the points grid FOLLOWS THE HELD WEAPON: a change of weapon brings it
-      back (`heldCatRef`), the window's tabs aim only the window;
+      back (`heldCatRef`), the window's tabs aim only the window; since
+      v2.3.3665 a TAP ON A WEAPON'S ROW in the gold frame shows that weapon's
+      six (the owner: "a way to toggle between the 3"; `data-points-shown`,
+      `data-prog3-held` still the one in hand), `mp-pointsswitch`:
+      docs/specs/points-weapon-switch.md;
     - the per-weapon and character point bubbles BREATHE while points wait
       (game.css `bt-pts-bubble`, transform and opacity only) -- since
       v2.3.3559 the COUNTS do, slowly (`bt-pts-count`, a 3.2 s breath: the
