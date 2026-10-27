@@ -1,4 +1,4 @@
-/* ═══ WHAT THE HEAP GAINS ON EACH TRIP (v2.3.3638) ═══
+/* ═══ WHAT THE HEAP GAINS ON EACH TRIP (v2.3.3650) ═══
  *
  * mp-membudget's heap line read 30.3 -> 31.7 -> 33.4 MB at the Flame Fields'
  * fight on three trips running (2026-10-27, #1130's run), 30.3 -> 31.0 -> 32.6
@@ -24,6 +24,25 @@ import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, createWriteStream, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MEM_INIT } from './memprobe.mjs';
+/* v2.3.3650: the Web Audio nodes the game makes per sound, counted from their
+   making until the browser COLLECTS them (a FinalizationRegistry) -- the soak
+   counted made minus disconnected, and a finished sound that is never
+   disconnected is collected all the same, so that count only ever climbed */
+const AUDIO_INIT = `(() => {
+  const A = window.__audioLive = { made: 0, live: 0 };
+  const gone = new FinalizationRegistry(() => { A.live--; });
+  if (!window.AudioContext) return;
+  for (const name of ['createBufferSource', 'createGain', 'createBiquadFilter', 'createStereoPanner', 'createPanner', 'createOscillator']) {
+    const orig = window.AudioContext.prototype[name];
+    if (typeof orig !== 'function') continue;
+    window.AudioContext.prototype[name] = function (...a) {
+      const n = orig.apply(this, a);
+      A.made++; A.live++;
+      try { gone.register(n, 0); } catch (e) { /* counting only */ }
+      return n;
+    };
+  }
+})();`;
 import { PROBE } from './mp-soak.mjs';
 
 const PHONE = { width: 390, height: 844 };
@@ -161,7 +180,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   const SCR = process.env.BT_HD_DIR || '/tmp';
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'heapdiff', wsPort, webPort, viewport: PHONE, touch: true, dpr: 1, world: 'wheel', init: MEM_INIT });
+  const P = await H.newPlayer(browser, { name: 'heapdiff', wsPort, webPort, viewport: PHONE, touch: true, dpr: 1, world: 'wheel', init: MEM_INIT + '\n' + AUDIO_INIT });
   let stopAlive = false;
   const res = { trips: [] };
   try {
@@ -224,8 +243,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       const hHome = await heap();
       const pr = await probe();
-      res.trips.push({ k, swings, fight: hFight, home: hHome, probe: pr });
-      console.log(`    trip ${k}: ${swings} swings, heap at the fight ${hFight} MB, home ${hHome} MB`);
+      /* the finalizers run a moment after the collections */
+      await P.page.waitForTimeout(300);
+      const audio = await P.page.evaluate(() => (window.__audioLive ? { ...window.__audioLive } : null));
+      res.trips.push({ k, swings, fight: hFight, home: hHome, probe: pr, audio });
+      console.log(`    trip ${k}: ${swings} swings, heap at the fight ${hFight} MB, home ${hHome} MB, audio nodes ${audio ? audio.live + ' live of ' + audio.made + ' made' : '-'}`);
       if (k === SNAP_A || k === SNAP_B) {
         const f = join(SCR, `heapdiff-${k}.heapsnapshot`);
         await snapshot(cdp, f);

@@ -1,4 +1,4 @@
-/* ═══ WHICH EVENT LISTENERS OUTLIVE A TRIP (v2.3.3638) ═══
+/* ═══ WHICH EVENT LISTENERS OUTLIVE A TRIP (v2.3.3650) ═══
  *
  * mp-longplay counted the page's event listeners as adds minus removes, and on
  * the farmer's page that rose ~100 every farm visit (748 -> 1,209 in 41

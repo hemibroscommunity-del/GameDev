@@ -1,4 +1,4 @@
-# Five players, a long session (v2.3.3638)
+# Five players, a long session (v2.3.3650)
 
 The owner, 2026-10-27: "simulate about 5 players doing the main quest lines,
 mining, fishing, combat, trading, partying, no mans land combat,
@@ -101,4 +101,47 @@ turned out to be the test's fault (below).
   every later step waited on it. The soak now asks the worker before it calls
   a step failed.
 
-RESULTS_2
+## The second run, with the test's faults fixed (2026-10-27)
+
+Six rounds, 32 minutes, on a build of main that includes the text-label fix
+(#1133). Again **no page error on any of the five pages**.
+
+| Who | What they did |
+|-----|---------------|
+| Questy | the quest line 6 of 6 (1 of 9 in the first run) |
+| Gathry | mined, fished and chopped 6 of 6 times each, sold 6 of 6 |
+| Fighty | fought 6 of 6, made the party, cleared the Goo Grotto 2 of 2 |
+| Tradey | bought and sold 6 of 6, traded 2 of 2; the No man's land fight 1 of 2 |
+| Farmy | the farm 3 of 3; walked the lands 2 of 3 (one walk past its 4-minute limit) |
+
+| Page | JS heap, round by round (MB, after a forced collection) | per hour after the warm-up |
+|------|----------------------------------------------------------|---|
+| Questy | 31.6 33.3 34.1 35.8 35.4 35.8 | +7.9 |
+| Gathry | 34.4 35.8 36.3 37.5 36.8 38.4 | +7.2 |
+| Fighty | 35.4 36.7 38.6 40.2 39.8 39.9 | +9.3 |
+| Tradey | 34.9 36.3 38.9 38.9 38.9 41.8 | +13.2 |
+| Farmy | 33.8 37.2 39.1 39.7 38.9 43.0 | +14.0 |
+
+- **The same picture as the first run.** Textures, the game's canvases, art from
+  files, decoded sound and buffers rise and fall with what is on screen and do
+  not climb. Event listeners step up the first time a system is used (Farmy's
+  first farm visit, +22) and then hold. The JS heap rises 7 to 14 MB an hour of
+  play, fastest on the two who walked the lands.
+- **Part of that rise is by design.** A phone keeps every monster it has come
+  near on this visit, so its monster list grows as it walks: Farmy's 140 to
+  183, Tradey's 43 to 100. That stops at the world's 1,920, and their sprites
+  are pooled. The other lists on the game state that grew were small and capped
+  (the last ball each monster threw: at most 48).
+- **The No man's land fight's one miss was the test's.** The second time,
+  Tradey's tap on Farmy opened no "Attack?" window, with both at level 6 in the
+  first ring and in sight of each other. The two had fought in the first fight,
+  and a tap on a player you already chose to fight attacks with no second window
+  (`nmlAsk.js`). The soak now asks the game whether the two are still foes
+  (`__btNmlAsk.about`) and, if so, goes straight to the swings: the test is
+  whether a blow lands.
+- **Audio nodes** read 7 to 23 a page and rose slowly. That count was made minus
+  disconnected, and a finished sound is collected without being disconnected,
+  so it could only climb. The soak and `mp-heapdiff` now count a node until the
+  browser collects it.
+
+AUDIO_RESULTS

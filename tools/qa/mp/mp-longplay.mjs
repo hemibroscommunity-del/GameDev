@@ -1,4 +1,4 @@
-/* ═══ FIVE PLAYERS, A LONG SESSION: DOES ANYTHING GROW? (v2.3.3638) ═══
+/* ═══ FIVE PLAYERS, A LONG SESSION: DOES ANYTHING GROW? (v2.3.3650) ═══
  *
  * The owner, 2026-10-27: "simulate about 5 players doing the main quest lines,
  * mining, fishing, combat, trading, partying, no mans land combat,
@@ -81,16 +81,22 @@ const LEAK_INIT = `(() => {
     id = _st.call(window, wrapped, ms, ...r); live.to.add(id); return id;
   };
   window.clearTimeout = function (id) { live.to.delete(id); return _ct.call(window, id); };
+  /* v2.3.3650: the audio nodes LIVE: counted from their making until the
+     browser collects them.  Made minus disconnected (the first two runs) only
+     ever climbed, as a finished sound that is never disconnected is collected
+     all the same -- the listeners' lesson below */
+  const anGone = new FinalizationRegistry(() => { live.an--; });
   const bump = (proto, name) => {
     const orig = proto && proto[name];
     if (typeof orig !== 'function') return;
-    proto[name] = function (...a) { const n = orig.apply(this, a); live.an++; live.anMade++; return n; };
+    proto[name] = function (...a) {
+      const n = orig.apply(this, a); live.an++; live.anMade++;
+      try { anGone.register(n, 0); } catch (e) { /* counting only */ }
+      return n;
+    };
   };
   if (window.AudioContext) {
-    bump(window.AudioContext.prototype, 'createBufferSource');
-    bump(window.AudioContext.prototype, 'createGain');
-    const _dis = AudioNode.prototype.disconnect;
-    AudioNode.prototype.disconnect = function (...a) { if (!this.__counted) { this.__counted = 1; live.an--; } return _dis.apply(this, a); };
+    for (const k of ['createBufferSource', 'createGain', 'createBiquadFilter', 'createStereoPanner', 'createPanner', 'createOscillator']) bump(window.AudioContext.prototype, k);
   }
   /* the listeners HELD: an add counts until its remove, its once, its
      signal's abort, or until the thing it was added to is collected (a
@@ -324,7 +330,7 @@ const LINES = {
   'leak.ls': { per: 150, of: 'event listeners' },
   'leak.iv': { per: 10, of: 'live intervals' },
   'leak.to': { per: 60, of: 'pending timeouts' },
-  'leak.an': { per: 60, of: 'connected audio nodes' },
+  'leak.an': { per: 60, of: 'audio nodes alive (made, not yet collected)' },
 };
 const get = (s, k) => k.split('.').reduce((o, p) => (o == null ? o : o[p]), s);
 /* the slope of a least-squares line through (t, v), per hour */
@@ -744,14 +750,18 @@ async function nmlFight(a, b, ctx) {
     await a.P.page.waitForTimeout(600);
     asked = await a.P.page.evaluate(() => { const el = document.querySelector('[data-nml-ask-attack]'); if (!el) return null; const q = el.getBoundingClientRect(); return { x: q.left + q.width / 2, y: q.top + q.height / 2 }; });
   }
-  if (!asked) {
+  /* no window, and Farmy still a foe chosen in an earlier fight: a tap on a
+     live foe attacks with no second window (nmlAsk.js), so the swings below
+     are the test (the second run's one miss) */
+  const about = asked ? null : await a.P.page.evaluate((pid) => (window.__btNmlAsk && window.__btNmlAsk.about ? window.__btNmlAsk.about(pid) : null), b.id).catch(() => null);
+  if (!asked && !(about && about.live)) {
     const why = await a.P.page.evaluate((pid) => {
       const S = window._gameState.current, o = S.others && S.others[pid];
       return { me: S.rpg && (S.rpg.rpgLv || S.rpg.level), them: o ? o.rpgLv : null, ring: S._nmlLevel || 0, seen: !!o };
     }, b.id).catch(() => null);
-    return { ok: false, why: 'no "Attack?" window ' + JSON.stringify(why) };
+    return { ok: false, why: 'no "Attack?" window ' + JSON.stringify({ ...why, about }) };
   }
-  await a.P.page.mouse.click(asked.x, asked.y);
+  if (asked) await a.P.page.mouse.click(asked.x, asked.y);
   /* Farmy mortal and healed, THEN read: a blow is a drop from the full bar */
   await H.devOp(ctx.wsPort, 'vitals', b.id, { heal: true, god: false });
   await a.P.page.waitForTimeout(800);
