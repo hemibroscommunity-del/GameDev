@@ -179,8 +179,14 @@ const DOOR_W = 3.5, DOOR_H = 2;
    "just do the colored icons but oversized so they aren't competing with the
    buildings color and size": BLD_ICON_PX across (the footprints are ~17 x 9),
    ringed in a thin dark outline (wheelBuildingIcons.js drawIcon), so the
-   picture is what you read and the roof is a base under it. */
-const BLD_ICON_PX = 20, BLD_ICON_UP = 1.5;
+   picture is what you read and the roof is a base under it.
+   v2.3.3678: AND NO ROOF UNDER IT -- the owner: "I also want the building
+   shapes behind the town icons to go away so only the icons are left".  A
+   footprint is drawn only for a building whose picture has not loaded (it
+   goes the moment its picture is up: _drawFootprints), so a town is never
+   blank; with no door notch to keep clear, the picture sits on its footprint's
+   middle (BLD_ICON_UP 0, was 1.5). */
+const BLD_ICON_PX = 20, BLD_ICON_UP = 0;
 
 /* v2.3.3108: the land's colour lifted toward white to read on the dark plate,
    as the top bar had it (ZoneHeader.jsx landTint, k 0.42) */
@@ -454,20 +460,40 @@ export class WheelMinimap {
         }
         if (!isFinite(x0) || !(x1 > x0) || !(y1 > y0)) continue;
         const bx = x0 * SCALE, by = y0 * SCALE, bw = (x1 - x0) * SCALE, bh = (y1 - y0) * SCALE;
-        G.rect(bx, by, bw, bh).fill(d.closed ? C_BUILDING_SHUT : C_BUILDING)
-          .stroke({ width: 1, color: C_BUILDING_KEY, alpha: 0.9 });
-        /* the door: a notch on the front edge, at the foot of its steps */
-        const dx = Math.max(bx + 1, Math.min(bx + bw - 1 - DOOR_W, d.x * SCALE - DOOR_W / 2));
-        G.rect(dx, by + bh - DOOR_H, DOOR_W, DOOR_H).fill(C_DOOR);
         this._bld.push({ id: d.id, closed: !!d.closed, x0: Math.round(x0), y0: Math.round(y0), x1: Math.round(x1), y1: Math.round(y1),
           w: +bw.toFixed(1), h: +bh.toFixed(1), doorX: Math.round(d.x), doorY: Math.round(d.y),
           /* v2.3.3522: its picture's middle, in the pan (box px) */
-          iconX: +(bx + bw / 2).toFixed(1), iconY: +(by + bh / 2 - BLD_ICON_UP).toFixed(1), icon: false });
+          iconX: +(bx + bw / 2).toFixed(1), iconY: +(by + bh / 2 - BLD_ICON_UP).toFixed(1), icon: false,
+          /* v2.3.3678: where its footprint would be drawn (a placeholder only) */
+          bx, by, bw, bh, doorBx: d.x * SCALE });
       }
     }
     this.townMark.visible = !this._bld.length;
     this._dropTownIcons();
     this._buildTownIcons();
+    this._drawFootprints();
+  }
+
+  /* ═══ v2.3.3678: A FOOTPRINT ONLY WHERE THERE IS NO PICTURE ═══
+     (BLD_ICON_PX's note: the owner wants only the icons.)  A building whose
+     picture is up draws nothing under it; one whose picture has not loaded (or
+     never will) keeps its footprint and door notch, so the town is never
+     blank.  Redrawn whenever the pictures change: a Graphics redrawn on a
+     change, never a frame (TRAPS §218). */
+  _drawFootprints() {
+    const G = this.buildings;
+    G.clear();
+    let n = 0;
+    for (const b of this._bld) {
+      if (b.icon) continue;
+      G.rect(b.bx, b.by, b.bw, b.bh).fill(b.closed ? C_BUILDING_SHUT : C_BUILDING)
+        .stroke({ width: 1, color: C_BUILDING_KEY, alpha: 0.9 });
+      /* the door: a notch on the front edge, at the foot of its steps */
+      const dx = Math.max(b.bx + 1, Math.min(b.bx + b.bw - 1 - DOOR_W, b.doorBx - DOOR_W / 2));
+      G.rect(dx, b.by + b.bh - DOOR_H, DOOR_W, DOOR_H).fill(C_DOOR);
+      n++;
+    }
+    this._footprints = n;
   }
 
   /* ═══ v2.3.3522: THE BUILDINGS' PICTURES (BLD_ICON_PX's note) ═══
@@ -493,6 +519,8 @@ export class WheelMinimap {
       n++;
     }
     this._bldIconsOn = n > 0;
+    /* v2.3.3678: the footprints under them go (only the pictures are left) */
+    if (n > 0) this._drawFootprints();
   }
   _dropTownIcons() {
     for (const c of this.townIcons.removeChildren()) { try { c.destroy(); } catch (e) { /* gone */ } }
@@ -878,6 +906,9 @@ export class WheelMinimap {
         /* v2.3.3146: the town's buildings drawn (game px boxes, their size in
            the box, their doors), and whether the town's square still shows */
         buildings: this._bld.map((b) => ({ ...b })), townMark: !!this.townMark.visible,
+        /* v2.3.3678: how many footprints are drawn (a placeholder for a
+           picture not loaded; 0 once every picture is up) */
+        footprints: this._footprints || 0,
         /* v2.3.3522: the buildings' pictures on the box (how many, and their
            size, CSS px) */
         buildingIcons: { n: this.townIcons.children.length, px: BLD_ICON_PX },

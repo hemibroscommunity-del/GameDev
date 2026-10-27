@@ -96,7 +96,7 @@ export const OLD_MAP_LEGACY = Object.freeze(new Set([
   'townlock', 'townmap', 'townmeal', 'townprops', 'townrim', 'townscenery',
   'trade', 'tradeatk', 'tradetap', 'turnshield', 'tutgrant', 'tutorial',
   'tutskip', 'tutspecial', 'uisfx', 'uisfx2', 'uisfx3', 'unequip',
-  'vendorprompt', 'verify', 'weaponloss', 'wheellife', 'wheelmap',
+  'vendorprompt', 'verify', 'weaponloss', 'wheellife',
   'wheelmonsters', 'wheelnet', 'wheelobjects', 'wheelsteps', 'wheeltrial',
   'wheelwater', 'wheelwaves', 'whirlwind', 'windup', 'worldchat', 'worldfx',
   'worldshadow', 'worldtext', 'worldtrial', 'worldwalk', 'wvglass', 'wvlens',
