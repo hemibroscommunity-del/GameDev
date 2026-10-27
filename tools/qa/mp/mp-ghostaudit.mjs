@@ -1,4 +1,4 @@
-/* ═══ v2.3.3637: THE GHOST AUDIT -- EVERY ANIMATION, NOTHING OF THE BODY UNDER IT ═══
+/* ═══ v2.3.3651: THE GHOST AUDIT -- EVERY ANIMATION, NOTHING OF THE BODY UNDER IT ═══
  *
  * The owner, 2026-10-27: "check all the animations for ghost remnants of
  * either a body beneath or areas for cleanup".
@@ -164,7 +164,16 @@ const PAGE_TOOLS = () => {
         let b = null;
         try { b = c.getBounds(); } catch (e) { /* none */ }
         if (!b || b.width < 2 || b.x > px + 120 || b.x + b.width < px - 120 || b.y > py + 90 || b.y + b.height < py - 170) continue;
-        out.push({ layer: layer.label, label, w: Math.round(b.width), h: Math.round(b.height) });
+        /* the picture it draws, so a leftover can be named */
+        let tex = null;
+        try {
+          const t = c.texture, src = t && t.source;
+          const res = src && src.resource;
+          tex = (t && t.label) || (src && src.label) || (res && res.src ? String(res.src).split('/').pop().split('?')[0] : null)
+            || (src ? `${src.width}x${src.height}` : null);
+        } catch (e) { /* none */ }
+        out.push({ layer: layer.label, label, w: Math.round(b.width), h: Math.round(b.height), tex, alpha: +(c.alpha || 0).toFixed(2),
+          x: Math.round(b.x - px), y: Math.round(b.y - py), kids: c.children ? c.children.length : 0 });
       }
     }
     return { bodyVisible: !!(me && me.visible), pieces: out };

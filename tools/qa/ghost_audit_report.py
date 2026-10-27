@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3637: the ghost audit's report (tools/qa/mp/mp-ghostaudit.mjs).
+"""v2.3.3651: the ghost audit's report (tools/qa/mp/mp-ghostaudit.mjs).
 
 The owner, 2026-10-27: "check all the animations for ghost remnants of either a
 body beneath or areas for cleanup".  The scenario photographs every frame of

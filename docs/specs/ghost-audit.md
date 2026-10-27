@@ -1,4 +1,4 @@
-# The ghost audit: every animation, nothing of the body under it (v2.3.3637)
+# The ghost audit: every animation, nothing of the body under it (v2.3.3651)
 
 The owner, 2026-10-27: "check all the animations for ghost remnants of either a
 body beneath or areas for cleanup".
@@ -78,11 +78,12 @@ animation.
 | found | fixed in |
 |---|---|
 | the swing's and bow's bodies under greaves; the grey fill in the sword sheets | v2.3.3640 (#1139): `docs/specs/standin-legs.md` |
-| the specks of the trousers' and boots' colours round the head | v2.3.3647: `docs/specs/garment-specks.md` |
+| the specks of the trousers' and boots' colours round the head | v2.3.3647 (#1144): `docs/specs/garment-specks.md` |
 | the angler's grip over greaves | v2.3.3646 (#1141): `docs/specs/fish-armour-hands.md` |
 | the pickaxe in skin colour, the miner's tee pinholes | v2.3.3648: `docs/specs/pickaxe-wood.md` |
 | the pink waist jogging north-east and north-west | v2.3.3645 (#1142): `docs/specs/iron-waist.md` |
-| the fire-lighter's magenta log | v2.3.3649: `docs/specs/fire-log.md` |
+| the fire-lighter's magenta log | v2.3.3649 (#1145): `docs/specs/fire-log.md` |
+| the fire's painted flames (the owner's own ask: the fire drawn in code) | v2.3.3655: `docs/specs/fire-start.md` |
 
 ## Left as they are
 
@@ -95,14 +96,41 @@ animation.
   frame. Whether they show after the armour's bake was not checked.
 - **The tee's pickup sheet** has 28 px of holes over its 29 frames. The pickup
   showed nothing through the full set.
-- **Leftovers the check flagged, and why they are not faults:** the campfire
-  you lit keeps burning, and the rock you mined is still there. One piece stood
-  in the photograph's window after the north-west roll and was not identified;
-  a later run is the place to see whether it comes back.
+- **Leftovers the check flags, and why they are not faults:**
+  - after lighting a fire, the campfire you lit, still burning (a Container in
+    `gatherNodesFront`);
+  - after the roll, a pine tree (`wood-pine.png`) that the roll carried into
+    the photograph's window. The check now names each piece's picture, which is
+    how it was found;
+  - after mining, the rock you mined, still standing.
 - **Cooking** drew no frames in this run: the audit's tap on the campfire did
   not start a cook. That is the test, not the game (`mp-cookink` covers the
   cook).
 
 ## After the fixes
 
-AFTER
+The full set again, on a build with every fix above (the same 617 frames as the
+first run; cooking again drew none):
+
+| animation | first run: frames with the body showing, worst (px) | after |
+|---|---|---|
+| sword swing | 80 of 80, 688 | 2, 11 |
+| jog | 64 of 159, 56 | 0 |
+| hit, jump | in the 23 of 105 below, 31 | 0 |
+| chop | in the 23 of 105, 31 | 10 of 31, 17 |
+| fishing | 21 of 25, 54 | 5, 17 |
+| mining | 11 of 14, 51 | 4, 18 |
+| bow draw | 43 of 168, 15 | 43, 15: the bow's pale wood, not the body |
+| lighting a fire | 31 of 31, 1,622 | 31, 804: the strip's painted flames, read as the tee's yellow |
+| stand, roll, pickup, staff | 0 | 0 |
+
+- **What is left on the swing, chop, fishing and mining** is at most 18 px a
+  frame: edge pixels of the body's colours along the armour's outline, and on
+  some frames a sliver at the waist between the plate and the greaves. The
+  waist is the owner's "align the greaves so the waistband doesn't show", its
+  own piece of work.
+- **The fire's 804 px are the painted flames**, which v2.3.3655 takes out of
+  the strip (`docs/specs/fire-start.md`). The fire is drawn in code there, so
+  nothing yellow is left to be read as the tee.
+- **Nothing showed the walking body and a stand-in in the same frame**, in any
+  animation, before or after.
