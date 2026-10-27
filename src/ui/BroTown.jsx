@@ -13464,7 +13464,7 @@ export var BroTown = function BroTown(_ref0) {
   }, React.createElement(ElemStatusChips, { stateRef: stateRef }) /* v2.3.2996: the snowflake, the flame, the slime */,
   /* v2.3.3120: pet trapping -- the TRAP pop-up over a targeted monster and the
      card for a new pet (each on its own clock; game/trapping.js) */
-  React.createElement(TrapButton, { stateRef: stateRef }), React.createElement(TrapCatchCard, { stateRef: stateRef }), React.createElement(NewMonsterCard, { stateRef: stateRef }), function () {
+  React.createElement(TrapButton, { stateRef: stateRef, isLandscape: isLandscape }), React.createElement(TrapCatchCard, { stateRef: stateRef }), React.createElement(NewMonsterCard, { stateRef: stateRef }), function () {
     var S = stateRef.current;
     if (!S) return null;
     var effects = [];
