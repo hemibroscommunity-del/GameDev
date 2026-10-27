@@ -200,11 +200,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { left: (S._frozenUntil || 0) - Date.now(), chill: (S._chillUntil || 0) - Date.now(), swung: S.swingTimer !== sw0,
       pops: (S.dmgNumbers || []).filter((d) => d.text === 'Frozen!').length };
   });
-  /* the picture first, while it is surely on (this box draws a few frames a
-     second: after the walk below, the freeze had ended) */
+  const fHeld = await walk(P, 500, 1, 0);
+  /* the look on a second freeze, while it is surely on: this box draws a few
+     frames a second, and after the walk above the first had ended (a picture
+     taken first ate into the walk instead) */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    window.__btDispatch({ type: 'monster_attack', payload: { monsterId: 'qa-elem', targetId: S.myId, dmg: 4, dmgTaken: 4, zone: S.currentZone,
+      attackerX: S.player.x + 24, attackerY: S.player.y, ability: 'qa', elem: 'frost', st: 'chill', stMs: 6000, fz: 1800 } });
+  });
   await P.page.waitForTimeout(200);
   await shot(P, 'a1b-frozen');
-  const fHeld = await walk(P, 500, 1, 0);
   const fLook = await P.page.evaluate(() => ({ drawn: (window.__btElemFxDrawn || {}).frozen || 0,
     chip: !!document.querySelector('[data-elem-chips] [data-chip="Frozen"]') }));
   await H.waitFor(P, (S) => (S._frozenUntil || 0) - Date.now(), (v) => v < 0, { timeout: 8000, label: 'the freeze to end' });
