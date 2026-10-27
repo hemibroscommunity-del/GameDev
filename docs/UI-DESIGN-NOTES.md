@@ -977,6 +977,7 @@ Screens: building-forge
 - Salvaging, and using an essence, take two taps ("Sure?") because both are for good. A line at the top says what came back, or why not.
 - The grade colours are the owner's for gear: rare blue, elite orange, godly a rainbow.
 - Blacksmith Bro, who stands at the forge's steps, opens it when you talk to him (v2.3.3258).
+- The Woodworker is built from the same parts since v2.3.3657 (`BenchParts.jsx`: the chips, the lock, the button, the row), at the owner's "modeled after the blacksmith menu", so a change to one is a change to both.
 
 **Tried before, and changed:**
 - The old panel also offered Reforge, a "Harden" add-on, shield forging and Salvage. All four ran only in the browser, and the next update from the server undid them, so they were removed: a button that lies is worse than no button (v2.3.2826). Salvage came back in v2.3.3141, done by the server.
@@ -1002,40 +1003,39 @@ Sources: CLAUDE.md, docs/specs/blacksmith-2026-10-19.md, docs/specs/blacksmith-r
 ## The Woodworker
 Screens: building-woodwork
 
-**What it is for:** Logs become bows and staffs here. It is also where box traps for catching pets are made, where logs are made into hardened wood, and where a bow or staff is hardened.
+**What it is for:** Hardened wood becomes bows and staffs here. It is also where logs are made into hardened wood, where the bow or staff you hold is hardened, and where box traps for catching pets are made.
 
 **Decisions, and why:**
-- Four choices at the top: Bow, Staff, Traps, Harden, each with a one-line note under it ("Ranged single-target", "Ranged AOE swipe", "Box traps for pets", "Hardened wood"). With four they go TWO BY TWO: four across a phone left each about 75 px and its words on three lines (v2.3.3139). Traps and Harden only show when the server can do them.
-- The choice shown is the one lit: Bow when the window opens, since bows are what it lists. Nothing was lit until a choice was tapped (v2.3.3481).
+- Rebuilt after the Blacksmith (v2.3.3657). Owner: "I also want the woodworking menu rehauled and modeled after the blacksmith menu." The two windows are drawn by the same parts (`BenchParts.jsx`: the chips, the lock, the button, the row), so they cannot drift apart.
+- One job per tab, each an icon and one word, in ONE row: Bow, Staff, Hardened, Upgrade, Traps. The old two-by-two layout was for choices with a note under each, which wrapped onto three lines four across; with one word each, five fit on a 390 px phone, and sideways too. A tab only shows when the server can do that job. The tab you were on is kept for the visit.
+- "Hardened" is the hardened-wood tab, renamed from "Harden": with an Upgrade tab beside it, "Harden" read as hardening the weapon.
+- Pictures and numbers, not sentences, as at the forge. Every cost is a chip (the item's picture and HAVE/NEED, green or red), the XP pill wears the owner's XP star, and what stops you is one lock chip naming the one thing missing ("Woodworking 5").
+- Bow and Staff list the woods you can make now plus only the NEXT wood, locked, as the goal (v2.3.3481). A "Holding Pine Bow" line says what Make moves to the weapon bag, with a "Weapon bag full" lock when it cannot.
+- Nothing is shown that the server did not do. Make asks the server and waits for its answer before saying "Made Pine Bow!" (and after 3.5 s of silence, "Could not make it"). The old Make took the wood and gold, moved your weapon to the bag and paid the XP in the browser first.
+- Upgrade (v2.3.3657) hardens the bow and the staff you hold, a row each: H0 → H1, the bow's or staff's own HARDENED WOOD (one more each level) and gold that doubles each level, the odds, and what a failure does ("Fail keeps H2", v2.3.3529). Owner, for the materials: "Maybe 5 logs of the raw material can make one 'hardened (name) wood' raw material so it mirrors the same structure. Also for the number required and gold too" (v2.3.3139); for the skill: "Do woodworking" (2026-10-19, v2.3.3481), at the level that MAKES the wood (v2.3.3524: pine Woodworking 1). A short Woodworking level is a LOCK chip now, as the forge shows a short Smithing level; the old button could be pressed and the server refused it.
+- Hardened tab (v2.3.3139): five logs of one tree make one hardened wood of that tree, the Blacksmith's smelting copied on purpose. Each wood opens at its own Woodworking level (1, 5, 10, 15, 20), with Make and All. The names are the owner's "hardened (name) wood" (Softwood and Hardwood already say wood).
 - Traps tab (v2.3.3120): one log of ANY kind makes one box trap. Owner: "each trap should cost at least 1 wood to make". It lists only the logs you hold, each with Make, ×10 and All; with no logs it says "You have no logs. Chop any tree out in the lands, then come back." The line on top says a trap is used every time it springs. The trap's picture is the owner's own (v2.3.3281).
-- Harden tab (v2.3.3139): five logs of one tree make one hardened wood of that tree, the Blacksmith's smelting copied on purpose. Owner: "Maybe 5 logs of the raw material can make one 'hardened (name) wood' raw material so it mirrors the same structure. Also for the number required and gold too". Each wood opens at its own Woodworking level (1, 5, 10, 15, 20), with Make and All. The names are the owner's "hardened (name) wood" (Softwood and Hardwood already say wood).
-- Hardening a bow or staff (in the Bow and Staff views) uses its own wood's hardened wood, one more each level, and the same doubling gold as a sword. The button says the whole attempt, e.g. "Attempt H2 (1000G + 2 Hardened Pine Wood · 20%)", or what is missing ("Need 1 Hardened Pine Wood more").
-- Hardening a bow or staff asks for a WOODWORKING level: 5 times its wood's tier, so a pine bow needs Woodworking 5. A sword still asks for Smithing at the Blacksmith. Asked whether a bow's hardening should ask for the Blacksmithing level, the owner said "Do woodworking" (2026-10-19, v2.3.3481). The line above the button says it: "Needs Woodworking Lv5". Against an older server, which still asks for Blacksmithing, it keeps the old words "Gated on Blacksmithing".
-- Since v2.3.3524 that level is the one that MAKES the bow's or staff's wood, the Woodworker's own: a pine bow Woodworking 1, softwood 6, hardwood 11. The owner's rule for the Blacksmith ("Hardening should only require the same smithing level as it takes to smithing that item tier"), applied here the same way. The line says "Needs Woodworking Lv1" for pine.
-- A failed hardening keeps the bow's or staff's level, and the line says so: "Fail keeps H2" (v2.3.3529). Owner: "the worst that can happen is you just stay at hardening 2 and lose resources". The hardened wood and gold are still spent. Against an older server it keeps the old words, "Fail resets hardness (Temper N softens it)".
-- The Bow and Staff lists show what you can make now plus only the NEXT wood, locked, as the goal: the Blacksmith's rule (v2.3.3481). They used to run ten Woodworking levels ahead.
-- A blocked button says why in its own label: "Locked" for a level you lack, or "Need ..." with how much wood or gold is missing, so a price is never the only explanation (v2.3.1235). A recipe you can make says "Craft" on the brass button, its cost on the row above it (v2.3.3481: a coin and "8" alone read as a price tag).
-- The header stays fixed and the list scrolls under it, with a fade at the bottom while more is below. At 390 px the hardening button had been cut in half at the fold with no cue (v2.3.1235).
 - Beastmaster Bro stands beside the Woodworker as the trapper, not as its keeper (v2.3.3121); his first quest asks for three box traps made here. Walking past him to the door does not stop you to talk about his quest.
 
 **Tried before, and changed:**
-- Bow and Staff only, side by side, until Traps (v2.3.3120) and Harden (v2.3.3139) made four.
+- Bow and Staff only, side by side, until Traps (v2.3.3120) and Harden (v2.3.3139) made four, two by two, each with a note under it ("Ranged single-target", "Ranged AOE swipe", "Box traps for pets", "Hardened wood"), until v2.3.3657.
+- Until v2.3.3657 hardening a bow or staff was a button at the foot of the Bow and Staff views, its whole attempt written on it ("Attempt H2 (1000G + 2 Hardened Pine Wood · 20%)"), and the bows and staffs were a list with the price on each row and a "Craft" button.
 - The first cut of v2.3.3139 hardened bows and staffs with metal bars. The owner's answer replaced that with hardened wood.
 - Until v2.3.3481 hardening a bow or staff asked for a Blacksmithing level, and the line said only "Gated on Blacksmithing".
 - The new player's GEAR UP hint card used to lie over the Staff choice; it now steps aside while a window is open (v2.3.3407).
 - An old "Reforge & Harden" row (paid in raw wood) rolled a bonus in the browser alone. The server never kept it, so the next update undid it, and it was removed (v2.3.3481), as the Blacksmith's was in v2.3.2826: a button that lies is worse than no button.
 
 **Please don't suggest:**
-- Four choices in one row (too narrow on a phone).
+- Notes or paragraphs under the tabs (they are what made one row too narrow before).
 - Bars for bows and staffs, or raw logs for hardening (the owner chose hardened wood).
 - Bringing back Reforge or add-on bonuses without the server doing them.
+- Showing a result before the server confirms it.
 
 **Still open:**
-- The hardening button is not locked when your Woodworking level is short: it can be pressed, and the server refuses it with the level it needs. The Blacksmith shows a short Smithing level as a lock instead.
-- The Bow and Staff views were restyled (v2.3.1232-1235) but not rebuilt the way the Blacksmith was (v2.3.2826).
+- The woodworker has no animation of his own at the bench (the Blacksmith borrows the mining swing); one would need art.
 - The hardened wood pictures are made from the log paintings; painted ones are on the art wishlist.
 
-Sources: CLAUDE.md, docs/specs/hardened-wood.md, docs/specs/trapping.md, docs/PET-TRAPPING-PLAN.md, docs/specs/hardening.md, docs/specs/building-rooms.md, docs/specs/reach-every-button.md, docs/specs/bag-icons.md, src/ui/panels/buildings/WoodworkPanel.jsx, src/ui/panels/buildings/TrapsTab.jsx, src/ui/panels/buildings/HardenedWoodTab.jsx, src/data/wheelBuildingDoors.js
+Sources: CLAUDE.md, docs/specs/woodwork-rehaul.md, docs/specs/hardened-wood.md, docs/specs/trapping.md, docs/PET-TRAPPING-PLAN.md, docs/specs/hardening.md, docs/specs/building-rooms.md, docs/specs/reach-every-button.md, docs/specs/bag-icons.md, src/ui/panels/buildings/WoodworkPanel.jsx, src/ui/panels/buildings/BenchParts.jsx, src/ui/panels/buildings/TrapsTab.jsx, src/ui/panels/buildings/HardenedWoodTab.jsx, src/data/wheelBuildingDoors.js
 
 ## The Gem Works (cut gems, set gems)
 Screens: building-gemcut, building-enchant

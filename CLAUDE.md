@@ -3835,6 +3835,16 @@ remnant to migrate server-side, not a mode to preserve.
       against `caps.hardenkeep`; on average H5 now takes 326 attempts, ~2
       million gold and ~1,471 bars (was ~4.3 million attempts); `hardening`
       §6: docs/specs/hardening.md "v2.3.3529: a failure keeps the level".
+    - since v2.3.3657 THE WOODWORKER IS BUILT LIKE THE BLACKSMITH -- the
+      owner: "I also want the woodworking menu rehauled and modeled after the
+      blacksmith menu": one row of tabs (Bow, Staff, Hardened, Upgrade, Traps),
+      costs as HAVE/NEED chips, one lock chip, the XP star, the next wood
+      locked as the goal; Upgrade hardens the held bow and staff (a short
+      Woodworking level a lock now); Make only ASKS (`forge_weapon`) and
+      waits for the worker's answer -- the old one took the wood and gold and
+      paid the XP in the browser first; both windows draw from
+      `src/ui/panels/buildings/BenchParts.jsx`; no worker change;
+      `mp-woodwork`, `mp-hardenbars` §6: docs/specs/woodwork-rehaul.md.
   - Since v2.3.3140 DAILY REWARDS, NOTHING AT LOGIN -- the owner's layered
     brief ("a small reward just for logging in, daily quests ... feeding a
     longer progression track"), then: "I find the login page with the chest
