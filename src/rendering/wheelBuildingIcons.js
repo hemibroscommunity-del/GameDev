@@ -189,6 +189,8 @@ export function wheelBuildingIconsLoaded() { return Object.keys(_canvas).length;
 if (typeof window !== 'undefined') {
   try {
     window.__btBuildingIcons = () => ({ loaded: Object.keys(_canvas).length, grey: Object.keys(_grey).length, textures: Object.keys(_tex).length,
+      /* v2.3.3678 (mp-wheelmap): which picture each building wears, its file */
+      files: Object.keys(_canvas).reduce((o, plot) => { o[plot] = String(WHEEL_BUILDING_ICONS[plot] || '').split('?')[0]; return o; }, {}),
       bytes: (Object.keys(_canvas).length + Object.keys(_grey).length) * BUILDING_ICON_PX * BUILDING_ICON_PX * 4,
       /* v2.3.3630 (mp-wheelmap): each picture's opaque pixels -- how many
          carry colour (the picture's own), how many are the dark outline, how

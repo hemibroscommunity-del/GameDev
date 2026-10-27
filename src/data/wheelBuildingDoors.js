@@ -235,22 +235,42 @@ export const WHEEL_KEEPERS = {
                  that rests, WHEEL_HALL_CAPS; at the right stick's address).
    No imports (test-world-core reads it): it checks every plot of the town has
    one, a file in public/, no two buildings sharing one. */
+/* ═══ v2.3.3678: FOUR PICTURES THAT SAY WHAT THE BUILDING IS ═══
+   The owner, of the minimap's town: "I also want to double check all the
+   icons because not all of them make sense".  Checked one by one at the 20 px
+   the minimap draws them; four changed, each to a picture the game already
+   has (nothing new loaded):
+     gemcutter   a grinding wheel, a muddle at 20 px -> the Gem Cutting skill's
+                 gem and chisel (the Life Skills page's, at its address);
+     feedseed    a red barn, which says "farm", not a seed shop -> the sprout in
+                 its soil its own window wears (FeedSeedPanel, its address);
+     landoffice  a MAP -- on the minimap, a map read as "open the world map" --
+                 -> the red barn, its own window's picture (LandOfficePanel):
+                 the Land Office is the way to your farm, and the barn is free
+                 now the Feed & Seed wears its sprout (v2.3.3522 gave it the map
+                 only so no two buildings shared one);
+     store       the balance scales, which read as a court -> the shop's awning
+                 and coin (the old shop panel's picture), the General Store.
+   The other twelve say what they are (an anvil, a saw, crossed swords for the
+   Sheriff's duels and arena, a mug, dice, a bed, a letter, a pot, a banner, a
+   vault, a gavel, the Town Hall's bell).  The Enter button wears the same
+   picture (BroTown's door button reads this table). */
 export const WHEEL_BUILDING_ICONS = {
   townhall: '/icons/ui/bldg-townhall.webp',
   blacksmith: '/icons/ui/bldg-forge.webp?v=2.3.1224',
   woodworker: '/icons/ui/bldg-woodwork.webp?v=2.3.1224',
-  gemcutter: '/icons/ui/bldg-gemcut.webp?v=2.3.1224',
+  gemcutter: '/icons/ui/skill-gemcutting.webp?v=2.3.1224',
   sheriff: '/icons/ui/evt-duel.webp',
   saloon: '/icons/ui/bldg-tavern.webp?v=2.3.1224',
   gambling: '/icons/ui/bldg-gamble.webp?v=2.3.1224',
   hotel: '/ui/controls/sleep.webp?v=2.3.3526',   /* v2.3.3539: the right stick's address, so one copy (was ?v=2.3.3279, the picture before v2.3.3526) */
   post: '/icons/ui/evt-mail.webp',
   cookhouse: '/icons/ui/bldg-cook.webp?v=2.3.1224',
-  feedseed: '/icons/ui/bldg-farm.webp?v=2.3.1224',
-  landoffice: '/icons/ui/map.webp',
+  feedseed: '/icons/ui/skill-farming.webp?v=2.3.1224',
+  landoffice: '/icons/ui/bldg-farm.webp?v=2.3.1224',
   guildhall: '/icons/ui/panel-guild.webp',
   bank: '/icons/ui/bldg-bank.webp?v=2.3.1224',
-  store: '/icons/ui/bldg-exchange.webp?v=2.3.1224',
+  store: '/icons/ui/panel-shop.webp',
   /* v2.3.3546: the owner's gavel, as its Enter button wears (buildings.js
      auctionhouse, v2.3.3526: "Sheet's is clearer" -- the market stall
      "could have been any shop"); the maps kept the stall, two pictures for
