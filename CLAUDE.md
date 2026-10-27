@@ -1183,6 +1183,21 @@ remnant to migrate server-side, not a mode to preserve.
       .webp twins CI's to mint, TRAPS §255);
       `?standinlegs=0`, `window.__btStandInLegs()` (`.set(on)`); `mp-standinlegs`:
       docs/specs/standin-legs.md.
+  - Since v2.3.3647 THE TROUSERS AND BOOTS ARE PAINTED WHERE THEY ARE -- the
+    owner: "check all the animations for ghost remnants" (mp-ghostaudit: pink
+    and blue specks round the head in nearly every pose). The recolour finds
+    the garments by colour, and the outline's anti-aliased greys and olives
+    were painted with them all over the figure (TRAPS §256):
+    - a trouser or boot pixel outside the patterns' band (the bottom 68% or
+      35% of the figure) is painted only when it belongs to a trouser piece of
+      30+ px, or to a solid boot piece hanging off one (or a raised sole's
+      thin rim: no skin beside it, the black sole within 3 px)
+      (src/rendering/garmentConfine.js, playerSkins `recolorBodyToCanvas`);
+    - the head sheets take no garment colours, and a torso strip only the
+      sliver at its waist;
+    - `?garmentspecks=0`, `window.__btGarmentSpecks()`,
+      tools/qa/garment-confine.mjs (every sheet); `mp-garmentspecks`:
+      docs/specs/garment-specks.md.
   - Since v2.3.3520 THE ARMOUR RIDES THE ARM CAPSULE -- the owner: the east
     jog's shoulder on a copper torso, "fix it for all future tiers". The
     capsule (v2.3.200) clones the body over the arm on every east jog with a

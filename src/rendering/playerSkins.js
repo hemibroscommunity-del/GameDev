@@ -36,6 +36,7 @@ import { getArt, artHasInk, artHash, artIsSymmetric, onArtChange, sideForDir, em
 import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegions, splitSkinBySeeds, PANTS_LIT_MIN, SHOES_LIT_MIN, PANTS_MAX_UP, SHOES_MAX_UP, PANTS_BOX, TATTOO_BOX, FACE_BOX, ARM_BOX } from './playerDecal.js';
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine; v2.3.2854: + the file's key mask */
+import { garmentBands, inGarmentBand, judgeGarments, GC_PANTS, GC_BOOT, GC_SKIN, GC_DARK } from './garmentConfine.js';   /* v2.3.3647: trousers and boots painted where they are */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 /* v2.3.1513: seven more tones at the light end (owner: "more white tan and
@@ -906,6 +907,25 @@ function _clampLegsUnder(d, w, h, FW, greaves, legAll, skinAll) {
    of the eight screen facings are drawn by flipping a base-dir sheet, so a
    drawing baked straight in would read backwards on those (owner, on the shirt:
    "Your smiley face rotated the opposite direction"). */
+/* v2.3.3647: `?garmentspecks=0` is the game as it was: every trouser- and
+   boot-coloured pixel painted the player's colours, wherever it lies on the
+   figure (recolorBodyToCanvas, garmentConfine.js).  And, for QA, how many of
+   each a bake left in the art's own colour, by sheet. */
+const GARMENT_SPECKS_OFF = (() => { try { return /[?&]garmentspecks=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+/* v2.3.3647: a torso strip (a running swing's or shot's top half, drawn over
+   the jog legs) is cut at the waist -- at the skin->pants line, BOW_ART_VERSION
+   959/960 -- so its only real trousers are the sliver at that cut, within 2-3
+   rows of its bottom (14-18 px a frame on bow-southwest and sword-north), and
+   it has no boots: its band is that sliver, and it paints no boot at all.
+   Every other trouser- or boot-coloured pixel in one is outline (measured:
+   sword-east-torso's lie in lines along the back and the arm).  The sliver is
+   painted because the legs are drawn UNDER the torso there (effectsRenderer
+   _LEG_LIFT), so an unpainted one would show as an olive line at the waist. */
+const TORSO_WAIST_UP = 0.05;
+const _garmentLeft = Object.create(null);
+if (typeof window !== 'undefined') {
+  window.__btGarmentSpecks = () => ({ on: !GARMENT_SPECKS_OFF, left: { ..._garmentLeft } });
+}
 /* v2.3.1991: which sheet the bake below is for.  recolorBodyToCanvas takes an
    IMAGE, not a pose and a direction, so the probe inside it cannot name what it
    just measured -- and keying the probe by frame COUNT picked the 14-frame
@@ -941,8 +961,9 @@ let _bakeTag = '';
    a sword swing throws the torso around far more than a jog bob, so its frames
    are all honest outliers of each other and correcting them against a median
    costs ink rather than steadying it -- measured, on sword-south-torso. */
-export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art, frameW, steadyArt, eyeBlankRects, bootsUnderLegs, legsUnder) {
+export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art, frameW, steadyArt, eyeBlankRects, bootsUnderLegs, legsUnder, torsoStrip) {
   const FW = (typeof frameW === 'number' && frameW > 0) ? Math.round(frameW) : FRAME_W;
+  const _sheetName = (img && typeof img.src === 'string') ? img.src.replace(/[?#].*$/, '').replace(/^.*\//, '') : '';   /* v2.3.3647: QA */
   /* v2.3.1108: when the caller knows this sheet's logical frame height, restore
      a downscaled-on-disk sheet to it (nearest-neighbour, exact palette) so the
      skin/pants/shoes pixel thresholds + frame math are unchanged. The attack
@@ -1015,6 +1036,28 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   const greaves = (legsUnder && legsUnder.length === w * h) ? legsUnder : null;
   const legAll = greaves ? new Uint8Array(w * h) : null;
   const skinAll = greaves ? new Uint8Array(w * h) : null;
+  /* ═══ v2.3.3647: THE TROUSERS AND BOOTS ARE PAINTED WHERE THEY ARE ═══
+     The owner, 2026-10-27: "check all the animations for ghost remnants".  The
+     colour tests below find the trousers and the boots and, with them, every
+     outline pixel that happens to be their olive or their grey, wherever it
+     lies: round the head, along an eyelid, down an arm.  Painted the player's
+     colours, those were the pink and blue specks mp-ghostaudit found in nearly
+     every pose (TRAPS §256).  So a trouser or boot pixel is painted as it is
+     found only in its BAND, the bottom of the figure the patterns are already
+     confined to (playerDecal's PANTS_MAX_UP / SHOES_MAX_UP); one outside it
+     waits, and garmentConfine.js judges it after the pass: the garment after
+     all (a leg thrown up in the roll, a waistband in a torso strip), or a
+     speck, which keeps the art's own colour.  Nothing to do when neither
+     colour is wanted: the default trousers and boots are not recoloured. */
+  /* a torso strip: the waist's sliver of trousers and no boots (TORSO_WAIST_UP) */
+  const torso = !!torsoStrip && !GARMENT_SPECKS_OFF;
+  if (torso) shoesT = null;
+  const confine = !GARMENT_SPECKS_OFF && !!(pantsT || shoesT);
+  const gBands = confine ? garmentBands(d, w, h, FW, torso ? 0 : SHOES_MAX_UP, torso ? TORSO_WAIST_UP : PANTS_MAX_UP) : null;
+  /* a byte a pixel: what the ORIGINAL art is there (GC_PANTS, GC_BOOT,
+     GC_SKIN, GC_DARK), for the judge -- the retint below changes the colours */
+  const gCls = confine ? new Uint8Array(w * h) : null;
+  const farP = confine ? [] : null, farB = confine ? [] : null;
   /* A tattoo goes on the CHEST, so it is bare skin intersected with the torso
      band — the same tracker the baked shirt used, reused rather than re-guessed.
      (It also means the tattoo hides under a shirt or a breastplate, which is
@@ -1035,6 +1078,7 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   }
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
+    if (gCls && a > 180 && r < 45 && g < 45 && b < 45) gCls[i >> 2] = GC_DARK;   /* v2.3.3647 */
     if (shirtPx && shirtPx[i >> 2]) {
       /* shirt skin -> flat fill (kills muscle shading); dark outline/seam
          pixels are never in shirtPx, so they stay and give the shirt its
@@ -1044,25 +1088,50 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
       if (tattooPx && torsoPx[i >> 2]) tattooPx[i >> 2] = 1;
       if (skinPx) skinPx[i >> 2] = 1;              /* v2.3.1949 */
       if (skinAll) skinAll[i >> 2] = 1;            /* v2.3.3640 */
+      if (gCls) gCls[i >> 2] |= GC_SKIN;           /* v2.3.3647 */
       if (skinT) _retint(d, i, skinT, SKIN_REF);
     } else if (a > 180 && g >= r - 10 && g > b + 8 && r < 150) {
       /* pants (green) */ if (pantsPx) pantsPx[i >> 2] = 1;
       if (legPx) legPx[i >> 2] = 1;   /* v2.3.3146 */
       if (legAll) legAll[i >> 2] = 1;   /* v2.3.3640 */
-      if (pantsT) _retint(d, i, pantsT, PANTS_REF);
+      if (gCls) {   /* v2.3.3647: in its band, painted; else judged below */
+        gCls[i >> 2] |= GC_PANTS;
+        if (!inGarmentBand(gBands.pants, gBands.frames, i >> 2, w, FW)) farP.push(i >> 2);
+        else if (pantsT) _retint(d, i, pantsT, PANTS_REF);
+      } else if (pantsT) _retint(d, i, pantsT, PANTS_REF);
     } else if (a > 180) {
       const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
       if ((mx - mn) < 28 && mx >= 45 && mx < 140) {
         if (legAll) legAll[i >> 2] = 1;   /* v2.3.3640: a boot */
+        /* v2.3.3647: in its band, painted; else judged below */
+        let bootHere = true;
+        if (gCls) {
+          gCls[i >> 2] |= GC_BOOT;
+          if (!inGarmentBand(gBands.shoes, gBands.frames, i >> 2, w, FW)) { farB.push(i >> 2); bootHere = false; }
+        }
         /* boots (flat gray) -- v2.3.3146: or, under `bootsUnderLegs`, a
            candidate for one, painted below once the legs are known */
         if (bootCand) bootCand[i >> 2] = 1;
         else {
           if (shoesPx) shoesPx[i >> 2] = 1;
-          if (shoesT) _retint(d, i, shoesT, SHOES_REF);
+          if (shoesT && bootHere) _retint(d, i, shoesT, SHOES_REF);
         }
       }
     }
+  }
+  /* v2.3.3647: the trouser and boot pixels outside their bands, judged (see
+     above).  The fishing bake paints its boots below, from the legs: a boot
+     pixel outside its band that the judge did not keep is left out there too. */
+  let bootFar = null;
+  if (confine) {
+    const kept = judgeGarments(w, h, FW, gCls, gBands, farP, farB);
+    if (pantsT) for (const p of kept.pants) _retint(d, p << 2, pantsT, PANTS_REF);
+    if (bootCand) {
+      bootFar = new Uint8Array(w * h);
+      for (const p of farB) bootFar[p] = 1;
+      for (const p of kept.boots) bootFar[p] = 0;
+    } else if (shoesT) for (const p of kept.boots) _retint(d, p << 2, shoesT, SHOES_REF);
+    _garmentLeft[_sheetName || ('w' + w + 'h' + h)] = { pants: farP.length - kept.pants.length, boots: farB.length - kept.boots.length };
   }
   if (bootCand) {
     const legMin = Math.max(3, Math.round(h / 40));   /* a column or row of trouser, not a speck: 6 px at 256 */
@@ -1085,7 +1154,7 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
       for (let y = ly0; y < h; y++) {
         for (let x = bx0; x <= bx1; x++) {
           const p = y * w + x;
-          if (!bootCand[p]) continue;
+          if (!bootCand[p] || (bootFar && bootFar[p])) continue;
           if (shoesPx) shoesPx[p] = 1;
           if (shoesT) _retint(d, p * 4, shoesT, SHOES_REF);
         }
@@ -2106,7 +2175,12 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, 
        the fullset figure draws its head from here rather than from the body
        sheet.  Missing it would have left the erase working everywhere except
        on a knight, which is the v2.3.1788 shape of omission exactly. */
-    const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, FRAME_H,
+    /* v2.3.3647: and NO GARMENTS.  A head sheet's frames hold the head
+       alone, so every trouser- or boot-coloured pixel in them is the
+       outline's (up to 750 a sheet, measured by tools/qa/garment-confine.mjs),
+       and the bands are no help: in a frame that is all head, the bottom of
+       the figure is the chin. */
+    const full = recolorBodyToCanvas(img, skinT, GARMENT_SPECKS_OFF ? pantsT : null, GARMENT_SPECKS_OFF ? shoesT : null, null, FRAME_H,
       undefined, undefined, undefined, undefined, undefined, eyeBlank || null);
     if (art && artHasInk(art.tattooFace)) _stampHeadInk(full, img, art);   /* v2.3.2862 */
     const cv = document.createElement('canvas');
