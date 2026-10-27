@@ -11,7 +11,7 @@
  *      level 21 and its land's second stage, and the panel says where it went;
  *   3. the options off and Lv 1, the Frost chip: a Snowling, not golden, at
  *      level 1 -- the options are this row's, never left over from before;
- *   4. the Pets page lists both;
+ *   4. the panel's Close shuts it, and the Pets page lists both;
  *   5. no page errors.
  * Pictures: tools/qa/mp/out/devpet-*.png.
  */
@@ -135,8 +135,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     c3 && !!p3 && p3.gold === false && p3.level === 1 && p3.size < 1.25, { l3 });
 
   /* ── 4. the Pets page lists both (More -> Pets, mp-trapping's way) ── */
-  await P.page.keyboard.press('Escape').catch(() => {});
-  await P.page.waitForTimeout(400);
+  /* the panel's own Close, as a thumb shuts it */
+  const shut = await clickSel(P, '[data-dev-close]');
+  await P.page.waitForTimeout(500);
+  rec.ok('4. the panel\'s Close shuts it', shut && !(await panelUp(P)));
   await H.openDest(P, 'More').catch(() => {});
   await P.page.waitForTimeout(600);
   await P.page.evaluate(() => { const b = document.querySelector('[data-more-tile="pets"]'); if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); });

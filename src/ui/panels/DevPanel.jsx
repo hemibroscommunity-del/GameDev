@@ -648,7 +648,8 @@ export const DevPanel = ({ onClose }) => {
       <div style={sheet}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <strong style={{ font: '700 16px system-ui, sans-serif' }}>Test panel</strong>
-          <button type="button" style={{ ...chip, minHeight: 34 }} onClick={onClose}>Close</button>
+          {/* v2.3.3613: data-esc -- Esc on a computer closes it, as every window's ✕ */}
+          <button type="button" style={{ ...chip, minHeight: 34 }} onClick={onClose} data-esc="" data-dev-close="">Close</button>
         </div>
         <div style={{ color: COL.muted, fontSize: 12, marginBottom: 6 }}>
           Owner tools. Everything here needs your admin key.
