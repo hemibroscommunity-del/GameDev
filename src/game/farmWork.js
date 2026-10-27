@@ -20,6 +20,9 @@
  * a step this says is next is always one the worker takes.
  * docs/specs/farm-walk.md.
  */
+/* v2.3.3664: the owner's recordings' slices and levels (generated data, no
+   imports of its own, so node still runs this) */
+import { OWNER_SOUNDS } from '../data/ownerSoundClips.js';
 
 /** The five steps, in the order a bed goes through them. */
 export const FARM_STEPS = ['dig', 'plant', 'water', 'feed', 'harvest'];
@@ -58,14 +61,43 @@ export const FARM_ANIM_BEATS = Object.freeze({ hoe: Object.freeze([4]), water: O
 const LAST_BEAT_MS = 80;
 /* the sound of each step as its work lands, from recordings already in the
    game (SFX_MANIFEST): yours at this level (farmWalk.js), another player's at
-   their share by distance (effectsRenderer _drawPeerFarmer) */
+   their share by distance (effectsRenderer _drawPeerFarmer).
+   ═══ v2.3.3664: THE HOE, THE CAN AND THE CLAY ARE THE OWNER'S ═══
+   "the other hoe sound is for when you till the dirt.  There's a clay sound
+   for molding the ground (apply fertilizer)", and a watering can: a dig is
+   the hoe striking the dirt (farm-hoe, its three strikes in turn), a
+   watering the can's pour (farm-water), fertilizing the clay squeezed
+   (farm-mould, its two in turn) -- each cut and levelled by
+   tools/audio/cut_owner_sounds.py (ownerSoundClips.js).  Planting and the
+   harvest's leans keep the soil; the harvest's payoff is its own
+   (data/eventSounds.js farmHarvest, on the worker's answer).  A file of
+   parts carries them here, and `vol` is then a multiple of each part's own
+   volume (1: at its level); farmBeatPlay says what one beat plays. */
+function partsOf(key) {
+  const c = OWNER_SOUNDS[key];
+  return Object.freeze((c && Array.isArray(c.parts) ? c.parts : []).map((p) => Object.freeze(p.slice())));
+}
 export const FARM_BEAT_SOUND = Object.freeze({
-  dig: Object.freeze({ key: 'footstep-v3', vol: 0.55, rate: 0.7 }),
+  dig: Object.freeze({ key: 'farm-hoe', vol: 1, rate: 1, parts: partsOf('farm-hoe') }),
   plant: Object.freeze({ key: 'footstep-v3', vol: 0.3, rate: 1.35 }),
-  water: Object.freeze({ key: 'lure-drop', vol: 0.32, rate: 1.25 }),
-  feed: Object.freeze({ key: 'footstep-v3', vol: 0.4, rate: 0.6 }),
+  water: Object.freeze({ key: 'farm-water', vol: OWNER_SOUNDS['farm-water'].vol, rate: 1 }),
+  feed: Object.freeze({ key: 'farm-mould', vol: 1, rate: 1, parts: partsOf('farm-mould') }),
   harvest: Object.freeze({ key: 'footstep-v3', vol: 0.45, rate: 0.95 }),
 });
+/** What beat `i` of a step plays: {key, vol, rate} and, for a file of parts,
+ *  that beat's part in turn as {offset, duration}; `k` times the volume
+ *  (another player's share).  null for no step of the table. */
+export function farmBeatPlay(step, i, k) {
+  const b = Object.prototype.hasOwnProperty.call(FARM_BEAT_SOUND, step) ? FARM_BEAT_SOUND[step] : null;
+  if (!b) return null;
+  const kk = Number.isFinite(k) ? k : 1;
+  const n = b.parts ? b.parts.length : 0;
+  if (n) {
+    const p = b.parts[(((i | 0) % n) + n) % n];
+    return { key: b.key, offset: p[0], duration: p[1], vol: p[2] * b.vol * kk, rate: b.rate };
+  }
+  return { key: b.key, vol: b.vol * kk, rate: b.rate };
+}
 
 function turnOf(step) {
   const anim = FARM_STEP_ANIM[step] || 'kneel';

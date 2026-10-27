@@ -89,7 +89,11 @@ export const AboutPanel = () => (
       (cut into single steps and levelled) from Freesound.org: "Walking Through
       Snow" by Percy Duke (CC BY 3.0); "Running, Ice, A" by InspectorJ,
       www.jshaw.co.uk (CC BY 4.0); and steps by Ali_6868, qubodup, BlondPanda,
-      lukiacostello, jazzkdh, notarget and Phil25. Fonts: Baloo 2,
+      lukiacostello, jazzkdh, notarget and Phil25. The farm's, the forge's,
+      the Woodworker's, a door's, a fire's, the coins', the bag's and Lil
+      Bro's sounds (cut and levelled) from Freesound.org by anthousai,
+      triqystudio, roses1401, manuelaurreaf, 16hpanskadvorakova_aneta, wdomino,
+      wyronroberth, theboulder3400, mavom22, frostnox and heyheytheree. Fonts: Baloo 2,
       Press Start 2P and Source Sans 3 (SIL Open Font License). Built with
       React, PixiJS, Vite and Cloudflare Workers.
     </Section>

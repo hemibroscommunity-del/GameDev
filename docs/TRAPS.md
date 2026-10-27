@@ -8501,3 +8501,31 @@ stale twin is what every phone is served.
 
 **Receipt:** `mp-standinlegs` (no greaves: the trousers and boots stay;
 mp-ghostaudit's swing frames), docs/specs/standin-legs.md.
+
+## 256. "The colour test finds the garment" (v2.3.3658)
+
+**The move.** A garment is found by its colour, the trousers' olive or the
+boots' flat grey, and every pixel of that colour is painted the player's
+choice.
+
+**Why it is wrong.** The art's outlines are anti-aliased: where a dark line
+meets the skin or the background, many of the pixels in between are exactly a
+flat grey from 45 to 139, or a dull olive. They lie all over the figure: round
+the head, along an eye, down the arms and the back. playerSkins.js
+`recolorBodyToCanvas` painted every one of them the player's trousers or boots.
+In the default colours they pass for outline; in pink trousers or blue, white
+or red boots they were specks in nearly every pose (mp-ghostaudit). The
+patterns met the same specks in v2.3.1944 and were confined by height; the
+plain colour was not, for 1,700 versions.
+
+**The rule.** A colour test says what a pixel COULD be; where it lies says
+what it is. A garment colour outside the garment's band of the figure (the
+patterns' band) is painted only when it belongs to the garment: a trouser
+piece of 30 px or more at a 256 px frame, or a boot-grey piece with an inside
+that hangs off one, or a raised sole's thin rim (no skin beside it, the black
+sole within reach: garmentConfine.js). Never height alone: in the roll the
+legs go overhead. And a sheet that cannot hold the garment takes none of its
+colour: a head sheet takes no trousers or boots, a torso strip no boots.
+
+**Receipt:** `mp-garmentspecks`, `tools/qa/garment-confine.mjs` (every sheet,
+nothing left unpainted in a figure's bottom fifth), docs/specs/garment-specks.md.

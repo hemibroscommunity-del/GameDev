@@ -73,7 +73,7 @@ const TAGS = {
   playerDeath: () => 'other:playerDeath',
   monsterDeath: (a, A) => (a[0] === 'snowman' ? 'other:dieSnowman' : a[0] === 'skeleton' ? 'other:dieSkeleton'
     : has(A.DEATH_CUES, a[0]) ? 'cue:' + A.DEATH_CUES[a[0]] : 'other:dieOther'),
-  enterBuilding: () => 'cue:door',
+  enterBuilding: (a) => (a[0] === 'mouth' ? 'cue:caveMouth' : 'cue:door'),   /* v2.3.3664: a cave's knock, a building's door */
   /* the menu's own ticks: the studio's taps make them, so its "Heard just
      now" leaves them out unless asked */
   uiTick: (a) => (a[0] === 'ui-click' ? 'other:uiClick' : a[0] === 'ui-equip' ? 'other:uiEquip' : a[0] === 'ui-close' ? 'other:uiClose' : 'ui:' + a[0]),
