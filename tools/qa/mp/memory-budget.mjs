@@ -43,6 +43,21 @@
  * 32.5 MB against main's 31.9 that day (#1106's run, Playwright 1.64.1), its
  * line already 0.1 MB away.  Nothing is kept after it: the third trip ends
  * where the second did.
+ *
+ * v2.3.3646, main's own code at the line: `heap` 33 -> 34 -- RAISED.  Two runs
+ * of the check on 2026-10-27, both main with a change that never runs on its
+ * trip (#1142's walking waist, #1141's fishing grip), read 32.8 and 33.3 MB at
+ * the third trip's fight: the same code on either side of the line, so every
+ * pull request's check passed or failed by luck, and a failed first attempt
+ * left its retry too little of the job's 20 minutes (#1141's was cancelled).
+ * The heap at the fight has grown by about 1 MB since the line was set at 33
+ * (31.9 on main that day): the systems merged since then (the drops' lines of
+ * words, the elements' wind-ups and stronger hits, the mummy's roar, the
+ * owner's music and sounds, the ghost audit's fixes) and their tables.  It is
+ * the live heap (collected twice before each reading).  Nothing is kept: the
+ * third trip still ends where the second did (+1.3 MB at most, its line 3).
+ * Whether the page's heap should grow over a long session at all is the
+ * soak's question (docs/specs/long-play-soak.md: 7-14 MB an hour of play).
  */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 156, measured: 147.8,
@@ -53,7 +68,7 @@ export const MEMORY_BUDGET = {
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 30, measured: 26.0,
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
-  heap: { name: 'the page\'s JavaScript objects', mb: 33, measured: 27.5,   /* v2.3.3595: 32 -> 33, see the header */
+  heap: { name: 'the page\'s JavaScript objects', mb: 34, measured: 33.3,   /* v2.3.3595: 32 -> 33; v2.3.3646: 33 -> 34, see the header */
     what: 'the page\'s JavaScript objects' },
   buffers: { name: 'the page\'s raw data buffers', mb: 24, measured: 20.0,
     what: 'the page\'s raw data buffers (ArrayBuffers)' },
