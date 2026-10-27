@@ -5883,6 +5883,20 @@ Two protocol versions coexist; both must keep working:
   - THE TOUR: `mp-memledger` (all eight lands twice, ~6 min) runs from a button
     -- GitHub, Actions, "Memory", Run workflow -- after any big feature, or
     locally with `node tools/qa/mp/run.mjs memledger`.
+  - THE LONG SESSION (v2.3.3661, docs/specs/long-play-soak.md): `mp-longplay`
+    plays five pages against one worker for `BT_LONGPLAY_MS` (40 minutes by
+    default) -- the quest line, gathering and selling, fights, a party and the
+    Goo Grotto, a trade and No man's land, the farm and walks across the lands
+    -- and measures every page each round: the memory lines, timers, listeners
+    (each held until its remove or its target's collection), audio nodes
+    (alive until collected), DOM nodes and the game state's lists.
+    `mp-heapdiff` diffs two heap snapshots between fight trips (or idle
+    minutes), and `mp-listeners` names the listeners a farm visit leaves. Two
+    runs on 2026-10-27: no page error, nothing climbing but the JS heap, 7-14
+    MB an hour of play; no audio leak (9-15 nodes alive of 647 made over six
+    fights). Of the heap's growth between fights, about 40% is compiled code
+    (it levels off) and about 40% the storage of arrays something keeps
+    adding to, not yet found (it wants a snapshot of a build with names).
   - The preloading law above still stands. Moving a load off the loading
     screen to save memory is the owner's call, as #822's gathering poses were,
     never a quiet "fix".
