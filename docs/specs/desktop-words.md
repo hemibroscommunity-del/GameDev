@@ -50,7 +50,9 @@ they are the phone's words too.
   equipment tab's empty slot, the pets' notes, the Skills page's earn hints,
   the points reset's confirm, the achievements' title note, the quest
   tracker's toggle, the settings' notifications row, the creator's preview
-  tooltip.
+  tooltip;
+- a townsperson's bubble over his head ("I have a task for you! Click me."),
+  and No man's land's explainer (the badge's tap).
 
 A new line a computer player reads that says "tap" is shown through it.
 
