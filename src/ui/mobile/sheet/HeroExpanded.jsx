@@ -2649,7 +2649,12 @@ export const HeroExpanded = () => {
                             onClick={(e) => { e.stopPropagation(); setBuildCat(c.key); }}
                             style={{
                               flex: '1 1 0', minHeight: 0, display: 'flex', alignItems: 'center', gap: PH_GAP,
-                              borderRadius: 3, background: on ? 'rgba(216,170,88,.17)' : 'transparent',
+                              borderRadius: 3, background: on ? 'rgba(216,170,88,.22)' : 'transparent',
+                              /* the row shown wears a brass ring: the fill
+                                 alone was too faint to say whose six numbers
+                                 the cells are once they can be another
+                                 weapon's than the one in hand */
+                              boxShadow: on ? 'inset 0 0 0 1.5px rgba(216,170,88,.9)' : 'none',
                               /* a button that looks like the row it was */
                               appearance: 'none', WebkitAppearance: 'none', border: 0, margin: 0, padding: 0,
                               width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left',

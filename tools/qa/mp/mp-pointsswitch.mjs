@@ -18,15 +18,15 @@
  *   node tools/qa/mp/run.mjs pointsswitch
  */
 import * as H from './harness.mjs';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 
-/* the worker mints the points (mp-catgrid's seed: the devkit's `levels`) */
+/* the worker mints the points: every weapon to level 6 and the points those
+   levels give, each weapon's own (/dev/combat `deal`, the free reset's deal;
+   the kit's `levels` set the levels and left the weapons' points empty) */
 async function seed(P, wsPort) {
   const myId = await H.readState(P, (S) => S.myId);
-  await fetch(`http://127.0.0.1:${wsPort}/api/admin/dev/kit`, {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + H.ADMIN_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ playerId: myId, what: 'levels' }),
-  }).then((r) => r.json()).catch(() => null);
+  await H.devOp(wsPort, 'combat', myId, { skill: 'all', level: 6, deal: true }).catch(() => null);
   await P.page.waitForTimeout(1600);
 }
 
@@ -36,10 +36,11 @@ async function allocate(P, cat, stat, n) {
     const S = window._gameState.current;
     for (let i = 0; i < n; i++) S.channel.send({ type: 'prog3_allocate', payload: { stat, cat } });
   }, { cat, stat, n });
-  return H.waitFor(P, (S) => {
-    const a = S.rpg && S.rpg.prog3 && S.rpg.prog3.atk && S.rpg.prog3.atk[cat];
-    return a ? a[stat] || 0 : 0;
-  }, (v) => v >= n, { timeout: 8000, label: `${n} ${stat} on the ${cat}` }).catch(() => 0);
+  /* the read runs in the page, where `cat` and `stat` are not: it brings the
+     whole table back and the lane is picked here */
+  const pts = (atk) => (atk && atk[cat] && atk[cat][stat]) || 0;
+  return H.waitFor(P, (S) => (S.rpg && S.rpg.prog3 && S.rpg.prog3.atk) || null,
+    (atk) => pts(atk) >= n, { timeout: 8000, label: `${n} ${stat} on the ${cat}` }).then(pts).catch(() => 0);
 }
 
 async function openPoints(P) {
@@ -92,17 +93,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.enterWorld(P);
     await P.page.waitForTimeout(2400);
     await seed(P, wsPort);
-    const bowPower = await allocate(P, 'bow', 'power', 2);
+    const bowPower = await allocate(P, 'bow', 'dmg', 2);
     const staffRange = await allocate(P, 'staff', 'range', 1);
     rec.ok(`the worker charged two Power to the bow and one Range to the staff (${bowPower}, ${staffRange}) (guard)`, bowPower >= 2 && staffRange >= 1);
     await openPoints(P);
 
-    const g0 = await grid(P, 'power');
+    const g0 = await grid(P, 'dmg');
     rec.ok(`1. the grid opens on the weapon in your hand, the sword (${g0.lane}, its row lit: ${g0.shown}; in hand: ${g0.held})`,
       g0.cells === 6 && g0.lane === 'sword' && g0.shown === 'sword' && g0.held === 'sword', g0);
 
     const box = await pick(P, 'bow');
-    const g1 = await grid(P, 'power');
+    const g1 = await grid(P, 'dmg');
+    /* the page as the owner will see it: the frame and the bow's cells */
+    try {
+      const out = join(H.REPO, 'tools/qa/mp/out');
+      mkdirSync(out, { recursive: true });
+      await P.page.screenshot({ path: join(out, 'pointsswitch-bow.png') });
+    } catch (e) { /* a picture only */ }
     rec.ok(`2. a finger on the bow's row (${box ? Math.round(box.w) + ' x ' + Math.round(box.h) + ' px' : 'not found'}) shows the bow's six cells, its row lit, the sword still the one in hand`,
       !!box && g1.cells === 6 && g1.lane === 'bow' && g1.shown === 'bow' && g1.held === 'sword' && g1.head === 'bow', g1);
     rec.ok(`2b. ...with the bow's own points: its Power cell says 2 (${g1.cellLabel})`,
@@ -113,7 +120,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`3. the staff's row shows the staff's cells, its Range 1 (${g2.lane}; ${g2.cellLabel})`,
       g2.lane === 'staff' && g2.shown === 'staff' && /\b1 point\b/.test(g2.cellLabel || ''), g2);
     await pick(P, 'sword');
-    const g3 = await grid(P, 'power');
+    const g3 = await grid(P, 'dmg');
     rec.ok(`3b. ...and the sword's row brings the sword back (${g3.lane})`, g3.lane === 'sword' && g3.shown === 'sword', g3);
 
     /* the staff shown, then the bow taken in hand (the 2 key: the game's own
@@ -121,7 +128,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await pick(P, 'staff');
     await P.page.keyboard.press('Digit2');
     await P.page.waitForTimeout(900);
-    const g4 = await grid(P, 'power');
+    const g4 = await grid(P, 'dmg');
     rec.ok(`4. the bow taken in hand brings the grid to the bow (${g4.lane}; in hand: ${g4.held})`,
       g4.lane === 'bow' && g4.shown === 'bow' && g4.held === 'bow', g4);
   } finally {
@@ -135,9 +142,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await D.page.waitForTimeout(2400);
     await seed(D, wsPort);
     await openPoints(D);
-    const d0 = await grid(D, 'power');
+    const d0 = await grid(D, 'dmg');
     const dbox = await pick(D, 'bow', true);
-    const d1 = await grid(D, 'power');
+    const d1 = await grid(D, 'dmg');
     rec.ok(`5. a computer: a click on the bow's row shows the bow (${d0.lane} -> ${d1.lane})`,
       !!dbox && d0.lane === 'sword' && d1.lane === 'bow' && d1.shown === 'bow', { d0, d1 });
   } finally {

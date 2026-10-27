@@ -21,7 +21,9 @@ window.
 The frame's three rows are buttons (`HeroExpanded.jsx` `headCell`):
 
 - A tap on a weapon's row shows its six numbers. It's the same
-  `setBuildCat` the dashboard's pill uses, and the row is lit.
+  `setBuildCat` the dashboard's pill uses.
+- The row shown wears a brass ring. The faint fill it had before was too
+  faint, once the cells can be another weapon's than the one in hand.
 - The [+] on a cell spends that weapon's points, as before: the cells name
   their lane.
 - Changing the weapon in your hand brings the view back to it
@@ -48,3 +50,10 @@ worker charged two Power to the bow and one Range to the staff:
    sword back.
 4. Taking the bow in hand (the 2 key) brings the grid to the bow.
 5. On a computer, a click on the bow's row does the same.
+
+8 of 8. The page after the bow's row is tapped is saved as
+`tools/qa/mp/out/pointsswitch-bow.png`.
+
+The points are charged with `/dev/combat {skill: 'all', level: 6, deal: true}`
+(each weapon's own points, as a level-up deals them) and the game's own
+`prog3_allocate`, Power's key being `dmg`.
