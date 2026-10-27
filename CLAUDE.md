@@ -1209,6 +1209,23 @@ remnant to migrate server-side, not a mode to preserve.
     and grade; `_hideArmClones` hides them all together); `mp-armcapsule`
     (skin over the plate 49-233 px a frame -> the hand's 0-15):
     docs/specs/visuals-2026-10-19.md.
+  - Since v2.3.3645 NO TROUSERS AT THE WAIST OF A FULL IRON SET -- the owner:
+    "check all the animations for ghost remnants of either a body beneath"
+    (mp-ghostaudit: in pink trousers and full iron, a pink strip between the
+    plate and the greaves jogging north-east or north-west, 21-23 px on
+    frames 1-2, 7-15 on 11-13; in the default olive a dark line). North-east
+    has no knight figure, so it is the masked bake, and two faults kept the
+    trousers there:
+    - the fishing rod's restore (maskedBake.js, v2.3.1123) found the rod by
+      colour on EVERY pose, and pink trousers (or a pink skin) pass its test:
+      it runs on the fishing pose only now, the one sheet with a rod;
+    - the chain belt sheet (belt/chainbelt/jog-northeast) stopped one or two
+      rows short of the greaves on frames 8, 11-14, 21 and 23: bridged by
+      tools/gear/bridge-ne-belt.mjs (relay_jog_belt.py's rule, 47 px; the
+      mannequin's beltmask-northeast.png left, 23 frames to the sheet's 24);
+      GEAR_VERSION 2.3.3645, the PNG only (CI mints the .webp);
+    - `mp-ironwaist` (at most 6 px of pink a frame both ways; 56/51/24/42/47
+      on the old build), `iron-waist` suite: docs/specs/iron-waist.md.
   - Since v2.3.3011 the view is ANOTHER 25% further out -- the owner: "If it
     is already zoom it out another 25%" -- `VIEW_OUT` 0.64 (0.8 x 0.8) in
     worldViewport.js, the bro ~54 CSS px on the QA phone with the dashboard
