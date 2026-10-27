@@ -80,7 +80,7 @@ animation.
 | the swing's and bow's bodies under greaves; the grey fill in the sword sheets | v2.3.3640 (#1139): `docs/specs/standin-legs.md` |
 | the specks of the trousers' and boots' colours round the head | v2.3.3658 (#1144): `docs/specs/garment-specks.md` |
 | the angler's grip over greaves | v2.3.3657 (#1141): `docs/specs/fish-armour-hands.md` |
-| the pickaxe in skin colour, the miner's tee pinholes | v2.3.3659: `docs/specs/pickaxe-wood.md` |
+| the pickaxe in skin colour, the miner's tee pinholes | #1154: `docs/specs/pickaxe-wood.md` |
 | the pink waist jogging north-east and north-west | v2.3.3645 (#1142): `docs/specs/iron-waist.md` |
 | the fire-lighter's magenta log | v2.3.3660 (#1145): `docs/specs/fire-log.md` |
 | the fire's painted flames (the owner's own ask: the fire drawn in code) | v2.3.3666 (#1147): `docs/specs/fire-start.md` |
@@ -95,7 +95,9 @@ animation.
   v2.3.3666's strip (its painted flames gone, the code fire hidden while the
   light is photographed): 6 of 31 photos, at most 260 px (the trousers 166 px
   standing and up to 253 kneeling, the boots up to 44). It is the owner's
-  "Aligning the greaves so the waistband doesn't show", its own piece of work.
+  "Aligning the greaves so the waistband doesn't show", its own piece of work:
+  #1152 places the greaves again on frames 3-7 (the standing
+  waistband 590 trouser px of the art -> 16; docs/specs/fire-greaves.md).
 - **The steel plate's mining sheet** has small holes over the skin, 5 to 20 px a
   frame. Whether they show after the armour's bake was not checked.
 - **The tee's pickup sheet** has 28 px of holes over its 29 frames. The pickup
