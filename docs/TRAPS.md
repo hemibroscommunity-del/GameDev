@@ -8502,7 +8502,7 @@ stale twin is what every phone is served.
 **Receipt:** `mp-standinlegs` (no greaves: the trousers and boots stay;
 mp-ghostaudit's swing frames), docs/specs/standin-legs.md.
 
-## 256. "The colour test finds the garment" (v2.3.3647)
+## 256. "The colour test finds the garment" (v2.3.3658)
 
 **The move.** A garment is found by its colour, the trousers' olive or the
 boots' flat grey, and every pixel of that colour is painted the player's

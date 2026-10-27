@@ -1183,7 +1183,7 @@ remnant to migrate server-side, not a mode to preserve.
       .webp twins CI's to mint, TRAPS §255);
       `?standinlegs=0`, `window.__btStandInLegs()` (`.set(on)`); `mp-standinlegs`:
       docs/specs/standin-legs.md.
-  - Since v2.3.3647 THE TROUSERS AND BOOTS ARE PAINTED WHERE THEY ARE -- the
+  - Since v2.3.3658 THE TROUSERS AND BOOTS ARE PAINTED WHERE THEY ARE -- the
     owner: "check all the animations for ghost remnants" (mp-ghostaudit: pink
     and blue specks round the head in nearly every pose). The recolour finds
     the garments by colour, and the outline's anti-aliased greys and olives

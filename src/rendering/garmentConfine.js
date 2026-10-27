@@ -1,4 +1,4 @@
-/* ═══ v2.3.3647: A GARMENT'S COLOUR GOES ON THE GARMENT ═══
+/* ═══ v2.3.3658: A GARMENT'S COLOUR GOES ON THE GARMENT ═══
  *
  * The owner, 2026-10-27: "check all the animations for ghost remnants of
  * either a body beneath or areas for cleanup".  mp-ghostaudit dressed a bro in

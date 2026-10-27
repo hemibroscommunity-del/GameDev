@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* v2.3.3647: what garmentConfine.js (src/rendering) leaves unpainted, on every
+/* v2.3.3658: what garmentConfine.js (src/rendering) leaves unpainted, on every
  * player body sheet's real pixels -- the trouser- and boot-coloured specks the
  * recolour used to paint, and proof that no real trouser or boot is among them.
  *

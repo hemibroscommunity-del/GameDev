@@ -1,4 +1,4 @@
-# The trousers and boots are painted where they are (v2.3.3647)
+# The trousers and boots are painted where they are (v2.3.3658)
 
 The owner, 2026-10-27: "check all the animations for ghost remnants of either a
 body beneath or areas for cleanup".
@@ -166,6 +166,6 @@ Left for later:
   test off the outline. A baked mask would make every bake exact and would save
   the rule's ~5 ms and its three full-sheet arrays a bake.
 - **`tools/qa/garment-confine.mjs` marks skin everywhere.** The game marks skin
-  only outside the shirt and the pickaxe (v2.3.3648), so for a shirted bake the
+  only outside the shirt and the pickaxe (v2.3.3659), so for a shirted bake the
   tool's verdicts can differ from the game's by a few outline pixels at the hem.
   The phone test, `mp-garmentspecks`, reads the game's own bake.

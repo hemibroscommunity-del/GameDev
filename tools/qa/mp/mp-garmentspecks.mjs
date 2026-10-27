@@ -1,4 +1,4 @@
-/* ═══ THE TROUSERS AND BOOTS ARE PAINTED WHERE THEY ARE (v2.3.3647) ═══
+/* ═══ THE TROUSERS AND BOOTS ARE PAINTED WHERE THEY ARE (v2.3.3658) ═══
  *
  * The owner, 2026-10-27: "check all the animations for ghost remnants of
  * either a body beneath or areas for cleanup".  mp-ghostaudit dressed a bro in
