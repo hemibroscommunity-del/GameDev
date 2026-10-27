@@ -170,7 +170,10 @@ export const CTL_MIN_SIZE = 44;   /* Apple's touch-target minimum */
  * (it needs an enchanted weapon AND level 6+, where every other button here
  * turns on moment-to-moment combat state), and its closeness to the disc is a
  * preference its own comment states rather than a complaint anyone has filed. */
-export const CTL_SLOT = { bash: 0 };
+/* v2.3.3617: slot 1, over Bash, is TRAP on an upright phone (TrapButton.jsx):
+   up while a monster is targeted, which is when Block is up too, and the old
+   pop-up at the bottom middle lay under Block's button there */
+export const CTL_SLOT = { bash: 0, trap: 1 };
 
 /* ═══ v2.3.2562: BLOCK, ALONE, BELOW AND LEFT OF THE ATTACK DISC ═══
  *
@@ -587,6 +590,7 @@ export function combatBandTopPx(isLandscape) {
     l.bottomPx(LCTL_SLOT.burst) + l.size,      /* Element Burst, over the movement disc */
     l.bottomPx(LCTL_SLOT.eat) + l.size,        /* Quick eat, beside it (v2.3.3260) */
     c.bottomPx(CTL_SLOT.bash) + c.size,        /* Shield Bash */
+    c.bottomPx(CTL_SLOT.trap) + c.size,        /* TRAP, over it upright (v2.3.3617) */
     blk.bottomPx + blk.size,                   /* Block */
     spr.bottomPx + spr.size,                   /* Sprint, over the attack disc (v2.3.3006; v2.3.3106 moved it) */
     jmp.bottomPx + jmp.size,                   /* Jump, under the attack disc (v2.3.3017) */

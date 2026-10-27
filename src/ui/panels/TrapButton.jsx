@@ -1,6 +1,8 @@
 import React from 'react';
 import { trapButtonView, armTrap, trapProbe } from '@/game/trapping.js';
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* warmed on the loading screen */
+import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx';   /* v2.3.3617: upright, a round button in the column */
+import { Skin } from '@/ui/panels/controlSkin.jsx';
 
 /* ═══ v2.3.3120: THE TRAP POP-UP ═══
  * Plan: docs/PET-TRAPPING-PLAN.md, "Arming, and the kill".  When you have a
@@ -40,7 +42,19 @@ const TAP_SLOP_PX = 14;
 const TAP_MAX_MS = 600;
 const GHOST_MS = 700;
 
-export function TrapButton({ stateRef }) {
+/* ═══ v2.3.3617: UPRIGHT, A ROUND BUTTON BESIDE THE ATTACK DISC ═══
+   The owner, 2026-10-26: "The trap monster message appears over other UI
+   elements sometimes. Where else can you place it?"  On an upright phone the
+   pop-up sat at the bottom middle, and the Block button (ShieldButton.jsx
+   blockAnchor, left of the attack disc and below it) is up exactly when a
+   monster is targeted: it lay over the pop-up's left half.  Upright, TRAP is
+   now a round button of the controls' own skin in the column left of the
+   attack disc, one slot above Shield Bash (CTL_SLOT.trap, ctlColumn): what
+   it says -- your traps and the true odds, or why it is grey -- in a small tag
+   beside it, toward the middle, that takes no touch.  Sideways nothing lies
+   there (the Block button is far right) and a computer shows no Block button,
+   so both keep the pop-up where it was. */
+export function TrapButton({ stateRef, isLandscape }) {
   const [, setTick] = React.useState(0);
   const keyRef = React.useRef('');
   const touchRef = React.useRef(null);
@@ -83,6 +97,75 @@ export function TrapButton({ stateRef }) {
   const bg = grey ? 'rgba(17,30,35,.92)' : armed ? 'rgba(28,74,52,.94)' : 'linear-gradient(180deg,#E2B765,#C9923E)';
   const fg = grey ? '#B6C1BE' : armed ? '#CFF5DC' : '#172126';
   const rim = grey ? 'rgba(229,237,233,.22)' : armed ? 'rgba(126,224,168,.7)' : '#EAC675';
+  /* the press, shared by both faces */
+  const handlers = {
+    onClick: (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (Date.now() - lastTouchEndRef.current < GHOST_MS) return;   /* v2.3.3499: a touch's echo */
+      act();
+    },
+    onTouchStart: (e) => {
+      e.stopPropagation();
+      const t = e.changedTouches && e.changedTouches[0];
+      touchRef.current = t ? { x: t.clientX, y: t.clientY, at: Date.now(), id: t.identifier } : null;
+    },
+    onTouchMove: (e) => { e.stopPropagation(); },
+    onTouchEnd: (e) => {
+      e.stopPropagation();
+      const st = touchRef.current;
+      touchRef.current = null;
+      if (!st) return;
+      let t = null;
+      const list = e.changedTouches || [];
+      for (let i = 0; i < list.length; i++) if (list[i].identifier === st.id) t = list[i];
+      if (!t) return;
+      e.preventDefault();
+      lastTouchEndRef.current = Date.now();
+      const dx = t.clientX - st.x, dy = t.clientY - st.y;
+      if (dx * dx + dy * dy <= TAP_SLOP_PX * TAP_SLOP_PX && Date.now() - st.at <= TAP_MAX_MS) act();
+    },
+    onTouchCancel: (e) => { e.stopPropagation(); touchRef.current = null; },
+  };
+  const fine = typeof matchMedia === 'function' && matchMedia('(pointer:fine)').matches;
+  if (!fine && !isLandscape) {
+    const col = ctlColumn(false);
+    const size = col.size;
+    return (
+      <div
+        className="bt-desktop-hide"
+        data-trap-button={v.kind}
+        data-trap-monster={v.monsterId}
+        data-trap-odds={v.chance}
+        data-trap-round="1"
+        role="button"
+        aria-label={v.text + ' ' + v.sub}
+        {...handlers}
+        style={{
+          position: 'fixed', right: col.right, bottom: ctlBottom(col.bottomPx(CTL_SLOT.trap)),
+          width: size, height: size, borderRadius: '50%', zIndex: 31, pointerEvents: 'auto',
+          touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none',
+        }}>
+        <Skin size={size} tone="slate" state={grey ? 'disabled' : armed ? 'on' : pending ? 'cooldown' : 'normal'}>
+          <img src={TRAP_ICON_URL} alt="" draggable={false}
+            style={{ width: Math.round(size * 0.64), height: Math.round(size * 0.64), objectFit: 'contain', filter: grey ? 'grayscale(1) opacity(.6)' : 'none' }} />
+        </Skin>
+        {/* what it says, beside it toward the middle: takes no touch */}
+        <span data-trap-tag="1" style={{
+          position: 'absolute', right: 'calc(100% + 6px)', top: '50%', transform: 'translateY(-50%)',
+          pointerEvents: 'none', whiteSpace: 'nowrap', textAlign: 'right',
+          padding: '3px 8px 4px', borderRadius: 8, lineHeight: 1.15,
+          background: 'rgba(12,16,20,.82)', border: '1px solid ' + rim, color: grey ? '#B6C1BE' : armed ? '#CFF5DC' : '#F4E7C8',
+          font: '800 11px/1.15 "Source Sans 3", sans-serif',
+        }}>
+          <span style={{ display: 'block', letterSpacing: '.08em', fontWeight: 900 }}>
+            {v.text}{!grey && !armed ? <span style={{ fontWeight: 700, opacity: .8, marginLeft: 5, letterSpacing: 0 }}>×{v.traps}</span> : null}
+          </span>
+          <span data-trap-sub="1" style={{ display: 'block', fontVariantNumeric: 'tabular-nums' }}>{v.sub}</span>
+        </span>
+      </div>
+    );
+  }
   return (
     <button
       className="bt-interact-prompt"
@@ -95,33 +178,7 @@ export function TrapButton({ stateRef }) {
       data-key={v.kind === 'ready' || grey ? 'T' : undefined}
       data-key-at="inline"
       aria-label={v.text + ' ' + v.sub}
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (Date.now() - lastTouchEndRef.current < GHOST_MS) return;   /* v2.3.3499: a touch's echo */
-        act();
-      }}
-      onTouchStart={(e) => {
-        e.stopPropagation();
-        const t = e.changedTouches && e.changedTouches[0];
-        touchRef.current = t ? { x: t.clientX, y: t.clientY, at: Date.now(), id: t.identifier } : null;
-      }}
-      onTouchMove={(e) => { e.stopPropagation(); }}
-      onTouchEnd={(e) => {
-        e.stopPropagation();
-        const st = touchRef.current;
-        touchRef.current = null;
-        if (!st) return;
-        let t = null;
-        const list = e.changedTouches || [];
-        for (let i = 0; i < list.length; i++) if (list[i].identifier === st.id) t = list[i];
-        if (!t) return;
-        e.preventDefault();
-        lastTouchEndRef.current = Date.now();
-        const dx = t.clientX - st.x, dy = t.clientY - st.y;
-        if (dx * dx + dy * dy <= TAP_SLOP_PX * TAP_SLOP_PX && Date.now() - st.at <= TAP_MAX_MS) act();
-      }}
-      onTouchCancel={(e) => { e.stopPropagation(); touchRef.current = null; }}
+      {...handlers}
       style={{
         left: 'calc(50% - 10px)',
         bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + (raised ? 76 : 24) + 'px + var(--nml-lift, 0px))',

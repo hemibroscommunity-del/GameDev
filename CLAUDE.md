@@ -3605,7 +3605,13 @@ remnant to migrate server-side, not a mode to preserve.
       TRUE odds (`src/data/trapping.js`, held to `server/src/trapping.js` by
       mirror-audit): 1% x 0.8 a stretch, half on reaching the monster's level,
       the best 20 above; grey above your Trapping level ("Requires Trapping N"),
-      sending nothing; nothing else moves the odds, no bad-luck rule;
+      sending nothing; nothing else moves the odds, no bad-luck rule; since
+      v2.3.3617 on an upright phone a ROUND button in the column left of the
+      attack disc, over Shield Bash (`CTL_SLOT.trap`; the pop-up at the bottom
+      middle lay under the Block button, up whenever a monster is targeted --
+      the owner: "The trap monster message appears over other UI elements"),
+      its words in a tag beside it taking no touch; sideways and on a computer
+      the pop-up as before (TrapButton.jsx, mp-trapping);
     - `trap_arm` marks it 15 s; at the kill (`_trapRollOnKill`, combat.js, before
       dmgByPlayer is cleared; a slime judged at the blow) each armer with 5% of
       the damage rolls four checks at the fourth root (0-3 shakes drawn in code,

@@ -407,3 +407,29 @@ Nothing new on the worker.
 
 `mp-devpet` (the real panel on a phone): the row, a golden, big, level-21
 Wisplet, then a plain level-1 Snowling, and both on the Pets page.
+
+## v2.3.3617: upright, TRAP is a round button beside the attack disc
+
+The owner, 2026-10-26: "The trap monster message appears over other UI
+elements sometimes. Where else can you place it?"
+
+On an upright phone the TRAP pop-up stood at the bottom middle, in the door
+prompt's slot, and the Block button (ShieldButton.jsx `blockAnchor`: the column
+left of the attack disc, below the disc) is up exactly when a monster is
+targeted, which is when TRAP shows: it lay over the pop-up's left half.
+
+Upright, TRAP is now a round button in that same column, one slot above Shield
+Bash (`CTL_SLOT.trap` = 1, `ctlColumn`), drawn in the controls' own skin with
+the box trap's picture: grey when it cannot be set, glowing while it is set.
+What it says -- TRAP, your traps (×12) and the true odds, or why it is grey
+("Requires Trapping 3", "No box traps") -- is in a small tag beside it, toward
+the middle of the screen, which takes no touch. A tap does what it did.
+
+Sideways nothing lies at the bottom middle (the Block button is far to the
+right) and a computer shows no Block button, so both keep the pop-up where it
+was, with T on a keyboard.
+
+Tests: mp-trapping (its round button, its tag taking no touch, every state's
+words as before), mp-btnlayout and mp-abilslot (the column and the clusters
+unchanged): 482 checks.
+
