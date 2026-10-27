@@ -50,6 +50,15 @@ function voice(i, k, rate) {
   const p = OWNER_SOUNDS['npc-voices'].parts[i];
   return ['npc-voices', p[0], p[1], Math.round(p[2] * (k == null ? 1 : k) * 1000) / 1000, rate || 1];
 }
+/* v2.3.3664: part i of one of the owner's files of parts (the hammer's blows,
+   the knife's strokes: ownerSoundClips.js) as a layer -- its slice, its
+   volume at its level times k, at `rate`, `delay` s after the cue starts. */
+function part(key, i, k, rate, delay) {
+  const p = OWNER_SOUNDS[key].parts[i];
+  const L = [key, p[0], p[1], Math.round(p[2] * (k == null ? 1 : k) * 1000) / 1000, rate || 1];
+  if (delay) L.push(delay);
+  return L;
+}
 
 export const EVENT_SOUNDS = {
   /* ── your shield, your dodges ──────────────────────────────────────── */
@@ -233,14 +242,24 @@ export const EVENT_SOUNDS = {
   /* "Dungeon cleared!": the old quest fanfare, ~2.5 (a turn-in is ~2.4). */
   dungeonClear: [['quest-complete', 0, 0, 0.6, 1]],
   dungeonOut: [['whirlwind', 1.6, 0.9, 0.25, 1.1, 0, 0.3]],
-  /* A door: a knock of wood, ~0.65. */
-  door: [['wood-chop', 0.05, 0.3, 0.14, 0.7, 0, 0.1]],
+  /* A door: v2.3.3664, the owner's door opening, its creak and latch (~0.7,
+     the knock it replaces 0.68) -- "doors opening ("entering" town
+     buildings)": every town building's door, the farm's sheds' and the
+     Workshop's (BT_AUDIO.enterBuilding). */
+  door: [['door-open', 0, 0, own('door-open'), 1]],
+  /* A dungeon's mouth is a cave, not a door: the knock of wood the door was
+     until v2.3.3664, ~0.65 (enterBuilding('mouth'), game/wheelDungeons.js). */
+  caveMouth: [['wood-chop', 0.05, 0.3, 0.14, 0.7, 0, 0.1]],
   /* Crossing into a land: a breath of wind under its banner. */
   landCross: [['whirlwind', 0.2, 0.6, 0.18, 1.2, 0, 0.15]],
   /* Lighting a fire: two strikes of a flint (the pickaxe's ring, high and
      quick); the fire catching: the pan's crackle swelling and fading. */
   fireStrike: [['mine-strike', 0.55, 0.15, 0.25, 1.6], ['mine-strike', 0.55, 0.12, 0.2, 1.75, 0.22]],
-  campfire: [['pan-sizzle', 0.3, 1.2, 1.6, 0.9, 0, 0.5]],
+  /* v2.3.3664: the fire catching is the owner's "Light fire (when lighting
+     a fire)" -- a flare and its tail, ~0.8, its boom's own overtones laid
+     over it for a phone (cut_owner_sounds.py); the pan's crackle (0.48) it
+     replaces swelled and faded with nothing of a fire's catch in it. */
+  campfire: [['fire-light', 0, 0, own('fire-light'), 1]],
   /* v2.3.3572: `gatherReady`, a harvest's gesture cue opening, is gone -- the
      owner: "there's a splat sound when the ore is ready for the gesture cue
      (reaches 0hp) ... it needs to be removed" (sword-hit2 at 1.6x, v2.3.3343).
@@ -258,13 +277,25 @@ export const EVENT_SOUNDS = {
   petWard: [['shield-block', 0, 0, 0.3, 1.4]],
 
   /* ── crafting results ──────────────────────────────────────────────── */
-  smelt: [['mine-strike', 0.06, 0.35, 0.55, 0.8], ['pan-sizzle', 0.3, 0.8, 1.6, 1.15, 0.12, 0.3]],
-  forge: [['sword-hit', 0, 0.45, 0.6, 0.95], ['armor-hit-2', 0.06, 0.42, 0.22, 1.1, 0.04]],   /* v2.3.3524: the owner: "Forging sword makes flesh hit sound wrong sound" -- the slowed pickaxe layer (mine-strike 0.58 at 0.9: 48% of it under 250 Hz, a thud) is a metal clang now, the metal props' own (7%) */
+  /* ═══ v2.3.3664: THE FORGE'S HAMMER IS THE OWNER'S ═══
+     "One additional sound I'd like to use for blacksmithing label includes
+     "flat-hoe"": a hammer on a flat hoe, three blows (forge-strike's parts,
+     ~0.6 each).  A bar smelted: a blow and the bar's hiss in the water; a
+     blade forged: two blows; armour: a blow and the leather's tick as it is
+     yours.  (The smelt's blow was the pickaxe's, the forge's the blade's own
+     ring, v2.3.3524.) */
+  smelt: [part('forge-strike', 0, 1, 0.9), ['pan-sizzle', 0.3, 0.8, 1.6, 1.15, 0.12, 0.3]],
+  forge: [part('forge-strike', 0, 1, 1), part('forge-strike', 2, 0.9, 1.04, 0.32)],   /* v2.3.3524: the owner: "Forging sword makes flesh hit sound wrong sound" -- the slowed pickaxe layer (mine-strike 0.58 at 0.9: 48% of it under 250 Hz, a thud) is a metal clang now, the metal props' own (7%) */
   forgeFail: [['flip-lose', 0, 0.7, 0.45, 1]],
-  armourForge: [['armor-hit-1', 0.12, 0.6, 0.22, 0.95, 0, 0.15], ['ui-equip', 0.095, 0.3, 2.4, 1, 0.12]],
+  armourForge: [part('forge-strike', 1, 1, 0.94), ['ui-equip', 0.095, 0.3, 2.4, 1, 0.3]],
   hardenOk: [['sword-hit2', 0, 0, 0.5, 1.25], ['quest-complete-v2', 0.05, 0.7, 0.5, 1, 0.08, 0.2]],
   hardenFail: [['mine-strike', 0.06, 0.35, 0.45, 0.6], ['flip-lose', 0, 0.7, 0.45, 1, 0.08]],
-  woodwork: [['axe-chop', 0.13, 0.3, 1.8, 1.05], ['wood-chop', 0.05, 0.3, 0.12, 1.25, 0.1, 0.08]],
+  /* ═══ v2.3.3664: THE WOODWORKER'S KNIFE IS THE OWNER'S ═══
+     "a sound for wood carving (making bows, staffs, etc)": three strokes of
+     the knife (wood-carve, ~0.5 each, a little apart in pitch) where the
+     plane and a knock of wood (0.91) were.  Hardened wood is two strokes and
+     its hiss; traps two strokes and the box's knock. */
+  woodwork: [['wood-carve', 0, 0, own('wood-carve'), 1], ['wood-carve', 0, 0, own('wood-carve', 0.85), 1.08, 0.2], ['wood-carve', 0, 0, own('wood-carve', 0.95), 0.94, 0.42]],
   /* ═══ v2.3.3523: A TREE CHOPPED DOWN CRACKS AND CREAKS -- NO THUMP ═══
      The owner: "The sound when a tree hits 0 hp is a fleshy sound.  Remove
      that."  It was tree-fall whole, 2 s at 0.8: a crack, a creak, then from
@@ -278,8 +309,8 @@ export const EVENT_SOUNDS = {
   /* v2.3.3481: woodBreak (the wood cracking) is gone with its one caller,
      the Woodworker's browser-only Reforge & Harden row (WoodworkPanel.jsx);
      a cue nothing plays fails the sound suite (sound-cues §5d). */
-  hardWood: [['wood-chop', 0.05, 0.3, 0.14, 0.9], ['pan-sizzle', 0.3, 0.6, 1.2, 1.1, 0.08, 0.2]],
-  trapsMade: [['axe-chop', 0.13, 0.25, 1.6, 1.15], ['axe-chop', 1.135, 0.25, 1.4, 1.2, 0.14]],
+  hardWood: [['wood-carve', 0, 0, own('wood-carve'), 0.95], ['wood-carve', 0, 0, own('wood-carve', 0.9), 1.06, 0.2], ['pan-sizzle', 0.3, 0.6, 1.2, 1.1, 0.36, 0.2]],
+  trapsMade: [['wood-carve', 0, 0, own('wood-carve'), 1.02], ['wood-carve', 0, 0, own('wood-carve', 0.9), 0.92, 0.2], ['axe-chop', 1.135, 0.25, 1.4, 1.2, 0.4]],
   /* ── v2.3.3499: THE TRAP'S OWN SOUNDS ──
      The owner: "Make a sound when a trap gets placed on an enemy.  Make a
      sound when a monster gets trapped (your pet)."  Setting one played a
@@ -354,9 +385,9 @@ export const EVENT_SOUNDS = {
      of these still called collect() or beep(), both silent since v2.3.1103,
      or nothing at all.  Same recordings, same rules as above. */
   /* A crop pulled from its bed: the soil giving (the farm's own dirt step,
-     the dig's sample) and a pop as it comes free (the lure's plop, quick),
-     ~0.6 -- louder than the spade (~0.3): it is the farm's payoff. */
-  farmHarvest: [['footstep-v3', 0.08, 0.3, 1.1, 1.15, 0, 0.08], ['lure-drop', 0, 0, 3, 1.35, 0.09]],
+     the dig's sample) and -- v2.3.3664 -- the owner's harvest, a bright pop
+     and its ring (~0.7, where the lure's plop was), the farm's payoff. */
+  farmHarvest: [['footstep-v3', 0.08, 0.3, 1.1, 1.15, 0, 0.08], ['farm-harvest', 0, 0, own('farm-harvest'), 1, 0.06]],
   /* A wager: coins put down (the Gambling Den's weekly pot, a stake on a
      gladiator), ~0.6; won (the coins and Ace's win), ~1.5; lost (Ace's
      loss, softer than a lost duel), ~1.0.  The dice, the pot and the arena's
@@ -393,7 +424,7 @@ export const EVENT_SOUNDS = {
   /* The forge at work: three strikes on the anvil (the pickaxe's ring,
      bright), ~0.5 at the forge -- played by game/townAmbience.js now and
      then while you are near the Blacksmith's, its sparks' sound. */
-  anvil: [['mine-strike', 0.58, 0.3, 0.3, 1.25], ['mine-strike', 0.58, 0.3, 0.26, 1.22, 0.42], ['mine-strike', 0.58, 0.3, 0.3, 1.27, 0.84]],
+  anvil: [part('forge-strike', 0, 1, 1), part('forge-strike', 1, 0.9, 1.02, 0.42), part('forge-strike', 2, 1, 0.98, 0.84)],   /* v2.3.3664: the owner's hammer (forge-strike), where the pickaxe's ring was */
   /* ── v2.3.3434, the third look (the owner: "Good look for more") ──
      The emotes and moves (v2.3.3391-3395) shipped silent -- their plan's
      table says "Extras (reused sounds)" (docs/FUN-SOCIAL-PLAN.md) and Phase 1
@@ -416,9 +447,20 @@ export const EVENT_SOUNDS = {
   flexShine: [['magic-cast', 0, 0.5, 0.45, 1.45, 0.1, 0.12], ['sword-hit2', 0, 0.2, 0.22, 1.9, 0.18, 0.05]],
   /* Cheer: a party popper -- two pops and a puff of air, ~0.45. */
   cheerPop: [['lure-drop', 0, 0, 1.8, 1.5], ['lure-drop', 0, 0, 1.6, 1.75, 0.12], ['arrow-fly', 0.03, 0.2, 1.4, 1.2, 0.05, 0.05]],
-  /* A harvest's prize landing in the bag after its flight (lifeSkillRewards
-     _flyResourceToInventory): the bag's leather, softly, ~0.25. */
-  bagIn: [['ui-equip', 0.095, 0.3, 1.1, 1.25, 0, 0.08]],
+  /* Anything landing in the bag: a harvest's prize after its flight
+     (lifeSkillRewards _flyResourceToInventory, the farm's crops too) and,
+     since v2.3.3664, every pickup the worker credits that is not only gold
+     (wsClient _applyLootCredit) -- the owner's bag drawn shut, ~0.4: "when
+     any object gets picked up and placed in your bag".  (It was the bag's
+     leather, the equip tick, ~0.3.) */
+  bagIn: [['bag-close', 0, 0, own('bag-close'), 1]],
+  /* v2.3.3664: coins picked up, the owner's "coins (during pickup)" -- a
+     bright jingle, ~0.75 (the spilled coins it replaces at a pickup were
+     0.87, and still sound a sale, the market and the den's wins). */
+  coinsPickup: [['coins', 0, 0, own('coins'), 1]],
+  /* v2.3.3664: Lil Bro's own "hmm" -- a boy's, where the townsfolk's man's
+     hum was pitched up for him (game/npcVoices.js). */
+  lilBroHmm: [['lil-bro-hmm', 0, 0, own('lil-bro-hmm'), 1]],
 
   /* ── v2.3.3462: THE OWNER'S RECORDINGS ──────────────────────────────────
      The owner, 2026-10-18: "I have the rest of the sounds" -- recordings for

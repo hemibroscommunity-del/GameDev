@@ -1631,6 +1631,41 @@ export async function hopTo(P, tx, ty, { step = 100, gap = 260, tries = 40 } = {
   return false;
 }
 
+/* ═══ v2.3.3656: A TRIP BY THE CLOCK, NOT BY THE PAGE'S ROUND TRIPS ═══
+ * hopTo moves `step` px per page.evaluate, and an evaluate waits for the
+ * page's main thread.  On a CI runner drawing a dpr-3 phone in software that
+ * round trip grew to 1-3 s, so mp-membudget's 5,772 px from BroTown to the
+ * Flame Fields took 124-134 s each way (65 s on Oct 21), and the memory check
+ * ran past its job's 20 minutes on every pull request.
+ *
+ * glideTo moves the player INSIDE the page, by the wall clock: `speed` px a
+ * second however few frames the page draws, under the worker's move budget
+ * (it refills at 500 px/s: server/src/movement.js MOVE_BUDGET), so the
+ * worker's copy keeps pace and the monsters round the end are sent as you
+ * arrive.  One evaluate for the whole trip.  A frame that stalls moves at most
+ * a second's worth.  Like hopTo it writes the position straight (no walls),
+ * and resolves true once within 6 px, false at `timeoutMs`. */
+export async function glideTo(P, tx, ty, { speed = 450, timeoutMs = 120000 } = {}) {
+  return P.page.evaluate(({ x, y, v, lim }) => new Promise((resolve) => {
+    const t0 = performance.now();
+    let last = t0;
+    const iv = setInterval(() => {
+      const S = window._gameState && window._gameState.current;
+      const now = performance.now();
+      const dt = Math.min(1000, now - last);
+      last = now;
+      if (now - t0 > lim) { clearInterval(iv); resolve(false); return; }
+      if (!S || !S.player) return;
+      const dx = x - S.player.x, dy = y - S.player.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 6) { S.player.vx = 0; S.player.vy = 0; clearInterval(iv); resolve(true); return; }
+      const k = Math.min(d, v * dt / 1000);
+      S.player.x += (dx / d) * k;
+      S.player.y += (dy / d) * k;
+    }, 50);
+  }), { x: tx, y: ty, v: speed, lim: timeoutMs });
+}
+
 /* ═══ v2.3.2078: THE BOX A COLOUR PROBE MAY COUNT PIXELS IN ═══
  * mp-facingside, mp-cosmpose and mp-skinworld each carried their own copy of
  * `x = c.x - 44, y = c.y - 86, 88 x 104` — a box about twice the figure, with

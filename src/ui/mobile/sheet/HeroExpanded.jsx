@@ -2607,7 +2607,7 @@ export const HeroExpanded = () => {
                     ? `${(PROG3_SKILL_META.find((k) => k.key === buildCat) || {}).label || buildCat}, level ${prog3SkillLevel(R, buildCat)}. `
                       + POINT_LANES.filter((c) => !c.shared).map((c) => `${c.label} ${laneAvail(c.key)} to spend`).join(', ')
                     : `Shared, level ${prog3CharLevel(R)}. ${sharedAvail} to spend`}
-                  title={isLane ? 'Weapon stats — pick the weapon when you spend' : 'Shared stats'}
+                  title={isLane ? 'Tap a weapon to see its points' : 'Shared stats'}
                   style={{
                     height: CELL_H, minWidth: 0, boxSizing: 'border-box',
                     /* v2.3.2686's hairline after the head is the frame's own
@@ -2615,27 +2615,59 @@ export const HeroExpanded = () => {
                     position: 'relative', cursor: 'default', overflow: 'hidden',
                   }}>
                   {isLane ? (
-                    <div data-points-frame="weapons" style={{ ...frameStyle('weapons'), display: 'flex', flexDirection: 'column' }}>
+                    /* ═══ v2.3.3665: THE THREE ROWS ARE A SWITCH ═══
+                       The owner: "the points page needs a way to change
+                       between views between melee, bow, staff.  It's stuck on
+                       whatever weapon you have equipped but there should be a
+                       way to toggle between the 3".  A tap on a weapon's row
+                       shows its six numbers (setBuildCat: the dashboard pill's
+                       own way to ask for a lane), its row lit; swapping the
+                       weapon in your hand brings the grid back to it
+                       (heldCatRef, v2.3.3051).  v2.3.2684 kept this frame a
+                       label ("The weapon icon row is not meant to be button")
+                       while a tap on it would have done nothing the [+]'s
+                       window does not; showing another weapon's points is
+                       what it does now.  Each row is a third of the frame
+                       (~55 x 21 px upright): small for a thumb, so the rows
+                       are the frame's whole width and height between them,
+                       and a tap in the wrong one shows its neighbour, nothing
+                       else.  data-prog3-held still marks the weapon in your
+                       HAND (mp-catgrid), data-points-shown the one shown. */
+                    <div data-points-frame="weapons" style={{ ...frameStyle('weapons'), pointerEvents: 'auto', display: 'flex', flexDirection: 'column' }}>
                       {POINT_LANES.filter((c) => !c.shared).flatMap((c, i) => {
                         const on = c.key === buildCat;
                         const row = (
-                          <div key={c.key} data-points-row={c.key}
-                            /* v2.3.3051: the weapon in your hand, whose six
-                               numbers the cells show (the owner's "based on
-                               your active equipped weapon") -- its row lit */
-                            {...(on ? { 'data-prog3-held': c.key } : null)}
+                          <button key={c.key} type="button" data-points-row={c.key}
+                            /* v2.3.3051: the weapon in your hand (the owner's
+                               "based on your active equipped weapon"); its
+                               six numbers are the ones shown until you pick
+                               another (v2.3.3665) */
+                            {...(c.key === heldCat ? { 'data-prog3-held': c.key } : null)}
+                            {...(on ? { 'data-points-shown': c.key } : null)}
+                            aria-pressed={on}
+                            aria-label={`Show ${c.label}'s points`}
+                            onClick={(e) => { e.stopPropagation(); setBuildCat(c.key); }}
                             style={{
                               flex: '1 1 0', minHeight: 0, display: 'flex', alignItems: 'center', gap: PH_GAP,
-                              borderRadius: 3, background: on ? 'rgba(216,170,88,.17)' : 'transparent',
+                              borderRadius: 3, background: on ? 'rgba(216,170,88,.22)' : 'transparent',
+                              /* the row shown wears a brass ring: the fill
+                                 alone was too faint to say whose six numbers
+                                 the cells are once they can be another
+                                 weapon's than the one in hand */
+                              boxShadow: on ? 'inset 0 0 0 1.5px rgba(216,170,88,.9)' : 'none',
+                              /* a button that looks like the row it was */
+                              appearance: 'none', WebkitAppearance: 'none', border: 0, margin: 0, padding: 0,
+                              width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left',
+                              cursor: 'pointer', touchAction: 'manipulation',
                             }}>
                             <img src={POINTS_ICONS[c.key] || c.iconSrc} alt="" draggable={false} style={{
                               width: PH_ICON, height: PH_ICON, flex: 'none', objectFit: 'contain', display: 'block',
                               pointerEvents: 'none',
                             }} />
-                            <span style={{ flex: '1 1 0', minWidth: 0, display: 'flex', justifyContent: 'center' }}>
+                            <span style={{ flex: '1 1 0', minWidth: 0, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
                               {headCount(laneAvail(c.key), c.key, PH_DIG, PH_NUM_W)}
                             </span>
-                          </div>
+                          </button>
                         );
                         return i ? [headRule(i), row] : [row];
                       })}

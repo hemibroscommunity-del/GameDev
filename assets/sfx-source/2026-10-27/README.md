@@ -5,9 +5,13 @@ byte for byte. The server suite (`sound-cues` §11zd and §13f) refuses sound
 files at the top of the project, so every pull request's `test` check failed
 until they moved.
 
-**None of them is in the game yet.** Wiring one in means cutting and levelling
-it with the tools in `tools/audio/` (as `cut_owner_sounds.py` does), giving it a
-label in the Sound Studio, and an entry in `CREDITS.md`. Check each recording's
+**The first eleven are in the game** (#1151: the farm's hoe,
+clay, can and harvest, the forge's hammer, the Woodworker's knife, a door, a
+fire lit, coins, the bag, Lil Bro's "hmm"; docs/specs/owner-sounds-1027.md).
+**The last two, uploaded later the same day (a goblin's fall, a jump's flip),
+are not in the game yet.** Wiring one in means cutting and levelling it with
+the tools in `tools/audio/` (as `cut_owner_sounds.py` does), giving it a label
+in the Sound Studio, and an entry in `CREDITS.md`. Check each recording's
 licence on its Freesound page first. Freesound's "NonCommercial" licences are
 out (see the v2.3.2970 note in CLAUDE.md).
 
@@ -26,3 +30,5 @@ Each name is Freesound's: the sound's number, its maker, then its title.
 | `740271__mavom22__wavesaudiodooropensfx.wav` | 740271 | mavom22 | a door opening |
 | `796658__frostnox__wood-carve-5.ogg` | 796658 | frostnox | carving wood |
 | `872487__heyheytheree__harvest-cozy-game-sfx-free.wav` | 872487 | heyheytheree | a harvest |
+| `502553__kneeling__goblin-fall.mp3` | 502553 | kneeling | a goblin falling (not in the game yet) |
+| `563530__catthulu__sfx-jump-flip.wav` | 563530 | catthulu | a jump with a flip (not in the game yet) |

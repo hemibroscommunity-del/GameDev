@@ -32,7 +32,7 @@ import { BT_AUDIO } from '@/data/index.js';
 import { FARM, FARM_CROP_ORDER } from '@/data/farmCrops.js';
 import { FARM_BEDS, FARM_BED_REACH, FARM_KNEEL_DY, FARM_KNEEL_DX } from '@/data/farmLayout.js';
 import { farmBus } from '@/ui/mobile/farmBus.js';
-import { bedNext, bedAt, farmClock, farmWorkBeats, FARM_WORK_MS, FARM_BEAT_SOUND, seedToPlant, seedsInHand } from '@/game/farmWork.js';
+import { bedNext, bedAt, farmClock, farmWorkBeats, FARM_WORK_MS, farmBeatPlay, seedToPlant, seedsInHand } from '@/game/farmWork.js';
 import { pushDmgPopup, offlineRefused } from '@/game/combatHelpers.js';
 import { jumpAirborne } from '@/game/jump.js';
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';
@@ -90,10 +90,12 @@ function sayOverBed(S, i, text, color) {
 function play(key, opts) { try { BT_AUDIO.play(key, opts); } catch (e) { /* sound only */ } }
 
 /* the sound of each lean (farmWork.js FARM_BEAT_SOUND: v2.3.3439, the table
-   moved there so another player's are heard from the same one) */
-function beatSound(step) {
-  const b = Object.prototype.hasOwnProperty.call(FARM_BEAT_SOUND, step) ? FARM_BEAT_SOUND[step] : null;
-  if (b) play(b.key, { vol: b.vol, rate: b.rate });
+   moved there so another player's are heard from the same one).  v2.3.3664:
+   beat `i` of the step, for the owner's files of parts played in turn (the
+   hoe's three strikes, the clay's two squeezes: farmBeatPlay) */
+function beatSound(step, i) {
+  const b = farmBeatPlay(step, i);
+  if (b) play(b.key, b.offset != null ? { offset: b.offset, duration: b.duration, vol: b.vol, rate: b.rate } : { vol: b.vol, rate: b.rate });
 }
 
 /** Per frame, from BroTown's loop: the bed in reach (S._nearBed) and a step in
@@ -114,7 +116,7 @@ export function tickFarmWalk(S, now) {
       if (!w._beats) { w._beats = farmWorkBeats(w.step, w.doneAt - w.startedAt); w._sb = 0; }
       while (w._sb < w._beats.length && now - w.startedAt >= w._beats[w._sb]) {
         w._sb++;
-        beatSound(w.step);
+        beatSound(w.step, w._sb - 1);
       }
       if (now >= w.doneAt) {
         S._farmWork = null;
