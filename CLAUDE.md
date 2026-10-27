@@ -1452,6 +1452,16 @@ remnant to migrate server-side, not a mode to preserve.
         and doors not; 1.2 MB decoded (0.6); `mp-tierore` counts the band
         against the old vein's picture: docs/specs/tier-ore.md "As tall as the
         old vein again".
+      - since v2.3.3622 THE TEE'S HEM REACHES THE TROUSERS -- the owner's
+        list of 2026-10-26: "The shirt shifts while mining": the band itself
+        is gone; tools/gear/lower-mine-hem.mjs moved the hem AS DRAWN (its
+        keyline and the shade row above it) down to the trousers wherever
+        three or more columns side by side showed a short band of belly (8
+        of the 14 frames, 255 px), and closed frame 9's one-pixel slit down
+        the tee's middle (9 px); a lone column is left (lowered alone it hung
+        like a drip); GEAR_VERSION 2.3.3622; what mp-tierore's band counts now
+        is the arms and hands under the hem; `mine-hem` suite:
+        docs/specs/mine-hem.md.
     - since v2.3.3402 EACH LAND'S TREES AND ROCKS WEAR ITS ELEMENT -- the
       owner: "add effects to a pine tree to make it look like it belongs in
       that elemental zone but the wood logs stay the same", "keep in mind
