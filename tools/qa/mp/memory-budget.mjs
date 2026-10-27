@@ -58,6 +58,16 @@
  * third trip still ends where the second did (+1.3 MB at most, its line 3).
  * Whether the page's heap should grow over a long session at all is the
  * soak's question (docs/specs/long-play-soak.md: 7-14 MB an hour of play).
+ *
+ * v2.3.3664, the owner's recordings of 2026-10-27 (the farm's hoe, can, clay
+ * and harvest, the forge's hammer, the Woodworker's knife, a door, a fire
+ * lit, coins, the bag, Lil Bro's voice): `sound` 30 -> 32 -- RAISED.  They
+ * decode to 0.94 MB, measured file by file in a page (the coins and the hoe at
+ * the page's own rate, the rest at 24 kHz).  Like every sound in SFX_MANIFEST
+ * they are decoded on the loading screen, so they are held wherever you are.
+ * The second MB is room the line did not have: main's own code read 28.9 and
+ * 30.0 MB of sound on two runs of the check the same day (#1148), the higher
+ * one already at the old line.
  */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 156, measured: 147.8,
@@ -66,7 +76,7 @@ export const MEMORY_BUDGET = {
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
   canvases: { name: 'pictures the game draws itself', mb: 96, measured: 89.9,
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
-  sound: { name: 'decoded sound', mb: 30, measured: 26.0,
+  sound: { name: 'decoded sound', mb: 32, measured: 26.0,   /* v2.3.3664: 30 -> 32, see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
   heap: { name: 'the page\'s JavaScript objects', mb: 34, measured: 33.3,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34, see the header */
     what: 'the page\'s JavaScript objects' },

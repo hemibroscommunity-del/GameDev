@@ -284,7 +284,7 @@ const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
 const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHpFor /* v2.3.3035: a timer harvest's bar reads the node's HP; v2.3.3251: by its type */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, bossSizeK /* v2.3.3556: ...and a dungeon boss's, at its size */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
-import { farmWorkFrame, farmAnimOf, farmWorkBeats, parseFarmEx, FARM_BEAT_SOUND } from '@/game/farmWork.js';   /* v2.3.3439: the farmer's own moves, frame by frame; and another player's, off their `ex` */
+import { farmWorkFrame, farmAnimOf, farmWorkBeats, parseFarmEx, farmBeatPlay } from '@/game/farmWork.js';   /* v2.3.3439: the farmer's own moves, frame by frame; and another player's, off their `ex` */
 import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';   /* v2.3.3439: the owner's three farm animations, cut by tools/make_farm_anims.py */
 import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, treeChopOffset, behindTree, TREE_PX, TREE_FOOT_DY, TREE_FADE, TREE_SEE_ALPHA, TREE_SEE_MS } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree */
 import { oreArtSources, oreArtLevelFor, oreGeom, ORE_PX } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock */
@@ -16563,10 +16563,12 @@ export class EffectsRenderer {
     const beats = ent._farmBeats;
     while (ent._farmBeat < beats.length && t >= beats[ent._farmBeat]) {
       ent._farmBeat++;
-      const snd = FARM_BEAT_SOUND[fx.step];
       const share = peerShare(S, ox, oy);
-      if (snd && share > 0 && typeof window !== 'undefined' && window.BT_AUDIO) {
-        try { window.BT_AUDIO.play(snd.key, { vol: snd.vol * share, rate: snd.rate }); } catch (e) { /* sound only */ }
+      /* v2.3.3664: the beat's own part of the owner's hoe or clay, in turn */
+      const snd = share > 0 ? farmBeatPlay(fx.step, ent._farmBeat - 1, share) : null;
+      if (snd && typeof window !== 'undefined' && window.BT_AUDIO) {
+        const o = snd.offset != null ? { offset: snd.offset, duration: snd.duration, vol: snd.vol, rate: snd.rate } : { vol: snd.vol, rate: snd.rate };
+        try { window.BT_AUDIO.play(snd.key, o); } catch (e) { /* sound only */ }
       }
     }
     /* for the QA probe (__btPeerFarmers) */

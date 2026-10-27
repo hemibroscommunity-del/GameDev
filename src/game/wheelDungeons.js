@@ -192,7 +192,7 @@ export function enterWheelDungeon(S, id) {
   try {
     S.channel.send({ type: 'broadcast', event: 'dungeon_start', payload: { entrance: id } });
   } catch (e) { return false; }
-  try { BT_AUDIO.enterBuilding(); } catch (e) { /* sound only */ }
+  try { BT_AUDIO.enterBuilding('mouth'); } catch (e) { /* sound only: a cave's knock, not the door (v2.3.3664) */ }
   return true;
 }
 
