@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "896c78c33441fae2119e30cfa02d6064398328e8",
+  "tree": "5b83f71862f6c152d5a25f16727c3ae01aa215c0",
+  "committedAt": "2026-10-27T01:58:51-07:00",
+  "subject": "The roar's ring round the mummy, no roar after a respawn, the freeze a daze against players (v2.3.3634) (#1136)",
+  "files": 6590,
+  "bytes": 762737625,
+  "listingSha256": "9caead23aca0215e7c56f14fdb73db8f5ed959095bcc92904fff9ad668902af2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
