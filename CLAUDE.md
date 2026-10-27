@@ -692,6 +692,18 @@ remnant to migrate server-side, not a mode to preserve.
       (`_tgSeen`), the nearest 8; nothing new on the wire; `?nowindupfx`,
       `window.__btElemWindup()`; `elem-windup` suite, `mp-elemwindup`:
       docs/specs/elem-windup.md.
+    - since v2.3.3620 THE OWNER'S STRONGER HITS -- the list of 2026-10-26:
+      a snowman's hit FREEZES you 600 ms (no walk, swing, roll or shield,
+      "Frozen!", ice on you; `fz` on the chill's event, not again for 3 s)
+      then chills you 2 s; a blue slime HOLDS you 2 s and its goo STINGS four
+      times while it holds (`ability: 'sting'`, the poison's row of the hit
+      door, its own Map `_stings`); a rock monster's daze is followed by a
+      second of WOBBLE (`wb`: the phone turns your stick to and fro,
+      elemHits.js `wobbleTurn`); the burn's flames drawn half again as tall
+      (monsterstatus.js FREEZE, GOO, STING, WOBBLE; STUCK, a player's root,
+      unchanged); kill switches `freezehit`, `goohold`, `wobble`;
+      `monsterstatus` §3b/§6b/§10b, `mp-elemhits`:
+      docs/specs/stronger-elem-hits.md.
   - Since v2.3.2997 the TOWN IS 1.15x AND THE VIEW 25% FURTHER OUT -- the
     owner: "Change buildings from 1.5x to 1.15x and let me see what making the
     default scale looks like about 25% more zoomed out for everything by

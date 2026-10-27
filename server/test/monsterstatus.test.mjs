@@ -41,11 +41,20 @@
  *  13. POISON: the venom monsters' hit poisons -- the burn's machinery in its
  *      own Map: five ticks, refreshed never stacked, the rail, put out by the
  *      same things, and alongside a burn without touching it.
+ *
+ * v2.3.3620, the owner's stronger hits (docs/specs/stronger-elem-hits.md),
+ * each with its switch off giving the hit as it was (§3, §6):
+ *   3b. FREEZE: the snowman's hit freezes you FREEZE.MS (`fz`) and chills you
+ *       CHILL_MS; not frozen again inside IMMUNE_MS; the ward softens both.
+ *   6b. THE GOO: the slime holds you GOO.MS and stings while it holds -- its
+ *       own Map, the poison's row of the hit door (its rail), put out on the
+ *       safe ground; STUCK (a player's root) unchanged.
+ *  10b. THE WOBBLE: the rock monster's daze carries `wb`, WOBBLE.MS.
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
 import { WHEEL_CENTRE, WHEEL_SAFE_R } from '../src/wheelspawns.js';
-import { ELEM_HITS, CHILL, BURN, GUST, STUCK, DAZE, SHOCK, SOAK, POISON } from '../src/monsterstatus.js';
+import { ELEM_HITS, CHILL, BURN, GUST, STUCK, DAZE, SHOCK, SOAK, POISON, FREEZE, GOO, STING, WOBBLE } from '../src/monsterstatus.js';
 import { ZONES } from '../src/data.js';
 
 const mockState = {
@@ -92,14 +101,22 @@ function stage(m, opts) {
   ps.blocking = false; ps._zoneEntryGraceUntil = 0; ps._godUntil = 0;
   ps._chillUntil = 0; ps._stuckUntil = 0; ps._stuckImmuneUntil = 0; ps._gustLeft = 0; ps._gustUntil = 0;
   ps._dazeUntil = 0; ps._dazeImmuneUntil = 0; ps._soakUntil = 0;   /* v2.3.3014 */
+  ps._freezeUntil = 0; ps._freezeImmuneUntil = 0;   /* v2.3.3620 */
   if (room._burns) room._burns.clear();
   if (room._poisons) room._poisons.clear();
+  if (room._stings) room._stings.clear();   /* v2.3.3620 */
   room.extractions && room.extractions.delete && room.extractions.delete('p1');
   room.eventBuffer.length = 0;
 }
 const attacks = () => room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.targetId === 'p1');
 const lastHit = () => { const a = attacks(); return a.length ? a[a.length - 1].payload : null; };
 const strike = (m) => { room._monsterStrikePlayer(WHEEL_ZONE, m, 'p1', m.x, m.y); return lastHit(); };
+/* v2.3.3620: run `fn` with these live flags on top of the room's */
+function withFlags(flags, fn) {
+  const keep = room._liveFlags;
+  room._liveFlags = Object.assign({}, keep || {}, flags);
+  try { return fn(); } finally { room._liveFlags = keep; }
+}
 
 // ── 1. WHICH MONSTERS ─────────────────────────────────────────────────────
 {
@@ -145,10 +162,40 @@ const strike = (m) => { room._monsterStrikePlayer(WHEEL_ZONE, m, 'p1', m.x, m.y)
   const m = of('frost');
   stage(m);
   const t0 = Date.now();
-  const hit = strike(m);
-  check('chill: the snowman chills for CHILL.MS', hit.st === 'chill' && hit.stMs === CHILL.MS && hit.kb === undefined, hit);
-  check('chill: ...and the worker knows until when', ps._chillUntil >= t0 + CHILL.MS && ps._chillUntil <= Date.now() + CHILL.MS, ps._chillUntil - t0);
+  /* v2.3.3620: the chill as it was, with the stronger hit's switch off */
+  const hit = withFlags({ freezehit: false }, () => strike(m));
+  check('chill (freezehit off): the snowman chills for CHILL.MS, no freeze', hit.st === 'chill' && hit.stMs === CHILL.MS && hit.kb === undefined && hit.fz === undefined && !ps._freezeUntil, hit);
+  check('chill (freezehit off): ...and the worker knows until when', ps._chillUntil >= t0 + CHILL.MS && ps._chillUntil <= Date.now() + CHILL.MS, ps._chillUntil - t0);
   check('chill: about a second, at about half speed (the owner\'s "slowing down for a second")', CHILL.MS === 1000 && CHILL.MULT > 0.3 && CHILL.MULT < 0.8);
+}
+
+// ── 3b. FREEZE (v2.3.3620) ────────────────────────────────────────────────
+{
+  /* the owner: "a snowball freezes you solid for a moment, then slows you for
+     2 s, with ice on you" */
+  const m = of('frost');
+  stage(m);
+  const t0 = Date.now();
+  const hit = strike(m);
+  check(`freeze: the snowman's hit freezes you ${FREEZE.MS} ms (fz) and chills you ${FREEZE.CHILL_MS} ms, on the chill's own event`,
+    hit.st === 'chill' && hit.fz === FREEZE.MS && hit.stMs === FREEZE.CHILL_MS && hit.elem === 'frost', hit);
+  check('freeze: ...and the worker knows until when, both', ps._freezeUntil >= t0 + FREEZE.MS && ps._freezeUntil <= Date.now() + FREEZE.MS
+    && ps._chillUntil >= t0 + FREEZE.CHILL_MS, { fz: ps._freezeUntil - t0, ch: ps._chillUntil - t0 });
+  check('freeze: a moment (under a second), the slow two seconds, the window after it longer than a snowman\'s throw',
+    FREEZE.MS > 0 && FREEZE.MS < 1000 && FREEZE.CHILL_MS === 2000 && FREEZE.IMMUNE_MS >= 2500);
+  const again = strike(m);
+  check('freeze: not frozen again straight after (six snowmen cannot keep you frozen) -- but chilled again',
+    again.st === 'chill' && again.fz === undefined && again.stMs === FREEZE.CHILL_MS, again);
+  ps._freezeImmuneUntil = Date.now() - 1;
+  const later = strike(m);
+  check('freeze: ...once its window has passed, frozen again', later.fz === FREEZE.MS, later);
+  /* the ward softens it as it softens the chill */
+  stage(m);
+  const keepWard = room._petWard;
+  room._petWard = () => 0.5;
+  const warded = strike(m);
+  room._petWard = keepWard;
+  check('freeze: a land ward (the pet) shortens the freeze and the chill both', warded.fz === Math.round(FREEZE.MS * 0.5) && warded.stMs === Math.round(FREEZE.CHILL_MS * 0.5) && warded.wd === 50, warded);
 }
 
 // ── 4. BURN ───────────────────────────────────────────────────────────────
@@ -295,15 +342,63 @@ const strike = (m) => { room._monsterStrikePlayer(WHEEL_ZONE, m, 'p1', m.x, m.y)
   const m = of('verdant');
   stage(m);
   const t0 = Date.now();
-  const hit = strike(m);
-  check('stuck: the blue slime holds you in place', hit.elem === 'flora' && hit.st === 'stuck' && hit.stMs === STUCK.MS, hit);
-  check('stuck: briefly', STUCK.MS >= 400 && STUCK.MS <= 1200 && ps._stuckUntil >= t0 + STUCK.MS);
-  const again = strike(m);
-  check('stuck: not held again straight after (six slimes cannot hold you for good)', again.elem === 'flora' && again.st === undefined, again);
-  ps._stuckImmuneUntil = Date.now() - 1;
-  const later = strike(m);
-  check('stuck: ...but once IMMUNE_MS has passed, again', later.st === 'stuck', later);
+  /* v2.3.3620: the hold as it was, with the stronger hit's switch off */
+  withFlags({ goohold: false }, () => {
+    const hit = strike(m);
+    check('stuck (goohold off): the blue slime holds you in place', hit.elem === 'flora' && hit.st === 'stuck' && hit.stMs === STUCK.MS, hit);
+    check('stuck (goohold off): briefly, and no sting', STUCK.MS >= 400 && STUCK.MS <= 1200 && ps._stuckUntil >= t0 + STUCK.MS && !(room._stings && room._stings.size));
+    const again = strike(m);
+    check('stuck (goohold off): not held again straight after (six slimes cannot hold you for good)', again.elem === 'flora' && again.st === undefined, again);
+    ps._stuckImmuneUntil = Date.now() - 1;
+    const later = strike(m);
+    check('stuck (goohold off): ...but once IMMUNE_MS has passed, again', later.st === 'stuck', later);
+  });
   check('stuck: the immunity outlasts the hold', STUCK.IMMUNE_MS >= STUCK.MS);
+}
+
+// ── 6b. THE GOO (v2.3.3620) ───────────────────────────────────────────────
+{
+  /* the owner: "plant goo that holds you about 2 s and stings while it holds" */
+  const m = of('verdant');
+  stage(m);
+  const t0 = Date.now();
+  const hit = strike(m);
+  check(`goo: the slime holds you ${GOO.MS} ms`, hit.elem === 'flora' && hit.st === 'stuck' && hit.stMs === GOO.MS && ps._stuckUntil >= t0 + GOO.MS, hit);
+  const b = room._stings && room._stings.get('p1');
+  check(`goo: ...and stings while it holds: ${STING.TICKS} ticks of ${STING.PCT * 100}% of its hit, ${STING.EVERY_MS} ms apart, in a Map of its own`,
+    room._stings instanceof Map && !!b && b.left === STING.TICKS && b.dmg === Math.max(1, Math.round(m.dmg * STING.PCT)) && b.next >= t0 + STING.EVERY_MS
+      && !(room._poisons && room._poisons.has('p1')), b);
+  check('goo: the stings end when the hold does', STING.TICKS * STING.EVERY_MS === GOO.MS);
+  room.eventBuffer.length = 0;
+  const hp0 = ps.hp;
+  room._tickMonsterBurns(b.next);
+  const tick = lastHit();
+  check('goo: a sting is a monster_attack the worker resolved (ability sting), the leaf on it, taking what it says',
+    !!tick && tick.ability === 'sting' && tick.elem === 'flora' && tick.st === undefined && tick.dmgTaken > 0 && ps.hp === hp0 - tick.dmgTaken, tick);
+  for (let k = 0; k < 6; k++) room._tickMonsterBurns(room._stings.has('p1') ? room._stings.get('p1').next : Date.now() + 60000);
+  check(`goo: ${STING.TICKS} stings, then it is out`, attacks().length === STING.TICKS && !room._stings.has('p1'), attacks().length);
+  /* through the poison's row of the hit door: its rail */
+  stage(m); strike(m);
+  const s1 = room._stings.get('p1');
+  s1.dmg = 9999;
+  room.eventBuffer.length = 0;
+  room._tickMonsterBurns(s1.next);
+  const big = lastHit();
+  check('goo: no sting over the poison row\'s rail (8% of your max HP)', big && big.ability === 'sting' && big.dmg <= Math.max(1, Math.floor((ps.maxHp || 100) * POISON.MAX_HP_PCT)), big);
+  /* not held, nor stung, again inside its window */
+  stage(m); strike(m);
+  room._stings.clear();
+  const again = strike(m);
+  check('goo: not held again straight after, and no sting with no hold', again.st === undefined && !(room._stings && room._stings.size), again);
+  check('goo: the window after it outlasts a slime\'s swing', GOO.IMMUNE_MS >= 2000);
+  /* put out on the safe ground, as the poison is */
+  stage(m); strike(m);
+  const safe = alongSpoke(m, Math.max(0, WHEEL_SAFE_R - 300));
+  ps.x = safe.x; ps.y = safe.y;
+  room._tickMonsterBurns(Date.now() + 60000);
+  check('goo: the sting is put out on the Wheel\'s safe ground', !room._stings.has('p1'));
+  /* a player's root is still a slime's OLD hold (pvpextras.js): STUCK unchanged */
+  check('goo: STUCK itself unchanged (a player\'s root, "cannot be locked down")', STUCK.MS === 700 && STUCK.IMMUNE_MS === 2000);
 }
 
 // ── 7. THE TELEGRAPHED HITS, AND THE FIRE TRAIL ───────────────────────────
@@ -338,6 +433,7 @@ const strike = (m) => { room._monsterStrikePlayer(WHEEL_ZONE, m, 'p1', m.x, m.y)
   }
   check('kill switch: no burn, no hold, no room granted', !(room._burns && room._burns.size) && !ps._stuckUntil && !(ps._gustLeft > 0));
   check('kill switch: no daze, no soak, no poison (v2.3.3014)', !ps._dazeUntil && !ps._soakUntil && !(room._poisons && room._poisons.size));
+  check('kill switch: no freeze, no sting (v2.3.3620)', !ps._freezeUntil && !(room._stings && room._stings.size));
   room._liveFlags = keep;
 }
 
@@ -379,6 +475,22 @@ const strike = (m) => { room._monsterStrikePlayer(WHEEL_ZONE, m, 'p1', m.x, m.y)
   stage(m);
   const g = room._elemOnHit(WHEEL_ZONE, m, 'p1', ps, { dodged: false, dmgTaken: 0, graced: true }, Date.now());
   check('daze: a hit that lands nothing dazes nobody', g && g.elem === 'stone' && !('st' in g) && !ps._dazeUntil, g);
+}
+
+// ── 10b. THE WOBBLE (v2.3.3620) ───────────────────────────────────────────
+{
+  /* the owner: "a bash that leaves you wobbling for a second (your steering
+     sways)" -- the phone's to carry out, after the daze; the worker says how
+     long, on the daze's own event */
+  const m = of('hollows');
+  stage(m);
+  const hit = strike(m);
+  check(`wobble: the rock monster's daze is followed by ${WOBBLE.MS} ms of wobbling (wb)`, hit.st === 'daze' && hit.wb === WOBBLE.MS, hit);
+  const again = strike(m);
+  check('wobble: none without a daze (inside its window)', again.st === undefined && again.wb === undefined, again);
+  stage(m);
+  const off = withFlags({ wobble: false }, () => strike(m));
+  check('wobble (switch off): the daze as it was, no wb', off.st === 'daze' && off.stMs === DAZE.MS && off.wb === undefined, off);
 }
 
 // ── 11. SHOCK (v2.3.3014) ────────────────────────────────────────────────

@@ -57,6 +57,20 @@
  * yet") -- and a parry STAGGERS whoever it caught --
  * no swing, special, ability or burst for the parry's `ms` (isStaggered,
  * combatHelpers.staggerRefused).
+ *
+ * ═══ v2.3.3620: THE OWNER'S STRONGER HITS ═══
+ * (server/src/monsterstatus.js FREEZE, GOO, STING, WOBBLE; each its own kill
+ * switch on the worker, which then simply stops sending the field):
+ *   a snowman's chill with `fz`: FROZEN that long first -- no walk, swing,
+ *     special, ability, roll or shield, as the daze (isDazed answers for it,
+ *     dazeRefused says "Frozen!") -- with ice on you; then the chill's slow
+ *                                                           S._frozenUntil
+ *   a rock monster's daze with `wb`: after the daze, your steering WOBBLES
+ *     that long -- the stick's way turned to and fro (wobbleTurn, BroTown's
+ *     walk)                                       S._wobbleFrom / _wobbleUntil
+ *   a slime's hold is GOO.MS long now (the same `stuck`), and its STING ticks
+ *     arrive as monster_attack `ability: 'sting'` -- a tick, not a blow
+ *     (tickKind: the poison's sparks and sound), the leaf on the number.
  */
 
 /* The walk while chilled.  MIRROR: server/src/monsterstatus.js CHILL.MULT
@@ -110,6 +124,15 @@ export const SLOW_MULT = 0.4;
    shove is GUST.MS, on the wire as stMs). */
 const KB_MS = 180;
 
+/* v2.3.3620: a freeze and a wobble the wire says are held to these (the
+   worker's are 600 and 1000 ms) */
+const MAX_FREEZE_MS = 2000;
+const MAX_WOBBLE_MS = 3000;
+/* how far, and how quickly, a wobble turns your steering: up to WOBBLE_ANG
+   either way, a full sway every WOBBLE_PERIOD_MS, easing off as it ends */
+export const WOBBLE_ANG = 0.6;
+export const WOBBLE_PERIOD_MS = 460;
+
 /* Nothing the wire says lasts longer than this, or shoves further.
    MAX_KB_PX MIRROR: server/src/pvpextras.js PVP_EXTRAS.SHOVE_MAX (v2.3.3264,
    mirror-audit.test.mjs) -- the longest shove the worker grants a player. */
@@ -139,6 +162,9 @@ export function tickKind(p) {
   if (!p) return null;
   if (isBurnTick(p)) return 'burn';
   if (p.ability === 'poison') return 'poison';
+  /* v2.3.3620: the goo's sting while it holds you (the poison's sparks and
+     sound: goo is green) */
+  if (p.ability === 'sting') return 'poison';
   if (p.ability === 'shock') return 'shock';
   /* v2.3.3264: a player's gem on you (a pvp_hit, server pvpextras.js): a
      venom gem's root ticks like a poison, a flora gem's thorns prick back
@@ -163,11 +189,21 @@ export function applyElemHit(S, p, now, who) {
      (server petbook.js _petWard), `wd` the percent.  Yours only: the pet
      flashes and says so (game/trapping.js noteWard, entityRenderer). */
   if (!who && Number(p.wd) > 0) { S._wardAt = t; S._wardPct = Math.min(50, Math.round(Number(p.wd))); S._wardElem = typeof p.elem === 'string' ? p.elem : null; }
-  if (p.st === 'chill') R._chillUntil = Math.max(R._chillUntil || 0, t + ms);
+  if (p.st === 'chill') {
+    R._chillUntil = Math.max(R._chillUntil || 0, t + ms);
+    /* v2.3.3620: frozen solid a moment first, when the worker says so */
+    const fz = Math.max(0, Math.min(MAX_FREEZE_MS, Number(p.fz) || 0));
+    if (fz > 0) { R._frozenUntil = Math.max(R._frozenUntil || 0, t + fz); R._frozenAt = t; }
+  }
   else if (p.st === 'stuck') R._stuckUntil = Math.max(R._stuckUntil || 0, t + ms);
   else if (p.st === 'burn') R._burnUntil = Math.max(R._burnUntil || 0, t + ms);
   /* v2.3.3014 */
-  else if (p.st === 'daze') R._dazeUntil = Math.max(R._dazeUntil || 0, t + ms);
+  else if (p.st === 'daze') {
+    R._dazeUntil = Math.max(R._dazeUntil || 0, t + ms);
+    /* v2.3.3620: then wobbling, when the worker says so */
+    const wb = Math.max(0, Math.min(MAX_WOBBLE_MS, Number(p.wb) || 0));
+    if (wb > 0) { R._wobbleFrom = t + ms; R._wobbleUntil = t + ms + wb; }
+  }
   else if (p.st === 'soak') R._soakUntil = Math.max(R._soakUntil || 0, t + ms);
   else if (p.st === 'poison') R._poisonUntil = Math.max(R._poisonUntil || 0, t + ms);
   /* v2.3.3264: a player's gem (server pvpextras.js) */
@@ -208,6 +244,7 @@ export function elemMoveMult(S, now) {
   if (!S) return 1;
   if (S._stuckUntil && now < S._stuckUntil) return 0;
   if (S._dazeUntil && now < S._dazeUntil) return 0;   /* v2.3.3014 */
+  if (S._frozenUntil && now < S._frozenUntil) return 0;   /* v2.3.3620 */
   let k = 1;
   if (S._chillUntil && now < S._chillUntil) k = CHILL_MULT;
   if (S._slowUntil && now < S._slowUntil) k = Math.min(k, S._slowMult || SLOW_MULT);   /* v2.3.3264 */
@@ -243,9 +280,32 @@ export function isStuck(S, now) {
   return !!(S && S._stuckUntil && (typeof now === 'number' ? now : Date.now()) < S._stuckUntil);
 }
 
-/** v2.3.3014: dazed by a rock monster right now? */
+/** v2.3.3014: dazed by a rock monster right now?  v2.3.3620: or frozen by a
+    snowman -- every place that asks this refuses the same things. */
 export function isDazed(S, now) {
-  return !!(S && S._dazeUntil && (typeof now === 'number' ? now : Date.now()) < S._dazeUntil);
+  if (!S) return false;
+  const t = typeof now === 'number' ? now : Date.now();
+  return !!((S._dazeUntil && t < S._dazeUntil) || (S._frozenUntil && t < S._frozenUntil));
+}
+
+/** v2.3.3620: frozen solid by a snowman right now? */
+export function isFrozen(S, now) {
+  return !!(S && S._frozenUntil && (typeof now === 'number' ? now : Date.now()) < S._frozenUntil);
+}
+
+/**
+ * v2.3.3620: how far a wobble turns your steering right now, radians (0 when
+ * you are not wobbling).  To and fro by WOBBLE_ANG, a sway every
+ * WOBBLE_PERIOD_MS, easing off to nothing as it ends -- from the time alone.
+ */
+export function wobbleTurn(S, now) {
+  if (!S || !S._wobbleUntil) return 0;
+  const t = typeof now === 'number' ? now : Date.now();
+  const from = S._wobbleFrom || 0;
+  if (t < from || t >= S._wobbleUntil) return 0;
+  const span = Math.max(1, S._wobbleUntil - from);
+  const left = 1 - (t - from) / span;
+  return WOBBLE_ANG * Math.sin(((t - from) / WOBBLE_PERIOD_MS) * Math.PI * 2) * left;
 }
 
 /**
@@ -270,4 +330,5 @@ export function clearElemStatuses(S) {
   S._chillUntil = 0; S._stuckUntil = 0; S._burnUntil = 0; S._gust = null;
   S._dazeUntil = 0; S._shockUntil = 0; S._shockFrom = null; S._soakUntil = 0; S._poisonUntil = 0;   /* v2.3.3014 */
   S._slowUntil = 0; S._fractureUntil = 0; S._fractureStacks = 0; S._thornUntil = 0; S._staggerUntil = 0;   /* v2.3.3264 */
+  S._frozenUntil = 0; S._wobbleFrom = 0; S._wobbleUntil = 0;   /* v2.3.3620 */
 }
