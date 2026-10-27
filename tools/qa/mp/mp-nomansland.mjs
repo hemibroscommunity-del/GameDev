@@ -274,6 +274,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
           banner: zb && zb.shownAt ? zb.shownAt('nml-1') : 0,
           chat: (S.chatLog || []).filter((l) => /No man's land 1/.test(l.text || '')).map((l) => l.text),
           bar: sub ? sub.textContent : null,
+          /* v2.3.3629: the minimap's box and its name plate, beside which the badge stands */
+          mini: window.__btWheelMini ? { l: window.__btWheelMini.left, t: window.__btWheelMini.top } : null,
+          plateBox: window.__btWheelPlate ? { t: window.__btWheelPlate.top, b: window.__btWheelPlate.top + window.__btWheelPlate.height } : null,
           badge: b ? { n: b.getAttribute('data-nml-badge'), text: b.textContent, mid: Math.round(r.left + r.width / 2 - innerWidth / 2),
             /* v2.3.3268: how far its right edge stops short of the middle (2 px:
                it sat on the shield button, whose left edge is the middle) */
@@ -302,10 +305,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
        not awkwardly aligned to the left"), and just left of the shield button
        only while the shield is drawn under the middle (NmlBadge.jsx
        nmlBadgePlace; mp-nmlfoe measures every width) */
+    /* v2.3.3629: BESIDE THE MINIMAP'S NAME PLATE (the owner: "just beside the
+       minimap where it lists the zone and level range"): its right edge just
+       left of the minimap's box, its middle level with the plate, a 44 px
+       target, on the screen */
     const tb = t && t.badge;
-    rec.ok(`1. ...the badge at the play area's bottom edge, ${tb && tb.shield ? 'just left of the shield (its right edge ' + (tb.shield.l - tb.r) + ' px from it)' : 'centred (' + (tb && tb.mid) + ' px off the middle), ' + (tb && tb.gap) + ' px above the dashboard, a 44 px target'}, clear of the shield`,
-      !!tb && (tb.shield ? (tb.r <= tb.shield.l - 2 && tb.l >= 0)
-        : (Math.abs(tb.mid) <= 2 && tb.gap >= 0 && tb.gap <= 6 && tb.h >= 44)), tb);
+    const mid = tb ? (tb.t + tb.bt) / 2 : null;
+    rec.ok(`1. ...the badge just left of the minimap (${t && t.mini && tb ? t.mini.l - tb.r : '?'} px from its box), level with its name plate (middle ${mid} in ${t && t.plateBox ? t.plateBox.t + '-' + t.plateBox.b : '?'}), a ${tb && tb.h} px target`,
+      !!tb && !!t.mini && !!t.plateBox && tb.r <= t.mini.l - 2 && t.mini.l - tb.r <= 10 && mid >= t.plateBox.t && mid <= t.plateBox.b
+        && tb.h >= 44 && tb.l >= 0, { tb, mini: t && t.mini, plate: t && t.plateBox });
     rec.ok(`1. ...and the minimap's name plate shows the level band, the badge saying No man's land ("${t && t.bar}")`, !!t && t.bar === 'Lv 6–10', t && t.bar);
   }
   await shot(A, '1-told');

@@ -173,10 +173,14 @@ const DOOR_W = 3.5, DOOR_H = 2;
    under it still shows, a shut one's in grey.  Made ONCE, with the town (a
    Sprite each in townIcons, over the footprints, under every mark that
    moves) -- never redrawn a frame.
-   v2.3.3614: each picture is a white symbol on a dark grey disc (the owner:
-   "It blends in with the building visually"; wheelBuildingIcons.js
-   drawDisc), so it reads on the roof's terracotta. */
-const BLD_ICON_PX = 14, BLD_ICON_UP = 1.5;
+   v2.3.3614: each picture was a white symbol on a dark grey disc (the owner:
+   "It blends in with the building visually").
+   v2.3.3630: in its own colours again, BIGGER THAN THE BUILDING -- the owner:
+   "just do the colored icons but oversized so they aren't competing with the
+   buildings color and size": BLD_ICON_PX across (the footprints are ~17 x 9),
+   ringed in a thin dark outline (wheelBuildingIcons.js drawIcon), so the
+   picture is what you read and the roof is a base under it. */
+const BLD_ICON_PX = 20, BLD_ICON_UP = 1.5;
 
 /* v2.3.3108: the land's colour lifted toward white to read on the dark plate,
    as the top bar had it (ZoneHeader.jsx landTint, k 0.42) */
@@ -340,9 +344,10 @@ export class WheelMinimap {
   /* v2.3.3108: the name plate's two lines, redrawn only when they change.
      `w` the worker's words for the spot under you ({title, sub}), kept while
      you are over open water (no land, no words) so the plate never blinks;
-     `region` its land.  No man's land is its own badge over the dashboard's
-     middle (v2.3.3107, ui/mobile/NmlBadge.jsx), so the plate keeps the
-     level band there too. */
+     `region` its land.  No man's land is its own badge (v2.3.3107,
+     ui/mobile/NmlBadge.jsx; since v2.3.3629 just left of this box, level
+     with this plate, so the place, its levels and the skull read together),
+     so the plate keeps the level band there too. */
   _plate(w, region) {
     if (w && w.title) this._lastWords = { title: w.title, sub: w.sub || '', region: region || null };
     const at = this._lastWords;

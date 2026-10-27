@@ -8427,3 +8427,34 @@ bro had faced south only, then every facing jogging and standing; a rebuild,
 then every facing again; a hat whose southwest file failed every try, back once
 it can be had) -- and with `QA_HK_EXPECT=blank` the build before: blank after
 the wipe, blank after the rebuild, the hat never back.
+
+## 254. "Spread the base style and change what differs" (v2.3.3633)
+
+**The move.** A Pixi text style is derived from a shared one the way a plain
+object is: `new Text({ style: { ...NAME_STYLE, fontSize: 9 } })`.
+
+**Why it is wrong.** A TextStyle is not a plain object. Its own fields are
+private copies (`_fontSize`, `_fill`, ...) and its EventEmitter's registry
+(`_events`, `_eventsCount`) and its `uid`. The spread copies all of them, and
+TextStyle's constructor writes each one back:
+- the base's private fields come after the spread's own keys, so they
+  OVERWRITE them. `{ ...NAME_STYLE, fontSize: 9 }` is drawn at NAME_STYLE's
+  10 px, a pet's name meant at 22 px is 10 px, and the stun timer's amber is
+  white;
+- the new style SHARES the base's listener registry. Every Text of the
+  family listens on the base's one registry, which lives as long as the page.
+  Pixi 8.17's `AbstractText.destroy()` never takes a Text's listener off, so
+  every one ever made was kept (mp-textrelease: 42 -> 154 destroyed Texts held
+  over two trips to a fight), and every style change in the family called all
+  of them.
+
+**The rule.** Derive a style with `BASE.clone()` and set what differs on the
+copy (`const st = NAME_STYLE.clone(); st.fontSize = 9;`), as dropLines.js
+does. Since v2.3.3633 the registry half is safe either way
+(src/rendering/textRelease.js: a spread is passed on without the registry, and
+destroy() takes the listener off), but the overrides are still lost: the
+labels already written that way are drawn as the owner has seen them, and
+changing them is a change to how they look.
+
+**Receipt:** `mp-textrelease` (a family built both ways, and two real trips
+to a fight with and without `?textkeep`).

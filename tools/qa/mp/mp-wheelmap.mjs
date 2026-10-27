@@ -234,15 +234,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`...and each wears its building's picture, ${bi && bi.px} px on its footprint (${bi && bi.n} of ${bl.length}), the ${held && held.loaded} pictures loaded behind the loading screen (${held ? (held.bytes / 1048576).toFixed(2) : '?'} MB, ${held && held.grey} grey for the shut)`,
       /* v2.3.3555: a grey copy for each SHUT building, however many that is --
          it was `>= 1`, and since the Hotel opened (v2.3.3539) none is shut */
-      !!bi && bi.n === bl.length && bi.px === 14 && !!held && held.loaded >= bl.length
+      /* v2.3.3630: 20 px, bigger than its footprint (the owner: "oversized so
+         they aren't competing with the buildings color and size") */
+      !!bi && bi.n === bl.length && bi.px === 20 && !!held && held.loaded >= bl.length
         && held.grey >= bl.filter((b) => b.closed).length && held.textures >= bl.length, { bi, held, shut: bl.filter((b) => b.closed).length });
-    /* v2.3.3614: the owner -- "a plain circle background maybe dark gray and
-       the symbol drawing representing the building in white": every picture
-       is a dark grey disc with a white symbol on it, no colour left in it */
+    /* v2.3.3630: the owner -- "just do the colored icons but oversized so they
+       aren't competing with the buildings color and size" (v2.3.3614's white
+       symbols on dark grey discs before): every picture in its own colours,
+       ringed in its thin dark outline, and no disc behind it (its square's
+       ring see-through somewhere).  "Its own colours" is: never whitened (the
+       old symbol was all light grey and white) and, across the sixteen, in
+       colour -- one picture may be grey by nature (the blacksmith's anvil, 0%
+       colour), so most must carry colour, not every one */
     const look = await P.page.evaluate(() => (window.__btBuildingIcons && window.__btBuildingIcons().look ? window.__btBuildingIcons().look() : null));
-    const lookBad = (look || []).filter((q) => !(q.n > 0 && q.disc / q.n >= 0.2 && q.white / q.n >= 0.1 && q.colour / q.n <= 0.01));
-    rec.ok(`...each a white symbol on a dark grey disc (${look ? look.length : 0} pictures: dark disc ${look ? Math.min(...look.map((q) => Math.round(100 * q.disc / q.n))) : '?'}%+, white ${look ? Math.min(...look.map((q) => Math.round(100 * q.white / q.n))) : '?'}%+, no colour)`,
-      !!look && look.length >= bl.length && lookBad.length === 0, { lookBad, look });
+    const lookBad = (look || []).filter((q) => !(q.n > 0 && q.white / q.n < 0.4 && q.dark / q.n >= 0.04 && q.ring < 100));
+    const colourful = (look || []).filter((q) => q.n > 0 && q.colour / q.n >= 0.25).length;
+    rec.ok(`...each its picture in its own colours, outlined, no disc (${look ? look.length : 0} pictures, ${colourful} in colour; whitened at most ${look ? Math.max(...look.map((q) => Math.round(100 * q.white / q.n))) : '?'}%, outline ${look ? Math.min(...look.map((q) => Math.round(100 * q.dark / q.n))) : '?'}%+)`,
+      !!look && look.length >= bl.length && lookBad.length === 0 && colourful >= Math.ceil(0.75 * look.length), { lookBad, look });
+    /* ...and bigger than the roof it stands on */
+    const fp = bl.map((b) => Math.max(b.w, b.h)).sort((a, b) => a - b);
+    const fpMid = fp.length ? fp[Math.floor(fp.length / 2)] : null;
+    rec.ok(`...drawn bigger than the building under it (${bi && bi.px} px against a middling footprint of ${fpMid} px)`, !!bi && fpMid != null && bi.px > fpMid, { px: bi && bi.px, fp });
     const r = await P.page.evaluate(() => window.__btWheelMini);
     if (r) await P.page.screenshot({ path: join(OUT, 'wheelmap-01b-minimap-icons.png'), clip: { x: r.left, y: r.top, width: r.w, height: r.h } }).catch(() => {});
   }
