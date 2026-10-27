@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { notificationsMuted, setNotificationsMuted } from '../modalGuardBus.js'; /* v2.3.2147 */
 import { COL, panelStyle } from './common.js';
 import { BT_AUDIO } from '@/data/index.js';   /* v2.3.2820: see toggleAudio */

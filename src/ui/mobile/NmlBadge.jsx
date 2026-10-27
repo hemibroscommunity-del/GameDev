@@ -39,7 +39,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { nmlHere, NML_RED } from '@/game/noMansLand.js';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { infoPopupBus } from './infoPopupBus.js';
 import { blockAnchor } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.3268: where the shield button stands; v2.3.3608: where it WILL stand, before it shows */
 

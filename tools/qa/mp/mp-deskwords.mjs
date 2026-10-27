@@ -1,4 +1,4 @@
-/* ═══ ON A COMPUTER, "TAP" READS "CLICK" (v2.3.3612) ═══
+/* ═══ ON A COMPUTER, "TAP" READS "CLICK" (v2.3.3615) ═══
  *
  * The owner's list of 2026-10-26 (docs/OWNER-LIST-2026-10-26.md): the judges
  * play the DESKTOP version.  On a computer the very first instruction read

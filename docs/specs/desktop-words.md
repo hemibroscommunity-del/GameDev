@@ -1,4 +1,4 @@
-# On a computer, "tap" reads "click" (v2.3.3612)
+# On a computer, "tap" reads "click" (v2.3.3615)
 
 The owner, 2026-10-26: the judges play the **desktop** version in two days
 ("trying to win best game"). The plan (docs/OWNER-LIST-2026-10-26.md,

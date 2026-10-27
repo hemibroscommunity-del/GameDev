@@ -1,5 +1,5 @@
 import React from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, toDisplayDamage, dishFor } from '@/data/index.js'; /* v2.3.2520: the display damage scale; v2.3.3130: dishFor; v2.3.3481: createDefaultCompStats, getCookingSweetSpot and getFishTierLevel went with the fish game */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 

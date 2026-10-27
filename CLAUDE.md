@@ -5906,7 +5906,7 @@ Two protocol versions coexist; both must keep working:
   - A new key goes in the table and on its button in the same PR; a new
     window's ✕ takes `data-esc` (`"up"` if it acts on pointerup).
   - The keys strip lists 1-3 and sits right of the bell. `mp-deskkeys`.
-  - Since v2.3.3612 "TAP" READS "CLICK" ON A COMPUTER (the judges play the
+  - Since v2.3.3615 "TAP" READS "CLICK" ON A COMPUTER (the judges play the
     desktop version): `deskWords(s)` (src/game/deskWords.js) swaps tap, taps,
     tapped, tapping as the words are SHOWN, under `(pointer:fine)` only, never
     in the data (quest-lines counts the townsfolk's characters). The quest

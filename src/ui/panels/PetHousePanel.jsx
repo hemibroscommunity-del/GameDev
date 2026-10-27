@@ -1,5 +1,5 @@
 import React from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { BT_AUDIO, ELEMENTS, MAX_PET_SLOTS, PET_EVOLUTION_TIERS } from '@/data/index.js'; /* v2.3.3120: enchantPet, evolvePet retired */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 

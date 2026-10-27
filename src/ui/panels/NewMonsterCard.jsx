@@ -4,7 +4,7 @@ import { codexEntry } from '@/data/monsterCodex.js';
 import { codexAnnouncement, codexAnnounceDone, codexOpenPage, ANNOUNCE_MS } from '@/game/monsterCodex.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
 import { PetPortrait } from '@/ui/petPortrait.jsx';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 
 /* ═══ v2.3.3336: NEW MONSTER -- AN ANNOUNCEMENT YOU CAN TAP ═══
  * Owner, playtesting: "Make the new codex entry for monsters as a 'new

@@ -5,7 +5,7 @@ import { deriveQuestLog, trackedQuestId, setTrackedQuest } from '../sheet/questM
 import { questDetailBus } from '../sheet/questDetailBus.js';
 import { NPC_DATA } from '../../../data/gameDisplay.js';
 import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3580: the townsfolk's pictures at their version */
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 
 /* v2.3.1673: the quest giver's portrait, looked up by the NAME the quest
    chain stores — the same key getNpcQuest already matches on, so there is no
@@ -148,7 +148,7 @@ export const QuestDetailPanel = () => {
             Ready to hand in — go and see {quest.npc}.
           </div>
           <div style={{ fontSize: 12, lineHeight: 1.45, color: COL.text2, marginTop: 3 }}>
-            {/* v2.3.3612: "click him" on a computer */}
+            {/* v2.3.3615: "click him" on a computer */}
             {deskWords(`Find ${quest.npc} in town and tap him to talk. He pays the reward there.`)}
           </div>
         </div>

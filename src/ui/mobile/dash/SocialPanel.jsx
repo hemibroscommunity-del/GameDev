@@ -3,7 +3,7 @@ import { COL, panelStyle, getState } from './common.js';
 import { getFriendRows, lastSeenText, getBlocked, removeFriend as modelRemove, blockPlayer as modelBlock } from '../sheet/friendsModel.js';
 import { friendPortrait } from '../sheet/friendPortraits.js';
 import { friendsSrv } from '../sheet/friendsSync.js';            /* v2.3.1324 */
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 
 /* v2.3.1232: Lantern Slate pass.  v2.3.1297 (round-5): Blocked behind
    overflow, inline action strip, honest empty/reconnect states.

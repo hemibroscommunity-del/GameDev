@@ -59,7 +59,7 @@ async function waitCoach(P, want, ms = 30000) {
 
 /* a level-up, held at its settled frame: where its medallion and caption are */
 async function burstAt(P) {
-  /* v2.3.3612: the middle of the hold, read from the burst's own numbers -- a
+  /* v2.3.3615: the middle of the hold, read from the burst's own numbers -- a
      fixed 1500 was past the whole of it once v2.3.3608 halved the hold (1.3 s
      in all), and a burst past its end draws nothing */
   await P.page.evaluate((ms) => { window.__btLevelUpFreeze = ms; }, Math.round(LEVELUP_RUN_MS + LEVELUP_HOLD_MS / 2));

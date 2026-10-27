@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 /* v2.3.2131: the stat rows below became tappable explainers -- see the
    note on sheetRow.  The words live in infoGlossary so the hero sheet and
    anywhere else that ever shows these rows read from one copy. */

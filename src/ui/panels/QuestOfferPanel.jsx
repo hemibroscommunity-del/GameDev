@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { PROG3_SKILL_META } from '@/data/prog3.js';
 import { QuestFrame, QuestCloseX, QuestPay, QuestCaption, QuestSlot, QuestClaimButton, QuestClaimed, QUEST_COIN } from './questArt.jsx';
 import { flyQuestRewards } from '@/game/questFly.js';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 
 /* ═══ v2.3.1820: THE DECISION, ON ITS OWN SCREEN ═══
  *

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3612: ON A COMPUTER, "TAP" READS "CLICK" ═══
+/* ═══ v2.3.3615: ON A COMPUTER, "TAP" READS "CLICK" ═══
    The owner, 2026-10-26: the judges play the DESKTOP version.  The game's
    words were written for a phone: "Tap Race!", "tap a log in your Bag",
    "tap TRAP".  On a computer every one of those is a click, and a judge reading

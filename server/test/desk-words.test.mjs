@@ -1,4 +1,4 @@
-/* ON A COMPUTER, "TAP" READS "CLICK" -- v2.3.3612 (src/game/deskWords.js).
+/* ON A COMPUTER, "TAP" READS "CLICK" -- v2.3.3615 (src/game/deskWords.js).
  *
  * The owner, 2026-10-26: the judges play the desktop version.  The game's
  * words were written for a phone ("Tap Race!", "tap a log in your Bag", "tap

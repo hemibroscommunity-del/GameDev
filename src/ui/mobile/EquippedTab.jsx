@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { inventoryBus } from './inventoryBus.js';
 import { INV, FONT, RARITY_BORDER } from './inventoryStyles.js';
 import { ItemArt } from './ItemArt.jsx';

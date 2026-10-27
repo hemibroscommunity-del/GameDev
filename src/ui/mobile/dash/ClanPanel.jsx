@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState, openGameWindow } from './common.js';
 import { clanPartyOn, allyTagShown } from '@/game/alliance.js';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — spec
    empty state, identity strip with the clan icon, module header +

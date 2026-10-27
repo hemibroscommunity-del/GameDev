@@ -528,7 +528,7 @@ import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
 import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers; v2.3.3522: + each one's picture */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3612: "tap" reads "click" on a computer */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
  * The server holds the surge as a flat amount PER REGEN TICK (660 ms); this
@@ -7138,7 +7138,7 @@ export var BroTown = function BroTown(_ref0) {
                 /* If NPC has available quest, hint at it */
                 if (npcQuest && npcQuest.status === 'available' && distToPlayer < 100) {
                   npc.chatBubble = {
-                    text: deskWords('I have a task for you! Tap me.'),   /* v2.3.3612: "Click me." on a computer */
+                    text: deskWords('I have a task for you! Tap me.'),   /* v2.3.3615: "Click me." on a computer */
                     ts: Date.now(),
                     isQuest: true
                   };
@@ -13410,7 +13410,7 @@ export var BroTown = function BroTown(_ref0) {
       overflow: 'hidden',
       textOverflow: 'ellipsis'
     }
-  }, deskWords(questMsg.title)),   /* v2.3.3612: "tap" reads "click" on a computer */
+  }, deskWords(questMsg.title)),   /* v2.3.3615: "tap" reads "click" on a computer */
   questMsg.sub && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
