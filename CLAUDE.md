@@ -3972,6 +3972,12 @@ remnant to migrate server-side, not a mode to preserve.
     ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
     town's white square only without them; `__btMinimap.buildings`,
     `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
+    Each wears its Enter button's picture (v2.3.3522); since v2.3.3630 in its
+    own colours, ringed in a thin dark outline and drawn 20 px, BIGGER THAN
+    THE FOOTPRINT (the owner: "just do the colored icons but oversized so they
+    aren't competing with the buildings color and size"; v2.3.3614's white
+    symbols on dark discs before): wheelBuildingIcons.js `drawIcon`,
+    wheelMinimap.js `BLD_ICON_PX`; docs/specs/menus-2026-10-19.md.
   - Since v2.3.3277 YOUR PARTY IS ON THE MAPS -- the owner's "Yes do
     suggested", the party's map-markers follow-up (ARCHITECTURE-HANDOFF D):
     each member in the party's blue (the UI's Info blue `#5D93D2`, ringed

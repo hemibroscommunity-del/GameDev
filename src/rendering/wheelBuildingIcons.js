@@ -14,9 +14,10 @@
  * to ICON_PX on a canvas as it lands, the 256 px image dropped -- sixteen
  * decoded at full size would be 4 MB for marks 42 device px across.  A shut
  * building's picture gets a grey copy (its pixels' luminance, baked: the
- * canvas never filters a picture, TRAPS §42).  Since v2.3.3614 each is a
- * white symbol on a dark grey disc (drawDisc's note), the shut one's symbol
- * a mid grey.  Let go on leaving the Wheel
+ * canvas never filters a picture, TRAPS §42).  v2.3.3614 made each a white
+ * symbol on a dark grey disc; since v2.3.3630 each is its picture in its own
+ * colours again, drawn bigger than the building under it and ringed in a thin
+ * dark outline (drawIcon's note).  Let go on leaving the Wheel
  * (freeWheelBuildingIcons, from freeZoneAssets): the minimap's sprites are
  * taken off them first (`hold`'s clear), as a sprite left on a destroyed
  * texture throws in the next frame (CLAUDE.md, the ZONE-ASSET rule).
@@ -38,26 +39,22 @@ const _tex = Object.create(null);      /* 'plot' or 'plot:grey' -> Texture */
 let _loading = null;
 const _live = new Set();
 
-/* ═══ v2.3.3614: A WHITE SYMBOL ON A DARK GREY DISC ═══
-   The owner, 2026-10-26: "The icons on the minimap that represent each
-   business need to be totally different. It blends in with the building
-   visually. It needs to be on a plain circle background maybe dark gray and
-   the symbol drawing representing the building in white."  The pictures were
-   drawn as they are, in colour, on the roof's own terracotta.  Each is now a
-   plain dark grey disc under the same picture made WHITE BY ITS OWN LIGHT:
-   its darkest lines a light grey, its brightest quarter white (SYM_GREY_LO,
-   SYM_WHITE_SHARE), so the anvil keeps its horn and the vault its dial -- a flat
-   white silhouette turned the envelope into a white box and the dice into
-   two blobs (the preview compared both).  The picture's see-through margin is
-   cut first, so every symbol fills the same share of its disc (SYMBOL_K).
-   The world map draws the same canvas at each door: one look for a building
-   on both maps.  A shut building's symbol is a mid grey (none is shut today,
+/* ═══ v2.3.3630: THE PICTURE IN ITS COLOURS, BIGGER THAN ITS BUILDING ═══
+   v2.3.3614 drew each as a white symbol on a dark grey disc (the owner, then:
+   "It blends in with the building visually").  The owner, 2026-10-27: "I
+   think instead of the white minimap icons you should just do the colored
+   icons but oversized so they aren't competing with the buildings color and
+   size".  So each is the picture its Enter button wears, in its own colours
+   again, its see-through margin cut so every one fills the same share of its
+   square (fitSymbol), ringed in a thin dark outline (OUTLINE canvas px, the
+   minimap's keyline colour) so it stands off a roof's terracotta, and the
+   minimap draws it bigger than the footprint under it (wheelMinimap.js
+   BLD_ICON_PX): the picture is what you read, the roof a base under it.  The
+   world map draws the same canvas at each door.  A shut building's copy is
+   the picture's luminance in the controls' greys (none is shut today,
    v2.3.3539). */
-const DISC = '#2E3438', DISC_KEY = '#0E1214';
-const SYMBOL_K = 0.68;          /* the symbol's longer side, of the disc's width */
-const SYM_GREY_LO = 170;        /* a symbol's darkest line, a light grey */
-const SYM_WHITE_SHARE = 0.25;   /* its brightest quarter is white (whiten) */
-const SYM_SHUT = 0.62;          /* a shut building's symbol, of white */
+const OUTLINE = 3;              /* canvas px of dark ring round the picture's silhouette (~1 CSS px drawn) */
+const OUTLINE_COL = '#0B161B';  /* the minimap's keyline (C_BUILDING_KEY) */
 
 /** The picture's opaque box, drawn into `box` px (contained), as a canvas. */
 function fitSymbol(img, box) {
@@ -88,45 +85,44 @@ function fitSymbol(img, box) {
   a.width = 0;
   return out;
 }
-/** The symbol made white by its own light (the header's note); `shut` greys
-    it.  Each picture is lifted by its OWN light: the brightest quarter of its
-    pixels white, the rest down to SYM_GREY_LO by their luminance -- a fixed
-    lift left the gavel's dark wood a dull grey beside the envelope's white. */
-function whiten(cv, shut) {
+/** A shut building's copy: the picture's luminance squeezed into the
+    controls' greys (tools/ui/cut-small-icons.py grey), as v2.3.3522 had it. */
+function greyOut(cv) {
   const g = cv.getContext('2d');
   try {
     const d = g.getImageData(0, 0, cv.width, cv.height);
     const p = d.data;
-    const lum = (i) => (0.2126 * p[i] + 0.7152 * p[i + 1] + 0.0722 * p[i + 2]) / 255;
-    const hist = new Uint32Array(256);
-    let n = 0;
-    for (let i = 0; i < p.length; i += 4) if (p[i + 3] > 24) { hist[Math.round(lum(i) * 255)]++; n++; }
-    let want = Math.ceil(n * (1 - SYM_WHITE_SHARE)), at = 0, lHi = 1;
-    for (let b = 0; b < 256; b++) { at += hist[b]; if (at >= want) { lHi = b / 255; break; } }
-    lHi = Math.max(0.2, lHi);
     for (let i = 0; i < p.length; i += 4) {
-      let v = SYM_GREY_LO + (255 - SYM_GREY_LO) * Math.min(1, lum(i) / lHi);
-      if (shut) v *= SYM_SHUT;
-      p[i] = p[i + 1] = p[i + 2] = Math.round(v);
+      const l = (0.2126 * p[i] + 0.7152 * p[i + 1] + 0.0722 * p[i + 2]) / 255;
+      p[i] = p[i + 1] = p[i + 2] = Math.round(30 + 184 * l);
     }
     g.putImageData(d, 0, 0);
   } catch (e) { /* tainted: drawn as it is */ }
   return cv;
 }
-function drawDisc(img, shut) {
+function drawIcon(img, shut) {
   const S = BUILDING_ICON_PX;
   const cv = document.createElement('canvas');
   cv.width = cv.height = S;
   const g = cv.getContext('2d');
-  g.beginPath();
-  g.arc(S / 2, S / 2, S / 2 - 1.5, 0, Math.PI * 2);
-  g.fillStyle = DISC;
-  g.fill();
-  g.lineWidth = 2;
-  g.strokeStyle = DISC_KEY;
-  g.stroke();
-  const sym = whiten(fitSymbol(img, Math.round(S * SYMBOL_K)), shut);
-  g.drawImage(sym, Math.round((S - sym.width) / 2), Math.round((S - sym.height) / 2));
+  const sym = fitSymbol(img, S - 2 * OUTLINE - 2);
+  if (shut) greyOut(sym);
+  const x = Math.round((S - sym.width) / 2), y = Math.round((S - sym.height) / 2);
+  /* the outline: the silhouette in the keyline's colour, stamped round it,
+     then the picture over it */
+  const sil = document.createElement('canvas');
+  sil.width = sym.width; sil.height = sym.height;
+  const gs = sil.getContext('2d');
+  gs.drawImage(sym, 0, 0);
+  gs.globalCompositeOperation = 'source-in';
+  gs.fillStyle = OUTLINE_COL;
+  gs.fillRect(0, 0, sil.width, sil.height);
+  for (let a = 0; a < 16; a++) {
+    const t = (a / 16) * Math.PI * 2;
+    g.drawImage(sil, x + Math.round(Math.cos(t) * OUTLINE), y + Math.round(Math.sin(t) * OUTLINE));
+  }
+  g.drawImage(sym, x, y);
+  sil.width = 0;
   sym.width = 0;
   return cv;
 }
@@ -138,8 +134,8 @@ function loadOne(plot) {
     img.decoding = 'async';
     img.onload = () => {
       try {
-        _canvas[plot] = drawDisc(img, false);
-        if (WHEEL_SHUT_DOORS.indexOf(plot) >= 0) _grey[plot] = drawDisc(img, true);
+        _canvas[plot] = drawIcon(img, false);
+        if (WHEEL_SHUT_DOORS.indexOf(plot) >= 0) _grey[plot] = drawIcon(img, true);
       } catch (e) { /* drawn without it */ }
       resolve();
     };
@@ -194,20 +190,29 @@ if (typeof window !== 'undefined') {
   try {
     window.__btBuildingIcons = () => ({ loaded: Object.keys(_canvas).length, grey: Object.keys(_grey).length, textures: Object.keys(_tex).length,
       bytes: (Object.keys(_canvas).length + Object.keys(_grey).length) * BUILDING_ICON_PX * BUILDING_ICON_PX * 4,
-      /* v2.3.3614 (mp-wheelmap): each picture's opaque pixels -- the disc's
-         dark grey, the symbol's near-white, and any with colour left in it */
+      /* v2.3.3630 (mp-wheelmap): each picture's opaque pixels -- how many
+         carry colour (the picture's own), how many are the dark outline, how
+         many a light grey or white (the old whitened symbol was all of them),
+         and whether a disc fills its corners (none should) */
       look: () => Object.keys(_canvas).map((plot) => {
-        const d = _canvas[plot].getContext('2d').getImageData(0, 0, BUILDING_ICON_PX, BUILDING_ICON_PX).data;
-        let n = 0, disc = 0, white = 0, colour = 0;
+        const S = BUILDING_ICON_PX;
+        const d = _canvas[plot].getContext('2d').getImageData(0, 0, S, S).data;
+        let n = 0, dark = 0, colour = 0, white = 0;
         for (let i = 0; i < d.length; i += 4) {
           if (d[i + 3] < 250) continue;
           n++;
           const r = d[i], g = d[i + 1], b = d[i + 2];
-          if (Math.max(r, g, b) - Math.min(r, g, b) > 14) colour++;
-          else if (r < 70) disc++;
-          else if (r >= 200) white++;
+          if (Math.max(r, g, b) - Math.min(r, g, b) > 24) colour++;
+          else if (Math.max(r, g, b) < 40) dark++;
+          else if (Math.min(r, g, b) >= 170) white++;
         }
-        return { plot, n, disc, white, colour };
+        /* a disc would fill the square's ring at 45 degrees; the pictures leave it see-through somewhere */
+        let ring = 0, ringN = 0;
+        for (let a = 0; a < 32; a++) {
+          const t = (a / 32) * Math.PI * 2, x = Math.round(S / 2 + Math.cos(t) * (S / 2 - 3)), y = Math.round(S / 2 + Math.sin(t) * (S / 2 - 3));
+          ringN++; if (d[4 * (y * S + x) + 3] > 200) ring++;
+        }
+        return { plot, n, dark, colour, white, ring: Math.round(100 * ring / ringN) };
       }) });
   } catch (e) { /* no window */ }
 }

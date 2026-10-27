@@ -173,10 +173,14 @@ const DOOR_W = 3.5, DOOR_H = 2;
    under it still shows, a shut one's in grey.  Made ONCE, with the town (a
    Sprite each in townIcons, over the footprints, under every mark that
    moves) -- never redrawn a frame.
-   v2.3.3614: each picture is a white symbol on a dark grey disc (the owner:
-   "It blends in with the building visually"; wheelBuildingIcons.js
-   drawDisc), so it reads on the roof's terracotta. */
-const BLD_ICON_PX = 14, BLD_ICON_UP = 1.5;
+   v2.3.3614: each picture was a white symbol on a dark grey disc (the owner:
+   "It blends in with the building visually").
+   v2.3.3630: in its own colours again, BIGGER THAN THE BUILDING -- the owner:
+   "just do the colored icons but oversized so they aren't competing with the
+   buildings color and size": BLD_ICON_PX across (the footprints are ~17 x 9),
+   ringed in a thin dark outline (wheelBuildingIcons.js drawIcon), so the
+   picture is what you read and the roof is a base under it. */
+const BLD_ICON_PX = 20, BLD_ICON_UP = 1.5;
 
 /* v2.3.3108: the land's colour lifted toward white to read on the dark plate,
    as the top bar had it (ZoneHeader.jsx landTint, k 0.42) */
