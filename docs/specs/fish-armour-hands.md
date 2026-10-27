@@ -22,6 +22,11 @@ ended, over the gauntlet and the guard. Measured on a phone with the bro's skin
 purple (so nothing else reads as skin): 77-182 px of bare skin over the plate in
 every frame of the cast, for copper, iron and black steel alike.
 
+![Before and after: copper, iron and black steel, each pair before | after](../shots/fisharmour-before-after.webp)
+
+(The test's bro has purple skin so the bare skin stands out; each pair is the
+game before this version, then after.)
+
 ## The fix
 
 With a torso plate worn (its frame and its metal, `_chestFrameOf`):
