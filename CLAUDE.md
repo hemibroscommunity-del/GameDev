@@ -3895,6 +3895,16 @@ remnant to migrate server-side, not a mode to preserve.
       against `caps.hardenkeep`; on average H5 now takes 326 attempts, ~2
       million gold and ~1,471 bars (was ~4.3 million attempts); `hardening`
       §6: docs/specs/hardening.md "v2.3.3529: a failure keeps the level".
+    - since v2.3.3667 THE WOODWORKER IS BUILT LIKE THE BLACKSMITH -- the
+      owner: "I also want the woodworking menu rehauled and modeled after the
+      blacksmith menu": one row of tabs (Bow, Staff, Hardened, Upgrade, Traps),
+      costs as HAVE/NEED chips, one lock chip, the XP star, the next wood
+      locked as the goal; Upgrade hardens the held bow and staff (a short
+      Woodworking level a lock now); Make only ASKS (`forge_weapon`) and
+      waits for the worker's answer -- the old one took the wood and gold and
+      paid the XP in the browser first; both windows draw from
+      `src/ui/panels/buildings/BenchParts.jsx`; no worker change;
+      `mp-woodwork`, `mp-hardenbars` §6: docs/specs/woodwork-rehaul.md.
   - Since v2.3.3140 DAILY REWARDS, NOTHING AT LOGIN -- the owner's layered
     brief ("a small reward just for logging in, daily quests ... feeding a
     longer progression track"), then: "I find the login page with the chest
@@ -4074,6 +4084,24 @@ remnant to migrate server-side, not a mode to preserve.
       its hue window), on your fire-lighter and a peer's (`_peerFigFrames`); the
       skin probe reads the figure first; `?firelog=0`, `window.__btFireLog()`;
       `mp-firelog`: docs/specs/fire-log.md.
+    - since v2.3.3666 THE FIRE CATCHES IN CODE -- the owner: "replace the log
+      and flame in the animation with ... code drawn smoke and flames", then
+      "Keeping the log is optional": the strip's painted flame, sparks, smoke
+      and glow are taken out of frames 3-7 by tools/build_fire_clean.py (the
+      owner's frames kept in assets/skill-anim-src/firemaking-strip-painted.webp;
+      `--check`), and the campfire's own `Fire` (campfireFx.js) catches on the
+      strip's log at the strike (frame 3, `FIRE_STRIKE_FRAME`) at the
+      campfire's spot (`fireLightSpot`), grows 0 -> 1 -> 2 with sparks and
+      smoke and no logs of its own, and the campfire ADOPTS it when the light
+      ends (one fire, its flame in place, its logs appearing); a peer's light
+      the same (`_peerLights`); the log is KEPT (the figure kneels against it,
+      no legs drawn behind it); the bro no longer jumps 14 world px aside at a
+      light's start and end nor hops 7 up at frame 4 (src/data/fireStrip.js,
+      GENERATED: `FIRE_FRAME_OFF`, `FIRE_FIGURE_X`, `_fireFrameShift`); the
+      light stays where it began; the `campfire` cue at the strike
+      (`cueLater`); a fire-lighter packs 4.81 MB, not ~6.3, so three fit the
+      peers' 16 MB (`PEER_FIG_EST.fire` 4.9); `window.__btCampfireHide`;
+      `fire-strip` suite, `mp-firestart`: docs/specs/fire-start.md.
     - since v2.3.3623 AN ARMOURED ANGLER'S HANDS ARE GAUNTLETS -- the owner:
       "The fishing animation gets messed up around the hands when the
       character is wearing torso armor": the fish pose's top overlay

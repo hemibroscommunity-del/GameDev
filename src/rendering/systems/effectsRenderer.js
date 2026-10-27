@@ -305,7 +305,8 @@ import { clipBoxOrSelf } from '../hairClip.js';   /* v2.3.3459: a stand-in's hai
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
-import { CampfireFx } from '../campfireFx.js'; /* v2.3.2846: the lit-log campfire, in pixel art */
+import { CampfireFx, fireLightSpot } from '../campfireFx.js'; /* v2.3.2846: the lit-log campfire, in pixel art; v2.3.3666: + where a peer's light catches */
+import { FIRE_STRIP_V, FIRE_FRAME_OFF, FIRE_FIGURE_X, FIRE_STRIKE_FRAME } from '../../data/fireStrip.js'; /* v2.3.3666: the fire-lighter's strip, measured (tools/build_fire_clean.py) */
 import { getEquip, onEquipChange } from '../gearCatalog.js';   /* v2.3.3640: + the greaves' change (_rebakeLegBodies) */
 import { getShirt, onShirtChange } from '../traits/shirtCatalog.js';   /* v2.3.3146: + the change, for the dressed stand-in shirts */
 import { getShirtColor, shirtFill, onShirtColorChange } from '../traits/shirtColorCatalog.js';
@@ -758,7 +759,26 @@ const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
    shared with every other player's fire-lighter on your screen (the SPEC
    table).  One strip, no legless twin.  FIRE_KEEP_BOXES puts the fist's
    islands back into the figure for everybody, drawings or not. */
-const FIRE_URL = '/sprites/skills/firemaking-strip.webp?v=2.3.1715';
+const FIRE_URL = `/sprites/skills/firemaking-strip.webp?v=${FIRE_STRIP_V}`;   /* v2.3.3666: the strip without its painted fire */
+/* ═══ v2.3.3666: WHERE EACH FRAME OF THE FIRE-LIGHTER IS DRAWN ═══
+   The owner: "work on the fire starting animation to replace the log and flame
+   in the animation with actual log art and code drawn smoke and flames".  The
+   strip's painted fire is out (tools/build_fire_clean.py); the light's fire is
+   the campfire's own, drawn in code from the strike on (campfireFx.js).  For a
+   fire that stays put on the log, the log has to stay put, and it did not:
+   the second row of the owner's sheet (frames 4-7) was drawn 27 art px higher
+   and a few to the side, the figure with it -- the bro hopped ~7 world px up at
+   frame 4 and dropped back when the light ended.  And the figure stands at
+   x 243 of his 384 px frame, so he was drawn 14 world px to the side of you
+   at both ends of every light.  Both measured by the tool (src/data/fireStrip.js);
+   this is where frame `fi` goes, in world px, for a figure scaled (sx, sy):
+   the figure's middle on your x, each frame's log on frame 0's.  Everything
+   drawn with the figure (clothes, armour, hair, drawings) is placed from it,
+   so it follows. */
+function _fireFrameShift(fi, sx, sy) {
+  const o = FIRE_FRAME_OFF[fi] || FIRE_FRAME_OFF[0];
+  return [(FIRE_FW / 2 - FIRE_FIGURE_X + o[0]) * sx, o[1] * sy];
+}
 /* ═══ v2.3.3660: THE FIRE-LIGHTER'S LOG IS WOOD ═══
    The owner, 2026-10-27: "check all the animations for ghost remnants ... or
    areas for cleanup".  mp-ghostaudit's fire-lighter lit his fire on a hot pink
@@ -870,7 +890,9 @@ const STANDIN_INK = Object.freeze({
 const PEER_FIG_BUDGET = 16e6;   /* bytes, every peer figure together */
 /* a figure's size before it is made (the bake's own, rounded up), for the
    allowance; what it really holds is counted once it is in */
-const PEER_FIG_EST = Object.freeze({ cook: 4.6e6, fire: 6.3e6, chop: 2.1e6,
+/* v2.3.3666: a fire-lighter 6.3 -> 4.9: the strip without its painted fire
+   packs trimmed to 4.81 MB (mp-peercolours, mp-fireink), so three fit */
+const PEER_FIG_EST = Object.freeze({ cook: 4.6e6, fire: 4.9e6, chop: 2.1e6,
   /* v2.3.3439: the farmer's, uncropped (their frames' whole strips) */
   farmhoe: 1.7e6, farmwater: 1.1e6, farmkneel: 0.7e6 });
 const PEER_FIG_IDLE_MS = 15000;
@@ -3106,6 +3128,9 @@ export class EffectsRenderer {
     if (typeof window !== 'undefined') {
       const _cfx = this._campfireFx;
       window.__btCampfire = () => (_cfx ? _cfx.probe() : null);
+      /* v2.3.3666: QA (mp-firestart) -- the fires hidden while the figure is
+         photographed alone */
+      window.__btCampfireHide = (on) => { if (_cfx) _cfx.qaHide = !!on; };
     }
     this.projectileLayer = layers.projectiles;
     /* ═══ v2.3.1915: A SPENT ARROW IS SCENERY, NOT A PROJECTILE ═══
@@ -13240,7 +13265,9 @@ export class EffectsRenderer {
    * the depth sort so you can walk behind it.  Pruning of expired peer fires
    * moved with it (CampfireFx._records). */
   _updateCampfire(S, now) {
-    if (this._campfireFx) this._campfireFx.update(S, now);
+    /* v2.3.3666: + the peers' lights (_updateRemoteExtraction) and when the
+       strip strikes, for the light's own fire */
+    if (this._campfireFx) this._campfireFx.update(S, now, this._peerLights, FIRE_STRIKE_FRAME * FIRE_FRAME_MS);
   }
 
   _updateFiremaking(S, now) {
@@ -13283,17 +13310,26 @@ export class EffectsRenderer {
        zone's perspective curve" -- and left your own copy alone, because on a
        normal zone the curve is 1 and nothing looks wrong. Same sentence, same
        fix, your figure this time. See the peer twin at _updateRemoteExtraction. */
-    const pscale = zonePlayerScale(S.currentZone, S.player.x, S.player.y, TILE);
+    /* v2.3.3666: where the light began, not where you are now: its fire (the
+       campfire's, campfireFx) catches at that spot and stays there, so the
+       figure and its log do too if you walk off mid-light.  (fm.y is your y +6,
+       BroTown's record.) */
+    const _ax = Number.isFinite(fm.x) ? fm.x : S.player.x;
+    const _ay = Number.isFinite(fm.y) ? fm.y - 6 : S.player.y;
+    const pscale = zonePlayerScale(S.currentZone, _ax, _ay, TILE);
     const s = (FH / FIRE_FH) * pscale;
     /* v2.3.2500: ...times your build, as the walking body is (see _localBuild).
        The sprite is anchored (0.5, 1) -- its feet -- so growing y grows the
        figure upward and needs no lift, unlike the frame-centred body. */
     const _b = _localBuild();
     sp.scale.set(s * _b.sx, s * _b.sy);
-    sp.x = S.player.x;
+    /* v2.3.3666: the figure's middle on you, the frame's log on frame 0's
+       (_fireFrameShift) */
+    const [_fdx, _fdy] = _fireFrameShift(fi, sp.scale.x, sp.scale.y);
+    sp.x = _ax + _fdx;
     /* v2.3.2846: boots on your boots (see FIRE_FEET_ROW); was
        `S.player.y + 6 * pscale`, which planted the frame's bottom at your hips */
-    sp.y = S.player.y + standFootDy(pscale) + (FIRE_FH - FIRE_FEET_ROW) * sp.scale.y;
+    sp.y = _ay + standFootDy(pscale) + (FIRE_FH - FIRE_FEET_ROW) * sp.scale.y + _fdy;
     /* v2.3.2287 QA probe -- the sibling of __btChopFigure, which the fire
        figure never had. */
     if (typeof window !== 'undefined') {
@@ -13302,8 +13338,12 @@ export class EffectsRenderer {
         visible: !!sp.visible, scaleY: sp.scale.y,
         drawnH: +(Math.abs(sp.scale.y) * FIRE_FH).toFixed(2),
         x: sp.x, y: sp.y, gearScaleY: _fc ? _fc.scale.y : null,
-        /* v2.3.2846: where the figure's boots land (FIRE_FEET_ROW) */
-        bootsY: +(sp.y - (FIRE_FH - FIRE_FEET_ROW) * sp.scale.y).toFixed(2),
+        /* v2.3.2846: where the figure's boots land (FIRE_FEET_ROW); v2.3.3666:
+           the ground line, whatever the frame's shift */
+        bootsY: +(sp.y - _fdy - (FIRE_FH - FIRE_FEET_ROW) * sp.scale.y).toFixed(2),
+        /* v2.3.3666: the frame drawn, and the figure's middle (FIRE_FIGURE_X)
+           and the log's place on it (frame 0's), in world px */
+        fi, figX: +(sp.x - _fdx).toFixed(2), shift: [+_fdx.toFixed(2), +_fdy.toFixed(2)],
       });
     }
     sp.visible = true;
@@ -13423,6 +13463,10 @@ export class EffectsRenderer {
     const pool = this._remoteSkillSprites;
     const others = (S && S.others) || {};
     const zone = (S && S.currentZone) || 'town';
+    /* v2.3.3666: the peers lighting a fire this frame (their light's fire,
+       for campfireFx); a light not drawn this frame is let go below */
+    if (!this._peerLights) this._peerLights = new Map();
+    const _litNow = new Set();
     /* hide every pooled sprite up front; the active ones re-show below. */
     for (const ent of pool.values()) {
       /* v2.3.2858: was this peer's figure drawn last frame?  (The clock below.) */
@@ -13616,7 +13660,12 @@ export class EffectsRenderer {
          they walked -- so the second light was drawn frozen on the last frame
          for its whole length.  A figure that was not drawn last frame starts
          over (mp-fireink relights and watches for it). */
-      if (ent._exCode !== code || !ent._wasOn) { ent._exCode = code; ent._exStart = now; }
+      if (ent._exCode !== code || !ent._wasOn) {
+        ent._exCode = code; ent._exStart = now;
+        /* v2.3.3666: a light stays where it began, as yours does (its fire is
+           fixed there: campfireFx's light, published below) */
+        ent._fireAt = code === 'fire' ? { x: ox, y: oy } : null;
+      }
       ent._onNow = true;
       const _base = spec.from || 0;
       /* v2.3.3314: the frames of the figure drawn -- the lumberjack's are the
@@ -13686,7 +13735,10 @@ export class EffectsRenderer {
          and this figure stayed full size — a giant cook standing over a dot.
          Same curve, same position, so the two now shrink together.
          v2.3.2915: at the figure's own spot when it has one, as yours is. */
-      const pscale = _spot ? _spot.pscale : zonePlayerScale(zone, ox, oy, TILE);
+      /* v2.3.3666: a light where it began (ent._fireAt) */
+      const _fa = code === 'fire' && ent._fireAt ? ent._fireAt : null;
+      const _ox = _fa ? _fa.x : ox, _oy = _fa ? _fa.y : oy;
+      const pscale = _spot ? _spot.pscale : zonePlayerScale(zone, _ox, _oy, TILE);
       const s = (spec.h / spec.fh) * pscale;   /* v2.3.1715: per-strip frame height, was a hardcoded 220 */
       /* v2.3.2500: and THEIR build, relayed as hg/fr (peerCosmetics) and read
          here exactly as entityRenderer reads it for their walking body. */
@@ -13702,15 +13754,26 @@ export class EffectsRenderer {
       }
       const _sxR = s * _bR.sx, _syR = s * _bR.sy;   /* v2.3.2500 */
       sp.scale.set(_sign < 0 ? -_sxR : _sxR, _syR);
-      sp.x = _spot ? _spot.x : ox;   /* v2.3.2915 */
+      /* v2.3.3666: the fire-lighter's frame placed as yours is (_fireFrameShift) */
+      const _fsh = code === 'fire' ? _fireFrameShift(_fiClamped, sp.scale.x, _syR) : null;
+      sp.x = _spot ? _spot.x : _fsh ? _ox + _fsh[0] : ox;   /* v2.3.2915 */
       /* v2.3.2846: the fire-lighter plants its boots on the peer's boots (see
          FIRE_FEET_ROW) -- the same fix as your own figure.
          v2.3.2915: chop and cook stand where yours do (_spot, above); the old
          +6 below their position is only the fallback now. */
       sp.y = _spot ? _spot.y
         : code === 'fire'
-          ? oy + standFootDy(pscale) + (FIRE_FH - FIRE_FEET_ROW) * _syR
+          ? _oy + standFootDy(pscale) + (FIRE_FH - FIRE_FEET_ROW) * _syR + _fsh[1]
           : oy + 6 * pscale;                    /* foot offset shrinks with the figure */
+      /* v2.3.3666: and their light's fire, catching on their log from the
+         strike: campfireFx draws it (CampfireFx.update's `lights`), and their
+         campfire_lit takes it over where it burns */
+      if (code === 'fire') {
+        const _spt = fireLightSpot(zone, _ox, _oy);
+        this._peerLights.set(String(id), { x: _spt.x, y: _spt.y, zone, litAt: ent._exStart,
+          strikeAt: ent._exStart + FIRE_STRIKE_FRAME * FIRE_FRAME_MS });
+        _litNow.add(String(id));
+      }
       sp.visible = true;
       /* v2.3.2856: a drawn peer's cook gets their drawings' layer over the
          shared figure, on the same frame of the matching strip (_peerCookInk).
@@ -13930,6 +13993,9 @@ export class EffectsRenderer {
         for (const [k, e] of cache) if (now - e.used > PEER_INK_IDLE_MS) this._dropPeerStandInInk(kind, k);
       }
     }
+    /* v2.3.3666: a light no longer drawn has ended (or they left): its fire
+       burns down, or is taken over by their campfire (campfireFx) */
+    for (const k of this._peerLights.keys()) if (!_litNow.has(k)) this._peerLights.delete(k);
   }
 
   /* ── Sword swing animation (v2.3.910) ──
