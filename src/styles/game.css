@@ -1183,10 +1183,14 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
    (--nml-b-left, --nml-b-k, and [data-nml-beside]).  The switch is HERE, on
    the shield button being in the page at all, so it happens in the very frame
    the button appears -- a poll's lag left the badge over the shield for a
-   moment (mp-nmlfoe).  Transform and `left` only (TRAPS §42). */
+   moment (mp-nmlfoe).  Transform and `left` only (TRAPS §42).  The step
+   aside is INSTANT (`transition:none` on the beside rule: a transition is the
+   new state's), the way back to the middle a 160 ms slide -- a slide aside
+   left the badge over the shield for its 160 ms, and mp-nmlfoe's step 1
+   measured it there. */
 .bt-nml-badge{left:var(--nml-c-left,50%);transform:var(--nml-c-tf,translateX(-50%));transform-origin:left center;
   transition:left 160ms ease-out,transform 160ms ease-out}
-html:has([data-shield]) .bt-nml-badge[data-nml-beside]{left:var(--nml-b-left);transform:scale(var(--nml-b-k))}
+html:has([data-shield]) .bt-nml-badge[data-nml-beside]{left:var(--nml-b-left);transform:scale(var(--nml-b-k));transition:none}
 @keyframes bt-nml-line{0%,100%{opacity:.35}50%{opacity:.95}}
 .bt-nml-line{animation:bt-nml-line 1.8s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){
