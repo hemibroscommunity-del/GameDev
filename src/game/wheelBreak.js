@@ -156,10 +156,10 @@ export function strikeWheelObject(S, hit) {
      off it is (and `k` the same share for the break below); one too far off
      to hear plays nothing */
   if (!(hit.vol != null && hit.vol < 0.005)) { try { BT_AUDIO.propHit(k.mat, { vol: hit.vol != null ? hit.vol : 0.32, big, crown: k.canopy || null }); } catch (e) { /* audio is best-effort */ } }
-  /* the count */
+  /* the count (v2.3.3679: a slime's blast says how many hits it is, `blast`) */
   let d = _dmg.get(oi);
   if (!d || now - d.last > HEAL_MS) d = { d: 0, last: now };
-  d.d += hit.special ? 3 : 1;
+  d.d += Number.isFinite(hit.blast) && hit.blast > 0 ? hit.blast : hit.special ? 3 : 1;
   d.last = now;
   _dmg.set(oi, d);
   const broke = d.d >= (k.hp || 8);
@@ -181,6 +181,63 @@ export function strikeWheelObject(S, hit) {
     }
   }
   return { mat: k.mat, broke };
+}
+
+/* ═══ v2.3.3679: A SLIME'S BLAST BREAKS WHAT STANDS IN IT ═══
+   The owner, 2026-10-27: "It would be fun to make the slime explosions
+   destroy any nearby props (trees)".  Every object whose footprint (the
+   ground it stops you on, the thing a shot hits) lies within the blast's
+   radius of its middle -- the radius the worker hurt players with -- takes
+   the blast as hits: enough to break it (its `hp`), or for a building
+   BLAST_BUILDING_HITS, a quarter of its 24, which sets it smouldering where
+   the blast met it (rendering/buildingFire.js catches at 25%).  Nearest first,
+   at most BLAST_MAX; only the BLAST_SOUNDS nearest heard (at the blast's own
+   share of your ear, `k`), so ten trees going at once is not a roar.  On your
+   screen alone, as every break is: the worker sends the blast to every phone
+   near it, and each breaks its own copy of the same trees. */
+export const BLAST_BUILDING_HITS = 6;
+const BLAST_MAX = 40, BLAST_SOUNDS = 3;
+export function blastWheelObjects(S, x, y, r, opts) {
+  const o = sameWorld();
+  if (!S || !o || !o.boxOf || !o.boxes || !o.x || !o.y || !Number.isFinite(x) || !Number.isFinite(y) || !(r > 0)) return null;
+  const k = opts && typeof opts.k === 'number' ? Math.max(0, Math.min(1, opts.k)) : 1;
+  const reach = r + 600;   /* an object's footprint is never this far from its foot */
+  const found = [];
+  for (let i = 0; i < o.n; i++) {
+    if (Math.abs(o.x[i] - x) > reach || Math.abs(o.y[i] - y) > reach) continue;
+    const b0 = o.boxOf[i], b1 = o.boxOf[i + 1];
+    if (!(b1 > b0) || _broken.has(i)) continue;   /* no footprint: nothing a shot could hit either */
+    let best = Infinity, nx = 0, ny = 0;
+    for (let b = b0; b < b1; b++) {
+      const q = 4 * b;
+      const cx = Math.max(o.boxes[q], Math.min(x, o.boxes[q + 2]));
+      const cy = Math.max(o.boxes[q + 1], Math.min(y, o.boxes[q + 3]));
+      const dd = Math.hypot(cx - x, cy - y);
+      if (dd < best) { best = dd; nx = cx; ny = cy; }
+    }
+    if (best <= r) found.push({ oi: i, d: best, nx, ny });
+  }
+  found.sort((a, b) => a.d - b.d);
+  let hit = 0, broke = 0;
+  for (let j = 0; j < found.length && j < BLAST_MAX; j++) {
+    const f = found[j];
+    const kind = wheelObjectKind(f.oi);
+    if (!kind) continue;
+    const bld = isBuilding(kind.id);
+    const heard = j < BLAST_SOUNDS ? k : 0;
+    const res = strikeWheelObject(S, {
+      oi: f.oi,
+      /* where its pieces come from: a building where the blast met its wall,
+         anything else just above its foot */
+      x: bld ? f.nx : o.x[f.oi], y: bld ? f.ny - 24 : o.y[f.oi] - 18, gy: bld ? f.ny : o.y[f.oi],
+      ang: Math.atan2(o.y[f.oi] - y, o.x[f.oi] - x), weapon: 'blast', special: true,
+      blast: bld ? BLAST_BUILDING_HITS : (kind.hp || 8), vol: 0.32 * heard, peer: true, k: heard,
+    });
+    if (res) { hit++; if (res.broke) broke++; }
+  }
+  wheelBreakStats.blasts = (wheelBreakStats.blasts || 0) + 1;
+  wheelBreakStats.blastBroke = (wheelBreakStats.blastBroke || 0) + broke;
+  return { found: found.length, hit, broke };
 }
 
 /** Is catalog id `id` one of Brotown's buildings (its manifest says so)? */

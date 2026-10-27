@@ -33,6 +33,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armou
 import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
 import { applyElemHit, applyHitShove, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3014: + the poison's and the storm's ticks; v2.3.3264: + a player's blow's shove */
 import { echoHitSfx, heroHitSfx, earVol, deathVol, shotHitMe } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's; v2.3.3248: a far death, slam or blast heard and felt by distance; v2.3.3343: + was a blocked blow the ball */
+import { slimeBlastAftermath } from '@/game/slimeBlast.js'; /* v2.3.3679: a slime's blast breaks the trees near it and leaves soot */
 import { cue, cueAt, peerShare, cuePeer, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game; v2.3.3523: + cueLater, a peer's shot */
 import { hurtGrunt } from '@/game/ownSounds.js'; /* v2.3.3462: your hurt grunt (the owner's recordings) */
 import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
@@ -1405,6 +1406,9 @@ export function processGameEvent(type, payload, S, deps) {
                   if (isFinite(_sbX) && isFinite(_sbY)) {
                     if (!S.slimeShockwaves) S.slimeShockwaves = [];
                     if (S.slimeShockwaves.length < 8) S.slimeShockwaves.push({ x: _sbX, y: _sbY, r: _sbR, at: Date.now() });
+                    /* v2.3.3679: and what it leaves: the trees and props in
+                       its radius broken (in the Wheel), soot on the ground */
+                    slimeBlastAftermath(S, _sbX, _sbY, _sbR);
                     var _sbPl = S.player;
                     if (_sbPl && !S._dying) {
                       var _sbDx = _sbPl.x - _sbX, _sbDy = _sbPl.y - _sbY;
@@ -1702,6 +1706,7 @@ export function processGameEvent(type, payload, S, deps) {
                 var _spR = Math.max(10, Math.min(600, Number(payload.radius) || 110));
                 if (!S.slimeShockwaves) S.slimeShockwaves = [];
                 if (S.slimeShockwaves.length < 8) S.slimeShockwaves.push({ x: _dbaX, y: _dbaY, r: _spR, at: Date.now() });
+                slimeBlastAftermath(S, _dbaX, _dbaY, _spR);   /* v2.3.3679: its soot (a dungeon has no Wheel objects to break) */
                 var _spPl = S.player;
                 if (_spPl && !S._dying) {
                   var _spDx = _spPl.x - _dbaX, _spDy = _spPl.y - _dbaY;

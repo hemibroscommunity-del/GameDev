@@ -689,6 +689,7 @@ import { halloweenOn } from '@/game/season.js';   /* v2.3.3395: Halloween week's
 import { BUBBLE_SKINS, bubbleSkinFor } from '@/game/bubbleSkins.js';   /* v2.3.3522: a townsperson's bubble white, a player's dark */
 import { DropLinesFx } from '../dropLines.js';   /* v2.3.3627: each drop a line of words rising over the monster (v2.3.3616's columns before) */
 import { ElemWindupFx } from '../elemWindup.js';   /* v2.3.3619: a monster's element, seen as it winds up */
+import { SootMarks } from '../sootMarks.js';   /* v2.3.3679: a slime's blast leaves soot */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -3123,6 +3124,8 @@ export class EffectsRenderer {
     this.screenFXLayer = layers.screenFX;
     this.lootLayer = layers.groundLoot;
     this.splatLayer = layers.groundSplatter;
+    /* v2.3.3679: a slime's blast leaves soot, under the splats (sootMarks.js) */
+    this._soot = new SootMarks(layers.groundDetails || layers.groundSplatter);
     this.nodeLayer = layers.gatherNodes;
     /* v2.3.3062: over the buildings and trees, under the player -- the
        signposts' plates (wheelSignposts.js) */
@@ -11728,6 +11731,7 @@ export class EffectsRenderer {
     this._updateSnowballBursts(S, now);
     this._updateArrowBlasts(S, now);
     this._updateSlimeShockwaves(S, now);
+    this._soot.update(S, now);   /* v2.3.3679 */
   }
 
   /* ═══ v2.3.2912: THE SLIME'S BLAST HAS A SHOCKWAVE ═══
@@ -11794,6 +11798,9 @@ export class EffectsRenderer {
     const l = this._snowballBursts || [];
     return { playing: l.length, loaded: SNOWBALL_BURST.frames.length, inLayer: l.filter((f) => f.sp && !f.sp.destroyed && !!f.sp.parent).length };
   }
+
+  /* v2.3.3679 QA probe: the soot marks on the ground */
+  sootProbe() { return this._soot ? this._soot.probe() : null; }
 
   /* QA probe (house style, see arrowBlastProbe). */
   slimeShockwaveProbe() {
