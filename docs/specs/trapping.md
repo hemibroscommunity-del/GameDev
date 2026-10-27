@@ -422,7 +422,7 @@ Upright, TRAP is now a round button in that same column, one slot above Shield
 Bash (`CTL_SLOT.trap` = 1, `ctlColumn`), drawn in the controls' own skin with
 the box trap's picture: grey when it cannot be set, glowing while it is set.
 What it says -- TRAP, your traps (×12) and the true odds, or why it is grey
-("Requires Trapping 3", "No box traps") -- is in a small tag beside it, toward
+("Requires Trapping 3", "Get closer") -- is in a small tag beside it, toward
 the middle of the screen, which takes no touch. A tap does what it did.
 
 Sideways nothing lies at the bottom middle (the Block button is far to the
@@ -432,4 +432,26 @@ was, with T on a keyboard.
 Tests: mp-trapping (its round button, its tag taking no touch, every state's
 words as before), mp-btnlayout and mp-abilslot (the column and the clusters
 unchanged): 482 checks.
+
+## v2.3.3626: no trap in the bag, no TRAP pop-up
+
+The owner, 2026-10-27: "just don't show the trap message for monsters unless
+you have a trap in your inventory to use."
+
+TRAP came up over every Wheel monster you targeted. With no box trap it was
+grey and said "No box traps", and most players have never made one, so for
+most fights it was an extra message for nothing.
+
+Now `trapButtonView` (game/trapping.js) returns nothing when the bag holds no
+`trap_box`. That covers the round button upright, the pop-up sideways and on
+a computer, and the T key, which reads the same view. With a trap in the bag
+everything is as before: the odds, the grey "Requires Trapping N", "Not on
+safe ground", "Get closer" and "Collection full". A mark already set still
+counts down, because a set mark is checked before the bag.
+
+Nothing changes on the worker. It still refuses a `trap_arm` with no trap
+(`no-trap`).
+
+Tests: mp-trapping step 3. A targeted monster with the bag emptied by the
+worker shows no button, `__btTrap().view` is null, and T sends nothing.
 

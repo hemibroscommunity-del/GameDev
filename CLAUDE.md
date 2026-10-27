@@ -3656,7 +3656,10 @@ remnant to migrate server-side, not a mode to preserve.
       middle lay under the Block button, up whenever a monster is targeted --
       the owner: "The trap monster message appears over other UI elements"),
       its words in a tag beside it taking no touch; sideways and on a computer
-      the pop-up as before (TrapButton.jsx, mp-trapping);
+      the pop-up as before (TrapButton.jsx, mp-trapping); since v2.3.3626 NOT
+      THERE AT ALL with no box trap in the bag (the owner: "don't show the
+      trap message for monsters unless you have a trap in your inventory to
+      use"; `trapButtonView` null, so T too; a set mark still counts down);
     - `trap_arm` marks it 15 s; at the kill (`_trapRollOnKill`, combat.js, before
       dmgByPlayer is cleared; a slime judged at the blow) each armer with 5% of
       the damage rolls four checks at the fourth root (0-3 shakes drawn in code,
