@@ -98,11 +98,14 @@ const readFrames = (P, pid, ms, poke) => P.page.evaluate(async ({ pid, dur, poke
     if (Math.round(orig.width) !== FW || Math.round(orig.height) !== FH) return { err: `frame ${orig.width}x${orig.height}` };
     const got = blit(src, f.x, f.y, f.width, f.height, trim ? trim.x : 0, trim ? trim.y : 0);
     const raw = rawOf(k);
+    /* `key`: the log's own pixels still in the key -- only where the FILE has
+       it, as a pink trouser is in the key's hue window too (the first run
+       counted Pink's trousers) */
     let key = 0, fileKey = 0, bark = 0, h = 2166136261 >>> 0;
     for (let o = 0; o < got.length; o += 4) {
-      if (isKey(got, o)) key++;
       if (isKey(raw, o)) {
         fileKey++;
+        if (isKey(got, o)) key++;
         if (isBark(got, o)) bark++;
         continue;
       }
@@ -170,9 +173,12 @@ export async function run(ctx) {
 async function scenario({ browser, wsPort, webPort, rec }, opened) {
   const Pk = await H.newPlayer(browser, { name: 'Pink', wsPort, webPort, dpr: 2, init: LOOK, world: 'wheel' });
   opened.push(Pk);
-  const Bf = await H.newPlayer(browser, { name: 'Before', wsPort, webPort, guest: true, dpr: 2, init: LOOK, world: 'wheel', query: 'firelog=0' });
+  /* not guests: a guest's page reloads into '?guest=1' on the way in and
+     loses `firelog=0` (the first run's Before made its log wood); every player
+     has a browser context of its own, so each is its own character anyway */
+  const Bf = await H.newPlayer(browser, { name: 'Before', wsPort, webPort, dpr: 2, init: LOOK, world: 'wheel', query: 'firelog=0' });
   opened.push(Bf);
-  const Wt = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort, guest: true, dpr: 2, init: PLAIN, world: 'wheel' });
+  const Wt = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort, dpr: 2, init: PLAIN, world: 'wheel' });
   opened.push(Wt);
   const errs = [];
   const CAST = [[Pk, 'Pink'], [Bf, 'Before'], [Wt, 'Watcher']];
@@ -211,21 +217,31 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   rec.ok(`Pink: the log is there, in bark, on every frame (${barkShare.map((s) => Math.round(s * 100) + '%').join(' ')})`,
     barkShare.every((s) => s >= 0.9), barkShare);
   const befKey = Object.values(bK).map((m) => m.key);
-  rec.ok(`Before (?firelog=0): the log is magenta, so the test can see it (${befKey.join(' ')})`, befKey.every((n) => n >= 5000), befKey);
+  rec.ok(`Before (?firelog=0): the log is magenta, so the test can see it (${befKey.join(' ')})`,
+    Object.values(bK).every((m) => m.key >= 5000 && m.key >= 0.9 * m.fileKey), befKey);
   const same = Array.from({ length: FRAMES }, (_, k) => pK[k].hash === bK[k].hash);
   rec.ok(`only the log changed: every pixel the file does not key is the same on both pages, the pink trousers too (${same.filter(Boolean).length} of ${FRAMES} frames)`,
     same.every(Boolean), same);
   rec.ok(`__btFireLog: Pink made ${pink.log && pink.log.wood} px wood, Before none`,
     !!(pink.log && pink.log.on && pink.log.wood > 50000 && before.log && before.log.on === false), { pink: pink.log, before: before.log });
 
-  /* ── Pink's light on the watcher's screen, baked there in Pink's colours ── */
+  /* ── Pink's light on the watcher's screen, baked there in Pink's colours ──
+     the two in sight of each other first (mp-firepeer), Pink a step aside */
+  await H.waitMutualSight(Wt, Pk).catch(() => {});
+  await Pk.page.evaluate(() => { const S = window._gameState.current; if (S && S.player) S.player.x += 70; });
+  await Pk.page.waitForTimeout(1500);
   await relightLoop(Pk, 60000);
   const peer = await readFrames(Wt, pinkId, 50000, null);
   await Pk.page.evaluate(() => { window.__qaRelightGen = (window.__qaRelightGen || 0) + 1; const S = window._gameState.current; S._firemaking = null; S._campfire = null; });
   const wK = (peer && peer.byK) || {};
   const wN = Object.keys(wK).length;
   console.log(`    Watcher, Pink's light: key ${fmt(wK, (m) => m.key)} | bark ${fmt(wK, (m) => m.bark + '/' + m.fileKey)}`);
-  rec.ok(`Watcher: Pink's fire-lighter read on ${wN} frame(s) (guard)`, wN >= 2, peer && peer.err);
+  const seenBy = wN >= 2 ? null : await Wt.page.evaluate((pid) => {
+    const S = window._gameState.current, o = S.others && S.others[pid], R = window._pixiRenderer;
+    return { seen: !!o, ex: o ? (o._ex || null) : null, probe: R && R.remoteSkillProbe ? R.remoteSkillProbe(pid) : null,
+      fire: window.__btStandIns ? window.__btStandIns().fire : null };
+  }, pinkId).catch((e) => String(e));
+  rec.ok(`Watcher: Pink's fire-lighter read on ${wN} frame(s) (guard)`, wN >= 2, seenBy || (peer && peer.err));
   const wKey = Object.values(wK).map((m) => m.key);
   rec.ok(`Watcher: no magenta key on Pink's fire-lighter either (${wKey.join(' ')})`, wN >= 2 && wKey.every((n) => n === 0), wKey);
   rec.ok(`no page errors (${errs.length})`, errs.length === 0, errs.slice(0, 5));

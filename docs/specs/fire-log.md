@@ -68,7 +68,24 @@ The checks:
 - The Watcher's copy of Pink has no key colour either.
 - There are no page errors.
 
-RESULTS
+Its run, 12 checks of 12:
+
+| frame | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| the file's key (the log), px | 10,527 | 10,456 | 10,086 | 10,178 | 8,706 | 8,554 | 9,027 | 9,117 |
+| still magenta, Pink | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| still magenta, Before (`?firelog=0`) | 10,527 | 10,456 | 10,086 | 10,178 | 8,706 | 8,554 | 9,026 | 9,117 |
+| in bark, Pink | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
+
+- Every pixel the file does not key was the same on both pages, on all eight
+  frames, so the pink trousers kept their pink.
+- `__btFireLog` said 76,650 px made wood.
+- The watcher's copy of Pink's fire-lighter, read on three frames, had no
+  magenta either.
+
+The first run's faults were the test's. It counted Pink's pink trousers as
+magenta (they sit in the key's hue window), and the "before" page was a guest,
+whose page reloads into `?guest=1` on the way in and lost `firelog=0`.
 
 ## Not changed
 
