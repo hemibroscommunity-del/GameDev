@@ -29,22 +29,18 @@
  *      H<n>";
  *   5. bars short: the chip reads "have/need" in red and Harden is off; the
  *      worker's bag agrees with the game's;
- *   6. the Woodworker (caps.hardenedwood): a pine bow in hand takes HARDENED
- *      PINE WOOD, not bars -- "Need 1 Hardened Pine Wood more"; the choices
- *      Bow, Staff, Traps and Harden two by two; the Harden tab's five woods,
- *      each its own picture, Softwood waiting on Woodworking 5; twelve Pine
- *      Logs made into two Hardened Pine Wood with "All 2" (two logs over, 800
- *      Woodworking XP, said over your head, the worker's bag the same); and
- *      the bow's button "Attempt H1 (500G + 1 Hardened Pine Wood · 80%)",
- *      the worker taking one of it and 500 gold;
- *      v2.3.3481: and the bow's hardening line names its skill -- against a
- *      worker with caps.hardenwoodskill "Needs Woodworking Lv5" (the owner:
- *      "Do woodworking"; a pine bow is tier 1, 5 x 1), else "Gated on
- *      Blacksmithing" -- and against that worker Woodworking 5 is set (the
- *      admin lever) before the attempt, which it would refuse at Woodworking 1;
- *      v2.3.3524: against caps.forgeladder "Needs Woodworking Lv1", the level
- *      that makes pine (the owner: "Hardening should only require the same
- *      smithing level as it takes to smithing that item tier");
+ *   6. the Woodworker (caps.hardenedwood):  v2.3.3667: the Blacksmith's window
+ *      now -- its five picture tabs in one row (Bow, Staff, Hardened, Upgrade,
+ *      Traps); a pine bow in hand takes HARDENED PINE WOOD, not bars: the
+ *      Upgrade tab's bow row reads "0/1" in red with Harden off; the row asks
+ *      the skill the worker asks (`data-harden-gate`: Woodworking 1 against
+ *      caps.forgeladder, the level that makes pine; 5 x the tier against
+ *      caps.hardenwoodskill alone; else Blacksmithing); the Hardened tab's five
+ *      woods, each its own picture, Softwood waiting on Woodworking 5; twelve
+ *      Pine Logs made into two Hardened Pine Wood with "All 2" (two logs over,
+ *      800 Woodworking XP, said over your head, the worker's bag the same);
+ *      and the bow's row "2/1" with Harden on, the worker taking one of it and
+ *      500 gold;
  *   7. no page errors.
  * Pictures: tools/qa/mp/out/hardenbars-*.png.
  */
@@ -283,56 +279,72 @@ async function body({ P, wsPort, rec, errors }) {
   await H.equipWeapon(P, 'bow', 'rangedWeapon', 'ranged');
   await P.page.waitForFunction(() => { const b = window._gameState.current.rpg.rangedWeapon; return b && b.gearBase === 'ww_pine'; }, null, { timeout: 8000 }).catch(() => {});
   const ww = door('woodworker');
-  const wOpen = ww ? await enter(ww, 'button[data-harden-go]') : false;
+  /* v2.3.3667: the Woodworker is the Blacksmith's window now (the owner's
+     "modeled after the blacksmith menu"): a row of tabs, the bow's and the
+     staff's hardening on the Upgrade tab, each a row of chips (the
+     Blacksmith's Harden row, read here as it is above) */
+  const wOpen = ww ? await enter(ww, '[data-woodwork]') : false;
   await P.page.waitForTimeout(800);
-  const wwBtn = () => P.page.evaluate(() => {
-    const b = document.querySelector('button[data-harden-go]');
-    return b ? { text: b.textContent.trim(), on: !b.disabled, cost: (b.querySelector('[data-harden-cost]') || { getAttribute: () => null }).getAttribute('data-harden-cost') } : null;
+  const wwTab = async (id) => { await P.page.click(`[data-ww-type="${id}"]`).catch(() => {}); await P.page.waitForTimeout(300); };
+  const bowRow = () => P.page.evaluate(() => {
+    const row = document.querySelector('[data-harden-row="bow"]');
+    if (!row) return null;
+    const mat = row.querySelector('[data-harden-mat]');
+    const chip = row.querySelector('[data-harden-mat] > span');
+    const go = row.querySelector('[data-harden-go]');
+    return {
+      text: row.innerText.replace(/\s+/g, ' ').trim(),
+      mat: mat ? mat.getAttribute('data-harden-mat') : null,
+      chip: chip ? chip.innerText.trim() : null,
+      chipColor: chip ? getComputedStyle(chip).color : null,
+      gate: row.getAttribute('data-harden-gate'),
+      on: !!(go && !go.disabled), go: go ? go.textContent.trim() : null,
+    };
   });
   const hw = () => H.readState(P, (S) => ({ hw: ((S.rpg.inventory || {}).hardened_pine) || 0, logs: ((S.rpg.inventory || {}).wood_pine_log) || 0,
     coins: S.rpg.coins || 0, xp: (((S.rpg.lifeSkills || {}).woodworking) || {}).xp || 0, lvl: (((S.rpg.lifeSkills || {}).woodworking) || {}).level || 1,
     bow: S.rpg.rangedWeapon ? { h: S.rpg.rangedWeapon.hardness || 0, gb: S.rpg.rangedWeapon.gearBase } : null }));
   const caps2 = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.hardenedwood));
   rec.ok('the worker advertises caps.hardenedwood', caps2, caps2);
+
+  /* the tabs: one row, the Blacksmith's */
+  const tabs = await P.page.evaluate(() => {
+    const g = document.querySelector('[data-ww-tabs]');
+    const cards = Array.from(document.querySelectorAll('[data-ww-type]')).map((b) => { const r = b.getBoundingClientRect(); return { t: b.getAttribute('data-ww-type'), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }; });
+    return { n: g ? g.getAttribute('data-ww-tabs') : null, cards };
+  });
+  rec.ok(`the Woodworker's tabs are one row, as the Blacksmith's: Bow, Staff, Hardened, Upgrade, Traps (${tabs.cards.map((c) => c.t).join(', ')})`,
+    wOpen && tabs.n === '5' && tabs.cards.map((c) => c.t).join() === 'bow,staff,hardwood,upgrade,traps'
+      && new Set(tabs.cards.map((c) => c.y)).size === 1 && tabs.cards.every((c) => c.h >= 44), tabs);
+
+  await wwTab('upgrade');
+  await P.page.waitForSelector('[data-harden-row="bow"]', { timeout: 4000 }).catch(() => {});
   const h0 = await hw();
-  const w0 = await wwBtn();
-  rec.ok(`a pine bow takes HARDENED PINE WOOD, not bars: with none, its Harden button says "${w0 && w0.text}"`,
-    wOpen && !!w0 && !!h0.bow && h0.bow.gb === 'ww_pine' && h0.hw === 0 && w0.text === 'Need 1 Hardened Pine Wood more' && !w0.on, { w0, h0 });
-  /* v2.3.3481: the skill the line names -- Woodworking and the level the
-     worker asks (5 x the tier) against caps.hardenwoodskill, else the old
-     words (WoodworkPanel.jsx `data-harden-gate`) */
+  const w0 = await bowRow();
+  rec.ok(`a pine bow takes HARDENED PINE WOOD, not bars: with none, the Upgrade tab's bow row reads "${w0 && w0.chip}" in red and Harden is off ("${w0 && w0.text}")`,
+    !!w0 && !!h0.bow && h0.bow.gb === 'ww_pine' && h0.hw === 0 && w0.mat === 'hardened_pine' && w0.chip === '0/1'
+      && w0.chipColor === 'rgb(216, 99, 93)' && !w0.on && w0.go === 'Harden', { w0, h0 });
+  /* v2.3.3481: the skill the row asks -- Woodworking and the level the worker
+     asks against caps.hardenwoodskill, else Blacksmithing (an older worker) */
   const woodGate = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.hardenwoodskill));
   /* v2.3.3524: against caps.forgeladder the level that makes pine, 1 */
   const ladder = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.forgeladder));
   const pineLvl = ladder ? 1 : 5;
-  const gate0 = await P.page.evaluate(() => {
-    const el = document.querySelector('[data-harden-gate]');
-    return el ? { gate: el.getAttribute('data-harden-gate'), text: el.textContent.trim() } : null;
-  });
-  rec.ok(`...and its line names the skill it asks for: ${woodGate ? 'Woodworking Lv' + pineLvl + ' (caps.hardenwoodskill' + (ladder ? ', caps.forgeladder' : '') + ')' : 'Blacksmithing (an older worker)'} ("${gate0 && gate0.text}")`,
-    !!gate0 && (woodGate ? gate0.gate === 'woodworking:' + pineLvl && new RegExp('Needs Woodworking Lv' + pineLvl + '$').test(gate0.text)
-      : gate0.gate === 'blacksmithing' && /Gated on Blacksmithing$/.test(gate0.text)), { woodGate, ladder, gate0 });
+  rec.ok(`...and the row asks the skill the worker asks: ${woodGate ? 'Woodworking ' + pineLvl : 'Blacksmithing (an older worker)'} (${w0 && w0.gate})`,
+    !!w0 && (woodGate ? w0.gate === 'woodworking:' + pineLvl && (pineLvl > 1 ? /Woodworking \d/.test(w0.text) : !/Woodworking \d/.test(w0.text))
+      : w0.gate === 'blacksmithing'), { woodGate, ladder, w0 });
+  await shot(P, 'woodworker-upgrade-none');
 
-  /* the Harden choice: two by two with Bow, Staff and Traps */
-  const make = await P.page.evaluate(() => {
-    const g = document.querySelector('[data-ww-make]');
-    const cards = Array.from(document.querySelectorAll('[data-ww-type]')).map((b) => { const r = b.getBoundingClientRect(); return { t: b.getAttribute('data-ww-type'), x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width) }; });
-    return { n: g ? g.getAttribute('data-ww-make') : null, cards };
-  });
-  const rows = new Set(make.cards.map((c) => c.y));
-  rec.ok(`the Woodworker's choices are Bow, Staff, Traps and Harden, two by two (${make.cards.map((c) => c.t).join(', ')})`,
-    make.n === '4' && make.cards.map((c) => c.t).join() === 'bow,staff,traps,hardwood' && rows.size === 2 && make.cards.every((c) => c.w > 120), make);
-  await P.page.click('[data-ww-type="hardwood"]');
+  await wwTab('hardwood');
   await P.page.waitForSelector('[data-hw-row="hardened_pine"]', { timeout: 4000 }).catch(() => {});
   const tab0 = await P.page.$$eval('[data-hw-row]', (els) => els.map((el) => ({ key: el.getAttribute('data-hw-row'), text: el.innerText.replace(/\s+/g, ' ').trim(),
     img: (() => { const im = el.querySelector('img'); return !!(im && im.complete && im.naturalWidth > 0 && /hardened-/.test(im.src)); })(),
     make: (() => { const b = el.querySelector('[data-hw-make]'); return b ? { t: b.textContent.trim(), d: b.disabled } : null; })() })));
   const pineRow = tab0.find((r) => r.key === 'hardened_pine') || null;
   const softRow = tab0.find((r) => r.key === 'hardened_softwood') || null;
-  rec.ok(`the Harden tab: five woods, each its own picture; Hardened Pine Wood wants 5 Pine Logs (+400 XP), Softwood waits on Woodworking 5 ("${pineRow && pineRow.text}" / "${softRow && softRow.text}")`,
+  rec.ok(`the Hardened tab: five woods, each its own picture; Hardened Pine Wood wants 5 Pine Logs (+400 XP), Softwood waits on Woodworking 5 ("${pineRow && pineRow.text}" / "${softRow && softRow.text}")`,
     tab0.length === 5 && tab0.every((r) => r.img) && !!pineRow && /Hardened Pine Wood/.test(pineRow.text) && /0\/5/.test(pineRow.text) && /\+400 XP/.test(pineRow.text)
       && pineRow.make && pineRow.make.d && !!softRow && /Woodworking 5/.test(softRow.text) && softRow.make && softRow.make.d, tab0);
-  /* twelve pine logs: two pieces, two logs over */
   await H.grant(wsPort, me, 'item', { invKey: 'wood_pine_log', count: 12 });
   await P.page.waitForFunction(() => ((window._gameState.current.rpg.inventory || {}).wood_pine_log || 0) >= 12, null, { timeout: 8000 }).catch(() => {});
   await P.page.waitForSelector('[data-hw-all="hardened_pine"]', { timeout: 4000 }).catch(() => {});
@@ -363,18 +375,17 @@ async function body({ P, wsPort, rec, errors }) {
     await P.page.waitForFunction(() => ((((window._gameState.current.rpg || {}).lifeSkills || {}).woodworking || {}).level || 0) >= 5, null, { timeout: 8000 }).catch(() => {});
   }
 
-  /* back to the bow: one Hardened Pine Wood and 500 gold */
-  await P.page.click('[data-ww-type="bow"]');
-  await P.page.waitForSelector('button[data-harden-go]', { timeout: 4000 }).catch(() => {});
+  /* back to the Upgrade tab: one Hardened Pine Wood and 500 gold */
+  await wwTab('upgrade');
+  await P.page.waitForSelector('[data-harden-row="bow"] [data-harden-go]', { timeout: 4000 }).catch(() => {});
   await P.page.waitForTimeout(300);
-  const w1 = await wwBtn();
-  rec.ok(`...and the bow's Harden button: "${w1 && w1.text}"`, !!w1 && w1.text === 'Attempt H1 (500G + 1 Hardened Pine Wood · 80%)' && w1.on && w1.cost === 'hardened_pine:1', w1);
-  await P.page.evaluate(() => { const b = document.querySelector('button[data-harden-go]'); if (b) b.scrollIntoView({ block: 'center' }); });
-  await P.page.waitForTimeout(300);
+  const w1 = await bowRow();
+  rec.ok(`...and the bow's row: "${w1 && w1.chip}" hardened pine, Harden on ("${w1 && w1.text}")`,
+    !!w1 && w1.mat === 'hardened_pine' && w1.chip === '2/1' && w1.on && /500/.test(w1.text) && /80%/.test(w1.text), w1);
   await shot(P, 'woodworker');
   const before = await hw();
   const nR = await P.page.evaluate(() => window.__hardenReplies.length);
-  await P.page.click('button[data-harden-go]').catch(() => {});
+  await P.page.click('[data-harden-row="bow"] [data-harden-go]').catch(() => {});
   await P.page.waitForFunction((n) => window.__hardenReplies.length > n, nR, { timeout: 8000 }).catch(() => {});
   const wr = await P.page.evaluate((n) => window.__hardenReplies[n] || null, nR);
   let after = before;

@@ -17,8 +17,8 @@ import { isGearOnLevel } from '@/data/oneFormula.js'; /* v2.3.3544: armour asks 
 import { hardenTierOf, hardenCost, hardenLevelFor } from '@/data/hardenCosts.js'; /* v2.3.3139: bars and a doubling gold ladder; v2.3.3524: the level that makes the tier */
 import { forgeLevelFor, forgeOffered, forgeStatReq } from '@/data/forgeLadder.js'; /* v2.3.3524: the forge's ladder */
 import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3524: the Upgrade tab's hammer */
-import { BUFF_ICON } from '@/data/smallIcons.js'; /* v2.3.3524: the XP pill's "XP" star */
 import { amuletTabShown } from '@/game/forgeTabs.js'; /* v2.3.3535: the Amulet tab only with gold for it */
+import { C, ITEMS_V, COIN, XP, Icon, Cost, Chip, Lock, Btn, Row } from './BenchParts.jsx'; /* v2.3.3667 */
 
 /* ═══ v2.3.2826: THE BLACKSMITH, REBUILT ═══
  *
@@ -64,83 +64,12 @@ import { amuletTabShown } from '@/game/forgeTabs.js'; /* v2.3.3535: the Amulet t
  * data-salvage-row / data-salvage-go / data-essence-row / data-essence-go /
  * data-salvage-said (v2.3.3141). */
 
-const C = {
-  sheet: '#1E2E34', well: '#111E23', raised: '#293B41', card: '#24363C',
-  text: '#F4F0E7', sub: '#B6C1BE', mute: '#8D9B98', faint: '#667875',
-  brass: '#D8AA58', good: '#55B98A', bad: '#D8635D', line: 'rgba(229,237,233,.11)',
-};
-const ITEMS_V = '?v=2.3.1774';
-const COIN = '/icons/ui/cur-gold.webp';
-/* v2.3.3524: the owner's "XP" star (the buff badge's), not the plain gold
-   sparkle -- "Make the xp pill for smith items a different icon (one that's
-   more obviously 'xp')".  Warmed on the loading screen with the buff badges
-   (smallIcons.js smallIconDomUrls). */
-const XP = BUFF_ICON.xp;
+/* v2.3.3667: the bench's parts (C, Icon, Cost, Chip, Lock, Btn, Row, and the
+   coin, XP star and item-picture version) are in BenchParts.jsx, shared with
+   the Woodworker's window */
 const GOLDBAR = '/icons/ui/cur-goldbar.webp';
 const NUGGET = '/icons/ui/cur-nugget.webp';
 const GEM = '/icons/ui/cur-gem.webp';
-
-const Icon = ({ src, size = 18, fallback }) => (
-  <img src={src} alt="" draggable={false} style={{ width: size, height: size, objectFit: 'contain', flex: 'none' }}
-    onError={(e) => { if (fallback && e.currentTarget.src.indexOf(fallback) < 0) e.currentTarget.src = fallback; else e.currentTarget.style.visibility = 'hidden'; }} />
-);
-
-/* A cost: icon + have/need, green or red. */
-function Cost({ icon, have, need, fallback }) {
-  const ok = have >= need;
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 7px 2px 4px', borderRadius: 999,
-      background: C.well, fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: ok ? C.good : C.bad }}>
-      <Icon src={icon} size={16} fallback={fallback} />{Math.floor(have)}/{need}
-    </span>
-  );
-}
-/* A plain fact chip (XP paid, odds). */
-function Chip({ icon, children, color }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 7px 2px 4px', borderRadius: 999,
-      background: C.well, fontSize: 12, fontWeight: 700, color: color || C.sub }}>
-      {icon ? <Icon src={icon} size={16} /> : null}{children}
-    </span>
-  );
-}
-function Lock({ children }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 999,
-      background: 'rgba(216,99,93,.14)', fontSize: 12, fontWeight: 700, color: '#E59A94' }}>
-      <span className="ls-lock" />{children}
-    </span>
-  );
-}
-function Btn({ on, onClick, children, primary, ...rest }) {
-  return (
-    <button disabled={!on} onClick={() => { if (on) onClick(); }} {...rest}
-      style={{ minHeight: 44, minWidth: 84, padding: '0 14px', borderRadius: 10, fontSize: 13, fontWeight: 800,
-        fontFamily: 'inherit', flex: 'none', cursor: on ? 'pointer' : 'default',
-        border: on ? (primary ? '1px solid #EAC675' : '1px solid rgba(229,237,233,.20)') : `1px solid ${C.line}`,
-        background: on ? (primary ? 'linear-gradient(180deg,#E2B765,#D2A14D)' : C.raised) : '#1A292F',
-        color: on ? (primary ? '#172126' : C.text) : C.mute }}>
-      {children}
-    </button>
-  );
-}
-function Row({ icon, iconFallback, title, badge, children, action, ...rest }) {
-  return (
-    <div {...rest} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 10px', background: C.card,
-      borderRadius: 12, marginBottom: 8 }}>
-      <div style={{ width: 48, height: 48, borderRadius: 10, background: C.well, display: 'grid', placeItems: 'center', flex: 'none', position: 'relative' }}>
-        <Icon src={icon} size={40} fallback={iconFallback} />
-        {badge ? <span style={{ position: 'absolute', right: -4, bottom: -4, padding: '0 5px', borderRadius: 8, background: C.raised,
-          border: `1px solid ${C.line}`, fontSize: 11, fontWeight: 800, color: C.text }}>{badge}</span> : null}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: C.text, marginBottom: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>{children}</div>
-      </div>
-      {action}
-    </div>
-  );
-}
 
 const weaponIcon = (type, tierKey) => {
   const base = type === 'greatsword' ? '/icons/items/great-sword.webp' : '/icons/items/sword.webp';
