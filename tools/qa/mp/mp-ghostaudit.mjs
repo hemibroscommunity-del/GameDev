@@ -623,8 +623,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const lit = await H.waitFor(P, (S) => !!S._firemaking && S._standInBody === true, (v) => v, { timeout: 8000, label: 'lighting' }).catch(() => null);
           summary[`${outfit}/fire`] = { frames: 0, started: !!lit };
           if (lit) {
+            /* v2.3.3651: the light's own fire, drawn in code on the log from
+               the strike since v2.3.3655 (campfireFx), is not the figure:
+               hidden while the light is photographed, on a build with the
+               switch, so its yellows are never read as the tee */
+            await page.evaluate(() => (window.__btCampfireHide ? window.__btCampfireHide(true) : null)).catch(() => {});
             const t0 = await page.evaluate(() => Date.now());
             await sweep(outfit, 'fire', 'south', t0, 1800, 60);
+            await page.evaluate(() => (window.__btCampfireHide ? window.__btCampfireHide(false) : null)).catch(() => {});
           }
           await end(outfit, 'fire');
           await page.keyboard.press('Escape').catch(() => {});

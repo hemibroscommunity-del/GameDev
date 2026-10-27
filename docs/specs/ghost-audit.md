@@ -83,15 +83,19 @@ animation.
 | the pickaxe in skin colour, the miner's tee pinholes | v2.3.3648: `docs/specs/pickaxe-wood.md` |
 | the pink waist jogging north-east and north-west | v2.3.3645 (#1142): `docs/specs/iron-waist.md` |
 | the fire-lighter's magenta log | v2.3.3649 (#1145): `docs/specs/fire-log.md` |
-| the fire's painted flames (the owner's own ask: the fire drawn in code) | v2.3.3655: `docs/specs/fire-start.md` |
+| the fire's painted flames (the owner's own ask: the fire drawn in code) | v2.3.3655 (#1147): `docs/specs/fire-start.md` |
 
 ## Left as they are
 
-- **The fire-lighter's waist and boot.** On the standing frame of lighting a
-  fire, a thin line of the trousers shows at the waist between the plate and the
-  greaves, and a sliver of boot behind the greaves. The fire-lighter is one
-  painted figure with the garments laid over it frame by frame, and they do not
-  quite meet there. It is a few pixels for about half a second.
+- **The fire-lighter's waist and boot.** Lighting a fire in iron, the trousers
+  show between the plate and the greaves: at the waist on the standing frames,
+  on the bent thigh on the kneeling ones, and a sliver of boot behind the
+  greaves' feet. The fire-lighter is one painted figure with the garments laid
+  over it frame by frame, and they do not quite meet there. Measured on
+  v2.3.3655's strip (its painted flames gone, the code fire hidden while the
+  light is photographed): 6 of 31 photos, at most 260 px (the trousers 166 px
+  standing and up to 253 kneeling, the boots up to 44). It is the owner's
+  "Aligning the greaves so the waistband doesn't show", its own piece of work.
 - **The steel plate's mining sheet** has small holes over the skin, 5 to 20 px a
   frame. Whether they show after the armour's bake was not checked.
 - **The tee's pickup sheet** has 28 px of holes over its 29 frames. The pickup
@@ -121,7 +125,7 @@ first run; cooking again drew none):
 | fishing | 21 of 25, 54 | 5, 17 |
 | mining | 11 of 14, 51 | 4, 18 |
 | bow draw | 43 of 168, 15 | 43, 15: the bow's pale wood, not the body |
-| lighting a fire | 31 of 31, 1,622 | 31, 804: the strip's painted flames, read as the tee's yellow |
+| lighting a fire | 31 of 31, 1,622 | 31, 804: the strip's painted flames, read as the tee's yellow; on v2.3.3655's strip 6, 260: the trousers between the plate and the greaves |
 | stand, roll, pickup, staff | 0 | 0 |
 
 - **What is left on the swing, chop, fishing and mining** is at most 18 px a
@@ -129,8 +133,10 @@ first run; cooking again drew none):
   some frames a sliver at the waist between the plate and the greaves. The
   waist is the owner's "align the greaves so the waistband doesn't show", its
   own piece of work.
-- **The fire's 804 px are the painted flames**, which v2.3.3655 takes out of
-  the strip (`docs/specs/fire-start.md`). The fire is drawn in code there, so
-  nothing yellow is left to be read as the tee.
+- **The fire's 804 px were the painted flames**, which v2.3.3655 takes out of
+  the strip (`docs/specs/fire-start.md`); the fire is drawn in code there, and
+  the audit hides it while it photographs the light (`window.__btCampfireHide`,
+  on a build that has it). What shows on that strip is the waist and the boot
+  (above, "Left as they are"): 6 of 31 photos, at most 260 px.
 - **Nothing showed the walking body and a stand-in in the same frame**, in any
   animation, before or after.
