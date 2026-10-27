@@ -67,7 +67,7 @@ export const SHADE = {
      snow shadows are. */
   propSnow: { top: [1.0, 1.0, 1.0],  bot: [0.86, 0.87, 0.90] },
 };
-/* ═══ v2.3.3628: ONE FIGURE'S SHADE, LAID ON ANOTHER'S QUAD ═══
+/* ═══ v2.3.3636: ONE FIGURE'S SHADE, LAID ON ANOTHER'S QUAD ═══
    A sprite shaded across its own quad (`_vShade`) takes `{top, bot}` at its
    quad's top and bottom.  This gives a quad from world y `qTop` to `qBot` the
    values `spec` has at those heights when it runs over a figure's span `span`

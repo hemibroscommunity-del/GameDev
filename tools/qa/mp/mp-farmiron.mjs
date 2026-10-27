@@ -1,4 +1,4 @@
-/* ═══ v2.3.3628: THE FARMER'S IRON IS THE WALKING IRON ═══
+/* ═══ v2.3.3636: THE FARMER'S IRON IS THE WALKING IRON ═══
  *
  * The owner's list of 2026-10-26: "The armor while performing farming
  * gestures is noticeably different color (iron). Try to make it match more

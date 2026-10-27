@@ -985,7 +985,7 @@ def work_point(name, strips):
 # painted, in the game's greys -- and its colour the walking steel's own
 # near-grey.
 
-# v2.3.3628: graded to the STANDING sheets, not the jog's -- the farmer is
+# v2.3.3636: graded to the STANDING sheets, not the jog's -- the farmer is
 # seen beside the bro standing at the bed, and the standing greaves are drawn
 # brighter than the jogging ones (middle grey 0.557 against 0.513): graded to
 # the jog, his iron was 4-8% darker than the same iron a moment before
