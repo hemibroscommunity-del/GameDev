@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d42b1eb0d1ebb08e41e9291a5b38da513b3652c3",
+  "tree": "77127c37b6f9bad7ab17bc4242e753d8d34ddd3a",
+  "committedAt": "2026-10-27T13:42:47-07:00",
+  "subject": "Your new track kept in assets/music-source/2026-10-27/, as supplied (main's server suite green again) (#1156)",
+  "files": 6649,
+  "bytes": 772999578,
+  "listingSha256": "bff2c716e7c131c9cca34954ea5aadef6753bbd480be5c0f8bb8a4f4e6f7e782",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
