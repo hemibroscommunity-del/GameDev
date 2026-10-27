@@ -128,6 +128,7 @@ which the supporter pass is, so a row that turns out to be NC must come out.**
 | The Woodworker's knife (bows, staffs, hardened wood, traps) | `public/sfx/craft/wood-carve.mp3` | "wood carve 5" by **frostnox**, Freesound 796658 | **CONFIRM** |
 | A crop harvested | `public/sfx/farm/farm-harvest.mp3` | "Harvest - Cozy Game SFX" by **heyheytheree**, Freesound 872487 | **CONFIRM** -- its title says "free" |
 | The dodge roll (v2.3.3680) | `public/sfx/player/roll-tumble.mp3` | "goblin fall" by **kneeling**, Freesound 502553 | **CONFIRM** |
+| The double jump's flip (v2.3.3682) | `public/sfx/player/jump-flip.mp3` | "sfx jump flip" by **catthulu**, Freesound 563530 | **CONFIRM** |
 
 > **Note on the Pixabay license.** It permits commercial use and modification
 > without attribution, but it does *not* permit redistributing the audio "as a

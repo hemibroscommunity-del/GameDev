@@ -842,5 +842,27 @@ for (const p of files) {
       && has(SS.SAMPLE_SOURCES, 'roll-tumble') && /502553/.test(src('CREDITS.md')));
 }
 
+/* ── 16. v2.3.3682: the double jump's flip is the owner's "sfx jump flip" ──
+   "I just uploaded the second jump (flip) sound effect to GitHub"
+   (563530__catthulu__sfx-jump-flip). */
+{
+  const { OWNER_SOUNDS } = await import('../../src/data/ownerSoundClips.js');
+  const SS = await import('../../src/data/soundStudio.js');
+  const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');
+  const L0 = (n) => (EVENT_SOUNDS[n] || []).map((L) => L[0]);
+  check('16a the flip is cut by the owner\'s cutter from the recording as supplied, at 24 kHz',
+    has(OWNER_SOUNDS, 'jump-flip') && OWNER_SOUNDS['jump-flip'].low === true && OWNER_SOUNDS['jump-flip'].url === '/sfx/player/jump-flip.mp3'
+      && existsSync(new URL('assets/sfx-source/2026-10-27/563530__catthulu__sfx-jump-flip.wav', root))
+      && /'jump-flip', NEW_SRC \+ '563530__catthulu__sfx-jump-flip\.wav'/.test(src('tools/audio/cut_owner_sounds.py')));
+  check('16b your flip plays it (the second press in the air), and another player\'s flip at their share; a plain jump keeps its push-off',
+    L0('jumpFlip').join() === 'jump-flip' && L0('jumpUp').join() === 'arrow-fly'
+      && /cue\('jumpFlip'\)/.test(strip(src('src/game/jumpActions.js')))
+      && /cuePeer\(S, payload\.flip \? 'jumpFlip' : 'jumpUp'/.test(strip(src('src/networking/gameEvents.js'))));
+  check('16c loaded with the game\'s sounds, labelled in the studio, its recording credited (its license to confirm)',
+    /'jump-flip': '\/sfx\/player\/jump-flip\.mp3'/.test(src('src/data/gameDisplay.js'))
+      && /jumpFlip: \['move'/.test(src('src/data/soundStudio.js'))
+      && has(SS.SAMPLE_SOURCES, 'jump-flip') && /563530/.test(src('CREDITS.md')));
+}
+
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

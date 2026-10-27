@@ -156,6 +156,9 @@ export function jumpLook(j, now, land, across) {
   const ax = Number.isFinite(across) ? Math.max(-1, Math.min(1, across / JUMP_LEAN_PX_MS)) : 0;
   const t = jumpPhase(j, now);
   if (t >= 0 && t < 1) {
+    /* v2.3.3682: a flip is the roll's somersault (entityRenderer draws the
+       dodge frames, FLIP_FRAMES): its own tuck, so no stretch or lean on top */
+    if (j.flip) return { air: true, t, lift: jumpHeight(j, now), ky: 1, kx: 1, rot: 0, flip: true };
     const ky = jumpStretchAt(t);
     return { air: true, t, lift: jumpHeight(j, now), ky, kx: jumpWidthFor(ky), rot: JUMP_LEAN * jumpLeanAt(t) * ax };
   }
@@ -211,6 +214,8 @@ export function jumpActive(j, now) {
 /** How high the body is drawn, in world px (0 on the ground). */
 export function jumpHeight(j, now) {
   const p = jumpPhase(j, now);
+  /* v2.3.3682: a flip starts in the air, at its own height */
+  if (j && j.flip) return (p >= 0 && p < 1) ? flipHeightAt(j, now - j.t0) : 0;
   if (!(p > 0 && p < 1)) return 0;
   return (j.peak > 0 ? j.peak : JUMP_PEAK) * jumpLiftAt(p);
 }
@@ -223,6 +228,8 @@ export const CLEAR_TO = (1 + _CLR) / 2;
 /** How many ms more you are high enough to clear a low thing (0 when you
     are not, yet or any more). */
 export function clearMsLeft(j, now) {
+  /* v2.3.3682: a flip's arc is its own (flipClearMsLeft) */
+  if (j && j.flip) return flipClearMsLeft(j, now);
   const p = jumpPhase(j, now);
   if (!(p >= CLEAR_FROM && p < CLEAR_TO)) return 0;
   return (CLEAR_TO - p) * j.dur;
@@ -373,11 +380,172 @@ export function jumpFrame(dir, frameCount, t) {
 /** A peer's jump from the relay (game events), its numbers clamped: a
     forged or garbled one must not hang a figure in the air. */
 export function peerJump(payload, now) {
+  /* v2.3.3682: their flip (the relay's `flip`), clamped as a jump is */
+  if (payload && payload.flip) {
+    const f = peerFlip(payload, now);
+    if (f) return f;
+  }
   const dur = Number(payload && payload.dur);
   const peak = Number(payload && payload.peak);
   return {
     t0: now,
     dur: isFinite(dur) && dur > 0 ? Math.max(200, Math.min(900, dur)) : JUMP_MS,
     peak: isFinite(peak) && peak > 0 ? Math.max(8, Math.min(120, peak)) : JUMP_PEAK,   /* room above JUMP_PEAK (85 since v2.3.3499) */
+  };
+}
+
+/* ═══ v2.3.3682: THE DOUBLE JUMP -- A FLIP ═══
+   The owner, 2026-10-27: "Now I'm wondering about the feasibility of a
+   double jump feature.  You press jump then press jump again to do a little
+   flip for a little more of a bounce.  You have to time it right to get
+   maximum horizontal distance and the jump effect will be greater if you're
+   sprinting into the jump.  See if you can use the roll or part of the roll
+   for the double jump effect", and "I just uploaded the second jump (flip)
+   sound effect".
+
+   A second press in the air (the button, X, or a tap on the stick) is a FLIP,
+   once a jump: a push up from where you are, smaller than the jump's own
+   (FLIP_PUSH of it), falling under the jump's own gravity (its peak and time,
+   so `?jumpms=` stretches it too) -- the record that replaces S._jump is a
+   jump of its own (`flip: true`), so everything that reads a jump (the lift,
+   the low things cleared, the landing, the peers' copy) reads it unchanged.
+   It is drawn with the ROLL's somersault, the dodge sheets' tumble frames
+   (FLIP_FRAMES), lifted by jumpFx as a jump is.
+
+   TIMING IS DISTANCE.  For the flip's time in the air you go FLIP_BOOST_MIN
+   to FLIP_BOOST_MAX faster across the ground, by its grade (flipGrade): 0 at
+   FLIP_FROM, 1 at FLIP_SWEET -- coming down, about 0.12 s before the feet
+   would touch -- and a little less after it, to FLIP_TO, where it is too late
+   to tuck.  The later the flip, the more time in the air, but past the sweet
+   spot the boost falls faster than the air grows: the most ground is covered
+   at the sweet spot (docs/specs/jumping.md has the table: about twice a plain
+   jump's distance there, 1.3x with a flip right after take-off).  A grade of
+   FLIP_PERFECT or better is called "Perfect!" over you.
+
+   SPRINTING INTO IT is a bigger flip: the push x FLIP_SPRINT_PUSH and the
+   boost x FLIP_SPRINT_BOOST (a jump that took off in a sprint, or a sprint
+   still running at the flip).
+
+   THE WORKER hears a walk, as for a jump: at its best a flip is 1.45x the
+   walk for ~0.5 s (2.1x with the sprint's own 1.33), under the move budget's
+   500 px a second refill at the base walk and inside its three seconds of
+   burst with every speed stat (server/src/movement.js MOVE_BUDGET). */
+export const FLIP_PUSH = 0.6;
+export const FLIP_FROM = 0.15;
+export const FLIP_SWEET = 0.8;
+export const FLIP_TO = 0.96;
+export const FLIP_PERFECT = 0.8;
+export const FLIP_BOOST_MIN = 0.1;
+export const FLIP_BOOST_MAX = 0.45;
+export const FLIP_SPRINT_PUSH = 1.25;
+export const FLIP_SPRINT_BOOST = 1.35;
+/* the roll's tumble (dodge-east / dodge-south: 0 crouch, 1 hands down, 2 over,
+   3-5 the tuck going round, 6 the crouch coming out, 7 rising, 8 the stand),
+   and where in the flip each gives way to the next */
+export const FLIP_FRAMES = Object.freeze([2, 3, 4, 5, 6]);
+export const FLIP_FRAME_AT = Object.freeze([0.16, 0.36, 0.56, 0.78]);
+
+/** The flip's grade at phase p of the jump: 0..1 (0 outside the window). */
+export function flipGrade(p) {
+  if (!(p >= FLIP_FROM && p < FLIP_TO)) return 0;
+  if (p <= FLIP_SWEET) return Math.max(0, Math.min(1, (p - FLIP_FROM) / (FLIP_SWEET - FLIP_FROM)));
+  return 1 - 0.5 * (p - FLIP_SWEET) / (FLIP_TO - FLIP_SWEET);
+}
+
+/** Why a flip may not start now, or null.  `j` is the jump in the air. */
+export function flipRefusal(j, now) {
+  if (!j || !jumpActive(j, now)) return 'ground';
+  if (j.flip) return 'flipped';
+  const p = jumpPhase(j, now);
+  if (p < FLIP_FROM) return 'early';
+  if (p >= FLIP_TO) return 'late';
+  return null;
+}
+
+/** The jump's gravity (px a ms squared) and push (px a ms) from its own
+    peak and time: a parabola 4 x peak x t(1-t) over dur. */
+function jumpPhysics(j) {
+  const dur = j && j.dur > 0 ? j.dur : JUMP_MS;
+  const peak = j && j.peak > 0 ? j.peak : JUMP_PEAK;
+  return { g: 8 * peak / (dur * dur), v0: 4 * peak / dur, peak, dur };
+}
+
+/** A flip's height (world px) `ms` into it. */
+export function flipHeightAt(f, ms) {
+  if (!f || !(ms >= 0) || !(ms < f.dur)) return 0;
+  return Math.max(0, f.h0 + f.v * ms - f.g * ms * ms / 2);
+}
+
+/** How many ms more a flip is high enough to clear a low thing (the jump's
+    own JUMP_CLEAR of its peak), 0 when it is not now. */
+export function flipClearMsLeft(f, now) {
+  const ms = now - f.t0;
+  if (!(ms >= 0 && ms < f.dur)) return 0;
+  const c = JUMP_CLEAR * (f.basePeak > 0 ? f.basePeak : JUMP_PEAK);
+  if (flipHeightAt(f, ms) < c) return 0;
+  /* h0 + v t - g t^2 / 2 = c, the later root */
+  const disc = f.v * f.v + 2 * f.g * (f.h0 - c);
+  if (!(disc >= 0)) return 0;
+  const tc = (f.v + Math.sqrt(disc)) / f.g;
+  return Math.max(0, Math.min(f.dur, tc) - ms);
+}
+
+/**
+ * The flip that follows jump `j` pressed at `now`: a new jump record (it
+ * replaces S._jump), or null when one may not start.  `opts`: `sprint` (the
+ * jump was sprinted into, or a sprint is on), `dx`/`dy` (the stick, if held),
+ * `ang` (the way the somersault faces).
+ */
+export function startFlip(j, now, opts) {
+  if (flipRefusal(j, now)) return null;
+  const o = opts || {};
+  const ph = jumpPhysics(j);
+  const p = jumpPhase(j, now);
+  const h0 = jumpHeight(j, now);
+  const sprint = !!(o.sprint || j.sprint);
+  const v = FLIP_PUSH * ph.v0 * (sprint ? FLIP_SPRINT_PUSH : 1);
+  const g = ph.g;
+  const dur = (v + Math.sqrt(v * v + 2 * g * h0)) / g;
+  const grade = flipGrade(p);
+  const boost = (FLIP_BOOST_MIN + (FLIP_BOOST_MAX - FLIP_BOOST_MIN) * grade) * (sprint ? FLIP_SPRINT_BOOST : 1);
+  const hasStick = Number.isFinite(o.dx) && Number.isFinite(o.dy) && (Math.abs(o.dx) > 0.1 || Math.abs(o.dy) > 0.1);
+  return {
+    t0: now, dur, peak: h0 + v * v / (2 * g), flip: true,
+    h0, v, g, grade, boost, perfect: grade >= FLIP_PERFECT, sprint, at: p,
+    dx: hasStick ? o.dx : (j.dx || 0), dy: hasStick ? o.dy : (j.dy || 0),
+    ang: Number.isFinite(o.ang) ? o.ang : (j.ang || 0),
+    basePeak: ph.peak, baseDur: ph.dur,
+    over: j.over || null,   /* a fence it was already crossing stays crossed */
+  };
+}
+
+/** How much faster across the ground right now: 1 + the flip's boost while
+    one is in the air, else 1. */
+export function flipBoost(j, now) {
+  return j && j.flip && jumpActive(j, now) && j.boost > 0 ? 1 + j.boost : 1;
+}
+
+/** The roll's frame for a flip at phase t (FLIP_FRAMES), within the sheet. */
+export function flipFrame(frameCount, t) {
+  const n = frameCount > 0 ? frameCount : 9;
+  let i = 0;
+  while (i < FLIP_FRAME_AT.length && t >= FLIP_FRAME_AT[i]) i++;
+  return Math.min(n - 1, Math.max(0, FLIP_FRAMES[i]));
+}
+
+/** A peer's flip from the relay, its numbers clamped as a jump's are (a
+    forged one must not hang a figure in the air), or null to fall back to
+    a plain hop. */
+export function peerFlip(payload, now) {
+  const num = (k) => Number(payload && payload[k]);
+  const h0 = num('h0'), v = num('v'), g = num('g'), ang = num('ang');
+  if (!(h0 >= 0 && h0 <= 200) || !(v > 0 && v <= 2) || !(g > 0 && g <= 0.05)) return null;
+  const dur = (v + Math.sqrt(v * v + 2 * g * h0)) / g;
+  /* a real flip is ~0.4-0.6 s; up to 3.2 s for a test page's `?jumpms=`
+     (a jump drawn out to 3 s) -- still never a figure hung in the air */
+  if (!(dur >= 120 && dur <= 3200)) return null;
+  return {
+    t0: now, dur, peak: h0 + v * v / (2 * g), flip: true, h0, v, g,
+    ang: Number.isFinite(ang) ? ang : 0, basePeak: JUMP_PEAK, baseDur: JUMP_MS,
   };
 }

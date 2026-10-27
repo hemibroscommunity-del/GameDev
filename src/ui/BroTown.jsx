@@ -393,7 +393,7 @@ import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the s
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
 import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
-import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
+import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
 import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
 import { nmlAsk, nmlAskOn, nmlAim } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first; v2.3.3528: about the one who attacked you too */
@@ -5430,6 +5430,10 @@ export var BroTown = function BroTown(_ref0) {
             && Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) {
           dx = S._jump.dx || 0; dy = S._jump.dy || 0;
         }
+        /* v2.3.3682: a flip in the air carries you faster across the ground,
+           the better its timing the more (game/jump.js flipBoost; the owner's
+           "time it right to get maximum horizontal distance") */
+        finalSpd *= flipBoost(S._jump, Date.now());
         var _step = finalSpd * (S._dtScale || 1);
         var nx = P.x + dx * _step;
         var ny = P.y + dy * _step;

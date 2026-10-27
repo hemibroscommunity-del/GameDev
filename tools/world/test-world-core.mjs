@@ -3103,6 +3103,57 @@ console.log('jumping (v2.3.3017)');
   const pj = J.peerJump({ dur: 99999, peak: -5 }, 7), pk = J.peerJump({ dur: 'x', peak: 1e9 }, 7), pg = J.peerJump({ dur: 400, peak: 30 }, 7);
   ok('another player\'s jump: their numbers clamped, a garbled one the usual jump',
     pj.dur === 900 && pj.peak === J.JUMP_PEAK && pk.dur === J.JUMP_MS && pk.peak === 120 && pg.dur === 400 && pg.peak === 30 && pg.t0 === 7);
+
+  /* ── v2.3.3682: the double jump -- a flip, timed for distance ──
+     The owner: "You press jump then press jump again to do a little flip for a
+     little more of a bounce.  You have to time it right to get maximum
+     horizontal distance and the jump effect will be greater if you're
+     sprinting into the jump".  The rules alone, exactly (a phone's timers on
+     this box are too late for them: mp-doublejump checks the wiring). */
+  {
+    const T = J.JUMP_MS, base = (t0) => ({ t0, dur: T, peak: J.JUMP_PEAK, dx: 1, dy: 0, ang: 0 });
+    const g = (p) => J.flipGrade(p);
+    ok(`the flip's grade: nothing before ${J.FLIP_FROM} of the jump, rising to 1 at the sweet spot (${J.FLIP_SWEET}, coming down), easing after it, nothing from ${J.FLIP_TO}`,
+      g(J.FLIP_FROM - 0.01) === 0 && g(J.FLIP_FROM) === 0 && Math.abs(g(J.FLIP_SWEET) - 1) < 1e-9 && g(J.FLIP_TO) === 0
+        && g(0.5) > g(0.3) && g(0.7) > g(0.5) && g(0.9) < 1 && g(0.9) > 0.5 && g(J.FLIP_TO - 1e-6) >= 0.49);
+    const j0 = base(1000);
+    ok('a flip may start only in the air, once, between FLIP_FROM and FLIP_TO',
+      J.flipRefusal(null, 1000) === 'ground' && J.flipRefusal(j0, 1000 + 0.1 * T) === 'early' && J.flipRefusal(j0, 1000 + 0.5 * T) === null
+        && J.flipRefusal(j0, 1000 + 0.97 * T) === 'late' && J.flipRefusal(j0, 1000 + T + 1) === 'ground'
+        && J.flipRefusal(J.startFlip(j0, 1000 + 0.5 * T, {}), 1000 + 0.6 * T) === 'flipped');
+    const at = 1000 + 0.6 * T, h = J.jumpHeight(j0, at), f = J.startFlip(j0, at, {});
+    ok(`it starts where you are in the air (${h.toFixed(1)} px), rises above it (${f.peak.toFixed(1)} px at the top), and comes down on the ground`,
+      f.flip && Math.abs(J.jumpHeight(f, at) - h) < 1e-6 && f.peak > h + 20 && J.jumpHeight(f, at + f.dur / 3) > h
+        && J.jumpHeight(f, at + f.dur - 1) < 2 && !J.jumpActive(f, at + f.dur + 1) && J.jumpActive(f, at + f.dur - 1));
+    /* how far a jump carries you, in walk-ms, if the flip is pressed at phase p */
+    const distAt = (p, sprint) => {
+      const fl = J.startFlip(base(0), p * T, { sprint });
+      return p * T + fl.dur * (1 + fl.boost);
+    };
+    let best = 0, bestP = 0;
+    for (let p = J.FLIP_FROM; p < J.FLIP_TO; p += 0.005) { const d = distAt(p); if (d > best) { best = d; bestP = p; } }
+    ok(`timing is distance: the most ground at ${bestP.toFixed(2)} of the jump (the sweet spot is ${J.FLIP_SWEET}), ${(best / T).toFixed(2)}x a plain jump's; a flip right after take-off ${(distAt(0.2) / T).toFixed(2)}x`,
+      Math.abs(bestP - J.FLIP_SWEET) <= 0.05 && best / T > 1.8 && distAt(0.2) / T < 1.25 && distAt(0.95) < best * 0.95);
+    const fs = J.startFlip(base(0), J.FLIP_SWEET * T, { sprint: true }), fw = J.startFlip(base(0), J.FLIP_SWEET * T, {});
+    ok(`sprinting into the jump, the flip is bigger: boost ${fs.boost.toFixed(2)} (walking ${fw.boost.toFixed(2)}), ${fs.peak.toFixed(0)} px at the top (walking ${fw.peak.toFixed(0)}), more ground (${(distAt(J.FLIP_SWEET, true) / T).toFixed(2)}x)`,
+      fs.sprint && Math.abs(fs.boost / fw.boost - J.FLIP_SPRINT_BOOST) < 1e-9 && fs.peak > fw.peak && fs.dur > fw.dur && distAt(J.FLIP_SWEET, true) > distAt(J.FLIP_SWEET));
+    ok(`"Perfect!" from a grade of ${J.FLIP_PERFECT}: the press at the sweet spot, not one right after take-off`,
+      fw.perfect && !J.startFlip(base(0), 0.2 * T, {}).perfect);
+    ok('...faster across the ground only while the flip is in the air',
+      J.flipBoost(fw, fw.t0 + 1) === 1 + fw.boost && J.flipBoost(fw, fw.t0 + fw.dur + 1) === 1 && J.flipBoost(fw, fw.t0 - 1) === 1
+        && J.flipBoost(base(0), 100) === 1 && J.flipBoost(null, 1) === 1);
+    ok('...clearing low things while it is high enough (the jump\'s own JUMP_CLEAR), and not as it comes down',
+      J.clearMsLeft(fw, fw.t0 + 10) > 0 && J.clearMsLeft(fw, fw.t0 + fw.dur - 5) === 0);
+    const lk = J.jumpLook(fw, fw.t0 + fw.dur / 2, null, 1);
+    ok('drawn as the roll\'s somersault: no stretch or lean of its own, the tumble frames in order (dodge sheets)',
+      lk && lk.flip && lk.air && lk.ky === 1 && lk.rot === 0 && lk.lift > 0
+        && [0, 0.2, 0.4, 0.6, 0.85].map((t) => J.flipFrame(9, t)).join() === J.FLIP_FRAMES.join() && J.flipFrame(9, 0.999) === 6);
+    const real = J.peerJump({ flip: 1, h0: fw.h0, v: fw.v, g: fw.g, ang: 1.5, dur: 1, peak: 1 }, 50);
+    ok('another player\'s flip from the relay: the same arc, its numbers clamped, a forged one a plain hop',
+      real.flip && Math.abs(real.dur - fw.dur) < 1e-6 && real.ang === 1.5 && real.t0 === 50
+        && !J.peerJump({ flip: 1, h0: 900, v: fw.v, g: fw.g }, 0).flip && !J.peerJump({ flip: 1, h0: 10, v: 9, g: fw.g }, 0).flip
+        && !J.peerJump({ flip: 1, h0: 10, v: fw.v, g: 1e-9 }, 0).flip && !J.peerJump({ flip: 1 }, 0).flip);
+  }
 }
 
 /* ── v2.3.3105: a tap on the right stick jumps, last (src/game/tapJump.js) ──
@@ -3143,8 +3194,11 @@ console.log('the tap that jumps (v2.3.3105)');
       && !TJ.attackingNow({ swingTimer: now - TJ.ATTACK_FACE_MS }, false, now)
       && !TJ.attackingNow({}, false, now) && !TJ.attackingNow(null, true, now)
       && /&& !attackingNow\(S, !!rJoyActive\.current, Date\.now\(\)\);/.test(fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8')));
-  ok('the old button only with ?jumpbtn', TJ.jumpButtonWanted('?jumpbtn') && TJ.jumpButtonWanted('?a=1&jumpbtn=1')
-    && !TJ.jumpButtonWanted('') && !TJ.jumpButtonWanted('?jumpbtnx'));
+  /* v2.3.3681: the button is back for everyone ("I want a dedicated button
+     for jumping"), `?jumpbtn=0` the game of v2.3.3105-3680 */
+  ok('the jump button is drawn unless the address says ?jumpbtn=0', TJ.jumpButtonWanted('?jumpbtn') && TJ.jumpButtonWanted('?a=1&jumpbtn=1')
+    && TJ.jumpButtonWanted('') && TJ.jumpButtonWanted('?jumpbtnx') && TJ.jumpButtonWanted('?jumpbtn=00')
+    && !TJ.jumpButtonWanted('?jumpbtn=0') && !TJ.jumpButtonWanted('?a=1&jumpbtn=0'));
   const bt = fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
   const rE = bt.slice(bt.indexOf('var rE = function rE(e)'), bt.indexOf('THE BUTTON.  Press = engage'));
   const at = (re) => { const m = re.exec(rE); return m ? m.index : -1; };

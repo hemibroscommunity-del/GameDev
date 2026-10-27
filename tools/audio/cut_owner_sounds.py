@@ -238,6 +238,11 @@ ONE_SHOTS += [
     # 0.12 s, its loudest 0.2-0.5 s, down 30 dB by 0.9 s; 65% of it under 100 Hz,
     # so its own overtones laid over it, as the fire's are (a phone hears those)
     ('roll-tumble', NEW_SRC + '502553__kneeling__goblin-fall.mp3', 0.10, 0.80, 0.004, 0.25, 'low', 0.55, 'player'),
+    # v2.3.3682: the double jump's flip -- "I just uploaded the second jump
+    # (flip) sound effect" (563530__catthulu__sfx-jump-flip): a whoosh, -26 dB
+    # at its loudest 0.15 s in, a quiet airy tail to its end (0.56 s); 2% of it
+    # under 100 Hz, so nothing laid over it
+    ('jump-flip', NEW_SRC + '563530__catthulu__sfx-jump-flip.wav', 0.10, 0.45, 0.004, 0.15, 'low', 0.5, 'player'),
 ]
 PROCESS.update({
     'bag-close': {'hp': 150},

@@ -140,6 +140,10 @@ export const EVENT_SOUNDS = {
   /* ...and the landing's weight: the bare thud slowed to a low thump, ~0.4,
      under the landing's footstep. */
   jumpLand: [['monster-hit', 0.01, 0.2, 0.8, 0.62]],
+  /* v2.3.3682: the double jump's flip -- the owner's recording ("I just
+     uploaded the second jump (flip) sound effect", 563530 "sfx jump flip"),
+     ~0.5: a whoosh as you tuck and go over; yours and another player's */
+  jumpFlip: [['jump-flip', 0, 0, own('jump-flip'), 1]],
   /* A sprint running out of stamina mid-run.  v2.3.3455: the owner's grunt
      (BT_AUDIO.SPRINT_PUSH's, a sprint's start), whole at its own level but a
      touch lower and slower -- worn out -- where it was the arrow's flight

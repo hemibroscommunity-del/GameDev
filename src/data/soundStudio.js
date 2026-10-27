@@ -67,6 +67,7 @@ export const CUE_PLACES = {
 
   jumpUp: ['move', 'Your jump: the push-off'],
   jumpLand: ['move', 'Landing from a jump'],
+  jumpFlip: ['move', 'Your double jump: the flip, a second press in the air (another player\'s too, quieter)'],   /* v2.3.3682 */
   sprintOut: ['move', 'Your sprint running out of stamina (one time the grunt, worn out...)'],
   sprintOutBreath: ['move', '...the next time the tired breath'],
   statusEnd: ['hurt', 'A chill, burn or poison on you wearing off'],
@@ -406,6 +407,7 @@ export const SAMPLE_SOURCES = {
   'farm-hoe': '"hoe work" (16hpanskadvorakova_aneta, Freesound 497987)',
   'farm-mould': '"molding" (manuelaurreaf, Freesound 490099)',
   'roll-tumble': '"goblin fall" (kneeling, Freesound 502553)',   /* v2.3.3680 */
+  'jump-flip': '"sfx jump flip" (catthulu, Freesound 563530)',   /* v2.3.3682 */
 };
 
 /* ═══ v2.3.3610: THE MUSIC, AND WHERE EACH TRACK PLAYS ═══

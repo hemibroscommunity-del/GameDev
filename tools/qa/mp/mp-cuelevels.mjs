@@ -74,6 +74,8 @@ const PROMISED = {
   /* v2.3.3680: the roll is the owner's "goblin fall" (Freesound 502553), a
      tumble under the swish */
   rollTumble: 0.55,
+  /* v2.3.3682: the double jump's flip, the owner's "sfx jump flip" */
+  jumpFlip: 0.5,
 };
 
 /* v2.3.3434: cues kept quieter than 0.08 of a hit on purpose, and why -- each

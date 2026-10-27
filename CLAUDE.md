@@ -2729,6 +2729,21 @@ remnant to migrate server-side, not a mode to preserve.
       (tapJump.js `jumpButtonWanted`); a tap on the stick still jumps beside
       it; `mp-jumpbtn` (upright, small, sideways: clear of every control),
       `mp-tapjump` 1: docs/specs/jumping.md "v2.3.3681".
+    - since v2.3.3682 A DOUBLE JUMP, A FLIP (the owner: "press jump then press
+      jump again to do a little flip ... time it right to get maximum
+      horizontal distance ... greater if you're sprinting into the jump ...
+      use the roll or part of the roll"): a second press in the air flips,
+      once a jump (game/jump.js `startFlip`/`flipRefusal`, jumpActions.js
+      `triggerFlip`), a smaller push from where you are under the jump's own
+      gravity, drawn with the ROLL's somersault (`FLIP_FRAMES` 2-6 of the
+      dodge sheets, entityRenderer `_flipRoll`: the look only, no i-frames);
+      faster across the ground by its grade (`flipGrade`: 0 at 15% of the
+      jump, 1 at the sweet spot 80%, `FLIP_BOOST_MIN`-`MAX` 0.10-0.45: about
+      2x a plain jump's ground there), "Perfect!" from 0.8, sprinting into it
+      x1.25 push and x1.35 boost; the worker hears a walk (inside the move
+      budget); the relay `player_jump` carries `flip: 1` (`peerFlip` clamps
+      it); the owner's "sfx jump flip" (cue `jumpFlip`); test-world-core
+      "jumping", `mp-doublejump`: docs/specs/jumping.md "v2.3.3682".
     - since v2.3.3145 a TAP THAT JUMPS SHOWS NOTHING OF THE ATTACK (the owner:
       "When you tap jump with bow equipped it shows you and your line of sight
       facing southward for a brief instant"): with no job on the right side a

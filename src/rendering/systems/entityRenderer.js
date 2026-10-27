@@ -103,7 +103,7 @@ import { footstepSurface, groundStepAt } from '@/game/worldTrial.js';   /* v2.3.
 import { peerStepShare, peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's footsteps and pick, heard */
 import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
 import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
-import { jumpActive, jumpFrame, jumpPhase } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog; v2.3.3499: four, by its phase */
+import { jumpActive, jumpFrame, jumpPhase, flipFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog; v2.3.3499: four, by its phase; v2.3.3682: a flip, the roll's tumble */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606: a head piece kept as an image of itself */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
@@ -11878,10 +11878,12 @@ export class EntityRenderer {
          rolling past reads as a roll and not a slide.  The broadcast carries
          no duration (the roller's window is elastic), so this plays at the
          cycleMs default. */
-      const _rDodge = other._dodgeRoll || null;
       /* v2.3.3017: their jump (the `player_jump` relay, game events), drawn as
          yours is: the leaping frame of the jog, held, lifted by jumpFx.js */
       const _rJump = other._jump && jumpActive(other._jump, now) ? other._jump : null;
+      /* v2.3.3682: ...and their flip, the roll's somersault, as yours is */
+      const _rFlip = _rJump && _rJump.flip ? { angle: _rJump.ang || 0, startTime: _rJump.t0, durMs: _rJump.dur, kind: 'flip' } : null;
+      const _rDodge = other._dodgeRoll || _rFlip || null;
       const pose = _rexBodyPose
         ? _rexBodyPose
         : (_rDodge ? 'dodge' : (_rJump ? 'jog' : (isHit ? 'hit' : (isMoving ? 'jog' : 'stand'))));
@@ -12003,7 +12005,11 @@ export class EntityRenderer {
              (player_dodge `dur`), exactly as the local branch plays across
              durMs; the cycleMs default only for an older client. */
           const fc = playerFrameCount('dodge', dir) || 9;
-          if (_rDodge.kind === 'sworddash') {
+          if (_rDodge.kind === 'flip') {
+            /* v2.3.3682: their flip, by its phase (game/jump.js FLIP_FRAMES) */
+            frameIdx = flipFrame(fc, (now - _rDodge.startTime) / (_rDodge.durMs || 1));
+            display._flipFrameIdx = frameIdx;   /* QA (__btJumpFx().peerFlips) */
+          } else if (_rDodge.kind === 'sworddash') {
             /* v2.3.2916: a SWORD DASH loops the tumble, as yours does (the
                _dashRoll branch in _updatePlayer, v2.3.2463): anchored to the
                dash's start, the authored per-frame dwell, and never the last
@@ -13404,7 +13410,16 @@ export class EntityRenderer {
        asked for the sword's move; `kind` is on the record precisely so the
        two can differ. */
     const _dashRoll = (S._bashDash && S._bashDash.kind === 'sworddash') ? S._bashDash : null;
-    const _rollSrc = S._dodgeRoll || _dashRoll;
+    /* ═══ v2.3.3682: THE DOUBLE JUMP'S FLIP IS THE ROLL'S SOMERSAULT ═══
+       The owner: "See if you can use the roll or part of the roll for the
+       double jump effect".  A flip (game/jump.js startFlip) borrows the
+       roll's pose, sheet and facing here, as the sword's dash does -- the
+       look only: S._dodgeRoll is never written, so no i-frames -- and plays
+       the tumble's frames by the flip's phase (FLIP_FRAMES), lifted by
+       jumpFx as any jump is. */
+    const _flipJ = (S._jump && S._jump.flip && jumpActive(S._jump, now)) ? S._jump : null;
+    const _flipRoll = _flipJ ? { angle: _flipJ.ang || 0, startTime: _flipJ.t0, durMs: _flipJ.dur, kind: 'flip' } : null;
+    const _rollSrc = S._dodgeRoll || _dashRoll || _flipRoll;
     const dodging = !!_rollSrc;
     let facing;
     /* ═══ v2.3.1837: A TURN IS A FACING, NOT JUST A POSE ═══
@@ -13786,7 +13801,11 @@ export class EntityRenderer {
            actually used; DODGE_DURATION_MS covers the first frame before
            it has been published. */
         const fc = playerFrameCount('dodge', dir) || 9;
-        if (_dashRoll && !S._dodgeRoll) {
+        if (_flipRoll && !S._dodgeRoll && !_dashRoll) {
+          /* v2.3.3682: the flip -- the tumble's frames by its phase */
+          frameIdx = flipFrame(fc, jumpPhase(_flipJ, now));
+          display._jumpFrameIdx = frameIdx;   /* QA (__btJumpFx) */
+        } else if (_dashRoll && !S._dodgeRoll) {
           /* ═══ v2.3.2463: A DASH LOOPS WHERE A DODGE CLAMPS ═══
              The clamp above is right for a dodge: one tumble, one window, and
              freezing the last frame is how a roll settles.  A dash has no

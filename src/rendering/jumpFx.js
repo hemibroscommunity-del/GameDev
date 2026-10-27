@@ -71,6 +71,7 @@ export class JumpFx {
     const p = this._probe;
     p.self = null;
     p.peers = 0;
+    p.peerFlips = [];   /* v2.3.3682: another player's flip as drawn (QA) */
     if (S && er) {
       const pd = er.playerDisplay;
       if (pd && !pd.destroyed) {
@@ -84,7 +85,7 @@ export class JumpFx {
           p.self = {
             lift: look ? +look.lift.toFixed(2) : 0, y: +pd.y.toFixed(1), feet: +figureFeetY(pd).toFixed(2), feetX: +figureFeetX(pd).toFixed(2),
             pose: pd._lastPoseKey || null, dir: pd._lastFacingKey || null, frame: pd._jumpFrameIdx != null ? pd._jumpFrameIdx : null,
-            air: !!j, t: look ? +look.t.toFixed(3) : null, u: look && !look.air ? +look.u.toFixed(3) : null,
+            air: !!j, flip: !!(look && look.flip) /* v2.3.3682 */, t: look ? +look.t.toFixed(3) : null, u: look && !look.air ? +look.u.toFixed(3) : null,
             ky: shaped ? +look.ky.toFixed(3) : 1, kx: shaped ? +look.kx.toFixed(3) : 1, rot: shaped ? +look.rot.toFixed(4) : 0,
             shaped, across: +across.toFixed(3), hud: this._hudProbe(pd),
           };
@@ -111,6 +112,7 @@ export class JumpFx {
           if (!look) { d._jfxLand = null; continue; }
           this._apply(d, look);
           if (look.lift > 0) p.peers++;
+          if (look.flip) p.peerFlips.push({ id, lift: +look.lift.toFixed(1), frame: d._flipFrameIdx != null ? d._flipFrameIdx : null });
         }
       }
     }

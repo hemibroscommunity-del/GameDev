@@ -2425,7 +2425,8 @@ export function processGameEvent(type, payload, S, deps) {
                   var _jpO = S.others[payload.id];
                   var _jpPos = function () { return [typeof _jpO.renderX === 'number' ? _jpO.renderX : _jpO.x, typeof _jpO.renderY === 'number' ? _jpO.renderY : _jpO.y]; };
                   var _jpA = _jpPos();
-                  cuePeer(S, 'jumpUp', _jpA[0], _jpA[1]);
+                  /* v2.3.3682: their flip is the owner's flip sound */
+                  cuePeer(S, payload.flip ? 'jumpFlip' : 'jumpUp', _jpA[0], _jpA[1]);
                   var _jpMs = Math.max(150, Math.min(2000, (_jpO._jump && _jpO._jump.dur) || Number(payload.dur) || 560));
                   setTimeout(function () { try { var _jpB = _jpPos(); cuePeer(S, 'jumpLand', _jpB[0], _jpB[1]); } catch (e) { /* sound only */ } }, _jpMs);
                 } catch (e) { /* sound only */ }
