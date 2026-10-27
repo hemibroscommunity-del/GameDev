@@ -1131,6 +1131,13 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
       for (const p of farB) bootFar[p] = 1;
       for (const p of kept.boots) bootFar[p] = 0;
     } else if (shoesT) for (const p of kept.boots) _retint(d, p << 2, shoesT, SHOES_REF);
+    /* ...and the patterns' masks follow the judge: a speck it left as drawn
+       takes no trouser or boot pattern either, and a torso strip no boot
+       pattern at all (found in review: its waist and back outline could be
+       stamped with one) */
+    if (pantsPx && farP.length) { const k = new Set(kept.pants); for (const p of farP) if (!k.has(p)) pantsPx[p] = 0; }
+    if (shoesPx && torso) shoesPx.fill(0);
+    else if (shoesPx && farB.length) { const k = new Set(kept.boots); for (const p of farB) if (!k.has(p)) shoesPx[p] = 0; }
     _garmentLeft[_sheetName || ('w' + w + 'h' + h)] = { pants: farP.length - kept.pants.length, boots: farB.length - kept.boots.length };
   }
   if (bootCand) {
@@ -2136,6 +2143,11 @@ function _headArtSeg(a) {
   return '#hf' + artHash(a.tattooFace) + ((a.mirror && !artIsSymmetric(a.tattooFace)) ? 'm' : '');
 }
 function _headSheetKey(skinId, pantsId, shoesId, pose, dir, blank, a) {
+  /* v2.3.3647: a head sheet takes no trousers or boots now (_buildPickupHeadSheet),
+     so one sheet serves every pair of them -- keyed by them, every pair baked
+     the same head again and the 32-sheet cap evicted ones in use (found in
+     review) */
+  if (!GARMENT_SPECKS_OFF) { pantsId = null; shoesId = null; }
   return (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default')
     + (blank ? '/es:' + blank.id : '') + '|' + pose + '-' + dir + _headArtSeg(a);
 }

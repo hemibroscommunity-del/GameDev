@@ -123,3 +123,36 @@ catches the roll as the game sets it.
 The farmer and the gathering stand-ins (lumberjack, cook, fire-lighter) paint
 their clothes by their own confined rule (`_standInClothes`, v2.3.3146) and are
 untouched.
+
+## Found in review, after the first push
+
+An independent review of the change found two things it fixed and three it did
+not.
+
+Fixed in this change:
+- **The head sheets' cache key** still named the trousers and boots. A head
+  sheet takes neither now, so every pair of them baked the same head again, and
+  the cache (32 sheets) evicted heads still in use. The key leaves them out
+  (`_headSheetKey`).
+- **The patterns' masks.** The rule kept a speck in the art's own colour, but a
+  trouser or boot *pattern* could still be stamped on it. In a torso strip
+  (the sword's swing) that meant the waist and the back's outline. The masks
+  now follow the judge: a speck takes no pattern, and a torso strip no boot
+  pattern at all.
+
+Left for later:
+- **Inside the band, nothing is judged.** The review counted outline pixels
+  painted in the trousers' colour beside the arms at waist height: 188 on
+  `jog-south`, 124 of them next to skin, a handful a frame. A crouch (`pickup`)
+  brings the head down into the band, so its specks stay too, about 5 a frame.
+  They sit against the trousers or the hands, where they read as the trousers'
+  edge, and are much less visible than the head's were.
+- **The real cure is a mask per sheet, made once offline.** The belt already
+  has one (its `beltmask`), and the rod has its recorded shape. The garments are
+  still found by colour as the sheet loads, with this rule to keep the colour
+  test off the outline. A baked mask would make every bake exact and would save
+  the rule's ~5 ms and its three full-sheet arrays a bake.
+- **`tools/qa/garment-confine.mjs` marks skin everywhere.** The game marks skin
+  only outside the shirt and the pickaxe (v2.3.3648), so for a shirted bake the
+  tool's verdicts can differ from the game's by a few outline pixels at the hem.
+  The phone test, `mp-garmentspecks`, reads the game's own bake.
