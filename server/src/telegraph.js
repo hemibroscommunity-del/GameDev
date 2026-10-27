@@ -355,6 +355,11 @@ export const telegraphMethods = {
   _kitFor(m) {
     if (!m) return null;
     if (Object.prototype.hasOwnProperty.call(TELEGRAPH.KITS, m.arch)) return TELEGRAPH.KITS[m.arch];
+    /* v2.3.3634: SWARM still gets nothing, the element's kit included (the
+       header's rule: they come several at once, and N wind-ups at once is
+       noise, not a tell) -- a Workshop wave of eight wind swarm roared
+       together (found by the review of v2.3.3621) */
+    if (m.arch === 'swarm') return null;
     const e = m.element;
     if (typeof e === 'string' && Object.prototype.hasOwnProperty.call(TELEGRAPH.ELEM_KITS, e) && this._roarOn()) return TELEGRAPH.ELEM_KITS[e];
     return null;

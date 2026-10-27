@@ -85,4 +85,11 @@ Found by the review of v2.3.3621 (the worker's own code, run):
   HP, so a roar every shield in range blocked sent `hit: false`. It now counts
   everyone it reached and did not miss, as a single-target cast's `hit` does.
 
-`mummy-roar` §6 (six checks, each failing on the build before).
+- **A wave of wind swarm roared at once.** The roar is a kit by element, so
+  in the Workshop's dungeon any wind monster without an archetype kit of its
+  own roared, swarm included; telegraph.js's own rule is that swarm gets no
+  kit (they come several at once, and many wind-ups at once are noise, not a
+  tell). `_kitFor` keeps that rule for the element's kit too.
+
+`mummy-roar` §6 (six checks, each failing on the build before) and §1 (the
+swarm).

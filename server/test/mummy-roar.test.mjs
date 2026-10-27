@@ -93,6 +93,9 @@ const withFlags = (flags, fn) => { const keep = room._liveFlags; room._liveFlags
   check('1: a snowman, and a monster with no element, have none',
     room._kitFor(wheel.find((m) => m.home === 'frost')) === null && room._kitFor({ arch: 'hexer' }) === null && room._kitFor({ arch: 'hexer', element: '__proto__' }) === null);
   check('1: `mummyroar: false`: no roar', withFlags({ mummyroar: false }, () => room._kitFor(mummy)) === null);
+  /* v2.3.3634: swarm never gets a kit, the element's either (a Workshop wave
+     of wind swarm roared all at once) */
+  check('1: a wind SWARM does not roar (swarm gets no kit: N wind-ups at once is noise)', room._kitFor({ arch: 'swarm', element: 'wind' }) === null);
   const R = TELEGRAPH.ELEM_KITS.wind;
   check('1: "from a few steps away": its ring wider than a swing\'s reach, its shove longer than the swing\'s 48 px, under the shove the phone accepts (200)',
     R.radius > room.MONSTER_ATTACK_RANGE * 1.5 && R.shove > GUST.PX * 2 && R.shove <= 200 && R.windupMs >= 800 && R.cooldownMs >= 5 * room.MONSTER_ATTACK_CD, R);
