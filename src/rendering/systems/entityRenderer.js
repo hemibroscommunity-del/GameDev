@@ -5822,6 +5822,17 @@ export function standFootDy(zoneScale) {
    body's crown-to-feet height for a facing, and how far below the figure's
    origin (S.player.y) its boots are, on a zone with no perspective, at the
    default build.  The same rows and scales the body is drawn with. */
+/* ═══ v2.3.3624: THE STANDING FIGURE'S FORM-SHADE SPAN, IN WORLD Y ═══
+   formShade.js shades a figure from the top of its body's frame to the bottom
+   (`_vShadeRef`, the 256-unit frame: as painted at the top, a cool shade at
+   the bottom).  This is that frame's top and bottom for the standing figure
+   whose boots are at `feetY` -- the rows and scales the body is drawn with --
+   so a stand-in drawn where you stand (the farmer) can be lit as you are.  */
+export function standShadeSpan(feetY, zoneScale, sy) {
+  const rows = bodyRows('stand', 'south');
+  const s = bodyDirScale('stand', 'south') * LOCAL_BODY_SCALE * PLAYER_SIZE_MULT * (zoneScale || 1) * (sy || 1);
+  return [feetY - rows.feet * s, feetY + (BODY_CELL_MID * 2 - rows.feet) * s];
+}
 export function nominalStandFigure(dir) {
   const d = dir || 'south';
   const rows = bodyRows('stand', d);

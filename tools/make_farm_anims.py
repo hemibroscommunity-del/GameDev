@@ -985,7 +985,12 @@ def work_point(name, strips):
 # painted, in the game's greys -- and its colour the walking steel's own
 # near-grey.
 
-STEEL_REF = {'chest': os.path.join(CHESTS, 'jog-south.png'), 'legs': os.path.join(LEGS, 'jog-south.png')}
+# v2.3.3624: graded to the STANDING sheets, not the jog's -- the farmer is
+# seen beside the bro standing at the bed, and the standing greaves are drawn
+# brighter than the jogging ones (middle grey 0.557 against 0.513): graded to
+# the jog, his iron was 4-8% darker than the same iron a moment before
+# (mp-farmiron, with the shine and the form shade off on both)
+STEEL_REF = {'chest': os.path.join(CHESTS, 'stand-south.png'), 'legs': os.path.join(LEGS, 'stand-south.png')}
 STEEL_QS = np.linspace(0.0, 1.0, 41)
 
 

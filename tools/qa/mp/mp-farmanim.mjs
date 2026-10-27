@@ -356,7 +356,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => { window.__btSetGear('chest', 'none'); window.__btSetGear('legs', 'none'); });
     /* v2.3.3472: the six strips in the walking steel's greys -- the middle
        grey of their opaque pixels within 0.03 of jog-south's (ChatGPT's steel
-       was 0.53-0.61; tools/make_farm_anims.py steel_like_the_game) */
+       was 0.53-0.61; tools/make_farm_anims.py steel_like_the_game).
+       v2.3.3624: of STAND-south's: the bro stands beside the bed in it, and
+       its greaves are drawn brighter than the jog's (mp-farmiron) */
     {
       const midGrey = (file) => {
         const im = H.decodePng(readFileSync(join(H.REPO, 'public/sprites/gear', file)));
@@ -371,10 +373,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       };
       const grey = {};
       for (const [slot, art] of [['chest', 'steelplate'], ['legs', 'steelgreaves']]) {
-        grey[slot] = { walk: midGrey(`${slot}/${art}/jog-south.png`) };
+        grey[slot] = { walk: midGrey(`${slot}/${art}/stand-south.png`) };
         for (const a of ['hoe', 'water', 'kneel']) grey[slot][a] = midGrey(`${slot}/${art}/farm${a}-south.png`);
       }
-      rec.ok(`the farmer's plate and greaves are in the walking steel's greys: middle grey ${['hoe', 'water', 'kneel'].map((a) => grey.chest[a] + '/' + grey.legs[a]).join(', ')} against ${grey.chest.walk}/${grey.legs.walk}`,
+      rec.ok(`the farmer's plate and greaves are in the standing steel's greys: middle grey ${['hoe', 'water', 'kneel'].map((a) => grey.chest[a] + '/' + grey.legs[a]).join(', ')} against ${grey.chest.walk}/${grey.legs.walk}`,
         ['chest', 'legs'].every((sl) => ['hoe', 'water', 'kneel'].every((a) => grey[sl][a] != null && Math.abs(grey[sl][a] - grey[sl].walk) <= 0.03)), grey);
     }
 

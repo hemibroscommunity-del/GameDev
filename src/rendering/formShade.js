@@ -67,6 +67,25 @@ export const SHADE = {
      snow shadows are. */
   propSnow: { top: [1.0, 1.0, 1.0],  bot: [0.86, 0.87, 0.90] },
 };
+/* ═══ v2.3.3624: ONE FIGURE'S SHADE, LAID ON ANOTHER'S QUAD ═══
+   A sprite shaded across its own quad (`_vShade`) takes `{top, bot}` at its
+   quad's top and bottom.  This gives a quad from world y `qTop` to `qBot` the
+   values `spec` has at those heights when it runs over a figure's span `span`
+   ([top, bottom], world y) -- the gradient is linear, so the quad shades
+   exactly as that figure would there; past the span's ends it is held to
+   0..1 (a multiplier over 1 would carry into the next colour byte).  `out` is
+   filled and returned. */
+export function spanSpec(spec, span, qTop, qBot, out) {
+  const o = out || { top: [1, 1, 1], bot: [1, 1, 1] };
+  const h = span[1] - span[0];
+  const at = (y, dst) => {
+    const t = h > 0 ? (y - span[0]) / h : 0;
+    for (let j = 0; j < 3; j++) dst[j] = Math.max(0, Math.min(1, spec.top[j] + (spec.bot[j] - spec.top[j]) * t));
+  };
+  at(qTop, o.top); at(qBot, o.bot);
+  return o;
+}
+
 /* Which prop shade a zone's props take.  Frost is the snow map; every other
    zone keeps `prop`. */
 const SNOW_ZONES = Object.assign(Object.create(null), { frost: true });
