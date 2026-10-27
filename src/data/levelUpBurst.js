@@ -73,8 +73,13 @@ export const LEVELUP_FRAMES = [
    v2.3.3608: HALF AS LONG ON SCREEN -- the owner, 2026-10-26: "reduce the time
    the level up message stays on screen by 50%."  2,590 ms -> 1,295 ms: the
    burst plays as it did (590 ms), the hold 1,500 -> 455 and the fade 500 ->
-   250, so the skill and level still read at rest for most of a second. */
-export const LEVELUP_HOLD_MS = 455;
+   250, so the skill and level still read at rest for most of a second.
+   v2.3.3676: AND HALF AGAIN AS LONG -- the owner, 2026-10-27: "the level up
+   message should stay on the screen about 50% longer".  1,295 -> 1,940 ms,
+   all of it in the hold (455 -> 1,100), where the level number now stands big
+   under the banner (LevelUpBurst.jsx): the burst and the fade are as they
+   were. */
+export const LEVELUP_HOLD_MS = 1100;
 export const LEVELUP_FADE_MS = 250;
 export const LEVELUP_RUN_MS = LEVELUP_FRAMES.reduce((t, f) => t + f.ms, 0); /* 590 */
 export const LEVELUP_TOTAL_MS = LEVELUP_RUN_MS + LEVELUP_HOLD_MS + LEVELUP_FADE_MS;
@@ -91,7 +96,7 @@ export const LEVELUP_MAX_H = 645;
  * crop 17px off the truth the first time it was tuned — which it did, once.
  * One definition, imported by both. */
 export const LEVELUP_PIN_Y_FRAC = 0.40;   /* circle centre, as a fraction of viewport height */
-export const LEVELUP_CAPTION_BOX_H = 58;  /* two caption lines plus the plate's padding */
+export const LEVELUP_CAPTION_BOX_H = 74;  /* the big number and its label plus the plate's padding (v2.3.3676: was 58, two plain lines) */
 export const LEVELUP_CAPTION_GAP = 6;     /* art to caption */
 
 /* How much of the circle the icon fills.  0.78 rather than 1.0: the measured
