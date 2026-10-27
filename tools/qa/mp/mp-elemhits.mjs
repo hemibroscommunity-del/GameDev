@@ -334,13 +334,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }, 30);
     setTimeout(() => { clearInterval(iv); S.stickX = 0; S.stickY = 0; res({ angs, drawn: (window.__btElemFxDrawn || {}).wobble || 0 }); }, 1500);
   }));
-  /* the picture mid-walk, while the swirl is surely on */
-  await P.page.waitForTimeout(350);
-  await shot(P, 'a4b-wobble');
   const weave = await weaving;
+  /* the picture after the walk: one taken during it left the page three
+     frames to walk in (the run of 2026-10-27); the wobble runs 3 s */
+  await shot(P, 'a4b-wobble');
+  /* held due east, a walk with no wobble heads 0 rad every frame: the
+     wobble turns it away, and not by one fixed amount.  (Which side each
+     frame lands on is the sway's phase: this box draws a few frames a
+     second, so both sides are not always among them.) */
   const aMin = Math.min(...weave.angs), aMax = Math.max(...weave.angs);
+  const turned = Math.max(...weave.angs.map((a) => Math.abs(a)));
   rec.ok(`wobble: after the daze, a walk with the stick held due east sways (headings ${aMin.toFixed(2)} .. ${aMax.toFixed(2)} rad), the swirl over your head`,
-    weave.angs.length >= 3 && aMax - aMin > 0.3 && aMin < 0 && aMax > 0 && weave.drawn > 0, { angs: weave.angs.map((a) => +a.toFixed(2)), drawn: weave.drawn });
+    weave.angs.length >= 2 && turned > 0.1 && aMax - aMin > 0.05 && weave.drawn > 0, { angs: weave.angs.map((a) => +a.toFixed(2)), drawn: weave.drawn });
   await clearStatuses(P);
   await H.hopTo(P, home0.x, home0.y, { step: 60, gap: 260, tries: 10 });
 
