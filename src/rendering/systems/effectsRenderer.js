@@ -682,6 +682,7 @@ import { DEFENSE_POPUP_KEY, DEFENSE_POPUP_SRC } from '@/data/smallIcons.js';   /
 import { halloweenOn } from '@/game/season.js';   /* v2.3.3395: Halloween week's speech bubbles */
 import { BUBBLE_SKINS, bubbleSkinFor } from '@/game/bubbleSkins.js';   /* v2.3.3522: a townsperson's bubble white, a player's dark */
 import { DropColumnsFx } from '../dropColumns.js';   /* v2.3.3616: each drop a column over the monster */
+import { ElemWindupFx } from '../elemWindup.js';   /* v2.3.3619: a monster's element, seen as it winds up */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -3099,6 +3100,11 @@ export class EffectsRenderer {
        fired.  Vapour goes beneath every solid thing in the layer, always. */
     this.jetStreamLayer = new Container();
     this.projectileLayer.addChild(this.jetStreamLayer);
+    /* v2.3.3619: snow swirling in before a snowball (rendering/elemWindup.js),
+       over everything standing as an arrow in flight is -- its pool made here,
+       once, just above the vapour, so its place among the layer's sprites
+       never depends on which frame first needed it */
+    this._elemWindup = new ElemWindupFx(this.projectileLayer);
     /* Flat, index-pooled sprites refilled from zero every frame — the
        v2.3.1825 arrowSprites pattern, for the reason v2.3.2331 converted the
        particle field off polygons: re-tessellation was the single biggest
@@ -5336,6 +5342,7 @@ export class EffectsRenderer {
     /* v2.3.1735: guards internally on the strip being loaded. */
     try { this._updateWhirlVortex(S, now); } catch (e) { if (typeof window !== 'undefined' && window.__btProbe) window.__btWhirlErr = String(e && e.message); }
     try { this._updateAbilityWindups(S, now); } catch (e) { /* v2.3.2824: ditto */ }
+    try { this._elemWindup.update(S, now); } catch (e) { /* v2.3.3619: a look, never the frame */ }
     try { this._updateSmithing(S, now); } catch (e) { /* v2.3.2827: ditto */ }
     try { this._updateElemStatusFx(S, now); } catch (e) { /* v2.3.2996: ditto */ }
     this._updateScreenFlash(S, viewW, viewH, now);
@@ -17451,6 +17458,7 @@ export class EffectsRenderer {
     for (const t of this.dmgTexts) t.destroy();
     this.dmgTexts = [];
     if (this._dropCols) this._dropCols.clear();   /* v2.3.3616 */
+    if (this._elemWindup) this._elemWindup.clear();   /* v2.3.3619 */
     /* Icons live on dmg entries (dmg._pixiIcon) which are owned by
        game state, not this list. Walking the dmgLayer is the most
        reliable way to drop any orphaned icon Sprites on clear. */
