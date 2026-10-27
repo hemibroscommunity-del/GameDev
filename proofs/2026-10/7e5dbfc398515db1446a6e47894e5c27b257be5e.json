@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7e5dbfc398515db1446a6e47894e5c27b257be5e",
+  "tree": "fbcab47c88ea2b612424e224793bfc7515eea8e4",
+  "committedAt": "2026-10-27T13:58:52-07:00",
+  "subject": "Back from a sleeping tab after 10 s, a minute, 3 and 8 minutes: timed on a phone, and the crash log's socket state read as the page wakes (v2.3.3670) (#1157)",
+  "files": 6655,
+  "bytes": 773081794,
+  "listingSha256": "1dd13f14f0c2abd9f04f93b4706b649e1adf604db7e631ce329a9527ec44875a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

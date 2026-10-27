@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "65c78c30bbd619a07b67bfd5731b8257814fef65",
+  "tree": "4b25b46d71f52adf41bf5e28d5ffe581f603c0ca",
+  "committedAt": "2026-10-27T13:59:41-07:00",
+  "subject": "The pickaxe keeps its own wood and steel, and the miner's tee has no pinholes (v2.3.3671) (#1154)",
+  "files": 6660,
+  "bytes": 773122712,
+  "listingSha256": "d3d47732b572cf61a95398b260d733d3d89dc6901bf3901eda76cbb69393a626",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
