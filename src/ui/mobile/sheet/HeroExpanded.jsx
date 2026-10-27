@@ -2615,7 +2615,7 @@ export const HeroExpanded = () => {
                     position: 'relative', cursor: 'default', overflow: 'hidden',
                   }}>
                   {isLane ? (
-                    /* ═══ v2.3.3654: THE THREE ROWS ARE A SWITCH ═══
+                    /* ═══ v2.3.3665: THE THREE ROWS ARE A SWITCH ═══
                        The owner: "the points page needs a way to change
                        between views between melee, bow, staff.  It's stuck on
                        whatever weapon you have equipped but there should be a
@@ -2641,7 +2641,7 @@ export const HeroExpanded = () => {
                             /* v2.3.3051: the weapon in your hand (the owner's
                                "based on your active equipped weapon"); its
                                six numbers are the ones shown until you pick
-                               another (v2.3.3654) */
+                               another (v2.3.3665) */
                             {...(c.key === heldCat ? { 'data-prog3-held': c.key } : null)}
                             {...(on ? { 'data-points-shown': c.key } : null)}
                             aria-pressed={on}

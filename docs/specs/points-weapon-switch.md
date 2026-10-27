@@ -1,4 +1,4 @@
-# The Points page switches between the three weapons (v2.3.3654)
+# The Points page switches between the three weapons (v2.3.3665)
 
 The owner, 2026-10-27:
 

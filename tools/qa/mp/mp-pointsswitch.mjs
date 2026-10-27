@@ -1,4 +1,4 @@
-/* ═══ v2.3.3654: THE POINTS PAGE SWITCHES BETWEEN THE THREE WEAPONS ═══
+/* ═══ v2.3.3665: THE POINTS PAGE SWITCHES BETWEEN THE THREE WEAPONS ═══
  *
  * The owner: "the points page needs a way to change between views between
  * melee, bow, staff.  It's stuck on whatever weapon you have equipped but

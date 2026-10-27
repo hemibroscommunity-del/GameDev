@@ -1092,7 +1092,7 @@ remnant to migrate server-side, not a mode to preserve.
       `pooled`, `poolShown`, shared with the scene; `statsim` §9;
     - the points grid FOLLOWS THE HELD WEAPON: a change of weapon brings it
       back (`heldCatRef`), the window's tabs aim only the window; since
-      v2.3.3654 a TAP ON A WEAPON'S ROW in the gold frame shows that weapon's
+      v2.3.3665 a TAP ON A WEAPON'S ROW in the gold frame shows that weapon's
       six (the owner: "a way to toggle between the 3"; `data-points-shown`,
       `data-prog3-held` still the one in hand), `mp-pointsswitch`:
       docs/specs/points-weapon-switch.md;
