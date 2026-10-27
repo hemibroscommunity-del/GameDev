@@ -61,3 +61,35 @@ already winding up when it is thrown ends quietly.
 - `sound-cues`: the roar's cue has its label in the Sound Studio.
 - `mp-elemhits` (a phone, a real mummy): it roars and blows you back 130 px, and
   the worker agrees where you landed.
+
+## v2.3.3634: what the review found
+
+Found by the review of v2.3.3621 (the worker's own code, run):
+
+- **The ring was round the wrong spot.** The phones draw a wind-up's ring at
+  its `ax`/`ay`, which every kit sent as its target's feet, while the roar
+  reached everyone round the mummy. A player 100 px behind the mummy, outside
+  the drawn ring, took the roar. Now an area kit (`aoe`) aims where it stands:
+  its `ax`/`ay` are the mummy's place as it winds up, and the roar reaches
+  exactly that ring, even if a blow nudged the mummy mid-cast. Every phone
+  already deployed draws it right, with no client change.
+- **A mummy killed mid-roar roared at its spawn.** The respawn cleared the basic
+  swing's wind-up but not a kit's, so a monster killed during a wind-up came back
+  with its phase still `telegraph` and the next tick fired the cast with no
+  warning: half a hit and a 130 px shove for whoever stood by its spawn, 6 to
+  19 s later. The gap existed for the brute's slam since v2.3.1730 (a stray
+  "MISS"). The roar plants the mummy next to the players hitting it, so it was
+  often killed mid-cast. The respawn now clears a kit's wind-up too
+  (index.js, beside `_bwUntil`).
+- **A blocked roar read "MISS".** The roar counted a player only when it took
+  HP, so a roar every shield in range blocked sent `hit: false`. It now counts
+  everyone it reached and did not miss, as a single-target cast's `hit` does.
+
+- **A wave of wind swarm roared at once.** The roar is a kit by element, so
+  in the Workshop's dungeon any wind monster without an archetype kit of its
+  own roared, swarm included; telegraph.js's own rule is that swarm gets no
+  kit (they come several at once, and many wind-ups at once are noise, not a
+  tell). `_kitFor` keeps that rule for the element's kit too.
+
+`mummy-roar` §6 (six checks, each failing on the build before) and §1 (the
+swarm).
