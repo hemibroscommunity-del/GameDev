@@ -3628,6 +3628,12 @@ remnant to migrate server-side, not a mode to preserve.
       120 Hz; each step is now x `S._dtScale`, as the walk's is (120 px a
       second), the others' pets already eased by time; `mp-petdraw` measures
       each step against its frame's time: docs/specs/trapping.md.
+    - since v2.3.3613 THE TEST PANEL ADDS A PET -- the owner: "Admin 'add
+      pet'": a row of the eight lands (DevPanel.jsx DEV_PET_LANDS) with
+      Golden, Big and Lv 1 / Lv 21, each a call to the worker's trapping lever
+      (`/dev/trapping {pet: {home, level}, look}`, `look` first so the pet
+      comes out as chosen); it lands in More, Pets as a catch would, a first
+      pet out with you at once; `mp-devpet`: docs/specs/trapping.md.
   - Since v2.3.3139 HARDENING TAKES BARS OR HARDENED WOOD AND ITS GOLD
     DOUBLES -- the owner: "hardening should cost 1 bar per level (hardening
     lvl 1 cost 1 bar, hardening lvl 2 costs 2 bars, and a doubling gold cost

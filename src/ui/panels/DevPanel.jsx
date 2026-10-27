@@ -16,6 +16,16 @@ const TOUR_STEPS = [
   { id: 'beast_2', label: '11: Spring' }, { id: 'tut_2', label: '12: Snowmen' },
 ];
 
+/* v2.3.3613: a pet of each land, for "Add a pet" (the worker's trapping
+   lever, devtools.js _devTrapping `pet`; petbook.js KIND_BY_HOME names the
+   kind -- the Poison Forest's the Wisplet) */
+const DEV_PET_LANDS = [
+  { home: 'frost', label: 'Frost' }, { home: 'ember', label: 'Flame' },
+  { home: 'sky', label: 'Dunes' }, { home: 'hollows', label: 'Hollows' },
+  { home: 'thunder', label: 'Foundry' }, { home: 'tidal', label: 'Water' },
+  { home: 'mist', label: 'Poison' }, { home: 'verdant', label: 'Verdant' },
+];
+
 /* ═══ v2.3.2240: THE OWNER'S TEST PANEL ═══
  *
  * Owner: "Is there a test suite you can build that allows me to test features
@@ -367,6 +377,12 @@ export const DevPanel = ({ onClose }) => {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [state, setState] = useState(null);
+  /* v2.3.3613: Add a pet's options -- golden, big (the top of a catch's
+     sizes, petbook.js PETBOOK.SIZE_MAX), and its level (21 and up is the
+     land's second stage, its recoloured look) */
+  const [petGold, setPetGold] = useState(false);
+  const [petBig, setPetBig] = useState(false);
+  const [petLv, setPetLv] = useState(1);
 
   const S = getState();
   const myId = S && S.myId;
@@ -818,6 +834,45 @@ export const DevPanel = ({ onClose }) => {
                 <button key={lv} type="button" style={{ ...chip, minHeight: 34 }} disabled={busy || !myId} data-dev-hit-level={lv}
                   onClick={async () => { const j = await call('/dev/lifeskill', { playerId: myId, skill: 'hits', level: lv }); if (j) { setMsg('Mining, Woodcutting, Fishing and Cooking are level ' + j.level + ' -- open Skills to see each hit\'s odds.'); refresh(); } }}>
                   {lv}
+                </button>
+              ))}
+            </div>
+
+            {/* ═══ v2.3.3613: ADD A PET ═══
+                The owner, 2026-10-26: "Admin 'add pet'".  A catch is 1% at
+                best, a hundred kills; the worker's trapping lever (devtools.js
+                _devTrapping `pet`) puts one of a land's pets in your Pets page
+                as a catch would (`look` first, so it comes out golden or big
+                as chosen).  It is in More, Pets; a first pet comes out with you
+                (petbook.js: the first one is the active one). */}
+            <div style={{ color: COL.muted, fontSize: 12, margin: '6px 0 4px' }}>
+              Add a pet (it goes to More, Pets; your first one comes out with you)
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 6 }}>
+              {[['gold', 'Golden', petGold, setPetGold], ['big', 'Big', petBig, setPetBig]].map(([k, label, on, set]) => (
+                <button key={k} type="button" style={{ ...chip, minHeight: 34, ...(on ? { background: COL.accentFill, color: COL.accent, borderColor: COL.accent } : null) }}
+                  aria-pressed={on} data-dev-pet-opt={k} onClick={() => set(!on)}>
+                  {(on ? '✓ ' : '') + label}
+                </button>
+              ))}
+              {[1, 21].map((lv) => (
+                <button key={lv} type="button" style={{ ...chip, minHeight: 34, ...(petLv === lv ? { background: COL.accentFill, color: COL.accent, borderColor: COL.accent } : null) }}
+                  aria-pressed={petLv === lv} data-dev-pet-level={lv} onClick={() => setPetLv(lv)}>
+                  {'Lv ' + lv}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 4 }}>
+              {DEV_PET_LANDS.map((p) => (
+                <button key={p.home} type="button" style={{ ...chip, minHeight: 34 }} disabled={busy || !myId} data-dev-pet={p.home}
+                  onClick={async () => {
+                    const body = { playerId: myId, pet: { home: p.home, level: petLv } };
+                    if (petGold || petBig) body.look = Object.assign({}, petGold ? { gold: true } : null, petBig ? { size: 1.25 } : null);
+                    const j = await call('/dev/trapping', body);
+                    if (j && j.ok) setMsg('A ' + (petGold ? 'golden ' : '') + (petBig ? 'big ' : '') + p.label + ' pet, level ' + petLv + ', is in More, Pets.');
+                    else if (j && j.error) setMsg(j.error);
+                  }}>
+                  {p.label}
                 </button>
               ))}
             </div>
