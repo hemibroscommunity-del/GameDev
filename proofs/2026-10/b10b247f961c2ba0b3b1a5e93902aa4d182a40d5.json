@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b10b247f961c2ba0b3b1a5e93902aa4d182a40d5",
+  "tree": "ff7f64184d78632ab35aaaffa85642c5d4b577da",
+  "committedAt": "2026-10-27T15:35:41-07:00",
+  "subject": "The town on the minimap is its pictures alone, and four of them say what their building is (v2.3.3678) (#1163)",
+  "files": 6669,
+  "bytes": 774989451,
+  "listingSha256": "4d73e35310623e1586ae4a69c3b5455cf343201482d76df99c303eabf4a76785",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
