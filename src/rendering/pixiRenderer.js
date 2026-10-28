@@ -34,6 +34,7 @@ import { sweepTexturePool } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's te
 import { healAfterRenderThrow } from './renderHeal.js'; /* v2.3.3152: a frame that throws does not leave the screen black */
 import { setSheen, prewarmGlintPipe } from './lightfx/glint.js'; /* v2.3.2864: the permanent soft metal shine, behind ?sheen=1; v2.3.2887: on for everyone, ?sheen=0 turns it off; v2.3.2904: its shader built behind the loading screen */
 import { warmSheenBatch } from './lightfx/sheenBatch.js'; /* v2.3.3453: the ordinary metal shine drawn in the frame, not in a pass a piece */
+import { warmPicNumbers } from './picsNumbers.js'; /* v2.3.3715: a monster's strips as colour numbers on the chip (?picnumbers) */
 import { warmFillBatch } from './fillBatch.js'; /* v2.3.3577: the whirlwind's catch, drawn in one colour */
 import { WHIRL_TINT, WHIRL_TINT_HI, WHIRL_GLOW_ALPHA } from '../game/whirlCatch.js'; /* v2.3.3577: QA's whirlGlowLooks */
 import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2762 */
@@ -336,6 +337,7 @@ export async function initPixiRenderer(canvas) {
      palette's (whose own prewarm must reach the palette program); the three
      programs, as before, if it does not link (rendering/paletteTex.js) */
   try { setOneBatchRenderer(app.renderer); } catch (e) { /* the three programs */ }
+  try { warmPicNumbers(app.renderer); } catch (e) { /* compiled on its first whirlwind */ }   /* v2.3.3715: ?picnumbers (picsNumbers.js) */
   /* v2.3.3707: the silhouettes' two stencil programs, built here behind the
      loading screen, not the first time a monster hides (monsterSilhouette.js) */
   try { warmSilhouettes(app.renderer); } catch (e) { /* none drawn until they build */ }

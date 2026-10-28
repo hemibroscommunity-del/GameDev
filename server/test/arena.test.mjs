@@ -32,6 +32,11 @@
  *      each entry refunds under its own id, the sweep's included.
  *  14. v2.3.3171: an 8-player bracket is not won in round 2 on a
  *      walkover -- the whole round is built before any of it starts.
+ *  16. v2.3.3713: GET /status?playerId= says where that player stands
+ *      ('queued' with its place, 'fighting' with the match card,
+ *      'eliminated', 'none'), the old Arena DO's word the window draws.
+ *  17. v2.3.3713: an arena match's duel_end says `arena`; a fighter who
+ *      rejoins mid-match is sent its arena_match_start again.
  */
 import { GameRoom } from '../src/index.js';
 import { ARENA } from '../src/gladiator.js';
@@ -552,6 +557,71 @@ check('the champion\'s 2,000 is not paid early', room.playerState[P('a')].coins 
   }
   check('a restart at any write of an arena entry leaves the 1,000 after the sweep (no fee lost, none refunded twice)', lost.length === 0, lost);
   check('...the fee, its stamp and the entry record go out as ONE write', joinWrites === 1, joinWrites);
+}
+
+
+/* ── 16. v2.3.3713: /status says where the asking player stands ──
+ * The window drew "In Queue", the fight card and "Eliminated" off a
+ * `status` the settled route never sent (mp-arena, in the world): a paid
+ * gladiator saw "Enter Arena" again three seconds after joining. */
+{
+  const st16 = makeState();
+  const r16 = new GameRoom(st16, mockEnv);
+  const Q = (n) => 'bp_ar16_' + n;
+  const ws16 = {};
+  for (const n of ['a', 'b', 'c', 'd', 'e']) {
+    ws16[n] = fakeWs(n);
+    r16.sessions.set(ws16[n], baseSession());
+    await r16.webSocketMessage(ws16[n], JSON.stringify({ type: 'join', id: Q(n), name: n.toUpperCase(), phrase: 'p-' + Q(n), data: { x: 0, y: 0, z: 'town' } }));
+    r16.playerState[Q(n)].coins = 1000;
+  }
+  const status = async (pid) => (await r16._arenaFetch(new Request('http://x/api/arena/status' + (pid != null ? '?playerId=' + encodeURIComponent(pid) : '')))).json();
+  const none0 = await status(Q('a'));
+  check('16. before any entry /status says "none"', none0.ok && none0.status === 'none', none0);
+  const joins16 = [];
+  for (const n of ['a', 'b', 'c', 'd']) joins16.push(await r16._arenaJoin(Q(n), n.toUpperCase()));
+  check('...a join answers with the joiner\'s place and when the bracket starts',
+    joins16[2].ok && joins16[2].queuePosition === 3 && joins16[2].startsAt === r16._arena.gatherDeadline, joins16[2]);
+  const qc = await status(Q('c'));
+  check('...a queued player reads "queued", its place and when the bracket starts',
+    qc.status === 'queued' && qc.position === 3 && qc.queueSize === 4 && qc.startsAt === r16._arena.gatherDeadline, qc);
+  const qe = await status(Q('e')), qn = await status(null), qp = await status('__proto__');
+  check('...someone not in it (or no id, or a hostile one) reads "none"', qe.status === 'none' && qn.status === 'none' && qp.status === 'none', { qe: qe.status, qn: qn.status, qp: qp.status });
+  r16._arena.gatherDeadline = Date.now() - 1;
+  r16._arenaLazyTick(Date.now());
+  const fa = await status(Q('a'));
+  check('...in the bracket a fighter reads "fighting", the round and the match card with both names and levels',
+    fa.status === 'fighting' && fa.round === 1 && fa.currentMatch && fa.currentMatch.p1 === Q('a') && fa.currentMatch.p2 === Q('b')
+      && fa.currentMatch.p1Name === 'A' && fa.currentMatch.p2Name === 'B' && fa.currentMatch.p1Level >= 1 && fa.currentMatch.active === true && fa.currentMatch.deadline > Date.now(), fa);
+  const psB16 = r16.playerState[Q('b')];
+  psB16.hp = 0;
+  r16._handlePlayerDeath(psB16, Q('b'), 'pvp:' + Q('a'));
+  const eb = await status(Q('b')), wa = await status(Q('a'));
+  check('...the loser reads "eliminated" (the round, no wins), the winner "waiting" with a win while the round finishes',
+    eb.status === 'eliminated' && eb.round === 1 && eb.wins === 0 && wa.status === 'waiting' && wa.wins === 1, { eb, wa });
+  check('...and the tournament still rides along for the spectators', eb.tournament && eb.tournament.status === 'active' && eb.tournament.players.length === 4, eb.tournament && eb.tournament.status);
+  const cm = eb.tournament && eb.tournament.currentMatches, rm = eb.tournament && eb.tournament.recentMatches;
+  check('...its current matches carry both names (the window\'s "vs" card was empty) and a finished one says how it ended',
+    cm && cm.length === 1 && cm[0].p1Name === 'C' && cm[0].p2Name === 'D'
+      && rm && rm.length === 1 && rm[0].winnerId === Q('a') && rm[0].p1Name === 'A' && rm[0].p2Name === 'B' && rm[0].how === 'kill', { cm, rm });
+  /* ── 17. v2.3.3713: a phone that missed its match's start is told again ── */
+  const de = r16.eventBuffer.filter((e) => e.type === 'duel_end');
+  check('17. an arena match\'s duel_end says it is the arena\'s (the phone leaves the words to arena_match_result)',
+    de.length >= 1 && de[de.length - 1].payload.arena === true && de[de.length - 1].payload.winner === Q('a'), de.map((e) => e.payload));
+  const wsC2 = fakeWs('c2');
+  r16.sessions.set(wsC2, baseSession());
+  await r16.webSocketMessage(wsC2, JSON.stringify({ type: 'join', id: Q('c'), name: 'C', phrase: 'p-' + Q('c'), data: { x: 0, y: 0, z: 'town' } }));
+  const again = msgsOfType(wsC2, 'arena_match_start');
+  const syncAt = wsC2.sent.findIndex((m) => m.type === 'state_sync');
+  const startAt = wsC2.sent.findIndex((m) => m.type === 'arena_match_start');
+  check('...a fighter who rejoins mid-match is sent its arena_match_start again (rejoin), after its state_sync',
+    again.length === 1 && again[0].payload.rejoin === true && again[0].payload.opponentId === Q('d') && again[0].payload.round === 1 && syncAt >= 0 && startAt > syncAt,
+    { n: again.length, p: again[0] && again[0].payload, syncAt, startAt });
+  const wsB2 = fakeWs('b2');
+  r16.sessions.set(wsB2, baseSession());
+  r16.playerState[Q('b')].dead = false; r16.playerState[Q('b')].dying = false; r16.playerState[Q('b')].hp = 100;
+  await r16.webSocketMessage(wsB2, JSON.stringify({ type: 'join', id: Q('b'), name: 'B', phrase: 'p-' + Q('b'), data: { x: 0, y: 0, z: 'town' } }));
+  check('...and one knocked out (no match now) is sent none', msgsOfType(wsB2, 'arena_match_start').length === 0);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
