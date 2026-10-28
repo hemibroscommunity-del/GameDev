@@ -143,9 +143,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       return null;
     })();
-    rec.ok(`1. ...each with its picture first: the coin, then the snowman's remains (${pics ? pics.map((l) => (l.icon || '').split('/').pop().split('?')[0]).join(', ') : 'none'})`,
+    rec.ok(`1. ...each with its picture first: the coin pile, then the snowman's remains (${pics ? pics.map((l) => (l.icon || '').split('/').pop().split('?')[0]).join(', ') : 'none'})`,
       !!pics && pics.length === 2 && pics.every((l) => l.iconShown && l.iconRight <= l.textLeft + 0.5 && l.iconPx >= l.fontPx * 0.9)
-        && /cur-gold\.webp/.test(pics[0].icon || '') && /remnants-snowman\.webp/.test(pics[1].icon || ''), pics);
+        && /\/icons\/coins\/coin-\d+\.png/.test(pics[0].icon || '') /* v2.3.3734: the owner's pile for the amount */ && /remnants-snowman\.webp/.test(pics[1].icon || ''), pics);
     rec.ok('1. ...the second line under the first, coming in a little after it',
       L1.length === 2 && L1[1].y > L1[0].y + 10 && !!early && early.lines[1].alpha <= early.lines[0].alpha, { lines: L1, early: early && early.lines });
     const font = await P.page.evaluate(() => {

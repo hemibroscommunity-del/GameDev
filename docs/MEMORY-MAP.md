@@ -38,20 +38,35 @@ This page is the map going forward.
   fight with a full screen of players has room to spare. Every line keeps its
   look and sound: same pixels, same sound (MEMORY-PLAN's rules).
 
-| line | what it is | today | aim | how (lane) |
-|---|---|---|---|---|
-| `artCache` | pictures loaded from files, decoded in the page | 102 | ~10 | **M2** (v2.3.3715): a picture held once, on the chip; only those read back on the CPU keep a page copy, as colour numbers |
-| `gpu` | textures on the graphics chip | 95 | ~55 | **M2**: colour numbers on the chip (a quarter of each picture); **M3** and its phase 2: characters from shared sheets |
-| `canvases` | pictures the game draws itself | 50 | ~15 | **M3** and phase 2: a look is a palette row, not a copy of every sheet |
-| `sound` | decoded sound effects | 27 | ~10 | **M1** (v2.3.3714): decoded only while needed, a capped cache, the fight's sounds pinned |
-| `heap` | the page's JavaScript objects | 33 | ~28 | **M4** (v2.3.3717): trim what the page keeps without needing it |
-| `buffers` | raw buffers and the script's text | 20 | ~15 | **M4**: rarely opened parts of the game loaded when opened |
-| `workers` | the ground builder | 30 | ~15 | **M4**: its caches sized to what a walk needs |
-| | **all seven** | **~358** | **~150** | |
+| line | what it is | before | now, measured | aim | how (lane) |
+|---|---|---|---|---|---|
+| `artCache` | pictures loaded from files, decoded in the page | 102 | **66** (M2) | ~10 | **M2** (v2.3.3715, landed): a picture held once, on the chip; only those read back on the CPU keep a page copy, as colour numbers |
+| `gpu` | textures on the graphics chip | 95 | **75-83** (M2) | ~55 | **M2**: colour numbers on the chip (a quarter of each picture); **M3** and its phase 2: characters from shared sheets |
+| `canvases` | pictures the game draws itself | 50 | **27** (M2) | ~15 | **M3** and phase 2: a look is a palette row, not a copy of every sheet |
+| `sound` | decoded sound effects | 27 | **24** (M1) | ~10 | **M1** (v2.3.3714, landed): decoded only while needed, a capped cache, the fight's sounds pinned |
+| `heap` | the page's JavaScript objects | 33 | 33 | ~28 | **M4** (v2.3.3717): trim what the page keeps without needing it |
+| `buffers` | raw buffers and the script's text | 20 | 21 | ~15 | **M4**: rarely opened parts of the game loaded when opened |
+| `workers` | the ground builder | 30 | 28.5 | ~15 | **M4**: its caches sized to what a walk needs |
+| | **all seven** | **~358** | **~282** | **~150** | |
 
 The aims are the plan's estimates. Each lane measures its own and writes the
 reading into its spec, and this table takes the measured number once the lane
 lands.
+
+**The measured column (v2.3.3761)** is each line's highest reading in
+`mp-membudget`, with M1's and M2's savers on (their default): M2's from
+`docs/specs/pictures-once.md` §5, M1's from `docs/specs/sfx-cache.md`. Two
+cautions:
+
+- **Part of the artCache drop is the ruler, not memory.** 21.6 MB of the old
+  102 were canvases already emptied on the chip, counted at full size by a
+  measuring mistake that M2 fixed. With the ruler fixed and both savers off,
+  the line reads 79, so M2's real saving there is about 13 MB, plus about 13
+  MB of canvases and 9 MB on the chip (the fight's averages).
+- **The `gpu` line moves 2-3 MB from run to run** on this box. 75 is the
+  fight's average and 83 its highest.
+
+M4's and M3's rows are filled in when their PRs land (#1216, #1212).
 
 ## The slots
 
@@ -106,6 +121,11 @@ The plan (M3, v2.3.3716, then its phase 2):
   picture's colours are reduced without the owner's yes
   (`docs/PERFORMANCE-IDEAS.md`, part 3). M3's spec, `docs/specs/look-palette.md`,
   records the design it built.
+- **The owner's yes, the same evening (v2.3.3761).** After the previews: *"You
+  can go ahead and reduce it. I won't notice at all from anything at 256"*.
+  So phase 2 bakes each sheet's role map at 256 entries (8-bit) wherever that
+  saves memory. The quantizer is part of M3's P0; each lane's oracle records
+  its worst shade difference. A sheet already on 256 or fewer stays exact.
 
 | a new... | form, once the character lane's phase covering it lands | until then |
 |---|---|---|
@@ -144,19 +164,25 @@ it.
 
 ## The order the conversion lands in
 
-Each part is its own PR, behind a switch that is off by default. With a
-switch off the game is exactly as today; the owner turns each one on once its
-tests pass on their phone.
+Each part is its own PR and lands **ON by default** (v2.3.3761; the owner,
+2026-10-28: *"I think including the new memory change work by default would
+be better. I can always revert the change if I don't like it or it doesn't
+work well."*). Each part keeps its switch in the address: `?name=0` turns it
+off for one phone and gives the game exactly as it was. A live switch for
+every phone, from the Test panel and with no deploy, is lane D's v2.3.3755.
 
-1. **Phase 1, running (2026-10-28):**
-   - M1, sound (`?sfxcache`);
-   - M2, pictures once (`?onecopy`, `?picnumbers`);
+1. **Phase 1 (2026-10-28):**
+   - M1, sound (`?sfxcache`, `?voicecap`): landed, on;
+   - M2, pictures once (`?onecopy`, `?picnumbers`): landed, on;
    - M3, the characters' foundation (`?lookpalette`, the body standing and
-     walking);
-   - M4, the worker and the code (`?groundlean`, and the code split).
-2. **Phase 2, after M3 lands:** every other body pose; shirts and prints;
-   armour and the body under it; head pieces; other players and townsfolk.
-   `docs/specs/look-palette.md` (M3) lists each part and what it needs.
+     walking): #1212, on by default;
+   - M4, the worker and the code (`?groundlean`, `?heaplean`, `?codelazy`):
+     #1216, on by default.
+2. **Phase 2, running since the same evening** (the owner: *"Make it so phase
+   2 finishes in a few hours. By sampling etc"*): every other body pose;
+   shirts and prints; armour and the body under it; head pieces; other
+   players and townsfolk. `docs/specs/look-palette.md` (M3) lists each part
+   and what it needs.
 3. **The owner's calls, not in the plan until asked:**
    - words drawn at 2x, not 3x (~8 MB);
    - every sound at 24 kHz (~10 MB, a duller top end);
