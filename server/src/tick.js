@@ -248,6 +248,13 @@ export const tickMethods = {
          synchronous handler and keeps no reference, so reusing one a tick
          later cannot change what it saw.  playerState is null-prototype
          (index.js), so for...in walks exactly its own ids. */
+      /* v2.3.3726: a player whose phone sends a steady walk as a path is
+         moved along it first (movepath.js), so the history below, the
+         monsters' chase and every hit read where they are now */
+      try { this._tickMovePath(Date.now()); } catch (e) {
+        this._tickErrs = this._tickErrs || Object.create(null);
+        this._tickErrs.movePath = (this._tickErrs.movePath || 0) + 1;
+      }
       const _hist = this.stateHistory, _lim = this.LAGCOMP_BUFFER_TICKS;
       const _rollNow = Date.now();   /* v2.3.3292: one clock for the roll window below */
       for (const id in this.playerState) {
@@ -582,7 +589,7 @@ export const tickMethods = {
         const ps = this.playerState[id];
         if (!ps) continue;
         if (rosterMoved) rosterMoved.add(id);
-        if (steady && ps.z === WHEEL_ZONE && this._steadyHold(id, playerWire(ps), ts, ps.lastMoveAt)) {
+        if (steady && ps.z === WHEEL_ZONE && this._steadyHold(id, playerWire(ps), ts, this._movePathAt(ps))   /* v2.3.3726: a glide's own time (movepath.js) */) {
           (held || (held = [])).push(id);
           continue;
         }
@@ -618,7 +625,7 @@ export const tickMethods = {
             farList.push([id, ps]);
             /* v2.3.3203: every phone in the Wheel gets this list, so it is
                what went out for these players (steadymovers.js) */
-            if (steady) this._steadySent(id, playerWire(ps), ts, ps.lastMoveAt);
+            if (steady) this._steadySent(id, playerWire(ps), ts, this._movePathAt(ps));
           }
         }
       }
@@ -663,7 +670,7 @@ export const tickMethods = {
             roster[id] = playerWire(ps);
             rosterPairs.push([id, ps]);
             /* v2.3.3203: the roster is what went out for everyone in it */
-            if (steadyOn && ps.z === WHEEL_ZONE) this._steadySent(id, roster[id], ts, ps.lastMoveAt);
+            if (steadyOn && ps.z === WHEEL_ZONE) this._steadySent(id, roster[id], ts, this._movePathAt(ps));
           }
         }
         if (slimOn) {

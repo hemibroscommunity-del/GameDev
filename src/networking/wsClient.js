@@ -46,7 +46,7 @@ import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
 import { peerEntrySlim, broCountOf } from '@/networking/broWallet.js'; /* v2.3.3255: the Hemi Bro check, theirs and yours */
-import { MOVE_DIET, dietMayWait, steadyMove } from '@/game/moveDiet.js'; /* v2.3.3204: a steady walk on the safe ground, half as often */
+import { MOVE_DIET, dietMayWait, steadyMove, MOVE_PATH, pathMayWait, pathTurned } from '@/game/moveDiet.js'; /* v2.3.3204: a steady walk on the safe ground, half as often; v2.3.3726: + the message diet's path */
 import { QUIET, quietOn, bundleOn, lookNews, peerNear, quietMoveGap, framesOf } from '@/game/quietPhone.js'; /* v2.3.3254: the quiet phone */
 import { nmlCanAttack } from '@/game/noMansLand.js'; /* v2.3.3254: a steady walk is not held near a player who may fight you */
 import { NML_CENTRE, NML_CENTRES } from '@/data/noMansLandRings.js'; /* v2.3.3204: the Wheel's middle, the safe ground's centre */
@@ -5145,8 +5145,30 @@ export function setupWebSocket(ctx) {
         return false;
       }
     }
-    /* QA: what the diet did (mp-movediet) */
-    try { if (typeof window !== 'undefined') window.__btMoveDiet = function () { return { on: moveDietOn(), sent: _dietStats.sent, waited: _dietStats.waited }; }; } catch (e) { /* QA only */ }
+    /* ═══ v2.3.3726: THE MESSAGE DIET -- A STEADY WALK IS A PATH ═══
+       Against a worker that advertises caps.movepath (server movepath.js:
+       OFF unless the live flags say `movepath: true`), which moves its copy
+       of you along your speed between your moves, a steady move anywhere in
+       the Wheel waits until MOVE_PATH.GAP_MS (200) after the last one sent,
+       a turn, a start, a stop or any other change goes on the very next
+       batch, and a move off its line at the same speed (a wall, a shove)
+       keeps the rate it always had (game/moveDiet.js pathMayWait,
+       pathTurned).  Every such move carries `pd: 1`.  Not in a duel or an
+       arena match, which are judged blow by blow against where the worker
+       has you.  Your own walk never waits: these are reports. */
+    var _pathStats = { waited: 0, turned: 0 };
+    function movePathOn() {
+      try {
+        var _S = stateRef.current;
+        if (!_capsHere || !_S || !_S._serverCaps || !_S._serverCaps.movepath) return false;
+        if (_S.currentZone !== 'wheel') return false;
+        return !(_S._inDuel || _S._activeDuel || _S._arenaMatch);
+      } catch (e) {
+        return false;
+      }
+    }
+    /* QA: what the diet did (mp-movediet; v2.3.3726: + the path, mp-movepath) */
+    try { if (typeof window !== 'undefined') window.__btMoveDiet = function () { return { on: moveDietOn(), sent: _dietStats.sent, waited: _dietStats.waited, path: movePathOn(), pathWaited: _pathStats.waited, pathTurned: _pathStats.turned }; }; } catch (e) { /* QA only */ }
     /* ═══ v2.3.3254: THE QUIET PHONE -- ONE FRAME A MOMENT, AND RIDERS ═══
        game/quietPhone.js has the whole story.  wsOut is every game message's
        way out (the join keeps its own): against a worker that advertises
@@ -5263,8 +5285,19 @@ export function setupWebSocket(ctx) {
       if (_pendingMove) {
         var _nowMv = Date.now();
         var _gapMv = moveGapMs();
+        /* v2.3.3726: the path (movePathOn above): a steady move waits to
+           GAP_MS, a change goes now, the rest keep the rate */
+        if (_pendingMove.pd === 1 && _moveSent && _moveSent.pd === 1) {
+          if (pathMayWait(movePathOn(), _pendingMove, _pendingMoveAt, _moveSent, _moveSentMadeAt)) {
+            _gapMv = MOVE_PATH.GAP_MS;
+            if (_nowMv - _lastMoveSentAt < _gapMv) _pathStats.waited++;
+          } else if (pathTurned(_moveSent, _pendingMove)) {
+            _gapMv = 0;
+            _pathStats.turned++;
+          }
+        }
         /* v2.3.3204: ...and a steady walk on the safe ground waits longer */
-        if (_gapMv < MOVE_DIET.GAP_MS && _nowMv - _lastMoveSentAt >= _gapMv && moveMayWait()) {
+        else if (_gapMv < MOVE_DIET.GAP_MS && _nowMv - _lastMoveSentAt >= _gapMv && moveMayWait()) {
           _gapMv = MOVE_DIET.GAP_MS;
           if (_nowMv - _lastMoveSentAt < _gapMv) _dietStats.waited++;
         }
@@ -5832,7 +5865,11 @@ export function setupWebSocket(ctx) {
                  off (undefined, so not on the wire) when walking.  Only `sp: 1`
                  counts there, and only against a worker that advertised
                  caps.sprint does the client sprint at all (game/sprint.js). */
-              sp: sprintStepFlag(_S4) ? 1 : undefined
+              sp: sprintStepFlag(_S4) ? 1 : undefined,
+              /* v2.3.3726: "move me along my speed until my next one" -- only
+                 against a worker that glides (movePathOn); absent otherwise,
+                 so the move is byte for byte what it was */
+              pd: movePathOn() ? 1 : undefined
             };
             _pendingMoveAt = Date.now();   /* v2.3.3204: when this frame wrote it */
             startBatchTimer();

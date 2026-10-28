@@ -161,6 +161,7 @@ export const adminMethods = {
           /* v2.3.3325: the move budget -- moves judged, followed past it, back
              into the Wheel from where they left, followed now (movement.js) */
           moveBudget: this._moveBudgetInfo(),
+          movePath: this._movePathInfo(),   /* v2.3.3726: the message diet (movepath.js) */
           /* v2.3.3327: the last places -- kept at a leave, joins judged from
              one, followed past it, joins with none (lastplace.js) */
           lastPlace: this._lastPlaceInfo(),
