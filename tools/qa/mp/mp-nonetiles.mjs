@@ -15,7 +15,7 @@ import * as H from './harness.mjs';
 
 const PHONE = { width: 390, height: 844 };
 const STRIPS = [
-  ['Species', 'Human', 'cc-none-bro.png'],
+  ['Bro type', 'Human', 'cc-none-bro.png'],   /* v2.3.3772: the tab's words were "Species" */
   ['Hair', 'None', 'cc-none-bro.png'],
   ['Hats', 'None', 'cc-none-bro.png'],
   ['Beard', 'None', 'cc-none-bro.png'],

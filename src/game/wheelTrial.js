@@ -32,6 +32,7 @@
 const WORKER_URL = '/tools/world/core/ground-worker.js';
 import { landLook, hexRgb } from '../data/wheelLands.js';   /* v2.3.3024: each land's flat colour */
 import { wheelLong, noteWheelBuilt } from './wheelSize.js';   /* v2.3.3315: which Wheel the room plays */
+import { clientOffAtLoad } from './clientOff.js';   /* v2.3.3755: the Test panel's Memory savers */
 
 const ROW_KEEP = 160;          /* walk-grid rows kept made, a byte a cell (v2.3.3315: 1.8 KB today, 7 KB on the long Wheel; a JS array was ~14 KB and would be ~58) */
 /* v2.3.3298: the Wheel's walls come a block at a time (the worker's 'block':
@@ -247,6 +248,8 @@ try { if (typeof location !== 'undefined' && /[?&]groundwait=0(&|$)/.test(locati
    the new memory change work by default would be better") */
 let _heapLean = true;
 try { if (typeof location !== 'undefined' && /[?&]heaplean=(0|off|false)(&|$)/.test(location.search || '')) _heapLean = false; } catch (e) { /* lean */ }
+/* v2.3.3755: ...and off when the Test panel's Memory savers row turned it off, from the next load (clientOff.js) */
+try { if (clientOffAtLoad('heaplean')) _heapLean = false; } catch (e) { /* as the address says */ }
 let _said = false;
 let _sayWaiters = [];
 export function wheelRendererSaid() {
@@ -292,6 +295,10 @@ export function wheelStart() {
        v2.3.2955: and `?trial=wheel&blends` the blends, put away too */
     let search = '';
     try { search = window.location.search || ''; } catch (e) { /* no page */ }
+    /* v2.3.3755: the lean ground builder (on unless `groundlean=0`, ground-
+       worker.js) turned off in what the worker is told when the Test panel's
+       Memory savers row turned it off, from this load (clientOff.js) */
+    try { if (clientOffAtLoad('groundlean')) search = (search ? search + '&' : '?') + 'groundlean=0'; } catch (e) { /* as the address says */ }
     /* v2.3.3021: and whether the game draws the water moving here, so the
        worker takes the frozen web of light out of the water pictures
        (ground.js CALM WATER; setWheelWaterMoves, from wheelWater.js) */

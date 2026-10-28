@@ -4223,6 +4223,10 @@ html.bt-calm .bt-xp-gain{animation:none;opacity:1;transform:none}
    The tab row is one icon sheet now and every icon downscales smoothly --
    nearest at this fractional scale gave uneven blocks (see NameModal _TABS). */
 .bt-cc-tab--on .bt-cc-tab-icon{opacity:1}
+/* v2.3.3772: the Bro type tab's three heads (cc-tab-brotype.png, about 5:1):
+   the tabs' icon height at every size below, its own width, never wider than
+   its tab (a narrow sideways column shrinks it whole, never squashes it) */
+.bt-cc-tab-icon.bt-cc-tab-icon--trio{width:auto !important;max-width:100%;aspect-ratio:400/79;object-fit:contain}
 .bt-cc-tab-label{max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:clamp(9px,2.6vw,12px);font-weight:700;letter-spacing:0;line-height:1}
 /* v2.3.1272: the Random cell reads as an ACTION among the tabs — the
    standard slate micro-bevel instead of the transparent tab rest state

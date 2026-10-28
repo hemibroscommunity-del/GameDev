@@ -145,7 +145,9 @@ const COMPARE = (maxStrips) => {
   const out = { strips: 0, cells: 0, px: 0, over1: 0, maxDiff: 0, worst: null };
   for (const src of srcs) {
     const P = src._btPal, N = src._btNumbers;
-    if (!P || !N) continue;
+    /* (an effect's numbers may be packed by now, p256.js: its canvas kept for
+       the test is what it is compared against) */
+    if (!P || (!N && !src.__btOrigCanvas)) continue;
     /* the packed canvas itself (kept for the test: __btPicNumVerify), or one
        made from the numbers */
     let cv = src.__btOrigCanvas && src.__btOrigCanvas.width === P.w ? src.__btOrigCanvas : null;
@@ -352,6 +354,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`?picnumbers: every strip drawn the same as from its colours (${cmp.strips} strips, ${cmp.cells} cells at 3 scales, ${cmp.px} px: `
         + `${cmp.over1} more than 1 level of 255 apart, the most ${cmp.maxDiff}; against the packed canvas itself: ${cmp.originals || 0})`, cmp.strips > 0 && cmp.cells > 0 && cmp.over1 === 0 && cmp.originals === cmp.strips && !cmp.error && !cmp.sizeMismatch, cmp);
       out.numbers = { n, cmp };
+    }
+    /* v2.3.3728: the effects from their 256-colour twins (p256.js, off by default: BT_QA_QUERY=p256=1) */
+    if (/(^|&)p256(=1)?(&|$)/.test(Q) && !/(^|&)picnumbers=0(&|$)/.test(Q)) {
+      const p = await P.page.evaluate(() => (window.__btP256 ? window.__btP256() : null));
+      console.log(`    256 colours: ${JSON.stringify(p)}`);
+      rec.ok(`?p256: the effects are read from their twins as colour numbers (${p && p.strips} strips, ${p && p.pictures} whole pictures, `
+        + `${p && p.asOriginal} as the original, ${p && p.undecided} never decided; ${p && p.twins} twins listed)`,
+        !!p && p.on && p.strips > 0 && p.pictures > 0 && p.asOriginal === 0 && p.undecided === 0, p);
+      /* their numbers packed once on the chip, unpacked for the rebuild above
+         (when ?onecopy ran it) and packed again, never sent blank */
+      const k = p && p.pack;
+      rec.ok(`?p256: once on the chip the effects' numbers are kept packed (${k && k.packed} packs, ${k && k.packedMB} MB as ${k && k.packedKB} KB; `
+        + `${k && k.unpacked} unpacked for a rebuild, ${k && k.blankUploads} sent blank, ${k && k.failed} failed)`,
+        !!k && k.packed > 0 && k.blankUploads === 0 && k.failed === 0 && (/(^|&)onecopy=0(&|$)/.test(Q) || k.unpacked > 0), k);
     }
     const pageErrors = P.logs.filter((l) => /pageerror/.test(l));
     rec.ok('no page errors', pageErrors.length === 0, pageErrors.slice(0, 4));

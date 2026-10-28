@@ -444,6 +444,18 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
     await req('DELETE', '/api/admin/flags?name=pathall');
     check('8h. cleared, the worker glides again and every phone is on the path (the default)', room._movePathOn() === true && room._movePathAll() === true);
   }
+  // 8i. v2.3.3755: a memory saver turned off for every phone (clientoff.js):
+  //     `off_<name>: true` through the operator's route, told at join
+  {
+    const r = await jbody(await setFlag('off_onecopy', true));
+    check('8i. POST /flags stores off_onecopy: true', r.status === 200 && r.body.flags.off_onecopy === true, r);
+    const ws8i = fakeWs('s8i');
+    await join(ws8i, 'bp_lo_s8i');
+    const caps = (msgsOfType(ws8i, 'state_sync')[0] || {}).caps || {};
+    check('8i. ...and a join is told the saver is off (caps.clientoff)', caps.clientoff === 'onecopy', caps.clientoff);
+    await req('DELETE', '/api/admin/flags?name=off_onecopy');
+    check('8i. cleared, no saver is off', room._clientOffList() === '');
+  }
 
   // 8f. every flag the WORKER READS is a name the route takes.  The reads
   //     come in three shapes: _flagOn/_flagNum('<name>'), and a cache held

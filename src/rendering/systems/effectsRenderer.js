@@ -3,6 +3,7 @@
  * projectiles, telegraphs, lock-on, ambient particles, chat bubbles, building signs.
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
+import { coinPileTexture } from '../coinPileArt.js';   /* v2.3.3734: the owner's coin piles, one an amount */
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
 import { peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's axe, heard */
@@ -309,6 +310,7 @@ import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape,
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
 import { CampfireFx, fireLightSpot } from '../campfireFx.js'; /* v2.3.2846: the lit-log campfire, in pixel art; v2.3.3666: + where a peer's light catches */
+import { PersonFire } from '../buildingFire.js'; /* v2.3.3748: on fire in a burning heap, the building's own flames */
 import { FIRE_STRIP_V, FIRE_FRAME_OFF, FIRE_FIGURE_X, FIRE_STRIKE_FRAME } from '../../data/fireStrip.js'; /* v2.3.3666: the fire-lighter's strip, measured (tools/build_fire_clean.py) */
 import { getEquip, onEquipChange } from '../gearCatalog.js';   /* v2.3.3640: + the greaves' change (_rebakeLegBodies) */
 import { getShirt, onShirtChange } from '../traits/shirtCatalog.js';   /* v2.3.3146: + the change, for the dressed stand-in shirts */
@@ -1522,7 +1524,9 @@ const POPUP_ICONS = {};
 /* v2.3.3209: + the dice a kill's roll wears in front of it (game/killRoll.js):
    the Gambling Den's two, cut to their own edge (/icons/popups/dice.webp) */
 /* v2.3.3279: + the owner's shield, in front of "Defense Lv N" (it wore 🛡️) */
-const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit', 'dice', DEFENSE_POPUP_KEY].concat(Object.keys(ELEM_ICON_SRC));
+/* v2.3.3734: 'gold' left this list -- the "+5 G" mark is the owner's pile for
+   the amount now (coinPileArt.js), and nothing else drew gold.webp */
+const POPUP_ICON_KEYS = ['xp', 'sword', 'arrow', 'spell', 'heart', 'crit', 'dice', DEFENSE_POPUP_KEY].concat(Object.keys(ELEM_ICON_SRC));
 /* v2.3.2211: 'crit' is the one key whose art does not live in /icons/popups.
    Reusing the Hero screen's own crit icon rather than copying it to a second
    path -- one asset, one meaning, and no chance of the two drifting apart
@@ -3436,6 +3440,9 @@ export class EffectsRenderer {
     this.telegraphLayer.addChild(this.elemGfx);
     this.elemFrontGfx = new Graphics();
     this.overlayLayer.addChild(this.elemFrontGfx);
+    /* v2.3.3748: on fire in a burning heap -- the building's own flames on
+       you (buildingFire.js PersonFire), made the first time you burn */
+    this.personFire = new PersonFire(this.overlayLayer);
     this.fireTrailSprites = [];
 
     this.overlayGfx = new Graphics();
@@ -6327,11 +6334,14 @@ export class EffectsRenderer {
            gold from text pattern. Damage popups need an explicit iconKey
            because the text alone doesn't tell us the weapon type. */
         let iconKey = dmg.iconKey;
+        /* v2.3.3734: "+5 G" wears the owner's pile for its amount */
+        let coinTex = null;
         if (!iconKey) {
-          if (/^\+\d+\s*G$/.test(t)) iconKey = 'gold';
+          const _g = /^\+(\d+)\s*G$/.exec(t);
+          if (_g && (coinTex = coinPileTexture(+_g[1]))) iconKey = 'gold';
         }
-        if (iconKey && POPUP_ICONS[iconKey]) {
-          const tex = POPUP_ICONS[iconKey];
+        if (iconKey && (coinTex || POPUP_ICONS[iconKey])) {
+          const tex = coinTex || POPUP_ICONS[iconKey];
           const icon = new Sprite(tex);
           icon.anchor.set(0, 0.5);
           /* v2.3.2212 (owner: "make the crit icon much larger (I can barely
@@ -9874,7 +9884,9 @@ export class EffectsRenderer {
        gray + lower alpha and skip the "+Xg" label since the watcher
        doesn't know the recipient's per-share value. */
     const owned = ownsThis !== false;
-    const goldTex = POPUP_ICONS.gold;
+    /* v2.3.3734: the owner's pile for the amount (one coin for a watcher, who
+       does not know the share) */
+    const goldTex = coinPileTexture(owned ? l.coins : 1);
     if (goldTex) {
       if (!l._pixiCoinSprite || l._pixiCoinSprite.destroyed) {
         const sp = new Sprite(goldTex);
@@ -9887,7 +9899,10 @@ export class EffectsRenderer {
       l._pixiCoinSprite.y = anchorY;
       l._pixiCoinSprite.alpha = (owned ? 1 : 0.4) * alpha;
       l._pixiCoinSprite.tint = owned ? 0xffffff : 0x555555;
-      l._pixiCoinSprite.scale.set((12 * LOOT_SCALE) / (l._pixiCoinSprite.texture.width || 12));
+      if (l._pixiCoinSprite.texture !== goldTex) l._pixiCoinSprite.texture = goldTex;
+      /* v2.3.3734: fitted by its longer side (a pile is wider than tall, the
+         one coin taller than wide; gold.webp was square) */
+      l._pixiCoinSprite.scale.set((12 * LOOT_SCALE) / (Math.max(goldTex.width, goldTex.height) || 12));
       applySquash(l._pixiCoinSprite, sq, rot);   /* v2.3.2771; v2.3.2772 tilt */
       l._pixiCoinSprite.visible = true;
     }
@@ -10512,7 +10527,9 @@ export class EffectsRenderer {
         gfx.fill({ color: glowColor, alpha: glowAlpha });
         /* Coin icon sprite (matches HUD/popup gold icon).  Falls back
            to the procedural multi-circle stack while the PNG is loading. */
-        const goldTex = POPUP_ICONS.gold;
+        /* v2.3.3734: the owner's pile for the amount; a watcher, who does
+           not know the share, sees the one coin */
+        const goldTex = coinPileTexture(ownsThis ? l.coins : 1);
         if (goldTex) {
           if (!l._pixiSprite || l._pixiSprite.destroyed) {
             const sp = new Sprite(goldTex);
@@ -10525,7 +10542,8 @@ export class EffectsRenderer {
           l._pixiSprite.zIndex = LOOT_Z.coin;
           l._pixiSprite.alpha = (ownsThis ? 1 : 0.5) * alpha;
           l._pixiSprite.tint = ownsThis ? 0xffffff : 0x555555;
-          l._pixiSprite.scale.set((14 * LOOT_SCALE) / (l._pixiSprite.texture.width || 14));
+          if (l._pixiSprite.texture !== goldTex) l._pixiSprite.texture = goldTex;
+          l._pixiSprite.scale.set((14 * LOOT_SCALE) / (Math.max(goldTex.width, goldTex.height) || 14));
           applySquash(l._pixiSprite, hC.sq, hC.rot);
           l._pixiSprite.visible = true;
         } else {
@@ -13161,6 +13179,13 @@ export class EffectsRenderer {
       }
     };
     if (!isPlayerDead(S)) draw(S, S.player.x, S.player.y);
+    /* v2.3.3748: standing in a burning heap (game/heapBurn.js) */
+    if (this.personFire) {
+      const px = S.player.x, py = S.player.y;
+      const on = !isPlayerDead(S) && S._heapBurnUntil > now;
+      this.personFire.step(on, px, py + playerGroundDy(zone, px, py), zonePlayerScale(zone, px, py, TILE) || 1, now);
+      if (typeof window !== 'undefined' && window.__btProbe) window.__btPersonFire = this.personFire.probe();
+    }
     const others = S.others;
     if (others) {
       for (const id of Object.keys(others)) {
@@ -17165,6 +17190,8 @@ export class EffectsRenderer {
     clearTimeout(this._dressT);   /* v2.3.3146: a pending re-warm of the dressed shirts */
     if (this._dressed) this._dressed.clear();   /* ...whose sources _bakes lets go of below */
     try { this.clear(); } catch (e) { /* a half-built renderer */ }
+    try { if (this.personFire) this.personFire.destroy(); } catch (e) { /* v2.3.3748: gone with its layer */ }
+    this.personFire = null;
     for (const src of this._bakes) { unregisterGearSource(src); releaseCanvasSource(src); }
     this._bakes.clear();
     this._gpuWaiting.clear();   /* v2.3.3698: released with the rest just above */

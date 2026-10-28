@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';
@@ -116,7 +117,7 @@ function postOffice(props) {
         var what = m.key && ITEM_NAMES[m.key] ? m.n + '× ' + ITEM_NAMES[m.key] : m.what;
         return (
           <div key={i} data-mail-line="" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderTop: i ? '1px solid ' + LS.border : 'none' }}>
-            {m.kind === 'gold' ? icon('/icons/popups/gold.webp', '🪙', 18) : icon('/icons/ui/evt-mail.webp', '📫', 18)}
+            {m.kind === 'gold' ? icon(coinArtFor(m.amount), '🪙', 18) /* v2.3.3734: the pile for the gold */ : icon('/icons/ui/evt-mail.webp', '📫', 18)}
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: m.kind === 'gold' ? LS.brass : LS.txt1, fontVariantNumeric: 'tabular-nums' }}>{what}</span>
               {m.note ? <span style={{ display: 'block', fontSize: 11.5, color: LS.txt2, overflowWrap: 'anywhere' }}>{m.note}</span> : null}

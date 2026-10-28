@@ -80,6 +80,10 @@
  *                      tools/dev/check-town-rim.mjs: spawn, World View
  *                      arrival, exit, every NPC and door still reachable,
  *                      and the rocks all round still a wall (v2.3.2896).
+ *   9d. look-roles    — FAIL: if a stand or jog body sheet changed and the
+ *                      look-palette numbers (public/sprites/look/) were not
+ *                      re-baked from it; WARN if only the recolour code
+ *                      changed (tools/art/role-bake.mjs --hashes, v2.3.3716).
  *  10. hairmask-rule  — FAIL: if the headwear art, a hair-clip mask or
  *                      tools/make_hairmask.py changed, every committed
  *                      hairmask/<dir>.png must still be the v2.3.1957
@@ -889,6 +893,25 @@ if (changedServer.length || changedClient.length) {
       add('FAIL', 'foreground-crops', `check-foreground-crops.mjs exited ${r.status ?? 'timeout'}:\n    ${tail}`);
     }
   } else add('PASS', 'foreground-crops', 'no foreground art or placement changes — check skipped');
+}
+
+/* ---- 9d. look-roles ----------------------------------------------------
+   v2.3.3716.  `?lookpalette` draws the stand and jog body from colour numbers
+   baked offline by the game's own recolour (tools/art/role-bake.mjs,
+   public/sprites/look/).  A sheet changed without a re-bake draws the old
+   art's roles over the new art: FAIL.  The recolour code changed: WARN --
+   most edits leave the roles as they were; `role-bake.mjs --check` says. */
+{
+  const touched = changed.filter((f) => /^public\/sprites\/player\/(stand|jog)-(east|north|northeast|south|southwest)\.(png|webp)$/.test(f)
+    || /^src\/rendering\/(playerSkins|garmentConfine|spriteScale|playerDecal)\.js$/.test(f) || f === 'src/rendering/eyeMask.json'
+    || /^public\/sprites\/look\//.test(f));
+  if (touched.length) {
+    const r = spawnSync('node', ['tools/art/role-bake.mjs', '--hashes'], { cwd: root, encoding: 'utf8', timeout: 60 * 1000 });
+    const said = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-3).join(' ');
+    if (r.status === 0) add('PASS', 'look-roles', said);
+    else if (r.status === 2) add('WARN', 'look-roles', said + ' -- node tools/art/role-bake.mjs --check (a browser, ~15 s) says whether the roles moved; re-bake if they did');
+    else add('FAIL', 'look-roles', said + ' -- re-bake: node tools/art/role-bake.mjs');
+  } else add('PASS', 'look-roles', 'no stand or jog sheet or recolour change -- check skipped');
 }
 
 /* ---- 9c. town-rim ----------------------------------------------------

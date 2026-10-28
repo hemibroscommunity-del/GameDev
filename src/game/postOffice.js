@@ -90,7 +90,9 @@ export function mailLine(e) {
   else what = 'A delivery';
   let note = e && typeof e.note === 'string' ? e.note : '';
   if (!note && source === 'daily') note = 'Daily reward';
-  return { what, note: note.slice(0, 120), kind, source, key, n };
+  /* v2.3.3734: a gold line's amount, for the owner's coin pile beside it */
+  const amount = kind === 'gold' ? Math.max(0, Math.round(Number(p.amount) || 0)) : 0;
+  return { what, note: note.slice(0, 120), kind, source, key, n, amount };
 }
 
 /** Keep delivery `e` in S._mail (oldest first, at most MAIL_KEEP). */

@@ -3137,16 +3137,22 @@ console.log('jumping (v2.3.3017)');
     const fs = J.startFlip(base(0), J.FLIP_SWEET * T, { sprint: true }), fw = J.startFlip(base(0), J.FLIP_SWEET * T, {});
     ok(`sprinting into the jump, the flip is bigger: boost ${fs.boost.toFixed(2)} (walking ${fw.boost.toFixed(2)}), ${fs.peak.toFixed(0)} px at the top (walking ${fw.peak.toFixed(0)}), more ground (${(distAt(J.FLIP_SWEET, true) / T).toFixed(2)}x)`,
       fs.sprint && Math.abs(fs.boost / fw.boost - J.FLIP_SPRINT_BOOST) < 1e-9 && fs.peak > fw.peak && fs.dur > fw.dur && distAt(J.FLIP_SWEET, true) > distAt(J.FLIP_SWEET));
-    ok(`"Perfect!" from a grade of ${J.FLIP_PERFECT}: the press at the sweet spot, not one right after take-off`,
+    ok(`a perfect flip from a grade of ${J.FLIP_PERFECT}: the press at the sweet spot, not one right after take-off`,
       fw.perfect && !J.startFlip(base(0), 0.2 * T, {}).perfect);
+    /* v2.3.3738: the owner, "You can remove the 'perfect!' after a well timed
+       jump" -- the carry stays (the grade and boost above), the words go */
+    ok('v2.3.3738: ...and no "Perfect!" said over you any more (jumpActions triggerFlip pushes no popup)',
+      !/Perfect!'|pushDmgPopup/.test((await import('node:fs')).readFileSync(new URL('../../src/game/jumpActions.js', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')));
     ok('...faster across the ground only while the flip is in the air',
       J.flipBoost(fw, fw.t0 + 1) === 1 + fw.boost && J.flipBoost(fw, fw.t0 + fw.dur + 1) === 1 && J.flipBoost(fw, fw.t0 - 1) === 1
         && J.flipBoost(base(0), 100) === 1 && J.flipBoost(null, 1) === 1);
     ok('...clearing low things while it is high enough (the jump\'s own JUMP_CLEAR), and not as it comes down',
       J.clearMsLeft(fw, fw.t0 + 10) > 0 && J.clearMsLeft(fw, fw.t0 + fw.dur - 5) === 0);
     const lk = J.jumpLook(fw, fw.t0 + fw.dur / 2, null, 1);
-    ok('drawn as the roll\'s somersault: no stretch or lean of its own, the tumble frames in order (dodge sheets)',
-      lk && lk.flip && lk.air && lk.ky === 1 && lk.rot === 0 && lk.lift > 0
+    /* v2.3.3738: "The flipped body is too small (looks about 40% too small)":
+       drawn FLIP_BODY_K (1.4) larger, evenly, about the feet (jumpFx) */
+    ok('drawn as the roll\'s somersault: no stretch or lean of its own, FLIP_BODY_K (1.4) larger evenly (v2.3.3738), the tumble frames in order (dodge sheets)',
+      lk && lk.flip && lk.air && J.FLIP_BODY_K === 1.4 && lk.ky === J.FLIP_BODY_K && lk.kx === J.FLIP_BODY_K && lk.rot === 0 && lk.lift > 0
         && [0, 0.2, 0.4, 0.6, 0.85].map((t) => J.flipFrame(9, t)).join() === J.FLIP_FRAMES.join() && J.flipFrame(9, 0.999) === 6);
     const real = J.peerJump({ flip: 1, h0: fw.h0, v: fw.v, g: fw.g, ang: 1.5, dur: 1, peak: 1 }, 50);
     ok('another player\'s flip from the relay: the same arc, its numbers clamped, a forged one a plain hop',
