@@ -11,7 +11,7 @@
  *   node tools/qa/load/load.mjs [--steps 10,25,50] [--hold 20] [--settle 20]
  *        [--procs 3] [--fighters 0.3] [--cap 400] [--idle] [--pong N]
  *        [--server <a server/ folder>] [--observability] [--url ws://127.0.0.1:PORT]
- *        [--no-deflate] [--move-ms 33] [--town-move-ms 66] [--diet] [--seen-r 2400] [--pres]
+ *        [--no-deflate] [--move-ms 33] [--town-move-ms 66] [--diet] [--path] [--seen-r 2400] [--pres]
  *        [--inspector-port 9230] [--worker-log <file>] [--walk-r 400] [--track]
  *        [--keep-bundle <dir>] [--tick-parts]
  *        [--storm] [--storm-max 90] [--relays] [--events]
@@ -81,6 +81,7 @@ const OPT = {
   noDeflate: process.argv.includes('--no-deflate'),
   moveMs: +arg('move-ms', 0),             /* v2.3.3199: a walker's move every N ms (0: the phone's 33) */
   townMoveMs: +arg('town-move-ms', 0),     /* v2.3.3203: the town walkers' (not the fighters') move every N ms */
+  path: process.argv.includes('--path'),     /* v2.3.3732: the message diet -- every bot marks its moves `pd: 1` and sends a steady walk every 200 ms (src/game/moveDiet.js pathMayWait), and the room is switched on (`movepath: true`) */
   diet: process.argv.includes('--diet'),     /* v2.3.3204: the walkers keep a steady walk's moves back as a phone on the safe ground does (src/game/moveDiet.js) */
   track: process.argv.includes('--track'),   /* v2.3.3240: every bot sends a phone's 2 s look (bots.mjs TRACK_MS), relayed by the worker to everyone */
   relays: process.argv.includes('--relays'), /* v2.3.3245: the fighters send a phone's swing / arrow relay with each blow (bots.mjs) */
@@ -261,7 +262,7 @@ function startBots(url, wireUrl) {
       env: OPT.tickParts ? Object.assign({}, process.env, { BT_TICK_PARTS: '1' }) : process.env });
     const g = { child, last: null, n: 0 };
     child.on('message', (m) => { if (m && m.type === 'report') { g.last = m.data; reports.push(m.data); } });
-    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, townMoveMs: OPT.townMoveMs, diet: OPT.diet, pres: OPT.pres, noDeflate: OPT.noDeflate, seenR: OPT.seenR, walkR: OPT.walkR, track: OPT.track, relays: OPT.relays, events: OPT.events } });
+    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, townMoveMs: OPT.townMoveMs, diet: OPT.diet, path: OPT.path, pres: OPT.pres, noDeflate: OPT.noDeflate, seenR: OPT.seenR, walkR: OPT.walkR, track: OPT.track, relays: OPT.relays, events: OPT.events } });
     groups.push(g);
   }
 }
@@ -453,6 +454,14 @@ async function main() {
     worker = await startWorker(copy.dir, port);
     url = `ws://127.0.0.1:${port}/ws?room=${encodeURIComponent(OPT.room)}&rf=1`;
     pids = await groupPids(worker.proc.pid);
+    /* v2.3.3732: --path switches the room's glide on (liveops.js flags) */
+    if (OPT.path) {
+      const fr = await fetch(`http://127.0.0.1:${port}/api/admin/flags?room=${encodeURIComponent(OPT.room)}`, {
+        method: 'POST', headers: { Authorization: 'Bearer load-test-' + process.pid, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'movepath', value: true }),
+      }).then((r) => r.json()).catch((e) => ({ ok: false, error: String(e) }));
+      console.log('movepath: true ->', JSON.stringify(fr));
+    }
   } else {
     url = OPT.url;
     console.log('using the worker at', url, '(no CPU readings: it is not ours)');

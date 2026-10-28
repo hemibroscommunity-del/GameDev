@@ -104,3 +104,80 @@ export function dietMayWait(on, pending, pendingAt, sent, sentAt, centre, safeR)
   if (!onSafeGround(pending.x, pending.y, centre, safeR) || !onSafeGround(sent.x, sent.y, centre, safeR)) return false;
   return steadyMove(sent, pending, sentAt, pendingAt);
 }
+
+/* ═══ v2.3.3732: THE MESSAGE DIET -- A STEADY WALK IS A PATH, NOT A STREAM ═══
+ *
+ * Owner, 2026-10-28: "Before when you mentioned using less server messages
+ * for movement, can that be started now?" (docs/specs/move-path.md).  Against
+ * a worker that advertises caps.movepath (server/src/movepath.js), which
+ * moves its copy of you along your speed between your moves, a steady move
+ * anywhere in the Wheel waits until GAP_MS after the last one sent -- about 5
+ * a second where it was 15-30 -- and everything else goes on the next 33 ms
+ * batch, as it always did: a turn past ~2 degrees, a start, a stop, a sprint,
+ * a roll, new gear, and ANY place that is not where the speed says (a wall,
+ * a monster's body, a shove, the ice): the worker would be moving its copy
+ * somewhere you are not.
+ *
+ * "Steady" is steadyMove's own test (every other field as sent, still moving,
+ * the same speed within ~2 degrees, within ERR_PX of the line) with the
+ * place along the line held tighter, to ALONG_MS of the speed: over 200 ms
+ * the worker's copy is that close to you when the next move lands.  And
+ * never above MAX_V, the walk bound (server movement.js MOVE_BUDGET 500 px a
+ * second): the worker never glides faster, so a faster move (a lunge) goes.
+ * Your own controls never wait: the phone moves you at once, always; these
+ * are only its reports.
+ */
+export const MOVE_PATH = Object.freeze({
+  /* the longest a steady move waits -- MIRROR: server/src/movepath.js
+     MOVE_PATH.GAP_MS (move-path.test.mjs pins it) */
+  GAP_MS: 200,
+  /* along the line: this much of the speed's time (frame timing) */
+  ALONG_MS: 8,
+  /* hundredths of a px a 60 Hz frame: 500 px a second, the walk bound */
+  MAX_V: 833,
+});
+
+/** May this move wait as part of a path?  steadyMove's arguments. */
+export function pathSteady(last, m, lastAt, at) {
+  if (!steadyMove(last, m, lastAt, at)) return false;
+  const vx = num(m.vx), vy = num(m.vy);
+  const sp = Math.sqrt(vx * vx + vy * vy);
+  if (sp === 0) return true;   /* standing where you stood */
+  if (sp > MOVE_PATH.MAX_V) return false;
+  const lvx = num(last.vx), lvy = num(last.vy);
+  const lsp = Math.sqrt(lvx * lvx + lvy * lvy);
+  const ux = lvx / lsp, uy = lvy / lsp;
+  const along = (m.x - last.x) * ux + (m.y - last.y) * uy;
+  return Math.abs(along - lsp * PX_PER_MS * (at - lastAt)) <= MOVE_DIET.ERR_PX + lsp * PX_PER_MS * MOVE_PATH.ALONG_MS;
+}
+
+/**
+ * The batch's question (wsClient.js flushInputBuffer): may the pending move
+ * wait until MOVE_PATH.GAP_MS after the last one sent?  `on` is the phone's
+ * say (wsClient.js movePathOn: the worker advertises caps.movepath, you are
+ * in the Wheel, not in a duel or an arena match); both moves in the Wheel,
+ * both marked for the path, and the pending one steady.
+ */
+export function pathMayWait(on, pending, pendingAt, sent, sentAt) {
+  if (!on || !pending || !sent) return false;
+  if (pending.z !== 'wheel' || sent.z !== 'wheel' || pending.pd !== 1 || sent.pd !== 1) return false;
+  return pathSteady(sent, pending, sentAt, pendingAt);
+}
+
+/**
+ * Did the movement itself change since the last move sent -- a field, a
+ * start or a stop, the speed past a thumb's wobble?  Such a move goes on the
+ * next batch whatever the rate (wsClient.js flushInputBuffer); one that is
+ * only off its line at the same speed (a wall, a shove, the ice) keeps the
+ * rate it always had.
+ */
+export function pathTurned(last, m) {
+  if (!last || !m) return false;
+  for (const k in m) if (!MOTION[k] && m[k] !== last[k]) return true;
+  for (const k in last) if (!MOTION[k] && m[k] !== last[k]) return true;
+  const vx = num(m.vx), vy = num(m.vy), lvx = num(last.vx), lvy = num(last.vy);
+  if ((vx !== 0 || vy !== 0) !== (lvx !== 0 || lvy !== 0)) return true;
+  const sp = Math.sqrt(lvx * lvx + lvy * lvy);
+  const vtol = Math.max(MOVE_DIET.V_MIN, sp * MOVE_DIET.V_REL);
+  return Math.abs(vx - lvx) > vtol || Math.abs(vy - lvy) > vtol;
+}

@@ -424,6 +424,22 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   }
   check('8e. the lower-case rule is unchanged', flagNameOk('disable_dungeons') && flagNameOk('xp_mult') && flagNameOk('bowvolley') && !flagNameOk(null) && !flagNameOk(7));
   check('8e. the list is frozen', Object.isFrozen(LIVEOPS.CAMEL_SWITCHES));
+  // 8h. v2.3.3732: the message diet's two lower-case switches (movepath.js):
+  //     `pathall: true` puts every phone on it, `movepath: false` kills it,
+  //     each through the operator's route, and a join is told
+  {
+    const r1 = await jbody(await setFlag('pathall', true));
+    check('8h. POST /flags stores pathall: true, and every phone is on the path', r1.status === 200 && r1.body.flags.pathall === true && room._movePathAll() === true && room._movePathOn() === true, r1);
+    const r2 = await jbody(await setFlag('movepath', false));
+    check('8h. the kill switch movepath: false turns off the glide and every phone, pathall or not', r2.status === 200 && room._movePathOn() === false && room._movePathAll() === false, r2);
+    const ws8f = fakeWs('s8f');
+    await join(ws8f, 'bp_lo_s8f');
+    const caps = (msgsOfType(ws8f, 'state_sync')[0] || {}).caps || {};
+    check('8h. ...and a join is told both are off', caps.movepath === false && caps.pathall === false, { movepath: caps.movepath, pathall: caps.pathall });
+    await req('DELETE', '/api/admin/flags?name=movepath');
+    await req('DELETE', '/api/admin/flags?name=pathall');
+    check('8h. cleared, the worker glides again and no phone is put on the path', room._movePathOn() === true && room._movePathAll() === false);
+  }
 
   // 8f. every flag the WORKER READS is a name the route takes.  The reads
   //     come in three shapes: _flagOn/_flagNum('<name>'), and a cache held
