@@ -56,16 +56,13 @@ import { MapPanel }          from './dash/MapPanel.jsx';
 import { SocialPanel }       from './dash/SocialPanel.jsx';
 import { MorePanel }         from './dash/MorePanel.jsx';
 import { PetsPanel }         from './dash/PetsPanel.jsx'; /* v2.3.3120 */
-import { AchievementsPanel, AchievementsHead } from './dash/AchievementsPanel.jsx'; /* v2.3.3527 */
+/* v2.3.3717: the pages opened now and then, each its own script, loaded when first opened with `?codelazy` (ui/lazyPanels.js) */
+import { DashAchievementsPanel as AchievementsPanel, DashAchievementsHead as AchievementsHead, DashEncyclopediaPanel as EncyclopediaPanel,
+  DashLeaderboardPanel as LeaderboardPanel, DashClanPanel as ClanPanel, DashFeedbackPanel as FeedbackPanel, DashSettingsPanel as SettingsPanel } from '../lazyPanels.js'; /* v2.3.3527: achievements */
 import { StatsPanel }        from './dash/StatsPanel.jsx';
 import { SkillsPanel }       from './dash/SkillsPanel.jsx';
-import { EncyclopediaPanel } from './dash/EncyclopediaPanel.jsx';
 import { GuildPanel }        from './dash/GuildPanel.jsx';
-import { LeaderboardPanel }  from './dash/LeaderboardPanel.jsx';
-import { ClanPanel }         from './dash/ClanPanel.jsx';
-import { FeedbackPanel }     from './dash/FeedbackPanel.jsx';
 import { AboutPanel }        from './dash/AboutPanel.jsx';   /* v2.3.2820 */
-import { SettingsPanel }     from './dash/SettingsPanel.jsx';
 /* v2.3.1143: account panel -- Login Key display + device transfer. */
 import { AccountPanel }      from './dash/AccountPanel.jsx';
 import { QuestsPanel }        from './dash/QuestsPanel.jsx';

@@ -100,7 +100,9 @@ const sample = (P) => P.page.evaluate(() => {
   }
   const top = Object.entries(groups).sort((a, b) => b[1] - a[1]).slice(0, 12);
   return { zone: S.currentZone, x: Math.round(S.player.x), y: Math.round(S.player.y), cache: t ? t.mb : null, gpu: g,
-    canvas: cv ? [cv.width, cv.height] : null, mons: (S.monsters || []).length, looks: art ? Object.keys(art.looks || {}) : null, top };
+    canvas: cv ? [cv.width, cv.height] : null, mons: (S.monsters || []).length, looks: art ? Object.keys(art.looks || {}) : null, top,
+    /* v2.3.3717: the ground's pieces and what the walk asked of its worker (ground-worker.js DIET; `BT_QA_QUERY=groundlean` walks it lean) */
+    ground: (() => { const w = window.__btWorldTrial && window.__btWorldTrial.stats; return w ? { loads: w.loads, avgMs: w.loads ? Math.round(w.sumMs / w.loads) : null, maxMs: w.maxMs, popIns: w.popIns, partial: w.partial, diet: w.diet } : null; })() };
 });
 
 async function walk(browser, wsPort, webPort, query, label, rows) {
@@ -131,6 +133,7 @@ async function walk(browser, wsPort, webPort, query, label, rows) {
     for (const r of out) {
       console.log(`    ${label} stop ${r.stop} (${r.x},${r.y}) ${r.zone}: cache ${r.cache} MB, GPU textures ${r.gpu && r.gpu.tex} MB (+${r.gpu && r.gpu.rb} MB buffers, peak ${r.gpu && r.gpu.peakTex}), ${r.gpu && r.gpu.n} objects, canvas ${r.canvas}, looks ${JSON.stringify(r.looks)}`);
     }
+    for (const r of out) console.log(`    ${label} stop ${r.stop} ground: ${JSON.stringify(r.ground)}`);
     const last = out[out.length - 1];
     console.log(`    ${label} at the fight, cache by folder: ${JSON.stringify(last.top)}`);
     return out;
