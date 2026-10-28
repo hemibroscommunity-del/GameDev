@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "abe121aa90c326c5e6d6858c84bb0d0e9106fd20",
+  "tree": "6ac59b4e1162c448025b8d465a095e44ef426de7",
+  "committedAt": "2026-10-28T15:11:35-07:00",
+  "subject": "The plan for the arena's own area, with your answers (v2.3.3741) (#1215)",
+  "files": 6794,
+  "bytes": 794048846,
+  "listingSha256": "fa674f769d9d14fa3cf3add649d01562f0e95f1c6a770f96e546e5ad67ff0830",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
