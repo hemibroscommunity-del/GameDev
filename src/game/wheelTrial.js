@@ -242,9 +242,11 @@ const RENDERER_WAIT_MS = 15000;
 let _waitOn = true;
 try { if (typeof location !== 'undefined' && /[?&]groundwait=0(&|$)/.test(location.search || '')) _waitOn = false; } catch (e) { /* waits */ }
 /* v2.3.3717: `?heaplean`, the page's own leftovers let go (the overview's
-   pixels, above): docs/specs/worker-code-diet.md */
-let _heapLean = false;
-try { if (typeof location !== 'undefined' && /[?&]heaplean(=|&|$)/.test(location.search || '')) _heapLean = true; } catch (e) { /* kept */ }
+   pixels, above): docs/specs/worker-code-diet.md.
+   v2.3.3736: ON unless the address says `heaplean=0` (the owner's "including
+   the new memory change work by default would be better") */
+let _heapLean = true;
+try { if (typeof location !== 'undefined' && /[?&]heaplean=(0|off|false)(&|$)/.test(location.search || '')) _heapLean = false; } catch (e) { /* lean */ }
 let _said = false;
 let _sayWaiters = [];
 export function wheelRendererSaid() {

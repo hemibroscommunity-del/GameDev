@@ -878,6 +878,20 @@ Screens: more-achievements
 
 Sources: docs/specs/achievements.md, server/src/achievements.js, src/data/achievements.js, src/game/achievements.js, tools/ui/cut-achievement-badges.py, src/ui/mobile/dash/AchievementsPanel.jsx, src/ui/panels/AchievementBanner.jsx, src/ui/mobile/dash/MorePanel.jsx, src/ui/mobile/dash/LeaderboardPanel.jsx, src/ui/panels/buildings/PartyPanel.jsx, src/ui/panels/PlayerProfilePanel.jsx
 
+## A window that could not open
+Screens: lazy-cantopen
+
+**What it is for:** The windows a player opens now and then (ranks, the codex, achievements, settings, the clan, feedback, the buildings' windows, a player's card...) load their code the first time they are opened (v2.3.3717, on for everyone since v2.3.3736: the owner, "I think including the new memory change work by default would be better"). A game left open across an update asks for the OLD version's code, which the site no longer has. The window then says so instead of staying blank.
+
+**Decisions, and why:**
+- **Plain words, and what to do:** "Couldn't open this" over "Reload the game to get the newest version." The fix is always the same (the page again brings the new version's code), so the card says it, and its Reload button does it.
+- **The game plays on under it.** A deploy can land while the judges play: nothing stops, the world keeps moving, and only that one window is missing.
+- **Close puts the window away too** (its own close, so the game is not left "busy" behind a window with no ✕). Opened again, it tries again.
+- **One try more first, unseen.** A dropped connection is the other way a window's code can fail; it is tried once more, a moment later, before the card shows.
+- **The middle of the play column**, in the game's dark-and-gold card, with Reload (`data-enter`) and Close (`data-esc`) for a computer's keys.
+
+Sources: src/ui/lazyPanel.js, src/ui/lazyPanels.js, docs/specs/worker-code-diet.md, tools/qa/mp/mp-lazyfail.mjs
+
 ## Building doors and the Enter button
 Screens: near-door
 
