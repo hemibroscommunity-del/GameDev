@@ -5680,6 +5680,18 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
      that very column, below): its trait picker otherwise ran the window's
      whole width with one row of tiles in it.  The backdrop fills the window. */
   html.bt-desk-wide .bt-name-modal > *{max-width:min(100%, calc(100vh * 390 / 715));margin-left:auto;margin-right:auto}
+  /* ═══ v2.3.3769: THE TRAIT PICKER, PROPORTIONALLY LARGER ═══
+     The owner: "For the trait picker desktop only you can make the trait
+     picker area and buttons proportionally larger".  The creator takes 1.4
+     columns now (still the window's HEIGHT that sizes it, TRAPS §214): the
+     left column keeps its --cc-leftw (the bro, the plate, ENTER exactly as
+     they were) and the picker takes the rest, drawn 1.3 times its size --
+     its tiles, tabs, swatches and words together, in proportion (`zoom`, so
+     its layout is the size it is drawn).  Its height stays the column's
+     (a percentage is not zoomed: 100% is the column's foot), a long tab
+     scrolling inside as before. */
+  html.bt-desk-wide .bt-name-modal > .bt-cc-shell{max-width:min(100%, calc(100vh * 390 / 715 * 1.4))}
+  html.bt-desk-wide .bt-cc-cols>.bt-cc-panel{zoom:1.3;max-height:100%}
   /* THE CONTROLS' COLUMN at the screen's far edge (KeyboardHintsPanel.jsx
      DeskKeysList, from BottomDashboard): the screen's height, its keys in
      groups; folded, the ⌨ alone.  Its width and its edge are set inline from
