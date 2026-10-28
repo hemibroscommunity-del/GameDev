@@ -340,7 +340,7 @@ async function main() {
       texBytes += r.w * (r.h + tableRows) * (r.bits === 8 ? 1 : 2);
       nBits[r.bits]++;
       const entry = HEAD_ENTRY[cat];
-      out.sheets[name] = { ds: 1, bits: r.bits, w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends, cells: r.cells, dirs: r.dirs,
+      out.sheets[name] = { ds: 1, bits: r.bits, cut: r.quant || undefined, w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends, cells: r.cells, dirs: r.dirs,
         roleDefs: r.roleDefs.map((ro) => ({ name: ro.name, entry, ref: ro.ref64, under: 0 })), art: artHash(cat, id), bytes: png.length };
       const file = path.join(OUT, name + '.png');
       if (CHECK) {

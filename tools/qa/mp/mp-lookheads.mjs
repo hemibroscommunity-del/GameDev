@@ -91,7 +91,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log(`    the switch: ${JSON.stringify(st)}`);
     rec.ok(`by default the head pieces are colour numbers: ${st.hl.pieces} pieces, sets ${JSON.stringify(st.lp.sets)}, on ${st.lp.on}, ok ${st.lp.ok}`,
       st.lp.on === true && st.lp.ok === true && st.hl.loaded && st.hl.pieces === 59 && st.lp.sets.indexOf('heads') >= 0 && st.probe && !st.lp.loadError, st);
-    const allHats = await P.page.evaluate(() => fetch('/sprites/look/heads/roles.json').then((r) => r.json()).then((m) => Object.keys(m.sheets)));
+    const man = await P.page.evaluate(() => fetch('/sprites/look/heads/roles.json').then((r) => r.json()).then((m) => m.sheets));
+    const allHats = Object.keys(man);
+    /* a sheet cut to 255 colours (head-bake --bits 8, lookCut.mjs) is held to
+       the cut's bar, 16 levels; every other one is exact: 1 */
+    const BAR8 = 16;
+    const cutOf = (it) => { const e = man[it.split('/')[0] + '-' + it.split('/')[1]]; return !!(e && e.cut); };
     const items = [];
     for (const h of HAIRS) for (const c of HAIR_COLORS) items.push(['hair', h, c]);
     for (const h of HATS6) for (const c of HAT_COLORS) items.push(['headwear', h, c]);
@@ -112,15 +117,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const res = [];
     for (let i = 0; i < items.length; i += 8) res.push(...await P.page.evaluate((its) => window.__btHeadOracle.compare({ items: its, scale: 1 }), items.slice(i, i + 8)));
     report.oracle = res;
-    let facings = 0, drawn = 0, differ = 0, worst = 0;
+    let facings = 0, drawn = 0, differ = 0, worst = 0, cutN = 0, cutWorst = 0, cutOver = 0;
     const notDrawn = res.filter((r) => !r.old || !r.look || r.missingNew || r.missingOld);
     for (const r of res) {
-      facings += r.facings; drawn += r.drawn; differ += r.differ; worst = Math.max(worst, r.worst);
+      facings += r.facings; drawn += r.drawn;
+      if (cutOf(r.item)) { cutN++; cutWorst = Math.max(cutWorst, r.worst); if (r.worst > BAR8) cutOver++; continue; }
+      differ += r.differ; worst = Math.max(worst, r.worst);
       if (r.differ || !r.look) console.log(`    ${r.item.padEnd(34)} ${r.facings} facings, ${r.drawn} px, ${r.differ} over 1, worst ${r.worst} ${JSON.stringify(r.hist)} ${JSON.stringify(r.bad.slice(0, 2))}`);
     }
     console.log(`    the oracle: ${res.length} pieces-in-a-colour, ${facings} facings, ${drawn} px, ${differ} over 1, worst ${worst} (${Math.round((Date.now() - t0) / 1000)} s)`);
-    rec.ok(`THE ORACLE: ${res.length} pieces in a colour, ${facings} facings (flips included), ${drawn} px drawn both ways: ${differ} px more than 1 level apart (worst ${worst})`,
-      res.length === items.length && !notDrawn.length && differ === 0 && drawn > 100000, { facings, drawn, differ, worst, notDrawn: notDrawn.map((r) => r.item) });
+    rec.ok(`THE ORACLE: ${res.length} pieces in a colour, ${facings} facings (flips included), ${drawn} px drawn both ways: `
+      + `the ${res.length - cutN} exact, ${differ} px more than 1 level apart (worst ${worst}); the ${cutN} cut to 255 colours, worst ${cutWorst} (bar ${BAR8})`,
+      res.length === items.length && !notDrawn.length && differ === 0 && cutOver === 0 && drawn > 100000, { facings, drawn, differ, worst, cutN, cutWorst, notDrawn: notDrawn.map((r) => r.item) });
 
     /* 2. a phone's zoom and a computer's */
     report.wide = {};
@@ -129,12 +137,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const scale of [2.6, 0.8]) {
       const r = await P.page.evaluate(([its, s]) => window.__btHeadOracle.compare({ items: its, scale: s, cols: 6 }), [sample, scale]);
       report.wide[scale] = r;
-      const d = r.reduce((a, x) => a + x.differ, 0), px = r.reduce((a, x) => a + x.drawn, 0), w = Math.max(...r.map((x) => x.worst));
+      /* a cut sheet's own bar (BAR8, and the mip blend's 3 more minified) */
+      const ex = r.filter((x) => !cutOf(x.item)), cut = r.filter((x) => cutOf(x.item));
+      const cutBad = cut.filter((x) => x.worst > BAR8 + (scale < 1 ? 3 : 0)).map((x) => x.item);
+      const d = ex.reduce((a, x) => a + x.differ, 0), px = ex.reduce((a, x) => a + x.drawn, 0) || 1, w = Math.max(0, ...ex.map((x) => x.worst));
       const hist = {};
       for (const x of r) for (const [k, v] of Object.entries(x.hist)) hist[k] = (hist[k] || 0) + v;
       console.log(`    at ${scale}x: ${px} px, ${d} more than 1 apart, worst ${w} ${JSON.stringify(hist)}`);
       rec.ok(`at ${scale} screen pixels a texel (the sharp read${scale < 1 ? ', the mip chain' : ''}): ${d} of ${px} px more than 1 level apart, worst ${w}`,
-        r.every((x) => x.look && x.old) && (scale > 1 ? w <= 1 : (w <= 3 && d < 0.05 * px)), { d, px, w, hist });
+        r.every((x) => x.look && x.old) && !cutBad.length && (scale > 1 ? w <= 1 : (w <= 3 && d < 0.05 * px)), { d, px, w, hist, cutBad });
     }
 
     /* for the record (no line): through the old copy's whole 128 frame, the
