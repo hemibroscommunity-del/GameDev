@@ -68,6 +68,10 @@ const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../.
 const OUT = path.join(REPO, 'public/sprites/look');
 const PORT = Number(process.env.ROLE_BAKE_PORT || 5197);
 const CHECK = process.argv.includes('--check');
+/* v2.3.3750: the 8-bit cut's bar -- the worst colour of a sheet within this
+   many levels a channel of the 16-bit truth, in any look (the orchestrator's
+   line for the owner's "I won't notice at all from anything at 256") */
+const CUT_BAR = Number(process.env.ROLE_BAKE_BAR || 16);
 /* ROLE_BAKE_PROBE=jog-east:948,53 -- one display texel's story, for debugging a bake */
 const PROBE_AT = process.env.ROLE_BAKE_PROBE ? ((m) => [m[1], [Number(m[2]), Number(m[3])]])(/^([a-z-]+):(\d+),(\d+)$/.exec(process.env.ROLE_BAKE_PROBE)) : null;
 
@@ -77,7 +81,8 @@ async function pageMeta({ set }) {
   return { kind: S.kind, bits: S.bits, refScale: S.refScale || 1, fw: S.fw || 128, fh: S.fh || 128, out: S.out || null, roleDefs: S.roleDefs,
     sheets: S.sheets, code: S.code || [], art: Object.fromEntries(S.sheets.map((k) => [k, S.art(k)])) };
 }
-async function pageBake({ set, sheet, bits, probeAt }) {
+async function pageBake({ set, sheet, bits, probeAt, bar }) {
+  const CUT_BAR = bar;   /* v2.3.3750: the 8-bit cut's worst colour, in levels */
   const S = (await import(`/rendering/lookSets/${set}.js`)).default;
   const GS = await import('/rendering/gearSheets.js');
   const FW = S.fw || 128, FH = S.fh || 128;
@@ -192,74 +197,91 @@ async function pageBake({ set, sheet, bits, probeAt }) {
   /* ═══ v2.3.3737: 8 BITS -- AT MOST 255 COLOURS, CHOSEN PER ROLE ═══
      The owner: "You can go ahead and reduce it. I won't notice at all from
      anything at 256."  A sheet over 255 colours is cut down per ROLE (so no
-     colour crosses from the skin to the trousers), each role's share of the
-     255 as its share of the colours (at least one), by median cut over its
-     colours weighted by how many pixels use each; each box becomes its
-     pixels' mean.  `quant` reports how far a pixel moved (straight RGBA). */
+     colour crosses from the skin to the trousers).
+     ═══ v2.3.3750: ...BOUNDED BY ITS WORST COLOUR, NOT ITS COMMON ONES ═══
+     The first cut (median cut by pixel count, each box its pixels' mean) left
+     the common colours 1-3 levels off and merged the rare ones: 40-146 levels
+     off on a few texels a sheet -- an eye's highlight, a buckle -- which breaks
+     the promise behind the owner's yes.  Now the bar is the WORST texel: every
+     colour within CUT_BAR levels a channel of itself, in every look.
+       - A colour's error is what a look can show of it: its straight RGBA
+         (a look that leaves the role as drawn, and every kept pixel), and for a
+         retinted role its luminance as the retint magnifies it (target x lum /
+         ref: up to 255 / ref a level -- the boots' ref 75 makes one level of
+         luminance 3.4 of white boots).
+       - All 255 entries are one pool: each step splits the box, of ANY role,
+         whose worst colour is furthest from its entry, at the middle of the
+         axis that error lies on; an entry is the middle of its box (the
+         minimax point), not the mean.
+     A sheet whose worst is still over the bar with every entry spent is
+     reported (`over`); role-bake.mjs keeps such a sheet 16-bit (its caller's
+     choice: --bits 16 for that sheet). */
   let mapKey = (k) => k;
   let quant = null;
   if (bits === 8 && keys.size > 255) {
+    const ch = (k, c) => { const v = k % 4294967296; return c === 0 ? (v >>> 24) & 255 : c === 1 ? (v >>> 16) & 255 : c === 2 ? (v >>> 8) & 255 : v & 255; };
+    const total = keys.size;
+    /* the axes a colour is measured on: r, g, b, a, and (retinted roles) its
+       luminance scaled by what the retint makes of it */
+    const lumScale = (r) => { const ro = r ? roles[r - 1] : null; return ro && ro.ref ? 255 / (ro.ref / RS) : 0; };
+    const axes = (k, s) => {
+      const r = ch(k, 0), g = ch(k, 1), b = ch(k, 2);
+      return [r, g, b, ch(k, 3), s ? (0.299 * r + 0.587 * g + 0.114 * b) * s : 0];
+    };
+    const mkBox = (role, list) => {
+      const s = lumScale(role);
+      const pts = list.map(([k, n]) => [k, n, axes(k, s)]);
+      const lo = [Infinity, Infinity, Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity, -Infinity, -Infinity];
+      for (const [, , a] of pts) for (let q = 0; q < 5; q++) { if (a[q] < lo[q]) lo[q] = a[q]; if (a[q] > hi[q]) hi[q] = a[q]; }
+      /* the minimax entry: the middle of r, g, b, a -- and its error, the
+         worst colour's distance on any axis (luminance included) */
+      const rep = [0, 1, 2, 3].map((q) => Math.round((lo[q] + hi[q]) / 2));
+      const repLum = s ? (0.299 * rep[0] + 0.587 * rep[1] + 0.114 * rep[2]) * s : 0;
+      let err = 0, axis = 0;
+      for (const [, , a] of pts) {
+        for (let q = 0; q < 4; q++) { const e = Math.abs(a[q] - rep[q]); if (e > err) { err = e; axis = q; } }
+        if (s) { const e = Math.abs(a[4] - repLum); if (e > err) { err = e; axis = 4; } }
+      }
+      return { role, pts, lo, hi, rep, err, axis };
+    };
     const byRole = new Map();
     for (const [k, n] of keys) { const r = Math.floor(k / 4294967296); if (!byRole.has(r)) byRole.set(r, []); byRole.get(r).push([k, n]); }
-    const total = keys.size;
-    const budget = new Map();
-    let left = 255;
-    for (const [r, list] of byRole) { const b = Math.max(1, Math.floor(255 * list.length / total)); budget.set(r, b); left -= b; }
-    /* what is left, to the roles with the most colours a box */
-    while (left > 0) {
-      let best = -1, bestR = null;
-      for (const [r, list] of byRole) { const v = list.length / budget.get(r); if (v > best && budget.get(r) < list.length) { best = v; bestR = r; } }
-      if (bestR === null) break;
-      budget.set(bestR, budget.get(bestR) + 1); left--;
+    const boxes = [];
+    for (const [r, list] of byRole) boxes.push(mkBox(r, list));
+    while (boxes.length < 255) {
+      let bi = -1;
+      for (let i = 0; i < boxes.length; i++) if (boxes[i].pts.length > 1 && (bi < 0 || boxes[i].err > boxes[bi].err)) bi = i;
+      if (bi < 0 || boxes[bi].err < 0.5) break;
+      const bx = boxes[bi];
+      /* split at the middle of the widest axis (the one its error lies on, or
+         the widest when that one cannot part it) */
+      let q = bx.axis;
+      if (bx.hi[q] - bx.lo[q] <= 0) { let w = -1; for (let a = 0; a < 5; a++) if (bx.hi[a] - bx.lo[a] > w) { w = bx.hi[a] - bx.lo[a]; q = a; } }
+      const mid = (bx.lo[q] + bx.hi[q]) / 2;
+      const A = [], B = [];
+      for (const p of bx.pts) (p[2][q] <= mid ? A : B).push([p[0], p[1]]);
+      if (!A.length || !B.length) break;
+      boxes.splice(bi, 1, mkBox(bx.role, A), mkBox(bx.role, B));
     }
-    while (left < 0) {   /* more roles than colours to give: take from the biggest */
-      let bestR = null, bb = 1;
-      for (const [r, b] of budget) if (b > bb) { bb = b; bestR = r; }
-      if (bestR === null) break;
-      budget.set(bestR, budget.get(bestR) - 1); left++;
-    }
-    const ch = (k, c) => { const v = k % 4294967296; return c === 0 ? (v >>> 24) & 255 : c === 1 ? (v >>> 16) & 255 : c === 2 ? (v >>> 8) & 255 : v & 255; };
     const remap = new Map();
-    let moved = 0, worst = 0, pix = 0;
-    for (const [r, list] of byRole) {
-      let boxes = [list];
-      while (boxes.length < budget.get(r)) {
-        /* split the box with the widest weighted spread on one channel */
-        let bi = -1, bc = 0, bw = -1;
-        boxes.forEach((bx, i) => {
-          if (bx.length < 2) return;
-          for (let c = 0; c < 4; c++) {
-            let lo = 255, hi = 0;
-            for (const [k] of bx) { const v = ch(k, c); if (v < lo) lo = v; if (v > hi) hi = v; }
-            const wgt = (hi - lo) * Math.sqrt(bx.reduce((a, e) => a + e[1], 0));
-            if (wgt > bw) { bw = wgt; bi = i; bc = c; }
-          }
-        });
-        if (bi < 0 || bw <= 0) break;
-        const bx = boxes[bi].slice().sort((a, b) => ch(a[0], bc) - ch(b[0], bc));
-        const half = bx.reduce((a, e) => a + e[1], 0) / 2;
-        let acc = 0, cut = 1;
-        for (let i = 0; i < bx.length - 1; i++) { acc += bx[i][1]; if (acc >= half) { cut = i + 1; break; } cut = i + 1; }
-        boxes.splice(bi, 1, bx.slice(0, cut), bx.slice(cut));
-      }
-      for (const bx of boxes) {
-        let n = 0; const m = [0, 0, 0, 0];
-        for (const [k, c] of bx) { n += c; for (let q = 0; q < 4; q++) m[q] += ch(k, q) * c; }
-        const rep = m.map((v) => Math.round(v / n));
-        const key = r * 4294967296 + ((rep[0] << 24) >>> 0) + (rep[1] << 16) + (rep[2] << 8) + rep[3];
-        for (const [k, c] of bx) {
-          remap.set(k, key);
-          let dm = 0; for (let q = 0; q < 4; q++) dm = Math.max(dm, Math.abs(ch(k, q) - rep[q]));
-          moved += dm * c; pix += c; if (dm > worst) worst = dm;
-        }
+    let moved = 0, pix = 0, worst = 0;
+    for (const bx of boxes) {
+      const key = bx.role * 4294967296 + ((bx.rep[0] << 24) >>> 0) + (bx.rep[1] << 16) + (bx.rep[2] << 8) + bx.rep[3];
+      for (const [k, n] of bx.pts) remap.set(k, key);
+      if (bx.err > worst) worst = bx.err;
+      for (const [k, n, a] of bx.pts) {
+        let e = 0; for (let q = 0; q < 4; q++) e = Math.max(e, Math.abs(a[q] - bx.rep[q]));
+        moved += e * n; pix += n;
       }
     }
     mapKey = (k) => remap.get(k);
     const merged = new Map();
-    for (const [k, n] of keys) { const q = remap.get(k); merged.set(q, (merged.get(q) || 0) + n); }
+    for (const [k, n] of keys) { const qk = remap.get(k); merged.set(qk, (merged.get(qk) || 0) + n); }
     keys.clear();
     for (const [k, n] of merged) keys.set(k, n);
-    quant = { from: total, to: keys.size, meanMoved: +(moved / Math.max(1, pix)).toFixed(2), worstMoved: worst };
+    /* worstMoved: the worst colour's error on its worst axis, the retint's
+       magnified luminance included -- the number the bar is held to */
+    quant = { from: total, to: keys.size, meanMoved: +(moved / Math.max(1, pix)).toFixed(2), worstMoved: +worst.toFixed(1), over: worst > CUT_BAR };
   }
   const sorted = [...keys.keys()].sort((a, b) => a - b);
   const cap = bits === 8 ? 256 : 65536;   /* numbers 0..255 (0 see-through) or 0..65535 */
@@ -431,19 +453,28 @@ async function main() {
     if (!CHECK) fs.mkdirSync(outDir, { recursive: true });
     for (const name of sheets) {
       const t0 = Date.now();
-      const r = await page.evaluate(pageBake, { set, sheet: name, bits, probeAt: PROBE_AT });
+      let r = await page.evaluate(pageBake, { set, sheet: name, bits, probeAt: PROBE_AT, bar: CUT_BAR });
+      /* v2.3.3750: a sheet the 8-bit cut cannot hold to the bar stays 16-bit
+         (its own `bits` in the manifest; lookPalette.js reads a sheet's
+         over the set's) */
+      let sheetBits = bits;
+      if (bits === 8 && r.quant && r.quant.over) {
+        console.log(`  ${name}: the 8-bit cut's worst colour is ${r.quant.worstMoved} levels (over ${CUT_BAR}): kept 16-bit`);
+        r = await page.evaluate(pageBake, { set, sheet: name, bits: 16, probeAt: PROBE_AT, bar: CUT_BAR });
+        sheetBits = 16;
+      }
       if (r.probe) console.log(JSON.stringify(r.probe));
       const { png, tableRows } = sheetPng(r);
       /* an 8-bit sheet is a cut of the art (the owner's "anything at 256"):
          its self-check says how far, it does not fail it */
-      const ok = !r.unexplained && (bits === 8 || !r.check.over1);
+      const ok = !r.unexplained && (sheetBits === 8 || !r.check.over1);
       if (!ok) bad++;
       console.log(`${ok ? 'ok  ' : 'BAD '} ${name.padEnd(15)} ds ${r.ds}  ${String(r.w).padStart(4)}x${r.h}+${tableRows}  ${String(r.entries).padStart(5)} colours`
         + (r.quant ? ` (cut from ${r.quant.from}: a pixel moved ${r.quant.meanMoved} on average, ${r.quant.worstMoved} at most)` : '')
         + `  roles ${r.counts.join('/')}  unexplained ${r.unexplained}  ambiguous ${r.ambiguous}  pick ${r.pick}, ${r.split} split`
         + `  check ${r.check.texels} texels, ${r.check.over1} over 1, max ${r.check.max}, mean ${r.check.mean}  (${Date.now() - t0} ms)`);
       const artFiles = meta.art[name] || [];
-      out.sheets[name] = { ds: r.ds, frames: r.frames, w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends,
+      out.sheets[name] = { ...(sheetBits !== bits ? { bits: sheetBits } : {}), ds: r.ds, frames: r.frames, w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends,
         cells: r.cells, split: r.split, quant: r.quant || undefined, artFiles, art: hashFiles(artFiles), bytes: png.length };
       const file = path.join(outDir, name + '.png');
       if (CHECK) {
