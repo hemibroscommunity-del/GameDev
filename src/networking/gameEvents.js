@@ -4589,6 +4589,37 @@ export function processGameEvent(type, payload, S, deps) {
               pushDmgPopup(S, S.player.x, S.player.y - 50, '⚔️ ARENA R' + (payload.round || 1) + ': fight ' + (payload.opponentName || '???') + '!', '#f5c542');
               cue('arenaStart');   /* v2.3.3343: was a beep() -- silent */
               S.screenShake = 5;
+              /* ═══ v2.3.3713: AN ARENA MATCH IS A DUEL ON THIS PHONE TOO ═══
+                 The worker runs every match as a wager-0 duel (gladiator.js
+                 _arenaTryActivate: the consent pair, the shot clock), but this
+                 handler only showed the popup.  The phone's PvP gates key on
+                 S._inDuel (monsterCombat's melee claim, projectiles' shot
+                 target, peerShots, the abilities' safe-zone rule), and the
+                 world's BroTown is safe ground, so a fighter's swings sent NO
+                 attack at a player at all: every match could only end on its
+                 3-minute clock, by the health tiebreak (found by mp-arena, the
+                 first tournament played in the world).  Now the match puts the
+                 phone in the duel as a duel's accept does (duel_accept above),
+                 locked onto the opponent -- the block and Special buttons with
+                 it (duelLock.js) -- and `arena` names the match, so duel_end
+                 can leave the result to arena_match_result.  duel_end (the
+                 worker sends it for every resolution: kill, forfeit, clock)
+                 clears it all.  A lock that cannot take yet (the opponent not
+                 drawn: far away) waits for a tap, which BroTown's tap handler
+                 turns into the lock for a duel opponent. */
+              if (payload.opponentId != null) {
+                S._activeDuel = { partnerId: payload.opponentId, startTs: Date.now(), arena: payload.matchId || true };
+                S._inDuel = {
+                  opponent: payload.opponentId,
+                  opponentName: payload.opponentName || '',
+                  wager: 0,
+                  startTime: Date.now(),
+                  arena: payload.matchId || true,
+                  round: payload.round || 1,
+                  deadline: payload.deadline || 0
+                };
+                lockOntoDuelOpponent(S, payload.opponentId);
+              }
               break;
             }
           case 'arena_match_result':
@@ -4690,6 +4721,22 @@ export function processGameEvent(type, payload, S, deps) {
                  participants how it ended. */
               if (payload.winner === S.myId || payload.loser === S.myId) {
                 var _won = payload.winner === S.myId;
+                /* v2.3.3713: an ARENA match's end is said by arena_match_result
+                   ("Arena win!" / "Eliminated from the arena") and its sound;
+                   the duel's own popup and sound on top read "DUEL WON!" over
+                   "Arena win!".  So for a match this phone knows as the arena's
+                   (arena_match_start's `arena`), the state is cleared quietly. */
+                var _arenaDuel = !!(payload.arena || (S._inDuel && S._inDuel.arena) || (S._activeDuel && S._activeDuel.arena));   /* v2.3.3713: + the worker's word (duel.js) */
+                /* v2.3.3713: ...and the end of an EARLIER match never clears the
+                   next one.  When a round's last match ends the worker starts
+                   the next round inside the same call and sends its
+                   arena_match_start at once, while this duel_end waits for the
+                   event buffer's flush: the winner's phone heard "fight
+                   Retiarius!" and then lost the final's duel to the old one's
+                   end (mp-arena).  So an arena duel is cleared only by an end
+                   naming its own opponent. */
+                var _endFoe = _won ? payload.loser : payload.winner;
+                if (S._inDuel && S._inDuel.arena && String(S._inDuel.opponent) !== String(_endFoe)) break;
                 S._activeDuel = null;
                 S._inDuel = null;
                 /* v2.3.2242 (post-review): the duel took the lock and may have
@@ -4697,6 +4744,7 @@ export function processGameEvent(type, payload, S, deps) {
                    player is only ever a duel lock (duelLock.js). */
                 if (S.lockedTarget && S.lockedTarget.type === 'player') S.lockedTarget = null;
                 try { dropShield(S, 'duel_end'); } catch (e) { /* display-only */ }
+                if (_arenaDuel) break;   /* v2.3.3713: arena_match_result says it */
                 pushDmgPopup(S, S.player.x, S.player.y - 40, _won ? ('DUEL WON!' + (payload.wager ? ' +' + payload.wager * 2 + 'g' : '')) : (payload.how === 'forfeit' ? 'Duel forfeited' : 'Duel lost' + (payload.wager ? ' -' + payload.wager + 'g' : '')), _won ? '#f5c542' : '#ff5e6c');
                 /* v2.3.3343: levelUp() and beep() play nothing -- Ace's coin
                    flip's own win and loss, at his levels */

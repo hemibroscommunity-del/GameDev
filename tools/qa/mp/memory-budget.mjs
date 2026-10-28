@@ -104,6 +104,17 @@
  * other lines where main's are.  (memprobe.mjs now counts the buffers the
  * page makes as well as the ones it decodes: counting decodes alone, the
  * six one-channel copies went missing and the line read 23.8.)
+ *
+ * v2.3.3715, `artCache` read right (docs/specs/pictures-once.md): the line
+ * counted a canvas in the asset cache at its texture's size, and a canvas
+ * emptied once its copy is on the chip (gpuOnly.js, heldNumbers.js) holds
+ * nothing -- 21.6-23.3 MB of the line at the fight was pictures already let
+ * go of.  Counted by what each canvas holds, main's own code reads 78.9 MB at
+ * the fight (102.2 before) and 65.6 at home (79.5).  No line is changed here:
+ * the room it opens is the owner's to lock in or spend.  The two switches of
+ * that spec (`?onecopy`, `?picnumbers`, off by default) measured with
+ * QA_MB_QUERY: `?picnumbers` the fight's art 66.1, chip 75.6, canvases 26.5,
+ * buffers 19.4 (off: 78.9, 83.8, 39.8, 16.8).
  */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 112, measured: 102.2,   /* v2.3.3702: 156 -> 112, see the header */

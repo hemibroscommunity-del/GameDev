@@ -537,6 +537,9 @@ export const movementMethods = {
     /* v2.3.3325: where this move is judged from -- the worker's own place in
        this zone, or, coming back into the Wheel, where the player left it
        (MOVE_BUDGET above, "THE BYPASSES") -- and where it puts them */
+    /* v2.3.3732: a glided copy goes back to the last move's place first, so
+       this move is judged, billed and raced from move to move (movepath.js) */
+    if (ps._mp) this._movePathRewind(ps);
     let _fromX = ps.x, _fromY = ps.y;
     let _bounded = !_tm && !zoneChanged && !firstMove && typeof ps.x === 'number' && typeof ps.y === 'number';
     /* v2.3.3327: ...or from its ARRIVAL, after a login or a death
@@ -784,6 +787,9 @@ export const movementMethods = {
         this._raceOnMove(session.id, ps, zoneChanged ? ps.x : _raceFromX, zoneChanged ? ps.y : _raceFromY);
       }
       this.dirtyPlayers.add(session.id);
+      /* v2.3.3732: and moved on along its speed until the next move, if its
+         phone asks (movepath.js) */
+      this._movePathNote(session.id, ps, msg, _now, _sprintK);
     }
 
     // Zone change handling.
