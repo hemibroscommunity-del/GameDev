@@ -523,7 +523,9 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
   const { readdirSync, readFileSync } = await import('node:fs');
   /* 10a. every way of being hit measured above is one row of the door's
      table, and every row of the table is measured above */
-  const ROW_OF = { swing: 'swing', snowball: 'snowball', burrow: 'pile', slam: 'kit', lunge: 'kit', burst: 'burst', boss: 'boss', fire: 'fire', shock: 'shock', burn: 'burn', poison: 'poison' };
+  /* v2.3.3748: + the heap, which no monster deals: measured in §11 below and
+     in its own suite (heap-burn), not in the monster table of §1-§9 */
+  const ROW_OF = { swing: 'swing', snowball: 'snowball', burrow: 'pile', slam: 'kit', lunge: 'kit', burst: 'burst', boss: 'boss', fire: 'fire', shock: 'shock', burn: 'burn', poison: 'poison', heap: 'heap' };
   const rows = Object.keys(MONSTER_HITS);
   check('10a. each source above has its row in MONSTER_HITS', ALL.every((src) => rows.includes(ROW_OF[src])), { rows });
   check('10a. ...and each row of MONSTER_HITS is measured above', rows.every((r) => Object.values(ROW_OF).includes(r)), { rows });
@@ -570,6 +572,32 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
     const got = room._monsterHit({ src: 'constructor', zoneId: WHEEL_ZONE, pid: 'p1', m: M, mid: M.id, lvl: 5, raw: 30, at: { x: M.x, y: M.y }, now });
     check('10e. an unknown row (even an Object.prototype name) takes nothing and sends nothing', got === 0 && P.hp === hp0 && room.eventBuffer.length === 0, { got, hp: P.hp });
   }
+}
+
+// ── 11. v2.3.3748: a burning heap you stand in (heapburn.js) ──
+/* Asked for by your own phone; through the door's `heap` row.  Unlike every
+   monster's blow it lands on the safe ground (the owner wants it in BroTown),
+   no shield, roll or rock stops it, it leaves a harvester alone, and it never
+   takes the last point.  The heap-burn suite has the rest (the rate, the
+   switch). */
+{
+  const at = place('safe');
+  freshPlayer(P, at.zone, at.px, at.py);
+  const sess = [...room.sessions.values()].find((x) => x.id === 'p1');
+  room.eventBuffer.length = 0;
+  P.blocking = true; P.blockStartT = Date.now() - 5000; P.ba = 0;
+  const took = room._handleHeapBurn(sess, Date.now());
+  const ev = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload.targetId === 'p1');
+  check('11. heap: lands on the safe ground, through a raised shield, as a flame tick', took > 0 && P.hp === MAX_HP - took && !!ev && ev.payload.ability === 'heapburn' && ev.payload.elem === 'flame' && !ev.payload.blocked, { took, ev: ev && ev.payload });
+  freshPlayer(P, at.zone, at.px, at.py);
+  P.ex = 'cook'; P._exAt = Date.now(); P._exX = P.x; P._exY = P.y;
+  check('11. heap: leaves a harvester alone', room._handleHeapBurn(sess, Date.now()) === 0 && P.hp === MAX_HP);
+  freshPlayer(P, at.zone, at.px, at.py);
+  deaths.length = 0;
+  P.hp = 3; P._heapBurnAt = 0;
+  for (let i = 0; i < 10; i++) room._handleHeapBurn(sess, Date.now() + i * 2000);
+  check('11. heap: never the last point -- no death', P.hp >= 1 && deaths.length === 0 && !P.dying, { hp: P.hp, deaths });
+  freshPlayer(P, at.zone, at.px, at.py);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

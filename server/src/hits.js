@@ -171,6 +171,11 @@ export const MONSTER_HITS = Object.freeze({
      rail is the telegraph's 0.5, which firetrail.js always wrote out.  Under
      your feet: no roll slips it, no shield or rock stands in its way */
   fire: row({ shield: 'door', shelter: 'tick', rail: 0.5, elemental: true }),
+  /* v2.3.3748: a burning heap you stand in (heapburn.js _handleHeapBurn).
+     Asked for by your own phone, on BroTown's safe ground on purpose (the
+     owner wants it there), so no shelter; nothing to block, roll or hide
+     behind; flame; never the last point (the caller holds it under) */
+  heap: row({ shield: 'tick', shelter: 'tick', elemental: true }),
   /* a storm monster's arc to a player near the one it struck
      (monsterstatus.js _shockArcs) */
   shock: row({ shield: 'tick', shelter: 'tick', rail: SHOCK.MAX_HP_PCT, elemental: true, soak: true }),

@@ -5500,6 +5500,13 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
+        /* v2.3.3748: standing in a burning heap (game/heapBurn.js) ->
+           heapburn.js.  TRAPS #18: without this line the worker never hears
+           and nobody burns. */
+        if (msg.type === 'heap_burn') {
+          wsOut(msg);
+          return;
+        }
         if (msg.type === 'make_traps' || msg.type === 'trap_arm' || msg.type === 'pet_active'
             || msg.type === 'pet_name' || msg.type === 'pet_release'
             || msg.type === 'pet_house_buy') {   /* v2.3.3123: more room in the Pet House */

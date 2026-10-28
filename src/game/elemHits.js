@@ -148,7 +148,8 @@ export function elemLook(elem) {
 
 /** Is this monster_attack a burn's tick (or the fire trail's), not a blow? */
 export function isBurnTick(p) {
-  return !!p && (p.ability === 'burn' || p.ability === 'firetrail');
+  /* v2.3.3748: + a burning heap's (server heapburn.js) */
+  return !!p && (p.ability === 'burn' || p.ability === 'firetrail' || p.ability === 'heapburn');
 }
 
 /**
