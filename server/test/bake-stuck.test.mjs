@@ -8,8 +8,8 @@
  *      the answer comes; at the timer, a job still waiting retires the worker;
  *   2. retiring fails every job the worker holds (each takes the inline bake,
  *      as a failed job always has), terminates it, lets the next job start a
- *      fresh one, sends the rod again, counts it, and after _BAKE_STUCK_MAX
- *      gives the worker up (the old inline path);
+ *      fresh one, sends the rod again, counts it, and after _BAKE_STUCK_MAX in
+ *      a row (an answer resets the run) gives the worker up (the inline path);
  *   3. a late answer finds no job and is dropped (never placed twice), and a
  *      retired worker's onerror touches nothing;
  *   4. the worker's state is the rod alone, so a fresh one needs nothing else.
@@ -29,7 +29,7 @@ const body = (sig) => { const i = er.indexOf(sig); return i < 0 ? '' : er.slice(
 {
   const m = /const _BAKE_REPLY_MS = (\d+), _BAKE_STUCK_MAX = (\d+);/.exec(er);
   check('1a the reply timeout and the most stuck workers are set', !!m, m && m[0]);
-  check('1b ...4 s: well over a slow phone\'s bake, well under a player\'s patience', !!m && +m[1] >= 2000 && +m[1] <= 8000, m && m[1]);
+  check('1b ...10 s or so: past a slow worker on a loaded phone (4 s retired working ones), far short of the stall it is for', !!m && +m[1] >= 8000 && +m[1] <= 20000, m && m[1]);
   const rb = body('async function _runBake(job) {');
   const post = rb.indexOf('wk.postMessage({ id, body, belt');
   const timer = rb.indexOf('_stuckT = setTimeout(() => { if (_bakeJobs.has(id)) _retireStuckWorker(wk); }, _BAKE_REPLY_MS);');
@@ -45,7 +45,8 @@ const body = (sig) => { const i = er.indexOf(sig); return i < 0 ? '' : er.slice(
   check('2b the worker is terminated and the next job starts a fresh one', /wk\.terminate\(\)/.test(fn) && /if \(_bakeWorker === wk\) _bakeWorker = null;/.test(fn));
   check('2c the rod is sent again to the fresh worker', /_rodSent = null;/.test(fn));
   check('2d counted on the QA probe', /_bakeWorkerStats\.stuck = _bakeStuck;/.test(fn) && /stuck: 0/.test(er));
-  check('2e after _BAKE_STUCK_MAX the worker is given up (the inline path)', /if \(_bakeStuck >= _BAKE_STUCK_MAX\) _bakeWorkerDead = true;/.test(fn));
+  check('2e after _BAKE_STUCK_MAX in a row the worker is given up (the inline path)', /if \(_bakeStuckRun >= _BAKE_STUCK_MAX\) _bakeWorkerDead = true;/.test(fn));
+  check('2f ...an answered job resets the run', /if \(!job\) return;[^\n]*\n\s*_bakeStuckRun = 0;/.test(er));
 }
 
 /* ── 3. late answers and a retired worker's error ── */

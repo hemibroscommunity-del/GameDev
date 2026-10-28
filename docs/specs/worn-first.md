@@ -31,12 +31,13 @@ your own set took about twice as long.
 
 ## The fix
 
-- **A job not answered in 4 seconds retires the worker** (`entityRenderer.js`
+- **A job not answered in 10 seconds retires the worker** (`entityRenderer.js`
   `_retireStuckWorker`). Its jobs fall back to the main-thread bake (as a failed
   job always has), the worker is closed, and the next job starts a fresh one,
   which is sent the fishing rod's mask again (the only thing a worker keeps).
   A late answer finds no job and is dropped, never placed twice. After three
-  stuck workers in a session the worker is given up, and every bake is done on
+  stuck workers in a row (an answered job resets the count) the worker is
+  given up, and every bake is done on
   the main thread, as on an old Safari. `window.__btBakeWorker().stuck` counts
   them.
 - **The spare sets wait while the set you wear bakes** (`_wornBakeGate`), in

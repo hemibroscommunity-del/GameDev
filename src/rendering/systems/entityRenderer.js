@@ -3193,23 +3193,29 @@ const _bakeWorkerStats = { worker: 0, inline: 0, failed: 0, raw: 0, skipped: 0, 
    __btBakeWorker() busy 1, pending 1).  It is not the bake: the worker answers
    even on an error, and the same frame bakes inline in milliseconds.  The
    worker itself goes quiet (stuck, or ended without an onerror).
-   So a job not answered within _BAKE_REPLY_MS (a bake is 10-100 ms here, a
-   slow phone's a few hundred) retires the worker: every job it holds fails
-   (each falls back to the inline bake, as a failed job always has), it is
-   terminated, and the next job starts a fresh one.  After _BAKE_STUCK_MAX
-   of those in a session the worker is given up, which is the old inline path
-   everywhere (no worker, as on an old Safari).  __btBakeWorker().stuck. */
-const _BAKE_REPLY_MS = 4000, _BAKE_STUCK_MAX = 3;
+   So a job not answered within _BAKE_REPLY_MS retires the worker: every job
+   it holds fails (each falls back to the inline bake, as a failed job always
+   has), it is terminated, and the next job starts a fresh one.  After
+   _BAKE_STUCK_MAX of those IN A ROW (an answered job resets the run) the
+   worker is given up, which is the old inline path everywhere (no worker, as
+   on an old Safari).  __btBakeWorker().stuck counts them all.
+   10 s, not less: a first cut at 4 s retired a worker that was only slow --
+   on this loaded box (a few frames a second) a fresh worker's first jobs ran
+   past it three times and the session fell back to baking on the main thread,
+   the stutter the worker exists to prevent.  The stall it is for lasts the
+   whole session. */
+const _BAKE_REPLY_MS = 10000, _BAKE_STUCK_MAX = 3;
+let _bakeStuckRun = 0;
 let _bakeStuck = 0;
 function _retireStuckWorker(wk) {
-  _bakeStuck++;
+  _bakeStuck++; _bakeStuckRun++;
   _bakeWorkerStats.stuck = _bakeStuck;
   for (const [, job] of _bakeJobs) job({ err: 'worker stuck' });
   _bakeJobs.clear();
   try { wk.terminate(); } catch (e) { /* gone */ }
   if (_bakeWorker === wk) _bakeWorker = null;
   _rodSent = null;   /* a fresh worker has no rod */
-  if (_bakeStuck >= _BAKE_STUCK_MAX) _bakeWorkerDead = true;
+  if (_bakeStuckRun >= _BAKE_STUCK_MAX) _bakeWorkerDead = true;
 }
 function _getBakeWorker() {
   if (_bakeWorker || _bakeWorkerDead) return _bakeWorker;
@@ -3224,6 +3230,7 @@ function _getBakeWorker() {
       const d = e.data || {};
       const job = _bakeJobs.get(d.id);
       if (!job) return;   /* v2.3.3742: incl. a job already failed by the stuck timeout -- never placed twice */
+      _bakeStuckRun = 0;   /* v2.3.3742: an answer: this worker is not stuck */
       _bakeJobs.delete(d.id);
       job(d);
     };
