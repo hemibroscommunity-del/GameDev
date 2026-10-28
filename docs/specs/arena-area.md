@@ -1,4 +1,4 @@
-# The arena's own area: the plan (v2.3.3741)
+# The arena's own area: the plan (v2.3.3741; the wager window v2.3.3756)
 
 > The owner, 2026-10-28: *"Also interested in bringing the arena to Brotown
 > (the wheel map only). Let me know how to start that."* And then: *"There
@@ -386,6 +386,57 @@ The owner, on the arena, in their words; planned here, built after the area.
     for every refusal, and its line in `docs/specs/arena.md`.
   Size: **small to medium**, one lane with the badges.
 
+### 4. Stakes in items and gold: the wager window
+
+> *"Does the arena have a usable UI so people can wager items and gold? I like
+> the trading UI so something like that"* (the owner, 2026-10-28)
+
+Today a duel's stake is gold only (`duel_wager_request`, up to 999,999, winner
+takes all: `server/src/duel.js`, `DuelRequestPanel.jsx`); the arena has its
+100G entry and the onlookers' gold bets, and nothing stakes an item.
+
+**The wager window, modelled on the trade window** (`TradeWindowPanel.jsx`,
+`server/src/trade2.js`), for plain duels and arena matches alike, replacing
+the gold-only wager prompt:
+
+- **Both fighters put in gold and items**, each seeing the other's side live
+  (the trade's private `*_state` snapshot echoed to both: the window only
+  draws the server's truth). Bag items, weapons and gear, the kinds the
+  trade and the mail already carry (`inbox.js` credits `gold`, `item`,
+  `weapon`, `gear`, `pet`).
+- **Both confirm; any change un-confirms both**, with the trade's short wait
+  before a confirm is taken again (`TRADE2.ACCEPT_COOLDOWN_MS`, the
+  last-second-swap rule, held by the worker).
+- **Escrow in ONE write**: when both confirm, the worker takes both sides
+  out of both bags and writes both stake records and their stamps in one
+  synchronous run (handoff rules 5 and 7, opIds), then starts the fight. A
+  side that no longer holds what it staged cancels the whole wager before
+  anything moves. Unlike the trade's, these goods are held across a fight,
+  so they are on file: a stake record per side (a new storage key, in
+  ARCHITECTURE-HANDOFF's rule-2 registry), swept on a restart the way the
+  duel's gold escrow is (`duelpot:` and its sweep).
+- **The fight's server-observed result pays the winner everything in one
+  write** (`_creditPlayer` per piece, under the match's opId). A draw, a
+  timeout or a forfeit follows the duel's rules as they are today (the
+  tiebreak decides a timeout; a forfeit pays the one who stayed; a void,
+  such as a deploy, returns each side its own).
+- **The same-device block applies** (Step 3.3): no stakes between accounts
+  on one device; the worker refuses it with the same words, and it never
+  asks `_testMode` (it protects other players).
+- **The board shows each fight's stakes** (Step 3.2): the gold and each
+  piece, by name.
+- **Sealed mystery gear** (lane L's plan, in progress) may be staked still
+  sealed: it is shown and moved as a sealed piece, and its grade is in no
+  message, to anyone, until its owner opens it.
+- A cap (`wager2`) the phone gates the window on (an older worker: today's
+  gold-only prompt), a lower-case kill switch, a server suite (the escrow's
+  one write, the un-confirm, the payout, the restart sweep, the same-device
+  refusal, a sealed piece's grade never sent), and the new window in the UI
+  review's `states.mjs` and `UI-DESIGN-NOTES.md`.
+
+Size: **medium to large**, one to two lanes: the window copies the trade's,
+and the new work is holding the stakes across a fight.
+
 ### Later still
 
 - **Stands that fill**: the crowd drawn sitting on the benches (a sit pose
@@ -409,16 +460,18 @@ part sits behind its switch, the owner's preference), in this order:
 | 5 | The crowd on a phone | the area's crowd cap (16 drawn in full), the crowd's cheer at a match's end, the crowded-fight test (the voice cap is already on everywhere) | **Medium**: 1 lane |
 | 6 | The board | Step 3.2: fights on now, fighters, stakes, backing, rules, Watch, Back; with the friend, clan and party badges (3.3) | **Medium**: 1 lane |
 | 7 | The same-device block | Step 3.3: at match setup, the bracket's pairing and bets; kill switch `arenadevice`; server tests | **Small to medium**: 1 lane |
-| 8 | The ring choice for duels | a duel's challenger proposes the Ring or the Field, on the wire with a cap | **Small**: with 4 or 6 |
-| 9 | More instances | `arena:1`, then `arena:2`; the overflow's board; a load test with 60+ bots | **Medium**: 1 lane, only past ~60 watchers |
-| 10 | Later still | stands that fill, level bands, the timer, a real chariot ride | one lane each |
+| 8 | The wager window | Step 3.4: gold and items staked trade-style by both fighters, escrowed in one write, the winner paid in one; duels and arena matches; on the board | **Medium to large**: 1-2 lanes |
+| 9 | The ring choice for duels | a duel's challenger proposes the Ring or the Field, on the wire with a cap | **Small**: with 4 or 6 |
+| 10 | More instances | `arena:1`, then `arena:2`; the overflow's board; a load test with 60+ bots | **Medium**: 1 lane, only past ~60 watchers |
+| 11 | Later still | stands that fill, level bands, the timer, a real chariot ride | one lane each |
 
 **Why this order.** The charioteer (1) is visible on his own and replaces the
 Sheriff's window, so he can ship first even before the area exists (his
 "Ride" waits on 2). 2 to 4 are the area a judge would see. 5 must land before
 a crowd is invited in (memory). 7 is small but protects other players' gold,
-so it lands before stakes or bets move into the area. 1 to 5 is about five
-lanes; 6 to 8 two or three more.
+so it lands before stakes or bets move into the area, and before the wager
+window (8), which it guards. 1 to 5 is about five
+lanes; 6 to 9 three or four more.
 
 ## Decided
 
