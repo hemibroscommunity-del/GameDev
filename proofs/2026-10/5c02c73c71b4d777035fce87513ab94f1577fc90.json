@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5c02c73c71b4d777035fce87513ab94f1577fc90",
+  "tree": "518d8640f7a9b144a9f65780ab9499beb6863dfc",
+  "committedAt": "2026-10-28T15:37:32-07:00",
+  "subject": "The XP bar: \"+N XP\" left of the icon, a white gain bar the gold fills to, \"45 / 120\" on the bar (v2.3.3739) (#1227)",
+  "files": 6814,
+  "bytes": 795333846,
+  "listingSha256": "87503605e83de9fbcdb8e875bf4ff431a379ad5d3118d273aaf41a4bfa4aefab",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
