@@ -400,12 +400,6 @@ export const LAND_FOLD_CHIP_W = 44;
 export const DESK_NAV_BTN_H = 56;
 export const DESK_NAV_ICON = 42;
 export const DESK_FOLD_CHIP_W = 64;
-/* v2.3.3769: the folded strip's toolbar (BottomDashboard bt-desk-foldrail):
-   the six buttons stacked under OPEN, a little shorter than the open row's
-   (DESK_NAV_BTN_H) so they and the three weapons fit a 720-high screen with
-   room to spare (56 + 6 x 52 + 3 x 52 and the gaps is ~560) */
-export const DESK_RAIL_BTN_H = 52;
-export const DESK_RAIL_ICON = 36;
 export const DESK_FOLD_STRIP_W = DESK_FOLD_CHIP_W + 4 * DASH_GAP;
 export function deskFoldStripW() {
   return deskWideActive() ? DESK_FOLD_STRIP_W : 0;

@@ -139,12 +139,11 @@ export function combatSkillLevel(rpg, s) {
   return (prog3HasSkills(rpg) && p3cat) ? prog3SkillLevel(rpg, p3cat) : skillLevel(rpg, s.key);
 }
 
-/* ═══ v2.3.3769: THE WEAPONS ON THE COMPUTER'S FOLDED RAIL ═══
+/* ═══ v2.3.3769: THE WEAPONS AT THE FOOT OF EVERY PAGE, ON A COMPUTER ═══
    The owner: "As you find improvements you can make to the empty space on the
-   desktop version go ahead".  With the dashboard closed on a computer, its
-   column folds to a strip at the screen's edge (BottomDashboard's
-   bt-desk-foldrail); at the strip's foot, the three weapons the open column
-   shows at its bottom, compact: the picture and its level.  A click opens the
+   desktop version go ahead".  On a computer the dashboard's own page ends in
+   the three weapons; every other page ends in these, compact (BottomDashboard's
+   data-desk-foot, `row`): the picture and its level.  A click opens the
    dashboard, where the full card is (its XP, its points, its explainer). */
 export const DeskRailWeapons = ({ R, w, row }) => {
   const rpg = R || {};

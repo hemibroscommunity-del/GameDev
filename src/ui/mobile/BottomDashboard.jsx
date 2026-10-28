@@ -22,7 +22,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW, DESK_NAV_BTN_H, DESK_NAV_ICON, DESK_FOLD_CHIP_W, DESK_RAIL_BTN_H, DESK_RAIL_ICON } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
+import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW, DESK_NAV_BTN_H, DESK_NAV_ICON, DESK_FOLD_CHIP_W } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns, DeskRailWeapons } from './dash/DashColumns.jsx';           /* v2.3.1636; v2.3.3769 the folded rail's weapons */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
@@ -1195,59 +1195,36 @@ export const BottomDashboard = () => {
       {deskKeys ? <DeskKeysList side={side === 'left' ? 'right' : 'left'} /> : null}
       {/* v2.3.3687: the folded column on a computer: a strip in the column's
           slate, the chip at its top (the dock below), the world after it */}
+      {/* ═══ v2.3.3769: THE FOLDED STRIP, IN THE TOP BAR'S GREY, POINTS AT THE WORLD ═══
+          The owner: "Make the left long strip black bar the same gray color
+          as the top bar but have an arrow centered in the middle pointing
+          towards the screen play area."  The strip wears the top bar's face
+          (zone-header-bar.svg's #152A34, its rim #526A74 at the edge), one
+          arrow at its middle points into the world, and the whole strip is
+          the way back: a click opens the dashboard, as OPEN at its top does
+          and as I does (its data-key). */}
       {deskStripW ? (
         <div
           className="bt-desk-foldstrip bt-noselect"
           data-desk-foldstrip=""
-          aria-hidden="true"
+          role="button"
+          aria-label="Open dashboard"
+          title="Open dashboard (I)"
+          data-key="I" data-key-at="hang"
           onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.open('dashboard'); }}
           style={{
             position: 'fixed', top: 0, bottom: 0, width: deskStripW, zIndex: 29,
-            ...(side === 'left' ? { left: 0, borderRight: '1px solid rgba(229,237,233,.20)' } : { right: 0, borderLeft: '1px solid rgba(229,237,233,.20)' }),
-            boxSizing: 'border-box', background: 'rgba(13,22,27,.96)',
-          }}
-        />
-      ) : null}
-      {/* ═══ v2.3.3769: THE FOLDED STRIP IS A TOOLBAR ═══
-          The owner: "As you find improvements you can make to the empty space
-          on the desktop version go ahead and make your changes to better it"
-          (the judges play on computers).  Folded, the column's strip was a
-          dark band the screen's height with OPEN alone at its top.  Under
-          OPEN now the dashboard's six buttons stacked, the open row's own
-          (NavRail, their keys I P J L K O worn as data-key): a click opens
-          the dashboard on that page; and at the strip's foot the three
-          weapons and their levels (DeskRailWeapons), as the open column has
-          them at its bottom.  A computer only (deskStripW is 0 on a phone);
-          the strip, the world's edge and the open column are unchanged. */}
-      {deskStripW ? (
-        <div
-          className="bt-desk-foldrail bt-noselect"
-          data-desk-foldrail=""
-          onPointerDown={(e) => e.stopPropagation()}
-          style={{
-            position: 'fixed', top: landDock.top + landDock.h + DASH_GAP, bottom: 2 * DASH_GAP,
-            width: deskStripW, zIndex: 30,
-            ...(side === 'left' ? { left: 0 } : { right: 0 }),
-            boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'space-between', gap: 2 * DASH_GAP, overflow: 'hidden',
+            ...(side === 'left' ? { left: 0, borderRight: '1px solid rgba(82,106,116,.85)' } : { right: 0, borderLeft: '1px solid rgba(82,106,116,.85)' }),
+            boxSizing: 'border-box', background: '#152A34',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', touchAction: 'manipulation',
           }}
         >
-          <NavRail
-            items={RAIL_ITEMS}
-            litId={null}
-            atRest={false}
-            vw={playVw()}
-            vh={playVh()}
-            dots={dots}
-            btnW={DESK_FOLD_CHIP_W}
-            btnH={DESK_RAIL_BTN_H}
-            iconPx={DESK_RAIL_ICON}
-            landLit
-            vertical
-            profilePortrait={profilePortrait} />
-          <DeskRailWeapons
-            R={(typeof window !== 'undefined' && window._gameState && window._gameState.current && window._gameState.current.rpg) || null}
-            w={DESK_FOLD_CHIP_W} />
+          <svg data-desk-foldarrow="" width="30" height="44" viewBox="0 0 30 44" aria-hidden="true"
+            style={{ display: 'block', pointerEvents: 'none', transform: side === 'left' ? 'none' : 'scaleX(-1)' }}>
+            <path d="M9 6 L23 22 L9 38" fill="none" stroke="#E8D9B0" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </div>
       ) : null}
 
