@@ -10289,6 +10289,28 @@ export var BroTown = function BroTown(_ref0) {
     });
     return closest;
   };
+  /* ═══ v2.3.3694: A COMPUTER'S SWORD PRESS, AS THE PHONE'S ═══
+     onMouseDown's lunge (its note says why): the monster under the cursor
+     locked as a tap, else the game's own lock promoted to one -- the phone's
+     handleRBtnPress, `near` and all -- then maybeSwordDash, which keeps every
+     rule of its own (the sword, the shield down, its cooldown, a living target
+     within reach).  True when the lunge took the press.  The lock this press
+     took or kept is noted for its click (onClick). */
+  var _deskLungePress = function (S, cssX, cssY) {
+    var slot = S.rpg && S.rpg.activeSlot;
+    if (!S.rpg || slot === 'ranged' || slot === 'staff' || S._shieldUp) return false;
+    var hit = monsterAtCss(cssX, cssY);
+    var lt = S.lockedTarget;
+    if (hit) {
+      if (!lt || lt.ref !== hit) S.lockedTarget = { type: 'monster', id: hit.id, ref: hit, src: 'tap' };
+      else if (lt.src !== 'tap') S.lockedTarget = { type: 'monster', id: lt.id, ref: lt.ref, src: 'tap', near: true };
+    } else if (lt && lt.ref && lt.type === 'monster' && lt.src !== 'tap') {
+      S.lockedTarget = { type: 'monster', id: lt.id, ref: lt.ref, src: 'tap', near: true };
+    }
+    var now = S.lockedTarget;
+    if (now && now.type === 'monster' && now.ref) S._deskPressLock = now.ref;
+    try { return maybeSwordDash(S) === true; } catch (_e) { return false; }
+  };
   /* another player within the click's 25 px (onClick's own loop: the first
      one found, as it acts on) -- their id, or null */
   var otherPlayerAtCss = function (cssX, cssY) {
@@ -12510,11 +12532,30 @@ export var BroTown = function BroTown(_ref0) {
         var _pr = e.currentTarget.getBoundingClientRect();
         var _pk = _deskPressTarget(e.clientX - _pr.left, e.clientY - _pr.top);
         if (typeof window !== 'undefined' && window.__btProbe) window.__btDeskPress = { kind: _pk || 'attack', ts: Date.now() };
+        S._deskPressLock = null;   /* v2.3.3694: this press's lock, for its own click (below) */
         if (_pk) return;
         if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
         S.autoAttack = true;
         setAutoAttack(true);
         S._aiming = true;
+        /* ═══ v2.3.3694: A SWORD'S PRESS LUNGES ON A COMPUTER TOO ═══
+           The owner, on the desktop version: "The melee needs the "zoom to
+           attack monster" behavior that exists on phones when you get close
+           enough."  A phone's attack press (handleRBtnPress) makes the game's
+           own lock a deliberate one and asks maybeSwordDash, which dashes to
+           it and strikes on arrival in place of the swing; this click only
+           swung.  It asks the same now, after _deskPressTarget (a click on a
+           townsperson, a resource or a bed is still theirs):
+           - a monster under the cursor is the one the click means, so it is
+             locked as a tap there and then (the click below would have);
+           - else the game's own lock (the nearest within the sword's ring) is
+             promoted, the phone's rule;
+           - the lunge's own rules are unchanged: the sword only, the shield
+             down, off its 2.5 s cooldown, a living target within its reach.
+           The press's lock is noted (`_deskPressLock`) so the click that ends
+           this press does not undo it: a click on the locked monster toggled
+           it off, and on empty ground let it go. */
+        if (_deskLungePress(S, e.clientX - _pr.left, e.clientY - _pr.top)) return;
         doSwing();
       }
     },
@@ -12554,6 +12595,14 @@ export var BroTown = function BroTown(_ref0) {
       var cssX = e.clientX - rect.left;
       var cssY = e.clientY - rect.top;
       var S = stateRef.current;
+      /* v2.3.3694: the click that ends a sword's press on a computer is that
+         press's (onMouseDown, _deskLungePress): it took a monster's lock, or
+         lunged at the one the game had, so this click neither toggles that
+         lock off nor lets it go as a click on empty ground.  A phone never
+         sets it (its press is the disc's). */
+      var _dpl = S._deskPressLock;
+      S._deskPressLock = null;
+      if (_dpl && S.lockedTarget && S.lockedTarget.ref === _dpl) return;
       var cx = S.camera.x,
         cy = S.camera.y;
       /* Both render paths use uniform scaling (Canvas 2D: setTransform

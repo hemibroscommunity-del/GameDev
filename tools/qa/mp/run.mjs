@@ -622,6 +622,7 @@ const SCENARIOS = {
   harvest: () => import('./mp-harvest.mjs'), /* v2.3.1704: extraction_start reaches the worker + the shield ends */
   ability: () => import('./mp-ability.mjs'), /* v2.3.1733: the stamina abilities reach the worker (v2.3.2662: no milestone gate -- the ladder is gone) */
   joyfade: () => import('./mp-joyfade.mjs'), /* v2.3.2260: both sticks appear on input and fade after 2s; the right one stays while contextual */
+  desklunge: () => import('./mp-desklunge.mjs'), /* v2.3.3694: a computer's sword click lunges as a phone's press does -- in the world at Frost Ridge's snowmen, a greatsword in hand: the game's own lock and a click on empty ground dash to it and the worker lands the hit, the lock kept (a deliberate one); a click ON a snowman lunges at that one and keeps its lock; inside the cooldown a click swings; the bow never lunges */
   dashhit: () => import('./mp-dashhit.mjs'), /* v2.3.2261: does the lunge hurt a SERVER-driven monster? */
   dashreal: () => import('./mp-dashreal.mjs'), /* v2.3.2418: a REAL finger on the disc, with the lock left to the game itself */
   dashroll: () => import('./mp-dashroll.mjs'), /* v2.3.2463: the lunge tumbles instead of gliding */
