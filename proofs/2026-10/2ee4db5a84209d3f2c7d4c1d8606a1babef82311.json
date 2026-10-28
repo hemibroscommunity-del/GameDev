@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2ee4db5a84209d3f2c7d4c1d8606a1babef82311",
+  "tree": "21b36d96d489d6c598123c735d29533ed0e7bce5",
+  "committedAt": "2026-10-28T13:03:50-07:00",
+  "subject": "Less memory for the ground builder and the game's code, behind switches that are off (v2.3.3717) (#1202)",
+  "files": 6744,
+  "bytes": 776061816,
+  "listingSha256": "fa7476383ba5f828ef94039b61bcd1f2fd739f3fa7b3af5d4a910033bbbb13dd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
