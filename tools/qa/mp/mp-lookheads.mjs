@@ -44,8 +44,40 @@ async function inWheel(P) {
     { timeout: 90000, label: 'into the Wheel' }).catch(() => null);
 }
 
+/* LH_PICTURE=1: only the owner's side-by-side -- one look on two phones,
+   the old way (`?lookpalette=0`) and the default, the bro photographed */
+async function picture({ browser, wsPort, webPort, rec }) {
+  const shots = [];
+  for (const [way, query] of [['old', 'lookpalette=0'], ['new', '']]) {
+    const P = await H.newPlayer(browser, { name: 'pic' + way, wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query });
+    try {
+      const ok = await inWheel(P);
+      rec.ok(`the ${way}-way phone is in the Wheel (guard)`, !!ok, ok);
+      if (!ok) return;
+      for (const [i, L] of [['pink', 'afro', 'red', 'top-hat', 'white', 'blue', 'thug-life'], ['blonde', 'wavy', 'blue', 'crown', 'auburn', 'red', 'goggles']].entries()) {
+        await P.page.evaluate((L) => {
+          window.__btSetHair(L[1]); window.__btSetHairColor(L[0]);
+          window.__btSetHeadwear(L[3]); window.__btSetHatColor(L[2]);
+          window.__btSetFacialHair('beard'); window.__btSetFacialHairColor(L[4]);
+          window.__btSetEyewear(L[6]); window.__btEyewearColor.set(L[5]);
+        }, L);
+        await P.page.waitForTimeout(5000);
+        const f = join(OUT, `lookheads-pic-${i}-${way}.png`);
+        await P.page.screenshot({ path: f, clip: { x: PHONE.width / 2 - 70, y: PHONE.height / 2 - 120, width: 140, height: 170 } });
+        shots.push(f);
+        const self = await P.page.evaluate(() => (window.__btSelfSprites() || []).map((s) => s.url).filter((u) => /bt-look:heads/.test(u)).length);
+        rec.ok(`${way} way, look ${i}: ${self} head pieces drawn from the numbers`, way === 'old' ? self === 0 : self >= 4, self);
+      }
+    } finally {
+      await P.ctx.close().catch(() => {});
+    }
+  }
+  console.log('    pictures: ' + shots.join(' '));
+}
+
 export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
+  if (process.env.LH_PICTURE) return picture({ browser, wsPort, webPort, rec });
   const report = {};
   const P = await H.newPlayer(browser, { name: 'heads', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'lookprobe' });
   const said = [];
