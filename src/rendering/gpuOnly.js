@@ -44,6 +44,8 @@
  */
 export const KEEP_GPU_COPIES = typeof location !== 'undefined' && /[?&]gpucopies\b/.test(location.search || '');
 const keepCopies = () => KEEP_GPU_COPIES || (typeof window !== 'undefined' && window.__btTrimVerify === true);
+/* v2.3.3699: the same answer for heldNumbers.js */
+export const gpuCopiesKept = keepCopies;
 
 let _n = 0;
 let _bytes = 0;

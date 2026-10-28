@@ -9,6 +9,7 @@ import { peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another playe
 import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn as a bolt */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { keepOnGpuOnly, emptyOnceDrawn } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only; v2.3.3698: or once drawn */
+import { emptyHeldOnceDrawn } from '../heldNumbers.js';   /* v2.3.3699: the monsters' strips, held as colour numbers once drawn */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
@@ -5496,11 +5497,14 @@ export class EffectsRenderer {
     /* v2.3.3698: the weapon bodies drawn since the last look let go of their
        canvases (gpuOnly.js emptyOnceDrawn) -- a look at a handful of sources
        every GPU_WAIT_MS, nothing at all once every one has gone */
-    if (this._gpuWaiting.size) {
+    /* v2.3.3699: and the monsters' strips drawn since, read into their colour
+       numbers first (heldNumbers.js: a few ms at most a look) */
+    {
       const _t = typeof now === 'number' ? now : performance.now();
       if (_t >= this._gpuWaitAt) {
         this._gpuWaitAt = _t + GPU_WAIT_MS;
-        emptyOnceDrawn(this._captureRenderer, this._gpuWaiting);
+        if (this._gpuWaiting.size) emptyOnceDrawn(this._captureRenderer, this._gpuWaiting);
+        emptyHeldOnceDrawn(this._captureRenderer);
       }
     }
     /* v2.3.2841: the staff cast's sprite pools refill from zero each frame;
@@ -11127,6 +11131,8 @@ export class EffectsRenderer {
       const _selfD = this;
       window.__btDebris = function () { return _selfD._hitFx ? _selfD._hitFx.report(Date.now()) : []; };
       window.__btHitFx = function () { return _selfD._hitFx ? _selfD._hitFx.probe() : null; };
+      /* v2.3.3699: the chips a hit would cut from a monster now (mp-monsternumbers) */
+      window.__btHitFxChips = function (mid, fx) { return _selfD._hitFx ? _selfD._hitFx.chipsProbe(mid, fx) : null; };
     }
     /* v2.3.2995: a hit on one of the Wheel's objects is handed the object's
        picture, where it landed (or, for a tree's crown, where its leaves

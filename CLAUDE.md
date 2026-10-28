@@ -5902,6 +5902,16 @@ Two protocol versions coexist; both must keep working:
     that battle (three weapons swapped, every prop round it broken, rounds
     that must settle; every picture counted once), `mp-peermem` measures each
     other player on screen (~2.5 MB): docs/specs/battle-memory.md.
+    Since v2.3.3699 a picture something DOES read back, or that a rebuilt
+    renderer needs again, can still go once drawn if it is on 256 colours or
+    fewer: the monsters' strips (zoneTextures `loadTrackedStrip`) are read
+    into their COLOUR NUMBERS once drawn, a byte a pixel, and their canvases
+    emptied (src/rendering/heldNumbers.js); a hit's chips and a stuck arrow
+    read the numbers (`readSourceRect` -- a new CPU reader of a monster's
+    picture reads through it too), and a renderer that uploads one has its
+    canvas filled again from them first (`installHeldRefill`, Pixi's
+    onSourceUpdate). `?held=0`, `window.__btHeld()`; `held-numbers` suite,
+    `mp-monsternumbers` (a rebuild included): docs/specs/monster-numbers.md.
   - MUSIC, and any sound longer than a few seconds, plays through the music
     deck (BT_AUDIO's zone and global music, streamed from its file since
     v2.3.3073) -- never SFX_MANIFEST, which decodes the whole file into memory

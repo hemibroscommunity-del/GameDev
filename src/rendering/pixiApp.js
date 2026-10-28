@@ -9,12 +9,13 @@ import { installHairClip } from './hairClip.js'; /* v2.3.3459 */
 import { renderDpr } from '../game/renderRes.js'; /* v2.3.3339: ?res= and the speed test */
 import { installBindGroupFix } from './bindGroupFix.js'; /* v2.3.3152: a freed picture no longer breaks Pixi's pooled mask */
 import { installTexturePoolTrim } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's texture pool gives back what it does not use */
+import { installHeldRefill } from './heldNumbers.js'; /* v2.3.3699: a picture held as colour numbers is put back on its canvas for an upload */
 import { installTextRelease } from './textRelease.js'; /* v2.3.3633: a destroyed Text lets go of its style (the long-session heap creep) */
 import { installQuietClear } from './quietClear.js'; /* v2.3.3449: wiping an empty shape is not a change (no draw-list rebuild) */
 import { setDrawListRoot } from './drawLists.js'; /* v2.3.3449: a live switch's flip rebuilds every draw list */
 import { installLayerUniforms } from './layerUniforms.js'; /* v2.3.3449: a layer draws with the world's own camera numbers */
 import { SHADE } from './formShade.js';
-import { Application, Cache, Container, TextureSource } from 'pixi.js';
+import { Application, Cache, Container, GlTextureSystem, TextureSource } from 'pixi.js';
 
 /* ═══ v2.3.3069: A DESTROYED TEXTURE LETS GO OF ITS PIXELS ═══
    TextureSource.destroy() nulls its `resource` -- but Pixi also keeps the
@@ -682,6 +683,7 @@ export async function createPixiApp(canvas) {
   try { installTextRelease(); } catch (e) { /* Pixi's Text as it ships */ }
   try { installQuietClear(); } catch (e) { /* Pixi's clear as it ships */ }
   try { installLayerUniforms(); } catch (e) { /* every render group pushed as Pixi does */ }
+  try { installHeldRefill(GlTextureSystem); } catch (e) { /* every monster strip keeps its canvas (heldNumbers.js) */ }
   try {
     const app = new Application();
     const putBack = withoutDepthBuffer(canvas);   /* v2.3.3072 */
