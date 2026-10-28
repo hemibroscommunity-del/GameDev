@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f294f909db16a648b4309fc838acec1d394b2b9d",
+  "tree": "1bfb88f78bdaf8b4d84bef7f148b586ae4839bd2",
+  "committedAt": "2026-10-28T16:33:47-07:00",
+  "subject": "Big battles: a crowd's swings no longer blank the screen (v2.3.3754) (#1238)",
+  "files": 6905,
+  "bytes": 802407222,
+  "listingSha256": "5dc0951babdcda5165b8bf334246be325dd2cdd60bd75c974c1008b3b303da19",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
