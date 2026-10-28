@@ -56,7 +56,6 @@ import { paletteAtlasSource, takePaletteRow, givePaletteRow, paletteRendererOf }
 
 export const LOOK_BATCHER = 'bt-look';
 const SLOTS = 4;                  /* sheets a batch (a figure draws one); the atlas is the unit after */
-const LOOK_POSES = Object.freeze({ stand: true, jog: true });
 const IDLE_MS = 30000;            /* a look no one drew for this long gives its row back */
 const SWEEP_MS = 5000;
 
@@ -72,19 +71,58 @@ const _wanted = wantedByAddress();
 /** The body's stand and jog drawn from the numbers (`?lookpalette=0`: not). */
 export function lookPaletteWanted() { return _wanted; }
 
-let _manifest = null;             /* roles.json */
-const _sheets = Object.create(null);   /* 'jog-east' -> { src, frames: [{frame, trim}], ds } */
+/* ═══ v2.3.3737: SETS, REGISTERED BY THEIR MANIFESTS (phase 2's seam) ═══
+   Each part kept as numbers -- the body, a pose family, the shirts, the
+   armour, the head pieces -- is a SET: its own manifest and folder
+   (public/sprites/look/<set>/, tools/art/role-bake.mjs --set), registered
+   here by name, so a lane adds its part without editing this file:
+
+     registerLookSheets('hats', '/sprites/look/hats/roles.json')
+
+   A manifest says, as DATA: its sheets (by name, e.g. 'hit-east' -- a pose
+   is the sheets it has, nothing in this file lists them), their scale (ds),
+   bits (8 or 16 a number), and its ROLES: what each role does with which
+   entry of a look's row (docs/specs/look-palette.md, "The row is law").
+   The body is the set 'body' (roles.json at the folder's root, v2.3.3716). */
+const _sets = new Map();          /* name -> { url, base, manifest, loading } */
+const _sheets = Object.create(null);   /* 'body/jog-east' -> { src, frames: [{frame, trim}], ds, bits } */
 let _loading = null;
 let _ok = null;                   /* the program: null not tried, true linked, false not here */
-const _stats = { sheets: 0, sheetBytes: 0, looksMade: 0, looksFreed: 0, rowsFull: 0, linkError: null, loadError: null, drawn: 0 };
+const _stats = { sheets: 0, sheetBytes: 0, looksMade: 0, looksFreed: 0, rowsFull: 0, linkError: null, loadError: null, drawn: 0, sets: 0, rangeErrors: 0 };
+
+/* the body's roles, as v2.3.3716 baked them (its manifest predates `roles`):
+   1 skin, 2 trousers, 3 boots retinted by luminance over their refs; 4-7 an
+   iris (row entry 4, replaced) over roles 0-3 when no eye colour is picked */
+const BODY_ROLES = Object.freeze([
+  { name: 'skin', entry: 1, ref: 149, under: 0 },
+  { name: 'pants', entry: 2, ref: 112, under: 0 },
+  { name: 'boots', entry: 3, ref: 75, under: 0 },
+  { name: 'iris', entry: 4, ref: 0, under: 0 },
+  { name: 'iris-skin', entry: 4, ref: 0, under: 1 },
+  { name: 'iris-pants', entry: 4, ref: 0, under: 2 },
+  { name: 'iris-boots', entry: 4, ref: 0, under: 3 },
+]);
+/* THE ROW IS LAW (look-palette.md): which entries of a look's row each kind
+   of part may use, so the parts of one player can share one row later */
+export const LOOK_ROW_RANGES = Object.freeze({ body: [0, 7], shirt: [8, 31], armour: [32, 63], head: [64, 127], spare: [128, 255] });
+const MAX_ROLES = 15;
+const HEAD_VALUES = 5 + 16 + 3 * MAX_ROLES;   /* the header's 16-bit values */
 
 function webgl2(r) { return !!(r && r.gl && r.context && r.context.webGLVersion === 2); }
 /** Drawn from the numbers here: wanted, the sheets in, WebGL2, the program not refused. */
 export function lookPaletteOn() {
   return _wanted && _ok !== false && _stats.sheets > 0 && webgl2(paletteRendererOf());
 }
-/** This pose has sheets of numbers (stand, jog). */
-export function lookPose(pose) { return !!LOOK_POSES[pose]; }
+/** This set has this sheet in numbers (loaded). */
+export function lookHas(set, sheet) { return !!_sheets[set + '/' + sheet]; }
+/** The body has sheets of numbers for this pose (whatever its manifest lists). */
+export function lookPose(pose) {
+  const s = _sets.get('body');
+  const m = s && s.manifest;
+  if (!m) return false;
+  for (const k in m.sheets) if (k.slice(0, pose.length + 1) === pose + '-') return true;
+  return false;
+}
 
 /* ═══ THE SHEETS ═══ */
 function loadPng(url) {
@@ -95,16 +133,28 @@ function loadPng(url) {
     im.src = url;
   });
 }
-function buildSheet(name, m, img) {
-  const W = m.w, n = m.h, T = m.tableRows;
+function buildSheet(set, name, m, img, roles) {
+  const W = m.w, n = m.h, T = m.tableRows, E = m.entries;
+  const bits = m.bits === 8 ? 8 : 16;
+  const bpt = bits === 8 ? 1 : 2;            /* bytes a texel */
   if (img.naturalWidth !== W || img.naturalHeight !== n + T) throw new Error(name + ': ' + img.naturalWidth + 'x' + img.naturalHeight);
-  /* the header goes in the last row, and the stand's texture (resolution 2)
-     is an even number of rows */
-  let rows = n + T + 1;
+  if (roles.length > MAX_ROLES) throw new Error(name + ': ' + roles.length + ' roles, ' + MAX_ROLES + ' at most');
+  /* the table: two RG texels an entry (16 bits), four R texels (8 bits);
+     the header in the last row(s); the stand's texture (resolution 2) an
+     even number of rows */
+  const tRows = Math.ceil((E * 4 / bpt) / W);
+  const hRows = Math.ceil((HEAD_VALUES * 2 / bpt) / W);
+  let rows = n + tRows + hRows;
   if (m.ds === 2 && (rows & 1)) rows++;
-  /* every pixel's red and green are a texel's two bytes (the PNG is opaque,
-     so they decode exactly) -- made again from the <img> whenever the chip
-     needs them (lookUpload: the bytes are let go of once uploaded) */
+  const head = new Array(HEAD_VALUES).fill(0);
+  head[0] = m.ds | (bits === 8 ? 128 : 0); head[1] = n; head[2] = n; head[3] = bits; head[4] = roles.length;
+  const ends = m.ends || [];
+  for (let r = 0; r < 16; r++) head[5 + r] = ends[Math.min(r, ends.length - 1)] != null ? ends[Math.min(r, ends.length - 1)] : E;
+  roles.forEach((ro, i) => { head[21 + 3 * i] = ro.entry; head[22 + 3 * i] = ro.ref || 0; head[23 + 3 * i] = ro.under || 0; });
+  /* the PNG is opaque, so it decodes exactly: a number in red (and green, 16
+     bits), the table two pixels an entry, (r, g) then (b, a) -- made again
+     from the <img> whenever the chip needs them (the bytes are let go of
+     once uploaded) */
   const make = () => {
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = n + T;
@@ -112,58 +162,96 @@ function buildSheet(name, m, img) {
     g.drawImage(img, 0, 0);
     const px = g.getImageData(0, 0, W, n + T).data;
     cv.width = 0; cv.height = 0;   /* Safari: hand the backing store back now */
-    const out = new Uint8Array(W * rows * 2);
-    for (let q = 0, o = 0; q < W * (n + T); q++, o += 2) { out[o] = px[q * 4]; out[o + 1] = px[q * 4 + 1]; }
-    const head = [m.ds, n, n, ...m.ends];
-    const h0 = (rows - 1) * W * 2;
-    head.forEach((v, i) => { out[h0 + i * 2] = v & 255; out[h0 + i * 2 + 1] = (v >> 8) & 255; });
+    const out = new Uint8Array(W * rows * bpt);
+    for (let q = 0; q < W * n; q++) { out[q * bpt] = px[q * 4]; if (bpt === 2) out[q * 2 + 1] = px[q * 4 + 1]; }
+    const t0 = W * n * bpt;
+    for (let e = 0; e < E; e++) {
+      const s = (W * n + 2 * e) * 4;
+      out.set([px[s], px[s + 1], px[s + 4], px[s + 5]], t0 + e * 4);
+    }
+    const put = (i, v) => {
+      for (let b = 0; b < (bits === 8 ? 2 : 1); b++) {
+        const p = i * (bits === 8 ? 2 : 1) + b, x = p % W, y = rows - 1 - Math.floor(p / W);
+        if (bits === 8) out[y * W + x] = b ? (v >> 8) & 255 : v & 255;
+        else { out[(y * W + x) * 2] = v & 255; out[(y * W + x) * 2 + 1] = (v >> 8) & 255; }
+      }
+    };
+    head.forEach((v, i) => put(i, v));
     return out;
   };
   const data = make();
   const src = new BufferImageSource({
     resource: data, width: W / m.ds, height: rows / m.ds, resolution: m.ds,
-    format: 'rg8unorm', scaleMode: 'nearest', alphaMode: 'premultiplied-alpha',
-    autoGenerateMipmaps: false, autoGarbageCollect: false, label: 'bt-look:' + name,
+    format: bits === 8 ? 'r8unorm' : 'rg8unorm', scaleMode: 'nearest', alphaMode: 'premultiplied-alpha',
+    autoGenerateMipmaps: false, autoGarbageCollect: false, label: 'bt-look:' + (set === 'body' ? '' : set + '/') + name,
   });
-  src._btLook = { ds: m.ds, w: W, rows, make };
+  src._btLook = { ds: m.ds, w: W, rows, bits, make };
   const frames = m.cells.map(([ax, ay, tx, ty, w, h], i) => {
     const r = { i, n: m.cells.length };
     /* in display texels, which are the source's points (a ds 2 sheet is
        resolution 2): the old path's own cells */
     if (tx < 0) r.frame = new Rectangle(ax, ay, w, h);
-    else { r.frame = new Rectangle(ax, ay, w, h); r.orig = new Rectangle(0, 0, 128, 128); r.trim = new Rectangle(tx, ty, w, h); }
+    else { r.frame = new Rectangle(ax, ay, w, h); r.orig = new Rectangle(0, 0, m.fw || 128, m.fh || 128); r.trim = new Rectangle(tx, ty, w, h); }
     return r;
   });
-  _sheets[name] = { src, frames, ds: m.ds };
+  _sheets[set + '/' + name] = { src, frames, ds: m.ds, bits };
   _stats.sheets++;
   _stats.sheetBytes += data.length;
 }
-/** The sheets, behind the loading screen (playerSkins.preloadBodyAll awaits
- *  this) -- and the program built there once a renderer exists.  Resolves
- *  whatever happens: a failure leaves the body on the old path. */
-export function preloadLookSheets() {
-  if (!_wanted) return Promise.resolve(false);
-  prewarmProgram();
-  if (_loading) return _loading;
-  _loading = (async () => {
+async function loadSet(name) {
+  const s = _sets.get(name);
+  if (!s || s.loading) return s ? s.loading : false;
+  s.loading = (async () => {
     try {
-      const v = 'v2.3.3716';
-      const res = await fetch('/sprites/look/roles.json?v=' + v);
-      if (!res.ok) throw new Error('roles.json ' + res.status);
-      _manifest = await res.json();
-      await Promise.all(Object.keys(_manifest.sheets).map(async (name) => {
-        const img = await loadPng('/sprites/look/' + name + '.png?v=' + v + '.' + _manifest.sheets[name].art);
-        buildSheet(name, _manifest.sheets[name], img);
+      const v = 'v2.3.3737';
+      const res = await fetch(s.url + '?v=' + v);
+      if (!res.ok) throw new Error(s.url + ' ' + res.status);
+      const m = await res.json();
+      const roles = m.roleDefs || (name === 'body' ? BODY_ROLES : []);   /* (a manifest's `roles` is its roles' names) */
+      /* the row is law: a set's roles stay inside its kind's entries */
+      const range = m.kind && LOOK_ROW_RANGES[m.kind];
+      if (range && roles.some((ro) => ro.entry < range[0] || ro.entry > range[1])) { _stats.rangeErrors++; throw new Error(name + ': a role outside the ' + m.kind + ' entries ' + range.join('-')); }
+      await Promise.all(Object.keys(m.sheets).map(async (sheet) => {
+        const e = m.sheets[sheet];
+        const img = await loadPng(s.base + sheet + '.png?v=' + v + '.' + (e.art || ''));
+        buildSheet(name, sheet, { bits: m.bits, fw: m.fw, fh: m.fh, ...e }, img, e.roleDefs || roles);
       }));
+      s.manifest = m;
+      _stats.sets++;
       prewarmProgram();
       return true;
     } catch (e) {
       _stats.loadError = String((e && e.message) || e);
-      for (const k of Object.keys(_sheets)) { try { _sheets[k].src.destroy(); } catch (er) { /* gone */ } delete _sheets[k]; }
-      _stats.sheets = 0;
+      for (const k of Object.keys(_sheets)) {
+        if (k.slice(0, name.length + 1) !== name + '/') continue;
+        try { _sheets[k].src.destroy(); } catch (er) { /* gone */ }
+        delete _sheets[k];
+        _stats.sheets--;
+      }
       return false;
     }
   })();
+  return s.loading;
+}
+/**
+ * v2.3.3737: a set of colour-number sheets, by its manifest's address
+ * (`/sprites/look/<set>/roles.json`).  Loaded with the rest behind the
+ * loading screen (preloadLookSheets) -- or at once, if that has already run:
+ * the promise says when (await it behind your own loading screen).
+ */
+export function registerLookSheets(name, manifestUrl) {
+  if (!_wanted) return Promise.resolve(false);
+  if (!_sets.has(name)) _sets.set(name, { url: manifestUrl, base: manifestUrl.replace(/[^/]*$/, ''), manifest: null, loading: null });
+  return _loading ? loadSet(name) : Promise.resolve(true);
+}
+registerLookSheets('body', '/sprites/look/roles.json');
+/** The sheets, behind the loading screen (playerSkins.preloadBodyAll awaits
+ *  this) -- and the program built there once a renderer exists.  Resolves
+ *  whatever happens: a set that fails is drawn the old way. */
+export function preloadLookSheets() {
+  if (!_wanted) return Promise.resolve(false);
+  prewarmProgram();
+  if (!_loading) _loading = Promise.all([..._sets.keys()].map(loadSet)).then((r) => r.every(Boolean));
   return _loading;
 }
 
@@ -172,9 +260,7 @@ const _looks = new Map();          /* key -> look */
 const tkey = (t) => (t ? t[0] + ',' + t[1] + ',' + t[2] : '-');
 function lookRow(look) {
   const rgba = new Uint8Array(256 * 4);
-  [look.skin, look.pants, look.shoes, look.eye].forEach((t, i) => {
-    if (t) rgba.set([t[0], t[1], t[2], 255], (i + 1) * 4);
-  });
+  for (const [e, t] of look.entries) if (t) rgba.set([t[0], t[1], t[2], 255], e * 4);
   return rgba;
 }
 let _sweepAt = 0;
@@ -199,22 +285,22 @@ function sweep(now) {
   }
 }
 /**
- * The frame of a stand or jog sheet drawn in this look, or null (the switch
- * off, the sheets not in, the look the art's own, or no atlas row free: the
- * caller draws the old way).  Targets as playerSkins resolves them ([r, g, b]
- * or null), the eye's only on a sheet with an eye.
+ * v2.3.3737: a frame of any set's sheet drawn in a look, or null (the switch
+ * off, the set not in, every entry the art's own, or no atlas row free: the
+ * caller draws the old way).  `entries`: [[rowEntry, [r, g, b] | null], ...]
+ * in the set's own range of the row (LOOK_ROW_RANGES).
  */
-export function getLookFrame(pose, dir, frameIdx, skinT, pantsT, shoesT, eyeT) {
-  if (!lookPaletteOn() || !LOOK_POSES[pose]) return null;
+export function getLookPartFrame(set, sheet, frameIdx, entries) {
+  if (!lookPaletteOn()) return null;
   if (_ok === null) prewarmProgram();   /* not built behind the loading screen (no renderer then): now */
-  if (!skinT && !pantsT && !shoesT && !eyeT) return null;
-  const sh = _sheets[pose + '-' + dir];
+  if (!entries.some((e) => e[1])) return null;
+  const sh = _sheets[set + '/' + sheet];
   if (!sh) return null;
-  const key = tkey(skinT) + '/' + tkey(pantsT) + '/' + tkey(shoesT) + '/' + tkey(eyeT);
+  const key = entries.map((e) => e[0] + ':' + tkey(e[1])).join('/');
   const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   let look = _looks.get(key);
   if (!look) {
-    look = { key, skin: skinT, pants: pantsT, shoes: shoesT, eye: eyeT, row: -1, rowHeld: -1, used: now, tex: Object.create(null) };
+    look = { key, entries, row: -1, rowHeld: -1, used: now, tex: Object.create(null) };
     const row = takePaletteRow(lookRow(look));
     if (row < 0) { _stats.rowsFull++; return null; }
     look.row = row; look.rowHeld = row;
@@ -223,7 +309,7 @@ export function getLookFrame(pose, dir, frameIdx, skinT, pantsT, shoesT, eyeT) {
   }
   look.used = now;
   sweep(now);
-  const name = pose + '-' + dir;
+  const name = set + '/' + sheet;
   let list = look.tex[name];
   if (!list) {
     list = look.tex[name] = sh.frames.map((f) => {
@@ -234,6 +320,14 @@ export function getLookFrame(pose, dir, frameIdx, skinT, pantsT, shoesT, eyeT) {
     });
   }
   return list[((frameIdx % list.length) + list.length) % list.length];
+}
+/**
+ * The body's frame of a pose (any pose its manifest has) in this look, or
+ * null.  Targets as playerSkins resolves them ([r, g, b] or null), the eye's
+ * only on a sheet with an eye.
+ */
+export function getLookFrame(pose, dir, frameIdx, skinT, pantsT, shoesT, eyeT) {
+  return getLookPartFrame('body', pose + '-' + dir, frameIdx, [[1, skinT], [2, pantsT], [3, shoesT], [4, eyeT]]);
 }
 
 /* ═══ THE SHADER ═══ */
@@ -315,45 +409,90 @@ highp ivec2 sizeT()
 {
 ${fetchChain((t) => `textureSize(uTextures[${t}], 0)`)}
 }
+/* the sheet's header, read once a pixel (lookPalette.js buildSheet): its
+   scale, rows, table, bits, and each role's entry of the row, ref and under */
+highp int sDs, sN, sW, sT0, sBits, sR;
+highp int sE[16];
+highp int sRoE[16], sRoF[16], sRoU[16];
+highp ivec2 sDisp;
+highp int sRow;
+/* a number: one R texel (8 bits) or an RG pair of bytes (16) */
 highp int num(highp ivec2 p)
 {
     highp vec2 v = fetchT(p).rg;
+    if (sBits == 8) return int(v.r * 255.0 + 0.5);
     return int(v.r * 255.0 + 0.5) + 256 * int(v.g * 255.0 + 0.5);
 }
-/* the sheet (its header, the last row) and the look (its row), read once a pixel */
-highp int sDs, sN, sW, sT0;
-highp int sE[8];
-highp ivec2 sDisp;
-highp vec4 lT[5];
+highp int hdr(highp int i, highp ivec2 sz)
+{
+    highp int per = sBits == 8 ? 2 : 1;
+    highp int p = i * per;
+    highp ivec2 a = ivec2(p % sz.x, sz.y - 1 - p / sz.x);
+    if (per == 1) return num(a);
+    highp int q = p + 1;
+    highp ivec2 b = ivec2(q % sz.x, sz.y - 1 - q / sz.x);
+    return int(fetchT(a).r * 255.0 + 0.5) + 256 * int(fetchT(b).r * 255.0 + 0.5);
+}
 void readSheet()
 {
     highp ivec2 sz = sizeT();
-    highp int hy = sz.y - 1;
-    sDs = num(ivec2(0, hy));
-    sN = num(ivec2(1, hy));
-    sT0 = num(ivec2(2, hy));
-    for (int r = 0; r < 8; r++) sE[r] = num(ivec2(3 + r, hy));
+    /* the form first: the header's first byte is the scale, its top bit set
+       for an 8-bit sheet -- the same byte, read the same way, in both forms */
+    highp int b0 = int(fetchT(ivec2(0, sz.y - 1)).r * 255.0 + 0.5);
+    sBits = b0 >= 128 ? 8 : 16;
+    sDs = b0 >= 128 ? b0 - 128 : b0;
+    sN = hdr(1, sz);
+    sT0 = hdr(2, sz);
+    sR = hdr(4, sz);
+    for (int r = 0; r < 16; r++) sE[r] = hdr(5 + r, sz);
+    for (int r = 0; r < 15; r++) {
+        sRoE[r + 1] = hdr(21 + 3 * r, sz);
+        sRoF[r + 1] = hdr(22 + 3 * r, sz);
+        sRoU[r + 1] = hdr(23 + 3 * r, sz);
+    }
     sW = sz.x;
     sDisp = ivec2(sz.x / sDs, sN / sDs);
 }
-/* entry k's colour in this look, premultiplied, 0..255 as the canvas kept it:
-   recolorBodyToCanvas's _retint, and the iris painted after it */
+highp vec4 rowT(highp int e)
+{
+    return sRow >= 0 ? floor(texelFetch(uPalAtlas, ivec2(e, sRow), 0) * 255.0 + 0.5) : vec4(0.0);
+}
+/* recolorBodyToCanvas's _retint (a ref: the target at the pixel's luminance
+   over it), or the target itself (no ref: painted, as the iris) */
+highp vec3 recol(highp vec4 c, highp vec4 T, highp int ref)
+{
+    if (ref <= 0) return T.rgb;
+    highp float lum = (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / float(ref);
+    return min(vec3(255.0), floor(T.rgb * lum + 0.5));
+}
+highp ivec2 tpos(highp int t)
+{
+    return ivec2(t % sW, sT0 + t / sW);
+}
+/* entry k's colour in this look, premultiplied, 0..255 as the canvas kept it */
 highp vec4 entry(highp int k)
 {
     if (k == 0) return vec4(0.0);
-    highp int t = 2 * k;
-    highp ivec2 p = ivec2(t % sW, sT0 + t / sW);
-    highp vec4 c = floor(vec4(fetchT(p).rg, fetchT(p + ivec2(1, 0)).rg) * 255.0 + 0.5);
+    highp vec4 c;
+    if (sBits == 8) {
+        highp int t = 4 * k;
+        c = floor(vec4(fetchT(tpos(t)).r, fetchT(tpos(t + 1)).r, fetchT(tpos(t + 2)).r, fetchT(tpos(t + 3)).r) * 255.0 + 0.5);
+    } else {
+        highp int t = 2 * k;
+        highp ivec2 p = tpos(t);
+        c = floor(vec4(fetchT(p).rg, fetchT(p + ivec2(1, 0)).rg) * 255.0 + 0.5);
+    }
     highp int role = 0;
-    for (int r = 0; r < 7; r++) if (k >= sE[r]) role = r + 1;
-    highp int base = role >= 4 ? role - 4 : role;
-    if (role >= 4 && lT[4].a > 0.5) c.rgb = lT[4].rgb;
-    else if (base > 0) {
-        highp vec4 T = base == 1 ? lT[1] : (base == 2 ? lT[2] : lT[3]);
-        if (T.a > 0.5) {
-            highp float ref = base == 1 ? 149.0 : (base == 2 ? 112.0 : 75.0);
-            highp float lum = (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / ref;
-            c.rgb = min(vec3(255.0), floor(T.rgb * lum + 0.5));
+    for (int r = 0; r < 15; r++) if (k >= sE[r]) role = r + 1;
+    if (role > 0 && role <= sR) {
+        highp vec4 T = rowT(sRoE[role]);
+        if (T.a > 0.5) c.rgb = recol(c, T, sRoF[role]);
+        else {
+            highp int u = sRoU[role];
+            if (u > 0) {
+                highp vec4 T2 = rowT(sRoE[u]);
+                if (T2.a > 0.5) c.rgb = recol(c, T2, sRoF[u]);
+            }
         }
     }
     return vec4(floor(c.rgb * c.a / 255.0 + 0.5), c.a);
@@ -407,8 +546,7 @@ highp vec4 bilinear(highp vec2 P, bool level1)
 void main(void) {
     highp vec2 dx = dFdx(vUV);
     highp vec2 dy = dFdy(vUV);
-    highp int row = int(vLook + 0.5) - 1;
-    for (int i = 0; i < 5; i++) lT[i] = row >= 0 ? floor(texelFetch(uPalAtlas, ivec2(i, row), 0) * 255.0 + 0.5) : vec4(0.0);
+    sRow = int(vLook + 0.5) - 1;
     readSheet();
     /* the body as the chip drew it: sharpPixels.js's sharpSample (or Pixi's
        plain read) on a mipmapped texture, done by hand on the coloured texels */
@@ -535,7 +673,7 @@ function patchPipes() {
          screen).  The decoded <img> is the browser's to drop and decode
          again. */
       const res = source.resource || source._btLook.make();
-      gl.pixelStorei(gl.UNPACK_ALIGNMENT, 2);
+      gl.pixelStorei(gl.UNPACK_ALIGNMENT, source._btLook.bits === 8 ? 1 : 2);   /* v2.3.3737: an 8-bit sheet's rows are a byte a texel */
       if (!forceAllocation && glTexture.width === w && glTexture.height === h) {
         gl.texSubImage2D(target, 0, 0, 0, w, h, glTexture.format, glTexture.type, res);
       } else {
@@ -601,6 +739,6 @@ if (typeof window !== 'undefined') {
     let rows = 0;
     for (const l of _looks.values()) if (l.row >= 0) rows++;
     return { wanted: _wanted, on: lookPaletteOn(), ok: _ok, renderer: !!paletteRendererOf(), prewarmed: !!_prewarmedFor, ..._stats, looks: _looks.size, rows,
-      sheetMB: +(_stats.sheetBytes / 1048576).toFixed(2), manifest: _manifest ? _manifest.version : null };
+      sheetMB: +(_stats.sheetBytes / 1048576).toFixed(2), sets: [..._sets.keys()].filter((k) => _sets.get(k).manifest) };
   };
 }
