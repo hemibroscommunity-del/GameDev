@@ -901,5 +901,56 @@ for (const p of files) {
       && /jump-hup\.mp3` \| "hup" by \*\*mrdeadh\*\*, Freesound 613568 \| \*\*CONFIRM\*\*/.test(src('CREDITS.md')));
 }
 
+/* ── 18. v2.3.3714: decoded sound held only while it is needed (`?sfxcache`) ──
+   With the switch on, only data/sfxCache.js PINNED is decoded on the loading
+   screen; every other sound keeps its file's bytes and is decoded on its first
+   play.  No sound in combat or movement may wait for a decode: every layer of
+   every cue the studio files under fighting, your hits, getting hurt, moving
+   or the monsters, and every layer of BT_AUDIO's HIT_VOICES, SHOT_SOUNDS,
+   ELEM_SOUNDS, PROP_SOUNDS and CROWN_SOUNDS, the swings, the monsters'
+   noises, the hits on you and the deaths, is pinned. */
+{
+  const SC = await import('../../src/data/sfxCache.js');
+  const { CUE_PLACES } = await import('../../src/data/soundStudio.js');
+  const { MONSTER_NOISE_CLIPS } = await import('../../src/data/monsterNoiseClips.js');
+  const PIN = new Set(SC.PINNED);
+  const FIGHT = new Set(['fight', 'hits', 'hurt', 'move', 'monsters']);
+  const need = new Map();
+  const want = (k, why) => { if (has(MANIFEST, k) && !need.has(k)) need.set(k, why); };
+  for (const n of NAMES) if (CUE_PLACES[n] && FIGHT.has(CUE_PLACES[n][0])) for (const L of EVENT_SOUNDS[n]) want(L[0], 'cue ' + n);
+  /* a BT_AUDIO table's block, every sample named in it */
+  const tableSamples = (name) => {
+    const a = GD.indexOf('BT_AUDIO.' + name + ' = ');
+    if (a < 0) return null;
+    const end = GD.indexOf('\n};', a);
+    const blk = GD.slice(a, end < 0 ? GD.indexOf('\n', a) : end).replace(/\/\*[\s\S]*?\*\//g, '');
+    return [...blk.matchAll(/'([a-z0-9-]+)'/g)].map((m) => m[1]).filter((k) => has(MANIFEST, k));
+  };
+  const TABLES = ['HIT_VOICES', 'SHOT_SOUNDS', 'ELEM_SOUNDS', 'PROP_SOUNDS', 'CROWN_SOUNDS', 'COMBAT_CRITICAL_SFX', 'SWING_ROTATION', 'SWIM_SAMPLES'];
+  const missingTable = TABLES.filter((t) => !tableSamples(t));
+  for (const t of TABLES) for (const k of tableSamples(t) || []) want(k, t);
+  for (const c of Object.keys(MONSTER_NOISE_CLIPS)) want('noise-' + c, 'monster noise');
+  for (const k of ['monster-death', 'slime-death', 'snowman-death', 'skeleton-death', 'armor-hit-1', 'armor-hit-2', 'footstep-v2', 'footstep-v3', 'ui-click', 'ui-close', 'ui-equip']) want(k, 'the player\'s own');
+  const unpinned = [...need].filter(([k]) => !PIN.has(k));
+  check(`18a every combat and movement sound (${need.size}) is pinned: decoded up front, never let go`, missingTable.length === 0 && need.size >= 40 && unpinned.length === 0, { missingTable, unpinned });
+  check('18b the pinned list names only sounds in SFX_MANIFEST, once each', SC.PINNED.every((k) => has(MANIFEST, k)) && PIN.size === SC.PINNED.length,
+    SC.PINNED.filter((k) => !has(MANIFEST, k)));
+  const pre = [...Object.values(SC.PREFETCH.zone).flat(), ...SC.PREFETCH.building, ...SC.PREFETCH.family.flat()];
+  check('18c every sound decoded ahead (a zone\'s, a building\'s, a family\'s) is in SFX_MANIFEST', pre.every((k) => has(MANIFEST, k)), pre.filter((k) => !has(MANIFEST, k)));
+  check('18d the cache: 8 MB or under (the aim), the cold-play aim 30 ms, a late play logged after 1.5 s', SC.BUDGET_MB > 0 && SC.BUDGET_MB <= 8 && SC.COLD_MS === 30 && SC.LATE_MS === 1500);
+  /* the LRU: the least recently played let go first, never the one just in */
+  const L = SC.makeLru(100);
+  L.add('a', 40); L.add('b', 40); L.touch('a');
+  const out = L.add('c', 40);
+  const big = SC.makeLru(10).add('x', 50);
+  check('18e the cache lets go of the least recently played first, and never of the one just decoded', out.join() === 'b' && L.bytes === 80 && L.has('a') && L.has('c') && big.length === 0, { out, bytes: L.bytes });
+  /* the switch: off by default, `?sfxcache` on; play() decodes a cold sound and plays it when ready */
+  const G = GD.replace(/\/\*[\s\S]*?\*\//g, '');
+  check('18f off by default (the game as it was); `?sfxcache` turns it on; with it on the manifest decodes only the pinned, a cold play() is decoded and played when ready',
+    /BT_AUDIO\.SFX_CACHE = false;/.test(G) && /\[\?&\]sfxcache\(\?:=/.test(G)
+      && /if \(this\.SFX_CACHE && !this\._sfxPinned\[k\] && !pinUrl\[m\[k\]\]\) this\._sfxHold\(m\[k\]\);/.test(G)
+      && /if \(url && this\.SFX_CACHE\) \{ try \{ return this\._playCold\(key, url, opts\); \}/.test(G));
+}
+
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

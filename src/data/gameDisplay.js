@@ -25,6 +25,7 @@ import { SPRINT_GRUNT } from './sprintGrunt.js';   /* v2.3.3455: the owner's spr
 import { EVENT_SOUNDS } from './eventSounds.js';   /* v2.3.3343: each creature its own death (monsterDeath) */
 import { OWNER_SOUNDS, OWNER_LOOPS } from './ownerSoundClips.js';   /* v2.3.3462: the owner's recordings for the sounds still needed */
 import { foldToMono } from './soundFold.js';   /* v2.3.3706: a stereo sound whose two sides are one is kept as one */
+import { PINNED as SFX_PINNED, PREFETCH as SFX_PREFETCH, BUDGET_MB as SFX_BUDGET_MB, COLD_MS as SFX_COLD_MS, LATE_MS as SFX_LATE_MS, familyOf as sfxFamilyOf, makeLru as makeSfxLru } from './sfxCache.js';   /* v2.3.3714: decoded sound held only while it is needed (`?sfxcache`) */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
@@ -2159,6 +2160,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     this._samples = {};
     this._sampleLoading = {};
     this._sfxLoops = {};
+    if (this._sfxLru) this._sfxLru.clear();   /* v2.3.3714: the sound cache's decodes went with the old context (its files' bytes stay) */
     this._loadedManifest = false;
     this._unlocked = false;
     this._silentTicks = 0;
@@ -2441,6 +2443,8 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        opening ("entering" town buildings)"); a dungeon's mouth, a cave,
        keeps the knock (`kind` 'mouth': EVENT_SOUNDS.caveMouth). */
     if (!this.ctx || this.muted) return;
+    /* v2.3.3714: a building's sounds decoded on the way in (the sound cache) */
+    if (this.SFX_CACHE && kind !== 'mouth') { try { this.sfxPrefetch(SFX_PREFETCH.building); } catch (e) { /* sound only */ } }
     var L = kind === 'mouth' ? EVENT_SOUNDS.caveMouth : EVENT_SOUNDS.door, r = 1 + (Math.random() - 0.5) * 0.06;
     for (var i = 0; i < L.length; i++) this._playLayer(L[i], 1, r, 1);
     this._uiSpecificAt = this._now();
@@ -2633,6 +2637,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     if (_asks.length > 16) _asks.shift();
   } catch (e) {}
   if (!this.ctx || this.muted) return;
+  try { this._sfxZonePrefetch(zoneId); } catch (e) { /* v2.3.3714: a zone's sounds decoded on the way in (the sound cache) */ }
   /* v2.3.3610: every dungeon is one music key -- the owner's "Swift Skirmish
      Clash" (ZONE_MUSIC.dungeon) -- so `dungeon:<id>` is filed under it here,
      the one place every zone's music is asked for; the rest of the music code
@@ -3614,7 +3619,9 @@ BT_AUDIO.HIT_VOICES = {
 };
 /* Is sample `key` decoded and ready to play? */
 BT_AUDIO._has = function (key) {
-  return !!(key && this._samples && this._samples[key]);
+  /* v2.3.3714: with the sound cache on, a manifest sound not decoded is as
+     good as in: play() decodes it and plays it when ready */
+  return !!(key && this._samples && (this._samples[key] || (this.SFX_CACHE && this.ctx && this.SFX_MANIFEST[key])));
 };
 /* One layer of a table above or below: [key, offset, duration (0 = to the
    end), gain, rate, delay, fade], played at vol x hg x gain.  `hg` is
@@ -3828,7 +3835,7 @@ BT_AUDIO.CROWN_SOUNDS = {
 BT_AUDIO._propHitN = 0;
 /* One layer.  Returns whether its sample was in to play. */
 BT_AUDIO._propLayer = function (L, vol, rateK) {
-  if (!L || !this._samples || !this._samples[L[0]]) return false;
+  if (!L || !this._samples || !this._has(L[0])) return false;   /* v2.3.3714: _has, the sound cache's cold sounds too */
   this.play(L[0], { offset: L[1], duration: L[2], vol: vol * this.HIT_GAIN * L[3],
     rate: (L[4] || 1) * (rateK || 1) * (1 + (Math.random() - 0.5) * 0.06), delay: L[5] || 0 });
   return true;
@@ -4204,6 +4211,10 @@ BT_AUDIO.monsterDeath = function (arch, opts, k) {
    (not rejects) on failure and on the already-loaded/in-flight early return,
    so `.then(start)` is always safe and a missing file degrades to silence. */
 BT_AUDIO.loadSample = function (key, url) {
+  /* v2.3.3714: with the sound cache on, a key already on its way hands back
+     ITS promise, so a cold play waiting on it starts when it is in (off: as
+     it was, resolved at once) */
+  if (this.SFX_CACHE && this._sampleLoading[key] && this._sampleLoadP && this._sampleLoadP[key]) return this._sampleLoadP[key];
   if (!this.ctx || this._samples[key] || this._sampleLoading[key]) return Promise.resolve();
   var self = this;
   /* ═══ v2.3.3462: ONE DECODE A FILE ═══
@@ -4224,8 +4235,9 @@ BT_AUDIO.loadSample = function (key, url) {
   var p = this._tagLoads[tag];
   if (!p) {
     var low = this._lowRate(key);
-    p = this._tagLoads[tag] = fetch(url)
-      .then(function (r) { return r.arrayBuffer(); })
+    /* v2.3.3714: with the sound cache on, the file's bytes come from the ones
+       it holds (fetched once); off, or a pinned one, fetched as before */
+    p = this._tagLoads[tag] = (this.SFX_CACHE && !this._sfxPinned[key] && this.SFX_MANIFEST[key] ? this._sfxRead(url) : fetch(url).then(function (r) { return r.arrayBuffer(); }))
       .then(function (buf) {
         return new Promise(function (resolve, reject) {
           if (low) self._decodeLow(buf, resolve, reject);
@@ -4235,10 +4247,13 @@ BT_AUDIO.loadSample = function (key, url) {
       .then(function (b) { delete self._tagLoads[tag]; return self._fold(b, key); },
         function () { delete self._tagLoads[tag]; return null; });
   }
-  return p.then(function (audioBuf) {
-    if (audioBuf) { self._samples[key] = audioBuf; self._sampleTag[key] = tag; }
+  var done = p.then(function (audioBuf) {
+    if (audioBuf) { self._samples[key] = audioBuf; self._sampleTag[key] = tag; self._sfxKeep(key, tag, audioBuf); }
     delete self._sampleLoading[key];
+    if (self._sampleLoadP) delete self._sampleLoadP[key];
   });
+  if (this.SFX_CACHE) (this._sampleLoadP || (this._sampleLoadP = Object.create(null)))[key] = done;
+  return done;
 };
 /* ═══ v2.3.3706: A STEREO SOUND WHOSE TWO SIDES ARE ONE IS KEPT AS ONE ═══
    The owner: "Memory seems to be the persistent bottleneck ... Getting that
@@ -4308,8 +4323,178 @@ BT_AUDIO.loadSfxManifest = function () {
   if (!this.ctx) return;
   this._loadedManifest = true;
   var m = this.SFX_MANIFEST;
-  for (var k in m) this.loadSample(k, m[k]);
+  /* v2.3.3714: with the sound cache on, only the pinned are decoded here; the
+     rest keep their file's bytes and are decoded on their first play */
+  var pinUrl = Object.create(null);
+  for (var p in m) if (this._sfxPinned[p]) pinUrl[m[p]] = true;
+  for (var k in m) {
+    if (this.SFX_CACHE && !this._sfxPinned[k] && !pinUrl[m[k]]) this._sfxHold(m[k]);
+    else this.loadSample(k, m[k]);
+  }
 };
+/* ═══ v2.3.3714: DECODED SOUND HELD ONLY WHILE IT IS NEEDED (`?sfxcache`) ═══
+   The why, the pinned list and the numbers: data/sfxCache.js and
+   docs/specs/sfx-cache.md.  Off (the default) none of this runs: every sound
+   in SFX_MANIFEST is decoded on the loading screen and held, as before. */
+BT_AUDIO.SFX_CACHE = false;
+BT_AUDIO.SFX_CACHE_MB = SFX_BUDGET_MB;
+BT_AUDIO.SFX_LATE_MS = SFX_LATE_MS;   /* a test on a slow box raises it (mp-sfxcache) */
+try {
+  var _sc = typeof location !== 'undefined' && /[?&]sfxcache(?:=([0-9.]+))?(?:&|$)/.exec(location.search || '');
+  if (_sc) {
+    BT_AUDIO.SFX_CACHE = true;
+    /* `?sfxcache=8`: another budget, in MB, to try one (1-32) */
+    if (_sc[1]) BT_AUDIO.SFX_CACHE_MB = Math.max(1, Math.min(32, parseFloat(_sc[1]) || SFX_BUDGET_MB));
+  }
+} catch (e) { /* off */ }
+BT_AUDIO._sfxPinned = Object.create(null);
+for (var _sp = 0; _sp < SFX_PINNED.length; _sp++) BT_AUDIO._sfxPinned[SFX_PINNED[_sp]] = true;
+BT_AUDIO._sfxLru = null;   /* made on first use: tag -> decoded bytes */
+BT_AUDIO._sfxBytes = Object.create(null);   /* url -> the file (a Blob) */
+BT_AUDIO._sfxBytesP = Object.create(null);  /* url -> its fetch in flight */
+BT_AUDIO._sfxStats = null;
+BT_AUDIO._sfxStat = function () {
+  return this._sfxStats || (this._sfxStats = { cold: 0, late: 0, failed: 0, evicted: 0, warmed: 0, coldMs: Object.create(null), played: Object.create(null), lateKeys: [] });
+};
+/* Keep a file's bytes, not its decode.  A Blob: the browser holds it outside
+   the page's heap and its raw buffers (the memory check's `buffers` line), and
+   hands out a fresh copy for each decode (decodeAudioData takes its buffer). */
+BT_AUDIO._sfxHold = function (url) {
+  var self = this;
+  if (this._sfxBytes[url] || this._sfxBytesP[url]) return this._sfxBytesP[url] || Promise.resolve();
+  var p = this._sfxBytesP[url] = fetch(url)
+    .then(function (r) { return typeof r.blob === 'function' ? r.blob() : r.arrayBuffer(); })
+    .then(function (b) { self._sfxBytes[url] = b; delete self._sfxBytesP[url]; },
+      function () { delete self._sfxBytesP[url]; });
+  return p;
+};
+/* A copy of a file's bytes to decode: the held ones, or fetched (a key asked
+   for before the manifest's pass, or not in it) */
+BT_AUDIO._sfxRead = function (url) {
+  var self = this;
+  var copy = function () {
+    var b = self._sfxBytes[url];
+    if (!b) return null;
+    if (typeof b.arrayBuffer === 'function') return b.arrayBuffer();
+    return Promise.resolve(b.slice(0));
+  };
+  var c = copy();
+  if (c) return c;
+  return this._sfxHold(url).then(function () {
+    return copy() || fetch(url).then(function (r) { return r.arrayBuffer(); });
+  });
+};
+/* A key decoded: pinned, it is held for good; otherwise its file goes into
+   the cache, and the least recently played files over the budget are let go
+   (every key of theirs that is not pinned -- a playing source keeps its own
+   buffer, so nothing sounding is cut). */
+BT_AUDIO._sfxKeep = function (key, tag, buf) {
+  if (!this.SFX_CACHE || this._sfxPinned[key] || !this.SFX_MANIFEST[key]) return;
+  if (this._sfxPinnedTag(tag)) return;   /* a pinned key's file too */
+  if (!this._sfxLru) this._sfxLru = makeSfxLru(this.SFX_CACHE_MB * 1048576);
+  var out = this._sfxLru.add(tag, this._bufBytes(buf));
+  for (var i = 0; i < out.length; i++) this._sfxDrop(out[i]);
+};
+BT_AUDIO._sfxPinnedTag = function (tag) {
+  if (!this._sfxPinTags) {
+    this._sfxPinTags = Object.create(null);
+    for (var k in this.SFX_MANIFEST) if (this._sfxPinned[k]) this._sfxPinTags[this.SFX_MANIFEST[k] + (this._lowRate(k) ? '@low' : '')] = true;
+  }
+  return !!this._sfxPinTags[tag];
+};
+BT_AUDIO._sfxDrop = function (tag) {
+  for (var k in this._sampleTag) {
+    if (this._sampleTag[k] !== tag || this._sfxPinned[k]) continue;
+    delete this._samples[k];   /* a loop running keeps its own (startSfxLoop needs ours only to start) */
+  }
+  this._sfxStat().evicted++;
+};
+BT_AUDIO._sfxTouch = function (key) {
+  if (this._sfxLru && this._sampleTag && this._sampleTag[key]) this._sfxLru.touch(this._sampleTag[key]);
+};
+/* Decode ahead: keys whose play is near.  `fill` stops once the cache is
+   nine-tenths full, so a long list (the studio's) never churns it. */
+BT_AUDIO.sfxPrefetch = function (keys, fill) {
+  if (!this.SFX_CACHE || !this.ctx || !keys) return;
+  if (typeof keys === 'string') keys = [keys];
+  var room = this.SFX_CACHE_MB * 1048576 * 0.9;
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i], url = this.SFX_MANIFEST[k];
+    if (!url || this._samples[k] || this._sampleLoading[k]) continue;
+    if (fill && this._sfxLru && this._sfxLru.bytes >= room) break;
+    this._sfxStat().warmed++;
+    this.loadSample(k, url);
+  }
+};
+/* A sound not decoded, asked to play: decoded now and played the moment it
+   is ready.  Its gain is made and wired at once, so a caller that fades it or
+   stops it (the handle's gain and src) does so as it would a played one; the
+   src is a stand-in until the real one starts.  Never dropped silently: one
+   later than LATE_MS is counted and logged (window.__btSfxCache). */
+BT_AUDIO._playCold = function (key, url, opts) {
+  var self = this, ctx = this.ctx, t0 = this._sfxNow(), st = this._sfxStat();
+  var g = ctx.createGain();
+  g.gain.value = (opts && opts.vol != null) ? opts.vol : 0.6;
+  g.connect(this._out());
+  var h = { gain: g, cold: true, real: null, stopped: false };
+  h.src = {
+    stop: function () { h.stopped = true; if (h.real) { try { h.real.stop.apply(h.real, arguments); } catch (e) { /* ended */ } } },
+    disconnect: function () { if (h.real) { try { h.real.disconnect(); } catch (e) { /* gone */ } } },
+  };
+  st.cold++;
+  this.loadSample(key, url).then(function () {
+    var ms = self._sfxNow() - t0;
+    var prev = st.coldMs[key];
+    st.coldMs[key] = prev == null ? Math.round(ms) : Math.max(prev, Math.round(ms));
+    var buf = self._samples[key];
+    if (!buf || h.stopped || self.muted || self.ctx !== ctx || ms > self.SFX_LATE_MS) {
+      try { g.disconnect(); } catch (e) { /* gone */ }
+      if (h.stopped || self.muted) return;
+      if (!buf) st.failed++; else st.late++;
+      if (st.lateKeys.length < 20) st.lateKeys.push({ key: key, ms: Math.round(ms), failed: !buf });
+      try { if (typeof window !== 'undefined' && window.debug && window.debug.pushLog) window.debug.pushLog('warn', ['BT_AUDIO cold sound ' + key + (buf ? ' late, ' + Math.round(ms) + ' ms' : ' failed')]); } catch (e) { /* log only */ }
+      return;
+    }
+    var o = opts ? Object.assign({}, opts) : {};
+    /* the delay asked for runs from the ask, not from the decode */
+    if (o.delay > 0) o.delay = Math.max(0, o.delay - ms / 1000);
+    var r = self._startOn(buf, o, g);
+    if (r) h.real = r.src;
+    else { try { g.disconnect(); } catch (e) { /* gone */ } }
+  });
+  return h;
+};
+BT_AUDIO._sfxNow = function () {
+  return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+};
+/* what a zone or a building is about to play (startZoneAmbient, enterBuilding) */
+BT_AUDIO._sfxZonePrefetch = function (zoneId) {
+  if (!this.SFX_CACHE) return;
+  var z = SFX_PREFETCH.zone[zoneId];
+  if (z) this.sfxPrefetch(z);
+};
+/* QA: what the cache holds and what it did (mp-sfxcache) */
+if (typeof window !== 'undefined') {
+  window.__btSfxCache = function () {
+    var A = BT_AUDIO, st = A._sfxStat(), pin = 0, held = 0, seen = typeof Set === 'function' ? new Set() : null, k;
+    for (k in A._samples) {
+      var b = A._samples[k];
+      if (!b || !A.SFX_MANIFEST[k] || (seen && seen.has(b))) continue;
+      if (seen) seen.add(b);
+      if (A._sfxPinned[k]) pin += A._bufBytes(b); else held += A._bufBytes(b);
+    }
+    var bytes = 0;
+    for (k in A._sfxBytes) { var f = A._sfxBytes[k]; bytes += f ? (f.size != null ? f.size : f.byteLength || 0) : 0; }
+    var mb = function (n) { return +(n / 1048576).toFixed(2); };
+    return {
+      on: !!A.SFX_CACHE, budgetMB: A.SFX_CACHE_MB, coldAimMs: SFX_COLD_MS, lateMs: A.SFX_LATE_MS,
+      pinnedMB: mb(pin), cachedMB: mb(held), lruMB: A._sfxLru ? mb(A._sfxLru.bytes) : 0, filesMB: mb(bytes), files: Object.keys(A._sfxBytes).length,
+      cold: st.cold, late: st.late, failed: st.failed, evicted: st.evicted, warmed: st.warmed,
+      coldMs: Object.assign({}, st.coldMs), played: Object.assign({}, st.played), lateKeys: st.lateKeys.slice(),
+      pinned: SFX_PINNED.slice(),
+    };
+  };
+}
 /* ═══ v2.3.2452: THE FIRST BLOW IS NOT ALLOWED TO BE SILENT ═══
  *
  * Owner: "the first swing does not register the monster hit sound."
@@ -4431,6 +4616,11 @@ BT_AUDIO.startSfxLoop = function (key, vol, bus) {
   if (!this._sfxLoops) this._sfxLoops = {};
   if (this._sfxLoops[key]) return;             /* already running */
   var buf = this._samples[key];
+  /* v2.3.3714: a loop's start is a family's first sound too (the river under
+     a cast warms the reel), with the sound cache on */
+  if (this.SFX_CACHE && !this._sfxLoopSeen) this._sfxLoopSeen = Object.create(null);
+  if (this.SFX_CACHE && !this._sfxLoopSeen[key]) { this._sfxLoopSeen[key] = true; var fam = sfxFamilyOf(key); if (fam.length) this.sfxPrefetch(fam); }
+  if (buf && this.SFX_CACHE) this._sfxTouch(key);
   if (!buf) { var url = this.SFX_MANIFEST[key]; if (url) this.loadSample(key, url); return; }
   try {
     var src = this.ctx.createBufferSource();
@@ -5417,22 +5607,40 @@ BT_AUDIO.play = function (key, opts) {
     this._ensureAudible();
   }
   var buf = this._samples[key];
+  /* v2.3.3714: what played, for the sound cache's pinned list (mp-sfxcache),
+     and the rest of its family decoded ahead when the cache is on */
+  if (this.SFX_CACHE) {
+    var _st = this._sfxStat();
+    _st.played[key] = (_st.played[key] || 0) + 1;
+    if (_st.played[key] === 1) { var _fam = sfxFamilyOf(key); if (_fam.length) this.sfxPrefetch(_fam); }
+    if (buf) this._sfxTouch(key);
+  }
   if (!buf) {
     // Lazily load on first miss so a sound is at least cached for next time.
     var url = this.SFX_MANIFEST[key];
+    /* v2.3.3714: with the cache on, decoded now and played when ready */
+    if (url && this.SFX_CACHE) { try { return this._playCold(key, url, opts); } catch (e) { return null; } }
     if (url) this.loadSample(key, url);
     return null;
   }
+  return this._startOn(buf, opts, null);
+};
+/* v2.3.3714: play()'s second half, on its own so a cold sound (_playCold)
+   starts the same way once decoded: `g`, a gain already made and wired, or
+   null to make one. */
+BT_AUDIO._startOn = function (buf, opts, g) {
   try {
     var src = this.ctx.createBufferSource();
     src.buffer = buf;
     var rate = (opts && opts.rate) ||
       (1 + (Math.random() - 0.5) * (opts && opts.pitchVar != null ? opts.pitchVar : 0.06));
     src.playbackRate.value = rate;
-    var g = this.ctx.createGain();
-    g.gain.value = (opts && opts.vol != null) ? opts.vol : 0.6;
+    if (!g) {
+      g = this.ctx.createGain();
+      g.gain.value = (opts && opts.vol != null) ? opts.vol : 0.6;
+      g.connect(this._out());
+    }
     src.connect(g);
-    g.connect(this._out());
     /* v2.3.1104: optional offset/duration so a sound can be ISOLATED to a
        slice of its file at runtime (no re-encoding needed) -- e.g. play just
        the first footstep out of a 25 s walking clip, or trim the leading
