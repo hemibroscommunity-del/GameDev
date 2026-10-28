@@ -45,3 +45,15 @@ export function nextWeaponSlot(rpg) {
   if (i < 0) return 'melee';
   return slots[(i + 1) % slots.length];
 }
+
+/** v2.3.3711: the slot one step BACK round the cycle -- the mouse wheel turned
+ *  up (BroTown's canvas, game/deskCombos.js wheelStep).  Same rules as
+ *  nextWeaponSlot: only slots you can fill, the current one when there is
+ *  nowhere else to go, melee for a current slot you no longer own. */
+export function prevWeaponSlot(rpg) {
+  const slots = ownedWeaponSlots(rpg);
+  const cur = (rpg && rpg.activeSlot) || 'melee';
+  const i = slots.indexOf(cur);
+  if (i < 0) return 'melee';
+  return slots[(i + slots.length - 1) % slots.length];
+}

@@ -435,7 +435,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      (dead / mid-harvest / cooldown / no weapon / no mana).  So this asserts
      two things at once: that the coach credits the gesture, and that it
      credits it however the player got there. */
-  await P.page.keyboard.press('f');
+  await P.page.keyboard.press('q');   /* v2.3.3711: the special's key is Q (F is the Element Burst) */
   await P.page.waitForTimeout(900);
   const firedTrk = await P.page.evaluate(() => ({
     hasUsedSwipe: !!window._gameState.current._hasUsedSwipe,
