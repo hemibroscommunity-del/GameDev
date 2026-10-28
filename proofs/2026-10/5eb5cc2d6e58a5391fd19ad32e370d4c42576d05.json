@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5eb5cc2d6e58a5391fd19ad32e370d4c42576d05",
+  "tree": "6f4db74528060c5f3b022e55c0f9410832aa216c",
+  "committedAt": "2026-10-28T11:52:38-07:00",
+  "subject": "Performance ideas written down, colour counts measured, and an exact plan for characters (v2.3.3719) (#1198)",
+  "files": 6738,
+  "bytes": 775942135,
+  "listingSha256": "602e9daceef488e210eb915c183a0af8bce2b0255465ef367e482761ba2a6209",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
