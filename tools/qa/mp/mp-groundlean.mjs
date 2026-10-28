@@ -14,6 +14,14 @@
  *   - its pieces came as fast (the worker's mean piece time within
  *     SLOWER_MS of today's, and no more than POPIN_MORE pop-ins more);
  *   - and the ground worker held less (its heap and buffers, after a GC).
+ * v2.3.3736: lean is the DEFAULT (the owner: "including the new memory change
+ * work by default would be better"), so "today" is `?groundlean=0`, the
+ * old ground, and "lean" is the page as it starts.  And a SPRINT -- the
+ * cache's worst case -- after the two trips: from home out across the
+ * commons' edge into the Flame Fields, half again as far as the fight's
+ * spot, and straight back, at a sprint's 1.33x the walk: the lean ground
+ * shows no more holes on the way (pop-ins) than today's, no piece is left
+ * short of a picture, and nothing fails.
  * Results: the log and tools/qa/mp/out/groundlean.json.
  *
  *   node tools/qa/mp/run.mjs groundlean
@@ -28,6 +36,11 @@ const PHONE = { width: 390, height: 844 };
    the two walks' means differ by run-to-run noise of a few ms */
 const SLOWER_MS = 12;
 const POPIN_MORE = 60;
+/* the sprint (v2.3.3736): H.glideTo's 450 px a second is the walk; a
+   sprint is 1.33x it (mp-sprint), and its pop-ins may be at most this
+   many more than today's */
+const SPRINT_SPEED = 600;
+const SPRINT_POPIN_MORE = 25;
 
 async function walk(browser, wsPort, webPort, query, label) {
   const P = await H.newPlayer(browser, { name: label, wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query });
@@ -60,6 +73,16 @@ async function walk(browser, wsPort, webPort, query, label) {
       await H.glideTo(P, home.x, home.y);
       await P.page.waitForTimeout(8000);
     }
+    const read = () => P.page.evaluate(() => { const w = window.__btWorldTrial.stats; return { popIns: w.popIns, partial: w.partial, short: w.short, failures: w.failures, loads: w.loads }; });
+    const s0 = await read();
+    /* v2.3.3736: the sprint out across the land's edge and straight back */
+    const far = [home.x + (at[0] - home.x) * 1.5, home.y + (at[1] + 40 - home.y) * 1.5];
+    await H.glideTo(P, far[0], far[1], { speed: SPRINT_SPEED });
+    await H.glideTo(P, home.x, home.y, { speed: SPRINT_SPEED });
+    await P.page.waitForTimeout(8000);
+    const s1 = await read();
+    const sprint = { popIns: s1.popIns - s0.popIns, partial: s1.partial - s0.partial, loads: s1.loads - s0.loads, short: s1.short, failures: s1.failures,
+      at: await H.readState(P, (S) => ({ x: Math.round(S.player.x), y: Math.round(S.player.y) })), far: far.map(Math.round) };
     const st = await P.page.evaluate(() => {
       const w = window.__btWorldTrial.stats;
       return { loads: w.loads, avgMs: w.loads ? +(w.sumMs / w.loads).toFixed(1) : null, maxMs: w.maxMs, popIns: w.popIns, partial: w.partial,
@@ -69,6 +92,7 @@ async function walk(browser, wsPort, webPort, query, label) {
     const ws = (await workers()) || [];
     const g = ws.find((w) => /ground-worker/.test(w.url)) || null;
     st.worker = g ? { heapMB: g.heapMB, buffersMB: g.buffersMB } : null;
+    st.sprint = sprint;
     return st;
   } finally {
     await P.ctx.close().catch(() => {});
@@ -78,8 +102,8 @@ async function walk(browser, wsPort, webPort, query, label) {
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const today = await walk(browser, wsPort, webPort, 'groundsum', 'today');
-  const lean = await walk(browser, wsPort, webPort, 'groundsum&groundlean', 'lean');
+  const today = await walk(browser, wsPort, webPort, 'groundsum&groundlean=0', 'today');
+  const lean = await walk(browser, wsPort, webPort, 'groundsum', 'lean');
   rec.ok('both walks went out to the Flame Fields and home, twice (guard)', !!today && !!lean);
   if (!today || !lean) return;
   const line = (s) => `${s.loads} pieces, ${s.avgMs} ms a piece (worst ${s.maxMs}), ${s.popIns} pop-ins, ${s.partial} partial; `
@@ -96,6 +120,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     d.lean === true && d.thaws > 0 && d.redecodes === 0, d);
   rec.ok(`the lean ground came as fast: ${lean.avgMs} ms a piece against ${today.avgMs} (at most ${SLOWER_MS} more), ${lean.popIns} pop-ins against ${today.popIns} (at most ${POPIN_MORE} more), no failures`,
     lean.avgMs <= today.avgMs + SLOWER_MS && lean.popIns <= today.popIns + POPIN_MORE && !lean.failures, { today: [today.avgMs, today.popIns], lean: [lean.avgMs, lean.popIns] });
+  const sp = (s) => `${s.sprint.loads} pieces, ${s.sprint.popIns} pop-ins, ${s.sprint.partial} partial, ${s.sprint.short} short at the end, ${s.sprint.failures} failures`;
+  console.log(`    sprint, today: ${sp(today)}; lean: ${sp(lean)}`);
+  rec.ok(`the sprint across the land's edge and back: the lean ground no holier than today's (${lean.sprint.popIns} pop-ins against ${today.sprint.popIns}, at most ${SPRINT_POPIN_MORE} more), none short, no failures`,
+    lean.sprint.popIns <= today.sprint.popIns + SPRINT_POPIN_MORE && !lean.sprint.short && !lean.sprint.failures && lean.sprint.loads > 0,
+    { today: today.sprint, lean: lean.sprint });
   const mb = (s) => (s.worker ? s.worker.heapMB + s.worker.buffersMB : null);
   rec.ok(`the ground worker held less: ${mb(lean)} MB against ${mb(today)}`, mb(lean) != null && mb(today) != null && mb(lean) < mb(today),
     { today: today.worker, lean: lean.worker });

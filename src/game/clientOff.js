@@ -27,9 +27,9 @@ export const CLIENT_SAVERS = Object.freeze([
   Object.freeze({ id: 'voicecap', words: 'A crowd of one sound plays as a few', live: true }),
   Object.freeze({ id: 'onecopy', words: 'Pictures held once', live: false }),
   Object.freeze({ id: 'picnumbers', words: 'Monster strips as colour numbers', live: false }),
-  Object.freeze({ id: 'codelazy', words: 'Windows load when opened', live: false, optIn: true }),
-  Object.freeze({ id: 'groundlean', words: 'Lean ground builder', live: false, optIn: true }),
-  Object.freeze({ id: 'heaplean', words: 'Map leftover let go', live: false, optIn: true }),
+  Object.freeze({ id: 'codelazy', words: 'Windows load when opened', live: false }),
+  Object.freeze({ id: 'groundlean', words: 'Lean ground builder', live: false }),
+  Object.freeze({ id: 'heaplean', words: 'Map leftover let go', live: false }),
   Object.freeze({ id: 'lookpalette', words: 'Characters coloured on the chip', live: true }),
 ]);
 

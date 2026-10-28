@@ -37,16 +37,17 @@ for each client saver, from the Test panel, live, as the message diet has
 | `voicecap` | A crowd of one sound plays as a few | `clientOffApply.js` (BT_AUDIO.VOICE_CAP) | at once |
 | `onecopy` | Pictures held once | `src/rendering/picsOnce.js` | next load |
 | `picnumbers` | Monster strips as colour numbers | `src/rendering/picsNumbers.js` | next load |
-| `codelazy` | Windows load when opened | `src/ui/lazyPanel.js` (CODE_LAZY; opt-in on main: `?codelazy`) | next load |
-| `groundlean` | Lean ground builder | `src/game/wheelTrial.js` (the ground worker's `search`; opt-in on main: `?groundlean`) | next load |
-| `heaplean` | Map leftover let go | `src/game/wheelTrial.js` (_heapLean; opt-in on main: `?heaplean`) | next load |
+| `codelazy` | Windows load when opened | `src/ui/lazyPanel.js` (CODE_LAZY) | next load |
+| `groundlean` | Lean ground builder | `src/game/wheelTrial.js` (adds `groundlean=0` to what the ground worker is told) | next load |
+| `heaplean` | Map leftover let go | `src/game/wheelTrial.js` (_heapLean) | next load |
 | `lookpalette` | Characters coloured on the chip | its own PR (`src/rendering/lookPalette.js`): one line | at once |
 
 The look palette, not yet on main when this shipped, takes one line in its
 own PR (#1212): `import { clientOff } from '@/game/clientOff.js'` and
 `&& !clientOff('lookpalette')` in `lookPaletteOn()` (asked every frame, so it
-follows live). The three opt-ins (`optIn` in CLIENT_SAVERS) read on the panel
-as "allowed, only with ?id" until one of them is made a default.
+follows live).(A saver that is ever an opt-in again, on only with `?id`, takes
+`optIn: true` in CLIENT_SAVERS, and the panel reads "allowed, only with
+?id" for it.)
 
 ## Tests
 
@@ -59,6 +60,4 @@ as "allowed, only with ?id" until one of them is made a default.
 - `tools/qa/mp/mp-clientoff.mjs` (5 checks): on a page in BroTown,
   `off_voicecap` turns the voice cap off at once with no reload and is kept;
   `off_onecopy` and a reload turn pictures-held-once off from that load; both
-  cleared, the voice cap is back. (On main the voice cap is still off by
-  default until the sound savers' PR is in; the check follows whatever the
-  page had.)
+  cleared, the voice cap is back.
