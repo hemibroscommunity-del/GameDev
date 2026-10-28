@@ -145,7 +145,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── the surface ── */
   const disc = await P.page.evaluate(() => window.__centre('.bt-rjoy-base'));
   rec.ok('the right button is on screen at the old disc anchor (.bt-rjoy-base)', !!disc, disc);
-  rec.ok('...and it is "slightly larger" than the 75px stick was', !!disc && disc.w >= 90, disc && { w: disc.w });
+  /* v2.3.3721: the owner, "the contextual button should shrink in size a bit":
+     84 px upright (it was 96), still larger than the 75 px stick was */
+  rec.ok('...and it is "slightly larger" than the 75px stick was (84 since v2.3.3721, a little smaller than its 96)', !!disc && disc.w > 75 && Math.round(disc.w) === 84, disc && { w: disc.w });
   const label = await P.page.evaluate(() => (document.querySelector('.bt-rjoy-base') || {}).textContent || '');
   rec.ok('...and it says Attack', /attack/i.test(label), label);
   /* ═══ v2.3.2258: THE KNOB IS BACK, SO THIS PIN INVERTS ═══
