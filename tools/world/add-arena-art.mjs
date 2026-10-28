@@ -42,10 +42,15 @@
  *           scale; each with its `line`, its foot line [x0, x1, y].
  *   PROPS   four (horn, rack, brazier, pennant), the tallest 120 game px tall
  *           and the rest at its scale; each with its `foot`.
+ *   CHARIOT (v2.3.3743) one object, 320 game px wide, in two layers as the
+ *           ring is: `back` (the horse, the pole, the car's floor and far
+ *           side) behind its charioteer, `front` (the car's front rail, near
+ *           side and near wheel) over his legs; `stand` where his feet go and
+ *           `rail` the near side rail's top line (ARENA_PICTURES.chariot).
  *
  * Writes public/world/arena/*.png and src/data/arenaArt.js (GENERATED), and
- * the owner's preview, docs/specs/arena-art/preview.png.  --dry writes all of
- * it to a scratch folder instead.
+ * the owner's previews, docs/specs/arena-art/preview.png and (v2.3.3743)
+ * chariot.png.  --dry writes all of it to a scratch folder instead.
  */
 import http from 'http';
 import fs from 'fs';
@@ -57,6 +62,9 @@ import { fileURLToPath } from 'url';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const SRC = path.join(REPO, 'assets/prop-source/arena');
 const VER = '2.3.3730';
+/* v2.3.3743: the chariot came later; its files carry their own cache key, so
+   the first four's URLs (and anything cached under them) stay as they were */
+const CHARIOT_VER = '2.3.3743';
 
 /* ── what each picture holds, and the size it is drawn ──
    The sizes are the ones the prompts asked for (arena-art-prompts.mjs), a
@@ -73,6 +81,33 @@ export const ARENA_PICTURES = {
   gate: { file: 'gate.png', names: ['gate'], fit: 'w', size: 230, pockets: true },
   stands: { file: 'stands.png', names: ['long', 'short'], fit: 'w', size: 260, by: 'long' },
   props: { file: 'props.png', names: ['horn', 'rack', 'brazier', 'pennant'], fit: 'h', size: 120 },
+  /* v2.3.3743: the charioteer's chariot (the arena's way in: "an armored bro
+     in a chariot who takes you to the arena ... instead of the sheriff").
+     One object, 320 game px wide, cut in two as the ring is: the FRONT (the
+     car's front rail, its near side and the near wheel, drawn over the
+     charioteer's legs) and the BACK (the horse, the pole, the car's floor,
+     its far side and far wheel, behind him).  Where the one becomes the
+     other is read off the picture by eye, in the ORIGINAL's px
+     (assets/prop-source/arena/chariot.png, 1536 x 1024):
+       carX    the car's left end: everything left of it (the horse, the
+               pole, the reins) is the back's;
+       cut     the line from there along the front rail's inner edge, then
+               along the top of the near side's gold rail, to the picture's
+               right edge: the car's px below it are the front's;
+       rail    the near side rail's top, the part of \`cut\` a charioteer's
+               legs go behind;
+       stand   where a standing charioteer's feet go: the middle of the car,
+               between the front rail and the back post, on the floor below
+               the near side's top, so the near side hides his boots and
+               shins as a car's side would (on the rail's top line itself he
+               stood ON the rail, his boots in the open). */
+  chariot: {
+    file: 'chariot.png', names: ['chariot'], fit: 'w', size: 320,
+    carX: 955,
+    cut: [[955, 0], [1000, 0], [1000, 300], [1060, 380], [1110, 440], [1150, 522], [1190, 528], [1240, 540], [1340, 546], [1445, 548], [1536, 548]],
+    rail: [[1150, 522], [1190, 528], [1240, 540], [1340, 546], [1445, 548]],
+    stand: [1255, 610],
+  },
 };
 
 async function main() {
@@ -96,7 +131,7 @@ async function main() {
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
   const got = {};
-  let preview = null;
+  let preview = null, chariotPreview = null;
   try {
     const page = await browser.newPage();
     const errs = [];
@@ -114,7 +149,9 @@ async function main() {
       got[id] = await run(async (j) => window.__cutSheet(j), { ...spec, b64: b64(spec.file), name: id });
       console.log(`  ${id}: ${got[id].pieces.map((p) => `${p.id} ${p.w} x ${p.h}`).join(', ')}; ${got[id].colours} colours`);
     }
-    preview = await run(async (j) => window.__preview(j), { originals: Object.values(ARENA_PICTURES).map((p) => b64(p.file)) });
+    /* the ring's sheet keeps its four originals; the chariot has its own */
+    preview = await run(async (j) => window.__preview(j), { originals: ['ring', 'gate', 'stands', 'props'].map((id) => b64(ARENA_PICTURES[id].file)) });
+    chariotPreview = await run(async (j) => window.__chariotPreview(j), { body: '/sprites/player/stand-east.png' });
   } finally {
     await browser.close();
     server.close();
@@ -127,12 +164,12 @@ async function main() {
      top-left; `px` the file's own size in picture px */
   const g = (v) => Math.round(v) / 2;
   const gp = (p) => `[${g(p[0])}, ${g(p[1])}]`;
-  const sprite = (file, p, extra = '') => {
+  const sprite = (file, p, extra = '', ver = VER) => {
     const data = Buffer.from(p.png, 'base64');
     bytes += data.length;
     decoded += p.w * p.h * 4;
     fs.writeFileSync(path.join(OUT, file), data);
-    return `{ url: '/world/arena/${file}?v=${VER}', px: [${p.w}, ${p.h}], w: ${g(p.w)}, h: ${g(p.h)}, foot: ${gp(p.foot)}${extra} }`;
+    return `{ url: '/world/arena/${file}?v=${ver}', px: [${p.w}, ${p.h}], w: ${g(p.w)}, h: ${g(p.h)}, foot: ${gp(p.foot)}${extra} }`;
   };
   const ring = got.ring.pieces[0];
   const R = ring.geo;
@@ -153,6 +190,15 @@ ${R.posts.map((p) => `        { foot: ${gp(p.foot)}, w: ${g(p.w)} },`).join('\n'
   const gateJs = sprite('gate.png', gate, `, posts: [${gate.posts.map((p) => `{ foot: ${gp(p.foot)}, w: ${g(p.w)} }`).join(', ')}], walk: [${g(gate.walk[0])}, ${g(gate.walk[1])}]`);
   const standsJs = got.stands.pieces.map((p) => `    ${p.id}: ${sprite(`stand-${p.id}.png`, p, `, line: [${g(p.line[0])}, ${g(p.line[1])}, ${g(p.line[2])}]`)},`).join('\n');
   const propsJs = got.props.pieces.map((p) => `    ${p.id}: ${sprite(`prop-${p.id}.png`, p)},`).join('\n');
+  const ch = got.chariot.pieces[0];
+  const chariotJs = `{
+    /* v2.3.3743: the whole chariot, ${g(ch.w)} x ${g(ch.h)}, \`foot\` its middle on the ground */
+    w: ${g(ch.w)}, h: ${g(ch.h)}, foot: ${gp(ch.foot)},
+    back: ${sprite('chariot-back.png', ch.back, `, at: ${gp(ch.back.at)}`, CHARIOT_VER)},
+    front: ${sprite('chariot-front.png', ch.front, `, at: ${gp(ch.front.at)}`, CHARIOT_VER)},
+    stand: ${gp(ch.stand)},
+    rail: [${ch.rail.map(gp).join(', ')}],
+  }`;
 
   const js = `/* v2.3.3730: GENERATED by tools/world/add-arena-art.mjs -- do not edit by
    hand; run the tool again from assets/prop-source/arena/.  The owner's
@@ -173,7 +219,14 @@ ${R.posts.map((p) => `        { foot: ${gp(p.foot)}, w: ${g(p.w)} },`).join('\n'
              \`walk\` the open span between them [x0, x1].
      stands  \`long\` and \`short\`, at one scale; \`line\` the foot line
              [x0, x1, y].
-     props   \`horn\`, \`rack\`, \`brazier\`, \`pennant\`, at one scale. */
+     props   \`horn\`, \`rack\`, \`brazier\`, \`pennant\`, at one scale.
+   v2.3.3743:
+     chariot the charioteer's chariot in two layers, \`back\` (the horse, the
+             pole, the car's floor, far side and far wheel) and \`front\` (the
+             front rail, the near side and the near wheel, drawn over the
+             charioteer's legs), each placed at \`at\` in the whole; \`stand\`
+             where a standing charioteer's feet go, \`rail\` the near side
+             rail's top line, left to right. */
 export const ARENA_ART_V = ${JSON.stringify(VER)};
 export const ARENA_ART = {
   ring: ${ringJs},
@@ -184,6 +237,7 @@ ${standsJs}
   props: {
 ${propsJs}
   },
+  chariot: ${chariotJs},
 };
 `;
   const jsPath = DRY ? path.join(OUT, 'arenaArt.js') : path.join(REPO, 'src/data/arenaArt.js');
@@ -191,9 +245,11 @@ ${propsJs}
   const pvDir = DRY ? OUT : path.join(REPO, 'docs/specs/arena-art');
   fs.mkdirSync(pvDir, { recursive: true });
   fs.writeFileSync(path.join(pvDir, 'preview.png'), Buffer.from(preview.png, 'base64'));
+  fs.writeFileSync(path.join(pvDir, 'chariot.png'), Buffer.from(chariotPreview.png, 'base64'));
   const colours = Object.entries(got).map(([id, s]) => `${id} ${s.colours}`).join(', ');
   console.log(`  ring: oval at ${g(R.cx)}, ${g(R.cy)}, radii ${g(R.rx)} x ${g(R.ry)} (feet off it by ${g(R.err)} on average), ${R.posts.length} posts, gap ${g(R.gap.x[0])}..${g(R.gap.x[1])} (${R.gap.deg[0]}..${R.gap.deg[1]} deg)`);
   console.log(`  gate: walk ${g(gate.walk[0])}..${g(gate.walk[1])}`);
+  console.log(`  chariot: ${g(ch.w)} x ${g(ch.h)}, back ${ch.back.w} x ${ch.back.h} px, front ${ch.front.w} x ${ch.front.h} px, feet at ${gp(ch.stand)}`);
   console.log(`wrote ${(bytes / 1024).toFixed(0)} KB of pictures (${(decoded / 1048576).toFixed(1)} MB decoded; colours ${colours}) to ${path.relative(REPO, OUT) || OUT}, ${path.relative(REPO, jsPath) || jsPath} and the preview (${preview.w} x ${preview.h})`);
 }
 
@@ -432,7 +488,61 @@ const PAGE_LIB = async () => {
   };
 
   const kept = {};
-  window.__cutSheet = async ({ b64, names, fit, size, by, pockets, name }) => {
+  /* v2.3.3743: the chariot's two layers.  The by-eye lines are in the
+     original's px; the object's box in the keyed original maps them onto the
+     cut (shrunk by k, trimmed to the object) */
+  const cutChariot = async (c, cut, raw, spec, name) => {
+    const W = c.width, H = c.height;
+    /* the object's box in the keyed original: must be the cut's own, or the
+       lines would land off it */
+    const cd = pixels(cut);
+    let x0 = cut.width, y0 = cut.height, x1 = -1, y1 = -1;
+    for (let y = 0; y < cut.height; y++) for (let x = 0; x < cut.width; x++) if (cd[(y * cut.width + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (Math.abs((x1 - x0 + 1) - raw.width) > 2 || Math.abs((y1 - y0 + 1) - raw.height) > 2) throw new Error(`${name}: the object's box (${x1 - x0 + 1} x ${y1 - y0 + 1}) is not the cut's (${raw.width} x ${raw.height}): a speck outside it?`);
+    const sx = W / raw.width, sy = H / raw.height;
+    const map = ([x, y]) => [(x - x0) * sx, (y - y0) * sy];
+    const line = (pts) => {
+      const m = pts.map(map);
+      return (x) => {
+        if (x <= m[0][0]) return m[0][1];
+        for (let i = 1; i < m.length; i++) {
+          if (x <= m[i][0]) {
+            const [ax, ay] = m[i - 1], [bx, by] = m[i];
+            return bx === ax ? Math.min(ay, by) : ay + (by - ay) * (x - ax) / (bx - ax);
+          }
+        }
+        return m[m.length - 1][1];
+      };
+    };
+    const carX = map([spec.carX, 0])[0], cutY = line(spec.cut);
+    const d = pixels(c);
+    const layer = (front) => {
+      const o = new Uint8ClampedArray(d.length);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if ((x >= carX && y >= cutY(x + 0.5)) !== front) continue;
+        const i = (y * W + x) * 4;
+        o[i] = d[i]; o[i + 1] = d[i + 1]; o[i + 2] = d[i + 2]; o[i + 3] = d[i + 3];
+      }
+      let a0 = W, b0 = H, a1 = -1, b1 = -1;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (o[(y * W + x) * 4 + 3] > 24) { if (x < a0) a0 = x; if (x > a1) a1 = x; if (y < b0) b0 = y; if (y > b1) b1 = y; }
+      if (a1 < 0) throw new Error(`${name}: the ${front ? 'front' : 'back'} layer came out empty`);
+      const full = P.mk(W, H);
+      full.getContext('2d').putImageData(new ImageData(o, W, H), 0, 0);
+      const t = P.mk(a1 - a0 + 1, b1 - b0 + 1);
+      t.getContext('2d').drawImage(full, a0, b0, t.width, t.height, 0, 0, t.width, t.height);
+      return { c: t, at: [a0, b0] };
+    };
+    const back = layer(false), front = layer(true);
+    const pieceOf = async (h, nm) => ({ w: h.c.width, h: h.c.height, at: h.at, foot: footOf(h.c), png: await encode(h.c, nm) });
+    const r = (p) => p.map((v) => Math.round(v));
+    return {
+      back: await pieceOf(back, name + ' back'), front: await pieceOf(front, name + ' front'),
+      stand: r(map(spec.stand)), rail: spec.rail.map((p) => r(map(p))),
+      canvases: { back: back.c, front: front.c, backAt: back.at, frontAt: front.at },
+    };
+  };
+
+  window.__cutSheet = async ({ b64, names, fit, size, by, pockets, name, ...spec }) => {
     try {
       const { canvas: cut } = P.keyOut(await load(b64));
       if (pockets) {
@@ -457,6 +567,12 @@ const PAGE_LIB = async () => {
       for (let i = 0; i < cs.length; i++) {
         const c = P.trim(cs[i]) || cs[i];
         const id = names[i];
+        if (name === 'chariot') {
+          const r = await cutChariot(c, cut, raw[i], spec, name);
+          kept.chariot = { whole: c, ...r.canvases, stand: r.stand, rail: r.rail };
+          pieces.push({ id, w: c.width, h: c.height, foot: footOf(c), back: r.back, front: r.front, stand: r.stand, rail: r.rail });
+          continue;
+        }
         if (name === 'ring') {
           const r = await cutRing(c, name);
           kept.ring = { whole: c, ...r.canvases, backAt: r.back.at, frontAt: r.front.at, geo: r.geo };
@@ -481,7 +597,7 @@ const PAGE_LIB = async () => {
     try {
       const PAD = 40, PERSON_PX = PERSON * ART;
       const R = kept.ring;
-      const others = Object.entries(kept).filter(([k]) => k !== 'ring');
+      const others = Object.entries(kept).filter(([k]) => k !== 'ring' && k !== 'chariot');
       const rowW = others.reduce((s, [, p]) => s + p.c.width + PAD, PAD);
       const rowH = Math.max(...others.map(([, p]) => p.c.height));
       const thumbs = await Promise.all(originals.map(load));
@@ -550,6 +666,66 @@ const PAGE_LIB = async () => {
       /* 256 colours of its own, so the page stays small */
       P.hardenAndMap(c, P.ownPalette(pixels(c), c.width, c.height, 256));
       return { w: c.width, h: c.height, png: await encode(c, 'the preview') };
+    } catch (e) { return { err: String(e && e.message || e) }; }
+  };
+
+  /* ── v2.3.3743: the chariot's preview: its back, a stand-in charioteer
+     (the game's own body, stand-east turned to face the horse, 106 game px
+     tall: never ChatGPT's), its front over him; at 1x (a px a game px) and
+     2x (a px a picture px, as the files are), with the rail's top line and
+     the feet marked on a third copy at 2x ── */
+  window.__chariotPreview = async ({ body }) => {
+    try {
+      const C = kept.chariot;
+      const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('no body art at ' + body)); im.src = body; });
+      const bc = P.mk(img.width, img.height);
+      bc.getContext('2d').drawImage(img, 0, 0);
+      /* the body's own px: its box, turned to face west, at a person's height */
+      const bt = P.trim(bc);
+      const bh = PERSON * ART;
+      const bw = Math.round(bt.width * bh / bt.height);
+      const bro = P.mk(bw, bh), bg = bro.getContext('2d');
+      bg.imageSmoothingEnabled = false;
+      bg.translate(bw, 0); bg.scale(-1, 1);
+      bg.drawImage(bt, 0, 0, bw, bh);
+      const PAD = 40;
+      const W2 = C.whole.width, H2 = C.whole.height + bh;   /* room above for his head */
+      const c = P.mk(PAD * 3 + W2 / 2 + W2, PAD * 3 + Math.max(H2 / 2, H2) + H2 + 40);
+      const g = c.getContext('2d');
+      g.imageSmoothingEnabled = false;
+      g.fillStyle = '#5f8a3e';
+      g.fillRect(0, 0, c.width, c.height);
+      let seed = 11;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      g.fillStyle = '#57803a';
+      for (let i = 0; i < c.width * c.height / 90; i++) g.fillRect((rnd() * c.width) | 0, (rnd() * c.height) | 0, 2, 4);
+      const label = (s, x, y) => { g.font = 'bold 20px sans-serif'; g.fillStyle = 'rgba(0,0,0,.45)'; g.fillText(s, x + 2, y + 2); g.fillStyle = '#fff'; g.fillText(s, x, y); };
+      /* the chariot at scale s, its top-left at (x, y + bh*s) */
+      const draw = (x, y, s, marks) => {
+        const top = y + bh * s;
+        g.drawImage(C.back, x + C.backAt[0] * s, top + C.backAt[1] * s, C.back.width * s, C.back.height * s);
+        g.drawImage(bro, x + C.stand[0] * s - bw * s / 2, top + C.stand[1] * s - bh * s, bw * s, bh * s);
+        g.drawImage(C.front, x + C.frontAt[0] * s, top + C.frontAt[1] * s, C.front.width * s, C.front.height * s);
+        if (!marks) return;
+        g.strokeStyle = 'rgba(120,220,255,.95)'; g.lineWidth = 2;
+        g.beginPath();
+        C.rail.forEach(([rx, ry], i) => (i ? g.lineTo : g.moveTo).call(g, x + rx * s, top + ry * s));
+        g.stroke();
+        g.fillStyle = 'rgba(255,240,120,.95)';
+        g.fillRect(x + C.stand[0] * s - 4, top + C.stand[1] * s - 4, 8, 8);
+      };
+      label(`1x: ${C.whole.width / ART} x ${C.whole.height / ART} game px`, PAD, PAD - 8);
+      draw(PAD, PAD, 0.5, false);
+      label('2x (picture px, as the files are)', PAD * 2 + W2 / 2, PAD - 8);
+      draw(PAD * 2 + W2 / 2, PAD, 1, false);
+      const y3 = PAD * 2 + H2 + 30;
+      label('2x, the rail\'s top line (blue) and where his feet go (yellow)', PAD * 2 + W2 / 2, y3 - 8);
+      draw(PAD * 2 + W2 / 2, y3, 1, true);
+      label('the layers apart: back, front', PAD, y3 - 8);
+      g.drawImage(C.back, PAD, y3 + 20, C.back.width / 2, C.back.height / 2);
+      g.drawImage(C.front, PAD, y3 + 40 + C.back.height / 2, C.front.width / 2, C.front.height / 2);
+      P.hardenAndMap(c, P.ownPalette(pixels(c), c.width, c.height, 256));
+      return { w: c.width, h: c.height, png: await encode(c, 'the chariot preview') };
     } catch (e) { return { err: String(e && e.message || e) }; }
   };
   return true;
