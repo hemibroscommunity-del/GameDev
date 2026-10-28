@@ -6,9 +6,11 @@ import {
   LEVELUP_HOLD_MS, LEVELUP_FADE_MS, LEVELUP_RUN_MS, LEVELUP_MAX_W, LEVELUP_MAX_H,
   LEVELUP_ICON_FILL, LEVELUP_TOTAL_MS, LEVELUP_PIN_Y_FRAC,
   LEVELUP_CAPTION_BOX_H, LEVELUP_CAPTION_GAP, levelUpFrameAt,
+  LEVELUP_NUM_H, LEVELUP_NUM_W, LEVELUP_NUM_URLS,
 } from '../data/levelUpBurst.js';
 import { BT_AUDIO } from '../data/index.js';
 import { playVw, playVh } from './mobile/playViewport.js'; /* v2.3.3470: the column on a computer, until the burst's own box is measured */
+import { POINTS_DIGIT_H, POINTS_DIGIT_W } from '../data/pointsHeadArt.js'; /* v2.3.3693: the owner's gold numerals' widths, the level in the medallion */
 
 /* ═══ v2.3.2591: THE LEVEL-UP NOTIFICATION, REPLACED ═══
  *
@@ -57,6 +59,29 @@ import { playVw, playVh } from './mobile/playViewport.js'; /* v2.3.3470: the col
  * `col` / `cols` rather than an x fraction because the caption has to be
  * clamped to the same column the art is centred in, and passing one number
  * that both derive from is what stops them disagreeing. */
+/* ═══ v2.3.3693: THE LEVEL IN THE MEDALLION, IN THE OWNER'S NUMERALS ═══
+   The owner, 2026-10-28: "on the level up badge the number just needs to be
+   inside that big paper colored center space.  You can use numbers from
+   sprite sheets I've given you to make it look better than just code drawn".
+   The number is the Points sheet's gold numerals (data/pointsHeadArt.js, the
+   owner's art: gold with a dark outline, made to read on paper), `h` tall,
+   each at its known width so nothing jumps as they load, their outlines
+   overlapping a little so "12" reads as one number, and a run too wide for the
+   circle drawn smaller (`maxW`), never cut.  Warmed on the loading screen with
+   the burst (rendering/levelUpBurstPreload.js); the sizes and the files are in
+   data/levelUpBurst.js. */
+function goldNumber(text, h, maxW) {
+  const s = String(text).replace(/[^0-9]/g, '') || '0';
+  const ws = s.split('').map((ch) => POINTS_DIGIT_W.gold[+ch] * h / POINTS_DIGIT_H);
+  const lap = Math.max(1, h * 0.06);
+  const full = ws.reduce((a, w) => a + w, 0) - lap * (s.length - 1);
+  const k = full > maxW ? maxW / full : 1;
+  return s.split('').map((ch, i) => (
+    <img key={i} alt="" draggable={false} src={LEVELUP_NUM_URLS[+ch]}
+      style={{ display: 'block', flex: 'none', height: +(h * k).toFixed(2), width: +(ws[i] * k).toFixed(2), marginLeft: i ? -(lap * k) : 0 }} />
+  ));
+}
+
 export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
   /* ═══ ITS OWN CLOCK, ON PURPOSE ═══
      The banner this replaces animated off a bare Date.now() read inside
@@ -289,6 +314,9 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
   const iconR = f.r * k * LEVELUP_ICON_FILL;
   const label = levelUpLabelFor(msg);
   const lvl = msg.kind === 'life' ? msg.level : (msg.skillLevel != null ? msg.skillLevel : msg.level);
+  /* v2.3.3693: the number the medallion shows -- a character level its own, a
+     skill's its skill level (as the plate's number was) */
+  const numText = msg.kind === 'char' ? msg.level : lvl;
   /* v2.3.2615: the character's own bust for a character level, that skill's
      icon for a skill level.  S is read at use time the way the rest of this
      tree reads it — the store it goes through is the points panel's. */
@@ -329,27 +357,24 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
             backgroundRepeat: 'no-repeat',
           }}
         />
-        <img
-          src={medallionSrc}
-          alt=""
-          draggable={false}
-          data-levelup-icon=""
+        {/* v2.3.3693: the LEVEL in the paper centre, the owner's numerals,
+            pinned where the icon was (the circle's centre, every frame) and
+            growing with the circle through the run; the skill's icon is on
+            the plate under the banner now, beside whose level it is */}
+        <div
+          data-levelup-num=""
+          data-value={String(numText)}
+          aria-label={`Level ${numText}`}
           style={{
-            position: 'absolute',
-            left: -iconR, top: -iconR,
-            width: iconR * 2, height: iconR * 2,
-            /* v2.3.2615: `cover` inside a circular clip for the PORTRAIT, which
-               is a head-and-shoulders bust with its own rectangle and would sit
-               in the medallion as a floating photo otherwise.  A skill icon is
-               already a transparent glyph drawn to fill its own box, so it
-               keeps `contain` and is not cropped. */
-            objectFit: msg.kind === 'char' ? 'cover' : 'contain',
-            borderRadius: msg.kind === 'char' ? '50%' : 0,
-            /* a soft warm lift so the icon reads against the cream void
-               without a plate, which Lantern Slate would not want here */
+            position: 'absolute', left: 0, top: 0, transform: 'translate(-50%, -50%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
+            /* the soft warm lift the icon had, so the gold reads against the
+               cream void without a plate */
             filter: 'drop-shadow(0 1px 3px rgba(74,50,12,.45))',
           }}
-        />
+        >
+          {goldNumber(numText, iconR * LEVELUP_NUM_H, iconR * LEVELUP_NUM_W)}
+        </div>
       </div>
       <div
         data-levelup-caption=""
@@ -388,7 +413,7 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
              claiming 86% of the viewport would overlap in the middle, which is
              the "overlapping unreadably" the owner ruled out. */
           maxWidth: nCols === 1 ? '86%' : Math.max(120, colW - 14),
-          padding: '5px 16px 8px',   /* v2.3.3676: a little less on top, the number's own line height carries it */
+          padding: '6px 14px 7px',   /* v2.3.3693: one row, the icon and the words (the number is in the medallion) */
           borderRadius: 10,
           background: 'rgba(32,44,50,.88)',
           border: '1px solid rgba(238,242,235,.14)',
@@ -406,23 +431,27 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
               the only place left that can hold it.  The lighter TREATMENT is
               untouched — celebrateLifeSkillLevel still fires no screen shake
               and half the particles. */}
-          {/* ═══ v2.3.3676: THE NUMBER, BIG, RIGHT UNDER THE BANNER ═══
-              The owner: "put the number of the level more prominently just
-              below the icon label of the level up".  The level was the end of
-              one 18 px line ("Melee · Level 12"); it is its own line now, in
-              the game's chunky Baloo 2 at about twice the height of the words,
-              gold like the banner's letters with a dark edge so it reads on
-              the plate and in a glance, and the words under it say whose
-              level it is.  `data-levelup-num` for the rig. */}
-          <div data-levelup-num="" style={{
-            fontFamily: "'Baloo 2',Source Sans 3,sans-serif",
-            fontSize: nCols === 1 ? 42 : 32, fontWeight: 700, lineHeight: 1,
-            color: '#FFD24A', letterSpacing: '.01em', fontVariantNumeric: 'tabular-nums',
-            textShadow: '0 2px 0 #5a3a08, 0 0 2px #5a3a08, 0 0 12px rgba(255,196,64,.4)',
-            marginTop: 2,
-          }}>
-            {msg.kind === 'char' ? msg.level : lvl}
-          </div>
+          {/* ═══ v2.3.3693: THE ICON BESIDE WHOSE LEVEL IT IS ═══
+              The number is in the medallion now (above); the plate says whose
+              level it is, the skill's icon (or, for a character level, your
+              portrait, round) before the words.  `data-levelup-icon` for the
+              rigs, as before. */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: nCols === 1 ? 7 : 5 }}>
+          <img
+            src={medallionSrc}
+            alt=""
+            draggable={false}
+            data-levelup-icon=""
+            style={{
+              flex: 'none', width: nCols === 1 ? 24 : 19, height: nCols === 1 ? 24 : 19,
+              /* v2.3.2615: `cover` inside a circular clip for the PORTRAIT, which
+                 is a head-and-shoulders bust with its own rectangle; a skill icon
+                 is already a transparent glyph drawn to fill its own box, so it
+                 keeps `contain` and is not cropped. */
+              objectFit: msg.kind === 'char' ? 'cover' : 'contain',
+              borderRadius: msg.kind === 'char' ? '50%' : 0,
+            }}
+          />
           <div style={{
             /* v2.3.2615: a two-column caption gets the smaller step of the
                type scale.  18px "Woodcutting · Skill Level 7" in a 166px column
@@ -431,7 +460,7 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
                v2.3.3676: the words under the number, a step smaller (15 / 13):
                the number is the headline now */
             fontSize: nCols === 1 ? 15 : 13,
-            fontWeight: 800, color: '#F7F2E7', letterSpacing: '.04em', lineHeight: 1.15, marginTop: 3,
+            fontWeight: 800, color: '#F7F2E7', letterSpacing: '.04em', lineHeight: 1.15,
           }}>
             {msg.kind === 'life'
               ? `${label || 'Skill'} · Skill Level${(msg.gained || 1) > 1 ? `  (+${msg.gained})` : ''}`
@@ -445,6 +474,7 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
               : msg.kind === 'char'
                 ? 'Character Level'
                 : (label ? `${label} Level` : 'Level')}
+          </div>
           </div>
           {/* ═══ v2.3.2660: THE GAINS LINE IS GONE ═══
               Owner: "Don't include the specific stat increases, just the name

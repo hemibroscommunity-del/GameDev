@@ -24,7 +24,7 @@
  * void, and an icon that arrives a beat after the art is the most visible
  * version of this bug rather than the least.
  */
-import { LEVELUP_STRIP_SRC } from '../data/levelUpBurst.js';
+import { LEVELUP_STRIP_SRC, LEVELUP_NUM_URLS } from '../data/levelUpBurst.js';
 import { LEVELUP_ICON_URLS } from '../ui/levelUpIcons.js';
 import { portraitStore } from '../ui/mobile/sheet/portraitStore.js'; /* v2.3.2615 */
 
@@ -111,7 +111,10 @@ export function preloadLevelUpBurst() {
       };
     }
   } catch (e) { /* SSR / locked-down window */ }
-  return Promise.all([LEVELUP_STRIP_SRC, ...LEVELUP_ICON_URLS].map(warm));
+  /* v2.3.3693: and the ten gold numerals the medallion's level is drawn in
+     (~3 KB each): the same reason as the icons, they are drawn INSIDE the
+     burst, on its first frame. */
+  return Promise.all([LEVELUP_STRIP_SRC, ...LEVELUP_ICON_URLS, ...LEVELUP_NUM_URLS].map(warm));
 }
 
 /* For rigs: how many of the warms are actually being held. */
