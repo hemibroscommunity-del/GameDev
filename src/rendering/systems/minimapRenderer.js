@@ -632,6 +632,14 @@ export class MinimapRenderer {
        the in-world badge's three states, one for one */
     this._mintPin('questWait', '?');
     this._mintPin('questDone', 'check');
+    /* v2.3.3766: the Town Hall board's red and blue pins (game/mapPins.js) on
+       the Wheel's minimap -- a map pin, its round head over its point, white
+       under the keyline so the tint makes it red or blue */
+    this._mintIcon('mappin', (g) => {
+      g.poly([C, 31, 7.5, 16.5, 24.5, 16.5]).fill(0xffffff).stroke(KL);
+      g.circle(C, 12, 9.5).fill(0xffffff).stroke(KL);
+      g.circle(C, 12, 3.4).fill(0x0b161b);
+    });
   }
 
   /** Place one marker.  `icon` is a key into the minted set (or null for the

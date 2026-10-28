@@ -1,0 +1,176 @@
+/* ═══ v2.3.3766: THE TOWN HALL'S BOARD -- EVERYTHING TO DO, AND WHERE ═══
+ *
+ * The owner, 2026-10-28: "I was also thinking it would be cool if at the town
+ * hall it was just a big menu board of all the things to do (dungeon,
+ * gambling, arena, woodworking, etc) with a page that describes what each
+ * thing does and pin drop you can put on the map to go to the one you want
+ * (two pins can be active at once - red pin and blue pin).  When you "enter
+ * it" it brings up the board."
+ *
+ * One row a thing to do, BUILT AND REACHABLE in the world today (CLAUDE.md §2:
+ * a dormant system stays off the board -- the Bank stores nothing, so it is
+ * here as what it is, a look at your gold and gear).  Each row:
+ *   id     the pin's name for it (game/mapPins.js keeps ids, never places);
+ *   group  the board's heading (GROUPS, in order);
+ *   name, icon, emoji   the tile (an icon the game already loads: the
+ *          building's own map picture, data/wheelBuildingDoors.js
+ *          WHEEL_BUILDING_ICONS, or a UI icon; no new art);
+ *   page   2-4 short sentences: what it is, what you do, what you get, the
+ *          level or cost (numbers from the code: docs/GDD-AS-BUILT.md and the
+ *          worker's own tables, never invented);
+ *   where  where it is, in words;
+ *   at     how its place is found AT RUNTIME (game/mapPinPlaces.js), never a
+ *          coordinate written here (CLAUDE.md §1):
+ *            { door }   a building of the town, by its plot id (the door's
+ *                       foot, wheelTownDoors);
+ *            { npc }    a townsperson, by name (where he stands);
+ *            { mouth }  a dungeon's way in, by its land (wheelDungeonDoors);
+ *            { land }   a land, its first stretch (the world map's `lands`);
+ *   cap    a worker cap it waits for (the tile is not shown without it);
+ *   mouth  a dungeon the worker must open (game/wheelDungeons.js).
+ * No imports: a node suite reads it (server/test/town-board.test.mjs). */
+
+export const GROUPS = Object.freeze([
+  { id: 'fight', name: 'Fight' },
+  { id: 'lands', name: 'Explore the lands' },
+  { id: 'make', name: 'Make' },
+  { id: 'money', name: 'Money and trade' },
+  { id: 'people', name: 'People' },
+]);
+
+const E = (o) => Object.freeze(o);
+
+export const BOARD = Object.freeze([
+  /* ── Fight ── */
+  E({ id: 'goo-grotto', group: 'fight', name: 'Goo Grotto', icon: '/icons/ui/evt-dungeon.webp', emoji: '🕳',
+    page: ['A dungeon: three waves of the Verdant Wilds’ slimes, then a giant slime that splits three times.',
+      'Built for a party of 2 or 3 at about level 10. Clear it for gold, the boss’s chest and the land’s shards.',
+      'Die inside and you wake in BroTown with your bag kept.'],
+    where: 'In the Verdant Wilds, west of BroTown, in their first stretch.', at: { mouth: 'verdant' }, mouth: 'verdant' }),
+  E({ id: 'great-cave', group: 'fight', name: 'Great Cave', icon: '/icons/ui/evt-dungeon.webp', emoji: '🕳',
+    page: ['A dungeon of the Stone Hollows’ rock monsters: three waves, then an Amethyst Golem.',
+      'Levels 26 to 30, never above your own level. A clear pays gold and opens the boss’s chest.'],
+    where: 'Deep in the Stone Hollows, east of BroTown, at the end of the mine railway.', at: { mouth: 'hollows' }, mouth: 'hollows' }),
+  E({ id: 'foundry-dome', group: 'fight', name: 'Foundry Dome', icon: '/icons/ui/evt-dungeon.webp', emoji: '🕳',
+    page: ['A dungeon of the Electric Foundry’s slimes: three waves, then a giant Storm Slime that splits three times.',
+      'Levels 26 to 30, never above your own level. A clear pays gold and opens the boss’s chest.'],
+    where: 'Deep in the Electric Foundry, south-east of BroTown.', at: { mouth: 'thunder' }, mouth: 'thunder' }),
+  E({ id: 'buried-city', group: 'fight', name: 'Buried City', icon: '/icons/ui/evt-dungeon.webp', emoji: '🕳',
+    page: ['A dungeon of the Wind Dunes’ mummies: three waves, then a Gilded Mummy.',
+      'Levels 41 to 45, never above your own level. A clear pays gold and opens the boss’s chest.'],
+    where: 'Far out in the Wind Dunes, north-east of BroTown.', at: { mouth: 'sky' }, mouth: 'sky' }),
+  E({ id: 'arena', group: 'fight', name: 'The Arena', icon: '/icons/ui/evt-duel.webp', emoji: '🏟',
+    page: ['A tournament between players: 100 gold to enter, up to 8 fighters, one knockout bracket.',
+      'Each match is a 3-minute duel with no healing. The champion wins 250 gold for every fighter in the bracket.',
+      'Not fighting? Back a fighter with gold and share the losing side’s stakes.'],
+    where: 'Sign up at the Sheriff’s Office, in BroTown.', at: { door: 'sheriff' } }),
+  E({ id: 'duel', group: 'fight', name: 'Duels', icon: '/icons/ui/soc-duel.webp', emoji: '⚔️',
+    page: ['Challenge another player to a friendly fight. Nobody loses anything: no items, no gold.',
+      'Pick a player from the list at the Sheriff’s Office, or from their card.'],
+    where: 'The Sheriff’s Office, in BroTown.', at: { door: 'sheriff' } }),
+
+  /* ── Explore the lands (each its first stretch) ── */
+  E({ id: 'land-verdant', group: 'lands', name: 'Verdant Wilds', icon: '/icons/ui/elem-flora.webp', emoji: '🌿',
+    page: ['The flora land, where slimes live. The Mayor’s first quest sends you here.',
+      'Monsters from level 1 near town to 40 further out. Mine, chop and fish as you go.'],
+    where: 'West of BroTown.', at: { land: 'verdant' } }),
+  E({ id: 'land-ember', group: 'lands', name: 'Flame Fields', icon: '/icons/ui/elem-flame.webp', emoji: '🔥',
+    page: ['The flame land of Fire Goblins.', 'Monsters from level 1 near town to 40 further out. Mine, chop and fish as you go.'],
+    where: 'North of BroTown.', at: { land: 'ember' } }),
+  E({ id: 'land-frost', group: 'lands', name: 'Frost Ridge', icon: '/icons/ui/elem-frost.webp', emoji: '❄️',
+    page: ['The frost land of Snowmen.', 'Monsters from level 1 near town to 40 further out. Mine, chop and fish as you go.'],
+    where: 'North-west of BroTown.', at: { land: 'frost' } }),
+  E({ id: 'land-sky', group: 'lands', name: 'Wind Dunes', icon: '/icons/ui/elem-wind.webp', emoji: '🌪',
+    page: ['The wind land of Mummies and Skeletons, with the Buried City far out.', 'Monsters from level 1 near town to 40 further out. Mine, chop and fish as you go.'],
+    where: 'North-east of BroTown.', at: { land: 'sky' } }),
+  E({ id: 'land-hollows', group: 'lands', name: 'Stone Hollows', icon: '/icons/ui/elem-stone.webp', emoji: '🪨',
+    page: ['The stone land of Rock Monsters, with the Great Cave at the end of the railway.', 'Monsters from level 1 near town to 40 further out. Mine, chop and fish as you go.'],
+    where: 'East of BroTown.', at: { land: 'hollows' } }),
+  E({ id: 'land-thunder', group: 'lands', name: 'Electric Foundry', icon: '/icons/ui/elem-storm.webp', emoji: '⚡',
+    page: ['The storm land of Slimes, with the Foundry Dome far out.', 'Monsters from level 1 near town to 40 further out. Mine, chop and fish as you go.'],
+    where: 'South-east of BroTown.', at: { land: 'thunder' } }),
+  E({ id: 'land-tidal', group: 'lands', name: 'Water Caves', icon: '/icons/ui/elem-water.webp', emoji: '💧',
+    page: ['The water land of Fishmen.', 'Monsters from level 1 near town to 40 further out. Mine, chop and fish as you go.'],
+    where: 'South of BroTown.', at: { land: 'tidal' } }),
+  E({ id: 'land-mist', group: 'lands', name: 'Poison Forest', icon: '/icons/ui/elem-venom.webp', emoji: '☠️',
+    page: ['The venom land of Mire Wisps and Bog Lurkers.', 'Monsters from level 1 near town to 40 further out. Mine, chop and fish as you go.'],
+    where: 'South-west of BroTown.', at: { land: 'mist' } }),
+
+  /* ── Make ── */
+  E({ id: 'forge', group: 'make', name: 'Blacksmith', icon: '/icons/ui/bldg-forge.webp?v=2.3.1224', emoji: '⚒',
+    page: ['Smelt ore into bars, then forge great swords and armour from them.',
+      'Upgrade (harden) your gear, make an amulet, or salvage old pieces for bars.',
+      'Blacksmith Bro, by its steps, has the smithing quests.'],
+    where: 'In BroTown, north of the square.', at: { door: 'blacksmith' } }),
+  E({ id: 'woodworker', group: 'make', name: 'Woodworker', icon: '/icons/ui/bldg-woodwork.webp?v=2.3.1224', emoji: '🪚',
+    page: ['Turn logs into hardened wood, then make bows and staffs from it.',
+      'Box traps for catching pets are made here too, one log each.'],
+    where: 'In BroTown, north of the square.', at: { door: 'woodworker' } }),
+  E({ id: 'gemworks', group: 'make', name: 'Gem Works', icon: '/icons/ui/skill-gemcutting.webp?v=2.3.1224', emoji: '💎',
+    page: ['Crack the shards monsters and harvests drop to find raw gems; three raw gems make an elemental gem.',
+      'Set a gem in a weapon, an amulet or a shield: every hit then carries its element.'],
+    where: 'In BroTown, east of the square.', at: { door: 'gemcutter' } }),
+  E({ id: 'cookhouse', group: 'make', name: 'Cookhouse', icon: '/icons/ui/bldg-cook.webp?v=2.3.1224', emoji: '🍲',
+    page: ['Cook your crops and herbs into dishes that heal, refill stamina or speed you up for a while.',
+      'Raw fish cook at a campfire you light from a log, anywhere in the world.'],
+    where: 'In BroTown, west of the square.', at: { door: 'cookhouse' } }),
+  E({ id: 'feedseed', group: 'make', name: 'Feed & Seed', icon: '/icons/ui/skill-farming.webp?v=2.3.1224', emoji: '🌱',
+    page: ['Buy seeds and fill orders, and go to your farm.',
+      'On the farm you dig, plant, water and harvest sixteen kinds of crop. Crops grow while you are away.'],
+    where: 'In BroTown, west of the square.', at: { door: 'feedseed' } }),
+  E({ id: 'farm', group: 'make', name: 'Your farm', icon: '/icons/ui/bldg-farm.webp?v=2.3.1224', emoji: '🚜',
+    page: ['Your own beds to grow crops in, free. The barn is the Pet House; the haystack gives a night’s rest.',
+      'The Land Office takes you there; the farm’s gate brings you back to the same door.'],
+    where: 'The Land Office, in BroTown, west of the square.', at: { door: 'landoffice' } }),
+  E({ id: 'pets', group: 'make', name: 'Pets', icon: '/icons/ui/skill-trapping.webp', emoji: '🐾',
+    page: ['Arm a box trap on a monster, then defeat it, and you may catch it as a pet. Catching is rare.',
+      'A pet follows you, picks up loot and wards off its element. Beastmaster Bro teaches you.'],
+    where: 'Beastmaster Bro, by the Woodworker, in BroTown.', at: { npc: 'Beastmaster Bro' }, cap: 'beastmaster' }),
+
+  /* ── Money and trade ── */
+  E({ id: 'store', group: 'money', name: 'General Store', icon: '/icons/ui/panel-shop.webp', emoji: '🏪',
+    page: ['The Exchange: buy and sell weapons with other players by placing orders. No fee.'],
+    where: 'In BroTown, west of the square.', at: { door: 'store' } }),
+  E({ id: 'diego', group: 'money', name: 'Diego’s shop', icon: '/icons/ui/cur-goldbar.webp', emoji: '🪙',
+    page: ['Diego buys what you gather and make: ore, bars, logs, crops and gems.',
+      'He also sells back the pickaxe, hatchet and rod, 100 gold each, if you lose one.'],
+    where: 'Beside the General Store, in BroTown.', at: { npc: 'Diego' } }),
+  E({ id: 'auction', group: 'money', name: 'Auction House', icon: '/icons/ui/bldg-auction-gavel.webp?v=2.3.3526', emoji: '🔨',
+    page: ['List items, weapons, gear or pets at your own price for 7 days, or buy, bid and make offers.',
+      'Sales are paid by mail if you are away. No fee.'],
+    where: 'In BroTown, east of the square.', at: { door: 'auction' } }),
+  E({ id: 'gambling', group: 'money', name: 'Gambling Den', icon: '/icons/ui/bldg-gamble.webp?v=2.3.1224', emoji: '🎲',
+    page: ['A free daily spin you can double or nothing, a wager of 10 to 10,000 gold, and a weekly jackpot of 50-gold tickets.'],
+    where: 'In BroTown, south of the square.', at: { door: 'gambling' } }),
+  E({ id: 'ace', group: 'money', name: 'Ace’s coin flip', icon: '/icons/ui/cur-gold.webp', emoji: '🪙',
+    page: ['Ace flips a coin: stake at least 10 gold, and win three times your stake or lose three times it.',
+      'The odds are against you: you win 45 times in 100.'],
+    where: 'Beside the Gambling Den, in BroTown.', at: { npc: 'Ace' } }),
+  E({ id: 'bank', group: 'money', name: 'Bank', icon: '/icons/ui/bldg-bank.webp?v=2.3.1224', emoji: '🏦',
+    page: ['A look at your gold and your gear. Nothing can be stored here yet.'],
+    where: 'In BroTown, east of the square.', at: { door: 'bank' } }),
+
+  /* ── People ── */
+  E({ id: 'saloon', group: 'people', name: 'Saloon', icon: '/icons/ui/bldg-tavern.webp?v=2.3.1224', emoji: '🍺',
+    page: ['Team up: invite players to your party. A party sees each other’s health, has its own chat and goes into dungeons together.'],
+    where: 'In BroTown, south of the square.', at: { door: 'saloon' } }),
+  E({ id: 'guildhall', group: 'people', name: 'Guild Hall', icon: '/icons/ui/panel-guild.webp', emoji: '🏛',
+    page: ['Your rank in each life skill’s guild, and its quests.'],
+    where: 'In BroTown, north of the square.', at: { door: 'guildhall' } }),
+  E({ id: 'post', group: 'people', name: 'Post Office', icon: '/icons/ui/evt-mail.webp', emoji: '📫',
+    page: ['Your mail: sales, refunds, trade payouts and rewards, and anything that came while you were away. Write to your friends here too.'],
+    where: 'In BroTown, north of the square.', at: { door: 'post' } }),
+  E({ id: 'hotel', group: 'people', name: 'Hotel', icon: '/ui/controls/sleep.webp?v=2.3.3526', emoji: '🛏',
+    page: ['A free night’s rest: full health, stamina and mana, and Well Rested, more XP from fights for a while.'],
+    where: 'In BroTown, south of the square.', at: { door: 'hotel' }, cap: 'rest' }),
+  E({ id: 'race', group: 'people', name: 'Lil Bro’s race', icon: '/ui/controls/abil-jump.webp', emoji: '🏁',
+    page: ['Race Lil Bro once round the Town Hall’s square. He runs a little faster than you walk, so sprint.'],
+    where: 'Lil Bro, on the square west of the Town Hall.', at: { npc: 'Lil Bro' }, cap: 'race' }),
+]);
+
+/** The row for `id`, or null. */
+export function boardEntry(id) {
+  if (typeof id !== 'string') return null;
+  for (const e of BOARD) if (e.id === id) return e;
+  return null;
+}

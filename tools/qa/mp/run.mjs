@@ -605,6 +605,7 @@ const SCENARIOS = {
   clan: () => import('./mp-clan.mjs'),
   market: () => import('./mp-market.mjs'),
   arena: () => import('./mp-arena.mjs'),
+  townboard: () => import('./mp-townboard.mjs'), /* v2.3.3766: the Town Hall's board of everything to do, on a phone and a computer -- the board, a page, red and blue pins on the minimap, red moved, blue lifted, a reload keeping red, the world map */
   prog3: () => import('./mp-prog3.mjs'), /* v2.3.1660: trained-skill rebuild */
   tutorial: () => import('./mp-tutorial.mjs'), /* v2.3.1665: the completable arc */
   onboarding: () => import('./mp-onboarding.mjs'), /* v2.3.1668: the first-run greeting */

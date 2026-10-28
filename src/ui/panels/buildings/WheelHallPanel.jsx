@@ -6,6 +6,7 @@ import { ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3481
 import { AlliancePart } from './AlliancePart.jsx';   /* v2.3.3313: the alliance, at the top of the Saloon */
 import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3321: clans are parties now */
 import { wellRestedLeft, restLeftWords, REST_MS, REST_XP_PCT } from '@/game/rest.js';   /* v2.3.3539: the Hotel's rest, paid by the worker */
+import { TownBoard } from './TownBoard.jsx';   /* v2.3.3766: the Town Hall's board of everything to do */
 
 /* ═══ v2.3.3066: THE WHEEL'S HALLS — the Guild Hall, the Post Office, the Sheriff's Office ═══
  *
@@ -137,12 +138,12 @@ function postOffice(props) {
    with the two things its picture shows: the trophy case is the leaderboard (a
    ranking for every combat and life skill, the dashboard's Ranks page) and the
    painted map on the wall is the Wheel's world map. */
+/* v2.3.3766: ...and since the owner's "at the town hall it was just a big menu
+   board of all the things to do ... When you "enter it" it brings up the
+   board", the board (TownBoard.jsx), the two rows kept at its foot as two
+   small buttons (still data-hall-row "leaderboard" and "map") */
 function townHall(props) {
-  return [
-    row('leaderboard', '/icons/ui/panel-leaderboard.webp', '🏆', 'Leaderboard', 'A ranking for every combat and life skill, and where you stand', props.onLeaderboard),
-    /* v2.3.3552: "world", never "Wheel" -- a player never hears the map's shape named */
-    row('map', '/icons/ui/nav-map.webp', '🗺', 'World map', 'The whole world: its lands and levels, camps, passes and gates, and where you are', props.onMap),
-  ];
+  return [<TownBoard key="board" stateRef={props.stateRef} onLeaderboard={props.onLeaderboard} onMap={props.onMap} />];
 }
 
 /* ═══ v2.3.3539: THE HOTEL -- A BED FOR THE NIGHT ═══
