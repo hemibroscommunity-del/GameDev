@@ -7,6 +7,9 @@
  * white, slime remains (1) rising beneath that message then disappearing in
  * white (as a example)"
  *
+ * v2.3.3692: "Coins x5" and each line's picture before it (the owner: "maybe
+ * the icon first then the name then the quantity in the message popup").
+ *
  * A real player in the world, a real worker, real kills at Frost Ridge's first
  * snowmen (the test lever /dev/killroll: `next` the kill's roll, `kill`
  * through the path every kill takes -- mp-killroll's way):
@@ -94,6 +97,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const m = (window._gameState.current.monsters || []).find((q) => q && q.id === id);
       return m ? { y: m.y, top: m._popupTopOff != null ? m._popupTopOff : null } : null;
     }, m1.id);
+    /* v2.3.3692: the moment every line of this kill shows its picture, kept
+       by the page itself every frame from before the kill -- the lines live
+       ~2.4 s, and a screenshot on this box takes about as long */
+    await P.page.evaluate((mid) => {
+      const w = { lines: null, at: null, t0: performance.now() };
+      window.__dlPics = w;
+      const tick = () => {
+        if (window.__dlPics !== w || w.lines) return;
+        const d = window.__btDropLines ? window.__btDropLines() : null;
+        const g = d && d.find((x) => x.monsterId === mid);
+        if (g && g.lines.length >= 2 && g.lines.every((l) => l.iconShown)) { w.lines = g.lines; w.at = Math.round(performance.now() - w.t0); return; }
+        if (performance.now() - w.t0 < 10000) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }, m1.id);
     await H.devOp(wsPort, 'killroll', me, { next: 7431, kill: m1.id });
     const early = await (async () => {   /* the first look: the second line not in yet */
       for (const t0 = Date.now(); Date.now() - t0 < 6000;) {
@@ -112,8 +130,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     const L1 = g1 ? g1.lines : [];
     rec.ok(`1. "${L1[0] && L1[0].text}" over "${L1[1] && L1[1].text}", both white (the pile's gold for you: ${pile1 && pile1.coins})`,
-      L1.length === 2 && !!pile1 && L1[0].text === 'Coins (' + pile1.coins + ')' && Number(pile1.coins) > 0
-        && L1[1].text === 'Snowman Remains (1)' && L1.every((l) => l.color === WHITE), { g1, pile1 });
+      L1.length === 2 && !!pile1 && L1[0].text === 'Coins x' + pile1.coins && Number(pile1.coins) > 0
+        && L1[1].text === 'Snowman Remains x1' && L1.every((l) => l.color === WHITE), { g1, pile1 });
+    /* v2.3.3692: "maybe the icon first then the name then the quantity" --
+       each line's picture shown before its words (decoded within the line's
+       life; its room kept until then), as tall as the words */
+    const pics = await (async () => {
+      for (const t0 = Date.now(); Date.now() - t0 < 4000;) {
+        const w = await P.page.evaluate(() => (window.__dlPics ? { lines: window.__dlPics.lines, at: window.__dlPics.at } : null));
+        if (w && w.lines) return w.lines;
+        await P.page.waitForTimeout(100);
+      }
+      return null;
+    })();
+    rec.ok(`1. ...each with its picture first: the coin, then the snowman's remains (${pics ? pics.map((l) => (l.icon || '').split('/').pop().split('?')[0]).join(', ') : 'none'})`,
+      !!pics && pics.length === 2 && pics.every((l) => l.iconShown && l.iconRight <= l.textLeft + 0.5 && l.iconPx >= l.fontPx * 0.9)
+        && /cur-gold\.webp/.test(pics[0].icon || '') && /remnants-snowman\.webp/.test(pics[1].icon || ''), pics);
     rec.ok('1. ...the second line under the first, coming in a little after it',
       L1.length === 2 && L1[1].y > L1[0].y + 10 && !!early && early.lines[1].alpha <= early.lines[0].alpha, { lines: L1, early: early && early.lines });
     const font = await P.page.evaluate(() => {
@@ -147,7 +179,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await snap(P, join(OUT, 'droplines-2-shard.png'));
     const sh = g2 && g2.lines.find((l) => l.id === 'shard');
     rec.ok(`2. on the Frost Shard's numbers: ${g2 && g2.lines.length} lines, "${sh && sh.text}" in ${sh && sh.color}`,
-      !!g2 && g2.lines.map((l) => l.id).join() === 'gold,remnant,shard' && !!sh && sh.text === 'Frost Shard (1)' && sh.color === '#7EE0A8', g2);
+      !!g2 && g2.lines.map((l) => l.id).join() === 'gold,remnant,shard' && !!sh && sh.text === 'Frost Shard x1' && sh.color === '#7EE0A8' && /shard_frost\.webp/.test(sh.icon || ''), g2);
     rec.ok(`4. the lines rise (${y0} -> ${later && later.y})`, !!later && later.y < y0, { y0, later });
     await P.page.waitForTimeout(2800);
     const gone = (await drawn(P) || []).find((x) => x.monsterId === m2.id);
@@ -159,7 +191,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.devOp(wsPort, 'killroll', me, { next: 1, kill: m3.id });
       const g3 = await waitGroup(P, m3.id, 3);
       const nug = g3 && g3.lines.find((l) => l.id === 'nugget');
-      rec.ok(`3. on the nugget's number: "${nug && nug.text}" in ${nug && nug.color}`, !!nug && nug.text === 'Gold Nugget (1)' && nug.color === '#FFB25A', g3);
+      rec.ok(`3. on the nugget's number: "${nug && nug.text}" in ${nug && nug.color}`, !!nug && nug.text === 'Gold Nugget x1' && nug.color === '#FFB25A' && /cur-nugget\.webp/.test(nug.icon || ''), g3);
       await snap(P, join(OUT, 'droplines-3-nugget.png'));
     } else rec.ok('3. a third snowman for the nugget (guard)', false);
 

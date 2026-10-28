@@ -4599,7 +4599,10 @@ remnant to migrate server-side, not a mode to preserve.
       little after it, rising off the monster's body, no pictures loaded;
       src/game/dropLines.js + src/rendering/dropLines.js; `?droplines=0` the
       roll again (mp-killroll runs so); `drop-lines` suite, `mp-droplines`:
-      docs/specs/drop-lines.md;
+      docs/specs/drop-lines.md; since v2.3.3692 "Coins x5", each
+      line its drop's PICTURE FIRST (the owner: "maybe the icon first then the
+      name then the quantity"), the codex's own, from the dropped items' cache
+      (rendering/dropIcons.js), its room kept until decoded;
     - NO RANDOM WEAPON OFF A KILL (the owner: "Remove 'a random weapon'
       drop", then "Remove it from the game"): `_rollWeaponDropForKill` and
       its level curve are gone, a kill's one weapon the Iron Great Sword's 1

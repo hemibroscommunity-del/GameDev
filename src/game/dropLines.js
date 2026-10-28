@@ -33,6 +33,15 @@
  * 10 green, the rare gem's 1 in 200 blue, the nugget's 1 in 10,000 orange),
  * by the codex's chances, so the line and the codex page always agree.
  *
+ * v2.3.3692: THE PICTURE FIRST, THEN THE NAME, THEN "x5" -- the owner,
+ * 2026-10-28: "It might also be good to include the icon image next to the
+ * name of the dropped items when monsters die (floating popup) I also think
+ * the (x5) or whatever number format with the "x" quantity preceding the
+ * number looks better. So maybe the icon first then the name then the
+ * quantity in the message popup".  Each line carries its drop's picture
+ * (`icon`, the codex's own for that drop, data/codexDrops.js: the addresses
+ * the bag and the codex load them from), and says "Coins x5".
+ *
  * Nothing here decides anything: the drops are the worker's.  This builds the
  * lines (S._dropLines, a short list of groups) and the renderer draws them
  * (rendering/dropLines.js). */
@@ -84,9 +93,10 @@ export function rarityOf(row, mystery) {
   return { label: RARITY_TIERS[RARITY_TIERS.length - 1].label, color: RARITY_TIERS[RARITY_TIERS.length - 1].color };
 }
 
-/** "Coins (5)": a drop's name and its amount in brackets, the owner's way. */
+/** "Coins x5": a drop's name and its amount after an x, the owner's way
+ *  (v2.3.3692: it was "Coins (5)"). */
 export function dropLineText(name, qty) {
-  return String(name) + ' (' + Math.max(1, Math.floor(Number(qty) || 1)) + ')';
+  return String(name) + ' x' + Math.max(1, Math.floor(Number(qty) || 1));
 }
 
 /* the monster a pile is for: lootId 'mk-<monster id>-<seq>' (index.js
@@ -111,7 +121,10 @@ export function linesFor(kind, pile, rh) {
     const r = rarityOf(row, mystery);
     const q = Math.max(1, Math.floor(qty || 1));
     const nm = name || row.name || id;
-    lines.push({ id, name: nm, qty: q, text: dropLineText(nm, q), label: r.label, color: r.color });
+    /* v2.3.3692: its picture, the codex row's (null for a drop with none: the
+       line is its words alone) */
+    const icon = row.icon || null;
+    lines.push({ id, name: nm, qty: q, text: dropLineText(nm, q), label: r.label, color: r.color, icon });
   };
   if (pile) {
     if (pile.coins > 0) add('gold', pile.coins, false, 'Coins');
@@ -186,7 +199,7 @@ function pushGroup(S, monsterId, kind, spot, lines, now) {
   if (typeof window !== 'undefined' && window.__btProbe) {
     try {
       const log = window.__btDropLineLog || (window.__btDropLineLog = []);
-      log.push({ monsterId, kind, at: now, over: g.over, lines: lines.map((l) => ({ id: l.id, text: l.text, color: l.color, label: l.label })) });
+      log.push({ monsterId, kind, at: now, over: g.over, lines: lines.map((l) => ({ id: l.id, text: l.text, color: l.color, label: l.label, icon: l.icon || null })) });
       if (log.length > 40) log.splice(0, log.length - 40);
     } catch (e) { /* a probe never breaks the game */ }
   }
