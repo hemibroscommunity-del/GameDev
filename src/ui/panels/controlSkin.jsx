@@ -435,17 +435,18 @@ export function AbilityFace(props) {
  * gold ring) read as one of the specials beside it.  The button is now the
  * Lantern Slate rest look of Sprint and Block -- the skin's slate face and
  * gold ring -- with a plain mark drawn here in SVG (no file, so nothing to
- * preload or free): a parchment upward chevron over a short gold ground line,
+ * preload or free): a parchment upward arrow over a short gold ground line,
  * each with a dark edge so it reads over the slate and the warm air face
  * alike.  `kind` picks the mark; the alternatives were drawn for the owner to
- * choose from (`?jumpicon=arrow|double|hop` wears one for a tab:
+ * choose from, and the owner chose the arrow ("I like option B for jump
+ * better"); `?jumpicon=chevron|double|hop` wears another for a tab:
  * jumpGlyphKind).  `data-icon="jump"` as before, for the probes. */
 export const JUMP_GLYPHS = ['chevron', 'arrow', 'double', 'hop'];
 const JUMP_INK = '#F4E4BC', JUMP_GROUND = '#E6AE52', JUMP_EDGE = '#1B1712';
 const JUMP_MARKS = {
-  /* the default: one bold chevron over the ground */
+  /* one bold chevron over the ground (option A, the first default) */
   chevron: { ink: ['M27 60 L50 36 L73 60'], ground: 'M31 78 L69 78' },
-  /* an arrow, shaft and head, off the ground */
+  /* the default, the owner's pick (option B): an arrow, shaft and head, off the ground */
   arrow: { ink: ['M50 72 L50 28', 'M32 45 L50 27 L68 45'], ground: 'M31 82 L69 82' },
   /* two chevrons, the second for the second press (the flip) */
   double: { ink: ['M29 50 L50 30 L71 50', 'M29 68 L50 48 L71 68'], ground: 'M31 83 L69 83' },
@@ -456,14 +457,14 @@ export function jumpGlyphKind(search) {
   try {
     var q = search != null ? search : ((typeof window !== 'undefined' && window.location && window.location.search) || '');
     var m = /(?:^|[?&])jumpicon=([a-z]+)/.exec(q);
-    return m && JUMP_MARKS[m[1]] ? m[1] : 'chevron';
+    return m && JUMP_MARKS[m[1]] ? m[1] : 'arrow';
   } catch (e) {
-    return 'chevron';
+    return 'arrow';
   }
 }
 export function JumpGlyph(props) {
   var s = props.size || 36;
-  var mk = JUMP_MARKS[props.kind] || JUMP_MARKS.chevron;
+  var mk = JUMP_MARKS[props.kind] || JUMP_MARKS.arrow;
   var kids = [];
   var line = function (d, col, w, k) {
     return React.createElement('path', { key: k, d: d, fill: 'none', stroke: col, strokeWidth: w, strokeLinecap: 'round', strokeLinejoin: 'round' });
@@ -475,7 +476,7 @@ export function JumpGlyph(props) {
   mk.ink.forEach(function (d, i) { kids.push(line(d, JUMP_INK, 11, 'i' + i)); });
   return React.createElement('svg', {
     className: 'bt-skin-svg', viewBox: '0 0 100 100', width: s, height: s, 'aria-hidden': 'true',
-    'data-icon': 'jump', 'data-jump-glyph': props.kind || 'chevron',
+    'data-icon': 'jump', 'data-jump-glyph': props.kind || 'arrow',
     style: { display: 'block', pointerEvents: 'none' },
   }, kids);
 }

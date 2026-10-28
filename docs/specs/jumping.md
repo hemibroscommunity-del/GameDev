@@ -697,15 +697,18 @@ icon now for jump looks like a special ability".
   `JUMP_BLOCK_AIR` (24 px, half a 48 px button) clear of Block: 8 px
   (upright) or 5 px (sideways) toward the screen's edge of the disc's centre.
   The disc's weapon picture keeps its share of the face (`rIcon`, 0.6).
-- **The mark** (`controlSkin.jsx` `JumpGlyph`): a parchment upward chevron
+- **The mark** (`controlSkin.jsx` `JumpGlyph`): a parchment upward arrow
   over a short gold ground line, each with a dark edge, on the skin's slate
   face and gold ring (Sprint's and Block's rest look), the warm face while
   you are in the air. Drawn in SVG: no file to load or free. The owner's
   card 11 picture (`abil-jump.webp`) is no longer warmed on the loading
   screen, and nor is the stick's old JUMP arrow (`jump-glyph.webp`, unused
-  since v2.3.3712). Three other marks were drawn for the owner to choose
-  from: an arrow, a double chevron (the second press's flip) and a hop's
-  arc; `?jumpicon=arrow|double|hop` wears one for a tab
+  since v2.3.3712). Four marks were drawn for the owner to choose from (a
+  chevron, the first default; an arrow; a double chevron, the second
+  press's flip; a hop's arc), and the owner chose the arrow: "I like option
+  B for jump better" (2026-10-28). The phone shots in docs/specs/jump-button/
+  were taken before, with the chevron; `?jumpicon=chevron|double|hop` wears
+  another for a tab
   (`docs/specs/jump-button/icons-choices.png`).
 
 **Block stays where it was** (`BLOCK_BAND_BOTTOM`, 70, the disc's old bottom
