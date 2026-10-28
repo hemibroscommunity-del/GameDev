@@ -63,6 +63,9 @@ const LOOK = `try {
     'blockRanged', 'attack', 'special', 'chatTap', 'passkey'];
   const d = {}; for (const k of l) d[k] = true;
   localStorage.setItem('bt_coach_v1', JSON.stringify(d));
+  /* v2.3.3752: BT_LOOK_INLINE=1 -- the armour's look bakes on the page, not
+     the worker (whose canvas is ~200x slower on the QA box: lookArmour.js) */
+  if (${JSON.stringify(process.env.BT_LOOK_INLINE || '')} === '1') window.__btLookBakeInline = true;
   /* v2.3.3738: BT_GHOST_LOOK=plain -- the game's own colours, for pictures a
      person looks at (the flip's before/after); the ghost colours otherwise */
   if (${JSON.stringify(process.env.BT_GHOST_LOOK || '')} !== 'plain') {
