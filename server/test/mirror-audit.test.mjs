@@ -53,6 +53,8 @@ import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES,
 import { PVP_EXTRAS as SRV_PVP_EXTRAS, PVP_STATUSES as SRV_PVP_STATUSES } from '../src/pvpextras.js'; /* v2.3.3264 */
 import { elementMoveMult as SRV_ELEMENT_MOVE_MULT } from '../src/elemental.js'; /* v2.3.3264 */
 import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
+import { RIDE as SRV_RIDE } from '../src/ride.js'; /* v2.3.3776 */
+import { RIDE_MULT as CLIENT_RIDE_MULT } from '../../src/game/ride.js'; /* v2.3.3776 */
 import { WHEEL_DUNGEON as SRV_WHEEL_DUNGEON } from '../src/wheeldungeon.js'; /* v2.3.3016 */
 import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA, WHEEL_DUNGEON_PARTY as CLIENT_WHEEL_DUNGEON_PARTY } from '../../src/data/wheelDungeons.js'; /* v2.3.3016; v2.3.3573: + the party dungeons */
 import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wheelSignposts.js'; /* v2.3.3089 */
@@ -1841,6 +1843,13 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('elem hits: every element icon is in public/', missing.length === 0, missing);
 }
 
+// ── v2.3.3776: the skateboard (server ride.js, client game/ride.js): the
+// phone rolls at RIDE_MULT and the worker judges its moves at RIDE.MULT -- a
+// pair apart rubber-bands every ride.
+{
+  check('ride: the same speed on both sides (RIDE.MULT = RIDE_MULT)',
+    SRV_RIDE.MULT === CLIENT_RIDE_MULT, { srv: SRV_RIDE.MULT, cli: CLIENT_RIDE_MULT });
+}
 // ── v2.3.3006: the sprint (server sprint.js, client game/sprint.js).  The
 // worker bills the stamina and widens its bound; the client moves you and
 // predicts the bar between echoes.  Off by one number and either the bound

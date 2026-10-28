@@ -533,7 +533,10 @@ export const movementMethods = {
     /* v2.3.3006: is this move a sprint step the worker pays for (sprint.js)?
        Asked of every move, so a zone change or a first move never leaves an
        earlier step's mark to be billed. */
-    const _sprintK = typeof this._sprintK === 'function' ? this._sprintK(ps, msg, _now) : 1;
+    /* v2.3.3776: ...or a ride (ride.js RIDE.MULT, while the worker has you
+       on the board): the larger of the two, never their product */
+    const _sprintK = Math.max(typeof this._sprintK === 'function' ? this._sprintK(ps, msg, _now) : 1,
+      typeof this._rideK === 'function' ? this._rideK(ps) : 1);
     /* v2.3.3325: where this move is judged from -- the worker's own place in
        this zone, or, coming back into the Wheel, where the player left it
        (MOVE_BUDGET above, "THE BYPASSES") -- and where it puts them */
@@ -607,7 +610,7 @@ export const movementMethods = {
           if (_gust > 0) this._spendGust(ps, _gust);
           /* ...and on between the phone's moves (_tickMoveFollow), at the
              walk's bound: a sprint is billed by its moves, not by the tick */
-          ps._mvFollow = { x: msg.x, y: msg.y, z: newZone, rate: MOVE_BUDGET.SPEED_PX * _spdCap * _moveMult };
+          ps._mvFollow = { x: msg.x, y: msg.y, z: newZone, rate: MOVE_BUDGET.SPEED_PX * _spdCap * _moveMult * (ps._ride ? Math.max(1, _sprintK) : 1) /* v2.3.3776: a board rolls on at its own pace */ };
           if (!this._mvFollowing) this._mvFollowing = new Set();
           this._mvFollowing.add(session.id);
           this._mvTally('followed');
@@ -783,6 +786,9 @@ export const movementMethods = {
       if (ps.po && this._poseEndsOn(ps, _stepPx, zoneChanged, msg)) ps.po = null;
       /* v2.3.3525: a race under way judges the step the worker just took
          (race.js) -- one property read when there is none */
+      /* v2.3.3776: off the board past the safe ground's edge, out of the
+         Wheel or into a fight (ride.js) -- one property read when not riding */
+      if (ps._ride && typeof this._rideOnMove === 'function') this._rideOnMove(session.id, ps, zoneChanged);
       if (ps._race && typeof this._raceOnMove === 'function') {
         this._raceOnMove(session.id, ps, zoneChanged ? ps.x : _raceFromX, zoneChanged ? ps.y : _raceFromY);
       }

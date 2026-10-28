@@ -73,6 +73,7 @@
  */
 import { MOVE_BUDGET } from './movement.js';
 import { SPRINT } from './sprint.js';
+import { RIDE } from './ride.js';   /* v2.3.3776: a board glides at its own pace */
 import { WHEEL_ZONE } from './wheelzone.js';
 
 export const MOVE_PATH = Object.freeze({
@@ -139,7 +140,7 @@ export const movePathMethods = {
     if (!(sp > 0)) return;
     /* never faster than the walk's bound (movement.js, the same multipliers) */
     const { spdCap, moveMult } = this._moveSpeedK(ps);
-    const k = sprintK > 1 ? Math.min(sprintK, SPRINT.MULT) : 1;
+    const k = sprintK > 1 ? Math.min(sprintK, Math.max(SPRINT.MULT, RIDE.MULT)) : 1;
     const cap = MOVE_BUDGET.SPEED_PX * spdCap * moveMult * k / 1000;
     if (sp > cap) { vx *= cap / sp; vy *= cap / sp; }
     ps._mp = { x: ps.x, y: ps.y, z: ps.z, vx, vy, at: now, lx: ps.x, ly: ps.y, sentAt: now };
