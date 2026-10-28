@@ -965,7 +965,16 @@ remnant to migrate server-side, not a mode to preserve.
       - MEMORY: the voice and noise one-shots and every loop are decoded at
         24 kHz (`LOW_RATE_SFX`, `zoneamb-`/`amb-`, an OfflineAudioContext), and
         `loadSample` decodes a file once whatever keys name it (fish-on-hook
-        and lure-drop were two copies, ~1 MB) -- the wind 11 -> 5.5 MB;
+        and lure-drop were two copies, ~1 MB) -- the wind 11 -> 5.5 MB; and
+        since v2.3.3706 a STEREO SOUND WHOSE TWO SIDES ARE ONE IS KEPT AS ONE
+        CHANNEL (src/data/soundFold.js, after each decode: coin-pickup,
+        flip-lose, footstep-v2, pan-sizzle, quest-complete, fish-reel, 3.2 MB;
+        Web Audio plays it out of both speakers), read through small windows
+        (`copyFromChannel`), NEVER `getChannelData`, which hands the page a
+        sound's own samples, so that they then count as its own buffers (24 ->
+        42 MB on the memory check's `buffers` line); the check's `sound` line
+        32 -> 29; `?stereosfx`, `window.__btSoundFold()`; `sound-fold` suite,
+        `mp-soundfold`: docs/specs/sound-fold.md;
       - and the two sent after the rest: the SWIM'S SPLASH ("a missing sound
         effect for the player gets in and out of the water": the old one
         played at a tenth of a hit) -- one file, IN the whole splash at half a
