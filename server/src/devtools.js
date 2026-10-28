@@ -52,7 +52,6 @@ import { SHARD_CRACK } from './shardcrack.js'; /* v2.3.3516: the kit's shards */
 import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills a level can be set on */
 import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills whose harvests and cooks are hits */
 import { PROG3, prog3RespecPoints } from './prog3.js'; /* v2.3.3313: the combat skills a level can be set on; v2.3.3541: + the deal (/dev/combat `deal`) */
-import { BOTFP } from './botfp.js'; /* v2.3.3323: the score a flag is raised at, for the Bot flags list */
 
 export const DEVKIT = {
   /* The tutorial's own starter weapons -- copper/pine/pine.  Deliberately
@@ -682,8 +681,14 @@ export const devToolsMethods = {
     /* v2.3.3323: every flagged player, for the Test panel's Bot flags
        section (botfp.js _botfpFlaggedList) -- the anti-bot review's fix 9 */
     if (request.method === 'GET' && path === '/dev/botflags') {
-      return json({ ok: true, flagged: await this._botfpFlaggedList(50), flagAt: BOTFP.FLAG_AT });
+      /* v2.3.3723: the score in force (the hidden settings), not the placeholder */
+      await this._hiddenEnsure();
+      return json({ ok: true, flagged: await this._botfpFlaggedList(50), flagAt: this._hid().FLAG_AT });
     }
+    /* v2.3.3723: THE HIDDEN SETTINGS (hidden.js): GET the list, POST {name,
+       value} one (null: its placeholder), DELETE ?name= one or all.  No
+       playerId: they are the room's, not a character's */
+    if (path === '/dev/hidden') return this._hiddenAdmin(request, new URL(request.url), json);
     /* v2.3.3430: every character in test mode (testmode.js), newest first */
     if (request.method === 'GET' && path === '/dev/testmodes') {
       const r = await this._testModeList();
