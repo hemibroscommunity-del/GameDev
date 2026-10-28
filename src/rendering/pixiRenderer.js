@@ -6,6 +6,7 @@ import { createPixiApp } from './pixiApp.js';
 import { renderDpr } from '../game/renderRes.js'; /* v2.3.3339 */
 import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass per frame */
 import { TileRenderer } from './systems/tileRenderer.js';
+import { clientOff } from '../game/clientOff.js';   /* v2.3.3775: off_groundkeep */
 import { WheelObjects } from './wheelObjects.js'; /* v2.3.2975: the Wheel's buildings, trees, rocks and props */
 import { FarmWorld } from './farmWorld.js';   /* v2.3.3136: your farm -- its barn, props, beds and crops */
 import { ArenaWorld } from './arenaWorld.js';   /* v2.3.3566: a dungeon's arena, its things and the boss's chest */
@@ -194,6 +195,13 @@ let _appRef = null;   /* v2.3.701: handle for uploadBakedTextures behind the int
    player's FEET -- published for mp-propdepth, which has to compare it with
    each prop's base.  Mutated in place: no allocation per frame. */
 const _playerGround = { x: NaN, y: NaN };
+/* v2.3.3775: the world's ground kept on a return (forceRefresh, below):
+   `?groundkeep=0` or the live flag off_groundkeep rebuilds it as before; the
+   counts are the QA probe window.__btGroundKeep (mp-groundkeep) */
+const _groundKeepOffUrl = (() => { try { return /[?&]groundkeep=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+function groundKeepOn() { return !_groundKeepOffUrl && !clientOff('groundkeep'); }
+const _groundKeep = { kept: 0, rebuilt: 0 };
+try { if (typeof window !== 'undefined') window.__btGroundKeep = _groundKeep; } catch (e) { /* no page */ }
 const _depthProbe = { legacy: false };
 if (typeof window !== 'undefined') {
   window.__btPlayerGround = () => ({ x: _playerGround.x, y: _playerGround.y });
@@ -931,7 +939,20 @@ export async function initPixiRenderer(canvas) {
        context; after restore the tile buffers can be stale/black). */
     forceRefresh: () => {
       try {
-        if (currentZone && currentMap) tileRenderer.rebuild(app, currentMap, currentZone);
+        /* ═══ v2.3.3775: THE WORLD'S GROUND IS KEPT ON A RETURN ═══
+           Called on a healthy context only (wsClient's resume: a lost one
+           rebuilds the whole renderer, _rebuildRenderer, as before).  In the
+           Wheel this threw away every piece of the ground on screen and asked
+           the worker for each again: a tab brought back, or a page frozen
+           past 5 s (the 'thaw'), showed flat blocks of plain colour for
+           seconds while ~70 pieces were laid again (the 2026-10-28 UI review
+           on a computer; reproduced with a 6.5 s freeze: 72 pieces on screen
+           -> 9, 15 s to come back).  The pieces are textures on a context
+           that was never lost, so they are as good as ever: kept.  Every
+           other zone is rebuilt as before.  `?groundkeep=0`, or the live
+           flag off_groundkeep (game/clientOff.js), rebuilds as before. */
+        if (groundKeepOn() && tileRenderer.keepsGround(currentZone)) { _groundKeep.kept++; return; }
+        if (currentZone && currentMap) { tileRenderer.rebuild(app, currentMap, currentZone); _groundKeep.rebuilt++; }
       } catch (e) { /* best-effort */ }
     },
     /* v2.3.113: expose immediate-dispose for a single loot pile.

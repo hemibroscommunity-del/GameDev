@@ -401,6 +401,14 @@ export class TileRenderer {
     }).catch(() => {});
   }
 
+  /* v2.3.3775: is this zone's ground the world's streamed one, alive and
+     drawn -- kept through a return on a healthy context (pixiRenderer
+     forceRefresh: a rebuild there threw every piece away) */
+  keepsGround(zoneId) {
+    const g = this._chunkGround;
+    return !!(g && g instanceof WheelGround && !g.dead && zoneId && this.currentZone === zoneId);
+  }
+
   rebuild(app, map, zoneId) {
     this.currentZone = zoneId;
     this.currentMap = map;
