@@ -2,7 +2,8 @@
  * between two of the worker's skill blobs, across levels; its words; which
  * skill's bar shows; one "+N" for a flurry; when it goes. */
 import { skillXpGain, xpGainWords, noteProg3Xp, onXpBar, xpBarShown,
-  XP_BAR_SHOW_MS, XP_GAIN_MS, XP_BAR_CATS } from '../../src/game/xpBar.js';
+  XP_BAR_SHOW_MS, XP_GAIN_MS, XP_BAR_CATS,
+  xpNumWords, xpToNextWords, xpFillSteps, XP_FILL_DELAY_MS, XP_FILL_MS, XP_WRAP_MS } from '../../src/game/xpBar.js';
 import { prog3XpRequired } from '../src/prog3.js';
 
 let pass = 0, fail = 0;
@@ -66,6 +67,46 @@ check('2b: nothing for no gain', xpGainWords(0) === '' && xpGainWords(-2) === ''
   check('3j: shown until XP_BAR_SHOW_MS after the last gain, then gone',
     xpBarShown(S._xpBar, 6000 + XP_BAR_SHOW_MS - 1) && !xpBarShown(S._xpBar, 6000 + XP_BAR_SHOW_MS) && !xpBarShown(null, 0));
   check('3k: the three combat skills, the worker\'s keys', XP_BAR_CATS.join() === 'sword,bow,staff');
+  check('3l: v2.3.3739: where the skill stood before the gain (the white bar\'s start)',
+    bar3.fromLevel === 2 && Math.abs(bar3.fromFrac - 30 / req(2)) < 1e-9
+      && bar5.fromLevel === 1 && Math.abs(bar5.fromFrac - 6 / req(1)) < 1e-9, [bar3, bar5]);
+}
+
+// §4 v2.3.3739: "45 / 120" on the bar (the owner: "show the number of xp needed for the next level")
+check('4a: whole numbers from 10, rounded down (never "120 / 120" a hair early)',
+  xpNumWords(45) === '45' && xpNumWords(119.9) === '119' && xpNumWords(10) === '10', [xpNumWords(119.9)]);
+check('4b: one decimal where the XP is fractional below 10, none when whole',
+  xpNumWords(1.44) === '1.4' && xpNumWords(9.99) === '9.9' && xpNumWords(3) === '3' && xpNumWords(0) === '0' && xpNumWords(0.2 * 3) === '0.6',
+  [xpNumWords(1.44), xpNumWords(9.99), xpNumWords(0.6)]);
+check('4c: a thousands separator from 1,000', xpNumWords(999) === '999' && xpNumWords(1000) === '1,000' && xpNumWords(12345.6) === '12,345');
+check('4d: nothing odd from a bad number', xpNumWords(-5) === '0' && xpNumWords('x') === '0' && xpNumWords(null) === '0');
+check('4e: "45 / 120", "1.4 / 280", "1,250 / 2,400"',
+  xpToNextWords(45, 120) === '45 / 120' && xpToNextWords(1.44, req(1)) === '1.4 / 280' && xpToNextWords(1250, 2400) === '1,250 / 2,400',
+  [xpToNextWords(45, 120), xpToNextWords(1.44, req(1)), xpToNextWords(1250, 2400)]);
+check('4f: never "/ 0"', xpToNextWords(3, 0) === '3 / 1');
+
+// §5 v2.3.3739: how the track moves (the white bar)
+{
+  const b = (o) => Object.assign({ cat: 'sword', level: 3, frac: 0.5, at: 10000, fromLevel: 3, fromFrac: 0.4 }, o);
+  let p = xpFillSteps(null, b({}));
+  check('5a: nothing drawn yet: fresh, the gold starts where the XP was before the gain', p.fresh && !p.wrap && p.from === 0.4, p);
+  p = xpFillSteps({ cat: 'sword', level: 3, at: 9000 }, b({}));
+  check('5b: a gain while the bar is up: the gold grows on from where it is (not fresh, no wrap)', !p.fresh && !p.wrap, p);
+  p = xpFillSteps({ cat: 'sword', level: 3, at: 10000 - XP_BAR_SHOW_MS }, b({}));
+  check('5c: the bar had gone: fresh again', p.fresh && !p.wrap && p.from === 0.4, p);
+  p = xpFillSteps({ cat: 'bow', level: 3, at: 9900 }, b({}));
+  check('5d: another skill: fresh', p.fresh, p);
+  p = xpFillSteps({ cat: 'sword', level: 3, at: 9900 }, b({ level: 4, frac: 0.1, fromLevel: 3, fromFrac: 0.9 }));
+  check('5e: a level crossed since the level drawn: wrap (white and gold to the end, then the new level)', !p.fresh && p.wrap, p);
+  p = xpFillSteps(null, b({ level: 4, frac: 0.1, fromLevel: 3, fromFrac: 0.9 }));
+  check('5f: a level-up on a fresh bar: wrap, the gold from the old level\'s place', p.fresh && p.wrap && p.from === 0.9, p);
+  p = xpFillSteps({ cat: 'sword', level: 4, at: 9900 }, b({ level: 4, frac: 0.3, fromLevel: 4, fromFrac: 0.1 }));
+  check('5g: the next gain after a level-up grows on (no second wrap)', !p.fresh && !p.wrap, p);
+  p = xpFillSteps({ cat: 'sword', level: 5, at: 9900 }, b({}));
+  check('5h: a fall in level (a respec) is drawn fresh, never a wrap', p.fresh && !p.wrap, p);
+  check('5i: a level-up\'s whole run (to the end, then the carry-over) ends well inside the bar\'s 3 s',
+    XP_FILL_DELAY_MS + XP_FILL_MS <= XP_WRAP_MS && XP_WRAP_MS + XP_FILL_DELAY_MS + XP_FILL_MS <= XP_BAR_SHOW_MS - 1000
+      && XP_FILL_MS >= 400 && XP_FILL_MS <= 600, [XP_FILL_DELAY_MS, XP_FILL_MS, XP_WRAP_MS]);
 }
 
 console.log(`\n${pass + fail} checks, ${pass} passed, ${fail} failed`);

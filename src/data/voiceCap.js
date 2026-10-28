@@ -24,8 +24,11 @@
  * The kept copies are not made louder: no level change here without a
  * listen (the owner's call).
  *
- * Off by default (the game as it was).  `?voicecap` turns it on at N, W
- * below; `?voicecap=4:60` tries other values.  It changes no memory: every
+ * v2.3.3735: ON BY DEFAULT, at N, W below (the owner: "I think including
+ * the new memory change work by default would be better.  I can always
+ * revert the change if I don't like it or it doesn't work well.").
+ * `?voicecap=0` turns it off for one phone (the game as it was);
+ * `?voicecap=4:60` tries other values.  It changes no memory: every
  * copy of a recording plays one decoded buffer.  Plain data, no imports, so
  * node tests it (server/test/sound-cues.test.mjs §19). */
 
@@ -37,12 +40,16 @@ export function exempt(key) {
   return typeof key !== 'string' || /^ui-/.test(key);
 }
 
-/** `?voicecap`, `?voicecap=N:W` from a location.search: null when off. */
+/** The switch from a location.search: on at N, W unless `voicecap=0` (or
+ *  `off`), which gives null; `voicecap=N:W` other values. */
 export function parseVoiceCap(search) {
-  const m = /[?&]voicecap(?:=(\d+)(?::(\d+))?)?(?:&|$)/.exec(String(search || ''));
-  if (!m) return null;
-  const n = m[1] ? Math.max(1, Math.min(16, parseInt(m[1], 10))) : VOICE_N;
-  const w = m[2] ? Math.max(5, Math.min(500, parseInt(m[2], 10))) : VOICE_W_MS;
+  const m = /[?&]voicecap(?:=([^&]*))?(?:&|$)/.exec(String(search || ''));
+  if (!m || m[1] == null || m[1] === '') return { n: VOICE_N, w: VOICE_W_MS };
+  if (/^(0+|off|false|no)(:.*)?$/i.test(m[1])) return null;
+  const v = /^(\d+)(?::(\d+))?$/.exec(m[1]);
+  if (!v) return { n: VOICE_N, w: VOICE_W_MS };
+  const n = Math.max(1, Math.min(16, parseInt(v[1], 10)));
+  const w = v[2] ? Math.max(5, Math.min(500, parseInt(v[2], 10))) : VOICE_W_MS;
   return { n, w };
 }
 

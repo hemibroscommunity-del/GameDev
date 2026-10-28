@@ -3235,6 +3235,12 @@ export function processGameEvent(type, payload, S, deps) {
                  to draw a number, not whether the hit happened, and the worker
                  has said it did (game/elemHits.js, server monsterstatus.js). */
               var _elSt = applyElemHit(S, payload, Date.now());
+              /* v2.3.3747: a slime's blast blows you back -- a `kb` with no
+                 gust's `st` (server telegraph.js _blastShove), carried out as
+                 a blow's shove, with the gust's streaks round you */
+              if (_elSt !== 'gust' && payload.kb && !payload.blocked && !payload.dodged && applyHitShove(S, payload, Date.now())) {
+                S._gustAt = Date.now(); S._gustAng = Math.atan2(Number(payload.kb[1]), Number(payload.kb[0]));
+              }
               if (_elSt) { try { BT_AUDIO.elemHit(_elSt); } catch (e) { /* sound only */ } }
               /* v2.3.3123: ...and the pet out with you took the edge off it (its land ward) */
               if (_elSt && payload.wd > 0) { try { noteWard(S, payload); } catch (e) { /* words only */ } }
