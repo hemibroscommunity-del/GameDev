@@ -342,7 +342,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const cellNums = await P.page.evaluate(() => [...document.querySelectorAll('[data-prog3-grid] [data-prog3-row]')].map((c) => {
       const imgs = [...c.querySelectorAll('[data-cell-num] img')];
       const drawn = imgs.map((i) => { const m = /\/w(\d)\.png/.exec(i.getAttribute('src') || ''); return m ? m[1] : '?'; }).join('');
-      const m = /,\s*(\d+) of \d+/.exec(c.getAttribute('aria-label') || '');
+      /* v2.3.3578: "..., 12 of 40." while a stat has a cap, "..., 12 points."
+         once it has none (caps.nostatcap, HeroExpanded ptsOf) */
+      const m = /,\s*(\d+) (?:of \d+|points?)\b/.exec(c.getAttribute('aria-label') || '');
       return { k: c.getAttribute('data-prog3-row'), drawn, want: m ? m[1] : null, decoded: imgs.length > 0 && imgs.every((i) => i.naturalWidth > 0) };
     }));
     rec.ok(`${label}: every stat cell DRAWS its real count in the owner's numerals (v2.3.2692)`,
@@ -411,9 +413,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }) : [],
       };
     });
-    rec.ok(`${label}: both heads are the owner's gold frames (v2.3.3559), and each frame's picture decodes`,
-      heads.frames && heads.frameSrc[0] === 'frame-weapons.png' && heads.frameSrc[1] === 'frame-character.png'
-        && heads.frameDecoded.every(Boolean), heads);
+    /* v2.3.3691: the owner: "the 3 primary combat skills and the character
+       icon shouldn't have the bronze frame around it because it's not
+       self-contained it's supposed to represent the whole row" -- the heads
+       are there, with no frame drawn round them */
+    rec.ok(`${label}: both heads are there with NO frame round them (v2.3.3691: they are their rows' labels)`,
+      heads.frames && heads.frameSrc.every((u) => !u), heads);
     rec.ok(`${label}: ...the weapons' frame holds three rows in the owner's order, sword, staff, bow`,
       JSON.stringify(heads.rows) === JSON.stringify(['sword', 'staff', 'bow']), heads.rows);
     rec.ok(`${label}: ...every icon is the sheet's (the character the bust with the up arrow) and decoded`,
@@ -422,7 +427,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && heads.icons.every((i) => i.src.startsWith('/icons/ui/points/')), heads.icons);
     rec.ok(`${label}: ...and none of the old heads' art is left (the portrait, the hero icons, the blue badges)`,
       Array.isArray(heads.oldArt) && heads.oldArt.length === 0, heads.oldArt);
-    rec.ok(`${label}: ...and the two frames are one width, one over the other, as the mockup stands them`,
+    rec.ok(`${label}: ...and the two heads are one width, one over the other, as the mockup stands them`,
       !!heads.widths && Math.abs(heads.widths[0] - heads.widths[1]) <= 1 && Math.abs(heads.lefts[0] - heads.lefts[1]) <= 1,
       { widths: heads.widths, lefts: heads.lefts });
     /* The owner, of the first cut's gold rule with a diamond in its middle:
@@ -457,15 +462,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok(`${label}: the weapons head is not a control any more (no button role)`,
       !!headCtl && headCtl.role !== 'button', headCtl);
-    await finger(P, '[data-prog3-lane]:not([data-prog3-lane="shared"])');
-    const laneAfterHead = await P.page.evaluate(() => {
+    /* ═══ v2.3.3665: ITS THREE ROWS ARE A SWITCH ═══
+       The owner: "the points page needs a way to change between views between
+       melee, bow, staff".  The head itself is still no button (above), but
+       each weapon's row in it is: a tap shows that weapon's six numbers, the
+       weapon in your HAND unchanged (data-prog3-held), and opens no window.
+       Then back to the weapon shown before, for the spend below. */
+    const other = ['sword', 'staff', 'bow'].find((k) => k !== lane0);
+    await finger(P, `[data-points-row="${other}"]`);
+    const afterRow = await P.page.evaluate(() => {
+      const h = document.querySelector('[data-prog3-grid] [data-prog3-lane]');
+      const held = document.querySelector('[data-prog3-held]');
+      return { lane: h ? h.getAttribute('data-prog3-lane') : null,
+        shown: (document.querySelector('[data-points-shown]') || { getAttribute: () => null }).getAttribute('data-points-shown'),
+        held: held ? held.getAttribute('data-prog3-held') : null };
+    });
+    rec.ok(`${label}: ...and a tap on a weapon's row in it shows THAT weapon's points (v2.3.3665), the one in hand unchanged`,
+      !!lane0 && afterRow.lane === other && afterRow.shown === other && afterRow.held === lane0, { was: lane0, other, ...afterRow });
+    rec.ok(`${label}: ...and it did not open a window either`,
+      !(await has(P, '[data-infopopup-action]')));
+    await finger(P, `[data-points-row="${lane0}"]`);
+    const laneBack = await P.page.evaluate(() => {
       const h = document.querySelector('[data-prog3-grid] [data-prog3-lane]');
       return h ? h.getAttribute('data-prog3-lane') : null;
     });
-    rec.ok(`${label}: ...and tapping it changes nothing — it NAMES the row`,
-      !!lane0 && laneAfterHead === lane0, { was: lane0, now: laneAfterHead });
-    rec.ok(`${label}: ...and it did not open a window either`,
-      !(await has(P, '[data-infopopup-action]')));
+    rec.ok(`${label}: ...and a tap on the first one's row shows it again`, laneBack === lane0, { want: lane0, got: laneBack });
 
     /* ── A SPEND STILL GOES TO THE RIGHT POOL — AIMED FROM THE TABS ── */
     const before = await pools(P);

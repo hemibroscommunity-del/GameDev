@@ -1153,7 +1153,10 @@ remnant to migrate server-side, not a mode to preserve.
       numerals with points and grey at 0, no shapes behind the icons, both
       frames one width (`SHARED_FR`; sideways the head is 1.45 of a cell);
       `tools/ui/cut-points-heads.py`, GENERATED `src/data/pointsHeadArt.js`,
-      `mp-catgrid`, `mp-pointheads`: docs/specs/points-heads.md;
+      `mp-catgrid`, `mp-pointheads`: docs/specs/points-heads.md; since
+      v2.3.3691 NO FRAME round either head (the owner: "it's not
+      self-contained it's supposed to represent the whole row"), each its
+      row's label in the row's tray, its room kept; points-heads §4c2;
     - the Equipment tab's stats are PILLS, the owner's mockup: picture, name,
       value; OFFENSE gold with DPS beside its heading, PLAYER blue, the
       vitals as filled pills -- fourteen stats where there were seven, each
