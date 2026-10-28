@@ -190,7 +190,7 @@ import { notePvpBlow } from '@/game/sparTargets.js'; /* v2.3.3268: a blow betwee
 import { nmlJoinFight } from '@/game/nmlAsk.js'; /* v2.3.3530: one of a group whose blow lands on you joins the fight you chose, no window */
 import { allyMomentText } from '@/game/alliance.js'; /* v2.3.3313: the alliance's moments on party_state */
 import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3340: the mummy's bones rattle as it sheds */
-import { noteLootDrop } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
+import { noteLootDrop, notePileShine } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -316,6 +316,8 @@ export function processGameEvent(type, payload, S, deps) {
                  the monster (game/dropLines.js), when the pile is yours to
                  pick up */
               try { noteLootDrop(S, _newPile, S.myId); } catch (_dl) { /* display only */ }
+              /* v2.3.3746: your pile shines in its best line's colour */
+              try { notePileShine(S, _newPile, S.myId); } catch (_ps) { /* display only */ }
               /* v2.3.3343: a pile landing is heard, a little coin rattle by
                  distance (it was silent; SOUND-GAPS) */
               if (_newPile) cueAt(S, 'lootDrop', _newPile.x, _newPile.y);
@@ -3235,6 +3237,12 @@ export function processGameEvent(type, payload, S, deps) {
                  to draw a number, not whether the hit happened, and the worker
                  has said it did (game/elemHits.js, server monsterstatus.js). */
               var _elSt = applyElemHit(S, payload, Date.now());
+              /* v2.3.3747: a slime's blast blows you back -- a `kb` with no
+                 gust's `st` (server telegraph.js _blastShove), carried out as
+                 a blow's shove, with the gust's streaks round you */
+              if (_elSt !== 'gust' && payload.kb && !payload.blocked && !payload.dodged && applyHitShove(S, payload, Date.now())) {
+                S._gustAt = Date.now(); S._gustAng = Math.atan2(Number(payload.kb[1]), Number(payload.kb[0]));
+              }
               if (_elSt) { try { BT_AUDIO.elemHit(_elSt); } catch (e) { /* sound only */ } }
               /* v2.3.3123: ...and the pet out with you took the edge off it (its land ward) */
               if (_elSt && payload.wd > 0) { try { noteWard(S, payload); } catch (e) { /* words only */ } }

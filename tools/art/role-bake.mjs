@@ -63,11 +63,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { encode, decode } from '../png.mjs';
+import { cutPerRole } from './lookCut.mjs';   /* v2.3.3750: the one 8-bit cut (P4's module, error-bounded) */
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const OUT = path.join(REPO, 'public/sprites/look');
 const PORT = Number(process.env.ROLE_BAKE_PORT || 5197);
 const CHECK = process.argv.includes('--check');
+/* v2.3.3750: the 8-bit cut's bar -- the worst colour of a sheet within this
+   many levels a channel of the 16-bit truth, in any look (the orchestrator's
+   line for the owner's "I won't notice at all from anything at 256") */
+const CUT_BAR = Number(process.env.ROLE_BAKE_BAR || 16);
 /* ROLE_BAKE_PROBE=jog-east:948,53 -- one display texel's story, for debugging a bake */
 const PROBE_AT = process.env.ROLE_BAKE_PROBE ? ((m) => [m[1], [Number(m[2]), Number(m[3])]])(/^([a-z-]+):(\d+),(\d+)$/.exec(process.env.ROLE_BAKE_PROBE)) : null;
 
@@ -77,7 +82,8 @@ async function pageMeta({ set }) {
   return { kind: S.kind, bits: S.bits, refScale: S.refScale || 1, fw: S.fw || 128, fh: S.fh || 128, out: S.out || null, roleDefs: S.roleDefs,
     sheets: S.sheets, code: S.code || [], art: Object.fromEntries(S.sheets.map((k) => [k, S.art(k)])) };
 }
-async function pageBake({ set, sheet, bits, probeAt }) {
+async function pageBake({ set, sheet, bits, probeAt, bar, cutSrc }) {
+  const CUT_BAR = bar;   /* v2.3.3750: the 8-bit cut's worst colour, in levels */
   const S = (await import(`/rendering/lookSets/${set}.js`)).default;
   const GS = await import('/rendering/gearSheets.js');
   const FW = S.fw || 128, FH = S.fh || 128;
@@ -103,6 +109,11 @@ async function pageBake({ set, sheet, bits, probeAt }) {
   const fallsBack = new Set(roles.filter((ro) => ro.under).map((ro) => ro.entry));
   for (const e of used) if (!fallsBack.has(e)) P3[e] = P1[e];
   const f1 = read(run(P1)), f2 = read(run(P2)), f3 = read(run(P3));
+  /* v2.3.3750: `keepFromDefault` (a set module's option) -- a KEPT pixel is
+     what the bake leaves whatever the look, the default look's output: the
+     art's own colour, or something the bake paints over it for everyone (the
+     fishing rod's pine).  Without it, the art's colour, as before. */
+  const kd = S.keepFromDefault ? read(run({})) : d;
   const recol = (i, T, ref) => {
     if (!ref) return T;
     const k = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / (ref / RS);
@@ -110,7 +121,7 @@ async function pageBake({ set, sheet, bits, probeAt }) {
   };
   /* what role r makes of pixel i in look L -- lookPalette.js's entry(), in JS */
   const out = (i, r, L) => {
-    if (!r) return [d[i], d[i + 1], d[i + 2]];
+    if (!r) return [kd[i], kd[i + 1], kd[i + 2]];
     const ro = roles[r - 1], T = L[ro.entry];
     if (T) return recol(i, T, ro.ref);
     return ro.under ? out(i, ro.under, L) : [d[i], d[i + 1], d[i + 2]];
@@ -155,7 +166,10 @@ async function pageBake({ set, sheet, bits, probeAt }) {
     }
   }
   /* the table: one entry per (role, colour), sorted by role; entry 0 is see-through */
-  const keyOf = (p) => role[p] * 4294967296 + ((d[p * 4] << 24) >>> 0) + (d[p * 4 + 1] << 16) + (d[p * 4 + 2] << 8) + d[p * 4 + 3];
+  const keyOf = (p) => {
+    const c = role[p] ? d : kd;   /* v2.3.3750: a kept entry's colour is the bake's (keepFromDefault) */
+    return role[p] * 4294967296 + ((c[p * 4] << 24) >>> 0) + (c[p * 4 + 1] << 16) + (c[p * 4 + 2] << 8) + d[p * 4 + 3];
+  };
   const keys = new Map();   /* key -> pixels */
   const nw = ds === 1 ? DW : W, nh = ds === 1 ? DH : H;
   const srcOf = new Int32Array(nw * nh).fill(-1);
@@ -191,76 +205,23 @@ async function pageBake({ set, sheet, bits, probeAt }) {
   }
   /* ═══ v2.3.3737: 8 BITS -- AT MOST 255 COLOURS, CHOSEN PER ROLE ═══
      The owner: "You can go ahead and reduce it. I won't notice at all from
-     anything at 256."  A sheet over 255 colours is cut down per ROLE (so no
-     colour crosses from the skin to the trousers), each role's share of the
-     255 as its share of the colours (at least one), by median cut over its
-     colours weighted by how many pixels use each; each box becomes its
-     pixels' mean.  `quant` reports how far a pixel moved (straight RGBA). */
+     anything at 256."  v2.3.3750: the cut is tools/art/lookCut.mjs (one for
+     every bake), bounded by its WORST colour, CUT_BAR levels as the screen
+     shows it; a sheet it cannot hold to the bar stays 16-bit (below). */
   let mapKey = (k) => k;
   let quant = null;
-  if (bits === 8 && keys.size > 255) {
-    const byRole = new Map();
-    for (const [k, n] of keys) { const r = Math.floor(k / 4294967296); if (!byRole.has(r)) byRole.set(r, []); byRole.get(r).push([k, n]); }
-    const total = keys.size;
-    const budget = new Map();
-    let left = 255;
-    for (const [r, list] of byRole) { const b = Math.max(1, Math.floor(255 * list.length / total)); budget.set(r, b); left -= b; }
-    /* what is left, to the roles with the most colours a box */
-    while (left > 0) {
-      let best = -1, bestR = null;
-      for (const [r, list] of byRole) { const v = list.length / budget.get(r); if (v > best && budget.get(r) < list.length) { best = v; bestR = r; } }
-      if (bestR === null) break;
-      budget.set(bestR, budget.get(bestR) + 1); left--;
+  if (bits === 8) {
+    /* tools/art/lookCut.mjs, the one cut every bake uses (passed in as source) */
+    const cutPerRole = new Function('return ' + cutSrc)();
+    const cut = cutPerRole(keys, 255, { roles, refScale: RS, bar: CUT_BAR });
+    if (cut) {
+      mapKey = (k) => cut.remap.get(k);
+      keys.clear();
+      for (const [k, n] of cut.keys) keys.set(k, n);
+      quant = cut.quant;
     }
-    while (left < 0) {   /* more roles than colours to give: take from the biggest */
-      let bestR = null, bb = 1;
-      for (const [r, b] of budget) if (b > bb) { bb = b; bestR = r; }
-      if (bestR === null) break;
-      budget.set(bestR, budget.get(bestR) - 1); left++;
-    }
-    const ch = (k, c) => { const v = k % 4294967296; return c === 0 ? (v >>> 24) & 255 : c === 1 ? (v >>> 16) & 255 : c === 2 ? (v >>> 8) & 255 : v & 255; };
-    const remap = new Map();
-    let moved = 0, worst = 0, pix = 0;
-    for (const [r, list] of byRole) {
-      let boxes = [list];
-      while (boxes.length < budget.get(r)) {
-        /* split the box with the widest weighted spread on one channel */
-        let bi = -1, bc = 0, bw = -1;
-        boxes.forEach((bx, i) => {
-          if (bx.length < 2) return;
-          for (let c = 0; c < 4; c++) {
-            let lo = 255, hi = 0;
-            for (const [k] of bx) { const v = ch(k, c); if (v < lo) lo = v; if (v > hi) hi = v; }
-            const wgt = (hi - lo) * Math.sqrt(bx.reduce((a, e) => a + e[1], 0));
-            if (wgt > bw) { bw = wgt; bi = i; bc = c; }
-          }
-        });
-        if (bi < 0 || bw <= 0) break;
-        const bx = boxes[bi].slice().sort((a, b) => ch(a[0], bc) - ch(b[0], bc));
-        const half = bx.reduce((a, e) => a + e[1], 0) / 2;
-        let acc = 0, cut = 1;
-        for (let i = 0; i < bx.length - 1; i++) { acc += bx[i][1]; if (acc >= half) { cut = i + 1; break; } cut = i + 1; }
-        boxes.splice(bi, 1, bx.slice(0, cut), bx.slice(cut));
-      }
-      for (const bx of boxes) {
-        let n = 0; const m = [0, 0, 0, 0];
-        for (const [k, c] of bx) { n += c; for (let q = 0; q < 4; q++) m[q] += ch(k, q) * c; }
-        const rep = m.map((v) => Math.round(v / n));
-        const key = r * 4294967296 + ((rep[0] << 24) >>> 0) + (rep[1] << 16) + (rep[2] << 8) + rep[3];
-        for (const [k, c] of bx) {
-          remap.set(k, key);
-          let dm = 0; for (let q = 0; q < 4; q++) dm = Math.max(dm, Math.abs(ch(k, q) - rep[q]));
-          moved += dm * c; pix += c; if (dm > worst) worst = dm;
-        }
-      }
-    }
-    mapKey = (k) => remap.get(k);
-    const merged = new Map();
-    for (const [k, n] of keys) { const q = remap.get(k); merged.set(q, (merged.get(q) || 0) + n); }
-    keys.clear();
-    for (const [k, n] of merged) keys.set(k, n);
-    quant = { from: total, to: keys.size, meanMoved: +(moved / Math.max(1, pix)).toFixed(2), worstMoved: worst };
   }
+
   const sorted = [...keys.keys()].sort((a, b) => a - b);
   const cap = bits === 8 ? 256 : 65536;   /* numbers 0..255 (0 see-through) or 0..65535 */
   if (sorted.length + 1 > cap) throw new Error(sheet + ': ' + sorted.length + ' colours, over ' + bits + ' bits');
@@ -322,6 +283,7 @@ async function pageBake({ set, sheet, bits, probeAt }) {
     return [Math.round(c[0] * a / 255), Math.round(c[1] * a / 255), Math.round(c[2] * a / 255), a];
   };
   const check = { looks: LOOKS.length, texels: 0, over1: 0, max: 0, sum: 0 };
+  const fickle = S.fickle ? S.fickle(src, sheet) : null;   /* v2.3.3750: full-size pixels, or null */
   for (const L of LOOKS) {
     const od = read(disp(run(L)));
     for (let y = 0; y < DH; y++) for (let x = 0; x < DW; x++) {
@@ -342,6 +304,11 @@ async function pageBake({ set, sheet, bits, probeAt }) {
       const got = [od[j] * a / 255, od[j + 1] * a / 255, od[j + 2] * a / 255, a];
       let m = 0;
       for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(got[k] - want[k]));
+      /* v2.3.3750: a pixel the set says the old bake colours by more than its
+         role (`fickle`: the fish's rod key, re-tested after the retint) is
+         counted apart, not held to the old path (an 8-bit sheet's: only past
+         the cut's bar, which the cut itself is held to on every pixel) */
+      if (fickle && m > (quant ? CUT_BAR : 1.5) && fickle[ds === 1 ? (2 * y + oy) * W + 2 * x + ox : (2 * y) * W + 2 * x]) { check.fickle = (check.fickle || 0) + 1; continue; }
       check.texels++;
       check.sum += m;
       if (m > check.max) check.max = +m.toFixed(2);
@@ -431,19 +398,30 @@ async function main() {
     if (!CHECK) fs.mkdirSync(outDir, { recursive: true });
     for (const name of sheets) {
       const t0 = Date.now();
-      const r = await page.evaluate(pageBake, { set, sheet: name, bits, probeAt: PROBE_AT });
+      let r = await page.evaluate(pageBake, { set, sheet: name, bits, probeAt: PROBE_AT, bar: CUT_BAR, cutSrc: cutPerRole.toString() });
+      /* v2.3.3750: a sheet the 8-bit cut cannot hold to the bar stays 16-bit
+         (its own `bits` in the manifest; lookPalette.js reads a sheet's
+         over the set's) */
+      let sheetBits = bits;
+      /* ...or whose self-check (three real looks against the old path's own
+         canvases) shows a texel over the bar */
+      if (bits === 8 && r.quant && (r.quant.over || r.check.max > CUT_BAR)) {
+        console.log(`  ${name}: the 8-bit cut's worst colour is ${r.quant.worstMoved} levels, ${r.check.max} in the self-check (the bar ${CUT_BAR}): kept 16-bit`);
+        r = await page.evaluate(pageBake, { set, sheet: name, bits: 16, probeAt: PROBE_AT, bar: CUT_BAR, cutSrc: cutPerRole.toString() });
+        sheetBits = 16;
+      }
       if (r.probe) console.log(JSON.stringify(r.probe));
       const { png, tableRows } = sheetPng(r);
       /* an 8-bit sheet is a cut of the art (the owner's "anything at 256"):
          its self-check says how far, it does not fail it */
-      const ok = !r.unexplained && (bits === 8 || !r.check.over1);
+      const ok = !r.unexplained && (sheetBits === 8 || !r.check.over1);
       if (!ok) bad++;
       console.log(`${ok ? 'ok  ' : 'BAD '} ${name.padEnd(15)} ds ${r.ds}  ${String(r.w).padStart(4)}x${r.h}+${tableRows}  ${String(r.entries).padStart(5)} colours`
         + (r.quant ? ` (cut from ${r.quant.from}: a pixel moved ${r.quant.meanMoved} on average, ${r.quant.worstMoved} at most)` : '')
         + `  roles ${r.counts.join('/')}  unexplained ${r.unexplained}  ambiguous ${r.ambiguous}  pick ${r.pick}, ${r.split} split`
-        + `  check ${r.check.texels} texels, ${r.check.over1} over 1, max ${r.check.max}, mean ${r.check.mean}  (${Date.now() - t0} ms)`);
+        + `  check ${r.check.texels} texels, ${r.check.over1} over 1, max ${r.check.max}, mean ${r.check.mean}${r.check.fickle ? ', ' + r.check.fickle + ' fickle' : ''}  (${Date.now() - t0} ms)`);
       const artFiles = meta.art[name] || [];
-      out.sheets[name] = { ds: r.ds, frames: r.frames, w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends,
+      out.sheets[name] = { ...(sheetBits !== bits ? { bits: sheetBits } : {}), ds: r.ds, frames: r.frames, w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends,
         cells: r.cells, split: r.split, quant: r.quant || undefined, artFiles, art: hashFiles(artFiles), bytes: png.length };
       const file = path.join(outDir, name + '.png');
       if (CHECK) {

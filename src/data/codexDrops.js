@@ -66,6 +66,7 @@ import { REMAINS_NAMES } from './remains.js';   /* v2.3.3525: "remains", not "re
 import { ZONE_SHARDS, SHARD_GEM_ELEMENT } from './shards.js';   /* v2.3.3516: + the lands whose shards hold a gem */
 import { WHEEL_LAND_LEVELS } from './wheelSignposts.js';
 import { CODEX_ENTRIES } from './monsterCodex.js';
+import { COIN_PILES } from './coinPiles.js';   /* v2.3.3734: the owner's coins */
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -146,7 +147,7 @@ export function codexGoldAt(level) {
    hit for anything you have seen drop */
 const IV = '?v=2.3.1774';
 const ICON = Object.freeze({
-  gold: '/icons/ui/cur-gold.webp',
+  gold: COIN_PILES[0].url,   /* v2.3.3734: the owner's one coin (the codex lists gold as a kind, not an amount) */
   nugget: '/icons/ui/cur-nugget.webp',
   gem: '/icons/ui/cur-gem.webp' + IV,
   ironTorso: '/icons/items/chest-plate-iron.webp' + IV,

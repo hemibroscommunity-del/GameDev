@@ -42,6 +42,11 @@
  *   BT_GHOST_ONLY=stand,jog   only those families
  *   BT_GHOST_OUTFITS=full     only that outfit (full, plate, greaves; bare, no armour, only when named)
  *   BT_GHOST_SHIRT=print      v2.3.3696: the tee striped and printed
+ *   BT_GHOST_DIRS=east,south  v2.3.3750: only those facings, every family (a sample)
+ *   v2.3.3738, the double jump's flip (family `flip`, not in the default run):
+ *   BT_GHOST_ONLY=flip BT_GHOST_DIRS=east,south,north BT_GHOST_HAT=top-hat
+ *   BT_GHOST_HAIR=wavy BT_GHOST_LOOK=plain (the game's own colours)
+ *   BT_GHOST_SKIN=ebony BT_GHOST_SPECIES=alien (v2.3.3738: the skin the head wears)
  */
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -59,13 +64,23 @@ const LOOK = `try {
     'blockRanged', 'attack', 'special', 'chatTap', 'passkey'];
   const d = {}; for (const k of l) d[k] = true;
   localStorage.setItem('bt_coach_v1', JSON.stringify(d));
-  localStorage.setItem('bt-skin', 'green');
-  localStorage.setItem('bt-pants', 'pink');
-  localStorage.setItem('bt-shoes', 'blue');
-  localStorage.setItem('bt-shirt', 'tshirt');
-  localStorage.setItem('bt-shirtcolor', 'yellow');
-  localStorage.setItem('bt-hair', 'none');
-  localStorage.setItem('bt-headwear', 'none');
+  /* v2.3.3738: BT_GHOST_LOOK=plain -- the game's own colours, for pictures a
+     person looks at (the flip's before/after); the ghost colours otherwise */
+  if (${JSON.stringify(process.env.BT_GHOST_LOOK || '')} !== 'plain') {
+    localStorage.setItem('bt-skin', 'green');
+    localStorage.setItem('bt-pants', 'pink');
+    localStorage.setItem('bt-shoes', 'blue');
+    localStorage.setItem('bt-shirt', 'tshirt');
+    localStorage.setItem('bt-shirtcolor', 'yellow');
+  }
+  /* v2.3.3738: BT_GHOST_HAT / BT_GHOST_HAIR -- a hat and hair on the head
+     (the flip carries the head pieces now); none by default */
+  localStorage.setItem('bt-hair', ${JSON.stringify(process.env.BT_GHOST_HAIR || 'none')});
+  localStorage.setItem('bt-headwear', ${JSON.stringify(process.env.BT_GHOST_HAT || 'none')});
+  /* v2.3.3738: BT_GHOST_SKIN / BT_GHOST_SPECIES -- the owner: the flip's head
+     "will need to be recolored to whatever color the character is" */
+  if (${JSON.stringify(process.env.BT_GHOST_SKIN || '')}) localStorage.setItem('bt-skin', ${JSON.stringify(process.env.BT_GHOST_SKIN || '')});
+  if (${JSON.stringify(process.env.BT_GHOST_SPECIES || '')}) localStorage.setItem('bt-species', ${JSON.stringify(process.env.BT_GHOST_SPECIES || '')});
   /* v2.3.3696: BT_GHOST_SHIRT=print -- the tee striped (ART_PALETTE 5) with
      a block printed on the chest (ART_PALETTE 10, mp-gatherlook's), to see
      where a print and a pattern sit on every frame */
@@ -82,13 +97,7 @@ const FACINGS = [
   ['east', ['d'], 0], ['southeast', ['s', 'd'], Math.PI / 4], ['south', ['s'], Math.PI / 2],
   ['southwest', ['s', 'a'], 3 * Math.PI / 4], ['west', ['a'], Math.PI], ['northwest', ['w', 'a'], -3 * Math.PI / 4],
   ['north', ['w'], -Math.PI / 2], ['northeast', ['w', 'd'], -Math.PI / 4],
-];
-/* v2.3.3751: BT_GHOST_DIRS=south,east,northwest -- a sample of the facings
-   (the owner: "By sampling etc"), as BT_GHOST_ONLY samples the families */
-if (process.env.BT_GHOST_DIRS) {
-  const keep = new Set(process.env.BT_GHOST_DIRS.split(','));
-  FACINGS.splice(0, FACINGS.length, ...FACINGS.filter((f) => keep.has(f[0])));
-}
+].filter(([d]) => !process.env.BT_GHOST_DIRS || process.env.BT_GHOST_DIRS.split(',').includes(d));   /* v2.3.3750: BT_GHOST_DIRS=east,south,... samples the facings */
 
 const OUTFITS = {
   full: { chest: 'ironplate', legs: 'irongreaves' },
@@ -239,6 +248,20 @@ const PAGE_TOOLS = () => {
       ex: S._extraction ? S._extraction.skill : null, fire: !!S._firemaking,
       chop: fig('__btChopFigure'), cook: fig('__btCookFigure'), fireFig: fig('__btFireFigure'),
       x: S.player.x, y: S.player.y,
+      /* v2.3.3738: BT_GHOST_LAYERS=1 -- every visible piece of the figure,
+         named by its picture, with its alpha and tint (which layer paints what) */
+      layers: window.__qaGhostLayers && me ? (() => {
+        const out = [];
+        const walk = (c, depth) => {
+          if (!c || !c.visible || depth > 4) return;
+          let tex = null;
+          try { const t = c.texture, src = t && t.source, res = src && src.resource; tex = (t && t.label) || (src && src.label) || (res && res.src ? String(res.src).split('/').pop().split('?')[0] : null) || (src ? src.width + 'x' + src.height : null); } catch (e) { /* none */ }
+          if (tex || c.constructor.name === 'Graphics') out.push({ label: c.label || c.constructor.name, tex, a: +(c.alpha).toFixed(2), tint: c.tint != null ? c.tint : null, blend: c.blendMode || null, depth });
+          for (const k of c.children || []) walk(k, depth + 1);
+        };
+        walk(me, 0);
+        return out;
+      })() : undefined,
     };
   };
   return true;
@@ -438,6 +461,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const k of ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe']) await H.grant(wsPort, myId, 'item', { invKey: k, count: 1 }).catch(() => {});
     await page.waitForTimeout(2500);
     const tools = await page.evaluate(PAGE_TOOLS);
+    if (process.env.BT_GHOST_LAYERS) await page.evaluate(() => { window.__qaGhostLayers = true; });   /* v2.3.3738 */
     rec.ok('the page\'s clock can be held and the figure photographed alone (guard)', !!tools);
     if (!tools) return;
     /* the black-screen watchdog (BroTown.jsx) judges a screen that is nearly
@@ -606,6 +630,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await end(outfit, 'jump');
         }
       }
+      /* ── v2.3.3738: the double jump's flip, the roll's tumble in the air:
+         only when named (BT_GHOST_ONLY=flip).  A jump (X), then X again half
+         way through it; the flip is swept on its own clock.  BT_GHOST_DIRS
+         limits the facings (the owner: three are enough to look at) ── */
+      if (only && only.has('flip')) {
+        const dirs = process.env.BT_GHOST_DIRS ? new Set(process.env.BT_GHOST_DIRS.split(',')) : null;
+        for (const [dir, keys, ang] of FACINGS) {
+          if (dirs && !dirs.has(dir)) continue;
+          await face(keys, ang);
+          await begin();
+          /* the jump and its flip from inside the page, where a slow frame
+             cannot land the jump between the two presses: the second press
+             goes the moment the jump is a third of the way through (the flip
+             may start from FLIP_FROM, 0.15); tried up to three times */
+          let f = null;
+          for (let k = 0; k < 3 && !f; k++) {
+            f = await page.evaluate(async () => {
+              const S = window._gameState.current;
+              const key = (t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'KeyX', key: 'x', bubbles: true }));
+              key('keydown'); key('keyup');
+              for (let i = 0; i < 300; i++) {
+                const j = S._jump;
+                if (j && !j.flip && (Date.now() - j.t0) / j.dur >= 0.33) { key('keydown'); key('keyup'); break; }
+                if (j && j.flip) break;
+                await new Promise((r) => setTimeout(r, 5));
+              }
+              const j = S._jump;
+              return j && j.flip ? { t0: j.t0, dur: j.dur } : null;
+            });
+            if (!f) await page.waitForTimeout(2500);
+          }
+          if (f) await sweep(outfit, 'flip', dir, f.t0, f.dur * 0.98, Math.max(20, f.dur / 14));
+          await end(outfit, 'flip');
+        }
+      }
       /* ── the harvests: mining, chopping, fishing, a fire and a cook (the
          gathering figures and poses), on the nearest of each to the spot ── */
       if (outfit !== 'greaves') {
@@ -695,7 +754,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await travel(P, wsPort, myId, spot.x, spot.y);
         await page.waitForTimeout(1000);
       }
-      for (const fam of ['stand', 'jog', 'hit', 'dodge', 'pickup', 'swing', 'bow', 'staff', 'jump', 'mine', 'chop', 'fire', 'cook', 'fish']) {
+      for (const fam of ['stand', 'jog', 'hit', 'dodge', 'pickup', 'swing', 'bow', 'staff', 'jump', 'flip' /* v2.3.3738 */, 'mine', 'chop', 'fire', 'cook', 'fish']) {
         if (!want(fam)) continue;
         const s = summary[`${outfit}/${fam}`] || (summary[`${outfit}/${fam}`] = {});
         s.frames = count(outfit, fam);

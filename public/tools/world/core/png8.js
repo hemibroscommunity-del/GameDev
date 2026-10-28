@@ -85,3 +85,37 @@ export async function encodePalettePng(rgba, w, h, { clear = false } = {}) {
   for (const q of parts) { out.set(q, o); o += q.length; }
   return out;
 }
+
+/* ═══ v2.3.3728: A PICTURE OF NUMBERS AND ITS COLOURS, ANY ALPHA ═══
+   style/quant256.js gives a picture back as a number a pixel and up to 256
+   colours, soft ones among them (a glow's edge).  Written as a palette PNG
+   with every colour's own alpha in its tRNS chunk -- what every browser, and
+   the game's own reader (src/rendering/png8Decode.js), reads back as the same
+   colours.  `pal` is RGBA, 4 bytes a colour, straight alpha.  Null where there
+   is no CompressionStream. */
+export async function encodeIndexedPng(idx, pal, w, h) {
+  const n = pal.length >> 2;
+  if (n < 1 || n > 256 || idx.length !== w * h) return null;
+  const raw = new Uint8Array((w + 1) * h);
+  for (let y = 0; y < h; y++) raw.set(idx.subarray(y * w, (y + 1) * w), y * (w + 1) + 1);
+  const z = await deflate(raw);
+  if (!z) return null;
+  const ihdr = new Uint8Array(13), dv = new DataView(ihdr.buffer);
+  dv.setUint32(0, w); dv.setUint32(4, h);
+  ihdr[8] = 8; ihdr[9] = 3;
+  const plte = new Uint8Array(n * 3), trns = new Uint8Array(n);
+  let lastSoft = -1;
+  for (let k = 0; k < n; k++) {
+    plte[k * 3] = pal[k * 4]; plte[k * 3 + 1] = pal[k * 4 + 1]; plte[k * 3 + 2] = pal[k * 4 + 2];
+    trns[k] = pal[k * 4 + 3];
+    if (trns[k] !== 255) lastSoft = k;
+  }
+  const parts = [SIG, chunk('IHDR', ihdr), chunk('PLTE', plte)];
+  /* the alphas up to the last colour that is not solid (the rest read 255) */
+  if (lastSoft >= 0) parts.push(chunk('tRNS', trns.subarray(0, lastSoft + 1)));
+  parts.push(chunk('IDAT', z), chunk('IEND', new Uint8Array(0)));
+  const out = new Uint8Array(parts.reduce((s, q) => s + q.length, 0));
+  let o = 0;
+  for (const q of parts) { out.set(q, o); o += q.length; }
+  return out;
+}

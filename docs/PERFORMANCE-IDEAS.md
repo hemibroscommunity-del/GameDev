@@ -35,6 +35,11 @@ heat step and 2f below.
   - Revisit after the character lanes' phase 2, measured.
   - The gathering poses already load this way (#822, v2.3.3077): made on the
     way to a tree, as a log lands in the bag, or when a campfire is lit.
+- **The memory work lands on by default** (v2.3.3761): *"I think including
+  the new memory change work by default would be better. I can always revert
+  the change if I don't like it or it doesn't work well."* Each saver keeps
+  its `?name=0` off-ramp (`docs/MEMORY-MAP.md`, the order).
+- **256 colours a picture at most**, for every kind of art (part 3).
 
 ## 1. What mobile games do that this game doesn't yet
 
@@ -308,6 +313,18 @@ see-through level counted together).
 - **The rule.** No picture's colours are reduced without the owner's yes.
   Pictures already on 256 or fewer become colour numbers (exact); the rest are
   held once (M2's `onecopy`), at their own colours.
+- **The owner's yes (2026-10-28, v2.3.3761).** It came the same evening,
+  after the side-by-side previews of effects at 256:
+  - *"In the future, I want everything converted using this more efficient
+    method as standard protocol (art, audio, animations, etc)."*
+  - *"You can go ahead and reduce it. I won't notice at all from anything at
+    256."*
+  - *"Yeah I don't see any difference from those previews."*
+
+  So 256 colours a picture is now the ceiling for every kind of art
+  (CLAUDE.md §7). M2's follow-up (v2.3.3728, in progress) converts the
+  effects, the remaining monsters and the townsfolk. Phase 2 of the character
+  work bakes each sheet's role map at 256 entries.
 
 **How 2a stays exact anyway.** The recolour that gives each player a look works
 by brightness (`playerSkins.js`, `_retint`): every pixel keeps its own
