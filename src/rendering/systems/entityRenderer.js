@@ -3433,7 +3433,8 @@ async function _runLookBake(job) {
    the page's (mp-lookarmour runs the full oracle this way and samples the
    worker): the same bake (lookBake.js) here, as the old path's no-worker
    bake is (_maskedBodyFrame). */
-const _lookInline = () => typeof window !== 'undefined' && window.__btLookBakeInline === true;
+const _lookInlineAddr = (() => { try { return /(^|[?&])lookinline(=1)?(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();   /* QA: BT_QA_QUERY=lookinline */
+const _lookInline = () => typeof window !== 'undefined' && (window.__btLookBakeInline === true || (_lookInlineAddr && window.__btLookBakeInline !== false));
 const _lookSheetsHere = new Map();
 const _mkCpuCanvas = (w, h) => {
   const c = _mkBakeCanvas(w, h);
