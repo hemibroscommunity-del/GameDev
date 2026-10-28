@@ -327,6 +327,15 @@ export const SLIME_BURST = {
   SCALE: 3.5,                   /* owner: "3x or 4x" */
   RADIUS: 110,                  /* ~the swollen body, so the ring matches the art */
   DMG: 60,
+  /* v2.3.3747: THE BLOWBACK.  The owner, 2026-10-28: "if you take damage
+     from a slime explosion I want the character to be blown back a bit".
+     A blast that lands blows you SHOVE px straight away from where it went
+     off, over SHOVE_MS -- "a bit": between the swing's gust (48) and the
+     mummy's roar (130).  The gust's way (monsterstatus.js _grantShove): the
+     worker grants the room, the phone carries it out.  `slimeshove: false`
+     in the live flags: none. */
+  SHOVE: 90,
+  SHOVE_MS: 300,
 };
 
 /* Which archetypes own the move.  A table rather than an `=== 'snowman'`
@@ -530,6 +539,13 @@ export const telegraphMethods = {
        v2.3.2512: the burst is an ELEMENTAL blast (its row says so) and ELEM
        RESIST reads it; a slam and a lunge are ordinary untyped hits. */
     const raw = kit.flat ? Math.ceil(kit.flat * this._monsterHitK(m.level)) : Math.ceil(m.dmg * kit.dmgMult);
+    /* v2.3.3747: a blast that lands blows you back (SLIME_BURST.SHOVE): the
+       blue slime's burst and a splitting boss's alike, both this kit.  Set
+       for this one blow as the roar's is, so a wind slime's own gust is the
+       blast's 90 px rather than a second shove on top */
+    const shove = kit.kind === 'burst' && this._slimeShoveOn();
+    if (shove) { m._gustPx = SLIME_BURST.SHOVE; m._gustMs = SLIME_BURST.SHOVE_MS; }
+    try {
     return this._monsterHit({
       src: kit.kind === 'burst' ? 'burst' : 'kit', zoneId, pid, m, mid: m.id, lvl: m.level, raw,
       at: { x: m.x, y: m.y },
@@ -540,7 +556,35 @@ export const telegraphMethods = {
          hit resolved where you stood at DETONATION by a slime that is dying
          (measured: tools/qa/mp/mp-burstdmg.mjs).  The kit's kind tells it. */
       ability: (kit && kit.kind) || undefined,
+      /* v2.3.3747: the blowback for any element but the wind's, whose gust
+         above already carries it (st 'gust'); a block, a dodge, the grace
+         and a blow that took nothing shove nothing, as the roar's */
+      extra: shove ? (res) => this._blastShove(zoneId, m, ps, res) : undefined,
     });
+    } finally { if (shove) { m._gustPx = 0; m._gustMs = 0; } }
+  },
+
+  /* v2.3.3747: `slimeshove: false` in the live flags turns the blowback off */
+  _slimeShoveOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'slimeshove') && !f.slimeshove);
+  },
+
+  /* v2.3.3747: a slime blast's blowback on `ps`, the fields its
+     monster_attack carries ({kb, kbMs}), or null.  Away from the blast's
+     centre (m: the slime that went off, or the splitting boss), the length
+     the gust's own _gustShove gives it (m._gustPx, x the zone's depth); the
+     room granted as a gust's.  The phone carries a `kb` without a gust's
+     `st` as a blow's shove (elemHits.js applyHitShove), over `kbMs`. */
+  _blastShove(zoneId, m, ps, res) {
+    if (!res || res.dodged || !(res.dmgTaken > 0)) return null;
+    if (!ps || ps.dead || ps.dying || !(ps.hp > 0)) return null;
+    /* a wind slime's own gust carried it (monsterstatus.js _elemOnHit) */
+    if (this._elemGusts && this._elemGusts(m)) return null;
+    const kb = this._gustShove(zoneId, m, ps, 1);
+    if (!kb) return null;
+    this._grantShove(ps, kb, Date.now());
+    return { kb, kbMs: SLIME_BURST.SHOVE_MS };
   },
   /* ═══ v2.3.2215: basic-attack wind-up ═══ */
 
