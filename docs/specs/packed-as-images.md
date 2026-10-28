@@ -32,9 +32,10 @@ Every strip `gearSheets.js` packs is **kept as an image of itself**
 pixels, taken the moment it is made, loaded as an `<img>`, the texture's source
 swapped to it, the canvas let go of.
 
-- **What the page holds then:** the PNG's bytes for certain (a few per cent of
-  the canvas: these sheets are mostly see-through); the decoded pixels only
-  while the browser chooses to. A browser drops a picture's decoded copy under
+- **What the page holds then:** the PNG's bytes for certain, about a fifth of
+  what the canvas took (measured: 3.5 MB of PNG for the 77 pictures the screen
+  was drawing from, 19.3 MB as canvases); the decoded pixels only while the
+  browser chooses to. A browser drops a picture's decoded copy under
   memory pressure and decodes it again when the picture is next used. A canvas
   it cannot drop.
 - **Safari's purge of a parked tab** (TRAPS §250) empties canvases. An `<img>`
@@ -68,6 +69,12 @@ times), main and main with this change, the same day:
 | art from files, at the fight (the trip's highest) | 144.2 MB | 102.2 MB |
 | the graphics chip, at most | 86.1 MB | 87.2 MB |
 | heap, buffers, sound, workers | 30.7, 23.9, 30.1, 29 MB | 31, 23.8, 30.1, 29.1 MB |
+
+What takes the canvases' place is in no line: their PNGs, about a fifth of
+the canvases' size (3.5 MB for the 19.3 MB of pictures the screen was drawing
+from), so roughly 8 MB of the 42 at the fight; and, for as long as the browser
+keeps them, the images' decoded pixels, which Safari can drop when memory runs
+short and a canvas it could not.
 
 The art-from-files line falls by the same ~42 MB as the canvases because
 Pixi kept every texture made from a canvas in the asset cache that line reads,
