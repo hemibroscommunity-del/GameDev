@@ -8,7 +8,7 @@ import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's cl
 import { peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's axe, heard */
 import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn as a bolt */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
-import { keepOnGpuOnly } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only */
+import { keepOnGpuOnly, emptyOnceDrawn } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only; v2.3.3698: or once drawn */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
@@ -191,6 +191,7 @@ function _probeStandInSkin(key, cv, opts) {
    garment of the player's to sit on. */
 const CHOP_INK_KEYS = ['tattooFace', 'tattoo', 'tattooArm'];
 const PEER_CHOP_IDLE_MS = 15000;    /* released this long after the last frame that drew one */
+const GPU_WAIT_MS = 500;            /* v2.3.3698: how often the weapon bodies waiting to be drawn are looked at (emptyOnceDrawn) */
 /** Would the pre-flipped bake differ from the plain one?  Only when a drawing
  *  that gets stamped is not its own mirror image -- see _bakeChopStrips. */
 function _chopArtAsymmetric(art) {
@@ -3102,17 +3103,30 @@ export class EffectsRenderer {
     this._offs = [];
     this._destroyed = false;
     this._layers = layers;   /* v2.3.3074: walked by _letGo, so no sprite keeps a released source */
+    /* v2.3.3698: the weapon bodies (yours and other players'), each waiting to
+       be drawn once, when its canvas goes (gpuOnly.js emptyOnceDrawn; looked
+       at every GPU_WAIT_MS by update()) */
+    this._gpuWaiting = new Set();
+    this._gpuWaitAt = 0;
     /* v2.3.3074 QA (mp-bakeleak): how many bakes this renderer owns, and
        whether any strip it DRAWS from points at a released source -- what a
        release of the wrong (new) array would look like (TRAPS §49).  Set once
-       per renderer, not per frame; a rebuild's new one replaces it. */
+       per renderer, not per frame; a rebuild's new one replaces it.
+       v2.3.3698: and the weapon bodies' canvases -- `onChip` drawn and let go
+       of, `kept` still in the page (never drawn), `waiting` to be looked at
+       (mp-battlemem) */
     if (typeof window !== 'undefined') {
       window.__btFxBakes = () => {
-        let strips = 0, deadInUse = 0;
-        const look = (a) => { const src = a && a[0] && a[0].source; if (!src) return; strips++; if (src.destroyed) deadInUse++; };
+        let strips = 0, deadInUse = 0, onChip = 0, kept = 0, keptMb = 0;
+        const look = (a) => {
+          const src = a && a[0] && a[0].source; if (!src) return; strips++; if (src.destroyed) { deadInUse++; return; }
+          const cv = src.resource;
+          if (cv && cv.width > 0) { kept++; keptMb += cv.width * cv.height * 4 / 1048576; } else onChip++;
+        };
         for (const rec of this._bodyStrips || []) { if (rec.target) { look(rec.target[rec.dir]); look(rec.target[rec.dir + '|m']); } }
         for (const k of ['_chopSkinFrames', '_chopLeglessSkinFrames', '_cookFrames', '_cookLeglessFrames', '_fireFrames']) look(this[k]);
-        return { owned: this._bakes.size, strips, deadInUse, destroyed: this._destroyed };
+        return { owned: this._bakes.size, strips, deadInUse, destroyed: this._destroyed,
+          onChip, kept, keptMb: +keptMb.toFixed(2), waiting: this._gpuWaiting.size };
       };
     }
     this.particleLayer = layers.particles;
@@ -4146,6 +4160,12 @@ export class EffectsRenderer {
          as the figure it is composited onto — one skin change, one rebake,
          both stay in step. */
       if (rec.target === this._bowBodyFrames) registerBowBodyFrames(rec.dir, arr);
+      /* v2.3.3698: measured and handed over -- from here this strip and its
+         twin are only drawn (blockArm cuts a view of the same texels, a
+         re-bake starts from the sheet's own image), so each lets go of its
+         canvas once it has been drawn (gpuOnly.js emptyOnceDrawn) */
+      this._gpuOnceDrawn(arr);
+      this._gpuOnceDrawn(rec.target[rec.dir + '|m']);
       return _was;
     };
     /* Which base directions this family ever draws flipped -- read off the
@@ -5473,6 +5493,16 @@ export class EffectsRenderer {
        mp-deathstrip, which asks the SCREEN what is on the corpse rather than
        checking a list. */
     this._selfCorpse = selfCorpseUp(S);
+    /* v2.3.3698: the weapon bodies drawn since the last look let go of their
+       canvases (gpuOnly.js emptyOnceDrawn) -- a look at a handful of sources
+       every GPU_WAIT_MS, nothing at all once every one has gone */
+    if (this._gpuWaiting.size) {
+      const _t = typeof now === 'number' ? now : performance.now();
+      if (_t >= this._gpuWaitAt) {
+        this._gpuWaitAt = _t + GPU_WAIT_MS;
+        emptyOnceDrawn(this._captureRenderer, this._gpuWaiting);
+      }
+    }
     /* v2.3.2841: the staff cast's sprite pools refill from zero each frame;
        open them before anything this frame draws into them (the crash rings
        in _updateParticles, the bolts in _updateProjectiles). */
@@ -14507,7 +14537,7 @@ export class EffectsRenderer {
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
         null, cfg.fh, null, null, _pa.art, cfg.fw, undefined, undefined, undefined, _lu);   /* v2.3.2863: see _peerStandInArt; v2.3.3640: + under greaves */
       const n = Math.max(1, Math.round(cv.width / cfg.fw));
-      arr = this._own(_sliceStandIn(cv, cfg.fw, cfg.fh, n, null));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned */
+      arr = this._gpuOnceDrawn(this._own(_sliceStandIn(cv, cfg.fw, cfg.fh, n, null)));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned; v2.3.3698: its canvas let go of once drawn */
       this._remoteBodyCache.set(key, arr);
       _trimBakeCache(this._remoteBodyCache, this._bakes);
       return arr;
@@ -14538,7 +14568,7 @@ export class EffectsRenderer {
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
         null, _fh, null, null, _pa.art, _fw, undefined, undefined, undefined, undefined, !!torso);   /* v2.3.2863; v2.3.3658: + a torso strip's waist (TORSO_WAIST_UP) */
       const n = Math.max(1, Math.round(cv.width / _fw));
-      arr = this._own(_sliceStandIn(cv, _fw, _fh, n, null));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned */
+      arr = this._gpuOnceDrawn(this._own(_sliceStandIn(cv, _fw, _fh, n, null)));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned; v2.3.3698: its canvas let go of once drawn (the cut rows are tables: bowTorsoCut.js) */
       this._remoteSheetCache.set(key, arr);
       _trimBakeCache(this._remoteSheetCache, this._bakes);
       return arr;
@@ -16898,9 +16928,18 @@ export class EffectsRenderer {
     keepOnGpuOnly(this._captureRenderer, src);
     return arr;
   }
+  /* v2.3.3698: the same, but not before it is first drawn (gpuOnly.js
+     emptyOnceDrawn): for the weapon bodies, a strip a facing, many never drawn
+     in a visit -- uploading each as it is made would put them all on the chip */
+  _gpuOnceDrawn(arr) {
+    const src = arr && arr[0] && arr[0].source;
+    if (src && !this._destroyed) this._gpuWaiting.add(src);
+    return arr;
+  }
   _release(src) {
     if (!src) return;
     this._bakes.delete(src);
+    this._gpuWaiting.delete(src);   /* v2.3.3698 */
     unregisterGearSource(src);
     releaseCanvasSource(src);
   }
@@ -16949,6 +16988,7 @@ export class EffectsRenderer {
     try { this.clear(); } catch (e) { /* a half-built renderer */ }
     for (const src of this._bakes) { unregisterGearSource(src); releaseCanvasSource(src); }
     this._bakes.clear();
+    this._gpuWaiting.clear();   /* v2.3.3698: released with the rest just above */
     for (const k in (this._chopSrc || {})) {
       const c = this._chopSrc[k];
       try { if (c && c.getContext) { c.width = 0; c.height = 0; } } catch (e) { /* gone */ }

@@ -433,7 +433,7 @@ export class WheelObjects {
     this.life = wheelLifeOn();
     this._lifeT = null;
     /* v2.3.2995: hits, breaks and mendings */
-    this.shatter = new WheelShatter(layer);
+    this.shatter = new WheelShatter(layer, this.renderer);   /* v2.3.3698: the chip its heaps' canvases go to */
     this._shakes = new Map();       /* object index -> { t0, frac, tree, building, big } */
     this._fadeIn = new Map();       /* object index -> when it began to fade back in */
     this._breakT = null;
@@ -1140,6 +1140,8 @@ if (typeof window !== 'undefined') {
     /* v2.3.2995: the broken objects' shards, and an object's shake */
     shards: () => (_live ? _live.shatter.probe() : []),
     shatterStats: () => (_live ? { ..._live.shatter.stats } : null),
+    /* v2.3.3698: a shard drawn from the chip's copy, its heap's canvas emptied */
+    shardDraw: () => (_live ? _live.shatter.probeDraw() : null),
     shaking: (i) => !!(_live && _live._shakes.has(i)),
     /* v2.3.3230: every building's fire: its spots, flames, sparks, smoke and
        rubble (buildingFire.js) */

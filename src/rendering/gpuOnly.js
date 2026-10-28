@@ -47,6 +47,8 @@ const keepCopies = () => KEEP_GPU_COPIES || (typeof window !== 'undefined' && wi
 
 let _n = 0;
 let _bytes = 0;
+let _onceN = 0;       /* v2.3.3698: of those, what emptyOnceDrawn let go of */
+let _onceBytes = 0;
 
 /** Upload `source` to `renderer` now, if it is not there yet, and empty the
  *  canvas behind it.  Returns true when the canvas was emptied.  Anything but
@@ -79,6 +81,46 @@ export function keepOnGpuOnly(renderer, source) {
   return true;
 }
 
+/* ═══ v2.3.3698: OR ONCE IT HAS BEEN DRAWN ═══
+ * The owner, 2026-10-28: "The game definitely crashed because it ran out of
+ * memory for me during intense battles (lots of weapon switching, props
+ * destroyed, etc.)".  The sword's and the bow's bodies (effectsRenderer
+ * _bakeBodyStrip: the body, the torso and the jog's legs in each facing, 21
+ * canvases and 11.5 MB on the QA phone) and other players' (one per look,
+ * _remoteBodyFramesFor / _remoteSheetFramesFor) are keepOnGpuOnly's kind: only
+ * ever drawn, and made again by a rebuilt renderer.  But many of them are
+ * never drawn in a visit (a facing you never swing in), and uploading each the
+ * moment it is made would put every facing on the chip at once.  So they
+ * wait: `pending` holds them, and emptyOnceDrawn, called now and then, lets go
+ * of the canvas of each the renderer HAS drawn -- its copy is on the chip from
+ * then on whatever happens (a canvas picture is never in Pixi's collection;
+ * keepOnGpuOnly makes sure).  One never drawn keeps its canvas, as before.  A
+ * battle that swaps weapons draws nearly all of them, each held twice until
+ * now.  Returns how many canvases it emptied. */
+export function emptyOnceDrawn(renderer, pending) {
+  if (!pending || !pending.size || !renderer) return 0;
+  if (keepCopies()) { pending.clear(); return 0; }
+  /* not on a lost context: the rebuild 2.5 s on makes them all again */
+  try {
+    const gl = renderer.gl;
+    if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return 0;
+  } catch (e) { return 0; }
+  let n = 0;
+  for (const src of pending) {
+    const cv = src && src.resource;
+    if (!src || src.destroyed || !cv || !(cv.width > 0)) { pending.delete(src); continue; }
+    /* drawn: Pixi made this renderer's copy as it first bound it, uploading
+       the canvas there and then (GlTextureSystem._initSource) */
+    if (!(src._gpuData && src._gpuData[renderer.uid])) continue;
+    pending.delete(src);
+    const bytes = cv.width * cv.height * 4;
+    if (keepOnGpuOnly(renderer, src)) { n++; _onceN++; _onceBytes += bytes; }
+  }
+  return n;
+}
+
 if (typeof window !== 'undefined') {
-  window.__btGpuOnly = () => ({ keep: keepCopies(), emptied: _n, mb: +(_bytes / 1048576).toFixed(1) });
+  /* v2.3.3698: `onceDrawn`, what emptyOnceDrawn alone let go of */
+  window.__btGpuOnly = () => ({ keep: keepCopies(), emptied: _n, mb: +(_bytes / 1048576).toFixed(1),
+    onceDrawn: { n: _onceN, mb: +(_onceBytes / 1048576).toFixed(1) } });
 }

@@ -5894,6 +5894,14 @@ Two protocol versions coexist; both must keep working:
     sets `window.__btTrimVerify` in its init script (mp-chopink, mp-cookink,
     mp-fireink) -- not `?gpucopies`, which a guest's page loses when it
     reloads into `?guest=1` on the way in.
+    Since v2.3.3698 (the owner's crash "during intense battles"): a broken
+    prop's pieces too (wheelShatter.js, the heaps' cap 4e6 px), and a picture
+    made long before it is drawn -- the sword's and bow's bodies in every
+    facing, yours and other players' -- lets go of its canvas only once drawn
+    (`emptyOnceDrawn`, effectsRenderer `_gpuOnceDrawn`). `mp-battlemem` plays
+    that battle (three weapons swapped, every prop round it broken, rounds
+    that must settle; every picture counted once), `mp-peermem` measures each
+    other player on screen (~2.5 MB): docs/specs/battle-memory.md.
   - MUSIC, and any sound longer than a few seconds, plays through the music
     deck (BT_AUDIO's zone and global music, streamed from its file since
     v2.3.3073) -- never SFX_MANIFEST, which decodes the whole file into memory
