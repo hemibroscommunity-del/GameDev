@@ -118,6 +118,27 @@ function chamfer(inside, w, h) {
 }
 
 /** The key's footprint of an RGBA buffer, as a 0/1 byte mask. */
+/* ═══ v2.3.3684: THE KEY IN THE FIRE'S GLOW ═══
+   The fire-lighter's log (firemaking-strip.webp) is the key, and from frame 4
+   on its cut end is painted lit by the fire: the magenta pushed toward red,
+   (240,60,80) and (240,80,100) at hue 352-353, past the key's window
+   (315-350).  Those pixels kept the art's salmon pink in every light, a pink
+   end on a wooden log (mp-ghostaudit counted it as trousers).  A lit key pixel
+   is red-magenta, bright and strong; the caller takes it only beside the key
+   itself (effectsRenderer _fireLogToBark), so the figure's own red outline on
+   his lit side (dark, and nowhere near the log) is never wood. */
+export function isLitToolKey(r, g, b, a) {
+  if (a < 77) return false;
+  const mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+  const mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+  if (mx < 140 || mx !== r) return false;
+  const d = mx - mn;
+  if (d < mx * 0.5) return false;
+  let h = 60 * (((g - b) / d) % 6);
+  if (h < 0) h += 360;
+  return h > 350 || h <= 8;
+}
+
 export function toolKeyMask(data, w, h) {
   const m = new Uint8Array(w * h);
   for (let i = 0, o = 0; i < m.length; i++, o += 4) {
@@ -138,9 +159,12 @@ export function toolKeyMask(data, w, h) {
  * on since: the key test is a hue window (315-350), and a player's pink or
  * magenta tattoo sits inside it (#d76ba8 is hue 326).
  */
-export function recolorToolKey(data, w, h, spec, scale = 1, onlyMask = null) {
+export function recolorToolKey(data, w, h, spec, scale = 1, onlyMask = null, addMask = null) {
   const m = toolKeyMask(data, w, h);
   if (onlyMask) for (let i = 0; i < m.length; i++) if (!onlyMask[i]) m[i] = 0;
+  /* v2.3.3684: `addMask`, pixels that are key though the test says not (the
+     key in the fire's glow, isLitToolKey) */
+  if (addMask) for (let i = 0; i < m.length; i++) if (addMask[i]) m[i] = 1;
   let head = null;
   if (spec.head) {
     const R = (spec.headPx || 4) * scale;

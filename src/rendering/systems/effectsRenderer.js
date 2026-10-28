@@ -666,7 +666,7 @@ import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
-import { recolorToolKeyCanvas, recolorToolKey, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask; v2.3.3660: + recolorToolKey, the fire-lighter's log band */
+import { recolorToolKeyCanvas, recolorToolKey, toolKeyMask, isLitToolKey, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.3684: + isLitToolKey, the log's end in the fire's glow */ /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask; v2.3.3660: + recolorToolKey, the fire-lighter's log band */
 import { setStandInMaker, ensureStandIn, standInStarted, standInReady, standInMaking, setPeerStandInCheck, forgetStandIn, farmFigureReady } from '../standIns.js';   /* v2.3.3077: the gathering poses, made when first wanted; v2.3.3314: + a peer's, in their colours */
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
@@ -799,9 +799,48 @@ function _fireFrameShift(fi, sx, sy) {
    keeps the magenta, for a test's before; `window.__btFireLog()` says how many
    pixels the last bake made wood. */
 const FIRE_LOG_BAND = [340, 480];
+/* ═══ v2.3.3684: UNDER GREAVES, THE FIRE-LIGHTER HAS NO LEGS OF HIS OWN ═══
+   The owner: "remove pants (olive green) those should not be showing frame 6
+   is particularly bad - armor legs need to shift leftward".  His body kneels
+   its own way and the greaves are a picture of their own, so his trousers
+   and boots showed beside them on every kneeling frame (frame 2's thigh
+   between the plate and the greaves, frame 6's hip, the back boot on frames
+   4 and 5).  Under greaves he is baked without them (playerSkins
+   _standInLegless): the greaves are his legs, as the cook's and the
+   lumberjack's legless strips were drawn.  Your figure is baked the one way
+   you need (_fireWantLegless), again as greaves go on or come off; another
+   player's by theirs (_peerFigure).  And frame 6's greaves moved 20 art px
+   left and 4 up (FIRE_GEAR_REG), under the plate, where his hip is.
+   `?firelegless=0` keeps his legs under the greaves, the game as it was;
+   `window.__btFireLegless()` says which way your figure was baked and how
+   many pixels went. */
+const FIRE_LEGLESS_OFF = (() => { try { return /[?&]firelegless=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 const FIRE_LOG_OFF = (() => { try { return /[?&]firelog=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 let _fireLogWood = -1;
 if (typeof window !== 'undefined') window.__btFireLog = () => ({ on: !FIRE_LOG_OFF, wood: _fireLogWood });
+/* v2.3.3684: the lit key pixels within FIRE_LOG_LIT_REACH of the key itself;
+   `?firelit=0` leaves them pink, the game as it was */
+const FIRE_LOG_LIT_REACH = 4;
+const FIRE_LOG_LIT_OFF = (() => { try { return /[?&]firelit=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+function _litLogKey(fd, w, h, key) {
+  const lit = new Uint8Array(w * h);
+  let any = 0;
+  for (let i = 0, o = 0; i < lit.length; i++, o += 4) {
+    if (!key[i] && isLitToolKey(fd[o], fd[o + 1], fd[o + 2], fd[o + 3])) { lit[i] = 1; any++; }
+  }
+  if (!any) return null;
+  const R = FIRE_LOG_LIT_REACH;
+  for (let i = 0; i < lit.length; i++) {
+    if (!lit[i]) continue;
+    const x = i % w, y = (i - x) / w;
+    let near = false;
+    for (let yy = Math.max(0, y - R); yy <= Math.min(h - 1, y + R) && !near; yy++) {
+      for (let xx = Math.max(0, x - R); xx <= Math.min(w - 1, x + R); xx++) if (key[yy * w + xx]) { near = true; break; }
+    }
+    if (!near) lit[i] = 0;
+  }
+  return lit;
+}
 function _fireLogToBark(img, cv) {
   const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
   if (!cv || !cv.width || !iw || !ih) return 0;
@@ -814,11 +853,15 @@ function _fireLogToBark(img, cv) {
   const sg = src.getContext('2d', { willReadFrequently: true });
   sg.imageSmoothingEnabled = false;
   sg.drawImage(img, 0, y0 / k, iw, bh / k, 0, 0, w, bh);
-  const fileKey = toolKeyMask(sg.getImageData(0, 0, w, bh).data, w, bh);
+  const fd = sg.getImageData(0, 0, w, bh).data;
+  const fileKey = toolKeyMask(fd, w, bh);
   src.width = 0; src.height = 0;
+  /* v2.3.3684: + the log's end in the fire's glow (frames 4-7), beside the key
+     (toolRecolor isLitToolKey) */
+  const lit = FIRE_LOG_LIT_OFF ? null : _litLogKey(fd, w, bh, fileKey);
   const g = cv.getContext('2d', { willReadFrequently: true });
   const band = g.getImageData(0, y0, w, bh);
-  const n = recolorToolKey(band.data, w, bh, TOOL_SPECS.log, k, fileKey);
+  const n = recolorToolKey(band.data, w, bh, TOOL_SPECS.log, k, fileKey, lit);
   if (n) g.putImageData(band, 0, y0);
   _fireLogWood = n;
   return n;
@@ -830,8 +873,12 @@ function _bakeFireSplit(img, skinT, art, clothes, opts) {
   /* v2.3.3146: + `clothes` ({ pantsT, shoesT }): your trousers and boots --
      `pantsWide` for the trousers the fire's glow warms (playerSkins
      _standInClothes) */
+  /* v2.3.3684: + `glowLegs`, the trousers on the glow's side of frames 6-7
+     (playerSkins _standInGlowLegs), and `clothes.legless`, the body under
+     greaves (_standInLegless; FIRE_LEGLESS) */
   const out = recolorStandInSkinSplit(img, skinT, FIRE_FH, { ...FIRE_SKIN_OPTS, frameW: FIRE_FW,
-    keepBoxes: FIRE_KEEP_BOXES, art, regions: FIRE_INK_REGIONS, ...(clothes ? { ...clothes, pantsWide: true } : {}) });
+    keepBoxes: FIRE_KEEP_BOXES, art, regions: FIRE_INK_REGIONS, glowLegs: true,
+    ...(clothes ? { ...clothes, pantsWide: true, legless: !!clothes.legless && !FIRE_LEGLESS_OFF } : {}) });
   if (opts && opts.beforeWood) opts.beforeWood(out.cv);
   if (!FIRE_LOG_OFF && !(opts && opts.noWood)) _fireLogToBark(img, out.cv);   /* v2.3.3660 */
   return out;
@@ -1207,7 +1254,7 @@ const FIRE_GEAR_REG = {
      ALIGNED" in the header above */
   legs: {
     scale: 0.90,
-    off: [[28, -7], [23, 8], [89, 48], [43, 4], [54, 15], [51, 13], [55, 12], [43, 6]],
+    off: [[28, -7], [23, 8], [89, 48], [43, 4], [54, 15], [51, 13], [35, 8], [43, 6]],   /* v2.3.3684: frame 6 under the plate, 20 left and 4 up (FIRE_LEGLESS_OFF's header) */
   },
 };
 
@@ -5104,7 +5151,10 @@ export class EffectsRenderer {
     pending[kind] = true;
     _loadStandInImg(spec.url(legless), PEER_FIG_LOAD_MS).then((img) => {
       if (this._destroyed) return;
-      const { cv } = spec.bake(img, c.skinT, art ? { ...art, mirror: false } : null, { pantsT: c.pantsT, shoesT: c.shoesT });
+      /* v2.3.3684: the fire-lighter's `legless` is a bake of the one strip
+         (the cook's is a strip of its own, spec.url) */
+      const { cv } = spec.bake(img, c.skinT, art ? { ...art, mirror: false } : null,
+        { pantsT: c.pantsT, shoesT: c.shoesT, ...(kind === 'fire' && legless ? { legless: true } : {}) });
       const n = Math.max(1, Math.round(cv.width / spec.fw));
       const arr = this._own(_sliceStandIn(cv, spec.fw, spec.fh, n, null, false));
       cache.set(key, { arr, used: Date.now(), bytes: _figBytes(arr) });
@@ -5242,23 +5292,35 @@ export class EffectsRenderer {
     }
     if (kind !== 'cook' && kind !== 'fire') return null;
     let wantL = false, greavesComing = false;
-    if (kind === 'cook') {
-      const legsTex = this._gearStripFrame('legs', eq.legs, 'cook', 'south', COOK_FW, 0);
-      greavesComing = !legsTex && this._gearStripPending('legs', eq.legs, 'cook', 'south', now);
+    /* v2.3.3684: the fire-lighter too: under greaves his figure is the one
+       baked without legs (FIRE_LEGLESS_OFF's header) */
+    if (kind === 'cook' || !FIRE_LEGLESS_OFF) {
+      const fw = kind === 'cook' ? COOK_FW : FIRE_FW;
+      const legsTex = this._gearStripFrame('legs', eq.legs, kind, 'south', fw, 0);
+      greavesComing = !legsTex && this._gearStripPending('legs', eq.legs, kind, 'south', now);
       wantL = !!legsTex;
     }
     if (standInReady(kind) && c.key === (kind === 'cook' ? this._cookLook : this._fireLook)) {
-      const body = kind === 'cook' ? this._cookFrames : this._fireFrames;
-      const ll = kind === 'cook' ? this._cookLeglessFrames : null;
-      const useL = wantL && !!ll && ll.length === body.length;
-      const arr = useL ? ll : body;
-      if (arr && arr.length) return { arr, legless: useL, ink: false, shared: true };
+      if (kind === 'fire') {
+        /* yours is one figure, with legs or without as your greaves are:
+           theirs must be the same */
+        const body = this._fireFrames;
+        if (body && body.length && !!this._fireLegless === wantL) return { arr: body, legless: wantL, ink: false, shared: true };
+      } else {
+        const body = this._cookFrames;
+        const ll = this._cookLeglessFrames;
+        const useL = wantL && !!ll && ll.length === body.length;
+        const arr = useL ? ll : body;
+        if (arr && arr.length) return { arr, legless: useL, ink: false, shared: true };
+      }
     }
     /* yours is on its way, in these very colours: wait for it rather than
        bake its twin -- one already baked still draws.  (Yours is never made
        FOR them: theirs is one strip, let go of after they stop; yours is
-       two, kept.) */
-    const _yoursComing = standInMaking(kind) && c.key === _localStandInColourKey();
+       two, kept.)  v2.3.3684: the fire-lighter's only when it is coming the
+       way theirs is drawn, with legs or without. */
+    const _yoursComing = standInMaking(kind) && c.key === _localStandInColourKey()
+      && (kind !== 'fire' || wantL === this._fireWantLegless());
     let arr = this._peerFigFrames(kind, c, wantL, now, peek || _yoursComing || greavesComing);
     if (arr) return { arr, legless: wantL, ink: false, shared: false };
     if (wantL) {
@@ -5317,6 +5379,16 @@ export class EffectsRenderer {
     this._offs.push(onSkinChange(() => { this._fetchAndBakeFire(); }));   /* v2.3.3074: kept for destroy() */
     /* v2.3.3146: and the trousers and boots, which it wears now */
     this._offs.push(onPantsChange(() => { this._fetchAndBakeFire(); }), onShoesChange(() => { this._fetchAndBakeFire(); }));
+    /* v2.3.3684: and the greaves, put on or taken off -- under them he is
+       baked without legs (FIRE_LEGLESS_OFF's header).  The store tells a
+       change only, and a change of metal keeps the bake. */
+    this._offs.push(onEquipChange('legs', () => {
+      if (this._fireFrames.length && this._fireWantLegless() !== !!this._fireLegless) this._fetchAndBakeFire();
+    }));
+    if (typeof window !== 'undefined') {
+      window.__btFireLegless = () => ({ on: !FIRE_LEGLESS_OFF, want: this._fireWantLegless(),
+        legless: !!this._fireLegless, gone: this._fireLeglessGone | 0, frames: this._fireFrames.length });
+    }
     /* v2.3.2858: and the drawings' layer, once the strokes stop -- the cook's
        rule (_loadCookStrips); only the layer is rebuilt. */
     let _fireArtT = 0;
@@ -5332,6 +5404,15 @@ export class EffectsRenderer {
      to ~4.1MB of RGBA, and iPhone Safari's OOM history is written up in
      spriteScale.js).  A rebake re-fetches from the HTTP cache and only ever
      happens behind the character menu, never mid-play. */
+  /* v2.3.3684: your fire-lighter is baked legless while greaves are drawn
+     over him: a legs item with art (gearArtSafe: every metal is the steel
+     greaves' picture, tinted), never for a slot whose greaves would not draw */
+  _fireWantLegless() {
+    if (FIRE_LEGLESS_OFF) return false;
+    const it = getEquip('legs');
+    return !!it && it !== 'none' && !!gearArtSafe('legs', it);
+  }
+
   _fetchAndBakeFire(inkOnly) {
     /* v2.3.3077: the cook's rule (_fetchAndBakeCook) */
     if (!standInStarted('fire')) return Promise.resolve();
@@ -5354,11 +5435,13 @@ export class EffectsRenderer {
       const _art = _base ? artForFacing(_base, 'south') : null;
       /* v2.3.3146: and your trousers and boots (the cook's, above) */
       const _pantsT = pantsTarget(getPants()), _shoesT = shoesTarget(getShoes());
+      /* v2.3.3684: legless under greaves (FIRE_LEGLESS_OFF's header) */
+      const _legless = !inkOnly && this._fireWantLegless();
       /* v2.3.3660: the skin probe reads the figure before its log is wood (the
          bark's middle tones pass the skin window); a drawings-only rebake
          throws the figure away and leaves its log */
       const { cv, ink } = _bakeFireSplit(img, skinT, _art ? { ..._art, mirror: false } : null,
-        { pantsT: _pantsT, shoesT: _shoesT, probe: 'fire' },
+        { pantsT: _pantsT, shoesT: _shoesT, probe: 'fire', legless: _legless },
         inkOnly ? { noWood: true } : { beforeWood: (c) => _probeStandInSkin('/sprites/skills/firemaking-strip.webp', c, FIRE_SKIN_OPTS) });
       const n = Math.max(1, Math.round(cv.width / FIRE_FW));
       const _old = [];
@@ -5369,6 +5452,9 @@ export class EffectsRenderer {
         /* v2.3.3314: the colours it wears -- a peer in the same ones is drawn
            from it (_peerFigure), as the cook's _cookLook */
         this._fireLook = _standInColourKey(skinT, _pantsT, _shoesT);
+        /* v2.3.3684: and whether it has legs (a peer's greaves must match) */
+        this._fireLegless = _legless;
+        this._fireLeglessGone = _legless ? (cv.__btLegless | 0) : 0;
         /* v2.3.2500: the skin probe, measured through the bake's own window
            (_probeStandInSkin) -- since v2.3.3660 run inside the bake, before
            the log turns to wood */

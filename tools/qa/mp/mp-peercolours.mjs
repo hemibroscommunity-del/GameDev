@@ -124,6 +124,10 @@ const sampleFig = (P, kind, pid, ms, colours, poke) => P.page.evaluate(async ({ 
     else if (mx === g) h = 60 * ((b - r) / dd + 2);
     else h = 60 * ((r - g) / dd + 4);
     if (h < 0) h += 360;
+    /* v2.3.3684: and the fire-lighter's log end in the fire's glow, made wood
+       with the rest of the log (toolRecolor.js isLitToolKey: red-magenta,
+       bright and strong; the game takes it beside the key only) */
+    if (mx === r && mx >= 140 && dd >= mx * 0.5 && (h > 350 || h <= 8)) return true;
     return h >= 315 && h <= 350;
   };
   const far = (a, b) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]), Math.abs(a[2] - b[2])) > 6;

@@ -160,7 +160,9 @@ const PAGE_TOOLS = () => {
       for (const c of layer.children) {
         if (c === me || !c.visible || G.foreign.has(c)) continue;
         const label = c.label || c.constructor.name;
-        if (/^(monster_|npc_|wheelObject|peer_|player_)/.test(label)) continue;
+        /* v2.3.3684: and the campfire a light leaves: since v2.3.3666 the light's
+           fire IS the campfire (campfireFx adopts it), the point of lighting one */
+        if (/^(monster_|npc_|wheelObject|peer_|player_|campfire$)/.test(label)) continue;
         let b = null;
         try { b = c.getBounds(); } catch (e) { /* none */ }
         if (!b || b.width < 2 || b.x > px + 120 || b.x + b.width < px - 120 || b.y > py + 90 || b.y + b.height < py - 170) continue;
@@ -203,8 +205,12 @@ const PAGE_TOOLS = () => {
     const S = window._gameState.current;
     const me = R.playerDisplayRaw();
     const fig = (k) => { try { const f = window[k] ? window[k]() : null; return f && f.visible ? { x: f.x, y: f.y } : null; } catch (e) { return null; } };
+    /* v2.3.3684: the fire-lighter's own frame (its probe, __btFireFigure().fi),
+       so the report names its frames 0-7 and not the hidden body's */
+    let fireK = null;
+    try { const f = window.__btFireFigure ? window.__btFireFigure() : null; if (f && f.visible && typeof f.fi === 'number') fireK = f.fi; } catch (e) { /* none */ }
     return {
-      t: G.held, pose: me ? me._animPose || null : null, frame: me ? me._animFrame : null,
+      t: G.held, pose: fireK != null ? 'fire' : (me ? me._animPose || null : null), frame: fireK != null ? fireK : (me ? me._animFrame : null),
       facing: S._renderFacing || S._facing || null, bodyVisible: !!(me && me.visible),
       bodySprite: !!(me && me._spriteBody && me._spriteBody.visible),
       standInBody: S._standInBody === true, swing: !!S._swordSwinging, bow: !!S.autoAttack,
@@ -628,8 +634,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
                hidden while the light is photographed, on a build with the
                switch, so its yellows are never read as the tee */
             await page.evaluate(() => (window.__btCampfireHide ? window.__btCampfireHide(true) : null)).catch(() => {});
-            const t0 = await page.evaluate(() => Date.now());
-            await sweep(outfit, 'fire', 'south', t0, 1800, 60);
+            /* v2.3.3684: from the light's own start (its frames are 67 ms each,
+               the light over in about half a second: a sweep from "now" began
+               part way through and photographed three of its eight frames) */
+            const t0 = await page.evaluate(() => { const fm = window._gameState.current._firemaking; return (fm && fm.startedAt) || Date.now(); });
+            await sweep(outfit, 'fire', 'south', t0, 1800, 30);
             await page.evaluate(() => (window.__btCampfireHide ? window.__btCampfireHide(false) : null)).catch(() => {});
           }
           await end(outfit, 'fire');

@@ -4166,6 +4166,25 @@ remnant to migrate server-side, not a mode to preserve.
       the art -> 16, frames 3-6's thigh 693/852/884/792 -> 84/71/167/438;
       frame 2's thigh stays (its greaves are painted in another kneel);
       `mp-firegear` (in the world now) counts it: docs/specs/fire-greaves.md.
+    - since v2.3.3684 HIS HEAD IN FRONT, NO TROUSERS UNDER HIS GREAVES -- the
+      owner: "head needs to be removed and pasted on top of armor torso layer
+      ... also remove pants (olive green) ... frame 6 is particularly bad -
+      armor legs need to shift leftward":
+      - the plate and the T-shirt have no picture where his head is (their
+        fire-south.png cut by tools/gear/fire_head_front.py, `--check`;
+        GEARLAYER_VER 1039): on frame 2 the plate's collar crossed his mouth;
+      - under greaves he is baked without his own trousers and boots
+        (playerSkins `_standInLegless`), as the cook's and lumberjack's legless
+        strips: yours as your greaves are (`_fireWantLegless`, again as they
+        change), a peer's by theirs (`_peerFigure`);
+      - frame 6's greaves 20 left and 4 up (FIRE_GEAR_REG `[35, 8]`): its bare
+        trousers 437 -> 5 art px;
+      - the glow-lit trousers of frames 6-7 are trousers (`_standInGlowLegs`),
+        and the log's glow-lit end is wood (toolRecolor `isLitToolKey`);
+      - `?firelegless=0`, `?firelit=0`, `window.__btFireLegless()`; mp-ghostaudit's
+        fire light 15 frames leaking up to 133 px -> 3 of 9 px (the campfire the
+        light leaves is no leftover: `label 'campfire'`), `mp-firegear`:
+        docs/specs/fire-head-legs.md.
     - since v2.3.3623 AN ARMOURED ANGLER'S HANDS ARE GAUNTLETS -- the owner:
       "The fishing animation gets messed up around the hands when the
       character is wearing torso armor": the fish pose's top overlay
