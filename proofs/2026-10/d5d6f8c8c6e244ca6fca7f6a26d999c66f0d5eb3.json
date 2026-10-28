@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d5d6f8c8c6e244ca6fca7f6a26d999c66f0d5eb3",
+  "tree": "7a8deb3035a9677f9cf0dcd39096d22b257cbf2b",
+  "committedAt": "2026-10-28T12:00:34-07:00",
+  "subject": "What a phone, tablet or computer needs once the performance work is done (v2.3.3720) (#1199)",
+  "files": 6739,
+  "bytes": 775995619,
+  "listingSha256": "5ad16623fa878dbe3ff832a80ff85d720c699572c02cd6a82e7387ed5f6cfdd0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
