@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "752dc95b63700ba7dcca67aa2192dd8aba0689db",
+  "tree": "c3973dae3213243cd7264dc2551399c78614e13b",
+  "committedAt": "2026-10-28T14:15:31-07:00",
+  "subject": "On a slow phone, the way in no longer loads the old town's map (v2.3.3729) (#1206)",
+  "files": 6761,
+  "bytes": 787005580,
+  "listingSha256": "734371f485e696c2830d44880eeac2808b4a9747c32458564ddfdea9c75693e3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
