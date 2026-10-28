@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b1691ea74b04e893024fd12b6b5695c34229d3f6",
+  "tree": "b233350f8519fcd1612ac04b99c23e0bfa32d453",
+  "committedAt": "2026-10-28T15:28:03-07:00",
+  "subject": "The arena plan: a window to bet items and gold on a fight, like trading (v2.3.3756) (#1224)",
+  "files": 6801,
+  "bytes": 794712314,
+  "listingSha256": "942a4f872f20d4cfacddeb2c4a620a66830ea58a6d1cc9dd8886f53e6e486520",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
