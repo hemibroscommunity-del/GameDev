@@ -232,7 +232,15 @@ export const movementMethods = {
        (_handleProg3Allocate) and re-clamped on every read (_prog3Pts).
        prog3.test.mjs pins the arithmetic against the client's constants. */
     const _moveMult = (ps.prog3 && typeof this._prog3MoveMult === 'function') ? this._prog3MoveMult(ps) : 1;
-    return { spdCap: _spdCap, moveMult: _moveMult };
+    /* ═══ v2.3.3776: ...AND FOR A RIDE THE WORKER ITSELF ACCEPTED ═══
+       The skateboard (ride.js): RIDE.MULT while the worker has you on the
+       board, folded in HERE so every bound that reads this -- the move
+       budget, the follow, the glide's cap (movepath.js), the join's judge
+       (lastplace.js) -- agrees by construction (lane D's review).  Read from
+       the worker's own `ps._ride`, never a move's field; 1 dead, off the
+       board or with the kill switch thrown (_rideK). */
+    const _rideK = typeof this._rideK === 'function' ? this._rideK(ps) : 1;
+    return { spdCap: _spdCap, moveMult: _moveMult * _rideK };
   },
 
   /* v2.3.3325: a move the budget could not cover goes on being followed
@@ -533,10 +541,7 @@ export const movementMethods = {
     /* v2.3.3006: is this move a sprint step the worker pays for (sprint.js)?
        Asked of every move, so a zone change or a first move never leaves an
        earlier step's mark to be billed. */
-    /* v2.3.3776: ...or a ride (ride.js RIDE.MULT, while the worker has you
-       on the board): the larger of the two, never their product */
-    const _sprintK = Math.max(typeof this._sprintK === 'function' ? this._sprintK(ps, msg, _now) : 1,
-      typeof this._rideK === 'function' ? this._rideK(ps) : 1);
+    const _sprintK = typeof this._sprintK === 'function' ? this._sprintK(ps, msg, _now) : 1;
     /* v2.3.3325: where this move is judged from -- the worker's own place in
        this zone, or, coming back into the Wheel, where the player left it
        (MOVE_BUDGET above, "THE BYPASSES") -- and where it puts them */
@@ -610,7 +615,7 @@ export const movementMethods = {
           if (_gust > 0) this._spendGust(ps, _gust);
           /* ...and on between the phone's moves (_tickMoveFollow), at the
              walk's bound: a sprint is billed by its moves, not by the tick */
-          ps._mvFollow = { x: msg.x, y: msg.y, z: newZone, rate: MOVE_BUDGET.SPEED_PX * _spdCap * _moveMult * (ps._ride ? Math.max(1, _sprintK) : 1) /* v2.3.3776: a board rolls on at its own pace */ };
+          ps._mvFollow = { x: msg.x, y: msg.y, z: newZone, rate: MOVE_BUDGET.SPEED_PX * _spdCap * _moveMult };
           if (!this._mvFollowing) this._mvFollowing = new Set();
           this._mvFollowing.add(session.id);
           this._mvTally('followed');

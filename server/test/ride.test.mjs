@@ -139,19 +139,29 @@ async function step(dx, gapMs, extra) {
 }
 
 // ── 3. THE BOUND ──────────────────────────────────────────────────────────
-/* 200 ms from an empty budget: walking 500 px/s -> 100 px; riding x1.6 -> 160 */
+/* 200 ms from an empty budget: walking 500 px/s -> 100 px; riding x2 -> 200 */
 {
   await fresh();
-  check('3. on foot, a 150 px step in 200 ms is not taken whole', (await step(150, 200)) === false, { x: ps.x });
+  check('3. on foot, a 190 px step in 200 ms is not taken whole', (await step(190, 200)) === false, { x: ps.x });
   await fresh();
   await ride(true);
   ps.lastMoveAt = T; ps._mvBudget = 0; ps._mvBudgetAt = T;
-  check('3. on the board the same step is taken', (await step(150, 200)) === true, { x: ps.x, ride: ps._ride });
+  check('3. on the board the same step is taken', (await step(190, 200)) === true, { x: ps.x, ride: ps._ride });
   ps._mvBudget = 0; ps._mvBudgetAt = T;
-  check('3. ...but by RIDE.MULT and no more (a 175 px step is not)', (await step(175, 200)) === false, { x: ps.x });
+  check('3. ...but by RIDE.MULT and no more (a 215 px step is not)', (await step(215, 200)) === false, { x: ps.x });
+  check('3. the owner\'s "about twice as fast as run speed"', RIDE.MULT === 2);
   await ride(false);
   ps._mvBudget = 0; ps._mvBudgetAt = T;
-  check('3. off the board the walking bound is back', (await step(150, 200)) === false, { x: ps.x });
+  check('3. off the board the walking bound is back', (await step(190, 200)) === false, { x: ps.x });
+  /* no sprint on the board: a marked move is not a sprint step, and the
+     bound is the board's alone, never the board's times the sprint's */
+  await fresh();
+  await ride(true);
+  ps.lastMoveAt = T; ps._mvBudget = 0; ps._mvBudgetAt = T;
+  check('3. on the board a sprint-marked move is no sprint (no stacking: 215 px still refused)', (await step(215, 200, { sp: 1 })) === false && !ps._sprintAt, { x: ps.x, spr: ps._sprintAt });
+  check('3. every bound reads the ride through _moveSpeedK (the glide and the join\'s judge too)', room._moveSpeedK(ps).moveMult === RIDE.MULT);
+  await ride(false);
+  check('3. ...and 1 off the board', room._moveSpeedK(ps).moveMult === 1);
 }
 
 // ── 4. WHAT ENDS IT ───────────────────────────────────────────────────────
@@ -210,7 +220,7 @@ async function step(dx, gapMs, extra) {
   room._liveFlags = { ride: false };
   check('4. the kill switch: no board on the wire at once', room._rideWire(ps) === false);
   ps.lastMoveAt = T; ps._mvBudget = 0; ps._mvBudgetAt = T;
-  const took = await step(150, 200);
+  const took = await step(190, 200);
   check('4. ...and the next move is judged on foot and ends the ride (`off`)', took === false && ps._ride === false && lastRide().why === 'off', { took, last: lastRide() });
   room._liveFlags = {};
 }
@@ -259,6 +269,20 @@ async function step(dx, gapMs, extra) {
   C.rideApply(S, { on: false, why: 'edge' });
   check('6. the worker says off at the edge: on foot, and a line to say why', !C.isRiding(S) && C.rideMult(S) === 1 && /BroTown/.test(C.rideOffLine('edge') || ''), C.rideOffLine('edge'));
   check('6. players never read "Wheel" in a line', RIDE.WHY.every((w) => !/wheel/i.test(C.rideOffLine(w) || '')));
+  /* the stance: sideways in the stand pose, a push facing forward on setting
+     off and every PUSH_EVERY_MS (game/ride.js rideLook) */
+  const st = {};
+  const L = C.RIDE_LOOK;
+  const t0 = 1000000;
+  const a0 = C.rideLook(st, 'east', true, t0);
+  check('6. setting off going east: a push, the jog facing east', a0.pose === 'jog' && a0.facing === 'east' && a0.push === true, a0);
+  const a1 = C.rideLook(st, 'east', true, t0 + L.PUSH_MS + 10);
+  check('6. ...then the glide: the stand pose, sideways (facing south, to the camera)', a1.pose === 'stand' && a1.facing === 'south', a1);
+  const a2 = C.rideLook(st, 'east', true, t0 + L.PUSH_EVERY_MS + 5);
+  check('6. ...and a push again PUSH_EVERY_MS later', a2.pose === 'jog' && a2.facing === 'east', a2);
+  check('6. going north the board runs up and down and he faces east across it', C.rideLook({}, 'north', false, t0).facing === 'east');
+  check('6. on a diagonal he faces the diagonal across it, toward the camera', C.rideLook({}, 'southeast', false, t0).facing === 'southwest' && C.rideLook({}, 'northeast', false, t0).facing === 'southeast');
+  check('6. standing still on the board: the sideways stand, no push', C.rideLook({}, 'west', false, t0).pose === 'stand');
 }
 
 Date.now = realNow;

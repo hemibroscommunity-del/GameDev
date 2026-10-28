@@ -23,7 +23,7 @@
  */
 
 /* MIRROR: server/src/ride.js RIDE.MULT */
-export const RIDE_MULT = 1.6;
+export const RIDE_MULT = 2.0;   /* the owner: "about twice as fast as run speed" */
 /* a tap that waits on the worker's answer this long is given up (the button
    comes back to "get on") */
 export const ASK_MS = 2500;
@@ -135,4 +135,45 @@ export function rideOffLine(why) {
 /** A forgotten board on a fresh join (the worker forgets it too). */
 export function clearRide(S) {
   if (S) S._ride = null;
+}
+
+/* ═══ v2.3.3776: HOW A RIDER STANDS -- SIDEWAYS, WITH A PUSH ═══
+ * The owner: "I also don't know if it's better to just use the idle bro
+ * sideways staying positions or if jog legs can be used to 'push' every once
+ * in a while (or just constantly)".  The orchestrator's call, one switch here
+ * if the owner prefers another: he glides in the idle STAND pose standing
+ * SIDEWAYS on the board, as a skater does -- the board going east or west,
+ * he faces south (to the camera); north or south, he faces east; on a
+ * diagonal, the diagonal across it that faces the camera -- and PUSHES: when
+ * he sets off, and every PUSH_EVERY_MS while he rolls, he turns to face the
+ * way he goes and plays PUSH_MS of the jog's legs.
+ *   PUSH: false      never pushes (always the sideways glide)
+ *   PUSH_EVERY_MS: 0 pushes all the time (the jog's legs, facing forward)
+ * Drawn by entityRenderer for you and for every rider the tick names; the
+ * facing the phone SENDS stays the way you go (S._renderFacing), so each
+ * phone turns it once. */
+export const RIDE_LOOK = Object.freeze({ PUSH: true, PUSH_EVERY_MS: 2000, PUSH_MS: 400 });
+
+const ACROSS = Object.freeze({
+  east: 'south', west: 'south',
+  north: 'east', south: 'east',
+  southeast: 'southwest', northwest: 'southwest',
+  northeast: 'southeast', southwest: 'southeast',
+});
+
+/** The rider's pose and facing this frame.  `st` is the figure's own little
+    record (kept on its display), `facing` the way it goes (8-way), `moving`
+    whether it rolls. */
+export function rideLook(st, facing, moving, now) {
+  const L = RIDE_LOOK;
+  const across = ACROSS[facing] || 'south';
+  if (!moving) { st.was = false; st.pushUntil = 0; return { pose: 'stand', facing: across, push: false }; }
+  if (L.PUSH && L.PUSH_EVERY_MS <= 0) return { pose: 'jog', facing: facing, push: true };
+  if (L.PUSH && (!st.was || now >= (st.nextAt || 0))) {
+    st.pushUntil = now + L.PUSH_MS;
+    st.nextAt = now + L.PUSH_EVERY_MS;
+  }
+  st.was = true;
+  if (L.PUSH && now < (st.pushUntil || 0)) return { pose: 'jog', facing: facing, push: true };
+  return { pose: 'stand', facing: across, push: false };
 }

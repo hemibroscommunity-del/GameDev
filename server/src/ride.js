@@ -23,11 +23,13 @@
  * 1), no storage key, and a reconnect or a worker restart drops the board --
  * the phone forgets it too (wsClient: a fresh join is off the board).
  *
- * THE SPEED.  While `ps._ride`, the walk's bound (movement.js) is judged at
- * RIDE.MULT -- faster than a sprint's 1.33 -- in the budget, the follow and
- * the glide's cap (movepath.js).  A rider does not sprint (the phone stops
- * the sprint when you get on); if a move were both, the larger of the two
- * counts, never their product (movement.js _sprintK).
+ * THE SPEED.  While `ps._ride`, the walk's bound is judged at RIDE.MULT --
+ * twice the walk (the owner: "about twice as fast as run speed"), stacking
+ * with the potion and the move stat as the walk does -- folded into
+ * movement.js _moveSpeedK, so the budget, the follow, the glide's cap
+ * (movepath.js) and the join's judge agree by construction.  A rider does
+ * not sprint: the phone stops the sprint when you get on, and the worker
+ * pays for no sprint step while riding (sprint.js _sprintAllowed).
  *
  * WHAT ENDS IT (_rideEnd, each telling the rider):
  *   - an accepted move off the safe ground (wheelzone.js _wheelSafeAt, the
@@ -59,7 +61,7 @@
 export const RIDE = {
   /* the walk on the board: faster than a sprint (SPRINT.MULT 1.33) --
      MIRROR: src/game/ride.js RIDE_MULT (mirror-audit.test.mjs pins the pair) */
-  MULT: 1.6,
+  MULT: 2.0,   /* v2.3.3776: the owner, "It can maybe be about twice as fast as run speed" (1.6 first) */
   /* the least time between two toggles the worker takes; a quicker one is
      answered `soon` and changes nothing */
   TOGGLE_MS: 400,
@@ -128,6 +130,7 @@ export const rideMethods = {
     }
     ps._ride = true;
     ps._ridePid = pid;
+    ps._mp = undefined;   /* a glide noted at the walk's pace stops here (movepath.js; lane D) */
     this.dirtyPlayers.add(pid);   /* the others draw the board (tick.js brd) */
     this._rideSend(pid, { on: true, why: null });
     return true;
@@ -140,16 +143,18 @@ export const rideMethods = {
     const id = pid || ps._ridePid || null;
     ps._ride = false;
     ps._ridePid = undefined;
+    ps._mp = undefined;   /* a glide noted at the board's pace stops here (movepath.js; lane D) */
     if (id && this.dirtyPlayers) this.dirtyPlayers.add(id);
     this._rideSend(id, { on: false, why: why || 'asked' });
     return false;
   },
 
-  /* The bound's factor for this move (movement.js): RIDE.MULT on the board.
-     The kill switch ends the ride here, on the rider's next move. */
+  /* The walk's factor on the board, read by movement.js _moveSpeedK and so
+     by every bound (the budget, the follow, the glide, the join's judge).
+     A pure read: 1 off the board, dead or dying, or with the kill switch
+     thrown -- the ride itself is ended by _rideOnMove. */
   _rideK(ps) {
-    if (!ps || !ps._ride) return 1;
-    if (this._rideOff()) { this._rideEnd(ps, 'off'); return 1; }
+    if (!ps || !ps._ride || ps.dead || ps.dying || this._rideOff()) return 1;
     return RIDE.MULT;
   },
 
@@ -158,6 +163,7 @@ export const rideMethods = {
      fight.  One property read when nobody rides. */
   _rideOnMove(pid, ps, zoneChanged) {
     if (!ps || !ps._ride) return null;
+    if (this._rideOff()) return this._rideEnd(ps, 'off', pid);
     if (zoneChanged) return this._rideEnd(ps, ps.z === 'wheel' ? 'zone' : 'edge', pid);
     if (ps.dying || ps.dead) return this._rideEnd(ps, 'dead', pid);
     if (ps.z !== 'wheel' || !this._wheelSafeAt(ps.x, ps.y)) return this._rideEnd(ps, 'edge', pid);

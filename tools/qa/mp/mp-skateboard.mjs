@@ -136,6 +136,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await B.page.screenshot({ path: join(OUT, `skateboard-dir-${i}.png`), clip: box }).catch(() => {});
       for (const key of ways[i]) await B.page.keyboard.up(key);
     }
+    /* a ride as frames, for the owner: setting off east (the push), the
+       glide, then a turn north up the open square (another push), every
+       ~180 ms -- short legs: the board covers ~1,000 px a second */
+    await H.glideTo(B, G.arrival.x - 700, G.arrival.y + 140, { speed: 600, timeoutMs: 15000 });
+    await B.page.waitForTimeout(700);
+    const shotAt = async (n) => {
+      const box = await B.page.evaluate(() => { const c = document.querySelector('canvas').getBoundingClientRect(); return { x: c.left + c.width / 2 - 110, y: c.top + c.height / 2 - 150, width: 220, height: 240 }; });
+      await B.page.screenshot({ path: join(OUT, `skateboard-ride-${String(n).padStart(2, '0')}.png`), clip: box }).catch(() => {});
+    };
+    let fr = 0;
+    await shotAt(fr++);
+    await B.page.keyboard.down('d');
+    for (let i = 0; i < 5; i++) { await B.page.waitForTimeout(150); await shotAt(fr++); }
+    await B.page.keyboard.up('d');
+    await B.page.keyboard.down('w');
+    for (let i = 0; i < 4; i++) { await B.page.waitForTimeout(150); await shotAt(fr++); }
+    await B.page.keyboard.up('w');
+    await B.page.waitForTimeout(300);
+    await shotAt(fr++);
     await B.page.waitForTimeout(500);
     await B.page.keyboard.press('z');
     const zOff = await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === false, { timeout: 5000, label: 'Z off' }).catch(() => null);

@@ -11,13 +11,25 @@ get off." And on the owner's list (docs/OWNER-LIST-2026-10-26.md, item 26):
 - In BroTown and its safe commons, a round button with the board on it. A tap
   gets you on, a tap again gets you off. On a computer the button shows too,
   wearing **Z**, and Z does the same.
-- On the board you roll at **1.6x** your walk (a sprint is 1.33x). There is
-  no sprint while riding: the board is the faster.
+- On the board you roll at **twice** your walk (the owner: "It can maybe be
+  about twice as fast as run speed"; a sprint is 1.33x), stacking with the
+  speed potion and the move stat as the walk does. There is no sprint while
+  riding: the board is the faster.
 - The board is drawn under your boots, in the owner's three views: from above
   going north or south, from the side going east or west, angled on the
-  diagonals (mirrored for south-west and north-east). The body keeps its
-  standing pose. A jump lifts the board with your feet (an ollie), and it
-  stays level in a lean or a flip.
+  diagonals (mirrored for south-west and north-east). A jump lifts the board
+  with your feet (an ollie), and it stays level in a lean or a flip.
+- **How he stands** (the owner: "I also don't know if it's better to just use
+  the idle bro sideways staying positions or if jog legs can be used to
+  'push' every once in a while (or just constantly)"; the orchestrator's
+  call): SIDEWAYS in the idle stand pose, like a skater -- the board going
+  east or west, he faces south (to the camera); north or south, he faces
+  east; on a diagonal, the diagonal across it that faces the camera -- and he
+  PUSHES: setting off, and every 2 s while he rolls, he turns to face the way
+  he goes for 0.4 s of the jog's legs. One switch, `RIDE_LOOK` in
+  `src/game/ride.js`: `PUSH: false` never pushes, `PUSH_EVERY_MS: 0` pushes
+  all the time. The facing a phone sends stays the way you go; each phone
+  turns it (entityRenderer, `rideLook`).
 - Everyone near you sees you on your board.
 - You get off, with one short line, when you:
   - roll out of BroTown's safe ground ("Off the board: boards stay in BroTown.")
@@ -39,11 +51,15 @@ get off." And on the owner's list (docs/OWNER-LIST-2026-10-26.md, item 26):
   ground (`wheelzone.js` `_wheelSafeAt`, where IT has you), alive, and not in a
   duel, a race, a harvest, a pose, a roll or a block; a toggle within 400 ms of
   the last is answered `soon`.
-- **The speed**: while `ps._ride`, the walk's bound is judged at `RIDE.MULT`
-  (1.6) in the move budget, the follow and the glide's cap (`movement.js`,
-  `movepath.js`); with a sprint the larger of the two counts, never both.
-  The phone's `RIDE_MULT` (`src/game/ride.js`) mirrors it
-  (`mirror-audit.test`).
+- **The speed**: while `ps._ride`, `RIDE.MULT` (2.0) is folded into
+  `movement.js` `_moveSpeedK`'s `moveMult`, so every bound that reads it -- the
+  move budget, the follow, the glide's cap (`movepath.js`), the join's judge
+  (`lastplace.js`) -- agrees by construction (lane D's review). `_rideK` is a
+  pure read of the worker's own `ps._ride` (1 dead, off the board or switched
+  off). No sprint on the board: the worker pays for no sprint step while you
+  ride (`sprint.js` `_sprintAllowed`), so the two never multiply. Getting on
+  or off clears a glide in flight (`ps._mp`). The phone's `RIDE_MULT`
+  (`src/game/ride.js`) mirrors it (`mirror-audit.test`).
 - **What ends it on the worker**: an accepted move off the safe ground, out of
   the world or a zone change; death (`_handlePlayerDeath`); a hit that lands
   (`combat.js` `_applyDamage`, after the dodge); a fighting, gathering or
@@ -111,5 +127,7 @@ added to their figure when they get on and destroyed when they get off.
   - Z on and off;
   - the button on no other control, upright and sideways.
 
-  Pictures: `tools/qa/mp/out/skateboard-*.png`; the owner's sheet is
-  `docs/specs/skateboard/`.
+  Pictures: `tools/qa/mp/out/skateboard-*.png`; the owner's are in
+  `docs/specs/skateboard/`: the 8 directions, a ride as frames and a GIF
+  (`ride.gif`: setting off with a push, the sideways glide, a turn), and the
+  button upright, sideways and on a computer.
