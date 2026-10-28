@@ -10,7 +10,8 @@ import { achvLive, achvApTotal } from '../../game/achievements.js';   /* v2.3.35
 import { ACHV_MEDAL_SRC } from '../../data/achievements.js';         /* v2.3.3553: the owner's medal */
 import { apRise, apWords, apGainWords } from '../../game/apChip.js';  /* v2.3.3553 */
 import { dashboardPanelBus } from './dashboardPanelBus.js';            /* v2.3.3553: the AP opens its page */
-import { onXpBar, xpBarShown, xpGainWords } from '../../game/xpBar.js'; /* v2.3.3695: the XP bar */
+import { onXpBar, xpBarShown, xpGainWords, xpToNextWords } from '../../game/xpBar.js'; /* v2.3.3695: the XP bar */
+import { XpTrack } from './XpTrack.jsx';                                  /* v2.3.3739: its white gain bar and "45 / 120" */
 import { XP_BAR_ICONS, XP_BAR_LABELS } from './xpBarArt.js';           /* v2.3.3695: its skill pictures */
 
 /* ═══ v2.3.2892: WHAT TIME IT IS, NEXT TO WHERE YOU ARE ═══
@@ -237,7 +238,9 @@ export const ZoneHeader = ({ onExit }) => {
   const apBump = apRises.current;
   /* v2.3.3695: the XP bar -- the skill that last earned, while it is up */
   const xb = S._xpBar || null;
-  const xpOn = xpBarShown(xb, Date.now());
+  /* (QA only: `window.__btXpHold` keeps it up while a slow box takes its
+     picture, as __btLevelUpFreeze pins the level-up burst; mp-xpbar) */
+  const xpOn = xpBarShown(xb, Date.now()) || (!!xb && typeof window !== 'undefined' && window.__btXpHold === true);
   const openAchievements = (e) => {
     if (e) e.stopPropagation();
     /* no focus ring left on it once the page is open (a key pressed next
@@ -336,8 +339,9 @@ export const ZoneHeader = ({ onExit }) => {
         {/* ═══ v2.3.3695: THE XP BAR, IN THE TITLE'S PLACE WHILE YOU EARN ═══
             The owner: "an XP Popup and an Xp bar to appear with the icon of
             whatever primary combat skill you're earning Xp in ... Then
-            disappears again."  The skill's picture, its level, a bar filled to
-            the next level, and the gain popping over the bar -- the worker's
+            disappears again."  The gain, the skill's picture, its level, a bar
+            filled to the next level (v2.3.3739: the gain left of the picture,
+            a white bar ahead of the gold, "45 / 120" on it) -- the worker's
             numbers (game/xpBar.js), here for XP_BAR_SHOW_MS after the last
             gain.  OVER the title, which stays in the page under it (the zone
             banner's dock target, read exactly; the long press to the test
@@ -347,15 +351,18 @@ export const ZoneHeader = ({ onExit }) => {
           <div className={'bt-xp-bar' + (xpOn ? ' is-on' : '') + (xb.up ? ' is-up' : '')} data-xp-bar={xb.cat}
             data-xp-level={xb.level} data-xp-frac={xb.frac.toFixed(3)} data-xp-shown={xpOn ? '1' : '0'}
             role="img" aria-hidden={xpOn ? undefined : true}
-            aria-label={`${XP_BAR_LABELS[xb.cat] || 'Skill'} level ${xb.level}, ${Math.round(xb.frac * 100)}% to the next`}>
-            <img className="bt-xp-bar__icon" src={XP_BAR_ICONS[xb.cat]} alt="" draggable={false} />
-            <span className="bt-xp-bar__lv">Lv {xb.level}</span>
-            <span className="bt-xp-bar__track">
-              <span className="bt-xp-bar__fill" style={{ transform: `scaleX(${xb.frac})` }} />
+            aria-label={`${XP_BAR_LABELS[xb.cat] || 'Skill'} level ${xb.level}, ${xpToNextWords(xb.xp, xb.need)} XP to the next`}>
+            {/* v2.3.3739: the "+3 XP" pops LEFT of the picture, in its own
+                slot, so it never covers the bar (the owner: "put the plus xp
+                to the left of the weapon icon so you can still see the bar") */}
+            <span className="bt-xp-bar__gainslot">
               {xpOn && xb.gain > 0 ? (
                 <span key={'g' + xb.seq} className="bt-xp-gain" data-xp-gain={xb.gain}>{xpGainWords(xb.gain)}</span>
               ) : null}
             </span>
+            <img className="bt-xp-bar__icon" src={XP_BAR_ICONS[xb.cat]} alt="" draggable={false} />
+            <span className="bt-xp-bar__lv">Lv {xb.level}</span>
+            <XpTrack bar={xb} />
           </div>
         ) : null}
         </div>
