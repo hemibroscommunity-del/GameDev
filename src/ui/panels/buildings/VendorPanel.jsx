@@ -119,7 +119,9 @@ export function VendorPanel(props) {
           WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation'
         }
       }, React.createElement("img", {
-        src: '/icons/ui/bldg-exchange.webp', alt: '', draggable: false,
+        /* v2.3.3688: the market stall (was the scales: the owner, "When I see
+           scales I think of law instead of a store") */
+        src: '/icons/ui/panel-shop.webp', alt: '', draggable: false,
         style: { width: 34, height: 34, objectFit: 'contain', flexShrink: 0 },
         onError: function onError(e) { e.currentTarget.style.display = 'none'; }
       }), React.createElement("span", { style: { minWidth: 0 } },

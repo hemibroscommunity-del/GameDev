@@ -8,7 +8,7 @@
    bldg-* set); `icon` emoji kept as the render fallback.  farmhome
    reuses bldg-farm (same building family, different location). */
 export const TOWN_BUILDINGS = [
-  { id: 'marketplace', bx: 2,  by: 2,  bw: 5, bh: 4, label: 'MARKETPLACE',  icon: '🏪', iconSrc: '/icons/ui/bldg-exchange.webp?v=2.3.1224', desc: 'Buy and sell items',    action: 'exchange', color: '#5b52ff' },
+  { id: 'marketplace', bx: 2,  by: 2,  bw: 5, bh: 4, label: 'MARKETPLACE',  icon: '🏪', iconSrc: '/icons/ui/panel-shop.webp', desc: 'Buy and sell items',    action: 'exchange', color: '#5b52ff' },
   { id: 'auctionhouse', bx: 33, by: 2, bw: 5, bh: 4, label: 'AUCTION HOUSE', icon: '⚖', iconSrc: '/icons/ui/bldg-auction-gavel.webp?v=2.3.3526' /* v2.3.3526: the owner's sheet's gavel (card 11, "Sheet's is clearer"): the market stall could have been any shop */, desc: 'Buy and sell with players', action: 'auctionhouse', color: '#3dd497' },
   { id: 'bank',        bx: 9,  by: 33, bw: 5, bh: 4, label: 'BANK',         icon: '🏦', iconSrc: '/icons/ui/bldg-bank.webp?v=2.3.1224',     desc: 'Safe item storage',     action: 'bank',     color: '#f5c542' },
   { id: 'enchanting',  bx: 33, by: 33, bw: 5, bh: 4, label: 'ENCHANTER',    icon: '✨', iconSrc: '/icons/ui/bldg-enchant.webp?v=2.3.1224',  desc: 'Slot gems into gear',   action: 'enchant',  color: '#a78bfa' },
