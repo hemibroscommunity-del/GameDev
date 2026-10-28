@@ -3610,9 +3610,11 @@ console.log("the buildings' doors (v2.3.3032)");
        chisel, the Feed & Seed its window's sprout, the General Store a shop --
        each at the address the game already uses it at, so one copy held --
        and the Land Office the barn again (its window's), which the Feed & Seed
-       no longer wears */
-    ok('...each the very picture the building\'s window or the old town\'s door wore, at the same address (one copy held), but the three changed to say what the building is (v2.3.3678)',
-      differ.join() === 'gemcutter,feedseed,store'
+       no longer wears.  v2.3.3688: the General Store's door and window wear
+       the stall too (the owner: "When I see scales I think of law instead of
+       a store"), so it no longer differs */
+    ok('...each the very picture the building\'s window or the old town\'s door wore, at the same address (one copy held), but the two changed to say what the building is (v2.3.3678); the store\'s door the stall too (v2.3.3688)',
+      differ.join() === 'gemcutter,feedseed'
         && WHEEL_BUILDING_ICONS.gemcutter === '/icons/ui/skill-gemcutting.webp?v=2.3.1224'
         && WHEEL_BUILDING_ICONS.feedseed === '/icons/ui/skill-farming.webp?v=2.3.1224'
         && WHEEL_BUILDING_ICONS.store === '/icons/ui/panel-shop.webp'
