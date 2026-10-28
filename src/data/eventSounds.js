@@ -138,8 +138,13 @@ export const EVENT_SOUNDS = {
      "goblin fall is just the label of the file I want to use for when the
      character's jump lands".  v2.3.3680 had put it on the roll, which keeps
      its rush of air again (dodgeRoll); it was the bare thud slowed to a low
-     thump, ~0.4. */
-  jumpLand: [['jump-land', 0, 0, own('jump-land'), 1]],
+     thump, ~0.4.
+     v2.3.3732: SOFTER -- the owner: "The landing sound effect after a jump is
+     too harsh."  The same recording at 0.6 of its level (-4.4 dB, ~0.33 on
+     the scale above) and played at 0.85 of its speed: 2.8 semitones down, so
+     the overtones the cutter laid over the thump (its bright top) sit lower
+     and darker, and the thump is a touch longer and rounder.  No new file. */
+  jumpLand: [['jump-land', 0, 0, own('jump-land', 0.6), 0.85]],
   /* v2.3.3682: the double jump's flip -- the owner's recording ("I just
      uploaded the second jump (flip) sound effect", 563530 "sfx jump flip"),
      ~0.5: a whoosh as you tuck and go over; yours and another player's */

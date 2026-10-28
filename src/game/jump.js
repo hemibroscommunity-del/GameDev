@@ -158,7 +158,8 @@ export function jumpLook(j, now, land, across) {
   if (t >= 0 && t < 1) {
     /* v2.3.3682: a flip is the roll's somersault (entityRenderer draws the
        dodge frames, FLIP_FRAMES): its own tuck, so no stretch or lean on top */
-    if (j.flip) return { air: true, t, lift: jumpHeight(j, now), ky: 1, kx: 1, rot: 0, flip: true };
+    /* v2.3.3732: ...drawn FLIP_BODY_K larger, about the feet (jumpFx) */
+    if (j.flip) return { air: true, t, lift: jumpHeight(j, now), ky: FLIP_BODY_K, kx: FLIP_BODY_K, rot: 0, flip: true };
     const ky = jumpStretchAt(t);
     return { air: true, t, lift: jumpHeight(j, now), ky, kx: jumpWidthFor(ky), rot: JUMP_LEAN * jumpLeanAt(t) * ax };
   }
@@ -443,6 +444,16 @@ export const FLIP_SPRINT_BOOST = 1.35;
    3-5 the tuck going round, 6 the crouch coming out, 7 rising, 8 the stand),
    and where in the flip each gives way to the next */
 export const FLIP_FRAMES = Object.freeze([2, 3, 4, 5, 6]);
+/* ═══ v2.3.3732: THE FLIP DRAWN LARGER ═══
+   The owner: "The flipped body is too small (looks about 40% too small)."
+   Measured on the sheets: the tumble's frames are drawn at the standing
+   figure's own scale (the same head, 13-22 px of radius against 18-19
+   standing; as many opaque pixels a frame), but curled up -- 85-103 px tall
+   on the tuck frames against 186-194 standing -- so on screen it read as a
+   smaller bro.  The whole figure (body, armour, head pieces) is drawn this
+   much larger through the flip, about the feet (jumpFx, which holds the name
+   plate unscaled): the owner's 40%. */
+export const FLIP_BODY_K = 1.4;
 export const FLIP_FRAME_AT = Object.freeze([0.16, 0.36, 0.56, 0.78]);
 
 /** The flip's grade at phase p of the jump: 0..1 (0 outside the window). */

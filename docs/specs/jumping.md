@@ -723,3 +723,47 @@ under the disc; clear of every control and the dashboard), `mp-jump`,
 `mp-tapact`, `mp-tapstance`, `mp-doublejump`, `mp-questline`, and the UI
 review's control screens. `mp-rbutton` and `mp-joyfade` expected the stick's
 JUMP face at rest, gone since v2.3.3712: they now expect the weapon.
+
+## v2.3.3732: the flip polished -- a solid head, the hat turns with it, larger, no "Perfect!", a softer landing
+
+The owner, playing the jump: "The double jump head is transparent and needs at
+least the hat rotated to match the head during the flip. The landing sound
+effect after a jump is too harsh. You can remove the 'perfect!' after a well
+timed jump. The flipped body is too small (looks about 40% too small)."
+
+- **The see-through head** (in armour): the armoured body is baked with the
+  body under the plates erased (`maskedBake.js`), keeping the top third of the
+  figure as "the head".  On the tumble's handstand and tuck the head is at the
+  BOTTOM, upside down, so it was erased too and the ground showed through it.
+  The bake now gives the head back on a roll frame, from the body as drawn, in
+  a circle round where that frame's head is (`flipHead.js`).  Bare-chested it
+  was never see-through; the head pieces were missing (below).
+- **The head pieces turn with the head**: they were hidden for the whole roll
+  (`_placeTrait`: the roll sheets record no head, and the topmost pixel is a
+  boot).  `flipHead.js` has the head's centre and turn on every roll frame
+  (measured by `tools/qa/flip_head_track.py`: the skin the steel plate's own
+  roll frame leaves uncovered, its largest blob; its turn from the line from the
+  figure's middle to the head; two south frames where the head is hidden set by
+  hand).  While a flip draws, each piece -- the hat, its hair mask, the hair,
+  the beard, the glasses, the eyes -- is placed as it sits standing on that
+  facing, then carried to the tumble's head and turned with it.  Another
+  player's flip the same.  The ground roll keeps them hidden, as it always has.
+- **Larger**: the tumble's frames are drawn at the standing figure's own scale
+  (the same head; as many opaque pixels a frame) but curled up, 85-103 px tall
+  on the tuck frames against 186-194 standing.  The whole figure is drawn
+  `FLIP_BODY_K` (1.4, the owner's 40%) larger through the flip, about the feet
+  (`jumpLook` -> `jumpFx`, which holds the name plate unscaled).
+- **No "Perfect!"**: the words are gone; the well-timed flip still carries you
+  further (its grade and boost are unchanged).
+- **The landing, softer**: the owner's "goblin fall" (`jumpLand`) at 0.6 of its
+  level (-4.4 dB) and 0.85 of its speed (2.8 semitones down, its bright top
+  lower and darker, the thump a touch longer).  The same file, the same Sound
+  Studio label.
+
+**Checked:** test-world-core (the flip 1.4x, evenly; no "Perfect!" pushed);
+`mp-doublejump` (no "Perfect!" at the sweet spot; the carry unchanged);
+`mp-jump`; the ghost audit's new `flip` family (BT_GHOST_ONLY=flip,
+BT_GHOST_DIRS=east,south,north) bare and in the full set, bare-headed and in a
+top hat: no body colour through the armour (one bare-headed frame shows a
+straight 14 px row under the figure, not the body's shape; none in the hat
+run).  Before/after: `docs/specs/flip-polish/`.

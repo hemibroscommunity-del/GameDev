@@ -15,7 +15,8 @@
  *   2. a second press near the sweet spot (70-85% of the jump: a timer here
  *      can be late by a slow frame, so the press is made again until it lands
  *      there, up to five times) flips: in the air
- *      longer, "Perfect!" over him, and it carries him much further (more than
+ *      longer, NO "Perfect!" over him (v2.3.3732: the owner, "You can remove
+ *      the 'perfect!' after a well timed jump"), and it carries him much further (more than
  *      1.5x the plain jump); drawn with the ROLL's somersault -- the dodge
  *      pose, its tumble frames (2-6), lifted;
  *   3. a third press in the air does nothing ("flipped");
@@ -199,8 +200,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const r1 = await runFrom([0.72], { tag: 'sweet', accept: [0.68, 0.86] });
       const dodgePoses = r1.poses.filter((p) => p.pose === 'dodge');
       const tumble = dodgePoses.filter((p) => FLIP_FRAMES.includes(p.frame) && p.lift > 0);
-      rec.ok(`2. a second press at the sweet spot (${r1.at.join(',')} of the jump, attempt ${attempts.sweet}) flips (${r1.why.join(',')}): graded ${r1.lastFlip && r1.lastFlip.grade.toFixed(2)}, "Perfect!" ${r1.perfect}, in the air ${r1.run && r1.run.airMs} ms (plain ${r0.run && r0.run.airMs})`,
-        r1.ok && r1.why[0] === 'ok' && r1.flips === 1 && !!r1.lastFlip && r1.lastFlip.grade >= 0.8 && r1.perfect && !!r1.run && r1.run.flip && r1.run.airMs > 1.3 * r0.run.airMs, { ...r1, attempts: attempts.sweet });
+      rec.ok(`2. a second press at the sweet spot (${r1.at.join(',')} of the jump, attempt ${attempts.sweet}) flips (${r1.why.join(',')}): graded ${r1.lastFlip && r1.lastFlip.grade.toFixed(2)}, no "Perfect!" (${r1.perfect ? 'said' : 'none'}), in the air ${r1.run && r1.run.airMs} ms (plain ${r0.run && r0.run.airMs})`,
+        r1.ok && r1.why[0] === 'ok' && r1.flips === 1 && !!r1.lastFlip && r1.lastFlip.grade >= 0.8 && !r1.perfect && !!r1.run && r1.run.flip && r1.run.airMs > 1.3 * r0.run.airMs, { ...r1, attempts: attempts.sweet });
       rec.ok(`2. ...and carries him ${r1.run && Math.round(r1.run.dist)} px, ${r1.run && r0.run ? (r1.run.dist / r0.run.dist).toFixed(2) : '?'}x the plain jump's`,
         !!r1.run && !!r0.run && r1.run.dist > 1.5 * r0.run.dist, { r1: r1.run, r0: r0.run });
       rec.ok(`2. ...drawn with the roll's somersault: ${dodgePoses.length} of ${r1.poses.length} flip samples in the dodge pose, ${tumble.length} on its tumble frames (${[...new Set(tumble.map((p) => p.frame))].join(',')}), lifted`,
