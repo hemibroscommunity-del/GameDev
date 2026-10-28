@@ -892,6 +892,31 @@ Screens: lazy-cantopen
 
 Sources: src/ui/lazyPanel.js, src/ui/lazyPanels.js, docs/specs/worker-code-diet.md, tools/qa/mp/mp-lazyfail.mjs
 
+## The Town Hall's board and the map pins
+Screens: building-townhall, building-townhall-page
+
+**What it is for:** One place that says everything there is to do in the world and where it is, for a new player (and a judge) who does not know the game yet. The owner, 2026-10-28: "at the town hall it was just a big menu board of all the things to do (dungeon, gambling, arena, woodworking, etc) with a page that describes what each thing does and pin drop you can put on the map to go to the one you want (two pins can be active at once - red pin and blue pin). When you "enter it" it brings up the board."
+
+**Decisions, and why:**
+- **The board is the Town Hall's window (v2.3.3766)**: a grid of tiles (picture and name) under five plain headings, Fight, Explore the lands, Make, Money and trade, People. Only what is built and reachable today, and only what this server opens (the Hotel, Lil Bro's race, the Beastmaster and each dungeon wait for their server's word), so no tile leads nowhere. The list is `src/data/townBoard.js`.
+- **The pictures are the ones the game already shows**: each building's map icon (the one its Enter button wears), each land's element, the dungeon and duel icons. No new art. Lil Bro's race had none, so it wears the jump button's.
+- **A page per tile**: what it is and what you do there, what you get, the level or cost (numbers from the code, never invented), and where it is in words ("In BroTown, north of the square"; "West of BroTown"). Then two big buttons, Red pin and Blue pin.
+- **Two pins, red and blue, both up at once**: pressing one puts it on this place, moving it from wherever it was; pressing it again here lifts it ("Lift red pin"). A tile wears its pins in its corner and in its border's colour. They stay until lifted, per character, on the device (the orchestrator's recommendation; the owner can change it).
+- **The pins on the maps**: on the minimap, the pin's point on the place, or (off the box) a smaller pin riding its edge on the line to the place, as your party does, so the minimap always says which way. On the world map, at every zoom, over the gold road, and at the screen's edge when off it.
+- **Places are found where they stand**, never written down: a building's door, a townsperson, a dungeon's way in, a land's first stretch. A pin keeps the board's name for the place, so it can never point at a stale spot.
+- **No man's land is a tile without pins** (the orchestrator's call): it is every land past the safe ground, not one place, so its page says what it is (fights between players, the skulls, what you lose) and "Where: everywhere outside BroTown's safe ground", with no pin buttons. Its level words stay general while its levels are being changed.
+- **The Leaderboard and the World map stay**, as two small buttons at the board's foot: the trophy case and the painted map were the owner's earlier choice (v2.3.3258).
+- On a computer the words say "click" and the board flows into more columns in the wide layout.
+
+**Please don't suggest:**
+- Pins written as map coordinates, or a pin per townsperson's quest (the quest pins already do that).
+- A third pin colour, or pins that clear themselves, without the owner.
+
+**Still open:**
+- A pin cannot yet be lifted from the map itself, only from the board.
+
+Sources: src/data/townBoard.js, src/game/mapPins.js, src/game/mapPinPlaces.js, src/ui/panels/buildings/TownBoard.jsx, src/rendering/systems/wheelMinimap.js, src/ui/WorldMapOverlay.jsx, tools/qa/mp/mp-townboard.mjs
+
 ## Building doors and the Enter button
 Screens: near-door
 
@@ -1258,7 +1283,7 @@ Screens: building-bank, building-exchange, building-auctionhouse
 Sources: CLAUDE.md, docs/specs/auction-house.md, docs/specs/marketplace.md, docs/specs/store-offers.md, docs/specs/store-chat.md, docs/specs/building-rooms.md, docs/specs/wheel-doors.md, docs/TRAPS.md (§88), src/ui/panels/buildings/BankPanel.jsx, src/ui/panels/buildings/ExchangePanel.jsx, src/ui/panels/buildings/VendorPanel.jsx, src/ui/panels/buildings/StorePanel.jsx
 
 ## The halls: Saloon, Post Office, Sheriff, Guild Hall, Town Hall, Hotel, arena
-Screens: building-party, building-post, building-sheriff, building-guildhall, building-townhall, building-hotel, building-arena
+Screens: building-party, building-post, building-sheriff, building-guildhall, building-hotel, building-arena
 
 **What it is for:** The halls are BroTown's buildings that open onto systems the game already had: teaming up (Saloon), mail and friends' messages (Post Office), duels and the arena (Sheriff's Office), skill guilds (Guild Hall), the leaderboard and world map (Town Hall), and a night's rest (Hotel). The arena window is the gladiator tournament, opened from the Sheriff's Office.
 
@@ -1272,7 +1297,7 @@ Screens: building-party, building-post, building-sheriff, building-guildhall, bu
 - **Guild Hall:** that row, plus "Skill guilds" (your rank in each life skill's guild, and its quests). Every player is in every skill guild, ranked by that skill's level.
 - **Post Office:** "Your mail", every delivery of this visit (sales, refunds, trade payouts, rewards, and what came while you were away), newest first, each item named as the bag names it ("2× Garden Stew", "4× Copper Bar"; v2.3.3481, the UI review: it read "2× Meal garden stew") and a key the bag has no name for read as words ("3× Black steel ore"), and gold with the top bar's thousands separator ("+2,500 gold"); nothing new is stored. Then "Messages from friends" (the Social window; a friend reads it when they next come in).
 - **Sheriff's Office:** "Duel a player" (the player list; tap someone, then Duel on their card) and "The arena". There is no bounties row: bounties are funded only by threats, which are switched off.
-- **Town Hall (v2.3.3258):** given its picture and asked what it should do, the owner chose a Town Hall window over drawing the room behind Mayor Bro's dialogue or leaving it waiting. Its two rows are the two things the picture shows: the trophy case is the Leaderboard, the painted map on the wall the World map. Mayor Bro opens it too, once he has no quest for you. Its Enter button is out of reach where a new character arrives, so nobody starts with it showing.
+- **Town Hall (v2.3.3258):** given its picture and asked what it should do, the owner chose a Town Hall window over drawing the room behind Mayor Bro's dialogue or leaving it waiting. Its two rows are the two things the picture shows: the trophy case is the Leaderboard, the painted map on the wall the World map. Mayor Bro opens it too, once he has no quest for you. Its Enter button is out of reach where a new character arrives, so nobody starts with it showing. Since v2.3.3766 it is the board of everything to do, with those two at its foot: its own section below.
 - **The arena window** (its own since v2.3.3258): the gladiator tournament, 100 gold to enter, up to 8 in a bracket gathered for 60 s, a prize of 250 a gladiator (8 → 2,000, since v2.3.3178), backing a fighter from a shared pool. No room picture behind it: none exists yet, and it is not the Sheriff's Office. Its title wears the owner's gladiator helmet (their icon pick 2a, v2.3.3481); it wore the Saloon's beer mug, left over from when the arena lived in the Saloon. The Saloon's own window keeps the mug. The champion also gets the Gladiator title and 500 achievement points: the window always promised the points and no server paid them until v2.3.3481, when the owner said "an arena winner should be included". They come with the gold (in the Post Office: "+2,000 gold and 500 AP"), and the window and the champion box name them only when the server pays them; an older server pays the gold alone. Since v2.3.3527 the 500 AP is the Gladiator achievement and the FIRST win's only (a later win pays its gold and counts on the achievement's row): the window says "Your first win also earns the Gladiator achievement and its 500 AP; later wins pay the gold.", and the Post Office names it, "Gladiator achievement", beside the gold. Paid on every win, a second account in a two-player bracket made 500 every few minutes.
 - **The Hotel opens with a real rest (v2.3.3539).** The owner: "I value SIMPLICITY and INTELLIGIBILITY" (the after-review list). It stood shut while its rest would have been the farm bed's, which only the phone believed: the phone filled its own bars, which the server's next update put back, and a "+10% XP" the server never paid. The server pays the rest now. The window says what a night does ("fills your health, stamina and mana, and makes you Well Rested: +10% combat XP for 30 minutes. Free."), or how long Well Rested has left, over one row, Rest. Rest closes the window, and the answer is said over your bro ("Fully Rested!", "+10% combat XP for 30 min", or why not: "Can't rest in a fight", "You just rested"). Free, because the town's Hotel and your own farm's bed should be worth the walk back, not a gold sink. "Combat XP" because that is all it adds to: a fight's XP, never a quest's or a life skill's. With the Pumpkin Pie the two add up (+20%). The farm's bed is the same rest. Well Rested is a "Rested" chip with the other timed effects at the top left; the old badge at the top right lay over the minimap.
 - **Halls are not building visits**: Mayor Bro's "visit 3 buildings" counts only the buildings proper.

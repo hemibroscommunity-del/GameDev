@@ -658,7 +658,20 @@ export const STATES = [
   building('post', 'Post Office', 'The Post Office: your mail and friends\' messages.'),
   building('sheriff', "Sheriff's Office", "The Sheriff's Office: the player list (duels start from a player's card) and the arena sign-up."),
   building('guildhall', 'Guild Hall', 'The Guild Hall: a row saying clans are parties now (made in the Saloon), and the skill guilds.'),
-  building('townhall', 'Town Hall', 'The Town Hall: the leaderboard and the world map.'),
+  building('townhall', 'Town Hall', 'The Town Hall (v2.3.3766): the board of everything to do in the world, under five headings, the leaderboard and the world map at its foot.'),
+  /* v2.3.3766: a page of the board -- the arena's, with its two pins */
+  building('townhall', 'Town Hall: a page', 'A page of the Town Hall\'s board (v2.3.3766): what the arena is, where it is, and the Red pin and Blue pin buttons.', {
+    id: 'building-townhall-page',
+    run: async ({ P }) => {
+      const ok = await evalIn(P, (p) => { if (!window.__btBuildingWindow) return false; window.__btBuildingWindow.open(p); return true; }, 'townhall');
+      if (!ok) return 'no building-window probe';
+      for (let i = 0; i < 30; i++) {
+        const hit = await evalIn(P, () => { const t = document.querySelector('[data-board-tile="arena"]'); if (t) { t.click(); return true; } return false; });
+        if (hit) break;
+        await wait(P, 200);
+      }
+    },
+  }),
   building('hotel', 'Hotel', 'The Hotel (v2.3.3539): a free rest -- full health, stamina and mana, and Well Rested, +10% combat XP for 30 minutes -- paid by the server.'),
   building('arena', 'Gladiator Arena', 'The arena window (from the Sheriff\'s Office).'),
   {
