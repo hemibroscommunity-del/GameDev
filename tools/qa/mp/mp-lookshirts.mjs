@@ -72,6 +72,7 @@ async function memoryTrip(P, browser, way, rec) {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
+  if (process.env.LS_PICTURE) return picture({ browser, wsPort, webPort, rec });
   const report = { oracle: null, wide: null, memory: {} };
 
   if (!process.env.LS_NEW_ONLY) {
@@ -153,5 +154,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (said.length) console.log('    page said: ' + said.slice(0, 12).join('\n      '));
     writeFileSync(join(OUT, 'lookshirts.json'), JSON.stringify(report, null, 1));
     await B.ctx.close().catch(() => {});
+  }
+}
+
+/* ── LS_PICTURE=1: a picture for the owner -- the same four shirted looks on
+   two phones, the old way (`?lookpalette=0`) and the new, each cropped round
+   the player (tools/qa/mp/out/lookshirts-<way>-<n>.png) ── */
+const PICTURE = [
+  { color: 'red', pattern: 'stripe-v:2', front: ART_A, back: ART_B, skin: 'ebony' },
+  { color: 'navy', pattern: 'dots:6', front: null, back: null, skin: 'alabaster' },
+  { color: 'yellow', pattern: '', front: ART_B, back: ART_A, skin: 'green' },
+  { color: 'white', pattern: 'check:9', front: ART_A, back: null, skin: 'default' },
+];
+async function picture({ browser, wsPort, webPort, rec }) {
+  for (const [way, query] of [['old', 'lookpalette=0'], ['new', 'lookpalette=1']]) {
+    const P = await H.newPlayer(browser, { name: 'tee' + way, wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel', query });
+    try {
+      const ok = await inWheel(P);
+      rec.ok(`${way}: in the Wheel (guard)`, !!ok, ok);
+      if (!ok) return;
+      for (let i = 0; i < PICTURE.length; i++) {
+        const L = PICTURE[i];
+        await P.page.evaluate((L) => {
+          window.__btSetSkin(L.skin); window.__btSetShirtColor(L.color); window.__btSetPattern('shirt', L.pattern);
+          window.__btSetArt('shirtFront', L.front || '0'.repeat(256)); window.__btSetArt('shirtBack', L.back || '0'.repeat(256));
+        }, L);
+        await P.page.waitForTimeout(4000);
+        const self = await P.page.evaluate(() => (window.__btSelfSprites() || []).map((x) => x.name + ' ' + x.url));
+        console.log(`    ${way} #${i}: ${self.filter((x) => /Shirt|Body|shadeRef/.test(x)).join(' | ')}`);
+        await P.page.screenshot({ path: join(OUT, `lookshirts-${way}-${i}.png`), clip: { x: 115, y: 250, width: 160, height: 220 } });
+      }
+    } finally {
+      await P.ctx.close().catch(() => {});
+    }
   }
 }

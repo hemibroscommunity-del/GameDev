@@ -39,15 +39,16 @@ export function installShirtProbe(dep) {
     return { art, pattern, tint: L.tint || null, mirror };
   };
   const dressed = (a) => !!(a.art || a.pattern);
-  function cellsFor(L, limit) {
+  /* `old`: the frames the old way draws for this look (a dressed or coloured tee), with no new path asked */
+  function cellsFor(L, limit, old) {
     const cells = [];
     for (const pose of ['stand', 'jog']) for (const dir of DIRS) {
       const n = nFrames(pose, dir);
       for (const mirror of (MIRRORED.indexOf(dir) >= 0 ? [false, true] : [false])) {
         for (let f = 0; f < n && f < (limit || n); f++) {
           const a = lookArgs(L, dir, mirror);
-          const nt = getLookShirtFrame('tshirt', pose, dir, f, a, true);
-          if (!nt) continue;   /* white and plain: the shipped sheet, both ways */
+          const nt = old ? null : getLookShirtFrame('tshirt', pose, dir, f, a, true);
+          if (old ? !(dressed(a) || a.tint) : !nt) continue;   /* white and plain: the shipped sheet, both ways */
           const ot = dressed(a) ? getShirtLookFrame('tshirt', pose, dir, f, a) : getGearFrame('shirt', 'tshirt', pose, dir, f);
           cells.push({ pose, dir, f, mirror, ot, nt, tint: dressed(a) ? null : a.tint, a });
         }
@@ -60,7 +61,7 @@ export function installShirtProbe(dep) {
     const t0 = Date.now();
     for (const pose of ['stand', 'jog']) for (const dir of DIRS) await preloadGearSheet('shirt', 'tshirt', pose, dir);
     for (;;) {
-      const pending = cellsFor(L).filter((c) => !c.ot).length;
+      const pending = cellsFor(L, 0, true).filter((c) => !c.ot).length;
       if (!pending) return true;
       if (Date.now() - t0 > timeoutMs) return false;
       await new Promise((r) => setTimeout(r, 100));
@@ -126,7 +127,7 @@ export function installShirtProbe(dep) {
     const done = [];
     for (const L of looks) {
       if (way === 'old') await baked(L);
-      const cells = cellsFor(L).map((c) => ({ ...c, t: way === 'old' ? c.ot : c.nt }));
+      const cells = cellsFor(L, 0, way === 'old').map((c) => ({ ...c, t: way === 'old' ? c.ot : c.nt }));
       render(cells, (c) => c.t, 0.25, 36, 32, way === 'old');
       for (const c of cells) if (c.t) srcs.add(c.t.source);
       done.push({ frames: cells.length });

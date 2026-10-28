@@ -37,7 +37,7 @@ ONCE, as numbers, and the chip paints the look as it draws:
   bits), its high byte the frame + 1; the table the colours sorted by role
   (0 the outline and shading a print never touches, 1 the lit fabric), then
   five entries a frame: its packed cell, its pattern anchor, its print box. The
-  layout is the old path's packed cells. 88 KB to download, 0.2 MB on the
+  layout is the old path's packed cells. 88 KB to download, 0.6 MB on the
   chip, once.
 - **The look's row** (entries 8-31 the shirt's, 128-159 its drawing, P0's
   `LOOK_ROW_RANGES`): 8 the tint, 9 the pattern's colour, 10 its tile's size,
