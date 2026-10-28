@@ -66,8 +66,13 @@ import { encode, decode } from '../png.mjs';
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const OUT = path.join(REPO, 'public/sprites/look');
-const POSES = ['stand', 'jog'];
+/* v2.3.3750: every pose the body draws through getBodyFrame, in the facings
+   each is authored in (playerSprites.js POSE_DIRS) -- the walk and the sprint
+   are the jog's sheets, the roll and the flip the dodge's, the hit taken hit's */
+const POSES = ['stand', 'jog', 'hit', 'dodge', 'mine', 'fish', 'pickup'];
 const DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
+const POSE_DIRS = { dodge: ['east', 'south'], mine: ['south'], fish: ['south'], pickup: ['south'] };
+export const dirsOf = (pose) => POSE_DIRS[pose] || DIRS;
 const PORT = Number(process.env.ROLE_BAKE_PORT || 5197);
 const CHECK = process.argv.includes('--check');
 /* ROLE_BAKE_PROBE=jog-east:948,53 -- one display texel's story, for debugging a bake */
@@ -88,7 +93,8 @@ export function sheetHash(pose, dir) {
 export function codeHash() {
   const h = crypto.createHash('sha1');
   for (const f of ['src/rendering/playerSkins.js', 'src/rendering/garmentConfine.js', 'src/rendering/spriteScale.js',
-    'src/rendering/eyeMask.json', 'src/rendering/playerDecal.js']) h.update(fs.readFileSync(path.join(REPO, f)));
+    'src/rendering/eyeMask.json', 'src/rendering/playerDecal.js',
+    'src/rendering/toolRecolor.js', 'src/rendering/toolWood.js'])   /* v2.3.3750: + the rod's pine and the pickaxe's wood */ h.update(fs.readFileSync(path.join(REPO, f)));
   return h.digest('hex').slice(0, 16);
 }
 
@@ -120,8 +126,25 @@ async function pageBake({ pose, dir, probeAt }) {
   c0.getContext('2d').drawImage(up, 0, 0);
   const d = c0.getContext('2d').getImageData(0, 0, W, H).data;
   /* buildBodySheet's own call, argument for argument */
-  const run = (L) => PS.recolorBodyToCanvas(img, L.s || null, L.p || null, L.b || null, null, 256,
-    L.e || null, EYE_MASK[sheet], null, undefined, pose === 'jog', null, false, null, false, false);
+  /* v2.3.3750: buildBodySheet's own call for every pose -- the jog's steadied
+     drawing, the fish's boots under its legs, the pickaxe's wood -- and the
+     rod's pine after it, only where the FILE has the key (its _fileKeyMask) */
+  const TR = await import('/rendering/toolRecolor.js');
+  let fileKey = null;
+  if (pose === 'fish') {
+    const k = document.createElement('canvas'); k.width = W; k.height = H;
+    const kg = k.getContext('2d', { willReadFrequently: true });
+    kg.imageSmoothingEnabled = false;
+    kg.drawImage(up, 0, 0);
+    fileKey = TR.toolKeyMask(kg.getImageData(0, 0, W, H).data, W, H);
+    k.width = 0; k.height = 0;
+  }
+  const run = (L) => {
+    const cv = PS.recolorBodyToCanvas(img, L.s || null, L.p || null, L.b || null, null, 256,
+      L.e || null, EYE_MASK[sheet], null, undefined, pose === 'jog', null, pose === 'fish', null, false, pose === 'mine');
+    if (fileKey) TR.recolorToolKeyCanvas(cv, TR.TOOL_SPECS.rod, 1, fileKey);
+    return cv;
+  };
   const disp = (full) => {
     let c = SS.bakeDisplayCanvas(full, srcH);
     if (pose === 'jog' && dir === 'northeast') c = SP.stripDetachedComponents(c, frames);
@@ -143,7 +166,10 @@ async function pageBake({ pose, dir, probeAt }) {
     for (let k = 0; k < 3; k++) if (Math.abs(o[i + k] * a / 255 - rgb[k] * a / 255) > 1.01) return false;
     return true;
   };
-  const keepRGB = (i) => [d[i], d[i + 1], d[i + 2]];
+  /* v2.3.3750: a KEPT pixel is what the bake leaves whatever the look -- the
+     art's colour, or the rod's pine painted over it: the default look's output */
+  const f0 = read(run({}));
+  const keepRGB = (i) => [f0[i], f0[i + 1], f0[i + 2]];
   const roleOut = (i, r, L) => (r === 0 ? keepRGB(i) : retint(i, r === 1 ? L.s : r === 2 ? L.p : L.b, REF[r]));
   const role = new Uint8Array(W * H);
   let unexplained = 0, ambiguous = 0;
@@ -181,7 +207,10 @@ async function pageBake({ pose, dir, probeAt }) {
     }
   }
   /* the table: one entry per (role, colour), sorted by role; entry 0 is see-through */
-  const keyOf = (p) => role[p] * 4294967296 + ((d[p * 4] << 24) >>> 0) + (d[p * 4 + 1] << 16) + (d[p * 4 + 2] << 8) + d[p * 4 + 3];
+  const keyOf = (p) => {
+    const c = (role[p] & 3) === 0 ? f0 : d;   /* v2.3.3750: a kept entry's colour is the bake's (keepRGB) */
+    return role[p] * 4294967296 + ((c[p * 4] << 24) >>> 0) + (c[p * 4 + 1] << 16) + (c[p * 4 + 2] << 8) + d[p * 4 + 3];
+  };
   const keys = new Map();
   const nw = ds === 1 ? DW : W, nh = ds === 1 ? DH : H;
   const srcOf = new Int32Array(nw * nh).fill(-1);
@@ -290,6 +319,11 @@ async function pageBake({ pose, dir, probeAt }) {
       let m = 0;
       for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(got[k] - want[k]));
       check.texels++;
+      /* v2.3.3750: the old fish bake re-tests the rod's hue AFTER the
+         retint, so a boot pixel inside the file's key turns to pine for a
+         look whose boots land in that hue (2 texels of the 1.57 million, a
+         tan boot): counted apart, not copied -- the file says it is a boot */
+      if (fileKey && m > 1.5 && fileKey[(2 * y + oy) * W + 2 * x + ox]) { check.toolFlip = (check.toolFlip || 0) + 1; continue; }
       if (m > check.max) check.max = +m.toFixed(2);
       if (m > 1.5) check.over1++;
     }
@@ -350,7 +384,7 @@ async function main() {
     await page.goto(`http://localhost:${PORT}/__rolebake`);
     if (!CHECK) fs.mkdirSync(OUT, { recursive: true });
     for (const pose of POSES) {
-      for (const dir of DIRS) {
+      for (const dir of dirsOf(pose)) {
         const t0 = Date.now();
         const r = await page.evaluate(pageBake, { pose, dir, probeAt: PROBE_AT });
         if (r.probe) console.log(JSON.stringify(r.probe));
@@ -360,7 +394,7 @@ async function main() {
         if (!ok) bad++;
         console.log(`${ok ? 'ok  ' : 'BAD '} ${name.padEnd(15)} ds ${r.ds}  ${String(r.w).padStart(4)}x${r.h}+${tableRows}  ${String(r.entries).padStart(5)} colours`
           + `  roles ${r.counts.join('/')}  unexplained ${r.unexplained}  ambiguous ${r.ambiguous}  pick ${r.pick}, ${r.split} split`
-          + `  check ${r.check.texels} texels, ${r.check.over1} over 1, max ${r.check.max}  (${Date.now() - t0} ms)`);
+          + `  check ${r.check.texels} texels, ${r.check.over1} over 1, max ${r.check.max}${r.check.toolFlip ? ', ' + r.check.toolFlip + ' rod flips' : ''}  (${Date.now() - t0} ms)`);
         out.sheets[name] = { ds: r.ds, frames: r.frames, w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends,
           cells: r.cells, split: r.split, art: sheetHash(pose, dir), bytes: png.length };
         const file = path.join(OUT, name + '.png');
@@ -390,7 +424,7 @@ function hashes() {
   if (!fs.existsSync(file)) { console.log('no ' + path.relative(REPO, file)); return 1; }
   const m = JSON.parse(fs.readFileSync(file, 'utf8'));
   const stale = [];
-  for (const pose of POSES) for (const dir of DIRS) {
+  for (const pose of POSES) for (const dir of dirsOf(pose)) {
     const e = m.sheets[`${pose}-${dir}`];
     if (!e || e.art !== sheetHash(pose, dir)) stale.push(`${pose}-${dir}`);
   }
