@@ -138,7 +138,9 @@ export const movePathMethods = {
         continue;
       }
       const t = Math.min(Math.max(0, now - g.at), MOVE_PATH.HORIZON_MS);
-      const nx = g.x + g.vx * t, ny = g.y + g.vy * t;
+      /* to a tenth of a px, as a phone sends its place (BroTown.jsx): every
+         phone near is sent it, and a long fraction is bytes for nothing */
+      const nx = Math.round((g.x + g.vx * t) * 10) / 10, ny = Math.round((g.y + g.vy * t) * 10) / 10;
       if (nx !== ps.x || ny !== ps.y) {
         ps.x = nx; ps.y = ny;
         g.lx = nx; g.ly = ny;
