@@ -280,7 +280,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
           banner: zb && zb.shownAt ? zb.shownAt('nml-1') : 0,
           chat: (S.chatLog || []).filter((l) => /No man's land 1/.test(l.text || '')).map((l) => l.text),
           bar: sub ? sub.textContent : null,
-          /* v2.3.3629: the minimap's box and its name plate, beside which the badge stands */
+          /* v2.3.3765: the top bar's title, right of which the badge stands */
+          title: (() => { const q = document.querySelector('[data-zone-title]'); const x = q && q.getBoundingClientRect(); return x ? { l: Math.round(x.left), r: Math.round(x.right) } : null; })(),
+          header: (() => { const q = document.querySelector('.bt-zone-header'); const x = q && q.getBoundingClientRect(); return x ? { t: Math.round(x.top), b: Math.round(x.bottom) } : null; })(),
+          /* v2.3.3629: the minimap's box and its name plate, beside which the badge stood */
           mini: window.__btWheelMini ? { l: window.__btWheelMini.left, t: window.__btWheelMini.top } : null,
           plateBox: window.__btWheelPlate ? { t: window.__btWheelPlate.top, b: window.__btWheelPlate.top + window.__btWheelPlate.height } : null,
           badge: b ? { n: b.getAttribute('data-nml-badge'), text: b.textContent, mid: Math.round(r.left + r.width / 2 - innerWidth / 2),
@@ -315,11 +318,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
        minimap where it lists the zone and level range"): its right edge just
        left of the minimap's box, its middle level with the plate, a 44 px
        target, on the screen */
+    /* v2.3.3765: IN THE TOP BAR, just right of the title (the owner: "just
+       to the right of the Brotown name at the top"), a target the bar's height
+       (34 px, as the AP's; mp-nmltopbar measures every width) */
     const tb = t && t.badge;
-    const mid = tb ? (tb.t + tb.bt) / 2 : null;
-    rec.ok(`1. ...the badge just left of the minimap (${t && t.mini && tb ? t.mini.l - tb.r : '?'} px from its box), level with its name plate (middle ${mid} in ${t && t.plateBox ? t.plateBox.t + '-' + t.plateBox.b : '?'}), a ${tb && tb.h} px target`,
-      !!tb && !!t.mini && !!t.plateBox && tb.r <= t.mini.l - 2 && t.mini.l - tb.r <= 10 && mid >= t.plateBox.t && mid <= t.plateBox.b
-        && tb.h >= 44 && tb.l >= 0, { tb, mini: t && t.mini, plate: t && t.plateBox });
+    rec.ok(`1. ...the badge in the top bar just right of the title (${t && t.title && tb ? tb.l - t.title.r : '?'} px from it), a ${tb && tb.h} px target`,
+      !!tb && !!t.title && !!t.header && tb.l >= t.title.r && tb.l - t.title.r <= 14 && tb.t >= t.header.t && tb.bt <= t.header.b
+        && tb.h >= 34 && tb.l >= 0, { tb, title: t && t.title, header: t && t.header });
     rec.ok(`1. ...and the minimap's name plate shows the level band, the badge saying No man's land ("${t && t.bar}")`, !!t && t.bar === BAND, t && t.bar);
   }
   await shot(A, '1-told');

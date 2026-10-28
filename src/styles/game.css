@@ -2016,6 +2016,38 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
 .bt-zone-header__mid > .bt-zone-header__test{transition:opacity 220ms linear}
 .bt-zone-header__mid--xp > .bt-zone-header__title,
 .bt-zone-header__mid--xp > .bt-zone-header__test{opacity:0}
+/* ═══ v2.3.3765: NO MAN'S LAND'S PILL, RIGHT OF THE TITLE ═══
+   (NmlBadge.jsx NmlPill) The owner: "just to the right of the Brotown name at
+   the top (you can cut it away same as when earning xp in a weapon)".  It
+   takes touches (a tap opens the rules), as the AP chip does; the bar does
+   not.  Cut away with the title under the XP bar.  It never squeezes: the
+   title keeps its box and the purse its column, and on a narrow phone the
+   pill is the smaller size.  Flat fills only: the bar is over the WebGL
+   canvas (TRAPS section 42). */
+.bt-nml-pill{flex:none;position:relative;height:34px;min-width:34px;margin:0;padding:0 1px;
+  display:flex;align-items:center;border:0;background:transparent;cursor:pointer;
+  pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  transition:opacity 220ms linear}
+.bt-nml-pill__body{position:relative;display:flex;align-items:center;gap:3px;
+  padding:1px 7px 1px 3px;border-radius:999px;background:rgba(22,10,10,.9);
+  border:2px solid #FF6B5E;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+.bt-nml-pill__skull{display:block;line-height:0}
+.bt-nml-pill__num{color:#FF6B5E;font:900 17px/1 'Source Sans 3',sans-serif;
+  font-variant-numeric:tabular-nums}
+.bt-nml-pill__own{position:absolute;top:-6px;right:-7px;width:14px;height:14px;
+  border-radius:999px;background:rgba(22,10,10,.94);border:1px solid #FF6B5E;
+  display:flex;align-items:center;justify-content:center;pointer-events:none}
+.bt-zone-header__mid--xp > .bt-nml-pill{opacity:0;pointer-events:none}
+@media (max-width:374px){
+  .bt-nml-pill__body{gap:2px;padding:0 5px 0 2px}
+  .bt-nml-pill__skull svg{width:16px;height:16px}
+  .bt-nml-pill__num{font-size:14px}
+  /* ...and with the owner's TEST MODE tag beside them too (mp-nmltopbar: at
+     320 px the title lost its tail), the hour's icon gives way and the gaps
+     close a little: never the title or the purse */
+  .bt-zone-header__mid:has(> .bt-nml-pill):has(> .bt-zone-header__test){gap:4px}
+  .bt-zone-header__mid:has(> .bt-nml-pill):has(> .bt-zone-header__test) > .bt-zone-header__tod{display:none}
+}
 .bt-xp-bar{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;
   align-items:center;justify-content:center;gap:5px;opacity:0;
   transition:opacity 220ms linear;pointer-events:none}
