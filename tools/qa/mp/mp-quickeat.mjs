@@ -56,7 +56,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const id = await H.readState(P, (S) => S.myId);
   let alive = true;
   const keep = (async () => { while (alive) { await P.page.keyboard.press('Control').catch(() => {}); await P.page.waitForTimeout(20000); } })();
-  const done = async () => { alive = false; await keep.catch(() => {}); await P.ctx.close().catch(() => {}); };
+  /* v2.3.3683: BroTown is safe ground, and since v2.3.3569 the safe ground
+     heals 10% a tick out of a fight -- step 5's hurt was full again before
+     its button was read, and step 6's V had nothing to heal (failing on main
+     from then on).  The safe heal is off for this scenario (its kill switch,
+     the live flag), and back at the end for the scenarios after it. */
+  await H.liveFlag(wsPort, 'safeheal', false);
+  const done = async () => { alive = false; await keep.catch(() => {}); await H.liveFlag(wsPort, 'safeheal', null).catch(() => {}); await P.ctx.close().catch(() => {}); };
   const inWheel = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading, caps: !!(S._serverCaps && S._serverCaps.fishheal) }),
     (v) => v.zone === 'wheel' && !v.loading, { timeout: 90000, label: 'into the Wheel' }).catch(() => null);
   rec.ok('in the Wheel, and the worker advertises caps.fishheal (guard)', !!inWheel && inWheel.caps, inWheel);
