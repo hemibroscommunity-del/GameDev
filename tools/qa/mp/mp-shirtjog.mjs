@@ -62,8 +62,10 @@ const liveFrames = (P, ms) => P.page.evaluate((dur) => new Promise((res) => {
       seen.add(t.__qaId + '@' + t.frame.x + ',' + t.frame.y);
       const r = t.source.resource;
       /* v2.3.2750: a cropped sheet's resource is a packed canvas; gearSheets
-         keeps the decoded file's URL on the source's label */
-      src = String((r && (r.currentSrc || r.src)) || t.source.label || '').split('/').slice(-2).join('/');
+         keeps the decoded file's URL on the source's label.  v2.3.3702: and
+         once kept as an image of itself, the resource's URL is a blob: --
+         the label first */
+      src = String(t.source.label || (r && (r.currentSrc || r.src)) || '').split('/').slice(-2).join('/');
     }
     if (performance.now() - t0 < dur) requestAnimationFrame(tick); else res({ n: seen.size, src });
   };
@@ -133,7 +135,7 @@ const sheetOutline = (P) => P.page.evaluate(() => {
     }
     if (edge) frames.push(dark / edge);
   }
-  const url = String(img.currentSrc || img.src || t.source.label || '');
+  const url = String(t.source.label || img.currentSrc || img.src || '');   /* v2.3.3702: the label first (a kept sheet's image is a blob:) */
   return { src: url.split('/').slice(-2).join('/'), frames };
 });
 

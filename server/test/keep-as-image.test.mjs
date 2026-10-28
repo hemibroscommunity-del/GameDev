@@ -194,5 +194,48 @@ for (const f of ['hairColorCatalog', 'hatColorCatalog', 'facialHairColorCatalog'
   check('7h: keepAsImage.js imports nothing', !/^\s*import\s/m.test(K2), null);
 }
 
+/* ── 8: v2.3.3702 -- asked twice, one PNG; a failure may be asked again;
+   `quiet` sends nothing again to the chip ── */
+{
+  const cv = fakeCanvas(20, 10, 'gear-jog-south');
+  const src8 = fakeSource(cv);
+  const n0 = encodes;
+  const p1 = K.keepAsImage(src8, Cache, { quiet: true });
+  const p2 = K.keepAsImage(src8, Cache, { quiet: true });   /* asked again while it encodes */
+  const [a, b] = await Promise.all([p1, p2]);
+  check('8a: asked twice while it is kept, one PNG and one answer', p1 === p2 && a === true && b === true && encodes - n0 === 1, { same: p1 === p2, a, b, encodes: encodes - n0 });
+  check('8b: quiet: nothing sent again to the chip (its copy there is these pixels)', src8.updates === 0 && src8.resource.tagName === 'IMG' && cv.width === 0, { updates: src8.updates });
+  const c = await K.keepAsImage(src8, Cache, { quiet: true });
+  check('8c: asked again once kept, the same answer and no new PNG', c === true && encodes - n0 === 1, { c, encodes: encodes - n0 });
+  const cv2 = fakeCanvas(8, 8, 'shirt');
+  const src9 = fakeSource(cv2);
+  cv2.failEncode = true;
+  const f1 = await K.keepAsImage(src9, Cache);
+  cv2.failEncode = false;
+  const f2 = await K.keepAsImage(src9, Cache);
+  check('8d: a failure may be asked again (and then kept)', f1 === false && f2 === true && src9.resource.tagName === 'IMG', { f1, f2 });
+  const cv3 = fakeCanvas(8, 8, 'belt');
+  cv3.toBlob = () => { encodes++; throw new Error('tainted'); };
+  const src10 = fakeSource(cv3);
+  const g1 = await K.keepAsImage(src10, Cache);
+  check('8e: an encode that throws at once leaves no answer behind (asked again, tried again)', g1 === false && !src10.__btKeep && src10.resource === cv3, { g1, memo: !!src10.__btKeep });
+}
+
+/* ── 9: v2.3.3702 -- every strip gearSheets packs is kept as an image of itself ── */
+{
+  const G = src('src/rendering/gearSheets.js');
+  const fn = G.slice(G.indexOf('function keepPackedAsImage('), G.indexOf('function keepPackedAsImage(') + 400);
+  check('9a: keepPackedAsImage keeps quietly, handing in Pixi\'s Cache, never under ?gpucopies or __btTrimVerify',
+    /keepAsImage\(src, Cache, \{ quiet: true \}\)/.test(fn) && /KEEP_GPU_COPIES/.test(fn) && /__btTrimVerify === true/.test(fn)
+    && /^import \{ keepAsImage \} from '\.\/keepAsImage\.js'/m.test(G) && /^import \{[^}]*\bCache\b[^}]*\} from 'pixi\.js'/m.test(G), null);
+  const strip = G.slice(G.indexOf('export function loadCroppedStrip('), G.indexOf('/* ═══ v2.3.2791: THE BODY SHEETS, CROPPED'));
+  check('9b: loadCroppedStrip keeps the strip it packs (effects, townsfolk, head pieces)', /keepPackedAsImage\(src\);\s*\n\s*return frames;/.test(strip), null);
+  const slice = G.slice(G.indexOf('export function sliceCropped('), G.indexOf('const _bodyTrimStats'));
+  check('9c: sliceCropped keeps only the packed canvas it made (the body sheets), never the caller\'s',
+    /if \(packed\) \{[\s\S]*keepPackedAsImage\(src\);[\s\S]*\}\s*\n\s*return out;/.test(slice), null);
+  const build = G.slice(G.indexOf('function _buildSheet('), G.indexOf('/** Frame texture for an equipped piece'));
+  check('9d: _buildSheet keeps every walking armour, belt and shirt sheet it builds', /_sheets\[key\] = out;[\s\S]{0,400}keepPackedAsImage\(src\);/.test(build), null);
+}
+
 if (failures) { console.log(`\n${failures} failure(s)`); process.exit(1); }
 console.log('\nall keep-as-image checks passed');

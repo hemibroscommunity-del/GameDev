@@ -68,13 +68,24 @@
  * The second MB is room the line did not have: main's own code read 28.9 and
  * 30.0 MB of sound on two runs of the check the same day (#1148), the higher
  * one already at the old line.
+ *
+ * v2.3.3702, the armour, body and effect sheets kept as images of themselves
+ * (docs/specs/packed-as-images.md): `canvases` 96 -> 56 and `artCache` 156 ->
+ * 112 -- LOWERED, to lock the saving in.  Every strip gearSheets.js packs (the
+ * walking armour, belt and shirt sheets, the body sheets, the effect and
+ * townsfolk strips) is a PNG of itself in an <img> now, its canvas let go of:
+ * at the fight 90.2-93.2 -> 48.1-49.7 MB of canvases on the same day's runs.
+ * `artCache` falls by the same ~42 MB because Pixi kept every texture made
+ * from a canvas in the cache this line reads, keyed by the canvas -- the
+ * canvases were counted twice.  What the browser keeps of those images' decoded
+ * pixels is its to drop under memory pressure, and is in no line.
  */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 156, measured: 147.8,
+  artCache: { name: 'art loaded from files', mb: 112, measured: 102.2,   /* v2.3.3702: 156 -> 112, see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 105, measured: 95.0,
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
-  canvases: { name: 'pictures the game draws itself', mb: 96, measured: 89.9,
+  canvases: { name: 'pictures the game draws itself', mb: 56, measured: 49.7,   /* v2.3.3702: 96 -> 56, see the header */
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 32, measured: 26.0,   /* v2.3.3664: 30 -> 32, see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
