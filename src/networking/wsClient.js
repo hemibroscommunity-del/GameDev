@@ -46,6 +46,8 @@ import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
 import { peerEntrySlim, broCountOf } from '@/networking/broWallet.js'; /* v2.3.3255: the Hemi Bro check, theirs and yours */
+import { setClientOff } from '@/game/clientOff.js'; /* v2.3.3755: each memory saver off from the Test panel */
+import '@/game/clientOffApply.js'; /* v2.3.3755: ...the sound savers switched by it */
 import { MOVE_DIET, dietMayWait, steadyMove, MOVE_PATH, pathMayWait, pathTurned } from '@/game/moveDiet.js'; /* v2.3.3204: a steady walk on the safe ground, half as often; v2.3.3732: + the message diet's path */
 /* v2.3.3732: `?diet=1` (or `?diet=0`) in the address, read as the page loads
    -- before anything tidies the address -- and kept for the tab's reloads
@@ -1521,6 +1523,9 @@ export function setupWebSocket(ctx) {
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
               _capsHere = true;   /* v2.3.3254: this socket's caps (the quiet phone's bundles) */
+              /* v2.3.3755: the memory savers the worker has turned off (game/clientOff.js);
+                 an old worker says nothing, and this phone keeps what it last heard */
+              try { if (typeof S._serverCaps.clientoff === 'string') setClientOff(S._serverCaps.clientoff); } catch (e) { /* the savers as they are */ }
               /* v2.3.3355: a join with a NEW key got in -- the old key kept
                  beside it (key_new below) is no longer needed */
               try { if (isNewKey(S._joinKey || '')) localStorage.removeItem('bt_passphrase_old'); } catch (e) { /* private mode */ }
@@ -1862,6 +1867,14 @@ export function setupWebSocket(ctx) {
             }
           /* v2.3.3732: the message diet's switches, changed live (server
              movepath.js _movePathFlagChanged): the phone's next batch follows */
+          /* v2.3.3755: a memory saver turned off or on for every phone (server
+             clientoff.js): the live ones follow at once, the rest next load */
+          case 'client_off':
+            {
+              if (S._serverCaps) S._serverCaps.clientoff = typeof msg.off === 'string' ? msg.off : '';
+              try { setClientOff(typeof msg.off === 'string' ? msg.off : ''); } catch (e) { /* the savers as they are */ }
+              break;
+            }
           case 'move_path':
             {
               if (S._serverCaps) { S._serverCaps.movepath = !!msg.on; S._serverCaps.pathall = !!msg.all; }
