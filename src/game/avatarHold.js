@@ -39,6 +39,18 @@ function _capMs() {
   return AVATAR_HOLD_CAP_MS;
 }
 
+/** v2.3.3689: while the veil is up, wait for `wait` too.  The worker's
+    state_sync can put a different look on (the first join of a Login Key on
+    a new device, a picker row that had no look yet), and the veil's preload
+    had made the device's old one: that look's pictures are waited for under
+    the same veil.  False when there is no veil up to hold. */
+export function holdForAvatarAlso(S, wait) {
+  const h = S && S._avatarArtHold;
+  if (!h || h.liftedAt || !wait || typeof h._also !== 'function') return false;
+  h._also(wait);
+  return true;
+}
+
 /** Hold the world until `wait` settles (or the cap).  `name` is the veil's
     line ("BroTown").  Returns the hold record, also on S._avatarArtHold. */
 export function holdForAvatar(S, wait, name) {
@@ -67,7 +79,12 @@ export function holdForAvatar(S, wait, name) {
     if (S._avatarArtHold === h) S._avatarArtHold = null;
     try { if (el) el.remove(); } catch (e) { /* gone */ }
   };
-  Promise.resolve(wait).then(() => lift('ready'), () => lift('ready'));
+  /* v2.3.3689: more than one wait (holdForAvatarAlso), lifted when every one
+     has settled, the cap still counted from when the veil went up */
+  let pending = 0;
+  const settle = () => { if (--pending <= 0) lift('ready'); };
+  h._also = (p) => { pending++; Promise.resolve(p).then(settle, settle); };
+  h._also(wait);
   setTimeout(() => lift('cap'), _capMs());
   /* QA (mp-joinflicker): when it went up, when it came down and why */
   try { if (typeof window !== 'undefined') window.__btAvatarHold = h; } catch (e) { /* no window */ }

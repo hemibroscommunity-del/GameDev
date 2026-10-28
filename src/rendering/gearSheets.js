@@ -320,7 +320,22 @@ if (typeof window !== 'undefined') {
 export function loadCroppedStrip(url, n, opts) {
   return new Promise((res, rej) => {
     const im = new Image();
-    im.onload = () => res(im); im.onerror = rej; im.src = url;
+    /* v2.3.3689: `opts.timeoutMs` -- a picture that neither loads nor fails
+       in that time is given up as failed, so the caller's retry asks again:
+       a request that never settles left a head piece's facing bald for the
+       page (TRAPS §257).  The image is told to stop. */
+    let settled = false, timer = 0;
+    const finish = (f, v) => { if (settled) return; settled = true; if (timer) clearTimeout(timer); f(v); };
+    im.onload = () => finish(res, im);
+    im.onerror = (e) => finish(rej, e);
+    if (opts && opts.timeoutMs > 0) {
+      timer = setTimeout(() => {
+        if (settled) return;
+        try { im.onload = null; im.onerror = null; im.src = ''; } catch (e) { /* gone */ }
+        finish(rej, new Error('timeout'));
+      }, opts.timeoutMs);
+    }
+    im.src = url;
   }).then((img) => {
     const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
     const fw = Math.floor(W / n);

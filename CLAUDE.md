@@ -2937,6 +2937,29 @@ remnant to migrate server-side, not a mode to preserve.
         `mp-headkeep` (the canvases emptied after facing south only, a
         rebuild, a refused hat file: blank, blank and never back on the build
         before), TRAPS §253: docs/specs/head-pieces-stay.md.
+    - since v2.3.3689 A HEAD PIECE THAT DOES NOT COME IS ASKED FOR AGAIN --
+      the owner: "I logged in as another character and traits were missing
+      when jogging in certain directions", then "I still see it":
+      - every retry waited for a failure, and a request that STALLS (no
+        answer, no error: a flaky Wi-Fi) never fails, so that facing of that
+        piece was off for the session, the loading screen at its 20 s cap
+        first. A load the game waits on has a TIME LIMIT now, counted as a
+        failure: the pictures and the six colour catalogs' copies
+        (`TRAIT_LOAD_TIMEOUT_MS` 20 s, src/rendering/traits/traitImg.js
+        `loadTraitImg`, loadCroppedStrip's `timeoutMs`), meta.json; the body's
+        placement tables and `crowns.json` start another round instead of
+        giving up for the page; a species facing with no picture hides instead
+        of throwing every frame (TRAPS §257);
+      - a row picked from the list puts its look in the stores before the
+        reload, and the straight-in veil waits for the look state_sync brings
+        (avatarHold `holdForAvatarAlso`, wsClient's `bt-own-look`); your pieces
+        are asked for first;
+      - a worn piece hidden 2.5 s facing a way it ships is asked again and
+        logged once (`trait-hidden`, entityRenderer `_watchOwnHead`);
+        `window.__btTraitCache()`, `?traittimeoutms=`;
+      - eye styles, glasses and the beard are not drawn facing away, by design
+        (the table in the spec); `mp-traitswitch`:
+        docs/specs/head-pieces-ask-again.md.
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:

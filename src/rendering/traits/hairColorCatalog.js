@@ -15,6 +15,7 @@ import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3074
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606 */
 import { recolorHairToCanvas } from '../characterPortrait.js';
 import { recolorEnabled } from './recolorOptions.js';
+import { loadTraitImg } from './traitImg.js';   /* v2.3.3689: a stalled picture is asked for again */
 
 export const HAIR_COLOR_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#5a3a22', target: null },
@@ -115,14 +116,9 @@ const TRAIT_VER = '2.3.3590';   /* v2.3.2174: de-fringe sweep across the trait s
 /* `${hairId}/${colorId}` -> { east:Texture, ... } | 'loading' */
 const _cache = {};
 
-function loadImg(url) {
-  return new Promise((res, rej) => {
-    const im = new Image();
-    im.onload = () => res(im);
-    im.onerror = rej;
-    im.src = url;
-  });
-}
+/* v2.3.3689: a stalled request is given up on and asked again (traitImg.js),
+   so a recolour is never left in the native colour for one facing */
+const loadImg = (url) => loadTraitImg(url);
 
 /* v2.3.1119: cap the recolor cache so a crowded multiplayer zone can't grow it
    without bound (one ~1MB, 5-dir entry per unique hair+colour appearance).  LRU:

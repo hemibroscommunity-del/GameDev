@@ -12,6 +12,7 @@ import { Cache, Texture } from 'pixi.js';
 import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3074 */
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606 */
 import { recolorHairToCanvas } from '../characterPortrait.js';
+import { loadTraitImg } from './traitImg.js';   /* v2.3.3689: a stalled picture is asked for again */
 
 export const SHIRT_COLOR_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#3a5bd0', target: null },
@@ -95,14 +96,9 @@ const TRAIT_VER = '2.3.3590';   /* v2.3.2174: de-fringe sweep across the trait s
 /* `${shirtId}/${colorId}` -> { east:Texture, ... } | 'loading' */
 const _cache = {};
 
-function loadImg(url) {
-  return new Promise((res, rej) => {
-    const im = new Image();
-    im.onload = () => res(im);
-    im.onerror = rej;
-    im.src = url;
-  });
-}
+/* v2.3.3689: a stalled request is given up on and asked again (traitImg.js),
+   so a recolour is never left in the native colour for one facing */
+const loadImg = (url) => loadTraitImg(url);
 
 /* ═══ v2.3.2122: THE FOURTH RECOLOUR CACHE GETS ITS CAP ═══
  * v2.3.1119 bounded the hair, beard and hat caches with this exact code and

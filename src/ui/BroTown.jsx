@@ -295,7 +295,8 @@ import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: shared T1 repor
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId, idForKey } from '@/networking/index.js';
 /* v2.3.1923: the device's character roster — see src/networking/charRoster.js */
-import { rememberChar, ensureChar, activateChar, inRoster, adoptSharedPhrase } from '@/networking/charRoster.js';
+import { rememberChar, ensureChar, activateChar, inRoster, adoptSharedPhrase, readRoster } from '@/networking/charRoster.js';   /* v2.3.3689: + readRoster, the picked row's look */
+import { applyCharacterRecord } from '@/game/characterRecord.js';   /* v2.3.3689: the picked row's look into the stores before the reload */
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { EYEWEAR_CATALOG, getEyewear, setEyewear } from '@/rendering/traits/eyewearCatalog.js';   /* v2.3.2361 */
@@ -360,7 +361,7 @@ import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
 import { handleZoneTransitions } from '@/game/zoneTransitions.js';
-import { holdForAvatar } from '@/game/avatarHold.js'; /* v2.3.3520: the straight-in road waits for your bro's pictures behind a veil */
+import { holdForAvatar, holdForAvatarAlso } from '@/game/avatarHold.js'; /* v2.3.3520: the straight-in road waits for your bro's pictures behind a veil; v2.3.3689: + the server's look's */
 /* v2.3.789: desktop keyboard handlers extracted behavior-frozen (REBUILD-PLAN Phase 7). */
 import { setupDesktopControls } from '@/game/desktopControls.js';
 import { actionBus } from './mobile/actionBus.js'; /* v2.3.1562: quick-bar weapon swap */
@@ -527,7 +528,7 @@ import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136
 import { bedAt, farmExCode } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
 import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers; v2.3.3522: + each one's picture */
-import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
+import { playerGroundDy, preloadTraits } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are; v2.3.3689: + the head pieces' preload, again for the server's look */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 
@@ -11950,6 +11951,28 @@ export var BroTown = function BroTown(_ref0) {
     setTimeout(_clearSpin, 20000);
   }, []); /* mount-only by design: resumes happen once per page load */
 
+  /* ═══ v2.3.3689: THE SERVER'S LOOK, PREPARED BEFORE THE WORLD SHOWS ═══
+     state_sync puts the character's stored look on (wsClient), and when that
+     changes what your head wears -- a Login Key's first join on a new device,
+     a row picked with no look on it yet -- the loading preload had made the
+     look this device held.  preloadTraits again: every piece's art is in or
+     coming already (cached), so what it adds is the NEW look's colours and its
+     hat's clip shapes; and while the straight-in road's veil is up it waits
+     for them (holdForAvatarAlso).  `window.__btOwnLookWarm` for QA. */
+  useEffect(function () {
+    var onLook = function () {
+      var p = null;
+      try { p = preloadTraits(); } catch (e) { p = null; }
+      var held = false;
+      try { held = holdForAvatarAlso(stateRef.current, p); } catch (e) { held = false; }
+      var rec = { at: Date.now(), held: held, done: 0 };
+      try { window.__btOwnLookWarm = rec; } catch (e) { /* no window */ }
+      Promise.resolve(p).catch(function () {}).then(function () { rec.done = Date.now(); });
+    };
+    window.addEventListener('bt-own-look', onLook);
+    return function () { window.removeEventListener('bt-own-look', onLook); };
+  }, []);
+
   /* Name / avatar selection modal.
      v2.3.710: redesigned to two side-by-side panes at EVERY width (iPhone
      Safari portrait is the primary platform): big live preview + name +
@@ -12005,6 +12028,21 @@ export var BroTown = function BroTown(_ref0) {
            (characterRecord.js), which now treats the record as the whole
            look.  The design SLOTS are untouched (clearAllArt's note). */
         try { clearAllArt(); clearPatterns(); } catch (e) { /* the record apply still clears them on join */ }
+        /* ═══ v2.3.3689: AND THE LOOK BELONGS TO THE CHARACTER BEING PLAYED ═══
+           The owner: "I logged in as another character and traits were missing
+           when jogging in certain directions".  The reload's veil waits for
+           your bro's pictures (avatarHold.js) -- made from the look in this
+           device's stores, which still hold the character being LEFT until
+           the worker's state_sync puts the new one's in, after the veil's
+           preload has run.  The row keeps that character's look (the picker
+           draws its portrait from it, v2.3.2193), so it goes into the stores
+           now, and the veil prepares the bro the world will draw.  A row with
+           no look yet changes nothing: state_sync's record still applies, and
+           the veil waits for it too (wsClient 'bt-own-look'). */
+        try {
+          var _row = readRoster().find(function (r) { return r && r.phrase === phrase; });
+          if (_row && _row.look) applyCharacterRecord({ look: _row.look });
+        } catch (e) { /* the record on state_sync is the truth either way */ }
         try {
           /* Plain '/' deliberately: this door is most often reached BY
              LOGGING OUT, which navigates to '/?noresume=1&login=1'
