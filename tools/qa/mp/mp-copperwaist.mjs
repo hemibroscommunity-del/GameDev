@@ -201,12 +201,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     const results = {};
     for (const metal of METALS) {
-      /* the other metals: the same pieces drawn in that metal on this phone
-         only (the art is one steel set; a metal is its tint) */
-      const gear = await page.evaluate((m) => {
-        if (m !== 'copper') { window.__btSetGear('chest', m + 'plate'); window.__btSetGear('legs', m + 'greaves'); }
-        return [window.__btGetGear('chest'), window.__btGetGear('legs')];
+      /* each metal worn the way a player wears it: the kit's copper or iron
+         pieces put on (the server is told, so its next update keeps them);
+         black steel, which the kit has no piece of, is the worn iron drawn
+         as black steel on this phone (the art is one steel set; a metal is
+         its tint) -- checked again at every way, so a server update putting
+         the iron back would show */
+      await page.evaluate((m) => {
+        const S = window._gameState.current, R = S.rpg;
+        const want = m === 'blacksteel' ? 'iron' : m;
+        const put = (stash, slot) => {
+          if (R[slot] && R[slot].mat === want) return R[slot].gid;
+          if (R[slot]) { (R[stash] = R[stash] || []).push(R[slot]); R[slot] = null; }
+          const i = (R[stash] || []).findIndex((x) => x && x.mat === want && x.gid);
+          if (i < 0) return null;
+          R[slot] = R[stash][i]; R[stash].splice(i, 1);
+          return R[slot].gid;
+        };
+        const t = put('armorStash', 'armor'), l = put('legsStash', 'legsArmor');
+        if (window.__btSyncArmorLayers) window.__btSyncArmorLayers(R);
+        S.channel.send({ type: 'stats_update', payload: { armorRef: t, legsArmorRef: l } });
+        if (m === 'blacksteel') { window.__btSetGear('chest', 'blacksteelplate'); window.__btSetGear('legs', 'blacksteelgreaves'); }
       }, metal);
+      await page.waitForTimeout(1500);
+      const gearNow = () => page.evaluate(() => [window.__btGetGear('chest'), window.__btGetGear('legs')]);
+      const gear = await gearNow();
       rec.ok(`${metal}: the plate and greaves drawn in ${metal} (guard)`, gear[0] === metal + 'plate' && gear[1] === metal + 'greaves', gear);
       await page.waitForTimeout(6000);   /* the metal's masked bakes */
       for (const dir of PICK_DIRS) {
@@ -244,6 +263,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await page.evaluate(() => { window.__iw.isolate(false); window.__iw.free(); window.__iw.anchor = null; });
         for (const k of keys) await page.keyboard.up(k);
         await page.waitForTimeout(600);
+        const g2 = await gearNow();
+        if (g2[0] !== metal + 'plate' || g2[1] !== metal + 'greaves') rec.ok(`${metal} ${dir}: still drawn in ${metal} (guard)`, false, g2);
         results[metal + '/' + dir] = seen;
         const frames = Object.keys(seen).map(Number).sort((a, b) => a - b);
         console.log(`    ${metal} ${dir}: ${frames.length} frames, grey ${JSON.stringify(Object.fromEntries(frames.map((f) => [f, seen[f].grey])))} pink ${JSON.stringify(Object.fromEntries(frames.map((f) => [f, seen[f].pink])))}`);
