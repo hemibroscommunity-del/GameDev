@@ -48,3 +48,33 @@ export function lockOntoDuelOpponent(S, opponentId) {
   S.lockedTarget = { type: 'player', id: opponentId, ref: foe };
   return true;
 }
+
+/* ═══ v2.3.3713: THE DUEL LOCK FOLLOWS ITS OPPONENT, AND AN ARENA MATCH'S
+   LOCK TAKES WHEN THE OPPONENT COMES INTO VIEW ═══
+ * Found by mp-arena, the first tournament played on phones in the world: a
+ * gladiator who walked off (to the Sheriff's Office's window, to read the
+ * bracket) and came back swung for ninety seconds and landed nothing, while
+ * the opponent's blows landed.  The lock kept `ref`, the peer object of the
+ * moment it was taken; walking out of view dropped that peer and coming back
+ * made a NEW one, so every swing measured its reach to where the opponent
+ * stood a minute ago (monsterCombat's pvpLockInReach) and sent no attack.  A
+ * monster lock is re-pointed every frame (targeting.js lockRefPresent); a
+ * player lock never was.  Now it is, by id, from S.others.
+ * And arena_match_start's lock could only take if the opponent was drawn
+ * then (lockOntoDuelOpponent's `foe` check); a fighter across town had to
+ * find the opponent and tap them.  In an arena match the opponent is the only
+ * player you may hit, so the lock takes the moment they are drawn (a tap
+ * still lets go for the moment; it comes back next frame, which is the point
+ * of a match).  Called each frame from targeting.js updateTargeting. */
+export function keepDuelLock(S) {
+  if (!S) return;
+  const others = S.others || null;
+  const lt = S.lockedTarget;
+  if (lt && lt.type === 'player' && others && lt.id != null) {
+    const cur = others[lt.id];
+    if (cur && cur !== lt.ref) lt.ref = cur;
+    return;
+  }
+  const d = S._inDuel;
+  if (!lt && d && d.arena && d.opponent != null && others && others[d.opponent]) lockOntoDuelOpponent(S, d.opponent);
+}
