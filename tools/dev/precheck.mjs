@@ -904,7 +904,7 @@ if (changedServer.length || changedClient.length) {
 {
   const touched = changed.filter((f) => /^public\/sprites\/player\/(stand|jog)-(east|north|northeast|south|southwest)\.(png|webp)$/.test(f)
     || /^src\/rendering\/(playerSkins|garmentConfine|spriteScale|playerDecal)\.js$/.test(f) || f === 'src/rendering/eyeMask.json'
-    || /^public\/sprites\/look\//.test(f));
+    || /^public\/sprites\/look\//.test(f) || /^src\/rendering\/lookSets\//.test(f));   /* v2.3.3737: + a set's module */
   if (touched.length) {
     const r = spawnSync('node', ['tools/art/role-bake.mjs', '--hashes'], { cwd: root, encoding: 'utf8', timeout: 60 * 1000 });
     const said = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-3).join(' ');
