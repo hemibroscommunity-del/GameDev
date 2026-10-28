@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6d6671036f72974169b817299d4bd78bcbed2291",
+  "tree": "a05b2381df4f39dceb567f59df442c9752c35eb0",
+  "committedAt": "2026-10-28T12:41:04-07:00",
+  "subject": "The hidden server settings and the anti-bot plan, written down (v2.3.3722) (#1201)",
+  "files": 6740,
+  "bytes": 776030356,
+  "listingSha256": "c8fb6ce991eebf094ebea2fe946f1a6b47748bbcfa8fa582fe8fdb783ba21691",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
