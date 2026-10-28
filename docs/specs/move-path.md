@@ -5,10 +5,21 @@
 > diet slow down the game? Like introduce more lag than otherwise?"* and being
 > told it must not.
 
-**OFF BY DEFAULT.** Merged as it is, the game behaves exactly as before. It
-turns on with `movepath: true` in the live flags (`POST /api/admin/flags`,
-`{"name":"movepath","value":true}`), and off again by deleting the flag or
-setting it `false`.
+**Off for players by default, with three switches** (the owner, 2026-10-28:
+*"I would want to play it with it on before tomorrow to see if there's any
+noticeable difference. If not, I'd rather just leave it on."*):
+
+- **The worker always understands it**: it glides any move a phone marks
+  `pd: 1`. No phone marks its moves unless asked, so with nothing set every
+  phone sends exactly as today.
+- **One phone**: open the game with `?diet=1` at the end of its address (for
+  example `https://<the game's address>/?diet=1`). That tab keeps it through
+  reloads; `?diet=0` takes it off again.
+- **Every phone**: the Test panel, **Message diet**, **On for everyone** (the
+  live flag `pathall: true`). **Only ?diet=1 phones** goes back to the
+  default; **Off for everyone** is the kill switch (`movepath: false`), which
+  stops it on every phone, `?diet=1` ones too. Each tap reaches every phone at
+  once (`move_path`); nobody needs to reload, and no deploy is needed.
 
 ## Why
 
@@ -156,8 +167,10 @@ same rows a kill.
 
 ### On a phone (`tools/qa/mp/mp-movepath.mjs`)
 
-A real page and a bare peer socket, run with the switch off and then on (10
-checks, all passing). The box draws the game in software, so during a walk
+A real page and a bare peer socket, a page as today and one with `?diet=1`
+(11 checks; the first page also has `pathall` and then the kill switch
+flipped live, and follows each at once). Two runs, both passing; the first
+run's numbers: The box draws the game in software, so during a walk
 the game draws a frame a second and the walk is the game's own move broadcast
 written from a page timer (as `mp-movediet`); the worker's copy is read 20
 times a second off `/api/admin/player`.
@@ -175,6 +188,13 @@ times a second off `/api/admin/player`.
 | Blows on the walker in 38 s / within 150 ms of a change | 5 / 0 | 3 / 1 |
 | The copy from the phone at a blow, average | 5.2 px | 1.4 px |
 
+The second run (after the switches moved to `?diet=1`): straight walk 11.7 ->
+5 moves a second, the zig-zag 11.9 -> 6; BroTown copy from the phone mean 7.3
+-> 2.6 px, 95% 21.1 -> 8.4, after a change mean 6.9 -> 2.2, 95% 21.1 -> 7.6;
+the peer's drawing mean 22.9 -> 15.9, 95% 41.2 -> 37.1; among the monsters
+mean 6.9 -> 3.6, after a change 6.6 -> 3.1 (95% 17.5 -> 11.9), overall 95%
+17.5 -> 21.1; at a blow 2.6 -> 1.7 px (1 blow -> 6).
+
 After a change (a turn, a roll, a stop) the copy is much closer than today,
 and the watcher draws the walker closer. The worse 95% overall comes from this
 box's page timers, which run a few times a second: a change waits for the
@@ -185,9 +205,18 @@ more than that the copy was where the phone was when they landed.
 
 ## Switches and caps
 
-- `movepath: true` in the live flags: the worker advertises `caps.movepath`
-  (join.js) and glides. Absent (the default) or `false`: no cap, no glide from
-  the next tick; each phone sends every move again from its next join.
+- `caps.movepath` (join.js): the worker glides `pd` moves. On by default;
+  `movepath: false` in the live flags (the kill switch) takes it away and
+  stops every glide from the next tick.
+- `caps.pathall`: every phone is on the path. Only with `pathall: true` in the
+  live flags, and never with the kill switch thrown.
+- A change to either flag (`POST` or `DELETE /api/admin/flags`) sends every
+  phone `move_path {on, all}` (a privileged type), and each phone's next batch
+  follows it.
+- The phone (`wsClient.js` `movePathOn`): on the path when the worker glides
+  and either `?diet=1` was in the address (kept for the tab in
+  sessionStorage `bt_diet`) or `caps.pathall` is on and the address did not
+  say `?diet=0`.
 - `/api/admin/overview`'s `movePath`: on, and how many glide now.
 - Test mode: a test-mode character's moves are taken where the phone says, as
   before; the glide moves it between them like anyone's.

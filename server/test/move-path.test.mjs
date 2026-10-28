@@ -19,8 +19,10 @@
  *      bound; a phone gone quiet is left HORIZON_MS on; a move is judged
  *      from the last move's place (the budget), never from the guess; a
  *      server-placed player stops gliding; a wall is reported at once;
- *   6. off by default; `movepath: true` advertises it; an old phone (no
- *      `pd`) is never glided; the switch taken away stops every glide.
+ *   6. the switches: the worker understands the path by default and no phone
+ *      is on it; `pathall: true` puts every phone on it; the kill switch
+ *      `movepath: false` stops every glide at the next tick, and either
+ *      change is told to every phone at once (`move_path`).
  */
 import { GameRoom } from '../src/index.js';
 import { MOVE_PATH as SERVER_PATH } from '../src/movepath.js';
@@ -110,7 +112,7 @@ const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647
    phone really was and where the worker's copy was at every tick. */
 async function walk(legs, { path = false, seen = true, flags = null, start = START, old = false } = {}) {
   seed = 7;
-  const { room, tickFn } = await makeRoom(flags || (path ? { movepath: true } : {}));
+  const { room, tickFn } = await makeRoom(flags || {});
   const A = await join(room, 'pa');      /* the watcher */
   const B = await join(room, 'pb');      /* the walker */
   const base = { d: 'right', f: 'east', eqc: 'none', eql: 'none', eqs: 'none', ex: null, dodging: false, blocking: false, ba: null, dead: false };
@@ -349,7 +351,7 @@ let on0Tick = 22;
   check('5a. a wall: the copy runs on into it by at most a few px (the phone reports at once)', over <= 10, { over });
 }
 {
-  const { room, tickFn } = await makeRoom({ movepath: true });
+  const { room, tickFn } = await makeRoom({});
   const B = await join(room, 'pc');
   const base = { d: 'right', f: 'east', eqc: 'none', eql: 'none', eqs: 'none', ex: null, dodging: false, blocking: false, ba: null, dead: false, pd: 1 };
   await send(room, B, Object.assign({ type: 'move', x: 1000, y: 1000, z: 'town', vx: 0, vy: 0 }, base));
@@ -390,7 +392,7 @@ let on0Tick = 22;
   check('5e. a dead player is never glided', ps.x === 21000, { x: ps.x });
 }
 
-/* ── 6. the switch ─────────────────────────────────────────────────────── */
+/* ── 6. the switches ───────────────────────────────────────────────── */
 {
   const capsOf = async (flags) => {
     const { room } = await makeRoom(flags);
@@ -398,23 +400,22 @@ let on0Tick = 22;
     const ss = p.ws.sent.map((s) => JSON.parse(s)).find((m) => m.type === 'state_sync');
     return ss && ss.caps;
   };
-  const c0 = await capsOf({}), c1 = await capsOf({ movepath: true }), c2 = await capsOf({ movepath: false });
-  check('6a. OFF by default: caps.movepath is false with no flag', !!c0 && c0.movepath === false, c0 && c0.movepath);
-  check('6b. `movepath: true` advertises it; `movepath: false` does not', c1.movepath === true && c2.movepath === false, { c1: c1.movepath, c2: c2.movepath });
-  /* with the switch off a phone's `pd` changes nothing: the copy is where
-     the moves put it, exactly as without the field */
+  const c0 = await capsOf({}), c1 = await capsOf({ pathall: true }), c2 = await capsOf({ movepath: false }), c3 = await capsOf({ movepath: false, pathall: true });
+  check('6a. by default the worker understands the path (caps.movepath) and no phone is put on it (caps.pathall false)',
+    !!c0 && c0.movepath === true && c0.pathall === false, c0 && { movepath: c0.movepath, pathall: c0.pathall });
+  check('6b. `pathall: true` puts every phone on it; the kill switch `movepath: false` takes both away, pathall or not',
+    c1.movepath === true && c1.pathall === true && c2.movepath === false && c2.pathall === false && c3.movepath === false && c3.pathall === false,
+    { c1: [c1.movepath, c1.pathall], c2: [c2.movepath, c2.pathall], c3: [c3.movepath, c3.pathall] });
+  /* a phone that marks nothing (no ?diet=1, no pathall: every phone by
+     default) is sent and moved exactly as with no path at all */
   const legs = [{ ms: 800, dir: E }, { ms: 300, dir: N }];
-  const plain = await walk(legs, { path: false });
-  const offPd = await walk(legs, { path: false, flags: {} });
-  const same = plain.copy.length === offPd.copy.length && plain.copy.every((c, i) => c[1] === offPd.copy[i][1] && c[2] === offPd.copy[i][2]);
-  check('6c. switched off, the worker moves nobody between moves (the copy as today)', same && !(plain.room._mpGliding && plain.room._mpGliding.size));
-  /* an old phone (no pd) against a worker switched on: as today */
-  const oldOn = await walk(legs, { path: true, old: true });
-  const same2 = oldOn.copy.every((c, i) => c[1] === plain.copy[i][1] && c[2] === plain.copy[i][2]);
-  check('6d. an old phone (no `pd`) against a worker switched on: sent and moved exactly as today', same2 && oldOn.phoneSent.length === plain.phoneSent.length,
-    { a: oldOn.phoneSent.length, b: plain.phoneSent.length });
-  /* switched off mid-walk: the glide stops on the next tick */
-  const { room, tickFn } = await makeRoom({ movepath: true });
+  const plain = await walk(legs, { path: false, flags: { movepath: false } });
+  const def = await walk(legs, { path: false });
+  const same = plain.copy.length === def.copy.length && plain.copy.every((c, i) => c[1] === def.copy[i][1] && c[2] === def.copy[i][2]);
+  check('6c. by default (no phone marks a move) the worker moves nobody between moves: the copy exactly as with the kill switch',
+    same && !(def.room._mpGliding && def.room._mpGliding.size) && plain.phoneSent.length === def.phoneSent.length);
+  /* the kill switch thrown mid-walk: the glide stops on the next tick */
+  const { room, tickFn } = await makeRoom({});
   const B = await join(room, 'py');
   const base = { d: 'right', f: 'east', eqc: 'none', eql: 'none', eqs: 'none', ex: null, dodging: false, blocking: false, ba: null, dead: false, pd: 1 };
   await send(room, B, Object.assign({ type: 'move', x: 1000, y: 1000, z: 'town', vx: 0, vy: 0 }, base));
@@ -423,10 +424,26 @@ let on0Tick = 22;
   await send(room, B, Object.assign({ type: 'move', x: 21704, y: 21792, z: 'wheel', vx: 275, vy: 0 }, base));
   NOW += room.TICK_RATE; tickFn();
   const moved = room.playerState.py.x > 21704;
-  room._liveFlags = {};
+  room._liveFlags = { movepath: false };
   const xs = room.playerState.py.x;
   NOW += room.TICK_RATE; tickFn();
-  check('6e. the switch taken away stops every glide from the next tick', moved && room.playerState.py.x === xs, { moved, x: room.playerState.py.x, xs });
+  check('6e. the kill switch stops every glide from the next tick', moved && room.playerState.py.x === xs, { moved, x: room.playerState.py.x, xs });
+  /* ...and every phone is told at once, through the admin route */
+  const told = [];
+  room.broadcastAll = (m) => told.push(m);
+  room._adminLog = async () => {};
+  const post = (name, value) => room._liveopsRoutes(new Request('http://x/flags', { method: 'POST', body: JSON.stringify({ name, value }) }), new URL('http://x/flags'), '/flags', (o) => o);
+  const del = (name) => room._liveopsRoutes(new Request('http://x/flags?name=' + name, { method: 'DELETE' }), new URL('http://x/flags?name=' + name), '/flags', (o) => o);
+  await del('movepath');
+  await post('pathall', true);
+  await post('movepath', false);
+  await del('movepath');
+  await del('pathall');
+  const said = told.filter((m) => m.type === 'move_path').map((m) => [m.on, m.all]);
+  check('6f. every change of either switch is told to every phone at once (move_path): cleared, on for all, killed, back, only ?diet=1',
+    JSON.stringify(said) === JSON.stringify([[true, false], [true, true], [false, false], [true, true], [true, false]]), said);
+  check('6g. move_path is a privileged type (a phone cannot forge it)', (await import('../src/index.js')).PRIVILEGED_EVENTS
+    ? (await import('../src/index.js')).PRIVILEGED_EVENTS.has('move_path') : true);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

@@ -47,6 +47,16 @@ import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker 
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
 import { peerEntrySlim, broCountOf } from '@/networking/broWallet.js'; /* v2.3.3255: the Hemi Bro check, theirs and yours */
 import { MOVE_DIET, dietMayWait, steadyMove, MOVE_PATH, pathMayWait, pathTurned } from '@/game/moveDiet.js'; /* v2.3.3204: a steady walk on the safe ground, half as often; v2.3.3726: + the message diet's path */
+/* v2.3.3726: `?diet=1` (or `?diet=0`) in the address, read as the page loads
+   -- before anything tidies the address -- and kept for the tab's reloads
+   (sessionStorage), so the owner's own phone stays on the path it asked for */
+const DIET_ASK = (function () {
+  try {
+    var q = new URLSearchParams(window.location.search).get('diet');
+    if (q === '1' || q === '0') { try { sessionStorage.setItem('bt_diet', q); } catch (e) { /* private mode */ } return q; }
+    return sessionStorage.getItem('bt_diet');
+  } catch (e) { return null; }   /* no page: a test */
+})();
 import { QUIET, quietOn, bundleOn, lookNews, peerNear, quietMoveGap, framesOf } from '@/game/quietPhone.js'; /* v2.3.3254: the quiet phone */
 import { nmlCanAttack } from '@/game/noMansLand.js'; /* v2.3.3254: a steady walk is not held near a player who may fight you */
 import { NML_CENTRE, NML_CENTRES } from '@/data/noMansLandRings.js'; /* v2.3.3204: the Wheel's middle, the safe ground's centre */
@@ -1848,6 +1858,13 @@ export function setupWebSocket(ctx) {
                  despawn.  The actual coin/inventory mutation rides on
                  the player_state event that immediately follows. */
               if (msg.payload) _applyLootCredit(msg.payload, S);
+              break;
+            }
+          /* v2.3.3726: the message diet's switches, changed live (server
+             movepath.js _movePathFlagChanged): the phone's next batch follows */
+          case 'move_path':
+            {
+              if (S._serverCaps) { S._serverCaps.movepath = !!msg.on; S._serverCaps.pathall = !!msg.all; }
               break;
             }
           /* v2.3.3058: No man's land (server/src/nomansland.js; the game's half,
@@ -5157,10 +5174,17 @@ export function setupWebSocket(ctx) {
        arena match, which are judged blow by blow against where the worker
        has you.  Your own walk never waits: these are reports. */
     var _pathStats = { waited: 0, turned: 0 };
+    /* v2.3.3726: who is on the path -- this phone with `?diet=1` in its
+       address, or every phone with caps.pathall (the Test panel's Message
+       diet buttons); `?diet=0` keeps this one out.  Both need caps.movepath
+       (the worker glides; `movepath: false` is the kill switch), and either
+       may change live (`move_path`, the direct switch above) */
+    var _dietAsk = DIET_ASK;
     function movePathOn() {
       try {
         var _S = stateRef.current;
         if (!_capsHere || !_S || !_S._serverCaps || !_S._serverCaps.movepath) return false;
+        if (!(_dietAsk === '1' || (_S._serverCaps.pathall && _dietAsk !== '0'))) return false;
         if (_S.currentZone !== 'wheel') return false;
         return !(_S._inDuel || _S._activeDuel || _S._arenaMatch);
       } catch (e) {

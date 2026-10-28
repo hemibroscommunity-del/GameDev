@@ -214,7 +214,7 @@ const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letter
  * the very system the owner is chasing was switched off.
  */
 const CAP_GATES = [
-  'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'movepath' /* v2.3.3726: the message diet's path */, 'broVerify', 'broCount' /* v2.3.3255: the wallet's Hemi Bro count */,
+  'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'movepath' /* v2.3.3726: the message diet's path */, 'pathall' /* v2.3.3726: ...for every phone */, 'broVerify', 'broCount' /* v2.3.3255: the wallet's Hemi Bro count */,
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
   'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'partykeep' /* v2.3.3284: a party that lasts (party.js) */, 'alliance' /* v2.3.3313: a party of 20 active members (alliance.js) */, 'clanparty' /* v2.3.3321: clans are parties now (clanparty.js) */, 'petLoot', 'potionBag', 'prog3',   /* v2.3.3120: 'pets' gone with the 20% capture */
@@ -498,6 +498,32 @@ export const DevPanel = ({ onClose }) => {
   const clearFlag = useCallback(async (name) => {
     const j = await call('/flags?name=' + encodeURIComponent(name), null, 'DELETE');
     if (j) { setFlags(j.flags || {}); setMsg('Cleared "' + name + '". Reload the game to pick it up.'); }
+  }, [call]);
+
+  /* ═══ v2.3.3726: THE MESSAGE DIET, FROM THE PHONE ═══
+     The owner, 2026-10-28: "I would want to play it with it on before
+     tomorrow to see if there's any noticeable difference.  If not, I'd rather
+     just leave it on."  Three taps over the live flags (server movepath.js
+     THE SWITCHES): on for every phone (`pathall: true`, the kill switch
+     cleared), back to only a phone with ?diet=1 in its address (`pathall`
+     cleared), and the kill switch (`movepath: false`: off for every phone,
+     ?diet=1 too).  Every phone is told at once; none needs to reload. */
+  const setDiet = useCallback(async (mode) => {
+    let j = null;
+    if (mode === 'all') {
+      j = await call('/flags?name=movepath', null, 'DELETE');
+      if (j) j = await call('/flags', { name: 'pathall', value: true });
+      if (j) setMsg('Message diet ON for every phone. Every phone switched over at once.');
+    } else if (mode === 'one') {
+      j = await call('/flags?name=movepath', null, 'DELETE');
+      if (j) j = await call('/flags?name=pathall', null, 'DELETE');
+      if (j) setMsg('Message diet only on a phone with ?diet=1 in its address. Everyone else is as before.');
+    } else if (mode === 'kill') {
+      j = await call('/flags?name=pathall', null, 'DELETE');
+      if (j) j = await call('/flags', { name: 'movepath', value: false });
+      if (j) setMsg('Message diet OFF for every phone, ?diet=1 too. Every phone switched back at once.');
+    }
+    if (j) setFlags(j.flags || {});
   }, [call]);
 
   /* ═══ v2.3.3323: BOT FLAGS, WHERE THE OWNER CAN SEE THEM ═══
@@ -1093,6 +1119,18 @@ export const DevPanel = ({ onClose }) => {
                 LOUD when a flag is overriding a server capability, because
                 that is the case that silently breaks a system and it is
                 indistinguishable from a bug unless something names it. */}
+            {/* v2.3.3726: the message diet (setDiet above) */}
+            <div style={label}>Message diet (fewer movement messages)</div>
+            <div style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }}>
+              Now: {!(S && S._serverCaps && S._serverCaps.movepath) ? 'off for every phone (kill switch)'
+                : (S._serverCaps.pathall ? 'on for every phone' : 'only on a phone with ?diet=1 in its address')}.
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+              <button type="button" style={btn(false)} disabled={busy} onClick={() => setDiet('all')}>On for everyone</button>
+              <button type="button" style={btn(false)} disabled={busy} onClick={() => setDiet('one')}>Only ?diet=1 phones</button>
+              <button type="button" style={btn(false)} disabled={busy} onClick={() => setDiet('kill')}>Off for everyone</button>
+            </div>
+
             <div style={label}>Live flags</div>
             <button type="button" style={btn(false)} disabled={busy}
               onClick={loadFlags}>

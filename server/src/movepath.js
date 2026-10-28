@@ -51,12 +51,21 @@
  * their speed, as it always has (visualSystems.js); a turn, a stop or a start
  * goes out on the next tick after it comes in, as before.
  *
- * OFF BY DEFAULT (the owner shows the game to judges on 2026-10-29): the
- * worker advertises the cap, and glides, only with `movepath: true` in the
- * live flags.  Taking it out again (or `movepath: false`) stops every glide
- * from the next tick, and each phone sends every move again from its next
- * join.  An old phone never sends `pd` and is never glided; an old worker
- * never advertises the cap and every phone sends as before.
+ * THE SWITCHES (the owner, 2026-10-28: "I would want to play it with it on
+ * before tomorrow to see if there's any noticeable difference.  If not, I'd
+ * rather just leave it on."):
+ *   - this worker always UNDERSTANDS the path: it advertises caps.movepath and
+ *     glides any move marked `pd: 1`.  A phone marks its moves only when it is
+ *     asked to, so with nothing else set every phone sends exactly as today;
+ *   - one phone tries it with `?diet=1` in its address (wsClient.js
+ *     movePathOn; `?diet=0` keeps one phone out);
+ *   - `pathall: true` in the live flags (OFF by default; the Test panel's
+ *     Message diet buttons) turns it on for every phone;
+ *   - `movepath: false` is the kill switch: no cap, no glide from the next
+ *     tick, and every phone told at once (`move_path`, _movePathFlagChanged)
+ *     to send every move again.
+ * An old phone never sends `pd` and is never glided; an old worker never
+ * advertises the cap and every phone sends as before.
  *
  * NOTHING IS PERSISTED (handoff rule 1): `_mp` is an underscore field on the
  * player state, and a worker restart forgetting it is correct.
@@ -81,10 +90,26 @@ export const MOVE_PATH = Object.freeze({
 const PX_PER_MS = 60 / 100 / 1000;
 
 export const movePathMethods = {
-  /* OFF unless `movepath: true` is in the live flags (the header) */
+  /* the worker's glide: on unless the kill switch `movepath: false` (the
+     header, THE SWITCHES) */
   _movePathOn() {
     const f = this._liveFlags;
-    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'movepath') && f.movepath === true);
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'movepath') && !f.movepath);
+  },
+
+  /* every phone on the path: `pathall: true` in the live flags, OFF by
+     default, and never while the kill switch is thrown */
+  _movePathAll() {
+    const f = this._liveFlags;
+    return this._movePathOn() && !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'pathall') && f.pathall === true);
+  },
+
+  /* liveops.js, when `movepath` or `pathall` is set or cleared: every phone
+     told at once, so the kill switch stops every phone's diet as it stops
+     the glide (a phone still on the path with no glide behind it would be
+     v2.3.1635's rubber band); a phone that joins later reads its caps */
+  _movePathFlagChanged() {
+    this.broadcastAll({ type: 'move_path', on: this._movePathOn(), all: this._movePathAll() });
   },
 
   /* _handleMove, before it judges a move: a glided copy goes back to the last

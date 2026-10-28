@@ -131,6 +131,7 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 | Type | Purpose / payload | Client handler (BroTown.jsx) |
 |---|---|---|
 | `tick` | Batched per-tick frame: `players` (id → x/y/dir/facing/zone/vx/vy + live equip fields; v2.3.3015: `spr: 1` while that player sprints -- a step the worker paid for in the last 600 ms, absent when walking, and deliberately not `sp`, which in a player's data is the shirt pattern; docs/specs/sprint.md "Seen and heard"; v2.3.3123: `pw`, the pet out with that player as the worker keeps it, `'kind.stage.gold.size.lv'`, absent with none -- deliberately not `pt`, which in a player's data is the pants, nor `pet`, the old client-relayed one; docs/specs/trapping.md "Pets that matter"; v2.3.3142: `eqg`, the grades of the torso and greaves that player wears as the worker counts them, two letters `n`/`r`/`e`/`g` (`'rn'`, `'ee'`; godly only on a piece the worker minted, else `e`, combat.js's rule), absent in plain armour; docs/specs/armor-grade-look.md), `events` (array fed to `_processGameEvent`), `monsters`/`nodes` (zone → entity list; v2 = dirty entities only). **Zone-scoped since v2.3.1575** — see below | ~2048 |
+| `move_path` | v2.3.3726: `{on, all}`, sent to every phone when the live flag `movepath` (the kill switch) or `pathall` is set or cleared: `on` is caps.movepath (the worker glides), `all` caps.pathall (every phone on the path). Privileged; the client updates its caps (server/src/movepath.js, docs/specs/move-path.md) | ~40 |
 | `state_sync` | Full room snapshot on join: players, zone monsters, etc. v2.3.3244: each other player as the public keys only (`PEER_PUBLIC_KEYS`, index.js: position, name, look, gear on show) -- see "What the others are told about you" below | ~2223 |
 | `zone_state` | v2 zone change: `{ zone, monsters, nodes, loot }` merged. **v2.3.1983: also sent MID-SESSION**, unprompted, when population-scaled spawns change a zone's roster — the client already replaces its lists wholesale on it, and a per-entity `tick` delta cannot introduce an entity, so this resend is how a new monster becomes real on any client (`docs/specs/spawn-scaling.md`) | ~2352 |
 | `zone_monsters` / `zone_nodes` / `zone_loot` | v1 legacy zone-change trio (kept as fallback). v2.3.1983: `zone_monsters` + `zone_nodes` are the v1 half of the mid-session roster push above (no `zone_loot` — piles are unaffected) | ~2732 / ~2727 / ~2347 |
@@ -162,7 +163,7 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | Type | Purpose | Server case |
 |---|---|---|
 | `join` | Session start; negotiates `protocolVersion` | ~3418 |
-| `move` | Position/zone update (batched client-side, 33 ms). v2.3.3006: `sp: 1` marks a sprint step, judged at 1.33x the walking bound and paid for in stamina (server/src/sprint.js; an old worker ignores it). v2.3.3726: `pd: 1` asks to be moved along `vx`/`vy` until the next move (caps.movepath, off by default; server/src/movepath.js) | ~3672 |
+| `move` | Position/zone update (batched client-side, 33 ms). v2.3.3006: `sp: 1` marks a sprint step, judged at 1.33x the walking bound and paid for in stamina (server/src/sprint.js; an old worker ignores it). v2.3.3726: `pd: 1` asks to be moved along `vx`/`vy` until the next move (caps.movepath; sent only with `?diet=1` or caps.pathall; server/src/movepath.js) | ~3672 |
 | `pong` | Heartbeat reply | ~3811 |
 | `track` | **Cosmetics/appearance only** (2 s cadence) — allowlisted, see below | ~3819 |
 | `player_attack` | Attack swing (also relayed to peers — see Quirks) | ~3828 |
@@ -290,10 +291,12 @@ passes such a move on at its next tick (`STEADY.SPACED_MS`). Same message, sent
 less often; an old worker gets every move, an old client sends every move. Kill
 switch: `movediet: false` (un-advertises the cap). `docs/specs/move-diet.md`.
 
-**v2.3.3726: the message diet -- a steady walk is sent as a path (OFF by
-default).** Against a worker advertising `caps.movepath` (only with
-`movepath: true` in the live flags), a client in the Wheel, not in a duel or an
-arena match, marks every `move` with `pd: 1` ("move me along my speed until my
+**v2.3.3726: the message diet -- a steady walk is sent as a path (off for
+players by default).** Against a worker advertising `caps.movepath` (on unless
+the kill switch `movepath: false`), a client in the Wheel, not in a duel or an
+arena match, that was opened with `?diet=1` or is told `caps.pathall` (the live
+flag `pathall: true`; changes to either flag reach every client at once as the
+privileged `move_path {on, all}`), marks every `move` with `pd: 1` ("move me along my speed until my
 next one"). A steady move (every other field as sent, the same speed within ~2
 degrees, on its line, as far along it as the speed says, under 500 px/s)
 waits until 200 ms after the last one sent; a change (a turn, start, stop,

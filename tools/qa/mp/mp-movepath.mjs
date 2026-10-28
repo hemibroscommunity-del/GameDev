@@ -1,11 +1,13 @@
 /* ═══ v2.3.3726: THE MESSAGE DIET -- A STEADY WALK IS A PATH, NOT A STREAM ═══
  *
- * Against a worker switched on (`movepath: true` in the live flags), a phone
- * in the Wheel sends a steady walk about 5 times a second with its speed and
+ * A phone on the path (`?diet=1` in its address, or every phone with
+ * `pathall: true` in the live flags) in the Wheel sends a steady walk about 5 times a second with its speed and
  * a change at once, and the worker moves its copy along that speed between
  * (server/src/movepath.js, src/game/moveDiet.js pathMayWait, wsClient.js
- * movePathOn; docs/specs/move-path.md).  Run TWICE, the switch off (today)
- * and on, each with a real page and a bare peer socket beside it:
+ * movePathOn; docs/specs/move-path.md).  Run TWICE, a page as today and one
+ * with ?diet=1, each with a real page and a bare peer socket beside it (and
+ * on the first, the live switches flipped: `pathall`, then the kill switch,
+ * each reaching the page at once):
  *
  *   1. a straight walk in BroTown: moves a second on the wire (seen by the
  *      peer), and how often the peer's copy is updated;
@@ -256,8 +258,9 @@ function zig(baseAng) {
 
 async function oneRun(browser, wsPort, webPort, rec, on) {
   const tag = on ? 'path on' : 'today';
-  await H.liveFlag(wsPort, 'movepath', on ? true : null);
-  const A = await H.newPlayer(browser, { name: on ? 'PathOn' : 'PathOff', wsPort, webPort, world: 'wheel', wide: true, viewport: VIEW, init: instrument });
+  /* the worker understands the path by default; this one phone asks for it
+     with ?diet=1 (wsClient.js movePathOn) */
+  const A = await H.newPlayer(browser, { name: on ? 'PathOn' : 'PathOff', wsPort, webPort, world: 'wheel', wide: true, viewport: VIEW, init: instrument, query: on ? 'diet=1' : '' });
   const conLog = [];
   A.page.on('console', (m) => { conLog.push(m.type() + ' ' + m.text()); if (conLog.length > 60) conLog.shift(); });
   A.page.on('framenavigated', (f) => { if (f === A.page.mainFrame()) { console.log(`      ${tag}: the page navigated to ${f.url()}`); console.log(conLog.slice(-40).map((l) => '        | ' + String(l).slice(0, 220)).join('\n')); } });
@@ -293,7 +296,23 @@ async function oneRunIn(A, P, wsPort, rec, on, tag, inWheel) {
   await A.page.waitForTimeout(2000);
   const path = await A.page.evaluate(() => window.__btMoveDiet ? window.__btMoveDiet().path : null);
   rec.ok(`${tag} -- setup: the walker in the Wheel's BroTown with a peer beside them; caps.movepath ${a0.caps}, the page's path ${path}`,
-    inWheel && a0.caps === on && path === on, { inWheel, a0, path });
+    inWheel && a0.caps === true && path === on, { inWheel, a0, path });
+  /* the live switches, on the page without ?diet=1: `pathall` puts it on the
+     path and the kill switch takes it off, each at once, no reload */
+  if (!on) {
+    const pathNow = () => A.page.evaluate(() => (window.__btMoveDiet ? window.__btMoveDiet().path : null));
+    const waitPath = async (want) => { for (let i = 0; i < 20; i++) { if ((await pathNow()) === want) return true; await A.page.waitForTimeout(250); } return false; };
+    await H.liveFlag(wsPort, 'pathall', true);
+    const allOn = await waitPath(true);
+    await H.liveFlag(wsPort, 'movepath', false);
+    const killed = await waitPath(false);
+    await H.liveFlag(wsPort, 'movepath', null);
+    const back = await waitPath(true);
+    await H.liveFlag(wsPort, 'pathall', null);
+    const off = await waitPath(false);
+    rec.ok(`the live switches reach a phone at once: pathall on -> on ${allOn}, the kill switch -> off ${killed}, cleared -> on ${back}, pathall cleared -> off ${off}`,
+      allOn && killed && back && off, { allOn, killed, back, off });
+  }
   const out = { tag };
 
   /* ── 1. a straight walk ── */
@@ -399,6 +418,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     on = await oneRun(browser, wsPort, webPort, rec, true);
   } finally {
     await H.liveFlag(wsPort, 'movepath', null).catch(() => {});
+    await H.liveFlag(wsPort, 'pathall', null).catch(() => {});
   }
   rec.ok(`fewer moves on the wire: a straight walk ${r1(off.rate)} -> ${r1(on.rate)} a second, the zig-zag ${r1(off.zigRate)} -> ${r1(on.zigRate)}`,
     on.rate <= off.rate * 0.6 && on.zigRate < off.zigRate, { off: off.rate, on: on.rate, zoff: off.zigRate, zon: on.zigRate });

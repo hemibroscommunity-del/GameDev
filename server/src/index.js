@@ -709,6 +709,10 @@ export const PRIVILEGED_EVENTS = new Set([
   // un-privileged 'chat' relay (any client could impersonate the
   // server there); this type is forgeable only by the worker.
   'server_announce',
+  // v2.3.3726: the message diet's switches, live (movepath.js
+  // _movePathFlagChanged) -- forged, it would put a phone on the path with
+  // no glide behind it, or take one off
+  'move_path',
   // v2.3.1132: two-sided trade session echoes (server-truth renderer).
   'trade2_state', 'trade2_invite',
   // v2.3.1185: party roster echoes (server-truth HUD renderer) + the
