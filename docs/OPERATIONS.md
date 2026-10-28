@@ -47,6 +47,9 @@ From there you can:
   minutes, so you can't leave it on by accident.
 - **Bot flags** — who the game has flagged as a possible script, and why
   (v2.3.3323; "Bot flags" below).
+- **Hidden settings** — the anti-bot's numbers and the hourly harvest and
+  cook caps, kept in the server instead of the public code (v2.3.3723;
+  "Hidden settings" below).
 - **Test mode** — turn the anti-cheat off for the character you're playing,
   so testing never trips it; a TEST MODE tag shows on the top bar while it is
   on (v2.3.3430; "Test mode" below).
@@ -163,6 +166,26 @@ passes used, and `loginKeys` the new keys made and used. If the device lock
 ever gets in honest players' way, the live flag `devicelock: false` turns it
 off (docs/specs/device-lock.md); `keys2: false` stops new keys being handed
 out, while keys already made keep working (docs/specs/login-keys.md).
+
+## Hidden settings: the numbers a copier must not read (v2.3.3723)
+
+The code is public, so every number in it is readable by anyone, a bot maker
+included. The anti-bot's thresholds and scores, and the hourly harvest and
+cook caps, can now be kept **in the server's own storage** instead: the code
+holds only a public **placeholder** for each (today's value), and yours
+replaces it.
+
+**On your phone:** Test panel, **Hidden settings**, **Show hidden settings**.
+Each row says what the number does, the value in force, its placeholder and
+the range the server accepts. Type a new value and tap **Save**: it is in
+force at once, no deploy. **Reset** puts the placeholder back. A value
+outside the range is refused with the reason (the harvest and cook caps can
+never go under the fastest an honest player can play).
+
+Your values are never sent to any phone. If a change goes wrong, the live
+flag **hidden_off** (Live flags) puts every one back to its placeholder at
+once without forgetting them; clear the flag and they come back. The spec is
+`docs/specs/hidden-settings.md`.
 
 ## Bot flags: who looks like a script (v2.3.3323)
 

@@ -316,6 +316,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | a domain players use | `ORIGINS` (wrangler.toml: the owner approves) |
 | a change to the Wheel's plan or objects | a re-bake of both Wheels |
 | anything the memory check reads more of | the line raised, with the MB and why in the PR body |
+| a server-only number a copier would value | a row in the hidden settings (`hidden.js` `HIDDEN_SPEC`) with a public placeholder |
 
 ## 9. Where things are
 
