@@ -469,6 +469,14 @@ const FEATS = new WeakMap();
 /* how many features' answers a plan keeps before starting again (a long walk
    over a big Wheel would otherwise keep every one it passed) */
 const STANDS_KEEP = 30000;
+/* v2.3.3717: the lattice's remembered values (planFeatures latticeAt, one
+   memo a field) had no cap: every lattice point a walk's blocks asked about
+   was kept, ~3.3 MB of the ground worker's heap in BroTown and growing with
+   the walk.  `latticeKeep(n)` starts each memo again past n values (the
+   ground worker's `?groundlean`: ground-worker.js LEAN); without a call,
+   none, as before. */
+let LATTICE_KEEP = Infinity;
+export function latticeKeep(n) { LATTICE_KEEP = n > 0 ? n : Infinity; }
 
 export function planFeatures(plan) {
   const hit = FEATS.get(plan);
@@ -529,7 +537,12 @@ export function planFeatures(plan) {
     const at = (i, j) => {
       const k = i * 1048576 + j;
       let v = memo.get(k);
-      if (v === undefined) { v = f(i * STEP, j * STEP); memo.set(k, v); }
+      if (v === undefined) {
+        v = f(i * STEP, j * STEP);
+        /* v2.3.3717: started again past LATTICE_KEEP (latticeKeep) -- the same numbers worked out again */
+        if (memo.size >= LATTICE_KEEP) memo.clear();
+        memo.set(k, v);
+      }
       return v;
     };
     return (gx, gy) => {

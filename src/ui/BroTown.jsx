@@ -10,28 +10,20 @@ import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 /* v2.3.855: first UI-panel extraction — the info/online-count popup. */
 import { InfoPanel } from './panels/InfoPanel.jsx';
 /* v2.3.856: leaderboard panel extraction. */
-import { LeaderboardPanel } from './panels/LeaderboardPanel.jsx';
 /* v2.3.857: guild panel extraction. */
 import { GuildPanel } from './panels/GuildPanel.jsx';
 /* v2.3.858: feedback panel extraction. */
-import { FeedbackPanel } from './panels/FeedbackPanel.jsx';
 /* v2.3.859: clan panel extraction. */
-import { ClanPanel } from './panels/ClanPanel.jsx';
 /* v2.3.860: social panel extraction. */
 import { SocialPanel } from './panels/SocialPanel.jsx';
 /* v2.3.861: pet house panel extraction. */
-import { PetHousePanel } from './panels/PetHousePanel.jsx';
 /* v2.3.862: furniture panel extraction. */
-import { FurniturePanel } from './panels/FurniturePanel.jsx';
 /* v2.3.863: dungeon creator panel extraction. */
-import { DungeonCreatorPanel } from './panels/DungeonCreatorPanel.jsx';
 /* v2.3.864: encyclopedia panel extraction. */
-import { EncyclopediaPanel } from './panels/EncyclopediaPanel.jsx';
 /* v2.3.865: skills panel extraction. */
 import { SkillsPanel } from './panels/SkillsPanel.jsx';
 /* v2.3.866: shop panel extraction. */
 /* v2.3.869: stat screen panel extraction. */
-import { StatScreenPanel } from './panels/StatScreenPanel.jsx';
 /* v2.3.870: quest panel extraction (logic already in @/game/quests.js). */
 import { QuestPanel } from './panels/QuestPanel.jsx';
 import RaceHud from './mobile/RaceHud.jsx'; /* v2.3.3525: Lil Bro's race on the screen */
@@ -43,12 +35,14 @@ import { TOUR_MEET } from '@/game/tour.js'; /* v2.3.3525 */
 import { QuestBannerLayer } from './panels/QuestBannerLayer.jsx'; /* v2.3.3030: the quest banners in the owner's art */
 import { InventoryPanel } from './panels/InventoryPanel.jsx';
 import { TradePanel } from './panels/TradePanel.jsx';
-import { TradeWindowPanel } from './panels/TradeWindowPanel.jsx';
 import { PartyHUD } from './panels/PartyHUD.jsx';
 import { IncomingTradePanel } from './panels/IncomingTradePanel.jsx';
 import { PlayerListPanel } from './panels/PlayerListPanel.jsx';
 import { EmotePanel } from './panels/EmotePanel.jsx';
-import { InspectPlayerPanel } from './panels/InspectPlayerPanel.jsx';
+/* v2.3.3717: the windows opened now and then, each its own script, loaded when first opened with `?codelazy` (lazyPanels.js) */
+import { LeaderboardPanel, FeedbackPanel, ClanPanel, PetHousePanel, FurniturePanel, DungeonCreatorPanel, EncyclopediaPanel, StatScreenPanel, TradeWindowPanel, InspectPlayerPanel, ExchangePanel, GamblePanel, PartyPanel,
+  /* the buildings' windows: v2.3.2826 the Blacksmith; v2.3.3259 the Gem Cutter and the Enchanter, one window (GemcutPanel, EnchantPanel); v2.3.3258 the Land Office's, in the card like the others; v2.3.2476 the auction house */
+  SmithyPanel, WoodworkPanel, GemWorksPanel, FarmPanel, BankPanel, CookPanel, VendorPanel, LandOfficePanel, StorePanel } from './lazyPanels.js';
 import { nmlCanAttack, nmlHere } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land; v2.3.3253: + where you stand */
 import { sparCanAttack, sparAim } from '../game/spar.js'; /* v2.3.3265: aim at your sparring clones */
 import { isLiveFoe } from '../game/sparTargets.js'; /* v2.3.3268: a player you chose to attack is aimed at by a tap, no second window */
@@ -135,23 +129,11 @@ import { Z_ABOVE_DASH_PROMPT } from './zLayers.js';
 import { MenuBar } from './panels/MenuBar.jsx';
 import { RevealOverlay } from './reveal/RevealOverlay.jsx'; /* v2.3.1925 */
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
-import { SmithyPanel } from './panels/buildings/SmithyPanel.jsx'; /* v2.3.2826: the Blacksmith, rebuilt (ForgePanel deleted) */
-import { WoodworkPanel } from './panels/buildings/WoodworkPanel.jsx';
-import { GemWorksPanel } from './panels/buildings/GemWorksPanel.jsx';   /* v2.3.3259: the Gem Cutter and the Enchanter are one building, one window, two tabs (it draws GemcutPanel and EnchantPanel) */
-import { ExchangePanel } from './panels/buildings/ExchangePanel.jsx';
-import { FarmPanel } from './panels/buildings/FarmPanel.jsx';
-import { BankPanel } from './panels/buildings/BankPanel.jsx';
-import { CookPanel } from './panels/buildings/CookPanel.jsx';
-import { GamblePanel } from './panels/buildings/GamblePanel.jsx';
-import { PartyPanel } from './panels/buildings/PartyPanel.jsx';
-import { VendorPanel } from './panels/buildings/VendorPanel.jsx';
 import { WheelHallPanel, SaloonPanel } from './panels/buildings/WheelHallPanel.jsx';   /* v2.3.3066: the Wheel's halls; v2.3.3258: + the Saloon's own window (parties) */
-import { LandOfficePanel } from './panels/buildings/LandOfficePanel.jsx';   /* v2.3.3258: the Land Office's window, in the card like the others */
 import { BuildingRoom } from './panels/buildings/BuildingRoom.jsx';   /* v2.3.3258: the inside of each building, behind its window's menu */
 import { warmRoom } from '@/game/buildingRooms.js';   /* v2.3.3258 */
 import { roomIdFor } from '@/data/buildingRooms.js';   /* v2.3.3258 */
 import { ClanInviteCard } from './panels/ClanInviteCard.jsx';            /* v2.3.3066: a clan invite you can take up */
-import { StorePanel } from './panels/buildings/StorePanel.jsx';   /* v2.3.2476: the auction house */
 import { StoreToast } from './mobile/StoreToast.jsx';   /* v2.3.2476: "your thing sold" */
 import { WorldMapOverlay, openWorldMap } from './WorldMapOverlay.jsx';  /* v2.3.2966: the Wheel's labelled world map */
 import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';

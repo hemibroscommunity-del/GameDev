@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BroTown } from './BroTown.jsx';
-import { DebugOverlay } from '../debug/DebugOverlay.jsx';
+import { DebugOverlay } from './lazyPanels.js';   /* v2.3.3717: ?dev=1 only, its own script (lazyPanels.js) */
 import { wheelBus } from './mobile/wheelBus.js';
 import { BottomDashboard } from './mobile/BottomDashboard.jsx';
 import { ChatBubble } from './mobile/ChatBubble.jsx';
