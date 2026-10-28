@@ -132,7 +132,7 @@ export function triggerFlip(S, now, extra) {
   S._flipCount = (S._flipCount || 0) + 1;
   S._lastFlip = { at: now, grade: f.grade, boost: f.boost, perfect: f.perfect, sprint: f.sprint, phase: f.at, dur: f.dur, peak: f.peak, h0: f.h0 };
   cue('jumpFlip');
-  /* v2.3.3732: no "Perfect!" over you any more -- the owner: "You can remove
+  /* v2.3.3738: no "Perfect!" over you any more -- the owner: "You can remove
      the 'perfect!' after a well timed jump."  The well-timed flip still
      carries you further (its grade and boost); only the words went. */
   if (S.channel) {

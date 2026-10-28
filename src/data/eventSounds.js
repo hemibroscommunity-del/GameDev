@@ -139,7 +139,7 @@ export const EVENT_SOUNDS = {
      character's jump lands".  v2.3.3680 had put it on the roll, which keeps
      its rush of air again (dodgeRoll); it was the bare thud slowed to a low
      thump, ~0.4.
-     v2.3.3732: SOFTER -- the owner: "The landing sound effect after a jump is
+     v2.3.3738: SOFTER -- the owner: "The landing sound effect after a jump is
      too harsh."  The same recording at 0.6 of its level (-4.4 dB, ~0.33 on
      the scale above) and played at 0.85 of its speed: 2.8 semitones down, so
      the overtones the cutter laid over the thump (its bright top) sit lower

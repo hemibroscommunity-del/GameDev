@@ -104,7 +104,7 @@ import { footstepSurface, groundStepAt } from '@/game/worldTrial.js';   /* v2.3.
 import { peerStepShare, peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's footsteps and pick, heard */
 import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
 import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
-import { flipHeadAt } from '../flipHead.js';   /* v2.3.3732: the head pieces ride the tumble's head */
+import { flipHeadAt } from '../flipHead.js';   /* v2.3.3738: the head pieces ride the tumble's head */
 import { jumpActive, jumpFrame, jumpPhase, flipFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog; v2.3.3499: four, by its phase; v2.3.3682: a flip, the roll's tumble */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606: a head piece kept as an image of itself */
@@ -1759,7 +1759,7 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
      pose would place hats on feet.  Re-enabling traits needs a real per-frame
      head anchor (the head IS separable — it is the bare skin blob left in the
      armoured art, which is how the seal below finds it), not a bodyTop. */
-  /* ═══ v2.3.3732: ...AND THAT ANCHOR NOW EXISTS, FOR THE FLIP ═══
+  /* ═══ v2.3.3738: ...AND THAT ANCHOR NOW EXISTS, FOR THE FLIP ═══
      The owner: "needs at least the hat rotated to match the head during the
      flip".  flipHead.js has the head's centre and turn on every roll frame.
      While a flip draws the roll (display._flipHead, set by the two callers),
@@ -1783,7 +1783,7 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
     sprite.rotation = th;
     return;
   }
-  if (sprite.rotation !== 0) sprite.rotation = 0;   /* v2.3.3732: a flip turned it */
+  if (sprite.rotation !== 0) sprite.rotation = 0;   /* v2.3.3738: a flip turned it */
   _ensureBodyData();
   /* v2.3.1305: fallbackTex = the NATIVE-color textures behind a recolored
      set.  The color catalogs cache a build as complete even when one
@@ -12226,7 +12226,7 @@ export class EntityRenderer {
              (player_dodge `dur`), exactly as the local branch plays across
              durMs; the cycleMs default only for an older client. */
           const fc = playerFrameCount('dodge', dir) || 9;
-          display._flipHead = _rDodge.kind === 'flip';   /* v2.3.3732: their head pieces ride their head (_placeTrait) */
+          display._flipHead = _rDodge.kind === 'flip';   /* v2.3.3738: their head pieces ride their head (_placeTrait) */
           if (_rDodge.kind === 'flip') {
             /* v2.3.3682: their flip, by its phase (game/jump.js FLIP_FRAMES) */
             frameIdx = flipFrame(fc, (now - _rDodge.startTime) / (_rDodge.durMs || 1));
@@ -14023,11 +14023,11 @@ export class EntityRenderer {
            actually used; DODGE_DURATION_MS covers the first frame before
            it has been published. */
         const fc = playerFrameCount('dodge', dir) || 9;
-        display._flipHead = false;   /* v2.3.3732 */
+        display._flipHead = false;   /* v2.3.3738 */
         if (_flipRoll && !S._dodgeRoll && !_dashRoll) {
           /* v2.3.3682: the flip -- the tumble's frames by its phase */
           frameIdx = flipFrame(fc, jumpPhase(_flipJ, now));
-          display._flipHead = true;   /* v2.3.3732: the head pieces ride the head (_placeTrait) */
+          display._flipHead = true;   /* v2.3.3738: the head pieces ride the head (_placeTrait) */
           display._jumpFrameIdx = frameIdx;   /* QA (__btJumpFx) */
         } else if (_dashRoll && !S._dodgeRoll) {
           /* ═══ v2.3.2463: A DASH LOOPS WHERE A DODGE CLAMPS ═══

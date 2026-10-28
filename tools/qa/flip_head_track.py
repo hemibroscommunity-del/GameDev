@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3732: where the HEAD is on every frame of the roll (dodge) sheets.
+"""v2.3.3738: where the HEAD is on every frame of the roll (dodge) sheets.
 
 The owner, on the double jump's flip (the roll's tumble, in the air): "The
 double jump head is transparent and needs at least the hat rotated to match

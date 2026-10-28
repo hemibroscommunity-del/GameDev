@@ -42,9 +42,10 @@
  *   BT_GHOST_ONLY=stand,jog   only those families
  *   BT_GHOST_OUTFITS=full     only that outfit (full, plate, greaves; bare, no armour, only when named)
  *   BT_GHOST_SHIRT=print      v2.3.3696: the tee striped and printed
- *   v2.3.3732, the double jump's flip (family `flip`, not in the default run):
+ *   v2.3.3738, the double jump's flip (family `flip`, not in the default run):
  *   BT_GHOST_ONLY=flip BT_GHOST_DIRS=east,south,north BT_GHOST_HAT=top-hat
  *   BT_GHOST_HAIR=wavy BT_GHOST_LOOK=plain (the game's own colours)
+ *   BT_GHOST_SKIN=ebony BT_GHOST_SPECIES=alien (v2.3.3738: the skin the head wears)
  */
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -62,7 +63,7 @@ const LOOK = `try {
     'blockRanged', 'attack', 'special', 'chatTap', 'passkey'];
   const d = {}; for (const k of l) d[k] = true;
   localStorage.setItem('bt_coach_v1', JSON.stringify(d));
-  /* v2.3.3732: BT_GHOST_LOOK=plain -- the game's own colours, for pictures a
+  /* v2.3.3738: BT_GHOST_LOOK=plain -- the game's own colours, for pictures a
      person looks at (the flip's before/after); the ghost colours otherwise */
   if (${JSON.stringify(process.env.BT_GHOST_LOOK || '')} !== 'plain') {
     localStorage.setItem('bt-skin', 'green');
@@ -71,10 +72,14 @@ const LOOK = `try {
     localStorage.setItem('bt-shirt', 'tshirt');
     localStorage.setItem('bt-shirtcolor', 'yellow');
   }
-  /* v2.3.3732: BT_GHOST_HAT / BT_GHOST_HAIR -- a hat and hair on the head
+  /* v2.3.3738: BT_GHOST_HAT / BT_GHOST_HAIR -- a hat and hair on the head
      (the flip carries the head pieces now); none by default */
   localStorage.setItem('bt-hair', ${JSON.stringify(process.env.BT_GHOST_HAIR || 'none')});
   localStorage.setItem('bt-headwear', ${JSON.stringify(process.env.BT_GHOST_HAT || 'none')});
+  /* v2.3.3738: BT_GHOST_SKIN / BT_GHOST_SPECIES -- the owner: the flip's head
+     "will need to be recolored to whatever color the character is" */
+  if (${JSON.stringify(process.env.BT_GHOST_SKIN || '')}) localStorage.setItem('bt-skin', ${JSON.stringify(process.env.BT_GHOST_SKIN || '')});
+  if (${JSON.stringify(process.env.BT_GHOST_SPECIES || '')}) localStorage.setItem('bt-species', ${JSON.stringify(process.env.BT_GHOST_SPECIES || '')});
   /* v2.3.3696: BT_GHOST_SHIRT=print -- the tee striped (ART_PALETTE 5) with
      a block printed on the chest (ART_PALETTE 10, mp-gatherlook's), to see
      where a print and a pattern sit on every frame */
@@ -242,7 +247,7 @@ const PAGE_TOOLS = () => {
       ex: S._extraction ? S._extraction.skill : null, fire: !!S._firemaking,
       chop: fig('__btChopFigure'), cook: fig('__btCookFigure'), fireFig: fig('__btFireFigure'),
       x: S.player.x, y: S.player.y,
-      /* v2.3.3732: BT_GHOST_LAYERS=1 -- every visible piece of the figure,
+      /* v2.3.3738: BT_GHOST_LAYERS=1 -- every visible piece of the figure,
          named by its picture, with its alpha and tint (which layer paints what) */
       layers: window.__qaGhostLayers && me ? (() => {
         const out = [];
@@ -455,7 +460,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const k of ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe']) await H.grant(wsPort, myId, 'item', { invKey: k, count: 1 }).catch(() => {});
     await page.waitForTimeout(2500);
     const tools = await page.evaluate(PAGE_TOOLS);
-    if (process.env.BT_GHOST_LAYERS) await page.evaluate(() => { window.__qaGhostLayers = true; });   /* v2.3.3732 */
+    if (process.env.BT_GHOST_LAYERS) await page.evaluate(() => { window.__qaGhostLayers = true; });   /* v2.3.3738 */
     rec.ok('the page\'s clock can be held and the figure photographed alone (guard)', !!tools);
     if (!tools) return;
     /* the black-screen watchdog (BroTown.jsx) judges a screen that is nearly
@@ -624,7 +629,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await end(outfit, 'jump');
         }
       }
-      /* ── v2.3.3732: the double jump's flip, the roll's tumble in the air:
+      /* ── v2.3.3738: the double jump's flip, the roll's tumble in the air:
          only when named (BT_GHOST_ONLY=flip).  A jump (X), then X again half
          way through it; the flip is swept on its own clock.  BT_GHOST_DIRS
          limits the facings (the owner: three are enough to look at) ── */
@@ -748,7 +753,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await travel(P, wsPort, myId, spot.x, spot.y);
         await page.waitForTimeout(1000);
       }
-      for (const fam of ['stand', 'jog', 'hit', 'dodge', 'pickup', 'swing', 'bow', 'staff', 'jump', 'flip' /* v2.3.3732 */, 'mine', 'chop', 'fire', 'cook', 'fish']) {
+      for (const fam of ['stand', 'jog', 'hit', 'dodge', 'pickup', 'swing', 'bow', 'staff', 'jump', 'flip' /* v2.3.3738 */, 'mine', 'chop', 'fire', 'cook', 'fish']) {
         if (!want(fam)) continue;
         const s = summary[`${outfit}/${fam}`] || (summary[`${outfit}/${fam}`] = {});
         s.frames = count(outfit, fam);

@@ -19,7 +19,7 @@
  * frame had no pixels yet (spawn) or the bake failed: draw the raw body.
  * Byte-identity with the inline version is pinned by tools/qa/qa-bake-ident.mjs. */
 import { jogWaistRow } from './jogWaist.js';
-import { flipHeadAt } from './flipHead.js';   /* v2.3.3732: the tumble's head, kept */
+import { flipHeadAt } from './flipHead.js';   /* v2.3.3738: the tumble's head, kept */
 
 function _histMedian(h, n) {
   const want = n >> 1;
@@ -851,7 +851,7 @@ export function bakeMaskedCanvas(inp) {
         if (dirty2) ctx.putImageData(img2, 0, 0);
       }
     } catch (e) { /* silhouette confinement is best-effort */ }
-    /* ═══ v2.3.3732: THE TUMBLE'S HEAD IS KEPT ═══
+    /* ═══ v2.3.3738: THE TUMBLE'S HEAD IS KEPT ═══
        The owner: "The double jump head is transparent".  Everything above
        keeps the head as the top third of the figure (neckY) -- and on the
        roll's handstand and tuck the head is at the BOTTOM, upside down, so the

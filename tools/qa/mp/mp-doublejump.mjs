@@ -15,7 +15,7 @@
  *   2. a second press near the sweet spot (70-85% of the jump: a timer here
  *      can be late by a slow frame, so the press is made again until it lands
  *      there, up to five times) flips: in the air
- *      longer, NO "Perfect!" over him (v2.3.3732: the owner, "You can remove
+ *      longer, NO "Perfect!" over him (v2.3.3738: the owner, "You can remove
  *      the 'perfect!' after a well timed jump"), and it carries him much further (more than
  *      1.5x the plain jump); drawn with the ROLL's somersault -- the dodge
  *      pose, its tumble frames (2-6), lifted;

@@ -724,7 +724,7 @@ under the disc; clear of every control and the dashboard), `mp-jump`,
 review's control screens. `mp-rbutton` and `mp-joyfade` expected the stick's
 JUMP face at rest, gone since v2.3.3712: they now expect the weapon.
 
-## v2.3.3732: the flip polished -- a solid head, the hat turns with it, larger, no "Perfect!", a softer landing
+## v2.3.3738: the flip polished -- a solid head, the hat turns with it, larger, no "Perfect!", a softer landing
 
 The owner, playing the jump: "The double jump head is transparent and needs at
 least the hat rotated to match the head during the flip. The landing sound
