@@ -213,7 +213,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const bw = window.__btBakeWorker ? window.__btBakeWorker() : null;
       const lm = window.__btLocalMisses ? window.__btLocalMisses() : null;
       return { jog, all, have: last && last.have, want: last && last.want, missing: last ? last.missing.slice(0, 12) : null,
-        worker: bw && { busy: bw.busy, queued: bw.queued, pending: bw.pending, worker: bw.worker, inline: bw.inline, failed: bw.failed, raw: bw.raw, skipped: bw.skipped, beltPending: bw.beltPending, dead: bw.dead },
+        worker: bw && { stuck: bw.stuck, busy: bw.busy, queued: bw.queued, pending: bw.pending, worker: bw.worker, inline: bw.inline, failed: bw.failed, raw: bw.raw, skipped: bw.skipped, beltPending: bw.beltPending, dead: bw.dead },
         cache: lm && { size: lm.size, cap: lm.cap, worn: lm.worn, uids: lm.cachedUids } };
     });
     await startWatch(P);

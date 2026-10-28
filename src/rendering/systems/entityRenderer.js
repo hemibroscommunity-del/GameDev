@@ -3182,7 +3182,35 @@ function _sendRod(wk) {
   try { wk.postMessage({ type: 'rod', rod: r }); } catch (e) { /* the bake falls back to the colour key, as inline does without a mask */ }
 }
 const _bakeJobs = new Map();
-const _bakeWorkerStats = { worker: 0, inline: 0, failed: 0, raw: 0, skipped: 0, beltPending: 0, rawKeys: [] };   /* v2.3.3577: + why a bake was not kept (QA) */
+const _bakeWorkerStats = { worker: 0, inline: 0, failed: 0, raw: 0, skipped: 0, beltPending: 0, stuck: 0, rawKeys: [] };   /* v2.3.3577: + why a bake was not kept (QA); v2.3.3742: + stuck */
+/* ═══ v2.3.3742: A WORKER THAT STOPS ANSWERING NO LONGER STOPS EVERY BAKE ═══
+   Found by mp-armourflash's equip measure (the owner's showing, 2026-10-28:
+   the plain body flashing under new armour): 90 s after putting copper on,
+   the worker had taken a job -- jog north-west, frame 2 -- and never
+   answered.  The queue runs one job at a time (_BAKE_BUSY_MAX), so the
+   equip's prewarm, the spare sets and every other player's frames waited
+   behind it for the rest of the session (34 of the set's 177 frames baked;
+   __btBakeWorker() busy 1, pending 1).  It is not the bake: the worker answers
+   even on an error, and the same frame bakes inline in milliseconds.  The
+   worker itself goes quiet (stuck, or ended without an onerror).
+   So a job not answered within _BAKE_REPLY_MS (a bake is 10-100 ms here, a
+   slow phone's a few hundred) retires the worker: every job it holds fails
+   (each falls back to the inline bake, as a failed job always has), it is
+   terminated, and the next job starts a fresh one.  After _BAKE_STUCK_MAX
+   of those in a session the worker is given up, which is the old inline path
+   everywhere (no worker, as on an old Safari).  __btBakeWorker().stuck. */
+const _BAKE_REPLY_MS = 4000, _BAKE_STUCK_MAX = 3;
+let _bakeStuck = 0;
+function _retireStuckWorker(wk) {
+  _bakeStuck++;
+  _bakeWorkerStats.stuck = _bakeStuck;
+  for (const [, job] of _bakeJobs) job({ err: 'worker stuck' });
+  _bakeJobs.clear();
+  try { wk.terminate(); } catch (e) { /* gone */ }
+  if (_bakeWorker === wk) _bakeWorker = null;
+  _rodSent = null;   /* a fresh worker has no rod */
+  if (_bakeStuck >= _BAKE_STUCK_MAX) _bakeWorkerDead = true;
+}
 function _getBakeWorker() {
   if (_bakeWorker || _bakeWorkerDead) return _bakeWorker;
   try {
@@ -3318,13 +3346,17 @@ async function _runBake(job) {
   const _close = () => { for (const x of [body, belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
   if (!body) { _close(); _bakeWorkerStats.inline++; _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); return; }
   const id = ++_bakeSeq;
+  let _stuckT = null;
   const reply = await new Promise((resolve) => {
     _bakeJobs.set(id, resolve);
     const transfer = [body, belt, ...inps].filter(Boolean).map((x) => x.bm);
     try {
       wk.postMessage({ id, body, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate, poseInfo, ds: DISPLAY_DS, crop: true }, transfer);
+      /* v2.3.3742: an answer that never comes frees the queue (_retireStuckWorker) */
+      _stuckT = setTimeout(() => { if (_bakeJobs.has(id)) _retireStuckWorker(wk); }, _BAKE_REPLY_MS);
     } catch (e) { _bakeJobs.delete(id); _close(); resolve({ err: String(e) }); }
   });
+  if (_stuckT) clearTimeout(_stuckT);
   if (reply.err) { _bakeWorkerStats.failed++; _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); return; }
   if (reply.raw || !reply.bitmap) {
     _bakeWorkerStats.raw++;
