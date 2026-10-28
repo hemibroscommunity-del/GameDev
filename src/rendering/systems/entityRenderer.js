@@ -99,6 +99,7 @@ import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, bl
 import { gearTint, gearArt, gearMaterial, gearIdFor } from '../gearVariants.js'; /* v2.3.1757: material recolor; v2.3.2872: + owned pieces -> art */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
+import { wornSigOf, pickEvictKey } from '../maskedEvict.js';   /* v2.3.3704: the armour you wear is the last to go */
 import { footstepSurface, groundStepAt } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel); v2.3.3343: + under another player's boots */
 import { peerStepShare, peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's footsteps and pick, heard */
 import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
@@ -2761,6 +2762,12 @@ function _placeSouthBlockLegs(display, sb, o) {
    and cached per (body-frame, loadout) -- cheap, recomputed only on a cache
    miss.  Falls back to the raw body texture if pixel access fails. */
 const _maskedBodyCache = new Map();
+/* v2.3.3704: the most frames it holds (v2.3.2872's 900); the armour you WEAR
+   is the last to go when it is full (maskedEvict.js, the why) */
+const MASKED_CAP = 900;
+const _localWornSig = () => wornSigOf(getEquip('chest'), getEquip('legs'));
+const _maskedEvictKey = () => pickEvictKey(_maskedBodyCache.keys(), _localWornSig());
+let _spareSkipped = 0;   /* spare-set frames not baked for want of room (QA: __btLocalMisses) */
 /* ═══ v2.3.2871: THE BAKE, FASTER AND BYTE-FOR-BYTE THE SAME ═══
    Owner: "whenever I put on a piece of armor like legs or torso the game
    would noticeably stutter".  Measured (4x CPU throttle, equip then run): 99
@@ -3215,7 +3222,11 @@ if (typeof window !== 'undefined') {
   window.__btLocalMisses = () => {
     const uids = Object.create(null);
     for (const k of _maskedBodyCache.keys()) { const u = String(k).split('|')[0]; uids[u] = (uids[u] || 0) + 1; }
-    return { misses: _localMisses.slice(), cachedUids: uids };
+    /* v2.3.3704: + the worn set's frames held, and the spare bakes skipped */
+    const sig = _localWornSig();
+    let worn = 0;
+    for (const k of _maskedBodyCache.keys()) { const t = String(k); if (t.slice(t.indexOf('|') + 1, t.lastIndexOf('|')) === sig) worn++; }
+    return { misses: _localMisses.slice(), cachedUids: uids, size: _maskedBodyCache.size, cap: MASKED_CAP, worn, spareSkipped: _spareSkipped };
   };
   /* v2.3.3577: QA (mp-armourflash) -- of every frame your bro can be drawn
      in under what you wear (each prewarmed pose, all EIGHT facings, the three
@@ -3448,8 +3459,23 @@ function _storeBake(key, dc, _beltPending, _bt0, _bs, cell) {
      prebake needs the room: the worn set plus up to two sets one equip away
      is up to ~660 frames, and a cap below that would evict the start of its
      own work -- the v2.3.704 lesson again. */
-  while (_maskedBodyCache.size > 900) {
-    const k0 = _maskedBodyCache.keys().next().value;
+  /* v2.3.3704: and the room runs out again: v2.3.2873 added a third set one
+     equip away (a new piece for each slot) and v2.3.3577 the flipped facings
+     to every set (their own pictures under a pattern or a drawing), so such a
+     player owning pieces of two metals asks for more than 900 -- the bake
+     went on into play, every insert evicting the least
+     recently DRAWN frame, and the frames of the armour you WEAR in a facing
+     you had not faced lately (north-east, north-west, a stand) went first.
+     Jogging that way then drew the plain body under the plate, a frame here
+     and a frame there, while each was baked again: mp-wornbake (checked
+     trousers, the kit's pieces) read 177 of 177 of the worn set baked, then
+     137 once the cache filled, and 20 of 26 looks jogging north-east and
+     north-west the plain body.  So what is
+     let go of is the least recently drawn frame of any OTHER armour
+     (_maskedEvictKey), and the sets one equip away are baked only into room
+     the cache has (prewarmAltWornSets). */
+  while (_maskedBodyCache.size > MASKED_CAP) {
+    const k0 = _maskedEvictKey();
     const old = _maskedBodyCache.get(k0); _maskedBodyCache.delete(k0);
     /* v2.3.780: destroy DEFERRED, not immediate.  destroy(true) nuked the
        TextureSource the moment an entry was evicted -- and a REMOTE
@@ -3940,8 +3966,11 @@ export async function prewarmAltWornSets(opts) {
   const DIRS = _dirsFacingFirst();   /* v2.3.2904: the way you face first */
   let sinceYield = 0;
   const pending = [];   /* v2.3.2904: `fast` keeps the worker fed, as prewarmMaskedBodyFrames does */
+  const wornSig = _localWornSig();   /* v2.3.3704 */
   for (const set of SETS) {
     const sT = null, sK = 'none';   /* v2.3.756: shirtless always */
+    /* v2.3.3704: a set one equip away, not the one you wear */
+    const spare = set.worn.map((w) => w[0] + ':' + w[1]).join(',') !== wornSig;
     for (const pose of PREWARM_POSES) {
       for (const dir of prewarmDirs(pose, DIRS)) {
         const fc = playerFrameCount(pose, dir) || 1;
@@ -3965,6 +3994,12 @@ export async function prewarmAltWornSets(opts) {
           /* v2.3.1399: skip the full-steel family's figure-covered jog
              bakes here too (see _fullsetCoversBake). */
           if (_fullsetCoversBake(worn, pose, dir)) continue;
+          /* v2.3.3704: ONLY INTO ROOM THE CACHE HAS.  Baked into a full
+             cache, a spare set's frame pushed out another -- one of the worn
+             set's, before _maskedEvictKey, and now another spare's, a bake
+             thrown away for a bake.  A spare frame not baked is baked when
+             that piece goes on, as before v2.3.2873. */
+          if (spare && _maskedBodyCache.size >= MASKED_CAP && !_maskedBodyCache.has(_maskedKey(tex, worn, 6))) { _spareSkipped++; continue; }
           /* ═══ v2.3.2904: THE PACES WERE SET FOR A BAKE ON THIS THREAD ═══
              The trickle's gaps (v2.3.699: two bakes per idle slice, 90 ms
              apart; v2.3.2873's `soon`: one per two frames) were measured
