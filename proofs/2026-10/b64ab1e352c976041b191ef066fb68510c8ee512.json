@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b64ab1e352c976041b191ef066fb68510c8ee512",
+  "tree": "a4d21f7dc51d18bcce047f9cabd79d10e7dc99ce",
+  "committedAt": "2026-10-28T14:49:52-07:00",
+  "subject": "The arena works in BroTown on phones, start to finish, and the plan for its own area (v2.3.3713) (#1213)",
+  "files": 6784,
+  "bytes": 792114065,
+  "listingSha256": "8d4ef8fb2926ce6b08d912f1b0e9321189052547be7d669218671986ddc81c9e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
