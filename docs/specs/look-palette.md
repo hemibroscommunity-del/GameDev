@@ -158,7 +158,24 @@ images are the browser's to drop and in no line). The page's buffers: +2.6 MB
 with the switch (the numbers, kept to upload again).
 
 `mp-membudget` (its phone wears the default look, which the old path never
-recolours: no copies to save there): RESULT_MEMBUDGET
+recolours: no copies to save there), three trips each, highest reading:
+
+| line | main (switch off) | `?lookpalette` | budget |
+|---|---|---|---|
+| artCache | 102.2 | 102.2 | 112 |
+| gpu | 87.5 | 86.9 | 105 |
+| canvases | 44.7 | 40.7 | 56 |
+| sound | 27.0 | 27.0 | 29 |
+| heap | 33.0 | 33.5 | 34 |
+| buffers | 20.7 | **23.0 (over)** | 22 |
+| workers | 28.6 | 28.6 | 36 |
+
+With the switch on, the `buffers` line goes over its budget by 1 MB: that is the
+2.6 MB of numbers the page keeps to upload again after a black screen. Main is
+unchanged (the switch is off). Before the switch goes on for everyone, either
+raise the line by 3 MB (with the owner's yes, as `memory-budget.mjs` asks) or
+let go of the copy once uploaded and fetch the sheets again on a rebuild (the
+Wheel's ground does the same, `wheelGround.js`): the next chunk.
 
 ## How it was proven
 
