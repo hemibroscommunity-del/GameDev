@@ -267,6 +267,12 @@ async function oneRun(browser, wsPort, webPort, rec, on) {
     inWheel = (await H.readState(A, (S) => (S._zoneLoading ? null : S.currentZone))) === 'wheel';
     if (!inWheel) await A.page.waitForTimeout(500);
   }
+  /* this box draws in software, and with the game's frames slowed for the
+     walks (below) the black-screen watchdog sees a dark Wheel and reloads the
+     page (BroTown.jsx, "world dark 20s despite rebuild"): it does not judge
+     before the intro lifts, so the lift's stamp is taken away (otherwise only
+     toasts read it) */
+  await A.page.evaluate(() => { const S = window._gameState.current; S.__introLiftedAt = 0; }).catch(() => {});
   const stopKeep = H.keepAlive(A, 15000);
   let P = null;
   try {
