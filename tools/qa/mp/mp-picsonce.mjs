@@ -297,7 +297,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const tex = await P.page.evaluate(() => (window.__btTex ? window.__btTex() : null));
     const gpu = await P.page.evaluate(() => { const g = window.__btGpuTex ? window.__btGpuTex(1) : null; return g ? { mb: g.mb, byKind: g.byKind } : null; });
     const once = await P.page.evaluate(() => (window.__btPicsOnce ? window.__btPicsOnce() : null));
-    out.stops.fight = { swings, tex, gpu, once, rows };
+    /* the shared atlas of colours' rows (paletteTex.js): used, of how many, and
+       pictures sent as colours for want of one */
+    const pal = await P.page.evaluate(() => { const p = window.__btPalette ? window.__btPalette() : null; return p ? { rowsUsed: p.rowsUsed, rowsMax: p.rowsMax, rowsFull: p.rowsFull, live: p.live } : null; });
+    console.log(`    the atlas of colours: ${JSON.stringify(pal)}`);
+    rec.ok(`the atlas of colours had a row for every picture (${pal && pal.rowsUsed} of ${pal && pal.rowsMax} rows used, ${pal && pal.rowsFull} pictures went without)`, !!pal && pal.rowsFull === 0, pal);
+    out.stops.fight = { swings, tex, gpu, once, pal, rows };
     const sum = (f) => +rows.filter(f).reduce((a, r) => a + r.mb, 0).toFixed(1);
     console.log(`    at the fight (${swings} swings): ${rows.length} pictures from files, ${sum(() => true)} MB as colours; `
       + `on the chip ${sum((r) => r.onGpu)}; read back ${rows.filter((r) => r.reads.length).length}; <=256 colours ${sum((r) => typeof r.colours === 'number')} MB`);
