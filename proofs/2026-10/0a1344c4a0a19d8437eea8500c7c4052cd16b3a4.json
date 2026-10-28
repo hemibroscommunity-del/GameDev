@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0a1344c4a0a19d8437eea8500c7c4052cd16b3a4",
+  "tree": "d3044db86aeac422618196f3658e58cc07097647",
+  "committedAt": "2026-10-28T13:16:22-07:00",
+  "subject": "Keep the anti-bot numbers and hour caps hidden in the server (v2.3.3723) (#1204)",
+  "files": 6751,
+  "bytes": 776163240,
+  "listingSha256": "44788b7e298e2d395ace0e2d9d7b94d482ae334a577bc46e7e95f8490f0d852e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
