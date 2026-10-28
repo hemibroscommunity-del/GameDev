@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "42ec7eb6358fc7269f807a731234d4fe323bb3cf",
+  "tree": "a3bbb24a8dc2279c2a3c1f16cbcd4fee23b71c52",
+  "committedAt": "2026-10-28T16:43:36-07:00",
+  "subject": "The Bro type tab: its three heads over its name on an upright phone (v2.3.3777) (#1242)",
+  "files": 6916,
+  "bytes": 803085183,
+  "listingSha256": "8a0a298a75123365af0e15de1305fa94161a39f63841caea3dff28170b0a0f7e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
