@@ -89,7 +89,13 @@ const GPU_SHIM = () => {
       if (t && t.mb > cachePeak) cachePeak = t.mb;
       if (t && t.list && !townSeen) {
         const hit = t.list.find((r) => /\/maps\/town_/.test(String(r.k)));
-        if (hit) townSeen = { k: String(hit.k).replace(/^https?:\/\/[^/]+/, ''), zone: window._gameState && window._gameState.current && window._gameState.current.currentZone, at: Date.now() };
+        /* v2.3.3729: and where the trip stood when it was (wheelHome.js): a
+           veil let go before the worker had answered was this check's red */
+        if (hit) {
+          const S0 = window._gameState && window._gameState.current;
+          townSeen = { k: String(hit.k).replace(/^https?:\/\/[^/]+/, ''), zone: S0 && S0.currentZone, at: Date.now(),
+            trip: S0 ? { wanted: S0._spawnToWheel, askedAgoMs: Date.now() - (S0._spawnAskedAt || 0), caps: !!S0._serverCaps } : null };
+        }
       }
     } catch (e) { /* not up yet */ }
   }, 250);
