@@ -114,7 +114,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const settle = () => A.page.waitForTimeout(2500);
   /* a pick on the Species tab, and the stores and the figure after it */
   const pickSpecies = async (name) => {
-    await pickTab(A, 'Species');
+    await pickTab(A, 'Bro type');   /* v2.3.3772: the tab's words (the owner: "Change species to bro type") */
     await A.page.waitForTimeout(500);
     const ok = await pickTile(A, name);
     await settle();
@@ -123,16 +123,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 1 ── the Species tab */
   const opened = await onTab(A);
-  rec.ok(`the creator opens on the Species tab (on "${opened}")`, opened === 'Species', { opened });
+  rec.ok(`the creator opens on the Bro type tab (on "${opened}")`, opened === 'Bro type', { opened });
   const icon = await A.page.evaluate(() => {
-    const b = [...document.querySelectorAll('.bt-cc-tabs .bt-cc-tab')].find((x) => (x.textContent || '').trim() === 'Species');
+    const b = [...document.querySelectorAll('.bt-cc-tabs .bt-cc-tab')].find((x) => (x.textContent || '').trim() === 'Bro type');
     const img = b && b.querySelector('img.bt-cc-tab-icon');
     return img ? { src: img.getAttribute('src'), nat: img.naturalWidth } : null;
   });
-  rec.ok(`...its icon is the alien's head, and it decoded (${JSON.stringify(icon)})`,
-    !!icon && /cc-tab-species\.png/.test(icon.src) && icon.nat > 0, icon);
+  rec.ok(`...its icon is the three bro types' heads, and it decoded (${JSON.stringify(icon)})`,   /* v2.3.3772 */
+    !!icon && /cc-tab-brotype\.png/.test(icon.src) && icon.nat > 0, icon);
   const titles = await stripTitles(A);
-  rec.ok(`the Species tab offers Human, Monkey and Alien, in that order (saw ${JSON.stringify(titles)})`,
+  rec.ok(`the Bro type tab offers Human, Monkey and Alien, in that order (saw ${JSON.stringify(titles)})`,
     JSON.stringify(titles) === JSON.stringify(['Human', 'Monkey', 'Alien']), { titles });
   const rowS = await colourRow(A);
   rec.ok('...and no colour row: the skin is the next tab along', !rowS.present || rowS.ghost, rowS);
