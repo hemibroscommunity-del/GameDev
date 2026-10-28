@@ -333,7 +333,7 @@ function sweep(now) {
  * caller draws the old way).  `entries`: [[rowEntry, [r, g, b] | null], ...]
  * in the set's own range of the row (LOOK_ROW_RANGES).
  */
-export function getLookPartFrame(set, sheet, frameIdx, entries, opts) {
+function lookFrames(set, sheet, entries, opts) {
   if (!lookPaletteOn()) return null;
   if (_ok === null) prewarmProgram();   /* not built behind the loading screen (no renderer then): now */
   if (!entries.some((e) => e[1])) return null;
@@ -368,7 +368,19 @@ export function getLookPartFrame(set, sheet, frameIdx, entries, opts) {
       return t;
     });
   }
-  return list[((frameIdx % list.length) + list.length) % list.length];
+  return list;
+}
+export function getLookPartFrame(set, sheet, frameIdx, entries, opts) {
+  const list = lookFrames(set, sheet, entries, opts);
+  return list ? list[((frameIdx % list.length) + list.length) % list.length] : null;
+}
+/**
+ * v2.3.3737 (P1's stand-ins): every frame of a sheet in a look, for a caller
+ * that indexes the whole strip -- the same options.  Ask again each time it
+ * is drawn: a look nobody asks for in 30 s gives its row and frames back.
+ */
+export function getLookPartFrames(set, sheet, entries, opts) {
+  return lookFrames(set, sheet, entries, opts);
 }
 /**
  * The body's frame of a pose (any pose its manifest has) in this look, or

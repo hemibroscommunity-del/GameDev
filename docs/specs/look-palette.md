@@ -255,6 +255,10 @@ so five lanes can add theirs without editing one shared line.
    jog sheets, the rarest colours up to 40-146 (a median cut merges a colour
    few pixels use) -- the oracle for an 8-bit set is the quantized art
    recoloured the old way, and its look is for the owner's eye.
+   **The quality bar** (the orchestrator, on the owner's "I won't notice"): a
+   sheet's worst texel stays within 16 levels a channel of the art; the cut
+   this tool ships is the first cut (P1 makes it error-bounded), and a sheet
+   that cannot meet the bar stays 16 bits, named here.
 3. **The game**: `registerLookSheets('<set>', '/sprites/look/<set>/roles.json')`
    (a promise: loaded behind the loading screen with the body, or at once if
    later), then `getLookPartFrame('<set>', sheetName, frameIdx, [[entry, rgb |
@@ -281,7 +285,9 @@ so five lanes can add theirs without editing one shared line.
    It may call `entry(k)` (the default), `tableRGBA(k)`, `num(p)`, `fetchT(p)`
    (the ONE fetch chain -- never a second), `rowT(e)`, `recol(c, T, ref)`, and
    read `sMirror`, `sBook`, `sKind`, `sW`, `sN`, `sDs`, `sBits`.
-7. **The frame's options**: `getLookPartFrame(set, sheet, f, entries, { key,
+7. **The frame's options** (and `getLookPartFrames(...)`, the whole strip,
+   for a caller that indexes it -- ask again each time it is drawn: a look no
+   one asks for in 30 s gives its frames back): `getLookPartFrame(set, sheet, f, entries, { key,
    mirror })`: an entry's value of four bytes is RGBA verbatim (three: a
    colour, alpha 255); `key` is the caller's own key for the entries (not
    joined every frame); `mirror` gives the flipped facings their own frames and
