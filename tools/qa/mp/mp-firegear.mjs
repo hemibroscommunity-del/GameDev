@@ -38,7 +38,10 @@ const REG = {
   /* v2.3.3669: frames 3-7 re-aligned so the trousers do not show (the
      FIRE_GEAR_REG header, "THE GREAVES ALIGNED"); OLD_LEGS is the table
      before, for the bare-trouser check below */
-  legs: { scale: 0.90, off: [[28, -7], [23, 8], [89, 48], [43, 4], [54, 15], [51, 13], [55, 12], [43, 6]] },
+  /* v2.3.3684: frame 6 20 left and 4 up, under the plate, where his hip is
+     (the owner: "frame 6 is particularly bad - armor legs need to shift
+     leftward"): its bare trousers 437 -> 5 px of the art */
+  legs: { scale: 0.90, off: [[28, -7], [23, 8], [89, 48], [43, 4], [54, 15], [51, 13], [35, 8], [43, 6]] },
 };
 const OLD_LEGS = [[28, -7], [23, 8], [89, 48], [57, 7], [73, 15], [72, 15], [64, 17], [41, 15]];
 /* v2.3.1749: read from the page, never copied.  This was a hard-coded 200 and
@@ -290,6 +293,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
     bn[7] <= 40 && bb[7] > 200, { now: bn, before: bb });
   rec.ok(`...and far less of the trousers bare over the light (${sum(bb)} -> ${sum(bn)} px; frames 3-6 ${bb.slice(3, 7).join('/')} -> ${bn.slice(3, 7).join('/')})`,
     sum(bn) <= 0.45 * sum(bb) && bn.slice(3, 7).every((v, i) => v < bb[3 + i]), { now: bn, before: bb });
+
+  /* ── v2.3.3684: UNDER GREAVES HE HAS NO LEGS OF HIS OWN ──
+     The owner: "remove pants (olive green) those should not be showing".  The
+     art-space count above is what the greaves' PLACE can do; frame 2's thigh
+     (1,092 px of it) is a kneel the greaves are not painted in, so his own
+     trousers and boots are taken out of the body under greaves
+     (playerSkins _standInLegless), and put back when they come off. */
+  await gear('steelplate', 'steelgreaves');
+  const waitLegless = async (want) => {
+    for (let i = 0; i < 60; i++) {
+      const r = await P.page.evaluate(() => (window.__btFireLegless ? window.__btFireLegless() : null));
+      if (r && r.legless === want && r.frames === 8) return r;
+      await P.page.waitForTimeout(250);
+    }
+    return P.page.evaluate(() => (window.__btFireLegless ? window.__btFireLegless() : null));
+  };
+  const ll = await waitLegless(true);
+  rec.ok('in greaves the fire-lighter is baked without his own legs', !!ll && ll.legless === true && ll.gone > 20000, ll);
+  await gear('steelplate', 'none');
+  const wl = await waitLegless(false);
+  rec.ok('...and with them again when the greaves come off', !!wl && wl.legless === false && wl.want === false, wl);
+  await gear('steelplate', 'steelgreaves');
+  const back = await waitLegless(true);
+  rec.ok('...and without them when the greaves go back on', !!back && back.legless === true, back);
 
   await P.ctx.close().catch(() => {});
 }

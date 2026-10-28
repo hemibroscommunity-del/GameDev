@@ -197,6 +197,7 @@ class Fire {
     if (!this.lighting) for (let i = 0; i < 6; i++) this._ember(1, true);
 
     this.root = new Container();
+    this.root.label = 'campfire';   /* v2.3.3684: named, for mp-ghostaudit (the light's fire becomes the campfire by design) */
     this.halo = new Sprite(T.halo); this.halo.anchor.set(0.5, 0.5); this.halo.blendMode = 'add'; this.halo.tint = 0xffa650;
     this.logBack = new Sprite(T.logBack[0]);
     this.crackBack = new Sprite(T.crackBack[0]); this.crackBack.blendMode = 'add';

@@ -77,6 +77,34 @@ const readFrames = (P, pid, ms, poke) => P.page.evaluate(async ({ pid, dur, poke
     if (h < 0) h += 360;
     return h >= 315 && h <= 350;
   };
+  /* v2.3.3684: toolRecolor.js isLitToolKey -- the log's end in the fire's
+     glow (frames 4-7), made wood with the log when within 4 px of its key
+     (effectsRenderer _litLogKey) */
+  const isLit = (d, o) => {
+    if (d[o + 3] < 77) return false;
+    const r = d[o], g = d[o + 1], b = d[o + 2];
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    if (mx < 140 || mx !== r) return false;
+    const dd = mx - mn;
+    if (dd < mx * 0.5) return false;
+    let h = 60 * (((g - b) / dd) % 6);
+    if (h < 0) h += 360;
+    return h > 350 || h <= 8;
+  };
+  const litLog = (raw) => {
+    const m = new Uint8Array(FW * FH);
+    for (let p = 0; p < FW * FH; p++) {
+      if (isKey(raw, p * 4) || !isLit(raw, p * 4)) continue;
+      const x = p % FW, y = (p - x) / FW;
+      let near = false;
+      for (let yy = Math.max(0, y - 4); yy <= Math.min(FH - 1, y + 4) && !near; yy++) {
+        for (let xx = Math.max(0, x - 4); xx <= Math.min(FW - 1, x + 4); xx++) if (isKey(raw, (yy * FW + xx) * 4)) { near = true; break; }
+      }
+      if (near) m[p] = 1;
+    }
+    return m;
+  };
+  const lits = {};
   /* the bark ramp's family: warm browns, red over green over blue */
   const isBark = (d, o) => d[o + 3] > 60 && d[o] >= d[o + 1] && d[o + 1] >= d[o + 2] && d[o] - d[o + 2] >= 15 && d[o] <= 200;
   const blit = (res, sx, sy, sw, sh, dx, dy) => {
@@ -103,7 +131,9 @@ const readFrames = (P, pid, ms, poke) => P.page.evaluate(async ({ pid, dur, poke
        it, as a pink trouser is in the key's hue window too (the first run
        counted Pink's trousers) */
     let key = 0, fileKey = 0, bark = 0, h = 2166136261 >>> 0;
+    const lit = lits[k] || (lits[k] = litLog(raw));
     for (let o = 0; o < got.length; o += 4) {
+      if (lit[o >> 2]) continue;   /* v2.3.3684: the log's lit end, wood on one page only */
       if (isKey(raw, o)) {
         fileKey++;
         if (isKey(got, o)) key++;
