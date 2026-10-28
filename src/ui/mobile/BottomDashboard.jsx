@@ -1163,6 +1163,22 @@ export const BottomDashboard = () => {
               both from the same expression. */}
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: `8px 8px ${landDock.reserve}` }}>
             {Active && <Active />}
+            {/* ═══ v2.3.3769: THE WEAPONS AT THE FOOT OF EVERY PAGE ═══
+                On a computer the dashboard's own page ends in the three
+                weapons and their levels; every other page ended in empty
+                column (the owner: "As you find improvements you can make to
+                the empty space on the desktop version go ahead").  Now each
+                page does, the same three (DeskRailWeapons, as the folded
+                strip's), pinned at the column's foot under the page, which
+                scrolls above them when it needs the height.  A computer only;
+                the dashboard page keeps its own row. */}
+            {deskKeys && active && dashboardPanelBus.state.stack[0] !== 'dashboard' ? (
+              <div data-desk-foot="" style={{ flex: 'none', marginTop: 'auto', paddingTop: 2 * DASH_GAP }}>
+                <DeskRailWeapons
+                  R={(typeof window !== 'undefined' && window._gameState && window._gameState.current && window._gameState.current.rpg) || null}
+                  row />
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

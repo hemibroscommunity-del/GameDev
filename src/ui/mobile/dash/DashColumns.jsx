@@ -146,10 +146,12 @@ export function combatSkillLevel(rpg, s) {
    bt-desk-foldrail); at the strip's foot, the three weapons the open column
    shows at its bottom, compact: the picture and its level.  A click opens the
    dashboard, where the full card is (its XP, its points, its explainer). */
-export const DeskRailWeapons = ({ R, w }) => {
+export const DeskRailWeapons = ({ R, w, row }) => {
   const rpg = R || {};
+  /* `row`: across the open column's foot, under a page (BottomDashboard's
+     data-desk-foot), each chip a third of it, the picture beside its level */
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+    <div style={row ? { display: 'flex', flexDirection: 'row', gap: 4 } : { display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
       {COMBAT_SKILLS.slice(0, 3).map((s) => {
         const lvl = combatSkillLevel(rpg, s);
         return (
@@ -160,14 +162,15 @@ export const DeskRailWeapons = ({ R, w }) => {
             title={`${s.label} — Lv ${lvl}`}
             onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.open('dashboard'); }}
             style={{
-              width: w, height: 52, boxSizing: 'border-box',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
+              ...(row ? { flex: '1 1 0', minWidth: 0, height: 48, flexDirection: 'row', gap: 8 } : { width: w, height: 52, flexDirection: 'column', gap: 1 }),
+              boxSizing: 'border-box',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 11,
               cursor: 'pointer', touchAction: 'manipulation',
             }}>
             <img src={s.iconSrc} alt="" draggable={false}
               style={{ width: 28, height: 28, objectFit: 'contain', pointerEvents: 'none' }} />
-            <span style={{ fontSize: 11, fontWeight: 800, color: COL.text, lineHeight: 1, letterSpacing: '.04em', pointerEvents: 'none' }}>LV {lvl}</span>
+            <span style={{ fontSize: row ? 13 : 11, fontWeight: 800, color: COL.text, lineHeight: 1, letterSpacing: '.04em', pointerEvents: 'none' }}>LV {lvl}</span>
           </div>
         );
       })}
