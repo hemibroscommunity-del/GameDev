@@ -61,7 +61,11 @@ async function picture({ browser, wsPort, webPort, rec }) {
           window.__btSetFacialHair('beard'); window.__btSetFacialHairColor(L[4]);
           window.__btSetEyewear(L[6]); window.__btEyewearColor.set(L[5]);
         }, L);
-        await P.page.waitForTimeout(5000);
+        /* the old way's beard copy is stored only once its two facings that
+           do not exist (north, northeast) have failed their retries (2 s,
+           6 s, traitImg.js): a coloured beard is brown for ~8 s after a
+           change, the old way.  Waited out, so the picture is fair */
+        await P.page.waitForTimeout(way === 'old' ? 14000 : 5000);
         const f = join(OUT, `lookheads-pic-${i}-${way}.png`);
         await P.page.screenshot({ path: f, clip: { x: PHONE.width / 2 - 70, y: PHONE.height / 2 - 120, width: 140, height: 170 } });
         shots.push(f);
