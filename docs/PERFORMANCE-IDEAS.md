@@ -301,7 +301,31 @@ needed:
   colours, with the same arithmetic as `_retint`.
 
 The result is the same pixels, no colour reduction, and a look that costs a few
-bytes. The orchestrator sent this to the characters lane (M3) on 2026-10-28;
+bytes.
+
+**64, 128 or 256: is a smaller set cheaper?** The owner asked this too. For
+memory, no.
+
+- **A pixel is one byte either way.** A colour-numbers pixel takes one byte
+  whether its picture has 64, 128 or 256 colours (an `r8unorm` texture,
+  `paletteTex.js`). A byte is the smallest unit the graphics chip reads
+  cheaply. The colour list is one 1 KB atlas row a picture either way.
+- **Going below a byte doesn't pay.** It means packing two pixels into one
+  byte (16 colours or fewer) and unpacking them in the shader: slower, and
+  harder to blend smoothly (the shader blends four texels). 64 and 128
+  (6 and 7 bits) don't divide a byte evenly, so nothing is saved there.
+- **Where a smaller set does help.**
+  - **The atlas.** A 64-colour picture fills a quarter of its row, so four can
+    share one row, their numbers offset when they are prepared (0-63, 64-127,
+    128-191, 192-255). Nothing changes in the shader, and the atlas holds up to
+    four times as many pictures before it fills. Worth it only if the rows run
+    short: `__btPalette()` counts `rowsUsed` and `rowsFull`, and M2 reports
+    them at the fight.
+  - **The files.** A picture with fewer colours makes a slightly smaller file to
+    download. That is not memory.
+
+So 256 is the ceiling for every picture at no memory cost. The world's 64 is
+the art law's style, not a memory need. The orchestrator sent this to the characters lane (M3) on 2026-10-28;
 its spec, `docs/specs/look-palette.md`, records what it built and why.
 
 ## 4. The order, after the showing
