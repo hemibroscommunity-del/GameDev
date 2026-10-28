@@ -708,6 +708,11 @@ icon now for jump looks like a special ability".
   arc; `?jumpicon=arrow|double|hop` wears one for a tab
   (`docs/specs/jump-button/icons-choices.png`).
 
+**Block stays where it was** (`BLOCK_BAND_BOTTOM`, 70, the disc's old bottom
+edge): rising with the disc it came within 22 px of Shield Bash above it,
+under the 24 px floor `mp-btnlayout` and `mp-abilslot` hold that pair to.
+Where it was it has 32 (Bash hangs from the disc's centre, which rose 4).
+
 **Checked:** `mp-jumpbtn` (the disc 84/94 and the button 60/64, measured on
 an upright 390, a small 360 and a sideways 844 phone; 24 px from Block;
 under the disc; clear of every control and the dashboard), `mp-jump`,
