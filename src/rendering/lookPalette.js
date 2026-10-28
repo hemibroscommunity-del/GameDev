@@ -570,6 +570,18 @@ function prewarmProgram() {
   if (!_wanted || !r || _prewarmedFor === r || !_stats.sheets) return;
   if (!webgl2(r)) { _ok = false; return; }
   _prewarmedFor = r;
+  /* every sheet on the chip now, behind the loading screen, and its bytes let
+     go of (the upload, below): a sheet first drawn only when someone wears a
+     look held its 2.6 MB in the page until then -- measured, the memory
+     check's phone (the default look) read 23.0 MB of buffers at home against
+     20.3 with `?lookpalette=0`.  As the Wheel's ground does (wheelGround.js
+     _toGpu); a context that is lost uploads as it is first drawn instead. */
+  try {
+    const gl = r.gl;
+    if (!(gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) && r.texture && typeof r.texture.initSource === 'function') {
+      for (const k of Object.keys(_sheets)) { try { r.texture.initSource(_sheets[k].src); } catch (e) { /* drawn the usual way */ } }
+    }
+  } catch (e) { /* drawn the usual way */ }
   let box = null;
   try {
     const name = Object.keys(_sheets)[0];
