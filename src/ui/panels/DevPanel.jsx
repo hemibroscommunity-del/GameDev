@@ -242,6 +242,7 @@ const CAP_GATES = [
   'nmlgroup' /* v2.3.3530: a group attacks you, one window -- every attacker yours to hit back, joining a fight you chose (nmlAsk.js nmlJoinFight) -- lower case, a kill switch */,
   'nmlchoice' /* v2.3.3530: the window's Attack is the attack -- `nml_attack` starts both skulls at once, the one attacked white before any blow (nomansland.js _handleNmlAttack) -- lower case, a kill switch */,
   'nmlnear' /* v2.3.3690: No man's land from the safe ground's edge, the Lv 1-5 ring its 1 (nomansland.js NML.FIRST_TIER; the phone's nmlFirst) -- lower case, a kill switch */,
+  'nmlsteps' /* v2.3.3767: No man's land a step a monster level (nomansland.js nmlStepLevelAt; the phone's nmlLevelFor) -- lower case, a kill switch */,
   'gatherreq' /* v2.3.3038: lower case, a kill switch */,
   'farm' /* v2.3.3127: the farm -- lower case, a kill switch */,
   'meals' /* v2.3.3130: meals and brews you carry -- lower case, a kill switch */,
