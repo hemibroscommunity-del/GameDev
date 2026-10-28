@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3d7df4cb3ccda93afbdf4304a59122e4e6b360f9",
+  "tree": "18dab78af8d0ebd86df918f8662bd25aedf296ce",
+  "committedAt": "2026-10-28T15:08:12-07:00",
+  "subject": "Pictures held once: less memory for the game's art, on by default (v2.3.3715) (#1218)",
+  "files": 6794,
+  "bytes": 794040490,
+  "listingSha256": "e97c2b39b35fe8dff99d6ff741a0bf28b672f3e0dfda5185b79648f51c3d63ca",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
