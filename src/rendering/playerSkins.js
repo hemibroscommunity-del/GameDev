@@ -2233,6 +2233,19 @@ export function getLookBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, 
     shoesTarget(shoesId), eye ? eye.t : null);
 }
 
+/* v2.3.3752: the same look as getLookBodyFrame's, as the row entries the
+   armoured body is coloured with (lookArmour.js) -- the art's own look
+   included (all null), which the bare body draws from its shipped sheet but
+   whose masked frames under armour were copies like any other look's.  Null
+   where getLookBodyFrame would be for any other reason: the old path. */
+export function getLookBodyEntries(skinId, pantsId, shoesId, pose, dir, shirtT, eyeId, art, eyeStyleId) {
+  if (!lookPaletteWanted() || !lookPose(pose) || shirtT) return null;
+  if (eyeBlankFor(pose, dir, eyeStyleId)) return null;
+  if (bodyArtSeg(artForFacing(art, dir))) return null;
+  const eye = eyeFor(pose, dir, eyeId);
+  return [[1, poseSkinTarget(skinTarget(skinId), pose)], [2, pantsTarget(pantsId)], [3, shoesTarget(shoesId)], [4, eye ? eye.t : null]];
+}
+
 /* ═══ v2.3.2854: FISHING KEEPS YOUR DRAWINGS ═══
    Owner: "yes make tattoos stay on while harvesting resources."
    Fishing draws the RAW fish sheet, on purpose (entityRenderer v2.3.2304):

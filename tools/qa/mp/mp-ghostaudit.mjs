@@ -98,10 +98,13 @@ const FACINGS = [
   ['north', ['w'], -Math.PI / 2], ['northeast', ['w', 'd'], -Math.PI / 4],
 ];
 
+/* v2.3.3752: BT_GHOST_METAL=copper -- the kit's copper pieces instead of its
+   iron (the look palette's armour, sampled in each metal the kit has) */
+const METAL = process.env.BT_GHOST_METAL === 'copper' ? 'copper' : 'iron';
 const OUTFITS = {
-  full: { chest: 'ironplate', legs: 'irongreaves' },
-  plate: { chest: 'ironplate', legs: 'none' },
-  greaves: { chest: 'none', legs: 'irongreaves' },
+  full: { chest: METAL + 'plate', legs: METAL + 'greaves' },
+  plate: { chest: METAL + 'plate', legs: 'none' },
+  greaves: { chest: 'none', legs: METAL + 'greaves' },
   /* v2.3.3685: no armour -- every colour drawn, nothing to hide; for a hole
      in the figure (the background seen through it), only when asked:
      BT_GHOST_OUTFITS=bare */
@@ -503,17 +506,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
        (gearCatalog.js syncArmorLayers), so a layer set on the page alone
        was undone after the first photograph */
     await H.devOp(wsPort, 'kit', myId, { what: 'armor' }).catch(() => {});
-    await H.waitFor(P, () => {
+    await page.waitForFunction((m) => {
       const R = window._gameState.current.rpg || {};
-      return !!((R.armorStash || []).concat(R.armor ? [R.armor] : []).some((x) => x && x.mat === 'iron' && x.gid)
-        && (R.legsStash || []).concat(R.legsArmor ? [R.legsArmor] : []).some((x) => x && x.mat === 'iron' && x.gid));
-    }, (v) => v, { timeout: 15000, label: 'the iron pieces' }).catch(() => null);
-    const wear = (o) => page.evaluate((o) => {
+      return !!((R.armorStash || []).concat(R.armor ? [R.armor] : []).some((x) => x && x.mat === m && x.gid)
+        && (R.legsStash || []).concat(R.legsArmor ? [R.legsArmor] : []).some((x) => x && x.mat === m && x.gid));
+    }, METAL, { timeout: 15000, polling: 250 }).catch(() => null);   /* the kit's pieces of the metal */
+    const wear = (o) => page.evaluate(([o, metal]) => {
       const S = window._gameState.current, R = S.rpg;
       const put = (stash, slot, want) => {
         if (R[slot]) { (R[stash] = R[stash] || []).push(R[slot]); R[slot] = null; }
         if (!want) return null;
-        const i = (R[stash] || []).findIndex((x) => x && x.mat === 'iron' && x.gid);
+        const i = (R[stash] || []).findIndex((x) => x && x.mat === metal && x.gid);
         if (i < 0) return null;
         R[slot] = R[stash][i]; R[stash].splice(i, 1);
         return R[slot].gid;
@@ -523,7 +526,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (window.__btSyncArmorLayers) window.__btSyncArmorLayers(R);
       S.channel.send({ type: 'stats_update', payload: { armorRef: t, legsArmorRef: l } });
       return { t, l };
-    }, o);
+    }, [o, METAL]);
 
     for (const outfit of outfits) {
       const o = OUTFITS[outfit];
