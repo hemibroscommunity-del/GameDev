@@ -482,7 +482,7 @@ const lastOf = (ws, type) => { for (let i = ws.sent.length - 1; i >= 0; i--) if 
     const dir = new URL('../src/', import.meta.url);
     return fs.readdirSync(dir).filter((f) => f.endsWith('.js')).filter((f) => /_testMode\(/.test(fs.readFileSync(new URL(f, dir), 'utf8')));
   });
-  const expect = ['botfp.js', 'combat.js', 'cooking.js', 'gathering.js', 'join.js', 'lastplace.js', 'movement.js', 'quests.js', 'testmode.js'];
+  const expect = ['botfp.js', 'botsig.js' /* v2.3.3724 */, 'combat.js', 'cooking.js', 'gathering.js', 'join.js', 'lastplace.js', 'movement.js', 'quests.js', 'testmode.js'];
   check('8. the checks that ask are the listed ones, and only those (a new one is said in testmode.js\'s header)',
     JSON.stringify(all.sort()) === JSON.stringify(expect), all);
 }

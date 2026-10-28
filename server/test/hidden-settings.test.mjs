@@ -25,6 +25,7 @@
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
 import { BOTFP } from '../src/botfp.js';
+import { BOTSIG } from '../src/botsig.js';
 import { HIDDEN, HIDDEN_SPEC, HIDDEN_PLACEHOLDERS, cleanHidden, mergeHidden, hiddenRefusal } from '../src/hidden.js';
 import { HONEST_CYCLE_MIN_MS } from '../src/gathering.js';
 
@@ -97,10 +98,13 @@ const synthFp = (i) => ({ len: 400, n: 60, dur: 1200, ent: 0.001, tv: 0, vc: 0.0
 // ── 1. the table ──
 {
   const names = Object.keys(HIDDEN_SPEC);
-  check('1. every hidden setting is a BOTFP name, its placeholder today\'s value', names.length >= 24
-    && names.every((n) => n in BOTFP && HIDDEN_SPEC[n].dflt === BOTFP[n] && HIDDEN_PLACEHOLDERS[n] === BOTFP[n]), names.length);
+  /* v2.3.3724: and BOTSIG's, the server's own bot signals (botsig.js) */
+  const home = (n) => (n in BOTFP ? BOTFP : BOTSIG);
+  const same = (a, b) => (Array.isArray(a) ? JSON.stringify(a) === JSON.stringify(b) : a === b);
+  check('1. every hidden setting is a BOTFP or BOTSIG name, its placeholder today\'s value', names.length >= 24
+    && names.every((n) => (n in BOTFP || n in BOTSIG) && same(HIDDEN_SPEC[n].dflt, home(n)[n]) && same(HIDDEN_PLACEHOLDERS[n], home(n)[n])), names.filter((n) => !(n in BOTFP || n in BOTSIG)));
   check('1. every placeholder is inside its own range (a fresh room reads exactly today\'s values)',
-    names.every((n) => hiddenRefusal(n, HIDDEN_SPEC[n].dflt) === null), names.filter((n) => hiddenRefusal(n, HIDDEN_SPEC[n].dflt)));
+    names.every((n) => hiddenRefusal(n, HIDDEN_SPEC[n].dflt === null ? 0 : (Array.isArray(HIDDEN_SPEC[n].dflt) ? [...HIDDEN_SPEC[n].dflt] : HIDDEN_SPEC[n].dflt)) === null), names.filter((n) => hiddenRefusal(n, Array.isArray(HIDDEN_SPEC[n].dflt) ? [...HIDDEN_SPEC[n].dflt] : HIDDEN_SPEC[n].dflt)));
   for (const n of ['FLAG_AT', 'STARTLESS_FLAG_AT', 'FLAG_MIN_GAP_MS', 'FLEET_MIN_IDS', 'FLEET_ACTIVE_MIN', 'FLEET_ACTIVE_STRIKES',
     'HARVEST_HOUR_CAP', 'COOK_HOUR_CAP', 'ENT_FLOOR', 'TV_FLOOR', 'VC_FLOOR', 'SCORE_SYNTH', 'SCORE_REPLAY', 'SCORE_COLLAPSE', 'SCORE_INTERVAL']) {
     check('1. ' + n + ' is hidden', n in HIDDEN_SPEC);
@@ -171,7 +175,7 @@ const synthFp = (i) => ({ len: 400, n: 60, dur: 1200, ent: 0.001, tv: 0, vc: 0.0
   check('3. a room with a broken record runs on its placeholders (and the one good value)', room._hid().FLAG_AT === BOTFP.FLAG_AT && room._hid().SCORE_REPLAY === 7);
   const room2 = new GameRoom(makeState(), envWith(KEY));
   await room2._hiddenEnsure();
-  check('3. no record at all: every placeholder', Object.keys(HIDDEN_SPEC).every((n) => room2._hid()[n] === BOTFP[n]));
+  check('3. no record at all: every placeholder', Object.keys(HIDDEN_SPEC).every((n) => room2._hid()[n] === HIDDEN_PLACEHOLDERS[n]));
   const st3 = makeState();
   st3.storage.get = async () => { throw new Error('storage down'); };
   const room3 = new GameRoom(st3, envWith(KEY));
@@ -230,7 +234,7 @@ const synthFp = (i) => ({ len: 400, n: 60, dur: 1200, ent: 0.001, tv: 0, vc: 0.0
   await room._hiddenEnsure();
   const on = await jbody(await admin(room, 'POST', '/flags', KEY, { name: HIDDEN.OFF_FLAG, value: true }));
   check('5. `hidden_off` is a name the live flags take (lower case)', on.status === 200 && on.body.flags.hidden_off === true, on);
-  check('5. thrown: every value is its placeholder', Object.keys(HIDDEN_SPEC).every((n) => room._hid()[n] === BOTFP[n]));
+  check('5. thrown: every value is its placeholder', Object.keys(HIDDEN_SPEC).every((n) => room._hid()[n] === HIDDEN_PLACEHOLDERS[n]));
   check('5. ...the record untouched', state.store.get(HIDDEN.KEY).s.FLAG_AT === 4);
   check('5. ...and the Test panel says so', (await jbody(await admin(room, 'GET', '/dev/hidden', KEY))).body.off === true);
   await admin(room, 'DELETE', '/flags?name=' + HIDDEN.OFF_FLAG, KEY);
@@ -258,6 +262,7 @@ const synthFp = (i) => ({ len: 400, n: 60, dur: 1200, ent: 0.001, tv: 0, vc: 0.0
   }
   /* small enough that the bot below crosses them */
   const s = { ...markers, FLAG_AT: 3.917243, SCORE_SYNTH: 2.718281 };
+  if (HIDDEN_SPEC.CLOUD_ASNS) s.CLOUD_ASNS = [4199999917];   /* v2.3.3724: a list setting's marker */
   const state = makeState({ [HIDDEN.KEY]: { v: 1, s } });
   const room = new GameRoom(state, envWith(KEY));
   await room._hiddenEnsure();

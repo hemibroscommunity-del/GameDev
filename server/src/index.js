@@ -127,6 +127,7 @@ import { trade2Methods } from './trade2.js';
 import { accountMethods } from './account.js';
 // v2.3.1146: behavioral anti-bot for life skills (flag-only) -- see botfp.js.
 import { botfpMethods } from './botfp.js';
+import { botsigMethods } from './botsig.js'; /* v2.3.3724: the server's own bot signals (botsig.js) */
 import { hiddenMethods } from './hidden.js'; /* v2.3.3723: the hidden settings (docs/specs/hidden-settings.md) */
 // v2.3.1162 (P4 decomposition): quest accept/credit/turn-in -- see quests.js.
 import { questMethods } from './quests.js';
@@ -4855,7 +4856,13 @@ export class GameRoom {
     this.state.acceptWebSocket(server);
     /* v2.3.3274: `ip` for the address limits, `openedAt` for the join window
        (tick.js _tickPingAndAfk) */
-    this.sessions.set(server, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), moveSig: '', ip: _ip, openedAt: Date.now() });
+    /* v2.3.3724: the network the socket came from (Cloudflare's own word on
+       every plan): one of the server's bot signals (botsig.js `cloud`).  Kept
+       on the session only; the AS number goes in the player's botstat. */
+    const _cf = (request && request.cf) || {};
+    const _asn = Number(_cf.asn);
+    this.sessions.set(server, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), moveSig: '', ip: _ip, openedAt: Date.now(),
+      asn: Number.isFinite(_asn) && _asn > 0 ? _asn : null, asOrg: typeof _cf.asOrganization === 'string' ? _cf.asOrganization.slice(0, 64) : null });
     if (!this.tickInterval && this.sessions.size === 1) this.startTickLoop();
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -5114,6 +5121,7 @@ export class GameRoom {
         // zone-change streaming.  Hoisted to movement.js
         // _handleMove (v2.3.1171, byte-identical body).
         this._handleMove(session, ws, msg);
+        this._sigOnMove(session, msg);   /* v2.3.3724: the place, the streak, a wind-up's answer (botsig.js) */
         break;
 
       case 'pong':
@@ -5243,6 +5251,7 @@ export class GameRoom {
       case 'monster_damage':
         // Client reports damage dealt to a server monster
         if (session.id) {
+          this._sigOnHit(session, msg.payload || msg);   /* v2.3.3724: where it was struck from (botsig.js) */
           this._handleMonsterDamage(session, msg.payload || msg);
         }
         break;
@@ -5254,6 +5263,7 @@ export class GameRoom {
         // expected open-delay window (see _handleExtractionStart +
         // _handleNodeStrike).
         if (session.id) {
+          this._sigOnStart(session, msg.payload || msg);   /* v2.3.3724: the walk that led here (botsig.js) */
           this._handleExtractionStart(session, msg.payload || msg);
         }
         break;
@@ -5284,6 +5294,7 @@ export class GameRoom {
            was.  Read beside lastStrike in the operator view. */
         this._strikeSeen = (this._strikeSeen || 0) + 1;
         if (session.id) {
+          this._sigOnStrike(session, msg.payload || msg);   /* v2.3.3724: the gesture's time, before the handler spends the start (botsig.js) */
           this._handleNodeStrike(session, msg.payload || msg);
         }
         break;
@@ -5394,6 +5405,7 @@ export class GameRoom {
         // raw fish, applies the consume + cooked/burnt outcome + cooking
         // XP, and emits player_state.
         if (session.id) {
+          this._sigOnCook(session);   /* v2.3.3724: the beat between cooks (botsig.js) */
           this._handleCookRequest(session, msg.payload || msg);
         }
         break;
@@ -5412,6 +5424,7 @@ export class GameRoom {
         // / retreat / swipe).  Server computes cost from ps.maxStamina
         // or the swipe ramp, validates, deducts, and emits player_state.
         if (session.id) {
+          this._sigOnAbility(session, msg.payload || msg);   /* v2.3.3724: a dodge answers a wind-up (botsig.js) */
           this._handleAbilityUse(session, msg.payload || msg);
         }
         break;
@@ -6531,6 +6544,7 @@ Object.assign(GameRoom.prototype, trade2Methods);
 Object.assign(GameRoom.prototype, accountMethods);
 // v2.3.1146: behavioral anti-bot for life skills (flag-only) -- see botfp.js.
 Object.assign(GameRoom.prototype, botfpMethods);
+Object.assign(GameRoom.prototype, botsigMethods);   /* v2.3.3724 */
 Object.assign(GameRoom.prototype, hiddenMethods);   /* v2.3.3723 */
 // v2.3.1148: operator toolkit -- see admin.js.
 Object.assign(GameRoom.prototype, adminMethods);

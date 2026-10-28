@@ -41,6 +41,7 @@
  * a caller that may run on a bare object (a test's stub) reads hiddenOf(this).
  */
 import { BOTFP } from './botfp.js';
+import { BOTSIG } from './botsig.js';   /* v2.3.3724: the server's own bot signals */
 import { HONEST_CYCLE_MIN_MS } from './gathering.js';
 
 export const HIDDEN = {
@@ -59,6 +60,11 @@ const HOUR = 3600000, DAY = 86400000;
    panel shows the owner. */
 function row(group, dflt, lo, hi, int, words) {
   return Object.freeze({ group, dflt, lo, hi, int: !!int, words });
+}
+/* v2.3.3724: a LIST of whole numbers (the cloud networks' AS numbers), each
+   in [lo, hi], at most `max` of them */
+function listRow(group, dflt, lo, hi, max, words) {
+  return Object.freeze({ group, dflt: Object.freeze(dflt.slice()), lo, hi, int: true, list: true, max, words });
 }
 export const HIDDEN_SPEC = Object.freeze({
   // ── anti-bot: the per-harvest floors (botfp.js) ──
@@ -91,6 +97,39 @@ export const HIDDEN_SPEC = Object.freeze({
   // ── the economic hour caps: floors are the honest bound (header) ──
   HARVEST_HOUR_CAP: row('caps', BOTFP.HARVEST_HOUR_CAP, HONEST_PER_HOUR, 100000, true, 'Harvests a skill an hour before grants are withheld'),
   COOK_HOUR_CAP: row('caps', BOTFP.COOK_HOUR_CAP, HONEST_PER_HOUR, 100000, true, 'Cooks an hour before grants are withheld'),
+  // ── v2.3.3724: the server's own bot signals (botsig.js) ──
+  AIM_CHORD_PX: row('botsig', BOTSIG.AIM_CHORD_PX, 10, 400, false, 'Aimed walk: the run judged back this far (px)'),
+  AIM_STRAIGHT_PX: row('botsig', BOTSIG.AIM_STRAIGHT_PX, 0, 10, false, 'Aimed walk: every step within this of a straight line (px)'),
+  AIM_MISS_PX: row('botsig', BOTSIG.AIM_MISS_PX, 0, 20, false, 'Aimed walk: the line passes this close to the node\'s centre (px)'),
+  AIM_KEY_DEG: row('botsig', BOTSIG.AIM_KEY_DEG, 0, 10, false, 'Aimed walk: headings this close to a keyboard\'s 8 are not judged (degrees)'),
+  AIM_MIN_N: row('botsig', BOTSIG.AIM_MIN_N, 5, 400, true, 'Aimed walk: walks judged before it can count'),
+  AIM_SHARE: row('botsig', BOTSIG.AIM_SHARE, 0.05, 1, false, 'Aimed walk: share of walks aimed that counts'),
+  GEST_MIN_N: row('botsig', BOTSIG.GEST_MIN_N, 10, 400, true, 'Even gestures: harvests timed before it can count'),
+  GEST_SPREAD_MAX: row('botsig', BOTSIG.GEST_SPREAD_MAX, 0, 16, true, 'Even gestures: spread at most this many steps of 9%'),
+  COOK_MIN_N: row('botsig', BOTSIG.COOK_MIN_N, 10, 400, true, 'Even cooking: cooks timed before it can count'),
+  COOK_SPREAD_MAX: row('botsig', BOTSIG.COOK_SPREAD_MAX, 0, 16, true, 'Even cooking: spread at most this many steps of 9%'),
+  COOK_GAP_MAX_MS: row('botsig', BOTSIG.COOK_GAP_MAX_MS, 5000, 600000, true, 'Even cooking: gaps longer than this (ms) are not the beat'),
+  REACT_WINDOW_MS: row('botsig', BOTSIG.REACT_WINDOW_MS, 300, 5000, true, 'Reflex: an answer later than this (ms) is not a reaction'),
+  REACT_QUICK_MS: row('botsig', BOTSIG.REACT_QUICK_MS, 0, 400, true, 'Reflex: quicker than this after the round trip (ms) is too quick'),
+  REACT_MIN_N: row('botsig', BOTSIG.REACT_MIN_N, 5, 400, true, 'Reflex: reactions needed before it can count'),
+  REACT_QUICK_SHARE: row('botsig', BOTSIG.REACT_QUICK_SHARE, 0.05, 1, false, 'Reflex: share too quick that counts'),
+  ROOT_CELL_PX: row('botsig', BOTSIG.ROOT_CELL_PX, 1, 32, true, 'Rooted: the spot\'s size (px)'),
+  ROOT_HITS: row('botsig', BOTSIG.ROOT_HITS, 50, 100000, true, 'Rooted: hits in a row from one spot'),
+  ROOT_MONSTERS: row('botsig', BOTSIG.ROOT_MONSTERS, 1, 16, true, 'Rooted: ...on at least this many monsters'),
+  BREAK_MS: row('botsig', BOTSIG.BREAK_MS, 60000, 3600000, true, 'Marathon: this long (ms) with no action is a break'),
+  MARATHON_MS: row('botsig', BOTSIG.MARATHON_MS, 1800000, 7 * DAY, true, 'Marathon: this long (ms) without a break'),
+  LOOP_MIN_N: row('botsig', BOTSIG.LOOP_MIN_N, 10, 400, true, 'Loop: harvest steps needed before it can count'),
+  LOOP_SHARE: row('botsig', BOTSIG.LOOP_SHARE, 0.05, 1, false, 'Loop: share of steps taken before that counts'),
+  CLOUD_ASNS: listRow('botsig', BOTSIG.CLOUD_ASNS, 1, 4294967295, 64, 'Cloud networks: AS numbers, comma separated'),
+  W_AIM: row('botsig', BOTSIG.W_AIM, 0, 100, false, 'Score: aimed walks'),
+  W_GEST: row('botsig', BOTSIG.W_GEST, 0, 100, false, 'Score: even gestures'),
+  W_COOK: row('botsig', BOTSIG.W_COOK, 0, 100, false, 'Score: even cooking'),
+  W_REACT: row('botsig', BOTSIG.W_REACT, 0, 100, false, 'Score: reflexes too quick'),
+  W_ROOT: row('botsig', BOTSIG.W_ROOT, 0, 100, false, 'Score: rooted to one spot'),
+  W_MARATHON: row('botsig', BOTSIG.W_MARATHON, 0, 100, false, 'Score: hours without a break'),
+  W_LOOP: row('botsig', BOTSIG.W_LOOP, 0, 100, false, 'Score: the same loop for hours'),
+  W_CLOUD: row('botsig', BOTSIG.W_CLOUD, 0, 100, false, 'Score: a cloud network'),
+  SIG_FLAG_AT: row('botsig', BOTSIG.SIG_FLAG_AT, 1, 1000, false, 'The server-signals score that flags a player'),
 });
 
 /* every placeholder, frozen: what the room reads with no record, a broken
@@ -102,6 +141,16 @@ export const HIDDEN_PLACEHOLDERS = Object.freeze(Object.fromEntries(
 export function hiddenRefusal(name, value) {
   if (typeof name !== 'string' || !Object.prototype.hasOwnProperty.call(HIDDEN_SPEC, name)) return 'unknown setting';
   const s = HIDDEN_SPEC[name];
+  /* v2.3.3724: a list, each entry a whole number in range, no repeats */
+  if (s.list) {
+    if (!Array.isArray(value)) return 'must be a list of numbers';
+    if (value.length > s.max) return 'at most ' + s.max + ' numbers';
+    for (const v of value) {
+      if (typeof v !== 'number' || !Number.isInteger(v) || v < s.lo || v > s.hi) return 'each must be a whole number from ' + s.lo + ' to ' + s.hi;
+    }
+    if (new Set(value).size !== value.length) return 'a number is listed twice';
+    return null;
+  }
   if (typeof value !== 'number' || !Number.isFinite(value)) return 'not a number';
   if (s.int && !Number.isInteger(value)) return 'must be a whole number';
   if (value < s.lo || value > s.hi) return 'must be from ' + s.lo + ' to ' + s.hi;
@@ -115,7 +164,7 @@ export function cleanHidden(rec) {
   if (!rec || typeof rec !== 'object' || typeof rec.s !== 'object' || !rec.s) return out;
   if (typeof rec.v === 'number' && rec.v > HIDDEN.V) return out;
   for (const name of Object.keys(rec.s)) {
-    if (hiddenRefusal(name, rec.s[name]) === null) out[name] = rec.s[name];
+    if (hiddenRefusal(name, rec.s[name]) === null) out[name] = Array.isArray(rec.s[name]) ? Object.freeze(rec.s[name].slice()) : rec.s[name];
   }
   return out;
 }

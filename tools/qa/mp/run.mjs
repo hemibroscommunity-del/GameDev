@@ -741,6 +741,7 @@ process.on('uncaughtException', (e) => { console.error(e); cleanup(); process.ex
 console.log(`up in ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);
 
 const all = [];
+const _botsigSeen = new Set();   /* v2.3.3724: each flag reported once */
 for (const name of names) {
   const rec = H.recorder(name);
   const started = Date.now();
@@ -769,6 +770,19 @@ for (const name of names) {
      passed early.  Scenarios are isolated by their own fresh contexts, so
      none can need another's page afterwards. */
   for (const c of browser.contexts()) await c.close().catch(() => {});
+  /* v2.3.3724: did the server's own bot signals (botsig.js) flag anyone this
+     scenario played?  A report line, never a failure: the harness moves
+     players by script (teleports, exact steps), so a flag here is a question
+     about the scenario before it is one about the detector.  The close just
+     above made each player's last judgement (_botfpFlush). */
+  await new Promise((r) => setTimeout(r, 800));
+  try {
+    const bf = await (await fetch(`http://127.0.0.1:${WS}/api/admin/dev/botflags`, { headers: { Authorization: 'Bearer ' + H.ADMIN_KEY } })).json();
+    const sig = (bf.flagged || []).filter((f) => (f.kinds || []).includes('server-signals') && !_botsigSeen.has(f.id + ':' + (f.last && f.last.at)));
+    for (const f of sig) _botsigSeen.add(f.id + ':' + (f.last && f.last.at));
+    console.log(sig.length ? `   botsig: FLAGGED ${sig.map((f) => (f.name || f.id) + ' [' + ((f.last && f.last.detail && f.last.detail.reasons) || []).join(',') + ']').join('; ')}`
+      : '   botsig: no player flagged by the server\'s own signals');
+  } catch (e) { console.log('   botsig: (could not read the flags: ' + String(e).slice(0, 80) + ')'); }
   console.log(`   (${((Date.now() - started) / 1000).toFixed(0)}s)\n`);
   all.push(...rec.rows());
 }

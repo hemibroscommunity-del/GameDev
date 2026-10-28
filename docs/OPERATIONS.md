@@ -212,6 +212,22 @@ What each flag means:
 - **Harvests sent without starting them:** 20 or more harvests sent without
   the "started" message a real phone always sends first. These are refused,
   and this flag means someone is trying (v2.3.3322).
+- **Plays like a script (measured by the server):** the server's own
+  measures, which a script cannot fake by sending different numbers
+  (v2.3.3724). The reasons follow the flag:
+  - *walks dead straight through the centre of every node*;
+  - *dodges monster attacks faster than a person can*;
+  - *hundreds of hits without moving a step*;
+  - *cooks on a perfectly even beat*;
+  - *every harvest gesture takes exactly the same time*;
+  - *the same harvest loop for hours without a break* / *hours of play without a break*;
+  - *connects from a cloud server's network*.
+
+  Each reason has a weight; one strong reason, or two weaker ones, flags.
+  The thresholds and weights are hidden settings (above). Two live flags:
+  **disable_botsig** stops the measuring; **botsig_reverify** (off unless you
+  turn it on, and only when the account check is set up) asks a player
+  flagged this way to pass the account check again at their next login.
 - **A test flag:** planted by the Test panel's own check, not evidence.
 
 The same list from a computer, most recent first (both commands take the same

@@ -95,7 +95,7 @@ extended.
    | `harden_ledger:<pid>` | last 50 hardening attempts (§17.5) | hardening.md |
    | `harden_h5_log` | global H5-mint timestamps, 90-day window (INV-27) | hardening.md |
    | `shop_stock` | Shopkeeper Bro's ONE public pile: `{itemKey: qty}`; his buy price decays with the qty held | shop.js (v2.3.2047) |
-   | `botstat:<playerId>` | anti-bot evidence: counters, hour caps, replay-hash tail, shadow flags | anticheat-botfp.md |
+   | `botstat:<playerId>` | anti-bot evidence: counters, hour caps, replay-hash tail, shadow flags; v2.3.3724: + `sig`, the SERVER'S OWN signals (botsig.js: counter pairs, two small log histograms, the route's last 64 hashes, the network's AS number, the re-check owed), written at the same pace, never per message | anticheat-botfp.md, server-botsig.md |
    | `device:<deviceId>` | identity list per device nonce (fleet correlation) | anticheat-botfp.md |
    | `frozen:<pid>` | `{ts, note}` operator freeze — join gate | admin.md |
    | `testmode:<pid>` | `{v, on: true, at, name}` — the owner's TEST MODE for one character (v2.3.3430, testmode.js): present is on, deleted is off. Written only by the admin route (POST /api/admin/dev/testmode, the Test panel; `on` only for a character who is online); read once at a join, BEFORE the reconnect's place is judged, kept as `ps._testMode` (memory only, never the rpg blob); a failed read is off. Deleted by `_resetCharacterData`. `testmode: false` in the live flags turns every one off without touching the records | test-mode.md |

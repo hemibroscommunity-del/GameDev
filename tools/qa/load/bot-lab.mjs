@@ -48,6 +48,7 @@
  */
 import { GameRoom } from '../../../server/src/index.js';
 import { BOTFP } from '../../../server/src/botfp.js';
+import { BOTSIG } from '../../../server/src/botsig.js';   /* v2.3.3724: the server's own bot signals */
 import { GATHER_HITS, HONEST_CYCLE, gatherReqLvl } from '../../../server/src/gathering.js';
 import { WHEEL_SPAWNS, WHEEL_CENTRE } from '../../../server/src/wheelspawns.js';
 
@@ -209,6 +210,30 @@ async function travel(world, p, tx, ty, reach) {
       budget = budgetOn ? 0 : 80;
     }
     if (out.length) { p.moves += out.length; await send(world, p, out); }
+  } else if (mode === 'walk' && p.cfg.human) {
+    /* v2.3.3724: A THUMB ON THE STICK, the synthetic person the server's
+       signals must leave alone (botsig.js): aims roughly (anywhere within
+       45 px of the node), the heading wanders a little each frame and steers
+       back, and the thumb sometimes rests still for a few frames (the same
+       angle: a straight stretch, as a real resting thumb sends) */
+    const key = Math.round(tx) + ',' + Math.round(ty);
+    if (p.aimFor !== key) {
+      p.aimFor = key;
+      p.aimPt = { x: tx + u(-45, 45), y: ty + u(-45, 45) };
+      p.h = Math.atan2(p.aimPt.y - ps.y, p.aimPt.x - ps.x) + u(-0.2, 0.2);
+      p.rest = 0;
+    }
+    if (p.rest > 0) p.rest--;
+    else {
+      let dh = Math.atan2(p.aimPt.y - ps.y, p.aimPt.x - ps.x) - p.h;
+      while (dh > Math.PI) dh -= 2 * Math.PI;
+      while (dh < -Math.PI) dh += 2 * Math.PI;
+      p.h += dh * 0.25 + u(-0.04, 0.04);
+      if (Math.random() < 0.1) p.rest = 3 + Math.floor(Math.random() * 8);
+    }
+    const len = Math.min(d, (p.cfg.speed || 220) * STEP_MS / 1000);
+    p.moves++;
+    await send(world, p, moveMsg(x0 + Math.cos(p.h) * len, y0 + Math.sin(p.h) * len, Math.cos(p.h) * 3, Math.sin(p.h) * 3));
   } else {
     const len = mode === 'burst' ? Math.min(d - reach * 0.5, allow()) : Math.min(d - reach * 0.5, (p.cfg.speed || 220) * STEP_MS / 1000);
     p.moves++;
@@ -369,6 +394,26 @@ async function stepFighter(world, p) {
     if (now - (p.jiggleAt || 0) > 20000) { p.jiggleAt = now; p.jig = -(p.jig || 1); await send(world, p, moveMsg(ps.x + p.jig, ps.y, 0, 0)); }
     return;
   }
+  /* v2.3.3724: an answer to a monster's wind-up on this player, read off the
+     room the way a script reads the messages: `reflex` says how long after
+     it (ms) the player dodges -- a script at once, a person a few hundred ms
+     and not every time */
+  if (p.cfg.reflex) {
+    for (const m of mons) {
+      const t = (m._bwTarget === p.id && m._bwUntil > now) ? m._bwUntil : (m._tgTarget === p.id && m._tgPhase === 'telegraph') ? m._tgUntil : 0;
+      if (!t) continue;
+      const key = m.id + ':' + t;
+      if (p.wuSeen === key) continue;
+      p.wuSeen = key;
+      const r = p.cfg.reflex();
+      if (r != null) p.dodgeAt = now + r;
+    }
+    if (p.dodgeAt && now >= p.dodgeAt) {
+      p.dodgeAt = 0;
+      p.dodges = (p.dodges || 0) + 1;
+      await send(world, p, { type: 'ability_use', payload: { type: 'dodge' } });
+    }
+  }
   /* honest */
   if (!p.target || !p.target.alive) {
     let best = null, bd = Infinity;
@@ -430,6 +475,10 @@ const think = () => u(60, 260);
 const gap = () => u(150, 900);
 const SCENARIOS = [
   { name: 'honest-pine', note: 'a quick, honest hand on the commons pines (Woodcutting 1)',
+    players: [{ type: 'tree', tier: 1, start: true, fp: 'human', acc: 'mix', move: 'walk', human: true, speed: 220, after: () => u(250, 700) }] },
+  /* v2.3.3724: the honest messages with a SCRIPT's walk: straight through
+     each tree's centre (the lab's honest walker before v2.3.3724) */
+  { name: 'straight-pine', note: 'the honest messages, but walked dead straight to each tree\'s centre (a script\'s path)',
     players: [{ type: 'tree', tier: 1, start: true, fp: 'human', acc: 'mix', move: 'walk', speed: 220, after: () => u(250, 700) }] },
   { name: 'edge-pine', note: 'the real messages, struck the moment the worker takes it, at the speed bound',
     players: [{ type: 'tree', tier: 1, start: true, edge: true, fp: 'human', acc: 'perfect', move: 'burst' }] },
@@ -440,7 +489,7 @@ const SCENARIOS = [
   { name: 'disguised-pine', note: 'no start message, a fresh human-looking fingerprint and uneven gaps',
     players: [{ type: 'tree', tier: 1, start: false, fp: 'human', acc: 'perfect', move: 'burst', think, after: gap }] },
   { name: 'honest-obsidian', note: 'an honest miner at obsidian (Mining 15, the level it opens)',
-    players: [{ type: 'oreVein', tier: 21, levels: { mining: 15 }, start: true, fp: 'human', acc: 'mix', move: 'walk', speed: 220, after: () => u(250, 700) }] },
+    players: [{ type: 'oreVein', tier: 21, levels: { mining: 15 }, start: true, fp: 'human', acc: 'mix', move: 'walk', human: true, speed: 220, after: () => u(250, 700) }] },
   { name: 'disguised-obsidian', note: 'obsidian with no start message, human-looking fingerprints, moving by bundles',
     players: [{ type: 'oreVein', tier: 21, levels: { mining: 15 }, start: false, fp: 'human', acc: 'perfect', move: 'bundle', think, after: gap }] },
   { name: 'fleet-one-device', note: 'four disguised pine bots sharing one device id',
@@ -450,7 +499,12 @@ const SCENARIOS = [
     shared: true,
     players: [0, 1, 2, 3].map(() => ({ type: 'tree', tier: 1, start: false, fp: 'human', acc: 'perfect', move: 'burst', think, after: gap, device: (i) => 'labdev' + i + hash32() })) },
   { name: 'honest-fighter', note: 'a sword, one Frost Ridge monster (levels 1-5) at a time, a swing every 650 ms',
-    players: [{ fight: true, move: 'walk', speed: 220, startAt: () => landAnchor('frost') }] },
+    players: [{ fight: true, move: 'walk', human: true, speed: 220, startAt: () => landAnchor('frost') }] },
+  /* v2.3.3724: the wind-up's answer -- a person's, and a script's */
+  { name: 'honest-dodger', note: 'the honest sword, dodging most wind-ups 280-700 ms after they start (a person)',
+    players: [{ fight: true, move: 'walk', human: true, speed: 220, startAt: () => landAnchor('frost'), reflex: () => (Math.random() < 0.7 ? u(280, 700) : null) }] },
+  { name: 'reflex-fighter', note: 'the honest sword, dodging every wind-up 60 ms after it starts (a script reading the wind-up)',
+    players: [{ fight: true, move: 'walk', speed: 220, startAt: () => landAnchor('frost'), reflex: () => 60 }] },
   { name: 'aimbot-fighter', note: 'standing still, a "ranged" hit on every level 1-5 monster within 3,600 px, no bow (v2.3.3334: under the message budget, 100 a second)',
     players: [{ fight: true, aimbot: true, perSec: 100, move: 'walk', startAt: () => landAnchor('frost') }] },
   /* v2.3.3334: the same script holding a bow (hitproof.js asks for one), and
@@ -458,7 +512,7 @@ const SCENARIOS = [
   { name: 'aimbot-bow', note: 'the aimbot holding a bow, under the message budget (100 claims a second, the nearest first), specials never paid for',
     players: [{ fight: true, aimbot: true, bow: true, perSec: 100, move: 'walk', startAt: () => landAnchor('frost') }] },
   { name: 'honest-archer', note: 'a bow, one Frost Ridge monster at a time from 450 px, a shot every 600 ms, a paid volley every 6 s',
-    players: [{ fight: true, archer: true, bow: true, move: 'walk', speed: 220, startAt: () => landAnchor('frost') }] },
+    players: [{ fight: true, archer: true, bow: true, move: 'walk', human: true, speed: 220, startAt: () => landAnchor('frost') }] },
   { name: 'honest-cook', note: 'cooking minnows at an honest pace (1 in 10 burnt)',
     players: [{ cook: true, fish: { key: 'fish_minnow', n: 9000 }, start: true, fp: 'human', burn: 0.1 }] },
   { name: 'limit-cook', note: 'cooking minnows at the worker\'s 45-a-minute limit, every one "cooked", no fingerprint',
@@ -501,6 +555,8 @@ async function runScenario(sc) {
     if (!world.room.playerState[p.id]) p.why.set('LOGGED OUT (the room closed the socket)', 1);
     const rec = world.room._botfp && world.room._botfp.get(p.id);
     if (rec) world.room._botfpDecay(rec, Date.now());
+    /* v2.3.3724: the server's own signals, judged as the close would */
+    const sigJ = rec && rec.sig ? world.room._sigEval(p.id, rec, Date.now()) : null;
     const gained = {};
     for (const [k, v] of Object.entries(ps.inventory || {})) { const d = v - (p.inv0[k] || 0); if (d) gained[k] = d; }
     const sess = [...world.room.sessions.values()].find((s) => s.id === p.id) || {};
@@ -512,6 +568,8 @@ async function runScenario(sc) {
       pxPerS: p.dist / (MINUTES * 60), refusedMoves: p.refusedMoves, idleS: Math.round((p.idle || 0) / 1000),
       plannedHits: p.plannedHits || 0, deaths: p.deaths || 0,
       kills: world.kills.get(p.id) || 0, combatXp: world.cxp.get(p.id) || 0, coins: (ps.coins || 0) - (p.coins0 || 0),
+      sig: sigJ ? { score: sigJ.score, reasons: sigJ.reasons, aim: rec.sig.aim, react: rec.sig.react, rootMax: rec.sig.root.max, flagged: rec.flags.some((f) => f.kind === 'server-signals') } : null,
+      dodges: p.dodges || 0,
     });
   }
   return { sc, out, realS: (realDateNow() - t0) / 1000 };
@@ -764,6 +822,7 @@ for (const sc of SCENARIOS) {
     if (o.kills || /fighter/.test(o.name)) console.log(`  #${o.i}  kills/h ${Math.round(o.kills / hours)}  combat xp/h ${Math.round(o.combatXp / hours)}  coins/h ${Math.round(o.coins / hours)}  hit messages/h ${Math.round(o.moves / hours)}`);
     console.log(`  #${o.i}  strikes/h ${Math.round(o.strikes / hours)}  paid/h ${Math.round((o.why.paid || 0) / hours)}  xp/h ${Math.round(o.xp / hours)}  | got/h: ${g || '-'}`);
     console.log(`       refusals ${JSON.stringify(Object.fromEntries(Object.entries(o.why).filter(([k]) => k !== 'paid')))}  frames/h ${Math.round(o.frames / hours)}  travel ${Math.round(o.pxPerS)} px/s  idle ${o.idleS}s${o.deaths ? '  deaths ' + o.deaths : ''}`);
+    if (o.sig) console.log(`       server signals: score ${o.sig.score}${o.sig.flagged ? ' FLAGGED' : ''}  reasons [${o.sig.reasons.join(', ')}]  aimed ${o.sig.aim.hit}/${o.sig.aim.n}  quick reactions ${o.sig.react.quick}/${o.sig.react.n}${o.dodges ? ' (' + o.dodges + ' dodges)' : ''}  most hits from one spot ${o.sig.rootMax}`);
     console.log(`       anti-bot: score ${o.score}  flags [${o.flags.join(', ')}]  no-start strikes ${o.extractionMissing}  counters ${o.counters ? JSON.stringify({ noFp: o.counters.noFpStrikes, synthetic: o.counters.syntheticStrikes, replay: o.counters.replayHits, capClamps: o.counters.capClamps, tapless: o.counters.taplessCooks }) : '-'}`);
   }
   console.log('');
@@ -794,6 +853,7 @@ if (process.env.LAB_JSON) {
   const { writeFileSync } = await import('node:fs');
   writeFileSync(process.env.LAB_JSON, JSON.stringify(results.map((r) => ({ name: r.sc.name, note: r.sc.note, out: r.out })), null, 1));
 }
+console.log(`(BOTSIG: flag at ${BOTSIG.SIG_FLAG_AT}; weights aimed ${BOTSIG.W_AIM}, reflex ${BOTSIG.W_REACT}, rooted ${BOTSIG.W_ROOT}, cook ${BOTSIG.W_COOK}, gesture ${BOTSIG.W_GEST}, loop ${BOTSIG.W_LOOP}, marathon ${BOTSIG.W_MARATHON}, cloud ${BOTSIG.W_CLOUD} -- placeholders: the live values are the room's hidden settings)`);
 console.log(`(BOTFP: flag at score ${BOTFP.FLAG_AT}, half-life ${BOTFP.SCORE_HALF_LIFE_MS / 60000} min, hour caps ${BOTFP.HARVEST_HOUR_CAP} a skill / ${BOTFP.COOK_HOUR_CAP} cooks)`);
 Date.now = realDateNow;
 process.exit(0);

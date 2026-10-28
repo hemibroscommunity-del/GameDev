@@ -29,6 +29,8 @@
  * types (rule 13 untouched); the admin surface is HTTP, invisible (404)
  * unless env.ADMIN_KEY is configured AND presented. */
 
+import { hydrateSig } from './botsig.js';   /* v2.3.3724: the server's own signals ride the botstat record */
+
 /* v2.3.3723: every threshold, weight, flag score, fleet limit and hour cap in
    this table is a PUBLIC PLACEHOLDER now (docs/specs/hidden-settings.md).  The
    room reads them through its hidden settings (hidden.js HIDDEN_SPEC lists
@@ -278,6 +280,8 @@ export const botfpMethods = {
         if (typeof stored.score === 'number') { rec.score = stored.score; rec.lastDecayAt = stored.updatedAt || now; }
         if (Array.isArray(stored.flags)) rec.flags = stored.flags.slice(-BOTFP.FLAG_CAP);
         if (typeof stored.lastFlagAt === 'number') rec.lastFlagAt = stored.lastFlagAt;
+        /* v2.3.3724: the server's own bot signals (botsig.js) */
+        if (stored.sig) rec.sig = hydrateSig(stored.sig);
       }
     } catch (e) { /* absent record is the common case */ }
   },
@@ -558,12 +562,15 @@ export const botfpMethods = {
       score: rec.score, lastFlagAt: rec.lastFlagAt,
       flags: rec.flags,
     };
+    if (rec.sig) obj.sig = rec.sig;   /* v2.3.3724: botsig.js, at this same pace */
     try { this.state.storage.put('botstat:' + id, obj).catch(() => {}); } catch (e) {}
   },
 
   _botfpFlush(session) {
     if (!session || !session.id || !this._botfp) return;
     const rec = this._botfp.get(session.id);
+    /* v2.3.3724: a last judgement of the server's signals, in the write the close makes anyway */
+    if (rec && rec.sig && typeof this._sigEval === 'function') this._sigEval(session.id, rec, now_());
     if (rec) this._botfpMaybePut(session.id, rec, true);
   },
 
